@@ -5,6 +5,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 import { useConvexAvailable } from "@/app/ConvexClientProvider";
+import { SilentErrorBoundary } from "@/components/ui/SilentErrorBoundary";
 
 const tabs = [
   { label: "Changelog", href: "/community/changelog" },
@@ -85,5 +86,9 @@ export default function CommunityLayout({
     );
   }
 
-  return <CommunityLayoutInner>{children}</CommunityLayoutInner>;
+  return (
+    <SilentErrorBoundary label="CommunityLayout">
+      <CommunityLayoutInner>{children}</CommunityLayoutInner>
+    </SilentErrorBoundary>
+  );
 }

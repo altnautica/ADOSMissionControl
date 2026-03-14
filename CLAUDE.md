@@ -203,6 +203,7 @@ When you need to understand a system, read these files:
 
 ## Gotchas
 
+- **Always skip Convex queries when context is unavailable** — Any hook that calls `useQuery(communityApi.*.*)` MUST pass `"skip"` as the second argument when Convex is unavailable or in demo mode. Pattern: `useQuery(ref, !isDemoMode() && convexAvailable ? {} : "skip")`. See `use-has-command-access.ts` for the reference implementation. Never call `useQuery(ref)` with no skip guard -- it crashes when auth context doesn't exist.
 - **`getParameter()` returns `{ value, type, index, count }`** — not just a number. Access `.value` for the numeric value.
 - **All mock params use `type: 9`** (`MAV_PARAM_TYPE_REAL32`). Even integer-valued params like `FLTMODE1` are stored as floats — this matches real ArduPilot behavior.
 - **`paramNames` must be stable** — `usePanelParams` memoizes on the array reference. Define `paramNames` as a module-level `const`, not inline in the component. Otherwise you get infinite re-render loops.
