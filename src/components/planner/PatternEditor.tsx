@@ -134,7 +134,8 @@ export function PatternEditor({ onApply }: PatternEditorProps) {
             <span className="text-[10px] font-mono text-status-warning">
               {activeType === "survey" || activeType === "structureScan" ? "Draw polygon first" :
                activeType === "orbit" ? "Draw circle first" :
-               activeType === "corridor" ? "Set path points" : "Set datum point"}
+               activeType === "corridor" ? "Set path points" :
+               activeType === "parallelTrack" ? "Set start point" : "Set datum point"}
             </span>
           </>
         )}
