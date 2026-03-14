@@ -18,7 +18,6 @@ interface NotamEntitiesProps {
 export function NotamEntities({ viewer }: NotamEntitiesProps) {
   const notams = useAirspaceStore((s) => s.notams);
   const layerVisibility = useAirspaceStore((s) => s.layerVisibility);
-  const timelineTime = useAirspaceStore((s) => s.timelineTime);
   const entityIdsRef = useRef<string[]>([]);
 
   useEffect(() => {
@@ -37,20 +36,14 @@ export function NotamEntities({ viewer }: NotamEntitiesProps) {
 
     const newIds: string[] = [];
 
-    // Filter NOTAMs by timeline time (only show active at selected time)
-    const timeMs = timelineTime.getTime();
-    const activeNotams = notams.filter((n) => {
-      if (!n.effectiveFrom || !n.effectiveTo) return true; // show if no time range
-      const from = new Date(n.effectiveFrom).getTime();
-      const to = new Date(n.effectiveTo).getTime();
-      return timeMs >= from && timeMs <= to;
-    });
-
-    for (const notam of activeNotams) {
+    for (const notam of notams) {
       if (notam.lat == null || notam.lon == null) continue;
 
       const entityId = `notam-${notam.id}`;
       const radiusM = (notam.radius ?? 5) * 1000; // default 5km if not specified
+
+      // Skip if entity already exists (prevents duplicate entity crash)
+      if (viewer.entities.getById(entityId)) continue;
 
       viewer.entities.add({
         id: entityId,
@@ -97,7 +90,7 @@ export function NotamEntities({ viewer }: NotamEntitiesProps) {
         }
       }
     };
-  }, [viewer, notams, layerVisibility.restrictions, timelineTime]);
+  }, [viewer, notams, layerVisibility.restrictions]);
 
   return null;
 }
