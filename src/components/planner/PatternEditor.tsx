@@ -72,15 +72,27 @@ export function PatternEditor({ onApply }: PatternEditorProps) {
     structureScanConfig.structurePolygon, corridorConfig.pathPoints,
     sarExpandingSquareConfig?.center, sarSectorSearchConfig?.center, sarParallelTrackConfig?.startPoint]);
 
+  // Stable config fingerprint — only re-generate when the ACTIVE config's values change
+  const configKey = useMemo(() => {
+    if (!activeType) return "";
+    const cfg = activeType === "survey" ? surveyConfig
+      : activeType === "orbit" ? orbitConfig
+      : activeType === "corridor" ? corridorConfig
+      : activeType === "expandingSquare" ? sarExpandingSquareConfig
+      : activeType === "sectorSearch" ? sarSectorSearchConfig
+      : activeType === "parallelTrack" ? sarParallelTrackConfig
+      : structureScanConfig;
+    return JSON.stringify(cfg);
+  }, [activeType, surveyConfig, orbitConfig, corridorConfig, structureScanConfig,
+    sarExpandingSquareConfig, sarSectorSearchConfig, sarParallelTrackConfig]);
+
   // Auto-generate on config/geometry change (300ms debounce)
   useEffect(() => {
     if (!activeType || !hasGeometry) return;
     const timer = setTimeout(() => generate(), 300);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeType, surveyConfig, orbitConfig, corridorConfig, structureScanConfig,
-    sarExpandingSquareConfig, sarSectorSearchConfig, sarParallelTrackConfig,
-    polygons, circles, generate]);
+  }, [activeType, configKey, polygons.length, circles.length, generate]);
 
   if (!activeType) {
     return (

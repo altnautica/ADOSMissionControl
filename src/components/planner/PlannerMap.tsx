@@ -87,7 +87,7 @@ export function PlannerMap({
       },
       onCircleComplete: (center, radius) => {
         const id = randomId(); const shape: DrawnCircle = { id, center, radius };
-        addCircle(shape); onDrawingComplete?.(shape); setDrawingMode(null); setActiveTool("select");
+        addCircle(shape); onDrawingComplete?.(shape); setDrawingMode(null); setActiveTool("select"); setActiveDrawingVertices([]);
       },
       onMeasureUpdate: (points, segmentDistances, totalDistance) => { setMeasureLine({ points, segmentDistances, totalDistance }); },
       onVerticesUpdate: (vertices) => { setActiveDrawingVertices(vertices); },
