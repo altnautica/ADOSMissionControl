@@ -43,7 +43,6 @@ import { TimelineScrubber } from "./overlays/TimelineScrubber";
 import { AirTrafficMapControls } from "./controls/AirTrafficMapControls";
 import { AirTrafficToolbar } from "./controls/AirTrafficToolbar";
 import { StatsOverlay } from "./overlays/StatsOverlay";
-import { ViewportStatsOverlay } from "./overlays/ViewportStatsOverlay";
 import { AltitudeSlider } from "./overlays/AltitudeSlider";
 import { AirportDetailPanel } from "./panels/AirportDetailPanel";
 import { FlightSearchPanel } from "./panels/FlightSearchPanel";
@@ -410,7 +409,6 @@ export function AirTrafficViewer() {
       <TimelineScrubber />
       <AltitudeSlider />
       <StatsOverlay />
-      <ViewportStatsOverlay />
 
       {/* Panels */}
       <LayerControlPanel />
@@ -429,7 +427,7 @@ export function AirTrafficViewer() {
 
       {/* Zone loading indicator */}
       {airspaceLoading && (
-        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
+        <div className="absolute top-[5.5rem] left-1/2 -translate-x-1/2 z-20 pointer-events-none">
           <div className="flex items-center gap-2 bg-bg-primary/80 backdrop-blur-md rounded-lg px-4 py-2 border border-border-default">
             <div className="w-3 h-3 border border-accent-primary/30 border-t-accent-primary rounded-full animate-spin" />
             <p className="text-xs text-text-secondary">Loading airspace zones...</p>
