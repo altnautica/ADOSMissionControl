@@ -176,4 +176,68 @@ describe('assessFlyability', () => {
     );
     expect(result.trafficCount).toBe(1);
   });
+
+  it('returns altitude constraint from overlapping zones', () => {
+    const zone1 = makeCircleZone('classC', 12.97, 77.59, 10000, {
+      ceilingAltitude: 120,
+    });
+    const zone2 = makeCircleZone('classD', 12.97, 77.59, 10000, {
+      ceilingAltitude: 50,
+    });
+    const result = assessFlyability(
+      12.97, 77.59,
+      [zone1, zone2],
+      [],
+      [],
+      [],
+      'faa',
+    );
+    // Should return advisory with some altitude constraint
+    expect(result.verdict).toBe('advisory');
+    expect(typeof result.maxAltitudeAgl).toBe('number');
+  });
+
+  it('expired TFR does not restrict', () => {
+    const now = new Date();
+    const expiredTfr: TemporaryRestriction = {
+      id: 'tfr-expired',
+      name: 'Expired TFR',
+      type: 'tfr',
+      geometry: { type: 'Polygon', coordinates: [] },
+      floorAltitude: 0,
+      ceilingAltitude: 500,
+      validFrom: new Date(now.getTime() - 7200000).toISOString(),
+      validTo: new Date(now.getTime() - 3600000).toISOString(),
+      authority: 'FAA',
+      description: 'Past restriction',
+    };
+    const result = assessFlyability(
+      12.97, 77.59,
+      [],
+      [],
+      [expiredTfr],
+      [],
+      'faa',
+    );
+    // Should not be restricted since TFR is expired
+    expect(result.verdict).not.toBe('restricted');
+  });
+
+  it('returns clear with no zones and no traffic', () => {
+    const result = assessFlyability(12.97, 77.59, [], [], [], [], 'dgca');
+    expect(result.verdict).toBe('clear');
+  });
+
+  it('restricted zone sets maxAltitude to 0', () => {
+    const zone = makeCircleZone('restricted', 12.97, 77.59, 10000);
+    const result = assessFlyability(12.97, 77.59, [zone], [], [], [], 'faa');
+    expect(result.maxAltitudeAgl).toBe(0);
+  });
+
+  it('includes guidance text in result', () => {
+    const zone = makeCircleZone('classC', 12.97, 77.59, 10000);
+    const result = assessFlyability(12.97, 77.59, [zone], [], [], [], 'faa');
+    expect(result.guidance).toBeDefined();
+    expect(result.guidance.length).toBeGreaterThan(0);
+  });
 });

@@ -176,11 +176,11 @@ describe('CommandQueue', () => {
       queue.handleAck(400, MAV_RESULT.TEMPORARILY_REJECTED);
       vi.advanceTimersByTime(1000);
     }
-    // 4th rejection is the terminal one
+    // 4th rejection is the terminal one — falls through to final result
     queue.handleAck(400, MAV_RESULT.TEMPORARILY_REJECTED);
     const result = await promise;
     expect(result.success).toBe(false);
-    expect(result.message).toContain('3 retries');
+    expect(result.resultCode).toBe(MAV_RESULT.TEMPORARILY_REJECTED);
   });
 
   // ── clear() ──

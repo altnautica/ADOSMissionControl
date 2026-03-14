@@ -129,4 +129,66 @@ describe('computeAllThreats()', () => {
       expect(typeof t.altitudeDelta).toBe('number');
     }
   });
+
+  it('empty aircraft list returns empty threats', () => {
+    const threats = computeAllThreats(12.97, 77.59, 100, []);
+    expect(threats).toHaveLength(0);
+  });
+});
+
+describe('computeCPA edge cases', () => {
+  it('same position gives CPA distance near 0', () => {
+    const ac = makeAircraft({
+      lat: 12.97,
+      lon: 77.59,
+      altitudeMsl: 100,
+      velocity: 0,
+      heading: 0,
+    });
+    const cpa = computeCPA(12.97, 77.59, 100, ac);
+    // Distance should be very small (just altitude delta if any)
+    expect(cpa.distanceM).toBeLessThan(10);
+  });
+
+  it('high altitude aircraft has large altitude delta in threat', () => {
+    const ac = makeAircraft({
+      lat: 12.975,
+      lon: 77.595,
+      altitudeMsl: 10000,
+      velocity: 200,
+      heading: 270,
+    });
+    const threats = computeAllThreats(12.97, 77.59, 100, [ac]);
+    expect(threats[0].altitudeDelta).toBeGreaterThan(9000);
+  });
+
+  it('stationary aircraft CPA equals current position', () => {
+    const ac = makeAircraft({
+      lat: 12.975,
+      lon: 77.595,
+      altitudeMsl: 100,
+      velocity: 0,
+      heading: 90,
+    });
+    const cpa = computeCPA(12.97, 77.59, 100, ac);
+    expect(cpa.timeS).toBe(0);
+    const currentDist = haversineDistance(12.97, 77.59, 12.975, 77.595);
+    expect(cpa.distanceM).toBeGreaterThanOrEqual(currentDist * 0.9);
+  });
+});
+
+describe('classifyThreat edge cases', () => {
+  it('exactly at RA boundary', () => {
+    // RA is CPA < 500m AND time < 30s
+    const level = classifyThreat({ distanceM: 499, timeS: 29 });
+    expect(level).toBe('ra');
+  });
+
+  it('CPA is 0 meters classifies as RA', () => {
+    expect(classifyThreat({ distanceM: 0, timeS: 5 })).toBe('ra');
+  });
+
+  it('very large CPA distance classifies as other', () => {
+    expect(classifyThreat({ distanceM: 100000, timeS: 300 })).toBe('other');
+  });
 });

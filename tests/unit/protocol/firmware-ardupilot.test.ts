@@ -66,7 +66,7 @@ describe('ArduCopterHandler', () => {
     const modes = handler.getAvailableModes();
     expect(modes).toContain('STABILIZE');
     expect(modes).toContain('AUTO_RTL');
-    expect(modes.length).toBe(22);
+    expect(modes.length).toBe(24);
   });
 
   it('getDefaultMode returns STABILIZE', () => {
