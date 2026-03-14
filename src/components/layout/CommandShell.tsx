@@ -61,7 +61,8 @@ export function CommandShell({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user);
   const syncStatus = useAuthStore((s) => s.syncStatus);
   const lastSyncedAt = useAuthStore((s) => s.lastSyncedAt);
-  const { signOut } = useAuthActions();
+  const authActions = useAuthActions();
+  const signOut = authActions?.signOut;
   const immersiveMode = useUiStore((s) => s.immersiveMode);
   const exitImmersiveMode = useUiStore((s) => s.exitImmersiveMode);
   const [signInOpen, setSignInOpen] = useState(false);
@@ -194,7 +195,7 @@ export function CommandShell({ children }: { children: React.ReactNode }) {
                   <button
                     onClick={() => {
                       setUserMenuOpen(false);
-                      void signOut();
+                      if (signOut) void signOut();
                     }}
                     className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary hover:bg-bg-primary transition-colors"
                   >
