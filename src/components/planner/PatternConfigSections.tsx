@@ -5,17 +5,19 @@
  */
 "use client";
 
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useState } from "react";
 import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Toggle } from "@/components/ui/toggle";
 import { usePatternStore } from "@/stores/pattern-store";
 import { useDrawingStore } from "@/stores/drawing-store";
 import { CAMERA_PROFILES, computeGSD, computeLineSpacing, computeTriggerDistance } from "@/lib/patterns/gsd-calculator";
-import { Grid3X3, Circle, Route, Search, Building, Camera } from "lucide-react";
+import { Grid3X3, Circle, Route, Search, Building, Camera, ChevronDown } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 import {
   ENTRY_LOCATION_OPTIONS, DIRECTION_OPTIONS, SCAN_DIRECTION_OPTIONS, CAMERA_OPTIONS,
+  SURVEY_PRESET_OPTIONS, SURVEY_PRESETS,
 } from "./pattern-editor-constants";
 
 export function SurveyConfig() {
@@ -25,10 +27,14 @@ export function SurveyConfig() {
   const selectedPolygonIds = useDrawingStore((s) => s.selectedPolygonIds);
   const togglePolygonSelection = useDrawingStore((s) => s.togglePolygonSelection);
 
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  const extConfig = surveyConfig as { _cameraName?: string; _sidelap?: number; _frontlap?: number; _preset?: string; crosshatch?: boolean };
+
   const selectedCamera = useMemo(
-    () => CAMERA_PROFILES.find((c) => c.name === (surveyConfig as { _cameraName?: string })._cameraName),
+    () => CAMERA_PROFILES.find((c) => c.name === extConfig._cameraName),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [(surveyConfig as { _cameraName?: string })._cameraName]
+    [extConfig._cameraName]
   );
 
   const gsdInfo = useMemo(() => {
@@ -43,18 +49,76 @@ export function SurveyConfig() {
       const camera = CAMERA_PROFILES.find((c) => c.name === value);
       if (camera) {
         const alt = surveyConfig.altitude ?? 50;
-        const lineSpacing = computeLineSpacing(alt, camera, 0.6);
-        const triggerDist = computeTriggerDistance(alt, camera, 0.7);
+        const sidelap = 60;
+        const frontlap = 70;
+        const lineSpacing = computeLineSpacing(alt, camera, sidelap / 100);
+        const triggerDist = computeTriggerDistance(alt, camera, frontlap / 100);
         updateSurveyConfig({
           lineSpacing: Math.round(lineSpacing * 10) / 10,
           cameraTriggerDistance: Math.round(triggerDist * 10) / 10,
           _cameraName: value,
-        } as Partial<typeof surveyConfig> & { _cameraName: string });
+          _sidelap: sidelap,
+          _frontlap: frontlap,
+        } as Partial<typeof surveyConfig>);
       } else {
-        updateSurveyConfig({ _cameraName: "" } as Partial<typeof surveyConfig> & { _cameraName: string });
+        updateSurveyConfig({ _cameraName: "", _sidelap: undefined, _frontlap: undefined } as Partial<typeof surveyConfig>);
       }
     },
     [surveyConfig.altitude, updateSurveyConfig]
+  );
+
+  const handlePresetChange = useCallback(
+    (value: string) => {
+      const preset = SURVEY_PRESETS.find((p) => p.label === value);
+      if (preset) {
+        const updates: Record<string, unknown> = {
+          altitude: preset.altitude,
+          speed: preset.speed,
+          _preset: preset.label,
+          _sidelap: preset.sidelap,
+          _frontlap: preset.frontlap,
+        };
+        if (preset.tieLines !== undefined) updates.tieLines = preset.tieLines;
+        if (selectedCamera) {
+          const ls = computeLineSpacing(preset.altitude, selectedCamera, preset.sidelap / 100);
+          const td = computeTriggerDistance(preset.altitude, selectedCamera, preset.frontlap / 100);
+          updates.lineSpacing = Math.round(ls * 10) / 10;
+          updates.cameraTriggerDistance = Math.round(td * 10) / 10;
+        }
+        updateSurveyConfig(updates as Partial<typeof surveyConfig>);
+      } else {
+        updateSurveyConfig({ _preset: "" } as Partial<typeof surveyConfig>);
+      }
+    },
+    [selectedCamera, updateSurveyConfig]
+  );
+
+  const handleSidelapChange = useCallback(
+    (value: number) => {
+      if (!selectedCamera) return;
+      const alt = surveyConfig.altitude ?? 50;
+      const ls = computeLineSpacing(alt, selectedCamera, value / 100);
+      updateSurveyConfig({
+        _sidelap: value,
+        _preset: "",
+        lineSpacing: Math.round(ls * 10) / 10,
+      } as Partial<typeof surveyConfig>);
+    },
+    [selectedCamera, surveyConfig.altitude, updateSurveyConfig]
+  );
+
+  const handleFrontlapChange = useCallback(
+    (value: number) => {
+      if (!selectedCamera) return;
+      const alt = surveyConfig.altitude ?? 50;
+      const td = computeTriggerDistance(alt, selectedCamera, value / 100);
+      updateSurveyConfig({
+        _frontlap: value,
+        _preset: "",
+        cameraTriggerDistance: Math.round(td * 10) / 10,
+      } as Partial<typeof surveyConfig>);
+    },
+    [selectedCamera, surveyConfig.altitude, updateSurveyConfig]
   );
 
   return (
@@ -86,8 +150,14 @@ export function SurveyConfig() {
           </div>
         )}
       </div>
+
+      {/* Preset dropdown */}
+      <Select label="Survey Preset" options={SURVEY_PRESET_OPTIONS}
+        value={extConfig._preset ?? ""} onChange={handlePresetChange} />
+
+      {/* Camera Profile */}
       <Select label="Camera Profile" options={CAMERA_OPTIONS}
-        value={(surveyConfig as { _cameraName?: string })._cameraName ?? ""} onChange={handleCameraChange} />
+        value={extConfig._cameraName ?? ""} onChange={handleCameraChange} />
       {gsdInfo && (
         <Tooltip content="Ground Sample Distance. Lower = higher detail. 2 cm/px = excellent, 5 cm/px = typical survey, 10 cm/px = coarse overview." position="right">
           <div className="flex items-center gap-1.5 px-2 py-1 bg-accent-primary/10 border border-accent-primary/20 cursor-help">
@@ -96,43 +166,93 @@ export function SurveyConfig() {
           </div>
         </Tooltip>
       )}
-      <Input label="Grid Angle" type="number" unit="deg" value={String(surveyConfig.gridAngle ?? 0)}
-        onChange={(e) => updateSurveyConfig({ gridAngle: parseFloat(e.target.value) || 0 })} />
-      <Input label="Line Spacing" type="number" unit="m" value={String(surveyConfig.lineSpacing ?? 25)}
-        onChange={(e) => updateSurveyConfig({ lineSpacing: parseFloat(e.target.value) || 25 })} />
-      <Input label="Turn-around Distance" type="number" unit="m" value={String(surveyConfig.turnAroundDistance ?? 10)}
-        onChange={(e) => updateSurveyConfig({ turnAroundDistance: parseFloat(e.target.value) || 10 })} />
-      <Select label="Entry Point" options={ENTRY_LOCATION_OPTIONS} value={surveyConfig.entryLocation ?? "topLeft"}
-        onChange={(v) => updateSurveyConfig({ entryLocation: v as "topLeft" | "topRight" | "bottomLeft" | "bottomRight" })} />
-      <Toggle label="Alternate Transects" checked={surveyConfig.flyAlternateTransects ?? false}
-        onChange={(v) => updateSurveyConfig({ flyAlternateTransects: v })} />
-      <Toggle label="Tie Lines" checked={surveyConfig.tieLines ?? false}
-        onChange={(v) => updateSurveyConfig({ tieLines: v })} />
-      {surveyConfig.tieLines && (
-        <div className="grid grid-cols-2 gap-2">
-          <Input label="Tie Angle" type="number" unit="deg" value={String(surveyConfig.tieLineAngle ?? 90)}
-            onChange={(e) => updateSurveyConfig({ tieLineAngle: parseFloat(e.target.value) || 90 })} />
-          <Input label="Tie Spacing" type="number" unit="m" value={String(surveyConfig.tieLineSpacing ?? 25)}
-            onChange={(e) => updateSurveyConfig({ tieLineSpacing: parseFloat(e.target.value) || 25 })} />
+
+      {/* Sidelap/Frontlap (when camera selected) OR raw line spacing (fallback) */}
+      {selectedCamera ? (
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-1">
+            <label className="flex items-center justify-between text-xs text-text-secondary">
+              <span>Sidelap</span>
+              <span className="font-mono text-text-primary">{extConfig._sidelap ?? 60}%</span>
+            </label>
+            <input type="range" min={20} max={95} step={5}
+              value={extConfig._sidelap ?? 60}
+              onChange={(e) => handleSidelapChange(parseInt(e.target.value))}
+              className="w-full h-1 bg-bg-tertiary appearance-none cursor-pointer accent-accent-primary" />
+            <span className="text-[9px] font-mono text-text-tertiary">Line spacing: {surveyConfig.lineSpacing ?? 25} m</span>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="flex items-center justify-between text-xs text-text-secondary">
+              <span>Frontlap</span>
+              <span className="font-mono text-text-primary">{extConfig._frontlap ?? 70}%</span>
+            </label>
+            <input type="range" min={20} max={95} step={5}
+              value={extConfig._frontlap ?? 70}
+              onChange={(e) => handleFrontlapChange(parseInt(e.target.value))}
+              className="w-full h-1 bg-bg-tertiary appearance-none cursor-pointer accent-accent-primary" />
+            <span className="text-[9px] font-mono text-text-tertiary">Trigger dist: {surveyConfig.cameraTriggerDistance ?? 0} m</span>
+          </div>
         </div>
+      ) : (
+        <>
+          <Input label="Line Spacing" type="number" unit="m" value={String(surveyConfig.lineSpacing ?? 25)}
+            onChange={(e) => updateSurveyConfig({ lineSpacing: parseFloat(e.target.value) || 25 })} />
+        </>
       )}
-      <Input label="Camera Trigger Dist" type="number" unit="m" placeholder="0 = off"
-        value={String(surveyConfig.cameraTriggerDistance ?? 0)}
-        onChange={(e) => updateSurveyConfig({ cameraTriggerDistance: parseFloat(e.target.value) || 0 })} />
+
+      {/* Altitude + Speed (always visible) */}
       <div className="grid grid-cols-2 gap-2">
         <Input label="Altitude" type="number" unit="m" value={String(surveyConfig.altitude ?? 50)}
           onChange={(e) => {
             const alt = parseFloat(e.target.value) || 50;
             updateSurveyConfig({ altitude: alt });
             if (selectedCamera) {
-              const ls = computeLineSpacing(alt, selectedCamera, 0.6);
-              const td = computeTriggerDistance(alt, selectedCamera, 0.7);
+              const sidelap = extConfig._sidelap ?? 60;
+              const frontlap = extConfig._frontlap ?? 70;
+              const ls = computeLineSpacing(alt, selectedCamera, sidelap / 100);
+              const td = computeTriggerDistance(alt, selectedCamera, frontlap / 100);
               updateSurveyConfig({ lineSpacing: Math.round(ls * 10) / 10, cameraTriggerDistance: Math.round(td * 10) / 10 });
             }
           }} />
         <Input label="Speed" type="number" unit="m/s" value={String(surveyConfig.speed ?? 5)}
           onChange={(e) => updateSurveyConfig({ speed: parseFloat(e.target.value) || 5 })} />
       </div>
+
+      {/* Advanced toggle */}
+      <button onClick={() => setShowAdvanced(!showAdvanced)}
+        className="flex items-center gap-1 text-[10px] font-mono text-text-tertiary hover:text-text-secondary w-full py-1 cursor-pointer">
+        <ChevronDown size={10} className={cn("transition-transform", showAdvanced && "rotate-180")} />
+        {showAdvanced ? "Hide Advanced" : "Show Advanced"}
+      </button>
+
+      {showAdvanced && (
+        <>
+          <Input label="Grid Angle" type="number" unit="deg" value={String(surveyConfig.gridAngle ?? 0)}
+            onChange={(e) => updateSurveyConfig({ gridAngle: parseFloat(e.target.value) || 0 })} />
+          <Input label="Turn-around Distance" type="number" unit="m" value={String(surveyConfig.turnAroundDistance ?? 10)}
+            onChange={(e) => updateSurveyConfig({ turnAroundDistance: parseFloat(e.target.value) || 10 })} />
+          <Select label="Entry Point" options={ENTRY_LOCATION_OPTIONS} value={surveyConfig.entryLocation ?? "topLeft"}
+            onChange={(v) => updateSurveyConfig({ entryLocation: v as "topLeft" | "topRight" | "bottomLeft" | "bottomRight" })} />
+          <Toggle label="Alternate Transects" checked={surveyConfig.flyAlternateTransects ?? false}
+            onChange={(v) => updateSurveyConfig({ flyAlternateTransects: v })} />
+          <Toggle label="Crosshatch (90°)" checked={extConfig.crosshatch ?? false}
+            onChange={(v) => updateSurveyConfig({ crosshatch: v, tieLines: false } as Partial<typeof surveyConfig>)} />
+          <Toggle label="Tie Lines" checked={surveyConfig.tieLines ?? false}
+            onChange={(v) => updateSurveyConfig({ tieLines: v })}
+            disabled={extConfig.crosshatch === true} />
+          {surveyConfig.tieLines && (
+            <div className="grid grid-cols-2 gap-2">
+              <Input label="Tie Angle" type="number" unit="deg" value={String(surveyConfig.tieLineAngle ?? 90)}
+                onChange={(e) => updateSurveyConfig({ tieLineAngle: parseFloat(e.target.value) || 90 })} />
+              <Input label="Tie Spacing" type="number" unit="m" value={String(surveyConfig.tieLineSpacing ?? 25)}
+                onChange={(e) => updateSurveyConfig({ tieLineSpacing: parseFloat(e.target.value) || 25 })} />
+            </div>
+          )}
+          <Input label="Camera Trigger Dist" type="number" unit="m" placeholder="0 = off"
+            value={String(surveyConfig.cameraTriggerDistance ?? 0)}
+            onChange={(e) => updateSurveyConfig({ cameraTriggerDistance: parseFloat(e.target.value) || 0 })} />
+        </>
+      )}
     </>
   );
 }

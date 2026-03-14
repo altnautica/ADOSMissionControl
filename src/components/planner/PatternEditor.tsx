@@ -7,7 +7,7 @@
  */
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { Select } from "@/components/ui/select";
 import { usePatternStore } from "@/stores/pattern-store";
 import { useDrawingStore } from "@/stores/drawing-store";
@@ -31,17 +31,18 @@ export function PatternEditor({ onApply }: PatternEditorProps) {
   const surveyConfig = usePatternStore((s) => s.surveyConfig);
   const orbitConfig = usePatternStore((s) => s.orbitConfig);
   const structureScanConfig = usePatternStore((s) => s.structureScanConfig);
-  const updateSurveyConfig = usePatternStore((s) => s.updateSurveyConfig);
-  const updateOrbitConfig = usePatternStore((s) => s.updateOrbitConfig);
-  const updateStructureScanConfig = usePatternStore((s) => s.updateStructureScanConfig);
+  const corridorConfig = usePatternStore((s) => s.corridorConfig);
+  const sarExpandingSquareConfig = usePatternStore((s) => s.sarExpandingSquareConfig);
+  const sarSectorSearchConfig = usePatternStore((s) => s.sarSectorSearchConfig);
+  const sarParallelTrackConfig = usePatternStore((s) => s.sarParallelTrackConfig);
   const generate = usePatternStore((s) => s.generate);
   const clear = usePatternStore((s) => s.clear);
   const patternResult = usePatternStore((s) => s.patternResult);
   const isGenerating = usePatternStore((s) => s.isGenerating);
   const error = usePatternStore((s) => s.error);
 
-  const drawnPolygons = useDrawingStore((s) => s.polygons);
-  const drawnCircles = useDrawingStore((s) => s.circles);
+  const polygons = useDrawingStore((s) => s.polygons);
+  const circles = useDrawingStore((s) => s.circles);
 
   const handleTypeChange = useCallback(
     (value: string) => {
@@ -51,18 +52,35 @@ export function PatternEditor({ onApply }: PatternEditorProps) {
   );
 
   const handleGenerate = useCallback(() => {
-    if (activeType === "survey" && !surveyConfig.polygon && drawnPolygons.length > 0) {
-      updateSurveyConfig({ polygon: drawnPolygons[drawnPolygons.length - 1].vertices });
-    }
-    if (activeType === "orbit" && !orbitConfig.center && drawnCircles.length > 0) {
-      const lastCircle = drawnCircles[drawnCircles.length - 1];
-      updateOrbitConfig({ center: lastCircle.center, radius: lastCircle.radius });
-    }
-    if (activeType === "structureScan" && !structureScanConfig.structurePolygon && drawnPolygons.length > 0) {
-      updateStructureScanConfig({ structurePolygon: drawnPolygons[drawnPolygons.length - 1].vertices });
-    }
     generate();
-  }, [activeType, surveyConfig, orbitConfig, structureScanConfig, drawnPolygons, drawnCircles, updateSurveyConfig, updateOrbitConfig, updateStructureScanConfig, generate]);
+  }, [generate]);
+
+  // Compute whether geometry is available for the active pattern type
+  const hasGeometry = useMemo(() => {
+    if (!activeType) return false;
+    switch (activeType) {
+      case "survey": return !!(surveyConfig.polygon || polygons.length > 0);
+      case "orbit": return !!(orbitConfig.center || circles.length > 0);
+      case "structureScan": return !!(structureScanConfig.structurePolygon || polygons.length > 0);
+      case "corridor": return !!corridorConfig.pathPoints;
+      case "expandingSquare": return !!sarExpandingSquareConfig?.center;
+      case "sectorSearch": return !!sarSectorSearchConfig?.center;
+      case "parallelTrack": return !!sarParallelTrackConfig?.startPoint;
+      default: return false;
+    }
+  }, [activeType, surveyConfig.polygon, polygons.length, orbitConfig.center, circles.length,
+    structureScanConfig.structurePolygon, corridorConfig.pathPoints,
+    sarExpandingSquareConfig?.center, sarSectorSearchConfig?.center, sarParallelTrackConfig?.startPoint]);
+
+  // Auto-generate on config/geometry change (300ms debounce)
+  useEffect(() => {
+    if (!activeType || !hasGeometry) return;
+    const timer = setTimeout(() => generate(), 300);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeType, surveyConfig, orbitConfig, corridorConfig, structureScanConfig,
+    sarExpandingSquareConfig, sarSectorSearchConfig, sarParallelTrackConfig,
+    polygons, circles, generate]);
 
   if (!activeType) {
     return (
@@ -85,6 +103,30 @@ export function PatternEditor({ onApply }: PatternEditorProps) {
       {activeType === "sectorSearch" && <SarSectorSearchConfig />}
       {activeType === "parallelTrack" && <SarParallelTrackConfig />}
       {activeType === "structureScan" && <StructureScanConfig />}
+
+      {/* Readiness indicator */}
+      <div className="flex items-center gap-1.5 px-2 py-1">
+        {isGenerating ? (
+          <>
+            <div className="w-1.5 h-1.5 rounded-full bg-accent-primary animate-pulse" />
+            <span className="text-[10px] font-mono text-accent-primary">Generating...</span>
+          </>
+        ) : hasGeometry ? (
+          <>
+            <div className="w-1.5 h-1.5 rounded-full bg-status-success" />
+            <span className="text-[10px] font-mono text-status-success">Ready</span>
+          </>
+        ) : (
+          <>
+            <div className="w-1.5 h-1.5 rounded-full bg-status-warning" />
+            <span className="text-[10px] font-mono text-status-warning">
+              {activeType === "survey" || activeType === "structureScan" ? "Draw polygon first" :
+               activeType === "orbit" ? "Draw circle first" :
+               activeType === "corridor" ? "Set path points" : "Set datum point"}
+            </span>
+          </>
+        )}
+      </div>
 
       {/* Generate / Clear buttons */}
       <div className="flex gap-2">
@@ -109,6 +151,18 @@ export function PatternEditor({ onApply }: PatternEditorProps) {
         </div>
       )}
 
+      {/* Apply button (above stats for prominence) */}
+      {patternResult && onApply && (
+        <button onClick={onApply}
+          className={cn(
+            "w-full flex items-center justify-center gap-1.5 py-2 text-xs font-mono font-semibold",
+            "bg-accent-lime/20 text-accent-lime border border-accent-lime/30 hover:bg-accent-lime/30 transition-colors cursor-pointer"
+          )}>
+          <Check size={12} />Apply to Mission ({patternResult.waypoints.length} WP)
+        </button>
+      )}
+
+      {/* Pattern stats */}
       {patternResult && (
         <div className="border border-border-default p-2">
           <div className="text-[10px] font-mono text-text-tertiary mb-1">Pattern Stats</div>
@@ -133,16 +187,6 @@ export function PatternEditor({ onApply }: PatternEditorProps) {
             </>)}
           </div>
         </div>
-      )}
-
-      {patternResult && onApply && (
-        <button onClick={onApply}
-          className={cn(
-            "w-full flex items-center justify-center gap-1.5 py-2 text-xs font-mono font-semibold",
-            "bg-accent-lime/20 text-accent-lime border border-accent-lime/30 hover:bg-accent-lime/30 transition-colors cursor-pointer"
-          )}>
-          <Check size={12} />Apply to Mission ({patternResult.waypoints.length} WP)
-        </button>
       )}
     </div>
   );
