@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Modal } from "@/components/ui/modal";
@@ -18,7 +18,7 @@ import { getParamMetadata, firmwareTypeToVehicle, type ParamMetadata } from "@/l
 import { cn } from "@/lib/utils";
 import { RefreshCw, ListTree } from "lucide-react";
 import type { ParameterValue } from "@/lib/protocol/types";
-import { exportParamFile, importParamFile } from "./param-file-io";
+import { exportParamFile } from "./param-file-io";
 
 /** Module-level cache — survives unmount/remount, avoids full re-download on navigation. */
 let cachedParamList: ParameterValue[] | null = null;
@@ -39,11 +39,22 @@ function getCategory(name: string): string {
   return name.slice(0, idx).replace(/\d+$/, "");
 }
 
+/** Debounce hook — returns debounced value after delay ms */
+function useDebouncedValue<T>(value: T, delay: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+  return debounced;
+}
+
 export function ParametersPanel() {
   const { toast } = useToast();
   const [parameters, setParameters] = useState<ParameterValue[]>([]);
   const [modified, setModified] = useState<Map<string, number>>(new Map());
   const [filter, setFilter] = useState("");
+  const debouncedFilter = useDebouncedValue(filter, 150);
   const [category, setCategory] = useState<string | null>(null);
   const [showModifiedOnly, setShowModifiedOnly] = useState(false);
   const [showNonDefault, setShowNonDefault] = useState(false);
@@ -56,7 +67,6 @@ export function ParametersPanel() {
   const [metadata, setMetadata] = useState<Map<string, ParamMetadata>>(new Map());
   const [showWriteConfirm, setShowWriteConfirm] = useState(false);
   const [showRebootPrompt, setShowRebootPrompt] = useState(false);
-  const [showCommitButton, setShowCommitButton] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showCompare, setShowCompare] = useState(false);
   const [showDefaultsDiff, setShowDefaultsDiff] = useState(false);
@@ -65,15 +75,22 @@ export function ParametersPanel() {
   const pendingParamSearch = useUiStore((s) => s.pendingParamSearch);
   const setPendingParamSearch = useUiStore((s) => s.setPendingParamSearch);
 
+  // Throttled progress ref — update UI at most every 100ms during download
+  const lastProgressUpdate = useRef(0);
+
   const downloadParams = useCallback(async () => {
     const protocol = useDroneManager.getState().getSelectedProtocol();
     if (!protocol) { setError("No drone connected"); return; }
     setLoading(true); setError(null); setProgress({ current: 0, total: 0 });
-    setModified(new Map()); setShowCommitButton(false);
+    setModified(new Map());
     const received: ParameterValue[] = [];
     const unsub = protocol.onParameter((param) => {
       received.push(param);
-      setProgress({ current: received.length, total: param.count || received.length });
+      const now = Date.now();
+      if (now - lastProgressUpdate.current >= 100 || received.length === param.count) {
+        lastProgressUpdate.current = now;
+        setProgress({ current: received.length, total: param.count || received.length });
+      }
     });
     try {
       const params = await protocol.getAllParameters();
@@ -102,6 +119,13 @@ export function ParametersPanel() {
     }
   }, [pendingParamSearch, setPendingParamSearch]);
 
+  // Pre-built Map for O(1) lookups instead of O(n) .find() calls
+  const paramsByName = useMemo(() => {
+    const map = new Map<string, ParameterValue>();
+    for (const p of parameters) map.set(p.name, p);
+    return map;
+  }, [parameters]);
+
   const categories = useMemo(() => {
     const map = new Map<string, number>();
     for (const p of parameters) { const cat = getCategory(p.name); map.set(cat, (map.get(cat) || 0) + 1); }
@@ -114,9 +138,9 @@ export function ParametersPanel() {
     if (showNonDefault) {
       result = result.filter((p) => {
         const meta = metadata.get(p.name);
-        if (meta?.defaultValue === undefined && meta?.defaultValue !== 0) return false;
+        if (meta?.defaultValue === undefined) return false;
         const current = modified.has(p.name) ? modified.get(p.name)! : p.value;
-        return current !== meta?.defaultValue;
+        return current !== meta.defaultValue;
       });
     }
     if (showFavorites) result = result.filter((p) => favoriteParams.includes(p.name));
@@ -125,11 +149,11 @@ export function ParametersPanel() {
 
   const handleModify = useCallback((name: string, value: number) => {
     setModified((prev) => {
-      const original = parameters.find((p) => p.name === name);
+      const original = paramsByName.get(name);
       if (original && original.value === value) { const next = new Map(prev); next.delete(name); return next; }
       return new Map(prev).set(name, value);
     });
-  }, [parameters]);
+  }, [paramsByName]);
 
   const handleSave = useCallback(async () => {
     if (modified.size === 0) return;
@@ -147,7 +171,7 @@ export function ParametersPanel() {
     for (let i = 0; i < entries.length; i++) {
       const [name, value] = entries[i];
       setWriteProgress({ current: i + 1, total: entries.length });
-      const param = parameters.find((p) => p.name === name);
+      const param = paramsByName.get(name);
       try {
         const result = await protocol.setParameter(name, value, param?.type);
         if (!result.success) failures.push(`${name}: ${result.message}`);
@@ -162,16 +186,18 @@ export function ParametersPanel() {
         const updated = prev.map((p) => { const nv = modified.get(p.name); return nv !== undefined ? { ...p, value: nv } : p; });
         cachedParamList = updated; cacheTimestamp = Date.now(); return updated;
       });
-      setModified(new Map()); setShowCommitButton(true);
+      setModified(new Map());
       toast(`Wrote ${entries.length} parameter(s) to FC`, "success");
+      // Auto-commit to flash (belt-and-suspenders, fire-and-forget per DEC-047)
+      try { protocol.commitParamsToFlash(); } catch { /* fire-and-forget */ }
       if (needsReboot) setShowRebootPrompt(true);
     }
     setSaving(false); setWriteProgress({ current: 0, total: 0 });
-  }, [modified, parameters, metadata, toast]);
+  }, [modified, paramsByName, metadata, toast]);
 
   const writeChanges = useMemo(() => Array.from(modified.entries()).map(([name, newValue]) => ({
-    name, oldValue: parameters.find((p) => p.name === name)?.value ?? 0, newValue,
-  })), [modified, parameters]);
+    name, oldValue: paramsByName.get(name)?.value ?? 0, newValue,
+  })), [modified, paramsByName]);
 
   const handleRevert = useCallback(() => { setModified(new Map()); }, []);
 
@@ -200,26 +226,6 @@ export function ParametersPanel() {
     exportParamFile(parameters, modified);
   }, [parameters, modified]);
 
-  const handleImport = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]; if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      setModified(importParamFile(reader.result as string, parameters, modified));
-    };
-    reader.readAsText(file); e.target.value = "";
-  }, [parameters, modified]);
-
-  const handleCommitFlash = useCallback(async () => {
-    const protocol = useDroneManager.getState().getSelectedProtocol();
-    if (protocol) {
-      try {
-        const result = await protocol.commitParamsToFlash();
-        if (result.success) { setShowCommitButton(false); toast("Written to flash — persists after reboot", "success"); }
-        else { toast("Failed to write to flash", "error"); }
-      } catch { toast("Failed to write to flash", "error"); }
-    }
-  }, [toast]);
-
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
       <ParameterSearchFilter filter={filter} onFilterChange={setFilter}
@@ -230,10 +236,9 @@ export function ParametersPanel() {
         loading={loading} saving={saving} progress={progress} writeProgress={writeProgress}
         error={error} onDismissError={() => setError(null)}
         onExport={handleExport} onCompare={() => setShowCompare(true)}
-        onDefaultsDiff={() => setShowDefaultsDiff(true)} onImport={handleImport}
+        onDefaultsDiff={() => setShowDefaultsDiff(true)}
         onRevert={handleRevert} onResetDefaults={() => setShowResetConfirm(true)}
-        onSave={handleSave} onRefresh={downloadParams}
-        showCommitButton={showCommitButton} onCommitFlash={handleCommitFlash} />
+        onSave={handleSave} onRefresh={downloadParams} />
 
       <div className="flex-1 flex min-h-0 overflow-hidden">
         {!loading && parameters.length === 0 ? (
@@ -271,7 +276,7 @@ export function ParametersPanel() {
                   modified={modified} onModify={handleModify} metadata={metadata} columnVisibility={columnVisibility} />
               )}
               <ParameterGrid parameters={filteredParams} modified={modified} onModify={handleModify}
-                filter={filter} showModifiedOnly={showModifiedOnly} metadata={metadata} columnVisibility={columnVisibility} />
+                filter={debouncedFilter} showModifiedOnly={showModifiedOnly} metadata={metadata} columnVisibility={columnVisibility} />
             </div>
           </>
         )}

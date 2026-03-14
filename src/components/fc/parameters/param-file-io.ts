@@ -32,10 +32,10 @@ export function importParamFile(
     if (parts.length >= 2) {
       const name = parts[0];
       const value = parseFloat(parts[1]);
-      if (!isNaN(value) && parameters.some((p) => p.name === name)) {
+      if (!isNaN(value)) {
         const orig = parameters.find((p) => p.name === name);
         if (orig && orig.value !== value) newMods.set(name, value);
-        else newMods.delete(name);
+        else if (orig) newMods.delete(name);
       }
     }
   }

@@ -36,6 +36,7 @@
     "@monaco-editor/react": "^4.7.0",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",
+    "@tanstack/react-virtual": "^3.13.22",
     "cesium": "^1.138.0",
     "convex": "^1.32.0",
     "electron-updater": "^6.0.0",

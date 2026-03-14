@@ -1,6 +1,5 @@
 "use client";
 
-import { useRef, type ChangeEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ColumnVisibilityToggle } from "../shared/ColumnVisibilityToggle";
@@ -8,7 +7,6 @@ import { cn } from "@/lib/utils";
 import {
   Search,
   Download,
-  Upload,
   GitCompareArrows,
   PenLine,
   RotateCcw,
@@ -17,9 +15,7 @@ import {
   AlertTriangle,
   Filter,
   Star,
-  HardDrive,
   Zap,
-  Diff,
 } from "lucide-react";
 
 interface ParameterSearchFilterProps {
@@ -42,13 +38,10 @@ interface ParameterSearchFilterProps {
   onExport: () => void;
   onCompare: () => void;
   onDefaultsDiff: () => void;
-  onImport: (e: ChangeEvent<HTMLInputElement>) => void;
   onRevert: () => void;
   onResetDefaults: () => void;
   onSave: () => void;
   onRefresh: () => void;
-  showCommitButton: boolean;
-  onCommitFlash: () => void;
 }
 
 export function ParameterSearchFilter({
@@ -71,16 +64,11 @@ export function ParameterSearchFilter({
   onExport,
   onCompare,
   onDefaultsDiff,
-  onImport,
   onRevert,
   onResetDefaults,
   onSave,
   onRefresh,
-  showCommitButton,
-  onCommitFlash,
 }: ParameterSearchFilterProps) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
   const progressPercent = progress.total > 0
     ? Math.round((progress.current / progress.total) * 100)
     : 0;
@@ -101,7 +89,7 @@ export function ParameterSearchFilter({
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Filters group */}
+          {/* Search */}
           <div className="relative flex-1 max-w-sm">
             <Search size={14} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-tertiary" />
             <input
@@ -113,11 +101,13 @@ export function ParameterSearchFilter({
             />
           </div>
 
+          {/* Filter toggles */}
           <Button
             variant={showModifiedOnly ? "primary" : "ghost"}
             size="sm"
             icon={<Filter size={12} />}
             onClick={onToggleModified}
+            title="Show only parameters you've changed this session"
             className={cn(showModifiedOnly && "bg-status-warning text-bg-primary hover:bg-status-warning/90")}
           >
             Modified
@@ -128,16 +118,28 @@ export function ParameterSearchFilter({
             size="sm"
             icon={<Zap size={12} />}
             onClick={onToggleNonDefault}
+            title="Show parameters that differ from firmware defaults"
             className={cn(showNonDefault && "bg-accent-primary text-bg-primary hover:bg-accent-primary/90")}
           >
             Non-Default
           </Button>
+
+          {showNonDefault && (
+            <button
+              onClick={onDefaultsDiff}
+              className="text-[10px] text-accent-primary hover:underline cursor-pointer"
+              title="Open detailed diff view comparing current values to firmware defaults"
+            >
+              View diff
+            </button>
+          )}
 
           <Button
             variant={showFavorites ? "primary" : "ghost"}
             size="sm"
             icon={<Star size={12} />}
             onClick={onToggleFavorites}
+            title="Show only starred parameters"
             className={cn(showFavorites && "bg-status-warning text-bg-primary hover:bg-status-warning/90")}
           >
             Favorites
@@ -147,37 +149,23 @@ export function ParameterSearchFilter({
 
           <div className="w-px h-5 bg-border-default" />
 
-          {/* File ops group */}
-          <Button variant="secondary" size="sm" icon={<Download size={12} />} onClick={onExport} disabled={paramCount === 0}>Export</Button>
-          <Button variant="secondary" size="sm" icon={<Upload size={12} />} onClick={() => fileInputRef.current?.click()} disabled={paramCount === 0}>Import</Button>
-          <input ref={fileInputRef} type="file" accept=".param,.txt" className="hidden" onChange={onImport} />
-          <Button variant="secondary" size="sm" icon={<GitCompareArrows size={12} />} onClick={onCompare} disabled={paramCount === 0}>Compare</Button>
-          <Button variant="secondary" size="sm" icon={<Diff size={12} />} onClick={onDefaultsDiff} disabled={paramCount === 0}>Defaults Diff</Button>
+          {/* File ops */}
+          <Button variant="secondary" size="sm" icon={<Download size={12} />} onClick={onExport} disabled={paramCount === 0} title="Download all parameters as a .param file">Export</Button>
+          <Button variant="secondary" size="sm" icon={<GitCompareArrows size={12} />} onClick={onCompare} disabled={paramCount === 0} title="Load a .param file and compare against current FC values">Compare</Button>
 
           <div className="w-px h-5 bg-border-default" />
 
-          {/* Changes group */}
-          <Button variant="ghost" size="sm" icon={<RotateCcw size={12} />} onClick={onRevert} disabled={modifiedCount === 0}>Revert</Button>
-          <Button variant="ghost" size="sm" icon={<RotateCw size={12} />} onClick={onResetDefaults} disabled={paramCount === 0 || saving}>Reset to Default</Button>
-          <Button variant="primary" size="sm" icon={<PenLine size={12} />} onClick={onSave} disabled={modifiedCount === 0} loading={saving}>
+          {/* Changes */}
+          <Button variant="ghost" size="sm" icon={<RotateCcw size={12} />} onClick={onRevert} disabled={modifiedCount === 0} title="Discard all unsaved changes (does not affect FC)">Revert</Button>
+          <Button variant="ghost" size="sm" icon={<RotateCw size={12} />} onClick={onResetDefaults} disabled={paramCount === 0 || saving} title="Reset ALL FC parameters to firmware factory defaults">Reset to Default</Button>
+          <Button variant="primary" size="sm" icon={<PenLine size={12} />} onClick={onSave} disabled={modifiedCount === 0} loading={saving} title="Send changed parameters to the flight controller">
             {saving ? `Writing ${writeProgress.current}/${writeProgress.total}...` : `Write to FC (${modifiedCount})`}
           </Button>
 
-          {showCommitButton && (
-            <Button
-              variant="secondary"
-              size="sm"
-              icon={<HardDrive size={12} />}
-              onClick={onCommitFlash}
-            >
-              Commit to Flash
-            </Button>
-          )}
-
           <div className="w-px h-5 bg-border-default" />
 
-          {/* Sync group */}
-          <Button variant="secondary" size="sm" icon={<RefreshCw size={12} />} onClick={onRefresh} disabled={loading} loading={loading}>Refresh</Button>
+          {/* Sync */}
+          <Button variant="secondary" size="sm" icon={<RefreshCw size={12} />} onClick={onRefresh} disabled={loading} loading={loading} title="Re-download all parameters from FC">Refresh</Button>
         </div>
       </div>
 
