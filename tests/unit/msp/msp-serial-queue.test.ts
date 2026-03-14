@@ -118,23 +118,26 @@ describe('MspSerialQueue', () => {
   });
 
   it('flush: rejects all pending with "Disconnected"', async () => {
-    const p1 = queue.send(1);
-    const p2 = queue.send(2);
-    const p3 = queue.send(3);
+    // Attach .catch() immediately to avoid unhandled rejection
+    const p1 = queue.send(1).catch((e: Error) => e);
+    const p2 = queue.send(2).catch((e: Error) => e);
+    const p3 = queue.send(3).catch((e: Error) => e);
 
     queue.flush();
 
-    await expect(p1).rejects.toThrow('Disconnected');
-    await expect(p2).rejects.toThrow('Disconnected');
-    await expect(p3).rejects.toThrow('Disconnected');
+    const [r1, r2, r3] = await Promise.all([p1, p2, p3]);
+    expect((r1 as Error).message).toBe('Disconnected');
+    expect((r2 as Error).message).toBe('Disconnected');
+    expect((r3 as Error).message).toBe('Disconnected');
   });
 
   it('destroy: flushes and unsubscribes', async () => {
-    const p1 = queue.send(1);
+    const p1 = queue.send(1).catch((e: Error) => e);
 
     queue.destroy();
 
-    await expect(p1).rejects.toThrow('Disconnected');
+    const r1 = await p1;
+    expect((r1 as Error).message).toBe('Disconnected');
 
     // After destroy, triggering a frame should not cause errors
     // (handler was unsubscribed)
@@ -226,26 +229,29 @@ describe('MspSerialQueue', () => {
   });
 
   it('processes next request after timeout of current', async () => {
-    const p1 = queue.send(1);
+    const p1 = queue.send(1).catch((e: Error) => e);
     const p2 = queue.send(2);
 
-    // Timeout all retries for request 1
+    // Timeout all retries for request 1:
+    // initial send (1), retry 1 (2), retry 2 (3), then exhaustion starts req2
     vi.advanceTimersByTime(100);
     vi.advanceTimersByTime(100);
     vi.advanceTimersByTime(100);
 
-    await expect(p1).rejects.toThrow('MSP timeout');
+    const r1 = await p1;
+    expect((r1 as Error).message).toContain('MSP timeout');
 
-    // Request 2 should now be active
-    expect(sendFn).toHaveBeenCalledTimes(4 + 1); // 3 for req1 + 1 for req2
+    // 3 sends for req1 + 1 for req2 = 4 total
+    expect(sendFn).toHaveBeenCalledTimes(4);
     mock.triggerFrame(makeFrame(2));
     const r2 = await p2;
     expect(r2.command).toBe(2);
   });
 
-  it('flush clears timeout', () => {
-    queue.send(1);
+  it('flush clears timeout', async () => {
+    const p = queue.send(1).catch(() => {});
     queue.flush();
+    await p;
 
     // Advancing time after flush should not cause issues
     vi.advanceTimersByTime(1000);
