@@ -1,7 +1,0 @@
-     233 /Users/ajaymohan/Altnautica/ADOSMissionControl/src/components/fc/sensors/SensorsPanel.tsx
-     197 /Users/ajaymohan/Altnautica/ADOSMissionControl/src/components/fc/parameters/ParameterGrid.tsx
-     173 /Users/ajaymohan/Altnautica/ADOSMissionControl/src/components/fc/misc/DebugPanel.tsx
-     134 /Users/ajaymohan/Altnautica/ADOSMissionControl/src/components/fc/betaflight/RateProfilePanel.tsx
-     163 /Users/ajaymohan/Altnautica/ADOSMissionControl/src/components/fc/sensors/SensorGraphPanel.tsx
-     142 /Users/ajaymohan/Altnautica/ADOSMissionControl/src/components/fc/comms/BlackboxPanel.tsx
-    1042 total
