@@ -46,7 +46,7 @@ export function AirspaceInfoPanel() {
   const Icon = config.icon;
 
   return (
-    <div className="absolute top-16 right-4 z-20 w-80 bg-bg-primary/90 backdrop-blur-md border border-border-default rounded-lg overflow-hidden shadow-xl">
+    <div className="absolute top-16 right-14 z-20 w-80 bg-bg-primary/90 backdrop-blur-md border border-border-default rounded-lg overflow-hidden shadow-xl">
       {/* Verdict header */}
       <div className={cn("flex items-center gap-2 px-4 py-3 border-b", config.bg)}>
         <Icon size={18} className={config.color} />

@@ -69,7 +69,7 @@ export function AirportDetailPanel({ airport }: AirportDetailPanelProps) {
   if (dismissed) return null;
 
   return (
-    <div className="absolute bottom-20 right-4 z-10 w-56 bg-bg-primary/80 backdrop-blur-md border border-border-default rounded-lg overflow-hidden">
+    <div className="absolute bottom-16 right-[20rem] z-10 w-56 bg-bg-primary/80 backdrop-blur-md border border-border-default rounded-lg overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-border-default">
         <div className="flex items-center gap-1.5 min-w-0">

@@ -40,7 +40,7 @@ export function StatsOverlay() {
   const freshness = lastUpdate ? `${Math.round((Date.now() - lastUpdate) / 1000)}s` : "-";
 
   return (
-    <div className="absolute top-16 right-4 z-10">
+    <div className="absolute top-[10.5rem] right-4 z-10">
       <button
         onClick={() => setCollapsed((c) => !c)}
         className={cn(

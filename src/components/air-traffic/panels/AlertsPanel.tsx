@@ -20,7 +20,7 @@ export function AlertsPanel() {
   if (visible.length === 0) return null;
 
   return (
-    <div className="absolute bottom-20 right-4 z-20 flex flex-col gap-2 w-72">
+    <div className="absolute bottom-16 right-4 z-30 flex flex-col gap-2 w-72">
       {visible.map((alert) => (
         <AlertCard key={alert.id} alert={alert} onDismiss={() => dismissAlert(alert.id)} />
       ))}

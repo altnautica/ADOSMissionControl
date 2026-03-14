@@ -84,7 +84,7 @@ export function AirTrafficToolbar({ viewer }: AirTrafficToolbarProps) {
   }, [viewer]);
 
   return (
-    <div className="absolute top-16 right-4 z-10 flex flex-col gap-1">
+    <div className="absolute top-14 right-4 z-10 flex flex-col gap-1">
       <ToolbarButton icon={Maximize} title="Fullscreen" onClick={handleFullscreen} />
       <ToolbarButton icon={Compass} title="Reset compass (north up)" onClick={handleCompassReset} />
       <ToolbarButton icon={Camera} title="Screenshot" onClick={handleScreenshot} />

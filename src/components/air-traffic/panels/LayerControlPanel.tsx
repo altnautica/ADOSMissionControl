@@ -45,7 +45,7 @@ export function LayerControlPanel() {
   }
 
   return (
-    <div className="absolute top-4 left-4 z-10 w-48 bg-bg-primary/80 backdrop-blur-md border border-border-default rounded-lg overflow-hidden">
+    <div className="absolute top-4 left-4 z-10 w-48 bg-bg-primary/80 backdrop-blur-md border border-border-default rounded-lg overflow-hidden max-h-[calc(100vh-14rem)] overflow-y-auto">
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-border-default">
         <div className="flex items-center gap-1.5">

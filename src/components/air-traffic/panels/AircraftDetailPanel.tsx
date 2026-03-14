@@ -81,7 +81,7 @@ export function AircraftDetailPanel() {
     : "unknown";
 
   return (
-    <div className="absolute top-4 right-20 z-10 w-64 bg-bg-primary/90 backdrop-blur-md border border-border-default rounded-lg overflow-hidden">
+    <div className="absolute top-4 right-14 z-10 w-64 bg-bg-primary/90 backdrop-blur-md border border-border-default rounded-lg overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-border-default">
         <div className="flex items-center gap-2 min-w-0">

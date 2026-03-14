@@ -30,7 +30,7 @@ export function AirTrafficMapControls({ hasIonToken }: AirTrafficMapControlsProp
   const buildingsDisabled = !hasIonToken;
 
   return (
-    <div className="absolute bottom-28 left-4 z-10 flex flex-col gap-2 p-2 bg-bg-primary/70 backdrop-blur-md border border-border-default rounded-lg">
+    <div className="absolute bottom-14 left-4 z-10 flex flex-col gap-2 p-2 bg-bg-primary/70 backdrop-blur-md border border-border-default rounded-lg">
       <span className="text-[9px] font-mono text-text-tertiary text-center">MAP</span>
 
       {/* Imagery toggle */}

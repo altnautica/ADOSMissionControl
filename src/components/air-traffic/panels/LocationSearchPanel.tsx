@@ -84,7 +84,7 @@ export function LocationSearchPanel({ viewer }: LocationSearchPanelProps) {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="absolute top-14 right-4 z-10 p-2 bg-bg-primary/70 backdrop-blur-md border border-border-default rounded-lg hover:bg-bg-secondary transition-colors cursor-pointer"
+        className="absolute top-4 right-4 z-10 p-2 bg-bg-primary/70 backdrop-blur-md border border-border-default rounded-lg hover:bg-bg-secondary transition-colors cursor-pointer"
         title="Search location"
       >
         <Search size={14} className="text-text-secondary" />
@@ -93,7 +93,7 @@ export function LocationSearchPanel({ viewer }: LocationSearchPanelProps) {
   }
 
   return (
-    <div className="absolute top-14 right-4 z-20 w-72 bg-bg-primary/90 backdrop-blur-md border border-border-default rounded-lg overflow-hidden shadow-xl">
+    <div className="absolute top-4 right-4 z-20 w-72 bg-bg-primary/90 backdrop-blur-md border border-border-default rounded-lg overflow-hidden shadow-xl">
       {/* Search input */}
       <div className="flex items-center gap-2 px-3 py-2 border-b border-border-default">
         <Search size={12} className="text-text-tertiary shrink-0" />

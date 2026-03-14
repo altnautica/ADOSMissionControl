@@ -36,7 +36,7 @@ export function ConnectionBanner() {
   if (connectionQuality === "good" && !showGood) return null;
 
   return (
-    <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
+    <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
       <div
         className={cn(
           "px-3 py-1.5 rounded-lg backdrop-blur-md text-[10px] font-mono border",

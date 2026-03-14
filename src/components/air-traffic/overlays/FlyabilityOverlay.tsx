@@ -47,7 +47,7 @@ export function FlyabilityOverlay() {
     : "not permitted";
 
   return (
-    <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 max-w-lg pointer-events-auto">
+    <div className="absolute top-12 left-1/2 -translate-x-1/2 z-20 max-w-lg pointer-events-auto">
       <div
         className={cn(
           "flex items-center gap-2 px-4 py-2 rounded-lg border backdrop-blur-md text-xs font-mono",
