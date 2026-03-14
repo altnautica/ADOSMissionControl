@@ -169,20 +169,22 @@ describe('MspSerialQueue', () => {
   });
 
   it('pending count: increments with queued requests', () => {
-    queue.send(1);
+    queue.send(1).catch(() => {});
     expect(queue.pending).toBe(1);
-    queue.send(2);
+    queue.send(2).catch(() => {});
     expect(queue.pending).toBe(2);
+    queue.flush(); // cleanup
   });
 
   it('pending count: decrements on response', async () => {
     const p1 = queue.send(1);
-    queue.send(2);
+    queue.send(2).catch(() => {});
     expect(queue.pending).toBe(2);
 
     mock.triggerFrame(makeFrame(1));
     await p1;
     expect(queue.pending).toBe(1);
+    queue.flush(); // cleanup remaining
   });
 
   it('multiple queued requests process sequentially', async () => {

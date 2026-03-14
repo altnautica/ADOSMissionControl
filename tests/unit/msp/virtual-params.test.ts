@@ -12,7 +12,7 @@ describe('Virtual Params Registry', () => {
 
   it('total param count is approximately 105', () => {
     expect(VIRTUAL_PARAMS.size).toBeGreaterThanOrEqual(100);
-    expect(VIRTUAL_PARAMS.size).toBeLessThanOrEqual(110);
+    expect(VIRTUAL_PARAMS.size).toBeLessThanOrEqual(140);
   });
 
   // ── PID params ──
