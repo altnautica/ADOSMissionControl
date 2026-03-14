@@ -206,6 +206,12 @@ export const usePatternStore = create<PatternStoreState>()((set, get) => ({
           const cfg = orbitConfig as OrbitConfig;
           if (cfg.center) {
             result = generateOrbit(cfg);
+          } else {
+            const drawState = useDrawingStore.getState();
+            if (drawState.circles.length > 0) {
+              const lastCircle = drawState.circles[drawState.circles.length - 1];
+              result = generateOrbit({ ...cfg, center: lastCircle.center, radius: lastCircle.radius ?? cfg.radius } as OrbitConfig);
+            }
           }
           break;
         }
@@ -241,6 +247,12 @@ export const usePatternStore = create<PatternStoreState>()((set, get) => ({
           const cfg = structureScanConfig as StructureScanConfig;
           if (cfg.structurePolygon && cfg.structurePolygon.length >= 3) {
             result = generateStructureScan(cfg);
+          } else {
+            const drawState = useDrawingStore.getState();
+            const lastPoly = drawState.polygons[drawState.polygons.length - 1];
+            if (lastPoly && lastPoly.vertices.length >= 3) {
+              result = generateStructureScan({ ...cfg, structurePolygon: lastPoly.vertices } as StructureScanConfig);
+            }
           }
           break;
         }
@@ -255,6 +267,19 @@ export const usePatternStore = create<PatternStoreState>()((set, get) => ({
       return;
     }
 
+    if (result === null) {
+      const msgs: Record<string, string> = {
+        survey: "Draw a polygon on the map first",
+        orbit: "Draw a circle or click to set orbit center",
+        corridor: "Set corridor path points (use measure tool)",
+        expandingSquare: "Click map to set datum point",
+        sectorSearch: "Click map to set datum point",
+        parallelTrack: "Click map to set start point",
+        structureScan: "Draw structure boundary polygon on map",
+      };
+      set({ patternResult: null, isGenerating: false, error: msgs[activePatternType] ?? "Missing input geometry" });
+      return;
+    }
     set({ patternResult: result, isGenerating: false, error: null });
   },
 

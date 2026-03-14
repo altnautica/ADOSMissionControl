@@ -83,11 +83,11 @@ export function PlannerMap({
       onPolygonComplete: (vertices) => {
         const id = randomId(); const area = polygonArea(vertices);
         const shape: DrawnPolygon = { id, vertices, area };
-        addPolygon(shape); onDrawingComplete?.(shape); setDrawingMode(null); setActiveDrawingVertices([]);
+        addPolygon(shape); onDrawingComplete?.(shape); setDrawingMode(null); setActiveTool("select"); setActiveDrawingVertices([]);
       },
       onCircleComplete: (center, radius) => {
         const id = randomId(); const shape: DrawnCircle = { id, center, radius };
-        addCircle(shape); onDrawingComplete?.(shape); setDrawingMode(null);
+        addCircle(shape); onDrawingComplete?.(shape); setDrawingMode(null); setActiveTool("select");
       },
       onMeasureUpdate: (points, segmentDistances, totalDistance) => { setMeasureLine({ points, segmentDistances, totalDistance }); },
       onVerticesUpdate: (vertices) => { setActiveDrawingVertices(vertices); },
@@ -103,13 +103,6 @@ export function PlannerMap({
     else if (activeTool === "measure") { setDrawingMode("measure"); setMeasureLine(null); manager.startMeasure(); }
     else if (manager.getMode() !== null) { manager.cancelDraw(); setDrawingMode(null); setActiveDrawingVertices([]); }
   }, [activeTool, setDrawingMode, setMeasureLine, setActiveDrawingVertices]);
-
-  useEffect(() => {
-    const manager = drawingManagerRef.current;
-    if (!manager || drawingMode !== null) return;
-    if (activeTool === "polygon") { setDrawingMode("polygon"); manager.startPolygonDraw(); }
-    else if (activeTool === "circle") { setDrawingMode("circle"); manager.startCircleDraw(); }
-  }, [drawingMode, activeTool, setDrawingMode]);
 
   useEffect(() => {
     if (!mapInstance) return;

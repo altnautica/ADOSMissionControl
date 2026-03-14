@@ -39,3 +39,26 @@ export const CAMERA_OPTIONS = [
 ];
 
 export const VALID_PATTERN_TYPES = new Set(PATTERN_TYPE_OPTIONS.map((o) => o.value));
+
+export interface SurveyPreset {
+  label: string;
+  sidelap: number;
+  frontlap: number;
+  altitude: number;
+  speed: number;
+  tieLines?: boolean;
+  description: string;
+}
+
+export const SURVEY_PRESETS: SurveyPreset[] = [
+  { label: "Photogrammetry Standard", sidelap: 80, frontlap: 70, altitude: 50, speed: 5, description: "Most common mapping preset" },
+  { label: "High Detail", sidelap: 90, frontlap: 80, altitude: 30, speed: 3, description: "Dense 3D reconstruction" },
+  { label: "Quick Overview", sidelap: 60, frontlap: 50, altitude: 80, speed: 8, description: "Fast area coverage" },
+  { label: "Inspection", sidelap: 70, frontlap: 60, altitude: 30, speed: 2, description: "Close-range inspection" },
+  { label: "Magnetic Survey", sidelap: 60, frontlap: 50, altitude: 50, speed: 5, tieLines: true, description: "Tie lines enabled for calibration" },
+];
+
+export const SURVEY_PRESET_OPTIONS = [
+  { value: "", label: "Custom" },
+  ...SURVEY_PRESETS.map((p) => ({ value: p.label, label: p.label, description: p.description })),
+];
