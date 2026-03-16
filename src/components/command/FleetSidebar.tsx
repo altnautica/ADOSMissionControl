@@ -64,6 +64,7 @@ export function FleetSidebar({
   const unpairDroneMutation = convexAvailable ? useMutation(cmdDronesApi.unpairDrone) : null;
 
   const agentConnect = useAgentStore((s) => s.connect);
+  const agentConnectCloud = useAgentStore((s) => s.connectCloud);
   const agentConnected = useAgentStore((s) => s.connected);
 
   const [contextMenu, setContextMenu] = useState<{

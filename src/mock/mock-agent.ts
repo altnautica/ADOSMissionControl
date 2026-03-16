@@ -370,18 +370,27 @@ export class MockAgentClient {
     return {
       version: "0.1.0",
       uptime_seconds: Math.floor(uptimeMs / 1000),
-      device_id: "ados-alpha-1-cm4",
-      name: "ADOS Agent (Alpha-1)",
-      tier: 3,
-      board: "Raspberry Pi CM4",
-      os: "Raspberry Pi OS Lite",
+      board: {
+        name: "Raspberry Pi CM4",
+        model: "CM4104032",
+        tier: 3,
+        ram_mb: 4096,
+        cpu_cores: 4,
+        vendor: "Raspberry Pi",
+        soc: "BCM2711",
+        arch: "aarch64",
+        hw_video_codecs: ["h264_v4l2m2m"],
+      },
+      health: {
+        cpu_percent: jitter(34, 8),
+        memory_percent: jitter(31, 4),
+        disk_percent: jitter(42, 2),
+        temperature: jitter(45, 3),
+        timestamp: new Date().toISOString(),
+      },
       fc_connected: true,
       fc_port: "/dev/ttyAMA0",
       fc_baud: 921600,
-      armed: true,
-      mode: "AUTO",
-      gps_fix: 3,
-      satellites: 17,
     };
   }
 

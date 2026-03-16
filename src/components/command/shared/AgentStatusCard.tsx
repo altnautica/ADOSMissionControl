@@ -5,8 +5,6 @@ import {
   Clock,
   Wifi,
   WifiOff,
-  Shield,
-  MapPin,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDuration } from "@/lib/utils";
@@ -22,22 +20,34 @@ export function AgentStatusCard({ status }: AgentStatusCardProps) {
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-medium text-text-primary">Agent Status</h3>
         <span className="text-xs font-mono text-text-tertiary">
-          {status.device_id}
+          v{status.version}
         </span>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <InfoRow icon={Cpu} label="Board" value={status.board} />
-        <InfoRow icon={Shield} label="Tier" value={String(status.tier)} />
+        <InfoRow icon={Cpu} label="Board" value={status.board?.name ?? "Unknown"} />
+        <InfoRow label="Tier" value={String(status.board?.tier ?? "?")} />
         <InfoRow
           icon={Clock}
           label="Uptime"
           value={formatDuration(status.uptime_seconds)}
         />
-        <InfoRow label="OS" value={status.os} />
+        <InfoRow label="Arch" value={status.board?.arch ?? "Unknown"} />
         <InfoRow label="Version" value={`v${status.version}`} />
-        <InfoRow label="Mode" value={status.mode} />
+        <InfoRow label="SoC" value={status.board?.soc ?? "Unknown"} />
       </div>
+
+      {/* Health stats */}
+      {status.health && (
+        <div className="flex items-center gap-4 text-xs text-text-secondary border-t border-border-default pt-2">
+          <span>CPU {status.health.cpu_percent.toFixed(0)}%</span>
+          <span>MEM {status.health.memory_percent.toFixed(0)}%</span>
+          <span>DISK {status.health.disk_percent.toFixed(0)}%</span>
+          {status.health.temperature != null && (
+            <span>{status.health.temperature.toFixed(0)}°C</span>
+          )}
+        </div>
+      )}
 
       <div className="flex items-center gap-4 pt-2 border-t border-border-default">
         <div className="flex items-center gap-1.5">
@@ -56,28 +66,9 @@ export function AgentStatusCard({ status }: AgentStatusCardProps) {
           </span>
         </div>
         {status.fc_connected && (
-          <>
-            <span className="text-xs text-text-tertiary">
-              {status.fc_port} @ {status.fc_baud}
-            </span>
-            <div className="flex items-center gap-1.5">
-              <div
-                className={cn(
-                  "w-2 h-2 rounded-full",
-                  status.armed ? "bg-status-error" : "bg-status-success"
-                )}
-              />
-              <span className="text-xs text-text-secondary">
-                {status.armed ? "ARMED" : "Disarmed"}
-              </span>
-            </div>
-            <div className="flex items-center gap-1">
-              <MapPin size={11} className="text-text-tertiary" />
-              <span className="text-xs text-text-secondary font-mono">
-                GPS {status.gps_fix}D / {status.satellites} sats
-              </span>
-            </div>
-          </>
+          <span className="text-xs text-text-tertiary">
+            {status.fc_port} @ {status.fc_baud}
+          </span>
         )}
       </div>
     </div>

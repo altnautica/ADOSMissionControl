@@ -132,24 +132,24 @@ export function CommandPage() {
                 v{status.version}
               </span>
               <span className="text-xs text-text-tertiary">
-                Tier {status.tier}
+                Tier {status.board?.tier}
               </span>
-              <span className="text-xs text-text-tertiary">{status.board}</span>
+              <span className="text-xs text-text-tertiary">{status.board?.name}</span>
             </div>
           ) : connected && status ? (
             <>
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-status-success" />
                 <span className="text-xs text-text-primary font-medium">
-                  {status.name}
+                  {status.board?.name ?? "Agent"}
                 </span>
                 <span className="text-xs text-text-tertiary">
                   v{status.version}
                 </span>
                 <span className="text-xs text-text-tertiary">
-                  Tier {status.tier}
+                  Tier {status.board?.tier}
                 </span>
-                <span className="text-xs text-text-tertiary">{status.board}</span>
+                <span className="text-xs text-text-tertiary">{status.board?.name}</span>
               </div>
               <div className="ml-auto">
                 <button

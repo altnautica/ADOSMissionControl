@@ -42,32 +42,6 @@ export function AgentOverviewTab() {
     <div className="p-4 space-y-4 max-w-5xl">
       <AgentStatusCard status={status} />
 
-      {/* Connection details */}
-      {status.fc_connected && (
-        <div className="border border-border-default rounded-lg p-3 bg-bg-secondary">
-          <div className="flex items-center gap-4 text-xs">
-            <div>
-              <span className="text-text-tertiary">FC Port</span>
-              <p className="text-text-primary font-mono mt-0.5">{status.fc_port}</p>
-            </div>
-            <div>
-              <span className="text-text-tertiary">Baud Rate</span>
-              <p className="text-text-primary font-mono mt-0.5">{status.fc_baud.toLocaleString()}</p>
-            </div>
-            <div>
-              <span className="text-text-tertiary">Flight Mode</span>
-              <p className="text-accent-primary font-mono mt-0.5">{status.mode}</p>
-            </div>
-            <div>
-              <span className="text-text-tertiary">GPS</span>
-              <p className="text-text-primary font-mono mt-0.5">
-                {status.gps_fix}D Fix / {status.satellites} sats
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <ServiceTable services={services} onRestart={restartService} />
         <div className="space-y-4">
