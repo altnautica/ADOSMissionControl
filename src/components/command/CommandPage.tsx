@@ -35,6 +35,7 @@ import { ModuleStoreTab } from "./ModuleStoreTab";
 import { AgentDisconnectedPage } from "./AgentDisconnectedPage";
 import { DroneContextRail } from "./shared/DroneContextRail";
 import { CloudStatusBridge } from "./CloudStatusBridge";
+import { MqttBridge } from "./MqttBridge";
 
 type SubTab = "overview" | "scripts" | "peripherals" | "fleet" | "modules";
 
@@ -138,6 +139,12 @@ export function CommandPage() {
                 Tier {status.board?.tier}
               </span>
               <span className="text-xs text-text-tertiary">{status.board?.name}</span>
+              {cloudMode && (
+                <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 bg-accent-primary/15 text-accent-primary rounded font-medium">
+                  <Cloud size={10} />
+                  Cloud
+                </span>
+              )}
             </div>
           ) : connected && status ? (
             <>
@@ -153,6 +160,12 @@ export function CommandPage() {
                   Tier {status.board?.tier}
                 </span>
                 <span className="text-xs text-text-tertiary">{status.board?.name}</span>
+                {cloudMode && (
+                  <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 bg-accent-primary/15 text-accent-primary rounded font-medium">
+                    <Cloud size={10} />
+                    Cloud
+                  </span>
+                )}
               </div>
               <div className="ml-auto">
                 <button
@@ -252,6 +265,8 @@ export function CommandPage() {
       </div>
 
       {connected && <DroneContextRail />}
+
+      {cloudMode && <CloudStatusBridge />}
 
       <PairingDialog
         open={pairingOpen}
