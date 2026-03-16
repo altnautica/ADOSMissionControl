@@ -10,8 +10,7 @@ import { SilentErrorBoundary } from "@/components/ui/SilentErrorBoundary";
 const tabs = [
   { label: "Changelog", href: "/community/changelog" },
   { label: "Kanban", href: "/community/kanban", adminOnly: true },
-  { label: "Testers", href: "/community/testers", adminOnly: true },
-  { label: "Roadmap", href: "/community/roadmap" },
+{ label: "Roadmap", href: "/community/roadmap" },
   { label: "Contact", href: "/community/contact" },
 ];
 

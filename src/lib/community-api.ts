@@ -42,8 +42,6 @@ export const communityApi = {
   },
   profiles: {
     getMyProfile: api.profiles.getMyProfile,
-    applyForAlpha: api.profiles.applyForAlpha,
-    listAlphaApplications: api.profiles.listAlphaApplications,
     updateRole: api.profiles.updateRole,
   },
   clientConfig: {

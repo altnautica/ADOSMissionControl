@@ -126,36 +126,6 @@ export const updateRole = mutation({
   },
 });
 
-export const applyForAlpha = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
-
-    const profile = await getProfileByUserId(ctx, userId);
-    if (!profile) throw new Error("Profile not found");
-
-    if (profile.alphaAppliedAt) return; // Already applied
-    if (profile.role === "admin" || profile.role === "alpha_tester") return; // Already has access
-
-    await ctx.db.patch(profile._id, { alphaAppliedAt: Date.now() });
-  },
-});
-
-export const listAlphaApplications = query({
-  args: {},
-  handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) return [];
-
-    const admin = await getProfileByUserId(ctx, userId);
-    if (!admin || admin.role !== "admin") return [];
-
-    const allProfiles = await ctx.db.query("profiles").collect();
-    return allProfiles.filter((p) => p.alphaAppliedAt !== undefined || p.role === "alpha_tester");
-  },
-});
-
 export const ensureProfile = mutation({
   args: {
     fullName: v.optional(v.string()),

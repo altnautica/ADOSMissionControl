@@ -15,8 +15,7 @@ export default defineSchema({
       v.literal("pilot"),
       v.literal("alpha_tester")
     ),
-    alphaAppliedAt: v.optional(v.number()),
-    fullName: v.optional(v.string()),
+fullName: v.optional(v.string()),
     email: v.optional(v.string()),
     phone: v.optional(v.string()),
     company: v.optional(v.string()),

@@ -15,7 +15,6 @@ import {
   Package,
   Plug,
   Unplug,
-  Loader2,
   ChevronDown,
   ChevronRight,
 } from "lucide-react";
@@ -25,8 +24,6 @@ import { useConvexAvailable } from "@/app/ConvexClientProvider";
 import { cmdDronesApi } from "@/lib/community-api-drones";
 import { useAgentStore } from "@/stores/agent-store";
 import { usePairingStore } from "@/stores/pairing-store";
-import { useHasCommandAccess } from "@/hooks/use-has-command-access";
-import { CommandLockedPage } from "./CommandLockedPage";
 import { FleetSidebar } from "./FleetSidebar";
 import { PairingDialog } from "./PairingDialog";
 import { AgentOverviewTab } from "./AgentOverviewTab";
@@ -48,7 +45,6 @@ const subTabs = [
 ];
 
 export function CommandPage() {
-  const { hasAccess, isLoading, profile } = useHasCommandAccess();
   const [activeTab, setActiveTab] = useState<SubTab>("overview");
   const [urlInput, setUrlInput] = useState("http://localhost:8080");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -113,18 +109,6 @@ export function CommandPage() {
   function handlePaired(deviceId: string, apiKey: string, url: string) {
     setPairingOpen(false);
     connect(url, apiKey);
-  }
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <Loader2 size={20} className="animate-spin text-text-tertiary" />
-      </div>
-    );
-  }
-
-  if (!hasAccess) {
-    return <CommandLockedPage profile={profile} />;
   }
 
   return (

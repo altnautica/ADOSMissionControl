@@ -29,12 +29,10 @@ app/community/
 ├── changelog/page.tsx      # Changelog list
 ├── kanban/page.tsx         # Admin kanban board
 ├── roadmap/page.tsx        # Roadmap view
-├── testers/page.tsx        # Alpha testers tab
 ├── contact/page.tsx        # Contact form route
 └── README.md               # This file
 
 components/community/
-├── AlphaTestersTab.tsx      # Alpha testers management
 ├── AuthGate.tsx             # Auth gate for protected actions
 ├── CategoryBadge.tsx        # Category badge display
 ├── ChangelogDetail.tsx      # Single changelog detail view
