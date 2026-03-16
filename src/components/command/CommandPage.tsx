@@ -36,6 +36,7 @@ import { ModuleStoreTab } from "./ModuleStoreTab";
 import { AgentDisconnectedPage } from "./AgentDisconnectedPage";
 import { DroneContextRail } from "./shared/DroneContextRail";
 import { CloudStatusBridge } from "./CloudStatusBridge";
+import { CloudCommandResultBridge } from "./CloudCommandResultBridge";
 import { MqttBridge } from "./MqttBridge";
 
 type SubTab = "overview" | "scripts" | "peripherals" | "fleet" | "modules";
@@ -279,6 +280,7 @@ export function CommandPage() {
       {connected && <DroneContextRail />}
 
       {cloudMode && <CloudStatusBridge />}
+      {cloudMode && <CloudCommandResultBridge />}
       {cloudMode && <MqttBridge mqttBrokerUrl={clientConfig?.mqttBrokerUrl} />}
 
       <PairingDialog

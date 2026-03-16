@@ -36,6 +36,12 @@ export const pushStatus = mutation({
     }))),
     lastIp: v.optional(v.string()),
     mdnsHost: v.optional(v.string()),
+    peripherals: v.optional(v.any()),
+    scripts: v.optional(v.any()),
+    suites: v.optional(v.any()),
+    enrollment: v.optional(v.any()),
+    peers: v.optional(v.any()),
+    logs: v.optional(v.any()),
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db

@@ -12,7 +12,6 @@ import { cn } from "@/lib/utils";
 import { useAgentStore } from "@/stores/agent-store";
 import { AgentDisconnectedPage } from "./AgentDisconnectedPage";
 import { CategoryFilter } from "./shared/CategoryFilter";
-import type { PeripheralCategory } from "@/lib/agent/types";
 
 const statusColor: Record<string, string> = {
   ok: "bg-status-success",
@@ -31,7 +30,6 @@ const categoryBadgeColor: Record<string, string> = {
 
 export function PeripheralsTab() {
   const connected = useAgentStore((s) => s.connected);
-  const cloudMode = useAgentStore((s) => s.cloudMode);
   const peripherals = useAgentStore((s) => s.peripherals);
   const fetchPeripherals = useAgentStore((s) => s.fetchPeripherals);
   const scanPeripherals = useAgentStore((s) => s.scanPeripherals);
@@ -39,8 +37,8 @@ export function PeripheralsTab() {
   const [activeCategory, setActiveCategory] = useState("all");
 
   useEffect(() => {
-    if (connected && !cloudMode) fetchPeripherals();
-  }, [connected, cloudMode, fetchPeripherals]);
+    if (connected) fetchPeripherals();
+  }, [connected, fetchPeripherals]);
 
   const categories = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -69,19 +67,6 @@ export function PeripheralsTab() {
 
   if (!connected) {
     return <AgentDisconnectedPage />;
-  }
-
-  if (cloudMode) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 gap-3 max-w-md mx-auto text-center">
-        <Radio size={24} className="text-text-tertiary" />
-        <p className="text-sm text-text-secondary">Direct connection required</p>
-        <p className="text-xs text-text-tertiary">
-          Peripheral management requires a direct connection to the agent.
-          Connect via local network to access this feature.
-        </p>
-      </div>
-    );
   }
 
   return (

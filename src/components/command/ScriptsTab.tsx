@@ -60,7 +60,6 @@ export function ScriptsTab() {
   const [editorContent, setEditorContent] = useState("");
 
   const connected = useAgentStore((s) => s.connected);
-  const cloudMode = useAgentStore((s) => s.cloudMode);
   const sendCommand = useAgentStore((s) => s.sendCommand);
   const scripts = useAgentStore((s) => s.scripts);
   const fetchScripts = useAgentStore((s) => s.fetchScripts);
@@ -71,8 +70,8 @@ export function ScriptsTab() {
   const runningScript = useAgentStore((s) => s.runningScript);
 
   useEffect(() => {
-    if (connected && !cloudMode) fetchScripts();
-  }, [connected, cloudMode, fetchScripts]);
+    if (connected) fetchScripts();
+  }, [connected, fetchScripts]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -176,15 +175,12 @@ export function ScriptsTab() {
         </button>
         <button
           onClick={() => setMode("editor")}
-          disabled={cloudMode}
           className={cn(
             "flex items-center gap-1.5 px-3 py-1 text-xs rounded transition-colors",
-            mode === "editor" && !cloudMode
+            mode === "editor"
               ? "bg-bg-tertiary text-text-primary"
-              : "text-text-tertiary hover:text-text-secondary",
-            cloudMode && "opacity-40 cursor-not-allowed"
+              : "text-text-tertiary hover:text-text-secondary"
           )}
-          title={cloudMode ? "Editor requires direct connection" : undefined}
         >
           <Code2 size={12} />
           Editor

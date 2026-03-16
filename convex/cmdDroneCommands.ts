@@ -59,11 +59,13 @@ export const ackCommand = mutation({
       success: v.boolean(),
       message: v.string(),
     })),
+    data: v.optional(v.any()),
   },
-  handler: async (ctx, { commandId, status, result }) => {
+  handler: async (ctx, { commandId, status, result, data }) => {
     await ctx.db.patch(commandId, {
       status,
       result,
+      data,
       completedAt: Date.now(),
     });
     return { ok: true };

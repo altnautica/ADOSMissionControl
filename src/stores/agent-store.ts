@@ -200,7 +200,8 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   },
 
   async fetchStatus() {
-    const { client } = get();
+    const { client, cloudMode } = get();
+    if (cloudMode) return; // Cloud status arrives via reactive query
     if (!client) return;
     try {
       const status = await client.getStatus();
@@ -212,7 +213,11 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   },
 
   async fetchServices() {
-    const { client } = get();
+    const { client, cloudMode } = get();
+    if (cloudMode) {
+      get().sendCloudCommand("get_services");
+      return;
+    }
     if (!client) return;
     try {
       const services = await client.getServices();
@@ -221,7 +226,8 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   },
 
   async fetchResources() {
-    const { client } = get();
+    const { client, cloudMode } = get();
+    if (cloudMode) return; // Cloud resources arrive via status push
     if (!client) return;
     try {
       const resources = await client.getSystemResources();
@@ -234,7 +240,11 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   },
 
   async fetchLogs(level?: string) {
-    const { client } = get();
+    const { client, cloudMode } = get();
+    if (cloudMode) {
+      get().sendCloudCommand("get_logs", { level, limit: 200 });
+      return;
+    }
     if (!client) return;
     try {
       const logs = await client.getLogs({ level, limit: 200 });
@@ -294,7 +304,11 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   // ── Peripherals ─────────────────────────────────────────
 
   async fetchPeripherals() {
-    const { client } = get();
+    const { client, cloudMode } = get();
+    if (cloudMode) {
+      get().sendCloudCommand("get_peripherals");
+      return;
+    }
     if (!client) return;
     try {
       const peripherals = await client.getPeripherals();
@@ -303,7 +317,11 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   },
 
   async scanPeripherals() {
-    const { client } = get();
+    const { client, cloudMode } = get();
+    if (cloudMode) {
+      get().sendCloudCommand("scan_peripherals");
+      return;
+    }
     if (!client) return;
     try {
       const peripherals = await client.scanPeripherals();
@@ -314,7 +332,11 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   // ── Scripts ─────────────────────────────────────────────
 
   async fetchScripts() {
-    const { client } = get();
+    const { client, cloudMode } = get();
+    if (cloudMode) {
+      get().sendCloudCommand("get_scripts");
+      return;
+    }
     if (!client) return;
     try {
       const scripts = await client.getScripts();
@@ -323,7 +345,11 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   },
 
   async saveScript(name: string, content: string, suite?: string) {
-    const { client } = get();
+    const { client, cloudMode } = get();
+    if (cloudMode) {
+      get().sendCloudCommand("save_script", { name, content, suite });
+      return null;
+    }
     if (!client) return null;
     try {
       const script = await client.saveScript(name, content, suite);
@@ -335,7 +361,11 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   },
 
   async deleteScript(id: string) {
-    const { client } = get();
+    const { client, cloudMode } = get();
+    if (cloudMode) {
+      get().sendCloudCommand("delete_script", { id });
+      return;
+    }
     if (!client) return;
     try {
       await client.deleteScript(id);
@@ -344,7 +374,12 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   },
 
   async runScript(id: string) {
-    const { client } = get();
+    const { client, cloudMode } = get();
+    if (cloudMode) {
+      set({ runningScript: id, scriptOutput: null });
+      get().sendCloudCommand("run_script", { id });
+      return;
+    }
     if (!client) return;
     set({ runningScript: id, scriptOutput: null });
     try {
@@ -361,7 +396,11 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   // ── Suites ──────────────────────────────────────────────
 
   async fetchSuites() {
-    const { client } = get();
+    const { client, cloudMode } = get();
+    if (cloudMode) {
+      get().sendCloudCommand("get_suites");
+      return;
+    }
     if (!client) return;
     try {
       const suites = await client.getSuites();
@@ -370,7 +409,11 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   },
 
   async installSuite(id: string) {
-    const { client } = get();
+    const { client, cloudMode } = get();
+    if (cloudMode) {
+      get().sendCloudCommand("install_suite", { id });
+      return;
+    }
     if (!client) return;
     try {
       await client.installSuite(id);
@@ -379,7 +422,11 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   },
 
   async uninstallSuite(id: string) {
-    const { client } = get();
+    const { client, cloudMode } = get();
+    if (cloudMode) {
+      get().sendCloudCommand("uninstall_suite", { id });
+      return;
+    }
     if (!client) return;
     try {
       await client.uninstallSuite(id);
@@ -388,7 +435,11 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   },
 
   async activateSuite(id: string) {
-    const { client } = get();
+    const { client, cloudMode } = get();
+    if (cloudMode) {
+      get().sendCloudCommand("activate_suite", { id });
+      return;
+    }
     if (!client) return;
     try {
       await client.activateSuite(id);
@@ -399,7 +450,11 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   // ── Fleet ───────────────────────────────────────────────
 
   async fetchEnrollment() {
-    const { client } = get();
+    const { client, cloudMode } = get();
+    if (cloudMode) {
+      get().sendCloudCommand("get_enrollment");
+      return;
+    }
     if (!client) return;
     try {
       const enrollment = await client.getEnrollment();
@@ -408,7 +463,11 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   },
 
   async fetchPeers() {
-    const { client } = get();
+    const { client, cloudMode } = get();
+    if (cloudMode) {
+      get().sendCloudCommand("get_peers");
+      return;
+    }
     if (!client) return;
     try {
       const peers = await client.getPeers();

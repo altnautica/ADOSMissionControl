@@ -100,6 +100,30 @@ export function CloudStatusBridge() {
         })),
       });
     }
+
+    // Map extended status fields pushed by agent
+    const extended: Record<string, unknown> = {};
+    if (cloudStatus.peripherals && Array.isArray(cloudStatus.peripherals)) {
+      extended.peripherals = cloudStatus.peripherals;
+    }
+    if (cloudStatus.scripts && Array.isArray(cloudStatus.scripts)) {
+      extended.scripts = cloudStatus.scripts;
+    }
+    if (cloudStatus.suites && Array.isArray(cloudStatus.suites)) {
+      extended.suites = cloudStatus.suites;
+    }
+    if (cloudStatus.peers && Array.isArray(cloudStatus.peers)) {
+      extended.peers = cloudStatus.peers;
+    }
+    if (cloudStatus.enrollment && typeof cloudStatus.enrollment === "object") {
+      extended.enrollment = cloudStatus.enrollment;
+    }
+    if (cloudStatus.logs && Array.isArray(cloudStatus.logs)) {
+      extended.logs = cloudStatus.logs;
+    }
+    if (Object.keys(extended).length > 0) {
+      useAgentStore.setState(extended);
+    }
   }, [cloudStatus, setCloudStatus]);
 
   // Listen for cloud command events from the store

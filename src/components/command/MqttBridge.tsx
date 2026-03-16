@@ -116,6 +116,30 @@ export function MqttBridge({ mqttBrokerUrl }: { mqttBrokerUrl?: string | null })
                   })),
                 });
               }
+
+              // Map extended status fields
+              const extended: Record<string, unknown> = {};
+              if (data.peripherals && Array.isArray(data.peripherals)) {
+                extended.peripherals = data.peripherals;
+              }
+              if (data.scripts && Array.isArray(data.scripts)) {
+                extended.scripts = data.scripts;
+              }
+              if (data.suites && Array.isArray(data.suites)) {
+                extended.suites = data.suites;
+              }
+              if (data.peers && Array.isArray(data.peers)) {
+                extended.peers = data.peers;
+              }
+              if (data.enrollment && typeof data.enrollment === "object") {
+                extended.enrollment = data.enrollment;
+              }
+              if (data.logs && Array.isArray(data.logs)) {
+                extended.logs = data.logs;
+              }
+              if (Object.keys(extended).length > 0) {
+                useAgentStore.setState(extended);
+              }
             }
           } catch { /* ignore parse errors */ }
         });
