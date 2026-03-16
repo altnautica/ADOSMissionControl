@@ -53,6 +53,9 @@ export class MsePlayer {
     this.sourceBuffer = null;
     this.queue = [];
     if (this.videoElement) {
+      if (this.videoElement.src) {
+        URL.revokeObjectURL(this.videoElement.src);
+      }
       this.videoElement.src = "";
       this.videoElement = null;
     }

@@ -70,7 +70,9 @@ export function CloudStatusBridge() {
         deviceId: detail.deviceId,
         command: detail.command,
         args: detail.args,
-      }).catch(() => {});
+      }).catch((err) => {
+        console.warn("Cloud command enqueue failed:", err);
+      });
     }
 
     window.addEventListener("cloud-command", handleCloudCommand);

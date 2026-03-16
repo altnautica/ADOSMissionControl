@@ -83,8 +83,8 @@ export function MqttBridge() {
             }
           } catch { /* ignore parse errors */ }
         });
-      } catch {
-        // mqtt package not available, silent fail
+      } catch (err) {
+        console.warn("MQTT connection failed:", err);
       }
     }
 
@@ -93,7 +93,8 @@ export function MqttBridge() {
     return () => {
       cancelled = true;
       if (clientRef.current) {
-        (clientRef.current as { end: () => void }).end();
+        const c = clientRef.current as { end?: () => void };
+        if (typeof c.end === "function") c.end();
         clientRef.current = null;
       }
       setMqttConnected(false);

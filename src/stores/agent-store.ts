@@ -63,7 +63,7 @@ interface AgentStore {
 
   // Cloud methods
   connectCloud: (deviceId: string) => void;
-  sendCloudCommand: (command: string, args?: Record<string, unknown>) => Promise<void>;
+  sendCloudCommand: (command: string, args?: Record<string, unknown>) => void;
   setCloudStatus: (status: AgentStatus) => void;
   setMqttConnected: (connected: boolean) => void;
 
@@ -177,7 +177,7 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
     });
   },
 
-  async sendCloudCommand(command: string, args?: Record<string, unknown>) {
+  sendCloudCommand(command: string, args?: Record<string, unknown>) {
     // The actual mutation call happens in the component layer (CloudStatusBridge)
     // since we need Convex context. Store dispatches intent via custom event.
     const { cloudDeviceId } = get();
@@ -241,7 +241,7 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   async restartService(name: string) {
     const { client, cloudMode } = get();
     if (cloudMode) {
-      await get().sendCloudCommand("restart_service", { name });
+      get().sendCloudCommand("restart_service", { name });
       return;
     }
     if (!client) return;
@@ -254,7 +254,7 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   async sendCommand(cmd: string, args?: unknown[]) {
     const { client, cloudMode } = get();
     if (cloudMode) {
-      await get().sendCloudCommand("send_command", { cmd, args });
+      get().sendCloudCommand("send_command", { cmd, args });
       return null;
     }
     if (!client) return null;
