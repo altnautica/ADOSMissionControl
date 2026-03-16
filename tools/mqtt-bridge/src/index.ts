@@ -60,7 +60,7 @@ function start(): void {
         console.error("Subscribe error:", err);
         return;
       }
-      for (const g of granted) {
+      for (const g of granted ?? []) {
         console.log(`Subscribed to ${g.topic} (qos ${g.qos})`);
       }
     });
