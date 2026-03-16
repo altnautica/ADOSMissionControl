@@ -29,7 +29,7 @@ function statusBadge(status: ServiceInfo["status"]) {
 }
 
 export function ServiceTable({ services, onRestart }: ServiceTableProps) {
-  if (services.length === 0) {
+  if (!services || !Array.isArray(services) || services.length === 0) {
     return (
       <div className="border border-border-default rounded-lg p-4">
         <h3 className="text-sm font-medium text-text-primary mb-2">Services</h3>

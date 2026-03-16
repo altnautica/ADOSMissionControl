@@ -72,6 +72,20 @@ export function CloudStatusBridge() {
     };
 
     setCloudStatus(mapped);
+
+    // Map services from cloud status if present
+    if (cloudStatus.services && Array.isArray(cloudStatus.services)) {
+      useAgentStore.setState({
+        services: cloudStatus.services.map((s) => ({
+          name: s.name,
+          status: (["running", "stopped", "error"].includes(s.status) ? s.status : "stopped") as "running" | "stopped" | "error",
+          pid: null,
+          cpu_percent: s.cpuPercent || 0,
+          memory_mb: s.memoryMb || 0,
+          uptime_seconds: 0,
+        })),
+      });
+    }
   }, [cloudStatus, setCloudStatus]);
 
   // Listen for cloud command events from the store

@@ -26,10 +26,21 @@ export function MqttBridge({ mqttBrokerUrl }: { mqttBrokerUrl?: string | null })
 
     async function connectMqtt() {
       try {
-        const mqtt = await import("mqtt");
+        const mqttModule = await import("mqtt");
         if (cancelled) return;
 
-        const client = mqtt.connect(mqttBrokerUrl || MQTT_WS_URL_DEFAULT, {
+        const connect = typeof mqttModule.connect === "function"
+          ? mqttModule.connect
+          : typeof mqttModule.default?.connect === "function"
+            ? mqttModule.default.connect
+            : typeof mqttModule.default === "function"
+              ? mqttModule.default
+              : null;
+        if (!connect) {
+          throw new Error("mqtt.connect not found in module");
+        }
+
+        const client = connect(mqttBrokerUrl || MQTT_WS_URL_DEFAULT, {
           protocolVersion: 5,
           clean: true,
           reconnectPeriod: 5000,
@@ -80,6 +91,20 @@ export function MqttBridge({ mqttBrokerUrl }: { mqttBrokerUrl?: string | null })
                 fc_baud: data.fcBaud || 0,
               };
               setCloudStatus(mapped);
+
+              // Map services if present in MQTT payload
+              if (data.services && Array.isArray(data.services)) {
+                useAgentStore.setState({
+                  services: data.services.map((s: Record<string, unknown>) => ({
+                    name: String(s.name || "unknown"),
+                    status: (["running", "stopped", "error"].includes(s.status as string) ? s.status : "stopped") as "running" | "stopped" | "error",
+                    pid: typeof s.pid === "number" ? s.pid : null,
+                    cpu_percent: typeof s.cpuPercent === "number" ? s.cpuPercent : 0,
+                    memory_mb: typeof s.memoryMb === "number" ? s.memoryMb : 0,
+                    uptime_seconds: typeof s.uptimeSeconds === "number" ? s.uptimeSeconds : 0,
+                  })),
+                });
+              }
             }
           } catch { /* ignore parse errors */ }
         });
