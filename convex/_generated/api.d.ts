@@ -15,6 +15,8 @@ import type * as clientConfig from "../clientConfig.js";
 import type * as cmdAdsbCache from "../cmdAdsbCache.js";
 import type * as cmdAdsbCacheMutations from "../cmdAdsbCacheMutations.js";
 import type * as cmdAiUsage from "../cmdAiUsage.js";
+import type * as cmdDroneCommands from "../cmdDroneCommands.js";
+import type * as cmdDroneStatus from "../cmdDroneStatus.js";
 import type * as cmdDrones from "../cmdDrones.js";
 import type * as cmdMissions from "../cmdMissions.js";
 import type * as cmdPairing from "../cmdPairing.js";
@@ -42,6 +44,8 @@ declare const fullApi: ApiFromModules<{
   cmdAdsbCache: typeof cmdAdsbCache;
   cmdAdsbCacheMutations: typeof cmdAdsbCacheMutations;
   cmdAiUsage: typeof cmdAiUsage;
+  cmdDroneCommands: typeof cmdDroneCommands;
+  cmdDroneStatus: typeof cmdDroneStatus;
   cmdDrones: typeof cmdDrones;
   cmdMissions: typeof cmdMissions;
   cmdPairing: typeof cmdPairing;

@@ -43,6 +43,11 @@ interface AgentStore {
 
   pollInterval: ReturnType<typeof setInterval> | null;
 
+  // Cloud mode state
+  cloudMode: boolean;
+  cloudDeviceId: string | null;
+  mqttConnected: boolean;
+
   connect: (url: string, apiKey?: string | null) => Promise<void>;
   disconnect: () => void;
   setApiKey: (key: string | null) => void;
@@ -55,6 +60,12 @@ interface AgentStore {
   startPolling: () => void;
   stopPolling: () => void;
   clear: () => void;
+
+  // Cloud methods
+  connectCloud: (deviceId: string) => void;
+  sendCloudCommand: (command: string, args?: Record<string, unknown>) => Promise<void>;
+  setCloudStatus: (status: AgentStatus) => void;
+  setMqttConnected: (connected: boolean) => void;
 
   fetchPeripherals: () => Promise<void>;
   scanPeripherals: () => Promise<void>;
@@ -94,6 +105,11 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   runningScript: null,
 
   pollInterval: null,
+
+  // Cloud mode defaults
+  cloudMode: false,
+  cloudDeviceId: null,
+  mqttConnected: false,
 
   setApiKey(key: string | null) {
     set({ apiKey: key });
@@ -143,7 +159,40 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
       cpuHistory: [],
       scriptOutput: null,
       runningScript: null,
+      cloudMode: false,
+      cloudDeviceId: null,
+      mqttConnected: false,
     });
+  },
+
+  connectCloud(deviceId: string) {
+    get().stopPolling();
+    set({
+      cloudMode: true,
+      cloudDeviceId: deviceId,
+      connected: true,
+      connectionError: null,
+      agentUrl: null,
+      client: null,
+    });
+  },
+
+  async sendCloudCommand(command: string, args?: Record<string, unknown>) {
+    // The actual mutation call happens in the component layer (CloudStatusBridge)
+    // since we need Convex context. Store dispatches intent via custom event.
+    const { cloudDeviceId } = get();
+    if (!cloudDeviceId) return;
+    window.dispatchEvent(new CustomEvent("cloud-command", {
+      detail: { deviceId: cloudDeviceId, command, args },
+    }));
+  },
+
+  setCloudStatus(status: AgentStatus) {
+    set({ status });
+  },
+
+  setMqttConnected(connected: boolean) {
+    set({ mqttConnected: connected });
   },
 
   async fetchStatus() {
@@ -190,7 +239,11 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   },
 
   async restartService(name: string) {
-    const { client } = get();
+    const { client, cloudMode } = get();
+    if (cloudMode) {
+      await get().sendCloudCommand("restart_service", { name });
+      return;
+    }
     if (!client) return;
     try {
       await client.restartService(name);
@@ -199,7 +252,11 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   },
 
   async sendCommand(cmd: string, args?: unknown[]) {
-    const { client } = get();
+    const { client, cloudMode } = get();
+    if (cloudMode) {
+      await get().sendCloudCommand("send_command", { cmd, args });
+      return null;
+    }
     if (!client) return null;
     try {
       return await client.sendCommand(cmd, args);
