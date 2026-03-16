@@ -31,7 +31,8 @@ The `convex/` directory contains the standalone backend for cloud features (auth
 - **Schema:** 25 tables (7 auth + 18 custom). Subset of the website schema (no investor-only tables).
 - **`cmd_*` files** are GCS-exclusive functions (drones, pairing, missions, preferences, AI usage, ADS-B).
 - **Shared files** (`profiles.ts`, `comments.ts`, `communityChangelog.ts`, etc.) are duplicated from `website/convex/` for OSS independence.
-- **`community-api.ts` and `community-api-drones.ts`** use typed imports from `convex/_generated/api` (not `makeFunctionReference`).
+- **`community-api.ts` and `community-api-drones.ts`** use typed imports from `convex/_generated/api`.
+- **`convex/_generated/`** is committed per Convex best practice. Regenerate with `npx convex dev` if you modify `convex/` files.
 - **For Altnautica production:** The website's `convex/` is the superset deployment. Both apps share one backend. Changes to shared functions must be synced between both directories.
 
 ---

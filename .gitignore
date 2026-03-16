@@ -32,9 +32,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# convex codegen
-convex/_generated/
-
 # tools
 /tools/sitl/node_modules
 

@@ -1,24 +1,23 @@
 /**
  * @module community-api-drones
- * @description Typed Convex function references for drone pairing and fleet management.
- * Uses makeFunctionReference to reference functions in convex/ without requiring
- * codegen (_generated/) to exist at build time.
+ * @description Typed Convex API references for drone pairing and fleet management.
+ * Uses typed imports from convex/_generated/api for full type safety.
  * @license GPL-3.0-only
  */
 
-import { makeFunctionReference } from "convex/server";
+import { api } from "../../convex/_generated/api";
 
 export const cmdDronesApi = {
-  listMyDrones: makeFunctionReference<"query">("cmdDrones:listMyDrones"),
-  getDrone: makeFunctionReference<"query">("cmdDrones:getDrone"),
-  renameDrone: makeFunctionReference<"mutation">("cmdDrones:renameDrone"),
-  unpairDrone: makeFunctionReference<"mutation">("cmdDrones:unpairDrone"),
-  updateHeartbeat: makeFunctionReference<"mutation">("cmdDrones:updateHeartbeat"),
+  listMyDrones: api.cmdDrones.listMyDrones,
+  getDrone: api.cmdDrones.getDrone,
+  renameDrone: api.cmdDrones.renameDrone,
+  unpairDrone: api.cmdDrones.unpairDrone,
+  updateHeartbeat: api.cmdDrones.updateHeartbeat,
 };
 
 export const cmdPairingApi = {
-  claimPairingCode: makeFunctionReference<"mutation">("cmdPairing:claimPairingCode"),
-  preGenerateCode: makeFunctionReference<"mutation">("cmdPairing:preGenerateCode"),
-  getPairingStatus: makeFunctionReference<"query">("cmdPairing:getPairingStatus"),
-  getMyPendingCodes: makeFunctionReference<"query">("cmdPairing:getMyPendingCodes"),
+  claimPairingCode: api.cmdPairing.claimPairingCode,
+  preGenerateCode: api.cmdPairing.preGenerateCode,
+  getPairingStatus: api.cmdPairing.getPairingStatus,
+  getMyPendingCodes: api.cmdPairing.getMyPendingCodes,
 };
