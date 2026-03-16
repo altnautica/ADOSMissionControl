@@ -10,17 +10,19 @@ interface ServiceTableProps {
   onRestart: (name: string) => void;
 }
 
-function statusBadge(status: ServiceInfo["status"]) {
-  const colors = {
+function statusBadge(status: string) {
+  const colors: Record<string, string> = {
     running: "bg-status-success/20 text-status-success",
     stopped: "bg-text-tertiary/20 text-text-tertiary",
     error: "bg-status-error/20 text-status-error",
+    degraded: "bg-status-warning/20 text-status-warning",
+    starting: "bg-accent-primary/20 text-accent-primary",
   };
   return (
     <span
       className={cn(
         "inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium rounded",
-        colors[status]
+        colors[status] ?? colors.stopped
       )}
     >
       {status}

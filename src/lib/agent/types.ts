@@ -36,7 +36,7 @@ export interface AgentStatus {
 
 export interface ServiceInfo {
   name: string;
-  status: "running" | "stopped" | "error";
+  status: "running" | "stopped" | "error" | "degraded" | "starting";
   pid: number | null;
   cpu_percent: number;
   memory_mb: number;
