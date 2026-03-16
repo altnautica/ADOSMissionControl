@@ -11,9 +11,9 @@ import { useEffect, useRef } from "react";
 import { useAgentStore } from "@/stores/agent-store";
 import type { AgentStatus } from "@/lib/agent/types";
 
-const MQTT_WS_URL = "wss://mqtt.altnautica.com/mqtt";
+const MQTT_WS_URL_DEFAULT = "wss://mqtt.altnautica.com/mqtt";
 
-export function MqttBridge() {
+export function MqttBridge({ mqttBrokerUrl }: { mqttBrokerUrl?: string | null }) {
   const cloudDeviceId = useAgentStore((s) => s.cloudDeviceId);
   const setCloudStatus = useAgentStore((s) => s.setCloudStatus);
   const setMqttConnected = useAgentStore((s) => s.setMqttConnected);
@@ -29,7 +29,7 @@ export function MqttBridge() {
         const mqtt = await import("mqtt");
         if (cancelled) return;
 
-        const client = mqtt.connect(MQTT_WS_URL, {
+        const client = mqtt.connect(mqttBrokerUrl || MQTT_WS_URL_DEFAULT, {
           protocolVersion: 5,
           clean: true,
           reconnectPeriod: 5000,

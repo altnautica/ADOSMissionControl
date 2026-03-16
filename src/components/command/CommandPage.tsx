@@ -23,6 +23,7 @@ import { useQuery } from "convex/react";
 import { cn, isDemoMode } from "@/lib/utils";
 import { useConvexAvailable } from "@/app/ConvexClientProvider";
 import { cmdDronesApi } from "@/lib/community-api-drones";
+import { communityApi } from "@/lib/community-api";
 import { useAgentStore } from "@/stores/agent-store";
 import { usePairingStore } from "@/stores/pairing-store";
 import { FleetSidebar } from "./FleetSidebar";
@@ -65,6 +66,10 @@ export function CommandPage() {
 
   const demo = isDemoMode();
   const convexAvailable = useConvexAvailable();
+  const clientConfig = useQuery(
+    communityApi.clientConfig.get,
+    !demo && convexAvailable ? {} : "skip"
+  );
   const myDrones = useQuery(
     cmdDronesApi.listMyDrones,
     !demo && convexAvailable ? {} : "skip"
@@ -267,7 +272,7 @@ export function CommandPage() {
       {connected && <DroneContextRail />}
 
       {cloudMode && <CloudStatusBridge />}
-      {cloudMode && <MqttBridge />}
+      {cloudMode && <MqttBridge mqttBrokerUrl={clientConfig?.mqttBrokerUrl} />}
 
       <PairingDialog
         open={pairingOpen}

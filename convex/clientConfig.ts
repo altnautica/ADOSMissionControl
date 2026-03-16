@@ -9,6 +9,8 @@ export const getClientConfig = query({
       cesiumIonToken: process.env.CESIUM_ION_TOKEN ?? null,
       openAipApiKey: process.env.OPENAIP_API_KEY ?? null,
       aiPidWeeklyLimit: Number.isFinite(parsed) && parsed > 0 ? parsed : 3,
+      mqttBrokerUrl: process.env.MQTT_BROKER_URL ?? null,
+      videoRelayUrl: process.env.VIDEO_RELAY_URL ?? null,
     };
   },
 });

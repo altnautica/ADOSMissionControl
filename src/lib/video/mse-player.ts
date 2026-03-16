@@ -6,7 +6,7 @@
  * @license GPL-3.0-only
  */
 
-const VIDEO_RELAY_URL = "wss://video.altnautica.com";
+const VIDEO_RELAY_URL_DEFAULT = "wss://video.altnautica.com";
 
 export class MsePlayer {
   private ws: WebSocket | null = null;
@@ -15,12 +15,14 @@ export class MsePlayer {
   private videoElement: HTMLVideoElement | null = null;
   private queue: ArrayBuffer[] = [];
   private deviceId: string = "";
+  private videoRelayUrl: string = VIDEO_RELAY_URL_DEFAULT;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
-  start(deviceId: string, videoElement: HTMLVideoElement): void {
+  start(deviceId: string, videoElement: HTMLVideoElement, videoRelayUrl?: string): void {
     this.stop();
     this.deviceId = deviceId;
     this.videoElement = videoElement;
+    if (videoRelayUrl) this.videoRelayUrl = videoRelayUrl;
 
     if (!("MediaSource" in window)) {
       console.warn("MSE not supported in this browser");
@@ -62,7 +64,7 @@ export class MsePlayer {
   }
 
   private connectWebSocket(): void {
-    const url = `${VIDEO_RELAY_URL}/ws/stream/${this.deviceId}`;
+    const url = `${this.videoRelayUrl}/ws/stream/${this.deviceId}`;
     this.ws = new WebSocket(url);
     this.ws.binaryType = "arraybuffer";
 
