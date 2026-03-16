@@ -24,7 +24,7 @@ Altnautica Command is a web GCS that runs in any browser and also ships as a nat
 
 It replaces desktop-only tools like QGroundControl and Mission Planner with a modern web stack: React 19, TypeScript strict, real-time Zustand stores with ring-buffered telemetry, and a custom binary MAVLink v2 parser.
 
-~98K lines of TypeScript. 38 FC configuration panels. 7 pattern generators. 83 MAVLink + 34 MSP message decoders. 33 Zustand stores. Full demo mode with zero setup.
+~98K lines of TypeScript. 38 FC configuration panels. 7 pattern generators. 83 MAVLink + 34 MSP message decoders. 34 Zustand stores. Full demo mode with zero setup.
 
 **[Live App](https://command.altnautica.com)** · **[Website](https://altnautica.com/command)** · **[Discord](https://discord.gg/uxbvuD4d5q)**
 
@@ -302,6 +302,35 @@ The first user to sign up automatically becomes admin.
 
 Deploy the [open-source Convex backend](https://github.com/get-convex/convex-backend) and point `NEXT_PUBLIC_CONVEX_URL` at it. Use `npx convex deploy --url <url> --admin-key <key>` to push functions.
 
+### Cloud Mode
+
+When the GCS is served over HTTPS (like at `command.altnautica.com`), it can't connect directly to a drone agent's local HTTP API due to mixed-content restrictions. Cloud mode solves this with a three-layer relay architecture:
+
+1. **Convex HTTP relay** (baseline). Agent POSTs status every 5s, GCS reads via reactive Convex queries. Commands go the reverse direction. Works immediately, no extra infra.
+2. **MQTT real-time telemetry** (optional). Agent publishes to `ados/{deviceId}/status` and `ados/{deviceId}/telemetry` topics via Mosquitto. GCS subscribes in the browser via `mqtt.js` over WebSocket. 2Hz+ update rate.
+3. **Video streaming** (optional). Video relay converts RTSP from the agent to fragmented MP4 over WebSocket. Browser plays via native MediaSource Extensions. 0.5-1.5s latency.
+
+The GCS auto-detects HTTPS and falls back to cloud mode. On HTTP (local dev), it connects directly to the agent.
+
+**Environment variables for cloud mode:**
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `NEXT_PUBLIC_MQTT_BROKER_URL` | `wss://mqtt.altnautica.com/mqtt` | MQTT WebSocket broker URL |
+| `NEXT_PUBLIC_VIDEO_RELAY_URL` | `wss://video.altnautica.com` | Video relay WebSocket URL |
+
+### Tools
+
+The `tools/` directory contains standalone infrastructure for self-hosting:
+
+| Tool | Path | Description |
+|------|------|-------------|
+| SITL launcher | `tools/sitl/` | ArduPilot SITL + TCP-to-WebSocket bridge |
+| MQTT bridge | `tools/mqtt-bridge/` | Mosquitto broker + MQTT-to-Convex bridge (Docker Compose) |
+| Video relay | `tools/video-relay/` | RTSP-to-WebSocket fMP4 relay via ffmpeg (Docker Compose) |
+
+Each tool has its own README, Docker Compose config, and `.env.example`.
+
 ---
 
 ## Tech Stack
@@ -340,7 +369,7 @@ Deploy the [open-source Convex backend](https://github.com/get-convex/convex-bac
 |--------|-------|
 | Lines of TypeScript | ~98,000 |
 | FC configuration panels | 38 |
-| Zustand stores | 33 |
+| Zustand stores | 34 |
 | MAVLink message decoders | 83 |
 | MSP message decoders | 34 |
 | MSP message encoders | 21 |
@@ -390,3 +419,5 @@ Free to use, modify, and distribute. Derivative works must also be GPL-3.0, same
 - **Discord:** [discord.gg/uxbvuD4d5q](https://discord.gg/uxbvuD4d5q)
 - **Issues:** [github.com/altnautica/ADOSMissionControl/issues](https://github.com/altnautica/ADOSMissionControl/issues)
 - **SITL tool:** [`tools/sitl/`](tools/sitl/)
+- **MQTT bridge:** [`tools/mqtt-bridge/`](tools/mqtt-bridge/)
+- **Video relay:** [`tools/video-relay/`](tools/video-relay/)

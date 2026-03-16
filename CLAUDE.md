@@ -8,7 +8,7 @@
 
 - **Stack:** Next.js 16 (App Router) + React 19 + Zustand 5 + Tailwind v4 + TypeScript strict
 - **Protocol:** Custom MAVLink v2 binary parser/encoder, `DroneProtocol` abstraction interface
-- **Stores:** 33 Zustand stores with ring-buffered telemetry
+- **Stores:** 34 Zustand stores with ring-buffered telemetry
 - **FC panels:** 38 configuration panels + 15 shared infra components
 - **MAVLink:** 83 message decoders, 33 MAV_CMD handlers
 - **Firmware:** ArduPilot (full), PX4 (full), Betaflight/iNav (stubs)
@@ -28,7 +28,7 @@ npm run lint     # ESLint
 
 The `convex/` directory contains the standalone backend for cloud features (auth, fleet, community, missions, ADS-B cache). Community users can deploy their own backend with `npx convex dev`.
 
-- **Schema:** 25 tables (7 auth + 18 custom). Subset of the website schema (no investor-only tables).
+- **Schema:** 25 tables (7 auth + 18 custom, including `cmd_droneStatus` and `cmd_droneCommands` for cloud relay). Subset of the website schema (no investor-only tables).
 - **`cmd_*` files** are GCS-exclusive functions (drones, pairing, missions, preferences, AI usage, ADS-B).
 - **Shared files** (`profiles.ts`, `comments.ts`, `communityChangelog.ts`, etc.) are duplicated from `website/convex/` for OSS independence.
 - **`community-api.ts` and `community-api-drones.ts`** use typed imports from `convex/_generated/api`.
@@ -188,6 +188,10 @@ When you need to understand a system, read these files:
 | Air traffic stores | `src/stores/airspace-store.ts`, `src/stores/traffic-store.ts` — zones, NOTAMs, aircraft, alerts |
 | ADS-B providers | `src/lib/airspace/adsb-provider.ts` — adsb.lol + OpenSky fetch |
 | Airspace types | `src/lib/airspace/types.ts` — AircraftState, AirspaceZone, ThreatLevel, Flyability |
+| Cloud status bridge | `src/components/command/CloudStatusBridge.tsx` — Convex reactive query → agent store |
+| MQTT bridge | `src/components/command/MqttBridge.tsx` — Browser MQTT client for real-time telemetry |
+| MSE video player | `src/lib/video/mse-player.ts` — WebSocket to MediaSource Extensions player |
+| Agent store (cloud mode) | `src/stores/agent-store.ts` — Cloud/local agent connection state |
 
 ---
 
@@ -227,6 +231,9 @@ When you need to understand a system, read these files:
 - **Ring buffer `.toArray()` copies** — It returns a new array every call. Don't call it in render paths without memoization.
 - **`isDemoMode()` checks both env var and URL param** — `NEXT_PUBLIC_DEMO_MODE=true` or `?demo=true` in the URL. Either activates the mock engine.
 - **Never import from `src/mock/` in production code paths** — Mock modules should only be loaded when `isDemoMode()` is true. Use dynamic imports or conditional requires.
+- **Cloud mode auto-activates on HTTPS** — When `window.location.protocol === "https:"`, the GCS uses cloud relay instead of direct agent HTTP. On plain HTTP (local dev), it connects directly.
+- **MQTT connects via Cloudflare Tunnel** — `wss://mqtt.altnautica.com/mqtt` routes through Cloudflare to Mosquitto WebSocket port 9001. The `mqtt.js` client connects in-browser with MQTTv5.
+- **MSE player assumes H.264 AVC1** — The codec string `video/mp4; codecs="avc1.640029"` is hardcoded in `mse-player.ts`. Changing the video relay's ffmpeg output codec requires updating this string.
 - **Zustand `getState()` is synchronous** — Use it in callbacks and event handlers. Use selectors (`useStore(s => s.field)`) in React components for reactivity.
 - **Electron: no proxy needed for standalone** — The Next.js standalone server serves `/_next/static/*` natively when `.next/static/` is copied into the standalone directory. No HTTP proxy layer required. `server.ts` just forks the standalone server on a single port. Always use `127.0.0.1` (not `localhost`) to avoid IPv6 resolution issues on macOS.
 - **Electron: always use `127.0.0.1`** — `window.ts`, `main.ts`, and `server.ts` all use `127.0.0.1` instead of `localhost`. macOS can resolve `localhost` to `::1` (IPv6), causing ECONNREFUSED when the server only listens on IPv4.
