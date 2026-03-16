@@ -302,6 +302,8 @@ The first user to sign up automatically becomes admin.
 
 Deploy the [open-source Convex backend](https://github.com/get-convex/convex-backend) and point `NEXT_PUBLIC_CONVEX_URL` at it. Use `npx convex deploy --url <url> --admin-key <key>` to push functions.
 
+For full cloud relay self-hosting (MQTT + video), see **[SELFHOSTING.md](SELFHOSTING.md)**.
+
 ### Cloud Mode
 
 When the GCS is served over HTTPS (like at `command.altnautica.com`), it can't connect directly to a drone agent's local HTTP API due to mixed-content restrictions. Cloud mode solves this with a three-layer relay architecture:
@@ -312,12 +314,14 @@ When the GCS is served over HTTPS (like at `command.altnautica.com`), it can't c
 
 The GCS auto-detects HTTPS and falls back to cloud mode. On HTTP (local dev), it connects directly to the agent.
 
-**Environment variables for cloud mode:**
+**Convex environment variables for cloud mode** (set via `npx convex env set`):
 
-| Variable | Default | Description |
+| Variable | Example | Description |
 |----------|---------|-------------|
-| `NEXT_PUBLIC_MQTT_BROKER_URL` | `wss://mqtt.altnautica.com/mqtt` | MQTT WebSocket broker URL |
-| `NEXT_PUBLIC_VIDEO_RELAY_URL` | `wss://video.altnautica.com` | Video relay WebSocket URL |
+| `MQTT_BROKER_URL` | `wss://mqtt.example.com/mqtt` | MQTT WebSocket broker URL |
+| `VIDEO_RELAY_URL` | `wss://video.example.com` | Video relay WebSocket URL |
+
+The GCS reads these from the `clientConfig` Convex query at runtime. No Next.js env vars needed.
 
 ### Tools
 

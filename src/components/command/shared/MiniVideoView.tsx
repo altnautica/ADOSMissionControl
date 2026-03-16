@@ -9,14 +9,24 @@
 
 import { useEffect, useRef } from "react";
 import { VideoOff } from "lucide-react";
+import { useQuery } from "convex/react";
 import { useAgentStore } from "@/stores/agent-store";
 import { useVideoStore } from "@/stores/video-store";
+import { useConvexAvailable } from "@/app/ConvexClientProvider";
+import { communityApi } from "@/lib/community-api";
+import { isDemoMode } from "@/lib/utils";
 
 export function MiniVideoView() {
   const cloudMode = useAgentStore((s) => s.cloudMode);
   const cloudDeviceId = useAgentStore((s) => s.cloudDeviceId);
   const cloudStreaming = useVideoStore((s) => s.cloudStreaming);
   const setCloudStreaming = useVideoStore((s) => s.setCloudStreaming);
+  const convexAvailable = useConvexAvailable();
+  const demo = isDemoMode();
+  const clientConfig = useQuery(
+    communityApi.clientConfig.get,
+    !demo && convexAvailable ? {} : "skip"
+  );
   const videoRef = useRef<HTMLVideoElement>(null);
   const playerRef = useRef<{ stop: () => void } | null>(null);
 
@@ -31,7 +41,7 @@ export function MiniVideoView() {
 
       const player = new MsePlayer();
       playerRef.current = player;
-      player.start(cloudDeviceId!, videoRef.current!);
+      player.start(cloudDeviceId!, videoRef.current!, clientConfig?.videoRelayUrl ?? undefined);
       setCloudStreaming(true);
     }
 
@@ -43,7 +53,7 @@ export function MiniVideoView() {
       playerRef.current = null;
       setCloudStreaming(false);
     };
-  }, [cloudMode, cloudDeviceId, setCloudStreaming]);
+  }, [cloudMode, cloudDeviceId, setCloudStreaming, clientConfig?.videoRelayUrl]);
 
   if (cloudMode && cloudDeviceId) {
     return (

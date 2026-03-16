@@ -18,6 +18,11 @@ function shouldSend(deviceId: string): boolean {
   const last = lastSent.get(deviceId) ?? 0;
   if (now - last < DEBOUNCE_MS) return false;
   lastSent.set(deviceId, now);
+  // Evict oldest entry if map grows too large (prevent unbounded memory)
+  if (lastSent.size > 1000) {
+    const oldest = lastSent.entries().next().value;
+    if (oldest) lastSent.delete(oldest[0]);
+  }
   return true;
 }
 
@@ -32,6 +37,7 @@ async function forwardToConvex(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ deviceId, topic, ...payload }),
+      signal: AbortSignal.timeout(5000),
     });
     if (!res.ok) {
       console.error(
