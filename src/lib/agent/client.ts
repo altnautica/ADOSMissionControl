@@ -50,19 +50,19 @@ export class AgentClient {
   }
 
   async getStatus(): Promise<AgentStatus> {
-    return this.request<AgentStatus>("/api/v1/status");
+    return this.request<AgentStatus>("/api/status");
   }
 
   async getTelemetry(): Promise<TelemetrySnapshot> {
-    return this.request<TelemetrySnapshot>("/api/v1/telemetry");
+    return this.request<TelemetrySnapshot>("/api/telemetry");
   }
 
   async getServices(): Promise<ServiceInfo[]> {
-    return this.request<ServiceInfo[]>("/api/v1/services");
+    return this.request<ServiceInfo[]>("/api/services");
   }
 
   async getSystemResources(): Promise<SystemResources> {
-    return this.request<SystemResources>("/api/v1/system");
+    return this.request<SystemResources>("/api/system");
   }
 
   async getLogs(params?: { level?: string; limit?: number }): Promise<LogEntry[]> {
@@ -70,26 +70,26 @@ export class AgentClient {
     if (params?.level) qs.set("level", params.level);
     if (params?.limit) qs.set("limit", String(params.limit));
     const query = qs.toString();
-    return this.request<LogEntry[]>(`/api/v1/logs${query ? `?${query}` : ""}`);
+    return this.request<LogEntry[]>(`/api/logs${query ? `?${query}` : ""}`);
   }
 
   async getParams(): Promise<Record<string, number>> {
-    return this.request<Record<string, number>>("/api/v1/params");
+    return this.request<Record<string, number>>("/api/params");
   }
 
   async sendCommand(cmd: string, args?: unknown[]): Promise<CommandResult> {
-    return this.request<CommandResult>("/api/v1/command", {
+    return this.request<CommandResult>("/api/command", {
       method: "POST",
       body: JSON.stringify({ command: cmd, args: args ?? [] }),
     });
   }
 
   async getConfig(): Promise<Record<string, unknown>> {
-    return this.request<Record<string, unknown>>("/api/v1/config");
+    return this.request<Record<string, unknown>>("/api/config");
   }
 
   async restartService(name: string): Promise<CommandResult> {
-    return this.request<CommandResult>(`/api/v1/services/${encodeURIComponent(name)}/restart`, {
+    return this.request<CommandResult>(`/api/services/${encodeURIComponent(name)}/restart`, {
       method: "POST",
     });
   }
@@ -97,34 +97,34 @@ export class AgentClient {
   // ── Peripherals ─────────────────────────────────────────
 
   async getPeripherals(): Promise<PeripheralInfo[]> {
-    return this.request<PeripheralInfo[]>("/api/v1/peripherals");
+    return this.request<PeripheralInfo[]>("/api/peripherals");
   }
 
   async scanPeripherals(): Promise<PeripheralInfo[]> {
-    return this.request<PeripheralInfo[]>("/api/v1/peripherals/scan", { method: "POST" });
+    return this.request<PeripheralInfo[]>("/api/peripherals/scan", { method: "POST" });
   }
 
   // ── Scripts ─────────────────────────────────────────────
 
   async getScripts(): Promise<ScriptInfo[]> {
-    return this.request<ScriptInfo[]>("/api/v1/scripts");
+    return this.request<ScriptInfo[]>("/api/scripts");
   }
 
   async saveScript(name: string, content: string, suite?: string): Promise<ScriptInfo> {
-    return this.request<ScriptInfo>("/api/v1/scripts", {
+    return this.request<ScriptInfo>("/api/scripts", {
       method: "POST",
       body: JSON.stringify({ name, content, suite }),
     });
   }
 
   async deleteScript(id: string): Promise<CommandResult> {
-    return this.request<CommandResult>(`/api/v1/scripts/${encodeURIComponent(id)}`, {
+    return this.request<CommandResult>(`/api/scripts/${encodeURIComponent(id)}`, {
       method: "DELETE",
     });
   }
 
   async runScript(id: string): Promise<ScriptRunResult> {
-    return this.request<ScriptRunResult>(`/api/v1/scripts/${encodeURIComponent(id)}/run`, {
+    return this.request<ScriptRunResult>(`/api/scripts/${encodeURIComponent(id)}/run`, {
       method: "POST",
     });
   }
@@ -132,23 +132,23 @@ export class AgentClient {
   // ── Suites ──────────────────────────────────────────────
 
   async getSuites(): Promise<SuiteInfo[]> {
-    return this.request<SuiteInfo[]>("/api/v1/suites");
+    return this.request<SuiteInfo[]>("/api/suites");
   }
 
   async installSuite(id: string): Promise<CommandResult> {
-    return this.request<CommandResult>(`/api/v1/suites/${encodeURIComponent(id)}/install`, {
+    return this.request<CommandResult>(`/api/suites/${encodeURIComponent(id)}/install`, {
       method: "POST",
     });
   }
 
   async uninstallSuite(id: string): Promise<CommandResult> {
-    return this.request<CommandResult>(`/api/v1/suites/${encodeURIComponent(id)}/uninstall`, {
+    return this.request<CommandResult>(`/api/suites/${encodeURIComponent(id)}/uninstall`, {
       method: "POST",
     });
   }
 
   async activateSuite(id: string): Promise<CommandResult> {
-    return this.request<CommandResult>(`/api/v1/suites/${encodeURIComponent(id)}/activate`, {
+    return this.request<CommandResult>(`/api/suites/${encodeURIComponent(id)}/activate`, {
       method: "POST",
     });
   }
@@ -156,28 +156,28 @@ export class AgentClient {
   // ── Fleet ───────────────────────────────────────────────
 
   async getEnrollment(): Promise<DroneNetEnrollment> {
-    return this.request<DroneNetEnrollment>("/api/v1/fleet/enrollment");
+    return this.request<DroneNetEnrollment>("/api/fleet/enrollment");
   }
 
   async getPeers(): Promise<NetworkPeer[]> {
-    return this.request<NetworkPeer[]>("/api/v1/fleet/peers");
+    return this.request<NetworkPeer[]>("/api/fleet/peers");
   }
 
   // ── Pairing ──────────────────────────────────────────────
 
   async getPairingInfo(): Promise<PairingInfo> {
-    return this.request<PairingInfo>("/api/v1/pairing/info");
+    return this.request<PairingInfo>("/api/pairing/info");
   }
 
   async claimLocally(userId: string): Promise<ClaimResponse> {
-    return this.request<ClaimResponse>("/api/v1/pairing/claim", {
+    return this.request<ClaimResponse>("/api/pairing/claim", {
       method: "POST",
       body: JSON.stringify({ user_id: userId }),
     });
   }
 
   async unpairAgent(): Promise<CommandResult> {
-    return this.request<CommandResult>("/api/v1/pairing/unpair", {
+    return this.request<CommandResult>("/api/pairing/unpair", {
       method: "POST",
     });
   }
