@@ -12,6 +12,7 @@ import { ThumbsUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { communityApi } from "@/lib/community-api";
 import { useAuthStore } from "@/stores/auth-store";
+import type { Id } from "../../../convex/_generated/dataModel";
 
 interface ChangelogReactionButtonProps {
   changelogId: string;
@@ -30,7 +31,7 @@ export function ChangelogReactionButton({ changelogId, count }: ChangelogReactio
 
   const handleClick = () => {
     if (!isAuthenticated) return;
-    react({ changelogId: changelogId as never, reaction: "thumbsup" });
+    react({ changelogId: changelogId as Id<"community_changelog">, reaction: "thumbsup" });
   };
 
   return (

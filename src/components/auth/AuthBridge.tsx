@@ -32,7 +32,7 @@ export function AuthBridge() {
     if (isAuthenticated && profile) {
       setAuth({
         id: profile._id ?? "",
-        name: profile.name ?? profile.email?.split("@")[0] ?? "User",
+        name: profile.fullName ?? profile.email?.split("@")[0] ?? "User",
         email: profile.email ?? "",
       });
     } else if (!isAuthenticated && zustandAuth) {
