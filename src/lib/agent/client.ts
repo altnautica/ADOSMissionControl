@@ -57,17 +57,34 @@ export class AgentClient {
     return this.request<TelemetrySnapshot>("/api/telemetry");
   }
 
-  async getServices(): Promise<ServiceInfo[]> {
-    const res = await this.request<{ services: Array<Record<string, unknown>> }>("/api/services");
-    const list = Array.isArray(res) ? res : (res.services ?? []);
-    return list.map((s) => ({
-      name: String(s.name ?? "unknown"),
-      status: (s.status ?? s.state ?? "stopped") as ServiceInfo["status"],
-      pid: typeof s.pid === "number" ? s.pid : null,
-      cpu_percent: typeof s.cpu_percent === "number" ? s.cpu_percent : 0,
-      memory_mb: typeof s.memory_mb === "number" ? s.memory_mb : 0,
-      uptime_seconds: typeof s.uptime_seconds === "number" ? s.uptime_seconds : 0,
-    }));
+  async getServices(agentUptimeHint?: number): Promise<ServiceInfo[]> {
+    const svcRes = await this.request<{ services: Array<Record<string, unknown>> }>("/api/services");
+    const list = Array.isArray(svcRes) ? svcRes : (svcRes.services ?? []);
+
+    // Compute per-service uptime from monotonic last_transition timestamps.
+    // Use agent uptime hint (from store) to estimate current monotonic time.
+    const agentUptime = agentUptimeHint ?? 0;
+    const transitions = list
+      .map((s) => (typeof s.last_transition === "number" ? s.last_transition : 0))
+      .filter((t) => t > 0);
+    const earliestStart = transitions.length > 0 ? Math.min(...transitions) : 0;
+    const monotonicNow = earliestStart > 0 ? earliestStart + agentUptime : 0;
+
+    return list.map((s) => {
+      const lastTransition = typeof s.last_transition === "number" ? s.last_transition : 0;
+      const uptimeSeconds = monotonicNow > 0 && lastTransition > 0
+        ? Math.max(0, monotonicNow - lastTransition)
+        : (typeof s.uptime_seconds === "number" ? s.uptime_seconds : 0);
+
+      return {
+        name: String(s.name ?? "unknown"),
+        status: (s.status ?? s.state ?? "stopped") as ServiceInfo["status"],
+        pid: typeof s.pid === "number" ? s.pid : null,
+        cpu_percent: typeof s.cpu_percent === "number" ? s.cpu_percent : (typeof s.cpuPercent === "number" ? s.cpuPercent : 0),
+        memory_mb: typeof s.memory_mb === "number" ? s.memory_mb : (typeof s.memoryMb === "number" ? s.memoryMb : 0),
+        uptime_seconds: uptimeSeconds,
+      };
+    });
   }
 
   async getSystemResources(): Promise<SystemResources> {

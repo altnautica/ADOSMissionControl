@@ -220,7 +220,8 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
     }
     if (!client) return;
     try {
-      const services = await client.getServices();
+      const agentUptime = get().status?.uptime_seconds ?? 0;
+      const services = await client.getServices(agentUptime);
       set({ services });
     } catch { /* silent */ }
   },
