@@ -20,13 +20,19 @@ export function VariableInspector() {
   const vars: VarEntry[] = [];
   if (status) {
     vars.push(
-      { name: "drone.armed", value: String(status.armed) },
-      { name: "drone.mode", value: `"${status.mode}"` },
-      { name: "drone.gps_fix", value: String(status.gps_fix) },
-      { name: "drone.satellites", value: String(status.satellites) },
       { name: "drone.fc_connected", value: String(status.fc_connected) },
-      { name: "drone.tier", value: String(status.tier) },
+      { name: "drone.board", value: status.board?.name ?? "Unknown" },
+      { name: "drone.tier", value: String(status.board?.tier ?? "?") },
+      { name: "drone.version", value: status.version },
+      { name: "drone.uptime", value: `${status.uptime_seconds}s` },
     );
+    if (status.health) {
+      vars.push(
+        { name: "health.cpu", value: `${status.health.cpu_percent.toFixed(1)}%` },
+        { name: "health.mem", value: `${status.health.memory_percent.toFixed(1)}%` },
+        { name: "health.disk", value: `${status.health.disk_percent.toFixed(1)}%` },
+      );
+    }
   }
   if (resources) {
     vars.push(
