@@ -3,92 +3,195 @@
 /**
  * @module AgentDisconnectedPage
  * @description Pairing-first page shown when no agent is connected.
- * Guides the user through installing the agent and entering a pairing code.
- * Falls back to capability info and manual connection for advanced users.
+ * Shows a pre-generated pairing code with countdown, install command,
+ * and consumer-facing feature cards.
  * @license GPL-3.0-only
  */
 
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   ArrowUpRight,
   Radio,
-  Globe,
-  Monitor,
+  Video,
+  Signal,
+  Wifi,
+  Sparkles,
+  Layers,
   Terminal,
-  Cog,
   Code2,
   AlertTriangle,
   Cpu,
   Copy,
   Check,
-  Wifi,
+  Loader2,
 } from "lucide-react";
-import { usePairingStore, type DiscoveredAgent } from "@/stores/pairing-store";
-import { PairingCodeInput } from "./PairingDialog";
+import { useMutation } from "convex/react";
+import { useConvexAvailable } from "@/app/ConvexClientProvider";
+import { cmdPairingApi } from "@/lib/community-api-drones";
+import { usePairingStore } from "@/stores/pairing-store";
 
-const capabilities = [
+const features = [
   {
     icon: Radio,
     title: "MAVLink Proxy",
     description:
-      "Routes flight controller data over WebSocket, TCP, and UDP. Bidirectional relay with auto-reconnect.",
+      "Full bidirectional flight controller access over WebSocket, TCP, and UDP. Configure, monitor, and control your drone from anywhere.",
   },
   {
-    icon: Globe,
-    title: "REST API",
+    icon: Video,
+    title: "HD Video Streaming",
     description:
-      "Full HTTP API at :8080 for agent status, telemetry, parameters, commands, configuration, and logs.",
+      "Live HD video from your drone to any browser. Low-latency streaming powered by WFB-ng and OpenHD with RTL8812-series WiFi adapters.",
   },
   {
-    icon: Monitor,
-    title: "TUI Dashboard",
+    icon: Signal,
+    title: "4G/5G Telemetry",
     description:
-      "SSH-friendly terminal interface with 5 screens: dashboard, telemetry, MAVLink inspector, config editor, and log viewer.",
+      "Fly beyond visual line of sight. Real-time telemetry and control over cellular networks. No range limits.",
+  },
+  {
+    icon: Wifi,
+    title: "Extended Range Datalinks",
+    description:
+      "Push your control range to 50km+ using RTL8812AU/EU WiFi adapters in monitor mode. Purpose-built for long-range drone operations.",
+  },
+  {
+    icon: Cpu,
+    title: "Plug & Play Hardware",
+    description:
+      "Automatic hardware detection and setup. The agent recognizes your flight controller, sensors, and peripherals on first boot. No manual configuration needed.",
+  },
+  {
+    icon: Sparkles,
+    title: "AI-Ready",
+    description:
+      "Built for autonomous operations. Python SDK, scripting engine, and REST API let you build intelligent flight behaviors and integrate ML models.",
+  },
+  {
+    icon: Layers,
+    title: "Software-Defined Drone",
+    description:
+      "Turn any ArduPilot or PX4 drone into a smart drone. One companion computer. Full software control over every system.",
   },
   {
     icon: Terminal,
-    title: "CLI Tools",
+    title: "SSH & Terminal Access",
     description:
-      "`ados status`, `ados health`, `ados config`, `ados mavlink` and more. Quick diagnostics without a browser.",
-  },
-  {
-    icon: Cog,
-    title: "systemd Service",
-    description:
-      "Auto-start on boot, watchdog monitoring, graceful shutdown. Install with a single curl command.",
+      "Full TUI dashboard over SSH. Five screens for telemetry, MAVLink inspection, config editing, and logs. No browser needed.",
   },
   {
     icon: Code2,
-    title: "Scripting",
+    title: "Developer Tools",
     description:
-      "Text commands, Python SDK, YAML missions, REST API. Five tiers from simple to advanced.",
+      "REST API at :8080, Python SDK, YAML missions, CLI tools, and five scripting tiers from simple text commands to full autonomy.",
   },
 ];
 
-const INSTALL_COMMAND = "curl -sSL https://raw.githubusercontent.com/altnautica/ADOSDroneAgent/main/scripts/install.sh | sudo bash";
+const INSTALL_URL =
+  "https://raw.githubusercontent.com/altnautica/ADOSDroneAgent/main/scripts/install.sh";
+const CODE_TTL_MS = 15 * 60 * 1000; // 15 minutes
 
 interface AgentDisconnectedPageProps {
   onOpenPairing?: () => void;
 }
 
-export function AgentDisconnectedPage({ onOpenPairing }: AgentDisconnectedPageProps) {
-  const [copied, setCopied] = useState(false);
-  const [pairingSubmitted, setPairingSubmitted] = useState(false);
+export function AgentDisconnectedPage({
+  onOpenPairing,
+}: AgentDisconnectedPageProps) {
+  const [code, setCode] = useState<string | null>(null);
+  const [copiedCode, setCopiedCode] = useState(false);
+  const [copiedInstall, setCopiedInstall] = useState(false);
+  const [secondsLeft, setSecondsLeft] = useState(CODE_TTL_MS / 1000);
+  const [expired, setExpired] = useState(false);
+
+  const expiryRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const codeGeneratedAt = useRef<number>(0);
+
+  const convexAvailable = useConvexAvailable();
+  // convexAvailable is stable (env-var derived, never changes between renders)
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const preGenerate = convexAvailable
+    ? useMutation(cmdPairingApi.preGenerateCode)
+    : null;
 
   const discoveredAgents = usePairingStore((s) => s.discoveredAgents);
 
-  function handleCopy() {
-    navigator.clipboard.writeText(INSTALL_COMMAND).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+  const generateCode = useCallback(async () => {
+    setExpired(false);
+    setCopiedCode(false);
+    setCopiedInstall(false);
+
+    const fallback = () =>
+      Array.from(
+        { length: 6 },
+        () =>
+          "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random() * 32)]
+      ).join("");
+
+    let generated: string;
+    if (preGenerate) {
+      try {
+        const result = await preGenerate({});
+        generated = result.code;
+      } catch {
+        generated = fallback();
+      }
+    } else {
+      generated = fallback();
+    }
+
+    setCode(generated);
+    codeGeneratedAt.current = Date.now();
+    setSecondsLeft(CODE_TTL_MS / 1000);
+
+    // Start countdown
+    if (expiryRef.current) clearInterval(expiryRef.current);
+    expiryRef.current = setInterval(() => {
+      const elapsed = Date.now() - codeGeneratedAt.current;
+      const remaining = Math.max(
+        0,
+        Math.ceil((CODE_TTL_MS - elapsed) / 1000)
+      );
+      setSecondsLeft(remaining);
+      if (remaining <= 0) {
+        setExpired(true);
+        if (expiryRef.current) clearInterval(expiryRef.current);
+      }
+    }, 1000);
+  }, [preGenerate]);
+
+  // Generate code on mount
+  useEffect(() => {
+    generateCode();
+    return () => {
+      if (expiryRef.current) clearInterval(expiryRef.current);
+    };
+  }, [generateCode]);
+
+  function getInstallCommand(c: string) {
+    return `curl -sSL ${INSTALL_URL} | sudo bash -s -- --pair ${c}`;
+  }
+
+  function formatTime(secs: number) {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  }
+
+  function handleCopyCode() {
+    if (!code) return;
+    navigator.clipboard.writeText(code).then(() => {
+      setCopiedCode(true);
+      setTimeout(() => setCopiedCode(false), 2000);
     });
   }
 
-  function handleCodeSubmit(code: string) {
-    setPairingSubmitted(true);
-    // The actual pairing flow is handled by PairingDialog, opened via onOpenPairing.
-    // This inline input opens the full dialog with the code pre-filled.
-    onOpenPairing?.();
+  function handleCopyInstall() {
+    if (!code) return;
+    navigator.clipboard.writeText(getInstallCommand(code)).then(() => {
+      setCopiedInstall(true);
+      setTimeout(() => setCopiedInstall(false), 2000);
+    });
   }
 
   return (
@@ -104,91 +207,114 @@ export function AgentDisconnectedPage({ onOpenPairing }: AgentDisconnectedPagePr
             Pair Your Drone
           </h1>
           <p className="text-text-secondary text-sm max-w-lg mx-auto">
-            Connect the ADOS Drone Agent running on your companion computer to
-            start managing your drone.
+            Install the agent, enter this code, and you&apos;re connected.
           </p>
         </div>
 
-        {/* Three-step flow */}
-        <div className="max-w-2xl mx-auto space-y-5">
-          {/* Step 1: Install */}
-          <div className="p-4 bg-bg-secondary border border-border-default rounded space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="flex items-center justify-center w-6 h-6 rounded-full bg-accent-primary/15 text-accent-primary text-xs font-bold shrink-0">
-                1
-              </span>
-              <span className="text-xs font-medium text-text-primary">
-                Install the agent on your drone
-              </span>
+        {/* Pairing code hero */}
+        <div className="max-w-md mx-auto">
+          {!code ? (
+            <div className="flex flex-col items-center gap-3 py-8">
+              <Loader2
+                size={24}
+                className="animate-spin text-accent-primary"
+              />
+              <p className="text-xs text-text-secondary">
+                Generating pairing code...
+              </p>
             </div>
-            <div className="flex items-center gap-2 p-2 bg-bg-primary border border-border-default rounded ml-8">
-              <code className="flex-1 text-[11px] font-mono text-text-secondary select-all truncate">
-                {INSTALL_COMMAND}
-              </code>
+          ) : expired ? (
+            <div className="flex flex-col items-center gap-4 py-6">
+              <p className="text-sm text-text-secondary">
+                Code expired.
+              </p>
               <button
-                onClick={handleCopy}
-                className="flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-medium text-text-tertiary hover:text-text-primary bg-bg-secondary border border-border-default rounded transition-colors shrink-0"
+                onClick={generateCode}
+                className="px-4 py-1.5 text-xs font-medium bg-accent-primary text-white rounded hover:bg-accent-primary/90 transition-colors"
               >
-                {copied ? (
-                  <>
-                    <Check size={10} className="text-status-success" />
-                    Copied
-                  </>
-                ) : (
-                  <>
-                    <Copy size={10} />
-                    Copy
-                  </>
-                )}
+                Generate New Code
               </button>
             </div>
-            <p className="text-[10px] text-text-tertiary ml-8">
-              Works on Raspberry Pi OS, Ubuntu, and most Debian-based systems. Requires Python 3.11+.
-            </p>
-          </div>
+          ) : (
+            <div className="space-y-5">
+              {/* Big code display */}
+              <div className="p-5 bg-bg-secondary border border-border-default rounded-lg text-center space-y-2">
+                <div className="flex items-center justify-center gap-1">
+                  {code.split("").map((char, i) => (
+                    <span
+                      key={i}
+                      className="inline-flex items-center justify-center w-10 h-12 bg-bg-primary border border-border-default rounded text-xl font-mono font-bold text-text-primary"
+                    >
+                      {char}
+                    </span>
+                  ))}
+                  <button
+                    onClick={handleCopyCode}
+                    className="ml-2 p-2 text-text-tertiary hover:text-text-primary transition-colors"
+                    title="Copy code"
+                  >
+                    {copiedCode ? (
+                      <Check size={16} className="text-status-success" />
+                    ) : (
+                      <Copy size={16} />
+                    )}
+                  </button>
+                </div>
+                <p className="text-xs text-text-tertiary">
+                  Expires in{" "}
+                  <span
+                    className={
+                      secondsLeft < 60
+                        ? "text-status-warning font-medium"
+                        : "font-medium text-text-secondary"
+                    }
+                  >
+                    {formatTime(secondsLeft)}
+                  </span>
+                </p>
+              </div>
 
-          {/* Step 2: Pairing code */}
-          <div className="p-4 bg-bg-secondary border border-border-default rounded space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="flex items-center justify-center w-6 h-6 rounded-full bg-accent-primary/15 text-accent-primary text-xs font-bold shrink-0">
-                2
-              </span>
-              <span className="text-xs font-medium text-text-primary">
-                Enter the pairing code
-              </span>
-            </div>
-            <div className="flex justify-center py-2">
-              <PairingCodeInput
-                onSubmit={handleCodeSubmit}
-                disabled={pairingSubmitted}
-              />
-            </div>
-            <p className="text-[10px] text-text-tertiary text-center">
-              The 6-character code is shown when the agent starts. Or{" "}
-              <button
-                onClick={onOpenPairing}
-                className="text-accent-primary hover:underline"
-              >
-                open the full pairing dialog
-              </button>{" "}
-              for more options.
-            </p>
-          </div>
+              {/* Install command */}
+              <div className="space-y-2">
+                <p className="text-xs text-text-secondary">
+                  First time? Run this on your drone:
+                </p>
+                <div className="flex items-start gap-2 p-3 bg-bg-secondary border border-border-default rounded-lg">
+                  <code className="flex-1 text-[11px] font-mono text-text-secondary leading-relaxed break-all select-all">
+                    {getInstallCommand(code)}
+                  </code>
+                  <button
+                    onClick={handleCopyInstall}
+                    className="p-1.5 text-text-tertiary hover:text-text-primary transition-colors shrink-0"
+                    title="Copy install command"
+                  >
+                    {copiedInstall ? (
+                      <Check size={14} className="text-status-success" />
+                    ) : (
+                      <Copy size={14} />
+                    )}
+                  </button>
+                </div>
+                <p className="text-[10px] text-text-tertiary">
+                  Already installed? Run:{" "}
+                  <code className="font-mono text-text-secondary">
+                    sudo ados pair {code}
+                  </code>
+                </p>
+              </div>
 
-          {/* Step 3: Connected */}
-          <div className="p-4 bg-bg-secondary border border-border-default/50 rounded space-y-2 opacity-50">
-            <div className="flex items-center gap-2">
-              <span className="flex items-center justify-center w-6 h-6 rounded-full bg-accent-primary/15 text-accent-primary text-xs font-bold shrink-0">
-                3
-              </span>
-              <span className="text-xs font-medium text-text-primary">
-                Connected and ready
-              </span>
+              {/* Waiting indicator */}
+              <div className="flex items-center justify-center gap-2 py-2">
+                <Loader2
+                  size={14}
+                  className="animate-spin text-text-tertiary"
+                />
+                <p className="text-xs text-text-tertiary">
+                  Waiting for your drone to connect...
+                </p>
+              </div>
             </div>
-            <p className="text-[10px] text-text-tertiary ml-8">
-              Once paired, your drone appears in the sidebar. Click to connect any time.
-            </p>
-          </div>
+          )}
         </div>
 
         {/* Discovered agents */}
@@ -223,13 +349,13 @@ export function AgentDisconnectedPage({ onOpenPairing }: AgentDisconnectedPagePr
           </div>
         )}
 
-        {/* Capabilities grid */}
+        {/* Feature cards */}
         <div>
           <h2 className="text-sm font-medium text-text-primary mb-4">
-            What the ADOS Agent does
+            Turn any drone into a smart drone
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {capabilities.map(({ icon: Icon, title, description }) => (
+            {features.map(({ icon: Icon, title, description }) => (
               <div
                 key={title}
                 className="p-4 bg-bg-secondary border border-border-default rounded space-y-2"
@@ -250,7 +376,10 @@ export function AgentDisconnectedPage({ onOpenPairing }: AgentDisconnectedPagePr
 
         {/* Alpha Disclaimer */}
         <div className="flex items-start gap-3 p-4 bg-yellow-500/5 border border-yellow-500/20 rounded">
-          <AlertTriangle size={16} className="text-yellow-400 shrink-0 mt-0.5" />
+          <AlertTriangle
+            size={16}
+            className="text-yellow-400 shrink-0 mt-0.5"
+          />
           <p className="text-xs text-yellow-200/80 leading-relaxed">
             This is alpha software. Expect bugs, breaking changes, and
             incomplete features. The Command tab provides direct control over
