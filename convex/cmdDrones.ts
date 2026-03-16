@@ -35,6 +35,17 @@ export const getDrone = query({
   },
 });
 
+/** Get a drone by deviceId string (for HTTP route validation). */
+export const getDroneByDeviceId = query({
+  args: { deviceId: v.string() },
+  handler: async (ctx, { deviceId }) => {
+    return await ctx.db
+      .query("cmd_drones")
+      .withIndex("by_deviceId", (q) => q.eq("deviceId", deviceId))
+      .first();
+  },
+});
+
 /** Rename a paired drone. */
 export const renameDrone = mutation({
   args: { droneId: v.id("cmd_drones"), name: v.string() },

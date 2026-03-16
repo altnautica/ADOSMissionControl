@@ -231,6 +231,55 @@ fullName: v.optional(v.string()),
     .index("by_userId", ["userId"])
     .index("by_deviceId", ["deviceId"]),
 
+  // ── Cloud relay tables (cmd_ prefix) ──────────────────────
+
+  cmd_droneStatus: defineTable({
+    deviceId: v.string(),
+    version: v.string(),
+    uptimeSeconds: v.number(),
+    boardName: v.optional(v.string()),
+    boardTier: v.optional(v.number()),
+    boardSoc: v.optional(v.string()),
+    boardArch: v.optional(v.string()),
+    cpuPercent: v.optional(v.number()),
+    memoryPercent: v.optional(v.number()),
+    diskPercent: v.optional(v.number()),
+    temperature: v.optional(v.float64()),
+    fcConnected: v.optional(v.boolean()),
+    fcPort: v.optional(v.string()),
+    fcBaud: v.optional(v.number()),
+    services: v.optional(v.array(v.object({
+      name: v.string(),
+      status: v.string(),
+      cpuPercent: v.optional(v.number()),
+      memoryMb: v.optional(v.number()),
+    }))),
+    lastIp: v.optional(v.string()),
+    mdnsHost: v.optional(v.string()),
+    updatedAt: v.number(),
+  })
+    .index("by_deviceId", ["deviceId"]),
+
+  cmd_droneCommands: defineTable({
+    deviceId: v.string(),
+    userId: v.string(),
+    command: v.string(),
+    args: v.optional(v.any()),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("completed"),
+      v.literal("failed"),
+    ),
+    result: v.optional(v.object({
+      success: v.boolean(),
+      message: v.string(),
+    })),
+    createdAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_deviceId_status", ["deviceId", "status"])
+    .index("by_deviceId_createdAt", ["deviceId", "createdAt"]),
+
   cmd_pairingRequests: defineTable({
     deviceId: v.optional(v.string()),
     pairingCode: v.string(),

@@ -95,4 +95,108 @@ http.route({
   }),
 });
 
+// ── Cloud Relay: agent pushes full status ──────────────────
+
+http.route({
+  path: "/agent/status",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const body = await request.json();
+    const { deviceId, apiKey } = body;
+
+    if (!deviceId || !apiKey) {
+      return new Response(
+        JSON.stringify({ error: "deviceId and apiKey required" }),
+        { status: 400, headers: jsonHeaders }
+      );
+    }
+
+    // Validate API key matches the paired drone
+    const drone = await ctx.runQuery(api.cmdDrones.getDroneByDeviceId, { deviceId });
+    if (!drone || drone.apiKey !== apiKey) {
+      return new Response(
+        JSON.stringify({ error: "Invalid device or API key" }),
+        { status: 401, headers: jsonHeaders }
+      );
+    }
+
+    const result = await ctx.runMutation(api.cmdDroneStatus.pushStatus, body);
+    return new Response(JSON.stringify(result), {
+      status: 200,
+      headers: jsonHeaders,
+    });
+  }),
+});
+
+// ── Cloud Relay: agent polls for pending commands ──────────
+
+http.route({
+  path: "/agent/commands",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    const url = new URL(request.url);
+    const deviceId = url.searchParams.get("deviceId");
+    const apiKey = url.searchParams.get("apiKey");
+
+    if (!deviceId || !apiKey) {
+      return new Response(
+        JSON.stringify({ error: "deviceId and apiKey required" }),
+        { status: 400, headers: jsonHeaders }
+      );
+    }
+
+    // Validate API key
+    const drone = await ctx.runQuery(api.cmdDrones.getDroneByDeviceId, { deviceId });
+    if (!drone || drone.apiKey !== apiKey) {
+      return new Response(
+        JSON.stringify({ error: "Invalid device or API key" }),
+        { status: 401, headers: jsonHeaders }
+      );
+    }
+
+    const commands = await ctx.runQuery(api.cmdDroneCommands.getPendingCommands, { deviceId });
+    return new Response(JSON.stringify({ commands }), {
+      status: 200,
+      headers: jsonHeaders,
+    });
+  }),
+});
+
+// ── Cloud Relay: agent acknowledges command completion ─────
+
+http.route({
+  path: "/agent/commands/ack",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const body = await request.json();
+    const { commandId, deviceId, apiKey, status, result } = body;
+
+    if (!commandId || !deviceId || !apiKey) {
+      return new Response(
+        JSON.stringify({ error: "commandId, deviceId, and apiKey required" }),
+        { status: 400, headers: jsonHeaders }
+      );
+    }
+
+    // Validate API key
+    const drone = await ctx.runQuery(api.cmdDrones.getDroneByDeviceId, { deviceId });
+    if (!drone || drone.apiKey !== apiKey) {
+      return new Response(
+        JSON.stringify({ error: "Invalid device or API key" }),
+        { status: 401, headers: jsonHeaders }
+      );
+    }
+
+    const ackResult = await ctx.runMutation(api.cmdDroneCommands.ackCommand, {
+      commandId,
+      status: status || "completed",
+      result,
+    });
+    return new Response(JSON.stringify(ackResult), {
+      status: 200,
+      headers: jsonHeaders,
+    });
+  }),
+});
+
 export default http;
