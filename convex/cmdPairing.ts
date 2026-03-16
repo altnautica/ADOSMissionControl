@@ -203,13 +203,14 @@ export const registerAgent = mutation({
         apiKey: args.apiKey,
         mdnsHost: args.mdnsHost,
         localIp: args.localIp,
-        claimedBy: preGenerated.createdBy,
+        claimedBy: preGenerated.createdBy!,
         claimedAt: Date.now(),
       });
       // Upsert drone record
+      const ownerId = preGenerated.createdBy!;
       const existingDrone = await ctx.db
         .query("cmd_drones")
-        .withIndex("by_userId", (q) => q.eq("userId", preGenerated.createdBy))
+        .withIndex("by_userId", (q) => q.eq("userId", ownerId))
         .filter((q) => q.eq(q.field("deviceId"), args.deviceId))
         .first();
 
@@ -227,7 +228,7 @@ export const registerAgent = mutation({
         });
       } else {
         await ctx.db.insert("cmd_drones", {
-          userId: preGenerated.createdBy,
+          userId: ownerId,
           deviceId: args.deviceId,
           name: args.name || `Drone ${args.pairingCode}`,
           apiKey: args.apiKey || "",
@@ -242,7 +243,7 @@ export const registerAgent = mutation({
           pairedAt: Date.now(),
         });
       }
-      return { autoMatched: true, userId: preGenerated.createdBy };
+      return { autoMatched: true, userId: ownerId };
     }
 
     // Insert new pairing request
