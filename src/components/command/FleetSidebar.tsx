@@ -108,7 +108,12 @@ export function FleetSidebar({
       : drone.lastIp
         ? `http://${drone.lastIp}:8080`
         : null;
-    if (url) {
+
+    // If on HTTPS (prod) or no direct URL, fall back to cloud relay
+    const isHttps = typeof window !== "undefined" && window.location.protocol === "https:";
+    if (!url || isHttps) {
+      agentConnectCloud(drone.deviceId);
+    } else {
       agentConnect(url, drone.apiKey);
     }
   }
