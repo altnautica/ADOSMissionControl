@@ -188,7 +188,11 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   },
 
   setCloudStatus(status: AgentStatus) {
-    set({ status });
+    set((state) => {
+      const cpuHistory = [...state.cpuHistory, status.health.cpu_percent];
+      if (cpuHistory.length > MAX_CPU_HISTORY) cpuHistory.shift();
+      return { status, cpuHistory };
+    });
   },
 
   setMqttConnected(connected: boolean) {

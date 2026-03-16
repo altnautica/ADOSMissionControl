@@ -89,6 +89,20 @@ export function MqttBridge({ mqttBrokerUrl }: { mqttBrokerUrl?: string | null })
               };
               setCloudStatus(mapped);
 
+              // Synthesize resources from health data (cloud mode only has percentages)
+              useAgentStore.setState({
+                resources: {
+                  cpu_percent: mapped.health.cpu_percent,
+                  memory_percent: mapped.health.memory_percent,
+                  memory_used_mb: 0,
+                  memory_total_mb: 0,
+                  disk_percent: mapped.health.disk_percent,
+                  disk_used_gb: 0,
+                  disk_total_gb: 0,
+                  temperature: mapped.health.temperature,
+                },
+              });
+
               // Map services if present in MQTT payload
               if (data.services && Array.isArray(data.services)) {
                 useAgentStore.setState({

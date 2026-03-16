@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAgentStore } from "@/stores/agent-store";
 import type { LogEntry } from "@/lib/agent/types";
 
 interface LogViewerProps {
@@ -25,6 +26,7 @@ const levelFilters: Array<{ label: string; value: string | undefined }> = [
 ];
 
 export function LogViewer({ logs, onRefresh }: LogViewerProps) {
+  const cloudMode = useAgentStore((s) => s.cloudMode);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
   const [levelFilter, setLevelFilter] = useState<string | undefined>(undefined);
@@ -78,7 +80,11 @@ export function LogViewer({ logs, onRefresh }: LogViewerProps) {
         onScroll={handleScroll}
         className="h-[240px] overflow-y-auto p-2 font-mono text-[11px] leading-relaxed"
       >
-        {logs.length === 0 ? (
+        {cloudMode ? (
+          <p className="text-text-tertiary text-center py-4">
+            Logs are only available when connected directly to the agent
+          </p>
+        ) : logs.length === 0 ? (
           <p className="text-text-tertiary text-center py-4">No logs</p>
         ) : (
           logs.map((entry, i) => (

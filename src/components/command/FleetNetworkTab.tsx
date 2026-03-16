@@ -15,14 +15,16 @@ import { DroneNetEnrollmentCard } from "./shared/DroneNetEnrollmentCard";
 
 export function FleetNetworkTab() {
   const connected = useAgentStore((s) => s.connected);
+  const cloudMode = useAgentStore((s) => s.cloudMode);
+  const mqttConnected = useAgentStore((s) => s.mqttConnected);
   const peers = useAgentStore((s) => s.peers);
   const fetchPeers = useAgentStore((s) => s.fetchPeers);
   const [scanning, setScanning] = useState(false);
   const [lastScan, setLastScan] = useState<Date | null>(null);
 
   useEffect(() => {
-    if (connected) fetchPeers();
-  }, [connected, fetchPeers]);
+    if (connected && !cloudMode) fetchPeers();
+  }, [connected, cloudMode, fetchPeers]);
 
   async function handleScan() {
     setScanning(true);
@@ -51,23 +53,20 @@ export function FleetNetworkTab() {
           <div>
             <span className="text-text-tertiary">Status</span>
             <div className="flex items-center gap-1.5 mt-0.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-status-success" />
-              <span className="text-text-primary font-medium">Connected</span>
+              <span className={cn(
+                "w-1.5 h-1.5 rounded-full",
+                mqttConnected ? "bg-status-success" : "bg-text-tertiary"
+              )} />
+              <span className="text-text-primary font-medium">
+                {mqttConnected ? "Connected" : "Disconnected"}
+              </span>
             </div>
           </div>
           <div>
             <span className="text-text-tertiary">Broker</span>
             <p className="text-text-secondary font-mono mt-0.5 text-[11px]">
-              mqtt://fleet.altnautica.com:8883
+              mqtt.altnautica.com
             </p>
-          </div>
-          <div>
-            <span className="text-text-tertiary">Messages Sent</span>
-            <p className="text-text-primary font-mono mt-0.5">14,832</p>
-          </div>
-          <div>
-            <span className="text-text-tertiary">Messages Received</span>
-            <p className="text-text-primary font-mono mt-0.5">9,217</p>
           </div>
         </div>
       </div>
@@ -106,7 +105,7 @@ export function FleetNetworkTab() {
             )}
             <button
               onClick={handleScan}
-              disabled={scanning}
+              disabled={scanning || cloudMode}
               className="flex items-center gap-1 px-2 py-1 text-xs border border-border-default rounded hover:border-accent-primary hover:text-accent-primary text-text-secondary transition-colors disabled:opacity-50"
             >
               {scanning ? (
@@ -119,7 +118,11 @@ export function FleetNetworkTab() {
           </div>
         </div>
 
-        {peers.length === 0 ? (
+        {cloudMode ? (
+          <p className="text-xs text-text-tertiary">
+            Peer discovery requires a direct connection to the agent.
+          </p>
+        ) : peers.length === 0 ? (
           <p className="text-xs text-text-tertiary">No peers discovered</p>
         ) : (
           <div className="overflow-x-auto">

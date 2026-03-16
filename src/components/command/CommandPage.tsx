@@ -75,11 +75,18 @@ export function CommandPage() {
     !demo && convexAvailable ? {} : "skip"
   );
 
-  // Sync Convex fleet data into Zustand store
+  // Sync Convex fleet data into Zustand store (deduplicate by deviceId, keep newest)
   useEffect(() => {
     if (myDrones && Array.isArray(myDrones)) {
+      const deduped = new Map<string, typeof myDrones[number]>();
+      for (const d of myDrones) {
+        const existing = deduped.get(d.deviceId);
+        if (!existing || (d.pairedAt || 0) > (existing.pairedAt || 0)) {
+          deduped.set(d.deviceId, d);
+        }
+      }
       usePairingStore.getState().setPairedDrones(
-        myDrones.map((d) => ({
+        Array.from(deduped.values()).map((d) => ({
           _id: d._id,
           userId: d.userId,
           deviceId: d.deviceId,

@@ -34,8 +34,18 @@ export function AgentOverviewTab() {
     }
   }, [connected, fetchServices, fetchResources, fetchLogs]);
 
-  if (!connected || !status) {
+  if (!connected) {
     return <AgentDisconnectedPage />;
+  }
+
+  if (!status) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-3">
+        <div className="w-5 h-5 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" />
+        <p className="text-sm text-text-secondary">Waiting for agent status...</p>
+        <p className="text-xs text-text-tertiary">The agent should report in shortly</p>
+      </div>
+    );
   }
 
   return (
