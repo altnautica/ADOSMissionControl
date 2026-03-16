@@ -15,7 +15,6 @@ import { DroneNetEnrollmentCard } from "./shared/DroneNetEnrollmentCard";
 
 export function FleetNetworkTab() {
   const connected = useAgentStore((s) => s.connected);
-  const cloudMode = useAgentStore((s) => s.cloudMode);
   const mqttConnected = useAgentStore((s) => s.mqttConnected);
   const peers = useAgentStore((s) => s.peers);
   const fetchPeers = useAgentStore((s) => s.fetchPeers);
@@ -23,8 +22,8 @@ export function FleetNetworkTab() {
   const [lastScan, setLastScan] = useState<Date | null>(null);
 
   useEffect(() => {
-    if (connected && !cloudMode) fetchPeers();
-  }, [connected, cloudMode, fetchPeers]);
+    if (connected) fetchPeers();
+  }, [connected, fetchPeers]);
 
   async function handleScan() {
     setScanning(true);
@@ -105,7 +104,7 @@ export function FleetNetworkTab() {
             )}
             <button
               onClick={handleScan}
-              disabled={scanning || cloudMode}
+              disabled={scanning}
               className="flex items-center gap-1 px-2 py-1 text-xs border border-border-default rounded hover:border-accent-primary hover:text-accent-primary text-text-secondary transition-colors disabled:opacity-50"
             >
               {scanning ? (
@@ -118,11 +117,7 @@ export function FleetNetworkTab() {
           </div>
         </div>
 
-        {cloudMode ? (
-          <p className="text-xs text-text-tertiary">
-            Peer discovery requires a direct connection to the agent.
-          </p>
-        ) : peers.length === 0 ? (
+        {peers.length === 0 ? (
           <p className="text-xs text-text-tertiary">No peers discovered</p>
         ) : (
           <div className="overflow-x-auto">

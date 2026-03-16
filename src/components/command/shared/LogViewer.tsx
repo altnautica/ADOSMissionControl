@@ -80,12 +80,10 @@ export function LogViewer({ logs, onRefresh }: LogViewerProps) {
         onScroll={handleScroll}
         className="h-[240px] overflow-y-auto p-2 font-mono text-[11px] leading-relaxed"
       >
-        {cloudMode ? (
+        {logs.length === 0 ? (
           <p className="text-text-tertiary text-center py-4">
-            Logs are only available when connected directly to the agent
+            {cloudMode ? "Waiting for logs from agent..." : "No logs"}
           </p>
-        ) : logs.length === 0 ? (
-          <p className="text-text-tertiary text-center py-4">No logs</p>
         ) : (
           logs.map((entry, i) => (
             <div key={i} className="flex gap-2 py-0.5">

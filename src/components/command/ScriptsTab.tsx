@@ -187,7 +187,7 @@ export function ScriptsTab() {
         </button>
       </div>
 
-      {(mode === "console" || cloudMode) ? (
+      {mode === "console" ? (
         /* Console Mode */
         <div className="flex flex-col flex-1 p-4 gap-4 max-w-3xl">
           <div className="flex items-center gap-2 flex-wrap">
