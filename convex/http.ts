@@ -120,9 +120,13 @@ http.route({
       );
     }
 
-    // Strip auth fields before passing to mutation (agent sends apiKey + agentVersion
-    // which aren't in the pushStatus schema)
+    // Strip auth fields and sanitize before passing to mutation
+    // Agent sends apiKey + agentVersion (not in schema) and temperature: null
+    // (v.float64() rejects null — must be absent or a number)
     const { apiKey: _ak, agentVersion: _av, ...statusPayload } = body;
+    if (statusPayload.temperature === null || statusPayload.temperature === undefined) {
+      delete statusPayload.temperature;
+    }
     const result = await ctx.runMutation(api.cmdDroneStatus.pushStatus, statusPayload);
     return new Response(JSON.stringify(result), {
       status: 200,
