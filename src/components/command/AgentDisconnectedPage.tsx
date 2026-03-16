@@ -199,14 +199,14 @@ export function AgentDisconnectedPage({
       <div className="max-w-4xl mx-auto px-6 py-10 space-y-10">
         {/* Hero */}
         <div className="text-center space-y-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1 text-xs font-medium bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 rounded-full">
+          <div className="inline-flex items-center gap-2 px-3 py-1 text-sm font-medium bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 rounded-full">
             <AlertTriangle size={12} />
             ALPHA
           </div>
           <h1 className="text-3xl font-display font-bold text-text-primary">
             Pair Your Drone
           </h1>
-          <p className="text-text-secondary text-sm max-w-lg mx-auto">
+          <p className="text-text-secondary text-base max-w-lg mx-auto">
             Install the agent, enter this code, and you&apos;re connected.
           </p>
         </div>
@@ -239,11 +239,11 @@ export function AgentDisconnectedPage({
             <div className="space-y-5">
               {/* Big code display */}
               <div className="p-5 bg-bg-secondary border border-border-default rounded-lg text-center space-y-2">
-                <div className="flex items-center justify-center gap-1">
+                <div className="flex items-center justify-center gap-2">
                   {code.split("").map((char, i) => (
                     <span
                       key={i}
-                      className="inline-flex items-center justify-center w-10 h-12 bg-bg-primary border border-border-default rounded text-xl font-mono font-bold text-text-primary"
+                      className="inline-flex items-center justify-center w-12 h-14 bg-bg-primary border border-border-default rounded text-2xl font-mono font-bold text-text-primary"
                     >
                       {char}
                     </span>
@@ -260,7 +260,7 @@ export function AgentDisconnectedPage({
                     )}
                   </button>
                 </div>
-                <p className="text-xs text-text-tertiary">
+                <p className="text-sm text-text-tertiary">
                   Expires in{" "}
                   <span
                     className={
@@ -276,11 +276,11 @@ export function AgentDisconnectedPage({
 
               {/* Install command */}
               <div className="space-y-2">
-                <p className="text-xs text-text-secondary">
+                <p className="text-sm text-text-secondary">
                   First time? Run this on your drone:
                 </p>
                 <div className="flex items-start gap-2 p-3 bg-bg-secondary border border-border-default rounded-lg">
-                  <code className="flex-1 text-[11px] font-mono text-text-secondary leading-relaxed break-all select-all">
+                  <code className="flex-1 text-xs font-mono text-text-secondary leading-relaxed break-all select-all">
                     {getInstallCommand(code)}
                   </code>
                   <button
@@ -295,7 +295,7 @@ export function AgentDisconnectedPage({
                     )}
                   </button>
                 </div>
-                <p className="text-[10px] text-text-tertiary">
+                <p className="text-xs text-text-tertiary">
                   Already installed? Run:{" "}
                   <code className="font-mono text-text-secondary">
                     sudo ados pair {code}
@@ -309,7 +309,7 @@ export function AgentDisconnectedPage({
                   size={14}
                   className="animate-spin text-text-tertiary"
                 />
-                <p className="text-xs text-text-tertiary">
+                <p className="text-sm text-text-tertiary">
                   Waiting for your drone to connect...
                 </p>
               </div>
@@ -351,22 +351,22 @@ export function AgentDisconnectedPage({
 
         {/* Feature cards */}
         <div>
-          <h2 className="text-sm font-medium text-text-primary mb-4">
+          <h2 className="text-lg font-medium text-text-primary mb-4">
             Turn any drone into a smart drone
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {features.map(({ icon: Icon, title, description }) => (
               <div
                 key={title}
-                className="p-4 bg-bg-secondary border border-border-default rounded space-y-2"
+                className="p-5 bg-bg-secondary border border-border-default rounded space-y-2"
               >
                 <div className="flex items-center gap-2">
-                  <Icon size={14} className="text-accent-primary" />
-                  <span className="text-xs font-medium text-text-primary">
+                  <Icon size={18} className="text-accent-primary" />
+                  <span className="text-sm font-medium text-text-primary">
                     {title}
                   </span>
                 </div>
-                <p className="text-[11px] text-text-tertiary leading-relaxed">
+                <p className="text-xs text-text-tertiary leading-relaxed">
                   {description}
                 </p>
               </div>
@@ -380,7 +380,7 @@ export function AgentDisconnectedPage({
             size={16}
             className="text-yellow-400 shrink-0 mt-0.5"
           />
-          <p className="text-xs text-yellow-200/80 leading-relaxed">
+          <p className="text-sm text-yellow-200/80 leading-relaxed">
             This is alpha software. Expect bugs, breaking changes, and
             incomplete features. The Command tab provides direct control over
             drone agent services and configuration. Use at your own risk.
@@ -389,10 +389,10 @@ export function AgentDisconnectedPage({
 
         {/* Requirements */}
         <div className="text-center space-y-3">
-          <h2 className="text-sm font-medium text-text-primary">
+          <h2 className="text-base font-medium text-text-primary">
             Requirements
           </h2>
-          <div className="inline-flex items-center gap-4 text-xs text-text-tertiary">
+          <div className="inline-flex items-center gap-4 text-sm text-text-tertiary">
             <span className="flex items-center gap-1.5">
               <Cpu size={12} />
               Python 3.11+
@@ -410,7 +410,7 @@ export function AgentDisconnectedPage({
             href="https://github.com/altnautica/ADOSDroneAgent"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-text-primary bg-bg-tertiary border border-border-default rounded hover:bg-bg-secondary transition-colors"
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-text-primary bg-bg-tertiary border border-border-default rounded hover:bg-bg-secondary transition-colors"
           >
             View on GitHub
             <ArrowUpRight size={12} />
