@@ -10,6 +10,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { indexedDBStorage } from "@/lib/storage";
 import type { Jurisdiction } from "@/lib/jurisdiction";
+import { isDemoMode } from "@/lib/utils";
 
 export type MapTileSource = "osm" | "satellite" | "terrain" | "dark";
 export type UnitSystem = "metric" | "imperial";
@@ -140,7 +141,7 @@ export const useSettingsStore = create<SettingsStoreState>()(
       saveCount: 0,
       onboarded: false,
       jurisdiction: null,
-      demoMode: true,
+      demoMode: false,
       _hasHydrated: false,
       paramColumns: { ...DEFAULT_PARAM_COLUMNS },
       audioEnabled: false,
@@ -218,7 +219,7 @@ export const useSettingsStore = create<SettingsStoreState>()(
     {
       name: "altcmd:settings",
       storage: createJSONStorage(indexedDBStorage.storage),
-      version: 16,
+      version: 17,
       migrate: (persisted, version) => {
         const state = persisted as Record<string, unknown>;
         if (version < 2) {
@@ -294,12 +295,21 @@ export const useSettingsStore = create<SettingsStoreState>()(
           state.showNoFlyZones = false;
           state.offlineTileCaching = true;
         }
+        if (version < 17) {
+          // v17: Demo mode default flipped to false — env var/URL is authoritative
+          state.demoMode = false;
+        }
         return state as unknown as SettingsStoreState;
       },
       onRehydrateStorage: () => {
         return (state) => {
           if (state) {
             state._hasHydrated = true;
+            // Sync demo mode with env/URL — env var is authoritative
+            const envDemo = isDemoMode();
+            if (state.demoMode !== envDemo) {
+              state.demoMode = envDemo;
+            }
           }
         };
       },
