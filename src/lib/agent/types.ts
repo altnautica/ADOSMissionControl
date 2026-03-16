@@ -4,21 +4,34 @@
  * @license GPL-3.0-only
  */
 
+export interface BoardInfo {
+  name: string;
+  model: string;
+  tier: number;
+  ram_mb: number;
+  cpu_cores: number;
+  vendor: string;
+  soc: string;
+  arch: string;
+  hw_video_codecs: string[];
+}
+
+export interface HealthInfo {
+  cpu_percent: number;
+  memory_percent: number;
+  disk_percent: number;
+  temperature: number | null;
+  timestamp: string;
+}
+
 export interface AgentStatus {
   version: string;
   uptime_seconds: number;
-  device_id: string;
-  name: string;
-  tier: number;
-  board: string;
-  os: string;
+  board: BoardInfo;
+  health: HealthInfo;
   fc_connected: boolean;
   fc_port: string;
   fc_baud: number;
-  armed: boolean;
-  mode: string;
-  gps_fix: number;
-  satellites: number;
 }
 
 export interface ServiceInfo {
