@@ -42,30 +42,53 @@ export const claimPairingCode = mutation({
       claimedAt: Date.now(),
     });
 
-    // Create drone record
-    const droneId = await ctx.db.insert("cmd_drones", {
-      userId,
-      deviceId: request.deviceId || `device-${code}`,
-      name: request.agentName || `Drone ${code}`,
-      apiKey: request.apiKey || "",
-      agentVersion: request.agentVersion,
-      board: request.board,
-      tier: request.tier,
-      os: request.os,
-      mdnsHost: request.mdnsHost,
-      lastIp: request.localIp,
-      lastSeen: Date.now(),
-      fcConnected: false,
-      pairedAt: Date.now(),
-    });
+    // Upsert: update existing drone record if same user + device
+    const deviceId = request.deviceId || `device-${code}`;
+    const existingDrone = await ctx.db
+      .query("cmd_drones")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .filter((q) => q.eq(q.field("deviceId"), deviceId))
+      .first();
+
+    let droneId;
+    if (existingDrone) {
+      await ctx.db.patch(existingDrone._id, {
+        apiKey: request.apiKey || "",
+        agentVersion: request.agentVersion,
+        board: request.board,
+        tier: request.tier,
+        os: request.os,
+        mdnsHost: request.mdnsHost,
+        lastIp: request.localIp,
+        lastSeen: Date.now(),
+        pairedAt: Date.now(),
+      });
+      droneId = existingDrone._id;
+    } else {
+      droneId = await ctx.db.insert("cmd_drones", {
+        userId,
+        deviceId,
+        name: request.agentName || `Drone ${code}`,
+        apiKey: request.apiKey || "",
+        agentVersion: request.agentVersion,
+        board: request.board,
+        tier: request.tier,
+        os: request.os,
+        mdnsHost: request.mdnsHost,
+        lastIp: request.localIp,
+        lastSeen: Date.now(),
+        fcConnected: false,
+        pairedAt: Date.now(),
+      });
+    }
 
     return {
       droneId,
       apiKey: request.apiKey || "",
       mdnsHost: request.mdnsHost,
       localIp: request.localIp,
-      deviceId: request.deviceId,
-      name: request.agentName,
+      deviceId,
+      name: existingDrone?.name || request.agentName,
     };
   },
 });
@@ -183,22 +206,42 @@ export const registerAgent = mutation({
         claimedBy: preGenerated.createdBy,
         claimedAt: Date.now(),
       });
-      // Create drone record
-      await ctx.db.insert("cmd_drones", {
-        userId: preGenerated.createdBy,
-        deviceId: args.deviceId,
-        name: args.name || `Drone ${args.pairingCode}`,
-        apiKey: args.apiKey || "",
-        agentVersion: args.version,
-        board: args.board,
-        tier: args.tier,
-        os: args.os,
-        mdnsHost: args.mdnsHost,
-        lastIp: args.localIp,
-        lastSeen: Date.now(),
-        fcConnected: false,
-        pairedAt: Date.now(),
-      });
+      // Upsert drone record
+      const existingDrone = await ctx.db
+        .query("cmd_drones")
+        .withIndex("by_userId", (q) => q.eq("userId", preGenerated.createdBy))
+        .filter((q) => q.eq(q.field("deviceId"), args.deviceId))
+        .first();
+
+      if (existingDrone) {
+        await ctx.db.patch(existingDrone._id, {
+          apiKey: args.apiKey || "",
+          agentVersion: args.version,
+          board: args.board,
+          tier: args.tier,
+          os: args.os,
+          mdnsHost: args.mdnsHost,
+          lastIp: args.localIp,
+          lastSeen: Date.now(),
+          pairedAt: Date.now(),
+        });
+      } else {
+        await ctx.db.insert("cmd_drones", {
+          userId: preGenerated.createdBy,
+          deviceId: args.deviceId,
+          name: args.name || `Drone ${args.pairingCode}`,
+          apiKey: args.apiKey || "",
+          agentVersion: args.version,
+          board: args.board,
+          tier: args.tier,
+          os: args.os,
+          mdnsHost: args.mdnsHost,
+          lastIp: args.localIp,
+          lastSeen: Date.now(),
+          fcConnected: false,
+          pairedAt: Date.now(),
+        });
+      }
       return { autoMatched: true, userId: preGenerated.createdBy };
     }
 

@@ -70,6 +70,29 @@ export const unpairDrone = mutation({
   },
 });
 
+/** Deduplicate drone records — keeps newest per (userId, deviceId). */
+export const deduplicateDrones = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const all = await ctx.db.query("cmd_drones").collect();
+    const groups = new Map<string, typeof all>();
+    for (const d of all) {
+      const key = `${d.userId}:${d.deviceId}`;
+      groups.set(key, [...(groups.get(key) || []), d]);
+    }
+    let deleted = 0;
+    for (const [, drones] of groups) {
+      if (drones.length <= 1) continue;
+      drones.sort((a, b) => (b.pairedAt || 0) - (a.pairedAt || 0));
+      for (let i = 1; i < drones.length; i++) {
+        await ctx.db.delete(drones[i]._id);
+        deleted++;
+      }
+    }
+    return { deleted };
+  },
+});
+
 /**
  * Agent heartbeat — called from HTTP handler.
  * Validates using deviceId + apiKey (no user auth).

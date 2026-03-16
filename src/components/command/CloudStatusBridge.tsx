@@ -27,6 +27,20 @@ export function CloudStatusBridge() {
 
   const enqueueCommand = useMutation(cmdDroneCommandsApi.enqueueCommand);
 
+  // Timeout: surface error if no cloud status within 15s
+  useEffect(() => {
+    if (!cloudDeviceId || !convexAvailable) return;
+    const timer = setTimeout(() => {
+      const current = useAgentStore.getState();
+      if (current.cloudMode && !current.status) {
+        useAgentStore.setState({
+          connectionError: "No cloud status received. Is the agent paired and online?",
+        });
+      }
+    }, 15000);
+    return () => clearTimeout(timer);
+  }, [cloudDeviceId, convexAvailable]);
+
   // Map Convex status to AgentStatus
   useEffect(() => {
     if (!cloudStatus) return;
