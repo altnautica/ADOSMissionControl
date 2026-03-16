@@ -273,6 +273,37 @@ These run inside Convex functions, not in Next.js. Only needed if you use cloud 
 
 ---
 
+## Backend / Cloud Features
+
+Command GCS works fully standalone with no backend. Field mode (direct WebSocket or WebSerial connection to a flight controller) needs nothing else.
+
+Cloud features require a Convex deployment. These include:
+
+- **Auth** (sign up, log in, profiles)
+- **Cloud missions** (save/load missions from any device)
+- **Fleet management** (paired drones, heartbeat, connection presets)
+- **Community** (changelog, roadmap kanban, feature requests, bug reports, comments)
+- **ADS-B caching** (server-side fetch from adsb.lol + OpenSky, served to all clients)
+- **AI PID tuning** (usage tracking and rate limiting)
+
+### Quick Start (Convex Cloud)
+
+```bash
+npx convex init              # Create a free cloud deployment
+npx @convex-dev/auth          # Generate JWT keys for auth
+npx convex dev                # Start dev backend + codegen
+```
+
+Set `NEXT_PUBLIC_CONVEX_URL` in `.env.local` to the URL shown by `npx convex dev`.
+
+The first user to sign up automatically becomes admin.
+
+### Self-Hosted
+
+Deploy the [open-source Convex backend](https://github.com/get-convex/convex-backend) and point `NEXT_PUBLIC_CONVEX_URL` at it. Use `npx convex deploy --url <url> --admin-key <key>` to push functions.
+
+---
+
 ## Tech Stack
 
 | Layer | Technology |
