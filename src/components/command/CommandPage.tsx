@@ -267,6 +267,7 @@ export function CommandPage() {
       {connected && <DroneContextRail />}
 
       {cloudMode && <CloudStatusBridge />}
+      {cloudMode && <MqttBridge />}
 
       <PairingDialog
         open={pairingOpen}
