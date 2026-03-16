@@ -120,7 +120,10 @@ http.route({
       );
     }
 
-    const result = await ctx.runMutation(api.cmdDroneStatus.pushStatus, body);
+    // Strip auth fields before passing to mutation (agent sends apiKey + agentVersion
+    // which aren't in the pushStatus schema)
+    const { apiKey: _ak, agentVersion: _av, ...statusPayload } = body;
+    const result = await ctx.runMutation(api.cmdDroneStatus.pushStatus, statusPayload);
     return new Response(JSON.stringify(result), {
       status: 200,
       headers: jsonHeaders,
