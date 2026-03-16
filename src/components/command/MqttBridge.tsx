@@ -29,18 +29,15 @@ export function MqttBridge({ mqttBrokerUrl }: { mqttBrokerUrl?: string | null })
         const mqttModule = await import("mqtt");
         if (cancelled) return;
 
-        const connect = typeof mqttModule.connect === "function"
-          ? mqttModule.connect
-          : typeof mqttModule.default?.connect === "function"
-            ? mqttModule.default.connect
-            : typeof mqttModule.default === "function"
-              ? mqttModule.default
-              : null;
-        if (!connect) {
+        // Handle ESM/CJS module resolution differences in production bundles
+        const connectFn = mqttModule.connect
+          ?? (mqttModule.default as { connect?: typeof mqttModule.connect })?.connect
+          ?? mqttModule.default;
+        if (typeof connectFn !== "function") {
           throw new Error("mqtt.connect not found in module");
         }
 
-        const client = connect(mqttBrokerUrl || MQTT_WS_URL_DEFAULT, {
+        const client = (connectFn as typeof mqttModule.connect)(mqttBrokerUrl || MQTT_WS_URL_DEFAULT, {
           protocolVersion: 5,
           clean: true,
           reconnectPeriod: 5000,
