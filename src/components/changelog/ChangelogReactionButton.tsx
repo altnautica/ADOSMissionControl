@@ -27,7 +27,7 @@ export function ChangelogReactionButton({ changelogId, count }: ChangelogReactio
     isAuthenticated ? {} : "skip"
   );
 
-  const hasReacted = myReactions?.includes(changelogId) ?? false;
+  const hasReacted = myReactions?.includes(changelogId as Id<"community_changelog">) ?? false;
 
   const handleClick = () => {
     if (!isAuthenticated) return;
