@@ -71,7 +71,25 @@ export class AgentClient {
   }
 
   async getSystemResources(): Promise<SystemResources> {
-    return this.request<SystemResources>("/api/system");
+    const res = await this.request<Record<string, unknown>>("/api/system");
+    // Agent returns temperatures: { cpu_thermal: 45.2 } — map to flat temperature field
+    let temperature: number | null = null;
+    if (res.temperature != null) {
+      temperature = Number(res.temperature);
+    } else if (res.temperatures && typeof res.temperatures === "object") {
+      const temps = res.temperatures as Record<string, number>;
+      temperature = temps.cpu_thermal ?? Object.values(temps)[0] ?? null;
+    }
+    return {
+      cpu_percent: Number(res.cpu_percent ?? 0),
+      memory_percent: Number(res.memory_percent ?? 0),
+      memory_used_mb: Number(res.memory_used_mb ?? 0),
+      memory_total_mb: Number(res.memory_total_mb ?? 0),
+      disk_percent: Number(res.disk_percent ?? 0),
+      disk_used_gb: Number(res.disk_used_gb ?? 0),
+      disk_total_gb: Number(res.disk_total_gb ?? 0),
+      temperature,
+    };
   }
 
   async getLogs(params?: { level?: string; limit?: number }): Promise<LogEntry[]> {
@@ -117,7 +135,8 @@ export class AgentClient {
   // ── Scripts ─────────────────────────────────────────────
 
   async getScripts(): Promise<ScriptInfo[]> {
-    return this.request<ScriptInfo[]>("/api/scripts");
+    const res = await this.request<ScriptInfo[] | { scripts: ScriptInfo[] }>("/api/scripts");
+    return Array.isArray(res) ? res : (res.scripts ?? []);
   }
 
   async saveScript(name: string, content: string, suite?: string): Promise<ScriptInfo> {
