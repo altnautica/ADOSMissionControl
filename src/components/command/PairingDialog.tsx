@@ -3,7 +3,8 @@
 /**
  * @module PairingDialog
  * @description Modal dialog for pairing a new ADOS Drone Agent.
- * Supports manual 6-char code entry, discovered agent cards, and pre-generated codes.
+ * Default flow: auto-generate code → show install command → wait for drone.
+ * Secondary: manual code entry with retry logic for timing issues.
  * @license GPL-3.0-only
  */
 
@@ -16,6 +17,8 @@ import {
   AlertCircle,
   Cpu,
   Wifi,
+  Terminal,
+  RotateCcw,
 } from "lucide-react";
 import { useMutation } from "convex/react";
 import { cn } from "@/lib/utils";
@@ -29,25 +32,38 @@ interface PairingDialogProps {
   onPaired?: (deviceId: string, apiKey: string, url: string) => void;
 }
 
-type PairingState = "input" | "claiming" | "success" | "error";
+type PairingState =
+  | "setup"      // generating code
+  | "waiting"    // code generated, waiting for drone
+  | "manual"     // user wants to enter code manually
+  | "searching"  // manual code submitted, retrying
+  | "claiming"   // manual code matched, claiming
+  | "success"    // paired
+  | "error"      // failed after retries
+  | "expired";   // code TTL reached
 
-const INSTALL_COMMAND = "curl -sSL https://raw.githubusercontent.com/altnautica/ADOSDroneAgent/main/scripts/install.sh | sudo bash";
+const INSTALL_URL = "https://raw.githubusercontent.com/altnautica/ADOSDroneAgent/main/scripts/install.sh";
+const CODE_TTL_MS = 15 * 60 * 1000; // 15 minutes
+const RETRY_INTERVAL_MS = 3000;
+const MAX_RETRIES = 10; // 30 seconds of retrying
 
 export function PairingDialog({ open, onClose, onPaired }: PairingDialogProps) {
-  const [code, setCode] = useState("");
-  const [state, setState] = useState<PairingState>("input");
+  const [state, setState] = useState<PairingState>("setup");
+  const [preGenCode, setPreGenCode] = useState<string | null>(null);
+  const [manualCode, setManualCode] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [copied, setCopied] = useState(false);
   const [pairedInfo, setPairedInfo] = useState<{
     deviceId: string;
     name: string;
     apiKey: string;
     mdnsHost: string;
   } | null>(null);
-  const [copiedInstall, setCopiedInstall] = useState(false);
-  const [copiedCode, setCopiedCode] = useState(false);
-  const [preGenCode, setPreGenCode] = useState<string | null>(null);
+  const [initialDroneCount, setInitialDroneCount] = useState(0);
 
   const inputRef = useRef<HTMLInputElement>(null);
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const expiryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const convexAvailable = useConvexAvailable();
   // convexAvailable is stable (env-var derived, never changes between renders)
@@ -57,20 +73,57 @@ export function PairingDialog({ open, onClose, onPaired }: PairingDialogProps) {
   const preGenerate = convexAvailable ? useMutation(cmdPairingApi.preGenerateCode) : null;
 
   const discoveredAgents = usePairingStore((s) => s.discoveredAgents);
+  const pairedDrones = usePairingStore((s) => s.pairedDrones);
   const setPairingInProgress = usePairingStore((s) => s.setPairingInProgress);
   const setPairingError = usePairingStore((s) => s.setPairingError);
 
+  // Auto-generate code when dialog opens
   useEffect(() => {
-    if (open) {
-      setCode("");
-      setState("input");
-      setErrorMessage("");
-      setPairedInfo(null);
-      setPreGenCode(null);
-      // Focus the input after a brief delay for the modal animation
-      setTimeout(() => inputRef.current?.focus(), 100);
-    }
+    if (!open) return;
+
+    // Reset all state
+    setState("setup");
+    setPreGenCode(null);
+    setManualCode("");
+    setErrorMessage("");
+    setPairedInfo(null);
+    setCopied(false);
+    setInitialDroneCount(pairedDrones.length);
+    // Generate code immediately
+    generateCode();
+
+    return () => {
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+      if (expiryTimerRef.current) clearTimeout(expiryTimerRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  // Watch for new drones appearing (zero-touch flow)
+  useEffect(() => {
+    if (state !== "waiting" && state !== "searching") return;
+    if (pairedDrones.length > initialDroneCount) {
+      const newDrone = pairedDrones[pairedDrones.length - 1];
+      if (newDrone) {
+        setPairedInfo({
+          deviceId: newDrone.deviceId,
+          name: newDrone.name,
+          apiKey: newDrone.apiKey,
+          mdnsHost: newDrone.mdnsHost || `${newDrone.deviceId}.local`,
+        });
+        setState("success");
+        setPairingInProgress(false);
+
+        // Auto-connect after a brief pause
+        setTimeout(() => {
+          const host = newDrone.mdnsHost || newDrone.lastIp;
+          if (host) {
+            onPaired?.(newDrone.deviceId, newDrone.apiKey, `http://${host}:8080`);
+          }
+        }, 1500);
+      }
+    }
+  }, [pairedDrones.length, initialDroneCount, state, pairedDrones, onPaired, setPairingInProgress]);
 
   // Close on ESC
   useEffect(() => {
@@ -82,23 +135,87 @@ export function PairingDialog({ open, onClose, onPaired }: PairingDialogProps) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [open, onClose]);
 
-  const handleCodeChange = useCallback(
-    (value: string) => {
-      const cleaned = value.replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(0, 6);
-      setCode(cleaned);
-      setErrorMessage("");
-      if (cleaned.length === 6) {
-        submitCode(cleaned);
-      }
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
-  );
+  async function generateCode() {
+    if (!preGenerate) {
+      // Fallback for local-only mode
+      const generated = Array.from({ length: 6 }, () =>
+        "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random() * 32)]
+      ).join("");
+      setPreGenCode(generated);
 
-  async function submitCode(pairingCode: string) {
-    setState("claiming");
-    setPairingInProgress(true);
-    setPairingError(null);
+      setState("waiting");
+      startExpiryTimer();
+      return;
+    }
+    try {
+      const result = await preGenerate({});
+      setPreGenCode(result.code);
+
+      setState("waiting");
+      startExpiryTimer();
+    } catch {
+      const generated = Array.from({ length: 6 }, () =>
+        "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random() * 32)]
+      ).join("");
+      setPreGenCode(generated);
+
+      setState("waiting");
+      startExpiryTimer();
+    }
+  }
+
+  function startExpiryTimer() {
+    if (expiryTimerRef.current) clearTimeout(expiryTimerRef.current);
+    expiryTimerRef.current = setTimeout(() => {
+      if (state === "waiting") {
+        setState("expired");
+      }
+    }, CODE_TTL_MS);
+  }
+
+  function getInstallCommand(code: string) {
+    return `curl -sSL ${INSTALL_URL} | sudo bash -s -- --pair ${code}`;
+  }
+
+  function handleCopy() {
+    if (!preGenCode) return;
+    navigator.clipboard.writeText(getInstallCommand(preGenCode)).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  function switchToManual() {
+    setState("manual");
+    setManualCode("");
+    setErrorMessage("");
+    setTimeout(() => inputRef.current?.focus(), 50);
+  }
+
+  function switchToAutomatic() {
+    setState("waiting");
+    setManualCode("");
+    setErrorMessage("");
+  }
+
+  const handleManualCodeChange = useCallback((value: string) => {
+    const cleaned = value.replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(0, 6);
+    setManualCode(cleaned);
+    setErrorMessage("");
+  }, []);
+
+  function handleManualSubmit() {
+    if (manualCode.length === 6) {
+      submitCodeWithRetry(manualCode, MAX_RETRIES);
+    }
+  }
+
+  async function submitCodeWithRetry(pairingCode: string, retriesLeft: number) {
+    if (retriesLeft === MAX_RETRIES) {
+      setState("searching");
+      setPairingInProgress(true);
+      setPairingError(null);
+    }
 
     try {
       if (!claimCode) {
@@ -116,7 +233,6 @@ export function PairingDialog({ open, onClose, onPaired }: PairingDialogProps) {
       setState("success");
       setPairingInProgress(false);
 
-      // Auto-connect after a brief pause
       setTimeout(() => {
         const host = info.mdnsHost || result.localIp;
         if (host) {
@@ -125,13 +241,23 @@ export function PairingDialog({ open, onClose, onPaired }: PairingDialogProps) {
       }, 1500);
     } catch (err) {
       const raw = err instanceof Error ? err.message : "Pairing failed";
-      // Extract user-friendly message from Convex error
+      const isInvalid = raw.includes("Invalid");
+
+      if (isInvalid && retriesLeft > 0) {
+        // Agent might not have registered yet, retry
+        retryTimerRef.current = setTimeout(() => {
+          submitCodeWithRetry(pairingCode, retriesLeft - 1);
+        }, RETRY_INTERVAL_MS);
+        return;
+      }
+
+      // Retries exhausted or non-retryable error
       const msg = raw.includes("expired")
         ? "Pairing code expired. Ask the agent to generate a new one."
         : raw.includes("already claimed")
           ? "This code was already used by another account."
-          : raw.includes("Invalid")
-            ? "Invalid pairing code. Check the code on your agent terminal."
+          : isInvalid
+            ? "Could not find that pairing code. Make sure the agent is running and connected to the internet."
             : raw;
       setErrorMessage(msg);
       setState("error");
@@ -141,53 +267,19 @@ export function PairingDialog({ open, onClose, onPaired }: PairingDialogProps) {
   }
 
   function handleDiscoveredPair(agent: DiscoveredAgent) {
-    setCode(agent.pairingCode);
-    submitCode(agent.pairingCode);
-  }
-
-  async function handlePreGenerate() {
-    if (!preGenerate) {
-      // Fallback for local-only mode
-      const generated = Array.from({ length: 6 }, () =>
-        "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random() * 32)]
-      ).join("");
-      setPreGenCode(generated);
-      return;
-    }
-    try {
-      const result = await preGenerate({});
-      setPreGenCode(result.code);
-    } catch {
-      // Fallback to local generation on error
-      const generated = Array.from({ length: 6 }, () =>
-        "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random() * 32)]
-      ).join("");
-      setPreGenCode(generated);
-    }
-  }
-
-  function handleCopyInstall() {
-    navigator.clipboard.writeText(INSTALL_COMMAND).then(() => {
-      setCopiedInstall(true);
-      setTimeout(() => setCopiedInstall(false), 2000);
-    });
-  }
-
-  function handleCopyCode() {
-    if (!preGenCode) return;
-    navigator.clipboard
-      .writeText(`curl -sSL https://raw.githubusercontent.com/altnautica/ADOSDroneAgent/main/scripts/install.sh | sudo bash -s -- --pair ${preGenCode}`)
-      .then(() => {
-        setCopiedCode(true);
-        setTimeout(() => setCopiedCode(false), 2000);
-      });
+    setManualCode(agent.pairingCode);
+    submitCodeWithRetry(agent.pairingCode, MAX_RETRIES);
   }
 
   function handleRetry() {
-    setCode("");
-    setState("input");
+    if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+    if (expiryTimerRef.current) clearTimeout(expiryTimerRef.current);
+    setState("setup");
+    setPreGenCode(null);
+    setManualCode("");
     setErrorMessage("");
-    setTimeout(() => inputRef.current?.focus(), 50);
+    setPairedInfo(null);
+    generateCode();
   }
 
   if (!open) return null;
@@ -214,39 +306,57 @@ export function PairingDialog({ open, onClose, onPaired }: PairingDialogProps) {
         </div>
 
         <div className="px-5 py-5 space-y-5">
-          {/* Code Input */}
-          {state === "input" && (
-            <>
-              <div className="text-center space-y-2">
-                <p className="text-xs text-text-secondary">
-                  Enter the 6-character pairing code shown on your drone agent.
-                </p>
-              </div>
+          {/* Setup — generating code */}
+          {state === "setup" && (
+            <div className="flex flex-col items-center gap-3 py-6">
+              <Loader2 size={24} className="animate-spin text-accent-primary" />
+              <p className="text-xs text-text-secondary">
+                Generating pairing code...
+              </p>
+            </div>
+          )}
 
-              <div className="flex justify-center">
-                <div className="relative">
-                  <input
-                    ref={inputRef}
-                    type="text"
-                    value={code}
-                    onChange={(e) => handleCodeChange(e.target.value)}
-                    maxLength={6}
-                    placeholder="------"
-                    className="w-64 text-center text-2xl font-mono font-bold tracking-[0.5em] bg-bg-primary border border-border-default rounded-lg px-4 py-3 text-text-primary placeholder:text-text-tertiary/40 outline-none focus:border-accent-primary transition-colors uppercase"
-                    autoComplete="off"
-                    spellCheck={false}
-                  />
-                  <div className="absolute -bottom-5 left-0 right-0 text-center">
-                    <span className="text-[10px] text-text-tertiary">
-                      {code.length}/6 characters
-                    </span>
+          {/* Waiting — code generated, show install command */}
+          {state === "waiting" && preGenCode && (
+            <>
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Terminal size={14} className="text-accent-primary" />
+                  <p className="text-xs font-medium text-text-primary">
+                    Run this on your drone
+                  </p>
+                </div>
+
+                <div className="relative group">
+                  <div className="flex items-start gap-2 p-3 bg-bg-primary border border-border-default rounded-lg">
+                    <code className="flex-1 text-[11px] font-mono text-text-secondary leading-relaxed break-all select-all">
+                      {getInstallCommand(preGenCode)}
+                    </code>
+                    <button
+                      onClick={handleCopy}
+                      className="p-1.5 text-text-tertiary hover:text-text-primary transition-colors shrink-0 mt-[-2px]"
+                      title="Copy to clipboard"
+                    >
+                      {copied ? (
+                        <Check size={14} className="text-status-success" />
+                      ) : (
+                        <Copy size={14} />
+                      )}
+                    </button>
                   </div>
+                </div>
+
+                <div className="flex items-center justify-center gap-2 py-3">
+                  <Loader2 size={14} className="animate-spin text-text-tertiary" />
+                  <p className="text-xs text-text-tertiary">
+                    Waiting for your drone to connect...
+                  </p>
                 </div>
               </div>
 
-              {/* Discovered Agents */}
+              {/* Discovered agents */}
               {discoveredAgents.length > 0 && (
-                <div className="pt-3 space-y-2">
+                <div className="space-y-2">
                   <p className="text-[11px] text-text-tertiary font-medium uppercase tracking-wider">
                     Discovered on network
                   </p>
@@ -285,53 +395,108 @@ export function PairingDialog({ open, onClose, onPaired }: PairingDialogProps) {
                 </div>
               )}
 
-              {/* Pre-generate section */}
+              {/* Switch to manual */}
               <div className="pt-2 border-t border-border-default">
-                {preGenCode ? (
-                  <div className="space-y-2">
-                    <p className="text-[11px] text-text-tertiary">
-                      Run this on your drone to pair with a pre-generated code:
-                    </p>
-                    <div className="flex items-center gap-2 p-2 bg-bg-primary border border-border-default rounded">
-                      <code className="flex-1 text-[11px] font-mono text-text-secondary truncate select-all">
-                        curl -sSL https://raw.githubusercontent.com/altnautica/ADOSDroneAgent/main/scripts/install.sh | sudo bash -s -- --pair {preGenCode}
-                      </code>
-                      <button
-                        onClick={handleCopyCode}
-                        className="p-1 text-text-tertiary hover:text-text-primary transition-colors shrink-0"
-                      >
-                        {copiedCode ? (
-                          <Check size={12} className="text-status-success" />
-                        ) : (
-                          <Copy size={12} />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <button
-                    onClick={handlePreGenerate}
-                    className="w-full text-center text-[11px] text-accent-primary hover:text-accent-primary/80 transition-colors py-1"
-                  >
-                    Pre-generate a code instead
-                  </button>
-                )}
+                <button
+                  onClick={switchToManual}
+                  className="w-full text-center text-[11px] text-text-tertiary hover:text-accent-primary transition-colors py-1"
+                >
+                  Already have a code? Enter it manually
+                </button>
               </div>
             </>
           )}
 
-          {/* Claiming state */}
+          {/* Manual code entry */}
+          {state === "manual" && (
+            <>
+              <div className="text-center space-y-2">
+                <p className="text-xs text-text-secondary">
+                  Enter the 6-character pairing code from your agent terminal.
+                </p>
+              </div>
+
+              <div className="flex justify-center">
+                <div className="relative">
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={manualCode}
+                    onChange={(e) => handleManualCodeChange(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && manualCode.length === 6) {
+                        handleManualSubmit();
+                      }
+                    }}
+                    maxLength={6}
+                    placeholder="------"
+                    className="w-64 text-center text-2xl font-mono font-bold tracking-[0.5em] bg-bg-primary border border-border-default rounded-lg px-4 py-3 text-text-primary placeholder:text-text-tertiary/40 outline-none focus:border-accent-primary transition-colors uppercase"
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                  <div className="absolute -bottom-5 left-0 right-0 text-center">
+                    <span className="text-[10px] text-text-tertiary">
+                      {manualCode.length}/6 characters
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {manualCode.length === 6 && (
+                <div className="flex justify-center pt-2">
+                  <button
+                    onClick={handleManualSubmit}
+                    className="px-4 py-1.5 text-xs font-medium bg-accent-primary text-white rounded hover:bg-accent-primary/90 transition-colors"
+                  >
+                    Pair
+                  </button>
+                </div>
+              )}
+
+              {/* Switch back to automatic */}
+              <div className="pt-2 border-t border-border-default">
+                <button
+                  onClick={switchToAutomatic}
+                  className="w-full text-center text-[11px] text-text-tertiary hover:text-accent-primary transition-colors py-1"
+                >
+                  Back to install command
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* Searching — manual code submitted, retrying */}
+          {state === "searching" && (
+            <div className="flex flex-col items-center gap-3 py-6">
+              <Loader2 size={24} className="animate-spin text-accent-primary" />
+              <div className="text-center space-y-1">
+                <p className="text-xs text-text-secondary">
+                  Looking for your drone...
+                </p>
+                <p className="text-[10px] text-text-tertiary">
+                  Code:{" "}
+                  <span className="font-mono font-bold text-text-primary">
+                    {manualCode}
+                  </span>
+                </p>
+                <p className="text-[10px] text-text-tertiary">
+                  This can take up to 30 seconds if the agent just started.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Claiming — legacy, brief transition */}
           {state === "claiming" && (
             <div className="flex flex-col items-center gap-3 py-6">
               <Loader2 size={24} className="animate-spin text-accent-primary" />
               <p className="text-xs text-text-secondary">
-                Pairing with code{" "}
-                <span className="font-mono font-bold text-text-primary">{code}</span>...
+                Pairing...
               </p>
             </div>
           )}
 
-          {/* Success state */}
+          {/* Success */}
           {state === "success" && pairedInfo && (
             <div className="flex flex-col items-center gap-3 py-6">
               <div className="w-10 h-10 rounded-full bg-status-success/15 flex items-center justify-center">
@@ -352,7 +517,7 @@ export function PairingDialog({ open, onClose, onPaired }: PairingDialogProps) {
             </div>
           )}
 
-          {/* Error state */}
+          {/* Error */}
           {state === "error" && (
             <div className="flex flex-col items-center gap-3 py-6">
               <div className="w-10 h-10 rounded-full bg-status-error/15 flex items-center justify-center">
@@ -373,27 +538,26 @@ export function PairingDialog({ open, onClose, onPaired }: PairingDialogProps) {
             </div>
           )}
 
-          {/* Install help */}
-          {state === "input" && (
-            <div className="border-t border-border-default pt-4 space-y-2">
-              <p className="text-[11px] text-text-tertiary">
-                Don&apos;t have the agent installed yet?
-              </p>
-              <div className="flex items-center gap-2 p-2 bg-bg-primary border border-border-default rounded">
-                <code className="flex-1 text-[11px] font-mono text-text-secondary truncate select-all">
-                  {INSTALL_COMMAND}
-                </code>
-                <button
-                  onClick={handleCopyInstall}
-                  className="p-1 text-text-tertiary hover:text-text-primary transition-colors shrink-0"
-                >
-                  {copiedInstall ? (
-                    <Check size={12} className="text-status-success" />
-                  ) : (
-                    <Copy size={12} />
-                  )}
-                </button>
+          {/* Expired */}
+          {state === "expired" && (
+            <div className="flex flex-col items-center gap-3 py-6">
+              <div className="w-10 h-10 rounded-full bg-status-warning/15 flex items-center justify-center">
+                <RotateCcw size={20} className="text-status-warning" />
               </div>
+              <div className="text-center space-y-1">
+                <p className="text-sm font-medium text-text-primary">
+                  Code Expired
+                </p>
+                <p className="text-xs text-text-secondary">
+                  The pairing code timed out after 15 minutes.
+                </p>
+              </div>
+              <button
+                onClick={handleRetry}
+                className="px-4 py-1.5 text-xs font-medium bg-accent-primary text-white rounded hover:bg-accent-primary/90 transition-colors"
+              >
+                Generate New Code
+              </button>
             </div>
           )}
         </div>
