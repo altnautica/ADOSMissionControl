@@ -73,7 +73,7 @@ export function SystemResourceGauges({ resources }: SystemResourceGaugesProps) {
         detail={`${resources.disk_used_gb.toFixed(1)} / ${resources.disk_total_gb.toFixed(1)} GB`}
       />
 
-      {resources.temperature !== null && (
+      {resources.temperature != null && (
         <div className="flex items-center gap-2 pt-2 border-t border-border-default">
           <Thermometer size={12} className="text-text-tertiary" />
           <span className="text-xs text-text-secondary">Temperature</span>

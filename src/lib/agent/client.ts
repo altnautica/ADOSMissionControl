@@ -58,7 +58,16 @@ export class AgentClient {
   }
 
   async getServices(): Promise<ServiceInfo[]> {
-    return this.request<ServiceInfo[]>("/api/services");
+    const res = await this.request<{ services: Array<Record<string, unknown>> }>("/api/services");
+    const list = Array.isArray(res) ? res : (res.services ?? []);
+    return list.map((s) => ({
+      name: String(s.name ?? "unknown"),
+      status: (s.status ?? s.state ?? "stopped") as ServiceInfo["status"],
+      pid: typeof s.pid === "number" ? s.pid : null,
+      cpu_percent: typeof s.cpu_percent === "number" ? s.cpu_percent : 0,
+      memory_mb: typeof s.memory_mb === "number" ? s.memory_mb : 0,
+      uptime_seconds: typeof s.uptime_seconds === "number" ? s.uptime_seconds : 0,
+    }));
   }
 
   async getSystemResources(): Promise<SystemResources> {
@@ -70,7 +79,8 @@ export class AgentClient {
     if (params?.level) qs.set("level", params.level);
     if (params?.limit) qs.set("limit", String(params.limit));
     const query = qs.toString();
-    return this.request<LogEntry[]>(`/api/logs${query ? `?${query}` : ""}`);
+    const res = await this.request<LogEntry[] | { entries: LogEntry[] }>(`/api/logs${query ? `?${query}` : ""}`);
+    return Array.isArray(res) ? res : (res.entries ?? []);
   }
 
   async getParams(): Promise<Record<string, number>> {

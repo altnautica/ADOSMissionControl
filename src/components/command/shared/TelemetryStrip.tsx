@@ -50,7 +50,7 @@ export function TelemetryStrip() {
               {health.disk_percent.toFixed(0)}%
             </span>
           </div>
-          {health.temperature !== null && (
+          {health.temperature != null && (
             <div className="flex items-center justify-between">
               <span className="text-[10px] text-text-tertiary">Temp</span>
               <span

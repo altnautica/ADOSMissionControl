@@ -40,7 +40,7 @@ export function VariableInspector() {
       { name: "system.memory_mb", value: `${resources.memory_used_mb.toFixed(0)} / ${resources.memory_total_mb}` },
       { name: "system.disk_percent", value: resources.disk_percent.toFixed(1) },
     );
-    if (resources.temperature !== null) {
+    if (resources.temperature != null) {
       vars.push({ name: "system.temperature", value: `${resources.temperature.toFixed(1)}C` });
     }
   }

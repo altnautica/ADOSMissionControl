@@ -54,7 +54,13 @@ export function CloudCommandResultBridge() {
       if (data !== undefined && data !== null) {
         const storeField = COMMAND_RESULT_MAP[cmd.command];
         if (storeField) {
-          useAgentStore.setState({ [storeField]: data });
+          // Array fields must be arrays, object fields stay as-is
+          const arrayFields = ["peripherals", "scripts", "suites", "peers", "logs", "services"];
+          if (arrayFields.includes(storeField) && !Array.isArray(data)) {
+            // Skip — data shape doesn't match expected array
+          } else {
+            useAgentStore.setState({ [storeField]: data });
+          }
         }
 
         // Special handling for run_script results
