@@ -1,0 +1,22 @@
+services:
+  video-relay:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - RTSP_URL_PATTERN=${RTSP_URL_PATTERN:-rtsp://host.docker.internal:8554/{deviceId}}
+      - PORT=3001
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel run
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - video-relay
