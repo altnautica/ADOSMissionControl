@@ -17,6 +17,7 @@ import {
   Unplug,
   ChevronDown,
   ChevronRight,
+  Cloud,
 } from "lucide-react";
 import { useQuery } from "convex/react";
 import { cn, isDemoMode } from "@/lib/utils";
@@ -33,6 +34,7 @@ import { FleetNetworkTab } from "./FleetNetworkTab";
 import { ModuleStoreTab } from "./ModuleStoreTab";
 import { AgentDisconnectedPage } from "./AgentDisconnectedPage";
 import { DroneContextRail } from "./shared/DroneContextRail";
+import { CloudStatusBridge } from "./CloudStatusBridge";
 
 type SubTab = "overview" | "scripts" | "peripherals" | "fleet" | "modules";
 
@@ -56,6 +58,7 @@ export function CommandPage() {
   const status = useAgentStore((s) => s.status);
   const connect = useAgentStore((s) => s.connect);
   const disconnect = useAgentStore((s) => s.disconnect);
+  const cloudMode = useAgentStore((s) => s.cloudMode);
 
   const pairedDrones = usePairingStore((s) => s.pairedDrones);
 
