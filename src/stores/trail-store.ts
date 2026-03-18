@@ -18,8 +18,8 @@ export interface TrailPoint {
 interface TrailStoreState {
   _ring: RingBuffer<TrailPoint>;
   maxPoints: number;
-  /** Snapshot array for React consumers — updated on each push */
-  trail: TrailPoint[];
+  /** Version counter — consumers select this to know when trail updated */
+  _version: number;
   pushPoint: (lat: number, lon: number, alt?: number) => void;
   clear: () => void;
 }
@@ -29,7 +29,7 @@ const DEFAULT_MAX_POINTS = 1000;
 export const useTrailStore = create<TrailStoreState>((set, get) => ({
   _ring: new RingBuffer<TrailPoint>(DEFAULT_MAX_POINTS),
   maxPoints: DEFAULT_MAX_POINTS,
-  trail: [],
+  _version: 0,
 
   pushPoint: (lat, lon, alt = 0) => {
     const ring = get()._ring;
@@ -41,11 +41,11 @@ export const useTrailStore = create<TrailStoreState>((set, get) => ({
       if (dlat < 0.00001 && dlon < 0.00001) return;
     }
     ring.push({ lat, lon, alt });
-    set({ trail: ring.toArray() });
+    set({ _version: get()._version + 1 });
   },
 
   clear: () => {
     const ring = new RingBuffer<TrailPoint>(get().maxPoints);
-    set({ _ring: ring, trail: [] });
+    set({ _ring: ring, _version: 0 });
   },
 }));
