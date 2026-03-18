@@ -26,18 +26,20 @@ import { cmdDronesApi } from "@/lib/community-api-drones";
 import { communityApi } from "@/lib/community-api";
 import { useAgentStore } from "@/stores/agent-store";
 import { usePairingStore } from "@/stores/pairing-store";
+import dynamic from "next/dynamic";
 import { FleetSidebar } from "./FleetSidebar";
 import { PairingDialog } from "./PairingDialog";
-import { AgentOverviewTab } from "./AgentOverviewTab";
-import { ScriptsTab } from "./ScriptsTab";
-import { PeripheralsTab } from "./PeripheralsTab";
-import { FleetNetworkTab } from "./FleetNetworkTab";
-import { ModuleStoreTab } from "./ModuleStoreTab";
 import { AgentDisconnectedPage } from "./AgentDisconnectedPage";
 import { DroneContextRail } from "./shared/DroneContextRail";
-import { CloudStatusBridge } from "./CloudStatusBridge";
-import { CloudCommandResultBridge } from "./CloudCommandResultBridge";
-import { MqttBridge } from "./MqttBridge";
+
+const AgentOverviewTab = dynamic(() => import("./AgentOverviewTab").then(m => ({ default: m.AgentOverviewTab })), { ssr: false });
+const ScriptsTab = dynamic(() => import("./ScriptsTab").then(m => ({ default: m.ScriptsTab })), { ssr: false });
+const PeripheralsTab = dynamic(() => import("./PeripheralsTab").then(m => ({ default: m.PeripheralsTab })), { ssr: false });
+const FleetNetworkTab = dynamic(() => import("./FleetNetworkTab").then(m => ({ default: m.FleetNetworkTab })), { ssr: false });
+const ModuleStoreTab = dynamic(() => import("./ModuleStoreTab").then(m => ({ default: m.ModuleStoreTab })), { ssr: false });
+const CloudStatusBridge = dynamic(() => import("./CloudStatusBridge").then(m => ({ default: m.CloudStatusBridge })), { ssr: false });
+const CloudCommandResultBridge = dynamic(() => import("./CloudCommandResultBridge").then(m => ({ default: m.CloudCommandResultBridge })), { ssr: false });
+const MqttBridge = dynamic(() => import("./MqttBridge").then(m => ({ default: m.MqttBridge })), { ssr: false });
 
 type SubTab = "overview" | "scripts" | "peripherals" | "fleet" | "modules";
 

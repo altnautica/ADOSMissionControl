@@ -68,16 +68,24 @@ export class MAVLinkAdapter implements DroneProtocol {
   get isConnected(): boolean { return this._connected }
 
   // ── Shared state object for frame handlers ──────────────
+  // Cached mutable object — updated in-place to avoid 50+/sec allocations
+  private _fhs: FrameHandlerState = {
+    transport: null, firmwareHandler: null, vehicleInfo: null,
+    targetSysId: 1, targetCompId: 1, sysId: 255, compId: 190,
+    commandQueue: this.commandQueue, cbs: this.cbs, paramCache: this.paramCache,
+    parameterDownload: null, missionUpload: null, missionDownload: null,
+    rallyUpload: null, rallyDownload: null, logListDownload: null, logDataDownload: null,
+    lastVehicleHeartbeat: 0, linkIsLost: false, HEARTBEAT_TIMEOUT_MS: 5000,
+  }
   private get fhs(): FrameHandlerState {
-    return {
-      transport: this.transport, firmwareHandler: this.firmwareHandler, vehicleInfo: this.vehicleInfo,
-      targetSysId: this.targetSysId, targetCompId: this.targetCompId, sysId: this.sysId, compId: this.compId,
-      commandQueue: this.commandQueue, cbs: this.cbs, paramCache: this.paramCache,
-      parameterDownload: this.parameterDownload, missionUpload: this.missionUpload,
-      missionDownload: this.missionDownload, rallyUpload: this.rallyUpload, rallyDownload: this.rallyDownload,
-      logListDownload: this.logListDownload, logDataDownload: this.logDataDownload,
-      lastVehicleHeartbeat: this.lastVehicleHeartbeat, linkIsLost: this.linkIsLost, HEARTBEAT_TIMEOUT_MS: 5000,
-    }
+    const s = this._fhs
+    s.transport = this.transport; s.firmwareHandler = this.firmwareHandler; s.vehicleInfo = this.vehicleInfo
+    s.targetSysId = this.targetSysId; s.targetCompId = this.targetCompId; s.sysId = this.sysId; s.compId = this.compId
+    s.parameterDownload = this.parameterDownload; s.missionUpload = this.missionUpload
+    s.missionDownload = this.missionDownload; s.rallyUpload = this.rallyUpload; s.rallyDownload = this.rallyDownload
+    s.logListDownload = this.logListDownload; s.logDataDownload = this.logDataDownload
+    s.lastVehicleHeartbeat = this.lastVehicleHeartbeat; s.linkIsLost = this.linkIsLost
+    return s
   }
   private syncFhs(s: FrameHandlerState) {
     this.vehicleInfo = s.vehicleInfo; this.parameterDownload = s.parameterDownload
@@ -148,12 +156,18 @@ export class MAVLinkAdapter implements DroneProtocol {
     this.transport = null
   }
 
+  /** Set to true when the MAVLink Inspector / diagnostics panel is open. */
+  diagnosticsEnabled = false
+
   private handleFrame(frame: MAVLinkFrame): void {
     const startTime = performance.now()
     const diag = useDiagnosticsStore.getState(); diag.recordParseEvent()
     const msgName = MSG_NAMES[frame.msgId] ?? `MSG_${frame.msgId}`
-    const pb = new Uint8Array(frame.payload.buffer, frame.payload.byteOffset, frame.payload.byteLength)
-    const rawHex = Array.from(pb.slice(0, 32)).map((b) => b.toString(16).padStart(2, '0')).join(' ') + (pb.length > 32 ? ' ...' : '')
+    let rawHex: string | undefined
+    if (this.diagnosticsEnabled) {
+      const pb = new Uint8Array(frame.payload.buffer, frame.payload.byteOffset, frame.payload.byteLength)
+      rawHex = Array.from(pb.slice(0, 32)).map((b) => b.toString(16).padStart(2, '0')).join(' ') + (pb.length > 32 ? ' ...' : '')
+    }
     diag.logMessage(frame.msgId, msgName, 'in', frame.payload.byteLength, rawHex)
     const s = this.fhs; routeFrame(s, frame, frame.payload); this.syncFhs(s)
     diag.recordFrameProcessingTime(performance.now() - startTime)
