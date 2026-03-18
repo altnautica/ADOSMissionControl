@@ -37,10 +37,13 @@ export const useFleetStore = create<FleetStoreState>((set) => ({
     })),
 
   updateDrone: (id, update) =>
-    set((state) => ({
-      drones: state.drones.map((d) => (d.id === id ? { ...d, ...update } : d)),
-      lastUpdate: Date.now(),
-    })),
+    set((state) => {
+      const idx = state.drones.findIndex((d) => d.id === id);
+      if (idx === -1) return state;
+      const updated = [...state.drones];
+      updated[idx] = { ...updated[idx], ...update };
+      return { drones: updated, lastUpdate: Date.now() };
+    }),
 
   addAlert: (alert) =>
     set((state) => ({

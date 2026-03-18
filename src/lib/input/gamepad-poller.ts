@@ -51,12 +51,13 @@ function applyExpo(value: number, expo: number): number {
   return (1 - expo) * value + expo * value * value * value;
 }
 
-/** Convert gamepad buttons to boolean array for the input store. */
+/** Convert gamepad buttons to boolean array for the input store. Reuses array to reduce GC. */
+const _buttonsBuf: boolean[] = new Array(16).fill(false);
 function buttonsToArray(buttons: readonly GamepadButton[]): boolean[] {
-  return Array.from(
-    { length: Math.min(buttons.length, 16) },
-    (_, i) => buttons[i]?.pressed ?? false,
-  );
+  const len = Math.min(buttons.length, 16);
+  for (let i = 0; i < len; i++) _buttonsBuf[i] = buttons[i]?.pressed ?? false;
+  for (let i = len; i < 16; i++) _buttonsBuf[i] = false;
+  return _buttonsBuf;
 }
 
 let pollAnimFrame: number | null = null;

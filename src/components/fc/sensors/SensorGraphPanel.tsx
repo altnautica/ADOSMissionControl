@@ -31,6 +31,7 @@ export function SensorGraphPanel() {
   frozenRef.current = frozen;
 
   useEffect(() => {
+    samplesRef.current = [];
     const protocol = getSelectedProtocol();
     if (!protocol?.onScaledImu) return;
     const unsub = protocol.onScaledImu((data) => {
@@ -38,7 +39,7 @@ export function SensorGraphPanel() {
       samplesRef.current.push({ timestamp: data.timestamp, xgyro: data.xgyro, ygyro: data.ygyro, zgyro: data.zgyro, xacc: data.xacc, yacc: data.yacc, zacc: data.zacc, xmag: data.xmag, ymag: data.ymag, zmag: data.zmag });
       if (samplesRef.current.length > MAX_SAMPLES) samplesRef.current.splice(0, samplesRef.current.length - MAX_SAMPLES);
     });
-    return unsub;
+    return () => { unsub(); samplesRef.current = []; };
   }, [getSelectedProtocol, selectedDroneId]);
 
   useEffect(() => {

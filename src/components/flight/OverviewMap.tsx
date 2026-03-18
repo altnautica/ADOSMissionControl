@@ -158,7 +158,8 @@ export function OverviewMap() {
 
   // Subscribe to position updates
   const pos = useTelemetryStore((s) => s.position.latest());
-  const trail = useTrailStore((s) => s.trail);
+  useTrailStore((s) => s._version); // subscribe to updates
+  const trail = useTrailStore.getState()._ring.toArray();
 
   // Fleet drones for multi-drone markers
   const fleetDrones = useFleetStore((s) => s.drones);

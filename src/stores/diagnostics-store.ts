@@ -140,6 +140,8 @@ interface DiagnosticsStoreState {
 const RATE_WINDOW_MS = 5000;
 const PERF_WINDOW_MS = 5000;
 const MAX_PERF_SAMPLES = 500;
+const MAX_CONNECTION_LOG = 500;
+const MAX_CALIBRATION_HISTORY = 500;
 
 export const useDiagnosticsStore = create<DiagnosticsStoreState>((set, get) => ({
   messageLog: new RingBuffer<MessageLogEntry>(2000),
@@ -183,7 +185,7 @@ export const useDiagnosticsStore = create<DiagnosticsStoreState>((set, get) => (
       type,
       description,
     });
-    set({});
+    set({ eventTimeline: get().eventTimeline });
   },
 
   logConnection: (type, details, errorCategory) => {
@@ -191,9 +193,8 @@ export const useDiagnosticsStore = create<DiagnosticsStoreState>((set, get) => (
     const log = get().connectionLog;
 
     if (type === "connect") {
-      // Store connect timestamp for duration tracking
       log.push({ type, timestamp: now, details });
-      set({ connectionLog: [...log], _lastConnectTimestamp: now });
+      set({ connectionLog: [...log].slice(-MAX_CONNECTION_LOG), _lastConnectTimestamp: now });
       return;
     }
 
@@ -201,19 +202,19 @@ export const useDiagnosticsStore = create<DiagnosticsStoreState>((set, get) => (
       const connectTs = get()._lastConnectTimestamp;
       const durationMs = connectTs ? now - connectTs : undefined;
       log.push({ type, timestamp: now, details, durationMs });
-      set({ connectionLog: [...log], _lastConnectTimestamp: null });
+      set({ connectionLog: [...log].slice(-MAX_CONNECTION_LOG), _lastConnectTimestamp: null });
       return;
     }
 
     if (type === "error") {
       log.push({ type, timestamp: now, details, errorCategory: errorCategory ?? "unknown" });
-      set({ connectionLog: [...log] });
+      set({ connectionLog: [...log].slice(-MAX_CONNECTION_LOG) });
       return;
     }
 
     // reconnect_attempt
     log.push({ type, timestamp: now, details });
-    set({ connectionLog: [...log] });
+    set({ connectionLog: [...log].slice(-MAX_CONNECTION_LOG) });
   },
 
   logCalibration: (type, result, extra) => {
@@ -227,7 +228,7 @@ export const useDiagnosticsStore = create<DiagnosticsStoreState>((set, get) => (
       compassId: extra?.compassId,
       preCalOffsets: extra?.preCalOffsets,
     });
-    set({ calibrationHistory: [...history] });
+    set({ calibrationHistory: [...history].slice(-MAX_CALIBRATION_HISTORY) });
   },
 
   updateRates: () => {

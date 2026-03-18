@@ -91,17 +91,20 @@ function buildSegments(trail: TrailPoint[]): TrailSegment[] {
 }
 
 export function AltitudeTrail() {
-  const trail = useTrailStore((s) => s.trail);
+  const version = useTrailStore((s) => s._version);
+  const trail = useTrailStore.getState()._ring.toArray();
 
   const hasAltData = useMemo(
     () => trail.some((p) => p.alt !== 0),
-    [trail]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [version]
   );
 
   const segments = useMemo(() => {
     if (!hasAltData) return [];
     return buildSegments(trail);
-  }, [trail, hasAltData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [version, hasAltData]);
 
   // No altitude data — render simple blue trail like VehicleTrail
   if (!hasAltData) {

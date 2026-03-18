@@ -40,11 +40,13 @@ function FitBounds({ positions }: { positions: [number, number][] }) {
 }
 
 export function GpsTrackMap() {
-  const trail = useTrailStore((s) => s.trail);
+  const trailVersion = useTrailStore((s) => s._version);
+  const trail = useTrailStore.getState()._ring.toArray();
 
   const positions = useMemo<[number, number][]>(
     () => trail.map((p) => [p.lat, p.lon]),
-    [trail]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [trailVersion]
   );
 
   const startPos = positions.length > 0 ? positions[0] : null;

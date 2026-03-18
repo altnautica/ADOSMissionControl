@@ -47,7 +47,7 @@ export const useParamSafetyStore = create<ParamSafetyStoreState>((set, get) => (
   rebootRequiredParams: new Set(),
 
   trackWrite: (paramName, oldValue, newValue, panel) => {
-    const pending = get().pendingWrites;
+    const pending = new Map(get().pendingWrites);
     pending.set(paramName, {
       panel,
       paramName,
@@ -55,12 +55,13 @@ export const useParamSafetyStore = create<ParamSafetyStoreState>((set, get) => (
       newValue,
       timestamp: Date.now(),
     });
-    set({}); // trigger re-render
+    set({ pendingWrites: pending });
   },
 
   removeWrite: (paramName) => {
-    get().pendingWrites.delete(paramName);
-    set({});
+    const pending = new Map(get().pendingWrites);
+    pending.delete(paramName);
+    set({ pendingWrites: pending });
   },
 
   commitFlash: (success = true) => {
@@ -92,8 +93,9 @@ export const useParamSafetyStore = create<ParamSafetyStoreState>((set, get) => (
   },
 
   markPanelLoaded: (panel) => {
-    get().panelStaleness.set(panel, Date.now());
-    set({});
+    const staleness = new Map(get().panelStaleness);
+    staleness.set(panel, Date.now());
+    set({ panelStaleness: staleness });
   },
 
   isPanelStale: (panel, maxAgeMs = DEFAULT_STALE_MS) => {
@@ -103,9 +105,9 @@ export const useParamSafetyStore = create<ParamSafetyStoreState>((set, get) => (
   },
 
   trackRebootParam: (paramName: string) => {
-    const reboot = get().rebootRequiredParams;
+    const reboot = new Set(get().rebootRequiredParams);
     reboot.add(paramName);
-    set({}); // trigger re-render
+    set({ rebootRequiredParams: reboot });
   },
 
   clearRebootParams: () => {

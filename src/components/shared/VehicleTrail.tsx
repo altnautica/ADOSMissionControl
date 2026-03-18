@@ -12,7 +12,8 @@ import { useTrailStore } from "@/stores/trail-store";
 import { Polyline } from "react-leaflet";
 
 export function VehicleTrail() {
-  const trail = useTrailStore((s) => s.trail);
+  useTrailStore((s) => s._version); // subscribe to updates
+  const trail = useTrailStore.getState()._ring.toArray();
 
   if (trail.length < 2) return null;
 
