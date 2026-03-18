@@ -34,13 +34,13 @@ function makeFrame(command: number): ParsedMspFrame {
 }
 
 describe('MspSerialQueue', () => {
-  let sendFn: ReturnType<typeof vi.fn>;
+  let sendFn: ReturnType<typeof vi.fn<(data: Uint8Array) => void>>;
   let mock: ReturnType<typeof createMockParser>;
   let queue: MspSerialQueue;
 
   beforeEach(() => {
     vi.useFakeTimers();
-    sendFn = vi.fn();
+    sendFn = vi.fn<(data: Uint8Array) => void>();
     mock = createMockParser();
     // Use 100ms timeout, 2 max retries for tests
     queue = new MspSerialQueue(sendFn, mock.parser as any, 100, 2);

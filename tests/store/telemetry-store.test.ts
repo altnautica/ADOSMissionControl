@@ -1,9 +1,10 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { useTelemetryStore } from '@/stores/telemetry-store';
 import { RingBuffer } from '@/lib/ring-buffer';
 
 describe('telemetry-store', () => {
   beforeEach(() => {
+    vi.useFakeTimers();
     useTelemetryStore.setState({
       _version: 0,
       attitude: new RingBuffer(600),
@@ -33,6 +34,12 @@ describe('telemetry-store', () => {
       cameraTrigger: new RingBuffer(100),
       navController: new RingBuffer(120),
     });
+  });
+
+  afterEach(() => {
+    // Flush any pending RAF/setTimeout version bumps before restoring real timers
+    vi.advanceTimersByTime(20);
+    vi.useRealTimers();
   });
 
   it('initial state has empty ring buffers', () => {
@@ -92,12 +99,15 @@ describe('telemetry-store', () => {
     expect(useTelemetryStore.getState()._version).toBe(0);
 
     useTelemetryStore.getState().pushAttitude({ roll: 0, pitch: 0, yaw: 0, rollSpeed: 0, pitchSpeed: 0, yawSpeed: 0, timestamp: 0 } as any);
+    vi.advanceTimersByTime(16);
     expect(useTelemetryStore.getState()._version).toBe(1);
 
     useTelemetryStore.getState().pushBattery({ voltage: 12, current: 1, remaining: 90, timestamp: 0 } as any);
+    vi.advanceTimersByTime(16);
     expect(useTelemetryStore.getState()._version).toBe(2);
 
     useTelemetryStore.getState().pushGps({ fixType: 3, satellitesVisible: 10, lat: 0, lon: 0, alt: 0, timestamp: 0 } as any);
+    vi.advanceTimersByTime(16);
     expect(useTelemetryStore.getState()._version).toBe(3);
   });
 
@@ -122,6 +132,8 @@ describe('telemetry-store', () => {
       attitude: { roll: 0.1, pitch: 0.2, yaw: 0.3, rollSpeed: 0, pitchSpeed: 0, yawSpeed: 0, timestamp: 0 } as any,
       battery: { voltage: 12, current: 1, remaining: 90, timestamp: 0 } as any,
     });
+
+    vi.advanceTimersByTime(16);
 
     const state = useTelemetryStore.getState();
     expect(state.attitude.length).toBe(1);

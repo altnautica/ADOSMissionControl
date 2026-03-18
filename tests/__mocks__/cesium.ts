@@ -1,3 +1,5 @@
+import { vi } from 'vitest';
+
 export const Viewer = vi.fn();
 export const Cartesian3 = { fromDegrees: vi.fn() };
 export const Color = { RED: {}, BLUE: {}, GREEN: {}, WHITE: {}, fromCssColorString: vi.fn() };

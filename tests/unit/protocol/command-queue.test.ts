@@ -8,13 +8,13 @@ import { CommandQueue, MAV_RESULT } from '@/lib/protocol/command-queue';
 
 describe('CommandQueue', () => {
   let queue: CommandQueue;
-  let sendFn: ReturnType<typeof vi.fn>;
+  let sendFn: ReturnType<typeof vi.fn<(data: Uint8Array) => void>>;
   const params: [number, number, number, number, number, number, number] = [0, 0, 0, 0, 0, 0, 0];
 
   beforeEach(() => {
     vi.useFakeTimers();
     queue = new CommandQueue(3000);
-    sendFn = vi.fn();
+    sendFn = vi.fn<(data: Uint8Array) => void>();
   });
 
   afterEach(() => {

@@ -1,3 +1,5 @@
+import { vi } from 'vitest';
+
 const store = new Map<string, unknown>();
 
 export const get = vi.fn(async (key: string) => store.get(key));

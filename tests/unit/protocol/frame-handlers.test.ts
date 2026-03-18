@@ -14,6 +14,7 @@ function makeFrame(msgId: number, payload: DataView): MAVLinkFrame {
     componentId: 1,
     sequence: 0,
     payload,
+    timestamp: Date.now(),
   };
 }
 
