@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { EventTimeline } from "./EventTimeline";
 import { MessageRatePanel } from "./MessageRatePanel";
@@ -11,6 +11,8 @@ import { CommandQueuePanel } from "./CommandQueuePanel";
 import { RingBufferPanel } from "./RingBufferPanel";
 import { PerformancePanel } from "./PerformancePanel";
 import { useDiagnosticsStore } from "@/stores/diagnostics-store";
+import { useDroneManager } from "@/stores/drone-manager";
+import type { MAVLinkAdapter } from "@/lib/protocol/mavlink-adapter";
 import {
   Clock,
   Activity,
@@ -27,6 +29,21 @@ type DiagTab = "timeline" | "rates" | "frames" | "queue" | "buffers" | "perf";
 export function DiagnosticsPanel() {
   const [activeTab, setActiveTab] = useState<DiagTab>("timeline");
   const clear = useDiagnosticsStore((s) => s.clear);
+  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+
+  // Enable hex logging only when frames tab is active (perf optimization)
+  useEffect(() => {
+    const protocol = getSelectedProtocol();
+    if (protocol && 'diagnosticsEnabled' in protocol) {
+      (protocol as MAVLinkAdapter).diagnosticsEnabled = activeTab === "frames";
+    }
+    return () => {
+      const p = getSelectedProtocol();
+      if (p && 'diagnosticsEnabled' in p) {
+        (p as MAVLinkAdapter).diagnosticsEnabled = false;
+      }
+    };
+  }, [activeTab, getSelectedProtocol]);
 
   const tabs: { key: DiagTab; label: string; Icon: React.ComponentType<{ size?: number }> }[] = [
     { key: "timeline", label: "Timeline", Icon: Clock },
