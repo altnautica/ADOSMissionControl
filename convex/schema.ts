@@ -79,6 +79,10 @@ fullName: v.optional(v.string()),
     commitDate: v.optional(v.number()),
     editedByAdmin: v.optional(v.boolean()),
     repo: v.optional(v.string()),
+    translations: v.optional(v.record(v.string(), v.object({
+      title: v.string(),
+      description: v.string(),
+    }))),
   })
     .index("by_publishedAt", ["published", "publishedAt"])
     .index("by_version", ["version"])
@@ -116,6 +120,10 @@ fullName: v.optional(v.string()),
     upvoteCount: v.number(),
     eta: v.optional(v.string()),
     resolvedVersion: v.optional(v.string()),
+    translations: v.optional(v.record(v.string(), v.object({
+      title: v.string(),
+      description: v.string(),
+    }))),
   })
     .index("by_type_status", ["type", "status"])
     .index("by_type_upvotes", ["type", "upvoteCount"])
