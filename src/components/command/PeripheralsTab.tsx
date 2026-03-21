@@ -75,7 +75,7 @@ export function PeripheralsTab() {
     <div className="p-4 max-w-5xl space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
-          Peripherals
+          {t("title")}
         </h3>
         <button
           onClick={handleScan}
@@ -87,7 +87,7 @@ export function PeripheralsTab() {
           ) : (
             <ScanLine size={12} />
           )}
-          {scanning ? "Scanning..." : "Scan Now"}
+          {scanning ? t("scanning") : t("scanNow")}
         </button>
       </div>
 
@@ -136,20 +136,20 @@ export function PeripheralsTab() {
 
             <div className="space-y-1 text-xs text-text-tertiary">
               <div className="flex justify-between">
-                <span>Bus</span>
+                <span>{t("bus")}</span>
                 <span className="text-text-secondary font-mono">
                   {peripheral.bus}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span>Address</span>
+                <span>{t("address")}</span>
                 <span className="text-text-secondary font-mono">
                   {peripheral.address}
                 </span>
               </div>
               {peripheral.rate_hz > 0 && (
                 <div className="flex justify-between">
-                  <span>Rate</span>
+                  <span>{t("rate")}</span>
                   <span className="text-text-secondary font-mono">
                     {peripheral.rate_hz} Hz
                   </span>
@@ -158,7 +158,7 @@ export function PeripheralsTab() {
             </div>
 
             <div className="mt-2 pt-2 border-t border-border-default">
-              <span className="text-[10px] text-text-tertiary">Last reading</span>
+              <span className="text-[10px] text-text-tertiary">{t("lastReading")}</span>
               <p className="text-xs text-text-secondary font-mono mt-0.5">
                 {peripheral.last_reading}
               </p>

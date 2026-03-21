@@ -8,6 +8,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { useTranslations } from "next-intl";
 import type { Waypoint } from "@/lib/types";
 import { computeFlightPlan } from "@/lib/simulation-utils";
 
@@ -17,6 +18,7 @@ interface MissionStatsBarProps {
 }
 
 export function MissionStatsBar({ waypoints, defaultSpeed }: MissionStatsBarProps) {
+  const t = useTranslations("planner");
   const stats = useMemo(() => {
     const plan = computeFlightPlan(waypoints, defaultSpeed);
     let maxAlt = 0;
@@ -45,7 +47,7 @@ export function MissionStatsBar({ waypoints, defaultSpeed }: MissionStatsBarProp
         <Sep />
         <Stat label={`~${stats.estTimeMin}m`} />
         <Sep />
-        <Stat label={`${stats.maxAlt}m max`} />
+        <Stat label={`${stats.maxAlt}m ${t("max")}`} />
         <Sep />
         <Stat label={`${stats.avgSpeed}m/s`} />
       </div>

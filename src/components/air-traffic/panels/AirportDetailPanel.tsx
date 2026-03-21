@@ -7,6 +7,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState, useMemo } from "react";
 import { Plane, X, ChevronDown, ChevronUp } from "lucide-react";
 import { useAirspaceStore } from "@/stores/airspace-store";
@@ -34,6 +35,7 @@ function getJurisdictionForCountry(country: string): Jurisdiction | null {
 }
 
 export function AirportDetailPanel({ airport }: AirportDetailPanelProps) {
+  const t = useTranslations("airTraffic");
   const [dismissed, setDismissed] = useState(false);
   const [expanded, setExpanded] = useState(true);
   const zones = useAirspaceStore((s) => s.zones);
@@ -106,18 +108,18 @@ export function AirportDetailPanel({ airport }: AirportDetailPanelProps) {
           </div>
 
           <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-text-secondary">
-            <span>Elevation</span>
+            <span>{t("elevation")}</span>
             <span className="text-text-primary text-right">{airport.elevation}m</span>
-            <span>Type</span>
+            <span>{t("type")}</span>
             <span className="text-text-primary text-right capitalize">{airport.type.replace("_", " ")}</span>
-            <span>Traffic</span>
-            <span className="text-text-primary text-right">{nearbyTraffic} nearby</span>
+            <span>{t("traffic")}</span>
+            <span className="text-text-primary text-right">{t("nearbyCount", { count: nearbyTraffic })}</span>
           </div>
 
           {/* Active zones */}
           {activeZones.length > 0 && (
             <div className="border-t border-border-default/50 pt-1.5">
-              <div className="text-[9px] text-text-tertiary uppercase tracking-wider mb-1">Active Zones</div>
+              <div className="text-[9px] text-text-tertiary uppercase tracking-wider mb-1">{t("activeZonesLabel")}</div>
               <div className="space-y-0.5">
                 {activeZones.map((z) => (
                   <div key={z.id} className="flex justify-between text-text-secondary">
@@ -134,7 +136,7 @@ export function AirportDetailPanel({ airport }: AirportDetailPanelProps) {
           {/* Drone rules */}
           {DRONE_RULES[airport.country] && (
             <div className="border-t border-border-default/50 pt-1.5">
-              <div className="text-[9px] text-text-tertiary uppercase tracking-wider mb-1">Drone Rules</div>
+              <div className="text-[9px] text-text-tertiary uppercase tracking-wider mb-1">{t("droneRules")}</div>
               <p className="text-text-secondary leading-relaxed text-[9px]">
                 {DRONE_RULES[airport.country]}
               </p>

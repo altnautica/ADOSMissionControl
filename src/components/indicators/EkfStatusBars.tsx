@@ -1,20 +1,22 @@
 "use client";
 
+import { useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { cn } from "@/lib/utils";
 import { Tooltip } from "@/components/ui/tooltip";
 
 interface EkfBar {
-  label: string;
+  labelKey: string;
   key: "velocityVariance" | "posHorizVariance" | "posVertVariance" | "compassVariance" | "terrainAltVariance";
 }
 
 const EKF_BARS: EkfBar[] = [
-  { label: "Velocity", key: "velocityVariance" },
-  { label: "Pos Horiz", key: "posHorizVariance" },
-  { label: "Pos Vert", key: "posVertVariance" },
-  { label: "Compass", key: "compassVariance" },
-  { label: "Terrain", key: "terrainAltVariance" },
+  { labelKey: "ekfVelocity", key: "velocityVariance" },
+  { labelKey: "ekfHorizPos", key: "posHorizVariance" },
+  { labelKey: "ekfVertPos", key: "posVertVariance" },
+  { labelKey: "ekfCompass", key: "compassVariance" },
+  { labelKey: "ekfTerrain", key: "terrainAltVariance" },
 ];
 
 const ESTIMATOR_FLAGS: { mask: number; label: string; short: string }[] = [
@@ -44,6 +46,7 @@ function getBarColor(value: number): string {
  * Also decodes ESTIMATOR_STATUS flags bitmask as colored dots.
  */
 export function EkfStatusBars({ className }: { className?: string }) {
+  const t = useTranslations("indicators");
   const ekf = useTelemetryStore((s) => s.ekf);
   const estimator = useTelemetryStore((s) => s.estimatorStatus);
   const latest = ekf.latest();
@@ -52,15 +55,16 @@ export function EkfStatusBars({ className }: { className?: string }) {
   if (!latest) {
     return (
       <div className={cn("text-[10px] text-text-tertiary", className)}>
-        No EKF data
+        {t("noEkfData")}
       </div>
     );
   }
 
   return (
     <div className={cn("space-y-1", className)}>
-      {EKF_BARS.map(({ label, key }) => {
+      {EKF_BARS.map(({ labelKey, key }) => {
         const value = latest[key];
+        const label = t(labelKey);
         const pct = Math.min(value * 100, 100);
         return (
           <Tooltip key={key} content={`${label}: ${value.toFixed(3)}`}>
@@ -86,7 +90,7 @@ export function EkfStatusBars({ className }: { className?: string }) {
       {estLatest && (
         <div className="pt-1 border-t border-border-default/30">
           <div className="text-[9px] font-mono text-text-tertiary mb-1">
-            Estimator Flags (0x{estLatest.flags.toString(16).toUpperCase().padStart(4, "0")})
+            {t("estimatorFlags")} (0x{estLatest.flags.toString(16).toUpperCase().padStart(4, "0")})
           </div>
           <div className="flex flex-wrap gap-x-2 gap-y-0.5">
             {ESTIMATOR_FLAGS.map(({ mask, label, short }) => {

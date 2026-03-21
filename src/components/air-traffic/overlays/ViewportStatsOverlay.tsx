@@ -7,6 +7,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Plane, MapPin, Radio } from "lucide-react";
 import { useAirspaceStore } from "@/stores/airspace-store";
 import { useTrafficStore } from "@/stores/traffic-store";
@@ -19,6 +20,7 @@ function formatAltitude(m: number): string {
 }
 
 export function ViewportStatsOverlay() {
+  const t = useTranslations("airTraffic");
   const viewportState = useAirspaceStore((s) => s.viewportState);
   const aircraft = useTrafficStore((s) => s.aircraft);
   const dataSource = useTrafficStore((s) => s.dataSource);
@@ -31,7 +33,7 @@ export function ViewportStatsOverlay() {
   return (
     <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 px-2.5 py-1.5 bg-bg-primary/70 backdrop-blur-md border border-border-default rounded-lg text-[9px] font-mono text-text-secondary">
       {/* Aircraft count (viewport / total) */}
-      <div className="flex items-center gap-1" title={`${viewportState.aircraftInView} in viewport / ${aircraft.size} total`}>
+      <div className="flex items-center gap-1" title={t("aircraftInViewport", { inView: viewportState.aircraftInView, total: aircraft.size })}>
         <Plane size={9} className="text-text-tertiary" />
         <span className="text-text-primary font-bold">{viewportState.aircraftInView}</span>
         <span className="text-text-tertiary">/</span>
@@ -41,7 +43,7 @@ export function ViewportStatsOverlay() {
       <div className="w-px h-3 bg-border-default/50" />
 
       {/* Visible airports */}
-      <div className="flex items-center gap-1" title="Airports in viewport">
+      <div className="flex items-center gap-1" title={t("airportsInViewport")}>
         <MapPin size={9} className="text-text-tertiary" />
         <span>{viewportState.visibleAirports.length}</span>
       </div>

@@ -7,6 +7,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { Send, Trash2, TerminalSquare, Code2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAgentStore } from "@/stores/agent-store";
@@ -47,6 +48,7 @@ main()
 `;
 
 export function ScriptsTab() {
+  const t = useTranslations("scripts");
   const [mode, setMode] = useState<Mode>("editor");
 
   // Console state
@@ -171,7 +173,7 @@ export function ScriptsTab() {
           )}
         >
           <TerminalSquare size={12} />
-          Console
+          {t("console")}
         </button>
         <button
           onClick={() => setMode("editor")}
@@ -183,7 +185,7 @@ export function ScriptsTab() {
           )}
         >
           <Code2 size={12} />
-          Editor
+          {t("editor")}
         </button>
       </div>
 
@@ -191,7 +193,7 @@ export function ScriptsTab() {
         /* Console Mode */
         <div className="flex flex-col flex-1 p-4 gap-4 max-w-3xl">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs text-text-tertiary">Quick:</span>
+            <span className="text-xs text-text-tertiary">{t("quick")}</span>
             {quickCommands.map((qc) => (
               <button
                 key={qc.cmd + (qc.args ? JSON.stringify(qc.args) : "")}
@@ -209,7 +211,7 @@ export function ScriptsTab() {
           >
             {history.length === 0 ? (
               <p className="text-text-tertiary text-center py-8">
-                Command history will appear here
+                {t("commandHistoryEmpty")}
               </p>
             ) : (
               history.map((entry) => (
@@ -239,7 +241,7 @@ export function ScriptsTab() {
                     </div>
                   )}
                   {!entry.result && (
-                    <div className="pl-4 text-status-error">No response</div>
+                    <div className="pl-4 text-status-error">{t("noResponse")}</div>
                   )}
                 </div>
               ))
@@ -253,7 +255,7 @@ export function ScriptsTab() {
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Enter command (e.g. arm, takeoff 10, mode loiter)"
+                placeholder={t("enterCommandPlaceholder")}
                 className="flex-1 bg-transparent text-xs text-text-primary placeholder:text-text-tertiary outline-none font-mono"
               />
             </div>
@@ -261,7 +263,7 @@ export function ScriptsTab() {
               type="submit"
               disabled={!input.trim()}
               className="p-2 text-accent-primary hover:bg-bg-tertiary rounded transition-colors disabled:opacity-30"
-              title="Send command"
+              title={t("sendCommand")}
             >
               <Send size={14} />
             </button>
@@ -269,7 +271,7 @@ export function ScriptsTab() {
               type="button"
               onClick={() => setHistory([])}
               className="p-2 text-text-tertiary hover:text-status-error hover:bg-bg-tertiary rounded transition-colors"
-              title="Clear history"
+              title={t("clearHistory")}
             >
               <Trash2 size={14} />
             </button>

@@ -9,6 +9,7 @@
  */
 
 import { useState, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { Trash2, MountainSnow, Gauge, Command } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +31,7 @@ const BATCH_COMMANDS: Array<{ value: string; label: string }> = [
 ];
 
 export function BatchEditor({ selectedIds, onClearSelection }: BatchEditorProps) {
+  const t = useTranslations("planner");
   const updateWaypoint = useMissionStore((s) => s.updateWaypoint);
   const removeWaypoint = useMissionStore((s) => s.removeWaypoint);
   const setWaypoints = useMissionStore((s) => s.setWaypoints);
@@ -73,7 +75,7 @@ export function BatchEditor({ selectedIds, onClearSelection }: BatchEditorProps)
     return (
       <div className="px-3 py-2">
         <p className="text-[10px] text-text-tertiary font-mono">
-          Select 2+ waypoints to batch edit (Ctrl+click or Shift+click)
+          {t("batchEditHint")}
         </p>
       </div>
     );
@@ -83,13 +85,13 @@ export function BatchEditor({ selectedIds, onClearSelection }: BatchEditorProps)
     <div className="px-3 py-2 space-y-2">
       <div className="flex items-center justify-between">
         <span className="text-xs text-text-secondary">
-          {count} waypoints selected
+          {t("waypointsSelected", { count })}
         </span>
         <button
           onClick={onClearSelection}
           className="text-[10px] text-text-tertiary hover:text-text-primary cursor-pointer"
         >
-          Clear
+          {t("clear")}
         </button>
       </div>
 
@@ -103,10 +105,10 @@ export function BatchEditor({ selectedIds, onClearSelection }: BatchEditorProps)
           max={10000}
           step={5}
           className="flex-1"
-          label="Alt (m)"
+          label={t("altitudeM")}
         />
         <Button variant="ghost" size="sm" onClick={applyAltitude} disabled={batchAlt === null}>
-          Set
+          {t("set")}
         </Button>
       </div>
 
@@ -120,10 +122,10 @@ export function BatchEditor({ selectedIds, onClearSelection }: BatchEditorProps)
           max={100}
           step={1}
           className="flex-1"
-          label="Speed (m/s)"
+          label={t("speedMs")}
         />
         <Button variant="ghost" size="sm" onClick={applySpeed} disabled={batchSpeed === null}>
-          Set
+          {t("set")}
         </Button>
       </div>
 
@@ -133,11 +135,11 @@ export function BatchEditor({ selectedIds, onClearSelection }: BatchEditorProps)
           value={batchCommand}
           onChange={setBatchCommand}
           options={BATCH_COMMANDS}
-          placeholder="Command..."
+          placeholder={t("commandPlaceholder")}
           className="flex-1"
         />
         <Button variant="ghost" size="sm" onClick={applyCommand} disabled={!batchCommand}>
-          Set
+          {t("set")}
         </Button>
       </div>
 
@@ -148,7 +150,7 @@ export function BatchEditor({ selectedIds, onClearSelection }: BatchEditorProps)
         icon={<Trash2 size={12} />}
         onClick={() => setShowDeleteConfirm(true)}
       >
-        Delete {count} Waypoints
+        {t("deleteWaypoints", { count })}
       </Button>
 
       <ConfirmDialog
@@ -158,9 +160,9 @@ export function BatchEditor({ selectedIds, onClearSelection }: BatchEditorProps)
           setShowDeleteConfirm(false);
         }}
         onCancel={() => setShowDeleteConfirm(false)}
-        title="Delete Waypoints"
-        message={`Delete ${count} selected waypoints? This action cannot be undone.`}
-        confirmLabel="Delete"
+        title={t("deleteWaypointsTitle")}
+        message={t("deleteWaypointsConfirm", { count })}
+        confirmLabel={t("delete")}
         variant="danger"
       />
     </div>

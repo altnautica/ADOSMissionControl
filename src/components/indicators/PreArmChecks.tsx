@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useSensorHealthStore } from "@/stores/sensor-health-store";
 import { useTelemetryStore } from "@/stores/telemetry-store";
@@ -152,6 +153,7 @@ function RcNeutralQuickFix({ channelNumber, onTrimApplied }: { channelNumber: nu
 // ── Bulk Trim Fix ────────────────────────────────────────────
 
 function BulkTrimFix({ channels, onFixed }: { channels: number[]; onFixed: () => void }) {
+  const t = useTranslations("preArm");
   const protocol = useDroneManager.getState().getSelectedProtocol();
   const rcBuffer = useTelemetryStore((s) => s.rc);
   const latestRc = rcBuffer.latest();
@@ -177,7 +179,7 @@ function BulkTrimFix({ channels, onFixed }: { channels: number[]; onFixed: () =>
     return (
       <div className="flex items-center gap-1 text-[10px] text-status-success p-2 bg-status-success/10 border border-status-success/20">
         <Check size={10} />
-        <span>All trims fixed — re-checking...</span>
+        <span>{t("allTrimsFixed")}</span>
       </div>
     );
   }
@@ -187,7 +189,7 @@ function BulkTrimFix({ channels, onFixed }: { channels: number[]; onFixed: () =>
       <div className="flex items-center gap-2">
         <Wrench size={10} className="text-accent-primary" />
         <span className="text-[10px] text-text-primary font-medium">
-          {channels.length} RC channels outside trim deadzone
+          {t("rcChannelsOutside", { count: channels.length })}
         </span>
       </div>
       <div className="space-y-0.5">
@@ -207,7 +209,7 @@ function BulkTrimFix({ channels, onFixed }: { channels: number[]; onFixed: () =>
         loading={applying}
         onClick={fixAll}
       >
-        Fix All RC Trims
+        {t("fixAllTrims")}
       </Button>
     </div>
   );
@@ -220,6 +222,7 @@ function BulkTrimFix({ channels, onFixed }: { channels: number[]; onFixed: () =>
  * Captures STATUSTEXT messages with "PreArm:" prefix.
  */
 export function PreArmChecks({ className }: { className?: string }) {
+  const t = useTranslations("preArm");
   const protocol = useDroneManager.getState().getSelectedProtocol();
   const healthyCount = useSensorHealthStore((s) => s.getHealthySensorCount());
   const totalPresent = useSensorHealthStore((s) => s.getTotalPresentCount());
@@ -272,28 +275,28 @@ export function PreArmChecks({ className }: { className?: string }) {
       {/* Header with check button */}
       <div className="flex items-center gap-2">
         <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider flex-1">
-          Pre-Arm Checks
+          {t("title")}
         </h3>
         <span className="text-[10px] text-text-tertiary font-mono">
-          Sensors: {healthyCount}/{totalPresent}
+          {t("sensors")}: {healthyCount}/{totalPresent}
         </span>
         <Button size="sm" onClick={runCheck} disabled={checking || !protocol}>
           <RefreshCw size={10} className={checking ? "animate-spin" : ""} />
-          {checking ? "Checking..." : "Run Check"}
+          {checking ? t("checking") : t("runCheck")}
         </Button>
       </div>
 
       {/* Results */}
       {checking && (
         <div className="text-[10px] text-text-tertiary animate-pulse">
-          Running pre-arm checks...
+          {t("runningChecks")}
         </div>
       )}
 
       {allClear && (
         <div className="flex items-center gap-1.5 text-status-success text-xs">
           <Check size={14} />
-          <span>All pre-arm checks passed</span>
+          <span>{t("allPassed")}</span>
         </div>
       )}
 
@@ -337,7 +340,7 @@ export function PreArmChecks({ className }: { className?: string }) {
 
       {!lastChecked && !checking && (
         <div className="text-[10px] text-text-tertiary">
-          Click &quot;Run Check&quot; to verify pre-arm status
+          {t("clickToRun")}
         </div>
       )}
     </div>

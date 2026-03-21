@@ -7,6 +7,7 @@
  */
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { Network, Wifi, Radio, ScanLine, Loader2, Battery, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAgentStore } from "@/stores/agent-store";
@@ -14,6 +15,7 @@ import { AgentDisconnectedPage } from "./AgentDisconnectedPage";
 import { DroneNetEnrollmentCard } from "./shared/DroneNetEnrollmentCard";
 
 export function FleetNetworkTab() {
+  const t = useTranslations("fleetNetwork");
   const connected = useAgentStore((s) => s.connected);
   const mqttConnected = useAgentStore((s) => s.mqttConnected);
   const peers = useAgentStore((s) => s.peers);
@@ -45,7 +47,7 @@ export function FleetNetworkTab() {
         <div className="flex items-center gap-2 mb-3">
           <Wifi size={14} className="text-text-secondary" />
           <h3 className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
-            MQTT Gateway
+            {t("mqttGateway")}
           </h3>
         </div>
         <div className="grid grid-cols-2 gap-3 text-xs">

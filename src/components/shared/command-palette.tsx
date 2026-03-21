@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { Search, LayoutDashboard, Route, History, BarChart3, Settings, Zap, Battery, Home, HeartPulse, Plug, SlidersHorizontal } from "lucide-react";
 import { useFleetStore } from "@/stores/fleet-store";

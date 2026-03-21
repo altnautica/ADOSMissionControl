@@ -8,6 +8,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState, useMemo } from "react";
 import { Plane, ChevronLeft, ArrowUpDown } from "lucide-react";
 import { useTrafficStore } from "@/stores/traffic-store";
@@ -38,6 +39,7 @@ function computeBearing(lat1: number, lon1: number, lat2: number, lon2: number):
 }
 
 export function TrafficListPanel({ onClose, droneLat, droneLon }: TrafficListPanelProps) {
+  const t = useTranslations("airTraffic");
   const aircraft = useTrafficStore((s) => s.aircraft);
   const threatLevels = useTrafficStore((s) => s.threatLevels);
   const lastUpdate = useTrafficStore((s) => s.lastUpdate);
@@ -92,8 +94,8 @@ export function TrafficListPanel({ onClose, droneLat, droneLon }: TrafficListPan
   }
 
   const timeSinceUpdate = lastUpdate
-    ? `${Math.round((Date.now() - lastUpdate) / 1000)}s ago`
-    : "No data";
+    ? t("agoSeconds", { seconds: Math.round((Date.now() - lastUpdate) / 1000) })
+    : t("noData");
 
   return (
     <div className="w-80 shrink-0 flex flex-col h-full border-l border-border-default bg-bg-primary/95 backdrop-blur-md">
@@ -127,7 +129,7 @@ export function TrafficListPanel({ onClose, droneLat, droneLon }: TrafficListPan
       <div className="flex-1 overflow-y-auto min-h-0">
         {aircraftList.length === 0 && (
           <div className="flex items-center justify-center h-32 text-xs text-text-tertiary font-mono">
-            No aircraft in range
+            {t("noAircraftInRange")}
           </div>
         )}
         {aircraftList.map((ac) => {

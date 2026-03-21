@@ -7,6 +7,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { CheckCircle, AlertTriangle, XCircle } from "lucide-react";
 import { useAirspaceStore } from "@/stores/airspace-store";
 import { cn } from "@/lib/utils";
@@ -34,6 +35,7 @@ const VERDICT_STYLES: Record<FlyabilityVerdict, { icon: typeof CheckCircle; text
 };
 
 export function FlyabilityOverlay() {
+  const t = useTranslations("airTraffic");
   const flyability = useAirspaceStore((s) => s.flyability);
   const selectedPoint = useAirspaceStore((s) => s.selectedPoint);
 
@@ -43,8 +45,8 @@ export function FlyabilityOverlay() {
   const Icon = style.icon;
 
   const altText = flyability.maxAltitudeAgl > 0
-    ? `up to ${flyability.maxAltitudeAgl}m AGL`
-    : "not permitted";
+    ? t("upToAgl", { alt: flyability.maxAltitudeAgl })
+    : t("notPermitted");
 
   return (
     <div className="absolute top-12 left-1/2 -translate-x-1/2 z-20 max-w-lg pointer-events-auto">
@@ -57,9 +59,9 @@ export function FlyabilityOverlay() {
       >
         <Icon size={16} className={cn(style.text, "shrink-0")} />
         <span className={cn("font-semibold", style.text)}>
-          {flyability.verdict === "clear" && `Clear to fly ${altText}`}
-          {flyability.verdict === "advisory" && `Advisories active. Review before flying (${altText})`}
-          {flyability.verdict === "restricted" && `Flight restricted. Authorization required`}
+          {flyability.verdict === "clear" && t("clearToFlyAlt", { alt: altText })}
+          {flyability.verdict === "advisory" && t("advisoriesActiveAlt", { alt: altText })}
+          {flyability.verdict === "restricted" && t("flightRestrictedAuth")}
         </span>
         {flyability.zones.length > 0 && (
           <span className="text-text-tertiary ml-1">

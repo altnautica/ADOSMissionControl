@@ -7,6 +7,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Save, FileText, FileJson } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
 import { Input } from "@/components/ui/input";
@@ -51,10 +52,11 @@ export function SaveMissionDialog({
   onSaveWaypoints,
   onSaveQGCPlan,
 }: SaveMissionDialogProps) {
-  const [name, setName] = useState(missionName || "Untitled Mission");
+  const t = useTranslations("planner");
+  const [name, setName] = useState(missionName || t("untitledMission"));
 
   const handleSelect = (format: "native" | "waypoints" | "plan") => {
-    const finalName = name.trim() || "Untitled Mission";
+    const finalName = name.trim() || t("untitledMission");
     if (format === "native") onSaveNative(finalName);
     else if (format === "waypoints") onSaveWaypoints(finalName);
     else if (format === "plan") onSaveQGCPlan(finalName);
