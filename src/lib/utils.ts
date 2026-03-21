@@ -8,9 +8,9 @@ export function cn(...classes: (string | false | null | undefined)[]): string {
 }
 
 /** Format ISO timestamp to readable date string. */
-export function formatDate(date: Date | string | number): string {
+export function formatDate(date: Date | string | number, locale = "en"): string {
   const d = new Date(date);
-  return d.toLocaleDateString("en-IN", {
+  return d.toLocaleDateString(locale, {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -18,9 +18,9 @@ export function formatDate(date: Date | string | number): string {
 }
 
 /** Format ISO timestamp to readable time string. */
-export function formatTime(date: Date | string | number): string {
+export function formatTime(date: Date | string | number, locale = "en"): string {
   const d = new Date(date);
-  return d.toLocaleTimeString("en-IN", {
+  return d.toLocaleTimeString(locale, {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",

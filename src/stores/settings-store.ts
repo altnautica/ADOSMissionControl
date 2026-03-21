@@ -97,6 +97,9 @@ interface SettingsStoreState {
   showNoFlyZones: boolean;
   /** Whether offline tile caching is enabled. */
   offlineTileCaching: boolean;
+  /** Display language locale code. */
+  locale: string;
+  setLocale: (locale: string) => void;
 
   setMapTileSource: (source: MapTileSource) => void;
   setUnits: (units: UnitSystem) => void;
@@ -170,6 +173,7 @@ export const useSettingsStore = create<SettingsStoreState>()(
       panelScrollPositions: {},
       showNoFlyZones: false,
       offlineTileCaching: true,
+      locale: 'en',
 
       setMapTileSource: (mapTileSource) => set({ mapTileSource }),
       setUnits: (units) => set({ units }),
@@ -215,11 +219,12 @@ export const useSettingsStore = create<SettingsStoreState>()(
         })),
       setShowNoFlyZones: (showNoFlyZones) => set({ showNoFlyZones }),
       setOfflineTileCaching: (offlineTileCaching) => set({ offlineTileCaching }),
+      setLocale: (locale) => set({ locale }),
     }),
     {
       name: "altcmd:settings",
       storage: createJSONStorage(indexedDBStorage.storage),
-      version: 17,
+      version: 18,
       migrate: (persisted, version) => {
         const state = persisted as Record<string, unknown>;
         if (version < 2) {
@@ -298,6 +303,10 @@ export const useSettingsStore = create<SettingsStoreState>()(
         if (version < 17) {
           // v17: Demo mode default flipped to false — env var/URL is authoritative
           state.demoMode = false;
+        }
+        if (version < 18) {
+          // v18: display language locale
+          state.locale = 'en';
         }
         return state as unknown as SettingsStoreState;
       },
