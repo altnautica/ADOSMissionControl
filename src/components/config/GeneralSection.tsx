@@ -188,13 +188,13 @@ export function GeneralSection() {
               }}
               disabled={locationRequesting}
             >
-              {locationRequesting ? "Requesting..." : "Request Permission"}
+              {locationRequesting ? t("requesting") : t("requestPermission")}
             </Button>
           )}
 
           {!isSupported && (
             <p className="text-[10px] text-status-warning pl-0.5">
-              Geolocation not available in this browser.
+              {t("geoUnavailable")}
             </p>
           )}
         </div>
@@ -204,9 +204,9 @@ export function GeneralSection() {
       <Card>
         <div className="flex items-center justify-between">
           <div>
-            <span className="text-xs text-text-secondary">Re-run Setup Wizard</span>
+            <span className="text-xs text-text-secondary">{t("setupWizard")}</span>
             <p className="text-[10px] text-text-tertiary mt-0.5">
-              Re-run the initial configuration wizard
+              {t("setupWizardDesc")}
             </p>
           </div>
           <Button
@@ -215,7 +215,7 @@ export function GeneralSection() {
             icon={<RotateCcw size={12} />}
             onClick={() => setOnboarded(false)}
           >
-            Re-run
+            {t("rerun")}
           </Button>
         </div>
       </Card>

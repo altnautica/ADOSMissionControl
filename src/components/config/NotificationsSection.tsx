@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -19,49 +20,50 @@ type AlertKey =
 
 const ALERT_ROWS: {
   key: AlertKey;
-  label: string;
-  description: string;
+  labelKey: string;
+  descriptionKey: string;
   testSound: string;
 }[] = [
   {
     key: "alertLowBattery",
-    label: "Low Battery",
-    description: "Alert when battery drops below warning threshold",
+    labelKey: "lowBattery",
+    descriptionKey: "lowBatteryDesc",
     testSound: "low_battery",
   },
   {
     key: "alertGpsLost",
-    label: "GPS Lost",
-    description: "Alert when GPS fix is lost",
+    labelKey: "gpsLost",
+    descriptionKey: "gpsLostDesc",
     testSound: "gps_lost",
   },
   {
     key: "alertRcLost",
-    label: "RC Link Lost",
-    description: "Alert when RC signal is lost",
+    labelKey: "rcLost",
+    descriptionKey: "rcLostDesc",
     testSound: "rc_lost",
   },
   {
     key: "alertArmDisarm",
-    label: "Arm / Disarm",
-    description: "Feedback tone when vehicle arms or disarms",
+    labelKey: "armDisarm",
+    descriptionKey: "armDisarmDesc",
     testSound: "arm",
   },
   {
     key: "alertWaypoint",
-    label: "Waypoint & Mission",
-    description: "Tone on waypoint reach and mission complete",
+    labelKey: "waypointMission",
+    descriptionKey: "waypointMissionDesc",
     testSound: "waypoint_reached",
   },
   {
     key: "alertFailsafe",
-    label: "Failsafe & Errors",
-    description: "Urgent alarm for failsafe triggers",
+    labelKey: "failsafeErrors",
+    descriptionKey: "failsafeErrorsDesc",
     testSound: "failsafe",
   },
 ];
 
 export function NotificationsSection() {
+  const t = useTranslations("notifications");
   const audioEnabled = useSettingsStore((s) => s.audioEnabled);
   const audioVolume = useSettingsStore((s) => s.audioVolume);
   const setAudioEnabled = useSettingsStore((s) => s.setAudioEnabled);
