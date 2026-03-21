@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
 import { useFcKeyboardShortcuts } from "@/hooks/use-fc-keyboard-shortcuts";
@@ -146,10 +147,55 @@ interface DroneConfigureTabProps {
 }
 
 export function DroneConfigureTab({ droneId, droneName, isConnected }: DroneConfigureTabProps) {
+  const t = useTranslations("fcNav");
   const lastActivePanel = useSettingsStore((s) => s.lastActivePanel);
   const setLastActivePanelSetting = useSettingsStore((s) => s.setLastActivePanel);
   const [activePanel, setActivePanel] = useState(lastActivePanel || "outputs");
   const { supports, firmwareType } = useFirmwareCapabilities();
+
+  const sectionLabels: Record<string, string> = {
+    Flight: t("flightSection"),
+    Safety: t("safetySection"),
+    Sensors: t("sensorsSection"),
+    Tuning: t("tuningSection"),
+    Display: t("displaySection"),
+    System: t("systemSection"),
+    Debug: t("debugSection"),
+  };
+
+  const navLabels: Record<string, string> = {
+    outputs: t("outputs"),
+    receiver: t("receiver"),
+    modes: t("flightModes"),
+    "aux-modes": t("auxModes"),
+    "bf-motors": t("motorsEsc"),
+    frame: t("frameSetup"),
+    failsafe: t("failsafe"),
+    geofence: t("geofence"),
+    health: t("healthCheck"),
+    sensors: t("sensors"),
+    power: t("power"),
+    "gps-config": t("gpsConfig"),
+    gimbal: t("gimbal"),
+    camera: t("camera"),
+    pid: t("pidTuning"),
+    "rate-profiles": t("rateProfiles"),
+    adjustments: t("adjustments"),
+    "sensor-graphs": t("sensorGraphs"),
+    osd: t("osdEditor"),
+    led: t("ledStrip"),
+    vtx: t("vtx"),
+    ports: t("ports"),
+    radio: t("radioConfig"),
+    "bf-config": t("configuration"),
+    firmware: t("firmwarePanel"),
+    cli: t("cli"),
+    mavlink: t("mavlinkInspector"),
+    blackbox: t("blackbox"),
+    debug: t("debugPanel"),
+    diagnostics: t("diagnostics"),
+    logs: t("logAnalysis"),
+  };
 
   // Persist active panel to settings store
   useEffect(() => {
@@ -211,7 +257,7 @@ export function DroneConfigureTab({ droneId, droneName, isConnected }: DroneConf
       <nav className="w-[200px] border-r border-border-default bg-bg-secondary flex-shrink-0 overflow-y-auto">
         <div className="px-3 py-3 border-b border-border-default">
           <h2 className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
-            Flight Controller
+            {t("flightController")}
           </h2>
           {firmwareLabel && (
             <span className="mt-1 inline-block text-[10px] font-medium px-1.5 py-0.5 rounded bg-accent-primary/15 text-accent-primary">
@@ -234,7 +280,7 @@ export function DroneConfigureTab({ droneId, droneName, isConnected }: DroneConf
             <div key={section}>
               <div className="px-3 pt-3 pb-1">
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">
-                  {section}
+                  {sectionLabels[section] ?? section}
                 </span>
               </div>
               {items.map((item) => (
@@ -252,7 +298,7 @@ export function DroneConfigureTab({ droneId, droneName, isConnected }: DroneConf
                   )}
                 >
                   {item.icon}
-                  {(firmwareType && item.labelOverride?.[firmwareType]) ?? item.label}
+                  {(firmwareType && item.labelOverride?.[firmwareType]) ?? navLabels[item.id] ?? item.label}
                 </button>
               ))}
             </div>

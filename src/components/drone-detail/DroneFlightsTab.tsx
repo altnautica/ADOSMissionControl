@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { Table, type Column } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { getFlightHistory } from "@/mock/history";
@@ -19,86 +20,87 @@ const statusVariant: Record<string, "success" | "warning" | "error"> = {
   emergency: "error",
 };
 
-const columns: Column<FlightRecordRow>[] = [
-  {
-    key: "date",
-    label: "Date",
-    sortable: true,
-    width: "18%",
-    render: (row) => (
-      <span className="font-mono text-text-primary tabular-nums">
-        {formatDate(row.date)}
-      </span>
-    ),
-  },
-  {
-    key: "duration",
-    label: "Duration",
-    sortable: true,
-    width: "14%",
-    render: (row) => (
-      <span className="font-mono text-text-primary tabular-nums">
-        {formatDuration(row.duration)}
-      </span>
-    ),
-  },
-  {
-    key: "distance",
-    label: "Distance",
-    sortable: true,
-    width: "14%",
-    render: (row) => (
-      <span className="font-mono text-text-primary tabular-nums">
-        {(row.distance / 1000).toFixed(1)} km
-      </span>
-    ),
-  },
-  {
-    key: "maxAlt",
-    label: "Max Alt",
-    sortable: true,
-    width: "12%",
-    render: (row) => (
-      <span className="font-mono text-text-primary tabular-nums">
-        {row.maxAlt}m
-      </span>
-    ),
-  },
-  {
-    key: "status",
-    label: "Status",
-    sortable: true,
-    width: "14%",
-    render: (row) => (
-      <Badge variant={statusVariant[row.status] || "neutral"}>
-        {row.status}
-      </Badge>
-    ),
-  },
-  {
-    key: "batteryUsed",
-    label: "Battery Used",
-    sortable: true,
-    width: "14%",
-    render: (row) => (
-      <span className="font-mono text-text-primary tabular-nums">
-        {row.batteryUsed}%
-      </span>
-    ),
-  },
-  {
-    key: "suiteType",
-    label: "Suite",
-    width: "14%",
-    render: (row) => (
-      <span className="text-text-secondary capitalize">
-        {row.suiteType ?? "---"}
-      </span>
-    ),
-  },
-];
-
 export function DroneFlightsTab({ droneId }: DroneFlightsTabProps) {
+  const t = useTranslations("droneDetail");
+
+  const columns: Column<FlightRecordRow>[] = useMemo(() => [
+    {
+      key: "date",
+      label: t("flightDate"),
+      sortable: true,
+      width: "18%",
+      render: (row) => (
+        <span className="font-mono text-text-primary tabular-nums">
+          {formatDate(row.date)}
+        </span>
+      ),
+    },
+    {
+      key: "duration",
+      label: t("flightDuration"),
+      sortable: true,
+      width: "14%",
+      render: (row) => (
+        <span className="font-mono text-text-primary tabular-nums">
+          {formatDuration(row.duration)}
+        </span>
+      ),
+    },
+    {
+      key: "distance",
+      label: t("flightDistance"),
+      sortable: true,
+      width: "14%",
+      render: (row) => (
+        <span className="font-mono text-text-primary tabular-nums">
+          {(row.distance / 1000).toFixed(1)} km
+        </span>
+      ),
+    },
+    {
+      key: "maxAlt",
+      label: t("flightMaxAlt"),
+      sortable: true,
+      width: "12%",
+      render: (row) => (
+        <span className="font-mono text-text-primary tabular-nums">
+          {row.maxAlt}m
+        </span>
+      ),
+    },
+    {
+      key: "status",
+      label: t("flightStatus"),
+      sortable: true,
+      width: "14%",
+      render: (row) => (
+        <Badge variant={statusVariant[row.status] || "neutral"}>
+          {row.status}
+        </Badge>
+      ),
+    },
+    {
+      key: "batteryUsed",
+      label: t("flightBattery"),
+      sortable: true,
+      width: "14%",
+      render: (row) => (
+        <span className="font-mono text-text-primary tabular-nums">
+          {row.batteryUsed}%
+        </span>
+      ),
+    },
+    {
+      key: "suiteType",
+      label: t("flightSuite"),
+      width: "14%",
+      render: (row) => (
+        <span className="text-text-secondary capitalize">
+          {row.suiteType ?? "---"}
+        </span>
+      ),
+    },
+  ], [t]);
   const flights = useMemo(() => {
     const all = getFlightHistory();
     return all.filter((f) => f.droneId === droneId);

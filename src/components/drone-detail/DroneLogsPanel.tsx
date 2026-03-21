@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import {
   LineChart,
   Line,
@@ -161,6 +162,7 @@ function SortIcon({ field, sortField, sortDir }: { field: SortField; sortField: 
 // ── Component ────────────────────────────────────────────────
 
 export function DroneLogsPanel({ droneId }: DroneLogsPanelProps) {
+  const t = useTranslations("logs");
   const getProtocol = useDroneManager((s) => s.getSelectedProtocol);
 
   // Status message log
@@ -333,12 +335,24 @@ export function DroneLogsPanel({ droneId }: DroneLogsPanelProps) {
         <Select
           value={categoryFilter}
           onChange={(v) => setCategoryFilter(v as CategoryFilter)}
-          options={MESSAGE_CATEGORIES.map((c) => ({ value: c.value, label: c.label }))}
+          options={[
+            { value: "all", label: t("allMessages") },
+            { value: "error", label: t("errors") },
+            { value: "warning", label: t("warnings") },
+            { value: "info", label: t("info") },
+            { value: "arm", label: t("armDisarm") },
+            { value: "mode", label: t("modeChanges") },
+            { value: "gps", label: t("gps") },
+            { value: "battery", label: t("batteryFilter") },
+            { value: "failsafe", label: t("failsafe") },
+            { value: "ekf", label: t("ekf") },
+            { value: "calibration", label: t("calibration") },
+          ]}
           className="text-[11px]"
         />
 
         <span className="text-[10px] text-text-tertiary font-mono">
-          {processedMessages.length} msgs
+          {processedMessages.length} {t("msgs")}
         </span>
 
         <div className="flex-1" />
@@ -352,14 +366,14 @@ export function DroneLogsPanel({ droneId }: DroneLogsPanelProps) {
           title={autoscroll ? "Auto-scroll on" : "Auto-scroll off"}
         >
           {autoscroll ? <Play size={10} /> : <Pause size={10} />}
-          {autoscroll ? "Auto" : "Paused"}
+          {autoscroll ? t("auto") : t("paused")}
         </button>
 
         {/* Export */}
         <button
           onClick={exportLog}
           className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
-          title="Export log"
+          title={t("exportLog")}
         >
           <Download size={10} />
         </button>
@@ -368,7 +382,7 @@ export function DroneLogsPanel({ droneId }: DroneLogsPanelProps) {
         <button
           onClick={() => setMessages([])}
           className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
-          title="Clear log"
+          title={t("clearLog")}
         >
           <Trash2 size={10} />
         </button>
@@ -379,7 +393,7 @@ export function DroneLogsPanel({ droneId }: DroneLogsPanelProps) {
           className={`flex items-center gap-1 px-1.5 py-0.5 text-[10px] transition-colors cursor-pointer ${
             showGraph ? "text-accent-primary" : "text-text-secondary hover:text-text-primary"
           }`}
-          title={showGraph ? "Hide graph" : "Show graph"}
+          title={t(showGraph ? "hideGraph" : "showGraph")}
         >
           <Activity size={10} />
         </button>
@@ -392,7 +406,7 @@ export function DroneLogsPanel({ droneId }: DroneLogsPanelProps) {
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search messages..."
+          placeholder={t("searchMessages")}
           className="flex-1 bg-transparent text-[11px] font-mono text-text-primary placeholder:text-text-tertiary outline-none"
         />
         {searchQuery && (
@@ -411,19 +425,19 @@ export function DroneLogsPanel({ droneId }: DroneLogsPanelProps) {
           onClick={() => handleSort("timestamp")}
           className="flex items-center gap-0.5 text-[9px] font-mono text-text-tertiary hover:text-text-secondary cursor-pointer shrink-0 w-[60px]"
         >
-          TIME <SortIcon field="timestamp" sortField={sortField} sortDir={sortDir} />
+          {t("time")} <SortIcon field="timestamp" sortField={sortField} sortDir={sortDir} />
         </button>
         <button
           onClick={() => handleSort("severity")}
           className="flex items-center gap-0.5 text-[9px] font-mono text-text-tertiary hover:text-text-secondary cursor-pointer shrink-0 w-[72px]"
         >
-          SEVERITY <SortIcon field="severity" sortField={sortField} sortDir={sortDir} />
+          {t("severity")} <SortIcon field="severity" sortField={sortField} sortDir={sortDir} />
         </button>
         <button
           onClick={() => handleSort("text")}
           className="flex items-center gap-0.5 text-[9px] font-mono text-text-tertiary hover:text-text-secondary cursor-pointer flex-1"
         >
-          MESSAGE <SortIcon field="text" sortField={sortField} sortDir={sortDir} />
+          {t("message")} <SortIcon field="text" sortField={sortField} sortDir={sortDir} />
         </button>
       </div>
 
@@ -437,8 +451,8 @@ export function DroneLogsPanel({ droneId }: DroneLogsPanelProps) {
         {processedMessages.length === 0 ? (
           <div className="flex items-center justify-center h-full text-text-tertiary text-xs">
             {messages.length === 0
-              ? "Waiting for status messages..."
-              : "No messages match current filters"
+              ? t("waitingForMessages")
+              : t("noMessagesMatch")
             }
           </div>
         ) : (
