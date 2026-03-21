@@ -75,7 +75,7 @@ export function ActionsPanel() {
             )}
           >
             <ClipboardCheck size={12} />
-            <span className="flex-1 text-left">Pre-Flight Check</span>
+            <span className="flex-1 text-left">{t("preFlightCheck")}</span>
             <span className="text-[10px] font-mono">
               {checklistProgress.checked}/{checklistProgress.total}
             </span>
@@ -86,7 +86,7 @@ export function ActionsPanel() {
           {/* ARM / DISARM */}
           <div className="flex-1 [&>*]:w-full">
             <Tooltip
-              content={isArmed ? "Disarm (Shift+A)" : "Arm (Shift+A)"}
+              content={isArmed ? t("disarmShortcut") : t("armShortcut")}
               position="right"
             >
               <Button
@@ -103,7 +103,7 @@ export function ActionsPanel() {
                   }
                 }}
               >
-                {isArmed ? "DISARM" : "ARM"}
+                {isArmed ? t("disarm") : t("arm")}
               </Button>
             </Tooltip>
           </div>
