@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
 import { ChevronLeft, ChevronRight, Maximize2 } from "lucide-react";
 import { TelemetryReadout } from "@/components/flight/TelemetryReadout";
@@ -44,6 +45,7 @@ interface DroneOverviewTabProps {
 type RightPanel = "map" | "fly";
 
 export function DroneOverviewTab({ drone }: DroneOverviewTabProps) {
+  const t = useTranslations("droneDetail");
   const [rightPanel, setRightPanel] = useState<RightPanel>("map");
   const [telemetryCollapsed, setTelemetryCollapsed] = useState(false);
   const immersiveMode = useUiStore((s) => s.immersiveMode);
@@ -95,7 +97,7 @@ export function DroneOverviewTab({ drone }: DroneOverviewTabProps) {
                   : "px-3 py-1 text-xs font-mono text-text-tertiary hover:text-text-secondary transition-colors rounded"
               }
             >
-              Map
+              {t("map")}
             </button>
             <button
               onClick={() => setRightPanel("fly")}
@@ -105,7 +107,7 @@ export function DroneOverviewTab({ drone }: DroneOverviewTabProps) {
                   : "px-3 py-1 text-xs font-mono text-text-tertiary hover:text-text-secondary transition-colors rounded"
               }
             >
-              Fly
+              {t("fly")}
             </button>
             <div className="flex-1" />
             <button
@@ -114,7 +116,7 @@ export function DroneOverviewTab({ drone }: DroneOverviewTabProps) {
               title="Enter immersive mode"
             >
               <Maximize2 size={12} />
-              Immersive
+              {t("immersive")}
             </button>
             <RecordingControls />
           </div>

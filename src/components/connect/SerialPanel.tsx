@@ -216,7 +216,7 @@ export function SerialPanel({
       {/* Known ports count */}
       {knownPorts.length > 0 && (
         <p className="text-[10px] text-text-tertiary">
-          {knownPorts.length} permitted port{knownPorts.length !== 1 ? "s" : ""} available
+          {t("portsAvailable", { count: knownPorts.length })}
         </p>
       )}
 

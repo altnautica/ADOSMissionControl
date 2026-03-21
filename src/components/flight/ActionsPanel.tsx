@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import {
   Power, ArrowUpFromLine, Home, ArrowDownToLine,
   Pause, Play, XOctagon, Skull, ClipboardCheck,
@@ -19,6 +20,7 @@ import { cn } from "@/lib/utils";
 
 
 export function ActionsPanel() {
+  const t = useTranslations("flight");
   const armState = useDroneStore((s) => s.armState);
   const flightMode = useDroneStore((s) => s.flightMode);
   const previousMode = useDroneStore((s) => s.previousMode);
