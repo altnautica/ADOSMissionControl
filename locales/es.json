@@ -257,7 +257,7 @@
     "exportFlight": "Exportar datos de vuelo",
     "clearCache": "Limpiar caché de telemetría",
     "exportUnavailable": "Exportación no disponible en modo demo",
-    "cacheCleared": "Caché limpiada"
+    "cacheCleared": "Caché vaciado"
   },
   "communityNav": {
     "changelog": "Registro de cambios",

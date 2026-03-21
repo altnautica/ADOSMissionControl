@@ -70,8 +70,8 @@
     "connecting": "Verbindet...",
     "disconnected": "Getrennt",
     "offline": "Offline",
-    "armed": "Aktiviert",
-    "disarmed": "Deaktiviert",
+    "armed": "Armed",
+    "disarmed": "Disarmed",
     "online": "Online"
   },
   "auth": {
@@ -126,7 +126,7 @@
     "star": "Stern",
     "flashTool": "Flash-Tool",
     "settings": "Einstellungen",
-    "exitImmersive": "Vollbildmodus beenden (Esc)",
+    "exitImmersive": "Immersiven Modus beenden (Esc)",
     "lastSynced": "Zuletzt synchronisiert: {time}",
     "account": "Konto"
   },
@@ -212,7 +212,7 @@
   },
   "video": {
     "title": "Videoeinstellungen",
-    "lowLatency": "Niedrige-Latenz-Modus",
+    "lowLatency": "Niedriglatenz-Modus",
     "targetBitrate": "Ziel-Bitrate",
     "recordingCodec": "Aufnahme-Codec",
     "currentResolution": "Aktuelle Auflösung",

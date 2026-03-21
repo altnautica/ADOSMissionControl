@@ -11,37 +11,37 @@
   },
   "welcome": {
     "language": {
-      "title": "Choisissez votre langue",
+      "title": "Choisis ta langue",
       "continue": "Continuer"
     },
     "intro": {
       "tagline": "Une station de contrôle au sol pour la communauté des drones open source.",
-      "description": "Connectez n'importe quel drone ArduPilot, PX4 ou Betaflight. Configurez, planifiez des missions et volez — le tout depuis votre navigateur.",
+      "description": "Connecte n'importe quel drone ArduPilot, PX4 ou Betaflight. Configure, planifie des missions et vole, le tout depuis ton navigateur.",
       "openBeta": "Bêta ouverte",
       "freeForever": "Gratuit pour toujours",
       "openSource": "GPL-3.0 Open Source",
       "getStarted": "Commencer",
-      "privacy": "Vos données restent sur cet appareil.",
+      "privacy": "Tes données restent sur cet appareil.",
       "privacyDetail": "Nous ne collectons ni ne suivons quoi que ce soit."
     },
     "preferences": {
-      "title": "Définissez vos préférences",
+      "title": "Définis tes préférences",
       "jurisdiction": "Juridiction réglementaire",
       "jurisdictionOptional": "Facultatif — définit les règles d'espace aérien et les unités par défaut",
       "units": "Unités",
       "metric": "Métrique (m, km/h, °C)",
       "imperial": "Impérial (ft, mph, °F)",
       "demoMode": "Mode démo",
-      "demoModeDescription": "Essayez l'interface avec 5 drones simulés. Désactivez quand vous connectez du matériel réel.",
+      "demoModeDescription": "Essaie l'interface avec 5 drones simulés. Désactive quand tu connectes du matériel réel.",
       "audioAlerts": "Alertes sonores",
       "audioAlertsDescription": "Alertes sonores pour la batterie, la perte GPS et les avertissements failsafe.",
       "yourPosition": "Afficher ma position sur la carte",
-      "yourPositionDescription": "Affiche votre marqueur sur la carte. Ne quitte jamais votre appareil.",
+      "yourPositionDescription": "Affiche ton marqueur sur la carte. Ne quitte jamais ton appareil.",
       "locationGranted": "Accès à la localisation accordé",
       "locationDenied": "Permission refusée — activez dans les paramètres du navigateur ou configurez plus tard"
     },
     "ready": {
-      "title": "Vous êtes prêt.",
+      "title": "Tu es prêt.",
       "openApp": "Ouvrir Mission Control",
       "joinDiscord": "Rejoindre les pilotes sur Discord",
       "starGitHub": "Nous étoiler sur GitHub"
@@ -82,12 +82,12 @@
     "signInButton": "Connexion",
     "noAccount": "Pas encore de compte ?",
     "createAccount": "Créer un compte",
-    "haveAccount": "Vous avez déjà un compte ?",
+    "haveAccount": "Tu as déjà un compte ?",
     "name": "Nom complet"
   },
   "settings": {
     "language": "Langue",
-    "languageDescription": "Choisissez votre langue d'affichage. Plus de langues à venir.",
+    "languageDescription": "Choisis ta langue d'affichage. Plus de langues à venir.",
     "languageNote": "Aidez à traduire — contribuez sur GitHub"
   },
   "community": {
@@ -118,7 +118,7 @@
     "exitDemo": "Quitter le mode démo",
     "connectionStatus": "État de la connexion",
     "unacknowledgedAlerts": "Alertes non acquittées",
-    "signInForSync": "Connectez-vous pour la synchronisation cloud",
+    "signInForSync": "Connecte-toi pour la synchronisation cloud",
     "localOnly": "Local uniquement",
     "commandPalette": "Palette de commandes",
     "joinDiscord": "Rejoindre Discord",
