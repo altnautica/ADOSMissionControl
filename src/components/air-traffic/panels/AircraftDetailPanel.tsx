@@ -196,7 +196,7 @@ export function AircraftDetailPanel() {
             )}
           >
             <Route size={10} />
-            {isTracked ? "Tracking" : "Track"}
+            {isTracked ? t("tracking") : t("track")}
           </button>
         </div>
       </div>

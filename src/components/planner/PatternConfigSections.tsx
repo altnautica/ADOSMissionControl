@@ -401,6 +401,7 @@ export function SarParallelTrackConfig() {
 }
 
 export function StructureScanConfig() {
+  const t = useTranslations("planner");
   const config = usePatternStore((s) => s.structureScanConfig);
   const update = usePatternStore((s) => s.updateStructureScanConfig);
   const drawnPolygons = useDrawingStore((s) => s.polygons);
@@ -413,7 +414,7 @@ export function StructureScanConfig() {
             ? `${config.structurePolygon.length} vertices`
             : drawnPolygons.length > 0
               ? `Using last drawn polygon (${drawnPolygons[drawnPolygons.length - 1].vertices.length} pts)`
-              : "Draw structure boundary on map"}
+              : t("drawStructureBoundary")}
         </span>
       </div>
       <div className="grid grid-cols-2 gap-2">

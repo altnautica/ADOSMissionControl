@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Cpu, MemoryStick, HardDrive, Thermometer } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SystemResources } from "@/lib/agent/types";
@@ -48,27 +49,28 @@ function ResourceBar({
 }
 
 export function SystemResourceGauges({ resources }: SystemResourceGaugesProps) {
+  const t = useTranslations("agent");
   return (
     <div className="border border-border-default rounded-lg p-4 space-y-4">
-      <h3 className="text-sm font-medium text-text-primary">System Resources</h3>
+      <h3 className="text-sm font-medium text-text-primary">{t("systemResources")}</h3>
 
       <ResourceBar
         icon={Cpu}
-        label="CPU"
+        label={t("cpu")}
         percent={resources.cpu_percent}
-        detail={`${resources.cpu_percent.toFixed(1)}% utilization`}
+        detail={t("utilization", { percent: resources.cpu_percent.toFixed(1) })}
       />
 
       <ResourceBar
         icon={MemoryStick}
-        label="Memory"
+        label={t("memory")}
         percent={resources.memory_percent}
         detail={`${resources.memory_used_mb.toFixed(0)} / ${resources.memory_total_mb.toFixed(0)} MB`}
       />
 
       <ResourceBar
         icon={HardDrive}
-        label="Disk"
+        label={t("disk")}
         percent={resources.disk_percent}
         detail={`${resources.disk_used_gb.toFixed(1)} / ${resources.disk_total_gb.toFixed(1)} GB`}
       />
@@ -76,7 +78,7 @@ export function SystemResourceGauges({ resources }: SystemResourceGaugesProps) {
       {resources.temperature != null && (
         <div className="flex items-center gap-2 pt-2 border-t border-border-default">
           <Thermometer size={12} className="text-text-tertiary" />
-          <span className="text-xs text-text-secondary">Temperature</span>
+          <span className="text-xs text-text-secondary">{t("temperature")}</span>
           <span
             className={cn(
               "text-xs font-mono ml-auto",

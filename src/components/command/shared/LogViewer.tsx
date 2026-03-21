@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAgentStore } from "@/stores/agent-store";

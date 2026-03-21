@@ -44,18 +44,18 @@ export function ServiceTable({ services, onRestart }: ServiceTableProps) {
 
   return (
     <div className="border border-border-default rounded-lg p-4">
-      <h3 className="text-sm font-medium text-text-primary mb-3">Services</h3>
+      <h3 className="text-sm font-medium text-text-primary mb-3">{t("services")}</h3>
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
           <thead>
             <tr className="border-b border-border-default text-text-tertiary">
-              <th className="text-left py-1.5 pr-3 font-medium">Name</th>
-              <th className="text-left py-1.5 pr-3 font-medium">Status</th>
-              <th className="text-right py-1.5 pr-3 font-medium">PID</th>
-              <th className="text-right py-1.5 pr-3 font-medium">CPU %</th>
-              <th className="text-right py-1.5 pr-3 font-medium">RAM (MB)</th>
-              <th className="text-right py-1.5 pr-3 font-medium">Uptime</th>
-              <th className="text-right py-1.5 font-medium">Action</th>
+              <th className="text-left py-1.5 pr-3 font-medium">{t("serviceName")}</th>
+              <th className="text-left py-1.5 pr-3 font-medium">{t("serviceStatus")}</th>
+              <th className="text-right py-1.5 pr-3 font-medium">{t("servicePid")}</th>
+              <th className="text-right py-1.5 pr-3 font-medium">{t("serviceCpu")}</th>
+              <th className="text-right py-1.5 pr-3 font-medium">{t("serviceRam")}</th>
+              <th className="text-right py-1.5 pr-3 font-medium">{t("serviceUptime")}</th>
+              <th className="text-right py-1.5 font-medium">{t("serviceAction")}</th>
             </tr>
           </thead>
           <tbody>
@@ -84,7 +84,7 @@ export function ServiceTable({ services, onRestart }: ServiceTableProps) {
                   <button
                     onClick={() => onRestart(svc.name)}
                     className="p-1 text-text-tertiary hover:text-accent-primary transition-colors"
-                    title={`Restart ${svc.name}`}
+                    title={t("restartService", { name: svc.name })}
                   >
                     <RotateCw size={12} />
                   </button>

@@ -11,6 +11,7 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   MapPin,
   ChevronRight,
@@ -75,6 +76,7 @@ export function SimulationPanel({
   onClose,
 }: SimulationPanelProps) {
   const router = useRouter();
+  const t = useTranslations("simulate");
   const { toast } = useToast();
 
   // Simulation store
@@ -141,7 +143,7 @@ export function SimulationPanel({
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-border-default">
         <div className="flex items-center gap-2 min-w-0">
-          <h2 className="text-sm font-display font-semibold text-text-primary">Simulation</h2>
+          <h2 className="text-sm font-display font-semibold text-text-primary">{t("title")}</h2>
           {activePlan && (
             <span className="text-[10px] font-mono text-text-tertiary truncate">
               {activePlan.name}
@@ -161,11 +163,11 @@ export function SimulationPanel({
         {/* Mission overview stats grid (2x3) */}
         <div className="px-3 py-2 border-b border-border-default grid grid-cols-3 gap-2">
           <div>
-            <span className="text-[10px] font-mono text-text-tertiary">Duration</span>
+            <span className="text-[10px] font-mono text-text-tertiary">{t("duration")}</span>
             <p className="text-xs font-mono text-text-primary">{formatEta(totalDuration)}</p>
           </div>
           <div>
-            <span className="text-[10px] font-mono text-text-tertiary">Distance</span>
+            <span className="text-[10px] font-mono text-text-tertiary">{t("distance")}</span>
             <p className="text-xs font-mono text-text-primary">
               {flightPlan.totalDistance >= 1000
                 ? `${(flightPlan.totalDistance / 1000).toFixed(2)} km`
