@@ -62,7 +62,7 @@ export function PlanContextMenu({ planId, x, y, onClose, onPlanRenamed }: PlanCo
 
   const handleDuplicate = useCallback(() => {
     duplicatePlan(planId);
-    toast("Plan duplicated", "info");
+    toast(t("planDuplicated"), "info");
     onClose();
   }, [duplicatePlan, planId, toast, onClose]);
 
@@ -71,7 +71,7 @@ export function PlanContextMenu({ planId, x, y, onClose, onPlanRenamed }: PlanCo
       clearMission();
     }
     deletePlan(planId);
-    toast("Plan deleted", "info");
+    toast(t("planDeleted"), "info");
     onClose();
   }, [deletePlan, planId, isActivePlan, clearMission, toast, onClose]);
 
@@ -84,14 +84,14 @@ export function PlanContextMenu({ planId, x, y, onClose, onPlanRenamed }: PlanCo
   const handleExportWaypoints = useCallback(() => {
     if (!plan) return;
     exportWaypointsFormat(getExportWaypoints(), plan.name);
-    toast("Exported .waypoints", "success");
+    toast(t("exportedWaypoints"), "success");
     onClose();
   }, [plan, getExportWaypoints, toast, onClose]);
 
   const handleExportPlan = useCallback(() => {
     if (!plan) return;
     exportQGCPlan(getExportWaypoints(), plan.name);
-    toast("Exported .plan", "success");
+    toast(t("exportedPlan"), "success");
     onClose();
   }, [plan, getExportWaypoints, toast, onClose]);
 
@@ -108,7 +108,7 @@ export function PlanContextMenu({ planId, x, y, onClose, onPlanRenamed }: PlanCo
       if (isActivePlan && onPlanRenamed) {
         onPlanRenamed(renameValue.trim());
       }
-      toast("Plan renamed", "info");
+      toast(t("planRenamed"), "info");
     }
     setRenaming(false);
     onClose();
