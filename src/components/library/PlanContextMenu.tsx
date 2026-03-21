@@ -117,13 +117,13 @@ export function PlanContextMenu({ planId, x, y, onClose, onPlanRenamed }: PlanCo
   if (!plan) return null;
 
   const items = [
-    { id: "rename", label: "Rename", icon: <Pencil size={12} />, action: handleStartRename },
-    { id: "duplicate", label: "Duplicate", icon: <Copy size={12} />, action: handleDuplicate },
+    { id: "rename", label: t("rename"), icon: <Pencil size={12} />, action: handleStartRename },
+    { id: "duplicate", label: t("duplicate"), icon: <Copy size={12} />, action: handleDuplicate },
     { id: "div1", divider: true },
-    { id: "export-wp", label: "Export .waypoints", icon: <FileDown size={12} />, action: handleExportWaypoints },
-    { id: "export-plan", label: "Export .plan", icon: <FileDown size={12} />, action: handleExportPlan },
+    { id: "export-wp", label: t("exportWaypoints"), icon: <FileDown size={12} />, action: handleExportWaypoints },
+    { id: "export-plan", label: t("exportPlanFile"), icon: <FileDown size={12} />, action: handleExportPlan },
     { id: "div2", divider: true },
-    { id: "delete", label: "Delete", icon: <Trash2 size={12} />, action: handleDelete, danger: true },
+    { id: "delete", label: t("delete"), icon: <Trash2 size={12} />, action: handleDelete, danger: true },
   ];
 
   return (

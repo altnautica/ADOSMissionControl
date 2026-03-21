@@ -271,21 +271,21 @@ export function OrbitConfig() {
         <span>
           {orbitConfig.center
             ? `Center: ${orbitConfig.center[0].toFixed(4)}, ${orbitConfig.center[1].toFixed(4)}`
-            : drawnCircles.length > 0 ? "Using last drawn circle" : "Draw a circle on map first"}
+            : drawnCircles.length > 0 ? t("usingLastDrawnCircle") : t("drawCircleFirst")}
         </span>
       </div>
-      <Input label="Radius" type="number" unit="m" value={String(orbitConfig.radius ?? 50)}
+      <Input label={t("radius")} type="number" unit="m" value={String(orbitConfig.radius ?? 50)}
         onChange={(e) => updateOrbitConfig({ radius: parseFloat(e.target.value) || 50 })} />
-      <Select label="Direction" options={DIRECTION_OPTIONS} value={orbitConfig.direction ?? "cw"}
+      <Select label={t("direction")} options={DIRECTION_OPTIONS} value={orbitConfig.direction ?? "cw"}
         onChange={(v) => updateOrbitConfig({ direction: v as "cw" | "ccw" })} />
-      <Input label="Turns" type="number" value={String(orbitConfig.turns ?? 1)}
+      <Input label={t("turns")} type="number" value={String(orbitConfig.turns ?? 1)}
         onChange={(e) => updateOrbitConfig({ turns: parseInt(e.target.value) || 1 })} />
-      <Input label="Start Angle" type="number" unit="deg" placeholder="0 = North" value={String(orbitConfig.startAngle ?? 0)}
+      <Input label={t("startAngle")} type="number" unit="deg" placeholder="0 = North" value={String(orbitConfig.startAngle ?? 0)}
         onChange={(e) => updateOrbitConfig({ startAngle: parseFloat(e.target.value) || 0 })} />
       <div className="grid grid-cols-2 gap-2">
-        <Input label="Altitude" type="number" unit="m" value={String(orbitConfig.altitude ?? 50)}
+        <Input label={t("altitude")} type="number" unit="m" value={String(orbitConfig.altitude ?? 50)}
           onChange={(e) => updateOrbitConfig({ altitude: parseFloat(e.target.value) || 50 })} />
-        <Input label="Speed" type="number" unit="m/s" value={String(orbitConfig.speed ?? 5)}
+        <Input label={t("speedMs")} type="number" unit="m/s" value={String(orbitConfig.speed ?? 5)}
           onChange={(e) => updateOrbitConfig({ speed: parseFloat(e.target.value) || 5 })} />
       </div>
     </>
@@ -308,12 +308,12 @@ export function CorridorConfig() {
       </div>
       <Input label={t("corridorWidth")} type="number" unit="m" value={String(corridorConfig.corridorWidth ?? 50)}
         onChange={(e) => updateCorridorConfig({ corridorWidth: parseFloat(e.target.value) || 50 })} />
-      <Input label="Line Spacing" type="number" unit="m" value={String(corridorConfig.lineSpacing ?? 20)}
+      <Input label={t("lineSpacing")} type="number" unit="m" value={String(corridorConfig.lineSpacing ?? 20)}
         onChange={(e) => updateCorridorConfig({ lineSpacing: parseFloat(e.target.value) || 20 })} />
       <div className="grid grid-cols-2 gap-2">
-        <Input label="Altitude" type="number" unit="m" value={String(corridorConfig.altitude ?? 50)}
+        <Input label={t("altitude")} type="number" unit="m" value={String(corridorConfig.altitude ?? 50)}
           onChange={(e) => updateCorridorConfig({ altitude: parseFloat(e.target.value) || 50 })} />
-        <Input label="Speed" type="number" unit="m/s" value={String(corridorConfig.speed ?? 5)}
+        <Input label={t("speedMs")} type="number" unit="m/s" value={String(corridorConfig.speed ?? 5)}
           onChange={(e) => updateCorridorConfig({ speed: parseFloat(e.target.value) || 5 })} />
       </div>
     </>
