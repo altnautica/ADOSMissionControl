@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useParamSafetyStore } from "@/stores/param-safety-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { HardDrive, ChevronDown, ChevronUp } from "lucide-react";
@@ -8,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export function FlashCommitBanner() {
+  const t = useTranslations("fcShared");
   const pendingWrites = useParamSafetyStore((s) => s.pendingWrites);
   const hasCritical = useParamSafetyStore((s) => s.hasCriticalPending());
   const commitFlash = useParamSafetyStore((s) => s.commitFlash);
@@ -43,13 +45,13 @@ export function FlashCommitBanner() {
       <div className="flex items-center gap-2">
         <HardDrive size={14} className={hasCritical ? "text-status-error" : "text-status-warning"} />
         <span className="flex-1">
-          {count} param{count !== 1 ? "s" : ""} modified in RAM, not written to flash
-          {hasCritical && <span className="text-status-error font-medium ml-1">(includes safety-critical params)</span>}
+          {t("pendingFlashCount", { count })}
+          {hasCritical && <span className="text-status-error font-medium ml-1">{t("includesCritical")}</span>}
         </span>
         <button onClick={() => setExpanded(!expanded)} className="text-text-secondary hover:text-text-primary">
           {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
         </button>
-        <Button size="sm" loading={committing} onClick={handleCommitAll}>Commit All</Button>
+        <Button size="sm" loading={committing} onClick={handleCommitAll}>{t("commitAll")}</Button>
       </div>
 
       {expanded && (

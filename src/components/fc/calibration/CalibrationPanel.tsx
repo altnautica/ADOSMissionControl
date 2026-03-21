@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
 import {
@@ -17,6 +18,7 @@ import { PX4CalibrationsSection } from "./PX4CalibrationsSection";
 import { ArduPilotCalibrations } from "./ArduPilotCalibrations";
 
 export function CalibrationPanel() {
+  const t = useTranslations("calibration");
   const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
   const { firmwareType } = useFirmwareCapabilities();
   const isBetaflight = firmwareType === "betaflight";

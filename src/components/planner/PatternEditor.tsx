@@ -8,6 +8,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { Select } from "@/components/ui/select";
 import { usePatternStore } from "@/stores/pattern-store";
 import { useDrawingStore } from "@/stores/drawing-store";
@@ -26,6 +27,7 @@ interface PatternEditorProps {
 }
 
 export function PatternEditor({ onApply }: PatternEditorProps) {
+  const t = useTranslations("planner");
   const activeType = usePatternStore((s) => s.activePatternType);
   const setPatternType = usePatternStore((s) => s.setPatternType);
   const surveyConfig = usePatternStore((s) => s.surveyConfig);
@@ -97,9 +99,9 @@ export function PatternEditor({ onApply }: PatternEditorProps) {
   if (!activeType) {
     return (
       <div className="px-3 py-2">
-        <Select label="Pattern Type" options={PATTERN_TYPE_OPTIONS} value="" onChange={handleTypeChange} placeholder="Select pattern..." />
+        <Select label={t("patternType")} options={PATTERN_TYPE_OPTIONS} value="" onChange={handleTypeChange} placeholder={t("selectPattern")} />
         <p className="text-[10px] font-mono text-text-tertiary mt-2">
-          Draw a polygon or circle on the map, then select a pattern type to generate waypoints.
+          {t("drawPatternHint")}
         </p>
       </div>
     );
@@ -107,7 +109,7 @@ export function PatternEditor({ onApply }: PatternEditorProps) {
 
   return (
     <div className="flex flex-col gap-3 px-3 py-2">
-      <Select label="Pattern Type" options={PATTERN_TYPE_OPTIONS} value={activeType} onChange={handleTypeChange} />
+      <Select label={t("patternType")} options={PATTERN_TYPE_OPTIONS} value={activeType} onChange={handleTypeChange} />
       {activeType === "survey" && <SurveyConfig />}
       {activeType === "orbit" && <OrbitConfig />}
       {activeType === "corridor" && <CorridorConfig />}
@@ -121,21 +123,21 @@ export function PatternEditor({ onApply }: PatternEditorProps) {
         {isGenerating ? (
           <>
             <div className="w-1.5 h-1.5 rounded-full bg-accent-primary animate-pulse" />
-            <span className="text-[10px] font-mono text-accent-primary">Generating...</span>
+            <span className="text-[10px] font-mono text-accent-primary">{t("generating")}</span>
           </>
         ) : hasGeometry ? (
           <>
             <div className="w-1.5 h-1.5 rounded-full bg-status-success" />
-            <span className="text-[10px] font-mono text-status-success">Ready</span>
+            <span className="text-[10px] font-mono text-status-success">{t("ready")}</span>
           </>
         ) : (
           <>
             <div className="w-1.5 h-1.5 rounded-full bg-status-warning" />
             <span className="text-[10px] font-mono text-status-warning">
-              {activeType === "survey" || activeType === "structureScan" ? "Draw polygon first" :
-               activeType === "orbit" ? "Draw circle first" :
-               activeType === "corridor" ? "Set path points" :
-               activeType === "parallelTrack" ? "Set start point" : "Set datum point"}
+              {activeType === "survey" || activeType === "structureScan" ? t("drawPolygonFirst") :
+               activeType === "orbit" ? t("drawCircleFirst") :
+               activeType === "corridor" ? t("setPathPoints") :
+               activeType === "parallelTrack" ? t("setStartPoint") : t("setDatumPoint")}
             </span>
           </>
         )}
@@ -149,7 +151,7 @@ export function PatternEditor({ onApply }: PatternEditorProps) {
             "bg-accent-primary/20 text-accent-primary border border-accent-primary/30 hover:bg-accent-primary/30",
             isGenerating && "opacity-50 cursor-wait"
           )}>
-          <Play size={12} />{isGenerating ? "Generating..." : "Generate"}
+          <Play size={12} />{isGenerating ? t("generating") : t("generatePattern")}
         </button>
         <button onClick={clear}
           className="flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-mono text-text-secondary border border-border-default hover:bg-bg-tertiary transition-colors cursor-pointer">

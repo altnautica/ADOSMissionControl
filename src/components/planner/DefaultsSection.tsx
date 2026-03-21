@@ -6,15 +6,11 @@
  */
 "use client";
 
+import { useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import type { AltitudeFrame } from "@/lib/types";
-
-const FRAME_OPTIONS: { value: AltitudeFrame; label: string }[] = [
-  { value: "relative", label: "Relative (AGL)" },
-  { value: "absolute", label: "Absolute (MSL)" },
-  { value: "terrain", label: "Terrain Following" },
-];
 
 interface DefaultsSectionProps {
   defaultAlt: number;
@@ -37,11 +33,19 @@ export function DefaultsSection({
   onRadiusChange,
   onFrameChange,
 }: DefaultsSectionProps) {
+  const t = useTranslations("planner");
+
+  const FRAME_OPTIONS: { value: AltitudeFrame; label: string }[] = useMemo(() => [
+    { value: "relative", label: t("relativeAgl") },
+    { value: "absolute", label: t("absoluteMsl") },
+    { value: "terrain", label: t("terrainFollowing") },
+  ], [t]);
+
   return (
     <div className="flex flex-col gap-2 px-3 py-2">
       <div className="grid grid-cols-2 gap-2">
         <Input
-          label="Default Alt"
+          label={t("defaultAltitude")}
           type="number"
           unit="m"
           value={String(defaultAlt)}
@@ -52,7 +56,7 @@ export function DefaultsSection({
           onChange={() => {}}
         />
         <Input
-          label="Default Speed"
+          label={t("defaultSpeed")}
           type="number"
           unit="m/s"
           value={String(defaultSpeed)}
@@ -65,7 +69,7 @@ export function DefaultsSection({
       </div>
       <div className="grid grid-cols-2 gap-2">
         <Input
-          label="Accept Radius"
+          label={t("acceptRadius")}
           type="number"
           unit="m"
           value={String(defaultAcceptRadius)}
@@ -76,7 +80,7 @@ export function DefaultsSection({
           onChange={() => {}}
         />
         <Select
-          label="Alt Frame"
+          label={t("altFrame")}
           options={FRAME_OPTIONS}
           value={defaultFrame}
           onChange={(v) => onFrameChange(v as AltitudeFrame)}
@@ -84,7 +88,7 @@ export function DefaultsSection({
       </div>
       {defaultFrame === "terrain" && (
         <p className="text-[10px] text-text-tertiary font-mono px-0.5">
-          Waypoint altitudes will be adjusted to maintain constant height above ground
+          {t("terrainFollowingHint")}
         </p>
       )}
     </div>

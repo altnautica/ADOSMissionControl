@@ -10,6 +10,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { CircleDot, Square, Download, Play, Pause, FileDown } from "lucide-react";
 import {
   startRecording,
@@ -35,6 +36,7 @@ function formatDuration(ms: number): string {
 }
 
 export function RecordingControls({ className }: { className?: string }) {
+  const t = useTranslations("recording");
   const { toast } = useToast();
   const [isRecording, setIsRecording] = useState(false);
   const [durationMs, setDurationMs] = useState(0);

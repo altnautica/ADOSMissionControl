@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Download, Loader2, AlertCircle, AlertTriangle } from "lucide-react";
 
@@ -33,6 +34,7 @@ export function PanelHeader({
   missingOptional,
   children,
 }: PanelHeaderProps) {
+  const t = useTranslations("fcShared");
   return (
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-2 min-w-0">
@@ -69,7 +71,7 @@ export function PanelHeader({
           <div className="flex items-center gap-1.5 px-2 py-1 bg-status-warning/10 border border-status-warning/20">
             <AlertTriangle size={10} className="text-status-warning shrink-0" />
             <span className="text-[10px] text-status-warning max-w-[200px] truncate">
-              {missingOptional.size} optional param{missingOptional.size > 1 ? "s" : ""} not available
+              {t("missingParams")}
             </span>
           </div>
         )}
@@ -82,7 +84,7 @@ export function PanelHeader({
             icon={<Download size={12} />}
             onClick={onRead}
           >
-            Read from FC
+            {t("readFromFc")}
           </Button>
         )}
         {connected && !loading && !hasLoaded && error && (
@@ -92,7 +94,7 @@ export function PanelHeader({
             icon={<Download size={12} />}
             onClick={onRead}
           >
-            Retry
+            {t("retry")}
           </Button>
         )}
         {connected && !loading && hasLoaded && (
@@ -102,7 +104,7 @@ export function PanelHeader({
             icon={<RefreshCw size={12} />}
             onClick={onRead}
           >
-            Refresh
+            {t("refresh")}
           </Button>
         )}
 

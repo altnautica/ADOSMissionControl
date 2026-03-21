@@ -6,7 +6,8 @@
  * @license GPL-3.0-only
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import {
   Monitor,
   TerminalSquare,
@@ -43,15 +44,16 @@ const MqttBridge = dynamic(() => import("./MqttBridge").then(m => ({ default: m.
 
 type SubTab = "overview" | "scripts" | "peripherals" | "fleet" | "modules";
 
-const subTabs = [
-  { id: "overview" as const, label: "Overview", icon: Monitor },
-  { id: "scripts" as const, label: "Scripts", icon: TerminalSquare },
-  { id: "peripherals" as const, label: "Peripherals", icon: Radio },
-  { id: "fleet" as const, label: "Fleet Network", icon: Network },
-  { id: "modules" as const, label: "Module Store", icon: Package },
-];
-
 export function CommandPage() {
+  const t = useTranslations("command");
+
+  const subTabs = useMemo(() => [
+    { id: "overview" as const, label: t("overview"), icon: Monitor },
+    { id: "scripts" as const, label: t("scripts"), icon: TerminalSquare },
+    { id: "peripherals" as const, label: t("peripherals"), icon: Radio },
+    { id: "fleet" as const, label: t("fleetNetwork"), icon: Network },
+    { id: "modules" as const, label: t("moduleStore"), icon: Package },
+  ], [t]);
   const [activeTab, setActiveTab] = useState<SubTab>("overview");
   const [urlInput, setUrlInput] = useState("http://localhost:8080");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -145,19 +147,19 @@ export function CommandPage() {
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-status-success" />
               <span className="text-xs text-text-primary font-medium">
-                Demo Agent
+                {t("demoAgent")}
               </span>
               <span className="text-xs text-text-tertiary">
                 v{status.version}
               </span>
               <span className="text-xs text-text-tertiary">
-                Tier {status.board?.tier}
+                {t("tier", { tier: status.board?.tier })}
               </span>
               <span className="text-xs text-text-tertiary">{status.board?.name}</span>
               {cloudMode && (
                 <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 bg-accent-primary/15 text-accent-primary rounded font-medium">
                   <Cloud size={10} />
-                  Cloud
+                  {t("cloud")}
                 </span>
               )}
             </div>
@@ -166,13 +168,13 @@ export function CommandPage() {
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-status-success" />
                 <span className="text-xs text-text-primary font-medium">
-                  {status.board?.name ?? "Agent"}
+                  {status.board?.name ?? t("agent")}
                 </span>
                 <span className="text-xs text-text-tertiary">
                   v{status.version}
                 </span>
                 <span className="text-xs text-text-tertiary">
-                  Tier {status.board?.tier}
+                  {t("tier", { tier: status.board?.tier })}
                 </span>
                 <span className="text-xs text-text-tertiary">{status.board?.name}</span>
                 {cloudMode && (
@@ -188,7 +190,7 @@ export function CommandPage() {
                   className="flex items-center gap-1.5 px-2.5 py-1 text-xs text-status-error hover:bg-bg-tertiary rounded transition-colors"
                 >
                   <Unplug size={12} />
-                  Disconnect
+                  {t("disconnect")}
                 </button>
               </div>
             </>
@@ -196,11 +198,11 @@ export function CommandPage() {
             <>
               {pairedDrones.length > 0 ? (
                 <span className="text-xs text-text-secondary">
-                  Select a drone from the sidebar to connect
+                  {t("selectDrone")}
                 </span>
               ) : (
                 <span className="text-xs text-text-secondary">
-                  Pair a drone to get started
+                  {t("pairToStart")}
                 </span>
               )}
               <div className="ml-auto flex items-center gap-2">
@@ -208,7 +210,7 @@ export function CommandPage() {
                   onClick={() => setAdvancedOpen((v) => !v)}
                   className="flex items-center gap-1 text-[11px] text-text-tertiary hover:text-text-secondary transition-colors"
                 >
-                  Advanced
+                  {t("advanced")}
                   {advancedOpen ? (
                     <ChevronDown size={10} />
                   ) : (

@@ -27,11 +27,17 @@ interface DroneDetailPanelProps {
 }
 
 export function DroneDetailPanel({ droneId, onClose }: DroneDetailPanelProps) {
+  const t = useTranslations("dronePanel");
   const drones = useFleetStore((s) => s.drones);
   const removeDrone = useFleetStore((s) => s.removeDrone);
   const [activeTab, setActiveTab] = useState("overview");
   const [deleteOpen, setDeleteOpen] = useState(false);
   const { toast } = useToast();
+
+  const tabs = useMemo(() => TAB_IDS.map((id) => ({
+    id,
+    label: t(id),
+  })), [t]);
 
   const drone = drones.find((d) => d.id === droneId);
   const metadata = useDroneMetadataStore((s) => s.profiles[droneId]);
@@ -88,7 +94,7 @@ export function DroneDetailPanel({ droneId, onClose }: DroneDetailPanelProps) {
           Drone &quot;{droneId}&quot; not found
         </p>
         <Button variant="secondary" size="sm" onClick={onClose}>
-          Back to Dashboard
+          {t("backToDashboard")}
         </Button>
       </div>
     );
@@ -110,7 +116,7 @@ export function DroneDetailPanel({ droneId, onClose }: DroneDetailPanelProps) {
 
           <div className="w-px h-5 bg-border-default shrink-0" />
 
-          {TABS.map((tab) => (
+          {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
@@ -146,7 +152,7 @@ export function DroneDetailPanel({ droneId, onClose }: DroneDetailPanelProps) {
                 if (protocol) protocol.reboot();
               }}
             >
-              Reboot FC
+              {t("rebootFc")}
             </Button>
           )}
         </div>
@@ -171,9 +177,9 @@ export function DroneDetailPanel({ droneId, onClose }: DroneDetailPanelProps) {
         open={deleteOpen}
         onConfirm={handleDelete}
         onCancel={() => setDeleteOpen(false)}
-        title="Delete Drone"
-        message={`Are you sure you want to delete "${displayName}"? This removes the drone from the fleet and deletes all saved metadata.`}
-        confirmLabel="Delete"
+        title={t("deleteDrone")}
+        message={t("deleteConfirm", { name: displayName })}
+        confirmLabel={t("delete")}
         variant="danger"
       />
     </div>
