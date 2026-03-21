@@ -25,7 +25,7 @@ export function MissionProgressBar() {
         </span>
       </div>
       <div className="flex items-center justify-between">
-        <span className="text-[10px] text-text-tertiary">Waypoint</span>
+        <span className="text-[10px] text-text-tertiary">{t("waypoint")}</span>
         <span className="text-[10px] font-mono text-accent-primary">
           {currentWp} / {totalWps}
         </span>

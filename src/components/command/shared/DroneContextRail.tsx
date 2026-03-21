@@ -7,6 +7,7 @@
  */
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { ChevronRight, ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MiniMapView } from "./MiniMapView";
@@ -15,6 +16,7 @@ import { TelemetryStrip } from "./TelemetryStrip";
 import { MissionProgressBar } from "./MissionProgressBar";
 
 export function DroneContextRail() {
+  const t = useTranslations("command");
   const [collapsed, setCollapsed] = useState(false);
 
   return (
@@ -27,7 +29,7 @@ export function DroneContextRail() {
       <button
         onClick={() => setCollapsed((v) => !v)}
         className="flex items-center justify-center h-8 border-b border-border-default hover:bg-bg-tertiary transition-colors"
-        title={collapsed ? "Expand rail" : "Collapse rail"}
+        title={collapsed ? t("expandRail") : t("collapseRail")}
       >
         {collapsed ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
       </button>

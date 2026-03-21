@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn, formatDate, formatDuration } from "@/lib/utils";
@@ -22,6 +23,7 @@ interface HistoryTableProps {
 }
 
 export function HistoryTable({ records, selectedId, onSelect }: HistoryTableProps) {
+  const t = useTranslations("history");
   const [page, setPage] = useState(0);
 
   const totalPages = Math.ceil(records.length / PAGE_SIZE);
@@ -34,25 +36,25 @@ export function HistoryTable({ records, selectedId, onSelect }: HistoryTableProp
           <thead>
             <tr className="border-b border-border-default">
               <th className="px-3 py-2 text-left font-semibold text-text-secondary uppercase tracking-wider">
-                Date
+                {t("date")}
               </th>
               <th className="px-3 py-2 text-left font-semibold text-text-secondary uppercase tracking-wider">
-                Drone
+                {t("drone")}
               </th>
               <th className="px-3 py-2 text-left font-semibold text-text-secondary uppercase tracking-wider">
-                Duration
+                {t("duration")}
               </th>
               <th className="px-3 py-2 text-left font-semibold text-text-secondary uppercase tracking-wider">
-                Distance
+                {t("distance")}
               </th>
               <th className="px-3 py-2 text-left font-semibold text-text-secondary uppercase tracking-wider">
-                Max Alt
+                {t("maxAlt")}
               </th>
               <th className="px-3 py-2 text-left font-semibold text-text-secondary uppercase tracking-wider">
-                Status
+                {t("status")}
               </th>
               <th className="px-3 py-2 text-left font-semibold text-text-secondary uppercase tracking-wider">
-                Batt Used
+                {t("battUsed")}
               </th>
             </tr>
           </thead>
@@ -93,7 +95,7 @@ export function HistoryTable({ records, selectedId, onSelect }: HistoryTableProp
       {/* Pagination */}
       <div className="flex items-center justify-between px-3 py-2 border-t border-border-default shrink-0">
         <span className="text-[10px] text-text-tertiary font-mono">
-          {records.length} records | Page {page + 1} of {totalPages}
+          {t("recordsPageInfo", { records: records.length, page: page + 1, totalPages })}
         </span>
         <div className="flex items-center gap-1">
           <Button
@@ -103,7 +105,7 @@ export function HistoryTable({ records, selectedId, onSelect }: HistoryTableProp
             onClick={() => setPage((p) => p - 1)}
             icon={<ChevronLeft size={14} />}
           >
-            Prev
+            {t("prev")}
           </Button>
           <Button
             variant="ghost"
@@ -112,7 +114,7 @@ export function HistoryTable({ records, selectedId, onSelect }: HistoryTableProp
             onClick={() => setPage((p) => p + 1)}
             icon={<ChevronRight size={14} />}
           >
-            Next
+            {t("next")}
           </Button>
         </div>
       </div>

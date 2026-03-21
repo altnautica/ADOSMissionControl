@@ -1,35 +1,13 @@
 "use client";
 
+import { useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Download } from "lucide-react";
 import type { FlightRecord } from "@/lib/types";
 import { exportFlightRecordsAsCsv } from "@/lib/csv-export";
-
-const STATUS_OPTIONS = [
-  { value: "all", label: "All Statuses" },
-  { value: "completed", label: "Completed" },
-  { value: "aborted", label: "Aborted" },
-  { value: "emergency", label: "Emergency" },
-];
-
-const SORT_OPTIONS = [
-  { value: "date-desc", label: "Newest First" },
-  { value: "date-asc", label: "Oldest First" },
-  { value: "duration-desc", label: "Longest" },
-  { value: "distance-desc", label: "Farthest" },
-];
-
-const SUITE_OPTIONS: { value: string; label: string }[] = [
-  { value: "all", label: "All Suites" },
-  { value: "sentry", label: "Sentry" },
-  { value: "survey", label: "Survey" },
-  { value: "agriculture", label: "Agriculture" },
-  { value: "cargo", label: "Cargo" },
-  { value: "sar", label: "SAR" },
-  { value: "inspection", label: "Inspection" },
-];
 
 interface HistoryToolbarProps {
   dateFrom: string;
@@ -64,39 +42,64 @@ export function HistoryToolbar({
   onSuiteFilterChange,
   onSortChange,
 }: HistoryToolbarProps) {
+  const t = useTranslations("history");
 
-  const allDroneOptions = [{ value: "all", label: "All Drones" }, ...droneNames];
+  const STATUS_OPTIONS = useMemo(() => [
+    { value: "all", label: t("allStatuses") },
+    { value: "completed", label: t("completed") },
+    { value: "aborted", label: t("aborted") },
+    { value: "emergency", label: t("emergency") },
+  ], [t]);
+
+  const SORT_OPTIONS = useMemo(() => [
+    { value: "date-desc", label: t("newestFirst") },
+    { value: "date-asc", label: t("oldestFirst") },
+    { value: "duration-desc", label: t("longest") },
+    { value: "distance-desc", label: t("farthest") },
+  ], [t]);
+
+  const SUITE_OPTIONS = useMemo(() => [
+    { value: "all", label: t("allSuites") },
+    { value: "sentry", label: "Sentry" },
+    { value: "survey", label: "Survey" },
+    { value: "agriculture", label: "Agriculture" },
+    { value: "cargo", label: "Cargo" },
+    { value: "sar", label: "SAR" },
+    { value: "inspection", label: "Inspection" },
+  ], [t]);
+
+  const allDroneOptions = [{ value: "all", label: t("allDrones") }, ...droneNames];
 
   return (
     <div className="flex items-end gap-3 px-4 py-3 border-b border-border-default flex-wrap shrink-0">
       <Input
-        label="From"
+        label={t("from")}
         type="date"
         value={dateFrom}
         onChange={(e) => onDateFromChange(e.target.value)}
         className="w-[130px]"
       />
       <Input
-        label="To"
+        label={t("to")}
         type="date"
         value={dateTo}
         onChange={(e) => onDateToChange(e.target.value)}
         className="w-[130px]"
       />
       <Select
-        label="Status"
+        label={t("statusLabel")}
         options={STATUS_OPTIONS}
         value={status}
         onChange={onStatusChange}
       />
       <Select
-        label="Drone"
+        label={t("droneLabel")}
         options={allDroneOptions}
         value={droneFilter}
         onChange={onDroneFilterChange}
       />
       <Select
-        label="Suite"
+        label={t("suiteLabel")}
         options={SUITE_OPTIONS}
         value={suiteFilter}
         onChange={onSuiteFilterChange}

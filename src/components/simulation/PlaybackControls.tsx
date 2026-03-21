@@ -16,6 +16,7 @@ import {
   Lock,
   Unlock,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useSimulationStore } from "@/stores/simulation-store";
 import { Select } from "@/components/ui/select";
 import { useThrottledElapsed } from "@/hooks/use-throttled-elapsed";
@@ -36,6 +37,7 @@ interface PlaybackControlsProps {
 }
 
 export function PlaybackControls({ waypoints, totalDuration }: PlaybackControlsProps) {
+  const t = useTranslations("simulate");
   const playbackState = useSimulationStore((s) => s.playbackState);
   const playbackSpeed = useSimulationStore((s) => s.playbackSpeed);
   const cameraMode = useSimulationStore((s) => s.cameraMode);
@@ -60,7 +62,7 @@ export function PlaybackControls({ waypoints, totalDuration }: PlaybackControlsP
         onClick={stop}
         disabled={disabled}
         className="p-1 text-text-secondary hover:text-text-primary disabled:opacity-30 cursor-pointer disabled:cursor-default"
-        title="Stop (Home)"
+        title={t("stopHome")}
       >
         <SkipBack size={14} />
       </button>
@@ -70,7 +72,7 @@ export function PlaybackControls({ waypoints, totalDuration }: PlaybackControlsP
         onClick={stepBack}
         disabled={disabled}
         className="p-1 text-text-secondary hover:text-text-primary disabled:opacity-30 cursor-pointer disabled:cursor-default"
-        title="Step back (Left)"
+        title={t("stepBackLeft")}
       >
         <ChevronLeft size={14} />
       </button>
@@ -80,7 +82,7 @@ export function PlaybackControls({ waypoints, totalDuration }: PlaybackControlsP
         onClick={playbackState === "playing" ? pause : play}
         disabled={disabled}
         className="p-1.5 rounded-full bg-accent-primary/20 text-accent-primary hover:bg-accent-primary/30 disabled:opacity-30 cursor-pointer disabled:cursor-default"
-        title="Play/Pause (Space)"
+        title={t("playPauseSpace")}
       >
         {playbackState === "playing" ? <Pause size={16} /> : <Play size={16} />}
       </button>
@@ -90,7 +92,7 @@ export function PlaybackControls({ waypoints, totalDuration }: PlaybackControlsP
         onClick={stepForward}
         disabled={disabled}
         className="p-1 text-text-secondary hover:text-text-primary disabled:opacity-30 cursor-pointer disabled:cursor-default"
-        title="Step forward (Right)"
+        title={t("stepForwardRight")}
       >
         <ChevronRight size={14} />
       </button>
@@ -100,7 +102,7 @@ export function PlaybackControls({ waypoints, totalDuration }: PlaybackControlsP
         onClick={() => seek(totalDuration)}
         disabled={disabled}
         className="p-1 text-text-secondary hover:text-text-primary disabled:opacity-30 cursor-pointer disabled:cursor-default"
-        title="Skip to end (End)"
+        title={t("skipToEndEnd")}
       >
         <SkipForward size={14} />
       </button>
@@ -120,7 +122,7 @@ export function PlaybackControls({ waypoints, totalDuration }: PlaybackControlsP
         onChange={(e) => seek(Number(e.target.value))}
         disabled={disabled}
         className="w-40 h-1 accent-accent-primary cursor-pointer disabled:cursor-default disabled:opacity-30"
-        title="Scrubber"
+        title={t("scrubber")}
       />
 
       {/* Speed selector */}
@@ -137,7 +139,7 @@ export function PlaybackControls({ waypoints, totalDuration }: PlaybackControlsP
         <button
           onClick={toggleFollowHeading}
           className="p-1 text-text-secondary hover:text-text-primary cursor-pointer"
-          title={followHeadingLocked ? "Unlock camera heading (free rotate)" : "Lock camera heading (track drone)"}
+          title={followHeadingLocked ? t("unlockCameraHeading") : t("lockCameraHeading")}
         >
           {followHeadingLocked ? <Lock size={12} /> : <Unlock size={12} />}
         </button>

@@ -11,6 +11,7 @@ import { useMissionStore } from "@/stores/mission-store";
 import { useSimulationStore } from "@/stores/simulation-store";
 import { useInterpolatedPosition } from "@/hooks/use-interpolated-position";
 import { useCameraTriggerCount } from "./CameraTriggerEntities";
+import { useTranslations } from "next-intl";
 import { formatEta } from "@/lib/simulation-utils";
 import { formatAlt, formatHeading, haversineDistance } from "@/lib/telemetry-utils";
 
@@ -18,6 +19,7 @@ export function SimulationHUD() {
   const waypoints = useMissionStore((s) => s.waypoints);
   const totalDuration = useSimulationStore((s) => s.totalDuration);
   const playbackState = useSimulationStore((s) => s.playbackState);
+  const t = useTranslations("simulate");
   const { pos, elapsed } = useInterpolatedPosition();
   const photoCount = useCameraTriggerCount(waypoints);
 
@@ -45,7 +47,7 @@ export function SimulationHUD() {
     { label: "HDG", value: formatHeading(pos.heading) },
     { label: "DIST", value: distLabel },
     { label: "ETA", value: formatEta(remaining) },
-    ...(photoCount > 0 ? [{ label: "CAM", value: `${photoCount} photos` }] : []),
+    ...(photoCount > 0 ? [{ label: "CAM", value: t("photosCount", { count: photoCount }) }] : []),
   ];
 
   // Show HOLD indicator when speed is 0 and playing
