@@ -209,7 +209,10 @@ export function WelcomeModal() {
                 <button
                   key={code}
                   type="button"
-                  onClick={() => setSelectedLocale(code)}
+                  onClick={() => {
+                    setSelectedLocale(code);
+                    setLocale(code);
+                  }}
                   className={`flex flex-col items-center gap-1 p-4 border rounded-sm transition-all ${
                     isSelected
                       ? "border-accent-primary bg-accent-primary/10 text-text-primary"
