@@ -7,6 +7,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { AlertTriangle, X } from "lucide-react";
 import { useTrafficStore } from "@/stores/traffic-store";
 import { THREAT_COLORS, THREAT_LABELS, type TrafficAlert } from "@/lib/airspace/types";
@@ -29,6 +30,7 @@ export function AlertsPanel() {
 }
 
 function AlertCard({ alert, onDismiss }: { alert: TrafficAlert; onDismiss: () => void }) {
+  const t = useTranslations("airTraffic");
   const color = THREAT_COLORS[alert.level];
   const label = THREAT_LABELS[alert.level];
   const callsign = alert.callsign?.trim() || alert.icao24.toUpperCase();
@@ -48,7 +50,7 @@ function AlertCard({ alert, onDismiss }: { alert: TrafficAlert; onDismiss: () =>
           <span className="text-[11px] font-mono font-bold" style={{ color }}>
             {label}
           </span>
-          <span className="text-[9px] font-mono text-text-tertiary">{age}s ago</span>
+          <span className="text-[9px] font-mono text-text-tertiary">{t("agoSeconds", { seconds: age })}</span>
         </div>
         <p className="text-[10px] font-mono text-text-secondary mt-0.5">
           {callsign} at {alert.distanceKm.toFixed(1)}km,{" "}

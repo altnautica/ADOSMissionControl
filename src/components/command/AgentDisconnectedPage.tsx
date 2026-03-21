@@ -31,62 +31,11 @@ import { useConvexAvailable } from "@/app/ConvexClientProvider";
 import { cmdPairingApi } from "@/lib/community-api-drones";
 import { usePairingStore } from "@/stores/pairing-store";
 
-const features = [
-  {
-    icon: Radio,
-    title: "MAVLink Proxy",
-    description:
-      "Full bidirectional flight controller access over WebSocket, TCP, and UDP. Configure, monitor, and control your drone from anywhere.",
-  },
-  {
-    icon: Video,
-    title: "HD Video Streaming",
-    description:
-      "Live HD video from your drone to any browser. Low-latency streaming powered by WFB-ng and OpenHD with RTL8812-series WiFi adapters.",
-  },
-  {
-    icon: Signal,
-    title: "4G/5G Telemetry",
-    description:
-      "Fly beyond visual line of sight. Real-time telemetry and control over cellular networks. No range limits.",
-  },
-  {
-    icon: Wifi,
-    title: "Extended Range Datalinks",
-    description:
-      "Push your control range to 50km+ using RTL8812AU/EU WiFi adapters in monitor mode. Purpose-built for long-range drone operations.",
-  },
-  {
-    icon: Cpu,
-    title: "Plug & Play Hardware",
-    description:
-      "Automatic hardware detection and setup. The agent recognizes your flight controller, sensors, and peripherals on first boot. No manual configuration needed.",
-  },
-  {
-    icon: Sparkles,
-    title: "AI-Ready",
-    description:
-      "Built for autonomous operations. Python SDK, scripting engine, and REST API let you build intelligent flight behaviors and integrate ML models.",
-  },
-  {
-    icon: Layers,
-    title: "Software-Defined Drone",
-    description:
-      "Turn any ArduPilot or PX4 drone into a smart drone. One companion computer. Full software control over every system.",
-  },
-  {
-    icon: Terminal,
-    title: "SSH & Terminal Access",
-    description:
-      "Full TUI dashboard over SSH. Five screens for telemetry, MAVLink inspection, config editing, and logs. No browser needed.",
-  },
-  {
-    icon: Code2,
-    title: "Developer Tools",
-    description:
-      "REST API at :8080, Python SDK, YAML missions, CLI tools, and five scripting tiers from simple text commands to full autonomy.",
-  },
-];
+const featureIcons = [Radio, Video, Signal, Wifi, Cpu, Sparkles, Layers, Terminal, Code2];
+const featureKeys = [
+  "mavlinkProxy", "hdVideo", "cellularTelemetry", "extendedRange",
+  "plugAndPlay", "aiReady", "softwareDefined", "sshTerminal", "devTools",
+] as const;
 
 const INSTALL_URL =
   "https://raw.githubusercontent.com/altnautica/ADOSDroneAgent/main/scripts/install.sh";
@@ -99,6 +48,17 @@ interface AgentDisconnectedPageProps {
 export function AgentDisconnectedPage({
   onOpenPairing,
 }: AgentDisconnectedPageProps) {
+  const t = useTranslations("disconnectedPage");
+  const tc = useTranslations("command");
+
+  const features = useMemo(() =>
+    featureKeys.map((key, i) => ({
+      icon: featureIcons[i],
+      title: t(key),
+      description: t(`${key}Desc`),
+    })),
+  [t]);
+
   const [code, setCode] = useState<string | null>(null);
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedInstall, setCopiedInstall] = useState(false);
@@ -202,10 +162,10 @@ export function AgentDisconnectedPage({
         <div className="text-center space-y-3">
           <div className="inline-flex items-center gap-2 px-3 py-1 text-sm font-medium bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 rounded-full">
             <AlertTriangle size={12} />
-            ALPHA
+            {t("alpha")}
           </div>
           <h1 className="text-3xl font-display font-bold text-text-primary">
-            Pair Your Drone
+            {t("pairYourDrone")}
           </h1>
           <p className="text-text-secondary text-base max-w-lg mx-auto">
             Install the agent, enter this code, and you&apos;re connected.

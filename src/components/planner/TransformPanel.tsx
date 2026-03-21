@@ -115,7 +115,7 @@ export function TransformPanel() {
       <div className="space-y-1.5">
         <div className="flex items-center gap-1.5 text-xs text-text-secondary">
           <RotateCw size={12} />
-          <span>Rotate Mission</span>
+          <span>{t("rotate")}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <Input
@@ -126,10 +126,10 @@ export function TransformPanel() {
             max={360}
             step={15}
             className="flex-1"
-            label="Angle °"
+            label={t("rotationAngle")}
           />
           <Button variant="ghost" size="sm" onClick={() => setPendingAction("rotate")} disabled={disabled}>
-            Rotate
+            {t("rotate")}
           </Button>
         </div>
       </div>
@@ -138,7 +138,7 @@ export function TransformPanel() {
       <div className="space-y-1.5">
         <div className="flex items-center gap-1.5 text-xs text-text-secondary">
           <Maximize2 size={12} />
-          <span>Scale Mission</span>
+          <span>{t("scale")}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <Input
@@ -149,17 +149,17 @@ export function TransformPanel() {
             max={10}
             step={0.1}
             className="flex-1"
-            label="Factor"
+            label={t("scaleFactor")}
           />
           <Button variant="ghost" size="sm" onClick={() => setPendingAction("scale")} disabled={disabled}>
-            Scale
+            {t("scale")}
           </Button>
         </div>
       </div>
 
       {disabled && (
         <p className="text-[10px] text-text-tertiary">
-          Add at least 2 waypoints to use transform tools.
+          {t("minWaypointsHint")}
         </p>
       )}
 
@@ -167,9 +167,9 @@ export function TransformPanel() {
         open={pendingAction !== null}
         onConfirm={confirmTransform}
         onCancel={() => setPendingAction(null)}
-        title="Apply Transform"
+        title={t("applyTransform")}
         message={confirmMessage}
-        confirmLabel="Apply"
+        confirmLabel={t("apply")}
       />
     </div>
   );

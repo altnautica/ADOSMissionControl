@@ -39,7 +39,7 @@ export function LayerControlPanel() {
       <button
         onClick={() => setCollapsed(false)}
         className="absolute top-4 left-4 z-10 p-2 bg-bg-primary/70 backdrop-blur-md border border-border-default rounded-lg hover:bg-bg-secondary transition-colors cursor-pointer"
-        title="Show layer controls"
+        title={t("showLayerControls")}
       >
         <ChevronRight size={14} className="text-text-secondary" />
       </button>
@@ -53,7 +53,7 @@ export function LayerControlPanel() {
         <div className="flex items-center gap-1.5">
           <Layers size={12} className="text-text-tertiary" />
           <span className="text-[10px] font-mono font-bold text-text-secondary uppercase tracking-wider">
-            Layers
+            {t("layers")}
           </span>
         </div>
         <button
@@ -92,7 +92,7 @@ export function LayerControlPanel() {
 
       {/* Jurisdiction filters */}
       <div className="px-2 pt-1 pb-2 border-t border-border-default mt-1">
-        <span className="text-[9px] font-mono text-text-tertiary uppercase px-2">Jurisdictions</span>
+        <span className="text-[9px] font-mono text-text-tertiary uppercase px-2">{t("jurisdictions")}</span>
         <div className="flex flex-col gap-1 mt-1">
           {(Object.keys(JURISDICTIONS) as Jurisdiction[]).map((j) => (
             <label

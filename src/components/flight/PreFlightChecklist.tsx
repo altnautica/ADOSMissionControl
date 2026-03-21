@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { RotateCcw, Shield, ShieldCheck, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProgressBar } from "@/components/ui/progress-bar";
@@ -12,9 +13,10 @@ import { useSensorHealthStore } from "@/stores/sensor-health-store";
 import { useMissionStore } from "@/stores/mission-store";
 import { useGeofenceStore } from "@/stores/geofence-store";
 import { cn } from "@/lib/utils";
-import { CATEGORY_ORDER, CATEGORY_LABELS, ChecklistRow } from "./checklist-helpers";
+import { CATEGORY_ORDER, CATEGORY_LABEL_KEYS, ChecklistRow } from "./checklist-helpers";
 
 export function PreFlightChecklist({ className }: { className?: string }) {
+  const t = useTranslations("checklist");
   const items = useChecklistStore((s) => s.items);
   const sessionId = useChecklistStore((s) => s.sessionId);
   const startSession = useChecklistStore((s) => s.startSession);
@@ -176,7 +178,7 @@ export function PreFlightChecklist({ className }: { className?: string }) {
           return (
             <CollapsibleSection
               key={category}
-              title={CATEGORY_LABELS[category]}
+              title={t(CATEGORY_LABEL_KEYS[category])}
               defaultOpen
               count={catProgress.checked}
               trailing={
