@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import {
   Settings,
@@ -16,29 +17,29 @@ import type { ReactNode } from "react";
 
 interface NavItem {
   href: string;
-  label: string;
+  labelKey: string;
   icon: ReactNode;
 }
 
 const GCS_NAV_ITEMS: NavItem[] = [
-  { href: "/config", label: "General", icon: <Settings size={14} /> },
-  { href: "/config/input", label: "Input Devices", icon: <Gamepad2 size={14} /> },
-  { href: "/config/video", label: "Video", icon: <Video size={14} /> },
-  { href: "/config/notifications", label: "Notifications", icon: <Bell size={14} /> },
-  { href: "/config/theme", label: "Theme", icon: <Palette size={14} /> },
-  { href: "/config/data", label: "Data", icon: <Database size={14} /> },
-  { href: "/config/firmware", label: "Flash Tool", icon: <Zap size={14} /> },
+  { href: "/config", labelKey: "general", icon: <Settings size={14} /> },
+  { href: "/config/input", labelKey: "inputDevices", icon: <Gamepad2 size={14} /> },
+  { href: "/config/video", labelKey: "video", icon: <Video size={14} /> },
+  { href: "/config/notifications", labelKey: "notifications", icon: <Bell size={14} /> },
+  { href: "/config/theme", labelKey: "theme", icon: <Palette size={14} /> },
+  { href: "/config/data", labelKey: "data", icon: <Database size={14} /> },
+  { href: "/config/firmware", labelKey: "flashTool", icon: <Zap size={14} /> },
 ];
 
 export function ConfigNav() {
   const pathname = usePathname();
+  const t = useTranslations("configNav");
 
   return (
     <nav className="w-[200px] border-r border-border-default bg-bg-secondary flex-shrink-0 overflow-y-auto">
-      {/* GCS Settings */}
       <div className="px-3 py-3 border-b border-border-default">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
-          GCS Settings
+          {t("title")}
         </h2>
       </div>
       <div className="flex flex-col py-1">
@@ -54,7 +55,7 @@ export function ConfigNav() {
             )}
           >
             {item.icon}
-            {item.label}
+            {t(item.labelKey)}
           </Link>
         ))}
       </div>

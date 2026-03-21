@@ -244,36 +244,36 @@ export function CommandShell({ children }: { children: React.ReactNode }) {
           </Tooltip>
 
           {/* GitHub Star */}
-          <Tooltip content="Star on GitHub" position="bottom">
+          <Tooltip content={t("starOnGitHub")} position="bottom">
             <a
               href="https://github.com/altnautica/ADOSMissionControl"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1 text-text-secondary hover:text-text-primary transition-colors"
-              aria-label="Star on GitHub"
+              aria-label={t("starOnGitHub")}
             >
               <Star size={16} />
-              <span className="text-xs hidden sm:inline">Star</span>
+              <span className="text-xs hidden sm:inline">{t("star")}</span>
             </a>
           </Tooltip>
 
           {/* Flash Tool */}
-          <Tooltip content="Flash Tool" position="bottom">
+          <Tooltip content={t("flashTool")} position="bottom">
             <Link
               href="/config/firmware"
               className="text-text-secondary hover:text-text-primary transition-colors"
-              aria-label="Flash Tool"
+              aria-label={t("flashTool")}
             >
               <Zap size={16} />
             </Link>
           </Tooltip>
 
           {/* Settings */}
-          <Tooltip content="Settings" position="bottom">
+          <Tooltip content={t("settings")} position="bottom">
             <Link
               href="/config"
               className="text-text-secondary hover:text-text-primary transition-colors"
-              aria-label="Settings"
+              aria-label={t("settings")}
             >
               <Settings size={16} />
             </Link>

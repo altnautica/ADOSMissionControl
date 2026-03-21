@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { RotateCcw } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
@@ -11,6 +12,7 @@ import { useGcsLocationStore } from "@/stores/gcs-location-store";
 import { JURISDICTIONS, type Jurisdiction } from "@/lib/jurisdiction";
 
 export function GeneralSection() {
+  const t = useTranslations("general");
   const jurisdiction = useSettingsStore((s) => s.jurisdiction);
   const units = useSettingsStore((s) => s.units);
   const demoMode = useSettingsStore((s) => s.demoMode);
@@ -49,15 +51,15 @@ export function GeneralSection() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-sm font-semibold text-text-primary">General Settings</h2>
+      <h2 className="text-sm font-semibold text-text-primary">{t("title")}</h2>
 
       <Card>
         <div className="space-y-4">
           <Select
-            label="Regulatory Jurisdiction (optional)"
+            label={t("jurisdiction")}
             value={jurisdiction ?? ""}
             onChange={handleJurisdictionChange}
-            placeholder="— Not set"
+            placeholder={t("notSet")}
             options={(Object.entries(JURISDICTIONS) as [Jurisdiction, (typeof JURISDICTIONS)[Jurisdiction]][]).map(([key, cfg]) => ({
               value: key,
               label: `${cfg.flag}  ${cfg.name}`,

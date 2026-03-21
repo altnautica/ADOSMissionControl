@@ -86,13 +86,13 @@ export function ContactForm() {
 
         <div>
           <label className="text-xs text-text-tertiary block mb-1">
-            Name
+            {t("name")}
           </label>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Your name"
+            placeholder={t("namePlaceholder")}
             maxLength={100}
             className="w-full bg-bg-primary border border-border-default rounded px-3 py-1.5 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent-primary"
           />
@@ -100,13 +100,13 @@ export function ContactForm() {
 
         <div>
           <label className="text-xs text-text-tertiary block mb-1">
-            Email
+            {t("email")}
           </label>
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
+            placeholder={t("emailPlaceholder")}
             maxLength={200}
             className="w-full bg-bg-primary border border-border-default rounded px-3 py-1.5 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent-primary"
           />
@@ -114,14 +114,14 @@ export function ContactForm() {
 
         <div>
           <label className="text-xs text-text-tertiary block mb-1">
-            Subject{" "}
-            <span className="text-text-tertiary/60">(optional)</span>
+            {t("subject")}{" "}
+            <span className="text-text-tertiary/60">({t("subjectOptional")})</span>
           </label>
           <input
             type="text"
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
-            placeholder="What's this about?"
+            placeholder={t("subjectPlaceholder")}
             maxLength={200}
             className="w-full bg-bg-primary border border-border-default rounded px-3 py-1.5 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent-primary"
           />
@@ -129,14 +129,14 @@ export function ContactForm() {
 
         <div>
           <label className="text-xs text-text-tertiary block mb-1">
-            Message
+            {t("message")}
           </label>
           <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             rows={6}
             maxLength={5000}
-            placeholder="Your message..."
+            placeholder={t("messagePlaceholder")}
             className="w-full bg-bg-primary border border-border-default rounded px-3 py-1.5 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent-primary resize-y"
           />
         </div>
@@ -147,7 +147,7 @@ export function ContactForm() {
             disabled={submitting}
             className="px-3 py-1.5 text-sm font-medium bg-accent-primary text-bg-primary rounded hover:bg-accent-primary/90 disabled:opacity-50 transition-colors"
           >
-            {submitting ? "Sending..." : "Send Message"}
+            {submitting ? t("sending") : t("send")}
           </button>
         </div>
       </form>
