@@ -51,6 +51,10 @@ export const create = mutation({
     body: v.string(),
     tags: v.optional(v.array(v.string())),
     published: v.boolean(),
+    translations: v.optional(v.record(v.string(), v.object({
+      title: v.string(),
+      description: v.string(),
+    }))),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -74,6 +78,7 @@ export const create = mutation({
       tags: args.tags,
       published: args.published,
       source: "manual",
+      translations: args.translations,
     });
   },
 });
@@ -86,6 +91,10 @@ export const update = mutation({
     body: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
     published: v.optional(v.boolean()),
+    translations: v.optional(v.record(v.string(), v.object({
+      title: v.string(),
+      description: v.string(),
+    }))),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
