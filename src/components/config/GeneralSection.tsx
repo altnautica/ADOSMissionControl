@@ -67,17 +67,17 @@ export function GeneralSection() {
           />
 
           <Select
-            label="Units"
+            label={t("units")}
             value={units}
             onChange={(v) => setUnits(v as "metric" | "imperial")}
             options={[
-              { value: "metric", label: "Metric (m, km/h, \u00b0C)" },
-              { value: "imperial", label: "Imperial (ft, mph, \u00b0F)" },
+              { value: "metric", label: t("metric") },
+              { value: "imperial", label: t("imperial") },
             ]}
           />
 
           <Select
-            label="Timezone"
+            label={t("timezone")}
             value={timezone}
             onChange={setTimezone}
             options={[
@@ -88,19 +88,19 @@ export function GeneralSection() {
           />
 
           <Toggle
-            label="Auto-connect on startup"
+            label={t("autoConnect")}
             checked={autoConnectOnLoad}
             onChange={setAutoConnectOnLoad}
           />
 
           <Toggle
-            label="Auto-reconnect on disconnect"
+            label={t("autoReconnect")}
             checked={autoReconnect}
             onChange={setAutoReconnect}
           />
 
           <Select
-            label="Telemetry rate"
+            label={t("telemetryRate")}
             value={telemetryRate}
             onChange={setTelemetryRate}
             options={[
@@ -116,21 +116,21 @@ export function GeneralSection() {
       <Card>
         <div className="space-y-1">
           <Toggle
-            label="Demo Mode"
+            label={t("demoMode")}
             checked={demoMode}
             onChange={setDemoMode}
           />
           <p className="text-[10px] text-text-tertiary pl-0.5">
-            Simulates drone telemetry for exploring the interface without a connected flight controller.
+            {t("demoDescription")}
           </p>
         </div>
       </Card>
 
       {/* Location */}
-      <Card title="Location">
+      <Card title={t("locationTitle")}>
         <div className="space-y-3">
           <Toggle
-            label="Show My Position on Map"
+            label={t("showPosition")}
             checked={locationEnabled}
             onChange={async (enabled) => {
               if (enabled && permission !== "granted") {
@@ -148,7 +148,7 @@ export function GeneralSection() {
             }}
           />
           <p className="text-[10px] text-text-tertiary pl-0.5">
-            Browser-local only. Displays your position on map views so you can see where you are relative to your drone. Never sent to any server.
+            {t("locationDescription")}
           </p>
 
           {/* Permission status */}
@@ -159,10 +159,10 @@ export function GeneralSection() {
               "bg-text-tertiary"
             }`} />
             <span className="text-[10px] text-text-tertiary">
-              {permission === "granted" ? "Permission granted" :
-               permission === "denied" ? "Permission denied" :
-               permission === "unavailable" ? "Geolocation not available" :
-               "Not yet requested"}
+              {permission === "granted" ? t("permGranted") :
+               permission === "denied" ? t("permDenied") :
+               permission === "unavailable" ? t("permUnavailable") :
+               t("permNotRequested")}
             </span>
           </div>
 
