@@ -7,6 +7,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { useAgentStore } from "@/stores/agent-store";
 

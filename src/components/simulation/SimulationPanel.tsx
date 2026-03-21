@@ -175,19 +175,19 @@ export function SimulationPanel({
             </p>
           </div>
           <div>
-            <span className="text-[10px] font-mono text-text-tertiary">Speed</span>
+            <span className="text-[10px] font-mono text-text-tertiary">{t("speed")}</span>
             <p className="text-xs font-mono text-text-primary">{pos.speed.toFixed(1)} m/s</p>
           </div>
           <div>
-            <span className="text-[10px] font-mono text-text-tertiary">Heading</span>
+            <span className="text-[10px] font-mono text-text-tertiary">{t("heading")}</span>
             <p className="text-xs font-mono text-text-primary">{Math.round(pos.heading)}&deg;</p>
           </div>
           <div>
-            <span className="text-[10px] font-mono text-text-tertiary">Waypoints</span>
+            <span className="text-[10px] font-mono text-text-tertiary">{t("waypoints")}</span>
             <p className="text-xs font-mono text-text-primary">{waypoints.length}</p>
           </div>
           <div>
-            <span className="text-[10px] font-mono text-text-tertiary">Progress</span>
+            <span className="text-[10px] font-mono text-text-tertiary">{t("progress")}</span>
             <div className="flex items-center gap-1.5">
               <div className="flex-1 h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
                 <div
@@ -203,7 +203,7 @@ export function SimulationPanel({
         {/* Altitude profile */}
         <div className="px-3 py-2 border-b border-border-default">
           <h3 className="text-[10px] font-mono text-text-tertiary uppercase tracking-wider mb-1">
-            Altitude Profile
+            {t("altitudeProfile")}
           </h3>
           <AltitudeProfile waypoints={waypoints} flightPlan={flightPlan} />
         </div>
@@ -217,7 +217,7 @@ export function SimulationPanel({
             >
               <Mountain size={12} className="text-text-tertiary" />
               <span className="text-[10px] font-mono text-text-tertiary uppercase tracking-wider flex-1 text-left">
-                Terrain Profile
+                {t("terrainProfile")}
               </span>
               <ChevronDown
                 size={12}
@@ -237,7 +237,7 @@ export function SimulationPanel({
         {currentWp && (
           <div className="px-3 py-2 border-b border-border-default">
             <h3 className="text-[10px] font-mono text-text-tertiary uppercase tracking-wider mb-1.5">
-              Active Waypoint
+              {t("activeWaypoint")}
             </h3>
             <div className="bg-accent-primary/10 border border-accent-primary/30 rounded p-2">
               <div className="flex items-center gap-1.5 mb-1.5">
@@ -274,7 +274,7 @@ export function SimulationPanel({
         {/* Waypoint progress list with ETAs */}
         <div className="px-3 py-2 border-b border-border-default">
           <h3 className="text-[10px] font-mono text-text-tertiary uppercase tracking-wider mb-2">
-            Waypoint Progress
+            {t("waypointProgress")}
           </h3>
           <div className="space-y-1">
             {waypoints.map((wp, i) => {
@@ -343,7 +343,7 @@ export function SimulationPanel({
         {/* Camera mode buttons */}
         <div className="px-3 py-2 border-b border-border-default">
           <h3 className="text-[10px] font-mono text-text-tertiary uppercase tracking-wider mb-2">
-            Camera
+            {t("camera")}
           </h3>
           <div className="flex gap-1.5">
             {CAMERA_MODES.map((mode) => (
@@ -367,7 +367,7 @@ export function SimulationPanel({
         {/* Quick Actions */}
         <div className="px-3 py-2 border-b border-border-default">
           <h3 className="text-[10px] font-mono text-text-tertiary uppercase tracking-wider mb-2">
-            Quick Actions
+            {t("quickActions")}
           </h3>
           <div className="flex gap-1.5">
             <button
@@ -375,7 +375,7 @@ export function SimulationPanel({
               className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-[10px] font-mono bg-bg-tertiary/50 text-text-secondary hover:text-text-primary border border-border-default transition-colors cursor-pointer"
             >
               <Pencil size={10} />
-              Edit in Planner
+              {t("editInPlanner")}
             </button>
             <button
               onClick={handleExport}
@@ -383,7 +383,7 @@ export function SimulationPanel({
               className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-[10px] font-mono bg-bg-tertiary/50 text-text-secondary hover:text-text-primary border border-border-default transition-colors cursor-pointer disabled:opacity-50"
             >
               <FileDown size={10} />
-              Export
+              {t("export")}
             </button>
           </div>
         </div>

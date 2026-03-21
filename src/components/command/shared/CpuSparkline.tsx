@@ -6,10 +6,12 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { AreaChart, Area, ResponsiveContainer } from "recharts";
 import { useAgentStore } from "@/stores/agent-store";
 
 export function CpuSparkline() {
+  const t = useTranslations("agent");
   const cpuHistory = useAgentStore((s) => s.cpuHistory);
   const data = cpuHistory.map((value, i) => ({ i, value }));
 
@@ -18,7 +20,7 @@ export function CpuSparkline() {
   return (
     <div className="border border-border-default rounded-lg p-3 bg-bg-secondary">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs text-text-secondary">CPU History (60s)</span>
+        <span className="text-xs text-text-secondary">{t("cpuHistory")}</span>
         <span className="text-xs text-text-primary font-mono">
           {data.length > 0 ? `${data[data.length - 1].value.toFixed(1)}%` : "--"}
         </span>

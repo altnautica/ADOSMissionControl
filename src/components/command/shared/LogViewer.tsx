@@ -19,15 +19,20 @@ const levelColors: Record<LogEntry["level"], string> = {
   error: "text-status-error",
 };
 
-const levelFilters: Array<{ label: string; value: string | undefined }> = [
-  { label: "All", value: undefined },
-  { label: "Info", value: "info" },
-  { label: "Warning", value: "warning" },
-  { label: "Error", value: "error" },
-];
+const levelFilterKeys = [
+  { key: "allLogs", value: undefined },
+  { key: "infoLogs", value: "info" },
+  { key: "warningLogs", value: "warning" },
+  { key: "errorLogs", value: "error" },
+] as const;
 
 export function LogViewer({ logs, onRefresh }: LogViewerProps) {
+  const t = useTranslations("agent");
   const cloudMode = useAgentStore((s) => s.cloudMode);
+
+  const levelFilters = useMemo(() =>
+    levelFilterKeys.map((f) => ({ label: t(f.key), value: f.value })),
+  [t]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
   const [levelFilter, setLevelFilter] = useState<string | undefined>(undefined);
@@ -47,7 +52,7 @@ export function LogViewer({ logs, onRefresh }: LogViewerProps) {
   return (
     <div className="border border-border-default rounded-lg flex flex-col">
       <div className="flex items-center gap-2 px-3 py-2 border-b border-border-default">
-        <h3 className="text-sm font-medium text-text-primary">Logs</h3>
+        <h3 className="text-sm font-medium text-text-primary">{t("logs")}</h3>
         <div className="flex items-center gap-1 ml-2">
           {levelFilters.map((f) => (
             <button
@@ -70,7 +75,7 @@ export function LogViewer({ logs, onRefresh }: LogViewerProps) {
         <button
           onClick={() => onRefresh(levelFilter)}
           className="ml-auto p-1 text-text-tertiary hover:text-accent-primary transition-colors"
-          title="Refresh logs"
+          title={t("refreshLogs")}
         >
           <RefreshCw size={12} />
         </button>
@@ -83,7 +88,7 @@ export function LogViewer({ logs, onRefresh }: LogViewerProps) {
       >
         {!Array.isArray(logs) || logs.length === 0 ? (
           <p className="text-text-tertiary text-center py-4">
-            {cloudMode ? "Waiting for logs from agent..." : "No logs"}
+            {cloudMode ? t("waitingForLogs") : t("noLogs")}
           </p>
         ) : (
           (Array.isArray(logs) ? logs : []).map((entry, i) => (
