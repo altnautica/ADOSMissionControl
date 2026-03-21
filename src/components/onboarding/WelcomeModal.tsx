@@ -229,10 +229,7 @@ export function WelcomeModal() {
 
           <button
             type="button"
-            onClick={() => {
-              setLocale(selectedLocale);
-              advance(1);
-            }}
+            onClick={() => advance(1)}
             className="h-10 px-8 bg-accent-primary text-black text-sm font-semibold hover:brightness-110 transition-all rounded-sm"
           >
             {t("language.continue")} →

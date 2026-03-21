@@ -7,6 +7,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useDroneMetadataStore } from "@/stores/drone-metadata-store";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ import {
 } from "@/lib/recent-connections";
 
 export function RecentConnections() {
+  const t = useTranslations("connect");
   const [connections, setConnections] = useState<RecentConnection[]>([]);
   const [reconnecting, setReconnecting] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -149,7 +151,7 @@ export function RecentConnections() {
               onClick={() => handleReconnect(conn, i)}
               loading={reconnecting === i}
             >
-              Reconnect
+              {t("reconnect")}
             </Button>
           </div>
         </div>
@@ -162,7 +164,7 @@ export function RecentConnections() {
           icon={<Trash2 size={10} />}
           onClick={clearHistory}
         >
-          Clear
+          {t("clear")}
         </Button>
       </div>
     </div>

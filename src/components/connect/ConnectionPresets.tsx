@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Star, Trash2, Usb, Wifi } from "lucide-react";
@@ -15,6 +16,7 @@ export function ConnectionPresets({
 }: {
   onApply: (preset: ConnectionPreset) => void;
 }) {
+  const t = useTranslations("connect");
   const [presets, setPresets] = useState<ConnectionPreset[]>([]);
 
   useEffect(() => {
@@ -29,7 +31,7 @@ export function ConnectionPresets({
   if (presets.length === 0) {
     return (
       <p className="text-[10px] text-text-tertiary py-2">
-        No saved presets. Connect and save a preset for quick access.
+        {t("noPresets")}
       </p>
     );
   }

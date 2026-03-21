@@ -38,7 +38,7 @@
       "yourPosition": "Afficher ma position sur la carte",
       "yourPositionDescription": "Affiche ton marqueur sur la carte. Ne quitte jamais ton appareil.",
       "locationGranted": "Accès à la localisation accordé",
-      "locationDenied": "Permission refusée — activez dans les paramètres du navigateur ou configurez plus tard"
+      "locationDenied": "Permission refusée — active dans les paramètres du navigateur ou configure plus tard"
     },
     "ready": {
       "title": "Tu es prêt.",

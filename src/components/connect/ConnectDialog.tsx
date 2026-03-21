@@ -7,6 +7,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/modal";
 import { Tabs } from "@/components/ui/tabs";
@@ -24,16 +25,17 @@ import { savePreset, type ConnectionPreset } from "@/lib/connection-presets";
 import { randomId } from "@/lib/utils";
 import { Usb, Zap, Radio, Save, Star, History } from "lucide-react";
 
-const CONNECTION_TABS = [
-  { id: "serial", label: "USB Serial" },
-  { id: "websocket", label: "WebSocket" },
-];
-
 export function ConnectDialog() {
+  const t = useTranslations("connect");
   const open = useConnectDialogStore((s) => s.open);
   const closeDialog = useConnectDialogStore((s) => s.closeDialog);
   const droneCount = useDroneManager((s) => s.drones.size);
   const router = useRouter();
+
+  const CONNECTION_TABS = [
+    { id: "serial", label: t("usbSerial") },
+    { id: "websocket", label: t("webSocket") },
+  ];
 
   const [tab, setTab] = useState("serial");
   const [presetsKey, setPresetsKey] = useState(0);
@@ -126,7 +128,7 @@ export function ConnectDialog() {
     <Modal
       open={open}
       onClose={closeDialog}
-      title="Connect to Drone"
+      title={t("title")}
       className="max-w-3xl"
     >
       <div className="max-h-[80vh] overflow-y-auto space-y-4 -m-4 p-4">
