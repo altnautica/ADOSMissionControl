@@ -1,6 +1,6 @@
-# Altnautica Command
+# Altnautica Mission Control
 
-**Open-source web GCS for software-defined drones. AI tuning. 50km+ data link. Live video. Full gamepad flight control.**
+**Open-source web GCS for software-defined drones, supports full ardupilot, PX4 and betaflight. AI tuning. 50km+ data link. Live video. Full gamepad flight control.**
 
 ![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-green.svg) ![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue.svg) ![Next.js 16](https://img.shields.io/badge/Next.js-16-black.svg) ![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg) [![Discord](https://img.shields.io/badge/Discord-Join-5865F2.svg)](https://discord.gg/uxbvuD4d5q)
 
