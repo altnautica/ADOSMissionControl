@@ -137,7 +137,7 @@ export function SerialPanel({
     return (
       <div className="py-4 text-center">
         <p className="text-xs text-status-warning">
-          Web Serial not supported in this browser. Use Chrome or Edge.
+          {t("webSerialNotSupported")}
         </p>
       </div>
     );
@@ -146,7 +146,7 @@ export function SerialPanel({
   const portOptions =
     knownPorts.length > 0
       ? knownPorts.map((p, i) => ({ value: String(i), label: p.label }))
-      : [{ value: "-1", label: "No ports — request one below" }];
+      : [{ value: "-1", label: t("noPortsHint") }];
 
   return (
     <div className="space-y-4">
@@ -155,7 +155,7 @@ export function SerialPanel({
         <div className="flex items-center gap-2">
           <div className="flex-1">
             <Select
-              label="Port"
+              label={t("port")}
               options={portOptions}
               value={selectedPortIndex}
               onChange={setSelectedPortIndex}
@@ -163,7 +163,7 @@ export function SerialPanel({
           </div>
           <div className="flex-1">
             <Select
-              label="Baud Rate"
+              label={t("baudRate")}
               options={BAUD_RATES}
               value={baudRate}
               onChange={setBaudRate}
@@ -178,7 +178,7 @@ export function SerialPanel({
             <span className="text-[10px] text-text-tertiary font-mono">
               {knownPorts[parseInt(selectedPortIndex)]?.vendorId !== undefined
                 ? `VID: ${knownPorts[parseInt(selectedPortIndex)].vendorId?.toString(16).toUpperCase().padStart(4, "0")} · PID: ${knownPorts[parseInt(selectedPortIndex)].productId?.toString(16).toUpperCase().padStart(4, "0")}`
-                : "No USB info available"}
+                : t("noUsbInfo")}
             </span>
           </div>
         )}
@@ -192,14 +192,14 @@ export function SerialPanel({
           icon={<Plug size={14} />}
           disabled={knownPorts.length === 0}
         >
-          {connecting ? "Connecting..." : "Connect"}
+          {connecting ? t("connecting") : t("connect")}
         </Button>
         <Button
           variant="secondary"
           onClick={handleRequestPort}
           icon={<Plus size={14} />}
         >
-          Request Port
+          {t("requestPort")}
         </Button>
       </div>
 
