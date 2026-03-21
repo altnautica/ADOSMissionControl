@@ -7,6 +7,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { Plus } from "lucide-react";
 import { WaypointListItem } from "./WaypointListItem";
 import { usePlannerStore } from "@/stores/planner-store";
@@ -81,11 +82,13 @@ export function WaypointList({
     setDragOverIndex(null);
   }, []);
 
+  const t = useTranslations("planner");
+
   if (waypoints.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-8 gap-2">
-        <p className="text-xs text-text-tertiary">No waypoints added</p>
-        <p className="text-[10px] text-text-tertiary">Click map or press [+] to add</p>
+        <p className="text-xs text-text-tertiary">{t("noWaypoints")}</p>
+        <p className="text-[10px] text-text-tertiary">{t("addWaypointHint")}</p>
       </div>
     );
   }

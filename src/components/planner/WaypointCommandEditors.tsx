@@ -5,6 +5,7 @@
  */
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import type { Waypoint } from "@/lib/types";

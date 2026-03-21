@@ -6,19 +6,11 @@
  */
 "use client";
 
+import { useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import type { FleetDrone, SuiteType } from "@/lib/types";
-
-const SUITE_OPTIONS: { value: SuiteType | ""; label: string }[] = [
-  { value: "", label: "None" },
-  { value: "sentry", label: "Sentry" },
-  { value: "survey", label: "Survey" },
-  { value: "agriculture", label: "Agriculture" },
-  { value: "cargo", label: "Cargo" },
-  { value: "sar", label: "SAR" },
-  { value: "inspection", label: "Inspection" },
-];
 
 interface MissionEditorProps {
   drones: FleetDrone[];
@@ -39,12 +31,23 @@ export function MissionEditor({
   onDroneChange,
   onSuiteChange,
 }: MissionEditorProps) {
+  const t = useTranslations("planner");
   const availableDrones = drones.filter(
     (d) => d.status === "idle" || d.status === "online"
   );
 
+  const SUITE_OPTIONS: { value: SuiteType | ""; label: string }[] = useMemo(() => [
+    { value: "", label: t("none") },
+    { value: "sentry", label: "Sentry" },
+    { value: "survey", label: "Survey" },
+    { value: "agriculture", label: "Agriculture" },
+    { value: "cargo", label: "Cargo" },
+    { value: "sar", label: "SAR" },
+    { value: "inspection", label: "Inspection" },
+  ], [t]);
+
   const droneOptions = [
-    { value: "", label: "Select drone..." },
+    { value: "", label: t("selectDrone") },
     ...availableDrones.map((d) => ({
       value: d.id,
       label: `${d.name} (${Math.round(d.battery?.remaining ?? 0)}%)`,
@@ -54,19 +57,19 @@ export function MissionEditor({
   return (
     <div className="flex flex-col gap-2 px-3 py-2">
       <Input
-        label="Mission Name"
-        placeholder="e.g., Campus Patrol A"
+        label={t("missionName")}
+        placeholder={t("missionNamePlaceholder")}
         value={missionName}
         onChange={(e) => onNameChange(e.target.value)}
       />
       <Select
-        label="Assign Drone"
+        label={t("assignDrone")}
         options={droneOptions}
         value={selectedDroneId}
         onChange={onDroneChange}
       />
       <Select
-        label="Suite"
+        label={t("suite")}
         options={SUITE_OPTIONS}
         value={suiteType}
         onChange={onSuiteChange}

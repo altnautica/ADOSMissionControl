@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { useFleetStore } from "@/stores/fleet-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useDroneMetadataStore } from "@/stores/drone-metadata-store";
@@ -18,13 +19,7 @@ import { X, RotateCcw, Trash2 } from "lucide-react";
 import { ConnectionQualityMeter } from "@/components/indicators/ConnectionQualityMeter";
 import { useUiStore } from "@/stores/ui-store";
 
-const TABS = [
-  { id: "overview", label: "Overview" },
-  { id: "flights", label: "Flights" },
-  { id: "calibrate", label: "Calibrate" },
-  { id: "parameters", label: "Parameters" },
-  { id: "configure", label: "Configure" },
-];
+const TAB_IDS = ["overview", "flights", "calibrate", "parameters", "configure"] as const;
 
 interface DroneDetailPanelProps {
   droneId: string;

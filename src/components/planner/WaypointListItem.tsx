@@ -8,6 +8,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { GripVertical, X, ChevronDown, ChevronRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -41,6 +42,7 @@ export function WaypointListItem({
   onToggleExpand, onSelect, onUpdate, onRemove,
   onDragStart, onDragOver, onDragEnd, onDrop, dragOver,
 }: WaypointListItemProps) {
+  const t = useTranslations("planner");
   const cmd = waypoint.command ?? "WAYPOINT";
   const letter = CMD_LETTER[cmd] ?? "W";
   const defaultFrame = usePlannerStore((s) => s.defaultFrame);
@@ -95,7 +97,7 @@ export function WaypointListItem({
           <span className="text-[10px] font-mono text-text-tertiary">{waypoint.alt}m</span>
           <span className="text-[9px] font-mono text-accent-primary/70 bg-accent-primary/10 px-1 py-px">{frameLabel}</span>
           {waypoint.groundElevation !== undefined && (
-            <span className="text-[9px] font-mono text-status-success bg-status-success/10 px-1 py-px">{Math.round(waypoint.alt)}m above ground ({Math.round(waypoint.groundElevation)}m MSL)</span>
+            <span className="text-[9px] font-mono text-status-success bg-status-success/10 px-1 py-px">{t("aboveGround", { alt: Math.round(waypoint.alt), elev: Math.round(waypoint.groundElevation) })}</span>
           )}
         </div>
         <button onClick={(e) => { e.stopPropagation(); onToggleExpand(); }} className="text-text-tertiary hover:text-text-primary shrink-0 cursor-pointer">
@@ -110,18 +112,18 @@ export function WaypointListItem({
       {expanded && (
         <div className="px-3 pb-2 pt-1 flex flex-col gap-2 bg-bg-tertiary/50">
           <div className="grid grid-cols-2 gap-2">
-            <Input label="Lat" type="number" step="0.0001" value={localLat}
+            <Input label={t("lat")} type="number" step="0.0001" value={localLat}
               onChange={(e) => setLocalLat(e.target.value)} onBlur={() => commitField("lat", localLat)} />
-            <Input label="Lon" type="number" step="0.0001" value={localLon}
+            <Input label={t("lon")} type="number" step="0.0001" value={localLon}
               onChange={(e) => setLocalLon(e.target.value)} onBlur={() => commitField("lon", localLon)} />
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <Input label="Alt" type="number" unit="m" value={localAlt}
+            <Input label={t("altitude")} type="number" unit="m" value={localAlt}
               onChange={(e) => setLocalAlt(e.target.value)} onBlur={() => commitField("alt", localAlt)} />
-            <Input label="Speed" type="number" unit="m/s" placeholder="default" value={localSpeed}
+            <Input label={t("speed")} type="number" unit="m/s" placeholder={t("default")} value={localSpeed}
               onChange={(e) => setLocalSpeed(e.target.value)} onBlur={() => commitField("speed", localSpeed)} />
           </div>
-          <Select label="Command" options={COMMAND_OPTIONS} value={cmd}
+          <Select label={t("command")} options={COMMAND_OPTIONS} value={cmd}
             onChange={(v) => onUpdate({ command: v as WaypointCommand })} />
           <CommandSpecificEditors
             cmd={cmd} waypoint={waypoint}

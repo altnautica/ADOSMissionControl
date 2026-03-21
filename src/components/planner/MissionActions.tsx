@@ -8,6 +8,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Upload, Save, MoreHorizontal, Download, FileDown, FileOutput, FileSpreadsheet, Globe, Copy, ArrowDownUp, Trash2, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu } from "@/components/ui/dropdown-menu";
@@ -48,20 +49,21 @@ export function MissionActions({
   onDiscard,
 }: MissionActionsProps) {
   const router = useRouter();
+  const t = useTranslations("planner");
 
   const isDownloading = downloadState === "downloading";
   const overflowItems = [
-    { id: "download-drone", label: isDownloading ? "Loading..." : "Download from Drone", icon: <Download size={12} />, disabled: isDownloading || !hasDrone },
+    { id: "download-drone", label: isDownloading ? t("loading") : t("downloadFromDrone"), icon: <Download size={12} />, disabled: isDownloading || !hasDrone },
     { id: "div1", label: "", divider: true },
-    { id: "export-waypoints", label: "Export .waypoints", icon: <FileDown size={12} /> },
-    { id: "export-plan", label: "Export .plan (QGC)", icon: <FileOutput size={12} /> },
-    { id: "export-kml", label: "Export .kml", icon: <Globe size={12} /> },
-    { id: "export-csv", label: "Export .csv", icon: <FileSpreadsheet size={12} /> },
-    { id: "save-as", label: "Save As New Plan", icon: <Copy size={12} /> },
+    { id: "export-waypoints", label: t("exportWaypoints"), icon: <FileDown size={12} /> },
+    { id: "export-plan", label: t("exportPlanQgc"), icon: <FileOutput size={12} /> },
+    { id: "export-kml", label: t("exportKml"), icon: <Globe size={12} /> },
+    { id: "export-csv", label: t("exportCsv"), icon: <FileSpreadsheet size={12} /> },
+    { id: "save-as", label: t("saveAsNewPlan"), icon: <Copy size={12} /> },
     { id: "div2", label: "", divider: true },
-    { id: "reverse", label: "Reverse Waypoints", icon: <ArrowDownUp size={12} /> },
+    { id: "reverse", label: t("reverseWaypoints"), icon: <ArrowDownUp size={12} /> },
     { id: "div3", label: "", divider: true },
-    { id: "discard", label: "Discard Changes", icon: <Trash2 size={12} />, danger: true },
+    { id: "discard", label: t("discardChanges"), icon: <Trash2 size={12} />, danger: true },
   ];
 
   const handleOverflow = (id: string) => {
@@ -85,7 +87,7 @@ export function MissionActions({
           disabled={!isDirty}
           onClick={onSave}
         >
-          Save
+          {t("saveMission")}
         </Button>
         <Button
           variant="primary"
@@ -96,7 +98,7 @@ export function MissionActions({
           loading={uploadState === "uploading"}
           onClick={onUpload}
         >
-          Upload to Drone
+          {t("uploadToFc")}
         </Button>
         <DropdownMenu
           trigger={
@@ -115,7 +117,7 @@ export function MissionActions({
         disabled={!hasWaypoints}
         onClick={() => router.push("/simulate")}
       >
-        Simulate in 3D
+        {t("simulateIn3d")}
       </Button>
     </div>
   );
