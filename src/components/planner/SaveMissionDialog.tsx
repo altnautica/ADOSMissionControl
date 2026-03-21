@@ -64,17 +64,17 @@ export function SaveMissionDialog({
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Save Mission" className="max-w-md">
+    <Modal open={open} onClose={onClose} title={t("saveMission")} className="max-w-md">
       <div className="flex flex-col gap-4">
         <Input
-          label="Mission name"
+          label={t("missionName")}
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Untitled Mission"
+          placeholder={t("untitledMission")}
         />
 
         <div className="flex flex-col gap-2">
-          <span className="text-xs text-text-secondary">Choose format:</span>
+          <span className="text-xs text-text-secondary">{t("chooseFormat")}</span>
           {FORMAT_CARDS.map((card) => (
             <button
               key={card.id}

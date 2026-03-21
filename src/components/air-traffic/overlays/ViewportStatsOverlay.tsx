@@ -51,14 +51,14 @@ export function ViewportStatsOverlay() {
       <div className="w-px h-3 bg-border-default/50" />
 
       {/* Zoom / altitude */}
-      <span title="Camera altitude" className="text-text-tertiary">
+      <span title={t("cameraAltitude")} className="text-text-tertiary">
         {formatAltitude(viewportState.cameraAlt)}
       </span>
 
       <div className="w-px h-3 bg-border-default/50" />
 
       {/* Display mode */}
-      <span className="text-text-tertiary capitalize" title="Display mode">
+      <span className="text-text-tertiary capitalize" title={t("displayMode")}>
         {displayMode}
       </span>
 

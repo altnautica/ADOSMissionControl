@@ -7,11 +7,13 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect, useState, useRef } from "react";
 import { useTrafficStore } from "@/stores/traffic-store";
 import { cn } from "@/lib/utils";
 
 export function ConnectionBanner() {
+  const t = useTranslations("airTraffic");
   const connectionQuality = useTrafficStore((s) => s.connectionQuality);
   const lastUpdate = useTrafficStore((s) => s.lastUpdate);
   const [showGood, setShowGood] = useState(false);
@@ -45,9 +47,9 @@ export function ConnectionBanner() {
           connectionQuality === "disconnected" && "bg-red-500/10 border-red-500/30 text-red-400",
         )}
       >
-        {connectionQuality === "good" && "Connected"}
-        {connectionQuality === "degraded" && `ADS-B data stale (${staleSeconds}s ago)`}
-        {connectionQuality === "disconnected" && "Disconnected - using cached data"}
+        {connectionQuality === "good" && t("connected")}
+        {connectionQuality === "degraded" && t("adsbStale", { seconds: staleSeconds })}
+        {connectionQuality === "disconnected" && t("disconnectedCached")}
       </div>
     </div>
   );

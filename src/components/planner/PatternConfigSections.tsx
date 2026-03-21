@@ -6,6 +6,7 @@
 "use client";
 
 import { useMemo, useCallback, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Toggle } from "@/components/ui/toggle";
@@ -21,6 +22,7 @@ import {
 } from "./pattern-editor-constants";
 
 export function SurveyConfig() {
+  const t = useTranslations("planner");
   const surveyConfig = usePatternStore((s) => s.surveyConfig);
   const updateSurveyConfig = usePatternStore((s) => s.updateSurveyConfig);
   const drawnPolygons = useDrawingStore((s) => s.polygons);
@@ -131,7 +133,7 @@ export function SurveyConfig() {
               ? `${surveyConfig.polygon.length} vertices`
               : drawnPolygons.length > 0
                 ? `${selectedPolygonIds.length} of ${drawnPolygons.length} polygon${drawnPolygons.length > 1 ? "s" : ""} selected`
-                : "Draw a polygon on map first"}
+                : t("drawPolygonOnMap")}
           </span>
         </div>
         {!surveyConfig.polygon && drawnPolygons.length > 1 && (
@@ -152,11 +154,11 @@ export function SurveyConfig() {
       </div>
 
       {/* Preset dropdown */}
-      <Select label="Survey Preset" options={SURVEY_PRESET_OPTIONS}
+      <Select label={t("surveyPreset")} options={SURVEY_PRESET_OPTIONS}
         value={extConfig._preset ?? ""} onChange={handlePresetChange} />
 
       {/* Camera Profile */}
-      <Select label="Camera Profile" options={CAMERA_OPTIONS}
+      <Select label={t("cameraProfile")} options={CAMERA_OPTIONS}
         value={extConfig._cameraName ?? ""} onChange={handleCameraChange} />
       {gsdInfo && (
         <Tooltip content="Ground Sample Distance. Lower = higher detail. 2 cm/px = excellent, 5 cm/px = typical survey, 10 cm/px = coarse overview." position="right">
@@ -195,7 +197,7 @@ export function SurveyConfig() {
         </div>
       ) : (
         <>
-          <Input label="Line Spacing" type="number" unit="m" value={String(surveyConfig.lineSpacing ?? 25)}
+          <Input label={t("lineSpacing")} type="number" unit="m" value={String(surveyConfig.lineSpacing ?? 25)}
             onChange={(e) => updateSurveyConfig({ lineSpacing: parseFloat(e.target.value) || 25 })} />
         </>
       )}
@@ -222,33 +224,33 @@ export function SurveyConfig() {
       <button onClick={() => setShowAdvanced(!showAdvanced)}
         className="flex items-center gap-1 text-[10px] font-mono text-text-tertiary hover:text-text-secondary w-full py-1 cursor-pointer">
         <ChevronDown size={10} className={cn("transition-transform", showAdvanced && "rotate-180")} />
-        {showAdvanced ? "Hide Advanced" : "Show Advanced"}
+        {showAdvanced ? t("hideAdvanced") : t("showAdvanced")}
       </button>
 
       {showAdvanced && (
         <>
-          <Input label="Grid Angle" type="number" unit="deg" value={String(surveyConfig.gridAngle ?? 0)}
+          <Input label={t("gridAngle")} type="number" unit="deg" value={String(surveyConfig.gridAngle ?? 0)}
             onChange={(e) => updateSurveyConfig({ gridAngle: parseFloat(e.target.value) || 0 })} />
-          <Input label="Turn-around Distance" type="number" unit="m" value={String(surveyConfig.turnAroundDistance ?? 10)}
+          <Input label={t("turnAroundDistance")} type="number" unit="m" value={String(surveyConfig.turnAroundDistance ?? 10)}
             onChange={(e) => updateSurveyConfig({ turnAroundDistance: parseFloat(e.target.value) || 10 })} />
-          <Select label="Entry Point" options={ENTRY_LOCATION_OPTIONS} value={surveyConfig.entryLocation ?? "topLeft"}
+          <Select label={t("entryPoint")} options={ENTRY_LOCATION_OPTIONS} value={surveyConfig.entryLocation ?? "topLeft"}
             onChange={(v) => updateSurveyConfig({ entryLocation: v as "topLeft" | "topRight" | "bottomLeft" | "bottomRight" })} />
-          <Toggle label="Alternate Transects" checked={surveyConfig.flyAlternateTransects ?? false}
+          <Toggle label={t("alternateTransects")} checked={surveyConfig.flyAlternateTransects ?? false}
             onChange={(v) => updateSurveyConfig({ flyAlternateTransects: v })} />
-          <Toggle label="Crosshatch (90°)" checked={extConfig.crosshatch ?? false}
+          <Toggle label={t("crosshatch")} checked={extConfig.crosshatch ?? false}
             onChange={(v) => updateSurveyConfig({ crosshatch: v, tieLines: false } as Partial<typeof surveyConfig>)} />
-          <Toggle label="Tie Lines" checked={surveyConfig.tieLines ?? false}
+          <Toggle label={t("tieLines")} checked={surveyConfig.tieLines ?? false}
             onChange={(v) => updateSurveyConfig({ tieLines: v })}
             disabled={extConfig.crosshatch === true} />
           {surveyConfig.tieLines && (
             <div className="grid grid-cols-2 gap-2">
-              <Input label="Tie Angle" type="number" unit="deg" value={String(surveyConfig.tieLineAngle ?? 90)}
+              <Input label={t("tieAngle")} type="number" unit="deg" value={String(surveyConfig.tieLineAngle ?? 90)}
                 onChange={(e) => updateSurveyConfig({ tieLineAngle: parseFloat(e.target.value) || 90 })} />
-              <Input label="Tie Spacing" type="number" unit="m" value={String(surveyConfig.tieLineSpacing ?? 25)}
+              <Input label={t("tieSpacing")} type="number" unit="m" value={String(surveyConfig.tieLineSpacing ?? 25)}
                 onChange={(e) => updateSurveyConfig({ tieLineSpacing: parseFloat(e.target.value) || 25 })} />
             </div>
           )}
-          <Input label="Camera Trigger Dist" type="number" unit="m" placeholder="0 = off"
+          <Input label={t("cameraTriggerDist")} type="number" unit="m" placeholder="0 = off"
             value={String(surveyConfig.cameraTriggerDistance ?? 0)}
             onChange={(e) => updateSurveyConfig({ cameraTriggerDistance: parseFloat(e.target.value) || 0 })} />
         </>
@@ -258,6 +260,7 @@ export function SurveyConfig() {
 }
 
 export function OrbitConfig() {
+  const t = useTranslations("planner");
   const orbitConfig = usePatternStore((s) => s.orbitConfig);
   const updateOrbitConfig = usePatternStore((s) => s.updateOrbitConfig);
   const drawnCircles = useDrawingStore((s) => s.circles);
@@ -290,6 +293,7 @@ export function OrbitConfig() {
 }
 
 export function CorridorConfig() {
+  const t = useTranslations("planner");
   const corridorConfig = usePatternStore((s) => s.corridorConfig);
   const updateCorridorConfig = usePatternStore((s) => s.updateCorridorConfig);
   return (
@@ -298,11 +302,11 @@ export function CorridorConfig() {
         <Route size={12} />
         <span>
           {corridorConfig.pathPoints
-            ? `${corridorConfig.pathPoints.length} path points`
-            : "Draw corridor center line on map (measure tool)"}
+            ? `${corridorConfig.pathPoints.length} ${t("pathPoints")}`
+            : t("drawCorridorHint")}
         </span>
       </div>
-      <Input label="Corridor Width" type="number" unit="m" value={String(corridorConfig.corridorWidth ?? 50)}
+      <Input label={t("corridorWidth")} type="number" unit="m" value={String(corridorConfig.corridorWidth ?? 50)}
         onChange={(e) => updateCorridorConfig({ corridorWidth: parseFloat(e.target.value) || 50 })} />
       <Input label="Line Spacing" type="number" unit="m" value={String(corridorConfig.lineSpacing ?? 20)}
         onChange={(e) => updateCorridorConfig({ lineSpacing: parseFloat(e.target.value) || 20 })} />
@@ -317,6 +321,7 @@ export function CorridorConfig() {
 }
 
 export function SarExpandingSquareConfig() {
+  const t = useTranslations("planner");
   const config = usePatternStore((s) => s.sarExpandingSquareConfig);
   const update = usePatternStore((s) => s.updateSarExpandingSquareConfig);
   return (
@@ -342,6 +347,7 @@ export function SarExpandingSquareConfig() {
 }
 
 export function SarSectorSearchConfig() {
+  const t = useTranslations("planner");
   const config = usePatternStore((s) => s.sarSectorSearchConfig);
   const update = usePatternStore((s) => s.updateSarSectorSearchConfig);
   return (
@@ -367,6 +373,7 @@ export function SarSectorSearchConfig() {
 }
 
 export function SarParallelTrackConfig() {
+  const t = useTranslations("planner");
   const config = usePatternStore((s) => s.sarParallelTrackConfig);
   const update = usePatternStore((s) => s.updateSarParallelTrackConfig);
   return (

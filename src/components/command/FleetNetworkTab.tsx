@@ -52,19 +52,19 @@ export function FleetNetworkTab() {
         </div>
         <div className="grid grid-cols-2 gap-3 text-xs">
           <div>
-            <span className="text-text-tertiary">Status</span>
+            <span className="text-text-tertiary">{t("status")}</span>
             <div className="flex items-center gap-1.5 mt-0.5">
               <span className={cn(
                 "w-1.5 h-1.5 rounded-full",
                 mqttConnected ? "bg-status-success" : "bg-text-tertiary"
               )} />
               <span className="text-text-primary font-medium">
-                {mqttConnected ? "Connected" : "Disconnected"}
+                {mqttConnected ? t("connected") : t("disconnected")}
               </span>
             </div>
           </div>
           <div>
-            <span className="text-text-tertiary">Broker</span>
+            <span className="text-text-tertiary">{t("broker")}</span>
             <p className="text-text-secondary font-mono mt-0.5 text-[11px]">
               mqtt.altnautica.com
             </p>
@@ -77,17 +77,17 @@ export function FleetNetworkTab() {
         <div className="flex items-center gap-2 mb-3">
           <Radio size={14} className="text-text-secondary" />
           <h3 className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
-            Mesh Radio
+            {t("meshRadio")}
           </h3>
         </div>
         <div className="grid grid-cols-2 gap-3 text-xs">
           <div>
-            <span className="text-text-tertiary">LoRa</span>
-            <p className="text-text-secondary mt-0.5">Not installed</p>
+            <span className="text-text-tertiary">{t("lora")}</span>
+            <p className="text-text-secondary mt-0.5">{t("notInstalled")}</p>
           </div>
           <div>
-            <span className="text-text-tertiary">WiFi Direct</span>
-            <p className="text-text-secondary mt-0.5">Disabled</p>
+            <span className="text-text-tertiary">{t("wifiDirect")}</span>
+            <p className="text-text-secondary mt-0.5">{t("disabled")}</p>
           </div>
         </div>
       </div>
@@ -96,12 +96,12 @@ export function FleetNetworkTab() {
       <div className="border border-border-default rounded-lg p-4 bg-bg-secondary">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
-            ADOS Peers
+            {t("adosPeers")}
           </h3>
           <div className="flex items-center gap-2">
             {lastScan && (
               <span className="text-[10px] text-text-tertiary">
-                Last scan: {lastScan.toLocaleTimeString("en-IN", { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                {t("lastScan", { time: lastScan.toLocaleTimeString("en-IN", { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" }) })}
               </span>
             )}
             <button
@@ -114,24 +114,24 @@ export function FleetNetworkTab() {
               ) : (
                 <ScanLine size={10} />
               )}
-              Scan
+              {t("scan")}
             </button>
           </div>
         </div>
 
         {peers.length === 0 ? (
-          <p className="text-xs text-text-tertiary">No peers discovered</p>
+          <p className="text-xs text-text-tertiary">{t("noPeersDiscovered")}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-border-default text-text-tertiary">
-                  <th className="text-left py-1.5 pr-3 font-medium">Name</th>
-                  <th className="text-right py-1.5 pr-3 font-medium">Signal</th>
-                  <th className="text-right py-1.5 pr-3 font-medium">Distance</th>
-                  <th className="text-right py-1.5 pr-3 font-medium">Battery</th>
-                  <th className="text-center py-1.5 pr-3 font-medium">Tier</th>
-                  <th className="text-right py-1.5 font-medium">Link</th>
+                  <th className="text-left py-1.5 pr-3 font-medium">{t("peerName")}</th>
+                  <th className="text-right py-1.5 pr-3 font-medium">{t("signal")}</th>
+                  <th className="text-right py-1.5 pr-3 font-medium">{t("distance")}</th>
+                  <th className="text-right py-1.5 pr-3 font-medium">{t("battery")}</th>
+                  <th className="text-center py-1.5 pr-3 font-medium">{t("tier")}</th>
+                  <th className="text-right py-1.5 font-medium">{t("link")}</th>
                 </tr>
               </thead>
               <tbody>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { RotateCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDuration } from "@/lib/utils";
@@ -31,11 +32,12 @@ function statusBadge(status: string) {
 }
 
 export function ServiceTable({ services, onRestart }: ServiceTableProps) {
+  const t = useTranslations("agent");
   if (!services || !Array.isArray(services) || services.length === 0) {
     return (
       <div className="border border-border-default rounded-lg p-4">
-        <h3 className="text-sm font-medium text-text-primary mb-2">Services</h3>
-        <p className="text-xs text-text-tertiary">No services reported</p>
+        <h3 className="text-sm font-medium text-text-primary mb-2">{t("services")}</h3>
+        <p className="text-xs text-text-tertiary">{t("noServicesReported")}</p>
       </div>
     );
   }

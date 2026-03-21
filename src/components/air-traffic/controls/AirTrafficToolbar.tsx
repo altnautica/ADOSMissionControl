@@ -7,6 +7,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useCallback, useState, useRef, useEffect } from "react";
 import { Maximize, Compass, Camera, MapPin } from "lucide-react";
 import { Cartesian3, type Viewer as CesiumViewer } from "cesium";
@@ -16,6 +17,7 @@ interface AirTrafficToolbarProps {
 }
 
 export function AirTrafficToolbar({ viewer }: AirTrafficToolbarProps) {
+  const t = useTranslations("airTraffic");
   const handleFullscreen = useCallback(() => {
     const container = viewer?.container;
     if (!container) return;
@@ -85,11 +87,11 @@ export function AirTrafficToolbar({ viewer }: AirTrafficToolbarProps) {
 
   return (
     <div className="absolute top-14 right-4 z-10 flex flex-col gap-1">
-      <ToolbarButton icon={Maximize} title="Fullscreen" onClick={handleFullscreen} />
-      <ToolbarButton icon={Compass} title="Reset compass (north up)" onClick={handleCompassReset} />
-      <ToolbarButton icon={Camera} title="Screenshot" onClick={handleScreenshot} />
+      <ToolbarButton icon={Maximize} title={t("fullscreen")} onClick={handleFullscreen} />
+      <ToolbarButton icon={Compass} title={t("resetCompass")} onClick={handleCompassReset} />
+      <ToolbarButton icon={Camera} title={t("screenshot")} onClick={handleScreenshot} />
       <div ref={flyToRef} className="relative">
-        <ToolbarButton icon={MapPin} title="Fly to location" onClick={() => setFlyToOpen((o) => !o)} />
+        <ToolbarButton icon={MapPin} title={t("flyToLocation")} onClick={() => setFlyToOpen((o) => !o)} />
         {flyToOpen && (
           <div className="absolute right-10 top-0 w-32 bg-bg-primary/90 backdrop-blur-md border border-border-default rounded-lg overflow-hidden">
             {FLY_TO_LOCATIONS.map((loc) => (

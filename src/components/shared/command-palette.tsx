@@ -22,6 +22,7 @@ interface CommandAction {
 }
 
 export function CommandPalette() {
+  const t = useTranslations("commandPalette");
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -30,18 +31,18 @@ export function CommandPalette() {
   const { toast } = useToast();
 
   const actions: CommandAction[] = [
-    { id: "nav-dashboard", label: "Go to Dashboard", category: "Navigation", icon: <LayoutDashboard size={14} />, action: () => router.push("/") },
-    { id: "nav-plan", label: "Go to Mission Planner", category: "Navigation", icon: <Route size={14} />, action: () => router.push("/plan") },
-    { id: "nav-history", label: "Go to History", category: "Navigation", icon: <History size={14} />, action: () => router.push("/history") },
-    { id: "nav-analytics", label: "Go to Analytics", category: "Navigation", icon: <BarChart3 size={14} />, action: () => router.push("/analytics") },
-    { id: "nav-config", label: "Go to Config", category: "Navigation", icon: <Settings size={14} />, action: () => router.push("/config") },
-    { id: "nav-wizard", label: "Go to Pre-flight Wizard", category: "Navigation", icon: <HeartPulse size={14} />, action: () => router.push("/wizard") },
+    { id: "nav-dashboard", label: t("goToDashboard"), category: t("navigation"), icon: <LayoutDashboard size={14} />, action: () => router.push("/") },
+    { id: "nav-plan", label: t("goToPlan"), category: t("navigation"), icon: <Route size={14} />, action: () => router.push("/plan") },
+    { id: "nav-history", label: t("goToHistory"), category: t("navigation"), icon: <History size={14} />, action: () => router.push("/history") },
+    { id: "nav-analytics", label: t("goToAnalytics"), category: t("navigation"), icon: <BarChart3 size={14} />, action: () => router.push("/analytics") },
+    { id: "nav-config", label: t("goToConfig"), category: t("navigation"), icon: <Settings size={14} />, action: () => router.push("/config") },
+    { id: "nav-wizard", label: t("goToWizard"), category: t("navigation"), icon: <HeartPulse size={14} />, action: () => router.push("/wizard") },
     {
-      id: "cmd-connect", label: "Connect Drone", category: "Commands", icon: <Plug size={14} />,
+      id: "cmd-connect", label: t("connectDrone"), category: t("commands"), icon: <Plug size={14} />,
       action: () => useConnectDialogStore.getState().openDialog(),
     },
     {
-      id: "cmd-rth", label: "Return to Home All", category: "Commands", icon: <Home size={14} />,
+      id: "cmd-rth", label: t("returnToHomeAll"), category: t("commands"), icon: <Home size={14} />,
       action: () => {
         const drones = useFleetStore.getState().drones;
         const inFlight = drones.filter((d) => d.connectionState === "in_flight" || d.connectionState === "armed");
@@ -49,14 +50,14 @@ export function CommandPalette() {
       },
     },
     {
-      id: "cmd-arm", label: "Arm Drone", category: "Commands", icon: <Zap size={14} />,
+      id: "cmd-arm", label: t("armVehicle"), category: t("commands"), icon: <Zap size={14} />,
       action: () => {
         useDroneStore.getState().setArmState("armed");
         toast("Arm command sent", "success");
       },
     },
     {
-      id: "cmd-bat", label: "Check Battery Status", category: "Commands", icon: <Battery size={14} />,
+      id: "cmd-bat", label: t("checkBattery"), category: t("commands"), icon: <Battery size={14} />,
       action: () => {
         const drones = useFleetStore.getState().drones;
         if (drones.length === 0) { toast("No drones in fleet"); return; }
@@ -82,7 +83,7 @@ export function CommandPalette() {
       .map(p => ({
         id: `param-${p}`,
         label: p,
-        category: "Parameters",
+        category: t("parameters"),
         icon: <SlidersHorizontal size={14} />,
         action: () => {
           // Navigate to dashboard, switch to Parameters tab, pre-fill search filter
@@ -160,7 +161,7 @@ export function CommandPalette() {
             ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Type a command..."
+            placeholder={t("placeholder")}
             className="flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-tertiary outline-none"
           />
           <kbd className="text-[10px] text-text-tertiary border border-border-default px-1 py-0.5 font-mono">ESC</kbd>
@@ -196,7 +197,7 @@ export function CommandPalette() {
             </div>
           ))}
           {filtered.length === 0 && (
-            <div className="px-3 py-4 text-xs text-text-tertiary text-center">No results found</div>
+            <div className="px-3 py-4 text-xs text-text-tertiary text-center">{t("noResults")}</div>
           )}
         </div>
       </div>

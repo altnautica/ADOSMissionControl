@@ -7,6 +7,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { Search, X, ChevronDown, ChevronUp } from "lucide-react";
 import { Cartesian3, type Viewer as CesiumViewer } from "cesium";
@@ -18,6 +19,7 @@ interface FlightSearchPanelProps {
 }
 
 export function FlightSearchPanel({ viewer }: FlightSearchPanelProps) {
+  const t = useTranslations("airTraffic");
   const [collapsed, setCollapsed] = useState(true);
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -89,7 +91,7 @@ export function FlightSearchPanel({ viewer }: FlightSearchPanelProps) {
       <button
         onClick={() => setCollapsed(false)}
         className="absolute top-4 left-56 z-10 p-2 bg-bg-primary/70 backdrop-blur-md border border-border-default rounded-lg hover:bg-bg-secondary transition-colors cursor-pointer flex items-center gap-1.5"
-        title="Search aircraft"
+        title={t("searchAircraft")}
       >
         <Search size={12} className="text-text-secondary" />
         <span className="text-[9px] font-mono text-text-tertiary">{aircraft.size}</span>
@@ -108,7 +110,7 @@ export function FlightSearchPanel({ viewer }: FlightSearchPanelProps) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Callsign, reg, ICAO..."
+          placeholder={t("searchPlaceholder")}
           className="flex-1 bg-transparent text-[11px] font-mono text-text-primary placeholder:text-text-tertiary outline-none min-w-0"
         />
         <span className="text-[9px] font-mono text-text-tertiary shrink-0">{aircraft.size}</span>
@@ -130,7 +132,7 @@ export function FlightSearchPanel({ viewer }: FlightSearchPanelProps) {
         <div className="max-h-60 overflow-y-auto">
           {results.length === 0 && (
             <div className="px-3 py-4 text-[10px] font-mono text-text-tertiary text-center">
-              No matches
+              {t("noMatches")}
             </div>
           )}
           {results.map((r) => (

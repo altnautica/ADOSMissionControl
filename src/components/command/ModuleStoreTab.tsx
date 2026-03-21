@@ -7,6 +7,7 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { Package, Download, Check, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAgentStore } from "@/stores/agent-store";
@@ -18,6 +19,7 @@ import type { MockModule } from "@/mock/mock-agent";
 type ViewCategory = "all" | "suites" | "modules";
 
 export function ModuleStoreTab() {
+  const t = useTranslations("moduleStore");
   const connected = useAgentStore((s) => s.connected);
   const suites = useAgentStore((s) => s.suites);
   const fetchSuites = useAgentStore((s) => s.fetchSuites);
@@ -64,9 +66,9 @@ export function ModuleStoreTab() {
   }, [modules, searchQuery]);
 
   const categories = [
-    { id: "all" as const, label: "All" },
-    { id: "suites" as const, label: "Suites", count: suites.length },
-    { id: "modules" as const, label: "Modules", count: modules.length },
+    { id: "all" as const, label: t("all") },
+    { id: "suites" as const, label: t("suites"), count: suites.length },
+    { id: "modules" as const, label: t("modules"), count: modules.length },
   ];
 
   if (!connected) {
@@ -88,7 +90,7 @@ export function ModuleStoreTab() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search suites and modules..."
+            placeholder={t("searchPlaceholder")}
             className="flex-1 bg-transparent text-xs text-text-primary placeholder:text-text-tertiary outline-none"
           />
         </div>
@@ -103,7 +105,7 @@ export function ModuleStoreTab() {
       {showSuites && filteredSuites.length > 0 && (
         <div>
           <h3 className="text-xs font-semibold uppercase tracking-wider text-text-secondary mb-3">
-            Featured Suites
+            {t("featuredSuites")}
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {filteredSuites.map((suite) => (
@@ -122,7 +124,7 @@ export function ModuleStoreTab() {
       {showModules && installedModules.length > 0 && (
         <div>
           <h3 className="text-xs font-semibold uppercase tracking-wider text-text-secondary mb-3">
-            Installed Modules ({installedModules.length})
+            {t("installedModules", { count: installedModules.length })}
           </h3>
           <div className="space-y-2">
             {installedModules.map((mod) => (
@@ -140,7 +142,7 @@ export function ModuleStoreTab() {
                     </span>
                     <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium rounded bg-status-success/15 text-status-success">
                       <Check size={10} />
-                      Installed
+                      {t("installed")}
                     </span>
                   </div>
                   <p className="text-xs text-text-tertiary mt-0.5">
@@ -157,7 +159,7 @@ export function ModuleStoreTab() {
       {showModules && availableModules.length > 0 && (
         <div>
           <h3 className="text-xs font-semibold uppercase tracking-wider text-text-secondary mb-3">
-            Available Modules ({availableModules.length})
+            {t("availableModules", { count: availableModules.length })}
           </h3>
           <div className="space-y-2">
             {availableModules.map((mod) => (
@@ -183,7 +185,7 @@ export function ModuleStoreTab() {
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-accent-primary text-white rounded hover:opacity-90 transition-opacity shrink-0 ml-3"
                 >
                   <Download size={12} />
-                  Install
+                  {t("install")}
                 </button>
               </div>
             ))}

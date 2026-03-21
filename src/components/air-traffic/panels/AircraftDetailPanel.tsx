@@ -7,6 +7,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { X, Crosshair, Route, ArrowUp, ArrowDown, Minus } from "lucide-react";
 import { useTrafficStore } from "@/stores/traffic-store";
@@ -49,6 +50,7 @@ function countryFlag(country: string): string {
 }
 
 export function AircraftDetailPanel() {
+  const t = useTranslations("airTraffic");
   const selectedAircraft = useTrafficStore((s) => s.selectedAircraft);
   const aircraft = useTrafficStore((s) => s.aircraft);
   const threatLevels = useTrafficStore((s) => s.threatLevels);
@@ -100,7 +102,7 @@ export function AircraftDetailPanel() {
 
       <div className="p-3 flex flex-col gap-3 text-[10px] font-mono max-h-[70vh] overflow-y-auto">
         {/* Identity */}
-        <Section title="Identity">
+        <Section title={t("identity")}>
           <Row label="ICAO24" value={ac.icao24.toUpperCase()} />
           {ac.registration && <Row label="Reg" value={ac.registration} />}
           {ac.aircraftType && (
@@ -111,7 +113,7 @@ export function AircraftDetailPanel() {
         </Section>
 
         {/* Position */}
-        <Section title="Position">
+        <Section title={t("position")}>
           <Row label="Lat" value={ac.lat.toFixed(6)} />
           <Row label="Lon" value={ac.lon.toFixed(6)} />
           {ac.altitudeMsl != null && (
@@ -134,7 +136,7 @@ export function AircraftDetailPanel() {
         </Section>
 
         {/* Dynamics */}
-        <Section title="Dynamics">
+        <Section title={t("dynamics")}>
           {ac.verticalRate != null && (
             <Row label="V/Rate" value={
               <span className={cn("flex items-center gap-1",
@@ -159,7 +161,7 @@ export function AircraftDetailPanel() {
         </Section>
 
         {/* Threat */}
-        <Section title="Threat">
+        <Section title={t("threat")}>
           <div className="flex items-center gap-2">
             <span
               className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded"
@@ -182,7 +184,7 @@ export function AircraftDetailPanel() {
             )}
           >
             <Crosshair size={10} />
-            {isFollowing ? "Following" : "Follow"}
+            {isFollowing ? t("following") : t("follow")}
           </button>
           <button
             onClick={() => toggleTracked(ac.icao24)}

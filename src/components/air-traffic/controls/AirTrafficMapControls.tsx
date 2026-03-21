@@ -8,6 +8,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useTrafficStore } from "@/stores/traffic-store";
 import { cn } from "@/lib/utils";
@@ -17,6 +18,7 @@ interface AirTrafficMapControlsProps {
 }
 
 export function AirTrafficMapControls({ hasIonToken }: AirTrafficMapControlsProps) {
+  const t = useTranslations("airTraffic");
   const imageryMode = useSettingsStore((s) => s.cesiumImageryMode);
   const setImageryMode = useSettingsStore((s) => s.setCesiumImageryMode);
   const buildingsEnabled = useSettingsStore((s) => s.cesiumBuildingsEnabled);
@@ -31,7 +33,7 @@ export function AirTrafficMapControls({ hasIonToken }: AirTrafficMapControlsProp
 
   return (
     <div className="absolute bottom-14 left-4 z-10 flex flex-col gap-2 p-2 bg-bg-primary/70 backdrop-blur-md border border-border-default rounded-lg">
-      <span className="text-[9px] font-mono text-text-tertiary text-center">MAP</span>
+      <span className="text-[9px] font-mono text-text-tertiary text-center">{t("map")}</span>
 
       {/* Imagery toggle */}
       <div className="flex gap-1">
@@ -48,7 +50,7 @@ export function AirTrafficMapControls({ hasIonToken }: AirTrafficMapControlsProp
         </button>
         <button
           onClick={() => !satDisabled && setImageryMode("satellite")}
-          title={satDisabled ? "Requires Cesium Ion token" : "Satellite imagery"}
+          title={satDisabled ? t("requiresIonToken") : t("satelliteImagery")}
           className={cn(
             "h-7 rounded text-[10px] font-mono font-bold flex-1 transition-colors",
             satDisabled && "opacity-50 cursor-not-allowed",
@@ -68,7 +70,7 @@ export function AirTrafficMapControls({ hasIonToken }: AirTrafficMapControlsProp
           "flex items-center gap-1.5 text-[10px] font-mono text-text-secondary",
           buildingsDisabled && "opacity-50"
         )}
-        title={buildingsDisabled ? "Requires Cesium Ion token" : "Toggle 3D buildings"}
+        title={buildingsDisabled ? t("requiresIonToken") : t("toggle3DBuildings")}
       >
         <input
           type="checkbox"
@@ -77,13 +79,13 @@ export function AirTrafficMapControls({ hasIonToken }: AirTrafficMapControlsProp
           onChange={(e) => setBuildingsEnabled(e.target.checked)}
           className="w-3 h-3 rounded accent-accent-primary"
         />
-        Buildings
+        {t("buildings")}
       </label>
 
       {/* Terrain exaggeration slider */}
       <div className="flex flex-col gap-0.5">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] font-mono text-text-secondary">Terrain</span>
+          <span className="text-[10px] font-mono text-text-secondary">{t("terrain")}</span>
           <span className="text-[10px] font-mono text-text-tertiary">{terrainExaggeration}x</span>
         </div>
         <input

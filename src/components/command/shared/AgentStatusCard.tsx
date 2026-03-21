@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import {
   Cpu,
   Clock,
@@ -15,26 +16,27 @@ interface AgentStatusCardProps {
 }
 
 export function AgentStatusCard({ status }: AgentStatusCardProps) {
+  const t = useTranslations("agent");
   return (
     <div className="border border-border-default rounded-lg p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-text-primary">Agent Status</h3>
+        <h3 className="text-sm font-medium text-text-primary">{t("status")}</h3>
         <span className="text-xs font-mono text-text-tertiary">
           v{status.version}
         </span>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <InfoRow icon={Cpu} label="Board" value={status.board?.name ?? "Unknown"} />
-        <InfoRow label="Tier" value={String(status.board?.tier ?? "?")} />
+        <InfoRow icon={Cpu} label={t("board")} value={status.board?.name ?? t("unknown")} />
+        <InfoRow label={t("tier")} value={String(status.board?.tier ?? "?")} />
         <InfoRow
           icon={Clock}
-          label="Uptime"
+          label={t("uptime")}
           value={formatDuration(status.uptime_seconds)}
         />
-        <InfoRow label="Arch" value={status.board?.arch ?? "Unknown"} />
-        <InfoRow label="Version" value={`v${status.version}`} />
-        <InfoRow label="SoC" value={status.board?.soc ?? "Unknown"} />
+        <InfoRow label={t("arch")} value={status.board?.arch ?? t("unknown")} />
+        <InfoRow label={t("version")} value={`v${status.version}`} />
+        <InfoRow label={t("soc")} value={status.board?.soc ?? t("unknown")} />
       </div>
 
       {/* Health stats */}
@@ -62,7 +64,7 @@ export function AgentStatusCard({ status }: AgentStatusCardProps) {
               status.fc_connected ? "text-status-success" : "text-status-error"
             )}
           >
-            FC {status.fc_connected ? "Connected" : "Disconnected"}
+            {status.fc_connected ? t("fcConnected") : t("fcDisconnected")}
           </span>
         </div>
         {status.fc_connected && (

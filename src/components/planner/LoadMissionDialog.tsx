@@ -7,6 +7,7 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { FolderOpen, FileText, FileJson, Clock } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
 import { cn } from "@/lib/utils";
@@ -68,6 +69,7 @@ export function LoadMissionDialog({
   onImportFile,
   onLoadRecent,
 }: LoadMissionDialogProps) {
+  const t = useTranslations("planner");
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [recentMissions, setRecentMissions] = useState<RecentMission[]>([]);
 
@@ -87,10 +89,10 @@ export function LoadMissionDialog({
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Load Mission" className="max-w-md">
+    <Modal open={open} onClose={onClose} title={t("loadMission")} className="max-w-md">
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
-          <span className="text-xs text-text-secondary">Import from file:</span>
+          <span className="text-xs text-text-secondary">{t("importFromFile")}</span>
           {FORMAT_CARDS.map((card) => (
             <div key={card.id}>
               <button
@@ -124,7 +126,7 @@ export function LoadMissionDialog({
           <div className="flex flex-col gap-2">
             <span className="text-xs text-text-secondary flex items-center gap-1.5">
               <Clock size={12} />
-              Recent Missions:
+              {t("recentMissions")}
             </span>
             <div className="border border-border-default divide-y divide-border-default max-h-[160px] overflow-y-auto">
               {recentMissions.map((mission, i) => (
