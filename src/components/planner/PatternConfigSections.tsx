@@ -328,18 +328,18 @@ export function SarExpandingSquareConfig() {
     <>
       <div className="flex items-center gap-1.5 text-[10px] font-mono text-text-tertiary">
         <Search size={12} />
-        <span>{config.center ? `Datum: ${config.center[0].toFixed(4)}, ${config.center[1].toFixed(4)}` : "Click map to set datum point"}</span>
+        <span>{config.center ? `Datum: ${config.center[0].toFixed(4)}, ${config.center[1].toFixed(4)}` : t("clickMapSetDatum")}</span>
       </div>
-      <Input label="Leg Spacing" type="number" unit="m" value={String(config.legSpacing ?? 50)}
+      <Input label={t("legSpacing")} type="number" unit="m" value={String(config.legSpacing ?? 50)}
         onChange={(e) => update({ legSpacing: parseFloat(e.target.value) || 50 })} />
-      <Input label="Max Legs" type="number" value={String(config.maxLegs ?? 20)}
+      <Input label={t("maxLegs")} type="number" value={String(config.maxLegs ?? 20)}
         onChange={(e) => update({ maxLegs: parseInt(e.target.value) || 20 })} />
-      <Input label="Start Bearing" type="number" unit="deg" value={String(config.startBearing ?? 0)}
+      <Input label={t("startBearing")} type="number" unit="deg" value={String(config.startBearing ?? 0)}
         onChange={(e) => update({ startBearing: parseFloat(e.target.value) || 0 })} />
       <div className="grid grid-cols-2 gap-2">
-        <Input label="Altitude" type="number" unit="m" value={String(config.altitude ?? 50)}
+        <Input label={t("altitude")} type="number" unit="m" value={String(config.altitude ?? 50)}
           onChange={(e) => update({ altitude: parseFloat(e.target.value) || 50 })} />
-        <Input label="Speed" type="number" unit="m/s" value={String(config.speed ?? 5)}
+        <Input label={t("speedMs")} type="number" unit="m/s" value={String(config.speed ?? 5)}
           onChange={(e) => update({ speed: parseFloat(e.target.value) || 5 })} />
       </div>
     </>
@@ -354,18 +354,18 @@ export function SarSectorSearchConfig() {
     <>
       <div className="flex items-center gap-1.5 text-[10px] font-mono text-text-tertiary">
         <Search size={12} />
-        <span>{config.center ? `Datum: ${config.center[0].toFixed(4)}, ${config.center[1].toFixed(4)}` : "Click map to set datum point"}</span>
+        <span>{config.center ? `Datum: ${config.center[0].toFixed(4)}, ${config.center[1].toFixed(4)}` : t("clickMapSetDatum")}</span>
       </div>
-      <Input label="Search Radius" type="number" unit="m" value={String(config.radius ?? 200)}
+      <Input label={t("searchRadius")} type="number" unit="m" value={String(config.radius ?? 200)}
         onChange={(e) => update({ radius: parseFloat(e.target.value) || 200 })} />
-      <Input label="Sweeps" type="number" value={String(config.sweeps ?? 3)}
+      <Input label={t("sweeps")} type="number" value={String(config.sweeps ?? 3)}
         onChange={(e) => update({ sweeps: parseInt(e.target.value) || 3 })} />
-      <Input label="Start Bearing" type="number" unit="deg" value={String(config.startBearing ?? 0)}
+      <Input label={t("startBearing")} type="number" unit="deg" value={String(config.startBearing ?? 0)}
         onChange={(e) => update({ startBearing: parseFloat(e.target.value) || 0 })} />
       <div className="grid grid-cols-2 gap-2">
-        <Input label="Altitude" type="number" unit="m" value={String(config.altitude ?? 50)}
+        <Input label={t("altitude")} type="number" unit="m" value={String(config.altitude ?? 50)}
           onChange={(e) => update({ altitude: parseFloat(e.target.value) || 50 })} />
-        <Input label="Speed" type="number" unit="m/s" value={String(config.speed ?? 5)}
+        <Input label={t("speedMs")} type="number" unit="m/s" value={String(config.speed ?? 5)}
           onChange={(e) => update({ speed: parseFloat(e.target.value) || 5 })} />
       </div>
     </>
@@ -380,20 +380,20 @@ export function SarParallelTrackConfig() {
     <>
       <div className="flex items-center gap-1.5 text-[10px] font-mono text-text-tertiary">
         <Search size={12} />
-        <span>{config.startPoint ? `Start: ${config.startPoint[0].toFixed(4)}, ${config.startPoint[1].toFixed(4)}` : "Click map to set start point"}</span>
+        <span>{config.startPoint ? `Start: ${config.startPoint[0].toFixed(4)}, ${config.startPoint[1].toFixed(4)}` : t("clickMapSetStart")}</span>
       </div>
-      <Input label="Track Length" type="number" unit="m" value={String(config.trackLength ?? 500)}
+      <Input label={t("trackLength")} type="number" unit="m" value={String(config.trackLength ?? 500)}
         onChange={(e) => update({ trackLength: parseFloat(e.target.value) || 500 })} />
-      <Input label="Track Spacing" type="number" unit="m" value={String(config.trackSpacing ?? 50)}
+      <Input label={t("trackSpacing")} type="number" unit="m" value={String(config.trackSpacing ?? 50)}
         onChange={(e) => update({ trackSpacing: parseFloat(e.target.value) || 50 })} />
-      <Input label="Track Count" type="number" value={String(config.trackCount ?? 10)}
+      <Input label={t("trackCount")} type="number" value={String(config.trackCount ?? 10)}
         onChange={(e) => update({ trackCount: parseInt(e.target.value) || 10 })} />
-      <Input label="Bearing" type="number" unit="deg" value={String(config.bearing ?? 0)}
+      <Input label={t("bearing")} type="number" unit="deg" value={String(config.bearing ?? 0)}
         onChange={(e) => update({ bearing: parseFloat(e.target.value) || 0 })} />
       <div className="grid grid-cols-2 gap-2">
-        <Input label="Altitude" type="number" unit="m" value={String(config.altitude ?? 50)}
+        <Input label={t("altitude")} type="number" unit="m" value={String(config.altitude ?? 50)}
           onChange={(e) => update({ altitude: parseFloat(e.target.value) || 50 })} />
-        <Input label="Speed" type="number" unit="m/s" value={String(config.speed ?? 5)}
+        <Input label={t("speedMs")} type="number" unit="m/s" value={String(config.speed ?? 5)}
           onChange={(e) => update({ speed: parseFloat(e.target.value) || 5 })} />
       </div>
     </>
@@ -411,29 +411,29 @@ export function StructureScanConfig() {
         <Building size={12} />
         <span>
           {config.structurePolygon
-            ? `${config.structurePolygon.length} vertices`
+            ? t("verticesCount", { count: config.structurePolygon.length })
             : drawnPolygons.length > 0
-              ? `Using last drawn polygon (${drawnPolygons[drawnPolygons.length - 1].vertices.length} pts)`
+              ? t("usingLastDrawnPolygon", { count: drawnPolygons[drawnPolygons.length - 1].vertices.length })
               : t("drawStructureBoundary")}
         </span>
       </div>
       <div className="grid grid-cols-2 gap-2">
-        <Input label="Bottom Alt" type="number" unit="m" value={String(config.bottomAlt ?? 10)}
+        <Input label={t("bottomAlt")} type="number" unit="m" value={String(config.bottomAlt ?? 10)}
           onChange={(e) => update({ bottomAlt: parseFloat(e.target.value) || 10 })} />
-        <Input label="Top Alt" type="number" unit="m" value={String(config.topAlt ?? 50)}
+        <Input label={t("topAlt")} type="number" unit="m" value={String(config.topAlt ?? 50)}
           onChange={(e) => update({ topAlt: parseFloat(e.target.value) || 50 })} />
       </div>
-      <Input label="Layer Spacing" type="number" unit="m" value={String(config.layerSpacing ?? 10)}
+      <Input label={t("layerSpacing")} type="number" unit="m" value={String(config.layerSpacing ?? 10)}
         onChange={(e) => update({ layerSpacing: parseFloat(e.target.value) || 10 })} />
-      <Input label="Scan Distance" type="number" unit="m" value={String(config.scanDistance ?? 15)}
+      <Input label={t("scanDistance")} type="number" unit="m" value={String(config.scanDistance ?? 15)}
         onChange={(e) => update({ scanDistance: parseFloat(e.target.value) || 15 })} />
-      <Input label="Gimbal Pitch" type="number" unit="deg" value={String(config.gimbalPitch ?? -30)}
+      <Input label={t("gimbalPitch")} type="number" unit="deg" value={String(config.gimbalPitch ?? -30)}
         onChange={(e) => update({ gimbalPitch: parseFloat(e.target.value) || -30 })} />
-      <Input label="Points Per Layer" type="number" value={String(config.pointsPerLayer ?? 16)}
+      <Input label={t("pointsPerLayer")} type="number" value={String(config.pointsPerLayer ?? 16)}
         onChange={(e) => update({ pointsPerLayer: parseInt(e.target.value) || 16 })} />
-      <Select label="Direction" options={SCAN_DIRECTION_OPTIONS} value={config.direction ?? "bottom-up"}
+      <Select label={t("direction")} options={SCAN_DIRECTION_OPTIONS} value={config.direction ?? "bottom-up"}
         onChange={(v) => update({ direction: v as "bottom-up" | "top-down" })} />
-      <Input label="Speed" type="number" unit="m/s" value={String(config.speed ?? 3)}
+      <Input label={t("speedMs")} type="number" unit="m/s" value={String(config.speed ?? 3)}
         onChange={(e) => update({ speed: parseFloat(e.target.value) || 3 })} />
     </>
   );
