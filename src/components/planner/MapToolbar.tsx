@@ -8,6 +8,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import {
   MousePointer2, MapPin, Pentagon, Circle, Ruler,
   Undo2, Redo2, Trash2, HelpCircle, X,
@@ -128,7 +129,7 @@ export function MapToolbar({
 
       <div className="h-px bg-border-default" />
 
-      <ToolButton onClick={onClearAll} tooltip="Clear All">
+      <ToolButton onClick={onClearAll} tooltip={t("clearAll")}>
         <Trash2 size={16} />
       </ToolButton>
 

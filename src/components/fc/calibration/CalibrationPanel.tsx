@@ -45,13 +45,13 @@ export function CalibrationPanel() {
         {/* Left: Calibration Wizards */}
         <div className="space-y-6">
           <div>
-            <h1 className="text-lg font-display font-semibold text-text-primary">Sensor Calibration</h1>
+            <h1 className="text-lg font-display font-semibold text-text-primary">{t("sensorCalibration")}</h1>
             <p className="text-xs text-text-tertiary mt-0.5">
-              Step-by-step calibration wizards for accelerometer, gyroscope, compass, level, and airspeed
+              {t("sensorCalibrationDesc")}
             </p>
             {!connected && (
               <p className="text-[10px] text-status-warning mt-2">
-                Connect a drone to run calibrations
+                {t("connectToCalibrate")}
               </p>
             )}
           </div>
@@ -60,24 +60,23 @@ export function CalibrationPanel() {
           {isBetaflight && (
             <>
               <CalibrationWizard
-                title="Accelerometer Calibration"
-                description="Place the quad on a flat surface and keep it still. Betaflight calibration takes about 5 seconds."
-                steps={[{ label: "Calibrating", description: "Keep the quad perfectly still on a flat surface" }]}
+                title={t("bfAccelTitle")}
+                description={t("bfAccelDesc")}
+                steps={[{ label: t("calibrating"), description: t("bfAccelStepDesc") }]}
                 currentStep={cal.accel.currentStep}
                 status={cal.accel.status}
                 progress={cal.accel.progress}
-                statusMessage={cal.accel.message || (cal.accel.status === "in_progress" ? "Calibrating... keep the quad still" : undefined)}
+                statusMessage={cal.accel.message || (cal.accel.status === "in_progress" ? t("bfAccelInProgress") : undefined)}
                 onStart={() => cal.startCalibration("accel", cal.setAccel, 1)}
                 onCancel={() => cal.cancelCalibration("accel", cal.setAccel)}
               />
               <div className="border border-border-default bg-bg-secondary p-4 space-y-2">
-                <h3 className="text-sm font-medium text-text-primary">Betaflight Calibration</h3>
+                <h3 className="text-sm font-medium text-text-primary">{t("bfCalibrationTitle")}</h3>
                 <p className="text-xs text-text-tertiary">
-                  Betaflight supports accelerometer calibration via MSP. Gyro calibration runs automatically on every boot.
-                  Compass calibration (if a magnetometer is present) should be done through the Betaflight Configurator or CLI.
+                  {t("bfCalibrationNote1")}
                 </p>
                 <p className="text-xs text-text-tertiary">
-                  Other calibration types (level, airspeed, barometer, ESC, RC, CompassMot) are ArduPilot-specific and not available on Betaflight.
+                  {t("bfCalibrationNote2")}
                 </p>
               </div>
             </>

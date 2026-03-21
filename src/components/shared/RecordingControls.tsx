@@ -142,7 +142,7 @@ export function RecordingControls({ className }: { className?: string }) {
             <Pause size={9} className="text-accent-primary" />
           )}
           <span className="text-[10px] font-mono font-semibold text-accent-primary uppercase tracking-wider">
-            Replay
+            {t("replay")}
           </span>
           {/* Progress bar */}
           <div className="w-16 h-1 bg-bg-primary/50 overflow-hidden">
@@ -178,10 +178,10 @@ export function RecordingControls({ className }: { className?: string }) {
           <button
             onClick={handleStop}
             className="flex items-center gap-1 px-2 py-1 text-[10px] font-mono border border-status-error/30 text-status-error hover:bg-status-error/10 transition-colors"
-            title="Stop recording"
+            title={t("stopRecording")}
           >
             <Square size={8} />
-            STOP
+            {t("stop")}
           </button>
         </>
       ) : (
@@ -189,24 +189,24 @@ export function RecordingControls({ className }: { className?: string }) {
           <button
             onClick={handleStart}
             className="flex items-center gap-1 px-2 py-1 text-[10px] font-mono border border-border-default text-text-secondary hover:text-text-primary hover:border-status-error/50 transition-colors"
-            title="Start telemetry recording"
+            title={t("startRecording")}
           >
             <CircleDot size={10} />
-            REC
+            {t("rec")}
           </button>
           {lastRecordingId && (
             <>
               <button
                 onClick={handleExportCSV}
                 className="flex items-center gap-1 px-1.5 py-1 text-[10px] font-mono border border-border-default text-text-tertiary hover:text-text-primary transition-colors"
-                title="Export last recording as CSV"
+                title={t("exportCsv")}
               >
                 <Download size={10} />
               </button>
               <button
                 onClick={handleExportTlog}
                 className="flex items-center gap-1 px-1.5 py-1 text-[10px] font-mono border border-border-default text-text-tertiary hover:text-text-primary transition-colors"
-                title="Export last recording as .tlog"
+                title={t("exportTlog")}
               >
                 <FileDown size={10} />
               </button>

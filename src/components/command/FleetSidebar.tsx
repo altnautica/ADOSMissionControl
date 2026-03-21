@@ -9,6 +9,7 @@
  */
 
 import { useState, useRef, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import {
   Plus,
   MoreHorizontal,
@@ -50,6 +51,7 @@ export function FleetSidebar({
   onToggleCollapse,
   onOpenPairing,
 }: FleetSidebarProps) {
+  const t = useTranslations("command");
   const pairedDrones = usePairingStore((s) => s.pairedDrones);
   const selectedPairedId = usePairingStore((s) => s.selectedPairedId);
   const selectPairedDrone = usePairingStore((s) => s.selectPairedDrone);
@@ -156,12 +158,12 @@ export function FleetSidebar({
       <div className="w-12 shrink-0 flex flex-col h-full border-r border-border-default bg-bg-secondary">
         <div className="flex flex-col items-center gap-1.5 px-1 py-2 border-b border-border-default">
           <span className="text-[9px] font-semibold uppercase tracking-wider text-text-tertiary">
-            Fleet
+            {t("fleet")}
           </span>
           <button
             onClick={onToggleCollapse}
             className="w-full aspect-square flex items-center justify-center hover:bg-bg-tertiary transition-colors cursor-pointer group"
-            title="Expand fleet panel"
+            title={t("expandFleet")}
           >
             <ChevronRight
               size={12}

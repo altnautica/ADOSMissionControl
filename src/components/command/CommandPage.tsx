@@ -232,7 +232,7 @@ export function CommandPage() {
                       className="flex items-center gap-1.5 px-3 py-1 text-xs bg-accent-primary text-white rounded hover:opacity-90 transition-opacity"
                     >
                       <Plug size={12} />
-                      Connect
+                      {t("connect")}
                     </button>
                   </>
                 )}

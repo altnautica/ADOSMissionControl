@@ -173,31 +173,31 @@ export function PatternEditor({ onApply }: PatternEditorProps) {
             "w-full flex items-center justify-center gap-1.5 py-2 text-xs font-mono font-semibold",
             "bg-accent-lime/20 text-accent-lime border border-accent-lime/30 hover:bg-accent-lime/30 transition-colors cursor-pointer"
           )}>
-          <Check size={12} />Apply to Mission ({patternResult.waypoints.length} WP)
+          <Check size={12} />{t("applyToMission", { count: patternResult.waypoints.length })}
         </button>
       )}
 
       {/* Pattern stats */}
       {patternResult && (
         <div className="border border-border-default p-2">
-          <div className="text-[10px] font-mono text-text-tertiary mb-1">Pattern Stats</div>
+          <div className="text-[10px] font-mono text-text-tertiary mb-1">{t("patternStats")}</div>
           <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[10px] font-mono">
-            <span className="text-text-secondary">Distance</span>
+            <span className="text-text-secondary">{t("distance")}</span>
             <span className="text-text-primary">{formatDistance(patternResult.stats.totalDistance)}</span>
-            <span className="text-text-secondary">Est. Time</span>
+            <span className="text-text-secondary">{t("estimatedTime")}</span>
             <span className="text-text-primary">{Math.floor(patternResult.stats.estimatedTime / 60)}m {Math.round(patternResult.stats.estimatedTime % 60)}s</span>
-            <span className="text-text-secondary">Waypoints</span>
+            <span className="text-text-secondary">{t("waypoints")}</span>
             <span className="text-text-primary">{patternResult.waypoints.length}</span>
             {patternResult.stats.photoCount > 0 && (<>
-              <span className="text-text-secondary">Photos</span>
+              <span className="text-text-secondary">{t("photos")}</span>
               <span className="text-text-primary">{patternResult.stats.photoCount}</span>
             </>)}
             {patternResult.stats.coveredArea > 0 && (<>
-              <span className="text-text-secondary">Area</span>
+              <span className="text-text-secondary">{t("area")}</span>
               <span className="text-text-primary">{formatArea(patternResult.stats.coveredArea)}</span>
             </>)}
             {patternResult.stats.transectCount > 0 && (<>
-              <span className="text-text-secondary">Transects</span>
+              <span className="text-text-secondary">{t("transects")}</span>
               <span className="text-text-primary">{patternResult.stats.transectCount}</span>
             </>)}
           </div>

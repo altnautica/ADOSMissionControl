@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { BatteryBar } from "@/components/shared/battery-bar";
 import { SensorHealthBar } from "@/components/shared/SensorHealthBar";
 import { Input } from "@/components/ui/input";
