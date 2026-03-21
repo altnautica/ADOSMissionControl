@@ -6,6 +6,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import {
   Shield,
   Map,
@@ -47,6 +48,7 @@ interface SuiteCardProps {
 }
 
 export function SuiteCard({ suite, onInstall, onActivate }: SuiteCardProps) {
+  const t = useTranslations("moduleStore");
   const [loading, setLoading] = useState(false);
   const Icon = iconMap[suite.icon] ?? Shield;
 
@@ -92,7 +94,7 @@ export function SuiteCard({ suite, onInstall, onActivate }: SuiteCardProps) {
             {suite.active && (
               <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-medium rounded bg-accent-primary/15 text-accent-primary">
                 <Zap size={8} />
-                Active
+                {t("active")}
               </span>
             )}
           </div>
@@ -120,7 +122,7 @@ export function SuiteCard({ suite, onInstall, onActivate }: SuiteCardProps) {
         {suite.active ? (
           <span className="flex items-center gap-1 px-2 py-1 text-xs text-status-success">
             <Check size={12} />
-            Active
+            {t("active")}
           </span>
         ) : (
           <button
@@ -140,7 +142,7 @@ export function SuiteCard({ suite, onInstall, onActivate }: SuiteCardProps) {
             ) : (
               <Download size={12} />
             )}
-            {suite.installed ? "Activate" : "Install"}
+            {suite.installed ? t("activate") : t("install")}
           </button>
         )}
       </div>

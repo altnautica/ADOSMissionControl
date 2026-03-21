@@ -246,24 +246,24 @@ export function SimulationPanel({
                   WP {pos.currentWaypointIndex + 1} / {waypoints.length}
                 </span>
                 <span className="text-[9px] font-mono text-accent-primary ml-auto uppercase">
-                  {playbackState === "playing" ? "Active" : playbackState}
+                  {playbackState === "playing" ? t("active") : playbackState}
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-1">
                 <div>
-                  <span className="text-[9px] text-text-tertiary">Alt</span>
+                  <span className="text-[9px] text-text-tertiary">{t("alt")}</span>
                   <p className="text-[10px] font-mono text-text-primary">{formatAlt(currentWp.alt)}</p>
                 </div>
                 <div>
-                  <span className="text-[9px] text-text-tertiary">Elapsed</span>
+                  <span className="text-[9px] text-text-tertiary">{t("elapsed")}</span>
                   <p className="text-[10px] font-mono text-text-primary">{formatEta(elapsed)}</p>
                 </div>
                 <div>
-                  <span className="text-[9px] text-text-tertiary">Speed</span>
+                  <span className="text-[9px] text-text-tertiary">{t("speedLabel")}</span>
                   <p className="text-[10px] font-mono text-text-primary">{pos.speed.toFixed(1)} m/s</p>
                 </div>
                 <div>
-                  <span className="text-[9px] text-text-tertiary">Heading</span>
+                  <span className="text-[9px] text-text-tertiary">{t("headingLabel")}</span>
                   <p className="text-[10px] font-mono text-text-primary">{Math.round(pos.heading)}&deg;</p>
                 </div>
               </div>
@@ -401,7 +401,7 @@ export function SimulationPanel({
                 <ChevronRight size={10} className="text-text-tertiary" />
               )}
               <h3 className="text-[10px] font-mono text-text-tertiary uppercase tracking-wider">
-                History ({historyEntries.length})
+                {t("history", { count: historyEntries.length })}
               </h3>
             </button>
 
@@ -431,7 +431,7 @@ export function SimulationPanel({
                   className="flex items-center gap-1 mt-2 text-[10px] text-text-tertiary hover:text-status-error transition-colors cursor-pointer"
                 >
                   <Trash2 size={10} />
-                  Clear History
+                  {t("clearHistory")}
                 </button>
               </div>
             )}
@@ -445,7 +445,7 @@ export function SimulationPanel({
             className="w-full flex items-center gap-2 text-[10px] font-mono text-text-tertiary uppercase tracking-wider hover:text-text-secondary cursor-pointer"
           >
             <Keyboard size={12} />
-            Keyboard Shortcuts
+            {t("keyboardShortcuts")}
             {shortcutsExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
           </button>
           {shortcutsExpanded && (

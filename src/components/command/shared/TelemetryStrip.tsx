@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { useAgentStore } from "@/stores/agent-store";
 
 export function TelemetryStrip() {
+  const t = useTranslations("telemetryStrip");
   const status = useAgentStore((s) => s.status);
 
   if (!status) return null;
@@ -21,39 +22,39 @@ export function TelemetryStrip() {
   return (
     <div className="rounded border border-border-default bg-bg-tertiary p-2 space-y-1.5">
       <div className="flex items-center justify-between">
-        <span className="text-[10px] text-text-tertiary">FC</span>
+        <span className="text-[10px] text-text-tertiary">{t("fc")}</span>
         <span
           className={cn(
             "text-[10px] font-mono font-medium",
             status.fc_connected ? "text-status-success" : "text-status-error"
           )}
         >
-          {status.fc_connected ? "CONNECTED" : "DISCONNECTED"}
+          {status.fc_connected ? t("connected") : t("disconnected")}
         </span>
       </div>
       {health && (
         <>
           <div className="flex items-center justify-between">
-            <span className="text-[10px] text-text-tertiary">CPU</span>
+            <span className="text-[10px] text-text-tertiary">{t("cpu")}</span>
             <span className="text-[10px] font-mono text-text-secondary">
               {health.cpu_percent.toFixed(0)}%
             </span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-[10px] text-text-tertiary">MEM</span>
+            <span className="text-[10px] text-text-tertiary">{t("mem")}</span>
             <span className="text-[10px] font-mono text-text-secondary">
               {health.memory_percent.toFixed(0)}%
             </span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-[10px] text-text-tertiary">Disk</span>
+            <span className="text-[10px] text-text-tertiary">{t("disk")}</span>
             <span className="text-[10px] font-mono text-text-secondary">
               {health.disk_percent.toFixed(0)}%
             </span>
           </div>
           {health.temperature != null && (
             <div className="flex items-center justify-between">
-              <span className="text-[10px] text-text-tertiary">Temp</span>
+              <span className="text-[10px] text-text-tertiary">{t("temp")}</span>
               <span
                 className={cn(
                   "text-[10px] font-mono",
