@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +27,7 @@ export function SerialPanel({
 }: {
   onConnected?: (name: string, type: "serial", baudRate: number) => void;
 }) {
+  const t = useTranslations("connect");
   const [mounted, setMounted] = useState(false);
   const [baudRate, setBaudRate] = useState("115200");
   const [connecting, setConnecting] = useState(false);

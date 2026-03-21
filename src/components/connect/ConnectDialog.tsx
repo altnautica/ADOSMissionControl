@@ -138,7 +138,7 @@ export function ConnectDialog() {
             <div className="flex items-center gap-2">
               <Usb size={14} className="text-accent-primary" />
               <span className="text-xs text-text-primary">
-                DFU device detected — bootloader mode (flash-only).
+                {t("dfuDetected")}
               </span>
             </div>
             <button
@@ -146,7 +146,7 @@ export function ConnectDialog() {
               className="flex items-center gap-1 text-xs text-accent-primary hover:underline shrink-0"
             >
               <Zap size={12} />
-              Go to Firmware
+              {t("goToFirmware")}
             </button>
           </div>
         )}
@@ -156,7 +156,7 @@ export function ConnectDialog() {
           <div className="bg-bg-primary border border-status-success/20 p-3 space-y-2">
             <h3 className="text-xs font-semibold text-text-primary flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-status-success animate-pulse" />
-              Active Connections
+              {t("activeConnections")}
               <Badge variant="success" size="sm">
                 <Radio size={8} className="mr-0.5" />
                 {droneCount}
@@ -181,7 +181,7 @@ export function ConnectDialog() {
               icon={<Save size={12} />}
               onClick={handleSavePreset}
             >
-              Save Preset
+              {t("savePreset")}
             </Button>
           </div>
           <div className="p-4">
@@ -199,7 +199,7 @@ export function ConnectDialog() {
             <div className="flex items-center gap-2">
               <Star size={14} className="text-accent-secondary" />
               <h3 className="text-xs font-semibold text-text-primary">
-                Saved Presets
+                {t("savedPresets")}
               </h3>
             </div>
             <ConnectionPresets key={presetsKey} onApply={handleApplyPreset} />
@@ -208,7 +208,7 @@ export function ConnectDialog() {
             <div className="flex items-center gap-2">
               <History size={14} className="text-text-secondary" />
               <h3 className="text-xs font-semibold text-text-primary">
-                Recent Connections
+                {t("recentConnections")}
               </h3>
             </div>
             <RecentConnections />
