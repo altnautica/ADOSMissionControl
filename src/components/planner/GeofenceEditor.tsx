@@ -6,6 +6,8 @@
  */
 "use client";
 
+import { useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { Toggle } from "@/components/ui/toggle";
 import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -15,16 +17,6 @@ import type { FenceType, BreachAction } from "@/stores/geofence-store";
 import { Upload, Download, Pentagon, Circle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const GEOFENCE_TYPE_OPTIONS = [
-  { value: "circle", label: "Circle" },
-  { value: "polygon", label: "Polygon" },
-];
-
-const GEOFENCE_ACTION_OPTIONS = [
-  { value: "RTL", label: "Return to Launch" },
-  { value: "LAND", label: "Land" },
-  { value: "REPORT", label: "Report Only" },
-];
 
 interface GeofenceEditorProps {
   enabled: boolean;
@@ -49,6 +41,19 @@ export function GeofenceEditor({
   onActionChange,
   onDrawOnMap,
 }: GeofenceEditorProps) {
+  const t = useTranslations("geofence");
+
+  const GEOFENCE_TYPE_OPTIONS = useMemo(() => [
+    { value: "circle", label: t("circle") },
+    { value: "polygon", label: t("polygon") },
+  ], [t]);
+
+  const GEOFENCE_ACTION_OPTIONS = useMemo(() => [
+    { value: "RTL", label: t("rtlOrLand") },
+    { value: "LAND", label: t("land") },
+    { value: "REPORT", label: t("report") },
+  ], [t]);
+
   const uploadFence = useGeofenceStore((s) => s.uploadFence);
   const downloadFence = useGeofenceStore((s) => s.downloadFence);
   const uploadState = useGeofenceStore((s) => s.uploadState);
@@ -61,22 +66,22 @@ export function GeofenceEditor({
   return (
     <div className="flex flex-col gap-3 px-3 py-2">
       <div className="flex items-center justify-between">
-        <Toggle label="Enable Geofence" checked={enabled} onChange={onToggle} />
+        <Toggle label={t("enableGeofence")} checked={enabled} onChange={onToggle} />
         <Badge variant={enabled ? "success" : "neutral"} size="sm">
-          {enabled ? "Active" : "Off"}
+          {enabled ? t("active") : t("off")}
         </Badge>
       </div>
 
       {enabled && (
         <>
           <Select
-            label="Type"
+            label={t("type")}
             options={GEOFENCE_TYPE_OPTIONS}
             value={type}
             onChange={onTypeChange}
           />
           <Input
-            label="Max Altitude"
+            label={t("maxAltitude")}
             type="number"
             unit="m"
             value={maxAlt}
@@ -84,7 +89,7 @@ export function GeofenceEditor({
             placeholder="120"
           />
           <Select
-            label="Breach Action"
+            label={t("fenceAction")}
             options={GEOFENCE_ACTION_OPTIONS}
             value={action}
             onChange={onActionChange}
@@ -99,20 +104,20 @@ export function GeofenceEditor({
                 transition-colors cursor-pointer"
             >
               {type === "polygon" ? <Pentagon size={12} /> : <Circle size={12} />}
-              Draw on Map
+              {t("drawOnMap")}
             </button>
           )}
 
           {/* Fence geometry status */}
           <div className="text-[10px] font-mono text-text-tertiary">
             {type === "polygon" && polygonPoints.length > 0 && (
-              <span>{polygonPoints.length} fence points defined</span>
+              <span>{t("fencePointsDefined", { count: polygonPoints.length })}</span>
             )}
             {type === "circle" && circleCenter && (
-              <span>Circle fence set</span>
+              <span>{t("circleFenceSet")}</span>
             )}
             {!hasFenceGeometry && (
-              <span>No fence boundary drawn</span>
+              <span>{t("noFenceBoundary")}</span>
             )}
           </div>
 
@@ -130,7 +135,7 @@ export function GeofenceEditor({
               )}
             >
               <Upload size={12} />
-              {uploadState === "uploading" ? "Uploading..." : "Upload"}
+              {uploadState === "uploading" ? t("uploading") : t("uploadFence")}
             </button>
             <button
               onClick={() => downloadFence()}
@@ -138,15 +143,15 @@ export function GeofenceEditor({
                 text-text-primary border border-border-default hover:bg-bg-tertiary transition-colors cursor-pointer"
             >
               <Download size={12} />
-              Download
+              {t("download")}
             </button>
           </div>
 
           {uploadState === "uploaded" && (
-            <div className="text-[10px] font-mono text-status-success">Fence uploaded to FC</div>
+            <div className="text-[10px] font-mono text-status-success">{t("fenceUploaded")}</div>
           )}
           {uploadState === "error" && (
-            <div className="text-[10px] font-mono text-status-error">Upload failed</div>
+            <div className="text-[10px] font-mono text-status-error">{t("uploadFailed")}</div>
           )}
         </>
       )}

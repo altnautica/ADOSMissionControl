@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -50,6 +51,7 @@ function useDebouncedValue<T>(value: T, delay: number): T {
 }
 
 export function ParametersPanel() {
+  const t = useTranslations("parameters");
   const { toast } = useToast();
   const [parameters, setParameters] = useState<ParameterValue[]>([]);
   const [modified, setModified] = useState<Map<string, number>>(new Map());
@@ -80,7 +82,7 @@ export function ParametersPanel() {
 
   const downloadParams = useCallback(async () => {
     const protocol = useDroneManager.getState().getSelectedProtocol();
-    if (!protocol) { setError("No drone connected"); return; }
+    if (!protocol) { setError(t("noDroneConnected")); return; }
     setLoading(true); setError(null); setProgress({ current: 0, total: 0 });
     setModified(new Map());
     const received: ParameterValue[] = [];
@@ -96,7 +98,7 @@ export function ParametersPanel() {
       const params = await protocol.getAllParameters();
       params.sort((a, b) => collator.compare(a.name, b.name));
       cachedParamList = params; cacheTimestamp = Date.now(); setParameters(params);
-    } catch (err) { setError(err instanceof Error ? err.message : "Failed to download parameters"); }
+    } catch (err) { setError(err instanceof Error ? err.message : t("downloadFailed")); }
     finally { unsub(); setLoading(false); }
   }, []);
 
@@ -204,7 +206,7 @@ export function ParametersPanel() {
   const handleResetConfirm = useCallback(async () => {
     setShowResetConfirm(false);
     const protocol = useDroneManager.getState().getSelectedProtocol();
-    if (!protocol) { setError("No drone connected"); return; }
+    if (!protocol) { setError(t("noDroneConnected")); return; }
     setSaving(true); setError(null);
     try {
       const result = await protocol.resetParametersToDefault();
@@ -244,21 +246,21 @@ export function ParametersPanel() {
         {!loading && parameters.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-3 text-text-tertiary">
             <ListTree size={32} strokeWidth={1.5} />
-            <p className="text-sm">No parameters loaded</p>
-            <Button variant="secondary" size="sm" icon={<RefreshCw size={12} />} onClick={downloadParams}>Download from FC</Button>
+            <p className="text-sm">{t("noParamsLoaded")}</p>
+            <Button variant="secondary" size="sm" icon={<RefreshCw size={12} />} onClick={downloadParams}>{t("downloadFromFc")}</Button>
           </div>
         ) : (
           <>
             {parameters.length > 0 && (
               <nav className="w-[180px] flex-shrink-0 border-r border-border-default bg-bg-secondary overflow-y-auto">
                 <div className="px-3 py-2 border-b border-border-default">
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">Categories</span>
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">{t("categories")}</span>
                 </div>
                 <div className="flex flex-col py-1">
                   <button onClick={() => setCategory(null)}
                     className={cn("flex items-center justify-between px-3 py-1.5 text-xs text-left transition-colors cursor-pointer",
                       category === null ? "text-accent-primary bg-accent-primary/10 border-l-2 border-l-accent-primary" : "text-text-secondary hover:text-text-primary hover:bg-bg-tertiary border-l-2 border-l-transparent")}>
-                    <span>All</span><span className="text-[10px] text-text-tertiary font-mono">{parameters.length}</span>
+                    <span>{t("all")}</span><span className="text-[10px] text-text-tertiary font-mono">{parameters.length}</span>
                   </button>
                   {categories.map(([cat, count]) => (
                     <button key={cat} onClick={() => setCategory(cat)}
@@ -284,18 +286,18 @@ export function ParametersPanel() {
 
       <WriteConfirmDialog open={showWriteConfirm} onCancel={() => setShowWriteConfirm(false)} onConfirm={doWrite} changes={writeChanges} metadata={metadata} />
       <ConfirmDialog open={showResetConfirm} onCancel={() => setShowResetConfirm(false)} onConfirm={handleResetConfirm}
-        title="Reset to Factory Defaults" message="This will reset ALL parameters to firmware defaults. You will need to re-calibrate sensors afterward. The flight controller will require a reboot."
-        confirmLabel="Reset All Parameters" variant="danger" />
-      <Modal open={showCompare} onClose={() => setShowCompare(false)} title="Parameter Compare" className="max-w-3xl">
+        title={t("resetTitle")} message={t("resetMessage")}
+        confirmLabel={t("resetConfirmLabel")} variant="danger" />
+      <Modal open={showCompare} onClose={() => setShowCompare(false)} title={t("compareTitle")} className="max-w-3xl">
         <ParamCompare fcParams={fcParamMap} onApplied={handleCompareApplied} />
       </Modal>
-      <Modal open={showDefaultsDiff} onClose={() => setShowDefaultsDiff(false)} title="Compare to Defaults" className="max-w-3xl">
+      <Modal open={showDefaultsDiff} onClose={() => setShowDefaultsDiff(false)} title={t("compareDefaults")} className="max-w-3xl">
         <ParamDefaultsDiff parameters={parameters} modified={modified} metadata={metadata} />
       </Modal>
       <ConfirmDialog open={showRebootPrompt} onCancel={() => setShowRebootPrompt(false)}
         onConfirm={async () => { const protocol = useDroneManager.getState().getSelectedProtocol(); if (protocol) await protocol.reboot(); setShowRebootPrompt(false); }}
-        title="Reboot Required" message="Some parameters you changed require a flight controller reboot to take effect. Reboot now?"
-        confirmLabel="Reboot FC" variant="primary" />
+        title={t("rebootTitle")} message={t("rebootMessage")}
+        confirmLabel={t("rebootConfirmLabel")} variant="primary" />
     </div>
   );
 }

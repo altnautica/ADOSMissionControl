@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Modal } from "@/components/ui/modal";
 import { PreFlightChecklist } from "@/components/flight/PreFlightChecklist";
@@ -24,6 +25,7 @@ export function ActionDialogs({
   showKillConfirm, setShowKillConfirm,
   showChecklist, setShowChecklist,
 }: ActionDialogsProps) {
+  const t = useTranslations("actionDialogs");
   const setFlightMode = useDroneStore((s) => s.setFlightMode);
   const setArmState = useDroneStore((s) => s.setArmState);
   const getProtocol = useDroneManager((s) => s.getSelectedProtocol);
@@ -52,9 +54,9 @@ export function ActionDialogs({
           else setFlightMode("RTL");
           setShowRthConfirm(false);
         }}
-        title="Return to Home"
-        message="The drone will abort its current mission and return to the home position. Are you sure?"
-        confirmLabel="Return to Home"
+        title={t("rthTitle")}
+        message={t("rthMessage")}
+        confirmLabel={t("rthConfirm")}
         variant="primary"
       />
 
@@ -71,9 +73,9 @@ export function ActionDialogs({
           }
           setShowAbortConfirm(false);
         }}
-        title="Emergency Abort"
-        message="This will immediately stop the mission and initiate emergency landing. This action cannot be undone. Are you sure?"
-        confirmLabel="ABORT MISSION"
+        title={t("abortTitle")}
+        message={t("abortMessage")}
+        confirmLabel={t("abortConfirm")}
         variant="danger"
       />
 
@@ -84,9 +86,9 @@ export function ActionDialogs({
           setShowKillConfirm(false);
           setShowKillFinal(true);
         }}
-        title="Kill Switch"
-        message="This will IMMEDIATELY CUT ALL MOTORS. The drone will fall from the sky. This is an emergency-only action. Are you absolutely sure?"
-        confirmLabel="I understand - proceed"
+        title={t("killTitle")}
+        message={t("killMessage")}
+        confirmLabel={t("killConfirm")}
         variant="danger"
       />
 
@@ -101,9 +103,9 @@ export function ActionDialogs({
           setShowKillFinal(false);
           setKillCountdown(3);
         }}
-        title="FINAL CONFIRMATION - KILL MOTORS"
-        message={`Motors will be cut immediately. Drone will fall. ${killCountdown > 0 ? `Wait ${killCountdown}s...` : "Button enabled."}`}
-        confirmLabel={killCountdown > 0 ? `Wait ${killCountdown}s...` : "KILL MOTORS NOW"}
+        title={t("killFinalTitle")}
+        message={`${t("killFinalMessage")} ${killCountdown > 0 ? t("killFinalWait", { seconds: killCountdown }) : t("killFinalEnabled")}`}
+        confirmLabel={killCountdown > 0 ? t("killFinalWait", { seconds: killCountdown }) : t("killFinalConfirm")}
         variant="danger"
         confirmDisabled={killCountdown > 0}
       />
@@ -111,7 +113,7 @@ export function ActionDialogs({
       <Modal
         open={showChecklist}
         onClose={() => setShowChecklist(false)}
-        title="Pre-Flight Checklist"
+        title={t("checklistTitle")}
         className="max-w-md max-h-[80vh] flex flex-col"
       >
         <PreFlightChecklist className="max-h-[60vh] -mx-4 -my-4" />

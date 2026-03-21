@@ -84,8 +84,8 @@ export function CalibrationPanel() {
 
           {/* Accelerometer — 6-position (ArduPilot/PX4) */}
           {!isBetaflight && <CalibrationWizard
-            title="Accelerometer Calibration"
-            description="6-position calibration. Place vehicle in each orientation when prompted."
+            title={t("accelCalibrationTitle")}
+            description={t("accelCalibrationDesc")}
             steps={ACCEL_STEPS}
             currentStep={cal.accel.currentStep}
             status={cal.accel.status}
@@ -99,8 +99,8 @@ export function CalibrationPanel() {
 
           {/* Gyroscope */}
           {!isBetaflight && <CalibrationWizard
-            title="Gyroscope Calibration"
-            description="Keep vehicle perfectly still during calibration."
+            title={t("gyroCalibrationTitle")}
+            description={t("gyroCalibrationDesc")}
             steps={GYRO_STEPS}
             currentStep={cal.gyro.currentStep}
             status={cal.gyro.status}
@@ -120,8 +120,8 @@ export function CalibrationPanel() {
 
           {/* Compass */}
           {!isBetaflight && <CalibrationWizard
-            title="Compass Calibration"
-            description="Rotate vehicle slowly in all orientations until complete."
+            title={t("compassCalibrationTitle")}
+            description={t("compassCalibrationDesc")}
             steps={COMPASS_STEPS}
             currentStep={cal.compass.currentStep}
             status={cal.compass.status}
@@ -129,16 +129,16 @@ export function CalibrationPanel() {
             statusMessage={cal.compass.message}
             waitingForConfirm={cal.compass.waitingForConfirm}
             onConfirm={cal.acceptCompass}
-            confirmLabel="Accept Offsets"
+            confirmLabel={t("acceptOffsets")}
             compassProgress={compassProgressEntries}
             compassResults={compassResultEntries}
             failureFixes={cal.compass.failureFixes}
             onForceSave={cal.forceCompassSave}
             preTips={[
-              "Move at least 3m away from metal objects, vehicles, and buildings",
-              "Remove magnetic accessories (phone mounts, metal tools) from nearby",
-              "Ensure GPS fix if possible (helps validate compass orientation)",
-              "Keep a firm grip — you will rotate the drone through all axes",
+              t("compassTip1"),
+              t("compassTip2"),
+              t("compassTip3"),
+              t("compassTip4"),
             ]}
             onStart={() => cal.startCalibration("compass", cal.setCompass, COMPASS_STEPS.length)}
             onCancel={() => cal.cancelCalibration("compass", cal.setCompass)}
@@ -146,7 +146,7 @@ export function CalibrationPanel() {
 
           {/* Compass Reboot Required Banner */}
           {!isBetaflight && cal.compass.needsReboot && cal.compass.status === "success" && (
-            <CalibrationRebootBanner label="Compass offsets saved" onReboot={() => { const p = getSelectedProtocol(); if (p) p.reboot(); }} />
+            <CalibrationRebootBanner label={t("compassOffsetsSaved")} onReboot={() => { const p = getSelectedProtocol(); if (p) p.reboot(); }} />
           )}
 
           {/* Orientation change alert */}
@@ -154,17 +154,16 @@ export function CalibrationPanel() {
             (r) => r.oldOrientation !== r.newOrientation && r.newOrientation !== 0
           ) && (
             <div className="border border-status-warning/30 bg-status-warning/10 px-4 py-3">
-              <p className="text-xs font-medium text-status-warning">Compass Orientation Changed</p>
+              <p className="text-xs font-medium text-status-warning">{t("compassOrientationChanged")}</p>
               <p className="text-[10px] text-text-secondary mt-0.5">
-                The calibration detected a different compass orientation than previously configured.
-                Verify mounting orientation in parameters after reboot.
+                {t("compassOrientationChangedDesc")}
               </p>
             </div>
           )}
 
           {/* Accel Reboot Banner */}
           {cal.accel.needsReboot && cal.accel.status === "success" && (
-            <CalibrationRebootBanner label="Accelerometer calibration saved" onReboot={() => { const p = getSelectedProtocol(); if (p) p.reboot(); }} />
+            <CalibrationRebootBanner label={t("accelCalibrationSaved")} onReboot={() => { const p = getSelectedProtocol(); if (p) p.reboot(); }} />
           )}
 
           {/* Level through CompassMot: ArduPilot/PX4 only */}

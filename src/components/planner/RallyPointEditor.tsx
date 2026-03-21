@@ -8,6 +8,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { MapPin, Upload, Download, Trash2, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useRallyStore, type RallyPoint } from "@/stores/rally-store";
@@ -23,6 +24,7 @@ export function RallyPointEditor({
   addingRallyPoint,
   onToggleAdding,
 }: RallyPointEditorProps) {
+  const t = useTranslations("rally");
   const points = useRallyStore((s) => s.points);
   const removePoint = useRallyStore((s) => s.removePoint);
   const updatePoint = useRallyStore((s) => s.updatePoint);
@@ -70,7 +72,7 @@ export function RallyPointEditor({
           }`}
         >
           <Plus size={10} />
-          Add
+          {t("addRally")}
         </button>
         <button
           onClick={handleUpload}
@@ -78,7 +80,7 @@ export function RallyPointEditor({
           className="flex items-center gap-1 px-2 py-1 text-[10px] font-mono bg-bg-tertiary border border-border-default text-text-secondary hover:text-text-primary disabled:opacity-40 cursor-pointer transition-colors"
         >
           <Upload size={10} />
-          {uploading ? "..." : "Upload"}
+          {uploading ? "..." : t("uploadRally")}
         </button>
         <button
           onClick={handleDownload}
@@ -86,14 +88,14 @@ export function RallyPointEditor({
           className="flex items-center gap-1 px-2 py-1 text-[10px] font-mono bg-bg-tertiary border border-border-default text-text-secondary hover:text-text-primary disabled:opacity-40 cursor-pointer transition-colors"
         >
           <Download size={10} />
-          {downloading ? "..." : "Download"}
+          {downloading ? "..." : t("downloadRally")}
         </button>
       </div>
 
       {/* Rally point list */}
       {points.length === 0 ? (
         <p className="text-[10px] text-text-tertiary font-mono py-1">
-          No rally points. Click &quot;Add&quot; then click on the map.
+          {t("noRallyPoints")}
         </p>
       ) : (
         <div className="flex flex-col gap-1.5">
@@ -111,18 +113,18 @@ export function RallyPointEditor({
 
       {uploadStatus === "success" && (
         <p className="text-[10px] text-status-success font-mono">
-          Rally points uploaded to FC
+          {t("rallyUploaded")}
         </p>
       )}
       {uploadStatus === "error" && (
         <p className="text-[10px] text-status-error font-mono">
-          Failed to upload rally points
+          {t("rallyUploadFailed")}
         </p>
       )}
 
       {addingRallyPoint && (
         <p className="text-[10px] text-accent-primary font-mono animate-pulse">
-          Click on the map to place a rally point...
+          {t("clickToAdd")}
         </p>
       )}
     </div>

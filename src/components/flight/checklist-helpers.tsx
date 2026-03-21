@@ -5,11 +5,12 @@ import { cn } from "@/lib/utils";
 
 export const CATEGORY_ORDER: ChecklistCategory[] = ["hardware", "software", "environment", "mission"];
 
-export const CATEGORY_LABELS: Record<ChecklistCategory, string> = {
-  hardware: "Hardware",
-  software: "Software",
-  environment: "Environment",
-  mission: "Mission",
+/** Translation keys for checklist category labels — use with t(key) from "checklist" namespace */
+export const CATEGORY_LABEL_KEYS: Record<ChecklistCategory, string> = {
+  hardware: "hardware",
+  software: "software",
+  environment: "environment",
+  mission: "mission",
 };
 
 export function StatusIcon({ status }: { status: ChecklistItemStatus }) {

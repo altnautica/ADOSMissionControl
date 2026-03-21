@@ -7,6 +7,7 @@
  */
 
 import { useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { useAgentStore } from "@/stores/agent-store";
 import { AgentStatusCard } from "./shared/AgentStatusCard";
 import { ServiceTable } from "./shared/ServiceTable";
@@ -16,6 +17,7 @@ import { LogViewer } from "./shared/LogViewer";
 import { AgentDisconnectedPage } from "./AgentDisconnectedPage";
 
 export function AgentOverviewTab() {
+  const t = useTranslations("agent");
   const connected = useAgentStore((s) => s.connected);
   const status = useAgentStore((s) => s.status);
   const services = useAgentStore((s) => s.services);
@@ -42,8 +44,8 @@ export function AgentOverviewTab() {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-3">
         <div className="w-5 h-5 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" />
-        <p className="text-sm text-text-secondary">Waiting for agent status...</p>
-        <p className="text-xs text-text-tertiary">The agent should report in shortly</p>
+        <p className="text-sm text-text-secondary">{t("waitingForStatus")}</p>
+        <p className="text-xs text-text-tertiary">{t("shouldReportShortly")}</p>
       </div>
     );
   }

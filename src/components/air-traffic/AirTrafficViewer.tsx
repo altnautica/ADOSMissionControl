@@ -9,6 +9,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect, useState, useCallback, useRef, Component, type ReactNode } from "react";
 import { useQuery } from "convex/react";
 import { Cartesian3, Cartographic, ScreenSpaceEventHandler, ScreenSpaceEventType, Math as CesiumMath, defined, type Viewer as CesiumViewer } from "cesium";
@@ -100,6 +101,7 @@ class ConvexErrorBoundary extends Component<{ children: ReactNode; onError?: () 
 const ALERT_COOLDOWN_MS = 30_000;
 
 export function AirTrafficViewer() {
+  const t = useTranslations("airTraffic");
   const [viewer, setViewer] = useState<CesiumViewer | null>(null);
   const [viewerError, setViewerError] = useState<string | null>(null);
   const convexAvailable = useConvexAvailable();
@@ -403,7 +405,7 @@ export function AirTrafficViewer() {
         <div className="absolute top-[5.5rem] left-1/2 -translate-x-1/2 z-20 pointer-events-none">
           <div className="flex items-center gap-2 bg-bg-primary/80 backdrop-blur-md rounded-lg px-4 py-2 border border-border-default">
             <div className="w-3 h-3 border border-accent-primary/30 border-t-accent-primary rounded-full animate-spin" />
-            <p className="text-xs text-text-secondary">Loading airspace zones...</p>
+            <p className="text-xs text-text-secondary">{t("loadingZones")}</p>
           </div>
         </div>
       )}
@@ -413,7 +415,7 @@ export function AirTrafficViewer() {
         <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
           <div className="flex flex-col items-center gap-3">
             <div className="w-8 h-8 border-2 border-accent-primary/30 border-t-accent-primary rounded-full animate-spin" />
-            <p className="text-sm text-text-secondary">Initializing 3D view...</p>
+            <p className="text-sm text-text-secondary">{t("initializing3D")}</p>
           </div>
         </div>
       )}
@@ -422,7 +424,7 @@ export function AirTrafficViewer() {
       {viewerError && (
         <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
           <div className="bg-bg-primary/80 backdrop-blur-md rounded-lg px-6 py-4 border border-red-500/30 text-center max-w-sm">
-            <p className="text-sm text-red-400">3D view failed: {viewerError}</p>
+            <p className="text-sm text-red-400">{t("viewFailed", { error: viewerError })}</p>
           </div>
         </div>
       )}

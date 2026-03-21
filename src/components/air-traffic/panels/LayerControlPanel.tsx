@@ -7,6 +7,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Layers, ChevronLeft, ChevronRight } from "lucide-react";
 import { useAirspaceStore } from "@/stores/airspace-store";
@@ -24,6 +25,7 @@ const LAYER_GROUPS: { key: keyof AirTrafficLayers; label: string; description: s
 ];
 
 export function LayerControlPanel() {
+  const t = useTranslations("airTraffic");
   const [collapsed, setCollapsed] = useState(false);
   const layerVisibility = useAirspaceStore((s) => s.layerVisibility);
   const setLayerVisibility = useAirspaceStore((s) => s.setLayerVisibility);

@@ -200,7 +200,7 @@ export function FleetSidebar({
           <button
             onClick={onOpenPairing}
             className="w-8 h-8 rounded flex items-center justify-center text-accent-primary hover:bg-accent-primary/10 transition-colors"
-            title="Pair new drone"
+            title={t("pairNewDroneTitle")}
           >
             <Plus size={14} />
           </button>
@@ -215,12 +215,12 @@ export function FleetSidebar({
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-border-default">
         <span className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
-          Paired Drones
+          {t("pairedDrones")}
         </span>
         <button
           onClick={onToggleCollapse}
           className="p-1 text-text-tertiary hover:text-text-primary transition-colors"
-          title="Collapse"
+          title={t("collapse")}
         >
           <ChevronLeft size={14} />
         </button>
@@ -231,13 +231,13 @@ export function FleetSidebar({
         {pairedDrones.length === 0 && (
           <div className="text-center py-8 space-y-3">
             <Cpu size={24} className="mx-auto text-text-tertiary/40" />
-            <p className="text-xs text-text-tertiary">No drones paired</p>
+            <p className="text-xs text-text-tertiary">{t("noDronesPaired")}</p>
             <button
               onClick={onOpenPairing}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-accent-primary text-white rounded hover:opacity-90 transition-opacity"
             >
               <Plus size={12} />
-              Pair Your First Drone
+              {t("pairFirstDrone")}
             </button>
           </div>
         )}
@@ -329,7 +329,7 @@ export function FleetSidebar({
             className="w-full flex items-center justify-center gap-1.5 py-1.5 text-xs font-medium text-accent-primary border border-accent-primary/30 rounded hover:bg-accent-primary/10 transition-colors"
           >
             <Plus size={12} />
-            Pair New Drone
+            {t("pairNewDrone")}
           </button>
         </div>
       )}
@@ -351,7 +351,7 @@ export function FleetSidebar({
                   className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-text-secondary hover:bg-bg-tertiary hover:text-text-primary transition-colors"
                 >
                   <Pencil size={12} />
-                  Rename
+                  {t("rename")}
                 </button>
                 {drone.lastIp && (
                   <button
@@ -363,7 +363,7 @@ export function FleetSidebar({
                     ) : (
                       <Copy size={12} />
                     )}
-                    Copy IP
+                    {t("copyIp")}
                   </button>
                 )}
                 <div className="my-1 border-t border-border-default" />
@@ -372,7 +372,7 @@ export function FleetSidebar({
                   className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-status-error hover:bg-status-error/10 transition-colors"
                 >
                   <Unplug size={12} />
-                  Unpair
+                  {t("unpair")}
                 </button>
               </>
             );

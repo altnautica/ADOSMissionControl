@@ -8,7 +8,8 @@
  * @license GPL-3.0-only
  */
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import {
   ArrowUpRight,
   Radio,

@@ -20,22 +20,7 @@ interface CompactInfoCardsProps {
 
 type EditSection = "vehicle" | "identity" | "stats" | null;
 
-const WEIGHT_OPTIONS = [
-  { value: "Micro", label: "Micro" },
-  { value: "Small", label: "Small" },
-  { value: "Medium", label: "Medium" },
-  { value: "Large", label: "Large" },
-];
-
-const SUITE_OPTIONS = [
-  { value: "none", label: "No Suite" },
-  { value: "sentry", label: "Sentry" },
-  { value: "survey", label: "Survey" },
-  { value: "agriculture", label: "Agriculture" },
-  { value: "cargo", label: "Cargo" },
-  { value: "sar", label: "SAR" },
-  { value: "inspection", label: "Inspection" },
-];
+// Weight and suite options are built inside the component with translations
 
 function MetricCell({ label, value, unit }: { label: string; value: string | number; unit?: string }) {
   return (
@@ -140,7 +125,25 @@ function EditSelect({ label, value, onChange, options }: {
 }
 
 export function CompactInfoCards({ drone }: CompactInfoCardsProps) {
+  const t = useTranslations("flightInfo");
   const jurisdiction = useSettingsStore((s) => s.jurisdiction);
+
+  const WEIGHT_OPTIONS = useMemo(() => [
+    { value: "Micro", label: t("micro") },
+    { value: "Small", label: t("small") },
+    { value: "Medium", label: t("medium") },
+    { value: "Large", label: t("large") },
+  ], [t]);
+
+  const SUITE_OPTIONS = useMemo(() => [
+    { value: "none", label: t("noSuite") },
+    { value: "sentry", label: t("sentry") },
+    { value: "survey", label: t("survey") },
+    { value: "agriculture", label: t("agriculture") },
+    { value: "cargo", label: t("cargo") },
+    { value: "sar", label: t("sar") },
+    { value: "inspection", label: t("inspection") },
+  ], [t]);
   const jConfig = getJurisdictionConfig(jurisdiction);
   const metadata = useDroneMetadataStore((s) => s.profiles[drone.id]);
   const upsertProfile = useDroneMetadataStore((s) => s.upsertProfile);
@@ -210,17 +213,17 @@ export function CompactInfoCards({ drone }: CompactInfoCardsProps) {
   return (
     <div className="bg-bg-secondary">
       {/* Health — READ-ONLY */}
-      <Section title="Health">
+      <Section title={t("health")}>
         <SensorHealthBar compact />
         <div className="grid grid-cols-2 gap-2 mt-2">
-          <MetricCell label="Health" value={drone.healthScore} unit="%" />
-          <MetricCell label="Voltage" value={(drone.battery?.voltage ?? 0).toFixed(1)} unit="V" />
-          <MetricCell label="GPS Sats" value={drone.gps?.satellites ?? 0} />
-          <MetricCell label="Fix Type" value={drone.gps?.fixType && drone.gps.fixType >= 3 ? "3D" : drone.gps?.fixType === 2 ? "2D" : "No Fix"} />
+          <MetricCell label={t("health")} value={drone.healthScore} unit="%" />
+          <MetricCell label={t("voltage")} value={(drone.battery?.voltage ?? 0).toFixed(1)} unit="V" />
+          <MetricCell label={t("gpsSats")} value={drone.gps?.satellites ?? 0} />
+          <MetricCell label={t("fixType")} value={drone.gps?.fixType && drone.gps.fixType >= 3 ? "3D" : drone.gps?.fixType === 2 ? "2D" : "No Fix"} />
         </div>
         <div className="mt-2">
           <div className="flex items-center justify-between text-[10px] text-text-tertiary mb-1">
-            <span>Battery</span>
+            <span>{t("battery")}</span>
             <span className="font-mono tabular-nums">{Math.round(drone.battery?.remaining ?? 0)}%</span>
           </div>
           <BatteryBar percentage={drone.battery?.remaining ?? 0} />
@@ -229,7 +232,7 @@ export function CompactInfoCards({ drone }: CompactInfoCardsProps) {
 
       {/* Vehicle — EDITABLE */}
       <Section
-        title="Vehicle"
+        title={t("vehicleInfo")}
         editable
         editing={editingSection === "vehicle"}
         onEdit={() => startEdit("vehicle")}
@@ -238,12 +241,12 @@ export function CompactInfoCards({ drone }: CompactInfoCardsProps) {
       >
         {editingSection === "vehicle" ? (
           <div className="grid grid-cols-2 gap-2">
-            <MetricCell label="Frame" value={drone.frameType || "copter"} />
-            <MetricCell label="Firmware" value={drone.firmwareVersion || "ArduCopter"} />
-            <EditField label="Compute" value={editCompute} onChange={setEditCompute} />
-            <EditSelect label="Weight" value={editWeight} onChange={setEditWeight} options={WEIGHT_OPTIONS} />
+            <MetricCell label={t("frame")} value={drone.frameType || "copter"} />
+            <MetricCell label={t("firmware")} value={drone.firmwareVersion || "ArduCopter"} />
+            <EditField label={t("compute")} value={editCompute} onChange={setEditCompute} />
+            <EditSelect label={t("weight")} value={editWeight} onChange={setEditWeight} options={WEIGHT_OPTIONS} />
             <EditSelect
-              label="Suite"
+              label={t("suite")}
               value={editSuite}
               onChange={setEditSuite}
               options={SUITE_OPTIONS}
@@ -251,12 +254,12 @@ export function CompactInfoCards({ drone }: CompactInfoCardsProps) {
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-2">
-            <MetricCell label="Frame" value={drone.frameType || "copter"} />
-            <MetricCell label="Firmware" value={drone.firmwareVersion || "ArduCopter"} />
-            <MetricCell label="Compute" value={metadata?.computeModule || "—"} />
-            <MetricCell label="Weight" value={metadata?.weightClass || "—"} />
+            <MetricCell label={t("frame")} value={drone.frameType || "copter"} />
+            <MetricCell label={t("firmware")} value={drone.firmwareVersion || "ArduCopter"} />
+            <MetricCell label={t("compute")} value={metadata?.computeModule || "—"} />
+            <MetricCell label={t("weight")} value={metadata?.weightClass || "—"} />
             {(metadata?.suiteType) && (
-              <MetricCell label="Suite" value={metadata.suiteType} />
+              <MetricCell label={t("suite")} value={metadata.suiteType} />
             )}
           </div>
         )}
@@ -264,7 +267,7 @@ export function CompactInfoCards({ drone }: CompactInfoCardsProps) {
 
       {/* Identity — EDITABLE */}
       <Section
-        title="Identity"
+        title={t("identity")}
         editable
         editing={editingSection === "identity"}
         onEdit={() => startEdit("identity")}
@@ -273,16 +276,16 @@ export function CompactInfoCards({ drone }: CompactInfoCardsProps) {
       >
         {editingSection === "identity" ? (
           <div className="grid grid-cols-2 gap-2">
-            <EditField label="Name" value={editName} onChange={setEditName} />
-            <MetricCell label="ID" value={drone.id} />
-            <EditField label="Serial" value={editSerial} onChange={setEditSerial} />
+            <EditField label={t("name")} value={editName} onChange={setEditName} />
+            <MetricCell label={t("id")} value={drone.id} />
+            <EditField label={t("serial")} value={editSerial} onChange={setEditSerial} />
             <EditField label={jConfig.registrationLabel} value={editRegistration} onChange={setEditRegistration} />
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-2">
-            <MetricCell label="Name" value={metadata?.displayName ?? drone.name} />
-            <MetricCell label="ID" value={drone.id} />
-            <MetricCell label="Serial" value={metadata?.serial || "—"} />
+            <MetricCell label={t("name")} value={metadata?.displayName ?? drone.name} />
+            <MetricCell label={t("id")} value={drone.id} />
+            <MetricCell label={t("serial")} value={metadata?.serial || "—"} />
             <MetricCell label={jConfig.registrationLabel} value={metadata?.registration || "—"} />
           </div>
         )}
@@ -290,7 +293,7 @@ export function CompactInfoCards({ drone }: CompactInfoCardsProps) {
 
       {/* Stats — EDITABLE */}
       <Section
-        title="Stats"
+        title={t("statistics")}
         editable
         editing={editingSection === "stats"}
         onEdit={() => startEdit("stats")}
@@ -299,17 +302,17 @@ export function CompactInfoCards({ drone }: CompactInfoCardsProps) {
       >
         {editingSection === "stats" ? (
           <div className="grid grid-cols-2 gap-2">
-            <EditField label="Flights" value={editFlights} onChange={setEditFlights} type="number" />
-            <EditField label="Hours" value={editHours} onChange={setEditHours} type="number" />
-            <EditField label="Enrolled" value={editEnrolled} onChange={setEditEnrolled} type="date" />
-            <MetricCell label="Last Flight" value={formatDate(drone.lastHeartbeat)} />
+            <EditField label={t("totalFlights")} value={editFlights} onChange={setEditFlights} type="number" />
+            <EditField label={t("hours")} value={editHours} onChange={setEditHours} type="number" />
+            <EditField label={t("enrolled")} value={editEnrolled} onChange={setEditEnrolled} type="date" />
+            <MetricCell label={t("lastFlight")} value={formatDate(drone.lastHeartbeat)} />
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-2">
-            <MetricCell label="Flights" value={metadata?.totalFlights ?? 0} />
-            <MetricCell label="Hours" value={metadata?.totalHours ?? 0} unit="h" />
-            <MetricCell label="Enrolled" value={formatDate(metadata?.enrolledAt ?? Date.now() - 30 * 24 * 60 * 60 * 1000)} />
-            <MetricCell label="Last Flight" value={formatDate(drone.lastHeartbeat)} />
+            <MetricCell label={t("totalFlights")} value={metadata?.totalFlights ?? 0} />
+            <MetricCell label={t("hours")} value={metadata?.totalHours ?? 0} unit="h" />
+            <MetricCell label={t("enrolled")} value={formatDate(metadata?.enrolledAt ?? Date.now() - 30 * 24 * 60 * 60 * 1000)} />
+            <MetricCell label={t("lastFlight")} value={formatDate(drone.lastHeartbeat)} />
           </div>
         )}
       </Section>

@@ -7,6 +7,7 @@
  */
 
 import { useState, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { Move, RotateCw, Maximize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +22,7 @@ import {
 import type { Waypoint } from "@/lib/types";
 
 export function TransformPanel() {
+  const t = useTranslations("transform");
   const waypoints = useMissionStore((s) => s.waypoints);
   const setWaypoints = useMissionStore((s) => s.setWaypoints);
   const { toast } = useToast();
@@ -80,7 +82,7 @@ export function TransformPanel() {
       <div className="space-y-1.5">
         <div className="flex items-center gap-1.5 text-xs text-text-secondary">
           <Move size={12} />
-          <span>Move Mission</span>
+          <span>{t("move")}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <Input
@@ -91,7 +93,7 @@ export function TransformPanel() {
             max={360}
             step={15}
             className="flex-1"
-            label="Bearing °"
+            label={t("bearing")}
           />
           <Input
             type="number"
@@ -101,10 +103,10 @@ export function TransformPanel() {
             max={100000}
             step={50}
             className="flex-1"
-            label="Dist (m)"
+            label={t("distanceM")}
           />
           <Button variant="ghost" size="sm" onClick={() => setPendingAction("move")} disabled={disabled}>
-            Move
+            {t("move")}
           </Button>
         </div>
       </div>

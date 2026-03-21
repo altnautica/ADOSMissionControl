@@ -92,6 +92,7 @@ export function MapToolbar({
   onRedo,
   onClearAll,
 }: MapToolbarProps) {
+  const t = useTranslations("planner");
   return (
     <div className="absolute top-3 left-3 z-[1000] flex flex-col gap-1 p-1 bg-bg-secondary/90 backdrop-blur-sm border border-border-default rounded-lg">
       {toolGroups.map((group, gi) => (
@@ -115,14 +116,14 @@ export function MapToolbar({
       <ToolButton
         disabled={!canUndo}
         onClick={onUndo}
-        tooltip="Undo (Cmd+Z)"
+        tooltip={t("undo")}
       >
         <Undo2 size={16} />
       </ToolButton>
       <ToolButton
         disabled={!canRedo}
         onClick={onRedo}
-        tooltip="Redo (Cmd+Shift+Z)"
+        tooltip={t("redo")}
       >
         <Redo2 size={16} />
       </ToolButton>
@@ -142,17 +143,18 @@ export function MapToolbar({
 
 function ShortcutsHelpButton() {
   const [open, setOpen] = useState(false);
+  const t = useTranslations("planner");
 
   return (
     <>
-      <ToolButton onClick={() => setOpen(true)} tooltip="Keyboard Shortcuts">
+      <ToolButton onClick={() => setOpen(true)} tooltip={t("keyboardShortcuts")}>
         <HelpCircle size={16} />
       </ToolButton>
 
       {open && (
         <div className="absolute left-12 top-0 z-[1001] w-52 bg-bg-secondary/95 backdrop-blur-sm border border-border-default rounded-lg p-3">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-mono font-semibold text-text-primary">Keyboard Shortcuts</span>
+            <span className="text-[11px] font-mono font-semibold text-text-primary">{t("keyboardShortcuts")}</span>
             <button onClick={() => setOpen(false)} className="text-text-tertiary hover:text-text-primary cursor-pointer">
               <X size={12} />
             </button>

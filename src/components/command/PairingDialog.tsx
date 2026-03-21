@@ -8,6 +8,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import {
   X,
   Loader2,
@@ -47,6 +48,7 @@ export function PairingDialog({
   onClose,
   onPaired,
 }: PairingDialogProps) {
+  const t = useTranslations("command");
   const [state, setState] = useState<PairingState>("setup");
   const [preGenCode, setPreGenCode] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
@@ -286,7 +288,7 @@ export function PairingDialog({
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border-default">
           <h2 className="text-sm font-semibold text-text-primary">
-            Pair New Drone
+            {t("pairNewDrone")}
           </h2>
           <button
             onClick={onClose}
@@ -305,7 +307,7 @@ export function PairingDialog({
                 className="animate-spin text-accent-primary"
               />
               <p className="text-xs text-text-secondary">
-                Generating pairing code...
+                {t("generatingCode")}
               </p>
             </div>
           )}
@@ -327,7 +329,7 @@ export function PairingDialog({
                   <button
                     onClick={handleCopyCode}
                     className="ml-2 p-2 text-text-tertiary hover:text-text-primary transition-colors"
-                    title="Copy code"
+                    title={t("copyCode")}
                   >
                     {copiedCode ? (
                       <Check size={14} className="text-status-success" />
@@ -337,7 +339,7 @@ export function PairingDialog({
                   </button>
                 </div>
                 <p className="text-xs text-text-tertiary">
-                  Expires in{" "}
+                  {t("expiresIn")}{" "}
                   <span
                     className={
                       secondsLeft < 60
@@ -355,7 +357,7 @@ export function PairingDialog({
                 <div className="flex items-center gap-2">
                   <Terminal size={14} className="text-accent-primary" />
                   <p className="text-xs font-medium text-text-primary">
-                    First time? Run this on your drone
+                    {t("firstTime")}
                   </p>
                 </div>
 
@@ -366,7 +368,7 @@ export function PairingDialog({
                   <button
                     onClick={handleCopyInstall}
                     className="p-1.5 text-text-tertiary hover:text-text-primary transition-colors shrink-0"
-                    title="Copy install command"
+                    title={t("copyInstallCommand")}
                   >
                     {copiedInstall ? (
                       <Check size={14} className="text-status-success" />
@@ -377,7 +379,7 @@ export function PairingDialog({
                 </div>
 
                 <p className="text-[10px] text-text-tertiary">
-                  Already installed? Run:{" "}
+                  {t("alreadyInstalled")}{" "}
                   <code className="font-mono text-text-secondary">
                     sudo ados pair {preGenCode}
                   </code>
@@ -391,7 +393,7 @@ export function PairingDialog({
                   className="animate-spin text-text-tertiary"
                 />
                 <p className="text-xs text-text-tertiary">
-                  Waiting for your drone to connect...
+                  {t("waitingForDrone")}
                 </p>
               </div>
 
@@ -399,7 +401,7 @@ export function PairingDialog({
               {discoveredAgents.length > 0 && (
                 <div className="space-y-2">
                   <p className="text-[11px] text-text-tertiary font-medium uppercase tracking-wider">
-                    Discovered on network
+                    {t("discoveredOnNetwork")}
                   </p>
                   <div className="space-y-2">
                     {discoveredAgents.map((agent) => (
@@ -434,7 +436,7 @@ export function PairingDialog({
                           </div>
                         </div>
                         <span className="text-[10px] font-medium text-accent-primary opacity-0 group-hover:opacity-100 transition-opacity">
-                          Pair
+                          {t("pair")}
                         </span>
                       </button>
                     ))}
@@ -452,7 +454,7 @@ export function PairingDialog({
               </div>
               <div className="text-center space-y-1">
                 <p className="text-sm font-medium text-text-primary">
-                  Paired!
+                  {t("paired")}
                 </p>
                 <p className="text-xs text-text-secondary">
                   {pairedInfo.name}
@@ -462,7 +464,7 @@ export function PairingDialog({
                 </p>
               </div>
               <p className="text-[11px] text-text-tertiary">
-                Connecting automatically...
+                {t("connectingAutomatically")}
               </p>
             </div>
           )}
@@ -475,7 +477,7 @@ export function PairingDialog({
               </div>
               <div className="text-center space-y-1">
                 <p className="text-sm font-medium text-text-primary">
-                  Pairing Failed
+                  {t("pairingFailed")}
                 </p>
                 <p className="text-xs text-status-error">{errorMessage}</p>
               </div>
@@ -483,7 +485,7 @@ export function PairingDialog({
                 onClick={handleRetry}
                 className="px-4 py-1.5 text-xs font-medium bg-bg-tertiary border border-border-default rounded hover:bg-bg-primary transition-colors text-text-primary"
               >
-                Try Again
+                {t("tryAgain")}
               </button>
             </div>
           )}
@@ -496,17 +498,17 @@ export function PairingDialog({
               </div>
               <div className="text-center space-y-1">
                 <p className="text-sm font-medium text-text-primary">
-                  Code Expired
+                  {t("codeExpired")}
                 </p>
                 <p className="text-xs text-text-secondary">
-                  The pairing code timed out after 15 minutes.
+                  {t("codeExpiredMessage")}
                 </p>
               </div>
               <button
                 onClick={handleRetry}
                 className="px-4 py-1.5 text-xs font-medium bg-accent-primary text-white rounded hover:bg-accent-primary/90 transition-colors"
               >
-                Generate New Code
+                {t("generateNewCode")}
               </button>
             </div>
           )}
