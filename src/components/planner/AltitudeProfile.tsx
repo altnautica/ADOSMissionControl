@@ -8,6 +8,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Dot } from "recharts";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import type { Waypoint } from "@/lib/types";
@@ -38,6 +39,7 @@ export function AltitudeProfile({
   selectedWaypointId,
   onSelectWaypoint,
 }: AltitudeProfileProps) {
+  const t = useTranslations("planner");
   const data: AltitudeDataPoint[] = useMemo(() => {
     let cumDist = 0;
     return waypoints.map((wp, i) => {
@@ -68,7 +70,7 @@ export function AltitudeProfile({
           className="w-full flex items-center justify-between px-3 py-1.5 cursor-pointer hover:bg-bg-tertiary transition-colors"
         >
           <span className="text-[10px] font-semibold uppercase tracking-wider text-text-secondary">
-            Altitude Profile
+            {t("altitudeProfile")}
           </span>
           {collapsed ? <ChevronUp size={12} className="text-text-tertiary" /> : <ChevronDown size={12} className="text-text-tertiary" />}
         </button>

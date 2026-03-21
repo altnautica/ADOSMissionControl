@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { useSensorHealthStore } from "@/stores/sensor-health-store";
 import { cn } from "@/lib/utils";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -29,6 +30,7 @@ export function SensorHealthGrid({
   compact?: boolean;
   className?: string;
 }) {
+  const t = useTranslations("indicators");
   const sensors = useSensorHealthStore((s) => s.sensors);
   const healthyCount = useSensorHealthStore((s) => s.getHealthySensorCount());
   const totalPresent = useSensorHealthStore((s) => s.getTotalPresentCount());
@@ -49,7 +51,7 @@ export function SensorHealthGrid({
   if (displayed.length === 0) {
     return (
       <div className={cn("text-xs text-text-tertiary", className)}>
-        No sensor data
+        {t("noSensorData")}
       </div>
     );
   }
@@ -103,28 +105,28 @@ export function SensorHealthGrid({
             {isExpanded && (
               <div className="px-2 py-1.5 mt-0.5 rounded bg-bg-tertiary/30 border border-border-default/30 text-[9px] font-mono text-text-secondary space-y-0.5 animate-in fade-in slide-in-from-top-1 duration-150">
                 <div className="flex justify-between">
-                  <span className="text-text-tertiary">Status</span>
+                  <span className="text-text-tertiary">{t("status")}</span>
                   <span className={cfg.color}>{sensor.status}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-text-tertiary">Present</span>
-                  <span>{sensor.present ? "Yes" : "No"}</span>
+                  <span className="text-text-tertiary">{t("present")}</span>
+                  <span>{sensor.present ? t("yes") : t("no")}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-text-tertiary">Enabled</span>
-                  <span>{sensor.enabled ? "Yes" : "No"}</span>
+                  <span className="text-text-tertiary">{t("enabled")}</span>
+                  <span>{sensor.enabled ? t("yes") : t("no")}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-text-tertiary">Healthy</span>
-                  <span>{sensor.healthy ? "Yes" : "No"}</span>
+                  <span className="text-text-tertiary">{t("healthy")}</span>
+                  <span>{sensor.healthy ? t("yes") : t("no")}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-text-tertiary">Bit</span>
+                  <span className="text-text-tertiary">{t("bit")}</span>
                   <span>{sensor.bit} (0x{(1 << sensor.bit).toString(16).toUpperCase()})</span>
                 </div>
                 {lastUpdate > 0 && (
                   <div className="flex justify-between">
-                    <span className="text-text-tertiary">Last Update</span>
+                    <span className="text-text-tertiary">{t("lastUpdate")}</span>
                     <span>{new Date(lastUpdate).toLocaleTimeString()}</span>
                   </div>
                 )}

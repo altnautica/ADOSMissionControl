@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useDroneStore } from "@/stores/drone-store";
 import { cn } from "@/lib/utils";
@@ -20,6 +21,7 @@ export function RebootRequiredBanner({
   rebootParams: string[];
   className?: string;
 }) {
+  const t = useTranslations("fcShared");
   const [dismissed, setDismissed] = useState(false);
   const [fadingOut, setFadingOut] = useState(false);
   const protocol = useDroneManager.getState().getSelectedProtocol();
@@ -70,10 +72,10 @@ export function RebootRequiredBanner({
       <div className="flex items-center gap-2">
         <RotateCcw size={14} className="text-status-warning shrink-0" />
         <span className="flex-1 text-text-primary">
-          Reboot required for {rebootParams.length} parameter{rebootParams.length !== 1 ? "s" : ""} to take effect
+          {t("rebootRequired")}
         </span>
         <Button size="sm" variant="ghost" onClick={handleReboot}>
-          Reboot FC
+          {t("rebootNow")}
         </Button>
         <button onClick={() => setDismissed(true)} className="text-text-tertiary hover:text-text-primary">
           <X size={12} />

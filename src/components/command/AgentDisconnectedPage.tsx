@@ -168,7 +168,7 @@ export function AgentDisconnectedPage({
             {t("pairYourDrone")}
           </h1>
           <p className="text-text-secondary text-base max-w-lg mx-auto">
-            Install the agent, enter this code, and you&apos;re connected.
+            {t("installAndConnect")}
           </p>
         </div>
 
@@ -181,19 +181,19 @@ export function AgentDisconnectedPage({
                 className="animate-spin text-accent-primary"
               />
               <p className="text-xs text-text-secondary">
-                Generating pairing code...
+                {tc("generatingCode")}
               </p>
             </div>
           ) : expired ? (
             <div className="flex flex-col items-center gap-4 py-6">
               <p className="text-sm text-text-secondary">
-                Code expired.
+                {tc("codeExpiredShort")}
               </p>
               <button
                 onClick={generateCode}
                 className="px-4 py-1.5 text-xs font-medium bg-accent-primary text-white rounded hover:bg-accent-primary/90 transition-colors"
               >
-                Generate New Code
+                {tc("generateNewCode")}
               </button>
             </div>
           ) : (
@@ -212,7 +212,7 @@ export function AgentDisconnectedPage({
                   <button
                     onClick={handleCopyCode}
                     className="ml-2 p-2 text-text-tertiary hover:text-text-primary transition-colors"
-                    title="Copy code"
+                    title={tc("copyCode")}
                   >
                     {copiedCode ? (
                       <Check size={16} className="text-status-success" />
@@ -222,7 +222,7 @@ export function AgentDisconnectedPage({
                   </button>
                 </div>
                 <p className="text-sm text-text-tertiary">
-                  Expires in{" "}
+                  {tc("expiresIn")}{" "}
                   <span
                     className={
                       secondsLeft < 60
@@ -238,7 +238,7 @@ export function AgentDisconnectedPage({
               {/* Install command */}
               <div className="space-y-2">
                 <p className="text-sm text-text-secondary">
-                  First time? Run this on your drone:
+                  {tc("firstTimeColon")}
                 </p>
                 <div className="flex items-start gap-2 p-3 bg-bg-secondary border border-border-default rounded-lg">
                   <code className="flex-1 text-xs font-mono text-text-secondary leading-relaxed break-all select-all">
@@ -247,7 +247,7 @@ export function AgentDisconnectedPage({
                   <button
                     onClick={handleCopyInstall}
                     className="p-1.5 text-text-tertiary hover:text-text-primary transition-colors shrink-0"
-                    title="Copy install command"
+                    title={tc("copyInstallCommand")}
                   >
                     {copiedInstall ? (
                       <Check size={14} className="text-status-success" />
@@ -257,7 +257,7 @@ export function AgentDisconnectedPage({
                   </button>
                 </div>
                 <p className="text-xs text-text-tertiary">
-                  Already installed? Run:{" "}
+                  {tc("alreadyInstalled")}{" "}
                   <code className="font-mono text-text-secondary">
                     sudo ados pair {code}
                   </code>
@@ -271,7 +271,7 @@ export function AgentDisconnectedPage({
                   className="animate-spin text-text-tertiary"
                 />
                 <p className="text-sm text-text-tertiary">
-                  Waiting for your drone to connect...
+                  {tc("waitingForDrone")}
                 </p>
               </div>
             </div>
@@ -283,7 +283,7 @@ export function AgentDisconnectedPage({
           <div className="max-w-2xl mx-auto space-y-3">
             <h2 className="text-xs font-medium text-text-primary flex items-center gap-2">
               <Wifi size={12} className="text-status-success" />
-              Discovered on your network
+              {tc("discoveredOnYourNetwork")}
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {discoveredAgents.map((agent) => (
@@ -313,7 +313,7 @@ export function AgentDisconnectedPage({
         {/* Feature cards */}
         <div>
           <h2 className="text-lg font-medium text-text-primary mb-4">
-            Turn any drone into a smart drone
+            {t("turnAnyDrone")}
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {features.map(({ icon: Icon, title, description }) => (
@@ -342,16 +342,14 @@ export function AgentDisconnectedPage({
             className="text-yellow-400 shrink-0 mt-0.5"
           />
           <p className="text-sm text-yellow-200/80 leading-relaxed">
-            This is alpha software. Expect bugs, breaking changes, and
-            incomplete features. The Command tab provides direct control over
-            drone agent services and configuration. Use at your own risk.
+            {t("alphaDisclaimer")}
           </p>
         </div>
 
         {/* Requirements */}
         <div className="text-center space-y-3">
           <h2 className="text-base font-medium text-text-primary">
-            Requirements
+            {t("requirements")}
           </h2>
           <div className="inline-flex items-center gap-4 text-sm text-text-tertiary">
             <span className="flex items-center gap-1.5">
@@ -373,7 +371,7 @@ export function AgentDisconnectedPage({
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-text-primary bg-bg-tertiary border border-border-default rounded hover:bg-bg-secondary transition-colors"
           >
-            View on GitHub
+            {t("viewOnGitHub")}
             <ArrowUpRight size={12} />
           </a>
         </div>

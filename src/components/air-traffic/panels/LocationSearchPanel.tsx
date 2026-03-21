@@ -7,6 +7,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState, useCallback } from "react";
 import { Search, MapPin, X } from "lucide-react";
 import { Cartesian3, type Viewer as CesiumViewer } from "cesium";
@@ -22,6 +23,7 @@ interface SearchResult {
 }
 
 export function LocationSearchPanel({ viewer }: LocationSearchPanelProps) {
+  const t = useTranslations("airTraffic");
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -85,7 +87,7 @@ export function LocationSearchPanel({ viewer }: LocationSearchPanelProps) {
       <button
         onClick={() => setOpen(true)}
         className="absolute top-4 right-4 z-10 p-2 bg-bg-primary/70 backdrop-blur-md border border-border-default rounded-lg hover:bg-bg-secondary transition-colors cursor-pointer"
-        title="Search location"
+        title={t("searchLocation")}
       >
         <Search size={14} className="text-text-secondary" />
       </button>
@@ -102,7 +104,7 @@ export function LocationSearchPanel({ viewer }: LocationSearchPanelProps) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-          placeholder="Address or lat,lon..."
+          placeholder={t("addressOrCoords")}
           className="flex-1 bg-transparent text-xs font-mono text-text-primary placeholder:text-text-tertiary outline-none"
           autoFocus
         />
@@ -116,7 +118,7 @@ export function LocationSearchPanel({ viewer }: LocationSearchPanelProps) {
 
       {/* Results */}
       {loading && (
-        <div className="px-3 py-2 text-[10px] font-mono text-text-tertiary">Searching...</div>
+        <div className="px-3 py-2 text-[10px] font-mono text-text-tertiary">{t("searching")}</div>
       )}
       {results.length > 0 && (
         <div className="max-h-48 overflow-y-auto">
@@ -136,7 +138,7 @@ export function LocationSearchPanel({ viewer }: LocationSearchPanelProps) {
       )}
       {!loading && results.length === 0 && query.trim() && (
         <div className="px-3 py-2 text-[10px] font-mono text-text-tertiary">
-          Press Enter to search
+          {t("pressEnterToSearch")}
         </div>
       )}
     </div>

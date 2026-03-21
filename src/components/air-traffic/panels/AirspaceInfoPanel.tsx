@@ -8,33 +8,35 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { X, CheckCircle, AlertTriangle, XCircle, ExternalLink, MapPin } from "lucide-react";
 import { useAirspaceStore } from "@/stores/airspace-store";
 import { cn } from "@/lib/utils";
 import type { Flyability, FlyabilityVerdict } from "@/lib/airspace/types";
 
-const VERDICT_CONFIG: Record<FlyabilityVerdict, { icon: typeof CheckCircle; color: string; bg: string; label: string }> = {
+const VERDICT_CONFIG: Record<FlyabilityVerdict, { icon: typeof CheckCircle; color: string; bg: string; labelKey: string }> = {
   clear: {
     icon: CheckCircle,
     color: "text-green-400",
     bg: "bg-green-500/10 border-green-500/30",
-    label: "Clear to Fly",
+    labelKey: "clearToFly",
   },
   advisory: {
     icon: AlertTriangle,
     color: "text-yellow-400",
     bg: "bg-yellow-500/10 border-yellow-500/30",
-    label: "Advisories Active",
+    labelKey: "advisoriesActive",
   },
   restricted: {
     icon: XCircle,
     color: "text-red-400",
     bg: "bg-red-500/10 border-red-500/30",
-    label: "Flight Restricted",
+    labelKey: "flightRestricted",
   },
 };
 
 export function AirspaceInfoPanel() {
+  const t = useTranslations("airTraffic");
   const flyability = useAirspaceStore((s) => s.flyability);
   const selectedPoint = useAirspaceStore((s) => s.selectedPoint);
   const setSelectedPoint = useAirspaceStore((s) => s.setSelectedPoint);
@@ -51,7 +53,7 @@ export function AirspaceInfoPanel() {
       <div className={cn("flex items-center gap-2 px-4 py-3 border-b", config.bg)}>
         <Icon size={18} className={config.color} />
         <div className="flex-1 min-w-0">
-          <p className={cn("text-sm font-semibold", config.color)}>{config.label}</p>
+          <p className={cn("text-sm font-semibold", config.color)}>{t(config.labelKey)}</p>
           <p className="text-[10px] font-mono text-text-tertiary">
             {selectedPoint.lat.toFixed(5)}, {selectedPoint.lon.toFixed(5)}
           </p>
@@ -68,9 +70,9 @@ export function AirspaceInfoPanel() {
       <div className="p-3 flex flex-col gap-3 max-h-[400px] overflow-y-auto">
         {/* Max altitude */}
         <div>
-          <p className="text-[9px] font-mono text-text-tertiary uppercase mb-1">Max Altitude</p>
+          <p className="text-[9px] font-mono text-text-tertiary uppercase mb-1">{t("maxAltitude")}</p>
           <p className="text-sm font-mono text-text-primary font-bold">
-            {flyability.maxAltitudeAgl > 0 ? `${flyability.maxAltitudeAgl}m AGL` : "No flight permitted"}
+            {flyability.maxAltitudeAgl > 0 ? `${flyability.maxAltitudeAgl}m AGL` : t("noFlightPermitted")}
           </p>
         </div>
 
@@ -78,7 +80,7 @@ export function AirspaceInfoPanel() {
         {flyability.zones.length > 0 && (
           <div>
             <p className="text-[9px] font-mono text-text-tertiary uppercase mb-1">
-              Active Zones ({flyability.zones.length})
+              {t("activeZones", { count: flyability.zones.length })}
             </p>
             <div className="flex flex-col gap-1">
               {flyability.zones.map((zone) => (
@@ -97,7 +99,7 @@ export function AirspaceInfoPanel() {
         {/* Nearest airport */}
         {flyability.nearestAirport && (
           <div>
-            <p className="text-[9px] font-mono text-text-tertiary uppercase mb-1">Nearest Airport</p>
+            <p className="text-[9px] font-mono text-text-tertiary uppercase mb-1">{t("nearestAirport")}</p>
             <div className="flex items-center gap-2 text-xs font-mono text-text-secondary">
               <MapPin size={10} className="text-text-tertiary shrink-0" />
               <span>{flyability.nearestAirport.name} ({flyability.nearestAirport.icao})</span>
@@ -112,7 +114,7 @@ export function AirspaceInfoPanel() {
         {flyability.activeNotams.length > 0 && (
           <div>
             <p className="text-[9px] font-mono text-text-tertiary uppercase mb-1">
-              Active NOTAMs ({flyability.activeNotams.length})
+              {t("activeNotams", { count: flyability.activeNotams.length })}
             </p>
             <div className="flex flex-col gap-1">
               {flyability.activeNotams.map((notam) => (
@@ -128,7 +130,7 @@ export function AirspaceInfoPanel() {
         {flyability.activeTfrs.length > 0 && (
           <div>
             <p className="text-[9px] font-mono text-text-tertiary uppercase mb-1">
-              Active TFRs ({flyability.activeTfrs.length})
+              {t("activeTfrs", { count: flyability.activeTfrs.length })}
             </p>
             <div className="flex flex-col gap-1">
               {flyability.activeTfrs.map((tfr) => (
@@ -142,7 +144,7 @@ export function AirspaceInfoPanel() {
 
         {/* Traffic count */}
         <div className="flex items-center justify-between text-xs font-mono">
-          <span className="text-text-tertiary">Live traffic within 5km</span>
+          <span className="text-text-tertiary">{t("liveTrafficNearby")}</span>
           <span className="text-text-primary font-bold">{flyability.trafficCount}</span>
         </div>
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useConnectionQuality } from "@/hooks/use-connection-quality";
 import { cn } from "@/lib/utils";
 
@@ -8,6 +9,7 @@ import { cn } from "@/lib/utils";
  * Renders 4 bars that fill based on signal quality rating.
  */
 export function ConnectionQualityMeter({ className }: { className?: string }) {
+  const t = useTranslations("indicators");
   const { quality, signalStrength, latencyMs, rssi } = useConnectionQuality();
 
   if (quality === "unknown") return null;
@@ -25,7 +27,7 @@ export function ConnectionQualityMeter({ className }: { className?: string }) {
     : "bg-status-error";
 
   return (
-    <div className={cn("flex items-center gap-1.5", className)} title={`Signal: ${signalStrength}% | RSSI: ${rssi} | Latency: ${latencyMs}ms`}>
+    <div className={cn("flex items-center gap-1.5", className)} title={`${t("signal")}: ${signalStrength}% | ${t("rssi")}: ${rssi} | ${t("latency")}: ${latencyMs}ms`}>
       {/* Signal bars */}
       <div className="flex items-end gap-px h-3.5">
         {[1, 2, 3, 4].map((level) => (

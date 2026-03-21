@@ -7,6 +7,7 @@
  */
 
 import { useState, useEffect, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { ScanLine, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAgentStore } from "@/stores/agent-store";
@@ -29,6 +30,7 @@ const categoryBadgeColor: Record<string, string> = {
 };
 
 export function PeripheralsTab() {
+  const t = useTranslations("peripherals");
   const connected = useAgentStore((s) => s.connected);
   const peripherals = useAgentStore((s) => s.peripherals);
   const fetchPeripherals = useAgentStore((s) => s.fetchPeripherals);

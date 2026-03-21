@@ -8,6 +8,7 @@
 "use client";
 
 import { useMemo, useState, useEffect, useRef, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
 import { Mountain, Loader2 } from "lucide-react";
 import type { Waypoint } from "@/lib/types";
@@ -34,6 +35,7 @@ interface TerrainProfileChartProps {
 }
 
 export function TerrainProfileChart({ waypoints }: TerrainProfileChartProps) {
+  const t = useTranslations("terrain");
   const [terrainProfile, setTerrainProfile] = useState<TerrainProfile | null>(null);
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<"relative" | "terrain">("terrain");
@@ -137,14 +139,14 @@ export function TerrainProfileChart({ waypoints }: TerrainProfileChartProps) {
         <div className="flex items-center gap-1.5">
           <Mountain size={12} className="text-text-tertiary" />
           <span className="text-[10px] font-mono text-text-tertiary">
-            {mode === "terrain" ? "Terrain Following (AGL)" : "Relative to Takeoff"}
+            {mode === "terrain" ? t("terrainFollowingAgl") : t("relativeToTakeoff")}
           </span>
         </div>
         <button
           onClick={toggleMode}
           className="text-[10px] font-mono text-accent-primary hover:text-accent-primary/80 cursor-pointer"
         >
-          {mode === "terrain" ? "Show Relative" : "Show Terrain"}
+          {mode === "terrain" ? t("showRelative") : t("showTerrain")}
         </button>
       </div>
 
@@ -152,7 +154,7 @@ export function TerrainProfileChart({ waypoints }: TerrainProfileChartProps) {
       {loading && (
         <div className="flex items-center justify-center h-[80px]">
           <Loader2 size={14} className="text-text-tertiary animate-spin" />
-          <span className="text-[10px] text-text-tertiary ml-2">Loading terrain data...</span>
+          <span className="text-[10px] text-text-tertiary ml-2">{t("loadingTerrain")}</span>
         </div>
       )}
 
@@ -161,11 +163,11 @@ export function TerrainProfileChart({ waypoints }: TerrainProfileChartProps) {
         <div className="flex items-center gap-3 mb-0.5">
           <div className="flex items-center gap-1">
             <div className="w-3 h-1.5 rounded-sm" style={{ background: TERRAIN_FILL, opacity: 0.5 }} />
-            <span className="text-[9px] font-mono text-text-tertiary">Terrain</span>
+            <span className="text-[9px] font-mono text-text-tertiary">{t("terrain")}</span>
           </div>
           <div className="flex items-center gap-1">
             <div className="w-3 h-0.5 rounded-sm" style={{ background: MAP_COLORS.accentPrimary }} />
-            <span className="text-[9px] font-mono text-text-tertiary">Flight path</span>
+            <span className="text-[9px] font-mono text-text-tertiary">{t("flightPath")}</span>
           </div>
         </div>
       )}
@@ -244,7 +246,7 @@ export function TerrainProfileChart({ waypoints }: TerrainProfileChartProps) {
       {!loading && data.length === 0 && terrainProfile === null && (
         <div className="flex items-center justify-center h-[40px]">
           <span className="text-[10px] text-text-tertiary font-mono">
-            Add 2+ waypoints to see terrain profile
+            {t("addWaypointsForTerrain")}
           </span>
         </div>
       )}

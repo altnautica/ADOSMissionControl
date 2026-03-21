@@ -7,6 +7,7 @@
 "use client";
 
 import { useMemo, useEffect, useState, useRef, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { CheckCircle, AlertTriangle, XCircle } from "lucide-react";
 import type { Waypoint } from "@/lib/types";
 import {
@@ -28,6 +29,7 @@ export function ValidationPanel({
   geofenceMaxAlt,
   onSelectWaypoint,
 }: ValidationPanelProps) {
+  const t = useTranslations("validation");
   const [result, setResult] = useState<ValidationResult | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -74,7 +76,7 @@ export function ValidationPanel({
     return (
       <div className="px-3 py-2">
         <p className="text-[10px] text-text-tertiary font-mono">
-          Add waypoints to validate
+          {t("addWaypointsToValidate")}
         </p>
       </div>
     );
@@ -84,7 +86,7 @@ export function ValidationPanel({
   if (!result) {
     return (
       <div className="px-3 py-2">
-        <span className="text-[10px] text-text-tertiary font-mono">Validating...</span>
+        <span className="text-[10px] text-text-tertiary font-mono">{t("validating")}</span>
       </div>
     );
   }
@@ -98,7 +100,7 @@ export function ValidationPanel({
         {result.valid && result.warnings.length === 0 ? (
           <>
             <CheckCircle size={12} className="text-status-success" />
-            <span className="text-[10px] font-mono text-status-success">Mission valid</span>
+            <span className="text-[10px] font-mono text-status-success">{t("missionValid")}</span>
           </>
         ) : result.valid ? (
           <>
