@@ -8,6 +8,7 @@
 "use client";
 
 import { useMemo, useCallback, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { usePlanLibraryStore } from "@/stores/plan-library-store";
 import { useMissionStore } from "@/stores/mission-store";
@@ -39,6 +40,7 @@ interface FlightPlanLibraryProps {
 }
 
 export function FlightPlanLibrary({ context, onPlanLoaded, onSave, onPlanRenamed, onDownloadFromDrone, isDownloading, hasDrone }: FlightPlanLibraryProps) {
+  const t = useTranslations("library");
   const plans = usePlanLibraryStore((s) => s.plans);
   const folders = usePlanLibraryStore((s) => s.folders);
   const activePlanId = usePlanLibraryStore((s) => s.activePlanId);
@@ -70,8 +72,8 @@ export function FlightPlanLibrary({ context, onPlanLoaded, onSave, onPlanRenamed
   const handleNewPlan = useCallback(() => {
     createPlan();
     clearMission();
-    onPlanLoaded?.({ name: "Untitled Plan" });
-    toast("New plan created", "info");
+    onPlanLoaded?.({ name: t("untitledPlan") });
+    toast(t("newPlanCreated"), "info");
   }, [createPlan, clearMission, onPlanLoaded, toast]);
 
   /** Load a plan into the planner — no dirty check, used after save/discard. */
@@ -151,9 +153,9 @@ export function FlightPlanLibrary({ context, onPlanLoaded, onSave, onPlanRenamed
         });
         setWaypoints(result.waypoints);
         onPlanLoaded?.({ name, droneId: result.metadata?.droneId, suiteType: result.metadata?.suiteType });
-        toast(`Imported "${name}" (${result.waypoints.length} WPs)`, "success");
+        toast(t("importedPlan", { name, count: result.waypoints.length }), "success");
       } catch {
-        toast("Failed to import file", "error");
+        toast(t("importFailed"), "error");
       }
       e.target.value = "";
     },
@@ -166,7 +168,7 @@ export function FlightPlanLibrary({ context, onPlanLoaded, onSave, onPlanRenamed
         <button
           onClick={toggleLibrary}
           className="p-2 mt-2 text-text-tertiary hover:text-text-primary transition-colors cursor-pointer"
-          title="Expand flight plans"
+          title={t("expandFlightPlans")}
         >
           <ChevronRight size={14} />
         </button>
@@ -185,7 +187,7 @@ export function FlightPlanLibrary({ context, onPlanLoaded, onSave, onPlanRenamed
             <PlanLibraryEmpty onNew={handleNewPlan} onImport={handleImport} onDownloadFromDrone={onDownloadFromDrone} isDownloading={isDownloading} hasDrone={hasDrone} />
           ) : filteredPlans.length === 0 ? (
             <div className="text-xs text-text-tertiary text-center py-4">
-              No plans match search
+              {t("noPlansMatchSearch")}
             </div>
           ) : (
             <PlanTree

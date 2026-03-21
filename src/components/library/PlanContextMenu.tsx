@@ -7,6 +7,7 @@
 "use client";
 
 import { useEffect, useRef, useCallback, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Copy, Trash2, FileDown, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePlanLibraryStore } from "@/stores/plan-library-store";
@@ -24,6 +25,7 @@ interface PlanContextMenuProps {
 }
 
 export function PlanContextMenu({ planId, x, y, onClose, onPlanRenamed }: PlanContextMenuProps) {
+  const t = useTranslations("library");
   const ref = useRef<HTMLDivElement>(null);
   const plans = usePlanLibraryStore((s) => s.plans);
   const deletePlan = usePlanLibraryStore((s) => s.deletePlan);

@@ -105,7 +105,7 @@ export function HistoryToolbar({
         onChange={onSuiteFilterChange}
       />
       <Select
-        label="Sort"
+        label={t("sortLabel")}
         options={SORT_OPTIONS}
         value={sort}
         onChange={onSortChange}
@@ -116,7 +116,7 @@ export function HistoryToolbar({
         icon={<Download size={14} />}
         onClick={() => exportFlightRecordsAsCsv(records)}
       >
-        Export
+        {t("exportBtn")}
       </Button>
     </div>
   );

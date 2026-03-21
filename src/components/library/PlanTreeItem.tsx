@@ -9,6 +9,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { Play, Save, MoreHorizontal } from "lucide-react";
 import type { SavedPlan } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -28,6 +29,7 @@ interface PlanTreeItemProps {
 }
 
 export function PlanTreeItem({ plan, isActive, isDirty, context, onSelect, onSave, onPlanRenamed }: PlanTreeItemProps) {
+  const t = useTranslations("library");
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
   const dist = totalDistance(plan.waypoints);
@@ -64,7 +66,7 @@ export function PlanTreeItem({ plan, isActive, isDirty, context, onSelect, onSav
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
             {isDirty && (
-              <span className="w-1.5 h-1.5 rounded-full bg-status-warning shrink-0" title="Unsaved changes" />
+              <span className="w-1.5 h-1.5 rounded-full bg-status-warning shrink-0" title={t("unsavedChanges")} />
             )}
             <span className="text-xs font-medium text-text-primary truncate">
               {plan.name}
@@ -86,7 +88,7 @@ export function PlanTreeItem({ plan, isActive, isDirty, context, onSelect, onSav
               role="button"
               onClick={handleSaveClick}
               className="p-0.5 text-text-tertiary hover:text-accent-primary transition-colors cursor-pointer"
-              title="Save plan"
+              title={t("savePlan")}
             >
               <Save size={12} />
             </span>
@@ -100,7 +102,7 @@ export function PlanTreeItem({ plan, isActive, isDirty, context, onSelect, onSav
             role="button"
             onClick={handleOverflowClick}
             className="p-0.5 text-text-tertiary hover:text-text-primary transition-colors cursor-pointer"
-            title="More actions"
+            title={t("moreActions")}
           >
             <MoreHorizontal size={12} />
           </span>
