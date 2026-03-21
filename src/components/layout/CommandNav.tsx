@@ -2,20 +2,22 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { LayoutDashboard, Terminal, Route, Play, Radar, History } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const tabs = [
-  { icon: LayoutDashboard, label: "Dashboard", href: "/" },
-  { icon: Terminal, label: "Command", href: "/command" },
-  { icon: Route, label: "Plan", href: "/plan" },
-  { icon: Play, label: "Simulate", href: "/simulate" },
-  { icon: Radar, label: "Air Traffic", href: "/air-traffic" },
-  { icon: History, label: "History", href: "/history" },
+  { icon: LayoutDashboard, labelKey: "dashboard", href: "/" },
+  { icon: Terminal, labelKey: "command", href: "/command" },
+  { icon: Route, labelKey: "plan", href: "/plan" },
+  { icon: Play, labelKey: "simulate", href: "/simulate" },
+  { icon: Radar, labelKey: "airTraffic", href: "/air-traffic" },
+  { icon: History, labelKey: "history", href: "/history" },
 ] as const;
 
 export function CommandNav() {
   const pathname = usePathname();
+  const t = useTranslations("nav");
 
   function isActive(href: string): boolean {
     if (href === "/") return pathname === "/";
@@ -24,7 +26,7 @@ export function CommandNav() {
 
   return (
     <nav className="flex items-center gap-1">
-      {tabs.map(({ icon: Icon, label, href }) => {
+      {tabs.map(({ icon: Icon, labelKey, href }) => {
         const active = isActive(href);
         return (
           <Link
@@ -38,7 +40,7 @@ export function CommandNav() {
             )}
           >
             <Icon size={14} />
-            {label}
+            {t(labelKey)}
           </Link>
         );
       })}

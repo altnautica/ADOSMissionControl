@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { useMutation } from "convex/react";
 import { communityApi } from "@/lib/community-api";
 
 export function ContactForm() {
+  const t = useTranslations("contact");
   const submit = useMutation(communityApi.contact.submit);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -17,7 +19,7 @@ export function ContactForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !email.trim() || !message.trim()) {
-      setError("Name, email, and message are required.");
+      setError(t("errorRequired"));
       return;
     }
 
@@ -40,9 +42,9 @@ export function ContactForm() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
       if (msg.includes("Not authenticated")) {
-        setError("Please sign in to send a message.");
+        setError(t("errorAuth"));
       } else {
-        setError("Failed to send message. Please try again.");
+        setError(t("errorGeneral"));
       }
     } finally {
       setSubmitting(false);
@@ -53,16 +55,16 @@ export function ContactForm() {
     return (
       <div className="max-w-2xl mx-auto p-6">
         <div className="text-sm text-status-success bg-status-success/10 px-4 py-3 rounded">
-          <p className="font-medium">Message sent.</p>
+          <p className="font-medium">{t("successTitle")}</p>
           <p className="mt-1 text-status-success/80">
-            We&apos;ll get back to you as soon as we can.
+            {t("successDescription")}
           </p>
         </div>
         <button
           onClick={() => setSuccess(false)}
           className="mt-4 px-3 py-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors"
         >
-          Send another message
+          {t("sendAnother")}
         </button>
       </div>
     );
@@ -70,9 +72,9 @@ export function ContactForm() {
 
   return (
     <div className="max-w-2xl mx-auto p-6">
-      <h1 className="text-xl font-semibold text-text-primary mb-1">Contact</h1>
+      <h1 className="text-xl font-semibold text-text-primary mb-1">{t("title")}</h1>
       <p className="text-sm text-text-tertiary mb-6">
-        Send a message to the Altnautica team.
+        {t("subtitle")}
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-3">

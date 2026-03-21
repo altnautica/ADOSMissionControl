@@ -3,20 +3,22 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 import { useConvexAvailable } from "@/app/ConvexClientProvider";
 import { SilentErrorBoundary } from "@/components/ui/SilentErrorBoundary";
 
 const tabs = [
-  { label: "Changelog", href: "/community/changelog" },
-  { label: "Kanban", href: "/community/kanban", adminOnly: true },
-{ label: "Roadmap", href: "/community/roadmap" },
-  { label: "Contact", href: "/community/contact" },
+  { labelKey: "changelog", href: "/community/changelog" },
+  { labelKey: "kanban", href: "/community/kanban", adminOnly: true },
+  { labelKey: "roadmap", href: "/community/roadmap" },
+  { labelKey: "contact", href: "/community/contact" },
 ];
 
 function CommunityLayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isAdmin = useIsAdmin();
+  const t = useTranslations("communityNav");
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -38,7 +40,7 @@ function CommunityLayoutInner({ children }: { children: React.ReactNode }) {
                       : "border-transparent text-text-tertiary hover:text-text-secondary"
                   )}
                 >
-                  {tab.label}
+                  {t(tab.labelKey)}
                 </Link>
               );
             })}
@@ -55,14 +57,14 @@ export default function CommunityLayout({
   children: React.ReactNode;
 }) {
   const convexAvailable = useConvexAvailable();
+  const t = useTranslations("communityNav");
 
   if (!convexAvailable) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center space-y-3 p-8 max-w-md">
           <p className="text-text-secondary text-sm">
-            Community data (changelog, roadmap, contact) is
-            live on the hosted version at{" "}
+            {t("unavailableTitle")}{" "}
             <a
               href="https://command.altnautica.com/community"
               target="_blank"
@@ -73,12 +75,10 @@ export default function CommunityLayout({
             </a>
           </p>
           <p className="text-text-tertiary text-xs">
-            Disabled by default in local builds. To run your own internal
-            community board, set up a Convex backend and configure{" "}
-            <code className="text-accent-primary">NEXT_PUBLIC_CONVEX_URL</code>.
+            {t("unavailableSetup")}
           </p>
           <p className="text-text-tertiary text-xs">
-            Completely optional. The GCS works without it.
+            {t("unavailableOptional")}
           </p>
         </div>
       </div>
