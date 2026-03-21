@@ -34,7 +34,6 @@ export function GeneralSection() {
 
   const [locationRequesting, setLocationRequesting] = useState(false);
 
-  const [language, setLanguage] = useState("en");
   const [timezone, setTimezone] = useState("IST");
   const [telemetryRate, setTelemetryRate] = useState("10");
 
@@ -72,16 +71,6 @@ export function GeneralSection() {
             options={[
               { value: "metric", label: "Metric (m, km/h, \u00b0C)" },
               { value: "imperial", label: "Imperial (ft, mph, \u00b0F)" },
-            ]}
-          />
-
-          <Select
-            label="Language"
-            value={language}
-            onChange={setLanguage}
-            options={[
-              { value: "en", label: "English" },
-              { value: "hi", label: "Hindi" },
             ]}
           />
 

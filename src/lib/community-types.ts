@@ -32,6 +32,7 @@ export interface CommunityItem {
   upvoteCount: number;
   eta?: string;
   resolvedVersion?: string;
+  translations?: Record<string, { title: string; description: string }>;
   _creationTime: number;
 }
 
@@ -51,6 +52,7 @@ export interface ChangelogEntry {
   commitDate?: number;
   editedByAdmin?: boolean;
   repo?: string;
+  translations?: Record<string, { title: string; description: string }>;
   _creationTime: number;
 }
 
