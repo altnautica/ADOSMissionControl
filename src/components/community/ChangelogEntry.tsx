@@ -78,14 +78,18 @@ export function ChangelogEntry({ entry, commentCount = 0, onEdit, onDelete }: Ch
           </div>
         </div>
 
-        {entry.bodyHtml ? (
+        {entry.translations?.[locale]?.description ? (
+          <div className="text-sm text-text-secondary whitespace-pre-wrap leading-relaxed">
+            {displayBody}
+          </div>
+        ) : entry.bodyHtml ? (
           <div
             className="text-sm text-text-secondary leading-relaxed changelog-body"
             dangerouslySetInnerHTML={{ __html: entry.bodyHtml }}
           />
         ) : (
           <div className="text-sm text-text-secondary whitespace-pre-wrap leading-relaxed">
-            {entry.body}
+            {displayBody}
           </div>
         )}
 

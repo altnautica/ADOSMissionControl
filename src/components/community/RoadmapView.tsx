@@ -3,6 +3,7 @@
 import { useQuery } from "convex/react";
 import { ChevronUp } from "lucide-react";
 import { communityApi } from "@/lib/community-api";
+import { useSettingsStore } from "@/stores/settings-store";
 import { CategoryBadge } from "./CategoryBadge";
 import type { CommunityItem, ItemStatus } from "@/lib/community-types";
 
@@ -14,6 +15,7 @@ const sections: { status: ItemStatus; label: string; color: string }[] = [
 
 export function RoadmapView() {
   const grouped = useQuery(communityApi.items.listByStatus, {});
+  const locale = useSettingsStore((s) => s.locale);
 
   if (grouped === undefined) {
     return (
@@ -52,7 +54,7 @@ export function RoadmapView() {
                     className="bg-bg-secondary border border-border-default rounded p-3 space-y-1.5"
                   >
                     <h4 className="text-sm font-medium text-text-primary">
-                      {item.title}
+                      {item.translations?.[locale]?.title ?? item.title}
                     </h4>
                     <div className="flex items-center gap-2">
                       <div className="flex items-center gap-0.5 text-xs text-text-tertiary">

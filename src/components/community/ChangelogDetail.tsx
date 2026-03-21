@@ -7,6 +7,7 @@ import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
 import { communityApi } from "@/lib/community-api";
 import { formatDate } from "@/lib/utils";
 import { useIsAdmin } from "@/hooks/use-is-admin";
+import { useSettingsStore } from "@/stores/settings-store";
 import { ChangelogEditor } from "./ChangelogEditor";
 import { CommunityComments } from "./CommunityComments";
 import type { ChangelogEntry } from "@/lib/community-types";
@@ -44,6 +45,9 @@ export function ChangelogDetail({ id }: ChangelogDetailProps) {
   }
 
   const typedEntry = entry as ChangelogEntry;
+  const locale = useSettingsStore((s) => s.locale);
+  const displayTitle = typedEntry.translations?.[locale]?.title ?? typedEntry.title;
+  const displayBody = typedEntry.translations?.[locale]?.description ?? typedEntry.body;
 
   const handleDelete = () => {
     if (!confirm("Delete this changelog entry?")) return;
@@ -95,18 +99,22 @@ export function ChangelogDetail({ id }: ChangelogDetailProps) {
 
         {/* Title */}
         <h1 className="text-lg font-semibold text-text-primary">
-          {typedEntry.title}
+          {displayTitle}
         </h1>
 
         {/* Body */}
-        {typedEntry.bodyHtml ? (
+        {typedEntry.translations?.[locale]?.description ? (
+          <div className="text-sm text-text-secondary whitespace-pre-wrap leading-relaxed">
+            {displayBody}
+          </div>
+        ) : typedEntry.bodyHtml ? (
           <div
             className="text-sm text-text-secondary leading-relaxed changelog-body"
             dangerouslySetInnerHTML={{ __html: typedEntry.bodyHtml }}
           />
         ) : (
           <div className="text-sm text-text-secondary whitespace-pre-wrap leading-relaxed">
-            {typedEntry.body}
+            {displayBody}
           </div>
         )}
 

@@ -22,6 +22,23 @@ export function ChangelogEditor({ entry, onClose }: ChangelogEditorProps) {
   const [published, setPublished] = useState(entry?.published ?? true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [translationLocale, setTranslationLocale] = useState("de");
+  const [translationTitle, setTranslationTitle] = useState("");
+  const [translationDescription, setTranslationDescription] = useState("");
+  const [translations, setTranslations] = useState<Record<string, { title: string; description: string }>>(
+    entry?.translations ?? {}
+  );
+
+  const addTranslation = () => {
+    if (translationLocale && (translationTitle || translationDescription)) {
+      setTranslations(prev => ({
+        ...prev,
+        [translationLocale]: { title: translationTitle, description: translationDescription },
+      }));
+      setTranslationTitle("");
+      setTranslationDescription("");
+    }
+  };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

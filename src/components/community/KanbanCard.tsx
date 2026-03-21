@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronUp, Bug, Lightbulb } from "lucide-react";
+import { useSettingsStore } from "@/stores/settings-store";
 import type { CommunityItem } from "@/lib/community-types";
 
 interface KanbanCardProps {
@@ -8,6 +9,9 @@ interface KanbanCardProps {
 }
 
 export function KanbanCard({ item }: KanbanCardProps) {
+  const locale = useSettingsStore((s) => s.locale);
+  const displayTitle = item.translations?.[locale]?.title ?? item.title;
+
   return (
     <div
       draggable
@@ -18,7 +22,7 @@ export function KanbanCard({ item }: KanbanCardProps) {
       className="bg-bg-primary border border-border-default rounded p-2 cursor-grab active:cursor-grabbing hover:border-border-hover transition-colors"
     >
       <p className="text-xs text-text-primary mb-1.5 line-clamp-2">
-        {item.title}
+        {displayTitle}
       </p>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1">
