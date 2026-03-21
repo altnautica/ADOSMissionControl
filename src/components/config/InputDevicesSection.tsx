@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusDot } from "@/components/ui/status-dot";
@@ -7,7 +8,7 @@ import { useInputStore } from "@/stores/input-store";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 
-const AXIS_LABELS = ["Roll", "Pitch", "Throttle", "Yaw"] as const;
+const AXIS_LABEL_KEYS = ["roll", "pitch", "throttle", "yaw"] as const;
 
 function AxisBar({ label, value }: { label: string; value: number }) {
   const clamped = Math.max(-1, Math.min(1, value));
@@ -41,6 +42,7 @@ function AxisBar({ label, value }: { label: string; value: number }) {
 }
 
 export function InputDevicesSection() {
+  const t = useTranslations("inputDevices");
   const { activeController, axes, deadzone, expo, setDeadzone, setExpo } =
     useInputStore();
   const { toast } = useToast();
@@ -48,18 +50,18 @@ export function InputDevicesSection() {
   const isConnected = activeController !== "none";
 
   const controllerLabel: Record<string, string> = {
-    keyboard: "Keyboard",
-    gamepad: "Gamepad Connected",
-    rc_tx: "RC Transmitter",
-    none: "No controller detected",
+    keyboard: t("keyboard"),
+    gamepad: t("gamepadConnected"),
+    rc_tx: t("rcTransmitter"),
+    none: t("noController"),
   };
 
   return (
     <div className="space-y-4">
-      <h2 className="text-sm font-semibold text-text-primary">Input Devices</h2>
+      <h2 className="text-sm font-semibold text-text-primary">{t("title")}</h2>
 
       {/* Detected Controllers */}
-      <Card title="Detected Controllers">
+      <Card title={t("detectedControllers")}>
         <div className="flex items-center gap-2">
           <StatusDot status={isConnected ? "online" : "offline"} />
           <span
@@ -74,20 +76,20 @@ export function InputDevicesSection() {
       </Card>
 
       {/* Axis Mapping */}
-      <Card title="Axis Mapping">
+      <Card title={t("axisMapping")}>
         <div className="space-y-3">
-          {AXIS_LABELS.map((label, i) => (
-            <AxisBar key={label} label={label} value={axes[i]} />
+          {AXIS_LABEL_KEYS.map((labelKey, i) => (
+            <AxisBar key={labelKey} label={t(labelKey)} value={axes[i]} />
           ))}
         </div>
       </Card>
 
       {/* Deadzone & Expo */}
-      <Card title="Tuning">
+      <Card title={t("tuning")}>
         <div className="space-y-4">
           <div className="space-y-1">
             <div className="flex items-center justify-between">
-              <label className="text-xs text-text-secondary">Deadzone</label>
+              <label className="text-xs text-text-secondary">{t("deadzone")}</label>
               <span className="text-[10px] font-mono text-text-tertiary tabular-nums">
                 {deadzone.toFixed(2)}
               </span>
@@ -109,7 +111,7 @@ export function InputDevicesSection() {
 
           <div className="space-y-1">
             <div className="flex items-center justify-between">
-              <label className="text-xs text-text-secondary">Expo Curve</label>
+              <label className="text-xs text-text-secondary">{t("expoCurve")}</label>
               <span className="text-[10px] font-mono text-text-tertiary tabular-nums">
                 {expo.toFixed(1)}
               </span>
@@ -134,9 +136,9 @@ export function InputDevicesSection() {
       {/* Test Mode */}
       <Button
         variant="secondary"
-        onClick={() => toast("Gamepad test mode not available in demo", "info")}
+        onClick={() => toast(t("testModeUnavailable"), "info")}
       >
-        Test Mode
+        {t("testMode")}
       </Button>
     </div>
   );

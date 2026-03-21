@@ -104,20 +104,20 @@ export function NotificationsSection() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-sm font-semibold text-text-primary">Notifications</h2>
+      <h2 className="text-sm font-semibold text-text-primary">{t("title")}</h2>
 
       {/* Card 1: Sound */}
-      <Card title="Sound">
+      <Card title={t("soundTitle")}>
         <div className="space-y-4">
           <Toggle
-            label="Enable audio alerts"
+            label={t("enableAudio")}
             checked={audioEnabled}
             onChange={handleToggleMaster}
           />
           {audioEnabled && (
             <div className="flex flex-col gap-1">
               <label className="text-xs text-text-secondary">
-                Volume — {Math.round(audioVolume * 100)}%
+                {t("volume", { percent: Math.round(audioVolume * 100) })}
               </label>
               <input
                 type="range"
@@ -130,13 +130,13 @@ export function NotificationsSection() {
             </div>
           )}
           <p className="text-[10px] text-text-tertiary">
-            Controls all audio alerts and feedback sounds
+            {t("soundDescription")}
           </p>
         </div>
       </Card>
 
       {/* Card 2: Alert Sounds */}
-      <Card title="Alert Sounds">
+      <Card title={t("alertSoundsTitle")}>
         <div
           className={
             !audioEnabled ? "opacity-50 pointer-events-none space-y-3" : "space-y-3"
@@ -148,16 +148,16 @@ export function NotificationsSection() {
               className="flex items-center justify-between gap-2"
             >
               <div className="flex-1 min-w-0">
-                <div className="text-xs text-text-primary">{row.label}</div>
+                <div className="text-xs text-text-primary">{t(row.labelKey)}</div>
                 <div className="text-[10px] text-text-tertiary truncate">
-                  {row.description}
+                  {t(row.descriptionKey)}
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => audioEngine.playForce(row.testSound)}
                 className="shrink-0 w-6 h-6 flex items-center justify-center text-text-tertiary hover:text-accent-primary transition-colors"
-                title={`Preview ${row.label}`}
+                title={t("preview", { name: t(row.labelKey) })}
               >
                 <Volume2 size={12} />
               </button>
@@ -172,10 +172,10 @@ export function NotificationsSection() {
       </Card>
 
       {/* Card 3: Alert Thresholds */}
-      <Card title="Alert Thresholds">
+      <Card title={t("thresholdsTitle")}>
         <div className="space-y-4">
           <Input
-            label="Battery warning threshold"
+            label={t("batteryWarning")}
             type="number"
             min={10}
             max={50}
@@ -187,7 +187,7 @@ export function NotificationsSection() {
             unit="%"
           />
           <Input
-            label="Battery critical threshold"
+            label={t("batteryCritical")}
             type="number"
             min={5}
             max={30}
@@ -199,24 +199,24 @@ export function NotificationsSection() {
             unit="%"
           />
           <Select
-            label="Alert popup duration"
+            label={t("alertDuration")}
             value={alertPopupDuration}
             onChange={setAlertPopupDuration}
             options={[
-              { value: "3", label: "3 seconds" },
-              { value: "5", label: "5 seconds" },
-              { value: "10", label: "10 seconds" },
-              { value: "never", label: "Never dismiss" },
+              { value: "3", label: t("seconds", { count: 3 }) },
+              { value: "5", label: t("seconds", { count: 5 }) },
+              { value: "10", label: t("seconds", { count: 10 }) },
+              { value: "never", label: t("neverDismiss") },
             ]}
           />
         </div>
       </Card>
 
       {/* Card 4: Changelog Notifications */}
-      <Card title="Changelog Notifications">
+      <Card title={t("changelogTitle")}>
         <div className="space-y-4">
           <Toggle
-            label="Show changelog notifications"
+            label={t("showChangelog")}
             checked={changelogNotificationsEnabled}
             onChange={setChangelogNotificationsEnabled}
           />
@@ -227,10 +227,10 @@ export function NotificationsSection() {
               clearSeenChangelog();
             }}
           >
-            Reset seen entries
+            {t("resetSeen")}
           </Button>
           <p className="text-[10px] text-text-tertiary">
-            Get notified about new releases and updates when you open the app
+            {t("changelogDescription")}
           </p>
         </div>
       </Card>
