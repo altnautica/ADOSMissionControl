@@ -8,6 +8,7 @@
  */
 
 import { useState, useEffect, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, AlertTriangle, X } from "lucide-react";
@@ -38,6 +39,7 @@ export default function SimulatePage() {
   const geofenceCircleCenter = useGeofenceStore((s) => s.circleCenter);
   const geofenceCircleRadius = useGeofenceStore((s) => s.circleRadius);
   const geofenceMaxAlt = useGeofenceStore((s) => s.maxAltitude);
+  const tSim = useTranslations("simulate");
   const [panelCollapsed, setPanelCollapsed] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const router = useRouter();
@@ -87,14 +89,14 @@ export default function SimulatePage() {
             <AlertTriangle size={14} className="shrink-0" />
             <span className="flex-1">
               {validation.errors.length > 0
-                ? `Mission has ${validation.errors.length} error${validation.errors.length > 1 ? "s" : ""}`
-                : `Mission has ${validation.warnings.length} warning${validation.warnings.length > 1 ? "s" : ""}`}
+                ? tSim("missionHasErrors", { count: validation.errors.length })
+                : tSim("missionHasWarnings", { count: validation.warnings.length })}
             </span>
             <button
               onClick={() => router.push("/plan")}
               className="text-accent-primary hover:text-accent-primary/80 whitespace-nowrap cursor-pointer"
             >
-              Edit Plan
+              {tSim("editPlan")}
             </button>
             <button
               onClick={() => setBannerDismissed(true)}

@@ -109,7 +109,7 @@ export function DroneFlightsTab({ droneId }: DroneFlightsTabProps) {
   if (flights.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center text-xs text-text-tertiary">
-        No flight records found for this drone
+        {t("noFlights")}
       </div>
     );
   }
@@ -117,7 +117,7 @@ export function DroneFlightsTab({ droneId }: DroneFlightsTabProps) {
   return (
     <div className="flex-1 overflow-auto p-3">
       <div className="text-xs text-text-secondary mb-2">
-        {flights.length} flight{flights.length !== 1 ? "s" : ""} recorded
+        {t("flightsRecorded", { count: flights.length })}
       </div>
       <Table
         columns={columns}
