@@ -1144,6 +1144,67 @@
     "toggleDemoMode": "切换演示模式",
     "openFlashTool": "打开刷写工具",
     "switchTab": "切换到 {tab}",
-    "toggleImmersive": "切换沉浸模式"
+    "toggleImmersive": "切换沉浸模式",
+    "goToDashboard": "前往仪表盘",
+    "goToPlan": "前往任务规划",
+    "goToHistory": "前往历史记录",
+    "goToAnalytics": "前往分析",
+    "goToConfig": "前往配置",
+    "goToWizard": "前往飞行前向导",
+    "returnToHomeAll": "全部返航",
+    "checkBattery": "检查电池状态",
+    "navigation": "导航",
+    "commands": "命令",
+    "parameters": "参数"
+  },
+  "disconnectedPage": {
+    "alpha": "ALPHA",
+    "pairYourDrone": "配对您的无人机",
+    "installAndConnect": "安装 Agent，输入代码，即可连接。",
+    "turnAnyDrone": "将任何无人机变成智能无人机",
+    "mavlinkProxy": "MAVLink Proxy",
+    "mavlinkProxyDesc": "通过 WebSocket、TCP 和 UDP 实现完整的双向飞控访问。从任何地方配置、监控和控制您的无人机。",
+    "hdVideo": "高清视频流",
+    "hdVideoDesc": "从无人机到任何浏览器的实时高清视频。使用 WFB-ng 和 OpenHD 配合 RTL8812 系列 WiFi 适配器实现低延迟流传输。",
+    "cellularTelemetry": "4G/5G 遥测",
+    "cellularTelemetryDesc": "超视距飞行。通过蜂窝网络实现实时遥测和控制。无距离限制。",
+    "extendedRange": "扩展距离数据链",
+    "extendedRangeDesc": "使用 RTL8812AU/EU WiFi 适配器的监控模式将控制距离扩展到 50km+。专为远程无人机操作而设计。",
+    "plugAndPlay": "即插即用硬件",
+    "plugAndPlayDesc": "自动硬件检测和设置。Agent 在首次启动时识别您的飞控、传感器和外设。无需手动配置。",
+    "aiReady": "AI 就绪",
+    "aiReadyDesc": "为自主操作而构建。Python SDK、脚本引擎和 REST API 让您构建智能飞行行为并集成 ML 模型。",
+    "softwareDefined": "软件定义无人机",
+    "softwareDefinedDesc": "将任何 ArduPilot 或 PX4 无人机变成智能无人机。一台伴飞计算机。对每个系统的完全软件控制。",
+    "sshTerminal": "SSH 和终端访问",
+    "sshTerminalDesc": "通过 SSH 的完整 TUI 仪表盘。五个屏幕用于遥测、MAVLink 检查、配置编辑和日志。无需浏览器。",
+    "devTools": "开发者工具",
+    "devToolsDesc": ":8080 REST API、Python SDK、YAML 任务、CLI 工具和五个脚本层级（从简单文本命令到完全自主）。",
+    "alphaDisclaimer": "这是 Alpha 软件。预计会有 bug、破坏性变更和不完整的功能。Command 标签页提供对无人机 Agent 服务和配置的直接控制。使用风险自负。",
+    "requirements": "系统要求",
+    "viewOnGitHub": "在 GitHub 上查看"
+  },
+  "fleet": {
+    "title": "机队",
+    "addDrone": "添加无人机",
+    "expandPanel": "展开机队面板",
+    "collapsePanel": "折叠机队面板",
+    "searchDrones": "搜索无人机...",
+    "noMatch": "没有匹配的无人机",
+    "noDrones": "没有无人机",
+    "droneCount": "{count} 架无人机"
+  },
+  "telemetryStrip": {
+    "fc": "FC",
+    "connected": "已连接",
+    "disconnected": "已断开",
+    "cpu": "CPU",
+    "mem": "MEM",
+    "disk": "Disk",
+    "temp": "温度"
+  },
+  "missionProgress": {
+    "mission": "任务",
+    "waypoint": "Waypoint"
   }
 }

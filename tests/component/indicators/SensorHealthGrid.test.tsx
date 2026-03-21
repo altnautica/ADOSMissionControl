@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent } from '@testing-library/react';
+import { renderWithIntl } from '../../helpers/intl-wrapper';
 import { SensorHealthGrid } from '@/components/indicators/SensorHealthGrid';
 
 // Mock the Tooltip to just render children
@@ -53,12 +54,12 @@ describe('SensorHealthGrid', () => {
   it('shows "No sensor data" when no sensors are displayed', () => {
     mockSensors.mockReturnValue([]);
 
-    render(<SensorHealthGrid />);
+    renderWithIntl(<SensorHealthGrid />);
     expect(screen.getByText('No sensor data')).toBeDefined();
   });
 
   it('renders present sensors by default (not all)', () => {
-    render(<SensorHealthGrid />);
+    renderWithIntl(<SensorHealthGrid />);
 
     // Present sensors: Gyro, Accel, Baro (3 out of 4)
     expect(screen.getByText('Gyro')).toBeDefined();
@@ -69,7 +70,7 @@ describe('SensorHealthGrid', () => {
   });
 
   it('renders all sensors when showAll=true', () => {
-    render(<SensorHealthGrid showAll={true} />);
+    renderWithIntl(<SensorHealthGrid showAll={true} />);
 
     expect(screen.getByText('Gyro')).toBeDefined();
     expect(screen.getByText('Accel')).toBeDefined();
@@ -78,12 +79,12 @@ describe('SensorHealthGrid', () => {
   });
 
   it('compact mode shows count ratio', () => {
-    render(<SensorHealthGrid compact={true} />);
+    renderWithIntl(<SensorHealthGrid compact={true} />);
     expect(screen.getByText('2/3')).toBeDefined();
   });
 
   it('clicking a sensor expands details', () => {
-    render(<SensorHealthGrid />);
+    renderWithIntl(<SensorHealthGrid />);
 
     // Click on Gyro to expand
     fireEvent.click(screen.getByText('Gyro'));

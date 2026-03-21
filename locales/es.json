@@ -1144,6 +1144,67 @@
     "toggleDemoMode": "Alternar modo demo",
     "openFlashTool": "Abrir herramienta de flasheo",
     "switchTab": "Cambiar a {tab}",
-    "toggleImmersive": "Alternar modo inmersivo"
+    "toggleImmersive": "Alternar modo inmersivo",
+    "goToDashboard": "Ir al panel",
+    "goToPlan": "Ir al planificador de misiones",
+    "goToHistory": "Ir al historial",
+    "goToAnalytics": "Ir a análisis",
+    "goToConfig": "Ir a configuración",
+    "goToWizard": "Ir al asistente pre-vuelo",
+    "returnToHomeAll": "Retornar todos a casa",
+    "checkBattery": "Verificar estado de batería",
+    "navigation": "Navegación",
+    "commands": "Comandos",
+    "parameters": "Parámetros"
+  },
+  "disconnectedPage": {
+    "alpha": "ALPHA",
+    "pairYourDrone": "Vincula tu dron",
+    "installAndConnect": "Instala el agente, ingresa este código y estás conectado.",
+    "turnAnyDrone": "Convierte cualquier dron en un dron inteligente",
+    "mavlinkProxy": "MAVLink Proxy",
+    "mavlinkProxyDesc": "Acceso bidireccional completo al controlador de vuelo vía WebSocket, TCP y UDP. Configura, monitorea y controla tu dron desde cualquier lugar.",
+    "hdVideo": "Streaming de video HD",
+    "hdVideoDesc": "Video HD en vivo de tu dron a cualquier navegador. Streaming de baja latencia con WFB-ng y OpenHD con adaptadores WiFi serie RTL8812.",
+    "cellularTelemetry": "Telemetría 4G/5G",
+    "cellularTelemetryDesc": "Vuela más allá de la línea visual. Telemetría y control en tiempo real a través de redes celulares. Sin límites de alcance.",
+    "extendedRange": "Datalinks de rango extendido",
+    "extendedRangeDesc": "Extiende el rango de control a 50km+ usando adaptadores WiFi RTL8812AU/EU en modo monitor. Diseñado para operaciones de drones de largo alcance.",
+    "plugAndPlay": "Hardware Plug & Play",
+    "plugAndPlayDesc": "Detección y configuración automática de hardware. El agente reconoce tu controlador de vuelo, sensores y periféricos en el primer arranque. Sin configuración manual.",
+    "aiReady": "Listo para IA",
+    "aiReadyDesc": "Diseñado para operaciones autónomas. SDK de Python, motor de scripts y API REST para crear comportamientos de vuelo inteligentes e integrar modelos de ML.",
+    "softwareDefined": "Dron definido por software",
+    "softwareDefinedDesc": "Convierte cualquier dron ArduPilot o PX4 en un dron inteligente. Una computadora compañera. Control total por software sobre cada sistema.",
+    "sshTerminal": "Acceso SSH y terminal",
+    "sshTerminalDesc": "Dashboard TUI completo vía SSH. Cinco pantallas para telemetría, inspección MAVLink, edición de configuración y logs. Sin necesidad de navegador.",
+    "devTools": "Herramientas de desarrollo",
+    "devToolsDesc": "API REST en :8080, SDK Python, misiones YAML, herramientas CLI y cinco niveles de scripting desde comandos de texto simples hasta autonomía completa.",
+    "alphaDisclaimer": "Este es software alpha. Espera bugs, cambios que rompen y funciones incompletas. La pestaña Command proporciona control directo sobre los servicios y configuración del agente del dron. Uso bajo tu propio riesgo.",
+    "requirements": "Requisitos",
+    "viewOnGitHub": "Ver en GitHub"
+  },
+  "fleet": {
+    "title": "Flota",
+    "addDrone": "Agregar dron",
+    "expandPanel": "Expandir panel de flota",
+    "collapsePanel": "Colapsar panel de flota",
+    "searchDrones": "Buscar drones...",
+    "noMatch": "Ningún dron coincide con la búsqueda",
+    "noDrones": "Sin drones",
+    "droneCount": "{count} dron{count, plural, one {} other {es}}"
+  },
+  "telemetryStrip": {
+    "fc": "FC",
+    "connected": "CONECTADO",
+    "disconnected": "DESCONECTADO",
+    "cpu": "CPU",
+    "mem": "MEM",
+    "disk": "Disco",
+    "temp": "Temp"
+  },
+  "missionProgress": {
+    "mission": "Misión",
+    "waypoint": "Waypoint"
   }
 }

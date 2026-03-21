@@ -1144,6 +1144,67 @@
     "toggleDemoMode": "Basculer le mode démo",
     "openFlashTool": "Ouvrir l'outil de flash",
     "switchTab": "Passer à {tab}",
-    "toggleImmersive": "Basculer le mode immersif"
+    "toggleImmersive": "Basculer le mode immersif",
+    "goToDashboard": "Aller au tableau de bord",
+    "goToPlan": "Aller au planificateur",
+    "goToHistory": "Aller à l'historique",
+    "goToAnalytics": "Aller aux analyses",
+    "goToConfig": "Aller à la configuration",
+    "goToWizard": "Aller à l'assistant pré-vol",
+    "returnToHomeAll": "Retour maison pour tous",
+    "checkBattery": "Vérifier l'état de la batterie",
+    "navigation": "Navigation",
+    "commands": "Commandes",
+    "parameters": "Paramètres"
+  },
+  "disconnectedPage": {
+    "alpha": "ALPHA",
+    "pairYourDrone": "Associez votre drone",
+    "installAndConnect": "Installez l'agent, entrez ce code, et vous êtes connecté.",
+    "turnAnyDrone": "Transformez n'importe quel drone en drone intelligent",
+    "mavlinkProxy": "MAVLink Proxy",
+    "mavlinkProxyDesc": "Accès bidirectionnel complet au contrôleur de vol via WebSocket, TCP et UDP. Configurez, surveillez et contrôlez votre drone de n'importe où.",
+    "hdVideo": "Streaming vidéo HD",
+    "hdVideoDesc": "Vidéo HD en direct de votre drone vers n'importe quel navigateur. Streaming à faible latence via WFB-ng et OpenHD avec adaptateurs WiFi série RTL8812.",
+    "cellularTelemetry": "Télémétrie 4G/5G",
+    "cellularTelemetryDesc": "Volez au-delà de la ligne de vue. Télémétrie et contrôle en temps réel via les réseaux cellulaires. Aucune limite de portée.",
+    "extendedRange": "Liaisons de données longue portée",
+    "extendedRangeDesc": "Étendez la portée de contrôle à 50km+ avec des adaptateurs WiFi RTL8812AU/EU en mode moniteur. Conçu pour les opérations drone longue distance.",
+    "plugAndPlay": "Matériel Plug & Play",
+    "plugAndPlayDesc": "Détection et configuration automatiques du matériel. L'agent reconnaît votre contrôleur de vol, capteurs et périphériques au premier démarrage. Aucune configuration manuelle nécessaire.",
+    "aiReady": "Prêt pour l'IA",
+    "aiReadyDesc": "Conçu pour les opérations autonomes. SDK Python, moteur de script et API REST pour créer des comportements de vol intelligents et intégrer des modèles ML.",
+    "softwareDefined": "Drone défini par logiciel",
+    "softwareDefinedDesc": "Transformez n'importe quel drone ArduPilot ou PX4 en drone intelligent. Un ordinateur compagnon. Contrôle logiciel complet sur chaque système.",
+    "sshTerminal": "Accès SSH et terminal",
+    "sshTerminalDesc": "Tableau de bord TUI complet via SSH. Cinq écrans pour la télémétrie, l'inspection MAVLink, l'édition de configuration et les logs. Pas besoin de navigateur.",
+    "devTools": "Outils développeur",
+    "devToolsDesc": "API REST sur :8080, SDK Python, missions YAML, outils CLI et cinq niveaux de script allant des commandes texte simples à l'autonomie complète.",
+    "alphaDisclaimer": "Ceci est un logiciel alpha. Attendez-vous à des bugs, des changements cassants et des fonctionnalités incomplètes. L'onglet Command fournit un contrôle direct sur les services et la configuration de l'agent drone. Utilisation à vos risques.",
+    "requirements": "Configuration requise",
+    "viewOnGitHub": "Voir sur GitHub"
+  },
+  "fleet": {
+    "title": "Flotte",
+    "addDrone": "Ajouter un drone",
+    "expandPanel": "Développer le panneau de flotte",
+    "collapsePanel": "Réduire le panneau de flotte",
+    "searchDrones": "Rechercher des drones...",
+    "noMatch": "Aucun drone ne correspond",
+    "noDrones": "Aucun drone",
+    "droneCount": "{count} drone{count, plural, one {} other {s}}"
+  },
+  "telemetryStrip": {
+    "fc": "FC",
+    "connected": "CONNECTÉ",
+    "disconnected": "DÉCONNECTÉ",
+    "cpu": "CPU",
+    "mem": "MEM",
+    "disk": "Disk",
+    "temp": "Temp"
+  },
+  "missionProgress": {
+    "mission": "Mission",
+    "waypoint": "Waypoint"
   }
 }

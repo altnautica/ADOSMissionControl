@@ -1144,6 +1144,67 @@
     "toggleDemoMode": "डेमो मोड टॉगल करें",
     "openFlashTool": "फ़्लैश टूल खोलें",
     "switchTab": "{tab} पर जाएँ",
-    "toggleImmersive": "इमर्सिव मोड टॉगल करें"
+    "toggleImmersive": "इमर्सिव मोड टॉगल करें",
+    "goToDashboard": "डैशबोर्ड पर जाएँ",
+    "goToPlan": "मिशन प्लानर पर जाएँ",
+    "goToHistory": "हिस्ट्री पर जाएँ",
+    "goToAnalytics": "एनालिटिक्स पर जाएँ",
+    "goToConfig": "कॉन्फ़िग पर जाएँ",
+    "goToWizard": "प्री-फ़्लाइट विज़ार्ड पर जाएँ",
+    "returnToHomeAll": "सभी को होम वापस भेजें",
+    "checkBattery": "बैटरी स्टेटस चेक करें",
+    "navigation": "नेविगेशन",
+    "commands": "कमांड्स",
+    "parameters": "पैरामीटर्स"
+  },
+  "disconnectedPage": {
+    "alpha": "ALPHA",
+    "pairYourDrone": "अपना ड्रोन पेयर करें",
+    "installAndConnect": "Agent इंस्टॉल करें, यह कोड डालें, और कनेक्ट हो जाएँ।",
+    "turnAnyDrone": "किसी भी ड्रोन को स्मार्ट ड्रोन बनाएं",
+    "mavlinkProxy": "MAVLink Proxy",
+    "mavlinkProxyDesc": "WebSocket, TCP और UDP के ज़रिए पूर्ण बाइडायरेक्शनल flight controller एक्सेस। कहीं से भी अपना ड्रोन कॉन्फ़िगर, मॉनिटर और कंट्रोल करें।",
+    "hdVideo": "HD Video Streaming",
+    "hdVideoDesc": "आपके ड्रोन से किसी भी ब्राउज़र में लाइव HD वीडियो। WFB-ng और OpenHD के साथ RTL8812-सीरीज़ WiFi एडाप्टर से लो-लेटेंसी स्ट्रीमिंग।",
+    "cellularTelemetry": "4G/5G टेलीमेट्री",
+    "cellularTelemetryDesc": "विज़ुअल लाइन ऑफ़ साइट से आगे उड़ें। सेल्युलर नेटवर्क के ज़रिए रियल-टाइम टेलीमेट्री और कंट्रोल। कोई रेंज लिमिट नहीं।",
+    "extendedRange": "Extended Range Datalinks",
+    "extendedRangeDesc": "RTL8812AU/EU WiFi एडाप्टर मॉनिटर मोड में इस्तेमाल करके कंट्रोल रेंज 50km+ तक बढ़ाएं। लॉन्ग-रेंज ड्रोन ऑपरेशंस के लिए बना है।",
+    "plugAndPlay": "Plug & Play Hardware",
+    "plugAndPlayDesc": "ऑटोमैटिक हार्डवेयर डिटेक्शन और सेटअप। Agent पहले बूट पर ही आपका flight controller, सेंसर और पेरिफेरल्स पहचान लेता है। मैन्युअल कॉन्फ़िगरेशन की ज़रूरत नहीं।",
+    "aiReady": "AI-Ready",
+    "aiReadyDesc": "ऑटोनॉमस ऑपरेशंस के लिए बना है। Python SDK, स्क्रिप्टिंग इंजन और REST API से इंटेलिजेंट फ़्लाइट बिहेवियर बनाएं और ML मॉडल इंटीग्रेट करें।",
+    "softwareDefined": "Software-Defined Drone",
+    "softwareDefinedDesc": "किसी भी ArduPilot या PX4 ड्रोन को स्मार्ट ड्रोन बनाएं। एक कम्पैनियन कंप्यूटर। हर सिस्टम पर पूरा सॉफ़्टवेयर कंट्रोल।",
+    "sshTerminal": "SSH & Terminal एक्सेस",
+    "sshTerminalDesc": "SSH के ज़रिए फ़ुल TUI डैशबोर्ड। टेलीमेट्री, MAVLink इंस्पेक्शन, कॉन्फ़िग एडिटिंग और लॉग्स के लिए पाँच स्क्रीन। ब्राउज़र की ज़रूरत नहीं।",
+    "devTools": "डेवलपर टूल्स",
+    "devToolsDesc": ":8080 पर REST API, Python SDK, YAML मिशंस, CLI टूल्स, और सिंपल टेक्स्ट कमांड्स से लेकर फ़ुल ऑटोनॉमी तक पाँच स्क्रिप्टिंग टियर्स।",
+    "alphaDisclaimer": "यह अल्फ़ा सॉफ़्टवेयर है। बग्स, ब्रेकिंग चेंजेस और अधूरे फ़ीचर्स की उम्मीद रखें। Command टैब ड्रोन agent सर्विसेज़ और कॉन्फ़िगरेशन पर डायरेक्ट कंट्रोल देता है। अपने जोखिम पर इस्तेमाल करें।",
+    "requirements": "आवश्यकताएँ",
+    "viewOnGitHub": "GitHub पर देखें"
+  },
+  "fleet": {
+    "title": "फ़्लीट",
+    "addDrone": "ड्रोन जोड़ें",
+    "expandPanel": "फ़्लीट पैनल विस्तार करें",
+    "collapsePanel": "फ़्लीट पैनल संक्षिप्त करें",
+    "searchDrones": "ड्रोन खोजें...",
+    "noMatch": "कोई ड्रोन सर्च से मैच नहीं",
+    "noDrones": "कोई ड्रोन नहीं",
+    "droneCount": "{count} ड्रोन"
+  },
+  "telemetryStrip": {
+    "fc": "FC",
+    "connected": "कनेक्टेड",
+    "disconnected": "डिस्कनेक्टेड",
+    "cpu": "CPU",
+    "mem": "MEM",
+    "disk": "Disk",
+    "temp": "Temp"
+  },
+  "missionProgress": {
+    "mission": "मिशन",
+    "waypoint": "Waypoint"
   }
 }

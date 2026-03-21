@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent } from '@testing-library/react';
+import { renderWithIntl } from '../helpers/intl-wrapper';
 import { PanelHeader } from '@/components/fc/shared/PanelHeader';
 
 // Mock lucide-react icons to simple spans
@@ -23,17 +24,17 @@ describe('PanelHeader', () => {
   };
 
   it('renders title text', () => {
-    render(<PanelHeader {...defaultProps} />);
+    renderWithIntl(<PanelHeader {...defaultProps} />);
     expect(screen.getByText('Test Panel')).toBeDefined();
   });
 
   it('renders subtitle when provided', () => {
-    render(<PanelHeader {...defaultProps} subtitle="Panel description" />);
+    renderWithIntl(<PanelHeader {...defaultProps} subtitle="Panel description" />);
     expect(screen.getByText('Panel description')).toBeDefined();
   });
 
   it('shows loading spinner when loading=true with progress', () => {
-    render(
+    renderWithIntl(
       <PanelHeader
         {...defaultProps}
         loading={true}
@@ -45,7 +46,7 @@ describe('PanelHeader', () => {
   });
 
   it('shows error message when error is provided', () => {
-    render(
+    renderWithIntl(
       <PanelHeader
         {...defaultProps}
         error="Failed to read parameters"
@@ -56,7 +57,7 @@ describe('PanelHeader', () => {
   });
 
   it('does not show error while loading', () => {
-    render(
+    renderWithIntl(
       <PanelHeader
         {...defaultProps}
         loading={true}
@@ -70,7 +71,7 @@ describe('PanelHeader', () => {
 
   it('calls onRead when Read from FC button is clicked', () => {
     const onRead = vi.fn();
-    render(
+    renderWithIntl(
       <PanelHeader
         {...defaultProps}
         onRead={onRead}
@@ -86,7 +87,7 @@ describe('PanelHeader', () => {
 
   it('shows Retry button when there is an error and not yet loaded', () => {
     const onRead = vi.fn();
-    render(
+    renderWithIntl(
       <PanelHeader
         {...defaultProps}
         onRead={onRead}
@@ -98,7 +99,7 @@ describe('PanelHeader', () => {
   });
 
   it('shows Refresh button when already loaded', () => {
-    render(
+    renderWithIntl(
       <PanelHeader
         {...defaultProps}
         hasLoaded={true}
@@ -108,7 +109,7 @@ describe('PanelHeader', () => {
   });
 
   it('shows progress indicator when loadProgress provided', () => {
-    render(
+    renderWithIntl(
       <PanelHeader
         {...defaultProps}
         loading={true}
@@ -120,19 +121,19 @@ describe('PanelHeader', () => {
 
   it('shows missing optional params warning', () => {
     const missing = new Set(['CAM1_TYPE', 'MNT1_TYPE']);
-    render(
+    renderWithIntl(
       <PanelHeader
         {...defaultProps}
         hasLoaded={true}
         missingOptional={missing}
       />
     );
-    expect(screen.getByText('2 optional params not available')).toBeDefined();
+    expect(screen.getByText('Some optional parameters are not available on this firmware')).toBeDefined();
     expect(screen.getByTestId('icon-alert-triangle')).toBeDefined();
   });
 
   it('hides all buttons when not connected', () => {
-    render(
+    renderWithIntl(
       <PanelHeader
         {...defaultProps}
         connected={false}

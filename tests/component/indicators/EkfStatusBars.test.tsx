@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { renderWithIntl } from '../../helpers/intl-wrapper';
 import { EkfStatusBars } from '@/components/indicators/EkfStatusBars';
 import { useTelemetryStore } from '@/stores/telemetry-store';
 import { RingBuffer } from '@/lib/ring-buffer';
@@ -27,7 +28,7 @@ describe('EkfStatusBars', () => {
   });
 
   it('shows "No EKF data" when ring buffer is empty', () => {
-    render(<EkfStatusBars />);
+    renderWithIntl(<EkfStatusBars />);
     expect(screen.getByText('No EKF data')).toBeDefined();
   });
 
@@ -45,7 +46,7 @@ describe('EkfStatusBars', () => {
 
     useTelemetryStore.setState({ ekf: ekfBuffer });
 
-    render(<EkfStatusBars />);
+    renderWithIntl(<EkfStatusBars />);
 
     // Check that variance values are displayed (formatted to 2 decimal places)
     expect(screen.getByText('0.30')).toBeDefined();
@@ -78,7 +79,7 @@ describe('EkfStatusBars', () => {
       estimatorStatus: estimatorBuffer,
     });
 
-    render(<EkfStatusBars />);
+    renderWithIntl(<EkfStatusBars />);
 
     // Estimator flags section should render flag abbreviations
     expect(screen.getByText('ATT')).toBeDefined();

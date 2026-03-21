@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { renderWithIntl } from '../../helpers/intl-wrapper';
 import { ConnectionQualityMeter } from '@/components/indicators/ConnectionQualityMeter';
 
 // Mock the hook with controllable return values
@@ -17,7 +18,7 @@ describe('ConnectionQualityMeter', () => {
       rssi: 0,
     });
 
-    const { container } = render(<ConnectionQualityMeter />);
+    const { container } = renderWithIntl(<ConnectionQualityMeter />);
     expect(container.innerHTML).toBe('');
   });
 
@@ -29,7 +30,7 @@ describe('ConnectionQualityMeter', () => {
       rssi: -50,
     });
 
-    const { container } = render(<ConnectionQualityMeter />);
+    const { container } = renderWithIntl(<ConnectionQualityMeter />);
 
     // Should show 4 bars, all with success color
     const bars = container.querySelectorAll('.bg-status-success');
@@ -44,7 +45,7 @@ describe('ConnectionQualityMeter', () => {
       rssi: -90,
     });
 
-    const { container } = render(<ConnectionQualityMeter />);
+    const { container } = renderWithIntl(<ConnectionQualityMeter />);
 
     const errorBars = container.querySelectorAll('.bg-status-error');
     expect(errorBars.length).toBe(1);
@@ -58,7 +59,7 @@ describe('ConnectionQualityMeter', () => {
       rssi: -60,
     });
 
-    render(<ConnectionQualityMeter />);
+    renderWithIntl(<ConnectionQualityMeter />);
     expect(screen.getByText('45ms')).toBeDefined();
   });
 
@@ -70,7 +71,7 @@ describe('ConnectionQualityMeter', () => {
       rssi: -60,
     });
 
-    render(<ConnectionQualityMeter />);
+    renderWithIntl(<ConnectionQualityMeter />);
     expect(screen.queryByText(/ms$/)).toBeNull();
   });
 
@@ -82,7 +83,7 @@ describe('ConnectionQualityMeter', () => {
       rssi: -75,
     });
 
-    const { container } = render(<ConnectionQualityMeter />);
+    const { container } = renderWithIntl(<ConnectionQualityMeter />);
 
     const warningBars = container.querySelectorAll('.bg-status-warning');
     expect(warningBars.length).toBe(2); // bars 1 and 2
@@ -96,7 +97,7 @@ describe('ConnectionQualityMeter', () => {
       rssi: -55,
     });
 
-    const { container } = render(<ConnectionQualityMeter />);
+    const { container } = renderWithIntl(<ConnectionQualityMeter />);
     const root = container.firstChild as HTMLElement;
     expect(root.getAttribute('title')).toContain('Signal: 80%');
     expect(root.getAttribute('title')).toContain('Latency: 30ms');

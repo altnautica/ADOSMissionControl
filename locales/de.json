@@ -1144,6 +1144,67 @@
     "toggleDemoMode": "Demo-Modus umschalten",
     "openFlashTool": "Flash-Tool öffnen",
     "switchTab": "Zu {tab} wechseln",
-    "toggleImmersive": "Immersiven Modus umschalten"
+    "toggleImmersive": "Immersiven Modus umschalten",
+    "goToDashboard": "Zum Dashboard",
+    "goToPlan": "Zum Missionsplaner",
+    "goToHistory": "Zum Verlauf",
+    "goToAnalytics": "Zur Analyse",
+    "goToConfig": "Zur Konfiguration",
+    "goToWizard": "Zum Pre-flight-Assistenten",
+    "returnToHomeAll": "Alle nach Hause",
+    "checkBattery": "Batteriestatus prüfen",
+    "navigation": "Navigation",
+    "commands": "Befehle",
+    "parameters": "Parameter"
+  },
+  "disconnectedPage": {
+    "alpha": "ALPHA",
+    "pairYourDrone": "Drohne koppeln",
+    "installAndConnect": "Agent installieren, Code eingeben, verbunden.",
+    "turnAnyDrone": "Verwandle jede Drohne in eine smarte Drohne",
+    "mavlinkProxy": "MAVLink Proxy",
+    "mavlinkProxyDesc": "Vollständiger bidirektionaler Flight-Controller-Zugriff über WebSocket, TCP und UDP. Drohne von überall konfigurieren, überwachen und steuern.",
+    "hdVideo": "HD Video Streaming",
+    "hdVideoDesc": "Live-HD-Video von der Drohne in jeden Browser. Latenzarmes Streaming mit WFB-ng und OpenHD mit RTL8812-Serie WiFi-Adaptern.",
+    "cellularTelemetry": "4G/5G Telemetrie",
+    "cellularTelemetryDesc": "Fliegen über die Sichtlinie hinaus. Echtzeit-Telemetrie und Steuerung über Mobilfunknetze. Keine Reichweitenbegrenzung.",
+    "extendedRange": "Extended Range Datalinks",
+    "extendedRangeDesc": "Steuerungsreichweite auf 50km+ erweitern mit RTL8812AU/EU WiFi-Adaptern im Monitor-Modus. Speziell für Langstrecken-Drohnenoperationen gebaut.",
+    "plugAndPlay": "Plug & Play Hardware",
+    "plugAndPlayDesc": "Automatische Hardwareerkennung und Einrichtung. Der Agent erkennt beim ersten Start Flight Controller, Sensoren und Peripheriegeräte. Keine manuelle Konfiguration nötig.",
+    "aiReady": "AI-Ready",
+    "aiReadyDesc": "Für autonome Operationen gebaut. Python SDK, Scripting-Engine und REST API zum Erstellen intelligenter Flugverhalten und Integration von ML-Modellen.",
+    "softwareDefined": "Software-Defined Drone",
+    "softwareDefinedDesc": "Jede ArduPilot- oder PX4-Drohne in eine smarte Drohne verwandeln. Ein Companion Computer. Volle Softwarekontrolle über jedes System.",
+    "sshTerminal": "SSH & Terminal-Zugang",
+    "sshTerminalDesc": "Vollständiges TUI-Dashboard über SSH. Fünf Bildschirme für Telemetrie, MAVLink-Inspektion, Konfigurationsbearbeitung und Logs. Kein Browser nötig.",
+    "devTools": "Entwickler-Tools",
+    "devToolsDesc": "REST API auf :8080, Python SDK, YAML Missions, CLI Tools und fünf Scripting-Stufen von einfachen Textbefehlen bis volle Autonomie.",
+    "alphaDisclaimer": "Dies ist Alpha-Software. Erwarten Sie Bugs, Breaking Changes und unvollständige Features. Der Command-Tab bietet direkte Kontrolle über Drone-Agent-Dienste und Konfiguration. Nutzung auf eigene Gefahr.",
+    "requirements": "Anforderungen",
+    "viewOnGitHub": "Auf GitHub ansehen"
+  },
+  "fleet": {
+    "title": "Flotte",
+    "addDrone": "Drohne hinzufügen",
+    "expandPanel": "Flottenpanel erweitern",
+    "collapsePanel": "Flottenpanel einklappen",
+    "searchDrones": "Drohnen suchen...",
+    "noMatch": "Keine Drohnen entsprechen der Suche",
+    "noDrones": "Keine Drohnen",
+    "droneCount": "{count} Drohne{count, plural, one {} other {n}}"
+  },
+  "telemetryStrip": {
+    "fc": "FC",
+    "connected": "VERBUNDEN",
+    "disconnected": "GETRENNT",
+    "cpu": "CPU",
+    "mem": "MEM",
+    "disk": "Disk",
+    "temp": "Temp"
+  },
+  "missionProgress": {
+    "mission": "Mission",
+    "waypoint": "Waypoint"
   }
 }
