@@ -64,6 +64,8 @@ export function ChangelogEditor({ entry, onClose }: ChangelogEditorProps) {
       .filter(Boolean);
 
     try {
+      const translationsArg = Object.keys(translations).length > 0 ? translations : undefined;
+
       if (entry) {
         await updateChangelog({
           id: entry._id as never,
@@ -72,6 +74,7 @@ export function ChangelogEditor({ entry, onClose }: ChangelogEditorProps) {
           body: body.trim(),
           tags,
           published,
+          translations: translationsArg,
         });
       } else {
         await createChangelog({
@@ -80,6 +83,7 @@ export function ChangelogEditor({ entry, onClose }: ChangelogEditorProps) {
           body: body.trim(),
           tags,
           published,
+          translations: translationsArg,
         });
       }
       onClose();
@@ -167,6 +171,62 @@ export function ChangelogEditor({ entry, onClose }: ChangelogEditorProps) {
             />
             <span className="text-xs text-text-secondary">Published</span>
           </label>
+
+          {/* Translation Section */}
+          <div className="border-t border-border-default pt-4 mt-4">
+            <p className="text-xs font-medium text-text-secondary mb-2">Add Translation (optional)</p>
+            <div className="flex gap-2 mb-2">
+              <select
+                value={translationLocale}
+                onChange={e => setTranslationLocale(e.target.value)}
+                className="text-xs bg-bg-tertiary border border-border-default px-2 py-1 text-text-primary"
+              >
+                {["de", "zh", "fr", "es"].map(code => (
+                  <option key={code} value={code}>{code.toUpperCase()}</option>
+                ))}
+              </select>
+            </div>
+            <input
+              value={translationTitle}
+              onChange={e => setTranslationTitle(e.target.value)}
+              placeholder="Title (translated)"
+              className="w-full text-xs bg-bg-tertiary border border-border-default px-2 py-1 text-text-primary mb-1"
+            />
+            <textarea
+              value={translationDescription}
+              onChange={e => setTranslationDescription(e.target.value)}
+              placeholder="Description (translated)"
+              className="w-full text-xs bg-bg-tertiary border border-border-default px-2 py-1 text-text-primary mb-2"
+              rows={2}
+            />
+            <button
+              type="button"
+              onClick={addTranslation}
+              className="text-xs text-accent-primary border border-accent-primary/30 px-3 py-1 hover:bg-accent-primary/10"
+            >
+              Add Translation
+            </button>
+            {Object.entries(translations).length > 0 && (
+              <div className="mt-2 space-y-1">
+                {Object.entries(translations).map(([code, t]) => (
+                  <div key={code} className="flex items-center justify-between text-[10px] text-text-tertiary bg-bg-tertiary px-2 py-1">
+                    <span>{code.toUpperCase()}: {t.title || "(no title)"}</span>
+                    <button
+                      type="button"
+                      onClick={() => setTranslations(prev => {
+                        const n = { ...prev };
+                        delete n[code];
+                        return n;
+                      })}
+                      className="text-status-error hover:text-status-error/80"
+                    >
+                      x
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           <div className="flex justify-end gap-2 pt-2">
             <button

@@ -22,14 +22,12 @@ export function LocaleProvider({ children }: LocaleProviderProps) {
 
   useEffect(() => {
     // Dynamic import based on locale — only loads the needed bundle
-    import(`../../locales/${locale}.json`)
+    import(`../../../locales/${locale}.json`)
       .then((m) => setMessages(m.default as Record<string, unknown>))
       .catch(() => {
         // Fallback to English if locale bundle fails to load
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-expect-error — dynamic JSON import resolved by bundler
-        import("../../locales/en.json").then((m: { default: Record<string, unknown> }) =>
-          setMessages(m.default)
+        import("../../../locales/en.json").then((m: { default: Record<string, unknown> }) =>
+          setMessages(m.default as Record<string, unknown>)
         );
       });
   }, [locale]);
