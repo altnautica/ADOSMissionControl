@@ -52,7 +52,47 @@ Command any drone from any browser. ADOS Mission Control is an open-source GCS b
     </td>
     <td width="50%">
       <img src="public/screenshots/flashtool.png" alt="Firmware Flash Tool" height="220" width="100%"><br>
-      <sub>WebUSB firmware flashing — no external flasher needed</sub>
+      <sub>WebUSB firmware flashing, no external flasher needed</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="public/screenshots/air-traffic.png" alt="Air Traffic" height="220" width="100%"><br>
+      <sub>Live ADS-B tracking on a 3D CesiumJS globe with airspace zone visualization and flyability assessment</sub>
+    </td>
+    <td width="50%">
+      <img src="public/screenshots/planning.png" alt="Mission Planning" height="220" width="100%"><br>
+      <sub>Drag-and-drop waypoint editor with terrain profile, mission validation, and pattern generators</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="public/screenshots/code-editor.png" alt="Code Editor" height="220" width="100%"><br>
+      <sub>Built-in Python script editor with syntax highlighting for drone automation scripts</sub>
+    </td>
+    <td width="50%">
+      <img src="public/screenshots/drone-agent-overview.png" alt="Drone Agent Overview" height="220" width="100%"><br>
+      <sub>Real-time agent monitoring with service status, system resources, and live logs</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="public/screenshots/drone-agent-suites.png" alt="Application Suites" height="220" width="100%"><br>
+      <sub>Module store with 6 application suites: Sentry, Survey, Inspection, Agriculture, Cargo, SAR</sub>
+    </td>
+    <td width="50%">
+      <img src="public/screenshots/drone-agent-fleet.png" alt="Fleet Network" height="220" width="100%"><br>
+      <sub>DroneNet fleet enrollment, MQTT gateway status, mesh radio peers, and network topology</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="public/screenshots/drone-agent-peripherals.png" alt="Peripherals" height="220" width="100%"><br>
+      <sub>Connected peripheral detection with live sensor readings (IMU, GPS, barometer, camera, radio)</sub>
+    </td>
+    <td width="50%">
+      <img src="public/screenshots/simulate-3d.png" alt="3D Mission Simulation" height="220" width="100%"><br>
+      <sub>3D mission simulation with waypoints over terrain, playback controls, and camera presets</sub>
     </td>
   </tr>
 </table>

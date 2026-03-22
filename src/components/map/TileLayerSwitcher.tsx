@@ -10,10 +10,11 @@
 
 "use client";
 
-import { useState, useCallback } from "react";
-import { TileLayer } from "react-leaflet";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { useMap } from "react-leaflet";
 import { useSettingsStore, type MapTileSource } from "@/stores/settings-store";
 import dynamic from "next/dynamic";
+import type L from "leaflet";
 
 const CachedTileLayer = dynamic(
   () => import("./CachedTileLayer").then((m) => ({ default: m.CachedTileLayer })),
@@ -62,6 +63,40 @@ const TILE_LABELS: Record<MapTileSource, string> = {
 
 const TILE_ORDER: MapTileSource[] = ["dark", "osm", "satellite", "terrain"];
 
+/** TileLayer that uses setUrl() on source change instead of unmounting/remounting.
+ *  Preserves loaded tiles during transition for smoother switching. */
+function ManagedTileLayer({ url, attribution, maxZoom }: { url: string; attribution: string; maxZoom: number }) {
+  const map = useMap();
+  const layerRef = useRef<L.TileLayer | null>(null);
+  const initialUrlRef = useRef(url);
+
+  // Create layer once on mount
+  useEffect(() => {
+    let layer: L.TileLayer | null = null;
+    import("leaflet").then((L) => {
+      layer = L.tileLayer(initialUrlRef.current, { attribution, maxZoom });
+      layer.addTo(map);
+      layerRef.current = layer;
+    });
+    return () => {
+      if (layerRef.current) {
+        map.removeLayer(layerRef.current);
+        layerRef.current = null;
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map]);
+
+  // Update URL without remounting
+  useEffect(() => {
+    if (layerRef.current && layerRef.current.getTileUrl !== undefined) {
+      layerRef.current.setUrl(url);
+    }
+  }, [url]);
+
+  return null;
+}
+
 export function TileLayerSwitcher() {
   const source = useSettingsStore((s) => s.mapTileSource);
   const setSource = useSettingsStore((s) => s.setMapTileSource);
@@ -81,14 +116,12 @@ export function TileLayerSwitcher() {
     <>
       {cachingEnabled ? (
         <CachedTileLayer
-          key={source}
           url={config.url}
           attribution={config.attribution}
           maxZoom={config.maxZoom}
         />
       ) : (
-        <TileLayer
-          key={source}
+        <ManagedTileLayer
           url={config.url}
           attribution={config.attribution}
           maxZoom={config.maxZoom}

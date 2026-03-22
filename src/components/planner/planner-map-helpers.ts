@@ -8,11 +8,16 @@ import L from "leaflet";
 import { MAP_COLORS } from "@/lib/map-constants";
 import type { PlannerTool } from "@/lib/types";
 
+const waypointIconCache = new Map<string, L.DivIcon>();
+
 export function makeWaypointIcon(index: number, selected: boolean): L.DivIcon {
+  const key = `${index}-${selected}`;
+  const cached = waypointIconCache.get(key);
+  if (cached) return cached;
   const fill = selected ? MAP_COLORS.accentSelected : MAP_COLORS.accentPrimary;
   const stroke = selected ? MAP_COLORS.accentPrimary : MAP_COLORS.foreground;
   const textFill = selected ? MAP_COLORS.background : "#fff";
-  return L.divIcon({
+  const icon = L.divIcon({
     className: "",
     iconSize: [24, 24],
     iconAnchor: [12, 12],
@@ -21,19 +26,36 @@ export function makeWaypointIcon(index: number, selected: boolean): L.DivIcon {
       <text x="12" y="16" text-anchor="middle" fill="${textFill}" font-size="11" font-family="JetBrains Mono, monospace" font-weight="600">${index + 1}</text>
     </svg>`,
   });
+  waypointIconCache.set(key, icon);
+  return icon;
 }
 
+const segmentLabelCache = new Map<string, L.DivIcon>();
+const SEGMENT_CACHE_MAX = 200;
+
 export function makeSegmentLabel(text: string): L.DivIcon {
-  return L.divIcon({
+  const cached = segmentLabelCache.get(text);
+  if (cached) return cached;
+  const icon = L.divIcon({
     className: "",
     iconSize: [80, 16],
     iconAnchor: [40, 8],
     html: `<div style="font-size:9px;font-family:JetBrains Mono,monospace;color:${MAP_COLORS.muted};white-space:nowrap;text-align:center;background:rgba(10,10,15,0.7);padding:1px 4px;border:1px solid rgba(255,255,255,0.1)">${text}</div>`,
   });
+  if (segmentLabelCache.size >= SEGMENT_CACHE_MAX) {
+    const first = segmentLabelCache.keys().next().value;
+    if (first !== undefined) segmentLabelCache.delete(first);
+  }
+  segmentLabelCache.set(text, icon);
+  return icon;
 }
 
+const rallyIconCache = new Map<number, L.DivIcon>();
+
 export function makeRallyIcon(index: number): L.DivIcon {
-  return L.divIcon({
+  const cached = rallyIconCache.get(index);
+  if (cached) return cached;
+  const icon = L.divIcon({
     className: "",
     iconSize: [22, 22],
     iconAnchor: [11, 11],
@@ -42,15 +64,28 @@ export function makeRallyIcon(index: number): L.DivIcon {
       <text x="11" y="16" text-anchor="middle" fill="${MAP_COLORS.foreground}" font-size="9" font-family="JetBrains Mono, monospace" font-weight="600">R${index + 1}</text>
     </svg>`,
   });
+  rallyIconCache.set(index, icon);
+  return icon;
 }
 
+const measureLabelCache = new Map<string, L.DivIcon>();
+const MEASURE_CACHE_MAX = 200;
+
 export function makeMeasureLabel(text: string): L.DivIcon {
-  return L.divIcon({
+  const cached = measureLabelCache.get(text);
+  if (cached) return cached;
+  const icon = L.divIcon({
     className: "",
     iconSize: [120, 20],
     iconAnchor: [60, -4],
     html: `<div style="font-size:10px;font-family:JetBrains Mono,monospace;color:${MAP_COLORS.foreground};white-space:nowrap;text-align:center;background:rgba(10,10,15,0.85);padding:2px 6px;border:1px solid ${MAP_COLORS.muted}">${text}</div>`,
   });
+  if (measureLabelCache.size >= MEASURE_CACHE_MAX) {
+    const first = measureLabelCache.keys().next().value;
+    if (first !== undefined) measureLabelCache.delete(first);
+  }
+  measureLabelCache.set(text, icon);
+  return icon;
 }
 
 export function formatDist(m: number): string {

@@ -34,22 +34,29 @@ const statusColors: Record<DroneStatus, string> = {
   offline: "#666666",
 };
 
+const droneIconCache = new Map<string, L.DivIcon>();
+
 function createDroneIcon(heading: number, status: DroneStatus): L.DivIcon {
+  const key = `${heading}-${status}`;
+  const cached = droneIconCache.get(key);
+  if (cached) return cached;
   const color = statusColors[status];
-  const rotation = Math.round(heading);
-  const svg = `<svg width="24" height="24" viewBox="0 0 24 24" style="transform:rotate(${rotation}deg)" xmlns="http://www.w3.org/2000/svg">
+  const svg = `<svg width="24" height="24" viewBox="0 0 24 24" style="transform:rotate(${heading}deg)" xmlns="http://www.w3.org/2000/svg">
     <polygon points="12,2 20,20 12,16 4,20" fill="${color}" stroke="#000" stroke-width="1" opacity="0.9"/>
   </svg>`;
-  return L.divIcon({
+  const icon = L.divIcon({
     html: svg,
     className: "",
     iconSize: [24, 24],
     iconAnchor: [12, 12],
   });
+  droneIconCache.set(key, icon);
+  return icon;
 }
 
 export function DroneMarker({ id, name, lat, lon, heading, status, battery, onClick }: DroneMarkerProps) {
-  const icon = useMemo(() => createDroneIcon(heading, status), [heading, status]);
+  const quantizedHeading = Math.round(heading / 5) * 5;
+  const icon = useMemo(() => createDroneIcon(quantizedHeading, status), [quantizedHeading, status]);
 
   return (
     <Marker

@@ -2,6 +2,8 @@
  * @module tile-cache
  * @description IndexedDB-based tile caching for Leaflet maps.
  * Stores tile image blobs with LRU eviction at a configurable max size.
+ * Uses readonly transactions for reads and batches lastAccess writes
+ * to avoid IndexedDB contention when many tiles load simultaneously.
  * @license GPL-3.0-only
  */
 
@@ -9,6 +11,7 @@ const DB_NAME = "tile-cache";
 const STORE_NAME = "tiles";
 const DB_VERSION = 1;
 const MAX_CACHE_BYTES = 500 * 1024 * 1024; // 500 MB
+const ACCESS_FLUSH_INTERVAL = 2000; // ms
 
 interface TileEntry {
   url: string;
@@ -36,19 +39,52 @@ function openDB(): Promise<IDBDatabase> {
   return dbPromise;
 }
 
+// Batched lastAccess updates to avoid readwrite contention
+const pendingAccessUpdates: string[] = [];
+let accessFlushTimer: ReturnType<typeof setTimeout> | null = null;
+
+function queueAccessUpdate(url: string): void {
+  pendingAccessUpdates.push(url);
+  if (!accessFlushTimer) {
+    accessFlushTimer = setTimeout(flushAccessUpdates, ACCESS_FLUSH_INTERVAL);
+  }
+}
+
+async function flushAccessUpdates(): Promise<void> {
+  accessFlushTimer = null;
+  const urls = pendingAccessUpdates.splice(0);
+  if (urls.length === 0) return;
+  try {
+    const db = await openDB();
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const store = tx.objectStore(STORE_NAME);
+    const now = Date.now();
+    for (const url of urls) {
+      const req = store.get(url);
+      req.onsuccess = () => {
+        const entry = req.result as TileEntry | undefined;
+        if (entry) {
+          entry.lastAccess = now;
+          store.put(entry);
+        }
+      };
+    }
+  } catch {
+    // Silently fail — access tracking is best-effort
+  }
+}
+
 export async function getCachedTile(url: string): Promise<Blob | null> {
   try {
     const db = await openDB();
     return new Promise((resolve) => {
-      const tx = db.transaction(STORE_NAME, "readwrite");
+      const tx = db.transaction(STORE_NAME, "readonly");
       const store = tx.objectStore(STORE_NAME);
       const getReq = store.get(url);
       getReq.onsuccess = () => {
         const entry = getReq.result as TileEntry | undefined;
         if (entry) {
-          // Update last access time
-          entry.lastAccess = Date.now();
-          store.put(entry);
+          queueAccessUpdate(url);
           resolve(entry.blob);
         } else {
           resolve(null);

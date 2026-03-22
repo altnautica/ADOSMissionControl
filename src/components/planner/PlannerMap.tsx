@@ -131,7 +131,10 @@ export function PlannerMap({
     mapInstance.fitBounds(bounds, { padding: [40, 40], maxZoom: 16 }); clearFitRequest();
   }, [mapInstance, fitRequestTs, waypoints, clearFitRequest]);
 
-  const polylinePositions: [number, number][] = waypoints.map((wp) => [wp.lat, wp.lon]);
+  const polylinePositions = useMemo(
+    () => waypoints.map((wp) => [wp.lat, wp.lon] as [number, number]),
+    [waypoints]
+  );
   const segments = useMemo(() => {
     if (zoom < 14 || waypoints.length < 2) return [];
     return waypoints.slice(1).map((wp, i) => {
@@ -141,6 +144,11 @@ export function PlannerMap({
       return { key: `seg-${prev.id}-${wp.id}`, position: [(prev.lat + wp.lat) / 2, (prev.lon + wp.lon) / 2] as [number, number], label: `${formatDist(dist)} ${Math.round(brg)}°` };
     });
   }, [waypoints, zoom]);
+
+  const measurePositions = useMemo(
+    () => measureLine?.points.map((p) => [p[0], p[1]] as [number, number]) ?? [],
+    [measureLine]
+  );
 
   return (
     <div className="w-full h-full relative">
@@ -160,7 +168,7 @@ export function PlannerMap({
         ))}
         {rallyPoints.map((rp, i) => <Marker key={`rally-${rp.id}`} position={[rp.lat, rp.lon]} icon={makeRallyIcon(i)} interactive={false} />)}
         {measureLine && measureLine.points.length >= 2 && (<>
-          <Polyline positions={measureLine.points.map((p) => [p[0], p[1]] as [number, number])} pathOptions={{ color: MAP_COLORS.muted, weight: 2, dashArray: "4 4" }} />
+          <Polyline positions={measurePositions} pathOptions={{ color: MAP_COLORS.muted, weight: 2, dashArray: "4 4" }} />
           {measureLine.points.map((pt, i) => i > 0 ? (
             <Marker key={`meas-seg-${i}`} position={[(pt[0] + measureLine.points[i - 1][0]) / 2, (pt[1] + measureLine.points[i - 1][1]) / 2]}
               icon={makeSegmentLabel(formatDist(measureLine.segmentDistances[i - 1]))} interactive={false} />
