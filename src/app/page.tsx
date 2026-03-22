@@ -11,6 +11,7 @@ import { DashboardOverview } from "@/components/dashboard/DashboardOverview";
 import { DroneDetailPanel } from "@/components/dashboard/DroneDetailPanel";
 import { DroneLogsPanel } from "@/components/drone-detail/DroneLogsPanel";
 import { EmptyFleetState } from "@/components/dashboard/EmptyFleetState";
+import { CloudDroneBridge } from "@/components/dashboard/CloudDroneBridge";
 
 export default function DashboardPage() {
   const t = useTranslations("dashboard");
@@ -34,11 +35,17 @@ export default function DashboardPage() {
   }, [selectedDroneId, immersiveMode, exitImmersiveMode]);
 
   if (drones.length === 0) {
-    return <EmptyFleetState />;
+    return (
+      <>
+        <CloudDroneBridge />
+        <EmptyFleetState />
+      </>
+    );
   }
 
   return (
     <div className="flex-1 flex h-full overflow-hidden">
+      <CloudDroneBridge />
       {!immersiveMode && (
         <DroneListPanel collapsed={panelCollapsed} onToggleCollapse={() => setPanelCollapsed((p) => !p)} />
       )}

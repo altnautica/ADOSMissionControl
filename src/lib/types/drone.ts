@@ -45,6 +45,10 @@ export interface FleetDrone extends DroneInfo {
   gps?: GpsData;
   healthScore: number; // 0-100
   hasAgent?: boolean;
+  /** "local" for direct MAVLink connections, "cloud" for cloud-paired agents */
+  source?: "local" | "cloud";
+  /** Cloud device ID for cloud-paired agents */
+  cloudDeviceId?: string;
 }
 
 export type AlertSeverity = "info" | "warning" | "critical";

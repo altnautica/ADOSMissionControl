@@ -2,7 +2,7 @@
 
 /**
  * @module AgentOverviewTab
- * @description Main overview tab showing agent status, services, resources, CPU sparkline, and logs.
+ * @description Main overview tab showing agent status, services, resources, CPU/memory sparklines, and logs.
  * @license GPL-3.0-only
  */
 
@@ -13,6 +13,7 @@ import { AgentStatusCard } from "./shared/AgentStatusCard";
 import { ServiceTable } from "./shared/ServiceTable";
 import { SystemResourceGauges } from "./shared/SystemResourceGauges";
 import { CpuSparkline } from "./shared/CpuSparkline";
+import { MemorySparkline } from "./shared/MemorySparkline";
 import { LogViewer } from "./shared/LogViewer";
 import { AgentDisconnectedPage } from "./AgentDisconnectedPage";
 
@@ -23,6 +24,8 @@ export function AgentOverviewTab() {
   const services = useAgentStore((s) => s.services);
   const resources = useAgentStore((s) => s.resources);
   const logs = useAgentStore((s) => s.logs);
+  const processCpu = useAgentStore((s) => s.processCpuPercent);
+  const processMemMb = useAgentStore((s) => s.processMemoryMb);
   const fetchServices = useAgentStore((s) => s.fetchServices);
   const fetchResources = useAgentStore((s) => s.fetchResources);
   const fetchLogs = useAgentStore((s) => s.fetchLogs);
@@ -55,10 +58,16 @@ export function AgentOverviewTab() {
       <AgentStatusCard status={status} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <ServiceTable services={services} onRestart={restartService} />
+        <ServiceTable
+          services={services}
+          onRestart={restartService}
+          processCpu={processCpu}
+          processMemoryMb={processMemMb}
+        />
         <div className="space-y-4">
           {resources && <SystemResourceGauges resources={resources} />}
           <CpuSparkline />
+          <MemorySparkline />
         </div>
       </div>
 

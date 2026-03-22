@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BatteryBar } from "./battery-bar";
 import { StatusDot } from "@/components/ui/status-dot";
+import { Cloud } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDroneMetadataStore } from "@/stores/drone-metadata-store";
 import type { FleetDrone, DroneStatus } from "@/lib/types";
@@ -50,6 +51,9 @@ export function DroneCard({ drone, selected, onClick }: DroneCardProps) {
         <div className="flex items-center gap-2">
           <StatusDot status={statusToDot[drone.status]} />
           <span className="text-sm font-semibold text-text-primary">{displayName}</span>
+          {drone.source === "cloud" && (
+            <Cloud size={12} className="text-accent-primary" />
+          )}
         </div>
         <div className="flex items-center gap-1.5">
           <Badge variant={drone.armState === "armed" ? "warning" : "neutral"}>

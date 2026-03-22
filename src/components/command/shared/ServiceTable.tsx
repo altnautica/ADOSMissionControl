@@ -9,6 +9,8 @@ import type { ServiceInfo } from "@/lib/agent/types";
 interface ServiceTableProps {
   services: ServiceInfo[];
   onRestart: (name: string) => void;
+  processCpu?: number | null;
+  processMemoryMb?: number | null;
 }
 
 function statusBadge(status: string) {
@@ -31,7 +33,7 @@ function statusBadge(status: string) {
   );
 }
 
-export function ServiceTable({ services, onRestart }: ServiceTableProps) {
+export function ServiceTable({ services, onRestart, processCpu, processMemoryMb }: ServiceTableProps) {
   const t = useTranslations("agent");
   if (!services || !Array.isArray(services) || services.length === 0) {
     return (
@@ -42,18 +44,28 @@ export function ServiceTable({ services, onRestart }: ServiceTableProps) {
     );
   }
 
+  const runningCount = services.filter((s) => s.status === "running").length;
+
   return (
     <div className="border border-border-default rounded-lg p-4">
-      <h3 className="text-sm font-medium text-text-primary mb-3">{t("services")}</h3>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-medium text-text-primary">{t("services")}</h3>
+        <div className="flex items-center gap-3 text-[10px] text-text-tertiary font-mono">
+          <span>{runningCount}/{services.length} running</span>
+          {processCpu != null && (
+            <span>CPU {processCpu.toFixed(1)}%</span>
+          )}
+          {processMemoryMb != null && (
+            <span>RAM {processMemoryMb.toFixed(0)} MB</span>
+          )}
+        </div>
+      </div>
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
           <thead>
             <tr className="border-b border-border-default text-text-tertiary">
               <th className="text-left py-1.5 pr-3 font-medium">{t("serviceName")}</th>
               <th className="text-left py-1.5 pr-3 font-medium">{t("serviceStatus")}</th>
-              <th className="text-right py-1.5 pr-3 font-medium">{t("servicePid")}</th>
-              <th className="text-right py-1.5 pr-3 font-medium">{t("serviceCpu")}</th>
-              <th className="text-right py-1.5 pr-3 font-medium">{t("serviceRam")}</th>
               <th className="text-right py-1.5 pr-3 font-medium">{t("serviceUptime")}</th>
               <th className="text-right py-1.5 font-medium">{t("serviceAction")}</th>
             </tr>
@@ -69,16 +81,7 @@ export function ServiceTable({ services, onRestart }: ServiceTableProps) {
                 </td>
                 <td className="py-1.5 pr-3">{statusBadge(svc.status)}</td>
                 <td className="py-1.5 pr-3 text-right text-text-secondary font-mono">
-                  {svc.pid ?? "-"}
-                </td>
-                <td className="py-1.5 pr-3 text-right text-text-secondary font-mono">
-                  {svc.cpu_percent.toFixed(1)}
-                </td>
-                <td className="py-1.5 pr-3 text-right text-text-secondary font-mono">
-                  {svc.memory_mb.toFixed(1)}
-                </td>
-                <td className="py-1.5 pr-3 text-right text-text-secondary font-mono">
-                  {formatDuration(svc.uptime_seconds)}
+                  {svc.status === "running" ? formatDuration(svc.uptime_seconds) : "-"}
                 </td>
                 <td className="py-1.5 text-right">
                   <button

@@ -28,11 +28,25 @@ export const pushStatus = mutation({
     fcConnected: v.optional(v.boolean()),
     fcPort: v.optional(v.string()),
     fcBaud: v.optional(v.number()),
+    // Absolute resource values
+    memoryUsedMb: v.optional(v.number()),
+    memoryTotalMb: v.optional(v.number()),
+    diskUsedGb: v.optional(v.number()),
+    diskTotalGb: v.optional(v.number()),
+    cpuCores: v.optional(v.number()),
+    boardRamMb: v.optional(v.number()),
+    // Process-level totals
+    processCpuPercent: v.optional(v.number()),
+    processMemoryMb: v.optional(v.number()),
+    // History arrays for sparkline charts
+    cpuHistory: v.optional(v.array(v.number())),
+    memoryHistory: v.optional(v.array(v.number())),
     services: v.optional(v.array(v.object({
       name: v.string(),
       status: v.string(),
       cpuPercent: v.optional(v.number()),
       memoryMb: v.optional(v.number()),
+      uptimeSeconds: v.optional(v.number()),
     }))),
     lastIp: v.optional(v.string()),
     mdnsHost: v.optional(v.string()),

@@ -38,6 +38,10 @@ interface AgentStore {
   enrollment: DroneNetEnrollment | null;
   peers: NetworkPeer[];
   cpuHistory: number[];
+  memoryHistory: number[];
+  processCpuPercent: number | null;
+  processMemoryMb: number | null;
+  lastCloudUpdate: number | null;
   scriptOutput: ScriptRunResult | null;
   runningScript: string | null;
 
@@ -101,6 +105,10 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   enrollment: null,
   peers: [],
   cpuHistory: [],
+  memoryHistory: [],
+  processCpuPercent: null,
+  processMemoryMb: null,
+  lastCloudUpdate: null,
   scriptOutput: null,
   runningScript: null,
 
@@ -157,6 +165,10 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
       enrollment: null,
       peers: [],
       cpuHistory: [],
+      memoryHistory: [],
+      processCpuPercent: null,
+      processMemoryMb: null,
+      lastCloudUpdate: null,
       scriptOutput: null,
       runningScript: null,
       cloudMode: false,
@@ -191,7 +203,9 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
     set((state) => {
       const cpuHistory = [...state.cpuHistory, status.health.cpu_percent];
       if (cpuHistory.length > MAX_CPU_HISTORY) cpuHistory.shift();
-      return { status, cpuHistory };
+      const memoryHistory = [...state.memoryHistory, status.health.memory_percent];
+      if (memoryHistory.length > MAX_CPU_HISTORY) memoryHistory.shift();
+      return { status, cpuHistory, memoryHistory, lastCloudUpdate: Date.now() };
     });
   },
 
@@ -235,7 +249,9 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
       set((state) => {
         const cpuHistory = [...state.cpuHistory, resources.cpu_percent];
         if (cpuHistory.length > MAX_CPU_HISTORY) cpuHistory.shift();
-        return { resources, cpuHistory };
+        const memoryHistory = [...state.memoryHistory, resources.memory_percent];
+        if (memoryHistory.length > MAX_CPU_HISTORY) memoryHistory.shift();
+        return { resources, cpuHistory, memoryHistory };
       });
     } catch { /* silent */ }
   },
