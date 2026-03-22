@@ -87,6 +87,7 @@ export default function CesiumScene({
     try {
       viewer = new Viewer(containerRef.current, {
         sceneMode: SceneMode.SCENE3D,
+        scene3DOnly: true,
         animation: false,
         timeline: false,
         baseLayerPicker: false,
@@ -111,7 +112,8 @@ export default function CesiumScene({
       if (viewer.scene.sun) viewer.scene.sun.show = false;
       if (viewer.scene.moon) viewer.scene.moon.show = false;
       if (viewer.scene.skyBox) viewer.scene.skyBox.show = false;
-      viewer.scene.fog.enabled = false;
+      viewer.scene.fog.enabled = true;
+      viewer.scene.fog.density = 2.0e-4;
 
       // Dark CARTO tiles as default imagery
       viewer.imageryLayers.removeAll();

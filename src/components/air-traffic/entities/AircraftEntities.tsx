@@ -8,7 +8,7 @@
 
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useImperativeHandle, forwardRef } from "react";
 import {
   Cartesian3,
   Cartesian2,
@@ -20,8 +20,6 @@ import {
   Math as CesiumMath,
   BillboardCollection,
   LabelCollection,
-  ScreenSpaceEventHandler,
-  ScreenSpaceEventType,
   type Viewer as CesiumViewer,
   type Billboard,
   type Label,
@@ -78,11 +76,32 @@ function getIconSize(mode: DisplayMode): number {
   }
 }
 
-export function AircraftEntities({ viewer }: AircraftEntitiesProps) {
+// ── Cached Color objects to avoid per-frame allocations ──
+const cesiumColorCache = new Map<string, Color>();
+function getCachedColor(hex: string, alpha?: number): Color {
+  const key = alpha !== undefined ? `${hex}-${alpha}` : hex;
+  let c = cesiumColorCache.get(key);
+  if (!c) {
+    c = Color.fromCssColorString(hex);
+    if (alpha !== undefined) c = c.withAlpha(alpha);
+    cesiumColorCache.set(key, c);
+  }
+  return c;
+}
+const LABEL_BG_COLOR = getCachedColor("#0a0a0f", 0.7);
+const LABEL_PIXEL_OFFSET = new Cartesian2(0, -16);
+const LABEL_BG_PADDING = new Cartesian2(4, 2);
+
+/** Handle for parent to pick aircraft by billboard reference */
+export interface AircraftEntitiesHandle {
+  findByBillboard: (billboard: Billboard) => string | null;
+}
+
+export const AircraftEntities = forwardRef<AircraftEntitiesHandle, AircraftEntitiesProps>(
+  function AircraftEntities({ viewer }, ref) {
   const aircraft = useTrafficStore((s) => s.aircraft);
   const threatLevels = useTrafficStore((s) => s.threatLevels);
   const selectedAircraft = useTrafficStore((s) => s.selectedAircraft);
-  const setSelectedAircraft = useTrafficStore((s) => s.setSelectedAircraft);
   const setDisplayMode = useTrafficStore((s) => s.setDisplayMode);
   const trafficVisible = useAirspaceStore((s) => s.layerVisibility.traffic);
 
@@ -94,6 +113,16 @@ export function AircraftEntities({ viewer }: AircraftEntitiesProps) {
   const modeRef = useRef<DisplayMode>("global");
   /** Visible viewport bounds for frustum culling (ref to avoid re-renders on camera move). */
   const visibleBoundsRef = useRef<ViewBounds | null>(null);
+
+  // Expose billboard-to-icao24 lookup for parent click handler
+  useImperativeHandle(ref, () => ({
+    findByBillboard: (billboard: Billboard): string | null => {
+      for (const [icao24, entry] of indexRef.current) {
+        if (entry.billboard === billboard) return icao24;
+      }
+      return null;
+    },
+  }), []);
 
   // Initialize BillboardCollection + LabelCollection
   useEffect(() => {
@@ -156,33 +185,6 @@ export function AircraftEntities({ viewer }: AircraftEntitiesProps) {
     };
   }, [viewer, handleCameraMove]);
 
-  // Billboard picking via click handler
-  useEffect(() => {
-    if (!viewer || viewer.isDestroyed()) return;
-
-    const handler = new ScreenSpaceEventHandler(viewer.scene.canvas);
-
-    handler.setInputAction((click: { position: Cartesian2 }) => {
-      const picked = viewer.scene.pick(click.position);
-      if (!picked || !picked.primitive) {
-        return;
-      }
-
-      // Find matching icao24 for clicked billboard
-      const clickedBb = picked.primitive;
-      for (const [icao24, entry] of indexRef.current) {
-        if (entry.billboard === clickedBb) {
-          setSelectedAircraft(icao24);
-          return;
-        }
-      }
-    }, ScreenSpaceEventType.LEFT_CLICK);
-
-    return () => {
-      if (!handler.isDestroyed()) handler.destroy();
-    };
-  }, [viewer, setSelectedAircraft]);
-
   // Update billboards when aircraft data changes
   useEffect(() => {
     const bbColl = billboardCollRef.current;
@@ -239,6 +241,7 @@ export function AircraftEntities({ viewer }: AircraftEntitiesProps) {
       const callsign = ac.callsign?.trim() || icao24.toUpperCase();
       const imageUri = getAircraftIcon(color, 32);
       const bbScale = isSelected ? scale * 1.5 : scale;
+      const threatColor = getCachedColor(THREAT_COLORS[threat] ?? THREAT_COLORS.other);
 
       const existing = indexRef.current.get(icao24);
       if (existing) {
@@ -253,9 +256,7 @@ export function AircraftEntities({ viewer }: AircraftEntitiesProps) {
         existing.label.position = position;
         existing.label.text = callsign;
         existing.label.show = showLabels;
-        existing.label.fillColor = Color.fromCssColorString(
-          THREAT_COLORS[threat] ?? THREAT_COLORS.other
-        );
+        existing.label.fillColor = threatColor;
       } else {
         // Add new billboard + label
         const billboard = bbColl.add({
@@ -274,18 +275,16 @@ export function AircraftEntities({ viewer }: AircraftEntitiesProps) {
           text: callsign,
           font: "10px monospace",
           show: showLabels,
-          fillColor: Color.fromCssColorString(
-            THREAT_COLORS[threat] ?? THREAT_COLORS.other
-          ),
+          fillColor: threatColor,
           outlineColor: Color.BLACK,
           outlineWidth: 2,
           style: LabelStyle.FILL_AND_OUTLINE,
           verticalOrigin: VerticalOrigin.BOTTOM,
-          pixelOffset: new Cartesian2(0, -16),
+          pixelOffset: LABEL_PIXEL_OFFSET,
           disableDepthTestDistance: 5000,
           showBackground: true,
-          backgroundColor: Color.fromCssColorString("#0a0a0f").withAlpha(0.7),
-          backgroundPadding: new Cartesian2(4, 2),
+          backgroundColor: LABEL_BG_COLOR,
+          backgroundPadding: LABEL_BG_PADDING,
         });
 
         indexRef.current.set(icao24, { billboard, label, icao24 });
@@ -307,4 +306,4 @@ export function AircraftEntities({ viewer }: AircraftEntitiesProps) {
   }, [viewer, aircraft, threatLevels, selectedAircraft, trafficVisible]);
 
   return null;
-}
+});

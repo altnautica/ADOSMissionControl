@@ -2,6 +2,7 @@
  * @module FlightTrailEntities
  * @description Renders aircraft position trails as Cesium PolylineCollection
  * primitives. Trail color matches aircraft threat level with fading alpha.
+ * Material and Color objects are cached by threat level to avoid per-frame allocations.
  * @license GPL-3.0-only
  */
 
@@ -23,6 +24,20 @@ import { THREAT_COLORS, type ThreatLevel } from "@/lib/airspace/types";
 
 interface FlightTrailEntitiesProps {
   viewer: CesiumViewer | null;
+}
+
+// ── Cached Material objects by threat level (avoids per-frame WebGL shader work) ──
+const trailMaterialCache = new Map<string, Material>();
+function getTrailMaterial(threat: ThreatLevel): Material {
+  const key = threat as string;
+  let m = trailMaterialCache.get(key);
+  if (!m) {
+    const hex = THREAT_COLORS[threat] ?? THREAT_COLORS.other;
+    const color = Color.fromCssColorString(hex).withAlpha(0.6);
+    m = Material.fromType("Color", { color });
+    trailMaterialCache.set(key, m);
+  }
+  return m;
 }
 
 export function FlightTrailEntities({ viewer }: FlightTrailEntitiesProps) {
@@ -72,19 +87,18 @@ export function FlightTrailEntities({ viewer }: FlightTrailEntitiesProps) {
       currentIcaos.add(icao24);
 
       const threat: ThreatLevel = threatLevels.get(icao24) ?? "other";
-      const colorHex = THREAT_COLORS[threat] ?? THREAT_COLORS.other;
-      const color = Color.fromCssColorString(colorHex).withAlpha(0.6);
+      const material = getTrailMaterial(threat);
       const positions = trail.map((p) => Cartesian3.fromDegrees(p.lon, p.lat, p.alt));
 
       const existing = polyIndexRef.current.get(icao24);
       if (existing) {
         existing.positions = positions;
-        existing.material = Material.fromType("Color", { color });
+        existing.material = material;
       } else {
         const polyline = polyColl.add({
           positions,
           width: 2,
-          material: Material.fromType("Color", { color }),
+          material,
         });
         polyIndexRef.current.set(icao24, polyline);
       }

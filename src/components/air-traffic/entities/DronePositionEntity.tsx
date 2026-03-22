@@ -8,7 +8,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { Cartesian3, Cartesian2, Color, VerticalOrigin, HorizontalOrigin, LabelStyle, type Viewer as CesiumViewer } from "cesium";
+import { Cartesian3, Cartesian2, Color, ConstantPositionProperty, VerticalOrigin, HorizontalOrigin, LabelStyle, type Viewer as CesiumViewer } from "cesium";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useAirspaceStore } from "@/stores/airspace-store";
 
@@ -25,6 +25,13 @@ function createDroneSvg(): string {
   </svg>`;
   return `data:image/svg+xml;base64,${btoa(svg)}`;
 }
+
+// Cache SVG data URI and Color objects at module level
+const DRONE_SVG_URI = createDroneSvg();
+const DRONE_COLOR = Color.fromCssColorString("#3A82FF");
+const DRONE_BG_COLOR = Color.fromCssColorString("#0a0a0f").withAlpha(0.7);
+const DRONE_LABEL_OFFSET = new Cartesian2(0, -14);
+const DRONE_BG_PADDING = new Cartesian2(4, 2);
 
 export function DronePositionEntity({ viewer }: DronePositionEntityProps) {
   const position = useTelemetryStore((s) => s.position);
@@ -60,14 +67,14 @@ export function DronePositionEntity({ viewer }: DronePositionEntityProps) {
 
     const existing = viewer.entities.getById(ENTITY_ID);
     if (existing) {
-      existing.position = pos as any;
+      existing.position = new ConstantPositionProperty(pos);
     } else {
       entityRef.current = viewer.entities.add({
         id: ENTITY_ID,
         name: "Own Drone",
         position: pos,
         billboard: {
-          image: createDroneSvg(),
+          image: DRONE_SVG_URI,
           width: 20,
           height: 20,
           verticalOrigin: VerticalOrigin.CENTER,
@@ -77,16 +84,16 @@ export function DronePositionEntity({ viewer }: DronePositionEntityProps) {
         label: {
           text: "DRONE",
           font: "10px monospace",
-          fillColor: Color.fromCssColorString("#3A82FF"),
+          fillColor: DRONE_COLOR,
           outlineColor: Color.BLACK,
           outlineWidth: 2,
           style: LabelStyle.FILL_AND_OUTLINE,
           verticalOrigin: VerticalOrigin.BOTTOM,
-          pixelOffset: new Cartesian2(0, -14),
+          pixelOffset: DRONE_LABEL_OFFSET,
           disableDepthTestDistance: Number.POSITIVE_INFINITY,
           showBackground: true,
-          backgroundColor: Color.fromCssColorString("#0a0a0f").withAlpha(0.7),
-          backgroundPadding: new Cartesian2(4, 2),
+          backgroundColor: DRONE_BG_COLOR,
+          backgroundPadding: DRONE_BG_PADDING,
         },
       });
     }

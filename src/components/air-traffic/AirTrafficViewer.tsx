@@ -10,7 +10,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useEffect, useState, useCallback, useRef, Component, type ReactNode } from "react";
+import { useEffect, useState, useCallback, useRef, Component, type ReactNode, createRef } from "react";
 import { useQuery } from "convex/react";
 import { Cartesian3, Cartographic, ScreenSpaceEventHandler, ScreenSpaceEventType, Math as CesiumMath, defined, type Viewer as CesiumViewer } from "cesium";
 import dynamic from "next/dynamic";
@@ -30,7 +30,7 @@ import { randomId } from "@/lib/utils";
 import type { AircraftState, ThreatLevel, TrafficAlert } from "@/lib/airspace/types";
 
 import { AirspaceVolumeEntities } from "./entities/AirspaceVolumeEntities";
-import { AircraftEntities } from "./entities/AircraftEntities";
+import { AircraftEntities, type AircraftEntitiesHandle } from "./entities/AircraftEntities";
 import { DronePositionEntity } from "./entities/DronePositionEntity";
 import { NotamEntities } from "./entities/NotamEntities";
 import { ZoneBoundaryEntities } from "./entities/ZoneBoundaryEntities";
@@ -113,6 +113,7 @@ export function AirTrafficViewer() {
   const handleOpenAIPKey = useCallback((k: string | null) => setOpenAipKey(k), []);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastAlertRef = useRef<Map<string, number>>(new Map());
+  const aircraftEntitiesRef = useRef<AircraftEntitiesHandle>(null);
 
   // Settings
   const cesiumImageryMode = useSettingsStore((s) => s.cesiumImageryMode);
@@ -237,6 +238,13 @@ export function AirTrafficViewer() {
       };
       addAlert(alert);
     }
+
+    // Prune stale cooldown entries to prevent unbounded growth
+    if (lastAlertRef.current.size > 100) {
+      for (const [id, ts] of lastAlertRef.current) {
+        if (now - ts > ALERT_COOLDOWN_MS * 2) lastAlertRef.current.delete(id);
+      }
+    }
   }, [viewer, updateAircraft, setThreatLevels, addAlert]);
 
   // Keep a ref to processAircraft for use in callbacks that can't depend on it
@@ -305,8 +313,17 @@ export function AirTrafficViewer() {
     handler.setInputAction((click: any) => {
       const picked = viewer.scene.pick(click.position);
 
-      // Entity or billboard click (aircraft, zone, notam, etc): let Cesium handle it
-      if (defined(picked) && (picked.id || picked.primitive?.constructor?.name === "Billboard")) return;
+      // Billboard click: check if it's an aircraft billboard
+      if (defined(picked) && picked.primitive?.constructor?.name === "Billboard") {
+        const icao24 = aircraftEntitiesRef.current?.findByBillboard(picked.primitive);
+        if (icao24) {
+          useTrafficStore.getState().setSelectedAircraft(icao24);
+          return;
+        }
+      }
+
+      // Entity click (zone, notam, etc): let Cesium handle it
+      if (defined(picked) && picked.id) return;
 
       // Globe click: deselect any selected aircraft
       useTrafficStore.getState().setSelectedAircraft(null);
@@ -373,7 +390,7 @@ export function AirTrafficViewer() {
 
       {/* Entity layers */}
       <AirspaceVolumeEntities viewer={viewer} />
-      <AircraftEntities viewer={viewer} />
+      <AircraftEntities ref={aircraftEntitiesRef} viewer={viewer} />
       <DronePositionEntity viewer={viewer} />
       <NotamEntities viewer={viewer} />
       <ZoneBoundaryEntities viewer={viewer} />

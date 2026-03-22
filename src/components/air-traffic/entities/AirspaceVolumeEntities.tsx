@@ -44,17 +44,7 @@ export function AirspaceVolumeEntities({ viewer }: AirspaceVolumeEntitiesProps) 
   const activeJurisdictions = useAirspaceStore((s) => s.activeJurisdictions);
   const entityMapRef = useRef<Map<string, CesiumEntity>>(new Map());
 
-  // Effect 1: Toggle entity.show when visibility changes (fast path)
-  useEffect(() => {
-    if (!viewer || viewer.isDestroyed()) return;
-    const visible = layerVisibility.airspace;
-    for (const entity of entityMapRef.current.values()) {
-      entity.show = visible;
-    }
-    viewer.scene.requestRender();
-  }, [viewer, layerVisibility.airspace]);
-
-  // Effect 2: Create/recreate entities when data or filters change
+  // Single effect: create/recreate entities when data, filters, or visibility change
   useEffect(() => {
     if (!viewer || viewer.isDestroyed()) return;
 
@@ -64,7 +54,10 @@ export function AirspaceVolumeEntities({ viewer }: AirspaceVolumeEntitiesProps) 
     }
     entityMapRef.current.clear();
 
-    if (!layerVisibility.airspace) return;
+    if (!layerVisibility.airspace) {
+      viewer.scene.requestRender();
+      return;
+    }
 
     const visible = layerVisibility.airspace;
 
@@ -146,7 +139,7 @@ export function AirspaceVolumeEntities({ viewer }: AirspaceVolumeEntitiesProps) 
         entityMapRef.current.clear();
       }
     };
-  }, [viewer, zones, operationalAltitude, showIcaoZones, activeJurisdictions]);
+  }, [viewer, zones, operationalAltitude, showIcaoZones, activeJurisdictions, layerVisibility.airspace]);
 
   return null;
 }
