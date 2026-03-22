@@ -20,6 +20,7 @@ function statusBadge(status: string) {
     error: "bg-status-error/20 text-status-error",
     degraded: "bg-status-warning/20 text-status-warning",
     starting: "bg-accent-primary/20 text-accent-primary",
+    circuit_open: "bg-status-error/20 text-status-error",
   };
   return (
     <span
@@ -28,10 +29,17 @@ function statusBadge(status: string) {
         colors[status] ?? colors.stopped
       )}
     >
-      {status}
+      {status === "circuit_open" ? "breaker" : status}
     </span>
   );
 }
+
+const categoryColors: Record<string, string> = {
+  core: "text-accent-primary",
+  hardware: "text-status-warning",
+  suite: "text-accent-secondary",
+  ondemand: "text-text-tertiary",
+};
 
 export function ServiceTable({ services, onRestart, processCpu, processMemoryMb }: ServiceTableProps) {
   const t = useTranslations("agent");
@@ -45,6 +53,8 @@ export function ServiceTable({ services, onRestart, processCpu, processMemoryMb 
   }
 
   const runningCount = services.filter((s) => s.status === "running").length;
+  // Detect multi-process mode: if any service has a real PID, show per-service columns
+  const hasRealPids = services.some((s) => s.pid != null && s.pid > 0);
 
   return (
     <div className="border border-border-default rounded-lg p-4">
@@ -66,6 +76,13 @@ export function ServiceTable({ services, onRestart, processCpu, processMemoryMb 
             <tr className="border-b border-border-default text-text-tertiary">
               <th className="text-left py-1.5 pr-3 font-medium">{t("serviceName")}</th>
               <th className="text-left py-1.5 pr-3 font-medium">{t("serviceStatus")}</th>
+              {hasRealPids && (
+                <>
+                  <th className="text-right py-1.5 pr-3 font-medium">{t("servicePid")}</th>
+                  <th className="text-right py-1.5 pr-3 font-medium">{t("serviceCpu")}</th>
+                  <th className="text-right py-1.5 pr-3 font-medium">{t("serviceRam")}</th>
+                </>
+              )}
               <th className="text-right py-1.5 pr-3 font-medium">{t("serviceUptime")}</th>
               <th className="text-right py-1.5 font-medium">{t("serviceAction")}</th>
             </tr>
@@ -77,9 +94,29 @@ export function ServiceTable({ services, onRestart, processCpu, processMemoryMb 
                 className="border-b border-border-default last:border-b-0"
               >
                 <td className="py-1.5 pr-3 text-text-primary font-mono">
-                  {svc.name}
+                  <div className="flex items-center gap-1.5">
+                    {svc.category && (
+                      <span className={cn("text-[8px] uppercase", categoryColors[svc.category] ?? "text-text-tertiary")}>
+                        {svc.category === "core" ? "C" : svc.category === "hardware" ? "H" : svc.category === "suite" ? "S" : "D"}
+                      </span>
+                    )}
+                    {svc.name}
+                  </div>
                 </td>
                 <td className="py-1.5 pr-3">{statusBadge(svc.status)}</td>
+                {hasRealPids && (
+                  <>
+                    <td className="py-1.5 pr-3 text-right text-text-secondary font-mono">
+                      {svc.pid ?? "-"}
+                    </td>
+                    <td className="py-1.5 pr-3 text-right text-text-secondary font-mono">
+                      {svc.status === "running" ? svc.cpu_percent.toFixed(1) : "-"}
+                    </td>
+                    <td className="py-1.5 pr-3 text-right text-text-secondary font-mono">
+                      {svc.status === "running" ? svc.memory_mb.toFixed(1) : "-"}
+                    </td>
+                  </>
+                )}
                 <td className="py-1.5 pr-3 text-right text-text-secondary font-mono">
                   {svc.status === "running" ? formatDuration(svc.uptime_seconds) : "-"}
                 </td>

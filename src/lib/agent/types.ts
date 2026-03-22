@@ -36,11 +36,12 @@ export interface AgentStatus {
 
 export interface ServiceInfo {
   name: string;
-  status: "running" | "stopped" | "error" | "degraded" | "starting";
+  status: "running" | "stopped" | "error" | "degraded" | "starting" | "circuit_open";
   pid: number | null;
   cpu_percent: number;
   memory_mb: number;
   uptime_seconds: number;
+  category?: "core" | "hardware" | "suite" | "ondemand";
 }
 
 export interface SystemResources {

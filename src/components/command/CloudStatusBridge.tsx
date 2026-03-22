@@ -133,11 +133,12 @@ export function CloudStatusBridge() {
       useAgentStore.setState({
         services: cloudStatus.services.map((s) => ({
           name: s.name,
-          status: (["running", "stopped", "error", "degraded", "starting"].includes(s.status) ? s.status : "stopped") as "running" | "stopped" | "error" | "degraded" | "starting",
-          pid: null,
+          status: (["running", "stopped", "error", "degraded", "starting", "circuit_open"].includes(s.status) ? s.status : "stopped") as "running" | "stopped" | "error" | "degraded" | "starting" | "circuit_open",
+          pid: s.pid ?? null,
           cpu_percent: s.cpuPercent || 0,
           memory_mb: s.memoryMb || 0,
           uptime_seconds: s.uptimeSeconds ?? 0,
+          category: s.category as "core" | "hardware" | "suite" | "ondemand" | undefined,
         })),
         processCpuPercent: cloudStatus.processCpuPercent ?? null,
         processMemoryMb: cloudStatus.processMemoryMb ?? null,

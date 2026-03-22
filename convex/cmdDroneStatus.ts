@@ -47,6 +47,8 @@ export const pushStatus = mutation({
       cpuPercent: v.optional(v.number()),
       memoryMb: v.optional(v.number()),
       uptimeSeconds: v.optional(v.number()),
+      pid: v.optional(v.number()),
+      category: v.optional(v.string()),
     }))),
     lastIp: v.optional(v.string()),
     mdnsHost: v.optional(v.string()),
