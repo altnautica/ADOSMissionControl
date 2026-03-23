@@ -13,17 +13,9 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useMap } from "react-leaflet";
 import { useSettingsStore, type MapTileSource } from "@/stores/settings-store";
-import dynamic from "next/dynamic";
-import type L from "leaflet";
-
-const CachedTileLayer = dynamic(
-  () => import("./CachedTileLayer").then((m) => ({ default: m.CachedTileLayer })),
-  { ssr: false }
-);
-const NoFlyZoneOverlay = dynamic(
-  () => import("./NoFlyZoneOverlay").then((m) => ({ default: m.NoFlyZoneOverlay })),
-  { ssr: false }
-);
+import L from "leaflet";
+import { CachedTileLayer } from "./CachedTileLayer";
+import { NoFlyZoneOverlay } from "./NoFlyZoneOverlay";
 
 interface TileConfig {
   url: string;
@@ -72,12 +64,9 @@ function ManagedTileLayer({ url, attribution, maxZoom }: { url: string; attribut
 
   // Create layer once on mount
   useEffect(() => {
-    let layer: L.TileLayer | null = null;
-    import("leaflet").then((L) => {
-      layer = L.tileLayer(initialUrlRef.current, { attribution, maxZoom });
-      layer.addTo(map);
-      layerRef.current = layer;
-    });
+    const layer = L.tileLayer(initialUrlRef.current, { attribution, maxZoom });
+    layer.addTo(map);
+    layerRef.current = layer;
     return () => {
       if (layerRef.current) {
         map.removeLayer(layerRef.current);
