@@ -69,20 +69,14 @@ export function CloudCommandResultBridge() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const data = (cmd as any).data;
       if (data !== undefined && data !== null) {
-        const storeField = COMMAND_RESULT_MAP[cmd.command];
-        if (storeField) {
-          // Array fields must be arrays, object fields stay as-is
-          const arrayFields = ["peripherals", "scripts", "suites", "peers", "logs", "services"];
-          if (arrayFields.includes(storeField) && !Array.isArray(data)) {
-            // Skip — data shape doesn't match expected array
-          } else {
-            useAgentStore.setState({ [storeField]: data });
-          }
+        const target = COMMAND_RESULT_MAP[cmd.command];
+        if (target) {
+          setStoreField(target.store, target.field, data);
         }
 
         // Special handling for run_script results
         if (cmd.command === "run_script") {
-          useAgentStore.setState({
+          useAgentScriptsStore.setState({
             scriptOutput: data,
             runningScript: null,
           });
@@ -90,13 +84,13 @@ export function CloudCommandResultBridge() {
 
         // Special handling for save_script — trigger a refresh
         if (cmd.command === "save_script" || cmd.command === "delete_script") {
-          useAgentStore.getState().fetchScripts();
+          useAgentScriptsStore.getState().fetchScripts();
         }
       }
 
       // If command failed and it was a script run, clear the running state
       if (cmd.status === "failed" && cmd.command === "run_script") {
-        useAgentStore.setState({
+        useAgentScriptsStore.setState({
           scriptOutput: {
             stdout: "",
             stderr: cmd.result?.message || "Command failed",
