@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useFleetStore } from "@/stores/fleet-store";
 import { useDroneManager } from "@/stores/drone-manager";
-import { useAgentStore } from "@/stores/agent-store";
+import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 
 export function DemoProvider() {
   const demoMode = useSettingsStore((s) => s.demoMode);

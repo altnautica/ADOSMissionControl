@@ -5,8 +5,7 @@
  * @license GPL-3.0-only
  */
 
-import { useState, useEffect, useMemo, type ReactNode } from "react";
-import { createElement } from "react";
+import { useState, useEffect, useMemo } from "react";
 
 // ── Types ────────────────────────────────────────────────────
 

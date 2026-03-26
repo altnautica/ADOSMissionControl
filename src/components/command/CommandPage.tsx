@@ -24,7 +24,8 @@ import { cn, isDemoMode } from "@/lib/utils";
 import { cmdDronesApi } from "@/lib/community-api-drones";
 import { communityApi } from "@/lib/community-api";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
-import { useAgentStore } from "@/stores/agent-store";
+import { useAgentConnectionStore } from "@/stores/agent-connection-store";
+import { useAgentSystemStore } from "@/stores/agent-system-store";
 import { usePairingStore } from "@/stores/pairing-store";
 import dynamic from "next/dynamic";
 import { FleetSidebar } from "./FleetSidebar";
@@ -59,12 +60,12 @@ export function CommandPage() {
   const [pairingOpen, setPairingOpen] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
-  const connected = useAgentStore((s) => s.connected);
-  const connectionError = useAgentStore((s) => s.connectionError);
-  const status = useAgentStore((s) => s.status);
-  const connect = useAgentStore((s) => s.connect);
-  const disconnect = useAgentStore((s) => s.disconnect);
-  const cloudMode = useAgentStore((s) => s.cloudMode);
+  const connected = useAgentConnectionStore((s) => s.connected);
+  const connectionError = useAgentConnectionStore((s) => s.connectionError);
+  const status = useAgentSystemStore((s) => s.status);
+  const connect = useAgentConnectionStore((s) => s.connect);
+  const disconnect = useAgentConnectionStore((s) => s.disconnect);
+  const cloudMode = useAgentConnectionStore((s) => s.cloudMode);
 
   const demo = isDemoMode();
   const pairedDrones = usePairingStore((s) => s.pairedDrones);
@@ -105,7 +106,7 @@ export function CommandPage() {
 
   useEffect(() => {
     return () => {
-      useAgentStore.getState().stopPolling();
+      useAgentConnectionStore.getState().stopPolling();
     };
   }, []);
 
