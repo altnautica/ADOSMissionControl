@@ -2,7 +2,7 @@
 
 /**
  * @module CloudStatusBridge
- * @description Bridges Convex cloud drone status into the agent Zustand store.
+ * @description Bridges Convex cloud drone status into the agent Zustand stores.
  * Mounted when cloudMode is true. Reactively queries cmd_droneStatus and maps
  * to AgentStatus shape that the rest of the UI consumes.
  * Includes heartbeat staleness detection (marks agent offline after 30s).
@@ -11,7 +11,10 @@
 
 import { useEffect, useRef } from "react";
 import { useMutation } from "convex/react";
-import { useAgentStore } from "@/stores/agent-store";
+import { useAgentConnectionStore } from "@/stores/agent-connection-store";
+import { useAgentSystemStore } from "@/stores/agent-system-store";
+import { useAgentPeripheralsStore } from "@/stores/agent-peripherals-store";
+import { useAgentScriptsStore } from "@/stores/agent-scripts-store";
 import { cmdDroneStatusApi, cmdDroneCommandsApi } from "@/lib/community-api-drones";
 import { useConvexAvailable } from "@/app/ConvexClientProvider";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
@@ -21,8 +24,8 @@ const STALE_THRESHOLD_MS = 30_000; // 30s = 6 missed heartbeats at 5s interval
 const STALE_CHECK_INTERVAL_MS = 10_000; // Check every 10s
 
 export function CloudStatusBridge() {
-  const cloudDeviceId = useAgentStore((s) => s.cloudDeviceId);
-  const setCloudStatus = useAgentStore((s) => s.setCloudStatus);
+  const cloudDeviceId = useAgentConnectionStore((s) => s.cloudDeviceId);
+  const setCloudStatus = useAgentConnectionStore((s) => s.setCloudStatus);
   const convexAvailable = useConvexAvailable();
   const initialLoadDone = useRef(false);
 
@@ -37,9 +40,9 @@ export function CloudStatusBridge() {
   useEffect(() => {
     if (!cloudDeviceId || !convexAvailable) return;
     const timer = setTimeout(() => {
-      const current = useAgentStore.getState();
-      if (current.cloudMode && !current.status) {
-        useAgentStore.setState({
+      const current = useAgentConnectionStore.getState();
+      if (current.cloudMode && !useAgentSystemStore.getState().status) {
+        useAgentConnectionStore.setState({
           connectionError: "No cloud status received. Is the agent paired and online?",
         });
       }
@@ -52,13 +55,13 @@ export function CloudStatusBridge() {
     if (!cloudDeviceId || !convexAvailable) return;
 
     const checkStale = () => {
-      const state = useAgentStore.getState();
+      const state = useAgentConnectionStore.getState();
       if (!state.cloudMode || !state.lastCloudUpdate) return;
 
       const elapsed = Date.now() - state.lastCloudUpdate;
       if (elapsed > STALE_THRESHOLD_MS) {
         const seconds = Math.round(elapsed / 1000);
-        useAgentStore.setState({
+        useAgentConnectionStore.setState({
           connected: false,
           connectionError: `Agent offline (last seen ${seconds}s ago)`,
         });
@@ -100,7 +103,7 @@ export function CloudStatusBridge() {
     };
 
     // Clear any stale error and mark connected on fresh data
-    useAgentStore.setState({
+    useAgentConnectionStore.setState({
       connected: true,
       connectionError: null,
     });
@@ -108,7 +111,7 @@ export function CloudStatusBridge() {
     setCloudStatus(mapped);
 
     // Map absolute resource values from agent heartbeat
-    useAgentStore.setState({
+    useAgentSystemStore.setState({
       resources: {
         cpu_percent: mapped.health.cpu_percent,
         memory_percent: mapped.health.memory_percent,
@@ -123,15 +126,15 @@ export function CloudStatusBridge() {
 
     // Map CPU/memory history arrays for sparkline charts
     if (cloudStatus.cpuHistory && Array.isArray(cloudStatus.cpuHistory) && cloudStatus.cpuHistory.length > 0) {
-      useAgentStore.setState({ cpuHistory: cloudStatus.cpuHistory });
+      useAgentSystemStore.setState({ cpuHistory: cloudStatus.cpuHistory });
     }
     if (cloudStatus.memoryHistory && Array.isArray(cloudStatus.memoryHistory) && cloudStatus.memoryHistory.length > 0) {
-      useAgentStore.setState({ memoryHistory: cloudStatus.memoryHistory });
+      useAgentSystemStore.setState({ memoryHistory: cloudStatus.memoryHistory });
     }
 
     // Map services from cloud status with real uptime and process-level totals
     if (cloudStatus.services && Array.isArray(cloudStatus.services)) {
-      useAgentStore.setState({
+      useAgentSystemStore.setState({
         services: cloudStatus.services.map((s) => ({
           name: s.name,
           status: (["running", "stopped", "error", "degraded", "starting", "circuit_open"].includes(s.status) ? s.status : "stopped") as "running" | "stopped" | "error" | "degraded" | "starting" | "circuit_open",
@@ -146,28 +149,24 @@ export function CloudStatusBridge() {
       });
     }
 
-    // Map extended status fields pushed by agent
-    const extended: Record<string, unknown> = {};
+    // Map extended status fields to their respective stores
     if (cloudStatus.peripherals && Array.isArray(cloudStatus.peripherals)) {
-      extended.peripherals = cloudStatus.peripherals;
+      useAgentPeripheralsStore.setState({ peripherals: cloudStatus.peripherals });
     }
     if (cloudStatus.scripts && Array.isArray(cloudStatus.scripts)) {
-      extended.scripts = cloudStatus.scripts;
+      useAgentScriptsStore.setState({ scripts: cloudStatus.scripts });
     }
     if (cloudStatus.suites && Array.isArray(cloudStatus.suites)) {
-      extended.suites = cloudStatus.suites;
+      useAgentScriptsStore.setState({ suites: cloudStatus.suites });
     }
     if (cloudStatus.peers && Array.isArray(cloudStatus.peers)) {
-      extended.peers = cloudStatus.peers;
+      useAgentScriptsStore.setState({ peers: cloudStatus.peers });
     }
     if (cloudStatus.enrollment && typeof cloudStatus.enrollment === "object") {
-      extended.enrollment = cloudStatus.enrollment;
+      useAgentScriptsStore.setState({ enrollment: cloudStatus.enrollment });
     }
     if (cloudStatus.logs && Array.isArray(cloudStatus.logs)) {
-      extended.logs = cloudStatus.logs;
-    }
-    if (Object.keys(extended).length > 0) {
-      useAgentStore.setState(extended);
+      useAgentSystemStore.setState({ logs: cloudStatus.logs });
     }
 
     initialLoadDone.current = true;

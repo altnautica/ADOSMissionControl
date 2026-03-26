@@ -9,24 +9,45 @@
  */
 
 import { useEffect, useRef } from "react";
-import { useAgentStore } from "@/stores/agent-store";
+import { useAgentConnectionStore } from "@/stores/agent-connection-store";
+import { useAgentSystemStore } from "@/stores/agent-system-store";
+import { useAgentPeripheralsStore } from "@/stores/agent-peripherals-store";
+import { useAgentScriptsStore } from "@/stores/agent-scripts-store";
 import { cmdDroneCommandsApi } from "@/lib/community-api-drones";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 
-/** Map of command names to the store field they populate */
-const COMMAND_RESULT_MAP: Record<string, string> = {
-  get_peripherals: "peripherals",
-  scan_peripherals: "peripherals",
-  get_scripts: "scripts",
-  get_suites: "suites",
-  get_peers: "peers",
-  get_enrollment: "enrollment",
-  get_logs: "logs",
-  get_services: "services",
+/** Map of command names to [store, field] for routing results */
+type StoreTarget = "system" | "peripherals" | "scripts";
+const COMMAND_RESULT_MAP: Record<string, { store: StoreTarget; field: string }> = {
+  get_peripherals: { store: "peripherals", field: "peripherals" },
+  scan_peripherals: { store: "peripherals", field: "peripherals" },
+  get_scripts: { store: "scripts", field: "scripts" },
+  get_suites: { store: "scripts", field: "suites" },
+  get_peers: { store: "scripts", field: "peers" },
+  get_enrollment: { store: "scripts", field: "enrollment" },
+  get_logs: { store: "system", field: "logs" },
+  get_services: { store: "system", field: "services" },
 };
 
+function setStoreField(store: StoreTarget, field: string, data: unknown) {
+  const arrayFields = ["peripherals", "scripts", "suites", "peers", "logs", "services"];
+  if (arrayFields.includes(field) && !Array.isArray(data)) return;
+
+  switch (store) {
+    case "system":
+      useAgentSystemStore.setState({ [field]: data } as Record<string, unknown>);
+      break;
+    case "peripherals":
+      useAgentPeripheralsStore.setState({ [field]: data } as Record<string, unknown>);
+      break;
+    case "scripts":
+      useAgentScriptsStore.setState({ [field]: data } as Record<string, unknown>);
+      break;
+  }
+}
+
 export function CloudCommandResultBridge() {
-  const cloudDeviceId = useAgentStore((s) => s.cloudDeviceId);
+  const cloudDeviceId = useAgentConnectionStore((s) => s.cloudDeviceId);
   const processedRef = useRef(new Set<string>());
 
   const recentCommands = useConvexSkipQuery(cmdDroneCommandsApi.listRecentCommands, {
