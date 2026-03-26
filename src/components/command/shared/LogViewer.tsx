@@ -28,7 +28,7 @@ const levelFilterKeys = [
 
 export function LogViewer({ logs, onRefresh }: LogViewerProps) {
   const t = useTranslations("agent");
-  const cloudMode = useAgentStore((s) => s.cloudMode);
+  const cloudMode = useAgentConnectionStore((s) => s.cloudMode);
 
   const levelFilters = useMemo(() =>
     levelFilterKeys.map((f) => ({ label: t(f.key), value: f.value })),
