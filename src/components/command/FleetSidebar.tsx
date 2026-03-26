@@ -26,7 +26,7 @@ import { cn } from "@/lib/utils";
 import { useConvexAvailable } from "@/app/ConvexClientProvider";
 import { cmdDronesApi } from "@/lib/community-api-drones";
 import { usePairingStore, type PairedDrone } from "@/stores/pairing-store";
-import { useAgentStore } from "@/stores/agent-store";
+import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 
 interface FleetSidebarProps {
   collapsed: boolean;
@@ -65,9 +65,9 @@ export function FleetSidebar({
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const unpairDroneMutation = convexAvailable ? useMutation(cmdDronesApi.unpairDrone) : null;
 
-  const agentConnect = useAgentStore((s) => s.connect);
-  const agentConnectCloud = useAgentStore((s) => s.connectCloud);
-  const agentConnected = useAgentStore((s) => s.connected);
+  const agentConnect = useAgentConnectionStore((s) => s.connect);
+  const agentConnectCloud = useAgentConnectionStore((s) => s.connectCloud);
+  const agentConnected = useAgentConnectionStore((s) => s.connected);
 
   const [contextMenu, setContextMenu] = useState<{
     droneId: string;

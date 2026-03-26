@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import {
   LineChart,
@@ -26,97 +26,24 @@ import {
   Search,
 } from "lucide-react";
 import { Select } from "@/components/ui/select";
+import {
+  useDroneLogFilter,
+  SEVERITY_LABELS,
+  SEVERITY_COLORS,
+  SEVERITY_BG,
+  type LogMessage,
+  type SortField,
+  type SortDir,
+  type CategoryFilter,
+} from "@/hooks/use-drone-log-filter";
 
 // ── Types ────────────────────────────────────────────────────
-
-interface LogMessage {
-  id: number;
-  timestamp: number;
-  severity: number;
-  text: string;
-}
 
 interface DroneLogsPanelProps {
   droneId: string;
 }
 
-type SortField = "timestamp" | "severity" | "text";
-type SortDir = "asc" | "desc";
-
-// ── Severity mapping ─────────────────────────────────────────
-
-const SEVERITY_LABELS = [
-  "EMERGENCY",
-  "ALERT",
-  "CRITICAL",
-  "ERROR",
-  "WARNING",
-  "NOTICE",
-  "INFO",
-  "DEBUG",
-] as const;
-
-const SEVERITY_COLORS: Record<number, string> = {
-  0: "text-red-500",
-  1: "text-red-500",
-  2: "text-red-400",
-  3: "text-red-400",
-  4: "text-yellow-400",
-  5: "text-blue-400",
-  6: "text-green-400",
-  7: "text-text-tertiary",
-};
-
-const SEVERITY_BG: Record<number, string> = {
-  0: "bg-red-500/10",
-  1: "bg-red-500/10",
-  2: "bg-red-400/10",
-  3: "bg-red-400/10",
-  4: "bg-yellow-400/10",
-  5: "bg-blue-400/10",
-  6: "bg-green-400/10",
-  7: "bg-transparent",
-};
-
 const MAX_LOG_MESSAGES = 1000;
-
-// ── Message type categories for filtering ────────────────────
-
-const MESSAGE_CATEGORIES = [
-  { value: "all", label: "All Messages" },
-  { value: "error", label: "Errors (0-3)" },
-  { value: "warning", label: "Warnings (4)" },
-  { value: "info", label: "Info (5-7)" },
-  { value: "arm", label: "Arm/Disarm" },
-  { value: "mode", label: "Mode Changes" },
-  { value: "gps", label: "GPS" },
-  { value: "battery", label: "Battery" },
-  { value: "failsafe", label: "Failsafe" },
-  { value: "ekf", label: "EKF" },
-  { value: "calibration", label: "Calibration" },
-] as const;
-
-type CategoryFilter = (typeof MESSAGE_CATEGORIES)[number]["value"];
-
-/** Checks if a message matches the selected category filter. */
-function matchesCategory(msg: LogMessage, category: CategoryFilter): boolean {
-  if (category === "all") return true;
-  if (category === "error") return msg.severity <= 3;
-  if (category === "warning") return msg.severity === 4;
-  if (category === "info") return msg.severity >= 5;
-
-  const lower = msg.text.toLowerCase();
-  switch (category) {
-    case "arm": return lower.includes("arm") || lower.includes("disarm");
-    case "mode": return lower.includes("mode") || lower.includes("flight mode");
-    case "gps": return lower.includes("gps") || lower.includes("sat");
-    case "battery": return lower.includes("batt") || lower.includes("voltage") || lower.includes("power");
-    case "failsafe": return lower.includes("failsafe") || lower.includes("fs_") || lower.includes("fail");
-    case "ekf": return lower.includes("ekf") || lower.includes("ahrs") || lower.includes("imu");
-    case "calibration": return lower.includes("cal") || lower.includes("compass") || lower.includes("accel");
-    default: return true;
-  }
-}
 
 // ── Graph channel config ─────────────────────────────────────
 
@@ -167,15 +94,22 @@ export function DroneLogsPanel({ droneId }: DroneLogsPanelProps) {
 
   // Status message log
   const [messages, setMessages] = useState<LogMessage[]>([]);
-  const [minSeverity, setMinSeverity] = useState(7);
   const [autoscroll, setAutoscroll] = useState(true);
 
-  // Filtering and sorting
-  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [sortField, setSortField] = useState<SortField>("timestamp");
-  const [sortDir, setSortDir] = useState<SortDir>("asc");
+  // Filtering via hook
+  const {
+    minSeverity,
+    setMinSeverity,
+    categoryFilter,
+    setCategoryFilter,
+    searchQuery,
+    setSearchQuery,
+    debouncedSearch,
+    sortField,
+    sortDir,
+    handleSort,
+    processedMessages,
+  } = useDroneLogFilter(messages);
 
   // Graph
   const [showGraph, setShowGraph] = useState(false);
@@ -188,13 +122,6 @@ export function DroneLogsPanel({ droneId }: DroneLogsPanelProps) {
 
   const logRef = useRef<HTMLDivElement>(null);
   const msgIdRef = useRef(0);
-
-  // ── Debounce search input (300ms) ──────────────────────────
-
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
 
   // ── Subscribe to STATUSTEXT messages from the protocol ─────
 
@@ -244,37 +171,6 @@ export function DroneLogsPanel({ droneId }: DroneLogsPanelProps) {
     rssi: rcArr[Math.min(i, rcArr.length - 1)]?.rssi ?? 0,
   }));
 
-  // ── Filtered, searched, and sorted messages ────────────────
-
-  const processedMessages = useMemo(() => {
-    let filtered = messages.filter((m) => m.severity <= minSeverity);
-
-    // Category filter
-    if (categoryFilter !== "all") {
-      filtered = filtered.filter((m) => matchesCategory(m, categoryFilter));
-    }
-
-    // Text search
-    if (debouncedSearch) {
-      const q = debouncedSearch.toLowerCase();
-      filtered = filtered.filter((m) => m.text.toLowerCase().includes(q));
-    }
-
-    // Sort
-    const sorted = [...filtered];
-    sorted.sort((a, b) => {
-      let cmp = 0;
-      switch (sortField) {
-        case "timestamp": cmp = a.timestamp - b.timestamp; break;
-        case "severity": cmp = a.severity - b.severity; break;
-        case "text": cmp = a.text.localeCompare(b.text); break;
-      }
-      return sortDir === "asc" ? cmp : -cmp;
-    });
-
-    return sorted;
-  }, [messages, minSeverity, categoryFilter, debouncedSearch, sortField, sortDir]);
-
   // ── Export log to text file ────────────────────────────────
 
   const exportLog = useCallback(() => {
@@ -296,15 +192,6 @@ export function DroneLogsPanel({ droneId }: DroneLogsPanelProps) {
 
   const toggleChannel = (key: ChannelKey) => {
     setActiveChannels((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setSortField(field);
-      setSortDir("asc");
-    }
   };
 
   const formatTime = (ts: number) => {

@@ -10,16 +10,17 @@ import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { Network, Wifi, Radio, ScanLine, Loader2, Battery, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useAgentStore } from "@/stores/agent-store";
+import { useAgentConnectionStore } from "@/stores/agent-connection-store";
+import { useAgentScriptsStore } from "@/stores/agent-scripts-store";
 import { AgentDisconnectedPage } from "./AgentDisconnectedPage";
 import { DroneNetEnrollmentCard } from "./shared/DroneNetEnrollmentCard";
 
 export function FleetNetworkTab() {
   const t = useTranslations("fleetNetwork");
-  const connected = useAgentStore((s) => s.connected);
-  const mqttConnected = useAgentStore((s) => s.mqttConnected);
-  const peers = useAgentStore((s) => s.peers);
-  const fetchPeers = useAgentStore((s) => s.fetchPeers);
+  const connected = useAgentConnectionStore((s) => s.connected);
+  const mqttConnected = useAgentConnectionStore((s) => s.mqttConnected);
+  const peers = useAgentScriptsStore((s) => s.peers);
+  const fetchPeers = useAgentScriptsStore((s) => s.fetchPeers);
   const [scanning, setScanning] = useState(false);
   const [lastScan, setLastScan] = useState<Date | null>(null);
 
