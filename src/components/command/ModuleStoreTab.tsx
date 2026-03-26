@@ -10,7 +10,8 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { Package, Download, Check, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useAgentStore } from "@/stores/agent-store";
+import { useAgentConnectionStore } from "@/stores/agent-connection-store";
+import { useAgentScriptsStore } from "@/stores/agent-scripts-store";
 import { AgentDisconnectedPage } from "./AgentDisconnectedPage";
 import { CategoryFilter } from "./shared/CategoryFilter";
 import { SuiteCard } from "./shared/SuiteCard";
@@ -20,11 +21,11 @@ type ViewCategory = "all" | "suites" | "modules";
 
 export function ModuleStoreTab() {
   const t = useTranslations("moduleStore");
-  const connected = useAgentStore((s) => s.connected);
-  const suites = useAgentStore((s) => s.suites);
-  const fetchSuites = useAgentStore((s) => s.fetchSuites);
-  const installSuite = useAgentStore((s) => s.installSuite);
-  const activateSuite = useAgentStore((s) => s.activateSuite);
+  const connected = useAgentConnectionStore((s) => s.connected);
+  const suites = useAgentScriptsStore((s) => s.suites);
+  const fetchSuites = useAgentScriptsStore((s) => s.fetchSuites);
+  const installSuite = useAgentScriptsStore((s) => s.installSuite);
+  const activateSuite = useAgentScriptsStore((s) => s.activateSuite);
   const [modules, setModules] = useState<MockModule[]>([]);
   const [activeCategory, setActiveCategory] = useState<ViewCategory>("all");
   const [searchQuery, setSearchQuery] = useState("");

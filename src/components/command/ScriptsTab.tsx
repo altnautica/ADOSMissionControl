@@ -10,7 +10,9 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { Send, Trash2, TerminalSquare, Code2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useAgentStore } from "@/stores/agent-store";
+import { useAgentConnectionStore } from "@/stores/agent-connection-store";
+import { useAgentSystemStore } from "@/stores/agent-system-store";
+import { useAgentScriptsStore } from "@/stores/agent-scripts-store";
 import { AgentDisconnectedPage } from "./AgentDisconnectedPage";
 import { ScriptLibrary } from "./shared/ScriptLibrary";
 import { MonacoEditorPanel } from "./shared/MonacoEditor";
@@ -61,15 +63,15 @@ export function ScriptsTab() {
   const [selectedScript, setSelectedScript] = useState<ScriptInfo | null>(null);
   const [editorContent, setEditorContent] = useState("");
 
-  const connected = useAgentStore((s) => s.connected);
-  const sendCommand = useAgentStore((s) => s.sendCommand);
-  const scripts = useAgentStore((s) => s.scripts);
-  const fetchScripts = useAgentStore((s) => s.fetchScripts);
-  const saveScript = useAgentStore((s) => s.saveScript);
-  const deleteScript = useAgentStore((s) => s.deleteScript);
-  const runScript = useAgentStore((s) => s.runScript);
-  const scriptOutput = useAgentStore((s) => s.scriptOutput);
-  const runningScript = useAgentStore((s) => s.runningScript);
+  const connected = useAgentConnectionStore((s) => s.connected);
+  const sendCommand = useAgentSystemStore((s) => s.sendCommand);
+  const scripts = useAgentScriptsStore((s) => s.scripts);
+  const fetchScripts = useAgentScriptsStore((s) => s.fetchScripts);
+  const saveScript = useAgentScriptsStore((s) => s.saveScript);
+  const deleteScript = useAgentScriptsStore((s) => s.deleteScript);
+  const runScript = useAgentScriptsStore((s) => s.runScript);
+  const scriptOutput = useAgentScriptsStore((s) => s.scriptOutput);
+  const runningScript = useAgentScriptsStore((s) => s.runningScript);
 
   useEffect(() => {
     if (connected) fetchScripts();
