@@ -7,12 +7,12 @@
  */
 
 import dynamic from "next/dynamic";
-import { useAgentStore } from "@/stores/agent-store";
+import { useAgentSystemStore } from "@/stores/agent-system-store";
 
 const MiniMapInner = dynamic(() => import("./MiniMapInner"), { ssr: false });
 
 export function MiniMapView() {
-  const status = useAgentStore((s) => s.status);
+  const status = useAgentSystemStore((s) => s.status);
   if (!status) return null;
 
   return (

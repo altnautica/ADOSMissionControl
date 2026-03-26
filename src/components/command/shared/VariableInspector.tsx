@@ -6,7 +6,7 @@
  * @license GPL-3.0-only
  */
 
-import { useAgentStore } from "@/stores/agent-store";
+import { useAgentSystemStore } from "@/stores/agent-system-store";
 
 interface VarEntry {
   name: string;
@@ -14,8 +14,8 @@ interface VarEntry {
 }
 
 export function VariableInspector() {
-  const status = useAgentStore((s) => s.status);
-  const resources = useAgentStore((s) => s.resources);
+  const status = useAgentSystemStore((s) => s.status);
+  const resources = useAgentSystemStore((s) => s.resources);
 
   const vars: VarEntry[] = [];
   if (status) {
