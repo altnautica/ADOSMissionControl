@@ -13,6 +13,7 @@ import type {
 } from "@/lib/analysis/types";
 import type { VehicleType } from "@/components/fc/pid/pid-constants";
 import { requestAiPidAnalysis } from "./pid-analysis-ai";
+import { formatErrorMessage } from "@/lib/utils";
 
 interface PidAnalysisState {
   // Analysis state
@@ -183,7 +184,7 @@ export const usePidAnalysisStore = create<PidAnalysisState & PidAnalysisActions>
         },
       ).catch((err) => {
         set({
-          error: `Failed to load mock data: ${err instanceof Error ? err.message : String(err)}`,
+          error: `Failed to load mock data: ${formatErrorMessage(err)}`,
           analyzing: false,
           analyzeProgress: null,
         });

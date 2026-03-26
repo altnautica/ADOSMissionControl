@@ -10,6 +10,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useDroneManager } from "@/stores/drone-manager";
 import type { DroneProtocol } from "@/lib/protocol/types";
+import { formatErrorMessage } from "@/lib/utils";
 
 interface MspDataOptions<T> {
   /** Unique panel ID for tracking */
@@ -70,7 +71,7 @@ export function useMspData<T>(options: MspDataOptions<T>): MspDataResult<T> {
       setHasLoaded(true);
       setIsDirty(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(formatErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -102,7 +103,7 @@ export function useMspData<T>(options: MspDataOptions<T>): MspDataResult<T> {
       }
       return ok;
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(formatErrorMessage(err));
       return false;
     } finally {
       setLoading(false);

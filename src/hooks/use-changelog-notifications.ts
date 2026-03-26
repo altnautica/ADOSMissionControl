@@ -9,11 +9,10 @@
 "use client";
 
 import { useEffect, useRef, useMemo } from "react";
-import { useQuery } from "convex/react";
 import { communityApi } from "@/lib/community-api";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useChangelogNotificationStore } from "@/stores/changelog-notification-store";
-import { isDemoMode } from "@/lib/utils";
+import { useConvexSkipQuery } from "./use-convex-skip-query";
 
 export interface ChangelogEntry {
   _id: string;
@@ -27,7 +26,7 @@ export interface ChangelogEntry {
 }
 
 export function useChangelogNotifications() {
-  const allEntries = (useQuery(communityApi.changelog.list, isDemoMode() ? "skip" : {}) ?? []) as ChangelogEntry[];
+  const allEntries = (useConvexSkipQuery(communityApi.changelog.list) ?? []) as ChangelogEntry[];
 
   const seenChangelogIds = useSettingsStore((s) => s.seenChangelogIds);
   const changelogNotificationsEnabled = useSettingsStore((s) => s.changelogNotificationsEnabled);

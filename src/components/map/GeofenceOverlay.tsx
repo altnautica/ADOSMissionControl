@@ -11,7 +11,7 @@
 
 import { useMemo } from "react";
 import { Circle, Polygon, Tooltip } from "react-leaflet";
-import { useTelemetryStore } from "@/stores/telemetry-store";
+import { useTelemetryLatest } from "@/hooks/use-telemetry-latest";
 import { useGeofenceStore, type FenceZone } from "@/stores/geofence-store";
 
 // ── Types ────────────────────────────────────────────────────
@@ -131,7 +131,7 @@ function ZoneOverlay({ zone }: { zone: FenceZone }) {
 
 export function GeofenceOverlay({ polygonPoints, breached = false, fenceConfig }: GeofenceOverlayProps) {
   const config = useFenceConfig(fenceConfig);
-  const pos = useTelemetryStore((s) => s.position.latest());
+  const pos = useTelemetryLatest("position");
   const zones = useGeofenceStore((s) => s.zones);
 
   // Use home position as fence center (first trail point or current position)

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { useTelemetryStore } from "@/stores/telemetry-store";
+import { useTelemetryLatest } from "@/hooks/use-telemetry-latest";
 import { useTrailStore } from "@/stores/trail-store";
 import { useDroneStore } from "@/stores/drone-store";
 import { useDroneManager } from "@/stores/drone-manager";
@@ -157,7 +157,7 @@ export function OverviewMap() {
   const showMissionControls = isAutoMode || isPausedFromAuto || missionState === "running" || missionState === "paused";
 
   // Subscribe to position updates
-  const pos = useTelemetryStore((s) => s.position.latest());
+  const pos = useTelemetryLatest("position");
   useTrailStore((s) => s._version); // subscribe to updates
   const trail = useTrailStore.getState()._ring.toArray();
 

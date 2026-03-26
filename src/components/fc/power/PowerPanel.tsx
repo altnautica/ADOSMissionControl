@@ -5,13 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
-import { useDroneManager } from "@/stores/drone-manager";
-import { usePanelParams } from "@/hooks/use-panel-params";
+import { useFcPanelState } from "@/hooks/use-fc-panel-state";
 import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
 import { useParamLabel } from "@/hooks/use-param-label";
 import { useParamMetadataMap } from "@/hooks/use-param-metadata";
-import { usePanelScroll } from "@/hooks/use-panel-scroll";
-import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { PanelHeader } from "../shared/PanelHeader";
 import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
 import { Battery, Zap, ShieldAlert, Save, HardDrive } from "lucide-react";
@@ -58,7 +55,6 @@ const OPTIONAL_POWER_PARAMS = [
 ];
 
 export function PowerPanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
   const { toast } = useToast();
   const { firmwareType } = useFirmwareCapabilities();
   const isPx4 = firmwareType === 'px4';
@@ -66,7 +62,6 @@ export function PowerPanel() {
   const { label: pl } = useParamLabel();
   const metadata = useParamMetadataMap();
   const lbl = (raw: string) => <ParamLabel label={pl(raw)} metadata={metadata} />;
-  const scrollRef = usePanelScroll("power");
   const [saving, setSaving] = useState(false);
 
   const powerParamNames = useMemo(() => isBetaflight ? [...BF_POWER_PARAMS] : POWER_PARAMS, [isBetaflight]);
@@ -74,11 +69,11 @@ export function PowerPanel() {
 
   const {
     params, loading, error, dirtyParams, hasRamWrites, loadProgress, hasLoaded,
+    getProtocol, scrollRef,
     refresh, setLocalValue, saveAllToRam, commitToFlash,
-  } = usePanelParams({ paramNames: powerParamNames, optionalParams: optionalPowerParams, panelId: "power", autoLoad: true });
-  useUnsavedGuard(dirtyParams.size > 0);
+  } = useFcPanelState({ paramNames: powerParamNames, optionalParams: optionalPowerParams, panelId: "power", autoLoad: true, scroll: true });
 
-  const connected = !!getSelectedProtocol();
+  const connected = !!getProtocol();
   const hasDirty = dirtyParams.size > 0;
 
   const p = (name: string, fallback = "0") => String(params.get(name) ?? fallback);

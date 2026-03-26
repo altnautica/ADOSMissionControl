@@ -84,7 +84,7 @@ export async function mspSetParameter(ctx: MspParamContext, name: string, value:
       existing = frame.payload
       ctx.paramCache.set(def.readCmd, existing)
     } catch (err) {
-      return { success: false, resultCode: -1, message: `Read failed: ${err instanceof Error ? err.message : String(err)}` }
+      return { success: false, resultCode: -1, message: `Read failed: ${formatErrorMessage(err)}` }
     }
   }
 
@@ -94,7 +94,7 @@ export async function mspSetParameter(ctx: MspParamContext, name: string, value:
     ctx.paramCache.set(def.readCmd, newPayload)
     return { success: true, resultCode: 0, message: 'OK' }
   } catch (err) {
-    return { success: false, resultCode: -1, message: `Write failed: ${err instanceof Error ? err.message : String(err)}` }
+    return { success: false, resultCode: -1, message: `Write failed: ${formatErrorMessage(err)}` }
   }
 }
 

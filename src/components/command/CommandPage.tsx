@@ -20,11 +20,10 @@ import {
   ChevronRight,
   Cloud,
 } from "lucide-react";
-import { useQuery } from "convex/react";
-import { cn, isDemoMode } from "@/lib/utils";
-import { useConvexAvailable } from "@/app/ConvexClientProvider";
+import { cn } from "@/lib/utils";
 import { cmdDronesApi } from "@/lib/community-api-drones";
 import { communityApi } from "@/lib/community-api";
+import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import { useAgentStore } from "@/stores/agent-store";
 import { usePairingStore } from "@/stores/pairing-store";
 import dynamic from "next/dynamic";
@@ -69,16 +68,8 @@ export function CommandPage() {
 
   const pairedDrones = usePairingStore((s) => s.pairedDrones);
 
-  const demo = isDemoMode();
-  const convexAvailable = useConvexAvailable();
-  const clientConfig = useQuery(
-    communityApi.clientConfig.get,
-    !demo && convexAvailable ? {} : "skip"
-  );
-  const myDrones = useQuery(
-    cmdDronesApi.listMyDrones,
-    !demo && convexAvailable ? {} : "skip"
-  );
+  const clientConfig = useConvexSkipQuery(communityApi.clientConfig.get);
+  const myDrones = useConvexSkipQuery(cmdDronesApi.listMyDrones);
 
   // Sync Convex fleet data into Zustand store (deduplicate by deviceId, keep newest)
   useEffect(() => {
