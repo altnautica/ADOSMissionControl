@@ -12,7 +12,8 @@
 import { useMemo } from "react";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { Mountain, Battery, TrendingUp, Activity, Radio } from "lucide-react";
-import { TimeSeriesChart, MultiSeriesChart } from "@/components/shared/TimeSeriesChart";
+import { TimeSeriesChart } from "@/components/shared/TimeSeriesChart";
+import { MultiSeriesChart } from "@/components/shared/MultiSeriesChart";
 import type { PositionData, BatteryData, VibrationData, RcData } from "@/lib/types";
 
 // ── Altitude chart ──────────────────────────────────────────────

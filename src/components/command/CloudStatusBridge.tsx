@@ -36,9 +36,11 @@ export function CloudStatusBridge() {
 
   const enqueueCommand = useMutation(cmdDroneCommandsApi.enqueueCommand);
 
-  // Timeout: surface error if no cloud status within 15s of initial load
+  // Heartbeat monitoring: initial timeout (15s) + staleness detection (10s interval)
   useEffect(() => {
     if (!cloudDeviceId || !convexAvailable) return;
+
+    // Surface error if no cloud status received within 15s
     const timer = setTimeout(() => {
       const current = useAgentConnectionStore.getState();
       if (current.cloudMode && !useAgentSystemStore.getState().status) {
@@ -47,14 +49,9 @@ export function CloudStatusBridge() {
         });
       }
     }, 15000);
-    return () => clearTimeout(timer);
-  }, [cloudDeviceId, convexAvailable]);
 
-  // Heartbeat staleness detection: mark offline if no update for 30s
-  useEffect(() => {
-    if (!cloudDeviceId || !convexAvailable) return;
-
-    const checkStale = () => {
+    // Ongoing staleness check: mark offline after 30s without heartbeat
+    const interval = setInterval(() => {
       const state = useAgentConnectionStore.getState();
       if (!state.cloudMode || !state.lastCloudUpdate) return;
 
@@ -66,10 +63,12 @@ export function CloudStatusBridge() {
           connectionError: `Agent offline (last seen ${seconds}s ago)`,
         });
       }
-    };
+    }, STALE_CHECK_INTERVAL_MS);
 
-    const interval = setInterval(checkStale, STALE_CHECK_INTERVAL_MS);
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(timer);
+      clearInterval(interval);
+    };
   }, [cloudDeviceId, convexAvailable]);
 
   // Map Convex status to AgentStatus
