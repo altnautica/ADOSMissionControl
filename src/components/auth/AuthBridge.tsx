@@ -7,9 +7,10 @@
 "use client";
 
 import { useEffect } from "react";
-import { useConvexAuth, useQuery } from "convex/react";
+import { useConvexAuth } from "convex/react";
 import { useAuthStore } from "@/stores/auth-store";
 import { communityApi } from "@/lib/community-api";
+import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 
 export function AuthBridge() {
   const { isAuthenticated, isLoading } = useConvexAuth();
@@ -17,10 +18,9 @@ export function AuthBridge() {
   const setStoreLoading = useAuthStore((s) => s.setLoading);
   const zustandAuth = useAuthStore((s) => s.isAuthenticated);
 
-  const profile = useQuery(
-    communityApi.profiles.getMyProfile,
-    isAuthenticated ? {} : "skip",
-  );
+  const profile = useConvexSkipQuery(communityApi.profiles.getMyProfile, {
+    enabled: isAuthenticated,
+  });
 
   useEffect(() => {
     setStoreLoading(isLoading);
