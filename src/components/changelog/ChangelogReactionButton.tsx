@@ -7,11 +7,12 @@
 
 "use client";
 
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import { ThumbsUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { communityApi } from "@/lib/community-api";
 import { useAuthStore } from "@/stores/auth-store";
+import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import type { Id } from "../../../convex/_generated/dataModel";
 
 interface ChangelogReactionButtonProps {
@@ -22,10 +23,9 @@ interface ChangelogReactionButtonProps {
 export function ChangelogReactionButton({ changelogId, count }: ChangelogReactionButtonProps) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const react = useMutation(communityApi.changelog.react);
-  const myReactions = useQuery(
-    communityApi.changelog.myReactions,
-    isAuthenticated ? {} : "skip"
-  );
+  const myReactions = useConvexSkipQuery(communityApi.changelog.myReactions, {
+    enabled: isAuthenticated,
+  });
 
   const hasReacted = myReactions?.includes(changelogId as Id<"community_changelog">) ?? false;
 

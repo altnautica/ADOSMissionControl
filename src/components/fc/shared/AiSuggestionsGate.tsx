@@ -12,13 +12,12 @@
  */
 
 import { useEffect } from "react";
-import { useQuery } from "convex/react";
 import { Sparkles, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/stores/auth-store";
 import { usePidAnalysisStore } from "@/stores/pid-analysis-store";
-import { useConvexAvailable } from "@/app/ConvexClientProvider";
 import { communityApi } from "@/lib/community-api";
+import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 
 interface AiSuggestionsGateProps {
   onRequestAi: () => void;
