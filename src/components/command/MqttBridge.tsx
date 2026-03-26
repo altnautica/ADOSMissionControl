@@ -93,7 +93,7 @@ export function MqttBridge({ mqttBrokerUrl }: { mqttBrokerUrl?: string | null })
               setCloudStatus(mapped);
 
               // Synthesize resources from health data (cloud mode only has percentages)
-              useAgentStore.setState({
+              useAgentSystemStore.setState({
                 resources: {
                   cpu_percent: mapped.health.cpu_percent,
                   memory_percent: mapped.health.memory_percent,
@@ -108,7 +108,7 @@ export function MqttBridge({ mqttBrokerUrl }: { mqttBrokerUrl?: string | null })
 
               // Map services if present in MQTT payload
               if (data.services && Array.isArray(data.services)) {
-                useAgentStore.setState({
+                useAgentSystemStore.setState({
                   services: data.services.map((s: Record<string, unknown>) => ({
                     name: String(s.name || "unknown"),
                     status: (["running", "stopped", "error"].includes(s.status as string) ? s.status : "stopped") as "running" | "stopped" | "error",
@@ -120,28 +120,24 @@ export function MqttBridge({ mqttBrokerUrl }: { mqttBrokerUrl?: string | null })
                 });
               }
 
-              // Map extended status fields
-              const extended: Record<string, unknown> = {};
+              // Map extended status fields to their respective stores
               if (data.peripherals && Array.isArray(data.peripherals)) {
-                extended.peripherals = data.peripherals;
+                useAgentPeripheralsStore.setState({ peripherals: data.peripherals });
               }
               if (data.scripts && Array.isArray(data.scripts)) {
-                extended.scripts = data.scripts;
+                useAgentScriptsStore.setState({ scripts: data.scripts });
               }
               if (data.suites && Array.isArray(data.suites)) {
-                extended.suites = data.suites;
+                useAgentScriptsStore.setState({ suites: data.suites });
               }
               if (data.peers && Array.isArray(data.peers)) {
-                extended.peers = data.peers;
+                useAgentScriptsStore.setState({ peers: data.peers });
               }
               if (data.enrollment && typeof data.enrollment === "object") {
-                extended.enrollment = data.enrollment;
+                useAgentScriptsStore.setState({ enrollment: data.enrollment });
               }
               if (data.logs && Array.isArray(data.logs)) {
-                extended.logs = data.logs;
-              }
-              if (Object.keys(extended).length > 0) {
-                useAgentStore.setState(extended);
+                useAgentSystemStore.setState({ logs: data.logs });
               }
             }
           } catch { /* ignore parse errors */ }
