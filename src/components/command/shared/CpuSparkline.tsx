@@ -8,11 +8,11 @@
 
 import { useTranslations } from "next-intl";
 import { AreaChart, Area, ResponsiveContainer } from "recharts";
-import { useAgentStore } from "@/stores/agent-store";
+import { useAgentSystemStore } from "@/stores/agent-system-store";
 
 export function CpuSparkline() {
   const t = useTranslations("agent");
-  const cpuHistory = useAgentStore((s) => s.cpuHistory);
+  const cpuHistory = useAgentSystemStore((s) => s.cpuHistory);
   const data = cpuHistory.map((value, i) => ({ i, value }));
 
   if (data.length < 2) return null;

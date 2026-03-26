@@ -8,11 +8,11 @@
 
 import { useTranslations } from "next-intl";
 import { AreaChart, Area, ResponsiveContainer } from "recharts";
-import { useAgentStore } from "@/stores/agent-store";
+import { useAgentSystemStore } from "@/stores/agent-system-store";
 
 export function MemorySparkline() {
   const t = useTranslations("agent");
-  const memoryHistory = useAgentStore((s) => s.memoryHistory);
+  const memoryHistory = useAgentSystemStore((s) => s.memoryHistory);
   const data = memoryHistory.map((value, i) => ({ i, value }));
 
   if (data.length < 2) return null;
