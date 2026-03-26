@@ -26,10 +26,10 @@ export function CloudStatusBridge() {
   const convexAvailable = useConvexAvailable();
   const initialLoadDone = useRef(false);
 
-  const cloudStatus = useQuery(
-    cmdDroneStatusApi.getCloudStatus,
-    cloudDeviceId && convexAvailable ? { deviceId: cloudDeviceId } : "skip"
-  );
+  const cloudStatus = useConvexSkipQuery(cmdDroneStatusApi.getCloudStatus, {
+    args: { deviceId: cloudDeviceId! },
+    enabled: !!cloudDeviceId,
+  });
 
   const enqueueCommand = useMutation(cmdDroneCommandsApi.enqueueCommand);
 

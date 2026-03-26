@@ -117,6 +117,107 @@ const defaultStructureScan: Partial<StructureScanConfig> = {
   direction: "bottom-up",
 };
 
+/** Merge multiple survey results into one combined result. */
+function mergeSurveyResults(results: PatternResult[]): PatternResult {
+  return {
+    waypoints: results.flatMap((r) => r.waypoints),
+    previewLines: results.flatMap((r) => r.previewLines ?? []),
+    stats: {
+      totalDistance: results.reduce((s, r) => s + r.stats.totalDistance, 0),
+      estimatedTime: results.reduce((s, r) => s + r.stats.estimatedTime, 0),
+      photoCount: results.reduce((s, r) => s + r.stats.photoCount, 0),
+      coveredArea: results.reduce((s, r) => s + r.stats.coveredArea, 0),
+      transectCount: results.reduce((s, r) => s + r.stats.transectCount, 0),
+    },
+  };
+}
+
+/** Generate a survey pattern, handling multi-polygon selection from drawing store. */
+function generateSurveyPattern(cfg: Partial<SurveyConfig>): PatternResult | null {
+  const fullCfg = cfg as SurveyConfig;
+  if (fullCfg.polygon && fullCfg.polygon.length >= 3) {
+    return generateSurvey(fullCfg);
+  }
+  const drawState = useDrawingStore.getState();
+  const selectedIds = drawState.selectedPolygonIds;
+  const polygons = selectedIds.length > 0
+    ? drawState.polygons.filter((p) => selectedIds.includes(p.id))
+    : drawState.polygons.slice(-1);
+
+  if (polygons.length === 1 && polygons[0].vertices.length >= 3) {
+    return generateSurvey({ ...fullCfg, polygon: polygons[0].vertices });
+  }
+  if (polygons.length > 1) {
+    const results = polygons
+      .filter((p) => p.vertices.length >= 3)
+      .map((p) => generateSurvey({ ...fullCfg, polygon: p.vertices }));
+    return results.length > 0 ? mergeSurveyResults(results) : null;
+  }
+  return null;
+}
+
+/** Generate an orbit pattern, falling back to the last drawn circle. */
+function generateOrbitPattern(cfg: Partial<OrbitConfig>): PatternResult | null {
+  const fullCfg = cfg as OrbitConfig;
+  if (fullCfg.center) return generateOrbit(fullCfg);
+  const drawState = useDrawingStore.getState();
+  if (drawState.circles.length > 0) {
+    const lastCircle = drawState.circles[drawState.circles.length - 1];
+    return generateOrbit({ ...fullCfg, center: lastCircle.center, radius: lastCircle.radius ?? fullCfg.radius } as OrbitConfig);
+  }
+  return null;
+}
+
+/** Generate a structure scan, falling back to the last drawn polygon. */
+function generateStructureScanPattern(cfg: Partial<StructureScanConfig>): PatternResult | null {
+  const fullCfg = cfg as StructureScanConfig;
+  if (fullCfg.structurePolygon && fullCfg.structurePolygon.length >= 3) {
+    return generateStructureScan(fullCfg);
+  }
+  const drawState = useDrawingStore.getState();
+  const lastPoly = drawState.polygons[drawState.polygons.length - 1];
+  if (lastPoly && lastPoly.vertices.length >= 3) {
+    return generateStructureScan({ ...fullCfg, structurePolygon: lastPoly.vertices } as StructureScanConfig);
+  }
+  return null;
+}
+
+/** Dispatch pattern generation by type. Returns null if input geometry is missing. */
+function generatePattern(state: PatternStoreState): PatternResult | null {
+  switch (state.activePatternType) {
+    case "survey": return generateSurveyPattern(state.surveyConfig);
+    case "orbit": return generateOrbitPattern(state.orbitConfig);
+    case "corridor": {
+      const cfg = state.corridorConfig as CorridorConfig;
+      return cfg.pathPoints && cfg.pathPoints.length >= 2 ? generateCorridor(cfg) : null;
+    }
+    case "expandingSquare": {
+      const cfg = state.sarExpandingSquareConfig as ExpandingSquareConfig;
+      return cfg.center ? generateExpandingSquare(cfg) : null;
+    }
+    case "sectorSearch": {
+      const cfg = state.sarSectorSearchConfig as SectorSearchConfig;
+      return cfg.center ? generateSectorSearch(cfg) : null;
+    }
+    case "parallelTrack": {
+      const cfg = state.sarParallelTrackConfig as ParallelTrackConfig;
+      return cfg.startPoint ? generateParallelTrack(cfg) : null;
+    }
+    case "structureScan": return generateStructureScanPattern(state.structureScanConfig);
+    default: return null;
+  }
+}
+
+const MISSING_GEOMETRY_MESSAGES: Record<string, string> = {
+  survey: "Draw a polygon on the map first",
+  orbit: "Draw a circle or click to set orbit center",
+  corridor: "Set corridor path points (use measure tool)",
+  expandingSquare: "Click map to set datum point",
+  sectorSearch: "Click map to set datum point",
+  parallelTrack: "Click map to set start point",
+  structureScan: "Draw structure boundary polygon on map",
+};
+
 export const usePatternStore = create<PatternStoreState>()((set, get) => ({
   activePatternType: null,
   surveyConfig: { ...defaultSurvey },

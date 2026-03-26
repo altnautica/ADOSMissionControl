@@ -9,10 +9,9 @@
  */
 
 import { useEffect, useRef } from "react";
-import { useQuery } from "convex/react";
 import { useAgentStore } from "@/stores/agent-store";
 import { cmdDroneCommandsApi } from "@/lib/community-api-drones";
-import { useConvexAvailable } from "@/app/ConvexClientProvider";
+import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 
 /** Map of command names to the store field they populate */
 const COMMAND_RESULT_MAP: Record<string, string> = {
@@ -28,15 +27,12 @@ const COMMAND_RESULT_MAP: Record<string, string> = {
 
 export function CloudCommandResultBridge() {
   const cloudDeviceId = useAgentStore((s) => s.cloudDeviceId);
-  const convexAvailable = useConvexAvailable();
   const processedRef = useRef(new Set<string>());
 
-  const recentCommands = useQuery(
-    cmdDroneCommandsApi.listRecentCommands,
-    cloudDeviceId && convexAvailable
-      ? { deviceId: cloudDeviceId, limit: 10 }
-      : "skip"
-  );
+  const recentCommands = useConvexSkipQuery(cmdDroneCommandsApi.listRecentCommands, {
+    args: { deviceId: cloudDeviceId!, limit: 10 },
+    enabled: !!cloudDeviceId,
+  });
 
   useEffect(() => {
     if (!recentCommands) return;
