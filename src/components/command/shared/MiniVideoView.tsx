@@ -9,24 +9,17 @@
 
 import { useEffect, useRef } from "react";
 import { VideoOff } from "lucide-react";
-import { useQuery } from "convex/react";
 import { useAgentStore } from "@/stores/agent-store";
 import { useVideoStore } from "@/stores/video-store";
-import { useConvexAvailable } from "@/app/ConvexClientProvider";
 import { communityApi } from "@/lib/community-api";
-import { isDemoMode } from "@/lib/utils";
+import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 
 export function MiniVideoView() {
   const cloudMode = useAgentStore((s) => s.cloudMode);
   const cloudDeviceId = useAgentStore((s) => s.cloudDeviceId);
   const cloudStreaming = useVideoStore((s) => s.cloudStreaming);
   const setCloudStreaming = useVideoStore((s) => s.setCloudStreaming);
-  const convexAvailable = useConvexAvailable();
-  const demo = isDemoMode();
-  const clientConfig = useQuery(
-    communityApi.clientConfig.get,
-    !demo && convexAvailable ? {} : "skip"
-  );
+  const clientConfig = useConvexSkipQuery(communityApi.clientConfig.get);
   const videoRef = useRef<HTMLVideoElement>(null);
   const playerRef = useRef<{ stop: () => void } | null>(null);
 
