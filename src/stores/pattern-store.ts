@@ -20,6 +20,7 @@ import { generateOrbit } from "@/lib/patterns/orbit-generator";
 import { generateCorridor } from "@/lib/patterns/corridor-generator";
 import { generateExpandingSquare, generateSectorSearch, generateParallelTrack } from "@/lib/patterns/sar-generators";
 import { generateStructureScan } from "@/lib/patterns/structure-scan-generator";
+import { formatErrorMessage } from "@/lib/utils";
 import { useDrawingStore } from "./drawing-store";
 
 type PatternType = "survey" | "orbit" | "corridor" | "expandingSquare" | "sectorSearch" | "parallelTrack" | "structureScan" | null;
