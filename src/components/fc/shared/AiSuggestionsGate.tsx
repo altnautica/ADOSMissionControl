@@ -31,17 +31,15 @@ function requestSignIn() {
 export function AiSuggestionsGate({ onRequestAi, connected }: AiSuggestionsGateProps) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const isLoading = useAuthStore((s) => s.isLoading);
-  const convexAvailable = useConvexAvailable();
 
   const aiRemainingUses = usePidAnalysisStore((s) => s.aiRemainingUses);
   const aiWeeklyLimit = usePidAnalysisStore((s) => s.aiWeeklyLimit);
   const setAiUsageInfo = usePidAnalysisStore((s) => s.setAiUsageInfo);
 
   // Reactive query — auto-updates when usage table changes
-  const usageData = useQuery(
-    communityApi.aiUsage.getRemaining,
-    convexAvailable && isAuthenticated ? {} : "skip",
-  );
+  const usageData = useConvexSkipQuery(communityApi.aiUsage.getRemaining, {
+    enabled: isAuthenticated,
+  });
 
   // Sync reactive query data into store
   useEffect(() => {

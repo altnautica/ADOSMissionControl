@@ -10,10 +10,11 @@
  */
 
 import { useEffect, useRef } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useMutation } from "convex/react";
 import { useAgentStore } from "@/stores/agent-store";
 import { cmdDroneStatusApi, cmdDroneCommandsApi } from "@/lib/community-api-drones";
 import { useConvexAvailable } from "@/app/ConvexClientProvider";
+import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import type { AgentStatus } from "@/lib/agent/types";
 
 const STALE_THRESHOLD_MS = 30_000; // 30s = 6 missed heartbeats at 5s interval
