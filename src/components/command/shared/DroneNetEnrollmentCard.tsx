@@ -9,11 +9,11 @@
 import { useEffect } from "react";
 import { Globe, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useAgentStore } from "@/stores/agent-store";
+import { useAgentScriptsStore } from "@/stores/agent-scripts-store";
 
 export function DroneNetEnrollmentCard() {
-  const enrollment = useAgentStore((s) => s.enrollment);
-  const fetchEnrollment = useAgentStore((s) => s.fetchEnrollment);
+  const enrollment = useAgentScriptsStore((s) => s.enrollment);
+  const fetchEnrollment = useAgentScriptsStore((s) => s.fetchEnrollment);
 
   useEffect(() => {
     fetchEnrollment();
