@@ -9,6 +9,8 @@ import { create } from "zustand";
 import { AgentClient } from "@/lib/agent/client";
 import type { AgentStatus } from "@/lib/agent/types";
 import { useAgentSystemStore } from "./agent-system-store";
+import { useAgentPeripheralsStore } from "./agent-peripherals-store";
+import { useAgentScriptsStore } from "./agent-scripts-store";
 
 interface AgentConnectionState {
   agentUrl: string | null;
@@ -103,9 +105,6 @@ export const useAgentConnectionStore = create<AgentConnectionStore>((set, get) =
     });
     // Clear all other stores
     useAgentSystemStore.getState().clear();
-    // Import lazily to avoid circular dependency at module load
-    const { useAgentPeripheralsStore } = require("./agent-peripherals-store");
-    const { useAgentScriptsStore } = require("./agent-scripts-store");
     useAgentPeripheralsStore.getState().clear();
     useAgentScriptsStore.getState().clear();
   },

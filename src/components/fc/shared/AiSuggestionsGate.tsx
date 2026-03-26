@@ -32,6 +32,7 @@ function requestSignIn() {
 export function AiSuggestionsGate({ onRequestAi, connected }: AiSuggestionsGateProps) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const isLoading = useAuthStore((s) => s.isLoading);
+  const convexAvailable = useConvexAvailable();
 
   const aiRemainingUses = usePidAnalysisStore((s) => s.aiRemainingUses);
   const aiWeeklyLimit = usePidAnalysisStore((s) => s.aiWeeklyLimit);
