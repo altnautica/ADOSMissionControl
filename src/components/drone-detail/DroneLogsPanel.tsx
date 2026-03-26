@@ -2,25 +2,13 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
 import { useDroneManager } from "@/stores/drone-manager";
-import { useTelemetryStore } from "@/stores/telemetry-store";
 import {
   Download,
   Trash2,
   Pause,
   Play,
   Activity,
-  Gauge,
-  Battery,
-  Signal,
   ChevronDown,
   ChevronUp,
   Search,
@@ -36,6 +24,7 @@ import {
   type SortDir,
   type CategoryFilter,
 } from "@/hooks/use-drone-log-filter";
+import { LogTelemetryGraph } from "./LogTelemetryGraph";
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -44,17 +33,6 @@ interface DroneLogsPanelProps {
 }
 
 const MAX_LOG_MESSAGES = 1000;
-
-// ── Graph channel config ─────────────────────────────────────
-
-const GRAPH_CHANNELS = [
-  { key: "altitude" as const, label: "Alt", icon: Activity, color: "#3A82FF" },
-  { key: "speed" as const, label: "Spd", icon: Gauge, color: "#DFF140" },
-  { key: "battery" as const, label: "Bat", icon: Battery, color: "#22c55e" },
-  { key: "rssi" as const, label: "RSSI", icon: Signal, color: "#f97316" },
-] as const;
-
-type ChannelKey = (typeof GRAPH_CHANNELS)[number]["key"];
 
 // ── Highlight helper ─────────────────────────────────────────
 
@@ -113,12 +91,6 @@ export function DroneLogsPanel({ droneId }: DroneLogsPanelProps) {
 
   // Graph
   const [showGraph, setShowGraph] = useState(false);
-  const [activeChannels, setActiveChannels] = useState<Record<ChannelKey, boolean>>({
-    altitude: true,
-    speed: false,
-    battery: false,
-    rssi: false,
-  });
 
   const logRef = useRef<HTMLDivElement>(null);
   const msgIdRef = useRef(0);
@@ -153,24 +125,6 @@ export function DroneLogsPanel({ droneId }: DroneLogsPanelProps) {
     }
   }, [messages, autoscroll]);
 
-  // ── Build graph data from telemetry ring buffers ───────────
-
-  const vfrBuffer = useTelemetryStore((s) => s.vfr);
-  const batteryBuffer = useTelemetryStore((s) => s.battery);
-  const rcBuffer = useTelemetryStore((s) => s.rc);
-
-  const vfrArr = vfrBuffer.toArray();
-  const batteryArr = batteryBuffer.toArray();
-  const rcArr = rcBuffer.toArray();
-
-  const graphData = vfrArr.map((v, i) => ({
-    time: i,
-    altitude: v.alt,
-    speed: v.groundspeed,
-    battery: batteryArr[Math.min(i, batteryArr.length - 1)]?.voltage ?? 0,
-    rssi: rcArr[Math.min(i, rcArr.length - 1)]?.rssi ?? 0,
-  }));
-
   // ── Export log to text file ────────────────────────────────
 
   const exportLog = useCallback(() => {
@@ -189,10 +143,6 @@ export function DroneLogsPanel({ droneId }: DroneLogsPanelProps) {
   }, [processedMessages, droneId]);
 
   // ── Helpers ────────────────────────────────────────────────
-
-  const toggleChannel = (key: ChannelKey) => {
-    setActiveChannels((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
 
   const formatTime = (ts: number) => {
     const d = new Date(ts);
@@ -369,64 +319,7 @@ export function DroneLogsPanel({ droneId }: DroneLogsPanelProps) {
       </div>
 
       {/* ── Telemetry graph (collapsible) ────────────────────── */}
-      {showGraph && (
-        <div className="border-t border-border-default">
-          {/* Channel toggles */}
-          <div className="flex items-center gap-3 px-3 py-1.5 border-b border-border-default">
-            {GRAPH_CHANNELS.map(({ key, label, color }) => (
-              <button
-                key={key}
-                onClick={() => toggleChannel(key)}
-                className={`flex items-center gap-1 text-[10px] transition-colors cursor-pointer ${
-                  activeChannels[key] ? "text-text-primary" : "text-text-tertiary"
-                }`}
-              >
-                <span
-                  className="w-1.5 h-1.5 rounded-full"
-                  style={{ backgroundColor: activeChannels[key] ? color : "#333" }}
-                />
-                {label}
-              </button>
-            ))}
-          </div>
-
-          {/* Chart */}
-          <div className="h-[150px] bg-bg-secondary p-2">
-            {graphData.length > 1 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={graphData}>
-                  <XAxis dataKey="time" tick={{ fontSize: 10, fill: "#666" }} />
-                  <YAxis tick={{ fontSize: 10, fill: "#666" }} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "#111116",
-                      border: "1px solid #333",
-                      fontSize: 11,
-                    }}
-                    labelStyle={{ color: "#888" }}
-                  />
-                  {activeChannels.altitude && (
-                    <Line type="monotone" dataKey="altitude" stroke="#3A82FF" dot={false} strokeWidth={1.5} />
-                  )}
-                  {activeChannels.speed && (
-                    <Line type="monotone" dataKey="speed" stroke="#DFF140" dot={false} strokeWidth={1.5} />
-                  )}
-                  {activeChannels.battery && (
-                    <Line type="monotone" dataKey="battery" stroke="#22c55e" dot={false} strokeWidth={1.5} />
-                  )}
-                  {activeChannels.rssi && (
-                    <Line type="monotone" dataKey="rssi" stroke="#f97316" dot={false} strokeWidth={1.5} />
-                  )}
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-full text-text-tertiary text-xs">
-                Telemetry data will appear here when connected
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      {showGraph && <LogTelemetryGraph />}
     </div>
   );
 }

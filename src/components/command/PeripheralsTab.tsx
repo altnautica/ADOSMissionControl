@@ -10,7 +10,8 @@ import { useState, useEffect, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { ScanLine, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useAgentStore } from "@/stores/agent-store";
+import { useAgentConnectionStore } from "@/stores/agent-connection-store";
+import { useAgentPeripheralsStore } from "@/stores/agent-peripherals-store";
 import { AgentDisconnectedPage } from "./AgentDisconnectedPage";
 import { CategoryFilter } from "./shared/CategoryFilter";
 
@@ -31,10 +32,10 @@ const categoryBadgeColor: Record<string, string> = {
 
 export function PeripheralsTab() {
   const t = useTranslations("peripherals");
-  const connected = useAgentStore((s) => s.connected);
-  const peripherals = useAgentStore((s) => s.peripherals);
-  const fetchPeripherals = useAgentStore((s) => s.fetchPeripherals);
-  const scanPeripherals = useAgentStore((s) => s.scanPeripherals);
+  const connected = useAgentConnectionStore((s) => s.connected);
+  const peripherals = useAgentPeripheralsStore((s) => s.peripherals);
+  const fetchPeripherals = useAgentPeripheralsStore((s) => s.fetchPeripherals);
+  const scanPeripherals = useAgentPeripheralsStore((s) => s.scanPeripherals);
   const [scanning, setScanning] = useState(false);
   const [activeCategory, setActiveCategory] = useState("all");
 

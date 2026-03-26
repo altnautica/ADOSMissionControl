@@ -9,11 +9,11 @@
 
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
-import { useAgentStore } from "@/stores/agent-store";
+import { useAgentSystemStore } from "@/stores/agent-system-store";
 
 export function TelemetryStrip() {
   const t = useTranslations("telemetryStrip");
-  const status = useAgentStore((s) => s.status);
+  const status = useAgentSystemStore((s) => s.status);
 
   if (!status) return null;
 
