@@ -5,11 +5,14 @@
  * Clock-backed: all time advancement driven by CesiumJS Clock,
  * synced back to store via syncFromClock() for HUD/controls.
  * Non-persisted — resets on page reload.
+ *
+ * Decoupled from CesiumJS: the store never imports "cesium" at runtime.
+ * All viewer/clock operations are delegated through callback functions
+ * supplied by bindSimViewer(). This keeps cesium out of shared chunks.
  * @license GPL-3.0-only
  */
 
 import { create } from "zustand";
-import { JulianDate, type Viewer as CesiumViewer } from "cesium";
 
 export type PlaybackState = "stopped" | "playing" | "paused";
 export type CameraMode = "topdown" | "follow" | "orbit" | "free";
@@ -58,34 +61,51 @@ const STEP_SECONDS = 1;
 /** Quantize to 3 decimal places — matches syncFromClock precision */
 const quantize = (v: number) => Math.round(v * 1000) / 1000;
 
-// Module-level clock binding (CesiumJS objects are not serializable in Zustand)
-let _viewer: CesiumViewer | null = null;
-let _startJulian: JulianDate | null = null;
-const _scratchJulian = new JulianDate();
+// ── Viewer bridge ──────────────────────────────────────────────────────
+// Instead of importing CesiumJS, the store delegates all viewer/clock
+// operations through these callback functions, set by bindSimViewer().
 
-export function bindSimViewer(viewer: CesiumViewer, startJulian: JulianDate) {
-  if (_viewer === viewer) return; // Already bound to this viewer
-  _viewer = viewer;
-  _startJulian = JulianDate.clone(startJulian);
+/** Callbacks that encapsulate all CesiumJS viewer operations. */
+export interface SimViewerBridge {
+  /** Seek the CesiumJS clock to the given elapsed seconds. */
+  seekClock: (seconds: number) => void;
+  /** Request a render frame. */
+  requestRender: () => void;
+  /** Set clock.shouldAnimate. */
+  setAnimate: (animate: boolean) => void;
+  /** Set clock.multiplier. */
+  setMultiplier: (multiplier: number) => void;
+  /** Set clock.stopTime from elapsed seconds. */
+  setStopTime: (totalDuration: number) => void;
+  /** Read elapsed seconds from the clock (secondsDifference from start). */
+  getElapsed: () => number;
+  /** Read clock.shouldAnimate. */
+  getShouldAnimate: () => boolean;
+  /** Check if the viewer is still alive (not destroyed). */
+  isAlive: () => boolean;
 }
 
-export function unbindSimViewer(viewer?: CesiumViewer) {
-  if (viewer && _viewer !== viewer) return; // Different viewer, don't unbind
-  _viewer = null;
-  _startJulian = null;
+// Module-level bridge binding (viewer objects are not serializable in Zustand)
+let _bridge: SimViewerBridge | null = null;
+/** Opaque viewer reference used only for identity checks in unbind. */
+let _viewerRef: unknown = null;
+
+export function bindSimViewer(viewer: unknown, bridge: SimViewerBridge) {
+  if (_viewerRef === viewer) return; // Already bound to this viewer
+  _viewerRef = viewer;
+  _bridge = bridge;
+}
+
+export function unbindSimViewer(viewer?: unknown) {
+  if (viewer && _viewerRef !== viewer) return; // Different viewer, don't unbind
+  _viewerRef = null;
+  _bridge = null;
 }
 
 function seekClock(seconds: number) {
-  if (_viewer && !_viewer.isDestroyed() && _startJulian) {
-    JulianDate.addSeconds(_startJulian, seconds, _scratchJulian);
-    // Clone to avoid aliasing — Clock stores currentTime by reference
-    _viewer.clock.currentTime = JulianDate.clone(_scratchJulian);
-    requestRender();
+  if (_bridge && _bridge.isAlive()) {
+    _bridge.seekClock(seconds);
   }
-}
-
-function requestRender() {
-  if (_viewer && !_viewer.isDestroyed()) _viewer.scene.requestRender();
 }
 
 export const useSimulationStore = create<SimulationStoreState>()((set, get) => ({
@@ -99,7 +119,7 @@ export const useSimulationStore = create<SimulationStoreState>()((set, get) => (
   followHeadingLocked: true,
 
   play: () => {
-    if (!_viewer || _viewer.isDestroyed()) return;
+    if (!_bridge || !_bridge.isAlive()) return;
     const { elapsed, totalDuration } = get();
     // If at the end, restart from beginning
     if (elapsed >= totalDuration && totalDuration > 0) {
@@ -108,20 +128,20 @@ export const useSimulationStore = create<SimulationStoreState>()((set, get) => (
     } else {
       set({ playbackState: "playing" });
     }
-    _viewer.clock.shouldAnimate = true;
+    _bridge.setAnimate(true);
   },
 
   pause: () => {
     set({ playbackState: "paused" });
-    if (_viewer && !_viewer.isDestroyed()) {
-      _viewer.clock.shouldAnimate = false;
+    if (_bridge && _bridge.isAlive()) {
+      _bridge.setAnimate(false);
     }
   },
 
   stop: () => {
     set({ playbackState: "stopped", elapsed: 0 });
-    if (_viewer && !_viewer.isDestroyed()) {
-      _viewer.clock.shouldAnimate = false;
+    if (_bridge && _bridge.isAlive()) {
+      _bridge.setAnimate(false);
     }
     seekClock(0);
   },
@@ -151,8 +171,8 @@ export const useSimulationStore = create<SimulationStoreState>()((set, get) => (
 
   setSpeed: (playbackSpeed) => {
     set({ playbackSpeed });
-    if (_viewer && !_viewer.isDestroyed()) {
-      _viewer.clock.multiplier = playbackSpeed;
+    if (_bridge && _bridge.isAlive()) {
+      _bridge.setMultiplier(playbackSpeed);
     }
   },
 
@@ -166,24 +186,19 @@ export const useSimulationStore = create<SimulationStoreState>()((set, get) => (
 
   setTotalDuration: (totalDuration) => {
     set({ totalDuration });
-    if (_viewer && !_viewer.isDestroyed() && _startJulian) {
-      const stopTime = new JulianDate();
-      JulianDate.addSeconds(_startJulian, totalDuration, stopTime);
-      _viewer.clock.stopTime = stopTime;
+    if (_bridge && _bridge.isAlive()) {
+      _bridge.setStopTime(totalDuration);
     }
   },
 
   syncFromClock: () => {
-    if (!_viewer || _viewer.isDestroyed() || !_startJulian) return;
-    const elapsed = JulianDate.secondsDifference(
-      _viewer.clock.currentTime,
-      _startJulian
-    );
+    if (!_bridge || !_bridge.isAlive()) return;
+    const elapsed = _bridge.getElapsed();
     const { totalDuration, playbackState, elapsed: current } = get();
     const clamped = quantize(Math.max(0, Math.min(elapsed, totalDuration)));
 
     // Detect CesiumJS auto-stop (ClockRange.CLAMPED stops clock at stopTime)
-    if (playbackState === "playing" && !_viewer.clock.shouldAnimate) {
+    if (playbackState === "playing" && !_bridge.getShouldAnimate()) {
       set({ elapsed: clamped, playbackState: "paused" });
     } else if (clamped !== current) {
       set({ elapsed: clamped });
@@ -201,9 +216,9 @@ export const useSimulationStore = create<SimulationStoreState>()((set, get) => (
       syncedPosition: null,
       followHeadingLocked: true,
     });
-    if (_viewer && !_viewer.isDestroyed()) {
-      _viewer.clock.shouldAnimate = false;
-      _viewer.clock.multiplier = 1;
+    if (_bridge && _bridge.isAlive()) {
+      _bridge.setAnimate(false);
+      _bridge.setMultiplier(1);
     }
     seekClock(0);
   },

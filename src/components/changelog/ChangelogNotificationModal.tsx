@@ -10,12 +10,12 @@
 
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery } from "convex/react";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { ChangelogNotificationEntry } from "./ChangelogNotificationEntry";
 import { useChangelogNotifications, type ChangelogEntry } from "@/hooks/use-changelog-notifications";
 import { communityApi } from "@/lib/community-api";
+import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 
 export function ChangelogNotificationModal() {
   const {
@@ -33,10 +33,10 @@ export function ChangelogNotificationModal() {
     [allEntries]
   );
 
-  const reactionCounts = useQuery(
-    communityApi.changelog.reactionCounts,
-    changelogIds.length > 0 ? { changelogIds } : "skip"
-  ) as Record<string, number> | undefined;
+  const reactionCounts = useConvexSkipQuery(communityApi.changelog.reactionCounts, {
+    args: { changelogIds },
+    enabled: changelogIds.length > 0,
+  }) as Record<string, number> | undefined;
 
   const entriesToShow = unseenEntries.length > 0 ? unseenEntries : allEntries;
 

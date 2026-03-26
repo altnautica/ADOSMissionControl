@@ -256,133 +256,21 @@ export const usePatternStore = create<PatternStoreState>()((set, get) => ({
     set((s) => ({ structureScanConfig: { ...s.structureScanConfig, ...update } })),
 
   generate: () => {
-    const {
-      activePatternType, surveyConfig, orbitConfig, corridorConfig,
-      sarExpandingSquareConfig, sarSectorSearchConfig, sarParallelTrackConfig,
-      structureScanConfig,
-    } = get();
-    if (!activePatternType) return;
+    const state = get();
+    if (!state.activePatternType) return;
 
     set({ isGenerating: true, error: null });
 
-    let result: PatternResult | null = null;
-
     try {
-      switch (activePatternType) {
-        case "survey": {
-          const cfg = surveyConfig as SurveyConfig;
-          if (cfg.polygon && cfg.polygon.length >= 3) {
-            result = generateSurvey(cfg);
-          } else {
-            // Multi-polygon: generate per selected polygon and merge
-            const drawState = useDrawingStore.getState();
-            const selectedIds = drawState.selectedPolygonIds;
-            const polygons = selectedIds.length > 0
-              ? drawState.polygons.filter((p) => selectedIds.includes(p.id))
-              : drawState.polygons.slice(-1); // fallback: last polygon
-
-            if (polygons.length === 1 && polygons[0].vertices.length >= 3) {
-              result = generateSurvey({ ...cfg, polygon: polygons[0].vertices });
-            } else if (polygons.length > 1) {
-              const results = polygons
-                .filter((p) => p.vertices.length >= 3)
-                .map((p) => generateSurvey({ ...cfg, polygon: p.vertices }));
-              if (results.length > 0) {
-                result = {
-                  waypoints: results.flatMap((r) => r.waypoints),
-                  previewLines: results.flatMap((r) => r.previewLines ?? []),
-                  stats: {
-                    totalDistance: results.reduce((s, r) => s + r.stats.totalDistance, 0),
-                    estimatedTime: results.reduce((s, r) => s + r.stats.estimatedTime, 0),
-                    photoCount: results.reduce((s, r) => s + r.stats.photoCount, 0),
-                    coveredArea: results.reduce((s, r) => s + r.stats.coveredArea, 0),
-                    transectCount: results.reduce((s, r) => s + r.stats.transectCount, 0),
-                  },
-                };
-              }
-            }
-          }
-          break;
-        }
-        case "orbit": {
-          const cfg = orbitConfig as OrbitConfig;
-          if (cfg.center) {
-            result = generateOrbit(cfg);
-          } else {
-            const drawState = useDrawingStore.getState();
-            if (drawState.circles.length > 0) {
-              const lastCircle = drawState.circles[drawState.circles.length - 1];
-              result = generateOrbit({ ...cfg, center: lastCircle.center, radius: lastCircle.radius ?? cfg.radius } as OrbitConfig);
-            }
-          }
-          break;
-        }
-        case "corridor": {
-          const cfg = corridorConfig as CorridorConfig;
-          if (cfg.pathPoints && cfg.pathPoints.length >= 2) {
-            result = generateCorridor(cfg);
-          }
-          break;
-        }
-        case "expandingSquare": {
-          const cfg = sarExpandingSquareConfig as ExpandingSquareConfig;
-          if (cfg.center) {
-            result = generateExpandingSquare(cfg);
-          }
-          break;
-        }
-        case "sectorSearch": {
-          const cfg = sarSectorSearchConfig as SectorSearchConfig;
-          if (cfg.center) {
-            result = generateSectorSearch(cfg);
-          }
-          break;
-        }
-        case "parallelTrack": {
-          const cfg = sarParallelTrackConfig as ParallelTrackConfig;
-          if (cfg.startPoint) {
-            result = generateParallelTrack(cfg);
-          }
-          break;
-        }
-        case "structureScan": {
-          const cfg = structureScanConfig as StructureScanConfig;
-          if (cfg.structurePolygon && cfg.structurePolygon.length >= 3) {
-            result = generateStructureScan(cfg);
-          } else {
-            const drawState = useDrawingStore.getState();
-            const lastPoly = drawState.polygons[drawState.polygons.length - 1];
-            if (lastPoly && lastPoly.vertices.length >= 3) {
-              result = generateStructureScan({ ...cfg, structurePolygon: lastPoly.vertices } as StructureScanConfig);
-            }
-          }
-          break;
-        }
+      const result = generatePattern(state);
+      if (result === null) {
+        set({ patternResult: null, isGenerating: false, error: MISSING_GEOMETRY_MESSAGES[state.activePatternType] ?? "Missing input geometry" });
+      } else {
+        set({ patternResult: result, isGenerating: false, error: null });
       }
     } catch (err) {
-      result = null;
-      set({
-        error: err instanceof Error ? err.message : "Pattern generation failed",
-        patternResult: null,
-        isGenerating: false,
-      });
-      return;
+      set({ error: formatErrorMessage(err), patternResult: null, isGenerating: false });
     }
-
-    if (result === null) {
-      const msgs: Record<string, string> = {
-        survey: "Draw a polygon on the map first",
-        orbit: "Draw a circle or click to set orbit center",
-        corridor: "Set corridor path points (use measure tool)",
-        expandingSquare: "Click map to set datum point",
-        sectorSearch: "Click map to set datum point",
-        parallelTrack: "Click map to set start point",
-        structureScan: "Draw structure boundary polygon on map",
-      };
-      set({ patternResult: null, isGenerating: false, error: msgs[activePatternType] ?? "Missing input geometry" });
-      return;
-    }
-    set({ patternResult: result, isGenerating: false, error: null });
   },
 
   clear: () =>

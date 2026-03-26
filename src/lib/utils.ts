@@ -69,5 +69,5 @@ export function randomId(): string {
 
 /** Check if running inside the Electron desktop app. */
 export function isElectron(): boolean {
-  return typeof window !== "undefined" && (window as any).electronAPI?.isElectron === true;
+  return typeof window !== "undefined" && window.electronAPI?.isElectron === true;
 }

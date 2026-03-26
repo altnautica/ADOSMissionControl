@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { Plus } from "lucide-react";
 import { communityApi } from "@/lib/community-api";
+import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 import { ChangelogEntry } from "./ChangelogEntry";
 import { ChangelogEditor } from "./ChangelogEditor";
@@ -25,10 +26,10 @@ export function ChangelogTimeline() {
       })) ?? [],
     [entries]
   );
-  const commentCounts = useQuery(
-    communityApi.comments.countBatch,
-    commentTargets.length > 0 ? { targets: commentTargets } : "skip"
-  );
+  const commentCounts = useConvexSkipQuery(communityApi.comments.countBatch, {
+    args: { targets: commentTargets },
+    enabled: commentTargets.length > 0,
+  });
 
   const handleEdit = (entry: ChangelogEntryType) => {
     setEditingEntry(entry);
