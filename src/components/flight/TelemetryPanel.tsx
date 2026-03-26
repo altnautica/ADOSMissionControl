@@ -1,6 +1,6 @@
 "use client";
 
-import { useTelemetryStore } from "@/stores/telemetry-store";
+import { useTelemetryLatest } from "@/hooks/use-telemetry-latest";
 import { useDroneStore } from "@/stores/drone-store";
 import { useMissionStore } from "@/stores/mission-store";
 import { TelemetryBlock } from "@/components/shared/telemetry-block";
@@ -9,11 +9,11 @@ import { mpsToKph, normalizeHeading } from "@/lib/telemetry-utils";
 import { formatDuration } from "@/lib/utils";
 
 export function TelemetryPanel() {
-  const position = useTelemetryStore((s) => s.position.latest());
-  const vfr = useTelemetryStore((s) => s.vfr.latest());
-  const battery = useTelemetryStore((s) => s.battery.latest());
-  const gps = useTelemetryStore((s) => s.gps.latest());
-  const radio = useTelemetryStore((s) => s.radio.latest());
+  const position = useTelemetryLatest("position");
+  const vfr = useTelemetryLatest("vfr");
+  const battery = useTelemetryLatest("battery");
+  const gps = useTelemetryLatest("gps");
+  const radio = useTelemetryLatest("radio");
   const flightMode = useDroneStore((s) => s.flightMode);
   const mission = useMissionStore((s) => s.activeMission);
 

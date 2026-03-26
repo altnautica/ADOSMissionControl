@@ -7,6 +7,7 @@
  */
 
 import type { CommandResult, UnifiedFlightMode, MissionItem, LogEntry, LogDownloadProgressCallback } from './types'
+import { formatErrorMessage } from '@/lib/utils'
 import type { MspSerialQueue } from './msp/msp-serial-queue'
 import { MSP } from './msp/msp-constants'
 import { findModeRange, type ModeRange } from './msp/msp-mode-map'
@@ -39,7 +40,7 @@ export async function mspArm(ctx: MspCommandContext): Promise<CommandResult> {
       await ctx.queue.send(MSP.MSP_ARMING_DISABLE, payload)
       return { success: true, resultCode: 0, message: 'Arming enabled via MSP' }
     } catch (err) {
-      return { success: false, resultCode: -1, message: `Arm failed: ${err instanceof Error ? err.message : String(err)}` }
+      return { success: false, resultCode: -1, message: `Arm failed: ${formatErrorMessage(err)}` }
     }
   }
   return mspSetAuxChannel(ctx, armRange.auxChannel, Math.round((armRange.rangeStart + armRange.rangeEnd) / 2))
@@ -55,7 +56,7 @@ export async function mspDisarm(ctx: MspCommandContext): Promise<CommandResult> 
       await ctx.queue.send(MSP.MSP_ARMING_DISABLE, payload)
       return { success: true, resultCode: 0, message: 'Disarmed via MSP' }
     } catch (err) {
-      return { success: false, resultCode: -1, message: `Disarm failed: ${err instanceof Error ? err.message : String(err)}` }
+      return { success: false, resultCode: -1, message: `Disarm failed: ${formatErrorMessage(err)}` }
     }
   }
   return mspSetAuxChannel(ctx, armRange.auxChannel, 1000)
@@ -93,7 +94,7 @@ export async function mspMotorTest(ctx: MspCommandContext, motor: number, thrott
     await ctx.queue.send(MSP.MSP_SET_MOTOR, payload)
     return { success: true, resultCode: 0, message: `Motor ${motor} set to ${throttle}%` }
   } catch (err) {
-    return { success: false, resultCode: -1, message: `Motor test failed: ${err instanceof Error ? err.message : String(err)}` }
+    return { success: false, resultCode: -1, message: `Motor test failed: ${formatErrorMessage(err)}` }
   }
 }
 
@@ -105,7 +106,7 @@ export async function mspReboot(ctx: MspCommandContext): Promise<CommandResult> 
     await ctx.queue.send(MSP.MSP_SET_REBOOT, payload)
     return { success: true, resultCode: 0, message: 'Rebooting firmware' }
   } catch (err) {
-    return { success: false, resultCode: -1, message: `Reboot failed: ${err instanceof Error ? err.message : String(err)}` }
+    return { success: false, resultCode: -1, message: `Reboot failed: ${formatErrorMessage(err)}` }
   }
 }
 
@@ -117,7 +118,7 @@ export async function mspRebootToBootloader(ctx: MspCommandContext): Promise<Com
     await ctx.queue.send(MSP.MSP_SET_REBOOT, payload)
     return { success: true, resultCode: 0, message: 'Rebooting to bootloader' }
   } catch (err) {
-    return { success: false, resultCode: -1, message: `Bootloader reboot failed: ${err instanceof Error ? err.message : String(err)}` }
+    return { success: false, resultCode: -1, message: `Bootloader reboot failed: ${formatErrorMessage(err)}` }
   }
 }
 
@@ -133,7 +134,7 @@ export async function mspStartCalibration(
         await ctx.queue.send(MSP.MSP_ACC_CALIBRATION)
         return { success: true, resultCode: 0, message: 'Accelerometer calibration started' }
       } catch (err) {
-        return { success: false, resultCode: -1, message: `Accel cal failed: ${err instanceof Error ? err.message : String(err)}` }
+        return { success: false, resultCode: -1, message: `Accel cal failed: ${formatErrorMessage(err)}` }
       }
     }
     case 'compass': {
@@ -141,7 +142,7 @@ export async function mspStartCalibration(
         await ctx.queue.send(MSP.MSP_MAG_CALIBRATION)
         return { success: true, resultCode: 0, message: 'Magnetometer calibration started' }
       } catch (err) {
-        return { success: false, resultCode: -1, message: `Mag cal failed: ${err instanceof Error ? err.message : String(err)}` }
+        return { success: false, resultCode: -1, message: `Mag cal failed: ${formatErrorMessage(err)}` }
       }
     }
     default:
@@ -155,7 +156,7 @@ export async function mspCommitParamsToFlash(ctx: MspCommandContext): Promise<Co
     await ctx.queue.send(MSP.MSP_EEPROM_WRITE)
     return { success: true, resultCode: 0, message: 'EEPROM saved' }
   } catch (err) {
-    return { success: false, resultCode: -1, message: `EEPROM write failed: ${err instanceof Error ? err.message : String(err)}` }
+    return { success: false, resultCode: -1, message: `EEPROM write failed: ${formatErrorMessage(err)}` }
   }
 }
 
@@ -183,7 +184,7 @@ export async function mspDoPreArmCheck(ctx: MspCommandContext): Promise<CommandR
     if (armingDisableFlags === 0) return { success: true, resultCode: 0, message: 'Pre-arm checks passed' }
     return { success: false, resultCode: -1, message: `Arming disabled: flags=0x${armingDisableFlags.toString(16)}` }
   } catch (err) {
-    return { success: false, resultCode: -1, message: `Pre-arm check failed: ${err instanceof Error ? err.message : String(err)}` }
+    return { success: false, resultCode: -1, message: `Pre-arm check failed: ${formatErrorMessage(err)}` }
   }
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useTelemetryStore } from "@/stores/telemetry-store";
+import { useTelemetryLatest } from "@/hooks/use-telemetry-latest";
 import { parseSensorHealth } from "@/lib/protocol/mavlink-constants";
 import { cn } from "@/lib/utils";
 
@@ -12,7 +12,7 @@ interface SensorHealthBarProps {
 const CORE_SENSOR_IDS = new Set([0, 1, 2, 3, 5, 15, 16, 21]); // Gyro, Accel, Compass, Baro, GPS, Motors, RC, AHRS
 
 export function SensorHealthBar({ compact = false }: SensorHealthBarProps) {
-  const sysStatus = useTelemetryStore((s) => s.sysStatus.latest());
+  const sysStatus = useTelemetryLatest("sysStatus");
 
   if (!sysStatus) {
     return (

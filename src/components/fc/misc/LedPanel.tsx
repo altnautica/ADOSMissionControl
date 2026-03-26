@@ -1,9 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import { usePanelParams } from "@/hooks/use-panel-params";
-import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useFcPanelState } from "@/hooks/use-fc-panel-state";
 import { useParamLabel } from "@/hooks/use-param-label";
 import { useParamMetadataMap } from "@/hooks/use-param-metadata";
 import { useToast } from "@/components/ui/toast";
@@ -49,7 +47,11 @@ function hexToOverride(hex: string): number {
 }
 
 export function LedPanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const {
+    params, loading, error, dirtyParams, hasRamWrites,
+    loadProgress, hasLoaded, getProtocol,
+    refresh, setLocalValue, saveAllToRam, commitToFlash,
+  } = useFcPanelState({ paramNames: LED_PARAMS, panelId: "led" });
   const { toast } = useToast();
   const { firmwareType } = useFirmwareCapabilities();
   const { label: pl } = useParamLabel();
@@ -57,14 +59,7 @@ export function LedPanel() {
   const lbl = (raw: string) => <ParamLabel label={pl(raw)} metadata={metadata} />;
   const [saving, setSaving] = useState(false);
 
-  const {
-    params, loading, error, dirtyParams, hasRamWrites,
-    loadProgress, hasLoaded,
-    refresh, setLocalValue, saveAllToRam, commitToFlash,
-  } = usePanelParams({ paramNames: LED_PARAMS, panelId: "led" });
-  useUnsavedGuard(dirtyParams.size > 0);
-
-  const connected = !!getSelectedProtocol();
+  const connected = !!getProtocol();
   const hasDirty = dirtyParams.size > 0;
 
   const ledTypes = params.get("NTF_LED_TYPES") ?? 0;

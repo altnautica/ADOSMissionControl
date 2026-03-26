@@ -1,11 +1,9 @@
 "use client";
 
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
-import { usePanelParams } from "@/hooks/use-panel-params";
+import { useFcPanelState } from "@/hooks/use-fc-panel-state";
 import { useParamLabel } from "@/hooks/use-param-label";
 import { useParamMetadataMap } from "@/hooks/use-param-metadata";
-import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
-import { useDroneManager } from "@/stores/drone-manager";
 import { useToast } from "@/components/ui/toast";
 import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
 import { PanelHeader } from "../shared/PanelHeader";
@@ -18,7 +16,11 @@ import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
 import { CAMERA_PARAMS, OPTIONAL_CAMERA_PARAMS, CAM_TYPE_OPTIONS, CameraCard as Card } from "./camera-constants";
 
 export function CameraPanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const {
+    params, loading, error, dirtyParams, hasRamWrites,
+    loadProgress, hasLoaded, getProtocol,
+    refresh, setLocalValue, saveAllToRam, commitToFlash,
+  } = useFcPanelState({ paramNames: CAMERA_PARAMS, optionalParams: OPTIONAL_CAMERA_PARAMS, panelId: "camera" });
   const { toast } = useToast();
   const { firmwareType } = useFirmwareCapabilities();
   const isPx4 = firmwareType === "px4";
@@ -36,14 +38,7 @@ export function CameraPanel() {
   const [surveyFov, setSurveyFov] = useState(84);
   const [surveyOverlap, setSurveyOverlap] = useState(70);
 
-  const {
-    params, loading, error, dirtyParams, hasRamWrites,
-    loadProgress, hasLoaded,
-    refresh, setLocalValue, saveAllToRam, commitToFlash,
-  } = usePanelParams({ paramNames: CAMERA_PARAMS, optionalParams: OPTIONAL_CAMERA_PARAMS, panelId: "camera" });
-  useUnsavedGuard(dirtyParams.size > 0);
-
-  const connected = !!getSelectedProtocol();
+  const connected = !!getProtocol();
   const hasDirty = dirtyParams.size > 0;
   const camEnabled = (params.get("CAM1_TYPE") ?? 0) !== 0;
   const isServoType = (params.get("CAM1_TYPE") ?? 0) === 1;
@@ -72,7 +67,7 @@ export function CameraPanel() {
   }
 
   function handleTrigger() {
-    const protocol = getSelectedProtocol();
+    const protocol = getProtocol();
     if (!protocol) return;
     // MAV_CMD_DO_DIGICAM_CONTROL would be sent here
     setImageCount((c) => c + 1);
@@ -87,11 +82,11 @@ export function CameraPanel() {
   }
 
   const doIntervalTrigger = useCallback(() => {
-    const protocol = getSelectedProtocol();
+    const protocol = getProtocol();
     if (!protocol) return;
     protocol.cameraTrigger();
     setImageCount((c) => c + 1);
-  }, [getSelectedProtocol]);
+  }, [getProtocol]);
 
   function toggleIntervalTrigger() {
     if (intervalActive) {

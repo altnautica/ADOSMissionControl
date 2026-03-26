@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useTelemetryStore } from "@/stores/telemetry-store";
+import { useTelemetryLatest } from "@/hooks/use-telemetry-latest";
 import { useDroneStore } from "@/stores/drone-store";
 import { mpsToKph, normalizeHeading } from "@/lib/telemetry-utils";
 import { MODE_DESCRIPTIONS } from "@/components/fc/flight-modes/flight-mode-constants";
@@ -39,10 +39,10 @@ function FlightCell({ label, value }: { label: string; value: string }) {
 }
 
 export function TelemetryReadout() {
-  const pos = useTelemetryStore((s) => s.position.latest());
-  const vfr = useTelemetryStore((s) => s.vfr.latest());
-  const bat = useTelemetryStore((s) => s.battery.latest());
-  const gps = useTelemetryStore((s) => s.gps.latest());
+  const pos = useTelemetryLatest("position");
+  const vfr = useTelemetryLatest("vfr");
+  const bat = useTelemetryLatest("battery");
+  const gps = useTelemetryLatest("gps");
   const mode = useDroneStore((s) => s.flightMode);
 
   const alt = pos?.alt ?? vfr?.alt ?? 0;

@@ -8,6 +8,7 @@
  */
 
 import type { ParameterValue, ParameterCallback, CommandResult } from './types'
+import { formatErrorMessage } from '@/lib/utils'
 import type { MspSerialQueue } from './msp/msp-serial-queue'
 import { MSP } from './msp/msp-constants'
 

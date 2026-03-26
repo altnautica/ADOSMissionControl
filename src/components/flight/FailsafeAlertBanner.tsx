@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { AlertTriangle, X, ShieldAlert, Radio, Navigation, Cpu, Zap } from "lucide-react";
-import { useTelemetryStore } from "@/stores/telemetry-store";
+import { useTelemetryLatest } from "@/hooks/use-telemetry-latest";
 import { useDroneStore } from "@/stores/drone-store";
 
 type FailsafeType = "LOW_BATTERY" | "GPS_LOST" | "RC_LOST" | "EKF_FAIL" | "MOTOR_FAIL" | "PREARM_FAIL" | "EMERGENCY";
@@ -24,8 +24,8 @@ const FAILSAFE_ICONS: Record<FailsafeType, React.ReactNode> = {
 };
 
 export function FailsafeAlertBanner() {
-  const sysStatus = useTelemetryStore((s) => s.sysStatus.latest());
-  const battery = useTelemetryStore((s) => s.battery.latest());
+  const sysStatus = useTelemetryLatest("sysStatus");
+  const battery = useTelemetryLatest("battery");
   const systemStatus = useDroneStore((s) => s.systemStatus);
   const connectionState = useDroneStore((s) => s.connectionState);
   const [dismissed, setDismissed] = useState(false);
