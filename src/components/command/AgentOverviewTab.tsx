@@ -8,7 +8,8 @@
 
 import { useEffect } from "react";
 import { useTranslations } from "next-intl";
-import { useAgentStore } from "@/stores/agent-store";
+import { useAgentConnectionStore } from "@/stores/agent-connection-store";
+import { useAgentSystemStore } from "@/stores/agent-system-store";
 import { AgentStatusCard } from "./shared/AgentStatusCard";
 import { ServiceTable } from "./shared/ServiceTable";
 import { SystemResourceGauges } from "./shared/SystemResourceGauges";
@@ -19,17 +20,17 @@ import { AgentDisconnectedPage } from "./AgentDisconnectedPage";
 
 export function AgentOverviewTab() {
   const t = useTranslations("agent");
-  const connected = useAgentStore((s) => s.connected);
-  const status = useAgentStore((s) => s.status);
-  const services = useAgentStore((s) => s.services);
-  const resources = useAgentStore((s) => s.resources);
-  const logs = useAgentStore((s) => s.logs);
-  const processCpu = useAgentStore((s) => s.processCpuPercent);
-  const processMemMb = useAgentStore((s) => s.processMemoryMb);
-  const fetchServices = useAgentStore((s) => s.fetchServices);
-  const fetchResources = useAgentStore((s) => s.fetchResources);
-  const fetchLogs = useAgentStore((s) => s.fetchLogs);
-  const restartService = useAgentStore((s) => s.restartService);
+  const connected = useAgentConnectionStore((s) => s.connected);
+  const status = useAgentSystemStore((s) => s.status);
+  const services = useAgentSystemStore((s) => s.services);
+  const resources = useAgentSystemStore((s) => s.resources);
+  const logs = useAgentSystemStore((s) => s.logs);
+  const processCpu = useAgentSystemStore((s) => s.processCpuPercent);
+  const processMemMb = useAgentSystemStore((s) => s.processMemoryMb);
+  const fetchServices = useAgentSystemStore((s) => s.fetchServices);
+  const fetchResources = useAgentSystemStore((s) => s.fetchResources);
+  const fetchLogs = useAgentSystemStore((s) => s.fetchLogs);
+  const restartService = useAgentSystemStore((s) => s.restartService);
 
   useEffect(() => {
     if (connected) {
