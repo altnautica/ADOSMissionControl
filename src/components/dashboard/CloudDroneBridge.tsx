@@ -10,24 +10,17 @@
  */
 
 import { useEffect, useRef } from "react";
-import { useQuery } from "convex/react";
 import { useFleetStore } from "@/stores/fleet-store";
-import { cmdDronesApi, cmdDroneStatusApi } from "@/lib/community-api-drones";
-import { useConvexAvailable } from "@/app/ConvexClientProvider";
-import { isDemoMode } from "@/lib/utils";
+import { cmdDronesApi } from "@/lib/community-api-drones";
+import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import type { FleetDrone } from "@/lib/types";
 
 const CLOUD_STALE_MS = 60_000; // Consider drone offline after 60s without update
 
 export function CloudDroneBridge() {
-  const convexAvailable = useConvexAvailable();
-  const demo = isDemoMode();
   const trackedIds = useRef<Set<string>>(new Set());
 
-  const myDrones = useQuery(
-    cmdDronesApi.listMyDrones,
-    !demo && convexAvailable ? {} : "skip"
-  );
+  const myDrones = useConvexSkipQuery(cmdDronesApi.listMyDrones);
 
   useEffect(() => {
     if (!myDrones || !Array.isArray(myDrones)) return;

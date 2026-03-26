@@ -20,7 +20,7 @@ import {
   ChevronRight,
   Cloud,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, isDemoMode } from "@/lib/utils";
 import { cmdDronesApi } from "@/lib/community-api-drones";
 import { communityApi } from "@/lib/community-api";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
@@ -66,6 +66,7 @@ export function CommandPage() {
   const disconnect = useAgentStore((s) => s.disconnect);
   const cloudMode = useAgentStore((s) => s.cloudMode);
 
+  const demo = isDemoMode();
   const pairedDrones = usePairingStore((s) => s.pairedDrones);
 
   const clientConfig = useConvexSkipQuery(communityApi.clientConfig.get);
