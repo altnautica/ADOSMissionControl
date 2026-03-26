@@ -21,12 +21,12 @@ export function DemoProvider() {
     });
 
     // Auto-connect the agent store in demo mode
-    useAgentStore.getState().connect("mock://demo");
+    useAgentConnectionStore.getState().connect("mock://demo");
 
     return () => {
       mounted = false;
       engine?.stop();
-      useAgentStore.getState().disconnect();
+      useAgentConnectionStore.getState().disconnect();
       useDroneManager.getState().clear();
       useFleetStore.getState().setDrones([]);
       useFleetStore.getState().clearAlerts();
