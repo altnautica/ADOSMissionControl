@@ -22,6 +22,7 @@ import {
   useSimulationStore,
   bindSimViewer,
   unbindSimViewer,
+  type SimViewerBridge,
 } from "@/stores/simulation-store";
 import type { SampledProperties } from "@/lib/build-sampled-properties";
 import type { FlightPlan } from "@/lib/simulation-utils";
@@ -70,7 +71,40 @@ export function useSimClock(
     viewer.clock.shouldAnimate = false;
     viewer.clock.multiplier = store.playbackSpeed;
 
-    bindSimViewer(viewer, startJulian);
+    // Build a bridge that encapsulates all CesiumJS clock operations,
+    // so the simulation store never imports cesium at runtime.
+    const scratchJulian = new JulianDate();
+    const bridge: SimViewerBridge = {
+      seekClock: (seconds: number) => {
+        if (viewer.isDestroyed()) return;
+        JulianDate.addSeconds(startJulian, seconds, scratchJulian);
+        viewer.clock.currentTime = JulianDate.clone(scratchJulian);
+        viewer.scene.requestRender();
+      },
+      requestRender: () => {
+        if (!viewer.isDestroyed()) viewer.scene.requestRender();
+      },
+      setAnimate: (animate: boolean) => {
+        if (!viewer.isDestroyed()) viewer.clock.shouldAnimate = animate;
+      },
+      setMultiplier: (multiplier: number) => {
+        if (!viewer.isDestroyed()) viewer.clock.multiplier = multiplier;
+      },
+      setStopTime: (duration: number) => {
+        if (!viewer.isDestroyed()) {
+          const stopTime = new JulianDate();
+          JulianDate.addSeconds(startJulian, duration, stopTime);
+          viewer.clock.stopTime = stopTime;
+        }
+      },
+      getElapsed: () => {
+        return JulianDate.secondsDifference(viewer.clock.currentTime, startJulian);
+      },
+      getShouldAnimate: () => viewer.clock.shouldAnimate,
+      isAlive: () => !viewer.isDestroyed(),
+    };
+
+    bindSimViewer(viewer, bridge);
 
     return () => unbindSimViewer(viewer);
   }, [viewer, sampled, totalDuration]);
