@@ -47,6 +47,11 @@ export function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t;
 }
 
+/** Extract a human-readable message from an unknown error value. */
+export function formatErrorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
 /** Check if demo mode is active (env var or URL param). */
 export function isDemoMode(): boolean {
   if (typeof window === "undefined") {
