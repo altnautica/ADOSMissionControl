@@ -94,6 +94,8 @@ export function MapToolbar({
   onUndo,
   onRedo,
   onClearAll,
+  onToggleOverlays,
+  overlayPanelOpen,
 }: MapToolbarProps) {
   const t = useTranslations("planner");
   return (
@@ -138,6 +140,16 @@ export function MapToolbar({
       </ToolButton>
 
       <div className="h-px bg-border-default" />
+
+      {onToggleOverlays && (
+        <ToolButton
+          active={overlayPanelOpen}
+          onClick={onToggleOverlays}
+          tooltip="KML Overlays (L)"
+        >
+          <Layers size={16} />
+        </ToolButton>
+      )}
 
       <ShortcutsHelpButton />
     </div>
