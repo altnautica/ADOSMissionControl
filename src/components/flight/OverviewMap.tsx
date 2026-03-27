@@ -53,6 +53,14 @@ const MissionExecutionOverlay = dynamic(
   () => import("@/components/flight/MissionExecutionOverlay").then((m) => ({ default: m.MissionExecutionOverlay })),
   { ssr: false }
 );
+const GuidedConfirmDialog = dynamic(
+  () => import("@/components/flight/GuidedConfirmDialog").then((m) => ({ default: m.GuidedConfirmDialog })),
+  { ssr: false }
+);
+const GuidedTargetOverlay = dynamic(
+  () => import("@/components/flight/GuidedTargetOverlay").then((m) => ({ default: m.GuidedTargetOverlay })),
+  { ssr: false }
+);
 
 // ── Drone marker colors per status ──────────────────────────
 

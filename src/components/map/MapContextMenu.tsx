@@ -1,8 +1,8 @@
 /**
  * @module MapContextMenu
- * @description Right-click context menu on the fly map. Shows "Go Here" option
- * that sends DO_REPOSITION (GUIDED goto) to the drone at the clicked lat/lon.
- * Only active when a drone is connected and in a compatible mode (GUIDED, AUTO).
+ * @description Right-click context menu on the fly map. Shows "Fly Here" option
+ * that opens a confirmation dialog with altitude picker and hold-to-confirm.
+ * Only active when a drone is connected and in a compatible mode.
  * @license GPL-3.0-only
  */
 
@@ -13,21 +13,24 @@ import { useMap } from "react-leaflet";
 import L from "leaflet";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useDroneStore } from "@/stores/drone-store";
+import { useGuidedStore } from "@/stores/guided-store";
+import { haversineDistance } from "@/lib/telemetry-utils";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 
-const GUIDED_MODES = new Set(["GUIDED", "AUTO", "GUIDED_NOGPS", "LOITER"]);
+const GUIDED_MODES = new Set(["GUIDED", "AUTO", "GUIDED_NOGPS", "LOITER", "POSHOLD"]);
 
 export function MapContextMenu() {
   const map = useMap();
   const [menuPos, setMenuPos] = useState<{ x: number; y: number; lat: number; lon: number } | null>(null);
 
-  const getProtocol = useDroneManager((s) => s.getSelectedProtocol);
   const connectionState = useDroneStore((s) => s.connectionState);
   const flightMode = useDroneStore((s) => s.flightMode);
+  const armed = useDroneStore((s) => s.armed);
+  const showConfirm = useGuidedStore((s) => s.showConfirm);
 
   const isConnected = connectionState === "connected";
   const isCompatibleMode = GUIDED_MODES.has(flightMode);
-  const canNavigate = isConnected && isCompatibleMode;
+  const canNavigate = isConnected && isCompatibleMode && armed;
 
   // Close menu on map click or move
   const closeMenu = useCallback(() => setMenuPos(null), []);
@@ -57,38 +60,44 @@ export function MapContextMenu() {
     };
   }, [map, closeMenu, canNavigate]);
 
-  const handleGoHere = useCallback(async () => {
+  const handleFlyHere = useCallback(() => {
     if (!menuPos) return;
-    const protocol = getProtocol();
-    if (!protocol) return;
 
-    // Use current altitude (relativeAlt) or default 10m
-    const pos = useTelemetryStore.getState().position.latest();
-    const alt = pos?.relativeAlt ?? 10;
-
-    await protocol.guidedGoto(menuPos.lat, menuPos.lon, alt);
+    // Get map container rect for screen coords
+    const rect = map.getContainer().getBoundingClientRect();
+    showConfirm(menuPos.lat, menuPos.lon, rect.left + menuPos.x, rect.top + menuPos.y);
     setMenuPos(null);
-  }, [menuPos, getProtocol]);
+  }, [menuPos, map, showConfirm]);
 
   if (!menuPos) return null;
 
+  // Compute distance for display
+  const pos = useTelemetryStore.getState().position.latest();
+  const dist = pos
+    ? haversineDistance(pos.lat, pos.lon, menuPos.lat, menuPos.lon)
+    : 0;
+  const distLabel = dist < 1000
+    ? `${Math.round(dist)} m`
+    : `${(dist / 1000).toFixed(2)} km`;
+
   return (
     <div
-      className="absolute z-[2000] bg-surface-primary border border-border-default shadow-lg"
-      style={{ left: menuPos.x, top: menuPos.y, minWidth: 160 }}
+      className="absolute z-[2000] bg-bg-secondary/95 backdrop-blur-sm border border-border-default rounded-lg shadow-lg overflow-hidden"
+      style={{ left: menuPos.x, top: menuPos.y, minWidth: 170 }}
     >
       <button
-        onClick={handleGoHere}
-        className="w-full text-left px-3 py-2 text-xs font-mono text-text-primary hover:bg-surface-secondary transition-colors flex items-center gap-2"
+        onClick={handleFlyHere}
+        className="w-full text-left px-3 py-2 text-xs font-mono text-text-primary hover:bg-bg-tertiary transition-colors flex items-center gap-2 cursor-pointer"
       >
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
           <path d="M7 1L13 13H1L7 1Z" fill="#3A82FF" fillOpacity="0.6" stroke="#3A82FF" strokeWidth="1"/>
         </svg>
-        Go Here (GUIDED)
+        Fly Here
       </button>
       <div className="border-t border-border-default" />
-      <div className="px-3 py-1.5 text-[9px] font-mono text-text-tertiary">
-        {menuPos.lat.toFixed(6)}, {menuPos.lon.toFixed(6)}
+      <div className="px-3 py-1.5 text-[9px] font-mono text-text-tertiary flex justify-between">
+        <span>{menuPos.lat.toFixed(6)}, {menuPos.lon.toFixed(6)}</span>
+        {dist > 0 && <span>{distLabel}</span>}
       </div>
     </div>
   );
