@@ -132,8 +132,13 @@ export function PlannerMap({
       onMapRightClick(e.latlng.lat, e.latlng.lng, rect.left + point.x, rect.top + point.y);
     };
     const zoomHandler = () => setZoom(mapInstance.getZoom());
-    mapInstance.on("click", clickHandler); mapInstance.on("contextmenu", contextHandler); mapInstance.on("zoomend", zoomHandler);
-    return () => { mapInstance.off("click", clickHandler); mapInstance.off("contextmenu", contextHandler); mapInstance.off("zoomend", zoomHandler); };
+    const moveHandler = () => {
+      const c = mapInstance.getCenter();
+      usePlannerStore.getState().setMapCenter([c.lat, c.lng]);
+    };
+    mapInstance.on("click", clickHandler); mapInstance.on("contextmenu", contextHandler); mapInstance.on("zoomend", zoomHandler); mapInstance.on("moveend", moveHandler);
+    moveHandler(); // Set initial center
+    return () => { mapInstance.off("click", clickHandler); mapInstance.off("contextmenu", contextHandler); mapInstance.off("zoomend", zoomHandler); mapInstance.off("moveend", moveHandler); };
   }, [mapInstance, activeTool, onMapClick, onMapRightClick, setActiveTool, setDrawingMode, setActiveDrawingVertices]);
 
   useEffect(() => { if (mapInstance) mapInstance.getContainer().style.cursor = TOOL_CURSORS[activeTool]; }, [mapInstance, activeTool]);

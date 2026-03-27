@@ -17,6 +17,7 @@ import { CAMERA_PROFILES, computeGSD, computeLineSpacing, computeTriggerDistance
 import { Grid3X3, Camera, ChevronDown, SquareDashed } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn, randomId } from "@/lib/utils";
+import { usePlannerStore } from "@/stores/planner-store";
 import {
   ENTRY_LOCATION_OPTIONS, CAMERA_OPTIONS,
   SURVEY_PRESET_OPTIONS, SURVEY_PRESETS,
@@ -32,9 +33,13 @@ export function SurveyConfig() {
 
   const [showAdvanced, setShowAdvanced] = useState(false);
 
+  const mapCenter = usePlannerStore((s) => s.mapCenter);
   const handleQuickRect = useCallback(() => {
-    const center: [number, number] = [12.9716, 77.5946]; // Bangalore default
-    const offset = 0.001; // ~100m
+    // Use current map center, fall back to 0,0 if not set
+    const center: [number, number] = (mapCenter[0] !== 0 || mapCenter[1] !== 0)
+      ? mapCenter
+      : [12.9716, 77.5946]; // Fallback only if map hasn't loaded yet
+    const offset = 0.001; // ~100m per side
     const vertices: [number, number][] = [
       [center[0] - offset, center[1] - offset],
       [center[0] - offset, center[1] + offset],
@@ -44,7 +49,7 @@ export function SurveyConfig() {
     const side = offset * 2 * 111320;
     const area = side * side * Math.cos(center[0] * Math.PI / 180);
     useDrawingStore.getState().addPolygon({ id: randomId(), vertices, area });
-  }, []);
+  }, [mapCenter]);
 
   const extConfig = surveyConfig as { _cameraName?: string; _sidelap?: number; _frontlap?: number; _preset?: string; crosshatch?: boolean };
 
