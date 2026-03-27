@@ -6,7 +6,7 @@
  */
 "use client";
 
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useState } from "react";
 import { useOverlayStore, type KmlOverlay } from "@/stores/overlay-store";
 import { parseKML } from "@/lib/formats/kml-parser";
 import { parseKMZ } from "@/lib/formats/kmz-handler";
@@ -26,38 +26,34 @@ export function OverlayPanel({ onClose }: OverlayPanelProps) {
   const setOpacity = useOverlayStore((s) => s.setOpacity);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [parseError, setParseError] = useState<string | null>(null);
+
   const handleFileSelect = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
+      setParseError(null);
 
       try {
+        let result;
         let kmlText: string;
 
         if (file.name.endsWith(".kmz")) {
-          // Decompress KMZ
-          const buffer = await file.arrayBuffer();
-          const pako = await import("pako");
-          // KMZ is a ZIP file. Find the local file header and extract.
-          const bytes = new Uint8Array(buffer);
-          // Simple extraction: skip 30-byte header + filename to get to compressed data
-          const view = new DataView(buffer);
-          const fileNameLen = view.getUint16(26, true);
-          const extraLen = view.getUint16(28, true);
-          const compressedSize = view.getUint32(18, true);
-          const dataStart = 30 + fileNameLen + extraLen;
-          const compressed = bytes.slice(dataStart, dataStart + compressedSize);
-          const decompressed = pako.inflateRaw(compressed);
-          kmlText = new TextDecoder().decode(decompressed);
+          result = await parseKMZ(file);
+          kmlText = ""; // Don't persist raw KML for KMZ (avoid large localStorage)
         } else {
           kmlText = await file.text();
+          result = parseKML(kmlText);
         }
 
-        const result = parseKML(kmlText);
+        if (result.polygons.length === 0 && result.paths.length === 0 && result.points.length === 0) {
+          setParseError("No geometry found in file.");
+          return;
+        }
 
         const overlay: KmlOverlay = {
           id: randomId(),
-          name: result.name || file.name.replace(/\.(kml|kmz)$/, ""),
+          name: result.name || file.name.replace(/\.(kml|kmz)$/i, ""),
           visible: true,
           opacity: 0.7,
           polygons: result.polygons,
@@ -74,6 +70,7 @@ export function OverlayPanel({ onClose }: OverlayPanelProps) {
         addOverlay(overlay);
       } catch (err) {
         console.error("Failed to parse KML/KMZ:", err);
+        setParseError("Failed to parse file. Check format.");
       }
 
       // Reset input so the same file can be re-selected
@@ -119,6 +116,13 @@ export function OverlayPanel({ onClose }: OverlayPanelProps) {
           </div>
         )}
       </div>
+
+      {/* Error */}
+      {parseError && (
+        <div className="px-3 py-1.5 bg-status-error/10 border-t border-status-error/30">
+          <span className="text-[10px] text-status-error">{parseError}</span>
+        </div>
+      )}
 
       {/* Add button */}
       <div className="px-3 py-2 border-t border-border-default">
