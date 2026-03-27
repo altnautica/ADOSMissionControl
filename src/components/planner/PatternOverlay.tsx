@@ -41,6 +41,7 @@ const FENCE_COLOR = MAP_COLORS.fence;
 const PATTERN_COLOR = MAP_COLORS.accentPrimary;
 const TRANSECT_COLOR = withAlpha(MAP_COLORS.accentPrimary, 0.4);
 const CAPTURE_DOT_COLOR = MAP_COLORS.accentSelected;
+const DATUM_COLOR = MAP_COLORS.rally;
 
 function makeAreaLabel(text: string): L.DivIcon {
   return L.divIcon({
@@ -56,6 +57,10 @@ export function PatternOverlay() {
   const patternResult = usePatternStore((s) => s.patternResult);
   const surveyConfig = usePatternStore((s) => s.surveyConfig);
   const orbitConfig = usePatternStore((s) => s.orbitConfig);
+  const corridorConfig = usePatternStore((s) => s.corridorConfig);
+  const sarExpandingSquareConfig = usePatternStore((s) => s.sarExpandingSquareConfig);
+  const sarSectorSearchConfig = usePatternStore((s) => s.sarSectorSearchConfig);
+  const sarParallelTrackConfig = usePatternStore((s) => s.sarParallelTrackConfig);
 
   // Drawn shapes for boundary display
   const drawnPolygons = useDrawingStore((s) => s.polygons);
@@ -95,6 +100,28 @@ export function PatternOverlay() {
     }
     return null;
   }, [activeType, surveyConfig.polygon, drawnPolygons]);
+
+  // SAR datum / start point for map marker
+  const datumPoint = useMemo((): [number, number] | null => {
+    if (activeType === "expandingSquare" && sarExpandingSquareConfig.center) {
+      return sarExpandingSquareConfig.center as [number, number];
+    }
+    if (activeType === "sectorSearch" && sarSectorSearchConfig.center) {
+      return sarSectorSearchConfig.center as [number, number];
+    }
+    if (activeType === "parallelTrack" && sarParallelTrackConfig.startPoint) {
+      return sarParallelTrackConfig.startPoint as [number, number];
+    }
+    return null;
+  }, [activeType, sarExpandingSquareConfig.center, sarSectorSearchConfig.center, sarParallelTrackConfig.startPoint]);
+
+  // Corridor path centerline
+  const corridorPath = useMemo((): [number, number][] | null => {
+    if (activeType === "corridor" && corridorConfig.pathPoints && corridorConfig.pathPoints.length >= 2) {
+      return corridorConfig.pathPoints as [number, number][];
+    }
+    return null;
+  }, [activeType, corridorConfig.pathPoints]);
 
   return (
     <>
@@ -197,6 +224,33 @@ export function PatternOverlay() {
           }}
         />
       ))}
+
+      {/* ── SAR datum / start point marker ──────────────────── */}
+      {datumPoint && (
+        <CircleMarker
+          center={[datumPoint[0], datumPoint[1]]}
+          radius={6}
+          pathOptions={{
+            color: DATUM_COLOR,
+            fillColor: DATUM_COLOR,
+            fillOpacity: 0.9,
+            weight: 2,
+          }}
+        />
+      )}
+
+      {/* ── Corridor path centerline ─────────────────────────── */}
+      {corridorPath && corridorPath.length >= 2 && (
+        <Polyline
+          positions={corridorPath}
+          pathOptions={{
+            color: PATTERN_COLOR,
+            weight: 2,
+            dashArray: "6 4",
+            opacity: 0.7,
+          }}
+        />
+      )}
 
       {/* ── Geofence overlay ────────────────────────────────── */}
       {fenceEnabled && fenceType === "polygon" && fencePolygonPoints.length >= 3 && (

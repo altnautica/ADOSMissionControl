@@ -93,6 +93,26 @@ export function usePlannerActions(deps: ActionsDeps) {
         setAddingRallyPoint(false);
         return;
       }
+      // SAR pattern datum/start point placement — only intercept in "select" tool mode
+      if (activeTool === "select") {
+        const patternStore = usePatternStore.getState();
+        const patternType = patternStore.activePatternType;
+        if (patternType === "expandingSquare") {
+          patternStore.updateSarExpandingSquareConfig({ center: [clampLat(lat), clampLon(lon)] });
+          toast("Datum point set", "success");
+          return;
+        }
+        if (patternType === "sectorSearch") {
+          patternStore.updateSarSectorSearchConfig({ center: [clampLat(lat), clampLon(lon)] });
+          toast("Datum point set", "success");
+          return;
+        }
+        if (patternType === "parallelTrack") {
+          patternStore.updateSarParallelTrackConfig({ startPoint: [clampLat(lat), clampLon(lon)] });
+          toast("Start point set", "success");
+          return;
+        }
+      }
       const command = TOOL_COMMAND_MAP[activeTool];
       if (!command) return;
       if (!activePlanId) { toast("Create or select a flight plan first", "info"); return; }
@@ -229,17 +249,23 @@ export function usePlannerActions(deps: ActionsDeps) {
       const patternType = patternStore.activePatternType;
       const geoStore = useGeofenceStore.getState();
       if ("vertices" in shape) {
-        if (geofenceEnabled && geoStore.fenceType === "polygon") {
+        if (geofenceEnabled && geoStore.fenceType === "polygon" && !patternType) {
           geoStore.setPolygonPoints(shape.vertices);
           toast(`Geofence polygon set (${shape.vertices.length} vertices)`, "success");
         } else if (patternType === "survey") {
           patternStore.updateSurveyConfig({ polygon: shape.vertices });
           toast(`Survey area set (${shape.vertices.length} vertices)`, "success");
+        } else if (patternType === "structureScan") {
+          patternStore.updateStructureScanConfig({ structurePolygon: shape.vertices });
+          toast(`Structure boundary set (${shape.vertices.length} vertices)`, "success");
+        } else if (patternType === "corridor") {
+          patternStore.updateCorridorConfig({ pathPoints: shape.vertices });
+          toast(`Corridor path set (${shape.vertices.length} points)`, "success");
         } else {
           toast(`Polygon drawn (${shape.vertices.length} vertices)`, "success");
         }
       } else {
-        if (geofenceEnabled && geoStore.fenceType === "circle") {
+        if (geofenceEnabled && geoStore.fenceType === "circle" && !patternType) {
           geoStore.setCircle(shape.center, shape.radius);
           toast(`Geofence circle set (r=${Math.round(shape.radius)}m)`, "success");
         } else if (patternType === "orbit") {

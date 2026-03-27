@@ -106,13 +106,25 @@ export function PlannerMap({
 
   useEffect(() => {
     if (!mapInstance) return;
-    const clickHandler = (e: L.LeafletMouseEvent) => { if (PLACEMENT_TOOLS.includes(activeTool)) onMapClick(e.latlng.lat, e.latlng.lng); };
+    const clickHandler = (e: L.LeafletMouseEvent) => {
+      if (drawingManagerRef.current?.getMode() !== null) return;
+      if (PLACEMENT_TOOLS.includes(activeTool)) onMapClick(e.latlng.lat, e.latlng.lng);
+    };
     const contextHandler = (e: L.LeafletMouseEvent) => {
       e.originalEvent.preventDefault();
       if (DRAWING_TOOLS.includes(activeTool)) {
         const manager = drawingManagerRef.current;
-        if (manager && manager.getMode() !== null) { manager.cancelDraw(); setDrawingMode(null); setActiveDrawingVertices([]); }
-        setActiveTool("select"); return;
+        if (manager && manager.getMode() !== null) {
+          if (activeTool === "polygon" && manager.getVertexCount() >= 3) {
+            manager.completePolygon();
+          } else {
+            manager.cancelDraw();
+            setDrawingMode(null);
+            setActiveDrawingVertices([]);
+            setActiveTool("select");
+          }
+        }
+        return;
       }
       const point = mapInstance.latLngToContainerPoint(e.latlng);
       const rect = mapInstance.getContainer().getBoundingClientRect();
@@ -195,7 +207,7 @@ export function PlannerMap({
         <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] pointer-events-none">
           <div className="bg-bg-secondary/90 border border-accent-primary/30 px-3 py-1.5">
             <span className="text-xs text-accent-primary font-mono">
-              {activeTool === "polygon" && "Click to place vertices, double-click to close. Right-click to cancel."}
+              {activeTool === "polygon" && "Click to place vertices. Right-click or click first vertex to close. Backspace to undo. Escape to cancel."}
               {activeTool === "circle" && "Click and drag to draw circle. Right-click to cancel."}
               {activeTool === "measure" && "Click to add points, double-click to finish. Right-click to cancel."}
             </span>

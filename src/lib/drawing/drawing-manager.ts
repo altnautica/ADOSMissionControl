@@ -151,11 +151,51 @@ export class DrawingManager {
       [[last[0], last[1]], [lat, lon]],
       { color: DRAW_COLORS.preview, weight: 2, dashArray: "4 4", opacity: 0.7 }
     ).addTo(this.drawingGroup);
+
+    // Snap indicator: show when cursor is near first vertex with >= 3 vertices
+    if (this.polygonVertices.length >= 3) {
+      const first = this.polygonVertices[0];
+      const firstPx = this.map.latLngToContainerPoint(L.latLng(first[0], first[1]));
+      const cursorPx = this.map.latLngToContainerPoint(L.latLng(lat, lon));
+      const pxDist = firstPx.distanceTo(cursorPx);
+      if (pxDist <= 20) {
+        if (!this.snapIndicator) {
+          this.snapIndicator = L.circleMarker([first[0], first[1]], {
+            radius: 8, color: DRAW_COLORS.stroke, weight: 2, fillOpacity: 0.3, fillColor: DRAW_COLORS.stroke,
+          }).addTo(this.drawingGroup);
+        }
+      } else {
+        this.removeSnapIndicator();
+      }
+    } else {
+      this.removeSnapIndicator();
+    }
   }
 
-  private completePolygon(): void {
+  private removeSnapIndicator(): void {
+    if (this.snapIndicator) {
+      this.drawingGroup.removeLayer(this.snapIndicator);
+      this.snapIndicator = null;
+    }
+  }
+
+  completePolygon(): void {
     if (this.polygonVertices.length < 3) return;
+
+    // BUG-1: Remove trailing duplicate vertices added by Leaflet's double-click
+    // (Leaflet fires two click events before dblclick, adding duplicates at the close position)
+    while (this.polygonVertices.length > 3) {
+      const last = this.polygonVertices[this.polygonVertices.length - 1];
+      const prev = this.polygonVertices[this.polygonVertices.length - 2];
+      if (haversineDistance(last[0], last[1], prev[0], prev[1]) < 1) {
+        this.polygonVertices.pop();
+      } else {
+        break;
+      }
+    }
+
     const vertices = [...this.polygonVertices];
+    this.removeSnapIndicator();
     this.removeDrawingListeners();
     this.mode = null;
     this.map.doubleClickZoom.enable();
@@ -302,6 +342,7 @@ export class DrawingManager {
     if (this.polygonPreviewLine) { this.drawingGroup.removeLayer(this.polygonPreviewLine); this.polygonPreviewLine = null; }
     if (this.polygonFill) { this.drawingGroup.removeLayer(this.polygonFill); this.polygonFill = null; }
     if (this.polygonAreaLabel) { this.drawingGroup.removeLayer(this.polygonAreaLabel); this.polygonAreaLabel = null; }
+    this.removeSnapIndicator();
     // Circle
     this.circleCenter = null;
     this.circleIsDragging = false;
