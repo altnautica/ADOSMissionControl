@@ -78,6 +78,7 @@ export const usePlannerStore = create<PlannerStoreState>()(
   defaultFrame: "relative",
   fitRequestTs: 0,
   patternSectionOpen: false,
+  mapCenter: [0, 0],
 
   setActiveTool: (activeTool) => set({ activeTool }),
   togglePanel: () => set((s) => ({ panelCollapsed: !s.panelCollapsed })),
@@ -107,6 +108,7 @@ export const usePlannerStore = create<PlannerStoreState>()(
   requestFit: () => set({ fitRequestTs: Date.now() }),
   clearFitRequest: () => set({ fitRequestTs: 0 }),
   setPatternSectionOpen: (patternSectionOpen) => set({ patternSectionOpen }),
+  setMapCenter: (mapCenter) => set({ mapCenter }),
     }),
     {
       name: "altcmd:planner-store",
