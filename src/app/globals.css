@@ -1,6 +1,17 @@
 @import "tailwindcss";
 @import "leaflet/dist/leaflet.css";
 
+/* Leaflet tile images must not be constrained by Tailwind preflight (img { max-width: 100%; height: auto }) */
+.leaflet-container img {
+  max-width: none !important;
+  max-height: none !important;
+  height: auto;
+}
+.leaflet-tile {
+  width: 256px !important;
+  height: 256px !important;
+}
+
 @import "@fontsource/space-grotesk/500.css";
 @import "@fontsource/space-grotesk/600.css";
 @import "@fontsource/inter/400.css";

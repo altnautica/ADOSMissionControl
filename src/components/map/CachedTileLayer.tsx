@@ -13,10 +13,26 @@ import { useMap } from "react-leaflet";
 import L from "leaflet";
 import { getCachedTile, cacheTile } from "@/lib/tile-cache";
 
+const CACHE_TIMEOUT_MS = 2000;
+
 interface CachedTileLayerProps {
   url: string;
   attribution?: string;
   maxZoom?: number;
+}
+
+/** Race a promise against a timeout. Resolves to null on timeout. */
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
+  return Promise.race([
+    promise,
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), ms)),
+  ]);
+}
+
+function loadDirect(tile: HTMLImageElement, tileUrl: string, done: (err?: Error | null, el?: HTMLElement) => void): void {
+  tile.onload = () => done(null, tile);
+  tile.onerror = () => done(new Error("Tile load error"), tile);
+  tile.src = tileUrl;
 }
 
 function fetchAndCache(tile: HTMLImageElement, tileUrl: string, done: (err?: Error | null, el?: HTMLElement) => void): void {
@@ -35,9 +51,7 @@ function fetchAndCache(tile: HTMLImageElement, tileUrl: string, done: (err?: Err
       tile.src = objectUrl;
     })
     .catch(() => {
-      tile.onload = () => done(null, tile);
-      tile.onerror = () => done(new Error("Tile load error"), tile);
-      tile.src = tileUrl;
+      loadDirect(tile, tileUrl, done);
     });
 }
 
@@ -51,7 +65,9 @@ class CachingTileLayer extends L.TileLayer {
 
     const tileUrl = this.getTileUrl(coords);
 
-    getCachedTile(tileUrl)
+    const doneTyped = done as (err?: Error | null, el?: HTMLElement) => void;
+
+    withTimeout(getCachedTile(tileUrl), CACHE_TIMEOUT_MS)
       .then((cachedBlob) => {
         if (cachedBlob) {
           const objectUrl = URL.createObjectURL(cachedBlob);
@@ -61,17 +77,15 @@ class CachingTileLayer extends L.TileLayer {
           };
           tile.onerror = () => {
             URL.revokeObjectURL(objectUrl);
-            fetchAndCache(tile, tileUrl, done as (err?: Error | null, el?: HTMLElement) => void);
+            fetchAndCache(tile, tileUrl, doneTyped);
           };
           tile.src = objectUrl;
         } else {
-          fetchAndCache(tile, tileUrl, done as (err?: Error | null, el?: HTMLElement) => void);
+          fetchAndCache(tile, tileUrl, doneTyped);
         }
       })
       .catch(() => {
-        tile.onload = () => done(undefined, tile);
-        tile.onerror = () => done(new Error("Tile load error") as unknown as undefined, tile);
-        tile.src = tileUrl;
+        loadDirect(tile, tileUrl, doneTyped);
       });
 
     return tile;

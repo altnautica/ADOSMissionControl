@@ -137,7 +137,7 @@ interface SettingsStoreState {
 export const useSettingsStore = create<SettingsStoreState>()(
   persist(
     (set, get) => ({
-      mapTileSource: "osm",
+      mapTileSource: "satellite",
       units: "metric",
       bannerDismissed: false,
       bannerDismissedAt: null,
@@ -172,7 +172,7 @@ export const useSettingsStore = create<SettingsStoreState>()(
       autoRecordOnConnect: false,
       panelScrollPositions: {},
       showNoFlyZones: false,
-      offlineTileCaching: true,
+      offlineTileCaching: false,
       locale: 'en',
 
       setMapTileSource: (mapTileSource) => set({ mapTileSource }),
@@ -224,7 +224,7 @@ export const useSettingsStore = create<SettingsStoreState>()(
     {
       name: "altcmd:settings",
       storage: createJSONStorage(indexedDBStorage.storage),
-      version: 18,
+      version: 19,
       migrate: (persisted, version) => {
         const state = persisted as Record<string, unknown>;
         if (version < 2) {
@@ -307,6 +307,11 @@ export const useSettingsStore = create<SettingsStoreState>()(
         if (version < 18) {
           // v18: display language locale
           state.locale = 'en';
+        }
+        if (version < 19) {
+          // v19: disable offline tile caching by default (IndexedDB can hang), satellite default
+          state.offlineTileCaching = false;
+          state.mapTileSource = "satellite" as MapTileSource;
         }
         return state as unknown as SettingsStoreState;
       },
