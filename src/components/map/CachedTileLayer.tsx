@@ -35,9 +35,9 @@ function fetchAndCache(tile: HTMLImageElement, tileUrl: string, done: (err?: Err
       tile.src = objectUrl;
     })
     .catch(() => {
-      tile.src = tileUrl;
       tile.onload = () => done(null, tile);
       tile.onerror = () => done(new Error("Tile load error"), tile);
+      tile.src = tileUrl;
     });
 }
 
@@ -46,6 +46,7 @@ class CachingTileLayer extends L.TileLayer {
   createTile(coords: L.Coords, done: L.DoneCallback): HTMLElement {
     const tile = document.createElement("img") as HTMLImageElement;
     tile.alt = "";
+    tile.crossOrigin = "anonymous";
     tile.setAttribute("role", "presentation");
 
     const tileUrl = this.getTileUrl(coords);
@@ -68,9 +69,9 @@ class CachingTileLayer extends L.TileLayer {
         }
       })
       .catch(() => {
-        tile.src = tileUrl;
         tile.onload = () => done(undefined, tile);
         tile.onerror = () => done(new Error("Tile load error") as unknown as undefined, tile);
+        tile.src = tileUrl;
       });
 
     return tile;
