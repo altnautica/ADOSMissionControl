@@ -14,7 +14,7 @@ import { useDroneManager } from "@/stores/drone-manager";
 import { haversineDistance } from "@/lib/telemetry-utils";
 import { X, Navigation } from "lucide-react";
 
-const ARRIVAL_THRESHOLD_M = 3;
+const ARRIVAL_THRESHOLD_M = 5;
 
 export function GuidedTargetOverlay() {
   const target = useGuidedStore((s) => s.target);
