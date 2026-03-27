@@ -9,6 +9,7 @@
 import { useRef, useCallback } from "react";
 import { useOverlayStore, type KmlOverlay } from "@/stores/overlay-store";
 import { parseKML } from "@/lib/formats/kml-parser";
+import { parseKMZ } from "@/lib/formats/kmz-handler";
 import { X, Eye, EyeOff, Trash2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { randomId } from "@/lib/utils";
