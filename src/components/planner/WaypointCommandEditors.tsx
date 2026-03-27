@@ -47,11 +47,23 @@ export function CommandSpecificEditors({
         </div>
       )}
       {cmd === "DO_JUMP" && (
-        <div className="grid grid-cols-2 gap-2">
-          <Input label={t("targetWp")} type="number" placeholder="1" value={localParam1}
-            onChange={(e) => setLocalParam1(e.target.value)} onBlur={() => commitField("param1", localParam1)} />
-          <Input label={t("repeat")} type="number" placeholder="1" value={localParam2}
-            onChange={(e) => setLocalParam2(e.target.value)} onBlur={() => commitField("param2", localParam2)} />
+        <div className="flex flex-col gap-1.5">
+          <div className="grid grid-cols-2 gap-2">
+            <Input label={t("targetWp")} type="number" placeholder="1" value={localParam1}
+              onChange={(e) => setLocalParam1(e.target.value)} onBlur={() => commitField("param1", localParam1)} />
+            <Input label={t("repeat")} type="number" placeholder="1" value={localParam2}
+              onChange={(e) => setLocalParam2(e.target.value)} onBlur={() => commitField("param2", localParam2)} />
+          </div>
+          {/* Validation warnings */}
+          {localParam1 && Number(localParam1) < 1 && (
+            <span className="text-[9px] text-status-error">Target waypoint must be 1 or greater</span>
+          )}
+          {localParam2 && Number(localParam2) < 0 && (
+            <span className="text-[9px] text-status-error">Repeat count cannot be negative</span>
+          )}
+          {localParam2 && Number(localParam2) === 0 && (
+            <span className="text-[9px] text-status-warning">Repeat count 0 means infinite loop</span>
+          )}
         </div>
       )}
       {cmd === "CONDITION_YAW" && (
