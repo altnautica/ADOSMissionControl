@@ -298,6 +298,10 @@ export function OverviewMap() {
       {/* Mission execution telemetry -- ETA + XTE */}
       <MissionExecutionOverlay />
 
+      {/* Guided mode: confirmation dialog + target overlay */}
+      <GuidedConfirmDialog />
+      <GuidedTargetOverlay />
+
       {/* Mission pause/resume overlay -- top right */}
       {showMissionControls && (
         <button
