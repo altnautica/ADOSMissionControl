@@ -13,7 +13,7 @@ import { Select } from "@/components/ui/select";
 import { usePatternStore } from "@/stores/pattern-store";
 import { useDrawingStore } from "@/stores/drawing-store";
 import { formatDistance, formatArea } from "@/lib/drawing/geo-utils";
-import { Play, Trash2, AlertTriangle, Check } from "lucide-react";
+import { Play, Trash2, AlertTriangle, Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PATTERN_TYPE_OPTIONS, VALID_PATTERN_TYPES } from "./pattern-editor-constants";
 import {
@@ -153,6 +153,13 @@ export function PatternEditor({ onApply }: PatternEditorProps) {
           )}>
           <Play size={12} />{isGenerating ? t("generating") : t("generatePattern")}
         </button>
+        {(polygons.length > 0 || circles.length > 0) && (
+          <button onClick={() => useDrawingStore.getState().clearAll()}
+            className="flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-mono text-text-secondary border border-border-default hover:bg-bg-tertiary transition-colors cursor-pointer"
+            title="Clear drawn shapes">
+            <X size={12} /> Shapes
+          </button>
+        )}
         <button onClick={clear}
           className="flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-mono text-text-secondary border border-border-default hover:bg-bg-tertiary transition-colors cursor-pointer">
           <Trash2 size={12} />

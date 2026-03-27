@@ -9,6 +9,7 @@ import { usePlanLibraryStore } from "@/stores/plan-library-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useMissionStore } from "@/stores/mission-store";
 import { usePatternStore } from "@/stores/pattern-store";
+import { usePlannerStore } from "@/stores/planner-store";
 import { useGeofenceStore } from "@/stores/geofence-store";
 import { randomId } from "@/lib/utils";
 import { clearAutoSave } from "@/lib/mission-io";
@@ -254,12 +255,15 @@ export function usePlannerActions(deps: ActionsDeps) {
           toast(`Geofence polygon set (${shape.vertices.length} vertices)`, "success");
         } else if (patternType === "survey") {
           patternStore.updateSurveyConfig({ polygon: shape.vertices });
+          usePlannerStore.getState().setPatternSectionOpen(true);
           toast(`Survey area set (${shape.vertices.length} vertices)`, "success");
         } else if (patternType === "structureScan") {
           patternStore.updateStructureScanConfig({ structurePolygon: shape.vertices });
+          usePlannerStore.getState().setPatternSectionOpen(true);
           toast(`Structure boundary set (${shape.vertices.length} vertices)`, "success");
         } else if (patternType === "corridor") {
           patternStore.updateCorridorConfig({ pathPoints: shape.vertices });
+          usePlannerStore.getState().setPatternSectionOpen(true);
           toast(`Corridor path set (${shape.vertices.length} points)`, "success");
         } else {
           toast(`Polygon drawn (${shape.vertices.length} vertices)`, "success");
@@ -270,6 +274,7 @@ export function usePlannerActions(deps: ActionsDeps) {
           toast(`Geofence circle set (r=${Math.round(shape.radius)}m)`, "success");
         } else if (patternType === "orbit") {
           patternStore.updateOrbitConfig({ center: shape.center, radius: shape.radius });
+          usePlannerStore.getState().setPatternSectionOpen(true);
           toast(`Orbit area set (r=${Math.round(shape.radius)}m)`, "success");
         } else {
           toast(`Circle drawn (r=${Math.round(shape.radius)}m)`, "success");

@@ -251,12 +251,13 @@ function generateSinglePass(config: SurveyConfig): PatternResult {
     }
   }
 
-  // Stats — sum all consecutive segment distances
+  // Stats — sum distances between navigation waypoints only (exclude camera triggers)
+  const navWaypoints = waypoints.filter((wp) => wp.command === "WAYPOINT" || wp.command === "SPLINE_WAYPOINT");
   let totalDistance = 0;
-  for (let i = 1; i < waypoints.length; i++) {
+  for (let i = 1; i < navWaypoints.length; i++) {
     totalDistance += haversineDistance(
-      waypoints[i - 1].lat, waypoints[i - 1].lon,
-      waypoints[i].lat, waypoints[i].lon
+      navWaypoints[i - 1].lat, navWaypoints[i - 1].lon,
+      navWaypoints[i].lat, navWaypoints[i].lon
     );
   }
 

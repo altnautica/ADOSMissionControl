@@ -232,7 +232,13 @@ export const usePatternStore = create<PatternStoreState>()((set, get) => ({
   error: null,
 
   setPatternType: (type) =>
-    set({ activePatternType: type, patternResult: null, error: null }),
+    set({
+      activePatternType: type,
+      patternResult: null,
+      error: null,
+      surveyConfig: { ...get().surveyConfig, polygon: undefined },
+      structureScanConfig: { ...get().structureScanConfig, structurePolygon: undefined },
+    }),
 
   updateSurveyConfig: (update) =>
     set((s) => ({ surveyConfig: { ...s.surveyConfig, ...update } })),
