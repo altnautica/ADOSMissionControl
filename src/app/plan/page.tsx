@@ -12,6 +12,7 @@ import dynamic from "next/dynamic";
 import { ChevronLeft } from "lucide-react";
 import { MapToolbar } from "@/components/planner/MapToolbar";
 import { MapContextMenu } from "@/components/planner/MapContextMenu";
+import { OverlayPanel } from "@/components/planner/OverlayPanel";
 import { MissionStatsBar } from "@/components/planner/MissionStatsBar";
 import { FlightPlanLibrary } from "@/components/library/FlightPlanLibrary";
 import { UnsavedChangesDialog } from "@/components/library/UnsavedChangesDialog";
@@ -39,6 +40,8 @@ export default function MissionPlannerPage() {
   const setPatternSectionOpen = usePlannerStore((s) => s.setPatternSectionOpen);
   const [validationOpen, setValidationOpen] = useState(true);
   const [terrainOpen, setTerrainOpen] = useState(false);
+  const [overlayPanelOpen, setOverlayPanelOpen] = useState(false);
+  const toggleOverlayPanel = useCallback(() => setOverlayPanelOpen((v) => !v), []);
   const togglePattern = useCallback(() => setPatternSectionOpen(!patternOpen), [patternOpen, setPatternSectionOpen]);
   const toggleValidation = useCallback(() => setValidationOpen((v) => !v), []);
   const toggleTerrain = useCallback(() => setTerrainOpen((v) => !v), []);
@@ -66,7 +69,9 @@ export default function MissionPlannerPage() {
               onDrawingComplete={p.handleDrawingComplete} />
             <MapToolbar activeTool={p.activeTool} onToolChange={p.setActiveTool}
               canUndo={p.undoStack.length > 0} canRedo={p.redoStack.length > 0}
-              onUndo={p.undo} onRedo={p.redo} onClearAll={p.handleClearAll} />
+              onUndo={p.undo} onRedo={p.redo} onClearAll={p.handleClearAll}
+              onToggleOverlays={toggleOverlayPanel} overlayPanelOpen={overlayPanelOpen} />
+            {overlayPanelOpen && <OverlayPanel onClose={() => setOverlayPanelOpen(false)} />}
             <MissionStatsBar waypoints={p.waypoints} defaultSpeed={p.defaultSpeed} />
             <AltitudeProfile waypoints={p.waypoints} collapsed={p.altProfileCollapsed} onToggle={p.toggleAltProfile}
               selectedWaypointId={p.selectedWaypointId}
