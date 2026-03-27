@@ -108,7 +108,8 @@ export function PlannerMap({
     if (!mapInstance) return;
     const clickHandler = (e: L.LeafletMouseEvent) => {
       if (drawingManagerRef.current?.getMode() !== null) return;
-      if (PLACEMENT_TOOLS.includes(activeTool)) onMapClick(e.latlng.lat, e.latlng.lng);
+      // Pass clicks for placement tools AND select mode (SAR datum placement uses select mode)
+      if (PLACEMENT_TOOLS.includes(activeTool) || activeTool === "select") onMapClick(e.latlng.lat, e.latlng.lng);
     };
     const contextHandler = (e: L.LeafletMouseEvent) => {
       e.originalEvent.preventDefault();

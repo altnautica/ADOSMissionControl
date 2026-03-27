@@ -38,6 +38,8 @@ interface PlannerStoreState {
   fitRequestTs: number;
   /** Whether the pattern editor section is open in the right panel. */
   patternSectionOpen: boolean;
+  /** Current map center for features that need map position (e.g. Quick Rect). */
+  mapCenter: [number, number];
   setActiveTool: (tool: PlannerTool) => void;
   togglePanel: () => void;
   toggleAltProfile: () => void;
@@ -56,6 +58,8 @@ interface PlannerStoreState {
   clearFitRequest: () => void;
   /** Set pattern section open/closed. */
   setPatternSectionOpen: (open: boolean) => void;
+  /** Update current map center. */
+  setMapCenter: (center: [number, number]) => void;
 }
 
 export const usePlannerStore = create<PlannerStoreState>()(
