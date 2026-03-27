@@ -36,6 +36,8 @@ interface PlannerStoreState {
   defaultFrame: AltitudeFrame;
   /** Timestamp of the last fit-bounds request (0 = none). PlannerMap watches this. */
   fitRequestTs: number;
+  /** Whether the pattern editor section is open in the right panel. */
+  patternSectionOpen: boolean;
   setActiveTool: (tool: PlannerTool) => void;
   togglePanel: () => void;
   toggleAltProfile: () => void;
@@ -52,6 +54,8 @@ interface PlannerStoreState {
   requestFit: () => void;
   /** Reset fit request after map has processed it. */
   clearFitRequest: () => void;
+  /** Set pattern section open/closed. */
+  setPatternSectionOpen: (open: boolean) => void;
 }
 
 export const usePlannerStore = create<PlannerStoreState>()(
@@ -69,6 +73,7 @@ export const usePlannerStore = create<PlannerStoreState>()(
   defaultAcceptRadius: 2,
   defaultFrame: "relative",
   fitRequestTs: 0,
+  patternSectionOpen: false,
 
   setActiveTool: (activeTool) => set({ activeTool }),
   togglePanel: () => set((s) => ({ panelCollapsed: !s.panelCollapsed })),
@@ -97,6 +102,7 @@ export const usePlannerStore = create<PlannerStoreState>()(
   setDefaults: (defaults) => set((s) => ({ ...s, ...defaults })),
   requestFit: () => set({ fitRequestTs: Date.now() }),
   clearFitRequest: () => set({ fitRequestTs: 0 }),
+  setPatternSectionOpen: (patternSectionOpen) => set({ patternSectionOpen }),
     }),
     {
       name: "altcmd:planner-store",

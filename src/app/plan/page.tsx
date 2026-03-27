@@ -7,7 +7,7 @@
  * @license GPL-3.0-only
  */
 
-import { useCallback, useState } from "react";
+import { useCallback, useState, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { ChevronLeft } from "lucide-react";
 import { MapToolbar } from "@/components/planner/MapToolbar";
@@ -17,6 +17,7 @@ import { FlightPlanLibrary } from "@/components/library/FlightPlanLibrary";
 import { UnsavedChangesDialog } from "@/components/library/UnsavedChangesDialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useDroneManager } from "@/stores/drone-manager";
+import { usePlannerStore } from "@/stores/planner-store";
 import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
 import { usePlanner } from "./use-planner";
 import { useKeyboardShortcuts } from "./use-keyboard-shortcuts";
@@ -34,10 +35,11 @@ export default function MissionPlannerPage() {
   const showGeofence = !hasDrone || supports("supportsGeoFence");
   const showRally = !hasDrone || supports("supportsRally");
 
-  const [patternOpen, setPatternOpen] = useState(false);
+  const patternOpen = usePlannerStore((s) => s.patternSectionOpen);
+  const setPatternSectionOpen = usePlannerStore((s) => s.setPatternSectionOpen);
   const [validationOpen, setValidationOpen] = useState(true);
   const [terrainOpen, setTerrainOpen] = useState(false);
-  const togglePattern = useCallback(() => setPatternOpen((v) => !v), []);
+  const togglePattern = useCallback(() => setPatternSectionOpen(!patternOpen), [patternOpen, setPatternSectionOpen]);
   const toggleValidation = useCallback(() => setValidationOpen((v) => !v), []);
   const toggleTerrain = useCallback(() => setTerrainOpen((v) => !v), []);
 
