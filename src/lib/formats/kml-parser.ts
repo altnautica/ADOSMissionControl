@@ -128,7 +128,7 @@ export function parseKML(text: string): KmlParseResult {
     }
   }
 
-  return { waypoints, polygons, paths };
+  return { waypoints, polygons, paths, points, name: docName, style };
 }
 
 // ── Helpers ──────────────────────────────────────────────────
@@ -187,4 +187,59 @@ function getCoordinatesText(parent: Element): string | null {
 
 function generateId(): string {
   return Math.random().toString(36).substring(2, 10);
+}
+
+/**
+ * Extract style info from KML. KML uses AABBGGRR color format.
+ * Returns CSS hex (#RRGGBB) colors.
+ */
+function extractStyle(doc: Document): KmlStyle {
+  const defaultStyle: KmlStyle = {
+    lineColor: "#3A82FF",
+    fillColor: "#3A82FF",
+    lineWidth: 2,
+  };
+
+  const styles = findElements(doc, "Style");
+  if (styles.length === 0) return defaultStyle;
+
+  const style = styles[0];
+
+  // Line style
+  const lineStyles = findElements(style, "LineStyle");
+  if (lineStyles.length > 0) {
+    const colorEl = findElements(lineStyles[0], "color");
+    if (colorEl.length > 0 && colorEl[0].textContent) {
+      defaultStyle.lineColor = kmlColorToHex(colorEl[0].textContent.trim());
+    }
+    const widthEl = findElements(lineStyles[0], "width");
+    if (widthEl.length > 0 && widthEl[0].textContent) {
+      defaultStyle.lineWidth = parseFloat(widthEl[0].textContent) || 2;
+    }
+  }
+
+  // Poly style
+  const polyStyles = findElements(style, "PolyStyle");
+  if (polyStyles.length > 0) {
+    const colorEl = findElements(polyStyles[0], "color");
+    if (colorEl.length > 0 && colorEl[0].textContent) {
+      defaultStyle.fillColor = kmlColorToHex(colorEl[0].textContent.trim());
+    }
+  } else {
+    defaultStyle.fillColor = defaultStyle.lineColor;
+  }
+
+  return defaultStyle;
+}
+
+/**
+ * Convert KML AABBGGRR color to CSS #RRGGBB hex.
+ * KML format: alpha-blue-green-red (8 hex chars).
+ */
+function kmlColorToHex(kmlColor: string): string {
+  if (kmlColor.length !== 8) return "#3A82FF";
+  const r = kmlColor.substring(6, 8);
+  const g = kmlColor.substring(4, 6);
+  const b = kmlColor.substring(2, 4);
+  return `#${r}${g}${b}`;
 }
