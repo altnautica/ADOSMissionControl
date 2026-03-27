@@ -2,22 +2,22 @@
  * @module MapContextMenu
  * @description Right-click context menu on the fly map. Shows "Fly Here" option
  * that opens a confirmation dialog with altitude picker and hold-to-confirm.
- * Only active when a drone is connected and in a compatible mode.
+ * Only active when a drone is connected, armed, and in a compatible mode.
  * @license GPL-3.0-only
  */
 
 "use client";
 
-import { useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback, useState, useMemo } from "react";
 import { useMap } from "react-leaflet";
 import L from "leaflet";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useDroneStore } from "@/stores/drone-store";
+import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useGuidedStore } from "@/stores/guided-store";
 import { haversineDistance } from "@/lib/telemetry-utils";
-import { useTelemetryStore } from "@/stores/telemetry-store";
 
-const GUIDED_MODES = new Set(["GUIDED", "AUTO", "GUIDED_NOGPS", "LOITER", "POSHOLD"]);
+const GUIDED_MODES = new Set(["GUIDED", "AUTO", "GUIDED_NOGPS", "LOITER"]);
 
 export function MapContextMenu() {
   const map = useMap();
@@ -27,14 +27,23 @@ export function MapContextMenu() {
   const flightMode = useDroneStore((s) => s.flightMode);
   const armState = useDroneStore((s) => s.armState);
   const showConfirm = useGuidedStore((s) => s.showConfirm);
+  const confirmPending = useGuidedStore((s) => s.confirmPending);
+
+  // Subscribe to position for distance display
+  const posBuffer = useTelemetryStore((s) => s.position);
+  const latestPos = posBuffer.latest();
 
   const isConnected = connectionState === "connected";
   const isCompatibleMode = GUIDED_MODES.has(flightMode);
   const isArmed = armState === "armed";
   const canNavigate = isConnected && isCompatibleMode && isArmed;
 
-  // Close menu on map click or move
+  // Close menu on map click, move, or when confirm dialog opens
   const closeMenu = useCallback(() => setMenuPos(null), []);
+
+  useEffect(() => {
+    if (confirmPending) closeMenu();
+  }, [confirmPending, closeMenu]);
 
   useEffect(() => {
     const onContextMenu = (e: L.LeafletMouseEvent) => {
@@ -63,23 +72,22 @@ export function MapContextMenu() {
 
   const handleFlyHere = useCallback(() => {
     if (!menuPos) return;
-
-    // Get map container rect for screen coords
     const rect = map.getContainer().getBoundingClientRect();
     showConfirm(menuPos.lat, menuPos.lon, rect.left + menuPos.x, rect.top + menuPos.y);
-    setMenuPos(null);
+    // Menu auto-closes via confirmPending effect above
   }, [menuPos, map, showConfirm]);
 
-  if (!menuPos) return null;
+  // Compute distance reactively via subscribed position
+  const dist = useMemo(() => {
+    if (!menuPos || !latestPos) return 0;
+    return haversineDistance(latestPos.lat, latestPos.lon, menuPos.lat, menuPos.lon);
+  }, [menuPos, latestPos]);
 
-  // Compute distance for display
-  const pos = useTelemetryStore.getState().position.latest();
-  const dist = pos
-    ? haversineDistance(pos.lat, pos.lon, menuPos.lat, menuPos.lon)
-    : 0;
   const distLabel = dist < 1000
     ? `${Math.round(dist)} m`
     : `${(dist / 1000).toFixed(2)} km`;
+
+  if (!menuPos) return null;
 
   return (
     <div
