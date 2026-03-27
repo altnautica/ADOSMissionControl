@@ -10,12 +10,24 @@
 
 import type { Waypoint } from "@/lib/types";
 
+export interface KmlStyle {
+  lineColor: string;  // CSS hex (#RRGGBB)
+  fillColor: string;
+  lineWidth: number;
+}
+
 export interface KmlParseResult {
   waypoints: Waypoint[];
   /** Polygon boundaries (for use with survey pattern generator). */
   polygons: [number, number][][];
   /** Path lines (for use with corridor pattern generator). */
   paths: [number, number][][];
+  /** Point-only markers (lat, lon). */
+  points: [number, number][];
+  /** Document name, if present. */
+  name: string;
+  /** Extracted style (from first Style element, or default). */
+  style: KmlStyle;
 }
 
 /**
