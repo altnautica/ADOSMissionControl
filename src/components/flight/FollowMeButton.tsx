@@ -6,7 +6,7 @@
  */
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useFollowMeStore } from "@/stores/follow-me-store";
@@ -19,6 +19,7 @@ export function FollowMeButton() {
   const isPaused = useFollowMeStore((s) => s.isPaused);
   const gcsAccuracy = useFollowMeStore((s) => s.gcsAccuracy);
   const getProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const [starting, setStarting] = useState(false);
 
   const handleToggle = useCallback(async () => {
     if (isActive) {
@@ -29,7 +30,17 @@ export function FollowMeButton() {
     const protocol = getProtocol();
     if (!protocol?.isConnected) return;
 
-    await startFollowMe(protocol);
+    setStarting(true);
+    try {
+      const ok = await startFollowMe(protocol);
+      if (!ok) {
+        // Permission denied or already running
+      }
+    } catch {
+      // Geolocation error
+    } finally {
+      setStarting(false);
+    }
   }, [isActive, getProtocol]);
 
   // Accuracy color
@@ -39,6 +50,14 @@ export function FollowMeButton() {
     ? "bg-status-warning"
     : "bg-status-error";
 
+  const label = starting
+    ? "Starting..."
+    : isActive
+    ? isPaused
+      ? "GPS Lost"
+      : "Following"
+    : "Follow Me";
+
   return (
     <div className="flex items-center gap-1.5">
       <Button
@@ -46,13 +65,14 @@ export function FollowMeButton() {
         size="sm"
         icon={<MapPin size={12} />}
         onClick={handleToggle}
+        disabled={starting}
         className={cn(
           "flex-1",
           isActive && "ring-1 ring-accent-primary",
           isPaused && "animate-pulse",
         )}
       >
-        {isActive ? (isPaused ? "GPS Lost" : "Following") : "Follow Me"}
+        {label}
       </Button>
       {isActive && (
         <div className="flex items-center gap-1 px-1.5 py-1 bg-bg-tertiary rounded text-[9px] font-mono text-text-secondary">
