@@ -123,6 +123,52 @@ export function HistoryDetailPanel({ record, onClose }: HistoryDetailPanelProps)
             </span>
           </div>
         </Card>
+
+        {/* Telemetry Export */}
+        <Card title="Export Telemetry" padding={true}>
+          {matchedRecording ? (
+            <div className="flex flex-col gap-2">
+              <p className="text-[10px] text-text-secondary">
+                {matchedRecording.frameCount.toLocaleString()} frames recorded
+                ({matchedRecording.channels.length} channels)
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  icon={<FileText size={12} />}
+                  disabled={exporting !== null}
+                  onClick={() => handleExport("csv", matchedRecording)}
+                >
+                  {exporting === "csv" ? "..." : "CSV"}
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  icon={<Globe size={12} />}
+                  disabled={exporting !== null}
+                  onClick={() => handleExport("kml", matchedRecording)}
+                >
+                  {exporting === "kml" ? "..." : "KML"}
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  icon={<Download size={12} />}
+                  disabled={exporting !== null}
+                  onClick={() => handleExport("kmz", matchedRecording)}
+                >
+                  {exporting === "kmz" ? "..." : "KMZ"}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <p className="text-[10px] text-text-tertiary">
+              No telemetry recording found for this flight.
+              Start recording before your next flight to enable export.
+            </p>
+          )}
+        </Card>
       </div>
     </div>
   );
