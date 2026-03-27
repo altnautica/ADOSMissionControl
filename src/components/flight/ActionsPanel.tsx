@@ -6,6 +6,7 @@ import {
   Power, ArrowUpFromLine, Home, ArrowDownToLine,
   Pause, Play, XOctagon, Skull, ClipboardCheck,
 } from "lucide-react";
+import { FollowMeButton } from "./FollowMeButton";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { FlightModeSelector } from "@/components/shared/flight-mode-selector";
@@ -252,6 +253,11 @@ export function ActionsPanel() {
             </Tooltip>
           </div>
         </div>
+
+        {/* Follow-me mode */}
+        {isArmed && hasAutonomousFlight && (
+          <FollowMeButton />
+        )}
       </div>
 
       <ActionDialogs
