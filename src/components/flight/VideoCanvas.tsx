@@ -80,13 +80,42 @@ export function VideoCanvas({ children, className }: VideoCanvasProps) {
         )}
       </div>
 
-      {/* Top-left: REC indicator */}
+      {/* Top-left: REC indicator + elapsed time */}
       {isRecording && (
         <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5">
           <span className="w-2.5 h-2.5 bg-status-error animate-pulse" />
           <span className="text-xs font-mono font-semibold text-status-error tracking-wider">
             REC
           </span>
+          {recElapsed && (
+            <span className="text-[10px] font-mono text-status-error/80">{recElapsed}</span>
+          )}
+        </div>
+      )}
+
+      {/* Bottom-left: Video controls (record + screenshot) */}
+      {isStreaming && (
+        <div className="absolute bottom-3 left-3 z-10 flex items-center gap-1">
+          <button
+            onClick={handleRecordToggle}
+            className={cn(
+              "flex items-center gap-1 px-2 py-1 text-[10px] font-mono font-semibold rounded transition-colors cursor-pointer",
+              isRecording
+                ? "bg-status-error/20 text-status-error border border-status-error/40 hover:bg-status-error/30"
+                : "bg-bg-primary/80 text-text-secondary border border-border-default hover:text-text-primary hover:bg-bg-primary"
+            )}
+            title={isRecording ? "Stop recording video" : "Record video"}
+          >
+            <span className={cn("w-2 h-2 rounded-full", isRecording ? "bg-status-error animate-pulse" : "bg-status-error/60")} />
+            {isRecording ? "STOP" : "REC"}
+          </button>
+          <button
+            onClick={handleScreenshot}
+            className="flex items-center gap-1 px-2 py-1 text-[10px] font-mono text-text-secondary bg-bg-primary/80 border border-border-default rounded hover:text-text-primary hover:bg-bg-primary transition-colors cursor-pointer"
+            title="Capture screenshot"
+          >
+            <Camera size={10} />
+          </button>
         </div>
       )}
 
