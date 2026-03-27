@@ -158,7 +158,7 @@ export function SurveyConfig() {
           {!surveyConfig.polygon && drawnPolygons.length === 0 && (
             <button onClick={handleQuickRect}
               className="flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-mono text-accent-primary border border-accent-primary/30 hover:bg-accent-primary/10 transition-colors cursor-pointer"
-              title="Create a 200m x 200m rectangle at default location">
+              title="Create a 200m x 200m rectangle at current map center">
               <SquareDashed size={10} /> Quick Rect
             </button>
           )}
