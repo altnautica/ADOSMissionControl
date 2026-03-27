@@ -23,9 +23,10 @@ import { polygonArea } from "@/lib/drawing/geo-utils";
 import { randomId } from "@/lib/utils";
 import L from "leaflet";
 import {
-  makeWaypointIcon, makeSegmentLabel, makeRallyIcon, makeMeasureLabel, formatDist,
+  makeWaypointIcon, makeSplineWaypointIcon, makeSegmentLabel, makeRallyIcon, makeMeasureLabel, formatDist,
   DRAWING_TOOLS, PLACEMENT_TOOLS, TOOL_CURSORS, TOOL_INSTRUCTIONS,
 } from "./planner-map-helpers";
+import { generateSplinePath } from "@/lib/spline-interpolation";
 
 const MapContainer = dynamic(() => import("react-leaflet").then((m) => m.MapContainer), { ssr: false });
 const TileLayerSwitcher = dynamic(() => import("@/components/map/TileLayerSwitcher").then((m) => ({ default: m.TileLayerSwitcher })), { ssr: false });
