@@ -28,6 +28,35 @@ interface HistoryDetailPanelProps {
 }
 
 export function HistoryDetailPanel({ record, onClose }: HistoryDetailPanelProps) {
+  const [recordings, setRecordings] = useState<TelemetryRecording[]>([]);
+  const [exporting, setExporting] = useState<string | null>(null);
+
+  useEffect(() => {
+    listRecordings().then(setRecordings);
+  }, []);
+
+  // Find a recording that matches this flight record by drone ID and time overlap
+  const matchedRecording = recordings.find((rec) => {
+    if (rec.droneId && rec.droneId === record.droneId) return true;
+    // Fuzzy match by time: recording started within 60s of flight record
+    const timeDiff = Math.abs(rec.startTime - record.date);
+    return timeDiff < 60_000;
+  });
+
+  const handleExport = async (
+    format: "csv" | "kml" | "kmz",
+    rec: TelemetryRecording,
+  ) => {
+    setExporting(format);
+    try {
+      if (format === "csv") await downloadTelemetryCSV(rec);
+      else if (format === "kml") await downloadTelemetryKML(rec);
+      else await downloadTelemetryKMZ(rec);
+    } finally {
+      setExporting(null);
+    }
+  };
+
   return (
     <div className="w-[340px] border-l border-border-default bg-bg-secondary flex flex-col shrink-0 overflow-hidden">
       {/* Header */}
