@@ -14,9 +14,9 @@ import { Toggle } from "@/components/ui/toggle";
 import { usePatternStore } from "@/stores/pattern-store";
 import { useDrawingStore } from "@/stores/drawing-store";
 import { CAMERA_PROFILES, computeGSD, computeLineSpacing, computeTriggerDistance } from "@/lib/patterns/gsd-calculator";
-import { Grid3X3, Camera, ChevronDown } from "lucide-react";
+import { Grid3X3, Camera, ChevronDown, SquareDashed } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
+import { cn, randomId } from "@/lib/utils";
 import {
   ENTRY_LOCATION_OPTIONS, CAMERA_OPTIONS,
   SURVEY_PRESET_OPTIONS, SURVEY_PRESETS,
