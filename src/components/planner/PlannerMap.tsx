@@ -165,6 +165,13 @@ export function PlannerMap({
     });
   }, [waypoints, zoom]);
 
+  // Generate spline curve path if any waypoints are SPLINE_WAYPOINT
+  const hasSpline = waypoints.some((wp) => wp.command === "SPLINE_WAYPOINT");
+  const splinePositions = useMemo(() => {
+    if (!hasSpline || waypoints.length < 2) return [];
+    return generateSplinePath(waypoints);
+  }, [waypoints, hasSpline]);
+
   const measurePositions = useMemo(
     () => measureLine?.points.map((p) => [p[0], p[1]] as [number, number]) ?? [],
     [measureLine]
