@@ -1,8 +1,11 @@
 "use client";
 
+import { useState, useEffect, useCallback } from "react";
 import { useVideoStore } from "@/stores/video-store";
+import { startRecording as startVideoRecording, stopRecording as stopVideoRecording, captureScreenshot } from "@/lib/video/webrtc-client";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { Camera } from "lucide-react";
 import type { ReactNode } from "react";
 
 interface VideoCanvasProps {
@@ -16,6 +19,34 @@ export function VideoCanvas({ children, className }: VideoCanvasProps) {
   const fps = useVideoStore((s) => s.fps);
   const latencyMs = useVideoStore((s) => s.latencyMs);
   const resolution = useVideoStore((s) => s.resolution);
+
+  // Video recording timer
+  const [recStartMs, setRecStartMs] = useState(0);
+  const [recElapsed, setRecElapsed] = useState("");
+
+  useEffect(() => {
+    if (!isRecording) { setRecElapsed(""); return; }
+    setRecStartMs(Date.now());
+    const timer = setInterval(() => {
+      const sec = Math.floor((Date.now() - recStartMs) / 1000);
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      setRecElapsed(`${m}:${String(s).padStart(2, "0")}`);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [isRecording, recStartMs]);
+
+  const handleRecordToggle = useCallback(() => {
+    if (isRecording) {
+      stopVideoRecording();
+    } else {
+      startVideoRecording();
+    }
+  }, [isRecording]);
+
+  const handleScreenshot = useCallback(() => {
+    captureScreenshot();
+  }, []);
 
   return (
     <div
