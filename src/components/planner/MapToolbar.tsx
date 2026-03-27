@@ -13,6 +13,7 @@ import {
   MousePointer2, MapPin, Pentagon, Circle, Ruler,
   Undo2, Redo2, Trash2, HelpCircle, X,
   ArrowUpFromLine, ArrowDownToLine, CircleDot, Crosshair, Flag,
+  Layers,
 } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -26,6 +27,8 @@ interface MapToolbarProps {
   onUndo: () => void;
   onRedo: () => void;
   onClearAll: () => void;
+  onToggleOverlays?: () => void;
+  overlayPanelOpen?: boolean;
 }
 
 type ToolDef = { id: PlannerTool; icon: typeof MapPin; label: string; shortcut?: string };
