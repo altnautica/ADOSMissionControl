@@ -38,7 +38,7 @@ export const COMMAND_OPTIONS: { value: WaypointCommand; label: string }[] = [
 export const CMD_LETTER: Record<string, string> = {
   TAKEOFF: "T",
   WAYPOINT: "W",
-  SPLINE_WAYPOINT: "W",
+  SPLINE_WAYPOINT: "S",
   LOITER: "L",
   LOITER_TIME: "L",
   LOITER_TURNS: "L",
