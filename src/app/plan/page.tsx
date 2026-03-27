@@ -7,7 +7,7 @@
  * @license GPL-3.0-only
  */
 
-import { useCallback, useState, useMemo } from "react";
+import { useCallback, useState } from "react";
 import dynamic from "next/dynamic";
 import { ChevronLeft } from "lucide-react";
 import { MapToolbar } from "@/components/planner/MapToolbar";

@@ -32,6 +32,20 @@ export function SurveyConfig() {
 
   const [showAdvanced, setShowAdvanced] = useState(false);
 
+  const handleQuickRect = useCallback(() => {
+    const center: [number, number] = [12.9716, 77.5946]; // Bangalore default
+    const offset = 0.001; // ~100m
+    const vertices: [number, number][] = [
+      [center[0] - offset, center[1] - offset],
+      [center[0] - offset, center[1] + offset],
+      [center[0] + offset, center[1] + offset],
+      [center[0] + offset, center[1] - offset],
+    ];
+    const side = offset * 2 * 111320;
+    const area = side * side * Math.cos(center[0] * Math.PI / 180);
+    useDrawingStore.getState().addPolygon({ id: randomId(), vertices, area });
+  }, []);
+
   const extConfig = surveyConfig as { _cameraName?: string; _sidelap?: number; _frontlap?: number; _preset?: string; crosshatch?: boolean };
 
   const selectedCamera = useMemo(
@@ -136,6 +150,13 @@ export function SurveyConfig() {
                 ? `${selectedPolygonIds.length} of ${drawnPolygons.length} polygon${drawnPolygons.length > 1 ? "s" : ""} selected`
                 : t("drawPolygonOnMap")}
           </span>
+          {!surveyConfig.polygon && drawnPolygons.length === 0 && (
+            <button onClick={handleQuickRect}
+              className="flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-mono text-accent-primary border border-accent-primary/30 hover:bg-accent-primary/10 transition-colors cursor-pointer"
+              title="Create a 200m x 200m rectangle at default location">
+              <SquareDashed size={10} /> Quick Rect
+            </button>
+          )}
         </div>
         {!surveyConfig.polygon && drawnPolygons.length > 1 && (
           <div className="flex flex-col gap-0.5 pl-4">
