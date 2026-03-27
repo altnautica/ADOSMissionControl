@@ -25,12 +25,13 @@ export function MapContextMenu() {
 
   const connectionState = useDroneStore((s) => s.connectionState);
   const flightMode = useDroneStore((s) => s.flightMode);
-  const armed = useDroneStore((s) => s.armed);
+  const armState = useDroneStore((s) => s.armState);
   const showConfirm = useGuidedStore((s) => s.showConfirm);
 
   const isConnected = connectionState === "connected";
   const isCompatibleMode = GUIDED_MODES.has(flightMode);
-  const canNavigate = isConnected && isCompatibleMode && armed;
+  const isArmed = armState === "armed";
+  const canNavigate = isConnected && isCompatibleMode && isArmed;
 
   // Close menu on map click or move
   const closeMenu = useCallback(() => setMenuPos(null), []);
