@@ -30,6 +30,28 @@ export function makeWaypointIcon(index: number, selected: boolean): L.DivIcon {
   return icon;
 }
 
+const splineIconCache = new Map<string, L.DivIcon>();
+
+export function makeSplineWaypointIcon(index: number, selected: boolean): L.DivIcon {
+  const key = `spline-${index}-${selected}`;
+  const cached = splineIconCache.get(key);
+  if (cached) return cached;
+  const fill = selected ? "#00e5ff" : "#0a0a0f";
+  const stroke = "#00e5ff";
+  const textFill = selected ? "#0a0a0f" : "#00e5ff";
+  const icon = L.divIcon({
+    className: "",
+    iconSize: [24, 24],
+    iconAnchor: [12, 12],
+    html: `<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="12" r="11" fill="${fill}" stroke="${stroke}" stroke-width="1.5" stroke-dasharray="4 2"/>
+      <text x="12" y="16" text-anchor="middle" fill="${textFill}" font-size="11" font-family="JetBrains Mono, monospace" font-weight="600">${index + 1}</text>
+    </svg>`,
+  });
+  splineIconCache.set(key, icon);
+  return icon;
+}
+
 const segmentLabelCache = new Map<string, L.DivIcon>();
 const SEGMENT_CACHE_MAX = 200;
 

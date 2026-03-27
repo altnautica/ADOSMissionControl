@@ -183,11 +183,16 @@ export function PlannerMap({
         style={{ background: "#0a0a0a" }} ref={(instance) => { if (instance) setMapInstance(instance); }}>
         <TileLayerSwitcher />
         <KmlOverlayLayers />
-        {polylinePositions.length >= 2 && <Polyline positions={polylinePositions} pathOptions={{ color: MAP_COLORS.accentPrimary, weight: 2, dashArray: "6 4", opacity: 0.8 }} />}
+        {/* Straight path (always shown for non-spline or as baseline) */}
+        {polylinePositions.length >= 2 && <Polyline positions={polylinePositions} pathOptions={{ color: MAP_COLORS.accentPrimary, weight: 2, dashArray: "6 4", opacity: hasSpline ? 0.3 : 0.8 }} />}
+        {/* Spline curve overlay (when spline waypoints present) */}
+        {splinePositions.length >= 2 && <Polyline positions={splinePositions} pathOptions={{ color: "#00e5ff", weight: 2.5, opacity: 0.9 }} />}
         {segments.map((seg) => <Marker key={seg.key} position={seg.position} icon={makeSegmentLabel(seg.label)} interactive={false} />)}
         <GcsMarker /><LocateControl /><PatternOverlay />
         {waypoints.map((wp, i) => (
-          <Marker key={wp.id} position={[wp.lat, wp.lon]} icon={makeWaypointIcon(i, wp.id === selectedWaypointId)} draggable={activeTool === "select"}
+          <Marker key={wp.id} position={[wp.lat, wp.lon]}
+            icon={wp.command === "SPLINE_WAYPOINT" ? makeSplineWaypointIcon(i, wp.id === selectedWaypointId) : makeWaypointIcon(i, wp.id === selectedWaypointId)}
+            draggable={activeTool === "select"}
             eventHandlers={{
               click: (e) => { e.originalEvent.stopPropagation(); onWaypointClick(wp.id); },
               dragend: (e) => { const ll = e.target.getLatLng(); onWaypointDragEnd(wp.id, ll.lat, ll.lng); },

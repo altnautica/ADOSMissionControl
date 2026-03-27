@@ -33,7 +33,7 @@ export function CommandSpecificEditors({
   const t = useTranslations("planner");
   return (
     <>
-      {(cmd === "LOITER" || cmd === "LOITER_TIME") && (
+      {(cmd === "LOITER" || cmd === "LOITER_TIME" || cmd === "SPLINE_WAYPOINT") && (
         <Input label={t("holdTime")} type="number" unit="s" placeholder="0"
           value={localHoldTime} onChange={(e) => setLocalHoldTime(e.target.value)}
           onBlur={() => commitField("holdTime", localHoldTime)} />
