@@ -31,6 +31,7 @@ export class DrawingManager {
   private polygonPreviewLine: L.Polyline | null = null;
   private polygonFill: L.Polygon | null = null;
   private polygonAreaLabel: L.Marker | null = null;
+  private snapIndicator: L.CircleMarker | null = null;
 
   // Circle state
   private circleCenter: [number, number] | null = null;
@@ -58,6 +59,7 @@ export class DrawingManager {
 
   setCallbacks(callbacks: DrawingCallbacks): void { this.callbacks = callbacks; }
   getMode(): DrawingMode { return this.mode; }
+  getVertexCount(): number { return this.polygonVertices.length; }
 
   // ── Polygon Drawing ──────────────────────────────────────────
 
@@ -79,6 +81,14 @@ export class DrawingManager {
     };
     this.boundKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") this.cancelDraw();
+      if (e.key === "Backspace" && this.polygonVertices.length > 0) {
+        e.preventDefault();
+        this.polygonVertices.pop();
+        const lastMarker = this.polygonMarkers.pop();
+        if (lastMarker) this.drawingGroup.removeLayer(lastMarker);
+        this.updatePolygonShape();
+        this.callbacks.onVerticesUpdate?.(this.polygonVertices);
+      }
     };
 
     this.map.on("click", this.boundClick);
@@ -89,6 +99,18 @@ export class DrawingManager {
   }
 
   private addPolygonVertex(lat: number, lon: number): void {
+    // BUG-7: Snap-to-close when clicking near first vertex with >= 3 vertices
+    if (this.polygonVertices.length >= 3) {
+      const first = this.polygonVertices[0];
+      const firstPx = this.map.latLngToContainerPoint(L.latLng(first[0], first[1]));
+      const clickPx = this.map.latLngToContainerPoint(L.latLng(lat, lon));
+      const pxDist = firstPx.distanceTo(clickPx);
+      if (pxDist <= 20) {
+        this.completePolygon();
+        return;
+      }
+    }
+
     this.polygonVertices.push([lat, lon]);
     const marker = L.marker([lat, lon], { icon: makeVertexIcon(), interactive: false }).addTo(this.drawingGroup);
     this.polygonMarkers.push(marker);
@@ -110,7 +132,7 @@ export class DrawingManager {
     if (this.polygonVertices.length >= 3) {
       this.polygonFill = L.polygon(
         this.polygonVertices.map((v) => [v[0], v[1]] as L.LatLngTuple),
-        { color: DRAW_COLORS.stroke, weight: 2, fillColor: DRAW_COLORS.fill, fillOpacity: 1, opacity: 0.8 }
+        { color: DRAW_COLORS.stroke, weight: 2, fillColor: DRAW_COLORS.fill, fillOpacity: 0.15, opacity: 0.8 }
       ).addTo(this.drawingGroup);
       const area = polygonArea(this.polygonVertices);
       const cLat = this.polygonVertices.reduce((s, v) => s + v[0], 0) / this.polygonVertices.length;
@@ -160,7 +182,7 @@ export class DrawingManager {
       }).addTo(this.drawingGroup);
       this.circleShape = L.circle([e.latlng.lat, e.latlng.lng], {
         radius: 0, color: DRAW_COLORS.stroke, weight: 2,
-        fillColor: DRAW_COLORS.fill, fillOpacity: 1, opacity: 0.8,
+        fillColor: DRAW_COLORS.fill, fillOpacity: 0.15, opacity: 0.8,
       }).addTo(this.drawingGroup);
       this.map.dragging.disable();
     };
