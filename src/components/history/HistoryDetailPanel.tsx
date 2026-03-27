@@ -1,11 +1,20 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { DataValue } from "@/components/ui/data-value";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { formatDate, formatDuration, formatTime } from "@/lib/utils";
 import type { FlightRecord } from "@/lib/types";
-import { X } from "lucide-react";
+import type { TelemetryRecording } from "@/lib/telemetry-recorder";
+import { listRecordings } from "@/lib/telemetry-recorder";
+import {
+  downloadTelemetryCSV,
+  downloadTelemetryKML,
+  downloadTelemetryKMZ,
+} from "@/lib/telemetry-export";
+import { X, Download, FileText, Globe } from "lucide-react";
 
 const statusVariant: Record<string, "success" | "warning" | "error"> = {
   completed: "success",
