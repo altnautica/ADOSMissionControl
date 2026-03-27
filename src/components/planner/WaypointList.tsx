@@ -23,6 +23,7 @@ interface WaypointListProps {
   onRemove: (id: string) => void;
   onReorder: (fromIndex: number, toIndex: number) => void;
   onAddManual: () => void;
+  onInsertAt?: (index: number) => void;
 }
 
 export function WaypointList({
@@ -96,23 +97,37 @@ export function WaypointList({
   return (
     <div className="flex-1 overflow-y-auto">
       {waypoints.map((wp, i) => (
-        <WaypointListItem
-          key={wp.id}
-          waypoint={wp}
-          index={i}
-          expanded={expandedId === wp.id}
-          selected={selectedId === wp.id}
-          multiSelected={selectedWaypointIds.includes(wp.id)}
-          onToggleExpand={() => onExpand(expandedId === wp.id ? null : wp.id)}
-          onSelect={(e) => handleMultiSelect(wp.id, e)}
-          onUpdate={(update) => onUpdate(wp.id, update)}
-          onRemove={() => onRemove(wp.id)}
-          onDragStart={handleDragStart(i)}
-          onDragOver={handleDragOver(i)}
-          onDragEnd={handleDragEnd}
-          onDrop={handleDrop(i)}
-          dragOver={dragOverIndex === i && dragIndexRef.current !== i}
-        />
+        <div key={wp.id}>
+          <WaypointListItem
+            waypoint={wp}
+            index={i}
+            expanded={expandedId === wp.id}
+            selected={selectedId === wp.id}
+            multiSelected={selectedWaypointIds.includes(wp.id)}
+            onToggleExpand={() => onExpand(expandedId === wp.id ? null : wp.id)}
+            onSelect={(e) => handleMultiSelect(wp.id, e)}
+            onUpdate={(update) => onUpdate(wp.id, update)}
+            onRemove={() => onRemove(wp.id)}
+            onDragStart={handleDragStart(i)}
+            onDragOver={handleDragOver(i)}
+            onDragEnd={handleDragEnd}
+            onDrop={handleDrop(i)}
+            dragOver={dragOverIndex === i && dragIndexRef.current !== i}
+          />
+          {/* Insert button between waypoints */}
+          {onInsertAt && i < waypoints.length - 1 && (
+            <div className="flex justify-center py-0.5 group">
+              <button
+                onClick={() => onInsertAt(i + 1)}
+                className="flex items-center gap-0.5 px-2 py-0.5 text-[9px] font-mono text-text-tertiary opacity-0 group-hover:opacity-100 hover:text-accent-primary hover:bg-accent-primary/10 rounded transition-all cursor-pointer"
+                title="Insert waypoint here"
+              >
+                <Plus size={10} />
+                insert
+              </button>
+            </div>
+          )}
+        </div>
       ))}
     </div>
   );
