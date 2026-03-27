@@ -46,7 +46,7 @@ export function GuidedConfirmDialog() {
     }
   }, [confirmPending]);
 
-  const hasGps = latestPos !== null && latestPos.lat !== 0;
+  const hasGps = latestPos != null && latestPos.lat !== 0;
 
   const distance = useMemo(() => {
     if (!confirmPending || !latestPos) return 0;
