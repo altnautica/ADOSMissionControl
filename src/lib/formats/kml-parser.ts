@@ -40,20 +40,30 @@ export function parseKML(text: string): KmlParseResult {
   const waypoints: Waypoint[] = [];
   const polygons: [number, number][][] = [];
   const paths: [number, number][][] = [];
+  const points: [number, number][] = [];
+
+  // Extract document name
+  const docElements = findElements(doc, "Document");
+  const nameElements = docElements.length > 0 ? findElements(docElements[0], "name") : [];
+  const docName = nameElements.length > 0 ? (nameElements[0].textContent ?? "KML Overlay") : "KML Overlay";
+
+  // Extract style
+  const style = extractStyle(doc);
 
   // Handle namespaced and non-namespaced KML.
   // getElementsByTagName("*") + local name matching works across namespaces.
   const placemarks = findElements(doc, "Placemark");
 
   for (const pm of placemarks) {
-    // Point → single waypoint
-    const points = findElements(pm, "Point");
-    for (const point of points) {
+    // Point → single waypoint + overlay point
+    const pointElements = findElements(pm, "Point");
+    for (const point of pointElements) {
       const coords = getCoordinatesText(point);
       if (coords) {
         const parsed = parseCoordinateString(coords);
         if (parsed.length > 0) {
           const [lat, lon, alt] = [parsed[0][0], parsed[0][1], parsed[0][2]];
+          points.push([lat, lon]);
           waypoints.push({
             id: generateId(),
             lat,
