@@ -1,4 +1,5 @@
 import type { ParameterValue } from "@/lib/protocol/types";
+import { areParamValuesEqual } from "@/lib/param-value";
 
 /** Export parameters to a .param file (download) */
 export function exportParamFile(
@@ -34,7 +35,7 @@ export function importParamFile(
       const value = parseFloat(parts[1]);
       if (!isNaN(value)) {
         const orig = parameters.find((p) => p.name === name);
-        if (orig && orig.value !== value) newMods.set(name, value);
+        if (orig && !areParamValuesEqual(orig.value, value)) newMods.set(name, value);
         else if (orig) newMods.delete(name);
       }
     }

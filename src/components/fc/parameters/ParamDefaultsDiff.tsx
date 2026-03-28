@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { areParamValuesEqual, formatParamValue } from "@/lib/param-value";
 import { Search } from "lucide-react";
 import type { ParamMetadata } from "@/lib/protocol/param-metadata";
 import type { ParameterValue } from "@/lib/protocol/types";
@@ -29,7 +30,7 @@ export function ParamDefaultsDiff({ parameters, modified, metadata }: ParamDefau
       const meta = metadata.get(p.name);
       if (meta?.defaultValue === undefined) continue;
       const current = modified.has(p.name) ? modified.get(p.name)! : p.value;
-      if (current !== meta.defaultValue) {
+      if (!areParamValuesEqual(current, meta.defaultValue)) {
         result.push({
           name: p.name,
           currentValue: current,
@@ -93,16 +94,16 @@ export function ParamDefaultsDiff({ parameters, modified, metadata }: ParamDefau
                   "px-3 py-1.5 text-right font-mono",
                   "text-status-warning"
                 )}>
-                  {d.currentValue}
+                  {formatParamValue(d.currentValue)}
                 </td>
                 <td className="px-3 py-1.5 text-right font-mono text-text-secondary">
-                  {d.defaultValue}
+                  {formatParamValue(d.defaultValue)}
                 </td>
                 <td className={cn(
                   "px-3 py-1.5 text-right font-mono",
                   d.difference > 0 ? "text-status-success" : d.difference < 0 ? "text-status-error" : "text-text-tertiary"
                 )}>
-                  {d.difference > 0 ? "+" : ""}{d.difference}
+                  {d.difference > 0 ? "+" : ""}{formatParamValue(d.difference)}
                 </td>
               </tr>
             ))}

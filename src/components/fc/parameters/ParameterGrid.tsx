@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useRef, useCallback, useMemo } from "react";
-import { useVirtualizer } from "@tanstack/react-virtual";
 import { RotateCw, Star, ChevronUp, ChevronDown, Lock, AlertTriangle, HardDrive } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useParamSafetyStore } from "@/stores/param-safety-store";
 import { ParamTooltip } from "./ParamTooltip";
 import { PARAM_TYPE_LABELS, isReadOnly, getDangerousWarning, isValueOutOfRange } from "./parameter-grid-utils";
+import { areParamValuesEqual, formatParamValue, getEnumLabel } from "@/lib/param-value";
 import type { ParameterValue } from "@/lib/protocol/types";
 import type { ParamMetadata } from "@/lib/protocol/param-metadata";
 import type { ParamColumnVisibility } from "@/stores/settings-store";
@@ -22,16 +22,12 @@ interface ParameterGridProps {
   columnVisibility: ParamColumnVisibility;
 }
 
-const ROW_HEIGHT = 32;
-const BITMASK_ROW_HEIGHT = 200; // estimated height for bitmask editing rows
-
 export function ParameterGrid({ parameters, modified, onModify, filter, showModifiedOnly, metadata, columnVisibility }: ParameterGridProps) {
   const [editingParam, setEditingParam] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const [dangerousWarning, setDangerousWarning] = useState<{ name: string; message: string } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const selectRef = useRef<HTMLSelectElement>(null);
-  const parentRef = useRef<HTMLDivElement>(null);
   const toggleFavorite = useSettingsStore((s) => s.toggleFavorite);
   const favoriteParams = useSettingsStore((s) => s.favoriteParams);
   const pendingWrites = useParamSafetyStore((s) => s.pendingWrites);
@@ -56,20 +52,6 @@ export function ParameterGrid({ parameters, modified, onModify, filter, showModi
     }
     return result;
   }, [parameters, filter, showModifiedOnly, modified, metadata]);
-
-  const rowVirtualizer = useVirtualizer({
-    count: filtered.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: (index) => {
-      const param = filtered[index];
-      if (editingParam === param?.name) {
-        const meta = metadata?.get(param.name);
-        if (meta?.bitmask && meta.bitmask.size > 0) return BITMASK_ROW_HEIGHT;
-      }
-      return ROW_HEIGHT;
-    },
-    overscan: 10,
-  });
 
   const startEdit = useCallback((param: ParameterValue) => {
     const meta = metadata?.get(param.name);
@@ -103,7 +85,7 @@ export function ParameterGrid({ parameters, modified, onModify, filter, showModi
   const colCount = Object.values(vis).filter(Boolean).length;
 
   return (
-    <div ref={parentRef} className="overflow-auto flex-1">
+    <div className="overflow-auto flex-1">
       <table className="w-full text-xs">
         <thead className="sticky top-0 bg-bg-secondary z-10">
           <tr className="border-b border-border-default">
@@ -117,7 +99,7 @@ export function ParameterGrid({ parameters, modified, onModify, filter, showModi
             {vis.type && <th className="px-3 py-2 text-left font-semibold text-text-secondary uppercase tracking-wider whitespace-nowrap">Type</th>}
           </tr>
         </thead>
-        <tbody style={{ height: `${rowVirtualizer.getTotalSize()}px`, position: "relative" }}>
+        <tbody>
           {filtered.length === 0 ? (
             <tr>
               <td colSpan={colCount + 1} className="px-3 py-8 text-center text-text-tertiary">
@@ -125,8 +107,7 @@ export function ParameterGrid({ parameters, modified, onModify, filter, showModi
               </td>
             </tr>
           ) : (
-            rowVirtualizer.getVirtualItems().map((virtualRow) => {
-              const param = filtered[virtualRow.index];
+            filtered.map((param) => {
               const isModified = modified.has(param.name);
               const isPendingRam = pendingWrites.has(param.name);
               const displayValue = isModified ? modified.get(param.name)! : param.value;
@@ -136,27 +117,20 @@ export function ParameterGrid({ parameters, modified, onModify, filter, showModi
               const hasBitmask = meta?.bitmask && meta.bitmask.size > 0;
               const outOfRange = isModified && isValueOutOfRange(displayValue, meta);
               const editOutOfRange = isEditing && !isNaN(parseFloat(editValue)) && isValueOutOfRange(parseFloat(editValue), meta);
-              const hasDefault = meta?.defaultValue !== undefined;
-              const differsFromDefault = hasDefault && displayValue !== meta!.defaultValue;
+              const defaultValue = meta?.defaultValue;
+              const hasDefault = defaultValue !== undefined;
+              const differsFromDefault = hasDefault && !areParamValuesEqual(displayValue, defaultValue);
               const readOnly = isReadOnly(param.name, meta);
               const isFav = favSet.has(param.name);
+              const enumLabel = getEnumLabel(meta?.values, displayValue);
 
               return (
                 <tr
                   key={`${param.name}-${param.index}`}
-                  data-index={virtualRow.index}
-                  ref={rowVirtualizer.measureElement}
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    width: "100%",
-                    transform: `translateY(${virtualRow.start}px)`,
-                  }}
                   className={cn("border-b border-border-default h-8 transition-colors", isModified ? "bg-status-warning/5" : isPendingRam ? "bg-orange-500/8" : differsFromDefault && "border-l-2 border-l-accent-primary bg-accent-primary/5")}
                 >
                   <td className="px-1 text-center">
-                    <button onClick={() => toggleFavorite(param.name)} className={cn("flex-shrink-0 p-0.5 transition-colors cursor-pointer", isFav ? "text-status-warning" : "text-text-tertiary hover:text-text-secondary")}>
+                    <button onClick={() => toggleFavorite(param.name)} title={isFav ? "Remove favorite" : "Add favorite"} className={cn("flex-shrink-0 p-0.5 transition-colors cursor-pointer", isFav ? "text-status-warning" : "text-text-tertiary hover:text-text-secondary")}>
                       <Star size={10} fill={isFav ? "currentColor" : "none"} />
                     </button>
                   </td>
@@ -189,7 +163,7 @@ export function ParameterGrid({ parameters, modified, onModify, filter, showModi
                           </div>
                         ) : isEditing ? (
                           hasEnum ? (
-                            <select ref={selectRef} value={editValue} onChange={(e) => { setEditValue(e.target.value); commitSelectEdit(param.name, e.target.value); }} onBlur={() => commitEdit(param.name)} onKeyDown={(e) => { if (e.key === "Escape") cancelEdit(); }} className="w-full h-6 px-1 bg-bg-tertiary border border-accent-primary text-xs font-mono text-text-primary focus:outline-none">
+                            <select ref={selectRef} title={`Edit ${param.name}`} value={editValue} onChange={(e) => { setEditValue(e.target.value); commitSelectEdit(param.name, e.target.value); }} onBlur={() => commitEdit(param.name)} onKeyDown={(e) => { if (e.key === "Escape") cancelEdit(); }} className="w-full h-6 px-1 bg-bg-tertiary border border-accent-primary text-xs font-mono text-text-primary focus:outline-none">
                               {Array.from(meta!.values!.entries()).map(([code, label]) => (<option key={code} value={code}>{code}: {label}</option>))}
                               {!meta!.values!.has(Number(editValue)) && <option value={editValue}>{editValue} (custom)</option>}
                             </select>
@@ -202,7 +176,7 @@ export function ParameterGrid({ parameters, modified, onModify, filter, showModi
                         ) : (
                           <>
                             <button onClick={() => !readOnly && startEdit(param)} title={readOnly ? "Read-only parameter" : outOfRange && meta?.range ? `Out of range: expected ${meta.range.min} .. ${meta.range.max}` : isPendingRam && !isModified ? "Written to RAM \u2014 not yet committed to flash" : undefined} className={cn("flex-1 h-6 px-1.5 text-left font-mono transition-colors flex items-center gap-1", readOnly ? "text-text-tertiary cursor-not-allowed" : outOfRange ? "text-status-warning border border-status-warning/60 bg-status-warning/5 cursor-pointer hover:bg-bg-tertiary" : isModified ? "text-status-warning border border-status-warning/40 cursor-pointer hover:bg-bg-tertiary" : isPendingRam ? "text-orange-400 border border-orange-500/40 cursor-pointer hover:bg-bg-tertiary" : "text-text-primary border border-transparent cursor-pointer hover:bg-bg-tertiary")}>
-                              <span>{hasEnum && meta!.values!.has(displayValue) ? `${displayValue}: ${meta!.values!.get(displayValue)}` : displayValue}</span>
+                              <span>{hasEnum && enumLabel ? `${formatParamValue(displayValue)}: ${enumLabel}` : formatParamValue(displayValue)}</span>
                               {outOfRange && <span className="text-[10px]" title={`Range: ${meta?.range?.min} .. ${meta?.range?.max}`}>!</span>}
                               {isPendingRam && !isModified && <span className="flex-shrink-0" title="RAM only, not flashed"><HardDrive size={10} className="text-orange-400" /></span>}
                             </button>
@@ -212,8 +186,8 @@ export function ParameterGrid({ parameters, modified, onModify, filter, showModi
                                 <button onClick={() => { const newVal = displayValue - meta.increment!; if (meta.range && newVal < meta.range.min) return; onModify(param.name, parseFloat(newVal.toFixed(10))); }} className="text-text-tertiary hover:text-text-primary p-0 leading-none cursor-pointer" title={`-${meta.increment}`}><ChevronDown size={10} /></button>
                               </div>
                             )}
-                            {differsFromDefault && !readOnly && <button onClick={() => onModify(param.name, meta!.defaultValue!)} title={`Reset to default: ${meta!.defaultValue}`} className="flex-shrink-0 p-0.5 text-text-tertiary hover:text-accent-primary transition-colors cursor-pointer"><RotateCw size={10} /></button>}
-                            {hasDefault && <span className="flex-shrink-0 text-[10px] text-text-tertiary font-mono" title={`Default: ${meta!.defaultValue}`}>d:{meta!.defaultValue}</span>}
+                            {differsFromDefault && !readOnly && <button onClick={() => onModify(param.name, defaultValue!)} title={`Reset to default: ${formatParamValue(defaultValue!)}`} className="flex-shrink-0 p-0.5 text-text-tertiary hover:text-accent-primary transition-colors cursor-pointer"><RotateCw size={10} /></button>}
+                            {hasDefault && <span className="flex-shrink-0 text-[10px] text-text-tertiary font-mono" title={`Default: ${formatParamValue(defaultValue!)}`}>d:{formatParamValue(defaultValue!)}</span>}
                           </>
                         )}
                       </div>
