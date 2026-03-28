@@ -32,6 +32,18 @@ interface PairingDialogProps {
   onPaired?: (deviceId: string, apiKey: string, url: string) => void;
 }
 
+type ClaimCodeMutation = ((args: { code: string }) => Promise<{
+  deviceId?: string;
+  name?: string;
+  apiKey?: string;
+  mdnsHost?: string;
+  localIp?: string;
+}>) | null;
+
+type PreGenerateMutation = ((args: Record<string, never>) => Promise<{
+  code: string;
+}>) | null;
+
 type PairingState =
   | "setup"    // generating code
   | "waiting"  // code generated, waiting for drone
@@ -48,6 +60,56 @@ export function PairingDialog({
   onClose,
   onPaired,
 }: PairingDialogProps) {
+  const convexAvailable = useConvexAvailable();
+  if (convexAvailable) {
+    return (
+      <PairingDialogWithConvex
+        open={open}
+        onClose={onClose}
+        onPaired={onPaired}
+      />
+    );
+  }
+  return (
+    <PairingDialogBase
+      open={open}
+      onClose={onClose}
+      onPaired={onPaired}
+      claimCode={null}
+      preGenerate={null}
+    />
+  );
+}
+
+function PairingDialogWithConvex({
+  open,
+  onClose,
+  onPaired,
+}: PairingDialogProps) {
+  const claimCode = useMutation(cmdPairingApi.claimPairingCode);
+  const preGenerate = useMutation(cmdPairingApi.preGenerateCode);
+
+  return (
+    <PairingDialogBase
+      open={open}
+      onClose={onClose}
+      onPaired={onPaired}
+      claimCode={claimCode as ClaimCodeMutation}
+      preGenerate={preGenerate as PreGenerateMutation}
+    />
+  );
+}
+
+function PairingDialogBase({
+  open,
+  onClose,
+  onPaired,
+  claimCode,
+  preGenerate,
+}: PairingDialogProps & {
+  claimCode: ClaimCodeMutation;
+  preGenerate: PreGenerateMutation;
+}) {
   const t = useTranslations("command");
   const [state, setState] = useState<PairingState>("setup");
   const [preGenCode, setPreGenCode] = useState<string | null>(null);
@@ -61,21 +123,10 @@ export function PairingDialog({
     apiKey: string;
     mdnsHost: string;
   } | null>(null);
-  const [initialDroneCount, setInitialDroneCount] = useState(0);
 
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const codeGeneratedAt = useRef<number>(0);
-
-  const convexAvailable = useConvexAvailable();
-  // convexAvailable is stable (env-var derived, never changes between renders)
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const claimCode = convexAvailable
-    ? useMutation(cmdPairingApi.claimPairingCode)
-    : null;
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const preGenerate = convexAvailable
-    ? useMutation(cmdPairingApi.preGenerateCode)
-    : null;
+  const initialDroneIdsRef = useRef<Set<string>>(new Set());
 
   const discoveredAgents = usePairingStore((s) => s.discoveredAgents);
   const pairedDrones = usePairingStore((s) => s.pairedDrones);
@@ -145,7 +196,9 @@ export function PairingDialog({
   // Auto-generate code when dialog opens
   useEffect(() => {
     if (!open) return;
-    setInitialDroneCount(pairedDrones.length);
+    initialDroneIdsRef.current = new Set(
+      pairedDrones.map((drone) => drone._id)
+    );
     generateCode();
     return () => stopCountdown();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -154,36 +207,41 @@ export function PairingDialog({
   // Watch for new drones appearing (zero-touch flow)
   useEffect(() => {
     if (state !== "waiting") return;
-    if (pairedDrones.length > initialDroneCount) {
-      const newDrone = pairedDrones[pairedDrones.length - 1];
-      if (newDrone) {
-        setPairedInfo({
-          deviceId: newDrone.deviceId,
-          name: newDrone.name,
-          apiKey: newDrone.apiKey,
-          mdnsHost: newDrone.mdnsHost || `${newDrone.deviceId}.local`,
-        });
-        setState("success");
-        setPairingInProgress(false);
-        stopCountdown();
+    const candidates = pairedDrones.filter(
+      (drone) => !initialDroneIdsRef.current.has(drone._id)
+    );
+    if (candidates.length === 0) return;
 
-        setTimeout(() => {
-          const host = newDrone.mdnsHost || newDrone.lastIp;
-          if (host) {
-            onPaired?.(
-              newDrone.deviceId,
-              newDrone.apiKey,
-              `http://${host}:8080`
-            );
-          }
-        }, 1500);
-      }
+    const newDrone = candidates.sort(
+      (a, b) => (b.pairedAt || 0) - (a.pairedAt || 0)
+    )[0];
+
+    if (newDrone) {
+      initialDroneIdsRef.current.add(newDrone._id);
+      setPairedInfo({
+        deviceId: newDrone.deviceId,
+        name: newDrone.name,
+        apiKey: newDrone.apiKey,
+        mdnsHost: newDrone.mdnsHost || `${newDrone.deviceId}.local`,
+      });
+      setState("success");
+      setPairingInProgress(false);
+      stopCountdown();
+
+      setTimeout(() => {
+        const host = newDrone.mdnsHost || newDrone.lastIp;
+        if (host) {
+          onPaired?.(
+            newDrone.deviceId,
+            newDrone.apiKey,
+            `http://${host}:8080`
+          );
+        }
+      }, 1500);
     }
   }, [
-    pairedDrones.length,
-    initialDroneCount,
-    state,
     pairedDrones,
+    state,
     onPaired,
     setPairingInProgress,
     stopCountdown,
@@ -291,8 +349,11 @@ export function PairingDialog({
             {t("pairNewDrone")}
           </h2>
           <button
+            type="button"
             onClick={onClose}
             className="p-1 text-text-tertiary hover:text-text-primary transition-colors"
+            title={t("close")}
+            aria-label={t("close")}
           >
             <X size={16} />
           </button>

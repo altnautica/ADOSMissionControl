@@ -45,9 +45,43 @@ interface AgentDisconnectedPageProps {
   onOpenPairing?: () => void;
 }
 
+type PreGenerateMutation = ((args: Record<string, never>) => Promise<{
+  code: string;
+}>) | null;
+
 export function AgentDisconnectedPage({
   onOpenPairing,
 }: AgentDisconnectedPageProps) {
+  const convexAvailable = useConvexAvailable();
+  if (convexAvailable) {
+    return <AgentDisconnectedPageWithConvex onOpenPairing={onOpenPairing} />;
+  }
+  return (
+    <AgentDisconnectedPageBase
+      onOpenPairing={onOpenPairing}
+      preGenerate={null}
+    />
+  );
+}
+
+function AgentDisconnectedPageWithConvex({
+  onOpenPairing,
+}: AgentDisconnectedPageProps) {
+  const preGenerate = useMutation(cmdPairingApi.preGenerateCode);
+  return (
+    <AgentDisconnectedPageBase
+      onOpenPairing={onOpenPairing}
+      preGenerate={preGenerate as PreGenerateMutation}
+    />
+  );
+}
+
+function AgentDisconnectedPageBase({
+  onOpenPairing,
+  preGenerate,
+}: AgentDisconnectedPageProps & {
+  preGenerate: PreGenerateMutation;
+}) {
   const t = useTranslations("disconnectedPage");
   const tc = useTranslations("command");
 
@@ -67,13 +101,6 @@ export function AgentDisconnectedPage({
 
   const expiryRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const codeGeneratedAt = useRef<number>(0);
-
-  const convexAvailable = useConvexAvailable();
-  // convexAvailable is stable (env-var derived, never changes between renders)
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const preGenerate = convexAvailable
-    ? useMutation(cmdPairingApi.preGenerateCode)
-    : null;
 
   const discoveredAgents = usePairingStore((s) => s.discoveredAgents);
 

@@ -36,6 +36,7 @@ export function WaypointList({
   onRemove,
   onReorder,
   onAddManual,
+  onInsertAt,
 }: WaypointListProps) {
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const dragIndexRef = useRef<number | null>(null);

@@ -11,6 +11,7 @@
 import { useEffect, useState } from "react";
 import { NextIntlClientProvider } from "next-intl";
 import { useSettingsStore } from "@/stores/settings-store";
+import enMessages from "../../../locales/en.json";
 
 interface LocaleProviderProps {
   children: React.ReactNode;
@@ -18,7 +19,9 @@ interface LocaleProviderProps {
 
 export function LocaleProvider({ children }: LocaleProviderProps) {
   const locale = useSettingsStore((s) => s.locale);
-  const [messages, setMessages] = useState<Record<string, unknown>>({});
+  const [messages, setMessages] = useState<Record<string, unknown>>(
+    enMessages as Record<string, unknown>
+  );
 
   useEffect(() => {
     // Dynamic import based on locale — only loads the needed bundle

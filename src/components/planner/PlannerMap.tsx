@@ -27,6 +27,7 @@ import {
   DRAWING_TOOLS, PLACEMENT_TOOLS, TOOL_CURSORS, TOOL_INSTRUCTIONS,
 } from "./planner-map-helpers";
 import { generateSplinePath } from "@/lib/spline-interpolation";
+import { JumpArrowOverlay } from "./JumpArrowOverlay";
 
 const MapContainer = dynamic(() => import("react-leaflet").then((m) => m.MapContainer), { ssr: false });
 const TileLayerSwitcher = dynamic(() => import("@/components/map/TileLayerSwitcher").then((m) => ({ default: m.TileLayerSwitcher })), { ssr: false });
@@ -189,6 +190,7 @@ export function PlannerMap({
         {splinePositions.length >= 2 && <Polyline positions={splinePositions} pathOptions={{ color: "#00e5ff", weight: 2.5, opacity: 0.9 }} />}
         {segments.map((seg) => <Marker key={seg.key} position={seg.position} icon={makeSegmentLabel(seg.label)} interactive={false} />)}
         <GcsMarker /><LocateControl /><PatternOverlay />
+        <JumpArrowOverlay waypoints={waypoints} />
         {waypoints.map((wp, i) => (
           <Marker key={wp.id} position={[wp.lat, wp.lon]}
             icon={wp.command === "SPLINE_WAYPOINT" ? makeSplineWaypointIcon(i, wp.id === selectedWaypointId) : makeWaypointIcon(i, wp.id === selectedWaypointId)}
