@@ -16,7 +16,6 @@ import { useDroneManager } from "@/stores/drone-manager";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useUiStore } from "@/stores/ui-store";
 import { getParamMetadata, firmwareTypeToVehicle, type ParamMetadata } from "@/lib/protocol/param-metadata";
-import { areParamValuesEqual } from "@/lib/param-value";
 import { cn } from "@/lib/utils";
 import { RefreshCw, ListTree } from "lucide-react";
 import type { ParameterValue } from "@/lib/protocol/types";
@@ -86,26 +85,18 @@ export function ParametersPanel() {
     if (!protocol) { setError(t("noDroneConnected")); return; }
     setLoading(true); setError(null); setProgress({ current: 0, total: 0 });
     setModified(new Map());
-    const receivedNames = new Set<string>();
-    let expectedTotal = 0;
+    const received: ParameterValue[] = [];
     const unsub = protocol.onParameter((param) => {
-      receivedNames.add(param.name);
-      if (param.count > 0) {
-        expectedTotal = expectedTotal > 0 ? Math.max(expectedTotal, param.count) : param.count;
-      }
-
-      const current = receivedNames.size;
-      const total = expectedTotal > 0 ? expectedTotal : current;
+      received.push(param);
       const now = Date.now();
-      if (now - lastProgressUpdate.current >= 100 || current >= total) {
+      if (now - lastProgressUpdate.current >= 100 || received.length === param.count) {
         lastProgressUpdate.current = now;
-        setProgress({ current: Math.min(current, total), total });
+        setProgress({ current: received.length, total: param.count || received.length });
       }
     });
     try {
       const params = await protocol.getAllParameters();
       params.sort((a, b) => collator.compare(a.name, b.name));
-      setProgress({ current: params.length, total: params.length });
       cachedParamList = params; cacheTimestamp = Date.now(); setParameters(params);
     } catch (err) { setError(err instanceof Error ? err.message : t("downloadFailed")); }
     finally { unsub(); setLoading(false); }
@@ -151,7 +142,7 @@ export function ParametersPanel() {
         const meta = metadata.get(p.name);
         if (meta?.defaultValue === undefined) return false;
         const current = modified.has(p.name) ? modified.get(p.name)! : p.value;
-        return !areParamValuesEqual(current, meta.defaultValue);
+        return current !== meta.defaultValue;
       });
     }
     if (showFavorites) result = result.filter((p) => favoriteParams.includes(p.name));
@@ -161,7 +152,7 @@ export function ParametersPanel() {
   const handleModify = useCallback((name: string, value: number) => {
     setModified((prev) => {
       const original = paramsByName.get(name);
-      if (original && areParamValuesEqual(original.value, value)) { const next = new Map(prev); next.delete(name); return next; }
+      if (original && original.value === value) { const next = new Map(prev); next.delete(name); return next; }
       return new Map(prev).set(name, value);
     });
   }, [paramsByName]);

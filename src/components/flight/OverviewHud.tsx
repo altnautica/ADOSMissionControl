@@ -1,7 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useCallback, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
+import { useRef, useEffect, useCallback } from "react";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useDroneStore } from "@/stores/drone-store";
 import { useMissionStore } from "@/stores/mission-store";
@@ -28,73 +27,6 @@ import {
 export function OverviewHud() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number>(0);
-  const popupRef = useRef<Window | null>(null);
-  const [isDetached, setIsDetached] = useState(false);
-  const [popupContainer, setPopupContainer] = useState<HTMLDivElement | null>(null);
-
-  const reattach = useCallback(() => {
-    setIsDetached(false);
-    setPopupContainer(null);
-
-    const popup = popupRef.current;
-    if (popup && !popup.closed) {
-      popup.close();
-    }
-    popupRef.current = null;
-  }, []);
-
-  const detach = useCallback(() => {
-    if (typeof window === "undefined") return;
-
-    const existing = popupRef.current;
-    if (existing && !existing.closed) {
-      existing.focus();
-      return;
-    }
-
-    const popup = window.open(
-      "",
-      "overview-hud-detached",
-      "width=980,height=640,resizable=yes,scrollbars=no"
-    );
-    if (!popup) return;
-
-    popup.document.title = "HUD";
-    popup.document.body.innerHTML = "";
-    popup.document.body.style.margin = "0";
-    popup.document.body.style.background = "#0a1428";
-    popup.document.body.style.overflow = "hidden";
-
-    // Mirror current stylesheets so Tailwind/util classes render in the popup.
-    const styleNodes = Array.from(document.querySelectorAll("style, link[rel='stylesheet']"));
-    for (const node of styleNodes) {
-      popup.document.head.appendChild(node.cloneNode(true));
-    }
-
-    const container = popup.document.createElement("div");
-    container.style.width = "100vw";
-    container.style.height = "100vh";
-    popup.document.body.appendChild(container);
-
-    popup.addEventListener("beforeunload", () => {
-      setIsDetached(false);
-      setPopupContainer(null);
-      popupRef.current = null;
-    });
-
-    popupRef.current = popup;
-    setPopupContainer(container);
-    setIsDetached(true);
-    popup.focus();
-  }, []);
-
-  const handleToggleDetach = useCallback(() => {
-    if (isDetached) {
-      reattach();
-      return;
-    }
-    detach();
-  }, [detach, isDetached, reattach]);
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -171,40 +103,15 @@ export function OverviewHud() {
     rafRef.current = requestAnimationFrame(draw);
     return () => {
       cancelAnimationFrame(rafRef.current);
-      const popup = popupRef.current;
-      if (popup && !popup.closed) popup.close();
-      popupRef.current = null;
     };
   }, [draw]);
 
-  const hudContent = useMemo(() => (
-    <div
-      className="relative w-full h-full border border-border-default overflow-hidden bg-[#0a1428]"
-      onDoubleClick={handleToggleDetach}
-      title={isDetached ? "Double-click to reattach" : "Double-click to detach into a new window"}
-    >
+  return (
+    <div className="relative w-full h-full border border-border-default overflow-hidden bg-[#0a1428]">
       <span className="absolute top-2 left-2 z-10 text-[9px] font-mono text-text-tertiary">
         Attitude
       </span>
-      <span className="absolute top-2 right-2 z-10 text-[9px] font-mono text-text-tertiary">
-        {isDetached ? "Detached" : "Double-click to detach"}
-      </span>
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
     </div>
-  ), [handleToggleDetach, isDetached]);
-
-  if (isDetached && popupContainer) {
-    return (
-      <>
-        <div className="relative w-full h-full border border-border-default overflow-hidden bg-bg-secondary">
-          <div className="absolute inset-0 flex items-center justify-center text-xs text-text-tertiary font-mono">
-            HUD detached to separate window. Double-click HUD there or close that window to reattach.
-          </div>
-        </div>
-        {createPortal(hudContent, popupContainer)}
-      </>
-    );
-  }
-
-  return hudContent;
+  );
 }

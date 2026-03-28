@@ -5,8 +5,6 @@
  * @license GPL-3.0-only
  */
 
-import { areParamValuesEqual } from "@/lib/param-value";
-
 export interface ParsedParam {
   name: string;
   value: number;
@@ -54,7 +52,7 @@ export function compareParams(
     const fcValue = fcParams.get(fp.name);
     if (fcValue === undefined) {
       diffs.push({ name: fp.name, fileValue: fp.value, fcValue: null, status: "added" });
-    } else if (!areParamValuesEqual(fcValue, fp.value)) {
+    } else if (fcValue !== fp.value) {
       diffs.push({ name: fp.name, fileValue: fp.value, fcValue, status: "changed" });
     } else {
       diffs.push({ name: fp.name, fileValue: fp.value, fcValue, status: "unchanged" });

@@ -13,19 +13,10 @@ export function CalibrationLog({
   logEntries: CalibrationLogEntry[];
   onClear: () => void;
 }) {
-  const logContainerRef = useRef<HTMLDivElement>(null);
+  const logEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const logContainer = logContainerRef.current;
-    if (!logContainer) return;
-
-    const distanceFromBottom =
-      logContainer.scrollHeight - logContainer.scrollTop - logContainer.clientHeight;
-    const shouldStickToBottom = distanceFromBottom <= 24;
-
-    if (shouldStickToBottom) {
-      logContainer.scrollTop = logContainer.scrollHeight;
-    }
+    logEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [logEntries]);
 
   return (
@@ -43,7 +34,7 @@ export function CalibrationLog({
             <Trash2 size={12} />
           </Button>
         </div>
-        <div ref={logContainerRef} className="h-[400px] overflow-y-auto overscroll-contain p-2 font-mono text-[10px] space-y-0.5">
+        <div className="h-[400px] overflow-y-auto p-2 font-mono text-[10px] space-y-0.5">
           {logEntries.length === 0 ? (
             <p className="text-text-tertiary italic">No calibration messages yet</p>
           ) : (
@@ -58,6 +49,7 @@ export function CalibrationLog({
               </div>
             ))
           )}
+          <div ref={logEndRef} />
         </div>
       </div>
     </div>

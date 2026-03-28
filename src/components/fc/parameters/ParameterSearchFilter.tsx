@@ -70,7 +70,7 @@ export function ParameterSearchFilter({
   onRefresh,
 }: ParameterSearchFilterProps) {
   const progressPercent = progress.total > 0
-    ? Math.min(100, Math.max(0, Math.round((progress.current / progress.total) * 100)))
+    ? Math.round((progress.current / progress.total) * 100)
     : 0;
 
   return (
@@ -174,11 +174,9 @@ export function ParameterSearchFilter({
           <div className="flex items-center gap-3">
             <RefreshCw size={12} className="text-accent-primary animate-spin flex-shrink-0" />
             <span className="text-xs text-text-secondary">Downloading parameters... {progress.current}/{progress.total}</span>
-            <progress
-              className="flex-1 h-1.5"
-              max={Math.max(progress.total, 1)}
-              value={Math.min(progress.current, Math.max(progress.total, 1))}
-            />
+            <div className="flex-1 h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
+              <div className="h-full bg-accent-primary transition-all duration-200" style={{ width: `${progressPercent}%` }} />
+            </div>
             <span className="text-xs text-text-tertiary font-mono">{progressPercent}%</span>
           </div>
         </div>
@@ -189,11 +187,9 @@ export function ParameterSearchFilter({
           <div className="flex items-center gap-3">
             <PenLine size={12} className="text-status-warning flex-shrink-0" />
             <span className="text-xs text-text-secondary">Writing parameters... {writeProgress.current}/{writeProgress.total}</span>
-            <progress
-              className="flex-1 h-1.5"
-              max={Math.max(writeProgress.total, 1)}
-              value={Math.min(writeProgress.current, Math.max(writeProgress.total, 1))}
-            />
+            <div className="flex-1 h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
+              <div className="h-full bg-status-warning transition-all duration-200" style={{ width: `${Math.round((writeProgress.current / writeProgress.total) * 100)}%` }} />
+            </div>
             <span className="text-xs text-text-tertiary font-mono">{Math.round((writeProgress.current / writeProgress.total) * 100)}%</span>
           </div>
         </div>
