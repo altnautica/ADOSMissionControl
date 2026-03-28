@@ -111,6 +111,7 @@ function PairingDialogBase({
   preGenerate: PreGenerateMutation;
 }) {
   const t = useTranslations("command");
+  const tCommon = useTranslations("common");
   const [state, setState] = useState<PairingState>("setup");
   const [preGenCode, setPreGenCode] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
@@ -352,8 +353,8 @@ function PairingDialogBase({
             type="button"
             onClick={onClose}
             className="p-1 text-text-tertiary hover:text-text-primary transition-colors"
-            title={t("close")}
-            aria-label={t("close")}
+            title={tCommon("close")}
+            aria-label={tCommon("close")}
           >
             <X size={16} />
           </button>
