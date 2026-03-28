@@ -24,12 +24,16 @@ const BAUD_RATES = [
 
 export function SerialPanel({
   onConnected,
+  baudRate,
+  onBaudRateChange,
 }: {
   onConnected?: (name: string, type: "serial", baudRate: number) => void;
+  baudRate?: number;
+  onBaudRateChange?: (baudRate: number) => void;
 }) {
   const t = useTranslations("connect");
   const [mounted, setMounted] = useState(false);
-  const [baudRate, setBaudRate] = useState("115200");
+  const [localBaudRate, setLocalBaudRate] = useState("115200");
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [knownPorts, setKnownPorts] = useState<PortInfo[]>([]);
@@ -37,6 +41,16 @@ export function SerialPanel({
   const [hotPlugEvent, setHotPlugEvent] = useState<string | null>(null);
   const addDrone = useDroneManager((s) => s.addDrone);
   const { toast } = useToast();
+
+  const selectedBaudRate = String(baudRate ?? parseInt(localBaudRate, 10));
+
+  const handleBaudRateChange = (value: string) => {
+    setLocalBaudRate(value);
+    const parsed = parseInt(value, 10);
+    if (!Number.isNaN(parsed)) {
+      onBaudRateChange?.(parsed);
+    }
+  };
 
   const refreshPorts = useCallback(async () => {
     const ports = await serialPortManager.getKnownPorts();
@@ -93,7 +107,7 @@ export function SerialPanel({
 
     try {
       const transport = new WebSerialTransport();
-      const baud = parseInt(baudRate);
+      const baud = parseInt(selectedBaudRate, 10);
       const portIdx = parseInt(selectedPortIndex);
 
       if (portIdx >= 0 && portIdx < knownPorts.length) {
@@ -165,8 +179,8 @@ export function SerialPanel({
             <Select
               label={t("baudRate")}
               options={BAUD_RATES}
-              value={baudRate}
-              onChange={setBaudRate}
+              value={selectedBaudRate}
+              onChange={handleBaudRateChange}
             />
           </div>
         </div>

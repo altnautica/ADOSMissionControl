@@ -40,6 +40,8 @@ export function ConnectDialog() {
   const [tab, setTab] = useState("serial");
   const [presetsKey, setPresetsKey] = useState(0);
   const [dfuDetected, setDfuDetected] = useState(false);
+  const [serialBaudRate, setSerialBaudRate] = useState(115200);
+  const [websocketUrl, setWebsocketUrl] = useState("ws://localhost:14550");
 
   // DFU hot-plug detection — only when dialog is open
   useEffect(() => {
@@ -97,7 +99,7 @@ export function ConnectDialog() {
     handleConnected(name, "websocket", url);
   }
 
-  function handleSavePreset() {
+  async function handleSavePreset() {
     const presetName = prompt("Preset name:");
     if (!presetName) return;
 
@@ -107,16 +109,22 @@ export function ConnectDialog() {
       type: tab as "serial" | "websocket",
       config:
         tab === "serial"
-          ? { baudRate: 115200 }
-          : { url: "ws://localhost:14550" },
+          ? { baudRate: serialBaudRate }
+          : { url: websocketUrl },
       createdAt: Date.now(),
     };
-    void savePreset(preset);
+    await savePreset(preset);
     setPresetsKey((k) => k + 1);
   }
 
   function handleApplyPreset(preset: ConnectionPreset) {
     setTab(preset.type);
+    if (preset.type === "serial" && preset.config.baudRate) {
+      setSerialBaudRate(preset.config.baudRate);
+    }
+    if (preset.type === "websocket" && preset.config.url) {
+      setWebsocketUrl(preset.config.url);
+    }
   }
 
   function handleGoToFirmware() {
@@ -186,9 +194,17 @@ export function ConnectDialog() {
           </div>
           <div className="p-4">
             {tab === "serial" ? (
-              <SerialPanel onConnected={handleSerialConnected} />
+              <SerialPanel
+                onConnected={handleSerialConnected}
+                baudRate={serialBaudRate}
+                onBaudRateChange={setSerialBaudRate}
+              />
             ) : (
-              <WebSocketPanel onConnected={handleWsConnected} />
+              <WebSocketPanel
+                onConnected={handleWsConnected}
+                url={websocketUrl}
+                onUrlChange={setWebsocketUrl}
+              />
             )}
           </div>
         </div>
