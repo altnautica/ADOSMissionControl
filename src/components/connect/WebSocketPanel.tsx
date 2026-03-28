@@ -25,20 +25,31 @@ function isSitlUrl(url: string): boolean {
 
 export function WebSocketPanel({
   onConnected,
+  url,
+  onUrlChange,
 }: {
   onConnected?: (name: string, type: "websocket", url: string) => void;
+  url?: string;
+  onUrlChange?: (url: string) => void;
 }) {
-  const [url, setUrl] = useState("ws://localhost:14550");
+  const [localUrl, setLocalUrl] = useState("ws://localhost:14550");
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
   const addDrone = useDroneManager((s) => s.addDrone);
 
-  const showPresetPicker = useMemo(() => isSitlUrl(url), [url]);
+  const effectiveUrl = url ?? localUrl;
+
+  const handleUrlChange = (next: string) => {
+    setLocalUrl(next);
+    onUrlChange?.(next);
+  };
+
+  const showPresetPicker = useMemo(() => isSitlUrl(effectiveUrl), [effectiveUrl]);
 
   async function handleConnect() {
     setError(null);
-    const trimmed = url.trim();
+    const trimmed = effectiveUrl.trim();
 
     if (!trimmed) {
       setError("URL is required");
@@ -90,7 +101,7 @@ export function WebSocketPanel({
         label="WebSocket URL"
         value={url}
         onChange={(e) => {
-          setUrl(e.target.value);
+          handleUrlChange(e.target.value);
           setError(null);
         }}
         placeholder="ws://localhost:14550"
@@ -101,9 +112,9 @@ export function WebSocketPanel({
         {QUICK_PRESETS.map((preset) => (
           <button
             key={preset.url}
-            onClick={() => setUrl(preset.url)}
+            onClick={() => handleUrlChange(preset.url)}
             className={`px-2 py-1 text-[10px] font-mono border transition-colors cursor-pointer ${
-              url === preset.url
+              effectiveUrl === preset.url
                 ? "border-accent-primary text-accent-primary bg-accent-primary/10"
                 : "border-border-default text-text-tertiary hover:text-text-secondary hover:border-border-strong"
             }`}
