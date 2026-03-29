@@ -13,7 +13,7 @@ import {
   MousePointer2, MapPin, Pentagon, Circle, Ruler,
   Undo2, Redo2, Trash2, HelpCircle, X,
   ArrowUpFromLine, ArrowDownToLine, CircleDot, Crosshair, Flag,
-  Layers,
+  Layers, CloudDownload,
 } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -29,6 +29,8 @@ interface MapToolbarProps {
   onClearAll: () => void;
   onToggleOverlays?: () => void;
   overlayPanelOpen?: boolean;
+  onToggleDownload?: () => void;
+  downloadPanelOpen?: boolean;
 }
 
 type ToolDef = { id: PlannerTool; icon: typeof MapPin; label: string; shortcut?: string };
@@ -96,6 +98,8 @@ export function MapToolbar({
   onClearAll,
   onToggleOverlays,
   overlayPanelOpen,
+  onToggleDownload,
+  downloadPanelOpen,
 }: MapToolbarProps) {
   const t = useTranslations("planner");
   return (
@@ -148,6 +152,16 @@ export function MapToolbar({
           tooltip="KML Overlays (L)"
         >
           <Layers size={16} />
+        </ToolButton>
+      )}
+
+      {onToggleDownload && (
+        <ToolButton
+          active={downloadPanelOpen}
+          onClick={onToggleDownload}
+          tooltip="Download Tiles for Offline"
+        >
+          <CloudDownload size={16} />
         </ToolButton>
       )}
 

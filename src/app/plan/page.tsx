@@ -13,6 +13,7 @@ import { ChevronLeft } from "lucide-react";
 import { MapToolbar } from "@/components/planner/MapToolbar";
 import { MapContextMenu } from "@/components/planner/MapContextMenu";
 import { OverlayPanel } from "@/components/planner/OverlayPanel";
+import { DownloadAreaPanel } from "@/components/planner/DownloadAreaPanel";
 import { MissionStatsBar } from "@/components/planner/MissionStatsBar";
 import { FlightPlanLibrary } from "@/components/library/FlightPlanLibrary";
 import { UnsavedChangesDialog } from "@/components/library/UnsavedChangesDialog";

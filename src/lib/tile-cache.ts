@@ -122,6 +122,45 @@ export async function cacheTile(url: string, blob: Blob): Promise<void> {
   }
 }
 
+/** Get cache statistics: tile count and total size in bytes. */
+export async function getCacheStats(): Promise<{ tileCount: number; totalBytes: number }> {
+  try {
+    const db = await openDB();
+    return new Promise((resolve) => {
+      const tx = db.transaction(STORE_NAME, "readonly");
+      const store = tx.objectStore(STORE_NAME);
+      const req = store.getAll();
+      req.onsuccess = () => {
+        const entries = req.result as TileEntry[];
+        const totalBytes = entries.reduce((sum, e) => sum + e.size, 0);
+        resolve({ tileCount: entries.length, totalBytes });
+      };
+      req.onerror = () => resolve({ tileCount: 0, totalBytes: 0 });
+    });
+  } catch {
+    return { tileCount: 0, totalBytes: 0 };
+  }
+}
+
+/** Delete all cached tiles. */
+export async function clearAllTiles(): Promise<void> {
+  try {
+    const db = await openDB();
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, "readwrite");
+      const store = tx.objectStore(STORE_NAME);
+      store.clear();
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  } catch {
+    // Silently fail
+  }
+}
+
+/** Maximum cache size constant (exported for UI display). */
+export const MAX_CACHE_SIZE = MAX_CACHE_BYTES;
+
 async function evictIfNeeded(): Promise<void> {
   const db = await openDB();
 
