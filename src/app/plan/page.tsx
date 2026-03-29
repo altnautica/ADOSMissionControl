@@ -43,6 +43,8 @@ export default function MissionPlannerPage() {
   const [terrainOpen, setTerrainOpen] = useState(false);
   const [overlayPanelOpen, setOverlayPanelOpen] = useState(false);
   const toggleOverlayPanel = useCallback(() => setOverlayPanelOpen((v) => !v), []);
+  const [downloadPanelOpen, setDownloadPanelOpen] = useState(false);
+  const toggleDownloadPanel = useCallback(() => setDownloadPanelOpen((v) => !v), []);
   const togglePattern = useCallback(() => setPatternSectionOpen(!patternOpen), [patternOpen, setPatternSectionOpen]);
   const toggleValidation = useCallback(() => setValidationOpen((v) => !v), []);
   const toggleTerrain = useCallback(() => setTerrainOpen((v) => !v), []);
@@ -71,8 +73,22 @@ export default function MissionPlannerPage() {
             <MapToolbar activeTool={p.activeTool} onToolChange={p.setActiveTool}
               canUndo={p.undoStack.length > 0} canRedo={p.redoStack.length > 0}
               onUndo={p.undo} onRedo={p.redo} onClearAll={p.handleClearAll}
-              onToggleOverlays={toggleOverlayPanel} overlayPanelOpen={overlayPanelOpen} />
+              onToggleOverlays={toggleOverlayPanel} overlayPanelOpen={overlayPanelOpen}
+              onToggleDownload={toggleDownloadPanel} downloadPanelOpen={downloadPanelOpen} />
             {overlayPanelOpen && <OverlayPanel onClose={() => setOverlayPanelOpen(false)} />}
+            {downloadPanelOpen && (
+              <DownloadAreaPanel
+                bounds={{
+                  north: 13.0,
+                  south: 12.9,
+                  east: 77.7,
+                  west: 77.5,
+                }}
+                currentZoom={13}
+                currentProvider="dark"
+                onClose={() => setDownloadPanelOpen(false)}
+              />
+            )}
             <MissionStatsBar waypoints={p.waypoints} defaultSpeed={p.defaultSpeed} />
             <AltitudeProfile waypoints={p.waypoints} collapsed={p.altProfileCollapsed} onToggle={p.toggleAltProfile}
               selectedWaypointId={p.selectedWaypointId}
