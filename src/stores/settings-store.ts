@@ -14,12 +14,22 @@ import { isDemoMode } from "@/lib/utils";
 
 export type MapTileSource = "osm" | "satellite" | "terrain" | "dark";
 export type UnitSystem = "metric" | "imperial";
-export type ThemeMode = "dark" | "light";
+export type ThemeMode = "dark" | "light" | "solarized-dark" | "solarized-light";
 export type AccentColor = "blue" | "green" | "amber" | "red" | "lime";
 export type { Jurisdiction };
 
 export type ParamColumnId = "index" | "name" | "description" | "value" | "range" | "units" | "type";
 export type ParamColumnVisibility = Record<ParamColumnId, boolean>;
+
+export interface ParameterFilterPreset {
+  id: string;
+  name: string;
+  filter: string;
+  category: string | null;
+  showModifiedOnly: boolean;
+  showNonDefault: boolean;
+  showFavorites: boolean;
+}
 
 export const DEFAULT_PARAM_COLUMNS: ParamColumnVisibility = {
   index: true,
@@ -58,6 +68,8 @@ interface SettingsStoreState {
   audioVolume: number;
   /** User-favorited FC parameter names. */
   favoriteParams: string[];
+  /** Saved FC parameter filter presets. */
+  paramFilterPresets: ParameterFilterPreset[];
   /** Per-alert-category toggles. */
   alertLowBattery: boolean;
   alertGpsLost: boolean;
@@ -105,9 +117,37 @@ interface SettingsStoreState {
   themeMode: ThemeMode;
   /** Global accent color preset. */
   accentColor: AccentColor;
+  /** Guidance HDG line settings. */
+  guidanceHdgLength: number;
+  guidanceHdgWidth: number;
+  guidanceHdgLineType: "solid" | "dashed" | "dotted";
+  guidanceHdgColor: string;
+  /** Guidance Track-WP line settings. */
+  guidanceTrackWpLength: number;
+  guidanceTrackWpWidth: number;
+  guidanceTrackWpLineType: "solid" | "dashed" | "dotted";
+  guidanceTrackWpColor: string;
+  /** Guidance TGT HDG line settings. */
+  guidanceTgtHdgLength: number;
+  guidanceTgtHdgWidth: number;
+  guidanceTgtHdgLineType: "solid" | "dashed" | "dotted";
+  guidanceTgtHdgColor: string;
+
   setLocale: (locale: string) => void;
   setThemeMode: (mode: ThemeMode) => void;
   setAccentColor: (accent: AccentColor) => void;
+  setGuidanceHdgLength: (length: number) => void;
+  setGuidanceHdgWidth: (width: number) => void;
+  setGuidanceHdgLineType: (lineType: "solid" | "dashed" | "dotted") => void;
+  setGuidanceHdgColor: (color: string) => void;
+  setGuidanceTrackWpLength: (length: number) => void;
+  setGuidanceTrackWpWidth: (width: number) => void;
+  setGuidanceTrackWpLineType: (lineType: "solid" | "dashed" | "dotted") => void;
+  setGuidanceTrackWpColor: (color: string) => void;
+  setGuidanceTgtHdgLength: (length: number) => void;
+  setGuidanceTgtHdgWidth: (width: number) => void;
+  setGuidanceTgtHdgLineType: (lineType: "solid" | "dashed" | "dotted") => void;
+  setGuidanceTgtHdgColor: (color: string) => void;
 
   setMapTileSource: (source: MapTileSource) => void;
   setUnits: (units: UnitSystem) => void;
@@ -121,6 +161,8 @@ interface SettingsStoreState {
   setAudioVolume: (volume: number) => void;
   toggleFavorite: (name: string) => void;
   isFavorite: (name: string) => boolean;
+  saveParamFilterPreset: (preset: ParameterFilterPreset) => void;
+  removeParamFilterPreset: (id: string) => void;
   setAlert: (key: "alertLowBattery" | "alertGpsLost" | "alertRcLost" | "alertArmDisarm" | "alertWaypoint" | "alertFailsafe", enabled: boolean) => void;
   setBatteryWarningPct: (pct: number) => void;
   setBatteryCriticalPct: (pct: number) => void;
@@ -158,6 +200,7 @@ export const useSettingsStore = create<SettingsStoreState>()(
       audioEnabled: false,
       audioVolume: 0.7,
       favoriteParams: [],
+      paramFilterPresets: [],
       alertLowBattery: true,
       alertGpsLost: true,
       alertRcLost: true,
@@ -184,6 +227,18 @@ export const useSettingsStore = create<SettingsStoreState>()(
       locale: 'en',
       themeMode: "dark",
       accentColor: "blue",
+      guidanceHdgLength: 80,
+      guidanceHdgWidth: 2,
+      guidanceHdgLineType: "solid",
+      guidanceHdgColor: "#FF6B35",
+      guidanceTrackWpLength: 100,
+      guidanceTrackWpWidth: 2,
+      guidanceTrackWpLineType: "dashed",
+      guidanceTrackWpColor: "#FFA500",
+      guidanceTgtHdgLength: 100,
+      guidanceTgtHdgWidth: 2,
+      guidanceTgtHdgLineType: "dashed",
+      guidanceTgtHdgColor: "#22c55e",
 
       setMapTileSource: (mapTileSource) => set({ mapTileSource }),
       setUnits: (units) => set({ units }),
@@ -203,6 +258,18 @@ export const useSettingsStore = create<SettingsStoreState>()(
             : [...s.favoriteParams, name],
         })),
       isFavorite: (name) => get().favoriteParams.includes(name),
+      saveParamFilterPreset: (preset) =>
+        set((s) => {
+          const existingIndex = s.paramFilterPresets.findIndex((p) => p.id === preset.id);
+          if (existingIndex >= 0) {
+            const next = [...s.paramFilterPresets];
+            next[existingIndex] = preset;
+            return { paramFilterPresets: next };
+          }
+          return { paramFilterPresets: [...s.paramFilterPresets, preset] };
+        }),
+      removeParamFilterPreset: (id) =>
+        set((s) => ({ paramFilterPresets: s.paramFilterPresets.filter((p) => p.id !== id) })),
       setAlert: (key, enabled) => set({ [key]: enabled }),
       setBatteryWarningPct: (batteryWarningPct) => set({ batteryWarningPct }),
       setBatteryCriticalPct: (batteryCriticalPct) => set({ batteryCriticalPct }),
@@ -232,11 +299,23 @@ export const useSettingsStore = create<SettingsStoreState>()(
       setLocale: (locale) => set({ locale }),
       setThemeMode: (themeMode) => set({ themeMode }),
       setAccentColor: (accentColor) => set({ accentColor }),
+      setGuidanceHdgLength: (guidanceHdgLength) => set({ guidanceHdgLength }),
+      setGuidanceHdgWidth: (guidanceHdgWidth) => set({ guidanceHdgWidth }),
+      setGuidanceHdgLineType: (guidanceHdgLineType) => set({ guidanceHdgLineType }),
+      setGuidanceHdgColor: (guidanceHdgColor) => set({ guidanceHdgColor }),
+      setGuidanceTrackWpLength: (guidanceTrackWpLength) => set({ guidanceTrackWpLength }),
+      setGuidanceTrackWpWidth: (guidanceTrackWpWidth) => set({ guidanceTrackWpWidth }),
+      setGuidanceTrackWpLineType: (guidanceTrackWpLineType) => set({ guidanceTrackWpLineType }),
+      setGuidanceTrackWpColor: (guidanceTrackWpColor) => set({ guidanceTrackWpColor }),
+      setGuidanceTgtHdgLength: (guidanceTgtHdgLength) => set({ guidanceTgtHdgLength }),
+      setGuidanceTgtHdgWidth: (guidanceTgtHdgWidth) => set({ guidanceTgtHdgWidth }),
+      setGuidanceTgtHdgLineType: (guidanceTgtHdgLineType) => set({ guidanceTgtHdgLineType }),
+      setGuidanceTgtHdgColor: (guidanceTgtHdgColor) => set({ guidanceTgtHdgColor }),
     }),
     {
       name: "altcmd:settings",
       storage: createJSONStorage(indexedDBStorage.storage),
-      version: 21,
+      version: 23,
       migrate: (persisted, version) => {
         const state = persisted as Record<string, unknown>;
         if (version < 2) {
@@ -332,6 +411,25 @@ export const useSettingsStore = create<SettingsStoreState>()(
         if (version < 21) {
           // v21: global accent preset
           state.accentColor = "blue";
+        }
+        if (version < 22) {
+          // v22: saved parameter filter presets
+          state.paramFilterPresets = [];
+        }
+        if (version < 23) {
+          // v23: guidance line settings (HDG, Track-WP, TGT HDG)
+          state.guidanceHdgLength = 80;
+          state.guidanceHdgWidth = 2;
+          state.guidanceHdgLineType = "solid";
+          state.guidanceHdgColor = "#FF6B35";
+          state.guidanceTrackWpLength = 100;
+          state.guidanceTrackWpWidth = 2;
+          state.guidanceTrackWpLineType = "dashed";
+          state.guidanceTrackWpColor = "#FFA500";
+          state.guidanceTgtHdgLength = 100;
+          state.guidanceTgtHdgWidth = 2;
+          state.guidanceTgtHdgLineType = "dashed";
+          state.guidanceTgtHdgColor = "#22c55e";
         }
         return state as unknown as SettingsStoreState;
       },

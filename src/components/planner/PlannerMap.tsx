@@ -19,6 +19,7 @@ import { useDefaultCenter } from "@/hooks/use-default-center";
 import { DrawingManager } from "@/lib/drawing/drawing-manager";
 import { useDrawingStore } from "@/stores/drawing-store";
 import { usePlannerStore } from "@/stores/planner-store";
+import { useSettingsStore } from "@/stores/settings-store";
 import { polygonArea } from "@/lib/drawing/geo-utils";
 import { randomId } from "@/lib/utils";
 import L from "leaflet";
@@ -28,15 +29,52 @@ import {
 } from "./planner-map-helpers";
 import { generateSplinePath } from "@/lib/spline-interpolation";
 import { JumpArrowOverlay } from "./JumpArrowOverlay";
+import { useTelemetryLatest } from "@/hooks/use-telemetry-latest";
+import { useMissionStore } from "@/stores/mission-store";
 
 const MapContainer = dynamic(() => import("react-leaflet").then((m) => m.MapContainer), { ssr: false });
 const TileLayerSwitcher = dynamic(() => import("@/components/map/TileLayerSwitcher").then((m) => ({ default: m.TileLayerSwitcher })), { ssr: false });
 const Polyline = dynamic(() => import("react-leaflet").then((m) => m.Polyline), { ssr: false });
 const Marker = dynamic(() => import("react-leaflet").then((m) => m.Marker), { ssr: false });
 const GcsMarker = dynamic(() => import("@/components/map/GcsMarker").then((m) => ({ default: m.GcsMarker })), { ssr: false });
+const GuidanceSettingsMenu = dynamic(() => import("@/components/shared/GuidanceSettingsMenu").then((m) => ({ default: m.GuidanceSettingsMenu })), { ssr: false });
 const PatternOverlay = dynamic(() => import("@/components/planner/PatternOverlay").then((m) => ({ default: m.PatternOverlay })), { ssr: false });
 const LocateControl = dynamic(() => import("@/components/map/LocateControl").then((m) => ({ default: m.LocateControl })), { ssr: false });
 const KmlOverlayLayers = dynamic(() => import("@/components/planner/KmlOverlayLayers").then((m) => ({ default: m.KmlOverlayLayers })), { ssr: false });
+
+/** Project a lat/lon by distance (m) at a given bearing (deg). */
+function projectByBearing(lat: number, lon: number, bearingDeg: number, distanceM: number): [number, number] {
+  const R = 6371000;
+  const brng = (bearingDeg * Math.PI) / 180;
+  const lat1 = (lat * Math.PI) / 180;
+  const lon1 = (lon * Math.PI) / 180;
+  const dByR = distanceM / R;
+
+  const lat2 = Math.asin(
+    Math.sin(lat1) * Math.cos(dByR) +
+    Math.cos(lat1) * Math.sin(dByR) * Math.cos(brng),
+  );
+  const lon2 = lon1 + Math.atan2(
+    Math.sin(brng) * Math.sin(dByR) * Math.cos(lat1),
+    Math.cos(dByR) - Math.sin(lat1) * Math.sin(lat2),
+  );
+
+  return [(lat2 * 180) / Math.PI, ((lon2 * 180) / Math.PI + 540) % 360 - 180];
+}
+
+/** Convert line type setting to Leaflet dashArray value. */
+function getLineTypeDashArray(lineType: "solid" | "dashed" | "dotted"): string | undefined {
+  switch (lineType) {
+    case "solid":
+      return undefined;
+    case "dashed":
+      return "6 4";
+    case "dotted":
+      return "2 2";
+    default:
+      return undefined;
+  }
+}
 
 interface PlannerMapProps {
   waypoints: Waypoint[];
@@ -69,8 +107,96 @@ export function PlannerMap({
   const setActiveTool = usePlannerStore((s) => s.setActiveTool);
   const fitRequestTs = usePlannerStore((s) => s.fitRequestTs);
   const clearFitRequest = usePlannerStore((s) => s.clearFitRequest);
+  const pos = useTelemetryLatest("position");
+  const gps = useTelemetryLatest("gps");
+  const nav = useTelemetryLatest("navController");
+  const currentWaypoint = useMissionStore((s) => s.currentWaypoint);
   const defaultCenter = useDefaultCenter();
   const isDrawingTool = DRAWING_TOOLS.includes(activeTool);
+
+  // Guidance settings
+  const guidanceHdgLength = useSettingsStore((s) => s.guidanceHdgLength);
+  const guidanceHdgWidth = useSettingsStore((s) => s.guidanceHdgWidth);
+  const guidanceHdgLineType = useSettingsStore((s) => s.guidanceHdgLineType);
+  const guidanceHdgColor = useSettingsStore((s) => s.guidanceHdgColor);
+
+  const guidanceTrackWpLength = useSettingsStore((s) => s.guidanceTrackWpLength);
+  const guidanceTrackWpWidth = useSettingsStore((s) => s.guidanceTrackWpWidth);
+  const guidanceTrackWpLineType = useSettingsStore((s) => s.guidanceTrackWpLineType);
+  const guidanceTrackWpColor = useSettingsStore((s) => s.guidanceTrackWpColor);
+
+  const guidanceTgtHdgLength = useSettingsStore((s) => s.guidanceTgtHdgLength);
+  const guidanceTgtHdgWidth = useSettingsStore((s) => s.guidanceTgtHdgWidth);
+  const guidanceTgtHdgLineType = useSettingsStore((s) => s.guidanceTgtHdgLineType);
+  const guidanceTgtHdgColor = useSettingsStore((s) => s.guidanceTgtHdgColor);
+
+  const dronePos: [number, number] | null =
+    pos && pos.lat !== 0 && pos.lon !== 0 ? [pos.lat, pos.lon] : null;
+
+  const gpsFixLabel = useMemo(() => {
+    switch (gps?.fixType ?? 0) {
+      case 0:
+      case 1:
+        return "No Fix";
+      case 2:
+        return "2D Fix";
+      case 3:
+        return "3D Fix";
+      case 4:
+        return "DGPS";
+      case 5:
+        return "RTK Float";
+      case 6:
+        return "RTK Fixed";
+      default:
+        return `Fix ${gps?.fixType}`;
+    }
+  }, [gps]);
+
+  const gpsStatusTone = dronePos
+    ? "border-status-success/40 text-status-success"
+    : gps?.fixType && gps.fixType >= 2
+      ? "border-status-warning/40 text-status-warning"
+      : "border-border-default text-text-secondary";
+
+  const gpsStatusLabel = dronePos
+    ? "GPS LIVE"
+    : gps?.fixType && gps.fixType >= 2
+      ? "GETTING POSITION"
+      : "ACQUIRING GPS";
+
+  const heading = pos?.heading;
+
+  // 1. CURRENT HEADING (RED/ORANGE) — Drone's physical pointing direction
+  // The direction the drone is physically facing (yaw orientation)
+  // Based on compass/magnetometer data
+  // Shows which way the nose of the aircraft is pointing
+  const currentHeadingVector = useMemo(() => {
+    if (!dronePos || heading === undefined || !Number.isFinite(heading)) return null;
+    const end = projectByBearing(dronePos[0], dronePos[1], heading, guidanceHdgLength);
+    return [dronePos, end] as [[number, number], [number, number]];
+  }, [dronePos, heading, guidanceHdgLength]);
+
+  // 3. TARGET HEADING (GREEN) — Autopilot desired heading
+  // The direction the autopilot wants the drone to face
+  // May differ from current heading during turns or course corrections
+  // In autonomous modes, this aligns with the desired flight path
+  const targetHeadingVector = useMemo(() => {
+    if (!dronePos || nav?.targetBearing === undefined || !Number.isFinite(nav.targetBearing)) return null;
+    const end = projectByBearing(dronePos[0], dronePos[1], nav.targetBearing, guidanceTgtHdgLength);
+    return [dronePos, end] as [[number, number], [number, number]];
+  }, [dronePos, nav, guidanceTgtHdgLength]);
+
+  // 2. DIRECT TO CURRENT WAYPOINT (ORANGE/YELLOW) — Shortest path to active waypoint
+  // The direct line/bearing from drone's current position to the active waypoint
+  // Shows the shortest path to the next waypoint
+  // Helps you see if the drone is on the optimal route
+  const wpIndex = currentWaypoint > 0 ? currentWaypoint - 1 : -1;
+  const currentWp = wpIndex >= 0 && wpIndex < waypoints.length ? waypoints[wpIndex] : null;
+  const trackToWpLine = useMemo(() => {
+    if (!dronePos || !currentWp) return null;
+    return [dronePos, [currentWp.lat, currentWp.lon] as [number, number]] as [[number, number], [number, number]];
+  }, [dronePos, currentWp]);
 
   useEffect(() => {
     if (!mapInstance) return;
@@ -180,6 +306,16 @@ export function PlannerMap({
 
   return (
     <div className="w-full h-full relative">
+      <div className={`absolute top-3 left-3 z-[1000] rounded border bg-bg-primary/80 px-2 py-1 shadow-lg backdrop-blur-md pointer-events-none ${gpsStatusTone}`}>
+        <div className="flex items-center gap-2 text-[10px] font-mono">
+          <span className="font-semibold">{gpsStatusLabel}</span>
+          <span className="text-text-tertiary">|</span>
+          <span>{gpsFixLabel}</span>
+          <span className="text-text-tertiary">|</span>
+          <span>{gps?.satellites ?? 0} sats</span>
+        </div>
+      </div>
+
       <MapContainer center={defaultCenter} zoom={13} className="w-full h-full" zoomControl={false} attributionControl={false}
         style={{ background: "#0a0a0a" }} ref={(instance) => { if (instance) setMapInstance(instance); }}>
         <TileLayerSwitcher />
@@ -191,6 +327,42 @@ export function PlannerMap({
         {segments.map((seg) => <Marker key={seg.key} position={seg.position} icon={makeSegmentLabel(seg.label)} interactive={false} />)}
         <GcsMarker /><LocateControl /><PatternOverlay />
         <JumpArrowOverlay waypoints={waypoints} />
+
+        {/* Guidance vectors: heading, track to active WP, and target heading */}
+        {currentHeadingVector && (
+          <Polyline
+            positions={currentHeadingVector}
+            pathOptions={{
+              color: guidanceHdgColor,
+              weight: guidanceHdgWidth,
+              opacity: 0.9,
+              dashArray: getLineTypeDashArray(guidanceHdgLineType),
+            }}
+          />
+        )}
+        {trackToWpLine && (
+          <Polyline
+            positions={trackToWpLine}
+            pathOptions={{
+              color: guidanceTrackWpColor,
+              weight: guidanceTrackWpWidth,
+              opacity: 0.85,
+              dashArray: getLineTypeDashArray(guidanceTrackWpLineType),
+            }}
+          />
+        )}
+        {targetHeadingVector && (
+          <Polyline
+            positions={targetHeadingVector}
+            pathOptions={{
+              color: guidanceTgtHdgColor,
+              weight: guidanceTgtHdgWidth,
+              opacity: 0.9,
+              dashArray: getLineTypeDashArray(guidanceTgtHdgLineType),
+            }}
+          />
+        )}
+
         {waypoints.map((wp, i) => (
           <Marker key={wp.id} position={[wp.lat, wp.lon]}
             icon={wp.command === "SPLINE_WAYPOINT" ? makeSplineWaypointIcon(i, wp.id === selectedWaypointId) : makeWaypointIcon(i, wp.id === selectedWaypointId)}
@@ -226,6 +398,9 @@ export function PlannerMap({
           </div>
         </div>
       )}
+
+      {/* Guidance vectors legend with settings menu */}
+      <GuidanceSettingsMenu />
       {isDrawingTool && (
         <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] pointer-events-none">
           <div className="bg-bg-secondary/90 border border-accent-primary/30 px-3 py-1.5">

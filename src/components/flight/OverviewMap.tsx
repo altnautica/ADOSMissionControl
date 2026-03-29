@@ -8,12 +8,16 @@ import { useDroneManager } from "@/stores/drone-manager";
 import { useMissionStore } from "@/stores/mission-store";
 import { useFleetStore } from "@/stores/fleet-store";
 import { useDroneMetadataStore } from "@/stores/drone-metadata-store";
+import { useTelemetryStore } from "@/stores/telemetry-store";
+import { usePlannerStore } from "@/stores/planner-store";
+import { useSettingsStore } from "@/stores/settings-store";
 import { Pause, Play, Ruler } from "lucide-react";
 import { useDefaultCenter } from "@/hooks/use-default-center";
 import {
   MapContainer,
   Circle,
   Marker,
+  Polyline,
   Popup,
   useMap,
 } from "react-leaflet";
@@ -23,6 +27,10 @@ import { DrawingManager } from "@/lib/drawing/drawing-manager";
 
 const GcsMarker = dynamic(
   () => import("@/components/map/GcsMarker").then((m) => ({ default: m.GcsMarker })),
+  { ssr: false }
+);
+const GuidanceSettingsMenu = dynamic(
+  () => import("@/components/shared/GuidanceSettingsMenu").then((m) => ({ default: m.GuidanceSettingsMenu })),
   { ssr: false }
 );
 const TileLayerSwitcher = dynamic(
@@ -72,6 +80,40 @@ const STATUS_COLORS: Record<string, string> = {
   maintenance: "#ef4444",
   offline: "#666666",
 };
+
+/** Convert line type setting to Leaflet dashArray value. */
+function getLineTypeDashArray(lineType: "solid" | "dashed" | "dotted"): string | undefined {
+  switch (lineType) {
+    case "solid":
+      return undefined;
+    case "dashed":
+      return "6 4";
+    case "dotted":
+      return "2 2";
+    default:
+      return undefined;
+  }
+}
+
+/** Project a lat/lon by distance (m) at a given bearing (deg). */
+function projectByBearing(lat: number, lon: number, bearingDeg: number, distanceM: number): [number, number] {
+  const R = 6371000;
+  const brng = (bearingDeg * Math.PI) / 180;
+  const lat1 = (lat * Math.PI) / 180;
+  const lon1 = (lon * Math.PI) / 180;
+  const dByR = distanceM / R;
+
+  const lat2 = Math.asin(
+    Math.sin(lat1) * Math.cos(dByR) +
+    Math.cos(lat1) * Math.sin(dByR) * Math.cos(brng),
+  );
+  const lon2 = lon1 + Math.atan2(
+    Math.sin(brng) * Math.sin(dByR) * Math.cos(lat1),
+    Math.cos(dByR) - Math.sin(lat1) * Math.sin(lat2),
+  );
+
+  return [(lat2 * 180) / Math.PI, ((lon2 * 180) / Math.PI + 540) % 360 - 180];
+}
 
 /** SVG arrow icon for the drone marker, rotated by heading. */
 function createDroneIcon(heading: number, color = "#00ff41", size = 24): L.DivIcon {
@@ -166,8 +208,12 @@ export function OverviewMap() {
 
   // Subscribe to position updates
   const pos = useTelemetryLatest("position");
+  const gps = useTelemetryLatest("gps");
+  const nav = useTelemetryLatest("navController");
   useTrailStore((s) => s._version); // subscribe to updates
   const trail = useTrailStore.getState()._ring.toArray();
+  const missionWaypoints = useMissionStore((s) => s.waypoints);
+  const currentWaypoint = useMissionStore((s) => s.currentWaypoint);
 
   // Fleet drones for multi-drone markers
   const fleetDrones = useFleetStore((s) => s.drones);
@@ -176,15 +222,113 @@ export function OverviewMap() {
   const dronePos: [number, number] | null =
     pos && pos.lat !== 0 && pos.lon !== 0 ? [pos.lat, pos.lon] : null;
 
+  // Guidance settings (must be before their use in memos)
+  const guidanceHdgLength = useSettingsStore((s) => s.guidanceHdgLength);
+  const guidanceHdgWidth = useSettingsStore((s) => s.guidanceHdgWidth);
+  const guidanceHdgLineType = useSettingsStore((s) => s.guidanceHdgLineType);
+  const guidanceHdgColor = useSettingsStore((s) => s.guidanceHdgColor);
+
+  const guidanceTrackWpLength = useSettingsStore((s) => s.guidanceTrackWpLength);
+  const guidanceTrackWpWidth = useSettingsStore((s) => s.guidanceTrackWpWidth);
+  const guidanceTrackWpLineType = useSettingsStore((s) => s.guidanceTrackWpLineType);
+  const guidanceTrackWpColor = useSettingsStore((s) => s.guidanceTrackWpColor);
+
+  const guidanceTgtHdgLength = useSettingsStore((s) => s.guidanceTgtHdgLength);
+  const guidanceTgtHdgWidth = useSettingsStore((s) => s.guidanceTgtHdgWidth);
+  const guidanceTgtHdgLineType = useSettingsStore((s) => s.guidanceTgtHdgLineType);
+  const guidanceTgtHdgColor = useSettingsStore((s) => s.guidanceTgtHdgColor);
+
   const heading = pos?.heading ?? 0;
   const droneIcon = useMemo(() => createDroneIcon(heading, "#00ff41", 24), [heading]);
 
-  // Home position = first trail point
-  const homePos: [number, number] | null =
-    trail.length > 0 ? [trail[0].lat, trail[0].lon] : null;
+  // 1. CURRENT HEADING (RED/ORANGE) — Drone's physical pointing direction
+  // The direction the drone is physically facing (yaw orientation)
+  // Based on compass/magnetometer data
+  // Shows which way the nose of the aircraft is pointing
+  const currentHeadingVector = useMemo(() => {
+    if (!dronePos || !Number.isFinite(heading)) return null;
+    const end = projectByBearing(dronePos[0], dronePos[1], heading, guidanceHdgLength);
+    return [dronePos, end] as [[number, number], [number, number]];
+  }, [dronePos, heading, guidanceHdgLength]);
+
+  // 3. TARGET HEADING (GREEN) — Autopilot desired heading
+  // The direction the autopilot wants the drone to face
+  // May differ from current heading during turns or course corrections
+  // In autonomous modes, this aligns with the desired flight path
+  const targetHeading = nav?.targetBearing;
+  const targetHeadingVector = useMemo(() => {
+    if (!dronePos || targetHeading === undefined || !Number.isFinite(targetHeading)) return null;
+    const end = projectByBearing(dronePos[0], dronePos[1], targetHeading, guidanceTgtHdgLength);
+    return [dronePos, end] as [[number, number], [number, number]];
+  }, [dronePos, targetHeading, guidanceTgtHdgLength]);
+
+  // 2. DIRECT TO CURRENT WAYPOINT (ORANGE/YELLOW) — Shortest path to active waypoint
+  // The direct line/bearing from drone's current position to the active waypoint
+  // Shows the shortest path to the next waypoint
+  // Helps you see if the drone is on the optimal route
+  const wpIndex = currentWaypoint > 0 ? currentWaypoint - 1 : -1;
+  const currentWp = wpIndex >= 0 && wpIndex < missionWaypoints.length ? missionWaypoints[wpIndex] : null;
+  const trackToWpLine = useMemo(() => {
+    if (!dronePos || !currentWp) return null;
+    return [dronePos, [currentWp.lat, currentWp.lon] as [number, number]] as [[number, number], [number, number]];
+  }, [dronePos, currentWp]);
+
+  const homeTelemetry = useTelemetryStore((s) => s.homePosition.latest());
+  // Home position source priority: FC HOME_POSITION -> legacy trail start
+  const homePos: [number, number] | null = useMemo(() => {
+    if (homeTelemetry && homeTelemetry.lat !== 0 && homeTelemetry.lon !== 0) {
+      return [homeTelemetry.lat, homeTelemetry.lon];
+    }
+    if (trail.length > 0) return [trail[0].lat, trail[0].lon];
+    return null;
+  }, [homeTelemetry, trail]);
+
+  const homeIcon = useMemo(() => {
+    return L.divIcon({
+      className: "",
+      iconSize: [20, 20],
+      iconAnchor: [10, 10],
+      html: `<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="10" cy="10" r="8" fill="rgba(58,130,255,0.18)" stroke="#3a82ff" stroke-width="1.4" stroke-dasharray="3 2"/>
+        <circle cx="10" cy="10" r="2.5" fill="#3a82ff"/>
+      </svg>`,
+    });
+  }, []);
 
   const defaultCenter = useDefaultCenter();
   const hasGps = dronePos !== null;
+
+  const gpsFixLabel = useMemo(() => {
+    switch (gps?.fixType ?? 0) {
+      case 0:
+      case 1:
+        return "No Fix";
+      case 2:
+        return "2D Fix";
+      case 3:
+        return "3D Fix";
+      case 4:
+        return "DGPS";
+      case 5:
+        return "RTK Float";
+      case 6:
+        return "RTK Fixed";
+      default:
+        return `Fix ${gps?.fixType}`;
+    }
+  }, [gps]);
+
+  const gpsStatusTone = hasGps
+    ? "border-status-success/40 text-status-success"
+    : gps?.fixType && gps.fixType >= 2
+      ? "border-status-warning/40 text-status-warning"
+      : "border-border-strong text-text-secondary";
+
+  const gpsStatusLabel = hasGps
+    ? "GPS LIVE"
+    : gps?.fixType && gps.fixType >= 2
+      ? "GETTING POSITION"
+      : "ACQUIRING GPS";
 
   const handleMeasureComplete = useCallback(() => {
     setMeasureActive(false);
@@ -198,9 +342,15 @@ export function OverviewMap() {
 
   return (
     <div className="relative w-full h-full border border-border-default overflow-hidden bg-[#0a0a0a] isolate">
-      <span className="absolute top-2 left-2 z-[1000] text-[10px] font-mono text-text-secondary bg-bg-primary/80 backdrop-blur-md rounded px-1.5 py-0.5 border border-border-strong shadow-lg">
-        Position
-      </span>
+      <div className={`absolute top-3 left-3 z-[1000] bg-bg-primary/80 backdrop-blur-md rounded px-2 py-1 border shadow-lg ${gpsStatusTone}`}>
+        <div className="flex items-center gap-2 text-[10px] font-mono">
+          <span className="font-semibold">{gpsStatusLabel}</span>
+          <span className="text-text-tertiary">|</span>
+          <span>{gpsFixLabel}</span>
+          <span className="text-text-tertiary">|</span>
+          <span>{gps?.satellites ?? 0} sats</span>
+        </div>
+      </div>
 
       {/* No GPS overlay */}
       {!hasGps && (
@@ -237,22 +387,64 @@ export function OverviewMap() {
 
         {/* Home marker -- dashed blue circle */}
         {homePos && (
-          <Circle
-            center={homePos}
-            radius={3}
-            pathOptions={{
-              color: "#3A82FF",
-              weight: 1.5,
-              dashArray: "4 4",
-              fillColor: "#3A82FF",
-              fillOpacity: 0.15,
-            }}
-          />
+          <>
+            <Circle
+              center={homePos}
+              radius={6}
+              pathOptions={{
+                color: "#3A82FF",
+                weight: 1.5,
+                dashArray: "4 4",
+                fillColor: "#3A82FF",
+                fillOpacity: 0.15,
+              }}
+            />
+            <Marker position={homePos} icon={homeIcon} interactive={false} />
+          </>
         )}
 
         {/* Selected drone marker (primary, larger) */}
         {dronePos && (
           <Marker position={dronePos} icon={droneIcon} />
+        )}
+
+        {/* Current heading vector (nose direction) */}
+        {currentHeadingVector && (
+          <Polyline
+            positions={currentHeadingVector}
+            pathOptions={{
+              color: guidanceHdgColor,
+              weight: guidanceHdgWidth,
+              opacity: 0.9,
+              dashArray: getLineTypeDashArray(guidanceHdgLineType),
+            }}
+          />
+        )}
+
+        {/* GPS track to active mission waypoint */}
+        {trackToWpLine && (
+          <Polyline
+            positions={trackToWpLine}
+            pathOptions={{
+              color: guidanceTrackWpColor,
+              weight: guidanceTrackWpWidth,
+              opacity: 0.85,
+              dashArray: getLineTypeDashArray(guidanceTrackWpLineType),
+            }}
+          />
+        )}
+
+        {/* Target heading vector from NAV_CONTROLLER_OUTPUT */}
+        {targetHeadingVector && (
+          <Polyline
+            positions={targetHeadingVector}
+            pathOptions={{
+              color: guidanceTgtHdgColor,
+              weight: guidanceTgtHdgWidth,
+              opacity: 0.9,
+              dashArray: getLineTypeDashArray(guidanceTgtHdgLineType),
+            }}
+          />
         )}
 
         {/* Other fleet drone markers (smaller, status-colored) */}
@@ -370,6 +562,9 @@ export function OverviewMap() {
           {dronePos[0].toFixed(6)}, {dronePos[1].toFixed(6)}
         </div>
       )}
+
+      {/* Guidance vectors legend with settings menu */}
+      <GuidanceSettingsMenu />
     </div>
   );
 }
