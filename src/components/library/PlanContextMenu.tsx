@@ -143,6 +143,7 @@ export function PlanContextMenu({ planId, x, y, onClose, onPlanRenamed }: PlanCo
               if (e.key === "Escape") onClose();
             }}
             onBlur={handleRenameConfirm}
+            placeholder={t("planName")}
             className="w-full px-2 py-1 text-xs bg-bg-tertiary border border-border-default text-text-primary outline-none"
           />
         </div>
