@@ -200,8 +200,7 @@
   },
   "theme": {
     "title": "主题",
-    "darkMode": "深色模式",
-    "lightModeSoon": "浅色模式即将推出",
+    "theme": "选择主题",
     "accentColor": "强调色",
     "blue": "蓝色",
     "green": "绿色",

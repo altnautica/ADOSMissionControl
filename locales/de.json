@@ -200,8 +200,7 @@
   },
   "theme": {
     "title": "Design",
-    "darkMode": "Dunkler Modus",
-    "lightModeSoon": "Heller Modus kommt bald",
+    "theme": "Design wählen",
     "accentColor": "Akzentfarbe",
     "blue": "Blau",
     "green": "Grün",
