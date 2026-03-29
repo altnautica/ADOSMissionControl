@@ -33,6 +33,7 @@ export const COMMAND_OPTIONS: { value: WaypointCommand; label: string }[] = [
   { value: "DELAY", label: "Delay" },
   { value: "CONDITION_YAW", label: "Set Yaw" },
   { value: "CONDITION_DISTANCE", label: "Wait Distance" },
+  { value: "DO_LAND_START", label: "Land Start" },
 ];
 
 export const CMD_LETTER: Record<string, string> = {
@@ -62,4 +63,5 @@ export const CMD_LETTER: Record<string, string> = {
   DO_AUX_FUNCTION: "A",
   VTOL_TAKEOFF: "T",
   VTOL_LAND: "D",
+  DO_LAND_START: "D",
 };

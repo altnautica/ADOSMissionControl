@@ -201,6 +201,7 @@ export const useMissionStore = create<MissionStoreState>()(
       NAV_PAYLOAD_PLACE: 94, CONDITION_DISTANCE: 114, DO_SET_HOME: 179,
       DO_AUX_FUNCTION: 218, VTOL_TAKEOFF: 84, VTOL_LAND: 85,
       DO_SET_ROI_NONE: 197,
+      DO_LAND_START: 189,
     } satisfies Record<WaypointCommand, number>;
 
     const frameMap: Record<string, number> = { relative: 3, absolute: 0, terrain: 10 };
