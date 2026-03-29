@@ -20,21 +20,20 @@ export function VideoCanvas({ children, className }: VideoCanvasProps) {
   const latencyMs = useVideoStore((s) => s.latencyMs);
   const resolution = useVideoStore((s) => s.resolution);
 
-  // Video recording timer
-  const [recStartMs, setRecStartMs] = useState(0);
+  // Video recording timer — capture start time once, not in state
   const [recElapsed, setRecElapsed] = useState("");
 
   useEffect(() => {
     if (!isRecording) { setRecElapsed(""); return; }
-    setRecStartMs(Date.now());
+    const startTime = Date.now();
     const timer = setInterval(() => {
-      const sec = Math.floor((Date.now() - recStartMs) / 1000);
+      const sec = Math.floor((Date.now() - startTime) / 1000);
       const m = Math.floor(sec / 60);
       const s = sec % 60;
       setRecElapsed(`${m}:${String(s).padStart(2, "0")}`);
     }, 1000);
     return () => clearInterval(timer);
-  }, [isRecording, recStartMs]);
+  }, [isRecording]);
 
   const handleRecordToggle = useCallback(() => {
     if (isRecording) {

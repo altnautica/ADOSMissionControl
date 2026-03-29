@@ -108,6 +108,7 @@ export function DownloadAreaPanel({ bounds, currentZoom, currentProvider, onClos
               setProvider(v);
               const newMax = TILE_PROVIDERS[v]?.maxZoom ?? 18;
               if (zoomMax > newMax) setZoomMax(newMax);
+              if (zoomMin > newMax) setZoomMin(Math.max(1, newMax - 4));
             }}
             options={PROVIDER_OPTIONS}
             disabled={isDownloading}

@@ -36,9 +36,9 @@ export function makeSplineWaypointIcon(index: number, selected: boolean): L.DivI
   const key = `spline-${index}-${selected}`;
   const cached = splineIconCache.get(key);
   if (cached) return cached;
-  const fill = selected ? "#00e5ff" : "#0a0a0f";
-  const stroke = "#00e5ff";
-  const textFill = selected ? "#0a0a0f" : "#00e5ff";
+  const fill = selected ? MAP_COLORS.accentSelected : MAP_COLORS.background;
+  const stroke = "#00bcd4"; // teal for spline distinction
+  const textFill = selected ? MAP_COLORS.background : "#00bcd4";
   const icon = L.divIcon({
     className: "",
     iconSize: [24, 24],

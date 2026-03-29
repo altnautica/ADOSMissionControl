@@ -56,10 +56,10 @@ export function generateFixedWingLanding(config: FixedWingLandingConfig): Patter
     command: "LAND",
   });
 
-  // Stats
+  // Stats — FC handles actual glide slope, but we compute descent rate for display
   const totalDistance = haversineDistance(approachStart[0], approachStart[1], landingPoint[0], landingPoint[1]);
-  const descentRate = speed * Math.sin((glideSlopeAngle * Math.PI) / 180);
   const estimatedTime = speed > 0 ? totalDistance / speed : 0;
+  // Note: descentRate = speed * sin(glideSlopeAngle) — available via config for UI display
 
   return {
     waypoints,
