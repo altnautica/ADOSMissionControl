@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { HistoryToolbar } from "@/components/history/HistoryToolbar";
 import { HistoryTable } from "@/components/history/HistoryTable";
 import { HistoryDetailPanel } from "@/components/history/HistoryDetailPanel";
+import { ReplayView } from "@/components/history/ReplayView";
 import { getFlightHistory } from "@/mock/history";
 import { useHistoryStore } from "@/stores/history-store";
 import type { FlightRecord } from "@/lib/types";
+import type { TelemetryRecording } from "@/lib/telemetry-recorder";
 
 export default function FlightHistoryPage() {
   // Init store with seed data once
@@ -27,6 +29,19 @@ export default function FlightHistoryPage() {
 
   // Selected record
   const [selectedRecord, setSelectedRecord] = useState<FlightRecord | null>(null);
+
+  // Replay mode
+  const [replayState, setReplayState] = useState<{ recording: TelemetryRecording; record: FlightRecord } | null>(null);
+
+  const handleReplay = useCallback((recording: TelemetryRecording) => {
+    if (selectedRecord) {
+      setReplayState({ recording, record: selectedRecord });
+    }
+  }, [selectedRecord]);
+
+  const handleExitReplay = useCallback(() => {
+    setReplayState(null);
+  }, []);
 
   // Unique drone names for the filter
   const droneNames = useMemo(() => {
@@ -85,6 +100,17 @@ export default function FlightHistoryPage() {
     return records;
   }, [allRecords, dateFrom, dateTo, status, droneFilter, suiteFilter, sort]);
 
+  // Replay mode: full-screen replay replaces table
+  if (replayState) {
+    return (
+      <ReplayView
+        recording={replayState.recording}
+        flightRecord={replayState.record}
+        onExit={handleExitReplay}
+      />
+    );
+  }
+
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
       {/* Header */}
@@ -122,6 +148,7 @@ export default function FlightHistoryPage() {
           <HistoryDetailPanel
             record={selectedRecord}
             onClose={() => setSelectedRecord(null)}
+            onReplay={handleReplay}
           />
         )}
       </div>

@@ -14,7 +14,7 @@ import {
   downloadTelemetryKML,
   downloadTelemetryKMZ,
 } from "@/lib/telemetry-export";
-import { X, Download, FileText, Globe } from "lucide-react";
+import { X, Download, FileText, Globe, Play } from "lucide-react";
 
 const statusVariant: Record<string, "success" | "warning" | "error"> = {
   completed: "success",
@@ -25,9 +25,10 @@ const statusVariant: Record<string, "success" | "warning" | "error"> = {
 interface HistoryDetailPanelProps {
   record: FlightRecord;
   onClose: () => void;
+  onReplay?: (recording: TelemetryRecording) => void;
 }
 
-export function HistoryDetailPanel({ record, onClose }: HistoryDetailPanelProps) {
+export function HistoryDetailPanel({ record, onClose, onReplay }: HistoryDetailPanelProps) {
   const [recordings, setRecordings] = useState<TelemetryRecording[]>([]);
   const [exporting, setExporting] = useState<string | null>(null);
 
@@ -115,14 +116,32 @@ export function HistoryDetailPanel({ record, onClose }: HistoryDetailPanelProps)
           </div>
         </Card>
 
-        {/* Route Map Placeholder */}
-        <Card title="Route" padding={true}>
-          <div className="flex items-center justify-center h-[120px] bg-bg-tertiary border border-border-default">
-            <span className="text-[10px] text-text-tertiary font-mono">
-              Route replay available for recorded flights
-            </span>
-          </div>
-        </Card>
+        {/* Replay Flight */}
+        {matchedRecording && matchedRecording.channels.includes("position") && onReplay ? (
+          <Card title="Flight Replay" padding={true}>
+            <div className="flex flex-col gap-2">
+              <p className="text-[10px] text-text-secondary">
+                Replay this flight on the map with full telemetry.
+              </p>
+              <Button
+                variant="primary"
+                size="sm"
+                icon={<Play size={12} />}
+                onClick={() => onReplay(matchedRecording)}
+              >
+                Replay Flight
+              </Button>
+            </div>
+          </Card>
+        ) : (
+          <Card title="Route" padding={true}>
+            <div className="flex items-center justify-center h-[80px] bg-bg-tertiary border border-border-default">
+              <span className="text-[10px] text-text-tertiary font-mono">
+                {matchedRecording ? "No position data in recording" : "No recording for this flight"}
+              </span>
+            </div>
+          </Card>
+        )}
 
         {/* Telemetry Export */}
         <Card title="Export Telemetry" padding={true}>
