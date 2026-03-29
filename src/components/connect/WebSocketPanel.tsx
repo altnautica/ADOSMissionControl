@@ -99,7 +99,7 @@ export function WebSocketPanel({
     <div className="space-y-4">
       <Input
         label="WebSocket URL"
-        value={url}
+        value={effectiveUrl}
         onChange={(e) => {
           handleUrlChange(e.target.value);
           setError(null);
