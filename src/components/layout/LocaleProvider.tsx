@@ -11,6 +11,15 @@
 import { useEffect, useState } from "react";
 import { NextIntlClientProvider } from "next-intl";
 import { useSettingsStore } from "@/stores/settings-store";
+import enMessages from "../../../locales/en.json";
+
+const ACCENT_PRESETS: Record<string, { primary: string; hover: string; secondary: string }> = {
+  blue: { primary: "#3a82ff", hover: "#5b9aff", secondary: "#dff140" },
+  green: { primary: "#22c55e", hover: "#34d06d", secondary: "#9bcc2f" },
+  amber: { primary: "#f59e0b", hover: "#f7b13a", secondary: "#7a9900" },
+  red: { primary: "#ef4444", hover: "#f16363", secondary: "#c4cf3a" },
+  lime: { primary: "#84cc16", hover: "#9bdf2a", secondary: "#2f6feb" },
+};
 
 interface LocaleProviderProps {
   children: React.ReactNode;
@@ -18,7 +27,11 @@ interface LocaleProviderProps {
 
 export function LocaleProvider({ children }: LocaleProviderProps) {
   const locale = useSettingsStore((s) => s.locale);
-  const [messages, setMessages] = useState<Record<string, unknown>>({});
+  const themeMode = useSettingsStore((s) => s.themeMode);
+  const accentColor = useSettingsStore((s) => s.accentColor);
+  const [messages, setMessages] = useState<Record<string, unknown>>(
+    enMessages as Record<string, unknown>
+  );
 
   useEffect(() => {
     // Dynamic import based on locale — only loads the needed bundle
@@ -38,6 +51,29 @@ export function LocaleProvider({ children }: LocaleProviderProps) {
       document.documentElement.lang = locale;
     }
   }, [locale]);
+
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      document.documentElement.dataset.theme = themeMode || "dark";
+    }
+  }, [themeMode]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const preset = ACCENT_PRESETS[accentColor] || ACCENT_PRESETS.blue;
+    document.documentElement.style.setProperty(
+      "--alt-accent-primary",
+      preset.primary
+    );
+    document.documentElement.style.setProperty(
+      "--alt-accent-primary-hover",
+      preset.hover
+    );
+    document.documentElement.style.setProperty(
+      "--alt-accent-secondary",
+      preset.secondary
+    );
+  }, [accentColor]);
 
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>

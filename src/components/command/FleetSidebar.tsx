@@ -34,6 +34,15 @@ interface FleetSidebarProps {
   onOpenPairing: () => void;
 }
 
+type RenameDroneMutation = ((args: {
+  droneId: never;
+  name: string;
+}) => Promise<unknown>) | null;
+
+type UnpairDroneMutation = ((args: {
+  droneId: never;
+}) => Promise<unknown>) | null;
+
 const ONLINE_THRESHOLD_MS = 90_000; // 90 seconds
 
 function isOnline(drone: PairedDrone): boolean {
@@ -51,19 +60,62 @@ export function FleetSidebar({
   onToggleCollapse,
   onOpenPairing,
 }: FleetSidebarProps) {
+  const convexAvailable = useConvexAvailable();
+  if (convexAvailable) {
+    return (
+      <FleetSidebarWithConvex
+        collapsed={collapsed}
+        onToggleCollapse={onToggleCollapse}
+        onOpenPairing={onOpenPairing}
+      />
+    );
+  }
+  return (
+    <FleetSidebarBase
+      collapsed={collapsed}
+      onToggleCollapse={onToggleCollapse}
+      onOpenPairing={onOpenPairing}
+      renameDroneMutation={null}
+      unpairDroneMutation={null}
+    />
+  );
+}
+
+function FleetSidebarWithConvex({
+  collapsed,
+  onToggleCollapse,
+  onOpenPairing,
+}: FleetSidebarProps) {
+  const renameDroneMutation = useMutation(cmdDronesApi.renameDrone);
+  const unpairDroneMutation = useMutation(cmdDronesApi.unpairDrone);
+
+  return (
+    <FleetSidebarBase
+      collapsed={collapsed}
+      onToggleCollapse={onToggleCollapse}
+      onOpenPairing={onOpenPairing}
+      renameDroneMutation={renameDroneMutation as RenameDroneMutation}
+      unpairDroneMutation={unpairDroneMutation as UnpairDroneMutation}
+    />
+  );
+}
+
+function FleetSidebarBase({
+  collapsed,
+  onToggleCollapse,
+  onOpenPairing,
+  renameDroneMutation,
+  unpairDroneMutation,
+}: FleetSidebarProps & {
+  renameDroneMutation: RenameDroneMutation;
+  unpairDroneMutation: UnpairDroneMutation;
+}) {
   const t = useTranslations("command");
   const pairedDrones = usePairingStore((s) => s.pairedDrones);
   const selectedPairedId = usePairingStore((s) => s.selectedPairedId);
   const selectPairedDrone = usePairingStore((s) => s.selectPairedDrone);
   const removePairedDrone = usePairingStore((s) => s.removePairedDrone);
   const updatePairedDroneName = usePairingStore((s) => s.updatePairedDroneName);
-
-  const convexAvailable = useConvexAvailable();
-  // convexAvailable is stable (env-var derived, never changes between renders)
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const renameDroneMutation = convexAvailable ? useMutation(cmdDronesApi.renameDrone) : null;
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const unpairDroneMutation = convexAvailable ? useMutation(cmdDronesApi.unpairDrone) : null;
 
   const agentConnect = useAgentConnectionStore((s) => s.connect);
   const agentConnectCloud = useAgentConnectionStore((s) => s.connectCloud);

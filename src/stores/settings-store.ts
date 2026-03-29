@@ -14,6 +14,8 @@ import { isDemoMode } from "@/lib/utils";
 
 export type MapTileSource = "osm" | "satellite" | "terrain" | "dark";
 export type UnitSystem = "metric" | "imperial";
+export type ThemeMode = "dark" | "light";
+export type AccentColor = "blue" | "green" | "amber" | "red" | "lime";
 export type { Jurisdiction };
 
 export type ParamColumnId = "index" | "name" | "description" | "value" | "range" | "units" | "type";
@@ -99,7 +101,13 @@ interface SettingsStoreState {
   offlineTileCaching: boolean;
   /** Display language locale code. */
   locale: string;
+  /** Application color theme mode. */
+  themeMode: ThemeMode;
+  /** Global accent color preset. */
+  accentColor: AccentColor;
   setLocale: (locale: string) => void;
+  setThemeMode: (mode: ThemeMode) => void;
+  setAccentColor: (accent: AccentColor) => void;
 
   setMapTileSource: (source: MapTileSource) => void;
   setUnits: (units: UnitSystem) => void;
@@ -174,6 +182,8 @@ export const useSettingsStore = create<SettingsStoreState>()(
       showNoFlyZones: false,
       offlineTileCaching: false,
       locale: 'en',
+      themeMode: "dark",
+      accentColor: "blue",
 
       setMapTileSource: (mapTileSource) => set({ mapTileSource }),
       setUnits: (units) => set({ units }),
@@ -220,11 +230,13 @@ export const useSettingsStore = create<SettingsStoreState>()(
       setShowNoFlyZones: (showNoFlyZones) => set({ showNoFlyZones }),
       setOfflineTileCaching: (offlineTileCaching) => set({ offlineTileCaching }),
       setLocale: (locale) => set({ locale }),
+      setThemeMode: (themeMode) => set({ themeMode }),
+      setAccentColor: (accentColor) => set({ accentColor }),
     }),
     {
       name: "altcmd:settings",
       storage: createJSONStorage(indexedDBStorage.storage),
-      version: 19,
+      version: 21,
       migrate: (persisted, version) => {
         const state = persisted as Record<string, unknown>;
         if (version < 2) {
@@ -312,6 +324,14 @@ export const useSettingsStore = create<SettingsStoreState>()(
           // v19: disable offline tile caching by default (IndexedDB can hang), satellite default
           state.offlineTileCaching = false;
           state.mapTileSource = "satellite" as MapTileSource;
+        }
+        if (version < 20) {
+          // v20: global theme mode
+          state.themeMode = "dark";
+        }
+        if (version < 21) {
+          // v21: global accent preset
+          state.accentColor = "blue";
         }
         return state as unknown as SettingsStoreState;
       },

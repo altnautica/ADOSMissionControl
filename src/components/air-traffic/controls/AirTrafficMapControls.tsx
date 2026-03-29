@@ -85,16 +85,24 @@ export function AirTrafficMapControls({ hasIonToken }: AirTrafficMapControlsProp
       {/* Terrain exaggeration slider */}
       <div className="flex flex-col gap-0.5">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] font-mono text-text-secondary">{t("terrain")}</span>
+            <label
+              htmlFor="air-traffic-terrain-exaggeration"
+              className="text-[10px] font-mono text-text-secondary"
+            >
+              {t("terrain")}
+            </label>
           <span className="text-[10px] font-mono text-text-tertiary">{terrainExaggeration}x</span>
         </div>
         <input
+            id="air-traffic-terrain-exaggeration"
           type="range"
           min={1}
           max={5}
           step={0.5}
           value={terrainExaggeration}
           onChange={(e) => setTerrainExaggeration(parseFloat(e.target.value))}
+            title={t("terrain")}
+            aria-label={t("terrain")}
           className="w-full h-1 rounded-full appearance-none bg-border-default accent-accent-primary cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-accent-primary"
         />
       </div>
