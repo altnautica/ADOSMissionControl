@@ -10,6 +10,7 @@
 
 import type { TelemetryFrame, TelemetryRecording } from "./telemetry-recorder";
 import { loadRecordingFrames } from "./telemetry-recorder";
+import { haversineDistance } from "./telemetry-utils";
 import type { PositionData, AttitudeData, BatteryData, GpsData, VfrData } from "@/lib/types";
 
 // ── CSV Export ───────────────────────────────────────────────
@@ -162,7 +163,7 @@ export async function exportTelemetryAsKML(
   const maxSpeed = Math.max(...positions.map((p) => p.groundSpeed));
   let totalDistance = 0;
   for (let i = 1; i < positions.length; i++) {
-    totalDistance += haversine(
+    totalDistance += haversineDistance(
       positions[i - 1].lat,
       positions[i - 1].lon,
       positions[i].lat,
@@ -343,20 +344,6 @@ function generateEmptyKML(name: string): string {
     "  </Document>",
     "</kml>",
   ].join("\n");
-}
-
-/** Haversine distance in meters between two lat/lon points. */
-function haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371000;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 /**
