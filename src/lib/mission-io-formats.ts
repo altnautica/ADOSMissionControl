@@ -16,6 +16,7 @@ export const cmdMap: Record<WaypointCommand, number> = {
   NAV_PAYLOAD_PLACE: 94, CONDITION_DISTANCE: 114, DO_SET_HOME: 179,
   DO_AUX_FUNCTION: 218, VTOL_TAKEOFF: 84, VTOL_LAND: 85,
   DO_SET_ROI_NONE: 197,
+  DO_LAND_START: 189,
 };
 
 /** MAVLink command number -> string mapping. */

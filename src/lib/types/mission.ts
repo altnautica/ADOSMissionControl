@@ -26,7 +26,8 @@ export type WaypointCommand =
   | "DO_SET_CAM_TRIGG" | "DO_DIGICAM" | "DO_JUMP" | "DELAY" | "CONDITION_YAW"
   | "DO_SET_SERVO" | "DO_FENCE_ENABLE" | "DO_MOUNT_CONTROL" | "DO_GRIPPER"
   | "DO_WINCH" | "NAV_PAYLOAD_PLACE" | "CONDITION_DISTANCE" | "DO_SET_HOME"
-  | "DO_AUX_FUNCTION" | "VTOL_TAKEOFF" | "VTOL_LAND" | "DO_SET_ROI_NONE";
+  | "DO_AUX_FUNCTION" | "VTOL_TAKEOFF" | "VTOL_LAND" | "DO_SET_ROI_NONE"
+  | "DO_LAND_START";
 
 /** Available tools in the map toolbar. */
 export type PlannerTool =

@@ -9,6 +9,8 @@ export { generateOrbit } from "./orbit-generator";
 export { generateCorridor } from "./corridor-generator";
 export { generateExpandingSquare, generateSectorSearch, generateParallelTrack } from "./sar-generators";
 export { generateStructureScan } from "./structure-scan-generator";
+export { generateFixedWingLanding } from "./landing-generator";
+export { generateVtolLanding } from "./vtol-landing-generator";
 export * from "./types";
 
 import type { PatternConfig, PatternResult } from "./types";
@@ -17,6 +19,8 @@ import { generateOrbit } from "./orbit-generator";
 import { generateCorridor } from "./corridor-generator";
 import { generateExpandingSquare, generateSectorSearch, generateParallelTrack } from "./sar-generators";
 import { generateStructureScan } from "./structure-scan-generator";
+import { generateFixedWingLanding } from "./landing-generator";
+import { generateVtolLanding } from "./vtol-landing-generator";
 
 /**
  * Dispatch to the correct pattern generator based on config type.
@@ -37,5 +41,9 @@ export function generatePattern(config: PatternConfig): PatternResult {
       return generateParallelTrack(config.config);
     case "structureScan":
       return generateStructureScan(config.config);
+    case "fixedWingLanding":
+      return generateFixedWingLanding(config.config);
+    case "vtolLanding":
+      return generateVtolLanding(config.config);
   }
 }

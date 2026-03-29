@@ -78,6 +78,40 @@ export type { ExpandingSquareConfig, SectorSearchConfig, ParallelTrackConfig } f
 
 export type { StructureScanConfig } from "./structure-scan-generator";
 
+// ── Fixed-Wing Landing ────────────────────────────────────────
+
+export interface FixedWingLandingConfig {
+  /** Landing point as [lat, lon]. */
+  landingPoint: [number, number];
+  /** Approach heading in degrees (0-360). -1 = auto from previous waypoint. */
+  approachHeading: number;
+  /** Distance from landing point to approach start, in meters. */
+  approachDistance: number;
+  /** Glide slope angle in degrees (2-15). */
+  glideSlopeAngle: number;
+  /** Loiter/approach altitude in meters AGL. */
+  loiterAltitude: number;
+  /** Approach speed in m/s. */
+  speed: number;
+}
+
+// ── VTOL Landing ──────────────────────────────────────────────
+
+export interface VtolLandingConfig {
+  /** Landing point as [lat, lon]. */
+  landingPoint: [number, number];
+  /** Approach heading in degrees (0-360). -1 = auto. */
+  approachHeading: number;
+  /** Distance from landing to transition start, in meters. */
+  transitionDistance: number;
+  /** Approach altitude in meters AGL. */
+  approachAltitude: number;
+  /** Vertical descent speed in m/s. */
+  descentSpeed: number;
+  /** Cruise approach speed in m/s. */
+  speed: number;
+}
+
 // ── Discriminated union config ───────────────────────────────
 
 import type { ExpandingSquareConfig, SectorSearchConfig, ParallelTrackConfig } from "./sar-generators";
@@ -90,7 +124,9 @@ export type PatternConfig =
   | { type: "expandingSquare"; config: ExpandingSquareConfig }
   | { type: "sectorSearch"; config: SectorSearchConfig }
   | { type: "parallelTrack"; config: ParallelTrackConfig }
-  | { type: "structureScan"; config: StructureScanConfig };
+  | { type: "structureScan"; config: StructureScanConfig }
+  | { type: "fixedWingLanding"; config: FixedWingLandingConfig }
+  | { type: "vtolLanding"; config: VtolLandingConfig };
 
 // ── Result types ─────────────────────────────────────────────
 
