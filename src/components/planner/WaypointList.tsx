@@ -116,7 +116,7 @@ export function WaypointList({
             dragOver={dragOverIndex === i && dragIndexRef.current !== i}
           />
           {/* Insert button between waypoints */}
-          {onInsertAt && i < waypoints.length - 1 && (
+          {onInsertAt && (
             <div className="flex justify-center py-0.5 group">
               <button
                 onClick={() => onInsertAt(i + 1)}

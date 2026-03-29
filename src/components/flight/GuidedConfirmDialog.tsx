@@ -126,6 +126,7 @@ export function GuidedConfirmDialog() {
         <button
           onClick={dismissConfirm}
           className="text-text-tertiary hover:text-text-primary transition-colors cursor-pointer"
+          aria-label="Close dialog"
         >
           <X size={14} />
         </button>

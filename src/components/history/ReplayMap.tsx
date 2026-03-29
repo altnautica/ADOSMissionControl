@@ -11,6 +11,7 @@ import { MapContainer, TileLayer, Polyline, Marker, useMap } from "react-leaflet
 import L from "leaflet";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useTrailStore, type TrailPoint } from "@/stores/trail-store";
+import { DEFAULT_CENTER } from "@/lib/map-constants";
 import { Crosshair } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 
@@ -82,7 +83,7 @@ export function ReplayMap() {
   const homePos = trailPositions.length > 0 ? trailPositions[0] : null;
 
   // Default center
-  const defaultCenter: [number, number] = dronePos ?? homePos ?? [12.97, 77.59]; // Bangalore fallback
+  const defaultCenter: [number, number] = dronePos ?? homePos ?? DEFAULT_CENTER;
 
   // Disable auto-follow on user drag
   const handleMapDrag = useCallback(() => setAutoFollow(false), []);

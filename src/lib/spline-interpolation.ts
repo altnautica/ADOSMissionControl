@@ -83,16 +83,17 @@ export function generateSplinePath(
     }
 
     // Spline segment — interpolate with Catmull-Rom
-    const p0: [number, number] = i > 0
-      ? [waypoints[i - 1].lat, waypoints[i - 1].lon]
-      : [waypoints[i].lat, waypoints[i].lon]; // mirror start
-
+    // Use linear extrapolation at boundaries to avoid cusps
     const p1: [number, number] = [waypoints[i].lat, waypoints[i].lon];
     const p2: [number, number] = [waypoints[i + 1].lat, waypoints[i + 1].lon];
 
+    const p0: [number, number] = i > 0
+      ? [waypoints[i - 1].lat, waypoints[i - 1].lon]
+      : [2 * p1[0] - p2[0], 2 * p1[1] - p2[1]]; // extrapolate backward
+
     const p3: [number, number] = i + 2 < waypoints.length
       ? [waypoints[i + 2].lat, waypoints[i + 2].lon]
-      : [waypoints[i + 1].lat, waypoints[i + 1].lon]; // mirror end
+      : [2 * p2[0] - p1[0], 2 * p2[1] - p1[1]]; // extrapolate forward
 
     const curvePoints = catmullRomSegment(p0, p1, p2, p3, 16);
 

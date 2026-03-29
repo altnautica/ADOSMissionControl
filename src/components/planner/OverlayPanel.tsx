@@ -89,6 +89,7 @@ export function OverlayPanel({ onClose }: OverlayPanelProps) {
         <button
           onClick={onClose}
           className="text-text-tertiary hover:text-text-primary transition-colors cursor-pointer"
+          aria-label="Close overlay panel"
         >
           <X size={12} />
         </button>
@@ -179,6 +180,7 @@ function OverlayItem({
         <button
           onClick={onToggle}
           className="text-text-tertiary hover:text-text-primary transition-colors cursor-pointer"
+          aria-label={overlay.visible ? "Hide overlay" : "Show overlay"}
         >
           {overlay.visible ? <Eye size={12} /> : <EyeOff size={12} />}
         </button>
@@ -187,6 +189,7 @@ function OverlayItem({
         <button
           onClick={onRemove}
           className="text-text-tertiary hover:text-status-error transition-colors cursor-pointer"
+          aria-label="Remove overlay"
         >
           <Trash2 size={12} />
         </button>
