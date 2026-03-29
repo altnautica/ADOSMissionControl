@@ -81,7 +81,7 @@ export function JumpArrowOverlay({ waypoints }: JumpArrowOverlayProps) {
         const arc = generateArc(arrow.from, arrow.to);
         const midpoint = arc[Math.floor(arc.length / 2)];
         return (
-          <div key={`jump-${i}`}>
+          <div key={`jump-${arrow.from[0].toFixed(5)}-${arrow.to[0].toFixed(5)}-${arrow.label}`}>
             <Polyline
               positions={arc}
               pathOptions={{
