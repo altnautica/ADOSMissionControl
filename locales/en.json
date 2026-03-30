@@ -88,7 +88,18 @@
   "settings": {
     "language": "Language",
     "languageDescription": "Choose your display language. More languages coming soon.",
-    "languageNote": "Help translate — contribute on GitHub"
+    "languageNote": "Help translate — contribute on GitHub",
+    "theme": {
+      "title": "Theme",
+      "theme": "Theme",
+      "accentColor": "Accent Color",
+      "selected": "Selected: {name}",
+      "blue": "Blue",
+      "green": "Green",
+      "amber": "Amber",
+      "red": "Red",
+      "lime": "Lime"
+    }
   },
   "community": {
     "changelog": "Changelog",
@@ -200,8 +211,7 @@
   },
   "theme": {
     "title": "Theme",
-    "darkMode": "Dark mode",
-    "lightModeSoon": "Light mode coming soon",
+    "theme": "Select Theme",
     "accentColor": "Accent Color",
     "blue": "Blue",
     "green": "Green",

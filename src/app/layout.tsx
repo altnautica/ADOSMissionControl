@@ -3,6 +3,7 @@ import "./globals.css";
 import { CommandShell } from "@/components/layout/CommandShell";
 import { ToastProvider } from "@/components/ui/toast";
 import { LocaleProvider } from "@/components/layout/LocaleProvider";
+import { ThemeProvider } from "@/components/layout/ThemeProvider";
 import ConvexClientProvider from "./ConvexClientProvider";
 import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server";
 
@@ -28,11 +29,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   const content = (
-    <LocaleProvider>
-      <ToastProvider>
-        <CommandShell>{children}</CommandShell>
-      </ToastProvider>
-    </LocaleProvider>
+    <ThemeProvider>
+      <LocaleProvider>
+        <ToastProvider>
+          <CommandShell>{children}</CommandShell>
+        </ToastProvider>
+      </LocaleProvider>
+    </ThemeProvider>
   );
 
   const body = (

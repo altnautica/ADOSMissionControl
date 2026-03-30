@@ -25,7 +25,7 @@ export function OsdOverlay() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number>(0);
 
-  const draw = useCallback(() => {
+  const draw = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -94,14 +94,14 @@ export function OsdOverlay() {
     drawFlightTimer(ctx, w - 16, h - 20, startedAt);
 
     rafRef.current = requestAnimationFrame(draw);
-  }, []);
+  };
 
   useEffect(() => {
     rafRef.current = requestAnimationFrame(draw);
     return () => {
       cancelAnimationFrame(rafRef.current);
     };
-  }, [draw]);
+  }, []);
 
   return (
     <canvas

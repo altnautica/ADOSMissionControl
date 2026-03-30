@@ -200,8 +200,7 @@
   },
   "theme": {
     "title": "थीम",
-    "darkMode": "डार्क मोड",
-    "lightModeSoon": "लाइट मोड जल्द आ रहा है",
+    "theme": "थीम चुनें",
     "accentColor": "एक्सेंट रंग",
     "blue": "नीला",
     "green": "हरा",
