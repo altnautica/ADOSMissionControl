@@ -26,7 +26,14 @@ import { useGcsLocation } from "@/hooks/use-gcs-location";
 import { usePlatform } from "@/hooks/use-platform";
 import { useDisconnectGuard } from "@/hooks/use-disconnect-guard";
 import { DisconnectGuard } from "@/components/fc/shared/DisconnectGuard";
-import { cn } from "@/lib/utils";
+import dynamic from "next/dynamic";
+import { cn, isBattleNet } from "@/lib/utils";
+
+// Defense overlay — only resolved in BattleNet builds; tree-shaken in community builds.
+const DEFENSE_PROVIDER_PATH = "@/components/defense/DefenseProvider";
+const DefenseSlot = isBattleNet()
+  ? dynamic(() => import(/* @vite-ignore */ DEFENSE_PROVIDER_PATH), { ssr: false })
+  : (() => null) as React.FC;
 import { ChangelogNotificationGate } from "@/components/changelog/ChangelogNotificationGate";
 import { ChangelogBadge } from "@/components/changelog/ChangelogBadge";
 import Link from "next/link";
@@ -301,6 +308,7 @@ export function CommandShell({ children }: { children: React.ReactNode }) {
       {/* Body */}
       <main className="flex-1 flex flex-col overflow-hidden">
         <DemoProvider />
+        <DefenseSlot />
         <CommandPalette />
         <FailsafeAlertBanner />
         {children}

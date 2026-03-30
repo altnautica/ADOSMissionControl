@@ -39,3 +39,15 @@ next-env.d.ts
 /dist-electron
 /release
 .vercel
+
+# Defense overlay (BattleNet) — never commit to public repo
+/src/components/defense/
+/src/stores/defense-*
+/src/lib/tactical/
+/src/lib/crypto/
+/src/hooks/use-defense-*
+/src/types/defense-types.ts
+/src/data/strike-profiles/
+/src/data/mil-std-2525d/
+/src/app/tactical/
+.overlay-manifest
