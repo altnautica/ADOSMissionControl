@@ -64,7 +64,7 @@ export function PlanContextMenu({ planId, x, y, onClose, onPlanRenamed }: PlanCo
     duplicatePlan(planId);
     toast(t("planDuplicated"), "info");
     onClose();
-  }, [duplicatePlan, planId, toast, onClose]);
+  }, [duplicatePlan, planId, toast, onClose, t]);
 
   const handleDelete = useCallback(() => {
     if (isActivePlan) {
@@ -73,7 +73,7 @@ export function PlanContextMenu({ planId, x, y, onClose, onPlanRenamed }: PlanCo
     deletePlan(planId);
     toast(t("planDeleted"), "info");
     onClose();
-  }, [deletePlan, planId, isActivePlan, clearMission, toast, onClose]);
+  }, [deletePlan, planId, isActivePlan, clearMission, toast, onClose, t]);
 
   // Use current planner waypoints for active plan, stored waypoints for others
   const getExportWaypoints = useCallback(() => {
@@ -86,14 +86,14 @@ export function PlanContextMenu({ planId, x, y, onClose, onPlanRenamed }: PlanCo
     exportWaypointsFormat(getExportWaypoints(), plan.name);
     toast(t("exportedWaypoints"), "success");
     onClose();
-  }, [plan, getExportWaypoints, toast, onClose]);
+  }, [plan, getExportWaypoints, toast, onClose, t]);
 
   const handleExportPlan = useCallback(() => {
     if (!plan) return;
     exportQGCPlan(getExportWaypoints(), plan.name);
     toast(t("exportedPlan"), "success");
     onClose();
-  }, [plan, getExportWaypoints, toast, onClose]);
+  }, [plan, getExportWaypoints, toast, onClose, t]);
 
   const handleStartRename = useCallback(() => {
     if (!plan) return;
@@ -112,7 +112,7 @@ export function PlanContextMenu({ planId, x, y, onClose, onPlanRenamed }: PlanCo
     }
     setRenaming(false);
     onClose();
-  }, [updatePlanName, planId, renameValue, isActivePlan, onPlanRenamed, toast, onClose]);
+  }, [updatePlanName, planId, renameValue, isActivePlan, onPlanRenamed, toast, onClose, t]);
 
   if (!plan) return null;
 

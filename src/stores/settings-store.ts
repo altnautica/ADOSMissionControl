@@ -14,7 +14,7 @@ import { isDemoMode } from "@/lib/utils";
 
 export type MapTileSource = "osm" | "satellite" | "terrain" | "dark";
 export type UnitSystem = "metric" | "imperial";
-export type ThemeMode = "dark" | "light";
+export type ThemeMode = "dark" | "light" | "solarized-dark" | "solarized-light";
 export type AccentColor = "blue" | "green" | "amber" | "red" | "lime";
 export type { Jurisdiction };
 

@@ -200,8 +200,7 @@
   },
   "theme": {
     "title": "Tema",
-    "darkMode": "Modo oscuro",
-    "lightModeSoon": "Modo claro próximamente",
+    "theme": "Seleccionar tema",
     "accentColor": "Color de acento",
     "blue": "Azul",
     "green": "Verde",

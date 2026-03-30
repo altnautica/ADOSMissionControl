@@ -2,9 +2,18 @@
 
 import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card";
-import { Toggle } from "@/components/ui/toggle";
+import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { useSettingsStore } from "@/stores/settings-store";
+import { useSettingsStore, type ThemeMode } from "@/stores/settings-store";
+
+type AccentColor = "blue" | "green" | "amber" | "red" | "lime";
+
+const THEME_OPTIONS = [
+  { value: "dark", label: "Dark" },
+  { value: "light", label: "Light" },
+  { value: "solarized-dark", label: "Solarized Dark" },
+  { value: "solarized-light", label: "Solarized Light" },
+];
 
 const ACCENT_COLORS = [
   { nameKey: "blue", value: "blue", swatchClass: "bg-[#3a82ff]" },
@@ -14,13 +23,12 @@ const ACCENT_COLORS = [
   { nameKey: "lime", value: "lime", swatchClass: "bg-[#84cc16]" },
 ] as const;
 
-export function ThemeSection() {
-  const t = useTranslations("theme");
+export function ThemeSection(): React.ReactNode {
+  const t = useTranslations("settings.theme");
   const themeMode = useSettingsStore((s) => s.themeMode);
   const setThemeMode = useSettingsStore((s) => s.setThemeMode);
   const accentColor = useSettingsStore((s) => s.accentColor);
   const setAccentColor = useSettingsStore((s) => s.setAccentColor);
-  const darkMode = themeMode === "dark";
 
   return (
     <div className="space-y-4">
@@ -28,12 +36,12 @@ export function ThemeSection() {
 
       <Card>
         <div className="space-y-4">
-          <Toggle
-            label={t("darkMode")}
-            checked={darkMode}
-            onChange={(checked) =>
-              setThemeMode(checked ? "dark" : "light")
-            }
+          <Select
+            label={t("theme")}
+            value={themeMode}
+            onChange={(value) => setThemeMode(value as ThemeMode)}
+            options={THEME_OPTIONS}
+            placeholder="Select a theme"
           />
         </div>
       </Card>
@@ -44,7 +52,7 @@ export function ThemeSection() {
             <button
               key={color.value}
               type="button"
-              onClick={() => setAccentColor(color.value)}
+              onClick={() => setAccentColor(color.value as AccentColor)}
               className={cn(
                 "w-8 h-8 border-2 transition-all cursor-pointer",
                 color.swatchClass,
@@ -59,8 +67,7 @@ export function ThemeSection() {
         <p className="text-[10px] text-text-tertiary mt-2">
           {t("selected", {
             name: t(
-              ACCENT_COLORS.find((c) => c.value === accentColor)?.nameKey ??
-              "blue",
+              ACCENT_COLORS.find((c) => c.value === accentColor)?.nameKey ?? "blue",
             ),
           })}
         </p>
