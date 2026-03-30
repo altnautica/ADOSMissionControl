@@ -41,7 +41,9 @@ next-env.d.ts
 .vercel
 
 # Defense overlay (BattleNet) — never commit to public repo
-/src/components/defense/
+# DefenseProvider.tsx stub is committed (harmless no-op); overlay replaces it at build time
+/src/components/defense/*
+!/src/components/defense/DefenseProvider.tsx
 /src/stores/defense-*
 /src/lib/tactical/
 /src/lib/crypto/
