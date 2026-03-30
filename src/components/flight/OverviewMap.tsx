@@ -8,13 +8,14 @@ import { useDroneManager } from "@/stores/drone-manager";
 import { useMissionStore } from "@/stores/mission-store";
 import { useFleetStore } from "@/stores/fleet-store";
 import { useDroneMetadataStore } from "@/stores/drone-metadata-store";
+import { useSettingsStore } from "@/stores/settings-store";
 import { Pause, Play, Ruler } from "lucide-react";
 import { useDefaultCenter } from "@/hooks/use-default-center";
 import {
   MapContainer,
-  Circle,
   Marker,
   Popup,
+  Polyline,
   useMap,
 } from "react-leaflet";
 import L from "leaflet";
@@ -61,6 +62,10 @@ const GuidedTargetOverlay = dynamic(
   () => import("@/components/flight/GuidedTargetOverlay").then((m) => ({ default: m.GuidedTargetOverlay })),
   { ssr: false }
 );
+const GuidanceSettingsMenu = dynamic(
+  () => import("@/components/shared/GuidanceSettingsMenu").then((m) => ({ default: m.GuidanceSettingsMenu })),
+  { ssr: false }
+);
 
 // ── Drone marker colors per status ──────────────────────────
 
@@ -84,6 +89,50 @@ function createDroneIcon(heading: number, color = "#00ff41", size = 24): L.DivIc
     </svg>`,
   });
 }
+
+/** Project a point from lat/lon by bearing (degrees) and distance (meters). */
+function projectByBearing(lat: number, lon: number, bearingDeg: number, distanceM: number): [number, number] {
+  const R = 6371000;
+  const brng = (bearingDeg * Math.PI) / 180;
+  const lat1 = (lat * Math.PI) / 180;
+  const lon1 = (lon * Math.PI) / 180;
+  const lat2 = Math.asin(Math.sin(lat1) * Math.cos(distanceM / R) + Math.cos(lat1) * Math.sin(distanceM / R) * Math.cos(brng));
+  const lon2 = lon1 + Math.atan2(Math.sin(brng) * Math.sin(distanceM / R) * Math.cos(lat1), Math.cos(distanceM / R) - Math.sin(lat1) * Math.sin(lat2));
+  return [(lat2 * 180) / Math.PI, (lon2 * 180) / Math.PI];
+}
+
+/** Convert a line type setting to Leaflet dashArray string. */
+function getLineTypeDashArray(lineType: "solid" | "dashed" | "dotted"): string | undefined {
+  if (lineType === "dashed") return "8 6";
+  if (lineType === "dotted") return "2 4";
+  return undefined;
+}
+
+/** GPS fix type label. */
+const GPS_FIX_LABELS: Record<number, string> = {
+  0: "NO GPS",
+  1: "NO FIX",
+  2: "2D FIX",
+  3: "3D FIX",
+  4: "DGPS",
+  5: "RTK FLOAT",
+  6: "RTK FIX",
+};
+
+/** SVG home marker icon. */
+function createHomeIcon(): L.DivIcon {
+  return L.divIcon({
+    className: "",
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
+    html: `<svg width="20" height="20" viewBox="0 0 20 20">
+      <circle cx="10" cy="10" r="8" fill="none" stroke="#3A82FF" stroke-width="1.5" stroke-dasharray="4 3" />
+      <circle cx="10" cy="10" r="3" fill="#3A82FF" fill-opacity="0.6" />
+    </svg>`,
+  });
+}
+
+const homeIcon = createHomeIcon();
 
 /** Tells Leaflet to recalculate its size when the container resizes. */
 function MapResizer() {
@@ -166,8 +215,28 @@ export function OverviewMap() {
 
   // Subscribe to position updates
   const pos = useTelemetryLatest("position");
+  const gps = useTelemetryLatest("gps");
+  const nav = useTelemetryLatest("navController");
   useTrailStore((s) => s._version); // subscribe to updates
   const trail = useTrailStore.getState()._ring.toArray();
+
+  // Guidance line settings
+  const guidanceHdgLength = useSettingsStore((s) => s.guidanceHdgLength);
+  const guidanceHdgWidth = useSettingsStore((s) => s.guidanceHdgWidth);
+  const guidanceHdgLineType = useSettingsStore((s) => s.guidanceHdgLineType);
+  const guidanceHdgColor = useSettingsStore((s) => s.guidanceHdgColor);
+  const guidanceTrackWpLength = useSettingsStore((s) => s.guidanceTrackWpLength);
+  const guidanceTrackWpWidth = useSettingsStore((s) => s.guidanceTrackWpWidth);
+  const guidanceTrackWpLineType = useSettingsStore((s) => s.guidanceTrackWpLineType);
+  const guidanceTrackWpColor = useSettingsStore((s) => s.guidanceTrackWpColor);
+  const guidanceTgtHdgLength = useSettingsStore((s) => s.guidanceTgtHdgLength);
+  const guidanceTgtHdgWidth = useSettingsStore((s) => s.guidanceTgtHdgWidth);
+  const guidanceTgtHdgLineType = useSettingsStore((s) => s.guidanceTgtHdgLineType);
+  const guidanceTgtHdgColor = useSettingsStore((s) => s.guidanceTgtHdgColor);
+
+  // Next waypoint from mission store for Track-WP line
+  const missionWaypoints = useMissionStore((s) => s.waypoints);
+  const currentWaypoint = useMissionStore((s) => s.currentWaypoint);
 
   // Fleet drones for multi-drone markers
   const fleetDrones = useFleetStore((s) => s.drones);
@@ -190,6 +259,30 @@ export function OverviewMap() {
     setMeasureActive(false);
   }, []);
 
+  // GPS status display
+  const fixType = gps?.fixType ?? 0;
+  const satellites = gps?.satellites ?? 0;
+  const fixLabel = GPS_FIX_LABELS[fixType] ?? `FIX ${fixType}`;
+
+  // Guidance vector endpoints
+  const hdgLine = useMemo(() => {
+    if (!dronePos || heading === 0 && !pos) return null;
+    const end = projectByBearing(dronePos[0], dronePos[1], heading, guidanceHdgLength);
+    return [dronePos, end] as [[number, number], [number, number]];
+  }, [dronePos, heading, guidanceHdgLength, pos]);
+
+  const trackWpLine = useMemo(() => {
+    if (!dronePos || !nav) return null;
+    const end = projectByBearing(dronePos[0], dronePos[1], nav.targetBearing, guidanceTrackWpLength);
+    return [dronePos, end] as [[number, number], [number, number]];
+  }, [dronePos, nav, guidanceTrackWpLength]);
+
+  const tgtHdgLine = useMemo(() => {
+    if (!dronePos || !nav) return null;
+    const end = projectByBearing(dronePos[0], dronePos[1], nav.navBearing, guidanceTgtHdgLength);
+    return [dronePos, end] as [[number, number], [number, number]];
+  }, [dronePos, nav, guidanceTgtHdgLength]);
+
   // Other fleet drones (exclude the selected one to avoid double-render)
   const otherDrones = useMemo(
     () => fleetDrones.filter((d) => d.id !== selectedDroneId && d.position && d.position.lat !== 0),
@@ -198,9 +291,11 @@ export function OverviewMap() {
 
   return (
     <div className="relative w-full h-full border border-border-default overflow-hidden bg-[#0a0a0a] isolate">
-      <span className="absolute top-2 left-2 z-[1000] text-[10px] font-mono text-text-secondary bg-bg-primary/80 backdrop-blur-md rounded px-1.5 py-0.5 border border-border-strong shadow-lg">
-        Position
+      <span className={`absolute top-2 left-2 z-[1000] text-[10px] font-mono bg-bg-primary/80 backdrop-blur-md rounded px-1.5 py-0.5 border border-border-strong shadow-lg ${fixType >= 3 ? "text-status-success" : fixType >= 2 ? "text-status-warning" : "text-status-error"}`}>
+        {fixLabel} | {satellites} SAT
       </span>
+
+      <GuidanceSettingsMenu />
 
       {/* No GPS overlay */}
       {!hasGps && (
@@ -235,18 +330,28 @@ export function OverviewMap() {
         {/* Planned vs actual path comparison */}
         {showPlannedPath && <PlannedVsActualOverlay />}
 
-        {/* Home marker -- dashed blue circle */}
+        {/* Home marker -- SVG icon */}
         {homePos && (
-          <Circle
-            center={homePos}
-            radius={3}
-            pathOptions={{
-              color: "#3A82FF",
-              weight: 1.5,
-              dashArray: "4 4",
-              fillColor: "#3A82FF",
-              fillOpacity: 0.15,
-            }}
+          <Marker position={homePos} icon={homeIcon} interactive={false} />
+        )}
+
+        {/* Guidance vector polylines */}
+        {hdgLine && (
+          <Polyline
+            positions={hdgLine}
+            pathOptions={{ color: guidanceHdgColor, weight: guidanceHdgWidth, dashArray: getLineTypeDashArray(guidanceHdgLineType), opacity: 0.8 }}
+          />
+        )}
+        {trackWpLine && (
+          <Polyline
+            positions={trackWpLine}
+            pathOptions={{ color: guidanceTrackWpColor, weight: guidanceTrackWpWidth, dashArray: getLineTypeDashArray(guidanceTrackWpLineType), opacity: 0.8 }}
+          />
+        )}
+        {tgtHdgLine && (
+          <Polyline
+            positions={tgtHdgLine}
+            pathOptions={{ color: guidanceTgtHdgColor, weight: guidanceTgtHdgWidth, dashArray: getLineTypeDashArray(guidanceTgtHdgLineType), opacity: 0.8 }}
           />
         )}
 
