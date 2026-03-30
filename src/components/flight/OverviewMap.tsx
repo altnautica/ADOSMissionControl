@@ -9,6 +9,7 @@ import { useMissionStore } from "@/stores/mission-store";
 import { useFleetStore } from "@/stores/fleet-store";
 import { useDroneMetadataStore } from "@/stores/drone-metadata-store";
 import { useSettingsStore } from "@/stores/settings-store";
+import { projectByBearing, getLineTypeDashArray, GPS_FIX_LABELS } from "@/lib/drawing/geo-utils";
 import { Pause, Play, Ruler } from "lucide-react";
 import { useDefaultCenter } from "@/hooks/use-default-center";
 import {
@@ -90,34 +91,6 @@ function createDroneIcon(heading: number, color = "#00ff41", size = 24): L.DivIc
   });
 }
 
-/** Project a point from lat/lon by bearing (degrees) and distance (meters). */
-function projectByBearing(lat: number, lon: number, bearingDeg: number, distanceM: number): [number, number] {
-  const R = 6371000;
-  const brng = (bearingDeg * Math.PI) / 180;
-  const lat1 = (lat * Math.PI) / 180;
-  const lon1 = (lon * Math.PI) / 180;
-  const lat2 = Math.asin(Math.sin(lat1) * Math.cos(distanceM / R) + Math.cos(lat1) * Math.sin(distanceM / R) * Math.cos(brng));
-  const lon2 = lon1 + Math.atan2(Math.sin(brng) * Math.sin(distanceM / R) * Math.cos(lat1), Math.cos(distanceM / R) - Math.sin(lat1) * Math.sin(lat2));
-  return [(lat2 * 180) / Math.PI, (lon2 * 180) / Math.PI];
-}
-
-/** Convert a line type setting to Leaflet dashArray string. */
-function getLineTypeDashArray(lineType: "solid" | "dashed" | "dotted"): string | undefined {
-  if (lineType === "dashed") return "8 6";
-  if (lineType === "dotted") return "2 4";
-  return undefined;
-}
-
-/** GPS fix type label. */
-const GPS_FIX_LABELS: Record<number, string> = {
-  0: "NO GPS",
-  1: "NO FIX",
-  2: "2D FIX",
-  3: "3D FIX",
-  4: "DGPS",
-  5: "RTK FLOAT",
-  6: "RTK FIX",
-};
 
 /** SVG home marker icon. */
 function createHomeIcon(): L.DivIcon {

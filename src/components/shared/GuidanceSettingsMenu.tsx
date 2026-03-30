@@ -122,9 +122,11 @@ export function GuidanceSettingsMenu() {
 
 function LineSettings(config: LineConfig) {
   const previewStyle = useMemo(() => {
+    const style = config.lineType === "solid" ? "solid" : config.lineType === "dashed" ? "dashed" : "dotted";
     return {
-      borderTop: `2px ${config.lineType === "solid" ? "solid" : "dashed"} ${config.color}`,
-      borderStyle: config.lineType === "dotted" ? "dotted" : undefined,
+      borderTopWidth: "2px",
+      borderTopStyle: style as "solid" | "dashed" | "dotted",
+      borderTopColor: config.color,
     };
   }, [config.lineType, config.color]);
 
@@ -132,7 +134,7 @@ function LineSettings(config: LineConfig) {
     <div className="pb-3 border-b border-border-default/50 last:border-b-0 last:pb-0">
       <div className="flex items-center justify-between mb-2">
         <span className="text-[10px] font-mono font-semibold text-text-primary">{config.label}</span>
-        <div className="inline-block w-8 h-px bg-white" style={previewStyle} />
+        <div className="inline-block w-8 h-px" style={previewStyle} />
       </div>
 
       <div className="grid grid-cols-2 gap-2">

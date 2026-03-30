@@ -90,6 +90,9 @@ html[data-theme="light"] {
   --alt-border-default: #d6dce8;
   --alt-border-strong: #bec9da;
 
+  --gcs-hud-green: #22c55e;
+  --gcs-armed: #ef4444;
+  --gcs-disarmed: #22c55e;
   --gcs-hud-bg: rgba(255, 255, 255, 0.7);
 }
 
@@ -110,6 +113,9 @@ html[data-theme="solarized-dark"] {
   --alt-border-default: #073642;
   --alt-border-strong: #586e75;
 
+  --gcs-hud-green: #268bd2;
+  --gcs-armed: #dc322f;
+  --gcs-disarmed: #859900;
   --gcs-hud-bg: rgba(0, 43, 54, 0.7);
 }
 
@@ -130,6 +136,9 @@ html[data-theme="solarized-light"] {
   --alt-border-default: #eee8d5;
   --alt-border-strong: #d6d0c8;
 
+  --gcs-hud-green: #268bd2;
+  --gcs-armed: #dc322f;
+  --gcs-disarmed: #859900;
   --gcs-hud-bg: rgba(253, 246, 227, 0.85);
 }
 

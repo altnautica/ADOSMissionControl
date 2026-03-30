@@ -310,3 +310,51 @@ export function formatArea(sqMeters: number): string {
   if (sqMeters >= 10000) return `${(sqMeters / 1e6).toFixed(4)} km²`;
   return `${Math.round(sqMeters)} m²`;
 }
+
+/**
+ * Project a lat/lon by distance (m) at a given bearing (deg).
+ * Returns [lat, lon] in degrees.
+ */
+export function projectByBearing(
+  lat: number,
+  lon: number,
+  bearingDeg: number,
+  distanceM: number
+): [number, number] {
+  const brng = degToRad(bearingDeg);
+  const lat1 = degToRad(lat);
+  const lon1 = degToRad(lon);
+  const dByR = distanceM / R;
+
+  const lat2 = Math.asin(
+    Math.sin(lat1) * Math.cos(dByR) +
+    Math.cos(lat1) * Math.sin(dByR) * Math.cos(brng),
+  );
+  const lon2 = lon1 + Math.atan2(
+    Math.sin(brng) * Math.sin(dByR) * Math.cos(lat1),
+    Math.cos(dByR) - Math.sin(lat1) * Math.sin(lat2),
+  );
+
+  return [radToDeg(lat2), ((radToDeg(lon2) + 540) % 360) - 180];
+}
+
+/** Convert guidance line type to Leaflet dashArray value. */
+export function getLineTypeDashArray(lineType: "solid" | "dashed" | "dotted"): string | undefined {
+  switch (lineType) {
+    case "solid": return undefined;
+    case "dashed": return "6 4";
+    case "dotted": return "2 2";
+    default: return undefined;
+  }
+}
+
+/** GPS fix type labels. */
+export const GPS_FIX_LABELS: Record<number, string> = {
+  0: "No GPS",
+  1: "No Fix",
+  2: "2D Fix",
+  3: "3D Fix",
+  4: "DGPS",
+  5: "RTK Float",
+  6: "RTK Fixed",
+};
