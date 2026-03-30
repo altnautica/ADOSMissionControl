@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useTranslations } from "next-intl";
+import { useShallow } from "zustand/react/shallow";
 import { useSettingsStore, type GuidanceLineType } from "@/stores/settings-store";
 import { ChevronDown, RotateCcw } from "lucide-react";
 
@@ -24,18 +25,18 @@ export function GuidanceSettingsMenu() {
   const [expanded, setExpanded] = useState(false);
   const t = useTranslations("guidance");
 
-  const hdg = useSettingsStore((s) => ({
+  const hdg = useSettingsStore(useShallow((s) => ({
     enabled: s.guidanceHdgEnabled, length: s.guidanceHdgLength, width: s.guidanceHdgWidth,
     lineType: s.guidanceHdgLineType, color: s.guidanceHdgColor,
-  }));
-  const trackWp = useSettingsStore((s) => ({
+  })));
+  const trackWp = useSettingsStore(useShallow((s) => ({
     enabled: s.guidanceTrackWpEnabled, length: s.guidanceTrackWpLength, width: s.guidanceTrackWpWidth,
     lineType: s.guidanceTrackWpLineType, color: s.guidanceTrackWpColor,
-  }));
-  const tgtHdg = useSettingsStore((s) => ({
+  })));
+  const tgtHdg = useSettingsStore(useShallow((s) => ({
     enabled: s.guidanceTgtHdgEnabled, length: s.guidanceTgtHdgLength, width: s.guidanceTgtHdgWidth,
     lineType: s.guidanceTgtHdgLineType, color: s.guidanceTgtHdgColor,
-  }));
+  })));
 
   const setHdgEnabled = useSettingsStore((s) => s.setGuidanceHdgEnabled);
   const setHdgLength = useSettingsStore((s) => s.setGuidanceHdgLength);
