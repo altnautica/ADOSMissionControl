@@ -25,6 +25,8 @@ interface ParameterGridProps {
 const ROW_HEIGHT = 32;
 const BITMASK_ROW_HEIGHT = 200; // estimated height for bitmask editing rows
 
+const HEADER_CLASS = "px-3 py-2 text-left font-semibold text-text-secondary uppercase tracking-wider whitespace-nowrap text-xs";
+
 export function ParameterGrid({ parameters, modified, onModify, filter, showModifiedOnly, metadata, columnVisibility }: ParameterGridProps) {
   const [editingParam, setEditingParam] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
@@ -38,6 +40,19 @@ export function ParameterGrid({ parameters, modified, onModify, filter, showModi
 
   // O(1) favorite lookup instead of O(n) .includes()
   const favSet = useMemo(() => new Set(favoriteParams), [favoriteParams]);
+
+  const vis = columnVisibility;
+
+  const gridCols = useMemo(() => [
+    "24px",                                          // star/favorite
+    vis.index && "50px",                             // #
+    vis.name && "minmax(120px, 2fr)",                // Name
+    vis.description && "minmax(100px, 1.5fr)",       // Description
+    vis.value && "minmax(160px, 2fr)",               // Value
+    vis.range && "minmax(100px, 1fr)",               // Range
+    vis.units && "minmax(50px, 0.5fr)",              // Units
+    vis.type && "minmax(60px, 0.5fr)",               // Type
+  ].filter(Boolean).join(" "), [vis.index, vis.name, vis.description, vis.value, vis.range, vis.units, vis.type]);
 
   const filtered = useMemo(() => {
     let result = parameters;
@@ -99,31 +114,30 @@ export function ParameterGrid({ parameters, modified, onModify, filter, showModi
 
   const cancelEdit = useCallback(() => { setEditingParam(null); setDangerousWarning(null); }, []);
 
-  const vis = columnVisibility;
-  const colCount = Object.values(vis).filter(Boolean).length;
-
   return (
     <div ref={parentRef} className="overflow-auto flex-1">
-      <table className="w-full text-xs">
-        <thead className="sticky top-0 bg-bg-secondary z-10">
-          <tr className="border-b border-border-default">
-            <th className="w-6 px-1" />
-            {vis.index && <th className="px-3 py-2 text-left font-semibold text-text-secondary uppercase tracking-wider whitespace-nowrap">#</th>}
-            {vis.name && <th className="px-3 py-2 text-left font-semibold text-text-secondary uppercase tracking-wider">Name</th>}
-            {vis.description && <th className="px-3 py-2 text-left font-semibold text-text-secondary uppercase tracking-wider">Description</th>}
-            {vis.value && <th className="px-3 py-2 text-left font-semibold text-text-secondary uppercase tracking-wider">Value</th>}
-            {vis.range && <th className="px-3 py-2 text-left font-semibold text-text-secondary uppercase tracking-wider whitespace-nowrap">Range</th>}
-            {vis.units && <th className="px-3 py-2 text-left font-semibold text-text-secondary uppercase tracking-wider whitespace-nowrap">Units</th>}
-            {vis.type && <th className="px-3 py-2 text-left font-semibold text-text-secondary uppercase tracking-wider whitespace-nowrap">Type</th>}
-          </tr>
-        </thead>
-        <tbody style={{ height: `${rowVirtualizer.getTotalSize()}px`, position: "relative" }}>
+      <div className="min-w-[600px] text-xs">
+        {/* Header */}
+        <div
+          className="sticky top-0 bg-bg-secondary z-10 grid items-center border-b border-border-default"
+          style={{ gridTemplateColumns: gridCols }}
+        >
+          <div className="px-1" />
+          {vis.index && <div className={HEADER_CLASS}>#</div>}
+          {vis.name && <div className={HEADER_CLASS}>Name</div>}
+          {vis.description && <div className={HEADER_CLASS}>Description</div>}
+          {vis.value && <div className={HEADER_CLASS}>Value</div>}
+          {vis.range && <div className={HEADER_CLASS}>Range</div>}
+          {vis.units && <div className={HEADER_CLASS}>Units</div>}
+          {vis.type && <div className={HEADER_CLASS}>Type</div>}
+        </div>
+
+        {/* Body */}
+        <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, position: "relative" }}>
           {filtered.length === 0 ? (
-            <tr>
-              <td colSpan={colCount + 1} className="px-3 py-8 text-center text-text-tertiary">
-                {parameters.length === 0 ? "No parameters loaded" : showModifiedOnly && modified.size === 0 ? "No modified parameters" : showModifiedOnly ? "No modified parameters match the search" : "No matching parameters"}
-              </td>
-            </tr>
+            <div className="px-3 py-8 text-center text-text-tertiary">
+              {parameters.length === 0 ? "No parameters loaded" : showModifiedOnly && modified.size === 0 ? "No modified parameters" : showModifiedOnly ? "No modified parameters match the search" : "No matching parameters"}
+            </div>
           ) : (
             rowVirtualizer.getVirtualItems().map((virtualRow) => {
               const param = filtered[virtualRow.index];
@@ -142,36 +156,37 @@ export function ParameterGrid({ parameters, modified, onModify, filter, showModi
               const isFav = favSet.has(param.name);
 
               return (
-                <tr
+                <div
                   key={`${param.name}-${param.index}`}
                   data-index={virtualRow.index}
                   ref={rowVirtualizer.measureElement}
+                  className={cn("grid items-center border-b border-border-default h-8 transition-colors", isModified ? "bg-status-warning/5" : isPendingRam ? "bg-orange-500/8" : differsFromDefault && "border-l-2 border-l-accent-primary bg-accent-primary/5")}
                   style={{
                     position: "absolute",
                     top: 0,
                     left: 0,
                     width: "100%",
                     transform: `translateY(${virtualRow.start}px)`,
+                    gridTemplateColumns: gridCols,
                   }}
-                  className={cn("border-b border-border-default h-8 transition-colors", isModified ? "bg-status-warning/5" : isPendingRam ? "bg-orange-500/8" : differsFromDefault && "border-l-2 border-l-accent-primary bg-accent-primary/5")}
                 >
-                  <td className="px-1 text-center">
+                  <div className="px-1 text-center">
                     <button onClick={() => toggleFavorite(param.name)} className={cn("flex-shrink-0 p-0.5 transition-colors cursor-pointer", isFav ? "text-status-warning" : "text-text-tertiary hover:text-text-secondary")}>
                       <Star size={10} fill={isFav ? "currentColor" : "none"} />
                     </button>
-                  </td>
-                  {vis.index && <td className="px-3 text-text-tertiary font-mono">{param.index}</td>}
+                  </div>
+                  {vis.index && <div className="px-3 text-text-tertiary font-mono">{param.index}</div>}
                   {vis.name && (
-                    <td className={cn("px-3 font-mono", differsFromDefault && !isModified ? "text-accent-primary" : "text-text-primary")}>
+                    <div className={cn("px-3 font-mono truncate", differsFromDefault && !isModified ? "text-accent-primary" : "text-text-primary")}>
                       <div className="flex items-center gap-1">
                         <ParamTooltip meta={meta}><span className="cursor-default">{param.name}</span></ParamTooltip>
                         {readOnly && <Lock size={10} className="text-text-tertiary flex-shrink-0" />}
                       </div>
-                    </td>
+                    </div>
                   )}
-                  {vis.description && <td className="px-3 text-text-secondary max-w-[200px] truncate" title={meta?.description}>{meta?.humanName || meta?.description || "\u2014"}</td>}
+                  {vis.description && <div className="px-3 text-text-secondary truncate" title={meta?.description}>{meta?.humanName || meta?.description || "\u2014"}</div>}
                   {vis.value && (
-                    <td className="px-3">
+                    <div className="px-3 overflow-hidden">
                       <div className="flex items-center gap-1">
                         {isEditing && hasBitmask ? (
                           <div className="flex flex-col gap-0.5 py-1">
@@ -202,7 +217,7 @@ export function ParameterGrid({ parameters, modified, onModify, filter, showModi
                         ) : (
                           <>
                             <button onClick={() => !readOnly && startEdit(param)} title={readOnly ? "Read-only parameter" : outOfRange && meta?.range ? `Out of range: expected ${meta.range.min} .. ${meta.range.max}` : isPendingRam && !isModified ? "Written to RAM \u2014 not yet committed to flash" : undefined} className={cn("flex-1 h-6 px-1.5 text-left font-mono transition-colors flex items-center gap-1", readOnly ? "text-text-tertiary cursor-not-allowed" : outOfRange ? "text-status-warning border border-status-warning/60 bg-status-warning/5 cursor-pointer hover:bg-bg-tertiary" : isModified ? "text-status-warning border border-status-warning/40 cursor-pointer hover:bg-bg-tertiary" : isPendingRam ? "text-orange-400 border border-orange-500/40 cursor-pointer hover:bg-bg-tertiary" : "text-text-primary border border-transparent cursor-pointer hover:bg-bg-tertiary")}>
-                              <span>{hasEnum && meta!.values!.has(displayValue) ? `${displayValue}: ${meta!.values!.get(displayValue)}` : displayValue}</span>
+                              <span className="truncate">{hasEnum && meta!.values!.has(displayValue) ? `${displayValue}: ${meta!.values!.get(displayValue)}` : displayValue}</span>
                               {outOfRange && <span className="text-[10px]" title={`Range: ${meta?.range?.min} .. ${meta?.range?.max}`}>!</span>}
                               {isPendingRam && !isModified && <span className="flex-shrink-0" title="RAM only, not flashed"><HardDrive size={10} className="text-orange-400" /></span>}
                             </button>
@@ -217,17 +232,17 @@ export function ParameterGrid({ parameters, modified, onModify, filter, showModi
                           </>
                         )}
                       </div>
-                    </td>
+                    </div>
                   )}
-                  {vis.range && <td className="px-3 text-text-tertiary font-mono">{meta?.range ? `${meta.range.min} .. ${meta.range.max}` : "\u2014"}</td>}
-                  {vis.units && <td className="px-3 text-text-tertiary">{meta?.units || "\u2014"}</td>}
-                  {vis.type && <td className="px-3 text-text-tertiary font-mono">{PARAM_TYPE_LABELS[param.type] ?? `T${param.type}`}</td>}
-                </tr>
+                  {vis.range && <div className="px-3 text-text-tertiary font-mono whitespace-nowrap">{meta?.range ? `${meta.range.min} .. ${meta.range.max}` : "\u2014"}</div>}
+                  {vis.units && <div className="px-3 text-text-tertiary">{meta?.units || "\u2014"}</div>}
+                  {vis.type && <div className="px-3 text-text-tertiary font-mono">{PARAM_TYPE_LABELS[param.type] ?? `T${param.type}`}</div>}
+                </div>
               );
             })
           )}
-        </tbody>
-      </table>
+        </div>
+      </div>
     </div>
   );
 }
