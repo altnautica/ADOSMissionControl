@@ -19,6 +19,10 @@ const ACCENT_PRESETS: Record<string, { primary: string; hover: string; secondary
   amber: { primary: "#f59e0b", hover: "#f7b13a", secondary: "#7a9900" },
   red: { primary: "#ef4444", hover: "#f16363", secondary: "#c4cf3a" },
   lime: { primary: "#84cc16", hover: "#9bdf2a", secondary: "#2f6feb" },
+  purple: { primary: "#a855f7", hover: "#b975f9", secondary: "#e879f9" },
+  pink: { primary: "#ec4899", hover: "#f06dae", secondary: "#f9a8d4" },
+  cyan: { primary: "#06b6d4", hover: "#22d3ee", secondary: "#67e8f9" },
+  orange: { primary: "#f97316", hover: "#fb923c", secondary: "#fdba74" },
 };
 
 interface LocaleProviderProps {
