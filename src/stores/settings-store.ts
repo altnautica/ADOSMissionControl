@@ -14,8 +14,13 @@ import { isDemoMode } from "@/lib/utils";
 
 export type MapTileSource = "osm" | "satellite" | "terrain" | "dark";
 export type UnitSystem = "metric" | "imperial";
-export type ThemeMode = "dark" | "light" | "solarized-dark" | "solarized-light" | "nvg";
-export type AccentColor = "blue" | "green" | "amber" | "red" | "lime";
+export type ThemeMode =
+  | "dark" | "light" | "solarized-dark" | "solarized-light" | "nvg"
+  | "dracula" | "catppuccin-mocha" | "catppuccin-frappe" | "catppuccin-latte"
+  | "nord" | "gruvbox-dark" | "gruvbox-light" | "one-dark" | "tokyo-night"
+  | "rose-pine" | "monokai" | "kanagawa" | "synthwave" | "github-dark"
+  | "ayu-dark" | "ayu-mirage" | "everforest-dark";
+export type AccentColor = "blue" | "green" | "amber" | "red" | "lime" | "purple" | "pink" | "cyan" | "orange";
 export type GuidanceLineType = "solid" | "dashed" | "dotted";
 export type { Jurisdiction };
 
@@ -332,7 +337,7 @@ export const useSettingsStore = create<SettingsStoreState>()(
     {
       name: "altcmd:settings",
       storage: createJSONStorage(indexedDBStorage.storage),
-      version: 24,
+      version: 25,
       migrate: (persisted, version) => {
         const state = persisted as Record<string, unknown>;
         if (version < 2) {
@@ -453,6 +458,7 @@ export const useSettingsStore = create<SettingsStoreState>()(
           state.guidanceTrackWpEnabled = true;
           state.guidanceTgtHdgEnabled = true;
         }
+        // v25: expanded theme + accent palette — widening only, no migration needed
         return state as unknown as SettingsStoreState;
       },
       onRehydrateStorage: () => {

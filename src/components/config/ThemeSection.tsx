@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
+import type { SelectOptionGroup } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useSettingsStore, type ThemeMode, type AccentColor } from "@/stores/settings-store";
 
@@ -13,6 +14,10 @@ const ACCENT_COLORS = [
   { nameKey: "amber", value: "amber", swatchClass: "bg-[#f59e0b]" },
   { nameKey: "red", value: "red", swatchClass: "bg-[#ef4444]" },
   { nameKey: "lime", value: "lime", swatchClass: "bg-[#84cc16]" },
+  { nameKey: "purple", value: "purple", swatchClass: "bg-[#a855f7]" },
+  { nameKey: "pink", value: "pink", swatchClass: "bg-[#ec4899]" },
+  { nameKey: "cyan", value: "cyan", swatchClass: "bg-[#06b6d4]" },
+  { nameKey: "orange", value: "orange", swatchClass: "bg-[#f97316]" },
 ] as const;
 
 export function ThemeSection(): React.ReactNode {
@@ -22,11 +27,53 @@ export function ThemeSection(): React.ReactNode {
   const accentColor = useSettingsStore((s) => s.accentColor);
   const setAccentColor = useSettingsStore((s) => s.setAccentColor);
 
-  const themeOptions = useMemo(() => [
-    { value: "dark", label: t("dark") },
-    { value: "light", label: t("light") },
-    { value: "solarized-dark", label: t("solarizedDark") },
-    { value: "solarized-light", label: t("solarizedLight") },
+  const themeOptions: SelectOptionGroup[] = useMemo(() => [
+    {
+      label: "Core",
+      options: [
+        { value: "dark", label: t("dark") },
+        { value: "light", label: t("light") },
+      ],
+    },
+    {
+      label: "Solarized",
+      options: [
+        { value: "solarized-dark", label: t("solarizedDark") },
+        { value: "solarized-light", label: t("solarizedLight") },
+      ],
+    },
+    {
+      label: "Dark Themes",
+      options: [
+        { value: "dracula", label: t("dracula") },
+        { value: "catppuccin-mocha", label: t("catppuccinMocha") },
+        { value: "catppuccin-frappe", label: t("catppuccinFrappe") },
+        { value: "nord", label: t("nord") },
+        { value: "gruvbox-dark", label: t("gruvboxDark") },
+        { value: "one-dark", label: t("oneDark") },
+        { value: "tokyo-night", label: t("tokyoNight") },
+        { value: "rose-pine", label: t("rosePine") },
+        { value: "monokai", label: t("monokai") },
+        { value: "kanagawa", label: t("kanagawa") },
+        { value: "synthwave", label: t("synthwave") },
+        { value: "github-dark", label: t("githubDark") },
+      ],
+    },
+    {
+      label: "Light Themes",
+      options: [
+        { value: "catppuccin-latte", label: t("catppuccinLatte") },
+        { value: "gruvbox-light", label: t("gruvboxLight") },
+      ],
+    },
+    {
+      label: "Mid-tone",
+      options: [
+        { value: "ayu-dark", label: t("ayuDark") },
+        { value: "ayu-mirage", label: t("ayuMirage") },
+        { value: "everforest-dark", label: t("everforestDark") },
+      ],
+    },
   ], [t]);
 
   return (
@@ -41,12 +88,13 @@ export function ThemeSection(): React.ReactNode {
             onChange={(value) => setThemeMode(value as ThemeMode)}
             options={themeOptions}
             placeholder="Select a theme"
+            searchable
           />
         </div>
       </Card>
 
       <Card title={t("accentColor")}>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           {ACCENT_COLORS.map((color) => (
             <button
               key={color.value}
