@@ -89,6 +89,7 @@ export function ThemeSection(): React.ReactNode {
             options={themeOptions}
             placeholder="Select a theme"
             searchable
+            maxHeight={480}
           />
         </div>
       </Card>
