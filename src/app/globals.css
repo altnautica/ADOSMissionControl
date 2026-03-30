@@ -142,6 +142,27 @@ html[data-theme="solarized-light"] {
   --gcs-hud-bg: rgba(253, 246, 227, 0.85);
 }
 
+html[data-theme="nvg"] {
+  --alt-bg-primary: #000000;
+  --alt-bg-secondary: #001100;
+  --alt-bg-tertiary: #002200;
+  --alt-text-primary: #00AA00;
+  --alt-text-secondary: #007700;
+  --alt-text-tertiary: #004400;
+  --alt-accent-primary: #00FF00;
+  --alt-accent-primary-hover: #00CC00;
+  --alt-accent-secondary: #008800;
+  --alt-border-default: #002200;
+  --alt-border-strong: #003300;
+  --alt-status-success: #005500;
+  --alt-status-warning: #886600;
+  --alt-status-error: #880000;
+  --gcs-hud-green: #00AA00;
+  --gcs-armed: #880000;
+  --gcs-disarmed: #005500;
+  --gcs-hud-bg: rgba(0, 17, 0, 0.8);
+}
+
 html {
   background-color: var(--alt-bg-primary);
   color: var(--alt-text-primary);

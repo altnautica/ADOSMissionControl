@@ -71,3 +71,8 @@ export function randomId(): string {
 export function isElectron(): boolean {
   return typeof window !== "undefined" && window.electronAPI?.isElectron === true;
 }
+
+/** Check if this is a BattleNet defense build. */
+export function isBattleNet(): boolean {
+  return process.env.NEXT_PUBLIC_BUILD_TARGET === "battlenet";
+}

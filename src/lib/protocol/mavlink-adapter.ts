@@ -13,7 +13,7 @@
  */
 
 import type {
-  DroneProtocol, Transport, VehicleInfo, CommandResult, ParameterValue,
+  DroneProtocol, Transport, TransportMiddleware, VehicleInfo, CommandResult, ParameterValue,
   MissionItem, FirmwareHandler, ProtocolCapabilities, UnifiedFlightMode,
   LogEntry, LogDownloadProgressCallback,
 } from './types'
@@ -55,6 +55,7 @@ export class MAVLinkAdapter implements DroneProtocol {
   private lastVehicleHeartbeat = 0
   private linkLostCheckInterval: ReturnType<typeof setInterval> | null = null
   private linkIsLost = false
+  private middleware: TransportMiddleware | null = null
 
   // Protocol state machines
   private parameterDownload: prm.ParamDownloadState | null = null
@@ -66,6 +67,9 @@ export class MAVLinkAdapter implements DroneProtocol {
   private logDataDownload: logOps.LogDataState | null = null
 
   get isConnected(): boolean { return this._connected }
+
+  /** Attach optional middleware for intercepting transport data (e.g., encryption). */
+  setMiddleware(mw: TransportMiddleware | null): void { this.middleware = mw }
 
   // ── Shared state object for frame handlers ──────────────
   // Cached mutable object — updated in-place to avoid 50+/sec allocations
@@ -98,7 +102,7 @@ export class MAVLinkAdapter implements DroneProtocol {
   // ── Connection ─────────────────────────────────────────
   async connect(transport: Transport): Promise<VehicleInfo> {
     this.transport = transport; this._disconnected = false
-    this.dataHandler = (data: Uint8Array) => this.parser.feed(data)
+    this.dataHandler = (data: Uint8Array) => this.parser.feed(this.middleware ? this.middleware.unwrapInbound(data) : data)
     this.closeHandler = () => this.handleDisconnect()
     transport.on('data', this.dataHandler)
     transport.on('close', this.closeHandler as (data: void) => void)
@@ -126,9 +130,9 @@ export class MAVLinkAdapter implements DroneProtocol {
 
     this._connected = true
     this.heartbeatInterval = setInterval(() => {
-      if (this.transport?.isConnected) this.transport.send(encodeHeartbeat(this.sysId, this.compId))
+      if (this.transport?.isConnected) this.sendWrapped(encodeHeartbeat(this.sysId, this.compId))
     }, 1000)
-    this.transport.send(encodeHeartbeat(this.sysId, this.compId))
+    this.sendWrapped(encodeHeartbeat(this.sysId, this.compId))
     requestDataStreams(this.fhs)
     this.streamRequestInterval = setInterval(() => requestDataStreams(this.fhs), 10000)
     this.lastVehicleHeartbeat = Date.now(); this.linkIsLost = false
@@ -293,6 +297,11 @@ export class MAVLinkAdapter implements DroneProtocol {
 
   private sendCommandLong(cmd: number, p: [number, number, number, number, number, number, number], timeout?: number): Promise<CommandResult> {
     if (!this.transport?.isConnected) return Promise.resolve({ success: false, resultCode: -1, message: 'Not connected' })
-    return this.commandQueue.sendCommand(cmd, p, (d) => this.transport!.send(d), this.targetSysId, this.targetCompId, this.sysId, this.compId, timeout)
+    return this.commandQueue.sendCommand(cmd, p, (d) => this.sendWrapped(d), this.targetSysId, this.targetCompId, this.sysId, this.compId, timeout)
+  }
+
+  /** Send data through transport, applying outbound middleware if set. */
+  private sendWrapped(data: Uint8Array): void {
+    this.transport?.send(this.middleware ? this.middleware.wrapOutbound(data) : data)
   }
 }
