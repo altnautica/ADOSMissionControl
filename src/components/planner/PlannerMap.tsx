@@ -19,6 +19,8 @@ import { useDefaultCenter } from "@/hooks/use-default-center";
 import { DrawingManager } from "@/lib/drawing/drawing-manager";
 import { useDrawingStore } from "@/stores/drawing-store";
 import { usePlannerStore } from "@/stores/planner-store";
+import { useSettingsStore } from "@/stores/settings-store";
+import { useTelemetryLatest } from "@/hooks/use-telemetry-latest";
 import { polygonArea } from "@/lib/drawing/geo-utils";
 import { randomId } from "@/lib/utils";
 import L from "leaflet";
@@ -37,6 +39,36 @@ const GcsMarker = dynamic(() => import("@/components/map/GcsMarker").then((m) =>
 const PatternOverlay = dynamic(() => import("@/components/planner/PatternOverlay").then((m) => ({ default: m.PatternOverlay })), { ssr: false });
 const LocateControl = dynamic(() => import("@/components/map/LocateControl").then((m) => ({ default: m.LocateControl })), { ssr: false });
 const KmlOverlayLayers = dynamic(() => import("@/components/planner/KmlOverlayLayers").then((m) => ({ default: m.KmlOverlayLayers })), { ssr: false });
+const GuidanceSettingsMenu = dynamic(() => import("@/components/shared/GuidanceSettingsMenu").then((m) => ({ default: m.GuidanceSettingsMenu })), { ssr: false });
+
+/** Project a point from lat/lon by bearing (degrees) and distance (meters). */
+function projectByBearing(lat: number, lon: number, bearingDeg: number, distanceM: number): [number, number] {
+  const R = 6371000;
+  const brng = (bearingDeg * Math.PI) / 180;
+  const lat1 = (lat * Math.PI) / 180;
+  const lon1 = (lon * Math.PI) / 180;
+  const lat2 = Math.asin(Math.sin(lat1) * Math.cos(distanceM / R) + Math.cos(lat1) * Math.sin(distanceM / R) * Math.cos(brng));
+  const lon2 = lon1 + Math.atan2(Math.sin(brng) * Math.sin(distanceM / R) * Math.cos(lat1), Math.cos(distanceM / R) - Math.sin(lat1) * Math.sin(lat2));
+  return [(lat2 * 180) / Math.PI, (lon2 * 180) / Math.PI];
+}
+
+/** Convert a line type setting to Leaflet dashArray string. */
+function getLineTypeDashArray(lineType: "solid" | "dashed" | "dotted"): string | undefined {
+  if (lineType === "dashed") return "8 6";
+  if (lineType === "dotted") return "2 4";
+  return undefined;
+}
+
+/** GPS fix type label. */
+const GPS_FIX_LABELS: Record<number, string> = {
+  0: "NO GPS",
+  1: "NO FIX",
+  2: "2D FIX",
+  3: "3D FIX",
+  4: "DGPS",
+  5: "RTK FLOAT",
+  6: "RTK FIX",
+};
 
 interface PlannerMapProps {
   waypoints: Waypoint[];
@@ -71,6 +103,50 @@ export function PlannerMap({
   const clearFitRequest = usePlannerStore((s) => s.clearFitRequest);
   const defaultCenter = useDefaultCenter();
   const isDrawingTool = DRAWING_TOOLS.includes(activeTool);
+
+  // Telemetry for GPS badge + guidance vectors
+  const pos = useTelemetryLatest("position");
+  const gps = useTelemetryLatest("gps");
+  const nav = useTelemetryLatest("navController");
+  const dronePos: [number, number] | null =
+    pos && pos.lat !== 0 && pos.lon !== 0 ? [pos.lat, pos.lon] : null;
+  const heading = pos?.heading ?? 0;
+  const fixType = gps?.fixType ?? 0;
+  const satellites = gps?.satellites ?? 0;
+  const fixLabel = GPS_FIX_LABELS[fixType] ?? `FIX ${fixType}`;
+
+  // Guidance line settings
+  const guidanceHdgLength = useSettingsStore((s) => s.guidanceHdgLength);
+  const guidanceHdgWidth = useSettingsStore((s) => s.guidanceHdgWidth);
+  const guidanceHdgLineType = useSettingsStore((s) => s.guidanceHdgLineType);
+  const guidanceHdgColor = useSettingsStore((s) => s.guidanceHdgColor);
+  const guidanceTrackWpLength = useSettingsStore((s) => s.guidanceTrackWpLength);
+  const guidanceTrackWpWidth = useSettingsStore((s) => s.guidanceTrackWpWidth);
+  const guidanceTrackWpLineType = useSettingsStore((s) => s.guidanceTrackWpLineType);
+  const guidanceTrackWpColor = useSettingsStore((s) => s.guidanceTrackWpColor);
+  const guidanceTgtHdgLength = useSettingsStore((s) => s.guidanceTgtHdgLength);
+  const guidanceTgtHdgWidth = useSettingsStore((s) => s.guidanceTgtHdgWidth);
+  const guidanceTgtHdgLineType = useSettingsStore((s) => s.guidanceTgtHdgLineType);
+  const guidanceTgtHdgColor = useSettingsStore((s) => s.guidanceTgtHdgColor);
+
+  // Guidance vector endpoints
+  const hdgLine = useMemo(() => {
+    if (!dronePos || (heading === 0 && !pos)) return null;
+    const end = projectByBearing(dronePos[0], dronePos[1], heading, guidanceHdgLength);
+    return [dronePos, end] as [[number, number], [number, number]];
+  }, [dronePos, heading, guidanceHdgLength, pos]);
+
+  const trackWpLine = useMemo(() => {
+    if (!dronePos || !nav) return null;
+    const end = projectByBearing(dronePos[0], dronePos[1], nav.targetBearing, guidanceTrackWpLength);
+    return [dronePos, end] as [[number, number], [number, number]];
+  }, [dronePos, nav, guidanceTrackWpLength]);
+
+  const tgtHdgLine = useMemo(() => {
+    if (!dronePos || !nav) return null;
+    const end = projectByBearing(dronePos[0], dronePos[1], nav.navBearing, guidanceTgtHdgLength);
+    return [dronePos, end] as [[number, number], [number, number]];
+  }, [dronePos, nav, guidanceTgtHdgLength]);
 
   useEffect(() => {
     if (!mapInstance) return;
@@ -180,6 +256,11 @@ export function PlannerMap({
 
   return (
     <div className="w-full h-full relative">
+      {/* GPS status badge */}
+      <span className={`absolute top-2 left-2 z-[1000] text-[10px] font-mono bg-bg-primary/80 backdrop-blur-md rounded px-1.5 py-0.5 border border-border-strong shadow-lg ${fixType >= 3 ? "text-status-success" : fixType >= 2 ? "text-status-warning" : "text-status-error"}`}>
+        {fixLabel} | {satellites} SAT
+      </span>
+      <GuidanceSettingsMenu />
       <MapContainer center={defaultCenter} zoom={13} className="w-full h-full" zoomControl={false} attributionControl={false}
         style={{ background: "#0a0a0a" }} ref={(instance) => { if (instance) setMapInstance(instance); }}>
         <TileLayerSwitcher />
@@ -190,6 +271,16 @@ export function PlannerMap({
         {splinePositions.length >= 2 && <Polyline positions={splinePositions} pathOptions={{ color: "#00e5ff", weight: 2.5, opacity: 0.9 }} />}
         {segments.map((seg) => <Marker key={seg.key} position={seg.position} icon={makeSegmentLabel(seg.label)} interactive={false} />)}
         <GcsMarker /><LocateControl /><PatternOverlay />
+        {/* Guidance vector polylines */}
+        {hdgLine && (
+          <Polyline positions={hdgLine} pathOptions={{ color: guidanceHdgColor, weight: guidanceHdgWidth, dashArray: getLineTypeDashArray(guidanceHdgLineType), opacity: 0.8 }} />
+        )}
+        {trackWpLine && (
+          <Polyline positions={trackWpLine} pathOptions={{ color: guidanceTrackWpColor, weight: guidanceTrackWpWidth, dashArray: getLineTypeDashArray(guidanceTrackWpLineType), opacity: 0.8 }} />
+        )}
+        {tgtHdgLine && (
+          <Polyline positions={tgtHdgLine} pathOptions={{ color: guidanceTgtHdgColor, weight: guidanceTgtHdgWidth, dashArray: getLineTypeDashArray(guidanceTgtHdgLineType), opacity: 0.8 }} />
+        )}
         <JumpArrowOverlay waypoints={waypoints} />
         {waypoints.map((wp, i) => (
           <Marker key={wp.id} position={[wp.lat, wp.lon]}

@@ -21,6 +21,16 @@ export type { Jurisdiction };
 export type ParamColumnId = "index" | "name" | "description" | "value" | "range" | "units" | "type";
 export type ParamColumnVisibility = Record<ParamColumnId, boolean>;
 
+export interface ParameterFilterPreset {
+  id: string;
+  name: string;
+  filter: string;
+  category: string | null;
+  showModifiedOnly: boolean;
+  showNonDefault: boolean;
+  showFavorites: boolean;
+}
+
 export const DEFAULT_PARAM_COLUMNS: ParamColumnVisibility = {
   index: true,
   name: true,
@@ -105,6 +115,23 @@ interface SettingsStoreState {
   themeMode: ThemeMode;
   /** Global accent color preset. */
   accentColor: AccentColor;
+  /** Saved parameter filter presets. */
+  paramFilterPresets: ParameterFilterPreset[];
+  /** Guidance HDG line settings. */
+  guidanceHdgLength: number;
+  guidanceHdgWidth: number;
+  guidanceHdgLineType: "solid" | "dashed" | "dotted";
+  guidanceHdgColor: string;
+  /** Guidance Track-WP line settings. */
+  guidanceTrackWpLength: number;
+  guidanceTrackWpWidth: number;
+  guidanceTrackWpLineType: "solid" | "dashed" | "dotted";
+  guidanceTrackWpColor: string;
+  /** Guidance TGT HDG line settings. */
+  guidanceTgtHdgLength: number;
+  guidanceTgtHdgWidth: number;
+  guidanceTgtHdgLineType: "solid" | "dashed" | "dotted";
+  guidanceTgtHdgColor: string;
   setLocale: (locale: string) => void;
   setThemeMode: (mode: ThemeMode) => void;
   setAccentColor: (accent: AccentColor) => void;
@@ -140,6 +167,20 @@ interface SettingsStoreState {
   setPanelScrollPosition: (panelId: string, scrollTop: number) => void;
   setShowNoFlyZones: (show: boolean) => void;
   setOfflineTileCaching: (enabled: boolean) => void;
+  saveParamFilterPreset: (preset: ParameterFilterPreset) => void;
+  removeParamFilterPreset: (id: string) => void;
+  setGuidanceHdgLength: (v: number) => void;
+  setGuidanceHdgWidth: (v: number) => void;
+  setGuidanceHdgLineType: (v: "solid" | "dashed" | "dotted") => void;
+  setGuidanceHdgColor: (v: string) => void;
+  setGuidanceTrackWpLength: (v: number) => void;
+  setGuidanceTrackWpWidth: (v: number) => void;
+  setGuidanceTrackWpLineType: (v: "solid" | "dashed" | "dotted") => void;
+  setGuidanceTrackWpColor: (v: string) => void;
+  setGuidanceTgtHdgLength: (v: number) => void;
+  setGuidanceTgtHdgWidth: (v: number) => void;
+  setGuidanceTgtHdgLineType: (v: "solid" | "dashed" | "dotted") => void;
+  setGuidanceTgtHdgColor: (v: string) => void;
 }
 
 export const useSettingsStore = create<SettingsStoreState>()(
@@ -184,6 +225,19 @@ export const useSettingsStore = create<SettingsStoreState>()(
       locale: 'en',
       themeMode: "dark",
       accentColor: "blue",
+      paramFilterPresets: [],
+      guidanceHdgLength: 100,
+      guidanceHdgWidth: 2,
+      guidanceHdgLineType: "solid",
+      guidanceHdgColor: "#00ff41",
+      guidanceTrackWpLength: 100,
+      guidanceTrackWpWidth: 1.5,
+      guidanceTrackWpLineType: "dashed",
+      guidanceTrackWpColor: "#3A82FF",
+      guidanceTgtHdgLength: 100,
+      guidanceTgtHdgWidth: 1.5,
+      guidanceTgtHdgLineType: "dashed",
+      guidanceTgtHdgColor: "#f59e0b",
 
       setMapTileSource: (mapTileSource) => set({ mapTileSource }),
       setUnits: (units) => set({ units }),
@@ -229,6 +283,29 @@ export const useSettingsStore = create<SettingsStoreState>()(
         })),
       setShowNoFlyZones: (showNoFlyZones) => set({ showNoFlyZones }),
       setOfflineTileCaching: (offlineTileCaching) => set({ offlineTileCaching }),
+      saveParamFilterPreset: (preset) =>
+        set((s) => ({
+          paramFilterPresets: [
+            ...s.paramFilterPresets.filter((p) => p.id !== preset.id),
+            preset,
+          ],
+        })),
+      removeParamFilterPreset: (id) =>
+        set((s) => ({
+          paramFilterPresets: s.paramFilterPresets.filter((p) => p.id !== id),
+        })),
+      setGuidanceHdgLength: (v) => set({ guidanceHdgLength: v }),
+      setGuidanceHdgWidth: (v) => set({ guidanceHdgWidth: v }),
+      setGuidanceHdgLineType: (v) => set({ guidanceHdgLineType: v }),
+      setGuidanceHdgColor: (v) => set({ guidanceHdgColor: v }),
+      setGuidanceTrackWpLength: (v) => set({ guidanceTrackWpLength: v }),
+      setGuidanceTrackWpWidth: (v) => set({ guidanceTrackWpWidth: v }),
+      setGuidanceTrackWpLineType: (v) => set({ guidanceTrackWpLineType: v }),
+      setGuidanceTrackWpColor: (v) => set({ guidanceTrackWpColor: v }),
+      setGuidanceTgtHdgLength: (v) => set({ guidanceTgtHdgLength: v }),
+      setGuidanceTgtHdgWidth: (v) => set({ guidanceTgtHdgWidth: v }),
+      setGuidanceTgtHdgLineType: (v) => set({ guidanceTgtHdgLineType: v }),
+      setGuidanceTgtHdgColor: (v) => set({ guidanceTgtHdgColor: v }),
       setLocale: (locale) => set({ locale }),
       setThemeMode: (themeMode) => set({ themeMode }),
       setAccentColor: (accentColor) => set({ accentColor }),
@@ -236,7 +313,7 @@ export const useSettingsStore = create<SettingsStoreState>()(
     {
       name: "altcmd:settings",
       storage: createJSONStorage(indexedDBStorage.storage),
-      version: 21,
+      version: 23,
       migrate: (persisted, version) => {
         const state = persisted as Record<string, unknown>;
         if (version < 2) {
@@ -332,6 +409,25 @@ export const useSettingsStore = create<SettingsStoreState>()(
         if (version < 21) {
           // v21: global accent preset
           state.accentColor = "blue";
+        }
+        if (version < 22) {
+          // v22: parameter filter presets
+          state.paramFilterPresets = [];
+        }
+        if (version < 23) {
+          // v23: guidance vector line settings
+          state.guidanceHdgLength = 100;
+          state.guidanceHdgWidth = 2;
+          state.guidanceHdgLineType = "solid";
+          state.guidanceHdgColor = "#00ff41";
+          state.guidanceTrackWpLength = 100;
+          state.guidanceTrackWpWidth = 1.5;
+          state.guidanceTrackWpLineType = "dashed";
+          state.guidanceTrackWpColor = "#3A82FF";
+          state.guidanceTgtHdgLength = 100;
+          state.guidanceTgtHdgWidth = 1.5;
+          state.guidanceTgtHdgLineType = "dashed";
+          state.guidanceTgtHdgColor = "#f59e0b";
         }
         return state as unknown as SettingsStoreState;
       },
