@@ -98,8 +98,27 @@
       "green": "Green",
       "amber": "Amber",
       "red": "Red",
-      "lime": "Lime"
+      "lime": "Lime",
+      "dark": "Dark",
+      "light": "Light",
+      "solarizedDark": "Solarized Dark",
+      "solarizedLight": "Solarized Light"
     }
+  },
+  "guidance": {
+    "title": "Guidance",
+    "hdg": "HDG",
+    "trackWp": "Track-WP",
+    "tgtHdg": "TGT HDG",
+    "allHidden": "All hidden",
+    "length": "Length (m)",
+    "width": "Width (px)",
+    "lineType": "Line style",
+    "color": "Color",
+    "solid": "Solid",
+    "dashed": "Dashed",
+    "dotted": "Dotted",
+    "resetAll": "Reset to defaults"
   },
   "community": {
     "changelog": "Changelog",
@@ -218,6 +237,10 @@
     "amber": "Amber",
     "red": "Red",
     "lime": "Lime",
+    "dark": "Dark",
+    "light": "Light",
+    "solarizedDark": "Solarized Dark",
+    "solarizedLight": "Solarized Light",
     "selected": "Selected: {name}"
   },
   "video": {

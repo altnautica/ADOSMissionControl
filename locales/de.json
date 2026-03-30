@@ -207,6 +207,10 @@
     "amber": "Bernstein",
     "red": "Rot",
     "lime": "Limette",
+    "dark": "Dunkel",
+    "light": "Hell",
+    "solarizedDark": "Solarized Dunkel",
+    "solarizedLight": "Solarized Hell",
     "selected": "Ausgewählt: {name}"
   },
   "video": {
@@ -1684,5 +1688,20 @@
   "missionProgress": {
     "mission": "Mission",
     "waypoint": "Waypoint"
+  },
+  "guidance": {
+    "title": "Leitlinien",
+    "hdg": "HDG",
+    "trackWp": "Track-WP",
+    "tgtHdg": "TGT HDG",
+    "allHidden": "Alle ausgeblendet",
+    "length": "Länge (m)",
+    "width": "Breite (px)",
+    "lineType": "Linienstil",
+    "color": "Farbe",
+    "solid": "Durchgehend",
+    "dashed": "Gestrichelt",
+    "dotted": "Gepunktet",
+    "resetAll": "Auf Standard zurücksetzen"
   }
 }

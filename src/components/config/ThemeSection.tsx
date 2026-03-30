@@ -1,19 +1,11 @@
 "use client";
 
+import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { useSettingsStore, type ThemeMode } from "@/stores/settings-store";
-
-type AccentColor = "blue" | "green" | "amber" | "red" | "lime";
-
-const THEME_OPTIONS = [
-  { value: "dark", label: "Dark" },
-  { value: "light", label: "Light" },
-  { value: "solarized-dark", label: "Solarized Dark" },
-  { value: "solarized-light", label: "Solarized Light" },
-];
+import { useSettingsStore, type ThemeMode, type AccentColor } from "@/stores/settings-store";
 
 const ACCENT_COLORS = [
   { nameKey: "blue", value: "blue", swatchClass: "bg-[#3a82ff]" },
@@ -30,6 +22,13 @@ export function ThemeSection(): React.ReactNode {
   const accentColor = useSettingsStore((s) => s.accentColor);
   const setAccentColor = useSettingsStore((s) => s.setAccentColor);
 
+  const themeOptions = useMemo(() => [
+    { value: "dark", label: t("dark") },
+    { value: "light", label: t("light") },
+    { value: "solarized-dark", label: t("solarizedDark") },
+    { value: "solarized-light", label: t("solarizedLight") },
+  ], [t]);
+
   return (
     <div className="space-y-4">
       <h2 className="text-sm font-semibold text-text-primary">{t("title")}</h2>
@@ -40,7 +39,7 @@ export function ThemeSection(): React.ReactNode {
             label={t("theme")}
             value={themeMode}
             onChange={(value) => setThemeMode(value as ThemeMode)}
-            options={THEME_OPTIONS}
+            options={themeOptions}
             placeholder="Select a theme"
           />
         </div>

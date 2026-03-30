@@ -207,6 +207,10 @@
     "amber": "Ambre",
     "red": "Rouge",
     "lime": "Citron vert",
+    "dark": "Sombre",
+    "light": "Clair",
+    "solarizedDark": "Solarized Sombre",
+    "solarizedLight": "Solarized Clair",
     "selected": "Sélectionné : {name}"
   },
   "video": {
@@ -1684,5 +1688,20 @@
   "missionProgress": {
     "mission": "Mission",
     "waypoint": "Waypoint"
+  },
+  "guidance": {
+    "title": "Guidage",
+    "hdg": "HDG",
+    "trackWp": "Track-WP",
+    "tgtHdg": "TGT HDG",
+    "allHidden": "Tout masqué",
+    "length": "Longueur (m)",
+    "width": "Largeur (px)",
+    "lineType": "Style de ligne",
+    "color": "Couleur",
+    "solid": "Plein",
+    "dashed": "Tirets",
+    "dotted": "Pointillé",
+    "resetAll": "Réinitialiser"
   }
 }
