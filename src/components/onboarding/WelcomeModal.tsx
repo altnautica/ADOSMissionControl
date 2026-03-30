@@ -606,12 +606,14 @@ export function WelcomeModal() {
                     title={color.label}
                     className={`w-7 h-7 rounded-full transition-all ${
                       accentColor === color.value
-                        ? "ring-2 ring-offset-2 ring-offset-bg-primary scale-110"
+                        ? "scale-110"
                         : "hover:scale-110"
                     }`}
                     style={{
                       backgroundColor: color.hex,
-                      ringColor: accentColor === color.value ? color.hex : undefined,
+                      boxShadow: accentColor === color.value
+                        ? `0 0 0 2px var(--alt-bg-primary), 0 0 0 4px ${color.hex}`
+                        : undefined,
                     }}
                   />
                 ))}
