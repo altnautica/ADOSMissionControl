@@ -30,10 +30,13 @@ import dynamic from "next/dynamic";
 import { cn, isBattleNet } from "@/lib/utils";
 
 // Defense overlay — only resolved in BattleNet builds; tree-shaken in community builds.
-const DEFENSE_PROVIDER_PATH = "@/components/defense/DefenseProvider";
-const DefenseSlot = isBattleNet()
-  ? dynamic(() => import(/* @vite-ignore */ DEFENSE_PROVIDER_PATH), { ssr: false })
-  : (() => null) as React.FC;
+const DefenseSlot = dynamic(
+  () =>
+    isBattleNet()
+      ? import("@/components/defense/DefenseProvider")
+      : Promise.resolve({ default: () => null as React.ReactNode }),
+  { ssr: false },
+);
 import { ChangelogNotificationGate } from "@/components/changelog/ChangelogNotificationGate";
 import { ChangelogBadge } from "@/components/changelog/ChangelogBadge";
 import Link from "next/link";
