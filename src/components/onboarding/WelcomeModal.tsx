@@ -1,6 +1,6 @@
 /**
  * @module WelcomeModal
- * @description Full-screen multi-step onboarding flow. 4 steps: language -> welcome -> preferences -> ready.
+ * @description Full-screen multi-step onboarding flow. 5 steps: language -> welcome -> preferences -> theme -> ready.
  * Cannot be dismissed without completing. Step state is local (not persisted) -- closing mid-flow
  * restarts from Step 1, ensuring language selection always runs.
  * @license GPL-3.0-only
@@ -15,7 +15,7 @@ import { useGcsLocationStore, type GeoPermission } from "@/stores/gcs-location-s
 import { JURISDICTIONS, type Jurisdiction } from "@/lib/jurisdiction";
 import { Select } from "@/components/ui/select";
 import { locales, localeNames } from "@/i18n";
-import type { UnitSystem } from "@/stores/settings-store";
+import type { UnitSystem, ThemeMode, AccentColor } from "@/stores/settings-store";
 
 const JURISDICTION_OPTIONS: { value: Jurisdiction; label: string }[] = (
   Object.entries(JURISDICTIONS) as [Jurisdiction, (typeof JURISDICTIONS)[Jurisdiction]][]
@@ -24,7 +24,66 @@ const JURISDICTION_OPTIONS: { value: Jurisdiction; label: string }[] = (
   label: `${cfg.flag}  ${cfg.name}`,
 }));
 
-type Step = 0 | 1 | 2 | 3;
+// ── Theme card data (colors extracted from globals.css) ──
+
+type ThemeGroup = "dark" | "light" | "mid";
+
+interface ThemeCardData {
+  value: ThemeMode;
+  label: string;
+  group: ThemeGroup;
+  colors: { bg: string; surface: string; accent: string; text: string; border: string };
+}
+
+const THEME_CARDS: ThemeCardData[] = [
+  // Core
+  { value: "dark", label: "Dark", group: "dark", colors: { bg: "#000000", surface: "#0a0a0a", accent: "#3a82ff", text: "#fafafa", border: "#1a1a1a" } },
+  { value: "light", label: "Light", group: "light", colors: { bg: "#f7f9fc", surface: "#eef2f8", accent: "#2f6feb", text: "#111827", border: "#d6dce8" } },
+  // Solarized
+  { value: "solarized-dark", label: "Solarized Dark", group: "dark", colors: { bg: "#002b36", surface: "#073642", accent: "#268bd2", text: "#eee8d5", border: "#073642" } },
+  { value: "solarized-light", label: "Solarized Light", group: "light", colors: { bg: "#fdf6e3", surface: "#eee8d5", accent: "#268bd2", text: "#002b36", border: "#eee8d5" } },
+  // Dark themes
+  { value: "dracula", label: "Dracula", group: "dark", colors: { bg: "#282a36", surface: "#21222c", accent: "#bd93f9", text: "#f8f8f2", border: "#383a4a" } },
+  { value: "catppuccin-mocha", label: "Catppuccin Mocha", group: "dark", colors: { bg: "#1e1e2e", surface: "#181825", accent: "#cba6f7", text: "#cdd6f4", border: "#313244" } },
+  { value: "catppuccin-frappe", label: "Catppuccin Frappé", group: "dark", colors: { bg: "#303446", surface: "#292c3c", accent: "#ca9ee6", text: "#c6d0f5", border: "#414559" } },
+  { value: "nord", label: "Nord", group: "dark", colors: { bg: "#2e3440", surface: "#3b4252", accent: "#88c0d0", text: "#eceff4", border: "#3b4252" } },
+  { value: "gruvbox-dark", label: "Gruvbox Dark", group: "dark", colors: { bg: "#282828", surface: "#1d2021", accent: "#83a598", text: "#ebdbb2", border: "#3c3836" } },
+  { value: "one-dark", label: "One Dark", group: "dark", colors: { bg: "#282c34", surface: "#21252b", accent: "#61afef", text: "#abb2bf", border: "#21252b" } },
+  { value: "tokyo-night", label: "Tokyo Night", group: "dark", colors: { bg: "#1a1b26", surface: "#16161e", accent: "#7aa2f7", text: "#c0caf5", border: "#292e42" } },
+  { value: "rose-pine", label: "Rosé Pine", group: "dark", colors: { bg: "#191724", surface: "#1f1d2e", accent: "#c4a7e7", text: "#e0def4", border: "#403d52" } },
+  { value: "monokai", label: "Monokai", group: "dark", colors: { bg: "#272822", surface: "#1e1f1c", accent: "#a6e22e", text: "#f8f8f2", border: "#3e3d32" } },
+  { value: "kanagawa", label: "Kanagawa", group: "dark", colors: { bg: "#1f1f28", surface: "#1a1a22", accent: "#7e9cd8", text: "#dcd7ba", border: "#363646" } },
+  { value: "synthwave", label: "Synthwave '84", group: "dark", colors: { bg: "#262335", surface: "#241b2f", accent: "#ff7edb", text: "#ffffff", border: "#2a2139" } },
+  { value: "github-dark", label: "GitHub Dark", group: "dark", colors: { bg: "#0d1117", surface: "#010409", accent: "#1f6feb", text: "#f0f6fc", border: "#2f3742" } },
+  // Light themes
+  { value: "catppuccin-latte", label: "Catppuccin Latte", group: "light", colors: { bg: "#eff1f5", surface: "#e6e9ef", accent: "#8839ef", text: "#4c4f69", border: "#ccd0da" } },
+  { value: "gruvbox-light", label: "Gruvbox Light", group: "light", colors: { bg: "#fbf1c7", surface: "#f2e5bc", accent: "#076678", text: "#3c3836", border: "#ebdbb2" } },
+  // Mid-tone
+  { value: "ayu-dark", label: "Ayu Dark", group: "mid", colors: { bg: "#0b0e14", surface: "#0a0d13", accent: "#e6b450", text: "#bfbdb6", border: "#1c2028" } },
+  { value: "ayu-mirage", label: "Ayu Mirage", group: "mid", colors: { bg: "#242936", surface: "#1a1f29", accent: "#ffcc66", text: "#cccac2", border: "#2a3040" } },
+  { value: "everforest-dark", label: "Everforest", group: "mid", colors: { bg: "#2d353b", surface: "#232a2e", accent: "#a7c080", text: "#d3c6aa", border: "#475258" } },
+];
+
+const ACCENT_COLORS: { label: string; value: AccentColor; hex: string }[] = [
+  { label: "Blue", value: "blue", hex: "#3a82ff" },
+  { label: "Green", value: "green", hex: "#22c55e" },
+  { label: "Amber", value: "amber", hex: "#f59e0b" },
+  { label: "Red", value: "red", hex: "#ef4444" },
+  { label: "Lime", value: "lime", hex: "#84cc16" },
+  { label: "Purple", value: "purple", hex: "#a855f7" },
+  { label: "Pink", value: "pink", hex: "#ec4899" },
+  { label: "Cyan", value: "cyan", hex: "#06b6d4" },
+  { label: "Orange", value: "orange", hex: "#f97316" },
+];
+
+const GROUP_TABS: { key: ThemeGroup | "all"; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "dark", label: "Dark" },
+  { key: "light", label: "Light" },
+  { key: "mid", label: "Mid-tone" },
+];
+
+type Step = 0 | 1 | 2 | 3 | 4;
 
 function detectBrowserLocale(): string {
   if (typeof navigator === "undefined") return "en";
@@ -67,7 +126,7 @@ function Toggle({
 function StepDots({ step }: { step: Step }) {
   return (
     <div className="flex gap-2 justify-center mt-8">
-      {[0, 1, 2, 3].map((i) => (
+      {[0, 1, 2, 3, 4].map((i) => (
         <span
           key={i}
           className={`w-2 h-2 rounded-full transition-colors duration-300 ${
@@ -76,6 +135,80 @@ function StepDots({ step }: { step: Step }) {
         />
       ))}
     </div>
+  );
+}
+
+// Self-themed card component
+function ThemeCard({
+  theme,
+  isSelected,
+  onClick,
+}: {
+  theme: ThemeCardData;
+  isSelected: boolean;
+  onClick: () => void;
+}) {
+  const { colors, label } = theme;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="relative rounded-lg transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline-none"
+      style={{
+        backgroundColor: colors.bg,
+        border: isSelected ? `2px solid ${colors.accent}` : `1px solid ${colors.border}`,
+        padding: isSelected ? "11px" : "12px",
+      }}
+    >
+      {/* Color swatches */}
+      <div className="flex gap-1.5 mb-3">
+        {[colors.bg, colors.surface, colors.accent, colors.text, colors.border].map((c, i) => (
+          <span
+            key={i}
+            className="w-4 h-4 rounded-full border border-white/10"
+            style={{ backgroundColor: c }}
+          />
+        ))}
+      </div>
+
+      {/* Mini mockup: simulated UI bars */}
+      <div className="rounded overflow-hidden mb-3" style={{ backgroundColor: colors.surface, height: 48 }}>
+        {/* Top bar */}
+        <div className="flex items-center gap-1 px-2 py-1" style={{ borderBottom: `1px solid ${colors.border}` }}>
+          <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: colors.accent }} />
+          <span className="w-8 h-1 rounded-full opacity-60" style={{ backgroundColor: colors.text }} />
+          <span className="w-5 h-1 rounded-full opacity-30 ml-auto" style={{ backgroundColor: colors.text }} />
+        </div>
+        {/* Content lines */}
+        <div className="flex gap-1 px-2 py-1.5">
+          <div className="w-6 h-full rounded-sm opacity-20" style={{ backgroundColor: colors.border, minHeight: 20 }} />
+          <div className="flex-1 flex flex-col gap-1 pt-0.5">
+            <span className="w-3/4 h-1 rounded-full opacity-40" style={{ backgroundColor: colors.text }} />
+            <span className="w-1/2 h-1 rounded-full opacity-25" style={{ backgroundColor: colors.text }} />
+          </div>
+        </div>
+      </div>
+
+      {/* Accent bar */}
+      <div className="h-0.5 rounded-full mb-2" style={{ backgroundColor: colors.accent }} />
+
+      {/* Theme name */}
+      <span className="text-xs font-medium block text-left" style={{ color: colors.text }}>
+        {label}
+      </span>
+
+      {/* Selected checkmark */}
+      {isSelected && (
+        <div
+          className="absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center"
+          style={{ backgroundColor: colors.accent }}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={colors.bg} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20 6 9 17l-5-5"/>
+          </svg>
+        </div>
+      )}
+    </button>
   );
 }
 
@@ -90,6 +223,10 @@ export function WelcomeModal() {
   const setLocationEnabled = useSettingsStore((s) => s.setLocationEnabled);
   const setLocale = useSettingsStore((s) => s.setLocale);
   const currentLocale = useSettingsStore((s) => s.locale);
+  const setThemeMode = useSettingsStore((s) => s.setThemeMode);
+  const themeMode = useSettingsStore((s) => s.themeMode);
+  const setAccentColor = useSettingsStore((s) => s.setAccentColor);
+  const accentColor = useSettingsStore((s) => s.accentColor);
   const requestPermission = useGcsLocationStore((s) => s.requestPermission);
   const isSupported = useGcsLocationStore((s) => s.isSupported);
 
@@ -111,6 +248,9 @@ export function WelcomeModal() {
   const [locationEnabled, setLocalLocationEnabled] = useState(true);
   const [locationPermission, setLocationPermission] = useState<GeoPermission>("prompt");
   const [locationChecking, setLocationChecking] = useState(false);
+
+  // Step 4: theme selection
+  const [activeGroup, setActiveGroup] = useState<ThemeGroup | "all">("all");
 
   // Auto-request location permission on mount
   useEffect(() => {
@@ -170,6 +310,10 @@ export function WelcomeModal() {
     setOnboarded(true);
   };
 
+  const filteredThemes = activeGroup === "all"
+    ? THEME_CARDS
+    : THEME_CARDS.filter((t) => t.group === activeGroup);
+
   // Step positions: current = center (0), before = left (-100%), after = right (100%)
   const stepX = (i: number): string => {
     if (i === step) return "translate-x-0";
@@ -179,7 +323,7 @@ export function WelcomeModal() {
 
   return (
     <div
-      className="fixed inset-0 z-[200] bg-[#0A0A0F] overflow-hidden"
+      className="fixed inset-0 z-[200] bg-bg-primary overflow-hidden transition-colors duration-300"
       role="dialog"
       aria-modal="true"
       aria-label="Welcome setup"
@@ -394,9 +538,101 @@ export function WelcomeModal() {
           </div>
         </div>
 
-        {/* -- STEP 3: Ready -- */}
+        {/* -- STEP 3: Theme Selection -- */}
         <div
-          className={`absolute inset-0 flex flex-col items-center justify-center p-8 transition-transform duration-300 ease-in-out ${stepX(3)}`}
+          className={`absolute inset-0 flex flex-col items-center p-8 pt-16 transition-transform duration-300 ease-in-out overflow-y-auto ${stepX(3)}`}
+        >
+          {/* Back button */}
+          <button
+            type="button"
+            onClick={() => back(2)}
+            className="absolute top-6 left-6 text-xs text-text-tertiary hover:text-text-primary transition-colors flex items-center gap-1"
+          >
+            ← {tCommon("back")}
+          </button>
+
+          <div className="w-full max-w-2xl">
+            <h2 className="text-xl font-display font-semibold text-text-primary mb-1 text-center">
+              Choose your theme
+            </h2>
+            <p className="text-xs text-text-tertiary mb-6 text-center">
+              You can change this anytime in settings
+            </p>
+
+            {/* Group filter tabs */}
+            <div className="flex gap-1.5 justify-center mb-6">
+              {GROUP_TABS.map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setActiveGroup(tab.key)}
+                  className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+                    activeGroup === tab.key
+                      ? "bg-accent-primary text-black"
+                      : "bg-bg-tertiary text-text-secondary hover:text-text-primary"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Theme card grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mb-8">
+              {filteredThemes.map((theme, idx) => (
+                <div
+                  key={theme.value}
+                  className="animate-in fade-in"
+                  style={{ animationDelay: `${idx * 30}ms`, animationFillMode: "both" }}
+                >
+                  <ThemeCard
+                    theme={theme}
+                    isSelected={themeMode === theme.value}
+                    onClick={() => setThemeMode(theme.value)}
+                  />
+                </div>
+              ))}
+            </div>
+
+            {/* Accent color */}
+            <div className="border-t border-border-default pt-4 mb-6">
+              <p className="text-sm text-text-primary font-medium mb-3 text-center">Accent color</p>
+              <div className="flex gap-2 justify-center">
+                {ACCENT_COLORS.map((color) => (
+                  <button
+                    key={color.value}
+                    type="button"
+                    onClick={() => setAccentColor(color.value)}
+                    title={color.label}
+                    className={`w-7 h-7 rounded-full transition-all ${
+                      accentColor === color.value
+                        ? "ring-2 ring-offset-2 ring-offset-bg-primary scale-110"
+                        : "hover:scale-110"
+                    }`}
+                    style={{
+                      backgroundColor: color.hex,
+                      ringColor: accentColor === color.value ? color.hex : undefined,
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => advance(4)}
+              className="w-full h-10 bg-accent-primary text-black text-sm font-semibold hover:brightness-110 transition-all rounded-sm"
+            >
+              {tCommon("continue")} →
+            </button>
+
+            <StepDots step={step} />
+          </div>
+        </div>
+
+        {/* -- STEP 4: Ready -- */}
+        <div
+          className={`absolute inset-0 flex flex-col items-center justify-center p-8 transition-transform duration-300 ease-in-out ${stepX(4)}`}
         >
           <div className="text-center max-w-sm">
             {/* Check mark */}
