@@ -8,9 +8,10 @@ import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 
 export function DemoProvider() {
   const demoMode = useSettingsStore((s) => s.demoMode);
+  const hasHydrated = useSettingsStore((s) => s._hasHydrated);
 
   useEffect(() => {
-    if (!demoMode) return;
+    if (!hasHydrated || !demoMode) return;
 
     let mounted = true;
     let engine: { start: (ms: number) => void; stop: () => void } | undefined;
@@ -31,7 +32,7 @@ export function DemoProvider() {
       useFleetStore.getState().setDrones([]);
       useFleetStore.getState().clearAlerts();
     };
-  }, [demoMode]);
+  }, [demoMode, hasHydrated]);
 
   return null;
 }
