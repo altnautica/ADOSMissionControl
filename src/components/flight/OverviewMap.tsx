@@ -206,6 +206,9 @@ export function OverviewMap() {
   const guidanceTgtHdgWidth = useSettingsStore((s) => s.guidanceTgtHdgWidth);
   const guidanceTgtHdgLineType = useSettingsStore((s) => s.guidanceTgtHdgLineType);
   const guidanceTgtHdgColor = useSettingsStore((s) => s.guidanceTgtHdgColor);
+  const guidanceHdgEnabled = useSettingsStore((s) => s.guidanceHdgEnabled);
+  const guidanceTrackWpEnabled = useSettingsStore((s) => s.guidanceTrackWpEnabled);
+  const guidanceTgtHdgEnabled = useSettingsStore((s) => s.guidanceTgtHdgEnabled);
 
   // Next waypoint from mission store for Track-WP line
   const missionWaypoints = useMissionStore((s) => s.waypoints);
@@ -309,19 +312,19 @@ export function OverviewMap() {
         )}
 
         {/* Guidance vector polylines */}
-        {hdgLine && (
+        {guidanceHdgEnabled && hdgLine && (
           <Polyline
             positions={hdgLine}
             pathOptions={{ color: guidanceHdgColor, weight: guidanceHdgWidth, dashArray: getLineTypeDashArray(guidanceHdgLineType), opacity: 0.8 }}
           />
         )}
-        {trackWpLine && (
+        {guidanceTrackWpEnabled && trackWpLine && (
           <Polyline
             positions={trackWpLine}
             pathOptions={{ color: guidanceTrackWpColor, weight: guidanceTrackWpWidth, dashArray: getLineTypeDashArray(guidanceTrackWpLineType), opacity: 0.8 }}
           />
         )}
-        {tgtHdgLine && (
+        {guidanceTgtHdgEnabled && tgtHdgLine && (
           <Polyline
             positions={tgtHdgLine}
             pathOptions={{ color: guidanceTgtHdgColor, weight: guidanceTgtHdgWidth, dashArray: getLineTypeDashArray(guidanceTgtHdgLineType), opacity: 0.8 }}

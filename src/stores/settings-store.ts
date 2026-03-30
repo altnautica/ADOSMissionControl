@@ -16,6 +16,7 @@ export type MapTileSource = "osm" | "satellite" | "terrain" | "dark";
 export type UnitSystem = "metric" | "imperial";
 export type ThemeMode = "dark" | "light" | "solarized-dark" | "solarized-light";
 export type AccentColor = "blue" | "green" | "amber" | "red" | "lime";
+export type GuidanceLineType = "solid" | "dashed" | "dotted";
 export type { Jurisdiction };
 
 export type ParamColumnId = "index" | "name" | "description" | "value" | "range" | "units" | "type";
@@ -120,18 +121,21 @@ interface SettingsStoreState {
   /** Guidance HDG line settings. */
   guidanceHdgLength: number;
   guidanceHdgWidth: number;
-  guidanceHdgLineType: "solid" | "dashed" | "dotted";
+  guidanceHdgLineType: GuidanceLineType;
   guidanceHdgColor: string;
   /** Guidance Track-WP line settings. */
   guidanceTrackWpLength: number;
   guidanceTrackWpWidth: number;
-  guidanceTrackWpLineType: "solid" | "dashed" | "dotted";
+  guidanceTrackWpLineType: GuidanceLineType;
   guidanceTrackWpColor: string;
   /** Guidance TGT HDG line settings. */
   guidanceTgtHdgLength: number;
   guidanceTgtHdgWidth: number;
-  guidanceTgtHdgLineType: "solid" | "dashed" | "dotted";
+  guidanceTgtHdgLineType: GuidanceLineType;
   guidanceTgtHdgColor: string;
+  guidanceHdgEnabled: boolean;
+  guidanceTrackWpEnabled: boolean;
+  guidanceTgtHdgEnabled: boolean;
   setLocale: (locale: string) => void;
   setThemeMode: (mode: ThemeMode) => void;
   setAccentColor: (accent: AccentColor) => void;
@@ -171,16 +175,20 @@ interface SettingsStoreState {
   removeParamFilterPreset: (id: string) => void;
   setGuidanceHdgLength: (v: number) => void;
   setGuidanceHdgWidth: (v: number) => void;
-  setGuidanceHdgLineType: (v: "solid" | "dashed" | "dotted") => void;
+  setGuidanceHdgLineType: (v: GuidanceLineType) => void;
   setGuidanceHdgColor: (v: string) => void;
   setGuidanceTrackWpLength: (v: number) => void;
   setGuidanceTrackWpWidth: (v: number) => void;
-  setGuidanceTrackWpLineType: (v: "solid" | "dashed" | "dotted") => void;
+  setGuidanceTrackWpLineType: (v: GuidanceLineType) => void;
   setGuidanceTrackWpColor: (v: string) => void;
   setGuidanceTgtHdgLength: (v: number) => void;
   setGuidanceTgtHdgWidth: (v: number) => void;
-  setGuidanceTgtHdgLineType: (v: "solid" | "dashed" | "dotted") => void;
+  setGuidanceTgtHdgLineType: (v: GuidanceLineType) => void;
   setGuidanceTgtHdgColor: (v: string) => void;
+  setGuidanceHdgEnabled: (v: boolean) => void;
+  setGuidanceTrackWpEnabled: (v: boolean) => void;
+  setGuidanceTgtHdgEnabled: (v: boolean) => void;
+  resetGuidanceDefaults: () => void;
 }
 
 export const useSettingsStore = create<SettingsStoreState>()(
@@ -238,6 +246,9 @@ export const useSettingsStore = create<SettingsStoreState>()(
       guidanceTgtHdgWidth: 1.5,
       guidanceTgtHdgLineType: "dashed",
       guidanceTgtHdgColor: "#f59e0b",
+      guidanceHdgEnabled: true,
+      guidanceTrackWpEnabled: true,
+      guidanceTgtHdgEnabled: true,
 
       setMapTileSource: (mapTileSource) => set({ mapTileSource }),
       setUnits: (units) => set({ units }),
@@ -306,6 +317,14 @@ export const useSettingsStore = create<SettingsStoreState>()(
       setGuidanceTgtHdgWidth: (v) => set({ guidanceTgtHdgWidth: v }),
       setGuidanceTgtHdgLineType: (v) => set({ guidanceTgtHdgLineType: v }),
       setGuidanceTgtHdgColor: (v) => set({ guidanceTgtHdgColor: v }),
+      setGuidanceHdgEnabled: (v) => set({ guidanceHdgEnabled: v }),
+      setGuidanceTrackWpEnabled: (v) => set({ guidanceTrackWpEnabled: v }),
+      setGuidanceTgtHdgEnabled: (v) => set({ guidanceTgtHdgEnabled: v }),
+      resetGuidanceDefaults: () => set({
+        guidanceHdgLength: 100, guidanceHdgWidth: 2, guidanceHdgLineType: "solid", guidanceHdgColor: "#00ff41", guidanceHdgEnabled: true,
+        guidanceTrackWpLength: 100, guidanceTrackWpWidth: 1.5, guidanceTrackWpLineType: "dashed", guidanceTrackWpColor: "#3A82FF", guidanceTrackWpEnabled: true,
+        guidanceTgtHdgLength: 100, guidanceTgtHdgWidth: 1.5, guidanceTgtHdgLineType: "dashed", guidanceTgtHdgColor: "#f59e0b", guidanceTgtHdgEnabled: true,
+      }),
       setLocale: (locale) => set({ locale }),
       setThemeMode: (themeMode) => set({ themeMode }),
       setAccentColor: (accentColor) => set({ accentColor }),
@@ -313,7 +332,7 @@ export const useSettingsStore = create<SettingsStoreState>()(
     {
       name: "altcmd:settings",
       storage: createJSONStorage(indexedDBStorage.storage),
-      version: 23,
+      version: 24,
       migrate: (persisted, version) => {
         const state = persisted as Record<string, unknown>;
         if (version < 2) {
@@ -428,6 +447,11 @@ export const useSettingsStore = create<SettingsStoreState>()(
           state.guidanceTgtHdgWidth = 1.5;
           state.guidanceTgtHdgLineType = "dashed";
           state.guidanceTgtHdgColor = "#f59e0b";
+        }
+        if (version < 24) {
+          state.guidanceHdgEnabled = true;
+          state.guidanceTrackWpEnabled = true;
+          state.guidanceTgtHdgEnabled = true;
         }
         return state as unknown as SettingsStoreState;
       },

@@ -207,6 +207,10 @@
     "amber": "एम्बर",
     "red": "लाल",
     "lime": "लाइम",
+    "dark": "डार्क",
+    "light": "लाइट",
+    "solarizedDark": "सोलराइज़्ड डार्क",
+    "solarizedLight": "सोलराइज़्ड लाइट",
     "selected": "चयनित: {name}"
   },
   "video": {
@@ -1684,5 +1688,20 @@
   "missionProgress": {
     "mission": "मिशन",
     "waypoint": "Waypoint"
+  },
+  "guidance": {
+    "title": "गाइडेंस",
+    "hdg": "HDG",
+    "trackWp": "Track-WP",
+    "tgtHdg": "TGT HDG",
+    "allHidden": "सभी छिपे हुए",
+    "length": "लंबाई (m)",
+    "width": "चौड़ाई (px)",
+    "lineType": "रेखा शैली",
+    "color": "रंग",
+    "solid": "ठोस",
+    "dashed": "डैश",
+    "dotted": "बिंदीदार",
+    "resetAll": "डिफ़ॉल्ट पर रीसेट करें"
   }
 }

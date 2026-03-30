@@ -207,6 +207,10 @@
     "amber": "ஆம்பர்",
     "red": "சிவப்பு",
     "lime": "லைம்",
+    "dark": "டார்க்",
+    "light": "லைட்",
+    "solarizedDark": "சோலரைஸ்ட் டார்க்",
+    "solarizedLight": "சோலரைஸ்ட் லைட்",
     "selected": "தேர்ந்தெடுக்கப்பட்டது: {name}"
   },
   "video": {
@@ -1684,5 +1688,20 @@
   "missionProgress": {
     "mission": "மிஷன்",
     "waypoint": "Waypoint"
+  },
+  "guidance": {
+    "title": "வழிகாட்டல்",
+    "hdg": "HDG",
+    "trackWp": "Track-WP",
+    "tgtHdg": "TGT HDG",
+    "allHidden": "அனைத்தும் மறைக்கப்பட்டன",
+    "length": "நீளம் (m)",
+    "width": "அகலம் (px)",
+    "lineType": "கோட்டு பாணி",
+    "color": "நிறம்",
+    "solid": "திட",
+    "dashed": "கோடு",
+    "dotted": "புள்ளி",
+    "resetAll": "இயல்புநிலைக்கு மீட்டமை"
   }
 }

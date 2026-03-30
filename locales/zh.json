@@ -207,6 +207,10 @@
     "amber": "琥珀色",
     "red": "红色",
     "lime": "青柠色",
+    "dark": "深色",
+    "light": "浅色",
+    "solarizedDark": "Solarized 深色",
+    "solarizedLight": "Solarized 浅色",
     "selected": "已选择: {name}"
   },
   "video": {
@@ -1684,5 +1688,20 @@
   "missionProgress": {
     "mission": "任务",
     "waypoint": "Waypoint"
+  },
+  "guidance": {
+    "title": "引导线",
+    "hdg": "航向",
+    "trackWp": "航迹",
+    "tgtHdg": "目标航向",
+    "allHidden": "全部隐藏",
+    "length": "长度 (m)",
+    "width": "宽度 (px)",
+    "lineType": "线型",
+    "color": "颜色",
+    "solid": "实线",
+    "dashed": "虚线",
+    "dotted": "点线",
+    "resetAll": "恢复默认"
   }
 }
