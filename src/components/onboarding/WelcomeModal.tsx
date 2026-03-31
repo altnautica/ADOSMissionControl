@@ -145,80 +145,6 @@ function StepDots({ step }: { step: Step }) {
   );
 }
 
-// Self-themed card component
-function ThemeCard({
-  theme,
-  isSelected,
-  onClick,
-}: {
-  theme: ThemeCardData;
-  isSelected: boolean;
-  onClick: () => void;
-}) {
-  const { colors, label } = theme;
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="relative rounded-lg transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline-none"
-      style={{
-        backgroundColor: colors.bg,
-        border: isSelected ? `2px solid ${colors.accent}` : `1px solid ${colors.border}`,
-        padding: isSelected ? "11px" : "12px",
-      }}
-    >
-      {/* Color swatches */}
-      <div className="flex gap-1.5 mb-3">
-        {[colors.bg, colors.surface, colors.accent, colors.text, colors.border].map((c, i) => (
-          <span
-            key={i}
-            className="w-4 h-4 rounded-full border border-white/10"
-            style={{ backgroundColor: c }}
-          />
-        ))}
-      </div>
-
-      {/* Mini mockup: simulated UI bars */}
-      <div className="rounded overflow-hidden mb-3" style={{ backgroundColor: colors.surface, height: 48 }}>
-        {/* Top bar */}
-        <div className="flex items-center gap-1 px-2 py-1" style={{ borderBottom: `1px solid ${colors.border}` }}>
-          <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: colors.accent }} />
-          <span className="w-8 h-1 rounded-full opacity-60" style={{ backgroundColor: colors.text }} />
-          <span className="w-5 h-1 rounded-full opacity-30 ml-auto" style={{ backgroundColor: colors.text }} />
-        </div>
-        {/* Content lines */}
-        <div className="flex gap-1 px-2 py-1.5">
-          <div className="w-6 h-full rounded-sm opacity-20" style={{ backgroundColor: colors.border, minHeight: 20 }} />
-          <div className="flex-1 flex flex-col gap-1 pt-0.5">
-            <span className="w-3/4 h-1 rounded-full opacity-40" style={{ backgroundColor: colors.text }} />
-            <span className="w-1/2 h-1 rounded-full opacity-25" style={{ backgroundColor: colors.text }} />
-          </div>
-        </div>
-      </div>
-
-      {/* Accent bar */}
-      <div className="h-0.5 rounded-full mb-2" style={{ backgroundColor: colors.accent }} />
-
-      {/* Theme name */}
-      <span className="text-xs font-medium block text-left" style={{ color: colors.text }}>
-        {label}
-      </span>
-
-      {/* Selected checkmark */}
-      {isSelected && (
-        <div
-          className="absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center"
-          style={{ backgroundColor: colors.accent }}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={colors.bg} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M20 6 9 17l-5-5"/>
-          </svg>
-        </div>
-      )}
-    </button>
-  );
-}
-
 function ThemeMiniTile({
   theme,
   onClick,
@@ -234,7 +160,7 @@ function ThemeMiniTile({
     <button
       type="button"
       onClick={onClick}
-      className="rounded-md border p-2 text-left transition-all hover:-translate-y-0.5 focus-visible:outline-none"
+      className="rounded-md border p-2 text-left transition-all hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:ring-offset-1"
       style={{
         backgroundColor: colors.bg,
         borderColor: colors.border,
@@ -358,6 +284,8 @@ function ThemeWorkspacePreview({ theme }: { theme: ThemeCardData }) {
           <div className="flex gap-2">
             <button
               type="button"
+              tabIndex={-1}
+              aria-hidden="true"
               className="h-7 px-2.5 rounded text-[10px] font-semibold"
               style={{
                 backgroundColor: accentHex,
@@ -368,6 +296,8 @@ function ThemeWorkspacePreview({ theme }: { theme: ThemeCardData }) {
             </button>
             <button
               type="button"
+              tabIndex={-1}
+              aria-hidden="true"
               className="h-7 px-2.5 rounded text-[10px]"
               style={{
                 backgroundColor: colors.surface,
@@ -772,7 +702,7 @@ export function WelcomeModal() {
             ← {tCommon("back")}
           </button>
 
-          <div className="w-full max-w-5xl">
+          <div className="w-full max-w-4xl">
             <h2 className="text-xl font-display font-semibold text-text-primary mb-1 text-center">
               Choose your theme
             </h2>
