@@ -55,7 +55,7 @@ export function DroneOverviewTab({ drone }: DroneOverviewTabProps) {
     <div className="flex-1 flex overflow-hidden">
       {/* Left column: HUD + Telemetry + Info */}
       {!immersiveMode && !telemetryCollapsed && (
-        <div className="w-80 shrink-0 flex flex-col overflow-y-auto border-r border-border-default">
+        <div className="w-[22rem] shrink-0 flex flex-col overflow-y-auto border-r border-border-default">
           {/* Telemetry freshness dots */}
           <div className="px-3 py-1.5 border-b border-border-default shrink-0">
             <TelemetryFreshnessIndicator />
