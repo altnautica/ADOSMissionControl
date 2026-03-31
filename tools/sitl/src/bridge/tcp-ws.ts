@@ -70,7 +70,8 @@ interface TcpHandle {
 
 export class TcpWsBridge extends EventEmitter<BridgeEvents> {
   private readonly config: BridgeConfig;
-  private wss: WebSocketServer | null = null;
+  /** One WebSocket server per drone, keyed by TCP port. */
+  private readonly wssMap = new Map<number, WebSocketServer>();
   private readonly tcpHandles: TcpHandle[] = [];
   private closed = false;
 
@@ -79,45 +80,51 @@ export class TcpWsBridge extends EventEmitter<BridgeEvents> {
     this.config = config;
   }
 
-  /** Number of currently connected WebSocket clients. */
+  /** Number of currently connected WebSocket clients across all servers. */
   get wsClientCount(): number {
-    return this.wss?.clients.size ?? 0;
+    let count = 0;
+    for (const wss of this.wssMap.values()) {
+      count += wss.clients.size;
+    }
+    return count;
   }
 
-  /** Start the WebSocket server and connect to all TCP instances. */
+  /** Start per-drone WebSocket servers and connect to all TCP instances. */
   start(): void {
-    this.wss = new WebSocketServer({ port: this.config.wsPort });
+    for (const instance of this.config.tcpInstances) {
+      // Each drone gets its own WebSocket server on its TCP port
+      const wss = new WebSocketServer({ port: instance.port });
 
-    this.wss.on('connection', (ws, req) => {
-      const remoteAddress = req.socket.remoteAddress ?? 'unknown';
-      this.emit('ws-client-connected', { remoteAddress });
+      wss.on('connection', (ws, req) => {
+        const remoteAddress = req.socket.remoteAddress ?? 'unknown';
+        this.emit('ws-client-connected', { remoteAddress });
 
-      ws.binaryType = 'nodebuffer';
+        ws.binaryType = 'nodebuffer';
 
-      ws.on('message', (msg: Buffer) => {
-        // GCS → SITL: relay to all TCP connections
-        for (const handle of this.tcpHandles) {
-          if (handle.socket && !handle.socket.destroyed) {
+        ws.on('message', (msg: Buffer) => {
+          // GCS → SITL: relay only to this drone's TCP connection
+          const handle = this.tcpHandles.find((h) => h.instance.port === instance.port);
+          if (handle?.socket && !handle.socket.destroyed) {
             handle.socket.write(msg);
           }
-        }
+        });
+
+        ws.on('close', () => {
+          this.emit('ws-client-disconnected', { remoteAddress });
+        });
+
+        ws.on('error', (err) => {
+          this.emit('error', err);
+        });
       });
 
-      ws.on('close', () => {
-        this.emit('ws-client-disconnected', { remoteAddress });
-      });
-
-      ws.on('error', (err) => {
+      wss.on('error', (err) => {
         this.emit('error', err);
       });
-    });
 
-    this.wss.on('error', (err) => {
-      this.emit('error', err);
-    });
+      this.wssMap.set(instance.port, wss);
 
-    // Initiate TCP connections
-    for (const instance of this.config.tcpInstances) {
+      // Initiate TCP connection for this drone
       const handle: TcpHandle = {
         instance,
         socket: null,
@@ -130,7 +137,7 @@ export class TcpWsBridge extends EventEmitter<BridgeEvents> {
     }
   }
 
-  /** Gracefully shut down all sockets and the WS server. */
+  /** Gracefully shut down all sockets and WS servers. */
   shutdown(): void {
     this.closed = true;
 
@@ -146,13 +153,13 @@ export class TcpWsBridge extends EventEmitter<BridgeEvents> {
       }
     }
 
-    if (this.wss) {
-      for (const client of this.wss.clients) {
+    for (const wss of this.wssMap.values()) {
+      for (const client of wss.clients) {
         client.close();
       }
-      this.wss.close();
-      this.wss = null;
+      wss.close();
     }
+    this.wssMap.clear();
   }
 
   // -----------------------------------------------------------------------
@@ -172,8 +179,8 @@ export class TcpWsBridge extends EventEmitter<BridgeEvents> {
     });
 
     socket.on('data', (data: Buffer) => {
-      // SITL → GCS: broadcast to all WS clients
-      this.broadcastToWs(data);
+      // SITL → GCS: broadcast only to this drone's WS clients
+      this.broadcastToWs(port, data);
       this.emit('data', { sysId, data });
     });
 
@@ -204,9 +211,10 @@ export class TcpWsBridge extends EventEmitter<BridgeEvents> {
     );
   }
 
-  private broadcastToWs(data: Buffer): void {
-    if (!this.wss) return;
-    for (const client of this.wss.clients) {
+  private broadcastToWs(tcpPort: number, data: Buffer): void {
+    const wss = this.wssMap.get(tcpPort);
+    if (!wss) return;
+    for (const client of wss.clients) {
       if (client.readyState === WebSocket.OPEN) {
         client.send(data);
       }

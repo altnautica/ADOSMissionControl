@@ -1,0 +1,46 @@
+# Dockerfile.gazebo — Gazebo Harmonic + ArduPilot SITL
+# SPDX-License-Identifier: GPL-3.0-only
+
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install Gazebo Harmonic + ArduPilot SITL dependencies
+RUN apt-get update && apt-get install -y \
+    git python3 python3-pip python3-dev \
+    build-essential gcc-arm-none-eabi \
+    wget lsb-release gnupg curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Add Gazebo repo and install
+RUN wget https://packages.osrfoundation.org/gazebo.gpg -O /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] http://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" \
+    > /etc/apt/sources.list.d/gazebo-stable.list \
+    && apt-get update && apt-get install -y gz-harmonic \
+    && rm -rf /var/lib/apt/lists/*
+
+# Clone and build ArduPilot with Gazebo plugin
+RUN git clone --depth 1 --recurse-submodules https://github.com/ArduPilot/ardupilot.git /ardupilot
+WORKDIR /ardupilot
+RUN Tools/environment_install/install-prereqs-ubuntu.sh -y
+RUN ./waf configure --board sitl && ./waf copter
+
+RUN pip3 install pexpect pymavlink
+
+ENV VEHICLE=ArduCopter
+ENV DRONE_COUNT=1
+ENV LAT=12.9716
+ENV LON=77.5946
+ENV HEADLESS=true
+ENV BASE_PORT=5760
+
+EXPOSE 5760-5850
+EXPOSE 8554
+
+CMD python3 Tools/autotest/sim_vehicle.py \
+    -v $VEHICLE \
+    --no-mavproxy \
+    -l "$LAT,$LON,0,0" \
+    --count $DRONE_COUNT \
+    --auto-sysid \
+    $(for i in $(seq 0 $((DRONE_COUNT-1))); do echo "--out=tcpin:0.0.0.0:$((BASE_PORT + i * 10))"; done)

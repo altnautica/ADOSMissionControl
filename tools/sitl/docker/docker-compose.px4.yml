@@ -1,0 +1,40 @@
+# docker-compose.px4.yml — Multi-drone PX4 SITL
+# SPDX-License-Identifier: GPL-3.0-only
+
+services:
+  sitl:
+    image: px4io/px4-dev-simulation-focal:latest
+    command: >
+      bash -c "
+        cd /src/PX4-Autopilot &&
+        git pull &&
+        for i in $$(seq 0 $$((${DRONE_COUNT:-3}-1))); do
+          PX4_SYS_AUTOSTART=4001 ./build/px4_sitl_default/bin/px4 -i $$i -d build/px4_sitl_default/etc &
+        done &&
+        wait
+      "
+    environment:
+      - DRONE_COUNT=${DRONE_COUNT:-3}
+    networks:
+      - sitl-net
+
+  bridge:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.bridge
+    environment:
+      - WS_PORT=14550
+      - TCP_HOST=sitl
+      - TCP_BASE_PORT=14540
+      - TCP_PORT_INCREMENT=1
+      - DRONE_COUNT=${DRONE_COUNT:-3}
+    ports:
+      - "${WS_PORT:-14550}:14550"
+    depends_on:
+      - sitl
+    networks:
+      - sitl-net
+
+networks:
+  sitl-net:
+    driver: bridge
