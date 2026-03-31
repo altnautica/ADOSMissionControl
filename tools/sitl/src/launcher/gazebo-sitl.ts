@@ -135,8 +135,18 @@ export class GazeboSitlLauncher extends EventEmitter {
       sitlArgs.push('--count', String(drones), '--auto-sysid');
     }
 
+    // Filter preset extraArgs: remove -f (frame) since Gazebo uses gazebo-iris,
+    // but keep -P (param overrides) which are still useful
     if (this.config.extraArgs?.length) {
-      sitlArgs.push(...this.config.extraArgs);
+      const filtered: string[] = [];
+      for (let i = 0; i < this.config.extraArgs.length; i++) {
+        if (this.config.extraArgs[i] === '-f') {
+          i++; // skip -f and its value
+        } else {
+          filtered.push(this.config.extraArgs[i]);
+        }
+      }
+      if (filtered.length) sitlArgs.push(...filtered);
     }
 
     const sitlProc = spawn('python3', sitlArgs, {

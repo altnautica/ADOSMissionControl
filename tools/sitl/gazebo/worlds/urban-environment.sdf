@@ -156,6 +156,35 @@
       </link>
     </model>
 
+    <!-- Origin axes with NavSat sensor (required for GPS/EKF) -->
+    <model name="axes">
+      <static>1</static>
+      <link name="link">
+        <visual name="r">
+          <cast_shadows>0</cast_shadows>
+          <pose>5 0 0.1 0 0 0</pose>
+          <geometry><box><size>10 0.01 0.01</size></box></geometry>
+          <material><ambient>1 0 0 0.8</ambient><diffuse>1 0 0 0.8</diffuse><emissive>1 0 0 0.8</emissive></material>
+        </visual>
+        <visual name="g">
+          <cast_shadows>0</cast_shadows>
+          <pose>0 5 0.1 0 0 0</pose>
+          <geometry><box><size>0.01 10 0.01</size></box></geometry>
+          <material><ambient>0 1 0 0.8</ambient><diffuse>0 1 0 0.8</diffuse><emissive>0 1 0 0.8</emissive></material>
+        </visual>
+        <visual name="b">
+          <cast_shadows>0</cast_shadows>
+          <pose>0 0 5.1 0 0 0</pose>
+          <geometry><box><size>0.01 0.01 10</size></box></geometry>
+          <material><ambient>0 0 1 0.8</ambient><diffuse>0 0 1 0.8</diffuse><emissive>0 0 1 0.8</emissive></material>
+        </visual>
+        <sensor name="navsat_sensor" type="navsat">
+          <always_on>1</always_on>
+          <update_rate>1</update_rate>
+        </sensor>
+      </link>
+    </model>
+
     <!-- Iris quadcopter with ArduPilot plugin -->
     <include>
       <uri>model://iris_with_ardupilot</uri>
