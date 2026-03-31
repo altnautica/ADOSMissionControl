@@ -72,34 +72,42 @@ export class GazeboSitlLauncher extends EventEmitter {
       throw new Error(`sim_vehicle.py not found at ${simVehiclePath}. Run setup-ardupilot.sh first.`);
     });
 
-    // Step 1: Launch Gazebo server
-    const gzArgs = this.config.headless
-      ? ['sim', '-s', '-r', worldPath]
-      : ['sim', '-r', worldPath];
+    // Step 1: Launch Gazebo server (always -s on macOS, GUI is separate process)
+    const gzEnv = {
+      ...process.env,
+      GZ_SIM_SYSTEM_PLUGIN_PATH: `${this.config.gazeboPluginHome}/build:${process.env.GZ_SIM_SYSTEM_PLUGIN_PATH || ''}`,
+      GZ_SIM_RESOURCE_PATH: `${this.config.gazeboPluginHome}/models:${this.config.gazeboPluginHome}/worlds:${process.env.GZ_SIM_RESOURCE_PATH || ''}`,
+    };
 
-    const gzProc = spawn('gz', gzArgs, {
+    // On macOS, server and GUI must be separate processes
+    const gzServerProc = spawn('gz', ['sim', '-s', '-r', worldPath], {
       stdio: ['ignore', 'pipe', 'pipe'],
-      env: {
-        ...process.env,
-        GZ_SIM_SYSTEM_PLUGIN_PATH: `${this.config.gazeboPluginHome}/build:${process.env.GZ_SIM_SYSTEM_PLUGIN_PATH || ''}`,
-        GZ_SIM_RESOURCE_PATH: `${this.config.gazeboPluginHome}/models:${this.config.gazeboPluginHome}/worlds:${process.env.GZ_SIM_RESOURCE_PATH || ''}`,
-      },
+      env: gzEnv,
     });
+    this.children.push(gzServerProc);
 
-    this.children.push(gzProc);
-
-    if (gzProc.stdout) {
-      const rl = createInterface({ input: gzProc.stdout });
-      rl.on('line', (line: string) => this.emit('stdout', `[Gazebo] ${line}`));
+    if (gzServerProc.stdout) {
+      const rl = createInterface({ input: gzServerProc.stdout });
+      rl.on('line', (line: string) => this.emit('stdout', `[Gazebo Server] ${line}`));
     }
-    if (gzProc.stderr) {
-      const rl = createInterface({ input: gzProc.stderr });
-      rl.on('line', (line: string) => this.emit('stderr', `[Gazebo] ${line}`));
+    if (gzServerProc.stderr) {
+      const rl = createInterface({ input: gzServerProc.stderr });
+      rl.on('line', (line: string) => this.emit('stderr', `[Gazebo Server] ${line}`));
     }
 
-    // Wait for Gazebo to initialize (poll gz topic list)
-    this.emit('stdout', 'Waiting for Gazebo to start...');
+    // Wait for Gazebo server to initialize
+    this.emit('stdout', 'Waiting for Gazebo server to start...');
     await this.waitForGazebo();
+
+    // Launch GUI in a separate process (unless headless)
+    if (!this.config.headless) {
+      const gzGuiProc = spawn('gz', ['sim', '-g'], {
+        stdio: ['ignore', 'pipe', 'pipe'],
+        env: gzEnv,
+      });
+      this.children.push(gzGuiProc);
+      this.emit('stdout', 'Gazebo GUI launched (separate window)');
+    }
 
     // Step 2: Launch ArduPilot SITL with Gazebo backend
     const { vehicle, drones, lat, lon, alt, heading, speedup, baseTcpPort } = this.config;

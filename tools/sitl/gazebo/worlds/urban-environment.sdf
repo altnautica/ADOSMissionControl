@@ -2,6 +2,7 @@
 <!--
   urban-environment.sdf — Urban test world with buildings for inspection sim
   SPDX-License-Identifier: GPL-3.0-only
+  Location: Bangalore, India (12.9716, 77.5946, 920m)
 -->
 <sdf version="1.9">
   <world name="ados_urban">
@@ -12,36 +13,51 @@
     </physics>
 
     <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
-    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
-    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
     <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
       <render_engine>ogre2</render_engine>
     </plugin>
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
     <plugin filename="gz-sim-imu-system" name="gz::sim::systems::Imu"/>
+    <plugin filename="gz-sim-navsat-system" name="gz::sim::systems::NavSat"/>
 
-    <atmosphere type="adiabatic"/>
+    <scene>
+      <ambient>1.0 1.0 1.0</ambient>
+      <background>0.8 0.8 0.8</background>
+      <sky></sky>
+    </scene>
+
+    <spherical_coordinates>
+      <latitude_deg>12.9716</latitude_deg>
+      <longitude_deg>77.5946</longitude_deg>
+      <elevation>920</elevation>
+      <heading_deg>0</heading_deg>
+      <surface_model>EARTH_WGS84</surface_model>
+    </spherical_coordinates>
 
     <light type="directional" name="sun">
       <cast_shadows>true</cast_shadows>
-      <pose>0 0 100 0 0 0</pose>
+      <pose>0 0 10 0 0 0</pose>
       <diffuse>0.8 0.8 0.8 1</diffuse>
-      <specular>0.2 0.2 0.2 1</specular>
+      <specular>0.8 0.8 0.8 1</specular>
+      <attenuation>
+        <range>1000</range>
+        <constant>0.9</constant>
+        <linear>0.01</linear>
+        <quadratic>0.001</quadratic>
+      </attenuation>
       <direction>-0.5 0.1 -0.9</direction>
     </light>
 
-    <!-- Ground plane -->
+    <!-- Ground -->
     <model name="ground_plane">
       <static>true</static>
       <link name="link">
         <collision name="collision">
-          <geometry>
-            <plane><normal>0 0 1</normal><size>500 500</size></plane>
-          </geometry>
+          <geometry><plane><normal>0 0 1</normal><size>500 500</size></plane></geometry>
         </collision>
         <visual name="visual">
-          <geometry>
-            <plane><normal>0 0 1</normal><size>500 500</size></plane>
-          </geometry>
+          <geometry><plane><normal>0 0 1</normal><size>500 500</size></plane></geometry>
           <material>
             <ambient>0.4 0.4 0.4 1</ambient>
             <diffuse>0.5 0.5 0.5 1</diffuse>
@@ -139,6 +155,12 @@
         </visual>
       </link>
     </model>
+
+    <!-- Iris quadcopter with ArduPilot plugin -->
+    <include>
+      <uri>model://iris_with_ardupilot</uri>
+      <pose>0 0 0.195 0 0 0</pose>
+    </include>
 
   </world>
 </sdf>
