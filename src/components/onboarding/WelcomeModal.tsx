@@ -86,6 +86,9 @@ const GROUP_TABS: { key: ThemeGroup | "all"; label: string }[] = [
 const ACCENT_BALL_SIZE = 28;
 const ACCENT_BALL_GAP = 8;
 const ACCENT_CAPSULE_PADDING = 8;
+const ACCENT_DOCK_MAX_SCALE = 1.30;
+const ACCENT_DOCK_RADIUS = ACCENT_BALL_SIZE * 1.4;
+const PRIMARY_CTA_CLASS = "h-10 px-8 bg-accent-primary text-black text-sm font-semibold hover:brightness-110 transition-all rounded-sm";
 
 type Step = 0 | 1 | 2 | 3 | 4;
 
@@ -418,6 +421,7 @@ export function WelcomeModal() {
   const [locationPermission, setLocationPermission] = useState<GeoPermission>("prompt");
   const [locationChecking, setLocationChecking] = useState(false);
   const [hoveredAccentColor, setHoveredAccentColor] = useState<AccentColor | null>(null);
+  const [accentPointerX, setAccentPointerX] = useState<number | null>(null);
   const [activeGroup, setActiveGroup] = useState<ThemeGroup | "all">("all");
 
   // Step 4: theme selection
@@ -503,6 +507,20 @@ export function WelcomeModal() {
   const accentCapsuleBorder = `${previewTheme.colors.border}`;
   const accentCapsuleShadow = `inset 0 1px 0 ${previewTheme.colors.text}12, inset 0 -1px 0 ${previewTheme.colors.bg}66, 0 12px 28px ${previewTheme.colors.bg}55`;
 
+  const getAccentDockScale = (index: number, colorValue: AccentColor): number => {
+    const selectedBoost = accentColor === colorValue ? 1.06 : 1;
+    if (accentPointerX === null) return selectedBoost;
+
+    const centerX = ACCENT_CAPSULE_PADDING + (ACCENT_BALL_SIZE / 2) + (index * (ACCENT_BALL_SIZE + ACCENT_BALL_GAP));
+    const distance = Math.abs(accentPointerX - centerX);
+    if (distance >= ACCENT_DOCK_RADIUS) return selectedBoost;
+
+    const t = 1 - (distance / ACCENT_DOCK_RADIUS);
+    const eased = t * t * (3 - (2 * t));
+    const dockScale = 1 + (eased * (ACCENT_DOCK_MAX_SCALE - 1));
+    return Math.max(selectedBoost, dockScale);
+  };
+
   const handleThemeTileClick = (themeValue: ThemeMode): void => {
     setThemeOrder((previous) => {
       const clickedIndex = previous.indexOf(themeValue);
@@ -577,7 +595,7 @@ export function WelcomeModal() {
           <button
             type="button"
             onClick={() => advance(1)}
-            className="h-10 px-8 bg-accent-primary text-black text-sm font-semibold hover:brightness-110 transition-all rounded-sm"
+            className={PRIMARY_CTA_CLASS}
           >
             {t("language.continue")} →
           </button>
@@ -639,7 +657,7 @@ export function WelcomeModal() {
             <button
               type="button"
               onClick={() => advance(2)}
-              className="self-start h-10 px-8 bg-accent-primary text-black text-sm font-semibold hover:brightness-110 transition-all rounded-sm"
+              className={`${PRIMARY_CTA_CLASS} self-start`}
             >
               {t("intro.getStarted")} →
             </button>
@@ -732,7 +750,7 @@ export function WelcomeModal() {
             <button
               type="button"
               onClick={() => advance(3)}
-              className="w-full mt-8 h-10 bg-accent-primary text-black text-sm font-semibold hover:brightness-110 transition-all rounded-sm"
+              className={`${PRIMARY_CTA_CLASS} mt-8 block w-fit mx-auto`}
             >
               {tCommon("continue")} →
             </button>
@@ -811,14 +829,24 @@ export function WelcomeModal() {
               <div className="flex justify-center">
                 <div
                   className="relative inline-flex items-center gap-2 rounded-full border border-border-default px-2 py-2"
-                  onMouseLeave={() => setHoveredAccentColor(null)}
+                  onMouseMove={(event) => {
+                    const rect = event.currentTarget.getBoundingClientRect();
+                    setAccentPointerX(event.clientX - rect.left);
+                  }}
+                  onMouseLeave={() => {
+                    setHoveredAccentColor(null);
+                    setAccentPointerX(null);
+                  }}
                   style={{
                     background: accentCapsuleBackground,
                     borderColor: accentCapsuleBorder,
                     boxShadow: accentCapsuleShadow,
                   }}
                 >
-                  {ACCENT_COLORS.map((color) => (
+                  {ACCENT_COLORS.map((color, index) => {
+                    const dockScale = getAccentDockScale(index, color.value);
+                    const lift = (dockScale - 1) * 10;
+                    return (
                     <button
                       key={color.value}
                       type="button"
@@ -826,10 +854,12 @@ export function WelcomeModal() {
                       onMouseEnter={() => setHoveredAccentColor(color.value)}
                       title={color.label}
                       aria-label={`Set accent color to ${color.label}`}
-                      className="relative z-10 rounded-full transition-transform duration-300 hover:scale-110 focus-visible:outline-none"
+                      className="relative rounded-full transition-transform duration-200 ease-out focus-visible:outline-none"
                       style={{
                         width: ACCENT_BALL_SIZE,
                         height: ACCENT_BALL_SIZE,
+                        transform: `translateY(${-lift}px) scale(${dockScale})`,
+                        zIndex: Math.round(dockScale * 10),
                       }}
                     >
                       <span
@@ -842,7 +872,7 @@ export function WelcomeModal() {
                         }}
                       />
                     </button>
-                  ))}
+                  );})}
                 </div>
               </div>
             </div>
@@ -850,7 +880,7 @@ export function WelcomeModal() {
             <button
               type="button"
               onClick={() => advance(4)}
-              className="w-full h-10 bg-accent-primary text-black text-sm font-semibold hover:brightness-110 transition-all rounded-sm"
+              className={`${PRIMARY_CTA_CLASS} block w-fit mx-auto`}
             >
               {tCommon("continue")} →
             </button>
@@ -879,7 +909,7 @@ export function WelcomeModal() {
             <button
               type="button"
               onClick={handleGetStarted}
-              className="w-full h-11 px-6 py-3 bg-accent-primary text-black text-sm font-semibold hover:brightness-110 transition-all rounded-sm mb-6"
+              className={`${PRIMARY_CTA_CLASS} mb-6`}
             >
               {t("ready.openApp")}
             </button>
