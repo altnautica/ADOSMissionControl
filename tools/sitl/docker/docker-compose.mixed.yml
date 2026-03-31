@@ -1,0 +1,69 @@
+# docker-compose.mixed.yml — Mixed protocol multi-drone SITL
+# SPDX-License-Identifier: GPL-3.0-only
+
+services:
+  ardupilot-sitl:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.ardupilot
+    environment:
+      - VEHICLE=ArduCopter
+      - DRONE_COUNT=${ARDUPILOT_COUNT:-3}
+      - LAT=${LAT:-12.9716}
+      - LON=${LON:-77.5946}
+      - SPEEDUP=${SPEEDUP:-1}
+      - BASE_PORT=5760
+    networks:
+      - sitl-net
+
+  ardupilot-bridge:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.bridge
+    environment:
+      - WS_PORT=5760
+      - TCP_HOST=ardupilot-sitl
+      - TCP_BASE_PORT=5760
+      - DRONE_COUNT=${ARDUPILOT_COUNT:-3}
+    ports:
+      - "5760:5760"
+    depends_on:
+      - ardupilot-sitl
+    networks:
+      - sitl-net
+
+  px4-sitl:
+    image: px4io/px4-dev-simulation-focal:latest
+    command: >
+      bash -c "
+        cd /src/PX4-Autopilot &&
+        for i in $$(seq 0 $$((${PX4_COUNT:-2}-1))); do
+          PX4_SYS_AUTOSTART=4001 ./build/px4_sitl_default/bin/px4 -i $$i &
+        done &&
+        wait
+      "
+    environment:
+      - PX4_COUNT=${PX4_COUNT:-2}
+    networks:
+      - sitl-net
+
+  px4-bridge:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.bridge
+    environment:
+      - WS_PORT=14550
+      - TCP_HOST=px4-sitl
+      - TCP_BASE_PORT=14540
+      - TCP_PORT_INCREMENT=1
+      - DRONE_COUNT=${PX4_COUNT:-2}
+    ports:
+      - "14550:14550"
+    depends_on:
+      - px4-sitl
+    networks:
+      - sitl-net
+
+networks:
+  sitl-net:
+    driver: bridge

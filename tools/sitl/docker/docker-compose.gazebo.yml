@@ -1,0 +1,48 @@
+# docker-compose.gazebo.yml — Gazebo Harmonic + ArduPilot SITL with video
+# SPDX-License-Identifier: GPL-3.0-only
+
+services:
+  gazebo-sitl:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.gazebo
+    environment:
+      - VEHICLE=ArduCopter
+      - DRONE_COUNT=${DRONE_COUNT:-1}
+      - LAT=${LAT:-12.9716}
+      - LON=${LON:-77.5946}
+      - HEADLESS=${HEADLESS:-true}
+    networks:
+      - sitl-net
+
+  bridge:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.bridge
+    environment:
+      - WS_PORT=5760
+      - TCP_HOST=gazebo-sitl
+      - TCP_BASE_PORT=5760
+      - DRONE_COUNT=${DRONE_COUNT:-1}
+    ports:
+      - "5760:5760"
+    depends_on:
+      - gazebo-sitl
+    networks:
+      - sitl-net
+
+  video-relay:
+    build:
+      context: ../../video-relay
+    environment:
+      - RTSP_URL=rtsp://gazebo-sitl:8554/cam
+    ports:
+      - "3001:3001"
+    depends_on:
+      - gazebo-sitl
+    networks:
+      - sitl-net
+
+networks:
+  sitl-net:
+    driver: bridge

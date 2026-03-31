@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 import { SitlLauncher, type SitlConfig } from './launcher/sitl.js';
+import { GazeboSitlLauncher } from './launcher/gazebo-sitl.js';
 import { TcpWsBridge } from './bridge/tcp-ws.js';
 import {
   Dashboard,
@@ -10,6 +11,7 @@ import {
 } from './dashboard/terminal.js';
 import { resolvePreset } from './presets/resolve.js';
 import { listPresets } from './presets/presets.js';
+import { getScenario, listScenarios } from './presets/scenarios.js';
 
 // ---------------------------------------------------------------------------
 // CLI argument parsing
@@ -27,6 +29,11 @@ interface CliArgs {
   noDashboard: boolean;
   preset?: string;
   listPresets: boolean;
+  scenario?: string;
+  listScenarios: boolean;
+  withGazebo: boolean;
+  gazeboWorld: string;
+  gazeboHeadless: boolean;
 }
 
 function parseArgs(argv: string[]): CliArgs {
@@ -39,6 +46,10 @@ function parseArgs(argv: string[]): CliArgs {
     vehicle: 'ArduCopter',
     noDashboard: false,
     listPresets: false,
+    listScenarios: false,
+    withGazebo: false,
+    gazeboWorld: 'multi-copter',
+    gazeboHeadless: false,
   };
 
   for (let i = 2; i < argv.length; i++) {
@@ -90,6 +101,23 @@ function parseArgs(argv: string[]): CliArgs {
       case '--list-presets':
         args.listPresets = true;
         break;
+      case '--scenario':
+        args.scenario = next;
+        i++;
+        break;
+      case '--list-scenarios':
+        args.listScenarios = true;
+        break;
+      case '--with-gazebo':
+        args.withGazebo = true;
+        break;
+      case '--gazebo-world':
+        args.gazeboWorld = next;
+        i++;
+        break;
+      case '--gazebo-headless':
+        args.gazeboHeadless = true;
+        break;
       case '--help':
       case '-h':
         printHelp();
@@ -123,6 +151,8 @@ Options:
   --vehicle <type>    Vehicle type: ArduCopter, ArduPlane, ArduRover (default: ArduCopter)
   --preset <id>       Use a build preset (sets frame, params, vehicle)
   --list-presets      List all available build presets and exit
+  --scenario <id>     Use a named test scenario (sets drones, preset, location, wind, speedup)
+  --list-scenarios    List all available test scenarios and exit
   --no-dashboard      Disable terminal dashboard (log to stdout instead)
   -h, --help          Show this help
 
@@ -132,6 +162,8 @@ Examples:
   npx tsx src/index.ts --preset 7in-long-range        # 7" LR build preset
   npx tsx src/index.ts --preset 10in-heavy-lifter     # Hexa heavy lifter
   npx tsx src/index.ts --list-presets                  # Show all presets
+  npx tsx src/index.ts --scenario wind-stress          # Named test scenario
+  npx tsx src/index.ts --list-scenarios                # Show all scenarios
   npx tsx src/index.ts --wind 5,180                   # 5 m/s wind from south
   npx tsx src/index.ts --lat 28.6139 --lon 77.2090    # New Delhi
 `);
@@ -170,6 +202,31 @@ function printPresets(): void {
   console.log('');
 }
 
+function printScenarios(): void {
+  const scenarios = listScenarios();
+  console.log('\nAvailable test scenarios:\n');
+  console.log(
+    '  ' +
+    'ID'.padEnd(24) +
+    'Name'.padEnd(22) +
+    'Drones'.padEnd(8) +
+    'Preset'.padEnd(22) +
+    'Description',
+  );
+  console.log('  ' + '-'.repeat(100));
+  for (const s of scenarios) {
+    console.log(
+      '  ' +
+      s.id.padEnd(24) +
+      s.name.padEnd(22) +
+      String(s.drones).padEnd(8) +
+      (s.preset ?? '(default quad)').padEnd(22) +
+      s.description,
+    );
+  }
+  console.log('');
+}
+
 async function main(): Promise<void> {
   const cli = parseArgs(process.argv);
 
@@ -177,6 +234,29 @@ async function main(): Promise<void> {
   if (cli.listPresets) {
     printPresets();
     process.exit(0);
+  }
+
+  // --- List scenarios ------------------------------------------------------
+  if (cli.listScenarios) {
+    printScenarios();
+    process.exit(0);
+  }
+
+  // --- Resolve scenario (if specified) -------------------------------------
+  if (cli.scenario) {
+    const scenario = getScenario(cli.scenario);
+    if (!scenario) {
+      const ids = listScenarios().map((s) => s.id).join(', ');
+      console.error(`\nUnknown scenario: "${cli.scenario}"\nAvailable scenarios: ${ids}\n`);
+      process.exit(1);
+    }
+    cli.drones = scenario.drones;
+    cli.lat = scenario.lat;
+    cli.lon = scenario.lon;
+    cli.speedup = scenario.speedup;
+    if (scenario.wind) cli.wind = scenario.wind;
+    if (scenario.preset) cli.preset = scenario.preset;
+    if (scenario.vehicle) cli.vehicle = scenario.vehicle;
   }
 
   // --- Resolve preset (if specified) ---------------------------------------
@@ -216,7 +296,7 @@ async function main(): Promise<void> {
   };
 
   // --- SITL Launcher ------------------------------------------------------
-  const launcherConfig: Partial<SitlConfig> & Pick<SitlConfig, 'lat' | 'lon'> = {
+  const baseLauncherConfig = {
     lat: cli.lat,
     lon: cli.lon,
     drones: cli.drones,
@@ -225,16 +305,20 @@ async function main(): Promise<void> {
     wind: cli.wind,
     baseTcpPort: cli.wsPort,
     extraArgs: presetExtraArgs.length > 0 ? presetExtraArgs : undefined,
+    ...(cli.ardupilotHome ? { ardupilotHome: cli.ardupilotHome } : {}),
   };
-  if (cli.ardupilotHome) {
-    launcherConfig.ardupilotHome = cli.ardupilotHome;
-  }
 
-  const launcher = new SitlLauncher(launcherConfig);
+  const launcher = cli.withGazebo
+    ? new GazeboSitlLauncher({
+        ...baseLauncherConfig,
+        world: cli.gazeboWorld,
+        headless: cli.gazeboHeadless,
+      })
+    : new SitlLauncher(baseLauncherConfig);
 
   launcher.on('stdout', (line: string) => {
     // Only log interesting lines, filter out noisy sim output
-    if (line.includes('Ready to fly') || line.includes('APM:') || line.includes('EKF')) {
+    if (line.includes('Ready to fly') || line.includes('APM:') || line.includes('EKF') || line.includes('[Gazebo]') || line.includes('[SITL]')) {
       log(`SITL: ${line.trim()}`);
     }
   });
@@ -325,7 +409,16 @@ async function main(): Promise<void> {
   });
 
   bridge.start();
-  log(`WebSocket bridge listening on ws://localhost:${cli.wsPort}`);
+
+  // Print per-drone connection URLs
+  if (instances.length === 1) {
+    log(`WebSocket bridge listening on ws://localhost:${instances[0].tcpPort}`);
+  } else {
+    log(`WebSocket bridges ready (one per drone):`);
+    for (const inst of instances) {
+      log(`  Drone #${inst.sysId}: ws://localhost:${inst.tcpPort}`);
+    }
+  }
 
   // --- Signal handling (clean shutdown) -----------------------------------
   let shuttingDown = false;

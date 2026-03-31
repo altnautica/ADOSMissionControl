@@ -1,0 +1,22 @@
+# Dockerfile.bridge — TCP-to-WebSocket bridge
+# SPDX-License-Identifier: GPL-3.0-only
+
+FROM node:20-slim
+
+WORKDIR /app
+
+# Copy package files
+COPY package.json package-lock.json* ./
+RUN npm ci --production
+
+# Copy source
+COPY src/ ./src/
+COPY tsconfig.json ./
+
+# Install tsx for TypeScript execution
+RUN npm install -g tsx
+
+EXPOSE 5760
+
+# Bridge will be configured via environment variables
+CMD ["tsx", "src/bridge/tcp-ws-standalone.ts"]
