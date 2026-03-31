@@ -2,6 +2,7 @@
 <!--
   agricultural-field.sdf — Agricultural test world for spray/survey suite testing
   SPDX-License-Identifier: GPL-3.0-only
+  Location: Bangalore, India (12.9716, 77.5946, 920m)
 -->
 <sdf version="1.9">
   <world name="ados_agriculture">
@@ -12,36 +13,51 @@
     </physics>
 
     <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
-    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
-    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
     <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
       <render_engine>ogre2</render_engine>
     </plugin>
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
     <plugin filename="gz-sim-imu-system" name="gz::sim::systems::Imu"/>
+    <plugin filename="gz-sim-navsat-system" name="gz::sim::systems::NavSat"/>
 
-    <atmosphere type="adiabatic"/>
+    <scene>
+      <ambient>1.0 1.0 1.0</ambient>
+      <background>0.8 0.8 0.8</background>
+      <sky></sky>
+    </scene>
+
+    <spherical_coordinates>
+      <latitude_deg>12.9716</latitude_deg>
+      <longitude_deg>77.5946</longitude_deg>
+      <elevation>920</elevation>
+      <heading_deg>0</heading_deg>
+      <surface_model>EARTH_WGS84</surface_model>
+    </spherical_coordinates>
 
     <light type="directional" name="sun">
       <cast_shadows>true</cast_shadows>
-      <pose>0 0 100 0 0 0</pose>
+      <pose>0 0 10 0 0 0</pose>
       <diffuse>0.9 0.9 0.85 1</diffuse>
       <specular>0.2 0.2 0.2 1</specular>
+      <attenuation>
+        <range>1000</range>
+        <constant>0.9</constant>
+        <linear>0.01</linear>
+        <quadratic>0.001</quadratic>
+      </attenuation>
       <direction>-0.3 0.2 -0.9</direction>
     </light>
 
-    <!-- Large flat ground (agricultural field) -->
+    <!-- Agricultural field ground -->
     <model name="field">
       <static>true</static>
       <link name="link">
         <collision name="collision">
-          <geometry>
-            <plane><normal>0 0 1</normal><size>500 500</size></plane>
-          </geometry>
+          <geometry><plane><normal>0 0 1</normal><size>500 500</size></plane></geometry>
         </collision>
         <visual name="visual">
-          <geometry>
-            <plane><normal>0 0 1</normal><size>500 500</size></plane>
-          </geometry>
+          <geometry><plane><normal>0 0 1</normal><size>500 500</size></plane></geometry>
           <material>
             <ambient>0.35 0.45 0.25 1</ambient>
             <diffuse>0.4 0.5 0.3 1</diffuse>
@@ -51,61 +67,16 @@
     </model>
 
     <!-- Crop rows (green strips, 0.3m tall, 100m long, 3m spacing) -->
-    <!-- Row 1 -->
-    <model name="crop_row_1">
-      <static>true</static>
-      <pose>0 -30 0.15 0 0 0</pose>
-      <link name="link">
-        <visual name="visual">
-          <geometry><box><size>100 0.8 0.3</size></box></geometry>
-          <material>
-            <ambient>0.2 0.5 0.15 1</ambient>
-            <diffuse>0.25 0.55 0.2 1</diffuse>
-          </material>
-        </visual>
-      </link>
-    </model>
+    <model name="crop_row_1"><static>true</static><pose>0 -15 0.15 0 0 0</pose><link name="link"><visual name="v"><geometry><box><size>100 0.8 0.3</size></box></geometry><material><ambient>0.2 0.5 0.15 1</ambient><diffuse>0.25 0.55 0.2 1</diffuse></material></visual></link></model>
+    <model name="crop_row_2"><static>true</static><pose>0 -12 0.15 0 0 0</pose><link name="link"><visual name="v"><geometry><box><size>100 0.8 0.3</size></box></geometry><material><ambient>0.2 0.5 0.15 1</ambient><diffuse>0.25 0.55 0.2 1</diffuse></material></visual></link></model>
+    <model name="crop_row_3"><static>true</static><pose>0 -9 0.15 0 0 0</pose><link name="link"><visual name="v"><geometry><box><size>100 0.8 0.3</size></box></geometry><material><ambient>0.2 0.5 0.15 1</ambient><diffuse>0.25 0.55 0.2 1</diffuse></material></visual></link></model>
+    <model name="crop_row_4"><static>true</static><pose>0 -6 0.15 0 0 0</pose><link name="link"><visual name="v"><geometry><box><size>100 0.8 0.3</size></box></geometry><material><ambient>0.2 0.5 0.15 1</ambient><diffuse>0.25 0.55 0.2 1</diffuse></material></visual></link></model>
+    <model name="crop_row_5"><static>true</static><pose>0 -3 0.15 0 0 0</pose><link name="link"><visual name="v"><geometry><box><size>100 0.8 0.3</size></box></geometry><material><ambient>0.2 0.5 0.15 1</ambient><diffuse>0.25 0.55 0.2 1</diffuse></material></visual></link></model>
+    <model name="crop_row_6"><static>true</static><pose>0 0 0.15 0 0 0</pose><link name="link"><visual name="v"><geometry><box><size>100 0.8 0.3</size></box></geometry><material><ambient>0.2 0.5 0.15 1</ambient><diffuse>0.25 0.55 0.2 1</diffuse></material></visual></link></model>
+    <model name="crop_row_7"><static>true</static><pose>0 3 0.15 0 0 0</pose><link name="link"><visual name="v"><geometry><box><size>100 0.8 0.3</size></box></geometry><material><ambient>0.2 0.5 0.15 1</ambient><diffuse>0.25 0.55 0.2 1</diffuse></material></visual></link></model>
+    <model name="crop_row_8"><static>true</static><pose>0 6 0.15 0 0 0</pose><link name="link"><visual name="v"><geometry><box><size>100 0.8 0.3</size></box></geometry><material><ambient>0.2 0.5 0.15 1</ambient><diffuse>0.25 0.55 0.2 1</diffuse></material></visual></link></model>
 
-    <!-- Row 2 -->
-    <model name="crop_row_2">
-      <static>true</static>
-      <pose>0 -27 0.15 0 0 0</pose>
-      <link name="link">
-        <visual name="visual">
-          <geometry><box><size>100 0.8 0.3</size></box></geometry>
-          <material>
-            <ambient>0.2 0.5 0.15 1</ambient>
-            <diffuse>0.25 0.55 0.2 1</diffuse>
-          </material>
-        </visual>
-      </link>
-    </model>
-
-    <!-- Row 3 -->
-    <model name="crop_row_3">
-      <static>true</static>
-      <pose>0 -24 0.15 0 0 0</pose>
-      <link name="link">
-        <visual name="visual">
-          <geometry><box><size>100 0.8 0.3</size></box></geometry>
-          <material>
-            <ambient>0.2 0.5 0.15 1</ambient>
-            <diffuse>0.25 0.55 0.2 1</diffuse>
-          </material>
-        </visual>
-      </link>
-    </model>
-
-    <!-- Row 4-10 (more crop rows at 3m spacing) -->
-    <model name="crop_row_4"><static>true</static><pose>0 -21 0.15 0 0 0</pose><link name="link"><visual name="visual"><geometry><box><size>100 0.8 0.3</size></box></geometry><material><ambient>0.2 0.5 0.15 1</ambient><diffuse>0.25 0.55 0.2 1</diffuse></material></visual></link></model>
-    <model name="crop_row_5"><static>true</static><pose>0 -18 0.15 0 0 0</pose><link name="link"><visual name="visual"><geometry><box><size>100 0.8 0.3</size></box></geometry><material><ambient>0.2 0.5 0.15 1</ambient><diffuse>0.25 0.55 0.2 1</diffuse></material></visual></link></model>
-    <model name="crop_row_6"><static>true</static><pose>0 -15 0.15 0 0 0</pose><link name="link"><visual name="visual"><geometry><box><size>100 0.8 0.3</size></box></geometry><material><ambient>0.2 0.5 0.15 1</ambient><diffuse>0.25 0.55 0.2 1</diffuse></material></visual></link></model>
-    <model name="crop_row_7"><static>true</static><pose>0 -12 0.15 0 0 0</pose><link name="link"><visual name="visual"><geometry><box><size>100 0.8 0.3</size></box></geometry><material><ambient>0.2 0.5 0.15 1</ambient><diffuse>0.25 0.55 0.2 1</diffuse></material></visual></link></model>
-    <model name="crop_row_8"><static>true</static><pose>0 -9 0.15 0 0 0</pose><link name="link"><visual name="visual"><geometry><box><size>100 0.8 0.3</size></box></geometry><material><ambient>0.2 0.5 0.15 1</ambient><diffuse>0.25 0.55 0.2 1</diffuse></material></visual></link></model>
-    <model name="crop_row_9"><static>true</static><pose>0 -6 0.15 0 0 0</pose><link name="link"><visual name="visual"><geometry><box><size>100 0.8 0.3</size></box></geometry><material><ambient>0.2 0.5 0.15 1</ambient><diffuse>0.25 0.55 0.2 1</diffuse></material></visual></link></model>
-    <model name="crop_row_10"><static>true</static><pose>0 -3 0.15 0 0 0</pose><link name="link"><visual name="visual"><geometry><box><size>100 0.8 0.3</size></box></geometry><material><ambient>0.2 0.5 0.15 1</ambient><diffuse>0.25 0.55 0.2 1</diffuse></material></visual></link></model>
-
-    <!-- Water tank (reference point) -->
+    <!-- Water tank landmark -->
     <model name="water_tank">
       <static>true</static>
       <pose>-60 10 1.5 0 0 0</pose>
@@ -123,7 +94,13 @@
       </link>
     </model>
 
-    <!-- Mild wind for realism -->
+    <!-- Iris quadcopter with ArduPilot plugin -->
+    <include>
+      <uri>model://iris_with_ardupilot</uri>
+      <pose>-20 -20 0.195 0 0 0</pose>
+    </include>
+
+    <!-- Mild wind -->
     <wind>
       <linear_velocity>2 1 0</linear_velocity>
     </wind>
