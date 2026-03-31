@@ -14,8 +14,11 @@ import { BuildPresetPicker } from "./BuildPresetPicker";
 
 const QUICK_PRESETS = [
   { label: "mavlink-router", url: "ws://localhost:14550" },
-  { label: "SITL", url: "ws://localhost:5760" },
-  { label: "Secondary", url: "ws://localhost:14555" },
+  { label: "SITL #1", url: "ws://localhost:5760" },
+  { label: "SITL #2", url: "ws://localhost:5770" },
+  { label: "SITL #3", url: "ws://localhost:5780" },
+  { label: "SITL #4", url: "ws://localhost:5790" },
+  { label: "SITL #5", url: "ws://localhost:5800" },
 ];
 
 /** Detect SITL-like URLs (ws://localhost:576*). */
@@ -70,10 +73,12 @@ export function WebSocketPanel({
       const droneId = randomId();
 
       // Use preset name if available, otherwise firmware info
+      // Append system ID for unique naming in multi-drone setups
       const preset = selectedPresetId ? getPreset(selectedPresetId) : null;
+      const sysIdSuffix = vehicleInfo.systemId > 0 ? ` #${vehicleInfo.systemId}` : '';
       const droneName = preset
-        ? preset.name
-        : `${vehicleInfo.firmwareVersionString} (${vehicleInfo.vehicleClass})`;
+        ? `${preset.name}${sysIdSuffix}`
+        : `${vehicleInfo.firmwareVersionString} (${vehicleInfo.vehicleClass})${sysIdSuffix}`;
 
       addDrone(droneId, droneName, adapter, transport, vehicleInfo, {
         type: "websocket",

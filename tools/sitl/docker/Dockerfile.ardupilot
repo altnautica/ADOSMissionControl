@@ -1,0 +1,50 @@
+# Dockerfile.ardupilot — ArduPilot SITL container
+# SPDX-License-Identifier: GPL-3.0-only
+
+FROM ubuntu:22.04 AS builder
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y \
+    git python3 python3-pip python3-dev \
+    build-essential gcc-arm-none-eabi \
+    && rm -rf /var/lib/apt/lists/*
+
+# Clone and build ArduPilot
+RUN git clone --depth 1 --recurse-submodules https://github.com/ArduPilot/ardupilot.git /ardupilot
+WORKDIR /ardupilot
+RUN Tools/environment_install/install-prereqs-ubuntu.sh -y
+RUN ./waf configure --board sitl && ./waf copter plane rover
+
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y \
+    python3 python3-pip python3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /ardupilot /ardupilot
+WORKDIR /ardupilot
+
+# Install Python dependencies for sim_vehicle.py
+RUN pip3 install pexpect pymavlink
+
+# Default: single copter at Bangalore
+ENV VEHICLE=ArduCopter
+ENV DRONE_COUNT=1
+ENV LAT=12.9716
+ENV LON=77.5946
+ENV SPEEDUP=1
+ENV BASE_PORT=5760
+
+EXPOSE 5760-5850
+
+CMD python3 Tools/autotest/sim_vehicle.py \
+    -v $VEHICLE \
+    --no-mavproxy \
+    -l "$LAT,$LON,0,0" \
+    --speedup $SPEEDUP \
+    --count $DRONE_COUNT \
+    --auto-sysid \
+    $(for i in $(seq 0 $((DRONE_COUNT-1))); do echo "--out=tcpin:0.0.0.0:$((BASE_PORT + i * 10))"; done)

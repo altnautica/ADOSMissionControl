@@ -1,0 +1,37 @@
+# docker-compose.ardupilot.yml — Multi-drone ArduPilot SITL
+# SPDX-License-Identifier: GPL-3.0-only
+
+services:
+  sitl:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.ardupilot
+    environment:
+      - VEHICLE=${VEHICLE:-ArduCopter}
+      - DRONE_COUNT=${DRONE_COUNT:-3}
+      - LAT=${LAT:-12.9716}
+      - LON=${LON:-77.5946}
+      - SPEEDUP=${SPEEDUP:-1}
+      - BASE_PORT=5760
+    networks:
+      - sitl-net
+
+  bridge:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.bridge
+    environment:
+      - WS_PORT=5760
+      - TCP_HOST=sitl
+      - TCP_BASE_PORT=5760
+      - DRONE_COUNT=${DRONE_COUNT:-3}
+    ports:
+      - "${WS_PORT:-5760}:5760"
+    depends_on:
+      - sitl
+    networks:
+      - sitl-net
+
+networks:
+  sitl-net:
+    driver: bridge

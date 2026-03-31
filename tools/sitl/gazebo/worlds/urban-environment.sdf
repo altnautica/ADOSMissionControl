@@ -1,0 +1,144 @@
+<?xml version="1.0" ?>
+<!--
+  urban-environment.sdf — Urban test world with buildings for inspection sim
+  SPDX-License-Identifier: GPL-3.0-only
+-->
+<sdf version="1.9">
+  <world name="ados_urban">
+
+    <physics name="1ms" type="ignore">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
+    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+    <plugin filename="gz-sim-imu-system" name="gz::sim::systems::Imu"/>
+
+    <atmosphere type="adiabatic"/>
+
+    <light type="directional" name="sun">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 100 0 0 0</pose>
+      <diffuse>0.8 0.8 0.8 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <direction>-0.5 0.1 -0.9</direction>
+    </light>
+
+    <!-- Ground plane -->
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry>
+            <plane><normal>0 0 1</normal><size>500 500</size></plane>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <plane><normal>0 0 1</normal><size>500 500</size></plane>
+          </geometry>
+          <material>
+            <ambient>0.4 0.4 0.4 1</ambient>
+            <diffuse>0.5 0.5 0.5 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Building 1: Tall office (20m) -->
+    <model name="building_1">
+      <static>true</static>
+      <pose>30 0 10 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>15 10 20</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>15 10 20</size></box></geometry>
+          <material>
+            <ambient>0.6 0.6 0.65 1</ambient>
+            <diffuse>0.7 0.7 0.75 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Building 2: Warehouse (8m) -->
+    <model name="building_2">
+      <static>true</static>
+      <pose>-20 25 4 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>20 15 8</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>20 15 8</size></box></geometry>
+          <material>
+            <ambient>0.5 0.45 0.4 1</ambient>
+            <diffuse>0.6 0.55 0.5 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Building 3: Residential (12m) -->
+    <model name="building_3">
+      <static>true</static>
+      <pose>10 -30 6 0 0 0.3</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>10 8 12</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>10 8 12</size></box></geometry>
+          <material>
+            <ambient>0.55 0.5 0.45 1</ambient>
+            <diffuse>0.65 0.6 0.55 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Building 4: Small structure (5m) -->
+    <model name="building_4">
+      <static>true</static>
+      <pose>-15 -15 2.5 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>6 6 5</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>6 6 5</size></box></geometry>
+          <material>
+            <ambient>0.5 0.5 0.5 1</ambient>
+            <diffuse>0.6 0.6 0.6 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Power line tower -->
+    <model name="power_tower">
+      <static>true</static>
+      <pose>50 -20 12.5 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>2 2 25</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>2 2 25</size></box></geometry>
+          <material>
+            <ambient>0.4 0.4 0.4 1</ambient>
+            <diffuse>0.5 0.5 0.5 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+  </world>
+</sdf>
