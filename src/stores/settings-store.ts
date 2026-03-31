@@ -22,6 +22,42 @@ export type ThemeMode =
   | "ayu-dark" | "ayu-mirage" | "everforest-dark";
 export type AccentColor = "blue" | "green" | "amber" | "red" | "lime" | "purple" | "pink" | "cyan" | "orange";
 export type GuidanceLineType = "solid" | "dashed" | "dotted";
+export type TelemetryDeckPageId = "flight" | "link" | "power" | "tuning";
+export type TelemetryDeckMetricId =
+  | "relAlt"
+  | "airspeed"
+  | "groundspeedMs"
+  | "throttle"
+  | "climbRate"
+  | "gpsFix"
+  | "satellites"
+  | "gpsHdop"
+  | "batteryVoltage"
+  | "batteryCurrent"
+  | "batteryConsumed"
+  | "roll"
+  | "pitch"
+  | "yaw"
+  | "wpDistance"
+  | "xtrackError"
+  | "altError"
+  | "navBearing"
+  | "targetBearing"
+  | "windSpeed"
+  | "windDirection"
+  | "radioRssi"
+  | "remrssi"
+  | "noise"
+  | "remnoise"
+  | "rxerrors"
+  | "txbuf"
+  | "powerWatts"
+  | "estFlightMin"
+  | "ekfVelRatio"
+  | "ekfPosHorizRatio"
+  | "vibeX"
+  | "vibeY"
+  | "vibeZ";
 export type { Jurisdiction };
 
 export type ParamColumnId = "index" | "name" | "description" | "value" | "range" | "units" | "type";
@@ -46,6 +82,77 @@ export const DEFAULT_PARAM_COLUMNS: ParamColumnVisibility = {
   units: true,
   type: false,
 };
+
+export const DEFAULT_TELEMETRY_DECK_METRICS: TelemetryDeckMetricId[] = [
+  "batteryVoltage",
+  "batteryCurrent",
+  "throttle",
+  "gpsFix",
+  "satellites",
+  "roll",
+  "pitch",
+  "windSpeed",
+];
+
+export const DEFAULT_TELEMETRY_DECK_PAGES: Record<TelemetryDeckPageId, TelemetryDeckMetricId[]> = {
+  flight: ["relAlt", "airspeed", "groundspeedMs", "climbRate", "roll", "pitch", "yaw", "windSpeed"],
+  link: ["radioRssi", "remrssi", "noise", "remnoise", "rxerrors", "txbuf", "gpsFix", "satellites"],
+  power: ["batteryVoltage", "batteryCurrent", "powerWatts", "batteryConsumed", "estFlightMin", "throttle"],
+  tuning: ["roll", "pitch", "yaw", "vibeX", "vibeY", "vibeZ", "ekfVelRatio", "ekfPosHorizRatio"],
+};
+
+function cloneDefaultTelemetryDeckPages(): Record<TelemetryDeckPageId, TelemetryDeckMetricId[]> {
+  return {
+    flight: [...DEFAULT_TELEMETRY_DECK_PAGES.flight],
+    link: [...DEFAULT_TELEMETRY_DECK_PAGES.link],
+    power: [...DEFAULT_TELEMETRY_DECK_PAGES.power],
+    tuning: [...DEFAULT_TELEMETRY_DECK_PAGES.tuning],
+  };
+}
+
+function arraysEqual(a: TelemetryDeckMetricId[], b: TelemetryDeckMetricId[]): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i += 1) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+}
+
+function normalizeTelemetryDeckPages(
+  rawPages: unknown,
+): Record<TelemetryDeckPageId, TelemetryDeckMetricId[]> {
+  const raw = (rawPages ?? {}) as Partial<Record<TelemetryDeckPageId, unknown>>;
+  const defaults = cloneDefaultTelemetryDeckPages();
+
+  const sanitize = (page: TelemetryDeckPageId): TelemetryDeckMetricId[] => {
+    const candidate = raw[page];
+    if (!Array.isArray(candidate)) return defaults[page];
+    const filtered = candidate.filter((m): m is TelemetryDeckMetricId => typeof m === "string");
+    const deduped = [...new Set(filtered)] as TelemetryDeckMetricId[];
+    return deduped.length > 0 ? deduped : defaults[page];
+  };
+
+  const normalized: Record<TelemetryDeckPageId, TelemetryDeckMetricId[]> = {
+    flight: sanitize("flight"),
+    link: sanitize("link"),
+    power: sanitize("power"),
+    tuning: sanitize("tuning"),
+  };
+
+  // Repair a common bad state: non-flight pages copied from default flight page.
+  const matchesDefaultFlight = arraysEqual(normalized.flight, defaults.flight);
+  if (matchesDefaultFlight && arraysEqual(normalized.link, normalized.flight)) {
+    normalized.link = defaults.link;
+  }
+  if (matchesDefaultFlight && arraysEqual(normalized.power, normalized.flight)) {
+    normalized.power = defaults.power;
+  }
+  if (matchesDefaultFlight && arraysEqual(normalized.tuning, normalized.flight)) {
+    normalized.tuning = defaults.tuning;
+  }
+
+  return normalized;
+}
 
 interface SettingsStoreState {
   /** Map tile source. */
@@ -144,6 +251,12 @@ interface SettingsStoreState {
   guidanceHdgEnabled: boolean;
   guidanceTrackWpEnabled: boolean;
   guidanceTgtHdgEnabled: boolean;
+  /** Extra HUD metrics shown in expandable telemetry deck. */
+  telemetryDeckMetrics: TelemetryDeckMetricId[];
+  /** Active page in expandable telemetry deck. */
+  telemetryDeckActivePage: TelemetryDeckPageId;
+  /** Per-page metric lists/order for telemetry deck. */
+  telemetryDeckPages: Record<TelemetryDeckPageId, TelemetryDeckMetricId[]>;
   setLocale: (locale: string) => void;
   setThemeMode: (mode: ThemeMode) => void;
   setAccentColor: (accent: AccentColor) => void;
@@ -196,6 +309,12 @@ interface SettingsStoreState {
   setGuidanceHdgEnabled: (v: boolean) => void;
   setGuidanceTrackWpEnabled: (v: boolean) => void;
   setGuidanceTgtHdgEnabled: (v: boolean) => void;
+  setTelemetryDeckMetrics: (metrics: TelemetryDeckMetricId[]) => void;
+  toggleTelemetryDeckMetric: (metric: TelemetryDeckMetricId) => void;
+  setTelemetryDeckActivePage: (page: TelemetryDeckPageId) => void;
+  setTelemetryDeckPageMetrics: (page: TelemetryDeckPageId, metrics: TelemetryDeckMetricId[]) => void;
+  toggleTelemetryDeckPageMetric: (page: TelemetryDeckPageId, metric: TelemetryDeckMetricId) => void;
+  moveTelemetryDeckMetric: (page: TelemetryDeckPageId, fromIndex: number, toIndex: number) => void;
   resetGuidanceDefaults: () => void;
 }
 
@@ -258,6 +377,9 @@ export const useSettingsStore = create<SettingsStoreState>()(
       guidanceHdgEnabled: true,
       guidanceTrackWpEnabled: true,
       guidanceTgtHdgEnabled: true,
+      telemetryDeckMetrics: [...DEFAULT_TELEMETRY_DECK_METRICS],
+      telemetryDeckActivePage: "flight",
+      telemetryDeckPages: cloneDefaultTelemetryDeckPages(),
 
       setMapTileSource: (mapTileSource) => set({ mapTileSource }),
       setUnits: (units) => set({ units }),
@@ -330,6 +452,65 @@ export const useSettingsStore = create<SettingsStoreState>()(
       setGuidanceHdgEnabled: (v) => set({ guidanceHdgEnabled: v }),
       setGuidanceTrackWpEnabled: (v) => set({ guidanceTrackWpEnabled: v }),
       setGuidanceTgtHdgEnabled: (v) => set({ guidanceTgtHdgEnabled: v }),
+      setTelemetryDeckMetrics: (metrics) =>
+        set({ telemetryDeckMetrics: [...new Set(metrics)] as TelemetryDeckMetricId[] }),
+      toggleTelemetryDeckMetric: (metric) =>
+        set((s) => {
+          if (s.telemetryDeckMetrics.includes(metric)) {
+            // Keep at least one metric visible so the deck is never empty.
+            if (s.telemetryDeckMetrics.length <= 1) return {};
+            return { telemetryDeckMetrics: s.telemetryDeckMetrics.filter((m) => m !== metric) };
+          }
+          return { telemetryDeckMetrics: [...s.telemetryDeckMetrics, metric] };
+        }),
+      setTelemetryDeckActivePage: (page) => set({ telemetryDeckActivePage: page }),
+      setTelemetryDeckPageMetrics: (page, metrics) =>
+        set((s) => ({
+          telemetryDeckPages: {
+            ...s.telemetryDeckPages,
+            [page]: [...new Set(metrics)] as TelemetryDeckMetricId[],
+          },
+        })),
+      toggleTelemetryDeckPageMetric: (page, metric) =>
+        set((s) => {
+          const current = s.telemetryDeckPages[page] ?? [];
+          if (current.includes(metric)) {
+            if (current.length <= 1) return {};
+            return {
+              telemetryDeckPages: {
+                ...s.telemetryDeckPages,
+                [page]: current.filter((m) => m !== metric),
+              },
+            };
+          }
+          return {
+            telemetryDeckPages: {
+              ...s.telemetryDeckPages,
+              [page]: [...current, metric],
+            },
+          };
+        }),
+      moveTelemetryDeckMetric: (page, fromIndex, toIndex) =>
+        set((s) => {
+          const current = [...(s.telemetryDeckPages[page] ?? [])];
+          if (
+            fromIndex < 0 ||
+            toIndex < 0 ||
+            fromIndex >= current.length ||
+            toIndex >= current.length ||
+            fromIndex === toIndex
+          ) {
+            return {};
+          }
+          const [moved] = current.splice(fromIndex, 1);
+          current.splice(toIndex, 0, moved);
+          return {
+            telemetryDeckPages: {
+              ...s.telemetryDeckPages,
+              [page]: current,
+            },
+          };
+        }),
       resetGuidanceDefaults: () => set({
         guidanceHdgLength: 100, guidanceHdgWidth: 2, guidanceHdgLineType: "solid", guidanceHdgColor: "#00ff41", guidanceHdgEnabled: true,
         guidanceTrackWpLength: 100, guidanceTrackWpWidth: 1.5, guidanceTrackWpLineType: "dashed", guidanceTrackWpColor: "#3A82FF", guidanceTrackWpEnabled: true,
@@ -342,7 +523,7 @@ export const useSettingsStore = create<SettingsStoreState>()(
     {
       name: "altcmd:settings",
       storage: createJSONStorage(indexedDBStorage.storage),
-      version: 26,
+      version: 29,
       migrate: (persisted, version) => {
         const state = persisted as Record<string, unknown>;
         if (version < 2) {
@@ -467,6 +648,30 @@ export const useSettingsStore = create<SettingsStoreState>()(
         if (version < 26) {
           // v26: WHEP video endpoint URL for local/SITL video
           state.videoWhepUrl = "";
+        }
+        if (version < 27) {
+          state.telemetryDeckMetrics = [...DEFAULT_TELEMETRY_DECK_METRICS];
+        }
+        if (version < 28) {
+          const legacyMetrics = Array.isArray(state.telemetryDeckMetrics)
+            ? (state.telemetryDeckMetrics as TelemetryDeckMetricId[])
+            : [...DEFAULT_TELEMETRY_DECK_METRICS];
+          state.telemetryDeckActivePage = "flight";
+          state.telemetryDeckPages = {
+            ...cloneDefaultTelemetryDeckPages(),
+            flight: legacyMetrics.length > 0 ? legacyMetrics : [...DEFAULT_TELEMETRY_DECK_PAGES.flight],
+          };
+        }
+        if (version < 29) {
+          state.telemetryDeckPages = normalizeTelemetryDeckPages(state.telemetryDeckPages);
+          if (
+            state.telemetryDeckActivePage !== "flight" &&
+            state.telemetryDeckActivePage !== "link" &&
+            state.telemetryDeckActivePage !== "power" &&
+            state.telemetryDeckActivePage !== "tuning"
+          ) {
+            state.telemetryDeckActivePage = "flight";
+          }
         }
         return state as unknown as SettingsStoreState;
       },
