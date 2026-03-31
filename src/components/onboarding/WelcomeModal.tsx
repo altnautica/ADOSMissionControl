@@ -83,6 +83,13 @@ const GROUP_TABS: { key: ThemeGroup | "all"; label: string }[] = [
   { key: "mid", label: "Mid-tone" },
 ];
 
+const ACCENT_BALL_SIZE = 28;
+const ACCENT_BALL_GAP = 8;
+const ACCENT_CAPSULE_PADDING = 8;
+const ACCENT_DOCK_MAX_SCALE = 1.30;
+const ACCENT_DOCK_RADIUS = ACCENT_BALL_SIZE * 1.4;
+const PRIMARY_CTA_CLASS = "h-10 px-8 bg-accent-primary text-black text-sm font-semibold hover:brightness-110 transition-all rounded-sm";
+
 type Step = 0 | 1 | 2 | 3 | 4;
 
 function detectBrowserLocale(): string {
@@ -212,6 +219,171 @@ function ThemeCard({
   );
 }
 
+function ThemeMiniTile({
+  theme,
+  onClick,
+}: {
+  theme: ThemeCardData;
+  onClick: () => void;
+}) {
+  const { colors, label } = theme;
+  const accentColor = useSettingsStore((s) => s.accentColor);
+  const accentHex = ACCENT_COLORS.find((c) => c.value === accentColor)?.hex ?? colors.accent;
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="rounded-md border p-2 text-left transition-all hover:-translate-y-0.5 focus-visible:outline-none"
+      style={{
+        backgroundColor: colors.bg,
+        borderColor: colors.border,
+        boxShadow: `0 0 0 1px ${colors.border}, 0 0 0 2px ${accentHex}22`,
+      }}
+      aria-label={`Use ${label} as preview`}
+    >
+      <div className="flex items-center gap-1 mb-1.5">
+        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: accentHex }} />
+        <span className="w-4 h-1 rounded-full opacity-60" style={{ backgroundColor: colors.text }} />
+      </div>
+      <div className="h-0.5 rounded-full mb-1.5" style={{ backgroundColor: accentHex }} />
+      <span className="block text-[10px] leading-tight truncate" style={{ color: colors.text }}>
+        {label}
+      </span>
+    </button>
+  );
+}
+
+function ThemeWorkspacePreview({ theme }: { theme: ThemeCardData }) {
+  const { colors, label } = theme;
+  const accentColor = useSettingsStore((s) => s.accentColor);
+  const accentHex = ACCENT_COLORS.find((c) => c.value === accentColor)?.hex ?? colors.accent;
+
+  return (
+    <div
+      className="rounded-xl border overflow-hidden"
+      style={{
+        backgroundColor: colors.bg,
+        borderColor: colors.border,
+      }}
+      aria-label={`${label} full preview`}
+    >
+      <div
+        className="h-10 px-3 flex items-center gap-2"
+        style={{
+          backgroundColor: colors.surface,
+          borderBottom: `1px solid ${colors.border}`,
+        }}
+      >
+        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: accentHex }} />
+        <span className="text-xs font-semibold" style={{ color: colors.text }}>Mission Control</span>
+        <span className="ml-auto text-[10px] opacity-70" style={{ color: colors.text }}>Connected</span>
+      </div>
+
+      <div className="grid grid-cols-[88px_1fr] min-h-[220px]">
+        <aside
+          className="p-2.5 space-y-1.5"
+          style={{
+            backgroundColor: colors.surface,
+            borderRight: `1px solid ${colors.border}`,
+          }}
+        >
+          {[
+            "Dashboard",
+            "Flight",
+            "Plan",
+            "Config",
+          ].map((item, idx) => (
+            <div
+              key={item}
+              className="rounded px-2 py-1 text-[10px] truncate"
+              style={{
+                color: colors.text,
+                backgroundColor: idx === 1 ? accentHex : `${colors.border}55`,
+                opacity: idx === 1 ? 1 : 0.85,
+              }}
+            >
+              {item}
+            </div>
+          ))}
+        </aside>
+
+        <main className="p-3">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-xs font-semibold" style={{ color: colors.text }}>Flight Overview</h4>
+            <span
+              className="text-[10px] px-2 py-0.5 rounded-full"
+              style={{
+                color: colors.bg,
+                backgroundColor: accentHex,
+              }}
+            >
+              LIVE
+            </span>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 mb-3">
+            {[
+              ["Alt", "42m"],
+              ["Speed", "11m/s"],
+              ["RSSI", "97%"],
+            ].map(([k, v]) => (
+              <div
+                key={k}
+                className="rounded p-2"
+                style={{
+                  backgroundColor: colors.surface,
+                  border: `1px solid ${colors.border}`,
+                }}
+              >
+                <p className="text-[9px] opacity-70" style={{ color: colors.text }}>{k}</p>
+                <p className="text-[11px] font-semibold" style={{ color: colors.text }}>{v}</p>
+              </div>
+            ))}
+          </div>
+
+          <div
+            className="rounded p-2.5 mb-3"
+            style={{
+              backgroundColor: colors.surface,
+              border: `1px solid ${colors.border}`,
+            }}
+          >
+            <p className="text-[10px] mb-1" style={{ color: colors.text }}>Mission Status</p>
+            <p className="text-[9px] opacity-75" style={{ color: colors.text }}>
+              5 waypoints loaded. Ready to arm and start mission.
+            </p>
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className="h-7 px-2.5 rounded text-[10px] font-semibold"
+              style={{
+                backgroundColor: accentHex,
+                color: colors.bg,
+              }}
+            >
+              Arm Vehicle
+            </button>
+            <button
+              type="button"
+              className="h-7 px-2.5 rounded text-[10px]"
+              style={{
+                backgroundColor: colors.surface,
+                color: colors.text,
+                border: `1px solid ${colors.border}`,
+              }}
+            >
+              Open Planner
+            </button>
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
+
 export function WelcomeModal() {
   const onboarded = useSettingsStore((s) => s.onboarded);
   const hasHydrated = useSettingsStore((s) => s._hasHydrated);
@@ -248,9 +420,16 @@ export function WelcomeModal() {
   const [locationEnabled, setLocalLocationEnabled] = useState(true);
   const [locationPermission, setLocationPermission] = useState<GeoPermission>("prompt");
   const [locationChecking, setLocationChecking] = useState(false);
+  const [hoveredAccentColor, setHoveredAccentColor] = useState<AccentColor | null>(null);
+  const [accentPointerX, setAccentPointerX] = useState<number | null>(null);
+  const [activeGroup, setActiveGroup] = useState<ThemeGroup | "all">("all");
 
   // Step 4: theme selection
-  const [activeGroup, setActiveGroup] = useState<ThemeGroup | "all">("all");
+  const [themeOrder, setThemeOrder] = useState<ThemeMode[]>(() => {
+    const values = THEME_CARDS.map((theme) => theme.value);
+    if (!values.includes(themeMode)) return values;
+    return [themeMode, ...values.filter((value) => value !== themeMode)];
+  });
 
   // Auto-request location permission on mount
   useEffect(() => {
@@ -310,9 +489,51 @@ export function WelcomeModal() {
     setOnboarded(true);
   };
 
-  const filteredThemes = activeGroup === "all"
-    ? THEME_CARDS
-    : THEME_CARDS.filter((t) => t.group === activeGroup);
+  const orderedThemes = themeOrder
+    .map((value) => THEME_CARDS.find((theme) => theme.value === value))
+    .filter((theme): theme is ThemeCardData => Boolean(theme));
+  const previewTheme = orderedThemes[0] ?? THEME_CARDS[0];
+  const selectableThemes = orderedThemes
+    .slice(1)
+    .filter((theme) => activeGroup === "all" || theme.group === activeGroup)
+    .slice(0, 20);
+  const accentFocusColor = hoveredAccentColor ?? accentColor;
+  const accentFocusIndex = Math.max(
+    0,
+    ACCENT_COLORS.findIndex((color) => color.value === accentFocusColor),
+  );
+  const accentFocusHex = ACCENT_COLORS[accentFocusIndex]?.hex ?? ACCENT_COLORS[0].hex;
+  const accentCapsuleBackground = `linear-gradient(135deg, ${previewTheme.colors.surface} 0%, ${previewTheme.colors.bg} 52%, ${accentFocusHex}24 100%)`;
+  const accentCapsuleBorder = `${previewTheme.colors.border}`;
+  const accentCapsuleShadow = `inset 0 1px 0 ${previewTheme.colors.text}12, inset 0 -1px 0 ${previewTheme.colors.bg}66, 0 12px 28px ${previewTheme.colors.bg}55`;
+
+  const getAccentDockScale = (index: number, colorValue: AccentColor): number => {
+    const selectedBoost = accentColor === colorValue ? 1.06 : 1;
+    if (accentPointerX === null) return selectedBoost;
+
+    const centerX = ACCENT_CAPSULE_PADDING + (ACCENT_BALL_SIZE / 2) + (index * (ACCENT_BALL_SIZE + ACCENT_BALL_GAP));
+    const distance = Math.abs(accentPointerX - centerX);
+    if (distance >= ACCENT_DOCK_RADIUS) return selectedBoost;
+
+    const t = 1 - (distance / ACCENT_DOCK_RADIUS);
+    const eased = t * t * (3 - (2 * t));
+    const dockScale = 1 + (eased * (ACCENT_DOCK_MAX_SCALE - 1));
+    return Math.max(selectedBoost, dockScale);
+  };
+
+  const handleThemeTileClick = (themeValue: ThemeMode): void => {
+    setThemeOrder((previous) => {
+      const clickedIndex = previous.indexOf(themeValue);
+      if (clickedIndex <= 0) return previous;
+
+      const next = [...previous];
+      const previousPreview = next[0];
+      next[0] = themeValue;
+      next[clickedIndex] = previousPreview;
+      return next;
+    });
+    setThemeMode(themeValue);
+  };
 
   // Step positions: current = center (0), before = left (-100%), after = right (100%)
   const stepX = (i: number): string => {
@@ -374,7 +595,7 @@ export function WelcomeModal() {
           <button
             type="button"
             onClick={() => advance(1)}
-            className="h-10 px-8 bg-accent-primary text-black text-sm font-semibold hover:brightness-110 transition-all rounded-sm"
+            className={PRIMARY_CTA_CLASS}
           >
             {t("language.continue")} →
           </button>
@@ -436,7 +657,7 @@ export function WelcomeModal() {
             <button
               type="button"
               onClick={() => advance(2)}
-              className="self-start h-10 px-8 bg-accent-primary text-black text-sm font-semibold hover:brightness-110 transition-all rounded-sm"
+              className={`${PRIMARY_CTA_CLASS} self-start`}
             >
               {t("intro.getStarted")} →
             </button>
@@ -529,7 +750,7 @@ export function WelcomeModal() {
             <button
               type="button"
               onClick={() => advance(3)}
-              className="w-full mt-8 h-10 bg-accent-primary text-black text-sm font-semibold hover:brightness-110 transition-all rounded-sm"
+              className={`${PRIMARY_CTA_CLASS} mt-8 block w-fit mx-auto`}
             >
               {tCommon("continue")} →
             </button>
@@ -540,7 +761,7 @@ export function WelcomeModal() {
 
         {/* -- STEP 3: Theme Selection -- */}
         <div
-          className={`absolute inset-0 flex flex-col items-center p-8 pt-16 transition-transform duration-300 ease-in-out overflow-y-auto ${stepX(3)}`}
+          className={`absolute inset-0 flex flex-col items-center p-8 pt-16 transition-transform duration-300 ease-in-out ${stepX(3)}`}
         >
           {/* Back button */}
           <button
@@ -551,7 +772,7 @@ export function WelcomeModal() {
             ← {tCommon("back")}
           </button>
 
-          <div className="w-full max-w-2xl">
+          <div className="w-full max-w-5xl">
             <h2 className="text-xl font-display font-semibold text-text-primary mb-1 text-center">
               Choose your theme
             </h2>
@@ -559,71 +780,107 @@ export function WelcomeModal() {
               You can change this anytime in settings
             </p>
 
-            {/* Group filter tabs */}
-            <div className="flex gap-1.5 justify-center mb-6">
-              {GROUP_TABS.map((tab) => (
-                <button
-                  key={tab.key}
-                  type="button"
-                  onClick={() => setActiveGroup(tab.key)}
-                  className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
-                    activeGroup === tab.key
-                      ? "bg-accent-primary text-black"
-                      : "bg-bg-tertiary text-text-secondary hover:text-text-primary"
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Theme card grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mb-8">
-              {filteredThemes.map((theme, idx) => (
-                <div
-                  key={theme.value}
-                  className="animate-in fade-in"
-                  style={{ animationDelay: `${idx * 30}ms`, animationFillMode: "both" }}
-                >
-                  <ThemeCard
-                    theme={theme}
-                    isSelected={themeMode === theme.value}
-                    onClick={() => setThemeMode(theme.value)}
-                  />
+            <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] gap-4 mb-6">
+              <div className="rounded-xl border border-border-default bg-bg-secondary p-3">
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <p className="text-[11px] uppercase tracking-widest text-text-tertiary">Theme library</p>
+                  <span className="text-[10px] text-text-tertiary">{selectableThemes.length} visible</span>
                 </div>
-              ))}
+                <div className="flex flex-wrap gap-1.5 mb-3">
+                  {GROUP_TABS.map((tab) => (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      onClick={() => setActiveGroup(tab.key)}
+                      className={`px-2.5 py-1 rounded-full text-[10px] font-medium transition-colors ${
+                        activeGroup === tab.key
+                          ? "bg-accent-primary text-black"
+                          : "bg-bg-tertiary text-text-secondary hover:text-text-primary"
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="grid grid-cols-4 gap-2">
+                  {selectableThemes.map((theme) => (
+                    <ThemeMiniTile
+                      key={theme.value}
+                      theme={theme}
+                      onClick={() => handleThemeTileClick(theme.value)}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-border-default bg-bg-secondary p-3">
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <p className="text-[11px] uppercase tracking-widest text-text-tertiary">Preview</p>
+                  <span className="text-xs font-medium text-text-primary">{previewTheme.label}</span>
+                </div>
+                <ThemeWorkspacePreview theme={previewTheme} />
+                <p className="text-[11px] text-text-tertiary mt-2 text-center">Tap any tile to swap with preview</p>
+              </div>
             </div>
 
             {/* Accent color */}
             <div className="border-t border-border-default pt-4 mb-6">
               <p className="text-sm text-text-primary font-medium mb-3 text-center">Accent color</p>
-              <div className="flex gap-2 justify-center">
-                {ACCENT_COLORS.map((color) => (
-                  <button
-                    key={color.value}
-                    type="button"
-                    onClick={() => setAccentColor(color.value)}
-                    title={color.label}
-                    className={`w-7 h-7 rounded-full transition-all ${
-                      accentColor === color.value
-                        ? "scale-110"
-                        : "hover:scale-110"
-                    }`}
-                    style={{
-                      backgroundColor: color.hex,
-                      boxShadow: accentColor === color.value
-                        ? `0 0 0 2px var(--alt-bg-primary), 0 0 0 4px ${color.hex}`
-                        : undefined,
-                    }}
-                  />
-                ))}
+              <div className="flex justify-center">
+                <div
+                  className="relative inline-flex items-center gap-2 rounded-full border border-border-default px-2 py-2"
+                  onMouseMove={(event) => {
+                    const rect = event.currentTarget.getBoundingClientRect();
+                    setAccentPointerX(event.clientX - rect.left);
+                  }}
+                  onMouseLeave={() => {
+                    setHoveredAccentColor(null);
+                    setAccentPointerX(null);
+                  }}
+                  style={{
+                    background: accentCapsuleBackground,
+                    borderColor: accentCapsuleBorder,
+                    boxShadow: accentCapsuleShadow,
+                  }}
+                >
+                  {ACCENT_COLORS.map((color, index) => {
+                    const dockScale = getAccentDockScale(index, color.value);
+                    const lift = (dockScale - 1) * 10;
+                    return (
+                    <button
+                      key={color.value}
+                      type="button"
+                      onClick={() => setAccentColor(color.value)}
+                      onMouseEnter={() => setHoveredAccentColor(color.value)}
+                      title={color.label}
+                      aria-label={`Set accent color to ${color.label}`}
+                      className="relative rounded-full transition-transform duration-200 ease-out focus-visible:outline-none"
+                      style={{
+                        width: ACCENT_BALL_SIZE,
+                        height: ACCENT_BALL_SIZE,
+                        transform: `translateY(${-lift}px) scale(${dockScale})`,
+                        zIndex: Math.round(dockScale * 10),
+                      }}
+                    >
+                      <span
+                        className="block w-full h-full rounded-full border border-white/20"
+                        style={{
+                          backgroundColor: color.hex,
+                          boxShadow: accentColor === color.value
+                            ? `0 0 0 2px var(--alt-bg-primary), 0 0 0 4px ${color.hex}55`
+                            : `0 3px 10px ${color.hex}40`,
+                        }}
+                      />
+                    </button>
+                  );})}
+                </div>
               </div>
             </div>
 
             <button
               type="button"
               onClick={() => advance(4)}
-              className="w-full h-10 bg-accent-primary text-black text-sm font-semibold hover:brightness-110 transition-all rounded-sm"
+              className={`${PRIMARY_CTA_CLASS} block w-fit mx-auto`}
             >
               {tCommon("continue")} →
             </button>
@@ -652,7 +909,7 @@ export function WelcomeModal() {
             <button
               type="button"
               onClick={handleGetStarted}
-              className="w-full h-11 bg-accent-primary text-black text-sm font-semibold hover:brightness-110 transition-all rounded-sm mb-6"
+              className={`${PRIMARY_CTA_CLASS} mb-6`}
             >
               {t("ready.openApp")}
             </button>
