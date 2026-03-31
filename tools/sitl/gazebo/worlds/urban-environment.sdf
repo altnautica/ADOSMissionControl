@@ -187,7 +187,7 @@
 
     <!-- Iris quadcopter with ArduPilot plugin -->
     <include>
-      <uri>model://iris_with_ardupilot</uri>
+      <uri>model://iris_with_gimbal</uri>
       <pose>0 0 0.195 0 0 0</pose>
     </include>
 
