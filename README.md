@@ -1,12 +1,12 @@
 # Altnautica Mission Control
 
-**Open-source web GCS for software-defined drones, supports full ardupilot, PX4 and betaflight. AI tuning. 50km+ data link. Live video. Full gamepad flight control.**
+**Open-source web GCS for software-defined drones. ArduPilot, PX4, and Betaflight. AI tuning. 50km+ data link. Full gamepad flight control.**
 
 ![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-green.svg) ![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue.svg) ![Next.js 16](https://img.shields.io/badge/Next.js-16-black.svg) ![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg) [![Discord](https://img.shields.io/badge/Discord-Join-5865F2.svg)](https://discord.gg/uxbvuD4d5q)
 
-Command any drone from any browser. ADOS Mission Control is an open-source GCS built for software-defined drones. Configure 38 flight controller panels, plan missions with 7 pattern generators, fly with a gamepad at 50Hz, and tune PID with AI. No install. No locked hardware.
+Command any drone from any browser. ADOS Mission Control is a full-stack ground control station built for software-defined drones. Configure 38 flight controller panels, plan missions with 7 pattern generators, fly with a gamepad at 50Hz, and tune PIDs with AI. No install. No locked hardware. 98,000 lines of TypeScript.
 
-> **Pairs with [ADOS Drone Agent](https://github.com/altnautica/ADOSDroneAgent)** — the onboard agent that runs on your companion computer. It handles the 50km data link, streams HD video, and relays commands between the GCS and your flight controller over cloud or local network.
+> **Part of the ADOS ecosystem.** Pairs with [ADOS Drone Agent](https://github.com/altnautica/ADOSDroneAgent) (the onboard companion OS) for 50km data link, HD video, and cloud fleet management. Works standalone with any MAVLink drone over USB or WebSocket.
 
 <p align="center">
   <strong><a href="https://command.altnautica.com">Live App</a></strong> |
@@ -116,11 +116,28 @@ Open [http://localhost:4000](http://localhost:4000). Five simulated drones. No h
 
 ---
 
+## Why ADOS Mission Control
+
+| | ADOS Mission Control | QGroundControl | Mission Planner | Betaflight Configurator |
+|---|---|---|---|---|
+| **Platform** | Browser (any OS) | Desktop (Qt) | Desktop (Windows/.NET) | Browser (Chrome) |
+| **Firmware** | ArduPilot + PX4 + Betaflight | ArduPilot + PX4 | ArduPilot only | Betaflight only |
+| **Protocol** | MAVLink v2 + MSP v1/v2 | MAVLink v2 | MAVLink v1/v2 | MSP |
+| **Flight control** | Gamepad/HOTAS at 50Hz | Joystick (limited) | Joystick (limited) | No |
+| **AI tuning** | Yes (PID + filter analysis) | No | No | No |
+| **3D simulation** | CesiumJS globe | No | No | No |
+| **Air traffic** | Live ADS-B + airspace zones | No | Yes (basic) | No |
+| **Cloud fleet** | Yes (MQTT + Convex relay) | No | No | No |
+| **Self-hosted** | Yes (Convex + MQTT + video) | N/A | N/A | N/A |
+| **License** | GPL-3.0 | Apache 2.0 / GPL-3.0 | GPL-3.0 | GPL-3.0 |
+
+---
+
 ## What It Does
 
 ### Configure your flight controller
 
-38 panels covering calibration, PID tuning, receiver, outputs, failsafe, power, ports, OSD, and firmware flashing. Works with ArduPilot, PX4, and Betaflight. **AI PID tuning** analyzes FFT noise and motor health, then suggests filter settings and PID values. Board auto-detection for 9 STM32 profiles. WebUSB firmware flashing — no external tools.
+38 panels covering calibration, PID tuning, receiver, outputs, failsafe, power, ports, OSD, and firmware flashing. Works with ArduPilot, PX4, and Betaflight. **AI PID tuning** analyzes FFT noise and motor health, then suggests filter settings and PID values. Board auto-detection for 9 STM32 profiles. WebUSB firmware flashing with no external tools.
 
 ### Plan missions
 
@@ -154,6 +171,37 @@ Works standalone in field mode (direct WebSocket or WebSerial). Cloud mode adds 
 ## By the Numbers
 
 ~98K lines of TypeScript. 38 FC panels. 83 MAVLink decoders. 34 MSP decoders. 7 pattern generators. 34 Zustand stores. 9 board profiles. Full demo mode with zero setup.
+
+---
+
+## Platform Support
+
+| Platform | Requirements | Notes |
+|----------|-------------|-------|
+| Web (recommended) | Chrome 89+ or Edge 89+ | WebSerial + WebUSB for FC connection and firmware flashing |
+| Web (limited) | Firefox, Safari | No WebSerial or WebUSB. WebSocket connections work. |
+| Desktop (macOS) | Intel or Apple Silicon | Electron app, not code-signed (same as Betaflight/INAV Configurator) |
+| Desktop (Windows) | x64 | Electron app, `.exe` installer |
+| Desktop (Linux) | x64 or arm64 | `.AppImage` |
+
+3D features (simulation, air traffic) benefit from a dedicated GPU. Works without one but frame rates will be lower.
+
+---
+
+## External Services
+
+All optional. The GCS works fully offline for local FC configuration and field operations.
+
+| Service | Purpose | Required? |
+|---------|---------|-----------|
+| [Convex](https://convex.dev) | Cloud fleet management, auth, community features | No (field mode works without) |
+| [Open Elevation](https://open-elevation.com) | Terrain following for mission planning | No (defaults to flat terrain) |
+| [adsb.lol](https://adsb.lol) | Live ADS-B aircraft positions | No (Air Traffic tab only) |
+| [OpenSky Network](https://opensky-network.org) | Fallback ADS-B source | No |
+| [Cesium Ion](https://cesium.com/ion) | 3D terrain tiles and satellite imagery | No (uses ArcGIS terrain by default) |
+| [Groq](https://console.groq.com) | AI PID tuning analysis | No (AI features disabled without key) |
+| [GitHub API](https://github.com) | PX4 firmware release fetching | No (raises rate limit from 60 to 5000/hr) |
+| [OpenAIP](https://www.openaip.net) | Airspace polygon data | No (Air Traffic tab only) |
 
 ---
 
@@ -192,7 +240,7 @@ npm run cli config       # Configure .env.local interactively
 
 **WebSocket:** Connect to any MAVLink-over-WebSocket endpoint. Use `npm run cli sitl` to launch ArduPilot SITL with the bridge tool. See [`tools/sitl/`](tools/sitl/).
 
-**WebSerial (USB):** Plug in your FC, open Command in Chrome 89+, click connect, pick the port. No drivers needed.
+**WebSerial (USB):** Plug in your FC, open Mission Control in Chrome 89+, click connect, pick the port. No drivers needed.
 
 ---
 
@@ -204,7 +252,7 @@ npm run desktop:build:win   # Windows .exe installer
 npm run desktop:build:linux # Linux .AppImage
 ```
 
-macOS: right-click the app, Open, then Open again. Not code-signed — same as Betaflight Configurator and INAV Configurator.
+macOS: right-click the app, Open, then Open again. Not code-signed, same as Betaflight Configurator and INAV Configurator.
 
 ---
 
@@ -252,7 +300,7 @@ For self-hosted MQTT and video relay, see [`tools/mqtt-bridge/`](tools/mqtt-brid
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide. Good areas: iNav MSP support, Betaflight hardware testing, new board profiles, UDP transport, unit tests, pattern generators.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide. Good areas to start: iNav MSP support, Betaflight hardware testing, new board profiles, UDP transport, unit tests, pattern generators.
 
 ```bash
 npm run demo   # Test against simulated drones
@@ -263,4 +311,4 @@ npm run lint   # Must pass before PR
 
 ## License
 
-[GPL-3.0-only](LICENSE). Copyright 2026 Altnautica. Derivative works must also be GPL-3.0 — same philosophy as ArduPilot.
+[GPL-3.0-only](LICENSE). Copyright 2025-2026 Altnautica. Derivative works must also be GPL-3.0, same as ArduPilot.
