@@ -83,17 +83,6 @@ export const DEFAULT_PARAM_COLUMNS: ParamColumnVisibility = {
   type: false,
 };
 
-export const DEFAULT_TELEMETRY_DECK_METRICS: TelemetryDeckMetricId[] = [
-  "batteryVoltage",
-  "batteryCurrent",
-  "throttle",
-  "gpsFix",
-  "satellites",
-  "roll",
-  "pitch",
-  "windSpeed",
-];
-
 export const DEFAULT_TELEMETRY_DECK_PAGES: Record<TelemetryDeckPageId, TelemetryDeckMetricId[]> = {
   flight: ["relAlt", "airspeed", "groundspeedMs", "climbRate", "roll", "pitch", "yaw", "windSpeed"],
   link: ["radioRssi", "remrssi", "noise", "remnoise", "rxerrors", "txbuf", "gpsFix", "satellites"],
@@ -251,8 +240,6 @@ interface SettingsStoreState {
   guidanceHdgEnabled: boolean;
   guidanceTrackWpEnabled: boolean;
   guidanceTgtHdgEnabled: boolean;
-  /** Extra HUD metrics shown in expandable telemetry deck. */
-  telemetryDeckMetrics: TelemetryDeckMetricId[];
   /** Active page in expandable telemetry deck. */
   telemetryDeckActivePage: TelemetryDeckPageId;
   /** Per-page metric lists/order for telemetry deck. */
@@ -309,8 +296,6 @@ interface SettingsStoreState {
   setGuidanceHdgEnabled: (v: boolean) => void;
   setGuidanceTrackWpEnabled: (v: boolean) => void;
   setGuidanceTgtHdgEnabled: (v: boolean) => void;
-  setTelemetryDeckMetrics: (metrics: TelemetryDeckMetricId[]) => void;
-  toggleTelemetryDeckMetric: (metric: TelemetryDeckMetricId) => void;
   setTelemetryDeckActivePage: (page: TelemetryDeckPageId) => void;
   setTelemetryDeckPageMetrics: (page: TelemetryDeckPageId, metrics: TelemetryDeckMetricId[]) => void;
   toggleTelemetryDeckPageMetric: (page: TelemetryDeckPageId, metric: TelemetryDeckMetricId) => void;
@@ -377,7 +362,6 @@ export const useSettingsStore = create<SettingsStoreState>()(
       guidanceHdgEnabled: true,
       guidanceTrackWpEnabled: true,
       guidanceTgtHdgEnabled: true,
-      telemetryDeckMetrics: [...DEFAULT_TELEMETRY_DECK_METRICS],
       telemetryDeckActivePage: "flight",
       telemetryDeckPages: cloneDefaultTelemetryDeckPages(),
 
@@ -452,17 +436,6 @@ export const useSettingsStore = create<SettingsStoreState>()(
       setGuidanceHdgEnabled: (v) => set({ guidanceHdgEnabled: v }),
       setGuidanceTrackWpEnabled: (v) => set({ guidanceTrackWpEnabled: v }),
       setGuidanceTgtHdgEnabled: (v) => set({ guidanceTgtHdgEnabled: v }),
-      setTelemetryDeckMetrics: (metrics) =>
-        set({ telemetryDeckMetrics: [...new Set(metrics)] as TelemetryDeckMetricId[] }),
-      toggleTelemetryDeckMetric: (metric) =>
-        set((s) => {
-          if (s.telemetryDeckMetrics.includes(metric)) {
-            // Keep at least one metric visible so the deck is never empty.
-            if (s.telemetryDeckMetrics.length <= 1) return {};
-            return { telemetryDeckMetrics: s.telemetryDeckMetrics.filter((m) => m !== metric) };
-          }
-          return { telemetryDeckMetrics: [...s.telemetryDeckMetrics, metric] };
-        }),
       setTelemetryDeckActivePage: (page) => set({ telemetryDeckActivePage: page }),
       setTelemetryDeckPageMetrics: (page, metrics) =>
         set((s) => ({
@@ -523,7 +496,7 @@ export const useSettingsStore = create<SettingsStoreState>()(
     {
       name: "altcmd:settings",
       storage: createJSONStorage(indexedDBStorage.storage),
-      version: 29,
+      version: 28,
       migrate: (persisted, version) => {
         const state = persisted as Record<string, unknown>;
         if (version < 2) {
@@ -650,19 +623,11 @@ export const useSettingsStore = create<SettingsStoreState>()(
           state.videoWhepUrl = "";
         }
         if (version < 27) {
-          state.telemetryDeckMetrics = [...DEFAULT_TELEMETRY_DECK_METRICS];
+          // v27: telemetry deck with per-page metric layouts
+          state.telemetryDeckActivePage = "flight";
+          state.telemetryDeckPages = cloneDefaultTelemetryDeckPages();
         }
         if (version < 28) {
-          const legacyMetrics = Array.isArray(state.telemetryDeckMetrics)
-            ? (state.telemetryDeckMetrics as TelemetryDeckMetricId[])
-            : [...DEFAULT_TELEMETRY_DECK_METRICS];
-          state.telemetryDeckActivePage = "flight";
-          state.telemetryDeckPages = {
-            ...cloneDefaultTelemetryDeckPages(),
-            flight: legacyMetrics.length > 0 ? legacyMetrics : [...DEFAULT_TELEMETRY_DECK_PAGES.flight],
-          };
-        }
-        if (version < 29) {
           state.telemetryDeckPages = normalizeTelemetryDeckPages(state.telemetryDeckPages);
           if (
             state.telemetryDeckActivePage !== "flight" &&
