@@ -17,7 +17,7 @@ export interface DemoDroneConfig {
 }
 
 /**
- * 5 demo drones in Null Island area.
+ * 5 demo drones in Bangalore area (HAL Airport / Whitefield).
  */
 export const DEMO_DRONES: DemoDroneConfig[] = [
   {
@@ -27,8 +27,8 @@ export const DEMO_DRONES: DemoDroneConfig[] = [
     flightMode: "AUTO",
     suiteType: "sentry",
     suiteName: "Sentry — Security Patrol",
-    homeLat: 0.005,
-    homeLon: 0.005,
+    homeLat: 12.950,
+    homeLon: 77.668,
     homeAlt: 0,
     batteryStart: 82,
     pathIndex: 0,
@@ -42,8 +42,8 @@ export const DEMO_DRONES: DemoDroneConfig[] = [
     flightMode: "AUTO",
     suiteType: "survey",
     suiteName: "Survey — Area Mapping",
-    homeLat: 0.01,
-    homeLon: 0.01,
+    homeLat: 12.955,
+    homeLon: 77.673,
     homeAlt: 0,
     batteryStart: 67,
     pathIndex: 1,
@@ -57,8 +57,8 @@ export const DEMO_DRONES: DemoDroneConfig[] = [
     flightMode: "GUIDED",
     suiteType: "sar",
     suiteName: "SAR — Search & Rescue",
-    homeLat: -0.005,
-    homeLon: 0.02,
+    homeLat: 12.940,
+    homeLon: 77.683,
     homeAlt: 0,
     batteryStart: 91,
     pathIndex: 2,
@@ -70,8 +70,8 @@ export const DEMO_DRONES: DemoDroneConfig[] = [
     name: "Charlie",
     status: "idle",
     flightMode: "STABILIZE",
-    homeLat: -0.01,
-    homeLon: -0.005,
+    homeLat: 12.935,
+    homeLon: 77.660,
     homeAlt: 0,
     batteryStart: 100,
     pathIndex: -1, // grounded
@@ -82,8 +82,8 @@ export const DEMO_DRONES: DemoDroneConfig[] = [
     name: "Delta",
     status: "maintenance",
     flightMode: "STABILIZE",
-    homeLat: 0.008,
-    homeLon: -0.003,
+    homeLat: 12.953,
+    homeLon: 77.662,
     homeAlt: 0,
     batteryStart: 45,
     pathIndex: -1, // offline
