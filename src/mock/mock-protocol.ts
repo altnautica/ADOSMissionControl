@@ -112,6 +112,10 @@ export class MockProtocol implements DroneProtocol {
   async setCameraTriggerDistance(): Promise<CommandResult> { return ok("Camera trigger distance set"); }
   async setGimbalMode(): Promise<CommandResult> { return ok("Gimbal mode set"); }
   async setGimbalROI(): Promise<CommandResult> { return ok("Gimbal ROI set"); }
+  async setRoiLocation(): Promise<CommandResult> { return ok("ROI location set"); }
+  async clearRoi(): Promise<CommandResult> { return ok("ROI cleared"); }
+  async orbit(): Promise<CommandResult> { return ok("Orbit started"); }
+  async setEkfOrigin(): Promise<CommandResult> { return ok("EKF origin set"); }
   async startEscCalibration(): Promise<CommandResult> { this.emitStatusText(3, "WARNING: ESC calibration will spin motors! Remove props!"); return ok("ESC calibration started"); }
   async startCompassMotCal(): Promise<CommandResult> { this.emitStatusText(6, "CompassMot calibration started — increase throttle slowly"); return ok("CompassMot calibration started"); }
   async enableFence(): Promise<CommandResult> { return ok("Fence updated"); }

@@ -291,3 +291,54 @@ export function cmdSendAttitudeTarget(ctx: CommandContext, roll: number, pitch: 
   ))
 }
 
+/** MAV_CMD_DO_SET_ROI_LOCATION (195) — point gimbal at GPS coordinate. Uses COMMAND_INT. */
+export function cmdSetRoiLocation(ctx: CommandContext, lat: number, lon: number, alt: number): CommandResult {
+  if (!ctx.transport?.isConnected) {
+    return { success: false, resultCode: -1, message: 'Not connected' }
+  }
+  const frame = encodeCommandInt(
+    ctx.targetSysId, ctx.targetCompId, 0, 195, 0, 0,
+    0, 0, 0, 0,
+    Math.round(lat * 1e7), Math.round(lon * 1e7), alt,
+    ctx.sysId, ctx.compId,
+  )
+  ctx.transport.send(frame)
+  return { success: true, resultCode: 0, message: 'ROI location set' }
+}
+
+/** MAV_CMD_DO_SET_ROI_NONE (197) — clear gimbal ROI targeting. */
+export function cmdSetRoiNone(ctx: CommandContext): Promise<CommandResult> {
+  return ctx.sendCommandLong(197, [0, 0, 0, 0, 0, 0, 0])
+}
+
+/** MAV_CMD_DO_ORBIT (34) — orbit at GPS coordinate. Uses COMMAND_INT. */
+export function cmdOrbit(ctx: CommandContext, radius: number, velocity: number, yawBehavior: number, lat: number, lon: number, alt: number): CommandResult {
+  if (!ctx.transport?.isConnected) {
+    return { success: false, resultCode: -1, message: 'Not connected' }
+  }
+  // yawBehavior: 0=HOLD, 1=UNCONTROLLED, 2=FRONT_TO_CENTER, 3=RC_CONTROLLED
+  const frame = encodeCommandInt(
+    ctx.targetSysId, ctx.targetCompId, 6, 34, 0, 0,
+    radius, velocity, yawBehavior, 0,
+    Math.round(lat * 1e7), Math.round(lon * 1e7), alt,
+    ctx.sysId, ctx.compId,
+  )
+  ctx.transport.send(frame)
+  return { success: true, resultCode: 0, message: 'Orbit command sent' }
+}
+
+/** MAV_CMD_SET_GPS_GLOBAL_ORIGIN (48) — set EKF origin. Uses COMMAND_INT. */
+export function cmdSetEkfOrigin(ctx: CommandContext, lat: number, lon: number, alt: number): CommandResult {
+  if (!ctx.transport?.isConnected) {
+    return { success: false, resultCode: -1, message: 'Not connected' }
+  }
+  const frame = encodeCommandInt(
+    ctx.targetSysId, ctx.targetCompId, 0, 48, 0, 0,
+    0, 0, 0, 0,
+    Math.round(lat * 1e7), Math.round(lon * 1e7), alt,
+    ctx.sysId, ctx.compId,
+  )
+  ctx.transport.send(frame)
+  return { success: true, resultCode: 0, message: 'EKF origin set' }
+}
+

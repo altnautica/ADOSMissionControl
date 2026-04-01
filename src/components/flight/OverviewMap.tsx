@@ -51,6 +51,10 @@ const LocateControl = dynamic(
   () => import("@/components/map/LocateControl").then((m) => ({ default: m.LocateControl })),
   { ssr: false }
 );
+const PoiMarkerOverlay = dynamic(
+  () => import("@/components/map/PoiMarkerOverlay").then((m) => ({ default: m.PoiMarkerOverlay })),
+  { ssr: false }
+);
 const MissionExecutionOverlay = dynamic(
   () => import("@/components/flight/MissionExecutionOverlay").then((m) => ({ default: m.MissionExecutionOverlay })),
   { ssr: false }
@@ -372,6 +376,7 @@ export function OverviewMap() {
         {/* Measurement tool */}
         <MeasureToolManager active={measureActive} onComplete={handleMeasureComplete} />
 
+        <PoiMarkerOverlay />
         <GcsMarker />
         <LocateControl style={{ marginBottom: 40 }} />
       </MapContainer>
