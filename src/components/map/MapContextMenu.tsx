@@ -90,7 +90,7 @@ export function MapContextMenu() {
   const posBuffer = useTelemetryStore((s) => s.position);
   const latestPos = posBuffer.latest();
 
-  const isConnected = connectionState === "connected";
+  const isConnected = connectionState === "connected" || connectionState === "armed" || connectionState === "in_flight";
   const isArmed = armState === "armed";
   const canNavigate = isConnected && isArmed && GUIDED_MODES.has(flightMode);
   const isCopter = frameType === "copter" || frameType === "heli";
