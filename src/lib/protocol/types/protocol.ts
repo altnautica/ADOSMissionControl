@@ -95,6 +95,14 @@ export interface DroneProtocol {
   setCameraTriggerDistance?(distance: number): Promise<CommandResult>;
   setGimbalMode?(mode: number): Promise<CommandResult>;
   setGimbalROI?(lat: number, lon: number, alt: number): Promise<CommandResult>;
+  setRoiLocation?(lat: number, lon: number, alt: number): Promise<CommandResult>;
+  clearRoi?(): Promise<CommandResult>;
+
+  // ── Orbit ────────────────────────────────────────────────
+  orbit?(radius: number, velocity: number, yawBehavior: number, lat: number, lon: number, alt: number): Promise<CommandResult>;
+
+  // ── EKF ──────────────────────────────────────────────────
+  setEkfOrigin?(lat: number, lon: number, alt: number): Promise<CommandResult>;
 
   // ── Advanced Calibration ──────────────────────────────────
   startEscCalibration?(): Promise<CommandResult>;

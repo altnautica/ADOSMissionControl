@@ -224,6 +224,11 @@ export class MAVLinkAdapter implements DroneProtocol {
   async requestMessage(id: number) { return cmds.cmdRequestMessage(this.cc, id) }
   async setMessageInterval(id: number, us: number) { return cmds.cmdSetMessageInterval(this.cc, id, us) }
   async startCompassMotCal() { return cmds.cmdStartCompassMotCal(this.cc) }
+  async setGimbalROI(lat: number, lon: number, alt: number) { return cmds.cmdSetRoiLocation(this.cc, lat, lon, alt) }
+  async setRoiLocation(lat: number, lon: number, alt: number) { return cmds.cmdSetRoiLocation(this.cc, lat, lon, alt) }
+  async clearRoi() { return cmds.cmdSetRoiNone(this.cc) }
+  async orbit(radius: number, velocity: number, yawBehavior: number, lat: number, lon: number, alt: number) { return cmds.cmdOrbit(this.cc, radius, velocity, yawBehavior, lat, lon, alt) }
+  async setEkfOrigin(lat: number, lon: number, alt: number) { return cmds.cmdSetEkfOrigin(this.cc, lat, lon, alt) }
   sendSerialData(t: string) { cmds.cmdSendSerialData(this.cc, t) }
   sendPositionTarget(lat: number, lon: number, alt: number) { cmds.cmdSendPositionTarget(this.cc, lat, lon, alt) }
   sendAttitudeTarget(r: number, p: number, y: number, t: number) { cmds.cmdSendAttitudeTarget(this.cc, r, p, y, t) }
