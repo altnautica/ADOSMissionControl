@@ -113,6 +113,11 @@ export function GuidedConfirmDialog() {
     };
   }, []);
 
+  // Debug: log when confirmPending changes
+  if (confirmPending) {
+    console.log('[GuidedConfirmDialog] confirmPending:', confirmPending);
+  }
+
   if (!confirmPending) return null;
 
   return (
