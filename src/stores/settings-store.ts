@@ -109,6 +109,9 @@ interface SettingsStoreState {
   changelogNotificationsEnabled: boolean;
   /** Auto-start telemetry recording when a drone connects. */
   autoRecordOnConnect: boolean;
+  /** WHEP video endpoint URL for local/SITL video (empty = disabled). */
+  videoWhepUrl: string;
+  setVideoWhepUrl: (url: string) => void;
   /** Per-panel scroll positions (panelId -> scrollTop). */
   panelScrollPositions: Record<string, number>;
   /** Whether no-fly zone overlays are visible on maps. */
@@ -232,6 +235,7 @@ export const useSettingsStore = create<SettingsStoreState>()(
       seenChangelogIds: [],
       changelogNotificationsEnabled: true,
       autoRecordOnConnect: false,
+      videoWhepUrl: "",
       panelScrollPositions: {},
       showNoFlyZones: false,
       offlineTileCaching: false,
@@ -293,6 +297,7 @@ export const useSettingsStore = create<SettingsStoreState>()(
       setChangelogNotificationsEnabled: (changelogNotificationsEnabled) =>
         set({ changelogNotificationsEnabled }),
       setAutoRecordOnConnect: (autoRecordOnConnect) => set({ autoRecordOnConnect }),
+      setVideoWhepUrl: (videoWhepUrl) => set({ videoWhepUrl }),
       setPanelScrollPosition: (panelId, scrollTop) =>
         set((s) => ({
           panelScrollPositions: { ...s.panelScrollPositions, [panelId]: scrollTop },
@@ -337,7 +342,7 @@ export const useSettingsStore = create<SettingsStoreState>()(
     {
       name: "altcmd:settings",
       storage: createJSONStorage(indexedDBStorage.storage),
-      version: 25,
+      version: 26,
       migrate: (persisted, version) => {
         const state = persisted as Record<string, unknown>;
         if (version < 2) {
@@ -459,6 +464,10 @@ export const useSettingsStore = create<SettingsStoreState>()(
           state.guidanceTgtHdgEnabled = true;
         }
         // v25: expanded theme + accent palette — widening only, no migration needed
+        if (version < 26) {
+          // v26: WHEP video endpoint URL for local/SITL video
+          state.videoWhepUrl = "";
+        }
         return state as unknown as SettingsStoreState;
       },
       onRehydrateStorage: () => {
