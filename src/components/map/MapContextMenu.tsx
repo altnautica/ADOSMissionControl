@@ -76,6 +76,16 @@ export function MapContextMenu() {
   const menuRef = useRef<HTMLDivElement>(null);
   const poiInputRef = useRef<HTMLInputElement>(null);
 
+  // Prevent Leaflet from intercepting clicks inside the context menu.
+  // React's stopPropagation doesn't work because Leaflet uses its own
+  // event system (L.DomEvent) that runs in parallel with DOM events.
+  useEffect(() => {
+    const el = menuRef.current;
+    if (!el) return;
+    L.DomEvent.disableClickPropagation(el);
+    L.DomEvent.disableScrollPropagation(el);
+  });
+
   const connectionState = useDroneStore((s) => s.connectionState);
   const flightMode = useDroneStore((s) => s.flightMode);
   const armState = useDroneStore((s) => s.armState);
