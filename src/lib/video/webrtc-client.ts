@@ -75,10 +75,10 @@ export async function startStream(whepUrl: string): Promise<MediaStream> {
   }
 
   const answerSdp = await response.text();
-  await pc.setRemoteDescription({ type: "answer", sdp: answerSdp });
 
-  // Wait for a track to arrive
-  const stream = await new Promise<MediaStream>((resolve, reject) => {
+  // Set ontrack BEFORE setRemoteDescription to avoid race condition
+  // (track events can fire during or immediately after setRemoteDescription)
+  const trackPromise = new Promise<MediaStream>((resolve, reject) => {
     const timeout = setTimeout(() => {
       reject(new Error("No video track received within 10 seconds"));
     }, 10000);
@@ -90,6 +90,10 @@ export async function startStream(whepUrl: string): Promise<MediaStream> {
       }
     };
   });
+
+  await pc.setRemoteDescription({ type: "answer", sdp: answerSdp });
+
+  const stream = await trackPromise;
 
   store.setStreamUrl(whepUrl);
   store.setStreaming(true);
