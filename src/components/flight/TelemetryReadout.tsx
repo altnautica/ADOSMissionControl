@@ -8,7 +8,7 @@ import { MODE_DESCRIPTIONS } from "@/components/fc/flight-modes/flight-mode-cons
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
 import type { UnifiedFlightMode } from "@/lib/protocol/types";
-import { TelemetryDeck } from "./telemetry-deck/TelemetryDeck";
+import { useTelemetryDeck } from "./telemetry-deck/TelemetryDeck";
 
 function gpsFixColor(fixType: number): string {
   if (fixType >= 3) return "text-status-success";
@@ -39,6 +39,7 @@ export function TelemetryReadout() {
   const bat = useTelemetryLatest("battery");
   const gps = useTelemetryLatest("gps");
   const mode = useDroneStore((s) => s.flightMode);
+  const { controls: deckControls, panel: deckPanel } = useTelemetryDeck();
 
   const alt = pos?.alt ?? vfr?.alt ?? 0;
   const speedKph = mpsToKph(vfr?.groundspeed ?? pos?.groundSpeed ?? 0);
@@ -83,9 +84,12 @@ export function TelemetryReadout() {
         {/* Flight mode + deck controls */}
         <div className="flex items-center gap-1.5 shrink-0">
           <ModeLabel mode={mode} />
-          <TelemetryDeck />
+          {deckControls}
         </div>
       </div>
+
+      {/* Expandable telemetry deck — full width below status bar */}
+      {deckPanel}
     </div>
   );
 }

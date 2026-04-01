@@ -19,7 +19,14 @@ import { DeckCell } from "./DeckCell";
 import { DeckCustomizer } from "./DeckCustomizer";
 import { DetachedDeckPortal } from "./DetachedDeckPortal";
 
-export function TelemetryDeck() {
+interface TelemetryDeckSlots {
+  /** Buttons (customize, expand/collapse, detach) — place inside the status bar flex row. */
+  controls: React.ReactNode;
+  /** Expandable deck panel — place as a full-width sibling below the status bar. */
+  panel: React.ReactNode;
+}
+
+export function useTelemetryDeck(): TelemetryDeckSlots {
   const pos = useTelemetryLatest("position");
   const vfr = useTelemetryLatest("vfr");
   const bat = useTelemetryLatest("battery");
@@ -264,63 +271,82 @@ export function TelemetryDeck() {
     </div>
   );
 
+  return {
+    controls: (
+      <TelemetryDeckControls
+        deckOpen={deckOpen}
+        customizeOpen={customizeOpen}
+        onToggleDeck={() => setDeckOpen((v) => !v)}
+        onToggleCustomize={handleToggleCustomize}
+        renderDetachedContent={() => renderDeckPanel(true)}
+      />
+    ),
+    panel: (
+      <div
+        className={cn(
+          "transition-all duration-300 ease-out border-t border-border-default bg-bg-primary/30",
+          deckOpen ? "max-h-80 opacity-100 overflow-y-auto" : "max-h-0 opacity-0 overflow-hidden",
+        )}
+      >
+        <div className="px-2 py-2 space-y-2">
+          {renderDeckPanel(false)}
+        </div>
+      </div>
+    ),
+  };
+}
+
+/** Inline controls component that wraps DetachedDeckPortal. */
+function TelemetryDeckControls({
+  deckOpen,
+  customizeOpen,
+  onToggleDeck,
+  onToggleCustomize,
+  renderDetachedContent,
+}: {
+  deckOpen: boolean;
+  customizeOpen: boolean;
+  onToggleDeck: () => void;
+  onToggleCustomize: () => void;
+  renderDetachedContent: () => React.ReactNode;
+}) {
   return (
-    <DetachedDeckPortal renderDetachedContent={() => renderDeckPanel(true)}>
+    <DetachedDeckPortal renderDetachedContent={renderDetachedContent}>
       {({ detached, open: openDetached, close: closeDetached }) => (
         <>
-          {/* Deck controls in the status bar */}
-          <div className="flex items-center gap-1.5 shrink-0">
-            <button
-              type="button"
-              onClick={handleToggleCustomize}
-              className={cn(
-                "p-1 rounded border border-border-default text-text-tertiary hover:text-text-primary transition-colors",
-                customizeOpen && "text-accent-primary border-accent-primary/50",
-              )}
-              title={customizeOpen ? "Hide deck customization" : "Customize expanded telemetry deck"}
-              aria-label={customizeOpen ? "Hide deck customization" : "Customize expanded telemetry deck"}
-            >
-              <SlidersHorizontal size={11} />
-            </button>
-            <button
-              type="button"
-              onClick={() => setDeckOpen((v) => !v)}
-              className="p-1 rounded border border-border-default text-text-tertiary hover:text-text-primary transition-colors"
-              title={deckOpen ? "Collapse expanded telemetry deck" : "Expand telemetry deck"}
-              aria-label={deckOpen ? "Collapse expanded telemetry deck" : "Expand telemetry deck"}
-            >
-              <ChevronDown size={11} className={cn("transition-transform duration-200", deckOpen && "rotate-180")} />
-            </button>
-            <button
-              type="button"
-              onClick={() => (detached ? closeDetached() : openDetached())}
-              className={cn(
-                "px-1.5 py-1 rounded border border-border-default text-[10px] font-mono text-text-tertiary hover:text-text-primary transition-colors",
-                detached && "text-accent-primary border-accent-primary/50",
-              )}
-              title={detached ? "Reattach detached telemetry deck" : "Detach telemetry deck"}
-              aria-label={detached ? "Reattach detached telemetry deck" : "Detach telemetry deck"}
-            >
-              {detached ? "ATTACH" : "DETACH"}
-            </button>
-          </div>
-
-          {/* Expandable deck panel */}
-          <div
+          <button
+            type="button"
+            onClick={onToggleCustomize}
             className={cn(
-              "col-span-full transition-all duration-300 ease-out border-t border-border-default bg-bg-primary/30",
-              deckOpen ? "max-h-80 opacity-100 overflow-y-auto" : "max-h-0 opacity-0 overflow-hidden",
+              "p-1 rounded border border-border-default text-text-tertiary hover:text-text-primary transition-colors",
+              customizeOpen && "text-accent-primary border-accent-primary/50",
             )}
+            title={customizeOpen ? "Hide deck customization" : "Customize expanded telemetry deck"}
+            aria-label={customizeOpen ? "Hide deck customization" : "Customize expanded telemetry deck"}
           >
-            <div className="px-2 py-2 space-y-2">
-              {!detached && renderDeckPanel(false)}
-              {detached && (
-                <div className="px-2 py-3 border border-border-default bg-bg-secondary text-[10px] text-text-tertiary">
-                  Telemetry deck is detached to a separate window.
-                </div>
-              )}
-            </div>
-          </div>
+            <SlidersHorizontal size={11} />
+          </button>
+          <button
+            type="button"
+            onClick={onToggleDeck}
+            className="p-1 rounded border border-border-default text-text-tertiary hover:text-text-primary transition-colors"
+            title={deckOpen ? "Collapse expanded telemetry deck" : "Expand telemetry deck"}
+            aria-label={deckOpen ? "Collapse expanded telemetry deck" : "Expand telemetry deck"}
+          >
+            <ChevronDown size={11} className={cn("transition-transform duration-200", deckOpen && "rotate-180")} />
+          </button>
+          <button
+            type="button"
+            onClick={() => (detached ? closeDetached() : openDetached())}
+            className={cn(
+              "px-1.5 py-1 rounded border border-border-default text-[10px] font-mono text-text-tertiary hover:text-text-primary transition-colors",
+              detached && "text-accent-primary border-accent-primary/50",
+            )}
+            title={detached ? "Reattach detached telemetry deck" : "Detach telemetry deck"}
+            aria-label={detached ? "Reattach detached telemetry deck" : "Detach telemetry deck"}
+          >
+            {detached ? "ATTACH" : "DETACH"}
+          </button>
         </>
       )}
     </DetachedDeckPortal>
