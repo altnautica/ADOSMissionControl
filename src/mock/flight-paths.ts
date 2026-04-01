@@ -11,49 +11,49 @@ export interface PathWaypoint {
 }
 
 /**
- * Path 0: Alpha-1 — Security patrol loop.
+ * Path 0: Alpha-1 — Security patrol loop (Bangalore, HAL area).
  */
 const PATROL_LOOP_A: PathWaypoint[] = [
-  { lat: 0.005, lon: 0.003, alt: 40, speed: 8 },
-  { lat: 0.007, lon: 0.005, alt: 45, speed: 8 },
-  { lat: 0.009, lon: 0.007, alt: 40, speed: 8 },
-  { lat: 0.008, lon: 0.010, alt: 45, speed: 8 },
-  { lat: 0.006, lon: 0.011, alt: 40, speed: 8 },
-  { lat: 0.004, lon: 0.009, alt: 45, speed: 8 },
-  { lat: 0.003, lon: 0.006, alt: 40, speed: 8 },
-  { lat: 0.004, lon: 0.004, alt: 45, speed: 8 },
+  { lat: 12.950, lon: 77.666, alt: 40, speed: 8 },
+  { lat: 12.952, lon: 77.668, alt: 45, speed: 8 },
+  { lat: 12.954, lon: 77.670, alt: 40, speed: 8 },
+  { lat: 12.953, lon: 77.673, alt: 45, speed: 8 },
+  { lat: 12.951, lon: 77.674, alt: 40, speed: 8 },
+  { lat: 12.949, lon: 77.672, alt: 45, speed: 8 },
+  { lat: 12.948, lon: 77.669, alt: 40, speed: 8 },
+  { lat: 12.949, lon: 77.667, alt: 45, speed: 8 },
 ];
 
 /**
- * Path 1: Bravo-2 — Survey grid pattern.
+ * Path 1: Bravo-2 — Survey grid pattern (Bangalore, Whitefield area).
  */
 const SURVEY_GRID_A: PathWaypoint[] = [
-  { lat: 0.010, lon: 0.010, alt: 80, speed: 5 },
-  { lat: 0.012, lon: 0.010, alt: 80, speed: 5 },
-  { lat: 0.012, lon: 0.013, alt: 80, speed: 5 },
-  { lat: 0.010, lon: 0.013, alt: 80, speed: 5 },
-  { lat: 0.010, lon: 0.016, alt: 80, speed: 5 },
-  { lat: 0.012, lon: 0.016, alt: 80, speed: 5 },
-  { lat: 0.012, lon: 0.019, alt: 80, speed: 5 },
-  { lat: 0.010, lon: 0.019, alt: 80, speed: 5 },
-  { lat: 0.008, lon: 0.019, alt: 80, speed: 5 },
-  { lat: 0.008, lon: 0.016, alt: 80, speed: 5 },
-  { lat: 0.008, lon: 0.013, alt: 80, speed: 5 },
-  { lat: 0.008, lon: 0.010, alt: 80, speed: 5 },
+  { lat: 12.955, lon: 77.673, alt: 80, speed: 5 },
+  { lat: 12.957, lon: 77.673, alt: 80, speed: 5 },
+  { lat: 12.957, lon: 77.676, alt: 80, speed: 5 },
+  { lat: 12.955, lon: 77.676, alt: 80, speed: 5 },
+  { lat: 12.955, lon: 77.679, alt: 80, speed: 5 },
+  { lat: 12.957, lon: 77.679, alt: 80, speed: 5 },
+  { lat: 12.957, lon: 77.682, alt: 80, speed: 5 },
+  { lat: 12.955, lon: 77.682, alt: 80, speed: 5 },
+  { lat: 12.953, lon: 77.682, alt: 80, speed: 5 },
+  { lat: 12.953, lon: 77.679, alt: 80, speed: 5 },
+  { lat: 12.953, lon: 77.676, alt: 80, speed: 5 },
+  { lat: 12.953, lon: 77.673, alt: 80, speed: 5 },
 ];
 
 /**
- * Path 2: Echo-5 — SAR search pattern.
+ * Path 2: Echo-5 — SAR search pattern (Bangalore, south of HAL).
  */
 const SAR_SEARCH_A: PathWaypoint[] = [
-  { lat: -0.005, lon: 0.020, alt: 60, speed: 10 },
-  { lat: -0.003, lon: 0.023, alt: 65, speed: 10 },
-  { lat: -0.001, lon: 0.020, alt: 60, speed: 10 },
-  { lat: -0.003, lon: 0.017, alt: 65, speed: 10 },
-  { lat: -0.005, lon: 0.014, alt: 60, speed: 10 },
-  { lat: -0.007, lon: 0.017, alt: 65, speed: 10 },
-  { lat: -0.007, lon: 0.023, alt: 60, speed: 10 },
-  { lat: -0.005, lon: 0.026, alt: 65, speed: 10 },
+  { lat: 12.940, lon: 77.683, alt: 60, speed: 10 },
+  { lat: 12.942, lon: 77.686, alt: 65, speed: 10 },
+  { lat: 12.944, lon: 77.683, alt: 60, speed: 10 },
+  { lat: 12.942, lon: 77.680, alt: 65, speed: 10 },
+  { lat: 12.940, lon: 77.677, alt: 60, speed: 10 },
+  { lat: 12.938, lon: 77.680, alt: 65, speed: 10 },
+  { lat: 12.938, lon: 77.686, alt: 60, speed: 10 },
+  { lat: 12.940, lon: 77.689, alt: 65, speed: 10 },
 ];
 
 export const FLIGHT_PATHS: PathWaypoint[][] = [

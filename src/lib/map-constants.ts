@@ -4,8 +4,8 @@
  * @license GPL-3.0-only
  */
 
-/** Default map center: Null Island (no location bias). */
-export const DEFAULT_CENTER: [number, number] = [0, 0];
+/** Default map center: Bangalore, India (HAL Airport area). */
+export const DEFAULT_CENTER: [number, number] = [12.95, 77.668];
 
 /** Design-system color tokens used across map components. */
 export const MAP_COLORS = {
