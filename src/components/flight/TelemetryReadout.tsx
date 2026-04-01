@@ -8,12 +8,7 @@ import { MODE_DESCRIPTIONS } from "@/components/fc/flight-modes/flight-mode-cons
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
 import type { UnifiedFlightMode } from "@/lib/protocol/types";
-
-function gpsFixLabel(fixType: number): string {
-  if (fixType >= 3) return "3D";
-  if (fixType === 2) return "2D";
-  return "No Fix";
-}
+import { TelemetryDeck } from "./telemetry-deck/TelemetryDeck";
 
 function gpsFixColor(fixType: number): string {
   if (fixType >= 3) return "text-status-success";
@@ -63,7 +58,7 @@ export function TelemetryReadout() {
         <FlightCell label="VS" value={`${vs.toFixed(1)}`} />
       </div>
 
-      {/* Status bar — GPS, battery, mode */}
+      {/* Status bar — GPS, battery, mode, deck controls */}
       <div className="flex items-center gap-2 px-3 py-1.5 border-t border-border-default text-[10px] font-mono">
         {/* GPS */}
         <div className="flex items-center gap-1">
@@ -85,8 +80,11 @@ export function TelemetryReadout() {
           </span>
         </div>
 
-        {/* Flight mode with description tooltip */}
-        <ModeLabel mode={mode} />
+        {/* Flight mode + deck controls */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <ModeLabel mode={mode} />
+          <TelemetryDeck />
+        </div>
       </div>
     </div>
   );
