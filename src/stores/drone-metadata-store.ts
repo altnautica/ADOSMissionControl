@@ -30,6 +30,10 @@ export interface DroneMetadata {
   totalFlights: number;
   totalHours: number;
 
+  // Video
+  /** WHEP endpoint URL for this drone's video feed (empty = no video). */
+  videoWhepUrl: string;
+
   // System
   createdAt: number;
   updatedAt: number;
@@ -65,6 +69,7 @@ function makeDefaults(id: string, partial: Partial<Omit<DroneMetadata, "droneId"
     enrolledAt: partial.enrolledAt ?? now,
     totalFlights: partial.totalFlights ?? 0,
     totalHours: partial.totalHours ?? 0,
+    videoWhepUrl: partial.videoWhepUrl ?? "",
     createdAt: partial.createdAt ?? now,
     updatedAt: now,
   };
@@ -104,7 +109,22 @@ export const useDroneMetadataStore = create<DroneMetadataStoreState>()(
     {
       name: "altcmd:drone-metadata",
       storage: createJSONStorage(indexedDBStorage.storage),
-      version: 1,
+      version: 2,
+      migrate: (persisted, version) => {
+        const state = persisted as Record<string, unknown>;
+        if (version < 2) {
+          // v2: add videoWhepUrl to all existing profiles
+          const profiles = state.profiles as Record<string, Record<string, unknown>> | undefined;
+          if (profiles) {
+            for (const id of Object.keys(profiles)) {
+              if (!profiles[id].videoWhepUrl) {
+                profiles[id].videoWhepUrl = "";
+              }
+            }
+          }
+        }
+        return state as unknown as DroneMetadataStoreState;
+      },
       onRehydrateStorage: () => {
         return (state) => {
           if (state) {
