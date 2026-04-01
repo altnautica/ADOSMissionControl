@@ -257,6 +257,8 @@ async function main(): Promise<void> {
     if (scenario.wind) cli.wind = scenario.wind;
     if (scenario.preset) cli.preset = scenario.preset;
     if (scenario.vehicle) cli.vehicle = scenario.vehicle;
+    if (scenario.withGazebo) cli.withGazebo = true;
+    if (scenario.gazeboWorld) cli.gazeboWorld = scenario.gazeboWorld;
   }
 
   // --- Resolve preset (if specified) ---------------------------------------
@@ -410,15 +412,29 @@ async function main(): Promise<void> {
 
   bridge.start();
 
-  // Print per-drone connection URLs
-  if (instances.length === 1) {
-    log(`WebSocket bridge listening on ws://localhost:${instances[0].tcpPort}`);
-  } else {
-    log(`WebSocket bridges ready (one per drone):`);
-    for (const inst of instances) {
-      log(`  Drone #${inst.sysId}: ws://localhost:${inst.tcpPort}`);
-    }
+  // Print connection info block
+  log('');
+  log('=== ADOS SITL Ready ===');
+  log('');
+  log('MAVLink connections:');
+  for (const inst of instances) {
+    log(`  Drone #${inst.sysId}:  ws://localhost:${inst.tcpPort}`);
   }
+  if (cli.withGazebo) {
+    log('');
+    log('Video (Gazebo camera):');
+    log('  WHEP:      http://localhost:8889/gazebo-cam/whep');
+    log('  WebSocket: ws://localhost:3001/ws/stream/gazebo-cam');
+    log('  RTSP:      rtsp://localhost:8554/gazebo-cam');
+  }
+  log('');
+  log('GCS:           http://localhost:4000');
+  if (cli.withGazebo && !cli.gazeboHeadless) {
+    log('Gazebo GUI:    (window should be open)');
+  } else if (cli.withGazebo) {
+    log('Gazebo GUI:    run "gz sim -g" to open');
+  }
+  log('');
 
   // --- Signal handling (clean shutdown) -----------------------------------
   let shuttingDown = false;
