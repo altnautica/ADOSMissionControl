@@ -11,7 +11,6 @@ import type {
   AirspaceZone,
   Notam,
   TemporaryRestriction,
-  AircraftState,
   Flyability,
   FlyabilityVerdict,
   CtaLink,
@@ -26,17 +25,11 @@ export function assessFlyability(
   zones: AirspaceZone[],
   notams: Notam[],
   tfrs: TemporaryRestriction[],
-  aircraft: AircraftState[],
   jurisdiction: Jurisdiction | null,
   timelineTime?: Date,
 ): Flyability {
   // Find zones that contain this point
   const activeZones = zones.filter((z) => isPointInZone(lat, lon, z));
-
-  // Count nearby traffic (within 5km)
-  const trafficCount = aircraft.filter(
-    (ac) => ac.lat && ac.lon && haversineDistance(lat, lon, ac.lat, ac.lon) < 5000
-  ).length;
 
   // Find nearest airport
   const nearestAirport = findNearestAirport(lat, lon);
@@ -107,7 +100,6 @@ export function assessFlyability(
     nearestAirport,
     activeNotams,
     activeTfrs,
-    trafficCount,
     guidance,
     ctaLinks,
   };
