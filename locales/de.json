@@ -15,8 +15,8 @@
       "continue": "Weiter"
     },
     "intro": {
-      "tagline": "Eine Bodenstation für die Open-Source-Drohnen-Community.",
-      "description": "Verbinde beliebige ArduPilot-, PX4- oder Betaflight-Drohnen. Konfiguriere, plane Missionen und fliege – alles in deinem Browser.",
+      "tagline": "Bodenkontrolle für softwaredefinierte Drohnen.",
+      "description": "Konfiguriere, plane Missionen und fliege jede ArduPilot-, PX4- oder Betaflight-Drohne. Kombiniere mit ADOS Drone Agent für Intelligenz direkt an der Drohne. Open Source. Läuft im Browser.",
       "openBeta": "Open Beta",
       "freeForever": "Kostenlos für immer",
       "openSource": "GPL-3.0 Open Source",
@@ -264,8 +264,6 @@
   },
   "communityNav": {
     "changelog": "Änderungsprotokoll",
-    "kanban": "Kanban",
-    "roadmap": "Roadmap",
     "contact": "Kontakt",
     "unavailableTitle": "Community-Daten (Änderungsprotokoll, Roadmap, Kontakt) sind auf der gehosteten Version verfügbar unter",
     "unavailableSetup": "In lokalen Builds standardmäßig deaktiviert. Um dein eigenes internes Community-Board zu betreiben, richte ein Convex-Backend ein und konfiguriere",
@@ -291,14 +289,6 @@
     "errorRequired": "Name, E-Mail und Nachricht sind erforderlich.",
     "errorAuth": "Bitte melde dich an, um eine Nachricht zu senden.",
     "errorGeneral": "Nachricht konnte nicht gesendet werden. Bitte versuche es erneut."
-  },
-  "roadmap": {
-    "title": "Roadmap",
-    "planned": "Geplant",
-    "inProgress": "In Bearbeitung",
-    "released": "Veröffentlicht",
-    "nothingHere": "Hier ist noch nichts.",
-    "loadingRoadmap": "Roadmap wird geladen..."
   },
   "dashboard": {
     "logs": "Protokolle",

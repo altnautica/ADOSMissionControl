@@ -4,25 +4,25 @@
  * @license GPL-3.0-only
  */
 
-export const locales = ['en', 'de', 'zh', 'fr', 'es', 'pt', 'ja', 'ko', 'id', 'hi', 'ta', 'kn', 'te', 'mr', 'pa', 'gu'] as const;
+export const locales = ['zh', 'en', 'fr', 'de', 'gu', 'hi', 'id', 'ja', 'kn', 'ko', 'mr', 'pt', 'pa', 'es', 'ta', 'te'] as const;
 export type Locale = (typeof locales)[number];
 export const defaultLocale: Locale = 'en';
 
 export const localeNames: Record<Locale, { native: string; english: string; flag: string }> = {
-  en: { native: 'English', english: 'English', flag: '🇺🇸' },
-  de: { native: 'Deutsch', english: 'German', flag: '🇩🇪' },
   zh: { native: '中文', english: 'Chinese', flag: '🇨🇳' },
+  en: { native: 'English', english: 'English', flag: '🇺🇸' },
   fr: { native: 'Français', english: 'French', flag: '🇫🇷' },
-  es: { native: 'Español', english: 'Spanish', flag: '🇪🇸' },
-  pt: { native: 'Português', english: 'Portuguese', flag: '🇧🇷' },
-  ja: { native: '日本語', english: 'Japanese', flag: '🇯🇵' },
-  ko: { native: '한국어', english: 'Korean', flag: '🇰🇷' },
-  id: { native: 'Bahasa Indonesia', english: 'Indonesian', flag: '🇮🇩' },
-  hi: { native: 'हिन्दी', english: 'Hindi', flag: '🇮🇳' },
-  ta: { native: 'தமிழ்', english: 'Tamil', flag: '🇮🇳' },
-  kn: { native: 'ಕನ್ನಡ', english: 'Kannada', flag: '🇮🇳' },
-  te: { native: 'తెలుగు', english: 'Telugu', flag: '🇮🇳' },
-  mr: { native: 'मराठी', english: 'Marathi', flag: '🇮🇳' },
-  pa: { native: 'ਪੰਜਾਬੀ', english: 'Punjabi', flag: '🇮🇳' },
+  de: { native: 'Deutsch', english: 'German', flag: '🇩🇪' },
   gu: { native: 'ગુજરાતી', english: 'Gujarati', flag: '🇮🇳' },
+  hi: { native: 'हिन्दी', english: 'Hindi', flag: '🇮🇳' },
+  id: { native: 'Bahasa Indonesia', english: 'Indonesian', flag: '🇮🇩' },
+  ja: { native: '日本語', english: 'Japanese', flag: '🇯🇵' },
+  kn: { native: 'ಕನ್ನಡ', english: 'Kannada', flag: '🇮🇳' },
+  ko: { native: '한국어', english: 'Korean', flag: '🇰🇷' },
+  mr: { native: 'मराठी', english: 'Marathi', flag: '🇮🇳' },
+  pt: { native: 'Português', english: 'Portuguese', flag: '🇧🇷' },
+  pa: { native: 'ਪੰਜਾਬੀ', english: 'Punjabi', flag: '🇮🇳' },
+  es: { native: 'Español', english: 'Spanish', flag: '🇪🇸' },
+  ta: { native: 'தமிழ்', english: 'Tamil', flag: '🇮🇳' },
+  te: { native: 'తెలుగు', english: 'Telugu', flag: '🇮🇳' },
 };

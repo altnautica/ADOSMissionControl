@@ -15,8 +15,8 @@
       "continue": "계속"
     },
     "intro": {
-      "tagline": "오픈소스 드론 커뮤니티를 위한 지상관제 스테이션입니다.",
-      "description": "ArduPilot, PX4, Betaflight 드론에 연결하세요. 브라우저에서 설정, 미션 계획, 비행이 모두 가능합니다.",
+      "tagline": "소프트웨어 정의 드론을 위한 지상관제.",
+      "description": "ArduPilot, PX4, Betaflight 드론을 설정하고, 미션을 계획하고, 비행하세요. ADOS Drone Agent와 연동하여 엣지에서 인텔리전스를 실행하세요. 오픈 소스. 브라우저에서 작동합니다.",
       "openBeta": "오픈 베타",
       "freeForever": "영구 무료",
       "openSource": "GPL-3.0 오픈소스",
@@ -373,8 +373,6 @@
   },
   "communityNav": {
     "changelog": "변경 이력",
-    "kanban": "칸반",
-    "roadmap": "로드맵",
     "contact": "문의",
     "unavailableTitle": "커뮤니티 데이터(변경 이력, 로드맵, 문의)는 호스팅 버전에서 사용할 수 있습니다:",
     "unavailableSetup": "로컬 빌드에서는 기본적으로 비활성화됩니다. 내부 커뮤니티 보드를 운영하려면 Convex 백엔드를 설정하고 구성하세요",
@@ -400,14 +398,6 @@
     "errorRequired": "이름, 이메일, 메시지는 필수입니다.",
     "errorAuth": "메시지를 보내려면 로그인하세요.",
     "errorGeneral": "메시지 전송에 실패했습니다. 다시 시도해 주세요."
-  },
-  "roadmap": {
-    "title": "로드맵",
-    "planned": "계획됨",
-    "inProgress": "진행 중",
-    "released": "출시됨",
-    "nothingHere": "아직 항목이 없습니다.",
-    "loadingRoadmap": "로드맵 로딩 중..."
   },
   "dashboard": {
     "logs": "로그",

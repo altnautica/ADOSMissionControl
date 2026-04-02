@@ -15,8 +15,8 @@
       "continue": "Continuer"
     },
     "intro": {
-      "tagline": "Une station de contrôle au sol pour la communauté des drones open source.",
-      "description": "Connecte n'importe quel drone ArduPilot, PX4 ou Betaflight. Configure, planifie des missions et vole, le tout depuis ton navigateur.",
+      "tagline": "Contrôle au sol pour drones définis par logiciel.",
+      "description": "Configure, planifie des missions et pilote n'importe quel drone ArduPilot, PX4 ou Betaflight. Associe avec ADOS Drone Agent pour exécuter l'intelligence embarquée. Open source. Fonctionne dans ton navigateur.",
       "openBeta": "Bêta ouverte",
       "freeForever": "Gratuit pour toujours",
       "openSource": "GPL-3.0 Open Source",
@@ -264,8 +264,6 @@
   },
   "communityNav": {
     "changelog": "Journal des modifications",
-    "kanban": "Kanban",
-    "roadmap": "Feuille de route",
     "contact": "Contact",
     "unavailableTitle": "Les données communautaires (journal des modifications, feuille de route, contact) sont disponibles sur la version hébergée à",
     "unavailableSetup": "Désactivé par défaut dans les builds locaux. Pour avoir ton propre tableau communautaire interne, configure un backend Convex et paramètre",
@@ -291,14 +289,6 @@
     "errorRequired": "Le nom, l'e-mail et le message sont obligatoires.",
     "errorAuth": "Connecte-toi pour envoyer un message.",
     "errorGeneral": "Échec de l'envoi du message. Réessaie."
-  },
-  "roadmap": {
-    "title": "Feuille de route",
-    "planned": "Planifié",
-    "inProgress": "En cours",
-    "released": "Publié",
-    "nothingHere": "Rien ici pour l'instant.",
-    "loadingRoadmap": "Chargement de la feuille de route..."
   },
   "dashboard": {
     "logs": "Journaux",

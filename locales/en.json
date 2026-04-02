@@ -15,8 +15,8 @@
       "continue": "Continue"
     },
     "intro": {
-      "tagline": "A ground control station built for the open-source drone community.",
-      "description": "Connect to any ArduPilot, PX4, or Betaflight drone. Configure, plan missions, and fly — all from your browser.",
+      "tagline": "Ground control for software-defined drones.",
+      "description": "Configure, plan missions, and fly any ArduPilot, PX4, or Betaflight drone. Pair with ADOS Drone Agent to run intelligence at the edge. Open source. Runs in your browser.",
       "openBeta": "Open Beta",
       "freeForever": "Free Forever",
       "openSource": "GPL-3.0 Open Source",
@@ -373,8 +373,6 @@
   },
   "communityNav": {
     "changelog": "Changelog",
-    "kanban": "Kanban",
-    "roadmap": "Roadmap",
     "contact": "Contact",
     "unavailableTitle": "Community data (changelog, roadmap, contact) is live on the hosted version at",
     "unavailableSetup": "Disabled by default in local builds. To run your own internal community board, set up a Convex backend and configure",
@@ -400,14 +398,6 @@
     "errorRequired": "Name, email, and message are required.",
     "errorAuth": "Please sign in to send a message.",
     "errorGeneral": "Failed to send message. Please try again."
-  },
-  "roadmap": {
-    "title": "Roadmap",
-    "planned": "Planned",
-    "inProgress": "In Progress",
-    "released": "Released",
-    "nothingHere": "Nothing here yet.",
-    "loadingRoadmap": "Loading roadmap..."
   },
   "dashboard": {
     "logs": "Logs",
