@@ -249,7 +249,8 @@ export default function CesiumScene({
       tilesetRef.current = null;
     }
 
-    if (buildingsEnabled) {
+    if (buildingsEnabled && effectiveToken) {
+      Ion.defaultAccessToken = effectiveToken;
       const buildingColor =
         imageryMode === "satellite"
           ? "color('rgba(200, 210, 230, 0.85)')"
@@ -277,7 +278,7 @@ export default function CesiumScene({
         tilesetRef.current = null;
       }
     };
-  }, [buildingsEnabled, imageryMode]);
+  }, [buildingsEnabled, imageryMode, effectiveToken]);
 
   // Effect 5: Terrain exaggeration
   useEffect(() => {
