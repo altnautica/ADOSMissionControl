@@ -15,6 +15,7 @@ import { getAustraliaAirspaceZones } from "./casa-zones";
 import { getICAOStandardZones } from "./icao-zones";
 import { fetchOpenAIPAirspaces } from "./openaip-provider";
 import { fetchFaaAirspace } from "./faa-arcgis-provider";
+import { getCachedZones, setCachedZones } from "./zone-cache";
 
 /** Geographic extents for jurisdiction-specific zone providers. */
 const REGION_EXTENTS: Record<string, BoundingBox> = {
