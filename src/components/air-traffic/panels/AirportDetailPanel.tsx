@@ -1,7 +1,7 @@
 /**
  * @module AirportDetailPanel
  * @description Auto-shows when zoomed into a single airport (<50km altitude).
- * Displays airport info, active zones, nearby traffic, and jurisdiction-specific rules.
+ * Displays airport info, active zones, and jurisdiction-specific rules.
  * @license GPL-3.0-only
  */
 
@@ -11,7 +11,6 @@ import { useTranslations } from "next-intl";
 import { useState, useMemo } from "react";
 import { Plane, X, ChevronDown, ChevronUp } from "lucide-react";
 import { useAirspaceStore } from "@/stores/airspace-store";
-import { useTrafficStore } from "@/stores/traffic-store";
 import { JURISDICTIONS, type Jurisdiction } from "@/lib/jurisdiction";
 import type { Airport } from "@/lib/airspace/airport-database";
 
