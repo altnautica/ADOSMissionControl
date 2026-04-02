@@ -23,7 +23,7 @@ export function LanguageSection() {
         <p className="text-[11px] text-text-tertiary mt-0.5">{t("languageDescription")}</p>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {(locales as readonly string[]).map((code) => {
           const info = localeNames[code as keyof typeof localeNames];
           const isSelected = locale === code;
