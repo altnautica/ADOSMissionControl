@@ -8,7 +8,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { Cartesian3, Color, DistanceDisplayCondition, PolygonHierarchy, type Viewer as CesiumViewer, type Entity as CesiumEntity } from "cesium";
+import { Cartesian3, Color, PolygonHierarchy, type Viewer as CesiumViewer, type Entity as CesiumEntity } from "cesium";
 import { useAirspaceStore } from "@/stores/airspace-store";
 import { ZONE_COLORS, type AirspaceZoneType, type GeoJSONPolygon, type GeoJSONMultiPolygon } from "@/lib/airspace/types";
 
@@ -68,7 +68,6 @@ export function AirspaceVolumeEntities({ viewer }: AirspaceVolumeEntitiesProps) 
       const colors = getVolumeColors(zone.type);
       if (!colors) continue;
 
-      const lodDistance = getZoneLodDistance(zone.type, zone.ceilingAltitude);
       const description = `<p><b>${zone.name}</b></p><p>Type: ${zone.type}</p><p>Floor: ${zone.floorAltitude}m / Ceiling: ${zone.ceilingAltitude}m</p><p>Authority: ${zone.authority}</p>`;
 
       if (zone.circle) {
@@ -89,7 +88,6 @@ export function AirspaceVolumeEntities({ viewer }: AirspaceVolumeEntitiesProps) 
             outline: true,
             outlineColor: colors.border,
             outlineWidth: 2,
-            distanceDisplayCondition: new DistanceDisplayCondition(0, lodDistance),
           },
           description,
         });
@@ -119,7 +117,6 @@ export function AirspaceVolumeEntities({ viewer }: AirspaceVolumeEntitiesProps) 
               outlineWidth: 2,
               closeTop: true,
               closeBottom: true,
-              distanceDisplayCondition: new DistanceDisplayCondition(0, lodDistance),
             },
             description,
           });
@@ -142,42 +139,6 @@ export function AirspaceVolumeEntities({ viewer }: AirspaceVolumeEntitiesProps) 
   }, [viewer, zones, operationalAltitude, showIcaoZones, activeJurisdictions, layerVisibility.airspace]);
 
   return null;
-}
-
-/** Returns max camera distance (meters) at which this zone type should be visible. */
-function getZoneLodDistance(type: string, _ceilingAlt: number): number {
-  switch (type) {
-    // Small zones (~5km radius): visible below 500km
-    case "dgcaRed":
-    case "casaRestricted":
-      return 500_000;
-    // Medium zones (~9-25km radius): visible below 2,000km
-    case "dgcaYellow":
-    case "classD":
-    case "casaCaution":
-    case "moa":
-      return 2_000_000;
-    // Large zones (~45-55km radius): visible at continental scale
-    case "dgcaGreen":
-    case "classB":
-    case "classC":
-    case "classE":
-      return 8_000_000;
-    // Restrictions and TFRs: visible below 3,000km
-    case "restricted":
-    case "prohibited":
-    case "tfr":
-    case "ctr":
-    case "tma":
-      return 3_000_000;
-    // Danger/Alert/Warning: visible below 2,000km
-    case "danger":
-    case "alert":
-    case "warning":
-      return 2_000_000;
-    default:
-      return 3_000_000;
-  }
 }
 
 function extractPolygons(geometry: GeoJSONPolygon | GeoJSONMultiPolygon): number[][][] {

@@ -233,6 +233,13 @@ fullName: v.optional(v.string()),
 
   // ── Cloud relay tables (cmd_ prefix) ──────────────────────
 
+  cmd_airspaceZones: defineTable({
+    jurisdiction: v.string(),
+    zones: v.string(),       // Compact JSON blob of zone data
+    zoneCount: v.number(),
+    generatedAt: v.number(),
+  }).index("by_jurisdiction", ["jurisdiction"]),
+
   cmd_droneStatus: defineTable({
     deviceId: v.string(),
     version: v.string(),
