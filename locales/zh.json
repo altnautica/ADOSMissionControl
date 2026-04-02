@@ -15,8 +15,8 @@
       "continue": "继续"
     },
     "intro": {
-      "tagline": "专为开源无人机社区构建的地面控制站。",
-      "description": "连接任意 ArduPilot、PX4 或 Betaflight 无人机。在浏览器中配置、规划任务并飞行。",
+      "tagline": "软件定义无人机的地面控制。",
+      "description": "配置、规划任务并飞行任何 ArduPilot、PX4 或 Betaflight 无人机。搭配 ADOS Drone Agent 在边缘端运行智能。开源，在浏览器中运行。",
       "openBeta": "公测版",
       "freeForever": "永久免费",
       "openSource": "GPL-3.0 开源",
@@ -264,8 +264,6 @@
   },
   "communityNav": {
     "changelog": "更新日志",
-    "kanban": "看板",
-    "roadmap": "路线图",
     "contact": "联系我们",
     "unavailableTitle": "社区数据（更新日志、路线图、联系方式）可在托管版本上访问：",
     "unavailableSetup": "本地构建默认禁用。要运行自己的内部社区面板，请设置 Convex 后端并配置",
@@ -291,14 +289,6 @@
     "errorRequired": "姓名、电子邮件和消息为必填项。",
     "errorAuth": "请登录后发送消息。",
     "errorGeneral": "消息发送失败，请重试。"
-  },
-  "roadmap": {
-    "title": "路线图",
-    "planned": "计划中",
-    "inProgress": "进行中",
-    "released": "已发布",
-    "nothingHere": "这里还没有内容。",
-    "loadingRoadmap": "正在加载路线图..."
   },
   "dashboard": {
     "logs": "日志",

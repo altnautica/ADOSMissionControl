@@ -15,8 +15,8 @@
       "continue": "続ける"
     },
     "intro": {
-      "tagline": "オープンソースドローンコミュニティのために作られた地上管制局。",
-      "description": "ArduPilot、PX4、Betaflightドローンに接続。設定、ミッション計画、飛行をブラウザから。",
+      "tagline": "ソフトウェア定義ドローンのための地上管制。",
+      "description": "ArduPilot、PX4、Betaflightドローンを設定し、ミッションを計画し、飛行させましょう。ADOS Drone Agentと組み合わせてエッジでインテリジェンスを実行。オープンソース。ブラウザで動作します。",
       "openBeta": "オープンベータ",
       "freeForever": "永久無料",
       "openSource": "GPL-3.0 オープンソース",
@@ -373,8 +373,6 @@
   },
   "communityNav": {
     "changelog": "変更履歴",
-    "kanban": "カンバン",
-    "roadmap": "ロードマップ",
     "contact": "お問い合わせ",
     "unavailableTitle": "コミュニティデータ（変更履歴、ロードマップ、お問い合わせ）はホスト版で利用可能です",
     "unavailableSetup": "ローカルビルドではデフォルトで無効です。独自のコミュニティボードを運用するには、Convexバックエンドをセットアップして設定してください",
@@ -400,14 +398,6 @@
     "errorRequired": "名前、メールアドレス、メッセージは必須です。",
     "errorAuth": "メッセージを送信するにはサインインしてください。",
     "errorGeneral": "メッセージの送信に失敗しました。再度お試しください。"
-  },
-  "roadmap": {
-    "title": "ロードマップ",
-    "planned": "計画中",
-    "inProgress": "進行中",
-    "released": "リリース済み",
-    "nothingHere": "まだ何もありません。",
-    "loadingRoadmap": "ロードマップを読み込み中..."
   },
   "dashboard": {
     "logs": "ログ",

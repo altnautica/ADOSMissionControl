@@ -4,29 +4,23 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
-import { useIsAdmin } from "@/hooks/use-is-admin";
 import { useConvexAvailable } from "@/app/ConvexClientProvider";
 import { SilentErrorBoundary } from "@/components/ui/SilentErrorBoundary";
 
 const tabs = [
   { labelKey: "changelog", href: "/community/changelog" },
-  { labelKey: "kanban", href: "/community/kanban", adminOnly: true },
-  { labelKey: "roadmap", href: "/community/roadmap" },
   { labelKey: "contact", href: "/community/contact" },
 ];
 
 function CommunityLayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isAdmin = useIsAdmin();
   const t = useTranslations("communityNav");
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <div className="border-b border-border-default bg-bg-secondary px-4">
         <nav className="flex gap-1" aria-label="Community navigation">
-          {tabs
-            .filter((tab) => !tab.adminOnly || isAdmin)
-            .map((tab) => {
+          {tabs.map((tab) => {
               const isActive =
                 pathname === tab.href || pathname.startsWith(tab.href + "/");
               return (

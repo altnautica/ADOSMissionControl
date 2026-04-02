@@ -1,6 +1,6 @@
 # Community
 
-Optional community board built into Command GCS. Provides changelog, a kanban board, roadmap, and a contact form.
+Optional community section built into Command GCS. Provides a changelog and a contact form.
 
 All community data lives on the Altnautica Convex backend. The hosted version at [command.altnautica.com/community](https://command.altnautica.com/community) runs it by default. Local builds have it disabled unless you configure your own backend.
 
@@ -17,8 +17,6 @@ Without `NEXT_PUBLIC_CONVEX_URL`, the community section shows a fallback message
 | Route | What it does |
 |-------|-------------|
 | `/community/changelog` | Version history and release notes |
-| `/community/kanban` | Admin-only board for triaging items |
-| `/community/roadmap` | Public roadmap view |
 | `/community/contact` | Contact form (no auth required) |
 
 ## File layout
@@ -27,8 +25,6 @@ Without `NEXT_PUBLIC_CONVEX_URL`, the community section shows a fallback message
 app/community/
 ├── layout.tsx              # Tab navigation + Convex availability gate
 ├── changelog/page.tsx      # Changelog list
-├── kanban/page.tsx         # Admin kanban board
-├── roadmap/page.tsx        # Roadmap view
 ├── contact/page.tsx        # Contact form route
 └── README.md               # This file
 
@@ -41,10 +37,6 @@ components/community/
 ├── ChangelogTimeline.tsx    # Changelog list with admin controls
 ├── CommunityComments.tsx    # Comments on items
 ├── ContactForm.tsx          # Contact form (name, email, subject, message)
-├── KanbanBoard.tsx          # Drag-and-drop kanban
-├── KanbanCard.tsx           # Kanban card component
-├── KanbanColumn.tsx         # Kanban column component
-├── RoadmapView.tsx          # Grouped roadmap display
 └── StatusBadge.tsx          # Status badge display
 
 lib/
@@ -54,9 +46,8 @@ lib/
 
 ## Auth
 
-- **Viewing** changelog, roadmap: public, no auth needed
+- **Viewing** changelog: public, no auth needed
 - **Contact form**: public, no auth needed
-- **Kanban board**: admin only
 - **Comments**: requires auth
 
 ## Not required for drone operations

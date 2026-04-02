@@ -11,7 +11,6 @@ Command any drone from any browser. ADOS Mission Control is a full-stack ground 
 <p align="center">
   <strong><a href="https://command.altnautica.com">Live App</a></strong> |
   <strong><a href="https://command.altnautica.com/community/changelog">Changelog</a></strong> |
-  <strong><a href="https://command.altnautica.com/community/roadmap">Roadmap</a></strong> |
   <strong><a href="https://discord.gg/uxbvuD4d5q">Discord</a></strong> |
   <strong><a href="https://command.altnautica.com/community/contact">Contact</a></strong>
 </p>
@@ -293,7 +292,6 @@ For self-hosted MQTT and video relay, see [`tools/mqtt-bridge/`](tools/mqtt-brid
 
 - **[Discord](https://discord.gg/uxbvuD4d5q)** — Join the community, ask questions, share builds
 - **[Changelog](https://command.altnautica.com/community/changelog)** — What shipped and when
-- **[Roadmap](https://command.altnautica.com/community/roadmap)** — What's planned next
 - **[GitHub Issues](https://github.com/altnautica/ADOSMissionControl/issues)** — Bug reports and technical discussions
 
 ---
