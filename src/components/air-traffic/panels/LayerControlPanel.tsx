@@ -1,7 +1,7 @@
 /**
  * @module LayerControlPanel
  * @description Left-side collapsible panel for toggling airspace and restriction
- * layer visibility on the Air Traffic globe.
+ * layer visibility on the Airspace globe.
  * @license GPL-3.0-only
  */
 

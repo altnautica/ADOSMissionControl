@@ -1,6 +1,6 @@
 /**
  * @module AirTrafficViewer
- * @description Composition root for the Air Traffic 3D view.
+ * @description Composition root for the Airspace 3D view.
  * Renders CesiumJS globe with airspace zones, drone position,
  * NOTAMs, and all control panels/overlays. Manages zone loading
  * lifecycle and flyability assessment on globe click.
