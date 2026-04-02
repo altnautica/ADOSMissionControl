@@ -1,6 +1,6 @@
 /**
  * @module LayerControlPanel
- * @description Left-side collapsible panel for toggling airspace, traffic, and restriction
+ * @description Left-side collapsible panel for toggling airspace and restriction
  * layer visibility on the Air Traffic globe.
  * @license GPL-3.0-only
  */
@@ -16,12 +16,10 @@ import type { AirTrafficLayers } from "@/lib/airspace/types";
 
 const LAYER_GROUPS: { key: keyof AirTrafficLayers; label: string; description: string }[] = [
   { key: "airspace", label: "Airspace", description: "Controlled zones, classes B-E" },
-  { key: "traffic", label: "Traffic", description: "Live aircraft positions" },
   { key: "restrictions", label: "Restrictions", description: "TFRs, NOTAMs, temporary zones" },
   { key: "advisory", label: "Advisory", description: "MOAs, stadiums, parks" },
   { key: "ownDrone", label: "Own Drone", description: "Your drone position" },
   { key: "terrain", label: "Terrain", description: "3D terrain and exaggeration" },
-  { key: "trails", label: "Flight Trails", description: "Position history for tracked aircraft" },
 ];
 
 export function LayerControlPanel() {

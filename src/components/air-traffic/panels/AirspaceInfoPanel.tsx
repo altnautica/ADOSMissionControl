@@ -1,7 +1,7 @@
 /**
  * @module AirspaceInfoPanel
  * @description Click-anywhere zone details panel with "Can I Fly?" verdict.
- * Shows active zones, altitude limits, NOTAMs, nearest airport, traffic count,
+ * Shows active zones, altitude limits, NOTAMs, nearest airport,
  * and jurisdiction-specific guidance with CTA links.
  * @license GPL-3.0-only
  */
@@ -141,12 +141,6 @@ export function AirspaceInfoPanel() {
             </div>
           </div>
         )}
-
-        {/* Traffic count */}
-        <div className="flex items-center justify-between text-xs font-mono">
-          <span className="text-text-tertiary">{t("liveTrafficNearby")}</span>
-          <span className="text-text-primary font-bold">{flyability.trafficCount}</span>
-        </div>
 
         {/* Guidance */}
         {flyability.guidance && (

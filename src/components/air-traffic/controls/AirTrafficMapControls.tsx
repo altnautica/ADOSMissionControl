@@ -10,7 +10,6 @@
 
 import { useTranslations } from "next-intl";
 import { useSettingsStore } from "@/stores/settings-store";
-import { useTrafficStore } from "@/stores/traffic-store";
 import { cn } from "@/lib/utils";
 
 interface AirTrafficMapControlsProps {
