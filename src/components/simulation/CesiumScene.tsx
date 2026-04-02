@@ -207,9 +207,9 @@ export default function CesiumScene({
       rafId = requestAnimationFrame(animate);
     }
 
-    if (imageryMode === "satellite" && cesiumToken) {
+    if (imageryMode === "satellite" && effectiveToken) {
       // Ensure Ion token is set before requesting satellite imagery
-      Ion.defaultAccessToken = cesiumToken;
+      Ion.defaultAccessToken = effectiveToken;
       // Satellite provider is async — await before cross-fading
       (async () => {
         try {
@@ -234,7 +234,7 @@ export default function CesiumScene({
         try { viewer.imageryLayers.remove(layerRef); } catch { /* already removed */ }
       }
     };
-  }, [imageryMode, cesiumToken]);
+  }, [imageryMode, effectiveToken]);
 
   // Effect 4: Buildings toggle (imagery-mode-aware styling)
   useEffect(() => {
