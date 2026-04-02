@@ -10,14 +10,17 @@ const BASE = "https://services6.arcgis.com/ssFJjBXIUyZDrSYZ/arcgis/rest/services
 const FEET_TO_METERS = 0.3048;
 const TIMEOUT_MS = 10_000;
 
-// Session cache
-let cachedTfrs: TemporaryRestriction[] | null = null;
+// Session cache with 10-minute TTL (TFRs are time-sensitive)
+const TFR_CACHE_TTL = 10 * 60 * 1000;
+let cachedTfrs: { data: TemporaryRestriction[]; timestamp: number } | null = null;
 
 /**
  * Fetch FAA Temporary Flight Restrictions from ArcGIS.
  */
 export async function fetchFaaTfrs(bbox?: BoundingBox): Promise<TemporaryRestriction[]> {
-  if (cachedTfrs) return cachedTfrs;
+  if (cachedTfrs && Date.now() - cachedTfrs.timestamp < TFR_CACHE_TTL) {
+    return cachedTfrs.data;
+  }
 
   const url = new URL(
     `${BASE}/National_Defense_Airspace_TFR_Areas/FeatureServer/0/query`,
@@ -71,7 +74,7 @@ export async function fetchFaaTfrs(bbox?: BoundingBox): Promise<TemporaryRestric
       },
     );
 
-    cachedTfrs = tfrs;
+    cachedTfrs = { data: tfrs, timestamp: Date.now() };
     console.log(`[faa-tfr] Loaded ${tfrs.length} TFRs from ArcGIS`);
     return tfrs;
   } catch (err) {

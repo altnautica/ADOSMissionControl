@@ -64,7 +64,7 @@ const SUA_TYPE_MAP: Record<string, AirspaceZoneType> = {
  * Queries all four classes in parallel.
  */
 export async function fetchFaaClassAirspace(bbox: BoundingBox): Promise<AirspaceZone[]> {
-  const cacheKey = "class-airspace";
+  const cacheKey = `class-airspace-${bbox.south}-${bbox.north}-${bbox.west}-${bbox.east}`;
   const cached = cache.get(cacheKey);
   if (cached) return cached;
 
@@ -114,7 +114,7 @@ export async function fetchFaaClassAirspace(bbox: BoundingBox): Promise<Airspace
  * Fetch FAA Special Use Airspace (restricted, prohibited, MOA, warning, alert).
  */
 export async function fetchFaaSua(bbox: BoundingBox): Promise<AirspaceZone[]> {
-  const cacheKey = "sua";
+  const cacheKey = `sua-${bbox.south}-${bbox.north}-${bbox.west}-${bbox.east}`;
   const cached = cache.get(cacheKey);
   if (cached) return cached;
 

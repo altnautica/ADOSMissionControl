@@ -128,6 +128,8 @@ export function AirTrafficViewer() {
   useEffect(() => {
     setLoading(true);
     setError(null);
+    // Clear stale TFRs from previous jurisdiction
+    useAirspaceStore.getState().setTfrs([]);
 
     const bbox = JURISDICTION_BBOX[jurisdiction ?? ""] ?? DEFAULT_BBOX;
 

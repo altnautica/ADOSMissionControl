@@ -92,10 +92,23 @@ export async function loadAirspaceZones(
   }
 }
 
+/** Build a cache key from bbox coordinates. */
+function bboxCacheKey(bbox: BoundingBox): string {
+  return `zones-${bbox.south}-${bbox.north}-${bbox.west}-${bbox.east}`;
+}
+
 export async function loadAllAirspaceZones(
   bbox: BoundingBox,
   openAipApiKey?: string | null,
 ): Promise<AirspaceZone[]> {
+  // Check IndexedDB cache first (instant on second visit)
+  const cacheKey = bboxCacheKey(bbox);
+  const cached = await getCachedZones(cacheKey);
+  if (cached) {
+    console.log(`[airspace] Cache hit: ${cached.length} zones from IndexedDB`);
+    return cached;
+  }
+
   const apiKey = openAipApiKey || process.env.NEXT_PUBLIC_OPENAIP_API_KEY;
 
   // Only load jurisdiction-specific zones that overlap the requested bbox
@@ -129,7 +142,11 @@ export async function loadAllAirspaceZones(
   const icao = getICAOStandardZones(bbox);
   const baseZones = [...results.flat(), ...icao];
 
-  if (!apiKey) return baseZones;
+  if (!apiKey) {
+    // Cache before returning
+    setCachedZones(cacheKey, baseZones).catch(() => {});
+    return baseZones;
+  }
 
   // Only fetch OpenAIP countries whose region overlaps the bbox
   try {
@@ -140,16 +157,22 @@ export async function loadAllAirspaceZones(
       }
     }
 
-    if (countries.length === 0) return baseZones;
+    if (countries.length === 0) {
+      setCachedZones(cacheKey, baseZones).catch(() => {});
+      return baseZones;
+    }
 
     const openAipZones = await fetchOpenAIPAirspaces(countries, apiKey);
     if (openAipZones.length > 0) {
       console.log(`[airspace] OpenAIP: ${openAipZones.length} polygons (${countries.length} countries) + ${baseZones.length} circle zones`);
-      return [...baseZones, ...openAipZones];
+      const allZones = [...baseZones, ...openAipZones];
+      setCachedZones(cacheKey, allZones).catch(() => {});
+      return allZones;
     }
   } catch (err) {
     console.warn("[airspace] OpenAIP fetch failed, using circle fallbacks:", err);
   }
 
+  setCachedZones(cacheKey, baseZones).catch(() => {});
   return baseZones;
 }

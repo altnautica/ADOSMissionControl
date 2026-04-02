@@ -184,7 +184,7 @@ export function ZoneBoundaryEntities({ viewer }: ZoneBoundaryEntitiesProps) {
             verticalOrigin: VerticalOrigin.CENTER,
             horizontalOrigin: HorizontalOrigin.CENTER,
             disableDepthTestDistance: 5000,
-            distanceDisplayCondition: new DistanceDisplayCondition(0, 1_500_000),
+            distanceDisplayCondition: new DistanceDisplayCondition(0, 5_000_000),
             showBackground: true,
             backgroundColor: LABEL_BG_COLOR,
             backgroundPadding: new Cartesian2(6, 3),
