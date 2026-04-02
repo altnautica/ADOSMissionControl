@@ -175,45 +175,59 @@ export default function CesiumScene({
 
     let cancelled = false;
     let rafId: number | undefined;
+    let layerRef: ImageryLayer | null = null;
 
-    // Create layer synchronously via fromProviderAsync (handles async loading internally)
-    const newLayer =
-      imageryMode === "satellite"
-        ? ImageryLayer.fromProviderAsync(IonImageryProvider.fromAssetId(2))
-        : createDarkCartoLayer();
-
-    // Add new layer at alpha 0
-    newLayer.alpha = 0;
-    viewer.imageryLayers.add(newLayer);
-
-    // Cross-fade over 300ms
-    const startTime = performance.now();
-    const duration = 300;
-
-    function animate(now: number) {
+    function crossFade(newLayer: ImageryLayer) {
       if (cancelled || !viewer || viewer.isDestroyed()) return;
-      const progress = Math.min((now - startTime) / duration, 1);
-      newLayer.alpha = progress;
-      viewer.scene.requestRender();
+      layerRef = newLayer;
+      newLayer.alpha = 0;
+      viewer.imageryLayers.add(newLayer);
 
-      if (progress < 1) {
-        rafId = requestAnimationFrame(animate);
-      } else {
-        // Remove all old layers (everything except the new one)
-        while (viewer.imageryLayers.length > 1) {
-          viewer.imageryLayers.remove(viewer.imageryLayers.get(0));
+      const startTime = performance.now();
+      const duration = 300;
+
+      function animate(now: number) {
+        if (cancelled || !viewer || viewer.isDestroyed()) return;
+        const progress = Math.min((now - startTime) / duration, 1);
+        newLayer.alpha = progress;
+        viewer.scene.requestRender();
+
+        if (progress < 1) {
+          rafId = requestAnimationFrame(animate);
+        } else {
+          // Remove all old layers (everything except the new one)
+          while (viewer.imageryLayers.length > 1) {
+            viewer.imageryLayers.remove(viewer.imageryLayers.get(0));
+          }
         }
       }
+
+      rafId = requestAnimationFrame(animate);
     }
 
-    rafId = requestAnimationFrame(animate);
+    if (imageryMode === "satellite") {
+      // Satellite provider is async — await before cross-fading
+      (async () => {
+        try {
+          const provider = await IonImageryProvider.fromAssetId(2);
+          if (cancelled) return;
+          const layer = await ImageryLayer.fromProviderAsync(provider);
+          if (cancelled) return;
+          crossFade(layer);
+        } catch {
+          // Ion token missing or network error — fall back to dark
+          if (!cancelled) crossFade(createDarkCartoLayer());
+        }
+      })();
+    } else {
+      crossFade(createDarkCartoLayer());
+    }
 
     return () => {
       cancelled = true;
       if (rafId !== undefined) cancelAnimationFrame(rafId);
-      // Remove the new layer if animation didn't finish (rapid toggle cleanup)
-      if (viewer && !viewer.isDestroyed()) {
-        try { viewer.imageryLayers.remove(newLayer); } catch { /* already removed */ }
+      if (viewer && !viewer.isDestroyed() && layerRef) {
+        try { viewer.imageryLayers.remove(layerRef); } catch { /* already removed */ }
       }
     };
   }, [imageryMode]);
