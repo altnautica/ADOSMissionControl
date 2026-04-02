@@ -20,6 +20,7 @@ import { useConvexAvailable } from "@/app/ConvexClientProvider";
 import { communityApi } from "@/lib/community-api";
 import type { AirspaceZone, BoundingBox } from "@/lib/airspace/types";
 import { loadAllAirspaceZones } from "@/lib/airspace/airspace-provider";
+import { rehydrateZones } from "@/lib/airspace/convex-zone-adapter";
 import { fetchNotams } from "@/lib/airspace/notam-provider";
 import { fetchFaaTfrs } from "@/lib/airspace/faa-tfr-provider";
 import { assessFlyability } from "@/lib/airspace/flyability";
@@ -79,6 +80,25 @@ function ConvexOpenAIPKey({ onKey }: { onKey: (key: string | null) => void }) {
   return null;
 }
 
+/** Fetches pre-computed airspace zones from Convex (instant vs client-side generation). */
+function ConvexAirspaceZones({ jurisdiction, onZones }: {
+  jurisdiction: string;
+  onZones: (zones: AirspaceZone[] | null) => void;
+}) {
+  const data = useQuery(communityApi.airspaceZones.getByJurisdiction,
+    { jurisdiction }
+  );
+  useEffect(() => {
+    if (data === undefined) return; // still loading from Convex
+    if (data === null) {
+      onZones(null); // no server data, fall back to client-side
+      return;
+    }
+    onZones(rehydrateZones(data.zones));
+  }, [data, onZones]);
+  return null;
+}
+
 /** Error boundary that silently catches Convex query errors. */
 class ConvexErrorBoundary extends Component<{ children: ReactNode; onError?: () => void }, { hasError: boolean }> {
   state = { hasError: false };
@@ -99,6 +119,12 @@ export function AirTrafficViewer() {
   const [openAipKey, setOpenAipKey] = useState<string | null>(null);
   const handleOpenAIPKey = useCallback((k: string | null) => setOpenAipKey(k), []);
   const [convexFailed, setConvexFailed] = useState(false);
+
+  // Convex zone state: undefined = loading, null = no server data, array = got zones
+  const [convexZones, setConvexZones] = useState<AirspaceZone[] | null | undefined>(undefined);
+  const handleConvexZones = useCallback((zones: AirspaceZone[] | null) => {
+    setConvexZones(zones);
+  }, []);
 
   // Settings
   const cesiumImageryMode = useSettingsStore((s) => s.cesiumImageryMode);
@@ -124,11 +150,29 @@ export function AirTrafficViewer() {
     setConvexFailed(true);
   }, []);
 
-  // ── Load all airspace zones (scoped to jurisdiction bbox) ──
+  // Reset Convex zones when jurisdiction changes
   useEffect(() => {
+    setConvexZones(undefined);
+  }, [jurisdiction]);
+
+  // ── Load all airspace zones (Convex-first, client-side fallback) ──
+  useEffect(() => {
+    // Convex data arrived → use it (instant, no spinner)
+    if (Array.isArray(convexZones)) {
+      setZones(convexZones);
+      setLoading(false);
+      return;
+    }
+
+    // Still waiting for Convex response
+    if (convexZones === undefined && convexAvailable && !convexFailed) {
+      setLoading(true);
+      return;
+    }
+
+    // Convex returned null or unavailable → client-side fallback
     setLoading(true);
     setError(null);
-    // Clear stale TFRs from previous jurisdiction
     useAirspaceStore.getState().setTfrs([]);
 
     const bbox = JURISDICTION_BBOX[jurisdiction ?? ""] ?? DEFAULT_BBOX;
@@ -150,7 +194,7 @@ export function AirTrafficViewer() {
         }
         setLoading(false);
       });
-  }, [setZones, setLoading, setError, openAipKey, jurisdiction]);
+  }, [convexZones, convexAvailable, convexFailed, setZones, setLoading, setError, openAipKey, jurisdiction]);
 
   // ── Load NOTAMs (scoped to jurisdiction bbox) ──
   useEffect(() => {
@@ -244,6 +288,7 @@ export function AirTrafficViewer() {
         <ConvexErrorBoundary onError={handleConvexError}>
           <ConvexCesiumToken onToken={handleCesiumToken} />
           <ConvexOpenAIPKey onKey={handleOpenAIPKey} />
+          <ConvexAirspaceZones jurisdiction={jurisdiction ?? "dgca"} onZones={handleConvexZones} />
         </ConvexErrorBoundary>
       )}
       <CesiumScene
