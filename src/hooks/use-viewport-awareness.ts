@@ -1,7 +1,7 @@
 /**
  * @module use-viewport-awareness
  * @description Hook that subscribes to CesiumJS camera movements and computes
- * viewport-aware state: visible airports, aircraft in view, camera altitude,
+ * viewport-aware state: visible airports, camera altitude,
  * and auto-panel suggestions.
  * @license GPL-3.0-only
  */
@@ -11,7 +11,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Cartographic, Math as CesiumMath, type Viewer as CesiumViewer } from "cesium";
 import { useAirspaceStore } from "@/stores/airspace-store";
-import { useTrafficStore } from "@/stores/traffic-store";
 import { getAirportsSync, type Airport } from "@/lib/airspace/airport-database";
 
 /** Haversine distance in meters between two lat/lon points. */
@@ -29,7 +28,6 @@ function haversine(lat1: number, lon1: number, lat2: number, lon2: number): numb
 export interface ViewportAwareness {
   cameraAltitude: number;
   visibleAirports: Airport[];
-  aircraftInView: number;
   autoPanel: { type: "airport"; airport: Airport } | null;
 }
 
@@ -39,7 +37,6 @@ export function useViewportAwareness(viewer: CesiumViewer | null): ViewportAware
   const [awareness, setAwareness] = useState<ViewportAwareness>({
     cameraAltitude: 10_000_000,
     visibleAirports: [],
-    aircraftInView: 0,
     autoPanel: null,
   });
 
@@ -60,12 +57,6 @@ export function useViewportAwareness(viewer: CesiumViewer | null): ViewportAware
       (a) => haversine(camLat, camLon, a.lat, a.lon) / 1000 < visibleRadiusKm,
     );
 
-    // Count aircraft in view (rough bbox check)
-    const allAircraft = Array.from(useTrafficStore.getState().aircraft.values());
-    const aircraftInView = allAircraft.filter(
-      (ac) => ac.lat && ac.lon && haversine(camLat, camLon, ac.lat, ac.lon) / 1000 < visibleRadiusKm,
-    ).length;
-
     // Auto-panel: if zoomed < 50km and one dominant airport nearby
     let autoPanel: ViewportAwareness["autoPanel"] = null;
     if (cameraAlt < 50_000 && visibleAirports.length > 0) {
@@ -84,9 +75,9 @@ export function useViewportAwareness(viewer: CesiumViewer | null): ViewportAware
       }
     }
 
-    setViewportState({ cameraAlt, visibleAirports, aircraftInView });
+    setViewportState({ cameraAlt, visibleAirports, aircraftInView: 0 });
 
-    const result: ViewportAwareness = { cameraAltitude: cameraAlt, visibleAirports, aircraftInView, autoPanel };
+    const result: ViewportAwareness = { cameraAltitude: cameraAlt, visibleAirports, autoPanel };
     setAwareness(result);
   }, [viewer, setViewportState]);
 
