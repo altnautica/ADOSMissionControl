@@ -68,6 +68,8 @@ export default function CesiumScene({
   buildingsEnabled = false,
   terrainExaggeration = 1,
 }: CesiumSceneProps) {
+  // Fall back to env var if Convex hasn't returned a token yet
+  const effectiveToken = cesiumToken ?? process.env.NEXT_PUBLIC_CESIUM_ION_TOKEN;
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<CesiumViewer | null>(null);
   const tilesetRef = useRef<Cesium3DTileset | null>(null);
@@ -156,9 +158,9 @@ export default function CesiumScene({
   // Effect 2: Token update — upgrade terrain to Cesium World Terrain without recreating viewer
   useEffect(() => {
     const viewer = viewerRef.current;
-    if (!viewer || viewer.isDestroyed() || !cesiumToken) return;
+    if (!viewer || viewer.isDestroyed() || !effectiveToken) return;
 
-    Ion.defaultAccessToken = cesiumToken;
+    Ion.defaultAccessToken = effectiveToken;
     viewer.scene.setTerrain(
       Terrain.fromWorldTerrain({
         requestVertexNormals: true,
@@ -166,7 +168,7 @@ export default function CesiumScene({
       })
     );
     viewer.scene.requestRender();
-  }, [cesiumToken]);
+  }, [effectiveToken]);
 
   // Effect 3: Imagery switching with cross-fade
   useEffect(() => {
