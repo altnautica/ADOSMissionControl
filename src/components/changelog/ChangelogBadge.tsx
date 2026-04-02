@@ -7,7 +7,7 @@
 
 "use client";
 
-import { MessageSquareText } from "lucide-react";
+import { Newspaper } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useChangelogNotificationStore } from "@/stores/changelog-notification-store";
 import Link from "next/link";
@@ -22,7 +22,7 @@ export function ChangelogBadge() {
         className="relative text-text-secondary hover:text-text-primary transition-colors"
         aria-label="Community"
       >
-        <MessageSquareText size={16} />
+        <Newspaper size={16} />
         {unseenCount > 0 && (
           <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-status-error" />
         )}
