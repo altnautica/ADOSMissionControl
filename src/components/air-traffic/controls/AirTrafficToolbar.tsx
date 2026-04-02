@@ -1,6 +1,6 @@
 /**
  * @module AirTrafficToolbar
- * @description Top-right toolbar for the Air Traffic viewer.
+ * @description Top-right toolbar for the Airspace viewer.
  * Provides fullscreen toggle, compass reset, and screenshot placeholder.
  * @license GPL-3.0-only
  */
