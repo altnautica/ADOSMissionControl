@@ -60,7 +60,7 @@ describe('airspace-store', () => {
     useAirspaceStore.getState().setLayerVisibility('airspace', false);
     expect(useAirspaceStore.getState().layerVisibility.airspace).toBe(false);
     // Other layers unchanged
-    expect(useAirspaceStore.getState().layerVisibility.traffic).toBe(true);
+    expect(useAirspaceStore.getState().layerVisibility.restrictions).toBe(true);
 
     // Toggle heatmap on
     useAirspaceStore.getState().setLayerVisibility('heatmap', true);

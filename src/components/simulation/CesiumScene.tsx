@@ -211,7 +211,7 @@ export default function CesiumScene({
         try {
           const provider = await IonImageryProvider.fromAssetId(2);
           if (cancelled) return;
-          const layer = await ImageryLayer.fromProviderAsync(provider);
+          const layer = new ImageryLayer(provider);
           if (cancelled) return;
           crossFade(layer);
         } catch {

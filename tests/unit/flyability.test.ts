@@ -3,7 +3,6 @@ import type {
   AirspaceZone,
   Notam,
   TemporaryRestriction,
-  AircraftState,
 } from '@/lib/airspace/types';
 
 // Mock the airport-database module since it depends on cached data
@@ -35,30 +34,11 @@ function makeCircleZone(
   };
 }
 
-function makePolygonZone(
-  type: AirspaceZone['type'],
-  coords: number[][],
-  overrides?: Partial<AirspaceZone>,
-): AirspaceZone {
-  return {
-    id: Math.random().toString(36).slice(2),
-    name: `Test ${type}`,
-    type,
-    geometry: { type: 'Polygon', coordinates: [coords] },
-    floorAltitude: 0,
-    ceilingAltitude: 120,
-    authority: 'test',
-    metadata: {},
-    ...overrides,
-  };
-}
-
 describe('assessFlyability', () => {
   it('returns CLEAR for location outside all zones', () => {
     const result = assessFlyability(
       12.97, 77.59,
       [], // no zones
-      [],
       [],
       [],
       null,
@@ -67,12 +47,10 @@ describe('assessFlyability', () => {
   });
 
   it('returns ADVISORY for advisory zone (classC)', () => {
-    // Point inside the circle zone
     const zone = makeCircleZone('classC', 12.97, 77.59, 10000);
     const result = assessFlyability(
       12.97, 77.59,
       [zone],
-      [],
       [],
       [],
       'faa',
@@ -89,7 +67,6 @@ describe('assessFlyability', () => {
       [zone],
       [],
       [],
-      [],
       'dgca',
     );
     expect(result.verdict).toBe('advisory');
@@ -103,7 +80,6 @@ describe('assessFlyability', () => {
       [zone],
       [],
       [],
-      [],
       'faa',
     );
     expect(result.verdict).toBe('restricted');
@@ -115,7 +91,6 @@ describe('assessFlyability', () => {
     const result = assessFlyability(
       12.97, 77.59,
       [zone],
-      [],
       [],
       [],
       'dgca',
@@ -142,39 +117,9 @@ describe('assessFlyability', () => {
       [],
       [],
       [tfr],
-      [],
       'faa',
     );
     expect(result.verdict).toBe('restricted');
-  });
-
-  it('counts nearby traffic within 5km', () => {
-    const aircraft: AircraftState[] = [
-      {
-        icao24: 'abc123',
-        callsign: 'TEST1',
-        originCountry: 'US',
-        lat: 12.971, // very close
-        lon: 77.591,
-        altitudeMsl: 100,
-        altitudeAgl: 100,
-        velocity: 50,
-        heading: 90,
-        verticalRate: 0,
-        squawk: null,
-        category: 0,
-        lastSeen: Date.now(),
-      },
-    ];
-    const result = assessFlyability(
-      12.97, 77.59,
-      [],
-      [],
-      [],
-      aircraft,
-      null,
-    );
-    expect(result.trafficCount).toBe(1);
   });
 
   it('returns altitude constraint from overlapping zones', () => {
@@ -189,10 +134,8 @@ describe('assessFlyability', () => {
       [zone1, zone2],
       [],
       [],
-      [],
       'faa',
     );
-    // Should return advisory with some altitude constraint
     expect(result.verdict).toBe('advisory');
     expect(typeof result.maxAltitudeAgl).toBe('number');
   });
@@ -216,27 +159,25 @@ describe('assessFlyability', () => {
       [],
       [],
       [expiredTfr],
-      [],
       'faa',
     );
-    // Should not be restricted since TFR is expired
     expect(result.verdict).not.toBe('restricted');
   });
 
-  it('returns clear with no zones and no traffic', () => {
-    const result = assessFlyability(12.97, 77.59, [], [], [], [], 'dgca');
+  it('returns clear with no zones', () => {
+    const result = assessFlyability(12.97, 77.59, [], [], [], 'dgca');
     expect(result.verdict).toBe('clear');
   });
 
   it('restricted zone sets maxAltitude to 0', () => {
     const zone = makeCircleZone('restricted', 12.97, 77.59, 10000);
-    const result = assessFlyability(12.97, 77.59, [zone], [], [], [], 'faa');
+    const result = assessFlyability(12.97, 77.59, [zone], [], [], 'faa');
     expect(result.maxAltitudeAgl).toBe(0);
   });
 
   it('includes guidance text in result', () => {
     const zone = makeCircleZone('classC', 12.97, 77.59, 10000);
-    const result = assessFlyability(12.97, 77.59, [zone], [], [], [], 'faa');
+    const result = assessFlyability(12.97, 77.59, [zone], [], [], 'faa');
     expect(result.guidance).toBeDefined();
     expect(result.guidance.length).toBeGreaterThan(0);
   });
