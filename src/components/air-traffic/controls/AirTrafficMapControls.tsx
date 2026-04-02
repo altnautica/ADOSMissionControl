@@ -1,6 +1,6 @@
 /**
  * @module AirTrafficMapControls
- * @description Map controls for the Air Traffic 3D viewer: imagery mode toggle,
+ * @description Map controls for the Airspace 3D viewer: imagery mode toggle,
  * buildings checkbox, terrain exaggeration slider.
  * Reuses pattern from simulation/MapControlsPanel.
  * @license GPL-3.0-only
