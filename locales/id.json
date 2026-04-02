@@ -51,6 +51,43 @@
       "welcome": "Selamat Datang",
       "preferences": "Preferensi",
       "ready": "Siap"
+    },
+    "disclaimer": {
+      "title": "Sebelum Terbang",
+      "subtitle": "ADOS Mission Control dapat mengendalikan pesawat sungguhan. Harap baca dan terima ketentuan berikut.",
+      "lawfulUse": {
+        "heading": "Hanya Penggunaan yang Sah",
+        "body": "Anda setuju untuk menggunakan perangkat lunak ini hanya untuk tujuan yang sah. Anda tidak akan menggunakannya untuk melakukan pengawasan, melecehkan individu, melanggar privasi, atau mendukung aktivitas apa pun yang dilarang oleh hukum di negara atau wilayah Anda."
+      },
+      "militaryUse": {
+        "heading": "Tanpa Penggunaan Militer Tidak Sah",
+        "body": "Perangkat lunak ini tidak boleh digunakan untuk operasi militer atau pertahanan ofensif tanpa otorisasi eksplisit dari otoritas pemerintah terkait. Persenjataan drone tanpa izin adalah ilegal di hampir semua yurisdiksi."
+      },
+      "aviationRegs": {
+        "heading": "Regulasi Penerbangan",
+        "body": "Anda bertanggung jawab penuh untuk mematuhi semua regulasi penerbangan yang berlaku di lokasi dan operasi Anda. Ini termasuk, tetapi tidak terbatas pada:",
+        "item1": "Mendaftarkan drone Anda ke otoritas yang sesuai (DGCA, FAA, CASA, EASA, KEMENHUB, dll.)",
+        "item2": "Memperoleh sertifikasi atau lisensi pilot yang diperlukan",
+        "item3": "Mengamankan otorisasi ruang udara sebelum penerbangan",
+        "item4": "Beroperasi dalam batas ketinggian, jarak, dan garis pandang visual",
+        "footer": "Perangkat lunak ini tidak menjamin kepatuhan regulasi. Ini adalah alat. Anda adalah pilot yang bertanggung jawab."
+      },
+      "exportControls": {
+        "heading": "Kontrol Ekspor",
+        "body": "Perangkat lunak kontrol drone mungkin tunduk pada hukum kontrol ekspor termasuk ITAR (AS), EAR (AS), Regulasi Penggunaan Ganda UE, dan daftar SCOMET India. Anda bertanggung jawab untuk memastikan bahwa penggunaan, distribusi, atau modifikasi perangkat lunak ini mematuhi hukum kontrol ekspor dan sanksi yang berlaku."
+      },
+      "noWarranty": {
+        "heading": "Tanpa Jaminan & Asumsi Risiko",
+        "warranty": "Perangkat lunak ini disediakan \"apa adanya\", tanpa jaminan apa pun, baik tersurat maupun tersirat. Ini termasuk, tetapi tidak terbatas pada, jaminan kelayakan jual, kesesuaian untuk tujuan tertentu, dan non-pelanggaran.",
+        "risk": "Drone adalah mesin fisik yang dapat menyebabkan kerusakan properti, cedera, atau kematian jika dioperasikan secara tidak tepat atau jika perangkat lunak mengalami kegagalan. Dengan menggunakan perangkat lunak ini, Anda menanggung semua risiko yang terkait dengan penggunaannya. Altnautica dan kontributornya tidak bertanggung jawab atas klaim, kerusakan, atau kerugian apa pun yang timbul dari penggunaan perangkat lunak ini, baik langsung, tidak langsung, insidental, atau konsekuensial."
+      },
+      "openSource": {
+        "heading": "Lisensi Open Source",
+        "body": "ADOS Mission Control dilisensikan di bawah GNU General Public License v3.0. Anda bebas menggunakan, memodifikasi, dan mendistribusikan perangkat lunak ini berdasarkan ketentuan lisensi tersebut.",
+        "link": "Baca lisensi GPL-3.0 lengkap"
+      },
+      "acceptCheckbox": "Saya telah membaca dan menerima ketentuan di atas. Saya memahami bahwa saya adalah pilot yang bertanggung jawab dan menanggung semua tanggung jawab untuk operasi yang aman dan sah.",
+      "acceptButton": "Terima & Lanjutkan"
     }
   },
   "common": {

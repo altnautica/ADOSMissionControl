@@ -156,6 +156,12 @@ interface SettingsStoreState {
   saveCount: number;
   /** Whether the user has completed the welcome onboarding modal. */
   onboarded: boolean;
+  /** Whether the user has accepted the legal disclaimer. */
+  disclaimerAccepted: boolean;
+  /** Timestamp when disclaimer was accepted. */
+  disclaimerAcceptedAt: number | null;
+  /** Version of disclaimer accepted (bump to force re-acceptance on changes). */
+  disclaimerVersion: number;
   /** Regulatory jurisdiction (null = not set, user skipped selection). */
   jurisdiction: Jurisdiction | null;
   /** Whether demo mode is active (gates mock data engine). */
@@ -253,6 +259,7 @@ interface SettingsStoreState {
   dismissBanner: () => void;
   incrementSaveCount: () => void;
   setOnboarded: (onboarded: boolean) => void;
+  setDisclaimerAccepted: (version: number) => void;
   setJurisdiction: (jurisdiction: Jurisdiction | null) => void;
   setDemoMode: (demoMode: boolean) => void;
   setParamColumn: (col: ParamColumnId, visible: boolean) => void;
@@ -312,6 +319,9 @@ export const useSettingsStore = create<SettingsStoreState>()(
       bannerDismissedAt: null,
       saveCount: 0,
       onboarded: false,
+      disclaimerAccepted: false,
+      disclaimerAcceptedAt: null,
+      disclaimerVersion: 0,
       jurisdiction: null,
       demoMode: false,
       _hasHydrated: false,
@@ -370,6 +380,7 @@ export const useSettingsStore = create<SettingsStoreState>()(
       dismissBanner: () => set({ bannerDismissed: true, bannerDismissedAt: Date.now() }),
       incrementSaveCount: () => set((s) => ({ saveCount: s.saveCount + 1 })),
       setOnboarded: (onboarded) => set({ onboarded }),
+      setDisclaimerAccepted: (version) => set({ disclaimerAccepted: true, disclaimerAcceptedAt: Date.now(), disclaimerVersion: version }),
       setJurisdiction: (jurisdiction) => set({ jurisdiction }),
       setDemoMode: (demoMode) => set({ demoMode }),
       setParamColumn: (col, visible) =>
@@ -496,7 +507,7 @@ export const useSettingsStore = create<SettingsStoreState>()(
     {
       name: "altcmd:settings",
       storage: createJSONStorage(indexedDBStorage.storage),
-      version: 28,
+      version: 29,
       migrate: (persisted, version) => {
         const state = persisted as Record<string, unknown>;
         if (version < 2) {
@@ -637,6 +648,12 @@ export const useSettingsStore = create<SettingsStoreState>()(
           ) {
             state.telemetryDeckActivePage = "flight";
           }
+        }
+        if (version < 29) {
+          // v29: legal disclaimer acceptance tracking
+          state.disclaimerAccepted = false;
+          state.disclaimerAcceptedAt = null;
+          state.disclaimerVersion = 0;
         }
         return state as unknown as SettingsStoreState;
       },

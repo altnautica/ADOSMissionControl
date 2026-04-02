@@ -1,6 +1,6 @@
 /**
  * @module WelcomeModal
- * @description Full-screen multi-step onboarding flow. 5 steps: language -> welcome -> preferences -> theme -> ready.
+ * @description Full-screen multi-step onboarding flow. 6 steps: language -> welcome -> disclaimer -> preferences -> theme -> ready.
  * Cannot be dismissed without completing. Step state is local (not persisted) -- closing mid-flow
  * restarts from Step 1, ensuring language selection always runs.
  * @license GPL-3.0-only
@@ -10,6 +10,7 @@
 
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
+import { Shield, Swords, Plane, PackageCheck, AlertTriangle, Scale } from "lucide-react";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useGcsLocationStore, type GeoPermission } from "@/stores/gcs-location-store";
 import { JURISDICTIONS, type Jurisdiction } from "@/lib/jurisdiction";
@@ -90,7 +91,10 @@ const ACCENT_DOCK_MAX_SCALE = 1.30;
 const ACCENT_DOCK_RADIUS = ACCENT_BALL_SIZE * 1.4;
 const PRIMARY_CTA_CLASS = "h-10 px-8 bg-accent-primary text-black text-sm font-semibold hover:brightness-110 transition-all rounded-sm";
 
-type Step = 0 | 1 | 2 | 3 | 4;
+type Step = 0 | 1 | 2 | 3 | 4 | 5;
+
+/** Bump this when disclaimer content changes materially to force re-acceptance. */
+const DISCLAIMER_VERSION = 1;
 
 function detectBrowserLocale(): string {
   if (typeof navigator === "undefined") return "en";
@@ -133,7 +137,7 @@ function Toggle({
 function StepDots({ step }: { step: Step }) {
   return (
     <div className="flex gap-2 justify-center mt-8">
-      {[0, 1, 2, 3, 4].map((i) => (
+      {[0, 1, 2, 3, 4, 5].map((i) => (
         <span
           key={i}
           className={`w-2 h-2 rounded-full transition-colors duration-300 ${
@@ -318,6 +322,7 @@ export function WelcomeModal() {
   const onboarded = useSettingsStore((s) => s.onboarded);
   const hasHydrated = useSettingsStore((s) => s._hasHydrated);
   const setOnboarded = useSettingsStore((s) => s.setOnboarded);
+  const setDisclaimerAccepted = useSettingsStore((s) => s.setDisclaimerAccepted);
   const setJurisdiction = useSettingsStore((s) => s.setJurisdiction);
   const setUnits = useSettingsStore((s) => s.setUnits);
   const setDemoMode = useSettingsStore((s) => s.setDemoMode);
@@ -341,6 +346,9 @@ export function WelcomeModal() {
 
   // Step 1: selected locale
   const [selectedLocale, setSelectedLocale] = useState<string>(() => detectBrowserLocale());
+
+  // Step 2: disclaimer acceptance
+  const [disclaimerChecked, setDisclaimerChecked] = useState(false);
 
   // Step 3: preferences
   const [jurisdiction, setLocalJurisdiction] = useState<Jurisdiction | "">("");
@@ -496,7 +504,7 @@ export function WelcomeModal() {
           </h2>
 
           {/* Language grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 w-full max-w-md mb-10">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full max-w-xl mb-10">
             {(locales as readonly string[]).map((code) => {
               const info = localeNames[code as keyof typeof localeNames];
               const isSelected = selectedLocale === code;
@@ -596,7 +604,7 @@ export function WelcomeModal() {
           </div>
         </div>
 
-        {/* -- STEP 2: Preferences -- */}
+        {/* -- STEP 2: Legal Disclaimer -- */}
         <div
           className={`absolute inset-0 flex flex-col items-center justify-center p-8 transition-transform duration-300 ease-in-out ${stepX(2)}`}
         >
@@ -604,6 +612,141 @@ export function WelcomeModal() {
           <button
             type="button"
             onClick={() => back(1)}
+            className="absolute top-6 left-6 text-xs text-text-tertiary hover:text-text-primary transition-colors flex items-center gap-1"
+          >
+            ← {tCommon("back")}
+          </button>
+
+          <div className="w-full max-w-2xl">
+            <h2 className="text-xl font-display font-semibold text-text-primary mb-1 text-center">
+              {t("disclaimer.title")}
+            </h2>
+            <p className="text-xs text-text-tertiary mb-6 text-center">
+              {t("disclaimer.subtitle")}
+            </p>
+
+            {/* Scrollable disclaimer sections */}
+            <div className="max-h-[55vh] overflow-y-auto border border-border-default rounded-sm bg-bg-secondary p-4 space-y-4 mb-6">
+              {/* 1. Lawful Use */}
+              <div className="flex gap-3">
+                <Shield size={16} className="text-accent-primary shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="text-sm font-semibold text-text-primary mb-1">{t("disclaimer.lawfulUse.heading")}</h3>
+                  <p className="text-xs text-text-secondary leading-relaxed">{t("disclaimer.lawfulUse.body")}</p>
+                </div>
+              </div>
+
+              <div className="border-t border-border-default" />
+
+              {/* 2. No Unauthorized Military Use */}
+              <div className="flex gap-3">
+                <Swords size={16} className="text-accent-primary shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="text-sm font-semibold text-text-primary mb-1">{t("disclaimer.militaryUse.heading")}</h3>
+                  <p className="text-xs text-text-secondary leading-relaxed">{t("disclaimer.militaryUse.body")}</p>
+                </div>
+              </div>
+
+              <div className="border-t border-border-default" />
+
+              {/* 3. Aviation Regulations */}
+              <div className="flex gap-3">
+                <Plane size={16} className="text-accent-primary shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="text-sm font-semibold text-text-primary mb-1">{t("disclaimer.aviationRegs.heading")}</h3>
+                  <p className="text-xs text-text-secondary leading-relaxed mb-2">{t("disclaimer.aviationRegs.body")}</p>
+                  <ul className="list-disc list-inside text-xs text-text-secondary leading-relaxed space-y-1 mb-2">
+                    <li>{t("disclaimer.aviationRegs.item1")}</li>
+                    <li>{t("disclaimer.aviationRegs.item2")}</li>
+                    <li>{t("disclaimer.aviationRegs.item3")}</li>
+                    <li>{t("disclaimer.aviationRegs.item4")}</li>
+                  </ul>
+                  <p className="text-xs text-text-primary font-medium">{t("disclaimer.aviationRegs.footer")}</p>
+                </div>
+              </div>
+
+              <div className="border-t border-border-default" />
+
+              {/* 4. Export Controls */}
+              <div className="flex gap-3">
+                <PackageCheck size={16} className="text-accent-primary shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="text-sm font-semibold text-text-primary mb-1">{t("disclaimer.exportControls.heading")}</h3>
+                  <p className="text-xs text-text-secondary leading-relaxed">{t("disclaimer.exportControls.body")}</p>
+                </div>
+              </div>
+
+              <div className="border-t border-border-default" />
+
+              {/* 5. No Warranty / Assumption of Risk */}
+              <div className="flex gap-3">
+                <AlertTriangle size={16} className="text-status-warning shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="text-sm font-semibold text-text-primary mb-1">{t("disclaimer.noWarranty.heading")}</h3>
+                  <p className="text-xs text-text-secondary leading-relaxed mb-2">{t("disclaimer.noWarranty.warranty")}</p>
+                  <p className="text-xs text-text-secondary leading-relaxed">{t("disclaimer.noWarranty.risk")}</p>
+                </div>
+              </div>
+
+              <div className="border-t border-border-default" />
+
+              {/* 6. Open Source License */}
+              <div className="flex gap-3">
+                <Scale size={16} className="text-accent-primary shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="text-sm font-semibold text-text-primary mb-1">{t("disclaimer.openSource.heading")}</h3>
+                  <p className="text-xs text-text-secondary leading-relaxed mb-1">{t("disclaimer.openSource.body")}</p>
+                  <a
+                    href="https://www.gnu.org/licenses/gpl-3.0.html"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-accent-primary hover:underline"
+                  >
+                    {t("disclaimer.openSource.link")} →
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            {/* Acceptance checkbox */}
+            <label className="flex items-start gap-3 mb-6 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={disclaimerChecked}
+                onChange={() => setDisclaimerChecked(!disclaimerChecked)}
+                className="mt-0.5 w-4 h-4 shrink-0 accent-accent-primary rounded-sm border-border-default bg-bg-tertiary"
+              />
+              <span className="text-xs text-text-primary leading-relaxed">
+                {t("disclaimer.acceptCheckbox")}
+              </span>
+            </label>
+
+            <button
+              type="button"
+              disabled={!disclaimerChecked}
+              onClick={() => {
+                setDisclaimerAccepted(DISCLAIMER_VERSION);
+                advance(3);
+              }}
+              className={`${PRIMARY_CTA_CLASS} block w-fit mx-auto ${!disclaimerChecked ? "opacity-50 cursor-not-allowed pointer-events-none" : ""}`}
+            >
+              {t("disclaimer.acceptButton")} →
+            </button>
+
+            <p className="text-center text-xs text-text-tertiary mt-4">Make ❤️, not war</p>
+
+            <StepDots step={step} />
+          </div>
+        </div>
+
+        {/* -- STEP 3: Preferences -- */}
+        <div
+          className={`absolute inset-0 flex flex-col items-center justify-center p-8 transition-transform duration-300 ease-in-out ${stepX(3)}`}
+        >
+          {/* Back button */}
+          <button
+            type="button"
+            onClick={() => back(2)}
             className="absolute top-6 left-6 text-xs text-text-tertiary hover:text-text-primary transition-colors flex items-center gap-1"
           >
             ← {tCommon("back")}
@@ -679,7 +822,7 @@ export function WelcomeModal() {
 
             <button
               type="button"
-              onClick={() => advance(3)}
+              onClick={() => advance(4)}
               className={`${PRIMARY_CTA_CLASS} mt-8 block w-fit mx-auto`}
             >
               {tCommon("continue")} →
@@ -689,14 +832,14 @@ export function WelcomeModal() {
           </div>
         </div>
 
-        {/* -- STEP 3: Theme Selection -- */}
+        {/* -- STEP 4: Theme Selection -- */}
         <div
-          className={`absolute inset-0 flex flex-col items-center p-8 pt-16 transition-transform duration-300 ease-in-out ${stepX(3)}`}
+          className={`absolute inset-0 flex flex-col items-center p-8 pt-16 transition-transform duration-300 ease-in-out ${stepX(4)}`}
         >
           {/* Back button */}
           <button
             type="button"
-            onClick={() => back(2)}
+            onClick={() => back(3)}
             className="absolute top-6 left-6 text-xs text-text-tertiary hover:text-text-primary transition-colors flex items-center gap-1"
           >
             ← {tCommon("back")}
@@ -809,7 +952,7 @@ export function WelcomeModal() {
 
             <button
               type="button"
-              onClick={() => advance(4)}
+              onClick={() => advance(5)}
               className={`${PRIMARY_CTA_CLASS} block w-fit mx-auto`}
             >
               {tCommon("continue")} →
@@ -819,9 +962,9 @@ export function WelcomeModal() {
           </div>
         </div>
 
-        {/* -- STEP 4: Ready -- */}
+        {/* -- STEP 5: Ready -- */}
         <div
-          className={`absolute inset-0 flex flex-col items-center justify-center p-8 transition-transform duration-300 ease-in-out ${stepX(4)}`}
+          className={`absolute inset-0 flex flex-col items-center justify-center p-8 transition-transform duration-300 ease-in-out ${stepX(5)}`}
         >
           <div className="text-center max-w-sm">
             {/* Check mark */}
@@ -876,6 +1019,130 @@ export function WelcomeModal() {
           </div>
         </div>
 
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Standalone disclaimer gate for existing users who completed onboarding
+ * before the disclaimer step was added. Shows only the disclaimer (not the full
+ * 6-step onboarding) and blocks the app until accepted.
+ */
+export function DisclaimerGate() {
+  const onboarded = useSettingsStore((s) => s.onboarded);
+  const hasHydrated = useSettingsStore((s) => s._hasHydrated);
+  const disclaimerAccepted = useSettingsStore((s) => s.disclaimerAccepted);
+  const setDisclaimerAccepted = useSettingsStore((s) => s.setDisclaimerAccepted);
+  const t = useTranslations("welcome");
+  const [checked, setChecked] = useState(false);
+
+  // Only show for existing users who are onboarded but haven't accepted the disclaimer
+  if (!hasHydrated || !onboarded || disclaimerAccepted) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-[200] bg-bg-primary overflow-hidden flex items-center justify-center p-8"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Legal disclaimer"
+    >
+      <div className="w-full max-w-2xl">
+        <h2 className="text-xl font-display font-semibold text-text-primary mb-1 text-center">
+          {t("disclaimer.title")}
+        </h2>
+        <p className="text-xs text-text-tertiary mb-6 text-center">
+          {t("disclaimer.subtitle")}
+        </p>
+
+        <div className="max-h-[55vh] overflow-y-auto border border-border-default rounded-sm bg-bg-secondary p-4 space-y-4 mb-6">
+          <div className="flex gap-3">
+            <Shield size={16} className="text-accent-primary shrink-0 mt-0.5" />
+            <div>
+              <h3 className="text-sm font-semibold text-text-primary mb-1">{t("disclaimer.lawfulUse.heading")}</h3>
+              <p className="text-xs text-text-secondary leading-relaxed">{t("disclaimer.lawfulUse.body")}</p>
+            </div>
+          </div>
+          <div className="border-t border-border-default" />
+          <div className="flex gap-3">
+            <Swords size={16} className="text-accent-primary shrink-0 mt-0.5" />
+            <div>
+              <h3 className="text-sm font-semibold text-text-primary mb-1">{t("disclaimer.militaryUse.heading")}</h3>
+              <p className="text-xs text-text-secondary leading-relaxed">{t("disclaimer.militaryUse.body")}</p>
+            </div>
+          </div>
+          <div className="border-t border-border-default" />
+          <div className="flex gap-3">
+            <Plane size={16} className="text-accent-primary shrink-0 mt-0.5" />
+            <div>
+              <h3 className="text-sm font-semibold text-text-primary mb-1">{t("disclaimer.aviationRegs.heading")}</h3>
+              <p className="text-xs text-text-secondary leading-relaxed mb-2">{t("disclaimer.aviationRegs.body")}</p>
+              <ul className="list-disc list-inside text-xs text-text-secondary leading-relaxed space-y-1 mb-2">
+                <li>{t("disclaimer.aviationRegs.item1")}</li>
+                <li>{t("disclaimer.aviationRegs.item2")}</li>
+                <li>{t("disclaimer.aviationRegs.item3")}</li>
+                <li>{t("disclaimer.aviationRegs.item4")}</li>
+              </ul>
+              <p className="text-xs text-text-primary font-medium">{t("disclaimer.aviationRegs.footer")}</p>
+            </div>
+          </div>
+          <div className="border-t border-border-default" />
+          <div className="flex gap-3">
+            <PackageCheck size={16} className="text-accent-primary shrink-0 mt-0.5" />
+            <div>
+              <h3 className="text-sm font-semibold text-text-primary mb-1">{t("disclaimer.exportControls.heading")}</h3>
+              <p className="text-xs text-text-secondary leading-relaxed">{t("disclaimer.exportControls.body")}</p>
+            </div>
+          </div>
+          <div className="border-t border-border-default" />
+          <div className="flex gap-3">
+            <AlertTriangle size={16} className="text-status-warning shrink-0 mt-0.5" />
+            <div>
+              <h3 className="text-sm font-semibold text-text-primary mb-1">{t("disclaimer.noWarranty.heading")}</h3>
+              <p className="text-xs text-text-secondary leading-relaxed mb-2">{t("disclaimer.noWarranty.warranty")}</p>
+              <p className="text-xs text-text-secondary leading-relaxed">{t("disclaimer.noWarranty.risk")}</p>
+            </div>
+          </div>
+          <div className="border-t border-border-default" />
+          <div className="flex gap-3">
+            <Scale size={16} className="text-accent-primary shrink-0 mt-0.5" />
+            <div>
+              <h3 className="text-sm font-semibold text-text-primary mb-1">{t("disclaimer.openSource.heading")}</h3>
+              <p className="text-xs text-text-secondary leading-relaxed mb-1">{t("disclaimer.openSource.body")}</p>
+              <a
+                href="https://www.gnu.org/licenses/gpl-3.0.html"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-accent-primary hover:underline"
+              >
+                {t("disclaimer.openSource.link")} →
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <label className="flex items-start gap-3 mb-6 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={checked}
+            onChange={() => setChecked(!checked)}
+            className="mt-0.5 w-4 h-4 shrink-0 accent-accent-primary rounded-sm border-border-default bg-bg-tertiary"
+          />
+          <span className="text-xs text-text-primary leading-relaxed">
+            {t("disclaimer.acceptCheckbox")}
+          </span>
+        </label>
+
+        <button
+          type="button"
+          disabled={!checked}
+          onClick={() => setDisclaimerAccepted(DISCLAIMER_VERSION)}
+          className={`${PRIMARY_CTA_CLASS} block w-fit mx-auto ${!checked ? "opacity-50 cursor-not-allowed pointer-events-none" : ""}`}
+        >
+          {t("disclaimer.acceptButton")}
+        </button>
+
+        <p className="text-center text-xs text-text-tertiary mt-4">Make ❤️, not war</p>
       </div>
     </div>
   );

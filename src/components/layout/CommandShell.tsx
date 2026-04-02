@@ -19,7 +19,7 @@ import { useUiStore } from "@/stores/ui-store";
 import { SignInModal } from "@/components/auth/SignInModal";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { ConnectDialog } from "@/components/connect/ConnectDialog";
-import { WelcomeModal } from "@/components/onboarding/WelcomeModal";
+import { WelcomeModal, DisclaimerGate } from "@/components/onboarding/WelcomeModal";
 import { formatSyncTime } from "@/lib/sync";
 import { useAutoReconnect } from "@/hooks/use-auto-reconnect";
 import { useGcsLocation } from "@/hooks/use-gcs-location";
@@ -102,6 +102,9 @@ export function CommandShell({ children }: { children: React.ReactNode }) {
     <div className="flex flex-col h-dvh">
       {/* Welcome onboarding modal */}
       <WelcomeModal />
+
+      {/* Disclaimer gate for existing users who haven't accepted yet */}
+      <DisclaimerGate />
 
       {/* Changelog "What's New" notification modal */}
       <ChangelogNotificationGate />

@@ -24,6 +24,43 @@
       "privacy": "Your data stays on this device.",
       "privacyDetail": "We don't collect or track anything."
     },
+    "disclaimer": {
+      "title": "Before You Fly",
+      "subtitle": "ADOS Mission Control can control real aircraft. Please read and accept the following.",
+      "lawfulUse": {
+        "heading": "Lawful Use Only",
+        "body": "You agree to use this software only for lawful purposes. You will not use it to conduct surveillance, harass individuals, violate privacy, or support any activity prohibited by law in your country or region."
+      },
+      "militaryUse": {
+        "heading": "No Unauthorized Military Use",
+        "body": "This software must not be used for offensive military or defense operations without explicit authorization from the relevant government authority. Unauthorized weaponization of drones is illegal in virtually every jurisdiction."
+      },
+      "aviationRegs": {
+        "heading": "Aviation Regulations",
+        "body": "You are solely responsible for complying with all aviation regulations that apply to your location and operation. This includes, but is not limited to:",
+        "item1": "Registering your drone with the appropriate authority (DGCA, FAA, CASA, EASA, etc.)",
+        "item2": "Obtaining required pilot certifications or licenses",
+        "item3": "Securing airspace authorizations before flight",
+        "item4": "Operating within altitude, distance, and visual-line-of-sight limits",
+        "footer": "This software does not guarantee regulatory compliance. It is a tool. You are the pilot in command."
+      },
+      "exportControls": {
+        "heading": "Export Controls",
+        "body": "Drone control software may be subject to export control laws including ITAR (US), EAR (US), EU Dual-Use Regulation, and India's SCOMET list. You are responsible for ensuring that your use, distribution, or modification of this software complies with applicable export control and sanctions laws."
+      },
+      "noWarranty": {
+        "heading": "No Warranty & Assumption of Risk",
+        "warranty": "This software is provided \"as is\", without warranty of any kind, express or implied. This includes, but is not limited to, warranties of merchantability, fitness for a particular purpose, and non-infringement.",
+        "risk": "Drones are physical machines that can cause property damage, injury, or death if operated improperly or if software malfunctions. By using this software, you assume all risk associated with its use. Altnautica and its contributors shall not be liable for any claim, damage, or loss arising from the use of this software, whether direct, indirect, incidental, or consequential."
+      },
+      "openSource": {
+        "heading": "Open Source License",
+        "body": "ADOS Mission Control is licensed under the GNU General Public License v3.0. You are free to use, modify, and distribute this software under the terms of that license.",
+        "link": "Read the full GPL-3.0 license"
+      },
+      "acceptCheckbox": "I have read and accept the terms above. I understand that I am the pilot in command and assume all responsibility for safe and lawful operation.",
+      "acceptButton": "Accept & Continue"
+    },
     "preferences": {
       "title": "Set your preferences",
       "jurisdiction": "Regulatory Jurisdiction",
