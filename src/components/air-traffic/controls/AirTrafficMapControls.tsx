@@ -24,9 +24,6 @@ export function AirTrafficMapControls({ hasIonToken }: AirTrafficMapControlsProp
   const setBuildingsEnabled = useSettingsStore((s) => s.setCesiumBuildingsEnabled);
   const terrainExaggeration = useSettingsStore((s) => s.terrainExaggeration);
   const setTerrainExaggeration = useSettingsStore((s) => s.setTerrainExaggeration);
-  const dataSource = useTrafficStore((s) => s.dataSource);
-  const connectionQuality = useTrafficStore((s) => s.connectionQuality);
-
   const satDisabled = !hasIonToken;
   const buildingsDisabled = !hasIonToken;
 
@@ -106,16 +103,6 @@ export function AirTrafficMapControls({ hasIonToken }: AirTrafficMapControlsProp
         />
       </div>
 
-      {/* Data source + connection quality */}
-      <div className="flex items-center gap-1.5 pt-1 border-t border-border-default/50 mt-1">
-        <span className={cn(
-          "w-2 h-2 rounded-full shrink-0",
-          connectionQuality === "good" && "bg-green-400",
-          connectionQuality === "degraded" && "bg-yellow-400",
-          connectionQuality === "disconnected" && "bg-red-400",
-        )} />
-        <span className="text-[9px] font-mono text-text-tertiary truncate">{dataSource || "offline"}</span>
-      </div>
     </div>
   );
 }

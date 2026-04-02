@@ -211,14 +211,6 @@ fullName: v.optional(v.string()),
     usedAt: v.number(),
   }).index("by_userId_feature", ["userId", "feature"]),
 
-  cmd_adsbCache: defineTable({
-    region: v.string(),
-    aircraft: v.string(), // JSON stringified array (stays under 1MB limit)
-    source: v.string(),
-    fetchedAt: v.number(),
-    count: v.number(),
-  }).index("by_region", ["region"]),
-
   // ── ADOS Pairing tables (cmd_ prefix) ──────────────────────
 
   cmd_drones: defineTable({

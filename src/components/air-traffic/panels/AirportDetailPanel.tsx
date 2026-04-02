@@ -38,7 +38,6 @@ export function AirportDetailPanel({ airport }: AirportDetailPanelProps) {
   const [dismissed, setDismissed] = useState(false);
   const [expanded, setExpanded] = useState(true);
   const zones = useAirspaceStore((s) => s.zones);
-  const aircraft = useTrafficStore((s) => s.aircraft);
 
   const jurisdiction = getJurisdictionForCountry(airport.country);
   const jConfig = jurisdiction ? JURISDICTIONS[jurisdiction] : null;
@@ -48,24 +47,6 @@ export function AirportDetailPanel({ airport }: AirportDetailPanelProps) {
     () => zones.filter((z) => z.metadata.icao === airport.icao),
     [zones, airport.icao],
   );
-
-  // Nearby traffic count (within 25km)
-  const nearbyTraffic = useMemo(() => {
-    const R = 6371000;
-    const toRad = Math.PI / 180;
-    let count = 0;
-    for (const ac of aircraft.values()) {
-      if (!ac.lat || !ac.lon) continue;
-      const dLat = (ac.lat - airport.lat) * toRad;
-      const dLon = (ac.lon - airport.lon) * toRad;
-      const a =
-        Math.sin(dLat / 2) ** 2 +
-        Math.cos(airport.lat * toRad) * Math.cos(ac.lat * toRad) * Math.sin(dLon / 2) ** 2;
-      const d = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      if (d < 25_000) count++;
-    }
-    return count;
-  }, [aircraft, airport.lat, airport.lon]);
 
   if (dismissed) return null;
 
@@ -111,8 +92,6 @@ export function AirportDetailPanel({ airport }: AirportDetailPanelProps) {
             <span className="text-text-primary text-right">{airport.elevation}m</span>
             <span>{t("type")}</span>
             <span className="text-text-primary text-right capitalize">{airport.type.replace("_", " ")}</span>
-            <span>{t("traffic")}</span>
-            <span className="text-text-primary text-right">{t("nearbyCount", { count: nearbyTraffic })}</span>
           </div>
 
           {/* Active zones */}
