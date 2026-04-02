@@ -11,7 +11,7 @@ const baseTabs = [
   { icon: Terminal, labelKey: "command", href: "/command" },
   { icon: Route, labelKey: "plan", href: "/plan" },
   { icon: Play, labelKey: "simulate", href: "/simulate" },
-  { icon: Radar, labelKey: "airTraffic", href: "/air-traffic" },
+  { icon: Radar, labelKey: "airTraffic", href: "/airspace" },
   { icon: History, labelKey: "history", href: "/history" },
 ];
 

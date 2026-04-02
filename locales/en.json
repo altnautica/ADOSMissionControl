@@ -5,7 +5,7 @@
     "simulate": "Simulate",
     "command": "Command",
     "configure": "Configure",
-    "airTraffic": "Air Traffic",
+    "airTraffic": "Airspace",
     "history": "History",
     "community": "Community"
   },
@@ -1272,7 +1272,7 @@
     "moreActions": "More actions"
   },
   "airTraffic": {
-    "title": "Air Traffic",
+    "title": "Airspace",
     "layers": "Layers",
     "aircraft": "Aircraft",
     "airspaceZones": "Airspace Zones",
