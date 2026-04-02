@@ -15,8 +15,8 @@
       "continue": "Continuar"
     },
     "intro": {
-      "tagline": "Uma estação de controle de solo feita para a comunidade de drones open-source.",
-      "description": "Conecte qualquer drone ArduPilot, PX4 ou Betaflight. Configure, planeje missões e voe, tudo pelo navegador.",
+      "tagline": "Controle de solo para drones definidos por software.",
+      "description": "Configure, planeje missões e voe qualquer drone ArduPilot, PX4 ou Betaflight. Combine com o ADOS Drone Agent para rodar inteligência na borda. Código aberto. Roda no navegador.",
       "openBeta": "Beta Aberto",
       "freeForever": "Grátis Para Sempre",
       "openSource": "Open Source GPL-3.0",
@@ -373,8 +373,6 @@
   },
   "communityNav": {
     "changelog": "Changelog",
-    "kanban": "Kanban",
-    "roadmap": "Roadmap",
     "contact": "Contato",
     "unavailableTitle": "Os dados da comunidade (changelog, roadmap, contato) estão disponíveis na versão hospedada em",
     "unavailableSetup": "Desativado por padrão em builds locais. Para rodar seu próprio quadro comunitário interno, configure um backend Convex e defina",
@@ -400,14 +398,6 @@
     "errorRequired": "Nome, e-mail e mensagem são obrigatórios.",
     "errorAuth": "Por favor, entre para enviar uma mensagem.",
     "errorGeneral": "Falha ao enviar mensagem. Por favor, tente novamente."
-  },
-  "roadmap": {
-    "title": "Roadmap",
-    "planned": "Planejado",
-    "inProgress": "Em Andamento",
-    "released": "Lançado",
-    "nothingHere": "Nada aqui ainda.",
-    "loadingRoadmap": "Carregando roadmap..."
   },
   "dashboard": {
     "logs": "Logs",

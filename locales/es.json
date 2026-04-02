@@ -15,8 +15,8 @@
       "continue": "Continuar"
     },
     "intro": {
-      "tagline": "Una estación de control terrestre para la comunidad de drones de código abierto.",
-      "description": "Conecta cualquier dron ArduPilot, PX4 o Betaflight. Configura, planifica misiones y vuela — todo desde tu navegador.",
+      "tagline": "Control terrestre para drones definidos por software.",
+      "description": "Configura, planifica misiones y vuela cualquier dron ArduPilot, PX4 o Betaflight. Combina con ADOS Drone Agent para ejecutar inteligencia en el borde. Código abierto. Funciona en tu navegador.",
       "openBeta": "Beta abierta",
       "freeForever": "Gratis para siempre",
       "openSource": "GPL-3.0 Open Source",
@@ -264,8 +264,6 @@
   },
   "communityNav": {
     "changelog": "Registro de cambios",
-    "kanban": "Kanban",
-    "roadmap": "Hoja de ruta",
     "contact": "Contacto",
     "unavailableTitle": "Los datos de comunidad (registro de cambios, hoja de ruta, contacto) están disponibles en la versión alojada en",
     "unavailableSetup": "Desactivado por defecto en builds locales. Para tener tu propio tablero de comunidad interno, configura un backend Convex y establece",
@@ -291,14 +289,6 @@
     "errorRequired": "Nombre, correo electrónico y mensaje son obligatorios.",
     "errorAuth": "Inicia sesión para enviar un mensaje.",
     "errorGeneral": "No se pudo enviar el mensaje. Inténtalo de nuevo."
-  },
-  "roadmap": {
-    "title": "Hoja de ruta",
-    "planned": "Planificado",
-    "inProgress": "En progreso",
-    "released": "Publicado",
-    "nothingHere": "Nada aquí todavía.",
-    "loadingRoadmap": "Cargando hoja de ruta..."
   },
   "dashboard": {
     "logs": "Registros",

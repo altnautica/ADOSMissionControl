@@ -15,8 +15,8 @@
       "continue": "Lanjutkan"
     },
     "intro": {
-      "tagline": "Stasiun kendali darat yang dibuat untuk komunitas drone open-source.",
-      "description": "Hubungkan ke drone ArduPilot, PX4, atau Betaflight mana pun. Konfigurasi, rencanakan misi, dan terbang — semua dari browser Anda.",
+      "tagline": "Kendali darat untuk drone berbasis perangkat lunak.",
+      "description": "Konfigurasi, rencanakan misi, dan terbangkan drone ArduPilot, PX4, atau Betaflight apa pun. Pasangkan dengan ADOS Drone Agent untuk menjalankan kecerdasan di edge. Open source. Berjalan di browser Anda.",
       "openBeta": "Open Beta",
       "freeForever": "Gratis Selamanya",
       "openSource": "Open Source GPL-3.0",
@@ -373,8 +373,6 @@
   },
   "communityNav": {
     "changelog": "Catatan Perubahan",
-    "kanban": "Kanban",
-    "roadmap": "Peta Jalan",
     "contact": "Kontak",
     "unavailableTitle": "Data komunitas (catatan perubahan, peta jalan, kontak) tersedia di versi yang di-host di",
     "unavailableSetup": "Dinonaktifkan secara default di build lokal. Untuk menjalankan papan komunitas internal Anda sendiri, siapkan backend Convex dan konfigurasikan",
@@ -400,14 +398,6 @@
     "errorRequired": "Nama, email, dan pesan wajib diisi.",
     "errorAuth": "Silakan masuk untuk mengirim pesan.",
     "errorGeneral": "Gagal mengirim pesan. Silakan coba lagi."
-  },
-  "roadmap": {
-    "title": "Peta Jalan",
-    "planned": "Direncanakan",
-    "inProgress": "Sedang Berjalan",
-    "released": "Dirilis",
-    "nothingHere": "Belum ada apa-apa di sini.",
-    "loadingRoadmap": "Memuat peta jalan..."
   },
   "dashboard": {
     "logs": "Log",

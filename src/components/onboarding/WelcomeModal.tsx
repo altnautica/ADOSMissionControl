@@ -733,8 +733,6 @@ export function WelcomeModal() {
               {t("disclaimer.acceptButton")} →
             </button>
 
-            <p className="text-center text-xs text-text-tertiary mt-4">Make ❤️, not war</p>
-
             <StepDots step={step} />
           </div>
         </div>
@@ -1142,7 +1140,6 @@ export function DisclaimerGate() {
           {t("disclaimer.acceptButton")}
         </button>
 
-        <p className="text-center text-xs text-text-tertiary mt-4">Make ❤️, not war</p>
       </div>
     </div>
   );
