@@ -185,7 +185,7 @@ When you need to understand a system, read these files:
 | Mission validation | `src/lib/validation/mission-validator.ts` — pre-upload checks |
 | File formats | `src/lib/formats/kml-parser.ts`, `csv-handler.ts` — KML/KMZ/CSV I/O |
 | Mission transforms | `src/lib/transforms/mission-transforms.ts` — move/rotate/scale |
-| Air traffic stores | `src/stores/airspace-store.ts`, `src/stores/traffic-store.ts` — zones, NOTAMs, aircraft, alerts |
+| Airspace stores | `src/stores/airspace-store.ts` — zones, NOTAMs, TFRs, flyability, layer visibility |
 | ADS-B providers | `src/lib/airspace/adsb-provider.ts` — adsb.lol + OpenSky fetch |
 | Airspace types | `src/lib/airspace/types.ts` — AircraftState, AirspaceZone, ThreatLevel, Flyability |
 | Cloud status bridge | `src/components/command/CloudStatusBridge.tsx` — Convex reactive query → agent store |
@@ -241,4 +241,4 @@ When you need to understand a system, read these files:
 - **Terrain provider caching** — `terrain-provider.ts` uses an LRU cache keyed by rounded lat,lon (4 decimal places). Cache hit rate is high for survey patterns where many waypoints are close together. Falls back to elevation 0 when offline.
 - **Pattern generators are pure functions** — They take config objects and return waypoint arrays. No store access, no side effects. This makes them testable and composable.
 - **Drawing manager is not a React component** — `drawing-manager.ts` interfaces directly with the Leaflet map instance. It's instantiated in a `useEffect` in `PlannerMap.tsx` and cleaned up on unmount.
-- **Air Traffic always uses real ADS-B data** — The Air Traffic tab fetches live aircraft positions from adsb.lol (primary) and OpenSky (fallback), even in demo mode. Never use mock/fake aircraft data. Real positions are freely available from these APIs and more useful than simulated traffic.
+- **Airspace tab has no ADS-B tracking** — The Airspace tab (formerly Air Traffic) focuses on airspace zones, flyability assessment, NOTAMs, and TFRs. Aircraft tracking was removed (DEC-088). Zone data comes from jurisdiction-specific providers (FAA, DGCA, CASA, ICAO) and optionally OpenAIP for real polygon boundaries.
