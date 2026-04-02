@@ -18,10 +18,24 @@ import { useAirspaceStore } from "@/stores/airspace-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useConvexAvailable } from "@/app/ConvexClientProvider";
 import { communityApi } from "@/lib/community-api";
+import type { AirspaceZone, BoundingBox } from "@/lib/airspace/types";
 import { loadAllAirspaceZones } from "@/lib/airspace/airspace-provider";
 import { fetchNotams } from "@/lib/airspace/notam-provider";
+import { fetchFaaTfrs } from "@/lib/airspace/faa-tfr-provider";
 import { assessFlyability } from "@/lib/airspace/flyability";
 import { lookupJurisdiction } from "@/lib/airspace/jurisdiction-lookup";
+
+const JURISDICTION_BBOX: Record<string, BoundingBox> = {
+  dgca:   { south: 6,  north: 36, west: 68,   east: 98 },
+  faa:    { south: 24, north: 50, west: -125, east: -66 },
+  casa:   { south: -45, north: -10, west: 112, east: 154 },
+  easa:   { south: 34, north: 72, west: -12,  east: 45 },
+  caa_uk: { south: 49, north: 61, west: -8,   east: 2 },
+  caac:   { south: 18, north: 54, west: 73,   east: 135 },
+  jcab:   { south: 24, north: 46, west: 123,  east: 146 },
+  tcca:   { south: 41, north: 84, west: -141, east: -52 },
+};
+const DEFAULT_BBOX: BoundingBox = JURISDICTION_BBOX.dgca; // India default
 
 import { AirspaceVolumeEntities } from "./entities/AirspaceVolumeEntities";
 import { DronePositionEntity } from "./entities/DronePositionEntity";
@@ -110,27 +124,35 @@ export function AirTrafficViewer() {
     setConvexFailed(true);
   }, []);
 
-  // ── Load all airspace zones on mount ──
+  // ── Load all airspace zones (scoped to jurisdiction bbox) ──
   useEffect(() => {
     setLoading(true);
     setError(null);
 
-    const bbox = { south: -60, north: 70, west: -180, east: 180 };
+    const bbox = JURISDICTION_BBOX[jurisdiction ?? ""] ?? DEFAULT_BBOX;
 
-    loadAllAirspaceZones(bbox, openAipKey)
+    const timeoutPromise = new Promise<AirspaceZone[]>((_, reject) =>
+      setTimeout(() => reject(new Error("timeout")), 15000)
+    );
+
+    Promise.race([loadAllAirspaceZones(bbox, openAipKey), timeoutPromise])
       .then((zones) => {
         setZones(zones);
         setLoading(false);
       })
       .catch((err) => {
-        setError(err instanceof Error ? err.message : "Failed to load airspace data");
+        if (err instanceof Error && err.message === "timeout") {
+          console.warn("[air-traffic] Zone loading timed out after 15s");
+        } else {
+          setError(err instanceof Error ? err.message : "Failed to load airspace data");
+        }
         setLoading(false);
       });
-  }, [setZones, setLoading, setError, openAipKey]);
+  }, [setZones, setLoading, setError, openAipKey, jurisdiction]);
 
-  // ── Load NOTAMs on mount ──
+  // ── Load NOTAMs (scoped to jurisdiction bbox) ──
   useEffect(() => {
-    const bbox = { south: -60, north: 70, west: -180, east: 180 };
+    const bbox = JURISDICTION_BBOX[jurisdiction ?? ""] ?? DEFAULT_BBOX;
     fetchNotams(bbox)
       .then((notams) => {
         if (notams.length > 0) {
@@ -138,7 +160,29 @@ export function AirTrafficViewer() {
         }
       })
       .catch(() => {}); // graceful fallback
-  }, []);
+  }, [jurisdiction]);
+
+  // ── Load FAA TFRs (when jurisdiction overlaps US) ──
+  useEffect(() => {
+    const bbox = JURISDICTION_BBOX[jurisdiction ?? ""] ?? DEFAULT_BBOX;
+    // Only fetch FAA TFRs when the bbox overlaps US territory
+    const usBbox = JURISDICTION_BBOX.faa;
+    const overlapsUs =
+      bbox.south <= usBbox.north &&
+      bbox.north >= usBbox.south &&
+      bbox.west <= usBbox.east &&
+      bbox.east >= usBbox.west;
+
+    if (!overlapsUs) return;
+
+    fetchFaaTfrs(bbox)
+      .then((tfrs) => {
+        if (tfrs.length > 0) {
+          useAirspaceStore.getState().setTfrs(tfrs);
+        }
+      })
+      .catch(() => {}); // graceful fallback
+  }, [jurisdiction]);
 
   // ── Consolidated click handler (globe) ──
   useEffect(() => {
