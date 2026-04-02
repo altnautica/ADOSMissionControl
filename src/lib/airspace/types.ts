@@ -1,31 +1,11 @@
 /**
  * @module airspace/types
- * @description Type definitions for the Air Traffic tab: aircraft tracking,
- * airspace zones, threat classification, and flyability assessment.
+ * @description Type definitions for the Air Traffic tab: airspace zones,
+ * flyability assessment, NOTAMs, and TFRs.
  * @license GPL-3.0-only
  */
 
 import type { Jurisdiction } from "@/lib/jurisdiction";
-
-// ── Aircraft State (from ADS-B providers) ──────────────────────────
-
-export interface AircraftState {
-  icao24: string;
-  callsign: string | null;
-  originCountry: string;
-  lat: number;
-  lon: number;
-  altitudeMsl: number | null;
-  altitudeAgl: number | null;
-  velocity: number | null;
-  heading: number | null;
-  verticalRate: number | null;
-  squawk: string | null;
-  category: number;
-  lastSeen: number;
-  registration?: string;
-  aircraftType?: string;
-}
 
 // ── Airspace Zone Types ────────────────────────────────────────────
 
@@ -77,18 +57,6 @@ export interface GeoJSONMultiPolygon {
   coordinates: number[][][][];
 }
 
-// ── Threat Classification ──────────────────────────────────────────
-
-export type ThreatLevel = "ra" | "ta" | "proximate" | "other";
-
-export interface ThreatAssessment {
-  icao24: string;
-  level: ThreatLevel;
-  cpaDistance: number;
-  cpaTime: number;
-  altitudeDelta: number;
-}
-
 // ── NOTAM / TFR ────────────────────────────────────────────────────
 
 export interface Notam {
@@ -118,19 +86,6 @@ export interface TemporaryRestriction {
   description: string;
 }
 
-// ── Traffic Alert ──────────────────────────────────────────────────
-
-export interface TrafficAlert {
-  id: string;
-  icao24: string;
-  callsign: string | null;
-  level: ThreatLevel;
-  distanceKm: number;
-  altitudeDelta: number;
-  timestamp: number;
-  dismissed: boolean;
-}
-
 // ── Flyability Assessment ──────────────────────────────────────────
 
 export type FlyabilityVerdict = "clear" | "advisory" | "restricted";
@@ -149,7 +104,6 @@ export interface Flyability {
   nearestAirport: NearestAirport | null;
   activeNotams: Notam[];
   activeTfrs: TemporaryRestriction[];
-  trafficCount: number;
   guidance: string;
   ctaLinks: CtaLink[];
 }
@@ -172,24 +126,20 @@ export interface BoundingBox {
 
 export interface AirTrafficLayers {
   airspace: boolean;
-  traffic: boolean;
   restrictions: boolean;
   advisory: boolean;
   ownDrone: boolean;
   terrain: boolean;
   heatmap: boolean;
-  trails: boolean;
 }
 
 export const DEFAULT_LAYERS: AirTrafficLayers = {
   airspace: true,
-  traffic: true,
   restrictions: true,
   advisory: false,
   ownDrone: true,
   terrain: true,
   heatmap: false,
-  trails: false,
 };
 
 // ── Zone Color Config ──────────────────────────────────────────────
@@ -222,29 +172,7 @@ export const ZONE_COLORS: Record<AirspaceZoneType, ZoneColorConfig> = {
   warning:        { fill: "#FF8C00", fillOpacity: 0.18, border: "#FF8C00", borderOpacity: 0.6 },
 };
 
-// ── Threat level display config ────────────────────────────────────
-
-export const THREAT_COLORS: Record<ThreatLevel, string> = {
-  ra: "#FF4444",
-  ta: "#FF8C00",
-  proximate: "#3A82FF",
-  other: "#888888",
-};
-
-export const THREAT_LABELS: Record<ThreatLevel, string> = {
-  ra: "Resolution Advisory",
-  ta: "Traffic Advisory",
-  proximate: "Proximate",
-  other: "Other Traffic",
-};
-
 // ── Provider result types ──────────────────────────────────────────
-
-export interface AdsbFetchResult {
-  aircraft: AircraftState[];
-  timestamp: number;
-  source: "adsb.lol" | "opensky";
-}
 
 export interface AirspaceFetchResult {
   zones: AirspaceZone[];

@@ -1,7 +1,7 @@
 /**
  * @module ViewportStatsOverlay
- * @description Bottom-left stats bar showing total aircraft, visible airports,
- * zoom level, data freshness, and source indicator. Compact horizontal layout.
+ * @description Bottom-left stats bar showing visible zones, airports,
+ * zoom level, and altitude. Compact horizontal layout.
  * @license GPL-3.0-only
  */
 
