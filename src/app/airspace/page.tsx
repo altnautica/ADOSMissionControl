@@ -1,6 +1,6 @@
 /**
  * @module AirTrafficPage
- * @description Air Traffic tab page. Full-screen CesiumJS 3D globe with
+ * @description Airspace tab page. Full-screen CesiumJS 3D globe with
  * airspace zones and flyability assessment.
  * @license GPL-3.0-only
  */
