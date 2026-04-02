@@ -311,7 +311,7 @@ function generateIcaoFallbackZones(airports: Airport[]): CompactZone[] {
 export const syncAllZones = internalAction({
   args: {},
   handler: async (ctx) => {
-    const airports = getAirports();
+    const airports = await getAirports();
     const now = Date.now();
 
     const jurisdictions: { id: string; zones: CompactZone[] }[] = [

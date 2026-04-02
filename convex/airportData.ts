@@ -1,11 +1,12 @@
 /**
  * @module airportData
- * @description Embedded airport database for server-side zone generation.
- * Imports the same airport dataset used by the client-side airspace providers.
+ * @description Fetches airport database from GitHub at runtime for server-side
+ * zone generation. Cached in memory after first fetch.
  * @license GPL-3.0-only
  */
 
-import airportsJson from "./data/airports.json";
+const AIRPORTS_URL =
+  "https://raw.githubusercontent.com/altnautica/ADOSMissionControl/main/src/data/airports.json";
 
 export interface Airport {
   icao: string;
@@ -19,16 +20,17 @@ export interface Airport {
   municipality: string;
 }
 
-const airports: Airport[] = airportsJson as Airport[];
+let cached: Airport[] | null = null;
 
-export function getAirports(): Airport[] {
-  return airports;
+export async function getAirports(): Promise<Airport[]> {
+  if (cached) return cached;
+  const res = await fetch(AIRPORTS_URL);
+  if (!res.ok) throw new Error(`Failed to fetch airports: ${res.status}`);
+  cached = (await res.json()) as Airport[];
+  return cached;
 }
 
-export function getByCountry(code: string): Airport[] {
+export async function getByCountry(code: string): Promise<Airport[]> {
+  const airports = await getAirports();
   return airports.filter((a) => a.country_code === code);
-}
-
-export function getByCountries(codes: Set<string>): Airport[] {
-  return airports.filter((a) => codes.has(a.country_code));
 }
