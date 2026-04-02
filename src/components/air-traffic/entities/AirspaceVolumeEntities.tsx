@@ -147,36 +147,36 @@ export function AirspaceVolumeEntities({ viewer }: AirspaceVolumeEntitiesProps) 
 /** Returns max camera distance (meters) at which this zone type should be visible. */
 function getZoneLodDistance(type: string, _ceilingAlt: number): number {
   switch (type) {
-    // Small zones (~5km radius): visible below 100km
+    // Small zones (~5km radius): visible below 500km
     case "dgcaRed":
     case "casaRestricted":
-      return 100_000;
-    // Medium zones (~9-25km radius): visible below 250km
+      return 500_000;
+    // Medium zones (~9-25km radius): visible below 2,000km
     case "dgcaYellow":
     case "classD":
     case "casaCaution":
     case "moa":
-      return 250_000;
-    // Large zones (~45-55km radius): visible below 500km
+      return 2_000_000;
+    // Large zones (~45-55km radius): visible at continental scale
     case "dgcaGreen":
     case "classB":
     case "classC":
     case "classE":
-      return 500_000;
-    // Restrictions and TFRs: visible below 300km
+      return 8_000_000;
+    // Restrictions and TFRs: visible below 3,000km
     case "restricted":
     case "prohibited":
     case "tfr":
     case "ctr":
     case "tma":
-      return 300_000;
-    // Danger/Alert/Warning: visible below 250km
+      return 3_000_000;
+    // Danger/Alert/Warning: visible below 2,000km
     case "danger":
     case "alert":
     case "warning":
-      return 250_000;
+      return 2_000_000;
     default:
-      return 300_000;
+      return 3_000_000;
   }
 }
 
