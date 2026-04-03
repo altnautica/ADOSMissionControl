@@ -155,6 +155,16 @@ function FleetSidebarBase({
     }
   }, [renaming]);
 
+  // Auto-reconnect on page load if a drone was previously selected
+  useEffect(() => {
+    if (!agentConnected && selectedPairedId && pairedDrones.length > 0) {
+      const drone = pairedDrones.find((d) => d._id === selectedPairedId);
+      if (drone) {
+        agentConnectCloud(drone.deviceId);
+      }
+    }
+  }, [selectedPairedId, pairedDrones, agentConnected, agentConnectCloud]);
+
   function handleDroneClick(drone: PairedDrone) {
     selectPairedDrone(drone._id);
     const url = drone.mdnsHost
@@ -163,13 +173,12 @@ function FleetSidebarBase({
         ? `http://${drone.lastIp}:8080`
         : null;
 
-    // If on HTTPS (prod) or no direct URL, fall back to cloud relay
-    const isHttps = typeof window !== "undefined" && window.location.protocol === "https:";
-    if (!url || isHttps) {
-      agentConnectCloud(drone.deviceId);
-    } else {
-      agentConnect(url, drone.apiKey);
-    }
+    // Always use cloud relay for paired drones — they are cloud-paired by definition.
+    // Direct mode only applies to manually-entered agent URLs (not fleet sidebar).
+    // Previous bug: on HTTP (localhost dev), this tried direct connection to agent IP
+    // which fails because the dev machine can't always reach the agent's LAN IP,
+    // causing partial data flow (Convex reactive queries worked but setCloudStatus never fired).
+    agentConnectCloud(drone.deviceId);
   }
 
   function handleContextAction(action: string, drone: PairedDrone) {
