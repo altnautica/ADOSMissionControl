@@ -21,6 +21,9 @@ import {
   Wifi,
   WifiOff,
   Clock,
+  Check,
+  Usb,
+  Circle,
 } from "lucide-react";
 import { cn, formatDuration } from "@/lib/utils";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
@@ -66,6 +69,75 @@ function groupPeripherals(peripherals: PeripheralInfo[]): DeviceGroup[] {
   if (radios.length > 0) groups.push({ title: "Radio Links", icon: Radio, devices: radios });
   if (other.length > 0) groups.push({ title: "Other Peripherals", icon: HardDrive, devices: other });
   return groups;
+}
+
+const SCAN_STEPS = [
+  { label: "USB devices", icon: Usb },
+  { label: "Flight controllers", icon: Gauge },
+  { label: "Cameras", icon: Camera },
+  { label: "Radio links", icon: Radio },
+  { label: "Modems & network", icon: Wifi },
+] as const;
+
+function ScanProgress() {
+  const [completedStep, setCompletedStep] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCompletedStep((prev) => {
+        if (prev >= SCAN_STEPS.length) {
+          clearInterval(interval);
+          return prev;
+        }
+        return prev + 1;
+      });
+    }, 1500);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="flex flex-col items-center justify-center py-12 gap-1">
+      <p className="text-sm font-medium text-text-secondary mb-4">Scanning hardware...</p>
+      <div className="flex flex-col gap-2.5 w-56">
+        {SCAN_STEPS.map((step, i) => {
+          const done = i < completedStep;
+          const active = i === completedStep;
+          const StepIcon = step.icon;
+
+          return (
+            <div
+              key={step.label}
+              className={cn(
+                "flex items-center gap-3 text-sm transition-all duration-300",
+                done && "text-status-success",
+                active && "text-accent-primary",
+                !done && !active && "text-text-tertiary opacity-40"
+              )}
+            >
+              <div className="w-5 h-5 flex items-center justify-center shrink-0">
+                {done ? (
+                  <Check size={16} style={{ animation: "scan-check 0.3s ease-out" }} />
+                ) : active ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <Circle size={14} />
+                )}
+              </div>
+              <StepIcon size={14} className="shrink-0" />
+              <span className={cn(active && "animate-pulse")}>{step.label}</span>
+            </div>
+          );
+        })}
+      </div>
+      {/* Keyframe for checkmark scale-in */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes scan-check {
+          from { transform: scale(0); opacity: 0; }
+          to { transform: scale(1); opacity: 1; }
+        }
+      ` }} />
+    </div>
+  );
 }
 
 function StatBox({ label, value, unit, warn }: { label: string; value: number; unit: string; warn?: boolean }) {
@@ -233,13 +305,7 @@ export function ArchitectureTab() {
       )}
 
       {/* Loading */}
-      {scanning && peripherals.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-16 gap-3">
-          <Loader2 size={24} className="animate-spin text-accent-primary" />
-          <p className="text-sm text-text-secondary">Scanning hardware...</p>
-          <p className="text-xs text-text-tertiary">Discovering USB devices, cameras, and modems</p>
-        </div>
-      )}
+      {scanning && peripherals.length === 0 && <ScanProgress />}
 
       {/* Grouped Sections */}
       {groups.map((group) => (

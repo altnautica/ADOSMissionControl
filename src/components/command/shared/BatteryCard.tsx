@@ -24,7 +24,7 @@ export function BatteryCard({ className }: BatteryCardProps) {
   return (
     <div
       className={cn(
-        "border border-border-default rounded-lg bg-bg-secondary p-3",
+        "border border-border-default rounded-lg p-4",
         className
       )}
     >

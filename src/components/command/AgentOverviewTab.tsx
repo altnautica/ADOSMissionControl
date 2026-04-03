@@ -62,11 +62,26 @@ export function AgentOverviewTab() {
 
   return (
     <div className="p-4 space-y-4">
-      {status && <AgentStatusCard status={status} />}
+      {/* Agent Status spans 2/3, Flight Telemetry column starts at top */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+        {/* Status card spans 2 columns */}
+        <div className="xl:col-span-2">
+          {status && <AgentStatusCard status={status} />}
+        </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-        {/* Column 1: Services */}
+        {/* Column 3: Video + Flight Telemetry (starts at same level as status) */}
+        <div className="xl:row-span-3 space-y-3">
+          <VideoFeedCard />
+          <AttitudeCard />
+          <GpsCard />
+          <BatteryCard />
+          <RcInputCard />
+          <RadioLinkCard />
+        </div>
+
+        {/* Below status: 2 columns — logs+services left, resources right */}
         <div className="space-y-4">
+          <LogViewer logs={logs} onRefresh={fetchLogs} />
           <ServiceTable
             services={services}
             onRestart={restartService}
@@ -75,22 +90,10 @@ export function AgentOverviewTab() {
           />
         </div>
 
-        {/* Column 2: Resources + Charts + Logs */}
         <div className="space-y-4">
           {resources && <SystemResourceGauges resources={resources} />}
           <CpuSparkline />
           <MemorySparkline />
-          <LogViewer logs={logs} onRefresh={fetchLogs} />
-        </div>
-
-        {/* Column 3: Video + Flight Telemetry */}
-        <div className="space-y-3">
-          <VideoFeedCard />
-          <AttitudeCard />
-          <GpsCard />
-          <BatteryCard />
-          <RcInputCard />
-          <RadioLinkCard />
         </div>
       </div>
     </div>
