@@ -248,10 +248,10 @@ export function CommandPage() {
                   key={id}
                   onClick={() => setActiveTab(id)}
                   className={cn(
-                    "flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors",
+                    "flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors self-stretch -mb-px border-b-2",
                     activeTab === id
-                      ? "text-accent-primary border-b-2 border-accent-primary"
-                      : "text-text-secondary hover:text-text-primary"
+                      ? "text-accent-primary border-accent-primary"
+                      : "text-text-secondary hover:text-text-primary border-transparent"
                   )}
                 >
                   <Icon size={13} />

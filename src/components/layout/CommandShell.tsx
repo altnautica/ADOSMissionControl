@@ -143,7 +143,7 @@ export function CommandShell({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Center — Navigation */}
-        <div className={cn(isElectron && !isLinux && "[-webkit-app-region:no-drag]")}>
+        <div className={cn("self-stretch flex", isElectron && !isLinux && "[-webkit-app-region:no-drag]")}>
           <CommandNav />
         </div>
 

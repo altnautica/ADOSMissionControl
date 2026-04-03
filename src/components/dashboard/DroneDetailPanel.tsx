@@ -121,10 +121,10 @@ export function DroneDetailPanel({ droneId, onClose }: DroneDetailPanelProps) {
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={cn(
-                "px-2.5 py-1.5 text-xs font-medium transition-colors cursor-pointer shrink-0",
+                "self-stretch flex items-center px-2.5 text-xs font-medium transition-colors cursor-pointer shrink-0 -mb-px border-b-2",
                 activeTab === tab.id
-                  ? "text-accent-primary border-b-2 border-accent-primary"
-                  : "text-text-secondary hover:text-text-primary"
+                  ? "text-accent-primary border-accent-primary"
+                  : "text-text-secondary hover:text-text-primary border-transparent"
               )}
             >
               {tab.label}

@@ -22,10 +22,10 @@ export function Tabs({ tabs, activeTab, onChange, className }: TabsProps) {
           key={tab.id}
           onClick={() => onChange(tab.id)}
           className={cn(
-            "px-4 py-2 text-xs font-medium transition-colors cursor-pointer",
+            "px-4 py-2 text-xs font-medium transition-colors cursor-pointer -mb-px border-b-2",
             activeTab === tab.id
-              ? "text-accent-primary border-b-2 border-accent-primary"
-              : "text-text-secondary hover:text-text-primary"
+              ? "text-accent-primary border-accent-primary"
+              : "text-text-secondary hover:text-text-primary border-transparent"
           )}
         >
           {tab.label}
