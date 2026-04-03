@@ -14,7 +14,7 @@ import { bridgeTelemetry } from "./drone-manager-bridge";
 import { invalidateParamCache } from "@/components/fc/parameters/ParametersPanel";
 
 export interface ConnectionMeta {
-  type: "serial" | "websocket";
+  type: "serial" | "websocket" | "mqtt-mavlink";
   baudRate?: number;
   url?: string;
   portVendorId?: number;
