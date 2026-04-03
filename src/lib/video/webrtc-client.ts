@@ -27,13 +27,30 @@ let videoElement: HTMLVideoElement | null = null;
 export async function startStream(whepUrl: string): Promise<MediaStream> {
   const store = useVideoStore.getState();
 
+  // Clean up any stale connection before starting fresh
   if (pc) {
-    throw new Error("Stream already active — call stopStream() first");
+    try { pc.close(); } catch { /* noop */ }
+    pc = null;
+    stopStatsPolling();
   }
 
   pc = new RTCPeerConnection({
     iceServers: [], // Local network — no STUN/TURN needed
   });
+
+  // Monitor connection state — detect silent disconnections
+  pc.onconnectionstatechange = () => {
+    const state = pc?.connectionState;
+    if (state === "disconnected" || state === "failed" || state === "closed") {
+      console.warn("[webrtc-client] Connection state:", state);
+      const s = useVideoStore.getState();
+      s.setStreaming(false);
+      s.updateStats(0, 0);
+      stopStatsPolling();
+      // Don't close pc here — let stopStream() handle cleanup
+      // This just updates the UI state so it shows NO SIGNAL
+    }
+  };
 
   // Receive-only transceiver
   pc.addTransceiver("video", { direction: "recvonly" });
