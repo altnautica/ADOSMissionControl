@@ -2,10 +2,15 @@
 
 /**
  * @module AgentMavlinkBridge
- * @description Automatically establishes a MAVLink WebSocket connection to the
- * ADOS Drone Agent's MAVLink proxy when a mavlinkUrl is available and the agent
- * reports an FC connected. Once connected, calls DroneManager.addDrone() which
- * activates all GCS features (telemetry, config panels, mission planning, etc.).
+ * @description Automatically establishes a MAVLink connection to the ADOS Drone
+ * Agent when the agent reports an FC connected. Tries two paths in order:
+ *
+ *   1. Direct WebSocket (ws://agent:8765/) — lowest latency, works on LAN
+ *   2. MQTT relay (via mqtt.altnautica.com) — works from anywhere
+ *
+ * Once connected via either path, calls DroneManager.addDrone() which activates
+ * all GCS features (telemetry, config panels, mission planning, flight commands).
+ *
  * Renders nothing — pure bridge component.
  * @license GPL-3.0-only
  */
@@ -14,6 +19,9 @@ import { useEffect, useRef } from "react";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
 import { useDroneManager } from "@/stores/drone-manager";
+import type { Transport } from "@/lib/protocol/types/transport";
+
+const WS_TIMEOUT_MS = 3000;
 
 export function AgentMavlinkBridge() {
   const mavlinkUrl = useAgentConnectionStore((s) => s.mavlinkUrl);
@@ -25,7 +33,9 @@ export function AgentMavlinkBridge() {
   const connectedDroneIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!mavlinkUrl || !connected || !fcConnected || connectingRef.current) return;
+    // Need at least: agent connected + FC connected + (mavlinkUrl OR cloudDeviceId for MQTT)
+    if (!connected || !fcConnected || connectingRef.current) return;
+    if (!mavlinkUrl && !cloudDeviceId) return;
 
     // Don't reconnect if already connected to a drone from this bridge
     if (connectedDroneIdRef.current) {
@@ -39,13 +49,51 @@ export function AgentMavlinkBridge() {
 
     async function connectMavlink() {
       try {
-        const { WebSocketTransport } = await import("@/lib/protocol/transport/websocket");
         const { MAVLinkAdapter } = await import("@/lib/protocol/mavlink-adapter");
 
         if (cancelled) return;
 
-        const transport = new WebSocketTransport();
-        await transport.connect(mavlinkUrl!);
+        let transport: Transport | undefined;
+        let connType: "websocket" | "mqtt-mavlink" = "websocket";
+
+        // Try 1: Direct WebSocket (LAN, lowest latency)
+        if (mavlinkUrl) {
+          try {
+            const { WebSocketTransport } = await import("@/lib/protocol/transport/websocket");
+            const wsTransport = new WebSocketTransport();
+            await Promise.race([
+              wsTransport.connect(mavlinkUrl),
+              new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error("timeout")), WS_TIMEOUT_MS),
+              ),
+            ]);
+            transport = wsTransport;
+            console.log("[AgentMavlinkBridge] Direct WebSocket connected");
+          } catch {
+            console.log("[AgentMavlinkBridge] Direct WS failed, trying MQTT relay...");
+          }
+        }
+
+        // Try 2: MQTT relay (cloud, works from anywhere)
+        if (!transport && cloudDeviceId) {
+          try {
+            const { MqttMavlinkTransport } = await import(
+              "@/lib/protocol/transport/mqtt-mavlink"
+            );
+            const mqttTransport = new MqttMavlinkTransport();
+            await mqttTransport.connect(cloudDeviceId);
+            transport = mqttTransport;
+            connType = "mqtt-mavlink";
+            console.log("[AgentMavlinkBridge] MQTT relay connected");
+          } catch (mqttErr) {
+            console.warn("[AgentMavlinkBridge] MQTT relay failed:", mqttErr);
+          }
+        }
+
+        if (!transport) {
+          console.warn("[AgentMavlinkBridge] All MAVLink connection methods failed");
+          return;
+        }
 
         if (cancelled) {
           transport.disconnect();
@@ -72,11 +120,11 @@ export function AgentMavlinkBridge() {
           adapter,
           transport,
           vehicleInfo,
-          { type: "websocket", url: mavlinkUrl! },
+          { type: connType, url: mavlinkUrl || undefined },
         );
 
         connectedDroneIdRef.current = droneId;
-        console.log("[AgentMavlinkBridge] MAVLink connected:", droneId, mavlinkUrl);
+        console.log(`[AgentMavlinkBridge] MAVLink connected via ${connType}:`, droneId);
       } catch (err) {
         console.warn("[AgentMavlinkBridge] MAVLink connection failed:", err);
       } finally {
@@ -89,7 +137,6 @@ export function AgentMavlinkBridge() {
     return () => {
       cancelled = true;
       connectingRef.current = false;
-      // Cleanup: remove drone on unmount or dependency change
       if (connectedDroneIdRef.current) {
         useDroneManager.getState().disconnectDrone(connectedDroneIdRef.current);
         connectedDroneIdRef.current = null;
