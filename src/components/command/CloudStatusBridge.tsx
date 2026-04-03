@@ -15,6 +15,7 @@ import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
 import { useAgentPeripheralsStore } from "@/stores/agent-peripherals-store";
 import { useAgentScriptsStore } from "@/stores/agent-scripts-store";
+import { useVideoStore } from "@/stores/video-store";
 import { cmdDroneStatusApi, cmdDroneCommandsApi } from "@/lib/community-api-drones";
 import { useConvexAvailable } from "@/app/ConvexClientProvider";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
@@ -168,6 +169,19 @@ export function CloudStatusBridge() {
     }
     if (cloudStatus.enrollment && typeof cloudStatus.enrollment === "object") {
       useAgentScriptsStore.setState({ enrollment: cloudStatus.enrollment });
+    }
+
+    // Map video status from cloud heartbeat to video store
+    const videoState = (cloudStatus as Record<string, unknown>).videoState as string | undefined;
+    const videoWhepPort = (cloudStatus as Record<string, unknown>).videoWhepPort as number | undefined;
+    const lastIp = (cloudStatus as Record<string, unknown>).lastIp as string | undefined;
+
+    if (videoState) {
+      let whepUrl: string | null = null;
+      if (videoState === "running" && lastIp && videoWhepPort && videoWhepPort > 0) {
+        whepUrl = `http://${lastIp}:${videoWhepPort}/main/whep`;
+      }
+      useVideoStore.getState().setAgentVideoStatus(videoState, whepUrl);
     }
 
     initialLoadDone.current = true;

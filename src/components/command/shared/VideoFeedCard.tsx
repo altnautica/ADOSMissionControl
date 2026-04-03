@@ -28,9 +28,9 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Direct mode: WebRTC WHEP
+  // WebRTC WHEP: try in any mode (works on LAN even in cloud mode)
   useEffect(() => {
-    if (cloudMode || !agentWhepUrl || agentVideoState !== "running") return;
+    if (!agentWhepUrl || agentVideoState !== "running") return;
 
     let cancelled = false;
     setConnecting(true);
@@ -66,9 +66,9 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
     };
   }, [cloudMode, agentWhepUrl, agentVideoState]);
 
-  // Cloud mode: MSE player
+  // Cloud mode fallback: MSE player (only if WHEP isn't already streaming)
   useEffect(() => {
-    if (!cloudMode || !cloudDeviceId || !videoRef.current) return;
+    if (!cloudMode || !cloudDeviceId || !videoRef.current || isStreaming) return;
 
     let cancelled = false;
 
@@ -90,7 +90,7 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
       playerRef.current = null;
       setCloudStreaming(false);
     };
-  }, [cloudMode, cloudDeviceId, setCloudStreaming, clientConfig?.videoRelayUrl]);
+  }, [cloudMode, cloudDeviceId, setCloudStreaming, clientConfig?.videoRelayUrl, isStreaming]);
 
   const hasVideo = isStreaming || cloudStreaming;
   const showConnecting = connecting || agentVideoState === "starting";
