@@ -31,7 +31,7 @@ export function CommandNav() {
   }
 
   return (
-    <nav className="flex items-center gap-1">
+    <nav className="flex items-stretch gap-1 h-full">
       {tabs.map(({ icon: Icon, labelKey, href }) => {
         const active = isActive(href);
         return (
@@ -39,10 +39,10 @@ export function CommandNav() {
             key={href}
             href={href}
             className={cn(
-              "flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors",
+              "flex items-center gap-1.5 px-3 text-xs font-medium transition-colors -mb-px border-b-2",
               active
-                ? "text-accent-primary border-b-2 border-accent-primary"
-                : "text-text-secondary hover:text-text-primary"
+                ? "text-accent-primary border-accent-primary"
+                : "text-text-secondary hover:text-text-primary border-transparent"
             )}
           >
             <Icon size={14} />
