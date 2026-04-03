@@ -102,10 +102,10 @@ export function OsdElementGrid({
           <button
             key={screen}
             onClick={() => onScreenChange(screen)}
-            className={`flex-1 py-2 text-[10px] font-semibold cursor-pointer ${
+            className={`flex-1 py-2 text-[10px] font-semibold cursor-pointer -mb-px border-b-2 ${
               activeScreen === screen
-                ? "text-accent-primary border-b-2 border-accent-primary"
-                : "text-text-tertiary hover:text-text-secondary"
+                ? "text-accent-primary border-accent-primary"
+                : "text-text-tertiary hover:text-text-secondary border-transparent"
             }`}
           >
             OSD {screen}
