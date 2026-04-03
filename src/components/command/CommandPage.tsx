@@ -11,7 +11,7 @@ import { useTranslations } from "next-intl";
 import {
   Monitor,
   TerminalSquare,
-  Radio,
+  GitBranch,
   Network,
   Package,
   Plug,
@@ -35,14 +35,14 @@ import { DroneContextRail } from "./shared/DroneContextRail";
 
 const AgentOverviewTab = dynamic(() => import("./AgentOverviewTab").then(m => ({ default: m.AgentOverviewTab })), { ssr: false });
 const ScriptsTab = dynamic(() => import("./ScriptsTab").then(m => ({ default: m.ScriptsTab })), { ssr: false });
-const PeripheralsTab = dynamic(() => import("./PeripheralsTab").then(m => ({ default: m.PeripheralsTab })), { ssr: false });
+const ArchitectureTab = dynamic(() => import("./ArchitectureTab").then(m => ({ default: m.ArchitectureTab })), { ssr: false });
 const FleetNetworkTab = dynamic(() => import("./FleetNetworkTab").then(m => ({ default: m.FleetNetworkTab })), { ssr: false });
 const ModuleStoreTab = dynamic(() => import("./ModuleStoreTab").then(m => ({ default: m.ModuleStoreTab })), { ssr: false });
 const CloudStatusBridge = dynamic(() => import("./CloudStatusBridge").then(m => ({ default: m.CloudStatusBridge })), { ssr: false });
 const CloudCommandResultBridge = dynamic(() => import("./CloudCommandResultBridge").then(m => ({ default: m.CloudCommandResultBridge })), { ssr: false });
 const MqttBridge = dynamic(() => import("./MqttBridge").then(m => ({ default: m.MqttBridge })), { ssr: false });
 
-type SubTab = "overview" | "scripts" | "peripherals" | "fleet" | "modules";
+type SubTab = "overview" | "scripts" | "architecture" | "fleet" | "modules";
 
 export function CommandPage() {
   const t = useTranslations("command");
@@ -50,7 +50,7 @@ export function CommandPage() {
   const subTabs = useMemo(() => [
     { id: "overview" as const, label: t("overview"), icon: Monitor },
     { id: "scripts" as const, label: t("scripts"), icon: TerminalSquare },
-    { id: "peripherals" as const, label: t("peripherals"), icon: Radio },
+    { id: "architecture" as const, label: "Architecture", icon: GitBranch },
     { id: "fleet" as const, label: t("fleetNetwork"), icon: Network },
     { id: "modules" as const, label: t("moduleStore"), icon: Package },
   ], [t]);
@@ -264,7 +264,7 @@ export function CommandPage() {
             <div className="flex-1 overflow-y-auto">
               {activeTab === "overview" && <AgentOverviewTab />}
               {activeTab === "scripts" && <ScriptsTab />}
-              {activeTab === "peripherals" && <PeripheralsTab />}
+              {activeTab === "architecture" && <ArchitectureTab />}
               {activeTab === "fleet" && <FleetNetworkTab />}
               {activeTab === "modules" && <ModuleStoreTab />}
             </div>

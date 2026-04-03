@@ -28,6 +28,9 @@ const categoryBadgeColor: Record<string, string> = {
   video: "bg-status-warning/15 text-status-warning",
   gimbal: "bg-purple-500/15 text-purple-400",
   compute: "bg-text-tertiary/15 text-text-secondary",
+  codec: "bg-orange-500/15 text-orange-400",
+  isp: "bg-cyan-500/15 text-cyan-400",
+  decoder: "bg-pink-500/15 text-pink-400",
 };
 
 export function PeripheralsTab() {
@@ -38,10 +41,23 @@ export function PeripheralsTab() {
   const scanPeripherals = useAgentPeripheralsStore((s) => s.scanPeripherals);
   const [scanning, setScanning] = useState(false);
   const [activeCategory, setActiveCategory] = useState("all");
+  const [initialLoad, setInitialLoad] = useState(true);
 
+  // Auto-scan on tab open if no peripherals cached
   useEffect(() => {
-    if (connected) fetchPeripherals();
-  }, [connected, fetchPeripherals]);
+    if (connected && peripherals.length === 0) {
+      setScanning(true);
+      scanPeripherals();
+    }
+  }, [connected]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Clear scanning state when peripherals arrive
+  useEffect(() => {
+    if (peripherals.length > 0) {
+      setScanning(false);
+      setInitialLoad(false);
+    }
+  }, [peripherals.length]);
 
   const categories = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -65,7 +81,10 @@ export function PeripheralsTab() {
   async function handleScan() {
     setScanning(true);
     await scanPeripherals();
-    setScanning(false);
+    // In cloud mode, scanPeripherals returns immediately (fire-and-forget).
+    // Scanning state clears when peripherals arrive via the useEffect above.
+    // Add a timeout fallback to clear scanning if no data arrives within 15s.
+    setTimeout(() => setScanning(false), 15000);
   }
 
   if (!connected) {
@@ -92,12 +111,23 @@ export function PeripheralsTab() {
         </button>
       </div>
 
+      {scanning && peripherals.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-16 gap-3">
+          <Loader2 size={24} className="animate-spin text-accent-primary" />
+          <p className="text-sm text-text-secondary">{t("scanning")}...</p>
+          <p className="text-xs text-text-tertiary">Discovering USB, cameras, and modems</p>
+        </div>
+      )}
+
+      {(!scanning || peripherals.length > 0) && (
       <CategoryFilter
         categories={categories}
         active={activeCategory}
         onChange={setActiveCategory}
       />
+      )}
 
+      {(!scanning || peripherals.length > 0) && (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
         {filtered.map((peripheral, i) => (
           <div
@@ -167,6 +197,7 @@ export function PeripheralsTab() {
           </div>
         ))}
       </div>
+      )}
     </div>
   );
 }

@@ -75,17 +75,6 @@ export function CloudStatusBridge() {
   useEffect(() => {
     if (!cloudStatus) return;
 
-    // DEBUG: log what Convex actually returns
-    console.log("[CloudStatusBridge] cloudStatus from Convex:", {
-      uptimeSeconds: cloudStatus.uptimeSeconds,
-      fcConnected: cloudStatus.fcConnected,
-      cpuPercent: cloudStatus.cpuPercent,
-      services: cloudStatus.services?.length ?? "NO SERVICES",
-      version: cloudStatus.version,
-      updatedAt: cloudStatus.updatedAt,
-      keys: Object.keys(cloudStatus),
-    });
-
     const mapped: AgentStatus = {
       version: cloudStatus.version || "?.?.?",
       uptime_seconds: cloudStatus.uptimeSeconds || 0,

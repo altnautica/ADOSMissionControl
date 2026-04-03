@@ -110,10 +110,10 @@ export function ServiceTable({ services, onRestart, processCpu, processMemoryMb 
                       {svc.pid ?? "-"}
                     </td>
                     <td className="py-1.5 pr-3 text-right text-text-secondary font-mono">
-                      {svc.status === "running" ? svc.cpu_percent.toFixed(1) : "-"}
+                      {svc.status === "running" ? (svc.cpu_percent ?? 0).toFixed(1) : "-"}
                     </td>
                     <td className="py-1.5 pr-3 text-right text-text-secondary font-mono">
-                      {svc.status === "running" ? svc.memory_mb.toFixed(1) : "-"}
+                      {svc.status === "running" ? (svc.memory_mb ?? 0).toFixed(1) : "-"}
                     </td>
                   </>
                 )}
