@@ -184,6 +184,12 @@ export function CloudStatusBridge() {
       useVideoStore.getState().setAgentVideoStatus(videoState, whepUrl);
     }
 
+    // MAVLink WebSocket URL from agent heartbeat
+    const mavlinkWsPort = (cloudStatus as Record<string, unknown>).mavlinkWsPort as number | undefined;
+    if (lastIp && mavlinkWsPort && mavlinkWsPort > 0) {
+      useAgentConnectionStore.getState().setMavlinkUrl(`ws://${lastIp}:${mavlinkWsPort}/`);
+    }
+
     initialLoadDone.current = true;
   }, [cloudStatus, setCloudStatus]);
 

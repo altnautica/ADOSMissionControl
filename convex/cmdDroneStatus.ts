@@ -55,6 +55,7 @@ export const pushStatus = mutation({
     // Video pipeline status for GCS auto-discovery
     videoState: v.optional(v.string()),
     videoWhepPort: v.optional(v.number()),
+    mavlinkWsPort: v.optional(v.number()),
     peripherals: v.optional(v.any()),
     scripts: v.optional(v.any()),
     suites: v.optional(v.any()),

@@ -26,6 +26,9 @@ interface AgentConnectionState {
   cloudDeviceId: string | null;
   mqttConnected: boolean;
   lastCloudUpdate: number | null;
+
+  // MAVLink WebSocket URL (set from agent heartbeat or direct connection)
+  mavlinkUrl: string | null;
 }
 
 interface AgentConnectionActions {
@@ -41,6 +44,9 @@ interface AgentConnectionActions {
   sendCloudCommand: (command: string, args?: Record<string, unknown>) => void;
   setCloudStatus: (status: AgentStatus) => void;
   setMqttConnected: (connected: boolean) => void;
+
+  // MAVLink URL
+  setMavlinkUrl: (url: string | null) => void;
 }
 
 export type AgentConnectionStore = AgentConnectionState & AgentConnectionActions;
@@ -60,6 +66,7 @@ export const useAgentConnectionStore = create<AgentConnectionStore>((set, get) =
   cloudDeviceId: null,
   mqttConnected: false,
   lastCloudUpdate: null,
+  mavlinkUrl: null,
 
   setApiKey(key: string | null) {
     set({ apiKey: key });
@@ -78,6 +85,13 @@ export const useAgentConnectionStore = create<AgentConnectionStore>((set, get) =
     try {
       const status = await client.getStatus();
       set({ connected: true });
+      // Derive MAVLink WebSocket URL from agent REST URL
+      // Agent REST is on :8080, MAVLink WebSocket is on :8765
+      try {
+        const agentUrlObj = new URL(url);
+        const mavWsUrl = `ws://${agentUrlObj.hostname}:8765/`;
+        set({ mavlinkUrl: mavWsUrl });
+      } catch { /* ignore invalid URL */ }
       useAgentSystemStore.getState().setStatus(status);
       // Fetch initial data immediately so tabs aren't empty for 3s
       useAgentSystemStore.getState().fetchServices();
@@ -103,6 +117,7 @@ export const useAgentConnectionStore = create<AgentConnectionStore>((set, get) =
       mqttConnected: false,
       lastCloudUpdate: null,
       pollInterval: null,
+      mavlinkUrl: null,
     });
     // Clear all other stores
     useAgentSystemStore.getState().clear();
@@ -119,6 +134,7 @@ export const useAgentConnectionStore = create<AgentConnectionStore>((set, get) =
       connectionError: null,
       agentUrl: null,
       client: null,
+      mavlinkUrl: null,
     });
   },
 
@@ -143,6 +159,10 @@ export const useAgentConnectionStore = create<AgentConnectionStore>((set, get) =
 
   setMqttConnected(connected: boolean) {
     set({ mqttConnected: connected });
+  },
+
+  setMavlinkUrl(url: string | null) {
+    set({ mavlinkUrl: url });
   },
 
   startPolling() {
