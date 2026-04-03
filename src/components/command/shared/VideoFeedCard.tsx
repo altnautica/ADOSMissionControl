@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CameraOff, Maximize2, Loader2 } from "lucide-react";
+import { CameraOff, Maximize2, Loader2, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useVideoStore } from "@/stores/video-store";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
@@ -32,6 +32,12 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
   isStreamingRef.current = isStreaming;
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
+
+  const handleRetry = () => {
+    setError(null);
+    setRetryKey((k) => k + 1);
+  };
 
   // WebRTC WHEP: try in any mode (works on LAN even in cloud mode)
   useEffect(() => {
@@ -69,7 +75,7 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
         stopStream();
       });
     };
-  }, [cloudMode, agentWhepUrl, agentVideoState]);
+  }, [agentWhepUrl, agentVideoState, retryKey]);
 
   // Cloud mode fallback: MSE player (only if WHEP isn't already streaming)
   useEffect(() => {
@@ -151,25 +157,54 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
           </div>
         )}
 
-        {/* Error state */}
+        {/* Error state with retry */}
         {error && !hasVideo && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-[#0a0a0f]">
             <CameraOff className="w-8 h-8 text-status-error" />
             <span className="text-xs text-status-error font-mono">
               {error}
             </span>
+            <button
+              onClick={handleRetry}
+              className="mt-1 flex items-center gap-1 px-2 py-1 rounded text-[10px] font-mono text-text-secondary bg-white/10 hover:bg-white/20 transition-colors"
+            >
+              <RefreshCw className="w-3 h-3" />
+              RETRY
+            </button>
+          </div>
+        )}
+
+        {/* No signal with retry (when agent video is running but stream failed) */}
+        {showNoSignal && agentVideoState === "running" && (
+          <div className="absolute bottom-2 left-0 right-0 flex justify-center">
+            <button
+              onClick={handleRetry}
+              className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-mono text-text-tertiary bg-white/10 hover:bg-white/20 transition-colors"
+            >
+              <RefreshCw className="w-3 h-3" />
+              RECONNECT
+            </button>
           </div>
         )}
       </div>
 
-      {/* Pop-out button */}
-      <button
-        onClick={onPopOut}
-        className="absolute top-2 right-2 p-1 rounded bg-black/50 hover:bg-black/70 text-text-tertiary hover:text-text-primary transition-colors"
-        title="Pop out video"
-      >
-        <Maximize2 className="w-3.5 h-3.5" />
-      </button>
+      {/* Top-right action buttons */}
+      <div className="absolute top-2 right-2 flex items-center gap-1">
+        <button
+          onClick={handleRetry}
+          className="p-1 rounded bg-black/50 hover:bg-black/70 text-text-tertiary hover:text-text-primary transition-colors"
+          title="Reconnect video"
+        >
+          <RefreshCw className="w-3.5 h-3.5" />
+        </button>
+        <button
+          onClick={onPopOut}
+          className="p-1 rounded bg-black/50 hover:bg-black/70 text-text-tertiary hover:text-text-primary transition-colors"
+          title="Pop out video"
+        >
+          <Maximize2 className="w-3.5 h-3.5" />
+        </button>
+      </div>
     </div>
   );
 }
