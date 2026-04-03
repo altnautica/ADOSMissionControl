@@ -80,21 +80,23 @@ function ConvexOpenAIPKey({ onKey }: { onKey: (key: string | null) => void }) {
   return null;
 }
 
-/** Fetches pre-computed airspace zones from Convex (instant vs client-side generation). */
-function ConvexAirspaceZones({ jurisdiction, onZones }: {
-  jurisdiction: string;
+/** Fetches ALL pre-computed airspace zones from Convex (all jurisdictions at once). */
+function ConvexAirspaceZones({ onZones }: {
   onZones: (zones: AirspaceZone[] | null) => void;
 }) {
-  const data = useQuery(communityApi.airspaceZones.getByJurisdiction,
-    { jurisdiction }
-  );
+  const data = useQuery(communityApi.airspaceZones.getAll);
   useEffect(() => {
     if (data === undefined) return; // still loading from Convex
-    if (data === null) {
+    if (!data || data.length === 0) {
       onZones(null); // no server data, fall back to client-side
       return;
     }
-    onZones(rehydrateZones(data.zones));
+    // Merge all jurisdictions into one array
+    const allZones: AirspaceZone[] = [];
+    for (const doc of data) {
+      allZones.push(...rehydrateZones(doc.zones));
+    }
+    onZones(allZones);
   }, [data, onZones]);
   return null;
 }
@@ -149,11 +151,6 @@ export function AirTrafficViewer() {
     console.warn("[air-traffic] Convex query error, falling back gracefully");
     setConvexFailed(true);
   }, []);
-
-  // Reset Convex zones when jurisdiction changes
-  useEffect(() => {
-    setConvexZones(undefined);
-  }, [jurisdiction]);
 
   // ── Load all airspace zones (Convex-first, client-side fallback) ──
   useEffect(() => {
@@ -288,7 +285,7 @@ export function AirTrafficViewer() {
         <ConvexErrorBoundary onError={handleConvexError}>
           <ConvexCesiumToken onToken={handleCesiumToken} />
           <ConvexOpenAIPKey onKey={handleOpenAIPKey} />
-          <ConvexAirspaceZones jurisdiction={jurisdiction ?? "dgca"} onZones={handleConvexZones} />
+          <ConvexAirspaceZones onZones={handleConvexZones} />
         </ConvexErrorBoundary>
       )}
       <CesiumScene

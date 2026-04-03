@@ -65,6 +65,19 @@ export const getByJurisdiction = query({
   },
 });
 
+export const getAllZones = query({
+  args: {},
+  handler: async (ctx) => {
+    const docs = await ctx.db.query("cmd_airspaceZones").collect();
+    return docs.map((d) => ({
+      jurisdiction: d.jurisdiction,
+      zones: d.zones,
+      zoneCount: d.zoneCount,
+      generatedAt: d.generatedAt,
+    }));
+  },
+});
+
 // ── Internal mutation (called by action) ─────────────────────────────
 
 export const upsertZones = internalMutation({
