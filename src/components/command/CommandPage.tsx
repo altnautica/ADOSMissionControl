@@ -274,7 +274,7 @@ export function CommandPage() {
         )}
       </div>
 
-      {connected && <DroneContextRail />}
+
 
       {cloudMode && <CloudStatusBridge />}
       {cloudMode && <CloudCommandResultBridge />}
