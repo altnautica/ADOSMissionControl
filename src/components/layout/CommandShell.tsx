@@ -293,8 +293,8 @@ export function CommandShell({ children }: { children: React.ReactNode }) {
         <DefenseSlot />
         <CommandPalette />
         <FailsafeAlertBanner />
-        <AgentMavlinkBridge />
         {children}
+        <AgentMavlinkBridge />
       </main>
     </div>
   );
