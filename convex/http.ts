@@ -176,7 +176,7 @@ http.route({
   method: "POST",
   handler: httpAction(async (ctx, request) => {
     const body = await request.json();
-    const { commandId, deviceId, apiKey, status, result } = body;
+    const { commandId, deviceId, apiKey, status, result, data } = body;
 
     if (!commandId || !deviceId || !apiKey) {
       return new Response(
@@ -198,6 +198,7 @@ http.route({
       commandId,
       status: status || "completed",
       result,
+      data,
     });
     return new Response(JSON.stringify(ackResult), {
       status: 200,
