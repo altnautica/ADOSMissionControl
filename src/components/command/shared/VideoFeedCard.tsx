@@ -25,6 +25,8 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const playerRef = useRef<{ stop: () => void } | null>(null);
+  const isStreamingRef = useRef(false);
+  isStreamingRef.current = isStreaming;
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -68,7 +70,7 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
 
   // Cloud mode fallback: MSE player (only if WHEP isn't already streaming)
   useEffect(() => {
-    if (!cloudMode || !cloudDeviceId || !videoRef.current || isStreaming) return;
+    if (!cloudMode || !cloudDeviceId || !videoRef.current || isStreamingRef.current) return;
 
     let cancelled = false;
 
@@ -90,7 +92,7 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
       playerRef.current = null;
       setCloudStreaming(false);
     };
-  }, [cloudMode, cloudDeviceId, setCloudStreaming, clientConfig?.videoRelayUrl, isStreaming]);
+  }, [cloudMode, cloudDeviceId, setCloudStreaming, clientConfig?.videoRelayUrl]);
 
   const hasVideo = isStreaming || cloudStreaming;
   const showConnecting = connecting || agentVideoState === "starting";
