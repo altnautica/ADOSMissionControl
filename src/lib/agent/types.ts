@@ -148,6 +148,25 @@ export interface NetworkPeer {
   link_type: string;
 }
 
+// ── Video ──────────────────────────────────────────────
+
+export interface VideoStatus {
+  state: "not_initialized" | "stopped" | "starting" | "running" | "error";
+  whep_url: string | null;
+  encoder: string | null;
+  cameras: {
+    cameras: Array<{
+      name: string;
+      type: string;
+      device_path: string;
+      hardware_role: string;
+    }>;
+    assignments: Record<string, unknown>;
+  };
+  mediamtx: { running: boolean; webrtc_port: number };
+  dependencies?: Record<string, { found: boolean; path: string | null }>;
+}
+
 // ── Pairing ─────────────────────────────────────────────
 
 export interface PairingInfo {
