@@ -17,6 +17,12 @@ import { CpuSparkline } from "./shared/CpuSparkline";
 import { MemorySparkline } from "./shared/MemorySparkline";
 import { LogViewer } from "./shared/LogViewer";
 import { AgentDisconnectedPage } from "./AgentDisconnectedPage";
+import { VideoFeedCard } from "./shared/VideoFeedCard";
+import { AttitudeCard } from "./shared/AttitudeCard";
+import { GpsCard } from "./shared/GpsCard";
+import { BatteryCard } from "./shared/BatteryCard";
+import { RcInputCard } from "./shared/RcInputCard";
+import { RadioLinkCard } from "./shared/RadioLinkCard";
 
 export function AgentOverviewTab() {
   const t = useTranslations("agent");
@@ -55,24 +61,38 @@ export function AgentOverviewTab() {
   }
 
   return (
-    <div className="p-4 space-y-4 max-w-5xl">
-      <AgentStatusCard status={status} />
+    <div className="p-4 space-y-4">
+      {status && <AgentStatusCard status={status} />}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <ServiceTable
-          services={services}
-          onRestart={restartService}
-          processCpu={processCpu}
-          processMemoryMb={processMemMb}
-        />
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+        {/* Column 1: Services */}
+        <div className="space-y-4">
+          <ServiceTable
+            services={services}
+            onRestart={restartService}
+            processCpu={processCpu}
+            processMemoryMb={processMemMb}
+          />
+        </div>
+
+        {/* Column 2: Resources + Charts + Logs */}
         <div className="space-y-4">
           {resources && <SystemResourceGauges resources={resources} />}
           <CpuSparkline />
           <MemorySparkline />
+          <LogViewer logs={logs} onRefresh={fetchLogs} />
+        </div>
+
+        {/* Column 3: Video + Flight Telemetry */}
+        <div className="space-y-3">
+          <VideoFeedCard />
+          <AttitudeCard />
+          <GpsCard />
+          <BatteryCard />
+          <RcInputCard />
+          <RadioLinkCard />
         </div>
       </div>
-
-      <LogViewer logs={logs} onRefresh={fetchLogs} />
     </div>
   );
 }
