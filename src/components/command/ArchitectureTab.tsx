@@ -159,7 +159,7 @@ function StatBox({ label, value, unit, warn }: { label: string; value: number; u
 
 function DeviceCard({ device }: { device: PeripheralInfo }) {
   const cat = CATEGORY_CONFIG[device.category] || CATEGORY_CONFIG.compute;
-  const endpointCount = (device as Record<string, unknown>).endpoint_count as number | undefined;
+  const endpointCount = (device as unknown as Record<string, unknown>).endpoint_count as number | undefined;
   return (
     <div className="border border-border-default rounded-lg p-3 bg-bg-secondary hover:border-border-hover transition-colors">
       <div className="flex items-start justify-between mb-2">
