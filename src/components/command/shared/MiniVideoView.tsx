@@ -24,12 +24,14 @@ export function MiniVideoView() {
   const clientConfig = useConvexSkipQuery(communityApi.clientConfig.get);
   const videoRef = useRef<HTMLVideoElement>(null);
   const playerRef = useRef<{ stop: () => void } | null>(null);
+  const directStreamingRef = useRef(false);
   const [directStreaming, setDirectStreaming] = useState(false);
+  directStreamingRef.current = directStreaming;
   const [connecting, setConnecting] = useState(false);
 
   // Cloud mode fallback: MSE player (only if WHEP isn't already streaming)
   useEffect(() => {
-    if (!cloudMode || !cloudDeviceId || !videoRef.current || directStreaming) return;
+    if (!cloudMode || !cloudDeviceId || !videoRef.current || directStreamingRef.current) return;
 
     let cancelled = false;
 
@@ -51,7 +53,7 @@ export function MiniVideoView() {
       playerRef.current = null;
       setCloudStreaming(false);
     };
-  }, [cloudMode, cloudDeviceId, setCloudStreaming, clientConfig?.videoRelayUrl, directStreaming]);
+  }, [cloudMode, cloudDeviceId, setCloudStreaming, clientConfig?.videoRelayUrl]);
 
   // WebRTC WHEP: try in any mode (works on LAN even in cloud mode)
   useEffect(() => {
