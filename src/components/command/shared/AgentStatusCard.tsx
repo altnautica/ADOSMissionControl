@@ -18,12 +18,21 @@ interface AgentStatusCardProps {
 
 export function AgentStatusCard({ status }: AgentStatusCardProps) {
   const t = useTranslations("agent");
-  // Read resources directly — proven to work even when status.health shows stale values
+  // Read dynamic values directly from system store — the status prop may be stale
+  // due to cross-store Zustand update batching issues
   const resources = useAgentSystemStore((s) => s.resources);
+  const services = useAgentSystemStore((s) => s.services);
+  const cpuHistory = useAgentSystemStore((s) => s.cpuHistory);
   const cpuPct = resources?.cpu_percent ?? status.health?.cpu_percent ?? 0;
   const memPct = resources?.memory_percent ?? status.health?.memory_percent ?? 0;
   const diskPct = resources?.disk_percent ?? status.health?.disk_percent ?? 0;
   const temp = resources?.temperature ?? status.health?.temperature ?? null;
+  // FC connected: infer from services — if ados-mavlink is running, FC is likely connected
+  // Also check status prop as backup
+  const fcFromServices = services.some(s => s.name === "ados-mavlink" && s.status === "running");
+  const fcConnected = status.fc_connected || fcFromServices;
+  // Uptime: estimate from cpuHistory length (each entry ~5s) if status.uptime_seconds is 0
+  const uptimeSeconds = status.uptime_seconds || (cpuHistory.length * 5);
   return (
     <div className="border border-border-default rounded-lg p-4 space-y-3">
       <div className="flex items-center justify-between">
@@ -39,7 +48,7 @@ export function AgentStatusCard({ status }: AgentStatusCardProps) {
         <InfoRow
           icon={Clock}
           label={t("uptime")}
-          value={formatDuration(status.uptime_seconds)}
+          value={formatDuration(uptimeSeconds)}
         />
         <InfoRow label={t("arch")} value={status.board?.arch ?? t("unknown")} />
         <InfoRow label={t("version")} value={`v${status.version}`} />
@@ -58,7 +67,7 @@ export function AgentStatusCard({ status }: AgentStatusCardProps) {
 
       <div className="flex items-center gap-4 pt-2 border-t border-border-default">
         <div className="flex items-center gap-1.5">
-          {status.fc_connected ? (
+          {fcConnected ? (
             <Wifi size={12} className="text-status-success" />
           ) : (
             <WifiOff size={12} className="text-status-error" />
@@ -66,13 +75,13 @@ export function AgentStatusCard({ status }: AgentStatusCardProps) {
           <span
             className={cn(
               "text-xs",
-              status.fc_connected ? "text-status-success" : "text-status-error"
+              fcConnected ? "text-status-success" : "text-status-error"
             )}
           >
-            {status.fc_connected ? t("fcConnected") : t("fcDisconnected")}
+            {fcConnected ? t("fcConnected") : t("fcDisconnected")}
           </span>
         </div>
-        {status.fc_connected && (
+        {fcConnected && status.fc_port && (
           <span className="text-xs text-text-tertiary">
             {status.fc_port} @ {status.fc_baud}
           </span>

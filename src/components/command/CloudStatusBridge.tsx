@@ -75,6 +75,17 @@ export function CloudStatusBridge() {
   useEffect(() => {
     if (!cloudStatus) return;
 
+    // DEBUG: log what Convex actually returns
+    console.log("[CloudStatusBridge] cloudStatus from Convex:", {
+      uptimeSeconds: cloudStatus.uptimeSeconds,
+      fcConnected: cloudStatus.fcConnected,
+      cpuPercent: cloudStatus.cpuPercent,
+      services: cloudStatus.services?.length ?? "NO SERVICES",
+      version: cloudStatus.version,
+      updatedAt: cloudStatus.updatedAt,
+      keys: Object.keys(cloudStatus),
+    });
+
     const mapped: AgentStatus = {
       version: cloudStatus.version || "?.?.?",
       uptime_seconds: cloudStatus.uptimeSeconds || 0,
@@ -109,13 +120,10 @@ export function CloudStatusBridge() {
 
     setCloudStatus(mapped);
 
-    // Direct status update on system store — eliminates cross-store batching issue
-    // where setCloudStatus (connection store) → setStatus (system store) may not
-    // trigger React re-renders for system store subscribers
-    useAgentSystemStore.setState({ status: mapped });
-
-    // Map absolute resource values from agent heartbeat
-    useAgentSystemStore.setState({
+    // Single atomic update to system store — avoids multiple setState calls
+    // that can cause React batching issues with stale intermediate states
+    const systemUpdate: Record<string, unknown> = {
+      status: mapped,
       resources: {
         cpu_percent: mapped.health.cpu_percent,
         memory_percent: mapped.health.memory_percent,
@@ -126,32 +134,35 @@ export function CloudStatusBridge() {
         disk_total_gb: cloudStatus.diskTotalGb ?? 0,
         temperature: mapped.health.temperature,
       },
-    });
+    };
 
-    // Map CPU/memory history arrays for sparkline charts
     if (cloudStatus.cpuHistory && Array.isArray(cloudStatus.cpuHistory) && cloudStatus.cpuHistory.length > 0) {
-      useAgentSystemStore.setState({ cpuHistory: cloudStatus.cpuHistory });
+      systemUpdate.cpuHistory = cloudStatus.cpuHistory;
     }
     if (cloudStatus.memoryHistory && Array.isArray(cloudStatus.memoryHistory) && cloudStatus.memoryHistory.length > 0) {
-      useAgentSystemStore.setState({ memoryHistory: cloudStatus.memoryHistory });
+      systemUpdate.memoryHistory = cloudStatus.memoryHistory;
     }
 
-    // Map services from cloud status with real uptime and process-level totals
     if (cloudStatus.services && Array.isArray(cloudStatus.services)) {
-      useAgentSystemStore.setState({
-        services: cloudStatus.services.map((s) => ({
-          name: s.name,
-          status: (["running", "stopped", "error", "degraded", "starting", "circuit_open"].includes(s.status) ? s.status : "stopped") as "running" | "stopped" | "error" | "degraded" | "starting" | "circuit_open",
-          pid: s.pid ?? null,
-          cpu_percent: s.cpuPercent || 0,
-          memory_mb: s.memoryMb || 0,
-          uptime_seconds: s.uptimeSeconds ?? 0,
-          category: s.category as "core" | "hardware" | "suite" | "ondemand" | undefined,
-        })),
-        processCpuPercent: cloudStatus.processCpuPercent ?? null,
-        processMemoryMb: cloudStatus.processMemoryMb ?? null,
-      });
+      systemUpdate.services = cloudStatus.services.map((s: Record<string, unknown>) => ({
+        name: s.name,
+        status: (["running", "stopped", "error", "degraded", "starting", "circuit_open"].includes(s.status as string) ? s.status : "stopped") as "running" | "stopped" | "error" | "degraded" | "starting" | "circuit_open",
+        pid: s.pid ?? null,
+        cpu_percent: (s.cpuPercent as number) || 0,
+        memory_mb: (s.memoryMb as number) || 0,
+        uptime_seconds: (s.uptimeSeconds as number) ?? 0,
+        category: s.category as "core" | "hardware" | "suite" | "ondemand" | undefined,
+      }));
+      systemUpdate.processCpuPercent = cloudStatus.processCpuPercent ?? null;
+      systemUpdate.processMemoryMb = cloudStatus.processMemoryMb ?? null;
     }
+
+    if (cloudStatus.logs && Array.isArray(cloudStatus.logs)) {
+      systemUpdate.logs = cloudStatus.logs;
+    }
+
+    // Single atomic setState for ALL system store fields
+    useAgentSystemStore.setState(systemUpdate);
 
     // Map extended status fields to their respective stores
     if (cloudStatus.peripherals && Array.isArray(cloudStatus.peripherals)) {
@@ -168,9 +179,6 @@ export function CloudStatusBridge() {
     }
     if (cloudStatus.enrollment && typeof cloudStatus.enrollment === "object") {
       useAgentScriptsStore.setState({ enrollment: cloudStatus.enrollment });
-    }
-    if (cloudStatus.logs && Array.isArray(cloudStatus.logs)) {
-      useAgentSystemStore.setState({ logs: cloudStatus.logs });
     }
 
     initialLoadDone.current = true;
