@@ -11,6 +11,7 @@ import type { AgentStatus } from "@/lib/agent/types";
 import { useAgentSystemStore } from "./agent-system-store";
 import { useAgentPeripheralsStore } from "./agent-peripherals-store";
 import { useAgentScriptsStore } from "./agent-scripts-store";
+import { useVideoStore } from "./video-store";
 
 interface AgentConnectionState {
   agentUrl: string | null;
@@ -150,6 +151,23 @@ export const useAgentConnectionStore = create<AgentConnectionStore>((set, get) =
       useAgentSystemStore.getState().fetchStatus();
       useAgentSystemStore.getState().fetchServices();
       useAgentSystemStore.getState().fetchResources();
+
+      // Poll agent video status
+      const client = get().client;
+      if (client) {
+        client.getVideoStatus().then((video) => {
+          if (video) {
+            const deps = video.dependencies
+              ? Object.fromEntries(
+                  Object.entries(video.dependencies).map(([k, v]) => [k, { found: v.found }])
+                )
+              : undefined;
+            useVideoStore.getState().setAgentVideoStatus(video.state, video.whep_url, deps);
+          }
+        }).catch(() => {
+          // Silently ignore — agent may not support /api/video
+        });
+      }
     }, 3000);
     set({ pollInterval: interval });
   },
