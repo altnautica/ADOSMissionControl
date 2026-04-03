@@ -27,9 +27,9 @@ export function MiniVideoView() {
   const [directStreaming, setDirectStreaming] = useState(false);
   const [connecting, setConnecting] = useState(false);
 
-  // Cloud mode: MSE player
+  // Cloud mode fallback: MSE player (only if WHEP isn't already streaming)
   useEffect(() => {
-    if (!cloudMode || !cloudDeviceId || !videoRef.current) return;
+    if (!cloudMode || !cloudDeviceId || !videoRef.current || directStreaming) return;
 
     let cancelled = false;
 
@@ -51,11 +51,11 @@ export function MiniVideoView() {
       playerRef.current = null;
       setCloudStreaming(false);
     };
-  }, [cloudMode, cloudDeviceId, setCloudStreaming, clientConfig?.videoRelayUrl]);
+  }, [cloudMode, cloudDeviceId, setCloudStreaming, clientConfig?.videoRelayUrl, directStreaming]);
 
-  // Direct mode: WebRTC WHEP
+  // WebRTC WHEP: try in any mode (works on LAN even in cloud mode)
   useEffect(() => {
-    if (cloudMode || !agentWhepUrl || agentVideoState !== "running") return;
+    if (!agentWhepUrl || agentVideoState !== "running") return;
 
     let cancelled = false;
     setConnecting(true);
