@@ -1,10 +1,11 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { RotateCw } from "lucide-react";
+import { RotateCw, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDuration } from "@/lib/utils";
 import type { ServiceInfo } from "@/lib/agent/types";
+import { useVideoStore } from "@/stores/video-store";
 
 interface ServiceTableProps {
   services: ServiceInfo[];
@@ -43,6 +44,7 @@ const categoryColors: Record<string, string> = {
 
 export function ServiceTable({ services, onRestart, processCpu, processMemoryMb }: ServiceTableProps) {
   const t = useTranslations("agent");
+  const agentDependencies = useVideoStore((s) => s.agentDependencies);
   if (!services || !Array.isArray(services) || services.length === 0) {
     return (
       <div className="border border-border-default rounded-lg p-4">
@@ -101,6 +103,22 @@ export function ServiceTable({ services, onRestart, processCpu, processMemoryMb 
                       </span>
                     )}
                     {svc.name}
+                    {svc.name === "ados-video" &&
+                      (svc.status === "error" || svc.status === "stopped") &&
+                      agentDependencies && (() => {
+                        const missing = Object.entries(agentDependencies)
+                          .filter(([, v]) => !v.found)
+                          .map(([k]) => k);
+                        if (missing.length === 0) return null;
+                        return (
+                          <span
+                            className="inline-flex items-center gap-0.5 text-status-warning"
+                            title={`Missing: ${missing.join(", ")}`}
+                          >
+                            <AlertTriangle size={10} />
+                          </span>
+                        );
+                      })()}
                   </div>
                 </td>
                 <td className="py-1.5 pr-3">{statusBadge(svc.status)}</td>

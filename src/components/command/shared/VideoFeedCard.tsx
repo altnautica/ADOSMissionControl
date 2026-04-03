@@ -1,7 +1,12 @@
 "use client";
 
-import { CameraOff, Maximize2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { CameraOff, Maximize2, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useVideoStore } from "@/stores/video-store";
+import { useAgentConnectionStore } from "@/stores/agent-connection-store";
+import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
+import { communityApi } from "@/lib/community-api";
 
 interface VideoFeedCardProps {
   className?: string;
@@ -9,6 +14,88 @@ interface VideoFeedCardProps {
 }
 
 export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
+  const agentWhepUrl = useVideoStore((s) => s.agentWhepUrl);
+  const agentVideoState = useVideoStore((s) => s.agentVideoState);
+  const isStreaming = useVideoStore((s) => s.isStreaming);
+  const cloudStreaming = useVideoStore((s) => s.cloudStreaming);
+  const setCloudStreaming = useVideoStore((s) => s.setCloudStreaming);
+  const cloudMode = useAgentConnectionStore((s) => s.cloudMode);
+  const cloudDeviceId = useAgentConnectionStore((s) => s.cloudDeviceId);
+  const clientConfig = useConvexSkipQuery(communityApi.clientConfig.get);
+
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const playerRef = useRef<{ stop: () => void } | null>(null);
+  const [connecting, setConnecting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Direct mode: WebRTC WHEP
+  useEffect(() => {
+    if (cloudMode || !agentWhepUrl || agentVideoState !== "running") return;
+
+    let cancelled = false;
+    setConnecting(true);
+    setError(null);
+
+    async function connect() {
+      try {
+        const { startStream, setVideoElement } = await import("@/lib/video/webrtc-client");
+        if (cancelled || !videoRef.current) return;
+
+        setVideoElement(videoRef.current);
+        const stream = await startStream(agentWhepUrl!);
+        if (cancelled) return;
+
+        videoRef.current!.srcObject = stream;
+        setConnecting(false);
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Connection failed");
+          setConnecting(false);
+        }
+      }
+    }
+
+    connect();
+
+    return () => {
+      cancelled = true;
+      setConnecting(false);
+      import("@/lib/video/webrtc-client").then(({ stopStream }) => {
+        stopStream();
+      });
+    };
+  }, [cloudMode, agentWhepUrl, agentVideoState]);
+
+  // Cloud mode: MSE player
+  useEffect(() => {
+    if (!cloudMode || !cloudDeviceId || !videoRef.current) return;
+
+    let cancelled = false;
+
+    async function startPlayer() {
+      const { MsePlayer } = await import("@/lib/video/mse-player");
+      if (cancelled || !videoRef.current) return;
+
+      const player = new MsePlayer();
+      playerRef.current = player;
+      player.start(cloudDeviceId!, videoRef.current!, clientConfig?.videoRelayUrl ?? undefined);
+      setCloudStreaming(true);
+    }
+
+    startPlayer();
+
+    return () => {
+      cancelled = true;
+      playerRef.current?.stop();
+      playerRef.current = null;
+      setCloudStreaming(false);
+    };
+  }, [cloudMode, cloudDeviceId, setCloudStreaming, clientConfig?.videoRelayUrl]);
+
+  const hasVideo = isStreaming || cloudStreaming;
+  const showConnecting = connecting || agentVideoState === "starting";
+  const showNoSignal = !hasVideo && !showConnecting && !error;
+
   return (
     <div
       className={cn(
@@ -18,12 +105,47 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
     >
       {/* 16:9 aspect ratio container */}
       <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-[#0a0a0f]">
-          <CameraOff className="w-8 h-8 text-text-tertiary" />
-          <span className="text-xs text-text-tertiary font-mono tracking-widest">
-            NO SIGNAL
-          </span>
-        </div>
+        {/* Video element (always rendered, hidden when no signal) */}
+        <video
+          ref={videoRef}
+          autoPlay
+          muted
+          playsInline
+          className={cn(
+            "absolute inset-0 w-full h-full object-cover bg-black",
+            !hasVideo && "hidden"
+          )}
+        />
+
+        {/* No signal placeholder */}
+        {showNoSignal && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-[#0a0a0f]">
+            <CameraOff className="w-8 h-8 text-text-tertiary" />
+            <span className="text-xs text-text-tertiary font-mono tracking-widest">
+              NO SIGNAL
+            </span>
+          </div>
+        )}
+
+        {/* Connecting state */}
+        {showConnecting && !hasVideo && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-[#0a0a0f]">
+            <Loader2 className="w-6 h-6 text-accent-primary animate-spin" />
+            <span className="text-xs text-text-tertiary font-mono tracking-widest">
+              CONNECTING...
+            </span>
+          </div>
+        )}
+
+        {/* Error state */}
+        {error && !hasVideo && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-[#0a0a0f]">
+            <CameraOff className="w-8 h-8 text-status-error" />
+            <span className="text-xs text-status-error font-mono">
+              {error}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Pop-out button */}
