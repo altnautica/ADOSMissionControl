@@ -41,7 +41,7 @@ const ModuleStoreTab = dynamic(() => import("./ModuleStoreTab").then(m => ({ def
 const CloudStatusBridge = dynamic(() => import("./CloudStatusBridge").then(m => ({ default: m.CloudStatusBridge })), { ssr: false });
 const CloudCommandResultBridge = dynamic(() => import("./CloudCommandResultBridge").then(m => ({ default: m.CloudCommandResultBridge })), { ssr: false });
 const MqttBridge = dynamic(() => import("./MqttBridge").then(m => ({ default: m.MqttBridge })), { ssr: false });
-const AgentMavlinkBridge = dynamic(() => import("./AgentMavlinkBridge").then(m => ({ default: m.AgentMavlinkBridge })), { ssr: false });
+// AgentMavlinkBridge moved to CommandShell for cross-tab persistence
 
 type SubTab = "overview" | "scripts" | "architecture" | "fleet" | "modules";
 
@@ -280,7 +280,7 @@ export function CommandPage() {
       {cloudMode && <CloudStatusBridge />}
       {cloudMode && <CloudCommandResultBridge />}
       {cloudMode && <MqttBridge mqttBrokerUrl={clientConfig?.mqttBrokerUrl} />}
-      {connected && <AgentMavlinkBridge />}
+      {/* AgentMavlinkBridge is in CommandShell for cross-tab persistence */}
 
       <PairingDialog
         open={pairingOpen}

@@ -137,10 +137,10 @@ export function AgentMavlinkBridge() {
     return () => {
       cancelled = true;
       connectingRef.current = false;
-      if (connectedDroneIdRef.current) {
-        useDroneManager.getState().disconnectDrone(connectedDroneIdRef.current);
-        connectedDroneIdRef.current = null;
-      }
+      // Don't disconnect the drone on unmount — the MAVLink connection should
+      // persist across tab navigations. DroneManager handles its own lifecycle.
+      // Only disconnect if the agent connection itself is dropped (handled by
+      // transport "close" event → DroneManager.removeDrone automatically).
     };
   }, [mavlinkUrl, connected, fcConnected, cloudDeviceId, status?.board?.name]);
 
