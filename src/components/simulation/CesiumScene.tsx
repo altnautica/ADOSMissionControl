@@ -27,10 +27,10 @@ import {
   SceneMode,
   ImageryLayer,
   UrlTemplateImageryProvider,
+  Credit,
   Color,
   Cesium3DTileset,
   Cesium3DTileStyle,
-  IonImageryProvider,
   type Viewer as CesiumViewer,
 } from "cesium";
 import "cesium/Build/Cesium/Widgets/widgets.css";
@@ -207,22 +207,16 @@ export default function CesiumScene({
       rafId = requestAnimationFrame(animate);
     }
 
-    if (imageryMode === "satellite" && effectiveToken) {
-      // Ensure Ion token is set before requesting satellite imagery
-      Ion.defaultAccessToken = effectiveToken;
-      // Satellite provider is async — await before cross-fading
-      (async () => {
-        try {
-          const provider = await IonImageryProvider.fromAssetId(2);
-          if (cancelled) return;
-          const layer = new ImageryLayer(provider);
-          if (cancelled) return;
-          crossFade(layer);
-        } catch {
-          // Ion token missing or network error — fall back to dark
-          if (!cancelled) crossFade(createDarkCartoLayer());
-        }
-      })();
+    if (imageryMode === "satellite") {
+      // Esri World Imagery — free, no token needed, same provider as Leaflet maps
+      const esriLayer = new ImageryLayer(
+        new UrlTemplateImageryProvider({
+          url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+          credit: new Credit("Esri, Maxar, Earthstar Geographics"),
+          maximumLevel: 18,
+        })
+      );
+      crossFade(esriLayer);
     } else {
       crossFade(createDarkCartoLayer());
     }

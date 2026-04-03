@@ -92,9 +92,9 @@ export async function loadAirspaceZones(
   }
 }
 
-/** Build a cache key from bbox coordinates. */
+/** Build a cache key from bbox coordinates. v2 = polygon-enabled cache. */
 function bboxCacheKey(bbox: BoundingBox): string {
-  return `zones-${bbox.south}-${bbox.north}-${bbox.west}-${bbox.east}`;
+  return `v2-zones-${bbox.south}-${bbox.north}-${bbox.west}-${bbox.east}`;
 }
 
 export async function loadAllAirspaceZones(

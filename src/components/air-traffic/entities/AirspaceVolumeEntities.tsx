@@ -61,10 +61,34 @@ export function AirspaceVolumeEntities({ viewer }: AirspaceVolumeEntitiesProps) 
 
     const visible = layerVisibility.airspace;
 
-    for (const zone of zones) {
-      if (zone.floorAltitude > operationalAltitude) continue;
-      if (zone.metadata?.generated === "icao-standard" && !showIcaoZones) continue;
-      if (zone.jurisdiction && !activeJurisdictions.has(zone.jurisdiction)) continue;
+    // Performance: sort to prioritize polygons over circles and restricted over advisory,
+    // then cap total entities to avoid CesiumJS performance degradation
+    const MAX_ENTITIES = 2500;
+    let entityCount = 0;
+
+    // Pre-filter and sort: polygons first (they have real boundaries), then by priority
+    const PRIORITY_TYPES = new Set(["restricted", "prohibited", "dgcaRed", "danger", "ctr", "tma"]);
+    const filtered = zones
+      .filter((z) => {
+        if (z.floorAltitude > operationalAltitude) return false;
+        if (z.metadata?.generated === "icao-standard" && !showIcaoZones) return false;
+        if (z.jurisdiction && !activeJurisdictions.has(z.jurisdiction)) return false;
+        if (!getVolumeColors(z.type)) return false;
+        return true;
+      })
+      .sort((a, b) => {
+        // Polygons (real boundaries) before circles
+        const aIsPolygon = !a.circle ? 1 : 0;
+        const bIsPolygon = !b.circle ? 1 : 0;
+        if (aIsPolygon !== bIsPolygon) return bIsPolygon - aIsPolygon;
+        // Priority zone types first
+        const aPriority = PRIORITY_TYPES.has(a.type) ? 1 : 0;
+        const bPriority = PRIORITY_TYPES.has(b.type) ? 1 : 0;
+        return bPriority - aPriority;
+      });
+
+    for (const zone of filtered) {
+      if (entityCount >= MAX_ENTITIES) break;
       const colors = getVolumeColors(zone.type);
       if (!colors) continue;
 
@@ -93,10 +117,12 @@ export function AirspaceVolumeEntities({ viewer }: AirspaceVolumeEntitiesProps) 
         });
 
         entityMapRef.current.set(entityId, entity);
+        entityCount++;
       } else {
         const polygons = extractPolygons(zone.geometry);
 
         for (let i = 0; i < polygons.length; i++) {
+          if (entityCount >= MAX_ENTITIES) break;
           const ring = polygons[i];
           if (ring.length < 3) continue;
 
@@ -122,6 +148,7 @@ export function AirspaceVolumeEntities({ viewer }: AirspaceVolumeEntitiesProps) 
           });
 
           entityMapRef.current.set(entityId, entity);
+          entityCount++;
         }
       }
     }
