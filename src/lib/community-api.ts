@@ -53,5 +53,6 @@ export const communityApi = {
   },
   airspaceZones: {
     getByJurisdiction: api.cmdAirspaceZones.getByJurisdiction,
+    getAll: api.cmdAirspaceZones.getAllZones,
   },
 };
