@@ -18,6 +18,8 @@ let mediaRecorder: MediaRecorder | null = null;
 let recordedChunks: Blob[] = [];
 let statsInterval: ReturnType<typeof setInterval> | null = null;
 let videoElement: HTMLVideoElement | null = null;
+let lastFrameTime: number = 0;
+const FRAME_TIMEOUT_MS = 8000;
 
 /**
  * Start a WebRTC stream from a WHEP endpoint.
@@ -231,6 +233,8 @@ export function captureScreenshot(): string | null {
 function startStatsPolling(): void {
   if (statsInterval) return;
 
+  lastFrameTime = Date.now();
+
   statsInterval = setInterval(async () => {
     if (!pc) return;
 
@@ -246,6 +250,21 @@ function startStatsPolling(): void {
         const latencyMs =
           emitted > 0 ? Math.round((delay / emitted) * 1000) : 0;
         store.updateStats(fps, latencyMs);
+
+        // Track frame arrival for timeout detection
+        if (fps > 0) {
+          lastFrameTime = Date.now();
+        } else if (
+          Date.now() - lastFrameTime > FRAME_TIMEOUT_MS &&
+          pc?.connectionState === "connected"
+        ) {
+          // Frames stopped arriving but WebRTC connection looks alive.
+          // Signal disconnect so VideoFeedCard auto-reconnect kicks in.
+          console.warn("[webrtc-client] Frame timeout — no frames for 8s, signaling disconnect");
+          store.setStreaming(false);
+          store.updateStats(0, 0);
+          stopStatsPolling();
+        }
       }
     });
   }, 1000);
