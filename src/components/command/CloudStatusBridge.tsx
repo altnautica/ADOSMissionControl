@@ -109,6 +109,11 @@ export function CloudStatusBridge() {
 
     setCloudStatus(mapped);
 
+    // Direct status update on system store — eliminates cross-store batching issue
+    // where setCloudStatus (connection store) → setStatus (system store) may not
+    // trigger React re-renders for system store subscribers
+    useAgentSystemStore.setState({ status: mapped });
+
     // Map absolute resource values from agent heartbeat
     useAgentSystemStore.setState({
       resources: {

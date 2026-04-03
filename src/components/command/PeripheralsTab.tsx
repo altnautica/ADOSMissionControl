@@ -99,9 +99,9 @@ export function PeripheralsTab() {
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-        {filtered.map((peripheral) => (
+        {filtered.map((peripheral, i) => (
           <div
-            key={peripheral.name}
+            key={`${peripheral.bus}-${peripheral.address}-${i}`}
             className="border border-border-default rounded-lg p-3 bg-bg-secondary"
           >
             <div className="flex items-center justify-between mb-2">
