@@ -24,7 +24,6 @@ export function AirTrafficMapControls({ hasIonToken }: AirTrafficMapControlsProp
   const setBuildingsEnabled = useSettingsStore((s) => s.setCesiumBuildingsEnabled);
   const terrainExaggeration = useSettingsStore((s) => s.terrainExaggeration);
   const setTerrainExaggeration = useSettingsStore((s) => s.setTerrainExaggeration);
-  const satDisabled = !hasIonToken;
   const buildingsDisabled = !hasIonToken;
 
   return (
@@ -45,13 +44,11 @@ export function AirTrafficMapControls({ hasIonToken }: AirTrafficMapControlsProp
           Dark
         </button>
         <button
-          onClick={() => !satDisabled && setImageryMode("satellite")}
-          title={satDisabled ? t("requiresIonToken") : t("satelliteImagery")}
+          onClick={() => setImageryMode("satellite")}
+          title={t("satelliteImagery")}
           className={cn(
-            "h-7 rounded text-[10px] font-mono font-bold flex-1 transition-colors",
-            satDisabled && "opacity-50 cursor-not-allowed",
-            !satDisabled && "cursor-pointer",
-            imageryMode === "satellite" && !satDisabled
+            "h-7 rounded text-[10px] font-mono font-bold flex-1 transition-colors cursor-pointer",
+            imageryMode === "satellite"
               ? "bg-accent-primary text-bg-primary"
               : "text-text-secondary hover:text-text-primary border border-border-default"
           )}

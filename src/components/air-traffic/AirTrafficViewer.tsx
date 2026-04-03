@@ -52,6 +52,7 @@ import { AirTrafficMapControls } from "./controls/AirTrafficMapControls";
 import { AirTrafficToolbar } from "./controls/AirTrafficToolbar";
 import { AirportDetailPanel } from "./panels/AirportDetailPanel";
 import { useViewportAwareness } from "@/hooks/use-viewport-awareness";
+import { useViewportPolygonLoader } from "@/hooks/use-viewport-polygon-loader";
 
 const CesiumScene = dynamic(
   () => import("@/components/simulation/CesiumScene"),
@@ -147,6 +148,10 @@ export function AirTrafficViewer() {
   // Viewport awareness: camera altitude, visible airports, auto-panel
   const viewportAwareness = useViewportAwareness(viewer);
 
+  // Progressive polygon loading: fetches real polygon boundaries from OpenAIP/FAA
+  // as user pans and zooms, overlaying them on top of Convex circle zones
+  useViewportPolygonLoader(viewer, openAipKey);
+
   const handleConvexError = useCallback(() => {
     console.warn("[air-traffic] Convex query error, falling back gracefully");
     setConvexFailed(true);
@@ -192,6 +197,31 @@ export function AirTrafficViewer() {
         setLoading(false);
       });
   }, [convexZones, convexAvailable, convexFailed, setZones, setLoading, setError, openAipKey, jurisdiction]);
+
+  // ── Phase 2: Enhance Convex circles with real polygon boundaries ──
+  // After Convex circles load (instant), fetch OpenAIP/FAA polygon data in background.
+  // This runs once on initial load; subsequent viewport-based loading is handled by
+  // useViewportPolygonLoader above.
+  useEffect(() => {
+    // Only enhance after Convex circles are loaded
+    if (!Array.isArray(convexZones)) return;
+    if (!openAipKey) return; // No API key = no polygon enhancement
+
+    const bbox = JURISDICTION_BBOX[jurisdiction ?? ""] ?? DEFAULT_BBOX;
+    const mergeZones = useAirspaceStore.getState().mergeZones;
+
+    loadAllAirspaceZones(bbox, openAipKey)
+      .then((polygonZones) => {
+        if (polygonZones.length > 0) {
+          console.log(`[air-traffic] Polygon enhancement: ${polygonZones.length} zones (replacing circles)`);
+          mergeZones(polygonZones);
+        }
+      })
+      .catch((err) => {
+        console.warn("[air-traffic] Polygon enhancement failed:", err);
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [convexZones !== undefined && convexZones !== null, openAipKey, jurisdiction]);
 
   // ── Load NOTAMs (scoped to jurisdiction bbox) ──
   useEffect(() => {

@@ -48,6 +48,7 @@ interface AirspaceStoreState {
   setShowIcaoZones: (show: boolean) => void;
   setJurisdiction: (j: Jurisdiction | null) => void;
   setZones: (zones: AirspaceZone[]) => void;
+  mergeZones: (incoming: AirspaceZone[]) => void;
   setNotams: (notams: Notam[]) => void;
   setTfrs: (tfrs: TemporaryRestriction[]) => void;
   setSelectedPoint: (point: { lat: number; lon: number } | null) => void;
@@ -88,6 +89,12 @@ export const useAirspaceStore = create<AirspaceStoreState>()((set) => ({
   setShowIcaoZones: (showIcaoZones) => set({ showIcaoZones }),
   setJurisdiction: (jurisdiction) => set({ jurisdiction }),
   setZones: (zones) => set({ zones }),
+  mergeZones: (incoming) =>
+    set((s) => {
+      const idMap = new Map(s.zones.map((z) => [z.id, z]));
+      for (const z of incoming) idMap.set(z.id, z);
+      return { zones: Array.from(idMap.values()) };
+    }),
   setNotams: (notams) => set({ notams }),
   setTfrs: (tfrs) => set({ tfrs }),
   setSelectedPoint: (selectedPoint) => set({ selectedPoint }),
