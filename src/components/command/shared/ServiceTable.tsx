@@ -10,6 +10,7 @@ import { useVideoStore } from "@/stores/video-store";
 interface ServiceTableProps {
   services: ServiceInfo[];
   onRestart: (name: string) => void;
+  onRestartAll?: () => void;
   processCpu?: number | null;
   processMemoryMb?: number | null;
 }
@@ -42,7 +43,7 @@ const categoryColors: Record<string, string> = {
   ondemand: "text-text-tertiary",
 };
 
-export function ServiceTable({ services, onRestart, processCpu, processMemoryMb }: ServiceTableProps) {
+export function ServiceTable({ services, onRestart, onRestartAll, processCpu, processMemoryMb }: ServiceTableProps) {
   const t = useTranslations("agent");
   const agentDependencies = useVideoStore((s) => s.agentDependencies);
   if (!services || !Array.isArray(services) || services.length === 0) {
@@ -64,6 +65,15 @@ export function ServiceTable({ services, onRestart, processCpu, processMemoryMb 
         <h3 className="text-sm font-medium text-text-primary">{t("services")}</h3>
         <div className="flex items-center gap-3 text-[10px] text-text-tertiary font-mono">
           <span>{runningCount}/{services.length} running</span>
+          {onRestartAll && (
+            <button
+              onClick={onRestartAll}
+              className="p-1 rounded hover:bg-white/10 text-text-tertiary hover:text-text-primary transition-colors"
+              title="Restart all services"
+            >
+              <RotateCw className="w-3.5 h-3.5" />
+            </button>
+          )}
           {processCpu != null && (
             <span>CPU {processCpu.toFixed(1)}%</span>
           )}
