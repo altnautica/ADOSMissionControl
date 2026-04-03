@@ -97,7 +97,23 @@ export function ZoneBoundaryEntities({ viewer }: ZoneBoundaryEntitiesProps) {
 
     const visible = layerVisibility.airspace;
 
-    for (const zone of boundaryZones) {
+    // Performance: cap total entities (each zone = boundary + label = 2 entities)
+    const MAX_ZONE_ENTITIES = 2500;
+    let entityCount = 0;
+
+    // Sort: polygons (real boundaries) before circles, restricted types first
+    const PRIORITY_TYPES = new Set(["restricted", "prohibited", "dgcaRed", "danger", "ctr", "tma"]);
+    const sortedZones = [...boundaryZones].sort((a, b) => {
+      const aIsPolygon = !a.circle ? 1 : 0;
+      const bIsPolygon = !b.circle ? 1 : 0;
+      if (aIsPolygon !== bIsPolygon) return bIsPolygon - aIsPolygon;
+      const aPriority = PRIORITY_TYPES.has(a.type) ? 1 : 0;
+      const bPriority = PRIORITY_TYPES.has(b.type) ? 1 : 0;
+      return bPriority - aPriority;
+    });
+
+    for (const zone of sortedZones) {
+      if (entityCount >= MAX_ZONE_ENTITIES) break;
       const colors = getBoundaryColors(zone.type);
       if (!colors) continue;
 
@@ -122,6 +138,7 @@ export function ZoneBoundaryEntities({ viewer }: ZoneBoundaryEntitiesProps) {
           description: buildDescription(zone),
         });
         entityMapRef.current.set(entityId, entity);
+        entityCount++;
       } else {
         const coords = zone.geometry.type === "Polygon"
           ? zone.geometry.coordinates[0]
@@ -149,6 +166,7 @@ export function ZoneBoundaryEntities({ viewer }: ZoneBoundaryEntitiesProps) {
           description: buildDescription(zone),
         });
         entityMapRef.current.set(entityId, entity);
+        entityCount++;
       }
 
       // Add center label
@@ -191,6 +209,7 @@ export function ZoneBoundaryEntities({ viewer }: ZoneBoundaryEntitiesProps) {
           },
         });
         entityMapRef.current.set(labelId, labelEntity);
+        entityCount++;
       }
     }
 

@@ -25,7 +25,6 @@ export function MapControlsPanel({ hasIonToken }: MapControlsPanelProps) {
   const showLabels = useSettingsStore((s) => s.showPathLabels);
   const setShowLabels = useSettingsStore((s) => s.setShowPathLabels);
 
-  const satDisabled = !hasIonToken;
   const buildingsDisabled = !hasIonToken;
 
   return (
@@ -46,13 +45,11 @@ export function MapControlsPanel({ hasIonToken }: MapControlsPanelProps) {
           Dark
         </button>
         <button
-          onClick={() => !satDisabled && setImageryMode("satellite")}
-          title={satDisabled ? "Requires Cesium Ion token" : "Satellite imagery"}
+          onClick={() => setImageryMode("satellite")}
+          title="Satellite imagery"
           className={cn(
-            "h-7 rounded text-[10px] font-mono font-bold flex-1 transition-colors",
-            satDisabled && "opacity-50 cursor-not-allowed",
-            !satDisabled && "cursor-pointer",
-            imageryMode === "satellite" && !satDisabled
+            "h-7 rounded text-[10px] font-mono font-bold flex-1 transition-colors cursor-pointer",
+            imageryMode === "satellite"
               ? "bg-accent-primary text-bg-primary"
               : "text-text-secondary hover:text-text-primary border border-border-default"
           )}
