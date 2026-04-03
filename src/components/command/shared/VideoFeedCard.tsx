@@ -19,6 +19,9 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
   const isStreaming = useVideoStore((s) => s.isStreaming);
   const cloudStreaming = useVideoStore((s) => s.cloudStreaming);
   const setCloudStreaming = useVideoStore((s) => s.setCloudStreaming);
+  const fps = useVideoStore((s) => s.fps);
+  const latencyMs = useVideoStore((s) => s.latencyMs);
+  const resolution = useVideoStore((s) => s.resolution);
   const cloudMode = useAgentConnectionStore((s) => s.cloudMode);
   const cloudDeviceId = useAgentConnectionStore((s) => s.cloudDeviceId);
   const clientConfig = useConvexSkipQuery(communityApi.clientConfig.get);
@@ -118,6 +121,15 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
             !hasVideo && "hidden"
           )}
         />
+
+        {/* Video stats overlay */}
+        {hasVideo && (
+          <div className="absolute bottom-0 left-0 right-0 flex items-center gap-3 px-2 py-1 bg-black/60 text-[10px] font-mono text-text-secondary">
+            <span>{fps > 0 ? `${fps} FPS` : "-- FPS"}</span>
+            <span>{latencyMs > 0 ? `${latencyMs}ms` : "--ms"}</span>
+            <span>{resolution || "--\u00D7--"}</span>
+          </div>
+        )}
 
         {/* No signal placeholder */}
         {showNoSignal && (

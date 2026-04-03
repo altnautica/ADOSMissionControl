@@ -18,11 +18,9 @@ import { MemorySparkline } from "./shared/MemorySparkline";
 import { LogViewer } from "./shared/LogViewer";
 import { AgentDisconnectedPage } from "./AgentDisconnectedPage";
 import { VideoFeedCard } from "./shared/VideoFeedCard";
-import { AttitudeCard } from "./shared/AttitudeCard";
-import { GpsCard } from "./shared/GpsCard";
 import { BatteryCard } from "./shared/BatteryCard";
 import { RcInputCard } from "./shared/RcInputCard";
-import { RadioLinkCard } from "./shared/RadioLinkCard";
+import { FlightDataCard } from "./shared/FlightDataCard";
 
 export function AgentOverviewTab() {
   const t = useTranslations("agent");
@@ -72,10 +70,8 @@ export function AgentOverviewTab() {
         {/* Column 3: Video + Flight Telemetry (starts at same level as status) */}
         <div className="xl:row-span-3 space-y-3">
           <VideoFeedCard />
-          <AttitudeCard />
-          <GpsCard />
+          <FlightDataCard />
           <RcInputCard />
-          <RadioLinkCard />
         </div>
 
         {/* Below status: 2 columns — logs+services left, resources right */}
