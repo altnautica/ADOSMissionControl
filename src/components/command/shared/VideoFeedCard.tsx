@@ -39,6 +39,20 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
     setRetryKey((k) => k + 1);
   };
 
+  // Auto-reconnect: when stream drops but agent video is still running
+  const prevStreamingRef = useRef(false);
+  useEffect(() => {
+    if (prevStreamingRef.current && !isStreaming && agentVideoState === "running" && !connecting) {
+      // Stream dropped — auto-retry after 3 seconds
+      const timer = setTimeout(() => {
+        console.log("[VideoFeedCard] Auto-reconnecting after stream drop");
+        setRetryKey((k) => k + 1);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+    prevStreamingRef.current = isStreaming;
+  }, [isStreaming, agentVideoState, connecting]);
+
   // WebRTC WHEP: try in any mode (works on LAN even in cloud mode)
   useEffect(() => {
     if (!agentWhepUrl || agentVideoState !== "running") return;
