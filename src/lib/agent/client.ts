@@ -19,6 +19,7 @@ import type {
   NetworkPeer,
   PairingInfo,
   ClaimResponse,
+  VideoStatus,
 } from "./types";
 
 export class AgentClient {
@@ -207,6 +208,16 @@ export class AgentClient {
 
   async getPeers(): Promise<NetworkPeer[]> {
     return this.request<NetworkPeer[]>("/api/fleet/peers");
+  }
+
+  // ── Video ───────────────────────────────────────────────
+
+  async getVideoStatus(): Promise<VideoStatus | null> {
+    try {
+      return await this.request<VideoStatus>("/api/video");
+    } catch {
+      return null; // Agent may not support this endpoint
+    }
   }
 
   // ── Pairing ──────────────────────────────────────────────

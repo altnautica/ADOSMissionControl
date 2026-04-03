@@ -74,7 +74,6 @@ export function AgentOverviewTab() {
           <VideoFeedCard />
           <AttitudeCard />
           <GpsCard />
-          <BatteryCard />
           <RcInputCard />
           <RadioLinkCard />
         </div>
@@ -94,6 +93,7 @@ export function AgentOverviewTab() {
           {resources && <SystemResourceGauges resources={resources} />}
           <CpuSparkline />
           <MemorySparkline />
+          <BatteryCard />
         </div>
       </div>
     </div>
