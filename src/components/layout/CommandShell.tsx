@@ -38,8 +38,8 @@ import { ChangelogNotificationGate } from "@/components/changelog/ChangelogNotif
 import { ChangelogBadge } from "@/components/changelog/ChangelogBadge";
 import Link from "next/link";
 
-// MAVLink bridge persists across all tabs — must not unmount on navigation
-const AgentMavlinkBridge = dynamic(() => import("@/components/command/AgentMavlinkBridge").then(m => ({ default: m.AgentMavlinkBridge })), { ssr: false });
+// MAVLink bridge persists across all tabs — direct import (renders null, no hydration issue)
+import { AgentMavlinkBridge } from "@/components/command/AgentMavlinkBridge";
 
 export function CommandShell({ children }: { children: React.ReactNode }) {
   useAutoReconnect();
