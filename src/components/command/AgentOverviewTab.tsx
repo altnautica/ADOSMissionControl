@@ -80,6 +80,7 @@ export function AgentOverviewTab() {
           <ServiceTable
             services={services}
             onRestart={restartService}
+            onRestartAll={() => restartService("ados-supervisor")}
             processCpu={processCpu}
             processMemoryMb={processMemMb}
           />
