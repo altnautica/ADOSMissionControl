@@ -10,6 +10,7 @@ import {
 import { cn } from "@/lib/utils";
 import { formatDuration } from "@/lib/utils";
 import type { AgentStatus } from "@/lib/agent/types";
+import { useAgentSystemStore } from "@/stores/agent-system-store";
 
 interface AgentStatusCardProps {
   status: AgentStatus;
@@ -17,6 +18,12 @@ interface AgentStatusCardProps {
 
 export function AgentStatusCard({ status }: AgentStatusCardProps) {
   const t = useTranslations("agent");
+  // Read resources directly — proven to work even when status.health shows stale values
+  const resources = useAgentSystemStore((s) => s.resources);
+  const cpuPct = resources?.cpu_percent ?? status.health?.cpu_percent ?? 0;
+  const memPct = resources?.memory_percent ?? status.health?.memory_percent ?? 0;
+  const diskPct = resources?.disk_percent ?? status.health?.disk_percent ?? 0;
+  const temp = resources?.temperature ?? status.health?.temperature ?? null;
   return (
     <div className="border border-border-default rounded-lg p-4 space-y-3">
       <div className="flex items-center justify-between">
@@ -40,16 +47,14 @@ export function AgentStatusCard({ status }: AgentStatusCardProps) {
       </div>
 
       {/* Health stats */}
-      {status.health && (
-        <div className="flex items-center gap-4 text-xs text-text-secondary border-t border-border-default pt-2">
-          <span>CPU {status.health.cpu_percent.toFixed(0)}%</span>
-          <span>MEM {status.health.memory_percent.toFixed(0)}%</span>
-          <span>DISK {status.health.disk_percent.toFixed(0)}%</span>
-          {status.health.temperature != null && (
-            <span>{status.health.temperature.toFixed(0)}°C</span>
-          )}
-        </div>
-      )}
+      <div className="flex items-center gap-4 text-xs text-text-secondary border-t border-border-default pt-2">
+        <span>CPU {cpuPct.toFixed(0)}%</span>
+        <span>MEM {memPct.toFixed(0)}%</span>
+        <span>DISK {diskPct.toFixed(0)}%</span>
+        {temp != null && (
+          <span>{temp.toFixed(0)}°C</span>
+        )}
+      </div>
 
       <div className="flex items-center gap-4 pt-2 border-t border-border-default">
         <div className="flex items-center gap-1.5">
