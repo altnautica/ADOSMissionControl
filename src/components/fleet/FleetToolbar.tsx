@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -22,37 +23,10 @@ interface FleetToolbarProps {
   onAddDrone: () => void;
 }
 
-const statusOptions = [
-  { value: "all", label: "All Status" },
-  { value: "online", label: "Online" },
-  { value: "in_mission", label: "In Mission" },
-  { value: "idle", label: "Idle" },
-  { value: "returning", label: "Returning" },
-  { value: "maintenance", label: "Maintenance" },
-  { value: "offline", label: "Offline" },
-];
-
-const suiteOptions = [
-  { value: "all", label: "All Suites" },
-  { value: "sentry", label: "Sentry" },
-  { value: "survey", label: "Survey" },
-  { value: "agriculture", label: "Agriculture" },
-  { value: "cargo", label: "Cargo" },
-  { value: "sar", label: "SAR" },
-  { value: "inspection", label: "Inspection" },
-];
-
-const sortOptions = [
-  { value: "name", label: "Sort: Name" },
-  { value: "status", label: "Sort: Status" },
-  { value: "battery", label: "Sort: Battery" },
-  { value: "health", label: "Sort: Health" },
-];
-
-const viewModes: { mode: FleetViewMode; icon: typeof LayoutGrid; label: string }[] = [
-  { mode: "grid", icon: LayoutGrid, label: "Grid" },
-  { mode: "list", icon: List, label: "List" },
-  { mode: "map", icon: Map, label: "Map" },
+const viewModes: { mode: FleetViewMode; icon: typeof LayoutGrid }[] = [
+  { mode: "grid", icon: LayoutGrid },
+  { mode: "list", icon: List },
+  { mode: "map", icon: Map },
 ];
 
 export function FleetToolbar({
@@ -68,11 +42,46 @@ export function FleetToolbar({
   onViewModeChange,
   onAddDrone,
 }: FleetToolbarProps) {
+  const t = useTranslations("fleet");
+
+  const statusOptions = [
+    { value: "all", label: t("toolbar.status.all") },
+    { value: "online", label: t("toolbar.status.online") },
+    { value: "in_mission", label: t("toolbar.status.inMission") },
+    { value: "idle", label: t("toolbar.status.idle") },
+    { value: "returning", label: t("toolbar.status.returning") },
+    { value: "maintenance", label: t("toolbar.status.maintenance") },
+    { value: "offline", label: t("toolbar.status.offline") },
+  ];
+
+  const suiteOptions = [
+    { value: "all", label: t("toolbar.suite.all") },
+    { value: "sentry", label: t("toolbar.suite.sentry") },
+    { value: "survey", label: t("toolbar.suite.survey") },
+    { value: "agriculture", label: t("toolbar.suite.agriculture") },
+    { value: "cargo", label: t("toolbar.suite.cargo") },
+    { value: "sar", label: t("toolbar.suite.sar") },
+    { value: "inspection", label: t("toolbar.suite.inspection") },
+  ];
+
+  const sortOptions = [
+    { value: "name", label: t("toolbar.sort.name") },
+    { value: "status", label: t("toolbar.sort.status") },
+    { value: "battery", label: t("toolbar.sort.battery") },
+    { value: "health", label: t("toolbar.sort.health") },
+  ];
+
+  const viewModeLabels: Record<FleetViewMode, string> = {
+    grid: t("toolbar.view.grid"),
+    list: t("toolbar.view.list"),
+    map: t("toolbar.view.map"),
+  };
+
   return (
     <div className="flex flex-wrap items-end gap-2 p-3 border-b border-border-default bg-bg-secondary">
       <div className="w-48">
         <Input
-          placeholder="Search drones..."
+          placeholder={t("searchDrones")}
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
         />
@@ -100,10 +109,10 @@ export function FleetToolbar({
       </div>
 
       <div className="flex items-center border border-border-default">
-        {viewModes.map(({ mode, icon: Icon, label }) => (
+        {viewModes.map(({ mode, icon: Icon }) => (
           <button
             key={mode}
-            title={label}
+            title={viewModeLabels[mode]}
             onClick={() => onViewModeChange(mode)}
             className={cn(
               "p-1.5 transition-colors cursor-pointer",
@@ -124,7 +133,7 @@ export function FleetToolbar({
           icon={<Plus size={14} />}
           onClick={onAddDrone}
         >
-          Add Drone
+          {t("addDrone")}
         </Button>
       </div>
     </div>

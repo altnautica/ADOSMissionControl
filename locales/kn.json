@@ -427,7 +427,52 @@
     "logs": "लॉग्स",
     "flightLogs": "फ़्लाइट लॉग्स",
     "expandLogs": "लॉग पैनल विस्तारित करें",
-    "collapseLogs": "लॉग पैनल संक्षिप्त करें"
+    "collapseLogs": "लॉग पैनल संक्षिप्त करें",
+    "quickActions": "ತ್ವರಿತ ಕ್ರಿಯೆಗಳು",
+    "fleetStatus": {
+      "title": "ಫ್ಲೀಟ್ ಸ್ಥಿತಿ",
+      "totalDrones": "ಒಟ್ಟು ಡ್ರೋನ್‌ಗಳು",
+      "statuses": {
+        "online": "ಆನ್‌ಲೈನ್",
+        "inMission": "ಮಿಷನ್ में",
+        "idle": "ನಿಷ್ಕ್ರಿಯ",
+        "returning": "ಹಿಂದೆी",
+        "maintenance": "मेंटेनेंस",
+        "offline": "ಆಫ್‌ಲೈನ್"
+      }
+    },
+    "activeMissions": {
+      "title": "ಸಕ್ರಿಯ ಮಿಷನ್‌ಗಳು",
+      "inFlight": "ಹಾರಾಟದಲ್ಲಿ",
+      "suites": {
+        "sentry": "Sentry",
+        "survey": "Survey",
+        "agriculture": "Agriculture",
+        "cargo": "Cargo",
+        "sar": "SAR",
+        "inspection": "Inspection"
+      },
+      "noActiveMissions": "ಸಕ್ರಿಯ ಮಿಷನ್‌ಗಳಿಲ್ಲ"
+    },
+    "alerts": {
+      "title": "ಎಚ್ಚರಿಕೆಗಳು",
+      "unacknowledged": "ಅಂಗೀಕರಿಸದ",
+      "levels": {
+        "critical": "ಗಂಭೀರ",
+        "warning": "ಎಚ್ಚರಿಕೆ"
+      }
+    },
+    "avgBattery": {
+      "title": "ಫ್ಲೀಟ್ ಬ್ಯಾಟರಿ",
+      "average": "ಸರಾಸರಿ",
+      "lowCount": "{count} ಕಡಿಮೆ",
+      "reportingCount": "{count} ವರದಿ ಮಾಡುತ್ತಿದೆ",
+      "lowestLabel": "ಕನಿಷ್ಠ: {name}"
+    },
+    "alertFeed": {
+      "title": "ಇತ್ತೀಚಿನ ಎಚ್ಚರಿಕೆಗಳು",
+      "noAlerts": "ಎಚ್ಚರಿಕೆಗಳಿಲ್ಲ"
+    }
   },
   "emptyState": {
     "title": "कोई ಡ್ರೋನ್ ಸಂಪರ್ಕಿಸಿ नहीं",
@@ -456,7 +501,13 @@
     "goToFirmware": "फ़र्मवेयर पर जाएँ",
     "webSerialNotSupported": "इस ಬ್ರೌಸರ್ में Web Serial सपोर्ट नहीं है। Chrome या Edge इस्तेमाल करें।",
     "noUsbInfo": "कोई USB जानकारी नहीं",
-    "portsAvailable": "{count} अनुमत पोर्ट उपलब्ध"
+    "portsAvailable": "{count} अनुमत पोर्ट उपलब्ध",
+    "noActiveConnectionsHelp": "ಸಕ್ರಿಯ ಸಂಪರ್ಕಗಳಿಲ್ಲ. ಮೇಲ್ಭಾಗದಲ್ಲಿ ಫ್ಲೈಟ್ ಕಂಟ್ರೋಲರ್ ಅನ್ನು ಸಂಪರ್ಕಿಸಿ.",
+    "activeBadge": "ಸಕ್ರಿಯ",
+    "buildPreset": {
+      "details": "ವಿವರಗಳು",
+      "noGps": "GPS ಇಲ್ಲ"
+    }
   },
   "droneDetail": {
     "overview": "ओवरव्यू",
@@ -1838,7 +1889,38 @@
     "searchDrones": "ಡ್ರೋನ್ खोजें...",
     "noMatch": "कोई ಡ್ರೋನ್ सर्च से मैच नहीं",
     "noDrones": "कोई ಡ್ರೋನ್ नहीं",
-    "droneCount": "{count, plural, one {# ಡ್ರೋನ್} other {# ಡ್ರೋನ್‌ಗಳು}}"
+    "droneCount": "{count, plural, one {# ಡ್ರೋನ್} other {# ಡ್ರೋನ್‌ಗಳು}}",
+    "toolbar": {
+      "status": {
+        "all": "ಎಲ್ಲಾ ಸ್ಥಿತಿಗಳು",
+        "online": "ಆನ್‌ಲೈನ್",
+        "inMission": "ಮಿಷನ್ में",
+        "idle": "ನಿಷ್ಕ್ರಿಯ",
+        "returning": "ಹಿಂದೆी",
+        "maintenance": "मेंटेनेंस",
+        "offline": "ಆಫ್‌ಲೈನ್"
+      },
+      "suite": {
+        "all": "ಎಲ್ಲಾ ಸೂಟ್‌ಗಳು",
+        "sentry": "Sentry",
+        "survey": "Survey",
+        "agriculture": "Agriculture",
+        "cargo": "Cargo",
+        "sar": "SAR",
+        "inspection": "Inspection"
+      },
+      "sort": {
+        "name": "ವಿಂಗಡಿಸಿ: ಹೆಸರು",
+        "status": "ವಿಂಗಡಿಸಿ: ಸ್ಥಿತಿ",
+        "battery": "ವಿಂಗಡಿಸಿ: ಬ್ಯಾಟರಿ",
+        "health": "ವಿಂಗಡಿಸಿ: ಆರೋಗ್ಯ"
+      },
+      "view": {
+        "grid": "ಗ್ರಿಡ್",
+        "list": "ಪಟ್ಟಿ",
+        "map": "ನಕ್ಷೆ"
+      }
+    }
   },
   "telemetryStrip": {
     "fc": "FC",

@@ -537,7 +537,52 @@
     "logs": "Logs",
     "flightLogs": "Flight Logs",
     "expandLogs": "Expand logs panel",
-    "collapseLogs": "Collapse logs panel"
+    "collapseLogs": "Collapse logs panel",
+    "quickActions": "Quick Actions",
+    "fleetStatus": {
+      "title": "Fleet Status",
+      "totalDrones": "Total Drones",
+      "statuses": {
+        "online": "Online",
+        "inMission": "In Mission",
+        "idle": "Idle",
+        "returning": "Returning",
+        "maintenance": "Maintenance",
+        "offline": "Offline"
+      }
+    },
+    "activeMissions": {
+      "title": "Active Missions",
+      "inFlight": "In Flight",
+      "suites": {
+        "sentry": "Sentry",
+        "survey": "Survey",
+        "agriculture": "Agriculture",
+        "cargo": "Cargo",
+        "sar": "SAR",
+        "inspection": "Inspection"
+      },
+      "noActiveMissions": "No active missions"
+    },
+    "alerts": {
+      "title": "Alerts",
+      "unacknowledged": "Unacknowledged",
+      "levels": {
+        "critical": "Critical",
+        "warning": "Warning"
+      }
+    },
+    "avgBattery": {
+      "title": "Fleet Battery",
+      "average": "Average",
+      "lowCount": "{count} low",
+      "reportingCount": "{count} reporting",
+      "lowestLabel": "Lowest: {name}"
+    },
+    "alertFeed": {
+      "title": "Recent Alerts",
+      "noAlerts": "No alerts"
+    }
   },
   "emptyState": {
     "title": "No Drones Connected",
@@ -566,7 +611,13 @@
     "goToFirmware": "Go to Firmware",
     "webSerialNotSupported": "Web Serial not supported in this browser. Use Chrome or Edge.",
     "noUsbInfo": "No USB info available",
-    "portsAvailable": "{count} permitted port(s) available"
+    "portsAvailable": "{count} permitted port(s) available",
+    "noActiveConnectionsHelp": "No active connections. Connect a flight controller above.",
+    "activeBadge": "ACTIVE",
+    "buildPreset": {
+      "details": "details",
+      "noGps": "No GPS"
+    }
   },
   "droneDetail": {
     "overview": "Overview",
@@ -1897,7 +1948,38 @@
     "searchDrones": "Search drones...",
     "noMatch": "No drones match search",
     "noDrones": "No drones",
-    "droneCount": "{count} drone{count, plural, one {} other {s}}"
+    "droneCount": "{count} drone{count, plural, one {} other {s}}",
+    "toolbar": {
+      "status": {
+        "all": "All Status",
+        "online": "Online",
+        "inMission": "In Mission",
+        "idle": "Idle",
+        "returning": "Returning",
+        "maintenance": "Maintenance",
+        "offline": "Offline"
+      },
+      "suite": {
+        "all": "All Suites",
+        "sentry": "Sentry",
+        "survey": "Survey",
+        "agriculture": "Agriculture",
+        "cargo": "Cargo",
+        "sar": "SAR",
+        "inspection": "Inspection"
+      },
+      "sort": {
+        "name": "Sort: Name",
+        "status": "Sort: Status",
+        "battery": "Sort: Battery",
+        "health": "Sort: Health"
+      },
+      "view": {
+        "grid": "Grid",
+        "list": "List",
+        "map": "Map"
+      }
+    }
   },
   "commandPalette": {
     "placeholder": "Type a command...",

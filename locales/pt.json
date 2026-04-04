@@ -442,7 +442,52 @@
     "logs": "Logs",
     "flightLogs": "Logs de Voo",
     "expandLogs": "Expandir painel de logs",
-    "collapseLogs": "Recolher painel de logs"
+    "collapseLogs": "Recolher painel de logs",
+    "quickActions": "Ações rápidas",
+    "fleetStatus": {
+      "title": "Status da frota",
+      "totalDrones": "Drones totais",
+      "statuses": {
+        "online": "Online",
+        "inMission": "Em Missão",
+        "idle": "Ocioso",
+        "returning": "Retornando",
+        "maintenance": "Manutenção",
+        "offline": "Offline"
+      }
+    },
+    "activeMissions": {
+      "title": "Missões ativas",
+      "inFlight": "Em voo",
+      "suites": {
+        "sentry": "Sentinela",
+        "survey": "Levantamento",
+        "agriculture": "Agricultura",
+        "cargo": "Carga",
+        "sar": "SAR",
+        "inspection": "Inspeção"
+      },
+      "noActiveMissions": "Nenhuma missão ativa"
+    },
+    "alerts": {
+      "title": "Alertas",
+      "unacknowledged": "Não confirmados",
+      "levels": {
+        "critical": "Crítico",
+        "warning": "Aviso"
+      }
+    },
+    "avgBattery": {
+      "title": "Bateria da frota",
+      "average": "Média",
+      "lowCount": "{count} baixos",
+      "reportingCount": "{count} reportando",
+      "lowestLabel": "Menor: {name}"
+    },
+    "alertFeed": {
+      "title": "Alertas recentes",
+      "noAlerts": "Sem alertas"
+    }
   },
   "emptyState": {
     "title": "Nenhum Drone Conectado",
@@ -471,7 +516,13 @@
     "goToFirmware": "Ir para Firmware",
     "webSerialNotSupported": "Web Serial não suportado neste navegador. Use Chrome ou Edge.",
     "noUsbInfo": "Informações USB não disponíveis",
-    "portsAvailable": "{count} porta(s) permitida(s) disponível(is)"
+    "portsAvailable": "{count} porta(s) permitida(s) disponível(is)",
+    "noActiveConnectionsHelp": "Nenhuma conexão ativa. Conecte um controlador de voo acima.",
+    "activeBadge": "ATIVO",
+    "buildPreset": {
+      "details": "detalhes",
+      "noGps": "Sem GPS"
+    }
   },
   "droneDetail": {
     "overview": "Visão Geral",
@@ -1802,7 +1853,38 @@
     "searchDrones": "Buscar drones...",
     "noMatch": "Nenhum drone corresponde à busca",
     "noDrones": "Sem drones",
-    "droneCount": "{count} drone{count, plural, one {} other {s}}"
+    "droneCount": "{count} drone{count, plural, one {} other {s}}",
+    "toolbar": {
+      "status": {
+        "all": "Todos os status",
+        "online": "Online",
+        "inMission": "Em Missão",
+        "idle": "Ocioso",
+        "returning": "Retornando",
+        "maintenance": "Manutenção",
+        "offline": "Offline"
+      },
+      "suite": {
+        "all": "Todas as suítes",
+        "sentry": "Sentinela",
+        "survey": "Levantamento",
+        "agriculture": "Agricultura",
+        "cargo": "Carga",
+        "sar": "SAR",
+        "inspection": "Inspeção"
+      },
+      "sort": {
+        "name": "Ordenar: Nome",
+        "status": "Ordenar: Status",
+        "battery": "Ordenar: Bateria",
+        "health": "Ordenar: Saúde"
+      },
+      "view": {
+        "grid": "Grade",
+        "list": "Lista",
+        "map": "Mapa"
+      }
+    }
   },
   "commandPalette": {
     "placeholder": "Digite um comando...",

@@ -442,7 +442,52 @@
     "logs": "Log",
     "flightLogs": "Log Penerbangan",
     "expandLogs": "Perluas panel log",
-    "collapseLogs": "Tutup panel log"
+    "collapseLogs": "Tutup panel log",
+    "quickActions": "Aksi Cepat",
+    "fleetStatus": {
+      "title": "Status Armada",
+      "totalDrones": "Total Drone",
+      "statuses": {
+        "online": "Online",
+        "inMission": "Dalam Misi",
+        "idle": "Idle",
+        "returning": "Kembali",
+        "maintenance": "Pemeliharaan",
+        "offline": "Offline"
+      }
+    },
+    "activeMissions": {
+      "title": "Misi Aktif",
+      "inFlight": "Sedang Terbang",
+      "suites": {
+        "sentry": "Sentry",
+        "survey": "Survei",
+        "agriculture": "Pertanian",
+        "cargo": "Kargo",
+        "sar": "SAR",
+        "inspection": "Inspeksi"
+      },
+      "noActiveMissions": "Tidak ada misi aktif"
+    },
+    "alerts": {
+      "title": "Peringatan",
+      "unacknowledged": "Belum diakui",
+      "levels": {
+        "critical": "Kritis",
+        "warning": "Peringatan"
+      }
+    },
+    "avgBattery": {
+      "title": "Baterai Armada",
+      "average": "Rata-rata",
+      "lowCount": "{count} rendah",
+      "reportingCount": "{count} melapor",
+      "lowestLabel": "Terendah: {name}"
+    },
+    "alertFeed": {
+      "title": "Peringatan Terbaru",
+      "noAlerts": "Tidak ada peringatan"
+    }
   },
   "emptyState": {
     "title": "Tidak Ada Drone Terhubung",
@@ -471,7 +516,13 @@
     "goToFirmware": "Buka Firmware",
     "webSerialNotSupported": "Web Serial tidak didukung di browser ini. Gunakan Chrome atau Edge.",
     "noUsbInfo": "Tidak ada info USB tersedia",
-    "portsAvailable": "{count} port yang diizinkan tersedia"
+    "portsAvailable": "{count} port yang diizinkan tersedia",
+    "noActiveConnectionsHelp": "Tidak ada koneksi aktif. Hubungkan flight controller di atas.",
+    "activeBadge": "AKTIF",
+    "buildPreset": {
+      "details": "detail",
+      "noGps": "Tanpa GPS"
+    }
   },
   "droneDetail": {
     "overview": "Ringkasan",
@@ -1802,7 +1853,38 @@
     "searchDrones": "Cari drone...",
     "noMatch": "Tidak ada drone cocok dengan pencarian",
     "noDrones": "Tidak ada drone",
-    "droneCount": "{count, plural, one {# drone} other {# drone}}"
+    "droneCount": "{count, plural, one {# drone} other {# drone}}",
+    "toolbar": {
+      "status": {
+        "all": "Semua Status",
+        "online": "Online",
+        "inMission": "Dalam Misi",
+        "idle": "Idle",
+        "returning": "Kembali",
+        "maintenance": "Pemeliharaan",
+        "offline": "Offline"
+      },
+      "suite": {
+        "all": "Semua Suite",
+        "sentry": "Sentry",
+        "survey": "Survei",
+        "agriculture": "Pertanian",
+        "cargo": "Kargo",
+        "sar": "SAR",
+        "inspection": "Inspeksi"
+      },
+      "sort": {
+        "name": "Urut: Nama",
+        "status": "Urut: Status",
+        "battery": "Urut: Baterai",
+        "health": "Urut: Kesehatan"
+      },
+      "view": {
+        "grid": "Grid",
+        "list": "Daftar",
+        "map": "Peta"
+      }
+    }
   },
   "commandPalette": {
     "placeholder": "Ketik perintah...",

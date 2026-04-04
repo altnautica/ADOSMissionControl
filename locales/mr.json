@@ -442,7 +442,52 @@
     "logs": "लॉग्ज",
     "flightLogs": "उड्डाण लॉग्ज",
     "expandLogs": "लॉग्ज पॅनेल विस्तारा",
-    "collapseLogs": "लॉग्ज पॅनेल आकुंचित करा"
+    "collapseLogs": "लॉग्ज पॅनेल आकुंचित करा",
+    "quickActions": "झटपट कृती",
+    "fleetStatus": {
+      "title": "फ्लीट स्थिती",
+      "totalDrones": "एकूण ड्रोन",
+      "statuses": {
+        "online": "ऑनलाइन",
+        "inMission": "मोहिमेत",
+        "idle": "निष्क्रिय",
+        "returning": "परत येत आहे",
+        "maintenance": "देखभाल",
+        "offline": "ऑफलाइन"
+      }
+    },
+    "activeMissions": {
+      "title": "सक्रिय मिशन्स",
+      "inFlight": "उड्डाणात",
+      "suites": {
+        "sentry": "सेन्ट्री",
+        "survey": "सर्वेक्षण",
+        "agriculture": "शेती",
+        "cargo": "कार्गो",
+        "sar": "SAR",
+        "inspection": "तपासणी"
+      },
+      "noActiveMissions": "सक्रिय मिशन नाहीत"
+    },
+    "alerts": {
+      "title": "अलर्ट",
+      "unacknowledged": "नोंद न केलेले",
+      "levels": {
+        "critical": "गंभीर",
+        "warning": "इशारा"
+      }
+    },
+    "avgBattery": {
+      "title": "फ्लीट बॅटरी",
+      "average": "सरासरी",
+      "lowCount": "{count} कमी",
+      "reportingCount": "{count} रिपोर्टिंग",
+      "lowestLabel": "सर्वात कमी: {name}"
+    },
+    "alertFeed": {
+      "title": "अलीकडील अलर्ट",
+      "noAlerts": "अलर्ट नाहीत"
+    }
   },
   "emptyState": {
     "title": "कोणतेही ड्रोन जोडलेले नाहीत",
@@ -471,7 +516,13 @@
     "goToFirmware": "Firmware वर जा",
     "webSerialNotSupported": "या ब्राउझरमध्ये Web Serial समर्थित नाही. Chrome किंवा Edge वापरा.",
     "noUsbInfo": "USB माहिती उपलब्ध नाही",
-    "portsAvailable": "{count} परवानगी दिलेले पोर्ट उपलब्ध"
+    "portsAvailable": "{count} परवानगी दिलेले पोर्ट उपलब्ध",
+    "noActiveConnectionsHelp": "कोणतीही सक्रिय जोडणी नाही. वर फ्लाइट कंट्रोलर जोडा.",
+    "activeBadge": "सक्रिय",
+    "buildPreset": {
+      "details": "तपशील",
+      "noGps": "GPS नाही"
+    }
   },
   "droneDetail": {
     "overview": "आढावा",
@@ -1802,7 +1853,38 @@
     "searchDrones": "ड्रोन्स शोधा...",
     "noMatch": "शोधाशी कोणतेही ड्रोन्स जुळत नाहीत",
     "noDrones": "ड्रोन्स नाहीत",
-    "droneCount": "{count} ड्रोन{count, plural, one {} other {}}"
+    "droneCount": "{count} ड्रोन{count, plural, one {} other {}}",
+    "toolbar": {
+      "status": {
+        "all": "सर्व स्थिती",
+        "online": "ऑनलाइन",
+        "inMission": "मोहिमेत",
+        "idle": "निष्क्रिय",
+        "returning": "परत येत आहे",
+        "maintenance": "देखभाल",
+        "offline": "ऑफलाइन"
+      },
+      "suite": {
+        "all": "सर्व सूट्स",
+        "sentry": "सेन्ट्री",
+        "survey": "सर्वेक्षण",
+        "agriculture": "शेती",
+        "cargo": "कार्गो",
+        "sar": "SAR",
+        "inspection": "तपासणी"
+      },
+      "sort": {
+        "name": "क्रमवारी: नाव",
+        "status": "क्रमवारी: स्थिती",
+        "battery": "क्रमवारी: बॅटरी",
+        "health": "क्रमवारी: आरोग्य"
+      },
+      "view": {
+        "grid": "जाळी",
+        "list": "यादी",
+        "map": "नकाशा"
+      }
+    }
   },
   "commandPalette": {
     "placeholder": "कमांड टाइप करा...",

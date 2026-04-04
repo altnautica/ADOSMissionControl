@@ -1225,7 +1225,7 @@ export function DisclaimerGate() {
       className="fixed inset-0 z-[200] bg-bg-primary overflow-hidden flex items-center justify-center p-8"
       role="dialog"
       aria-modal="true"
-      aria-label="Legal disclaimer"
+      aria-label={t("disclaimer.title")}
     >
       <div className="w-full max-w-2xl">
         <h2 className="text-xl font-display font-semibold text-text-primary mb-1 text-center">

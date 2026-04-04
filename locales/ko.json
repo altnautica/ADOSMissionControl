@@ -442,7 +442,52 @@
     "logs": "로그",
     "flightLogs": "비행 로그",
     "expandLogs": "로그 패널 확장",
-    "collapseLogs": "로그 패널 축소"
+    "collapseLogs": "로그 패널 축소",
+    "quickActions": "빠른 작업",
+    "fleetStatus": {
+      "title": "함대 상태",
+      "totalDrones": "총 드론 수",
+      "statuses": {
+        "online": "온라인",
+        "inMission": "미션 수행 중",
+        "idle": "대기 중",
+        "returning": "복귀 중",
+        "maintenance": "정비 중",
+        "offline": "오프라인"
+      }
+    },
+    "activeMissions": {
+      "title": "활성 임무",
+      "inFlight": "비행 중",
+      "suites": {
+        "sentry": "경계",
+        "survey": "측량",
+        "agriculture": "농업",
+        "cargo": "화물",
+        "sar": "수색 구조",
+        "inspection": "검사"
+      },
+      "noActiveMissions": "활성 임무 없음"
+    },
+    "alerts": {
+      "title": "경고",
+      "unacknowledged": "미확인",
+      "levels": {
+        "critical": "치명적",
+        "warning": "경고"
+      }
+    },
+    "avgBattery": {
+      "title": "함대 배터리",
+      "average": "평균",
+      "lowCount": "{count} 낮음",
+      "reportingCount": "{count} 보고 중",
+      "lowestLabel": "최저: {name}"
+    },
+    "alertFeed": {
+      "title": "최근 경고",
+      "noAlerts": "경고 없음"
+    }
   },
   "emptyState": {
     "title": "연결된 드론 없음",
@@ -471,7 +516,13 @@
     "goToFirmware": "펌웨어로 이동",
     "webSerialNotSupported": "이 브라우저에서 Web Serial을 지원하지 않습니다. Chrome 또는 Edge를 사용하세요.",
     "noUsbInfo": "USB 정보 없음",
-    "portsAvailable": "허용된 포트 {count}개 사용 가능"
+    "portsAvailable": "허용된 포트 {count}개 사용 가능",
+    "noActiveConnectionsHelp": "활성 연결이 없습니다. 위에서 비행 컨트롤러를 연결하세요.",
+    "activeBadge": "활성",
+    "buildPreset": {
+      "details": "상세",
+      "noGps": "GPS 없음"
+    }
   },
   "droneDetail": {
     "overview": "개요",
@@ -1802,7 +1853,38 @@
     "searchDrones": "드론 검색...",
     "noMatch": "검색과 일치하는 드론 없음",
     "noDrones": "드론 없음",
-    "droneCount": "{count, plural, one {#대의 드론} other {#대의 드론}}"
+    "droneCount": "{count, plural, one {#대의 드론} other {#대의 드론}}",
+    "toolbar": {
+      "status": {
+        "all": "모든 상태",
+        "online": "온라인",
+        "inMission": "미션 수행 중",
+        "idle": "대기 중",
+        "returning": "복귀 중",
+        "maintenance": "정비 중",
+        "offline": "오프라인"
+      },
+      "suite": {
+        "all": "모든 스위트",
+        "sentry": "경계",
+        "survey": "측량",
+        "agriculture": "농업",
+        "cargo": "화물",
+        "sar": "수색 구조",
+        "inspection": "검사"
+      },
+      "sort": {
+        "name": "정렬: 이름",
+        "status": "정렬: 상태",
+        "battery": "정렬: 배터리",
+        "health": "정렬: 상태"
+      },
+      "view": {
+        "grid": "격자",
+        "list": "목록",
+        "map": "지도"
+      }
+    }
   },
   "commandPalette": {
     "placeholder": "명령을 입력하세요...",
