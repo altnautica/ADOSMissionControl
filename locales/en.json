@@ -78,22 +78,29 @@
       "locationDenied": "Permission denied — enable in browser settings or configure later"
     },
     "download": {
-      "title": "Get the Desktop App",
-      "description": "For full local control, clone the repo and build from source. Want a quick install? Pre-built releases are ready to go.",
+      "title": "Desktop App Available",
+      "description": "The desktop app works offline with zero external dependencies. Your data stays on your machine, nothing phones home. Desktop releases follow a weekly update cycle and may trail the web version by a release or two.",
       "macos": "macOS",
       "appleSilicon": "Apple Silicon",
       "intel": "Intel",
       "windows": "Windows",
       "linux": "Linux",
       "download": "Download",
-      "skip": "Continue without downloading",
-      "releasesNote": "Opens GitHub Releases"
+      "continue": "I understand, continue",
+      "skip": "Skip for now",
+      "releasesNote": "Downloads from GitHub Releases"
     },
     "ready": {
-      "title": "You're all set.",
+      "title": "You're good to go.",
       "openApp": "Open Mission Control",
-      "joinDiscord": "Join pilots on Discord",
-      "starGitHub": "Star us on GitHub"
+      "communityHeading": "Built in the open",
+      "communityDescription": "ADOS Mission Control is free, open-source, and community-driven. We build this in public and every contribution matters.",
+      "discordHeading": "Talk to us",
+      "discordDescription": "Ask questions, share your setup, report bugs, or just hang out with other pilots and developers.",
+      "joinDiscord": "Join the Discord",
+      "githubHeading": "Help the project grow",
+      "githubDescription": "A star on GitHub helps more people find this project. It takes two seconds and makes a real difference.",
+      "starGitHub": "Star on GitHub"
     },
     "steps": {
       "language": "Language",

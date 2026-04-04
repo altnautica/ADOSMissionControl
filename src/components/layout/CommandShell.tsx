@@ -24,6 +24,7 @@ import { usePlatform } from "@/hooks/use-platform";
 import { useDisconnectGuard } from "@/hooks/use-disconnect-guard";
 import { DisconnectGuard } from "@/components/fc/shared/DisconnectGuard";
 import dynamic from "next/dynamic";
+import { useConvexAvailable } from "@/app/ConvexClientProvider";
 import { cn, isBattleNet } from "@/lib/utils";
 
 // Defense overlay — only resolved in BattleNet builds; tree-shaken in community builds.
@@ -41,11 +42,59 @@ import Link from "next/link";
 // MAVLink bridge persists across all tabs — direct import (renders null, no hydration issue)
 import { AgentMavlinkBridge } from "@/components/command/AgentMavlinkBridge";
 
+/**
+ * User menu with sign-out. Must only mount when ConvexAuthNextjsProvider exists
+ * (i.e., when convexAvailable is true), because useAuthActions requires that context.
+ */
+function ConvexUserMenu() {
+  const { signOut } = useAuthActions();
+  const user = useAuthStore((s) => s.user);
+  const lastSyncedAt = useAuthStore((s) => s.lastSyncedAt);
+  const t = useTranslations("shell");
+  const tAuth = useTranslations("auth");
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  return (
+    <div className="relative">
+      <Tooltip content={user?.email || t("account")} position="bottom">
+        <button
+          onClick={() => setMenuOpen(!menuOpen)}
+          className="w-6 h-6 rounded-full bg-accent-primary/20 text-accent-primary flex items-center justify-center text-[10px] font-semibold uppercase"
+        >
+          {user?.name?.charAt(0) || user?.email?.charAt(0) || "U"}
+        </button>
+      </Tooltip>
+      {menuOpen && (
+        <div className="absolute right-0 top-8 bg-bg-secondary border border-border-default shadow-lg z-50 w-48 py-1">
+          <div className="px-3 py-2 border-b border-border-default">
+            <p className="text-xs text-text-primary font-medium truncate">{user?.name || user?.email}</p>
+            <p className="text-[10px] text-text-tertiary truncate">{user?.email}</p>
+            {lastSyncedAt && (
+              <p className="text-[10px] text-text-tertiary mt-1">
+                {t("lastSynced", { time: formatSyncTime(lastSyncedAt) })}
+              </p>
+            )}
+          </div>
+          <button
+            onClick={() => {
+              setMenuOpen(false);
+              if (signOut) void signOut();
+            }}
+            className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary hover:bg-bg-primary transition-colors"
+          >
+            <LogOut size={12} />
+            {tAuth("signOut")}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function CommandShell({ children }: { children: React.ReactNode }) {
   useAutoReconnect();
   useGcsLocation();
   const t = useTranslations("shell");
-  const tAuth = useTranslations("auth");
   const { isElectron, isMac, isWindows, isLinux } = usePlatform();
   const {
     guardOpen,
@@ -69,14 +118,10 @@ export function CommandShell({ children }: { children: React.ReactNode }) {
   const alertCount = useFleetStore((s) => s.alerts.filter((a) => !a.acknowledged).length);
 
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const user = useAuthStore((s) => s.user);
-  const lastSyncedAt = useAuthStore((s) => s.lastSyncedAt);
-  const authActions = useAuthActions();
-  const signOut = authActions?.signOut;
+  const convexAvailable = useConvexAvailable();
   const immersiveMode = useUiStore((s) => s.immersiveMode);
   const exitImmersiveMode = useUiStore((s) => s.exitImmersiveMode);
   const [signInOpen, setSignInOpen] = useState(false);
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   // Listen for sign-in requests from AuthGate and other components
   useEffect(() => {
@@ -222,40 +267,8 @@ export function CommandShell({ children }: { children: React.ReactNode }) {
           </Tooltip>
 
           {/* Auth — sign in or user menu (far right) */}
-          {isAuthenticated ? (
-            <div className="relative">
-              <Tooltip content={user?.email || t("account")} position="bottom">
-                <button
-                  onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className="w-6 h-6 rounded-full bg-accent-primary/20 text-accent-primary flex items-center justify-center text-[10px] font-semibold uppercase"
-                >
-                  {user?.name?.charAt(0) || user?.email?.charAt(0) || "U"}
-                </button>
-              </Tooltip>
-              {userMenuOpen && (
-                <div className="absolute right-0 top-8 bg-bg-secondary border border-border-default shadow-lg z-50 w-48 py-1">
-                  <div className="px-3 py-2 border-b border-border-default">
-                    <p className="text-xs text-text-primary font-medium truncate">{user?.name || user?.email}</p>
-                    <p className="text-[10px] text-text-tertiary truncate">{user?.email}</p>
-                    {lastSyncedAt && (
-                      <p className="text-[10px] text-text-tertiary mt-1">
-                        {t("lastSynced", { time: formatSyncTime(lastSyncedAt) })}
-                      </p>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => {
-                      setUserMenuOpen(false);
-                      if (signOut) void signOut();
-                    }}
-                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary hover:bg-bg-primary transition-colors"
-                  >
-                    <LogOut size={12} />
-                    {tAuth("signOut")}
-                  </button>
-                </div>
-              )}
-            </div>
+          {isAuthenticated && convexAvailable ? (
+            <ConvexUserMenu />
           ) : (
             <Tooltip content={t("signInForSync")} position="bottom">
               <button

@@ -289,6 +289,16 @@ For self-hosted MQTT and video relay, see [`tools/mqtt-bridge/`](tools/mqtt-brid
 
 ---
 
+## Hardware Partners
+
+Building and testing ADOS Mission Control on real hardware. Want to get involved? [Email us](mailto:team@altnautica.com).
+
+<!-- Format: | [![Company](logo-url)](website) -->
+
+*Interested in sponsoring or sending test hardware? See our [partnership info](mailto:team@altnautica.com).*
+
+---
+
 ## Community
 
 - **[Discord](https://discord.gg/uxbvuD4d5q)** — Join the community, ask questions, share builds
