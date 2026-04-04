@@ -16,7 +16,7 @@ import { parseApjFile } from "@/lib/protocol/firmware/apj-parser";
 import { parseHexFile } from "@/lib/protocol/firmware/hex-parser";
 import { parsePx4File } from "@/lib/protocol/firmware/px4-parser";
 import { STM32DfuFlasher } from "@/lib/protocol/firmware/stm32-dfu";
-import type { UsbDeviceInfo } from "@/lib/usb-device-manager";
+import { usbDeviceManager, type UsbDeviceInfo } from "@/lib/usb-device-manager";
 import { AP_FLASH_METHODS, BF_FLASH_METHODS, PX4_FLASH_METHODS } from "./firmware-constants";
 
 const apManifest = new ArduPilotManifest();
@@ -76,12 +76,26 @@ export function useFirmwareState() {
   const [serialSupported, setSerialSupported] = useState(false);
   const [usbSupported, setUsbSupported] = useState(false);
 
-  // Browser support check
+  // Browser support check + USB hotplug listener
   useEffect(() => {
     setSerialSupported("serial" in navigator);
     setUsbSupported(STM32DfuFlasher.isSupported());
     if (STM32DfuFlasher.isSupported()) {
       STM32DfuFlasher.getKnownDevices().then(setDfuDevices).catch(() => {});
+      // Initialize hotplug detection so DFU devices are detected
+      // automatically during bootloader wait (no picker needed)
+      usbDeviceManager.init();
+      const unsubConnect = usbDeviceManager.onConnect((info) => {
+        if (info.isDfu) {
+          setDfuDevices((prev) => [...prev.filter((d) => d.label !== info.label), info]);
+        }
+      });
+      const unsubDisconnect = usbDeviceManager.onDisconnect((info) => {
+        if (info.isDfu) {
+          setDfuDevices((prev) => prev.filter((d) => d.label !== info.label));
+        }
+      });
+      return () => { unsubConnect(); unsubDisconnect(); };
     }
   }, []);
 
