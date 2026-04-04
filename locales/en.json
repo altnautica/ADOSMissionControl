@@ -77,6 +77,18 @@
       "locationGranted": "Location access granted",
       "locationDenied": "Permission denied — enable in browser settings or configure later"
     },
+    "download": {
+      "title": "Get the Desktop App",
+      "description": "For full local control, clone the repo and build from source. Want a quick install? Pre-built releases are ready to go.",
+      "macos": "macOS",
+      "appleSilicon": "Apple Silicon",
+      "intel": "Intel",
+      "windows": "Windows",
+      "linux": "Linux",
+      "download": "Download",
+      "skip": "Continue without downloading",
+      "releasesNote": "Opens GitHub Releases"
+    },
     "ready": {
       "title": "You're all set.",
       "openApp": "Open Mission Control",
@@ -87,6 +99,7 @@
       "language": "Language",
       "welcome": "Welcome",
       "preferences": "Preferences",
+      "download": "Desktop App",
       "ready": "Ready"
     }
   },
