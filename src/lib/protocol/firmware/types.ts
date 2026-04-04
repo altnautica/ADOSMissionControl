@@ -14,6 +14,7 @@ export type FlashPhase =
   | "idle"
   | "backup"
   | "rebooting"
+  | "bootloader_wait"
   | "bootloader_init"
   | "chip_detect"
   | "erasing"
