@@ -29,21 +29,21 @@ export function ThemeSection(): React.ReactNode {
 
   const themeOptions: SelectOptionGroup[] = useMemo(() => [
     {
-      label: "Core",
+      label: t("groupCore"),
       options: [
         { value: "dark", label: t("dark") },
         { value: "light", label: t("light") },
       ],
     },
     {
-      label: "Solarized",
+      label: t("groupSolarized"),
       options: [
         { value: "solarized-dark", label: t("solarizedDark") },
         { value: "solarized-light", label: t("solarizedLight") },
       ],
     },
     {
-      label: "Dark Themes",
+      label: t("groupDarkThemes"),
       options: [
         { value: "dracula", label: t("dracula") },
         { value: "catppuccin-mocha", label: t("catppuccinMocha") },
@@ -60,14 +60,14 @@ export function ThemeSection(): React.ReactNode {
       ],
     },
     {
-      label: "Light Themes",
+      label: t("groupLightThemes"),
       options: [
         { value: "catppuccin-latte", label: t("catppuccinLatte") },
         { value: "gruvbox-light", label: t("gruvboxLight") },
       ],
     },
     {
-      label: "Mid-tone",
+      label: t("groupMidTone"),
       options: [
         { value: "ayu-dark", label: t("ayuDark") },
         { value: "ayu-mirage", label: t("ayuMirage") },
@@ -87,7 +87,7 @@ export function ThemeSection(): React.ReactNode {
             value={themeMode}
             onChange={(value) => setThemeMode(value as ThemeMode)}
             options={themeOptions}
-            placeholder="Select a theme"
+            placeholder={t("selectTheme")}
             searchable
             maxHeight={480}
           />

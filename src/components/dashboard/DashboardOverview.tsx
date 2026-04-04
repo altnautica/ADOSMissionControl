@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { DashboardMap } from "@/components/dashboard/DashboardMap";
 import { FleetStatusCard } from "@/components/dashboard/FleetStatusCard";
 import { ActiveMissionsCard } from "@/components/dashboard/ActiveMissionsCard";
@@ -10,6 +11,8 @@ import { AlertFeed } from "@/components/dashboard/AlertFeed";
 import { QuickActionsBar } from "@/components/dashboard/QuickActionsBar";
 
 export function DashboardOverview() {
+  const t = useTranslations("dashboard");
+
   return (
     <div className="flex-1 overflow-auto p-3 flex flex-col gap-3">
       {/* Top bento grid: Map + Status cards */}
@@ -38,7 +41,7 @@ export function DashboardOverview() {
       <div className="border border-border-default bg-bg-secondary px-3 py-2">
         <div className="flex items-center justify-between">
           <span className="text-[10px] uppercase tracking-wider text-text-tertiary">
-            Quick Actions
+            {t("quickActions")}
           </span>
           <QuickActionsBar />
         </div>

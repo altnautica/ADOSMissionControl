@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useFleetStore } from "@/stores/fleet-store";
 import { Card } from "@/components/ui/card";
 import { StatusDot } from "@/components/ui/status-dot";
@@ -14,17 +15,18 @@ const statusDotMap: Record<DroneStatus, "online" | "idle" | "warning" | "error" 
   offline: "offline",
 };
 
-const statusLabels: Record<DroneStatus, string> = {
-  online: "Online",
-  in_mission: "In Mission",
-  idle: "Idle",
-  returning: "Returning",
-  maintenance: "Maintenance",
-  offline: "Offline",
-};
-
 export function FleetStatusCard() {
+  const t = useTranslations("dashboard");
   const drones = useFleetStore((s) => s.drones);
+
+  const statusLabels: Record<DroneStatus, string> = {
+    online: t("fleetStatus.statuses.online"),
+    in_mission: t("fleetStatus.statuses.inMission"),
+    idle: t("fleetStatus.statuses.idle"),
+    returning: t("fleetStatus.statuses.returning"),
+    maintenance: t("fleetStatus.statuses.maintenance"),
+    offline: t("fleetStatus.statuses.offline"),
+  };
 
   const counts = drones.reduce<Partial<Record<DroneStatus, number>>>((acc, d) => {
     acc[d.status] = (acc[d.status] || 0) + 1;
@@ -34,9 +36,9 @@ export function FleetStatusCard() {
   const statuses: DroneStatus[] = ["in_mission", "online", "idle", "returning", "maintenance", "offline"];
 
   return (
-    <Card title="Fleet Status">
+    <Card title={t("fleetStatus.title")}>
       <div className="flex items-center justify-between mb-3">
-        <span className="text-[11px] text-text-secondary">Total Drones</span>
+        <span className="text-[11px] text-text-secondary">{t("fleetStatus.totalDrones")}</span>
         <span className="text-lg font-mono font-semibold text-text-primary tabular-nums">
           {drones.length}
         </span>
