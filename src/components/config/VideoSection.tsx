@@ -54,10 +54,10 @@ export function VideoSection() {
             value={bitrate}
             onChange={setBitrate}
             options={[
-              { value: "2", label: "2 Mbps" },
-              { value: "4", label: "4 Mbps" },
-              { value: "8", label: "8 Mbps" },
-              { value: "12", label: "12 Mbps" },
+              { value: "2", label: t("bitrate2Mbps") },
+              { value: "4", label: t("bitrate4Mbps") },
+              { value: "8", label: t("bitrate8Mbps") },
+              { value: "12", label: t("bitrate12Mbps") },
             ]}
           />
 
@@ -66,8 +66,8 @@ export function VideoSection() {
             value={codec}
             onChange={setCodec}
             options={[
-              { value: "h264", label: "H.264" },
-              { value: "h265", label: "H.265" },
+              { value: "h264", label: t("codecH264") },
+              { value: "h265", label: t("codecH265") },
             ]}
           />
 

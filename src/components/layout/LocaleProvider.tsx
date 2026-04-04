@@ -29,6 +29,29 @@ interface LocaleProviderProps {
   children: React.ReactNode;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function mergeMessages(
+  base: Record<string, unknown>,
+  override: Record<string, unknown>
+): Record<string, unknown> {
+  const merged: Record<string, unknown> = { ...base };
+
+  for (const [key, overrideValue] of Object.entries(override)) {
+    const baseValue = merged[key];
+
+    if (isRecord(baseValue) && isRecord(overrideValue)) {
+      merged[key] = mergeMessages(baseValue, overrideValue);
+    } else {
+      merged[key] = overrideValue;
+    }
+  }
+
+  return merged;
+}
+
 export function LocaleProvider({ children }: LocaleProviderProps) {
   const locale = useSettingsStore((s) => s.locale);
   const themeMode = useSettingsStore((s) => s.themeMode);
@@ -40,7 +63,11 @@ export function LocaleProvider({ children }: LocaleProviderProps) {
   useEffect(() => {
     // Dynamic import based on locale — only loads the needed bundle
     import(`../../../locales/${locale}.json`)
-      .then((m) => setMessages(m.default as Record<string, unknown>))
+      .then((m) => {
+        const localeMessages = m.default as Record<string, unknown>;
+        const fallbackMessages = enMessages as Record<string, unknown>;
+        setMessages(mergeMessages(fallbackMessages, localeMessages));
+      })
       .catch(() => {
         // Fallback to English if locale bundle fails to load
         import("../../../locales/en.json").then((m: { default: Record<string, unknown> }) =>

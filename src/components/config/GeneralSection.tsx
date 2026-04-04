@@ -81,9 +81,9 @@ export function GeneralSection() {
             value={timezone}
             onChange={setTimezone}
             options={[
-              { value: "IST", label: "IST (UTC+5:30)" },
-              { value: "UTC", label: "UTC (UTC+0:00)" },
-              { value: "PST", label: "PST (UTC-8:00)" },
+              { value: "IST", label: t("timezoneIst") },
+              { value: "UTC", label: t("timezoneUtc") },
+              { value: "PST", label: t("timezonePst") },
             ]}
           />
 
@@ -104,10 +104,10 @@ export function GeneralSection() {
             value={telemetryRate}
             onChange={setTelemetryRate}
             options={[
-              { value: "1", label: "1 Hz" },
-              { value: "5", label: "5 Hz" },
-              { value: "10", label: "10 Hz" },
-              { value: "20", label: "20 Hz" },
+              { value: "1", label: t("telemetryRate1Hz") },
+              { value: "5", label: t("telemetryRate5Hz") },
+              { value: "10", label: t("telemetryRate10Hz") },
+              { value: "20", label: t("telemetryRate20Hz") },
             ]}
           />
         </div>
@@ -169,10 +169,10 @@ export function GeneralSection() {
           {/* Current position readout */}
           {permission === "granted" && position && (
             <div className="bg-bg-primary px-2.5 py-2 font-mono text-[10px] text-text-secondary space-y-0.5">
-              <div>LAT {position.lat.toFixed(6)}</div>
-              <div>LON {position.lon.toFixed(6)}</div>
-              <div>ACC {Math.round(position.accuracy)}m</div>
-              {position.altitude !== null && <div>ALT {position.altitude.toFixed(1)}m</div>}
+              <div>{t("latAbbr")} {position.lat.toFixed(6)}</div>
+              <div>{t("lonAbbr")} {position.lon.toFixed(6)}</div>
+              <div>{t("accAbbr")} {Math.round(position.accuracy)}m</div>
+              {position.altitude !== null && <div>{t("altAbbr")} {position.altitude.toFixed(1)}m</div>}
             </div>
           )}
 

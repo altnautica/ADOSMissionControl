@@ -1,17 +1,9 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useFleetStore } from "@/stores/fleet-store";
 import { Card } from "@/components/ui/card";
 import type { SuiteType } from "@/lib/types";
-
-const suiteLabels: Record<SuiteType, string> = {
-  sentry: "Sentry",
-  survey: "Survey",
-  agriculture: "Agriculture",
-  cargo: "Cargo",
-  sar: "SAR",
-  inspection: "Inspection",
-};
 
 const suiteColors: Record<SuiteType, string> = {
   sentry: "bg-accent-primary",
@@ -23,8 +15,18 @@ const suiteColors: Record<SuiteType, string> = {
 };
 
 export function ActiveMissionsCard() {
+  const t = useTranslations("dashboard");
   const drones = useFleetStore((s) => s.drones);
   const inFlight = drones.filter((d) => d.status === "in_mission");
+
+  const suiteLabels: Record<SuiteType, string> = {
+    sentry: t("activeMissions.suites.sentry"),
+    survey: t("activeMissions.suites.survey"),
+    agriculture: t("activeMissions.suites.agriculture"),
+    cargo: t("activeMissions.suites.cargo"),
+    sar: t("activeMissions.suites.sar"),
+    inspection: t("activeMissions.suites.inspection"),
+  };
 
   const bySuite = inFlight.reduce<Partial<Record<SuiteType, number>>>((acc, d) => {
     if (d.suiteType) {
@@ -34,9 +36,9 @@ export function ActiveMissionsCard() {
   }, {});
 
   return (
-    <Card title="Active Missions">
+    <Card title={t("activeMissions.title")}>
       <div className="flex items-center justify-between mb-3">
-        <span className="text-[11px] text-text-secondary">In Flight</span>
+        <span className="text-[11px] text-text-secondary">{t("activeMissions.inFlight")}</span>
         <span className="text-lg font-mono font-semibold text-text-primary tabular-nums">
           {inFlight.length}
         </span>
@@ -52,7 +54,7 @@ export function ActiveMissionsCard() {
           </div>
         ))}
         {Object.keys(bySuite).length === 0 && (
-          <span className="text-xs text-text-tertiary">No active missions</span>
+          <span className="text-xs text-text-tertiary">{t("activeMissions.noActiveMissions")}</span>
         )}
       </div>
     </Card>
