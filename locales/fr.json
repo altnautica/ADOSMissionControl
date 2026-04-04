@@ -129,10 +129,10 @@
     "theme": {
       "groupCore": "Base",
       "groupSolarized": "Solarized",
-      "groupDarkThemes": "Themes sombres",
-      "groupLightThemes": "Themes clairs",
+      "groupDarkThemes": "Thèmes sombres",
+      "groupLightThemes": "Thèmes clairs",
       "groupMidTone": "Tons moyens",
-      "selectTheme": "Selectionner un theme"
+      "selectTheme": "Sélectionner un thème"
     }
   },
   "community": {
@@ -164,11 +164,11 @@
         "general": "Général"
       },
       "statuses": {
-        "backlog": "Arriere",
+        "backlog": "Arriéré",
         "in_discussion": "En discussion",
         "planned": "Planifié",
         "in_progress": "En cours",
-        "released": "Publie",
+        "released": "Publié",
         "wont_do": "Ne sera pas fait"
       }
     }
@@ -515,16 +515,16 @@
       "missionProgress": "Progression de mission",
       "areaCovered": "Zone couverte",
       "laps": "Tours",
-      "detections": "Detections",
+      "detections": "Détections",
       "alerts": "Alertes",
       "images": "Images",
       "overlap": "Chevauchement",
       "gsd": "GSD",
       "area": "Zone",
       "searchArea": "Zone de recherche",
-      "personsFound": "Personnes trouvees",
+      "personsFound": "Personnes trouvées",
       "gridCells": "Cellules de grille",
-      "thermalHits": "Detections thermiques",
+      "thermalHits": "Détections thermiques",
       "waypoints": "Points de passage",
       "distance": "Distance"
     }
@@ -1597,19 +1597,19 @@
     "signal": "Signal",
     "status": "Statut",
     "yes": "Oui",
-    "telemetryNone": "Aucune donnee",
+    "telemetryNone": "Aucune donnée",
     "telemetryChannels": {
       "attitude": "Attitude",
       "position": "Position",
       "battery": "Batterie",
       "gps": "GPS",
-      "rcInput": "Entree RC",
+      "rcInput": "Entrée RC",
       "radio": "Radio",
       "vfrHud": "HUD VFR",
-      "systemStatus": "Etat du systeme",
+      "systemStatus": "État du système",
       "ekf": "EKF",
       "wind": "Vent",
-      "navController": "Controleur de navigation"
+      "navController": "Contrôleur de navigation"
     }
   },
   "flightInfo": {
