@@ -88,7 +88,15 @@
   "settings": {
     "language": "மொழி",
     "languageDescription": "உங்கள் காட்சி மொழியைத் தேர்ந்தெடுக்கவும். மேலும் மொழிகள் விரைவில் வரும்.",
-    "languageNote": "மொழிபெயர்க்க உதவுங்கள் — GitHub-ல் பங்களிக்கவும்"
+    "languageNote": "மொழிபெயர்க்க உதவுங்கள் — GitHub-ல் பங்களிக்கவும்",
+    "theme": {
+      "groupCore": "மையம்",
+      "groupSolarized": "Solarized",
+      "groupDarkThemes": "இருண்ட தீம்கள்",
+      "groupLightThemes": "ஒளிரும் தீம்கள்",
+      "groupMidTone": "நடுத்தரத் தோன்",
+      "selectTheme": "தீமைத் தேர்ந்தெடுக்கவும்"
+    }
   },
   "community": {
     "changelog": "மாற்றப் பதிவு",
@@ -110,7 +118,23 @@
     "cancelled": "ரத்துசெய்யப்பட்டது",
     "addTranslation": "மொழிபெயர்ப்பைச் சேர்",
     "translations": "மொழிபெயர்ப்புகள்",
-    "noTranslation": "இந்த மொழிக்கான மொழிபெயர்ப்பு கிடைக்கவில்லை"
+    "noTranslation": "இந்த மொழிக்கான மொழிபெயர்ப்பு கிடைக்கவில்லை",
+    "badges": {
+      "categories": {
+        "command": "கட்டளை",
+        "ados": "ADOS",
+        "website": "இணையதளம்",
+        "general": "பொது"
+      },
+      "statuses": {
+        "backlog": "பின்தங்கல்",
+        "in_discussion": "விவாதத்தில்",
+        "planned": "திட்டமிடப்பட்டது",
+        "in_progress": "நடந்துகொண்டிருக்கிறது",
+        "released": "வெளியிடப்பட்டது",
+        "wont_do": "செய்யப்படாது"
+      }
+    }
   },
   "shell": {
     "missionControl": "Mission Control",
@@ -165,7 +189,18 @@
     "geoUnavailable": "இந்த உலாவியில் புவியிடம் கிடைக்கவில்லை.",
     "setupWizard": "அமைவு வழிகாட்டியை மீண்டும் இயக்கு",
     "setupWizardDesc": "ஆரம்ப கட்டமைப்பு வழிகாட்டியை மீண்டும் இயக்கு",
-    "rerun": "மீண்டும் இயக்கு"
+    "rerun": "மீண்டும் இயக்கு",
+    "timezoneIst": "IST (UTC+5:30)",
+    "timezoneUtc": "UTC (UTC+0:00)",
+    "timezonePst": "PST (UTC-8:00)",
+    "telemetryRate1Hz": "1 Hz",
+    "telemetryRate5Hz": "5 Hz",
+    "telemetryRate10Hz": "10 Hz",
+    "telemetryRate20Hz": "20 Hz",
+    "latAbbr": "LAT",
+    "lonAbbr": "LON",
+    "accAbbr": "ACC",
+    "altAbbr": "ALT"
   },
   "notifications": {
     "title": "அறிவிப்புகள்",
@@ -228,7 +263,13 @@
     "gps": "GPS",
     "armedStatus": "ஆர்ம்டு நிலை",
     "signal": "சிக்னல்",
-    "timer": "நேரமானி"
+    "timer": "நேரமானி",
+    "bitrate2Mbps": "2 Mbps",
+    "bitrate4Mbps": "4 Mbps",
+    "bitrate8Mbps": "8 Mbps",
+    "bitrate12Mbps": "12 Mbps",
+    "codecH264": "H.264",
+    "codecH265": "H.265"
   },
   "inputDevices": {
     "title": "உள்ளீட்டு சாதனங்கள்",
@@ -376,7 +417,29 @@
     "frame": "ஃப்ரேம்",
     "firmware": "ஃபர்ம்வேர்",
     "compute": "கம்ப்யூட்",
-    "weight": "எடை"
+    "weight": "எடை",
+    "suiteDashboard": {
+      "dashboardTitle": "{suite} டாஷ்போர்டு",
+      "mission": "மிஷன்",
+      "patrolProgress": "காவல் முன்னேற்றம்",
+      "coverage": "விரிப்பு",
+      "gridProgress": "கட்டம் முன்னேற்றம்",
+      "missionProgress": "மிஷன் முன்னேற்றம்",
+      "areaCovered": "மூடப்பட்ட பரப்பு",
+      "laps": "சுற்றுகள்",
+      "detections": "கண்டறிதல்கள்",
+      "alerts": "எச்சரிக்கைகள்",
+      "images": "படங்கள்",
+      "overlap": "ஒட்டிப்பு",
+      "gsd": "GSD",
+      "area": "பரப்பு",
+      "searchArea": "தேடல் பகுதி",
+      "personsFound": "கண்டுபிடிக்கப்பட்டோர்",
+      "gridCells": "கிரிட் செல்கள்",
+      "thermalHits": "வெப்ப கண்டறிதல்கள்",
+      "waypoints": "வெய்பாயிண்ட்",
+      "distance": "தூரம்"
+    }
   },
   "logs": {
     "debug": "DEBUG",
@@ -403,7 +466,12 @@
     "severity": "தீவிரம்",
     "message": "செய்தி",
     "waitingForMessages": "நிலை செய்திகளுக்காகக் காத்திருக்கிறது...",
-    "noMessagesMatch": "தற்போதைய வடிகட்டிகளுடன் செய்திகள் பொருந்தவில்லை"
+    "noMessagesMatch": "தற்போதைய வடிகட்டிகளுடன் செய்திகள் பொருந்தவில்லை",
+    "externalAnalysis": {
+      "title": "வெளிப்புற பகுப்பாய்வு",
+      "plotterDescription": "இணையச்செயல்பாட்டு DataFlash / .tlog வரைபட வரைப்பான்",
+      "reviewerDescription": "தானியக்க பதிவு பகுப்பாய்வு மற்றும் பறப்பு மதிப்பாய்வு"
+    }
   },
   "fcNav": {
     "flightController": "ஃப்ளைட் கண்ட்ரோலர்",
@@ -1440,7 +1508,21 @@
     "no": "இல்லை",
     "signal": "சிக்னல்",
     "rssi": "RSSI",
-    "latency": "Latency"
+    "latency": "Latency",
+    "telemetryNone": "தரவு இல்லை",
+    "telemetryChannels": {
+      "attitude": "நிலை",
+      "position": "இடம்",
+      "battery": "மின்கலம்",
+      "gps": "GPS",
+      "rcInput": "RC உள்ளீடு",
+      "radio": "வானொலி",
+      "vfrHud": "VFR HUD",
+      "systemStatus": "கணினி நிலை",
+      "ekf": "EKF",
+      "wind": "காற்று",
+      "navController": "வழிசெலுத்தல் கட்டுப்படுத்தி"
+    }
   },
   "flightInfo": {
     "vehicleInfo": "வாகனத் தகவல்",

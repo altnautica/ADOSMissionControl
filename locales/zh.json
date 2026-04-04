@@ -88,7 +88,15 @@
   "settings": {
     "language": "语言",
     "languageDescription": "选择显示语言。更多语言即将上线。",
-    "languageNote": "帮助翻译 — 在 GitHub 上贡献"
+    "languageNote": "帮助翻译 — 在 GitHub 上贡献",
+    "theme": {
+      "groupCore": "核心",
+      "groupSolarized": "Solarized",
+      "groupDarkThemes": "深色主题",
+      "groupLightThemes": "浅色主题",
+      "groupMidTone": "中间色调",
+      "selectTheme": "选择主题"
+    }
   },
   "community": {
     "changelog": "更新日志",
@@ -110,7 +118,23 @@
     "cancelled": "已取消",
     "addTranslation": "添加翻译",
     "translations": "翻译",
-    "noTranslation": "该语言暂无翻译"
+    "noTranslation": "该语言暂无翻译",
+    "badges": {
+      "categories": {
+        "command": "控制",
+        "ados": "ADOS",
+        "website": "网站",
+        "general": "常规"
+      },
+      "statuses": {
+        "backlog": "待办",
+        "in_discussion": "讨论中",
+        "planned": "计划中",
+        "in_progress": "进行中",
+        "released": "已发布",
+        "wont_do": "不做"
+      }
+    }
   },
   "shell": {
     "missionControl": "任务控制",
@@ -165,7 +189,18 @@
     "geoUnavailable": "此浏览器不支持地理定位。",
     "setupWizard": "重新运行设置向导",
     "setupWizardDesc": "重新运行初始配置向导",
-    "rerun": "重新运行"
+    "rerun": "重新运行",
+    "timezoneIst": "IST (UTC+5:30)",
+    "timezoneUtc": "UTC (UTC+0:00)",
+    "timezonePst": "PST (UTC-8:00)",
+    "telemetryRate1Hz": "1 Hz",
+    "telemetryRate5Hz": "5 Hz",
+    "telemetryRate10Hz": "10 Hz",
+    "telemetryRate20Hz": "20 Hz",
+    "latAbbr": "LAT",
+    "lonAbbr": "LON",
+    "accAbbr": "ACC",
+    "altAbbr": "ALT"
   },
   "notifications": {
     "title": "通知",
@@ -228,7 +263,13 @@
     "gps": "GPS",
     "armedStatus": "解锁状态",
     "signal": "信号",
-    "timer": "计时器"
+    "timer": "计时器",
+    "bitrate2Mbps": "2 Mbps",
+    "bitrate4Mbps": "4 Mbps",
+    "bitrate8Mbps": "8 Mbps",
+    "bitrate12Mbps": "12 Mbps",
+    "codecH264": "H.264",
+    "codecH265": "H.265"
   },
   "inputDevices": {
     "title": "输入设备",
@@ -376,7 +417,29 @@
     "frame": "机架",
     "firmware": "固件",
     "compute": "计算模块",
-    "weight": "重量"
+    "weight": "重量",
+    "suiteDashboard": {
+      "dashboardTitle": "{suite} 仪表盘",
+      "mission": "任务",
+      "patrolProgress": "巡逻进度",
+      "coverage": "覆盖率",
+      "gridProgress": "网格进度",
+      "missionProgress": "任务进度",
+      "areaCovered": "已覆盖面积",
+      "laps": "圈数",
+      "detections": "检测",
+      "alerts": "警报",
+      "images": "图像",
+      "overlap": "重叠率",
+      "gsd": "GSD",
+      "area": "面积",
+      "searchArea": "搜索区域",
+      "personsFound": "发现人数",
+      "gridCells": "网格单元",
+      "thermalHits": "热成像命中",
+      "waypoints": "航点",
+      "distance": "距离"
+    }
   },
   "logs": {
     "debug": "DEBUG",
@@ -403,7 +466,12 @@
     "severity": "级别",
     "message": "消息",
     "waitingForMessages": "等待状态消息...",
-    "noMessagesMatch": "没有消息匹配当前筛选条件"
+    "noMessagesMatch": "没有消息匹配当前筛选条件",
+    "externalAnalysis": {
+      "title": "外部分析",
+      "plotterDescription": "交互式 DataFlash / .tlog 图表绘制工具",
+      "reviewerDescription": "自动日志分析与飞行复盘"
+    }
   },
   "fcNav": {
     "flightController": "飞控",
@@ -1440,7 +1508,21 @@
     "rssi": "RSSI",
     "signal": "信号",
     "status": "状态",
-    "yes": "是"
+    "yes": "是",
+    "telemetryNone": "无数据",
+    "telemetryChannels": {
+      "attitude": "姿态",
+      "position": "位置",
+      "battery": "电池",
+      "gps": "GPS",
+      "rcInput": "RC输入",
+      "radio": "无线电",
+      "vfrHud": "VFR HUD",
+      "systemStatus": "系统状态",
+      "ekf": "EKF",
+      "wind": "风",
+      "navController": "导航控制器"
+    }
   },
   "flightInfo": {
     "vehicleInfo": "飞行器信息",

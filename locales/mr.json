@@ -160,7 +160,13 @@
       "githubDark": "GitHub Dark",
       "ayuDark": "Ayu Dark",
       "ayuMirage": "Ayu Mirage",
-      "everforestDark": "Everforest Dark"
+      "everforestDark": "Everforest Dark",
+      "groupCore": "मूलभूत",
+      "groupSolarized": "Solarized",
+      "groupDarkThemes": "गडद थीम्स",
+      "groupLightThemes": "हलके थीम्स",
+      "groupMidTone": "मध्यम टोन",
+      "selectTheme": "थीम निवडा"
     }
   },
   "guidance": {
@@ -198,7 +204,23 @@
     "cancelled": "रद्द",
     "addTranslation": "भाषांतर जोडा",
     "translations": "भाषांतरे",
-    "noTranslation": "या भाषेसाठी भाषांतर उपलब्ध नाही"
+    "noTranslation": "या भाषेसाठी भाषांतर उपलब्ध नाही",
+    "badges": {
+      "categories": {
+        "command": "कमांड",
+        "ados": "ADOS",
+        "website": "वेबसाइट",
+        "general": "सामान्य"
+      },
+      "statuses": {
+        "backlog": "बॅकलॉग",
+        "in_discussion": "चर्चेत",
+        "planned": "नियोजित",
+        "in_progress": "प्रगतीपथावर",
+        "released": "प्रसिद्ध",
+        "wont_do": "करणार नाही"
+      }
+    }
   },
   "shell": {
     "missionControl": "Mission Control",
@@ -253,7 +275,18 @@
     "geoUnavailable": "या ब्राउझरमध्ये जिओलोकेशन उपलब्ध नाही.",
     "setupWizard": "सेटअप विझार्ड पुन्हा चालवा",
     "setupWizardDesc": "प्रारंभिक कॉन्फिगरेशन विझार्ड पुन्हा चालवा",
-    "rerun": "पुन्हा चालवा"
+    "rerun": "पुन्हा चालवा",
+    "timezoneIst": "IST (UTC+5:30)",
+    "timezoneUtc": "UTC (UTC+0:00)",
+    "timezonePst": "PST (UTC-8:00)",
+    "telemetryRate1Hz": "1 Hz",
+    "telemetryRate5Hz": "5 Hz",
+    "telemetryRate10Hz": "10 Hz",
+    "telemetryRate20Hz": "20 Hz",
+    "latAbbr": "LAT",
+    "lonAbbr": "LON",
+    "accAbbr": "ACC",
+    "altAbbr": "ALT"
   },
   "notifications": {
     "title": "सूचना",
@@ -337,7 +370,13 @@
     "gps": "GPS",
     "armedStatus": "सक्रिय स्थिती",
     "signal": "सिग्नल",
-    "timer": "टायमर"
+    "timer": "टायमर",
+    "bitrate2Mbps": "2 Mbps",
+    "bitrate4Mbps": "4 Mbps",
+    "bitrate8Mbps": "8 Mbps",
+    "bitrate12Mbps": "12 Mbps",
+    "codecH264": "H.264",
+    "codecH265": "H.265"
   },
   "inputDevices": {
     "title": "इनपुट उपकरणे",
@@ -485,7 +524,29 @@
     "frame": "फ्रेम",
     "firmware": "Firmware",
     "compute": "कंप्यूट",
-    "weight": "वजन"
+    "weight": "वजन",
+    "suiteDashboard": {
+      "dashboardTitle": "{suite} डॅशबोर्ड",
+      "mission": "मिशन",
+      "patrolProgress": "गस्त प्रगती",
+      "coverage": "व्याप्ती",
+      "gridProgress": "ग्रिड प्रगती",
+      "missionProgress": "मिशन प्रगती",
+      "areaCovered": "आवृत क्षेत्र",
+      "laps": "फेऱ्या",
+      "detections": "आढळ",
+      "alerts": "इशारे",
+      "images": "प्रतिमा",
+      "overlap": "ओव्हरलॅप",
+      "gsd": "GSD",
+      "area": "क्षेत्रफळ",
+      "searchArea": "शोध क्षेत्र",
+      "personsFound": "सापडलेली व्यक्ती",
+      "gridCells": "ग्रिड पेशी",
+      "thermalHits": "थर्मल हिट्स",
+      "waypoints": "वेपॉइंट्स",
+      "distance": "अंतर"
+    }
   },
   "logs": {
     "debug": "DEBUG",
@@ -512,7 +573,12 @@
     "severity": "तीव्रता",
     "message": "संदेश",
     "waitingForMessages": "स्थिती संदेशांची वाट पाहत आहे...",
-    "noMessagesMatch": "सध्याच्या फिल्टर्सशी कोणतेही संदेश जुळत नाहीत"
+    "noMessagesMatch": "सध्याच्या फिल्टर्सशी कोणतेही संदेश जुळत नाहीत",
+    "externalAnalysis": {
+      "title": "बाह्य विश्लेषण",
+      "plotterDescription": "इंटरॅक्टिव DataFlash / .tlog ग्राफ प्लॉटर",
+      "reviewerDescription": "स्वयंचलित लॉग विश्लेषण आणि उड्डाण पुनरावलोकन"
+    }
   },
   "fcNav": {
     "flightController": "फ्लाइट कंट्रोलर",
@@ -1549,7 +1615,21 @@
     "no": "नाही",
     "signal": "सिग्नल",
     "rssi": "RSSI",
-    "latency": "लेटन्सी"
+    "latency": "लेटन्सी",
+    "telemetryNone": "डेटा नाही",
+    "telemetryChannels": {
+      "attitude": "अॅटिट्यूड",
+      "position": "स्थिती",
+      "battery": "बॅटरी",
+      "gps": "GPS",
+      "rcInput": "RC इनपुट",
+      "radio": "रेडिओ",
+      "vfrHud": "VFR HUD",
+      "systemStatus": "प्रणाली स्थिती",
+      "ekf": "EKF",
+      "wind": "वारा",
+      "navController": "नेव्हिगेशन नियंत्रक"
+    }
   },
   "flightInfo": {
     "vehicleInfo": "वाहन माहिती",

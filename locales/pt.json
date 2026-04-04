@@ -160,7 +160,13 @@
       "githubDark": "GitHub Dark",
       "ayuDark": "Ayu Dark",
       "ayuMirage": "Ayu Mirage",
-      "everforestDark": "Everforest Dark"
+      "everforestDark": "Everforest Dark",
+      "groupCore": "Nucleo",
+      "groupSolarized": "Solarized",
+      "groupDarkThemes": "Temas escuros",
+      "groupLightThemes": "Temas claros",
+      "groupMidTone": "Tons medios",
+      "selectTheme": "Selecione um tema"
     }
   },
   "guidance": {
@@ -198,7 +204,23 @@
     "cancelled": "Cancelado",
     "addTranslation": "Adicionar Tradução",
     "translations": "Traduções",
-    "noTranslation": "Tradução não disponível para este idioma"
+    "noTranslation": "Tradução não disponível para este idioma",
+    "badges": {
+      "categories": {
+        "command": "Comando",
+        "ados": "ADOS",
+        "website": "Site",
+        "general": "Geral"
+      },
+      "statuses": {
+        "backlog": "Pendencias",
+        "in_discussion": "Em discussao",
+        "planned": "Planejado",
+        "in_progress": "Em Andamento",
+        "released": "Lancado",
+        "wont_do": "Nao sera feito"
+      }
+    }
   },
   "shell": {
     "missionControl": "Mission Control",
@@ -253,7 +275,18 @@
     "geoUnavailable": "Geolocalização não disponível neste navegador.",
     "setupWizard": "Executar Assistente de Configuração Novamente",
     "setupWizardDesc": "Executar novamente o assistente de configuração inicial",
-    "rerun": "Executar novamente"
+    "rerun": "Executar novamente",
+    "timezoneIst": "IST (UTC+5:30)",
+    "timezoneUtc": "UTC (UTC+0:00)",
+    "timezonePst": "PST (UTC-8:00)",
+    "telemetryRate1Hz": "1 Hz",
+    "telemetryRate5Hz": "5 Hz",
+    "telemetryRate10Hz": "10 Hz",
+    "telemetryRate20Hz": "20 Hz",
+    "latAbbr": "LAT",
+    "lonAbbr": "LON",
+    "accAbbr": "ACC",
+    "altAbbr": "ALT"
   },
   "notifications": {
     "title": "Notificações",
@@ -337,7 +370,13 @@
     "gps": "GPS",
     "armedStatus": "Status de armamento",
     "signal": "Sinal",
-    "timer": "Cronômetro"
+    "timer": "Cronômetro",
+    "bitrate2Mbps": "2 Mbps",
+    "bitrate4Mbps": "4 Mbps",
+    "bitrate8Mbps": "8 Mbps",
+    "bitrate12Mbps": "12 Mbps",
+    "codecH264": "H.264",
+    "codecH265": "H.265"
   },
   "inputDevices": {
     "title": "Dispositivos de Entrada",
@@ -485,7 +524,29 @@
     "frame": "Frame",
     "firmware": "Firmware",
     "compute": "Computação",
-    "weight": "Peso"
+    "weight": "Peso",
+    "suiteDashboard": {
+      "dashboardTitle": "Painel {suite}",
+      "mission": "Missao",
+      "patrolProgress": "Progresso da patrulha",
+      "coverage": "Cobertura",
+      "gridProgress": "Progresso da grade",
+      "missionProgress": "Progresso da missao",
+      "areaCovered": "Area coberta",
+      "laps": "Voltas",
+      "detections": "Deteccoes",
+      "alerts": "Alertas",
+      "images": "Imagens",
+      "overlap": "Sobreposicao",
+      "gsd": "GSD",
+      "area": "Area",
+      "searchArea": "Area de busca",
+      "personsFound": "Pessoas encontradas",
+      "gridCells": "Celulas da grade",
+      "thermalHits": "Deteccoes termicas",
+      "waypoints": "Pontos de rota",
+      "distance": "Distancia"
+    }
   },
   "logs": {
     "debug": "DEBUG",
@@ -512,7 +573,12 @@
     "severity": "SEVERIDADE",
     "message": "MENSAGEM",
     "waitingForMessages": "Aguardando mensagens de status...",
-    "noMessagesMatch": "Nenhuma mensagem corresponde aos filtros atuais"
+    "noMessagesMatch": "Nenhuma mensagem corresponde aos filtros atuais",
+    "externalAnalysis": {
+      "title": "Analise externa",
+      "plotterDescription": "Plotador interativo de graficos DataFlash / .tlog",
+      "reviewerDescription": "Analise automatizada de logs e revisao de voo"
+    }
   },
   "fcNav": {
     "flightController": "CONTROLADOR DE VOO",
@@ -1549,7 +1615,21 @@
     "no": "Não",
     "signal": "Sinal",
     "rssi": "RSSI",
-    "latency": "Latência"
+    "latency": "Latência",
+    "telemetryNone": "Sem dados",
+    "telemetryChannels": {
+      "attitude": "Atitude",
+      "position": "Posicao",
+      "battery": "Bateria",
+      "gps": "GPS",
+      "rcInput": "Entrada RC",
+      "radio": "Radio",
+      "vfrHud": "HUD VFR",
+      "systemStatus": "Status do sistema",
+      "ekf": "EKF",
+      "wind": "Vento",
+      "navController": "Controlador de navegacao"
+    }
   },
   "flightInfo": {
     "vehicleInfo": "Info do Veículo",

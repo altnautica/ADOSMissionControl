@@ -180,7 +180,13 @@
       "githubDark": "GitHub Dark",
       "ayuDark": "Ayu Dark",
       "ayuMirage": "Ayu Mirage",
-      "everforestDark": "Everforest Dark"
+      "everforestDark": "Everforest Dark",
+      "groupCore": "Core",
+      "groupSolarized": "Solarized",
+      "groupDarkThemes": "Dark Themes",
+      "groupLightThemes": "Light Themes",
+      "groupMidTone": "Mid-tone",
+      "selectTheme": "Select Theme"
     }
   },
   "guidance": {
@@ -218,7 +224,23 @@
     "cancelled": "Cancelled",
     "addTranslation": "Add Translation",
     "translations": "Translations",
-    "noTranslation": "No translation available for this language"
+    "noTranslation": "No translation available for this language",
+    "badges": {
+      "categories": {
+        "command": "Command",
+        "ados": "ADOS",
+        "website": "Website",
+        "general": "General"
+      },
+      "statuses": {
+        "backlog": "Backlog",
+        "in_discussion": "In Discussion",
+        "planned": "Planned",
+        "in_progress": "In Progress",
+        "released": "Released",
+        "wont_do": "Won't Do"
+      }
+    }
   },
   "shell": {
     "missionControl": "Mission Control",
@@ -273,7 +295,18 @@
     "geoUnavailable": "Geolocation not available in this browser.",
     "setupWizard": "Re-run Setup Wizard",
     "setupWizardDesc": "Re-run the initial configuration wizard",
-    "rerun": "Re-run"
+    "rerun": "Re-run",
+    "timezoneIst": "IST (UTC+5:30)",
+    "timezoneUtc": "UTC (UTC+0:00)",
+    "timezonePst": "PST (UTC-8:00)",
+    "telemetryRate1Hz": "1 Hz",
+    "telemetryRate5Hz": "5 Hz",
+    "telemetryRate10Hz": "10 Hz",
+    "telemetryRate20Hz": "20 Hz",
+    "latAbbr": "LAT",
+    "lonAbbr": "LON",
+    "accAbbr": "ACC",
+    "altAbbr": "ALT"
   },
   "notifications": {
     "title": "Notifications",
@@ -357,7 +390,13 @@
     "gps": "GPS",
     "armedStatus": "Armed status",
     "signal": "Signal",
-    "timer": "Timer"
+    "timer": "Timer",
+    "bitrate2Mbps": "2 Mbps",
+    "bitrate4Mbps": "4 Mbps",
+    "bitrate8Mbps": "8 Mbps",
+    "bitrate12Mbps": "12 Mbps",
+    "codecH264": "H.264",
+    "codecH265": "H.265"
   },
   "inputDevices": {
     "title": "Input Devices",
@@ -505,7 +544,29 @@
     "frame": "Frame",
     "firmware": "Firmware",
     "compute": "Compute",
-    "weight": "Weight"
+    "weight": "Weight",
+    "suiteDashboard": {
+      "dashboardTitle": "{suite} Dashboard",
+      "mission": "Mission Planner",
+      "patrolProgress": "Patrol Progress",
+      "coverage": "Coverage",
+      "gridProgress": "Grid Progress",
+      "missionProgress": "Mission Progress",
+      "areaCovered": "Area Covered",
+      "laps": "Laps",
+      "detections": "Detections",
+      "alerts": "Alerts",
+      "images": "Images",
+      "overlap": "Overlap",
+      "gsd": "GSD",
+      "area": "Area",
+      "searchArea": "Search Area",
+      "personsFound": "Persons Found",
+      "gridCells": "Grid Cells",
+      "thermalHits": "Thermal Hits",
+      "waypoints": "Waypoints",
+      "distance": "Distance"
+    }
   },
   "logs": {
     "debug": "DEBUG",
@@ -532,7 +593,12 @@
     "severity": "SEVERITY",
     "message": "MESSAGE",
     "waitingForMessages": "Waiting for status messages...",
-    "noMessagesMatch": "No messages match current filters"
+    "noMessagesMatch": "No messages match current filters",
+    "externalAnalysis": {
+      "title": "External Analysis",
+      "plotterDescription": "Interactive DataFlash / .tlog graph plotter",
+      "reviewerDescription": "Automated log analysis and flight review"
+    }
   },
   "fcNav": {
     "flightController": "FLIGHT CONTROLLER",
@@ -1569,7 +1635,21 @@
     "no": "No",
     "signal": "Signal",
     "rssi": "RSSI",
-    "latency": "Latency"
+    "latency": "Latency",
+    "telemetryNone": "No Data",
+    "telemetryChannels": {
+      "attitude": "Attitude",
+      "position": "Position",
+      "battery": "Battery",
+      "gps": "GPS",
+      "rcInput": "RC Input",
+      "radio": "Radio",
+      "vfrHud": "VFR HUD",
+      "systemStatus": "System Status",
+      "ekf": "EKF",
+      "wind": "Wind",
+      "navController": "Nav Controller"
+    }
   },
   "flightInfo": {
     "vehicleInfo": "Vehicle Info",

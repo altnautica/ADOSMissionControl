@@ -88,7 +88,15 @@
   "settings": {
     "language": "Langue",
     "languageDescription": "Choisis ta langue d'affichage. Plus de langues à venir.",
-    "languageNote": "Aidez à traduire — contribuez sur GitHub"
+    "languageNote": "Aidez à traduire — contribuez sur GitHub",
+    "theme": {
+      "groupCore": "Base",
+      "groupSolarized": "Solarized",
+      "groupDarkThemes": "Themes sombres",
+      "groupLightThemes": "Themes clairs",
+      "groupMidTone": "Tons moyens",
+      "selectTheme": "Selectionner un theme"
+    }
   },
   "community": {
     "changelog": "Journal des modifications",
@@ -110,7 +118,23 @@
     "cancelled": "Annulé",
     "addTranslation": "Ajouter une traduction",
     "translations": "Traductions",
-    "noTranslation": "Aucune traduction disponible pour cette langue"
+    "noTranslation": "Aucune traduction disponible pour cette langue",
+    "badges": {
+      "categories": {
+        "command": "Commande",
+        "ados": "ADOS",
+        "website": "Site web",
+        "general": "Général"
+      },
+      "statuses": {
+        "backlog": "Arriere",
+        "in_discussion": "En discussion",
+        "planned": "Planifié",
+        "in_progress": "En cours",
+        "released": "Publie",
+        "wont_do": "Ne sera pas fait"
+      }
+    }
   },
   "shell": {
     "missionControl": "Mission Control",
@@ -165,7 +189,18 @@
     "geoUnavailable": "La géolocalisation n'est pas disponible dans ce navigateur.",
     "setupWizard": "Relancer l'assistant de configuration",
     "setupWizardDesc": "Relancer l'assistant de configuration initiale",
-    "rerun": "Relancer"
+    "rerun": "Relancer",
+    "timezoneIst": "IST (UTC+5:30)",
+    "timezoneUtc": "UTC (UTC+0:00)",
+    "timezonePst": "PST (UTC-8:00)",
+    "telemetryRate1Hz": "1 Hz",
+    "telemetryRate5Hz": "5 Hz",
+    "telemetryRate10Hz": "10 Hz",
+    "telemetryRate20Hz": "20 Hz",
+    "latAbbr": "LAT",
+    "lonAbbr": "LON",
+    "accAbbr": "ACC",
+    "altAbbr": "ALT"
   },
   "notifications": {
     "title": "Notifications",
@@ -228,7 +263,13 @@
     "gps": "GPS",
     "armedStatus": "État d'armement",
     "signal": "Signal",
-    "timer": "Chronomètre"
+    "timer": "Chronomètre",
+    "bitrate2Mbps": "2 Mbps",
+    "bitrate4Mbps": "4 Mbps",
+    "bitrate8Mbps": "8 Mbps",
+    "bitrate12Mbps": "12 Mbps",
+    "codecH264": "H.264",
+    "codecH265": "H.265"
   },
   "inputDevices": {
     "title": "Périphériques d'entrée",
@@ -376,7 +417,29 @@
     "frame": "Châssis",
     "firmware": "Firmware",
     "compute": "Calculateur",
-    "weight": "Poids"
+    "weight": "Poids",
+    "suiteDashboard": {
+      "dashboardTitle": "Tableau de bord {suite}",
+      "mission": "Mission",
+      "patrolProgress": "Progression de patrouille",
+      "coverage": "Couverture",
+      "gridProgress": "Progression de la grille",
+      "missionProgress": "Progression de mission",
+      "areaCovered": "Zone couverte",
+      "laps": "Tours",
+      "detections": "Detections",
+      "alerts": "Alertes",
+      "images": "Images",
+      "overlap": "Chevauchement",
+      "gsd": "GSD",
+      "area": "Zone",
+      "searchArea": "Zone de recherche",
+      "personsFound": "Personnes trouvees",
+      "gridCells": "Cellules de grille",
+      "thermalHits": "Detections thermiques",
+      "waypoints": "Points de passage",
+      "distance": "Distance"
+    }
   },
   "logs": {
     "debug": "DEBUG",
@@ -403,7 +466,12 @@
     "severity": "SÉVÉRITÉ",
     "message": "MESSAGE",
     "waitingForMessages": "En attente de messages de statut...",
-    "noMessagesMatch": "Aucun message ne correspond aux filtres actuels"
+    "noMessagesMatch": "Aucun message ne correspond aux filtres actuels",
+    "externalAnalysis": {
+      "title": "Analyse externe",
+      "plotterDescription": "Traceur de graphiques interactif DataFlash / .tlog",
+      "reviewerDescription": "Analyse automatique des journaux et revue de vol"
+    }
   },
   "fcNav": {
     "flightController": "CONTRÔLEUR DE VOL",
@@ -1440,7 +1508,21 @@
     "rssi": "RSSI",
     "signal": "Signal",
     "status": "Statut",
-    "yes": "Oui"
+    "yes": "Oui",
+    "telemetryNone": "Aucune donnee",
+    "telemetryChannels": {
+      "attitude": "Attitude",
+      "position": "Position",
+      "battery": "Batterie",
+      "gps": "GPS",
+      "rcInput": "Entree RC",
+      "radio": "Radio",
+      "vfrHud": "HUD VFR",
+      "systemStatus": "Etat du systeme",
+      "ekf": "EKF",
+      "wind": "Vent",
+      "navController": "Controleur de navigation"
+    }
   },
   "flightInfo": {
     "vehicleInfo": "Info véhicule",
