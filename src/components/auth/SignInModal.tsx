@@ -10,16 +10,17 @@
 import { useState } from "react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/stores/auth-store";
 import { useConvexAvailable } from "@/app/ConvexClientProvider";
 
-function sanitizeAuthError(msg: string): string {
-  if (msg.includes("InvalidSecret") || msg.includes("password")) return "Incorrect password. Please try again.";
-  if (msg.includes("InvalidAccountId") || msg.includes("Could not find")) return "No account found with this email.";
-  if (msg.includes("TooManyFailedAttempts")) return "Too many failed attempts. Try again later.";
-  if (msg.includes("already exists") || msg.includes("UNIQUE")) return "An account with this email already exists.";
-  return "Something went wrong. Please try again.";
+function sanitizeAuthError(msg: string, t: (key: string) => string): string {
+  if (msg.includes("InvalidSecret") || msg.includes("password")) return t("errors.incorrectPassword");
+  if (msg.includes("InvalidAccountId") || msg.includes("Could not find")) return t("errors.noAccountFound");
+  if (msg.includes("TooManyFailedAttempts")) return t("errors.tooManyAttempts");
+  if (msg.includes("already exists") || msg.includes("UNIQUE")) return t("errors.accountExists");
+  return t("errors.generic");
 }
 
 interface SignInModalProps {
@@ -29,6 +30,7 @@ interface SignInModalProps {
 
 export function SignInModal({ open, onClose }: SignInModalProps) {
   const convexAvailable = useConvexAvailable();
+  const t = useTranslations("auth");
 
   if (!open) return null;
 
@@ -47,16 +49,16 @@ export function SignInModal({ open, onClose }: SignInModalProps) {
         ) : (
           <div className="text-center py-4">
             <h2 className="text-lg font-display font-semibold text-text-primary mb-2">
-              Cloud Not Available
+              {t("cloudNotAvailable")}
             </h2>
             <p className="text-xs text-text-secondary mb-4">
-              Sign-in requires a Convex backend. Set NEXT_PUBLIC_CONVEX_URL in your environment to enable cloud features.
+              {t("cloudRequiresConvex")}
             </p>
             <button
               onClick={onClose}
               className="text-xs text-text-tertiary hover:text-text-secondary"
             >
-              Continue in local mode
+              {t("continueLocalMode")}
             </button>
           </div>
         )}
@@ -71,6 +73,7 @@ export function SignInModal({ open, onClose }: SignInModalProps) {
 function ConvexSignInForm({ onClose }: { onClose: () => void }) {
   const { signIn } = useAuthActions();
   const setAuth = useAuthStore((s) => s.setAuth);
+  const t = useTranslations("auth");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -102,7 +105,7 @@ function ConvexSignInForm({ onClose }: { onClose: () => void }) {
       onClose();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
-      setError(sanitizeAuthError(msg));
+      setError(sanitizeAuthError(msg, t));
     } finally {
       setLoading(false);
     }
@@ -111,33 +114,33 @@ function ConvexSignInForm({ onClose }: { onClose: () => void }) {
   return (
     <>
       <h2 className="text-lg font-display font-semibold text-text-primary mb-1">
-        {mode === "signIn" ? "Sign In" : "Create Account"}
+        {mode === "signIn" ? t("signIn") : t("createAccount")}
       </h2>
       <p className="text-xs text-text-secondary mb-4">
         {mode === "signIn"
-          ? "Sign in to sync your missions across devices."
-          : "Create an account to back up your data to the cloud."}
+          ? t("signInSyncDescription")
+          : t("createAccountBackupDescription")}
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-3">
         {mode === "signUp" && (
           <div>
             <label className="text-[10px] text-text-secondary uppercase tracking-wider block mb-1">
-              Full Name
+              {t("name")}
             </label>
             <input
               type="text"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               className="w-full bg-bg-primary border border-border-default px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent-primary"
-              placeholder="Your name"
+              placeholder={t("namePlaceholder")}
             />
           </div>
         )}
 
         <div>
           <label className="text-[10px] text-text-secondary uppercase tracking-wider block mb-1">
-            Email
+            {t("email")}
           </label>
           <input
             type="email"
@@ -145,13 +148,13 @@ function ConvexSignInForm({ onClose }: { onClose: () => void }) {
             onChange={(e) => setEmail(e.target.value)}
             required
             className="w-full bg-bg-primary border border-border-default px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent-primary"
-            placeholder="you@example.com"
+            placeholder={t("emailPlaceholder")}
           />
         </div>
 
         <div>
           <label className="text-[10px] text-text-secondary uppercase tracking-wider block mb-1">
-            Password
+            {t("password")}
           </label>
           <input
             type="password"
@@ -160,7 +163,7 @@ function ConvexSignInForm({ onClose }: { onClose: () => void }) {
             required
             minLength={6}
             className="w-full bg-bg-primary border border-border-default px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent-primary"
-            placeholder="••••••••"
+            placeholder={t("passwordPlaceholder")}
           />
         </div>
 
@@ -175,7 +178,7 @@ function ConvexSignInForm({ onClose }: { onClose: () => void }) {
           className="w-full"
           loading={loading}
         >
-          {mode === "signIn" ? "Sign In" : "Create Account"}
+          {mode === "signIn" ? t("signIn") : t("createAccount")}
         </Button>
       </form>
 
@@ -188,7 +191,7 @@ function ConvexSignInForm({ onClose }: { onClose: () => void }) {
           }}
           className="text-xs text-accent-primary hover:underline"
         >
-          {mode === "signIn" ? "Create an account" : "Already have an account? Sign in"}
+          {mode === "signIn" ? t("createAccount") : t("alreadyHaveAccountSignIn")}
         </button>
       </div>
 
@@ -198,7 +201,7 @@ function ConvexSignInForm({ onClose }: { onClose: () => void }) {
           onClick={onClose}
           className="text-xs text-text-tertiary hover:text-text-secondary"
         >
-          Continue without account
+          {t("continueWithoutAccount")}
         </button>
       </div>
     </>

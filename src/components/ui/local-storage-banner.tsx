@@ -9,6 +9,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { AlertTriangle, X, Cloud } from "lucide-react";
 import { useAuthStore } from "@/stores/auth-store";
 import { useSettingsStore } from "@/stores/settings-store";
@@ -18,6 +19,7 @@ interface LocalStorageBannerProps {
 }
 
 export function LocalStorageBanner({ onSignIn }: LocalStorageBannerProps) {
+  const t = useTranslations("common");
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const saveCount = useSettingsStore((s) => s.saveCount);
   const bannerDismissed = useSettingsStore((s) => s.bannerDismissed);
@@ -48,7 +50,7 @@ export function LocalStorageBanner({ onSignIn }: LocalStorageBannerProps) {
       <div className="flex items-center gap-2 min-w-0">
         <AlertTriangle size={14} className="text-status-warning shrink-0" />
         <p className="text-xs text-text-primary truncate">
-          Your data is saved in this browser only. Clearing browser data will erase it.
+          {t("localStorageBanner.warning")}
         </p>
       </div>
       <div className="flex items-center gap-2 shrink-0">
@@ -57,7 +59,7 @@ export function LocalStorageBanner({ onSignIn }: LocalStorageBannerProps) {
           className="flex items-center gap-1 text-xs text-accent-primary hover:underline"
         >
           <Cloud size={12} />
-          Sign in to back up
+          {t("localStorageBanner.signInToBackup")}
         </button>
         <button
           onClick={handleDismiss}

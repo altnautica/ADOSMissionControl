@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useAuthStore } from "@/stores/auth-store";
 
 interface AuthGateProps {
@@ -14,6 +15,13 @@ function requestSignIn() {
 
 export function AuthGate({ children, action = "continue", onSignIn }: AuthGateProps) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const t = useTranslations("auth");
+
+  const actionLabel = action === "comment"
+    ? t("actions.comment")
+    : action === "continue"
+      ? t("actions.continue")
+      : action;
 
   if (!isAuthenticated) {
     return (
@@ -23,9 +31,9 @@ export function AuthGate({ children, action = "continue", onSignIn }: AuthGatePr
             onClick={onSignIn ?? requestSignIn}
             className="text-accent-primary hover:underline"
           >
-            Sign in
+            {t("signInButton")}
           </button>
-          {" "}to {action}
+          {" "}{t("toAction", { action: actionLabel })}
         </p>
       </div>
     );
