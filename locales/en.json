@@ -77,6 +77,49 @@
       "locationGranted": "Location access granted",
       "locationDenied": "Permission denied — enable in browser settings or configure later"
     },
+    "theme": {
+      "title": "Choose your theme",
+      "subtitle": "You can change this anytime in settings",
+      "themeLibrary": "Theme library",
+      "visibleCount": "{count} visible",
+      "groupTabs": {
+        "all": "All",
+        "dark": "Dark",
+        "light": "Light",
+        "mid": "Mid-tone"
+      },
+      "preview": "Preview",
+      "tapToSwap": "Tap any tile to swap with preview",
+      "accentColor": "Accent color",
+      "accentColors": {
+        "blue": "Blue",
+        "green": "Green",
+        "amber": "Amber",
+        "red": "Red",
+        "lime": "Lime",
+        "purple": "Purple",
+        "pink": "Pink",
+        "cyan": "Cyan",
+        "orange": "Orange"
+      },
+      "useAsPreviewAria": "Use {name} as preview",
+      "setAccentColorAria": "Set accent color to {color}",
+      "workspace": {
+        "menu": {
+          "flight": "Flight"
+        },
+        "flightOverview": "Flight Overview",
+        "live": "LIVE",
+        "telemetry": {
+          "alt": "Alt",
+          "speed": "Speed"
+        },
+        "missionStatus": "Mission Status",
+        "missionStatusSample": "5 waypoints loaded. Ready to arm and start mission.",
+        "armVehicle": "Arm Vehicle",
+        "openPlanner": "Open Planner"
+      }
+    },
     "download": {
       "title": "Desktop App Available",
       "description": "The desktop app works offline with zero external dependencies. Your data stays on your machine, nothing phones home. Desktop releases follow a weekly update cycle and may trail the web version by a release or two.",
@@ -120,7 +163,17 @@
     "retry": "Retry",
     "loading": "Loading...",
     "error": "Error",
-    "close": "Close"
+    "close": "Close",
+    "localStorageBanner": {
+      "warning": "Your data is saved in this browser only. Clearing browser data will erase it.",
+      "signInToBackup": "Sign in to back up"
+    },
+    "unsavedChangesDialog": {
+      "title": "Unsaved Changes",
+      "message": "You have unsaved changes to the current plan. What would you like to do?",
+      "saveAndSwitch": "Save & Switch",
+      "discardAndSwitch": "Discard & Switch"
+    }
   },
   "status": {
     "connected": "Connected",
@@ -140,7 +193,29 @@
     "noAccount": "No account yet?",
     "createAccount": "Create account",
     "haveAccount": "Already have an account?",
-    "name": "Full name"
+    "name": "Full name",
+    "cloudNotAvailable": "Cloud Not Available",
+    "cloudRequiresConvex": "Sign-in requires a Convex backend. Set NEXT_PUBLIC_CONVEX_URL in your environment to enable cloud features.",
+    "continueLocalMode": "Continue in local mode",
+    "signInSyncDescription": "Sign in to sync your missions across devices.",
+    "createAccountBackupDescription": "Create an account to back up your data to the cloud.",
+    "namePlaceholder": "Your name",
+    "emailPlaceholder": "you@example.com",
+    "passwordPlaceholder": "••••••••",
+    "alreadyHaveAccountSignIn": "Already have an account? Sign in",
+    "continueWithoutAccount": "Continue without account",
+    "toAction": "to {action}",
+    "actions": {
+      "comment": "comment",
+      "continue": "continue"
+    },
+    "errors": {
+      "incorrectPassword": "Incorrect password. Please try again.",
+      "noAccountFound": "No account found with this email.",
+      "tooManyAttempts": "Too many failed attempts. Try again later.",
+      "accountExists": "An account with this email already exists.",
+      "generic": "Something went wrong. Please try again."
+    }
   },
   "settings": {
     "language": "Language",

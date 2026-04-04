@@ -66,23 +66,23 @@ const THEME_CARDS: ThemeCardData[] = [
   { value: "everforest-dark", label: "Everforest", group: "mid", colors: { bg: "#2d353b", surface: "#232a2e", accent: "#a7c080", text: "#d3c6aa", border: "#475258" } },
 ];
 
-const ACCENT_COLORS: { label: string; value: AccentColor; hex: string }[] = [
-  { label: "Blue", value: "blue", hex: "#3a82ff" },
-  { label: "Green", value: "green", hex: "#22c55e" },
-  { label: "Amber", value: "amber", hex: "#f59e0b" },
-  { label: "Red", value: "red", hex: "#ef4444" },
-  { label: "Lime", value: "lime", hex: "#84cc16" },
-  { label: "Purple", value: "purple", hex: "#a855f7" },
-  { label: "Pink", value: "pink", hex: "#ec4899" },
-  { label: "Cyan", value: "cyan", hex: "#06b6d4" },
-  { label: "Orange", value: "orange", hex: "#f97316" },
+const ACCENT_COLORS: { value: AccentColor; hex: string }[] = [
+  { value: "blue", hex: "#3a82ff" },
+  { value: "green", hex: "#22c55e" },
+  { value: "amber", hex: "#f59e0b" },
+  { value: "red", hex: "#ef4444" },
+  { value: "lime", hex: "#84cc16" },
+  { value: "purple", hex: "#a855f7" },
+  { value: "pink", hex: "#ec4899" },
+  { value: "cyan", hex: "#06b6d4" },
+  { value: "orange", hex: "#f97316" },
 ];
 
-const GROUP_TABS: { key: ThemeGroup | "all"; label: string }[] = [
-  { key: "all", label: "All" },
-  { key: "dark", label: "Dark" },
-  { key: "light", label: "Light" },
-  { key: "mid", label: "Mid-tone" },
+const GROUP_TABS: { key: ThemeGroup | "all" }[] = [
+  { key: "all" },
+  { key: "dark" },
+  { key: "light" },
+  { key: "mid" },
 ];
 
 const ACCENT_BALL_SIZE = 28;
@@ -159,6 +159,7 @@ function ThemeMiniTile({
   theme: ThemeCardData;
   onClick: () => void;
 }) {
+  const t = useTranslations("welcome.theme");
   const { colors, label } = theme;
   const accentColor = useSettingsStore((s) => s.accentColor);
   const accentHex = ACCENT_COLORS.find((c) => c.value === accentColor)?.hex ?? colors.accent;
@@ -173,7 +174,7 @@ function ThemeMiniTile({
         borderColor: colors.border,
         boxShadow: `0 0 0 1px ${colors.border}, 0 0 0 2px ${accentHex}22`,
       }}
-      aria-label={`Use ${label} as preview`}
+      aria-label={t("useAsPreviewAria", { name: label })}
     >
       <div className="flex items-center gap-1 mb-1.5">
         <span className="w-2 h-2 rounded-full" style={{ backgroundColor: accentHex }} />
@@ -188,9 +189,19 @@ function ThemeMiniTile({
 }
 
 function ThemeWorkspacePreview({ theme }: { theme: ThemeCardData }) {
+  const t = useTranslations("welcome.theme");
+  const tNav = useTranslations("nav");
+  const tStatus = useTranslations("status");
   const { colors, label } = theme;
   const accentColor = useSettingsStore((s) => s.accentColor);
   const accentHex = ACCENT_COLORS.find((c) => c.value === accentColor)?.hex ?? colors.accent;
+
+  const navItems = [
+    tNav("dashboard"),
+    t("workspace.menu.flight"),
+    tNav("plan"),
+    tNav("configure"),
+  ];
 
   return (
     <div
@@ -210,7 +221,7 @@ function ThemeWorkspacePreview({ theme }: { theme: ThemeCardData }) {
       >
         <span className="w-2 h-2 rounded-full" style={{ backgroundColor: accentHex }} />
         <span className="text-xs font-semibold" style={{ color: colors.text }}>Mission Control</span>
-        <span className="ml-auto text-[10px] opacity-70" style={{ color: colors.text }}>Connected</span>
+        <span className="ml-auto text-[10px] opacity-70" style={{ color: colors.text }}>{tStatus("connected")}</span>
       </div>
 
       <div className="grid grid-cols-[88px_1fr] min-h-[220px]">
@@ -221,12 +232,7 @@ function ThemeWorkspacePreview({ theme }: { theme: ThemeCardData }) {
             borderRight: `1px solid ${colors.border}`,
           }}
         >
-          {[
-            "Dashboard",
-            "Flight",
-            "Plan",
-            "Config",
-          ].map((item, idx) => (
+          {navItems.map((item, idx) => (
             <div
               key={item}
               className="rounded px-2 py-1 text-[10px] truncate"
@@ -243,7 +249,7 @@ function ThemeWorkspacePreview({ theme }: { theme: ThemeCardData }) {
 
         <main className="p-3">
           <div className="flex items-center justify-between mb-3">
-            <h4 className="text-xs font-semibold" style={{ color: colors.text }}>Flight Overview</h4>
+            <h4 className="text-xs font-semibold" style={{ color: colors.text }}>{t("workspace.flightOverview")}</h4>
             <span
               className="text-[10px] px-2 py-0.5 rounded-full"
               style={{
@@ -251,14 +257,14 @@ function ThemeWorkspacePreview({ theme }: { theme: ThemeCardData }) {
                 backgroundColor: accentHex,
               }}
             >
-              LIVE
+              {t("workspace.live")}
             </span>
           </div>
 
           <div className="grid grid-cols-3 gap-2 mb-3">
             {[
-              ["Alt", "42m"],
-              ["Speed", "11m/s"],
+              [t("workspace.telemetry.alt"), "42m"],
+              [t("workspace.telemetry.speed"), "11m/s"],
               ["RSSI", "97%"],
             ].map(([k, v]) => (
               <div
@@ -282,9 +288,9 @@ function ThemeWorkspacePreview({ theme }: { theme: ThemeCardData }) {
               border: `1px solid ${colors.border}`,
             }}
           >
-            <p className="text-[10px] mb-1" style={{ color: colors.text }}>Mission Status</p>
+            <p className="text-[10px] mb-1" style={{ color: colors.text }}>{t("workspace.missionStatus")}</p>
             <p className="text-[9px] opacity-75" style={{ color: colors.text }}>
-              5 waypoints loaded. Ready to arm and start mission.
+              {t("workspace.missionStatusSample")}
             </p>
           </div>
 
@@ -299,7 +305,7 @@ function ThemeWorkspacePreview({ theme }: { theme: ThemeCardData }) {
                 color: colors.bg,
               }}
             >
-              Arm Vehicle
+              {t("workspace.armVehicle")}
             </button>
             <button
               type="button"
@@ -312,7 +318,7 @@ function ThemeWorkspacePreview({ theme }: { theme: ThemeCardData }) {
                 border: `1px solid ${colors.border}`,
               }}
             >
-              Open Planner
+              {t("workspace.openPlanner")}
             </button>
           </div>
         </main>
@@ -341,6 +347,7 @@ export function WelcomeModal() {
   const isSupported = useGcsLocationStore((s) => s.isSupported);
 
   const t = useTranslations("welcome");
+  const tTheme = useTranslations("welcome.theme");
   const tCommon = useTranslations("common");
 
   // Step state (not persisted -- always starts from 0 if modal shows)
@@ -444,6 +451,25 @@ export function WelcomeModal() {
   const accentCapsuleBackground = `linear-gradient(135deg, ${previewTheme.colors.surface} 0%, ${previewTheme.colors.bg} 52%, ${accentFocusHex}24 100%)`;
   const accentCapsuleBorder = `${previewTheme.colors.border}`;
   const accentCapsuleShadow = `inset 0 1px 0 ${previewTheme.colors.text}12, inset 0 -1px 0 ${previewTheme.colors.bg}66, 0 12px 28px ${previewTheme.colors.bg}55`;
+
+  const accentColorLabels: Record<AccentColor, string> = {
+    blue: tTheme("accentColors.blue"),
+    green: tTheme("accentColors.green"),
+    amber: tTheme("accentColors.amber"),
+    red: tTheme("accentColors.red"),
+    lime: tTheme("accentColors.lime"),
+    purple: tTheme("accentColors.purple"),
+    pink: tTheme("accentColors.pink"),
+    cyan: tTheme("accentColors.cyan"),
+    orange: tTheme("accentColors.orange"),
+  };
+
+  const groupTabLabels: Record<ThemeGroup | "all", string> = {
+    all: tTheme("groupTabs.all"),
+    dark: tTheme("groupTabs.dark"),
+    light: tTheme("groupTabs.light"),
+    mid: tTheme("groupTabs.mid"),
+  };
 
   const getAccentDockScale = (index: number, colorValue: AccentColor): number => {
     const selectedBoost = accentColor === colorValue ? 1.06 : 1;
@@ -849,17 +875,17 @@ export function WelcomeModal() {
 
           <div className="w-full max-w-4xl">
             <h2 className="text-xl font-display font-semibold text-text-primary mb-1 text-center">
-              Choose your theme
+              {tTheme("title")}
             </h2>
             <p className="text-xs text-text-tertiary mb-6 text-center">
-              You can change this anytime in settings
+              {tTheme("subtitle")}
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] gap-4 mb-6">
               <div className="rounded-xl border border-border-default bg-bg-secondary p-3">
                 <div className="flex items-center justify-between gap-3 mb-3">
-                  <p className="text-[11px] uppercase tracking-widest text-text-tertiary">Theme library</p>
-                  <span className="text-[10px] text-text-tertiary">{selectableThemes.length} visible</span>
+                  <p className="text-[11px] uppercase tracking-widest text-text-tertiary">{tTheme("themeLibrary")}</p>
+                  <span className="text-[10px] text-text-tertiary">{tTheme("visibleCount", { count: selectableThemes.length })}</span>
                 </div>
                 <div className="flex flex-wrap gap-1.5 mb-3">
                   {GROUP_TABS.map((tab) => (
@@ -873,7 +899,7 @@ export function WelcomeModal() {
                           : "bg-bg-tertiary text-text-secondary hover:text-text-primary"
                       }`}
                     >
-                      {tab.label}
+                      {groupTabLabels[tab.key]}
                     </button>
                   ))}
                 </div>
@@ -890,17 +916,17 @@ export function WelcomeModal() {
 
               <div className="rounded-xl border border-border-default bg-bg-secondary p-3">
                 <div className="flex items-center justify-between gap-3 mb-3">
-                  <p className="text-[11px] uppercase tracking-widest text-text-tertiary">Preview</p>
+                  <p className="text-[11px] uppercase tracking-widest text-text-tertiary">{tTheme("preview")}</p>
                   <span className="text-xs font-medium text-text-primary">{previewTheme.label}</span>
                 </div>
                 <ThemeWorkspacePreview theme={previewTheme} />
-                <p className="text-[11px] text-text-tertiary mt-2 text-center">Tap any tile to swap with preview</p>
+                <p className="text-[11px] text-text-tertiary mt-2 text-center">{tTheme("tapToSwap")}</p>
               </div>
             </div>
 
             {/* Accent color */}
             <div className="border-t border-border-default pt-4 mb-6">
-              <p className="text-sm text-text-primary font-medium mb-3 text-center">Accent color</p>
+              <p className="text-sm text-text-primary font-medium mb-3 text-center">{tTheme("accentColor")}</p>
               <div className="flex justify-center">
                 <div
                   className="relative inline-flex items-center gap-2 rounded-full border border-border-default px-2 py-2"
@@ -927,8 +953,8 @@ export function WelcomeModal() {
                       type="button"
                       onClick={() => setAccentColor(color.value)}
                       onMouseEnter={() => setHoveredAccentColor(color.value)}
-                      title={color.label}
-                      aria-label={`Set accent color to ${color.label}`}
+                      title={accentColorLabels[color.value]}
+                      aria-label={tTheme("setAccentColorAria", { color: accentColorLabels[color.value] })}
                       className="relative rounded-full transition-transform duration-200 ease-out focus-visible:outline-none"
                       style={{
                         width: ACCENT_BALL_SIZE,

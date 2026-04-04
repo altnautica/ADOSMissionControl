@@ -6,6 +6,7 @@
  */
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 
@@ -22,21 +23,23 @@ export function UnsavedChangesDialog({
   onDiscardAndSwitch,
   onCancel,
 }: UnsavedChangesDialogProps) {
+  const t = useTranslations("common");
+
   return (
-    <Modal open={open} onClose={onCancel} title="Unsaved Changes" className="max-w-sm">
+    <Modal open={open} onClose={onCancel} title={t("unsavedChangesDialog.title")} className="max-w-sm">
       <div className="flex flex-col gap-4">
         <p className="text-xs text-text-secondary">
-          You have unsaved changes to the current plan. What would you like to do?
+          {t("unsavedChangesDialog.message")}
         </p>
         <div className="flex flex-col gap-2">
           <Button variant="primary" size="md" className="w-full" onClick={onSaveAndSwitch}>
-            Save & Switch
+            {t("unsavedChangesDialog.saveAndSwitch")}
           </Button>
           <Button variant="secondary" size="md" className="w-full" onClick={onDiscardAndSwitch}>
-            Discard & Switch
+            {t("unsavedChangesDialog.discardAndSwitch")}
           </Button>
           <Button variant="ghost" size="md" className="w-full" onClick={onCancel}>
-            Cancel
+            {t("cancel")}
           </Button>
         </div>
       </div>
