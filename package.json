@@ -1,6 +1,6 @@
 {
   "name": "altnautica-command",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "private": false,
   "license": "GPL-3.0-only",
   "description": "Altnautica Command — Open-source Ground Control Station for autonomous drones",
