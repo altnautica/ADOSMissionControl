@@ -88,7 +88,15 @@
   "settings": {
     "language": "भाषा",
     "languageDescription": "अपनी डिस्प्ले भाषा चुनें। और भाषाएँ जल्द आ रही हैं।",
-    "languageNote": "अनुवाद में मदद करें — GitHub पर योगदान दें"
+    "languageNote": "अनुवाद में मदद करें — GitHub पर योगदान दें",
+    "theme": {
+      "groupCore": "कोर",
+      "groupSolarized": "Solarized",
+      "groupDarkThemes": "डार्क थीम",
+      "groupLightThemes": "लाइट थीम",
+      "groupMidTone": "मध्यम टोन",
+      "selectTheme": "थीम चुनें"
+    }
   },
   "community": {
     "changelog": "चेंजलॉग",
@@ -110,7 +118,23 @@
     "cancelled": "रद्द",
     "addTranslation": "अनुवाद जोड़ें",
     "translations": "अनुवाद",
-    "noTranslation": "इस भाषा के लिए अनुवाद उपलब्ध नहीं है"
+    "noTranslation": "इस भाषा के लिए अनुवाद उपलब्ध नहीं है",
+    "badges": {
+      "categories": {
+        "command": "कमांड",
+        "ados": "ADOS",
+        "website": "वेबसाइट",
+        "general": "सामान्य"
+      },
+      "statuses": {
+        "backlog": "बैकलॉग",
+        "in_discussion": "चर्चा में",
+        "planned": "योजनाबद्ध",
+        "in_progress": "प्रगति में",
+        "released": "जारी",
+        "wont_do": "नहीं करेंगे"
+      }
+    }
   },
   "shell": {
     "missionControl": "Mission Control",
@@ -165,7 +189,18 @@
     "geoUnavailable": "इस ब्राउज़र में जियोलोकेशन उपलब्ध नहीं है।",
     "setupWizard": "सेटअप विज़ार्ड फिर से चलाएँ",
     "setupWizardDesc": "प्रारंभिक कॉन्फ़िगरेशन विज़ार्ड फिर से चलाएँ",
-    "rerun": "फिर चलाएँ"
+    "rerun": "फिर चलाएँ",
+    "timezoneIst": "IST (UTC+5:30)",
+    "timezoneUtc": "UTC (UTC+0:00)",
+    "timezonePst": "PST (UTC-8:00)",
+    "telemetryRate1Hz": "1 Hz",
+    "telemetryRate5Hz": "5 Hz",
+    "telemetryRate10Hz": "10 Hz",
+    "telemetryRate20Hz": "20 Hz",
+    "latAbbr": "LAT",
+    "lonAbbr": "LON",
+    "accAbbr": "ACC",
+    "altAbbr": "ALT"
   },
   "notifications": {
     "title": "सूचनाएँ",
@@ -228,7 +263,13 @@
     "gps": "GPS",
     "armedStatus": "आर्म्ड स्थिति",
     "signal": "सिग्नल",
-    "timer": "टाइमर"
+    "timer": "टाइमर",
+    "bitrate2Mbps": "2 Mbps",
+    "bitrate4Mbps": "4 Mbps",
+    "bitrate8Mbps": "8 Mbps",
+    "bitrate12Mbps": "12 Mbps",
+    "codecH264": "H.264",
+    "codecH265": "H.265"
   },
   "inputDevices": {
     "title": "इनपुट डिवाइस",
@@ -376,7 +417,29 @@
     "frame": "फ़्रेम",
     "firmware": "फ़र्मवेयर",
     "compute": "कम्प्यूट",
-    "weight": "वज़न"
+    "weight": "वज़न",
+    "suiteDashboard": {
+      "dashboardTitle": "{suite} डैशबोर्ड",
+      "mission": "मिशन",
+      "patrolProgress": "गश्त प्रगति",
+      "coverage": "कवरेज",
+      "gridProgress": "ग्रिड प्रगति",
+      "missionProgress": "मिशन प्रगति",
+      "areaCovered": "कवर्ड क्षेत्र",
+      "laps": "चक्कर",
+      "detections": "पता लगना",
+      "alerts": "अलर्ट",
+      "images": "छवियां",
+      "overlap": "ओवरलैप",
+      "gsd": "GSD",
+      "area": "क्षेत्र",
+      "searchArea": "खोज क्षेत्र",
+      "personsFound": "मिले हुए लोग",
+      "gridCells": "ग्रिड सेल",
+      "thermalHits": "थर्मल हिट्स",
+      "waypoints": "वेपॉइंट",
+      "distance": "दूरी"
+    }
   },
   "logs": {
     "debug": "DEBUG",
@@ -403,7 +466,12 @@
     "severity": "गंभीरता",
     "message": "मैसेज",
     "waitingForMessages": "स्टेटस मैसेज की प्रतीक्षा...",
-    "noMessagesMatch": "वर्तमान फ़िल्टर से कोई मैसेज मेल नहीं खाता"
+    "noMessagesMatch": "वर्तमान फ़िल्टर से कोई मैसेज मेल नहीं खाता",
+    "externalAnalysis": {
+      "title": "बाहरी विश्लेषण",
+      "plotterDescription": "इंटरैक्टिव DataFlash / .tlog ग्राफ प्लॉटर",
+      "reviewerDescription": "स्वचालित लॉग विश्लेषण और उड़ान समीक्षा"
+    }
   },
   "fcNav": {
     "flightController": "फ़्लाइट कंट्रोलर",
@@ -1440,7 +1508,21 @@
     "rssi": "RSSI",
     "signal": "सिग्नल",
     "status": "स्टेटस",
-    "yes": "हाँ"
+    "yes": "हाँ",
+    "telemetryNone": "कोई डेटा नहीं",
+    "telemetryChannels": {
+      "attitude": "एटिट्यूड",
+      "position": "स्थिति",
+      "battery": "बैटरी",
+      "gps": "GPS",
+      "rcInput": "RC इनपुट",
+      "radio": "रेडियो",
+      "vfrHud": "VFR HUD",
+      "systemStatus": "सिस्टम स्थिति",
+      "ekf": "EKF",
+      "wind": "हवा",
+      "navController": "नेविगेशन कंट्रोलर"
+    }
   },
   "flightInfo": {
     "vehicleInfo": "वाहन जानकारी",

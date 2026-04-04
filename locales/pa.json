@@ -160,7 +160,13 @@
       "githubDark": "GitHub Dark",
       "ayuDark": "Ayu Dark",
       "ayuMirage": "Ayu Mirage",
-      "everforestDark": "Everforest Dark"
+      "everforestDark": "Everforest Dark",
+      "groupCore": "ਕੋਰ",
+      "groupSolarized": "Solarized",
+      "groupDarkThemes": "ਗੂੜ੍ਹੇ ਥੀਮ",
+      "groupLightThemes": "ਹਲਕੇ ਥੀਮ",
+      "groupMidTone": "ਦਰਮਿਆਨੇ ਟੋਨ",
+      "selectTheme": "ਥੀਮ ਚੁਣੋ"
     }
   },
   "community": {
@@ -183,7 +189,23 @@
     "cancelled": "ਰੱਦ",
     "addTranslation": "ਅਨੁਵਾਦ ਸ਼ਾਮਲ ਕਰੋ",
     "translations": "ਅਨੁਵਾਦ",
-    "noTranslation": "इस ਭਾਸ਼ਾ के लिए ਅਨੁਵਾਦ उपलब्ध नहीं है"
+    "noTranslation": "इस ਭਾਸ਼ਾ के लिए ਅਨੁਵਾਦ उपलब्ध नहीं है",
+    "badges": {
+      "categories": {
+        "command": "ਕਮਾਂਡ",
+        "ados": "ADOS",
+        "website": "ਵੈੱਬਸਾਈਟ",
+        "general": "ਆਮ"
+      },
+      "statuses": {
+        "backlog": "ਬੈਕਲੌਗ",
+        "in_discussion": "ਚਰਚਾ ਵਿੱਚ",
+        "planned": "ਯੋਜਨਾबद्ध",
+        "in_progress": "ਪ੍ਰਗਤੀ ਵਿੱਚ",
+        "released": "ਜਾਰੀ ਕੀਤਾ",
+        "wont_do": "ਨਹੀਂ ਕੀਤਾ ਜਾਵੇਗਾ"
+      }
+    }
   },
   "shell": {
     "missionControl": "Mission Control",
@@ -238,7 +260,18 @@
     "geoUnavailable": "इस ਬ੍ਰਾਊਜ਼ਰ में जियोलोकेशन उपलब्ध नहीं है।",
     "setupWizard": "सेटअप ਵਿਜ਼ਾਰਡ फिर से चलाएँ",
     "setupWizardDesc": "ਸ਼ੁਰੂਆਤੀ ਕੌਂਫਿਗਰेशन ਵਿਜ਼ਾਰਡ फिर से चलाएँ",
-    "rerun": "ਮੁੜ ਚਲਾਓ"
+    "rerun": "ਮੁੜ ਚਲਾਓ",
+    "timezoneIst": "IST (UTC+5:30)",
+    "timezoneUtc": "UTC (UTC+0:00)",
+    "timezonePst": "PST (UTC-8:00)",
+    "telemetryRate1Hz": "1 Hz",
+    "telemetryRate5Hz": "5 Hz",
+    "telemetryRate10Hz": "10 Hz",
+    "telemetryRate20Hz": "20 Hz",
+    "latAbbr": "LAT",
+    "lonAbbr": "LON",
+    "accAbbr": "ACC",
+    "altAbbr": "ALT"
   },
   "notifications": {
     "title": "ਸੂਚਨਾਵਾਂ",
@@ -322,7 +355,13 @@
     "gps": "GPS",
     "armedStatus": "ਸਰਗਰਮ ਸਥਿਤੀ",
     "signal": "सिग्नल",
-    "timer": "टाइमर"
+    "timer": "टाइमर",
+    "bitrate2Mbps": "2 Mbps",
+    "bitrate4Mbps": "4 Mbps",
+    "bitrate8Mbps": "8 Mbps",
+    "bitrate12Mbps": "12 Mbps",
+    "codecH264": "H.264",
+    "codecH265": "H.265"
   },
   "inputDevices": {
     "title": "ਇਨਪੁੱਟ ਡਿਵਾਈਸ",
@@ -470,7 +509,29 @@
     "frame": "फ़्रेम",
     "firmware": "फ़र्मवेयर",
     "compute": "कम्प्यूट",
-    "weight": "वज़न"
+    "weight": "वज़न",
+    "suiteDashboard": {
+      "dashboardTitle": "{suite} ਡੈਸ਼ਬੋਰਡ",
+      "mission": "ਮਿਸ਼ਨ",
+      "patrolProgress": "ਗਸ਼ਤ ਪ੍ਰਗਤੀ",
+      "coverage": "ਕਵਰੇਜ",
+      "gridProgress": "ਗ੍ਰਿਡ ਪ੍ਰਗਤੀ",
+      "missionProgress": "ਮਿਸ਼ਨ ਪ੍ਰਗਤੀ",
+      "areaCovered": "ਕਵਰ ਕੀਤਾ ਖੇਤਰ",
+      "laps": "ਚੱਕਰ",
+      "detections": "ਪਤਾ ਲੱਗਣੀਆਂ",
+      "alerts": "ਚੇਤਾਵਨੀਆਂ",
+      "images": "ਤਸਵੀਰਾਂ",
+      "overlap": "ਓਵਰਲੈਪ",
+      "gsd": "GSD",
+      "area": "ਖੇਤਰ",
+      "searchArea": "ਖੋਜ ਖੇਤਰ",
+      "personsFound": "ਮਿਲੇ ਵਿਅਕਤੀ",
+      "gridCells": "ਗ੍ਰਿਡ ਸੈਲ",
+      "thermalHits": "ਥਰਮਲ ਹਿੱਟਸ",
+      "waypoints": "ਵੇਪੋਇੰਟ",
+      "distance": "ਦੂਰੀ"
+    }
   },
   "logs": {
     "debug": "DEBUG",
@@ -497,7 +558,12 @@
     "severity": "ਗੰਭੀਰता",
     "message": "मैसेज",
     "waitingForMessages": "स्टेटस मैसेज की प्रतीक्षा...",
-    "noMessagesMatch": "वर्तमान ਫਿਲਟਰ से कोई मैसेज मेल नहीं खाता"
+    "noMessagesMatch": "वर्तमान ਫਿਲਟਰ से कोई मैसेज मेल नहीं खाता",
+    "externalAnalysis": {
+      "title": "ਬਾਹਰੀ ਵਿਸ਼ਲੇਸ਼ਣ",
+      "plotterDescription": "ਇੰਟਰਐਕਟਿਵ DataFlash / .tlog ਗ੍ਰਾਫ ਪਲੌਟਰ",
+      "reviewerDescription": "ਸਵੈਚਾਲਿਤ ਲੌਗ ਵਿਸ਼ਲੇਸ਼ਣ ਅਤੇ ਉਡਾਣ ਸਮੀਖਿਆ"
+    }
   },
   "fcNav": {
     "flightController": "ਫਲਾਈਟ ਕੰਟਰੋਲਰ",
@@ -1534,7 +1600,21 @@
     "rssi": "RSSI",
     "signal": "सिग्नल",
     "status": "स्टेटस",
-    "yes": "हाँ"
+    "yes": "हाँ",
+    "telemetryNone": "ਕੋਈ ਡਾਟਾ ਨਹੀਂ",
+    "telemetryChannels": {
+      "attitude": "ਐਟੀਟਿਊਡ",
+      "position": "ਸਥਿਤੀ",
+      "battery": "ਬੈਟਰੀ",
+      "gps": "GPS",
+      "rcInput": "RC ਇਨਪੁੱਟ",
+      "radio": "ਰੇਡੀਓ",
+      "vfrHud": "VFR HUD",
+      "systemStatus": "ਸਿਸਟਮ ਸਥਿਤੀ",
+      "ekf": "EKF",
+      "wind": "ਹਵਾ",
+      "navController": "ਨੇਵੀਗੇਸ਼ਨ ਕੰਟਰੋਲਰ"
+    }
   },
   "flightInfo": {
     "vehicleInfo": "ਵਾਹਨ जानकारी",

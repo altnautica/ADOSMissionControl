@@ -53,3 +53,5 @@ next-env.d.ts
 /src/data/mil-std-2525d/
 /src/app/tactical/
 .overlay-manifest
+
+/.agents

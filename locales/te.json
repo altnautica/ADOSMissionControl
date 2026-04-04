@@ -160,7 +160,13 @@
       "githubDark": "GitHub Dark",
       "ayuDark": "Ayu Dark",
       "ayuMirage": "Ayu Mirage",
-      "everforestDark": "Everforest Dark"
+      "everforestDark": "Everforest Dark",
+      "groupCore": "కోర్",
+      "groupSolarized": "Solarized",
+      "groupDarkThemes": "డార్క్ థీమ్లు",
+      "groupLightThemes": "లైట్ థీమ్లు",
+      "groupMidTone": "మధ్యస్థ టోన్",
+      "selectTheme": "థీమ్ ఎంచుకోండి"
     }
   },
   "guidance": {
@@ -198,7 +204,23 @@
     "cancelled": "రద్దు చేయబడింది",
     "addTranslation": "అనువాదం జోడించండి",
     "translations": "అనువాదాలు",
-    "noTranslation": "ఈ భాషకు అనువాదం అందుబాటులో లేదు"
+    "noTranslation": "ఈ భాషకు అనువాదం అందుబాటులో లేదు",
+    "badges": {
+      "categories": {
+        "command": "కమాండ్",
+        "ados": "ADOS",
+        "website": "వెబ్‌సైట్",
+        "general": "సాధారణం"
+      },
+      "statuses": {
+        "backlog": "బ్యాక్‌లాగ్",
+        "in_discussion": "చర్చలో",
+        "planned": "ప్లాన్ చేయబడింది",
+        "in_progress": "ప్రగతిలో ఉంది",
+        "released": "విడుదలైంది",
+        "wont_do": "చేయము"
+      }
+    }
   },
   "shell": {
     "missionControl": "Mission Control",
@@ -253,7 +275,18 @@
     "geoUnavailable": "ఈ బ్రౌజర్‌లో జియోలొకేషన్ అందుబాటులో లేదు.",
     "setupWizard": "సెటప్ విజార్డ్ మళ్ళీ అమలు చేయండి",
     "setupWizardDesc": "ప్రారంభ కాన్ఫిగరేషన్ విజార్డ్‌ను మళ్ళీ అమలు చేయండి",
-    "rerun": "మళ్ళీ అమలు"
+    "rerun": "మళ్ళీ అమలు",
+    "timezoneIst": "IST (UTC+5:30)",
+    "timezoneUtc": "UTC (UTC+0:00)",
+    "timezonePst": "PST (UTC-8:00)",
+    "telemetryRate1Hz": "1 Hz",
+    "telemetryRate5Hz": "5 Hz",
+    "telemetryRate10Hz": "10 Hz",
+    "telemetryRate20Hz": "20 Hz",
+    "latAbbr": "LAT",
+    "lonAbbr": "LON",
+    "accAbbr": "ACC",
+    "altAbbr": "ALT"
   },
   "notifications": {
     "title": "నోటిఫికేషన్‌లు",
@@ -337,7 +370,13 @@
     "gps": "GPS",
     "armedStatus": "ఆర్మ్‌డ్ స్థితి",
     "signal": "సిగ్నల్",
-    "timer": "టైమర్"
+    "timer": "టైమర్",
+    "bitrate2Mbps": "2 Mbps",
+    "bitrate4Mbps": "4 Mbps",
+    "bitrate8Mbps": "8 Mbps",
+    "bitrate12Mbps": "12 Mbps",
+    "codecH264": "H.264",
+    "codecH265": "H.265"
   },
   "inputDevices": {
     "title": "ఇన్‌పుట్ పరికరాలు",
@@ -485,7 +524,29 @@
     "frame": "ఫ్రేమ్",
     "firmware": "Firmware",
     "compute": "కంప్యూట్",
-    "weight": "బరువు"
+    "weight": "బరువు",
+    "suiteDashboard": {
+      "dashboardTitle": "{suite} డ్యాష్‌బోర్డ్",
+      "mission": "మిషన్",
+      "patrolProgress": "పహారా పురోగతి",
+      "coverage": "కవరేజ్",
+      "gridProgress": "గ్రిడ్ పురోగతి",
+      "missionProgress": "మిషన్ పురోగతి",
+      "areaCovered": "కవర్ చేసిన ప్రాంతం",
+      "laps": "ల్యాప్స్",
+      "detections": "గుర్తింపులు",
+      "alerts": "అలర్ట్లు",
+      "images": "చిత్రాలు",
+      "overlap": "ఓవర్ల్యాప్",
+      "gsd": "GSD",
+      "area": "ప్రాంతం",
+      "searchArea": "శోధన ప్రాంతం",
+      "personsFound": "కనుగొన్న వ్యక్తులు",
+      "gridCells": "గ్రిడ్ సెల్లు",
+      "thermalHits": "థర్మల్ హిట్లు",
+      "waypoints": "వేపాయింట్లు",
+      "distance": "దూరం"
+    }
   },
   "logs": {
     "debug": "DEBUG",
@@ -512,7 +573,12 @@
     "severity": "తీవ్రత",
     "message": "సందేశం",
     "waitingForMessages": "స్థితి సందేశాల కోసం వేచి ఉంది...",
-    "noMessagesMatch": "ప్రస్తుత ఫిల్టర్‌లకు సందేశాలు సరిపోలలేదు"
+    "noMessagesMatch": "ప్రస్తుత ఫిల్టర్‌లకు సందేశాలు సరిపోలలేదు",
+    "externalAnalysis": {
+      "title": "బాహ్య విశ్లేషణ",
+      "plotterDescription": "ఇంటరాక్టివ్ DataFlash / .tlog గ్రాఫ్ ప్లాటర్",
+      "reviewerDescription": "స్వయంచాలిత లాగ్ విశ్లేషణ మరియు విమాన సమీక్ష"
+    }
   },
   "fcNav": {
     "flightController": "ఫ్లైట్ కంట్రోలర్",
@@ -1549,7 +1615,21 @@
     "no": "కాదు",
     "signal": "సిగ్నల్",
     "rssi": "RSSI",
-    "latency": "లేటెన్సీ"
+    "latency": "లేటెన్సీ",
+    "telemetryNone": "డేటా లేదు",
+    "telemetryChannels": {
+      "attitude": "అటిట్యూడ్",
+      "position": "స్థానం",
+      "battery": "బ్యాటరీ",
+      "gps": "GPS",
+      "rcInput": "RC ఇన్‌పుట్",
+      "radio": "రేడియో",
+      "vfrHud": "VFR HUD",
+      "systemStatus": "సిస్టమ్ స్థితి",
+      "ekf": "EKF",
+      "wind": "గాలి",
+      "navController": "నావిగేషన్ కంట్రోలర్"
+    }
   },
   "flightInfo": {
     "vehicleInfo": "వాహన సమాచారం",

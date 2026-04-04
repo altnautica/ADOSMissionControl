@@ -160,7 +160,13 @@
       "githubDark": "GitHub Dark",
       "ayuDark": "Ayu Dark",
       "ayuMirage": "Ayu Mirage",
-      "everforestDark": "Everforest Dark"
+      "everforestDark": "Everforest Dark",
+      "groupCore": "핵심",
+      "groupSolarized": "Solarized",
+      "groupDarkThemes": "다크 테마",
+      "groupLightThemes": "라이트 테마",
+      "groupMidTone": "중간 톤",
+      "selectTheme": "테마 선택"
     }
   },
   "guidance": {
@@ -198,7 +204,23 @@
     "cancelled": "취소됨",
     "addTranslation": "번역 추가",
     "translations": "번역",
-    "noTranslation": "이 언어에 대한 번역이 없습니다"
+    "noTranslation": "이 언어에 대한 번역이 없습니다",
+    "badges": {
+      "categories": {
+        "command": "커맨드",
+        "ados": "ADOS",
+        "website": "웹사이트",
+        "general": "일반"
+      },
+      "statuses": {
+        "backlog": "백로그",
+        "in_discussion": "논의 중",
+        "planned": "계획됨",
+        "in_progress": "진행 중",
+        "released": "출시됨",
+        "wont_do": "하지 않음"
+      }
+    }
   },
   "shell": {
     "missionControl": "Mission Control",
@@ -253,7 +275,18 @@
     "geoUnavailable": "이 브라우저에서 위치 정보를 사용할 수 없습니다.",
     "setupWizard": "설정 마법사 다시 실행",
     "setupWizardDesc": "초기 설정 마법사를 다시 실행합니다",
-    "rerun": "다시 실행"
+    "rerun": "다시 실행",
+    "timezoneIst": "IST (UTC+5:30)",
+    "timezoneUtc": "UTC (UTC+0:00)",
+    "timezonePst": "PST (UTC-8:00)",
+    "telemetryRate1Hz": "1 Hz",
+    "telemetryRate5Hz": "5 Hz",
+    "telemetryRate10Hz": "10 Hz",
+    "telemetryRate20Hz": "20 Hz",
+    "latAbbr": "LAT",
+    "lonAbbr": "LON",
+    "accAbbr": "ACC",
+    "altAbbr": "ALT"
   },
   "notifications": {
     "title": "알림",
@@ -337,7 +370,13 @@
     "gps": "GPS",
     "armedStatus": "시동 상태",
     "signal": "신호",
-    "timer": "타이머"
+    "timer": "타이머",
+    "bitrate2Mbps": "2 Mbps",
+    "bitrate4Mbps": "4 Mbps",
+    "bitrate8Mbps": "8 Mbps",
+    "bitrate12Mbps": "12 Mbps",
+    "codecH264": "H.264",
+    "codecH265": "H.265"
   },
   "inputDevices": {
     "title": "입력 장치",
@@ -485,7 +524,29 @@
     "frame": "프레임",
     "firmware": "펌웨어",
     "compute": "컴퓨트",
-    "weight": "무게"
+    "weight": "무게",
+    "suiteDashboard": {
+      "dashboardTitle": "{suite} 대시보드",
+      "mission": "임무",
+      "patrolProgress": "순찰 진행률",
+      "coverage": "커버리지",
+      "gridProgress": "그리드 진행률",
+      "missionProgress": "임무 진행률",
+      "areaCovered": "커버된 면적",
+      "laps": "랩",
+      "detections": "감지",
+      "alerts": "경고",
+      "images": "이미지",
+      "overlap": "중첩",
+      "gsd": "GSD",
+      "area": "면적",
+      "searchArea": "수색 구역",
+      "personsFound": "발견 인원",
+      "gridCells": "그리드 셀",
+      "thermalHits": "열 감지",
+      "waypoints": "웨이포인트",
+      "distance": "거리"
+    }
   },
   "logs": {
     "debug": "디버그",
@@ -512,7 +573,12 @@
     "severity": "심각도",
     "message": "메시지",
     "waitingForMessages": "상태 메시지 대기 중...",
-    "noMessagesMatch": "현재 필터에 일치하는 메시지가 없습니다"
+    "noMessagesMatch": "현재 필터에 일치하는 메시지가 없습니다",
+    "externalAnalysis": {
+      "title": "외부 분석",
+      "plotterDescription": "대화형 DataFlash / .tlog 그래프 플로터",
+      "reviewerDescription": "자동 로그 분석 및 비행 검토"
+    }
   },
   "fcNav": {
     "flightController": "비행 컨트롤러",
@@ -1549,7 +1615,21 @@
     "no": "아니오",
     "signal": "신호",
     "rssi": "RSSI",
-    "latency": "지연시간"
+    "latency": "지연시간",
+    "telemetryNone": "데이터 없음",
+    "telemetryChannels": {
+      "attitude": "자세",
+      "position": "위치",
+      "battery": "배터리",
+      "gps": "GPS",
+      "rcInput": "RC 입력",
+      "radio": "무전",
+      "vfrHud": "VFR HUD",
+      "systemStatus": "시스템 상태",
+      "ekf": "EKF",
+      "wind": "바람",
+      "navController": "내비게이션 컨트롤러"
+    }
   },
   "flightInfo": {
     "vehicleInfo": "기체 정보",

@@ -160,7 +160,13 @@
       "githubDark": "GitHub Dark",
       "ayuDark": "Ayu Dark",
       "ayuMirage": "Ayu Mirage",
-      "everforestDark": "Everforest Dark"
+      "everforestDark": "Everforest Dark",
+      "groupCore": "コア",
+      "groupSolarized": "Solarized",
+      "groupDarkThemes": "ダークテーマ",
+      "groupLightThemes": "ライトテーマ",
+      "groupMidTone": "中間トーン",
+      "selectTheme": "テーマを選択"
     }
   },
   "guidance": {
@@ -198,7 +204,23 @@
     "cancelled": "中止",
     "addTranslation": "翻訳を追加",
     "translations": "翻訳",
-    "noTranslation": "この言語の翻訳はまだありません"
+    "noTranslation": "この言語の翻訳はまだありません",
+    "badges": {
+      "categories": {
+        "command": "コマンド",
+        "ados": "ADOS",
+        "website": "ウェブサイト",
+        "general": "一般"
+      },
+      "statuses": {
+        "backlog": "バックログ",
+        "in_discussion": "議論中",
+        "planned": "計画中",
+        "in_progress": "進行中",
+        "released": "リリース済み",
+        "wont_do": "対応しない"
+      }
+    }
   },
   "shell": {
     "missionControl": "Mission Control",
@@ -253,7 +275,18 @@
     "geoUnavailable": "このブラウザでは位置情報を利用できません。",
     "setupWizard": "セットアップウィザードを再実行",
     "setupWizardDesc": "初期設定ウィザードを再実行します",
-    "rerun": "再実行"
+    "rerun": "再実行",
+    "timezoneIst": "IST (UTC+5:30)",
+    "timezoneUtc": "UTC (UTC+0:00)",
+    "timezonePst": "PST (UTC-8:00)",
+    "telemetryRate1Hz": "1 Hz",
+    "telemetryRate5Hz": "5 Hz",
+    "telemetryRate10Hz": "10 Hz",
+    "telemetryRate20Hz": "20 Hz",
+    "latAbbr": "LAT",
+    "lonAbbr": "LON",
+    "accAbbr": "ACC",
+    "altAbbr": "ALT"
   },
   "notifications": {
     "title": "通知",
@@ -337,7 +370,13 @@
     "gps": "GPS",
     "armedStatus": "アーム状態",
     "signal": "信号",
-    "timer": "タイマー"
+    "timer": "タイマー",
+    "bitrate2Mbps": "2 Mbps",
+    "bitrate4Mbps": "4 Mbps",
+    "bitrate8Mbps": "8 Mbps",
+    "bitrate12Mbps": "12 Mbps",
+    "codecH264": "H.264",
+    "codecH265": "H.265"
   },
   "inputDevices": {
     "title": "入力デバイス",
@@ -485,7 +524,29 @@
     "frame": "フレーム",
     "firmware": "ファームウェア",
     "compute": "コンピュート",
-    "weight": "重量"
+    "weight": "重量",
+    "suiteDashboard": {
+      "dashboardTitle": "{suite} ダッシュボード",
+      "mission": "ミッション",
+      "patrolProgress": "巡回進捗",
+      "coverage": "カバレッジ",
+      "gridProgress": "グリッド進捗",
+      "missionProgress": "ミッション進捗",
+      "areaCovered": "カバー済み面積",
+      "laps": "周回",
+      "detections": "検出",
+      "alerts": "アラート",
+      "images": "画像",
+      "overlap": "オーバーラップ",
+      "gsd": "GSD",
+      "area": "面積",
+      "searchArea": "捜索エリア",
+      "personsFound": "発見人数",
+      "gridCells": "グリッドセル",
+      "thermalHits": "熱検知",
+      "waypoints": "ウェイポイント",
+      "distance": "距離"
+    }
   },
   "logs": {
     "debug": "デバッグ",
@@ -512,7 +573,12 @@
     "severity": "重要度",
     "message": "メッセージ",
     "waitingForMessages": "ステータスメッセージを待機中...",
-    "noMessagesMatch": "フィルターに一致するメッセージがありません"
+    "noMessagesMatch": "フィルターに一致するメッセージがありません",
+    "externalAnalysis": {
+      "title": "外部解析",
+      "plotterDescription": "対話型 DataFlash / .tlog グラフプロッター",
+      "reviewerDescription": "自動ログ解析と飛行レビュー"
+    }
   },
   "fcNav": {
     "flightController": "フライトコントローラー",
@@ -1549,7 +1615,21 @@
     "no": "いいえ",
     "signal": "信号",
     "rssi": "RSSI",
-    "latency": "遅延"
+    "latency": "遅延",
+    "telemetryNone": "データなし",
+    "telemetryChannels": {
+      "attitude": "姿勢",
+      "position": "位置",
+      "battery": "バッテリー",
+      "gps": "GPS",
+      "rcInput": "RC入力",
+      "radio": "無線",
+      "vfrHud": "VFR HUD",
+      "systemStatus": "システム状態",
+      "ekf": "EKF",
+      "wind": "風",
+      "navController": "航法コントローラー"
+    }
   },
   "flightInfo": {
     "vehicleInfo": "機体情報",

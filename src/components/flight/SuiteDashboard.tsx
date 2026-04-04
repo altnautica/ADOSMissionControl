@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useMissionStore } from "@/stores/mission-store";
 import { DataValue } from "@/components/ui/data-value";
@@ -9,74 +10,82 @@ import type { SuiteType } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 function SentryDashboard({ progress }: { progress: number }) {
+  const t = useTranslations("flight.suiteDashboard");
+
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-1">
         <span className="text-[10px] uppercase tracking-wider text-text-tertiary">
-          Patrol Progress
+          {t("patrolProgress")}
         </span>
         <ProgressBar value={progress} showLabel />
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <DataValue label="Area Covered" value="1.2" unit="km\u00B2" />
-        <DataValue label="Laps" value="3" />
-        <DataValue label="Detections" value="0" />
-        <DataValue label="Alerts" value="0" />
+        <DataValue label={t("areaCovered")} value="1.2" unit="km\u00B2" />
+        <DataValue label={t("laps")} value="3" />
+        <DataValue label={t("detections")} value="0" />
+        <DataValue label={t("alerts")} value="0" />
       </div>
     </div>
   );
 }
 
 function SurveyDashboard({ progress }: { progress: number }) {
+  const t = useTranslations("flight.suiteDashboard");
+
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-1">
         <span className="text-[10px] uppercase tracking-wider text-text-tertiary">
-          Coverage
+          {t("coverage")}
         </span>
         <ProgressBar value={progress} showLabel />
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <DataValue label="Images" value="142" />
-        <DataValue label="Overlap" value="78" unit="%" />
-        <DataValue label="GSD" value="2.1" unit="cm/px" />
-        <DataValue label="Area" value="0.8" unit="km\u00B2" />
+        <DataValue label={t("images")} value="142" />
+        <DataValue label={t("overlap")} value="78" unit="%" />
+        <DataValue label={t("gsd")} value="2.1" unit="cm/px" />
+        <DataValue label={t("area")} value="0.8" unit="km\u00B2" />
       </div>
     </div>
   );
 }
 
 function SarDashboard({ progress }: { progress: number }) {
+  const t = useTranslations("flight.suiteDashboard");
+
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-1">
         <span className="text-[10px] uppercase tracking-wider text-text-tertiary">
-          Grid Progress
+          {t("gridProgress")}
         </span>
         <ProgressBar value={progress} showLabel />
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <DataValue label="Search Area" value="2.4" unit="km\u00B2" />
-        <DataValue label="Persons Found" value="0" />
-        <DataValue label="Grid Cells" value={`${Math.round(progress / 10)}/10`} />
-        <DataValue label="Thermal Hits" value="3" />
+        <DataValue label={t("searchArea")} value="2.4" unit="km\u00B2" />
+        <DataValue label={t("personsFound")} value="0" />
+        <DataValue label={t("gridCells")} value={`${Math.round(progress / 10)}/10`} />
+        <DataValue label={t("thermalHits")} value="3" />
       </div>
     </div>
   );
 }
 
 function GenericDashboard({ progress }: { progress: number }) {
+  const t = useTranslations("flight.suiteDashboard");
+
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-1">
         <span className="text-[10px] uppercase tracking-wider text-text-tertiary">
-          Mission Progress
+          {t("missionProgress")}
         </span>
         <ProgressBar value={progress} showLabel />
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <DataValue label="Waypoints" value={`${Math.round(progress / 10)}/10`} />
-        <DataValue label="Distance" value="2.1" unit="km" />
+        <DataValue label={t("waypoints")} value={`${Math.round(progress / 10)}/10`} />
+        <DataValue label={t("distance")} value="2.1" unit="km" />
       </div>
     </div>
   );
@@ -98,25 +107,29 @@ function getSuiteDashboard(
   }
 }
 
-const SUITE_LABELS: Record<string, string> = {
-  sentry: "Sentry",
-  survey: "Survey",
-  sar: "SAR",
-  agriculture: "Agriculture",
-  cargo: "Cargo",
-  inspection: "Inspection",
+const SUITE_LABEL_KEYS: Partial<Record<SuiteType, string>> = {
+  sentry: "sentry",
+  survey: "survey",
+  sar: "sar",
+  agriculture: "agriculture",
+  cargo: "cargo",
+  inspection: "inspection",
 };
 
 export function SuiteDashboard() {
   const [collapsed, setCollapsed] = useState(false);
+  const t = useTranslations("flight.suiteDashboard");
+  const tSuite = useTranslations("flightInfo");
   const mission = useMissionStore((s) => s.activeMission);
   const progress = useMissionStore((s) => s.progress);
 
   if (!mission) return null;
 
   const suiteLabel = mission.suiteType
-    ? SUITE_LABELS[mission.suiteType] ?? mission.suiteType
-    : "Mission";
+    ? (SUITE_LABEL_KEYS[mission.suiteType]
+      ? tSuite(SUITE_LABEL_KEYS[mission.suiteType])
+      : mission.suiteType)
+    : t("mission");
 
   return (
     <div className="border-t border-border-default">
@@ -126,7 +139,7 @@ export function SuiteDashboard() {
         onClick={() => setCollapsed(!collapsed)}
       >
         <span className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold">
-          {suiteLabel} Dashboard
+          {t("dashboardTitle", { suite: suiteLabel })}
         </span>
         {collapsed ? (
           <ChevronDown size={12} className="text-text-tertiary" />

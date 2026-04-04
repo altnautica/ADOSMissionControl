@@ -160,7 +160,13 @@
       "githubDark": "GitHub Dark",
       "ayuDark": "Ayu Dark",
       "ayuMirage": "Ayu Mirage",
-      "everforestDark": "Everforest Dark"
+      "everforestDark": "Everforest Dark",
+      "groupCore": "Inti",
+      "groupSolarized": "Solarized",
+      "groupDarkThemes": "Tema gelap",
+      "groupLightThemes": "Tema terang",
+      "groupMidTone": "Nada sedang",
+      "selectTheme": "Pilih tema"
     }
   },
   "guidance": {
@@ -198,7 +204,23 @@
     "cancelled": "Dibatalkan",
     "addTranslation": "Tambah Terjemahan",
     "translations": "Terjemahan",
-    "noTranslation": "Terjemahan tidak tersedia untuk bahasa ini"
+    "noTranslation": "Terjemahan tidak tersedia untuk bahasa ini",
+    "badges": {
+      "categories": {
+        "command": "Perintah",
+        "ados": "ADOS",
+        "website": "Situs web",
+        "general": "Umum"
+      },
+      "statuses": {
+        "backlog": "Tertunda",
+        "in_discussion": "Dalam diskusi",
+        "planned": "Direncanakan",
+        "in_progress": "Sedang Berjalan",
+        "released": "Dirilis",
+        "wont_do": "Tidak dikerjakan"
+      }
+    }
   },
   "shell": {
     "missionControl": "Mission Control",
@@ -253,7 +275,18 @@
     "geoUnavailable": "Geolokasi tidak tersedia di browser ini.",
     "setupWizard": "Jalankan Ulang Wizard Pengaturan",
     "setupWizardDesc": "Jalankan ulang wizard konfigurasi awal",
-    "rerun": "Jalankan Ulang"
+    "rerun": "Jalankan Ulang",
+    "timezoneIst": "IST (UTC+5:30)",
+    "timezoneUtc": "UTC (UTC+0:00)",
+    "timezonePst": "PST (UTC-8:00)",
+    "telemetryRate1Hz": "1 Hz",
+    "telemetryRate5Hz": "5 Hz",
+    "telemetryRate10Hz": "10 Hz",
+    "telemetryRate20Hz": "20 Hz",
+    "latAbbr": "LAT",
+    "lonAbbr": "LON",
+    "accAbbr": "ACC",
+    "altAbbr": "ALT"
   },
   "notifications": {
     "title": "Notifikasi",
@@ -337,7 +370,13 @@
     "gps": "GPS",
     "armedStatus": "Status aktif",
     "signal": "Sinyal",
-    "timer": "Timer"
+    "timer": "Timer",
+    "bitrate2Mbps": "2 Mbps",
+    "bitrate4Mbps": "4 Mbps",
+    "bitrate8Mbps": "8 Mbps",
+    "bitrate12Mbps": "12 Mbps",
+    "codecH264": "H.264",
+    "codecH265": "H.265"
   },
   "inputDevices": {
     "title": "Perangkat Input",
@@ -485,7 +524,29 @@
     "frame": "Frame",
     "firmware": "Firmware",
     "compute": "Komputasi",
-    "weight": "Berat"
+    "weight": "Berat",
+    "suiteDashboard": {
+      "dashboardTitle": "Dasbor {suite}",
+      "mission": "Misi",
+      "patrolProgress": "Progres patroli",
+      "coverage": "Cakupan",
+      "gridProgress": "Progres grid",
+      "missionProgress": "Progres misi",
+      "areaCovered": "Area tercakup",
+      "laps": "Putaran",
+      "detections": "Deteksi",
+      "alerts": "Peringatan",
+      "images": "Gambar",
+      "overlap": "Tumpang tindih",
+      "gsd": "GSD",
+      "area": "Area",
+      "searchArea": "Area pencarian",
+      "personsFound": "Orang ditemukan",
+      "gridCells": "Sel grid",
+      "thermalHits": "Deteksi termal",
+      "waypoints": "Waypoint",
+      "distance": "Jarak"
+    }
   },
   "logs": {
     "debug": "DEBUG",
@@ -512,7 +573,12 @@
     "severity": "TINGKAT",
     "message": "PESAN",
     "waitingForMessages": "Menunggu pesan status...",
-    "noMessagesMatch": "Tidak ada pesan yang cocok dengan filter saat ini"
+    "noMessagesMatch": "Tidak ada pesan yang cocok dengan filter saat ini",
+    "externalAnalysis": {
+      "title": "Analisis eksternal",
+      "plotterDescription": "Plotter grafik DataFlash / .tlog interaktif",
+      "reviewerDescription": "Analisis log otomatis dan tinjauan penerbangan"
+    }
   },
   "fcNav": {
     "flightController": "PENGENDALI TERBANG",
@@ -1549,7 +1615,21 @@
     "no": "Tidak",
     "signal": "Sinyal",
     "rssi": "RSSI",
-    "latency": "Latensi"
+    "latency": "Latensi",
+    "telemetryNone": "Tidak ada data",
+    "telemetryChannels": {
+      "attitude": "Attitude",
+      "position": "Posisi",
+      "battery": "Baterai",
+      "gps": "GPS",
+      "rcInput": "Input RC",
+      "radio": "Radio",
+      "vfrHud": "VFR HUD",
+      "systemStatus": "Status sistem",
+      "ekf": "EKF",
+      "wind": "Angin",
+      "navController": "Pengendali navigasi"
+    }
   },
   "flightInfo": {
     "vehicleInfo": "Info Wahana",

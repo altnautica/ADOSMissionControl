@@ -7,28 +7,31 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { ExternalLink } from "lucide-react";
 
 const LINKS = [
   {
     name: "ArduPilot Log Plotter",
     url: "https://plot.ardupilot.org",
-    description: "Interactive DataFlash / .tlog graph plotter",
+    descriptionKey: "plotterDescription",
   },
   {
     name: "ArduPilot Log Reviewer",
     url: "https://review.ardupilot.org",
-    description: "Automated log analysis and flight review",
+    descriptionKey: "reviewerDescription",
   },
 ] as const;
 
 export function ExternalLogLinks() {
+  const t = useTranslations("logs.externalAnalysis");
+
   return (
     <div className="border border-border-default bg-bg-secondary p-3">
       <div className="flex items-center gap-2 mb-2">
         <ExternalLink size={12} className="text-accent-primary" />
         <span className="text-xs font-semibold text-text-primary">
-          External Analysis
+          {t("title")}
         </span>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -44,7 +47,7 @@ export function ExternalLogLinks() {
             <div>
               <div className="font-semibold">{link.name}</div>
               <div className="text-text-tertiary text-[9px]">
-                {link.description}
+                {t(link.descriptionKey)}
               </div>
             </div>
           </a>
