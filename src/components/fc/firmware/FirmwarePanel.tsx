@@ -53,6 +53,25 @@ export function FirmwarePanel() {
           </div>
         </details>
 
+        {/* Manual bootloader entry guide */}
+        <details className="bg-bg-secondary border border-border-default">
+          <summary className="px-4 py-2.5 text-xs text-text-secondary cursor-pointer hover:text-text-primary transition-colors">
+            Bootloader not detected? Manual entry guide
+          </summary>
+          <div className="px-4 pb-3 space-y-2 text-[10px] text-text-tertiary">
+            <p>If the flash tool cannot automatically enter bootloader mode, try these steps:</p>
+            <ol className="list-decimal list-inside space-y-1 ml-1">
+              <li><strong className="text-text-secondary">Unplug</strong> the FC from USB completely</li>
+              <li><strong className="text-text-secondary">Hold the BOOT button</strong> on the FC (small button near the USB port, sometimes labeled &quot;BT&quot; or &quot;BOOT&quot;)</li>
+              <li><strong className="text-text-secondary">While holding BOOT, plug in USB</strong></li>
+              <li><strong className="text-text-secondary">Release BOOT</strong> after 1-2 seconds</li>
+              <li>Click <strong className="text-text-secondary">Scan for DFU</strong> above, or click <strong className="text-text-secondary">Flash Firmware</strong> and select the port when prompted</li>
+            </ol>
+            <p className="mt-2"><strong className="text-text-secondary">Recovering a bricked board:</strong> If your FC is unresponsive (no serial port, no MAVLink), the BOOT button method above is the standard recovery path. It forces the STM32 into its built-in ROM bootloader, which is independent of any flashed firmware.</p>
+            <p><strong className="text-text-secondary">NuttShell / NSH prompt:</strong> If you see shell-like output instead of MAVLink data, the FC booted into maintenance mode (common on Pixhawk boards). Unplug, use the BOOT button method, and reflash.</p>
+          </div>
+        </details>
+
         {/* No-drone hint */}
         {!fw.drone && fw.dfuDevices.length === 0 && (
           <div className="bg-bg-secondary border border-border-default p-3">

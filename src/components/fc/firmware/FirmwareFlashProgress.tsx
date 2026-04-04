@@ -7,6 +7,7 @@ const PHASE_LABELS: Record<string, string> = {
   idle: "Ready",
   backup: "Backing up parameters...",
   rebooting: "Rebooting to bootloader...",
+  bootloader_wait: "Waiting for bootloader...",
   bootloader_init: "Connecting to bootloader...",
   chip_detect: "Detecting chip...",
   erasing: "Erasing flash...",
@@ -53,11 +54,20 @@ export function FirmwareFlashProgress({ progress, isFlashing, onAbort }: Firmwar
               ? "bg-status-danger"
               : progress.phase === "done"
               ? "bg-status-success"
+              : progress.phase === "bootloader_wait"
+              ? "bg-accent-primary animate-pulse"
               : "bg-accent-primary"
           }`}
           style={{ width: `${progress.percent}%` }}
         />
       </div>
+      {progress.phase === "bootloader_wait" && (
+        <p className="text-[10px] text-text-tertiary">
+          The flight controller is rebooting. This usually takes a few seconds.
+          If it takes longer than 10s, you may need to manually enter bootloader mode
+          (hold BOOT button while plugging in USB).
+        </p>
+      )}
       {progress.message && (
         <p className="text-[10px] text-text-tertiary font-mono whitespace-pre-wrap">{progress.message}</p>
       )}
