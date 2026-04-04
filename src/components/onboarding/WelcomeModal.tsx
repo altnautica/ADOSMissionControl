@@ -358,9 +358,9 @@ export function WelcomeModal() {
   const [units, setLocalUnits] = useState<UnitSystem>("metric");
   const [demoMode, setLocalDemoMode] = useState(true);
   const [audioEnabled, setLocalAudioEnabled] = useState(false);
-  const [locationEnabled, setLocalLocationEnabled] = useState(true);
+  const [locationEnabled, setLocalLocationEnabled] = useState(() => isSupported);
   const [locationPermission, setLocationPermission] = useState<GeoPermission>("prompt");
-  const [locationChecking, setLocationChecking] = useState(false);
+  const [locationChecking, setLocationChecking] = useState(() => isSupported);
   const [hoveredAccentColor, setHoveredAccentColor] = useState<AccentColor | null>(null);
   const [accentPointerX, setAccentPointerX] = useState<number | null>(null);
   const [activeGroup, setActiveGroup] = useState<ThemeGroup | "all">("all");
@@ -374,12 +374,8 @@ export function WelcomeModal() {
 
   // Auto-request location permission on mount
   useEffect(() => {
-    if (!isSupported) {
-      setLocalLocationEnabled(false);
-      return;
-    }
+    if (!isSupported) return;
     let cancelled = false;
-    setLocationChecking(true);
     requestPermission().then((perm) => {
       if (cancelled) return;
       setLocationChecking(false);
@@ -388,13 +384,6 @@ export function WelcomeModal() {
     });
     return () => { cancelled = true; };
   }, [isSupported, requestPermission]);
-
-  // Auto-set units when jurisdiction changes
-  useEffect(() => {
-    if (jurisdiction) {
-      setLocalUnits(JURISDICTIONS[jurisdiction].defaultUnits);
-    }
-  }, [jurisdiction]);
 
   // Desktop download step is skipped when already running in Electron
   const skipDownloadStep = isElectron();
@@ -772,7 +761,11 @@ export function WelcomeModal() {
                 <Select
                   label={t("preferences.jurisdiction")}
                   value={jurisdiction}
-                  onChange={(v) => setLocalJurisdiction(v as Jurisdiction | "")}
+                  onChange={(v) => {
+                    const j = v as Jurisdiction | "";
+                    setLocalJurisdiction(j);
+                    if (j) setLocalUnits(JURISDICTIONS[j].defaultUnits);
+                  }}
                   placeholder={`${t("preferences.jurisdictionOptional")}`}
                   options={JURISDICTION_OPTIONS}
                 />
