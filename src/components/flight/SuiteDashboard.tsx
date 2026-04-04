@@ -125,11 +125,13 @@ export function SuiteDashboard() {
 
   if (!mission) return null;
 
-  const suiteLabel = mission.suiteType
-    ? (SUITE_LABEL_KEYS[mission.suiteType]
-      ? tSuite(SUITE_LABEL_KEYS[mission.suiteType])
-      : mission.suiteType)
-    : t("mission");
+  const suiteLabelKey = mission.suiteType
+    ? SUITE_LABEL_KEYS[mission.suiteType]
+    : undefined;
+
+  const suiteLabel = suiteLabelKey
+    ? tSuite(suiteLabelKey)
+    : (mission.suiteType ?? t("mission"));
 
   return (
     <div className="border-t border-border-default">
