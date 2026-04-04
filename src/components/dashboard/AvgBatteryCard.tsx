@@ -61,7 +61,7 @@ export function AvgBatteryCard() {
           })}
         </span>
       </div>
-      {minDrone && minDrone.battery && (
+      {minDrone && minDrone.battery && minName && (
         <div className="flex items-center justify-between mt-2 pt-2 border-t border-border-default">
           <span className="text-[10px] text-text-tertiary truncate mr-2">
             {t("avgBattery.lowestLabel", { name: minName })}

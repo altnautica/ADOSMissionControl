@@ -41,8 +41,8 @@
         "item1": "Registrar tu dron ante la autoridad correspondiente (DGCA, FAA, CASA, EASA, etc.)",
         "item2": "Obtener las certificaciones o licencias de piloto requeridas",
         "item3": "Asegurar las autorizaciones de espacio aéreo antes del vuelo",
-        "item4": "Operar dentro de los limites de altitud, distancia y linea de vista visual",
-        "footer": "Este software no garantiza el cumplimiento normativo. Es una herramienta. Tu eres el piloto al mando."
+        "item4": "Operar dentro de los límites de altitud, distancia y línea de vista visual",
+        "footer": "Este software no garantiza el cumplimiento normativo. Es una herramienta. Tú eres el piloto al mando."
       },
       "exportControls": {
         "heading": "Controles de exportación",
@@ -127,7 +127,7 @@
     "languageDescription": "Elige tu idioma de visualización. Más idiomas próximamente.",
     "languageNote": "Ayuda a traducir — contribuye en GitHub",
     "theme": {
-      "groupCore": "Nucleo",
+      "groupCore": "Núcleo",
       "groupSolarized": "Solarized",
       "groupDarkThemes": "Temas oscuros",
       "groupLightThemes": "Temas claros",
@@ -165,11 +165,11 @@
       },
       "statuses": {
         "backlog": "Pendiente",
-        "in_discussion": "En discusion",
+        "in_discussion": "En discusión",
         "planned": "Planificado",
         "in_progress": "En progreso",
         "released": "Publicado",
-        "wont_do": "No se hara"
+        "wont_do": "No se hará"
       }
     }
   },
@@ -508,23 +508,23 @@
     "weight": "Peso",
     "suiteDashboard": {
       "dashboardTitle": "Panel de {suite}",
-      "mission": "Mision",
+      "mission": "Misión",
       "patrolProgress": "Progreso de patrulla",
       "coverage": "Cobertura",
       "gridProgress": "Progreso de cuadrícula",
-      "missionProgress": "Progreso de mision",
-      "areaCovered": "Area cubierta",
+      "missionProgress": "Progreso de misión",
+      "areaCovered": "Área cubierta",
       "laps": "Vueltas",
       "detections": "Detecciones",
       "alerts": "Alertas",
-      "images": "Imagenes",
+      "images": "Imágenes",
       "overlap": "Solapamiento",
       "gsd": "GSD",
-      "area": "Area",
-      "searchArea": "Area de busqueda",
+      "area": "Área",
+      "searchArea": "Área de búsqueda",
       "personsFound": "Personas encontradas",
       "gridCells": "Celdas de cuadrícula",
-      "thermalHits": "Detecciones termicas",
+      "thermalHits": "Detecciones térmicas",
       "waypoints": "Puntos de ruta",
       "distance": "Distancia"
     }
@@ -556,9 +556,9 @@
     "waitingForMessages": "Esperando mensajes de estado...",
     "noMessagesMatch": "Ningún mensaje coincide con los filtros actuales",
     "externalAnalysis": {
-      "title": "Analisis externo",
-      "plotterDescription": "Trazador interactivo de graficos DataFlash / .tlog",
-      "reviewerDescription": "Analisis automatizado de registros y revision de vuelo"
+      "title": "Análisis externo",
+      "plotterDescription": "Trazador interactivo de gráficos DataFlash / .tlog",
+      "reviewerDescription": "Análisis automatizado de registros y revisión de vuelo"
     }
   },
   "fcNav": {
@@ -1600,8 +1600,8 @@
     "telemetryNone": "Sin datos",
     "telemetryChannels": {
       "attitude": "Actitud",
-      "position": "Posicion",
-      "battery": "Bateria",
+      "position": "Posición",
+      "battery": "Batería",
       "gps": "GPS",
       "rcInput": "Entrada RC",
       "radio": "Radio",
@@ -1609,7 +1609,7 @@
       "systemStatus": "Estado del sistema",
       "ekf": "EKF",
       "wind": "Viento",
-      "navController": "Controlador de navegacion"
+      "navController": "Controlador de navegación"
     }
   },
   "flightInfo": {

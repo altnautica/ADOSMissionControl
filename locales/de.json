@@ -131,8 +131,8 @@
       "groupSolarized": "Solarized",
       "groupDarkThemes": "Dunkle Themes",
       "groupLightThemes": "Helle Themes",
-      "groupMidTone": "Mitteltone",
-      "selectTheme": "Thema auswaehlen"
+      "groupMidTone": "Mitteltöne",
+      "selectTheme": "Thema auswählen"
     }
   },
   "community": {
@@ -164,11 +164,11 @@
         "general": "Allgemein"
       },
       "statuses": {
-        "backlog": "Rueckstand",
+        "backlog": "Rückstand",
         "in_discussion": "In Diskussion",
         "planned": "Geplant",
         "in_progress": "In Bearbeitung",
-        "released": "Veroeffentlicht",
+        "released": "Veröffentlicht",
         "wont_do": "Wird nicht umgesetzt"
       }
     }
@@ -513,14 +513,14 @@
       "coverage": "Abdeckung",
       "gridProgress": "Rasterfortschritt",
       "missionProgress": "Missionsfortschritt",
-      "areaCovered": "Abgedeckte Flaeche",
+      "areaCovered": "Abgedeckte Fläche",
       "laps": "Runden",
       "detections": "Erkennungen",
       "alerts": "Warnungen",
       "images": "Bilder",
-      "overlap": "Ueberlappung",
+      "overlap": "Überlappung",
       "gsd": "GSD",
-      "area": "Flaeche",
+      "area": "Fläche",
       "searchArea": "Suchgebiet",
       "personsFound": "Gefundene Personen",
       "gridCells": "Rasterzellen",

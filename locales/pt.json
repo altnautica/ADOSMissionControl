@@ -161,11 +161,11 @@
       "ayuDark": "Ayu Dark",
       "ayuMirage": "Ayu Mirage",
       "everforestDark": "Everforest Dark",
-      "groupCore": "Nucleo",
+      "groupCore": "Núcleo",
       "groupSolarized": "Solarized",
       "groupDarkThemes": "Temas escuros",
       "groupLightThemes": "Temas claros",
-      "groupMidTone": "Tons medios",
+      "groupMidTone": "Tons médios",
       "selectTheme": "Selecione um tema"
     }
   },
@@ -213,12 +213,12 @@
         "general": "Geral"
       },
       "statuses": {
-        "backlog": "Pendencias",
-        "in_discussion": "Em discussao",
+        "backlog": "Pendências",
+        "in_discussion": "Em discussão",
         "planned": "Planejado",
         "in_progress": "Em Andamento",
-        "released": "Lancado",
-        "wont_do": "Nao sera feito"
+        "released": "Lançado",
+        "wont_do": "Não será feito"
       }
     }
   },
@@ -578,25 +578,25 @@
     "weight": "Peso",
     "suiteDashboard": {
       "dashboardTitle": "Painel {suite}",
-      "mission": "Missao",
+      "mission": "Missão",
       "patrolProgress": "Progresso da patrulha",
       "coverage": "Cobertura",
       "gridProgress": "Progresso da grade",
-      "missionProgress": "Progresso da missao",
-      "areaCovered": "Area coberta",
+      "missionProgress": "Progresso da missão",
+      "areaCovered": "Área coberta",
       "laps": "Voltas",
-      "detections": "Deteccoes",
+      "detections": "Detecções",
       "alerts": "Alertas",
       "images": "Imagens",
-      "overlap": "Sobreposicao",
+      "overlap": "Sobreposição",
       "gsd": "GSD",
-      "area": "Area",
-      "searchArea": "Area de busca",
+      "area": "Área",
+      "searchArea": "Área de busca",
       "personsFound": "Pessoas encontradas",
-      "gridCells": "Celulas da grade",
-      "thermalHits": "Deteccoes termicas",
+      "gridCells": "Células da grade",
+      "thermalHits": "Detecções térmicas",
       "waypoints": "Pontos de rota",
-      "distance": "Distancia"
+      "distance": "Distância"
     }
   },
   "logs": {
@@ -626,9 +626,9 @@
     "waitingForMessages": "Aguardando mensagens de status...",
     "noMessagesMatch": "Nenhuma mensagem corresponde aos filtros atuais",
     "externalAnalysis": {
-      "title": "Analise externa",
-      "plotterDescription": "Plotador interativo de graficos DataFlash / .tlog",
-      "reviewerDescription": "Analise automatizada de logs e revisao de voo"
+      "title": "Análise externa",
+      "plotterDescription": "Plotador interativo de gráficos DataFlash / .tlog",
+      "reviewerDescription": "Análise automatizada de logs e revisão de voo"
     }
   },
   "fcNav": {
@@ -1670,16 +1670,16 @@
     "telemetryNone": "Sem dados",
     "telemetryChannels": {
       "attitude": "Atitude",
-      "position": "Posicao",
+      "position": "Posição",
       "battery": "Bateria",
       "gps": "GPS",
       "rcInput": "Entrada RC",
-      "radio": "Radio",
+      "radio": "Rádio",
       "vfrHud": "HUD VFR",
       "systemStatus": "Status do sistema",
       "ekf": "EKF",
       "wind": "Vento",
-      "navController": "Controlador de navegacao"
+      "navController": "Controlador de navegação"
     }
   },
   "flightInfo": {
