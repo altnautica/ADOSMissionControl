@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { renderWithIntl } from '../../helpers/intl-wrapper';
 import { TelemetryFreshnessIndicator } from '@/components/indicators/TelemetryFreshnessIndicator';
 
 // Mock the Tooltip to just render children
@@ -19,7 +20,7 @@ describe('TelemetryFreshnessIndicator', () => {
   it('renders all channel labels', () => {
     mockGetFreshness.mockReturnValue('none');
 
-    render(<TelemetryFreshnessIndicator />);
+    renderWithIntl(<TelemetryFreshnessIndicator />);
 
     // Check short labels are rendered
     expect(screen.getByText('ATT')).toBeDefined();
@@ -38,7 +39,7 @@ describe('TelemetryFreshnessIndicator', () => {
   it('renders 11 channel dots', () => {
     mockGetFreshness.mockReturnValue('fresh');
 
-    const { container } = render(<TelemetryFreshnessIndicator />);
+    const { container } = renderWithIntl(<TelemetryFreshnessIndicator />);
 
     // Each channel has a colored dot (w-1.5 h-1.5 rounded-full)
     const dots = container.querySelectorAll('.rounded-full');
