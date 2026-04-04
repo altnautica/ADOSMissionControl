@@ -442,7 +442,52 @@
     "logs": "લોગ્સ",
     "flightLogs": "ઉડાન લોગ્સ",
     "expandLogs": "લોગ પેનલ વિસ્તારો",
-    "collapseLogs": "લોગ પેનલ સંકુચિત કરો"
+    "collapseLogs": "લોગ પેનલ સંકુચિત કરો",
+    "quickActions": "ઝડપી ક્રિયાઓ",
+    "fleetStatus": {
+      "title": "ફ્લીટ સ્થિતિ",
+      "totalDrones": "કુલ ડ્રોન્સ",
+      "statuses": {
+        "online": "ઑનલાઇન",
+        "inMission": "મિશનમાં",
+        "idle": "નિષ્ક્રિય",
+        "returning": "પરત આવી રહ્યું છે",
+        "maintenance": "જાળવણી",
+        "offline": "ઑફલાઇન"
+      }
+    },
+    "activeMissions": {
+      "title": "સક્રિય મિશન્સ",
+      "inFlight": "ઉડાનમાં",
+      "suites": {
+        "sentry": "સેન્ટ્રી",
+        "survey": "સર્વેક્ષણ",
+        "agriculture": "કૃષિ",
+        "cargo": "કાર્ગો",
+        "sar": "SAR",
+        "inspection": "નિરીક્ષણ"
+      },
+      "noActiveMissions": "કોઈ સક્રિય મિશન નથી"
+    },
+    "alerts": {
+      "title": "ચેતવણીઓ",
+      "unacknowledged": "સ્વીકાર ન થયેલ",
+      "levels": {
+        "critical": "ગંભીર",
+        "warning": "ચેતવણી"
+      }
+    },
+    "avgBattery": {
+      "title": "ફ્લીટ બેટરી",
+      "average": "સરેરાશ",
+      "lowCount": "{count} ઓછી",
+      "reportingCount": "{count} રિપોર્ટ કરી રહ્યા છે",
+      "lowestLabel": "ન્યૂનતમ: {name}"
+    },
+    "alertFeed": {
+      "title": "તાજેતરની ચેતવણીઓ",
+      "noAlerts": "કોઈ ચેતવણી નથી"
+    }
   },
   "emptyState": {
     "title": "કોઈ ડ્રોન જોડાયેલું નથી",
@@ -471,7 +516,13 @@
     "goToFirmware": "Firmware પર જાઓ",
     "webSerialNotSupported": "આ બ્રાઉઝરમાં Web Serial સપોર્ટ નથી. Chrome અથવા Edge વાપરો.",
     "noUsbInfo": "USB માહિતી ઉપલબ્ધ નથી",
-    "portsAvailable": "{count} મંજૂર પોર્ટ(ઓ) ઉપલબ્ધ"
+    "portsAvailable": "{count} મંજૂર પોર્ટ(ઓ) ઉપલબ્ધ",
+    "noActiveConnectionsHelp": "કોઈ સક્રિય જોડાણ નથી. ઉપર ફ્લાઇટ કંટ્રોલર જોડો.",
+    "activeBadge": "સક્રિય",
+    "buildPreset": {
+      "details": "વિગતો",
+      "noGps": "GPS નથી"
+    }
   },
   "droneDetail": {
     "overview": "ઝાંખી",
@@ -1802,7 +1853,38 @@
     "searchDrones": "ડ્રોન શોધો...",
     "noMatch": "શોધ સાથે કોઈ ડ્રોન મેળ ખાતું નથી",
     "noDrones": "કોઈ ડ્રોન નથી",
-    "droneCount": "{count} ડ્રોન{count, plural, one {} other {}}"
+    "droneCount": "{count} ડ્રોન{count, plural, one {} other {}}",
+    "toolbar": {
+      "status": {
+        "all": "બધી સ્થિતિઓ",
+        "online": "ઑનલાઇન",
+        "inMission": "મિશનમાં",
+        "idle": "નિષ્ક્રિય",
+        "returning": "પરત આવી રહ્યું છે",
+        "maintenance": "જાળવણી",
+        "offline": "ઑફલાઇન"
+      },
+      "suite": {
+        "all": "બધા સુઇટ્સ",
+        "sentry": "સેન્ટ્રી",
+        "survey": "સર્વેક્ષણ",
+        "agriculture": "કૃષિ",
+        "cargo": "કાર્ગો",
+        "sar": "SAR",
+        "inspection": "નિરીક્ષણ"
+      },
+      "sort": {
+        "name": "સૉર્ટ: નામ",
+        "status": "સૉર્ટ: સ્થિતિ",
+        "battery": "સૉર્ટ: બેટરી",
+        "health": "સૉર્ટ: સ્વાસ્થ્ય"
+      },
+      "view": {
+        "grid": "ગ્રીડ",
+        "list": "યાદી",
+        "map": "નકશો"
+      }
+    }
   },
   "commandPalette": {
     "placeholder": "કમાન્ડ ટાઇપ કરો...",

@@ -24,6 +24,43 @@
       "privacy": "您的数据保留在本地设备上。",
       "privacyDetail": "我们不收集或跟踪任何数据。"
     },
+    "disclaimer": {
+      "title": "飞行前须知",
+      "subtitle": "ADOS Mission Control 可以控制真实飞行器。请阅读并接受以下内容。",
+      "lawfulUse": {
+        "heading": "仅限合法使用",
+        "body": "您同意仅将本软件用于合法目的。您不得将其用于监视、骚扰他人、侵犯隐私，或支持您所在国家或地区法律禁止的任何活动。"
+      },
+      "militaryUse": {
+        "heading": "禁止未经授权的军事用途",
+        "body": "未经相关政府主管部门明确授权，不得将本软件用于进攻性军事或防务行动。在几乎所有司法辖区，未经授权将无人机武器化均属违法。"
+      },
+      "aviationRegs": {
+        "heading": "航空法规",
+        "body": "您需自行负责遵守适用于您所在地和运行场景的全部航空法规。包括但不限于：",
+        "item1": "向相应主管机构注册无人机（DGCA、FAA、CASA、EASA 等）",
+        "item2": "取得所需的飞手资质或执照",
+        "item3": "飞行前取得空域授权",
+        "item4": "在高度、距离和目视视距限制内运行",
+        "footer": "本软件不保证法规合规。它只是工具。您是飞行指挥责任人。"
+      },
+      "exportControls": {
+        "heading": "出口管制",
+        "body": "无人机控制软件可能受出口管制法律约束，包括 ITAR（美国）、EAR（美国）、欧盟两用物项条例以及印度 SCOMET 清单。您有责任确保对本软件的使用、分发或修改符合适用的出口管制和制裁法律。"
+      },
+      "noWarranty": {
+        "heading": "无担保与风险承担",
+        "warranty": "本软件按\"现状\"提供，不附带任何形式的明示或默示担保，包括但不限于适销性、特定用途适用性和非侵权担保。",
+        "risk": "无人机属于实体机械设备，操作不当或软件故障可能导致财产损失、人身伤害甚至死亡。使用本软件即表示您承担与其使用相关的全部风险。对于因使用本软件而产生的任何索赔、损害或损失（无论直接、间接、附带或后果性），Altnautica 及其贡献者不承担责任。"
+      },
+      "openSource": {
+        "heading": "开源许可证",
+        "body": "ADOS Mission Control 采用 GNU General Public License v3.0 许可。您可在该许可证条款下自由使用、修改和分发本软件。",
+        "link": "阅读完整 GPL-3.0 许可证"
+      },
+      "acceptCheckbox": "我已阅读并接受上述条款。我理解我作为飞行指挥责任人，对安全且合法的运行承担全部责任。",
+      "acceptButton": "接受并继续"
+    },
     "preferences": {
       "title": "设置偏好",
       "jurisdiction": "监管辖区",
@@ -335,7 +372,52 @@
     "logs": "日志",
     "flightLogs": "飞行日志",
     "expandLogs": "展开日志面板",
-    "collapseLogs": "收起日志面板"
+    "collapseLogs": "收起日志面板",
+    "quickActions": "快捷操作",
+    "fleetStatus": {
+      "title": "机队状态",
+      "totalDrones": "无人机总数",
+      "statuses": {
+        "online": "在线",
+        "inMission": "任务中",
+        "idle": "空闲",
+        "returning": "返航中",
+        "maintenance": "维护中",
+        "offline": "离线"
+      }
+    },
+    "activeMissions": {
+      "title": "活跃任务",
+      "inFlight": "飞行中",
+      "suites": {
+        "sentry": "Sentry",
+        "survey": "Survey",
+        "agriculture": "Agriculture",
+        "cargo": "Cargo",
+        "sar": "SAR",
+        "inspection": "Inspection"
+      },
+      "noActiveMissions": "暂无活跃任务"
+    },
+    "alerts": {
+      "title": "警报",
+      "unacknowledged": "未确认",
+      "levels": {
+        "critical": "严重",
+        "warning": "警告"
+      }
+    },
+    "avgBattery": {
+      "title": "机队电池",
+      "average": "平均",
+      "lowCount": "{count} 低电量",
+      "reportingCount": "{count} 正在上报",
+      "lowestLabel": "最低: {name}"
+    },
+    "alertFeed": {
+      "title": "最近警报",
+      "noAlerts": "无警报"
+    }
   },
   "emptyState": {
     "title": "未连接无人机",
@@ -364,7 +446,13 @@
     "goToFirmware": "前往固件",
     "webSerialNotSupported": "此浏览器不支持 Web Serial。请使用 Chrome 或 Edge。",
     "noUsbInfo": "无 USB 信息",
-    "portsAvailable": "{count} 个已授权端口可用"
+    "portsAvailable": "{count} 个已授权端口可用",
+    "noActiveConnectionsHelp": "暂无活动连接。请在上方连接飞控。",
+    "activeBadge": "活跃",
+    "buildPreset": {
+      "details": "详情",
+      "noGps": "无 GPS"
+    }
   },
   "droneDetail": {
     "overview": "概览",
@@ -1746,7 +1834,38 @@
     "searchDrones": "搜索无人机...",
     "noMatch": "没有匹配的无人机",
     "noDrones": "没有无人机",
-    "droneCount": "{count} 架无人机"
+    "droneCount": "{count} 架无人机",
+    "toolbar": {
+      "status": {
+        "all": "全部状态",
+        "online": "在线",
+        "inMission": "任务中",
+        "idle": "空闲",
+        "returning": "返航中",
+        "maintenance": "维护中",
+        "offline": "离线"
+      },
+      "suite": {
+        "all": "全部套件",
+        "sentry": "Sentry",
+        "survey": "Survey",
+        "agriculture": "Agriculture",
+        "cargo": "Cargo",
+        "sar": "SAR",
+        "inspection": "Inspection"
+      },
+      "sort": {
+        "name": "排序：名称",
+        "status": "排序：状态",
+        "battery": "排序：电池",
+        "health": "排序：健康"
+      },
+      "view": {
+        "grid": "网格",
+        "list": "列表",
+        "map": "地图"
+      }
+    }
   },
   "telemetryStrip": {
     "fc": "FC",

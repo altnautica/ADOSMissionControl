@@ -442,7 +442,52 @@
     "logs": "ログ",
     "flightLogs": "飛行ログ",
     "expandLogs": "ログパネルを展開",
-    "collapseLogs": "ログパネルを折りたたむ"
+    "collapseLogs": "ログパネルを折りたたむ",
+    "quickActions": "クイックアクション",
+    "fleetStatus": {
+      "title": "艦隊ステータス",
+      "totalDrones": "総ドローン数",
+      "statuses": {
+        "online": "オンライン",
+        "inMission": "ミッション中",
+        "idle": "待機中",
+        "returning": "帰還中",
+        "maintenance": "メンテナンス",
+        "offline": "オフライン"
+      }
+    },
+    "activeMissions": {
+      "title": "実行中ミッション",
+      "inFlight": "飛行中",
+      "suites": {
+        "sentry": "Sentry",
+        "survey": "Survey",
+        "agriculture": "Agriculture",
+        "cargo": "Cargo",
+        "sar": "SAR",
+        "inspection": "Inspection"
+      },
+      "noActiveMissions": "実行中ミッションはありません"
+    },
+    "alerts": {
+      "title": "アラート",
+      "unacknowledged": "未確認",
+      "levels": {
+        "critical": "重大",
+        "warning": "警告"
+      }
+    },
+    "avgBattery": {
+      "title": "艦隊バッテリー",
+      "average": "平均",
+      "lowCount": "{count} 低電圧",
+      "reportingCount": "{count} 機が報告中",
+      "lowestLabel": "最低: {name}"
+    },
+    "alertFeed": {
+      "title": "最近のアラート",
+      "noAlerts": "アラートなし"
+    }
   },
   "emptyState": {
     "title": "ドローン未接続",
@@ -471,7 +516,13 @@
     "goToFirmware": "ファームウェアへ",
     "webSerialNotSupported": "このブラウザではWeb Serialに対応していません。ChromeまたはEdgeをご使用ください。",
     "noUsbInfo": "USB情報がありません",
-    "portsAvailable": "{count} 個のポートが利用可能"
+    "portsAvailable": "{count} 個のポートが利用可能",
+    "noActiveConnectionsHelp": "アクティブな接続はありません。上でフライトコントローラーを接続してください。",
+    "activeBadge": "アクティブ",
+    "buildPreset": {
+      "details": "詳細",
+      "noGps": "GPSなし"
+    }
   },
   "droneDetail": {
     "overview": "概要",
@@ -1802,7 +1853,38 @@
     "searchDrones": "ドローンを検索...",
     "noMatch": "検索に一致するドローンがありません",
     "noDrones": "ドローンなし",
-    "droneCount": "{count, plural, one {# 機のドローン} other {# 機のドローン}}"
+    "droneCount": "{count, plural, one {# 機のドローン} other {# 機のドローン}}",
+    "toolbar": {
+      "status": {
+        "all": "すべてのステータス",
+        "online": "オンライン",
+        "inMission": "ミッション中",
+        "idle": "待機中",
+        "returning": "帰還中",
+        "maintenance": "メンテナンス",
+        "offline": "オフライン"
+      },
+      "suite": {
+        "all": "すべてのスイート",
+        "sentry": "Sentry",
+        "survey": "Survey",
+        "agriculture": "Agriculture",
+        "cargo": "Cargo",
+        "sar": "SAR",
+        "inspection": "Inspection"
+      },
+      "sort": {
+        "name": "並び替え: 名前",
+        "status": "並び替え: ステータス",
+        "battery": "並び替え: バッテリー",
+        "health": "並び替え: 健全性"
+      },
+      "view": {
+        "grid": "グリッド",
+        "list": "リスト",
+        "map": "マップ"
+      }
+    }
   },
   "commandPalette": {
     "placeholder": "コマンドを入力...",

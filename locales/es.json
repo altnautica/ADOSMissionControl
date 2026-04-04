@@ -24,6 +24,43 @@
       "privacy": "Tus datos permanecen en este dispositivo.",
       "privacyDetail": "No recopilamos ni rastreamos nada."
     },
+    "disclaimer": {
+      "title": "Antes de volar",
+      "subtitle": "ADOS Mission Control puede controlar aeronaves reales. Lee y acepta lo siguiente.",
+      "lawfulUse": {
+        "heading": "Solo uso legal",
+        "body": "Aceptas usar este software solo con fines legales. No lo usarás para realizar vigilancia, acosar a personas, violar la privacidad ni apoyar actividades prohibidas por la ley en tu país o región."
+      },
+      "militaryUse": {
+        "heading": "Sin uso militar no autorizado",
+        "body": "Este software no debe usarse para operaciones militares o de defensa ofensivas sin autorización explícita de la autoridad gubernamental correspondiente. La militarización no autorizada de drones es ilegal en prácticamente todas las jurisdicciones."
+      },
+      "aviationRegs": {
+        "heading": "Normativa de aviación",
+        "body": "Eres el único responsable de cumplir todas las normativas de aviación aplicables a tu ubicación y operación. Esto incluye, entre otros:",
+        "item1": "Registrar tu dron ante la autoridad correspondiente (DGCA, FAA, CASA, EASA, etc.)",
+        "item2": "Obtener las certificaciones o licencias de piloto requeridas",
+        "item3": "Asegurar las autorizaciones de espacio aéreo antes del vuelo",
+        "item4": "Operar dentro de los limites de altitud, distancia y linea de vista visual",
+        "footer": "Este software no garantiza el cumplimiento normativo. Es una herramienta. Tu eres el piloto al mando."
+      },
+      "exportControls": {
+        "heading": "Controles de exportación",
+        "body": "El software de control de drones puede estar sujeto a leyes de control de exportación, incluidas ITAR (EE. UU.), EAR (EE. UU.), el Reglamento de Doble Uso de la UE y la lista SCOMET de la India. Eres responsable de asegurar que tu uso, distribución o modificación de este software cumpla con las leyes aplicables de control de exportación y sanciones."
+      },
+      "noWarranty": {
+        "heading": "Sin garantía y asunción de riesgos",
+        "warranty": "Este software se proporciona \"tal cual\", sin garantía de ningún tipo, expresa ni implícita. Esto incluye, entre otras, garantías de comerciabilidad, idoneidad para un propósito particular y no infracción.",
+        "risk": "Los drones son máquinas físicas que pueden causar daños materiales, lesiones o muerte si se operan incorrectamente o si el software falla. Al usar este software, asumes todos los riesgos asociados a su uso. Altnautica y sus colaboradores no serán responsables de ninguna reclamación, daño o pérdida derivada del uso de este software, ya sea directa, indirecta, incidental o consecuente."
+      },
+      "openSource": {
+        "heading": "Licencia de código abierto",
+        "body": "ADOS Mission Control está licenciado bajo la GNU General Public License v3.0. Eres libre de usar, modificar y distribuir este software según los términos de esa licencia.",
+        "link": "Leer la licencia GPL-3.0 completa"
+      },
+      "acceptCheckbox": "He leído y acepto los términos anteriores. Entiendo que soy el piloto al mando y asumo toda la responsabilidad de una operación segura y legal.",
+      "acceptButton": "Aceptar y continuar"
+    },
     "preferences": {
       "title": "Configura tus preferencias",
       "jurisdiction": "Jurisdicción regulatoria",
@@ -335,7 +372,52 @@
     "logs": "Registros",
     "flightLogs": "Registros de vuelo",
     "expandLogs": "Expandir panel de registros",
-    "collapseLogs": "Contraer panel de registros"
+    "collapseLogs": "Contraer panel de registros",
+    "quickActions": "Acciones rápidas",
+    "fleetStatus": {
+      "title": "Estado de flota",
+      "totalDrones": "Drones totales",
+      "statuses": {
+        "online": "En línea",
+        "inMission": "En misión",
+        "idle": "Inactivo",
+        "returning": "Regresando",
+        "maintenance": "Mantenimiento",
+        "offline": "Sin conexión"
+      }
+    },
+    "activeMissions": {
+      "title": "Misiones activas",
+      "inFlight": "En vuelo",
+      "suites": {
+        "sentry": "Sentry",
+        "survey": "Survey",
+        "agriculture": "Agriculture",
+        "cargo": "Cargo",
+        "sar": "SAR",
+        "inspection": "Inspection"
+      },
+      "noActiveMissions": "No hay misiones activas"
+    },
+    "alerts": {
+      "title": "Alertas",
+      "unacknowledged": "Sin confirmar",
+      "levels": {
+        "critical": "Crítica",
+        "warning": "Advertencia"
+      }
+    },
+    "avgBattery": {
+      "title": "Batería de flota",
+      "average": "Promedio",
+      "lowCount": "{count} bajos",
+      "reportingCount": "{count} reportando",
+      "lowestLabel": "Más bajo: {name}"
+    },
+    "alertFeed": {
+      "title": "Alertas recientes",
+      "noAlerts": "Sin alertas"
+    }
   },
   "emptyState": {
     "title": "Ningún dron conectado",
@@ -364,7 +446,13 @@
     "goToFirmware": "Ir a Firmware",
     "webSerialNotSupported": "Web Serial no soportado en este navegador. Usa Chrome o Edge.",
     "noUsbInfo": "Sin información USB",
-    "portsAvailable": "{count} puerto(s) autorizado(s) disponible(s)"
+    "portsAvailable": "{count} puerto(s) autorizado(s) disponible(s)",
+    "noActiveConnectionsHelp": "No hay conexiones activas. Conecta un controlador de vuelo arriba.",
+    "activeBadge": "ACTIVO",
+    "buildPreset": {
+      "details": "detalles",
+      "noGps": "Sin GPS"
+    }
   },
   "droneDetail": {
     "overview": "Resumen",
@@ -1746,7 +1834,38 @@
     "searchDrones": "Buscar drones...",
     "noMatch": "Ningún dron coincide con la búsqueda",
     "noDrones": "Sin drones",
-    "droneCount": "{count} dron{count, plural, one {} other {es}}"
+    "droneCount": "{count} dron{count, plural, one {} other {es}}",
+    "toolbar": {
+      "status": {
+        "all": "Todos los estados",
+        "online": "En línea",
+        "inMission": "En misión",
+        "idle": "Inactivo",
+        "returning": "Regresando",
+        "maintenance": "Mantenimiento",
+        "offline": "Sin conexión"
+      },
+      "suite": {
+        "all": "Todas las suites",
+        "sentry": "Sentry",
+        "survey": "Survey",
+        "agriculture": "Agriculture",
+        "cargo": "Cargo",
+        "sar": "SAR",
+        "inspection": "Inspection"
+      },
+      "sort": {
+        "name": "Ordenar: Nombre",
+        "status": "Ordenar: Estado",
+        "battery": "Ordenar: Batería",
+        "health": "Ordenar: Salud"
+      },
+      "view": {
+        "grid": "Cuadrícula",
+        "list": "Lista",
+        "map": "Mapa"
+      }
+    }
   },
   "telemetryStrip": {
     "fc": "FC",

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useDroneManager, type ManagedDrone } from "@/stores/drone-manager";
@@ -29,6 +30,7 @@ function DroneRow({
 }) {
   const [uptime, setUptime] = useState(0);
   const [disconnecting, setDisconnecting] = useState(false);
+  const t = useTranslations("connect");
 
   useEffect(() => {
     const start = drone.connectedAt;
@@ -80,7 +82,7 @@ function DroneRow({
         <Badge variant={transportLabel === "USB" ? "info" : "neutral"}>
           {transportLabel}
         </Badge>
-        {isSelected && <Badge variant="success">ACTIVE</Badge>}
+        {isSelected && <Badge variant="success">{t("activeBadge")}</Badge>}
         <Button
           variant="danger"
           size="sm"
@@ -99,6 +101,7 @@ function DroneRow({
 }
 
 export function ActiveConnections() {
+  const t = useTranslations("connect");
   const drones = useDroneManager((s) => s.drones);
   const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
   const selectDrone = useDroneManager((s) => s.selectDrone);
@@ -108,7 +111,7 @@ export function ActiveConnections() {
   if (droneList.length === 0) {
     return (
       <p className="text-xs text-text-tertiary py-3">
-        No active connections. Connect a flight controller above.
+        {t("noActiveConnectionsHelp")}
       </p>
     );
   }

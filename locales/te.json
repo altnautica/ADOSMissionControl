@@ -442,7 +442,52 @@
     "logs": "లాగ్‌లు",
     "flightLogs": "ఫ్లైట్ లాగ్‌లు",
     "expandLogs": "లాగ్‌ల ప్యానెల్ విస్తరించు",
-    "collapseLogs": "లాగ్‌ల ప్యానెల్ కుదించు"
+    "collapseLogs": "లాగ్‌ల ప్యానెల్ కుదించు",
+    "quickActions": "త్వరిత చర్యలు",
+    "fleetStatus": {
+      "title": "ఫ్లీట్ స్థితి",
+      "totalDrones": "మొత్తం డ్రోన్లు",
+      "statuses": {
+        "online": "ఆన్‌లైన్",
+        "inMission": "మిషన్‌లో",
+        "idle": "నిష్క్రియం",
+        "returning": "తిరిగి వస్తోంది",
+        "maintenance": "నిర్వహణ",
+        "offline": "ఆఫ్‌లైన్"
+      }
+    },
+    "activeMissions": {
+      "title": "క్రియాశీల మిషన్లు",
+      "inFlight": "విమానంలో",
+      "suites": {
+        "sentry": "సెంట్రీ",
+        "survey": "సర్వే",
+        "agriculture": "వ్యవసాయం",
+        "cargo": "కార్గో",
+        "sar": "SAR",
+        "inspection": "తనిఖీ"
+      },
+      "noActiveMissions": "క్రియాశీల మిషన్లు లేవు"
+    },
+    "alerts": {
+      "title": "హెచ్చరికలు",
+      "unacknowledged": "అంగీకరించని",
+      "levels": {
+        "critical": "తీవ్రమైన",
+        "warning": "హెచ్చరిక"
+      }
+    },
+    "avgBattery": {
+      "title": "ఫ్లీట్ బ్యాటరీ",
+      "average": "సగటు",
+      "lowCount": "{count} తక్కువ",
+      "reportingCount": "{count} రిపోర్ట్ చేస్తున్నాయి",
+      "lowestLabel": "అత్యల్పం: {name}"
+    },
+    "alertFeed": {
+      "title": "ఇటీవలి హెచ్చరికలు",
+      "noAlerts": "హెచ్చరికలు లేవు"
+    }
   },
   "emptyState": {
     "title": "డ్రోన్‌లు కనెక్ట్ కాలేదు",
@@ -471,7 +516,13 @@
     "goToFirmware": "Firmware కు వెళ్ళండి",
     "webSerialNotSupported": "ఈ బ్రౌజర్‌లో Web Serial సపోర్ట్ లేదు. Chrome లేదా Edge ఉపయోగించండి.",
     "noUsbInfo": "USB సమాచారం అందుబాటులో లేదు",
-    "portsAvailable": "{count} అనుమతించబడిన పోర్ట్(లు) అందుబాటులో ఉన్నాయి"
+    "portsAvailable": "{count} అనుమతించబడిన పోర్ట్(లు) అందుబాటులో ఉన్నాయి",
+    "noActiveConnectionsHelp": "సక్రియ కనెక్షన్లు లేవు. పైభాగంలో ఫ్లైట్ కంట్రోలర్‌ను కనెక్ట్ చేయండి.",
+    "activeBadge": "సక్రియం",
+    "buildPreset": {
+      "details": "వివరాలు",
+      "noGps": "GPS లేదు"
+    }
   },
   "droneDetail": {
     "overview": "అవలోకనం",
@@ -1802,7 +1853,38 @@
     "searchDrones": "డ్రోన్‌లు వెతకండి...",
     "noMatch": "శోధనకు డ్రోన్‌లు సరిపోలలేదు",
     "noDrones": "డ్రోన్‌లు లేవు",
-    "droneCount": "{count, plural, one {# డ్రోన్} other {# డ్రోన్‌లు}}"
+    "droneCount": "{count, plural, one {# డ్రోన్} other {# డ్రోన్‌లు}}",
+    "toolbar": {
+      "status": {
+        "all": "అన్ని స్థితులు",
+        "online": "ఆన్‌లైన్",
+        "inMission": "మిషన్‌లో",
+        "idle": "నిష్క్రియం",
+        "returning": "తిరిగి వస్తోంది",
+        "maintenance": "నిర్వహణ",
+        "offline": "ఆఫ్‌లైన్"
+      },
+      "suite": {
+        "all": "అన్ని సూట్లు",
+        "sentry": "సెంట్రీ",
+        "survey": "సర్వే",
+        "agriculture": "వ్యవసాయం",
+        "cargo": "కార్గో",
+        "sar": "SAR",
+        "inspection": "తనిఖీ"
+      },
+      "sort": {
+        "name": "క్రమబద్ధీకరణ: పేరు",
+        "status": "క్రమబద్ధీకరణ: స్థితి",
+        "battery": "క్రమబద్ధీకరణ: బ్యాటరీ",
+        "health": "క్రమబద్ధీకరణ: ఆరోగ్యం"
+      },
+      "view": {
+        "grid": "గ్రిడ్",
+        "list": "జాబితా",
+        "map": "మ్యాప్"
+      }
+    }
   },
   "commandPalette": {
     "placeholder": "కమాండ్ టైప్ చేయండి...",

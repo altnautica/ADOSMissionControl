@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import type { BuildPreset } from "@/lib/presets/types";
 import {
   Cpu,
@@ -31,6 +32,7 @@ export function BuildPresetCard({
   onSelect: () => void;
   onDetail: () => void;
 }) {
+  const t = useTranslations("connect");
   const color = CATEGORY_COLORS[preset.category] ?? "text-text-secondary";
   const { specs } = preset;
 
@@ -65,7 +67,7 @@ export function BuildPresetCard({
           }}
           className="text-[9px] text-text-tertiary hover:text-text-secondary underline"
         >
-          details
+          {t("buildPreset.details")}
         </button>
       </div>
 
@@ -102,7 +104,7 @@ export function BuildPresetCard({
           ) : (
             <Navigation size={10} className="text-text-quaternary shrink-0" />
           )}
-          <span>{specs.hasGps ? "GPS" : "No GPS"}</span>
+          <span>{specs.hasGps ? "GPS" : t("buildPreset.noGps")}</span>
         </div>
       </div>
 
