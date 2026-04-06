@@ -8,7 +8,7 @@
 
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
-import { Network, Wifi, Radio, ScanLine, Loader2, Battery, MapPin } from "lucide-react";
+import { Wifi, Radio, ScanLine, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useAgentScriptsStore } from "@/stores/agent-scripts-store";

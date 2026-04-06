@@ -8,7 +8,7 @@
  */
 
 import { useRef, useEffect, useCallback, useState } from "react";
-import { Play, Square, Save, Code2 } from "lucide-react";
+import { Play, Square, Save, Code2, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface BlocklyEditorProps {
@@ -36,6 +36,7 @@ export function BlocklyEditor({
   const workspaceRef = useRef<unknown>(null);
   const [generatedCode, setGeneratedCode] = useState("");
   const [showCode, setShowCode] = useState(true);
+  const [loading, setLoading] = useState(true);
   const initRef = useRef(false);
 
   const updateCode = useCallback(() => {
@@ -126,6 +127,7 @@ export function BlocklyEditor({
 
       // Initial code generation
       updateCode();
+      setLoading(false);
     });
 
     return () => {
