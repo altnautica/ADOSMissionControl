@@ -954,7 +954,11 @@
     "enterCommandPlaceholder": "Enter command (e.g. arm, takeoff 10, mode loiter)",
     "sendCommand": "Send command",
     "clearHistory": "Clear history",
-    "noResponse": "No response"
+    "noResponse": "No response",
+    "blockly": "Blockly",
+    "yaml": "YAML",
+    "blocklyDescription": "Visual block-based drone programming",
+    "yamlDescription": "YAML mission definition files"
   },
   "fleetNetwork": {
     "title": "Fleet Network",
