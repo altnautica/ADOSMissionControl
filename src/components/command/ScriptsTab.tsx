@@ -8,7 +8,8 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { Send, Trash2, TerminalSquare, Code2 } from "lucide-react";
+import dynamic from "next/dynamic";
+import { Send, Trash2, TerminalSquare, Code2, Blocks, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
@@ -20,7 +21,16 @@ import { ScriptConsole } from "./shared/ScriptConsole";
 import { VariableInspector } from "./shared/VariableInspector";
 import type { CommandResult, ScriptInfo } from "@/lib/agent/types";
 
-type Mode = "console" | "editor";
+const BlocklyEditor = dynamic(
+  () => import("./shared/BlocklyEditor").then((m) => ({ default: m.BlocklyEditor })),
+  { ssr: false }
+);
+const YamlEditorPanel = dynamic(
+  () => import("./shared/YamlEditor").then((m) => ({ default: m.YamlEditorPanel })),
+  { ssr: false }
+);
+
+type Mode = "console" | "editor" | "blockly" | "yaml";
 
 interface HistoryEntry {
   id: number;
@@ -62,6 +72,8 @@ export function ScriptsTab() {
   // Editor state
   const [selectedScript, setSelectedScript] = useState<ScriptInfo | null>(null);
   const [editorContent, setEditorContent] = useState("");
+  const [blocklyXml, setBlocklyXml] = useState<string>("");
+  const [yamlContent, setYamlContent] = useState("");
 
   const connected = useAgentConnectionStore((s) => s.connected);
   const sendCommand = useAgentSystemStore((s) => s.sendCommand);
@@ -165,30 +177,26 @@ export function ScriptsTab() {
     <div className="flex flex-col h-full">
       {/* Mode toggle */}
       <div className="flex items-center gap-1 px-4 py-2 border-b border-border-default">
-        <button
-          onClick={() => setMode("console")}
-          className={cn(
-            "flex items-center gap-1.5 px-3 py-1 text-xs rounded transition-colors",
-            mode === "console"
-              ? "bg-bg-tertiary text-text-primary"
-              : "text-text-tertiary hover:text-text-secondary"
-          )}
-        >
-          <TerminalSquare size={12} />
-          {t("console")}
-        </button>
-        <button
-          onClick={() => setMode("editor")}
-          className={cn(
-            "flex items-center gap-1.5 px-3 py-1 text-xs rounded transition-colors",
-            mode === "editor"
-              ? "bg-bg-tertiary text-text-primary"
-              : "text-text-tertiary hover:text-text-secondary"
-          )}
-        >
-          <Code2 size={12} />
-          {t("editor")}
-        </button>
+        {([
+          { id: "console" as const, icon: TerminalSquare, label: t("console") },
+          { id: "editor" as const, icon: Code2, label: t("editor") },
+          { id: "blockly" as const, icon: Blocks, label: "Blockly" },
+          { id: "yaml" as const, icon: FileText, label: "YAML" },
+        ]).map(({ id, icon: Icon, label }) => (
+          <button
+            key={id}
+            onClick={() => setMode(id)}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1 text-xs rounded transition-colors",
+              mode === id
+                ? "bg-bg-tertiary text-text-primary"
+                : "text-text-tertiary hover:text-text-secondary"
+            )}
+          >
+            <Icon size={12} />
+            {label}
+          </button>
+        ))}
       </div>
 
       {mode === "console" ? (
@@ -278,6 +286,65 @@ export function ScriptsTab() {
               <Trash2 size={14} />
             </button>
           </form>
+        </div>
+      ) : mode === "blockly" ? (
+        /* Blockly Mode */
+        <div className="flex flex-1 min-h-0">
+          <ScriptLibrary
+            scripts={scripts}
+            selectedId={selectedScript?.id ?? null}
+            onSelect={handleSelectScript}
+            onNew={handleNewScript}
+            onDelete={handleDelete}
+          />
+          <div className="flex flex-col flex-1 min-w-0 p-2 gap-2">
+            <div className="flex flex-1 min-h-0 gap-2">
+              <BlocklyEditor
+                onCodeGenerated={setEditorContent}
+                onRun={handleRun}
+                onSave={handleSave}
+                isRunning={runningScript !== null}
+                fileName={selectedScript?.name ?? "untitled.py"}
+                initialXml={blocklyXml}
+                onXmlChange={setBlocklyXml}
+                onSwitchToCode={() => {
+                  setMode("editor");
+                }}
+              />
+            </div>
+            <ScriptConsole
+              output={scriptOutput}
+              isRunning={runningScript !== null}
+            />
+          </div>
+        </div>
+      ) : mode === "yaml" ? (
+        /* YAML Mode */
+        <div className="flex flex-1 min-h-0">
+          <ScriptLibrary
+            scripts={scripts}
+            selectedId={selectedScript?.id ?? null}
+            onSelect={handleSelectScript}
+            onNew={handleNewScript}
+            onDelete={handleDelete}
+          />
+          <div className="flex flex-col flex-1 min-w-0 p-2 gap-2">
+            <div className="flex flex-1 min-h-0 gap-2">
+              <YamlEditorPanel
+                value={yamlContent}
+                onChange={setYamlContent}
+                onRun={handleRun}
+                onSave={handleSave}
+                isRunning={runningScript !== null}
+                fileName={selectedScript?.name ?? "mission.yaml"}
+              />
+              <VariableInspector />
+            </div>
+            <ScriptConsole
+              output={scriptOutput}
+              isRunning={runningScript !== null}
+            />
+          </div>
         </div>
       ) : (
         /* Editor Mode */
