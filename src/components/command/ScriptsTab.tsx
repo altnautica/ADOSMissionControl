@@ -202,19 +202,34 @@ export function ScriptsTab() {
     setEditorContent(NEW_SCRIPT_CONTENT);
   }
 
+  /** Returns the content to save based on the current editor mode. */
+  function getActiveContent(): string {
+    if (mode === "yaml") return yamlContent;
+    return editorContent;
+  }
+
+  /** Returns the file extension for the current mode. */
+  function getActiveFileName(): string {
+    if (!selectedScript) return mode === "yaml" ? "mission.yaml" : "untitled.py";
+    if (mode === "yaml") return selectedScript.name.replace(/\.py$/, ".yaml");
+    return selectedScript.name;
+  }
+
   async function handleSave() {
     if (!selectedScript) return;
-    await saveScript(selectedScript.name, editorContent, selectedScript.suite);
+    const content = getActiveContent();
+    await saveScript(getActiveFileName(), content, selectedScript.suite);
   }
 
   async function handleRun() {
     if (!selectedScript) return;
+    const content = getActiveContent();
     // If script exists on server, run it. Otherwise save first
     const existing = scripts.find((s) => s.id === selectedScript.id);
     if (existing) {
       await runScript(existing.id);
     } else {
-      const saved = await saveScript(selectedScript.name, editorContent, selectedScript.suite);
+      const saved = await saveScript(getActiveFileName(), content, selectedScript.suite);
       if (saved) await runScript(saved.id);
     }
   }
