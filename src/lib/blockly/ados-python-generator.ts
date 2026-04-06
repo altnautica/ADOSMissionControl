@@ -178,7 +178,7 @@ export function generateScript(workspace: { /* Blockly.Workspace */ getAllBlocks
   const rawCode = pythonGenerator.workspaceToCode(workspace as never);
 
   if (!rawCode.trim()) {
-    return `"""ADOS Script — generated from Blockly"""\nfrom ados import drone\n\nasync def main():\n    pass\n\nmain()\n`;
+    return `"""ADOS Script (generated from Blockly)"""\nfrom ados import drone\n\nasync def main():\n    pass\n\nmain()\n`;
   }
 
   // Separate event handlers (top-level @drone.on decorators) from sequential code
@@ -200,7 +200,7 @@ export function generateScript(workspace: { /* Blockly.Workspace */ getAllBlocks
     }
   }
 
-  const parts = [`"""ADOS Script — generated from Blockly"""\nfrom ados import drone\n`];
+  const parts = [`"""ADOS Script (generated from Blockly)"""\nfrom ados import drone\n`];
 
   if (eventBlocks.length > 0) {
     parts.push(eventBlocks.join("\n") + "\n");

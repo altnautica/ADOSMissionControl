@@ -47,6 +47,23 @@ const quickCommands = [
   { label: "RTL", cmd: "rtl" },
   { label: "Stabilize", cmd: "mode", args: ["stabilize"] },
   { label: "Loiter", cmd: "mode", args: ["loiter"] },
+  { label: "Guided", cmd: "mode", args: ["guided"] },
+  { label: "Auto", cmd: "mode", args: ["auto"] },
+  { label: "Status", cmd: "status" },
+  { label: "Battery", cmd: "battery" },
+  { label: "GPS", cmd: "gps" },
+  { label: "Speed 3 m/s", cmd: "speed", args: [3] },
+  { label: "Speed 5 m/s", cmd: "speed", args: [5] },
+  { label: "Altitude 30m", cmd: "altitude", args: [30] },
+  { label: "Heading N", cmd: "heading", args: [0] },
+];
+
+/** All valid text commands for autocomplete */
+const ALL_COMMANDS = [
+  "arm", "disarm", "takeoff", "land", "rtl", "mode", "status", "battery",
+  "gps", "speed", "altitude", "heading", "hover", "goto", "forward",
+  "back", "left", "right", "up", "down", "rotate", "photo", "video",
+  "record", "stop", "home", "reboot", "version", "help",
 ];
 
 const NEW_SCRIPT_CONTENT = `"""New ADOS script."""
@@ -67,12 +84,14 @@ export function ScriptsTab() {
   const [input, setInput] = useState("");
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [nextId, setNextId] = useState(1);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Editor state
   const [selectedScript, setSelectedScript] = useState<ScriptInfo | null>(null);
   const [editorContent, setEditorContent] = useState("");
-  const [blocklyXml, setBlocklyXml] = useState<string>("");
+  const [blocklyState, setBlocklyState] = useState<string>("");
   const [yamlContent, setYamlContent] = useState("");
 
   const connected = useAgentConnectionStore((s) => s.connected);
@@ -305,8 +324,8 @@ export function ScriptsTab() {
                 onSave={handleSave}
                 isRunning={runningScript !== null}
                 fileName={selectedScript?.name ?? "untitled.py"}
-                initialXml={blocklyXml}
-                onXmlChange={setBlocklyXml}
+                initialState={blocklyState}
+                onStateChange={setBlocklyState}
                 onSwitchToCode={() => {
                   setMode("editor");
                 }}

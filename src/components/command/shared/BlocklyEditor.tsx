@@ -17,8 +17,8 @@ interface BlocklyEditorProps {
   onSave: () => void;
   isRunning: boolean;
   fileName: string;
-  initialXml?: string;
-  onXmlChange?: (xml: string) => void;
+  initialState?: string;
+  onStateChange?: (state: string) => void;
   onSwitchToCode: () => void;
 }
 
@@ -28,8 +28,8 @@ export function BlocklyEditor({
   onSave,
   isRunning,
   fileName,
-  initialXml,
-  onXmlChange,
+  initialState,
+  onStateChange,
   onSwitchToCode,
 }: BlocklyEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -93,13 +93,13 @@ export function BlocklyEditor({
 
       workspaceRef.current = workspace;
 
-      // Load initial XML if provided
-      if (initialXml) {
+      // Load initial state if provided (JSON serialization)
+      if (initialState) {
         try {
-          const xml = Blockly.utils.xml.textToDom(initialXml);
-          Blockly.Xml.domToWorkspace(xml, workspace);
+          const state = JSON.parse(initialState);
+          Blockly.serialization.workspaces.load(state, workspace);
         } catch {
-          // Invalid XML, start fresh
+          // Invalid state, start fresh
         }
       }
 
@@ -116,11 +116,10 @@ export function BlocklyEditor({
         ) {
           updateCode();
 
-          // Serialize XML for persistence
-          if (onXmlChange) {
-            const xml = Blockly.Xml.workspaceToDom(workspace);
-            const xmlText = Blockly.utils.xml.domToText(xml);
-            onXmlChange(xmlText);
+          // Serialize to JSON for persistence
+          if (onStateChange) {
+            const state = Blockly.serialization.workspaces.save(workspace);
+            onStateChange(JSON.stringify(state));
           }
         }
       });
