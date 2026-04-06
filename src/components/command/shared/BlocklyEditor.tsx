@@ -193,7 +193,16 @@ export function BlocklyEditor({
       {/* Workspace + Code Preview */}
       <div className="flex flex-1 min-h-0">
         {/* Blockly workspace */}
-        <div ref={containerRef} className="flex-1 min-h-[300px]" />
+        <div ref={containerRef} className="flex-1 min-h-[300px] relative">
+          {loading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-[#0A0A0F]">
+              <div className="flex items-center gap-2 text-text-tertiary text-xs">
+                <Loader2 size={14} className="animate-spin" />
+                Loading block editor...
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Generated code preview */}
         {showCode && (
