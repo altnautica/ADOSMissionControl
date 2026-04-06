@@ -23,6 +23,20 @@ export function FleetNetworkTab() {
   const fetchPeers = useAgentScriptsStore((s) => s.fetchPeers);
   const [scanning, setScanning] = useState(false);
   const [lastScan, setLastScan] = useState<Date | null>(null);
+  const [showMqttConfig, setShowMqttConfig] = useState(false);
+  const [mqttMode, setMqttMode] = useState<"cloud" | "self-hosted">("cloud");
+  const [mqttBrokerUrl, setMqttBrokerUrl] = useState("mqtt.altnautica.com");
+  const [mqttUsername, setMqttUsername] = useState("");
+  const [mqttPassword, setMqttPassword] = useState("");
+  const [mqttTls, setMqttTls] = useState(true);
+  const [mqttTesting, setMqttTesting] = useState(false);
+
+  async function handleTestMqtt() {
+    setMqttTesting(true);
+    // Simulate connection test
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    setMqttTesting(false);
+  }
 
   useEffect(() => {
     if (connected) fetchPeers();
@@ -43,13 +57,21 @@ export function FleetNetworkTab() {
     <div className="p-4 max-w-3xl space-y-4">
       <DroneNetEnrollmentCard />
 
-      {/* MQTT Status */}
+      {/* MQTT Status & Config */}
       <div className="border border-border-default rounded-lg p-4 bg-bg-secondary">
-        <div className="flex items-center gap-2 mb-3">
-          <Wifi size={14} className="text-text-secondary" />
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
-            {t("mqttGateway")}
-          </h3>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Wifi size={14} className="text-text-secondary" />
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
+              {t("mqttGateway")}
+            </h3>
+          </div>
+          <button
+            onClick={() => setShowMqttConfig(!showMqttConfig)}
+            className="text-[10px] text-text-tertiary hover:text-accent-primary transition-colors"
+          >
+            {showMqttConfig ? "Hide Config" : "Configure"}
+          </button>
         </div>
         <div className="grid grid-cols-2 gap-3 text-xs">
           <div>
@@ -67,10 +89,88 @@ export function FleetNetworkTab() {
           <div>
             <span className="text-text-tertiary">{t("broker")}</span>
             <p className="text-text-secondary font-mono mt-0.5 text-[11px]">
-              mqtt.altnautica.com
+              {mqttBrokerUrl}
             </p>
           </div>
         </div>
+
+        {/* MQTT Config Panel */}
+        {showMqttConfig && (
+          <div className="mt-3 pt-3 border-t border-border-default space-y-3">
+            <div className="flex items-center gap-3 text-xs">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="mqtt-mode"
+                  checked={mqttMode === "cloud"}
+                  onChange={() => setMqttMode("cloud")}
+                  className="accent-accent-primary"
+                />
+                <span className="text-text-secondary">Cloud (Altnautica)</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="mqtt-mode"
+                  checked={mqttMode === "self-hosted"}
+                  onChange={() => setMqttMode("self-hosted")}
+                  className="accent-accent-primary"
+                />
+                <span className="text-text-secondary">Self-Hosted</span>
+              </label>
+            </div>
+            {mqttMode === "self-hosted" && (
+              <div className="space-y-2">
+                <div>
+                  <label className="text-[10px] text-text-tertiary uppercase tracking-wider">Broker URL</label>
+                  <input
+                    type="text"
+                    value={mqttBrokerUrl}
+                    onChange={(e) => setMqttBrokerUrl(e.target.value)}
+                    placeholder="mqtt://192.168.1.100:1883"
+                    className="w-full mt-1 px-2.5 py-1.5 text-xs font-mono bg-bg-primary border border-border-default rounded text-text-primary placeholder:text-text-tertiary outline-none focus:border-accent-primary"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] text-text-tertiary uppercase tracking-wider">Username</label>
+                    <input
+                      type="text"
+                      value={mqttUsername}
+                      onChange={(e) => setMqttUsername(e.target.value)}
+                      placeholder="ados"
+                      className="w-full mt-1 px-2.5 py-1.5 text-xs font-mono bg-bg-primary border border-border-default rounded text-text-primary placeholder:text-text-tertiary outline-none focus:border-accent-primary"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-text-tertiary uppercase tracking-wider">Password</label>
+                    <input
+                      type="password"
+                      value={mqttPassword}
+                      onChange={(e) => setMqttPassword(e.target.value)}
+                      placeholder="********"
+                      className="w-full mt-1 px-2.5 py-1.5 text-xs font-mono bg-bg-primary border border-border-default rounded text-text-primary placeholder:text-text-tertiary outline-none focus:border-accent-primary"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 text-xs text-text-secondary cursor-pointer">
+                    <input type="checkbox" checked={mqttTls} onChange={(e) => setMqttTls(e.target.checked)} className="accent-accent-primary" />
+                    TLS/SSL
+                  </label>
+                  <button
+                    onClick={handleTestMqtt}
+                    disabled={mqttTesting}
+                    className="flex items-center gap-1.5 px-2.5 py-1 text-xs border border-border-default rounded hover:border-accent-primary hover:text-accent-primary text-text-secondary transition-colors disabled:opacity-50"
+                  >
+                    {mqttTesting ? <Loader2 size={10} className="animate-spin" /> : <Wifi size={10} />}
+                    Test Connection
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Mesh Radio */}
