@@ -136,6 +136,43 @@ export function ScriptsTab() {
     [connected, sendCommand, nextId]
   );
 
+  function handleInputChange(value: string) {
+    setInput(value);
+    setHistoryIndex(-1);
+    // Show autocomplete suggestions
+    const word = value.trim().split(/\s+/)[0].toLowerCase();
+    if (word && !value.includes(" ")) {
+      setSuggestions(ALL_COMMANDS.filter((c) => c.startsWith(word) && c !== word).slice(0, 5));
+    } else {
+      setSuggestions([]);
+    }
+  }
+
+  function handleConsoleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    // Tab to autocomplete
+    if (e.key === "Tab" && suggestions.length > 0) {
+      e.preventDefault();
+      setInput(suggestions[0] + " ");
+      setSuggestions([]);
+      return;
+    }
+    // Up/Down for command history
+    const cmds = history.map((h) => h.command);
+    if (e.key === "ArrowUp" && cmds.length > 0) {
+      e.preventDefault();
+      const next = Math.min(historyIndex + 1, cmds.length - 1);
+      setHistoryIndex(next);
+      setInput(cmds[cmds.length - 1 - next]);
+      setSuggestions([]);
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      const next = Math.max(historyIndex - 1, -1);
+      setHistoryIndex(next);
+      setInput(next < 0 ? "" : cmds[cmds.length - 1 - next]);
+      setSuggestions([]);
+    }
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = input.trim();
@@ -145,6 +182,8 @@ export function ScriptsTab() {
     const args = parts.slice(1);
     executeCommand(cmd, args.length > 0 ? args : undefined);
     setInput("");
+    setSuggestions([]);
+    setHistoryIndex(-1);
   }
 
   function handleSelectScript(script: ScriptInfo) {
@@ -283,10 +322,17 @@ export function ScriptsTab() {
               <input
                 type="text"
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={(e) => handleInputChange(e.target.value)}
+                onKeyDown={handleConsoleKeyDown}
                 placeholder={t("enterCommandPlaceholder")}
                 className="flex-1 bg-transparent text-xs text-text-primary placeholder:text-text-tertiary outline-none font-mono"
+                autoComplete="off"
               />
+              {suggestions.length > 0 && (
+                <span className="text-text-tertiary text-xs font-mono">
+                  Tab: {suggestions[0]}
+                </span>
+              )}
             </div>
             <button
               type="submit"
