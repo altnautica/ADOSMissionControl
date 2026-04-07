@@ -30,13 +30,41 @@ import * as prm from './mavlink-adapter-params'
 import * as msn from './mavlink-adapter-missions'
 import * as logOps from './mavlink-adapter-logs'
 
+/** Per-link state for multi-link support. Each link is a Transport that can reach this drone. */
+interface LinkState {
+  id: string
+  transport: Transport
+  label: string
+  connectionMeta?: import('@/stores/drone-manager').ConnectionMeta
+  connectedAt: number
+  /** Last time bytes were received on this link (ms) — used for "primary" selection */
+  lastByteAt: number
+  dataHandler: (data: Uint8Array) => void
+  closeHandler: () => void
+}
+
+/** Public link info exposed to the UI. */
+export interface LinkInfo {
+  id: string
+  type: Transport['type']
+  label: string
+  isConnected: boolean
+  connectedAt: number
+  lastByteAt: number
+  isPrimary: boolean
+}
+
+let _linkIdCounter = 0
+const nextLinkId = () => `link-${++_linkIdCounter}-${Date.now()}`
+
 export class MAVLinkAdapter implements DroneProtocol {
   readonly protocolName = 'mavlink'
 
   // Internal state
   private parser = new MAVLinkParser()
   private commandQueue = new CommandQueue(3000)
-  private transport: Transport | null = null
+  /** Multi-link support — Map of active transports reaching this drone. */
+  private links = new Map<string, LinkState>()
   private firmwareHandler: FirmwareHandler | null = null
   private vehicleInfo: VehicleInfo | null = null
   private targetSysId = 1
@@ -47,8 +75,16 @@ export class MAVLinkAdapter implements DroneProtocol {
   private _disconnected = false
   private heartbeatInterval: ReturnType<typeof setInterval> | null = null
   private streamRequestInterval: ReturnType<typeof setInterval> | null = null
-  private dataHandler: ((data: Uint8Array) => void) | null = null
-  private closeHandler: (() => void) | null = null
+
+  /** Returns the "primary" transport — the link with the most recent byte activity. */
+  private get transport(): Transport | null {
+    if (this.links.size === 0) return null
+    let primary: LinkState | null = null
+    for (const link of this.links.values()) {
+      if (!primary || link.lastByteAt > primary.lastByteAt) primary = link
+    }
+    return primary?.transport ?? null
+  }
   private cbs = createCallbackStore()
   private cbm = bindCallbackMethods(this.cbs)
   private paramCache = new Map<string, { value: number; timestamp: number }>()
@@ -99,13 +135,40 @@ export class MAVLinkAdapter implements DroneProtocol {
     this.lastVehicleHeartbeat = s.lastVehicleHeartbeat; this.linkIsLost = s.linkIsLost
   }
 
+  /** Attach a transport as a link. Returns the link state. */
+  private attachLink(transport: Transport, label: string, meta?: import('@/stores/drone-manager').ConnectionMeta): LinkState {
+    const id = nextLinkId()
+    const link: LinkState = {
+      id,
+      transport,
+      label,
+      connectionMeta: meta,
+      connectedAt: Date.now(),
+      lastByteAt: 0,
+      dataHandler: (data: Uint8Array) => {
+        link.lastByteAt = Date.now()
+        this.parser.feed(this.middleware ? this.middleware.unwrapInbound(data) : data)
+      },
+      closeHandler: () => this.handleLinkClose(id),
+    }
+    transport.on('data', link.dataHandler)
+    transport.on('close', link.closeHandler as (data: void) => void)
+    this.links.set(id, link)
+    return link
+  }
+
+  /** Detach a single link's transport handlers (does not disconnect the transport). */
+  private detachLink(link: LinkState): void {
+    link.transport.off('data', link.dataHandler)
+    link.transport.off('close', link.closeHandler as (data: void) => void)
+    this.links.delete(link.id)
+  }
+
   // ── Connection ─────────────────────────────────────────
   async connect(transport: Transport): Promise<VehicleInfo> {
-    this.transport = transport; this._disconnected = false
-    this.dataHandler = (data: Uint8Array) => this.parser.feed(this.middleware ? this.middleware.unwrapInbound(data) : data)
-    this.closeHandler = () => this.handleDisconnect()
-    transport.on('data', this.dataHandler)
-    transport.on('close', this.closeHandler as (data: void) => void)
+    this._disconnected = false
+    const label = this.formatLinkLabel(transport)
+    this.attachLink(transport, label)
     this.parser.onFrame((frame) => this.handleFrame(frame))
 
     const vehicleInfo = await new Promise<VehicleInfo>((resolve, reject) => {
@@ -142,9 +205,111 @@ export class MAVLinkAdapter implements DroneProtocol {
     return vehicleInfo
   }
 
+  /**
+   * Add an additional transport as a link to this drone.
+   * Validates that the new transport reaches the same sysid as the existing connection.
+   */
+  async addLink(transport: Transport): Promise<{ ok: true; linkId: string } | { ok: false; error: string }> {
+    if (!this._connected || this.targetSysId === 0) {
+      return { ok: false, error: 'Adapter is not connected to a primary link' }
+    }
+    if (this._disconnected) {
+      return { ok: false, error: 'Adapter is disconnected' }
+    }
+    const label = this.formatLinkLabel(transport)
+    const link = this.attachLink(transport, label)
+
+    // Wait for a heartbeat from the SAME sysid
+    const expectedSysId = this.targetSysId
+    return new Promise((resolve) => {
+      const timeout = setTimeout(() => {
+        unsub()
+        this.detachLink(link)
+        resolve({ ok: false, error: 'No heartbeat received on new link within 10 seconds' })
+      }, 10000)
+      const unsub = this.parser.onFrame((frame) => {
+        if (frame.msgId !== 0) return
+        const hb = decodeHeartbeat(frame.payload)
+        if (hb.type === 6) return
+        // Heuristic: the link with the most recent byte activity just delivered this heartbeat
+        const recentLink = this.findMostRecentlyActiveLink()
+        if (recentLink?.id !== link.id) return
+        if (frame.systemId !== expectedSysId) {
+          clearTimeout(timeout); unsub()
+          this.detachLink(link)
+          resolve({
+            ok: false,
+            error: `Sysid mismatch: this transport reaches sysid ${frame.systemId} but expected ${expectedSysId}`,
+          })
+          return
+        }
+        clearTimeout(timeout); unsub()
+        resolve({ ok: true, linkId: link.id })
+      })
+    })
+  }
+
+  /** Remove a link by id. If it's the last link, the adapter disconnects. */
+  async removeLink(linkId: string): Promise<void> {
+    const link = this.links.get(linkId)
+    if (!link) return
+    this.detachLink(link)
+    if (link.transport.isConnected) {
+      try { await link.transport.disconnect() } catch { /* ignore */ }
+    }
+    if (this.links.size === 0) {
+      this.handleDisconnect()
+    }
+  }
+
+  /** Returns information about all active links for this drone. */
+  get linkInfo(): LinkInfo[] {
+    const primaryTransport = this.transport
+    const result: LinkInfo[] = []
+    for (const link of this.links.values()) {
+      result.push({
+        id: link.id,
+        type: link.transport.type,
+        label: link.label,
+        isConnected: link.transport.isConnected,
+        connectedAt: link.connectedAt,
+        lastByteAt: link.lastByteAt,
+        isPrimary: link.transport === primaryTransport,
+      })
+    }
+    return result.sort((a, b) => a.connectedAt - b.connectedAt)
+  }
+
+  private findMostRecentlyActiveLink(): LinkState | null {
+    let best: LinkState | null = null
+    for (const link of this.links.values()) {
+      if (!best || link.lastByteAt > best.lastByteAt) best = link
+    }
+    return best
+  }
+
+  private formatLinkLabel(transport: Transport): string {
+    return transport.type
+  }
+
+  /** Called when an individual link's transport closes. */
+  private handleLinkClose(linkId: string): void {
+    const link = this.links.get(linkId)
+    if (!link) return
+    this.detachLink(link)
+    if (this.links.size === 0) {
+      this.handleDisconnect()
+    }
+  }
+
   async disconnect(): Promise<void> {
+    const links = Array.from(this.links.values())
     this.handleDisconnect()
-    if (this.transport?.isConnected) await this.transport.disconnect()
+    for (const link of links) {
+      if (link.transport.isConnected) {
+        try { await link.transport.disconnect() } catch { /* ignore */ }
+      }
+    }
   }
 
   private handleDisconnect(): void {
@@ -156,8 +321,10 @@ export class MAVLinkAdapter implements DroneProtocol {
     this.commandQueue.clear(); this.paramCache.clear(); this.parser.reset()
     if (this.logListDownload) { clearTimeout(this.logListDownload.timer); this.logListDownload.resolve(Array.from(this.logListDownload.entries.values())); this.logListDownload = null }
     if (this.logDataDownload) { if (this.logDataDownload.inactivityTimer) clearTimeout(this.logDataDownload.inactivityTimer); clearTimeout(this.logDataDownload.hardTimer); this.logDataDownload.reject(new Error('Disconnected during log download')); this.logDataDownload = null }
-    if (this.transport && this.dataHandler) { this.transport.off('data', this.dataHandler); this.transport.off('close', this.closeHandler as (data: void) => void) }
-    this.transport = null
+    // Detach all remaining links
+    for (const link of Array.from(this.links.values())) {
+      this.detachLink(link)
+    }
   }
 
   /** Set to true when the MAVLink Inspector / diagnostics panel is open. */
