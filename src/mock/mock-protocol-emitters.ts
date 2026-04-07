@@ -8,6 +8,7 @@
  */
 
 import type {
+  CanFrameCallback,
   SysStatusCallback,
   RadioCallback,
   EkfCallback,
@@ -81,3 +82,4 @@ export function emitExtendedSysState(cbs: MockCallbackArrays, data: Parameters<E
 export function emitFencePoint(cbs: MockCallbackArrays, data: Parameters<FencePointCallback>[0]): void { for (const cb of cbs.fencePointCbs) cb(data); }
 export function emitSystemTime(cbs: MockCallbackArrays, data: Parameters<SystemTimeCallback>[0]): void { for (const cb of cbs.systemTimeCbs) cb(data); }
 export function emitAutopilotVersion(cbs: MockCallbackArrays, data: Parameters<AutopilotVersionCallback>[0]): void { for (const cb of cbs.autopilotVersionCbs) cb(data); }
+export function emitCanFrame(cbs: MockCallbackArrays, data: Parameters<CanFrameCallback>[0]): void { for (const cb of cbs.canFrameCbs) cb(data); }

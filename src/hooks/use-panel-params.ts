@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneStore } from "@/stores/drone-store";
 import { useParamSafetyStore } from "@/stores/param-safety-store";
 import { usePanelCacheStore } from "@/stores/panel-cache-store";
 import { useFcPanelActionsStore } from "@/stores/fc-panel-actions-store";
 import { useDiagnosticsStore } from "@/stores/diagnostics-store";
+import { useArmedConfirmStore } from "@/stores/armed-confirm-store";
 import { cachePanelToIDB, getCachedPanelFromIDB } from "@/lib/param-cache-idb";
 import type { PanelParamOptions, PanelParamState, PanelParamActions, UndoEntry } from "./use-panel-params-types";
 import { MAX_UNDO_STACK, RETRY_DELAYS, DEFAULT_BATCH_SIZE, EMPTY_ARRAY } from "./use-panel-params-types";
@@ -208,13 +210,35 @@ export function usePanelParams(
   }, [getProtocol, panelId, trackWrite, trackRebootParam, externalMetadata, onEvent]);
 
   const saveAllToRam = useCallback(async (): Promise<boolean> => {
+    // Armed-write guard. When the vehicle is armed, pop a confirm dialog
+    // listing the pending parameter writes. User must explicitly opt in.
+    // See `use-armed-lock.ts` and `armed-confirm-store.ts` for the pattern.
+    if (dirtyParams.size > 0) {
+      const armState = useDroneStore.getState().armState;
+      const connectionState = useDroneStore.getState().connectionState;
+      const isArmed =
+        armState === "armed" && connectionState !== "disconnected";
+      if (isArmed) {
+        const confirmed = await useArmedConfirmStore
+          .getState()
+          .requestConfirm({ panelId, paramNames: Array.from(dirtyParams) });
+        if (!confirmed) {
+          onEvent?.({
+            type: "info",
+            message: "Save cancelled — vehicle is armed",
+          });
+          return false;
+        }
+      }
+    }
+
     let allOk = true;
     for (const name of dirtyParams) {
       const value = params.get(name);
       if (value !== undefined) { const ok = await saveToRam(name, value); if (!ok) allOk = false; }
     }
     return allOk;
-  }, [dirtyParams, params, saveToRam]);
+  }, [dirtyParams, params, saveToRam, panelId, onEvent]);
 
   const commitToFlash = useCallback(async (): Promise<boolean> => {
     const protocol = getProtocol();

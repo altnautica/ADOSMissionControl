@@ -16,6 +16,7 @@ import type {
   DebugCallback, GimbalAttitudeCallback, ObstacleDistanceCallback,
   CameraImageCapturedCallback, ExtendedSysStateCallback, FencePointCallback,
   SystemTimeCallback, AutopilotVersionCallback,
+  CanFrameCallback,
 } from "@/lib/protocol/types";
 import { ArduCopterHandler } from "@/lib/protocol/firmware/ardupilot";
 import { PX4Handler } from "@/lib/protocol/firmware/px4";
@@ -83,6 +84,7 @@ export class MockProtocol implements DroneProtocol {
   emitFencePoint(d: Parameters<FencePointCallback>[0]): void { E.emitFencePoint(this.cbs, d); }
   emitSystemTime(d: Parameters<SystemTimeCallback>[0]): void { E.emitSystemTime(this.cbs, d); }
   emitAutopilotVersion(d: Parameters<AutopilotVersionCallback>[0]): void { E.emitAutopilotVersion(this.cbs, d); }
+  emitCanFrame(d: Parameters<CanFrameCallback>[0]): void { E.emitCanFrame(this.cbs, d); }
 
   // ── Connection ─────────────────────────────────────────
   get isConnected(): boolean { return this._connected; }

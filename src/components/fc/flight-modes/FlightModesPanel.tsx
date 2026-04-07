@@ -28,7 +28,7 @@ import type { ModeSlotConfig, FlightModeGlobalConfig } from "./flight-mode-const
 export function FlightModesPanel() {
   const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
   const { toast } = useToast();
-  const { isLocked, lockMessage } = useArmedLock();
+  const { isArmed, lockMessage } = useArmedLock();
   const protocol = getSelectedProtocol();
   const firmwareHandler = protocol?.getFirmwareHandler() ?? null;
   const isCopter = firmwareHandler?.vehicleClass === "copter";
@@ -356,7 +356,7 @@ export function FlightModesPanel() {
               size="sm"
               icon={<Save size={12} />}
               loading={saving}
-              disabled={!isDirty || isLocked}
+              disabled={!isDirty}
               onClick={saveParams}
             >
               Save{dirtySlots.size > 0 ? ` (${dirtySlots.size})` : ""}
@@ -463,11 +463,11 @@ export function FlightModesPanel() {
           </div>
         )}
 
-        {/* ── Armed Lock Warning ──────────────────────────── */}
+        {/* ── Armed Warning ──────────────────────────── */}
 
-        {isLocked && (
-          <div className="flex items-center gap-2 p-2 bg-status-error/10 border border-status-error/20">
-            <span className="text-[10px] text-status-error">{lockMessage}</span>
+        {isArmed && (
+          <div className="flex items-center gap-2 p-2 bg-status-warning/10 border border-status-warning/50">
+            <span className="text-[10px] text-status-warning">{lockMessage}</span>
           </div>
         )}
 

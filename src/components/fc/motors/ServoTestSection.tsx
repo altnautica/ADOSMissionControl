@@ -11,21 +11,22 @@ const OUTPUT_COUNT = 16;
 
 interface ServoTestSectionProps {
   protocol: DroneProtocol | null;
-  isLocked: boolean;
-  lockMessage: string;
+  /** Hard-block flag — servo test is unsafe in flight. */
+  isHardBlocked: boolean;
+  hardBlockMessage: string;
   outputs: OutputRow[];
   gpioOutputs: Set<number>;
 }
 
-export function ServoTestSection({ protocol, isLocked, lockMessage, outputs, gpioOutputs }: ServoTestSectionProps) {
+export function ServoTestSection({ protocol, isHardBlocked, hardBlockMessage, outputs, gpioOutputs }: ServoTestSectionProps) {
   const [servoTestEnabled, setServoTestEnabled] = useState(false);
   const [servoTestValues, setServoTestValues] = useState<number[]>(
     () => Array.from({ length: OUTPUT_COUNT }, () => 1500),
   );
 
   useEffect(() => {
-    if (isLocked) setServoTestEnabled(false);
-  }, [isLocked]);
+    if (isHardBlocked) setServoTestEnabled(false);
+  }, [isHardBlocked]);
 
   return (
     <Card title="Servo Test">
@@ -37,12 +38,12 @@ export function ServoTestSection({ protocol, isLocked, lockMessage, outputs, gpi
           </span>
         </div>
 
-        <Toggle label="Enable servo test (safety master)" checked={servoTestEnabled} onChange={setServoTestEnabled} disabled={isLocked} />
+        <Toggle label="Enable servo test (safety master)" checked={servoTestEnabled} onChange={setServoTestEnabled} disabled={isHardBlocked} />
 
-        {isLocked && (
+        {isHardBlocked && (
           <div className="flex items-center gap-2 p-2 bg-status-error/10 border border-status-error/20">
             <AlertTriangle size={14} className="text-status-error shrink-0" />
-            <span className="text-[10px] text-status-error">{lockMessage}</span>
+            <span className="text-[10px] text-status-error">{hardBlockMessage}</span>
           </div>
         )}
 
