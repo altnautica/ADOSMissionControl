@@ -82,6 +82,57 @@ export default function FlightHistoryPage() {
   // Detail panel selection
   const [selectedRecord, setSelectedRecord] = useState<FlightRecord | null>(null);
 
+  // List width (resizable when a flight is selected)
+  const LIST_WIDTH_MIN = 280;
+  const LIST_WIDTH_MAX = 560;
+  const LIST_WIDTH_DEFAULT = 360;
+  const [listWidth, setListWidth] = useState<number>(LIST_WIDTH_DEFAULT);
+  const [listCollapsed, setListCollapsed] = useState<boolean>(false);
+  const resizingRef = useRef<{ startX: number; startWidth: number } | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const stored = window.localStorage.getItem("history.listWidth");
+    if (stored) {
+      const n = parseInt(stored, 10);
+      if (!Number.isNaN(n)) setListWidth(Math.min(LIST_WIDTH_MAX, Math.max(LIST_WIDTH_MIN, n)));
+    }
+    const collapsed = window.localStorage.getItem("history.listCollapsed");
+    if (collapsed === "1") setListCollapsed(true);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("history.listWidth", String(listWidth));
+  }, [listWidth]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("history.listCollapsed", listCollapsed ? "1" : "0");
+  }, [listCollapsed]);
+
+  const handleResizeStart = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    resizingRef.current = { startX: e.clientX, startWidth: listWidth };
+  }, [listWidth]);
+
+  const handleResizeMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (!resizingRef.current) return;
+    const dx = e.clientX - resizingRef.current.startX;
+    const next = Math.min(LIST_WIDTH_MAX, Math.max(LIST_WIDTH_MIN, resizingRef.current.startWidth + dx));
+    setListWidth(next);
+  }, []);
+
+  const handleResizeEnd = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).hasPointerCapture?.(e.pointerId)) {
+      (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    }
+    resizingRef.current = null;
+  }, []);
+
+  const toggleListCollapsed = useCallback(() => setListCollapsed((v) => !v), []);
+
   // Replay mode
   const [replayState, setReplayState] = useState<{ recording: TelemetryRecording; record: FlightRecord } | null>(null);
 
@@ -303,25 +354,54 @@ export default function FlightHistoryPage() {
         {allRecords.length === 0 ? (
           <EmptyState />
         ) : (
-          <HistoryTable
-            records={filteredRecords}
-            selectedId={selectedRecord?.id ?? null}
-            onSelect={setSelectedRecord}
-            selectedIds={selectedIds}
-            onToggleSelect={handleToggleSelect}
-            onSelectAllPage={handleSelectAllPage}
-            sortKey={sortKey}
-            sortDir={sortDir}
-            onSortChange={handleSortChange}
-          />
-        )}
+          <>
+            {!(selectedRecord && listCollapsed) && (
+              <div
+                className="h-full overflow-hidden"
+                style={
+                  selectedRecord
+                    ? { width: listWidth, flex: "0 0 auto" }
+                    : { flex: "1 1 auto", minWidth: 0 }
+                }
+              >
+                <HistoryTable
+                  records={filteredRecords}
+                  selectedId={selectedRecord?.id ?? null}
+                  onSelect={setSelectedRecord}
+                  selectedIds={selectedIds}
+                  onToggleSelect={handleToggleSelect}
+                  onSelectAllPage={handleSelectAllPage}
+                  sortKey={sortKey}
+                  sortDir={sortDir}
+                  onSortChange={handleSortChange}
+                  compact={!!selectedRecord}
+                />
+              </div>
+            )}
 
-        {selectedRecord && (
-          <HistoryDetailPanel
-            record={selectedRecord}
-            onClose={() => setSelectedRecord(null)}
-            onReplay={handleReplay}
-          />
+            {selectedRecord && !listCollapsed && (
+              <div
+                role="separator"
+                aria-orientation="vertical"
+                onPointerDown={handleResizeStart}
+                onPointerMove={handleResizeMove}
+                onPointerUp={handleResizeEnd}
+                onPointerCancel={handleResizeEnd}
+                className="w-1 shrink-0 cursor-col-resize bg-border-default hover:bg-accent-primary/60 transition-colors"
+                title="Drag to resize"
+              />
+            )}
+
+            {selectedRecord && (
+              <HistoryDetailPanel
+                record={selectedRecord}
+                onClose={() => setSelectedRecord(null)}
+                onReplay={handleReplay}
+                listCollapsed={listCollapsed}
+                onToggleListCollapsed={toggleListCollapsed}
+              />
+            )}
+          </>
         )}
       </div>
 
