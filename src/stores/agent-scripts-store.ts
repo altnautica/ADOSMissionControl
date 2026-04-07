@@ -54,7 +54,10 @@ interface AgentScriptsActions {
 export type AgentScriptsStore = AgentScriptsState & AgentScriptsActions;
 
 export const useAgentScriptsStore = create<AgentScriptsStore>((set, get) => ({
-  scripts: [],
+  // Seed built-in samples up front so the Scripts library is never empty,
+  // even before the agent has responded with a script list. The samples
+  // give new users and demo-mode evaluators an immediate starting point.
+  scripts: getBuiltInSamples(),
   scriptOutput: null,
   runningScript: null,
   suites: [],
@@ -72,7 +75,7 @@ export const useAgentScriptsStore = create<AgentScriptsStore>((set, get) => ({
     if (!client) return;
     try {
       const scripts = await client.getScripts();
-      set({ scripts });
+      set({ scripts: mergeSamples(scripts) });
     } catch { /* silent */ }
   },
 
@@ -93,6 +96,8 @@ export const useAgentScriptsStore = create<AgentScriptsStore>((set, get) => ({
   },
 
   async deleteScript(id: string) {
+    // Built-in samples are read-only — refuse delete.
+    if (id.startsWith("sample-")) return;
     const { client, cloudMode } = useAgentConnectionStore.getState();
     if (cloudMode) {
       useAgentConnectionStore.getState().sendCloudCommand("delete_script", { id });
