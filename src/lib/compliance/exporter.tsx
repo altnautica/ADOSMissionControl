@@ -1,8 +1,9 @@
 /**
  * Compliance exporter dispatch.
  *
- * Phase 7b implements only the PDF path for `IN_DGCA`. CSV / JSON / XML and
- * the other 13 jurisdictions land in Phase 7c.
+ * - PDF path: `IN_DGCA` → bespoke single-flight template; every other
+ *   jurisdiction → shared `GenericLogbookTemplate`.
+ * - CSV / JSON / XML paths still throw `ExportNotSupported` until 7c-2/7c-3.
  *
  * @module compliance/exporter
  * @license GPL-3.0-only
@@ -36,29 +37,40 @@ export async function exportFlights(input: ExportInput): Promise<Blob> {
   const spec = JURISDICTIONS[jurisdiction];
   if (!spec) throw new ExportNotSupported(jurisdiction, format);
 
-  if (format === "pdf" && jurisdiction === "IN_DGCA") {
-    if (records.length !== 1) {
-      throw new Error("Phase 7b PDF export expects exactly one record");
-    }
-    const record = records[0];
-    const aircraft = aircraftIndex[record.droneId];
+  if (format === "pdf") {
+    // Lazy-import the renderer chunk so the History tab stays small.
+    const { pdf } = await import("@react-pdf/renderer");
 
-    // Lazy-import @react-pdf/renderer (and the template) to keep the History
-    // tab bundle small.
-    const [{ pdf }, { DgcaIndiaTemplate }] = await Promise.all([
-      import("@react-pdf/renderer"),
-      import("./pdf/templates/dgca-india"),
-    ]);
-    const doc = (
-      <DgcaIndiaTemplate
-        record={record}
+    if (jurisdiction === "IN_DGCA") {
+      if (records.length !== 1) {
+        throw new Error("DGCA single-flight template expects exactly one record");
+      }
+      const record = records[0];
+      const aircraft = aircraftIndex[record.droneId];
+      const { DgcaIndiaTemplate } = await import("./pdf/templates/dgca-india");
+      return await pdf(
+        <DgcaIndiaTemplate
+          record={record}
+          operator={operator}
+          aircraft={aircraft}
+          generatedAt={new Date()}
+        />,
+      ).toBlob();
+    }
+
+    if (records.length === 0) {
+      throw new Error("No flights selected for export");
+    }
+    const { GenericLogbookTemplate } = await import("./pdf/templates/_generic-logbook");
+    return await pdf(
+      <GenericLogbookTemplate
+        spec={spec}
+        records={records}
         operator={operator}
-        aircraft={aircraft}
+        aircraftIndex={aircraftIndex}
         generatedAt={new Date()}
-      />
-    );
-    const blob = await pdf(doc).toBlob();
-    return blob;
+      />,
+    ).toBlob();
   }
 
   throw new ExportNotSupported(jurisdiction, format);
