@@ -38,6 +38,17 @@ import type { FirmwareHandler } from './firmware';
  * connected vehicle and bridges telemetry callbacks into reactive
  * store state.
  */
+/** Public link info exposed to the UI for multi-link displays. */
+export interface LinkInfo {
+  id: string;
+  type: Transport['type'];
+  label: string;
+  isConnected: boolean;
+  connectedAt: number;
+  lastByteAt: number;
+  isPrimary: boolean;
+}
+
 export interface DroneProtocol {
   readonly protocolName: string;
 
@@ -45,6 +56,14 @@ export interface DroneProtocol {
   connect(transport: Transport): Promise<VehicleInfo>;
   disconnect(): Promise<void>;
   readonly isConnected: boolean;
+
+  // ── Multi-Link (optional) ───────────────────────────────
+  /** Add an additional transport as a link. Validates sysid match. */
+  addLink?(transport: Transport): Promise<{ ok: true; linkId: string } | { ok: false; error: string }>;
+  /** Remove a link by id. If it's the last link, the protocol disconnects. */
+  removeLink?(linkId: string): Promise<void>;
+  /** Information about all active links for this drone. */
+  readonly linkInfo?: LinkInfo[];
 
   // ── Commands ────────────────────────────────────────────
   arm(): Promise<CommandResult>;

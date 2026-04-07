@@ -15,7 +15,7 @@
 import type {
   DroneProtocol, Transport, TransportMiddleware, VehicleInfo, CommandResult, ParameterValue,
   MissionItem, FirmwareHandler, ProtocolCapabilities, UnifiedFlightMode,
-  LogEntry, LogDownloadProgressCallback,
+  LogEntry, LogDownloadProgressCallback, LinkInfo,
 } from './types'
 import { MAVLinkParser, type MAVLinkFrame } from './mavlink-parser'
 import { encodeHeartbeat } from './mavlink-encoder'
@@ -41,17 +41,6 @@ interface LinkState {
   lastByteAt: number
   dataHandler: (data: Uint8Array) => void
   closeHandler: () => void
-}
-
-/** Public link info exposed to the UI. */
-export interface LinkInfo {
-  id: string
-  type: Transport['type']
-  label: string
-  isConnected: boolean
-  connectedAt: number
-  lastByteAt: number
-  isPrimary: boolean
 }
 
 let _linkIdCounter = 0
