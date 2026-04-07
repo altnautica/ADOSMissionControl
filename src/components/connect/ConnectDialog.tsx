@@ -42,6 +42,17 @@ export function ConnectDialog() {
   const [dfuDetected, setDfuDetected] = useState(false);
   const [serialBaudRate, setSerialBaudRate] = useState(115200);
   const [websocketUrl, setWebsocketUrl] = useState("ws://localhost:14550");
+  const [connectMode, setConnectMode] = useState<"new" | "link">("new");
+  const [selectedTargetDroneId, setSelectedTargetDroneId] = useState<string | null>(null);
+  const drones = useDroneManager((s) => s.drones);
+
+  // Reset link target when dialog closes or no drones
+  useEffect(() => {
+    if (!open || drones.size === 0) {
+      setConnectMode("new");
+      setSelectedTargetDroneId(null);
+    }
+  }, [open, drones.size]);
 
   // DFU hot-plug detection — only when dialog is open
   useEffect(() => {
@@ -174,6 +185,56 @@ export function ConnectDialog() {
           </div>
         )}
 
+        {/* Mode toggle (only when at least one drone is connected) */}
+        {droneCount > 0 && (
+          <div className="border border-border-default p-3 space-y-2">
+            <div className="flex items-center gap-3 text-xs">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="connect-mode"
+                  checked={connectMode === "new"}
+                  onChange={() => { setConnectMode("new"); setSelectedTargetDroneId(null); }}
+                  className="accent-accent-primary"
+                />
+                <span className="text-text-secondary">Connect new drone</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="connect-mode"
+                  checked={connectMode === "link"}
+                  onChange={() => setConnectMode("link")}
+                  className="accent-accent-primary"
+                />
+                <span className="text-text-secondary">Add link to existing drone</span>
+              </label>
+            </div>
+            {connectMode === "link" && (
+              <div className="pt-2">
+                <label className="text-[10px] text-text-tertiary uppercase tracking-wider block mb-1">
+                  Target drone (sysid match required)
+                </label>
+                <select
+                  value={selectedTargetDroneId ?? ""}
+                  onChange={(e) => setSelectedTargetDroneId(e.target.value || null)}
+                  className="w-full px-2.5 py-1.5 text-xs bg-bg-primary border border-border-default rounded text-text-primary outline-none focus:border-accent-primary"
+                >
+                  <option value="">— Select drone —</option>
+                  {Array.from(drones.values()).map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name} (sysid {d.vehicleInfo.systemId})
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[10px] text-text-tertiary mt-1">
+                  The new transport must reach the same sysid as the selected drone, otherwise it will be rejected.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Connection tabs */}
         <div className="border border-border-default">
           <div className="flex items-center justify-between border-b border-border-default px-4">
@@ -198,12 +259,14 @@ export function ConnectDialog() {
                 onConnected={handleSerialConnected}
                 baudRate={serialBaudRate}
                 onBaudRateChange={setSerialBaudRate}
+                targetDroneId={connectMode === "link" ? selectedTargetDroneId : null}
               />
             ) : (
               <WebSocketPanel
                 onConnected={handleWsConnected}
                 url={websocketUrl}
                 onUrlChange={setWebsocketUrl}
+                targetDroneId={connectMode === "link" ? selectedTargetDroneId : null}
               />
             )}
           </div>
