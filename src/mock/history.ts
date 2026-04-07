@@ -23,7 +23,9 @@ export function generateFlightHistory(): FlightRecord[] {
   const randId = () => rand().toString(36).substring(2, 10);
 
   const records: FlightRecord[] = [];
-  const baseTime = 1740600000000; // fixed epoch — Feb 2025
+  // Anchor 1 day in the past so the newest demo flights look "today"
+  // and the oldest are ~30 days old. Recomputed each call.
+  const baseTime = Date.now() - 24 * 60 * 60 * 1000;
   const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
 
   for (let i = 0; i < 87; i++) {
@@ -55,7 +57,17 @@ export function generateFlightHistory(): FlightRecord[] {
 
 let _cachedHistory: FlightRecord[] | null = null;
 
-export function getFlightHistory(): FlightRecord[] {
+/**
+ * Returns the seeded demo flight history. Should ONLY be called from
+ * demo-mode entry points. Use {@link seedDemoHistory} as the canonical name;
+ * `getFlightHistory` is kept as a back-compat alias for existing callers.
+ */
+export function seedDemoHistory(): FlightRecord[] {
   if (!_cachedHistory) _cachedHistory = generateFlightHistory();
   return _cachedHistory;
+}
+
+/** @deprecated use {@link seedDemoHistory} */
+export function getFlightHistory(): FlightRecord[] {
+  return seedDemoHistory();
 }

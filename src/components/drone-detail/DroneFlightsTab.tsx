@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { Table, type Column } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { getFlightHistory } from "@/mock/history";
+import { useHistoryStore } from "@/stores/history-store";
 import { formatDate, formatDuration } from "@/lib/utils";
 import type { FlightRecord } from "@/lib/types";
 
@@ -101,10 +101,13 @@ export function DroneFlightsTab({ droneId }: DroneFlightsTabProps) {
       ),
     },
   ], [t]);
-  const flights = useMemo(() => {
-    const all = getFlightHistory();
-    return all.filter((f) => f.droneId === droneId);
-  }, [droneId]);
+  // Source from the history store (single source of truth) so this view stays
+  // in sync with live recordings, imported logs, and demo seed data alike.
+  const allRecords = useHistoryStore((s) => s.records);
+  const flights = useMemo(
+    () => allRecords.filter((f) => f.droneId === droneId),
+    [allRecords, droneId],
+  );
 
   if (flights.length === 0) {
     return (

@@ -1405,6 +1405,8 @@
   "history": {
     "title": "Flight History",
     "noFlights": "No flight records",
+    "emptyTitle": "No flights recorded yet",
+    "emptySubtitle": "Connect a drone and arm to start your first recording. Imported logs and live recordings will appear here.",
     "date": "Date",
     "duration": "Duration",
     "distance": "Distance",

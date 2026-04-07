@@ -26,8 +26,10 @@ export function HistoryTable({ records, selectedId, onSelect }: HistoryTableProp
   const t = useTranslations("history");
   const [page, setPage] = useState(0);
 
-  const totalPages = Math.ceil(records.length / PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(records.length / PAGE_SIZE));
   const pageRecords = records.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  const from = records.length === 0 ? 0 : page * PAGE_SIZE + 1;
+  const to = Math.min((page + 1) * PAGE_SIZE, records.length);
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
@@ -95,7 +97,7 @@ export function HistoryTable({ records, selectedId, onSelect }: HistoryTableProp
       {/* Pagination */}
       <div className="flex items-center justify-between px-3 py-2 border-t border-border-default shrink-0">
         <span className="text-[10px] text-text-tertiary font-mono">
-          {t("recordsPageInfo", { records: records.length, page: page + 1, totalPages })}
+          {t("recordsPageInfo", { from, to, total: records.length })}
         </span>
         <div className="flex items-center gap-1">
           <Button
