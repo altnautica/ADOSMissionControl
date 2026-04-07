@@ -109,6 +109,17 @@ export interface FlightRecord {
   flags?: FlightFlag[];
   /** Phase 5 — health summary stats. */
   health?: HealthSummary;
+
+  // Phase 7a — frozen pilot/aircraft snapshot at flight time. Lets historical
+  // records produce compliance exports even after the operator profile or
+  // aircraft registry has been edited.
+  pilotFirstName?: string;
+  pilotLastName?: string;
+  pilotLicenseNumber?: string;
+  pilotLicenseIssuer?: string;
+  aircraftRegistration?: string;
+  aircraftSerial?: string;
+  aircraftMtomKg?: number;
 }
 
 // ── Analytics ────────────────────────────────────────────────

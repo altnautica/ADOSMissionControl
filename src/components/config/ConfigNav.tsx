@@ -12,6 +12,7 @@ import {
   Palette,
   Database,
   Zap,
+  User,
 } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -23,6 +24,7 @@ interface NavItem {
 
 const GCS_NAV_ITEMS: NavItem[] = [
   { href: "/config", labelKey: "general", icon: <Settings size={14} /> },
+  { href: "/config/operator", labelKey: "operator", icon: <User size={14} /> },
   { href: "/config/input", labelKey: "inputDevices", icon: <Gamepad2 size={14} /> },
   { href: "/config/video", labelKey: "video", icon: <Video size={14} /> },
   { href: "/config/notifications", labelKey: "notifications", icon: <Bell size={14} /> },

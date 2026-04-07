@@ -343,7 +343,8 @@
     "notifications": "Notifications",
     "theme": "Theme",
     "data": "Data",
-    "flashTool": "Flash Tool"
+    "flashTool": "Flash Tool",
+    "operator": "Operator & Aircraft"
   },
   "general": {
     "title": "General Settings",
