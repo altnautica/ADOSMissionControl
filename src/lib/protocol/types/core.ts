@@ -17,6 +17,8 @@ export interface VehicleInfo {
   autopilotType: number;
   /** Raw MAV_TYPE enum value. */
   vehicleType: number;
+  /** AP_FW_BOARD_ID from AUTOPILOT_VERSION (msg 148). Populated after first AUTOPILOT_VERSION received. */
+  boardId?: number;
 }
 
 /** Result of a command acknowledged by the flight controller. */

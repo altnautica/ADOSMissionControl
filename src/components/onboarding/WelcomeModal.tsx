@@ -517,7 +517,7 @@ export function WelcomeModal() {
 
         {/* -- STEP 0: Language Selection -- */}
         <div
-          className={`absolute inset-0 flex flex-col items-center justify-center p-8 transition-transform duration-300 ease-in-out ${stepX(0)}`}
+          className={`absolute inset-0 flex flex-col p-4 sm:p-6 md:p-8 overflow-y-auto [align-items:safe_center] [justify-content:safe_center] transition-transform duration-300 ease-in-out ${stepX(0)}`}
         >
           {/* Brand header */}
           <div className="text-center mb-10">
@@ -530,7 +530,7 @@ export function WelcomeModal() {
           </h2>
 
           {/* Language grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full max-w-xl mb-10">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3 w-full max-w-xl mb-8 sm:mb-10">
             {(locales as readonly string[]).map((code) => {
               const info = localeNames[code as keyof typeof localeNames];
               const isSelected = selectedLocale === code;
@@ -569,29 +569,29 @@ export function WelcomeModal() {
 
         {/* -- STEP 1: Welcome / Brand Moment -- */}
         <div
-          className={`absolute inset-0 flex flex-col md:flex-row transition-transform duration-300 ease-in-out ${stepX(1)}`}
+          className={`absolute inset-0 flex flex-col md:flex-row overflow-y-auto transition-transform duration-300 ease-in-out ${stepX(1)}`}
         >
           {/* Back button */}
           <button
             type="button"
             onClick={() => back(0)}
-            className="absolute top-6 left-6 text-xs text-text-tertiary hover:text-text-primary transition-colors flex items-center gap-1"
+            className="absolute top-3 left-3 sm:top-6 sm:left-6 min-h-11 px-2 -ml-1 text-sm text-text-tertiary hover:text-text-primary transition-colors flex items-center gap-1 z-10"
           >
             ← {tCommon("back")}
           </button>
 
           {/* Left: brand lockup */}
-          <div className="flex-none md:w-2/5 flex flex-col items-center justify-center p-12 md:p-16 border-b md:border-b-0 md:border-e border-border-default">
+          <div className="flex-none md:w-2/5 flex flex-col items-center justify-center p-8 pt-14 sm:p-10 md:p-16 border-b md:border-b-0 md:border-e border-border-default">
             <div className="text-center">
-              <p className="font-display text-5xl md:text-7xl font-bold text-accent-primary leading-none">ADOS</p>
-              <p className="font-display text-xl md:text-2xl font-semibold text-text-primary mt-2">Mission</p>
-              <p className="font-display text-xl md:text-2xl font-semibold text-text-primary">Control</p>
-              <div className="mt-6 w-16 h-px bg-accent-primary mx-auto opacity-50" />
+              <p className="font-display text-4xl sm:text-5xl md:text-7xl font-bold text-accent-primary leading-none">ADOS</p>
+              <p className="font-display text-lg sm:text-xl md:text-2xl font-semibold text-text-primary mt-2">Mission</p>
+              <p className="font-display text-lg sm:text-xl md:text-2xl font-semibold text-text-primary">Control</p>
+              <div className="mt-4 sm:mt-6 w-16 h-px bg-accent-primary mx-auto opacity-50" />
             </div>
           </div>
 
           {/* Right: copy */}
-          <div className="flex-1 flex flex-col justify-center p-8 md:p-16">
+          <div className="flex-1 flex flex-col justify-center p-6 sm:p-10 md:p-16 overflow-y-auto">
             <p className="text-lg font-semibold text-text-primary leading-snug mb-4">
               {t("intro.tagline")}
             </p>
@@ -632,13 +632,13 @@ export function WelcomeModal() {
 
         {/* -- STEP 2: Legal Disclaimer -- */}
         <div
-          className={`absolute inset-0 flex flex-col items-center justify-center p-8 transition-transform duration-300 ease-in-out ${stepX(2)}`}
+          className={`absolute inset-0 flex flex-col p-4 sm:p-6 md:p-8 overflow-y-auto [align-items:safe_center] [justify-content:safe_center] transition-transform duration-300 ease-in-out ${stepX(2)}`}
         >
           {/* Back button */}
           <button
             type="button"
             onClick={() => back(1)}
-            className="absolute top-6 left-6 text-xs text-text-tertiary hover:text-text-primary transition-colors flex items-center gap-1"
+            className="absolute top-3 left-3 sm:top-6 sm:left-6 min-h-11 px-2 -ml-1 text-sm text-text-tertiary hover:text-text-primary transition-colors flex items-center gap-1 z-10"
           >
             ← {tCommon("back")}
           </button>
@@ -652,7 +652,7 @@ export function WelcomeModal() {
             </p>
 
             {/* Scrollable disclaimer sections */}
-            <div className="max-h-[55vh] overflow-y-auto border border-border-default rounded-sm bg-bg-secondary p-4 space-y-4 mb-6">
+            <div className="[max-height:60dvh] overflow-y-auto border border-border-default rounded-sm bg-bg-secondary p-4 space-y-4 mb-6 overscroll-contain">
               {/* 1. Lawful Use */}
               <div className="flex gap-3">
                 <Shield size={16} className="text-accent-primary shrink-0 mt-0.5" />
@@ -765,13 +765,13 @@ export function WelcomeModal() {
 
         {/* -- STEP 3: Preferences -- */}
         <div
-          className={`absolute inset-0 flex flex-col items-center justify-center p-8 transition-transform duration-300 ease-in-out ${stepX(3)}`}
+          className={`absolute inset-0 flex flex-col p-4 sm:p-6 md:p-8 overflow-y-auto [align-items:safe_center] [justify-content:safe_center] transition-transform duration-300 ease-in-out ${stepX(3)}`}
         >
           {/* Back button */}
           <button
             type="button"
             onClick={() => back(2)}
-            className="absolute top-6 left-6 text-xs text-text-tertiary hover:text-text-primary transition-colors flex items-center gap-1"
+            className="absolute top-3 left-3 sm:top-6 sm:left-6 min-h-11 px-2 -ml-1 text-sm text-text-tertiary hover:text-text-primary transition-colors flex items-center gap-1 z-10"
           >
             ← {tCommon("back")}
           </button>
@@ -862,13 +862,13 @@ export function WelcomeModal() {
 
         {/* -- STEP 4: Theme Selection -- */}
         <div
-          className={`absolute inset-0 flex flex-col items-center p-8 pt-16 transition-transform duration-300 ease-in-out ${stepX(4)}`}
+          className={`absolute inset-0 flex flex-col items-center p-4 sm:p-6 md:p-8 pt-14 sm:pt-16 overflow-y-auto transition-transform duration-300 ease-in-out ${stepX(4)}`}
         >
           {/* Back button */}
           <button
             type="button"
             onClick={() => back(3)}
-            className="absolute top-6 left-6 text-xs text-text-tertiary hover:text-text-primary transition-colors flex items-center gap-1"
+            className="absolute top-3 left-3 sm:top-6 sm:left-6 min-h-11 px-2 -ml-1 text-sm text-text-tertiary hover:text-text-primary transition-colors flex items-center gap-1 z-10"
           >
             ← {tCommon("back")}
           </button>
@@ -903,7 +903,7 @@ export function WelcomeModal() {
                     </button>
                   ))}
                 </div>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                   {selectableThemes.map((theme) => (
                     <ThemeMiniTile
                       key={theme.value}
@@ -929,12 +929,16 @@ export function WelcomeModal() {
               <p className="text-sm text-text-primary font-medium mb-3 text-center">{tTheme("accentColor")}</p>
               <div className="flex justify-center">
                 <div
-                  className="relative inline-flex items-center gap-2 rounded-full border border-border-default px-2 py-2"
-                  onMouseMove={(event) => {
+                  className="relative inline-flex items-center gap-2 rounded-full border border-border-default px-2 py-2 touch-none"
+                  onPointerMove={(event) => {
                     const rect = event.currentTarget.getBoundingClientRect();
                     setAccentPointerX(event.clientX - rect.left);
                   }}
-                  onMouseLeave={() => {
+                  onPointerLeave={() => {
+                    setHoveredAccentColor(null);
+                    setAccentPointerX(null);
+                  }}
+                  onPointerCancel={() => {
                     setHoveredAccentColor(null);
                     setAccentPointerX(null);
                   }}
@@ -952,7 +956,7 @@ export function WelcomeModal() {
                       key={color.value}
                       type="button"
                       onClick={() => setAccentColor(color.value)}
-                      onMouseEnter={() => setHoveredAccentColor(color.value)}
+                      onPointerEnter={() => setHoveredAccentColor(color.value)}
                       title={accentColorLabels[color.value]}
                       aria-label={tTheme("setAccentColorAria", { color: accentColorLabels[color.value] })}
                       className="relative rounded-full transition-transform duration-200 ease-out focus-visible:outline-none"
@@ -993,13 +997,13 @@ export function WelcomeModal() {
         {/* -- STEP 5: Desktop App Download (skipped in Electron) -- */}
         {!skipDownloadStep && (
         <div
-          className={`absolute inset-0 flex flex-col items-center justify-center p-8 transition-transform duration-300 ease-in-out ${stepX(5)}`}
+          className={`absolute inset-0 flex flex-col p-4 sm:p-6 md:p-8 overflow-y-auto [align-items:safe_center] [justify-content:safe_center] transition-transform duration-300 ease-in-out ${stepX(5)}`}
         >
           {/* Back button */}
           <button
             type="button"
             onClick={() => back(4)}
-            className="absolute top-6 left-6 text-xs text-text-tertiary hover:text-text-primary transition-colors flex items-center gap-1"
+            className="absolute top-3 left-3 sm:top-6 sm:left-6 min-h-11 px-2 -ml-1 text-sm text-text-tertiary hover:text-text-primary transition-colors flex items-center gap-1 z-10"
           >
             ← {tCommon("back")}
           </button>
@@ -1021,12 +1025,12 @@ export function WelcomeModal() {
                   <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
                 </svg>
                 <span className="text-sm font-medium text-text-primary">{t("download.macos")}</span>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2 w-full">
                   <a
                     href={GITHUB_RELEASES_URL}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="h-7 px-3 text-[11px] font-semibold rounded-sm border border-border-default text-text-secondary hover:text-text-primary hover:border-accent-primary/50 transition-all inline-flex items-center"
+                    className="h-11 px-4 text-xs font-semibold rounded-sm border border-border-default text-text-secondary hover:text-text-primary hover:border-accent-primary/50 transition-all inline-flex items-center justify-center w-full sm:w-auto"
                   >
                     {t("download.appleSilicon")}
                   </a>
@@ -1034,7 +1038,7 @@ export function WelcomeModal() {
                     href={GITHUB_RELEASES_URL}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="h-7 px-3 text-[11px] font-semibold rounded-sm border border-border-default text-text-secondary hover:text-text-primary hover:border-accent-primary/50 transition-all inline-flex items-center"
+                    className="h-11 px-4 text-xs font-semibold rounded-sm border border-border-default text-text-secondary hover:text-text-primary hover:border-accent-primary/50 transition-all inline-flex items-center justify-center w-full sm:w-auto"
                   >
                     {t("download.intel")}
                   </a>
@@ -1051,7 +1055,7 @@ export function WelcomeModal() {
                   href={GITHUB_RELEASES_URL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="h-7 px-3 text-[11px] font-semibold rounded-sm border border-border-default text-text-secondary hover:text-text-primary hover:border-accent-primary/50 transition-all inline-flex items-center"
+                  className="h-11 px-4 text-xs font-semibold rounded-sm border border-border-default text-text-secondary hover:text-text-primary hover:border-accent-primary/50 transition-all inline-flex items-center justify-center w-full sm:w-auto"
                 >
                   {t("download.download")} .exe
                 </a>
@@ -1067,7 +1071,7 @@ export function WelcomeModal() {
                   href={GITHUB_RELEASES_URL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="h-7 px-3 text-[11px] font-semibold rounded-sm border border-border-default text-text-secondary hover:text-text-primary hover:border-accent-primary/50 transition-all inline-flex items-center"
+                  className="h-11 px-4 text-xs font-semibold rounded-sm border border-border-default text-text-secondary hover:text-text-primary hover:border-accent-primary/50 transition-all inline-flex items-center justify-center w-full sm:w-auto"
                 >
                   {t("download.download")} .AppImage
                 </a>
@@ -1104,13 +1108,13 @@ export function WelcomeModal() {
 
         {/* -- STEP 6: Ready -- */}
         <div
-          className={`absolute inset-0 flex flex-col items-center justify-center p-8 transition-transform duration-300 ease-in-out ${stepX(6)}`}
+          className={`absolute inset-0 flex flex-col p-4 sm:p-6 md:p-8 overflow-y-auto [align-items:safe_center] [justify-content:safe_center] transition-transform duration-300 ease-in-out ${stepX(6)}`}
         >
           {/* Back button */}
           <button
             type="button"
             onClick={() => back(beforeReady)}
-            className="absolute top-6 left-6 text-xs text-text-tertiary hover:text-text-primary transition-colors flex items-center gap-1"
+            className="absolute top-3 left-3 sm:top-6 sm:left-6 min-h-11 px-2 -ml-1 text-sm text-text-tertiary hover:text-text-primary transition-colors flex items-center gap-1 z-10"
           >
             ← {tCommon("back")}
           </button>
@@ -1235,7 +1239,7 @@ export function DisclaimerGate() {
           {t("disclaimer.subtitle")}
         </p>
 
-        <div className="max-h-[55vh] overflow-y-auto border border-border-default rounded-sm bg-bg-secondary p-4 space-y-4 mb-6">
+        <div className="[max-height:60dvh] overflow-y-auto border border-border-default rounded-sm bg-bg-secondary p-4 space-y-4 mb-6 overscroll-contain">
           <div className="flex gap-3">
             <Shield size={16} className="text-accent-primary shrink-0 mt-0.5" />
             <div>

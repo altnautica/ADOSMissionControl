@@ -7,7 +7,7 @@
  * @license GPL-3.0-only
  */
 
-import { Usb, Globe, Radio, X, Plus } from "lucide-react";
+import { Usb, Globe, Radio, Bluetooth, X, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useConnectDialogStore } from "@/stores/connect-dialog-store";
@@ -19,6 +19,7 @@ const TYPE_ICONS: Record<Transport["type"], typeof Usb> = {
   tcp: Globe,
   "udp-proxy": Globe,
   "mqtt-mavlink": Radio,
+  ble: Bluetooth,
 };
 
 const TYPE_LABELS: Record<Transport["type"], string> = {
@@ -27,6 +28,7 @@ const TYPE_LABELS: Record<Transport["type"], string> = {
   tcp: "TCP",
   "udp-proxy": "UDP",
   "mqtt-mavlink": "MQTT",
+  ble: "BLE",
 };
 
 interface Props {
@@ -90,8 +92,7 @@ export function LinkBadgesRow({ droneId, links, showAddButton = true }: Props) {
         <button
           onClick={(e) => {
             e.stopPropagation();
-            // Open connect dialog. Mode toggle will allow user to add as link to this drone.
-            useConnectDialogStore.setState({ open: true });
+            // Open connect dialog. Mode toggle inside lets user add as link to this drone.
             openConnectDialog();
           }}
           className="inline-flex items-center justify-center w-4 h-4 text-[10px] text-text-tertiary hover:text-accent-primary border border-border-default rounded transition-colors"
