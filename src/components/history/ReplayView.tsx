@@ -10,8 +10,9 @@ import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { ArrowLeft, Play } from "lucide-react";
 import {
-  loadPlayback, play as playerPlay, stop as playerStop,
-  getPlaybackState,
+  loadPlayback, play as playerPlay, pause as playerPause, resume as playerResume,
+  stop as playerStop, seek as playerSeek, setSpeed as playerSetSpeed,
+  getPlaybackState, type PlaybackSpeed,
 } from "@/lib/telemetry-player";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useTrailStore } from "@/stores/trail-store";
@@ -19,7 +20,9 @@ import { ReplayPlaybackBar } from "./ReplayPlaybackBar";
 import { ReplayTelemetryPanel } from "./ReplayTelemetryPanel";
 import type { TelemetryRecording } from "@/lib/telemetry-recorder";
 import type { FlightRecord } from "@/lib/types";
-import { formatDate, formatTime } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
+
+const SPEED_LADDER: PlaybackSpeed[] = [0.25, 0.5, 1, 2, 4, 8];
 
 const ReplayMap = dynamic(
   () => import("./ReplayMap").then((m) => ({ default: m.ReplayMap })),
@@ -68,6 +71,75 @@ export function ReplayView({ recording, flightRecord, onExit }: ReplayViewProps)
       useTrailStore.getState().clear();
     };
   }, [recording.id]);
+
+  // Keyboard shortcuts. Mounted once per replay session.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // Ignore if user is typing in a form field
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) {
+        return;
+      }
+      const status = getPlaybackState();
+
+      if (e.key === " " || e.code === "Space") {
+        e.preventDefault();
+        if (status.state === "playing") playerPause();
+        else if (status.state === "paused") playerResume();
+        else playerPlay();
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onExit();
+        return;
+      }
+      if (e.key === "Home") {
+        e.preventDefault();
+        playerSeek(0);
+        return;
+      }
+      if (e.key === "End") {
+        e.preventDefault();
+        playerSeek(status.totalDurationMs);
+        return;
+      }
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        const step = e.shiftKey ? 10_000 : 1000;
+        playerSeek(Math.max(0, status.currentTimeMs - step));
+        return;
+      }
+      if (e.key === "ArrowRight") {
+        e.preventDefault();
+        const step = e.shiftKey ? 10_000 : 1000;
+        playerSeek(Math.min(status.totalDurationMs, status.currentTimeMs + step));
+        return;
+      }
+      if (e.key === "j" || e.key === "J") {
+        e.preventDefault();
+        const idx = SPEED_LADDER.indexOf(status.playbackSpeed);
+        const next = SPEED_LADDER[Math.max(0, idx - 1)];
+        playerSetSpeed(next);
+        return;
+      }
+      if (e.key === "k" || e.key === "K") {
+        e.preventDefault();
+        if (status.state === "playing") playerPause();
+        else playerResume();
+        return;
+      }
+      if (e.key === "l" || e.key === "L") {
+        e.preventDefault();
+        const idx = SPEED_LADDER.indexOf(status.playbackSpeed);
+        const next = SPEED_LADDER[Math.min(SPEED_LADDER.length - 1, idx + 1)];
+        playerSetSpeed(next);
+        return;
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onExit]);
 
   const dateStr = formatDate(flightRecord.date);
 
@@ -134,7 +206,7 @@ export function ReplayView({ recording, flightRecord, onExit }: ReplayViewProps)
           </div>
 
           {/* Playback controls (bottom) */}
-          <ReplayPlaybackBar />
+          <ReplayPlaybackBar events={flightRecord.events} />
         </>
       )}
     </div>

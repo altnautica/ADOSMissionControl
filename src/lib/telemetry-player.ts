@@ -17,7 +17,7 @@ import { useDroneStore } from "@/stores/drone-store";
 // ── Types ────────────────────────────────────────────────────
 
 export type PlaybackState = "stopped" | "playing" | "paused";
-export type PlaybackSpeed = 0.5 | 1 | 2 | 4;
+export type PlaybackSpeed = 0.25 | 0.5 | 1 | 2 | 4 | 8;
 
 export interface PlaybackStatus {
   state: PlaybackState;
