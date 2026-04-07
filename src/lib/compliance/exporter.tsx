@@ -12,6 +12,8 @@
 import type { FlightRecord, OperatorProfile, AircraftRecord } from "@/lib/types";
 import type { JurisdictionCode, ExportFormat } from "./jurisdictions";
 import { JURISDICTIONS } from "./jurisdictions";
+import { exportComplianceCsv } from "./csv-exporter";
+import { exportComplianceJson } from "./json-exporter";
 
 export interface ExportInput {
   records: FlightRecord[];
@@ -36,6 +38,16 @@ export async function exportFlights(input: ExportInput): Promise<Blob> {
   const { records, jurisdiction, format, operator, aircraftIndex } = input;
   const spec = JURISDICTIONS[jurisdiction];
   if (!spec) throw new ExportNotSupported(jurisdiction, format);
+
+  if (format === "csv") {
+    const csv = exportComplianceCsv(records, spec, operator, aircraftIndex);
+    return new Blob([csv], { type: "text/csv;charset=utf-8" });
+  }
+
+  if (format === "json") {
+    const json = exportComplianceJson(records, spec, operator, aircraftIndex);
+    return new Blob([json], { type: "application/json;charset=utf-8" });
+  }
 
   if (format === "pdf") {
     // Lazy-import the renderer chunk so the History tab stays small.

@@ -9,12 +9,14 @@
  * @license GPL-3.0-only
  */
 
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
-import { Download, Star, StarOff, Trash2, X } from "lucide-react";
+import { Download, Star, StarOff, Trash2, X, FileType } from "lucide-react";
 import type { FlightRecord } from "@/lib/types";
 import { exportFlightRecordsAsCsv } from "@/lib/csv-export";
 import { useHistoryStore } from "@/stores/history-store";
+import { BulkExportModal } from "./compliance/BulkExportModal";
 
 interface HistoryBulkActionsProps {
   records: FlightRecord[];
@@ -28,6 +30,7 @@ export function HistoryBulkActions({
   onClearSelection,
 }: HistoryBulkActionsProps) {
   const t = useTranslations("history");
+  const [bulkOpen, setBulkOpen] = useState(false);
 
   if (selectedIds.size === 0) return null;
 
@@ -57,53 +60,70 @@ export function HistoryBulkActions({
   };
 
   return (
-    <div className="absolute bottom-4 left-1/2 z-20 -translate-x-1/2 flex items-center gap-2 rounded-md border border-border-default bg-surface-secondary px-3 py-2 shadow-lg">
-      <span className="text-xs font-mono text-text-secondary mr-2">
-        {t("selected", { count: selectedIds.size })}
-      </span>
-      <Button
-        variant="ghost"
-        size="sm"
-        icon={<Download size={14} />}
-        onClick={handleExport}
-        title={t("exportBtn")}
-      >
-        {t("exportBtn")}
-      </Button>
-      <Button
-        variant="ghost"
-        size="sm"
-        icon={<Star size={14} />}
-        onClick={() => handleFavorite(true)}
-        title={t("favorite")}
-      >
-        {t("favorite")}
-      </Button>
-      <Button
-        variant="ghost"
-        size="sm"
-        icon={<StarOff size={14} />}
-        onClick={() => handleFavorite(false)}
-        title={t("unfavorite")}
-      >
-        {t("unfavorite")}
-      </Button>
-      <Button
-        variant="ghost"
-        size="sm"
-        icon={<Trash2 size={14} />}
-        onClick={handleDelete}
-        title={t("delete")}
-      >
-        {t("delete")}
-      </Button>
-      <Button
-        variant="ghost"
-        size="sm"
-        icon={<X size={14} />}
-        onClick={onClearSelection}
-        title={t("clear")}
+    <>
+      <div className="absolute bottom-4 left-1/2 z-20 -translate-x-1/2 flex items-center gap-2 rounded-md border border-border-default bg-surface-secondary px-3 py-2 shadow-lg">
+        <span className="text-xs font-mono text-text-secondary mr-2">
+          {t("selected", { count: selectedIds.size })}
+        </span>
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<Download size={14} />}
+          onClick={handleExport}
+          title={t("exportBtn")}
+        >
+          {t("exportBtn")}
+        </Button>
+        <Button
+          variant="primary"
+          size="sm"
+          icon={<FileType size={14} />}
+          onClick={() => setBulkOpen(true)}
+          title="Compliance logbook"
+        >
+          Logbook
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<Star size={14} />}
+          onClick={() => handleFavorite(true)}
+          title={t("favorite")}
+        >
+          {t("favorite")}
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<StarOff size={14} />}
+          onClick={() => handleFavorite(false)}
+          title={t("unfavorite")}
+        >
+          {t("unfavorite")}
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<Trash2 size={14} />}
+          onClick={handleDelete}
+          title={t("delete")}
+        >
+          {t("delete")}
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<X size={14} />}
+          onClick={onClearSelection}
+          title={t("clear")}
+        />
+      </div>
+
+      <BulkExportModal
+        open={bulkOpen}
+        records={selectedRecords}
+        onClose={() => setBulkOpen(false)}
       />
-    </div>
+    </>
   );
 }
