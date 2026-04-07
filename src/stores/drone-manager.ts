@@ -54,6 +54,17 @@ interface DroneManagerState {
   removeDrone: (id: string) => void;
   /** Intentional disconnect — marks drone as intentional, then removes. */
   disconnectDrone: (id: string) => void;
+  /**
+   * Add a secondary transport as a link to an existing drone.
+   * The protocol validates that the new transport reaches the same MAVLink sysid.
+   * Returns success/error from the protocol.
+   */
+  attachLinkToDrone: (
+    droneId: string,
+    transport: Transport,
+  ) => Promise<{ ok: true; linkId: string } | { ok: false; error: string }>;
+  /** Remove a secondary link by id. If it's the last remaining link, the drone is removed. */
+  detachLinkFromDrone: (droneId: string, linkId: string) => Promise<void>;
   selectDrone: (id: string | null) => void;
   getSelectedProtocol: () => DroneProtocol | null;
   getSelectedDrone: () => ManagedDrone | null;
@@ -169,6 +180,44 @@ export const useDroneManager = create<DroneManagerState>((set, get) => ({
       drone._disconnectReason = "intentional";
     }
     get().removeDrone(id);
+  },
+
+  attachLinkToDrone: async (droneId, transport) => {
+    const drone = get().drones.get(droneId);
+    if (!drone) {
+      return { ok: false, error: "Drone not found" };
+    }
+    if (!drone.protocol.addLink) {
+      return { ok: false, error: "This drone's protocol does not support multi-link" };
+    }
+    const result = await drone.protocol.addLink(transport);
+    if (result.ok) {
+      useDiagnosticsStore.getState().logConnection(
+        "connect",
+        `${drone.name} added link (${transport.type})`,
+      );
+      // Force a re-render of the drones map by replacing it
+      set((state) => {
+        const newMap = new Map(state.drones);
+        return { drones: newMap };
+      });
+    }
+    return result;
+  },
+
+  detachLinkFromDrone: async (droneId, linkId) => {
+    const drone = get().drones.get(droneId);
+    if (!drone || !drone.protocol.removeLink) return;
+    await drone.protocol.removeLink(linkId);
+    useDiagnosticsStore.getState().logConnection(
+      "disconnect",
+      `${drone.name} removed link ${linkId}`,
+    );
+    // Force a re-render
+    set((state) => {
+      const newMap = new Map(state.drones);
+      return { drones: newMap };
+    });
   },
 
   selectDrone: (id) => {
