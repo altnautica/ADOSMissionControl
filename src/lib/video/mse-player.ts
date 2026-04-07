@@ -6,6 +6,13 @@
  * @license GPL-3.0-only
  */
 
+// captureStream() is not in standard TypeScript DOM types but is widely supported
+declare global {
+  interface HTMLVideoElement {
+    captureStream(): MediaStream;
+  }
+}
+
 const VIDEO_RELAY_URL_DEFAULT = "wss://video.altnautica.com";
 
 export class MsePlayer {
@@ -17,6 +24,10 @@ export class MsePlayer {
   private deviceId: string = "";
   private videoRelayUrl: string = VIDEO_RELAY_URL_DEFAULT;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+  // Recording state
+  private recorder: MediaRecorder | null = null;
+  private recordedChunks: Blob[] = [];
 
   start(deviceId: string, videoElement: HTMLVideoElement, videoRelayUrl?: string): void {
     this.stop();
@@ -37,7 +48,52 @@ export class MsePlayer {
     });
   }
 
+  /** Start recording the video stream to a .webm file. */
+  startRecording(): boolean {
+    if (!this.videoElement || this.recorder) return false;
+    try {
+      const stream = this.videoElement.captureStream();
+      const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9")
+        ? "video/webm;codecs=vp9"
+        : "video/webm";
+      this.recorder = new MediaRecorder(stream, { mimeType });
+      this.recordedChunks = [];
+      this.recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) this.recordedChunks.push(e.data);
+      };
+      this.recorder.onstop = () => {
+        const blob = new Blob(this.recordedChunks, { type: "video/webm" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+        a.href = url;
+        a.download = `altnautica-recording-${ts}.webm`;
+        a.click();
+        URL.revokeObjectURL(url);
+        this.recordedChunks = [];
+        this.recorder = null;
+      };
+      this.recorder.start(1000);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /** Stop recording and trigger download. */
+  stopRecording(): void {
+    if (this.recorder && this.recorder.state !== "inactive") {
+      this.recorder.stop();
+    }
+  }
+
+  /** Whether recording is currently active. */
+  get isRecording(): boolean {
+    return this.recorder !== null && this.recorder.state === "recording";
+  }
+
   stop(): void {
+    this.stopRecording();
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;

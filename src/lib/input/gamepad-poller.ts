@@ -45,6 +45,14 @@ function applyDeadzone(value: number, deadzone: number): number {
   return (sign * (Math.abs(value) - deadzone)) / (1 - deadzone);
 }
 
+/** Apply calibration offset — normalize raw axis to -1..1 based on measured center/min/max. */
+function applyCal(raw: number, center: number, min: number, max: number): number {
+  const adjusted = raw - center;
+  const halfRange = adjusted >= 0 ? (max - center) : (center - min);
+  if (halfRange <= 0.01) return 0;
+  return Math.max(-1, Math.min(1, adjusted / halfRange));
+}
+
 /** Apply exponential curve — higher expo = more gentle near center, more aggressive at extremes. */
 function applyExpo(value: number, expo: number): number {
   // Blend linear and cubic: output = (1-expo)*value + expo*value^3
@@ -115,13 +123,24 @@ export function startGamepadPolling(): void {
       inputStore.setController("gamepad");
     }
 
-    const { deadzone, expo } = inputStore;
+    const { deadzone, expo, calibration } = inputStore;
 
     // Read raw axes and apply mapping
-    const rawRoll = gp.axes[currentMapping.rollAxis] ?? 0;
-    const rawPitch = -(gp.axes[currentMapping.pitchAxis] ?? 0); // Invert Y
-    const rawThrottle = -(gp.axes[currentMapping.throttleAxis] ?? 0); // Invert Y: up = positive
-    const rawYaw = gp.axes[currentMapping.yawAxis] ?? 0;
+    let rawRoll = gp.axes[currentMapping.rollAxis] ?? 0;
+    let rawPitch = -(gp.axes[currentMapping.pitchAxis] ?? 0); // Invert Y
+    let rawThrottle = -(gp.axes[currentMapping.throttleAxis] ?? 0); // Invert Y: up = positive
+    let rawYaw = gp.axes[currentMapping.yawAxis] ?? 0;
+
+    // Store raw axes for calibration wizard display
+    inputStore.setRawAxes([rawRoll, rawPitch, rawThrottle, rawYaw]);
+
+    // Apply calibration offsets if available
+    if (calibration) {
+      rawRoll = applyCal(rawRoll, calibration.center[0], calibration.min[0], calibration.max[0]);
+      rawPitch = applyCal(rawPitch, calibration.center[1], calibration.min[1], calibration.max[1]);
+      rawThrottle = applyCal(rawThrottle, calibration.center[2], calibration.min[2], calibration.max[2]);
+      rawYaw = applyCal(rawYaw, calibration.center[3], calibration.min[3], calibration.max[3]);
+    }
 
     // Apply deadzone + expo
     const roll = applyExpo(applyDeadzone(rawRoll, deadzone), expo);
