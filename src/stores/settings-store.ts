@@ -211,6 +211,8 @@ interface SettingsStoreState {
   changelogNotificationsEnabled: boolean;
   /** Auto-start telemetry recording when a drone connects. */
   autoRecordOnConnect: boolean;
+  /** Auto-start telemetry recording when a drone is armed (Phase 1 — wired by Phase 2 lifecycle). */
+  autoRecordOnArm: boolean;
   /** WHEP video endpoint URL for local/SITL video (empty = disabled). */
   videoWhepUrl: string;
   setVideoWhepUrl: (url: string) => void;
@@ -283,6 +285,7 @@ interface SettingsStoreState {
   clearSeenChangelog: () => void;
   setChangelogNotificationsEnabled: (enabled: boolean) => void;
   setAutoRecordOnConnect: (enabled: boolean) => void;
+  setAutoRecordOnArm: (enabled: boolean) => void;
   setPanelScrollPosition: (panelId: string, scrollTop: number) => void;
   setShowNoFlyZones: (show: boolean) => void;
   setOfflineTileCaching: (enabled: boolean) => void;
@@ -349,6 +352,7 @@ export const useSettingsStore = create<SettingsStoreState>()(
       seenChangelogIds: [],
       changelogNotificationsEnabled: true,
       autoRecordOnConnect: false,
+      autoRecordOnArm: true,
       videoWhepUrl: "",
       panelScrollPositions: {},
       showNoFlyZones: false,
@@ -414,6 +418,7 @@ export const useSettingsStore = create<SettingsStoreState>()(
       setChangelogNotificationsEnabled: (changelogNotificationsEnabled) =>
         set({ changelogNotificationsEnabled }),
       setAutoRecordOnConnect: (autoRecordOnConnect) => set({ autoRecordOnConnect }),
+      setAutoRecordOnArm: (autoRecordOnArm) => set({ autoRecordOnArm }),
       setVideoWhepUrl: (videoWhepUrl) => set({ videoWhepUrl }),
       setPanelScrollPosition: (panelId, scrollTop) =>
         set((s) => ({
@@ -507,7 +512,7 @@ export const useSettingsStore = create<SettingsStoreState>()(
     {
       name: "altcmd:settings",
       storage: createJSONStorage(indexedDBStorage.storage),
-      version: 29,
+      version: 30,
       migrate: (persisted, version) => {
         const state = persisted as Record<string, unknown>;
         if (version < 2) {
@@ -654,6 +659,10 @@ export const useSettingsStore = create<SettingsStoreState>()(
           state.disclaimerAccepted = false;
           state.disclaimerAcceptedAt = null;
           state.disclaimerVersion = 0;
+        }
+        if (version < 30) {
+          // v30: auto-record on arm (Phase 1 — wired by Phase 2 lifecycle)
+          state.autoRecordOnArm = true;
         }
         return state as unknown as SettingsStoreState;
       },

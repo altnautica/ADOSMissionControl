@@ -14,6 +14,7 @@ import { audioEngine } from "@/lib/audio-engine";
 import { useDiagnosticsStore } from "./diagnostics-store";
 import { useGeofenceStore } from "./geofence-store";
 import { useCanMonitorStore } from "./can-monitor-store";
+import { recordFrameFor } from "@/lib/telemetry-recorder";
 import type { FlightMode } from "@/lib/types";
 
 /** Known flight modes that map cleanly to the UI FlightMode union. */
@@ -39,23 +40,32 @@ export function bridgeTelemetry(
   const telemetry = useTelemetryStore.getState();
   const fleetStore = useFleetStore.getState();
 
+  /** Record a frame to the recorder slot for this drone (Phase 1). Noop if no recording is active. */
+  const rec = (channel: string, data: unknown) => recordFrameFor(droneId, channel, data);
+
   return [
-    protocol.onAttitude((data) => telemetry.pushAttitude(data)),
+    protocol.onAttitude((data) => {
+      telemetry.pushAttitude(data);
+      rec("attitude", data);
+    }),
 
     protocol.onPosition((data) => {
       telemetry.pushPosition(data);
       fleetStore.updateDrone(droneId, { position: data });
       useTrailStore.getState().pushPoint(data.lat, data.lon, data.relativeAlt);
+      rec("position", data);
     }),
 
     protocol.onBattery((data) => {
       telemetry.pushBattery(data);
       fleetStore.updateDrone(droneId, { battery: data });
+      rec("battery", data);
     }),
 
     protocol.onGps((data) => {
       telemetry.pushGps(data);
       fleetStore.updateDrone(droneId, { gps: data });
+      rec("gps", data);
 
       const settings = useSettingsStore.getState();
       if (settings.audioEnabled && settings.alertGpsLost && data.fixType <= 1) {
@@ -63,10 +73,14 @@ export function bridgeTelemetry(
       }
     }),
 
-    protocol.onVfr((data) => telemetry.pushVfr(data)),
+    protocol.onVfr((data) => {
+      telemetry.pushVfr(data);
+      rec("vfr", data);
+    }),
 
     protocol.onRc((data) => {
       telemetry.pushRc(data);
+      rec("rc", data);
 
       const settings = useSettingsStore.getState();
       if (settings.audioEnabled && settings.alertRcLost && data.rssi === 0) {
@@ -76,6 +90,7 @@ export function bridgeTelemetry(
 
     protocol.onSysStatus((data) => {
       telemetry.pushSysStatus(data);
+      rec("sysStatus", data);
 
       const settings = useSettingsStore.getState();
       if (settings.audioEnabled && settings.alertLowBattery) {
@@ -87,30 +102,80 @@ export function bridgeTelemetry(
 
     protocol.onRadio((data) => {
       telemetry.pushRadio(data);
+      rec("radio", data);
     }),
 
-    protocol.onEkf((data) => telemetry.pushEkf(data)),
-    protocol.onVibration((data) => telemetry.pushVibration(data)),
-    protocol.onServoOutput((data) => telemetry.pushServoOutput(data)),
-    protocol.onWind((data) => telemetry.pushWind(data)),
-    protocol.onTerrain((data) => telemetry.pushTerrain(data)),
+    protocol.onEkf((data) => {
+      telemetry.pushEkf(data);
+      rec("ekf", data);
+    }),
+    protocol.onVibration((data) => {
+      telemetry.pushVibration(data);
+      rec("vibration", data);
+    }),
+    protocol.onServoOutput((data) => {
+      telemetry.pushServoOutput(data);
+      rec("servoOutput", data);
+    }),
+    protocol.onWind((data) => {
+      telemetry.pushWind(data);
+      rec("wind", data);
+    }),
+    protocol.onTerrain((data) => {
+      telemetry.pushTerrain(data);
+      rec("terrain", data);
+    }),
 
     // Optional telemetry callbacks (bridged with optional chaining)
-    ...(protocol.onScaledImu ? [protocol.onScaledImu((data) => telemetry.pushScaledImu(data))] : []),
-    ...(protocol.onHomePosition ? [protocol.onHomePosition((data) => telemetry.pushHomePosition(data))] : []),
-    ...(protocol.onPowerStatus ? [protocol.onPowerStatus((data) => telemetry.pushPowerStatus(data))] : []),
-    ...(protocol.onDistanceSensor ? [protocol.onDistanceSensor((data) => telemetry.pushDistanceSensor(data))] : []),
+    ...(protocol.onScaledImu ? [protocol.onScaledImu((data) => {
+      telemetry.pushScaledImu(data);
+      rec("scaledImu", data);
+    })] : []),
+    ...(protocol.onHomePosition ? [protocol.onHomePosition((data) => {
+      telemetry.pushHomePosition(data);
+      rec("homePosition", data);
+    })] : []),
+    ...(protocol.onPowerStatus ? [protocol.onPowerStatus((data) => {
+      telemetry.pushPowerStatus(data);
+      rec("powerStatus", data);
+    })] : []),
+    ...(protocol.onDistanceSensor ? [protocol.onDistanceSensor((data) => {
+      telemetry.pushDistanceSensor(data);
+      rec("distanceSensor", data);
+    })] : []),
     ...(protocol.onFenceStatus ? [protocol.onFenceStatus((data) => {
       telemetry.pushFenceStatus(data);
       useGeofenceStore.getState().updateBreachState(data.breachStatus, data.breachCount, data.breachType);
+      rec("fenceStatus", data);
     })] : []),
-    ...(protocol.onEstimatorStatus ? [protocol.onEstimatorStatus((data) => telemetry.pushEstimatorStatus(data))] : []),
-    ...(protocol.onCameraTrigger ? [protocol.onCameraTrigger((data) => telemetry.pushCameraTrigger(data))] : []),
-    ...(protocol.onNavController ? [protocol.onNavController((data) => telemetry.pushNavController(data))] : []),
-    ...(protocol.onLocalPosition ? [protocol.onLocalPosition((data) => telemetry.pushLocalPosition(data))] : []),
-    ...(protocol.onDebug ? [protocol.onDebug((data) => telemetry.pushDebug(data))] : []),
-    ...(protocol.onGimbalAttitude ? [protocol.onGimbalAttitude((data) => telemetry.pushGimbal(data))] : []),
-    ...(protocol.onObstacleDistance ? [protocol.onObstacleDistance((data) => telemetry.pushObstacle(data))] : []),
+    ...(protocol.onEstimatorStatus ? [protocol.onEstimatorStatus((data) => {
+      telemetry.pushEstimatorStatus(data);
+      rec("estimatorStatus", data);
+    })] : []),
+    ...(protocol.onCameraTrigger ? [protocol.onCameraTrigger((data) => {
+      telemetry.pushCameraTrigger(data);
+      rec("cameraTrigger", data);
+    })] : []),
+    ...(protocol.onNavController ? [protocol.onNavController((data) => {
+      telemetry.pushNavController(data);
+      rec("navController", data);
+    })] : []),
+    ...(protocol.onLocalPosition ? [protocol.onLocalPosition((data) => {
+      telemetry.pushLocalPosition(data);
+      rec("localPosition", data);
+    })] : []),
+    ...(protocol.onDebug ? [protocol.onDebug((data) => {
+      telemetry.pushDebug(data);
+      rec("debug", data);
+    })] : []),
+    ...(protocol.onGimbalAttitude ? [protocol.onGimbalAttitude((data) => {
+      telemetry.pushGimbal(data);
+      rec("gimbal", data);
+    })] : []),
+    ...(protocol.onObstacleDistance ? [protocol.onObstacleDistance((data) => {
+      telemetry.pushObstacle(data);
+      rec("obstacle", data);
+    })] : []),
     ...(protocol.onCanFrame ? [protocol.onCanFrame((data) => {
       useCanMonitorStore.getState().pushFrame({
         timestamp: data.timestamp,

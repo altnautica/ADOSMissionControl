@@ -47,111 +47,266 @@ export interface TelemetryRecording {
 const IDB_RECORDINGS_PREFIX = "altcmd:recording:";
 const IDB_RECORDINGS_INDEX = "altcmd:recordings-index";
 
-// ── Recorder Class ───────────────────────────────────────────
+// ── Recorder ─────────────────────────────────────────────────
 
 type RecordingState = "idle" | "recording" | "error";
 
-/** Singleton-style recording state. */
-let _state: RecordingState = "idle";
-let _startTime = 0;
-let _frames: TelemetryFrame[] = [];
-let _channels = new Set<string>();
-let _recordingId = "";
-let _droneId: string | undefined;
-let _droneName: string | undefined;
-
-// Max frames per recording to prevent memory issues
-const MAX_FRAMES = 500_000; // ~8 min at full rate
-
-/**
- * Start a new telemetry recording.
- */
-export function startRecording(droneId?: string, droneName?: string): string {
-  if (_state === "recording") {
-    throw new Error("Already recording — stop current recording first");
-  }
-
-  _recordingId = `rec-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  _startTime = Date.now();
-  _frames = [];
-  _channels = new Set();
-  _droneId = droneId;
-  _droneName = droneName;
-  _state = "recording";
-
-  return _recordingId;
+interface RecorderSlot {
+  state: RecordingState;
+  startTime: number;
+  frames: TelemetryFrame[];
+  channels: Set<string>;
+  recordingId: string;
+  droneId?: string;
+  droneName?: string;
+  /** Last write timestamp per channel for rate limiting (ms since epoch). */
+  lastWriteAt: Map<string, number>;
 }
 
 /**
- * Record a single telemetry frame. Call this from telemetry bridges.
- * Noop if not recording.
+ * Per-channel max sample rate in Hz. Frames received above this rate are
+ * silently dropped to keep recordings within the 500k frame cap and IndexedDB
+ * payloads under control. Phase 1 — see DEC plan.
+ *
+ * Channels not listed here use {@link DEFAULT_RATE_HZ}. Channels listed in
+ * {@link CAP_BYPASS_CHANNELS} are exempt entirely.
  */
-export function recordFrame(channel: string, data: unknown): void {
-  if (_state !== "recording") return;
-  if (_frames.length >= MAX_FRAMES) return; // silently cap
+const CHANNEL_RATE_LIMIT_HZ: Record<string, number> = {
+  attitude: 50,
+  position: 10,
+  globalPosition: 10,
+  localPosition: 10,
+  gps: 5,
+  vfr: 10,
+  vibration: 20,
+  servoOutput: 20,
+  rc: 10,
+  radio: 5,
+  battery: 5,
+  sysStatus: 5,
+  ekf: 5,
+  wind: 2,
+  terrain: 2,
+  gimbal: 10,
+  obstacle: 5,
+  scaledImu: 50,
+  homePosition: 1,
+  powerStatus: 1,
+  distanceSensor: 10,
+  fenceStatus: 2,
+  estimatorStatus: 5,
+  cameraTrigger: 20,
+  navController: 5,
+  debug: 20,
+};
 
-  _channels.add(channel);
-  _frames.push({
-    offsetMs: Date.now() - _startTime,
+const DEFAULT_RATE_HZ = 20;
+
+/** Channels that bypass rate limiting (e.g. high-rate IMU in Phase 29). */
+const CAP_BYPASS_CHANNELS = new Set<string>(["imu_highrate"]);
+
+/** Sentinel slot key for the legacy single-drone API. */
+const DEFAULT_SLOT = "__default__";
+
+/** Max frames per recording. ~8 min at full rate before rate limiting. */
+const MAX_FRAMES = 500_000;
+
+const _slots = new Map<string, RecorderSlot>();
+
+function newSlot(droneId?: string, droneName?: string): RecorderSlot {
+  return {
+    state: "recording",
+    startTime: Date.now(),
+    frames: [],
+    channels: new Set(),
+    recordingId: `rec-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    droneId,
+    droneName,
+    lastWriteAt: new Map(),
+  };
+}
+
+function getSlot(key: string): RecorderSlot | undefined {
+  return _slots.get(key);
+}
+
+// ── Per-drone API (Phase 1) ──────────────────────────────────
+
+/**
+ * Start a recording for a specific drone slot. Independent from any other
+ * drone's slot and from the legacy default slot. Returns the recording id.
+ *
+ * @throws if a recording is already in progress for this drone.
+ */
+export function startRecordingFor(droneId: string, droneName?: string): string {
+  if (_slots.get(droneId)?.state === "recording") {
+    throw new Error(`Already recording for drone ${droneId}`);
+  }
+  const slot = newSlot(droneId, droneName);
+  _slots.set(droneId, slot);
+  return slot.recordingId;
+}
+
+/**
+ * Append a telemetry frame to the recording for {@link droneId}.
+ * Noop if no recording is active for that drone. Rate-limited per channel
+ * (see {@link CHANNEL_RATE_LIMIT_HZ}).
+ */
+export function recordFrameFor(droneId: string, channel: string, data: unknown): void {
+  const slot = _slots.get(droneId);
+  if (!slot || slot.state !== "recording") return;
+  if (slot.frames.length >= MAX_FRAMES) return;
+
+  if (!CAP_BYPASS_CHANNELS.has(channel)) {
+    const rateHz = CHANNEL_RATE_LIMIT_HZ[channel] ?? DEFAULT_RATE_HZ;
+    const minIntervalMs = 1000 / rateHz;
+    const now = Date.now();
+    const last = slot.lastWriteAt.get(channel) ?? 0;
+    if (now - last < minIntervalMs) return;
+    slot.lastWriteAt.set(channel, now);
+  }
+
+  slot.channels.add(channel);
+  slot.frames.push({
+    offsetMs: Date.now() - slot.startTime,
     channel,
     data,
   });
 }
 
 /**
- * Stop the current recording and persist to IndexedDB.
- * Returns the recording metadata.
+ * Stop the recording for {@link droneId} and persist it. Returns metadata or
+ * null if no active recording.
  */
-export async function stopRecording(): Promise<TelemetryRecording | null> {
-  if (_state !== "recording") return null;
+export async function stopRecordingFor(droneId: string): Promise<TelemetryRecording | null> {
+  const slot = _slots.get(droneId);
+  if (!slot || slot.state !== "recording") return null;
+  return await finalizeSlot(droneId, slot);
+}
 
-  const endTime = Date.now();
-  const recording: TelemetryRecording = {
-    id: _recordingId,
-    name: `Recording ${new Date(_startTime).toLocaleString()}`,
-    startTime: _startTime,
-    endTime,
-    durationMs: endTime - _startTime,
-    frameCount: _frames.length,
-    channels: Array.from(_channels),
-    droneId: _droneId,
-    droneName: _droneName,
+/** True if a recording is active for the given drone. */
+export function isRecordingFor(droneId: string): boolean {
+  return _slots.get(droneId)?.state === "recording";
+}
+
+/** Get recording state for the given drone. */
+export function getRecordingStateFor(droneId: string): {
+  state: RecordingState;
+  durationMs: number;
+  frameCount: number;
+} {
+  const slot = _slots.get(droneId);
+  if (!slot) return { state: "idle", durationMs: 0, frameCount: 0 };
+  return {
+    state: slot.state,
+    durationMs: slot.state === "recording" ? Date.now() - slot.startTime : 0,
+    frameCount: slot.frames.length,
   };
+}
 
-  // Store frames
-  await idbSet(`${IDB_RECORDINGS_PREFIX}${_recordingId}`, _frames);
+// ── Legacy single-slot API (kept for RecordingControls header button) ────
 
-  // Update index
-  const index: TelemetryRecording[] = (await idbGet(IDB_RECORDINGS_INDEX)) ?? [];
-  index.push(recording);
-  // Keep last 20 recordings
-  while (index.length > 20) {
-    const oldest = index.shift()!;
-    await idbDel(`${IDB_RECORDINGS_PREFIX}${oldest.id}`);
+/**
+ * Start a new telemetry recording on the default slot.
+ *
+ * @deprecated Prefer {@link startRecordingFor} for multi-drone scenarios.
+ * Retained so the existing header start/stop button keeps working.
+ */
+export function startRecording(droneId?: string, droneName?: string): string {
+  if (_slots.get(DEFAULT_SLOT)?.state === "recording") {
+    throw new Error("Already recording — stop current recording first");
   }
-  await idbSet(IDB_RECORDINGS_INDEX, index);
-
-  // Reset state
-  _state = "idle";
-  _frames = [];
-  _channels = new Set();
-
-  return recording;
+  const slot = newSlot(droneId, droneName);
+  _slots.set(DEFAULT_SLOT, slot);
+  return slot.recordingId;
 }
 
 /**
- * Get recording state.
+ * Append a frame to the default slot.
+ *
+ * @deprecated Prefer {@link recordFrameFor}.
+ */
+export function recordFrame(channel: string, data: unknown): void {
+  // Delegate via a synthetic per-drone-style call against the default slot.
+  const slot = _slots.get(DEFAULT_SLOT);
+  if (!slot || slot.state !== "recording") return;
+  if (slot.frames.length >= MAX_FRAMES) return;
+
+  if (!CAP_BYPASS_CHANNELS.has(channel)) {
+    const rateHz = CHANNEL_RATE_LIMIT_HZ[channel] ?? DEFAULT_RATE_HZ;
+    const minIntervalMs = 1000 / rateHz;
+    const now = Date.now();
+    const last = slot.lastWriteAt.get(channel) ?? 0;
+    if (now - last < minIntervalMs) return;
+    slot.lastWriteAt.set(channel, now);
+  }
+
+  slot.channels.add(channel);
+  slot.frames.push({
+    offsetMs: Date.now() - slot.startTime,
+    channel,
+    data,
+  });
+}
+
+/**
+ * Stop the default-slot recording and persist it.
+ *
+ * @deprecated Prefer {@link stopRecordingFor}.
+ */
+export async function stopRecording(): Promise<TelemetryRecording | null> {
+  const slot = _slots.get(DEFAULT_SLOT);
+  if (!slot || slot.state !== "recording") return null;
+  return await finalizeSlot(DEFAULT_SLOT, slot);
+}
+
+/**
+ * Get default-slot recording state.
+ *
+ * @deprecated Prefer {@link getRecordingStateFor}.
  */
 export function getRecordingState(): {
   state: RecordingState;
   durationMs: number;
   frameCount: number;
 } {
+  const slot = _slots.get(DEFAULT_SLOT);
+  if (!slot) return { state: "idle", durationMs: 0, frameCount: 0 };
   return {
-    state: _state,
-    durationMs: _state === "recording" ? Date.now() - _startTime : 0,
-    frameCount: _frames.length,
+    state: slot.state,
+    durationMs: slot.state === "recording" ? Date.now() - slot.startTime : 0,
+    frameCount: slot.frames.length,
   };
+}
+
+// ── Internal: persist a slot ─────────────────────────────────
+
+async function finalizeSlot(slotKey: string, slot: RecorderSlot): Promise<TelemetryRecording> {
+  const endTime = Date.now();
+  const recording: TelemetryRecording = {
+    id: slot.recordingId,
+    name: `Recording ${new Date(slot.startTime).toLocaleString()}`,
+    startTime: slot.startTime,
+    endTime,
+    durationMs: endTime - slot.startTime,
+    frameCount: slot.frames.length,
+    channels: Array.from(slot.channels),
+    droneId: slot.droneId,
+    droneName: slot.droneName,
+  };
+
+  await idbSet(`${IDB_RECORDINGS_PREFIX}${slot.recordingId}`, slot.frames);
+
+  const index: TelemetryRecording[] = (await idbGet(IDB_RECORDINGS_INDEX)) ?? [];
+  index.push(recording);
+  while (index.length > 20) {
+    const oldest = index.shift()!;
+    await idbDel(`${IDB_RECORDINGS_PREFIX}${oldest.id}`);
+  }
+  await idbSet(IDB_RECORDINGS_INDEX, index);
+
+  _slots.delete(slotKey);
+  return recording;
 }
 
 /**
