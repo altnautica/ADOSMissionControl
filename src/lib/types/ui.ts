@@ -24,6 +24,36 @@ export interface PanelState {
 
 // ── Flight History ───────────────────────────────────────────
 
+export type FlightEventSeverity = "info" | "warning" | "error";
+
+export interface FlightEvent {
+  /** Offset from flight start in milliseconds. */
+  t: number;
+  /** Event type — broad enough to extend without breaking existing rows. */
+  type: string;
+  severity: FlightEventSeverity;
+  /** Short human label. */
+  label: string;
+  /** Optional structured data (channel name, threshold, etc.). */
+  data?: Record<string, unknown>;
+}
+
+export interface FlightFlag {
+  /** Stable id for the flag rule (e.g. `vibration_high`). */
+  type: string;
+  severity: FlightEventSeverity;
+  message: string;
+  /** Optional remediation hint. */
+  suggestion?: string;
+}
+
+export interface HealthSummary {
+  avgSatellites?: number;
+  avgHdop?: number;
+  maxVibrationRms?: number;
+  batteryHealthPct?: number;
+}
+
 export interface FlightRecord {
   id: string;
   droneId: string;
@@ -73,6 +103,12 @@ export interface FlightRecord {
   customName?: string;
   /** Markdown notes (Phase 4 NotesTab). */
   notes?: string;
+  /** Phase 5 — auto-detected events from flight analyzer. */
+  events?: FlightEvent[];
+  /** Phase 5 — auto-detected anomaly flags. */
+  flags?: FlightFlag[];
+  /** Phase 5 — health summary stats. */
+  health?: HealthSummary;
 }
 
 // ── Analytics ────────────────────────────────────────────────

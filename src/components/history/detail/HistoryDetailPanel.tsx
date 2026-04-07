@@ -18,9 +18,11 @@ import type { FlightRecord } from "@/lib/types";
 import { listRecordings, type TelemetryRecording } from "@/lib/telemetry-recorder";
 import { OverviewTab } from "./tabs/OverviewTab";
 import { MapTab } from "./tabs/MapTab";
+import { ChartsTab } from "./tabs/ChartsTab";
+import { EventsTab } from "./tabs/EventsTab";
+import { AnalysisTab } from "./tabs/AnalysisTab";
 import { NotesTab } from "./tabs/NotesTab";
 import { ExportTab } from "./tabs/ExportTab";
-import { PlaceholderTab } from "./tabs/PlaceholderTab";
 import { cn } from "@/lib/utils";
 
 const statusVariant: Record<string, "success" | "warning" | "error" | "neutral"> = {
@@ -122,24 +124,9 @@ export function HistoryDetailPanel({ record, onClose, onReplay }: HistoryDetailP
       <div className="flex-1 overflow-y-auto p-3">
         {active === "overview" && <OverviewTab record={record} />}
         {active === "map" && <MapTab record={record} />}
-        {active === "charts" && (
-          <PlaceholderTab
-            title="Charts"
-            message={`Multi-axis telemetry charts arrive in Phase 4b. ${matchedRecording ? `${matchedRecording.frameCount.toLocaleString()} frames available across ${matchedRecording.channels.length} channels.` : "No telemetry recording attached."}`}
-          />
-        )}
-        {active === "events" && (
-          <PlaceholderTab
-            title="Events"
-            message="Auto-detected mode changes, failsafes, prearm bits, and manual notes arrive in Phase 5."
-          />
-        )}
-        {active === "analysis" && (
-          <PlaceholderTab
-            title="Analysis"
-            message="Vibration, EKF, GPS quality, battery sag, and other anomaly flags arrive in Phase 5."
-          />
-        )}
+        {active === "charts" && <ChartsTab record={record} />}
+        {active === "events" && <EventsTab record={record} />}
+        {active === "analysis" && <AnalysisTab record={record} />}
         {active === "notes" && <NotesTab record={record} />}
         {active === "export" && <ExportTab record={record} matchedRecording={matchedRecording} />}
       </div>
