@@ -13,6 +13,7 @@ import { useTrailStore } from "./trail-store";
 import { audioEngine } from "@/lib/audio-engine";
 import { useDiagnosticsStore } from "./diagnostics-store";
 import { useGeofenceStore } from "./geofence-store";
+import { useCanMonitorStore } from "./can-monitor-store";
 import type { FlightMode } from "@/lib/types";
 
 /** Known flight modes that map cleanly to the UI FlightMode union. */
