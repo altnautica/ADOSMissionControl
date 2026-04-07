@@ -27,6 +27,7 @@ import {
 } from "./telemetry-recorder";
 import { useHistoryStore } from "@/stores/history-store";
 import { useSettingsStore } from "@/stores/settings-store";
+import { analyzeFlight } from "./flight-analysis/analyzer";
 import type { FlightRecord } from "./types";
 
 // ── Per-drone lifecycle state ────────────────────────────────
@@ -141,6 +142,7 @@ async function handleDisarm(droneId: string): Promise<void> {
   }
 
   const stats = computeFlightStats(frames);
+  const analysis = frames.length > 0 ? analyzeFlight(frames) : { events: [], flags: [], health: {} };
   const endTime = Date.now();
   const history = useHistoryStore.getState();
   history.updateRecord(lc.draftRecordId, {
@@ -158,6 +160,9 @@ async function handleDisarm(droneId: string): Promise<void> {
     landingLon: stats.landingLon,
     status: "completed",
     hasTelemetry: frames.length > 0,
+    events: analysis.events,
+    flags: analysis.flags,
+    health: analysis.health,
   });
   void history.persistToIDB();
 
