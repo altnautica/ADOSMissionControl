@@ -14,13 +14,18 @@
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Download, FileText, Globe, FileCode, FileJson, FileType } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Download, FileText, Globe, FileCode, FileJson, FileType, AlertTriangle } from "lucide-react";
 import {
   downloadTelemetryCSV,
   downloadTelemetryKML,
   downloadTelemetryKMZ,
 } from "@/lib/telemetry-export";
 import { downloadGpx } from "@/lib/formats/gpx-exporter";
+import { exportFlights, downloadBlob } from "@/lib/compliance/exporter";
+import { validateForJurisdiction, type ValidationIssue } from "@/lib/compliance/validator";
+import { useOperatorProfileStore } from "@/stores/operator-profile-store";
+import { useAircraftRegistryStore } from "@/stores/aircraft-registry-store";
 import type { FlightRecord } from "@/lib/types";
 import type { TelemetryRecording } from "@/lib/telemetry-recorder";
 
@@ -29,12 +34,43 @@ interface ExportTabProps {
   matchedRecording: TelemetryRecording | undefined;
 }
 
-export function ExportTab({ record, matchedRecording }: ExportTabProps) {
-  const [busy, setBusy] = useState<string | null>(null);
-
-  const fileBase = (record.customName || `${record.droneName}-${new Date(record.startTime ?? record.date).toISOString().slice(0, 10)}`)
+function fileBaseFor(record: FlightRecord): string {
+  return (record.customName || `${record.droneName}-${new Date(record.startTime ?? record.date).toISOString().slice(0, 10)}`)
     .replace(/[^a-z0-9-_]+/gi, "-")
     .toLowerCase();
+}
+
+export function ExportTab({ record, matchedRecording }: ExportTabProps) {
+  const [busy, setBusy] = useState<string | null>(null);
+  const operator = useOperatorProfileStore((s) => s.profile);
+  const aircraftIndex = useAircraftRegistryStore((s) => s.aircraft);
+  const aircraft = aircraftIndex[record.droneId];
+
+  // Run the DGCA validator on every render — cheap and instantly responsive.
+  const dgcaIssues: ValidationIssue[] = validateForJurisdiction(record, operator, aircraft, "IN_DGCA");
+  const dgcaErrors = dgcaIssues.filter((i) => i.severity === "error");
+  const dgcaWarnings = dgcaIssues.filter((i) => i.severity === "warning");
+
+  const handleDgcaPdf = async () => {
+    setBusy("dgca-pdf");
+    try {
+      const blob = await exportFlights({
+        records: [record],
+        jurisdiction: "IN_DGCA",
+        format: "pdf",
+        operator,
+        aircraftIndex,
+      });
+      downloadBlob(blob, `${fileBaseFor(record)}-dgca.pdf`);
+    } catch (err) {
+      console.error("[ExportTab] DGCA PDF failed", err);
+      if (typeof window !== "undefined") window.alert(`PDF export failed: ${(err as Error).message}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const fileBase = fileBaseFor(record);
 
   const handleTelemetry = async (format: "csv" | "kml" | "kmz") => {
     if (!matchedRecording) return;
@@ -150,16 +186,52 @@ export function ExportTab({ record, matchedRecording }: ExportTabProps) {
             >
               JSON
             </Button>
+          </div>
+        </div>
+      </Card>
+
+      <Card title="Compliance · DGCA India" padding={true}>
+        <div className="flex flex-col gap-2">
+          <p className="text-[10px] text-text-secondary">
+            Drone Rules 2021 audit-ready PDF. More jurisdictions arrive in Phase 7c.
+          </p>
+          <div className="flex items-center gap-2">
+            <Badge variant={dgcaErrors.length > 0 ? "error" : dgcaWarnings.length > 0 ? "warning" : "success"} size="sm">
+              {dgcaErrors.length > 0
+                ? `${dgcaErrors.length} error${dgcaErrors.length === 1 ? "" : "s"}`
+                : dgcaWarnings.length > 0
+                  ? `${dgcaWarnings.length} warning${dgcaWarnings.length === 1 ? "" : "s"}`
+                  : "Ready"}
+            </Badge>
+          </div>
+          {dgcaIssues.length > 0 && (
+            <ul className="flex flex-col gap-1 max-h-32 overflow-y-auto border border-border-default rounded p-2">
+              {dgcaIssues.map((issue) => (
+                <li key={issue.field} className="flex items-start gap-1.5 text-[10px]">
+                  <AlertTriangle
+                    size={10}
+                    className={issue.severity === "error" ? "text-status-error mt-0.5" : "text-status-warning mt-0.5"}
+                  />
+                  <span className="text-text-secondary">{issue.message}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="flex gap-2">
             <Button
-              variant="ghost"
+              variant="primary"
               size="sm"
               icon={<FileType size={12} />}
-              disabled
-              title="Coming in Phase 7 — multi-jurisdiction compliance export"
+              disabled={busy !== null}
+              onClick={handleDgcaPdf}
             >
-              PDF
+              {busy === "dgca-pdf" ? "Generating…" : "DGCA PDF"}
             </Button>
           </div>
+          <p className="text-[9px] text-text-tertiary italic">
+            Errors are missing required fields per the regulator. Generate the PDF anyway to
+            inspect the layout, or fix them in Settings → Operator &amp; Aircraft.
+          </p>
         </div>
       </Card>
     </div>
