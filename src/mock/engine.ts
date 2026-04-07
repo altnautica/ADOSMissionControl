@@ -20,7 +20,6 @@ import { emitSelectedDroneTelemetry } from "./engine-telemetry";
 import { useFleetStore } from "@/stores/fleet-store";
 import { useDroneStore } from "@/stores/drone-store";
 import { useDroneManager } from "@/stores/drone-manager";
-import { useHistoryStore } from "@/stores/history-store";
 import { useDroneMetadataStore } from "@/stores/drone-metadata-store";
 import { haversineDistance } from "@/lib/telemetry-utils";
 import { randomId } from "@/lib/utils";
@@ -171,7 +170,10 @@ class MockFlightEngine {
               path: state.loopTrail.length > 0 ? [...state.loopTrail] : undefined,
               updatedAt: now,
             };
-            useHistoryStore.getState().addRecord(record);
+            // In demo mode the curated seed in mock/history.ts is the source
+            // of truth for the History tab. Skip live engine records here to
+            // avoid stuck IN_PROGRESS / 0-duration stubs piling up in IDB.
+            void record;
           }
           state.loopStartTick = state.tickCount;
           state.loopMaxAlt = 0; state.loopMaxSpeed = 0; state.loopDistance = 0;

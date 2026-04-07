@@ -40,24 +40,52 @@ export default function FlightHistoryPage() {
   const loadFromIDB = useHistoryStore((s) => s.loadFromIDB);
   const loadOperator = useOperatorProfileStore((s) => s.loadFromIDB);
   const loadAircraft = useAircraftRegistryStore((s) => s.loadFromIDB);
+  const initWithSeedData = useHistoryStore((s) => s.initWithSeedData);
+  const resetDemoData = useHistoryStore((s) => s.resetDemoData);
+
   useEffect(() => {
-    void loadFromIDB();
     void loadOperator();
     void loadAircraft();
-  }, [loadFromIDB, loadOperator, loadAircraft]);
 
-  // In demo mode only, lazy-import the mock seeder and hand it to the store.
-  const initWithSeedData = useHistoryStore((s) => s.initWithSeedData);
-  useEffect(() => {
-    if (!isDemoMode()) return;
+    // In demo mode: if the seed version stored in localStorage is older
+    // than the current bundled DEMO_SEED_VERSION, drop persisted records
+    // (they're either stale demo data or live mock-engine stubs) and
+    // re-seed. Otherwise, fall back to a normal IDB load.
+    if (!isDemoMode()) {
+      void loadFromIDB();
+      return;
+    }
+
     let cancelled = false;
-    void import("@/mock/history").then(({ seedDemoHistory }) => {
-      if (!cancelled) initWithSeedData(seedDemoHistory());
-    });
+    void (async () => {
+      const mod = await import("@/mock/history");
+      const { seedDemoHistory, seedDemoTelemetryRecordings, DEMO_SEED_VERSION } = mod;
+      const versionKey = "history.demoSeedVersion";
+      const stored =
+        typeof window !== "undefined" ? window.localStorage.getItem(versionKey) : null;
+      const storedVersion = stored ? parseInt(stored, 10) : -1;
+
+      if (storedVersion !== DEMO_SEED_VERSION) {
+        await resetDemoData();
+      } else {
+        await loadFromIDB();
+      }
+      if (cancelled) return;
+
+      const records = seedDemoHistory();
+      await seedDemoTelemetryRecordings(records);
+      if (cancelled) return;
+      initWithSeedData(records);
+
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(versionKey, String(DEMO_SEED_VERSION));
+      }
+    })();
+
     return () => {
       cancelled = true;
     };
-  }, [initWithSeedData]);
+  }, [loadFromIDB, loadOperator, loadAircraft, initWithSeedData, resetDemoData]);
 
   const allRecords = useHistoryStore((s) => s.records);
 
