@@ -26,6 +26,7 @@ import type {
   RawImuCallback, RcChannelsRawCallback, RcChannelsOverrideCallback,
   MissionItemCallback, AltitudeCallback, WindCovCallback,
   AisVesselCallback, GimbalManagerInfoCallback, GimbalManagerStatusCallback,
+  CanFrameCallback,
 } from './callbacks';
 import type { MissionItem, LogEntry, LogDownloadProgressCallback } from './mission';
 import type { FirmwareHandler } from './firmware';
@@ -236,6 +237,7 @@ export interface DroneProtocol {
   onAisVessel?(callback: AisVesselCallback): () => void;
   onGimbalManagerInfo?(callback: GimbalManagerInfoCallback): () => void;
   onGimbalManagerStatus?(callback: GimbalManagerStatusCallback): () => void;
+  onCanFrame?(callback: CanFrameCallback): () => void;
 
   // ── Serial Passthrough ──────────────────────────────────
   /** Send a string as SERIAL_CONTROL data to the FC shell. */

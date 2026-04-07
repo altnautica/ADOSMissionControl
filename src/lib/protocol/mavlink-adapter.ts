@@ -436,6 +436,7 @@ export class MAVLinkAdapter implements DroneProtocol {
   onMissionItem = this.cbm.onMissionItem; onAltitude = this.cbm.onAltitude
   onWindCov = this.cbm.onWindCov; onAisVessel = this.cbm.onAisVessel
   onGimbalManagerInfo = this.cbm.onGimbalManagerInfo; onGimbalManagerStatus = this.cbm.onGimbalManagerStatus
+  onCanFrame = this.cbm.onCanFrame
 
   // ── Info ────────────────────────────────────────────────
   getVehicleInfo(): VehicleInfo | null { return this.vehicleInfo }

@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { LayoutDashboard, Terminal, Route, Play, Radar, History, Crosshair } from "lucide-react";
-import { cn, isBattleNet } from "@/lib/utils";
+import { LayoutDashboard, Terminal, Route, Play, Radar, History } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-const baseTabs = [
+const tabs = [
   { icon: LayoutDashboard, labelKey: "dashboard", href: "/" },
   { icon: Terminal, labelKey: "command", href: "/command" },
   { icon: Route, labelKey: "plan", href: "/plan" },
@@ -14,12 +14,6 @@ const baseTabs = [
   { icon: Radar, labelKey: "airTraffic", href: "/airspace" },
   { icon: History, labelKey: "history", href: "/history" },
 ];
-
-const defenseTabs = isBattleNet()
-  ? [{ icon: Crosshair, labelKey: "tactical", href: "/tactical" }]
-  : [];
-
-const tabs = [...baseTabs.slice(0, 3), ...defenseTabs, ...baseTabs.slice(3)];
 
 export function CommandNav() {
   const pathname = usePathname();
