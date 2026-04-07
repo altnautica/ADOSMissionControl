@@ -72,6 +72,8 @@ export interface ProtocolCapabilities {
   supportsOpticalFlow: boolean;
   supportsObstacleAvoidance: boolean;
   supportsDebugValues: boolean;
+  /** CAN bus passthrough — receives MAVLink CAN_FRAME (msg 386) for DroneCAN/UAVCAN traffic monitoring */
+  supportsCanFrame: boolean;
   // MSP / Betaflight / iNav capabilities
   /** Betaflight aux mode configuration */
   supportsAuxModes: boolean;
