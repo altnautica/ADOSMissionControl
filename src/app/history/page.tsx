@@ -12,6 +12,12 @@ import type { FlightRecord } from "@/lib/types";
 import type { TelemetryRecording } from "@/lib/telemetry-recorder";
 
 export default function FlightHistoryPage() {
+  // Load any persisted history from IndexedDB on first mount. Idempotent.
+  const loadFromIDB = useHistoryStore((s) => s.loadFromIDB);
+  useEffect(() => {
+    void loadFromIDB();
+  }, [loadFromIDB]);
+
   // In demo mode only, lazy-import the mock seeder and hand it to the store.
   // In all other modes the store stays empty until real flights land via the
   // recording lifecycle (Phase 2) or imported logs (Phase 11/30).
