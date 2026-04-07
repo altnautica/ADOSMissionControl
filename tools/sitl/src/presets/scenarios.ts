@@ -119,17 +119,6 @@ const SCENARIOS: Scenario[] = [
   },
 
   {
-    id: 'battlenet-strike',
-    name: 'BattleNet Strike',
-    description: 'BattleNet strike formation with staggered altitudes.',
-    preset: '7in-ados-reference',
-    drones: 5,
-    lat: BLR_LAT,
-    lon: BLR_LON,
-    speedup: 1,
-  },
-
-  {
     id: 'long-range-mission',
     name: 'Long Range Mission',
     description: 'Long-range mission at 2x simulation speed.',

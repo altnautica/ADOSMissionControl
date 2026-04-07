@@ -263,6 +263,7 @@ export class MockProtocol implements DroneProtocol {
   onMissionItem = this._on.onMissionItem; onAltitude = this._on.onAltitude;
   onWindCov = this._on.onWindCov; onAisVessel = this._on.onAisVessel;
   onGimbalManagerInfo = this._on.onGimbalManagerInfo; onGimbalManagerStatus = this._on.onGimbalManagerStatus;
+  onCanFrame = this._on.onCanFrame;
 
   // ── Info ───────────────────────────────────────────────
   getVehicleInfo(): VehicleInfo { return this._vehicleInfo; }

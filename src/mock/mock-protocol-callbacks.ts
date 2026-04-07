@@ -58,6 +58,7 @@ import type {
   AisVesselCallback,
   GimbalManagerInfoCallback,
   GimbalManagerStatusCallback,
+  CanFrameCallback,
 } from "@/lib/protocol/types";
 
 function sub<T>(arr: T[], cb: T): () => void {
@@ -119,6 +120,7 @@ export interface MockCallbackArrays {
   aisVesselCbs: AisVesselCallback[];
   gimbalManagerInfoCbs: GimbalManagerInfoCallback[];
   gimbalManagerStatusCbs: GimbalManagerStatusCallback[];
+  canFrameCbs: CanFrameCallback[];
 }
 
 export function createCallbackArrays(): MockCallbackArrays {
@@ -138,6 +140,7 @@ export function createCallbackArrays(): MockCallbackArrays {
     rawImuCbs: [], rcChannelsRawCbs: [], rcChannelsOverrideCbs: [],
     missionItemCbs: [], altitudeCbs: [], windCovCbs: [],
     aisVesselCbs: [], gimbalManagerInfoCbs: [], gimbalManagerStatusCbs: [],
+    canFrameCbs: [],
   };
 }
 
@@ -194,5 +197,6 @@ export function bindOnMethods(cbs: MockCallbackArrays) {
     onAisVessel: (cb: AisVesselCallback) => sub(cbs.aisVesselCbs, cb),
     onGimbalManagerInfo: (cb: GimbalManagerInfoCallback) => sub(cbs.gimbalManagerInfoCbs, cb),
     onGimbalManagerStatus: (cb: GimbalManagerStatusCallback) => sub(cbs.gimbalManagerStatusCbs, cb),
+    onCanFrame: (cb: CanFrameCallback) => sub(cbs.canFrameCbs, cb),
   };
 }
