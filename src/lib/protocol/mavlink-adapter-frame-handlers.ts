@@ -277,7 +277,11 @@ function handleAutopilotVersionFrame(s: FrameHandlerState, frame: MAVLinkFrame):
     const major = (data.flightSwVersion >> 24) & 0xff
     const minor = (data.flightSwVersion >> 16) & 0xff
     const patch = (data.flightSwVersion >> 8) & 0xff
-    s.vehicleInfo = { ...s.vehicleInfo, firmwareVersionString: `${major}.${minor}.${patch}` }
+    s.vehicleInfo = {
+      ...s.vehicleInfo,
+      firmwareVersionString: `${major}.${minor}.${patch}`,
+      boardId: data.boardVersion,
+    }
   }
 }
 

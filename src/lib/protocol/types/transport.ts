@@ -13,7 +13,7 @@ export type TransportEventMap = {
 
 /** Generic byte-level connection to a flight controller. */
 export interface Transport {
-  readonly type: "webserial" | "websocket" | "tcp" | "udp-proxy" | "mqtt-mavlink";
+  readonly type: "webserial" | "websocket" | "tcp" | "udp-proxy" | "mqtt-mavlink" | "ble";
   connect(...args: unknown[]): Promise<void>;
   disconnect(): Promise<void>;
   send(data: Uint8Array): void;

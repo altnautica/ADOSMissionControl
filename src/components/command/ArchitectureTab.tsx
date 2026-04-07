@@ -34,6 +34,7 @@ import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useAgentPeripheralsStore } from "@/stores/agent-peripherals-store";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
 import { AgentDisconnectedPage } from "./AgentDisconnectedPage";
+import { BoardPinoutView } from "./shared/BoardPinoutView";
 import type { PeripheralInfo } from "@/lib/agent/types";
 
 const CATEGORY_CONFIG: Record<string, { color: string; label: string }> = {
@@ -307,6 +308,9 @@ export function ArchitectureTab() {
           </div>
         </div>
       )}
+
+      {/* Board Pinout */}
+      {fcConnected && <BoardPinoutView />}
 
       {/* Calibration Quick-Launch */}
       {fcConnected && (
