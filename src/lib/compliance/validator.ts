@@ -15,6 +15,7 @@ import type {
   AircraftRecord,
 } from "@/lib/types";
 import { JURISDICTIONS, type JurisdictionCode, type FieldRef } from "./jurisdictions";
+import { readField, refLabel } from "./field-reader";
 
 export type ValidationSeverity = "error" | "warning";
 
@@ -31,22 +32,6 @@ function isMissing(value: unknown): boolean {
   if (typeof value === "string" && value.trim() === "") return true;
   if (Array.isArray(value) && value.length === 0) return true;
   return false;
-}
-
-function readField(
-  ref: FieldRef,
-  record: FlightRecord,
-  operator: OperatorProfile,
-  aircraft: AircraftRecord | undefined,
-): unknown {
-  if (ref.kind === "record") return record[ref.key];
-  if (ref.kind === "operator") return operator[ref.key];
-  if (ref.kind === "aircraft") return aircraft?.[ref.key];
-  return undefined;
-}
-
-function refLabel(ref: FieldRef): string {
-  return `${ref.kind}.${String(ref.key)}`;
 }
 
 function refTab(ref: FieldRef): "operator" | "aircraft" | "notes" {

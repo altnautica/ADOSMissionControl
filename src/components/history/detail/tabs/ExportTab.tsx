@@ -67,20 +67,22 @@ export function ExportTab({ record, matchedRecording }: ExportTabProps) {
   const errors = issues.filter((i) => i.severity === "error");
   const warnings = issues.filter((i) => i.severity === "warning");
 
-  const handleCompliancePdf = async () => {
-    setBusy("compliance-pdf");
+  const runCompliance = async (fmt: "pdf" | "csv" | "json") => {
+    const slot = `compliance-${fmt}`;
+    setBusy(slot);
     try {
       const blob = await exportFlights({
         records: [record],
         jurisdiction,
-        format: "pdf",
+        format: fmt,
         operator,
         aircraftIndex,
       });
-      downloadBlob(blob, `${fileBaseFor(record)}-${jurisdiction.toLowerCase()}.pdf`);
+      const ext = fmt === "pdf" ? "pdf" : fmt === "csv" ? "csv" : "json";
+      downloadBlob(blob, `${fileBaseFor(record)}-${jurisdiction.toLowerCase()}.${ext}`);
     } catch (err) {
-      console.error("[ExportTab] compliance PDF failed", err);
-      if (typeof window !== "undefined") window.alert(`PDF export failed: ${(err as Error).message}`);
+      console.error("[ExportTab] compliance export failed", err);
+      if (typeof window !== "undefined") window.alert(`Export failed: ${(err as Error).message}`);
     } finally {
       setBusy(null);
     }
@@ -237,15 +239,33 @@ export function ExportTab({ record, matchedRecording }: ExportTabProps) {
               ))}
             </ul>
           )}
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               variant="primary"
               size="sm"
               icon={<FileType size={12} />}
               disabled={busy !== null}
-              onClick={handleCompliancePdf}
+              onClick={() => runCompliance("pdf")}
             >
-              {busy === "compliance-pdf" ? "Generating…" : "Generate PDF"}
+              {busy === "compliance-pdf" ? "Generating…" : "PDF"}
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={<FileText size={12} />}
+              disabled={busy !== null}
+              onClick={() => runCompliance("csv")}
+            >
+              {busy === "compliance-csv" ? "…" : "CSV"}
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={<FileJson size={12} />}
+              disabled={busy !== null}
+              onClick={() => runCompliance("json")}
+            >
+              {busy === "compliance-json" ? "…" : "JSON"}
             </Button>
           </div>
           <p className="text-[9px] text-text-tertiary italic">
