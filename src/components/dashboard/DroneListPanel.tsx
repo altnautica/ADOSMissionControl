@@ -5,9 +5,35 @@ import { useTranslations } from "next-intl";
 import { useFleetStore } from "@/stores/fleet-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { DroneCard } from "@/components/shared/drone-card";
+import { LinkBadgesRow } from "@/components/connect/LinkBadgesRow";
 import { useConnectDialogStore } from "@/stores/connect-dialog-store";
 import { Plus, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { DroneTile } from "@/components/shared/drone-tile";
+
+function DroneListItem({
+  droneId,
+  selected,
+  onSelect,
+  fleetDrone,
+}: {
+  droneId: string;
+  selected: boolean;
+  onSelect: (id: string) => void;
+  fleetDrone: ReturnType<typeof useFleetStore.getState>["drones"][number];
+}) {
+  const managedDrone = useDroneManager((s) => s.drones.get(droneId));
+  const linkInfo = managedDrone?.protocol.linkInfo ?? [];
+  return (
+    <div className="flex flex-col gap-1">
+      <DroneCard drone={fleetDrone} selected={selected} onClick={onSelect} />
+      {linkInfo.length > 0 && (
+        <div className="px-2">
+          <LinkBadgesRow droneId={droneId} links={linkInfo} />
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface DroneListPanelProps {
   collapsed: boolean;
@@ -118,11 +144,12 @@ export function DroneListPanel({ collapsed, onToggleCollapse }: DroneListPanelPr
       {/* Drone list */}
       <div className="flex-1 overflow-auto p-2 flex flex-col gap-2">
         {filtered.map((drone) => (
-          <DroneCard
+          <DroneListItem
             key={drone.id}
-            drone={drone}
+            droneId={drone.id}
+            fleetDrone={drone}
             selected={drone.id === selectedDroneId}
-            onClick={selectDrone}
+            onSelect={selectDrone}
           />
         ))}
         {filtered.length === 0 && (

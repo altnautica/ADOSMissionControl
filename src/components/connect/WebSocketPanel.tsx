@@ -30,16 +30,20 @@ export function WebSocketPanel({
   onConnected,
   url,
   onUrlChange,
+  targetDroneId,
 }: {
   onConnected?: (name: string, type: "websocket", url: string) => void;
   url?: string;
   onUrlChange?: (url: string) => void;
+  /** When set, connects this transport as an additional link to the existing drone (multi-link mode). */
+  targetDroneId?: string | null;
 }) {
   const [localUrl, setLocalUrl] = useState("ws://localhost:14550");
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
   const addDrone = useDroneManager((s) => s.addDrone);
+  const attachLinkToDrone = useDroneManager((s) => s.attachLinkToDrone);
 
   const effectiveUrl = url ?? localUrl;
 
@@ -67,6 +71,20 @@ export function WebSocketPanel({
     try {
       const transport = new WebSocketTransport();
       await transport.connect(trimmed);
+
+      // Multi-link mode: attach as secondary link to existing drone
+      if (targetDroneId) {
+        const result = await attachLinkToDrone(targetDroneId, transport);
+        if (!result.ok) {
+          try { await transport.disconnect(); } catch { /* ignore */ }
+          setError(result.error);
+          setConnecting(false);
+          return;
+        }
+        onConnected?.("link", "websocket", trimmed);
+        setConnecting(false);
+        return;
+      }
 
       const adapter = new MAVLinkAdapter();
       const vehicleInfo = await adapter.connect(transport);

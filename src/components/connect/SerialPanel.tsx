@@ -26,10 +26,13 @@ export function SerialPanel({
   onConnected,
   baudRate,
   onBaudRateChange,
+  targetDroneId,
 }: {
   onConnected?: (name: string, type: "serial", baudRate: number) => void;
   baudRate?: number;
   onBaudRateChange?: (baudRate: number) => void;
+  /** When set, connects this transport as an additional link to the existing drone (multi-link mode). */
+  targetDroneId?: string | null;
 }) {
   const t = useTranslations("connect");
   const [mounted, setMounted] = useState(false);
@@ -40,6 +43,7 @@ export function SerialPanel({
   const [selectedPortIndex, setSelectedPortIndex] = useState<string>("-1");
   const [hotPlugEvent, setHotPlugEvent] = useState<string | null>(null);
   const addDrone = useDroneManager((s) => s.addDrone);
+  const attachLinkToDrone = useDroneManager((s) => s.attachLinkToDrone);
   const { toast } = useToast();
 
   const selectedBaudRate = String(baudRate ?? parseInt(localBaudRate, 10));
@@ -116,6 +120,20 @@ export function SerialPanel({
       } else {
         // Fallback: open browser picker
         await transport.connect(baud);
+      }
+
+      // Multi-link mode: attach as secondary link to existing drone
+      if (targetDroneId) {
+        const result = await attachLinkToDrone(targetDroneId, transport);
+        if (!result.ok) {
+          try { await transport.disconnect(); } catch { /* ignore */ }
+          setError(result.error);
+          setConnecting(false);
+          return;
+        }
+        onConnected?.("link", "serial", baud);
+        setConnecting(false);
+        return;
       }
 
       const adapter = new MAVLinkAdapter();
