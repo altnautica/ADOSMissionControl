@@ -12,10 +12,13 @@
 
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { X, Play } from "lucide-react";
+import { X, Play, Lock, Unlock } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { FlightRecord } from "@/lib/types";
+import type { FlightRecord, FlightEvent } from "@/lib/types";
 import { listRecordings, type TelemetryRecording } from "@/lib/telemetry-recorder";
+import { signRecord, verifyRecord } from "@/lib/compliance/sign";
+import { useHistoryStore } from "@/stores/history-store";
+import { useOperatorProfileStore } from "@/stores/operator-profile-store";
 import { OverviewTab } from "./tabs/OverviewTab";
 import { MapTab } from "./tabs/MapTab";
 import { ChartsTab } from "./tabs/ChartsTab";
@@ -53,10 +56,59 @@ interface HistoryDetailPanelProps {
 export function HistoryDetailPanel({ record, onClose, onReplay }: HistoryDetailPanelProps) {
   const [active, setActive] = useState<TabId>("overview");
   const [recordings, setRecordings] = useState<TelemetryRecording[]>([]);
+  const [signing, setSigning] = useState(false);
+  const operatorProfile = useOperatorProfileStore((s) => s.profile);
 
   useEffect(() => {
     listRecordings().then(setRecordings);
   }, []);
+
+  const sealed = !!record.pilotSignatureHash;
+
+  const handleSign = async () => {
+    setSigning(true);
+    try {
+      const patch = await signRecord(record, operatorProfile.signatureImageBase64);
+      const store = useHistoryStore.getState();
+      store.updateRecord(record.id, patch);
+      void store.persistToIDB();
+    } catch (err) {
+      console.error("[HistoryDetailPanel] sign failed", err);
+      if (typeof window !== "undefined") window.alert(`Sign failed: ${(err as Error).message}`);
+    } finally {
+      setSigning(false);
+    }
+  };
+
+  const handleUnseal = async () => {
+    if (typeof window !== "undefined") {
+      const ok = window.confirm(
+        "Unseal this record? Subsequent edits will invalidate the previous signature. An audit event will be logged.",
+      );
+      if (!ok) return;
+    }
+    const store = useHistoryStore.getState();
+    const auditEvent: FlightEvent = {
+      t: 0,
+      type: "manual_note",
+      severity: "warning",
+      label: `Record unsealed at ${new Date().toLocaleString()}`,
+    };
+    const newEvents = [...(record.events ?? []), auditEvent];
+    store.updateRecord(record.id, {
+      pilotSignatureHash: undefined,
+      pilotSignedAt: undefined,
+      events: newEvents,
+    });
+    void store.persistToIDB();
+  };
+
+  const handleVerify = async () => {
+    const ok = await verifyRecord(record, operatorProfile.signatureImageBase64);
+    if (typeof window !== "undefined") {
+      window.alert(ok ? "Signature OK — record is unmodified." : "Signature INVALID — record has been altered since signing.");
+    }
+  };
 
   // Match recording by recordingId first (Phase 2), fall back to drone+time fuzzy.
   const matchedRecording = recordings.find((rec) => {
@@ -81,6 +133,42 @@ export function HistoryDetailPanel({ record, onClose, onReplay }: HistoryDetailP
           </Badge>
         </div>
         <div className="flex items-center gap-1">
+          {sealed ? (
+            <>
+              <Badge variant="success" size="sm">
+                <Lock size={10} className="inline mr-1" />
+                Sealed
+              </Badge>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleVerify}
+                title="Verify signature hash"
+              >
+                Verify
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={<Unlock size={12} />}
+                onClick={handleUnseal}
+                title="Unseal to allow edits"
+              >
+                Unseal
+              </Button>
+            </>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={<Lock size={12} />}
+              onClick={handleSign}
+              disabled={signing}
+              title="Sign and lock this record"
+            >
+              {signing ? "Signing…" : "Sign & lock"}
+            </Button>
+          )}
           {matchedRecording && matchedRecording.channels.includes("position") && onReplay && (
             <Button
               variant="ghost"

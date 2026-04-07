@@ -120,6 +120,12 @@ export interface FlightRecord {
   aircraftRegistration?: string;
   aircraftSerial?: string;
   aircraftMtomKg?: number;
+
+  // Phase 7c-3 — sign-and-lock workflow.
+  /** Wall-clock time the pilot sealed this record. */
+  pilotSignedAt?: number;
+  /** SHA-256 hex digest of the canonicalised record + optional signature image. */
+  pilotSignatureHash?: string;
 }
 
 // ── Analytics ────────────────────────────────────────────────
