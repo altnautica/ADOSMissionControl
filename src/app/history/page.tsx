@@ -5,16 +5,26 @@ import { HistoryToolbar } from "@/components/history/HistoryToolbar";
 import { HistoryTable } from "@/components/history/HistoryTable";
 import { HistoryDetailPanel } from "@/components/history/HistoryDetailPanel";
 import { ReplayView } from "@/components/history/ReplayView";
-import { getFlightHistory } from "@/mock/history";
+import { EmptyState } from "@/components/history/EmptyState";
 import { useHistoryStore } from "@/stores/history-store";
+import { isDemoMode } from "@/lib/utils";
 import type { FlightRecord } from "@/lib/types";
 import type { TelemetryRecording } from "@/lib/telemetry-recorder";
 
 export default function FlightHistoryPage() {
-  // Init store with seed data once
+  // In demo mode only, lazy-import the mock seeder and hand it to the store.
+  // In all other modes the store stays empty until real flights land via the
+  // recording lifecycle (Phase 2) or imported logs (Phase 11/30).
   const initWithSeedData = useHistoryStore((s) => s.initWithSeedData);
   useEffect(() => {
-    initWithSeedData(getFlightHistory());
+    if (!isDemoMode()) return;
+    let cancelled = false;
+    void import("@/mock/history").then(({ seedDemoHistory }) => {
+      if (!cancelled) initWithSeedData(seedDemoHistory());
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [initWithSeedData]);
 
   const allRecords = useHistoryStore((s) => s.records);
@@ -138,11 +148,15 @@ export default function FlightHistoryPage() {
 
       {/* Table + Detail */}
       <div className="flex flex-1 overflow-hidden">
-        <HistoryTable
-          records={filteredRecords}
-          selectedId={selectedRecord?.id ?? null}
-          onSelect={setSelectedRecord}
-        />
+        {allRecords.length === 0 ? (
+          <EmptyState />
+        ) : (
+          <HistoryTable
+            records={filteredRecords}
+            selectedId={selectedRecord?.id ?? null}
+            onSelect={setSelectedRecord}
+          />
+        )}
 
         {selectedRecord && (
           <HistoryDetailPanel
