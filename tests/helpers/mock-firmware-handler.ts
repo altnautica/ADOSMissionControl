@@ -36,6 +36,7 @@ const DEFAULT_CAPABILITIES: ProtocolCapabilities = {
   supportsOpticalFlow: false,
   supportsObstacleAvoidance: false,
   supportsDebugValues: true,
+  supportsCanFrame: true,
   supportsAuxModes: false,
   supportsVtx: false,
   supportsBlackbox: false,
