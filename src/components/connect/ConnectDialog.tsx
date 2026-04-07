@@ -15,6 +15,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SerialPanel } from "@/components/connect/SerialPanel";
 import { WebSocketPanel } from "@/components/connect/WebSocketPanel";
+import { BluetoothPanel } from "@/components/connect/BluetoothPanel";
+import { BluetoothTransport } from "@/lib/protocol/transport/ble";
 import { ActiveConnections } from "@/components/connect/ActiveConnections";
 import { ConnectionPresets } from "@/components/connect/ConnectionPresets";
 import { RecentConnections } from "@/components/connect/RecentConnections";
@@ -35,6 +37,7 @@ export function ConnectDialog() {
   const CONNECTION_TABS = [
     { id: "serial", label: t("usbSerial") },
     { id: "websocket", label: t("webSocket") },
+    ...(BluetoothTransport.isSupported() ? [{ id: "bluetooth", label: "Bluetooth" }] : []),
   ];
 
   const [tab, setTab] = useState("serial");
@@ -261,14 +264,18 @@ export function ConnectDialog() {
                 onBaudRateChange={setSerialBaudRate}
                 targetDroneId={connectMode === "link" ? selectedTargetDroneId : null}
               />
-            ) : (
+            ) : tab === "websocket" ? (
               <WebSocketPanel
                 onConnected={handleWsConnected}
                 url={websocketUrl}
                 onUrlChange={setWebsocketUrl}
                 targetDroneId={connectMode === "link" ? selectedTargetDroneId : null}
               />
-            )}
+            ) : tab === "bluetooth" ? (
+              <BluetoothPanel
+                targetDroneId={connectMode === "link" ? selectedTargetDroneId : null}
+              />
+            ) : null}
           </div>
         </div>
 

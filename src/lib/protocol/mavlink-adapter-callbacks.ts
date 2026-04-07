@@ -26,6 +26,7 @@ import type {
   RawImuCallback, RcChannelsRawCallback, RcChannelsOverrideCallback,
   MissionItemCallback, AltitudeCallback, WindCovCallback,
   AisVesselCallback, GimbalManagerInfoCallback, GimbalManagerStatusCallback,
+  CanFrameCallback,
 } from './types'
 
 /** All callback arrays stored by the adapter. */
@@ -80,6 +81,7 @@ export interface CallbackStore {
   aisVesselCallbacks: AisVesselCallback[]
   gimbalManagerInfoCallbacks: GimbalManagerInfoCallback[]
   gimbalManagerStatusCallbacks: GimbalManagerStatusCallback[]
+  canFrameCallbacks: CanFrameCallback[]
 }
 
 /** Create a fresh empty callback store. */
@@ -135,6 +137,7 @@ export function createCallbackStore(): CallbackStore {
     aisVesselCallbacks: [],
     gimbalManagerInfoCallbacks: [],
     gimbalManagerStatusCallbacks: [],
+    canFrameCallbacks: [],
   }
 }
 
@@ -200,5 +203,6 @@ export function bindCallbackMethods(cbs: CallbackStore) {
     onAisVessel: (cb: AisVesselCallback) => sub(cbs.aisVesselCallbacks, cb),
     onGimbalManagerInfo: (cb: GimbalManagerInfoCallback) => sub(cbs.gimbalManagerInfoCallbacks, cb),
     onGimbalManagerStatus: (cb: GimbalManagerStatusCallback) => sub(cbs.gimbalManagerStatusCallbacks, cb),
+    onCanFrame: (cb: CanFrameCallback) => sub(cbs.canFrameCallbacks, cb),
   }
 }

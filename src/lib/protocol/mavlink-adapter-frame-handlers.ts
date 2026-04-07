@@ -45,6 +45,7 @@ import {
   handleCameraTrigger, handleCameraImageCaptured, handleGimbalAttitude, handleObstacleDistance,
   handleAisVessel, handleGimbalManagerInfo, handleGimbalManagerStatus,
 } from './handlers/debug-handlers'
+import { handleCanFrame } from './handlers/can-handlers'
 import { finishParamDownload } from './mavlink-adapter-params'
 import { handleLogEntry, handleLogData } from './mavlink-adapter-logs'
 import type { Transport } from './types'
@@ -135,6 +136,7 @@ export function routeFrame(s: FrameHandlerState, frame: MAVLinkFrame, p: DataVie
     case 285: handleGimbalManagerInfo(p, c.gimbalManagerInfoCallbacks); break
     case 286: handleGimbalManagerStatus(p, c.gimbalManagerStatusCallbacks); break
     case 330: handleObstacleDistance(p, c.obstacleDistanceCallbacks); break
+    case 386: handleCanFrame(p, c.canFrameCallbacks); break
   }
 }
 
