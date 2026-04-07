@@ -1,0 +1,148 @@
+"use client";
+
+/**
+ * History detail panel — tabbed shell for the right rail.
+ *
+ * Phase 4a:
+ *  - Overview / Map / Notes / Export tabs are real and functional.
+ *  - Charts / Events / Analysis tabs render Placeholder cards (Phase 4b + 5).
+ *
+ * @license GPL-3.0-only
+ */
+
+import { useEffect, useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { X, Play } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import type { FlightRecord } from "@/lib/types";
+import { listRecordings, type TelemetryRecording } from "@/lib/telemetry-recorder";
+import { OverviewTab } from "./tabs/OverviewTab";
+import { MapTab } from "./tabs/MapTab";
+import { NotesTab } from "./tabs/NotesTab";
+import { ExportTab } from "./tabs/ExportTab";
+import { PlaceholderTab } from "./tabs/PlaceholderTab";
+import { cn } from "@/lib/utils";
+
+const statusVariant: Record<string, "success" | "warning" | "error" | "neutral"> = {
+  completed: "success",
+  aborted: "warning",
+  emergency: "error",
+  in_progress: "neutral",
+};
+
+type TabId = "overview" | "map" | "charts" | "events" | "analysis" | "notes" | "export";
+
+const TABS: { id: TabId; label: string }[] = [
+  { id: "overview", label: "Overview" },
+  { id: "map", label: "Map" },
+  { id: "charts", label: "Charts" },
+  { id: "events", label: "Events" },
+  { id: "analysis", label: "Analysis" },
+  { id: "notes", label: "Notes" },
+  { id: "export", label: "Export" },
+];
+
+interface HistoryDetailPanelProps {
+  record: FlightRecord;
+  onClose: () => void;
+  onReplay?: (recording: TelemetryRecording) => void;
+}
+
+export function HistoryDetailPanel({ record, onClose, onReplay }: HistoryDetailPanelProps) {
+  const [active, setActive] = useState<TabId>("overview");
+  const [recordings, setRecordings] = useState<TelemetryRecording[]>([]);
+
+  useEffect(() => {
+    listRecordings().then(setRecordings);
+  }, []);
+
+  // Match recording by recordingId first (Phase 2), fall back to drone+time fuzzy.
+  const matchedRecording = recordings.find((rec) => {
+    if (record.recordingId && rec.id === record.recordingId) return true;
+    if (rec.droneId && rec.droneId === record.droneId) {
+      const timeDiff = Math.abs(rec.startTime - (record.startTime ?? record.date));
+      return timeDiff < 60_000;
+    }
+    return false;
+  });
+
+  return (
+    <div className="w-[420px] border-l border-border-default bg-bg-secondary flex flex-col shrink-0 overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-3 py-2 border-b border-border-default flex-shrink-0">
+        <div className="flex items-center gap-2 min-w-0">
+          <h3 className="text-xs font-semibold text-text-primary uppercase tracking-wider truncate">
+            {record.customName || "Flight Detail"}
+          </h3>
+          <Badge variant={statusVariant[record.status] ?? "neutral"} size="sm">
+            {record.status}
+          </Badge>
+        </div>
+        <div className="flex items-center gap-1">
+          {matchedRecording && matchedRecording.channels.includes("position") && onReplay && (
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={<Play size={12} />}
+              onClick={() => onReplay(matchedRecording)}
+              title="Replay flight"
+            >
+              Replay
+            </Button>
+          )}
+          <button
+            onClick={onClose}
+            className="text-text-tertiary hover:text-text-primary transition-colors cursor-pointer p-1"
+            aria-label="Close"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      </div>
+
+      {/* Tab strip */}
+      <div className="flex border-b border-border-default shrink-0 overflow-x-auto">
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActive(tab.id)}
+            className={cn(
+              "px-3 py-2 text-[10px] font-semibold uppercase tracking-wider transition-colors whitespace-nowrap",
+              active === tab.id
+                ? "text-accent-primary border-b border-accent-primary"
+                : "text-text-tertiary hover:text-text-primary",
+            )}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab body */}
+      <div className="flex-1 overflow-y-auto p-3">
+        {active === "overview" && <OverviewTab record={record} />}
+        {active === "map" && <MapTab record={record} />}
+        {active === "charts" && (
+          <PlaceholderTab
+            title="Charts"
+            message={`Multi-axis telemetry charts arrive in Phase 4b. ${matchedRecording ? `${matchedRecording.frameCount.toLocaleString()} frames available across ${matchedRecording.channels.length} channels.` : "No telemetry recording attached."}`}
+          />
+        )}
+        {active === "events" && (
+          <PlaceholderTab
+            title="Events"
+            message="Auto-detected mode changes, failsafes, prearm bits, and manual notes arrive in Phase 5."
+          />
+        )}
+        {active === "analysis" && (
+          <PlaceholderTab
+            title="Analysis"
+            message="Vibration, EKF, GPS quality, battery sag, and other anomaly flags arrive in Phase 5."
+          />
+        )}
+        {active === "notes" && <NotesTab record={record} />}
+        {active === "export" && <ExportTab record={record} matchedRecording={matchedRecording} />}
+      </div>
+    </div>
+  );
+}

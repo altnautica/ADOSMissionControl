@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useCallback, useDeferredValue, useRef } from "react";
 import { HistoryToolbar, type DatePreset } from "@/components/history/HistoryToolbar";
 import { HistoryTable, type SortKey, type SortDir } from "@/components/history/HistoryTable";
-import { HistoryDetailPanel } from "@/components/history/HistoryDetailPanel";
+import { HistoryDetailPanel } from "@/components/history/detail/HistoryDetailPanel";
 import { HistoryStatsBar } from "@/components/history/HistoryStatsBar";
 import { HistoryBulkActions } from "@/components/history/HistoryBulkActions";
 import { ReplayView } from "@/components/history/ReplayView";
