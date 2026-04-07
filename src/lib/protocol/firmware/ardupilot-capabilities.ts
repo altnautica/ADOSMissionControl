@@ -65,6 +65,7 @@ export const ARDUPILOT_CAPABILITIES: ProtocolCapabilities = {
   supportsOpticalFlow: true,
   supportsObstacleAvoidance: true,
   supportsDebugValues: true,
+  supportsCanFrame: true,
   supportsAuxModes: false,
   supportsVtx: false,
   supportsBlackbox: false,

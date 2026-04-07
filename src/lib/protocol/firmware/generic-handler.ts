@@ -44,6 +44,7 @@ const GENERIC_CAPABILITIES: ProtocolCapabilities = {
   supportsOpticalFlow: false,
   supportsObstacleAvoidance: false,
   supportsDebugValues: false,
+  supportsCanFrame: false,
   supportsAuxModes: false,
   supportsVtx: false,
   supportsBlackbox: false,

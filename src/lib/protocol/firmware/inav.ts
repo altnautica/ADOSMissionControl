@@ -98,6 +98,7 @@ const INAV_CAPABILITIES: ProtocolCapabilities = {
   supportsOpticalFlow: false,
   supportsObstacleAvoidance: false,
   supportsDebugValues: true,
+  supportsCanFrame: false,
   supportsAuxModes: true,
   supportsVtx: true,
   supportsBlackbox: true,
