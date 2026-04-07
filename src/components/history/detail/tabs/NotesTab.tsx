@@ -28,8 +28,11 @@ function NotesTabInner({ record }: NotesTabProps) {
   const [favorite, setFavorite] = useState(record.favorite ?? false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
 
-  // Debounced save effect.
+  const sealed = !!record.pilotSignatureHash;
+
+  // Debounced save effect — skipped while sealed.
   useEffect(() => {
+    if (sealed) return;
     const handle = setTimeout(() => {
       const tags = tagsText
         .split(",")
@@ -46,10 +49,15 @@ function NotesTabInner({ record }: NotesTabProps) {
       setSavedAt(Date.now());
     }, SAVE_DELAY_MS);
     return () => clearTimeout(handle);
-  }, [record.id, customName, notes, tagsText, favorite]);
+  }, [record.id, customName, notes, tagsText, favorite, sealed]);
 
   return (
     <div className="flex flex-col gap-3">
+      {sealed && (
+        <div className="rounded border border-status-success bg-status-success/10 px-3 py-2 text-[10px] text-text-secondary">
+          This record is sealed. Unseal from the panel header to edit the name, tags, or notes.
+        </div>
+      )}
       <Card title="Name & Tags" padding={true}>
         <div className="flex flex-col gap-2">
           <Input
@@ -57,12 +65,14 @@ function NotesTabInner({ record }: NotesTabProps) {
             value={customName}
             onChange={(e) => setCustomName(e.target.value)}
             placeholder="Field A — North survey"
+            disabled={sealed}
           />
           <Input
             label="Tags (comma separated)"
             value={tagsText}
             onChange={(e) => setTagsText(e.target.value)}
             placeholder="survey, field-a, test"
+            disabled={sealed}
           />
           <div className="flex items-center gap-2 mt-1">
             <Button
@@ -70,6 +80,7 @@ function NotesTabInner({ record }: NotesTabProps) {
               size="sm"
               icon={favorite ? <Star size={12} /> : <X size={12} />}
               onClick={() => setFavorite((f) => !f)}
+              disabled={sealed}
             >
               {favorite ? "Favorited" : "Not favorited"}
             </Button>
@@ -83,7 +94,8 @@ function NotesTabInner({ record }: NotesTabProps) {
           onChange={(e) => setNotes(e.target.value)}
           placeholder="Add observations, incidents, or context for this flight…"
           rows={8}
-          className="w-full bg-bg-tertiary border border-border-default text-xs text-text-primary p-2 font-mono resize-y focus:outline-none focus:border-accent-primary"
+          disabled={sealed}
+          className="w-full bg-bg-tertiary border border-border-default text-xs text-text-primary p-2 font-mono resize-y focus:outline-none focus:border-accent-primary disabled:opacity-50 disabled:cursor-not-allowed"
         />
         <div className="mt-1 text-[10px] text-text-tertiary">
           {savedAt ? `Saved ${new Date(savedAt).toLocaleTimeString()}` : "Unsaved"}

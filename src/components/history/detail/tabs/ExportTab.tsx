@@ -25,7 +25,7 @@ import {
 import { downloadGpx } from "@/lib/formats/gpx-exporter";
 import { exportFlights, downloadBlob } from "@/lib/compliance/exporter";
 import { validateForJurisdiction, type ValidationIssue } from "@/lib/compliance/validator";
-import { listJurisdictions, type JurisdictionCode } from "@/lib/compliance/jurisdictions";
+import { listJurisdictions, JURISDICTIONS, type JurisdictionCode } from "@/lib/compliance/jurisdictions";
 import { useOperatorProfileStore } from "@/stores/operator-profile-store";
 import { useAircraftRegistryStore } from "@/stores/aircraft-registry-store";
 import type { FlightRecord } from "@/lib/types";
@@ -67,7 +67,7 @@ export function ExportTab({ record, matchedRecording }: ExportTabProps) {
   const errors = issues.filter((i) => i.severity === "error");
   const warnings = issues.filter((i) => i.severity === "warning");
 
-  const runCompliance = async (fmt: "pdf" | "csv" | "json") => {
+  const runCompliance = async (fmt: "pdf" | "csv" | "json" | "xml") => {
     const slot = `compliance-${fmt}`;
     setBusy(slot);
     try {
@@ -78,8 +78,7 @@ export function ExportTab({ record, matchedRecording }: ExportTabProps) {
         operator,
         aircraftIndex,
       });
-      const ext = fmt === "pdf" ? "pdf" : fmt === "csv" ? "csv" : "json";
-      downloadBlob(blob, `${fileBaseFor(record)}-${jurisdiction.toLowerCase()}.${ext}`);
+      downloadBlob(blob, `${fileBaseFor(record)}-${jurisdiction.toLowerCase()}.${fmt}`);
     } catch (err) {
       console.error("[ExportTab] compliance export failed", err);
       if (typeof window !== "undefined") window.alert(`Export failed: ${(err as Error).message}`);
@@ -87,6 +86,8 @@ export function ExportTab({ record, matchedRecording }: ExportTabProps) {
       setBusy(null);
     }
   };
+
+  const supportsXml = JURISDICTIONS[jurisdiction].outputFormats.includes("xml");
 
   const fileBase = fileBaseFor(record);
 
@@ -267,6 +268,17 @@ export function ExportTab({ record, matchedRecording }: ExportTabProps) {
             >
               {busy === "compliance-json" ? "…" : "JSON"}
             </Button>
+            {supportsXml && (
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={<FileCode size={12} />}
+                disabled={busy !== null}
+                onClick={() => runCompliance("xml")}
+              >
+                {busy === "compliance-xml" ? "…" : "XML"}
+              </Button>
+            )}
           </div>
           <p className="text-[9px] text-text-tertiary italic">
             Errors are missing required fields per the regulator. Generate the PDF anyway to

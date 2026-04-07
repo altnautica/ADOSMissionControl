@@ -14,6 +14,7 @@ import type { JurisdictionCode, ExportFormat } from "./jurisdictions";
 import { JURISDICTIONS } from "./jurisdictions";
 import { exportComplianceCsv } from "./csv-exporter";
 import { exportComplianceJson } from "./json-exporter";
+import { exportComplianceXml } from "./xml-exporter";
 
 export interface ExportInput {
   records: FlightRecord[];
@@ -47,6 +48,14 @@ export async function exportFlights(input: ExportInput): Promise<Blob> {
   if (format === "json") {
     const json = exportComplianceJson(records, spec, operator, aircraftIndex);
     return new Blob([json], { type: "application/json;charset=utf-8" });
+  }
+
+  if (format === "xml") {
+    if (!spec.outputFormats.includes("xml")) {
+      throw new ExportNotSupported(jurisdiction, format);
+    }
+    const xml = exportComplianceXml(records, spec, operator, aircraftIndex);
+    return new Blob([xml], { type: "application/xml;charset=utf-8" });
   }
 
   if (format === "pdf") {
