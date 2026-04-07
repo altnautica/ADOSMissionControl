@@ -5,47 +5,64 @@ import { useTranslations } from "next-intl";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Download } from "lucide-react";
+import { Download, Star, X } from "lucide-react";
 import type { FlightRecord } from "@/lib/types";
 import { exportFlightRecordsAsCsv } from "@/lib/csv-export";
 
+export type DatePreset = "all" | "today" | "7d" | "30d" | "month";
+
 interface HistoryToolbarProps {
+  search: string;
   dateFrom: string;
   dateTo: string;
+  datePreset: DatePreset;
   status: string;
   droneFilter: string;
   suiteFilter: string;
   sort: string;
+  favoritesOnly: boolean;
   droneNames: { value: string; label: string }[];
   records: FlightRecord[];
+  onSearchChange: (v: string) => void;
   onDateFromChange: (v: string) => void;
   onDateToChange: (v: string) => void;
+  onDatePresetChange: (v: DatePreset) => void;
   onStatusChange: (v: string) => void;
   onDroneFilterChange: (v: string) => void;
   onSuiteFilterChange: (v: string) => void;
   onSortChange: (v: string) => void;
+  onFavoritesOnlyChange: (v: boolean) => void;
+  onReset: () => void;
 }
 
 export function HistoryToolbar({
+  search,
   dateFrom,
   dateTo,
+  datePreset,
   status,
   droneFilter,
   suiteFilter,
   sort,
+  favoritesOnly,
   droneNames,
   records,
+  onSearchChange,
   onDateFromChange,
   onDateToChange,
+  onDatePresetChange,
   onStatusChange,
   onDroneFilterChange,
   onSuiteFilterChange,
   onSortChange,
+  onFavoritesOnlyChange,
+  onReset,
 }: HistoryToolbarProps) {
   const t = useTranslations("history");
 
   const STATUS_OPTIONS = useMemo(() => [
     { value: "all", label: t("allStatuses") },
+    { value: "in_progress", label: t("inProgress") },
     { value: "completed", label: t("completed") },
     { value: "aborted", label: t("aborted") },
     { value: "emergency", label: t("emergency") },
@@ -68,10 +85,32 @@ export function HistoryToolbar({
     { value: "inspection", label: "Inspection" },
   ], [t]);
 
+  const PRESET_OPTIONS = useMemo(() => [
+    { value: "all", label: t("presetAll") },
+    { value: "today", label: t("presetToday") },
+    { value: "7d", label: t("preset7d") },
+    { value: "30d", label: t("preset30d") },
+    { value: "month", label: t("presetMonth") },
+  ], [t]);
+
   const allDroneOptions = [{ value: "all", label: t("allDrones") }, ...droneNames];
 
   return (
     <div className="flex items-end gap-3 px-4 py-3 border-b border-border-default flex-wrap shrink-0">
+      <Input
+        label={t("search")}
+        type="text"
+        value={search}
+        onChange={(e) => onSearchChange(e.target.value)}
+        placeholder={t("searchPlaceholder")}
+        className="w-[220px]"
+      />
+      <Select
+        label={t("datePresetLabel")}
+        options={PRESET_OPTIONS}
+        value={datePreset}
+        onChange={(v) => onDatePresetChange(v as DatePreset)}
+      />
       <Input
         label={t("from")}
         type="date"
@@ -111,12 +150,29 @@ export function HistoryToolbar({
         onChange={onSortChange}
       />
       <Button
+        variant={favoritesOnly ? "primary" : "secondary"}
+        size="md"
+        icon={<Star size={14} />}
+        onClick={() => onFavoritesOnlyChange(!favoritesOnly)}
+        title={t("favoritesOnly")}
+      >
+        {t("favoritesOnly")}
+      </Button>
+      <Button
         variant="secondary"
         size="md"
         icon={<Download size={14} />}
         onClick={() => exportFlightRecordsAsCsv(records)}
       >
         {t("exportBtn")}
+      </Button>
+      <Button
+        variant="ghost"
+        size="md"
+        icon={<X size={14} />}
+        onClick={onReset}
+      >
+        {t("reset")}
       </Button>
     </div>
   );

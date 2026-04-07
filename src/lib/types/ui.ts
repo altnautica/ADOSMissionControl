@@ -65,6 +65,14 @@ export interface FlightRecord {
   hasTelemetry?: boolean;
   /** Last mutation time in ms epoch. */
   updatedAt: number;
+  /** User-set favorite flag. */
+  favorite?: boolean;
+  /** User-set tags (free-form labels). */
+  tags?: string[];
+  /** User-overridden display name. Falls back to droneName/date when unset. */
+  customName?: string;
+  /** Markdown notes (Phase 4 NotesTab). */
+  notes?: string;
 }
 
 // ── Analytics ────────────────────────────────────────────────
