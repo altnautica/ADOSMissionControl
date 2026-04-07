@@ -6,10 +6,12 @@
  */
 
 import { create } from "zustand";
-import { get as idbGet, set as idbSet } from "idb-keyval";
+import { get as idbGet, set as idbSet, del as idbDel, keys as idbKeys } from "idb-keyval";
 import type { FlightRecord } from "@/lib/types";
 
 const IDB_HISTORY_KEY = "altcmd:flight-history";
+const IDB_RECORDINGS_PREFIX = "altcmd:recording:";
+const IDB_RECORDINGS_INDEX = "altcmd:recordings-index";
 
 /** On-board log entry received via LOG_ENTRY (msg 118). */
 export interface LogEntry {
@@ -52,6 +54,12 @@ interface HistoryActions {
   loadFromIDB: () => Promise<void>;
   /** Async: write current records to IndexedDB. */
   persistToIDB: () => Promise<void>;
+  /**
+   * Async: clear all flight records and demo telemetry recordings from
+   * memory + IndexedDB. Used by the History page in demo mode when the
+   * seeded dataset version changes, to drop stale records before re-seeding.
+   */
+  resetDemoData: () => Promise<void>;
   /** Store log entries for a drone from LOG_ENTRY messages. */
   setLogEntries: (droneId: string, entries: LogEntry[]) => void;
   setIsLoadingLogList: (v: boolean) => void;
@@ -133,6 +141,25 @@ export const useHistoryStore = create<HistoryState & HistoryActions>((set, get) 
     } catch (err) {
       console.warn("[history-store] persistToIDB failed", err);
     }
+  },
+
+  resetDemoData: async () => {
+    try {
+      await idbDel(IDB_HISTORY_KEY);
+      // Drop demo telemetry recordings (id prefix "demo-rec-").
+      const allKeys = await idbKeys();
+      const demoKeys = allKeys.filter(
+        (k): k is string =>
+          typeof k === "string" && k.startsWith(`${IDB_RECORDINGS_PREFIX}demo-rec-`),
+      );
+      for (const k of demoKeys) await idbDel(k);
+      const index = ((await idbGet(IDB_RECORDINGS_INDEX)) ?? []) as Array<{ id: string }>;
+      const filtered = index.filter((r) => !r.id.startsWith("demo-rec-"));
+      await idbSet(IDB_RECORDINGS_INDEX, filtered);
+    } catch (err) {
+      console.warn("[history-store] resetDemoData failed", err);
+    }
+    set({ records: [], _seeded: false, _loadedFromIdb: false });
   },
 
   setLogEntries: (droneId, entries) => {
