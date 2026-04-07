@@ -9,6 +9,8 @@ import { HistoryBulkActions } from "@/components/history/HistoryBulkActions";
 import { ReplayView } from "@/components/history/ReplayView";
 import { EmptyState } from "@/components/history/EmptyState";
 import { useHistoryStore } from "@/stores/history-store";
+import { useOperatorProfileStore } from "@/stores/operator-profile-store";
+import { useAircraftRegistryStore } from "@/stores/aircraft-registry-store";
 import { isDemoMode } from "@/lib/utils";
 import type { FlightRecord } from "@/lib/types";
 import type { TelemetryRecording } from "@/lib/telemetry-recorder";
@@ -33,11 +35,16 @@ function presetToRange(preset: DatePreset): { fromMs?: number; toMs?: number } {
 }
 
 export default function FlightHistoryPage() {
-  // Load any persisted history from IndexedDB on first mount. Idempotent.
+  // Load any persisted history + operator profile + aircraft registry from
+  // IndexedDB on first mount. All three are idempotent.
   const loadFromIDB = useHistoryStore((s) => s.loadFromIDB);
+  const loadOperator = useOperatorProfileStore((s) => s.loadFromIDB);
+  const loadAircraft = useAircraftRegistryStore((s) => s.loadFromIDB);
   useEffect(() => {
     void loadFromIDB();
-  }, [loadFromIDB]);
+    void loadOperator();
+    void loadAircraft();
+  }, [loadFromIDB, loadOperator, loadAircraft]);
 
   // In demo mode only, lazy-import the mock seeder and hand it to the store.
   const initWithSeedData = useHistoryStore((s) => s.initWithSeedData);

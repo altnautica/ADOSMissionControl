@@ -7,3 +7,4 @@ export * from './drone';
 export * from './telemetry';
 export * from './mission';
 export * from './ui';
+export * from './operator';

@@ -27,6 +27,8 @@ import {
 } from "./telemetry-recorder";
 import { useHistoryStore } from "@/stores/history-store";
 import { useSettingsStore } from "@/stores/settings-store";
+import { useOperatorProfileStore } from "@/stores/operator-profile-store";
+import { useAircraftRegistryStore } from "@/stores/aircraft-registry-store";
 import { analyzeFlight } from "./flight-analysis/analyzer";
 import type { FlightRecord } from "./types";
 
@@ -93,6 +95,12 @@ function handleArm(droneId: string, droneName: string, snapshot: ArmSnapshot): v
     }
   }
 
+  // Phase 7a — freeze pilot + aircraft snapshots into the new record so
+  // future compliance exports keep working even if the operator edits these
+  // fields later.
+  const profile = useOperatorProfileStore.getState().profile;
+  const aircraft = useAircraftRegistryStore.getState().getOrCreate(droneId, droneName);
+
   const draft: FlightRecord = {
     id: cryptoRandomId(),
     droneId,
@@ -112,6 +120,13 @@ function handleArm(droneId: string, droneName: string, snapshot: ArmSnapshot): v
     recordingId,
     hasTelemetry: false,
     updatedAt: startTime,
+    pilotFirstName: profile.pilotFirstName,
+    pilotLastName: profile.pilotLastName,
+    pilotLicenseNumber: profile.pilotLicenseNumber,
+    pilotLicenseIssuer: profile.pilotLicenseIssuer,
+    aircraftRegistration: aircraft.registrationNumber,
+    aircraftSerial: aircraft.serialNumber,
+    aircraftMtomKg: aircraft.mtomKg,
   };
 
   const history = useHistoryStore.getState();
@@ -145,6 +160,12 @@ async function handleDisarm(droneId: string): Promise<void> {
   const analysis = frames.length > 0 ? analyzeFlight(frames) : { events: [], flags: [], health: {} };
   const endTime = Date.now();
   const history = useHistoryStore.getState();
+  // Roll up aircraft usage stats (Phase 7a).
+  const draftRow = history.records.find((r) => r.id === lc.draftRecordId);
+  const flightSeconds = draftRow ? Math.max(0, Math.round((endTime - draftRow.startTime) / 1000)) : 0;
+  if (flightSeconds > 0) {
+    useAircraftRegistryStore.getState().recordFlight(droneId, flightSeconds);
+  }
   history.updateRecord(lc.draftRecordId, {
     endTime,
     duration: Math.max(0, Math.round((endTime - (history.records.find((r) => r.id === lc.draftRecordId)?.startTime ?? endTime)) / 1000)),
