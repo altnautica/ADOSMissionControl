@@ -42,6 +42,8 @@ export function generateFlightHistory(): FlightRecord[] {
       droneName: DRONE_NAMES[droneIdx],
       suiteType: SUITE_NAMES[randInt(0, SUITE_NAMES.length - 1)],
       date,
+      startTime: date,
+      endTime: date + duration * 1000,
       duration,
       distance,
       maxAlt: randInt(30, 120),
@@ -49,6 +51,7 @@ export function generateFlightHistory(): FlightRecord[] {
       batteryUsed: randInt(15, 65),
       waypointCount: randInt(4, 24),
       status: isEmergency ? "emergency" : isAborted ? "aborted" : "completed",
+      updatedAt: date + duration * 1000,
     });
   }
 

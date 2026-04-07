@@ -15,6 +15,7 @@ import { useDiagnosticsStore } from "./diagnostics-store";
 import { useGeofenceStore } from "./geofence-store";
 import { useCanMonitorStore } from "./can-monitor-store";
 import { recordFrameFor } from "@/lib/telemetry-recorder";
+import { notifyArmed } from "@/lib/flight-lifecycle";
 import type { FlightMode } from "@/lib/types";
 
 /** Known flight modes that map cleanly to the UI FlightMode union. */
@@ -35,6 +36,7 @@ const KNOWN_MODES: Set<string> = new Set([
  */
 export function bridgeTelemetry(
   droneId: string,
+  droneName: string,
   protocol: DroneProtocol,
 ): (() => void)[] {
   const telemetry = useTelemetryStore.getState();
@@ -217,6 +219,15 @@ export function bridgeTelemetry(
       if (!data.armed && wasArmed) {
         useDiagnosticsStore.getState().logEvent("disarm", "Vehicle disarmed");
       }
+
+      // Phase 2: per-drone flight lifecycle. Snapshot last-known position so
+      // the draft FlightRecord gets takeoff/landing coords without an extra
+      // ring-buffer roundtrip in the lifecycle module.
+      const lastPos = telemetry.position.toArray().at(-1);
+      notifyArmed(droneId, droneName, data.armed, {
+        lat: lastPos?.lat,
+        lon: lastPos?.lon,
+      });
 
       if (mode !== prevMode) {
         useDiagnosticsStore.getState().logEvent("mode_change", `Mode: ${prevMode} → ${mode}`);

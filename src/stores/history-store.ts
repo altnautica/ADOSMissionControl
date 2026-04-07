@@ -6,7 +6,10 @@
  */
 
 import { create } from "zustand";
+import { get as idbGet, set as idbSet } from "idb-keyval";
 import type { FlightRecord } from "@/lib/types";
+
+const IDB_HISTORY_KEY = "altcmd:flight-history";
 
 /** On-board log entry received via LOG_ENTRY (msg 118). */
 export interface LogEntry {
@@ -33,6 +36,7 @@ interface HistoryState {
   isLoadingLogList: boolean;
   isDownloadingLog: boolean;
   _seeded: boolean;
+  _loadedFromIdb: boolean;
 }
 
 interface HistoryActions {
@@ -40,6 +44,14 @@ interface HistoryActions {
   initWithSeedData: (records: FlightRecord[]) => void;
   /** Prepend a new flight record (cap at 500). */
   addRecord: (record: FlightRecord) => void;
+  /** Patch an existing record by id. Sets `updatedAt`. Noop if not found. */
+  updateRecord: (id: string, patch: Partial<FlightRecord>) => void;
+  /** Remove a record by id. */
+  removeRecord: (id: string) => void;
+  /** Async: load persisted records from IndexedDB. Idempotent. */
+  loadFromIDB: () => Promise<void>;
+  /** Async: write current records to IndexedDB. */
+  persistToIDB: () => Promise<void>;
   /** Store log entries for a drone from LOG_ENTRY messages. */
   setLogEntries: (droneId: string, entries: LogEntry[]) => void;
   setIsLoadingLogList: (v: boolean) => void;
@@ -58,16 +70,69 @@ export const useHistoryStore = create<HistoryState & HistoryActions>((set, get) 
   isLoadingLogList: false,
   isDownloadingLog: false,
   _seeded: false,
+  _loadedFromIdb: false,
 
   initWithSeedData: (records) => {
     if (get()._seeded) return;
-    set({ records, _seeded: true });
+    // Merge: keep any IDB-loaded records and append seed records that don't
+    // collide by id. This lets demo seed and real persisted history coexist.
+    const existing = new Map(get().records.map((r) => [r.id, r] as const));
+    for (const r of records) if (!existing.has(r.id)) existing.set(r.id, r);
+    const merged = Array.from(existing.values()).sort(
+      (a, b) => (b.startTime ?? b.date) - (a.startTime ?? a.date),
+    );
+    set({ records: merged.slice(0, MAX_RECORDS), _seeded: true });
   },
 
   addRecord: (record) => {
     set((s) => ({
       records: [record, ...s.records].slice(0, MAX_RECORDS),
     }));
+  },
+
+  updateRecord: (id, patch) => {
+    set((s) => {
+      let changed = false;
+      const records = s.records.map((r) => {
+        if (r.id !== id) return r;
+        changed = true;
+        return { ...r, ...patch, updatedAt: Date.now() };
+      });
+      return changed ? { records } : s;
+    });
+  },
+
+  removeRecord: (id) => {
+    set((s) => ({ records: s.records.filter((r) => r.id !== id) }));
+  },
+
+  loadFromIDB: async () => {
+    if (get()._loadedFromIdb) return;
+    try {
+      const stored = (await idbGet(IDB_HISTORY_KEY)) as FlightRecord[] | undefined;
+      if (stored && Array.isArray(stored)) {
+        // Merge with anything already in memory (e.g. demo seed that ran first).
+        const existing = new Map(get().records.map((r) => [r.id, r] as const));
+        for (const r of stored) existing.set(r.id, r); // IDB wins on conflict
+        const merged = Array.from(existing.values()).sort(
+          (a, b) => (b.startTime ?? b.date) - (a.startTime ?? a.date),
+        );
+        set({ records: merged.slice(0, MAX_RECORDS), _loadedFromIdb: true });
+      } else {
+        set({ _loadedFromIdb: true });
+      }
+    } catch (err) {
+      console.warn("[history-store] loadFromIDB failed", err);
+      set({ _loadedFromIdb: true });
+    }
+  },
+
+  persistToIDB: async () => {
+    try {
+      await idbSet(IDB_HISTORY_KEY, get().records);
+    } catch (err) {
+      console.warn("[history-store] persistToIDB failed", err);
+    }
   },
 
   setLogEntries: (droneId, entries) => {

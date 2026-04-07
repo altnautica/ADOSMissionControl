@@ -76,7 +76,7 @@ export const useDroneManager = create<DroneManagerState>((set, get) => ({
   selectedDroneId: null,
 
   addDrone: (id, name, protocol, transport, vehicleInfo, connectionMeta) => {
-    const unsubscribers = bridgeTelemetry(id, protocol);
+    const unsubscribers = bridgeTelemetry(id, name, protocol);
 
     const drone: ManagedDrone = {
       id,
