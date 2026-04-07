@@ -9,7 +9,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
-import { Send, Trash2, TerminalSquare, Code2, Blocks, FileText } from "lucide-react";
+import { Send, Trash2, TerminalSquare, Code2, Blocks, FileText, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
@@ -188,7 +188,33 @@ export function ScriptsTab() {
 
   function handleSelectScript(script: ScriptInfo) {
     setSelectedScript(script);
-    setEditorContent(script.content);
+    // Route content into the correct editor surface based on the sample
+    // format. Built-in samples encode the format in their id + suite label.
+    const isBlockly =
+      script.id.startsWith("sample-blk-") ||
+      script.suite?.includes("Blockly");
+    const isYaml =
+      script.id.startsWith("sample-yml-") ||
+      script.suite?.includes("YAML") ||
+      script.name.endsWith(".yaml");
+    const isText =
+      script.id.startsWith("sample-txt-") ||
+      script.suite?.includes("Text") ||
+      script.name.endsWith(".txt");
+
+    if (isBlockly) {
+      setBlocklyState(script.content);
+      setMode("blockly");
+    } else if (isYaml) {
+      setYamlContent(script.content);
+      setMode("yaml");
+    } else if (isText) {
+      setEditorContent(script.content);
+      setMode("editor");
+    } else {
+      setEditorContent(script.content);
+      setMode("editor");
+    }
   }
 
   function handleNewScript() {
@@ -217,12 +243,34 @@ export function ScriptsTab() {
 
   async function handleSave() {
     if (!selectedScript) return;
+    // Built-in samples are read-only. Auto-duplicate on save.
+    if (selectedScript.id.startsWith("sample-")) {
+      await handleDuplicateSample();
+      return;
+    }
     const content = getActiveContent();
     await saveScript(getActiveFileName(), content, selectedScript.suite);
   }
 
+  /** Create an editable copy of the currently selected sample. */
+  async function handleDuplicateSample() {
+    if (!selectedScript) return;
+    const baseName = selectedScript.name.replace(/^\d+\s*—\s*/, "");
+    const copyName = `Copy of ${baseName}`;
+    const content = getActiveContent();
+    const saved = await saveScript(copyName, content);
+    if (saved) {
+      setSelectedScript(saved);
+    }
+  }
+
   async function handleRun() {
     if (!selectedScript) return;
+    // Samples cannot run directly — duplicate first, then run the copy.
+    if (selectedScript.id.startsWith("sample-")) {
+      await handleDuplicateSample();
+      return;
+    }
     const content = getActiveContent();
     // If script exists on server, run it. Otherwise save first
     const existing = scripts.find((s) => s.id === selectedScript.id);
@@ -271,6 +319,23 @@ export function ScriptsTab() {
           </button>
         ))}
       </div>
+
+      {/* Read-only sample banner */}
+      {selectedScript?.id.startsWith("sample-") && mode !== "console" && (
+        <div className="flex items-center gap-2 px-4 py-2 bg-accent-primary/5 border-b border-accent-primary/20 text-xs">
+          <BookOpen size={12} className="text-accent-primary shrink-0" />
+          <span className="text-text-secondary flex-1">
+            This is a built-in sample. Click <span className="text-accent-primary font-medium">Save</span> or <span className="text-accent-primary font-medium">Run</span> to create an editable copy under{" "}
+            <span className="text-text-primary">My Scripts</span>.
+          </span>
+          <button
+            onClick={handleDuplicateSample}
+            className="px-2 py-0.5 text-[10px] text-accent-primary hover:bg-accent-primary/10 rounded transition-colors"
+          >
+            Duplicate now
+          </button>
+        </div>
+      )}
 
       {mode === "console" ? (
         /* Console Mode */

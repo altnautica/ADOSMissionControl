@@ -7,9 +7,14 @@
  */
 
 import { useState } from "react";
-import { Plus, FileCode, Trash2 } from "lucide-react";
+import { Plus, FileCode, Trash2, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ScriptInfo } from "@/lib/agent/types";
+
+/** Samples are identified by an id that starts with "sample-". */
+function isSample(s: ScriptInfo): boolean {
+  return s.id.startsWith("sample-");
+}
 
 interface ScriptLibraryProps {
   scripts: ScriptInfo[];
@@ -28,8 +33,18 @@ export function ScriptLibrary({
 }: ScriptLibraryProps) {
   const [hovered, setHovered] = useState<string | null>(null);
 
-  const templates = scripts.filter((s) => s.suite);
-  const userScripts = scripts.filter((s) => !s.suite);
+  const samples = scripts.filter(isSample);
+  const templates = scripts.filter((s) => !isSample(s) && s.suite);
+  const userScripts = scripts.filter((s) => !isSample(s) && !s.suite);
+
+  // Group samples by their `suite` label ("Samples · Python", etc.).
+  const sampleGroups = new Map<string, ScriptInfo[]>();
+  for (const s of samples) {
+    const key = s.suite ?? "Samples";
+    const arr = sampleGroups.get(key) ?? [];
+    arr.push(s);
+    sampleGroups.set(key, arr);
+  }
 
   return (
     <div className="flex flex-col w-[220px] border-r border-border-default bg-bg-secondary shrink-0">
@@ -47,6 +62,38 @@ export function ScriptLibrary({
       </div>
 
       <div className="flex-1 overflow-y-auto">
+        {sampleGroups.size > 0 && (
+          <div className="py-2 border-b border-border-default">
+            <div className="px-3 pb-1 flex items-center gap-1.5">
+              <BookOpen size={10} className="text-accent-primary" />
+              <span className="text-[10px] text-accent-primary uppercase tracking-wider font-semibold">
+                Samples
+              </span>
+            </div>
+            {Array.from(sampleGroups.entries()).map(([groupLabel, items]) => (
+              <div key={groupLabel} className="mt-1">
+                <div className="px-3 py-0.5">
+                  <span className="text-[9px] text-text-tertiary uppercase tracking-wider">
+                    {groupLabel.replace(/^Samples\s*·\s*/, "")}
+                  </span>
+                </div>
+                {items.map((script) => (
+                  <ScriptItem
+                    key={script.id}
+                    script={script}
+                    selected={selectedId === script.id}
+                    hovered={hovered === script.id}
+                    onSelect={() => onSelect(script)}
+                    onDelete={() => onDelete(script.id)}
+                    onHover={(h) => setHovered(h ? script.id : null)}
+                    readOnly
+                  />
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+
         {templates.length > 0 && (
           <div className="py-2">
             <div className="px-3 pb-1">
@@ -106,6 +153,7 @@ function ScriptItem({
   onSelect,
   onDelete,
   onHover,
+  readOnly = false,
 }: {
   script: ScriptInfo;
   selected: boolean;
@@ -113,6 +161,7 @@ function ScriptItem({
   onSelect: () => void;
   onDelete: () => void;
   onHover: (h: boolean) => void;
+  readOnly?: boolean;
 }) {
   return (
     <div
@@ -129,11 +178,11 @@ function ScriptItem({
       <FileCode size={12} className="shrink-0" />
       <div className="flex-1 min-w-0">
         <span className="text-xs truncate block">{script.name}</span>
-        {script.suite && (
+        {!readOnly && script.suite && (
           <span className="text-[10px] text-text-tertiary">{script.suite}</span>
         )}
       </div>
-      {hovered && (
+      {hovered && !readOnly && (
         <button
           onClick={(e) => {
             e.stopPropagation();
