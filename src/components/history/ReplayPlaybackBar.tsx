@@ -8,7 +8,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
-  play, pause, resume, stop, seek, setSpeed,
+  play, pause, resume, seek, setSpeed,
   getPlaybackState, onPlaybackChange,
   type PlaybackStatus, type PlaybackSpeed,
 } from "@/lib/telemetry-player";
@@ -16,15 +16,24 @@ import {
   Play, Pause, SkipBack, SkipForward, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { Select } from "@/components/ui/select";
+import type { FlightEvent } from "@/lib/types";
 
 const SPEED_OPTIONS = [
+  { value: "0.25", label: "0.25x" },
   { value: "0.5", label: "0.5x" },
   { value: "1", label: "1x" },
   { value: "2", label: "2x" },
   { value: "4", label: "4x" },
+  { value: "8", label: "8x" },
 ];
 
 const STEP_MS = 5000; // 5 second step
+
+const eventColor: Record<FlightEvent["severity"], string> = {
+  info: "#3a82ff",
+  warning: "#f59e0b",
+  error: "#ef4444",
+};
 
 function formatTime(ms: number): string {
   const totalSec = Math.floor(ms / 1000);
@@ -33,9 +42,14 @@ function formatTime(ms: number): string {
   return `${min}:${String(sec).padStart(2, "0")}`;
 }
 
-export function ReplayPlaybackBar() {
+interface ReplayPlaybackBarProps {
+  events?: FlightEvent[];
+}
+
+export function ReplayPlaybackBar({ events = [] }: ReplayPlaybackBarProps = {}) {
   const [status, setStatus] = useState<PlaybackStatus>(getPlaybackState());
   const scrubRef = useRef(false);
+  void scrubRef;
 
   useEffect(() => {
     const unsub = onPlaybackChange(setStatus);
@@ -108,6 +122,25 @@ export function ReplayPlaybackBar() {
 
       {/* Timeline scrubber */}
       <div className="flex-1 relative">
+        {/* Event ticks (above the range track) */}
+        {status.totalDurationMs > 0 && events.length > 0 && (
+          <div className="absolute -top-2 left-0 right-0 h-2 pointer-events-none">
+            {events.map((e, i) => {
+              const pct = (e.t / status.totalDurationMs) * 100;
+              if (pct < 0 || pct > 100) return null;
+              return (
+                <button
+                  key={`${e.type}-${i}`}
+                  type="button"
+                  className="absolute top-0 w-[3px] h-2 -translate-x-1/2 cursor-pointer pointer-events-auto rounded-sm"
+                  style={{ left: `${pct}%`, backgroundColor: eventColor[e.severity] }}
+                  title={`${e.label} @ ${formatTime(e.t)}`}
+                  onClick={() => seek(e.t)}
+                />
+              );
+            })}
+          </div>
+        )}
         <input
           type="range"
           min={0}
