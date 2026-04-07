@@ -110,6 +110,15 @@ export function bridgeTelemetry(
     ...(protocol.onDebug ? [protocol.onDebug((data) => telemetry.pushDebug(data))] : []),
     ...(protocol.onGimbalAttitude ? [protocol.onGimbalAttitude((data) => telemetry.pushGimbal(data))] : []),
     ...(protocol.onObstacleDistance ? [protocol.onObstacleDistance((data) => telemetry.pushObstacle(data))] : []),
+    ...(protocol.onCanFrame ? [protocol.onCanFrame((data) => {
+      useCanMonitorStore.getState().pushFrame({
+        timestamp: data.timestamp,
+        bus: data.bus,
+        id: data.id,
+        len: data.len,
+        data: data.data,
+      });
+    })] : []),
 
     protocol.onMissionProgress((data) => {
       if (data.reachedSeq !== undefined) {
