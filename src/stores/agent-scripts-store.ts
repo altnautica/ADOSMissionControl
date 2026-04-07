@@ -12,7 +12,21 @@ import type {
   DroneNetEnrollment,
   NetworkPeer,
 } from "@/lib/agent/types";
+import { getBuiltInSamples } from "@/lib/agent/sample-scripts";
 import { useAgentConnectionStore } from "./agent-connection-store";
+
+/**
+ * Merge built-in samples into a script list. Samples are identified by
+ * an `id` prefix of `sample-`. If the agent already returned samples
+ * (future: seeded by agent install), we leave those alone and only
+ * backfill the missing ones.
+ */
+function mergeSamples(fromAgent: ScriptInfo[]): ScriptInfo[] {
+  const samples = getBuiltInSamples();
+  const agentIds = new Set(fromAgent.map((s) => s.id));
+  const missing = samples.filter((s) => !agentIds.has(s.id));
+  return [...fromAgent, ...missing];
+}
 
 interface AgentScriptsState {
   scripts: ScriptInfo[];

@@ -67,7 +67,7 @@ export function OutputsPanel() {
   const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
   const protocol = getSelectedProtocol();
   const { toast } = useToast();
-  const { isLocked, lockMessage } = useArmedLock();
+  const { isHardBlocked, hardBlockMessage } = useArmedLock();
   const [saving, setSaving] = useState(false);
 
   const {
@@ -167,8 +167,8 @@ export function OutputsPanel() {
         <OutputTimerGroupConfig hasLoaded={hasLoaded} boardProfile={boardProfile} functionMap={functionMap} motPwmType={motPwmType} timerConflicts={timerConflicts} conflicts={conflicts} pwmWarnings={pwmWarnings} gpioOutputs={gpioOutputs} onBoardOverride={setManualBoardOverride} />
         <ServoMappingTable outputs={outputs} gpioOutputs={gpioOutputs} conflictDisabledOutputs={conflictDisabledOutputs} boardProfile={boardProfile} liveServos={liveServos} setLocalValue={setLocalValue} />
 
-        <MotorTestSection protocol={protocol} isLocked={isLocked} lockMessage={lockMessage} />
-        <ServoTestSection protocol={protocol} isLocked={isLocked} lockMessage={lockMessage} outputs={outputs} gpioOutputs={gpioOutputs} />
+        <MotorTestSection protocol={protocol} isHardBlocked={isHardBlocked} hardBlockMessage={hardBlockMessage} />
+        <ServoTestSection protocol={protocol} isHardBlocked={isHardBlocked} hardBlockMessage={hardBlockMessage} outputs={outputs} gpioOutputs={gpioOutputs} />
       </div>
     </div>
   );

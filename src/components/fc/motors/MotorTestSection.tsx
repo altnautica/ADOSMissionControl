@@ -11,11 +11,15 @@ import type { DroneProtocol } from "@/lib/protocol/types";
 
 interface MotorTestSectionProps {
   protocol: DroneProtocol | null;
-  isLocked: boolean;
-  lockMessage: string;
+  /**
+   * Hard-block flag. Motor test is genuinely unsafe in flight — never
+   * allow it while armed regardless of user override.
+   */
+  isHardBlocked: boolean;
+  hardBlockMessage: string;
 }
 
-export function MotorTestSection({ protocol, isLocked, lockMessage }: MotorTestSectionProps) {
+export function MotorTestSection({ protocol, isHardBlocked, hardBlockMessage }: MotorTestSectionProps) {
   const { toast } = useToast();
   const [motorTestEnabled, setMotorTestEnabled] = useState(false);
   const [testMotor, setTestMotor] = useState("1");
@@ -24,8 +28,8 @@ export function MotorTestSection({ protocol, isLocked, lockMessage }: MotorTestS
   const [motorTesting, setMotorTesting] = useState(false);
 
   useEffect(() => {
-    if (isLocked) setMotorTestEnabled(false);
-  }, [isLocked]);
+    if (isHardBlocked) setMotorTestEnabled(false);
+  }, [isHardBlocked]);
 
   const runMotorTest = useCallback(async () => {
     if (!protocol || !motorTestEnabled) return;
@@ -55,12 +59,12 @@ export function MotorTestSection({ protocol, isLocked, lockMessage }: MotorTestS
           </span>
         </div>
 
-        <Toggle label="Enable motor test (safety master)" checked={motorTestEnabled} onChange={setMotorTestEnabled} disabled={isLocked} />
+        <Toggle label="Enable motor test (safety master)" checked={motorTestEnabled} onChange={setMotorTestEnabled} disabled={isHardBlocked} />
 
-        {isLocked && (
+        {isHardBlocked && (
           <div className="flex items-center gap-2 p-2 bg-status-error/10 border border-status-error/20">
             <AlertTriangle size={14} className="text-status-error shrink-0" />
-            <span className="text-[10px] text-status-error">{lockMessage}</span>
+            <span className="text-[10px] text-status-error">{hardBlockMessage}</span>
           </div>
         )}
 

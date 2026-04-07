@@ -23,6 +23,7 @@ import { useGcsLocation } from "@/hooks/use-gcs-location";
 import { usePlatform } from "@/hooks/use-platform";
 import { useDisconnectGuard } from "@/hooks/use-disconnect-guard";
 import { DisconnectGuard } from "@/components/fc/shared/DisconnectGuard";
+import { ArmedWriteConfirmDialog } from "@/components/indicators/ArmedWriteConfirmDialog";
 import { useConvexAvailable } from "@/app/ConvexClientProvider";
 import { cn } from "@/lib/utils";
 import { ChangelogNotificationGate } from "@/components/changelog/ChangelogNotificationGate";
@@ -140,6 +141,9 @@ export function CommandShell({ children }: { children: React.ReactNode }) {
 
       {/* Changelog "What's New" notification modal */}
       <ChangelogNotificationGate />
+
+      {/* Armed-state parameter write confirmation dialog */}
+      <ArmedWriteConfirmDialog />
 
       {/* Immersive mode exit button */}
       {immersiveMode && (

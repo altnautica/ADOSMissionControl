@@ -35,7 +35,9 @@ const FRAME_CLASS_OPTIONS = Object.entries(FRAME_CLASS_NAMES).map(([value, label
 
 export function FramePanel() {
   const { toast } = useToast();
-  const { isLocked } = useArmedLock();
+  // Frame class/type are hard-blocked in flight (structural change).
+  // Save button is soft — goes through usePanelParams confirm dialog.
+  const { isHardBlocked } = useArmedLock();
   const { firmwareType } = useFirmwareCapabilities();
   const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
   const connected = !!getSelectedProtocol();
@@ -151,8 +153,8 @@ export function FramePanel() {
             {!isFixedWingOnly && (
               <FrameCard icon={<Box size={14} />} title="Frame Selection" description="Select airframe class and configuration type">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <Select label={classParam} options={FRAME_CLASS_OPTIONS} value={String(frameClass)} onChange={(v) => handleLocalChange(classParam, Number(v))} disabled={isLocked} searchable />
-                  <Select label={typeParam} options={frameTypeOptions} value={String(effectiveFrameType)} onChange={(v) => handleLocalChange(typeParam, Number(v))} disabled={isLocked} />
+                  <Select label={classParam} options={FRAME_CLASS_OPTIONS} value={String(frameClass)} onChange={(v) => handleLocalChange(classParam, Number(v))} disabled={isHardBlocked} searchable />
+                  <Select label={typeParam} options={frameTypeOptions} value={String(effectiveFrameType)} onChange={(v) => handleLocalChange(typeParam, Number(v))} disabled={isHardBlocked} />
                 </div>
                 {typeDescription && <p className="text-[10px] text-text-tertiary mt-2">{typeDescription}</p>}
                 {classNote && (
@@ -189,7 +191,7 @@ export function FramePanel() {
 
             {!isFixedWingOnly && (
               <div className="flex items-center gap-3 pt-2 pb-4">
-                <Button variant="primary" size="lg" icon={<Save size={14} />} disabled={!hasDirty || isLocked} loading={saving} onClick={handleSave}>Save to RAM</Button>
+                <Button variant="primary" size="lg" icon={<Save size={14} />} disabled={!hasDirty} loading={saving} onClick={handleSave}>Save to RAM</Button>
                 {hasRamWrites && <Button variant="secondary" size="lg" icon={<HardDrive size={14} />} loading={committing} onClick={handleFlash}>Write to Flash</Button>}
                 {hasDirty && <span className="text-[10px] text-status-warning">Unsaved changes</span>}
               </div>

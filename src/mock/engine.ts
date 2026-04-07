@@ -17,6 +17,7 @@ import { MockProtocol } from "./mock-protocol";
 import { MockTransport } from "./mock-transport";
 import { BOOT_MESSAGES } from "./status-messages";
 import { emitSelectedDroneTelemetry } from "./engine-telemetry";
+import { mockCanBus } from "./mock-can-bus";
 import { useFleetStore } from "@/stores/fleet-store";
 import { useDroneStore } from "@/stores/drone-store";
 import { useDroneManager } from "@/stores/drone-manager";
@@ -226,6 +227,10 @@ class MockFlightEngine {
       fleetStore.updateDrone(cfg.id, droneUpdate);
 
       if (cfg.id === selectedId) {
+        // DroneCAN bus simulation — feeds CAN_FRAME events into the
+        // selected drone's protocol so the CAN Monitor panel lights up.
+        mockCanBus.tick(state.protocol, now);
+
         const modePhase = Math.floor(state.tickCount / 25) % 6;
         const modePwmTable = [1000, 1295, 1425, 1555, 1685, 1875];
         const ch5Pwm = modePwmTable[modePhase];

@@ -12,7 +12,7 @@ const MOTOR_COUNT = 4;
 export function BfMotorTest({ connected }: { connected: boolean }) {
   const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
   const { toast } = useToast();
-  const { isLocked } = useArmedLock();
+  const { isHardBlocked } = useArmedLock();
 
   const [motorTestActive, setMotorTestActive] = useState(false);
   const [motorValues, setMotorValues] = useState<number[]>(Array(MOTOR_COUNT).fill(0));
@@ -21,13 +21,13 @@ export function BfMotorTest({ connected }: { connected: boolean }) {
   const motorTestIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const startMotorTest = useCallback(() => {
-    if (isLocked) {
+    if (isHardBlocked) {
       toast("Cannot test motors while armed", "error");
       return;
     }
     setMotorTestActive(true);
     toast("Motor test started. Keep clear of props!", "warning");
-  }, [isLocked, toast]);
+  }, [isHardBlocked, toast]);
 
   const stopMotorTest = useCallback(() => {
     const protocol = getSelectedProtocol();
@@ -109,7 +109,7 @@ export function BfMotorTest({ connected }: { connected: boolean }) {
         <div className="space-y-4 mt-3">
           <div className="flex items-center gap-2">
             {!motorTestActive ? (
-              <Button variant="primary" size="sm" icon={<Play size={12} />} onClick={startMotorTest} disabled={isLocked || !connected}>
+              <Button variant="primary" size="sm" icon={<Play size={12} />} onClick={startMotorTest} disabled={isHardBlocked || !connected}>
                 Enable Motor Test
               </Button>
             ) : (
@@ -117,7 +117,7 @@ export function BfMotorTest({ connected }: { connected: boolean }) {
                 Stop All Motors
               </Button>
             )}
-            {isLocked && <span className="text-[10px] text-status-error">Disarm to test motors</span>}
+            {isHardBlocked && <span className="text-[10px] text-status-error">Disarm to test motors</span>}
           </div>
 
           {/* Individual motor sliders */}

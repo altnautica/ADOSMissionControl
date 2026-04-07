@@ -5,9 +5,19 @@ import { ShieldAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
- * Full-panel overlay that blocks config interactions while the vehicle is armed.
- * Wraps FC panel content — renders children normally when disarmed,
- * overlays with a blocking message when armed.
+ * Panel wrapper used across all FC configure panels.
+ *
+ * Previously this rendered a full blocking overlay when armed, preventing
+ * users from even seeing their options. The new behavior:
+ *
+ * - Children always render and stay fully interactive.
+ * - When the vehicle is armed, a non-blocking warning banner pins to the
+ *   top of the panel scroll area.
+ * - The actual write guard happens at save time via
+ *   `usePanelParams.saveAllToRam()` which opens a confirmation dialog.
+ *
+ * The name is preserved so the 23 existing panel imports keep working
+ * without touching every file.
  */
 export function ArmedLockOverlay({
   children,
@@ -16,19 +26,17 @@ export function ArmedLockOverlay({
   children: React.ReactNode;
   className?: string;
 }) {
-  const { isLocked, lockMessage } = useArmedLock();
+  const { isArmed, lockMessage } = useArmedLock();
 
   return (
     <div className={cn("relative flex-1 flex flex-col min-h-0", className)}>
-      {children}
-      {isLocked && (
-        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-bg-primary/80 backdrop-blur-sm">
-          <ShieldAlert size={32} className="text-status-warning" />
-          <p className="text-sm text-text-secondary text-center max-w-xs">
-            {lockMessage}
-          </p>
+      {isArmed && (
+        <div className="shrink-0 flex items-center gap-2 mx-3 mt-2 mb-1 rounded border border-status-warning/50 bg-status-warning/10 px-3 py-2 text-xs">
+          <ShieldAlert size={14} className="text-status-warning shrink-0" />
+          <span className="text-status-warning">{lockMessage}</span>
         </div>
       )}
+      {children}
     </div>
   );
 }
