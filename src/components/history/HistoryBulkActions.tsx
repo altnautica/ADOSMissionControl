@@ -12,11 +12,12 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
-import { Download, Star, StarOff, Trash2, X, FileType } from "lucide-react";
+import { Download, Star, StarOff, Trash2, X, FileType, GitCompare } from "lucide-react";
 import type { FlightRecord } from "@/lib/types";
 import { exportFlightRecordsAsCsv } from "@/lib/csv-export";
 import { useHistoryStore } from "@/stores/history-store";
 import { BulkExportModal } from "./compliance/BulkExportModal";
+import { CompareModal } from "./compare/CompareModal";
 
 interface HistoryBulkActionsProps {
   records: FlightRecord[];
@@ -31,10 +32,12 @@ export function HistoryBulkActions({
 }: HistoryBulkActionsProps) {
   const t = useTranslations("history");
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [compareOpen, setCompareOpen] = useState(false);
 
   if (selectedIds.size === 0) return null;
 
   const selectedRecords = records.filter((r) => selectedIds.has(r.id));
+  const canCompare = selectedRecords.length === 2;
 
   const handleExport = () => {
     exportFlightRecordsAsCsv(selectedRecords);
@@ -83,6 +86,17 @@ export function HistoryBulkActions({
         >
           Logbook
         </Button>
+        {canCompare && (
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={<GitCompare size={14} />}
+            onClick={() => setCompareOpen(true)}
+            title="Compare two flights"
+          >
+            Compare
+          </Button>
+        )}
         <Button
           variant="ghost"
           size="sm"
@@ -123,6 +137,13 @@ export function HistoryBulkActions({
         open={bulkOpen}
         records={selectedRecords}
         onClose={() => setBulkOpen(false)}
+      />
+
+      <CompareModal
+        open={compareOpen}
+        recordA={selectedRecords[0] ?? null}
+        recordB={selectedRecords[1] ?? null}
+        onClose={() => setCompareOpen(false)}
       />
     </>
   );
