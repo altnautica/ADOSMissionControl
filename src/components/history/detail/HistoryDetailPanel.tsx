@@ -12,7 +12,7 @@
 
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { X, Play, Lock, Unlock } from "lucide-react";
+import { X, Play, Lock, Unlock, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { FlightRecord, FlightEvent } from "@/lib/types";
 import { listRecordings, type TelemetryRecording } from "@/lib/telemetry-recorder";
@@ -51,9 +51,11 @@ interface HistoryDetailPanelProps {
   record: FlightRecord;
   onClose: () => void;
   onReplay?: (recording: TelemetryRecording) => void;
+  listCollapsed?: boolean;
+  onToggleListCollapsed?: () => void;
 }
 
-export function HistoryDetailPanel({ record, onClose, onReplay }: HistoryDetailPanelProps) {
+export function HistoryDetailPanel({ record, onClose, onReplay, listCollapsed, onToggleListCollapsed }: HistoryDetailPanelProps) {
   const [active, setActive] = useState<TabId>("overview");
   const [recordings, setRecordings] = useState<TelemetryRecording[]>([]);
   const [signing, setSigning] = useState(false);
@@ -121,10 +123,20 @@ export function HistoryDetailPanel({ record, onClose, onReplay }: HistoryDetailP
   });
 
   return (
-    <div className="w-[420px] border-l border-border-default bg-bg-secondary flex flex-col shrink-0 overflow-hidden">
+    <div className="flex-1 min-w-0 border-l border-border-default bg-bg-secondary flex flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-border-default flex-shrink-0">
         <div className="flex items-center gap-2 min-w-0">
+          {onToggleListCollapsed && (
+            <button
+              onClick={onToggleListCollapsed}
+              className="text-text-tertiary hover:text-text-primary transition-colors cursor-pointer p-1"
+              aria-label={listCollapsed ? "Show flight list" : "Hide flight list"}
+              title={listCollapsed ? "Show flight list" : "Hide flight list"}
+            >
+              {listCollapsed ? <PanelLeftOpen size={14} /> : <PanelLeftClose size={14} />}
+            </button>
+          )}
           <h3 className="text-xs font-semibold text-text-primary uppercase tracking-wider truncate">
             {record.customName || "Flight Detail"}
           </h3>
@@ -209,7 +221,7 @@ export function HistoryDetailPanel({ record, onClose, onReplay }: HistoryDetailP
       </div>
 
       {/* Tab body */}
-      <div className="flex-1 overflow-y-auto p-3">
+      <div className="flex-1 overflow-y-auto p-4">
         {active === "overview" && <OverviewTab record={record} />}
         {active === "map" && <MapTab record={record} />}
         {active === "charts" && <ChartsTab record={record} />}

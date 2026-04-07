@@ -37,6 +37,7 @@ interface HistoryTableProps {
   sortKey: SortKey;
   sortDir: SortDir;
   onSortChange: (key: SortKey) => void;
+  compact?: boolean;
 }
 
 interface SortHeaderProps {
@@ -72,6 +73,7 @@ export function HistoryTable({
   sortKey,
   sortDir,
   onSortChange,
+  compact = false,
 }: HistoryTableProps) {
   const t = useTranslations("history");
   const [page, setPage] = useState(0);
@@ -87,7 +89,7 @@ export function HistoryTable({
   const allOnPageSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.has(id));
 
   return (
-    <div className="flex flex-col flex-1 overflow-hidden">
+    <div className="flex flex-col h-full w-full overflow-hidden">
       <div className="overflow-auto flex-1">
         <table className="w-full text-xs">
           <thead>
@@ -104,12 +106,18 @@ export function HistoryTable({
               <SortHeader label={t("date")} sortKey="date" activeKey={sortKey} dir={sortDir} onClick={onSortChange} />
               <SortHeader label={t("drone")} sortKey="drone" activeKey={sortKey} dir={sortDir} onClick={onSortChange} />
               <SortHeader label={t("duration")} sortKey="duration" activeKey={sortKey} dir={sortDir} onClick={onSortChange} />
-              <SortHeader label={t("distance")} sortKey="distance" activeKey={sortKey} dir={sortDir} onClick={onSortChange} />
-              <SortHeader label={t("maxAlt")} sortKey="maxAlt" activeKey={sortKey} dir={sortDir} onClick={onSortChange} />
+              {!compact && (
+                <>
+                  <SortHeader label={t("distance")} sortKey="distance" activeKey={sortKey} dir={sortDir} onClick={onSortChange} />
+                  <SortHeader label={t("maxAlt")} sortKey="maxAlt" activeKey={sortKey} dir={sortDir} onClick={onSortChange} />
+                </>
+              )}
               <th className="px-3 py-2 text-left font-semibold text-text-secondary uppercase tracking-wider">
                 {t("status")}
               </th>
-              <SortHeader label={t("battUsed")} sortKey="battery" activeKey={sortKey} dir={sortDir} onClick={onSortChange} />
+              {!compact && (
+                <SortHeader label={t("battUsed")} sortKey="battery" activeKey={sortKey} dir={sortDir} onClick={onSortChange} />
+              )}
             </tr>
           </thead>
           <tbody>
@@ -151,16 +159,22 @@ export function HistoryTable({
                   <td className="px-3 py-2 text-text-primary font-mono">
                     {formatDuration(rec.duration)}
                   </td>
-                  <td className="px-3 py-2 text-text-primary font-mono">
-                    {(rec.distance / 1000).toFixed(1)} km
-                  </td>
-                  <td className="px-3 py-2 text-text-primary font-mono">{rec.maxAlt}m</td>
+                  {!compact && (
+                    <>
+                      <td className="px-3 py-2 text-text-primary font-mono">
+                        {(rec.distance / 1000).toFixed(1)} km
+                      </td>
+                      <td className="px-3 py-2 text-text-primary font-mono">{rec.maxAlt}m</td>
+                    </>
+                  )}
                   <td className="px-3 py-2">
                     <Badge variant={statusVariant[rec.status] ?? "neutral"} size="sm">
                       {rec.status}
                     </Badge>
                   </td>
-                  <td className="px-3 py-2 text-text-primary font-mono">{rec.batteryUsed}%</td>
+                  {!compact && (
+                    <td className="px-3 py-2 text-text-primary font-mono">{rec.batteryUsed}%</td>
+                  )}
                 </tr>
               );
             })}
