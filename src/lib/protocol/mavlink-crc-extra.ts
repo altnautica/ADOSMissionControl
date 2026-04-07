@@ -89,6 +89,7 @@ export const CRC_EXTRA: ReadonlyMap<number, number> = new Map([
   [246, 245],   // AIS_VESSEL
   [285, 166],   // GIMBAL_MANAGER_INFORMATION
   [286, 48],    // GIMBAL_MANAGER_STATUS
+  [386, 132],   // CAN_FRAME
 ]);
 
 /**
@@ -173,4 +174,5 @@ export const PAYLOAD_LENGTHS: ReadonlyMap<number, number> = new Map([
   [246, 58],    // AIS_VESSEL
   [285, 33],    // GIMBAL_MANAGER_INFORMATION
   [286, 13],    // GIMBAL_MANAGER_STATUS
+  [386, 16],    // CAN_FRAME
 ]);

@@ -450,3 +450,16 @@ export type GimbalManagerStatusCallback = (data: {
   secondaryControlSysid: number;
   secondaryControlCompid: number;
 }) => void;
+
+/** CAN_FRAME (msg 386) — raw CAN frame from a flight controller's CAN bus. */
+export type CanFrameCallback = (data: {
+  timestamp: number;
+  bus: number;
+  len: number;
+  targetSystem: number;
+  targetComponent: number;
+  /** 11-bit (standard) or 29-bit (extended) CAN identifier */
+  id: number;
+  /** Up to 8 data bytes */
+  data: Uint8Array;
+}) => void;
