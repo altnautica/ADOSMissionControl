@@ -50,6 +50,7 @@ const GpsPanel = dynamic(() => import("@/components/fc/sensors/GpsPanel").then(m
 const BlackboxPanel = dynamic(() => import("@/components/fc/comms/BlackboxPanel").then(m => ({ default: m.BlackboxPanel })), { ssr: false, ...panelLoading });
 const RateProfilePanel = dynamic(() => import("@/components/fc/betaflight/RateProfilePanel").then(m => ({ default: m.RateProfilePanel })), { ssr: false, ...panelLoading });
 const AdjustmentsPanel = dynamic(() => import("@/components/fc/betaflight/AdjustmentsPanel").then(m => ({ default: m.AdjustmentsPanel })), { ssr: false, ...panelLoading });
+const CanMonitorPanel = dynamic(() => import("@/components/fc/can/CanMonitorPanel").then(m => ({ default: m.CanMonitorPanel })), { ssr: false, ...panelLoading });
 import type { ReactNode } from "react";
 import type { ProtocolCapabilities } from "@/lib/protocol/types";
 import {
@@ -80,6 +81,7 @@ import {
   Sliders,
   Settings,
   HardDrive,
+  Network,
 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -134,6 +136,7 @@ const FC_NAV_ITEMS: FcNavItem[] = [
   { id: "debug", label: "Debug", icon: <Bug size={14} />, requiredCapability: "supportsDebugValues", section: "Debug" },
   { id: "diagnostics", label: "Diagnostics", icon: <Stethoscope size={14} />, section: "Debug" },
   { id: "logs", label: "Log Analysis", icon: <BarChart3 size={14} />, section: "Debug" },
+  { id: "can", label: "DroneCAN Monitor", icon: <Network size={14} />, requiredCapability: "supportsCanFrame", section: "Debug" },
 ];
 
 // ---------------------------------------------------------------------------
@@ -195,6 +198,7 @@ export function DroneConfigureTab({ droneId, droneName, isConnected }: DroneConf
     debug: t("debugPanel"),
     diagnostics: t("diagnostics"),
     logs: t("logAnalysis"),
+    can: "DroneCAN Monitor",
   };
 
   // Persist active panel to settings store
@@ -349,6 +353,7 @@ export function DroneConfigureTab({ droneId, droneName, isConnected }: DroneConf
             {activePanel === "debug" && <DebugPanel />}
             {activePanel === "diagnostics" && <DiagnosticsPanel />}
             {activePanel === "logs" && <LogAnalysisPanel />}
+            {activePanel === "can" && <CanMonitorPanel />}
           </>
         )}
       </div>
