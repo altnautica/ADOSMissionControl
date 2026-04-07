@@ -1,12 +1,19 @@
 "use client";
 
+import { useState } from "react";
 import { useTranslations } from "next-intl";
+import dynamic from "next/dynamic";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusDot } from "@/components/ui/status-dot";
 import { useInputStore } from "@/stores/input-store";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
+
+const JoystickCalibrationWizard = dynamic(
+  () => import("./JoystickCalibrationWizard").then((m) => ({ default: m.JoystickCalibrationWizard })),
+  { ssr: false }
+);
 
 const AXIS_LABEL_KEYS = ["roll", "pitch", "throttle", "yaw"] as const;
 
@@ -43,9 +50,10 @@ function AxisBar({ label, value }: { label: string; value: number }) {
 
 export function InputDevicesSection() {
   const t = useTranslations("inputDevices");
-  const { activeController, axes, deadzone, expo, setDeadzone, setExpo } =
+  const { activeController, axes, deadzone, expo, setDeadzone, setExpo, calibration, clearCalibration } =
     useInputStore();
   const { toast } = useToast();
+  const [showCalWizard, setShowCalWizard] = useState(false);
 
   const isConnected = activeController !== "none";
 
@@ -74,6 +82,43 @@ export function InputDevicesSection() {
           </span>
         </div>
       </Card>
+
+      {/* Calibration */}
+      {isConnected && (
+        <Card title="Calibration">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {calibration ? (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium rounded bg-status-success/15 text-status-success">
+                  Calibrated
+                </span>
+              ) : (
+                <span className="text-xs text-text-tertiary">Not calibrated</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {calibration && (
+                <button
+                  onClick={clearCalibration}
+                  className="text-[10px] text-text-tertiary hover:text-status-error transition-colors"
+                >
+                  Reset
+                </button>
+              )}
+              <button
+                onClick={() => setShowCalWizard(true)}
+                className="px-3 py-1 text-xs font-medium bg-accent-primary text-white rounded hover:opacity-90 transition-opacity"
+              >
+                {calibration ? "Recalibrate" : "Calibrate"}
+              </button>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {showCalWizard && (
+        <JoystickCalibrationWizard onClose={() => setShowCalWizard(false)} />
+      )}
 
       {/* Axis Mapping */}
       <Card title={t("axisMapping")}>

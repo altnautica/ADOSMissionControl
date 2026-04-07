@@ -8,6 +8,7 @@ import { TelemetryReadout } from "@/components/flight/TelemetryReadout";
 import { ActionsPanel } from "@/components/flight/ActionsPanel";
 import { CompactInfoCards } from "@/components/flight/CompactInfoCards";
 import { OsdOverlay } from "@/components/flight/OsdOverlay";
+import { ProximityRadar } from "@/components/flight/ProximityRadar";
 import { VideoCanvas } from "@/components/flight/VideoCanvas";
 import { TelemetryFreshnessIndicator } from "@/components/indicators/TelemetryFreshnessIndicator";
 import { RecordingControls } from "@/components/shared/RecordingControls";
@@ -129,6 +130,7 @@ export function DroneOverviewTab({ drone }: DroneOverviewTabProps) {
             <div className="relative h-full">
               <VideoCanvas>
                 <OsdOverlay />
+                <ProximityRadar />
               </VideoCanvas>
             </div>
           )}
