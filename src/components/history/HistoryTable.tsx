@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn, formatDate, formatDuration } from "@/lib/utils";
 import type { FlightRecord } from "@/lib/types";
-import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Star } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Star, Cloud, CloudOff } from "lucide-react";
 
 const PAGE_SIZE = 20;
 
@@ -118,6 +118,7 @@ export function HistoryTable({
               {!compact && (
                 <SortHeader label={t("battUsed")} sortKey="battery" activeKey={sortKey} dir={sortDir} onClick={onSortChange} />
               )}
+              {!compact && <th className="px-1 py-2 w-[24px]" />}
             </tr>
           </thead>
           <tbody>
@@ -174,6 +175,15 @@ export function HistoryTable({
                   </td>
                   {!compact && (
                     <td className="px-3 py-2 text-text-primary font-mono">{rec.batteryUsed}%</td>
+                  )}
+                  {!compact && (
+                    <td className="px-1 py-2 text-center" title={rec.cloudSynced ? "Synced to cloud" : "Local only"}>
+                      {rec.cloudSynced ? (
+                        <Cloud size={11} className="inline text-status-success" />
+                      ) : (
+                        <CloudOff size={11} className="inline text-text-tertiary" />
+                      )}
+                    </td>
                   )}
                 </tr>
               );

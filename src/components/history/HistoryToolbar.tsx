@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Download, Star, X } from "lucide-react";
 import type { FlightRecord } from "@/lib/types";
 import { exportFlightRecordsAsCsv } from "@/lib/csv-export";
+import { CloudSyncBadge } from "./CloudSyncBadge";
 
 export type DatePreset = "all" | "today" | "7d" | "30d" | "month";
 
@@ -174,6 +175,7 @@ export function HistoryToolbar({
       >
         {t("reset")}
       </Button>
+      <CloudSyncBadge />
     </div>
   );
 }
