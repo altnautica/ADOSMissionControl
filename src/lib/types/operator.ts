@@ -129,3 +129,51 @@ export interface BatteryPack {
   notes?: string;
 }
 
+// ── Equipment registry (Phase 12b) ───────────────────────────
+
+export type EquipmentType =
+  | "prop_set"
+  | "motor_set"
+  | "esc_set"
+  | "camera"
+  | "gimbal"
+  | "payload"
+  | "frame"
+  | "rc_tx";
+
+/**
+ * Generic registry entry for any swappable component on the drone:
+ * propeller sets, motor sets, ESCs, cameras, gimbals, payloads, frames,
+ * RC transmitters. Hours and flight counts auto-roll up on disarm via
+ * the loadout linkage that lands in Phase 12c.
+ */
+export interface EquipmentItem {
+  /** Stable id. UUID generated client-side. */
+  id: string;
+  type: EquipmentType;
+  /** Friendly name (e.g. "Gemfan 5152S 5"). */
+  label: string;
+  /** Manufacturer or operator-assigned serial number. */
+  serial?: string;
+  manufacturer?: string;
+  model?: string;
+  /** Free-form free text describing where this item is fitted (e.g. "Alpha-1 motor 3", "Bravo backpack RC"). */
+  fitment?: string;
+  /** ISO date this item was installed / put into service. */
+  installDate?: string;
+
+  // Auto-rolled-up usage stats. Updated by recordFlight(). 12c wires it.
+  totalFlightHours?: number;
+  totalFlights?: number;
+
+  /** Trigger an "inspection due" badge once `totalFlightHours` exceeds this. */
+  inspectionDueHours?: number;
+  /** ISO date of last maintenance / inspection. */
+  lastInspectedAt?: string;
+
+  /** ISO date this item was retired from service. Hides from active picker. */
+  retiredAt?: string;
+  notes?: string;
+}
+
+
