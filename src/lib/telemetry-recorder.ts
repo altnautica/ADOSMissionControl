@@ -310,6 +310,56 @@ async function finalizeSlot(slotKey: string, slot: RecorderSlot): Promise<Teleme
 }
 
 /**
+ * Insert a fully-formed recording into IDB without going through the live
+ * arm/disarm slot machinery. Used by importers (Phase 11 dataflash + Phase 30
+ * ULog) that already have all frames in memory and just need them stored
+ * + indexed so the existing Charts/Replay/Analysis pipeline can read them.
+ *
+ * Caller is responsible for choosing a unique `id` (e.g. `dataflash-<uuid>`).
+ * The LRU cap on the recordings index does not apply to imported recordings —
+ * they're typically larger and the user explicitly asked to import them.
+ */
+export async function setRecordingFromFrames(
+  id: string,
+  name: string,
+  frames: TelemetryFrame[],
+  options: {
+    droneId?: string;
+    droneName?: string;
+    startTimeMs?: number;
+  } = {},
+): Promise<TelemetryRecording> {
+  const startTime = options.startTimeMs ?? Date.now();
+  const lastOffsetMs = frames.length > 0 ? frames[frames.length - 1].offsetMs : 0;
+  const endTime = startTime + lastOffsetMs;
+
+  const channels = new Set<string>();
+  for (const frame of frames) channels.add(frame.channel);
+
+  const recording: TelemetryRecording = {
+    id,
+    name,
+    startTime,
+    endTime,
+    durationMs: endTime - startTime,
+    frameCount: frames.length,
+    channels: Array.from(channels),
+    droneId: options.droneId,
+    droneName: options.droneName,
+  };
+
+  await idbSet(`${IDB_RECORDINGS_PREFIX}${id}`, frames);
+
+  const index: TelemetryRecording[] = (await idbGet(IDB_RECORDINGS_INDEX)) ?? [];
+  // Replace any existing entry with the same id (idempotent re-import).
+  const filtered = index.filter((r) => r.id !== id);
+  filtered.push(recording);
+  await idbSet(IDB_RECORDINGS_INDEX, filtered);
+
+  return recording;
+}
+
+/**
  * List all saved recordings.
  */
 export async function listRecordings(): Promise<TelemetryRecording[]> {

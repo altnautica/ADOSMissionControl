@@ -129,6 +129,11 @@ export interface FlightRecord {
 
   /** Phase 9 — true if this record has been successfully synced to Convex. */
   cloudSynced?: boolean;
+
+  /** Phase 11 — origin of this record. */
+  source?: "live" | "dataflash" | "imported";
+  /** Phase 11 — original `.bin` / `.ulg` / `.tlog` filename when imported. */
+  sourceFilename?: string;
 }
 
 // ── Analytics ────────────────────────────────────────────────
