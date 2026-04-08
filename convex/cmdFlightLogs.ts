@@ -101,6 +101,34 @@ const RECORD_VALIDATOR = {
       rcTxId: v.optional(v.string()),
     }),
   ),
+  preflight: v.optional(
+    v.object({
+      checklistSessionId: v.optional(v.string()),
+      checklistStartedAt: v.optional(v.number()),
+      checklistComplete: v.optional(v.boolean()),
+      checklistItems: v.optional(
+        v.array(
+          v.object({
+            id: v.string(),
+            category: v.string(),
+            label: v.string(),
+            status: v.union(
+              v.literal("pending"),
+              v.literal("pass"),
+              v.literal("fail"),
+              v.literal("skipped"),
+            ),
+            type: v.union(v.literal("auto"), v.literal("manual")),
+            displayValue: v.optional(v.string()),
+          }),
+        ),
+      ),
+      sysStatusHealth: v.optional(v.number()),
+      sysStatusPresent: v.optional(v.number()),
+      sysStatusEnabled: v.optional(v.number()),
+      prearmFailures: v.optional(v.array(v.string())),
+    }),
+  ),
   updatedAt: v.number(),
 };
 

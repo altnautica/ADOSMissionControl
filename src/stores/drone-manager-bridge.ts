@@ -16,6 +16,7 @@ import { useGeofenceStore } from "./geofence-store";
 import { useCanMonitorStore } from "./can-monitor-store";
 import { recordFrameFor } from "@/lib/telemetry-recorder";
 import { notifyArmed } from "@/lib/flight-lifecycle";
+import { usePrearmBufferStore } from "@/stores/prearm-buffer-store";
 import type { FlightMode } from "@/lib/types";
 
 /** Known flight modes that map cleanly to the UI FlightMode union. */
@@ -187,6 +188,12 @@ export function bridgeTelemetry(
         data: data.data,
       });
     })] : []),
+
+    // Phase 13 — capture ArduPilot prearm STATUSTEXT lines into a per-drone
+    // ring buffer that the flight lifecycle drains on arm.
+    protocol.onStatusText((data) => {
+      usePrearmBufferStore.getState().push(droneId, data.text);
+    }),
 
     protocol.onMissionProgress((data) => {
       if (data.reachedSeq !== undefined) {

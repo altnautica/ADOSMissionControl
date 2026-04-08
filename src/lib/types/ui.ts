@@ -137,6 +137,42 @@ export interface FlightRecord {
 
   /** Phase 12c — frozen loadout snapshot at arm time (battery + equipment ids). */
   loadout?: LoadoutSnapshot;
+
+  /** Phase 13 — pre-flight checklist + prearm bitmask snapshot at arm time. */
+  preflight?: PreflightSnapshot;
+}
+
+/**
+ * Snapshot of the pre-flight state at arm time. Used by the History
+ * Overview "Pre-flight" card and by jurisdiction validators (CASA in
+ * particular requires the actual checklist contents).
+ */
+export interface PreflightSnapshot {
+  /** Checklist session id from useChecklistStore. */
+  checklistSessionId?: string;
+  checklistStartedAt?: number;
+  /** Each item's id + status at arm time, frozen. */
+  checklistItems?: PreflightChecklistItem[];
+  /** True iff every checklist item was pass or skipped. */
+  checklistComplete?: boolean;
+  /** Latest SYS_STATUS health bitmask at arm time. */
+  sysStatusHealth?: number;
+  /** Latest SYS_STATUS sensors-present bitmask at arm time. */
+  sysStatusPresent?: number;
+  /** Latest SYS_STATUS sensors-enabled bitmask at arm time. */
+  sysStatusEnabled?: number;
+  /** Recent ArduPilot STATUSTEXT lines starting with "PreArm:" (most recent ≤10). */
+  prearmFailures?: string[];
+}
+
+export interface PreflightChecklistItem {
+  id: string;
+  category: string;
+  label: string;
+  status: "pending" | "pass" | "fail" | "skipped";
+  type: "auto" | "manual";
+  /** Captured display value for auto items at arm time (e.g. "98 sats", "12.4V"). */
+  displayValue?: string;
 }
 
 /** Equipment + battery ids fitted to the drone for one specific flight. */

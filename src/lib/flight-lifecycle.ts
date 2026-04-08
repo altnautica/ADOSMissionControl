@@ -32,8 +32,16 @@ import { useAircraftRegistryStore } from "@/stores/aircraft-registry-store";
 import { useLoadoutStore } from "@/stores/loadout-store";
 import { useBatteryRegistryStore } from "@/stores/battery-registry-store";
 import { useEquipmentRegistryStore } from "@/stores/equipment-registry-store";
+import { useChecklistStore } from "@/stores/checklist-store";
+import { useTelemetryStore } from "@/stores/telemetry-store";
+import { usePrearmBufferStore } from "@/stores/prearm-buffer-store";
 import { analyzeFlight } from "./flight-analysis/analyzer";
-import type { FlightRecord, LoadoutSnapshot } from "./types";
+import type {
+  FlightRecord,
+  LoadoutSnapshot,
+  PreflightSnapshot,
+  PreflightChecklistItem,
+} from "./types";
 
 // ── Per-drone lifecycle state ────────────────────────────────
 
@@ -107,6 +115,9 @@ function handleArm(droneId: string, droneName: string, snapshot: ArmSnapshot): v
   // Phase 12c — freeze the user's pre-flight loadout selection.
   const loadout: LoadoutSnapshot | undefined = useLoadoutStore.getState().get(droneId);
 
+  // Phase 13 — freeze the pre-flight checklist + prearm bitmask snapshot.
+  const preflight = capturePreflightSnapshot(droneId);
+
   const draft: FlightRecord = {
     id: cryptoRandomId(),
     droneId,
@@ -134,6 +145,7 @@ function handleArm(droneId: string, droneName: string, snapshot: ArmSnapshot): v
     aircraftSerial: aircraft.serialNumber,
     aircraftMtomKg: aircraft.mtomKg,
     loadout,
+    preflight,
   };
 
   const history = useHistoryStore.getState();
@@ -330,6 +342,47 @@ export function computeFlightStats(frames: TelemetryFrame[]): FlightStats {
     path,
     landingLat,
     landingLon,
+  };
+}
+
+// ── Pre-flight snapshot (Phase 13) ───────────────────────────
+
+function capturePreflightSnapshot(droneId: string): PreflightSnapshot | undefined {
+  const checklist = useChecklistStore.getState();
+  const items: PreflightChecklistItem[] = checklist.items.map((i) => ({
+    id: i.id,
+    category: i.category,
+    label: i.label,
+    status: i.status,
+    type: i.type,
+    displayValue: i.displayValue,
+  }));
+  const checklistComplete = items.length > 0 && items.every((i) => i.status === "pass" || i.status === "skipped");
+
+  // Drain the prearm STATUSTEXT buffer the bridge has been filling.
+  const prearmFailures = usePrearmBufferStore.getState().drain(droneId);
+
+  // SYS_STATUS bitmasks at arm time — these come from the latest sysStatus
+  // ring buffer entry. ArduPilot stores sensor health/present/enabled bitmasks
+  // here per the MAVLink SYS_STATUS message.
+  const latestSys = useTelemetryStore.getState().sysStatus.latest();
+
+  // If there's nothing to capture, return undefined to keep the FlightRecord clean.
+  const hasAnything =
+    items.length > 0 ||
+    prearmFailures.length > 0 ||
+    latestSys?.sensorsHealthy !== undefined;
+  if (!hasAnything) return undefined;
+
+  return {
+    checklistSessionId: checklist.sessionId ?? undefined,
+    checklistStartedAt: checklist.startedAt ?? undefined,
+    checklistItems: items,
+    checklistComplete,
+    sysStatusHealth: latestSys?.sensorsHealthy,
+    sysStatusPresent: latestSys?.sensorsPresent,
+    sysStatusEnabled: latestSys?.sensorsEnabled,
+    prearmFailures,
   };
 }
 
