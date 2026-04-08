@@ -8,6 +8,7 @@ import { HistoryStatsBar } from "@/components/history/HistoryStatsBar";
 import { HistoryBulkActions } from "@/components/history/HistoryBulkActions";
 import { ReplayView } from "@/components/history/ReplayView";
 import { EmptyState } from "@/components/history/EmptyState";
+import { CloudSyncBridge } from "@/components/history/CloudSyncBridge";
 import { useHistoryStore } from "@/stores/history-store";
 import { useOperatorProfileStore } from "@/stores/operator-profile-store";
 import { useAircraftRegistryStore } from "@/stores/aircraft-registry-store";
@@ -344,6 +345,7 @@ export default function FlightHistoryPage() {
 
   return (
     <div className="relative flex-1 flex flex-col h-full overflow-hidden">
+      <CloudSyncBridge />
       {/* Header */}
       <div className="px-4 py-3 border-b border-border-default shrink-0">
         <h1 className="text-sm font-display font-semibold text-text-primary">Flight History</h1>
