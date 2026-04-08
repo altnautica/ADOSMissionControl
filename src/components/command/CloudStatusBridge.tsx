@@ -20,9 +20,9 @@ import { cmdDroneStatusApi, cmdDroneCommandsApi } from "@/lib/community-api-dron
 import { useConvexAvailable } from "@/app/ConvexClientProvider";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import type { AgentStatus } from "@/lib/agent/types";
+import { STALE_THRESHOLD_MS, OFFLINE_THRESHOLD_MS } from "@/lib/agent/freshness";
 
-const STALE_THRESHOLD_MS = 30_000; // 30s = 6 missed heartbeats at 5s interval
-const STALE_CHECK_INTERVAL_MS = 10_000; // Check every 10s
+const STALE_CHECK_INTERVAL_MS = 5_000; // Check every 5s so the 1Hz UI label stays close to reality
 
 export function CloudStatusBridge() {
   const cloudDeviceId = useAgentConnectionStore((s) => s.cloudDeviceId);
@@ -51,18 +51,31 @@ export function CloudStatusBridge() {
       }
     }, 15000);
 
-    // Ongoing staleness check: mark offline after 30s without heartbeat
+    // Ongoing staleness check: two thresholds.
+    //   > STALE_THRESHOLD_MS  (30s) → mark system store stale, dim the UI,
+    //                                 keep last-known data visible.
+    //   > OFFLINE_THRESHOLD_MS (120s) → mark connection offline, clear MAVLink
+    //                                   URL so dependent UIs stop trying.
     const interval = setInterval(() => {
       const state = useAgentConnectionStore.getState();
       if (!state.cloudMode || !state.lastCloudUpdate) return;
 
       const elapsed = Date.now() - state.lastCloudUpdate;
+
       if (elapsed > STALE_THRESHOLD_MS) {
+        if (!useAgentSystemStore.getState().stale) {
+          useAgentSystemStore.setState({ stale: true });
+        }
+      }
+
+      if (elapsed > OFFLINE_THRESHOLD_MS) {
         const seconds = Math.round(elapsed / 1000);
-        useAgentConnectionStore.setState({
-          connected: false,
+        const patch: Record<string, unknown> = {
           connectionError: `Agent offline (last seen ${seconds}s ago)`,
-        });
+        };
+        if (state.connected) patch.connected = false;
+        if (state.mavlinkUrl) patch.mavlinkUrl = null;
+        useAgentConnectionStore.setState(patch);
       }
     }, STALE_CHECK_INTERVAL_MS);
 
@@ -114,6 +127,8 @@ export function CloudStatusBridge() {
     // that can cause React batching issues with stale intermediate states
     const systemUpdate: Record<string, unknown> = {
       status: mapped,
+      lastUpdatedAt: Date.now(),
+      stale: false,
       resources: {
         cpu_percent: mapped.health.cpu_percent,
         memory_percent: mapped.health.memory_percent,

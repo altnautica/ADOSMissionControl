@@ -41,6 +41,10 @@ interface AgentConnectionActions {
   stopPolling: () => void;
   clear: () => void;
 
+  // Staleness cascade (local-mode polling)
+  noteFetchSuccess: () => void;
+  noteFetchFailure: () => void;
+
   // Cloud methods
   connectCloud: (deviceId: string) => void;
   sendCloudCommand: (command: string, args?: Record<string, unknown>) => void;
@@ -62,6 +66,7 @@ export const useAgentConnectionStore = create<AgentConnectionStore>((set, get) =
   client: null,
   connectionError: null,
   pollInterval: null,
+  consecutiveFailures: 0,
 
   // Cloud mode defaults
   cloudMode: false,
@@ -120,11 +125,42 @@ export const useAgentConnectionStore = create<AgentConnectionStore>((set, get) =
       lastCloudUpdate: null,
       pollInterval: null,
       mavlinkUrl: null,
+      consecutiveFailures: 0,
     });
     // Clear all other stores
     useAgentSystemStore.getState().clear();
     useAgentPeripheralsStore.getState().clear();
     useAgentScriptsStore.getState().clear();
+  },
+
+  noteFetchSuccess() {
+    const { consecutiveFailures, connected, connectionError } = get();
+    const patch: Partial<AgentConnectionState> = {};
+    if (consecutiveFailures !== 0) patch.consecutiveFailures = 0;
+    if (!connected) patch.connected = true;
+    if (connectionError) patch.connectionError = null;
+    if (Object.keys(patch).length > 0) set(patch);
+    // Fetch succeeded — system store stale flag is cleared by the fetcher itself.
+  },
+
+  noteFetchFailure() {
+    const next = get().consecutiveFailures + 1;
+    set({ consecutiveFailures: next });
+    // After 3 consecutive failures (~9s at 3s poll), mark data stale but keep
+    // last-known values visible. After 6 (~18s), flip the header to offline.
+    if (next >= 3) {
+      if (!useAgentSystemStore.getState().stale) {
+        useAgentSystemStore.setState({ stale: true });
+      }
+    }
+    if (next >= 6) {
+      if (get().connected) {
+        set({
+          connected: false,
+          connectionError: "Lost connection to agent",
+        });
+      }
+    }
   },
 
   connectCloud(deviceId: string) {
