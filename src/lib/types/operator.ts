@@ -93,3 +93,39 @@ export interface AircraftRecord {
   /** Hours since last maintenance threshold. */
   nextMaintenanceDueHours?: number;
 }
+
+// ── Battery registry (Phase 12a) ─────────────────────────────
+
+export type BatteryChemistry = "LiPo" | "Li-Ion" | "LiFePO4" | "Li-HV" | "NiMH" | "Other";
+
+export interface BatteryPack {
+  /** Stable ID. UUID generated client-side. */
+  id: string;
+  /** Manufacturer-assigned serial number. */
+  serial?: string;
+  /** Friendly name (e.g. "Pack A1 — 6S 1300mAh"). */
+  label: string;
+  chemistry?: BatteryChemistry;
+  /** Series cell count. */
+  cells?: number;
+  /** Capacity in mAh. */
+  capacityMah?: number;
+  /** Continuous discharge rating ("65C", "20C"). */
+  cRating?: string;
+  manufacturer?: string;
+  model?: string;
+  /** ISO date the pack was put into service. */
+  purchaseDate?: string;
+
+  // Auto-tracked usage stats. Updated by recordCycle().
+  cycleCount?: number;
+  /** Estimated state-of-health 0..100 (cycle-degradation model). */
+  healthPercent?: number;
+  /** ISO timestamp of last full charge (manual entry; charger integration TBD). */
+  lastChargedAt?: string;
+
+  /** ISO date the pack was retired from service. Hides from active picker. */
+  retiredAt?: string;
+  notes?: string;
+}
+

@@ -84,6 +84,10 @@ const RECORD_VALIDATOR = {
   aircraftMtomKg: v.optional(v.number()),
   pilotSignedAt: v.optional(v.number()),
   pilotSignatureHash: v.optional(v.string()),
+  source: v.optional(
+    v.union(v.literal("live"), v.literal("dataflash"), v.literal("imported")),
+  ),
+  sourceFilename: v.optional(v.string()),
   updatedAt: v.number(),
 };
 

@@ -1,5 +1,6 @@
 import { OperatorProfileEditor } from "@/components/config/operator/OperatorProfileEditor";
 import { AircraftRegistryEditor } from "@/components/config/operator/AircraftRegistryEditor";
+import { BatteryRegistryEditor } from "@/components/config/operator/BatteryRegistryEditor";
 
 export default function OperatorPage() {
   return (
@@ -10,12 +11,14 @@ export default function OperatorPage() {
             Operator &amp; Aircraft
           </h1>
           <p className="text-[11px] text-text-tertiary mt-1">
-            Pilot, organisation, insurance, and aircraft registry. Used for
-            compliance exports and the per-flight pilot &amp; aircraft snapshot.
+            Pilot, organisation, insurance, aircraft and battery registries.
+            Used for compliance exports and the per-flight pilot, aircraft
+            and loadout snapshot.
           </p>
         </div>
         <OperatorProfileEditor />
         <AircraftRegistryEditor />
+        <BatteryRegistryEditor />
       </div>
     </div>
   );
