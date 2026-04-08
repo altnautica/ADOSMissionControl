@@ -134,6 +134,23 @@ export interface FlightRecord {
   source?: "live" | "dataflash" | "imported";
   /** Phase 11 — original `.bin` / `.ulg` / `.tlog` filename when imported. */
   sourceFilename?: string;
+
+  /** Phase 12c — frozen loadout snapshot at arm time (battery + equipment ids). */
+  loadout?: LoadoutSnapshot;
+}
+
+/** Equipment + battery ids fitted to the drone for one specific flight. */
+export interface LoadoutSnapshot {
+  /** Battery pack ids (typically one for series, multiple for parallel packs). */
+  batteryIds?: string[];
+  propSetId?: string;
+  motorSetId?: string;
+  escSetId?: string;
+  cameraId?: string;
+  gimbalId?: string;
+  payloadId?: string;
+  frameId?: string;
+  rcTxId?: string;
 }
 
 // ── Analytics ────────────────────────────────────────────────
