@@ -9,41 +9,64 @@
 import { useTranslations } from "next-intl";
 import { AreaChart, Area, ResponsiveContainer } from "recharts";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
+import { useFreshness } from "@/lib/agent/freshness";
+import { cn } from "@/lib/utils";
 
 export function MemorySparkline() {
   const t = useTranslations("agent");
   const memoryHistory = useAgentSystemStore((s) => s.memoryHistory);
+  const freshness = useFreshness();
+  const isStale = freshness.state !== "live" && freshness.state !== "unknown";
   const data = memoryHistory.map((value, i) => ({ i, value }));
 
   if (data.length < 2) return null;
 
+  const strokeColor = isStale ? "#6B7280" : "#DFF140";
+
   return (
-    <div className="border border-border-default rounded-lg p-3 bg-bg-secondary">
+    <div
+      className={cn(
+        "border border-border-default rounded-lg p-3 bg-bg-secondary transition-opacity",
+        isStale && "opacity-70"
+      )}
+    >
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs text-text-secondary">{t("memoryHistory")}</span>
-        <span className="text-xs text-text-primary font-mono">
+        <span
+          className={cn(
+            "text-xs font-mono",
+            isStale ? "text-text-tertiary" : "text-text-primary"
+          )}
+        >
           {data.length > 0 ? `${data[data.length - 1].value.toFixed(1)}%` : "--"}
         </span>
       </div>
-      <div style={{ width: "100%", height: 60 }}>
+      <div className="relative" style={{ width: "100%", height: 60 }}>
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
             <defs>
               <linearGradient id="memGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#DFF140" stopOpacity={0.3} />
-                <stop offset="100%" stopColor="#DFF140" stopOpacity={0.05} />
+                <stop offset="0%" stopColor={strokeColor} stopOpacity={0.3} />
+                <stop offset="100%" stopColor={strokeColor} stopOpacity={0.05} />
               </linearGradient>
             </defs>
             <Area
               type="monotone"
               dataKey="value"
-              stroke="#DFF140"
+              stroke={strokeColor}
               strokeWidth={1.5}
               fill="url(#memGradient)"
               isAnimationActive={false}
             />
           </AreaChart>
         </ResponsiveContainer>
+        {isStale && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <span className="text-[10px] uppercase tracking-widest text-text-tertiary bg-bg-primary/70 px-2 py-0.5 rounded">
+              Paused
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );
