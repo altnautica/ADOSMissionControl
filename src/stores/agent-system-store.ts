@@ -26,6 +26,10 @@ interface AgentSystemState {
   memoryHistory: number[];
   processCpuPercent: number | null;
   processMemoryMb: number | null;
+  /** Wall-clock ms of the last time any agent data was written to this store. */
+  lastUpdatedAt: number | null;
+  /** True when the freshness watchdog has flagged the agent as not updating. */
+  stale: boolean;
 }
 
 interface AgentSystemActions {
@@ -50,9 +54,11 @@ export const useAgentSystemStore = create<AgentSystemStore>((set, get) => ({
   memoryHistory: [],
   processCpuPercent: null,
   processMemoryMb: null,
+  lastUpdatedAt: null,
+  stale: false,
 
   setStatus(status: AgentStatus) {
-    set({ status });
+    set({ status, lastUpdatedAt: Date.now(), stale: false });
   },
 
   async fetchStatus() {
@@ -61,10 +67,10 @@ export const useAgentSystemStore = create<AgentSystemStore>((set, get) => ({
     if (!client) return;
     try {
       const status = await client.getStatus();
-      set({ status });
+      set({ status, lastUpdatedAt: Date.now(), stale: false });
+      useAgentConnectionStore.getState().noteFetchSuccess();
     } catch {
-      useAgentConnectionStore.setState({ connected: false, connectionError: "Lost connection to agent" });
-      useAgentConnectionStore.getState().stopPolling();
+      useAgentConnectionStore.getState().noteFetchFailure();
     }
   },
 
@@ -78,8 +84,11 @@ export const useAgentSystemStore = create<AgentSystemStore>((set, get) => ({
     try {
       const agentUptime = get().status?.uptime_seconds ?? 0;
       const services = await client.getServices(agentUptime);
-      set({ services });
-    } catch { /* silent */ }
+      set({ services, lastUpdatedAt: Date.now(), stale: false });
+      useAgentConnectionStore.getState().noteFetchSuccess();
+    } catch {
+      useAgentConnectionStore.getState().noteFetchFailure();
+    }
   },
 
   async fetchResources() {
@@ -93,9 +102,12 @@ export const useAgentSystemStore = create<AgentSystemStore>((set, get) => ({
         if (cpuHistory.length > MAX_CPU_HISTORY) cpuHistory.shift();
         const memoryHistory = [...state.memoryHistory, resources.memory_percent];
         if (memoryHistory.length > MAX_CPU_HISTORY) memoryHistory.shift();
-        return { resources, cpuHistory, memoryHistory };
+        return { resources, cpuHistory, memoryHistory, lastUpdatedAt: Date.now(), stale: false };
       });
-    } catch { /* silent */ }
+      useAgentConnectionStore.getState().noteFetchSuccess();
+    } catch {
+      useAgentConnectionStore.getState().noteFetchFailure();
+    }
   },
 
   async fetchLogs(level?: string) {
@@ -107,8 +119,9 @@ export const useAgentSystemStore = create<AgentSystemStore>((set, get) => ({
     if (!client) return;
     try {
       const logs = await client.getLogs({ level, limit: 200 });
-      set({ logs });
-    } catch { /* silent */ }
+      set({ logs, lastUpdatedAt: Date.now(), stale: false });
+      useAgentConnectionStore.getState().noteFetchSuccess();
+    } catch { /* silent — logs are best-effort */ }
   },
 
   async restartService(name: string) {
@@ -148,6 +161,8 @@ export const useAgentSystemStore = create<AgentSystemStore>((set, get) => ({
       memoryHistory: [],
       processCpuPercent: null,
       processMemoryMb: null,
+      lastUpdatedAt: null,
+      stale: false,
     });
   },
 }));
