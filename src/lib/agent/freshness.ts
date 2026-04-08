@@ -6,8 +6,9 @@
  * @license GPL-3.0-only
  */
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
+import { useClockStore, subscribeToClock } from "@/stores/clock-store";
 
 /** Heartbeat considered stale after this many ms without an update. */
 export const STALE_THRESHOLD_MS = 30_000;
@@ -48,18 +49,30 @@ export function getFreshness(lastUpdatedAt: number | null): Freshness {
 
 /**
  * React hook that returns the current freshness of the agent system store.
- * Ticks at 1Hz so "last seen Xs ago" labels count up even when no new data
- * arrives. Cheap — only one interval per mounted consumer page, because
- * Zustand selectors bail out when the underlying timestamp is unchanged.
+ * Subscribes to a shared 1Hz clock store so "last seen Xs ago" labels count
+ * up in lockstep across every consumer on the page, with only one interval
+ * running process-wide (refcounted — starts on first subscription, stops on
+ * last unmount).
  */
 export function useFreshness(): Freshness {
   const lastUpdatedAt = useAgentSystemStore((s) => s.lastUpdatedAt);
-  const [, tick] = useState(0);
+  // Subscribe to the clock tick so this component re-renders every second.
+  // The selector returns a scalar so Zustand bails out when nothing changed.
+  useClockStore((s) => s.tick);
 
-  useEffect(() => {
-    const id = setInterval(() => tick((n) => (n + 1) & 0xff), 1000);
-    return () => clearInterval(id);
-  }, []);
+  useEffect(() => subscribeToClock(), []);
 
   return getFreshness(lastUpdatedAt);
+}
+
+/**
+ * Subscribe to the shared 1Hz clock without reading freshness. Used by
+ * components like FleetSidebar that derive their state from `Date.now()`
+ * against per-row timestamps and need periodic re-renders to keep their
+ * "live/stale/offline" dots current.
+ */
+export function useClockTick(): number {
+  const tick = useClockStore((s) => s.tick);
+  useEffect(() => subscribeToClock(), []);
+  return tick;
 }

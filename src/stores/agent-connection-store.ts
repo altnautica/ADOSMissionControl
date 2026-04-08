@@ -173,7 +173,18 @@ export const useAgentConnectionStore = create<AgentConnectionStore>((set, get) =
       agentUrl: null,
       client: null,
       mavlinkUrl: null,
+      // Give the watchdog a grace period so it doesn't immediately re-flip
+      // the header to offline against the old stale timestamp.
+      lastCloudUpdate: Date.now(),
+      consecutiveFailures: 0,
     });
+    // Reset the freshness clock to "unknown" so the UI stops showing
+    // stale/offline treatment while we wait for the first fresh heartbeat.
+    // getFreshness(null) returns state: "unknown" which every consumer
+    // treats as live-neutral (no dim, no banner, no "last seen Xm ago" chip).
+    // The next heartbeat (or the watchdog at t+STALE_THRESHOLD_MS) will
+    // reinstate the correct state.
+    useAgentSystemStore.setState({ lastUpdatedAt: null, stale: false });
   },
 
   sendCloudCommand(command: string, args?: Record<string, unknown>) {

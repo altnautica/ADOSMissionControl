@@ -27,6 +27,11 @@ import { useConvexAvailable } from "@/app/ConvexClientProvider";
 import { cmdDronesApi } from "@/lib/community-api-drones";
 import { usePairingStore, type PairedDrone } from "@/stores/pairing-store";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
+import {
+  STALE_THRESHOLD_MS,
+  OFFLINE_THRESHOLD_MS,
+  useClockTick,
+} from "@/lib/agent/freshness";
 
 interface FleetSidebarProps {
   collapsed: boolean;
@@ -43,11 +48,25 @@ type UnpairDroneMutation = ((args: {
   droneId: never;
 }) => Promise<unknown>) | null;
 
-const ONLINE_THRESHOLD_MS = 90_000; // 90 seconds
+type DroneLiveness = "live" | "stale" | "offline";
 
-function isOnline(drone: PairedDrone): boolean {
-  if (!drone.lastSeen) return false;
-  return Date.now() - drone.lastSeen < ONLINE_THRESHOLD_MS;
+function droneLiveness(drone: PairedDrone): DroneLiveness {
+  if (!drone.lastSeen) return "offline";
+  const elapsed = Date.now() - drone.lastSeen;
+  if (elapsed < STALE_THRESHOLD_MS) return "live";
+  if (elapsed < OFFLINE_THRESHOLD_MS) return "stale";
+  return "offline";
+}
+
+function dotClass(liveness: DroneLiveness): string {
+  switch (liveness) {
+    case "live":
+      return "bg-status-success";
+    case "stale":
+      return "bg-status-warning animate-pulse";
+    case "offline":
+      return "bg-text-tertiary/30";
+  }
 }
 
 function tierLabel(tier?: number): string | null {
@@ -116,6 +135,9 @@ function FleetSidebarBase({
   const selectPairedDrone = usePairingStore((s) => s.selectPairedDrone);
   const removePairedDrone = usePairingStore((s) => s.removePairedDrone);
   const updatePairedDroneName = usePairingStore((s) => s.updatePairedDroneName);
+  // Subscribe to the 1Hz shared clock so drone dots transition live → stale →
+  // offline without needing an unrelated Convex query to trigger a re-render.
+  useClockTick();
 
   const agentConnect = useAgentConnectionStore((s) => s.connect);
   const agentConnectCloud = useAgentConnectionStore((s) => s.connectCloud);
@@ -250,7 +272,7 @@ function FleetSidebarBase({
               <span
                 className={cn(
                   "absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full",
-                  isOnline(drone) ? "bg-status-success" : "bg-text-tertiary/30"
+                  dotClass(droneLiveness(drone))
                 )}
               />
             </button>
@@ -323,7 +345,7 @@ function FleetSidebarBase({
               <span
                 className={cn(
                   "absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full border border-bg-secondary",
-                  isOnline(drone) ? "bg-status-success" : "bg-text-tertiary/30"
+                  dotClass(droneLiveness(drone))
                 )}
               />
             </div>

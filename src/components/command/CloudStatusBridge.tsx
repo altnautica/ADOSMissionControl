@@ -63,8 +63,19 @@ export function CloudStatusBridge() {
       const elapsed = Date.now() - state.lastCloudUpdate;
 
       if (elapsed > STALE_THRESHOLD_MS) {
-        if (!useAgentSystemStore.getState().stale) {
-          useAgentSystemStore.setState({ stale: true });
+        const sys = useAgentSystemStore.getState();
+        const patch: Record<string, unknown> = {};
+        if (!sys.stale) patch.stale = true;
+        // Keep the freshness clock in sync with the watchdog. If the user
+        // hit Reconnect (which clears lastUpdatedAt to null) and no heartbeat
+        // arrived before the grace period elapsed, seed lastUpdatedAt from
+        // lastCloudUpdate so useFreshness() starts reporting the correct
+        // stale/offline state instead of staying stuck at "unknown".
+        if (sys.lastUpdatedAt == null && state.lastCloudUpdate != null) {
+          patch.lastUpdatedAt = state.lastCloudUpdate;
+        }
+        if (Object.keys(patch).length > 0) {
+          useAgentSystemStore.setState(patch);
         }
       }
 
