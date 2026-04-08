@@ -14,6 +14,7 @@ import { useOperatorProfileStore } from "@/stores/operator-profile-store";
 import { useAircraftRegistryStore } from "@/stores/aircraft-registry-store";
 import { useBatteryRegistryStore } from "@/stores/battery-registry-store";
 import { useEquipmentRegistryStore } from "@/stores/equipment-registry-store";
+import { useLoadoutStore } from "@/stores/loadout-store";
 import { isDemoMode } from "@/lib/utils";
 import type { FlightRecord } from "@/lib/types";
 import type { TelemetryRecording } from "@/lib/telemetry-recorder";
@@ -45,6 +46,7 @@ export default function FlightHistoryPage() {
   const loadAircraft = useAircraftRegistryStore((s) => s.loadFromIDB);
   const loadBatteries = useBatteryRegistryStore((s) => s.loadFromIDB);
   const loadEquipment = useEquipmentRegistryStore((s) => s.loadFromIDB);
+  const loadLoadouts = useLoadoutStore((s) => s.loadFromIDB);
   const initWithSeedData = useHistoryStore((s) => s.initWithSeedData);
   const resetDemoData = useHistoryStore((s) => s.resetDemoData);
 
@@ -53,6 +55,7 @@ export default function FlightHistoryPage() {
     void loadAircraft();
     void loadBatteries();
     void loadEquipment();
+    void loadLoadouts();
 
     // In demo mode: if the seed version stored in localStorage is older
     // than the current bundled DEMO_SEED_VERSION, drop persisted records
@@ -92,7 +95,7 @@ export default function FlightHistoryPage() {
     return () => {
       cancelled = true;
     };
-  }, [loadFromIDB, loadOperator, loadAircraft, loadBatteries, loadEquipment, initWithSeedData, resetDemoData]);
+  }, [loadFromIDB, loadOperator, loadAircraft, loadBatteries, loadEquipment, loadLoadouts, initWithSeedData, resetDemoData]);
 
   const allRecords = useHistoryStore((s) => s.records);
 

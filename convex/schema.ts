@@ -262,6 +262,20 @@ fullName: v.optional(v.string()),
       v.union(v.literal("live"), v.literal("dataflash"), v.literal("imported")),
     ),
     sourceFilename: v.optional(v.string()),
+    // Phase 12c — frozen loadout snapshot at arm time.
+    loadout: v.optional(
+      v.object({
+        batteryIds: v.optional(v.array(v.string())),
+        propSetId: v.optional(v.string()),
+        motorSetId: v.optional(v.string()),
+        escSetId: v.optional(v.string()),
+        cameraId: v.optional(v.string()),
+        gimbalId: v.optional(v.string()),
+        payloadId: v.optional(v.string()),
+        frameId: v.optional(v.string()),
+        rcTxId: v.optional(v.string()),
+      }),
+    ),
     /** Last mutation time (client-side). Server uses this for last-write-wins conflict resolution. */
     updatedAt: v.number(),
   })

@@ -29,8 +29,11 @@ import { useHistoryStore } from "@/stores/history-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useOperatorProfileStore } from "@/stores/operator-profile-store";
 import { useAircraftRegistryStore } from "@/stores/aircraft-registry-store";
+import { useLoadoutStore } from "@/stores/loadout-store";
+import { useBatteryRegistryStore } from "@/stores/battery-registry-store";
+import { useEquipmentRegistryStore } from "@/stores/equipment-registry-store";
 import { analyzeFlight } from "./flight-analysis/analyzer";
-import type { FlightRecord } from "./types";
+import type { FlightRecord, LoadoutSnapshot } from "./types";
 
 // ── Per-drone lifecycle state ────────────────────────────────
 
@@ -101,6 +104,9 @@ function handleArm(droneId: string, droneName: string, snapshot: ArmSnapshot): v
   const profile = useOperatorProfileStore.getState().profile;
   const aircraft = useAircraftRegistryStore.getState().getOrCreate(droneId, droneName);
 
+  // Phase 12c — freeze the user's pre-flight loadout selection.
+  const loadout: LoadoutSnapshot | undefined = useLoadoutStore.getState().get(droneId);
+
   const draft: FlightRecord = {
     id: cryptoRandomId(),
     droneId,
@@ -127,6 +133,7 @@ function handleArm(droneId: string, droneName: string, snapshot: ArmSnapshot): v
     aircraftRegistration: aircraft.registrationNumber,
     aircraftSerial: aircraft.serialNumber,
     aircraftMtomKg: aircraft.mtomKg,
+    loadout,
   };
 
   const history = useHistoryStore.getState();
@@ -165,6 +172,29 @@ async function handleDisarm(droneId: string): Promise<void> {
   const flightSeconds = draftRow ? Math.max(0, Math.round((endTime - draftRow.startTime) / 1000)) : 0;
   if (flightSeconds > 0) {
     useAircraftRegistryStore.getState().recordFlight(droneId, flightSeconds);
+
+    // Phase 12c — roll usage stats into the loadout's batteries + equipment.
+    const loadout = draftRow?.loadout;
+    if (loadout) {
+      const batteryStore = useBatteryRegistryStore.getState();
+      for (const batteryId of loadout.batteryIds ?? []) {
+        batteryStore.recordCycle(batteryId);
+      }
+      const equipmentStore = useEquipmentRegistryStore.getState();
+      const equipmentIds = [
+        loadout.propSetId,
+        loadout.motorSetId,
+        loadout.escSetId,
+        loadout.cameraId,
+        loadout.gimbalId,
+        loadout.payloadId,
+        loadout.frameId,
+        loadout.rcTxId,
+      ].filter((id): id is string => typeof id === "string" && id.length > 0);
+      for (const equipmentId of equipmentIds) {
+        equipmentStore.recordFlight(equipmentId, flightSeconds);
+      }
+    }
   }
   history.updateRecord(lc.draftRecordId, {
     endTime,

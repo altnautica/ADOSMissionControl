@@ -7,6 +7,7 @@ import {
   Pause, Play, XOctagon, Skull, ClipboardCheck,
 } from "lucide-react";
 import { FollowMeButton } from "./FollowMeButton";
+import { LoadoutSelector } from "./LoadoutSelector";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { FlightModeSelector } from "@/components/shared/flight-mode-selector";
@@ -64,6 +65,9 @@ export function ActionsPanel() {
   return (
     <>
       <div className="px-3 pt-3 pb-1.5 border-t border-border-default bg-bg-secondary flex flex-col gap-1.5">
+        {/* Phase 12c — Loadout selector (battery + equipment fitted for this flight) */}
+        <LoadoutSelector />
+
         {/* Pre-Flight Checklist button */}
         <Tooltip content="Open pre-flight checklist" position="right">
           <button

@@ -9,6 +9,8 @@
 import { Card } from "@/components/ui/card";
 import { DataValue } from "@/components/ui/data-value";
 import { formatDate, formatDuration, formatTime } from "@/lib/utils";
+import { useBatteryRegistryStore } from "@/stores/battery-registry-store";
+import { useEquipmentRegistryStore } from "@/stores/equipment-registry-store";
 import type { FlightRecord } from "@/lib/types";
 
 interface OverviewTabProps {
@@ -22,6 +24,8 @@ function fmtCoord(lat?: number, lon?: number): string {
 
 export function OverviewTab({ record }: OverviewTabProps) {
   const start = record.startTime ?? record.date;
+  const batteries = useBatteryRegistryStore((s) => s.packs);
+  const equipment = useEquipmentRegistryStore((s) => s.items);
   return (
     <div className="flex flex-col gap-3">
       <Card title="Flight Info" padding={true}>
@@ -56,6 +60,45 @@ export function OverviewTab({ record }: OverviewTabProps) {
           )}
         </div>
       </Card>
+
+      {record.loadout && (
+        <Card title="Loadout" padding={true}>
+          <div className="flex flex-col gap-2">
+            {(record.loadout.batteryIds ?? []).length > 0 && (
+              <Row
+                label="Batteries"
+                value={(record.loadout.batteryIds ?? [])
+                  .map((id) => batteries[id]?.label ?? id)
+                  .join(", ")}
+              />
+            )}
+            {record.loadout.propSetId && (
+              <Row label="Prop set" value={equipment[record.loadout.propSetId]?.label ?? record.loadout.propSetId} />
+            )}
+            {record.loadout.motorSetId && (
+              <Row label="Motor set" value={equipment[record.loadout.motorSetId]?.label ?? record.loadout.motorSetId} />
+            )}
+            {record.loadout.escSetId && (
+              <Row label="ESC set" value={equipment[record.loadout.escSetId]?.label ?? record.loadout.escSetId} />
+            )}
+            {record.loadout.cameraId && (
+              <Row label="Camera" value={equipment[record.loadout.cameraId]?.label ?? record.loadout.cameraId} />
+            )}
+            {record.loadout.gimbalId && (
+              <Row label="Gimbal" value={equipment[record.loadout.gimbalId]?.label ?? record.loadout.gimbalId} />
+            )}
+            {record.loadout.payloadId && (
+              <Row label="Payload" value={equipment[record.loadout.payloadId]?.label ?? record.loadout.payloadId} />
+            )}
+            {record.loadout.frameId && (
+              <Row label="Frame" value={equipment[record.loadout.frameId]?.label ?? record.loadout.frameId} />
+            )}
+            {record.loadout.rcTxId && (
+              <Row label="RC TX" value={equipment[record.loadout.rcTxId]?.label ?? record.loadout.rcTxId} />
+            )}
+          </div>
+        </Card>
+      )}
     </div>
   );
 }
