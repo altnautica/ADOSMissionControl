@@ -12,6 +12,7 @@ import { CloudSyncBridge } from "@/components/history/CloudSyncBridge";
 import { useHistoryStore } from "@/stores/history-store";
 import { useOperatorProfileStore } from "@/stores/operator-profile-store";
 import { useAircraftRegistryStore } from "@/stores/aircraft-registry-store";
+import { useBatteryRegistryStore } from "@/stores/battery-registry-store";
 import { isDemoMode } from "@/lib/utils";
 import type { FlightRecord } from "@/lib/types";
 import type { TelemetryRecording } from "@/lib/telemetry-recorder";
@@ -41,12 +42,14 @@ export default function FlightHistoryPage() {
   const loadFromIDB = useHistoryStore((s) => s.loadFromIDB);
   const loadOperator = useOperatorProfileStore((s) => s.loadFromIDB);
   const loadAircraft = useAircraftRegistryStore((s) => s.loadFromIDB);
+  const loadBatteries = useBatteryRegistryStore((s) => s.loadFromIDB);
   const initWithSeedData = useHistoryStore((s) => s.initWithSeedData);
   const resetDemoData = useHistoryStore((s) => s.resetDemoData);
 
   useEffect(() => {
     void loadOperator();
     void loadAircraft();
+    void loadBatteries();
 
     // In demo mode: if the seed version stored in localStorage is older
     // than the current bundled DEMO_SEED_VERSION, drop persisted records
@@ -86,7 +89,7 @@ export default function FlightHistoryPage() {
     return () => {
       cancelled = true;
     };
-  }, [loadFromIDB, loadOperator, loadAircraft, initWithSeedData, resetDemoData]);
+  }, [loadFromIDB, loadOperator, loadAircraft, loadBatteries, initWithSeedData, resetDemoData]);
 
   const allRecords = useHistoryStore((s) => s.records);
 

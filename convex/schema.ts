@@ -257,6 +257,11 @@ fullName: v.optional(v.string()),
     // Sign-and-lock (Phase 7c-3)
     pilotSignedAt: v.optional(v.number()),
     pilotSignatureHash: v.optional(v.string()),
+    // Phase 11 — origin tracking for imported records.
+    source: v.optional(
+      v.union(v.literal("live"), v.literal("dataflash"), v.literal("imported")),
+    ),
+    sourceFilename: v.optional(v.string()),
     /** Last mutation time (client-side). Server uses this for last-write-wins conflict resolution. */
     updatedAt: v.number(),
   })
