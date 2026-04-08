@@ -31,6 +31,8 @@ export interface LogDownloadState {
   data: Uint8Array;
 }
 
+export type CloudSyncStatus = "idle" | "syncing" | "error";
+
 interface HistoryState {
   records: FlightRecord[];
   logEntries: Map<string, LogEntry[]>;
@@ -39,21 +41,41 @@ interface HistoryState {
   isDownloadingLog: boolean;
   _seeded: boolean;
   _loadedFromIdb: boolean;
+
+  // Phase 9 — cloud sync bookkeeping. The Convex client is injected from
+  // the React layer (CloudSyncBridge); the store stays Zustand-only.
+  syncStatus: CloudSyncStatus;
+  lastSyncAt: number | null;
+  lastSyncError: string | null;
+  /** clientIds dirty since the last successful upsert. */
+  pendingSyncIds: Set<string>;
 }
 
 interface HistoryActions {
   /** One-time init from mock/history.ts seed data. */
   initWithSeedData: (records: FlightRecord[]) => void;
-  /** Prepend a new flight record (cap at 500). */
+  /** Prepend a new flight record (cap at 500). Marks the row dirty for cloud sync. */
   addRecord: (record: FlightRecord) => void;
-  /** Patch an existing record by id. Sets `updatedAt`. Noop if not found. */
+  /** Patch an existing record by id. Sets `updatedAt` and marks dirty. Noop if not found. */
   updateRecord: (id: string, patch: Partial<FlightRecord>) => void;
-  /** Remove a record by id. */
+  /** Remove a record by id. Marks for tombstone delete on next sync. */
   removeRecord: (id: string) => void;
   /** Async: load persisted records from IndexedDB. Idempotent. */
   loadFromIDB: () => Promise<void>;
   /** Async: write current records to IndexedDB. */
   persistToIDB: () => Promise<void>;
+  /**
+   * Phase 9 — merge a list of cloud records into the local store. Last-write-
+   * wins on `updatedAt`. Records that exist locally but not in cloud stay put.
+   * Returns the count of records that were updated by the merge.
+   */
+  mergeCloudRecords: (cloudRecords: FlightRecord[]) => number;
+  /** Phase 9 — set the global sync status. */
+  setSyncStatus: (status: CloudSyncStatus, error?: string | null) => void;
+  /** Phase 9 — record a successful sync timestamp + clear dirty set. */
+  markSynced: (ids: string[]) => void;
+  /** Phase 9 — explicitly mark a clientId as dirty (re-sync next pass). */
+  markDirty: (id: string) => void;
   /**
    * Async: clear all flight records and demo telemetry recordings from
    * memory + IndexedDB. Used by the History page in demo mode when the
@@ -79,6 +101,10 @@ export const useHistoryStore = create<HistoryState & HistoryActions>((set, get) 
   isDownloadingLog: false,
   _seeded: false,
   _loadedFromIdb: false,
+  syncStatus: "idle",
+  lastSyncAt: null,
+  lastSyncError: null,
+  pendingSyncIds: new Set<string>(),
 
   initWithSeedData: (records) => {
     if (get()._seeded) return;
@@ -93,9 +119,14 @@ export const useHistoryStore = create<HistoryState & HistoryActions>((set, get) 
   },
 
   addRecord: (record) => {
-    set((s) => ({
-      records: [record, ...s.records].slice(0, MAX_RECORDS),
-    }));
+    set((s) => {
+      const next = new Set(s.pendingSyncIds);
+      next.add(record.id);
+      return {
+        records: [{ ...record, cloudSynced: false }, ...s.records].slice(0, MAX_RECORDS),
+        pendingSyncIds: next,
+      };
+    });
   },
 
   updateRecord: (id, patch) => {
@@ -104,14 +135,25 @@ export const useHistoryStore = create<HistoryState & HistoryActions>((set, get) 
       const records = s.records.map((r) => {
         if (r.id !== id) return r;
         changed = true;
-        return { ...r, ...patch, updatedAt: Date.now() };
+        return { ...r, ...patch, updatedAt: Date.now(), cloudSynced: false };
       });
-      return changed ? { records } : s;
+      if (!changed) return s;
+      const next = new Set(s.pendingSyncIds);
+      next.add(id);
+      return { records, pendingSyncIds: next };
     });
   },
 
   removeRecord: (id) => {
-    set((s) => ({ records: s.records.filter((r) => r.id !== id) }));
+    set((s) => {
+      const next = new Set(s.pendingSyncIds);
+      // Drop the dirty marker — caller is responsible for any tombstone push.
+      next.delete(id);
+      return {
+        records: s.records.filter((r) => r.id !== id),
+        pendingSyncIds: next,
+      };
+    });
   },
 
   loadFromIDB: async () => {
@@ -141,6 +183,62 @@ export const useHistoryStore = create<HistoryState & HistoryActions>((set, get) 
     } catch (err) {
       console.warn("[history-store] persistToIDB failed", err);
     }
+  },
+
+  mergeCloudRecords: (cloudRecords) => {
+    let updatedCount = 0;
+    set((s) => {
+      const localById = new Map(s.records.map((r) => [r.id, r] as const));
+      for (const remote of cloudRecords) {
+        const local = localById.get(remote.id);
+        if (!local) {
+          localById.set(remote.id, { ...remote, cloudSynced: true });
+          updatedCount += 1;
+          continue;
+        }
+        // Last-write-wins: only overwrite if the remote is strictly newer.
+        if ((remote.updatedAt ?? 0) > (local.updatedAt ?? 0)) {
+          localById.set(remote.id, { ...remote, cloudSynced: true });
+          updatedCount += 1;
+        }
+      }
+      const merged = Array.from(localById.values()).sort(
+        (a, b) => (b.startTime ?? b.date) - (a.startTime ?? a.date),
+      );
+      return { records: merged.slice(0, MAX_RECORDS) };
+    });
+    return updatedCount;
+  },
+
+  setSyncStatus: (status, error = null) => {
+    set({ syncStatus: status, lastSyncError: error });
+  },
+
+  markSynced: (ids) => {
+    set((s) => {
+      const idSet = new Set(ids);
+      const records = s.records.map((r) =>
+        idSet.has(r.id) ? { ...r, cloudSynced: true } : r,
+      );
+      const next = new Set(s.pendingSyncIds);
+      for (const id of ids) next.delete(id);
+      return {
+        records,
+        pendingSyncIds: next,
+        lastSyncAt: Date.now(),
+        syncStatus: "idle" as const,
+        lastSyncError: null,
+      };
+    });
+  },
+
+  markDirty: (id) => {
+    set((s) => {
+      if (s.pendingSyncIds.has(id)) return s;
+      const next = new Set(s.pendingSyncIds);
+      next.add(id);
+      return { pendingSyncIds: next };
+    });
   },
 
   resetDemoData: async () => {
