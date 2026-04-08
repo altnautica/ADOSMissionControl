@@ -1472,7 +1472,12 @@
     "statsHours": "Hours",
     "statsDistance": "Distance",
     "statsBattery": "Battery used",
-    "inProgress": "In progress"
+    "inProgress": "In progress",
+    "syncLocalOnly": "Local only",
+    "syncSyncing": "Syncing…",
+    "syncSynced": "Synced {time}",
+    "syncError": "Sync error",
+    "syncManual": "Sync now"
   },
   "library": {
     "title": "FLIGHT PLANS",

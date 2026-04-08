@@ -19,6 +19,7 @@ import type * as cmdAirspaceZones from "../cmdAirspaceZones.js";
 import type * as cmdDroneCommands from "../cmdDroneCommands.js";
 import type * as cmdDroneStatus from "../cmdDroneStatus.js";
 import type * as cmdDrones from "../cmdDrones.js";
+import type * as cmdFlightLogs from "../cmdFlightLogs.js";
 import type * as cmdMissions from "../cmdMissions.js";
 import type * as cmdPairing from "../cmdPairing.js";
 import type * as cmdPreferences from "../cmdPreferences.js";
@@ -49,6 +50,7 @@ declare const fullApi: ApiFromModules<{
   cmdDroneCommands: typeof cmdDroneCommands;
   cmdDroneStatus: typeof cmdDroneStatus;
   cmdDrones: typeof cmdDrones;
+  cmdFlightLogs: typeof cmdFlightLogs;
   cmdMissions: typeof cmdMissions;
   cmdPairing: typeof cmdPairing;
   cmdPreferences: typeof cmdPreferences;

@@ -179,18 +179,90 @@ fullName: v.optional(v.string()),
 
   cmd_flightLogs: defineTable({
     userId: v.string(),
-    droneId: v.optional(v.string()),
-    droneName: v.optional(v.string()),
-    missionName: v.optional(v.string()),
+    /** FlightRecord.id from the client (UUID). Stable across sync. */
+    clientId: v.string(),
+    droneId: v.string(),
+    droneName: v.string(),
+    suiteType: v.optional(v.string()),
+    startTime: v.number(),
+    endTime: v.number(),
     duration: v.number(),
     distance: v.number(),
-    maxAlt: v.optional(v.number()),
-    maxSpeed: v.optional(v.number()),
-    batteryUsed: v.optional(v.number()),
-    waypointCount: v.optional(v.number()),
-    status: v.union(v.literal("completed"), v.literal("aborted"), v.literal("emergency")),
-    completedAt: v.number(),
-  }).index("by_userId", ["userId"]),
+    maxAlt: v.number(),
+    maxSpeed: v.number(),
+    avgSpeed: v.optional(v.number()),
+    batteryUsed: v.number(),
+    batteryStartV: v.optional(v.number()),
+    batteryEndV: v.optional(v.number()),
+    waypointCount: v.number(),
+    status: v.union(
+      v.literal("in_progress"),
+      v.literal("completed"),
+      v.literal("aborted"),
+      v.literal("emergency"),
+    ),
+    // Geo
+    takeoffLat: v.optional(v.number()),
+    takeoffLon: v.optional(v.number()),
+    landingLat: v.optional(v.number()),
+    landingLon: v.optional(v.number()),
+    /** Downsampled track: [[lat, lon], ...]. */
+    path: v.optional(v.array(v.array(v.number()))),
+    // Recording linkage
+    recordingId: v.optional(v.string()),
+    hasTelemetry: v.optional(v.boolean()),
+    // Analyzer (Phase 5)
+    events: v.optional(
+      v.array(
+        v.object({
+          t: v.number(),
+          type: v.string(),
+          severity: v.union(v.literal("info"), v.literal("warning"), v.literal("error")),
+          label: v.string(),
+          data: v.optional(v.any()),
+        }),
+      ),
+    ),
+    flags: v.optional(
+      v.array(
+        v.object({
+          type: v.string(),
+          severity: v.union(v.literal("info"), v.literal("warning"), v.literal("error")),
+          message: v.string(),
+          suggestion: v.optional(v.string()),
+        }),
+      ),
+    ),
+    health: v.optional(
+      v.object({
+        avgSatellites: v.optional(v.number()),
+        avgHdop: v.optional(v.number()),
+        maxVibrationRms: v.optional(v.number()),
+        batteryHealthPct: v.optional(v.number()),
+      }),
+    ),
+    // User metadata
+    customName: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
+    favorite: v.optional(v.boolean()),
+    // Frozen pilot/aircraft snapshot (Phase 7a)
+    pilotFirstName: v.optional(v.string()),
+    pilotLastName: v.optional(v.string()),
+    pilotLicenseNumber: v.optional(v.string()),
+    pilotLicenseIssuer: v.optional(v.string()),
+    aircraftRegistration: v.optional(v.string()),
+    aircraftSerial: v.optional(v.string()),
+    aircraftMtomKg: v.optional(v.number()),
+    // Sign-and-lock (Phase 7c-3)
+    pilotSignedAt: v.optional(v.number()),
+    pilotSignatureHash: v.optional(v.string()),
+    /** Last mutation time (client-side). Server uses this for last-write-wins conflict resolution. */
+    updatedAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_user_clientId", ["userId", "clientId"])
+    .index("by_user_startTime", ["userId", "startTime"]),
 
   cmd_preferences: defineTable({
     userId: v.string(),

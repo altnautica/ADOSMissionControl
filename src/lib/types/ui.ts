@@ -126,6 +126,9 @@ export interface FlightRecord {
   pilotSignedAt?: number;
   /** SHA-256 hex digest of the canonicalised record + optional signature image. */
   pilotSignatureHash?: string;
+
+  /** Phase 9 — true if this record has been successfully synced to Convex. */
+  cloudSynced?: boolean;
 }
 
 // ── Analytics ────────────────────────────────────────────────
