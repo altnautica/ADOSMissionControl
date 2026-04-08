@@ -17,6 +17,7 @@ import { CpuSparkline } from "./shared/CpuSparkline";
 import { MemorySparkline } from "./shared/MemorySparkline";
 import { LogViewer } from "./shared/LogViewer";
 import { AgentDisconnectedPage } from "./AgentDisconnectedPage";
+import { StaleBanner } from "./shared/StaleBanner";
 import { VideoFeedCard } from "./shared/VideoFeedCard";
 import { BatteryCard } from "./shared/BatteryCard";
 import { RcInputCard } from "./shared/RcInputCard";
@@ -44,11 +45,14 @@ export function AgentOverviewTab() {
     }
   }, [connected, fetchServices, fetchResources, fetchLogs]);
 
-  if (!connected) {
-    return <AgentDisconnectedPage />;
-  }
-
+  // Note: we do NOT gate this tab on `connected`. Once we have a `status`
+  // snapshot we keep showing it — the StaleBanner, header dot, and per-card
+  // dim/PAUSED overlays communicate that the feed is stale. Completely hiding
+  // the UI on disconnect would lose the last-known state the operator needs.
   if (!status) {
+    if (!connected) {
+      return <AgentDisconnectedPage />;
+    }
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-3">
         <div className="w-5 h-5 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" />
@@ -60,6 +64,7 @@ export function AgentOverviewTab() {
 
   return (
     <div className="p-4 space-y-4">
+      <StaleBanner />
       {/* Agent Status spans 2/3, Flight Telemetry column starts at top */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
         {/* Status card spans 2 columns */}
