@@ -85,6 +85,8 @@ export function SystemResourceGauges({ resources }: SystemResourceGaugesProps) {
         label={t("cpu")}
         percent={resources.cpu_percent}
         detail={t("utilization", { percent: resources.cpu_percent.toFixed(1) })}
+        stale={isStale}
+        staleLabel={freshness.label}
       />
 
       <ResourceBar
@@ -92,6 +94,8 @@ export function SystemResourceGauges({ resources }: SystemResourceGaugesProps) {
         label={t("memory")}
         percent={resources.memory_percent}
         detail={`${resources.memory_used_mb.toFixed(0)} / ${resources.memory_total_mb.toFixed(0)} MB`}
+        stale={isStale}
+        staleLabel={freshness.label}
       />
 
       <ResourceBar
@@ -99,6 +103,8 @@ export function SystemResourceGauges({ resources }: SystemResourceGaugesProps) {
         label={t("disk")}
         percent={resources.disk_percent}
         detail={`${resources.disk_used_gb.toFixed(1)} / ${resources.disk_total_gb.toFixed(1)} GB`}
+        stale={isStale}
+        staleLabel={freshness.label}
       />
 
       {resources.temperature != null && (
