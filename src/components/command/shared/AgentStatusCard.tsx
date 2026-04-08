@@ -6,11 +6,13 @@ import {
   Clock,
   Wifi,
   WifiOff,
+  AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDuration } from "@/lib/utils";
 import type { AgentStatus } from "@/lib/agent/types";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
+import { useFreshness } from "@/lib/agent/freshness";
 
 interface AgentStatusCardProps {
   status: AgentStatus;
@@ -23,6 +25,8 @@ export function AgentStatusCard({ status }: AgentStatusCardProps) {
   const resources = useAgentSystemStore((s) => s.resources);
   const services = useAgentSystemStore((s) => s.services);
   const cpuHistory = useAgentSystemStore((s) => s.cpuHistory);
+  const freshness = useFreshness();
+  const isStale = freshness.state !== "live" && freshness.state !== "unknown";
   const cpuPct = resources?.cpu_percent ?? status.health?.cpu_percent ?? 0;
   const memPct = resources?.memory_percent ?? status.health?.memory_percent ?? 0;
   const diskPct = resources?.disk_percent ?? status.health?.disk_percent ?? 0;
@@ -34,13 +38,35 @@ export function AgentStatusCard({ status }: AgentStatusCardProps) {
   // Uptime: estimate from cpuHistory length (each entry ~5s) if status.uptime_seconds is 0
   const uptimeSeconds = status.uptime_seconds || (cpuHistory.length * 5);
   return (
-    <div className="border border-border-default rounded-lg p-4 space-y-3">
+    <div
+      className={cn(
+        "border border-border-default rounded-lg p-4 space-y-3 transition-opacity",
+        isStale && "opacity-60"
+      )}
+    >
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-medium text-text-primary">{t("status")}</h3>
         <span className="text-xs font-mono text-text-tertiary">
           v{status.version}
         </span>
       </div>
+
+      {isStale && (
+        <div
+          className={cn(
+            "flex items-center gap-1.5 text-[11px] px-2 py-1 rounded",
+            freshness.state === "offline"
+              ? "bg-status-error/10 text-status-error"
+              : "bg-status-warning/10 text-status-warning"
+          )}
+        >
+          <AlertTriangle size={12} />
+          <span>
+            {freshness.state === "offline" ? "Agent offline" : "Stale data"} ·
+            last update {freshness.label}
+          </span>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-3">
         <InfoRow icon={Cpu} label={t("board")} value={status.board?.name ?? t("unknown")} />
@@ -68,17 +94,27 @@ export function AgentStatusCard({ status }: AgentStatusCardProps) {
       <div className="flex items-center gap-4 pt-2 border-t border-border-default">
         <div className="flex items-center gap-1.5">
           {fcConnected ? (
-            <Wifi size={12} className="text-status-success" />
+            <Wifi
+              size={12}
+              className={isStale ? "text-status-warning" : "text-status-success"}
+            />
           ) : (
             <WifiOff size={12} className="text-status-error" />
           )}
           <span
             className={cn(
               "text-xs",
-              fcConnected ? "text-status-success" : "text-status-error"
+              fcConnected
+                ? isStale
+                  ? "text-status-warning"
+                  : "text-status-success"
+                : "text-status-error"
             )}
           >
             {fcConnected ? t("fcConnected") : t("fcDisconnected")}
+            {isStale && fcConnected && (
+              <span className="text-text-tertiary"> (unverified)</span>
+            )}
           </span>
         </div>
         {fcConnected && status.fc_port && (

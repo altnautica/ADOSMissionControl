@@ -27,6 +27,7 @@ import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
 import { usePairingStore } from "@/stores/pairing-store";
+import { useFreshness } from "@/lib/agent/freshness";
 import dynamic from "next/dynamic";
 import { FleetSidebar } from "./FleetSidebar";
 import { PairingDialog } from "./PairingDialog";
@@ -63,10 +64,21 @@ export function CommandPage() {
 
   const connected = useAgentConnectionStore((s) => s.connected);
   const connectionError = useAgentConnectionStore((s) => s.connectionError);
+  const cloudDeviceId = useAgentConnectionStore((s) => s.cloudDeviceId);
   const status = useAgentSystemStore((s) => s.status);
   const connect = useAgentConnectionStore((s) => s.connect);
   const disconnect = useAgentConnectionStore((s) => s.disconnect);
+  const connectCloud = useAgentConnectionStore((s) => s.connectCloud);
   const cloudMode = useAgentConnectionStore((s) => s.cloudMode);
+  const freshness = useFreshness();
+  // When we have a status object but the watchdog has flagged the feed as
+  // stale/offline, render the dimmed/offline header rather than the live one.
+  const headerState: "live" | "stale" | "offline" =
+    !connected || freshness.state === "offline"
+      ? "offline"
+      : freshness.state === "stale"
+        ? "stale"
+        : "live";
 
   const demo = isDemoMode();
   const pairedDrones = usePairingStore((s) => s.pairedDrones);
@@ -157,11 +169,23 @@ export function CommandPage() {
                 </span>
               )}
             </div>
-          ) : connected && status ? (
+          ) : status ? (
             <>
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-status-success" />
-                <span className="text-xs text-text-primary font-medium">
+                <div
+                  className={cn(
+                    "w-2 h-2 rounded-full",
+                    headerState === "live" && "bg-status-success",
+                    headerState === "stale" && "bg-status-warning animate-pulse",
+                    headerState === "offline" && "bg-status-error"
+                  )}
+                />
+                <span
+                  className={cn(
+                    "text-xs font-medium",
+                    headerState === "offline" ? "text-text-tertiary" : "text-text-primary"
+                  )}
+                >
                   {status.board?.name ?? t("agent")}
                 </span>
                 <span className="text-xs text-text-tertiary">
@@ -170,15 +194,34 @@ export function CommandPage() {
                 <span className="text-xs text-text-tertiary">
                   {t("tier", { tier: status.board?.tier })}
                 </span>
-                <span className="text-xs text-text-tertiary">{status.board?.name}</span>
                 {cloudMode && (
                   <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 bg-accent-primary/15 text-accent-primary rounded font-medium">
                     <Cloud size={10} />
                     Cloud
                   </span>
                 )}
+                {headerState === "stale" && (
+                  <span className="text-[10px] px-1.5 py-0.5 bg-status-warning/15 text-status-warning rounded font-medium uppercase tracking-wide">
+                    Stale · last seen {freshness.label}
+                  </span>
+                )}
+                {headerState === "offline" && (
+                  <span className="text-[10px] px-1.5 py-0.5 bg-status-error/15 text-status-error rounded font-medium uppercase tracking-wide">
+                    Offline · last seen {freshness.label}
+                  </span>
+                )}
               </div>
-              <div className="ml-auto">
+              <div className="ml-auto flex items-center gap-2">
+                {headerState === "offline" && cloudMode && cloudDeviceId && (
+                  <button
+                    onClick={() => connectCloud(cloudDeviceId)}
+                    className="flex items-center gap-1.5 px-2.5 py-1 text-xs text-accent-primary hover:bg-bg-tertiary rounded transition-colors"
+                    title="Re-subscribe to cloud heartbeats for this drone"
+                  >
+                    <Plug size={12} />
+                    Reconnect
+                  </button>
+                )}
                 <button
                   onClick={disconnect}
                   className="flex items-center gap-1.5 px-2.5 py-1 text-xs text-status-error hover:bg-bg-tertiary rounded transition-colors"
@@ -240,7 +283,7 @@ export function CommandPage() {
           )}
         </div>
 
-        {connected ? (
+        {status ? (
           <>
             {/* Sub-tab navigation */}
             <div className="flex items-center gap-1 px-4 border-b border-border-default bg-bg-secondary">
