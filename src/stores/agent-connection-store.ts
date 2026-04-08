@@ -20,6 +20,8 @@ interface AgentConnectionState {
   client: AgentClient | null;
   connectionError: string | null;
   pollInterval: ReturnType<typeof setInterval> | null;
+  /** Consecutive poll failures. Used by the local-mode staleness cascade. */
+  consecutiveFailures: number;
 
   // Cloud mode state
   cloudMode: boolean;
