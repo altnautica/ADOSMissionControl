@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn, formatDate, formatDuration } from "@/lib/utils";
 import type { FlightRecord } from "@/lib/types";
-import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Star, Cloud, CloudOff } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Star, Cloud, CloudOff, HardDrive } from "lucide-react";
 
 const PAGE_SIZE = 20;
 
@@ -156,7 +156,18 @@ export function HistoryTable({
                       formatDate(rec.startTime ?? rec.date)
                     )}
                   </td>
-                  <td className="px-3 py-2 text-text-primary">{rec.droneName}</td>
+                  <td className="px-3 py-2 text-text-primary">
+                    <span className="inline-flex items-center gap-1">
+                      {rec.droneName}
+                      {rec.source === "dataflash" && (
+                        <HardDrive
+                          size={10}
+                          className="text-text-tertiary"
+                          aria-label="Imported from dataflash log"
+                        />
+                      )}
+                    </span>
+                  </td>
                   <td className="px-3 py-2 text-text-primary font-mono">
                     {formatDuration(rec.duration)}
                   </td>

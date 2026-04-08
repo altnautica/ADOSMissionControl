@@ -1,14 +1,16 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Download, Star, X } from "lucide-react";
+import { Download, Star, X, HardDrive, Upload } from "lucide-react";
 import type { FlightRecord } from "@/lib/types";
 import { exportFlightRecordsAsCsv } from "@/lib/csv-export";
 import { CloudSyncBadge } from "./CloudSyncBadge";
+import { LogBrowser } from "./dataflash/LogBrowser";
+import { UploadLog } from "./dataflash/UploadLog";
 
 export type DatePreset = "all" | "today" | "7d" | "30d" | "month";
 
@@ -60,6 +62,8 @@ export function HistoryToolbar({
   onReset,
 }: HistoryToolbarProps) {
   const t = useTranslations("history");
+  const [logBrowserOpen, setLogBrowserOpen] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
 
   const STATUS_OPTIONS = useMemo(() => [
     { value: "all", label: t("allStatuses") },
@@ -175,7 +179,28 @@ export function HistoryToolbar({
       >
         {t("reset")}
       </Button>
+      <Button
+        variant="secondary"
+        size="md"
+        icon={<HardDrive size={14} />}
+        onClick={() => setLogBrowserOpen(true)}
+        title={t("onboardLogs")}
+      >
+        {t("onboardLogs")}
+      </Button>
+      <Button
+        variant="secondary"
+        size="md"
+        icon={<Upload size={14} />}
+        onClick={() => setUploadOpen(true)}
+        title={t("importBin")}
+      >
+        {t("importBin")}
+      </Button>
       <CloudSyncBadge />
+
+      <LogBrowser open={logBrowserOpen} onClose={() => setLogBrowserOpen(false)} />
+      <UploadLog open={uploadOpen} onClose={() => setUploadOpen(false)} />
     </div>
   );
 }
