@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { formatDuration } from "@/lib/utils";
 import type { ServiceInfo } from "@/lib/agent/types";
 import { useVideoStore } from "@/stores/video-store";
+import { useFreshness } from "@/lib/agent/freshness";
 
 interface ServiceTableProps {
   services: ServiceInfo[];
@@ -15,7 +16,7 @@ interface ServiceTableProps {
   processMemoryMb?: number | null;
 }
 
-function statusBadge(status: string) {
+function statusBadge(status: string, stale: boolean) {
   const colors: Record<string, string> = {
     running: "bg-status-success/20 text-status-success",
     stopped: "bg-text-tertiary/20 text-text-tertiary",
@@ -24,11 +25,15 @@ function statusBadge(status: string) {
     starting: "bg-accent-primary/20 text-accent-primary",
     circuit_open: "bg-status-error/20 text-status-error",
   };
+  // When the feed is stale we can't vouch for these states — render every
+  // badge in the neutral tertiary tone so "running" doesn't read as a live
+  // confirmation.
+  const staleStyle = "bg-text-tertiary/20 text-text-tertiary";
   return (
     <span
       className={cn(
         "inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium rounded",
-        colors[status] ?? colors.stopped
+        stale ? staleStyle : (colors[status] ?? colors.stopped)
       )}
     >
       {status === "circuit_open" ? "breaker" : status}
@@ -46,6 +51,8 @@ const categoryColors: Record<string, string> = {
 export function ServiceTable({ services, onRestart, onRestartAll, processCpu, processMemoryMb }: ServiceTableProps) {
   const t = useTranslations("agent");
   const agentDependencies = useVideoStore((s) => s.agentDependencies);
+  const freshness = useFreshness();
+  const isStale = freshness.state !== "live" && freshness.state !== "unknown";
   if (!services || !Array.isArray(services) || services.length === 0) {
     return (
       <div className="border border-border-default rounded-lg p-4">
@@ -60,9 +67,28 @@ export function ServiceTable({ services, onRestart, onRestartAll, processCpu, pr
   const hasRealPids = services.some((s) => s.pid != null && s.pid > 0);
 
   return (
-    <div className="border border-border-default rounded-lg p-4">
+    <div
+      className={cn(
+        "border border-border-default rounded-lg p-4 transition-opacity",
+        isStale && "opacity-60"
+      )}
+    >
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-medium text-text-primary">{t("services")}</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-medium text-text-primary">{t("services")}</h3>
+          {isStale && (
+            <span
+              className={cn(
+                "text-[9px] uppercase tracking-wide px-1.5 py-0.5 rounded font-semibold",
+                freshness.state === "offline"
+                  ? "bg-status-error/15 text-status-error"
+                  : "bg-status-warning/15 text-status-warning"
+              )}
+            >
+              Data stale
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-3 text-[10px] text-text-tertiary font-mono">
           <span>{runningCount}/{services.length} running</span>
           {onRestartAll && (
@@ -131,7 +157,7 @@ export function ServiceTable({ services, onRestart, onRestartAll, processCpu, pr
                       })()}
                   </div>
                 </td>
-                <td className="py-1.5 pr-3">{statusBadge(svc.status)}</td>
+                <td className="py-1.5 pr-3">{statusBadge(svc.status, isStale)}</td>
                 {hasRealPids && (
                   <>
                     <td className="py-1.5 pr-3 text-right text-text-secondary font-mono">

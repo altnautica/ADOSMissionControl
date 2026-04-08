@@ -4,12 +4,14 @@ import { useTranslations } from "next-intl";
 import { Cpu, MemoryStick, HardDrive, Thermometer } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SystemResources } from "@/lib/agent/types";
+import { useFreshness } from "@/lib/agent/freshness";
 
 interface SystemResourceGaugesProps {
   resources: SystemResources;
 }
 
-function barColor(percent: number): string {
+function barColor(percent: number, stale: boolean): string {
+  if (stale) return "bg-text-tertiary/60";
   if (percent >= 90) return "bg-status-error";
   if (percent >= 70) return "bg-status-warning";
   return "bg-accent-primary";
@@ -20,11 +22,15 @@ function ResourceBar({
   label,
   percent,
   detail,
+  stale,
+  staleLabel,
 }: {
   icon: typeof Cpu;
   label: string;
   percent: number;
   detail: string;
+  stale: boolean;
+  staleLabel: string;
 }) {
   return (
     <div className="space-y-1">
@@ -33,13 +39,19 @@ function ResourceBar({
           <Icon size={12} className="text-text-tertiary" />
           <span className="text-xs text-text-secondary">{label}</span>
         </div>
-        <span className="text-xs text-text-primary font-mono">
+        <span
+          className={cn(
+            "text-xs font-mono",
+            stale ? "text-text-tertiary" : "text-text-primary"
+          )}
+          title={stale ? `Last reading ${staleLabel}` : undefined}
+        >
           {percent.toFixed(1)}%
         </span>
       </div>
       <div className="h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
         <div
-          className={cn("h-full rounded-full transition-all", barColor(percent))}
+          className={cn("h-full rounded-full transition-all", barColor(percent, stale))}
           style={{ width: `${Math.min(percent, 100)}%` }}
         />
       </div>
@@ -50,9 +62,23 @@ function ResourceBar({
 
 export function SystemResourceGauges({ resources }: SystemResourceGaugesProps) {
   const t = useTranslations("agent");
+  const freshness = useFreshness();
+  const isStale = freshness.state !== "live" && freshness.state !== "unknown";
   return (
-    <div className="border border-border-default rounded-lg p-4 space-y-4">
-      <h3 className="text-sm font-medium text-text-primary">{t("systemResources")}</h3>
+    <div
+      className={cn(
+        "border border-border-default rounded-lg p-4 space-y-4 transition-opacity",
+        isStale && "opacity-60"
+      )}
+    >
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-medium text-text-primary">{t("systemResources")}</h3>
+        {isStale && (
+          <span className="text-[10px] uppercase text-text-tertiary font-mono">
+            Paused · {freshness.label}
+          </span>
+        )}
+      </div>
 
       <ResourceBar
         icon={Cpu}
