@@ -38,7 +38,10 @@ import { usePrearmBufferStore } from "@/stores/prearm-buffer-store";
 import { analyzeFlight } from "./flight-analysis/analyzer";
 import { detectPhases } from "./flight-analysis/phase-detector";
 import { computeAdherence } from "./flight-analysis/mission-adherence";
+import { detectGeofenceBreaches } from "./flight-analysis/geofence-forensics";
 import { useMissionStore } from "@/stores/mission-store";
+import { useGeofenceStore } from "@/stores/geofence-store";
+import type { GeofenceSnapshot, GeofenceSnapshotZone } from "./types";
 import { computeSunMoon } from "./environment/sun-moon";
 import { getWeatherSnapshot } from "./environment/weather-provider";
 import { captureAirspaceSnapshot } from "./environment/airspace-snapshot";
@@ -144,6 +147,11 @@ function handleArm(droneId: string, droneName: string, snapshot: ArmSnapshot): v
     alt: w.alt,
   }));
 
+  // Phase 16c — freeze the geofence snapshot at arm time so disarm
+  // forensics can detect breaches even if the user edits the fence
+  // after the flight ends.
+  const geofenceSnapshot = captureGeofenceSnapshot();
+
   const draft: FlightRecord = {
     id: cryptoRandomId(),
     droneId,
@@ -176,6 +184,7 @@ function handleArm(droneId: string, droneName: string, snapshot: ArmSnapshot): v
     missionId,
     missionName,
     missionWaypoints,
+    geofenceSnapshot,
   };
 
   const history = useHistoryStore.getState();
@@ -248,6 +257,11 @@ async function handleDisarm(droneId: string): Promise<void> {
   const adherence =
     draftRowEarly?.missionWaypoints && stats.path.length >= 2
       ? computeAdherence(stats.path, draftRowEarly.missionWaypoints) ?? undefined
+      : undefined;
+  // Phase 16c — geofence breach detection against the snapshot frozen on arm.
+  const geofenceBreaches =
+    draftRowEarly?.geofenceSnapshot && stats.path.length >= 2
+      ? detectGeofenceBreaches(stats.path, draftRowEarly.geofenceSnapshot, stats.maxAlt)
       : undefined;
   const endTime = Date.now();
   const history = useHistoryStore.getState();
@@ -383,6 +397,7 @@ async function handleDisarm(droneId: string): Promise<void> {
     sunMoon: sunMoonPatch,
     phases: phases.length > 0 ? phases : undefined,
     adherence,
+    geofenceBreaches: geofenceBreaches && geofenceBreaches.length > 0 ? geofenceBreaches : undefined,
   });
   void history.persistToIDB();
 
@@ -556,6 +571,62 @@ function capturePreflightSnapshot(droneId: string): PreflightSnapshot | undefine
     sysStatusPresent: latestSys?.sensorsPresent,
     sysStatusEnabled: latestSys?.sensorsEnabled,
     prearmFailures,
+  };
+}
+
+// ── Geofence snapshot (Phase 16c) ────────────────────────────
+
+function captureGeofenceSnapshot(): GeofenceSnapshot | undefined {
+  const fence = useGeofenceStore.getState();
+  // Skip the snapshot entirely when nothing is configured.
+  const hasLegacyCircle = fence.circleCenter !== null && fence.circleRadius > 0;
+  const hasLegacyPolygon = fence.polygonPoints.length >= 3;
+  const hasZones = fence.zones && fence.zones.length > 0;
+  const hasAltitude = fence.maxAltitude > 0 || fence.minAltitude > 0;
+  if (!fence.enabled && !hasLegacyCircle && !hasLegacyPolygon && !hasZones && !hasAltitude) {
+    return undefined;
+  }
+
+  const zones: GeofenceSnapshotZone[] = [];
+
+  // Convert legacy single-fence into a synthetic inclusion zone so the
+  // forensics module can treat both legacy and multi-zone uniformly.
+  if (hasLegacyCircle && fence.fenceType === "circle") {
+    zones.push({
+      id: "legacy-circle",
+      role: "inclusion",
+      type: "circle",
+      circleCenter: fence.circleCenter ?? undefined,
+      circleRadius: fence.circleRadius,
+    });
+  }
+  if (hasLegacyPolygon && fence.fenceType === "polygon") {
+    zones.push({
+      id: "legacy-polygon",
+      role: "inclusion",
+      type: "polygon",
+      polygonPoints: fence.polygonPoints,
+    });
+  }
+  // Multi-zone entries.
+  if (hasZones) {
+    for (const z of fence.zones) {
+      zones.push({
+        id: z.id,
+        role: z.role,
+        type: z.type,
+        polygonPoints: z.type === "polygon" ? z.polygonPoints : undefined,
+        circleCenter: z.type === "circle" ? z.circleCenter ?? undefined : undefined,
+        circleRadius: z.type === "circle" ? z.circleRadius : undefined,
+      });
+    }
+  }
+
+  return {
+    enabled: fence.enabled,
+    maxAltitude: fence.maxAltitude > 0 ? fence.maxAltitude : undefined,
+    minAltitude: fence.minAltitude > 0 ? fence.minAltitude : undefined,
+    zones: zones.length > 0 ? zones : undefined,
   };
 }
 

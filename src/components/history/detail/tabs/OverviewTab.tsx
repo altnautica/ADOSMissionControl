@@ -11,7 +11,7 @@ import { DataValue } from "@/components/ui/data-value";
 import { formatDate, formatDuration, formatTime } from "@/lib/utils";
 import { useBatteryRegistryStore } from "@/stores/battery-registry-store";
 import { useEquipmentRegistryStore } from "@/stores/equipment-registry-store";
-import { CheckCircle2, XCircle, AlertTriangle, Sun, Moon, Sparkles, Cloud, Shield, Activity, MapPin } from "lucide-react";
+import { CheckCircle2, XCircle, AlertTriangle, Sun, Moon, Sparkles, Cloud, Shield, Activity, MapPin, Hexagon } from "lucide-react";
 import type {
   FlightRecord,
   FlightPhase,
@@ -20,6 +20,7 @@ import type {
   WeatherSnapshot,
   AirspaceSnapshot,
   MissionAdherence,
+  GeofenceBreach,
 } from "@/lib/types";
 
 interface OverviewTabProps {
@@ -80,6 +81,12 @@ export function OverviewTab({ record }: OverviewTabProps) {
             adherence={record.adherence}
             missionName={record.missionName}
           />
+        </Card>
+      )}
+
+      {record.geofenceBreaches && record.geofenceBreaches.length > 0 && (
+        <Card title="Geofence" padding={true}>
+          <GeofenceCard breaches={record.geofenceBreaches} />
         </Card>
       )}
 
@@ -353,6 +360,115 @@ function fmtPhaseDuration(ms: number): string {
   const m = Math.floor(totalSec / 60);
   const s = totalSec % 60;
   return m > 0 ? `${m}m${s.toString().padStart(2, "0")}` : `${s}s`;
+}
+
+const BREACH_LABELS: Record<GeofenceBreach["type"], string> = {
+  polygon_outside: "Outside polygon",
+  polygon_inside: "Inside exclusion polygon",
+  circle_outside: "Outside circle",
+  circle_inside: "Inside exclusion circle",
+  max_altitude: "Above max altitude",
+  min_altitude: "Below min altitude",
+};
+
+function GeofenceCard({ breaches }: { breaches: GeofenceBreach[] }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-1.5 text-[11px] text-status-error">
+        <AlertTriangle size={12} />
+        <span className="uppercase tracking-wider font-semibold">
+          {breaches.length} breach{breaches.length === 1 ? "" : "es"} detected
+        </span>
+      </div>
+      <ul className="flex flex-col gap-1.5">
+        {breaches.map((b, i) => (
+          <li
+            key={`${b.zoneId}-${b.type}-${i}`}
+            className="flex flex-col gap-0.5 border-l-2 border-status-error pl-2 py-0.5"
+          >
+            <div className="flex items-center justify-between gap-2 text-[11px]">
+              <span className="inline-flex items-center gap-1.5 text-text-primary">
+                <Hexagon size={10} className="text-status-error" />
+                {BREACH_LABELS[b.type]}
+              </span>
+              {b.maxBreachDistanceM !== undefined && b.maxBreachDistanceM > 0 && (
+                <span className="font-mono text-status-error">
+                  +{b.maxBreachDistanceM} m
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-3 text-[10px] text-text-tertiary font-mono">
+              <span>zone: {b.zoneId}</span>
+              <span>
+                pts {b.startIdx}–{b.endIdx}
+              </span>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function AdherenceCard({
+  adherence,
+  missionName,
+}: {
+  adherence: MissionAdherence;
+  missionName?: string;
+}) {
+  const reachedPct =
+    adherence.totalWaypoints > 0
+      ? Math.round((adherence.waypointsReached / adherence.totalWaypoints) * 100)
+      : 0;
+
+  // Severity colour based on max cross-track error.
+  const errColour =
+    adherence.maxCrossTrackErrorM > 50
+      ? "text-status-error"
+      : adherence.maxCrossTrackErrorM > 20
+        ? "text-status-warning"
+        : "text-status-success";
+
+  return (
+    <div className="flex flex-col gap-2">
+      {missionName && (
+        <div className="flex items-center gap-1.5 text-[11px] text-text-secondary">
+          <MapPin size={12} />
+          <span className="text-text-primary">{missionName}</span>
+        </div>
+      )}
+      <div className="grid grid-cols-2 gap-2 text-[11px]">
+        <Row
+          label="Waypoints"
+          value={`${adherence.waypointsReached}/${adherence.totalWaypoints} (${reachedPct}%)`}
+        />
+        <Row
+          label="Max XTE"
+          value={`${adherence.maxCrossTrackErrorM} m`}
+        />
+        <Row
+          label="Mean XTE"
+          value={`${adherence.meanCrossTrackErrorM} m`}
+        />
+        {adherence.deviationSegments && adherence.deviationSegments.length > 0 && (
+          <Row
+            label="Deviations"
+            value={`${adherence.deviationSegments.length}`}
+          />
+        )}
+      </div>
+      {adherence.maxCrossTrackErrorM > 0 && (
+        <div className={`text-[10px] font-mono ${errColour}`}>
+          {adherence.maxCrossTrackErrorM > 50
+            ? "Significant deviation from intended path"
+            : adherence.maxCrossTrackErrorM > 20
+              ? "Moderate deviation"
+              : "Tracked the intended path closely"}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function PhasesCard({ phases }: { phases: FlightPhase[] }) {

@@ -174,6 +174,51 @@ export interface FlightRecord {
   missionWaypoints?: { lat: number; lon: number; alt: number }[];
   /** Computed adherence stats from comparing the actual path against the intended waypoints. */
   adherence?: MissionAdherence;
+
+  // Phase 16c — geofence forensics.
+  /** Frozen geofence configuration at arm time. */
+  geofenceSnapshot?: GeofenceSnapshot;
+  /** Detected breaches against the snapshotted geofence. */
+  geofenceBreaches?: GeofenceBreach[];
+}
+
+/** Frozen geofence configuration captured at flight arm time. */
+export interface GeofenceSnapshot {
+  enabled: boolean;
+  maxAltitude?: number;
+  minAltitude?: number;
+  /** Inclusion + exclusion zones at arm time. */
+  zones?: GeofenceSnapshotZone[];
+}
+
+export interface GeofenceSnapshotZone {
+  id: string;
+  role: "inclusion" | "exclusion";
+  type: "polygon" | "circle";
+  polygonPoints?: [number, number][];
+  circleCenter?: [number, number];
+  circleRadius?: number;
+}
+
+/** One contiguous run of path points that breached the snapshotted geofence. */
+export interface GeofenceBreach {
+  /** Index of the first path point in the breach run. */
+  startIdx: number;
+  /** Index of the last path point in the breach run. */
+  endIdx: number;
+  type:
+    | "polygon_outside"
+    | "polygon_inside"
+    | "circle_outside"
+    | "circle_inside"
+    | "max_altitude"
+    | "min_altitude";
+  /** Zone id from the snapshot, or "altitude" for altitude breaches. */
+  zoneId: string;
+  /** Peak breach distance in meters. */
+  maxBreachDistanceM?: number;
+  /** Path index where the peak breach occurred. */
+  peakIdx?: number;
 }
 
 /** Mission adherence stats from {@link computeAdherence}. */
