@@ -37,6 +37,22 @@ export function AgentMavlinkBridge() {
     if (!connected || !fcConnected || connectingRef.current) return;
     if (!mavlinkUrl && !cloudDeviceId) return;
 
+    // DEC-108 Phase E: skip the MQTT MAVLink relay path on localhost dev mode
+    // when no direct LAN WebSocket is available. The cloud MQTT MAVLink relay
+    // requires production cloud infrastructure that doesn't exist for the
+    // bench user, and the attempt always fails after 10s with the
+    // "No heartbeat received within 10 seconds" error spamming the console.
+    // Telemetry is already covered by MqttBridge.tsx in this mode, so the
+    // missing MAVLinkAdapter just disables binary command/control (which is
+    // fine for monitoring-only sessions).
+    const isLocalDev =
+      typeof window !== "undefined" &&
+      (window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1");
+    if (isLocalDev && !mavlinkUrl) {
+      return;
+    }
+
     // Don't reconnect if already connected to a drone from this bridge
     if (connectedDroneIdRef.current) {
       const existing = useDroneManager.getState().drones.get(connectedDroneIdRef.current);
