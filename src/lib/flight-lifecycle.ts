@@ -36,6 +36,7 @@ import { useChecklistStore } from "@/stores/checklist-store";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { usePrearmBufferStore } from "@/stores/prearm-buffer-store";
 import { analyzeFlight } from "./flight-analysis/analyzer";
+import { detectPhases } from "./flight-analysis/phase-detector";
 import { computeSunMoon } from "./environment/sun-moon";
 import { getWeatherSnapshot } from "./environment/weather-provider";
 import { captureAirspaceSnapshot } from "./environment/airspace-snapshot";
@@ -223,6 +224,7 @@ async function handleDisarm(droneId: string): Promise<void> {
 
   const stats = computeFlightStats(frames);
   const analysis = frames.length > 0 ? analyzeFlight(frames) : { events: [], flags: [], health: {} };
+  const phases = frames.length > 0 ? detectPhases(frames) : [];
   const endTime = Date.now();
   const history = useHistoryStore.getState();
   // Roll up aircraft usage stats (Phase 7a).
@@ -355,6 +357,7 @@ async function handleDisarm(droneId: string): Promise<void> {
     flags: analysis.flags,
     health: analysis.health,
     sunMoon: sunMoonPatch,
+    phases: phases.length > 0 ? phases : undefined,
   });
   void history.persistToIDB();
 
