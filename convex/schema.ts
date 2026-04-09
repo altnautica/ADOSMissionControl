@@ -336,6 +336,12 @@ fullName: v.optional(v.string()),
         error: v.optional(v.string()),
       }),
     ),
+    // Phase 15 — reverse-geocoded place names from takeoff / landing coords.
+    takeoffPlaceName: v.optional(v.string()),
+    landingPlaceName: v.optional(v.string()),
+    country: v.optional(v.string()),
+    region: v.optional(v.string()),
+    locality: v.optional(v.string()),
     // Phase 14c — airspace / NOTAM / TFR intersection snapshot.
     airspaceSnapshot: v.optional(
       v.object({

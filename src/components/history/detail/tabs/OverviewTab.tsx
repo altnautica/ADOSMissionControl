@@ -43,8 +43,12 @@ export function OverviewTab({ record }: OverviewTabProps) {
           <Row label="Start" value={formatTime(start)} />
           {record.endTime !== start && <Row label="End" value={formatTime(record.endTime)} />}
           {record.suiteType && <Row label="Suite" value={record.suiteType.toUpperCase()} />}
+          {record.takeoffPlaceName && <Row label="Place" value={record.takeoffPlaceName} />}
           <Row label="Takeoff" value={fmtCoord(record.takeoffLat, record.takeoffLon)} mono />
           <Row label="Landing" value={fmtCoord(record.landingLat, record.landingLon)} mono />
+          {record.landingPlaceName && (
+            <Row label="Landing place" value={record.landingPlaceName} />
+          )}
         </div>
       </Card>
 

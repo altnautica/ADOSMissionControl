@@ -149,6 +149,18 @@ export interface FlightRecord {
 
   /** Phase 14c — NOTAM / zone / TFR intersections with this flight's path + window. */
   airspaceSnapshot?: AirspaceSnapshot;
+
+  // Phase 15 — reverse-geocoded human-readable location fields.
+  /** Comma-joined place name at takeoff ("Bangalore, Karnataka, India"). */
+  takeoffPlaceName?: string;
+  /** Comma-joined place name at landing. Only set when landing is >5 km from takeoff. */
+  landingPlaceName?: string;
+  /** ISO 3166-1 alpha-2 country code from the takeoff lookup (e.g. "IN", "US"). */
+  country?: string;
+  /** State / province / region from the takeoff lookup. */
+  region?: string;
+  /** City / town / village from the takeoff lookup. */
+  locality?: string;
 }
 
 /**

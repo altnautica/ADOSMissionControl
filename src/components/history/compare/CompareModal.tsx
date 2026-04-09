@@ -146,8 +146,27 @@ function StatsDelta({ recordA, recordB }: { recordA: FlightRecord; recordB: Flig
     },
   ];
 
+  const placeA = recordA.takeoffPlaceName || "—";
+  const placeB = recordB.takeoffPlaceName || "—";
+  const sameLocation = placeA === placeB && placeA !== "—";
+
   return (
     <Card title="Stats delta" padding={true}>
+      {(recordA.takeoffPlaceName || recordB.takeoffPlaceName) && (
+        <div className="mb-2 flex flex-col gap-0.5 text-[10px] border-b border-border-default pb-2">
+          <div className="flex justify-between gap-2">
+            <span className="text-text-tertiary uppercase tracking-wider">Location A</span>
+            <span className="text-text-primary truncate max-w-[60%] text-right">{placeA}</span>
+          </div>
+          <div className="flex justify-between gap-2">
+            <span className="text-text-tertiary uppercase tracking-wider">Location B</span>
+            <span className="text-text-primary truncate max-w-[60%] text-right">{placeB}</span>
+          </div>
+          {sameLocation && (
+            <span className="text-[9px] text-status-success">Same location — direct comparison</span>
+          )}
+        </div>
+      )}
       <table className="w-full text-xs">
         <thead>
           <tr className="border-b border-border-default">
