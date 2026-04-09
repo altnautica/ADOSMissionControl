@@ -17,6 +17,20 @@ import { useVideoStore } from "@/stores/video-store";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import { communityApi } from "@/lib/community-api";
+// DEC-108 Phase D follow-up: static import for webrtc-client. Dynamic
+// imports inside useEffect were causing Turbopack to HMR-reload the
+// module on every unrelated edit, wiping module-level stats state and
+// orphaning the active RTCPeerConnection. Static import puts the module
+// in the parent's import graph so HMR only invalidates it on direct
+// edits to webrtc-client.ts itself.
+import {
+  startStream,
+  stopStream,
+  setVideoElement,
+  captureScreenshot,
+  startRecording,
+  stopRecording,
+} from "@/lib/video/webrtc-client";
 
 interface VideoFeedCardProps {
   className?: string;
@@ -74,22 +88,20 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
     return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
   }, []);
 
-  const handleSnapshot = useCallback(async () => {
+  const handleSnapshot = useCallback(() => {
     try {
-      const { captureScreenshot } = await import("@/lib/video/webrtc-client");
       captureScreenshot();
     } catch (err) {
       console.warn("[VideoFeedCard] snapshot failed", err);
     }
   }, []);
 
-  const handleRecordToggle = useCallback(async () => {
+  const handleRecordToggle = useCallback(() => {
     try {
-      const mod = await import("@/lib/video/webrtc-client");
       if (isRecording) {
-        mod.stopRecording();
+        stopRecording();
       } else {
-        mod.startRecording();
+        startRecording();
       }
     } catch (err) {
       console.warn("[VideoFeedCard] record toggle failed", err);
@@ -145,7 +157,6 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
 
     async function connect() {
       try {
-        const { startStream, setVideoElement } = await import("@/lib/video/webrtc-client");
         if (cancelled || !videoRef.current) return;
 
         setVideoElement(videoRef.current);
@@ -167,9 +178,7 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
     return () => {
       cancelled = true;
       setConnecting(false);
-      import("@/lib/video/webrtc-client").then(({ stopStream }) => {
-        stopStream();
-      });
+      stopStream();
     };
   }, [agentWhepUrl, agentVideoState, retryKey]);
 
