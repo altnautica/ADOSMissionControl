@@ -22,7 +22,30 @@ let lastFrameTime: number = 0;
 // DEC-108: track frame counts for fps computation when framesPerSecond is missing
 let lastFramesDecoded: number = 0;
 let lastStatsTime: number = 0;
+// DEC-108 Phase D: track bytes received for bitrate derivation
+let lastBytesReceived: number = 0;
 const FRAME_TIMEOUT_MS = 8000;
+
+/** DEC-108 Phase D: classify a WHEP URL as LAN-direct or cloud relay. */
+function detectTransportFromUrl(url: string): "lan-whep" | "cloud-whep" {
+  try {
+    const u = new URL(url);
+    const host = u.hostname;
+    // Loopback or RFC1918 private addresses → LAN direct
+    if (
+      host === "localhost" ||
+      host === "127.0.0.1" ||
+      host.startsWith("10.") ||
+      host.startsWith("192.168.") ||
+      /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(host)
+    ) {
+      return "lan-whep";
+    }
+    return "cloud-whep";
+  } catch {
+    return "lan-whep";
+  }
+}
 
 /**
  * Start a WebRTC stream from a WHEP endpoint.
@@ -119,6 +142,9 @@ export async function startStream(whepUrl: string): Promise<MediaStream> {
 
   store.setStreamUrl(whepUrl);
   store.setStreaming(true);
+  // DEC-108 Phase D: classify and publish the active transport so the UI
+  // can show "LAN DIRECT" / "CLOUD WHEP" badges.
+  store.setTransport(detectTransportFromUrl(whepUrl));
 
   // Start stats polling
   startStatsPolling();
@@ -144,6 +170,8 @@ export async function stopStream(): Promise<void> {
   store.setStreaming(false);
   store.setStreamUrl(null);
   store.updateStats(0, 0);
+  store.setTransport("unknown");
+  store.setVideoMetrics({ codec: "", bitrateKbps: 0, packetsLost: 0, jitterMs: 0 });
 }
 
 /** Bind a video element for screenshot/recording reference. */
@@ -254,6 +282,7 @@ function startStatsPolling(): void {
   lastFrameTime = Date.now();
   lastFramesDecoded = 0;
   lastStatsTime = 0;
+  lastBytesReceived = 0;
 
   statsInterval = setInterval(async () => {
     if (!pc) return;
@@ -261,19 +290,47 @@ function startStatsPolling(): void {
     const stats = await pc.getStats();
     const store = useVideoStore.getState();
 
+    // Build a lookup for codec stats reports (keyed by id).
+    // RTCRtpCodecStats isn't always declared in the lib.dom typings, so use
+    // a structural type for the fields we read.
+    type CodecStatsLite = { id: string; type: string; mimeType?: string };
+    const codecReports = new Map<string, CodecStatsLite>();
+    stats.forEach((report) => {
+      if (report.type === "codec") {
+        codecReports.set(report.id, report as unknown as CodecStatsLite);
+      }
+    });
+
     let computedFps = 0;
     let inboundFound = false;
     let jitterMs = 0;
     let rttMs = 0;
     let framesDecoded = 0;
+    let codecName = "";
+    let bitrateKbps = 0;
+    let packetsLost = 0;
+    let inboundJitterRtpMs = 0;
+    let bytesReceived = 0;
 
     stats.forEach((report) => {
       if (report.type === "inbound-rtp" && report.kind === "video") {
         inboundFound = true;
 
+        type ExtendedInbound = RTCInboundRtpStreamStats & {
+          framesPerSecond?: number;
+          framesDecoded?: number;
+          jitterBufferDelay?: number;
+          jitterBufferEmittedCount?: number;
+          codecId?: string;
+          bytesReceived?: number;
+          packetsLost?: number;
+          jitter?: number;
+        };
+        const r = report as ExtendedInbound;
+
         // Prefer the browser-reported framesPerSecond, fall back to derived
-        const reportedFps = (report as RTCInboundRtpStreamStats & { framesPerSecond?: number }).framesPerSecond;
-        const decoded = ((report as RTCInboundRtpStreamStats & { framesDecoded?: number }).framesDecoded) ?? 0;
+        const reportedFps = r.framesPerSecond;
+        const decoded = r.framesDecoded ?? 0;
         framesDecoded = decoded;
         const now = Date.now();
 
@@ -287,11 +344,23 @@ function startStatsPolling(): void {
         }
 
         // Decoder jitter buffer (L5)
-        const delay = (report as RTCInboundRtpStreamStats & { jitterBufferDelay?: number }).jitterBufferDelay ?? 0;
-        const emitted = (report as RTCInboundRtpStreamStats & { jitterBufferEmittedCount?: number }).jitterBufferEmittedCount ?? 0;
+        const delay = r.jitterBufferDelay ?? 0;
+        const emitted = r.jitterBufferEmittedCount ?? 0;
         if (emitted > 0) {
           jitterMs = Math.round((delay / emitted) * 1000);
         }
+
+        // DEC-108 Phase D: codec / bitrate / packet loss / RTP jitter
+        if (r.codecId && codecReports.has(r.codecId)) {
+          const codec = codecReports.get(r.codecId)!;
+          // mimeType looks like "video/H264" or "video/VP8"
+          const mime = codec.mimeType || "";
+          codecName = mime.includes("/") ? mime.split("/")[1] : mime;
+        }
+        bytesReceived = r.bytesReceived ?? 0;
+        packetsLost = r.packetsLost ?? 0;
+        // r.jitter is in seconds (per spec)
+        inboundJitterRtpMs = Math.round((r.jitter ?? 0) * 1000);
       }
 
       if (
@@ -311,7 +380,24 @@ function startStatsPolling(): void {
       const totalLatencyMs = rttMs + jitterMs;
       store.updateStats(computedFps, totalLatencyMs);
 
+      // DEC-108 Phase D: bitrate from byte delta over the polling interval
+      if (lastStatsTime > 0 && bytesReceived > lastBytesReceived) {
+        const elapsedSec = (Date.now() - lastStatsTime) / 1000;
+        if (elapsedSec > 0) {
+          const deltaBytes = bytesReceived - lastBytesReceived;
+          bitrateKbps = Math.round((deltaBytes * 8) / elapsedSec / 1000);
+        }
+      }
+
+      store.setVideoMetrics({
+        codec: codecName,
+        bitrateKbps,
+        packetsLost,
+        jitterMs: inboundJitterRtpMs > 0 ? inboundJitterRtpMs : jitterMs,
+      });
+
       lastFramesDecoded = framesDecoded;
+      lastBytesReceived = bytesReceived;
       lastStatsTime = Date.now();
 
       // Track frame arrival for timeout detection
