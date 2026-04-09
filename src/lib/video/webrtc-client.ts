@@ -13,20 +13,18 @@
 
 import { useVideoStore } from "@/stores/video-store";
 
+// DEC-108 Phase E: pc/mediaRecorder/statsInterval/videoElement are session-
+// scoped and get re-initialized cleanly on every startStream call. The
+// per-poll DELTA STATE (lastFramesDecoded, lastStatsTime, etc.) used to
+// live in module-level globals here too, but Turbopack HMR re-evaluated
+// the module on every unrelated file change and reset them to 0, breaking
+// the FPS counter. That state now lives in useVideoStore._pollState which
+// is HMR-safe (Zustand stores live on globalThis).
 let pc: RTCPeerConnection | null = null;
 let mediaRecorder: MediaRecorder | null = null;
 let recordedChunks: Blob[] = [];
 let statsInterval: ReturnType<typeof setInterval> | null = null;
 let videoElement: HTMLVideoElement | null = null;
-let lastFrameTime: number = 0;
-// DEC-108: track frame counts for fps computation when framesPerSecond is missing
-let lastFramesDecoded: number = 0;
-let lastStatsTime: number = 0;
-// DEC-108 Phase D: track bytes received for bitrate derivation
-let lastBytesReceived: number = 0;
-// DEC-108 Phase D follow-up: track jitter buffer delta for windowed latency.
-let lastJitterDelay: number = 0;
-let lastJitterEmitted: number = 0;
 
 /** DEC-108 Phase D: classify a WHEP URL as LAN-direct or cloud relay. */
 function detectTransportFromUrl(url: string): "lan-whep" | "cloud-whep" {
@@ -281,18 +279,22 @@ export function captureScreenshot(): string | null {
 function startStatsPolling(): void {
   if (statsInterval) return;
 
-  lastFrameTime = Date.now();
-  lastFramesDecoded = 0;
-  lastStatsTime = 0;
-  lastBytesReceived = 0;
-  lastJitterDelay = 0;
-  lastJitterEmitted = 0;
+  // DEC-108 Phase E: reset polling state in the HMR-safe Zustand store
+  useVideoStore.getState().resetPollState();
+  useVideoStore.getState().setPollState({ lastFrameTime: Date.now() });
 
   statsInterval = setInterval(async () => {
     if (!pc) return;
 
     const stats = await pc.getStats();
     const store = useVideoStore.getState();
+    // DEC-108 Phase E: read persistent polling state from store
+    const ps = store._pollState;
+    const lastFramesDecoded = ps.lastFramesDecoded;
+    const lastStatsTime = ps.lastStatsTime;
+    const lastBytesReceived = ps.lastBytesReceived;
+    const lastJitterDelay = ps.lastJitterDelay;
+    const lastJitterEmitted = ps.lastJitterEmitted;
 
     // Build a lookup for codec stats reports (keyed by id).
     // RTCRtpCodecStats isn't always declared in the lib.dom typings, so use
@@ -364,9 +366,10 @@ function startStatsPolling(): void {
           // First sample — use cumulative as best available
           jitterMs = Math.round((delay / emitted) * 1000);
         }
-        // Persist for next window
-        lastJitterDelay = delay;
-        lastJitterEmitted = emitted;
+        // Persist for next window — local mutation only; we batch the
+        // store write at the bottom of this poll cycle
+        ps.lastJitterDelay = delay;
+        ps.lastJitterEmitted = emitted;
 
         // DEC-108 Phase D: codec / bitrate / packet loss / RTP jitter
         if (r.codecId && codecReports.has(r.codecId)) {
@@ -414,9 +417,18 @@ function startStatsPolling(): void {
         jitterMs: inboundJitterRtpMs > 0 ? inboundJitterRtpMs : jitterMs,
       });
 
-      lastFramesDecoded = framesDecoded;
-      lastBytesReceived = bytesReceived;
-      lastStatsTime = Date.now();
+      // DEC-108 Phase E: persist polling state to the Zustand store. This
+      // single setPollState call replaces all 5 module-global writes — the
+      // store is HMR-safe so the next poll cycle (even after a Turbopack
+      // reload of this module) will read the correct previous values.
+      store.setPollState({
+        lastFramesDecoded: framesDecoded,
+        lastBytesReceived: bytesReceived,
+        lastStatsTime: Date.now(),
+        lastJitterDelay: ps.lastJitterDelay,
+        lastJitterEmitted: ps.lastJitterEmitted,
+        lastFrameTime: computedFps > 0 ? Date.now() : ps.lastFrameTime,
+      });
 
       // DEC-108 RCA: previously this branch fired a "frame timeout" disconnect
       // when computedFps stayed at 0 for >20s. The pattern was wrong:
@@ -434,9 +446,8 @@ function startStatsPolling(): void {
       // Removing the custom timeout. If frames stop but the WebRTC connection
       // is still alive, the user sees a frozen frame, which is the correct
       // behavior — the user can manually retry via the reconnect button.
-      if (computedFps > 0) {
-        lastFrameTime = Date.now();
-      }
+      // (lastFrameTime is now persisted via setPollState in the batched
+      // store update above.)
     }
   }, 1000);
 }

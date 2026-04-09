@@ -22,6 +22,22 @@ interface VideoStoreState {
   jitterMs: number;         // from inbound-rtp.jitter (sec * 1000)
   transport: VideoTransport;
 
+  // DEC-108 Phase E: HMR-safe polling state. Module-level globals in
+  // webrtc-client.ts get reset every time Turbopack reloads the module
+  // (which happens on any unrelated file change in the dev server). The
+  // FPS counter delta computation needs persistent state across polls.
+  // Zustand stores live on globalThis and survive HMR cleanly.
+  _pollState: {
+    lastFrameTime: number;
+    lastFramesDecoded: number;
+    lastStatsTime: number;
+    lastBytesReceived: number;
+    lastJitterDelay: number;
+    lastJitterEmitted: number;
+  };
+  setPollState: (s: Partial<VideoStoreState["_pollState"]>) => void;
+  resetPollState: () => void;
+
   // Cloud video state
   cloudStreamUrl: string | null;
   cloudStreaming: boolean;
@@ -57,6 +73,15 @@ export const useVideoStore = create<VideoStoreState>((set) => ({
   jitterMs: 0,
   transport: "unknown",
 
+  _pollState: {
+    lastFrameTime: 0,
+    lastFramesDecoded: 0,
+    lastStatsTime: 0,
+    lastBytesReceived: 0,
+    lastJitterDelay: 0,
+    lastJitterEmitted: 0,
+  },
+
   cloudStreamUrl: null,
   cloudStreaming: false,
 
@@ -77,6 +102,19 @@ export const useVideoStore = create<VideoStoreState>((set) => ({
       jitterMs: m.jitterMs ?? s.jitterMs,
     })),
   setTransport: (transport) => set({ transport }),
+  setPollState: (s) =>
+    set((prev) => ({ _pollState: { ...prev._pollState, ...s } })),
+  resetPollState: () =>
+    set({
+      _pollState: {
+        lastFrameTime: 0,
+        lastFramesDecoded: 0,
+        lastStatsTime: 0,
+        lastBytesReceived: 0,
+        lastJitterDelay: 0,
+        lastJitterEmitted: 0,
+      },
+    }),
   setCloudStreamUrl: (cloudStreamUrl) => set({ cloudStreamUrl }),
   setCloudStreaming: (cloudStreaming) => set({ cloudStreaming }),
   setAgentVideoStatus: (agentVideoState, agentWhepUrl, deps) =>
