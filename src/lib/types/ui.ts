@@ -164,6 +164,34 @@ export interface FlightRecord {
 
   /** Phase 16a — derived flight phase segmentation. */
   phases?: FlightPhase[];
+
+  // Phase 16b — mission adherence (intended vs actual).
+  /** Mission id from the active mission at arm time. */
+  missionId?: string;
+  /** Mission name from the active mission at arm time. */
+  missionName?: string;
+  /** Frozen waypoint snapshot. Present when an active mission was loaded at arm. */
+  missionWaypoints?: { lat: number; lon: number; alt: number }[];
+  /** Computed adherence stats from comparing the actual path against the intended waypoints. */
+  adherence?: MissionAdherence;
+}
+
+/** Mission adherence stats from {@link computeAdherence}. */
+export interface MissionAdherence {
+  /** Total number of waypoints in the mission. */
+  totalWaypoints: number;
+  /** How many waypoints the actual path passed within the hit radius. */
+  waypointsReached: number;
+  /** Max distance from any path point to the closest mission leg, in meters. */
+  maxCrossTrackErrorM: number;
+  /** Mean cross-track error in meters. */
+  meanCrossTrackErrorM: number;
+  /** Path-index ranges where the deviation exceeded the threshold. */
+  deviationSegments?: {
+    startIdx: number;
+    endIdx: number;
+    maxErrorM: number;
+  }[];
 }
 
 /**
