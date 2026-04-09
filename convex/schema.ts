@@ -365,6 +365,45 @@ fullName: v.optional(v.string()),
         ),
       }),
     ),
+    // Phase 16c — geofence forensics.
+    geofenceSnapshot: v.optional(
+      v.object({
+        enabled: v.boolean(),
+        maxAltitude: v.optional(v.number()),
+        minAltitude: v.optional(v.number()),
+        zones: v.optional(
+          v.array(
+            v.object({
+              id: v.string(),
+              role: v.union(v.literal("inclusion"), v.literal("exclusion")),
+              type: v.union(v.literal("polygon"), v.literal("circle")),
+              polygonPoints: v.optional(v.array(v.array(v.number()))),
+              circleCenter: v.optional(v.array(v.number())),
+              circleRadius: v.optional(v.number()),
+            }),
+          ),
+        ),
+      }),
+    ),
+    geofenceBreaches: v.optional(
+      v.array(
+        v.object({
+          startIdx: v.number(),
+          endIdx: v.number(),
+          type: v.union(
+            v.literal("polygon_outside"),
+            v.literal("polygon_inside"),
+            v.literal("circle_outside"),
+            v.literal("circle_inside"),
+            v.literal("max_altitude"),
+            v.literal("min_altitude"),
+          ),
+          zoneId: v.string(),
+          maxBreachDistanceM: v.optional(v.number()),
+          peakIdx: v.optional(v.number()),
+        }),
+      ),
+    ),
     // Phase 16a — flight phase segmentation.
     phases: v.optional(
       v.array(
