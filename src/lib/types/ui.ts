@@ -161,6 +161,33 @@ export interface FlightRecord {
   region?: string;
   /** City / town / village from the takeoff lookup. */
   locality?: string;
+
+  /** Phase 16a — derived flight phase segmentation. */
+  phases?: FlightPhase[];
+}
+
+/**
+ * One segment of the flight classified by motion state. Derived by
+ * {@link detectPhases} from recorded position + VFR frames and frozen
+ * into FlightRecord at disarm.
+ */
+export interface FlightPhase {
+  type:
+    | "pre_arm"
+    | "takeoff"
+    | "climb"
+    | "cruise"
+    | "hover"
+    | "descent"
+    | "land"
+    | "post_disarm";
+  /** Offset from flight start (ms). */
+  startMs: number;
+  endMs: number;
+  /** Average groundspeed during this phase in m/s, if any position frames exist. */
+  avgSpeed?: number;
+  /** Max altitude reached during this phase in m AGL. */
+  maxAlt?: number;
 }
 
 /**

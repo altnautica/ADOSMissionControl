@@ -336,6 +336,27 @@ fullName: v.optional(v.string()),
         error: v.optional(v.string()),
       }),
     ),
+    // Phase 16a — flight phase segmentation.
+    phases: v.optional(
+      v.array(
+        v.object({
+          type: v.union(
+            v.literal("pre_arm"),
+            v.literal("takeoff"),
+            v.literal("climb"),
+            v.literal("cruise"),
+            v.literal("hover"),
+            v.literal("descent"),
+            v.literal("land"),
+            v.literal("post_disarm"),
+          ),
+          startMs: v.number(),
+          endMs: v.number(),
+          avgSpeed: v.optional(v.number()),
+          maxAlt: v.optional(v.number()),
+        }),
+      ),
+    ),
     // Phase 15 — reverse-geocoded place names from takeoff / landing coords.
     takeoffPlaceName: v.optional(v.string()),
     landingPlaceName: v.optional(v.string()),
