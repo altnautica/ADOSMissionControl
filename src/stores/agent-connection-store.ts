@@ -222,8 +222,14 @@ export const useAgentConnectionStore = create<AgentConnectionStore>((set, get) =
       useAgentSystemStore.getState().fetchResources();
 
       // Poll agent video status
+      // DEC-108 Phase E: defensive guard. The store unsafe-casts
+      // MockAgentClient to AgentClient at line ~87, which makes
+      // TypeScript happy but doesn't guarantee MockAgentClient
+      // implements every AgentClient method. In demo mode (or after a
+      // stale HMR replace), client.getVideoStatus may be undefined and
+      // calling it throws "client.getVideoStatus is not a function".
       const client = get().client;
-      if (client) {
+      if (client && typeof client.getVideoStatus === "function") {
         client.getVideoStatus().then((video) => {
           if (video) {
             const deps = video.dependencies
