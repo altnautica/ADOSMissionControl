@@ -1,14 +1,70 @@
 import { create } from "zustand";
 
 // DEC-108 Phase D: detected transport for the active video stream.
-// "lan-whep" = WHEP from a private/loopback URL (LAN direct, lowest latency)
-// "cloud-whep" = WHEP from a public cloud relay hostname
-// "cloud-mse" = MSE WebSocket fallback from the cloud video relay
-// "unknown" = no stream OR transport not yet detected
-// "p2p-mqtt" = Direct WebRTC peer connection, SDP signaling relayed via MQTT
-//              (DEC-108 Phase B0). Works cross-network via STUN; media flows
-//              direct P2P after the handshake.
-export type VideoTransport = "lan-whep" | "cloud-whep" | "cloud-mse" | "p2p-mqtt" | "unknown";
+// "lan-whep"   = WHEP from a private/loopback URL (LAN direct, lowest latency)
+// "p2p-mqtt"   = Direct WebRTC P2P, SDP signaling relayed via MQTT
+//                (DEC-108 Phase B0). Cross-network via STUN.
+// "cloud-whep" = DEFERRED (DEC-107 Phase H) — kept in the type for future
+// "cloud-mse"  = DEFERRED (DEC-107 Phase H) — kept in the type for future
+// "off"        = User selected "no video" (DEC-107 Phase H)
+// "unknown"    = No stream OR transport not yet detected
+export type VideoTransport =
+  | "lan-whep"
+  | "p2p-mqtt"
+  | "cloud-whep"
+  | "cloud-mse"
+  | "off"
+  | "unknown";
+
+// DEC-107 Phase H: user preference for transport selection. Persisted via
+// settings-store to IndexedDB so it survives across sessions.
+export type VideoTransportMode =
+  | "auto"       // cascade: lan-whep → p2p-mqtt
+  | "lan-whep"   // pin to LAN direct
+  | "p2p-mqtt"   // pin to P2P MQTT
+  | "off";       // no video
+
+// DEC-107 Phase H: per-mode health state for the dropdown indicator. Updated
+// in real time by the cascade hook as it tries each mode.
+export type TransportAttemptStage =
+  | "idle"
+  | "starting"
+  | "ice-gathering"
+  | "sdp-exchange"
+  | "ontrack-wait"
+  | "connected";
+
+export type TransportErrorCode =
+  | "ice-gather-timeout"
+  | "ice-disconnect"
+  | "sdp-exchange-timeout"
+  | "mqtt-connect-timeout"
+  | "mqtt-subscribe-failed"
+  | "mqtt-answer-timeout"
+  | "whep-4xx"
+  | "whep-5xx"
+  | "whep-network"
+  | "ontrack-timeout"
+  | "prereq-missing"
+  | "other";
+
+export interface TransportHealth {
+  state: "unknown" | "testing" | "ok" | "failed";
+  lastError: string | null;
+  lastTriedAt: number | null;
+  latencyMs: number | null;
+  lastErrorCode: TransportErrorCode | null;
+  lastAttemptStage: TransportAttemptStage | null;
+}
+
+const emptyHealth = (): TransportHealth => ({
+  state: "unknown",
+  lastError: null,
+  lastTriedAt: null,
+  latencyMs: null,
+  lastErrorCode: null,
+  lastAttemptStage: null,
+});
 
 interface VideoStoreState {
   streamUrl: string | null;
@@ -40,6 +96,12 @@ interface VideoStoreState {
   };
   setPollState: (s: Partial<VideoStoreState["_pollState"]>) => void;
   resetPollState: () => void;
+
+  // DEC-107 Phase H: per-mode transport health. Keyed by VideoTransport.
+  // Cascade hook and UX switcher both read/write this map.
+  transportHealth: Record<VideoTransport, TransportHealth>;
+  setTransportHealth: (t: VideoTransport, h: Partial<TransportHealth>) => void;
+  resetTransportHealth: () => void;
 
   // Cloud video state
   cloudStreamUrl: string | null;
@@ -85,6 +147,15 @@ export const useVideoStore = create<VideoStoreState>((set) => ({
     lastJitterEmitted: 0,
   },
 
+  transportHealth: {
+    "lan-whep": emptyHealth(),
+    "p2p-mqtt": emptyHealth(),
+    "cloud-whep": emptyHealth(),
+    "cloud-mse": emptyHealth(),
+    "off": emptyHealth(),
+    "unknown": emptyHealth(),
+  },
+
   cloudStreamUrl: null,
   cloudStreaming: false,
 
@@ -116,6 +187,24 @@ export const useVideoStore = create<VideoStoreState>((set) => ({
         lastBytesReceived: 0,
         lastJitterDelay: 0,
         lastJitterEmitted: 0,
+      },
+    }),
+  setTransportHealth: (t, h) =>
+    set((prev) => ({
+      transportHealth: {
+        ...prev.transportHealth,
+        [t]: { ...prev.transportHealth[t], ...h, lastTriedAt: Date.now() },
+      },
+    })),
+  resetTransportHealth: () =>
+    set({
+      transportHealth: {
+        "lan-whep": emptyHealth(),
+        "p2p-mqtt": emptyHealth(),
+        "cloud-whep": emptyHealth(),
+        "cloud-mse": emptyHealth(),
+        "off": emptyHealth(),
+        "unknown": emptyHealth(),
       },
     }),
   setCloudStreamUrl: (cloudStreamUrl) => set({ cloudStreamUrl }),

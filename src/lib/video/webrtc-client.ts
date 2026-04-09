@@ -11,7 +11,7 @@
  * @module video/webrtc-client
  */
 
-import { useVideoStore } from "@/stores/video-store";
+import { useVideoStore, type TransportErrorCode, type TransportAttemptStage, type VideoTransport } from "@/stores/video-store";
 
 // DEC-108 Phase E: pc/mediaRecorder/statsInterval/videoElement are session-
 // scoped and get re-initialized cleanly on every startStream call. The
@@ -30,12 +30,89 @@ let videoElement: HTMLVideoElement | null = null;
 // SDP offer/answer flows over MQTT topics; media flows direct peer-to-peer
 // via STUN-punched ICE candidates after the handshake.
 const MQTT_SIGNALING_WS_URL = "wss://mqtt.altnautica.com/mqtt";
-const MQTT_SIGNALING_TIMEOUT_MS = 10000;
-// Public STUN servers for ICE candidate gathering on cross-network paths.
+// DEC-107 Phase H: timeouts bumped — slow cellular initial signaling needs
+// more headroom. Each value is the per-stage ceiling.
+const MQTT_CONNECT_TIMEOUT_MS = 8000;
+const MQTT_ANSWER_TIMEOUT_MS = 12000;
+const ICE_GATHER_TIMEOUT_MS = 8000;
+const ONTRACK_TIMEOUT_MS = 8000;
+// DEC-107 Phase H: expanded STUN server list for better ICE candidate diversity.
+// More candidates = higher chance of finding a working pair on cellular and
+// corporate networks. Cloudflare anycast STUN reaches many regions; Twilio
+// adds an independent network path; Google stun2 is a third Google POP.
 const CROSS_NETWORK_ICE_SERVERS: RTCIceServer[] = [
   { urls: "stun:stun.l.google.com:19302" },
   { urls: "stun:stun1.l.google.com:19302" },
+  { urls: "stun:stun2.l.google.com:19302" },
+  { urls: "stun:stun.cloudflare.com:3478" },
+  { urls: "stun:global.stun.twilio.com:3478" },
 ];
+
+// DEC-107 Phase H: shared helpers for the cascade hook to thread per-mode
+// health updates from inside the WebRTC client.
+function reportHealth(
+  transport: VideoTransport,
+  patch: { state?: "testing" | "ok" | "failed"; stage?: TransportAttemptStage; code?: TransportErrorCode; error?: string; latencyMs?: number },
+): void {
+  useVideoStore.getState().setTransportHealth(transport, {
+    state: patch.state,
+    lastAttemptStage: patch.stage ?? null,
+    lastErrorCode: patch.code ?? null,
+    lastError: patch.error ?? null,
+    latencyMs: patch.latencyMs ?? null,
+  });
+}
+
+// DEC-107 Phase H: classify a thrown error into a TransportErrorCode based on
+// the message. Lets the dropdown tooltip surface "ICE timeout" instead of
+// raw stack traces.
+function classifyError(err: unknown): { code: TransportErrorCode; message: string } {
+  const message = err instanceof Error ? err.message : String(err);
+  const lower = message.toLowerCase();
+  if (lower.includes("ice gather") || lower.includes("ice gathering")) {
+    return { code: "ice-gather-timeout", message };
+  }
+  if (lower.includes("disconnect") && lower.includes("ice")) {
+    return { code: "ice-disconnect", message };
+  }
+  if (lower.includes("mqtt") && lower.includes("timeout")) {
+    return { code: "mqtt-answer-timeout", message };
+  }
+  if (lower.includes("mqtt") && lower.includes("connect")) {
+    return { code: "mqtt-connect-timeout", message };
+  }
+  if (lower.includes("subscribe")) {
+    return { code: "mqtt-subscribe-failed", message };
+  }
+  if (lower.includes("ontrack") || lower.includes("video track")) {
+    return { code: "ontrack-timeout", message };
+  }
+  if (lower.includes("whep") || lower.includes("4")) {
+    if (/4\d\d/.test(message)) return { code: "whep-4xx", message };
+    if (/5\d\d/.test(message)) return { code: "whep-5xx", message };
+  }
+  if (lower.includes("network") || lower.includes("fetch")) {
+    return { code: "whep-network", message };
+  }
+  return { code: "other", message };
+}
+
+// DEC-107 Phase H: ICE restart cooldown — only attempt once per 5 seconds to
+// avoid thrash on flapping networks.
+let lastIceRestartAt = 0;
+function tryIceRestart(): void {
+  if (!pc || pc.connectionState === "closed") return;
+  if (typeof pc.restartIce !== "function") return; // older browsers
+  const now = Date.now();
+  if (now - lastIceRestartAt < 5000) return;
+  lastIceRestartAt = now;
+  try {
+    pc.restartIce();
+    console.log("[webrtc-client] ICE restart triggered after disconnect");
+  } catch (err) {
+    console.warn("[webrtc-client] ICE restart failed:", err);
+  }
+}
 
 /** DEC-108 Phase D: classify a WHEP URL as LAN-direct or cloud relay. */
 function detectTransportFromUrl(url: string): "lan-whep" | "cloud-whep" {
@@ -65,6 +142,11 @@ function detectTransportFromUrl(url: string): "lan-whep" | "cloud-whep" {
  */
 export async function startStream(whepUrl: string): Promise<MediaStream> {
   const store = useVideoStore.getState();
+  const startedAt = Date.now();
+  const transport: VideoTransport = detectTransportFromUrl(whepUrl);
+
+  // DEC-107 Phase H: report testing state for the cascade UX
+  reportHealth(transport, { state: "testing", stage: "starting" });
 
   // Clean up any stale connection before starting fresh
   if (pc) {
@@ -73,6 +155,7 @@ export async function startStream(whepUrl: string): Promise<MediaStream> {
     stopStatsPolling();
   }
 
+  try {
   pc = new RTCPeerConnection({
     iceServers: [], // Local network — no STUN/TURN needed
   });
@@ -155,12 +238,27 @@ export async function startStream(whepUrl: string): Promise<MediaStream> {
   store.setStreaming(true);
   // DEC-108 Phase D: classify and publish the active transport so the UI
   // can show "LAN DIRECT" / "CLOUD WHEP" badges.
-  store.setTransport(detectTransportFromUrl(whepUrl));
+  store.setTransport(transport);
+  // DEC-107 Phase H: report success with measured latency
+  reportHealth(transport, {
+    state: "ok",
+    stage: "connected",
+    latencyMs: Date.now() - startedAt,
+  });
 
   // Start stats polling
   startStatsPolling();
 
   return stream;
+  } catch (err) {
+    if (pc) {
+      try { pc.close(); } catch { /* noop */ }
+      pc = null;
+    }
+    const { code, message } = classifyError(err);
+    reportHealth(transport, { state: "failed", code, error: message });
+    throw err;
+  }
 }
 
 /**
@@ -180,130 +278,187 @@ export async function startStreamViaMqttSignaling(
   deviceId: string,
 ): Promise<MediaStream> {
   const store = useVideoStore.getState();
+  const startedAt = Date.now();
 
-  // Clean up any stale connection before starting fresh
+  // DEC-107 Phase H: report testing state immediately so the UX dropdown
+  // shows the live attempt.
+  reportHealth("p2p-mqtt", { state: "testing", stage: "starting" });
+
+  // Clean up any stale connection before starting fresh.
   if (pc) {
     try { pc.close(); } catch { /* noop */ }
     pc = null;
     stopStatsPolling();
   }
 
-  pc = new RTCPeerConnection({ iceServers: CROSS_NETWORK_ICE_SERVERS });
-
-  pc.onconnectionstatechange = () => {
-    const state = pc?.connectionState;
-    if (state === "disconnected" || state === "failed" || state === "closed") {
-      console.warn("[webrtc-client] P2P MQTT connection state:", state);
-      const s = useVideoStore.getState();
-      s.setStreaming(false);
-      s.updateStats(0, 0);
-      stopStatsPolling();
-    }
-  };
-
-  pc.addTransceiver("video", { direction: "recvonly" });
-  pc.addTransceiver("audio", { direction: "recvonly" });
-
-  const offer = await pc.createOffer();
-  await pc.setLocalDescription(offer);
-
-  // Wait for ICE gathering (critical for cross-network — offer must carry
-  // all srflx candidates STUN discovered). 5s ceiling.
-  await new Promise<void>((resolve) => {
-    if (pc!.iceGatheringState === "complete") { resolve(); return; }
-    const check = () => {
-      if (pc?.iceGatheringState === "complete") {
-        pc.removeEventListener("icegatheringstatechange", check);
-        resolve();
-      }
-    };
-    pc!.addEventListener("icegatheringstatechange", check);
-    setTimeout(resolve, 5000);
-  });
-
-  // Connect a one-shot mqtt.js client for the SDP handshake.
-  const mqttModule = await import("mqtt");
-  const connectFn = mqttModule.connect
-    ?? (mqttModule.default as { connect?: typeof mqttModule.connect })?.connect
-    ?? mqttModule.default;
-  if (typeof connectFn !== "function") {
-    pc.close(); pc = null;
-    throw new Error("mqtt.connect not found in module");
-  }
-
-  const topicOffer = `ados/${deviceId}/webrtc/offer`;
-  const topicAnswer = `ados/${deviceId}/webrtc/answer`;
-
+  // mqtt.js client lives outside the inner Promise so the outer try/finally
+  // guarantees cleanup on every code path (success, timeout, error).
   type MqttClient = {
     on: (event: string, cb: (...args: unknown[]) => void) => void;
     subscribe: (topic: string, cb?: (err: Error | null) => void) => void;
     publish: (topic: string, payload: string | Buffer, opts?: { qos?: 0 | 1 | 2 }) => void;
     end: (force?: boolean) => void;
   };
+  let mqttClient: MqttClient | null = null;
 
-  const mqttClient = (connectFn as typeof mqttModule.connect)(
-    MQTT_SIGNALING_WS_URL,
-    { protocolVersion: 5, clean: true, reconnectPeriod: 0 },
-  ) as unknown as MqttClient;
-
-  // Race: answer arrival vs overall timeout.
-  const answerSdp = await new Promise<string>((resolve, reject) => {
-    const timer = setTimeout(() => {
-      mqttClient.end(true);
-      reject(new Error("MQTT signaling timeout — no answer within 10s"));
-    }, MQTT_SIGNALING_TIMEOUT_MS);
-
-    mqttClient.on("error", (err: unknown) => {
-      clearTimeout(timer);
-      mqttClient.end(true);
-      reject(err instanceof Error ? err : new Error(String(err)));
+  try {
+    pc = new RTCPeerConnection({
+      iceServers: CROSS_NETWORK_ICE_SERVERS,
+      iceTransportPolicy: "all",
     });
 
-    mqttClient.on("message", (topic: unknown, payload: unknown) => {
-      if (topic !== topicAnswer) return;
-      clearTimeout(timer);
-      // payload is Buffer in mqtt.js
-      const sdp = (payload as Buffer).toString("utf-8");
-      mqttClient.end(true);
-      resolve(sdp);
-    });
-
-    mqttClient.on("connect", () => {
-      mqttClient.subscribe(topicAnswer, (err: Error | null) => {
-        if (err) {
-          clearTimeout(timer);
-          mqttClient.end(true);
-          reject(err);
-          return;
-        }
-        // Subscribed → publish offer (qos=1 so paho-side queues if busy)
-        mqttClient.publish(topicOffer, pc!.localDescription!.sdp, { qos: 1 });
-      });
-    });
-  });
-
-  // Set ontrack BEFORE setRemoteDescription to avoid race
-  const trackPromise = new Promise<MediaStream>((resolve, reject) => {
-    const timeout = setTimeout(() => {
-      reject(new Error("No video track received within 10 seconds"));
-    }, 10000);
-    pc!.ontrack = (event) => {
-      if (event.streams[0]) {
-        clearTimeout(timeout);
-        resolve(event.streams[0]);
+    // DEC-107 Phase H: ICE restart on transient disconnect. The browser
+    // detects 'disconnected' state when ICE keepalives stop arriving but
+    // before declaring the connection 'failed'. restartIce() can recover
+    // a paused connection without a full session teardown.
+    pc.onconnectionstatechange = () => {
+      const state = pc?.connectionState;
+      if (state === "disconnected") {
+        console.warn("[webrtc-client] P2P MQTT disconnected — attempting ICE restart");
+        tryIceRestart();
+      } else if (state === "failed" || state === "closed") {
+        console.warn("[webrtc-client] P2P MQTT terminal state:", state);
+        const s = useVideoStore.getState();
+        s.setStreaming(false);
+        s.updateStats(0, 0);
+        stopStatsPolling();
+        reportHealth("p2p-mqtt", {
+          state: "failed",
+          stage: "connected",
+          code: "ice-disconnect",
+          error: `Connection ${state}`,
+        });
       }
     };
-  });
 
-  await pc.setRemoteDescription({ type: "answer", sdp: answerSdp });
-  const stream = await trackPromise;
+    pc.addTransceiver("video", { direction: "recvonly" });
+    pc.addTransceiver("audio", { direction: "recvonly" });
 
-  store.setStreamUrl(`mqtt://${deviceId}/webrtc`);
-  store.setStreaming(true);
-  store.setTransport("p2p-mqtt");
-  startStatsPolling();
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
 
-  return stream;
+    // === Stage: ICE gathering ===
+    reportHealth("p2p-mqtt", { state: "testing", stage: "ice-gathering" });
+    await new Promise<void>((resolve) => {
+      if (pc!.iceGatheringState === "complete") { resolve(); return; }
+      const check = () => {
+        if (pc?.iceGatheringState === "complete") {
+          pc.removeEventListener("icegatheringstatechange", check);
+          resolve();
+        }
+      };
+      pc!.addEventListener("icegatheringstatechange", check);
+      // DEC-107 Phase H: 8s ceiling (was 5s). Slow cellular needs more time.
+      setTimeout(resolve, ICE_GATHER_TIMEOUT_MS);
+    });
+
+    // === Stage: SDP exchange via MQTT ===
+    reportHealth("p2p-mqtt", { state: "testing", stage: "sdp-exchange" });
+    const mqttModule = await import("mqtt");
+    const connectFn = mqttModule.connect
+      ?? (mqttModule.default as { connect?: typeof mqttModule.connect })?.connect
+      ?? mqttModule.default;
+    if (typeof connectFn !== "function") {
+      throw new Error("mqtt.connect not found in module");
+    }
+
+    const topicOffer = `ados/${deviceId}/webrtc/offer`;
+    const topicAnswer = `ados/${deviceId}/webrtc/answer`;
+
+    mqttClient = (connectFn as typeof mqttModule.connect)(
+      MQTT_SIGNALING_WS_URL,
+      { protocolVersion: 5, clean: true, reconnectPeriod: 0 },
+    ) as unknown as MqttClient;
+
+    // Wait for broker connect (separate timeout from answer wait so we can
+    // distinguish "broker unreachable" from "agent unreachable").
+    await new Promise<void>((resolve, reject) => {
+      const t = setTimeout(
+        () => reject(new Error("MQTT broker connect timeout")),
+        MQTT_CONNECT_TIMEOUT_MS,
+      );
+      mqttClient!.on("connect", () => { clearTimeout(t); resolve(); });
+      mqttClient!.on("error", (err: unknown) => {
+        clearTimeout(t);
+        reject(err instanceof Error ? err : new Error(String(err)));
+      });
+    });
+
+    // Subscribe + publish + wait for answer (single composite timeout).
+    const answerSdp = await new Promise<string>((resolve, reject) => {
+      const timer = setTimeout(
+        () => reject(new Error(`MQTT signaling timeout — no answer within ${MQTT_ANSWER_TIMEOUT_MS / 1000}s`)),
+        MQTT_ANSWER_TIMEOUT_MS,
+      );
+
+      mqttClient!.on("error", (err: unknown) => {
+        clearTimeout(timer);
+        reject(err instanceof Error ? err : new Error(String(err)));
+      });
+
+      mqttClient!.on("message", (topic: unknown, payload: unknown) => {
+        if (topic !== topicAnswer) return;
+        clearTimeout(timer);
+        const sdp = (payload as Buffer).toString("utf-8");
+        resolve(sdp);
+      });
+
+      mqttClient!.subscribe(topicAnswer, (err: Error | null) => {
+        if (err) {
+          clearTimeout(timer);
+          reject(new Error(`MQTT subscribe failed: ${err.message}`));
+          return;
+        }
+        // Subscribed → publish offer
+        mqttClient!.publish(topicOffer, pc!.localDescription!.sdp, { qos: 1 });
+      });
+    });
+
+    // === Stage: ontrack wait ===
+    reportHealth("p2p-mqtt", { state: "testing", stage: "ontrack-wait" });
+    const trackPromise = new Promise<MediaStream>((resolve, reject) => {
+      const timeout = setTimeout(
+        () => reject(new Error(`No video track received within ${ONTRACK_TIMEOUT_MS / 1000} seconds`)),
+        ONTRACK_TIMEOUT_MS,
+      );
+      pc!.ontrack = (event) => {
+        if (event.streams[0]) {
+          clearTimeout(timeout);
+          resolve(event.streams[0]);
+        }
+      };
+    });
+
+    await pc.setRemoteDescription({ type: "answer", sdp: answerSdp });
+    const stream = await trackPromise;
+
+    // === Stage: connected ===
+    const elapsedMs = Date.now() - startedAt;
+    store.setStreamUrl(`mqtt://${deviceId}/webrtc`);
+    store.setStreaming(true);
+    store.setTransport("p2p-mqtt");
+    reportHealth("p2p-mqtt", { state: "ok", stage: "connected", latencyMs: elapsedMs });
+    startStatsPolling();
+
+    return stream;
+  } catch (err) {
+    // Tear down peer connection on any failure
+    if (pc) {
+      try { pc.close(); } catch { /* noop */ }
+      pc = null;
+    }
+    const { code, message } = classifyError(err);
+    reportHealth("p2p-mqtt", { state: "failed", code, error: message });
+    throw err;
+  } finally {
+    // DEC-107 Phase H: guaranteed mqtt.js client cleanup. Earlier the
+    // .end(true) call lived inside the inner Promise handlers — if any
+    // unrelated error path threw before reaching them, the broker
+    // connection leaked.
+    if (mqttClient) {
+      try { mqttClient.end(true); } catch { /* noop */ }
+    }
+  }
 }
 
 /** Stop the active WebRTC stream. */

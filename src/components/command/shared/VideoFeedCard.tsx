@@ -14,9 +14,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useVideoStore } from "@/stores/video-store";
+import { useSettingsStore } from "@/stores/settings-store";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
-import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
-import { communityApi } from "@/lib/community-api";
 // DEC-108 Phase D follow-up: static import for webrtc-client. Dynamic
 // imports inside useEffect were causing Turbopack to HMR-reload the
 // module on every unrelated edit, wiping module-level stats state and
@@ -24,14 +23,16 @@ import { communityApi } from "@/lib/community-api";
 // in the parent's import graph so HMR only invalidates it on direct
 // edits to webrtc-client.ts itself.
 import {
-  startStream,
-  startStreamViaMqttSignaling,
-  stopStream,
   setVideoElement,
   captureScreenshot,
   startRecording,
   stopRecording,
 } from "@/lib/video/webrtc-client";
+// DEC-107 Phase H: cascade hook + interactive transport switcher.
+// Replaces the inline transport-selection useEffect that previously lived
+// in this component.
+import { useVideoTransportCascade } from "@/hooks/use-video-transport-cascade";
+import { VideoTransportSwitcher } from "./VideoTransportSwitcher";
 
 interface VideoFeedCardProps {
   className?: string;
@@ -42,8 +43,6 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
   const agentWhepUrl = useVideoStore((s) => s.agentWhepUrl);
   const agentVideoState = useVideoStore((s) => s.agentVideoState);
   const isStreaming = useVideoStore((s) => s.isStreaming);
-  const cloudStreaming = useVideoStore((s) => s.cloudStreaming);
-  const setCloudStreaming = useVideoStore((s) => s.setCloudStreaming);
   const fps = useVideoStore((s) => s.fps);
   const latencyMs = useVideoStore((s) => s.latencyMs);
   const resolution = useVideoStore((s) => s.resolution);
@@ -51,24 +50,17 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
   const codec = useVideoStore((s) => s.codec);
   const bitrateKbps = useVideoStore((s) => s.bitrateKbps);
   const packetsLost = useVideoStore((s) => s.packetsLost);
-  const transport = useVideoStore((s) => s.transport);
   const isRecording = useVideoStore((s) => s.isRecording);
-  const cloudMode = useAgentConnectionStore((s) => s.cloudMode);
   const cloudDeviceId = useAgentConnectionStore((s) => s.cloudDeviceId);
-  const clientConfig = useConvexSkipQuery(communityApi.clientConfig.get);
+  // DEC-107 Phase H: user transport preference (persisted to IndexedDB)
+  const transportMode = useSettingsStore((s) => s.videoTransportMode);
 
   const videoRef = useRef<HTMLVideoElement>(null);
-  const playerRef = useRef<{ stop: () => void } | null>(null);
-  const isStreamingRef = useRef(false);
-  isStreamingRef.current = isStreaming;
-  const [connecting, setConnecting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
 
-  const handleRetry = () => {
-    setError(null);
+  const handleRetry = useCallback(() => {
     setRetryKey((k) => k + 1);
-  };
+  }, []);
 
   // DEC-108 Phase D: video action buttons. The actual capture/record/PiP
   // logic already exists in webrtc-client.ts (captureScreenshot, startRecording,
@@ -134,97 +126,42 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
     }
   }, []);
 
-  // Auto-reconnect: when stream drops but agent video is still running
-  const prevStreamingRef = useRef(false);
+  // DEC-107 Phase H: bind the video element to the webrtc-client helper
+  // (used by snapshot/recording). Done once on mount.
   useEffect(() => {
-    if (prevStreamingRef.current && !isStreaming && agentVideoState === "running" && !connecting) {
-      // Stream dropped — auto-retry after 3 seconds
+    setVideoElement(videoRef.current);
+    return () => setVideoElement(null);
+  }, []);
+
+  // DEC-107 Phase H: cascade hook owns all transport selection + connection
+  // logic. The hook respects the user's `transportMode` preference: in Auto
+  // mode it cascades LAN → P2P MQTT, in pinned mode it tries only that mode.
+  // Cloud WHEP / Cloud MSE deferred per Plan Part H.
+  const cascade = useVideoTransportCascade({
+    agentWhepUrl,
+    cloudDeviceId,
+    transportMode,
+    videoEl: videoRef.current,
+    retryKey,
+    enabled: agentVideoState === "running",
+  });
+
+  // Auto-reconnect: when cascade flips to failed but agent video is still
+  // running, retry after 3 seconds (covers transient network blips).
+  useEffect(() => {
+    if (cascade.state === "failed" && agentVideoState === "running") {
       const timer = setTimeout(() => {
-        console.log("[VideoFeedCard] Auto-reconnecting after stream drop");
+        console.log("[VideoFeedCard] Auto-retry after cascade failure");
         setRetryKey((k) => k + 1);
       }, 3000);
       return () => clearTimeout(timer);
     }
-    prevStreamingRef.current = isStreaming;
-  }, [isStreaming, agentVideoState, connecting]);
+  }, [cascade.state, agentVideoState]);
 
-  // WebRTC WHEP: try in any mode (works on LAN even in cloud mode)
-  useEffect(() => {
-    if (!agentWhepUrl || agentVideoState !== "running") return;
-
-    let cancelled = false;
-    setConnecting(true);
-    setError(null);
-
-    async function connect() {
-      try {
-        if (cancelled || !videoRef.current) return;
-
-        setVideoElement(videoRef.current);
-        try {
-          const stream = await startStream(agentWhepUrl!);
-          if (cancelled) return;
-          videoRef.current!.srcObject = stream;
-          setConnecting(false);
-          return;
-        } catch (whepErr) {
-          // DEC-108 Phase B0: if the direct WHEP fetch fails (cross-network
-          // case — the browser can't reach the agent's LAN IP), fall back to
-          // MQTT-relayed SDP signaling for a P2P WebRTC connection. Media
-          // flows direct peer-to-peer via STUN-punched ICE after handshake.
-          if (cancelled || !cloudDeviceId) throw whepErr;
-          console.log("[VideoFeedCard] WHEP failed, trying P2P MQTT signaling:", whepErr);
-          const stream = await startStreamViaMqttSignaling(cloudDeviceId);
-          if (cancelled) return;
-          videoRef.current!.srcObject = stream;
-          setConnecting(false);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Connection failed");
-          setConnecting(false);
-        }
-      }
-    }
-
-    connect();
-
-    return () => {
-      cancelled = true;
-      setConnecting(false);
-      stopStream();
-    };
-  }, [agentWhepUrl, agentVideoState, retryKey, cloudDeviceId]);
-
-  // Cloud mode fallback: MSE player (only if WHEP isn't already streaming)
-  useEffect(() => {
-    if (!cloudMode || !cloudDeviceId || !videoRef.current || isStreamingRef.current) return;
-
-    let cancelled = false;
-
-    async function startPlayer() {
-      const { MsePlayer } = await import("@/lib/video/mse-player");
-      if (cancelled || !videoRef.current) return;
-
-      const player = new MsePlayer();
-      playerRef.current = player;
-      player.start(cloudDeviceId!, videoRef.current!, clientConfig?.videoRelayUrl ?? undefined);
-      setCloudStreaming(true);
-    }
-
-    startPlayer();
-
-    return () => {
-      cancelled = true;
-      playerRef.current?.stop();
-      playerRef.current = null;
-      setCloudStreaming(false);
-    };
-  }, [cloudMode, cloudDeviceId, setCloudStreaming, clientConfig?.videoRelayUrl]);
-
-  const hasVideo = isStreaming || cloudStreaming;
-  const showConnecting = connecting || agentVideoState === "starting";
-  const showNoSignal = !hasVideo && !showConnecting && !error;
+  const hasVideo = isStreaming;
+  const showConnecting = cascade.state === "connecting" || agentVideoState === "starting";
+  const showNoSignal = !hasVideo && !showConnecting && cascade.state !== "failed";
+  const error = cascade.state === "failed" ? cascade.error : null;
 
   return (
     <div
@@ -252,30 +189,18 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
           )}
         />
 
-        {/* DEC-108 Phase D: transport pill (top-left) */}
-        {hasVideo && (
-          <div className="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/60 backdrop-blur-sm text-[10px] font-mono text-text-secondary flex items-center gap-1.5 select-none">
-            <span
-              className={cn(
-                "w-1.5 h-1.5 rounded-full",
-                transport === "lan-whep" && "bg-green-400",
-                transport === "cloud-whep" && "bg-blue-400",
-                transport === "cloud-mse" && "bg-purple-400",
-                transport === "p2p-mqtt" && "bg-yellow-400",
-                transport === "unknown" && "bg-gray-500"
-              )}
-            />
-            {transport === "lan-whep"
-              ? "LAN DIRECT"
-              : transport === "cloud-whep"
-                ? "CLOUD WHEP"
-                : transport === "cloud-mse"
-                  ? "CLOUD MSE"
-                  : transport === "p2p-mqtt"
-                    ? "P2P MQTT"
-                    : "—"}
-          </div>
-        )}
+        {/* DEC-107 Phase H: interactive transport switcher (always rendered,
+            not gated on hasVideo so users can pin a mode before video starts) */}
+        <VideoTransportSwitcher
+          activeTransport={cascade.activeTransport}
+          cascadeState={cascade.state}
+          cascadeError={cascade.error}
+          onRetry={handleRetry}
+          hasPairedAgent={!!cloudDeviceId}
+          hasLanWhep={!!agentWhepUrl}
+          containerRef={containerRef}
+        />
+
 
         {/* DEC-108 Phase D: video stats overlay (bottom) — extended with
             codec, bitrate, packet loss when available. Latency is color-coded:

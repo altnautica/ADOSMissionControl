@@ -216,6 +216,10 @@ interface SettingsStoreState {
   /** WHEP video endpoint URL for local/SITL video (empty = disabled). */
   videoWhepUrl: string;
   setVideoWhepUrl: (url: string) => void;
+  /** DEC-107 Phase H: preferred video transport mode.
+   *  "auto" cascades LAN → P2P MQTT; pinned modes try only that one. */
+  videoTransportMode: "auto" | "lan-whep" | "p2p-mqtt" | "off";
+  setVideoTransportMode: (mode: "auto" | "lan-whep" | "p2p-mqtt" | "off") => void;
   /** Per-panel scroll positions (panelId -> scrollTop). */
   panelScrollPositions: Record<string, number>;
   /** Whether no-fly zone overlays are visible on maps. */
@@ -354,6 +358,7 @@ export const useSettingsStore = create<SettingsStoreState>()(
       autoRecordOnConnect: false,
       autoRecordOnArm: true,
       videoWhepUrl: "",
+      videoTransportMode: "auto",
       panelScrollPositions: {},
       showNoFlyZones: false,
       offlineTileCaching: false,
@@ -420,6 +425,7 @@ export const useSettingsStore = create<SettingsStoreState>()(
       setAutoRecordOnConnect: (autoRecordOnConnect) => set({ autoRecordOnConnect }),
       setAutoRecordOnArm: (autoRecordOnArm) => set({ autoRecordOnArm }),
       setVideoWhepUrl: (videoWhepUrl) => set({ videoWhepUrl }),
+      setVideoTransportMode: (videoTransportMode) => set({ videoTransportMode }),
       setPanelScrollPosition: (panelId, scrollTop) =>
         set((s) => ({
           panelScrollPositions: { ...s.panelScrollPositions, [panelId]: scrollTop },
@@ -512,7 +518,7 @@ export const useSettingsStore = create<SettingsStoreState>()(
     {
       name: "altcmd:settings",
       storage: createJSONStorage(indexedDBStorage.storage),
-      version: 30,
+      version: 31,
       migrate: (persisted, version) => {
         const state = persisted as Record<string, unknown>;
         if (version < 2) {
@@ -663,6 +669,11 @@ export const useSettingsStore = create<SettingsStoreState>()(
         if (version < 30) {
           // v30: auto-record on arm (Phase 1 — wired by Phase 2 lifecycle)
           state.autoRecordOnArm = true;
+        }
+        if (version < 31) {
+          // v31: DEC-107 Phase H — interactive video transport switcher.
+          // Default to "auto" cascade (LAN → P2P MQTT) for existing users.
+          state.videoTransportMode = "auto";
         }
         return state as unknown as SettingsStoreState;
       },
