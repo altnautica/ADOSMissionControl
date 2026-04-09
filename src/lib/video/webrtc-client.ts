@@ -26,6 +26,17 @@ let recordedChunks: Blob[] = [];
 let statsInterval: ReturnType<typeof setInterval> | null = null;
 let videoElement: HTMLVideoElement | null = null;
 
+// DEC-108 Phase B0: MQTT signaling broker for P2P WebRTC across WAN.
+// SDP offer/answer flows over MQTT topics; media flows direct peer-to-peer
+// via STUN-punched ICE candidates after the handshake.
+const MQTT_SIGNALING_WS_URL = "wss://mqtt.altnautica.com/mqtt";
+const MQTT_SIGNALING_TIMEOUT_MS = 10000;
+// Public STUN servers for ICE candidate gathering on cross-network paths.
+const CROSS_NETWORK_ICE_SERVERS: RTCIceServer[] = [
+  { urls: "stun:stun.l.google.com:19302" },
+  { urls: "stun:stun1.l.google.com:19302" },
+];
+
 /** DEC-108 Phase D: classify a WHEP URL as LAN-direct or cloud relay. */
 function detectTransportFromUrl(url: string): "lan-whep" | "cloud-whep" {
   try {
@@ -147,6 +158,149 @@ export async function startStream(whepUrl: string): Promise<MediaStream> {
   store.setTransport(detectTransportFromUrl(whepUrl));
 
   // Start stats polling
+  startStatsPolling();
+
+  return stream;
+}
+
+/**
+ * DEC-108 Phase B0: Start a WebRTC stream via MQTT-relayed SDP signaling.
+ *
+ * Used when the browser cannot reach the agent's local WHEP endpoint
+ * directly (cross-network case — cellular phone, different LAN). The SDP
+ * offer is published to `ados/{deviceId}/webrtc/offer`; the agent's
+ * WebrtcSignalingRelay forwards it to local mediamtx and publishes the
+ * answer to `ados/{deviceId}/webrtc/answer`. Media flows direct
+ * peer-to-peer via STUN-punched ICE candidates after the handshake.
+ *
+ * @param deviceId — Cloud device ID of the paired agent.
+ * @returns The MediaStream to attach to a <video> element.
+ */
+export async function startStreamViaMqttSignaling(
+  deviceId: string,
+): Promise<MediaStream> {
+  const store = useVideoStore.getState();
+
+  // Clean up any stale connection before starting fresh
+  if (pc) {
+    try { pc.close(); } catch { /* noop */ }
+    pc = null;
+    stopStatsPolling();
+  }
+
+  pc = new RTCPeerConnection({ iceServers: CROSS_NETWORK_ICE_SERVERS });
+
+  pc.onconnectionstatechange = () => {
+    const state = pc?.connectionState;
+    if (state === "disconnected" || state === "failed" || state === "closed") {
+      console.warn("[webrtc-client] P2P MQTT connection state:", state);
+      const s = useVideoStore.getState();
+      s.setStreaming(false);
+      s.updateStats(0, 0);
+      stopStatsPolling();
+    }
+  };
+
+  pc.addTransceiver("video", { direction: "recvonly" });
+  pc.addTransceiver("audio", { direction: "recvonly" });
+
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+
+  // Wait for ICE gathering (critical for cross-network — offer must carry
+  // all srflx candidates STUN discovered). 5s ceiling.
+  await new Promise<void>((resolve) => {
+    if (pc!.iceGatheringState === "complete") { resolve(); return; }
+    const check = () => {
+      if (pc?.iceGatheringState === "complete") {
+        pc.removeEventListener("icegatheringstatechange", check);
+        resolve();
+      }
+    };
+    pc!.addEventListener("icegatheringstatechange", check);
+    setTimeout(resolve, 5000);
+  });
+
+  // Connect a one-shot mqtt.js client for the SDP handshake.
+  const mqttModule = await import("mqtt");
+  const connectFn = mqttModule.connect
+    ?? (mqttModule.default as { connect?: typeof mqttModule.connect })?.connect
+    ?? mqttModule.default;
+  if (typeof connectFn !== "function") {
+    pc.close(); pc = null;
+    throw new Error("mqtt.connect not found in module");
+  }
+
+  const topicOffer = `ados/${deviceId}/webrtc/offer`;
+  const topicAnswer = `ados/${deviceId}/webrtc/answer`;
+
+  type MqttClient = {
+    on: (event: string, cb: (...args: unknown[]) => void) => void;
+    subscribe: (topic: string, cb?: (err: Error | null) => void) => void;
+    publish: (topic: string, payload: string | Buffer, opts?: { qos?: 0 | 1 | 2 }) => void;
+    end: (force?: boolean) => void;
+  };
+
+  const mqttClient = (connectFn as typeof mqttModule.connect)(
+    MQTT_SIGNALING_WS_URL,
+    { protocolVersion: 5, clean: true, reconnectPeriod: 0 },
+  ) as unknown as MqttClient;
+
+  // Race: answer arrival vs overall timeout.
+  const answerSdp = await new Promise<string>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      mqttClient.end(true);
+      reject(new Error("MQTT signaling timeout — no answer within 10s"));
+    }, MQTT_SIGNALING_TIMEOUT_MS);
+
+    mqttClient.on("error", (err: unknown) => {
+      clearTimeout(timer);
+      mqttClient.end(true);
+      reject(err instanceof Error ? err : new Error(String(err)));
+    });
+
+    mqttClient.on("message", (topic: unknown, payload: unknown) => {
+      if (topic !== topicAnswer) return;
+      clearTimeout(timer);
+      // payload is Buffer in mqtt.js
+      const sdp = (payload as Buffer).toString("utf-8");
+      mqttClient.end(true);
+      resolve(sdp);
+    });
+
+    mqttClient.on("connect", () => {
+      mqttClient.subscribe(topicAnswer, (err: Error | null) => {
+        if (err) {
+          clearTimeout(timer);
+          mqttClient.end(true);
+          reject(err);
+          return;
+        }
+        // Subscribed → publish offer (qos=1 so paho-side queues if busy)
+        mqttClient.publish(topicOffer, pc!.localDescription!.sdp, { qos: 1 });
+      });
+    });
+  });
+
+  // Set ontrack BEFORE setRemoteDescription to avoid race
+  const trackPromise = new Promise<MediaStream>((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      reject(new Error("No video track received within 10 seconds"));
+    }, 10000);
+    pc!.ontrack = (event) => {
+      if (event.streams[0]) {
+        clearTimeout(timeout);
+        resolve(event.streams[0]);
+      }
+    };
+  });
+
+  await pc.setRemoteDescription({ type: "answer", sdp: answerSdp });
+  const stream = await trackPromise;
+
+  store.setStreamUrl(`mqtt://${deviceId}/webrtc`);
+  store.setStreaming(true);
+  store.setTransport("p2p-mqtt");
   startStatsPolling();
 
   return stream;

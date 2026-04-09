@@ -5,7 +5,10 @@ import { create } from "zustand";
 // "cloud-whep" = WHEP from a public cloud relay hostname
 // "cloud-mse" = MSE WebSocket fallback from the cloud video relay
 // "unknown" = no stream OR transport not yet detected
-export type VideoTransport = "lan-whep" | "cloud-whep" | "cloud-mse" | "unknown";
+// "p2p-mqtt" = Direct WebRTC peer connection, SDP signaling relayed via MQTT
+//              (DEC-108 Phase B0). Works cross-network via STUN; media flows
+//              direct P2P after the handshake.
+export type VideoTransport = "lan-whep" | "cloud-whep" | "cloud-mse" | "p2p-mqtt" | "unknown";
 
 interface VideoStoreState {
   streamUrl: string | null;

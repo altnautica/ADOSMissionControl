@@ -25,6 +25,7 @@ import { communityApi } from "@/lib/community-api";
 // edits to webrtc-client.ts itself.
 import {
   startStream,
+  startStreamViaMqttSignaling,
   stopStream,
   setVideoElement,
   captureScreenshot,
@@ -160,11 +161,24 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
         if (cancelled || !videoRef.current) return;
 
         setVideoElement(videoRef.current);
-        const stream = await startStream(agentWhepUrl!);
-        if (cancelled) return;
-
-        videoRef.current!.srcObject = stream;
-        setConnecting(false);
+        try {
+          const stream = await startStream(agentWhepUrl!);
+          if (cancelled) return;
+          videoRef.current!.srcObject = stream;
+          setConnecting(false);
+          return;
+        } catch (whepErr) {
+          // DEC-108 Phase B0: if the direct WHEP fetch fails (cross-network
+          // case — the browser can't reach the agent's LAN IP), fall back to
+          // MQTT-relayed SDP signaling for a P2P WebRTC connection. Media
+          // flows direct peer-to-peer via STUN-punched ICE after handshake.
+          if (cancelled || !cloudDeviceId) throw whepErr;
+          console.log("[VideoFeedCard] WHEP failed, trying P2P MQTT signaling:", whepErr);
+          const stream = await startStreamViaMqttSignaling(cloudDeviceId);
+          if (cancelled) return;
+          videoRef.current!.srcObject = stream;
+          setConnecting(false);
+        }
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : "Connection failed");
@@ -180,7 +194,7 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
       setConnecting(false);
       stopStream();
     };
-  }, [agentWhepUrl, agentVideoState, retryKey]);
+  }, [agentWhepUrl, agentVideoState, retryKey, cloudDeviceId]);
 
   // Cloud mode fallback: MSE player (only if WHEP isn't already streaming)
   useEffect(() => {
@@ -247,6 +261,7 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
                 transport === "lan-whep" && "bg-green-400",
                 transport === "cloud-whep" && "bg-blue-400",
                 transport === "cloud-mse" && "bg-purple-400",
+                transport === "p2p-mqtt" && "bg-yellow-400",
                 transport === "unknown" && "bg-gray-500"
               )}
             />
@@ -256,7 +271,9 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
                 ? "CLOUD WHEP"
                 : transport === "cloud-mse"
                   ? "CLOUD MSE"
-                  : "—"}
+                  : transport === "p2p-mqtt"
+                    ? "P2P MQTT"
+                    : "—"}
           </div>
         )}
 
