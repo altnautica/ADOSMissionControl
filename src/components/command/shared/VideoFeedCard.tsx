@@ -1,7 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { CameraOff, Maximize2, Loader2, RefreshCw } from "lucide-react";
+import { useEffect, useRef, useState, useCallback } from "react";
+import {
+  CameraOff,
+  Maximize2,
+  Minimize2,
+  Loader2,
+  RefreshCw,
+  Camera,
+  Circle,
+  Square,
+  PictureInPicture2,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useVideoStore } from "@/stores/video-store";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
@@ -27,6 +37,7 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
   const bitrateKbps = useVideoStore((s) => s.bitrateKbps);
   const packetsLost = useVideoStore((s) => s.packetsLost);
   const transport = useVideoStore((s) => s.transport);
+  const isRecording = useVideoStore((s) => s.isRecording);
   const cloudMode = useAgentConnectionStore((s) => s.cloudMode);
   const cloudDeviceId = useAgentConnectionStore((s) => s.cloudDeviceId);
   const clientConfig = useConvexSkipQuery(communityApi.clientConfig.get);
@@ -43,6 +54,72 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
     setError(null);
     setRetryKey((k) => k + 1);
   };
+
+  // DEC-108 Phase D: video action buttons. The actual capture/record/PiP
+  // logic already exists in webrtc-client.ts (captureScreenshot, startRecording,
+  // stopRecording) — these handlers just wire UI buttons to those helpers and
+  // add fullscreen / picture-in-picture using the standard browser APIs on
+  // the underlying <video> element.
+
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Listen for fullscreenchange events so we keep our state in sync if the
+  // user presses ESC or otherwise exits fullscreen outside our buttons.
+  useEffect(() => {
+    function onFullscreenChange() {
+      setIsFullscreen(document.fullscreenElement === containerRef.current);
+    }
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
+  }, []);
+
+  const handleSnapshot = useCallback(async () => {
+    try {
+      const { captureScreenshot } = await import("@/lib/video/webrtc-client");
+      captureScreenshot();
+    } catch (err) {
+      console.warn("[VideoFeedCard] snapshot failed", err);
+    }
+  }, []);
+
+  const handleRecordToggle = useCallback(async () => {
+    try {
+      const mod = await import("@/lib/video/webrtc-client");
+      if (isRecording) {
+        mod.stopRecording();
+      } else {
+        mod.startRecording();
+      }
+    } catch (err) {
+      console.warn("[VideoFeedCard] record toggle failed", err);
+    }
+  }, [isRecording]);
+
+  const handleFullscreenToggle = useCallback(async () => {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else if (containerRef.current?.requestFullscreen) {
+        await containerRef.current.requestFullscreen();
+      }
+    } catch (err) {
+      console.warn("[VideoFeedCard] fullscreen toggle failed", err);
+    }
+  }, []);
+
+  const handlePip = useCallback(async () => {
+    if (!videoRef.current) return;
+    try {
+      if (document.pictureInPictureElement) {
+        await document.exitPictureInPicture();
+      } else if (videoRef.current.requestPictureInPicture) {
+        await videoRef.current.requestPictureInPicture();
+      }
+    } catch (err) {
+      console.warn("[VideoFeedCard] picture-in-picture failed", err);
+    }
+  }, []);
 
   // Auto-reconnect: when stream drops but agent video is still running
   const prevStreamingRef = useRef(false);
@@ -128,8 +205,13 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
 
   return (
     <div
+      ref={containerRef}
       className={cn(
         "relative border border-border-default rounded-lg overflow-hidden bg-bg-secondary",
+        // DEC-108 Phase D: in fullscreen the container expands to fill the
+        // screen; switch to flex layout so the 16:9 aspect inner div can
+        // scale up properly.
+        isFullscreen && "flex items-center justify-center bg-black",
         className
       )}
     >
@@ -252,8 +334,64 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
         )}
       </div>
 
-      {/* Top-right action buttons */}
+      {/* DEC-108 Phase D: REC indicator (top-center, inside the video frame) */}
+      {hasVideo && isRecording && (
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2 py-0.5 rounded bg-black/70 backdrop-blur-sm">
+          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+          <span className="text-[10px] font-mono font-semibold text-red-400 tracking-widest">
+            REC
+          </span>
+        </div>
+      )}
+
+      {/* Top-right action buttons — DEC-108 Phase D: snapshot, record,
+          PiP, fullscreen, reconnect, popout */}
       <div className="absolute top-2 right-2 flex items-center gap-1">
+        {hasVideo && (
+          <>
+            <button
+              onClick={handleSnapshot}
+              className="p-1 rounded bg-black/50 hover:bg-black/70 text-text-tertiary hover:text-text-primary transition-colors"
+              title="Capture screenshot"
+            >
+              <Camera className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={handleRecordToggle}
+              className={cn(
+                "p-1 rounded bg-black/50 hover:bg-black/70 transition-colors",
+                isRecording
+                  ? "text-red-400 hover:text-red-300"
+                  : "text-text-tertiary hover:text-text-primary"
+              )}
+              title={isRecording ? "Stop recording" : "Start recording"}
+            >
+              {isRecording ? (
+                <Square className="w-3.5 h-3.5 fill-current" />
+              ) : (
+                <Circle className="w-3.5 h-3.5" />
+              )}
+            </button>
+            <button
+              onClick={handlePip}
+              className="p-1 rounded bg-black/50 hover:bg-black/70 text-text-tertiary hover:text-text-primary transition-colors"
+              title="Picture in picture"
+            >
+              <PictureInPicture2 className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={handleFullscreenToggle}
+              className="p-1 rounded bg-black/50 hover:bg-black/70 text-text-tertiary hover:text-text-primary transition-colors"
+              title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+            >
+              {isFullscreen ? (
+                <Minimize2 className="w-3.5 h-3.5" />
+              ) : (
+                <Maximize2 className="w-3.5 h-3.5" />
+              )}
+            </button>
+          </>
+        )}
         <button
           onClick={handleRetry}
           className="p-1 rounded bg-black/50 hover:bg-black/70 text-text-tertiary hover:text-text-primary transition-colors"
@@ -261,13 +399,15 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
         >
           <RefreshCw className="w-3.5 h-3.5" />
         </button>
-        <button
-          onClick={onPopOut}
-          className="p-1 rounded bg-black/50 hover:bg-black/70 text-text-tertiary hover:text-text-primary transition-colors"
-          title="Pop out video"
-        >
-          <Maximize2 className="w-3.5 h-3.5" />
-        </button>
+        {onPopOut && (
+          <button
+            onClick={onPopOut}
+            className="p-1 rounded bg-black/50 hover:bg-black/70 text-text-tertiary hover:text-text-primary transition-colors"
+            title="Pop out video"
+          >
+            <Maximize2 className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
     </div>
   );
