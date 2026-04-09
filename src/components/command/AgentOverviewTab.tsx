@@ -22,6 +22,7 @@ import { VideoFeedCard } from "./shared/VideoFeedCard";
 import { BatteryCard } from "./shared/BatteryCard";
 import { RcInputCard } from "./shared/RcInputCard";
 import { FlightDataCard } from "./shared/FlightDataCard";
+import { SensorStatusCard } from "./shared/SensorStatusCard";
 
 export function AgentOverviewTab() {
   const t = useTranslations("agent");
@@ -96,6 +97,8 @@ export function AgentOverviewTab() {
           <CpuSparkline />
           <MemorySparkline />
           <BatteryCard />
+          {/* DEC-108 Phase D: sensor health grid */}
+          <SensorStatusCard />
         </div>
       </div>
     </div>

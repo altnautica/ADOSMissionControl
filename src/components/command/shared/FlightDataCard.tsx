@@ -39,6 +39,10 @@ export function FlightDataCard({ className }: FlightDataCardProps) {
   const radioData = radio.latest();
 
   const fix = FIX_LABELS[gpsData?.fixType ?? 0] ?? FIX_LABELS[0];
+  // DEC-108 Phase D: gate GPS-derived fields on a real fix. Without a fix
+  // the FC reports HDOP ~655, lat/lon 0.0, MSL 0.0, heading 360 — all
+  // garbage that pollutes the bench dashboard.
+  const hasFix = (gpsData?.fixType ?? 0) >= 2;
   const heading = pos?.heading ?? (att ? normalizeHeading(toDeg(att.yaw)) : undefined);
 
   const fmtDeg = (v: number | undefined) =>
@@ -113,43 +117,43 @@ export function FlightDataCard({ className }: FlightDataCardProps) {
           <div className="flex justify-between">
             <span className="text-text-tertiary">HDOP</span>
             <span className="font-mono text-text-primary">
-              {gpsData ? gpsData.hdop.toFixed(1) : "--.-"}
+              {hasFix ? gpsData!.hdop.toFixed(1) : "--.-"}
             </span>
           </div>
           <div className="flex justify-between">
             <span className="text-text-tertiary">Lat</span>
             <span className="font-mono text-text-primary">
-              {gpsData ? gpsData.lat.toFixed(6) : "---.------"}
+              {hasFix ? gpsData!.lat.toFixed(6) : "---.------"}
             </span>
           </div>
           <div className="flex justify-between">
             <span className="text-text-tertiary">Lon</span>
             <span className="font-mono text-text-primary">
-              {gpsData ? gpsData.lon.toFixed(6) : "---.------"}
+              {hasFix ? gpsData!.lon.toFixed(6) : "---.------"}
             </span>
           </div>
           <div className="flex justify-between">
             <span className="text-text-tertiary">MSL</span>
             <span className="font-mono text-text-primary">
-              {gpsData ? `${gpsData.alt.toFixed(1)}m` : "--.-m"}
+              {hasFix ? `${gpsData!.alt.toFixed(1)}m` : "--.-m"}
             </span>
           </div>
           <div className="flex justify-between">
             <span className="text-text-tertiary">Rel</span>
             <span className="font-mono text-text-primary">
-              {pos ? `${pos.relativeAlt.toFixed(1)}m` : "--.-m"}
+              {hasFix && pos ? `${pos.relativeAlt.toFixed(1)}m` : "--.-m"}
             </span>
           </div>
           <div className="flex justify-between">
             <span className="text-text-tertiary">Hdg</span>
             <span className="font-mono text-text-primary">
-              {pos ? `${pos.heading.toFixed(0)}\u00B0` : "--\u00B0"}
+              {hasFix && pos ? `${pos.heading.toFixed(0)}\u00B0` : "--\u00B0"}
             </span>
           </div>
           <div className="flex justify-between">
             <span className="text-text-tertiary">GS</span>
             <span className="font-mono text-text-primary">
-              {pos ? `${pos.groundSpeed.toFixed(1)} m/s` : "-- m/s"}
+              {hasFix && pos ? `${pos.groundSpeed.toFixed(1)} m/s` : "-- m/s"}
             </span>
           </div>
         </div>

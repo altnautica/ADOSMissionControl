@@ -22,6 +22,11 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
   const fps = useVideoStore((s) => s.fps);
   const latencyMs = useVideoStore((s) => s.latencyMs);
   const resolution = useVideoStore((s) => s.resolution);
+  // DEC-108 Phase D: extended stats + transport indicator
+  const codec = useVideoStore((s) => s.codec);
+  const bitrateKbps = useVideoStore((s) => s.bitrateKbps);
+  const packetsLost = useVideoStore((s) => s.packetsLost);
+  const transport = useVideoStore((s) => s.transport);
   const cloudMode = useAgentConnectionStore((s) => s.cloudMode);
   const cloudDeviceId = useAgentConnectionStore((s) => s.cloudDeviceId);
   const clientConfig = useConvexSkipQuery(communityApi.clientConfig.get);
@@ -142,12 +147,57 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
           )}
         />
 
-        {/* Video stats overlay */}
+        {/* DEC-108 Phase D: transport pill (top-left) */}
         {hasVideo && (
-          <div className="absolute bottom-0 left-0 right-0 flex items-center gap-3 px-2 py-1 bg-black/60 text-[10px] font-mono text-text-secondary">
+          <div className="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/60 backdrop-blur-sm text-[10px] font-mono text-text-secondary flex items-center gap-1.5 select-none">
+            <span
+              className={cn(
+                "w-1.5 h-1.5 rounded-full",
+                transport === "lan-whep" && "bg-green-400",
+                transport === "cloud-whep" && "bg-blue-400",
+                transport === "cloud-mse" && "bg-purple-400",
+                transport === "unknown" && "bg-gray-500"
+              )}
+            />
+            {transport === "lan-whep"
+              ? "LAN DIRECT"
+              : transport === "cloud-whep"
+                ? "CLOUD WHEP"
+                : transport === "cloud-mse"
+                  ? "CLOUD MSE"
+                  : "—"}
+          </div>
+        )}
+
+        {/* DEC-108 Phase D: video stats overlay (bottom) — extended with
+            codec, bitrate, packet loss when available. Latency is color-coded:
+              green < 100ms, yellow 100-300, orange 300-600, red > 600 */}
+        {hasVideo && (
+          <div className="absolute bottom-0 left-0 right-0 flex flex-wrap items-center gap-x-3 gap-y-0.5 px-2 py-1 bg-black/60 backdrop-blur-sm text-[10px] font-mono text-text-secondary">
             <span>{fps > 0 ? `${fps} FPS` : "-- FPS"}</span>
-            <span>{latencyMs > 0 ? `${latencyMs}ms` : "--ms"}</span>
+            <span
+              className={cn(
+                latencyMs === 0 && "text-text-tertiary",
+                latencyMs > 0 && latencyMs < 100 && "text-green-400",
+                latencyMs >= 100 && latencyMs < 300 && "text-yellow-400",
+                latencyMs >= 300 && latencyMs < 600 && "text-orange-400",
+                latencyMs >= 600 && "text-red-400"
+              )}
+            >
+              {latencyMs > 0 ? `${latencyMs}ms` : "--ms"}
+            </span>
             <span>{resolution || "--\u00D7--"}</span>
+            {codec && <span className="text-text-tertiary">{codec}</span>}
+            {bitrateKbps > 0 && (
+              <span className="text-text-tertiary">
+                {bitrateKbps >= 1000
+                  ? `${(bitrateKbps / 1000).toFixed(1)} Mbps`
+                  : `${bitrateKbps} kbps`}
+              </span>
+            )}
+            {packetsLost > 0 && (
+              <span className="text-orange-400">{packetsLost} pkts lost</span>
+            )}
           </div>
         )}
 
