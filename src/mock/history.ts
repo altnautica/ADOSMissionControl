@@ -36,7 +36,7 @@ import {
  * Bump this whenever the seeder output changes. The History page resets
  * demo records in IndexedDB and re-seeds when the stored version differs.
  */
-export const DEMO_SEED_VERSION = 2;
+export const DEMO_SEED_VERSION = 3;
 
 const DRONE_NAMES = ["Alpha-1", "Bravo-2", "Echo-5", "Charlie", "Delta"];
 const DRONE_IDS = ["alpha-1", "bravo-2", "echo-5", "charlie", "delta"];
@@ -47,6 +47,8 @@ interface SeedPlanRow {
   status: "completed" | "aborted" | "emergency";
   hasTelemetry: boolean;
   favorite: boolean;
+  /** Origin of the record. Defaults to "live" when omitted. */
+  source?: "live" | "dataflash" | "imported";
 }
 
 /**
@@ -66,15 +68,15 @@ const SEED_PLAN: SeedPlanRow[] = [
   { suite: "survey", ageDays: 2.2, status: "completed", hasTelemetry: false, favorite: false },
   { suite: "agriculture", ageDays: 2.8, status: "completed", hasTelemetry: true, favorite: false },
   { suite: "cargo", ageDays: 3.3, status: "aborted", hasTelemetry: true, favorite: false },
-  { suite: "inspection", ageDays: 4.0, status: "completed", hasTelemetry: true, favorite: true },
+  { suite: "inspection", ageDays: 4.0, status: "completed", hasTelemetry: true, favorite: true, source: "dataflash" },
   { suite: "sentry", ageDays: 5.5, status: "completed", hasTelemetry: false, favorite: false },
-  { suite: "sar", ageDays: 6.8, status: "completed", hasTelemetry: true, favorite: false },
+  { suite: "sar", ageDays: 6.8, status: "completed", hasTelemetry: true, favorite: false, source: "imported" },
   // 8–30 days ago (17 flights)
-  { suite: "survey", ageDays: 8.2, status: "completed", hasTelemetry: false, favorite: true },
+  { suite: "survey", ageDays: 8.2, status: "completed", hasTelemetry: false, favorite: true, source: "dataflash" },
   { suite: "agriculture", ageDays: 9.5, status: "completed", hasTelemetry: true, favorite: false },
   { suite: "sentry", ageDays: 10.4, status: "completed", hasTelemetry: false, favorite: false },
-  { suite: "inspection", ageDays: 11.6, status: "completed", hasTelemetry: false, favorite: true },
-  { suite: "cargo", ageDays: 12.9, status: "completed", hasTelemetry: false, favorite: false },
+  { suite: "inspection", ageDays: 11.6, status: "completed", hasTelemetry: false, favorite: true, source: "dataflash" },
+  { suite: "cargo", ageDays: 12.9, status: "completed", hasTelemetry: false, favorite: false, source: "imported" },
   { suite: "survey", ageDays: 13.7, status: "completed", hasTelemetry: true, favorite: false },
   { suite: "sar", ageDays: 15.0, status: "emergency", hasTelemetry: true, favorite: true },
   { suite: "agriculture", ageDays: 16.4, status: "completed", hasTelemetry: false, favorite: false },
@@ -187,6 +189,17 @@ function buildRecord(plan: SeedPlanRow, idx: number, rand: Prng, baseTime: numbe
     aircraftRegistration: `VT-DEMO-${String(idx + 1).padStart(3, "0")}`,
     aircraftSerial: `SN-${1000 + idx}`,
     aircraftMtomKg: 1.6,
+    source: plan.source ?? "live",
+    sourceFilename:
+      plan.source === "dataflash"
+        ? `LOG_${String(100 + idx).padStart(4, "0")}.bin`
+        : plan.source === "imported"
+          ? `flight_${idx}.tlog`
+          : undefined,
+    takeoffPlaceName: `${site.name}, India`,
+    locality: site.name,
+    country: "IN",
+    region: "Karnataka",
   };
 
   // Sign-and-lock the most recent 5 completed flights.

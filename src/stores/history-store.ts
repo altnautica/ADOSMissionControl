@@ -179,7 +179,11 @@ export const useHistoryStore = create<HistoryState & HistoryActions>((set, get) 
 
   persistToIDB: async () => {
     try {
-      await idbSet(IDB_HISTORY_KEY, get().records);
+      // Demo seed records (id prefix "demo-") are reseeded on every demo
+      // mode load and must never pollute IDB. Real imports, dataflash logs,
+      // and live-hardware flights use other id schemes and persist normally.
+      const clean = get().records.filter((r) => !r.id.startsWith("demo-"));
+      await idbSet(IDB_HISTORY_KEY, clean);
     } catch (err) {
       console.warn("[history-store] persistToIDB failed", err);
     }
