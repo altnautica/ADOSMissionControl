@@ -7,6 +7,7 @@ import {
   Pause, Play, XOctagon, Skull, ClipboardCheck,
 } from "lucide-react";
 import { FollowMeButton } from "./FollowMeButton";
+import { LoadoutSelector } from "./LoadoutSelector";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { FlightModeSelector } from "@/components/shared/flight-mode-selector";
@@ -50,18 +51,9 @@ export function ActionsPanel() {
 
   const isArmed = armState === "armed";
   const protocol = getProtocol();
-  const { supports, firmwareType, isConnected } = useFirmwareCapabilities();
+  const { supports } = useFirmwareCapabilities();
   const hasMissions = supports("supportsMissionUpload");
-  // Takeoff / Land / RTL / Pause require autonomous nav — ArduPilot, PX4, and iNav all qualify.
-  // Betaflight and generic MAVLink don't. Before a firmware is resolved we optimistically
-  // show the buttons so the user isn't left staring at a stub panel; the button handlers
-  // already no-op safely if the command isn't accepted.
-  const hasAutonomousFlight =
-    !isConnected ||
-    (firmwareType?.startsWith("ardupilot") ?? false) ||
-    firmwareType === "px4" ||
-    firmwareType === "inav" ||
-    supports("supportsMissionUpload");
+  const hasAutonomousFlight = supports("supportsGeoFence"); // RTL/Land/Takeoff require autonomous nav
 
   useFlightShortcuts({
     enabled: true,
@@ -73,6 +65,9 @@ export function ActionsPanel() {
   return (
     <>
       <div className="px-3 pt-3 pb-1.5 border-t border-border-default bg-bg-secondary flex flex-col gap-1.5">
+        {/* Phase 12c — Loadout selector (battery + equipment fitted for this flight) */}
+        <LoadoutSelector />
+
         {/* Pre-Flight Checklist button */}
         <Tooltip content="Open pre-flight checklist" position="right">
           <button
