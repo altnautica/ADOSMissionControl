@@ -96,23 +96,25 @@ export function GpsCard({ className }: GpsCardProps) {
         <div className="text-[10px] text-text-tertiary">
           Rel{" "}
           <span className="text-text-primary font-mono text-xs">
-            {posLatest ? `${posLatest.relativeAlt.toFixed(1)}m` : "--.-m"}
+            {hasFix && posLatest ? `${posLatest.relativeAlt.toFixed(1)}m` : "--.-m"}
           </span>
         </div>
       </div>
 
-      {/* Heading + Groundspeed */}
+      {/* Heading + Groundspeed — gated on hasFix per DEC-108: without GPS lock
+          the FC reports stale heading (often 360°) and zero ground speed,
+          which on the bench reads as garbage. */}
       <div className="flex gap-3">
         <div className="text-[10px] text-text-tertiary">
           Hdg{" "}
           <span className="text-text-primary font-mono text-xs">
-            {posLatest ? `${posLatest.heading.toFixed(0)}\u00B0` : "--\u00B0"}
+            {hasFix && posLatest ? `${posLatest.heading.toFixed(0)}\u00B0` : "--\u00B0"}
           </span>
         </div>
         <div className="text-[10px] text-text-tertiary">
           GS{" "}
           <span className="text-text-primary font-mono text-xs">
-            {posLatest
+            {hasFix && posLatest
               ? `${posLatest.groundSpeed.toFixed(1)} m/s`
               : "-- m/s"}
           </span>
