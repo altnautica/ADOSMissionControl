@@ -159,6 +159,26 @@ const RECORD_VALIDATOR = {
       error: v.optional(v.string()),
     }),
   ),
+  phases: v.optional(
+    v.array(
+      v.object({
+        type: v.union(
+          v.literal("pre_arm"),
+          v.literal("takeoff"),
+          v.literal("climb"),
+          v.literal("cruise"),
+          v.literal("hover"),
+          v.literal("descent"),
+          v.literal("land"),
+          v.literal("post_disarm"),
+        ),
+        startMs: v.number(),
+        endMs: v.number(),
+        avgSpeed: v.optional(v.number()),
+        maxAlt: v.optional(v.number()),
+      }),
+    ),
+  ),
   takeoffPlaceName: v.optional(v.string()),
   landingPlaceName: v.optional(v.string()),
   country: v.optional(v.string()),
