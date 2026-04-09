@@ -11,7 +11,7 @@ import { DataValue } from "@/components/ui/data-value";
 import { formatDate, formatDuration, formatTime } from "@/lib/utils";
 import { useBatteryRegistryStore } from "@/stores/battery-registry-store";
 import { useEquipmentRegistryStore } from "@/stores/equipment-registry-store";
-import { CheckCircle2, XCircle, AlertTriangle, Sun, Moon, Sparkles, Cloud, Shield, Activity } from "lucide-react";
+import { CheckCircle2, XCircle, AlertTriangle, Sun, Moon, Sparkles, Cloud, Shield, Activity, MapPin } from "lucide-react";
 import type {
   FlightRecord,
   FlightPhase,
@@ -19,6 +19,7 @@ import type {
   SunMoonSnapshot,
   WeatherSnapshot,
   AirspaceSnapshot,
+  MissionAdherence,
 } from "@/lib/types";
 
 interface OverviewTabProps {
@@ -72,6 +73,15 @@ export function OverviewTab({ record }: OverviewTabProps) {
           )}
         </div>
       </Card>
+
+      {record.adherence && (
+        <Card title="Mission Adherence" padding={true}>
+          <AdherenceCard
+            adherence={record.adherence}
+            missionName={record.missionName}
+          />
+        </Card>
+      )}
 
       {record.phases && record.phases.length > 0 && (
         <Card title="Phases" padding={true}>
