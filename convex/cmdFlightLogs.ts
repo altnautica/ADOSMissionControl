@@ -159,6 +159,34 @@ const RECORD_VALIDATOR = {
       error: v.optional(v.string()),
     }),
   ),
+  missionId: v.optional(v.string()),
+  missionName: v.optional(v.string()),
+  missionWaypoints: v.optional(
+    v.array(
+      v.object({
+        lat: v.number(),
+        lon: v.number(),
+        alt: v.number(),
+      }),
+    ),
+  ),
+  adherence: v.optional(
+    v.object({
+      totalWaypoints: v.number(),
+      waypointsReached: v.number(),
+      maxCrossTrackErrorM: v.number(),
+      meanCrossTrackErrorM: v.number(),
+      deviationSegments: v.optional(
+        v.array(
+          v.object({
+            startIdx: v.number(),
+            endIdx: v.number(),
+            maxErrorM: v.number(),
+          }),
+        ),
+      ),
+    }),
+  ),
   phases: v.optional(
     v.array(
       v.object({
