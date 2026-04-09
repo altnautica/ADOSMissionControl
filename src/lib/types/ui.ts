@@ -146,6 +146,54 @@ export interface FlightRecord {
 
   /** Phase 14b — METAR weather snapshot from the nearest reporting station. */
   weatherSnapshot?: WeatherSnapshot;
+
+  /** Phase 14c — NOTAM / zone / TFR intersections with this flight's path + window. */
+  airspaceSnapshot?: AirspaceSnapshot;
+}
+
+/**
+ * Snapshot of every airspace zone, NOTAM, and TFR that intersected this
+ * flight's path or time window. Computed on disarm (we need the final
+ * path) by {@link captureAirspaceSnapshot}. Feeds the Overview "Airspace"
+ * card and downstream compliance validators.
+ */
+export interface AirspaceSnapshot {
+  /** ISO timestamp when the snapshot was computed. */
+  computedAt: string;
+  /** Number of path points that were intersection-tested. */
+  pathSampleCount: number;
+  /** ISO time of the flight arm. */
+  windowStartIso: string;
+  /** ISO time of the flight disarm. */
+  windowEndIso: string;
+  /** Bounding box used for provider queries (with 5 km margin). */
+  bbox: { south: number; north: number; west: number; east: number };
+  /** Every unique intersection. Deduped by (source, id). */
+  intersections: AirspaceIntersection[];
+}
+
+/** One airspace zone, NOTAM, or TFR that intersected this flight. */
+export interface AirspaceIntersection {
+  /** Provider-assigned stable id. */
+  id: string;
+  /** What kind of object this is. */
+  kind: "zone" | "notam" | "tfr";
+  /** Provider / data source identifier. */
+  source: string;
+  /** Zone type string (from AirspaceZoneType) or "notam" / "tfr". */
+  type: string;
+  /** Human-readable name. */
+  name: string;
+  /** Severity bucket for UI colour-coding and compliance rules. */
+  severity: "info" | "warning" | "error";
+  /** Altitude band in the provider's native units. */
+  floorAltitude?: number;
+  ceilingAltitude?: number;
+  /** Effective time window (NOTAMs / TFRs). */
+  effectiveStartIso?: string;
+  effectiveEndIso?: string;
+  /** One-line summary (NOTAM text snippet, zone authority, etc). */
+  summary?: string;
 }
 
 /**
