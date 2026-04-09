@@ -1,5 +1,12 @@
 import { create } from "zustand";
 
+// DEC-108 Phase D: detected transport for the active video stream.
+// "lan-whep" = WHEP from a private/loopback URL (LAN direct, lowest latency)
+// "cloud-whep" = WHEP from a public cloud relay hostname
+// "cloud-mse" = MSE WebSocket fallback from the cloud video relay
+// "unknown" = no stream OR transport not yet detected
+export type VideoTransport = "lan-whep" | "cloud-whep" | "cloud-mse" | "unknown";
+
 interface VideoStoreState {
   streamUrl: string | null;
   isStreaming: boolean;
@@ -7,6 +14,13 @@ interface VideoStoreState {
   fps: number;
   latencyMs: number;
   resolution: string;
+
+  // DEC-108 Phase D: extended WebRTC stats
+  codec: string;            // e.g. "H264" or "VP8"
+  bitrateKbps: number;      // derived from bytesReceived delta
+  packetsLost: number;      // cumulative
+  jitterMs: number;         // from inbound-rtp.jitter (sec * 1000)
+  transport: VideoTransport;
 
   // Cloud video state
   cloudStreamUrl: string | null;
@@ -22,6 +36,8 @@ interface VideoStoreState {
   setRecording: (isRecording: boolean) => void;
   updateStats: (fps: number, latencyMs: number) => void;
   setResolution: (resolution: string) => void;
+  setVideoMetrics: (m: { codec?: string; bitrateKbps?: number; packetsLost?: number; jitterMs?: number }) => void;
+  setTransport: (transport: VideoTransport) => void;
   setCloudStreamUrl: (url: string | null) => void;
   setCloudStreaming: (streaming: boolean) => void;
   setAgentVideoStatus: (state: string, whepUrl: string | null, deps?: Record<string, { found: boolean }>) => void;
@@ -35,6 +51,12 @@ export const useVideoStore = create<VideoStoreState>((set) => ({
   latencyMs: 0,
   resolution: "1280x720",
 
+  codec: "",
+  bitrateKbps: 0,
+  packetsLost: 0,
+  jitterMs: 0,
+  transport: "unknown",
+
   cloudStreamUrl: null,
   cloudStreaming: false,
 
@@ -47,6 +69,14 @@ export const useVideoStore = create<VideoStoreState>((set) => ({
   setRecording: (isRecording) => set({ isRecording }),
   updateStats: (fps, latencyMs) => set({ fps, latencyMs }),
   setResolution: (resolution) => set({ resolution }),
+  setVideoMetrics: (m) =>
+    set((s) => ({
+      codec: m.codec ?? s.codec,
+      bitrateKbps: m.bitrateKbps ?? s.bitrateKbps,
+      packetsLost: m.packetsLost ?? s.packetsLost,
+      jitterMs: m.jitterMs ?? s.jitterMs,
+    })),
+  setTransport: (transport) => set({ transport }),
   setCloudStreamUrl: (cloudStreamUrl) => set({ cloudStreamUrl }),
   setCloudStreaming: (cloudStreaming) => set({ cloudStreaming }),
   setAgentVideoStatus: (agentVideoState, agentWhepUrl, deps) =>
