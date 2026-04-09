@@ -11,8 +11,8 @@ import { DataValue } from "@/components/ui/data-value";
 import { formatDate, formatDuration, formatTime } from "@/lib/utils";
 import { useBatteryRegistryStore } from "@/stores/battery-registry-store";
 import { useEquipmentRegistryStore } from "@/stores/equipment-registry-store";
-import { CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
-import type { FlightRecord, PreflightSnapshot } from "@/lib/types";
+import { CheckCircle2, XCircle, AlertTriangle, Sun, Moon, Sparkles } from "lucide-react";
+import type { FlightRecord, PreflightSnapshot, SunMoonSnapshot } from "@/lib/types";
 
 interface OverviewTabProps {
   record: FlightRecord;
@@ -61,6 +61,12 @@ export function OverviewTab({ record }: OverviewTabProps) {
           )}
         </div>
       </Card>
+
+      {record.sunMoon && (
+        <Card title="Conditions" padding={true}>
+          <ConditionsCard sunMoon={record.sunMoon} />
+        </Card>
+      )}
 
       {record.preflight && (
         <Card title="Pre-flight" padding={true}>
@@ -117,6 +123,90 @@ function Row({ label, value, mono = false }: { label: string; value: string; mon
       <span className={`text-xs text-text-primary ${mono ? "font-mono" : ""}`}>{value}</span>
     </div>
   );
+}
+
+function fmtHhMm(iso: string | undefined): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
+}
+
+const PHASE_LABEL_KEYS: Record<SunMoonSnapshot["daylightPhase"], string> = {
+  day: "phaseDay",
+  civil_twilight: "phaseCivilTwilight",
+  nautical_twilight: "phaseNauticalTwilight",
+  astronomical_twilight: "phaseAstronomicalTwilight",
+  night: "phaseNight",
+};
+
+function ConditionsCard({ sunMoon }: { sunMoon: SunMoonSnapshot }) {
+  const phaseKey = PHASE_LABEL_KEYS[sunMoon.daylightPhase];
+  const phaseColor =
+    sunMoon.daylightPhase === "day"
+      ? "text-status-success"
+      : sunMoon.daylightPhase === "night"
+        ? "text-text-tertiary"
+        : "text-status-warning";
+
+  return (
+    <div className="flex flex-col gap-2">
+      {/* Phase summary row */}
+      <div className="flex items-center gap-3 text-[11px]">
+        <span className={`inline-flex items-center gap-1 ${phaseColor}`}>
+          {sunMoon.daylightPhase === "night" ? <Moon size={12} /> : <Sun size={12} />}
+          <span className="uppercase tracking-wider font-semibold">{phaseLabel(phaseKey)}</span>
+        </span>
+        {sunMoon.inGoldenHour && (
+          <span className="inline-flex items-center gap-1 text-status-warning">
+            <Sparkles size={12} />
+            Golden hour
+          </span>
+        )}
+      </div>
+
+      {/* Sun row */}
+      <div className="flex flex-col gap-0.5">
+        <Row label="Sunrise" value={fmtHhMm(sunMoon.sunriseIso)} mono />
+        <Row label="Sunset" value={fmtHhMm(sunMoon.sunsetIso)} mono />
+        <Row
+          label="Sun"
+          value={`${sunMoon.sunAltitudeDeg.toFixed(1)}° alt · ${sunMoon.sunAzimuthDeg.toFixed(0)}° az`}
+          mono
+        />
+      </div>
+
+      {/* Moon row */}
+      <div className="flex flex-col gap-0.5 border-t border-border-default pt-2 mt-1">
+        <Row label="Moon phase" value={sunMoon.moonPhaseLabel} />
+        <Row
+          label="Illumination"
+          value={`${Math.round(sunMoon.moonIllumination * 100)}%`}
+          mono
+        />
+        <Row
+          label="Moon"
+          value={`${sunMoon.moonAltitudeDeg.toFixed(1)}° alt · ${sunMoon.moonAzimuthDeg.toFixed(0)}° az`}
+          mono
+        />
+      </div>
+    </div>
+  );
+}
+
+/** Small local helper — reach into i18n at call time without threading useTranslations into every leaf. */
+function phaseLabel(key: string): string {
+  // This component is rendered inside the i18n provider already, so a
+  // small synthetic dict keeps us from adding a second useTranslations call
+  // in this deeply nested helper component.
+  const map: Record<string, string> = {
+    phaseDay: "Day",
+    phaseCivilTwilight: "Civil twilight",
+    phaseNauticalTwilight: "Nautical twilight",
+    phaseAstronomicalTwilight: "Astronomical twilight",
+    phaseNight: "Night",
+  };
+  return map[key] ?? key;
 }
 
 function PreflightCard({ preflight }: { preflight: PreflightSnapshot }) {

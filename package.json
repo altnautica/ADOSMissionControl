@@ -58,6 +58,7 @@
     "react-dom": "19.2.3",
     "react-leaflet": "^5.0.0",
     "recharts": "^2.15.3",
+    "suncalc": "^1.9.0",
     "three": "^0.183.2",
     "zustand": "^5.0.5"
   },
@@ -73,6 +74,7 @@
     "@types/pako": "^2.0.4",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/suncalc": "^1.9.2",
     "@types/three": "^0.183.1",
     "@vitest/coverage-v8": "^4.0.18",
     "@vitest/ui": "^4.0.18",

@@ -36,6 +36,7 @@ import { useChecklistStore } from "@/stores/checklist-store";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { usePrearmBufferStore } from "@/stores/prearm-buffer-store";
 import { analyzeFlight } from "./flight-analysis/analyzer";
+import { computeSunMoon } from "./environment/sun-moon";
 import type {
   FlightRecord,
   LoadoutSnapshot,
@@ -118,6 +119,13 @@ function handleArm(droneId: string, droneName: string, snapshot: ArmSnapshot): v
   // Phase 13 — freeze the pre-flight checklist + prearm bitmask snapshot.
   const preflight = capturePreflightSnapshot(droneId);
 
+  // Phase 14a — sun / moon snapshot at arm time, iff we have a position fix.
+  // Disarm will retry with landing coords when arm had no lock.
+  const sunMoon =
+    snapshot.lat !== undefined && snapshot.lon !== undefined
+      ? computeSunMoon(snapshot.lat, snapshot.lon, startTime)
+      : undefined;
+
   const draft: FlightRecord = {
     id: cryptoRandomId(),
     droneId,
@@ -146,6 +154,7 @@ function handleArm(droneId: string, droneName: string, snapshot: ArmSnapshot): v
     aircraftMtomKg: aircraft.mtomKg,
     loadout,
     preflight,
+    sunMoon,
   };
 
   const history = useHistoryStore.getState();
@@ -208,6 +217,19 @@ async function handleDisarm(droneId: string): Promise<void> {
       }
     }
   }
+  // Phase 14a retry: if arm didn't have a position lock, compute sun/moon
+  // now from landing coords (which are from the same flight site within the
+  // typical flight's flight-duration, so the answer is still accurate).
+  let sunMoonPatch = draftRow?.sunMoon;
+  if (
+    !sunMoonPatch &&
+    stats.landingLat !== undefined &&
+    stats.landingLon !== undefined &&
+    draftRow
+  ) {
+    sunMoonPatch = computeSunMoon(stats.landingLat, stats.landingLon, draftRow.startTime);
+  }
+
   history.updateRecord(lc.draftRecordId, {
     endTime,
     duration: Math.max(0, Math.round((endTime - (history.records.find((r) => r.id === lc.draftRecordId)?.startTime ?? endTime)) / 1000)),
@@ -226,6 +248,7 @@ async function handleDisarm(droneId: string): Promise<void> {
     events: analysis.events,
     flags: analysis.flags,
     health: analysis.health,
+    sunMoon: sunMoonPatch,
   });
   void history.persistToIDB();
 
