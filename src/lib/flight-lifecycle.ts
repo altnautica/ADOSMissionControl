@@ -132,6 +132,18 @@ function handleArm(droneId: string, droneName: string, snapshot: ArmSnapshot): v
       ? computeSunMoon(snapshot.lat, snapshot.lon, startTime)
       : undefined;
 
+  // Phase 16b — freeze the active mission's id + name + waypoint snapshot
+  // so the disarm-time adherence calc has something to compare against,
+  // even if the user clears the mission mid-flight or the app crashes.
+  const activeMission = useMissionStore.getState().activeMission;
+  const missionId = activeMission?.id;
+  const missionName = activeMission?.name;
+  const missionWaypoints = activeMission?.waypoints?.map((w) => ({
+    lat: w.lat,
+    lon: w.lon,
+    alt: w.alt,
+  }));
+
   const draft: FlightRecord = {
     id: cryptoRandomId(),
     droneId,
@@ -161,6 +173,9 @@ function handleArm(droneId: string, droneName: string, snapshot: ArmSnapshot): v
     loadout,
     preflight,
     sunMoon,
+    missionId,
+    missionName,
+    missionWaypoints,
   };
 
   const history = useHistoryStore.getState();
@@ -227,6 +242,13 @@ async function handleDisarm(droneId: string): Promise<void> {
   const stats = computeFlightStats(frames);
   const analysis = frames.length > 0 ? analyzeFlight(frames) : { events: [], flags: [], health: {} };
   const phases = frames.length > 0 ? detectPhases(frames) : [];
+  // Phase 16b — compute mission adherence using the path we just derived
+  // and the waypoint snapshot we froze on arm.
+  const draftRowEarly = useHistoryStore.getState().records.find((r) => r.id === lc.draftRecordId);
+  const adherence =
+    draftRowEarly?.missionWaypoints && stats.path.length >= 2
+      ? computeAdherence(stats.path, draftRowEarly.missionWaypoints) ?? undefined
+      : undefined;
   const endTime = Date.now();
   const history = useHistoryStore.getState();
   // Roll up aircraft usage stats (Phase 7a).
@@ -360,6 +382,7 @@ async function handleDisarm(droneId: string): Promise<void> {
     health: analysis.health,
     sunMoon: sunMoonPatch,
     phases: phases.length > 0 ? phases : undefined,
+    adherence,
   });
   void history.persistToIDB();
 

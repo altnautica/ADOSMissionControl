@@ -336,6 +336,35 @@ fullName: v.optional(v.string()),
         error: v.optional(v.string()),
       }),
     ),
+    // Phase 16b — mission adherence (intended vs actual).
+    missionId: v.optional(v.string()),
+    missionName: v.optional(v.string()),
+    missionWaypoints: v.optional(
+      v.array(
+        v.object({
+          lat: v.number(),
+          lon: v.number(),
+          alt: v.number(),
+        }),
+      ),
+    ),
+    adherence: v.optional(
+      v.object({
+        totalWaypoints: v.number(),
+        waypointsReached: v.number(),
+        maxCrossTrackErrorM: v.number(),
+        meanCrossTrackErrorM: v.number(),
+        deviationSegments: v.optional(
+          v.array(
+            v.object({
+              startIdx: v.number(),
+              endIdx: v.number(),
+              maxErrorM: v.number(),
+            }),
+          ),
+        ),
+      }),
+    ),
     // Phase 16a — flight phase segmentation.
     phases: v.optional(
       v.array(
