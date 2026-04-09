@@ -143,6 +143,49 @@ export interface FlightRecord {
 
   /** Phase 14a — sun / moon environmental snapshot at arm time. */
   sunMoon?: SunMoonSnapshot;
+
+  /** Phase 14b — METAR weather snapshot from the nearest reporting station. */
+  weatherSnapshot?: WeatherSnapshot;
+}
+
+/**
+ * METAR weather snapshot captured at arm time from the nearest aviation
+ * weather station (within 300 km). Fetched async so it doesn't block the
+ * arm path — undefined when the network is down or no station is in range.
+ *
+ * Feeds the Overview "Conditions" card and jurisdictions that care about
+ * wind / visibility (insurance reporting, litigation evidence, go/no-go
+ * audit trails).
+ */
+export interface WeatherSnapshot {
+  /** ISO timestamp of the METAR observation (not the flight time). */
+  observedAt: string;
+  /** ICAO code of the reporting station (e.g. "VOBL", "EGLL"). */
+  stationIcao: string;
+  /** Friendly station name, typically "<airport>, <city>, <country>". */
+  stationName?: string;
+  stationLat?: number;
+  stationLon?: number;
+  /** Distance from the flight's arm position to the station in km. */
+  stationDistanceKm?: number;
+  tempC?: number;
+  dewPointC?: number;
+  /** Wind direction in compass degrees (0–360, 0 = calm). */
+  windDirDeg?: number;
+  windKts?: number;
+  gustKts?: number;
+  /** Horizontal visibility in statute miles. "6+" is represented as 6. */
+  visibilityMi?: number;
+  /** Ceiling (lowest BKN or OVC layer) in feet AGL. */
+  ceilingFtAgl?: number;
+  /** Altimeter setting in hectopascals (hPa). */
+  altimeterHpa?: number;
+  /** FAA flight category derived from ceiling + visibility. */
+  flightCategory?: "VFR" | "MVFR" | "IFR" | "LIFR";
+  /** Raw METAR string for audit trail. */
+  rawMetar?: string;
+  /** Set when the fetch or parse failed; the snapshot is still serialized so the UI can show the error. */
+  error?: string;
 }
 
 /**

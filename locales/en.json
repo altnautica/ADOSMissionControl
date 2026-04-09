@@ -1527,7 +1527,18 @@
     "phaseCivilTwilight": "Civil twilight",
     "phaseNauticalTwilight": "Nautical twilight",
     "phaseAstronomicalTwilight": "Astronomical twilight",
-    "phaseNight": "Night"
+    "phaseNight": "Night",
+    "weatherStation": "Station",
+    "weatherTemp": "Temperature",
+    "weatherDewPoint": "Dew point",
+    "weatherWind": "Wind",
+    "weatherGust": "Gust",
+    "weatherVisibility": "Visibility",
+    "weatherCeiling": "Ceiling",
+    "weatherAltimeter": "Altimeter",
+    "weatherFlightCategory": "Flight cat.",
+    "weatherRawMetar": "Raw METAR",
+    "weatherCalm": "Calm"
   },
   "library": {
     "title": "FLIGHT PLANS",

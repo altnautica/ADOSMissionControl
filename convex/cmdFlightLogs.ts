@@ -131,6 +131,34 @@ const RECORD_VALIDATOR = {
       moonAzimuthDeg: v.number(),
     }),
   ),
+  weatherSnapshot: v.optional(
+    v.object({
+      observedAt: v.string(),
+      stationIcao: v.string(),
+      stationName: v.optional(v.string()),
+      stationLat: v.optional(v.number()),
+      stationLon: v.optional(v.number()),
+      stationDistanceKm: v.optional(v.number()),
+      tempC: v.optional(v.number()),
+      dewPointC: v.optional(v.number()),
+      windDirDeg: v.optional(v.number()),
+      windKts: v.optional(v.number()),
+      gustKts: v.optional(v.number()),
+      visibilityMi: v.optional(v.number()),
+      ceilingFtAgl: v.optional(v.number()),
+      altimeterHpa: v.optional(v.number()),
+      flightCategory: v.optional(
+        v.union(
+          v.literal("VFR"),
+          v.literal("MVFR"),
+          v.literal("IFR"),
+          v.literal("LIFR"),
+        ),
+      ),
+      rawMetar: v.optional(v.string()),
+      error: v.optional(v.string()),
+    }),
+  ),
   preflight: v.optional(
     v.object({
       checklistSessionId: v.optional(v.string()),

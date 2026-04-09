@@ -37,6 +37,7 @@ import { useTelemetryStore } from "@/stores/telemetry-store";
 import { usePrearmBufferStore } from "@/stores/prearm-buffer-store";
 import { analyzeFlight } from "./flight-analysis/analyzer";
 import { computeSunMoon } from "./environment/sun-moon";
+import { getWeatherSnapshot } from "./environment/weather-provider";
 import type {
   FlightRecord,
   LoadoutSnapshot,
@@ -162,6 +163,22 @@ function handleArm(droneId: string, droneName: string, snapshot: ArmSnapshot): v
   void history.persistToIDB();
 
   _state.set(droneId, { armed: true, draftRecordId: draft.id, recordingId });
+
+  // Phase 14b — non-blocking METAR fetch. Fires async from the nearest
+  // aviationweather.gov station within 300 km. Resolves (or doesn't) on
+  // its own schedule and patches the record; never awaits here, never
+  // blocks the arm path, and never throws.
+  if (snapshot.lat !== undefined && snapshot.lon !== undefined) {
+    const draftId = draft.id;
+    void getWeatherSnapshot(snapshot.lat, snapshot.lon, startTime).then((weather) => {
+      if (!weather) return;
+      const store = useHistoryStore.getState();
+      // Only patch if the record still exists (user may have deleted it).
+      if (!store.records.some((r) => r.id === draftId)) return;
+      store.updateRecord(draftId, { weatherSnapshot: weather });
+      void store.persistToIDB();
+    });
+  }
 }
 
 async function handleDisarm(droneId: string): Promise<void> {
@@ -228,6 +245,28 @@ async function handleDisarm(droneId: string): Promise<void> {
     draftRow
   ) {
     sunMoonPatch = computeSunMoon(stats.landingLat, stats.landingLon, draftRow.startTime);
+  }
+
+  // Phase 14b retry: if the arm-time async fetch didn't land (network was
+  // down or the drone had no GPS fix at arm), fire one more attempt from
+  // the landing coords. Non-blocking — we don't wait for it.
+  if (
+    !draftRow?.weatherSnapshot &&
+    stats.landingLat !== undefined &&
+    stats.landingLon !== undefined &&
+    draftRow
+  ) {
+    const draftId = draftRow.id;
+    const flightStartTime = draftRow.startTime;
+    void getWeatherSnapshot(stats.landingLat, stats.landingLon, flightStartTime).then(
+      (weather) => {
+        if (!weather) return;
+        const store = useHistoryStore.getState();
+        if (!store.records.some((r) => r.id === draftId)) return;
+        store.updateRecord(draftId, { weatherSnapshot: weather });
+        void store.persistToIDB();
+      },
+    );
   }
 
   history.updateRecord(lc.draftRecordId, {
