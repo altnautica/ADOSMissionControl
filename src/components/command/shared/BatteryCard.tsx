@@ -19,6 +19,11 @@ export function BatteryCard({ className }: BatteryCardProps) {
   const battery = useTelemetryStore((s) => s.battery);
   const latest = battery.latest();
 
+  // DEC-108 bench mode: a disconnected battery reads ~0.01V via the FC's
+  // voltage divider, and the percentage field is uninitialized garbage.
+  // When voltage is below ~1V, treat it as "no battery connected" instead
+  // of showing "0% Critical".
+  const hasRealBattery = (latest?.voltage ?? 0) >= 1.0;
   const pct = latest?.remaining ?? 0;
 
   return (
@@ -40,16 +45,16 @@ export function BatteryCard({ className }: BatteryCardProps) {
       <div className="mb-2">
         <div className="flex items-baseline justify-between mb-1">
           <span className="text-lg font-mono font-semibold text-text-primary leading-none">
-            {latest ? `${pct.toFixed(0)}%` : "--%"}
+            {!latest ? "--%" : hasRealBattery ? `${pct.toFixed(0)}%` : "—"}
           </span>
           <span className="text-[10px] text-text-tertiary">
-            {latest ? `${latest.consumed.toFixed(0)} mAh` : "-- mAh"}
+            {hasRealBattery && latest ? `${latest.consumed.toFixed(0)} mAh` : "no battery"}
           </span>
         </div>
         <div className="h-1.5 w-full rounded-full bg-white/5">
           <div
             className={cn("h-full rounded-full transition-all", barColor(pct))}
-            style={{ width: latest ? `${Math.min(pct, 100)}%` : "0%" }}
+            style={{ width: hasRealBattery && latest ? `${Math.min(pct, 100)}%` : "0%" }}
           />
         </div>
       </div>
@@ -59,19 +64,19 @@ export function BatteryCard({ className }: BatteryCardProps) {
         <div className="text-[10px] text-text-tertiary">
           V{" "}
           <span className="text-text-primary font-mono text-xs">
-            {latest ? `${latest.voltage.toFixed(2)}` : "--.-"}
+            {hasRealBattery && latest ? `${latest.voltage.toFixed(2)}` : "--.-"}
           </span>
         </div>
         <div className="text-[10px] text-text-tertiary">
           A{" "}
           <span className="text-text-primary font-mono text-xs">
-            {latest ? `${latest.current.toFixed(1)}` : "--.-"}
+            {hasRealBattery && latest ? `${latest.current.toFixed(1)}` : "--.-"}
           </span>
         </div>
       </div>
 
       {/* Cell voltages if available */}
-      {latest?.cellVoltages && latest.cellVoltages.length > 0 && (
+      {hasRealBattery && latest?.cellVoltages && latest.cellVoltages.length > 0 && (
         <div className="mt-1.5 pt-1.5 border-t border-border-default">
           <div className="text-[10px] text-text-tertiary mb-1">Cells</div>
           <div className="grid grid-cols-3 gap-x-2 gap-y-0.5">

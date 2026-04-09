@@ -47,16 +47,38 @@ export function FailsafeAlertBanner() {
 
   const conditions: FailsafeCondition[] = [];
 
-  // Check battery
+  // DEC-108 bench mode gating: a drone sitting on a bench with no real
+  // battery, no GPS lock, and no flight reports a flood of false-positive
+  // failsafe conditions. The fix is NOT to lower the thresholds — they're
+  // correct for in-flight use — but to require that the alarm condition is
+  // GROUNDED in real telemetry before it shows.
+  //
+  // - LOW_BATTERY: only fires when the FC reports a plausible voltage
+  //   (>= 1.0V). A disconnected battery reads ~0.01V and the percentage
+  //   field is meaningless until the battery is actually wired.
+  // - AHRS_FAIL / PREARM_FAIL / GPS_LOST / RC_LOST / MOTOR_FAIL: only fire
+  //   when the vehicle is in an active flight state (systemStatus >= 4 =
+  //   ACTIVE/CRITICAL/EMERGENCY). On the bench the FC sits in
+  //   STANDBY (3) or BOOT (1), where these checks are normally failing
+  //   for benign reasons (no GPS lock indoors, mag not calibrated yet).
+  // - EMERGENCY: always shows — that's the FC's own active emergency state.
+  //
+  // MAV_STATE: 0=UNINIT, 1=BOOT, 2=CALIBRATING, 3=STANDBY, 4=ACTIVE,
+  //            5=CRITICAL, 6=EMERGENCY, 7=POWEROFF, 8=FLIGHT_TERMINATION
+  const isActiveFlight = systemStatus !== null && systemStatus >= 4;
+  const battVoltage = battery?.voltage ?? 0;
+  const hasRealBattery = battVoltage >= 1.0;
+
+  // Check battery — only when a real battery is connected
   const battRemaining = battery?.remaining ?? sysStatus?.batteryRemaining ?? -1;
-  if (battRemaining >= 0 && battRemaining < 15) {
+  if (hasRealBattery && battRemaining >= 0 && battRemaining < 15) {
     conditions.push({ type: "LOW_BATTERY", label: `Battery Critical: ${battRemaining}%`, icon: FAILSAFE_ICONS.LOW_BATTERY });
-  } else if (battRemaining >= 0 && battRemaining < 25) {
+  } else if (hasRealBattery && battRemaining >= 0 && battRemaining < 25) {
     conditions.push({ type: "LOW_BATTERY", label: `Battery Low: ${battRemaining}%`, icon: FAILSAFE_ICONS.LOW_BATTERY });
   }
 
-  // Check sensor health from SYS_STATUS bitmasks
-  if (sysStatus) {
+  // Check sensor health from SYS_STATUS bitmasks — only in active flight
+  if (sysStatus && isActiveFlight) {
     const present = sysStatus.sensorsPresent;
     const health = sysStatus.sensorsHealthy;
 
@@ -82,7 +104,7 @@ export function FailsafeAlertBanner() {
     }
   }
 
-  // Check HEARTBEAT systemStatus
+  // Check HEARTBEAT systemStatus — emergency states always show
   if (systemStatus === 5 || systemStatus === 6) {
     conditions.push({
       type: "EMERGENCY",

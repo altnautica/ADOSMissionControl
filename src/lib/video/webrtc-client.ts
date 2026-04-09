@@ -19,6 +19,9 @@ let recordedChunks: Blob[] = [];
 let statsInterval: ReturnType<typeof setInterval> | null = null;
 let videoElement: HTMLVideoElement | null = null;
 let lastFrameTime: number = 0;
+// DEC-108: track frame counts for fps computation when framesPerSecond is missing
+let lastFramesDecoded: number = 0;
+let lastStatsTime: number = 0;
 const FRAME_TIMEOUT_MS = 8000;
 
 /**
@@ -229,11 +232,28 @@ export function captureScreenshot(): string | null {
   return dataUrl;
 }
 
-/** Poll WebRTC stats for FPS and latency. */
+/** Poll WebRTC stats for FPS and latency.
+ *
+ * DEC-108: the previous implementation relied on `framesPerSecond` and
+ * `jitterBufferDelay` from `inbound-rtp` stats. `framesPerSecond` is not
+ * populated by all browsers (Safari often omits it on first poll cycles),
+ * and `jitterBufferDelay/jitterBufferEmittedCount` measures only the
+ * decoder buffer wait — it does NOT include the network round-trip.
+ *
+ * The corrected implementation:
+ *   - Computes fps from `framesDecoded` delta over the polling interval,
+ *     so it works on every browser even when framesPerSecond is undefined.
+ *   - Pulls round-trip time from `candidate-pair.currentRoundTripTime` of
+ *     the nominated/succeeded candidate pair, which is the true L4 latency
+ *     (browser ↔ mediamtx network RTT). Adds the jitter buffer delay (L5)
+ *     on top to give glass-to-decoded total.
+ */
 function startStatsPolling(): void {
   if (statsInterval) return;
 
   lastFrameTime = Date.now();
+  lastFramesDecoded = 0;
+  lastStatsTime = 0;
 
   statsInterval = setInterval(async () => {
     if (!pc) return;
@@ -241,32 +261,74 @@ function startStatsPolling(): void {
     const stats = await pc.getStats();
     const store = useVideoStore.getState();
 
+    let computedFps = 0;
+    let inboundFound = false;
+    let jitterMs = 0;
+    let rttMs = 0;
+    let framesDecoded = 0;
+
     stats.forEach((report) => {
       if (report.type === "inbound-rtp" && report.kind === "video") {
-        const fps = report.framesPerSecond ?? 0;
-        // jitterBufferDelay / jitterBufferEmittedCount ~ latency
-        const delay = report.jitterBufferDelay ?? 0;
-        const emitted = report.jitterBufferEmittedCount ?? 1;
-        const latencyMs =
-          emitted > 0 ? Math.round((delay / emitted) * 1000) : 0;
-        store.updateStats(fps, latencyMs);
+        inboundFound = true;
 
-        // Track frame arrival for timeout detection
-        if (fps > 0) {
-          lastFrameTime = Date.now();
-        } else if (
-          Date.now() - lastFrameTime > FRAME_TIMEOUT_MS &&
-          pc?.connectionState === "connected"
-        ) {
-          // Frames stopped arriving but WebRTC connection looks alive.
-          // Signal disconnect so VideoFeedCard auto-reconnect kicks in.
-          console.warn("[webrtc-client] Frame timeout — no frames for 8s, signaling disconnect");
-          store.setStreaming(false);
-          store.updateStats(0, 0);
-          stopStatsPolling();
+        // Prefer the browser-reported framesPerSecond, fall back to derived
+        const reportedFps = (report as RTCInboundRtpStreamStats & { framesPerSecond?: number }).framesPerSecond;
+        const decoded = ((report as RTCInboundRtpStreamStats & { framesDecoded?: number }).framesDecoded) ?? 0;
+        framesDecoded = decoded;
+        const now = Date.now();
+
+        if (reportedFps !== undefined && reportedFps > 0) {
+          computedFps = Math.round(reportedFps);
+        } else if (lastStatsTime > 0 && decoded > lastFramesDecoded) {
+          const elapsedSec = (now - lastStatsTime) / 1000;
+          if (elapsedSec > 0) {
+            computedFps = Math.round((decoded - lastFramesDecoded) / elapsedSec);
+          }
+        }
+
+        // Decoder jitter buffer (L5)
+        const delay = (report as RTCInboundRtpStreamStats & { jitterBufferDelay?: number }).jitterBufferDelay ?? 0;
+        const emitted = (report as RTCInboundRtpStreamStats & { jitterBufferEmittedCount?: number }).jitterBufferEmittedCount ?? 0;
+        if (emitted > 0) {
+          jitterMs = Math.round((delay / emitted) * 1000);
         }
       }
+
+      if (
+        report.type === "candidate-pair" &&
+        (report as RTCIceCandidatePairStats).state === "succeeded" &&
+        (report as RTCIceCandidatePairStats).nominated
+      ) {
+        // Network round-trip (L4) — browser ↔ mediamtx
+        const rttSec = (report as RTCIceCandidatePairStats).currentRoundTripTime ?? 0;
+        rttMs = Math.round(rttSec * 1000);
+      }
     });
+
+    if (inboundFound) {
+      // Total displayed latency = network RTT + jitter buffer delay
+      // (sensor capture + encoder are agent-side, not measurable from browser)
+      const totalLatencyMs = rttMs + jitterMs;
+      store.updateStats(computedFps, totalLatencyMs);
+
+      lastFramesDecoded = framesDecoded;
+      lastStatsTime = Date.now();
+
+      // Track frame arrival for timeout detection
+      if (computedFps > 0) {
+        lastFrameTime = Date.now();
+      } else if (
+        Date.now() - lastFrameTime > FRAME_TIMEOUT_MS &&
+        pc?.connectionState === "connected"
+      ) {
+        // Frames stopped arriving but WebRTC connection looks alive.
+        // Signal disconnect so VideoFeedCard auto-reconnect kicks in.
+        console.warn("[webrtc-client] Frame timeout — no frames for 8s, signaling disconnect");
+        store.setStreaming(false);
+        store.updateStats(0, 0);
+        stopStatsPolling();
+      }
+    }
   }, 1000);
 }
 
