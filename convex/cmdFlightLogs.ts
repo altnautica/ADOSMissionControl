@@ -159,6 +159,11 @@ const RECORD_VALIDATOR = {
       error: v.optional(v.string()),
     }),
   ),
+  takeoffPlaceName: v.optional(v.string()),
+  landingPlaceName: v.optional(v.string()),
+  country: v.optional(v.string()),
+  region: v.optional(v.string()),
+  locality: v.optional(v.string()),
   airspaceSnapshot: v.optional(
     v.object({
       computedAt: v.string(),

@@ -1547,7 +1547,9 @@
     "airspaceFloor": "Floor",
     "airspaceCeiling": "Ceiling",
     "airspaceEffective": "Effective",
-    "airspaceSource": "Source"
+    "airspaceSource": "Source",
+    "place": "Place",
+    "placeLanding": "Landing place"
   },
   "library": {
     "title": "FLIGHT PLANS",

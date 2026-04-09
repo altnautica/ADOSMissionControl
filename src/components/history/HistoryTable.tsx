@@ -157,16 +157,26 @@ export function HistoryTable({
                     )}
                   </td>
                   <td className="px-3 py-2 text-text-primary">
-                    <span className="inline-flex items-center gap-1">
-                      {rec.droneName}
-                      {rec.source === "dataflash" && (
-                        <HardDrive
-                          size={10}
-                          className="text-text-tertiary"
-                          aria-label="Imported from dataflash log"
-                        />
+                    <div className="flex flex-col leading-tight">
+                      <span className="inline-flex items-center gap-1">
+                        {rec.droneName}
+                        {rec.source === "dataflash" && (
+                          <HardDrive
+                            size={10}
+                            className="text-text-tertiary"
+                            aria-label="Imported from dataflash log"
+                          />
+                        )}
+                      </span>
+                      {(rec.locality || rec.country) && (
+                        <span
+                          className="text-[10px] text-text-tertiary truncate max-w-[160px]"
+                          title={rec.takeoffPlaceName}
+                        >
+                          {[rec.locality, rec.country].filter(Boolean).join(", ")}
+                        </span>
                       )}
-                    </span>
+                    </div>
                   </td>
                   <td className="px-3 py-2 text-text-primary font-mono">
                     {formatDuration(rec.duration)}

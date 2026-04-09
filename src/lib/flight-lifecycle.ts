@@ -39,6 +39,7 @@ import { analyzeFlight } from "./flight-analysis/analyzer";
 import { computeSunMoon } from "./environment/sun-moon";
 import { getWeatherSnapshot } from "./environment/weather-provider";
 import { captureAirspaceSnapshot } from "./environment/airspace-snapshot";
+import { reverseGeocode, haversineKmLocal } from "./geocoding/reverse";
 import type {
   FlightRecord,
   LoadoutSnapshot,
@@ -179,6 +180,24 @@ function handleArm(droneId: string, droneName: string, snapshot: ArmSnapshot): v
       store.updateRecord(draftId, { weatherSnapshot: weather });
       void store.persistToIDB();
     });
+
+    // Phase 15 — non-blocking reverse geocode for a human-readable takeoff
+    // place name. Throttled 1 req/s, IDB-cached indefinitely.
+    const draftId15 = draft.id;
+    const armLat = snapshot.lat;
+    const armLon = snapshot.lon;
+    void reverseGeocode(armLat, armLon).then((place) => {
+      if (!place) return;
+      const store = useHistoryStore.getState();
+      if (!store.records.some((r) => r.id === draftId15)) return;
+      store.updateRecord(draftId15, {
+        takeoffPlaceName: place.placeName,
+        country: place.country,
+        region: place.region,
+        locality: place.locality,
+      });
+      void store.persistToIDB();
+    });
   }
 }
 
@@ -268,6 +287,53 @@ async function handleDisarm(droneId: string): Promise<void> {
         void store.persistToIDB();
       },
     );
+  }
+
+  // Phase 15 retry: if arm-time geocode didn't land, retry with landing coords.
+  if (
+    !draftRow?.takeoffPlaceName &&
+    stats.landingLat !== undefined &&
+    stats.landingLon !== undefined &&
+    draftRow
+  ) {
+    const draftId = draftRow.id;
+    const latP = stats.landingLat;
+    const lonP = stats.landingLon;
+    void reverseGeocode(latP, lonP).then((place) => {
+      if (!place) return;
+      const store = useHistoryStore.getState();
+      if (!store.records.some((r) => r.id === draftId)) return;
+      store.updateRecord(draftId, {
+        takeoffPlaceName: place.placeName,
+        country: place.country,
+        region: place.region,
+        locality: place.locality,
+      });
+      void store.persistToIDB();
+    });
+  }
+
+  // Phase 15 landing-place check: if landing is >5 km from takeoff, the
+  // user flew to a distinctly different location — capture a second place
+  // name for the landing spot.
+  if (
+    draftRow?.takeoffLat !== undefined &&
+    draftRow?.takeoffLon !== undefined &&
+    stats.landingLat !== undefined &&
+    stats.landingLon !== undefined &&
+    draftRow &&
+    haversineKmLocal(draftRow.takeoffLat, draftRow.takeoffLon, stats.landingLat, stats.landingLon) > 5
+  ) {
+    const draftId = draftRow.id;
+    const latL = stats.landingLat;
+    const lonL = stats.landingLon;
+    void reverseGeocode(latL, lonL).then((place) => {
+      if (!place) return;
+      const store = useHistoryStore.getState();
+      if (!store.records.some((r) => r.id === draftId)) return;
+      store.updateRecord(draftId, { landingPlaceName: place.placeName });
+      void store.persistToIDB();
+    });
   }
 
   history.updateRecord(lc.draftRecordId, {
