@@ -23,8 +23,7 @@
  * @license GPL-3.0-only
  */
 
-import { useEffect, useRef, useState } from "react";
-import type { RefObject } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -50,18 +49,18 @@ interface Props {
   /** Whether the agent has a reachable LAN WHEP URL (enables LAN option) */
   hasLanWhep: boolean;
   /**
-   * Container the dropdown should render INSIDE (so it stays inside
-   * fullscreen). Pass a ref to the same div the video is in.
+   * Part I P1-10: agent video service state ("running" / "starting" /
+   * "stopped" / "unknown"). Surfaced in the dropdown footer when the
+   * service isn't running so users know it's not a transport problem.
    */
-  containerRef: RefObject<HTMLDivElement | null>;
+  agentVideoState: string;
+  /**
+   * Part I P1-9: when > 0, the parent is in a backoff window before the
+   * next auto-retry. The pill shows "Retrying in Xs" instead of flashing
+   * between FAILED and CONNECTING.
+   */
+  retryDelaySec: number;
 }
-
-const MODE_LABELS: Record<TransportMode, string> = {
-  "auto": "Auto",
-  "lan-whep": "LAN Direct",
-  "p2p-mqtt": "P2P MQTT",
-  "off": "Off",
-};
 
 const TRANSPORT_LABELS: Record<VideoTransport, string> = {
   "lan-whep": "LAN DIRECT",
@@ -92,7 +91,14 @@ function dotColorForUnavailable(): string {
   return "bg-gray-500";
 }
 
-function pillDotColor(state: Props["cascadeState"], transport: VideoTransport): string {
+function pillDotColor(
+  state: Props["cascadeState"],
+  transport: VideoTransport,
+  agentVideoStopped: boolean,
+  retryDelaySec: number,
+): string {
+  if (agentVideoStopped) return "bg-gray-500";
+  if (retryDelaySec > 0) return "bg-orange-400 animate-pulse";
   if (state === "connecting") return "bg-blue-400 animate-pulse";
   if (state === "failed") return "bg-red-400";
   if (state === "connected") {
@@ -104,6 +110,9 @@ function pillDotColor(state: Props["cascadeState"], transport: VideoTransport): 
   return "bg-gray-500";
 }
 
+// Part I P2-21: keyboard nav uses option indices in this fixed order
+const DROPDOWN_OPTIONS: TransportMode[] = ["auto", "lan-whep", "p2p-mqtt", "off"];
+
 export function VideoTransportSwitcher(props: Props) {
   const {
     activeTransport,
@@ -112,7 +121,8 @@ export function VideoTransportSwitcher(props: Props) {
     onRetry,
     hasPairedAgent,
     hasLanWhep,
-    containerRef,
+    agentVideoState,
+    retryDelaySec,
   } = props;
 
   const transportMode = useSettingsStore((s) => s.videoTransportMode);
@@ -121,7 +131,18 @@ export function VideoTransportSwitcher(props: Props) {
   const latencyMs = useVideoStore((s) => s.latencyMs);
 
   const [open, setOpen] = useState(false);
+  const [focusedIdx, setFocusedIdx] = useState(0);
   const pillRef = useRef<HTMLButtonElement>(null);
+
+  const selectMode = useCallback(
+    (mode: TransportMode) => {
+      setTransportMode(mode);
+      setOpen(false);
+      // Force re-cascade so the new mode kicks in immediately
+      onRetry();
+    },
+    [onRetry, setTransportMode],
+  );
 
   // Close on outside click
   useEffect(() => {
@@ -139,31 +160,63 @@ export function VideoTransportSwitcher(props: Props) {
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
-  // Close on ESC
+  // Part I P2-21: keyboard nav. ESC closes, ArrowDown/Up moves focus,
+  // Enter selects. Tab also closes (lets user tab past the widget).
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
+      if (e.key === "Escape" || e.key === "Tab") {
         setOpen(false);
-        e.stopPropagation();
+        if (e.key === "Escape") e.stopPropagation();
+        return;
+      }
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setFocusedIdx((i) => (i + 1) % DROPDOWN_OPTIONS.length);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setFocusedIdx((i) => (i - 1 + DROPDOWN_OPTIONS.length) % DROPDOWN_OPTIONS.length);
+      } else if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        const mode = DROPDOWN_OPTIONS[focusedIdx];
+        // Skip unavailable modes (LAN with no URL, P2P with no pairing)
+        const available =
+          mode === "auto" ||
+          mode === "off" ||
+          (mode === "lan-whep" && hasLanWhep) ||
+          (mode === "p2p-mqtt" && hasPairedAgent);
+        if (available) selectMode(mode);
       }
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [open]);
+  }, [open, focusedIdx, hasLanWhep, hasPairedAgent, selectMode]);
 
-  function selectMode(mode: TransportMode) {
-    setTransportMode(mode);
-    setOpen(false);
-    // Force re-cascade so the new mode kicks in immediately
-    onRetry();
-  }
+  // Reset keyboard focus to current mode when dropdown opens
+  useEffect(() => {
+    if (open) {
+      const idx = DROPDOWN_OPTIONS.indexOf(transportMode);
+      setFocusedIdx(idx >= 0 ? idx : 0);
+    }
+  }, [open, transportMode]);
 
-  // Pill label: in Auto mode show "AUTO · <current>"; pinned shows just current
+  // Part I P1-10: surface "agent video stopped" state cleanly. If the agent
+  // video service isn't running, the cascade is disabled — pill should
+  // reflect that instead of showing the last cascade label.
+  const agentVideoStopped =
+    agentVideoState !== "running" && agentVideoState !== "starting";
+
+  // Pill label: in Auto mode show "AUTO · <current>"; pinned shows just current.
+  // Part I P2-14: AUTO·FAILED variant. Part I P1-9: retrying countdown.
   const pillLabel = (() => {
+    if (agentVideoStopped) return "AGENT VIDEO STOPPED";
     if (transportMode === "off" || activeTransport === "off") return "OFF";
+    if (retryDelaySec > 0) return `RETRYING IN ${retryDelaySec}s`;
     if (cascadeState === "connecting") return "CONNECTING…";
-    if (cascadeState === "failed") return "FAILED";
+    if (cascadeState === "failed") {
+      if (transportMode === "auto") return "AUTO · FAILED";
+      return `${TRANSPORT_LABELS[transportMode]} FAILED`;
+    }
     const cur = TRANSPORT_LABELS[activeTransport];
     return transportMode === "auto" ? `AUTO · ${cur}` : cur;
   })();
@@ -189,7 +242,7 @@ export function VideoTransportSwitcher(props: Props) {
         <span
           className={cn(
             "w-1.5 h-1.5 rounded-full",
-            pillDotColor(cascadeState, activeTransport),
+            pillDotColor(cascadeState, activeTransport, agentVideoStopped, retryDelaySec),
           )}
         />
         <span>{pillLabel}</span>
@@ -204,13 +257,14 @@ export function VideoTransportSwitcher(props: Props) {
           transportHealth={transportHealth}
           hasPairedAgent={hasPairedAgent}
           hasLanWhep={hasLanWhep}
+          agentVideoStopped={agentVideoStopped}
+          focusedIdx={focusedIdx}
           onSelect={selectMode}
           onRetry={() => {
             setOpen(false);
             onRetry();
           }}
           cascadeError={cascadeError}
-          containerRef={containerRef}
         />
       )}
     </>
@@ -223,10 +277,11 @@ interface DropdownProps {
   transportHealth: Record<VideoTransport, TransportHealth>;
   hasPairedAgent: boolean;
   hasLanWhep: boolean;
+  agentVideoStopped: boolean;
+  focusedIdx: number;
   onSelect: (mode: TransportMode) => void;
   onRetry: () => void;
   cascadeError: string | null;
-  containerRef: RefObject<HTMLDivElement | null>;
 }
 
 function DropdownPanel(props: DropdownProps) {
@@ -236,15 +291,17 @@ function DropdownPanel(props: DropdownProps) {
     transportHealth,
     hasPairedAgent,
     hasLanWhep,
+    agentVideoStopped,
+    focusedIdx,
     onSelect,
     onRetry,
     cascadeError,
-    containerRef,
   } = props;
 
   // The dropdown is positioned absolute relative to the same container the
-  // pill lives in (containerRef). Anchored to top-left so it stays inside
-  // fullscreen.
+  // pill lives in (VideoFeedCard's containerRef). Anchored to top-left so
+  // it stays inside fullscreen automatically (since it's a DOM child of the
+  // fullscreen element).
   return (
     <div
       id="video-transport-dropdown"
@@ -260,6 +317,7 @@ function DropdownPanel(props: DropdownProps) {
         selected={mode === "auto"}
         active={mode === "auto"}
         available
+        focused={focusedIdx === 0}
         onClick={() => onSelect("auto")}
       />
       <Divider />
@@ -270,6 +328,7 @@ function DropdownPanel(props: DropdownProps) {
         available={hasLanWhep}
         unavailableReason="No agent on LAN"
         health={transportHealth["lan-whep"]}
+        focused={focusedIdx === 1}
         onClick={() => hasLanWhep && onSelect("lan-whep")}
       />
       <Option
@@ -279,6 +338,7 @@ function DropdownPanel(props: DropdownProps) {
         available={hasPairedAgent}
         unavailableReason="Agent not paired"
         health={transportHealth["p2p-mqtt"]}
+        focused={focusedIdx === 2}
         onClick={() => hasPairedAgent && onSelect("p2p-mqtt")}
       />
       <Option
@@ -286,9 +346,24 @@ function DropdownPanel(props: DropdownProps) {
         selected={mode === "off"}
         active={mode === "off"}
         available
+        focused={focusedIdx === 3}
         onClick={() => onSelect("off")}
       />
-      {cascadeError && (
+      {/* Part I P1-10: agent video service status footer. Surfaces "agent
+          video service stopped" so users know it's not a transport issue. */}
+      {agentVideoStopped && (
+        <>
+          <Divider />
+          <div className="px-2 py-1.5 text-orange-400 text-[10px] leading-tight">
+            <div className="font-semibold mb-0.5">⚠ Agent video stopped</div>
+            <div className="text-text-tertiary">
+              The agent&apos;s video service is not running. Check
+              <code className="px-1">ados-video</code> on the SBC.
+            </div>
+          </div>
+        </>
+      )}
+      {cascadeError && !agentVideoStopped && (
         <>
           <Divider />
           <div className="px-2 py-1.5 text-red-400 text-[10px] leading-tight">
@@ -303,11 +378,6 @@ function DropdownPanel(props: DropdownProps) {
           </div>
         </>
       )}
-      {/* Keep containerRef referenced so eslint doesn't strip it; reserved
-          for future fullscreen-aware positioning logic. */}
-      <span className="hidden" aria-hidden="true">
-        {containerRef.current ? "" : ""}
-      </span>
     </div>
   );
 }
@@ -319,11 +389,13 @@ interface OptionProps {
   available: boolean;
   unavailableReason?: string;
   health?: TransportHealth;
+  /** Part I P2-21: keyboard focus indicator (true = highlighted by ArrowUp/Down) */
+  focused: boolean;
   onClick: () => void;
 }
 
 function Option(props: OptionProps) {
-  const { label, selected, active, available, unavailableReason, health, onClick } = props;
+  const { label, selected, active, available, unavailableReason, health, focused, onClick } = props;
   const dotColor = !available
     ? dotColorForUnavailable()
     : health
@@ -349,6 +421,7 @@ function Option(props: OptionProps) {
         "hover:bg-white/5 transition-colors",
         !available && "opacity-40 cursor-not-allowed",
         selected && "bg-white/5",
+        focused && "ring-1 ring-inset ring-accent-primary/60 bg-white/10",
       )}
       title={tooltip}
       role="menuitemradio"
@@ -356,8 +429,10 @@ function Option(props: OptionProps) {
     >
       <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", dotColor)} />
       <span className={cn("flex-1", active && "text-text-primary")}>{label}</span>
-      {health?.latencyMs != null && health.state === "ok" && (
-        <span className="text-text-tertiary text-[9px]">{health.latencyMs}ms</span>
+      {/* Part I P1-11: label this as "Connect: Xms" so users don't confuse
+          it with the live RTT shown in the pill. */}
+      {health?.connectMs != null && health.state === "ok" && (
+        <span className="text-text-tertiary text-[9px]">Connect {health.connectMs}ms</span>
       )}
       {failed && <span className="text-red-400 text-[9px]">⚠</span>}
       {selected && <span className="text-accent-primary">●</span>}

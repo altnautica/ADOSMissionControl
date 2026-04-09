@@ -55,10 +55,27 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
   // DEC-107 Phase H: user transport preference (persisted to IndexedDB)
   const transportMode = useSettingsStore((s) => s.videoTransportMode);
 
-  const videoRef = useRef<HTMLVideoElement>(null);
+  // Part I P0-1: callback ref for the video element. The previous
+  // useRef-only pattern caused the cascade hook to receive `videoEl: null`
+  // on first render and never re-trigger when the ref attached, because
+  // refs don't cause re-renders. The callback ref calls setState when the
+  // element mounts, which DOES trigger a re-render and lets the cascade
+  // hook see the element on the next pass.
+  const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null);
+  const setVideoRef = useCallback((el: HTMLVideoElement | null) => {
+    setVideoEl(el);
+  }, []);
   const [retryKey, setRetryKey] = useState(0);
 
+  // Part I P1-9: exponential backoff state. Tracks how many automatic
+  // retries have happened since last successful connect or user action.
+  // Manual retry resets the counter.
+  const retryAttemptRef = useRef(0);
+  const [retryDelaySec, setRetryDelaySec] = useState(0);
+
   const handleRetry = useCallback(() => {
+    retryAttemptRef.current = 0;
+    setRetryDelaySec(0);
     setRetryKey((k) => k + 1);
   }, []);
 
@@ -114,24 +131,24 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
   }, []);
 
   const handlePip = useCallback(async () => {
-    if (!videoRef.current) return;
+    if (!videoEl) return;
     try {
       if (document.pictureInPictureElement) {
         await document.exitPictureInPicture();
-      } else if (videoRef.current.requestPictureInPicture) {
-        await videoRef.current.requestPictureInPicture();
+      } else if (videoEl.requestPictureInPicture) {
+        await videoEl.requestPictureInPicture();
       }
     } catch (err) {
       console.warn("[VideoFeedCard] picture-in-picture failed", err);
     }
-  }, []);
+  }, [videoEl]);
 
   // DEC-107 Phase H: bind the video element to the webrtc-client helper
-  // (used by snapshot/recording). Done once on mount.
+  // (used by snapshot/recording). Re-binds when the element changes.
   useEffect(() => {
-    setVideoElement(videoRef.current);
+    setVideoElement(videoEl);
     return () => setVideoElement(null);
-  }, []);
+  }, [videoEl]);
 
   // DEC-107 Phase H: cascade hook owns all transport selection + connection
   // logic. The hook respects the user's `transportMode` preference: in Auto
@@ -141,21 +158,46 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
     agentWhepUrl,
     cloudDeviceId,
     transportMode,
-    videoEl: videoRef.current,
+    videoEl,
     retryKey,
     enabled: agentVideoState === "running",
   });
 
-  // Auto-reconnect: when cascade flips to failed but agent video is still
-  // running, retry after 3 seconds (covers transient network blips).
+  // Part I P1-9: exponential backoff for auto-retry. Resets to 0 on connect
+  // or manual retry. Caps at 5 attempts before requiring user action.
+  // Delays: 3s, 6s, 12s, 24s, 30s.
   useEffect(() => {
-    if (cascade.state === "failed" && agentVideoState === "running") {
-      const timer = setTimeout(() => {
-        console.log("[VideoFeedCard] Auto-retry after cascade failure");
-        setRetryKey((k) => k + 1);
-      }, 3000);
-      return () => clearTimeout(timer);
+    if (cascade.state === "connected") {
+      retryAttemptRef.current = 0;
+      setRetryDelaySec(0);
     }
+  }, [cascade.state]);
+
+  useEffect(() => {
+    if (cascade.state !== "failed" || agentVideoState !== "running") {
+      return;
+    }
+    const attempt = retryAttemptRef.current;
+    if (attempt >= 5) {
+      // Max retries reached — stop auto-retrying, wait for user action
+      setRetryDelaySec(0);
+      return;
+    }
+    const delaySec = Math.min(3 * Math.pow(2, attempt), 30);
+    setRetryDelaySec(delaySec);
+    const tickHandle = setInterval(() => {
+      setRetryDelaySec((s) => Math.max(0, s - 1));
+    }, 1000);
+    const retryHandle = setTimeout(() => {
+      clearInterval(tickHandle);
+      retryAttemptRef.current += 1;
+      setRetryDelaySec(0);
+      setRetryKey((k) => k + 1);
+    }, delaySec * 1000);
+    return () => {
+      clearInterval(tickHandle);
+      clearTimeout(retryHandle);
+    };
   }, [cascade.state, agentVideoState]);
 
   const hasVideo = isStreaming;
@@ -179,7 +221,7 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
       <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
         {/* Video element (always rendered, hidden when no signal) */}
         <video
-          ref={videoRef}
+          ref={setVideoRef}
           autoPlay
           muted
           playsInline
@@ -190,7 +232,11 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
         />
 
         {/* DEC-107 Phase H: interactive transport switcher (always rendered,
-            not gated on hasVideo so users can pin a mode before video starts) */}
+            not gated on hasVideo so users can pin a mode before video starts).
+            Part I P1-10: surfaces agentVideoState so the dropdown can show
+            "Agent video stopped" instead of a misleading mode label.
+            Part I P1-9: surfaces retryDelaySec so the pill can show "retrying
+            in Xs" instead of flickering between FAILED and CONNECTING. */}
         <VideoTransportSwitcher
           activeTransport={cascade.activeTransport}
           cascadeState={cascade.state}
@@ -198,7 +244,8 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
           onRetry={handleRetry}
           hasPairedAgent={!!cloudDeviceId}
           hasLanWhep={!!agentWhepUrl}
-          containerRef={containerRef}
+          agentVideoState={agentVideoState}
+          retryDelaySec={retryDelaySec}
         />
 
 
@@ -271,18 +318,6 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
           </div>
         )}
 
-        {/* No signal with retry (when agent video is running but stream failed) */}
-        {showNoSignal && agentVideoState === "running" && (
-          <div className="absolute bottom-2 left-0 right-0 flex justify-center">
-            <button
-              onClick={handleRetry}
-              className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-mono text-text-tertiary bg-white/10 hover:bg-white/20 transition-colors"
-            >
-              <RefreshCw className="w-3 h-3" />
-              RECONNECT
-            </button>
-          </div>
-        )}
       </div>
 
       {/* DEC-108 Phase D: REC indicator (top-center, inside the video frame) */}
