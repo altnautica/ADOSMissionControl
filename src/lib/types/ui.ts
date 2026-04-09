@@ -140,6 +140,59 @@ export interface FlightRecord {
 
   /** Phase 13 — pre-flight checklist + prearm bitmask snapshot at arm time. */
   preflight?: PreflightSnapshot;
+
+  /** Phase 14a — sun / moon environmental snapshot at arm time. */
+  sunMoon?: SunMoonSnapshot;
+}
+
+/**
+ * Sun + moon snapshot for the flight's arm-time position and instant.
+ * Pure compute from `src/lib/environment/sun-moon.ts` — no network.
+ * Feeds the Overview "Conditions" card and jurisdictions that care about
+ * day-vs-night operations (EASA Open, UK CAA, CASA ReOC).
+ */
+export interface SunMoonSnapshot {
+  /** ISO timestamp of the compute reference instant (flight startTime). */
+  computedAt: string;
+  /** Latitude used for the computation. */
+  lat: number;
+  /** Longitude used for the computation. */
+  lon: number;
+
+  // Solar day markers (ISO). Undefined near polar circles when not defined.
+  sunriseIso?: string;
+  sunsetIso?: string;
+  /** Civil twilight start (dawn). */
+  civilDawnIso?: string;
+  /** Civil twilight end (dusk). */
+  civilDuskIso?: string;
+  goldenHourMorningStartIso?: string;
+  goldenHourMorningEndIso?: string;
+  goldenHourEveningStartIso?: string;
+  goldenHourEveningEndIso?: string;
+
+  /** Daylight phase at `computedAt` — classified from sun altitude. */
+  daylightPhase:
+    | "day"
+    | "civil_twilight"
+    | "nautical_twilight"
+    | "astronomical_twilight"
+    | "night";
+  /** True iff `computedAt` fell inside either golden-hour window. */
+  inGoldenHour: boolean;
+
+  /** Sun altitude in degrees at `computedAt` (negative = below horizon). */
+  sunAltitudeDeg: number;
+  sunAzimuthDeg: number;
+
+  /** Moon phase 0..1 (0 = new, 0.25 = first quarter, 0.5 = full, 0.75 = last quarter). */
+  moonPhase: number;
+  /** Fraction of the moon's visible disk illuminated (0..1). */
+  moonIllumination: number;
+  /** Human label such as "Waxing crescent", "Full moon". */
+  moonPhaseLabel: string;
+  moonAltitudeDeg: number;
+  moonAzimuthDeg: number;
 }
 
 /**

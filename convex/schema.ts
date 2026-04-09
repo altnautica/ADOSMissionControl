@@ -276,6 +276,37 @@ fullName: v.optional(v.string()),
         rcTxId: v.optional(v.string()),
       }),
     ),
+    // Phase 14a — sun / moon environmental snapshot.
+    sunMoon: v.optional(
+      v.object({
+        computedAt: v.string(),
+        lat: v.number(),
+        lon: v.number(),
+        sunriseIso: v.optional(v.string()),
+        sunsetIso: v.optional(v.string()),
+        civilDawnIso: v.optional(v.string()),
+        civilDuskIso: v.optional(v.string()),
+        goldenHourMorningStartIso: v.optional(v.string()),
+        goldenHourMorningEndIso: v.optional(v.string()),
+        goldenHourEveningStartIso: v.optional(v.string()),
+        goldenHourEveningEndIso: v.optional(v.string()),
+        daylightPhase: v.union(
+          v.literal("day"),
+          v.literal("civil_twilight"),
+          v.literal("nautical_twilight"),
+          v.literal("astronomical_twilight"),
+          v.literal("night"),
+        ),
+        inGoldenHour: v.boolean(),
+        sunAltitudeDeg: v.number(),
+        sunAzimuthDeg: v.number(),
+        moonPhase: v.number(),
+        moonIllumination: v.number(),
+        moonPhaseLabel: v.string(),
+        moonAltitudeDeg: v.number(),
+        moonAzimuthDeg: v.number(),
+      }),
+    ),
     // Phase 13 — frozen pre-flight checklist + prearm bitmask snapshot.
     preflight: v.optional(
       v.object({
