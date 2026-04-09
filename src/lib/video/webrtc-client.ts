@@ -25,20 +25,8 @@ let lastStatsTime: number = 0;
 // DEC-108 Phase D: track bytes received for bitrate derivation
 let lastBytesReceived: number = 0;
 // DEC-108 Phase D follow-up: track jitter buffer delta for windowed latency.
-// jitterBufferDelay / jitterBufferEmittedCount (cumulative) gives an average
-// across the entire stream lifetime — when the stream starts with backed-up
-// buffers (common during connection setup), the average stays high forever
-// even after frames are flowing smoothly. Computing the delta over the last
-// poll window gives a much more accurate "current" latency.
 let lastJitterDelay: number = 0;
 let lastJitterEmitted: number = 0;
-// DEC-108 Phase D follow-up: increased from 8s to 20s. The previous 8s was
-// too aggressive — any brief jitter-buffer backup or WiFi blip caused the
-// client to signal disconnect, triggering a 3s reconnect loop that left the
-// stream visibly flapping (the user reported "intermittent connect/disconnect"
-// with the dev-server actively running). 20s gives WebRTC the chance to
-// recover from transient stalls without us tearing down the peer connection.
-const FRAME_TIMEOUT_MS = 20000;
 
 /** DEC-108 Phase D: classify a WHEP URL as LAN-direct or cloud relay. */
 function detectTransportFromUrl(url: string): "lan-whep" | "cloud-whep" {
@@ -430,19 +418,24 @@ function startStatsPolling(): void {
       lastBytesReceived = bytesReceived;
       lastStatsTime = Date.now();
 
-      // Track frame arrival for timeout detection
+      // DEC-108 RCA: previously this branch fired a "frame timeout" disconnect
+      // when computedFps stayed at 0 for >20s. The pattern was wrong:
+      //   - Module-level state (lastFramesDecoded, lastStatsTime) gets reset
+      //     by Turbopack HMR every time ANY file in the project changes
+      //   - The reset makes computedFps stuck at 0 even when frames are flowing
+      //   - The timeout fires falsely → setStreaming(false) → VideoFeedCard
+      //     auto-reconnect → new peer connection → mediamtx renegotiates →
+      //     state resets again → loop
+      // The user perceived this as "intermittent connect/disconnect".
+      //
+      // The native pc.onconnectionstatechange handler (line 44-55) ALREADY
+      // detects real disconnects (state transitions to "disconnected"/"failed"/
+      // "closed"). We don't need a custom frame-arrival timer on top of that.
+      // Removing the custom timeout. If frames stop but the WebRTC connection
+      // is still alive, the user sees a frozen frame, which is the correct
+      // behavior — the user can manually retry via the reconnect button.
       if (computedFps > 0) {
         lastFrameTime = Date.now();
-      } else if (
-        Date.now() - lastFrameTime > FRAME_TIMEOUT_MS &&
-        pc?.connectionState === "connected"
-      ) {
-        // Frames stopped arriving but WebRTC connection looks alive.
-        // Signal disconnect so VideoFeedCard auto-reconnect kicks in.
-        console.warn("[webrtc-client] Frame timeout — no frames for 8s, signaling disconnect");
-        store.setStreaming(false);
-        store.updateStats(0, 0);
-        stopStatsPolling();
       }
     }
   }, 1000);
