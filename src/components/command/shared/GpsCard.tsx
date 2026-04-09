@@ -26,6 +26,9 @@ export function GpsCard({ className }: GpsCardProps) {
   const posLatest = position.latest();
 
   const fix = FIX_LABELS[gpsLatest?.fixType ?? 0] ?? FIX_LABELS[0];
+  // DEC-108: HDOP is uninitialized garbage (often ~655) when there's no
+  // GPS lock. Only show the HDOP value when fix type is 2D or better.
+  const hasFix = (gpsLatest?.fixType ?? 0) >= 2;
 
   return (
     <div
@@ -61,7 +64,7 @@ export function GpsCard({ className }: GpsCardProps) {
         <div className="text-[10px] text-text-tertiary">
           HDOP{" "}
           <span className="text-text-primary font-mono">
-            {gpsLatest ? gpsLatest.hdop.toFixed(1) : "--.-"}
+            {hasFix ? gpsLatest!.hdop.toFixed(1) : "--.-"}
           </span>
         </div>
       </div>
@@ -71,13 +74,13 @@ export function GpsCard({ className }: GpsCardProps) {
         <div className="flex justify-between">
           <span className="text-[10px] text-text-tertiary">Lat</span>
           <span className="text-xs font-mono text-text-primary">
-            {gpsLatest ? gpsLatest.lat.toFixed(6) : "---.------"}
+            {hasFix ? gpsLatest!.lat.toFixed(6) : "---.------"}
           </span>
         </div>
         <div className="flex justify-between">
           <span className="text-[10px] text-text-tertiary">Lon</span>
           <span className="text-xs font-mono text-text-primary">
-            {gpsLatest ? gpsLatest.lon.toFixed(6) : "---.------"}
+            {hasFix ? gpsLatest!.lon.toFixed(6) : "---.------"}
           </span>
         </div>
       </div>
@@ -87,7 +90,7 @@ export function GpsCard({ className }: GpsCardProps) {
         <div className="text-[10px] text-text-tertiary">
           MSL{" "}
           <span className="text-text-primary font-mono text-xs">
-            {gpsLatest ? `${gpsLatest.alt.toFixed(1)}m` : "--.-m"}
+            {hasFix ? `${gpsLatest!.alt.toFixed(1)}m` : "--.-m"}
           </span>
         </div>
         <div className="text-[10px] text-text-tertiary">
