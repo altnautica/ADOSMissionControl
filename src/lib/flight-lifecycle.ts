@@ -37,6 +37,8 @@ import { useTelemetryStore } from "@/stores/telemetry-store";
 import { usePrearmBufferStore } from "@/stores/prearm-buffer-store";
 import { analyzeFlight } from "./flight-analysis/analyzer";
 import { detectPhases } from "./flight-analysis/phase-detector";
+import { computeAdherence } from "./flight-analysis/mission-adherence";
+import { useMissionStore } from "@/stores/mission-store";
 import { computeSunMoon } from "./environment/sun-moon";
 import { getWeatherSnapshot } from "./environment/weather-provider";
 import { captureAirspaceSnapshot } from "./environment/airspace-snapshot";
