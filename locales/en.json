@@ -1538,7 +1538,16 @@
     "weatherAltimeter": "Altimeter",
     "weatherFlightCategory": "Flight cat.",
     "weatherRawMetar": "Raw METAR",
-    "weatherCalm": "Calm"
+    "weatherCalm": "Calm",
+    "airspace": "Airspace",
+    "airspaceNoIntersections": "No airspace intersections",
+    "airspaceZone": "Zone",
+    "airspaceNotam": "NOTAM",
+    "airspaceTfr": "TFR",
+    "airspaceFloor": "Floor",
+    "airspaceCeiling": "Ceiling",
+    "airspaceEffective": "Effective",
+    "airspaceSource": "Source"
   },
   "library": {
     "title": "FLIGHT PLANS",

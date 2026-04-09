@@ -336,6 +336,36 @@ fullName: v.optional(v.string()),
         error: v.optional(v.string()),
       }),
     ),
+    // Phase 14c — airspace / NOTAM / TFR intersection snapshot.
+    airspaceSnapshot: v.optional(
+      v.object({
+        computedAt: v.string(),
+        pathSampleCount: v.number(),
+        windowStartIso: v.string(),
+        windowEndIso: v.string(),
+        bbox: v.object({
+          south: v.number(),
+          north: v.number(),
+          west: v.number(),
+          east: v.number(),
+        }),
+        intersections: v.array(
+          v.object({
+            id: v.string(),
+            kind: v.union(v.literal("zone"), v.literal("notam"), v.literal("tfr")),
+            source: v.string(),
+            type: v.string(),
+            name: v.string(),
+            severity: v.union(v.literal("info"), v.literal("warning"), v.literal("error")),
+            floorAltitude: v.optional(v.number()),
+            ceilingAltitude: v.optional(v.number()),
+            effectiveStartIso: v.optional(v.string()),
+            effectiveEndIso: v.optional(v.string()),
+            summary: v.optional(v.string()),
+          }),
+        ),
+      }),
+    ),
     // Phase 13 — frozen pre-flight checklist + prearm bitmask snapshot.
     preflight: v.optional(
       v.object({
