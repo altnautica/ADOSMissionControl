@@ -191,10 +191,18 @@ function detectTransportFromUrl(url: string): "lan-whep" | "cloud-whep" {
 
 /**
  * Start a WebRTC stream from a WHEP endpoint.
+ *
  * @param whepUrl — Full WHEP URL, e.g. `http://192.168.1.50:8889/stream/whep`
+ * @param signal  — Optional AbortSignal. When fired, the function aborts at
+ *                  the next checkpoint and throws AbortError. Used by the
+ *                  cascade hook to cancel a mode mid-attempt without
+ *                  leaving a stale background continuation. (Part I P0-3)
  * @returns The MediaStream to attach to a <video> element.
  */
-export async function startStream(whepUrl: string): Promise<MediaStream> {
+export async function startStream(
+  whepUrl: string,
+  signal?: AbortSignal,
+): Promise<MediaStream> {
   const store = useVideoStore.getState();
   const startedAt = Date.now();
   const transport: VideoTransport = detectTransportFromUrl(whepUrl);
@@ -209,105 +217,130 @@ export async function startStream(whepUrl: string): Promise<MediaStream> {
     stopStatsPolling();
   }
 
+  // Part I P0-5: hold a local reference so handlers can verify they're
+  // still the active pc. The module-level `pc` may be replaced by a parallel
+  // call (e.g. cascade switching modes) and we don't want stale handlers
+  // to operate on the wrong connection.
+  let localPc: RTCPeerConnection | null = null;
+
   try {
-  pc = new RTCPeerConnection({
-    iceServers: [], // Local network — no STUN/TURN needed
-  });
+    checkAborted(signal);
 
-  // Monitor connection state — detect silent disconnections
-  pc.onconnectionstatechange = () => {
-    const state = pc?.connectionState;
-    if (state === "disconnected" || state === "failed" || state === "closed") {
-      console.warn("[webrtc-client] Connection state:", state);
-      const s = useVideoStore.getState();
-      s.setStreaming(false);
-      s.updateStats(0, 0);
-      stopStatsPolling();
-      // Don't close pc here — let stopStream() handle cleanup
-      // This just updates the UI state so it shows NO SIGNAL
-    }
-  };
+    const newPc = new RTCPeerConnection({
+      iceServers: [], // Local network — no STUN/TURN needed
+    });
+    localPc = newPc;
+    pc = newPc;
 
-  // Receive-only transceiver
-  pc.addTransceiver("video", { direction: "recvonly" });
-  pc.addTransceiver("audio", { direction: "recvonly" });
+    // Part I P0-5 + P1-7: capture newPc (a const) in the handler closure.
+    // Even if a parallel call replaces the global pc, this handler still
+    // refers to ITS OWN connection, and bails on the (newPc !== pc) check.
+    newPc.onconnectionstatechange = () => {
+      if (newPc !== pc) return; // a newer pc has taken over
+      const state = newPc.connectionState;
+      if (state === "disconnected") {
+        console.warn("[webrtc-client] LAN WHEP disconnected — attempting ICE restart");
+        tryIceRestart(newPc);
+      } else if (state === "failed" || state === "closed") {
+        console.warn("[webrtc-client] LAN WHEP terminal state:", state);
+        const s = useVideoStore.getState();
+        s.setStreaming(false);
+        s.updateStats(0, 0);
+        stopStatsPolling();
+        reportHealth(transport, {
+          state: "failed",
+          stage: "connected",
+          code: "ice-disconnect",
+          error: `Connection ${state}`,
+        });
+      }
+    };
 
-  const offer = await pc.createOffer();
-  await pc.setLocalDescription(offer);
+    // Receive-only transceiver
+    localPc.addTransceiver("video", { direction: "recvonly" });
+    localPc.addTransceiver("audio", { direction: "recvonly" });
 
-  // Wait for ICE gathering to complete (or timeout)
-  await new Promise<void>((resolve) => {
-    if (pc!.iceGatheringState === "complete") {
-      resolve();
-      return;
-    }
-    const check = () => {
-      if (pc?.iceGatheringState === "complete") {
-        pc.removeEventListener("icegatheringstatechange", check);
+    const offer = await abortable(localPc.createOffer(), signal);
+    checkAborted(signal);
+    await abortable(localPc.setLocalDescription(offer), signal);
+    checkAborted(signal);
+
+    // Wait for ICE gathering to complete (or LAN_ICE_GATHER_TIMEOUT_MS)
+    await new Promise<void>((resolve) => {
+      if (localPc!.iceGatheringState === "complete") {
         resolve();
+        return;
       }
-    };
-    pc!.addEventListener("icegatheringstatechange", check);
-    // Timeout after 3 seconds
-    setTimeout(resolve, 3000);
-  });
+      const check = () => {
+        if (localPc?.iceGatheringState === "complete") {
+          localPc.removeEventListener("icegatheringstatechange", check);
+          resolve();
+        }
+      };
+      localPc!.addEventListener("icegatheringstatechange", check);
+      setTimeout(resolve, LAN_ICE_GATHER_TIMEOUT_MS);
+    });
+    checkAborted(signal);
 
-  // Send offer to WHEP endpoint
-  const response = await fetch(whepUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/sdp" },
-    body: pc.localDescription!.sdp,
-  });
+    // Send offer to WHEP endpoint (fetch supports AbortSignal natively)
+    const response = await fetch(whepUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/sdp" },
+      body: localPc.localDescription!.sdp,
+      signal,
+    });
 
-  if (!response.ok) {
-    pc.close();
-    pc = null;
-    throw new Error(
-      `WHEP request failed: ${response.status} ${response.statusText}`
-    );
-  }
+    if (!response.ok) {
+      throw new Error(
+        `WHEP request failed: ${response.status} ${response.statusText}`,
+      );
+    }
 
-  const answerSdp = await response.text();
+    const answerSdp = await abortable(response.text(), signal);
+    checkAborted(signal);
 
-  // Set ontrack BEFORE setRemoteDescription to avoid race condition
-  // (track events can fire during or immediately after setRemoteDescription)
-  const trackPromise = new Promise<MediaStream>((resolve, reject) => {
-    const timeout = setTimeout(() => {
-      reject(new Error("No video track received within 10 seconds"));
-    }, 10000);
+    // Set ontrack BEFORE setRemoteDescription to avoid race condition
+    // (track events can fire during or immediately after setRemoteDescription)
+    const trackPromise = new Promise<MediaStream>((resolve, reject) => {
+      const timeout = setTimeout(
+        () => reject(new Error(`No video track received within ${LAN_ONTRACK_TIMEOUT_MS / 1000}s`)),
+        LAN_ONTRACK_TIMEOUT_MS,
+      );
+      localPc!.ontrack = (event) => {
+        if (event.streams[0]) {
+          clearTimeout(timeout);
+          resolve(event.streams[0]);
+        }
+      };
+    });
 
-    pc!.ontrack = (event) => {
-      if (event.streams[0]) {
-        clearTimeout(timeout);
-        resolve(event.streams[0]);
-      }
-    };
-  });
+    await abortable(localPc.setRemoteDescription({ type: "answer", sdp: answerSdp }), signal);
+    const stream = await abortable(trackPromise, signal);
+    checkAborted(signal);
 
-  await pc.setRemoteDescription({ type: "answer", sdp: answerSdp });
+    store.setStreamUrl(whepUrl);
+    store.setStreaming(true);
+    // DEC-108 Phase D: classify and publish the active transport so the UI
+    // can show "LAN DIRECT" / "CLOUD WHEP" badges.
+    store.setTransport(transport);
+    // DEC-107 Phase H + Part I P1-11: report success with connection
+    // establishment time (NOT live RTT — that's tracked separately).
+    reportHealth(transport, {
+      state: "ok",
+      stage: "connected",
+      connectMs: Date.now() - startedAt,
+    });
 
-  const stream = await trackPromise;
+    // Start stats polling
+    startStatsPolling();
 
-  store.setStreamUrl(whepUrl);
-  store.setStreaming(true);
-  // DEC-108 Phase D: classify and publish the active transport so the UI
-  // can show "LAN DIRECT" / "CLOUD WHEP" badges.
-  store.setTransport(transport);
-  // DEC-107 Phase H: report success with measured latency
-  reportHealth(transport, {
-    state: "ok",
-    stage: "connected",
-    latencyMs: Date.now() - startedAt,
-  });
-
-  // Start stats polling
-  startStatsPolling();
-
-  return stream;
+    return stream;
   } catch (err) {
-    if (pc) {
-      try { pc.close(); } catch { /* noop */ }
-      pc = null;
+    // Tear down the local pc on any failure. Only clear the global if we're
+    // still the active pc (a parallel call may have already replaced us).
+    if (localPc) {
+      try { localPc.close(); } catch { /* noop */ }
+      if (localPc === pc) pc = null;
     }
     const { code, message } = classifyError(err);
     reportHealth(transport, { state: "failed", code, error: message });
@@ -330,6 +363,7 @@ export async function startStream(whepUrl: string): Promise<MediaStream> {
  */
 export async function startStreamViaMqttSignaling(
   deviceId: string,
+  signal?: AbortSignal,
 ): Promise<MediaStream> {
   const store = useVideoStore.getState();
   const startedAt = Date.now();
@@ -355,21 +389,29 @@ export async function startStreamViaMqttSignaling(
   };
   let mqttClient: MqttClient | null = null;
 
+  // Part I P0-5: hold a local pc reference for the handlers' closure.
+  let localPc: RTCPeerConnection | null = null;
+
   try {
-    pc = new RTCPeerConnection({
+    checkAborted(signal);
+
+    const newPc = new RTCPeerConnection({
       iceServers: CROSS_NETWORK_ICE_SERVERS,
       iceTransportPolicy: "all",
     });
+    localPc = newPc;
+    pc = newPc;
 
-    // DEC-107 Phase H: ICE restart on transient disconnect. The browser
-    // detects 'disconnected' state when ICE keepalives stop arriving but
-    // before declaring the connection 'failed'. restartIce() can recover
-    // a paused connection without a full session teardown.
-    pc.onconnectionstatechange = () => {
-      const state = pc?.connectionState;
+    // DEC-107 Phase H + Part I P0-5: ICE restart on transient disconnect.
+    // Closure captures newPc (const), so even if pc has been replaced by a
+    // parallel call, this handler still acts on its own connection (and
+    // bails via the newPc !== pc check).
+    newPc.onconnectionstatechange = () => {
+      if (newPc !== pc) return; // a newer pc has taken over
+      const state = newPc.connectionState;
       if (state === "disconnected") {
         console.warn("[webrtc-client] P2P MQTT disconnected — attempting ICE restart");
-        tryIceRestart();
+        tryIceRestart(newPc);
       } else if (state === "failed" || state === "closed") {
         console.warn("[webrtc-client] P2P MQTT terminal state:", state);
         const s = useVideoStore.getState();
@@ -385,30 +427,34 @@ export async function startStreamViaMqttSignaling(
       }
     };
 
-    pc.addTransceiver("video", { direction: "recvonly" });
-    pc.addTransceiver("audio", { direction: "recvonly" });
+    localPc.addTransceiver("video", { direction: "recvonly" });
+    localPc.addTransceiver("audio", { direction: "recvonly" });
 
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
+    const offer = await abortable(localPc.createOffer(), signal);
+    checkAborted(signal);
+    await abortable(localPc.setLocalDescription(offer), signal);
+    checkAborted(signal);
 
     // === Stage: ICE gathering ===
     reportHealth("p2p-mqtt", { state: "testing", stage: "ice-gathering" });
     await new Promise<void>((resolve) => {
-      if (pc!.iceGatheringState === "complete") { resolve(); return; }
+      if (localPc!.iceGatheringState === "complete") { resolve(); return; }
       const check = () => {
-        if (pc?.iceGatheringState === "complete") {
-          pc.removeEventListener("icegatheringstatechange", check);
+        if (localPc?.iceGatheringState === "complete") {
+          localPc.removeEventListener("icegatheringstatechange", check);
           resolve();
         }
       };
-      pc!.addEventListener("icegatheringstatechange", check);
+      localPc!.addEventListener("icegatheringstatechange", check);
       // DEC-107 Phase H: 8s ceiling (was 5s). Slow cellular needs more time.
       setTimeout(resolve, ICE_GATHER_TIMEOUT_MS);
     });
+    checkAborted(signal);
 
     // === Stage: SDP exchange via MQTT ===
     reportHealth("p2p-mqtt", { state: "testing", stage: "sdp-exchange" });
     const mqttModule = await import("mqtt");
+    checkAborted(signal);
     const connectFn = mqttModule.connect
       ?? (mqttModule.default as { connect?: typeof mqttModule.connect })?.connect
       ?? mqttModule.default;
@@ -426,47 +472,55 @@ export async function startStreamViaMqttSignaling(
 
     // Wait for broker connect (separate timeout from answer wait so we can
     // distinguish "broker unreachable" from "agent unreachable").
-    await new Promise<void>((resolve, reject) => {
-      const t = setTimeout(
-        () => reject(new Error("MQTT broker connect timeout")),
-        MQTT_CONNECT_TIMEOUT_MS,
-      );
-      mqttClient!.on("connect", () => { clearTimeout(t); resolve(); });
-      mqttClient!.on("error", (err: unknown) => {
-        clearTimeout(t);
-        reject(err instanceof Error ? err : new Error(String(err)));
-      });
-    });
+    await abortable(
+      new Promise<void>((resolve, reject) => {
+        const t = setTimeout(
+          () => reject(new Error("MQTT broker connect timeout")),
+          MQTT_CONNECT_TIMEOUT_MS,
+        );
+        mqttClient!.on("connect", () => { clearTimeout(t); resolve(); });
+        mqttClient!.on("error", (err: unknown) => {
+          clearTimeout(t);
+          reject(err instanceof Error ? err : new Error(String(err)));
+        });
+      }),
+      signal,
+    );
+    checkAborted(signal);
 
     // Subscribe + publish + wait for answer (single composite timeout).
-    const answerSdp = await new Promise<string>((resolve, reject) => {
-      const timer = setTimeout(
-        () => reject(new Error(`MQTT signaling timeout — no answer within ${MQTT_ANSWER_TIMEOUT_MS / 1000}s`)),
-        MQTT_ANSWER_TIMEOUT_MS,
-      );
+    const answerSdp = await abortable(
+      new Promise<string>((resolve, reject) => {
+        const timer = setTimeout(
+          () => reject(new Error(`MQTT signaling timeout — no answer within ${MQTT_ANSWER_TIMEOUT_MS / 1000}s`)),
+          MQTT_ANSWER_TIMEOUT_MS,
+        );
 
-      mqttClient!.on("error", (err: unknown) => {
-        clearTimeout(timer);
-        reject(err instanceof Error ? err : new Error(String(err)));
-      });
-
-      mqttClient!.on("message", (topic: unknown, payload: unknown) => {
-        if (topic !== topicAnswer) return;
-        clearTimeout(timer);
-        const sdp = (payload as Buffer).toString("utf-8");
-        resolve(sdp);
-      });
-
-      mqttClient!.subscribe(topicAnswer, (err: Error | null) => {
-        if (err) {
+        mqttClient!.on("error", (err: unknown) => {
           clearTimeout(timer);
-          reject(new Error(`MQTT subscribe failed: ${err.message}`));
-          return;
-        }
-        // Subscribed → publish offer
-        mqttClient!.publish(topicOffer, pc!.localDescription!.sdp, { qos: 1 });
-      });
-    });
+          reject(err instanceof Error ? err : new Error(String(err)));
+        });
+
+        mqttClient!.on("message", (topic: unknown, payload: unknown) => {
+          if (topic !== topicAnswer) return;
+          clearTimeout(timer);
+          const sdp = (payload as Buffer).toString("utf-8");
+          resolve(sdp);
+        });
+
+        mqttClient!.subscribe(topicAnswer, (err: Error | null) => {
+          if (err) {
+            clearTimeout(timer);
+            reject(new Error(`MQTT subscribe failed: ${err.message}`));
+            return;
+          }
+          // Subscribed → publish offer
+          mqttClient!.publish(topicOffer, localPc!.localDescription!.sdp, { qos: 1 });
+        });
+      }),
+      signal,
+    );
+    checkAborted(signal);
 
     // === Stage: ontrack wait ===
     reportHealth("p2p-mqtt", { state: "testing", stage: "ontrack-wait" });
@@ -475,7 +529,7 @@ export async function startStreamViaMqttSignaling(
         () => reject(new Error(`No video track received within ${ONTRACK_TIMEOUT_MS / 1000} seconds`)),
         ONTRACK_TIMEOUT_MS,
       );
-      pc!.ontrack = (event) => {
+      localPc!.ontrack = (event) => {
         if (event.streams[0]) {
           clearTimeout(timeout);
           resolve(event.streams[0]);
@@ -483,23 +537,26 @@ export async function startStreamViaMqttSignaling(
       };
     });
 
-    await pc.setRemoteDescription({ type: "answer", sdp: answerSdp });
-    const stream = await trackPromise;
+    await abortable(localPc.setRemoteDescription({ type: "answer", sdp: answerSdp }), signal);
+    const stream = await abortable(trackPromise, signal);
+    checkAborted(signal);
 
     // === Stage: connected ===
     const elapsedMs = Date.now() - startedAt;
     store.setStreamUrl(`mqtt://${deviceId}/webrtc`);
     store.setStreaming(true);
     store.setTransport("p2p-mqtt");
-    reportHealth("p2p-mqtt", { state: "ok", stage: "connected", latencyMs: elapsedMs });
+    // Part I P1-11: report connection establishment time, NOT live RTT.
+    reportHealth("p2p-mqtt", { state: "ok", stage: "connected", connectMs: elapsedMs });
     startStatsPolling();
 
     return stream;
   } catch (err) {
-    // Tear down peer connection on any failure
-    if (pc) {
-      try { pc.close(); } catch { /* noop */ }
-      pc = null;
+    // Tear down the local pc on any failure. Only clear the global if we're
+    // still the active pc.
+    if (localPc) {
+      try { localPc.close(); } catch { /* noop */ }
+      if (localPc === pc) pc = null;
     }
     const { code, message } = classifyError(err);
     reportHealth("p2p-mqtt", { state: "failed", code, error: message });
