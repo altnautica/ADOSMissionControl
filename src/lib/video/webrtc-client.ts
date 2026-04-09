@@ -36,6 +36,10 @@ const MQTT_CONNECT_TIMEOUT_MS = 8000;
 const MQTT_ANSWER_TIMEOUT_MS = 12000;
 const ICE_GATHER_TIMEOUT_MS = 8000;
 const ONTRACK_TIMEOUT_MS = 8000;
+// Part I P2-18: LAN paths get tighter timeouts since loopback / RFC1918
+// either responds within a couple seconds or won't respond at all.
+const LAN_ICE_GATHER_TIMEOUT_MS = 3000;
+const LAN_ONTRACK_TIMEOUT_MS = 8000;
 // DEC-107 Phase H: expanded STUN server list for better ICE candidate diversity.
 // More candidates = higher chance of finding a working pair on cellular and
 // corporate networks. Cloudflare anycast STUN reaches many regions; Twilio
@@ -52,23 +56,65 @@ const CROSS_NETWORK_ICE_SERVERS: RTCIceServer[] = [
 // health updates from inside the WebRTC client.
 function reportHealth(
   transport: VideoTransport,
-  patch: { state?: "testing" | "ok" | "failed"; stage?: TransportAttemptStage; code?: TransportErrorCode; error?: string; latencyMs?: number },
+  patch: { state?: "testing" | "ok" | "failed"; stage?: TransportAttemptStage; code?: TransportErrorCode; error?: string; connectMs?: number },
 ): void {
   useVideoStore.getState().setTransportHealth(transport, {
     state: patch.state,
     lastAttemptStage: patch.stage ?? null,
     lastErrorCode: patch.code ?? null,
     lastError: patch.error ?? null,
-    latencyMs: patch.latencyMs ?? null,
+    connectMs: patch.connectMs ?? null,
   });
 }
 
-// DEC-107 Phase H: classify a thrown error into a TransportErrorCode based on
-// the message. Lets the dropdown tooltip surface "ICE timeout" instead of
+// Part I P0-3: helper for AbortSignal-driven cancellation. Throws an
+// AbortError that classifyError catches and reports as { code: "aborted" }.
+function checkAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) {
+    throw new DOMException("Aborted", "AbortError");
+  }
+}
+
+// Part I P0-3: race a promise against an AbortSignal. The promise itself
+// can't be aborted (no AbortablePromise in JS) but we can reject early when
+// the signal fires.
+function abortable<T>(p: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return p;
+  return new Promise<T>((resolve, reject) => {
+    if (signal.aborted) {
+      reject(new DOMException("Aborted", "AbortError"));
+      return;
+    }
+    const onAbort = () => reject(new DOMException("Aborted", "AbortError"));
+    signal.addEventListener("abort", onAbort, { once: true });
+    p.then(
+      (v) => { signal.removeEventListener("abort", onAbort); resolve(v); },
+      (e) => { signal.removeEventListener("abort", onAbort); reject(e); },
+    );
+  });
+}
+
+// DEC-107 Phase H: classify a thrown error into a TransportErrorCode based
+// on the message. Lets the dropdown tooltip surface "ICE timeout" instead of
 // raw stack traces.
+//
+// Part I P1-8: added cascade-timeout and abort patterns. Order matters —
+// most specific patterns first.
 function classifyError(err: unknown): { code: TransportErrorCode; message: string } {
+  // Native AbortError thrown by our checkAborted() helper or fetch()
+  if (err instanceof DOMException && err.name === "AbortError") {
+    return { code: "aborted", message: "Cancelled" };
+  }
   const message = err instanceof Error ? err.message : String(err);
   const lower = message.toLowerCase();
+  if (lower.includes("aborted") || lower.includes("cancelled")) {
+    return { code: "aborted", message };
+  }
+  // Cascade-level timeouts come from withTimeout in the cascade hook and
+  // look like "LAN Direct timeout after 4000ms" or "P2P MQTT timeout after 14000ms"
+  if (lower.match(/^(lan direct|p2p mqtt|cloud whep|cloud mse) timeout/)) {
+    return { code: "cascade-timeout", message };
+  }
   if (lower.includes("ice gather") || lower.includes("ice gathering")) {
     return { code: "ice-gather-timeout", message };
   }
@@ -78,7 +124,7 @@ function classifyError(err: unknown): { code: TransportErrorCode; message: strin
   if (lower.includes("mqtt") && lower.includes("timeout")) {
     return { code: "mqtt-answer-timeout", message };
   }
-  if (lower.includes("mqtt") && lower.includes("connect")) {
+  if (lower.includes("mqtt broker connect")) {
     return { code: "mqtt-connect-timeout", message };
   }
   if (lower.includes("subscribe")) {
@@ -87,9 +133,12 @@ function classifyError(err: unknown): { code: TransportErrorCode; message: strin
   if (lower.includes("ontrack") || lower.includes("video track")) {
     return { code: "ontrack-timeout", message };
   }
-  if (lower.includes("whep") || lower.includes("4")) {
-    if (/4\d\d/.test(message)) return { code: "whep-4xx", message };
-    if (/5\d\d/.test(message)) return { code: "whep-5xx", message };
+  // WHEP HTTP status — check status code in message
+  if (/4\d\d/.test(message) && lower.includes("whep")) {
+    return { code: "whep-4xx", message };
+  }
+  if (/5\d\d/.test(message) && lower.includes("whep")) {
+    return { code: "whep-5xx", message };
   }
   if (lower.includes("network") || lower.includes("fetch")) {
     return { code: "whep-network", message };
@@ -99,15 +148,20 @@ function classifyError(err: unknown): { code: TransportErrorCode; message: strin
 
 // DEC-107 Phase H: ICE restart cooldown — only attempt once per 5 seconds to
 // avoid thrash on flapping networks.
+//
+// Part I P0-5: takes a targetPc parameter so handlers can pass their own
+// captured pc reference. Refuses to restart if targetPc isn't the current
+// active pc (cascade may have moved on to a different transport).
 let lastIceRestartAt = 0;
-function tryIceRestart(): void {
-  if (!pc || pc.connectionState === "closed") return;
-  if (typeof pc.restartIce !== "function") return; // older browsers
+function tryIceRestart(targetPc: RTCPeerConnection): void {
+  if (targetPc !== pc) return; // a newer pc has taken over
+  if (targetPc.connectionState === "closed") return;
+  if (typeof targetPc.restartIce !== "function") return; // older browsers
   const now = Date.now();
   if (now - lastIceRestartAt < 5000) return;
   lastIceRestartAt = now;
   try {
-    pc.restartIce();
+    targetPc.restartIce();
     console.log("[webrtc-client] ICE restart triggered after disconnect");
   } catch (err) {
     console.warn("[webrtc-client] ICE restart failed:", err);

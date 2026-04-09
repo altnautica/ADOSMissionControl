@@ -46,13 +46,23 @@ export type TransportErrorCode =
   | "whep-network"
   | "ontrack-timeout"
   | "prereq-missing"
+  // Part I P1-8: cascade-level withTimeout fired before the mode finished
+  // its own internal stages. Distinct from per-stage timeouts.
+  | "cascade-timeout"
+  // Part I P0-3: AbortSignal fired (cascade was cancelled by mode change
+  // or component unmount).
+  | "aborted"
   | "other";
 
 export interface TransportHealth {
   state: "unknown" | "testing" | "ok" | "failed";
   lastError: string | null;
   lastTriedAt: number | null;
-  latencyMs: number | null;
+  // Part I P1-11: connection establishment time in ms (from start of attempt
+  // to first frame), captured once on success. Distinct from
+  // useVideoStore.latencyMs which is the LIVE network RTT polled from
+  // RTCPeerConnection stats every second.
+  connectMs: number | null;
   lastErrorCode: TransportErrorCode | null;
   lastAttemptStage: TransportAttemptStage | null;
 }
@@ -61,7 +71,7 @@ const emptyHealth = (): TransportHealth => ({
   state: "unknown",
   lastError: null,
   lastTriedAt: null,
-  latencyMs: null,
+  connectMs: null,
   lastErrorCode: null,
   lastAttemptStage: null,
 });
