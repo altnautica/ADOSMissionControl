@@ -24,7 +24,21 @@ let lastFramesDecoded: number = 0;
 let lastStatsTime: number = 0;
 // DEC-108 Phase D: track bytes received for bitrate derivation
 let lastBytesReceived: number = 0;
-const FRAME_TIMEOUT_MS = 8000;
+// DEC-108 Phase D follow-up: track jitter buffer delta for windowed latency.
+// jitterBufferDelay / jitterBufferEmittedCount (cumulative) gives an average
+// across the entire stream lifetime — when the stream starts with backed-up
+// buffers (common during connection setup), the average stays high forever
+// even after frames are flowing smoothly. Computing the delta over the last
+// poll window gives a much more accurate "current" latency.
+let lastJitterDelay: number = 0;
+let lastJitterEmitted: number = 0;
+// DEC-108 Phase D follow-up: increased from 8s to 20s. The previous 8s was
+// too aggressive — any brief jitter-buffer backup or WiFi blip caused the
+// client to signal disconnect, triggering a 3s reconnect loop that left the
+// stream visibly flapping (the user reported "intermittent connect/disconnect"
+// with the dev-server actively running). 20s gives WebRTC the chance to
+// recover from transient stalls without us tearing down the peer connection.
+const FRAME_TIMEOUT_MS = 20000;
 
 /** DEC-108 Phase D: classify a WHEP URL as LAN-direct or cloud relay. */
 function detectTransportFromUrl(url: string): "lan-whep" | "cloud-whep" {
@@ -283,6 +297,8 @@ function startStatsPolling(): void {
   lastFramesDecoded = 0;
   lastStatsTime = 0;
   lastBytesReceived = 0;
+  lastJitterDelay = 0;
+  lastJitterEmitted = 0;
 
   statsInterval = setInterval(async () => {
     if (!pc) return;
@@ -343,12 +359,26 @@ function startStatsPolling(): void {
           }
         }
 
-        // Decoder jitter buffer (L5)
+        // Decoder jitter buffer (L5) — DEC-108 Phase D follow-up: use the
+        // delta over the last polling window instead of the cumulative
+        // average. The cumulative ratio gets pinned to whatever the buffer
+        // looked like during the connection ramp-up, even if the stream is
+        // now smooth.
         const delay = r.jitterBufferDelay ?? 0;
         const emitted = r.jitterBufferEmittedCount ?? 0;
-        if (emitted > 0) {
+        if (emitted > lastJitterEmitted && lastJitterEmitted > 0) {
+          const deltaDelay = delay - lastJitterDelay;
+          const deltaEmitted = emitted - lastJitterEmitted;
+          if (deltaEmitted > 0) {
+            jitterMs = Math.round((deltaDelay / deltaEmitted) * 1000);
+          }
+        } else if (emitted > 0 && lastJitterEmitted === 0) {
+          // First sample — use cumulative as best available
           jitterMs = Math.round((delay / emitted) * 1000);
         }
+        // Persist for next window
+        lastJitterDelay = delay;
+        lastJitterEmitted = emitted;
 
         // DEC-108 Phase D: codec / bitrate / packet loss / RTP jitter
         if (r.codecId && codecReports.has(r.codecId)) {
