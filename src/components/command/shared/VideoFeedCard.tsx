@@ -312,9 +312,9 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
           </div>
         )}
 
-        {/* No signal placeholder */}
+        {/* No signal placeholder — z-10 so transport switcher (z-20) stays on top */}
         {showNoSignal && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-[#0a0a0f]">
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-[#0a0a0f]">
             <CameraOff className="w-8 h-8 text-text-tertiary" />
             <span className="text-xs text-text-tertiary font-mono tracking-widest">
               NO SIGNAL
@@ -322,9 +322,9 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
           </div>
         )}
 
-        {/* Connecting state */}
+        {/* Connecting state — z-10 so transport switcher (z-20) stays on top */}
         {showConnecting && !hasVideo && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-[#0a0a0f]">
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-[#0a0a0f]">
             <Loader2 className="w-6 h-6 text-accent-primary animate-spin" />
             <span className="text-xs text-text-tertiary font-mono tracking-widest">
               CONNECTING...
@@ -332,9 +332,10 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
           </div>
         )}
 
-        {/* Error state with retry */}
+        {/* Error state with retry — z-10 so the transport switcher
+            (z-20) stays clickable on top of this overlay. */}
         {error && !hasVideo && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-[#0a0a0f]">
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-[#0a0a0f]">
             <CameraOff className="w-8 h-8 text-status-error" />
             <span className="text-xs text-status-error font-mono">
               {error}

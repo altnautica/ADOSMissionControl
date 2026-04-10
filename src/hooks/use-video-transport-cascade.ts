@@ -51,8 +51,14 @@ interface CascadeResult {
 // Per-mode timeout (ms). LAN should fail fast — loopback / RFC1918 either
 // responds in a couple seconds or won't respond at all. P2P MQTT gets more
 // time because cellular ICE punching is slow.
-const LAN_TIMEOUT_MS = 4000;
-const P2P_TIMEOUT_MS = 10000;
+// Bumped from 4s: WHEP POST + WebRTC answer + ICE connect + first
+// video frame can take 5-8s on real hardware even on the same LAN.
+const LAN_TIMEOUT_MS = 10_000;
+// Must exceed the cumulative internal timeouts in startStreamViaMqttSignaling:
+// MQTT connect (8s) + answer (12s) + ontrack (8s) = 28s worst case.
+// Previous value of 10s caused premature abort ("Cancelled") before
+// signaling could complete.
+const P2P_TIMEOUT_MS = 35_000;
 
 export function useVideoTransportCascade(opts: CascadeOpts): CascadeResult {
   const {
@@ -95,19 +101,24 @@ export function useVideoTransportCascade(opts: CascadeOpts): CascadeResult {
     setState("connecting");
     setError(null);
 
-    // Build the cascade list based on mode. In auto mode, always try LAN
-    // first if we have a WHEP URL (the GCS may be on the same LAN as the
-    // agent even when connected via cloud). LAN is faster and more reliable
-    // than P2P MQTT. P2P MQTT is the fallback for cross-network scenarios.
+    // Build the cascade list based on mode. In cloud mode (HTTPS), skip LAN
+    // WHEP entirely — the agent's private LAN IP is unreachable from the
+    // internet and mixed content policy blocks HTTP fetches from HTTPS pages.
+    // Going straight to P2P MQTT saves 4s of wasted timeout.
+    const isHttps = typeof window !== "undefined" && window.location.protocol === "https:";
     const cascade: VideoTransport[] =
       transportMode === "auto"
-        ? agentWhepUrl
+        ? isHttps
           ? cloudDeviceId
-            ? ["lan-whep", "p2p-mqtt"]   // same LAN + cloud fallback
-            : ["lan-whep"]               // local only, no cloud
-          : cloudDeviceId
-            ? ["p2p-mqtt"]               // no LAN URL, cloud only
-            : []                         // nothing available
+            ? ["p2p-mqtt"]               // HTTPS: skip LAN, P2P only
+            : []                         // HTTPS but no cloud device
+          : agentWhepUrl
+            ? cloudDeviceId
+              ? ["lan-whep", "p2p-mqtt"] // HTTP: same LAN + cloud fallback
+              : ["lan-whep"]             // HTTP: local only, no cloud
+            : cloudDeviceId
+              ? ["p2p-mqtt"]             // HTTP: no LAN URL, cloud only
+              : []                       // nothing available
         : [transportMode];
 
     // Per-mode timeout handle so we can clear it on success/abort
@@ -146,9 +157,18 @@ export function useVideoTransportCascade(opts: CascadeOpts): CascadeResult {
         const isAbort = err instanceof DOMException && err.name === "AbortError";
         const isTimeout = isAbort && !controller.signal.aborted;
         const msg = isTimeout
-          ? `${label} timeout after ${timeoutMs}ms`
+          ? `${label} timeout after ${timeoutMs / 1000}s`
           : err instanceof Error ? err.message : String(err);
         console.log(`[transport-cascade] ${mode} failed: ${msg}`);
+        // Report descriptive health so the dropdown shows the real failure,
+        // not generic "Cancelled" from the AbortError classification.
+        if (isTimeout) {
+          useVideoStore.getState().setTransportHealth(mode as VideoTransport, {
+            state: "failed",
+            lastErrorCode: "cascade-timeout",
+            lastError: msg,
+          });
+        }
         return null;
       } finally {
         if (modeTimeoutHandle) {

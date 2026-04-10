@@ -230,7 +230,7 @@ export function VideoTransportSwitcher(props: Props) {
         ref={pillRef}
         onClick={() => setOpen((o) => !o)}
         className={cn(
-          "absolute top-2 left-2 px-2 py-0.5 rounded bg-black/60 backdrop-blur-sm",
+          "absolute top-2 left-2 z-20 px-2 py-0.5 rounded bg-black/60 backdrop-blur-sm",
           "text-[10px] font-mono text-text-secondary flex items-center gap-1.5",
           "hover:bg-black/80 transition-colors select-none cursor-pointer",
           "focus:outline-none focus:ring-1 focus:ring-accent-primary",
