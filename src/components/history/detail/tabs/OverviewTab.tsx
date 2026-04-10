@@ -11,7 +11,7 @@ import { DataValue } from "@/components/ui/data-value";
 import { formatDate, formatDuration, formatTime } from "@/lib/utils";
 import { useBatteryRegistryStore } from "@/stores/battery-registry-store";
 import { useEquipmentRegistryStore } from "@/stores/equipment-registry-store";
-import { CheckCircle2, XCircle, AlertTriangle, Sun, Moon, Sparkles, Cloud, Shield, Activity, MapPin, Hexagon } from "lucide-react";
+import { CheckCircle2, XCircle, AlertTriangle, Sun, Moon, Sparkles, Cloud, Shield, Activity, MapPin, Hexagon, Wind } from "lucide-react";
 import type {
   FlightRecord,
   FlightPhase,
@@ -21,6 +21,7 @@ import type {
   AirspaceSnapshot,
   MissionAdherence,
   GeofenceBreach,
+  WindEstimate,
 } from "@/lib/types";
 
 interface OverviewTabProps {
@@ -96,9 +97,10 @@ export function OverviewTab({ record }: OverviewTabProps) {
         </Card>
       )}
 
-      {(record.sunMoon || record.weatherSnapshot) && (
+      {(record.sunMoon || record.weatherSnapshot || record.windEstimate) && (
         <Card title="Conditions" padding={true}>
           <ConditionsCard sunMoon={record.sunMoon} weather={record.weatherSnapshot} />
+          {record.windEstimate && <WindCard wind={record.windEstimate} hasMetar={!!record.weatherSnapshot} />}
         </Card>
       )}
 
@@ -313,6 +315,38 @@ function WeatherSection({ weather }: { weather: WeatherSnapshot }) {
         <div className="mt-1 border-t border-border-default pt-1 text-[10px] font-mono text-text-tertiary leading-relaxed break-all">
           {weather.rawMetar}
         </div>
+      )}
+    </div>
+  );
+}
+
+const COMPASS_LABELS = [
+  "N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
+  "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW",
+] as const;
+
+function compassLabel(deg: number): string {
+  const idx = Math.round(deg / 22.5) % 16;
+  return COMPASS_LABELS[idx];
+}
+
+function WindCard({ wind, hasMetar }: { wind: WindEstimate; hasMetar: boolean }) {
+  return (
+    <div className="flex flex-col gap-1 mt-2 border-t border-border-default pt-2">
+      <div className="flex items-center gap-1.5 text-[10px] font-semibold text-text-secondary uppercase tracking-wider mb-1">
+        <Wind size={11} className="text-accent-primary" />
+        Wind (estimated from FC)
+      </div>
+      <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
+        <Row label="Speed" value={`${wind.speedMs.toFixed(1)} m/s`} mono />
+        <Row label="From" value={`${wind.fromDirDeg}° (${compassLabel(wind.fromDirDeg)})`} mono />
+        <Row label="Samples" value={wind.sampleCount.toString()} mono />
+        <Row label="Method" value={wind.method === "vfr_diff" ? "GS − AS" : "Attitude track"} />
+      </div>
+      {hasMetar && (
+        <span className="text-[9px] text-text-tertiary mt-0.5">
+          METAR wind shown above is from the nearest station. This estimate is derived from the flight controller.
+        </span>
       )}
     </div>
   );

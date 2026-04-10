@@ -425,6 +425,15 @@ fullName: v.optional(v.string()),
         }),
       ),
     ),
+    // Phase 16d — wind estimation from FC telemetry.
+    windEstimate: v.optional(
+      v.object({
+        speedMs: v.number(),
+        fromDirDeg: v.number(),
+        sampleCount: v.number(),
+        method: v.union(v.literal("vfr_diff"), v.literal("attitude_track")),
+      }),
+    ),
     // Phase 15 — reverse-geocoded place names from takeoff / landing coords.
     takeoffPlaceName: v.optional(v.string()),
     landingPlaceName: v.optional(v.string()),

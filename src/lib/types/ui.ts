@@ -180,6 +180,9 @@ export interface FlightRecord {
   geofenceSnapshot?: GeofenceSnapshot;
   /** Detected breaches against the snapshotted geofence. */
   geofenceBreaches?: GeofenceBreach[];
+
+  /** Phase 16d — wind vector estimated from FC telemetry (VFR_HUD airspeed vs groundspeed). */
+  windEstimate?: WindEstimate;
 }
 
 /** Frozen geofence configuration captured at flight arm time. */
@@ -443,6 +446,22 @@ export interface LoadoutSnapshot {
   payloadId?: string;
   frameId?: string;
   rcTxId?: string;
+}
+
+/**
+ * Estimated wind vector derived from FC telemetry. The `vfr_diff` method
+ * compares groundspeed to airspeed from VFR_HUD; the `attitude_track`
+ * method (future) infers wind from attitude-vs-track during hover.
+ */
+export interface WindEstimate {
+  /** Estimated wind speed in m/s. */
+  speedMs: number;
+  /** Compass direction the wind is blowing FROM (0–360°, 0 = north). */
+  fromDirDeg: number;
+  /** Number of valid telemetry frames used in the estimate. */
+  sampleCount: number;
+  /** Estimation method. */
+  method: "vfr_diff" | "attitude_track";
 }
 
 // ── Analytics ────────────────────────────────────────────────

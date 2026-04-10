@@ -245,6 +245,14 @@ const RECORD_VALIDATOR = {
       }),
     ),
   ),
+  windEstimate: v.optional(
+    v.object({
+      speedMs: v.number(),
+      fromDirDeg: v.number(),
+      sampleCount: v.number(),
+      method: v.union(v.literal("vfr_diff"), v.literal("attitude_track")),
+    }),
+  ),
   takeoffPlaceName: v.optional(v.string()),
   landingPlaceName: v.optional(v.string()),
   country: v.optional(v.string()),

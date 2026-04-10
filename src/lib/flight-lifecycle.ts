@@ -39,6 +39,7 @@ import { analyzeFlight } from "./flight-analysis/analyzer";
 import { detectPhases } from "./flight-analysis/phase-detector";
 import { computeAdherence } from "./flight-analysis/mission-adherence";
 import { detectGeofenceBreaches } from "./flight-analysis/geofence-forensics";
+import { estimateWind } from "./flight-analysis/wind-estimator";
 import { useMissionStore } from "@/stores/mission-store";
 import { useGeofenceStore } from "@/stores/geofence-store";
 import type { GeofenceSnapshot, GeofenceSnapshotZone } from "./types";
@@ -263,6 +264,8 @@ async function handleDisarm(droneId: string): Promise<void> {
     draftRowEarly?.geofenceSnapshot && stats.path.length >= 2
       ? detectGeofenceBreaches(stats.path, draftRowEarly.geofenceSnapshot, stats.maxAlt)
       : undefined;
+  // Phase 16d — wind estimation from VFR_HUD airspeed vs groundspeed.
+  const windEstimate = frames.length > 0 ? estimateWind(frames) : undefined;
   const endTime = Date.now();
   const history = useHistoryStore.getState();
   // Roll up aircraft usage stats (Phase 7a).
@@ -398,6 +401,7 @@ async function handleDisarm(droneId: string): Promise<void> {
     phases: phases.length > 0 ? phases : undefined,
     adherence,
     geofenceBreaches: geofenceBreaches && geofenceBreaches.length > 0 ? geofenceBreaches : undefined,
+    windEstimate,
   });
   void history.persistToIDB();
 
