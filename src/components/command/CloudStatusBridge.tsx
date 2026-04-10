@@ -21,6 +21,8 @@ import { useConvexAvailable } from "@/app/ConvexClientProvider";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import type { AgentStatus } from "@/lib/agent/types";
 import { STALE_THRESHOLD_MS, OFFLINE_THRESHOLD_MS } from "@/lib/agent/freshness";
+import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
+import { inferCapabilities } from "@/lib/agent/infer-capabilities";
 
 const STALE_CHECK_INTERVAL_MS = 5_000; // Check every 5s so the 1Hz UI label stays close to reality
 
@@ -214,6 +216,16 @@ export function CloudStatusBridge() {
     const mavlinkWsPort = (cloudStatus as Record<string, unknown>).mavlinkWsPort as number | undefined;
     if (lastIp && mavlinkWsPort && mavlinkWsPort > 0) {
       useAgentConnectionStore.getState().setMavlinkUrl(`ws://${lastIp}:${mavlinkWsPort}/`);
+    }
+
+    // Infer capabilities from cloud status (board SoC → NPU, peripherals → cameras)
+    const capState = useAgentCapabilitiesStore.getState();
+    if (!capState.loaded || capState.cameras.length === 0) {
+      const peripherals = useAgentPeripheralsStore.getState().peripherals;
+      const inferred = inferCapabilities(mapped, peripherals);
+      if (inferred) {
+        useAgentCapabilitiesStore.getState().setCapabilities(inferred);
+      }
     }
 
     initialLoadDone.current = true;

@@ -295,13 +295,26 @@ export const useAgentConnectionStore = create<AgentConnectionStore>((set, get) =
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const fullAny = full as any;
             if (fullAny.capabilities) {
+              // Agent has capabilities API — normalize and store (handles shape differences)
               useAgentCapabilitiesStore.getState().setCapabilities(fullAny.capabilities);
-            } else if (!useAgentCapabilitiesStore.getState().loaded) {
-              // Agent doesn't have capabilities API yet — infer from board + peripherals
+            } else {
+              // Agent doesn't have capabilities API — infer from board SoC + peripherals
               const peripherals = useAgentPeripheralsStore.getState().peripherals;
               const inferred = inferCapabilities(status as AgentStatus, peripherals);
               if (inferred) {
                 useAgentCapabilitiesStore.getState().setCapabilities(inferred);
+              }
+            }
+            // Fallback: if capabilities store still has no cameras but we know board SoC,
+            // re-infer on every poll to pick up peripherals that loaded after first poll
+            const capState = useAgentCapabilitiesStore.getState();
+            if (capState.cameras.length === 0 && (status as AgentStatus)?.board?.soc) {
+              const peripherals = useAgentPeripheralsStore.getState().peripherals;
+              if (peripherals.length > 0) {
+                const inferred = inferCapabilities(status as AgentStatus, peripherals);
+                if (inferred && inferred.cameras.length > 0) {
+                  useAgentCapabilitiesStore.getState().setCapabilities(inferred);
+                }
               }
             }
             get().noteFetchSuccess();
