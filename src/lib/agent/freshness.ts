@@ -11,11 +11,11 @@ import { useAgentSystemStore } from "@/stores/agent-system-store";
 import { useClockStore, subscribeToClock } from "@/stores/clock-store";
 
 /** Heartbeat considered stale after this many ms without an update.
- * Set to 20s: cloud heartbeat interval is 5s, but the agent's asyncio
- * event loop can be blocked for 3-6s by synchronous command handlers
- * (journalctl, systemctl), making effective heartbeat interval ~10s.
- * 20s gives 2 full cycles of headroom before triggering. */
-export const STALE_THRESHOLD_MS = 20_000;
+ * Set to 45s: on CPU-constrained boards (RK3582 A55 running libx264
+ * at ~40% CPU), heartbeats arrive every 11-14s instead of 5s. At 20s
+ * the banner flickered constantly. 45s gives 3 full heartbeat cycles
+ * of headroom. */
+export const STALE_THRESHOLD_MS = 45_000;
 
 /** Heartbeat considered offline (agent presumed dead) after this many ms.
  * Set to 60s: generous enough to survive transient network hiccups and
