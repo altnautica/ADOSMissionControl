@@ -14,6 +14,7 @@ import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { useAvailableFeatures } from "@/hooks/use-available-features";
 import { AgentDisconnectedPage } from "./AgentDisconnectedPage";
 import { FeatureGrid } from "./features/FeatureGrid";
+import { SetupWizard } from "./features/SetupWizard";
 import { CategoryFilter } from "./shared/CategoryFilter";
 import type { ResolvedFeature } from "@/lib/agent/feature-types";
 
@@ -24,6 +25,7 @@ export function FeaturesTab() {
   const features = useAvailableFeatures();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<ViewFilter>("all");
+  const [wizardFeature, setWizardFeature] = useState<ResolvedFeature | null>(null);
 
   // Counts for filter pills
   const smartModeCount = useMemo(
@@ -76,17 +78,19 @@ export function FeaturesTab() {
     return result;
   }, [features, activeFilter, searchQuery]);
 
-  // Actions (stub for now, will wire to agent API in Phase 3)
   const handleSetup = useCallback((feature: ResolvedFeature) => {
-    // TODO: Open SetupWizard dialog
-    console.log("[Features] Setup:", feature.id);
-    // For now, optimistically enable
-    useAgentCapabilitiesStore.getState().optimisticEnableFeature(feature.id);
+    setWizardFeature(feature);
   }, []);
 
   const handleConfigure = useCallback((feature: ResolvedFeature) => {
-    // TODO: Open FeatureDetailSheet
-    console.log("[Features] Configure:", feature.id);
+    // Re-open wizard for reconfiguration
+    setWizardFeature(feature);
+  }, []);
+
+  const handleWizardComplete = useCallback((_featureId: string, _params: Record<string, unknown>) => {
+    // Feature is already optimistically enabled inside SetupWizard
+    // In Phase 2+, this will POST /api/features/{id}/enable to the agent
+    setWizardFeature(null);
   }, []);
 
   const handleToggle = useCallback((feature: ResolvedFeature, enabled: boolean) => {
@@ -141,6 +145,16 @@ export function FeaturesTab() {
         onActivate={handleActivate}
         onDeactivate={handleDeactivate}
       />
+
+      {/* Setup wizard modal */}
+      {wizardFeature && (
+        <SetupWizard
+          feature={wizardFeature}
+          open={!!wizardFeature}
+          onClose={() => setWizardFeature(null)}
+          onComplete={handleWizardComplete}
+        />
+      )}
     </div>
   );
 }

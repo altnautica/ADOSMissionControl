@@ -30,6 +30,7 @@ import { usePairingStore } from "@/stores/pairing-store";
 import { useFreshness } from "@/lib/agent/freshness";
 import { useVisibleTabs, type CommandSubTab } from "@/hooks/use-visible-tabs";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
+import { FEATURE_CATALOG } from "@/lib/agent/feature-catalog";
 import dynamic from "next/dynamic";
 import { FleetSidebar } from "./FleetSidebar";
 import { PairingDialog } from "./PairingDialog";
@@ -39,6 +40,7 @@ import { DroneContextRail } from "./shared/DroneContextRail";
 const AgentOverviewTab = dynamic(() => import("./AgentOverviewTab").then(m => ({ default: m.AgentOverviewTab })), { ssr: false });
 const ScriptsTab = dynamic(() => import("./ScriptsTab").then(m => ({ default: m.ScriptsTab })), { ssr: false });
 const FeaturesTab = dynamic(() => import("./FeaturesTab").then(m => ({ default: m.FeaturesTab })), { ssr: false });
+const SmartModesTab = dynamic(() => import("./SmartModesTab").then(m => ({ default: m.SmartModesTab })), { ssr: false });
 const SystemTab = dynamic(() => import("./SystemTab").then(m => ({ default: m.SystemTab })), { ssr: false });
 const CloudStatusBridge = dynamic(() => import("./CloudStatusBridge").then(m => ({ default: m.CloudStatusBridge })), { ssr: false });
 const CloudCommandResultBridge = dynamic(() => import("./CloudCommandResultBridge").then(m => ({ default: m.CloudCommandResultBridge })), { ssr: false });
@@ -49,7 +51,8 @@ export function CommandPage() {
   const t = useTranslations("command");
 
   const visibleTabs = useVisibleTabs();
-  const activeFeatureName = useAgentCapabilitiesStore((s) => s.features.active);
+  const activeFeatureId = useAgentCapabilitiesStore((s) => s.features.active);
+  const activeFeatureName = activeFeatureId ? FEATURE_CATALOG[activeFeatureId]?.name ?? null : null;
 
   const tabConfig: Record<CommandSubTab, { label: string; icon: typeof Monitor }> = useMemo(() => ({
     overview: { label: t("overview"), icon: Monitor },
@@ -171,6 +174,12 @@ export function CommandPage() {
                   {t("cloud")}
                 </span>
               )}
+              {activeFeatureName && (
+                <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 bg-status-success/15 text-status-success rounded font-medium">
+                  <Zap size={10} />
+                  {activeFeatureName}
+                </span>
+              )}
             </div>
           ) : status ? (
             <>
@@ -201,6 +210,12 @@ export function CommandPage() {
                   <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 bg-accent-primary/15 text-accent-primary rounded font-medium">
                     <Cloud size={10} />
                     Cloud
+                  </span>
+                )}
+                {activeFeatureName && headerState === "live" && (
+                  <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 bg-status-success/15 text-status-success rounded font-medium">
+                    <Zap size={10} />
+                    {activeFeatureName}
                   </span>
                 )}
                 {headerState === "stale" && (
@@ -316,6 +331,7 @@ export function CommandPage() {
             <div className="flex-1 overflow-y-auto">
               {activeTab === "overview" && <AgentOverviewTab />}
               {activeTab === "features" && <FeaturesTab />}
+              {activeTab === "smart-modes" && <SmartModesTab />}
               {activeTab === "system" && <SystemTab />}
               {activeTab === "scripts" && <ScriptsTab />}
             </div>
