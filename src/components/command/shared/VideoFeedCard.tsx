@@ -183,7 +183,7 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
       setRetryDelaySec(0);
       return;
     }
-    const delaySec = Math.min(3 * Math.pow(2, attempt), 30);
+    const delaySec = Math.min(3 * Math.pow(2, attempt), 10);
     setRetryDelaySec(delaySec);
     const tickHandle = setInterval(() => {
       setRetryDelaySec((s) => Math.max(0, s - 1));

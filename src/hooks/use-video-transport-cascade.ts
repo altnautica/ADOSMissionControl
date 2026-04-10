@@ -52,7 +52,7 @@ interface CascadeResult {
 // responds in a couple seconds or won't respond at all. P2P MQTT gets more
 // time because cellular ICE punching is slow.
 const LAN_TIMEOUT_MS = 4000;
-const P2P_TIMEOUT_MS = 14000;
+const P2P_TIMEOUT_MS = 10000;
 
 export function useVideoTransportCascade(opts: CascadeOpts): CascadeResult {
   const {
@@ -95,10 +95,15 @@ export function useVideoTransportCascade(opts: CascadeOpts): CascadeResult {
     setState("connecting");
     setError(null);
 
-    // DEC-107 Phase H: build the cascade list based on mode
+    // DEC-107 Phase H: build the cascade list based on mode.
+    // In cloud mode (cloudDeviceId set), skip LAN Direct — the agent's
+    // RFC1918 IP is unreachable from a cloud-connected browser. Go straight
+    // to P2P MQTT which works across NAT via MQTT-relayed SDP signaling.
     const cascade: VideoTransport[] =
       transportMode === "auto"
-        ? ["lan-whep", "p2p-mqtt"]
+        ? cloudDeviceId
+          ? ["p2p-mqtt"]
+          : ["lan-whep", "p2p-mqtt"]
         : [transportMode];
 
     // Per-mode timeout handle so we can clear it on success/abort
