@@ -20,6 +20,7 @@ import type {
   PairingInfo,
   ClaimResponse,
   VideoStatus,
+  FullStatusResponse,
 } from "./types";
 
 export class AgentClient {
@@ -208,6 +209,20 @@ export class AgentClient {
 
   async getPeers(): Promise<NetworkPeer[]> {
     return this.request<NetworkPeer[]>("/api/fleet/peers");
+  }
+
+  // ── Consolidated ────────────────────────────────────────
+
+  /**
+   * Fetch all status data in a single request (agent v0.3.19+).
+   * Falls back to null on older agents that don't have this endpoint.
+   */
+  async getFullStatus(): Promise<FullStatusResponse | null> {
+    try {
+      return await this.request<FullStatusResponse>("/api/status/full");
+    } catch {
+      return null; // Agent version < 0.3.19
+    }
   }
 
   // ── Video ───────────────────────────────────────────────

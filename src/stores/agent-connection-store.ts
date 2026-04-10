@@ -59,6 +59,10 @@ export type AgentConnectionStore = AgentConnectionState & AgentConnectionActions
 
 const MAX_CPU_HISTORY = 60;
 
+// Module-level cleanup function for tab visibility listener. Lives outside the
+// store because Zustand's strict typing doesn't allow ad-hoc extra fields.
+let _visibilityCleanup: (() => void) | undefined;
+
 export const useAgentConnectionStore = create<AgentConnectionStore>((set, get) => ({
   agentUrl: null,
   apiKey: null,
@@ -216,35 +220,108 @@ export const useAgentConnectionStore = create<AgentConnectionStore>((set, get) =
 
   startPolling() {
     get().stopPolling();
-    const interval = setInterval(() => {
-      useAgentSystemStore.getState().fetchStatus();
-      useAgentSystemStore.getState().fetchServices();
-      useAgentSystemStore.getState().fetchResources();
 
-      // Poll agent video status
-      // DEC-108 Phase E: defensive guard. The store unsafe-casts
-      // MockAgentClient to AgentClient at line ~87, which makes
-      // TypeScript happy but doesn't guarantee MockAgentClient
-      // implements every AgentClient method. In demo mode (or after a
-      // stale HMR replace), client.getVideoStatus may be undefined and
-      // calling it throws "client.getVideoStatus is not a function".
+    // Track whether the consolidated endpoint is available (agent v0.3.19+).
+    // Once confirmed, skip the 4-request fallback path.
+    let useFullEndpoint: boolean | null = null; // null = untried
+
+    const poll = async () => {
+      // Pause polling when browser tab is hidden to save bandwidth/battery.
+      if (typeof document !== "undefined" && document.hidden) return;
+
       const client = get().client;
-      if (client && typeof client.getVideoStatus === "function") {
-        client.getVideoStatus().then((video) => {
-          if (video) {
-            const deps = video.dependencies
-              ? Object.fromEntries(
-                  Object.entries(video.dependencies).map(([k, v]) => [k, { found: v.found }])
-                )
-              : undefined;
-            useVideoStore.getState().setAgentVideoStatus(video.state, video.whep_url, deps);
+      if (!client) return;
+
+      try {
+        // Try consolidated endpoint first (1 request instead of 4).
+        if (useFullEndpoint !== false && typeof client.getFullStatus === "function") {
+          const full = await client.getFullStatus();
+          if (full) {
+            useFullEndpoint = true;
+            // Map consolidated response to the same stores as the 4-endpoint path.
+            const status = {
+              version: full.version,
+              uptime_seconds: full.uptime_seconds,
+              board: full.board,
+              health: full.health,
+              fc_connected: full.fc_connected,
+              fc_port: full.fc_port,
+              fc_baud: full.fc_baud,
+            };
+            useAgentSystemStore.getState().setStatus(status as AgentStatus);
+            if (full.services) {
+              // Map service state field name for compatibility
+              const mapped = full.services.map((s: { name: string; state: string; task_done: boolean; uptimeSeconds: number }) => ({
+                ...s,
+                status: s.state,
+              }));
+              useAgentSystemStore.setState({ services: mapped as never[] });
+            }
+            if (full.resources) {
+              useAgentSystemStore.setState({
+                resources: full.resources as never,
+                lastUpdatedAt: Date.now(),
+                stale: false,
+              });
+            }
+            if (full.video) {
+              useVideoStore.getState().setAgentVideoStatus(
+                full.video.state,
+                full.video.whep_url,
+              );
+            }
+            get().noteFetchSuccess();
+            return;
           }
-        }).catch(() => {
-          // Silently ignore — agent may not support /api/video
-        });
+          // 404 or null = agent doesn't support it
+          useFullEndpoint = false;
+        }
+
+        // Fallback: parallel requests for older agents
+        await Promise.all([
+          useAgentSystemStore.getState().fetchStatus(),
+          useAgentSystemStore.getState().fetchServices(),
+          useAgentSystemStore.getState().fetchResources(),
+        ]);
+
+        // Video status (may not exist on all agents)
+        if (typeof client.getVideoStatus === "function") {
+          client.getVideoStatus().then((video) => {
+            if (video) {
+              const deps = video.dependencies
+                ? Object.fromEntries(
+                    Object.entries(video.dependencies).map(([k, v]) => [k, { found: v.found }])
+                  )
+                : undefined;
+              useVideoStore.getState().setAgentVideoStatus(video.state, video.whep_url, deps);
+            }
+          }).catch(() => {});
+        }
+        get().noteFetchSuccess();
+      } catch {
+        get().noteFetchFailure();
       }
-    }, 3000);
+    };
+
+    // Run first poll immediately, then every 3s
+    poll();
+    const interval = setInterval(poll, 3000);
     set({ pollInterval: interval });
+
+    // Pause/resume on tab visibility change
+    if (typeof document !== "undefined") {
+      const onVisibility = () => {
+        if (!document.hidden) {
+          // Tab became visible: poll immediately for fresh data
+          poll();
+        }
+      };
+      document.addEventListener("visibilitychange", onVisibility);
+      // Store the cleanup function
+      _visibilityCleanup = () => {
+        document.removeEventListener("visibilitychange", onVisibility);
+      };
+    }
   },
 
   stopPolling() {
@@ -252,6 +329,11 @@ export const useAgentConnectionStore = create<AgentConnectionStore>((set, get) =
     if (pollInterval) {
       clearInterval(pollInterval);
       set({ pollInterval: null });
+    }
+    // Clean up visibility listener
+    if (_visibilityCleanup) {
+      _visibilityCleanup();
+      _visibilityCleanup = undefined;
     }
   },
 

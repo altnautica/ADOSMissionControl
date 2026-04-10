@@ -10,11 +10,16 @@ import { useEffect } from "react";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
 import { useClockStore, subscribeToClock } from "@/stores/clock-store";
 
-/** Heartbeat considered stale after this many ms without an update. */
-export const STALE_THRESHOLD_MS = 30_000;
+/** Heartbeat considered stale after this many ms without an update.
+ * Tightened from 30s to 10s for faster UX feedback on connection issues.
+ * Both local polling (3s interval) and cloud heartbeat (5s interval) should
+ * keep this well under threshold during normal operation. */
+export const STALE_THRESHOLD_MS = 10_000;
 
-/** Heartbeat considered offline (agent presumed dead) after this many ms. */
-export const OFFLINE_THRESHOLD_MS = 120_000;
+/** Heartbeat considered offline (agent presumed dead) after this many ms.
+ * Tightened from 120s to 30s. At 3s poll interval, 10 consecutive failures
+ * means something is genuinely wrong. */
+export const OFFLINE_THRESHOLD_MS = 30_000;
 
 export type FreshnessState = "live" | "stale" | "offline" | "unknown";
 

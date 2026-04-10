@@ -167,6 +167,23 @@ export interface VideoStatus {
   dependencies?: Record<string, { found: boolean; path: string | null }>;
 }
 
+// ── Consolidated ───────────────────────────────────────
+
+/** Response from `/api/status/full` (agent v0.3.19+). */
+export interface FullStatusResponse {
+  version: string;
+  uptime_seconds: number;
+  board: BoardInfo;
+  health: HealthInfo;
+  fc_connected: boolean;
+  fc_port: string;
+  fc_baud: number;
+  services: Array<{ name: string; state: string; task_done: boolean; uptimeSeconds: number }>;
+  resources: { cpu_percent: number; memory_percent: number; disk_percent: number; temperature: number | null };
+  video: { state: string; whep_url: string | null };
+  telemetry: Record<string, unknown>;
+}
+
 // ── Pairing ─────────────────────────────────────────────
 
 export interface PairingInfo {
