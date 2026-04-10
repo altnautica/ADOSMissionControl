@@ -608,6 +608,10 @@ export async function stopStream(): Promise<void> {
     pc = null;
   }
 
+  // Reset ICE restart cooldown so the next session can restart immediately
+  // instead of being gated by the previous session's 5s cooldown.
+  lastIceRestartAt = 0;
+
   store.setStreaming(false);
   store.setStreamUrl(null);
   store.updateStats(0, 0);

@@ -334,9 +334,14 @@ export function CommandPage() {
               })}
             </div>
 
-            {/* Tab content */}
+            {/* Tab content — Overview is always mounted (hidden via CSS when
+                inactive) so that VideoFeedCard's WebRTC connection persists
+                across tab switches. Other tabs mount/unmount normally since
+                they have no long-lived connections. */}
             <div className="flex-1 overflow-y-auto">
-              {activeTab === "overview" && <AgentOverviewTab />}
+              <div className={activeTab !== "overview" ? "hidden" : undefined}>
+                <AgentOverviewTab />
+              </div>
               {activeTab === "features" && <FeaturesTab />}
               {activeTab === "smart-modes" && <SmartModesTab />}
               {activeTab === "system" && <SystemTab />}
