@@ -53,7 +53,7 @@ function DroneScene({ layout }: { layout: FrameLayout }) {
 
   return (
     <>
-      <ambientLight intensity={0.3} />
+      <ambientLight intensity={0.4} />
       <directionalLight position={[5, 8, 5]} intensity={0.7} />
       <directionalLight position={[-3, 4, -3]} intensity={0.25} />
       <pointLight position={[0, 3, 0]} intensity={0.15} color={COLOR_CW} />
@@ -63,11 +63,11 @@ function DroneScene({ layout }: { layout: FrameLayout }) {
       <group ref={droneGroupRef}>
         <mesh position={[0, 0, 0]}>
           <cylinderGeometry args={[0.5, 0.48, 0.08, 32]} />
-          <meshStandardMaterial color={COLOR_BODY} metalness={0.9} roughness={0.2} />
+          <meshStandardMaterial color={COLOR_BODY} metalness={0.7} roughness={0.3} />
         </mesh>
         <mesh position={[0, 0.035, 0]}>
           <torusGeometry args={[0.46, 0.008, 8, 32]} />
-          <meshStandardMaterial color="#1a1a1a" metalness={0.8} roughness={0.3} />
+          <meshStandardMaterial color="#3a3a3a" metalness={0.5} roughness={0.3} />
         </mesh>
         <ForwardChevron />
 

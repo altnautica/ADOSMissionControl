@@ -13,8 +13,8 @@ import { useTelemetryStore } from "@/stores/telemetry-store";
 export const COLOR_CW = "#3A82FF";
 export const COLOR_CCW = "#DFF140";
 const COLOR_UNKNOWN = "#444444";
-export const COLOR_ARM = "#111111";
-export const COLOR_BODY = "#111111";
+export const COLOR_ARM = "#333333";
+export const COLOR_BODY = "#2a2a2a";
 export const COLOR_SERVO = "#f59e0b";
 export const COLOR_GRID = "#0a0a0a";
 
@@ -258,7 +258,7 @@ export const Arm = memo(function Arm({
     <group position={[midX, y, midZ]} rotation={[0, angle, 0]}>
       <mesh rotation={[Math.PI / 2, 0, 0]}>
         <cylinderGeometry args={[0.025, 0.03, length, 8]} />
-        <meshStandardMaterial color={COLOR_ARM} metalness={0.9} roughness={0.2} />
+        <meshStandardMaterial color={COLOR_ARM} metalness={0.6} roughness={0.4} />
       </mesh>
     </group>
   );
