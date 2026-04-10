@@ -1,0 +1,86 @@
+{
+  "version": 1,
+  "models": [
+    {
+      "id": "person_v1",
+      "name": "Person Detector",
+      "description": "Detect people for Follow Me, SAR, and security",
+      "license": "Apache-2.0",
+      "classes": ["person"],
+      "variants": [
+        { "variant": "nano", "input_size": "320x320", "min_tops": 0.8, "formats": {} },
+        { "variant": "small", "input_size": "640x640", "min_tops": 2.0, "formats": {} }
+      ]
+    },
+    {
+      "id": "depth_midas_v3",
+      "name": "Depth Estimator",
+      "description": "Monocular depth estimation for obstacle avoidance",
+      "license": "MIT",
+      "classes": [],
+      "variants": [
+        { "variant": "small", "input_size": "256x256", "min_tops": 0.8, "formats": {} }
+      ]
+    },
+    {
+      "id": "landing_pad_v1",
+      "name": "Landing Pad Detector",
+      "description": "Detect AprilTag and H-markers for precision landing",
+      "license": "Apache-2.0",
+      "classes": ["apriltag", "h_marker", "circle"],
+      "variants": [
+        { "variant": "nano", "input_size": "320x320", "min_tops": 0.8, "formats": {} }
+      ]
+    },
+    {
+      "id": "vehicle_v1",
+      "name": "Vehicle Detector",
+      "description": "Detect vehicles for security and traffic monitoring",
+      "license": "Apache-2.0",
+      "classes": ["car", "truck", "bus", "motorcycle"],
+      "variants": [
+        { "variant": "nano", "input_size": "320x320", "min_tops": 0.8, "formats": {} }
+      ]
+    },
+    {
+      "id": "crop_health_v1",
+      "name": "Crop Health Detector",
+      "description": "Detect crop health, weeds, and bare soil for agriculture",
+      "license": "Apache-2.0",
+      "classes": ["crop", "weed", "bare_soil"],
+      "variants": [
+        { "variant": "nano", "input_size": "640x640", "min_tops": 0.8, "formats": {} }
+      ]
+    },
+    {
+      "id": "defect_v1",
+      "name": "Defect Detector",
+      "description": "Detect cracks, corrosion, and spalling for inspection",
+      "license": "Apache-2.0",
+      "classes": ["crack", "corrosion", "spalling"],
+      "variants": [
+        { "variant": "small", "input_size": "640x640", "min_tops": 2.0, "formats": {} }
+      ]
+    },
+    {
+      "id": "thermal_person_v1",
+      "name": "Thermal Person Detector",
+      "description": "Detect people in thermal imagery for SAR and night ops",
+      "license": "Apache-2.0",
+      "classes": ["person_thermal"],
+      "variants": [
+        { "variant": "nano", "input_size": "320x320", "min_tops": 0.8, "formats": {} }
+      ]
+    },
+    {
+      "id": "gesture_v1",
+      "name": "Gesture Recognizer",
+      "description": "Recognize hand gestures for drone control",
+      "license": "Apache-2.0",
+      "classes": ["palm_up", "palm_down", "fist", "peace", "thumbs_up", "wave", "stop"],
+      "variants": [
+        { "variant": "nano", "input_size": "256x256", "min_tops": 0.8, "formats": {} }
+      ]
+    }
+  ]
+}
