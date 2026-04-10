@@ -12,6 +12,7 @@ import { useAgentSystemStore } from "./agent-system-store";
 import { useAgentPeripheralsStore } from "./agent-peripherals-store";
 import { useAgentScriptsStore } from "./agent-scripts-store";
 import { useVideoStore } from "./video-store";
+import { useAgentCapabilitiesStore } from "./agent-capabilities-store";
 
 interface AgentConnectionState {
   agentUrl: string | null;
@@ -108,6 +109,15 @@ export const useAgentConnectionStore = create<AgentConnectionStore>((set, get) =
       useAgentSystemStore.getState().fetchServices();
       useAgentSystemStore.getState().fetchResources();
       useAgentSystemStore.getState().fetchLogs();
+      // Populate capabilities (mock or real)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const anyClient = client as any;
+      if (typeof anyClient.getCapabilities === "function") {
+        try {
+          const caps = await anyClient.getCapabilities();
+          if (caps) useAgentCapabilitiesStore.getState().setCapabilities(caps);
+        } catch { /* capabilities optional */ }
+      }
       get().startPolling();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Connection failed";
@@ -269,6 +279,12 @@ export const useAgentConnectionStore = create<AgentConnectionStore>((set, get) =
                 full.video.state,
                 full.video.whep_url,
               );
+            }
+            // Populate capabilities store from consolidated response
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const fullAny = full as any;
+            if (fullAny.capabilities) {
+              useAgentCapabilitiesStore.getState().setCapabilities(fullAny.capabilities);
             }
             get().noteFetchSuccess();
             return;

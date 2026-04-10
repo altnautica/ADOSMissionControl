@@ -11,9 +11,9 @@ import { useTranslations } from "next-intl";
 import {
   Monitor,
   TerminalSquare,
-  GitBranch,
-  Network,
-  Package,
+  Wrench,
+  Sparkles,
+  Zap,
   Plug,
   Unplug,
   ChevronDown,
@@ -28,6 +28,8 @@ import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
 import { usePairingStore } from "@/stores/pairing-store";
 import { useFreshness } from "@/lib/agent/freshness";
+import { useVisibleTabs, type CommandSubTab } from "@/hooks/use-visible-tabs";
+import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import dynamic from "next/dynamic";
 import { FleetSidebar } from "./FleetSidebar";
 import { PairingDialog } from "./PairingDialog";
@@ -36,27 +38,28 @@ import { DroneContextRail } from "./shared/DroneContextRail";
 
 const AgentOverviewTab = dynamic(() => import("./AgentOverviewTab").then(m => ({ default: m.AgentOverviewTab })), { ssr: false });
 const ScriptsTab = dynamic(() => import("./ScriptsTab").then(m => ({ default: m.ScriptsTab })), { ssr: false });
-const ArchitectureTab = dynamic(() => import("./ArchitectureTab").then(m => ({ default: m.ArchitectureTab })), { ssr: false });
-const FleetNetworkTab = dynamic(() => import("./FleetNetworkTab").then(m => ({ default: m.FleetNetworkTab })), { ssr: false });
-const ModuleStoreTab = dynamic(() => import("./ModuleStoreTab").then(m => ({ default: m.ModuleStoreTab })), { ssr: false });
+const FeaturesTab = dynamic(() => import("./FeaturesTab").then(m => ({ default: m.FeaturesTab })), { ssr: false });
+const SystemTab = dynamic(() => import("./SystemTab").then(m => ({ default: m.SystemTab })), { ssr: false });
 const CloudStatusBridge = dynamic(() => import("./CloudStatusBridge").then(m => ({ default: m.CloudStatusBridge })), { ssr: false });
 const CloudCommandResultBridge = dynamic(() => import("./CloudCommandResultBridge").then(m => ({ default: m.CloudCommandResultBridge })), { ssr: false });
 const MqttBridge = dynamic(() => import("./MqttBridge").then(m => ({ default: m.MqttBridge })), { ssr: false });
 // AgentMavlinkBridge moved to CommandShell for cross-tab persistence
 
-type SubTab = "overview" | "scripts" | "architecture" | "fleet" | "modules";
-
 export function CommandPage() {
   const t = useTranslations("command");
 
-  const subTabs = useMemo(() => [
-    { id: "overview" as const, label: t("overview"), icon: Monitor },
-    { id: "scripts" as const, label: t("scripts"), icon: TerminalSquare },
-    { id: "architecture" as const, label: "Architecture", icon: GitBranch },
-    { id: "fleet" as const, label: t("fleetNetwork"), icon: Network },
-    { id: "modules" as const, label: t("moduleStore"), icon: Package },
-  ], [t]);
-  const [activeTab, setActiveTab] = useState<SubTab>("overview");
+  const visibleTabs = useVisibleTabs();
+  const activeFeatureName = useAgentCapabilitiesStore((s) => s.features.active);
+
+  const tabConfig: Record<CommandSubTab, { label: string; icon: typeof Monitor }> = useMemo(() => ({
+    overview: { label: t("overview"), icon: Monitor },
+    features: { label: "Features", icon: Sparkles },
+    "smart-modes": { label: "Smart Modes", icon: Zap },
+    system: { label: "System", icon: Wrench },
+    scripts: { label: t("scripts"), icon: TerminalSquare },
+  }), [t]);
+
+  const [activeTab, setActiveTab] = useState<CommandSubTab>("overview");
   const [urlInput, setUrlInput] = useState("http://localhost:8080");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [pairingOpen, setPairingOpen] = useState(false);
@@ -287,30 +290,34 @@ export function CommandPage() {
           <>
             {/* Sub-tab navigation */}
             <div className="flex items-center gap-1 px-4 border-b border-border-default bg-bg-secondary">
-              {subTabs.map(({ id, label, icon: Icon }) => (
-                <button
-                  key={id}
-                  onClick={() => setActiveTab(id)}
-                  className={cn(
-                    "flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors self-stretch -mb-px border-b-2",
-                    activeTab === id
-                      ? "text-accent-primary border-accent-primary"
-                      : "text-text-secondary hover:text-text-primary border-transparent"
-                  )}
-                >
-                  <Icon size={13} />
-                  {label}
-                </button>
-              ))}
+              {visibleTabs.map((tabId) => {
+                const config = tabConfig[tabId];
+                if (!config) return null;
+                const Icon = config.icon;
+                return (
+                  <button
+                    key={tabId}
+                    onClick={() => setActiveTab(tabId)}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors self-stretch -mb-px border-b-2",
+                      activeTab === tabId
+                        ? "text-accent-primary border-accent-primary"
+                        : "text-text-secondary hover:text-text-primary border-transparent"
+                    )}
+                  >
+                    <Icon size={13} />
+                    {config.label}
+                  </button>
+                );
+              })}
             </div>
 
             {/* Tab content */}
             <div className="flex-1 overflow-y-auto">
               {activeTab === "overview" && <AgentOverviewTab />}
+              {activeTab === "features" && <FeaturesTab />}
+              {activeTab === "system" && <SystemTab />}
               {activeTab === "scripts" && <ScriptsTab />}
-              {activeTab === "architecture" && <ArchitectureTab />}
-              {activeTab === "fleet" && <FleetNetworkTab />}
-              {activeTab === "modules" && <ModuleStoreTab />}
             </div>
           </>
         ) : (
