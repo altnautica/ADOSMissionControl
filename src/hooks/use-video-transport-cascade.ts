@@ -95,15 +95,19 @@ export function useVideoTransportCascade(opts: CascadeOpts): CascadeResult {
     setState("connecting");
     setError(null);
 
-    // DEC-107 Phase H: build the cascade list based on mode.
-    // In cloud mode (cloudDeviceId set), skip LAN Direct — the agent's
-    // RFC1918 IP is unreachable from a cloud-connected browser. Go straight
-    // to P2P MQTT which works across NAT via MQTT-relayed SDP signaling.
+    // Build the cascade list based on mode. In auto mode, always try LAN
+    // first if we have a WHEP URL (the GCS may be on the same LAN as the
+    // agent even when connected via cloud). LAN is faster and more reliable
+    // than P2P MQTT. P2P MQTT is the fallback for cross-network scenarios.
     const cascade: VideoTransport[] =
       transportMode === "auto"
-        ? cloudDeviceId
-          ? ["p2p-mqtt"]
-          : ["lan-whep", "p2p-mqtt"]
+        ? agentWhepUrl
+          ? cloudDeviceId
+            ? ["lan-whep", "p2p-mqtt"]   // same LAN + cloud fallback
+            : ["lan-whep"]               // local only, no cloud
+          : cloudDeviceId
+            ? ["p2p-mqtt"]               // no LAN URL, cloud only
+            : []                         // nothing available
         : [transportMode];
 
     // Per-mode timeout handle so we can clear it on success/abort
