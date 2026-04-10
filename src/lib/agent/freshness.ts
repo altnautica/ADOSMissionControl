@@ -11,15 +11,16 @@ import { useAgentSystemStore } from "@/stores/agent-system-store";
 import { useClockStore, subscribeToClock } from "@/stores/clock-store";
 
 /** Heartbeat considered stale after this many ms without an update.
- * Tightened from 30s to 10s for faster UX feedback on connection issues.
- * Both local polling (3s interval) and cloud heartbeat (5s interval) should
- * keep this well under threshold during normal operation. */
-export const STALE_THRESHOLD_MS = 10_000;
+ * Set to 20s: cloud heartbeat interval is 5s, but the agent's asyncio
+ * event loop can be blocked for 3-6s by synchronous command handlers
+ * (journalctl, systemctl), making effective heartbeat interval ~10s.
+ * 20s gives 2 full cycles of headroom before triggering. */
+export const STALE_THRESHOLD_MS = 20_000;
 
 /** Heartbeat considered offline (agent presumed dead) after this many ms.
- * Tightened from 120s to 30s. At 3s poll interval, 10 consecutive failures
- * means something is genuinely wrong. */
-export const OFFLINE_THRESHOLD_MS = 30_000;
+ * Set to 60s: generous enough to survive transient network hiccups and
+ * agent command processing bursts without false disconnection. */
+export const OFFLINE_THRESHOLD_MS = 60_000;
 
 export type FreshnessState = "live" | "stale" | "offline" | "unknown";
 

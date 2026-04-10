@@ -54,10 +54,10 @@ export function CloudStatusBridge() {
     }, 15000);
 
     // Ongoing staleness check: two thresholds.
-    //   > STALE_THRESHOLD_MS  (30s) → mark system store stale, dim the UI,
+    //   > STALE_THRESHOLD_MS  (20s) → mark system store stale, dim the UI,
     //                                 keep last-known data visible.
-    //   > OFFLINE_THRESHOLD_MS (120s) → mark connection offline, clear MAVLink
-    //                                   URL so dependent UIs stop trying.
+    //   > OFFLINE_THRESHOLD_MS (60s) → mark connection offline, clear MAVLink
+    //                                  URL so dependent UIs stop trying.
     const interval = setInterval(() => {
       const state = useAgentConnectionStore.getState();
       if (!state.cloudMode || !state.lastCloudUpdate) return;
