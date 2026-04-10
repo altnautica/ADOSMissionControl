@@ -13,6 +13,7 @@ import { useAgentPeripheralsStore } from "./agent-peripherals-store";
 import { useAgentScriptsStore } from "./agent-scripts-store";
 import { useVideoStore } from "./video-store";
 import { useAgentCapabilitiesStore } from "./agent-capabilities-store";
+import { inferCapabilities } from "@/lib/agent/infer-capabilities";
 
 interface AgentConnectionState {
   agentUrl: string | null;
@@ -109,14 +110,24 @@ export const useAgentConnectionStore = create<AgentConnectionStore>((set, get) =
       useAgentSystemStore.getState().fetchServices();
       useAgentSystemStore.getState().fetchResources();
       useAgentSystemStore.getState().fetchLogs();
-      // Populate capabilities (mock or real)
+      // Populate capabilities (mock or real, with inference fallback)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const anyClient = client as any;
+      let capsLoaded = false;
       if (typeof anyClient.getCapabilities === "function") {
         try {
           const caps = await anyClient.getCapabilities();
-          if (caps) useAgentCapabilitiesStore.getState().setCapabilities(caps);
+          if (caps) {
+            useAgentCapabilitiesStore.getState().setCapabilities(caps);
+            capsLoaded = true;
+          }
         } catch { /* capabilities optional */ }
+      }
+      if (!capsLoaded) {
+        // Agent doesn't have capabilities API — infer from board SoC + peripherals
+        const peripherals = useAgentPeripheralsStore.getState().peripherals;
+        const inferred = inferCapabilities(status, peripherals);
+        if (inferred) useAgentCapabilitiesStore.getState().setCapabilities(inferred);
       }
       get().startPolling();
     } catch (err) {
@@ -280,11 +291,18 @@ export const useAgentConnectionStore = create<AgentConnectionStore>((set, get) =
                 full.video.whep_url,
               );
             }
-            // Populate capabilities store from consolidated response
+            // Populate capabilities store from consolidated response or infer from legacy data
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const fullAny = full as any;
             if (fullAny.capabilities) {
               useAgentCapabilitiesStore.getState().setCapabilities(fullAny.capabilities);
+            } else if (!useAgentCapabilitiesStore.getState().loaded) {
+              // Agent doesn't have capabilities API yet — infer from board + peripherals
+              const peripherals = useAgentPeripheralsStore.getState().peripherals;
+              const inferred = inferCapabilities(status as AgentStatus, peripherals);
+              if (inferred) {
+                useAgentCapabilitiesStore.getState().setCapabilities(inferred);
+              }
             }
             get().noteFetchSuccess();
             return;

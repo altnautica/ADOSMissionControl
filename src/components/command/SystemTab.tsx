@@ -38,6 +38,7 @@ import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useAgentPeripheralsStore } from "@/stores/agent-peripherals-store";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
 import { useAgentScriptsStore } from "@/stores/agent-scripts-store";
+import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { AgentDisconnectedPage } from "./AgentDisconnectedPage";
 import { BoardPinoutView } from "./shared/BoardPinoutView";
 import { ServiceTable } from "./shared/ServiceTable";
@@ -73,15 +74,51 @@ function groupPeripherals(peripherals: PeripheralInfo[]): DeviceGroup[] {
     ["codec", "isp", "decoder"].includes(p.category)
   );
   const radios = filtered.filter((p) => p.category === "video");
-  const other = filtered.filter((p) => p.category === "compute");
+  // Separate NPU/AI accelerators from generic compute devices
+  const npuKeywords = ["aic", "npu", "rknn", "tensorrt", "coral", "hailo", "myriad"];
+  const computeDevices = filtered.filter((p) => p.category === "compute");
+  const aiAccelerators = computeDevices.filter((p) =>
+    npuKeywords.some((kw) => p.name.toLowerCase().includes(kw))
+  );
+  const other = computeDevices.filter((p) =>
+    !npuKeywords.some((kw) => p.name.toLowerCase().includes(kw))
+  );
 
   const groups: DeviceGroup[] = [];
   if (fc.length > 0) groups.push({ title: "Flight Controller", icon: Gauge, devices: fc });
   if (cameras.length > 0) groups.push({ title: "Cameras", icon: Camera, devices: cameras });
+  if (aiAccelerators.length > 0) groups.push({ title: "AI Accelerator (NPU)", icon: Cpu, devices: aiAccelerators });
   if (videoHw.length > 0) groups.push({ title: "Video Hardware", icon: MonitorPlay, devices: videoHw });
   if (radios.length > 0) groups.push({ title: "Radio Links", icon: Radio, devices: radios });
   if (other.length > 0) groups.push({ title: "Other Peripherals", icon: HardDrive, devices: other });
   return groups;
+}
+
+// ── NPU Badge (for hero card) ──
+
+function NpuBadge() {
+  const npuAvailable = useAgentCapabilitiesStore((s) => s.compute.npu_available);
+  const npuTops = useAgentCapabilitiesStore((s) => s.compute.npu_tops);
+  const npuRuntime = useAgentCapabilitiesStore((s) => s.compute.npu_runtime);
+  const loaded = useAgentCapabilitiesStore((s) => s.loaded);
+
+  if (!loaded) return null;
+
+  if (!npuAvailable) {
+    return (
+      <p className="text-[11px] text-text-tertiary mt-0.5 flex items-center gap-1">
+        <Cpu size={10} />
+        NPU: Not available
+      </p>
+    );
+  }
+
+  return (
+    <p className="text-[11px] text-status-success mt-0.5 flex items-center gap-1">
+      <Cpu size={10} />
+      NPU: {npuTops} TOPS ({npuRuntime?.toUpperCase()})
+    </p>
+  );
 }
 
 // ── Scan progress animation ──
@@ -377,6 +414,7 @@ export function SystemTab() {
                   {status.board?.cpu_cores ? ` · ${status.board.cpu_cores} cores` : ""}
                   {status.board?.ram_mb ? ` · ${status.board.ram_mb} MB RAM` : ""}
                 </p>
+                <NpuBadge />
               </div>
               <span className="text-xs font-mono text-text-tertiary">v{status.version}</span>
             </div>
