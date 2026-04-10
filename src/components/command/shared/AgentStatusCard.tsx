@@ -31,10 +31,9 @@ export function AgentStatusCard({ status }: AgentStatusCardProps) {
   const memPct = resources?.memory_percent ?? status.health?.memory_percent ?? 0;
   const diskPct = resources?.disk_percent ?? status.health?.disk_percent ?? 0;
   const temp = resources?.temperature ?? status.health?.temperature ?? null;
-  // FC connected: infer from services — if ados-mavlink is running, FC is likely connected
-  // Also check status prop as backup
-  const fcFromServices = services.some(s => s.name === "ados-mavlink" && s.status === "running");
-  const fcConnected = status.fc_connected || fcFromServices;
+  // FC connected: trust the agent's authoritative fc_connected field from StateIPC.
+  // Service running != FC connected (service may be scanning for the serial port).
+  const fcConnected = status.fc_connected ?? false;
   // Uptime: estimate from cpuHistory length (each entry ~5s) if status.uptime_seconds is 0
   const uptimeSeconds = status.uptime_seconds || (cpuHistory.length * 5);
   return (

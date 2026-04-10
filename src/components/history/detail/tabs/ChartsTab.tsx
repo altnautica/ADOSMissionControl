@@ -22,9 +22,13 @@ import {
   ReferenceLine,
 } from "recharts";
 import { Card } from "@/components/ui/card";
-import { loadRecordingFrames } from "@/lib/telemetry-recorder";
+import { loadRecordingFrames, type TelemetryFrame } from "@/lib/telemetry-recorder";
 import { useChartCursor } from "@/stores/use-chart-cursor";
 import { buildSeries, EMPTY_SERIES, type SeriesData, type SeriesPoint } from "@/lib/flight-analysis/series-builder";
+import { CustomChartBuilder } from "@/components/history/detail/charts/CustomChartBuilder";
+import { StatisticsPanel } from "@/components/history/detail/charts/StatisticsPanel";
+import { CorrelationPanel } from "@/components/history/detail/charts/CorrelationPanel";
+import { VibrationSpectrogramPanel } from "@/components/history/detail/charts/VibrationSpectrogramPanel";
 import type { FlightRecord, FlightEvent } from "@/lib/types";
 
 interface ChartsTabProps {
@@ -46,6 +50,7 @@ export function ChartsTab({ record }: ChartsTabProps) {
 
 function ChartsTabLoaded({ recordingId, record }: { recordingId: string; record: FlightRecord }) {
   const [series, setSeries] = useState<SeriesData>(EMPTY_SERIES);
+  const [rawFrames, setRawFrames] = useState<TelemetryFrame[]>([]);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -53,6 +58,7 @@ function ChartsTabLoaded({ recordingId, record }: { recordingId: string; record:
     void loadRecordingFrames(recordingId).then((frames) => {
       if (cancelled) return;
       setSeries(buildSeries(frames));
+      setRawFrames(frames);
       setLoaded(true);
     });
     return () => {
@@ -118,6 +124,13 @@ function ChartsTabLoaded({ recordingId, record }: { recordingId: string; record:
         ]}
         events={record.events}
       />
+      {/* Phase 17a — custom chart builder (any channel, any field, uPlot) */}
+      <CustomChartBuilder frames={rawFrames} />
+      {/* Phase 17b — statistics + correlation */}
+      <StatisticsPanel frames={rawFrames} />
+      <CorrelationPanel frames={rawFrames} />
+      {/* Phase 17c — vibration spectrogram */}
+      <VibrationSpectrogramPanel frames={rawFrames} />
     </div>
   );
 }

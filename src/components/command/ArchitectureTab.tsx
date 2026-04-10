@@ -237,7 +237,7 @@ export function ArchitectureTab() {
   const memPct = resources?.memory_percent ?? 0;
   const diskPct = resources?.disk_percent ?? 0;
   const temp = resources?.temperature ?? 0;
-  const fcConnected = status?.fc_connected || services.some((s) => s.name === "ados-mavlink" && s.status === "running");
+  const fcConnected = status?.fc_connected ?? false;
   const uptimeSeconds = status?.uptime_seconds || cpuHistory.length * 5;
 
   async function handleScan() {
