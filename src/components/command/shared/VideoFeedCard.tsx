@@ -150,6 +150,37 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
     return () => setVideoElement(null);
   }, [videoEl]);
 
+  // Live-edge catch-up: prevent the video from drifting behind real-time.
+  // WebRTC jitter buffers accumulate small delays (USB camera jitter,
+  // encoding variance, network micro-bursts) and the <video> element plays
+  // at 1.0x forever, so without intervention the stream falls progressively
+  // behind. This interval checks the gap between the buffer's live edge and
+  // the current playback position:
+  //   >0.5s behind  → skip forward to near-live (hard reset)
+  //   0.15-0.5s     → play at 1.05x to gently catch up
+  //   <=0.15s       → normal 1.0x playback
+  useEffect(() => {
+    const video = videoEl;
+    if (!video) return;
+
+    const interval = setInterval(() => {
+      if (!video.buffered.length || video.paused) return;
+      const bufferEnd = video.buffered.end(video.buffered.length - 1);
+      const lag = bufferEnd - video.currentTime;
+
+      if (lag > 0.5) {
+        // Too far behind — jump to near-live
+        video.currentTime = bufferEnd - 0.05;
+      } else if (lag > 0.15 && video.playbackRate === 1.0) {
+        video.playbackRate = 1.05;
+      } else if (lag <= 0.15 && video.playbackRate !== 1.0) {
+        video.playbackRate = 1.0;
+      }
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, [videoEl]);
+
   // DEC-107 Phase H: cascade hook owns all transport selection + connection
   // logic. The hook respects the user's `transportMode` preference: in Auto
   // mode it cascades LAN → P2P MQTT, in pinned mode it tries only that mode.

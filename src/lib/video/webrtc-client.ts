@@ -67,6 +67,21 @@ function reportHealth(
   });
 }
 
+/**
+ * Munge SDP to hint Chrome for minimum jitter buffer. The
+ * `a=x-google-flag:conference` attribute tells Chrome's WebRTC stack to
+ * prioritize low latency over smooth playout, reducing the default 100-200ms
+ * adaptive jitter buffer to its minimum. Applied to the video m-section.
+ */
+function mungeForLowLatency(sdp: string): string {
+  if (sdp.includes("a=x-google-flag:conference")) return sdp;
+  // Insert after the first video m-line's mid attribute
+  return sdp.replace(
+    /(m=video[^\r\n]*\r\n)/,
+    "$1a=x-google-flag:conference\r\n",
+  );
+}
+
 // Part I P0-3: helper for AbortSignal-driven cancellation. Throws an
 // AbortError that classifyError catches and reports as { code: "aborted" }.
 function checkAborted(signal?: AbortSignal): void {
@@ -282,11 +297,16 @@ export async function startStream(
     });
     checkAborted(signal);
 
+    // Munge SDP for low latency: x-google-flag:conference tells Chrome to
+    // use its minimum jitter buffer instead of the conservative default
+    // (100-200ms which grows under any packet variance).
+    const offerSdp = mungeForLowLatency(localPc.localDescription!.sdp);
+
     // Send offer to WHEP endpoint (fetch supports AbortSignal natively)
     const response = await fetch(whepUrl, {
       method: "POST",
       headers: { "Content-Type": "application/sdp" },
-      body: localPc.localDescription!.sdp,
+      body: offerSdp,
       signal,
     });
 
@@ -514,8 +534,9 @@ export async function startStreamViaMqttSignaling(
             reject(new Error(`MQTT subscribe failed: ${err.message}`));
             return;
           }
-          // Subscribed → publish offer
-          mqttClient!.publish(topicOffer, localPc!.localDescription!.sdp, { qos: 1 });
+          // Subscribed → publish offer (with low-latency SDP hint)
+          const offerSdp = mungeForLowLatency(localPc!.localDescription!.sdp);
+          mqttClient!.publish(topicOffer, offerSdp, { qos: 1 });
         });
       }),
       signal,
