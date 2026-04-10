@@ -9,6 +9,7 @@
 
 import { Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Select } from "@/components/ui/select";
 import type { WizardStepProps } from "../SetupWizard";
 import type { ConfigParam } from "@/lib/agent/feature-types";
 
@@ -63,20 +64,12 @@ function SelectParam({
   onChange: (v: string) => void;
 }) {
   return (
-    <div className="space-y-1">
-      <label className="text-[11px] text-text-secondary">{param.label}</label>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full px-2.5 py-1.5 text-xs bg-bg-tertiary border border-border-default rounded text-text-primary outline-none focus:border-accent-primary"
-      >
-        {param.options?.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
-    </div>
+    <Select
+      label={param.label}
+      value={value}
+      onChange={onChange}
+      options={param.options ?? []}
+    />
   );
 }
 

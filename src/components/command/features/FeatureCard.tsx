@@ -13,7 +13,6 @@ import {
   Settings,
   Play,
   Square,
-  Loader2,
   AlertTriangle,
   CircleDot,
 } from "lucide-react";

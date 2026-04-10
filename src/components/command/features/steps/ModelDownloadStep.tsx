@@ -6,13 +6,23 @@
  * @license GPL-3.0-only
  */
 
-import { Check, Download, HardDrive, AlertTriangle } from "lucide-react";
+import { useState, useCallback } from "react";
+import { Check, Download, HardDrive, AlertTriangle, Loader2 } from "lucide-react";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import type { WizardStepProps } from "../SetupWizard";
 
 export function ModelDownloadStep({ feature }: WizardStepProps) {
   const models = useAgentCapabilitiesStore((s) => s.models);
   const compute = useAgentCapabilitiesStore((s) => s.compute);
+  const [downloading, setDownloading] = useState<string | null>(null);
+
+  const handleDownload = useCallback(async (modelId: string) => {
+    setDownloading(modelId);
+    // TODO(agent-api): POST /api/vision/models/{modelId}/download
+    // For now, simulate a download delay in demo mode
+    await new Promise((r) => setTimeout(r, 1500));
+    setDownloading(null);
+  }, []);
 
   const requiredModels = feature.requiredModels ?? [];
 
@@ -67,9 +77,17 @@ export function ModelDownloadStep({ feature }: WizardStepProps) {
                     Installed
                   </span>
                 ) : (
-                  <button className="inline-flex items-center gap-1 text-[10px] text-white px-2 py-1 rounded bg-accent-primary hover:opacity-90 transition-opacity">
-                    <Download size={10} />
-                    Download
+                  <button
+                    onClick={() => handleDownload(req.modelId)}
+                    disabled={downloading === req.modelId}
+                    className="inline-flex items-center gap-1 text-[10px] text-white px-2 py-1 rounded bg-accent-primary hover:opacity-90 transition-opacity disabled:opacity-50"
+                  >
+                    {downloading === req.modelId ? (
+                      <Loader2 size={10} className="animate-spin" />
+                    ) : (
+                      <Download size={10} />
+                    )}
+                    {downloading === req.modelId ? "Downloading..." : "Download"}
                   </button>
                 )}
               </div>

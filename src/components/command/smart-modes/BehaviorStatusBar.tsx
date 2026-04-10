@@ -68,7 +68,10 @@ export function BehaviorStatusBar() {
         </span>
       </div>
       <button
-        onClick={clear}
+        onClick={() => {
+          // TODO(agent-api): POST /api/features/{activeBehavior}/deactivate
+          clear();
+        }}
         className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium text-status-error border border-status-error/30 rounded hover:bg-status-error/10 transition-colors"
       >
         <OctagonX className="w-3.5 h-3.5" />

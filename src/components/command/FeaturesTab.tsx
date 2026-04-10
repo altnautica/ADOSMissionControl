@@ -101,14 +101,12 @@ export function FeaturesTab() {
     }
   }, []);
 
-  const handleActivate = useCallback((feature: ResolvedFeature) => {
-    // TODO: POST /api/features/{id}/activate
-    console.log("[Features] Activate:", feature.id);
+  const handleActivate = useCallback((_feature: ResolvedFeature) => {
+    // TODO(agent-api): POST /api/features/{id}/activate
   }, []);
 
-  const handleDeactivate = useCallback((feature: ResolvedFeature) => {
-    // TODO: POST /api/features/{id}/deactivate
-    console.log("[Features] Deactivate:", feature.id);
+  const handleDeactivate = useCallback((_feature: ResolvedFeature) => {
+    // TODO(agent-api): POST /api/features/{id}/deactivate
   }, []);
 
   if (!connected) {

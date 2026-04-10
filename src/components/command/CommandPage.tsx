@@ -63,6 +63,13 @@ export function CommandPage() {
   }), [t]);
 
   const [activeTab, setActiveTab] = useState<CommandSubTab>("overview");
+
+  // Auto-redirect when active tab becomes unavailable (e.g., Smart Modes disabled)
+  useEffect(() => {
+    if (!visibleTabs.includes(activeTab)) {
+      setActiveTab("overview");
+    }
+  }, [visibleTabs, activeTab]);
   const [urlInput, setUrlInput] = useState("http://localhost:8080");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [pairingOpen, setPairingOpen] = useState(false);

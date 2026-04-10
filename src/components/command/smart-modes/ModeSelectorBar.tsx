@@ -17,26 +17,31 @@ import {
   Mountain,
   Hand,
   Maximize2,
+  MoveUpRight,
+  ArrowUp,
+  RotateCw,
+  Undo2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSmartModeStore } from "@/stores/smart-mode-store";
 import { useAvailableFeatures } from "@/hooks/use-available-features";
 import type { LucideIcon } from "lucide-react";
 
+// Map feature IDs to their icons
 const ICON_MAP: Record<string, LucideIcon> = {
-  UserRound,
-  Crosshair,
-  CircleDot,
-  MoveUpRight: Camera,
-  ArrowUp: Camera,
-  RotateCw: Camera,
-  Orbit: Camera,
-  Undo2: Camera,
-  ShieldAlert,
-  Target,
-  Mountain,
-  Hand,
-  Maximize2,
+  "follow-me": UserRound,
+  "active-track": Crosshair,
+  orbit: CircleDot,
+  "quickshot-dronie": MoveUpRight,
+  "quickshot-rocket": ArrowUp,
+  "quickshot-circle": RotateCw,
+  "quickshot-helix": CircleDot,
+  "quickshot-boomerang": Undo2,
+  "obstacle-avoidance": ShieldAlert,
+  "precision-landing": Target,
+  "terrain-following": Mountain,
+  "gesture-recognition": Hand,
+  panorama: Maximize2,
 };
 
 /** Modes shown in the selector. QuickShots are grouped under one "QuickShots" pill. */
@@ -65,17 +70,19 @@ export function ModeSelectorBar() {
   const setActiveBehavior = useSmartModeStore((s) => s.setActiveBehavior);
   const features = useAvailableFeatures();
 
+  // Only show enabled smart modes (A8 fix: was f.status !== "unavailable")
   const enabledIds = new Set(
     features
-      .filter((f) => f.type === "smart-mode" && f.status !== "unavailable")
+      .filter((f) => f.type === "smart-mode" && f.enabled)
       .map((f) => f.id)
   );
 
-  // Check if any QuickShot is available
+  // Check if any QuickShot is enabled
   const hasQuickShots = QUICKSHOT_IDS.some((id) => enabledIds.has(id));
   const isQuickShotActive = QUICKSHOT_IDS.some((id) => id === activeBehavior);
 
   const handleSelect = (modeId: string) => {
+    // TODO(agent-api): POST /api/features/{modeId}/activate or deactivate
     if (modeId === activeBehavior) {
       setActiveBehavior(null);
     } else {
@@ -84,10 +91,10 @@ export function ModeSelectorBar() {
   };
 
   const handleQuickShotSelect = () => {
+    // TODO(agent-api): POST /api/features/quickshots/activate or deactivate
     if (isQuickShotActive) {
       setActiveBehavior(null);
     } else {
-      // Set to the grouped "quickshots" marker; QuickShotLauncher handles sub-selection
       setActiveBehavior("quickshots");
     }
   };
@@ -119,7 +126,8 @@ export function ModeSelectorBar() {
         const feature = features.find((f) => f.id === modeId);
         if (!feature) return null;
 
-        const Icon = ICON_MAP[feature.icon] ?? CircleDot;
+        // A7 fix: lookup by feature ID, not icon name
+        const Icon = ICON_MAP[feature.id] ?? CircleDot;
         const isActive = activeBehavior === modeId;
 
         return (

@@ -89,15 +89,18 @@ export function SetupWizard({ feature, open, onClose, onComplete }: SetupWizardP
   const isFirstStep = currentStep === 0;
 
   const handleNext = useCallback(() => {
-    if (isLastStep) {
-      // Enable the feature
-      useAgentCapabilitiesStore.getState().optimisticEnableFeature(feature.id);
-      onComplete(feature.id, params);
-      onClose();
-    } else {
-      setCurrentStep((s) => Math.min(s + 1, steps.length - 1));
-    }
-  }, [isLastStep, feature.id, params, onComplete, onClose, steps.length]);
+    setCurrentStep((current) => {
+      const last = current >= steps.length - 1;
+      if (last) {
+        // Final step: enable the feature and close wizard
+        useAgentCapabilitiesStore.getState().optimisticEnableFeature(feature.id);
+        onComplete(feature.id, params);
+        onClose();
+        return current;
+      }
+      return current + 1;
+    });
+  }, [steps.length, feature.id, params, onComplete, onClose]);
 
   const handleBack = useCallback(() => {
     setCurrentStep((s) => Math.max(s - 1, 0));

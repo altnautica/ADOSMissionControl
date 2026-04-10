@@ -8,6 +8,7 @@
  * @license GPL-3.0-only
  */
 
+import { useMemo } from "react";
 import dynamic from "next/dynamic";
 import { cn } from "@/lib/utils";
 import { useSmartModeStore } from "@/stores/smart-mode-store";
@@ -18,6 +19,9 @@ import { OrbitPanel } from "./smart-modes/OrbitPanel";
 import { QuickShotLauncher } from "./smart-modes/QuickShotLauncher";
 import { ObstacleAvoidancePanel } from "./smart-modes/ObstacleAvoidancePanel";
 import { ModeSelectorBar } from "./smart-modes/ModeSelectorBar";
+import { VisionOverlay } from "./smart-modes/VisionOverlay";
+import { TargetDesignation } from "./smart-modes/TargetDesignation";
+import type { Detection } from "@/lib/agent/feature-types";
 
 // Dynamic import for VideoFeedCard to avoid SSR issues with WebRTC/video APIs
 const VideoFeedCard = dynamic(
@@ -94,9 +98,22 @@ function QuickActions() {
   );
 }
 
+// Mock detections for demo mode (will come from agent /api/vision/state in production)
+const MOCK_DETECTIONS: Detection[] = [
+  { class: "Person", confidence: 0.94, bbox: { x: 400, y: 200, w: 120, h: 280 }, track_id: 1, designated: true },
+  { class: "Person", confidence: 0.87, bbox: { x: 800, y: 250, w: 100, h: 240 }, track_id: 2, designated: false },
+];
+
 export function SmartModesTab() {
   const activeBehavior = useSmartModeStore((s) => s.activeBehavior);
   const engineState = useAgentCapabilitiesStore((s) => s.vision.engine_state);
+  const visionActive = engineState === "active" || engineState === "ready";
+
+  // In demo mode, show mock detections when vision is active
+  const detections = useMemo<Detection[]>(() => {
+    if (!visionActive || !activeBehavior) return [];
+    return MOCK_DETECTIONS;
+  }, [visionActive, activeBehavior]);
 
   // Show a notice if the vision engine is not ready
   if (engineState === "off" || engineState === "error") {
@@ -118,9 +135,30 @@ export function SmartModesTab() {
 
       {/* Middle: Video feed (left) + sidebar (right) */}
       <div className="flex gap-3 flex-1 min-h-0">
-        {/* Video feed, larger */}
-        <div className="flex-1 min-w-0">
+        {/* Video feed with vision overlay */}
+        <div className="flex-1 min-w-0 relative">
           <VideoFeedCard className="h-full" />
+          {detections.length > 0 && (
+            <VisionOverlay
+              detections={detections}
+              frameWidth={1920}
+              frameHeight={1080}
+              containerWidth={640}
+              containerHeight={360}
+              statusText={activeBehavior ? `${activeBehavior.toUpperCase()} - TRACKING` : undefined}
+            />
+          )}
+          {visionActive && activeBehavior && (
+            <TargetDesignation
+              enabled={true}
+              frameWidth={1920}
+              frameHeight={1080}
+              onDesignate={(x, y, fw, fh) => {
+                // TODO(agent-api): POST /api/vision/target { x, y, frame_width: fw, frame_height: fh }
+                console.log("[Vision] Designate target:", { x, y, fw, fh });
+              }}
+            />
+          )}
         </div>
 
         {/* Sidebar */}
