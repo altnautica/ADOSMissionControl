@@ -434,6 +434,22 @@ fullName: v.optional(v.string()),
         method: v.union(v.literal("vfr_diff"), v.literal("attitude_track")),
       }),
     ),
+    // Phase 20a — media files linked to this flight (metadata only, blobs stay in IDB).
+    media: v.optional(
+      v.array(
+        v.object({
+          id: v.string(),
+          name: v.string(),
+          type: v.string(),
+          size: v.number(),
+          capturedAt: v.number(),
+          lat: v.optional(v.number()),
+          lon: v.optional(v.number()),
+          alt: v.optional(v.number()),
+          blobKey: v.string(),
+        }),
+      ),
+    ),
     // Phase 15 — reverse-geocoded place names from takeoff / landing coords.
     takeoffPlaceName: v.optional(v.string()),
     landingPlaceName: v.optional(v.string()),

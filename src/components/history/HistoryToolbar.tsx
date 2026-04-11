@@ -5,12 +5,13 @@ import { useTranslations } from "next-intl";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Download, Star, X, HardDrive, Upload } from "lucide-react";
+import { Download, Star, X, HardDrive, Upload, Image } from "lucide-react";
 import type { FlightRecord } from "@/lib/types";
 import { exportFlightRecordsAsCsv } from "@/lib/csv-export";
 import { CloudSyncBadge } from "./CloudSyncBadge";
 import { LogBrowser } from "./dataflash/LogBrowser";
 import { UploadLog } from "./dataflash/UploadLog";
+import { MediaUploader } from "./media/MediaUploader";
 
 export type DatePreset = "all" | "today" | "7d" | "30d" | "month";
 
@@ -64,6 +65,7 @@ export function HistoryToolbar({
   const t = useTranslations("history");
   const [logBrowserOpen, setLogBrowserOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [mediaOpen, setMediaOpen] = useState(false);
 
   const STATUS_OPTIONS = useMemo(() => [
     { value: "all", label: t("allStatuses") },
@@ -197,10 +199,20 @@ export function HistoryToolbar({
       >
         {t("importBin")}
       </Button>
+      <Button
+        variant="ghost"
+        size="md"
+        icon={<Image size={14} />}
+        onClick={() => setMediaOpen(true)}
+        title="Import media"
+      >
+        Media
+      </Button>
       <CloudSyncBadge />
 
       <LogBrowser open={logBrowserOpen} onClose={() => setLogBrowserOpen(false)} />
       <UploadLog open={uploadOpen} onClose={() => setUploadOpen(false)} />
+      <MediaUploader open={mediaOpen} onClose={() => setMediaOpen(false)} />
     </div>
   );
 }

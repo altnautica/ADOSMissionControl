@@ -253,6 +253,21 @@ const RECORD_VALIDATOR = {
       method: v.union(v.literal("vfr_diff"), v.literal("attitude_track")),
     }),
   ),
+  media: v.optional(
+    v.array(
+      v.object({
+        id: v.string(),
+        name: v.string(),
+        type: v.string(),
+        size: v.number(),
+        capturedAt: v.number(),
+        lat: v.optional(v.number()),
+        lon: v.optional(v.number()),
+        alt: v.optional(v.number()),
+        blobKey: v.string(),
+      }),
+    ),
+  ),
   takeoffPlaceName: v.optional(v.string()),
   landingPlaceName: v.optional(v.string()),
   country: v.optional(v.string()),

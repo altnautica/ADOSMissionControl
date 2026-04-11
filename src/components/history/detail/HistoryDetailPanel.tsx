@@ -26,6 +26,7 @@ import { EventsTab } from "./tabs/EventsTab";
 import { AnalysisTab } from "./tabs/AnalysisTab";
 import { NotesTab } from "./tabs/NotesTab";
 import { ExportTab } from "./tabs/ExportTab";
+import { MediaTab } from "./tabs/MediaTab";
 import { cn } from "@/lib/utils";
 
 const statusVariant: Record<string, "success" | "warning" | "error" | "neutral"> = {
@@ -35,7 +36,7 @@ const statusVariant: Record<string, "success" | "warning" | "error" | "neutral">
   in_progress: "neutral",
 };
 
-type TabId = "overview" | "map" | "charts" | "events" | "analysis" | "notes" | "export";
+type TabId = "overview" | "map" | "charts" | "events" | "analysis" | "notes" | "media" | "export";
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "overview", label: "Overview" },
@@ -44,6 +45,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "events", label: "Events" },
   { id: "analysis", label: "Analysis" },
   { id: "notes", label: "Notes" },
+  { id: "media", label: "Media" },
   { id: "export", label: "Export" },
 ];
 
@@ -228,6 +230,7 @@ export function HistoryDetailPanel({ record, onClose, onReplay, listCollapsed, o
         {active === "events" && <EventsTab record={record} />}
         {active === "analysis" && <AnalysisTab record={record} />}
         {active === "notes" && <NotesTab record={record} />}
+        {active === "media" && <MediaTab record={record} />}
         {active === "export" && <ExportTab record={record} matchedRecording={matchedRecording} />}
       </div>
     </div>

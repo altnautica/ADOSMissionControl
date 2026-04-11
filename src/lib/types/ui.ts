@@ -183,6 +183,30 @@ export interface FlightRecord {
 
   /** Phase 16d — wind vector estimated from FC telemetry (VFR_HUD airspeed vs groundspeed). */
   windEstimate?: WindEstimate;
+
+  /** Phase 20a — media files linked to this flight. */
+  media?: FlightMedia[];
+}
+
+/** A photo or video file linked to a flight. */
+export interface FlightMedia {
+  id: string;
+  /** Original filename. */
+  name: string;
+  /** MIME type (image/jpeg, video/mp4, etc.). */
+  type: string;
+  /** File size in bytes. */
+  size: number;
+  /** Capture timestamp from EXIF (ms epoch), or file modification time if no EXIF. */
+  capturedAt: number;
+  /** GPS latitude from EXIF, if present. */
+  lat?: number;
+  /** GPS longitude from EXIF, if present. */
+  lon?: number;
+  /** Camera altitude from EXIF, if present. */
+  alt?: number;
+  /** IDB key where the blob is stored. */
+  blobKey: string;
 }
 
 /** Frozen geofence configuration captured at flight arm time. */
