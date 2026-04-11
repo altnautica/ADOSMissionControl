@@ -10,9 +10,11 @@ import { Card } from "@/components/ui/card";
 import { DataValue } from "@/components/ui/data-value";
 import { formatDate, formatDuration, formatTime } from "@/lib/utils";
 import { computeSuiteKpis } from "@/lib/kpi/suite-kpis";
+import { summarizeFlight, suggestTags } from "@/lib/ai/flight-summarizer";
 import { useBatteryRegistryStore } from "@/stores/battery-registry-store";
 import { useEquipmentRegistryStore } from "@/stores/equipment-registry-store";
-import { CheckCircle2, XCircle, AlertTriangle, Sun, Moon, Sparkles, Cloud, Shield, Activity, MapPin, Hexagon, Wind } from "lucide-react";
+import { useHistoryStore } from "@/stores/history-store";
+import { CheckCircle2, XCircle, AlertTriangle, Sun, Moon, Sparkles, Cloud, Shield, Activity, MapPin, Hexagon, Wind, Wand2, Tag } from "lucide-react";
 import type {
   FlightRecord,
   FlightPhase,
@@ -76,6 +78,9 @@ export function OverviewTab({ record }: OverviewTabProps) {
           )}
         </div>
       </Card>
+
+      {/* Phase 22 — AI summary + suggested tags */}
+      <SummaryCard record={record} />
 
       {record.adherence && (
         <Card title="Mission Adherence" padding={true}>
@@ -179,6 +184,51 @@ function Row({ label, value, mono = false }: { label: string; value: string; mon
       <span className="text-[11px] text-text-secondary">{label}</span>
       <span className={`text-xs text-text-primary ${mono ? "font-mono" : ""}`}>{value}</span>
     </div>
+  );
+}
+
+function SummaryCard({ record }: { record: FlightRecord }) {
+  const summary = summarizeFlight(record);
+  const suggested = suggestTags(record);
+  const existingTags = record.tags ?? [];
+  const newTags = suggested.filter((t) => !existingTags.includes(t));
+
+  const addTag = (tag: string) => {
+    const store = useHistoryStore.getState();
+    const current = store.records.find((r) => r.id === record.id)?.tags ?? [];
+    if (current.includes(tag)) return;
+    store.updateRecord(record.id, { tags: [...current, tag] });
+    void store.persistToIDB();
+  };
+
+  return (
+    <Card title="Summary" padding={true}>
+      <div className="flex flex-col gap-2">
+        <div className="flex items-start gap-1.5">
+          <Wand2 size={11} className="text-accent-primary shrink-0 mt-0.5" />
+          <p className="text-[11px] text-text-primary leading-relaxed">{summary}</p>
+        </div>
+        {newTags.length > 0 && (
+          <div className="flex flex-col gap-1 mt-1 border-t border-border-default pt-2">
+            <div className="flex items-center gap-1 text-[10px] text-text-secondary">
+              <Tag size={10} />
+              Suggested tags
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {newTags.map((tag) => (
+                <button
+                  key={tag}
+                  onClick={() => addTag(tag)}
+                  className="text-[10px] px-1.5 py-0.5 rounded bg-bg-tertiary text-text-secondary hover:bg-accent-primary/20 hover:text-accent-primary transition-colors"
+                >
+                  + {tag}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </Card>
   );
 }
 

@@ -16,13 +16,14 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select } from "@/components/ui/select";
-import { Download, FileText, Globe, FileCode, FileJson, FileType, AlertTriangle } from "lucide-react";
+import { Download, FileText, Globe, FileCode, FileJson, FileType, AlertTriangle, Calendar } from "lucide-react";
 import {
   downloadTelemetryCSV,
   downloadTelemetryKML,
   downloadTelemetryKMZ,
 } from "@/lib/telemetry-export";
 import { downloadGpx } from "@/lib/formats/gpx-exporter";
+import { exportFlightsAsIcs } from "@/lib/export/ics";
 import { exportFlights, downloadBlob } from "@/lib/compliance/exporter";
 import { validateForJurisdiction, type ValidationIssue } from "@/lib/compliance/validator";
 import { listJurisdictions, JURISDICTIONS, type JurisdictionCode } from "@/lib/compliance/jurisdictions";
@@ -204,6 +205,14 @@ export function ExportTab({ record, matchedRecording }: ExportTabProps) {
               onClick={handleJson}
             >
               JSON
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={<Calendar size={12} />}
+              onClick={() => exportFlightsAsIcs([record], `${fileBase}.ics`)}
+            >
+              ICS
             </Button>
           </div>
         </div>
