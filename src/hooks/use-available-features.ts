@@ -7,6 +7,7 @@
 
 import { useMemo } from "react";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
+import { useVideoStore } from "@/stores/video-store";
 import { FEATURE_CATALOG } from "@/lib/agent/feature-catalog";
 import type { ResolvedFeature, FeatureStatus } from "@/lib/agent/feature-types";
 
@@ -18,9 +19,25 @@ export function useAvailableFeatures(): ResolvedFeature[] {
   const enabledFeatures = useAgentCapabilitiesStore((s) => s.features.enabled);
   const activeFeature = useAgentCapabilitiesStore((s) => s.features.active);
   const vision = useAgentCapabilitiesStore((s) => s.vision);
+  // Fallback camera detection: if video is streaming, a camera is present
+  // even if the capabilities API didn't report it.
+  const agentVideoState = useVideoStore((s) => s.agentVideoState);
 
   return useMemo(() => {
     return Object.values(FEATURE_CATALOG).map((def): ResolvedFeature => {
+      // Coming-soon features skip all capability checks
+      if (def.comingSoon) {
+        return {
+          ...def,
+          status: "coming-soon",
+          enabled: false,
+          active: false,
+          setupComplete: false,
+          missingSensors: [],
+          statusReason: "This feature is under development",
+        };
+      }
+
       const isEnabled = enabledFeatures.includes(def.id);
       const isActive = activeFeature === def.id;
       const missingSensors: string[] = [];
@@ -31,7 +48,8 @@ export function useAvailableFeatures(): ResolvedFeature[] {
         let met = false;
         switch (req.type) {
           case "camera":
-            met = cameras.length > 0;
+            // Check capabilities store first, fall back to video state
+            met = cameras.length > 0 || agentVideoState === "running";
             break;
           case "npu":
             met = compute.npu_available;
@@ -95,7 +113,7 @@ export function useAvailableFeatures(): ResolvedFeature[] {
         statusReason,
       };
     });
-  }, [loaded, tier, cameras, compute, enabledFeatures, activeFeature, vision]);
+  }, [loaded, tier, cameras, compute, enabledFeatures, activeFeature, vision, agentVideoState]);
 }
 
 /** Filter resolved features by type. */

@@ -53,6 +53,7 @@ export interface FeatureDef {
   requiredModels?: ModelRequirement[];
   suiteId?: string;
   configSchema?: ConfigParam[];
+  comingSoon?: boolean;
 }
 
 // ── Feature State (resolved from catalog + agent) ────────
@@ -60,6 +61,7 @@ export interface FeatureDef {
 export type FeatureStatus =
   | "unavailable"
   | "available"
+  | "coming-soon"
   | "setup-required"
   | "enabled"
   | "active"

@@ -50,6 +50,7 @@ export const FEATURE_CATALOG: Record<string, FeatureDef> = {
 
   "active-track": {
     id: "active-track",
+    comingSoon: true,
     type: "smart-mode",
     name: "ActiveTrack",
     description: "Multi-target aware tracking with automatic re-acquisition after occlusion",
@@ -79,6 +80,7 @@ export const FEATURE_CATALOG: Record<string, FeatureDef> = {
 
   orbit: {
     id: "orbit",
+    comingSoon: true,
     type: "smart-mode",
     name: "Orbit",
     description: "Circle a point of interest at a configurable radius, speed, and altitude",
@@ -105,6 +107,7 @@ export const FEATURE_CATALOG: Record<string, FeatureDef> = {
 
   "quickshot-dronie": {
     id: "quickshot-dronie",
+    comingSoon: true,
     type: "smart-mode",
     name: "Dronie",
     description: "Fly backward and upward from the target for a dramatic reveal shot",
@@ -131,6 +134,7 @@ export const FEATURE_CATALOG: Record<string, FeatureDef> = {
 
   "quickshot-rocket": {
     id: "quickshot-rocket",
+    comingSoon: true,
     type: "smart-mode",
     name: "Rocket",
     description: "Fly straight up while the camera points down at the subject",
@@ -156,6 +160,7 @@ export const FEATURE_CATALOG: Record<string, FeatureDef> = {
 
   "quickshot-circle": {
     id: "quickshot-circle",
+    comingSoon: true,
     type: "smart-mode",
     name: "Circle Shot",
     description: "Complete a 360-degree orbit around the subject while filming",
@@ -181,6 +186,7 @@ export const FEATURE_CATALOG: Record<string, FeatureDef> = {
 
   "quickshot-helix": {
     id: "quickshot-helix",
+    comingSoon: true,
     type: "smart-mode",
     name: "Helix",
     description: "Spiral upward around the subject while filming from above",
@@ -207,6 +213,7 @@ export const FEATURE_CATALOG: Record<string, FeatureDef> = {
 
   "quickshot-boomerang": {
     id: "quickshot-boomerang",
+    comingSoon: true,
     type: "smart-mode",
     name: "Boomerang",
     description: "Arc away from the subject and return in a smooth boomerang path",
@@ -234,6 +241,7 @@ export const FEATURE_CATALOG: Record<string, FeatureDef> = {
 
   "obstacle-avoidance": {
     id: "obstacle-avoidance",
+    comingSoon: true,
     type: "smart-mode",
     name: "Obstacle Avoidance",
     description: "Automatic obstacle detection with brake or detour maneuvers",
@@ -266,6 +274,7 @@ export const FEATURE_CATALOG: Record<string, FeatureDef> = {
 
   "precision-landing": {
     id: "precision-landing",
+    comingSoon: true,
     type: "smart-mode",
     name: "Precision Landing",
     description: "Land accurately on an ArUco marker or landing pad using visual guidance",
@@ -296,6 +305,7 @@ export const FEATURE_CATALOG: Record<string, FeatureDef> = {
 
   "terrain-following": {
     id: "terrain-following",
+    comingSoon: true,
     type: "smart-mode",
     name: "Terrain Following",
     description: "Maintain constant altitude above ground using downward camera and rangefinder",
@@ -320,6 +330,7 @@ export const FEATURE_CATALOG: Record<string, FeatureDef> = {
 
   "gesture-recognition": {
     id: "gesture-recognition",
+    comingSoon: true,
     type: "utility",
     name: "Gesture Control",
     description: "Control the drone with hand gestures detected by the camera",
@@ -343,6 +354,7 @@ export const FEATURE_CATALOG: Record<string, FeatureDef> = {
 
   panorama: {
     id: "panorama",
+    comingSoon: true,
     type: "utility",
     name: "Panorama",
     description: "Capture a 360-degree panorama or wide-angle composite automatically",
@@ -368,6 +380,7 @@ export const FEATURE_CATALOG: Record<string, FeatureDef> = {
 
   "suite-sentry": {
     id: "suite-sentry",
+    comingSoon: true,
     type: "suite",
     name: "Sentry Suite",
     description: "Patrol and surveillance with perimeter monitoring and intrusion detection",
@@ -396,6 +409,7 @@ export const FEATURE_CATALOG: Record<string, FeatureDef> = {
 
   "suite-survey": {
     id: "suite-survey",
+    comingSoon: true,
     type: "suite",
     name: "Survey Suite",
     description: "Aerial mapping, photogrammetry, and 3D reconstruction capture",
@@ -418,6 +432,7 @@ export const FEATURE_CATALOG: Record<string, FeatureDef> = {
 
   "suite-agriculture": {
     id: "suite-agriculture",
+    comingSoon: true,
     type: "suite",
     name: "Agriculture Suite",
     description: "Crop health monitoring, precision spray control, and field analytics",
@@ -444,6 +459,7 @@ export const FEATURE_CATALOG: Record<string, FeatureDef> = {
 
   "suite-cargo": {
     id: "suite-cargo",
+    comingSoon: true,
     type: "suite",
     name: "Cargo Suite",
     description: "Autonomous delivery with precision landing and route optimization",
@@ -470,6 +486,7 @@ export const FEATURE_CATALOG: Record<string, FeatureDef> = {
 
   "suite-sar": {
     id: "suite-sar",
+    comingSoon: true,
     type: "suite",
     name: "SAR Suite",
     description: "Search and rescue with thermal detection and systematic search patterns",
@@ -498,6 +515,7 @@ export const FEATURE_CATALOG: Record<string, FeatureDef> = {
 
   "suite-inspection": {
     id: "suite-inspection",
+    comingSoon: true,
     type: "suite",
     name: "Inspection Suite",
     description: "Close-range structural assessment with thermal and defect detection",

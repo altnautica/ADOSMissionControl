@@ -68,6 +68,11 @@ const STATUS_CONFIG: Record<
     dotClass: "bg-status-error",
     badgeClass: "bg-status-error/15 text-status-error",
   },
+  "coming-soon": {
+    label: "Coming Soon",
+    dotClass: "bg-text-tertiary",
+    badgeClass: "bg-purple-500/15 text-purple-400",
+  },
 };
 
 function getIcon(iconName: string) {
@@ -88,6 +93,7 @@ export function FeatureCard({
   const config = STATUS_CONFIG[feature.status];
   const Icon = useMemo(() => getIcon(feature.icon), [feature.icon]);
   const isUnavailable = feature.status === "unavailable";
+  const isComingSoon = feature.status === "coming-soon";
   const isActive = feature.status === "active";
   const isEnabled = feature.enabled;
 
@@ -95,7 +101,7 @@ export function FeatureCard({
     <div
       className={cn(
         "border rounded-lg p-3.5 transition-all",
-        isUnavailable
+        isUnavailable || isComingSoon
           ? "border-border-default/50 bg-bg-secondary/50 opacity-60"
           : isActive
             ? "border-status-success/40 bg-bg-secondary"
@@ -110,12 +116,12 @@ export function FeatureCard({
           <div
             className={cn(
               "flex items-center justify-center w-7 h-7 rounded shrink-0",
-              isUnavailable ? "bg-bg-tertiary" : "bg-accent-primary/10"
+              isUnavailable || isComingSoon ? "bg-bg-tertiary" : "bg-accent-primary/10"
             )}
           >
             <Icon
               size={14}
-              className={isUnavailable ? "text-text-tertiary" : "text-accent-primary"}
+              className={isUnavailable || isComingSoon ? "text-text-tertiary" : "text-accent-primary"}
             />
           </div>
           <div className="min-w-0">
@@ -124,16 +130,23 @@ export function FeatureCard({
             </h4>
           </div>
         </div>
-        {/* Status badge */}
-        <span
-          className={cn(
-            "inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium rounded shrink-0",
-            config.badgeClass
+        {/* Status badge + Alpha badge */}
+        <div className="flex items-center gap-1 shrink-0">
+          {feature.id === "follow-me" && (
+            <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-semibold rounded bg-accent-primary/15 text-accent-primary">
+              Alpha
+            </span>
           )}
-        >
-          <span className={cn("w-1.5 h-1.5 rounded-full", config.dotClass)} />
-          {config.label}
-        </span>
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium rounded",
+              config.badgeClass
+            )}
+          >
+            <span className={cn("w-1.5 h-1.5 rounded-full", config.dotClass)} />
+            {config.label}
+          </span>
+        </div>
       </div>
 
       {/* Description */}
