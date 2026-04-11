@@ -12,12 +12,14 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
-import { Download, Star, StarOff, Trash2, X, FileType, GitCompare } from "lucide-react";
+import { Download, Star, StarOff, Trash2, X, FileType, GitCompare, Layers, Map } from "lucide-react";
 import type { FlightRecord } from "@/lib/types";
 import { exportFlightRecordsAsCsv } from "@/lib/csv-export";
 import { useHistoryStore } from "@/stores/history-store";
 import { BulkExportModal } from "./compliance/BulkExportModal";
 import { CompareModal } from "./compare/CompareModal";
+import { OverlayModal } from "./compare/OverlayModal";
+import { FleetCoverageModal } from "./maps/FleetCoverageModal";
 
 interface HistoryBulkActionsProps {
   records: FlightRecord[];
@@ -33,11 +35,14 @@ export function HistoryBulkActions({
   const t = useTranslations("history");
   const [bulkOpen, setBulkOpen] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);
+  const [overlayOpen, setOverlayOpen] = useState(false);
+  const [fleetMapOpen, setFleetMapOpen] = useState(false);
 
   if (selectedIds.size === 0) return null;
 
   const selectedRecords = records.filter((r) => selectedIds.has(r.id));
   const canCompare = selectedRecords.length === 2;
+  const canOverlay = selectedRecords.length >= 2 && selectedRecords.length <= 5;
 
   const handleExport = () => {
     exportFlightRecordsAsCsv(selectedRecords);
@@ -97,6 +102,26 @@ export function HistoryBulkActions({
             Compare
           </Button>
         )}
+        {canOverlay && (
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={<Layers size={14} />}
+            onClick={() => setOverlayOpen(true)}
+            title={`Overlay ${selectedRecords.length} flights`}
+          >
+            Overlay
+          </Button>
+        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<Map size={14} />}
+          onClick={() => setFleetMapOpen(true)}
+          title="Fleet coverage map"
+        >
+          Fleet map
+        </Button>
         <Button
           variant="ghost"
           size="sm"
@@ -144,6 +169,18 @@ export function HistoryBulkActions({
         recordA={selectedRecords[0] ?? null}
         recordB={selectedRecords[1] ?? null}
         onClose={() => setCompareOpen(false)}
+      />
+
+      <OverlayModal
+        open={overlayOpen}
+        records={selectedRecords}
+        onClose={() => setOverlayOpen(false)}
+      />
+
+      <FleetCoverageModal
+        open={fleetMapOpen}
+        records={records}
+        onClose={() => setFleetMapOpen(false)}
       />
     </>
   );

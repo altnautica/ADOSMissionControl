@@ -25,6 +25,8 @@ import { cn } from "@/lib/utils";
 import { useConvexAvailable } from "@/app/ConvexClientProvider";
 import { cmdPairingApi } from "@/lib/community-api-drones";
 import { usePairingStore, type DiscoveredAgent } from "@/stores/pairing-store";
+import { useAuthStore } from "@/stores/auth-store";
+import { SignInModal } from "@/components/auth/SignInModal";
 
 interface PairingDialogProps {
   open: boolean;
@@ -77,6 +79,7 @@ export function PairingDialog({
       onPaired={onPaired}
       claimCode={null}
       preGenerate={null}
+      requiresSignIn={false}
     />
   );
 }
@@ -86,6 +89,8 @@ function PairingDialogWithConvex({
   onClose,
   onPaired,
 }: PairingDialogProps) {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const isAuthLoading = useAuthStore((s) => s.isLoading);
   const claimCode = useMutation(cmdPairingApi.claimPairingCode);
   const preGenerate = useMutation(cmdPairingApi.preGenerateCode);
 
@@ -94,8 +99,9 @@ function PairingDialogWithConvex({
       open={open}
       onClose={onClose}
       onPaired={onPaired}
-      claimCode={claimCode as ClaimCodeMutation}
-      preGenerate={preGenerate as PreGenerateMutation}
+      claimCode={isAuthenticated ? (claimCode as ClaimCodeMutation) : null}
+      preGenerate={isAuthenticated ? (preGenerate as PreGenerateMutation) : null}
+      requiresSignIn={!isAuthenticated && !isAuthLoading}
     />
   );
 }
@@ -106,15 +112,18 @@ function PairingDialogBase({
   onPaired,
   claimCode,
   preGenerate,
+  requiresSignIn,
 }: PairingDialogProps & {
   claimCode: ClaimCodeMutation;
   preGenerate: PreGenerateMutation;
+  requiresSignIn: boolean;
 }) {
   const t = useTranslations("command");
   const tCommon = useTranslations("common");
   const [state, setState] = useState<PairingState>("setup");
   const [preGenCode, setPreGenCode] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
+  const [signInOpen, setSignInOpen] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedInstall, setCopiedInstall] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(CODE_TTL_MS / 1000);
@@ -182,8 +191,11 @@ function PairingDialogBase({
       try {
         const result = await preGenerate({});
         generated = result.code;
-      } catch {
-        generated = fallback();
+      } catch (err) {
+        const raw = err instanceof Error ? err.message : "Could not generate a pairing code";
+        setErrorMessage(raw);
+        setState("error");
+        return;
       }
     } else {
       generated = fallback();
@@ -194,16 +206,19 @@ function PairingDialogBase({
     startCountdown();
   }, [preGenerate, startCountdown]);
 
-  // Auto-generate code when dialog opens
+  // Auto-generate code when dialog opens, unless the user still needs to
+  // sign in. When `requiresSignIn` is true we render the sign-in prompt
+  // below and never touch the mutation.
   useEffect(() => {
     if (!open) return;
+    if (requiresSignIn) return;
     initialDroneIdsRef.current = new Set(
       pairedDrones.map((drone) => drone._id)
     );
     generateCode();
     return () => stopCountdown();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [open, requiresSignIn]);
 
   // Watch for new drones appearing (zero-touch flow)
   useEffect(() => {
@@ -361,8 +376,34 @@ function PairingDialogBase({
         </div>
 
         <div className="px-5 py-5 space-y-5">
+          {/* Sign-in required — shown when Convex is available but the user
+              is signed out. We never call preGenerateCode in this state. */}
+          {requiresSignIn && (
+            <div className="flex flex-col items-center gap-4 py-4 text-center">
+              <div className="w-10 h-10 rounded-full bg-accent-primary/10 flex items-center justify-center">
+                <Cpu size={18} className="text-accent-primary" />
+              </div>
+              <div className="space-y-1 max-w-xs">
+                <p className="text-sm font-medium text-text-primary">
+                  Sign in to pair a drone
+                </p>
+                <p className="text-xs text-text-tertiary leading-relaxed">
+                  Cloud pairing links your drone to your account so you can
+                  reach it from anywhere. Local network flight still works
+                  without an account.
+                </p>
+              </div>
+              <button
+                onClick={() => setSignInOpen(true)}
+                className="px-4 py-1.5 text-xs font-medium bg-accent-primary text-white rounded hover:bg-accent-primary/90 transition-colors"
+              >
+                Sign in
+              </button>
+            </div>
+          )}
+
           {/* Setup — generating code */}
-          {state === "setup" && (
+          {!requiresSignIn && state === "setup" && (
             <div className="flex flex-col items-center gap-3 py-6">
               <Loader2
                 size={24}
@@ -576,6 +617,10 @@ function PairingDialogBase({
           )}
         </div>
       </div>
+      <SignInModal
+        open={signInOpen}
+        onClose={() => setSignInOpen(false)}
+      />
     </div>
   );
 }

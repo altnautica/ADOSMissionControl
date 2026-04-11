@@ -30,6 +30,8 @@ import { useMutation } from "convex/react";
 import { useConvexAvailable } from "@/app/ConvexClientProvider";
 import { cmdPairingApi } from "@/lib/community-api-drones";
 import { usePairingStore } from "@/stores/pairing-store";
+import { useAuthStore } from "@/stores/auth-store";
+import { SignInModal } from "@/components/auth/SignInModal";
 
 const featureIcons = [Radio, Video, Signal, Wifi, Cpu, Sparkles, Layers, Terminal, Code2];
 const featureKeys = [
@@ -60,6 +62,7 @@ export function AgentDisconnectedPage({
     <AgentDisconnectedPageBase
       onOpenPairing={onOpenPairing}
       preGenerate={null}
+      requiresSignIn={false}
     />
   );
 }
@@ -67,11 +70,14 @@ export function AgentDisconnectedPage({
 function AgentDisconnectedPageWithConvex({
   onOpenPairing,
 }: AgentDisconnectedPageProps) {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const isAuthLoading = useAuthStore((s) => s.isLoading);
   const preGenerate = useMutation(cmdPairingApi.preGenerateCode);
   return (
     <AgentDisconnectedPageBase
       onOpenPairing={onOpenPairing}
-      preGenerate={preGenerate as PreGenerateMutation}
+      preGenerate={isAuthenticated ? (preGenerate as PreGenerateMutation) : null}
+      requiresSignIn={!isAuthenticated && !isAuthLoading}
     />
   );
 }
@@ -79,8 +85,10 @@ function AgentDisconnectedPageWithConvex({
 function AgentDisconnectedPageBase({
   onOpenPairing,
   preGenerate,
+  requiresSignIn,
 }: AgentDisconnectedPageProps & {
   preGenerate: PreGenerateMutation;
+  requiresSignIn: boolean;
 }) {
   const t = useTranslations("disconnectedPage");
   const tc = useTranslations("command");
@@ -98,6 +106,8 @@ function AgentDisconnectedPageBase({
   const [copiedInstall, setCopiedInstall] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(CODE_TTL_MS / 1000);
   const [expired, setExpired] = useState(false);
+  const [codeError, setCodeError] = useState<string | null>(null);
+  const [signInOpen, setSignInOpen] = useState(false);
 
   const expiryRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const codeGeneratedAt = useRef<number>(0);
@@ -108,6 +118,7 @@ function AgentDisconnectedPageBase({
     setExpired(false);
     setCopiedCode(false);
     setCopiedInstall(false);
+    setCodeError(null);
 
     const fallback = () =>
       Array.from(
@@ -121,8 +132,11 @@ function AgentDisconnectedPageBase({
       try {
         const result = await preGenerate({});
         generated = result.code;
-      } catch {
-        generated = fallback();
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        setCodeError(msg);
+        setCode(null);
+        return;
       }
     } else {
       generated = fallback();
@@ -148,13 +162,16 @@ function AgentDisconnectedPageBase({
     }, 1000);
   }, [preGenerate]);
 
-  // Generate code on mount
+  // Generate code on mount — but only when pairing is actually possible.
+  // When `requiresSignIn` is true, we show a sign-in CTA instead and never
+  // fire the mutation that would throw "Not authenticated" server-side.
   useEffect(() => {
+    if (requiresSignIn) return;
     generateCode();
     return () => {
       if (expiryRef.current) clearInterval(expiryRef.current);
     };
-  }, [generateCode]);
+  }, [generateCode, requiresSignIn]);
 
   function getInstallCommand(c: string) {
     return `curl -sSL ${INSTALL_URL} | sudo bash -s -- --pair ${c}`;
@@ -201,7 +218,51 @@ function AgentDisconnectedPageBase({
 
         {/* Pairing code hero */}
         <div className="max-w-md mx-auto">
-          {!code ? (
+          {requiresSignIn ? (
+            <div className="p-5 bg-bg-secondary border border-border-default rounded-lg text-center space-y-4">
+              <div className="w-10 h-10 mx-auto rounded-full bg-accent-primary/10 flex items-center justify-center">
+                <Radio size={18} className="text-accent-primary" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-text-primary">
+                  Sign in to pair a drone
+                </p>
+                <p className="text-xs text-text-tertiary leading-relaxed">
+                  Cloud pairing links your drone to your account so you can
+                  reach it from anywhere. Local network flight still works
+                  without an account.
+                </p>
+              </div>
+              <button
+                onClick={() => setSignInOpen(true)}
+                className="w-full px-4 py-2 text-xs font-medium bg-accent-primary text-white rounded hover:bg-accent-primary/90 transition-colors"
+              >
+                Sign in
+              </button>
+              <p className="text-[10px] text-text-tertiary">
+                Already connected on your LAN? Use the fleet sidebar to pair
+                a discovered agent directly.
+              </p>
+            </div>
+          ) : codeError ? (
+            <div className="p-5 bg-bg-secondary border border-status-error/30 rounded-lg text-center space-y-3">
+              <div className="w-10 h-10 mx-auto rounded-full bg-status-error/15 flex items-center justify-center">
+                <AlertTriangle size={18} className="text-status-error" />
+              </div>
+              <p className="text-sm font-medium text-text-primary">
+                Could not generate a pairing code
+              </p>
+              <p className="text-xs text-status-error break-words">
+                {codeError}
+              </p>
+              <button
+                onClick={generateCode}
+                className="px-4 py-1.5 text-xs font-medium bg-bg-tertiary border border-border-default rounded hover:bg-bg-primary transition-colors text-text-primary"
+              >
+                {tc("tryAgain")}
+              </button>
+            </div>
+          ) : !code ? (
             <div className="flex flex-col items-center gap-3 py-8">
               <Loader2
                 size={24}
@@ -403,6 +464,10 @@ function AgentDisconnectedPageBase({
           </a>
         </div>
       </div>
+      <SignInModal
+        open={signInOpen}
+        onClose={() => setSignInOpen(false)}
+      />
     </div>
   );
 }
