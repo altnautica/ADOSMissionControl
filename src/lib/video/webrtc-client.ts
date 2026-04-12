@@ -311,9 +311,10 @@ export async function startStream(
     });
 
     if (!response.ok) {
-      throw new Error(
-        `WHEP request failed: ${response.status} ${response.statusText}`,
-      );
+      const msg = response.status === 404
+        ? "No video stream on agent (mediamtx 404, video pipeline not running)"
+        : `WHEP request failed: ${response.status} ${response.statusText}`;
+      throw new Error(msg);
     }
 
     const answerSdp = await abortable(response.text(), signal);
@@ -524,8 +525,29 @@ export async function startStreamViaMqttSignaling(
         mqttClient!.on("message", (topic: unknown, payload: unknown) => {
           if (topic !== topicAnswer) return;
           clearTimeout(timer);
-          const sdp = (payload as Buffer).toString("utf-8");
-          resolve(sdp);
+          const raw = (payload as Buffer).toString("utf-8");
+
+          // Agent publishes JSON error when mediamtx WHEP fails (e.g. no
+          // active video stream). SDP always starts with "v=0"; JSON error
+          // starts with "{". Fail fast with a descriptive message instead
+          // of passing garbage to setRemoteDescription.
+          if (raw.startsWith("{")) {
+            try {
+              const errPayload = JSON.parse(raw) as { error?: string; status?: number };
+              if (errPayload.error) {
+                const status = errPayload.status ?? 0;
+                const msg = status === 404
+                  ? "Agent video pipeline not running (no stream published to mediamtx)"
+                  : `Agent WHEP relay error: ${errPayload.error} (status ${status})`;
+                reject(new Error(msg));
+                return;
+              }
+            } catch {
+              // Not valid JSON, fall through to treat as SDP
+            }
+          }
+
+          resolve(raw);
         });
 
         mqttClient!.subscribe(topicAnswer, (err: Error | null) => {
