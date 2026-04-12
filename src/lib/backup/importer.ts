@@ -25,8 +25,7 @@ const STORE_MAP: Record<string, string> = {
   "equipment-registry.json": "altcmd:equipment-registry",
   "recordings-index.json": "altcmd:recordings-index",
   "plan-library.json": "altcmd:plan-library",
-  "checklist-store.json": "altcmd:checklist-store",
-  "loadout-store.json": "altcmd:loadout-store",
+  "loadouts.json": "altcmd:loadouts",
 };
 
 /** Array-type stores that should be merged by `id` instead of replaced. */

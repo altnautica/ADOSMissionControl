@@ -28,6 +28,8 @@ const VOLATILE_KEYS: ReadonlyArray<keyof FlightRecord> = [
   "tags",
   "favorite",
   "customName",
+  "deleted",
+  "deletedAt",
 ];
 
 /**

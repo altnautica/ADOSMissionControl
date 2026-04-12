@@ -20,8 +20,7 @@ const STORE_KEYS = [
   "altcmd:equipment-registry",
   "altcmd:recordings-index",
   "altcmd:plan-library",
-  "altcmd:checklist-store",
-  "altcmd:loadout-store",
+  "altcmd:loadouts",
 ] as const;
 
 /**

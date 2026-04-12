@@ -37,7 +37,7 @@ function toCloudShape(record: FlightRecord): Omit<FlightRecord, "cloudSynced"> &
   // Map the record-store `id` field to the cloud-side `clientId`.
   const { id, cloudSynced: _cloudSynced, ...rest } = record;
   void _cloudSynced;
-  return { ...rest, clientId: id, id } as unknown as Omit<FlightRecord, "cloudSynced"> & { clientId: string };
+  return { ...rest, clientId: id } as unknown as Omit<FlightRecord, "cloudSynced"> & { clientId: string };
 }
 
 /**

@@ -351,6 +351,9 @@ const VOLATILE_KEYS = new Set([
   // The signature itself can flip between sealed/unsealed.
   "pilotSignedAt",
   "pilotSignatureHash",
+  // Soft-delete is a metadata operation that should not break the seal.
+  "deleted",
+  "deletedAt",
 ]);
 
 async function requireUser(ctx: QueryCtx): Promise<string> {

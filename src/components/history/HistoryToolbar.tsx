@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Download, Star, X, HardDrive, Upload, Image, Trash2, RotateCcw } from "lucide-react";
+import { Download, Star, X, HardDrive, Upload, Image, Trash2, RotateCcw, Archive, FolderInput } from "lucide-react";
 import type { FlightRecord } from "@/lib/types";
 import { exportFlightRecordsAsCsv } from "@/lib/csv-export";
 import { CloudSyncBadge } from "./CloudSyncBadge";
@@ -13,6 +13,8 @@ import { LogBrowser } from "./dataflash/LogBrowser";
 import { UploadLog } from "./dataflash/UploadLog";
 import { MediaUploader } from "./media/MediaUploader";
 import { ComplianceAlertBell } from "./ComplianceAlertBell";
+import { exportBackup } from "@/lib/backup/exporter";
+import { importBackup } from "@/lib/backup/importer";
 
 export type DatePreset = "all" | "today" | "7d" | "30d" | "month";
 
@@ -236,6 +238,39 @@ export function HistoryToolbar({
         title="Import media"
       >
         Media
+      </Button>
+      <Button
+        variant="ghost"
+        size="md"
+        icon={<Archive size={14} />}
+        onClick={() => void exportBackup()}
+        title="Export full backup (ZIP)"
+      >
+        Backup
+      </Button>
+      <Button
+        variant="ghost"
+        size="md"
+        icon={<FolderInput size={14} />}
+        onClick={() => {
+          const input = document.createElement("input");
+          input.type = "file";
+          input.accept = ".zip";
+          input.onchange = async () => {
+            if (!input.files?.[0]) return;
+            const result = await importBackup(input.files[0]);
+            if (result.errors.length > 0) {
+              window.alert(`Restore completed with errors:\n${result.errors.join("\n")}`);
+            } else {
+              window.alert(`Restored ${result.storesRestored} stores, ${result.recordsMerged} records merged.`);
+            }
+            window.location.reload();
+          };
+          input.click();
+        }}
+        title="Restore from backup (ZIP)"
+      >
+        Restore
       </Button>
       <ComplianceAlertBell />
       <CloudSyncBadge />
