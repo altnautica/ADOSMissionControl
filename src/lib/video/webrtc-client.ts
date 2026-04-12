@@ -297,10 +297,15 @@ export async function startStream(
     });
     checkAborted(signal);
 
-    // Munge SDP for low latency: x-google-flag:conference tells Chrome to
-    // use its minimum jitter buffer instead of the conservative default
-    // (100-200ms which grows under any packet variance).
-    const offerSdp = mungeForLowLatency(localPc.localDescription!.sdp);
+    // SDP offer — send as-is. The previous mungeForLowLatency() injected
+    // a=x-google-flag:conference which pins Chrome to a minimum jitter
+    // buffer. That flag is designed for multi-party conferences on reliable
+    // networks, not one-way WHEP streaming over WiFi. On WiFi with any
+    // jitter or reordering, the minimum buffer causes decoder stalls that
+    // appear as video freezes after a few seconds. mediamtx's own test
+    // page (no SDP munge) streams indefinitely. Removed per web research
+    // (selkies-project, mediamtx#1697, webrtc-discuss jitter buffer).
+    const offerSdp = localPc.localDescription!.sdp;
 
     // Send offer to WHEP endpoint (fetch supports AbortSignal natively)
     const response = await fetch(whepUrl, {
@@ -557,7 +562,7 @@ export async function startStreamViaMqttSignaling(
             return;
           }
           // Subscribed → publish offer (with low-latency SDP hint)
-          const offerSdp = mungeForLowLatency(localPc!.localDescription!.sdp);
+          const offerSdp = localPc!.localDescription!.sdp;
           mqttClient!.publish(topicOffer, offerSdp, { qos: 1 });
         });
       }),
@@ -626,6 +631,12 @@ export async function stopStream(): Promise<void> {
   stopStatsPolling();
 
   if (pc) {
+    // Null event handlers BEFORE close to prevent spurious state callbacks
+    // during teardown (w3c/webrtc-pc#1218). Without this, Chrome may fire
+    // onconnectionstatechange("closed") which re-enters store updates.
+    pc.ontrack = null;
+    pc.onconnectionstatechange = null;
+    pc.onicecandidateerror = null;
     pc.close();
     pc = null;
   }

@@ -75,14 +75,23 @@ export function useVideoTransportCascade(opts: CascadeOpts): CascadeResult {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!enabled || transportMode === "off") {
-      // Off mode: stop any active stream and idle
+    if (transportMode === "off") {
+      // User explicitly turned off video — tear down everything
       stopStream();
-      // Part I P0-4: clear srcObject so the video element doesn't keep
-      // showing the last decoded frame as a frozen image.
       if (videoEl) videoEl.srcObject = null;
       setState("idle");
-      setActiveTransport(transportMode === "off" ? "off" : "unknown");
+      setActiveTransport("off");
+      setError(null);
+      return;
+    }
+    if (!enabled) {
+      // Agent reports not-running, but DON'T tear down an active WebRTC
+      // session. The WebRTC connection is independent of the agent HTTP
+      // poll. A transient mediamtx probe timeout should not kill a healthy
+      // stream. The pc.onconnectionstatechange handler is the authority
+      // on whether the stream is actually dead.
+      // Just stop auto-reconnecting — don't touch the active stream.
+      setState("idle");
       setError(null);
       return;
     }

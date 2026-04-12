@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import {
   CameraOff,
   Maximize2,
@@ -156,6 +156,23 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
   // freezes. mediamtx's built-in test page (no catchup logic) streams
   // indefinitely without issues — confirming the timer was the problem.
 
+  // Stabilize the enabled flag so a single flaky agent poll doesn't kill
+  // a healthy WebRTC session. Requires 3 consecutive non-"running" polls
+  // (~9 seconds at 3s interval) before disabling the cascade. A single
+  // transient mediamtx probe timeout on the agent was causing
+  // agentVideoState to flap "running" → "not_initialized" → "running",
+  // which triggered the cascade cleanup (stopStream + srcObject=null)
+  // every time, destroying a perfectly healthy WebRTC connection.
+  const nonRunningCountRef = useRef(0);
+  const stableEnabled = useMemo(() => {
+    if (agentVideoState === "running") {
+      nonRunningCountRef.current = 0;
+      return true;
+    }
+    nonRunningCountRef.current += 1;
+    return nonRunningCountRef.current < 3;
+  }, [agentVideoState]);
+
   // DEC-107 Phase H: cascade hook owns all transport selection + connection
   // logic. The hook respects the user's `transportMode` preference: in Auto
   // mode it cascades LAN → P2P MQTT, in pinned mode it tries only that mode.
@@ -166,7 +183,7 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
     transportMode,
     videoEl,
     retryKey,
-    enabled: agentVideoState === "running",
+    enabled: stableEnabled,
   });
 
   // Part I P1-9: exponential backoff for auto-retry. Resets to 0 on connect
