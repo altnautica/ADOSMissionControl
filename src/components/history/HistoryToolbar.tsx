@@ -5,13 +5,14 @@ import { useTranslations } from "next-intl";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Download, Star, X, HardDrive, Upload, Image } from "lucide-react";
+import { Download, Star, X, HardDrive, Upload, Image, Trash2, RotateCcw } from "lucide-react";
 import type { FlightRecord } from "@/lib/types";
 import { exportFlightRecordsAsCsv } from "@/lib/csv-export";
 import { CloudSyncBadge } from "./CloudSyncBadge";
 import { LogBrowser } from "./dataflash/LogBrowser";
 import { UploadLog } from "./dataflash/UploadLog";
 import { MediaUploader } from "./media/MediaUploader";
+import { ComplianceAlertBell } from "./ComplianceAlertBell";
 
 export type DatePreset = "all" | "today" | "7d" | "30d" | "month";
 
@@ -36,6 +37,10 @@ interface HistoryToolbarProps {
   onSuiteFilterChange: (v: string) => void;
   onSortChange: (v: string) => void;
   onFavoritesOnlyChange: (v: boolean) => void;
+  showTrash: boolean;
+  onShowTrashChange: (v: boolean) => void;
+  onEmptyTrash: () => void;
+  trashCount: number;
   onReset: () => void;
 }
 
@@ -60,6 +65,10 @@ export function HistoryToolbar({
   onSuiteFilterChange,
   onSortChange,
   onFavoritesOnlyChange,
+  showTrash,
+  onShowTrashChange,
+  onEmptyTrash,
+  trashCount,
   onReset,
 }: HistoryToolbarProps) {
   const t = useTranslations("history");
@@ -174,6 +183,26 @@ export function HistoryToolbar({
         {t("exportBtn")}
       </Button>
       <Button
+        variant={showTrash ? "primary" : "ghost"}
+        size="md"
+        icon={<Trash2 size={14} />}
+        onClick={() => onShowTrashChange(!showTrash)}
+        title={`Trash (${trashCount})`}
+      >
+        Trash{trashCount > 0 ? ` (${trashCount})` : ""}
+      </Button>
+      {showTrash && trashCount > 0 && (
+        <Button
+          variant="ghost"
+          size="md"
+          icon={<RotateCcw size={14} />}
+          onClick={onEmptyTrash}
+          title="Empty trash"
+        >
+          Empty
+        </Button>
+      )}
+      <Button
         variant="ghost"
         size="md"
         icon={<X size={14} />}
@@ -208,6 +237,7 @@ export function HistoryToolbar({
       >
         Media
       </Button>
+      <ComplianceAlertBell />
       <CloudSyncBadge />
 
       <LogBrowser open={logBrowserOpen} onClose={() => setLogBrowserOpen(false)} />

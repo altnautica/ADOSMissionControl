@@ -186,6 +186,11 @@ export interface FlightRecord {
 
   /** Phase 20a — media files linked to this flight. */
   media?: FlightMedia[];
+
+  /** Phase 26b — soft-delete. When true, the record is in the trash. */
+  deleted?: boolean;
+  /** Phase 26b — timestamp when the record was soft-deleted. */
+  deletedAt?: number;
 }
 
 /** A photo or video file linked to a flight. */

@@ -96,6 +96,7 @@ export default function FlightHistoryPage() {
   const [droneFilter, setDroneFilter] = useState("all");
   const [suiteFilter, setSuiteFilter] = useState("all");
   const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [showTrash, setShowTrash] = useState(false);
   const [sort, setSort] = useState("date-desc");
   const [sortKey, setSortKey] = useState<SortKey>("date");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
@@ -261,7 +262,10 @@ export default function FlightHistoryPage() {
 
   // Filtered and sorted records
   const filteredRecords = useMemo(() => {
-    let records = [...allRecords];
+    // Phase 26b — separate trash from active records
+    let records = showTrash
+      ? allRecords.filter((r) => r.deleted === true)
+      : allRecords.filter((r) => !r.deleted);
 
     // Search (deferred)
     const q = deferredSearch.trim().toLowerCase();
@@ -326,7 +330,7 @@ export default function FlightHistoryPage() {
     }
 
     return records;
-  }, [allRecords, deferredSearch, datePreset, dateFrom, dateTo, status, droneFilter, suiteFilter, favoritesOnly, sortKey, sortDir]);
+  }, [allRecords, deferredSearch, datePreset, dateFrom, dateTo, status, droneFilter, suiteFilter, favoritesOnly, showTrash, sortKey, sortDir]);
 
   // Replay mode: full-screen replay replaces table
   if (replayState) {
@@ -369,6 +373,15 @@ export default function FlightHistoryPage() {
         onSuiteFilterChange={setSuiteFilter}
         onSortChange={setSort}
         onFavoritesOnlyChange={setFavoritesOnly}
+        showTrash={showTrash}
+        onShowTrashChange={setShowTrash}
+        onEmptyTrash={() => {
+          if (typeof window !== "undefined" && !window.confirm("Permanently delete all trashed flights?")) return;
+          const store = useHistoryStore.getState();
+          store.emptyTrash();
+          void store.persistToIDB();
+        }}
+        trashCount={allRecords.filter((r) => r.deleted === true).length}
         onReset={handleReset}
       />
 

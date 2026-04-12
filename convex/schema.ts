@@ -450,6 +450,9 @@ fullName: v.optional(v.string()),
         }),
       ),
     ),
+    // Phase 26b — soft-delete.
+    deleted: v.optional(v.boolean()),
+    deletedAt: v.optional(v.number()),
     // Phase 15 — reverse-geocoded place names from takeoff / landing coords.
     takeoffPlaceName: v.optional(v.string()),
     landingPlaceName: v.optional(v.string()),

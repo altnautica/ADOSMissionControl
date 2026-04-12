@@ -268,6 +268,8 @@ const RECORD_VALIDATOR = {
       }),
     ),
   ),
+  deleted: v.optional(v.boolean()),
+  deletedAt: v.optional(v.number()),
   takeoffPlaceName: v.optional(v.string()),
   landingPlaceName: v.optional(v.string()),
   country: v.optional(v.string()),

@@ -58,8 +58,14 @@ interface HistoryActions {
   addRecord: (record: FlightRecord) => void;
   /** Patch an existing record by id. Sets `updatedAt` and marks dirty. Noop if not found. */
   updateRecord: (id: string, patch: Partial<FlightRecord>) => void;
-  /** Remove a record by id. Marks for tombstone delete on next sync. */
+  /** Soft-delete a record (move to trash). */
   removeRecord: (id: string) => void;
+  /** Restore a soft-deleted record from trash. */
+  restoreRecord: (id: string) => void;
+  /** Permanently delete a record (bypasses trash). */
+  permanentlyDelete: (id: string) => void;
+  /** Permanently delete all trashed records. */
+  emptyTrash: () => void;
   /** Async: load persisted records from IndexedDB. Idempotent. */
   loadFromIDB: () => Promise<void>;
   /** Async: write current records to IndexedDB. */
@@ -145,12 +151,54 @@ export const useHistoryStore = create<HistoryState & HistoryActions>((set, get) 
   },
 
   removeRecord: (id) => {
+    // Soft-delete: mark as deleted instead of removing.
+    set((s) => {
+      let changed = false;
+      const records = s.records.map((r) => {
+        if (r.id !== id || r.deleted) return r;
+        changed = true;
+        return { ...r, deleted: true, deletedAt: Date.now(), updatedAt: Date.now(), cloudSynced: false };
+      });
+      if (!changed) return s;
+      const next = new Set(s.pendingSyncIds);
+      next.add(id);
+      return { records, pendingSyncIds: next };
+    });
+  },
+
+  restoreRecord: (id) => {
+    set((s) => {
+      let changed = false;
+      const records = s.records.map((r) => {
+        if (r.id !== id || !r.deleted) return r;
+        changed = true;
+        return { ...r, deleted: undefined, deletedAt: undefined, updatedAt: Date.now(), cloudSynced: false };
+      });
+      if (!changed) return s;
+      const next = new Set(s.pendingSyncIds);
+      next.add(id);
+      return { records, pendingSyncIds: next };
+    });
+  },
+
+  permanentlyDelete: (id) => {
     set((s) => {
       const next = new Set(s.pendingSyncIds);
-      // Drop the dirty marker — caller is responsible for any tombstone push.
       next.delete(id);
       return {
         records: s.records.filter((r) => r.id !== id),
+        pendingSyncIds: next,
+      };
+    });
+  },
+
+  emptyTrash: () => {
+    set((s) => {
+      const next = new Set(s.pendingSyncIds);
+      const trashed = s.records.filter((r) => r.deleted);
+      for (const r of trashed) next.delete(r.id);
+      return {
+        records: s.records.filter((r) => !r.deleted),
         pendingSyncIds: next,
       };
     });
