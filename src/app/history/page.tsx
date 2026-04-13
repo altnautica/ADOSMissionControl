@@ -137,6 +137,38 @@ export default function FlightHistoryPage() {
     window.localStorage.setItem("history.listCollapsed", listCollapsed ? "1" : "0");
   }, [listCollapsed]);
 
+  // Phase 31 — keyboard shortcuts for the history page
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // Don't capture when typing in an input/textarea
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+
+      if (e.key === "/" && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        const searchInput = document.querySelector<HTMLInputElement>('[data-history-search]');
+        searchInput?.focus();
+      }
+      if (e.key === "Escape") {
+        if (selectedRecord) setSelectedRecord(null);
+        else if (selectedIds.size > 0) setSelectedIds(new Set());
+      }
+      if (e.key === "t" && !e.metaKey && !e.ctrlKey) {
+        setShowTrash((v) => !v);
+      }
+      if (e.key === "Delete" || e.key === "Backspace") {
+        if (selectedIds.size > 0 && !e.metaKey) {
+          const store = useHistoryStore.getState();
+          for (const id of selectedIds) store.removeRecord(id);
+          void store.persistToIDB();
+          setSelectedIds(new Set());
+        }
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [selectedRecord, selectedIds, setSelectedRecord, setSelectedIds, setShowTrash]);
+
   const handleResizeStart = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     e.preventDefault();
     (e.target as HTMLElement).setPointerCapture(e.pointerId);

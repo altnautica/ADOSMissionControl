@@ -52,24 +52,43 @@ function ChartsTabLoaded({ recordingId, record }: { recordingId: string; record:
   const [series, setSeries] = useState<SeriesData>(EMPTY_SERIES);
   const [rawFrames, setRawFrames] = useState<TelemetryFrame[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    void loadRecordingFrames(recordingId).then((frames) => {
-      if (cancelled) return;
-      setSeries(buildSeries(frames));
-      setRawFrames(frames);
-      setLoaded(true);
-    });
+    void loadRecordingFrames(recordingId)
+      .then((frames) => {
+        if (cancelled) return;
+        setSeries(buildSeries(frames));
+        setRawFrames(frames);
+        setLoaded(true);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setLoadError((err as Error).message ?? "Failed to load frames");
+        setLoaded(true);
+      });
     return () => {
       cancelled = true;
     };
   }, [recordingId]);
 
+  if (loadError) {
+    return (
+      <Card title="Charts" padding={true}>
+        <p className="text-[10px] text-status-error">{loadError}</p>
+      </Card>
+    );
+  }
+
   if (!loaded) {
     return (
       <Card title="Charts" padding={true}>
-        <p className="text-[10px] text-text-tertiary">Loading frames…</p>
+        <div className="flex flex-col gap-3">
+          <div className="h-[140px] w-full animate-pulse rounded bg-bg-tertiary" />
+          <div className="h-[140px] w-full animate-pulse rounded bg-bg-tertiary" />
+          <div className="h-[140px] w-full animate-pulse rounded bg-bg-tertiary" />
+        </div>
       </Card>
     );
   }

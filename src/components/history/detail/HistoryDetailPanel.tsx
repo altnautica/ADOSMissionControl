@@ -205,10 +205,13 @@ export function HistoryDetailPanel({ record, onClose, onReplay, listCollapsed, o
       </div>
 
       {/* Tab strip */}
-      <div className="flex border-b border-border-default shrink-0 overflow-x-auto">
+      <div className="flex border-b border-border-default shrink-0 overflow-x-auto" role="tablist" aria-label="Flight detail tabs">
         {TABS.map((tab) => (
           <button
             key={tab.id}
+            role="tab"
+            aria-selected={active === tab.id}
+            aria-controls={`tabpanel-${tab.id}`}
             onClick={() => setActive(tab.id)}
             className={cn(
               "px-3 py-2 text-[10px] font-semibold uppercase tracking-wider transition-colors whitespace-nowrap",
@@ -223,7 +226,7 @@ export function HistoryDetailPanel({ record, onClose, onReplay, listCollapsed, o
       </div>
 
       {/* Tab body */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto p-4" role="tabpanel" id={`tabpanel-${active}`}>
         {active === "overview" && <OverviewTab record={record} />}
         {active === "map" && <MapTab record={record} />}
         {active === "charts" && <ChartsTab record={record} />}

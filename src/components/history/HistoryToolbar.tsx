@@ -122,6 +122,7 @@ export function HistoryToolbar({
         onChange={(e) => onSearchChange(e.target.value)}
         placeholder={t("searchPlaceholder")}
         className="w-[220px]"
+        data-history-search=""
       />
       <Select
         label={t("datePresetLabel")}
