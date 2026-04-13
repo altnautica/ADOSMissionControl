@@ -87,9 +87,9 @@ export function HistoryBulkActions({
           size="sm"
           icon={<FileType size={14} />}
           onClick={() => setBulkOpen(true)}
-          title="Compliance logbook"
+          title={t("complianceLogbook")}
         >
-          Logbook
+          {t("logbook")}
         </Button>
         {canCompare && (
           <Button
@@ -97,9 +97,9 @@ export function HistoryBulkActions({
             size="sm"
             icon={<GitCompare size={14} />}
             onClick={() => setCompareOpen(true)}
-            title="Compare two flights"
+            title={t("compareFlights")}
           >
-            Compare
+            {t("compare")}
           </Button>
         )}
         {canOverlay && (
@@ -108,9 +108,9 @@ export function HistoryBulkActions({
             size="sm"
             icon={<Layers size={14} />}
             onClick={() => setOverlayOpen(true)}
-            title={`Overlay ${selectedRecords.length} flights`}
+            title={t("overlayFlights", { count: selectedRecords.length })}
           >
-            Overlay
+            {t("overlay")}
           </Button>
         )}
         <Button
@@ -118,9 +118,9 @@ export function HistoryBulkActions({
           size="sm"
           icon={<Map size={14} />}
           onClick={() => setFleetMapOpen(true)}
-          title="Fleet coverage map"
+          title={t("fleetCoverage")}
         >
-          Fleet map
+          {t("fleetMap")}
         </Button>
         <Button
           variant="ghost"

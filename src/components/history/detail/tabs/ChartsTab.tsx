@@ -11,6 +11,7 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import {
   LineChart,
   Line,
@@ -36,11 +37,12 @@ interface ChartsTabProps {
 }
 
 export function ChartsTab({ record }: ChartsTabProps) {
+  const t = useTranslations("history");
   if (!record.recordingId) {
     return (
       <Card title="Charts" padding={true}>
         <p className="text-[10px] text-text-tertiary">
-          No telemetry recording attached to this flight.
+          {t("chartsNoRecording")}
         </p>
       </Card>
     );
@@ -49,6 +51,7 @@ export function ChartsTab({ record }: ChartsTabProps) {
 }
 
 function ChartsTabLoaded({ recordingId, record }: { recordingId: string; record: FlightRecord }) {
+  const t = useTranslations("history");
   const [series, setSeries] = useState<SeriesData>(EMPTY_SERIES);
   const [rawFrames, setRawFrames] = useState<TelemetryFrame[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -76,7 +79,7 @@ function ChartsTabLoaded({ recordingId, record }: { recordingId: string; record:
   if (loadError) {
     return (
       <Card title="Charts" padding={true}>
-        <p className="text-[10px] text-status-error">{loadError}</p>
+        <p className="text-[10px] text-status-error">{t("chartsLoadError")}: {loadError}</p>
       </Card>
     );
   }

@@ -10,6 +10,7 @@
  */
 
 import { useMemo, useState, useRef, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { Bell, AlertTriangle, XCircle, Info } from "lucide-react";
 import { useOperatorProfileStore } from "@/stores/operator-profile-store";
 import { useAircraftRegistryStore } from "@/stores/aircraft-registry-store";
@@ -18,6 +19,7 @@ import { useEquipmentRegistryStore } from "@/stores/equipment-registry-store";
 import { runComplianceChecks, type ComplianceAlert } from "@/lib/compliance/monitor";
 
 export function ComplianceAlertBell() {
+  const t = useTranslations("history");
   const operator = useOperatorProfileStore((s) => s.profile);
   const aircraft = useAircraftRegistryStore((s) => s.aircraft);
   const batteries = useBatteryRegistryStore((s) => s.packs);
@@ -56,7 +58,7 @@ export function ComplianceAlertBell() {
       <button
         onClick={() => setOpen((v) => !v)}
         className={`relative p-1 rounded hover:bg-bg-tertiary transition-colors ${bellColor}`}
-        title={`${total} compliance alert${total === 1 ? "" : "s"}`}
+        title={`${t("complianceAlerts")} (${total})`}
       >
         <Bell size={14} />
         {total > 0 && (
@@ -74,12 +76,12 @@ export function ComplianceAlertBell() {
         <div className="absolute right-0 top-full mt-1 z-50 w-72 max-h-80 overflow-y-auto rounded-md border border-border-default bg-bg-secondary shadow-lg">
           <div className="px-3 py-2 border-b border-border-default">
             <span className="text-[10px] font-semibold text-text-secondary uppercase tracking-wider">
-              Compliance ({total})
+              {t("complianceAlerts")} ({total})
             </span>
           </div>
           {alerts.length === 0 ? (
             <div className="px-3 py-4 text-center text-[10px] text-text-tertiary">
-              All checks passed.
+              {t("complianceAllPassed")}
             </div>
           ) : (
             <div className="flex flex-col">
