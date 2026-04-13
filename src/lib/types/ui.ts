@@ -131,7 +131,7 @@ export interface FlightRecord {
   cloudSynced?: boolean;
 
   /** Phase 11 — origin of this record. */
-  source?: "live" | "dataflash" | "imported";
+  source?: "live" | "dataflash" | "imported" | "ulog" | "tlog";
   /** Phase 11 — original `.bin` / `.ulg` / `.tlog` filename when imported. */
   sourceFilename?: string;
 

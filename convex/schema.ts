@@ -259,7 +259,7 @@ fullName: v.optional(v.string()),
     pilotSignatureHash: v.optional(v.string()),
     // Phase 11 — origin tracking for imported records.
     source: v.optional(
-      v.union(v.literal("live"), v.literal("dataflash"), v.literal("imported")),
+      v.union(v.literal("live"), v.literal("dataflash"), v.literal("imported"), v.literal("ulog"), v.literal("tlog")),
     ),
     sourceFilename: v.optional(v.string()),
     // Phase 12c — frozen loadout snapshot at arm time.

@@ -85,7 +85,7 @@ const RECORD_VALIDATOR = {
   pilotSignedAt: v.optional(v.number()),
   pilotSignatureHash: v.optional(v.string()),
   source: v.optional(
-    v.union(v.literal("live"), v.literal("dataflash"), v.literal("imported")),
+    v.union(v.literal("live"), v.literal("dataflash"), v.literal("imported"), v.literal("ulog"), v.literal("tlog")),
   ),
   sourceFilename: v.optional(v.string()),
   loadout: v.optional(

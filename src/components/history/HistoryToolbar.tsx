@@ -10,7 +10,7 @@ import type { FlightRecord } from "@/lib/types";
 import { exportFlightRecordsAsCsv } from "@/lib/csv-export";
 import { CloudSyncBadge } from "./CloudSyncBadge";
 import { LogBrowser } from "./dataflash/LogBrowser";
-import { UploadLog } from "./dataflash/UploadLog";
+import { ImportLogModal } from "../history/import/ImportLogModal";
 import { MediaUploader } from "./media/MediaUploader";
 import { ComplianceAlertBell } from "./ComplianceAlertBell";
 import { exportBackup } from "@/lib/backup/exporter";
@@ -75,7 +75,7 @@ export function HistoryToolbar({
 }: HistoryToolbarProps) {
   const t = useTranslations("history");
   const [logBrowserOpen, setLogBrowserOpen] = useState(false);
-  const [uploadOpen, setUploadOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [mediaOpen, setMediaOpen] = useState(false);
 
   const STATUS_OPTIONS = useMemo(() => [
@@ -225,10 +225,10 @@ export function HistoryToolbar({
         variant="secondary"
         size="md"
         icon={<Upload size={14} />}
-        onClick={() => setUploadOpen(true)}
-        title={t("importBin")}
+        onClick={() => setImportOpen(true)}
+        title="Import logs"
       >
-        {t("importBin")}
+        Import
       </Button>
       <Button
         variant="ghost"
@@ -276,7 +276,7 @@ export function HistoryToolbar({
       <CloudSyncBadge />
 
       <LogBrowser open={logBrowserOpen} onClose={() => setLogBrowserOpen(false)} />
-      <UploadLog open={uploadOpen} onClose={() => setUploadOpen(false)} />
+      <ImportLogModal open={importOpen} onClose={() => setImportOpen(false)} />
       <MediaUploader open={mediaOpen} onClose={() => setMediaOpen(false)} />
     </div>
   );
