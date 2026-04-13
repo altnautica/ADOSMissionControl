@@ -92,6 +92,8 @@ export function routeFrame(s: FrameHandlerState, frame: MAVLinkFrame, p: DataVie
     case 24:  handleGpsRaw(p, c.gpsCallbacks); break
     case 26:  handleScaledImu(p, c.scaledImuCallbacks); break
     case 27:  handleRawImu(p, c.rawImuCallbacks); break
+    case 116: handleScaledImu(p, c.scaledImuCallbacks); break // SCALED_IMU2
+    case 129: handleScaledImu(p, c.scaledImuCallbacks); break // SCALED_IMU3
     case 29:  handleScaledPressure(p, c.scaledPressureCallbacks); break
     case 30:  handleAttitude(p, c.attitudeCallbacks); break
     case 32:  handleLocalPosition(p, c.localPositionCallbacks); break

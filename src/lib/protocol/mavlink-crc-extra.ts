@@ -82,6 +82,9 @@ export const CRC_EXTRA: ReadonlyMap<number, number> = new Map([
   [112, 174],   // CAMERA_TRIGGER
   [230, 163],   // ESTIMATOR_STATUS
   [27, 144],    // RAW_IMU
+  [105, 93],    // HIGHRES_IMU
+  [116, 76],    // SCALED_IMU2
+  [129, 46],    // SCALED_IMU3
   [35, 244],    // RC_CHANNELS_RAW
   [39, 254],    // MISSION_ITEM
   [141, 47],    // ALTITUDE
@@ -167,6 +170,9 @@ export const PAYLOAD_LENGTHS: ReadonlyMap<number, number> = new Map([
   [112, 24],    // CAMERA_TRIGGER
   [230, 42],    // ESTIMATOR_STATUS
   [27, 26],     // RAW_IMU
+  [105, 62],    // HIGHRES_IMU
+  [116, 22],    // SCALED_IMU2 (same layout as SCALED_IMU)
+  [129, 22],    // SCALED_IMU3 (same layout as SCALED_IMU)
   [35, 22],     // RC_CHANNELS_RAW
   [39, 37],     // MISSION_ITEM
   [141, 32],    // ALTITUDE
