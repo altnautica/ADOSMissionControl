@@ -36,6 +36,9 @@ export default function HardwareGamepadsPage() {
   const { toast } = useToast();
   const [pairOpen, setPairOpen] = useState(false);
 
+  const autoClaim = useSettingsStore((s) => s.hudAutoClaimPicOnFirstButton);
+  const setAutoClaim = useSettingsStore((s) => s.setHudAutoClaimPicOnFirstButton);
+
   const agentUrlRef = useRef(agentUrl);
   const apiKeyRef = useRef(apiKey);
   agentUrlRef.current = agentUrl;
@@ -190,6 +193,23 @@ export default function HardwareGamepadsPage() {
                   </table>
                 </div>
               )}
+            </section>
+
+            <section className="rounded-lg border border-border-primary bg-surface-secondary p-5">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-lg font-medium text-text-primary">HDMI kiosk auto-claim</h2>
+                  <p className="mt-1 text-xs text-text-secondary">
+                    Auto-claim PIC on first button press from the HDMI kiosk. Off by default
+                    so that standalone kiosks do not silently take control.
+                  </p>
+                </div>
+                <Toggle
+                  label={autoClaim ? "Enabled" : "Disabled"}
+                  checked={autoClaim}
+                  onChange={setAutoClaim}
+                />
+              </div>
             </section>
 
             <section className="rounded-lg border border-border-primary bg-surface-secondary p-5">
