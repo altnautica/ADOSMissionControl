@@ -16,6 +16,8 @@ import type {
   DisplayUpdate,
   Gamepad,
   GroundStationApi,
+  ModemStatus,
+  ModemUpdate,
   NetworkStatus,
   OledUpdate,
   PairResult,
@@ -23,6 +25,10 @@ import type {
   PicState,
   ScreensUpdate,
   UiConfig,
+  UplinkEvent,
+  UplinkFailoverEntry,
+  UplinkHealth,
+  WifiScanResult,
 } from "@/lib/api/ground-station-api";
 import { GroundStationApiError } from "@/lib/api/ground-station-api";
 
@@ -83,6 +89,30 @@ export interface BluetoothSlice {
   error: string | null;
 }
 
+export interface WifiScanCache {
+  results: WifiScanResult[];
+  scanning: boolean;
+  scannedAt: number | null;
+  error: string | null;
+}
+
+export interface UplinkDataCap {
+  state: "ok" | "warn_80" | "throttle_95" | "blocked_100";
+  percent: number;
+  used_mb: number;
+  cap_mb: number;
+}
+
+export interface UplinkSlice {
+  active: string | null;
+  priority: string[];
+  health: UplinkHealth;
+  failover_log: UplinkFailoverEntry[];
+  data_cap: UplinkDataCap | null;
+  loading: boolean;
+  error: string | null;
+}
+
 interface GroundStationState {
   linkHealth: GroundStationLinkHealth;
   wfbConfig: WfbConfig | null;
@@ -102,6 +132,11 @@ interface GroundStationState {
   gamepads: GamepadsSlice;
   bluetooth: BluetoothSlice;
   display: DisplayConfig | null;
+
+  // Phase 3 slices (Wave C) - network client, modem, uplink
+  wifiScan: WifiScanCache;
+  modem: ModemStatus | null;
+  uplink: UplinkSlice;
 
   // Existing actions
   loadStatus: (status: GroundStationStatus, linkHealth?: Partial<GroundStationLinkHealth>) => void;
@@ -141,6 +176,34 @@ interface GroundStationState {
 
   loadDisplay: (api: GroundStationApi) => Promise<void>;
   applyDisplay: (api: GroundStationApi, update: DisplayUpdate) => Promise<DisplayConfig | null>;
+
+  // Phase 3 actions (Wave C)
+  scanWifiNetworks: (
+    api: GroundStationApi,
+    timeoutS?: number,
+  ) => Promise<WifiScanResult[]>;
+  joinWifi: (
+    api: GroundStationApi,
+    ssid: string,
+    passphrase?: string,
+    force?: boolean,
+  ) => Promise<{ joined: boolean; needsForce: boolean; error: string | null }>;
+  leaveWifi: (api: GroundStationApi) => Promise<boolean>;
+  loadModem: (api: GroundStationApi) => Promise<void>;
+  applyModem: (
+    api: GroundStationApi,
+    update: ModemUpdate,
+  ) => Promise<ModemStatus | null>;
+  loadPriority: (api: GroundStationApi) => Promise<void>;
+  applyPriority: (
+    api: GroundStationApi,
+    priority: string[],
+  ) => Promise<string[] | null>;
+  toggleShareUplink: (
+    api: GroundStationApi,
+    enabled: boolean,
+  ) => Promise<boolean | null>;
+  subscribeUplinkWs: (api: GroundStationApi) => () => void;
 
   resetAll: () => void;
 }
@@ -189,6 +252,25 @@ const INITIAL_BLUETOOTH: BluetoothSlice = {
   error: null,
 };
 
+const INITIAL_WIFI_SCAN: WifiScanCache = {
+  results: [],
+  scanning: false,
+  scannedAt: null,
+  error: null,
+};
+
+const INITIAL_UPLINK: UplinkSlice = {
+  active: null,
+  priority: [],
+  health: "ok",
+  failover_log: [],
+  data_cap: null,
+  loading: false,
+  error: null,
+};
+
+const FAILOVER_LOG_CAP = 20;
+
 function errorMessage(err: unknown): { message: string; status: number | null } {
   if (err instanceof GroundStationApiError) {
     let parsedMsg = err.body;
@@ -221,6 +303,10 @@ export const useGroundStationStore = create<GroundStationState>((set, get) => ({
   gamepads: INITIAL_GAMEPADS,
   bluetooth: INITIAL_BLUETOOTH,
   display: null,
+
+  wifiScan: INITIAL_WIFI_SCAN,
+  modem: null,
+  uplink: INITIAL_UPLINK,
 
   loadStatus: (status, linkHealth) => {
     const current = get().linkHealth;
@@ -259,7 +345,20 @@ export const useGroundStationStore = create<GroundStationState>((set, get) => ({
   loadNetwork: async (api) => {
     try {
       const net = await api.getNetwork();
-      set({ network: net, ap: net.ap, lastError: null });
+      const modemFromNet = net.modem_4g ?? net.modem ?? null;
+      const currentUplink = get().uplink;
+      set({
+        network: net,
+        ap: net.ap,
+        modem: modemFromNet,
+        uplink: {
+          ...currentUplink,
+          active: net.active_uplink ?? currentUplink.active,
+          priority: net.priority ?? currentUplink.priority,
+          data_cap: modemFromNet?.data_cap ?? currentUplink.data_cap,
+        },
+        lastError: null,
+      });
     } catch (err) {
       const { message } = errorMessage(err);
       set({ lastError: message });
@@ -582,6 +681,244 @@ export const useGroundStationStore = create<GroundStationState>((set, get) => ({
     }
   },
 
+  // ============================================================
+  // Phase 3 actions (Wave C) - network client, modem, uplink
+  // ============================================================
+
+  scanWifiNetworks: async (api, timeoutS) => {
+    set({
+      wifiScan: { ...get().wifiScan, scanning: true, error: null },
+    });
+    try {
+      const res = await api.scanWifiClient(timeoutS ?? 10);
+      const results = [...res.networks].sort((a, b) => b.signal - a.signal);
+      set({
+        wifiScan: {
+          results,
+          scanning: false,
+          scannedAt: Date.now(),
+          error: null,
+        },
+      });
+      return results;
+    } catch (err) {
+      const { message } = errorMessage(err);
+      set({
+        wifiScan: { ...get().wifiScan, scanning: false, error: message },
+      });
+      return [];
+    }
+  },
+
+  joinWifi: async (api, ssid, passphrase, force) => {
+    try {
+      const res = await api.joinWifiClient(ssid, passphrase, force);
+      if (res.joined) {
+        // refresh network on success
+        try {
+          const net = await api.getNetwork();
+          const modemFromNet = net.modem_4g ?? net.modem ?? null;
+          set({
+            network: net,
+            ap: net.ap,
+            modem: modemFromNet,
+          });
+        } catch {
+          // non-fatal
+        }
+      }
+      return { joined: res.joined, needsForce: Boolean(res.needs_force), error: null };
+    } catch (err) {
+      const { message, status } = errorMessage(err);
+      let needsForce = status === 409;
+      if (err instanceof GroundStationApiError) {
+        try {
+          const parsed = JSON.parse(err.body) as { needs_force?: boolean; detail?: { needs_force?: boolean } };
+          if (parsed.needs_force || parsed.detail?.needs_force) needsForce = true;
+        } catch {
+          // ignore parse failure
+        }
+      }
+      return { joined: false, needsForce, error: message };
+    }
+  },
+
+  leaveWifi: async (api) => {
+    try {
+      await api.leaveWifiClient();
+      try {
+        const net = await api.getNetwork();
+        set({ network: net, ap: net.ap });
+      } catch {
+        // non-fatal
+      }
+      return true;
+    } catch (err) {
+      const { message } = errorMessage(err);
+      set({ lastError: message });
+      return false;
+    }
+  },
+
+  loadModem: async (api) => {
+    try {
+      const m = await api.getModem();
+      const currentUplink = get().uplink;
+      set({
+        modem: m,
+        uplink: {
+          ...currentUplink,
+          data_cap: m.data_cap ?? currentUplink.data_cap,
+        },
+      });
+    } catch (err) {
+      const { message } = errorMessage(err);
+      set({ lastError: message });
+    }
+  },
+
+  applyModem: async (api, update) => {
+    try {
+      const m = await api.setModem(update);
+      const currentUplink = get().uplink;
+      set({
+        modem: m,
+        uplink: {
+          ...currentUplink,
+          data_cap: m.data_cap ?? currentUplink.data_cap,
+        },
+      });
+      return m;
+    } catch (err) {
+      const { message } = errorMessage(err);
+      set({ lastError: message });
+      return null;
+    }
+  },
+
+  loadPriority: async (api) => {
+    try {
+      const res = await api.getPriority();
+      const currentUplink = get().uplink;
+      set({
+        uplink: { ...currentUplink, priority: res.priority },
+      });
+    } catch (err) {
+      const { message } = errorMessage(err);
+      set({ lastError: message });
+    }
+  },
+
+  applyPriority: async (api, priority) => {
+    const currentUplink = get().uplink;
+    // optimistic update
+    set({ uplink: { ...currentUplink, priority } });
+    try {
+      const res = await api.setPriority(priority);
+      set({
+        uplink: { ...get().uplink, priority: res.priority },
+      });
+      return res.priority;
+    } catch (err) {
+      const { message } = errorMessage(err);
+      // revert on failure
+      set({
+        uplink: { ...get().uplink, priority: currentUplink.priority, error: message },
+      });
+      return null;
+    }
+  },
+
+  toggleShareUplink: async (api, enabled) => {
+    try {
+      const res = await api.setShareUplink(enabled);
+      const prev = get().network;
+      if (prev) {
+        set({ network: { ...prev, share_uplink: res.enabled } });
+      }
+      return res.enabled;
+    } catch (err) {
+      const { message } = errorMessage(err);
+      set({ lastError: message });
+      return null;
+    }
+  },
+
+  subscribeUplinkWs: (api) => {
+    return api.subscribeUplinkEvents((event: UplinkEvent) => {
+      const current = get().uplink;
+      if (event.type === "state") {
+        const e = event as {
+          active?: string | null;
+          priority?: string[];
+          health?: UplinkHealth;
+        };
+        set({
+          uplink: {
+            ...current,
+            active: e.active ?? current.active,
+            priority: e.priority ?? current.priority,
+            health: e.health ?? current.health,
+          },
+        });
+      } else if (event.type === "active") {
+        const e = event as { iface: string };
+        set({
+          uplink: { ...current, active: e.iface },
+        });
+      } else if (event.type === "priority") {
+        const e = event as { priority: string[] };
+        set({
+          uplink: { ...current, priority: e.priority },
+        });
+      } else if (event.type === "health") {
+        const e = event as { health: UplinkHealth };
+        set({
+          uplink: { ...current, health: e.health },
+        });
+      } else if (event.type === "failover") {
+        const e = event as {
+          from: string | null;
+          to: string;
+          reason: string;
+          timestamp?: number;
+        };
+        const entry: UplinkFailoverEntry = {
+          from: e.from,
+          to: e.to,
+          reason: e.reason,
+          timestamp: e.timestamp ?? Date.now(),
+        };
+        const nextLog = [entry, ...current.failover_log].slice(0, FAILOVER_LOG_CAP);
+        set({
+          uplink: {
+            ...current,
+            active: e.to,
+            failover_log: nextLog,
+          },
+        });
+      } else if (event.type === "data_cap") {
+        const e = event as {
+          state: "ok" | "warn_80" | "throttle_95" | "blocked_100";
+          percent: number;
+          used_mb: number;
+          cap_mb: number;
+        };
+        set({
+          uplink: {
+            ...current,
+            data_cap: {
+              state: e.state,
+              percent: e.percent,
+              used_mb: e.used_mb,
+              cap_mb: e.cap_mb,
+            },
+          },
+        });
+      }
+    });
+  },
+
   resetAll: () =>
     set({
       linkHealth: INITIAL_LINK_HEALTH,
@@ -598,5 +935,8 @@ export const useGroundStationStore = create<GroundStationState>((set, get) => ({
       gamepads: INITIAL_GAMEPADS,
       bluetooth: INITIAL_BLUETOOTH,
       display: null,
+      wifiScan: INITIAL_WIFI_SCAN,
+      modem: null,
+      uplink: INITIAL_UPLINK,
     }),
 }));

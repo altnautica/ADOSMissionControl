@@ -4,6 +4,8 @@
  * Phase 0: status, wfb GET/PUT.
  * Phase 1 (Wave D): network, pair, UI, factory-reset.
  * Phase 2 (Wave C): display, bluetooth, gamepads, pic (with WebSocket events).
+ * Phase 3 (Wave C): network client (WiFi scan/join/leave), modem config,
+ * uplink priority, share-uplink toggle, and uplink events WebSocket.
  * @license GPL-3.0-only
  */
 
@@ -28,20 +30,73 @@ export interface ApStatus {
 
 export interface WifiClientStatus {
   available: boolean;
+  connected?: boolean;
   ssid?: string | null;
+  bssid?: string | null;
   rssi_dbm?: number | null;
+  signal?: number | null;
+  security?: string | null;
+  ip?: string | null;
+  gateway?: string | null;
+}
+
+export interface EthernetStatus {
+  available: boolean;
+  link?: boolean;
+  speed_mbps?: number | null;
+  ip?: string | null;
+  gateway?: string | null;
+  iface?: string | null;
+}
+
+export type ModemConnState =
+  | "disconnected"
+  | "searching"
+  | "registered"
+  | "connected"
+  | "error";
+
+export type DataCapState = "ok" | "warn_80" | "throttle_95" | "blocked_100";
+
+export interface ModemDataCap {
+  state: DataCapState;
+  percent: number;
+  used_mb: number;
+  cap_mb: number;
 }
 
 export interface ModemStatus {
   available: boolean;
+  enabled?: boolean;
+  state?: ModemConnState;
   carrier?: string | null;
+  operator?: string | null;
+  apn?: string | null;
   signal_bars?: number | null;
+  signal_dbm?: number | null;
+  iface?: string | null;
+  ip?: string | null;
+  data_cap?: ModemDataCap | null;
 }
+
+export interface ModemUpdate {
+  apn?: string;
+  cap_gb?: number;
+  enabled?: boolean;
+}
+
+export type UplinkHealth = "ok" | "degraded" | "down";
 
 export interface NetworkStatus {
   ap: ApStatus;
   wifi_client: WifiClientStatus;
-  modem: ModemStatus;
+  ethernet?: EthernetStatus;
+  modem_4g?: ModemStatus;
+  // legacy Phase 1 field
+  modem?: ModemStatus;
+  active_uplink?: string | null;
+  priority?: string[];
+  share_uplink?: boolean;
 }
 
 export interface ApUpdate {
@@ -50,6 +105,52 @@ export interface ApUpdate {
   passphrase?: string;
   channel?: number;
 }
+
+export interface WifiScanResult {
+  ssid: string;
+  bssid: string;
+  signal: number;
+  security: string;
+  in_use?: boolean;
+}
+
+export interface WifiScanResponse {
+  networks: WifiScanResult[];
+}
+
+export interface WifiJoinResult {
+  joined: boolean;
+  ssid: string;
+  needs_force?: boolean;
+}
+
+export interface WifiLeaveResult {
+  previous_ssid: string | null;
+}
+
+export interface UplinkPriorityConfig {
+  priority: string[];
+}
+
+export interface ShareUplinkResult {
+  enabled: boolean;
+}
+
+export interface UplinkFailoverEntry {
+  from: string | null;
+  to: string;
+  reason: string;
+  timestamp: number;
+}
+
+export type UplinkEvent =
+  | { type: "active"; iface: string; timestamp?: number }
+  | { type: "priority"; priority: string[] }
+  | { type: "health"; health: UplinkHealth; iface?: string }
+  | { type: "failover"; from: string | null; to: string; reason: string; timestamp?: number }
+  | { type: "data_cap"; state: DataCapState; percent: number; used_mb: number; cap_mb: number }
+  | { type: "state"; active: string | null; priority: string[]; health: UplinkHealth }
+  | { type: string; [key: string]: unknown };
 
 // Pair types
 export interface PairResult {
@@ -406,6 +507,154 @@ export class GroundStationApi {
         body: JSON.stringify({ client_id: clientId }),
       },
     );
+  }
+
+  // ============================================================
+  // Phase 3 (Wave C) — network client, modem, uplink priority/events
+  // ============================================================
+
+  async scanWifiClient(timeoutS = 10): Promise<WifiScanResponse> {
+    const q = encodeURIComponent(String(timeoutS));
+    return this.request<WifiScanResponse>(
+      `/api/v1/ground-station/network/client/scan?timeout_s=${q}`,
+    );
+  }
+
+  async joinWifiClient(
+    ssid: string,
+    passphrase?: string,
+    force?: boolean,
+  ): Promise<WifiJoinResult> {
+    const body: Record<string, unknown> = { ssid };
+    if (passphrase !== undefined) body.passphrase = passphrase;
+    if (force) body.force = true;
+    return this.request<WifiJoinResult>(
+      "/api/v1/ground-station/network/client/join",
+      {
+        method: "PUT",
+        body: JSON.stringify(body),
+      },
+    );
+  }
+
+  async leaveWifiClient(): Promise<WifiLeaveResult> {
+    return this.request<WifiLeaveResult>(
+      "/api/v1/ground-station/network/client",
+      { method: "DELETE" },
+    );
+  }
+
+  async getModem(): Promise<ModemStatus> {
+    return this.request<ModemStatus>("/api/v1/ground-station/network/modem");
+  }
+
+  async setModem(update: ModemUpdate): Promise<ModemStatus> {
+    return this.request<ModemStatus>("/api/v1/ground-station/network/modem", {
+      method: "PUT",
+      body: JSON.stringify(update),
+    });
+  }
+
+  async getPriority(): Promise<UplinkPriorityConfig> {
+    return this.request<UplinkPriorityConfig>(
+      "/api/v1/ground-station/network/priority",
+    );
+  }
+
+  async setPriority(priority: string[]): Promise<UplinkPriorityConfig> {
+    return this.request<UplinkPriorityConfig>(
+      "/api/v1/ground-station/network/priority",
+      {
+        method: "PUT",
+        body: JSON.stringify({ priority }),
+      },
+    );
+  }
+
+  async setShareUplink(enabled: boolean): Promise<ShareUplinkResult> {
+    return this.request<ShareUplinkResult>(
+      "/api/v1/ground-station/network/share_uplink",
+      {
+        method: "PUT",
+        body: JSON.stringify({ enabled }),
+      },
+    );
+  }
+
+  /**
+   * Subscribe to uplink events via WebSocket.
+   * Mirrors subscribePicEvents: exponential-backoff reconnect, API key via
+   * query param, close on unsubscribe.
+   */
+  subscribeUplinkEvents(onEvent: (e: UplinkEvent) => void): () => void {
+    if (typeof window === "undefined") {
+      return () => {};
+    }
+    const httpBase = this.baseUrl;
+    const wsBase = httpBase.replace(/^http/, "ws");
+    const path = "/api/v1/ground-station/ws/uplink";
+    const urlObj = new URL(wsBase + path);
+    if (this.apiKey) {
+      urlObj.searchParams.set("api_key", this.apiKey);
+    }
+    const url = urlObj.toString();
+
+    let closed = false;
+    let ws: WebSocket | null = null;
+    let retryDelay = 500;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const connect = () => {
+      if (closed) return;
+      try {
+        ws = new WebSocket(url);
+      } catch {
+        scheduleReconnect();
+        return;
+      }
+      ws.onopen = () => {
+        retryDelay = 500;
+      };
+      ws.onmessage = (ev) => {
+        try {
+          const data = JSON.parse(String(ev.data)) as UplinkEvent;
+          onEvent(data);
+        } catch {
+          // ignore malformed frames
+        }
+      };
+      ws.onerror = () => {
+        // onclose handles reconnection
+      };
+      ws.onclose = () => {
+        ws = null;
+        scheduleReconnect();
+      };
+    };
+
+    const scheduleReconnect = () => {
+      if (closed) return;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      reconnectTimer = setTimeout(() => {
+        retryDelay = Math.min(retryDelay * 2, 10000);
+        connect();
+      }, retryDelay);
+    };
+
+    connect();
+
+    return () => {
+      closed = true;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (ws) {
+        try {
+          ws.close();
+        } catch {
+          // ignore
+        }
+        ws = null;
+      }
+    };
   }
 
   /**

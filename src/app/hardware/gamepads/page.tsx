@@ -13,10 +13,12 @@ import Link from "next/link";
 import { HardwareTabs } from "@/components/hardware/HardwareTabs";
 import { BluetoothPairModal } from "@/components/hardware/BluetoothPairModal";
 import { Button } from "@/components/ui/button";
+import { Toggle } from "@/components/ui/toggle";
 import { useToast } from "@/components/ui/toast";
 import { groundStationApiFromAgent } from "@/lib/api/ground-station-api";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useGroundStationStore } from "@/stores/ground-station-store";
+import { useSettingsStore } from "@/stores/settings-store";
 
 const POLL_INTERVAL_MS = 2000;
 

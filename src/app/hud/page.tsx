@@ -13,7 +13,7 @@
 //   product/specs/08-hdmi-kiosk-mode.md
 //   product/specs/09-joystick-input.md
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { TopBar } from "@/components/hud/TopBar";
 import { BottomBar } from "@/components/hud/BottomBar";
@@ -27,6 +27,12 @@ import {
 import { useInputStore } from "@/stores/input-store";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useDroneStore } from "@/stores/drone-store";
+import { useSettingsStore } from "@/stores/settings-store";
+import { useAgentConnectionStore } from "@/stores/agent-connection-store";
+import { useGroundStationStore } from "@/stores/ground-station-store";
+import { groundStationApiFromAgent } from "@/lib/api/ground-station-api";
+
+const HUD_KIOSK_CLIENT_ID = "hdmi-kiosk";
 
 export default function HudPage() {
   return (
@@ -43,12 +49,21 @@ function HudRouter() {
   return minimal ? <MinimalHud /> : <FullHud />;
 }
 
-// Gamepad indicator. Shows controller identity + PIC claim state. PIC
-// state lives on ground-station-store's `pic` slice (Brass Wave C). Until
-// that slice lands, show a neutral "PIC pending" label.
+// Gamepad indicator. Shows controller identity + PIC claim state. When the
+// settings flag hud.autoClaimPicOnFirstButton is on, the first button press
+// detected by the gamepad poller auto-claims PIC as the hdmi-kiosk client.
 function GamepadIndicator() {
   const controller = useInputStore((s) => s.activeController);
   const [name, setName] = useState<string | null>(null);
+
+  const agentUrl = useAgentConnectionStore((s) => s.agentUrl);
+  const apiKey = useAgentConnectionStore((s) => s.apiKey);
+  const pic = useGroundStationStore((s) => s.pic);
+  const claimPic = useGroundStationStore((s) => s.claimPic);
+  const autoClaim = useSettingsStore((s) => s.hudAutoClaimPicOnFirstButton);
+
+  const claimedRef = useRef(false);
+  const claimingRef = useRef(false);
 
   useEffect(() => {
     if (controller !== "gamepad") {
@@ -62,9 +77,52 @@ function GamepadIndicator() {
     return () => clearInterval(id);
   }, [controller]);
 
+  // First-button auto-claim. Polls navigator.getGamepads() at 60 Hz looking
+  // for any pressed button. Fires once per session. Gated by the settings
+  // flag and by the current PIC holder.
+  useEffect(() => {
+    if (!autoClaim) return;
+    if (typeof navigator === "undefined") return;
+    if (pic.claimed_by === HUD_KIOSK_CLIENT_ID) return;
+
+    let rafId: number | null = null;
+    const loop = () => {
+      rafId = requestAnimationFrame(loop);
+      if (claimedRef.current || claimingRef.current) return;
+      const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+      for (const pad of pads) {
+        if (!pad) continue;
+        for (const btn of pad.buttons) {
+          if (btn && btn.pressed) {
+            const client = groundStationApiFromAgent(agentUrl, apiKey);
+            if (!client) return;
+            claimingRef.current = true;
+            void claimPic(client, HUD_KIOSK_CLIENT_ID).then((ok) => {
+              if (ok) claimedRef.current = true;
+              claimingRef.current = false;
+            });
+            return;
+          }
+        }
+      }
+    };
+    rafId = requestAnimationFrame(loop);
+    return () => {
+      if (rafId != null) cancelAnimationFrame(rafId);
+    };
+  }, [autoClaim, agentUrl, apiKey, claimPic, pic.claimed_by]);
+
   const label = controller === "gamepad"
     ? (name ? name.slice(0, 28) : "GAMEPAD")
     : "NO INPUT";
+
+  const picLabel = pic.claimed_by === HUD_KIOSK_CLIENT_ID
+    ? "PIC CLAIMED"
+    : pic.claimed_by
+      ? "PIC (remote)"
+      : autoClaim
+        ? "Press button to claim"
+        : "PIC pending";
 
   return (
     <div className="absolute top-12 right-4 flex flex-col items-end gap-1 pointer-events-none">
@@ -72,7 +130,7 @@ function GamepadIndicator() {
         {label}
       </div>
       <div className="text-[10px] font-mono uppercase tracking-wider px-2 py-1 bg-black/50 text-white/60 border border-white/10 rounded">
-        PIC pending
+        {picLabel}
       </div>
     </div>
   );

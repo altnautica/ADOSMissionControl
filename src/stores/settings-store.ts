@@ -220,6 +220,11 @@ interface SettingsStoreState {
    *  "auto" cascades LAN → P2P MQTT; pinned modes try only that one. */
   videoTransportMode: "auto" | "lan-whep" | "p2p-mqtt" | "off";
   setVideoTransportMode: (mode: "auto" | "lan-whep" | "p2p-mqtt" | "off") => void;
+  /** Phase 2/3 Wave C: when running in HDMI kiosk mode, auto-claim PIC the
+   *  first time a primary gamepad button press is detected. Defaults to false
+   *  so that kiosks do not silently take control on wake. */
+  hudAutoClaimPicOnFirstButton: boolean;
+  setHudAutoClaimPicOnFirstButton: (enabled: boolean) => void;
   /** Per-panel scroll positions (panelId -> scrollTop). */
   panelScrollPositions: Record<string, number>;
   /** Whether no-fly zone overlays are visible on maps. */
@@ -359,6 +364,7 @@ export const useSettingsStore = create<SettingsStoreState>()(
       autoRecordOnArm: true,
       videoWhepUrl: "",
       videoTransportMode: "auto",
+      hudAutoClaimPicOnFirstButton: false,
       panelScrollPositions: {},
       showNoFlyZones: false,
       offlineTileCaching: false,
@@ -426,6 +432,8 @@ export const useSettingsStore = create<SettingsStoreState>()(
       setAutoRecordOnArm: (autoRecordOnArm) => set({ autoRecordOnArm }),
       setVideoWhepUrl: (videoWhepUrl) => set({ videoWhepUrl }),
       setVideoTransportMode: (videoTransportMode) => set({ videoTransportMode }),
+      setHudAutoClaimPicOnFirstButton: (hudAutoClaimPicOnFirstButton) =>
+        set({ hudAutoClaimPicOnFirstButton }),
       setPanelScrollPosition: (panelId, scrollTop) =>
         set((s) => ({
           panelScrollPositions: { ...s.panelScrollPositions, [panelId]: scrollTop },
@@ -518,7 +526,7 @@ export const useSettingsStore = create<SettingsStoreState>()(
     {
       name: "altcmd:settings",
       storage: createJSONStorage(indexedDBStorage.storage),
-      version: 31,
+      version: 32,
       migrate: (persisted, version) => {
         const state = persisted as Record<string, unknown>;
         if (version < 2) {
@@ -674,6 +682,10 @@ export const useSettingsStore = create<SettingsStoreState>()(
           // v31: DEC-107 Phase H — interactive video transport switcher.
           // Default to "auto" cascade (LAN → P2P MQTT) for existing users.
           state.videoTransportMode = "auto";
+        }
+        if (version < 32) {
+          // v32: Phase 3 Wave C — HDMI kiosk PIC auto-claim flag (default off).
+          state.hudAutoClaimPicOnFirstButton = false;
         }
         return state as unknown as SettingsStoreState;
       },

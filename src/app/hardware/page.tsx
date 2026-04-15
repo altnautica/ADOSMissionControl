@@ -15,6 +15,7 @@ import { useGroundStationStore } from "@/stores/ground-station-store";
 import { HardwareTabs } from "@/components/hardware/HardwareTabs";
 import { PairModal } from "@/components/hardware/PairModal";
 import { PicWidget } from "@/components/hardware/PicWidget";
+import { OverviewUplinkWidget } from "@/components/hardware/OverviewUplinkWidget";
 import { Button } from "@/components/ui/button";
 
 const POLL_INTERVAL_MS = 500; // 2 Hz
@@ -55,6 +56,7 @@ export default function HardwarePage() {
   const setLoading = useGroundStationStore((s) => s.setLoading);
   const setError = useGroundStationStore((s) => s.setError);
   const subscribePicWs = useGroundStationStore((s) => s.subscribePicWs);
+  const subscribeUplinkWs = useGroundStationStore((s) => s.subscribeUplinkWs);
 
   const [pairOpen, setPairOpen] = useState(false);
 
@@ -126,6 +128,16 @@ export default function HardwarePage() {
     };
   }, [agentUrl, apiKey, subscribePicWs]);
 
+  // Uplink events WebSocket subscription (Phase 3, Wave C).
+  useEffect(() => {
+    const client = groundStationApiFromAgent(agentUrl, apiKey);
+    if (!client) return;
+    const unsubscribe = subscribeUplinkWs(client);
+    return () => {
+      unsubscribe();
+    };
+  }, [agentUrl, apiKey, subscribeUplinkWs]);
+
   const hasAgent = Boolean(agentUrl);
   const hasData = lastFetchedAt != null && hasAgent;
 
@@ -140,6 +152,8 @@ export default function HardwarePage() {
         <HardwareTabs />
 
         <PicWidget />
+
+        <OverviewUplinkWidget />
 
         <section className="rounded-lg border border-border-primary bg-surface-secondary p-5">
           <div className="mb-4 flex items-center justify-between">
