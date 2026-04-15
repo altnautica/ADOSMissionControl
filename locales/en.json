@@ -4,6 +4,7 @@
     "plan": "Plan",
     "simulate": "Simulate",
     "command": "Command",
+    "hardware": "Hardware",
     "configure": "Configure",
     "airTraffic": "Airspace",
     "history": "History",

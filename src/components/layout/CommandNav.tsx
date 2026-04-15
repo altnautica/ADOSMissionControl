@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { LayoutDashboard, Terminal, Route, Play, Radar, History } from "lucide-react";
+import { LayoutDashboard, Terminal, Cable, Route, Play, Radar, History } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const tabs = [
   { icon: LayoutDashboard, labelKey: "dashboard", href: "/" },
   { icon: Terminal, labelKey: "command", href: "/command" },
+  { icon: Cable, labelKey: "hardware", href: "/hardware" },
   { icon: Route, labelKey: "plan", href: "/plan" },
   { icon: Play, labelKey: "simulate", href: "/simulate" },
   { icon: Radar, labelKey: "airTraffic", href: "/airspace" },
