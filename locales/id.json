@@ -2235,7 +2235,22 @@
       "title": "Ethernet",
       "link": "Tautan",
       "speed": "Kecepatan",
-      "dhcp": "DHCP"
+      "dhcp": "DHCP",
+      "configure": "Konfigurasi",
+      "mode": "Mode",
+      "static": "Statis",
+      "ipAddress": "Alamat IP",
+      "gateway": "Gateway",
+      "dns": "Server DNS",
+      "invalidIp": "Alamat IPv4 tidak valid",
+      "invalidCidr": "CIDR tidak valid (0-32)",
+      "backendPending": "Backend konfigurasi Ethernet menunggu",
+      "modalTitle": "Konfigurasi Ethernet",
+      "save": "Simpan",
+      "cancel": "Batal",
+      "savedToast": "Konfigurasi Ethernet disimpan.",
+      "genericError": "Gagal menyimpan konfigurasi Ethernet.",
+      "dhcpHint": "DHCP akan meminta alamat secara otomatis."
     },
     "priority": {
       "title": "Prioritas uplink",
@@ -2248,6 +2263,7 @@
       "title": "Bagikan uplink dengan klien AP",
       "description": "Rutekan lalu lintas uplink aktif melalui Titik Akses. Opsi lanjutan.",
       "enabled": "Aktif"
-    }
+    },
+    "controllers": "Pengendali"
   }
 }

@@ -2180,7 +2180,22 @@
       "title": "Ethernet",
       "link": "Verbindung",
       "speed": "Geschwindigkeit",
-      "dhcp": "DHCP"
+      "dhcp": "DHCP",
+      "configure": "Konfigurieren",
+      "mode": "Modus",
+      "static": "Statisch",
+      "ipAddress": "IP-Adresse",
+      "gateway": "Gateway",
+      "dns": "DNS-Server",
+      "invalidIp": "Ungültige IPv4-Adresse",
+      "invalidCidr": "Ungültige CIDR (0-32)",
+      "backendPending": "Ethernet-Konfiguration: Backend ausstehend",
+      "modalTitle": "Ethernet konfigurieren",
+      "save": "Speichern",
+      "cancel": "Abbrechen",
+      "savedToast": "Ethernet-Konfiguration gespeichert.",
+      "genericError": "Speichern der Ethernet-Konfiguration fehlgeschlagen.",
+      "dhcpHint": "DHCP fordert automatisch eine Adresse an."
     },
     "priority": {
       "title": "Uplink-Priorität",
@@ -2193,6 +2208,7 @@
       "title": "Uplink mit AP-Clients teilen",
       "description": "Leitet aktiven Uplink-Verkehr über den AP. Erweiterte Option.",
       "enabled": "Aktiviert"
-    }
+    },
+    "controllers": "Controller"
   }
 }

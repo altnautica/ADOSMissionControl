@@ -2235,7 +2235,22 @@
       "title": "イーサネット",
       "link": "リンク",
       "speed": "速度",
-      "dhcp": "DHCP"
+      "dhcp": "DHCP",
+      "configure": "構成",
+      "mode": "モード",
+      "static": "静的",
+      "ipAddress": "IPアドレス",
+      "gateway": "ゲートウェイ",
+      "dns": "DNSサーバー",
+      "invalidIp": "無効なIPv4アドレス",
+      "invalidCidr": "無効なCIDR (0-32)",
+      "backendPending": "イーサネット構成バックエンド保留中",
+      "modalTitle": "イーサネット構成",
+      "save": "保存",
+      "cancel": "キャンセル",
+      "savedToast": "イーサネット構成を保存しました。",
+      "genericError": "イーサネット構成の保存に失敗しました。",
+      "dhcpHint": "DHCPは自動的にアドレスを要求します。"
     },
     "priority": {
       "title": "アップリンク優先順位",
@@ -2248,6 +2263,7 @@
       "title": "APクライアントとアップリンクを共有",
       "description": "アクティブなアップリンクのトラフィックをAP経由でルーティングします。上級者向け。",
       "enabled": "有効"
-    }
+    },
+    "controllers": "コントローラー"
   }
 }

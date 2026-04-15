@@ -2235,7 +2235,22 @@
       "title": "Ethernet",
       "link": "Link",
       "speed": "Velocidade",
-      "dhcp": "DHCP"
+      "dhcp": "DHCP",
+      "configure": "Configurar",
+      "mode": "Modo",
+      "static": "Estático",
+      "ipAddress": "Endereço IP",
+      "gateway": "Gateway",
+      "dns": "Servidores DNS",
+      "invalidIp": "Endereço IPv4 inválido",
+      "invalidCidr": "CIDR inválido (0-32)",
+      "backendPending": "Backend de configuração Ethernet pendente",
+      "modalTitle": "Configurar Ethernet",
+      "save": "Salvar",
+      "cancel": "Cancelar",
+      "savedToast": "Configuração Ethernet salva.",
+      "genericError": "Falha ao salvar a configuração Ethernet.",
+      "dhcpHint": "DHCP solicitará um endereço automaticamente."
     },
     "priority": {
       "title": "Prioridade de uplink",
@@ -2248,6 +2263,7 @@
       "title": "Compartilhar uplink com clientes AP",
       "description": "Roteia o tráfego do uplink ativo pelo Ponto de Acesso. Opção avançada.",
       "enabled": "Ativado"
-    }
+    },
+    "controllers": "Controles"
   }
 }

@@ -2180,7 +2180,22 @@
       "title": "Ethernet",
       "link": "Liaison",
       "speed": "Vitesse",
-      "dhcp": "DHCP"
+      "dhcp": "DHCP",
+      "configure": "Configurer",
+      "mode": "Mode",
+      "static": "Statique",
+      "ipAddress": "Adresse IP",
+      "gateway": "Passerelle",
+      "dns": "Serveurs DNS",
+      "invalidIp": "Adresse IPv4 non valide",
+      "invalidCidr": "CIDR non valide (0-32)",
+      "backendPending": "Configuration Ethernet en attente du backend",
+      "modalTitle": "Configurer Ethernet",
+      "save": "Enregistrer",
+      "cancel": "Annuler",
+      "savedToast": "Configuration Ethernet enregistrée.",
+      "genericError": "Échec de l'enregistrement de la configuration Ethernet.",
+      "dhcpHint": "DHCP demandera une adresse automatiquement."
     },
     "priority": {
       "title": "Priorité des liens montants",
@@ -2193,6 +2208,7 @@
       "title": "Partager le lien avec les clients AP",
       "description": "Route le trafic du lien actif via le point d'accès. Option avancée.",
       "enabled": "Activé"
-    }
+    },
+    "controllers": "Contrôleurs"
   }
 }

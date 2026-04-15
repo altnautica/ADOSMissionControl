@@ -48,7 +48,7 @@ function AxisBar({ label, value }: { label: string; value: number }) {
   );
 }
 
-export function InputDevicesSection() {
+export function ControllersSection() {
   const t = useTranslations("inputDevices");
   const { activeController, axes, deadzone, expo, setDeadzone, setExpo, calibration, clearCalibration } =
     useInputStore();

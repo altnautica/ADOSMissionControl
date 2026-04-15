@@ -1,11 +1,13 @@
-import { InputDevicesSection } from "@/components/config/InputDevicesSection";
+import { redirect } from "next/navigation";
 
-export default function InputPage() {
-  return (
-    <div className="flex-1 overflow-y-auto p-6">
-      <div className="max-w-xl">
-        <InputDevicesSection />
-      </div>
-    </div>
-  );
+/**
+ * @module ConfigInputRedirect
+ * @description Phase 4 Track A (Wave 2): the /config/input page was migrated
+ * to /hardware/controllers. This server-side redirect preserves bookmarks
+ * and any in-app links that still point at the old route.
+ * @license GPL-3.0-only
+ */
+
+export default function ConfigInputRedirect() {
+  redirect("/hardware/controllers");
 }

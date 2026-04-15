@@ -2235,7 +2235,22 @@
       "title": "이더넷",
       "link": "링크",
       "speed": "속도",
-      "dhcp": "DHCP"
+      "dhcp": "DHCP",
+      "configure": "구성",
+      "mode": "모드",
+      "static": "고정",
+      "ipAddress": "IP 주소",
+      "gateway": "게이트웨이",
+      "dns": "DNS 서버",
+      "invalidIp": "잘못된 IPv4 주소",
+      "invalidCidr": "잘못된 CIDR (0-32)",
+      "backendPending": "이더넷 구성 백엔드 대기 중",
+      "modalTitle": "이더넷 구성",
+      "save": "저장",
+      "cancel": "취소",
+      "savedToast": "이더넷 구성이 저장되었습니다.",
+      "genericError": "이더넷 구성 저장에 실패했습니다.",
+      "dhcpHint": "DHCP가 자동으로 주소를 요청합니다."
     },
     "priority": {
       "title": "업링크 우선순위",
@@ -2248,6 +2263,7 @@
       "title": "AP 클라이언트와 업링크 공유",
       "description": "활성 업링크 트래픽을 AP를 통해 라우팅. 고급 옵션.",
       "enabled": "활성화됨"
-    }
+    },
+    "controllers": "컨트롤러"
   }
 }

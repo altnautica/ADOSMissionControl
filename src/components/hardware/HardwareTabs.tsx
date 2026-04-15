@@ -2,7 +2,9 @@
 
 /**
  * @module HardwareTabs
- * @description Secondary nav for the Hardware tab: Overview / Network / Physical UI.
+ * @description Secondary nav for the Hardware tab: Overview, Network,
+ * Physical UI, Gamepads (agent-side device list + BT pairing), Controllers
+ * (browser-side calibration + tuning).
  * @license GPL-3.0-only
  */
 
@@ -15,6 +17,7 @@ const TABS: { href: string; label: string }[] = [
   { href: "/hardware/network", label: "Network" },
   { href: "/hardware/ui", label: "Physical UI" },
   { href: "/hardware/gamepads", label: "Gamepads" },
+  { href: "/hardware/controllers", label: "Controllers" },
 ];
 
 export function HardwareTabs() {

@@ -2335,7 +2335,22 @@
       "title": "Ethernet",
       "link": "Link",
       "speed": "Speed",
-      "dhcp": "DHCP"
+      "dhcp": "DHCP",
+      "configure": "Configure",
+      "mode": "Mode",
+      "static": "Static",
+      "ipAddress": "IP Address",
+      "gateway": "Gateway",
+      "dns": "DNS servers",
+      "invalidIp": "Invalid IPv4 address",
+      "invalidCidr": "Invalid CIDR (0-32)",
+      "backendPending": "Ethernet config backend pending",
+      "modalTitle": "Configure Ethernet",
+      "save": "Save",
+      "cancel": "Cancel",
+      "savedToast": "Ethernet configuration saved.",
+      "genericError": "Failed to save Ethernet configuration.",
+      "dhcpHint": "DHCP will request an address automatically from the network."
     },
     "priority": {
       "title": "Uplink priority",
@@ -2348,6 +2363,7 @@
       "title": "Share uplink with AP clients",
       "description": "Routes active uplink traffic out the ground station Access Point. Advanced option.",
       "enabled": "Enabled"
-    }
+    },
+    "controllers": "Controllers"
   }
 }

@@ -2180,7 +2180,22 @@
       "title": "以太网",
       "link": "链路",
       "speed": "速度",
-      "dhcp": "DHCP"
+      "dhcp": "DHCP",
+      "configure": "配置",
+      "mode": "模式",
+      "static": "静态",
+      "ipAddress": "IP 地址",
+      "gateway": "网关",
+      "dns": "DNS 服务器",
+      "invalidIp": "无效的 IPv4 地址",
+      "invalidCidr": "无效的 CIDR (0-32)",
+      "backendPending": "以太网配置后端待定",
+      "modalTitle": "配置以太网",
+      "save": "保存",
+      "cancel": "取消",
+      "savedToast": "以太网配置已保存。",
+      "genericError": "保存以太网配置失败。",
+      "dhcpHint": "DHCP 将自动请求地址。"
     },
     "priority": {
       "title": "上行链路优先级",
@@ -2193,6 +2208,7 @@
       "title": "与 AP 客户端共享上行链路",
       "description": "将活动上行链路的流量从地面站接入点路由。高级选项。",
       "enabled": "已启用"
-    }
+    },
+    "controllers": "控制器"
   }
 }

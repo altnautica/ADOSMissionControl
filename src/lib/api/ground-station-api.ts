@@ -49,6 +49,16 @@ export interface EthernetStatus {
   iface?: string | null;
 }
 
+// Ethernet static-IP config (Phase 4 Wave 2; backend lands in Wave 3)
+export interface EthernetConfig {
+  mode: "dhcp" | "static";
+  ip?: string;       // IPv4 with prefix, e.g., "192.168.1.42/24"
+  gateway?: string;
+  dns?: string[];    // IPv4 addresses
+}
+
+export type EthernetConfigUpdate = Partial<EthernetConfig>;
+
 export type ModemConnState =
   | "disconnected"
   | "searching"
@@ -355,6 +365,25 @@ export class GroundStationApi {
 
   async setAp(update: ApUpdate): Promise<ApStatus> {
     return this.request<ApStatus>("/api/v1/ground-station/network/ap", {
+      method: "PUT",
+      body: JSON.stringify(update),
+    });
+  }
+
+  /**
+   * Get Ethernet config (Phase 4 Wave 2 stub; agent endpoint lands in Wave 3).
+   * Returns 404 GroundStationApiError until backend ships.
+   */
+  async getEthernetConfig(): Promise<EthernetConfig> {
+    return this.request<EthernetConfig>("/api/v1/ground-station/network/ethernet");
+  }
+
+  /**
+   * Set Ethernet config (Phase 4 Wave 2 stub; agent endpoint lands in Wave 3).
+   * Returns 404 GroundStationApiError until backend ships.
+   */
+  async setEthernetConfig(update: EthernetConfigUpdate): Promise<EthernetConfig> {
+    return this.request<EthernetConfig>("/api/v1/ground-station/network/ethernet", {
       method: "PUT",
       body: JSON.stringify(update),
     });

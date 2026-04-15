@@ -2235,7 +2235,22 @@
       "title": "ईथरनेट",
       "link": "लिंक",
       "speed": "गति",
-      "dhcp": "DHCP"
+      "dhcp": "DHCP",
+      "configure": "ਕੌਂਫਿਗਰ ਕਰੋ",
+      "mode": "ਮੋਡ",
+      "static": "ਸਥਿਰ",
+      "ipAddress": "IP ਪਤਾ",
+      "gateway": "ਗੇਟਵੇ",
+      "dns": "DNS ਸਰਵਰ",
+      "invalidIp": "ਗਲਤ IPv4 ਪਤਾ",
+      "invalidCidr": "ਗਲਤ CIDR (0-32)",
+      "backendPending": "ਈਥਰਨੈੱਟ ਕੌਂਫਿਗ ਬੈਕਐਂਡ ਬਕਾਇਆ",
+      "modalTitle": "ਈਥਰਨੈੱਟ ਕੌਂਫਿਗਰ ਕਰੋ",
+      "save": "ਸੰਭਾਲੋ",
+      "cancel": "ਰੱਦ ਕਰੋ",
+      "savedToast": "ਈਥਰਨੈੱਟ ਕੌਂਫਿਗ ਸੰਭਾਲੀ ਗਈ।",
+      "genericError": "ਈਥਰਨੈੱਟ ਕੌਂਫਿਗ ਸੰਭਾਲਣ ਵਿੱਚ ਅਸਫਲ।",
+      "dhcpHint": "DHCP ਆਪਣੇ-ਆਪ ਪਤਾ ਮੰਗੇਗਾ।"
     },
     "priority": {
       "title": "अपलिंक प्राथमिकता",
@@ -2248,6 +2263,7 @@
       "title": "AP क्लाइंट्स के साथ अपलिंक साझा करें",
       "description": "सक्रिय अपलिंक ट्रैफ़िक को ग्राउंड स्टेशन AP से रूट करता है। उन्नत विकल्प।",
       "enabled": "सक्षम"
-    }
+    },
+    "controllers": "ਕੰਟਰੋਲਰ"
   }
 }

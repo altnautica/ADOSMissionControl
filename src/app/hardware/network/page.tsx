@@ -14,6 +14,7 @@ import Link from "next/link";
 import { HardwareTabs } from "@/components/hardware/HardwareTabs";
 import { PairModal } from "@/components/hardware/PairModal";
 import { WifiScanModal } from "@/components/hardware/WifiScanModal";
+import { EthernetConfigModal } from "@/components/hardware/EthernetConfigModal";
 import { UplinkPriorityList } from "@/components/hardware/UplinkPriorityList";
 import { DataUsageBar } from "@/components/hardware/DataUsageBar";
 import { Button } from "@/components/ui/button";
@@ -64,6 +65,8 @@ export default function HardwareNetworkPage() {
   const network = useGroundStationStore((s) => s.network);
   const modem = useGroundStationStore((s) => s.modem);
   const uplink = useGroundStationStore((s) => s.uplink);
+  const ethernetConfig = useGroundStationStore((s) => s.ethernetConfig);
+  const loadEthernetConfig = useGroundStationStore((s) => s.loadEthernetConfig);
   const lastError = useGroundStationStore((s) => s.lastError);
   const loadNetwork = useGroundStationStore((s) => s.loadNetwork);
   const applyAp = useGroundStationStore((s) => s.applyAp);
@@ -89,6 +92,7 @@ export default function HardwareNetworkPage() {
   const [pairOpen, setPairOpen] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
   const [modemOpen, setModemOpen] = useState(false);
+  const [ethernetOpen, setEthernetOpen] = useState(false);
 
   // Modem form state
   const [apnDraft, setApnDraft] = useState("");
@@ -139,7 +143,10 @@ export default function HardwareNetworkPage() {
     if (!client) return;
     void loadModem(client);
     void loadPriority(client);
-  }, [agentUrl, apiKey, loadModem, loadPriority]);
+    // Wave 2: best-effort fetch of ethernet config. Returns null when
+    // the Wave 3 backend is not yet shipped (404 swallowed by the store).
+    void loadEthernetConfig(client);
+  }, [agentUrl, apiKey, loadModem, loadPriority, loadEthernetConfig]);
 
   // Sync AP form from store on first load.
   useEffect(() => {
@@ -385,7 +392,17 @@ export default function HardwareNetworkPage() {
 
             {/* Ethernet card (live) */}
             <section className="rounded-lg border border-border-primary bg-surface-secondary p-5">
-              <h2 className="mb-3 text-lg font-medium text-text-primary">Ethernet</h2>
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-lg font-medium text-text-primary">Ethernet</h2>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setEthernetOpen(true)}
+                  disabled={!ethernet?.available}
+                >
+                  Configure
+                </Button>
+              </div>
               {!ethernet?.available ? (
                 <div className="text-sm text-text-secondary">Ethernet not available on this hardware.</div>
               ) : (
@@ -401,11 +418,9 @@ export default function HardwareNetworkPage() {
                   />
                   <StatRow label="IP" value={ethernet.ip ?? EMPTY} />
                   <StatRow label="Gateway" value={ethernet.gateway ?? EMPTY} />
+                  <StatRow label="Mode" value={ethernetConfig?.mode ?? EMPTY} />
                 </dl>
               )}
-              <p className="mt-3 text-[11px] text-text-tertiary">
-                Static IP configuration ships in a later phase.
-              </p>
             </section>
 
             {/* 4G Modem card (live) */}
@@ -530,6 +545,11 @@ export default function HardwareNetworkPage() {
 
         <PairModal open={pairOpen} onClose={() => setPairOpen(false)} />
         <WifiScanModal open={scanOpen} onClose={() => setScanOpen(false)} />
+        <EthernetConfigModal
+          open={ethernetOpen}
+          onClose={() => setEthernetOpen(false)}
+          initial={ethernetConfig}
+        />
 
         <Modal
           open={modemOpen}

@@ -14,6 +14,8 @@ import type {
   BluetoothDevice,
   DisplayConfig,
   DisplayUpdate,
+  EthernetConfig,
+  EthernetConfigUpdate,
   Gamepad,
   GroundStationApi,
   ModemStatus,
@@ -138,6 +140,9 @@ interface GroundStationState {
   modem: ModemStatus | null;
   uplink: UplinkSlice;
 
+  // Phase 4 (Wave 2) - Ethernet static-IP config (Wave 3 backend pending)
+  ethernetConfig: EthernetConfig | null;
+
   // Existing actions
   loadStatus: (status: GroundStationStatus, linkHealth?: Partial<GroundStationLinkHealth>) => void;
   loadWfb: (wfb: WfbConfig) => void;
@@ -204,6 +209,13 @@ interface GroundStationState {
     enabled: boolean,
   ) => Promise<boolean | null>;
   subscribeUplinkWs: (api: GroundStationApi) => () => void;
+
+  // Phase 4 Wave 2 - Ethernet static-IP config
+  loadEthernetConfig: (api: GroundStationApi) => Promise<EthernetConfig | null>;
+  applyEthernetConfig: (
+    api: GroundStationApi,
+    update: EthernetConfigUpdate,
+  ) => Promise<{ config: EthernetConfig | null; error: string | null; backendPending: boolean }>;
 
   resetAll: () => void;
 }
@@ -307,6 +319,8 @@ export const useGroundStationStore = create<GroundStationState>((set, get) => ({
   wifiScan: INITIAL_WIFI_SCAN,
   modem: null,
   uplink: INITIAL_UPLINK,
+
+  ethernetConfig: null,
 
   loadStatus: (status, linkHealth) => {
     const current = get().linkHealth;
@@ -919,6 +933,48 @@ export const useGroundStationStore = create<GroundStationState>((set, get) => ({
     });
   },
 
+  // ============================================================
+  // Phase 4 Wave 2 - Ethernet static-IP config
+  // Backend endpoint lands in Wave 3 (Violas). 404 surfaces as a
+  // clear "backend pending" signal so the form does not look broken.
+  // ============================================================
+
+  loadEthernetConfig: async (api) => {
+    try {
+      const cfg = await api.getEthernetConfig();
+      set({ ethernetConfig: cfg });
+      return cfg;
+    } catch (err) {
+      const { message, status } = errorMessage(err);
+      if (status === 404) {
+        // Wave 3 backend not yet shipped. Do not pollute lastError.
+        return null;
+      }
+      set({ lastError: message });
+      return null;
+    }
+  },
+
+  applyEthernetConfig: async (api, update) => {
+    try {
+      const cfg = await api.setEthernetConfig(update);
+      const prev = get().ethernetConfig;
+      const merged = prev ? { ...prev, ...cfg } : cfg;
+      set({ ethernetConfig: merged });
+      return { config: merged, error: null, backendPending: false };
+    } catch (err) {
+      const { message, status } = errorMessage(err);
+      if (status === 404) {
+        return {
+          config: null,
+          error: "Ethernet config backend pending (Phase 4 Wave 3)",
+          backendPending: true,
+        };
+      }
+      return { config: null, error: message, backendPending: false };
+    }
+  },
+
   resetAll: () =>
     set({
       linkHealth: INITIAL_LINK_HEALTH,
@@ -938,5 +994,6 @@ export const useGroundStationStore = create<GroundStationState>((set, get) => ({
       wifiScan: INITIAL_WIFI_SCAN,
       modem: null,
       uplink: INITIAL_UPLINK,
+      ethernetConfig: null,
     }),
 }));
