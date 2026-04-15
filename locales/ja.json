@@ -2168,6 +2168,48 @@
     "screens": {
       "title": "画面",
       "phase2Note": "有効化と並べ替えはフェーズ2で提供"
+    },
+    "pic": {
+      "title": "パイロット・イン・コマンド",
+      "currentPilot": "現在のパイロット",
+      "takeControl": "操縦権を取得",
+      "release": "解除",
+      "noPilot": "パイロットなし",
+      "claimCounter": "クレームカウンター",
+      "primaryGamepad": "プライマリゲームパッド",
+      "confirmWithin2s": "2秒以内に確認してください。",
+      "takeControlFrom": "から操縦権を取得",
+      "youHaveControl": "操縦権を保持中"
+    },
+    "gamepads": {
+      "title": "ゲームパッド",
+      "name": "名前",
+      "type": "タイプ",
+      "usb": "USB",
+      "bluetooth": "Bluetooth",
+      "connected": "接続済み",
+      "disconnected": "未接続",
+      "setPrimary": "プライマリに設定",
+      "primaryBadge": "プライマリ",
+      "noGamepads": "ゲームパッドが検出されません。"
+    },
+    "bluetooth": {
+      "title": "Bluetooth",
+      "scan": "スキャン",
+      "pair": "ペア",
+      "forget": "削除",
+      "scanning": "スキャン中...",
+      "scanResults": "スキャン結果",
+      "pairedDevices": "ペアリング済みBluetoothデバイス",
+      "pairSuccess": "ペアリング完了",
+      "pairFailed": "ペアリング失敗",
+      "noDevicesFound": "デバイスが見つかりません。",
+      "pairNewDevice": "新しいデバイスをペア"
+    },
+    "display": {
+      "title": "ディスプレイ",
+      "resolution": "解像度",
+      "kioskEnabled": "キオスクモード有効"
     }
   }
 }

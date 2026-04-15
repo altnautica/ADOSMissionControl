@@ -2268,6 +2268,48 @@
     "screens": {
       "title": "Screens",
       "phase2Note": "Enable and reorder ships in Phase 2"
+    },
+    "pic": {
+      "title": "Pilot in Command",
+      "currentPilot": "Current pilot",
+      "takeControl": "Take control",
+      "release": "Release",
+      "noPilot": "No pilot",
+      "claimCounter": "Claim counter",
+      "primaryGamepad": "Primary gamepad",
+      "confirmWithin2s": "Confirm within 2 seconds of tapping.",
+      "takeControlFrom": "Take control from",
+      "youHaveControl": "You have control"
+    },
+    "gamepads": {
+      "title": "Gamepads",
+      "name": "Name",
+      "type": "Type",
+      "usb": "USB",
+      "bluetooth": "Bluetooth",
+      "connected": "Connected",
+      "disconnected": "Disconnected",
+      "setPrimary": "Set as primary",
+      "primaryBadge": "Primary",
+      "noGamepads": "No gamepads detected."
+    },
+    "bluetooth": {
+      "title": "Bluetooth",
+      "scan": "Scan",
+      "pair": "Pair",
+      "forget": "Forget",
+      "scanning": "Scanning...",
+      "scanResults": "Scan results",
+      "pairedDevices": "Paired Bluetooth devices",
+      "pairSuccess": "Paired",
+      "pairFailed": "Failed to pair",
+      "noDevicesFound": "No devices found.",
+      "pairNewDevice": "Pair new device"
+    },
+    "display": {
+      "title": "Display",
+      "resolution": "Resolution",
+      "kioskEnabled": "Kiosk mode enabled"
     }
   }
 }

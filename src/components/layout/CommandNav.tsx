@@ -9,11 +9,11 @@ import { cn } from "@/lib/utils";
 const tabs = [
   { icon: LayoutDashboard, labelKey: "dashboard", href: "/" },
   { icon: Terminal, labelKey: "command", href: "/command" },
-  { icon: Cable, labelKey: "hardware", href: "/hardware" },
   { icon: Route, labelKey: "plan", href: "/plan" },
   { icon: Play, labelKey: "simulate", href: "/simulate" },
   { icon: Radar, labelKey: "airTraffic", href: "/airspace" },
   { icon: History, labelKey: "history", href: "/history" },
+  { icon: Cable, labelKey: "hardware", href: "/hardware" },
 ];
 
 export function CommandNav() {

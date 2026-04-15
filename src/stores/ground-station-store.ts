@@ -3,6 +3,7 @@
  * @description Zustand store for the ADOS Ground Agent / ground station state.
  * Phase 0: link health, WFB-ng config, and paired-drone status.
  * Phase 1 (Wave D): network, pair, UI slices plus API-driven actions.
+ * Phase 2 (Wave C): pic, gamepads, bluetooth, display slices plus PIC WebSocket subscription.
  * @license GPL-3.0-only
  */
 
@@ -10,10 +11,16 @@ import { create } from "zustand";
 import type {
   ApStatus,
   ApUpdate,
+  BluetoothDevice,
+  DisplayConfig,
+  DisplayUpdate,
+  Gamepad,
   GroundStationApi,
   NetworkStatus,
   OledUpdate,
   PairResult,
+  PicEvent,
+  PicState,
   ScreensUpdate,
   UiConfig,
 } from "@/lib/api/ground-station-api";
@@ -53,6 +60,29 @@ export interface PairSlice {
   errorStatus: number | null;
 }
 
+export interface PicSlice {
+  state: string;
+  claimed_by: string | null;
+  claim_counter: number;
+  primary_gamepad_id: string | null;
+  loading: boolean;
+  error: string | null;
+}
+
+export interface GamepadsSlice {
+  devices: Gamepad[];
+  primary_id: string | null;
+  loading: boolean;
+}
+
+export interface BluetoothSlice {
+  scanning: boolean;
+  scan_results: BluetoothDevice[];
+  paired: BluetoothDevice[];
+  pairing_mac: string | null;
+  error: string | null;
+}
+
 interface GroundStationState {
   linkHealth: GroundStationLinkHealth;
   wfbConfig: WfbConfig | null;
@@ -66,6 +96,12 @@ interface GroundStationState {
   ap: ApStatus | null;
   pair: PairSlice;
   ui: UiConfig | null;
+
+  // Phase 2 slices (Wave C)
+  pic: PicSlice;
+  gamepads: GamepadsSlice;
+  bluetooth: BluetoothSlice;
+  display: DisplayConfig | null;
 
   // Existing actions
   loadStatus: (status: GroundStationStatus, linkHealth?: Partial<GroundStationLinkHealth>) => void;
@@ -84,6 +120,28 @@ interface GroundStationState {
   startPair: (api: GroundStationApi, pairKey: string, droneId?: string) => Promise<void>;
   unpair: (api: GroundStationApi) => Promise<void>;
   clearPair: () => void;
+
+  // Phase 2 actions (Wave C)
+  loadPic: (api: GroundStationApi) => Promise<void>;
+  claimPic: (
+    api: GroundStationApi,
+    clientId: string,
+    opts?: { confirmToken?: string; force?: boolean },
+  ) => Promise<boolean>;
+  releasePic: (api: GroundStationApi, clientId: string) => Promise<boolean>;
+  subscribePicWs: (api: GroundStationApi) => () => void;
+
+  loadGamepads: (api: GroundStationApi) => Promise<void>;
+  applyPrimaryGamepad: (api: GroundStationApi, deviceId: string | null) => Promise<boolean>;
+
+  scanBluetooth: (api: GroundStationApi, durationS?: number) => Promise<void>;
+  pairBluetooth: (api: GroundStationApi, mac: string) => Promise<boolean>;
+  forgetBluetooth: (api: GroundStationApi, mac: string) => Promise<boolean>;
+  loadPairedBluetooth: (api: GroundStationApi) => Promise<void>;
+
+  loadDisplay: (api: GroundStationApi) => Promise<void>;
+  applyDisplay: (api: GroundStationApi, update: DisplayUpdate) => Promise<DisplayConfig | null>;
+
   resetAll: () => void;
 }
 
@@ -106,6 +164,29 @@ const INITIAL_PAIR: PairSlice = {
   result: null,
   error: null,
   errorStatus: null,
+};
+
+const INITIAL_PIC: PicSlice = {
+  state: "idle",
+  claimed_by: null,
+  claim_counter: 0,
+  primary_gamepad_id: null,
+  loading: false,
+  error: null,
+};
+
+const INITIAL_GAMEPADS: GamepadsSlice = {
+  devices: [],
+  primary_id: null,
+  loading: false,
+};
+
+const INITIAL_BLUETOOTH: BluetoothSlice = {
+  scanning: false,
+  scan_results: [],
+  paired: [],
+  pairing_mac: null,
+  error: null,
 };
 
 function errorMessage(err: unknown): { message: string; status: number | null } {
@@ -135,6 +216,11 @@ export const useGroundStationStore = create<GroundStationState>((set, get) => ({
   ap: null,
   pair: INITIAL_PAIR,
   ui: null,
+
+  pic: INITIAL_PIC,
+  gamepads: INITIAL_GAMEPADS,
+  bluetooth: INITIAL_BLUETOOTH,
+  display: null,
 
   loadStatus: (status, linkHealth) => {
     const current = get().linkHealth;
@@ -264,6 +350,238 @@ export const useGroundStationStore = create<GroundStationState>((set, get) => ({
 
   clearPair: () => set({ pair: INITIAL_PAIR }),
 
+  // ============================================================
+  // Phase 2 actions (Wave C)
+  // ============================================================
+
+  loadPic: async (api) => {
+    set({ pic: { ...get().pic, loading: true, error: null } });
+    try {
+      const s = await api.getPicState();
+      set({
+        pic: {
+          state: s.state,
+          claimed_by: s.claimed_by,
+          claim_counter: s.claim_counter,
+          primary_gamepad_id: s.primary_gamepad_id,
+          loading: false,
+          error: null,
+        },
+      });
+    } catch (err) {
+      const { message } = errorMessage(err);
+      set({ pic: { ...get().pic, loading: false, error: message } });
+    }
+  },
+
+  claimPic: async (api, clientId, opts) => {
+    set({ pic: { ...get().pic, loading: true, error: null } });
+    try {
+      const res = await api.claimPic(clientId, opts?.confirmToken, opts?.force);
+      set({
+        pic: {
+          ...get().pic,
+          loading: false,
+          claimed_by: res.claimed_by,
+          claim_counter: res.claim_counter,
+          state: res.claimed ? "claimed" : get().pic.state,
+          error: null,
+        },
+      });
+      return res.claimed;
+    } catch (err) {
+      const { message } = errorMessage(err);
+      set({ pic: { ...get().pic, loading: false, error: message } });
+      return false;
+    }
+  },
+
+  releasePic: async (api, clientId) => {
+    set({ pic: { ...get().pic, loading: true, error: null } });
+    try {
+      const res = await api.releasePic(clientId);
+      set({
+        pic: {
+          ...get().pic,
+          loading: false,
+          claimed_by: res.claimed_by,
+          state: res.released ? "idle" : get().pic.state,
+          error: null,
+        },
+      });
+      return res.released;
+    } catch (err) {
+      const { message } = errorMessage(err);
+      set({ pic: { ...get().pic, loading: false, error: message } });
+      return false;
+    }
+  },
+
+  subscribePicWs: (api) => {
+    return api.subscribePicEvents((event: PicEvent) => {
+      const current = get().pic;
+      if (event.type === "state" || event.type === "claimed" || event.type === "released") {
+        set({
+          pic: {
+            ...current,
+            state: (event as { state?: string }).state ?? current.state,
+            claimed_by:
+              (event as { claimed_by?: string | null }).claimed_by !== undefined
+                ? ((event as { claimed_by: string | null }).claimed_by)
+                : current.claimed_by,
+            claim_counter:
+              (event as { claim_counter?: number }).claim_counter ?? current.claim_counter,
+            primary_gamepad_id:
+              (event as { primary_gamepad_id?: string | null }).primary_gamepad_id !== undefined
+                ? ((event as { primary_gamepad_id: string | null }).primary_gamepad_id)
+                : current.primary_gamepad_id,
+          },
+        });
+      } else if (event.type === "gamepad_changed") {
+        set({
+          pic: {
+            ...current,
+            primary_gamepad_id:
+              (event as { primary_gamepad_id?: string | null }).primary_gamepad_id ?? null,
+          },
+        });
+      }
+    });
+  },
+
+  loadGamepads: async (api) => {
+    set({ gamepads: { ...get().gamepads, loading: true } });
+    try {
+      const list = await api.listGamepads();
+      set({
+        gamepads: {
+          devices: list.devices,
+          primary_id: list.primary_id,
+          loading: false,
+        },
+      });
+    } catch (err) {
+      const { message } = errorMessage(err);
+      set({
+        gamepads: { ...get().gamepads, loading: false },
+        lastError: message,
+      });
+    }
+  },
+
+  applyPrimaryGamepad: async (api, deviceId) => {
+    try {
+      const list = await api.setPrimaryGamepad(deviceId);
+      set({
+        gamepads: {
+          devices: list.devices,
+          primary_id: list.primary_id,
+          loading: false,
+        },
+      });
+      return true;
+    } catch (err) {
+      const { message } = errorMessage(err);
+      set({ lastError: message });
+      return false;
+    }
+  },
+
+  scanBluetooth: async (api, durationS) => {
+    set({
+      bluetooth: { ...get().bluetooth, scanning: true, error: null, scan_results: [] },
+    });
+    try {
+      const res = await api.scanBluetooth(durationS ?? 10);
+      set({
+        bluetooth: {
+          ...get().bluetooth,
+          scanning: false,
+          scan_results: res.devices,
+          error: null,
+        },
+      });
+    } catch (err) {
+      const { message } = errorMessage(err);
+      set({
+        bluetooth: { ...get().bluetooth, scanning: false, error: message },
+      });
+    }
+  },
+
+  pairBluetooth: async (api, mac) => {
+    set({ bluetooth: { ...get().bluetooth, pairing_mac: mac, error: null } });
+    try {
+      const res = await api.pairBluetooth(mac);
+      set({ bluetooth: { ...get().bluetooth, pairing_mac: null, error: null } });
+      if (res.paired) {
+        // refresh paired list
+        try {
+          const list = await api.getPairedBluetooth();
+          set({ bluetooth: { ...get().bluetooth, paired: list.devices } });
+        } catch {
+          // non-fatal
+        }
+      }
+      return res.paired;
+    } catch (err) {
+      const { message } = errorMessage(err);
+      set({
+        bluetooth: { ...get().bluetooth, pairing_mac: null, error: message },
+      });
+      return false;
+    }
+  },
+
+  forgetBluetooth: async (api, mac) => {
+    try {
+      const res = await api.forgetBluetooth(mac);
+      if (res.forgotten) {
+        const remaining = get().bluetooth.paired.filter((d) => d.mac !== mac);
+        set({ bluetooth: { ...get().bluetooth, paired: remaining } });
+      }
+      return res.forgotten;
+    } catch (err) {
+      const { message } = errorMessage(err);
+      set({ bluetooth: { ...get().bluetooth, error: message } });
+      return false;
+    }
+  },
+
+  loadPairedBluetooth: async (api) => {
+    try {
+      const list = await api.getPairedBluetooth();
+      set({
+        bluetooth: { ...get().bluetooth, paired: list.devices, error: null },
+      });
+    } catch (err) {
+      const { message } = errorMessage(err);
+      set({ bluetooth: { ...get().bluetooth, error: message } });
+    }
+  },
+
+  loadDisplay: async (api) => {
+    try {
+      const d = await api.getDisplay();
+      set({ display: d });
+    } catch (err) {
+      const { message } = errorMessage(err);
+      set({ lastError: message });
+    }
+  },
+
+  applyDisplay: async (api, update) => {
+    try {
+      const d = await api.setDisplay(update);
+      set({ display: d });
+      return d;
+    } catch (err) {
+      const { message } = errorMessage(err);
+      set({ lastError: message });
+      return null;
+    }
+  },
+
   resetAll: () =>
     set({
       linkHealth: INITIAL_LINK_HEALTH,
@@ -276,5 +594,9 @@ export const useGroundStationStore = create<GroundStationState>((set, get) => ({
       ap: null,
       pair: INITIAL_PAIR,
       ui: null,
+      pic: INITIAL_PIC,
+      gamepads: INITIAL_GAMEPADS,
+      bluetooth: INITIAL_BLUETOOTH,
+      display: null,
     }),
 }));

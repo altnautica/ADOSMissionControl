@@ -2113,6 +2113,48 @@
     "screens": {
       "title": "Écrans",
       "phase2Note": "Activer et réordonner arrivent en Phase 2"
+    },
+    "pic": {
+      "title": "Pilote en commande",
+      "currentPilot": "Pilote actuel",
+      "takeControl": "Prendre le contrôle",
+      "release": "Libérer",
+      "noPilot": "Aucun pilote",
+      "claimCounter": "Compteur de réclamations",
+      "primaryGamepad": "Manette principale",
+      "confirmWithin2s": "Confirmer dans les 2 secondes.",
+      "takeControlFrom": "Prendre le contrôle de",
+      "youHaveControl": "Vous avez le contrôle"
+    },
+    "gamepads": {
+      "title": "Manettes",
+      "name": "Nom",
+      "type": "Type",
+      "usb": "USB",
+      "bluetooth": "Bluetooth",
+      "connected": "Connecté",
+      "disconnected": "Déconnecté",
+      "setPrimary": "Définir comme principale",
+      "primaryBadge": "Principale",
+      "noGamepads": "Aucune manette détectée."
+    },
+    "bluetooth": {
+      "title": "Bluetooth",
+      "scan": "Scanner",
+      "pair": "Appairer",
+      "forget": "Oublier",
+      "scanning": "Scan en cours...",
+      "scanResults": "Résultats du scan",
+      "pairedDevices": "Appareils Bluetooth appairés",
+      "pairSuccess": "Appairé",
+      "pairFailed": "Échec de l appairage",
+      "noDevicesFound": "Aucun appareil trouvé.",
+      "pairNewDevice": "Appairer un nouvel appareil"
+    },
+    "display": {
+      "title": "Affichage",
+      "resolution": "Résolution",
+      "kioskEnabled": "Mode kiosque activé"
     }
   }
 }

@@ -2113,6 +2113,48 @@
     "screens": {
       "title": "Bildschirme",
       "phase2Note": "Aktivieren und neu ordnen kommt in Phase 2"
+    },
+    "pic": {
+      "title": "Pilot in Command",
+      "currentPilot": "Aktueller Pilot",
+      "takeControl": "Übernehmen",
+      "release": "Freigeben",
+      "noPilot": "Kein Pilot",
+      "claimCounter": "Anspruchszähler",
+      "primaryGamepad": "Primäres Gamepad",
+      "confirmWithin2s": "Innerhalb von 2 Sekunden bestätigen.",
+      "takeControlFrom": "Kontrolle übernehmen von",
+      "youHaveControl": "Sie haben die Kontrolle"
+    },
+    "gamepads": {
+      "title": "Gamepads",
+      "name": "Name",
+      "type": "Typ",
+      "usb": "USB",
+      "bluetooth": "Bluetooth",
+      "connected": "Verbunden",
+      "disconnected": "Getrennt",
+      "setPrimary": "Als primär festlegen",
+      "primaryBadge": "Primär",
+      "noGamepads": "Keine Gamepads erkannt."
+    },
+    "bluetooth": {
+      "title": "Bluetooth",
+      "scan": "Scannen",
+      "pair": "Koppeln",
+      "forget": "Vergessen",
+      "scanning": "Scannen...",
+      "scanResults": "Scanergebnisse",
+      "pairedDevices": "Gekoppelte Bluetooth-Geräte",
+      "pairSuccess": "Gekoppelt",
+      "pairFailed": "Kopplung fehlgeschlagen",
+      "noDevicesFound": "Keine Geräte gefunden.",
+      "pairNewDevice": "Neues Gerät koppeln"
+    },
+    "display": {
+      "title": "Anzeige",
+      "resolution": "Auflösung",
+      "kioskEnabled": "Kioskmodus aktiviert"
     }
   }
 }

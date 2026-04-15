@@ -2168,6 +2168,48 @@
     "screens": {
       "title": "Telas",
       "phase2Note": "Ativar e reordenar vêm na Fase 2"
+    },
+    "pic": {
+      "title": "Piloto no comando",
+      "currentPilot": "Piloto atual",
+      "takeControl": "Assumir controle",
+      "release": "Liberar",
+      "noPilot": "Sem piloto",
+      "claimCounter": "Contador de reivindicações",
+      "primaryGamepad": "Gamepad primário",
+      "confirmWithin2s": "Confirme em 2 segundos.",
+      "takeControlFrom": "Assumir controle de",
+      "youHaveControl": "Você tem o controle"
+    },
+    "gamepads": {
+      "title": "Gamepads",
+      "name": "Nome",
+      "type": "Tipo",
+      "usb": "USB",
+      "bluetooth": "Bluetooth",
+      "connected": "Conectado",
+      "disconnected": "Desconectado",
+      "setPrimary": "Definir como primário",
+      "primaryBadge": "Primário",
+      "noGamepads": "Nenhum gamepad detectado."
+    },
+    "bluetooth": {
+      "title": "Bluetooth",
+      "scan": "Escanear",
+      "pair": "Parear",
+      "forget": "Esquecer",
+      "scanning": "Escaneando...",
+      "scanResults": "Resultados da busca",
+      "pairedDevices": "Dispositivos Bluetooth pareados",
+      "pairSuccess": "Pareado",
+      "pairFailed": "Falha ao parear",
+      "noDevicesFound": "Nenhum dispositivo encontrado.",
+      "pairNewDevice": "Parear novo dispositivo"
+    },
+    "display": {
+      "title": "Tela",
+      "resolution": "Resolução",
+      "kioskEnabled": "Modo quiosque ativado"
     }
   }
 }

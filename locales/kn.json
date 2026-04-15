@@ -2168,6 +2168,48 @@
     "screens": {
       "title": "ಪರದೆಗಳು",
       "phase2Note": "ಸಕ್ರಿಯಗೊಳಿಸಿ ಮತ್ತು ಮರುಕ್ರಮಗೊಳಿಸಿ Phase 2 ರಲ್ಲಿ ಬರಲಿದೆ"
+    },
+    "pic": {
+      "title": "ಪೈಲಟ್ ಇನ್ ಕಮಾಂಡ್",
+      "currentPilot": "ಪ್ರಸ್ತುತ ಪೈಲಟ್",
+      "takeControl": "ನಿಯಂತ್ರಣ ತೆಗೆದುಕೊಳ್ಳಿ",
+      "release": "ಬಿಡುಗಡೆ",
+      "noPilot": "ಪೈಲಟ್ ಇಲ್ಲ",
+      "claimCounter": "ಕ್ಲೈಮ್ ಕೌಂಟರ್",
+      "primaryGamepad": "ಪ್ರಾಥಮಿಕ ಗೇಮ್‌ಪ್ಯಾಡ್",
+      "confirmWithin2s": "2 ಸೆಕೆಂಡ್‌ಗಳಲ್ಲಿ ದೃಢೀಕರಿಸಿ.",
+      "takeControlFrom": "ಇವರಿಂದ ನಿಯಂತ್ರಣ ತೆಗೆದುಕೊಳ್ಳಿ",
+      "youHaveControl": "ನಿಮಗೆ ನಿಯಂತ್ರಣವಿದೆ"
+    },
+    "gamepads": {
+      "title": "ಗೇಮ್‌ಪ್ಯಾಡ್‌ಗಳು",
+      "name": "ಹೆಸರು",
+      "type": "ಪ್ರಕಾರ",
+      "usb": "USB",
+      "bluetooth": "ಬ್ಲೂಟೂತ್",
+      "connected": "ಸಂಪರ್ಕಿತ",
+      "disconnected": "ಸಂಪರ್ಕ ಕಡಿತ",
+      "setPrimary": "ಪ್ರಾಥಮಿಕವಾಗಿ ಹೊಂದಿಸಿ",
+      "primaryBadge": "ಪ್ರಾಥಮಿಕ",
+      "noGamepads": "ಗೇಮ್‌ಪ್ಯಾಡ್‌ಗಳು ಪತ್ತೆಯಾಗಿಲ್ಲ."
+    },
+    "bluetooth": {
+      "title": "ಬ್ಲೂಟೂತ್",
+      "scan": "ಸ್ಕ್ಯಾನ್",
+      "pair": "ಜೋಡಿಸಿ",
+      "forget": "ಮರೆತುಬಿಡಿ",
+      "scanning": "ಸ್ಕ್ಯಾನ್ ಆಗುತ್ತಿದೆ...",
+      "scanResults": "ಸ್ಕ್ಯಾನ್ ಫಲಿತಾಂಶಗಳು",
+      "pairedDevices": "ಜೋಡಿಸಿದ ಬ್ಲೂಟೂತ್ ಸಾಧನಗಳು",
+      "pairSuccess": "ಜೋಡಿಸಲಾಗಿದೆ",
+      "pairFailed": "ಜೋಡಿಸುವಿಕೆ ವಿಫಲವಾಗಿದೆ",
+      "noDevicesFound": "ಸಾಧನಗಳು ಕಂಡುಬಂದಿಲ್ಲ.",
+      "pairNewDevice": "ಹೊಸ ಸಾಧನವನ್ನು ಜೋಡಿಸಿ"
+    },
+    "display": {
+      "title": "ಡಿಸ್ಪ್ಲೇ",
+      "resolution": "ರೆಸೊಲ್ಯೂಶನ್",
+      "kioskEnabled": "ಕಿಯೋಸ್ಕ್ ಮೋಡ್ ಸಕ್ರಿಯಗೊಳಿಸಲಾಗಿದೆ"
     }
   }
 }

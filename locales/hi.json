@@ -2113,6 +2113,48 @@
     "screens": {
       "title": "स्क्रीन",
       "phase2Note": "सक्षम करना और पुनर्क्रम Phase 2 में आएगा"
+    },
+    "pic": {
+      "title": "पायलट इन कमांड",
+      "currentPilot": "वर्तमान पायलट",
+      "takeControl": "नियंत्रण लें",
+      "release": "छोड़ें",
+      "noPilot": "कोई पायलट नहीं",
+      "claimCounter": "दावा काउंटर",
+      "primaryGamepad": "प्राथमिक गेमपैड",
+      "confirmWithin2s": "2 सेकंड के भीतर पुष्टि करें।",
+      "takeControlFrom": "से नियंत्रण लें",
+      "youHaveControl": "आपके पास नियंत्रण है"
+    },
+    "gamepads": {
+      "title": "गेमपैड",
+      "name": "नाम",
+      "type": "प्रकार",
+      "usb": "यूएसबी",
+      "bluetooth": "ब्लूटूथ",
+      "connected": "जुड़ा हुआ",
+      "disconnected": "डिस्कनेक्ट",
+      "setPrimary": "प्राथमिक के रूप में सेट करें",
+      "primaryBadge": "प्राथमिक",
+      "noGamepads": "कोई गेमपैड नहीं मिला।"
+    },
+    "bluetooth": {
+      "title": "ब्लूटूथ",
+      "scan": "स्कैन",
+      "pair": "जोड़ें",
+      "forget": "भूलें",
+      "scanning": "स्कैन हो रहा है...",
+      "scanResults": "स्कैन परिणाम",
+      "pairedDevices": "जुड़े हुए ब्लूटूथ डिवाइस",
+      "pairSuccess": "जोड़ा गया",
+      "pairFailed": "जोड़ने में विफल",
+      "noDevicesFound": "कोई डिवाइस नहीं मिला।",
+      "pairNewDevice": "नया डिवाइस जोड़ें"
+    },
+    "display": {
+      "title": "डिस्प्ले",
+      "resolution": "रिज़ॉल्यूशन",
+      "kioskEnabled": "कियोस्क मोड सक्षम"
     }
   }
 }

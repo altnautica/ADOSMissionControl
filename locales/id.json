@@ -2168,6 +2168,48 @@
     "screens": {
       "title": "Layar",
       "phase2Note": "Aktifkan dan urutkan ulang hadir di Fase 2"
+    },
+    "pic": {
+      "title": "Pilot dalam Komando",
+      "currentPilot": "Pilot saat ini",
+      "takeControl": "Ambil kendali",
+      "release": "Lepaskan",
+      "noPilot": "Tidak ada pilot",
+      "claimCounter": "Penghitung klaim",
+      "primaryGamepad": "Gamepad utama",
+      "confirmWithin2s": "Konfirmasi dalam 2 detik.",
+      "takeControlFrom": "Ambil kendali dari",
+      "youHaveControl": "Anda memiliki kendali"
+    },
+    "gamepads": {
+      "title": "Gamepad",
+      "name": "Nama",
+      "type": "Tipe",
+      "usb": "USB",
+      "bluetooth": "Bluetooth",
+      "connected": "Terhubung",
+      "disconnected": "Terputus",
+      "setPrimary": "Atur sebagai utama",
+      "primaryBadge": "Utama",
+      "noGamepads": "Tidak ada gamepad terdeteksi."
+    },
+    "bluetooth": {
+      "title": "Bluetooth",
+      "scan": "Pindai",
+      "pair": "Pasangkan",
+      "forget": "Lupakan",
+      "scanning": "Memindai...",
+      "scanResults": "Hasil pemindaian",
+      "pairedDevices": "Perangkat Bluetooth terpasang",
+      "pairSuccess": "Terpasangkan",
+      "pairFailed": "Gagal memasangkan",
+      "noDevicesFound": "Perangkat tidak ditemukan.",
+      "pairNewDevice": "Pasangkan perangkat baru"
+    },
+    "display": {
+      "title": "Layar",
+      "resolution": "Resolusi",
+      "kioskEnabled": "Mode kios aktif"
     }
   }
 }

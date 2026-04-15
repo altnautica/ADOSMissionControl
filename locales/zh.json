@@ -2113,6 +2113,48 @@
     "screens": {
       "title": "屏幕",
       "phase2Note": "启用和重排将在第 2 阶段推出"
+    },
+    "pic": {
+      "title": "主控飞行员",
+      "currentPilot": "当前飞行员",
+      "takeControl": "接管控制",
+      "release": "释放",
+      "noPilot": "无飞行员",
+      "claimCounter": "认领计数",
+      "primaryGamepad": "主手柄",
+      "confirmWithin2s": "请在2秒内确认。",
+      "takeControlFrom": "接管自",
+      "youHaveControl": "您拥有控制权"
+    },
+    "gamepads": {
+      "title": "手柄",
+      "name": "名称",
+      "type": "类型",
+      "usb": "USB",
+      "bluetooth": "蓝牙",
+      "connected": "已连接",
+      "disconnected": "已断开",
+      "setPrimary": "设为主手柄",
+      "primaryBadge": "主要",
+      "noGamepads": "未检测到手柄。"
+    },
+    "bluetooth": {
+      "title": "蓝牙",
+      "scan": "扫描",
+      "pair": "配对",
+      "forget": "忘记",
+      "scanning": "扫描中...",
+      "scanResults": "扫描结果",
+      "pairedDevices": "已配对蓝牙设备",
+      "pairSuccess": "已配对",
+      "pairFailed": "配对失败",
+      "noDevicesFound": "未找到设备。",
+      "pairNewDevice": "配对新设备"
+    },
+    "display": {
+      "title": "显示",
+      "resolution": "分辨率",
+      "kioskEnabled": "信息亭模式已启用"
     }
   }
 }

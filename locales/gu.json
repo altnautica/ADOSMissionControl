@@ -2168,6 +2168,48 @@
     "screens": {
       "title": "સ્ક્રીન",
       "phase2Note": "સક્ષમ અને પુનઃક્રમ Phase 2 માં આવશે"
+    },
+    "pic": {
+      "title": "પાયલટ ઇન કમાન્ડ",
+      "currentPilot": "વર્તમાન પાયલટ",
+      "takeControl": "નિયંત્રણ લો",
+      "release": "છોડો",
+      "noPilot": "કોઈ પાયલટ નથી",
+      "claimCounter": "દાવા કાઉન્ટર",
+      "primaryGamepad": "પ્રાથમિક ગેમપેડ",
+      "confirmWithin2s": "2 સેકન્ડમાં પુષ્ટિ કરો.",
+      "takeControlFrom": "પાસેથી નિયંત્રણ લો",
+      "youHaveControl": "તમારી પાસે નિયંત્રણ છે"
+    },
+    "gamepads": {
+      "title": "ગેમપેડ્સ",
+      "name": "નામ",
+      "type": "પ્રકાર",
+      "usb": "USB",
+      "bluetooth": "બ્લૂટૂથ",
+      "connected": "કનેક્ટેડ",
+      "disconnected": "ડિસ્કનેક્ટ",
+      "setPrimary": "પ્રાથમિક તરીકે સેટ કરો",
+      "primaryBadge": "પ્રાથમિક",
+      "noGamepads": "કોઈ ગેમપેડ મળ્યું નથી."
+    },
+    "bluetooth": {
+      "title": "બ્લૂટૂથ",
+      "scan": "સ્કેન",
+      "pair": "જોડો",
+      "forget": "ભૂલી જાઓ",
+      "scanning": "સ્કેન થઈ રહ્યું છે...",
+      "scanResults": "સ્કેન પરિણામો",
+      "pairedDevices": "જોડાયેલ બ્લૂટૂથ ઉપકરણો",
+      "pairSuccess": "જોડાયું",
+      "pairFailed": "જોડવામાં નિષ્ફળ",
+      "noDevicesFound": "કોઈ ઉપકરણો મળ્યા નથી.",
+      "pairNewDevice": "નવું ઉપકરણ જોડો"
+    },
+    "display": {
+      "title": "ડિસ્પ્લે",
+      "resolution": "રિઝોલ્યુશન",
+      "kioskEnabled": "કિઓસ્ક મોડ સક્ષમ"
     }
   }
 }

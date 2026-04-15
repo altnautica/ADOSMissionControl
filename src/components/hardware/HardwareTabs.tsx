@@ -14,6 +14,7 @@ const TABS: { href: string; label: string }[] = [
   { href: "/hardware", label: "Overview" },
   { href: "/hardware/network", label: "Network" },
   { href: "/hardware/ui", label: "Physical UI" },
+  { href: "/hardware/gamepads", label: "Gamepads" },
 ];
 
 export function HardwareTabs() {

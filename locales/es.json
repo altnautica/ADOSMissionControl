@@ -2113,6 +2113,48 @@
     "screens": {
       "title": "Pantallas",
       "phase2Note": "Activar y reordenar llegan en la Fase 2"
+    },
+    "pic": {
+      "title": "Piloto al mando",
+      "currentPilot": "Piloto actual",
+      "takeControl": "Tomar control",
+      "release": "Liberar",
+      "noPilot": "Sin piloto",
+      "claimCounter": "Contador de reclamos",
+      "primaryGamepad": "Gamepad principal",
+      "confirmWithin2s": "Confirme en 2 segundos.",
+      "takeControlFrom": "Tomar control de",
+      "youHaveControl": "Tiene el control"
+    },
+    "gamepads": {
+      "title": "Gamepads",
+      "name": "Nombre",
+      "type": "Tipo",
+      "usb": "USB",
+      "bluetooth": "Bluetooth",
+      "connected": "Conectado",
+      "disconnected": "Desconectado",
+      "setPrimary": "Establecer como principal",
+      "primaryBadge": "Principal",
+      "noGamepads": "No se detectaron gamepads."
+    },
+    "bluetooth": {
+      "title": "Bluetooth",
+      "scan": "Escanear",
+      "pair": "Emparejar",
+      "forget": "Olvidar",
+      "scanning": "Escaneando...",
+      "scanResults": "Resultados del escaneo",
+      "pairedDevices": "Dispositivos Bluetooth emparejados",
+      "pairSuccess": "Emparejado",
+      "pairFailed": "Error al emparejar",
+      "noDevicesFound": "No se encontraron dispositivos.",
+      "pairNewDevice": "Emparejar dispositivo nuevo"
+    },
+    "display": {
+      "title": "Pantalla",
+      "resolution": "Resolución",
+      "kioskEnabled": "Modo kiosco habilitado"
     }
   }
 }

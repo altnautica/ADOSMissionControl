@@ -2168,6 +2168,48 @@
     "screens": {
       "title": "화면",
       "phase2Note": "사용 및 재정렬은 Phase 2에 제공"
+    },
+    "pic": {
+      "title": "파일럿 인 커맨드",
+      "currentPilot": "현재 파일럿",
+      "takeControl": "제어권 가져오기",
+      "release": "해제",
+      "noPilot": "파일럿 없음",
+      "claimCounter": "클레임 카운터",
+      "primaryGamepad": "기본 게임패드",
+      "confirmWithin2s": "2초 이내에 확인하세요.",
+      "takeControlFrom": "에서 제어권 가져오기",
+      "youHaveControl": "제어권 보유 중"
+    },
+    "gamepads": {
+      "title": "게임패드",
+      "name": "이름",
+      "type": "유형",
+      "usb": "USB",
+      "bluetooth": "블루투스",
+      "connected": "연결됨",
+      "disconnected": "연결 해제됨",
+      "setPrimary": "기본으로 설정",
+      "primaryBadge": "기본",
+      "noGamepads": "게임패드가 감지되지 않았습니다."
+    },
+    "bluetooth": {
+      "title": "블루투스",
+      "scan": "스캔",
+      "pair": "페어링",
+      "forget": "잊기",
+      "scanning": "스캔 중...",
+      "scanResults": "스캔 결과",
+      "pairedDevices": "페어링된 블루투스 장치",
+      "pairSuccess": "페어링됨",
+      "pairFailed": "페어링 실패",
+      "noDevicesFound": "장치가 없습니다.",
+      "pairNewDevice": "새 장치 페어링"
+    },
+    "display": {
+      "title": "디스플레이",
+      "resolution": "해상도",
+      "kioskEnabled": "키오스크 모드 활성화"
     }
   }
 }

@@ -2113,6 +2113,48 @@
     "screens": {
       "title": "திரைகள்",
       "phase2Note": "இயக்கம் மற்றும் மறு வரிசை Phase 2 இல் வரும்"
+    },
+    "pic": {
+      "title": "கட்டளையில் உள்ள பைலட்",
+      "currentPilot": "தற்போதைய பைலட்",
+      "takeControl": "கட்டுப்பாட்டை எடுக்க",
+      "release": "விடுவிக்க",
+      "noPilot": "பைலட் இல்லை",
+      "claimCounter": "உரிமை எண்ணிக்கை",
+      "primaryGamepad": "முதன்மை கேம்பேட்",
+      "confirmWithin2s": "2 வினாடிகளில் உறுதிப்படுத்தவும்.",
+      "takeControlFrom": "இவரிடமிருந்து கட்டுப்பாட்டை எடு",
+      "youHaveControl": "உங்களுக்கு கட்டுப்பாடு உள்ளது"
+    },
+    "gamepads": {
+      "title": "கேம்பேட்கள்",
+      "name": "பெயர்",
+      "type": "வகை",
+      "usb": "USB",
+      "bluetooth": "ப்ளூடூத்",
+      "connected": "இணைக்கப்பட்டது",
+      "disconnected": "துண்டிக்கப்பட்டது",
+      "setPrimary": "முதன்மையாக அமை",
+      "primaryBadge": "முதன்மை",
+      "noGamepads": "கேம்பேட்கள் கண்டறியப்படவில்லை."
+    },
+    "bluetooth": {
+      "title": "ப்ளூடூத்",
+      "scan": "ஸ்கேன்",
+      "pair": "இணை",
+      "forget": "மறக்க",
+      "scanning": "ஸ்கேன் செய்கிறது...",
+      "scanResults": "ஸ்கேன் முடிவுகள்",
+      "pairedDevices": "இணைக்கப்பட்ட ப்ளூடூத் சாதனங்கள்",
+      "pairSuccess": "இணைக்கப்பட்டது",
+      "pairFailed": "இணைப்பு தோல்வி",
+      "noDevicesFound": "சாதனங்கள் இல்லை.",
+      "pairNewDevice": "புதிய சாதனத்தை இணை"
+    },
+    "display": {
+      "title": "காட்சி",
+      "resolution": "தெளிவுத்திறன்",
+      "kioskEnabled": "கியோஸ்க் முறை இயக்கப்பட்டது"
     }
   }
 }

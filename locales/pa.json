@@ -2168,6 +2168,48 @@
     "screens": {
       "title": "ਸਕ੍ਰੀਨ",
       "phase2Note": "ਸਮਰੱਥ ਅਤੇ ਮੁੜ ਕ੍ਰਮ Phase 2 ਵਿੱਚ ਆਵੇਗਾ"
+    },
+    "pic": {
+      "title": "ਪਾਇਲਟ ਇਨ ਕਮਾਂਡ",
+      "currentPilot": "ਮੌਜੂਦਾ ਪਾਇਲਟ",
+      "takeControl": "ਕੰਟਰੋਲ ਲਓ",
+      "release": "ਛੱਡੋ",
+      "noPilot": "ਕੋਈ ਪਾਇਲਟ ਨਹੀਂ",
+      "claimCounter": "ਦਾਅਵਾ ਕਾਊਂਟਰ",
+      "primaryGamepad": "ਪ੍ਰਾਇਮਰੀ ਗੇਮਪੈਡ",
+      "confirmWithin2s": "2 ਸਕਿੰਟਾਂ ਵਿੱਚ ਪੁਸ਼ਟੀ ਕਰੋ।",
+      "takeControlFrom": "ਤੋਂ ਕੰਟਰੋਲ ਲਓ",
+      "youHaveControl": "ਤੁਹਾਡੇ ਕੋਲ ਕੰਟਰੋਲ ਹੈ"
+    },
+    "gamepads": {
+      "title": "ਗੇਮਪੈਡ",
+      "name": "ਨਾਮ",
+      "type": "ਕਿਸਮ",
+      "usb": "USB",
+      "bluetooth": "ਬਲੂਟੁੱਥ",
+      "connected": "ਕਨੈਕਟ ਕੀਤਾ",
+      "disconnected": "ਡਿਸਕਨੈਕਟ",
+      "setPrimary": "ਪ੍ਰਾਇਮਰੀ ਵਜੋਂ ਸੈੱਟ ਕਰੋ",
+      "primaryBadge": "ਪ੍ਰਾਇਮਰੀ",
+      "noGamepads": "ਕੋਈ ਗੇਮਪੈਡ ਨਹੀਂ ਮਿਲਿਆ।"
+    },
+    "bluetooth": {
+      "title": "ਬਲੂਟੁੱਥ",
+      "scan": "ਸਕੈਨ",
+      "pair": "ਜੋੜੋ",
+      "forget": "ਭੁੱਲ ਜਾਓ",
+      "scanning": "ਸਕੈਨ ਹੋ ਰਿਹਾ ਹੈ...",
+      "scanResults": "ਸਕੈਨ ਨਤੀਜੇ",
+      "pairedDevices": "ਜੋੜੇ ਹੋਏ ਬਲੂਟੁੱਥ ਡਿਵਾਈਸ",
+      "pairSuccess": "ਜੋੜ ਦਿੱਤਾ",
+      "pairFailed": "ਜੋੜਨ ਵਿੱਚ ਅਸਫਲ",
+      "noDevicesFound": "ਕੋਈ ਡਿਵਾਈਸ ਨਹੀਂ ਮਿਲਿਆ।",
+      "pairNewDevice": "ਨਵਾਂ ਡਿਵਾਈਸ ਜੋੜੋ"
+    },
+    "display": {
+      "title": "ਡਿਸਪਲੇ",
+      "resolution": "ਰੈਜ਼ੋਲੂਸ਼ਨ",
+      "kioskEnabled": "ਕਿਓਸਕ ਮੋਡ ਸਮਰੱਥ"
     }
   }
 }

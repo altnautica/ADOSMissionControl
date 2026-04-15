@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Settings, AlertTriangle, LogOut, CloudOff, Zap, Minimize2, X, Star } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -83,6 +84,18 @@ function ConvexUserMenu() {
 }
 
 export function CommandShell({ children }: { children: React.ReactNode }) {
+  // HDMI kiosk / HUD route opts out of the full GCS chrome (navbar, sidebar,
+  // auto-reconnect, global dialogs). Root providers (Convex, Locale, Toast)
+  // still wrap via app/layout.tsx. See product/specs/08-hdmi-kiosk-mode.md.
+  const pathname = usePathname();
+  const isHudRoute = pathname?.startsWith("/hud") ?? false;
+  if (isHudRoute) {
+    return <>{children}</>;
+  }
+  return <CommandShellInner>{children}</CommandShellInner>;
+}
+
+function CommandShellInner({ children }: { children: React.ReactNode }) {
   useAutoReconnect();
   useGcsLocation();
   const t = useTranslations("shell");

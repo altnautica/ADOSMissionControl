@@ -2168,6 +2168,48 @@
     "screens": {
       "title": "స్క్రీన్‌లు",
       "phase2Note": "ప్రారంభం మరియు పునఃక్రమం Phase 2 లో వస్తుంది"
+    },
+    "pic": {
+      "title": "పైలట్ ఇన్ కమాండ్",
+      "currentPilot": "ప్రస్తుత పైలట్",
+      "takeControl": "నియంత్రణ తీసుకోండి",
+      "release": "విడుదల",
+      "noPilot": "పైలట్ లేరు",
+      "claimCounter": "క్లెయిమ్ కౌంటర్",
+      "primaryGamepad": "ప్రాథమిక గేమ్‌ప్యాడ్",
+      "confirmWithin2s": "2 సెకన్లలో ధృవీకరించండి.",
+      "takeControlFrom": "నుండి నియంత్రణ తీసుకో",
+      "youHaveControl": "మీకు నియంత్రణ ఉంది"
+    },
+    "gamepads": {
+      "title": "గేమ్‌ప్యాడ్‌లు",
+      "name": "పేరు",
+      "type": "రకం",
+      "usb": "USB",
+      "bluetooth": "బ్లూటూత్",
+      "connected": "కనెక్ట్ చేయబడింది",
+      "disconnected": "డిస్‌కనెక్ట్",
+      "setPrimary": "ప్రాథమికంగా సెట్ చేయండి",
+      "primaryBadge": "ప్రాథమిక",
+      "noGamepads": "గేమ్‌ప్యాడ్‌లు కనుగొనబడలేదు."
+    },
+    "bluetooth": {
+      "title": "బ్లూటూత్",
+      "scan": "స్కాన్",
+      "pair": "జత",
+      "forget": "మర్చిపో",
+      "scanning": "స్కాన్ అవుతోంది...",
+      "scanResults": "స్కాన్ ఫలితాలు",
+      "pairedDevices": "జత చేయబడిన బ్లూటూత్ పరికరాలు",
+      "pairSuccess": "జత చేయబడింది",
+      "pairFailed": "జతచేయడం విఫలమైంది",
+      "noDevicesFound": "పరికరాలు లేవు.",
+      "pairNewDevice": "కొత్త పరికరాన్ని జత చేయండి"
+    },
+    "display": {
+      "title": "డిస్ప్లే",
+      "resolution": "రిజల్యూషన్",
+      "kioskEnabled": "కియోస్క్ మోడ్ ప్రారంభం"
     }
   }
 }

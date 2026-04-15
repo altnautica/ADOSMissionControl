@@ -10,7 +10,10 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { HardwareTabs } from "@/components/hardware/HardwareTabs";
+import { BluetoothPairModal } from "@/components/hardware/BluetoothPairModal";
+import { Button } from "@/components/ui/button";
 import { Toggle } from "@/components/ui/toggle";
+import { useToast } from "@/components/ui/toast";
 import { groundStationApiFromAgent } from "@/lib/api/ground-station-api";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useGroundStationStore } from "@/stores/ground-station-store";
@@ -28,6 +31,12 @@ export default function HardwareUiPage() {
   const lastError = useGroundStationStore((s) => s.lastError);
   const loadUi = useGroundStationStore((s) => s.loadUi);
   const applyOled = useGroundStationStore((s) => s.applyOled);
+  const bluetooth = useGroundStationStore((s) => s.bluetooth);
+  const loadPairedBluetooth = useGroundStationStore((s) => s.loadPairedBluetooth);
+  const forgetBluetooth = useGroundStationStore((s) => s.forgetBluetooth);
+
+  const { toast } = useToast();
+  const [btPairOpen, setBtPairOpen] = useState(false);
 
   const [brightness, setBrightness] = useState<number>(128);
   const [autoDim, setAutoDim] = useState<boolean>(true);
@@ -45,7 +54,15 @@ export default function HardwareUiPage() {
     const client = groundStationApiFromAgent(agentUrl, apiKey);
     if (!client) return;
     loadUi(client);
-  }, [agentUrl, apiKey, loadUi]);
+    loadPairedBluetooth(client);
+  }, [agentUrl, apiKey, loadUi, loadPairedBluetooth]);
+
+  const handleForgetBt = async (mac: string, name: string) => {
+    const client = groundStationApiFromAgent(agentUrlRef.current, apiKeyRef.current);
+    if (!client) return;
+    const ok = await forgetBluetooth(client, mac);
+    if (ok) toast("Forgot " + name, "info");
+  };
 
   useEffect(() => {
     if (!ui || initialised) return;
@@ -229,8 +246,46 @@ export default function HardwareUiPage() {
                 Enable and reorder ships in Phase 2.
               </p>
             </section>
+
+            {/* Bluetooth card (Phase 2, Wave C) */}
+            <section className="rounded-lg border border-border-primary bg-surface-secondary p-5">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-lg font-medium text-text-primary">Bluetooth</h2>
+                <Button variant="primary" size="sm" onClick={() => setBtPairOpen(true)}>
+                  Pair new device
+                </Button>
+              </div>
+              {bluetooth.paired.length === 0 ? (
+                <div className="py-4 text-center text-sm text-text-secondary">
+                  No paired Bluetooth devices.
+                </div>
+              ) : (
+                <ul className="flex flex-col gap-1">
+                  {bluetooth.paired.map((dev) => (
+                    <li
+                      key={dev.mac}
+                      className="flex items-center justify-between rounded border border-border-primary/40 px-3 py-2"
+                    >
+                      <div className="flex flex-col">
+                        <span className="text-sm text-text-primary">{dev.name || "Unknown"}</span>
+                        <span className="font-mono text-xs text-text-secondary">{dev.mac}</span>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleForgetBt(dev.mac, dev.name || dev.mac)}
+                      >
+                        Forget
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
           </div>
         ) : null}
+
+        <BluetoothPairModal open={btPairOpen} onClose={() => setBtPairOpen(false)} />
       </div>
     </div>
   );
