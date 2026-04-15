@@ -2120,5 +2120,54 @@
   "missionProgress": {
     "mission": "મિશન",
     "waypoint": "Waypoint"
+  },
+  "hardware": {
+    "overview": "ઝાંખી",
+    "network": "નેટવર્ક",
+    "physicalUi": "ભૌતિક UI",
+    "ap": {
+      "title": "ઍક્સેસ પોઇન્ટ",
+      "ssid": "SSID",
+      "passphrase": "પાસફ્રેઝ",
+      "channel": "ચેનલ",
+      "enabled": "સક્ષમ",
+      "save": "સાચવો",
+      "revealPassphrase": "બતાવો",
+      "hidePassphrase": "છુપાવો"
+    },
+    "wifiClient": {
+      "title": "WiFi ક્લાયન્ટ",
+      "notAvailable": "હજી ઉપલબ્ધ નથી"
+    },
+    "modem": {
+      "title": "4G મોડેમ",
+      "notAvailable": "હજી ઉપલબ્ધ નથી"
+    },
+    "pair": {
+      "title": "ડ્રોન સાથે પેર કરો",
+      "pairKey": "પેર કી",
+      "submit": "પેર કરો",
+      "cancel": "રદ કરો",
+      "done": "થઈ ગયું",
+      "fingerprint": "ફિંગરપ્રિન્ટ",
+      "alreadyPaired": "પહેલેથી પેર",
+      "unpair": "અનપેર કરો"
+    },
+    "oled": {
+      "title": "OLED ડિસ્પ્લે",
+      "brightness": "ચમક",
+      "autoDim": "60 સેકન્ડ નિષ્ક્રિય પછી સ્વતઃ ઝાંખું",
+      "cycleSeconds": "સાયકલ અંતરાલ (સેકન્ડ)"
+    },
+    "buttons": {
+      "title": "બટન",
+      "shortPress": "ટૂંકું દબાણ",
+      "longPress": "લાંબું દબાણ",
+      "phase2Note": "રીમેપિંગ Phase 2 માં આવશે"
+    },
+    "screens": {
+      "title": "સ્ક્રીન",
+      "phase2Note": "સક્ષમ અને પુનઃક્રમ Phase 2 માં આવશે"
+    }
   }
 }

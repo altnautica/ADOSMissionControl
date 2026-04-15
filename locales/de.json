@@ -2065,5 +2065,54 @@
     "dashed": "Gestrichelt",
     "dotted": "Gepunktet",
     "resetAll": "Auf Standard zurücksetzen"
+  },
+  "hardware": {
+    "overview": "Übersicht",
+    "network": "Netzwerk",
+    "physicalUi": "Physische UI",
+    "ap": {
+      "title": "Access Point",
+      "ssid": "SSID",
+      "passphrase": "Passphrase",
+      "channel": "Kanal",
+      "enabled": "Aktiviert",
+      "save": "Speichern",
+      "revealPassphrase": "Zeigen",
+      "hidePassphrase": "Verbergen"
+    },
+    "wifiClient": {
+      "title": "WLAN-Client",
+      "notAvailable": "Noch nicht verfügbar"
+    },
+    "modem": {
+      "title": "4G-Modem",
+      "notAvailable": "Noch nicht verfügbar"
+    },
+    "pair": {
+      "title": "Mit Drohne koppeln",
+      "pairKey": "Kopplungsschlüssel",
+      "submit": "Koppeln",
+      "cancel": "Abbrechen",
+      "done": "Fertig",
+      "fingerprint": "Fingerabdruck",
+      "alreadyPaired": "Bereits gekoppelt",
+      "unpair": "Entkoppeln"
+    },
+    "oled": {
+      "title": "OLED-Display",
+      "brightness": "Helligkeit",
+      "autoDim": "Nach 60 s Leerlauf automatisch abdunkeln",
+      "cycleSeconds": "Wechselintervall (Sekunden)"
+    },
+    "buttons": {
+      "title": "Tasten",
+      "shortPress": "Kurz drücken",
+      "longPress": "Lang drücken",
+      "phase2Note": "Neuzuweisung kommt in Phase 2"
+    },
+    "screens": {
+      "title": "Bildschirme",
+      "phase2Note": "Aktivieren und neu ordnen kommt in Phase 2"
+    }
   }
 }

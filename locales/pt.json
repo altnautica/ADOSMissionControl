@@ -2120,5 +2120,54 @@
   "missionProgress": {
     "mission": "Missão",
     "waypoint": "Waypoint"
+  },
+  "hardware": {
+    "overview": "Visão geral",
+    "network": "Rede",
+    "physicalUi": "IU física",
+    "ap": {
+      "title": "Ponto de acesso",
+      "ssid": "SSID",
+      "passphrase": "Senha",
+      "channel": "Canal",
+      "enabled": "Ativado",
+      "save": "Salvar",
+      "revealPassphrase": "Mostrar",
+      "hidePassphrase": "Ocultar"
+    },
+    "wifiClient": {
+      "title": "Cliente WiFi",
+      "notAvailable": "Ainda não disponível"
+    },
+    "modem": {
+      "title": "Modem 4G",
+      "notAvailable": "Ainda não disponível"
+    },
+    "pair": {
+      "title": "Parear com drone",
+      "pairKey": "Chave de pareamento",
+      "submit": "Parear",
+      "cancel": "Cancelar",
+      "done": "Concluído",
+      "fingerprint": "Impressão",
+      "alreadyPaired": "Já pareado",
+      "unpair": "Despares"
+    },
+    "oled": {
+      "title": "Display OLED",
+      "brightness": "Brilho",
+      "autoDim": "Escurecer após 60 s de inatividade",
+      "cycleSeconds": "Intervalo de ciclo (segundos)"
+    },
+    "buttons": {
+      "title": "Botões",
+      "shortPress": "Pressão curta",
+      "longPress": "Pressão longa",
+      "phase2Note": "Remapeamento vem na Fase 2"
+    },
+    "screens": {
+      "title": "Telas",
+      "phase2Note": "Ativar e reordenar vêm na Fase 2"
+    }
   }
 }

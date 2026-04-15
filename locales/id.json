@@ -2120,5 +2120,54 @@
   "missionProgress": {
     "mission": "Misi",
     "waypoint": "Waypoint"
+  },
+  "hardware": {
+    "overview": "Ikhtisar",
+    "network": "Jaringan",
+    "physicalUi": "UI Fisik",
+    "ap": {
+      "title": "Titik Akses",
+      "ssid": "SSID",
+      "passphrase": "Kata Sandi",
+      "channel": "Saluran",
+      "enabled": "Aktif",
+      "save": "Simpan",
+      "revealPassphrase": "Tampilkan",
+      "hidePassphrase": "Sembunyikan"
+    },
+    "wifiClient": {
+      "title": "Klien WiFi",
+      "notAvailable": "Belum tersedia"
+    },
+    "modem": {
+      "title": "Modem 4G",
+      "notAvailable": "Belum tersedia"
+    },
+    "pair": {
+      "title": "Pasangkan dengan drone",
+      "pairKey": "Kunci pasangan",
+      "submit": "Pasangkan",
+      "cancel": "Batal",
+      "done": "Selesai",
+      "fingerprint": "Sidik",
+      "alreadyPaired": "Sudah dipasangkan",
+      "unpair": "Lepaskan"
+    },
+    "oled": {
+      "title": "Layar OLED",
+      "brightness": "Kecerahan",
+      "autoDim": "Redupkan otomatis setelah diam 60 dtk",
+      "cycleSeconds": "Interval siklus (detik)"
+    },
+    "buttons": {
+      "title": "Tombol",
+      "shortPress": "Tekan singkat",
+      "longPress": "Tekan lama",
+      "phase2Note": "Pemetaan ulang hadir di Fase 2"
+    },
+    "screens": {
+      "title": "Layar",
+      "phase2Note": "Aktifkan dan urutkan ulang hadir di Fase 2"
+    }
   }
 }

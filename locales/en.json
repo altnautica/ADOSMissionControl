@@ -2220,5 +2220,54 @@
   "missionProgress": {
     "mission": "Mission",
     "waypoint": "Waypoint"
+  },
+  "hardware": {
+    "overview": "Overview",
+    "network": "Network",
+    "physicalUi": "Physical UI",
+    "ap": {
+      "title": "Access Point",
+      "ssid": "SSID",
+      "passphrase": "Passphrase",
+      "channel": "Channel",
+      "enabled": "Enabled",
+      "save": "Save",
+      "revealPassphrase": "Show",
+      "hidePassphrase": "Hide"
+    },
+    "wifiClient": {
+      "title": "WiFi Client",
+      "notAvailable": "Not available yet"
+    },
+    "modem": {
+      "title": "4G Modem",
+      "notAvailable": "Not available yet"
+    },
+    "pair": {
+      "title": "Pair with drone",
+      "pairKey": "Pair key",
+      "submit": "Pair",
+      "cancel": "Cancel",
+      "done": "Done",
+      "fingerprint": "Fingerprint",
+      "alreadyPaired": "Already paired",
+      "unpair": "Unpair"
+    },
+    "oled": {
+      "title": "OLED Display",
+      "brightness": "Brightness",
+      "autoDim": "Auto-dim after 60 s idle",
+      "cycleSeconds": "Cycle interval (seconds)"
+    },
+    "buttons": {
+      "title": "Buttons",
+      "shortPress": "Short press",
+      "longPress": "Long press",
+      "phase2Note": "Remapping ships in Phase 2"
+    },
+    "screens": {
+      "title": "Screens",
+      "phase2Note": "Enable and reorder ships in Phase 2"
+    }
   }
 }

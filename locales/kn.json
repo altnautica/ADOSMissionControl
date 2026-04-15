@@ -2120,5 +2120,54 @@
     "dashed": "Dashed",
     "dotted": "Dotted",
     "resetAll": "Reset to defaults"
+  },
+  "hardware": {
+    "overview": "ಅವಲೋಕನ",
+    "network": "ಜಾಲ",
+    "physicalUi": "ಭೌತಿಕ UI",
+    "ap": {
+      "title": "ಪ್ರವೇಶ ಬಿಂದು",
+      "ssid": "SSID",
+      "passphrase": "ಪಾಸ್‌ಫ್ರೇಸ್",
+      "channel": "ಚಾನೆಲ್",
+      "enabled": "ಸಕ್ರಿಯ",
+      "save": "ಉಳಿಸಿ",
+      "revealPassphrase": "ತೋರಿಸಿ",
+      "hidePassphrase": "ಮರೆಮಾಡಿ"
+    },
+    "wifiClient": {
+      "title": "WiFi ಕ್ಲೈಂಟ್",
+      "notAvailable": "ಇನ್ನೂ ಲಭ್ಯವಿಲ್ಲ"
+    },
+    "modem": {
+      "title": "4G ಮೋಡೆಮ್",
+      "notAvailable": "ಇನ್ನೂ ಲಭ್ಯವಿಲ್ಲ"
+    },
+    "pair": {
+      "title": "ಡ್ರೋನ್‌ನೊಂದಿಗೆ ಜೋಡಿಸಿ",
+      "pairKey": "ಜೋಡಿ ಕೀ",
+      "submit": "ಜೋಡಿಸಿ",
+      "cancel": "ರದ್ದುಮಾಡಿ",
+      "done": "ಮುಗಿದಿದೆ",
+      "fingerprint": "ಫಿಂಗರ್‌ಪ್ರಿಂಟ್",
+      "alreadyPaired": "ಈಗಾಗಲೇ ಜೋಡಿಸಲಾಗಿದೆ",
+      "unpair": "ಜೋಡಿ ತೆಗೆದುಹಾಕಿ"
+    },
+    "oled": {
+      "title": "OLED ಪ್ರದರ್ಶನ",
+      "brightness": "ಹೊಳಪು",
+      "autoDim": "60 ಸೆ ನಿಷ್ಕ್ರಿಯ ನಂತರ ಸ್ವಯಂ ಮಂದ",
+      "cycleSeconds": "ಸೈಕಲ್ ಅಂತರ (ಸೆಕೆಂಡುಗಳು)"
+    },
+    "buttons": {
+      "title": "ಬಟನ್‌ಗಳು",
+      "shortPress": "ಸಣ್ಣ ಒತ್ತಿ",
+      "longPress": "ದೀರ್ಘ ಒತ್ತಿ",
+      "phase2Note": "ರೀಮ್ಯಾಪಿಂಗ್ Phase 2 ರಲ್ಲಿ ಬರಲಿದೆ"
+    },
+    "screens": {
+      "title": "ಪರದೆಗಳು",
+      "phase2Note": "ಸಕ್ರಿಯಗೊಳಿಸಿ ಮತ್ತು ಮರುಕ್ರಮಗೊಳಿಸಿ Phase 2 ರಲ್ಲಿ ಬರಲಿದೆ"
+    }
   }
 }

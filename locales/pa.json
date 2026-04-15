@@ -2120,5 +2120,54 @@
     "dashed": "Dashed",
     "dotted": "Dotted",
     "resetAll": "Reset to defaults"
+  },
+  "hardware": {
+    "overview": "ਝਲਕ",
+    "network": "ਨੈੱਟਵਰਕ",
+    "physicalUi": "ਭੌਤਿਕ UI",
+    "ap": {
+      "title": "ਐਕਸੈਸ ਪੁਆਇੰਟ",
+      "ssid": "SSID",
+      "passphrase": "ਪਾਸਫ੍ਰੇਜ਼",
+      "channel": "ਚੈਨਲ",
+      "enabled": "ਸਮਰੱਥ",
+      "save": "ਸੰਭਾਲੋ",
+      "revealPassphrase": "ਦਿਖਾਓ",
+      "hidePassphrase": "ਲੁਕਾਓ"
+    },
+    "wifiClient": {
+      "title": "WiFi ਕਲਾਇੰਟ",
+      "notAvailable": "ਅਜੇ ਉਪਲਬਧ ਨਹੀਂ"
+    },
+    "modem": {
+      "title": "4G ਮੋਡਮ",
+      "notAvailable": "ਅਜੇ ਉਪਲਬਧ ਨਹੀਂ"
+    },
+    "pair": {
+      "title": "ਡਰੋਨ ਨਾਲ ਪੇਅਰ ਕਰੋ",
+      "pairKey": "ਪੇਅਰ ਕੁੰਜੀ",
+      "submit": "ਪੇਅਰ",
+      "cancel": "ਰੱਦ",
+      "done": "ਮੁਕੰਮਲ",
+      "fingerprint": "ਫਿੰਗਰਪ੍ਰਿੰਟ",
+      "alreadyPaired": "ਪਹਿਲਾਂ ਹੀ ਪੇਅਰ",
+      "unpair": "ਅਨਪੇਅਰ"
+    },
+    "oled": {
+      "title": "OLED ਡਿਸਪਲੇ",
+      "brightness": "ਚਮਕ",
+      "autoDim": "60 ਸੈ ਵਿਹਲੇ ਬਾਅਦ ਆਪੇ ਮੱਧਮ",
+      "cycleSeconds": "ਸਾਈਕਲ ਅੰਤਰਾਲ (ਸੈਕੰਡ)"
+    },
+    "buttons": {
+      "title": "ਬਟਨ",
+      "shortPress": "ਛੋਟਾ ਦਬਾਉ",
+      "longPress": "ਲੰਬਾ ਦਬਾਉ",
+      "phase2Note": "ਰੀਮੈਪਿੰਗ Phase 2 ਵਿੱਚ ਆਵੇਗੀ"
+    },
+    "screens": {
+      "title": "ਸਕ੍ਰੀਨ",
+      "phase2Note": "ਸਮਰੱਥ ਅਤੇ ਮੁੜ ਕ੍ਰਮ Phase 2 ਵਿੱਚ ਆਵੇਗਾ"
+    }
   }
 }

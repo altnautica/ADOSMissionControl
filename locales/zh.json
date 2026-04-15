@@ -2065,5 +2065,54 @@
     "dashed": "虚线",
     "dotted": "点线",
     "resetAll": "恢复默认"
+  },
+  "hardware": {
+    "overview": "概览",
+    "network": "网络",
+    "physicalUi": "物理界面",
+    "ap": {
+      "title": "接入点",
+      "ssid": "SSID",
+      "passphrase": "密码",
+      "channel": "信道",
+      "enabled": "已启用",
+      "save": "保存",
+      "revealPassphrase": "显示",
+      "hidePassphrase": "隐藏"
+    },
+    "wifiClient": {
+      "title": "WiFi 客户端",
+      "notAvailable": "尚不可用"
+    },
+    "modem": {
+      "title": "4G 调制解调器",
+      "notAvailable": "尚不可用"
+    },
+    "pair": {
+      "title": "与无人机配对",
+      "pairKey": "配对密钥",
+      "submit": "配对",
+      "cancel": "取消",
+      "done": "完成",
+      "fingerprint": "指纹",
+      "alreadyPaired": "已配对",
+      "unpair": "取消配对"
+    },
+    "oled": {
+      "title": "OLED 显示屏",
+      "brightness": "亮度",
+      "autoDim": "空闲 60 秒后自动变暗",
+      "cycleSeconds": "循环间隔（秒）"
+    },
+    "buttons": {
+      "title": "按钮",
+      "shortPress": "短按",
+      "longPress": "长按",
+      "phase2Note": "重新映射将在第 2 阶段推出"
+    },
+    "screens": {
+      "title": "屏幕",
+      "phase2Note": "启用和重排将在第 2 阶段推出"
+    }
   }
 }

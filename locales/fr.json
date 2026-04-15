@@ -2065,5 +2065,54 @@
     "dashed": "Tirets",
     "dotted": "Pointillé",
     "resetAll": "Réinitialiser"
+  },
+  "hardware": {
+    "overview": "Aperçu",
+    "network": "Réseau",
+    "physicalUi": "Interface physique",
+    "ap": {
+      "title": "Point d'accès",
+      "ssid": "SSID",
+      "passphrase": "Mot de passe",
+      "channel": "Canal",
+      "enabled": "Activé",
+      "save": "Enregistrer",
+      "revealPassphrase": "Afficher",
+      "hidePassphrase": "Masquer"
+    },
+    "wifiClient": {
+      "title": "Client WiFi",
+      "notAvailable": "Pas encore disponible"
+    },
+    "modem": {
+      "title": "Modem 4G",
+      "notAvailable": "Pas encore disponible"
+    },
+    "pair": {
+      "title": "Appairer avec le drone",
+      "pairKey": "Clé d'appairage",
+      "submit": "Appairer",
+      "cancel": "Annuler",
+      "done": "Terminé",
+      "fingerprint": "Empreinte",
+      "alreadyPaired": "Déjà appairé",
+      "unpair": "Désappairer"
+    },
+    "oled": {
+      "title": "Écran OLED",
+      "brightness": "Luminosité",
+      "autoDim": "Atténuer après 60 s d'inactivité",
+      "cycleSeconds": "Intervalle de cycle (secondes)"
+    },
+    "buttons": {
+      "title": "Boutons",
+      "shortPress": "Appui court",
+      "longPress": "Appui long",
+      "phase2Note": "La reconfiguration arrive en Phase 2"
+    },
+    "screens": {
+      "title": "Écrans",
+      "phase2Note": "Activer et réordonner arrivent en Phase 2"
+    }
   }
 }

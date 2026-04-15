@@ -2120,5 +2120,54 @@
   "missionProgress": {
     "mission": "मोहीम",
     "waypoint": "Waypoint"
+  },
+  "hardware": {
+    "overview": "आढावा",
+    "network": "नेटवर्क",
+    "physicalUi": "भौतिक UI",
+    "ap": {
+      "title": "ऍक्सेस पॉइंट",
+      "ssid": "SSID",
+      "passphrase": "पासफ्रेज",
+      "channel": "चॅनेल",
+      "enabled": "सक्षम",
+      "save": "जतन करा",
+      "revealPassphrase": "दाखवा",
+      "hidePassphrase": "लपवा"
+    },
+    "wifiClient": {
+      "title": "WiFi क्लायंट",
+      "notAvailable": "अजून उपलब्ध नाही"
+    },
+    "modem": {
+      "title": "4G मॉडेम",
+      "notAvailable": "अजून उपलब्ध नाही"
+    },
+    "pair": {
+      "title": "ड्रोनसोबत जोडा",
+      "pairKey": "जोडणी की",
+      "submit": "जोडा",
+      "cancel": "रद्द करा",
+      "done": "पूर्ण",
+      "fingerprint": "फिंगरप्रिंट",
+      "alreadyPaired": "आधीच जोडलेले",
+      "unpair": "अनपेअर"
+    },
+    "oled": {
+      "title": "OLED डिस्प्ले",
+      "brightness": "तेजस्वी",
+      "autoDim": "60 से निष्क्रीय नंतर स्वयं अंधुक",
+      "cycleSeconds": "सायकल अंतर (सेकंद)"
+    },
+    "buttons": {
+      "title": "बटणे",
+      "shortPress": "लहान दाब",
+      "longPress": "लांब दाब",
+      "phase2Note": "रीमॅपिंग Phase 2 मध्ये येईल"
+    },
+    "screens": {
+      "title": "स्क्रीन",
+      "phase2Note": "सक्षम आणि पुनर्क्रम Phase 2 मध्ये येईल"
+    }
   }
 }

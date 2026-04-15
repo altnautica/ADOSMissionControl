@@ -2,31 +2,35 @@
 
 /**
  * @module HardwarePage
- * @description Hardware tab (Phase 0). Ground Station Overview sub-view only.
- * Polls the agent at 2 Hz for /api/v1/ground-station/status and mirrors
- * the tab-visibility pause pattern used by agent-connection-store.
+ * @description Hardware tab Overview sub-view. Polls the agent at 2 Hz for
+ * /api/v1/ground-station/status and mirrors the tab-visibility pause pattern
+ * used by agent-connection-store.
  * @license GPL-3.0-only
  */
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { groundStationApiFromAgent } from "@/lib/api/ground-station-api";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useGroundStationStore } from "@/stores/ground-station-store";
+import { HardwareTabs } from "@/components/hardware/HardwareTabs";
+import { PairModal } from "@/components/hardware/PairModal";
+import { Button } from "@/components/ui/button";
 
 const POLL_INTERVAL_MS = 500; // 2 Hz
+const EMPTY = "…";
 
 function formatRssi(rssi: number | null): string {
-  if (rssi == null) return "—";
+  if (rssi == null) return EMPTY;
   return `${rssi.toFixed(0)} dBm`;
 }
 
 function formatBitrate(mbps: number | null): string {
-  if (mbps == null) return "—";
+  if (mbps == null) return EMPTY;
   return `${mbps.toFixed(1)} Mbps`;
 }
 
 function formatChannel(channel: number | null): string {
-  if (channel == null) return "—";
+  if (channel == null) return EMPTY;
   return `CH ${channel}`;
 }
 
@@ -49,6 +53,8 @@ export default function HardwarePage() {
   const loadStatus = useGroundStationStore((s) => s.loadStatus);
   const setLoading = useGroundStationStore((s) => s.setLoading);
   const setError = useGroundStationStore((s) => s.setError);
+
+  const [pairOpen, setPairOpen] = useState(false);
 
   const agentUrlRef = useRef(agentUrl);
   const apiKeyRef = useRef(apiKey);
@@ -119,6 +125,8 @@ export default function HardwarePage() {
           Ground station, radios, and physical peripherals.
         </p>
 
+        <HardwareTabs />
+
         <section className="rounded-lg border border-border-primary bg-surface-secondary p-5">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-medium text-text-primary">Ground Station Overview</h2>
@@ -143,7 +151,7 @@ export default function HardwarePage() {
             <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
               <StatRow label="Paired drone" value={status.paired_drone ?? "None"} />
               <StatRow label="Profile" value={formatProfile(status.profile)} />
-              <StatRow label="Uplink active" value={status.uplink_active ?? "—"} />
+              <StatRow label="Uplink active" value={status.uplink_active ?? EMPTY} />
               <StatRow label="Link RSSI" value={formatRssi(linkHealth.rssi_dbm)} />
               <StatRow label="Bitrate" value={formatBitrate(linkHealth.bitrate_mbps)} />
               <StatRow label="Channel" value={formatChannel(linkHealth.channel)} />
@@ -152,6 +160,16 @@ export default function HardwarePage() {
             </dl>
           ) : null}
         </section>
+
+        {hasAgent ? (
+          <div className="mt-5 flex justify-end">
+            <Button variant="primary" onClick={() => setPairOpen(true)}>
+              Pair with drone
+            </Button>
+          </div>
+        ) : null}
+
+        <PairModal open={pairOpen} onClose={() => setPairOpen(false)} />
       </div>
     </div>
   );

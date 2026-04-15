@@ -2120,5 +2120,54 @@
   "missionProgress": {
     "mission": "미션",
     "waypoint": "웨이포인트"
+  },
+  "hardware": {
+    "overview": "개요",
+    "network": "네트워크",
+    "physicalUi": "물리적 UI",
+    "ap": {
+      "title": "액세스 포인트",
+      "ssid": "SSID",
+      "passphrase": "암호",
+      "channel": "채널",
+      "enabled": "사용",
+      "save": "저장",
+      "revealPassphrase": "표시",
+      "hidePassphrase": "숨기기"
+    },
+    "wifiClient": {
+      "title": "WiFi 클라이언트",
+      "notAvailable": "아직 제공되지 않음"
+    },
+    "modem": {
+      "title": "4G 모뎀",
+      "notAvailable": "아직 제공되지 않음"
+    },
+    "pair": {
+      "title": "드론과 페어링",
+      "pairKey": "페어링 키",
+      "submit": "페어링",
+      "cancel": "취소",
+      "done": "완료",
+      "fingerprint": "지문",
+      "alreadyPaired": "이미 페어링됨",
+      "unpair": "페어링 해제"
+    },
+    "oled": {
+      "title": "OLED 디스플레이",
+      "brightness": "밝기",
+      "autoDim": "60초 후 자동 어두워짐",
+      "cycleSeconds": "주기 간격 (초)"
+    },
+    "buttons": {
+      "title": "버튼",
+      "shortPress": "짧게 누름",
+      "longPress": "길게 누름",
+      "phase2Note": "재매핑은 Phase 2에 제공"
+    },
+    "screens": {
+      "title": "화면",
+      "phase2Note": "사용 및 재정렬은 Phase 2에 제공"
+    }
   }
 }

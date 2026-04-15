@@ -2120,5 +2120,54 @@
   "missionProgress": {
     "mission": "ミッション",
     "waypoint": "ウェイポイント"
+  },
+  "hardware": {
+    "overview": "概要",
+    "network": "ネットワーク",
+    "physicalUi": "物理UI",
+    "ap": {
+      "title": "アクセスポイント",
+      "ssid": "SSID",
+      "passphrase": "パスフレーズ",
+      "channel": "チャンネル",
+      "enabled": "有効",
+      "save": "保存",
+      "revealPassphrase": "表示",
+      "hidePassphrase": "非表示"
+    },
+    "wifiClient": {
+      "title": "WiFiクライアント",
+      "notAvailable": "まだ利用できません"
+    },
+    "modem": {
+      "title": "4Gモデム",
+      "notAvailable": "まだ利用できません"
+    },
+    "pair": {
+      "title": "ドローンとペアリング",
+      "pairKey": "ペアリングキー",
+      "submit": "ペアリング",
+      "cancel": "キャンセル",
+      "done": "完了",
+      "fingerprint": "フィンガープリント",
+      "alreadyPaired": "すでにペアリング済み",
+      "unpair": "ペア解除"
+    },
+    "oled": {
+      "title": "OLEDディスプレイ",
+      "brightness": "明るさ",
+      "autoDim": "60秒アイドル後に自動減光",
+      "cycleSeconds": "切替間隔 (秒)"
+    },
+    "buttons": {
+      "title": "ボタン",
+      "shortPress": "短押し",
+      "longPress": "長押し",
+      "phase2Note": "リマップはフェーズ2で提供"
+    },
+    "screens": {
+      "title": "画面",
+      "phase2Note": "有効化と並べ替えはフェーズ2で提供"
+    }
   }
 }

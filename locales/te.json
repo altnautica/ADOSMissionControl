@@ -2120,5 +2120,54 @@
   "missionProgress": {
     "mission": "మిషన్",
     "waypoint": "Waypoint"
+  },
+  "hardware": {
+    "overview": "అవలోకనం",
+    "network": "నెట్‌వర్క్",
+    "physicalUi": "భౌతిక UI",
+    "ap": {
+      "title": "యాక్సెస్ పాయింట్",
+      "ssid": "SSID",
+      "passphrase": "పాస్‌ఫ్రేజ్",
+      "channel": "ఛానెల్",
+      "enabled": "ప్రారంభించబడింది",
+      "save": "సేవ్",
+      "revealPassphrase": "చూపు",
+      "hidePassphrase": "దాచు"
+    },
+    "wifiClient": {
+      "title": "WiFi క్లయింట్",
+      "notAvailable": "ఇంకా అందుబాటులో లేదు"
+    },
+    "modem": {
+      "title": "4G మోడెమ్",
+      "notAvailable": "ఇంకా అందుబాటులో లేదు"
+    },
+    "pair": {
+      "title": "డ్రోన్‌తో జత చేయి",
+      "pairKey": "జత కీ",
+      "submit": "జత చేయి",
+      "cancel": "రద్దు",
+      "done": "పూర్తయింది",
+      "fingerprint": "ఫింగర్‌ప్రింట్",
+      "alreadyPaired": "ఇప్పటికే జత",
+      "unpair": "విడదీయు"
+    },
+    "oled": {
+      "title": "OLED డిస్ప్లే",
+      "brightness": "కాంతి",
+      "autoDim": "60 సె నిష్క్రియ తర్వాత స్వయంచాలకంగా మసకబారు",
+      "cycleSeconds": "చక్ర వ్యవధి (సెకన్లు)"
+    },
+    "buttons": {
+      "title": "బటన్లు",
+      "shortPress": "చిన్న నొక్కు",
+      "longPress": "పొడవైన నొక్కు",
+      "phase2Note": "రీమ్యాపింగ్ Phase 2 లో వస్తుంది"
+    },
+    "screens": {
+      "title": "స్క్రీన్‌లు",
+      "phase2Note": "ప్రారంభం మరియు పునఃక్రమం Phase 2 లో వస్తుంది"
+    }
   }
 }

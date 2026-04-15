@@ -2065,5 +2065,54 @@
     "dashed": "डैश",
     "dotted": "बिंदीदार",
     "resetAll": "डिफ़ॉल्ट पर रीसेट करें"
+  },
+  "hardware": {
+    "overview": "अवलोकन",
+    "network": "नेटवर्क",
+    "physicalUi": "भौतिक UI",
+    "ap": {
+      "title": "एक्सेस पॉइंट",
+      "ssid": "SSID",
+      "passphrase": "पासफ़्रेज़",
+      "channel": "चैनल",
+      "enabled": "सक्षम",
+      "save": "सहेजें",
+      "revealPassphrase": "दिखाएँ",
+      "hidePassphrase": "छिपाएँ"
+    },
+    "wifiClient": {
+      "title": "वाईफ़ाई क्लाइंट",
+      "notAvailable": "अभी उपलब्ध नहीं"
+    },
+    "modem": {
+      "title": "4G मॉडेम",
+      "notAvailable": "अभी उपलब्ध नहीं"
+    },
+    "pair": {
+      "title": "ड्रोन से पेयर करें",
+      "pairKey": "पेयर कुंजी",
+      "submit": "पेयर करें",
+      "cancel": "रद्द करें",
+      "done": "पूर्ण",
+      "fingerprint": "फ़िंगरप्रिंट",
+      "alreadyPaired": "पहले से पेयर है",
+      "unpair": "अनपेयर करें"
+    },
+    "oled": {
+      "title": "OLED डिस्प्ले",
+      "brightness": "चमक",
+      "autoDim": "60 से निष्क्रिय रहने पर स्वतः मंद करें",
+      "cycleSeconds": "साइकल अंतराल (सेकंड)"
+    },
+    "buttons": {
+      "title": "बटन",
+      "shortPress": "छोटा प्रेस",
+      "longPress": "लंबा प्रेस",
+      "phase2Note": "रीमैपिंग Phase 2 में आएगी"
+    },
+    "screens": {
+      "title": "स्क्रीन",
+      "phase2Note": "सक्षम करना और पुनर्क्रम Phase 2 में आएगा"
+    }
   }
 }

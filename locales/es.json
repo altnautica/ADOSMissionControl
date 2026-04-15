@@ -2065,5 +2065,54 @@
     "dashed": "Discontinua",
     "dotted": "Punteada",
     "resetAll": "Restablecer valores"
+  },
+  "hardware": {
+    "overview": "Resumen",
+    "network": "Red",
+    "physicalUi": "IU física",
+    "ap": {
+      "title": "Punto de acceso",
+      "ssid": "SSID",
+      "passphrase": "Contraseña",
+      "channel": "Canal",
+      "enabled": "Habilitado",
+      "save": "Guardar",
+      "revealPassphrase": "Mostrar",
+      "hidePassphrase": "Ocultar"
+    },
+    "wifiClient": {
+      "title": "Cliente WiFi",
+      "notAvailable": "Aún no disponible"
+    },
+    "modem": {
+      "title": "Módem 4G",
+      "notAvailable": "Aún no disponible"
+    },
+    "pair": {
+      "title": "Emparejar con dron",
+      "pairKey": "Clave de emparejamiento",
+      "submit": "Emparejar",
+      "cancel": "Cancelar",
+      "done": "Listo",
+      "fingerprint": "Huella",
+      "alreadyPaired": "Ya emparejado",
+      "unpair": "Desemparejar"
+    },
+    "oled": {
+      "title": "Pantalla OLED",
+      "brightness": "Brillo",
+      "autoDim": "Atenuar tras 60 s de inactividad",
+      "cycleSeconds": "Intervalo de ciclo (segundos)"
+    },
+    "buttons": {
+      "title": "Botones",
+      "shortPress": "Pulsación corta",
+      "longPress": "Pulsación larga",
+      "phase2Note": "La reasignación llega en la Fase 2"
+    },
+    "screens": {
+      "title": "Pantallas",
+      "phase2Note": "Activar y reordenar llegan en la Fase 2"
+    }
   }
 }
