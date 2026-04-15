@@ -510,7 +510,7 @@ export class GroundStationApi {
   }
 
   // ============================================================
-  // Phase 3 (Wave C) — network client, modem, uplink priority/events
+  // Phase 3 (Wave C) - network client, modem, uplink priority/events
   // ============================================================
 
   async scanWifiClient(timeoutS = 10): Promise<WifiScanResponse> {

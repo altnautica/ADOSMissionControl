@@ -2082,11 +2082,30 @@
     },
     "wifiClient": {
       "title": "WLAN-Client",
-      "notAvailable": "Noch nicht verfügbar"
+      "notAvailable": "Noch nicht verfügbar",
+      "scan": "Netzwerke suchen",
+      "join": "Verbinden",
+      "leave": "Trennen",
+      "passphrase": "Passphrase",
+      "scanning": "Suche läuft...",
+      "noNetworks": "Tippen Sie auf Suchen, um Netzwerke zu finden.",
+      "forceJoinWarning": "Dies stoppt den Access Point. Fortfahren?",
+      "joinSuccess": "Mit Netzwerk verbunden",
+      "joinFailed": "Verbindung fehlgeschlagen",
+      "currentNetwork": "Aktuelles Netzwerk",
+      "signal": "Signal",
+      "security": "Sicherheit"
     },
     "modem": {
       "title": "4G-Modem",
-      "notAvailable": "Noch nicht verfügbar"
+      "notAvailable": "Noch nicht verfügbar",
+      "configure": "Konfigurieren",
+      "apn": "APN",
+      "cap": "Datenlimit",
+      "dataUsed": "Datenverbrauch",
+      "signalQuality": "Signalqualität",
+      "operator": "Betreiber",
+      "notConnected": "Nicht verbunden"
     },
     "pair": {
       "title": "Mit Drohne koppeln",
@@ -2124,7 +2143,8 @@
       "primaryGamepad": "Primäres Gamepad",
       "confirmWithin2s": "Innerhalb von 2 Sekunden bestätigen.",
       "takeControlFrom": "Kontrolle übernehmen von",
-      "youHaveControl": "Sie haben die Kontrolle"
+      "youHaveControl": "Sie haben die Kontrolle",
+      "autoClaim": "PIC bei erstem Tastendruck vom HDMI-Kiosk automatisch übernehmen"
     },
     "gamepads": {
       "title": "Gamepads",
@@ -2155,6 +2175,24 @@
       "title": "Anzeige",
       "resolution": "Auflösung",
       "kioskEnabled": "Kioskmodus aktiviert"
+    },
+    "ethernet": {
+      "title": "Ethernet",
+      "link": "Verbindung",
+      "speed": "Geschwindigkeit",
+      "dhcp": "DHCP"
+    },
+    "priority": {
+      "title": "Uplink-Priorität",
+      "active": "Aktiv",
+      "reorderHint": "Ziehen zum Umsortieren. Der erste gesunde Uplink übernimmt den Verkehr.",
+      "lastFailover": "Letzte 5 Failover",
+      "hoursAgo": " h"
+    },
+    "shareUplink": {
+      "title": "Uplink mit AP-Clients teilen",
+      "description": "Leitet aktiven Uplink-Verkehr über den AP. Erweiterte Option.",
+      "enabled": "Aktiviert"
     }
   }
 }

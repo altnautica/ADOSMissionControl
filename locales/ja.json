@@ -2137,11 +2137,30 @@
     },
     "wifiClient": {
       "title": "WiFiクライアント",
-      "notAvailable": "まだ利用できません"
+      "notAvailable": "まだ利用できません",
+      "scan": "ネットワークをスキャン",
+      "join": "接続",
+      "leave": "切断",
+      "passphrase": "パスフレーズ",
+      "scanning": "スキャン中...",
+      "noNetworks": "近くのネットワークを検索するにはスキャンを押してください。",
+      "forceJoinWarning": "アクセスポイントが停止します。続行しますか?",
+      "joinSuccess": "ネットワークに接続しました",
+      "joinFailed": "ネットワークに接続できませんでした",
+      "currentNetwork": "現在のネットワーク",
+      "signal": "信号",
+      "security": "セキュリティ"
     },
     "modem": {
       "title": "4Gモデム",
-      "notAvailable": "まだ利用できません"
+      "notAvailable": "まだ利用できません",
+      "configure": "設定",
+      "apn": "APN",
+      "cap": "データ上限",
+      "dataUsed": "使用データ量",
+      "signalQuality": "信号品質",
+      "operator": "オペレーター",
+      "notConnected": "未接続"
     },
     "pair": {
       "title": "ドローンとペアリング",
@@ -2179,7 +2198,8 @@
       "primaryGamepad": "プライマリゲームパッド",
       "confirmWithin2s": "2秒以内に確認してください。",
       "takeControlFrom": "から操縦権を取得",
-      "youHaveControl": "操縦権を保持中"
+      "youHaveControl": "操縦権を保持中",
+      "autoClaim": "HDMIキオスクからの最初のボタン押下でPICを自動取得"
     },
     "gamepads": {
       "title": "ゲームパッド",
@@ -2210,6 +2230,24 @@
       "title": "ディスプレイ",
       "resolution": "解像度",
       "kioskEnabled": "キオスクモード有効"
+    },
+    "ethernet": {
+      "title": "イーサネット",
+      "link": "リンク",
+      "speed": "速度",
+      "dhcp": "DHCP"
+    },
+    "priority": {
+      "title": "アップリンク優先順位",
+      "active": "アクティブ",
+      "reorderHint": "ドラッグして並べ替え。最初の正常なアップリンクがトラフィックを受けます。",
+      "lastFailover": "直近5件のフェイルオーバー",
+      "hoursAgo": "時間前"
+    },
+    "shareUplink": {
+      "title": "APクライアントとアップリンクを共有",
+      "description": "アクティブなアップリンクのトラフィックをAP経由でルーティングします。上級者向け。",
+      "enabled": "有効"
     }
   }
 }

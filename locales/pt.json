@@ -2137,11 +2137,30 @@
     },
     "wifiClient": {
       "title": "Cliente WiFi",
-      "notAvailable": "Ainda não disponível"
+      "notAvailable": "Ainda não disponível",
+      "scan": "Buscar redes",
+      "join": "Conectar",
+      "leave": "Desconectar",
+      "passphrase": "Senha",
+      "scanning": "Buscando...",
+      "noNetworks": "Toque em Buscar para encontrar redes próximas.",
+      "forceJoinWarning": "Isso interromperá o Ponto de Acesso. Continuar?",
+      "joinSuccess": "Conectado à rede",
+      "joinFailed": "Falha ao conectar à rede",
+      "currentNetwork": "Rede atual",
+      "signal": "Sinal",
+      "security": "Segurança"
     },
     "modem": {
       "title": "Modem 4G",
-      "notAvailable": "Ainda não disponível"
+      "notAvailable": "Ainda não disponível",
+      "configure": "Configurar",
+      "apn": "APN",
+      "cap": "Limite de dados",
+      "dataUsed": "Dados usados",
+      "signalQuality": "Qualidade do sinal",
+      "operator": "Operadora",
+      "notConnected": "Não conectado"
     },
     "pair": {
       "title": "Parear com drone",
@@ -2179,7 +2198,8 @@
       "primaryGamepad": "Gamepad primário",
       "confirmWithin2s": "Confirme em 2 segundos.",
       "takeControlFrom": "Assumir controle de",
-      "youHaveControl": "Você tem o controle"
+      "youHaveControl": "Você tem o controle",
+      "autoClaim": "Reivindicar PIC automaticamente no primeiro botão do quiosque HDMI"
     },
     "gamepads": {
       "title": "Gamepads",
@@ -2210,6 +2230,24 @@
       "title": "Tela",
       "resolution": "Resolução",
       "kioskEnabled": "Modo quiosque ativado"
+    },
+    "ethernet": {
+      "title": "Ethernet",
+      "link": "Link",
+      "speed": "Velocidade",
+      "dhcp": "DHCP"
+    },
+    "priority": {
+      "title": "Prioridade de uplink",
+      "active": "Ativo",
+      "reorderHint": "Arraste para reordenar. O primeiro uplink saudável assume o tráfego.",
+      "lastFailover": "Últimos 5 failovers",
+      "hoursAgo": "h atrás"
+    },
+    "shareUplink": {
+      "title": "Compartilhar uplink com clientes AP",
+      "description": "Roteia o tráfego do uplink ativo pelo Ponto de Acesso. Opção avançada.",
+      "enabled": "Ativado"
     }
   }
 }

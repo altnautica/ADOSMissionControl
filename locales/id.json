@@ -2137,11 +2137,30 @@
     },
     "wifiClient": {
       "title": "Klien WiFi",
-      "notAvailable": "Belum tersedia"
+      "notAvailable": "Belum tersedia",
+      "scan": "Pindai jaringan",
+      "join": "Sambungkan",
+      "leave": "Putuskan",
+      "passphrase": "Kata sandi",
+      "scanning": "Memindai...",
+      "noNetworks": "Ketuk Pindai untuk mencari jaringan terdekat.",
+      "forceJoinWarning": "Ini akan menghentikan Titik Akses. Lanjutkan?",
+      "joinSuccess": "Tersambung ke jaringan",
+      "joinFailed": "Gagal menyambungkan jaringan",
+      "currentNetwork": "Jaringan saat ini",
+      "signal": "Sinyal",
+      "security": "Keamanan"
     },
     "modem": {
       "title": "Modem 4G",
-      "notAvailable": "Belum tersedia"
+      "notAvailable": "Belum tersedia",
+      "configure": "Konfigurasi",
+      "apn": "APN",
+      "cap": "Batas data",
+      "dataUsed": "Data terpakai",
+      "signalQuality": "Kualitas sinyal",
+      "operator": "Operator",
+      "notConnected": "Tidak tersambung"
     },
     "pair": {
       "title": "Pasangkan dengan drone",
@@ -2179,7 +2198,8 @@
       "primaryGamepad": "Gamepad utama",
       "confirmWithin2s": "Konfirmasi dalam 2 detik.",
       "takeControlFrom": "Ambil kendali dari",
-      "youHaveControl": "Anda memiliki kendali"
+      "youHaveControl": "Anda memiliki kendali",
+      "autoClaim": "Otomatis klaim PIC pada penekanan tombol pertama dari kios HDMI"
     },
     "gamepads": {
       "title": "Gamepad",
@@ -2210,6 +2230,24 @@
       "title": "Layar",
       "resolution": "Resolusi",
       "kioskEnabled": "Mode kios aktif"
+    },
+    "ethernet": {
+      "title": "Ethernet",
+      "link": "Tautan",
+      "speed": "Kecepatan",
+      "dhcp": "DHCP"
+    },
+    "priority": {
+      "title": "Prioritas uplink",
+      "active": "Aktif",
+      "reorderHint": "Seret untuk mengurutkan. Uplink sehat pertama menangani lalu lintas.",
+      "lastFailover": "5 failover terakhir",
+      "hoursAgo": " jam lalu"
+    },
+    "shareUplink": {
+      "title": "Bagikan uplink dengan klien AP",
+      "description": "Rutekan lalu lintas uplink aktif melalui Titik Akses. Opsi lanjutan.",
+      "enabled": "Aktif"
     }
   }
 }

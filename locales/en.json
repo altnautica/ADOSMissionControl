@@ -2237,11 +2237,30 @@
     },
     "wifiClient": {
       "title": "WiFi Client",
-      "notAvailable": "Not available yet"
+      "notAvailable": "Not available yet",
+      "scan": "Scan networks",
+      "join": "Join",
+      "leave": "Leave",
+      "passphrase": "Passphrase",
+      "scanning": "Scanning...",
+      "noNetworks": "Tap Scan to look for nearby networks.",
+      "forceJoinWarning": "This will stop the Access Point. Continue?",
+      "joinSuccess": "Joined network",
+      "joinFailed": "Failed to join network",
+      "currentNetwork": "Current network",
+      "signal": "Signal",
+      "security": "Security"
     },
     "modem": {
       "title": "4G Modem",
-      "notAvailable": "Not available yet"
+      "notAvailable": "Not available yet",
+      "configure": "Configure",
+      "apn": "APN",
+      "cap": "Data cap",
+      "dataUsed": "Data used",
+      "signalQuality": "Signal quality",
+      "operator": "Operator",
+      "notConnected": "Not connected"
     },
     "pair": {
       "title": "Pair with drone",
@@ -2279,7 +2298,8 @@
       "primaryGamepad": "Primary gamepad",
       "confirmWithin2s": "Confirm within 2 seconds of tapping.",
       "takeControlFrom": "Take control from",
-      "youHaveControl": "You have control"
+      "youHaveControl": "You have control",
+      "autoClaim": "Auto-claim PIC on first button press from HDMI kiosk"
     },
     "gamepads": {
       "title": "Gamepads",
@@ -2310,6 +2330,24 @@
       "title": "Display",
       "resolution": "Resolution",
       "kioskEnabled": "Kiosk mode enabled"
+    },
+    "ethernet": {
+      "title": "Ethernet",
+      "link": "Link",
+      "speed": "Speed",
+      "dhcp": "DHCP"
+    },
+    "priority": {
+      "title": "Uplink priority",
+      "active": "Active",
+      "reorderHint": "Drag to reorder. The first healthy uplink takes traffic.",
+      "lastFailover": "Last 5 failovers",
+      "hoursAgo": "h ago"
+    },
+    "shareUplink": {
+      "title": "Share uplink with AP clients",
+      "description": "Routes active uplink traffic out the ground station Access Point. Advanced option.",
+      "enabled": "Enabled"
     }
   }
 }

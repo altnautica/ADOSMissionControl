@@ -2082,11 +2082,30 @@
     },
     "wifiClient": {
       "title": "Client WiFi",
-      "notAvailable": "Pas encore disponible"
+      "notAvailable": "Pas encore disponible",
+      "scan": "Rechercher des réseaux",
+      "join": "Se connecter",
+      "leave": "Se déconnecter",
+      "passphrase": "Phrase secrète",
+      "scanning": "Recherche...",
+      "noNetworks": "Appuyez sur Rechercher pour voir les réseaux proches.",
+      "forceJoinWarning": "Cela arrêtera le point d'accès. Continuer ?",
+      "joinSuccess": "Connecté au réseau",
+      "joinFailed": "Échec de la connexion",
+      "currentNetwork": "Réseau actuel",
+      "signal": "Signal",
+      "security": "Sécurité"
     },
     "modem": {
       "title": "Modem 4G",
-      "notAvailable": "Pas encore disponible"
+      "notAvailable": "Pas encore disponible",
+      "configure": "Configurer",
+      "apn": "APN",
+      "cap": "Plafond de données",
+      "dataUsed": "Données utilisées",
+      "signalQuality": "Qualité du signal",
+      "operator": "Opérateur",
+      "notConnected": "Non connecté"
     },
     "pair": {
       "title": "Appairer avec le drone",
@@ -2124,7 +2143,8 @@
       "primaryGamepad": "Manette principale",
       "confirmWithin2s": "Confirmer dans les 2 secondes.",
       "takeControlFrom": "Prendre le contrôle de",
-      "youHaveControl": "Vous avez le contrôle"
+      "youHaveControl": "Vous avez le contrôle",
+      "autoClaim": "Revendiquer PIC à la première pression depuis la borne HDMI"
     },
     "gamepads": {
       "title": "Manettes",
@@ -2155,6 +2175,24 @@
       "title": "Affichage",
       "resolution": "Résolution",
       "kioskEnabled": "Mode kiosque activé"
+    },
+    "ethernet": {
+      "title": "Ethernet",
+      "link": "Liaison",
+      "speed": "Vitesse",
+      "dhcp": "DHCP"
+    },
+    "priority": {
+      "title": "Priorité des liens montants",
+      "active": "Actif",
+      "reorderHint": "Glissez pour réorganiser. Le premier lien sain prend le trafic.",
+      "lastFailover": "5 derniers basculements",
+      "hoursAgo": " h"
+    },
+    "shareUplink": {
+      "title": "Partager le lien avec les clients AP",
+      "description": "Route le trafic du lien actif via le point d'accès. Option avancée.",
+      "enabled": "Activé"
     }
   }
 }

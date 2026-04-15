@@ -2082,11 +2082,30 @@
     },
     "wifiClient": {
       "title": "Cliente WiFi",
-      "notAvailable": "Aún no disponible"
+      "notAvailable": "Aún no disponible",
+      "scan": "Buscar redes",
+      "join": "Conectar",
+      "leave": "Desconectar",
+      "passphrase": "Contraseña",
+      "scanning": "Buscando...",
+      "noNetworks": "Toque Buscar para encontrar redes cercanas.",
+      "forceJoinWarning": "Esto detendrá el Punto de Acceso. ¿Continuar?",
+      "joinSuccess": "Conectado a la red",
+      "joinFailed": "No se pudo conectar a la red",
+      "currentNetwork": "Red actual",
+      "signal": "Señal",
+      "security": "Seguridad"
     },
     "modem": {
       "title": "Módem 4G",
-      "notAvailable": "Aún no disponible"
+      "notAvailable": "Aún no disponible",
+      "configure": "Configurar",
+      "apn": "APN",
+      "cap": "Límite de datos",
+      "dataUsed": "Datos usados",
+      "signalQuality": "Calidad de señal",
+      "operator": "Operador",
+      "notConnected": "No conectado"
     },
     "pair": {
       "title": "Emparejar con dron",
@@ -2124,7 +2143,8 @@
       "primaryGamepad": "Gamepad principal",
       "confirmWithin2s": "Confirme en 2 segundos.",
       "takeControlFrom": "Tomar control de",
-      "youHaveControl": "Tiene el control"
+      "youHaveControl": "Tiene el control",
+      "autoClaim": "Reclamar PIC automáticamente con el primer botón del kiosco HDMI"
     },
     "gamepads": {
       "title": "Gamepads",
@@ -2155,6 +2175,24 @@
       "title": "Pantalla",
       "resolution": "Resolución",
       "kioskEnabled": "Modo kiosco habilitado"
+    },
+    "ethernet": {
+      "title": "Ethernet",
+      "link": "Enlace",
+      "speed": "Velocidad",
+      "dhcp": "DHCP"
+    },
+    "priority": {
+      "title": "Prioridad de enlace",
+      "active": "Activo",
+      "reorderHint": "Arrastre para reordenar. El primer enlace saludable recibe el tráfico.",
+      "lastFailover": "Últimas 5 conmutaciones",
+      "hoursAgo": " h atrás"
+    },
+    "shareUplink": {
+      "title": "Compartir enlace con clientes del AP",
+      "description": "Enruta el tráfico del enlace activo por el Punto de Acceso. Opción avanzada.",
+      "enabled": "Activado"
     }
   }
 }

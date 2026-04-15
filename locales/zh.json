@@ -2082,11 +2082,30 @@
     },
     "wifiClient": {
       "title": "WiFi 客户端",
-      "notAvailable": "尚不可用"
+      "notAvailable": "尚不可用",
+      "scan": "扫描网络",
+      "join": "加入",
+      "leave": "离开",
+      "passphrase": "密码",
+      "scanning": "扫描中...",
+      "noNetworks": "点击扫描以查找附近的网络。",
+      "forceJoinWarning": "这将停止接入点。是否继续?",
+      "joinSuccess": "已加入网络",
+      "joinFailed": "加入网络失败",
+      "currentNetwork": "当前网络",
+      "signal": "信号",
+      "security": "安全"
     },
     "modem": {
       "title": "4G 调制解调器",
-      "notAvailable": "尚不可用"
+      "notAvailable": "尚不可用",
+      "configure": "配置",
+      "apn": "APN",
+      "cap": "流量上限",
+      "dataUsed": "已用流量",
+      "signalQuality": "信号质量",
+      "operator": "运营商",
+      "notConnected": "未连接"
     },
     "pair": {
       "title": "与无人机配对",
@@ -2124,7 +2143,8 @@
       "primaryGamepad": "主手柄",
       "confirmWithin2s": "请在2秒内确认。",
       "takeControlFrom": "接管自",
-      "youHaveControl": "您拥有控制权"
+      "youHaveControl": "您拥有控制权",
+      "autoClaim": "HDMI 信息终端首次按键时自动认领 PIC"
     },
     "gamepads": {
       "title": "手柄",
@@ -2155,6 +2175,24 @@
       "title": "显示",
       "resolution": "分辨率",
       "kioskEnabled": "信息亭模式已启用"
+    },
+    "ethernet": {
+      "title": "以太网",
+      "link": "链路",
+      "speed": "速度",
+      "dhcp": "DHCP"
+    },
+    "priority": {
+      "title": "上行链路优先级",
+      "active": "活动",
+      "reorderHint": "拖动以重新排序。第一个健康的上行链路承担流量。",
+      "lastFailover": "最近 5 次故障切换",
+      "hoursAgo": "小时前"
+    },
+    "shareUplink": {
+      "title": "与 AP 客户端共享上行链路",
+      "description": "将活动上行链路的流量从地面站接入点路由。高级选项。",
+      "enabled": "已启用"
     }
   }
 }

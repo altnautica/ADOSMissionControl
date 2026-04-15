@@ -2137,11 +2137,30 @@
     },
     "wifiClient": {
       "title": "WiFi 클라이언트",
-      "notAvailable": "아직 제공되지 않음"
+      "notAvailable": "아직 제공되지 않음",
+      "scan": "네트워크 검색",
+      "join": "연결",
+      "leave": "연결 해제",
+      "passphrase": "암호",
+      "scanning": "검색 중...",
+      "noNetworks": "주변 네트워크를 찾으려면 검색을 누르세요.",
+      "forceJoinWarning": "액세스 포인트가 중지됩니다. 계속하시겠습니까?",
+      "joinSuccess": "네트워크에 연결됨",
+      "joinFailed": "네트워크 연결 실패",
+      "currentNetwork": "현재 네트워크",
+      "signal": "신호",
+      "security": "보안"
     },
     "modem": {
       "title": "4G 모뎀",
-      "notAvailable": "아직 제공되지 않음"
+      "notAvailable": "아직 제공되지 않음",
+      "configure": "구성",
+      "apn": "APN",
+      "cap": "데이터 한도",
+      "dataUsed": "사용된 데이터",
+      "signalQuality": "신호 품질",
+      "operator": "통신사",
+      "notConnected": "연결되지 않음"
     },
     "pair": {
       "title": "드론과 페어링",
@@ -2179,7 +2198,8 @@
       "primaryGamepad": "기본 게임패드",
       "confirmWithin2s": "2초 이내에 확인하세요.",
       "takeControlFrom": "에서 제어권 가져오기",
-      "youHaveControl": "제어권 보유 중"
+      "youHaveControl": "제어권 보유 중",
+      "autoClaim": "HDMI 키오스크에서 첫 버튼 누름 시 PIC 자동 획득"
     },
     "gamepads": {
       "title": "게임패드",
@@ -2210,6 +2230,24 @@
       "title": "디스플레이",
       "resolution": "해상도",
       "kioskEnabled": "키오스크 모드 활성화"
+    },
+    "ethernet": {
+      "title": "이더넷",
+      "link": "링크",
+      "speed": "속도",
+      "dhcp": "DHCP"
+    },
+    "priority": {
+      "title": "업링크 우선순위",
+      "active": "활성",
+      "reorderHint": "드래그하여 순서 변경. 첫 번째 정상 업링크가 트래픽을 처리합니다.",
+      "lastFailover": "최근 5개 페일오버",
+      "hoursAgo": "시간 전"
+    },
+    "shareUplink": {
+      "title": "AP 클라이언트와 업링크 공유",
+      "description": "활성 업링크 트래픽을 AP를 통해 라우팅. 고급 옵션.",
+      "enabled": "활성화됨"
     }
   }
 }

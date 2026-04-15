@@ -2137,11 +2137,30 @@
     },
     "wifiClient": {
       "title": "WiFi ਕਲਾਇੰਟ",
-      "notAvailable": "ਅਜੇ ਉਪਲਬਧ ਨਹੀਂ"
+      "notAvailable": "ਅਜੇ ਉਪਲਬਧ ਨਹੀਂ",
+      "scan": "नेटवर्क स्कैन करें",
+      "join": "जुड़ें",
+      "leave": "छोड़ें",
+      "passphrase": "पासफ़्रेज़",
+      "scanning": "स्कैन हो रहा है...",
+      "noNetworks": "नज़दीकी नेटवर्क देखने के लिए स्कैन दबाएँ।",
+      "forceJoinWarning": "यह एक्सेस पॉइंट बंद कर देगा। जारी रखें?",
+      "joinSuccess": "नेटवर्क से जुड़ गया",
+      "joinFailed": "नेटवर्क से जुड़ नहीं सका",
+      "currentNetwork": "वर्तमान नेटवर्क",
+      "signal": "सिग्नल",
+      "security": "सुरक्षा"
     },
     "modem": {
       "title": "4G ਮੋਡਮ",
-      "notAvailable": "ਅਜੇ ਉਪਲਬਧ ਨਹੀਂ"
+      "notAvailable": "ਅਜੇ ਉਪਲਬਧ ਨਹੀਂ",
+      "configure": "कॉन्फ़िगर करें",
+      "apn": "APN",
+      "cap": "डेटा सीमा",
+      "dataUsed": "उपयोग किया डेटा",
+      "signalQuality": "सिग्नल गुणवत्ता",
+      "operator": "ऑपरेटर",
+      "notConnected": "कनेक्ट नहीं है"
     },
     "pair": {
       "title": "ਡਰੋਨ ਨਾਲ ਪੇਅਰ ਕਰੋ",
@@ -2179,7 +2198,8 @@
       "primaryGamepad": "ਪ੍ਰਾਇਮਰੀ ਗੇਮਪੈਡ",
       "confirmWithin2s": "2 ਸਕਿੰਟਾਂ ਵਿੱਚ ਪੁਸ਼ਟੀ ਕਰੋ।",
       "takeControlFrom": "ਤੋਂ ਕੰਟਰੋਲ ਲਓ",
-      "youHaveControl": "ਤੁਹਾਡੇ ਕੋਲ ਕੰਟਰੋਲ ਹੈ"
+      "youHaveControl": "ਤੁਹਾਡੇ ਕੋਲ ਕੰਟਰੋਲ ਹੈ",
+      "autoClaim": "HDMI कियोस्क से पहली बटन दबाने पर PIC स्वतः दावा करें"
     },
     "gamepads": {
       "title": "ਗੇਮਪੈਡ",
@@ -2210,6 +2230,24 @@
       "title": "ਡਿਸਪਲੇ",
       "resolution": "ਰੈਜ਼ੋਲੂਸ਼ਨ",
       "kioskEnabled": "ਕਿਓਸਕ ਮੋਡ ਸਮਰੱਥ"
+    },
+    "ethernet": {
+      "title": "ईथरनेट",
+      "link": "लिंक",
+      "speed": "गति",
+      "dhcp": "DHCP"
+    },
+    "priority": {
+      "title": "अपलिंक प्राथमिकता",
+      "active": "सक्रिय",
+      "reorderHint": "क्रम बदलने के लिए खींचें। पहला स्वस्थ अपलिंक ट्रैफ़िक लेगा।",
+      "lastFailover": "पिछले 5 फेलओवर",
+      "hoursAgo": " घंटे पहले"
+    },
+    "shareUplink": {
+      "title": "AP क्लाइंट्स के साथ अपलिंक साझा करें",
+      "description": "सक्रिय अपलिंक ट्रैफ़िक को ग्राउंड स्टेशन AP से रूट करता है। उन्नत विकल्प।",
+      "enabled": "सक्षम"
     }
   }
 }
