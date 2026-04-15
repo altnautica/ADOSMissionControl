@@ -2209,6 +2209,26 @@
       "description": "Enruta el tráfico del enlace activo por el Punto de Acceso. Opción avanzada.",
       "enabled": "Activado"
     },
-    "controllers": "Controles"
+    "controllers": "Controles",
+    "peripherals": {
+      "title": "Periféricos",
+      "emptyState": "No hay periféricos registrados. Conecta un dispositivo compatible o instala un plugin de periférico.",
+      "name": "Nombre",
+      "transport": "Transporte",
+      "connected": "Conectado",
+      "capabilities": "Capacidades"
+    },
+    "edge": {
+      "title": "Controlador RC ADOS Edge",
+      "stubHeading": "Producto en desarrollo",
+      "stubBody": "El controlador RC de código abierto ADOS Edge está en desarrollo activo. Este panel se activará cuando se lance el firmware. Sigue el progreso en altnautica/ADOSEdge.",
+      "stubBadge": "Fase 4 Pista B"
+    },
+    "androidRc": {
+      "title": "Controlador RC Android ADOS",
+      "stubHeading": "Producto en desarrollo",
+      "stubBody": "El controlador de mano Android RC de ADOS está en desarrollo activo con HGLRC. Este panel se activará cuando se lance el producto.",
+      "stubBadge": "Fase 4 Pista B"
+    }
   }
 }

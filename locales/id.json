@@ -2264,6 +2264,26 @@
       "description": "Rutekan lalu lintas uplink aktif melalui Titik Akses. Opsi lanjutan.",
       "enabled": "Aktif"
     },
-    "controllers": "Pengendali"
+    "controllers": "Pengendali",
+    "peripherals": {
+      "title": "Periferal",
+      "emptyState": "Tidak ada periferal terdaftar. Colokkan perangkat yang didukung atau instal plugin periferal.",
+      "name": "Nama",
+      "transport": "Transportasi",
+      "connected": "Terhubung",
+      "capabilities": "Kemampuan"
+    },
+    "edge": {
+      "title": "Pengontrol RC ADOS Edge",
+      "stubHeading": "Produk sedang dikembangkan",
+      "stubBody": "Pengontrol RC open-source ADOS Edge sedang dalam pengembangan aktif. Panel ini akan aktif saat firmware dirilis. Ikuti perkembangan di altnautica/ADOSEdge.",
+      "stubBadge": "Fase 4 Jalur B"
+    },
+    "androidRc": {
+      "title": "Pengontrol RC Android ADOS",
+      "stubHeading": "Produk sedang dikembangkan",
+      "stubBody": "Pengontrol genggam Android RC ADOS sedang dalam pengembangan aktif bersama HGLRC. Panel ini akan aktif saat produk dirilis.",
+      "stubBadge": "Fase 4 Jalur B"
+    }
   }
 }

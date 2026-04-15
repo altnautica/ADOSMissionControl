@@ -2209,6 +2209,26 @@
       "description": "将活动上行链路的流量从地面站接入点路由。高级选项。",
       "enabled": "已启用"
     },
-    "controllers": "控制器"
+    "controllers": "控制器",
+    "peripherals": {
+      "title": "外围设备",
+      "emptyState": "尚未注册外围设备。请插入受支持的设备或安装外围设备插件。",
+      "name": "名称",
+      "transport": "传输",
+      "connected": "已连接",
+      "capabilities": "功能"
+    },
+    "edge": {
+      "title": "ADOS Edge RC 控制器",
+      "stubHeading": "产品开发中",
+      "stubBody": "ADOS Edge 开源 RC 控制器正在积极开发中。固件发布后此面板将可用。请在 altnautica/ADOSEdge 跟踪进展。",
+      "stubBadge": "第 4 阶段 B 轨道"
+    },
+    "androidRc": {
+      "title": "ADOS 安卓 RC 控制器",
+      "stubHeading": "产品开发中",
+      "stubBody": "ADOS 安卓 RC 手持控制器正在与 HGLRC 积极开发中。产品发布后此面板将可用。",
+      "stubBadge": "第 4 阶段 B 轨道"
+    }
   }
 }

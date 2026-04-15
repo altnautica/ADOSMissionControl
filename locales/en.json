@@ -2364,6 +2364,26 @@
       "description": "Routes active uplink traffic out the ground station Access Point. Advanced option.",
       "enabled": "Enabled"
     },
-    "controllers": "Controllers"
+    "controllers": "Controllers",
+    "peripherals": {
+      "title": "Peripherals",
+      "emptyState": "No peripherals registered. Plug in a supported device or install a peripheral plugin.",
+      "name": "Name",
+      "transport": "Transport",
+      "connected": "Connected",
+      "capabilities": "Capabilities"
+    },
+    "edge": {
+      "title": "ADOS Edge RC Controller",
+      "stubHeading": "Product in development",
+      "stubBody": "The ADOS Edge open-source RC controller is in active development. This panel will light up when the firmware ships. Follow progress at altnautica/ADOSEdge.",
+      "stubBadge": "Phase 4 Track B"
+    },
+    "androidRc": {
+      "title": "ADOS Android RC Controller",
+      "stubHeading": "Product in development",
+      "stubBody": "The ADOS Android RC handheld controller is in active development with HGLRC. This panel will light up when the product ships.",
+      "stubBadge": "Phase 4 Track B"
+    }
   }
 }

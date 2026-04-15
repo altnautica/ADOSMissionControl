@@ -2209,6 +2209,26 @@
       "description": "Leitet aktiven Uplink-Verkehr über den AP. Erweiterte Option.",
       "enabled": "Aktiviert"
     },
-    "controllers": "Controller"
+    "controllers": "Controller",
+    "peripherals": {
+      "title": "Peripheriegeräte",
+      "emptyState": "Keine Peripheriegeräte registriert. Schließen Sie ein unterstütztes Gerät an oder installieren Sie ein Peripherie-Plugin.",
+      "name": "Name",
+      "transport": "Transport",
+      "connected": "Verbunden",
+      "capabilities": "Fähigkeiten"
+    },
+    "edge": {
+      "title": "ADOS Edge RC-Controller",
+      "stubHeading": "Produkt in Entwicklung",
+      "stubBody": "Der ADOS Edge Open-Source-RC-Controller wird aktiv entwickelt. Dieses Panel wird aktiviert, sobald die Firmware verfügbar ist. Fortschritt verfolgen unter altnautica/ADOSEdge.",
+      "stubBadge": "Phase 4 Track B"
+    },
+    "androidRc": {
+      "title": "ADOS Android RC-Controller",
+      "stubHeading": "Produkt in Entwicklung",
+      "stubBody": "Der ADOS Android RC-Handheld-Controller wird zusammen mit HGLRC aktiv entwickelt. Dieses Panel wird aktiviert, sobald das Produkt verfügbar ist.",
+      "stubBadge": "Phase 4 Track B"
+    }
   }
 }

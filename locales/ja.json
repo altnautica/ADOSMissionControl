@@ -2264,6 +2264,26 @@
       "description": "アクティブなアップリンクのトラフィックをAP経由でルーティングします。上級者向け。",
       "enabled": "有効"
     },
-    "controllers": "コントローラー"
+    "controllers": "コントローラー",
+    "peripherals": {
+      "title": "周辺機器",
+      "emptyState": "登録された周辺機器はありません。対応デバイスを接続するか、周辺機器プラグインをインストールしてください。",
+      "name": "名前",
+      "transport": "トランスポート",
+      "connected": "接続済み",
+      "capabilities": "機能"
+    },
+    "edge": {
+      "title": "ADOS Edge RC コントローラー",
+      "stubHeading": "製品開発中",
+      "stubBody": "ADOS Edge オープンソース RC コントローラーは現在活発に開発中です。ファームウェアがリリースされるとこのパネルが有効になります。altnautica/ADOSEdge で進捗を確認してください。",
+      "stubBadge": "フェーズ 4 トラック B"
+    },
+    "androidRc": {
+      "title": "ADOS Android RC コントローラー",
+      "stubHeading": "製品開発中",
+      "stubBody": "ADOS Android RC ハンドヘルドコントローラーは HGLRC と共に活発に開発中です。製品がリリースされるとこのパネルが有効になります。",
+      "stubBadge": "フェーズ 4 トラック B"
+    }
   }
 }

@@ -59,6 +59,43 @@ export interface EthernetConfig {
 
 export type EthernetConfigUpdate = Partial<EthernetConfig>;
 
+// Peripheral Manager (Phase 4 Wave 3)
+export interface PeripheralMatch {
+  vid?: string;
+  pid?: string;
+  regex?: string;
+}
+
+export interface PeripheralAction {
+  id: string;
+  display_name: string;
+  requires_confirm: boolean;
+  body_schema?: unknown;
+}
+
+export type PeripheralTransport = "usb" | "serial" | "network" | "ble";
+
+export interface PeripheralSummary {
+  id: string;
+  display_name: string;
+  transport: PeripheralTransport;
+  connected: boolean;
+  capabilities: string[];
+}
+
+export interface PeripheralDetail extends PeripheralSummary {
+  match: PeripheralMatch;
+  actions: PeripheralAction[];
+  config_schema?: unknown;
+  status_endpoint?: string;
+  extra?: Record<string, unknown>;
+}
+
+export interface PeripheralListResponse {
+  peripherals: PeripheralSummary[];
+  count: number;
+}
+
 export type ModemConnState =
   | "disconnected"
   | "searching"
@@ -387,6 +424,47 @@ export class GroundStationApi {
       method: "PUT",
       body: JSON.stringify(update),
     });
+  }
+
+  /**
+   * Peripheral Manager. Lists all registered peripheral plugins (Phase 4 Wave 3).
+   * Empty-state response is {peripherals: [], count: 0} when no plugins are registered.
+   */
+  async listPeripherals(): Promise<PeripheralListResponse> {
+    return this.request<PeripheralListResponse>("/api/v1/peripherals");
+  }
+
+  async getPeripheral(id: string): Promise<PeripheralDetail> {
+    return this.request<PeripheralDetail>(
+      `/api/v1/peripherals/${encodeURIComponent(id)}`,
+    );
+  }
+
+  async configurePeripheral(
+    id: string,
+    config: Record<string, unknown>,
+  ): Promise<{ saved: boolean }> {
+    return this.request<{ saved: boolean }>(
+      `/api/v1/peripherals/${encodeURIComponent(id)}/config`,
+      {
+        method: "POST",
+        body: JSON.stringify(config),
+      },
+    );
+  }
+
+  async invokePeripheralAction(
+    id: string,
+    actionId: string,
+    body?: Record<string, unknown>,
+  ): Promise<{ queued: boolean; result?: unknown }> {
+    return this.request<{ queued: boolean; result?: unknown }>(
+      `/api/v1/peripherals/${encodeURIComponent(id)}/action`,
+      {
+        method: "POST",
+        body: JSON.stringify({ action_id: actionId, body: body ?? {} }),
+      },
+    );
   }
 
   async pairDrone(pairKey: string, droneId?: string): Promise<PairResult> {

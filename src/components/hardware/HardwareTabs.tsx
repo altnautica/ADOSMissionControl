@@ -18,13 +18,16 @@ const TABS: { href: string; label: string }[] = [
   { href: "/hardware/ui", label: "Physical UI" },
   { href: "/hardware/gamepads", label: "Gamepads" },
   { href: "/hardware/controllers", label: "Controllers" },
+  { href: "/hardware/peripherals", label: "Peripherals" },
+  { href: "/hardware/edge", label: "Edge" },
+  { href: "/hardware/android-rc", label: "Android RC" },
 ];
 
 export function HardwareTabs() {
   const pathname = usePathname();
 
   return (
-    <nav className="mb-5 flex gap-1 border-b border-border-primary">
+    <nav className="mb-5 flex flex-wrap gap-1 border-b border-border-primary">
       {TABS.map((tab) => {
         const active = pathname === tab.href;
         return (

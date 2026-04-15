@@ -2264,6 +2264,26 @@
       "description": "सक्रिय अपलिंक ट्रैफ़िक को ग्राउंड स्टेशन AP से रूट करता है। उन्नत विकल्प।",
       "enabled": "सक्षम"
     },
-    "controllers": "ನಿಯಂತ್ರಕಗಳು"
+    "controllers": "ನಿಯಂತ್ರಕಗಳು",
+    "peripherals": {
+      "title": "परिधीय",
+      "emptyState": "कोई परिधीय पंजीकृत नहीं। समर्थित डिवाइस कनेक्ट करें या परिधीय प्लगइन स्थापित करें।",
+      "name": "नाम",
+      "transport": "ट्रांसपोर्ट",
+      "connected": "कनेक्टेड",
+      "capabilities": "क्षमताएं"
+    },
+    "edge": {
+      "title": "ADOS Edge RC कंट्रोलर",
+      "stubHeading": "उत्पाद विकास में",
+      "stubBody": "ADOS Edge ओपन-सोर्स RC कंट्रोलर सक्रिय विकास में है। फर्मवेयर रिलीज़ होने पर यह पैनल सक्रिय होगा। altnautica/ADOSEdge पर प्रगति देखें।",
+      "stubBadge": "चरण 4 ट्रैक B"
+    },
+    "androidRc": {
+      "title": "ADOS Android RC कंट्रोलर",
+      "stubHeading": "उत्पाद विकास में",
+      "stubBody": "ADOS Android RC हैंडहेल्ड कंट्रोलर HGLRC के साथ सक्रिय विकास में है। उत्पाद रिलीज़ होने पर यह पैनल सक्रिय होगा।",
+      "stubBadge": "चरण 4 ट्रैक B"
+    }
   }
 }

@@ -2264,6 +2264,26 @@
       "description": "Roteia o tráfego do uplink ativo pelo Ponto de Acesso. Opção avançada.",
       "enabled": "Ativado"
     },
-    "controllers": "Controles"
+    "controllers": "Controles",
+    "peripherals": {
+      "title": "Periféricos",
+      "emptyState": "Nenhum periférico registrado. Conecte um dispositivo compatível ou instale um plugin de periférico.",
+      "name": "Nome",
+      "transport": "Transporte",
+      "connected": "Conectado",
+      "capabilities": "Capacidades"
+    },
+    "edge": {
+      "title": "Controlador RC ADOS Edge",
+      "stubHeading": "Produto em desenvolvimento",
+      "stubBody": "O controlador RC de código aberto ADOS Edge está em desenvolvimento ativo. Este painel ficará ativo quando o firmware for lançado. Acompanhe o progresso em altnautica/ADOSEdge.",
+      "stubBadge": "Fase 4 Trilha B"
+    },
+    "androidRc": {
+      "title": "Controlador RC Android ADOS",
+      "stubHeading": "Produto em desenvolvimento",
+      "stubBody": "O controlador portátil Android RC ADOS está em desenvolvimento ativo com a HGLRC. Este painel ficará ativo quando o produto for lançado.",
+      "stubBadge": "Fase 4 Trilha B"
+    }
   }
 }

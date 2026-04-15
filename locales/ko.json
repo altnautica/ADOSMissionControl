@@ -2264,6 +2264,26 @@
       "description": "활성 업링크 트래픽을 AP를 통해 라우팅. 고급 옵션.",
       "enabled": "활성화됨"
     },
-    "controllers": "컨트롤러"
+    "controllers": "컨트롤러",
+    "peripherals": {
+      "title": "주변기기",
+      "emptyState": "등록된 주변기기가 없습니다. 지원 장치를 연결하거나 주변기기 플러그인을 설치하세요.",
+      "name": "이름",
+      "transport": "전송",
+      "connected": "연결됨",
+      "capabilities": "기능"
+    },
+    "edge": {
+      "title": "ADOS Edge RC 컨트롤러",
+      "stubHeading": "제품 개발 중",
+      "stubBody": "ADOS Edge 오픈소스 RC 컨트롤러는 현재 활발히 개발 중입니다. 펌웨어가 출시되면 이 패널이 활성화됩니다. altnautica/ADOSEdge 에서 진행 상황을 확인하세요.",
+      "stubBadge": "4단계 트랙 B"
+    },
+    "androidRc": {
+      "title": "ADOS Android RC 컨트롤러",
+      "stubHeading": "제품 개발 중",
+      "stubBody": "ADOS Android RC 핸드헬드 컨트롤러는 HGLRC와 함께 활발히 개발 중입니다. 제품이 출시되면 이 패널이 활성화됩니다.",
+      "stubBadge": "4단계 트랙 B"
+    }
   }
 }
