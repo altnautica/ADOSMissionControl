@@ -2227,7 +2227,7 @@
     "androidRc": {
       "title": "ADOS Android RC-Controller",
       "stubHeading": "Produkt in Entwicklung",
-      "stubBody": "Der ADOS Android RC-Handheld-Controller wird zusammen mit HGLRC aktiv entwickelt. Dieses Panel wird aktiviert, sobald das Produkt verfügbar ist.",
+      "stubBody": "Der ADOS Android RC-Handheld-Controller wird aktiv entwickelt. Dieses Panel wird aktiviert, sobald das Produkt verfügbar ist.",
       "stubBadge": "Phase 4 Track B"
     }
   }

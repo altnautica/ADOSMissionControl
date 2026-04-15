@@ -2282,7 +2282,7 @@
     "androidRc": {
       "title": "ADOS Android RC コントローラー",
       "stubHeading": "製品開発中",
-      "stubBody": "ADOS Android RC ハンドヘルドコントローラーは HGLRC と共に活発に開発中です。製品がリリースされるとこのパネルが有効になります。",
+      "stubBody": "ADOS Android RC ハンドヘルドコントローラーは活発に開発中です。製品がリリースされるとこのパネルが有効になります。",
       "stubBadge": "フェーズ 4 トラック B"
     }
   }

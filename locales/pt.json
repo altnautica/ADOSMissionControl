@@ -2282,7 +2282,7 @@
     "androidRc": {
       "title": "Controlador RC Android ADOS",
       "stubHeading": "Produto em desenvolvimento",
-      "stubBody": "O controlador portátil Android RC ADOS está em desenvolvimento ativo com a HGLRC. Este painel ficará ativo quando o produto for lançado.",
+      "stubBody": "O controlador portátil Android RC ADOS está em desenvolvimento ativo. Este painel ficará ativo quando o produto for lançado.",
       "stubBadge": "Fase 4 Trilha B"
     }
   }
