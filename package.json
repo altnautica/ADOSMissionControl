@@ -59,7 +59,7 @@
     "leaflet": "^1.9.4",
     "leaflet.heat": "^0.2.0",
     "lucide-react": "^0.570.0",
-    "marked": "^15.0.0",
+    "marked": "^18.0.5",
     "mqtt": "^5.15.0",
     "next": "^16.2.4",
     "next-intl": "^4.11.0",
