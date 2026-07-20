@@ -234,9 +234,24 @@ impl Tty {
     }
 
     /// No-op on crossterm: Ctrl-C is delivered as a key event in raw mode and is
-    /// handled by [`Tty::read_input`] (which sets the interrupt flag). Kept for
-    /// surface parity with the installer's tty.
+    /// handled by [`Tty::read_input`] / [`Tty::poll_interrupt`] (which set the
+    /// interrupt flag). Kept for surface parity with the installer's tty.
     pub fn enable_signals(&mut self) {}
+
+    /// Non-blocking: drain any pending key events and, if a Ctrl-C is among them,
+    /// set the interrupt flag. The deploy render loop calls this each tick (it
+    /// otherwise blocks on the progress channel and never reads the keyboard), so
+    /// Ctrl-C aborts a running deploy — the loop observes [`take_interrupt`],
+    /// leaves the alt screen, and exits 130.
+    pub fn poll_interrupt(&mut self) {
+        while matches!(event::poll(Duration::ZERO), Ok(true)) {
+            if let Ok(Event::Key(k)) = event::read() {
+                if map_ct_key(k) == Some(KeyEvent::CtrlC) {
+                    INTERRUPTED.store(true, Ordering::SeqCst);
+                }
+            }
+        }
+    }
 
     /// Block for one key press. A resize returns [`KeyEvent::Resize`].
     pub fn read_key(&mut self) -> std::io::Result<KeyEvent> {

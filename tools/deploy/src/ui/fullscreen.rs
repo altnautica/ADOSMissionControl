@@ -139,8 +139,6 @@ pub fn run(
     let mut interrupted = false;
 
     tty.force_clear_next();
-    // The run is write-only, so let Ctrl-C raise SIGINT (the wizard ran with it
-    // off); the handler sets a flag we observe below and exit cleanly.
     tty.enable_signals();
     paint(&mut tty, &theme, &title, footer, &st, spinner);
 
@@ -157,6 +155,11 @@ pub fn run(
             Err(RecvTimeoutError::Timeout) => spinner = spinner.wrapping_add(1),
             Err(RecvTimeoutError::Disconnected) => break,
         }
+        // The loop blocks on the progress channel, so poll the keyboard here each
+        // tick — this is what makes Ctrl-C abort a running deploy (incl. the long
+        // image build). The docker child keeps building in the daemon, so the
+        // deploy is resumable on the next run.
+        tty.poll_interrupt();
         if crate::ui::tty::take_interrupt() {
             interrupted = true;
             break;
@@ -179,7 +182,7 @@ pub fn run(
     // persist in scrollback after the shell returns.
     drop(tty);
     if interrupted {
-        eprintln!("\nInstall interrupted.");
+        eprintln!("\nDeploy interrupted. Re-run to finish — the deploy is idempotent.");
         std::process::exit(130);
     }
     if let Some(s) = st.summary {
