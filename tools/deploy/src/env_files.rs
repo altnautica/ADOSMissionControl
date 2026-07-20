@@ -113,6 +113,22 @@ fn kv(out: &mut String, key: &str, value: &str) {
     out.push_str(&format!("{key}={value}\n"));
 }
 
+/// Read the generated instance secret + MQTT password from an existing
+/// `tools/selfhost/.env`, so a re-run reuses them instead of minting new ones.
+/// This keeps the deploy idempotent: the Convex admin key is derived from the
+/// instance secret, so a stable secret means a re-run/upgrade targets the same
+/// backend and never needlessly recreates the container.
+pub fn read_existing_secrets(repo_root: &Path) -> Option<(String, String)> {
+    let text = std::fs::read_to_string(repo_root.join("tools/selfhost/.env")).ok()?;
+    let get = |k: &str| {
+        text.lines()
+            .find_map(|l| l.strip_prefix(&format!("{k}=")))
+            .map(|v| v.trim().to_string())
+            .filter(|v| !v.is_empty())
+    };
+    Some((get("CONVEX_INSTANCE_SECRET")?, get("MQTT_PASSWORD")?))
+}
+
 /// Whether git ignores `path` (so a secret written there is never committed).
 /// Runs `git check-ignore -q` relative to the repo the path lives in.
 pub fn is_gitignored(repo_root: &Path, path: &Path) -> bool {

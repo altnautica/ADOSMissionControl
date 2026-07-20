@@ -72,6 +72,27 @@ pub fn run(program: &str, args: &[&str]) -> CmdResult {
     }
 }
 
+/// Like [`run`] but takes a pre-built [`Command`] (so the caller can set the
+/// working directory + environment) and captures the FULL stdout/stderr with no
+/// line cap — use when the output is parsed and may be long (e.g. a PEM key),
+/// unlike the streaming runners which keep only a bounded tail.
+pub fn run_cmd(mut cmd: Command) -> CmdResult {
+    match cmd.output() {
+        Ok(out) => CmdResult {
+            code: out.status.code(),
+            stdout: String::from_utf8_lossy(&out.stdout).into_owned(),
+            stderr: String::from_utf8_lossy(&out.stderr).into_owned(),
+            spawned: true,
+        },
+        Err(e) => CmdResult {
+            code: None,
+            stdout: String::new(),
+            stderr: e.to_string(),
+            spawned: false,
+        },
+    }
+}
+
 /// Convenience: run and report only whether it exited 0. Use for best-effort
 /// commands where the output is not needed.
 pub fn run_ok(program: &str, args: &[&str]) -> bool {

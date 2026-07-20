@@ -310,13 +310,9 @@ impl Step for AuthKeys {
         let url = ctx.config.convex_cloud_origin();
 
         sink.activity("auth_keys", "generating RS256 auth keys".into());
-        let gen = docker::streamed_in(
-            "node",
-            &["scripts/generate-auth-keys.mjs"],
-            &root,
-            &[],
-            |_| {},
-        );
+        // Full capture (no line cap): the PEM key is ~1.7 KB on one line, which
+        // the streaming runners would truncate.
+        let gen = docker::capture_in("node", &["scripts/generate-auth-keys.mjs"], &root, &[]);
         if !gen.success() {
             return StepOutcome::Failed(fail_tail("generating auth keys failed", &gen.stderr));
         }
@@ -334,8 +330,15 @@ impl Step for AuthKeys {
         }
         for (k, v) in &pairs {
             sink.activity("auth_keys", format!("setting {k}"));
-            let cmd =
-                docker::convex_command("npx", &["convex", "env", "set", k, v], &root, &url, &key);
+            // `--` terminates option parsing: the JWT PEM value starts with
+            // "-----BEGIN", which the CLI would otherwise read as a flag.
+            let cmd = docker::convex_command(
+                "npx",
+                &["convex", "env", "set", "--", k, v],
+                &root,
+                &url,
+                &key,
+            );
             let res = crate::exec::run_streamed_cmd(cmd, |l| {
                 emit(&sink, "auth_keys", activity::convex_activity, l)
             });

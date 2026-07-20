@@ -29,7 +29,7 @@ use plan::Plan;
 pub fn run_wizard(theme: &Theme, repo_root: &Path, args: &Args) -> anyhow::Result<()> {
     let interactive = !args.plan && !args.non_interactive && Tty::is_available();
     let cfg: DeployConfig = if interactive {
-        match screens::run(theme, args)? {
+        match screens::run(theme, args, repo_root)? {
             Some(c) => c,
             None => {
                 println!("{}", theme.dim("Cancelled — nothing was changed."));
@@ -37,7 +37,7 @@ pub fn run_wizard(theme: &Theme, repo_root: &Path, args: &Args) -> anyhow::Resul
             }
         }
     } else {
-        screens::config_from_args(args)
+        screens::config_from_args(args, repo_root)
     };
 
     if args.plan {

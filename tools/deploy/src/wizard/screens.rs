@@ -6,6 +6,8 @@
 //! offers Deploy / change an answer / cancel. The wizard returns the finished
 //! config (or `None` on cancel); the caller runs the plan or the state machine.
 
+use std::path::Path;
+
 use crate::cli::Args;
 use crate::ui::tty::Tty;
 use crate::ui::Theme;
@@ -59,12 +61,13 @@ enum Move {
 }
 
 /// Run the wizard. Returns the finished config, or `None` on cancel/abort/no-tty.
-pub fn run(theme: &Theme, args: &Args) -> anyhow::Result<Option<DeployConfig>> {
+pub fn run(theme: &Theme, args: &Args, repo_root: &Path) -> anyhow::Result<Option<DeployConfig>> {
     let mut tty = match Tty::open()? {
         Some(t) => t,
         None => return Ok(None),
     };
     let mut cfg = DeployConfig::with_generated_secrets();
+    preserve_existing_secrets(&mut cfg, repo_root);
     prefill_from_args(&mut cfg, args);
 
     let mut i = 0usize;
@@ -96,10 +99,20 @@ pub fn run(theme: &Theme, args: &Args) -> anyhow::Result<Option<DeployConfig>> {
 
 /// Build a config non-interactively from defaults + supplied flags (for
 /// `--plan` and `--non-interactive`).
-pub fn config_from_args(args: &Args) -> DeployConfig {
+pub fn config_from_args(args: &Args, repo_root: &Path) -> DeployConfig {
     let mut c = DeployConfig::with_generated_secrets();
+    preserve_existing_secrets(&mut c, repo_root);
     prefill_from_args(&mut c, args);
     c
+}
+
+/// Reuse the instance secret + MQTT password from an existing `.env` so a re-run
+/// is idempotent (a stable Convex admin key, no needless container recreation).
+fn preserve_existing_secrets(cfg: &mut DeployConfig, repo_root: &Path) {
+    if let Some((secret, pw)) = crate::env_files::read_existing_secrets(repo_root) {
+        cfg.instance_secret = secret;
+        cfg.mqtt_password = pw;
+    }
 }
 
 /// Seed the config with any non-interactive flags the operator supplied.
