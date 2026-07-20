@@ -2,13 +2,12 @@
 //! stack (Mission Control + Convex + MQTT + video relay) in one guided flow,
 //! looking and behaving like the drone-agent installer.
 //!
-//! The `ui` + pure `wizard::{frame,render,widgets}` + `graph` + `exec` +
-//! `checkpoint` modules are vendored from `ados-installer` (see `.vendor-sha`);
-//! the terminal backend (`ui::tty`) is rewritten on `crossterm` for macOS /
-//! Windows / Linux. The deploy-specific surface (menu, wizard screens, the
-//! turnkey state machine, docker/env orchestration, asset export) is new.
+//! The `ui` + pure `wizard::{frame,render,widgets}` + `graph` + `exec` modules
+//! are vendored from `ados-installer` (see `.vendor-sha`); the terminal backend
+//! (`ui::tty`) is rewritten on `crossterm` for macOS / Windows / Linux. The
+//! deploy-specific surface (menu, wizard screens, the turnkey state machine,
+//! docker/env orchestration, asset export) is new.
 
-pub mod checkpoint;
 pub mod checks;
 pub mod cli;
 pub mod ctx;

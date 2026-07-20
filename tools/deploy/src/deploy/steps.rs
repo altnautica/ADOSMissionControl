@@ -56,9 +56,6 @@ impl Step for Preflight {
     fn requires(&self) -> &[&str] {
         &[]
     }
-    fn checkpoint(&self) -> Option<&str> {
-        None
-    }
     fn kind(&self) -> StepKind {
         StepKind::Required
     }
@@ -99,9 +96,6 @@ impl Step for WriteConfig {
     }
     fn requires(&self) -> &[&str] {
         &["preflight"]
-    }
-    fn checkpoint(&self) -> Option<&str> {
-        None
     }
     fn kind(&self) -> StepKind {
         StepKind::Required
@@ -152,11 +146,6 @@ impl Step for UpConvex {
     fn requires(&self) -> &[&str] {
         &["write_config"]
     }
-    // No checkpoint: `compose up -d` is idempotent, so every deploy re-asserts the
-    // Convex containers (a plain re-deploy must never skip real work — C3).
-    fn checkpoint(&self) -> Option<&str> {
-        None
-    }
     fn kind(&self) -> StepKind {
         StepKind::Required
     }
@@ -186,9 +175,6 @@ impl Step for WaitConvex {
     }
     fn requires(&self) -> &[&str] {
         &["up_convex"]
-    }
-    fn checkpoint(&self) -> Option<&str> {
-        None
     }
     fn kind(&self) -> StepKind {
         StepKind::Required
@@ -220,9 +206,6 @@ impl Step for AdminKey {
     }
     fn requires(&self) -> &[&str] {
         &["wait_convex"]
-    }
-    fn checkpoint(&self) -> Option<&str> {
-        None
     }
     fn kind(&self) -> StepKind {
         StepKind::Required
@@ -264,11 +247,6 @@ impl Step for PushFunctions {
     fn requires(&self) -> &[&str] {
         &["admin_key"]
     }
-    // No checkpoint: `convex deploy` is idempotent and MUST re-run every deploy so
-    // changed functions/schema actually get pushed on a plain re-deploy (C3).
-    fn checkpoint(&self) -> Option<&str> {
-        None
-    }
     fn kind(&self) -> StepKind {
         StepKind::Required
     }
@@ -308,11 +286,6 @@ impl Step for AuthKeys {
     }
     fn requires(&self) -> &[&str] {
         &["push_functions"]
-    }
-    // No checkpoint: `convex env set` is idempotent and MUST re-run so a changed
-    // SITE_URL / relay URL is re-applied on a reconfigure/re-deploy (C3).
-    fn checkpoint(&self) -> Option<&str> {
-        None
     }
     fn kind(&self) -> StepKind {
         StepKind::Required
@@ -382,11 +355,6 @@ impl Step for MqttPasswd {
     fn requires(&self) -> &[&str] {
         &["write_config"]
     }
-    // No checkpoint: `mosquitto_passwd -b -c` rewrites the file idempotently, so a
-    // re-deploy re-asserts the password against the current config (C3).
-    fn checkpoint(&self) -> Option<&str> {
-        None
-    }
     fn kind(&self) -> StepKind {
         StepKind::Required
     }
@@ -438,9 +406,6 @@ impl Step for UpRest {
     fn requires(&self) -> &[&str] {
         &["write_config", "auth_keys", "mqtt_passwd"]
     }
-    fn checkpoint(&self) -> Option<&str> {
-        None
-    }
     fn kind(&self) -> StepKind {
         StepKind::Required
     }
@@ -474,9 +439,6 @@ impl Step for Verify {
     }
     fn requires(&self) -> &[&str] {
         &["up_rest"]
-    }
-    fn checkpoint(&self) -> Option<&str> {
-        None
     }
     fn kind(&self) -> StepKind {
         StepKind::Optional

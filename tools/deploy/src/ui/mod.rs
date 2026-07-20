@@ -18,7 +18,6 @@ pub mod fullscreen;
 pub mod model;
 pub mod plain;
 pub mod rich;
-pub mod summary;
 pub mod theme;
 pub mod tty;
 
@@ -32,10 +31,7 @@ use tracing::{Event, Subscriber};
 use tracing_subscriber::layer::{Context, Layer};
 
 use crate::graph::StepOutcome;
-pub use events::{
-    GroupMap, ProgressEvent, SummaryData, DEPLOY_FOOTER, DEPLOY_GROUPS, INSTALL_FOOTER,
-    INSTALL_GROUPS, UNINSTALL_FOOTER, UNINSTALL_GROUPS,
-};
+pub use events::{GroupMap, ProgressEvent, DEPLOY_FOOTER, DEPLOY_GROUPS};
 pub use theme::Theme;
 use tty::Tty;
 
@@ -55,7 +51,7 @@ pub enum RenderMode {
     Rich,
     /// Clean escape-free line transitions (non-tty / CI / `--plain`).
     Plain,
-    /// Only the final summary (and errors); `--quiet`.
+    /// Suppress the per-step progress lines; `--quiet`.
     Quiet,
     /// No UI; machine output on stdout. `--json`.
     Json,
@@ -165,11 +161,6 @@ impl ProgressSink {
         });
     }
 
-    /// The terminal summary (success card / failure panel).
-    pub fn summary(&self, s: SummaryData) {
-        self.send(ProgressEvent::Summary(Box::new(s)));
-    }
-
     /// Stop the renderer and restore the terminal.
     pub fn finish(&self) {
         self.send(ProgressEvent::Finished);
@@ -187,7 +178,8 @@ impl RenderHandle {
         RenderHandle { join: None }
     }
 
-    /// Wait for the renderer to draw the final summary and restore the terminal.
+    /// Wait for the renderer to finish and restore the terminal (call after
+    /// [`ProgressSink::finish`]).
     pub fn finish(self) {
         if let Some(j) = self.join {
             let _ = j.join();
@@ -206,7 +198,6 @@ pub fn start(
     tty: Option<Tty>,
     groups: GroupMap,
     footer: &'static str,
-    interactive: bool,
 ) -> (ProgressSink, RenderHandle) {
     if mode == RenderMode::Json {
         return (ProgressSink::default(), RenderHandle::none());
@@ -223,7 +214,7 @@ pub fn start(
             let tty = tty.expect("Fullscreen render mode requires a Tty");
             std::thread::Builder::new()
                 .name("ados-installer-ui".to_string())
-                .spawn(move || fullscreen::run(tty, rx, theme, header, groups, footer, interactive))
+                .spawn(move || fullscreen::run(tty, rx, theme, header, groups, footer))
                 .ok()
         }
         RenderMode::Rich => {

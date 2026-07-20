@@ -153,29 +153,6 @@ pub fn strip_ansi(s: &str) -> String {
     out
 }
 
-/// Normalize a free-typed device name into a DNS-safe hostname slug: lowercase,
-/// keep `[a-z0-9-]`, collapse separator runs to a single dash, and trim leading
-/// and trailing dashes. Used for the `<name>.local` reach preview and for the
-/// stack `<host>` when the operator types a name rather than an IP.
-pub fn slugify_hostname(s: &str) -> String {
-    let mut out = String::with_capacity(s.len());
-    let mut last_dash = true; // suppress a leading dash
-    for c in s.chars() {
-        let lc = c.to_ascii_lowercase();
-        if lc.is_ascii_alphanumeric() {
-            out.push(lc);
-            last_dash = false;
-        } else if !last_dash {
-            out.push('-');
-            last_dash = true;
-        }
-    }
-    while out.ends_with('-') {
-        out.pop();
-    }
-    out
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

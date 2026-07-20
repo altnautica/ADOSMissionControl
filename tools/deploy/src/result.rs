@@ -40,11 +40,6 @@ impl FailureAccumulator {
             "ok".to_string()
         }
     }
-
-    /// True when nothing failed.
-    pub fn is_clean(&self) -> bool {
-        self.required.is_empty() && self.optional.is_empty()
-    }
 }
 
 #[cfg(test)]

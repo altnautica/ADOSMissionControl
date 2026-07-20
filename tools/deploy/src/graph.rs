@@ -27,8 +27,8 @@ pub enum StepKind {
 pub enum StepOutcome {
     /// The step did its work successfully.
     Ok,
-    /// The step had nothing to do (e.g. checkpoint already marked, or the step
-    /// does not apply to this profile). Treated as success for dependents.
+    /// The step had nothing to do (e.g. it does not apply to this profile).
+    /// Treated as success for dependents.
     Skipped,
     /// The step failed, with a human-readable reason.
     Failed(String),
@@ -41,15 +41,11 @@ pub trait Step {
     fn id(&self) -> &str;
     /// Ids of the steps that must succeed before this one runs.
     fn requires(&self) -> &[&str];
-    /// The checkpoint name this step marks on success, if any. A step with a
-    /// marked checkpoint is skipped (unless `--force`).
-    fn checkpoint(&self) -> Option<&str>;
     /// Whether a failure is Required (fatal) or Optional (degrading).
     fn kind(&self) -> StepKind;
     /// Do the step's work, returning [`StepOutcome::Ok`] on success,
-    /// [`StepOutcome::Skipped`] when there is nothing to do (already
-    /// checkpointed or not applicable to this profile), or
-    /// [`StepOutcome::Failed`] with a reason.
+    /// [`StepOutcome::Skipped`] when there is nothing to do (not applicable to
+    /// this profile), or [`StepOutcome::Failed`] with a reason.
     fn run(&self, ctx: &mut Ctx) -> StepOutcome;
 }
 
@@ -168,12 +164,9 @@ fn pop_lowest_index(ready: &mut Vec<String>, index: &BTreeMap<String, usize>) ->
 ///    [`StepOutcome::Skipped`], not run.
 /// 2. If the graph is ABORTING (a Required step failed earlier) → blocked:
 ///    [`StepOutcome::Skipped`], not run.
-/// 3. If the step has a checkpoint already marked and `--force` is off →
-///    [`StepOutcome::Skipped`] (the work is already done), and it counts as a
-///    success for dependents.
-/// 4. Otherwise run it. On [`StepOutcome::Failed`] record into `ctx.failures`
+/// 3. Otherwise run it. On [`StepOutcome::Failed`] record into `ctx.failures`
 ///    (required iff `kind() == Required`); a Required failure flips the graph
-///    to ABORTING. On success, mark its checkpoint.
+///    to ABORTING.
 ///
 /// A malformed graph (cycle / unknown require) is itself a hard error and is
 /// surfaced as a synthetic Required failure of a `graph` pseudo-step so the
@@ -224,31 +217,12 @@ pub fn run_graph(steps: Vec<Box<dyn Step>>, ctx: &mut Ctx) -> Vec<StepReport> {
             continue;
         }
 
-        // (3) Checkpoint short-circuit (unless force).
-        if let Some(cp) = step.checkpoint() {
-            if !ctx.force && ctx.checkpoint.is_done(cp) {
-                tracing::info!(step = %id, checkpoint = %cp, "skipped: checkpoint already done");
-                succeeded.insert(id.clone());
-                ctx.progress.step_result(id, &StepOutcome::Skipped);
-                reports.push(StepReport {
-                    id: id.clone(),
-                    outcome: StepOutcome::Skipped,
-                });
-                continue;
-            }
-        }
-
-        // (4) Run.
+        // (3) Run.
         ctx.progress.step_started(id);
         let outcome = step.run(ctx);
         match &outcome {
             StepOutcome::Ok | StepOutcome::Skipped => {
                 succeeded.insert(id.clone());
-                if let Some(cp) = step.checkpoint() {
-                    if let Err(e) = ctx.checkpoint.mark(cp) {
-                        tracing::warn!(step = %id, checkpoint = %cp, error = %e, "failed to mark checkpoint");
-                    }
-                }
             }
             StepOutcome::Failed(msg) => {
                 let required = step.kind() == StepKind::Required;
@@ -272,7 +246,6 @@ pub fn run_graph(steps: Vec<Box<dyn Step>>, ctx: &mut Ctx) -> Vec<StepReport> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::checkpoint::Checkpoint;
     use std::cell::RefCell;
 
     // A test step that records into a shared run-recorder when its run() fires,
@@ -281,7 +254,6 @@ mod tests {
     struct TestStep {
         id: &'static str,
         requires: Vec<&'static str>,
-        checkpoint: Option<&'static str>,
         kind: StepKind,
         outcome: StepOutcome,
         ran: &'static RecordCell,
@@ -296,9 +268,6 @@ mod tests {
         fn requires(&self) -> &[&str] {
             &self.requires
         }
-        fn checkpoint(&self) -> Option<&str> {
-            self.checkpoint
-        }
         fn kind(&self) -> StepKind {
             self.kind
         }
@@ -309,9 +278,7 @@ mod tests {
     }
 
     fn ctx() -> Ctx {
-        // Each test gets its own tempdir checkpoint root.
-        let dir = Box::leak(Box::new(tempfile::tempdir().unwrap()));
-        Ctx::for_test(Checkpoint::with_root(dir.path()))
+        Ctx::for_test()
     }
 
     fn recorder() -> &'static RecordCell {
@@ -325,7 +292,6 @@ mod tests {
             Box::new(TestStep {
                 id: "c",
                 requires: vec!["b"],
-                checkpoint: None,
                 kind: StepKind::Required,
                 outcome: StepOutcome::Ok,
                 ran,
@@ -333,7 +299,6 @@ mod tests {
             Box::new(TestStep {
                 id: "b",
                 requires: vec!["a"],
-                checkpoint: None,
                 kind: StepKind::Required,
                 outcome: StepOutcome::Ok,
                 ran,
@@ -341,7 +306,6 @@ mod tests {
             Box::new(TestStep {
                 id: "a",
                 requires: vec![],
-                checkpoint: None,
                 kind: StepKind::Required,
                 outcome: StepOutcome::Ok,
                 ran,
@@ -360,7 +324,6 @@ mod tests {
         let steps: Vec<Box<dyn Step>> = vec![Box::new(TestStep {
             id: "b",
             requires: vec!["a"], // no step 'a'
-            checkpoint: None,
             kind: StepKind::Required,
             outcome: StepOutcome::Ok,
             ran,
@@ -382,7 +345,6 @@ mod tests {
             Box::new(TestStep {
                 id: "a",
                 requires: vec!["b"],
-                checkpoint: None,
                 kind: StepKind::Required,
                 outcome: StepOutcome::Ok,
                 ran,
@@ -390,7 +352,6 @@ mod tests {
             Box::new(TestStep {
                 id: "b",
                 requires: vec!["a"],
-                checkpoint: None,
                 kind: StepKind::Required,
                 outcome: StepOutcome::Ok,
                 ran,
@@ -407,7 +368,6 @@ mod tests {
             Box::new(TestStep {
                 id: "first",
                 requires: vec![],
-                checkpoint: None,
                 kind: StepKind::Required,
                 outcome: StepOutcome::Failed("boom".to_string()),
                 ran,
@@ -415,7 +375,6 @@ mod tests {
             Box::new(TestStep {
                 id: "second",
                 requires: vec!["first"],
-                checkpoint: None,
                 kind: StepKind::Required,
                 outcome: StepOutcome::Ok,
                 ran,
@@ -439,7 +398,6 @@ mod tests {
             Box::new(TestStep {
                 id: "fetch_binaries",
                 requires: vec![],
-                checkpoint: None,
                 kind: StepKind::Required,
                 outcome: StepOutcome::Failed("no network".to_string()),
                 ran,
@@ -447,7 +405,6 @@ mod tests {
             Box::new(TestStep {
                 id: "systemd",
                 requires: vec!["fetch_binaries"],
-                checkpoint: None,
                 kind: StepKind::Required,
                 outcome: StepOutcome::Ok,
                 ran,
@@ -473,7 +430,6 @@ mod tests {
             Box::new(TestStep {
                 id: "dkms",
                 requires: vec![],
-                checkpoint: None,
                 kind: StepKind::Optional,
                 outcome: StepOutcome::Failed("no compiler".to_string()),
                 ran,
@@ -481,7 +437,6 @@ mod tests {
             Box::new(TestStep {
                 id: "systemd",
                 requires: vec![],
-                checkpoint: None,
                 kind: StepKind::Required,
                 outcome: StepOutcome::Ok,
                 ran,
@@ -492,53 +447,5 @@ mod tests {
         // Both ran; the optional failure degrades but did not abort systemd.
         assert!(ran.borrow().contains(&"systemd".to_string()));
         assert_eq!(c.failures.derive_status(), "degraded");
-    }
-
-    #[test]
-    fn marked_checkpoint_is_skipped_unless_force() {
-        let ran = recorder();
-        let cp_dir = Box::leak(Box::new(tempfile::tempdir().unwrap()));
-        let checkpoint = Checkpoint::with_root(cp_dir.path());
-        checkpoint.mark("deps").unwrap();
-
-        let make_steps = || -> Vec<Box<dyn Step>> {
-            vec![Box::new(TestStep {
-                id: "deps",
-                requires: vec![],
-                checkpoint: Some("deps"),
-                kind: StepKind::Required,
-                outcome: StepOutcome::Ok,
-                ran,
-            })]
-        };
-
-        // Not force: the marked checkpoint short-circuits → not run.
-        let mut c = Ctx::for_test(checkpoint.clone());
-        run_graph(make_steps(), &mut c);
-        assert!(!ran.borrow().contains(&"deps".to_string()));
-
-        // Force: the checkpoint is ignored → the step runs.
-        let mut c2 = Ctx::for_test(checkpoint);
-        c2.force = true;
-        run_graph(make_steps(), &mut c2);
-        assert!(ran.borrow().contains(&"deps".to_string()));
-    }
-
-    #[test]
-    fn successful_step_marks_its_checkpoint() {
-        let ran = recorder();
-        let cp_dir = Box::leak(Box::new(tempfile::tempdir().unwrap()));
-        let checkpoint = Checkpoint::with_root(cp_dir.path());
-        let steps: Vec<Box<dyn Step>> = vec![Box::new(TestStep {
-            id: "deps",
-            requires: vec![],
-            checkpoint: Some("deps"),
-            kind: StepKind::Required,
-            outcome: StepOutcome::Ok,
-            ran,
-        })];
-        let mut c = Ctx::for_test(checkpoint.clone());
-        run_graph(steps, &mut c);
-        assert!(checkpoint.is_done("deps"));
     }
 }

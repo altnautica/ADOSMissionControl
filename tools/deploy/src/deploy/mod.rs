@@ -48,21 +48,14 @@ pub fn run_wizard(theme: &Theme, repo_root: &Path, args: &Args) -> anyhow::Resul
     // Pause for Enter at the end only when a human is watching: a scripted /
     // non-interactive / --yes run returns immediately.
     let pause = !args.non_interactive && !args.yes && Tty::is_available();
-    execute(
-        theme,
-        repo_root,
-        &cfg,
-        ui::detect_mode(args),
-        args.force,
-        pause,
-    )
+    execute(theme, repo_root, &cfg, ui::detect_mode(args), pause)
 }
 
 /// Run the deploy state machine for a prepared config (no wizard). Used by
 /// Upgrade, which reconstructs the config from the deployed `.env` and re-runs
 /// the idempotent graph so functions are re-pushed and env re-set.
 pub fn deploy_config(theme: &Theme, repo_root: &Path, cfg: &DeployConfig) -> anyhow::Result<()> {
-    execute(theme, repo_root, cfg, RenderMode::Rich, false, true)
+    execute(theme, repo_root, cfg, RenderMode::Rich, true)
 }
 
 /// Execute the deploy as the ordered step machine with live progress, then print
@@ -72,7 +65,6 @@ fn execute(
     repo_root: &Path,
     cfg: &DeployConfig,
     base_mode: RenderMode,
-    force: bool,
     pause: bool,
 ) -> anyhow::Result<()> {
     let (mode, tty) = ui::resolve_live_mode(base_mode, None);
@@ -83,10 +75,9 @@ fn execute(
         tty,
         ui::DEPLOY_GROUPS,
         ui::DEPLOY_FOOTER,
-        true,
     );
 
-    let mut ctx = Ctx::for_deploy(cfg.clone(), repo_root.to_path_buf(), sink.clone(), force);
+    let mut ctx = Ctx::for_deploy(cfg.clone(), repo_root.to_path_buf(), sink.clone());
     let reports = run_graph(steps::build_steps(), &mut ctx);
     sink.finish();
     handle.finish();

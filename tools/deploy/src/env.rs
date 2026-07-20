@@ -1,45 +1,6 @@
-//! Host facts probed once at startup, plus filesystem locations.
+//! Filesystem locations for the deployer.
 
 use std::path::PathBuf;
-
-/// Fallback checkpoint root when a run does not pin one. The deploy engine always
-/// pins `Checkpoint::with_root(<selfhost>/.deploy-state)` at runtime, so this is
-/// only the `Checkpoint::default()` fallback (used by unit tests).
-pub const CHECKPOINT_DIR: &str = ".ados-deploy-checkpoints";
-
-/// Probed facts about the machine the deployer runs on.
-#[derive(Debug, Clone)]
-pub struct EnvInfo {
-    /// CPU architecture (`aarch64`, `x86_64`, …).
-    pub arch: String,
-    /// Operating system (`macos`, `linux`, `windows`).
-    pub os: String,
-}
-
-impl EnvInfo {
-    /// Probe the host facts from compile-time target info.
-    pub fn probe() -> Self {
-        EnvInfo {
-            arch: std::env::consts::ARCH.to_string(),
-            os: match std::env::consts::OS {
-                "macos" => "macos",
-                "windows" => "windows",
-                other => other,
-            }
-            .to_string(),
-        }
-    }
-
-    /// True when the host is macOS.
-    pub fn is_macos(&self) -> bool {
-        self.os == "macos"
-    }
-
-    /// True when the host is Windows.
-    pub fn is_windows(&self) -> bool {
-        self.os == "windows"
-    }
-}
 
 /// Locate the ADOSMissionControl repo root from the current working directory:
 /// walk up until a directory contains `tools/selfhost/docker-compose.yml`. The

@@ -23,11 +23,6 @@ pub fn fmt_bytes(n: u64) -> String {
     }
 }
 
-/// The first whitespace-delimited token of `s`, or `""`.
-fn first_token(s: &str) -> &str {
-    s.split_whitespace().next().unwrap_or("")
-}
-
 /// The `NN%` substring in `line`, if any (walks the digits left of a `%`).
 fn percent(line: &str) -> Option<String> {
     let bytes = line.as_bytes();
@@ -40,119 +35,6 @@ fn percent(line: &str) -> Option<String> {
         return None;
     }
     Some(line[start..=pos].to_string())
-}
-
-/// apt / dpkg progress → headline.
-pub fn apt_activity(line: &str) -> Option<String> {
-    let l = line.trim();
-    if let Some(rest) = l.strip_prefix("Unpacking ") {
-        let pkg = first_token(rest);
-        if !pkg.is_empty() {
-            return Some(format!("unpacking {pkg}"));
-        }
-    }
-    if let Some(rest) = l.strip_prefix("Setting up ") {
-        let pkg = first_token(rest);
-        if !pkg.is_empty() {
-            return Some(format!("configuring {pkg}"));
-        }
-    }
-    if l.starts_with("Get:") {
-        return Some("downloading packages".to_string());
-    }
-    None
-}
-
-/// pip progress → headline.
-pub fn pip_activity(line: &str) -> Option<String> {
-    let l = line.trim();
-    if let Some(rest) = l.strip_prefix("Collecting ") {
-        let pkg = first_token(rest);
-        if !pkg.is_empty() {
-            return Some(format!("resolving {pkg}"));
-        }
-    }
-    if let Some(rest) = l.strip_prefix("Building wheel for ") {
-        let pkg = first_token(rest);
-        if !pkg.is_empty() {
-            return Some(format!("building {pkg}"));
-        }
-    }
-    if let Some(rest) = l.strip_prefix("Downloading ") {
-        let name = first_token(rest).rsplit('/').next().unwrap_or("");
-        if !name.is_empty() {
-            return Some(format!("downloading {name}"));
-        }
-    }
-    if l.starts_with("Installing collected packages") {
-        return Some("installing agent package".to_string());
-    }
-    None
-}
-
-/// git clone progress → headline.
-pub fn git_activity(line: &str) -> Option<String> {
-    let l = line.trim();
-    if l.starts_with("Cloning into") {
-        return Some("cloning repository".to_string());
-    }
-    if l.starts_with("Receiving objects:") {
-        return Some(match percent(l) {
-            Some(p) => format!("receiving objects {p}"),
-            None => "receiving objects".to_string(),
-        });
-    }
-    if l.starts_with("Resolving deltas:") {
-        return Some(match percent(l) {
-            Some(p) => format!("resolving deltas {p}"),
-            None => "resolving deltas".to_string(),
-        });
-    }
-    if l.starts_with("Updating files:") {
-        return Some(match percent(l) {
-            Some(p) => format!("checking out {p}"),
-            None => "checking out files".to_string(),
-        });
-    }
-    None
-}
-
-/// DKMS kernel-module build → headline.
-pub fn dkms_activity(line: &str) -> Option<String> {
-    let l = line.trim();
-    if l.contains("Building module")
-        || l.contains("Building initial module")
-        || l.contains("Building for")
-    {
-        return Some("compiling 8812eu kernel module".to_string());
-    }
-    if l.contains("Installing module") || l.starts_with("depmod") {
-        return Some("installing kernel module".to_string());
-    }
-    None
-}
-
-/// wfb-ng userspace build (make + setup.py) → headline.
-pub fn wfb_activity(line: &str) -> Option<String> {
-    let l = line.trim();
-    let lower = l.to_ascii_lowercase();
-    if lower.contains("running install")
-        || lower.starts_with("installing ")
-        || lower.contains("setup.py")
-    {
-        return Some("installing radio stack".to_string());
-    }
-    if lower.starts_with("gcc")
-        || lower.starts_with("g++")
-        || lower.starts_with("cc ")
-        || lower.starts_with("make[")
-        || lower.starts_with("make ")
-        || lower.contains(".c ")
-        || lower.contains(".o ")
-    {
-        return Some("compiling radio stack".to_string());
-    }
-    None
 }
 
 /// docker / docker compose progress → headline (image pull, container create,
@@ -212,63 +94,14 @@ mod tests {
     }
 
     #[test]
-    fn apt_headlines() {
+    fn docker_and_convex_headlines() {
         assert_eq!(
-            apt_activity("Unpacking gstreamer1.0-tools (1.22.0) ...").as_deref(),
-            Some("unpacking gstreamer1.0-tools")
+            docker_activity("=> [build 6/9] RUN next build").as_deref(),
+            Some("building mission-control")
         );
         assert_eq!(
-            apt_activity("Setting up ffmpeg (7:5.1.6) ...").as_deref(),
-            Some("configuring ffmpeg")
-        );
-        assert_eq!(
-            apt_activity("Get:12 http://deb.debian.org bookworm/main arm64 libfoo").as_deref(),
-            Some("downloading packages")
-        );
-        assert_eq!(apt_activity("Reading package lists..."), None);
-    }
-
-    #[test]
-    fn pip_headlines() {
-        assert_eq!(
-            pip_activity("Collecting msgpack==1.0.5").as_deref(),
-            Some("resolving msgpack==1.0.5")
-        );
-        assert_eq!(
-            pip_activity("  Building wheel for ados-drone-agent (pyproject.toml)").as_deref(),
-            Some("building ados-drone-agent")
-        );
-        assert_eq!(
-            pip_activity("Installing collected packages: msgpack, ados").as_deref(),
-            Some("installing agent package")
-        );
-    }
-
-    #[test]
-    fn git_headlines_extract_percent() {
-        assert_eq!(
-            git_activity("Receiving objects:  73% (146/200)").as_deref(),
-            Some("receiving objects 73%")
-        );
-        assert_eq!(
-            git_activity("Cloning into '/opt/ados/source'...").as_deref(),
-            Some("cloning repository")
-        );
-    }
-
-    #[test]
-    fn dkms_and_wfb_headlines() {
-        assert_eq!(
-            dkms_activity("Building module(s)....").as_deref(),
-            Some("compiling 8812eu kernel module")
-        );
-        assert_eq!(
-            wfb_activity("gcc -O2 -c wfb_tx.c -o wfb_tx.o").as_deref(),
-            Some("compiling radio stack")
-        );
-        assert_eq!(
-            wfb_activity("running install").as_deref(),
-            Some("installing radio stack")
+            convex_activity("Bundled 214 modules").as_deref(),
+            Some("bundling functions")
         );
     }
 }

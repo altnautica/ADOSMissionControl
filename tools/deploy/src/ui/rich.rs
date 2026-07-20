@@ -18,9 +18,8 @@ use ratatui::crossterm::{
     terminal::{Clear, ClearType},
 };
 
-use crate::ui::events::{GroupMap, ProgressEvent, SummaryData};
+use crate::ui::events::{GroupMap, ProgressEvent};
 use crate::ui::model::{fmt_dur, GStatus, Group, Model};
-use crate::ui::summary;
 use crate::ui::theme::Theme;
 
 /// Spinner cadence + log-ring depth.
@@ -39,7 +38,6 @@ pub fn run(rx: Receiver<ProgressEvent>, theme: Theme, header: String, groups: Gr
     let mut spinner = 0usize;
     let mut height = 0usize;
     let mut logs: VecDeque<String> = VecDeque::with_capacity(LOG_RING_CAP);
-    let mut summary: Option<Box<SummaryData>> = None;
 
     draw_block(&mut w, &model, &theme, spinner, &mut height);
 
@@ -72,7 +70,6 @@ pub fn run(rx: Receiver<ProgressEvent>, theme: Theme, header: String, groups: Gr
                 push_log(&mut logs, line.clone());
                 emit_log(&mut w, &line, &model, &theme, spinner, &mut height);
             }
-            Ok(ProgressEvent::Summary(s)) => summary = Some(s),
             Ok(ProgressEvent::Finished) => break,
             Err(RecvTimeoutError::Timeout) => {
                 spinner = spinner.wrapping_add(1);
@@ -84,11 +81,6 @@ pub fn run(rx: Receiver<ProgressEvent>, theme: Theme, header: String, groups: Gr
 
     erase_block(&mut w, &mut height);
     let _ = cursor_show(&mut w);
-    if let Some(s) = summary {
-        for line in summary::rich_lines(&s, &theme, &logs) {
-            let _ = writeln!(w, "{line}");
-        }
-    }
     let _ = w.flush();
 }
 
@@ -181,10 +173,10 @@ fn block_lines(model: &Model, theme: &Theme, spinner: usize, width: usize) -> Ve
     out
 }
 
-/// `╭─ ADOS Drone Agent · installing ──── step 4/10 ─╮`
+/// `╭─ ADOS · deploying ──── step 4/7 ─╮`
 fn top_border(theme: &Theme, content_w: usize, model: &Model) -> String {
     let bc = theme.box_chars();
-    let title = "ADOS Drone Agent · installing";
+    let title = "ADOS · deploying";
     let counter = format!("step {}/{}", model.finalized(), model.total());
     let lead = format!("{} {} ", bc.h, title);
     let tail = format!(" {} {}", counter, bc.h);
@@ -311,7 +303,7 @@ mod tests {
 
     #[test]
     fn block_lines_count_is_groups_plus_borders() {
-        let m = Model::new(crate::ui::events::INSTALL_GROUPS);
+        let m = Model::new(crate::ui::events::DEPLOY_GROUPS);
         let lines = block_lines(&m, &theme(), 0, 58);
         assert_eq!(lines.len(), m.groups.len() + 2);
     }
@@ -319,8 +311,8 @@ mod tests {
     #[test]
     fn rows_fit_the_width_when_color_is_off() {
         // With color off there are no SGR escapes, so chars() == display width.
-        let mut m = Model::new(crate::ui::events::INSTALL_GROUPS);
-        m.record("deps", &StepOutcome::Ok);
+        let mut m = Model::new(crate::ui::events::DEPLOY_GROUPS);
+        m.record("write_config", &StepOutcome::Ok);
         let width = 58;
         for line in block_lines(&m, &theme(), 0, width) {
             assert_eq!(

@@ -7,7 +7,7 @@
 use std::time::{Duration, Instant};
 
 use crate::graph::StepOutcome;
-use crate::ui::events::{group_index_for_step, GroupMap, INSTALL_GROUPS};
+use crate::ui::events::{group_index_for_step, GroupMap};
 
 /// A display group's lifecycle state.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -18,7 +18,7 @@ pub enum GStatus {
     Running,
     /// All members done; at least one ran and none failed.
     Ok,
-    /// All members were skipped (e.g. checkpoints already done on a re-run).
+    /// All members were skipped (not applicable to this deploy).
     Skipped,
     /// A member step failed.
     Failed,
@@ -69,12 +69,6 @@ pub struct Model {
     pub groups: Vec<Group>,
     /// The step→group map this model was built from.
     map: GroupMap,
-}
-
-impl Default for Model {
-    fn default() -> Self {
-        Self::new(INSTALL_GROUPS)
-    }
 }
 
 impl Model {
@@ -218,32 +212,34 @@ pub fn fmt_dur(d: Duration) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ui::events::DEPLOY_GROUPS;
 
     #[test]
     fn group_finalizes_only_after_all_members() {
-        let mut m = Model::new(INSTALL_GROUPS);
-        // "Configuring" has 3 members; it must not finalize until all 3 report.
-        assert_eq!(m.record("config_identity", &StepOutcome::Ok), None);
-        assert_eq!(m.record("network_mac_pin", &StepOutcome::Ok), None);
+        let mut m = Model::new(DEPLOY_GROUPS);
+        // "Configuring Convex" has 3 members; it must not finalize until all 3 report.
+        assert_eq!(m.record("admin_key", &StepOutcome::Ok), None);
+        assert_eq!(m.record("push_functions", &StepOutcome::Ok), None);
         let idx = m
-            .record("rtl_regulatory", &StepOutcome::Skipped)
+            .record("auth_keys", &StepOutcome::Skipped)
             .expect("finalizes on the 3rd");
         assert_eq!(m.groups[idx].status, GStatus::Ok); // one ran → Ok, not Skipped
     }
 
     #[test]
     fn all_skipped_group_is_skipped() {
-        let mut m = Model::new(INSTALL_GROUPS);
-        let idx = m.record("deps", &StepOutcome::Skipped).unwrap();
+        let mut m = Model::new(DEPLOY_GROUPS);
+        let idx = m.record("write_config", &StepOutcome::Skipped).unwrap();
         assert_eq!(m.groups[idx].status, GStatus::Skipped);
     }
 
     #[test]
     fn any_failure_fails_the_group() {
-        let mut m = Model::new(INSTALL_GROUPS);
-        m.record("watchdog", &StepOutcome::Ok);
+        let mut m = Model::new(DEPLOY_GROUPS);
+        // "Starting Convex" has 2 members (up_convex, wait_convex).
+        m.record("up_convex", &StepOutcome::Ok);
         let idx = m
-            .record("systemd", &StepOutcome::Failed("boom".into()))
+            .record("wait_convex", &StepOutcome::Failed("boom".into()))
             .unwrap();
         assert_eq!(m.groups[idx].status, GStatus::Failed);
     }

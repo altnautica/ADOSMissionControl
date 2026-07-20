@@ -22,8 +22,6 @@ pub struct Args {
     pub non_interactive: bool,
     /// `--yes` / `-y` — accept detected defaults at every prompt.
     pub yes: bool,
-    /// `--force` — ignore resume checkpoints and re-run every step.
-    pub force: bool,
 
     // --- top-level action --------------------------------------------------
     /// A direct action name (`deploy`, `dev`, `demo`, `services`, `status`,
@@ -67,7 +65,6 @@ impl Args {
                 "--json" => a.json = true,
                 "--non-interactive" => a.non_interactive = true,
                 "--yes" | "-y" => a.yes = true,
-                "--force" => a.force = true,
                 "--plan" | "--dry-run" => a.plan = true,
                 "--no-video" => a.no_video = true,
                 "--no-mqtt" => a.no_mqtt = true,

@@ -13,11 +13,6 @@ pub fn node_present() -> bool {
     exec::node_run_ok("node", &["--version"])
 }
 
-/// Whether `npx` is present.
-pub fn npx_present() -> bool {
-    exec::node_run_ok("npx", &["--version"])
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

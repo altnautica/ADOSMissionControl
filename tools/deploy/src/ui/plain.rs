@@ -9,7 +9,6 @@ use std::sync::mpsc::Receiver;
 
 use crate::ui::events::{GroupMap, ProgressEvent};
 use crate::ui::model::{fmt_dur, GStatus, Group, Model};
-use crate::ui::summary;
 
 /// Run the plain renderer to completion. Consumes events until `Finished`.
 pub fn run(rx: Receiver<ProgressEvent>, quiet: bool, header: String, groups: GroupMap) {
@@ -39,11 +38,6 @@ pub fn run(rx: Receiver<ProgressEvent>, quiet: bool, header: String, groups: Gro
             | ProgressEvent::SubLog { .. }
             | ProgressEvent::ByteProgress { .. }
             | ProgressEvent::Log { .. } => {}
-            ProgressEvent::Summary(s) => {
-                for line in summary::plain_lines(&s) {
-                    eprintln!("{line}");
-                }
-            }
             ProgressEvent::Finished => break,
         }
     }

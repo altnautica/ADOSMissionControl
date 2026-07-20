@@ -19,11 +19,10 @@ use std::sync::mpsc::{Receiver, RecvTimeoutError};
 use std::time::{Duration, Instant};
 
 use crate::ui::activity;
-use crate::ui::events::{GroupMap, ProgressEvent, SummaryData};
+use crate::ui::events::{GroupMap, ProgressEvent};
 use crate::ui::model::{fmt_dur, GStatus, Group, Model};
-use crate::ui::summary;
 use crate::ui::theme::Theme;
-use crate::ui::tty::{Input, KeyEvent, Tty};
+use crate::ui::tty::Tty;
 use crate::wizard::frame::{self, TermSize};
 use crate::wizard::render;
 
@@ -33,8 +32,6 @@ const TICK_MS: u64 = 120;
 const SPLIT_MIN_COLS: usize = 90;
 /// Live-detail log-tail ring depth (kept small; only the tail is shown).
 const LOG_CAP: usize = 64;
-/// Journal ring depth retained for the failure panel.
-const JOURNAL_CAP: usize = 12;
 
 /// Everything the compositor needs for one frame.
 struct View<'a> {
@@ -54,11 +51,8 @@ struct State {
     active: Option<usize>,
     /// The running step's raw output tail.
     logs: VecDeque<String>,
-    /// Forwarded tracing lines, retained for the failure panel only.
-    journal: VecDeque<String>,
     /// When the first step started (drives the total-elapsed clock).
     started: Option<Instant>,
-    summary: Option<Box<SummaryData>>,
     finished: bool,
 }
 
@@ -68,9 +62,7 @@ impl State {
             model: Model::new(groups),
             active: None,
             logs: VecDeque::with_capacity(LOG_CAP),
-            journal: VecDeque::with_capacity(JOURNAL_CAP),
             started: None,
-            summary: None,
             finished: false,
         }
     }
@@ -113,17 +105,13 @@ impl State {
             } => {
                 self.model.set_bytes(&id, done, total, label);
             }
-            ProgressEvent::Log { line, .. } => {
-                push(&mut self.journal, line, JOURNAL_CAP);
-            }
-            ProgressEvent::Summary(s) => self.summary = Some(s),
+            ProgressEvent::Log { .. } => {}
             ProgressEvent::Finished => self.finished = true,
         }
     }
 }
 
-/// Run the full-screen renderer to completion, then leave the alternate screen
-/// and print the summary card on the primary screen.
+/// Run the full-screen renderer to completion, then leave the alternate screen.
 pub fn run(
     mut tty: Tty,
     rx: Receiver<ProgressEvent>,
@@ -131,7 +119,6 @@ pub fn run(
     header: String,
     groups: GroupMap,
     footer: &'static str,
-    interactive: bool,
 ) {
     let title = title_from_header(&header);
     let mut st = State::new(groups);
@@ -167,59 +154,12 @@ pub fn run(
         paint(&mut tty, &theme, &title, footer, &st, spinner);
     }
 
-    // On an interactive success, show the closing summary full-screen inside the
-    // alt screen and wait for the operator to dismiss it, before leaving.
-    if interactive && !interrupted {
-        if let Some(s) = st.summary.as_deref() {
-            if s.status != "failed" {
-                present_completion(&mut tty, &theme, s, &st.journal);
-            }
-        }
-    }
-
-    // Leave the alt screen + restore the terminal (RAII), then print the summary
-    // on the primary buffer where the pre-install output lived, so the reach URLs
-    // persist in scrollback after the shell returns.
+    // Leave the alt screen + restore the terminal (RAII). The deploy prints its
+    // own completion card on the primary buffer once the renderer thread joins.
     drop(tty);
     if interrupted {
         eprintln!("\nDeploy interrupted. Re-run to finish — the deploy is idempotent.");
         std::process::exit(130);
-    }
-    if let Some(s) = st.summary {
-        for line in summary::rich_lines(&s, &theme, &st.journal) {
-            eprintln!("{line}");
-        }
-    }
-}
-
-/// Paint the closing summary as a full-screen frame (centered on the charcoal
-/// background) on the still-open alt screen.
-fn paint_completion(tty: &mut Tty, theme: &Theme, s: &SummaryData, journal: &VecDeque<String>) {
-    let size = tty.size();
-    let grid = summary::fullscreen_grid(s, theme, journal, size.cols, size.rows);
-    tty.present(&grid, theme);
-}
-
-/// Show the closing summary full-screen and block until the operator dismisses
-/// it (Enter / any key / Ctrl-C), repainting on a resize. A generous auto-dismiss
-/// deadline means an unattended-but-interactive session still returns to a shell.
-fn present_completion(tty: &mut Tty, theme: &Theme, s: &SummaryData, journal: &VecDeque<String>) {
-    const AUTO_DISMISS: Duration = Duration::from_secs(120);
-    let deadline = Instant::now() + AUTO_DISMISS;
-    // Drop any keystrokes typed during the install so the card holds until a
-    // fresh keypress instead of a buffered byte dismissing it instantly.
-    tty.flush_input();
-    paint_completion(tty, theme, s, journal);
-    loop {
-        match tty.read_input(200) {
-            Input::Key(KeyEvent::Resize) => paint_completion(tty, theme, s, journal),
-            Input::Key(_) => break,
-            Input::Tick => {
-                if crate::ui::tty::take_interrupt() || Instant::now() >= deadline {
-                    break;
-                }
-            }
-        }
     }
 }
 
@@ -554,7 +494,7 @@ fn too_small(theme: &Theme, cols: usize, rows: usize) -> Vec<String> {
 mod tests {
     use super::*;
     use crate::graph::StepOutcome;
-    use crate::ui::events::{group_index_for_step, INSTALL_GROUPS};
+    use crate::ui::events::{group_index_for_step, DEPLOY_GROUPS};
     use crate::ui::theme::ColorTier;
 
     fn plain() -> Theme {
@@ -566,8 +506,8 @@ mod tests {
 
     fn view<'a>(m: &'a Model, logs: &'a VecDeque<String>, active: Option<usize>) -> View<'a> {
         View {
-            title: "Installing · ADOS Drone Agent (drone)",
-            footer: "First install can take a few minutes. Safe to leave running.",
+            title: "Deploying · ADOS stack",
+            footer: "First deploy pulls images + builds Mission Control. Safe to leave running.",
             model: m,
             active,
             logs,
@@ -578,19 +518,13 @@ mod tests {
 
     #[test]
     fn every_line_is_exactly_cols_wide_across_sizes_and_tiers() {
-        let mut m = Model::new(INSTALL_GROUPS);
-        m.record("deps", &StepOutcome::Ok);
-        m.set_bytes(
-            "fetch_binaries",
-            4_404_019,
-            8_388_608,
-            "ados-control".into(),
-        );
-        m.set_activity("fetch_binaries", "installing ados-control".into());
+        let mut m = Model::new(DEPLOY_GROUPS);
+        m.record("write_config", &StepOutcome::Ok);
+        m.set_activity("up_rest", "building + starting services".into());
         let mut logs = VecDeque::new();
-        logs.push_back("✓ ados-supervisor 6.1 MB".to_string());
-        logs.push_back("verifying ados-control sha256".to_string());
-        let active = group_index_for_step(INSTALL_GROUPS, "fetch_binaries");
+        logs.push_back("=> [build 6/9] RUN next build".to_string());
+        logs.push_back("=> exporting layers".to_string());
+        let active = group_index_for_step(DEPLOY_GROUPS, "up_rest");
 
         for tier in [ColorTier::None, ColorTier::Truecolor, ColorTier::Basic] {
             for ascii in [false, true] {
@@ -613,7 +547,7 @@ mod tests {
 
     #[test]
     fn below_floor_shows_resize_message() {
-        let m = Model::new(INSTALL_GROUPS);
+        let m = Model::new(DEPLOY_GROUPS);
         let logs = VecDeque::new();
         let v = view(&m, &logs, None);
         let grid = compose(&plain(), &v, TermSize { cols: 70, rows: 18 });
@@ -622,14 +556,10 @@ mod tests {
 
     #[test]
     fn split_shows_checklist_and_detail() {
-        let mut m = Model::new(INSTALL_GROUPS);
-        m.set_activity("fetch_binaries", "installing ados-control".into());
+        let mut m = Model::new(DEPLOY_GROUPS);
+        m.set_activity("up_rest", "building + starting services".into());
         let logs = VecDeque::new();
-        let v = view(
-            &m,
-            &logs,
-            group_index_for_step(INSTALL_GROUPS, "fetch_binaries"),
-        );
+        let v = view(&m, &logs, group_index_for_step(DEPLOY_GROUPS, "up_rest"));
         let joined = compose(
             &plain(),
             &v,
@@ -640,9 +570,9 @@ mod tests {
         )
         .join("\n");
         assert!(joined.contains("ADOS"), "header");
-        assert!(joined.contains("Downloading components"), "checklist label");
+        assert!(joined.contains("Starting services"), "checklist label");
         assert!(
-            joined.contains("installing ados-control"),
+            joined.contains("building + starting services"),
             "activity headline"
         );
         assert!(joined.contains("4:12"), "total elapsed clock");

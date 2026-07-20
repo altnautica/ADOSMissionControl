@@ -80,10 +80,3 @@ fn menu_frame_lines_are_exactly_cols_wide() {
         }
     }
 }
-
-#[test]
-fn slugify_hostname_trims_and_normalizes() {
-    assert_eq!(render::slugify_hostname("My Drone 01"), "my-drone-01");
-    assert_eq!(render::slugify_hostname("node-"), "node");
-    assert_eq!(render::slugify_hostname("  @@a__b  "), "a-b");
-}
