@@ -36,6 +36,7 @@
     "test:all": "vitest run",
     "convex:dev": "npx convex dev",
     "convex:deploy": "npx convex deploy",
+    "deploy": "cargo run --release --quiet --manifest-path tools/deploy/Cargo.toml --",
     "generate:agent-types": "openapi-typescript ../ADOSDroneAgent/dist/openapi.json -o src/lib/agent/api-types.gen.ts",
     "postinstall": "patch-package"
   },

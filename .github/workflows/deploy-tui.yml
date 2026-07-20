@@ -1,0 +1,68 @@
+name: deploy-tui
+
+# Gate + release the Rust stack deployer (tools/deploy). Cross-platform, since
+# the deployer runs on operator laptops (macOS / Windows / Linux).
+
+on:
+  push:
+    paths: ["tools/deploy/**", ".github/workflows/deploy-tui.yml"]
+    tags: ["ados-deploy-v*"]
+  pull_request:
+    paths: ["tools/deploy/**", ".github/workflows/deploy-tui.yml"]
+
+defaults:
+  run:
+    working-directory: tools/deploy
+
+jobs:
+  gate:
+    name: gate (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - name: fmt
+        run: cargo fmt --check
+      - name: clippy
+        run: cargo clippy --all-targets -- -D warnings
+      - name: test
+        run: cargo test
+      - name: gallery renders
+        run: cargo run --quiet --example ui_gallery
+
+  release:
+    name: release binaries
+    needs: gate
+    if: startsWith(github.ref, 'refs/tags/ados-deploy-v')
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: macos-latest, target: aarch64-apple-darwin }
+          - { os: macos-latest, target: x86_64-apple-darwin }
+          - { os: ubuntu-latest, target: x86_64-unknown-linux-gnu }
+          - { os: windows-latest, target: x86_64-pc-windows-msvc }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - name: build
+        run: cargo build --release --target ${{ matrix.target }}
+      - name: stage
+        shell: bash
+        run: |
+          bin="ados-deploy"
+          [[ "${{ matrix.os }}" == "windows-latest" ]] && bin="ados-deploy.exe"
+          mkdir -p dist
+          cp "target/${{ matrix.target }}/release/$bin" "dist/ados-deploy-${{ matrix.target }}${bin##ados-deploy}"
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: tools/deploy/dist/*
