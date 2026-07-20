@@ -648,7 +648,15 @@ fn ask_port(tty: &mut Tty, theme: &Theme, label: &str, current: u16) -> Flow<u16
                 raw.push(ch);
             }
         },
-        |raw: &str| Some(format!("bind :{raw}")),
+        // Live preview flags a port already bound on localhost (a non-blocking
+        // hint — on a re-deploy the operator's own containers hold their ports).
+        |raw: &str| {
+            let note = match raw.parse::<u16>() {
+                Ok(p) if p >= 1 && !crate::checks::port_free(p) => " · in use",
+                _ => "",
+            };
+            Some(format!("bind :{raw}{note}"))
+        },
         |raw: &str| match raw.parse::<u32>() {
             Ok(n) if (1..=65535).contains(&n) => None,
             _ => Some("Enter a port between 1 and 65535".to_string()),
