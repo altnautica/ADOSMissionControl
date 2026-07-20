@@ -264,4 +264,44 @@ mod tests {
         assert!(!ov.contains("convex-backend:"));
         assert!(ov.contains("mission-control:"));
     }
+
+    #[test]
+    fn read_existing_secrets_and_vars_round_trip() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        let sh = root.join("tools/selfhost");
+        std::fs::create_dir_all(&sh).unwrap();
+        std::fs::write(
+            sh.join(".env"),
+            "CONVEX_INSTANCE_SECRET=deadbeef\nMQTT_PASSWORD=hunter2\nEMPTY=\nOTHER=x\n",
+        )
+        .unwrap();
+        assert_eq!(
+            read_existing_secrets(root),
+            Some(("deadbeef".to_string(), "hunter2".to_string()))
+        );
+        assert_eq!(read_env_var(root, "OTHER").as_deref(), Some("x"));
+        assert!(read_env_var(root, "EMPTY").is_none()); // blank value → None
+        assert!(read_env_var(root, "NOPE").is_none());
+    }
+
+    #[test]
+    fn read_existing_ports_recovers_remaps_and_keeps_defaults() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        let sh = root.join("tools/selfhost");
+        std::fs::create_dir_all(&sh).unwrap();
+        // No override on disk → the compose defaults.
+        assert_eq!(read_existing_ports(root), Ports::default());
+        // An override remapping two ports round-trips; the rest stay default.
+        let mut c = cfg();
+        c.ports.gcs = 8080;
+        c.ports.convex_client = 13210;
+        let ov = render_override(&c).unwrap();
+        std::fs::write(sh.join("docker-compose.override.yml"), ov).unwrap();
+        let p = read_existing_ports(root);
+        assert_eq!(p.gcs, 8080);
+        assert_eq!(p.convex_client, 13210);
+        assert_eq!(p.convex_site, Ports::default().convex_site);
+    }
 }

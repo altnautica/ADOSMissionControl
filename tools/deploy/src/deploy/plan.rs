@@ -292,4 +292,41 @@ mod tests {
             .iter()
             .any(|c| c.label.contains("Push Convex functions")));
     }
+
+    // The plan and the real step machine are two encodings of the same ordered
+    // flow. This ties them: every command-producing step must appear in the plan,
+    // in the same order the graph runs them — so drift in either surface fails.
+    #[test]
+    fn plan_command_order_follows_build_steps() {
+        let plan = Plan::build(&cfg()); // all-in-one, spin-up everything
+        let labels: Vec<&str> = plan.commands.iter().map(|c| c.label.as_str()).collect();
+        let steps = crate::deploy::steps::build_steps();
+        let step_order = crate::graph::topo_order(&steps).expect("steps order");
+
+        // (step id in build_steps, a substring of its plan command label)
+        let expected: &[(&str, &str)] = &[
+            ("preflight", "Preflight"),
+            ("up_convex", "Start Convex"),
+            ("wait_convex", "Wait for Convex"),
+            ("admin_key", "admin key"),
+            ("push_functions", "Push Convex functions"),
+            ("auth_keys", "auth keys"),
+            ("mqtt_passwd", "MQTT password"),
+            ("up_rest", "Build + start"),
+            ("verify", "Verify"),
+        ];
+        let mut last = 0usize;
+        for (step_id, needle) in expected {
+            assert!(
+                step_order.iter().any(|s| s == step_id),
+                "expected step {step_id} not in build_steps"
+            );
+            let pos = labels
+                .iter()
+                .position(|l| l.contains(needle))
+                .unwrap_or_else(|| panic!("plan has no command for step {step_id} ({needle:?})"));
+            assert!(pos >= last, "plan command for {step_id} is out of order");
+            last = pos;
+        }
+    }
 }

@@ -319,4 +319,38 @@ mod tests {
         assert_eq!(c.mqtt_password.len(), 36); // 18 bytes → 36 hex chars
         assert!(c.instance_secret.chars().all(|ch| ch.is_ascii_hexdigit()));
     }
+
+    #[test]
+    fn compose_services_matrix() {
+        use crate::services::*;
+        // All-in-one, everything spun up → all six containers.
+        let all = DeployConfig::default().compose_services();
+        for svc in [
+            SVC_CONVEX_BACKEND,
+            SVC_CONVEX_DASHBOARD,
+            SVC_MISSION_CONTROL,
+            SVC_MOSQUITTO,
+            SVC_MQTT_BRIDGE,
+            SVC_VIDEO_RELAY,
+        ] {
+            assert!(all.contains(&svc), "all-in-one is missing {svc}");
+        }
+
+        // --no-mqtt + --no-video (Managed with an empty URL) drop those containers
+        // but keep Convex + the GCS.
+        let mut c = DeployConfig::default();
+        c.mqtt = Provision::Managed { url: String::new() };
+        c.video = Provision::Managed { url: String::new() };
+        let s = c.compose_services();
+        assert!(s.contains(&SVC_CONVEX_BACKEND));
+        assert!(s.contains(&SVC_MISSION_CONTROL));
+        assert!(!s.contains(&SVC_MOSQUITTO));
+        assert!(!s.contains(&SVC_MQTT_BRIDGE));
+        assert!(!s.contains(&SVC_VIDEO_RELAY));
+
+        // GCS unchecked drops just the mission-control container.
+        let mut c2 = DeployConfig::default();
+        c2.gcs = false;
+        assert!(!c2.compose_services().contains(&SVC_MISSION_CONTROL));
+    }
 }

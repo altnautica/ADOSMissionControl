@@ -565,6 +565,35 @@ mod tests {
         assert!(parse_quoted(text, "MISSING").is_none());
     }
 
+    // The generated auth keys arrive as one long single-line value: a PEM with
+    // embedded `\n`, base64 padding `=`, and `+`/`/`, and a JWKS JSON that also
+    // contains `=`. This is the exact shape the key-set step parses, so pin it.
+    #[test]
+    fn parse_quoted_handles_a_long_single_line_pem_and_jwks() {
+        let pem = "-----BEGIN PRIVATE KEY-----\\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQ+a/b==\\n-----END PRIVATE KEY-----\\n";
+        let jwks = r#"{"keys":[{"use":"sig","kty":"RSA","n":"abc+def/ghi=","e":"AQAB"}]}"#;
+        let text = format!("# generated\nJWT_PRIVATE_KEY=\"{pem}\"\nJWKS='{jwks}'\n");
+        assert_eq!(parse_quoted(&text, "JWT_PRIVATE_KEY").as_deref(), Some(pem));
+        assert_eq!(parse_quoted(&text, "JWKS").as_deref(), Some(jwks));
+    }
+
+    #[test]
+    fn convex_is_local_only_for_all_in_one_spin_up() {
+        use crate::wizard::state::{Provision, Scope};
+        let mut ctx = Ctx::for_test();
+        // Default config: all-in-one, spin up → local.
+        assert!(convex_is_local(&ctx));
+        // Managed Convex → not local (no backend container to configure).
+        ctx.config.convex = Provision::Managed {
+            url: "https://convex.example.com".into(),
+        };
+        assert!(!convex_is_local(&ctx));
+        // Relay-only scope → not local even when spinning up.
+        ctx.config.convex = Provision::SpinUp;
+        ctx.config.scope = Scope::RelayOnly;
+        assert!(!convex_is_local(&ctx));
+    }
+
     #[test]
     fn fail_tail_appends_stderr_tail() {
         let s = fail_tail("boom", "line1\nline2\nline3\nline4");

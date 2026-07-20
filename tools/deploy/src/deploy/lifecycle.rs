@@ -259,3 +259,55 @@ fn reach_urls(repo_root: &Path) -> Option<Vec<(String, String)>> {
     ));
     Some(urls)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn write_env(root: &Path, body: &str) {
+        let sh = root.join("tools/selfhost");
+        std::fs::create_dir_all(&sh).unwrap();
+        std::fs::write(sh.join(".env"), body).unwrap();
+    }
+
+    #[test]
+    fn reach_urls_spin_up_includes_dashboard_at_local_host() {
+        let dir = tempfile::tempdir().unwrap();
+        write_env(
+            dir.path(),
+            "CONVEX_CLOUD_ORIGIN=http://192.168.1.50:3210\n\
+             NEXT_PUBLIC_CONVEX_URL=http://192.168.1.50:3210\n\
+             CONVEX_INSTANCE_SECRET=x\nMQTT_PASSWORD=y\n",
+        );
+        let urls = reach_urls(dir.path()).unwrap();
+        assert!(urls.iter().any(|(l, _)| l == "Convex dashboard"));
+        assert!(urls
+            .iter()
+            .any(|(l, u)| l == "Mission Control" && u == "http://192.168.1.50:4000"));
+    }
+
+    #[test]
+    fn reach_urls_managed_convex_omits_dashboard_and_keeps_local_host() {
+        let dir = tempfile::tempdir().unwrap();
+        // Managed Convex: the browser URL is the managed domain, but the local
+        // host (from CONVEX_CLOUD_ORIGIN) still fronts the GCS + video.
+        write_env(
+            dir.path(),
+            "CONVEX_CLOUD_ORIGIN=http://192.168.1.50:3210\n\
+             NEXT_PUBLIC_CONVEX_URL=https://convex.example.com\n\
+             CONVEX_INSTANCE_SECRET=x\nMQTT_PASSWORD=y\n",
+        );
+        let urls = reach_urls(dir.path()).unwrap();
+        assert!(
+            !urls.iter().any(|(l, _)| l == "Convex dashboard"),
+            "a managed Convex has no local dashboard to link"
+        );
+        assert!(urls
+            .iter()
+            .any(|(l, u)| l == "Mission Control" && u.contains("192.168.1.50")));
+        assert!(
+            !urls.iter().any(|(_, u)| u.contains("convex.example.com")),
+            "reach links must use the local host, not the managed Convex domain"
+        );
+    }
+}
