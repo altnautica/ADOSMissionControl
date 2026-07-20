@@ -7,6 +7,7 @@
 //! functions → auth keys → MQTT passwd → up the rest → verify) with live progress
 //! in the split view, finishing with a verified reach-links card.
 
+pub mod lifecycle;
 pub mod plan;
 pub mod steps;
 

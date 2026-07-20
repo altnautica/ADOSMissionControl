@@ -13,9 +13,10 @@ fn main() -> anyhow::Result<()> {
     match RunMode::from_action(&args) {
         RunMode::Menu => menu::run(&theme, &repo_root, &args)?,
         RunMode::Deploy | RunMode::Reconfigure => deploy::run_wizard(&theme, &repo_root, &args)?,
-        // Upgrade / Restart / Teardown / Status land in Phases 3-4; until then
-        // they open the menu.
-        _ => menu::run(&theme, &repo_root, &args)?,
+        RunMode::Status => deploy::lifecycle::status(&theme, &repo_root),
+        RunMode::Upgrade | RunMode::Restart | RunMode::Teardown => {
+            deploy::lifecycle::manage(&theme, &repo_root)
+        }
     }
     Ok(())
 }

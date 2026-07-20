@@ -19,6 +19,7 @@ use crate::wizard::widgets::{select_list, Choice, Flow};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Action {
     Deploy,
+    ManageStack,
     WebGcs,
     Demo,
     DesktopBuild,
@@ -34,6 +35,11 @@ const ITEMS: &[(&str, &str, Action)] = &[
         "Deploy the stack",
         "self-host Convex + Mission Control + MQTT + video",
         Action::Deploy,
+    ),
+    (
+        "Manage running stack",
+        "status, logs, restart, upgrade, teardown",
+        Action::ManageStack,
     ),
     (
         "Run web GCS",
@@ -117,6 +123,7 @@ pub fn run(theme: &Theme, repo_root: &Path, args: &Args) -> anyhow::Result<()> {
         match ITEMS[picked].2 {
             Action::Quit => return Ok(()),
             Action::Deploy => deploy::run_wizard(theme, repo_root, args)?,
+            Action::ManageStack => deploy::lifecycle::manage(theme, repo_root),
             Action::WebGcs => npm_action(theme, repo_root, "Run web GCS (dev)", "dev"),
             Action::Demo => npm_action(theme, repo_root, "Run demo mode", "demo"),
             Action::DesktopDev => {
