@@ -51,8 +51,10 @@ next-env.d.ts
 # cesium static assets (copied from node_modules by predev/prebuild)
 /public/cesium
 
-# rust deployer (tools/deploy) build artifacts
+# rust deployer (tools/deploy) build artifacts + cached bootstrap binary
 /tools/deploy/target
+/tools/deploy/ados-deploy
+/tools/deploy/ados-deploy.exe
 
 # self-host deployer: generated secrets + local state (NEVER commit)
 # (.env is already covered above; these are the additional generated artifacts)
