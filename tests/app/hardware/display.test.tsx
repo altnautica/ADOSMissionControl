@@ -1,7 +1,8 @@
 /**
  * @module HardwareDisplayPage.test
- * @description Smoke test for the Display sub-view: composes all
- * four LCD cards plus the calibration wizard.
+ * @description Smoke test for the Display sub-view: composes the local
+ * display, HDMI kiosk, preview, remote control, theme, camera, and
+ * recording cards.
  *
  * @license GPL-3.0-only
  */
@@ -39,6 +40,7 @@ vi.mock("lucide-react", () => {
   return {
     __esModule: true,
     Monitor: makeStub("Monitor"),
+    MonitorPlay: makeStub("MonitorPlay"),
     LayoutDashboard: makeStub("LayoutDashboard"),
     Video: makeStub("Video"),
     Settings: makeStub("Settings"),
@@ -60,6 +62,14 @@ vi.mock("lucide-react", () => {
 const mockClient = {
   setDisplayPage: vi.fn().mockResolvedValue({ ok: true }),
   applySetup: vi.fn().mockResolvedValue({ ok: true }),
+  getConfig: vi.fn().mockResolvedValue({}),
+  setConfigValue: vi.fn().mockResolvedValue({ status: "ok" }),
+  startTouchCalibration: vi
+    .fn()
+    .mockResolvedValue({ target_count: 9, current_step: 0 }),
+  getTouchCalibrationStatus: vi
+    .fn()
+    .mockResolvedValue({ calibrated: true, in_progress: false }),
   startDisplayCalibration: vi.fn().mockResolvedValue({ ok: true }),
   getDisplayCalibrationStatus: vi
     .fn()
@@ -147,10 +157,12 @@ describe("HardwareDisplayPage", () => {
     expect(screen.getByText("Display")).toBeDefined();
   });
 
-  it("composes all five LCD cards", () => {
+  it("composes the display cards", () => {
     renderWithIntl(<HardwareDisplayPage />);
     // LocalDisplayCard
     expect(screen.getByText("Local Display")).toBeDefined();
+    // HdmiKioskCard
+    expect(screen.getByText("HDMI Cockpit")).toBeDefined();
     // LcdPagePreview
     expect(screen.getByText("Live preview")).toBeDefined();
     // LcdRemoteControl

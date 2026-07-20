@@ -13,6 +13,7 @@
 
 import { useTranslations } from "next-intl";
 import { LocalDisplayCard } from "@/components/hardware/LocalDisplayCard";
+import { HdmiKioskCard } from "@/components/hardware/HdmiKioskCard";
 import { CloudModeLimitedNotice } from "@/components/command/shared/CloudModeLimitedNotice";
 import { LcdPagePreview } from "@/components/hardware/LcdPagePreview";
 import { LcdRemoteControl } from "@/components/hardware/LcdRemoteControl";
@@ -48,6 +49,8 @@ export function DisplayTab() {
             <LcdPagePreview />
           </div>
         </div>
+
+        <HdmiKioskCard />
 
         <LcdRemoteControl />
 

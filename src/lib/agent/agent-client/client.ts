@@ -181,6 +181,16 @@ export class AgentClient {
     return setup.startDisplayCalibration(this.ctx);
   }
 
+  /** Arm the HDMI-kiosk touch-calibration wizard (`/api/v1/display/calibrate`). */
+  startTouchCalibration(): Promise<setup.TouchCalibrationStart> {
+    return setup.startTouchCalibration(this.ctx);
+  }
+
+  /** Poll the live HDMI-kiosk touch-calibration state. */
+  getTouchCalibrationStatus(): Promise<setup.TouchCalibrationStatus> {
+    return setup.getTouchCalibrationStatus(this.ctx);
+  }
+
   applySetup(update: Record<string, unknown>): Promise<{ ok?: boolean }> {
     return setup.applySetup(this.ctx, update);
   }

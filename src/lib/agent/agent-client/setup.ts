@@ -104,6 +104,53 @@ export function startDisplayCalibration(
   );
 }
 
+/** Response of `POST /api/v1/display/calibrate/start`. `target_count` is
+ * the number of crosshairs the operator taps on the panel — the GCS shows
+ * `step / target_count` progress while the on-panel wizard collects samples. */
+export interface TouchCalibrationStart {
+  job_id?: string;
+  target_count?: number;
+  current_step?: number;
+}
+
+/** Live state from `GET /api/v1/display/calibrate/status`. `calibrated` is
+ * the on-disk result (the panel has a stored affine), `in_progress` reflects
+ * a running wizard, `current_step` advances as the operator taps each
+ * crosshair, and `rms_residual_px` is the fit residual once it lands. */
+export interface TouchCalibrationStatus {
+  calibrated?: boolean;
+  in_progress?: boolean;
+  current_step?: number;
+  rms_residual_px?: number;
+}
+
+/**
+ * Arm the on-panel touch-calibration wizard for the HDMI kiosk display.
+ * Distinct from `startDisplayCalibration` (the SPI-LCD setup route): this
+ * drives the `/api/v1/display/calibrate/*` flow the kiosk card polls, so the
+ * GCS can show live `step / target_count` progress while the operator taps
+ * the crosshairs shown on the HDMI panel. Returns the target count.
+ */
+export function startTouchCalibration(
+  ctx: RequestContext,
+): Promise<TouchCalibrationStart> {
+  return agentRequest<TouchCalibrationStart>(
+    ctx,
+    "/api/v1/display/calibrate/start",
+    { method: "POST" },
+  );
+}
+
+/** Read the live touch-calibration state for the kiosk card poll. */
+export function getTouchCalibrationStatus(
+  ctx: RequestContext,
+): Promise<TouchCalibrationStatus> {
+  return agentRequest<TouchCalibrationStatus>(
+    ctx,
+    "/api/v1/display/calibrate/status",
+  );
+}
+
 /** Apply a partial setup config update. Used here to push the LCD
  * theme choice (`{ ui: { theme: "dark" | "light" } }`). */
 export function applySetup(
