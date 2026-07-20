@@ -104,9 +104,9 @@ pub fn config_from_args(args: &Args) -> DeployConfig {
 
 /// Seed the config with any non-interactive flags the operator supplied.
 fn prefill_from_args(cfg: &mut DeployConfig, args: &Args) {
-    if let Some(h) = &args.host {
-        cfg.host = h.clone();
-    }
+    // Default the reach address to the detected LAN IP (overridable by --host or
+    // the Address stage), so a browser/drone on the same network can reach it.
+    cfg.host = crate::host::default_host(args.host.as_deref());
     if let Some(pw) = &args.mqtt_password {
         cfg.mqtt_password = pw.clone();
     }

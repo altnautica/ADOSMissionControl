@@ -18,6 +18,7 @@ pub mod env;
 pub mod env_files;
 pub mod exec;
 pub mod graph;
+pub mod host;
 pub mod menu;
 pub mod result;
 pub mod services;
