@@ -12,6 +12,10 @@ use crate::exec::{self, CmdResult};
 /// The compose file, relative to the repo root (commands run with cwd = root).
 pub const COMPOSE_REL: &str = "tools/selfhost/docker-compose.yml";
 
+/// The port-remap override, relative to the repo root. Written only when ports
+/// are customized; layered in via a second `-f` when it exists.
+pub const OVERRIDE_REL: &str = "tools/selfhost/docker-compose.override.yml";
+
 /// `(program, base args)` for compose — Docker Compose v2 (`docker compose`)
 /// preferred, falling back to the v1 standalone `docker-compose`. Detected once.
 fn compose_base() -> &'static (String, Vec<String>) {
@@ -35,11 +39,18 @@ pub fn is_docker_running() -> bool {
     exec::run_ok("docker", &["info", "--format", "{{.ServerVersion}}"])
 }
 
-/// Build a compose `Command` (`docker compose -f <file> <extra…>`, cwd = root).
-fn compose_command(repo_root: &Path, extra: &[&str]) -> Command {
+/// Build a compose `Command` (`docker compose -f <file> [-f <override>] <extra…>`,
+/// cwd = root). The port-remap override is layered in with a second `-f` whenever
+/// it exists on disk, so a custom-port deploy actually binds the chosen ports
+/// (without it, compose reads only the base file and ignores the remaps).
+pub fn compose_command(repo_root: &Path, extra: &[&str]) -> Command {
     let (prog, base) = compose_base();
     let mut cmd = Command::new(prog);
-    cmd.args(base).arg("-f").arg(COMPOSE_REL).args(extra);
+    cmd.args(base).arg("-f").arg(COMPOSE_REL);
+    if repo_root.join(OVERRIDE_REL).exists() {
+        cmd.arg("-f").arg(OVERRIDE_REL);
+    }
+    cmd.args(extra);
     cmd.current_dir(repo_root);
     cmd
 }
@@ -102,12 +113,16 @@ pub fn convex_command(
     cmd
 }
 
-/// Whether an HTTP GET of `url` succeeds (2xx/3xx). Transport errors / 5xx → false.
+/// Whether an HTTP GET of `url` reaches a live server. A 2xx/3xx is up; a 4xx/5xx
+/// is ALSO up — the server answered, it just returned a non-2xx (a self-hosted
+/// Convex replies 404/426 to a bare GET, the video relay 404s `/`). Only a
+/// transport error (connection refused / timeout / DNS) counts as down.
 pub fn http_ok(url: &str) -> bool {
-    ureq::get(url)
-        .timeout(Duration::from_secs(3))
-        .call()
-        .is_ok()
+    match ureq::get(url).timeout(Duration::from_secs(3)).call() {
+        Ok(_) => true,
+        Err(ureq::Error::Status(_, _)) => true,
+        Err(ureq::Error::Transport(_)) => false,
+    }
 }
 
 /// Poll `url` until it answers OK or `timeout` elapses, ticking every 2s. Returns
@@ -134,5 +149,21 @@ pub fn tcp_open(host: &str, port: u16, timeout: Duration) -> bool {
     match addr.to_socket_addrs() {
         Ok(mut addrs) => addrs.any(|a| TcpStream::connect_timeout(&a, timeout).is_ok()),
         Err(_) => false,
+    }
+}
+
+/// Poll a TCP port until it accepts a connection or `timeout` elapses, ticking
+/// every 2s. Returns whether it opened. Used by the verify step to give a
+/// just-started broker a moment to bind before judging it down.
+pub fn wait_tcp_open(host: &str, port: u16, timeout: Duration) -> bool {
+    let deadline = Instant::now() + timeout;
+    loop {
+        if tcp_open(host, port, Duration::from_secs(2)) {
+            return true;
+        }
+        if Instant::now() >= deadline {
+            return false;
+        }
+        std::thread::sleep(Duration::from_secs(2));
     }
 }

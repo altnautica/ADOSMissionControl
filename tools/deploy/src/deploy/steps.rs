@@ -109,6 +109,19 @@ impl Step for WriteConfig {
     fn run(&self, ctx: &mut Ctx) -> StepOutcome {
         let sink = ctx.progress.clone();
         let selfhost = ctx.selfhost_dir();
+        // Guard: a spun-up backend needs a real instance secret (the admin key is
+        // derived from it) and a real MQTT password. An empty one means the OS RNG
+        // failed at mint time — fail loudly rather than write a weak/empty secret.
+        if !ctx.config.convex.is_managed() && ctx.config.instance_secret.is_empty() {
+            return StepOutcome::Failed(
+                "the Convex instance secret is empty (system RNG failed) — cannot deploy".into(),
+            );
+        }
+        if !ctx.config.mqtt.is_managed() && ctx.config.mqtt_password.is_empty() {
+            return StepOutcome::Failed(
+                "the MQTT password is empty (system RNG failed) — cannot deploy".into(),
+            );
+        }
         sink.activity("write_config", "writing .env".into());
         let env_path = selfhost.join(".env");
         if let Err(e) = env_files::write_secret_file(
@@ -139,8 +152,10 @@ impl Step for UpConvex {
     fn requires(&self) -> &[&str] {
         &["write_config"]
     }
+    // No checkpoint: `compose up -d` is idempotent, so every deploy re-asserts the
+    // Convex containers (a plain re-deploy must never skip real work — C3).
     fn checkpoint(&self) -> Option<&str> {
-        Some("up_convex")
+        None
     }
     fn kind(&self) -> StepKind {
         StepKind::Required
@@ -249,8 +264,10 @@ impl Step for PushFunctions {
     fn requires(&self) -> &[&str] {
         &["admin_key"]
     }
+    // No checkpoint: `convex deploy` is idempotent and MUST re-run every deploy so
+    // changed functions/schema actually get pushed on a plain re-deploy (C3).
     fn checkpoint(&self) -> Option<&str> {
-        Some("push_functions")
+        None
     }
     fn kind(&self) -> StepKind {
         StepKind::Required
@@ -292,8 +309,10 @@ impl Step for AuthKeys {
     fn requires(&self) -> &[&str] {
         &["push_functions"]
     }
+    // No checkpoint: `convex env set` is idempotent and MUST re-run so a changed
+    // SITE_URL / relay URL is re-applied on a reconfigure/re-deploy (C3).
     fn checkpoint(&self) -> Option<&str> {
-        Some("auth_keys")
+        None
     }
     fn kind(&self) -> StepKind {
         StepKind::Required
@@ -360,8 +379,10 @@ impl Step for MqttPasswd {
     fn requires(&self) -> &[&str] {
         &["write_config"]
     }
+    // No checkpoint: `mosquitto_passwd -b -c` rewrites the file idempotently, so a
+    // re-deploy re-asserts the password against the current config (C3).
     fn checkpoint(&self) -> Option<&str> {
-        Some("mqtt_passwd")
+        None
     }
     fn kind(&self) -> StepKind {
         StepKind::Required
@@ -422,7 +443,12 @@ impl Step for UpRest {
         let sink = ctx.progress.clone();
         let root = ctx.repo_root.clone();
         let services = ctx.config.compose_services();
-        let mut args: Vec<&str> = vec!["up", "-d", "--build"];
+        // `--no-deps`: only the explicitly-listed services start. Without it,
+        // `depends_on: convex-backend` on mission-control + mqtt-bridge would drag
+        // a rogue local convex-backend up under a managed-Convex / relay-only
+        // deploy; in all-in-one the convex containers were already started by
+        // up_convex, so they need no dependency pull here either (C2).
+        let mut args: Vec<&str> = vec!["up", "-d", "--build", "--no-deps"];
         args.extend(services.iter().copied());
         sink.activity("up_rest", "building + starting services".into());
         let res = docker::compose_streamed(&root, &args, |l| {
@@ -453,36 +479,55 @@ impl Step for Verify {
     fn run(&self, ctx: &mut Ctx) -> StepOutcome {
         let sink = ctx.progress.clone();
         let cfg = &ctx.config;
-        let mut all_ok = true;
-        let mut probe = |name: &str, ok: bool| {
-            let mark = if ok { "ok" } else { "not ready yet" };
-            sink.sub_log("verify", &format!("{name}: {mark}"));
+        // A short grace window: a just-built container (esp. the Next.js GCS)
+        // takes a moment to bind after `up -d` returns. Polling — not a single
+        // snapshot — is what makes a "not ready" verdict honest (C6).
+        let grace = Duration::from_secs(20);
+        let mut down: Vec<String> = Vec::new();
+
+        let check_http = |name: &str, url: &str, down: &mut Vec<String>| {
+            sink.activity("verify", format!("checking {name}"));
+            let ok = docker::wait_http_ok(url, grace, |_| {});
+            sink.sub_log(
+                "verify",
+                &format!("{name}: {}", if ok { "ok" } else { "not reachable" }),
+            );
             if !ok {
-                all_ok = false;
+                down.push(name.to_string());
             }
         };
-        if cfg.gcs {
-            probe("Mission Control :4000", docker::http_ok(&cfg.gcs_url()));
+
+        // Mission Control is only verified when this deploy actually started it.
+        if cfg.gcs && matches!(cfg.scope, Scope::AllInOne) {
+            check_http("Mission Control", &cfg.gcs_url(), &mut down);
         }
         if !cfg.video.is_managed() {
             let vurl = format!("http://{}:{}", cfg.host, cfg.ports.video);
-            probe("Video relay :3001", docker::http_ok(&vurl));
+            check_http("Video relay", &vurl, &mut down);
         }
         if convex_is_local(ctx) {
-            probe(
-                "Convex dashboard :6791",
-                docker::http_ok(&format!("http://{}:{}", cfg.host, cfg.ports.dashboard)),
-            );
+            let durl = format!("http://{}:{}", cfg.host, cfg.ports.dashboard);
+            check_http("Convex dashboard", &durl, &mut down);
         }
         if !cfg.mqtt.is_managed() {
-            probe(
-                "MQTT :1883",
-                docker::tcp_open(&cfg.host, cfg.ports.mqtt_tcp, Duration::from_secs(2)),
+            sink.activity("verify", "checking MQTT broker".into());
+            let ok = docker::wait_tcp_open(&cfg.host, cfg.ports.mqtt_tcp, grace);
+            sink.sub_log(
+                "verify",
+                &format!("MQTT broker: {}", if ok { "ok" } else { "not reachable" }),
             );
+            if !ok {
+                down.push("MQTT broker".to_string());
+            }
         }
-        // Verify is Optional: a service still warming up degrades, never aborts.
-        let _ = all_ok;
-        StepOutcome::Ok
+
+        // Verify is Optional: a service that never came up degrades the deploy
+        // (the completion card says "still warming up"), it never aborts.
+        if down.is_empty() {
+            StepOutcome::Ok
+        } else {
+            StepOutcome::Failed(format!("not reachable yet: {}", down.join(", ")))
+        }
     }
 }
 

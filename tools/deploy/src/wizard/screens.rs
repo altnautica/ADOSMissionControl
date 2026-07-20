@@ -132,6 +132,9 @@ fn prefill_from_args(cfg: &mut DeployConfig, args: &Args) {
     if let Some(url) = &args.video_managed_url {
         cfg.video = Provision::Managed { url: url.clone() };
     }
+    if args.no_mqtt {
+        cfg.mqtt = Provision::Managed { url: String::new() };
+    }
     if args.no_video {
         cfg.video = Provision::Managed { url: String::new() };
     }

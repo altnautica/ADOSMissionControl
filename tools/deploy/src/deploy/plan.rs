@@ -121,8 +121,14 @@ fn planned_files(cfg: &DeployConfig) -> Vec<PlannedFile> {
     files
 }
 
-fn compose(args: &str) -> String {
-    format!("docker compose -f {COMPOSE_FILE} {args}")
+/// The compose invocation as it will really run: the base file, plus the
+/// port-remap override layered with a second `-f` whenever ports are customized.
+fn compose(cfg: &DeployConfig, args: &str) -> String {
+    if cfg.ports.is_default() {
+        format!("docker compose -f {COMPOSE_FILE} {args}")
+    } else {
+        format!("docker compose -f {COMPOSE_FILE} -f {OVERRIDE_FILE} {args}")
+    }
 }
 
 fn planned_commands(cfg: &DeployConfig) -> Vec<PlannedCommand> {
@@ -146,7 +152,7 @@ fn planned_commands(cfg: &DeployConfig) -> Vec<PlannedCommand> {
         push(
             &mut c,
             "Start Convex backend + dashboard",
-            compose("up -d convex-backend convex-dashboard"),
+            compose(cfg, "up -d convex-backend convex-dashboard"),
         );
         push(
             &mut c,
@@ -159,7 +165,7 @@ fn planned_commands(cfg: &DeployConfig) -> Vec<PlannedCommand> {
         push(
             &mut c,
             "Retrieve the deterministic admin key",
-            compose("exec -T convex-backend ./generate_admin_key.sh"),
+            compose(cfg, "exec -T convex-backend ./generate_admin_key.sh"),
         );
         push(
             &mut c,
@@ -178,7 +184,8 @@ fn planned_commands(cfg: &DeployConfig) -> Vec<PlannedCommand> {
             push(
                 &mut c,
                 &format!("Set Convex env {k}"),
-                format!("npx convex env set {k} {v}"),
+                // `--` terminates option parsing (values like a PEM start with `-`).
+                format!("npx convex env set -- {k} {v}"),
             );
         }
     }
@@ -198,16 +205,18 @@ fn planned_commands(cfg: &DeployConfig) -> Vec<PlannedCommand> {
     push(
         &mut c,
         "Build + start the remaining services",
-        compose(&format!("up -d --build {services}")),
+        compose(cfg, &format!("up -d --build --no-deps {services}")),
     );
 
     push(
         &mut c,
-        "Verify each service is healthy",
+        "Verify each service is reachable",
         format!(
-            "curl {} (GCS), curl {} (video), tcp {} (MQTT)",
+            "curl {} (GCS), curl http://{}:{} (video), tcp {}:{} (MQTT)",
             cfg.gcs_url(),
-            cfg.video_relay_url(),
+            cfg.host,
+            cfg.ports.video,
+            cfg.host,
             cfg.ports.mqtt_tcp
         ),
     );

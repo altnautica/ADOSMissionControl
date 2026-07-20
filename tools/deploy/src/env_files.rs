@@ -9,7 +9,7 @@
 use std::path::Path;
 
 use crate::services;
-use crate::wizard::state::{DeployConfig, Provision};
+use crate::wizard::state::DeployConfig;
 
 /// Render the `tools/selfhost/.env` content for `cfg`. Matches the keys the
 /// compose file + the MQTT bridge read.
@@ -95,16 +95,16 @@ pub fn render_override(cfg: &DeployConfig) -> Option<String> {
 /// `cfg` (the auth keys are added by the deploy step, not here).
 pub fn convex_env_vars(cfg: &DeployConfig) -> Vec<(&'static str, String)> {
     let mut v = vec![("SITE_URL", cfg.site_url())];
-    // Only advertise a relay URL the browser should learn about when we set one.
-    match &cfg.mqtt {
-        Provision::Managed { .. } | Provision::SpinUp => {
-            v.push(("MQTT_BROKER_URL", cfg.mqtt_broker_url()))
-        }
+    // Advertise a relay URL only when there is a real one. A service disabled via
+    // `--no-mqtt`/`--no-video` is `Managed { url: "" }`, which must NOT push an
+    // empty MQTT_BROKER_URL / VIDEO_RELAY_URL onto Convex (C10/C11).
+    let broker = cfg.mqtt_broker_url();
+    if !broker.is_empty() {
+        v.push(("MQTT_BROKER_URL", broker));
     }
-    match &cfg.video {
-        Provision::Managed { .. } | Provision::SpinUp => {
-            v.push(("VIDEO_RELAY_URL", cfg.video_relay_url()))
-        }
+    let relay = cfg.video_relay_url();
+    if !relay.is_empty() {
+        v.push(("VIDEO_RELAY_URL", relay));
     }
     v
 }
