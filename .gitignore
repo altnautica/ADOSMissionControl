@@ -50,3 +50,12 @@ next-env.d.ts
 
 # cesium static assets (copied from node_modules by predev/prebuild)
 /public/cesium
+
+# rust deployer (tools/deploy) build artifacts
+/tools/deploy/target
+
+# self-host deployer: generated secrets + local state (NEVER commit)
+# (.env is already covered above; these are the additional generated artifacts)
+/tools/selfhost/passwd
+/tools/selfhost/.deploy-state
+/tools/selfhost/docker-compose.override.yml

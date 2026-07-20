@@ -1,0 +1,42 @@
+[package]
+name = "ados-deploy"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-only"
+description = "Rust TUI that self-hosts the full Altnautica ADOS stack (Mission Control + Convex + MQTT + video relay) in one guided flow."
+
+[[bin]]
+name = "ados-deploy"
+path = "src/main.rs"
+
+[lib]
+name = "ados_deploy"
+path = "src/lib.rs"
+
+[dependencies]
+# Full-screen alternate-screen TUI: only `ratatui::crossterm` is used (raw mode,
+# alternate screen, cursor, styled single-syscall writes, and cross-platform
+# event/size). The deployer runs on operator laptops (macOS / Windows / Linux),
+# so the terminal backend is crossterm, not the installer's Linux-only /dev/tty.
+ratatui = "0.29"
+anyhow = "1"
+thiserror = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# ISO-8601 UTC timestamps + the M:SS deploy clock.
+time = { version = "0.3", features = ["std", "formatting", "macros"] }
+# Secret minting (Convex instance secret, MQTT password) without a full RNG dep.
+getrandom = "0.2"
+# The vendored progress engine emits log lines through a tracing layer.
+tracing = "0.1"
+tracing-subscriber = "0.3"
+# Localhost health polling (http-only; no TLS needed for :3210/:4000/:3001).
+ureq = { version = "2", default-features = false }
+
+# SIGINT/SIGQUIT ignore-in-parent for the Pattern-A shell-out (a foreground
+# child — `npm run dev`, `docker compose logs -f` — owns Ctrl-C, not the menu).
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[dev-dependencies]
+tempfile = "3"
