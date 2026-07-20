@@ -1,7 +1,7 @@
 //! The deploy plan: the exact ordered command sequence + files a deploy would
 //! run/write, built purely from a [`DeployConfig`]. Drives the `--plan` preview
-//! and is the golden-test seam for the turnkey state machine (Phase 3 runs the
-//! same order for real). Secrets are always redacted.
+//! and is the golden-test seam for the turnkey state machine, which runs the
+//! same order for real. Secrets are always redacted.
 
 use crate::env_files;
 use crate::ui::Theme;

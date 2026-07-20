@@ -1,5 +1,5 @@
 //! The interactive wizard: pure frame compositor + widget grammar (vendored from
-//! the drone-agent installer), plus the deploy-specific screens (Phase 2).
+//! the drone-agent installer), plus the deploy-specific screens.
 
 pub mod frame;
 pub mod render;

@@ -403,8 +403,8 @@ mod tests {
             profile: "drone".to_string(),
             board: "Raspberry Pi 4 Model B".to_string(),
             device_id: "17bf646b".to_string(),
-            hostname: "skynode".to_string(),
-            setup_url: "http://skynode.local:8080/setup".to_string(),
+            hostname: "example-node".to_string(),
+            setup_url: "http://example-node.local:8080/setup".to_string(),
             lan_ips: vec!["192.168.1.42".to_string()],
             paired: true,
             failed_steps: vec![],
@@ -421,10 +421,12 @@ mod tests {
         assert!(lines.iter().any(|l| l.contains("Open the console:")));
         assert!(lines
             .iter()
-            .any(|l| l.contains("http://skynode.local:8080")));
+            .any(|l| l.contains("http://example-node.local:8080")));
         assert!(lines.iter().any(|l| l.contains("http://192.168.1.42:8080")));
         // The `.local` host comes before the LAN IP in the reach block.
-        let mdns_at = lines.iter().position(|l| l.contains("skynode.local:8080"));
+        let mdns_at = lines
+            .iter()
+            .position(|l| l.contains("example-node.local:8080"));
         let ip_at = lines.iter().position(|l| l.contains("192.168.1.42:8080"));
         assert!(mdns_at < ip_at, "mDNS host must lead the reach block");
         // The curated next-step commands, including `ados help`, `ados update`,
@@ -446,7 +448,7 @@ mod tests {
         };
         let logs = VecDeque::new();
         let joined = rich_lines(&sample("ok"), &theme, &logs).join("\n");
-        assert!(joined.contains("skynode.local:8080"));
+        assert!(joined.contains("example-node.local:8080"));
         assert!(joined.contains("192.168.1.42:8080"));
         assert!(joined.contains("ados help"));
         assert!(!joined.contains("localhost"));
@@ -466,13 +468,16 @@ mod tests {
         // Carries the card content + the dismiss hint.
         let joined = grid.join("\n");
         assert!(joined.contains("ADOS Drone Agent"));
-        assert!(joined.contains("skynode.local:8080"));
+        assert!(joined.contains("example-node.local:8080"));
         assert!(joined.contains("Press Enter to finish"));
     }
 
     #[test]
     fn mdns_host_skips_unusable_hostnames() {
-        assert_eq!(mdns_host("skynode"), Some("skynode.local".to_string()));
+        assert_eq!(
+            mdns_host("example-node"),
+            Some("example-node.local".to_string())
+        );
         assert_eq!(mdns_host("box.lan"), Some("box.lan".to_string()));
         assert_eq!(mdns_host("localhost"), None);
         assert_eq!(mdns_host("127.0.0.1"), None);
