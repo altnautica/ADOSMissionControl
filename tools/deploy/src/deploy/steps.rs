@@ -368,6 +368,12 @@ impl Step for MqttPasswd {
         // OS. Avoid `canonicalize`, which yields a `\\?\C:\…` verbatim path on
         // Windows that `docker run -v` rejects.
         let mount = format!("{}:/work", ctx.selfhost_dir().display());
+        // Idempotent re-deploy: `mosquitto_passwd -c` refuses to overwrite an
+        // existing file ("File exists"), and on a re-run the passwd is already
+        // bind-mounted into the running broker. Remove the prior host file so the
+        // hash is regenerated cleanly from the current config. The password is
+        // preserved across re-runs, so the broker's mounted copy stays valid.
+        let _ = std::fs::remove_file(ctx.selfhost_dir().join("passwd"));
         sink.activity("mqtt_passwd", "hashing the MQTT password".into());
         let res = docker::streamed_in(
             "docker",
