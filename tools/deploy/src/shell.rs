@@ -7,13 +7,20 @@
 //! must receive SIGINT itself while the parent (this menu) ignores it, so Ctrl-C
 //! stops the child and drops back to the menu instead of killing the whole tool.
 //! On unix a [`SignalGuard`] SIG_IGNs SIGINT+SIGQUIT in the parent for the child's
-//! lifetime and the child resets them to SIG_DFL via `pre_exec`; on Windows the
-//! console Ctrl-C model already routes to the foreground child.
+//! lifetime and the child resets them to SIG_DFL via `pre_exec`.
+//!
+//! Known Windows limitation: a console `CTRL_C_EVENT` is delivered to every
+//! process in the foreground group, so Ctrl-C during a shell-out ends the whole
+//! tool rather than just the child. Isolating it needs a `SetConsoleCtrlHandler`
+//! guard (a Windows-API dependency), deferred until the Windows path is
+//! bench-validated. The deploy flow itself is unaffected — it is not a
+//! shell-out and handles Ctrl-C in its own render loop.
 
 use std::io::Write;
 use std::path::Path;
 use std::process::Command;
 
+use crate::exec;
 use crate::ui::theme::Theme;
 
 /// Ignore SIGINT + SIGQUIT in the current (parent) process for the guard's
@@ -47,7 +54,9 @@ impl Drop for SignalGuard {
     }
 }
 
-/// No-op guard on non-unix (Windows console Ctrl-C already targets the child).
+/// No-op guard on non-unix. On Windows a console Ctrl-C reaches every process in
+/// the group; per-child isolation (a `SetConsoleCtrlHandler` guard) is deferred
+/// until the Windows path is bench-validated (see the module docs).
 #[cfg(not(unix))]
 pub struct SignalGuard;
 
@@ -77,8 +86,16 @@ pub fn run_foreground(
     cwd: &Path,
     envs: &[(&str, &str)],
 ) -> RunOutcome {
-    let mut cmd = Command::new(program);
-    cmd.args(args).current_dir(cwd);
+    // Node launchers (`npm`/`npx`) are `.cmd` shims on Windows that need the
+    // `cmd /C` path; everything else spawns directly.
+    let mut cmd = if exec::is_node_tool(program) {
+        exec::node_command(program, args)
+    } else {
+        let mut c = Command::new(program);
+        c.args(args);
+        c
+    };
+    cmd.current_dir(cwd);
     for (k, v) in envs {
         cmd.env(k, v);
     }

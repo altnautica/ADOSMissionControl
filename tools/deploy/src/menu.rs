@@ -241,11 +241,17 @@ fn system_check(theme: &Theme) {
 }
 
 /// Run `program args…`, returning the first non-empty stdout line on success.
+/// Node launchers go through the Windows-aware spawn so the check is accurate
+/// on every OS.
 fn probe(program: &str, args: &[&str]) -> Option<String> {
-    let out = std::process::Command::new(program)
-        .args(args)
-        .output()
-        .ok()?;
+    let mut cmd = if crate::exec::is_node_tool(program) {
+        crate::exec::node_command(program, args)
+    } else {
+        let mut c = std::process::Command::new(program);
+        c.args(args);
+        c
+    };
+    let out = cmd.output().ok()?;
     if !out.status.success() {
         return None;
     }

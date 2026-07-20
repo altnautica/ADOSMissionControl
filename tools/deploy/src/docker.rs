@@ -81,18 +81,6 @@ pub fn streamed_in<F: FnMut(&str)>(
     exec::run_streamed_cmd(cmd, on_line)
 }
 
-/// Run `program args…` with `cwd` + env, capturing the FULL output (no line
-/// cap). Use when the output is parsed and may be long — e.g. the generated PEM
-/// auth key, which the streaming runners would truncate.
-pub fn capture_in(program: &str, args: &[&str], cwd: &Path, envs: &[(&str, &str)]) -> CmdResult {
-    let mut cmd = Command::new(program);
-    cmd.args(args).current_dir(cwd);
-    for (k, v) in envs {
-        cmd.env(k, v);
-    }
-    exec::run_cmd(cmd)
-}
-
 /// Build a `Command` targeting a SELF-HOSTED Convex backend via the current CLI
 /// convention (env-var targeting) with a CLEAN env: the two self-hosted vars are
 /// set and the cloud vars (`CONVEX_URL` / `CONVEX_DEPLOY_KEY`) are removed, or the
@@ -104,8 +92,10 @@ pub fn convex_command(
     self_hosted_url: &str,
     admin_key: &str,
 ) -> Command {
-    let mut cmd = Command::new(program);
-    cmd.args(args).current_dir(cwd);
+    // `node_command` resolves the `.cmd` shim on Windows (`npx` won't spawn via a
+    // bare `Command::new`); on unix it is a plain `Command::new(program)`.
+    let mut cmd = exec::node_command(program, args);
+    cmd.current_dir(cwd);
     cmd.env_remove("CONVEX_URL");
     cmd.env_remove("CONVEX_DEPLOY_KEY");
     cmd.env("CONVEX_SELF_HOSTED_URL", self_hosted_url);

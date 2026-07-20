@@ -330,8 +330,11 @@ impl Step for AuthKeys {
 
         sink.activity("auth_keys", "generating RS256 auth keys".into());
         // Full capture (no line cap): the PEM key is ~1.7 KB on one line, which
-        // the streaming runners would truncate.
-        let gen = docker::capture_in("node", &["scripts/generate-auth-keys.mjs"], &root, &[]);
+        // the streaming runners would truncate. `node_command` resolves the
+        // Windows launcher; on unix it is a plain `node` spawn.
+        let mut gen_cmd = crate::exec::node_command("node", &["scripts/generate-auth-keys.mjs"]);
+        gen_cmd.current_dir(&root);
+        let gen = crate::exec::run_cmd(gen_cmd);
         if !gen.success() {
             return StepOutcome::Failed(fail_tail("generating auth keys failed", &gen.stderr));
         }
@@ -392,9 +395,11 @@ impl Step for MqttPasswd {
             return StepOutcome::Skipped;
         }
         let sink = ctx.progress.clone();
-        let selfhost = ctx.selfhost_dir();
-        let selfhost_abs = std::fs::canonicalize(&selfhost).unwrap_or(selfhost);
-        let mount = format!("{}:/work", selfhost_abs.display());
+        // The repo root is already absolute (resolved at startup), so the
+        // self-host dir is a plain absolute path Docker's `-v` accepts on every
+        // OS. Avoid `canonicalize`, which yields a `\\?\C:\…` verbatim path on
+        // Windows that `docker run -v` rejects.
+        let mount = format!("{}:/work", ctx.selfhost_dir().display());
         sink.activity("mqtt_passwd", "hashing the MQTT password".into());
         let res = docker::streamed_in(
             "docker",

@@ -8,13 +8,14 @@ pub fn port_free(port: u16) -> bool {
 }
 
 /// Whether Node.js is present (needed for `npx convex` + `node` scripts).
+/// Uses the Node-aware spawn so the probe works on Windows too.
 pub fn node_present() -> bool {
-    exec::run_ok("node", &["--version"])
+    exec::node_run_ok("node", &["--version"])
 }
 
 /// Whether `npx` is present.
 pub fn npx_present() -> bool {
-    exec::run_ok("npx", &["--version"])
+    exec::node_run_ok("npx", &["--version"])
 }
 
 #[cfg(test)]
