@@ -33,12 +33,23 @@ npm run desktop:dev  # Electron desktop dev mode
 
 The `convex/` directory contains the standalone backend for cloud features (auth, fleet, community, missions, ADS-B cache). Community users can deploy their own backend with `npx convex dev`.
 
-- **Schema:** 25 tables (7 auth + 18 custom, including `cmd_droneStatus` and `cmd_droneCommands` for cloud relay). Community subset of the full Altnautica schema.
+- **Schema:** ~42 tables (7 auth + ~35 custom, including `cmd_droneStatus` and `cmd_droneCommands` for cloud relay). Community subset of the full Altnautica schema.
 - **`cmd_*` files** are GCS-exclusive functions (drones, pairing, missions, preferences, AI usage, ADS-B).
 - **Shared files** (`profiles.ts`, `comments.ts`, `communityChangelog.ts`, etc.) are duplicated from `website/convex/` for OSS independence.
 - **`community-api.ts` and `community-api-drones.ts`** use typed imports from `convex/_generated/api`.
 - **`convex/_generated/`** is committed per Convex best practice. Regenerate with `npx convex dev` if you modify `convex/` files.
 - **For the hosted version:** the website project's `convex/` directory is the superset deployment that both apps share at runtime. Changes to shared functions must be synced between both directories.
+
+---
+
+## Deploying / self-hosting — `ados-deploy` (tools/deploy)
+
+The **Rust TUI at `tools/deploy/`** (`ados-deploy`, run via `npm run deploy` or the `tools/deploy/deploy.sh` one-liner) is the **canonical, supported way to self-host the whole stack** (Convex + Mission Control + MQTT + video relay) and to run/build the app. It supersedes the old Node `cli/`.
+
+- **Keep it current with the stack.** When services, ports, env vars, or compose wiring change (`tools/selfhost/docker-compose.yml`, `.env.example`, `convex/clientConfig.ts`, `src/lib/config/endpoints.ts`), update the deployer to match: `src/services.rs` (ports + service names), `src/wizard/state.rs` (config + derived URLs), `src/env_files.rs` (generated env), `src/deploy/steps.rs` (the state machine). A new service means a new step + group + reach-links row. This toolkit is meant to evolve with the platform, not rot.
+- **Never leak secrets.** The deployer GENERATES the Convex instance secret, JWT/JWKS, and MQTT password; they go ONLY to gitignored files (`tools/selfhost/.env`, `passwd`, `docker-compose.override.yml`) via `env_files::write_secret_file` (which refuses a non-gitignored path) or to `npx convex env set` — NEVER printed to committable logs, hardcoded in source, or baked into a snapshot/fixture. `--plan` output is secret-redacted. This repo is PUBLIC: no infra hostnames/IPs, partner/business content.
+- **Example + asset screens use generic placeholders** (`mycompany-fleet`, `192.168.1.50`, `fleet.example.com`) — never real infrastructure. The `examples/ui_gallery` assets and any docs screenshots follow this.
+- **Gates:** `cargo test` + `cargo clippy --all-targets -- -D warnings` + `cargo fmt --check` (CI: `.github/workflows/deploy-tui.yml`, cross-platform). Convex self-hosted targeting is env-var-based (`CONVEX_SELF_HOSTED_URL` + `CONVEX_SELF_HOSTED_ADMIN_KEY`, clean child env), not `--url/--admin-key` flags.
 
 ---
 

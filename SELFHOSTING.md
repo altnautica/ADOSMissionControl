@@ -10,29 +10,35 @@ You can run all three on a single Linux box (2+ CPU, 4+ GB RAM).
 
 ---
 
-## Quick Setup (CLI Wizard)
+## Quick Setup (the `ados-deploy` TUI)
 
-The fastest path is the interactive wizard. It covers service selection, port configuration, conflict detection, config file generation, and optional service start in one flow:
+The fastest path is the full-screen deployer. It is **turnkey** — one guided flow
+that generates the config, starts Convex, retrieves the admin key, pushes the
+functions, sets the auth keys, hashes the MQTT password, builds + starts every
+service, and verifies it, with no out-of-band steps.
 
 ```bash
-npm run cli prod
+# One-liner (clones the repo if needed, then launches the TUI):
+curl -sSL https://raw.githubusercontent.com/altnautica/ADOSMissionControl/main/tools/deploy/deploy.sh | sh
+
+# Or, from a checkout:
+npm run deploy -- deploy          # the guided deploy wizard
+npm run deploy -- deploy --plan   # preview the exact commands + files, run nothing
 ```
 
 The wizard:
-- Lets you pick which services to deploy
-- Configures ports with conflict detection (change ports if something is already running)
+- Lets you pick which services to spin up locally vs. point at your own (managed Convex / MQTT / video)
+- Defaults the reach address to your LAN IP; configures ports with conflict detection
 - Prompts for credentials with masked input — values go only to gitignored local `.env` files
 - Applies Convex server variables directly via the Convex CLI (never written to files)
 - Generates `docker-compose.override.yml` if you changed any default port
-- Optionally starts Docker services when done
+- Builds + starts the services and shows verified reach links when done
 
 After running the wizard you can manage services with:
 
 ```bash
-npm run cli services status   # see what's running
-npm run cli services start    # start a service
-npm run cli services stop     # stop a service
-npm run cli services logs     # tail logs
+npm run deploy -- status       # containers + reach links
+# manage the stack: menu -> Manage running stack (or docker compose)
 ```
 
 The manual steps below cover the same ground if you prefer direct control or need to understand what the wizard does.
