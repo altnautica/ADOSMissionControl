@@ -20,6 +20,7 @@ use crate::wizard::widgets::{select_list, Choice, Flow};
 enum Action {
     Deploy,
     ManageStack,
+    ShowReach,
     WebGcs,
     Demo,
     DesktopBuild,
@@ -40,6 +41,11 @@ const ITEMS: &[(&str, &str, Action)] = &[
         "Manage running stack",
         "status, logs, restart, upgrade, teardown",
         Action::ManageStack,
+    ),
+    (
+        "Show reach links",
+        "the deployed stack's URLs + container status",
+        Action::ShowReach,
     ),
     (
         "Run web GCS",
@@ -124,6 +130,7 @@ pub fn run(theme: &Theme, repo_root: &Path, args: &Args) -> anyhow::Result<()> {
             Action::Quit => return Ok(()),
             Action::Deploy => deploy::run_wizard(theme, repo_root, args)?,
             Action::ManageStack => deploy::lifecycle::manage(theme, repo_root),
+            Action::ShowReach => deploy::lifecycle::status(theme, repo_root),
             Action::WebGcs => npm_action(theme, repo_root, "Run web GCS (dev)", "dev"),
             Action::Demo => npm_action(theme, repo_root, "Run demo mode", "demo"),
             Action::DesktopDev => {
@@ -193,7 +200,23 @@ fn desktop_build(theme: &Theme, repo_root: &Path) {
         "{}\n",
         theme.dim("Installers are written to release/. First build downloads Electron and can take a few minutes.")
     );
-    let outcome = shell::run_foreground("npm", &["run", script], repo_root, &[]);
+    // NEXT_PUBLIC_CONVEX_URL is baked into the bundle at build time. If a stack
+    // is deployed here, point the desktop app at its self-hosted Convex rather
+    // than the default; otherwise the app ships against the wrong backend.
+    let convex_url = crate::env_files::read_env_var(repo_root, "NEXT_PUBLIC_CONVEX_URL");
+    let envs: Vec<(&str, &str)> = match &convex_url {
+        Some(u) => {
+            println!(
+                "{}\n",
+                theme.dim(&format!(
+                    "Baking NEXT_PUBLIC_CONVEX_URL={u} (from your deployed .env)."
+                ))
+            );
+            vec![("NEXT_PUBLIC_CONVEX_URL", u.as_str())]
+        }
+        None => vec![],
+    };
+    let outcome = shell::run_foreground("npm", &["run", script], repo_root, &envs);
     shell::report_and_pause(theme, outcome);
 }
 

@@ -21,13 +21,7 @@ pub fn is_deployed(repo_root: &Path) -> bool {
 /// The "Manage running stack" submenu loop.
 pub fn manage(theme: &Theme, repo_root: &Path) {
     if !is_deployed(repo_root) {
-        println!(
-            "\n{}",
-            theme.dim(
-                "No stack has been deployed from this repo yet. Run \"Deploy the stack\" first."
-            )
-        );
-        shell::pause_for_enter(theme);
+        not_deployed(theme);
         return;
     }
     let items: &[(&str, &str, Op)] = &[
@@ -79,17 +73,9 @@ pub fn manage(theme: &Theme, repo_root: &Path) {
                 let outcome = shell::run_foreground(&prog, &refs, repo_root, &[]);
                 shell::report_and_pause(theme, outcome);
             }
-            Op::Restart => run_compose(theme, repo_root, "Restart", &["restart"]),
+            Op::Restart => restart(theme, repo_root),
             Op::Stop => run_compose(theme, repo_root, "Stop", &["stop"]),
-            Op::Upgrade => {
-                run_compose(theme, repo_root, "Pull images", &["pull"]);
-                run_compose(
-                    theme,
-                    repo_root,
-                    "Rebuild + restart",
-                    &["up", "-d", "--build"],
-                );
-            }
+            Op::Upgrade => upgrade(theme, repo_root),
             Op::Teardown => teardown(theme, repo_root),
         }
     }
@@ -138,8 +124,57 @@ pub fn status(theme: &Theme, repo_root: &Path) {
     shell::pause_for_enter(theme);
 }
 
+/// Restart every service (compose `restart`).
+pub fn restart(theme: &Theme, repo_root: &Path) {
+    if !is_deployed(repo_root) {
+        not_deployed(theme);
+        return;
+    }
+    run_compose(theme, repo_root, "Restart", &["restart"]);
+}
+
+/// Upgrade: pull newer images, then re-run the idempotent deploy graph so images
+/// rebuild, Convex functions re-push, and env re-sets — reconstructing the config
+/// from the deployed `.env` so it targets the same backend. This is why upgrade
+/// runs the graph rather than a bare `up -d` (which would never re-push changed
+/// functions).
+pub fn upgrade(theme: &Theme, repo_root: &Path) {
+    if !is_deployed(repo_root) {
+        not_deployed(theme);
+        return;
+    }
+    run_compose(theme, repo_root, "Pull images", &["pull"]);
+    match crate::wizard::screens::config_from_env(repo_root) {
+        Some(cfg) => {
+            let _ = crate::deploy::deploy_config(theme, repo_root, &cfg);
+        }
+        None => {
+            println!(
+                "\n{}",
+                theme.warn(
+                    "could not read the deployed config from .env — re-run \"Deploy the stack\"."
+                )
+            );
+            shell::pause_for_enter(theme);
+        }
+    }
+}
+
+/// The "not deployed yet" notice + pause.
+fn not_deployed(theme: &Theme) {
+    println!(
+        "\n{}",
+        theme.dim("No stack has been deployed from this repo yet. Run \"Deploy the stack\" first.")
+    );
+    shell::pause_for_enter(theme);
+}
+
 /// A guarded teardown: `down`, with an opt-in (default-No) data-volume purge.
-fn teardown(theme: &Theme, repo_root: &Path) {
+pub fn teardown(theme: &Theme, repo_root: &Path) {
+    if !is_deployed(repo_root) {
+        not_deployed(theme);
+        return;
+    }
     let purge = {
         let mut tty = match Tty::open() {
             Ok(Some(t)) => t,
@@ -191,40 +226,36 @@ fn run_compose(theme: &Theme, repo_root: &Path, title: &str, args: &[&str]) {
     shell::report_and_pause(theme, outcome);
 }
 
-/// The (program, args) for `docker compose -f <file> <extra…>` as owned strings.
-fn compose_shell(_repo_root: &Path, extra: &[&str]) -> (String, Vec<String>) {
+/// The (program, args) for `docker compose -f <file> [-f <override>] <extra…>`
+/// as owned strings, layering the port-remap override when it exists (so a
+/// custom-port stack's lifecycle commands act on the right containers).
+fn compose_shell(repo_root: &Path, extra: &[&str]) -> (String, Vec<String>) {
     let mut args = vec![
         "compose".to_string(),
         "-f".to_string(),
         docker::COMPOSE_REL.to_string(),
     ];
+    if repo_root.join(docker::OVERRIDE_REL).exists() {
+        args.push("-f".to_string());
+        args.push(docker::OVERRIDE_REL.to_string());
+    }
     args.extend(extra.iter().map(|s| s.to_string()));
     ("docker".to_string(), args)
 }
 
-/// Read the reach URLs from the generated `.env` (best-effort).
+/// The reach URLs for the deployed stack, reconstructed from `.env` + the port
+/// override. Uses the real local host (from `CONVEX_CLOUD_ORIGIN`, not the
+/// possibly-managed `NEXT_PUBLIC_CONVEX_URL`) and the custom ports, and omits the
+/// Convex dashboard link when Convex is managed (there is no local dashboard).
 fn reach_urls(repo_root: &Path) -> Option<Vec<(String, String)>> {
-    let text = std::fs::read_to_string(repo_root.join(ENV_REL)).ok()?;
-    let get = |key: &str| {
-        text.lines()
-            .find_map(|l| l.strip_prefix(&format!("{key}=")))
-            .map(|v| v.trim().to_string())
-    };
-    let gcs = get("NEXT_PUBLIC_CONVEX_URL")?;
-    // Derive the GCS origin (:4000) from the host in the Convex URL.
-    let host = gcs
-        .trim_start_matches("http://")
-        .trim_start_matches("https://")
-        .split(':')
-        .next()
-        .unwrap_or("127.0.0.1")
-        .to_string();
-    Some(vec![
-        ("Mission Control".to_string(), format!("http://{host}:4000")),
-        (
-            "Convex dashboard".to_string(),
-            format!("http://{host}:6791"),
-        ),
-        ("Video relay".to_string(), format!("http://{host}:3001")),
-    ])
+    let cfg = crate::wizard::screens::config_from_env(repo_root)?;
+    let mut urls = vec![("Mission Control".to_string(), cfg.gcs_url())];
+    if !cfg.convex.is_managed() {
+        urls.push(("Convex dashboard".to_string(), cfg.dashboard_url()));
+    }
+    urls.push((
+        "Video relay".to_string(),
+        format!("http://{}:{}", cfg.host, cfg.ports.video),
+    ));
+    Some(urls)
 }

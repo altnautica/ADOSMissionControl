@@ -10,9 +10,11 @@ pub enum RunMode {
     Menu,
     /// Run the deploy wizard + state machine.
     Deploy,
-    /// Re-open the wizard pre-filled from an existing `.env`.
+    /// Re-open the wizard, pre-filled from an existing deploy (host, ports,
+    /// secrets, and the Convex provisioning recovered from `.env`).
     Reconfigure,
-    /// `docker compose pull` + rebuild + restart.
+    /// Pull newer images, then re-run the idempotent deploy graph (rebuild +
+    /// re-push functions + re-set env).
     Upgrade,
     /// `docker compose restart`.
     Restart,
@@ -35,12 +37,5 @@ impl RunMode {
             Some("status") => RunMode::Status,
             _ => RunMode::Menu,
         }
-    }
-
-    /// Whether this mode clears resume checkpoints before running (upgrade
-    /// re-runs the container bring-up + verify even if a prior deploy marked
-    /// them, because images/config changed).
-    pub fn clears_checkpoints(&self) -> bool {
-        matches!(self, RunMode::Upgrade)
     }
 }

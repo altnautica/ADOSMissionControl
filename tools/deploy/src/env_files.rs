@@ -8,7 +8,7 @@
 
 use std::path::Path;
 
-use crate::services;
+use crate::services::{self, Ports};
 use crate::wizard::state::DeployConfig;
 
 /// Render the `tools/selfhost/.env` content for `cfg`. Matches the keys the
@@ -113,20 +113,64 @@ fn kv(out: &mut String, key: &str, value: &str) {
     out.push_str(&format!("{key}={value}\n"));
 }
 
+/// Read one `KEY=value` from the generated `tools/selfhost/.env` (trimmed,
+/// non-empty), or `None` if the file or key is absent.
+pub fn read_env_var(repo_root: &Path, key: &str) -> Option<String> {
+    let text = std::fs::read_to_string(repo_root.join("tools/selfhost/.env")).ok()?;
+    text.lines()
+        .find_map(|l| l.strip_prefix(&format!("{key}=")))
+        .map(|v| v.trim().to_string())
+        .filter(|v| !v.is_empty())
+}
+
 /// Read the generated instance secret + MQTT password from an existing
 /// `tools/selfhost/.env`, so a re-run reuses them instead of minting new ones.
 /// This keeps the deploy idempotent: the Convex admin key is derived from the
 /// instance secret, so a stable secret means a re-run/upgrade targets the same
 /// backend and never needlessly recreates the container.
 pub fn read_existing_secrets(repo_root: &Path) -> Option<(String, String)> {
-    let text = std::fs::read_to_string(repo_root.join("tools/selfhost/.env")).ok()?;
-    let get = |k: &str| {
-        text.lines()
-            .find_map(|l| l.strip_prefix(&format!("{k}=")))
-            .map(|v| v.trim().to_string())
-            .filter(|v| !v.is_empty())
+    Some((
+        read_env_var(repo_root, "CONVEX_INSTANCE_SECRET")?,
+        read_env_var(repo_root, "MQTT_PASSWORD")?,
+    ))
+}
+
+/// Recover the host-facing ports from an existing `docker-compose.override.yml`
+/// (the only place custom ports are recorded). Maps each `"<host>:<container>"`
+/// entry back onto its port field by the fixed container port; absent file or
+/// unremapped ports keep the compose defaults. Used by `config_from_env` so an
+/// upgrade/reconfigure targets the same ports a custom-port deploy chose.
+pub fn read_existing_ports(repo_root: &Path) -> Ports {
+    let mut p = Ports::default();
+    let Ok(text) =
+        std::fs::read_to_string(repo_root.join("tools/selfhost/docker-compose.override.yml"))
+    else {
+        return p;
     };
-    Some((get("CONVEX_INSTANCE_SECRET")?, get("MQTT_PASSWORD")?))
+    for line in text.lines() {
+        let line = line.trim();
+        let Some(rest) = line.strip_prefix("- ") else {
+            continue;
+        };
+        let rest = rest.trim().trim_matches('"');
+        let Some((host_s, container_s)) = rest.split_once(':') else {
+            continue;
+        };
+        let (Ok(host), Ok(container)) = (host_s.parse::<u16>(), container_s.parse::<u16>()) else {
+            continue;
+        };
+        match container {
+            3210 => p.convex_client = host,
+            3211 => p.convex_site = host,
+            6791 => p.dashboard = host,
+            4000 => p.gcs = host,
+            1883 => p.mqtt_tcp = host,
+            9001 => p.mqtt_ws = host,
+            3001 => p.video = host,
+            _ => {}
+        }
+    }
+    p
 }
 
 /// Whether git ignores `path` (so a secret written there is never committed).

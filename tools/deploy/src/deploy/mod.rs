@@ -45,7 +45,24 @@ pub fn run_wizard(theme: &Theme, repo_root: &Path, args: &Args) -> anyhow::Resul
         return Ok(());
     }
 
-    execute(theme, repo_root, &cfg, ui::detect_mode(args), args.force)
+    // Pause for Enter at the end only when a human is watching: a scripted /
+    // non-interactive / --yes run returns immediately.
+    let pause = !args.non_interactive && !args.yes && Tty::is_available();
+    execute(
+        theme,
+        repo_root,
+        &cfg,
+        ui::detect_mode(args),
+        args.force,
+        pause,
+    )
+}
+
+/// Run the deploy state machine for a prepared config (no wizard). Used by
+/// Upgrade, which reconstructs the config from the deployed `.env` and re-runs
+/// the idempotent graph so functions are re-pushed and env re-set.
+pub fn deploy_config(theme: &Theme, repo_root: &Path, cfg: &DeployConfig) -> anyhow::Result<()> {
+    execute(theme, repo_root, cfg, RenderMode::Rich, false, true)
 }
 
 /// Execute the deploy as the ordered step machine with live progress, then print
@@ -56,6 +73,7 @@ fn execute(
     cfg: &DeployConfig,
     base_mode: RenderMode,
     force: bool,
+    pause: bool,
 ) -> anyhow::Result<()> {
     let (mode, tty) = ui::resolve_live_mode(base_mode, None);
     let (sink, handle) = ui::start(
@@ -74,7 +92,7 @@ fn execute(
     handle.finish();
 
     let status = ctx.failures.derive_status();
-    print_completion(theme, cfg, &status, &reports);
+    print_completion(theme, cfg, &status, &reports, pause);
     Ok(())
 }
 
@@ -86,6 +104,7 @@ fn print_completion(
     cfg: &DeployConfig,
     status: &str,
     reports: &[crate::graph::StepReport],
+    pause: bool,
 ) {
     println!();
     match status {
@@ -117,9 +136,11 @@ fn print_completion(
             }
             println!(
                 "\n{}",
-                theme.dim("Fix the issue above and re-run — completed steps are skipped.")
+                theme.dim("Fix the issue above and re-run — the deploy is idempotent.")
             );
-            shell::pause_for_enter(theme);
+            if pause {
+                shell::pause_for_enter(theme);
+            }
             return;
         }
     }
@@ -160,7 +181,9 @@ fn print_completion(
         "{}",
         theme.dim("Direct IP is the most reliable reach. Pair a drone by hostname/IP in the Add-a-Node card.")
     );
-    shell::pause_for_enter(theme);
+    if pause {
+        shell::pause_for_enter(theme);
+    }
 }
 
 /// One reach-links row with a verified health dot + the full copyable URL.

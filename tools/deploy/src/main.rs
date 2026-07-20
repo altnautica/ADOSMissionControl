@@ -14,9 +14,9 @@ fn main() -> anyhow::Result<()> {
         RunMode::Menu => menu::run(&theme, &repo_root, &args)?,
         RunMode::Deploy | RunMode::Reconfigure => deploy::run_wizard(&theme, &repo_root, &args)?,
         RunMode::Status => deploy::lifecycle::status(&theme, &repo_root),
-        RunMode::Upgrade | RunMode::Restart | RunMode::Teardown => {
-            deploy::lifecycle::manage(&theme, &repo_root)
-        }
+        RunMode::Upgrade => deploy::lifecycle::upgrade(&theme, &repo_root),
+        RunMode::Restart => deploy::lifecycle::restart(&theme, &repo_root),
+        RunMode::Teardown => deploy::lifecycle::teardown(&theme, &repo_root),
     }
     Ok(())
 }
