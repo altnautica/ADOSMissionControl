@@ -46,6 +46,25 @@ pub const INSTALL_FOOTER: &str = "First install can take a few minutes. Safe to 
 /// The full-screen footer line for the uninstall flow.
 pub const UNINSTALL_FOOTER: &str = "Removing the ADOS Drone Agent. This only takes a moment.";
 
+/// The deploy checklist groups. Each maps to one or more of the technical step
+/// ids in the deploy chain; every chain step appears in exactly one group.
+pub const DEPLOY_GROUPS: GroupMap = &[
+    ("Checking system", &["preflight"]),
+    ("Writing config", &["write_config"]),
+    ("Starting Convex", &["up_convex", "wait_convex"]),
+    (
+        "Configuring Convex",
+        &["admin_key", "push_functions", "auth_keys"],
+    ),
+    ("MQTT credentials", &["mqtt_passwd"]),
+    ("Starting services", &["up_rest"]),
+    ("Verifying", &["verify"]),
+];
+
+/// The full-screen footer reassurance line for the deploy flow.
+pub const DEPLOY_FOOTER: &str =
+    "First deploy pulls images + builds Mission Control. Safe to leave running.";
+
 /// The display group index a step belongs to within `groups`, if any.
 pub fn group_index_for_step(groups: GroupMap, step_id: &str) -> Option<usize> {
     groups

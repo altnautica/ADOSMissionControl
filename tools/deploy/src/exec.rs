@@ -151,17 +151,21 @@ fn pump<R: Read>(mut reader: R, kind: StreamKind, tx: mpsc::Sender<(StreamKind, 
 /// `anyhow::bail!(…, res.stderr.trim())` caller still reports the real error).
 /// `on_line` runs on the calling thread, so it can borrow non-`Send` state
 /// (the progress sink) freely.
-pub fn run_streamed<F: FnMut(&str)>(program: &str, args: &[&str], mut on_line: F) -> CmdResult {
-    tracing::debug!(program, ?args, "exec-streamed");
-    let mut child = match Command::new(program)
-        .args(args)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-    {
+pub fn run_streamed<F: FnMut(&str)>(program: &str, args: &[&str], on_line: F) -> CmdResult {
+    let mut cmd = Command::new(program);
+    cmd.args(args);
+    run_streamed_cmd(cmd, on_line)
+}
+
+/// Like [`run_streamed`] but takes a pre-built [`Command`], so the caller can set
+/// the working directory + environment (the deployer runs `npx convex` / `node`
+/// with `cwd = repo_root` and a scoped env). Streams stdout/stderr lines to
+/// `on_line` on the calling thread.
+pub fn run_streamed_cmd<F: FnMut(&str)>(mut cmd: Command, mut on_line: F) -> CmdResult {
+    let mut child = match cmd.stdout(Stdio::piped()).stderr(Stdio::piped()).spawn() {
         Ok(c) => c,
         Err(e) => {
-            tracing::warn!(program, error = %e, "exec spawn failed");
+            tracing::warn!(error = %e, "exec spawn failed");
             return CmdResult {
                 code: None,
                 stdout: String::new(),
@@ -199,7 +203,7 @@ pub fn run_streamed<F: FnMut(&str)>(program: &str, args: &[&str], mut on_line: F
     let _ = h_err.join();
 
     let code = child.wait().ok().and_then(|s| s.code());
-    tracing::debug!(program, code = ?code, "exec-streamed done");
+    tracing::debug!(code = ?code, "exec-streamed done");
     CmdResult {
         code,
         stdout: Vec::from(out_tail).join("\n"),

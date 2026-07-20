@@ -32,8 +32,8 @@ use tracing_subscriber::layer::{Context, Layer};
 
 use crate::graph::StepOutcome;
 pub use events::{
-    GroupMap, ProgressEvent, SummaryData, INSTALL_FOOTER, INSTALL_GROUPS, UNINSTALL_FOOTER,
-    UNINSTALL_GROUPS,
+    GroupMap, ProgressEvent, SummaryData, DEPLOY_FOOTER, DEPLOY_GROUPS, INSTALL_FOOTER,
+    INSTALL_GROUPS, UNINSTALL_FOOTER, UNINSTALL_GROUPS,
 };
 pub use theme::Theme;
 use tty::Tty;

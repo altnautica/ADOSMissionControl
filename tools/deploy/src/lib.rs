@@ -9,9 +9,11 @@
 //! turnkey state machine, docker/env orchestration, asset export) is new.
 
 pub mod checkpoint;
+pub mod checks;
 pub mod cli;
 pub mod ctx;
 pub mod deploy;
+pub mod docker;
 pub mod env;
 pub mod env_files;
 pub mod exec;

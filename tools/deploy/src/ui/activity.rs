@@ -155,6 +155,50 @@ pub fn wfb_activity(line: &str) -> Option<String> {
     None
 }
 
+/// docker / docker compose progress → headline (image pull, container create,
+/// image build).
+pub fn docker_activity(line: &str) -> Option<String> {
+    let l = line.trim();
+    let lower = l.to_ascii_lowercase();
+    if let Some(pct) = percent(l) {
+        if lower.contains("pulling") || lower.contains("download") || lower.contains("extract") {
+            return Some(format!("pulling images {pct}"));
+        }
+    }
+    if lower.contains("pulling ") || lower.starts_with("pull ") {
+        return Some("pulling images".to_string());
+    }
+    if lower.contains("building ") || lower.starts_with("build ") || lower.contains("=> [") {
+        return Some("building mission-control".to_string());
+    }
+    if lower.contains("creating") || lower.contains("created") {
+        return Some("creating containers".to_string());
+    }
+    if lower.contains("starting") || lower.contains("started") || lower.contains("running") {
+        return Some("starting containers".to_string());
+    }
+    None
+}
+
+/// Convex CLI progress → headline (bundle / schema / deploy / env set).
+pub fn convex_activity(line: &str) -> Option<String> {
+    let l = line.trim();
+    let lower = l.to_ascii_lowercase();
+    if lower.contains("bundl") {
+        return Some("bundling functions".to_string());
+    }
+    if lower.contains("schema") {
+        return Some("pushing schema".to_string());
+    }
+    if lower.contains("deploy") || lower.contains("pushing") {
+        return Some("deploying functions".to_string());
+    }
+    if lower.contains("environment variable") || lower.contains("env set") {
+        return Some("setting environment".to_string());
+    }
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
