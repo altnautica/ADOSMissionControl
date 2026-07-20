@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 834 568" width="834" height="568" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="14">
+<rect width="834" height="568" fill="#1f1f1f" rx="8"/>
+<rect x="131.6" y="212.0" width="571.2" height="18" fill="#ebc157"/>
+<text x="350.0" y="45.5" fill="#f2d68a" font-weight="700" xml:space="preserve">█▀█ █▀▄ █▀█ █▀▀</text>
+<text x="350.0" y="63.5" fill="#ebc157" font-weight="700" xml:space="preserve">█▀█ █░█ █░█ ▀▀█</text>
+<text x="350.0" y="81.5" fill="#c99b3e" font-weight="700" xml:space="preserve">▀░▀ ▀▀░ ▀▀▀ ▀▀▀</text>
+<text x="324.8" y="99.5" fill="#8a8a8a" xml:space="preserve">Onboarding your device</text>
+<text x="114.8" y="171.5" fill="#ebc157" xml:space="preserve">╭─ ADOS · Altnautica ADOS ─────────────────────────────────────────────╮</text>
+<text x="114.8" y="189.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="131.6" y="189.5" fill="#e9e9e9" font-weight="700" xml:space="preserve">What would you like to do?</text>
+<text x="711.2" y="189.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="114.8" y="207.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="711.2" y="207.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="114.8" y="225.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="131.6" y="225.5" fill="#1a1a1a" xml:space="preserve">● Deploy the stack                                                  </text>
+<text x="711.2" y="225.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="114.8" y="243.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="173.6" y="243.5" fill="#8a8a8a" xml:space="preserve">self-host Convex + Mission Control + MQTT + video</text>
+<text x="711.2" y="243.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="114.8" y="261.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="148.4" y="261.5" fill="#8a8a8a" xml:space="preserve">○</text>
+<text x="156.8" y="261.5" fill="#d2d2d2" xml:space="preserve"> Manage running stack                                             </text>
+<text x="711.2" y="261.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="114.8" y="279.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="173.6" y="279.5" fill="#8a8a8a" xml:space="preserve">status, logs, restart, upgrade, teardown</text>
+<text x="711.2" y="279.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="114.8" y="297.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="148.4" y="297.5" fill="#8a8a8a" xml:space="preserve">○</text>
+<text x="156.8" y="297.5" fill="#d2d2d2" xml:space="preserve"> Run web GCS                                                      </text>
+<text x="711.2" y="297.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="114.8" y="315.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="173.6" y="315.5" fill="#8a8a8a" xml:space="preserve">start Mission Control in dev on :4000</text>
+<text x="711.2" y="315.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="114.8" y="333.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="148.4" y="333.5" fill="#8a8a8a" xml:space="preserve">○</text>
+<text x="156.8" y="333.5" fill="#d2d2d2" xml:space="preserve"> Run demo mode                                                    </text>
+<text x="711.2" y="333.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="114.8" y="351.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="173.6" y="351.5" fill="#8a8a8a" xml:space="preserve">Mission Control with a simulated fleet</text>
+<text x="711.2" y="351.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="114.8" y="369.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="148.4" y="369.5" fill="#8a8a8a" xml:space="preserve">○</text>
+<text x="156.8" y="369.5" fill="#d2d2d2" xml:space="preserve"> Build desktop app                                                </text>
+<text x="711.2" y="369.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="114.8" y="387.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="173.6" y="387.5" fill="#8a8a8a" xml:space="preserve">package the Electron app for macOS / Windows / Linux</text>
+<text x="711.2" y="387.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="114.8" y="405.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="148.4" y="405.5" fill="#8a8a8a" xml:space="preserve">○</text>
+<text x="156.8" y="405.5" fill="#d2d2d2" xml:space="preserve"> Run dev desktop app                                              </text>
+<text x="711.2" y="405.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="114.8" y="423.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="173.6" y="423.5" fill="#8a8a8a" xml:space="preserve">the Electron app in dev mode</text>
+<text x="711.2" y="423.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="114.8" y="441.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="148.4" y="441.5" fill="#8a8a8a" xml:space="preserve">○</text>
+<text x="156.8" y="441.5" fill="#d2d2d2" xml:space="preserve"> System check                                                     </text>
+<text x="711.2" y="441.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="114.8" y="459.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="173.6" y="459.5" fill="#8a8a8a" xml:space="preserve">Docker, Node, and toolchain prerequisites</text>
+<text x="711.2" y="459.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="114.8" y="477.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="148.4" y="477.5" fill="#8a8a8a" xml:space="preserve">○</text>
+<text x="156.8" y="477.5" fill="#d2d2d2" xml:space="preserve"> Quit                                                             </text>
+<text x="711.2" y="477.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="114.8" y="495.5" fill="#ebc157" xml:space="preserve">╰──────────────────────────────────────────────────────────────────────╯</text>
+<text x="308.0" y="549.5" fill="#8a8a8a" xml:space="preserve">↑ ↓ move · Enter to choose</text>
+</svg>

@@ -13,6 +13,7 @@
 
 pub mod activity;
 pub mod events;
+pub mod export;
 pub mod fullscreen;
 pub mod model;
 pub mod plain;

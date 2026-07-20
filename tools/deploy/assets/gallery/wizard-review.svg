@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 834 568" width="834" height="568" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="14">
+<rect width="834" height="568" fill="#1f1f1f" rx="8"/>
+<rect x="131.6" y="410.0" width="571.2" height="18" fill="#ebc157"/>
+<text x="350.0" y="45.5" fill="#f2d68a" font-weight="700" xml:space="preserve">█▀█ █▀▄ █▀█ █▀▀</text>
+<text x="350.0" y="63.5" fill="#ebc157" font-weight="700" xml:space="preserve">█▀█ █░█ █░█ ▀▀█</text>
+<text x="350.0" y="81.5" fill="#c99b3e" font-weight="700" xml:space="preserve">▀░▀ ▀▀░ ▀▀▀ ▀▀▀</text>
+<text x="324.8" y="99.5" fill="#8a8a8a" xml:space="preserve">Onboarding your device</text>
+<text x="274.4" y="135.5" fill="#ebc157" xml:space="preserve">●</text>
+<text x="291.2" y="135.5" fill="#ebc157" xml:space="preserve">●</text>
+<text x="308.0" y="135.5" fill="#ebc157" xml:space="preserve">●</text>
+<text x="324.8" y="135.5" fill="#ebc157" xml:space="preserve">●</text>
+<text x="341.6" y="135.5" fill="#ebc157" xml:space="preserve">●</text>
+<text x="358.4" y="135.5" fill="#ebc157" xml:space="preserve">●</text>
+<text x="392.0" y="135.5" fill="#8a8a8a" xml:space="preserve">Step 6 of 6 · Review</text>
+<text x="114.8" y="207.5" fill="#ebc157" xml:space="preserve">╭─ ADOS · Review ──────────────────────────────────────────────────────╮</text>
+<text x="114.8" y="225.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="131.6" y="225.5" fill="#e9e9e9" font-weight="700" xml:space="preserve">Ready to deploy</text>
+<text x="711.2" y="225.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="114.8" y="243.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="711.2" y="243.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="114.8" y="261.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="148.4" y="261.5" fill="#8a8a8a" xml:space="preserve">Address       </text>
+<text x="266.0" y="261.5" fill="#d2d2d2" xml:space="preserve">  192.168.1.50                                       </text>
+<text x="711.2" y="261.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="114.8" y="279.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="148.4" y="279.5" fill="#8a8a8a" xml:space="preserve">Scope         </text>
+<text x="266.0" y="279.5" fill="#d2d2d2" xml:space="preserve">  all-in-one                                         </text>
+<text x="711.2" y="279.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="114.8" y="297.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="148.4" y="297.5" fill="#8a8a8a" xml:space="preserve">Convex        </text>
+<text x="266.0" y="297.5" fill="#d2d2d2" xml:space="preserve">  spin up locally                                    </text>
+<text x="711.2" y="297.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="114.8" y="315.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="148.4" y="315.5" fill="#8a8a8a" xml:space="preserve">Mission Ctrl  </text>
+<text x="266.0" y="315.5" fill="#d2d2d2" xml:space="preserve">  spin up locally                                    </text>
+<text x="711.2" y="315.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="114.8" y="333.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="148.4" y="333.5" fill="#8a8a8a" xml:space="preserve">MQTT          </text>
+<text x="266.0" y="333.5" fill="#d2d2d2" xml:space="preserve">  spin up locally                                    </text>
+<text x="711.2" y="333.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="114.8" y="351.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="148.4" y="351.5" fill="#8a8a8a" xml:space="preserve">Video         </text>
+<text x="266.0" y="351.5" fill="#d2d2d2" xml:space="preserve">  spin up locally                                    </text>
+<text x="711.2" y="351.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="114.8" y="369.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="148.4" y="369.5" fill="#8a8a8a" xml:space="preserve">Ports         </text>
+<text x="266.0" y="369.5" fill="#d2d2d2" xml:space="preserve">  defaults                                           </text>
+<text x="711.2" y="369.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="114.8" y="387.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="148.4" y="387.5" fill="#8a8a8a" xml:space="preserve">Access        </text>
+<text x="266.0" y="387.5" fill="#d2d2d2" xml:space="preserve">  HTTP on the LAN                                    </text>
+<text x="711.2" y="387.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="114.8" y="405.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="711.2" y="405.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="114.8" y="423.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="131.6" y="423.5" fill="#1a1a1a" xml:space="preserve">● Deploy now                                                        </text>
+<text x="711.2" y="423.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="114.8" y="441.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="148.4" y="441.5" fill="#8a8a8a" xml:space="preserve">○</text>
+<text x="156.8" y="441.5" fill="#d2d2d2" xml:space="preserve"> Change an answer                                                 </text>
+<text x="711.2" y="441.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="114.8" y="459.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="148.4" y="459.5" fill="#8a8a8a" xml:space="preserve">○</text>
+<text x="156.8" y="459.5" fill="#d2d2d2" xml:space="preserve"> Cancel                                                           </text>
+<text x="711.2" y="459.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="114.8" y="477.5" fill="#ebc157" xml:space="preserve">╰──────────────────────────────────────────────────────────────────────╯</text>
+<text x="308.0" y="549.5" fill="#8a8a8a" xml:space="preserve">↑ ↓ move · Enter to choose</text>
+</svg>

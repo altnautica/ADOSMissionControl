@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 834 568" width="834" height="568" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="14">
+<rect width="834" height="568" fill="#1f1f1f" rx="8"/>
+<text x="350.0" y="45.5" fill="#f2d68a" font-weight="700" xml:space="preserve">█▀█ █▀▄ █▀█ █▀▀</text>
+<text x="350.0" y="63.5" fill="#ebc157" font-weight="700" xml:space="preserve">█▀█ █░█ █░█ ▀▀█</text>
+<text x="350.0" y="81.5" fill="#c99b3e" font-weight="700" xml:space="preserve">▀░▀ ▀▀░ ▀▀▀ ▀▀▀</text>
+<text x="324.8" y="99.5" fill="#8a8a8a" xml:space="preserve">Onboarding your device</text>
+<text x="114.8" y="243.5" fill="#ebc157" xml:space="preserve">╭─ ADOS · Deployed ────────────────────────────────────────────────────╮</text>
+<text x="114.8" y="261.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="131.6" y="261.5" fill="#79c879" xml:space="preserve">✓</text>
+<text x="156.8" y="261.5" fill="#e9e9e9" font-weight="700" xml:space="preserve">Your ADOS stack is live</text>
+<text x="711.2" y="261.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="114.8" y="279.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="711.2" y="279.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="114.8" y="297.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="131.6" y="297.5" fill="#e9e9e9" font-weight="700" xml:space="preserve">Open Mission Control</text>
+<text x="711.2" y="297.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="114.8" y="315.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="148.4" y="315.5" fill="#79c879" xml:space="preserve">●</text>
+<text x="165.2" y="315.5" fill="#d2d2d2" font-weight="700" xml:space="preserve">Mission Control</text>
+<text x="299.6" y="315.5" fill="#ebc157" xml:space="preserve">http://192.168.1.50:4000</text>
+<text x="711.2" y="315.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="114.8" y="333.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="148.4" y="333.5" fill="#79c879" xml:space="preserve">●</text>
+<text x="165.2" y="333.5" fill="#d2d2d2" font-weight="700" xml:space="preserve">Convex dashboard</text>
+<text x="308.0" y="333.5" fill="#ebc157" xml:space="preserve">http://192.168.1.50:6791</text>
+<text x="711.2" y="333.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="114.8" y="351.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="148.4" y="351.5" fill="#79c879" xml:space="preserve">●</text>
+<text x="165.2" y="351.5" fill="#d2d2d2" font-weight="700" xml:space="preserve">Video relay</text>
+<text x="266.0" y="351.5" fill="#ebc157" xml:space="preserve">http://192.168.1.50:3001</text>
+<text x="711.2" y="351.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="114.8" y="369.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="148.4" y="369.5" fill="#79c879" xml:space="preserve">●</text>
+<text x="165.2" y="369.5" fill="#d2d2d2" font-weight="700" xml:space="preserve">MQTT broker</text>
+<text x="266.0" y="369.5" fill="#8a8a8a" xml:space="preserve">192.168.1.50:9001</text>
+<text x="711.2" y="369.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="114.8" y="387.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="711.2" y="387.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="114.8" y="405.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="131.6" y="405.5" fill="#8a8a8a" xml:space="preserve">Direct IP is the most reliable reach. Pair a drone by hostname/IP.</text>
+<text x="711.2" y="405.5" fill="#ebc157" xml:space="preserve">│</text>
+<text x="114.8" y="423.5" fill="#ebc157" xml:space="preserve">╰──────────────────────────────────────────────────────────────────────╯</text>
+<text x="324.8" y="549.5" fill="#8a8a8a" xml:space="preserve">Press Enter to finish</text>
+</svg>

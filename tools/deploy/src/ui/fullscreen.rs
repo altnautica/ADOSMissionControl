@@ -246,6 +246,36 @@ fn paint(tty: &mut Tty, theme: &Theme, title: &str, footer: &str, st: &State, sp
     tty.present(&grid, theme);
 }
 
+/// Render a representative split-view frame from a sequence of progress events,
+/// for the asset gallery + snapshot tests. Deterministic (fixed elapsed clock),
+/// so it never touches a terminal.
+#[allow(clippy::too_many_arguments)]
+pub fn sample_grid(
+    theme: &Theme,
+    size: TermSize,
+    groups: GroupMap,
+    title: &str,
+    footer: &str,
+    events: Vec<ProgressEvent>,
+    spinner: usize,
+    elapsed_secs: u64,
+) -> Vec<String> {
+    let mut st = State::new(groups);
+    for ev in events {
+        st.apply(ev);
+    }
+    let view = View {
+        title,
+        footer,
+        model: &st.model,
+        active: st.active,
+        logs: &st.logs,
+        spinner,
+        elapsed: Some(Duration::from_secs(elapsed_secs)),
+    };
+    compose(theme, &view, size)
+}
+
 /// Compose the whole screen as `size.rows` full-width lines. Pure.
 fn compose(theme: &Theme, v: &View, size: TermSize) -> Vec<String> {
     let cols = size.cols.max(1);

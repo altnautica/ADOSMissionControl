@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 834 496" width="834" height="496" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="14">
+<rect width="834" height="496" fill="#1f1f1f" rx="8"/>
+<text x="14.0" y="27.5" fill="#ebc157" xml:space="preserve">▌</text>
+<text x="30.8" y="27.5" fill="#e9e9e9" font-weight="700" xml:space="preserve">ADOS</text>
+<text x="81.2" y="27.5" fill="#8a8a8a" xml:space="preserve">·</text>
+<text x="106.4" y="27.5" fill="#ebc157" xml:space="preserve">ADOS · Deploying</text>
+<text x="786.8" y="27.5" fill="#8a8a8a" xml:space="preserve">1:42</text>
+<text x="14.0" y="45.5" fill="#8a8a8a" xml:space="preserve">────────────────────────────────────────────────────────────────────────────────────────────────</text>
+<text x="14.0" y="63.5" fill="#79c879" xml:space="preserve">✓</text>
+<text x="22.4" y="63.5" fill="#d2d2d2" xml:space="preserve"> Checking system                   </text>
+<text x="316.4" y="63.5" fill="#8a8a8a" xml:space="preserve">0.0s</text>
+<text x="358.4" y="63.5" fill="#8a8a8a" xml:space="preserve">│</text>
+<text x="375.2" y="63.5" fill="#ebc157" xml:space="preserve">⠸</text>
+<text x="392.0" y="63.5" fill="#e9e9e9" font-weight="700" xml:space="preserve">Starting services</text>
+<text x="14.0" y="81.5" fill="#79c879" xml:space="preserve">✓</text>
+<text x="22.4" y="81.5" fill="#d2d2d2" xml:space="preserve"> Writing config                    </text>
+<text x="316.4" y="81.5" fill="#8a8a8a" xml:space="preserve">0.0s</text>
+<text x="358.4" y="81.5" fill="#8a8a8a" xml:space="preserve">│</text>
+<text x="375.2" y="81.5" fill="#ebc157" xml:space="preserve">→ building mission-control</text>
+<text x="14.0" y="99.5" fill="#79c879" xml:space="preserve">✓</text>
+<text x="22.4" y="99.5" fill="#d2d2d2" xml:space="preserve"> Starting Convex                   </text>
+<text x="316.4" y="99.5" fill="#8a8a8a" xml:space="preserve">0.0s</text>
+<text x="358.4" y="99.5" fill="#8a8a8a" xml:space="preserve">│</text>
+<text x="14.0" y="117.5" fill="#79c879" xml:space="preserve">✓</text>
+<text x="22.4" y="117.5" fill="#d2d2d2" xml:space="preserve"> Configuring Convex                </text>
+<text x="316.4" y="117.5" fill="#8a8a8a" xml:space="preserve">0.0s</text>
+<text x="358.4" y="117.5" fill="#8a8a8a" xml:space="preserve">│</text>
+<text x="375.2" y="117.5" fill="#8a8a8a" xml:space="preserve">live</text>
+<text x="14.0" y="135.5" fill="#79c879" xml:space="preserve">✓</text>
+<text x="22.4" y="135.5" fill="#d2d2d2" xml:space="preserve"> MQTT credentials                  </text>
+<text x="316.4" y="135.5" fill="#8a8a8a" xml:space="preserve">0.0s</text>
+<text x="358.4" y="135.5" fill="#8a8a8a" xml:space="preserve">│</text>
+<text x="375.2" y="135.5" fill="#8a8a8a" xml:space="preserve">  =&gt; [build 6/9] RUN next build</text>
+<text x="14.0" y="153.5" fill="#ebc157" xml:space="preserve">⠸</text>
+<text x="30.8" y="153.5" fill="#e9e9e9" font-weight="700" xml:space="preserve">Starting services</text>
+<text x="316.4" y="153.5" fill="#8a8a8a" xml:space="preserve">0.0s</text>
+<text x="358.4" y="153.5" fill="#8a8a8a" xml:space="preserve">│</text>
+<text x="375.2" y="153.5" fill="#8a8a8a" xml:space="preserve">  =&gt; exporting layers</text>
+<text x="14.0" y="171.5" fill="#8a8a8a" xml:space="preserve">•</text>
+<text x="30.8" y="171.5" fill="#8a8a8a" xml:space="preserve">Verifying</text>
+<text x="358.4" y="171.5" fill="#8a8a8a" xml:space="preserve">│</text>
+<text x="358.4" y="189.5" fill="#8a8a8a" xml:space="preserve">│</text>
+<text x="358.4" y="207.5" fill="#8a8a8a" xml:space="preserve">│</text>
+<text x="358.4" y="225.5" fill="#8a8a8a" xml:space="preserve">│</text>
+<text x="358.4" y="243.5" fill="#8a8a8a" xml:space="preserve">│</text>
+<text x="358.4" y="261.5" fill="#8a8a8a" xml:space="preserve">│</text>
+<text x="358.4" y="279.5" fill="#8a8a8a" xml:space="preserve">│</text>
+<text x="358.4" y="297.5" fill="#8a8a8a" xml:space="preserve">│</text>
+<text x="358.4" y="315.5" fill="#8a8a8a" xml:space="preserve">│</text>
+<text x="358.4" y="333.5" fill="#8a8a8a" xml:space="preserve">│</text>
+<text x="358.4" y="351.5" fill="#8a8a8a" xml:space="preserve">│</text>
+<text x="358.4" y="369.5" fill="#8a8a8a" xml:space="preserve">│</text>
+<text x="358.4" y="387.5" fill="#8a8a8a" xml:space="preserve">│</text>
+<text x="358.4" y="405.5" fill="#8a8a8a" xml:space="preserve">│</text>
+<text x="358.4" y="423.5" fill="#8a8a8a" xml:space="preserve">│</text>
+<text x="358.4" y="441.5" fill="#8a8a8a" xml:space="preserve">│</text>
+<text x="358.4" y="459.5" fill="#8a8a8a" xml:space="preserve">│</text>
+<text x="106.4" y="477.5" fill="#8a8a8a" xml:space="preserve">First deploy pulls images + builds Mission Control. Safe to leave running.</text>
+</svg>
