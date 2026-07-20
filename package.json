@@ -18,7 +18,6 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "audit:security": "npm audit --audit-level=high",
-    "cli": "tsx cli/index.ts",
     "electron:compile": "tsc -p electron/tsconfig.json",
     "desktop:dev": "npm run electron:compile && electron . --dev",
     "desktop:demo": "npm run electron:compile && electron . --dev --demo",
@@ -85,7 +84,6 @@
     "zustand": "^5.0.5"
   },
   "devDependencies": {
-    "@clack/prompts": "^1.0.1",
     "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
@@ -107,11 +105,9 @@
     "eslint": "^9",
     "eslint-config-next": "^16.2.4",
     "happy-dom": "^20.8.3",
-    "listr2": "^8.2.0",
     "msw": "^2.12.10",
     "openapi-typescript": "^7.13.0",
     "patch-package": "^8.0.1",
-    "picocolors": "^1.1.1",
     "tailwindcss": "^4",
     "tsx": "^4.19.0",
     "typescript": "^5",

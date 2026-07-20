@@ -226,38 +226,37 @@ All optional. The GCS works fully offline for local FC configuration and field o
 
 ---
 
-## CLI
+## Deployer (`ados-deploy`)
+
+The stack ships with a full-screen terminal deployer that self-hosts the whole
+cloud stack (Convex + Mission Control + MQTT + video relay) in one guided flow,
+and also runs the web GCS, builds the desktop app, and manages a running stack.
 
 ```bash
-npm run cli              # Interactive menu (recommended starting point)
+# One-line convenience (clones the repo if needed, then launches the TUI):
+curl -sSL https://raw.githubusercontent.com/altnautica/ADOSMissionControl/main/tools/deploy/deploy.sh | sh
 
-# Development
-npm run cli dev          # Dev server (port 4000)
-npm run cli dev -a       # Dev server + MQTT + Video Relay via Docker
-npm run cli dev --convex # Dev server + Convex dev backend
-npm run cli demo         # Demo mode with simulated drones
-npm run cli sitl         # Launch ArduPilot SITL + WebSocket bridge
-
-# Services (Docker)
-npm run cli services         # Interactive service manager
-npm run cli services status  # Show MQTT / Video Relay status
-npm run cli services start   # Start a Docker service
-npm run cli services stop    # Stop a Docker service
-npm run cli services logs    # Tail service logs
-
-# Setup and configuration
-npm run cli setup        # First-time setup wizard (asks dev vs prod)
-npm run cli prod         # Production deployment wizard (ports, SSL, service config)
-npm run cli config       # Configure environment interactively
-npm run cli deploy       # Lint, build, start production server
-npm run cli info         # System check (Node, Docker, ports, security)
+# Local-first, from a checkout:
+npm run deploy                    # interactive menu
+npm run deploy -- deploy          # deploy the self-hosted stack (wizard)
+npm run deploy -- deploy --plan   # preview the exact commands + files, run nothing
+npm run deploy -- status          # a running stack's containers + reach links
 ```
+
+The interactive menu covers: deploy the stack, manage a running stack (status /
+logs / restart / upgrade / teardown), run the web GCS (dev), run demo mode,
+build / run the desktop app, a system check, and the drone-agent install
+one-liner. The primitive npm scripts (`dev`, `demo`, `build`, `desktop:*`,
+`convex:*`) are what the deployer shells out to.
+
+Prerequisites: Docker (with the daemon running) + Node 20+. See
+[SELFHOSTING.md](SELFHOSTING.md) for the full self-host walkthrough.
 
 ---
 
 ## Connecting to Hardware
 
-**WebSocket:** Connect to any MAVLink-over-WebSocket endpoint. Use `npm run cli sitl` to launch ArduPilot SITL with the bridge tool. See [`tools/sitl/`](tools/sitl/).
+**WebSocket:** Connect to any MAVLink-over-WebSocket endpoint. Launch ArduPilot SITL with the bridge tool from [`tools/sitl/`](tools/sitl/) (`cd tools/sitl && npm run setup && npm start`).
 
 **WebSerial (USB):** Plug in your FC, open Mission Control in Chrome 89+, click connect, pick the port. No drivers needed.
 
@@ -318,11 +317,11 @@ npx convex dev
 
 Set `NEXT_PUBLIC_CONVEX_URL` in `.env.local`. The first user to sign up becomes admin.
 
-For self-hosted MQTT and video relay, run `npm run cli prod` for a guided wizard (port selection, conflict detection, config file generation, optional service start), or follow the manual steps in [SELFHOSTING.md](SELFHOSTING.md). Source for each service: [`tools/mqtt-bridge/`](tools/mqtt-bridge/), [`tools/video-relay/`](tools/video-relay/).
+For self-hosted MQTT and video relay, run `npm run deploy -- deploy` for a guided wizard (port selection, conflict detection, config file generation, optional service start), or follow the manual steps in [SELFHOSTING.md](SELFHOSTING.md). Source for each service: [`tools/mqtt-bridge/`](tools/mqtt-bridge/), [`tools/video-relay/`](tools/video-relay/).
 
 ### Environment variables (`.env.local`)
 
-All variables are optional. Set them with `npm run cli config` or edit `.env.local` directly. The file is gitignored and never committed.
+All variables are optional. Set them by editing `.env.local` directly (or re-run the deployer). The file is gitignored and never committed.
 
 | Variable | Description |
 |----------|-------------|
