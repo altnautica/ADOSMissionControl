@@ -171,6 +171,9 @@ interface RadioPayload {
   txVideoRecvqBytes: number | null;
   acquireState: string | null;
   channelLocked: boolean | null;
+  // Null means "no verdict" — distinct from false, which asserts the transmit
+  // path was proven. Optional: older agents omit the key entirely.
+  rfUnverified?: boolean | null;
   reacquireKills: number | null;
   rxZombieKills: number | null;
   validRxPacketsPerS: number | null;

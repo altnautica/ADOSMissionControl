@@ -101,6 +101,55 @@ function parseArgsBlock(source: string, exportName: string): Map<string, string>
   return map;
 }
 
+/**
+ * Slice out the body of the nested `radio: v.optional(v.object({ ... }))` block
+ * from either the mutation or the schema source.
+ *
+ * The radio block is a strict `v.object()`, so it rejects any key it does not
+ * declare — and because it rides every heartbeat, one undeclared key takes the
+ * whole node offline in cloud mode rather than dropping a single field. The
+ * assertions below work on this slice (not the whole file) so a failure prints
+ * the radio block, not the entire module.
+ */
+function radioBlockBody(source: string): string {
+  const anchor = source.indexOf("radio: v.optional(");
+  if (anchor < 0) throw new Error("radio block not found");
+  const open = source.indexOf("{", source.indexOf("v.object(", anchor));
+  if (open < 0) throw new Error("radio object open brace not found");
+
+  let depth = 0;
+  for (let i = open; i < source.length; i += 1) {
+    const ch = source[i];
+    if (ch === "{") depth += 1;
+    else if (ch === "}") {
+      depth -= 1;
+      if (depth === 0) return source.slice(open + 1, i);
+    }
+  }
+  throw new Error("radio object close brace not found");
+}
+
+/** The top-level field names the radio block declares. */
+function parseRadioBlockKeys(source: string): Set<string> {
+  const keys = new Set<string>();
+  let nesting = 0;
+  for (const line of radioBlockBody(source).split("\n")) {
+    const slash = line.indexOf("//");
+    const code = slash >= 0 ? line.slice(0, slash) : line;
+    // Only depth-0 lines name a field of the radio object itself; anything
+    // deeper belongs to a nested validator.
+    if (nesting === 0) {
+      const match = /^\s*([A-Za-z][A-Za-z0-9_]*)\s*:/.exec(code);
+      if (match) keys.add(match[1]);
+    }
+    for (const ch of code) {
+      if (ch === "{" || ch === "(" || ch === "[") nesting += 1;
+      else if (ch === "}" || ch === ")" || ch === "]") nesting -= 1;
+    }
+  }
+  return keys;
+}
+
 describe("pushStatus required args (audit baseline)", () => {
   it("declares deviceId, version, uptimeSeconds as required (not optional)", async () => {
     const text = await readFile(MUTATION_PATH, "utf8");
@@ -436,6 +485,119 @@ describe("pushStatus args / cmd_droneStatus schema parity", () => {
         `${field}:`,
       );
       expect(args.has(field), `mutation must accept ${field}`).toBe(true);
+    }
+  });
+});
+
+describe("radio block declares every key an agent emits", () => {
+  /**
+   * The radio validator is a strict `v.object()`: an undeclared key does not
+   * get dropped, it rejects the ENTIRE heartbeat. Because the radio block rides
+   * every heartbeat from a node with a radio, one missing key takes the whole
+   * fleet dark in cloud mode the moment an updated agent starts emitting it.
+   *
+   * This is the radio wire contract. The agent emits these snake_case; the
+   * /agent/status route camelCases every key generically before pushStatus
+   * sees it, so a new field needs no route change — only this list plus both
+   * validators. Extend the list in the same commit that teaches an agent to
+   * emit a new radio field.
+   */
+  const AGENT_RADIO_WIRE_KEYS = [
+    "acquireState",
+    "adapterChipset",
+    "adapterInjectionOk",
+    "adapterUsbDegraded",
+    "adapterUsbSpeedMbps",
+    "autoPairEnabled",
+    "bandwidthMhz",
+    "bitrateKbps",
+    "channel",
+    "channelLocked",
+    "driver",
+    "fecLost",
+    "fecRecovered",
+    "freqMhz",
+    "iface",
+    "lossPercent",
+    "mcsIndex",
+    "noiseDbm",
+    "packetsLost",
+    "paired",
+    "pairedAt",
+    "pairedWithDeviceId",
+    "phyMuted",
+    "publicKeyFingerprint",
+    "reacquireKills",
+    "restartCount",
+    "rfUnverified",
+    "rssiDbm",
+    "rxSilentSeconds",
+    "snrDb",
+    "state",
+    "topology",
+    "txBytesPerS",
+    "txPowerDbm",
+    "txPowerMaxDbm",
+    "txVideoRecvqBytes",
+    "txVideoStallKills",
+    "txVideoStalled",
+    "txZombieKills",
+    "validRxPacketsPerS",
+  ] as const;
+
+  it("the mutation validator declares every emitted key", async () => {
+    const declared = parseRadioBlockKeys(await readFile(MUTATION_PATH, "utf8"));
+    const missing = AGENT_RADIO_WIRE_KEYS.filter((k) => !declared.has(k));
+    expect(missing, "undeclared radio keys reject the whole heartbeat").toEqual(
+      [],
+    );
+  });
+
+  it("the schema table declares every emitted key", async () => {
+    const declared = parseRadioBlockKeys(await readFile(SCHEMA_PATH, "utf8"));
+    const missing = AGENT_RADIO_WIRE_KEYS.filter((k) => !declared.has(k));
+    expect(missing, "a key the mutation accepts but the table rejects still fails the write").toEqual(
+      [],
+    );
+  });
+
+  it("the mutation and schema radio blocks declare the same key set", async () => {
+    const [mutationText, schemaText] = await Promise.all([
+      readFile(MUTATION_PATH, "utf8"),
+      readFile(SCHEMA_PATH, "utf8"),
+    ]);
+    const inMutation = Array.from(parseRadioBlockKeys(mutationText)).sort();
+    const inSchema = Array.from(parseRadioBlockKeys(schemaText)).sort();
+    expect(inMutation).toEqual(inSchema);
+  });
+
+  // The radio block with all whitespace stripped, so a validator wrapped
+  // across lines matches the same as a one-liner.
+  const squashedRadioBlock = async (path: string) =>
+    radioBlockBody(await readFile(path, "utf8")).replace(/\s+/g, "");
+
+  it("keeps rfUnverified nullable so 'no verdict' stays distinct from false", async () => {
+    // null means the radio reported no verdict. Storing it as false would
+    // claim the transmit path had been proven, so the null must round-trip.
+    for (const path of [MUTATION_PATH, SCHEMA_PATH]) {
+      expect(
+        await squashedRadioBlock(path),
+        `${path} must accept a null rfUnverified`,
+      ).toContain("rfUnverified:v.optional(v.union(v.boolean(),v.null()))");
+    }
+  });
+
+  it("keeps the adapter USB link-health keys nullable on both", async () => {
+    // A ground-station node reports these too; they were declared late once
+    // already, after an emitting agent had started failing its heartbeats.
+    for (const path of [MUTATION_PATH, SCHEMA_PATH]) {
+      const block = await squashedRadioBlock(path);
+      expect(block, path).toContain(
+        "adapterUsbSpeedMbps:v.optional(v.union(v.number(),v.null()))",
+      );
+      expect(block, path).toContain(
+        "adapterUsbDegraded:v.optional(v.union(v.boolean(),v.null()))",
+      );
     }
   });
 });

@@ -329,6 +329,12 @@ export const pushStatus = internalMutation({
       // and older agents omit them.
       acquireState: v.optional(v.union(v.string(), v.null())),
       channelLocked: v.optional(v.union(v.boolean(), v.null())),
+      // The other half of the received-side proof: true when the transmit
+      // counter advances while no return signal has been confirmed. Null means
+      // "no verdict" and is NOT the same as false — a false would claim the
+      // transmit path had been proven, so the null must be storable. Optional +
+      // nullable: older agents omit it.
+      rfUnverified: v.optional(v.union(v.boolean(), v.null())),
       reacquireKills: v.optional(v.union(v.number(), v.null())),
       rxZombieKills: v.optional(v.union(v.number(), v.null())),
       validRxPacketsPerS: v.optional(v.union(v.number(), v.null())),
