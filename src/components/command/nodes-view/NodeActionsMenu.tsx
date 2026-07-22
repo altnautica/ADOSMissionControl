@@ -25,7 +25,7 @@ import { MoreHorizontal } from "lucide-react";
 import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
 import { skillDisplayLabel } from "@/lib/skills/skill-label";
 import { safeTranslate } from "@/hooks/use-skill-toast-bridge";
-import { forgetNode } from "@/lib/agent/forget-node";
+import { useForgetNode } from "@/hooks/use-forget-node";
 import { useUiStore } from "@/stores/ui-store";
 import { DropdownMenu } from "@/components/ui/dropdown-menu";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -54,6 +54,7 @@ export function NodeActionsMenu({
   const t = useTranslations();
   const tNodes = useTranslations("nodesView");
   const [confirmingUnpair, setConfirmingUnpair] = useState(false);
+  const forget = useForgetNode();
 
   const flightActions = BOARD_ACTION_SKILLS.map((id) =>
     skills.resolve(id),
@@ -130,10 +131,7 @@ export function NodeActionsMenu({
           variant="danger"
           onConfirm={() => {
             setConfirmingUnpair(false);
-            forgetNode(node._id, {
-              convexId: node.convexId ?? null,
-              unpairMutation: null,
-            });
+            forget(node._id, { convexId: node.convexId ?? null });
           }}
           onCancel={() => setConfirmingUnpair(false)}
         />

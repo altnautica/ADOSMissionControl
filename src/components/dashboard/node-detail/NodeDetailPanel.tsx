@@ -13,13 +13,10 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
-import { useMutation } from "convex/react";
-import { useConvexAvailable } from "@/app/ConvexClientProvider";
-import { cmdDronesApi } from "@/lib/community-api-drones";
 import { useFleetStore } from "@/stores/fleet-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useDroneMetadataStore } from "@/stores/drone-metadata-store";
-import { forgetNode, type UnpairDroneMutation } from "@/lib/agent/forget-node";
+import { useForgetNode } from "@/hooks/use-forget-node";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { useUiPrefsStore } from "@/stores/ui-prefs-store";
@@ -75,12 +72,10 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const { toast } = useToast();
 
-  // Convex unpair mutation, used by forgetNode to delete the cloud row so the
-  // reactive listMyDrones query stops re-feeding a removed cloud drone. A
-  // ConvexProvider is always mounted (local-only uses a non-resolving client),
-  // so useMutation never throws; we only INVOKE it when Convex is available.
-  const convexAvailable = useConvexAvailable();
-  const unpairDroneMutation = useMutation(cmdDronesApi.unpairDrone);
+  // The shared forget action, with the Convex cloud-row delete already wired
+  // so a removed cloud drone cannot re-feed from the reactive listMyDrones
+  // query.
+  const forget = useForgetNode();
 
   const drone = drones.find((d) => d.id === droneId);
   // This drone is backed by a companion-computer agent when the fleet row
@@ -243,16 +238,11 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
     // for the "removed drone instantly reconnects" bug: the old path poked the
     // cosmetic fleet-store (overwritten by the projection on the next tick) and
     // gated the durable removal on a LAN entry a cloud-only drone never has, so
-    // the Convex row survived and listMyDrones re-fed it. forgetNode deletes the
-    // Convex row + drops registry presence so the projection re-run finds
-    // nothing. `convexId` is the cloud doc id when this node is cloud-paired.
+    // the Convex row survived and listMyDrones re-fed it. The shared hook
+    // deletes the Convex row + drops registry presence so the projection re-run
+    // finds nothing. `convexId` is the cloud doc id when cloud-paired.
     const convexId = fleetNodes.find((n) => n._id === droneId)?.convexId ?? null;
-    forgetNode(droneId, {
-      convexId,
-      unpairMutation: convexAvailable
-        ? (unpairDroneMutation as UnpairDroneMutation)
-        : null,
-    });
+    forget(droneId, { convexId });
     setDeleteOpen(false);
     toast(`Drone "${displayName}" removed`, "warning");
     onClose();

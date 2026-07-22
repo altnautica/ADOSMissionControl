@@ -39,10 +39,11 @@ import { unpairLocal } from "@/lib/agent/local-pair-client";
 import { deviceIdFromNodeId } from "@/lib/agent/node-id";
 
 /**
- * The Convex `unpairDrone` mutation, threaded in by the calling component
- * (which holds the `useMutation` handle). Null when Convex is unavailable.
- * Typed loosely (`droneId: never`) to match the generated mutation reference
- * the same way `FleetSidebar`'s `UnpairDroneMutation` does.
+ * The Convex `unpairDrone` mutation, threaded in by `useForgetNode` (the one
+ * hook that holds the `useMutation` handle — components call the hook, never
+ * this module directly, so no surface can skip the cloud-row delete). Null
+ * when Convex is unavailable. Typed loosely (`droneId: never`) to match the
+ * generated mutation reference.
  */
 export type UnpairDroneMutation =
   | ((args: { droneId: never }) => Promise<unknown>)

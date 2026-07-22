@@ -8,7 +8,7 @@ import { Plus, Search, ChevronLeft, ChevronRight, LayoutGrid } from "lucide-reac
 import { cn } from "@/lib/utils";
 import { useFleetNodes, type FleetNodeEntry } from "@/hooks/use-fleet-nodes";
 import { useClockTick } from "@/lib/agent/freshness";
-import { forgetNode } from "@/lib/agent/forget-node";
+import { useForgetNode } from "@/hooks/use-forget-node";
 import { NodeRow } from "@/components/command/nodes/NodeRow";
 import { NodeRail } from "@/components/command/nodes/NodeRail";
 import { NodeContextMenu } from "@/components/command/nodes/NodeContextMenu";
@@ -38,6 +38,7 @@ export function DroneListPanel({ collapsed, onToggleCollapse }: DroneListPanelPr
   const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
   const selectDrone = useDroneManager((s) => s.selectDrone);
   const openDialog = useConnectDialogStore((s) => s.openDialog);
+  const forget = useForgetNode();
   // 1 Hz tick so freshness (live / stale / offline) transitions without needing
   // an unrelated store update to trigger a re-render.
   useClockTick();
@@ -91,10 +92,7 @@ export function DroneListPanel({ collapsed, onToggleCollapse }: DroneListPanelPr
         }}
         onForget={(n) => {
           setContextMenu(null);
-          forgetNode(n._id, {
-            convexId: n.convexId ?? null,
-            unpairMutation: null,
-          });
+          forget(n._id, { convexId: n.convexId ?? null });
         }}
       />
     ) : null;
