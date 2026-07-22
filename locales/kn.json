@@ -5815,6 +5815,33 @@
       "capHint": "Monthly data budget. The node warns, throttles, then blocks as usage approaches the cap. 0 disables the cap.",
       "capInvalid": "Enter a number of gigabytes (0 or more).",
       "configOnlyNote": "This node's agent does not expose live modem status on this profile — these settings write to the node's configuration."
+    },
+    "macPin": {
+      "title": "MAC pinning",
+      "blurb": "An adapter without a hardware MAC randomizes its address each boot, which churns the node's DHCP lease and IP. The agent pins a stable MAC so the address stops moving.",
+      "enabledLabel": "Automatic MAC pinning",
+      "enabledHint": "Pin a stable MAC on adapters that report no hardware address. The pin is written as a next-boot rule and never touches the live link.",
+      "applyLiveLabel": "Allow live re-tag",
+      "applyLiveHint": "Also allow re-tagging the live interface so the address changes without a reboot. This drops any connection riding that interface, and is always refused on the management interface.",
+      "adaptersTitle": "Tracked adapters",
+      "adapterFallbackName": "adapter",
+      "notReported": "This node has not reported adapter stability.",
+      "noneTracked": "The agent reports no adapters that need MAC pinning.",
+      "stateStable": "Stable (hardware MAC)",
+      "statePinned": "Pinned (next boot)",
+      "stateCandidate": "Candidate",
+      "stateDeferred": "Pin deferred",
+      "stateDisabled": "Pinning disabled",
+      "chipsetLabel": "Chipset",
+      "pinnedMacLabel": "Pinned MAC",
+      "currentMacLabel": "Current MAC",
+      "sourceLabel": "Detected by",
+      "sourceQuirk": "Known chipset",
+      "sourceLearned": "Learned across boots",
+      "sourceOverride": "Operator override",
+      "candidateHint": "This adapter looks like it randomizes its MAC. Confirm the pin on the node with",
+      "deferredReason": "Deferred: {reason}",
+      "dhcpHint": "Add a DHCP reservation for a pinned MAC to fix the node's IP as well."
     }
   },
   "cockpitQuickSettings": {

@@ -32,6 +32,7 @@ import { PerceptionOffloadSection } from "./PerceptionOffloadSection";
 import { NetworkUplinkSection } from "./NetworkUplinkSection";
 import { WifiClientSection } from "./WifiClientSection";
 import { CellularSection } from "./CellularSection";
+import { MacPinSection } from "./MacPinSection";
 import { Section } from "./Section";
 
 export function NodeSettingsTab({
@@ -147,6 +148,10 @@ export function NodeSettingsTab({
         readOnly={readOnly}
         setValue={setValue}
       />
+
+      {/* MAC pinning — adapter stability report + the pin-service switches.
+          Profile-agnostic (any node can carry a no-efuse adapter). */}
+      <MacPinSection config={config} readOnly={readOnly} setValue={setValue} />
 
       {/* Cloud posture — read-only in v1 (mode + backend URL are a
           transactional pair). */}
