@@ -62,8 +62,15 @@ export function profileTypeKey(
       : p; // "drone" | "workstation"
 }
 
-/** The type-tile border carries health (the "ring"); the glyph carries type. */
-const STATUS_BORDER: Record<StatusLevel, string> = {
+/**
+ * The type-tile border carries health (the "ring"); the glyph carries type.
+ * Exported as the ONE ring vocabulary: every surface that rings a node tile
+ * (sidebar row, collapsed rail, board identity cell) reads this map, so a
+ * changed token cannot leave one surface ringing an old colour for the same
+ * health state — `Record<StatusLevel, string>` only catches a missing member,
+ * never a diverged value.
+ */
+export const STATUS_BORDER: Record<StatusLevel, string> = {
   // Healthy/live reads NEUTRAL (colour is reserved for attention states) so a
   // fleet of live nodes isn't a wall of green rings; the tile-colour channel
   // (personalization wash + selected pill) is separate.

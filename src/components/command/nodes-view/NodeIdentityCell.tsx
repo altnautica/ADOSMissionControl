@@ -24,25 +24,15 @@ import { cn } from "@/lib/utils";
 import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
 import { NODE_ACCENT_VAR, swatchVar, tintStyle } from "@/lib/nodes/node-profile";
 import { useNodePersonalizationStore } from "@/stores/node-personalization-store";
-import type { StatusLevel } from "@/components/ui/status-dot";
 import { NodeGlyph } from "@/components/command/nodes/node-glyph";
 import { NodeBadgeSet } from "@/components/command/nodes/NodeBadgeSet";
 import {
+  STATUS_BORDER,
   effProfileForNode,
   nodeStatusLevel,
   nodeSubtitle,
   profileTypeKey,
 } from "@/components/command/nodes/NodeRow";
-
-/** The tile border carries health; the glyph carries type. Never conflated. */
-const STATUS_BORDER: Record<StatusLevel, string> = {
-  good: "border-border-default",
-  warning: "border-status-warning",
-  serious: "border-status-serious",
-  critical: "border-status-error",
-  idle: "border-accent-primary",
-  offline: "border-text-tertiary/40",
-};
 
 export function NodeIdentityCell({
   node,

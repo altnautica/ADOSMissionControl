@@ -18,21 +18,10 @@ import {
   tintStyle,
 } from "@/lib/nodes/node-profile";
 import { NodeGlyph } from "./node-glyph";
-import { StatusDot, type StatusLevel } from "@/components/ui/status-dot";
+import { StatusDot } from "@/components/ui/status-dot";
 import { useNodePersonalizationStore } from "@/stores/node-personalization-store";
 import { resolveFeatureDot } from "@/lib/nodes/node-feature-dots";
-import { effProfileForNode, nodeStatusLevel } from "./NodeRow";
-
-/** The tile border carries health (the ring); the glyph carries type. */
-const STATUS_BORDER: Record<StatusLevel, string> = {
-  // Healthy/live reads NEUTRAL — colour is reserved for attention states.
-  good: "border-border-default",
-  warning: "border-status-warning",
-  serious: "border-status-serious",
-  critical: "border-status-error",
-  idle: "border-accent-primary",
-  offline: "border-text-tertiary/40",
-};
+import { STATUS_BORDER, effProfileForNode, nodeStatusLevel } from "./NodeRow";
 
 /** The count-pill background token per severity. */
 const PILL_BG: Record<"warning" | "serious" | "critical", string> = {
