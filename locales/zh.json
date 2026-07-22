@@ -634,7 +634,8 @@
       "title": "最近警报",
       "noAlerts": "无警报"
     },
-    "newLogs": "有新的日志消息"
+    "newLogs": "有新的日志消息",
+    "viewNodes": "节点"
   },
   "emptyState": {
     "title": "未连接无人机",
@@ -6123,6 +6124,20 @@
       "cancel": "Cancel",
       "nameError": "Enter a name.",
       "urlError": "Enter an rtsp:// or http:// URL."
+    }
+  },
+  "nodesView": {
+    "title": "节点",
+    "subtitle": "One console for the whole fleet — every node, how it is reached, and the controls that change it.",
+    "tableCaption": "Fleet nodes with their reach, link and live state",
+    "columnNode": "Node",
+    "columnStatus": "Status",
+    "columnLastSeen": "Last seen",
+    "noMatches": "No nodes to show",
+    "liveness": {
+      "live": "Live",
+      "stale": "Stale",
+      "offline": "Offline"
     }
   }
 }

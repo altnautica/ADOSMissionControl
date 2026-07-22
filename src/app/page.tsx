@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
-import { LayoutGrid, LayoutDashboard } from "lucide-react";
+import { LayoutGrid, LayoutDashboard, Network } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useFleetStore } from "@/stores/fleet-store";
@@ -13,6 +13,7 @@ import { useFleetNodes } from "@/hooks/use-fleet-nodes";
 import { DroneListPanel } from "@/components/dashboard/DroneListPanel";
 import { DashboardOverview } from "@/components/dashboard/DashboardOverview";
 import { CommandFleetOverview } from "@/components/command/CommandFleetOverview";
+import { NodesView } from "@/components/command/nodes-view/NodesView";
 import { NodeDetailPanel } from "@/components/dashboard/node-detail/NodeDetailPanel";
 import { EmptyFleetState } from "@/components/dashboard/EmptyFleetState";
 
@@ -109,17 +110,32 @@ export default function DashboardPage() {
                 <LayoutDashboard size={13} />
                 {t("viewOverview")}
               </button>
+              <button
+                type="button"
+                onClick={() => setDashboardView("nodes")}
+                className={cn(
+                  "flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium transition-colors border-l border-border-default",
+                  dashboardView === "nodes"
+                    ? "bg-accent-primary text-white"
+                    : "bg-bg-secondary text-text-secondary hover:text-text-primary",
+                )}
+              >
+                <Network size={13} />
+                {t("viewNodes")}
+              </button>
             </div>
           </div>
 
-          {dashboardView === "grid" ? (
+          {dashboardView === "grid" && (
             <CommandFleetOverview
               fleetNodes={fleetNodes}
               onOpenAgent={handleOpenAgent}
               onOpenPairing={handleOpenPairing}
             />
-          ) : (
-            <DashboardOverview />
+          )}
+          {dashboardView === "overview" && <DashboardOverview />}
+          {dashboardView === "nodes" && (
+            <NodesView fleetNodes={fleetNodes} onOpenAgent={handleOpenAgent} />
           )}
         </div>
       )}

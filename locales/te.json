@@ -634,7 +634,8 @@
       "title": "ఇటీవలి హెచ్చరికలు",
       "noAlerts": "హెచ్చరికలు లేవు"
     },
-    "newLogs": "కొత్త లాగ్ సందేశాలు"
+    "newLogs": "కొత్త లాగ్ సందేశాలు",
+    "viewNodes": "నోడ్‌లు"
   },
   "emptyState": {
     "title": "డ్రోన్‌లు కనెక్ట్ కాలేదు",
@@ -6123,6 +6124,20 @@
       "cancel": "Cancel",
       "nameError": "Enter a name.",
       "urlError": "Enter an rtsp:// or http:// URL."
+    }
+  },
+  "nodesView": {
+    "title": "నోడ్‌లు",
+    "subtitle": "One console for the whole fleet — every node, how it is reached, and the controls that change it.",
+    "tableCaption": "Fleet nodes with their reach, link and live state",
+    "columnNode": "Node",
+    "columnStatus": "Status",
+    "columnLastSeen": "Last seen",
+    "noMatches": "No nodes to show",
+    "liveness": {
+      "live": "Live",
+      "stale": "Stale",
+      "offline": "Offline"
     }
   }
 }

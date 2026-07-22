@@ -8,9 +8,10 @@ interface UiStoreState {
   modalOpen: string | null;
   immersiveMode: boolean;
   /** Dashboard no-selection body: "grid" = node tiles with live video +
-   * telemetry, "overview" = fleet map + status cards. Ephemeral; defaults
-   * to grid each load. */
-  dashboardView: "grid" | "overview";
+   * telemetry, "overview" = fleet map + status cards, "nodes" = the
+   * fleet-operations board (one live row per node with inline controls).
+   * Ephemeral; defaults to grid each load. */
+  dashboardView: "grid" | "overview" | "nodes";
   /** Pending param search from Cmd+K — consumed by ParametersPanel to set initial filter. */
   pendingParamSearch: string | null;
   /** Pending detail tab switch from Cmd+K — consumed by DroneDetailPanel. */
@@ -28,7 +29,7 @@ interface UiStoreState {
   rightRailPanel: "mcp" | "logs" | null;
 
   setActiveView: (view: ViewId) => void;
-  setDashboardView: (view: "grid" | "overview") => void;
+  setDashboardView: (view: "grid" | "overview" | "nodes") => void;
   togglePanel: (panel: keyof PanelState) => void;
   setPanel: (panel: keyof PanelState, open: boolean) => void;
   toggleSidebar: () => void;

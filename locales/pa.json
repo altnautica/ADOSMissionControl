@@ -634,7 +634,8 @@
       "title": "ਹਾਲੀਆ ਚੇਤਾਵਨੀਆਂ",
       "noAlerts": "ਕੋਈ ਚੇਤਾਵਨੀ ਨਹੀਂ"
     },
-    "newLogs": "ਨਵੇਂ ਲੌਗ ਸੁਨੇਹੇ"
+    "newLogs": "ਨਵੇਂ ਲੌਗ ਸੁਨੇਹੇ",
+    "viewNodes": "ਨੋਡਸ"
   },
   "emptyState": {
     "title": "No Drones Connected",
@@ -6123,6 +6124,20 @@
       "cancel": "Cancel",
       "nameError": "Enter a name.",
       "urlError": "Enter an rtsp:// or http:// URL."
+    }
+  },
+  "nodesView": {
+    "title": "ਨੋਡਸ",
+    "subtitle": "One console for the whole fleet — every node, how it is reached, and the controls that change it.",
+    "tableCaption": "Fleet nodes with their reach, link and live state",
+    "columnNode": "Node",
+    "columnStatus": "Status",
+    "columnLastSeen": "Last seen",
+    "noMatches": "No nodes to show",
+    "liveness": {
+      "live": "Live",
+      "stale": "Stale",
+      "offline": "Offline"
     }
   }
 }

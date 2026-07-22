@@ -634,7 +634,8 @@
       "title": "최근 경고",
       "noAlerts": "경고 없음"
     },
-    "newLogs": "새 로그 메시지"
+    "newLogs": "새 로그 메시지",
+    "viewNodes": "노드"
   },
   "emptyState": {
     "title": "연결된 드론 없음",
@@ -6123,6 +6124,20 @@
       "cancel": "Cancel",
       "nameError": "Enter a name.",
       "urlError": "Enter an rtsp:// or http:// URL."
+    }
+  },
+  "nodesView": {
+    "title": "노드",
+    "subtitle": "One console for the whole fleet — every node, how it is reached, and the controls that change it.",
+    "tableCaption": "Fleet nodes with their reach, link and live state",
+    "columnNode": "Node",
+    "columnStatus": "Status",
+    "columnLastSeen": "Last seen",
+    "noMatches": "No nodes to show",
+    "liveness": {
+      "live": "Live",
+      "stale": "Stale",
+      "offline": "Offline"
     }
   }
 }
