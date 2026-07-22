@@ -1291,8 +1291,7 @@
       "bindState": {
         "binding": "binding…",
         "failed": "bind failed: {error}",
-        "connected": "connected",
-        "unverified": "transmitting, unverified"
+        "connected": "connected"
       },
       "firstPairWarning": {
         "title": "ਤੁਹਾਡੀਆਂ API ਕੁੰਜੀਆਂ ਇਸੇ ਬ੍ਰਾਊਜ਼ਰ ਵਿੱਚ ਸੰਭਾਲੀਆਂ ਗਈਆਂ ਹਨ",

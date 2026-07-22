@@ -1291,8 +1291,7 @@
       "bindState": {
         "binding": "binding…",
         "failed": "bind failed: {error}",
-        "connected": "connected",
-        "unverified": "transmitting, unverified"
+        "connected": "connected"
       },
       "firstPairWarning": {
         "title": "आपकी API कुंजियाँ इसी ब्राउज़र में संग्रहीत हैं",

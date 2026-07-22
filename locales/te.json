@@ -1291,8 +1291,7 @@
       "bindState": {
         "binding": "binding…",
         "failed": "bind failed: {error}",
-        "connected": "connected",
-        "unverified": "transmitting, unverified"
+        "connected": "connected"
       },
       "firstPairWarning": {
         "title": "మీ API కీలు ఈ బ్రౌజర్‌లోనే నిల్వ ఉన్నాయి",

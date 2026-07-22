@@ -1367,8 +1367,7 @@
       "bindState": {
         "binding": "binding…",
         "failed": "bind failed: {error}",
-        "connected": "connected",
-        "unverified": "transmitting, unverified"
+        "connected": "connected"
       },
       "firstPairWarning": {
         "title": "Your API keys live in this browser",

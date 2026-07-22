@@ -65,15 +65,6 @@ function BindStateBadge({
         {t("bindState.failed", { error: b.error })}
       </span>
     );
-  // A radio that is transmitting with no reception confirmed is not connected,
-  // and a pair record does not make it so — being paired says a key exchange
-  // happened, not that anything is getting through now.
-  if (probe.radio?.state === "rf_unverified")
-    return (
-      <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-status-warning/15 text-status-warning font-medium">
-        {t("bindState.unverified")}
-      </span>
-    );
   const connected =
     probe.radio?.state === "connected" || probe.radioPaired === true;
   if (connected)

@@ -1291,8 +1291,7 @@
       "bindState": {
         "binding": "binding…",
         "failed": "bind failed: {error}",
-        "connected": "connected",
-        "unverified": "transmitting, unverified"
+        "connected": "connected"
       },
       "firstPairWarning": {
         "title": "Sus claves de API se guardan en este navegador",
