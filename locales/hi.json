@@ -6131,13 +6131,56 @@
     "subtitle": "One console for the whole fleet — every node, how it is reached, and the controls that change it.",
     "tableCaption": "Fleet nodes with their reach, link and live state",
     "columnNode": "Node",
-    "columnStatus": "Status",
     "columnLastSeen": "Last seen",
     "noMatches": "No nodes to show",
     "liveness": {
       "live": "Live",
       "stale": "Stale",
       "offline": "Offline"
+    },
+    "columnReach": "Reach",
+    "columnLink": "Link",
+    "columnBattery": "Battery",
+    "columnMode": "Flight mode",
+    "columnRelay": "Relay mode",
+    "columnFeatures": "Features",
+    "noLiveReading": "No live reading — the node is not being heard from",
+    "armed": "Armed",
+    "disarmed": "Disarmed",
+    "reach": {
+      "lan": "Direct · LAN",
+      "cloud": "Cloud relay",
+      "direct-fc": "Direct FC",
+      "none": "Unreachable",
+      "acknowledged": "Commands travel over the LAN and return the vehicle's own acknowledgement",
+      "queuedOnly": "Commands are queued for delivery; the vehicle acknowledges later"
+    },
+    "blocked": {
+      "direct-fc": "A directly connected flight controller has no agent command lane. Open the node to fly it.",
+      "lan-blocked-by-https": "This page is served over HTTPS, which blocks a plain-HTTP request to a LAN agent",
+      "not-paired": "Not paired on this browser and not cloud-paired",
+      "no-cloud-queue": "Cloud-paired, but no command queue is available in this session"
+    },
+    "link": {
+      "noRadio": "This node reports no radio",
+      "noVerdict": "The node reports a link state but no diagnosis"
+    },
+    "battery": {
+      "noReading": "The node reports no battery",
+      "withVoltage": "{volts} V"
+    },
+    "mode": {
+      "noReading": "The node reports no flight mode"
+    },
+    "relay": {
+      "direct": "Direct",
+      "relay": "Relay",
+      "receiver": "Receiver",
+      "notApplicable": "Only a ground station holds a mesh role",
+      "noReading": "The node reports no mesh role"
+    },
+    "features": {
+      "none": "No opt-in features for this node profile"
     }
   }
 }

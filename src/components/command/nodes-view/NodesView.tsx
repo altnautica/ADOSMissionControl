@@ -23,12 +23,25 @@ import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
 import { useCommandAgentFleet } from "@/hooks/use-command-agent-fleet";
 import { joinNodeRows } from "@/lib/nodes/node-rows";
 import { NodeBoardRow } from "./NodeBoardRow";
+import { useNodeCommandLane } from "./use-node-command-lane";
 
 /** The board renders no feeds, so both video budgets are permanently empty. */
 const NO_VIDEO_IDS: Set<string> = new Set();
 
 const HEAD_CELL =
   "px-2 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-text-tertiary";
+
+/** Column order, as translation keys. Each maps to one cell in the row. */
+const COLUMNS = [
+  "columnNode",
+  "columnReach",
+  "columnLink",
+  "columnBattery",
+  "columnMode",
+  "columnRelay",
+  "columnFeatures",
+  "columnLastSeen",
+] as const;
 
 export interface NodesViewProps {
   fleetNodes: FleetNodeEntry[];
@@ -38,6 +51,7 @@ export interface NodesViewProps {
 
 export function NodesView({ fleetNodes, onOpenAgent }: NodesViewProps) {
   const t = useTranslations("nodesView");
+  const laneOptions = useNodeCommandLane();
 
   // The same projection the grid consumes. It carries its own 1 Hz tick, so
   // liveness and the age labels below re-derive every second.
@@ -55,19 +69,15 @@ export function NodesView({ fleetNodes, onOpenAgent }: NodesViewProps) {
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-border-default bg-bg-secondary">
-        <table className="w-full min-w-[560px] border-collapse text-xs">
+        <table className="w-full min-w-[1000px] border-collapse text-xs">
           <caption className="sr-only">{t("tableCaption")}</caption>
           <thead>
             <tr className="border-b border-border-default">
-              <th scope="col" className={HEAD_CELL}>
-                {t("columnNode")}
-              </th>
-              <th scope="col" className={HEAD_CELL}>
-                {t("columnStatus")}
-              </th>
-              <th scope="col" className={HEAD_CELL}>
-                {t("columnLastSeen")}
-              </th>
+              {COLUMNS.map((column) => (
+                <th key={column} scope="col" className={HEAD_CELL}>
+                  {t(column)}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
@@ -75,6 +85,7 @@ export function NodesView({ fleetNodes, onOpenAgent }: NodesViewProps) {
               <NodeBoardRow
                 key={row.node._id}
                 row={row}
+                laneOptions={laneOptions}
                 onOpen={(node) => onOpenAgent(node.deviceId)}
               />
             ))}
