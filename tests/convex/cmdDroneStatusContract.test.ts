@@ -102,20 +102,20 @@ function parseArgsBlock(source: string, exportName: string): Map<string, string>
 }
 
 /**
- * Slice out the body of the nested `radio: v.optional(v.object({ ... }))` block
- * from either the mutation or the schema source.
+ * Slice out the body of a nested `<name>: v.optional(v.object({ ... }))`
+ * block from either the mutation or the schema source.
  *
- * The radio block is a strict `v.object()`, so it rejects any key it does not
- * declare — and because it rides every heartbeat, one undeclared key takes the
- * whole node offline in cloud mode rather than dropping a single field. The
- * assertions below work on this slice (not the whole file) so a failure prints
- * the radio block, not the entire module.
+ * These nested blocks are strict `v.object()`s, so they reject any key they
+ * do not declare — and because they ride the heartbeat, one undeclared key
+ * takes the whole node offline in cloud mode rather than dropping a single
+ * field. The assertions below work on this slice (not the whole file) so a
+ * failure prints the block, not the entire module.
  */
-function radioBlockBody(source: string): string {
-  const anchor = source.indexOf("radio: v.optional(");
-  if (anchor < 0) throw new Error("radio block not found");
+function nestedBlockBody(source: string, name: string): string {
+  const anchor = source.indexOf(`${name}: v.optional(`);
+  if (anchor < 0) throw new Error(`${name} block not found`);
   const open = source.indexOf("{", source.indexOf("v.object(", anchor));
-  if (open < 0) throw new Error("radio object open brace not found");
+  if (open < 0) throw new Error(`${name} object open brace not found`);
 
   let depth = 0;
   for (let i = open; i < source.length; i += 1) {
@@ -126,7 +126,11 @@ function radioBlockBody(source: string): string {
       if (depth === 0) return source.slice(open + 1, i);
     }
   }
-  throw new Error("radio object close brace not found");
+  throw new Error(`${name} object close brace not found`);
+}
+
+function radioBlockBody(source: string): string {
+  return nestedBlockBody(source, "radio");
 }
 
 /**
@@ -172,14 +176,14 @@ function parseSchemaTableKeys(source: string): Set<string> {
   return keys;
 }
 
-/** The top-level field names the radio block declares. */
-function parseRadioBlockKeys(source: string): Set<string> {
+/** The top-level field names a nested heartbeat block declares. */
+function parseNestedBlockKeys(source: string, name: string): Set<string> {
   const keys = new Set<string>();
   let nesting = 0;
-  for (const line of radioBlockBody(source).split("\n")) {
+  for (const line of nestedBlockBody(source, name).split("\n")) {
     const slash = line.indexOf("//");
     const code = slash >= 0 ? line.slice(0, slash) : line;
-    // Only depth-0 lines name a field of the radio object itself; anything
+    // Only depth-0 lines name a field of the block object itself; anything
     // deeper belongs to a nested validator.
     if (nesting === 0) {
       const match = /^\s*([A-Za-z][A-Za-z0-9_]*)\s*:/.exec(code);
@@ -191,6 +195,10 @@ function parseRadioBlockKeys(source: string): Set<string> {
     }
   }
   return keys;
+}
+
+function parseRadioBlockKeys(source: string): Set<string> {
+  return parseNestedBlockKeys(source, "radio");
 }
 
 describe("pushStatus required args (audit baseline)", () => {
@@ -376,6 +384,7 @@ describe("pushStatus args / cmd_droneStatus schema parity", () => {
         "cpuCores",
         "cpuHistory",
         "cpuPercent",
+        "crsf",
         "deviceId",
         "diskPercent",
         "diskTotalGb",
@@ -644,6 +653,108 @@ describe("radio block declares every key an agent emits", () => {
       expect(block, path).toContain(
         "adapterUsbDegraded:v.optional(v.union(v.boolean(),v.null()))",
       );
+    }
+  });
+});
+
+describe("crsf block declares every key an agent emits", () => {
+  /**
+   * The control-lane sibling of the radio-block contract above, and part of
+   * the top-level heartbeat wire contract: `crsf` is a nested strict
+   * `v.object()` on the heartbeat, so one undeclared key rejects the ENTIRE
+   * heartbeat, not just the field. The block is PRE-DECLARED here before any
+   * agent emits it — declaring first is what makes the deploy non-breaking
+   * when an emitting agent arrives (the reverse order has taken fleets dark
+   * before).
+   *
+   * The agent's crsf-stats sidecar carries these fields snake_case
+   * (`rssi_dbm`, `lq_uplink`, …); the receiver's generic snake→camel remap
+   * delivers the camelCase keys pinned here. The block is conditionally
+   * emitted (absent while the control-lane service is not running or its
+   * sidecar is stale), so it is guarded by this dedicated contract rather
+   * than the always-emitted top-level list. Extend this list in the same
+   * commit that teaches an agent to emit a new crsf field.
+   */
+  const CRSF_FIELD_TYPES = {
+    v: "number",
+    state: "string",
+    rssiDbm: "number",
+    lqUplink: "number",
+    lqDownlink: "number",
+    snrDb: "number",
+    band: "string",
+    packetRateHz: "number",
+    txPowerDbm: "number",
+    txFramesPerS: "number",
+    rxFramesPerS: "number",
+    rfUnverified: "boolean",
+    mode: "string",
+    channelSource: "string",
+    relayRole: "string",
+  } as const;
+  const AGENT_CRSF_WIRE_KEYS = Object.keys(CRSF_FIELD_TYPES);
+
+  it("the mutation validator declares every emitted key", async () => {
+    const declared = parseNestedBlockKeys(
+      await readFile(MUTATION_PATH, "utf8"),
+      "crsf",
+    );
+    const missing = AGENT_CRSF_WIRE_KEYS.filter((k) => !declared.has(k));
+    expect(missing, "undeclared crsf keys reject the whole heartbeat").toEqual(
+      [],
+    );
+  });
+
+  it("the schema table declares every emitted key", async () => {
+    const declared = parseNestedBlockKeys(
+      await readFile(SCHEMA_PATH, "utf8"),
+      "crsf",
+    );
+    const missing = AGENT_CRSF_WIRE_KEYS.filter((k) => !declared.has(k));
+    expect(
+      missing,
+      "a key the mutation accepts but the table rejects still fails the write",
+    ).toEqual([]);
+  });
+
+  it("the mutation and schema crsf blocks declare the same key set", async () => {
+    const [mutationText, schemaText] = await Promise.all([
+      readFile(MUTATION_PATH, "utf8"),
+      readFile(SCHEMA_PATH, "utf8"),
+    ]);
+    const inMutation = Array.from(
+      parseNestedBlockKeys(mutationText, "crsf"),
+    ).sort();
+    const inSchema = Array.from(parseNestedBlockKeys(schemaText, "crsf")).sort();
+    expect(inMutation).toEqual(inSchema);
+    // And nothing beyond the pinned wire contract: an extra declared key is
+    // harmless to the validator but means this contract drifted from the
+    // sidecar spec without review.
+    expect(inMutation).toEqual([...AGENT_CRSF_WIRE_KEYS].sort());
+  });
+
+  it("keeps every crsf field optional AND nullable with its pinned type", async () => {
+    // Numbers/strings are null when unmeasured; a null rfUnverified means
+    // "no verdict" and is NOT the same as false — a false would claim the
+    // transmit path had been proven, so the null must round-trip. Every
+    // field also being v.optional keeps a sparser emitter non-breaking.
+    for (const path of [MUTATION_PATH, SCHEMA_PATH]) {
+      const block = nestedBlockBody(
+        await readFile(path, "utf8"),
+        "crsf",
+      ).replace(/\s+/g, "");
+      for (const [key, type] of Object.entries(CRSF_FIELD_TYPES)) {
+        expect(block, `${path} must declare ${key} optional+nullable`).toContain(
+          `${key}:v.optional(v.union(v.${type}(),v.null()))`,
+        );
+      }
+    }
+  });
+
+  it("declares the whole crsf block optional so a non-emitting agent round-trips", async () => {
+    for (const path of [MUTATION_PATH, SCHEMA_PATH]) {
+      const squashed = (await readFile(path, "utf8")).replace(/\s+/g, "");
+      expect(squashed, path).toContain("crsf:v.optional(v.object({");
     }
   });
 });

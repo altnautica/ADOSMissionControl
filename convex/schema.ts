@@ -1128,6 +1128,32 @@ fullName: v.optional(v.string()),
       publicKeyFingerprint: v.optional(v.union(v.string(), v.null())),
       autoPairEnabled: v.optional(v.union(v.boolean(), v.null())),
     })),
+    // CRSF/ExpressLRS control-lane telemetry, mirrored from the agent's
+    // crsf-stats sidecar. Pre-declared ahead of the emitting agent: the
+    // strict args validator rejects an undeclared key and fails the
+    // ENTIRE heartbeat the moment an agent starts sending the block.
+    // The whole block is optional — absent when the control-lane service
+    // is not running or its sidecar is stale — and every field inside is
+    // optional + nullable: numbers/strings are null when unmeasured, and
+    // a null rfUnverified means "no verdict" (never a fabricated false,
+    // which would claim the transmit path had been proven).
+    crsf: v.optional(v.object({
+      v: v.optional(v.union(v.number(), v.null())),
+      state: v.optional(v.union(v.string(), v.null())),
+      rssiDbm: v.optional(v.union(v.number(), v.null())),
+      lqUplink: v.optional(v.union(v.number(), v.null())),
+      lqDownlink: v.optional(v.union(v.number(), v.null())),
+      snrDb: v.optional(v.union(v.number(), v.null())),
+      band: v.optional(v.union(v.string(), v.null())),
+      packetRateHz: v.optional(v.union(v.number(), v.null())),
+      txPowerDbm: v.optional(v.union(v.number(), v.null())),
+      txFramesPerS: v.optional(v.union(v.number(), v.null())),
+      rxFramesPerS: v.optional(v.union(v.number(), v.null())),
+      rfUnverified: v.optional(v.union(v.boolean(), v.null())),
+      mode: v.optional(v.union(v.string(), v.null())),
+      channelSource: v.optional(v.union(v.string(), v.null())),
+      relayRole: v.optional(v.union(v.string(), v.null())),
+    })),
 // Local SPI LCD surface state. Reported by the agent's OLED/LCD
     // service when a panel is attached and the renderer is active.
     // All fields are optional so heartbeats from agents without a
