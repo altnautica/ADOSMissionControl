@@ -12,9 +12,12 @@
  *
  * The live posture is read back from the heartbeat (`regPosture` /
  * `pinnedRegion` / `regVerified`, falling back to `regDomain`) so the
- * operator sees the effective state confirm the round-trip. Writes go
- * directly to the agent over the LAN via PUT /api/config (local-first,
- * zero cloud round-trip); the control degrades to read-only in cloud mode.
+ * operator sees the effective state confirm the round-trip. Writes ride
+ * the shared config-access resolution: the direct agent client over the
+ * LAN when one is attached (local-first, zero cloud round-trip), else the
+ * server-side config proxy against the stored LAN pairing — so a cloud
+ * session stays writable. The control degrades to read-only only when no
+ * path reaches the node at all.
  * @license GPL-3.0-only
  */
 
@@ -24,6 +27,11 @@ import { useTranslations } from "next-intl";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useLocalNodesStore } from "@/stores/local-nodes-store";
+import { usePairingStore } from "@/stores/pairing-store";
+import {
+  resolveConfigAccess,
+  setConfigValueViaAccess,
+} from "@/lib/agent/config-access";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Select, type SelectOption } from "@/components/ui/select";
@@ -41,10 +49,11 @@ export function RegulatoryRegionPanel() {
   const radio = useAgentCapabilitiesStore((s) => s.radio);
   const radioStackState = useAgentCapabilitiesStore((s) => s.radioStackState);
   const client = useAgentConnectionStore((s) => s.client);
-  const cloudMode = useAgentConnectionStore((s) => s.cloudMode);
+  const nodeDeviceId = useAgentConnectionStore((s) => s.nodeDeviceId);
   const activeUrl = useAgentConnectionStore((s) => s.agentUrl);
   const setNodeRegion = useLocalNodesStore((s) => s.setNodeRegion);
   const nodes = useLocalNodesStore((s) => s.nodes);
+  const pairedDrones = usePairingStore((s) => s.pairedDrones);
   const t = useTranslations("operatingRegion");
   const { toast } = useToast();
 
@@ -75,9 +84,21 @@ export function RegulatoryRegionPanel() {
 
   // Resolve the per-node device id for the focused agent so the chosen
   // region is remembered across a re-pair / re-flash of that same node.
-  const activeNode = nodes.find((n) => n.hostname === activeUrl) ?? null;
+  // Device-id match first (works in cloud mode, where no direct agent URL
+  // is attached); hostname match covers pre-device-id connects.
+  const activeNode =
+    nodes.find((n) => nodeDeviceId !== null && n.deviceId === nodeDeviceId) ??
+    nodes.find((n) => n.hostname === activeUrl) ??
+    null;
 
-  const readOnly = cloudMode || !client;
+  // Shared writable-path resolution: direct client, else the server-side
+  // config proxy against the stored LAN pairing, read-only only when no
+  // path reaches the node at all.
+  const access = resolveConfigAccess(client, nodeDeviceId, {
+    localNodes: nodes,
+    pairedDrones,
+  });
+  const readOnly = access.mode === "none";
 
   const options: SelectOption[] = [
     {
@@ -120,20 +141,23 @@ export function RegulatoryRegionPanel() {
   };
 
   const onApply = async () => {
-    if (!client || saving) return;
+    if (readOnly || saving) return;
     if (resolvedMode === "region" && resolvedRegion === null) return;
     setSaving(true);
     try {
       // Mode first, then region. The agent coerces both at its config
-      // boundary; an empty region string clears any prior pin.
-      const modeRes = await client.setConfigValue(
+      // boundary; an empty region string clears any prior pin. The writes
+      // ride whichever transport resolved (direct client or config proxy).
+      const modeRes = await setConfigValueViaAccess(
+        access,
         "network.regulatory.mode",
         resolvedMode,
       );
       if (modeRes && typeof modeRes.error === "string") {
         throw new Error(modeRes.error);
       }
-      const regionRes = await client.setConfigValue(
+      const regionRes = await setConfigValueViaAccess(
+        access,
         "network.regulatory.region",
         resolvedRegion ?? "",
       );
@@ -238,7 +262,7 @@ export function RegulatoryRegionPanel() {
       </p>
       {readOnly ? (
         <p className="mt-1 text-[11px] text-text-tertiary">
-          {cloudMode ? t("readOnlyCloud") : t("readOnlyNoAgent")}
+          {t("readOnlyNoAgent")}
         </p>
       ) : null}
     </section>

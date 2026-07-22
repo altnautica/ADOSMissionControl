@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { RefreshCw, EyeOff, Eye, Radio, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
+import { hasClientPath } from "@/lib/agent/config-access";
 import type { LogEntry } from "@/lib/agent/types";
 import type { LoggingRow } from "@/lib/agent/agent-client/logging";
 
@@ -110,21 +111,24 @@ export function LogViewer({ logs, onRefresh }: LogViewerProps) {
   const levelFilterRef = useRef(levelFilter);
   levelFilterRef.current = levelFilter;
 
-  // Attach the live tail when a direct client is available (not cloud).
-  // On any error or when no tail source exists, drop back to the polled
-  // prop feed by leaving liveActive false and triggering a refresh.
+  // Attach the live tail when a direct client path exists. The log tail
+  // rides the direct client only (the config proxy does not forward it),
+  // so a detached client — cloud mode included — falls back to the polled
+  // prop feed. On any error or when no tail source exists, drop back by
+  // leaving liveActive false and triggering a refresh.
   useEffect(() => {
     setLiveActive(false);
     setLiveLogs([]);
     setOlderLogs([]);
     setOlderCursor(null);
     setHasOlder(false);
-    if (cloudMode || !client?.logging) return;
+    const logging = client?.logging;
+    if (!hasClientPath(logging)) return;
 
     let es: EventSource | null = null;
     let cancelled = false;
     try {
-      es = client.logging.tail({ replay: 100, level: levelFilterRef.current });
+      es = logging.tail({ replay: 100, level: levelFilterRef.current });
     } catch {
       // No EventSource / no host — fall back to polling.
       onRefresh(levelFilterRef.current);
@@ -165,7 +169,7 @@ export function LogViewer({ logs, onRefresh }: LogViewerProps) {
       stream.removeEventListener("error", onError);
       stream.close();
     };
-  }, [client, cloudMode, levelFilter, onRefresh]);
+  }, [client, levelFilter, onRefresh]);
 
   // Seed the "Load older" cursor from the first store/query page so the
   // operator can scroll back beyond the live window.

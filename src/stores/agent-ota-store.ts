@@ -4,16 +4,19 @@
  * @module agent-ota-store
  * @description Live agent OTA self-update state for the System tab's Software
  * Update card. Polls the locally-paired agent's `GET /api/ota` (phase + download
- * fraction) and drives check / install / restart. Local-first: in cloud mode (no
- * local client) the card stays hidden until a future relay path lands. The card
- * gates on `available` (set true once the agent answers `/api/ota`, false on a
- * fetch error), so no agent-side capability plumbing is required.
+ * fraction) and drives check / install / restart. Local-first: the OTA routes
+ * ride the direct client only (the config proxy does not forward them), so the
+ * card stays hidden whenever no client path exists — which includes cloud mode,
+ * where the client is detached. The card gates on `available` (set true once
+ * the agent answers `/api/ota`, false on a fetch error), so no agent-side
+ * capability plumbing is required.
  * @license GPL-3.0-only
  */
 
 import { create } from "zustand";
 
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
+import { hasClientPath } from "@/lib/agent/config-access";
 
 /** Agent UpdateState values that represent an in-flight update. */
 export const OTA_ACTIVE_STATES = [
@@ -65,10 +68,10 @@ export const useAgentOtaStore = create<AgentOtaState & AgentOtaActions>()(
     ...INITIAL,
 
     async refresh() {
-      const { client, cloudMode } = useAgentConnectionStore.getState();
-      // Local-first: no local client (cloud / disconnected) → leave `available`
+      const { client } = useAgentConnectionStore.getState();
+      // Local-first: no client path (cloud / disconnected) → leave `available`
       // as-is so a null state keeps the card hidden without flicker.
-      if (cloudMode || !client) return;
+      if (!hasClientPath(client)) return;
       try {
         const s = await client.getOtaStatus();
         set({
@@ -87,7 +90,7 @@ export const useAgentOtaStore = create<AgentOtaState & AgentOtaActions>()(
 
     async check() {
       const { client } = useAgentConnectionStore.getState();
-      if (!client) return;
+      if (!hasClientPath(client)) return;
       set({ busy: true, error: null });
       try {
         await client.checkOtaUpdate();
@@ -100,7 +103,7 @@ export const useAgentOtaStore = create<AgentOtaState & AgentOtaActions>()(
 
     async install() {
       const { client } = useAgentConnectionStore.getState();
-      if (!client) return;
+      if (!hasClientPath(client)) return;
       set({ busy: true, error: null });
       try {
         // Blocks until the agent finishes; the card's poll loop renders the

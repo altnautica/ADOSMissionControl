@@ -6,8 +6,10 @@
  * this node is (mount, purpose, primary stream), assign discovered devices, and
  * add network cameras. Reads the reconciled roster from the agent, groups it by
  * state (Assigned / Discovered / Plugin-managed / Offline), and persists edits
- * as a whole declared-leg-list write. Read-only in cloud mode (writes are
- * LAN-direct, local-first).
+ * as a whole declared-leg-list write. Roster reads/writes ride the direct LAN
+ * client only (the config proxy does not forward them), so the tab resolves
+ * read-only through the shared client-path check whenever no client is
+ * attached — which includes cloud mode, where the client is detached.
  * @license GPL-3.0-only
  */
 
@@ -20,6 +22,7 @@ import { useCameraManagerStore } from "@/stores/camera-manager-store";
 import { useToast } from "@/components/ui/toast";
 import type { CameraLegInput, RosterCamera } from "@/lib/agent/feature-types";
 import type { CameraPatch } from "@/lib/agent/camera-roster";
+import { hasClientPath } from "@/lib/agent/config-access";
 import {
   legsWithAdd,
   legsWithEdit,
@@ -65,7 +68,7 @@ export function CameraManagerTab({ droneId }: { droneId: string }) {
   const saving = state?.saving ?? false;
   const restartPending = state?.restartPending ?? false;
   const error = state?.error ?? null;
-  const readOnly = cloudMode || !client;
+  const readOnly = !hasClientPath(client);
 
   const [editing, setEditing] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
@@ -107,9 +110,9 @@ export function CameraManagerTab({ droneId }: { droneId: string }) {
 
   const persist = useCallback(
     async (legs: CameraLegInput[]) => {
-      // Writes are LAN-direct + local-first; never persist in cloud (read-only)
-      // mode even if a stray control slips through.
-      if (!client || cloudMode) return;
+      // Writes are LAN-direct + local-first; never persist without a client
+      // path even if a stray control slips through.
+      if (!hasClientPath(client)) return;
       setSaving(droneId, true);
       try {
         await client.setCameraRoster(legs);
@@ -131,7 +134,7 @@ export function CameraManagerTab({ droneId }: { droneId: string }) {
         setSaving(droneId, false);
       }
     },
-    [client, cloudMode, droneId, setSaving, setRestartPending, load, toast, t],
+    [client, droneId, setSaving, setRestartPending, load, toast, t],
   );
 
   const onToggle = useCallback(

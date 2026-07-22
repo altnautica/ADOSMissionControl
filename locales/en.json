@@ -1108,7 +1108,7 @@
     "subtitle": "Configure this node's onboard computer. Changes write straight to the agent over the LAN.",
     "loading": "Loading configuration…",
     "loadFailed": "Could not read the node configuration.",
-    "readOnlyNoAgent": "Connect to this node's agent over the LAN to edit its configuration. Configuration is read-only over the cloud relay.",
+    "readOnlyNoAgent": "No connection path to this node — configuration is read-only. Pair the node over the LAN (or connect to its agent) to edit its settings.",
     "notSet": "not set",
     "applied": "Saved",
     "applyFailed": "Could not save the change",
@@ -5143,8 +5143,7 @@
     "applyFailed": "Could not update the operating region.",
     "applyHintUnrestricted": "The radio transmits on the configured channel without a pinned region. The agent re-reads this on its next restart.",
     "applyHintRegion": "Pinning a region enables the strict regulatory gate and the region’s legal power limit. The agent re-reads this on its next restart.",
-    "readOnlyCloud": "Read-only over the cloud relay. Connect to this node over the LAN to change its operating region.",
-    "readOnlyNoAgent": "Connect to this node to change its operating region."
+    "readOnlyNoAgent": "No connection path to this node — connect or pair it to change its operating region."
   },
   "cockpit": {
     "noDrone": "No drone",
