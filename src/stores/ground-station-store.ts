@@ -16,7 +16,10 @@ import { createMeshSlice } from "./ground-station/mesh-store";
 import { createPeripheralsSlice } from "./ground-station/peripherals-store";
 import { INITIAL_STORE_SLICE } from "./ground-station/initial-state";
 
-export { errorMessage } from "./ground-station/error-handler";
+export {
+  errorMessage,
+  roleSwitchErrorMessage,
+} from "./ground-station/error-handler";
 export type * from "./ground-station/types";
 export {
   useLinkSlice,

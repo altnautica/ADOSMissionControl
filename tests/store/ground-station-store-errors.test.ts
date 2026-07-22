@@ -11,7 +11,10 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { errorMessage } from "@/stores/ground-station-store";
+import {
+  errorMessage,
+  roleSwitchErrorMessage,
+} from "@/stores/ground-station-store";
 import { GroundStationApiError } from "@/lib/api/ground-station-api";
 
 describe("errorMessage", () => {
@@ -79,5 +82,53 @@ describe("errorMessage", () => {
     const result = errorMessage(err);
     expect(result.message).toBe(JSON.stringify({ code: "X" }));
     expect(result.status).toBe(400);
+  });
+});
+
+/**
+ * The role-switch guidance table is shared by every surface that writes a mesh
+ * role, so the same agent refusal reads as the same operator instruction on
+ * the mesh panel and on the fleet board's relay cell.
+ */
+describe("roleSwitchErrorMessage", () => {
+  it("turns a 409 on relay into the invite-bundle instruction", () => {
+    const err = new GroundStationApiError(
+      409,
+      JSON.stringify({ detail: "no approved invite bundle" }),
+    );
+    expect(roleSwitchErrorMessage(err, "relay")).toMatch(
+      /approved invite bundle.*OLED/i,
+    );
+  });
+
+  it("keeps the decoded detail for a 409 on a non-relay role", () => {
+    const err = new GroundStationApiError(
+      409,
+      JSON.stringify({ detail: "role change already in progress" }),
+    );
+    expect(roleSwitchErrorMessage(err, "receiver")).toBe(
+      "role change already in progress",
+    );
+  });
+
+  it("turns a 403 into the mesh-capability instruction for any role", () => {
+    const err = new GroundStationApiError(
+      403,
+      JSON.stringify({ detail: "mesh not installed" }),
+    );
+    expect(roleSwitchErrorMessage(err, "receiver")).toMatch(
+      /mesh capability.*--with-mesh/i,
+    );
+  });
+
+  it("falls back to the decoded message for any other failure", () => {
+    const err = new GroundStationApiError(
+      503,
+      JSON.stringify({ detail: "sentinel not running" }),
+    );
+    expect(roleSwitchErrorMessage(err, "relay")).toBe("sentinel not running");
+    expect(roleSwitchErrorMessage(new Error("Network unreachable"), "direct")).toBe(
+      "Network unreachable",
+    );
   });
 });

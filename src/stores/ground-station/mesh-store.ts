@@ -9,7 +9,7 @@
  */
 
 import type { GroundStationSliceCreator } from "./state";
-import { errorMessage } from "./error-handler";
+import { errorMessage, roleSwitchErrorMessage } from "./error-handler";
 import { INITIAL_DISTRIBUTED_RX, INITIAL_MESH, INITIAL_ROLE } from "./initial-state";
 import { subscribeMeshWs } from "./mesh-ws";
 import {
@@ -89,13 +89,7 @@ export const createMeshSlice: GroundStationSliceCreator<MeshSlice> = (
       set({ role: { info, loading: false, switching: false, error: null } });
       return info;
     } catch (err) {
-      const { message, status } = errorMessage(err);
-      const friendly =
-        status === 409 && role === "relay"
-          ? "Relay role needs an approved invite bundle first. Pair with the receiver from the OLED, then retry."
-          : status === 403
-            ? "Mesh role requires mesh capability on this node. Rerun install.sh --with-mesh."
-            : message;
+      const friendly = roleSwitchErrorMessage(err, role);
       set({ role: { ...get().role, switching: false, error: friendly } });
       return null;
     }

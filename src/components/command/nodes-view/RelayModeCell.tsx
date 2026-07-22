@@ -32,6 +32,7 @@ import { cn } from "@/lib/utils";
 import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
 import { groundStationApiFromAgent } from "@/lib/api/ground-station-api";
 import type { GroundStationRole } from "@/lib/api/ground-station/types";
+import { roleSwitchErrorMessage } from "@/stores/ground-station-store";
 import { resolveLocalAgentForDrone } from "@/lib/agent/resolve-agent";
 import { useToast } from "@/components/ui/toast";
 import { DropdownMenu } from "@/components/ui/dropdown-menu";
@@ -94,10 +95,13 @@ export function RelayModeCell({
         settled ? "success" : "info",
       );
     } catch (error) {
+      // The same status → guidance table the mesh surface uses, so a 409 or
+      // 403 tells the operator what to fix here too instead of reading as a
+      // raw status line with a JSON body.
       toast(
         t("relay.failed", {
           name: node.name,
-          error: error instanceof Error ? error.message : String(error),
+          error: roleSwitchErrorMessage(error, role),
         }),
         "error",
       );
