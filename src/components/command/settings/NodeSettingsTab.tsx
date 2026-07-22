@@ -35,6 +35,7 @@ import { CellularSection } from "./CellularSection";
 import { MacPinSection } from "./MacPinSection";
 import { SelfHealSection } from "./SelfHealSection";
 import { MavlinkRoutingSection } from "./MavlinkRoutingSection";
+import { SecuritySection } from "./SecuritySection";
 import { Section } from "./Section";
 
 export function NodeSettingsTab({
@@ -167,6 +168,10 @@ export function NodeSettingsTab({
         readOnly={readOnly}
         setValue={setValue}
       />
+
+      {/* Security — key state (never a value), the exposed auth switches,
+          and the dashboard-PIN posture pointing at the Health tab's card. */}
+      <SecuritySection config={config} readOnly={readOnly} setValue={setValue} />
 
       {/* Cloud posture — read-only in v1 (mode + backend URL are a
           transactional pair). */}

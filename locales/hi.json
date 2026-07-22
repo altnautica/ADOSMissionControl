@@ -5925,6 +5925,27 @@
       "signingLastRxLabel": "Last signed frame",
       "signingNoneSeen": "None seen",
       "signingEnrollHint": "Key enrollment, export and clearing live in the flight controller's Setup, under Security, in the MAVLink Signing panel."
+    },
+    "security": {
+      "title": "Security",
+      "blurb": "The node's access posture: pairing key state, connection enforcement, and the dashboard PIN.",
+      "notReported": "Not reported",
+      "apiKeyLabel": "Pairing API key",
+      "apiKeySet": "Set",
+      "apiKeyNotSet": "Not set",
+      "apiKeyHint": "Issued when the node is paired; the value is never shown here. To issue a new key, unpair the node and pair it again — in-place rotation is not exposed by the agent.",
+      "wsEnforceLabel": "Enforce raw MAVLink WebSocket auth",
+      "wsEnforceHint": "When on, a paired node rejects off-box raw-MAVLink WebSocket connections that present no valid pairing key. On-box and unpaired connections stay open. When off, an unauthorized connection is logged but still admitted.",
+      "setupTokenLabel": "Require setup token",
+      "setupTokenHint": "When on, every setup mutation needs the token generated on the node at first boot. When off, any browser served the setup pages from the node's own port is trusted.",
+      "pinLabel": "Dashboard PIN",
+      "pinChecking": "Checking…",
+      "pinReadFailed": "Could not read",
+      "pinSet": "PIN set",
+      "pinNotSet": "No PIN set",
+      "pinLocked": "Locked (failed attempts)",
+      "pinHint": "Gates the node's own web dashboard when opened from another device. Set or reset it from this node's Health tab, on the Dashboard access card.",
+      "pinNoPath": "The PIN posture can only be read through a stored pairing record for this node. Manage the PIN on the node's own dashboard, or from the Health tab once the node is paired over the LAN."
     }
   },
   "cockpitQuickSettings": {
