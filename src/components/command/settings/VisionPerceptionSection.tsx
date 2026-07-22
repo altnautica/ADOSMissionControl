@@ -1,13 +1,19 @@
 "use client";
 
 /**
- * @module command/settings/PerceptionOffloadSection
- * @description Profile-gated perception-offload configuration for the node
- * Settings tab. A drone streams frames to a serving workstation when it has no
- * local accelerator; a workstation runs the detector for those drones. Both
- * halves bind to the agent's `perception.offload.*` / `perception.serving.*`
- * config keys over the LAN, so the same stored link the Vision-tab tier card
- * shows is edited here. Renders nothing for a ground-station node.
+ * @module command/settings/VisionPerceptionSection
+ * @description The node Settings "Vision & perception" page: one surface for
+ * WHAT this node detects (the engine-wide detector model, via the shared
+ * model picker) and WHERE perception executes (the offload / serving
+ * tri-states over the agent's `perception.offload.*` / `perception.serving.*`
+ * config keys). A drone gets the detector picker + the offload client; a
+ * workstation gets the serving controls (its served-detector select + live
+ * GPU facts). Renders nothing for a ground-station node.
+ *
+ * The detector picker needs the node's LAN vision client (model listing,
+ * download, and upload are not proxied); a cloud-only session says so
+ * instead of rendering a dead picker. The offload / serving fields bind to
+ * the shared config writer, so every change is read back from the agent.
  * @license GPL-3.0-only
  */
 
@@ -24,9 +30,9 @@ import { useComputeStore } from "@/stores/compute-store";
 import { useComputeLocalState } from "@/hooks/use-compute-local-state";
 import { resolveVisionClient } from "@/lib/vision/resolve-vision-client";
 import { nodeToOffloadAddr } from "@/lib/vision/offload-target";
+import { ModelPicker } from "@/components/vision/ModelPicker";
 import { ConfigSelectField } from "./ConfigFields";
-
-const CARD = "rounded border border-border-default bg-bg-secondary p-5";
+import { CARD } from "./Section";
 
 interface SectionProps {
   droneId: string;
@@ -62,13 +68,57 @@ function ReadRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+function InfoNote({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="rounded border border-border-default/60 bg-bg-tertiary/40 px-3 py-2 text-[11px] text-text-tertiary">
+      {children}
+    </div>
+  );
+}
+
+/** Drone detector subsection: the engine-wide model this node runs, through
+ * the shared model picker. The picker needs the LAN vision client (model
+ * listing / download / upload are not proxied); without one this states the
+ * requirement instead of rendering a dead picker. */
+function DroneDetector({ droneId }: { droneId: string }) {
+  const t = useTranslations("nodeSettings");
+  const agentUrl = useAgentConnectionStore((s) => s.agentUrl);
+  const apiKey = useAgentConnectionStore((s) => s.apiKey);
+  const client = useMemo(
+    () => resolveVisionClient(agentUrl, apiKey),
+    [agentUrl, apiKey],
+  );
+
+  return (
+    <div className="space-y-2">
+      <div className="text-xs text-text-secondary">
+        {t("perception.detectorTitle")}
+      </div>
+      <p className="text-[11px] text-text-tertiary">
+        {t("perception.detectorHint")}
+      </p>
+      {client ? (
+        <ModelPicker droneId={droneId} mode="compact" hideHeaderLabel />
+      ) : (
+        <InfoNote>{t("perception.detectorRequiresLan")}</InfoNote>
+      )}
+    </div>
+  );
+}
+
 /** Drone half: where this node offloads perception, and which workstation it
  * pins (empty = auto-discover any serving workstation on the LAN). */
-function DroneOffloadClient({ config, readOnly, setValue }: Omit<HalfProps, "droneId">) {
+function DroneOffloadClient({
+  config,
+  readOnly,
+  setValue,
+}: Omit<HalfProps, "droneId">) {
   const t = useTranslations("nodeSettings");
   const enableOptions = useEnableOptions();
   const nodes = useLocalNodesStore((s) => s.nodes);
-  const activeTarget = useAgentCapabilitiesStore((s) => s.perceptionOffloadTarget);
+  const activeTarget = useAgentCapabilitiesStore(
+    (s) => s.perceptionOffloadTarget,
+  );
 
   const workstations = useMemo(
     () => nodes.filter((n) => n.profile === "workstation"),
@@ -87,7 +137,7 @@ function DroneOffloadClient({ config, readOnly, setValue }: Omit<HalfProps, "dro
 
   return (
     <div className="space-y-4">
-      {/* Active offload target — honest heartbeat status (Rule 44). */}
+      {/* Active offload target — the agent's own heartbeat status. */}
       <div className="flex items-baseline justify-between gap-3">
         <div className="min-w-0">
           <div className="text-xs text-text-secondary">
@@ -226,7 +276,7 @@ function WorkstationServing({ droneId, config, readOnly, setValue }: HalfProps) 
         setValue={setValue}
       />
 
-      {/* GPU — read-only, real values only (Rule 44). */}
+      {/* GPU — read-only, real values only. */}
       {hasGpu ? (
         <div className="space-y-2 border-t border-border-default pt-3">
           <div className="flex items-center gap-1.5">
@@ -262,9 +312,10 @@ function WorkstationServing({ droneId, config, readOnly, setValue }: HalfProps) 
   );
 }
 
-/** The Settings-tab perception section. Drone → offload client controls;
- * workstation → serving controls + GPU facts; ground-station → nothing. */
-export function PerceptionOffloadSection({
+/** The Settings-tab "Vision & perception" page. Drone → detector model +
+ * offload client; workstation → serving controls + GPU facts; ground-station
+ * → nothing. */
+export function VisionPerceptionSection({
   droneId,
   profile,
   config,
@@ -284,15 +335,28 @@ export function PerceptionOffloadSection({
       </div>
       <p className="mb-4 text-xs text-text-secondary">
         {profile === "drone"
-          ? t("perception.offload.blurb")
+          ? t("perception.blurb")
           : t("perception.serving.blurb")}
       </p>
       {profile === "drone" ? (
-        <DroneOffloadClient
-          config={config}
-          readOnly={readOnly}
-          setValue={setValue}
-        />
+        <div className="space-y-4">
+          <DroneDetector droneId={droneId} />
+          <div className="space-y-4 border-t border-border-default pt-3">
+            <div>
+              <div className="text-xs text-text-secondary">
+                {t("perception.offloadTitle")}
+              </div>
+              <p className="mt-0.5 text-[11px] text-text-tertiary">
+                {t("perception.offload.blurb")}
+              </p>
+            </div>
+            <DroneOffloadClient
+              config={config}
+              readOnly={readOnly}
+              setValue={setValue}
+            />
+          </div>
+        </div>
       ) : (
         <WorkstationServing
           droneId={droneId}

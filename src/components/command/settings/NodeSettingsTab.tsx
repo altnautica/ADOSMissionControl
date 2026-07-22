@@ -28,7 +28,7 @@ import {
   ConfigTextField,
   ConfigReadonlyRow,
 } from "./ConfigFields";
-import { PerceptionOffloadSection } from "./PerceptionOffloadSection";
+import { VisionPerceptionSection } from "./VisionPerceptionSection";
 import { NetworkUplinkSection } from "./NetworkUplinkSection";
 import { WifiClientSection } from "./WifiClientSection";
 import { CellularSection } from "./CellularSection";
@@ -120,9 +120,10 @@ export function NodeSettingsTab({
       {/* Region — the existing writable operating-region control. */}
       <RegulatoryRegionPanel />
 
-      {/* Perception offload — drone offload client / workstation serving.
-          Renders nothing on a ground-station node. */}
-      <PerceptionOffloadSection
+      {/* Vision & perception — detector model + offload client (drone) /
+          serving controls (workstation). Renders nothing on a ground-station
+          node. */}
+      <VisionPerceptionSection
         droneId={droneId}
         profile={profile}
         config={config}

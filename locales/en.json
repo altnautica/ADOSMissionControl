@@ -1177,7 +1177,12 @@
       "boardOverridePlaceholder": "auto-detect"
     },
     "perception": {
-      "title": "Perception offload",
+      "title": "Vision & perception",
+      "blurb": "What this node detects and where perception runs — on its own accelerator, or offloaded to a serving workstation.",
+      "detectorTitle": "Detector model",
+      "detectorHint": "The engine-wide detector this node runs. Every vision consumer on the node shares it.",
+      "detectorRequiresLan": "Model management needs the node's LAN connection. Connect to the agent over the LAN to view or change the detector.",
+      "offloadTitle": "Offload",
       "enabledAuto": "Auto",
       "enabledOn": "On",
       "enabledOff": "Off",
