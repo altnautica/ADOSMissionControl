@@ -21,6 +21,7 @@ import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { useRadioNetworkHealthStore } from "@/stores/radio-network-health-store";
 import type { RadioEventSeverity } from "@/lib/agent/radio-network-events";
 import { linkDiagTone } from "@/components/hardware/radio/labels";
+import { resolveRfLink } from "./rf-link-reading";
 import { formatLogTime } from "../shared/LogViewer";
 
 const SEVERITY_DOT: Record<RadioEventSeverity, string> = {
@@ -68,10 +69,13 @@ function Indicator({
   label,
   value,
   tone,
+  title,
 }: {
   label: string;
   value: string;
   tone: "success" | "warning" | "error" | "muted";
+  /** Optional hover text naming what the reading is based on. */
+  title?: string;
 }) {
   const valueClass =
     tone === "muted"
@@ -82,7 +86,10 @@ function Indicator({
           ? "text-status-warning"
           : "text-status-error";
   return (
-    <div className="rounded border border-border-default/60 bg-bg-tertiary/40 px-3 py-2">
+    <div
+      className="rounded border border-border-default/60 bg-bg-tertiary/40 px-3 py-2"
+      title={title}
+    >
       <div className="text-[10px] uppercase tracking-wide text-text-tertiary">
         {label}
       </div>
@@ -195,15 +202,35 @@ export function RadioNetworkHealthPanel() {
       ? "warning"
       : "muted";
 
-  // RF-unverified: TX advancing but no received-side signal. Derive from
-  // the live heartbeat (txActive true, no acquire lock) and reinforce from
-  // the most recent rf_unverified event in the feed.
+  // RF link: transmitting with no reception proven. The radio's own verdict
+  // is authoritative when it reports one; the older inference (transmitting
+  // while the channel acquirer has not locked) runs only when it does not.
+  // The event feed stays the episode history that reinforces the inference.
   const txActive = radio?.txActive === true;
-  const liveUnverified = txActive && acquire !== "locked" && channelLocked !== true;
   const lastRfEvent = recentEvents.find((e) => e.kind === "radio.rf_unverified");
-  const eventUnverified =
-    lastRfEvent != null && lastRfEvent.severity === "error";
-  const rfUnverified = liveUnverified || eventUnverified;
+  const rfLink = resolveRfLink({
+    reported: radio?.rfUnverified,
+    txActive,
+    acquireState: acquire,
+    channelLocked,
+    eventUnverified:
+      lastRfEvent != null && lastRfEvent.severity === "error",
+  });
+  const rfUnverified = rfLink.unverified;
+  const rfInferred = rfLink.source === "inferred";
+  // Name the basis on the pill so an inference is never read as a measurement.
+  const rfLinkValue = rfUnverified
+    ? rfInferred
+      ? "Unverified (inferred)"
+      : "Unverified"
+    : txActive
+      ? rfInferred
+        ? "TX + reception (inferred)"
+        : "TX + reception"
+      : "Idle";
+  const rfLinkTitle = rfInferred
+    ? "This node reports no transmit-proof verdict. Inferred from the transmit flag, the channel lock, and recent link events."
+    : "The radio's own verdict: it pairs the transmit counter with a confirmed return signal.";
 
   // PHY muted: the adapter is at the muted txpower floor, injecting frames
   // yet radiating nothing. The agent advances tx_bytes so the link reads
@@ -324,8 +351,9 @@ export function RadioNetworkHealthPanel() {
         />
         <Indicator
           label="RF link"
-          value={rfUnverified ? "Unverified" : txActive ? "TX + reception" : "Idle"}
+          value={rfLinkValue}
           tone={rfUnverified ? "error" : txActive ? "success" : "muted"}
+          title={rfLinkTitle}
         />
         {linkDiag != null ? (
           <Indicator
