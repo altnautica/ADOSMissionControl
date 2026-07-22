@@ -46,6 +46,7 @@ import {
   type CommandAgentSummary,
 } from "@/hooks/use-command-agent-fleet";
 import { useAgentVideoSession } from "@/hooks/use-agent-video-session";
+import { useBatteryBand } from "@/lib/battery-bands";
 import { StatTile } from "@/components/command/shared/StatTile";
 import { StatusDot, type StatusLevel } from "@/components/ui/status-dot";
 import { Badge } from "@/components/ui/badge";
@@ -97,13 +98,6 @@ function tileEffProfile(agent: CommandAgentSummary): EffProfile {
 
 function livenessLevel(liveness: CommandAgentSummary["liveness"]): StatusLevel {
   return liveness === "live" ? "good" : liveness === "stale" ? "serious" : "offline";
-}
-
-function batteryLevel(value: number | null): StatusLevel | undefined {
-  if (value == null) return undefined;
-  if (value < 20) return "critical";
-  if (value < 40) return "warning";
-  return "good";
 }
 
 export function AgentFeedTile(props: AgentFeedTileProps) {
@@ -291,6 +285,9 @@ function ConsoleAgentFeedTile({
 
   const effProfile = tileEffProfile(agent);
   const hasVideoArea = effProfile === "drone" || effProfile === "ground-station";
+  // Battery severity from the operator's configured thresholds — the shared
+  // resolver, so this grid, the fleet board and the alert pipeline agree.
+  const batteryLevel = useBatteryBand(agent.telemetry.batteryRemaining);
 
   // The video session is always subscribed (hook order is stable); it stays
   // idle for the no-video profiles because `enabled` is false.
@@ -467,7 +464,7 @@ function ConsoleAgentFeedTile({
         <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
           {effProfile === "drone" && (
             <>
-              <StatTile icon={<Battery size={12} />} label={t("battery")} value={pct(agent.telemetry.batteryRemaining)} level={batteryLevel(agent.telemetry.batteryRemaining)} />
+              <StatTile icon={<Battery size={12} />} label={t("battery")} value={pct(agent.telemetry.batteryRemaining)} level={batteryLevel} />
               <StatTile icon={<Satellite size={12} />} label={t("gps")} value={agent.telemetry.gpsSatellites == null ? "--" : `${agent.telemetry.gpsSatellites}`} />
               <StatTile icon={<MapPin size={12} />} label={t("alt")} value={fixed(agent.telemetry.altitudeRel, 0, "m")} />
               <StatTile icon={<Gauge size={12} />} label={t("mode")} value={agent.telemetry.mode ?? "--"} />
@@ -488,7 +485,7 @@ function ConsoleAgentFeedTile({
               />
               <StatTile icon={<Gauge size={12} />} label={t("mode")} value={agent.telemetry.mode ?? "--"} />
               <StatTile icon={<Satellite size={12} />} label={t("gps")} value={agent.telemetry.gpsSatellites == null ? "--" : `${agent.telemetry.gpsSatellites}`} />
-              <StatTile icon={<Battery size={12} />} label={t("battery")} value={pct(agent.telemetry.batteryRemaining)} level={batteryLevel(agent.telemetry.batteryRemaining)} />
+              <StatTile icon={<Battery size={12} />} label={t("battery")} value={pct(agent.telemetry.batteryRemaining)} level={batteryLevel} />
               <StatTile
                 icon={<HeartPulse size={12} />}
                 label="Heartbeat" /* i18n: nodeConsole FC heartbeat-Hz tile (honest grey until on the heartbeat) */

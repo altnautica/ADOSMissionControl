@@ -18,15 +18,12 @@ import { BatteryLow, BatteryMedium, BatteryFull } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import type { CommandAgentSummary } from "@/hooks/use-command-agent-fleet";
+import { useBatteryBand } from "@/lib/battery-bands";
 import {
   UnknownValue,
   staleClass,
   type ReadingFreshness,
 } from "./cell-primitives";
-
-/** Remaining-charge bands. Colour is never the only channel — the icon changes too. */
-const CRITICAL_PERCENT = 15;
-const LOW_PERCENT = 30;
 
 export function BatteryCell({
   telemetry,
@@ -37,21 +34,31 @@ export function BatteryCell({
 }) {
   const t = useTranslations("nodesView");
   const remaining = telemetry.batteryRemaining;
+  // Severity comes from the operator's configured thresholds — the shared
+  // resolver every fleet surface reads, so the board, the grid and the alert
+  // pipeline agree on when a node's battery is a problem. Colour is never the
+  // only channel: the icon changes with the band too.
+  const band = useBatteryBand(remaining);
 
   if (freshness === "none") return <UnknownValue title={t("noLiveReading")} />;
-  if (remaining == null) return <UnknownValue title={t("battery.noReading")} />;
+  if (remaining == null || band === undefined) {
+    return <UnknownValue title={t("battery.noReading")} />;
+  }
 
-  const critical = remaining <= CRITICAL_PERCENT;
-  const low = !critical && remaining <= LOW_PERCENT;
-  const Icon = critical ? BatteryLow : low ? BatteryMedium : BatteryFull;
+  const Icon =
+    band === "critical"
+      ? BatteryLow
+      : band === "warning"
+        ? BatteryMedium
+        : BatteryFull;
 
   return (
     <span
       className={cn(
         "inline-flex items-center gap-1 font-mono text-[11px] tabular-nums",
-        critical
+        band === "critical"
           ? "text-status-error"
-          : low
+          : band === "warning"
             ? "text-status-warning"
             : "text-text-secondary",
         staleClass(freshness),
