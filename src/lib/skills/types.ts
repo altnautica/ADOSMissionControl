@@ -8,10 +8,10 @@
  * @license GPL-3.0-only
  */
 
-import type { DroneProtocol } from "@/lib/protocol/types";
 import type { ProtocolCapabilities } from "@/lib/protocol/types";
 import type { UnifiedFlightMode } from "@/lib/protocol/types";
 import type { FlightMode, ArmState } from "@/lib/types";
+import type { SkillProtocol } from "./skill-protocol";
 
 export type SkillCategory = "flight" | "behavior" | "camera" | "safety";
 export type SkillSource = "builtin" | "plugin";
@@ -53,7 +53,13 @@ export interface SkillState {
 
 export interface SkillContext {
   droneId: string;
-  protocol: DroneProtocol | null;
+  /**
+   * The command surface this context dispatches through. A live `DroneProtocol`
+   * satisfies it directly; a node the GCS holds no connection to supplies a
+   * command sink of the same nine methods. Null when the node has no reachable
+   * command path at all, which every built-in reports as disabled-no-link.
+   */
+  protocol: SkillProtocol | null;
   armState: ArmState;
   flightMode: FlightMode;
   /**
@@ -138,3 +144,5 @@ export interface Skill {
   /** Required iff toggle; must be protocol-optional. */
   deactivate?: (ctx: SkillContext) => Promise<void>;
 }
+
+export type { SkillProtocol } from "./skill-protocol";

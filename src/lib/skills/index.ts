@@ -42,6 +42,7 @@ export type {
   SkillCategory,
   SkillSource,
   ArmRequirement,
+  SkillProtocol,
 } from "./types";
 export { useSkillRegistry, setSkillNotifier } from "./registry";
 
