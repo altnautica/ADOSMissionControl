@@ -23,9 +23,11 @@
  * @license GPL-3.0-only
  */
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Share2, ChevronDown } from "lucide-react";
+
+import { cn } from "@/lib/utils";
 
 import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
 import { groundStationApiFromAgent } from "@/lib/api/ground-station-api";
@@ -58,6 +60,7 @@ export function RelayModeCell({
   const t = useTranslations("nodesView");
   const { toast } = useToast();
   const [switching, setSwitching] = useState(false);
+  const reasonId = useId();
 
   if (!hasRelayRole(node)) {
     return <UnknownValue title={t("relay.notApplicable")} />;
@@ -109,23 +112,43 @@ export function RelayModeCell({
       ? t(`relay.${node.role}`)
       : t("relay.unknown");
 
+  // Inert while blocked or mid-switch. `aria-disabled` rather than `disabled`
+  // keeps the control focusable, so a keyboard or screen-reader operator can
+  // reach it and hear WHY it cannot run — the reason rides a hidden span the
+  // button describes itself by (a `title` alone is mouse-hover-only). A truly
+  // disabled button is unfocusable and the reason unreachable.
+  const inert = !canSwitch || switching;
   const trigger = (
     <button
       type="button"
-      disabled={!canSwitch || switching}
+      aria-disabled={inert || undefined}
+      aria-describedby={inert && blockedReason ? reasonId : undefined}
       title={blockedReason}
       aria-label={t("relay.change", { name: node.name })}
-      className="flex items-center gap-1 rounded border border-transparent px-1 py-0.5 hover:border-border-default hover:bg-bg-tertiary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-transparent disabled:hover:bg-transparent"
+      className={cn(
+        "flex items-center gap-1 rounded border border-transparent px-1 py-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary",
+        inert
+          ? "cursor-not-allowed opacity-60"
+          : "hover:border-border-default hover:bg-bg-tertiary",
+      )}
     >
       <Chip className={NEUTRAL_CHIP}>
         <Share2 size={10} />
         {label}
       </Chip>
       {canSwitch && <ChevronDown size={11} className="text-text-tertiary" />}
+      {inert && blockedReason && (
+        <span hidden id={reasonId}>
+          {blockedReason}
+        </span>
+      )}
     </button>
   );
 
-  if (!canSwitch) return trigger;
+  // While inert the trigger stands alone: a change is either unreachable on
+  // this lane or already in flight, and opening a menu of dead options would
+  // contradict the reason the control just gave.
+  if (inert) return trigger;
 
   return (
     <DropdownMenu

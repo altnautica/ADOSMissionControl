@@ -229,10 +229,8 @@ describe("NodesView", () => {
 
     // Focus moves into the menu on open, so the announced role has a working
     // interaction behind it in every browser, not only ones that focus a
-    // clicked button.
-    const items = within(screen.getByRole("menu"))
-      .getAllByRole("menuitem")
-      .filter((el) => !el.hasAttribute("disabled"));
+    // clicked button. Disabled items rove too — they carry their reason.
+    const items = within(screen.getByRole("menu")).getAllByRole("menuitem");
     expect(document.activeElement).toBe(items[0]);
 
     await user.keyboard("{ArrowDown}");
@@ -261,8 +259,40 @@ describe("NodesView", () => {
     const item = within(screen.getByRole("menu")).getByRole("menuitem", {
       name: /return to home/i,
     });
-    expect(item).toHaveProperty("disabled", true);
-    expect(item.getAttribute("title")).toMatch(/not paired|cloud/i);
+    // aria-disabled, not disabled: the item stays focusable so keyboard and
+    // screen-reader operators can reach the reason, which is announced as the
+    // item's accessible description rather than living in a hover title only.
+    expect(item.getAttribute("aria-disabled")).toBe("true");
+    expect(item).toHaveAccessibleDescription(/not paired|cloud/i);
+  });
+
+  it("keeps a disabled action inert even though it is focusable", async () => {
+    const user = userEvent.setup();
+    renderBoard();
+
+    await user.click(
+      within(rowFor("Bravo")).getByRole("button", { name: /bravo actions/i }),
+    );
+
+    const item = within(screen.getByRole("menu")).getByRole("menuitem", {
+      name: /return to home/i,
+    });
+    item.focus();
+    await user.keyboard("{Enter}");
+
+    // Activation is blocked and the menu stays open — a blocked press is not a
+    // dismissal.
+    expect(screen.getByRole("menu")).toBeTruthy();
+  });
+
+  it("gives a blank cell its reason as accessible text", () => {
+    renderBoard();
+
+    // Bravo is live but reports no battery: the blank explains itself to a
+    // screen reader instead of reading as a bare dash.
+    expect(
+      within(rowFor("Bravo")).getByText(/reports no battery/i),
+    ).toBeTruthy();
   });
 
   it("disables an offline node's controls and names the offline cause", async () => {
@@ -280,8 +310,8 @@ describe("NodesView", () => {
     const menu = screen.getByRole("menu");
     for (const name of [/^arm$/i, /return to home/i, /land/i]) {
       const item = within(menu).getByRole("menuitem", { name });
-      expect(item).toHaveProperty("disabled", true);
-      expect(item.getAttribute("title")).toMatch(/offline/i);
+      expect(item.getAttribute("aria-disabled")).toBe("true");
+      expect(item).toHaveAccessibleDescription(/offline/i);
     }
   });
 

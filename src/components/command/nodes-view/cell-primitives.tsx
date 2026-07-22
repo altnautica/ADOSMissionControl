@@ -37,6 +37,12 @@ export function staleClass(freshness: ReadingFreshness): string {
 /**
  * The value a cell renders when it has nothing true to show. `title` names the
  * reason so the blank is explained rather than merely empty.
+ *
+ * The reason is the cell's accessible text: a screen reader hears it instead
+ * of a bare dash. It rides a visually-hidden span rather than `aria-label`
+ * because a plain span maps to the generic role, on which `aria-label` is
+ * prohibited and ignored by the major screen readers. The dash stays for
+ * sighted operators, with the reason still on hover.
  */
 export function UnknownValue({
   title,
@@ -46,12 +52,9 @@ export function UnknownValue({
   className?: string;
 }) {
   return (
-    <span
-      className={cn("text-text-tertiary", className)}
-      title={title}
-      aria-label={title}
-    >
-      —
+    <span className={cn("text-text-tertiary", className)} title={title}>
+      <span aria-hidden="true">—</span>
+      <span className="sr-only">{title}</span>
     </span>
   );
 }

@@ -5,6 +5,7 @@ import {
   isValidElement,
   useCallback,
   useEffect,
+  useId,
   useRef,
   useState,
   type HTMLAttributes,
@@ -40,6 +41,13 @@ interface DropdownMenuProps {
  * Escape or Tab closes and hands focus back to the trigger. Without that,
  * assistive tech switches to menu-interaction mode on open and every key it
  * promises the operator does nothing.
+ *
+ * A disabled item stays focusable (`aria-disabled`, activation blocked) and
+ * carries its reason as an accessible description: a `disabled` button is out
+ * of the tab order and a `title` is mouse-hover-only, so the operators who most
+ * need the reason would otherwise never reach it. The description lives in a
+ * `hidden` span the button references — hidden content is excluded from the
+ * item's name yet still read when directly referenced.
  */
 export function DropdownMenu({ trigger, items, onSelect, align = "left" }: DropdownMenuProps) {
   const [open, setOpen] = useState(false);
@@ -47,6 +55,7 @@ export function DropdownMenu({ trigger, items, onSelect, align = "left" }: Dropd
   const menuRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef(new Map<number, HTMLButtonElement>());
   const [focusIdx, setFocusIdx] = useState(-1);
+  const menuId = useId();
   // Set when the menu is opened, consumed once its DOM exists: focus then moves
   // to the first usable item, per the menu pattern.
   const pendingFocus = useRef(false);
@@ -57,9 +66,10 @@ export function DropdownMenu({ trigger, items, onSelect, align = "left" }: Dropd
 
   const openMenu = useCallback(() => {
     compute();
-    // The first usable item is chosen now, while the menu's DOM does not exist
-    // yet; the focus effect below moves real focus once it does.
-    const first = items.findIndex((item) => !item.divider && !item.disabled);
+    // The first item is chosen now, while the menu's DOM does not exist yet;
+    // the focus effect below moves real focus once it does. Disabled items are
+    // focus targets too, so their reason is announced rather than skipped.
+    const first = items.findIndex((item) => !item.divider);
     setFocusIdx(first);
     pendingFocus.current = true;
     setOpen(true);
@@ -78,9 +88,10 @@ export function DropdownMenu({ trigger, items, onSelect, align = "left" }: Dropd
     [restoreFocus],
   );
 
-  /** Indexes of the items focus can rove over, in menu order. */
+  /** Indexes of the items focus can rove over, in menu order. Disabled items
+   * are included: they are focusable so their reason reaches the operator. */
   const focusOrder = useCallback(
-    () => items.flatMap((item, i) => (item.divider || item.disabled ? [] : [i])),
+    () => items.flatMap((item, i) => (item.divider ? [] : [i])),
     [items],
   );
 
@@ -185,10 +196,16 @@ export function DropdownMenu({ trigger, items, onSelect, align = "left" }: Dropd
             onKeyDown={onMenuKeyDown}
             className="min-w-[160px] overflow-y-auto border border-border-default bg-bg-secondary py-1 shadow-lg"
           >
-            {items.map((item, index) =>
-              item.divider ? (
-                <div key={item.id} className="border-t border-border-default my-1" />
-              ) : (
+            {items.map((item, index) => {
+              if (item.divider) {
+                return (
+                  <div key={item.id} className="border-t border-border-default my-1" />
+                );
+              }
+              const reasonId = item.title
+                ? `${menuId}-${item.id}-reason`
+                : undefined;
+              return (
                 <button
                   key={item.id}
                   ref={(el) => {
@@ -198,11 +215,12 @@ export function DropdownMenu({ trigger, items, onSelect, align = "left" }: Dropd
                   role="menuitem"
                   tabIndex={index === focusIdx ? 0 : -1}
                   title={item.title}
-                  disabled={item.disabled}
+                  aria-disabled={item.disabled || undefined}
+                  aria-describedby={reasonId}
                   className={cn(
                     "w-full flex items-center gap-2 px-3 py-1.5 text-xs text-left transition-colors focus:outline-none",
                     item.disabled
-                      ? "text-text-tertiary opacity-50 cursor-not-allowed"
+                      ? "text-text-tertiary opacity-50 cursor-not-allowed focus:bg-bg-tertiary"
                       : item.danger
                         ? "text-status-error hover:bg-status-error/10 focus:bg-status-error/10 cursor-pointer"
                         : "text-text-primary hover:bg-bg-tertiary focus:bg-bg-tertiary cursor-pointer"
@@ -215,9 +233,14 @@ export function DropdownMenu({ trigger, items, onSelect, align = "left" }: Dropd
                 >
                   {item.icon}
                   {item.label}
+                  {reasonId && (
+                    <span hidden id={reasonId}>
+                      {item.title}
+                    </span>
+                  )}
                 </button>
-              )
-            )}
+              );
+            })}
           </div>,
           document.body,
         )}
