@@ -1346,6 +1346,27 @@
       "deferredReason": "Deferred: {reason}",
       "dhcpHint": "Add a DHCP reservation for a pinned MAC to fix the node's IP as well."
     },
+    "discovery": {
+      "title": "Discovery",
+      "blurb": "How this node announces itself on the LAN, and the reach names and URLs it advertises.",
+      "mdnsLabel": "Announce over mDNS",
+      "mdnsHint": "Publish this node on the LAN so it can be found by name. Takes effect when the agent restarts.",
+      "serviceTypeLabel": "Service type",
+      "advertisedTitle": "Advertised by the node",
+      "advertisedHint": "Names and URLs come verbatim from the node's own report — nothing here is constructed by the app.",
+      "requiresLan": "The advertised reach names can only be read over the node's LAN connection.",
+      "loading": "Reading the node's advertised names…",
+      "loadFailed": "Could not read the node's advertised names.",
+      "hostnameLabel": "Hostname",
+      "mdnsHostLabel": "mDNS name",
+      "apiPortLabel": "API port",
+      "localIpsLabel": "LAN addresses",
+      "urlsTitle": "Advertised URLs",
+      "urlsEmpty": "The node reports no reachable URLs.",
+      "primaryBadge": "primary",
+      "notReported": "not reported",
+      "refresh": "Refresh"
+    },
     "selfHeal": {
       "title": "Self-heal",
       "blurb": "Always-on protections that repair the node's own connectivity and camera without operator action.",

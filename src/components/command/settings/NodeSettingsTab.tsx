@@ -34,6 +34,7 @@ import { NetworkUplinkSection } from "./NetworkUplinkSection";
 import { WifiClientSection } from "./WifiClientSection";
 import { CellularSection } from "./CellularSection";
 import { MacPinSection } from "./MacPinSection";
+import { DiscoverySection } from "./DiscoverySection";
 import { SelfHealSection } from "./SelfHealSection";
 import { MavlinkRoutingSection } from "./MavlinkRoutingSection";
 import { SecuritySection } from "./SecuritySection";
@@ -161,6 +162,14 @@ export function NodeSettingsTab({
       {/* MAC pinning — adapter stability report + the pin-service switches.
           Profile-agnostic (any node can carry a no-efuse adapter). */}
       <MacPinSection config={config} readOnly={readOnly} setValue={setValue} />
+
+      {/* Discovery — the mDNS announcement switch plus the reach names +
+          URLs the node itself advertises (never constructed). */}
+      <DiscoverySection
+        config={config}
+        readOnly={readOnly}
+        setValue={setValue}
+      />
 
       {/* Self-heal — the exposed protection switches, the always-on guardian
           and reconciler as live status, and the recent-heal activity feed. */}
