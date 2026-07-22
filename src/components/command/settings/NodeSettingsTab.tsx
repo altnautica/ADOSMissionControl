@@ -27,6 +27,7 @@ import {
   ConfigTextField,
   ConfigReadonlyRow,
 } from "./ConfigFields";
+import { VideoSection } from "./VideoSection";
 import { VisionPerceptionSection } from "./VisionPerceptionSection";
 import { AtlasSection } from "./AtlasSection";
 import { SwarmSection } from "./SwarmSection";
@@ -111,6 +112,15 @@ export function NodeSettingsTab({
 
       {/* Region — the existing writable operating-region control. */}
       <RegulatoryRegionPanel />
+
+      {/* Video — the persisted camera-stream list + the WFB link tunables
+          the agent config exposes. Renders nothing on a workstation. */}
+      <VideoSection
+        profile={profile}
+        config={config}
+        readOnly={readOnly}
+        setValue={setValue}
+      />
 
       {/* Vision & perception — detector model + offload client (drone) /
           serving controls (workstation). Renders nothing on a ground-station
