@@ -129,6 +129,49 @@ function radioBlockBody(source: string): string {
   throw new Error("radio object close brace not found");
 }
 
+/**
+ * The top-level field names the `cmd_droneStatus` schema table declares.
+ * Depth-aware, mirroring `parseRadioBlockKeys`: only depth-0 lines inside the
+ * `defineTable({ ... })` object name a column of the table itself.
+ */
+function parseSchemaTableKeys(source: string): Set<string> {
+  const anchor = source.indexOf("cmd_droneStatus: defineTable(");
+  if (anchor < 0) throw new Error("cmd_droneStatus table not found");
+  const open = source.indexOf("{", anchor);
+  if (open < 0) throw new Error("cmd_droneStatus table open brace not found");
+
+  let depth = 0;
+  let close = -1;
+  for (let i = open; i < source.length; i += 1) {
+    const ch = source[i];
+    if (ch === "{") depth += 1;
+    else if (ch === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        close = i;
+        break;
+      }
+    }
+  }
+  if (close < 0) throw new Error("cmd_droneStatus table close brace not found");
+
+  const keys = new Set<string>();
+  let nesting = 0;
+  for (const line of source.slice(open + 1, close).split("\n")) {
+    const slash = line.indexOf("//");
+    const code = slash >= 0 ? line.slice(0, slash) : line;
+    if (nesting === 0) {
+      const match = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*:/.exec(code);
+      if (match) keys.add(match[1]);
+    }
+    for (const ch of code) {
+      if (ch === "{" || ch === "(" || ch === "[") nesting += 1;
+      else if (ch === "}" || ch === ")" || ch === "]") nesting -= 1;
+    }
+  }
+  return keys;
+}
+
 /** The top-level field names the radio block declares. */
 function parseRadioBlockKeys(source: string): Set<string> {
   const keys = new Set<string>();
@@ -345,10 +388,12 @@ describe("pushStatus args / cmd_droneStatus schema parity", () => {
         "fcFirmware",
         "fcLinkHint",
         "fcPort",
+        "fcReachable",
         "fcSource",
         "fcVariant",
         "forwardingTelemetry",
         "forwardingVideo",
+        "hasAccelerator",
         "heartbeatAgeS",
         "hwEncoderProbed",
         "installStatus",
@@ -382,6 +427,7 @@ describe("pushStatus args / cmd_droneStatus schema parity", () => {
         "mgmtLinkMode",
         "missionControlUrl",
         "mqttConnected",
+        "npuTops",
         "peerChannel",
         "peerDeviceId",
         "peerRole",
@@ -599,5 +645,145 @@ describe("radio block declares every key an agent emits", () => {
         "adapterUsbDegraded:v.optional(v.union(v.boolean(),v.null()))",
       );
     }
+  });
+});
+
+describe("top-level heartbeat wire contract", () => {
+  /**
+   * Top-level sibling of the radio-block contract above, closing the same
+   * failure class one level up. The pushStatus args validator is strict: an
+   * emitted top-level key it does not declare is not dropped — it rejects the
+   * ENTIRE heartbeat (the production /agent/status route spreads the body
+   * into the mutation). One undeclared always-emitted scalar therefore takes
+   * every cloud node dark, while local-first LAN operation keeps working and
+   * masks it — which is exactly how such a gap stays unnoticed.
+   *
+   * These are the top-level camelCase keys the agent ALWAYS emits: the native
+   * heartbeat payload struct's non-optional fields (everything without a
+   * skip-if-none marker) plus the keys the packaged heartbeat builder always
+   * writes. Conditionally-emitted keys (compute, LCD, video enrichment, ...)
+   * are covered by the args key snapshot instead. apiKey and agentVersion are
+   * stripped by the route before the mutation and are deliberately absent
+   * here. Extend this list in the same commit that teaches an agent to always
+   * emit a new top-level field.
+   */
+  const AGENT_TOPLEVEL_WIRE_KEYS = [
+    "apiUrl",
+    "boardArch",
+    "boardName",
+    "boardRamMb",
+    "boardSoc",
+    "boardTier",
+    "cloudPosture",
+    "cloudRelayUrl",
+    "cloudflareUrl",
+    "cpuCores",
+    "cpuHistory",
+    "cpuPercent",
+    "deviceId",
+    "diskPercent",
+    "diskTotalGb",
+    "diskUsedGb",
+    "fcBaud",
+    "fcConnected",
+    "fcFirmware",
+    "fcLinkHint",
+    "fcPort",
+    "fcReachable",
+    "fcSource",
+    "fcVariant",
+    "hasAccelerator",
+    "heartbeatAgeS",
+    "kernelRelease",
+    "lastIp",
+    "manualConnectionUrls",
+    "mavlinkAlive",
+    "mavlinkWsPort",
+    "mdnsHost",
+    "memoryAvailableMb",
+    "memoryCacheMb",
+    "memoryHistory",
+    "memoryPercent",
+    "memoryTotalMb",
+    "memoryUsedMb",
+    "missionControlUrl",
+    "npuTops",
+    "perceptionOffloadTarget",
+    "perceptionTier",
+    "processCpuPercent",
+    "processMemoryMb",
+    "radio",
+    "remoteAccess",
+    "services",
+    "setupUrl",
+    "swapPercent",
+    "swapTotalMb",
+    "swapUsedMb",
+    "temperature",
+    "transportOpen",
+    "uptimeSeconds",
+    "version",
+    "videoRestartAttempts",
+    "videoWhepPort",
+    "wfbAdapterInjectionOk",
+    "wfbModuleSource",
+  ] as const;
+
+  it("the mutation validator declares every always-emitted top-level key", async () => {
+    const args = parseArgsBlock(await readFile(MUTATION_PATH, "utf8"), "pushStatus");
+    const missing = AGENT_TOPLEVEL_WIRE_KEYS.filter((k) => !args.has(k));
+    expect(
+      missing,
+      "undeclared top-level heartbeat keys reject the whole heartbeat",
+    ).toEqual([]);
+  });
+
+  it("the schema table declares every always-emitted top-level key", async () => {
+    const declared = parseSchemaTableKeys(await readFile(SCHEMA_PATH, "utf8"));
+    const missing = AGENT_TOPLEVEL_WIRE_KEYS.filter((k) => !declared.has(k));
+    expect(
+      missing,
+      "a key the mutation accepts but the table rejects still fails the write",
+    ).toEqual([]);
+  });
+
+  it("the schema table parser sees a plausible key set (parser sanity)", async () => {
+    // Belt for the guard itself: if the anchor or the depth walk ever breaks,
+    // the two tests above could pass vacuously against an empty set. The table
+    // declares well over a hundred columns; a collapse below that is a parser
+    // bug, not a schema change.
+    const declared = parseSchemaTableKeys(await readFile(SCHEMA_PATH, "utf8"));
+    expect(declared.size).toBeGreaterThan(100);
+    expect(declared.has("deviceId")).toBe(true);
+    expect(declared.has("radio")).toBe(true);
+  });
+});
+
+describe("http.ts statusPayload picks the FC-identity + NPU capability fields", () => {
+  // The OSS-twin /agent/status route PICKS fields one by one; a field declared
+  // on the mutation but NOT picked here is silently dropped from every cloud
+  // heartbeat that flows through this deployment (the production route spreads
+  // the body instead, so only this twin needs the explicit pick).
+  const squash = (s: string) => s.replace(/\s+/g, "");
+
+  it.each(["fcVariant", "fcFirmware", "perceptionTier", "perceptionOffloadTarget"])(
+    "picks %s via stringField",
+    async (field) => {
+      const text = squash(await readFile(HTTP_PATH, "utf8"));
+      expect(text).toContain(`${field}:stringField(body,"${field}"`);
+    },
+  );
+
+  it.each(["fcReachable", "hasAccelerator"])(
+    "picks %s via booleanField",
+    async (field) => {
+      const text = squash(await readFile(HTTP_PATH, "utf8"));
+      expect(text).toContain(`${field}:booleanField(body,"${field}"`);
+    },
+  );
+
+  it("picks npuTops via numberField", async () => {
+    const text = squash(await readFile(HTTP_PATH, "utf8"));
+    expect(text).toContain(`npuTops:numberField(body,"npuTops"`);
   });
 });

@@ -744,6 +744,11 @@ fullName: v.optional(v.string()),
     // Canonical FC firmware family ("ardupilot" | "px4" | "betaflight" | "inav")
     // so a cloud-relay GCS can badge the family (incl. ArduPilot vs PX4). Optional.
     fcFirmware: v.optional(v.string()),
+    // fcReachable = honest connected-or-reachable verdict (true for a healthy
+    // MSP FC that never emits the HEARTBEAT the alive gate needs). Emitted as
+    // a plain boolean on every packaged-loop heartbeat, so a validator that
+    // omits it rejects the entire heartbeat. Optional for older agents.
+    fcReachable: v.optional(v.boolean()),
     // Absolute resource values
     memoryUsedMb: v.optional(v.number()),
     memoryTotalMb: v.optional(v.number()),
@@ -921,6 +926,13 @@ fullName: v.optional(v.string()),
     forwardingVideo: v.optional(v.boolean()),
     forwardingTelemetry: v.optional(v.boolean()),
     tsMs: v.optional(v.number()),
+    // NPU capability the board declares: npuTops (declared TOPS, 0 when none)
+    // + hasAccelerator. Siblings of perceptionTier from the same heartbeat
+    // surface; the agent emits both as plain scalars on EVERY heartbeat, so a
+    // validator that omits them rejects the entire heartbeat. Optional so an
+    // agent that predates the surface round-trips cleanly.
+    npuTops: v.optional(v.number()),
+    hasAccelerator: v.optional(v.boolean()),
     // Perception tier this node runs on (where detection / tracking runs):
     // "local" (own NPU) | "offload" (a paired compute node) | "hybrid" | "none".
     // "perceptionOffloadTarget" names the workstation the drone is offloading to

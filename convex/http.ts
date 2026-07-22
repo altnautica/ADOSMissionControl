@@ -657,6 +657,14 @@ http.route({
       heartbeatAgeS: numberField(body, "heartbeatAgeS"),
       fcSource: stringField(body, "fcSource"),
       fcLinkHint: stringField(body, "fcLinkHint"),
+      // FC firmware identity + the honest connected-or-reachable verdict (an
+      // MSP FC never emits the HEARTBEAT the alive gate needs, so fcConnected
+      // alone under-reports it). This route PICKS fields explicitly, so each
+      // must be listed here or pushStatus silently never receives it and the
+      // cloud path renders a healthy MSP board as "no FC".
+      fcVariant: stringField(body, "fcVariant"),
+      fcFirmware: stringField(body, "fcFirmware"),
+      fcReachable: booleanField(body, "fcReachable"),
       memoryUsedMb: numberField(body, "memoryUsedMb"),
       memoryTotalMb: numberField(body, "memoryTotalMb"),
       memoryAvailableMb: numberField(body, "memoryAvailableMb"),
@@ -709,6 +717,10 @@ http.route({
       // body), so both must be listed here or pushStatus never receives them and
       // the cloud surface can never agree with the LAN one on where perception
       // runs. Absent on an agent that predates the surface.
+      // NPU capability the board declares — siblings of perceptionTier from
+      // the same heartbeat surface, emitted as plain scalars on every tick.
+      npuTops: numberField(body, "npuTops"),
+      hasAccelerator: booleanField(body, "hasAccelerator"),
       perceptionTier: stringField(body, "perceptionTier"),
       perceptionOffloadTarget: stringField(body, "perceptionOffloadTarget"),
       // Compute-node cluster + job-queue telemetry from a compute-profile
