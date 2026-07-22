@@ -8,12 +8,7 @@
  * @license GPL-3.0-only
  */
 
-import {
-  Radio as RadioIcon,
-  AlertTriangle,
-  VideoOff,
-  ShieldAlert,
-} from "lucide-react";
+import { Radio as RadioIcon, AlertTriangle, VideoOff } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type {
   RadioLinkState,
@@ -31,6 +26,7 @@ import {
   type RadioStackState,
 } from "./labels";
 import { StatRow } from "./StatRow";
+import { AdapterHealthPills } from "./AdapterHealthPills";
 
 export interface LinkHealthCardProps {
   topology: RadioTopology;
@@ -156,7 +152,6 @@ export function LinkHealthCard({
   recommendedTierName,
 }: LinkHealthCardProps) {
   const t = useTranslations("hardware.radio");
-  const adapterInjectionFailed = adapterInjectionOk === false;
   // Link-mode pill: "Adaptive · <rung>" when the controller is armed, else
   // "Manual". Only shown when the agent reports the flag (older agents omit it).
   const linkModeLabel =
@@ -207,28 +202,12 @@ export function LinkHealthCard({
             {t("brownoutWarning")}
           </span>
         ) : null}
-        {adapterInjectionFailed ? (
-          <span className="inline-flex items-center gap-1.5 rounded border border-status-error/40 bg-status-error/10 px-2.5 py-1 text-xs text-status-error">
-            <ShieldAlert size={12} />
-            {t("adapterNoInjection")}
-          </span>
-        ) : adapterChipset ? (
-          <span className="inline-flex items-center gap-1.5 rounded border border-border-default bg-bg-tertiary px-2.5 py-1 text-xs text-text-tertiary">
-            <RadioIcon size={12} />
-            {t("adapterChipset", { chipset: adapterChipset })}
-          </span>
-        ) : null}
-        {adapterUsbDegraded ? (
-          <span
-            className="inline-flex items-center gap-1.5 rounded border border-status-error/40 bg-status-error/10 px-2.5 py-1 text-xs text-status-error"
-            title={t("adapterUsbDegradedHint")}
-          >
-            <ShieldAlert size={12} />
-            {adapterUsbSpeedMbps != null
-              ? t("adapterUsbDegradedSpeed", { speed: adapterUsbSpeedMbps })
-              : t("adapterUsbDegraded")}
-          </span>
-        ) : null}
+        <AdapterHealthPills
+          chipset={adapterChipset}
+          injectionOk={adapterInjectionOk}
+          usbDegraded={adapterUsbDegraded}
+          usbSpeedMbps={adapterUsbSpeedMbps}
+        />
         {txVideoStalled ? (
           <span className="inline-flex items-center gap-1.5 rounded border border-status-error/40 bg-status-error/10 px-2.5 py-1 text-xs text-status-error">
             <AlertTriangle size={12} />

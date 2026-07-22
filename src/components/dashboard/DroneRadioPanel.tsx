@@ -29,6 +29,7 @@ import {
   linkStateBadgeClass,
   topologyLabel,
 } from "@/components/hardware/radio/labels";
+import { AdapterHealthPills } from "@/components/hardware/radio/AdapterHealthPills";
 import type {
   RadioLinkState,
   RadioState,
@@ -140,13 +141,6 @@ export function DroneRadioPanel({ droneId }: DroneRadioPanelProps) {
     txPowerDbm != null &&
     txPowerDbm > BROWNOUT_TX_FLOOR_DBM;
 
-  // Selected WFB adapter surface. When the agent reports the adapter is
-  // not injection-capable (explicit false), the radio refuses to
-  // transmit, so the operator's "no video" has a concrete cause. Null /
-  // undefined (older agents) renders nothing.
-  const adapterChipset = radio.adapterChipset;
-  const adapterInjectionFailed = radio.adapterInjectionOk === false;
-
   // WFB link-diagnosis verdict + received-frame counters. Null when the
   // agent doesn't report them (older agents); the chip and the counter
   // rows only render when a real value arrives.
@@ -218,17 +212,12 @@ export function DroneRadioPanel({ droneId }: DroneRadioPanelProps) {
               {t("brownoutWarning")}
             </span>
           ) : null}
-          {adapterInjectionFailed ? (
-            <span className="inline-flex items-center gap-1.5 rounded border border-status-error/40 bg-status-error/10 px-2.5 py-1 text-xs text-status-error">
-              <ShieldAlert size={12} />
-              {t("adapterNoInjection")}
-            </span>
-          ) : adapterChipset ? (
-            <span className="inline-flex items-center gap-1.5 rounded border border-border-default bg-bg-tertiary px-2.5 py-1 text-xs text-text-tertiary">
-              <RadioIcon size={12} />
-              {t("adapterChipset", { chipset: adapterChipset })}
-            </span>
-          ) : null}
+          <AdapterHealthPills
+            chipset={radio.adapterChipset}
+            injectionOk={radio.adapterInjectionOk}
+            usbDegraded={radio.adapterUsbDegraded}
+            usbSpeedMbps={radio.adapterUsbSpeedMbps}
+          />
         </div>
 
         <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
