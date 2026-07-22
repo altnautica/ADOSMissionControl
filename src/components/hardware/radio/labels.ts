@@ -29,8 +29,45 @@ export function linkStateLabel(
     connecting: "linkState.connecting",
     connected: "linkState.connected",
     degraded: "linkState.degraded",
+    rf_unverified: "linkState.rf_unverified",
   };
-  return t(map[state]);
+  // The normalizer clamps an unknown state, but the cloud-relay radio block is
+  // read un-normalized, so an out-of-contract string can reach here at runtime.
+  // Render it verbatim rather than translating an undefined key.
+  const key = map[state];
+  return key ? t(key) : String(state);
+}
+
+// Semantic tone for the coarse link state, in the same vocabulary as the
+// link-diagnosis tone. A transmitting-but-unproven link is a warning: it is
+// not healthy, and it is not silent either — treating it as an error would
+// claim the radio is dead, treating it as success would claim it is working.
+export function linkStateTone(state: RadioLinkState): RadioDiagTone {
+  switch (state) {
+    case "connected":
+      return "success";
+    case "rf_unverified":
+    case "degraded":
+    case "connecting":
+    case "binding":
+    case "auto_pairing":
+      return "warning";
+    case "disconnected":
+      return "error";
+    case "absent":
+    case "unpaired":
+      return "muted";
+    // An out-of-contract state over the un-normalized cloud-relay path reads
+    // as neutral rather than falling through to undefined.
+    default:
+      return "muted";
+  }
+}
+
+// Badge chip classes (border / bg / text) for the coarse link state, keyed to
+// its tone so the state chip matches the diagnosis chip beside it.
+export function linkStateBadgeClass(state: RadioLinkState): string {
+  return toneBadgeClass(linkStateTone(state));
 }
 
 export function topologyLabel(
@@ -144,10 +181,10 @@ export function linkDiagTone(diag: RadioLinkDiag): RadioDiagTone {
   }
 }
 
-// Badge chip classes (border / bg / text) for the verdict, keyed to its
-// semantic tone so the LinkHealthCard and DroneRadioPanel chips match.
-export function linkDiagBadgeClass(diag: RadioLinkDiag): string {
-  switch (linkDiagTone(diag)) {
+// Badge chip classes (border / bg / text) for a semantic tone. Shared by the
+// link-state and link-diagnosis chips so the two read as one vocabulary.
+export function toneBadgeClass(tone: RadioDiagTone): string {
+  switch (tone) {
     case "success":
       return "border-status-success/40 bg-status-success/10 text-status-success";
     case "warning":
@@ -157,6 +194,12 @@ export function linkDiagBadgeClass(diag: RadioLinkDiag): string {
     case "muted":
       return "border-border-default bg-bg-tertiary text-text-tertiary";
   }
+}
+
+// Badge chip classes for the verdict, keyed to its semantic tone so the
+// LinkHealthCard and DroneRadioPanel chips match.
+export function linkDiagBadgeClass(diag: RadioLinkDiag): string {
+  return toneBadgeClass(linkDiagTone(diag));
 }
 
 // Friendly band label. The agent emits the U-NII band slug; render a

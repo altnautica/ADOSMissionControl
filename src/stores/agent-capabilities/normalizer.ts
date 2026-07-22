@@ -79,6 +79,7 @@ const RADIO_LINK_STATES: ReadonlySet<RadioLinkState> = new Set<RadioLinkState>([
   "connecting",
   "connected",
   "degraded",
+  "rf_unverified",
 ]);
 const RADIO_TOPOLOGIES: ReadonlySet<RadioTopology> = new Set<RadioTopology>([
   "host_vbus",

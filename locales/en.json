@@ -3569,7 +3569,8 @@
         "binding": "Pairing in progress",
         "connecting": "Connecting",
         "connected": "Connected",
-        "degraded": "Degraded"
+        "degraded": "Degraded",
+        "rf_unverified": "Transmitting, unverified"
       },
       "pairing": {
         "title": "Pairing",

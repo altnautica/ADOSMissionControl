@@ -8,6 +8,14 @@
  * @license GPL-3.0-only
  */
 
+// Coarse link state. "absent" is this app's own sentinel for a node that
+// reports no radio at all; the rest are the radio's own vocabulary.
+//
+// "rf_unverified" is the state for a link that is transmitting while no
+// reception has been confirmed. It is neither up nor down: frames are leaving
+// the driver, but nothing proves they reached anyone. Rendering it as
+// connected would claim a working link; rendering it as down would claim a
+// silent radio. It has to be read as itself.
 export type RadioLinkState =
   | "absent"
   | "disconnected"
@@ -16,7 +24,8 @@ export type RadioLinkState =
   | "binding"
   | "connecting"
   | "connected"
-  | "degraded";
+  | "degraded"
+  | "rf_unverified";
 
 export type RadioTopology = "host_vbus" | "powered_hub" | "external_5v";
 

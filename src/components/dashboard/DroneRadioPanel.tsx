@@ -22,7 +22,13 @@ import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { groundStationApiFromAgent } from "@/lib/api/ground-station-api";
 import { TxPowerSlider } from "@/components/hardware/TxPowerSlider";
 import { WifiPowersaveCard } from "@/components/hardware/network/WifiPowersaveCard";
-import { linkDiagLabel, linkDiagBadgeClass } from "@/components/hardware/radio/labels";
+import {
+  linkDiagLabel,
+  linkDiagBadgeClass,
+  linkStateLabel,
+  linkStateBadgeClass,
+  topologyLabel,
+} from "@/components/hardware/radio/labels";
 import type {
   RadioLinkState,
   RadioState,
@@ -68,32 +74,6 @@ function topologyClass(topology: RadioTopology): string {
     return "border-accent-primary/40 text-accent-primary";
   }
   return "border-border-default text-text-secondary";
-}
-
-function linkStateLabel(
-  t: ReturnType<typeof useTranslations>,
-  state: RadioLinkState,
-): string {
-  const map: Record<RadioLinkState, string> = {
-    absent: "linkState.absent",
-    disconnected: "linkState.disconnected",
-    unpaired: "linkState.unpaired",
-    auto_pairing: "linkState.auto_pairing",
-    binding: "linkState.binding",
-    connecting: "linkState.connecting",
-    connected: "linkState.connected",
-    degraded: "linkState.degraded",
-  };
-  return t(map[state]);
-}
-
-function topologyLabel(
-  t: ReturnType<typeof useTranslations>,
-  topology: RadioTopology,
-): string {
-  if (topology === "host_vbus") return t("topology.hostVbus");
-  if (topology === "powered_hub") return t("topology.poweredHub");
-  return t("topology.external5v");
 }
 
 export function DroneRadioPanel({ droneId }: DroneRadioPanelProps) {
@@ -204,7 +184,9 @@ export function DroneRadioPanel({ droneId }: DroneRadioPanelProps) {
             <RadioIcon size={12} />
             {topologyLabel(t, topology)}
           </span>
-          <span className="inline-flex items-center gap-1.5 rounded border border-border-default bg-bg-tertiary px-2.5 py-1 text-xs text-text-secondary">
+          <span
+            className={`inline-flex items-center gap-1.5 rounded border px-2.5 py-1 text-xs ${linkStateBadgeClass(linkState)}`}
+          >
             {linkStateLabel(t, linkState)}
           </span>
           <span className="inline-flex items-center gap-1.5 rounded border border-border-default bg-bg-tertiary px-2.5 py-1 text-xs text-text-tertiary">
