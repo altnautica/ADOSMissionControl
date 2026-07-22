@@ -37,8 +37,9 @@ import {
   firmwareTypeForNode,
   type SkillTargetNode,
 } from "@/lib/skills/node-context";
-import { armSkill, disarmSkill } from "@/lib/skills/builtins";
+import { armSkill, disarmSkill, modeSkills } from "@/lib/skills/builtins";
 import { useCommandFleetStore } from "@/stores/command-fleet-store";
+import { useDroneManager, type ManagedDrone } from "@/stores/drone-manager";
 import { useDroneStore } from "@/stores/drone-store";
 import { useChecklistStore } from "@/stores/checklist-store";
 import { useLocalNodesStore, type LocalNode } from "@/stores/local-nodes-store";
@@ -89,6 +90,7 @@ beforeEach(() => {
 afterEach(() => {
   useCommandFleetStore.getState().clear();
   useLocalNodesStore.setState({ nodes: [] });
+  useDroneManager.setState({ drones: new Map() });
   vi.restoreAllMocks();
 });
 
@@ -337,5 +339,59 @@ describe("available modes", () => {
     const ctx = buildSkillContextForNode(NODE, { originIsHttps: false });
 
     expect(ctx.availableModes).toContain("LOITER");
+  });
+
+  it("offers the cross-build ArduPilot set when no airframe is identified", () => {
+    // Agents report the firmware family but no airframe, so this is the shape
+    // every real ArduPilot node arrives in. The provable floor is the modes on
+    // every build; anything one build lacks stays unavailable.
+    const modes = availableModesForNode("ardupilot");
+
+    expect(modes).toContain("GUIDED");
+    expect(modes).toContain("AUTO");
+    // Rover has no STABILIZE and Sub has no LOITER, so neither is provable.
+    expect(modes).not.toContain("STABILIZE");
+    expect(modes).not.toContain("LOITER");
+  });
+
+  it("enables the provable presets on a frameless ArduPilot node", () => {
+    publishTelemetry(DEVICE_ID, { armed: false, mode: "GUIDED" });
+    const frameless: SkillTargetNode = {
+      _id: NODE._id,
+      deviceId: DEVICE_ID,
+      fcFirmware: "ardupilot",
+    };
+
+    const ctx = buildSkillContextForNode(frameless, { originIsHttps: false });
+
+    const stateOf = (id: string) =>
+      modeSkills.find((skill) => skill.id === id)!.getState(ctx);
+    expect(stateOf("mode.guided").kind).toBe("idle");
+    expect(stateOf("mode.auto").kind).toBe("idle");
+    // Not provable across builds: disabled with the mode reason, not offered.
+    expect(stateOf("mode.stabilize")).toEqual({
+      kind: "disabled",
+      reason: "skills.reason.modeUnavailable",
+    });
+  });
+
+  it("prefers the node's own live FC connection's mode table", () => {
+    publishTelemetry(DEVICE_ID, { armed: false, mode: "FBWA" });
+    // An agent-attached FC registers in the drone manager under the node's
+    // canonical id; its handler is the same source the cockpit reads.
+    const managed = {
+      protocol: {
+        isConnected: true,
+        getFirmwareHandler: () => ({
+          getAvailableModes: () => ["FBWA", "CRUISE"],
+        }),
+      },
+    } as unknown as ManagedDrone;
+    useDroneManager.setState({ drones: new Map([[NODE._id, managed]]) });
+
+    const ctx = buildSkillContextForNode(NODE, { originIsHttps: false });
+
+    // The live handler wins over the reported family + airframe (Copter).
+    expect(ctx.availableModes).toEqual(["FBWA", "CRUISE"]);
   });
 });

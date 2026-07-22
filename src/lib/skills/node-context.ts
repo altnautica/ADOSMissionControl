@@ -19,9 +19,13 @@
  *    cloud-paired node publishes over MQTT first, the heartbeat row's snapshot
  *    (the LAN poll) as fallback. Reading only one map would blind the gate to
  *    exactly the nodes the other lane serves.
- *  - `availableModes`  the mode table of the firmware the node's agent
- *    identified. Empty when the firmware is unidentified, which reports mode
- *    presets as unavailable rather than offering a mode the vehicle lacks.
+ *  - `availableModes`  the node's own live FC connection's mode table when the
+ *    GCS holds one (the same source the cockpit reads); otherwise the table of
+ *    the firmware build the node's agent identified; otherwise, for the
+ *    ArduPilot family with no identified airframe, the modes every ArduPilot
+ *    build shares — provably on the vehicle whatever it is. Empty only when
+ *    the firmware family itself is unidentified, which reports mode presets as
+ *    unavailable rather than offering a mode the vehicle lacks.
  *
  * Two fields have no honest per-node source, and both resolve toward LESS
  * capability, never more:
@@ -50,6 +54,7 @@ import { asFlightMode } from "@/lib/flight-mode";
 import { createFirmwareHandlerByType } from "@/lib/protocol/firmware/ardupilot";
 import { nodeLiveness, telemetryValue } from "@/lib/nodes/presence";
 import { useCommandFleetStore } from "@/stores/command-fleet-store";
+import { useDroneManager } from "@/stores/drone-manager";
 import { useSkillConfirmStore } from "@/stores/skill-confirm-store";
 import {
   resolveNodeCommandSink,
@@ -120,14 +125,55 @@ export function firmwareTypeForNode(
   return null;
 }
 
-/** The modes a node's firmware offers; empty when it is unidentified. */
+/** The four ArduPilot builds; the airframe decides which one a node runs. */
+const ARDUPILOT_BUILDS: readonly FirmwareType[] = [
+  "ardupilot-copter",
+  "ardupilot-plane",
+  "ardupilot-rover",
+  "ardupilot-sub",
+];
+
+let ardupilotCommonCache: UnifiedFlightMode[] | null = null;
+
+/**
+ * The modes present on EVERY ArduPilot build — provably on the vehicle
+ * whatever its airframe turns out to be. Agents report the firmware family
+ * but no airframe today, so requiring one would keep every ArduPilot node's
+ * mode presets permanently disabled; offering a single build's full table
+ * instead would enable modes another build lacks. Derived from the real mode
+ * tables so it can never drift from them.
+ */
+function ardupilotCommonModes(): UnifiedFlightMode[] {
+  if (!ardupilotCommonCache) {
+    const [first, ...rest] = ARDUPILOT_BUILDS.map((build) =>
+      createFirmwareHandlerByType(build).getAvailableModes(),
+    );
+    const restSets = rest.map((modes) => new Set(modes));
+    ardupilotCommonCache = first.filter((mode) =>
+      restSets.every((set) => set.has(mode)),
+    );
+  }
+  return ardupilotCommonCache;
+}
+
+/**
+ * The modes a node's reported firmware offers. The identified build's full
+ * table when family + airframe resolve one; the cross-build common set when
+ * only the ArduPilot family is known; empty when the family itself is
+ * unidentified.
+ */
 export function availableModesForNode(
   fcFirmware?: string,
   frameType?: string,
 ): UnifiedFlightMode[] {
   const firmwareType = firmwareTypeForNode(fcFirmware, frameType);
-  if (!firmwareType) return [];
-  return createFirmwareHandlerByType(firmwareType).getAvailableModes();
+  if (firmwareType) {
+    return createFirmwareHandlerByType(firmwareType).getAvailableModes();
+  }
+  if (fcFirmware?.trim().toLowerCase() === "ardupilot") {
+    return ardupilotCommonModes();
+  }
+  return [];
 }
 
 /**
@@ -159,12 +205,26 @@ export function buildSkillContextForNode(
 
   const sink = armed === null ? null : resolveNodeCommandSink(node, options);
 
+  // An agent-attached FC registers in the drone manager under this node's
+  // canonical id, and its firmware handler is the ground truth for the mode
+  // table — the same source the cockpit reads — so the board and the cockpit
+  // offer one node the same presets. The family + airframe the agent reported
+  // is the fallback for a node with no live FC connection in this browser.
+  const managed = useDroneManager.getState().drones.get(node._id);
+  const liveHandler =
+    managed && managed.protocol.isConnected
+      ? managed.protocol.getFirmwareHandler()
+      : null;
+  const availableModes =
+    liveHandler?.getAvailableModes() ??
+    availableModesForNode(node.fcFirmware, node.frameType);
+
   return {
     droneId: node._id,
     protocol: sink,
     armState,
     flightMode,
-    availableModes: availableModesForNode(node.fcFirmware, node.frameType),
+    availableModes,
     // No per-node mode history exists. Reporting the current mode as the
     // previous one asserts no transition, so nothing infers a paused mission
     // from a mode change that was never observed.
