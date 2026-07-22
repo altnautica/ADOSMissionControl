@@ -33,6 +33,7 @@ import { NetworkUplinkSection } from "./NetworkUplinkSection";
 import { WifiClientSection } from "./WifiClientSection";
 import { CellularSection } from "./CellularSection";
 import { MacPinSection } from "./MacPinSection";
+import { SelfHealSection } from "./SelfHealSection";
 import { Section } from "./Section";
 
 export function NodeSettingsTab({
@@ -152,6 +153,10 @@ export function NodeSettingsTab({
       {/* MAC pinning — adapter stability report + the pin-service switches.
           Profile-agnostic (any node can carry a no-efuse adapter). */}
       <MacPinSection config={config} readOnly={readOnly} setValue={setValue} />
+
+      {/* Self-heal — the exposed protection switches, the always-on guardian
+          and reconciler as live status, and the recent-heal activity feed. */}
+      <SelfHealSection config={config} readOnly={readOnly} setValue={setValue} />
 
       {/* Cloud posture — read-only in v1 (mode + backend URL are a
           transactional pair). */}
