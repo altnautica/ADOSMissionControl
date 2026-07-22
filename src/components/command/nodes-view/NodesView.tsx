@@ -7,7 +7,8 @@
  * The card grid answers "how is each node doing?" one node at a time. This
  * board answers the fleet-wide question instead: one dense live row per node,
  * ordered live → stale → offline, with the controls that change a node's state
- * in the row itself rather than three clicks into its detail panel.
+ * in the row itself rather than three clicks into its detail panel, and a
+ * selection that applies one change across many.
  *
  * Rows are the membership list joined to the same per-node telemetry projection
  * the grid consumes, so liveness, radio and battery are derived once and read
@@ -16,15 +17,25 @@
  * @license GPL-3.0-only
  */
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
 import { useCommandAgentFleet } from "@/hooks/use-command-agent-fleet";
-import { joinNodeRows } from "@/lib/nodes/node-rows";
+import { useSkillToastBridge } from "@/hooks/use-skill-toast-bridge";
+import { joinNodeRows, nodeMatchesQuery } from "@/lib/nodes/node-rows";
+import { describeNodeReach } from "@/lib/nodes/node-reach";
 import { NodeBoardRow } from "./NodeBoardRow";
 import { useNodeCommandLane } from "./use-node-command-lane";
-import { useSkillToastBridge } from "@/hooks/use-skill-toast-bridge";
+import { BulkActionBar } from "./BulkActionBar";
+import {
+  NodesHeader,
+  REACH_FILTERS,
+  matchesReachFilter,
+  type ReachFilter,
+} from "./NodesHeader";
+import { dispatchSkillForNodes } from "./use-node-skills";
+import { FleetActionConfirm } from "./FleetActionConfirm";
 
 /** The board renders no feeds, so both video budgets are permanently empty. */
 const NO_VIDEO_IDS: Set<string> = new Set();
@@ -49,14 +60,25 @@ export interface NodesViewProps {
   fleetNodes: FleetNodeEntry[];
   /** Opens a node's detail panel. Takes the agent device id, as the grid does. */
   onOpenAgent: (deviceId: string) => void;
+  /** Opens the shared add-a-node dialog. */
+  onOpenPairing: () => void;
 }
 
-export function NodesView({ fleetNodes, onOpenAgent }: NodesViewProps) {
+export function NodesView({
+  fleetNodes,
+  onOpenAgent,
+  onOpenPairing,
+}: NodesViewProps) {
   const t = useTranslations("nodesView");
   const laneOptions = useNodeCommandLane();
   // A rejected control has to say why. The dispatcher answers with raw keys, so
   // without this bridge every refusal on this board would be silent.
   useSkillToastBridge();
+
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<ReachFilter>("all");
+  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
+  const [confirmingReturnAll, setConfirmingReturnAll] = useState(false);
 
   // The same projection the grid consumes. It carries its own 1 Hz tick, so
   // liveness and the age labels below re-derive every second.
@@ -66,6 +88,77 @@ export function NodesView({ fleetNodes, onOpenAgent }: NodesViewProps) {
     [fleetNodes, summaries],
   );
 
+  // Reach drives both the filter chips and their counts, so a chip's number is
+  // the number of rows it will actually show.
+  const reachKinds = useMemo(
+    () =>
+      new Map(
+        rows.map((row) => [
+          row.node._id,
+          describeNodeReach(row.node, laneOptions).kind,
+        ]),
+      ),
+    [rows, laneOptions],
+  );
+
+  const searched = useMemo(
+    () => rows.filter((row) => nodeMatchesQuery(row.node, query)),
+    [rows, query],
+  );
+
+  const counts = useMemo(() => {
+    const out = Object.fromEntries(
+      REACH_FILTERS.map((id) => [id, 0]),
+    ) as Record<ReachFilter, number>;
+    for (const row of searched) {
+      out.all += 1;
+      const kind = reachKinds.get(row.node._id);
+      if (kind) out[kind] += 1;
+    }
+    return out;
+  }, [searched, reachKinds]);
+
+  const visible = useMemo(
+    () =>
+      searched.filter((row) => {
+        const kind = reachKinds.get(row.node._id);
+        return kind ? matchesReachFilter(filter, kind) : filter === "all";
+      }),
+    [searched, filter, reachKinds],
+  );
+
+  // Selection survives filtering, but only the rows on screen can be acted on —
+  // a bulk command must never reach a node the operator cannot currently see.
+  const selectedRows = useMemo(
+    () => visible.filter((row) => selected.has(row.node._id)),
+    [visible, selected],
+  );
+
+  const allVisibleSelected =
+    visible.length > 0 && selectedRows.length === visible.length;
+
+  function toggleRow(nodeId: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(nodeId)) next.delete(nodeId);
+      else next.add(nodeId);
+      return next;
+    });
+  }
+
+  function toggleAllVisible() {
+    setSelected((prev) => {
+      if (allVisibleSelected) {
+        const next = new Set(prev);
+        for (const row of visible) next.delete(row.node._id);
+        return next;
+      }
+      const next = new Set(prev);
+      for (const row of visible) next.add(row.node._id);
+      return next;
+    });
+  }
+
   return (
     <div className="flex-1 overflow-y-auto p-3 md:p-4">
       <div className="mb-3">
@@ -73,11 +166,37 @@ export function NodesView({ fleetNodes, onOpenAgent }: NodesViewProps) {
         <p className="text-xs text-text-tertiary">{t("subtitle")}</p>
       </div>
 
+      <NodesHeader
+        query={query}
+        onQueryChange={setQuery}
+        filter={filter}
+        onFilterChange={setFilter}
+        counts={counts}
+        onReturnAll={() => setConfirmingReturnAll(true)}
+        onAddNode={onOpenPairing}
+      />
+
+      <BulkActionBar
+        selectedRows={selectedRows}
+        laneOptions={laneOptions}
+        onClear={() => setSelected(new Set())}
+      />
+
       <div className="overflow-x-auto rounded-lg border border-border-default bg-bg-secondary">
-        <table className="w-full min-w-[1000px] border-collapse text-xs">
+        <table className="w-full min-w-[1040px] border-collapse text-xs">
           <caption className="sr-only">{t("tableCaption")}</caption>
           <thead>
             <tr className="border-b border-border-default">
+              <th scope="col" className={HEAD_CELL}>
+                <input
+                  type="checkbox"
+                  checked={allVisibleSelected}
+                  onChange={toggleAllVisible}
+                  disabled={visible.length === 0}
+                  aria-label={t("selectAll")}
+                  className="accent-[var(--alt-accent-primary)]"
+                />
+              </th>
               {COLUMNS.map((column) => (
                 <th key={column} scope="col" className={HEAD_CELL}>
                   {t(column)}
@@ -86,11 +205,13 @@ export function NodesView({ fleetNodes, onOpenAgent }: NodesViewProps) {
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
+            {visible.map((row) => (
               <NodeBoardRow
                 key={row.node._id}
                 row={row}
                 laneOptions={laneOptions}
+                selected={selected.has(row.node._id)}
+                onToggleSelected={() => toggleRow(row.node._id)}
                 onOpen={(node) => onOpenAgent(node.deviceId)}
               />
             ))}
@@ -98,10 +219,25 @@ export function NodesView({ fleetNodes, onOpenAgent }: NodesViewProps) {
         </table>
       </div>
 
-      {rows.length === 0 && (
+      {visible.length === 0 && (
         <p className="mt-10 text-center text-sm text-text-tertiary">
           {t("noMatches")}
         </p>
+      )}
+
+      {confirmingReturnAll && (
+        <FleetActionConfirm
+          rows={rows}
+          laneOptions={laneOptions}
+          onDone={() => setConfirmingReturnAll(false)}
+          onRun={(targets) =>
+            void dispatchSkillForNodes(
+              "rth",
+              targets.map((row) => row.node),
+              laneOptions,
+            )
+          }
+        />
       )}
     </div>
   );

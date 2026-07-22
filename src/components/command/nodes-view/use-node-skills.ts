@@ -129,6 +129,35 @@ export function resolveBoardSkillState(
 /** The command-lane method a board skill drives, or null when it is not one. */
 export { methodForSkill };
 
+/**
+ * Run one skill across several nodes after the operator has already confirmed
+ * the batch.
+ *
+ * The confirm seam holds ONE pending request and cancels any prior one, so
+ * looping the dispatcher over N nodes would have each node's dialog cancel the
+ * last — the operator would confirm once and N-1 commands would silently
+ * abort. Instead the caller takes a single confirmation for the whole batch,
+ * and each node's context reports that confirmation as already given. Every
+ * other gate the dispatcher runs — disabled state, arm requirement, charges,
+ * press debounce — still runs per node.
+ *
+ * Dispatch is concurrent because the remaining guards are all keyed per node,
+ * and because a fleet-wide recovery command should not queue behind another
+ * node's round trip.
+ */
+export async function dispatchSkillForNodes(
+  skillId: string,
+  nodes: readonly SkillTargetNode[],
+  options: NodeCommandSinkOptions,
+): Promise<void> {
+  await Promise.all(
+    nodes.map((node) => {
+      const ctx = buildSkillContextForNode(node, options);
+      return activate(skillId, { ...ctx, confirm: async () => true });
+    }),
+  );
+}
+
 export function useNodeSkills(
   node: SkillTargetNode,
   reach: NodeReachDescriptor,

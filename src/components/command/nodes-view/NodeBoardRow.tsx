@@ -16,6 +16,7 @@
 
 import { useTranslations } from "next-intl";
 
+import { cn } from "@/lib/utils";
 import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
 import { formatCommandAge } from "@/hooks/use-command-agent-fleet";
 import type { NodeRowModel } from "@/lib/nodes/node-rows";
@@ -46,10 +47,18 @@ export interface NodeBoardRowProps {
   row: NodeRowModel;
   /** Command-lane inputs, resolved once for the whole board. */
   laneOptions: NodeCommandSinkOptions;
+  selected: boolean;
+  onToggleSelected: () => void;
   onOpen: (node: FleetNodeEntry) => void;
 }
 
-export function NodeBoardRow({ row, laneOptions, onOpen }: NodeBoardRowProps) {
+export function NodeBoardRow({
+  row,
+  laneOptions,
+  selected,
+  onToggleSelected,
+  onOpen,
+}: NodeBoardRowProps) {
   const t = useTranslations("nodesView");
   const { node, summary } = row;
   const level = LIVENESS_LEVEL[summary.liveness] ?? "offline";
@@ -62,7 +71,21 @@ export function NodeBoardRow({ row, laneOptions, onOpen }: NodeBoardRowProps) {
   const skills = useNodeSkills(node, reach, laneOptions);
 
   return (
-    <tr className="border-b border-border-default/60 last:border-b-0 hover:bg-bg-tertiary/40">
+    <tr
+      className={cn(
+        "border-b border-border-default/60 last:border-b-0 hover:bg-bg-tertiary/40",
+        selected && "bg-accent-primary/5",
+      )}
+    >
+      <td className={CELL}>
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={onToggleSelected}
+          aria-label={t("selectNode", { name: node.name })}
+          className="accent-[var(--alt-accent-primary)]"
+        />
+      </td>
       <td className={CELL}>
         <NodeIdentityCell node={node} onOpen={onOpen} />
       </td>

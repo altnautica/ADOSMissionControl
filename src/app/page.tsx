@@ -135,7 +135,11 @@ export default function DashboardPage() {
           )}
           {dashboardView === "overview" && <DashboardOverview />}
           {dashboardView === "nodes" && (
-            <NodesView fleetNodes={fleetNodes} onOpenAgent={handleOpenAgent} />
+            <NodesView
+              fleetNodes={fleetNodes}
+              onOpenAgent={handleOpenAgent}
+              onOpenPairing={handleOpenPairing}
+            />
           )}
         </div>
       )}

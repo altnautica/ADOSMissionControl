@@ -28,6 +28,7 @@ vi.hoisted(() => {
 });
 
 import { describeNodeReach } from "@/lib/nodes/node-reach";
+import { matchesReachFilter } from "@/components/command/nodes-view/NodesHeader";
 import { joinNodeRows, nodeMatchesQuery } from "@/lib/nodes/node-rows";
 import type { CloudCommandEnqueuer } from "@/lib/nodes/command-sink";
 import { useLocalNodesStore, type LocalNode } from "@/stores/local-nodes-store";
@@ -199,5 +200,20 @@ describe("nodeMatchesQuery", () => {
 
   it("does not match an unrelated term", () => {
     expect(nodeMatchesQuery(entry, "bravo")).toBe(false);
+  });
+});
+
+describe("matchesReachFilter", () => {
+  it("passes every kind through the all filter", () => {
+    for (const kind of ["lan", "cloud", "direct-fc", "none"] as const) {
+      expect(matchesReachFilter("all", kind)).toBe(true);
+    }
+  });
+
+  it("passes only its own kind otherwise", () => {
+    expect(matchesReachFilter("lan", "lan")).toBe(true);
+    expect(matchesReachFilter("lan", "cloud")).toBe(false);
+    expect(matchesReachFilter("none", "none")).toBe(true);
+    expect(matchesReachFilter("none", "lan")).toBe(false);
   });
 });

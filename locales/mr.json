@@ -6207,6 +6207,35 @@
     "unpair": {
       "title": "Unpair node",
       "message": "Forget {name}? Its pairing is released and it disappears from the fleet until it is paired again."
+    },
+    "selectAll": "Select all visible nodes",
+    "selectNode": "Select {name}",
+    "searchLabel": "Search nodes",
+    "searchPlaceholder": "Search nodes",
+    "filter": {
+      "all": "All",
+      "lan": "LAN",
+      "cloud": "Cloud",
+      "direct-fc": "Direct FC",
+      "none": "Unreachable"
+    },
+    "bulk": {
+      "selected": "{count} selected",
+      "flightAction": "Flight action",
+      "option": "{action} · {ready} of {total} ready",
+      "noneReady": "No selected node can take this command",
+      "clear": "Clear selection",
+      "confirmTitle": "{action} on the selection",
+      "confirmMessage": "{action} will be sent to {count} node(s): {names}. Nodes that cannot take it now are not included."
+    },
+    "fleet": {
+      "actions": "Fleet actions",
+      "returnAll": "Return all to launch",
+      "addNode": "Add a node",
+      "dismiss": "Close",
+      "noneReady": "No node in the fleet can take a return-to-launch command right now.",
+      "confirmTitle": "{action} across the fleet",
+      "confirmMessage": "{action} will be sent to {ready} of {total} nodes — the rest cannot take it right now."
     }
   }
 }
