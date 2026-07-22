@@ -196,6 +196,24 @@ describe("NodesView", () => {
     ).toBeTruthy();
   });
 
+  it("renders menus outside the table's scroll container", async () => {
+    const user = userEvent.setup();
+    renderBoard();
+
+    await user.click(
+      within(rowFor("Alpha")).getByRole("button", {
+        name: /change alpha flight mode/i,
+      }),
+    );
+
+    // The table wrapper scrolls horizontally, which makes it a scroll container
+    // on both axes — a popup rendered inside it is clipped at the table edge.
+    // The menu must portal out so a bottom row's menu stays fully reachable.
+    const menu = screen.getByRole("menu");
+    expect(menu.closest(".overflow-x-auto")).toBeNull();
+    expect(menu.parentElement).toBe(document.body);
+  });
+
   it("disables an unreachable node's actions and names the cause", async () => {
     const user = userEvent.setup();
     renderBoard();

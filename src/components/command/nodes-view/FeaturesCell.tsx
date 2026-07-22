@@ -20,6 +20,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useTranslations } from "next-intl";
 import { ChevronDown } from "lucide-react";
 
@@ -27,10 +28,14 @@ import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
 import { featuresForProfile } from "@/components/features/registry";
 import { useNodeFeaturesStore } from "@/stores/node-features-store";
 import { nodeIdForDevice } from "@/lib/agent/node-id";
+import { useAnchoredPosition } from "@/components/ui/use-anchored-position";
 import { Chip, NEUTRAL_CHIP, UnknownValue } from "./cell-primitives";
 
 const ON_CHIP =
   "border-accent-primary/40 bg-accent-primary/10 text-accent-primary";
+
+/** Matches the popover's `w-64`, so the viewport clamp knows its footprint. */
+const POPOVER_WIDTH = 256;
 
 export function FeaturesCell({ node }: { node: FleetNodeEntry }) {
   const t = useTranslations("nodesView");
@@ -40,11 +45,22 @@ export function FeaturesCell({ node }: { node: FleetNodeEntry }) {
   const enabled = useNodeFeaturesStore((s) => s.enabled[node.deviceId]);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const popRef = useRef<HTMLDivElement>(null);
+  // Portaled with a fixed viewport slot so the board's scrollable table wrapper
+  // cannot clip the toggles — the same machinery the Select popup uses.
+  const { style, compute } = useAnchoredPosition(ref, open, {
+    estimatedWidth: POPOVER_WIDTH,
+    maxHeight: 360,
+  });
 
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (ref.current?.contains(target) || popRef.current?.contains(target)) {
+        return;
+      }
+      setOpen(false);
     };
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
@@ -72,7 +88,14 @@ export function FeaturesCell({ node }: { node: FleetNodeEntry }) {
         type="button"
         aria-expanded={open}
         aria-label={t("features.change", { name: node.name })}
-        onClick={() => setOpen((prev) => !prev)}
+        onClick={() => {
+          if (open) {
+            setOpen(false);
+            return;
+          }
+          compute();
+          setOpen(true);
+        }}
         className="flex items-center gap-1 rounded border border-transparent px-1 py-0.5 hover:border-border-default hover:bg-bg-tertiary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary"
       >
         {features.map((feature) => (
@@ -88,26 +111,33 @@ export function FeaturesCell({ node }: { node: FleetNodeEntry }) {
         <ChevronDown size={11} className="text-text-tertiary" />
       </button>
 
-      {open && (
-        <div className="absolute left-0 top-full z-[2000] mt-1 w-64 rounded border border-border-default bg-bg-secondary p-3 shadow-lg">
-          <p className="mb-2 text-[10px] uppercase tracking-wide text-text-tertiary">
-            {t("features.heading")}
-          </p>
-          <div className="space-y-3">
-            {features.map((feature) => (
-              <div key={feature.id}>
-                <p className="text-xs font-medium text-text-primary">
-                  {feature.label}
-                </p>
-                <p className="mb-1.5 text-[10px] leading-snug text-text-tertiary">
-                  {feature.description}
-                </p>
-                <feature.Row droneId={nodeId} />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {open &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            ref={popRef}
+            style={style}
+            className="w-64 overflow-y-auto rounded border border-border-default bg-bg-secondary p-3 shadow-lg"
+          >
+            <p className="mb-2 text-[10px] uppercase tracking-wide text-text-tertiary">
+              {t("features.heading")}
+            </p>
+            <div className="space-y-3">
+              {features.map((feature) => (
+                <div key={feature.id}>
+                  <p className="text-xs font-medium text-text-primary">
+                    {feature.label}
+                  </p>
+                  <p className="mb-1.5 text-[10px] leading-snug text-text-tertiary">
+                    {feature.description}
+                  </p>
+                  <feature.Row droneId={nodeId} />
+                </div>
+              ))}
+            </div>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
