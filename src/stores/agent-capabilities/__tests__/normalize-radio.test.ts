@@ -201,6 +201,65 @@ describe("normalizeRadio adapter injection status", () => {
   });
 });
 
+describe("normalizeRadio link diagnosis", () => {
+  it("parses each valid link-diagnosis verdict", () => {
+    for (const diag of [
+      "deaf",
+      "mis_keyed",
+      "jammed",
+      "healthy",
+      "searching",
+    ] as const) {
+      const radio = normalizeRadio({ state: "connected", linkDiag: diag });
+      expect(radio!.linkDiag).toBe(diag);
+    }
+  });
+
+  it("parses the received-frame counters from a camelCase block", () => {
+    const radio = normalizeRadio({
+      state: "connected",
+      linkDiag: "mis_keyed",
+      packetsAll: 1200,
+      decryptErrors: 340,
+    });
+    expect(radio!.linkDiag).toBe("mis_keyed");
+    expect(radio!.packetsAll).toBe(1200);
+    expect(radio!.decryptErrors).toBe(340);
+  });
+
+  it("rejects an unknown link-diagnosis verdict to null", () => {
+    const radio = normalizeRadio({ state: "connected", linkDiag: "warp" });
+    expect(radio!.linkDiag).toBeNull();
+  });
+
+  it("defaults the diagnosis fields to null when absent (older agents)", () => {
+    const radio = normalizeRadio({ state: "connected" });
+    expect(radio!.linkDiag).toBeNull();
+    expect(radio!.packetsAll).toBeNull();
+    expect(radio!.decryptErrors).toBeNull();
+  });
+
+  it("keeps a zero decrypt-error count as a real zero, not null", () => {
+    const radio = normalizeRadio({
+      state: "connected",
+      packetsAll: 500,
+      decryptErrors: 0,
+    });
+    expect(radio!.packetsAll).toBe(500);
+    expect(radio!.decryptErrors).toBe(0);
+  });
+
+  it("coerces non-finite counters to null", () => {
+    const radio = normalizeRadio({
+      state: "connected",
+      packetsAll: "nope",
+      decryptErrors: Infinity,
+    });
+    expect(radio!.packetsAll).toBeNull();
+    expect(radio!.decryptErrors).toBeNull();
+  });
+});
+
 describe("normalizeRadio PHY-muted flag", () => {
   it("parses an explicit muted PHY", () => {
     const radio = normalizeRadio({ state: "connected", phyMuted: true });

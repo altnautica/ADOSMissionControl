@@ -158,6 +158,13 @@ export function RadioPanel() {
   const rxZombieKills = cloudRadio?.rxZombieKills ?? null;
   const validRxPacketsPerS = cloudRadio?.validRxPacketsPerS ?? null;
 
+  // WFB link-diagnosis verdict + received-frame counters. Null when the
+  // agent doesn't report them (older agents) so the card skips the chip
+  // and the counter rows rather than fabricating a reading.
+  const linkDiag = cloudRadio?.linkDiag ?? null;
+  const packetsAll = cloudRadio?.packetsAll ?? null;
+  const decryptErrors = cloudRadio?.decryptErrors ?? null;
+
   // Channel rendezvous + hop surface. Read-only: the agent owns
   // channel / band / reg-domain config and the hop supervisor decides
   // when to move. The card stays hidden when the agent reports none of
@@ -460,6 +467,9 @@ export function RadioPanel() {
         adapterUsbDegraded={adapterUsbDegraded}
         adapterUsbSpeedMbps={adapterUsbSpeedMbps}
         radioStackState={radioStackState}
+        linkDiag={linkDiag}
+        packetsAll={packetsAll}
+        decryptErrors={decryptErrors}
         fecK={fecK}
         fecN={fecN}
         adaptiveBitrateEnabled={adaptiveBitrateEnabled}

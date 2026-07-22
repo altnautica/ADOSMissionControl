@@ -3702,7 +3702,19 @@
         "all": "All bands"
       },
       "operatingRegion": "Operating region",
-      "operatingRegionUnrestricted": "Unrestricted (no region pinned)"
+      "operatingRegionUnrestricted": "Unrestricted (no region pinned)",
+      "linkDiag": {
+        "label": "Link diagnosis",
+        "healthy": "Healthy",
+        "searching": "Searching",
+        "deaf": "Deaf (no RF seen)",
+        "mis_keyed": "Mis-keyed",
+        "jammed": "Jammed"
+      },
+      "packetsAll": "Packets seen",
+      "packetsAllHint": "Total RF frames the receiver has seen, whether or not they decoded. A rising count with rising decrypt errors means frames arrive but cannot be decoded.",
+      "decryptErrors": "Decrypt errors",
+      "decryptErrorsHint": "Frames that reached the receiver but failed FEC decode or decryption. A climbing count usually points at a key or link-id mismatch between the two ends."
     },
     "videoLink": {
       "title": "Video Link",

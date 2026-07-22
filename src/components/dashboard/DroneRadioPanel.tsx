@@ -22,6 +22,7 @@ import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { groundStationApiFromAgent } from "@/lib/api/ground-station-api";
 import { TxPowerSlider } from "@/components/hardware/TxPowerSlider";
 import { WifiPowersaveCard } from "@/components/hardware/network/WifiPowersaveCard";
+import { linkDiagLabel, linkDiagBadgeClass } from "@/components/hardware/radio/labels";
 import type {
   RadioLinkState,
   RadioState,
@@ -166,6 +167,13 @@ export function DroneRadioPanel({ droneId }: DroneRadioPanelProps) {
   const adapterChipset = radio.adapterChipset;
   const adapterInjectionFailed = radio.adapterInjectionOk === false;
 
+  // WFB link-diagnosis verdict + received-frame counters. Null when the
+  // agent doesn't report them (older agents); the chip and the counter
+  // rows only render when a real value arrives.
+  const linkDiag = radio.linkDiag;
+  const packetsAll = radio.packetsAll;
+  const decryptErrors = radio.decryptErrors;
+
   // The drone does not typically receive its own RF — the value lives
   // on the ground side. Display a hint so operators do not interpret a
   // null RSSI as a bug.
@@ -202,6 +210,15 @@ export function DroneRadioPanel({ droneId }: DroneRadioPanelProps) {
           <span className="inline-flex items-center gap-1.5 rounded border border-border-default bg-bg-tertiary px-2.5 py-1 text-xs text-text-tertiary">
             {tDrone("airSideBadge")}
           </span>
+          {linkDiag != null ? (
+            <span
+              className={`inline-flex items-center gap-1.5 rounded border px-2.5 py-1 text-xs ${linkDiagBadgeClass(linkDiag)}`}
+              title={t("linkDiag.label")}
+            >
+              <RadioIcon size={12} />
+              {linkDiagLabel(t, linkDiag)}
+            </span>
+          ) : null}
           {linkModeLabel ? (
             <span
               className={`inline-flex items-center gap-1.5 rounded border px-2.5 py-1 text-xs ${
@@ -274,6 +291,23 @@ export function DroneRadioPanel({ droneId }: DroneRadioPanelProps) {
           ) : null}
           <StatRow label={t("fecRecovered")} value={String(fecRecovered)} />
           <StatRow label={t("fecLost")} value={String(fecLost)} />
+          {packetsAll != null ? (
+            <StatRow
+              label={t("packetsAll")}
+              value={String(packetsAll)}
+              hint={t("packetsAllHint")}
+            />
+          ) : null}
+          {decryptErrors != null ? (
+            <StatRow
+              label={t("decryptErrors")}
+              value={String(decryptErrors)}
+              valueClass={
+                decryptErrors > 0 ? "text-status-warning" : undefined
+              }
+              hint={t("decryptErrorsHint")}
+            />
+          ) : null}
           {driver ? <StatRow label={t("driver")} value={driver} /> : null}
           {iface ? <StatRow label={t("iface")} value={iface} /> : null}
         </dl>

@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { useRadioNetworkHealthStore } from "@/stores/radio-network-health-store";
 import type { RadioEventSeverity } from "@/lib/agent/radio-network-events";
+import { linkDiagTone } from "@/components/hardware/radio/labels";
 import { formatLogTime } from "../shared/LogViewer";
 
 const SEVERITY_DOT: Record<RadioEventSeverity, string> = {
@@ -40,6 +41,15 @@ const STACK_LABEL: Record<string, string> = {
   unpaired: "Unpaired",
   no_bind_artifacts: "No bind artifacts",
   stack_incomplete: "Stack incomplete",
+};
+
+// Operator-facing phrase for each WFB link-diagnosis verdict.
+const DIAG_LABEL: Record<string, string> = {
+  healthy: "Healthy",
+  searching: "Searching",
+  deaf: "Deaf (no RF seen)",
+  mis_keyed: "Mis-keyed",
+  jammed: "Jammed",
 };
 
 // Operator-facing phrase for each management-link repair rung the guardian
@@ -200,6 +210,15 @@ export function RadioNetworkHealthPanel() {
   // alive while no RF leaves the antenna. Surface it as its own loud pill.
   const phyMuted = radio?.phyMuted === true;
 
+  // WFB link diagnosis: the received-side verdict on why the link is (or
+  // is not) carrying payload, plus the raw frames-seen / decrypt-error
+  // counters. All null on older agents that don't report them — each
+  // pill only renders when a real value arrives (no fabricated verdict or
+  // zero counter).
+  const linkDiag = radio?.linkDiag ?? null;
+  const packetsAll = radio?.packetsAll ?? null;
+  const decryptErrors = radio?.decryptErrors ?? null;
+
   // Onboard-WiFi self-heal recency is derived in the store (it reads the
   // freshness clock there, keeping this render body pure).
 
@@ -308,6 +327,27 @@ export function RadioNetworkHealthPanel() {
           value={rfUnverified ? "Unverified" : txActive ? "TX + reception" : "Idle"}
           tone={rfUnverified ? "error" : txActive ? "success" : "muted"}
         />
+        {linkDiag != null ? (
+          <Indicator
+            label="Link diagnosis"
+            value={DIAG_LABEL[linkDiag] ?? linkDiag}
+            tone={linkDiagTone(linkDiag)}
+          />
+        ) : null}
+        {packetsAll != null ? (
+          <Indicator
+            label="Packets seen"
+            value={String(packetsAll)}
+            tone="muted"
+          />
+        ) : null}
+        {decryptErrors != null ? (
+          <Indicator
+            label="Decrypt errors"
+            value={String(decryptErrors)}
+            tone={decryptErrors > 0 ? "warning" : "muted"}
+          />
+        ) : null}
         <Indicator
           label="PHY status"
           value={

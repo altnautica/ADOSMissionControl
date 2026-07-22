@@ -13,6 +13,7 @@ import type {
   RadioPeerLink,
   RadioHopState,
   RadioAcquireState,
+  RadioLinkDiag,
 } from "@/lib/api/ground-station/types";
 
 export function linkStateLabel(
@@ -100,6 +101,62 @@ export function radioStackStateLabel(
     stack_incomplete: "radioStackState.stack_incomplete",
   };
   return t(map[state]);
+}
+
+export function linkDiagLabel(
+  t: ReturnType<typeof useTranslations>,
+  diag: RadioLinkDiag,
+): string {
+  const map: Record<RadioLinkDiag, string> = {
+    deaf: "linkDiag.deaf",
+    mis_keyed: "linkDiag.mis_keyed",
+    jammed: "linkDiag.jammed",
+    healthy: "linkDiag.healthy",
+    searching: "linkDiag.searching",
+  };
+  // The normalizer clamps unknown verdicts to null, but the cloud-relay radio
+  // path is read un-normalized, so an out-of-contract string can reach here at
+  // runtime. Render it verbatim rather than translating an undefined key.
+  const key = map[diag];
+  return key ? t(key) : String(diag);
+}
+
+// Semantic tone for the link-diagnosis verdict, matching the status color
+// vocabulary: healthy is good, jammed warns, deaf / mis_keyed are errors,
+// searching is a neutral in-progress state.
+export type RadioDiagTone = "success" | "warning" | "error" | "muted";
+
+export function linkDiagTone(diag: RadioLinkDiag): RadioDiagTone {
+  switch (diag) {
+    case "healthy":
+      return "success";
+    case "jammed":
+      return "warning";
+    case "deaf":
+    case "mis_keyed":
+      return "error";
+    case "searching":
+      return "muted";
+    // An out-of-contract verdict over the un-normalized cloud-relay path reads
+    // as a neutral/muted tone rather than falling through to undefined.
+    default:
+      return "muted";
+  }
+}
+
+// Badge chip classes (border / bg / text) for the verdict, keyed to its
+// semantic tone so the LinkHealthCard and DroneRadioPanel chips match.
+export function linkDiagBadgeClass(diag: RadioLinkDiag): string {
+  switch (linkDiagTone(diag)) {
+    case "success":
+      return "border-status-success/40 bg-status-success/10 text-status-success";
+    case "warning":
+      return "border-status-warning/40 bg-status-warning/10 text-status-warning";
+    case "error":
+      return "border-status-error/40 bg-status-error/10 text-status-error";
+    case "muted":
+      return "border-border-default bg-bg-tertiary text-text-tertiary";
+  }
 }
 
 // Friendly band label. The agent emits the U-NII band slug; render a

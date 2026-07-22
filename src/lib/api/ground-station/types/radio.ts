@@ -40,6 +40,21 @@ export type RadioHopState = "idle" | "searching" | "locked" | "hopping";
 // it.
 export type RadioAcquireState = "idle" | "searching" | "locked" | "no-peer";
 
+// WFB link-diagnosis verdict. Distinct from the coarse link state: it
+// reasons over the received-frame counters to name WHY a link is not
+// carrying payload. "healthy" = frames arrive and decode; "searching" =
+// no peer heard yet; "deaf" = the receiver sees no RF at all (the local
+// end injects but nothing comes back); "mis_keyed" = frames arrive but
+// fail decrypt/FEC (a key or link-id mismatch); "jammed" = frames arrive
+// but a high loss/error fraction points at interference. Null on older
+// agents that don't report the verdict.
+export type RadioLinkDiag =
+  | "deaf"
+  | "mis_keyed"
+  | "jammed"
+  | "healthy"
+  | "searching";
+
 export interface RadioState {
   state: RadioLinkState;
   iface: string | null;
@@ -120,6 +135,16 @@ export interface RadioState {
   reacquireKills: number | null;
   rxZombieKills: number | null;
   validRxPacketsPerS: number | null;
+  // WFB link diagnosis. `linkDiag` is the received-side verdict on why a
+  // link is (or is not) carrying payload; `packetsAll` is the total RF
+  // frames the receiver has seen (decoded or not) and `decryptErrors` is
+  // the count that reached it but failed decrypt/FEC (a key / link-id
+  // mismatch). All null on older agents that don't report them; the
+  // normalizer preserves absence as null so the UI can skip a missing
+  // reading rather than fabricate a verdict or a zero.
+  linkDiag: RadioLinkDiag | null;
+  packetsAll: number | null;
+  decryptErrors: number | null;
   // Selected WFB radio adapter chipset (e.g. "RTL8812EU"). Null when the
   // agent could not identify the chipset, or on older agents that don't
   // report it.

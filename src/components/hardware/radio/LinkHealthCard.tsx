@@ -17,11 +17,14 @@ import {
 import { useTranslations } from "next-intl";
 import type {
   RadioLinkState,
+  RadioLinkDiag,
   RadioTopology,
 } from "@/lib/api/ground-station/types";
 import { EMPTY, rssiClass, topologyClass } from "./constants";
 import {
   linkStateLabel,
+  linkDiagLabel,
+  linkDiagBadgeClass,
   radioStackStateLabel,
   topologyLabel,
   type RadioStackState,
@@ -90,6 +93,13 @@ export interface LinkHealthCardProps {
   // unpaired, missing bind keys, or an incomplete radio stack). Null or
   // absent on older agents — the row only renders when a value arrives.
   radioStackState?: RadioStackState | null;
+  // WFB link-diagnosis verdict + received-frame counters. The verdict
+  // chip and the two counter rows only render when the agent reports
+  // them; older agents omit these, so a missing value shows nothing (no
+  // fabricated "healthy" verdict, no fabricated 0 counter).
+  linkDiag?: RadioLinkDiag | null;
+  packetsAll?: number | null;
+  decryptErrors?: number | null;
   // Live transmit config (what wfb_tx is actually sending). `fecK`/`fecN`
   // are the running Reed-Solomon ratio; `adaptiveBitrateEnabled` flags the
   // closed-loop controller and `recommendedTierName` is its current rung.
@@ -136,6 +146,9 @@ export function LinkHealthCard({
   adapterUsbDegraded,
   adapterUsbSpeedMbps,
   radioStackState,
+  linkDiag,
+  packetsAll,
+  decryptErrors,
   fecK,
   fecN,
   adaptiveBitrateEnabled,
@@ -165,6 +178,15 @@ export function LinkHealthCard({
         <span className="inline-flex items-center gap-1.5 rounded border border-border-default bg-bg-tertiary px-2.5 py-1 text-xs text-text-secondary">
           {linkStateLabel(t, linkState)}
         </span>
+        {linkDiag != null ? (
+          <span
+            className={`inline-flex items-center gap-1.5 rounded border px-2.5 py-1 text-xs ${linkDiagBadgeClass(linkDiag)}`}
+            title={t("linkDiag.label")}
+          >
+            <RadioIcon size={12} />
+            {linkDiagLabel(t, linkDiag)}
+          </span>
+        ) : null}
         {linkModeLabel ? (
           <span
             className={`inline-flex items-center gap-1.5 rounded border px-2.5 py-1 text-xs ${
@@ -259,6 +281,21 @@ export function LinkHealthCard({
         />
         <StatRow label={t("fecRecovered")} value={String(fecRecovered)} />
         <StatRow label={t("fecLost")} value={String(fecLost)} />
+        {packetsAll != null ? (
+          <StatRow
+            label={t("packetsAll")}
+            value={String(packetsAll)}
+            title={t("packetsAllHint")}
+          />
+        ) : null}
+        {decryptErrors != null ? (
+          <StatRow
+            label={t("decryptErrors")}
+            value={String(decryptErrors)}
+            valueClass={decryptErrors > 0 ? "text-status-warning" : undefined}
+            title={t("decryptErrorsHint")}
+          />
+        ) : null}
         {snrDb != null ? (
           <StatRow label={t("snr")} value={`${snrDb.toFixed(0)} dB`} />
         ) : null}

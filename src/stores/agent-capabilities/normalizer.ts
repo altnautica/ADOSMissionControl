@@ -34,6 +34,7 @@ import type {
   RadioPeerLink,
   RadioHopState,
   RadioAcquireState,
+  RadioLinkDiag,
 } from "@/lib/api/ground-station/types";
 
 export const DEFAULT_COMPUTE: ComputeCapability = {
@@ -97,6 +98,13 @@ const RADIO_HOP_STATES: ReadonlySet<RadioHopState> = new Set<RadioHopState>([
 ]);
 const RADIO_ACQUIRE_STATES: ReadonlySet<RadioAcquireState> =
   new Set<RadioAcquireState>(["idle", "searching", "locked", "no-peer"]);
+const RADIO_LINK_DIAGS: ReadonlySet<RadioLinkDiag> = new Set<RadioLinkDiag>([
+  "deaf",
+  "mis_keyed",
+  "jammed",
+  "healthy",
+  "searching",
+]);
 
 /** Normalize the on-wire radio block onto the GCS RadioState shape. */
 export function normalizeRadio(raw: unknown): RadioState | null {
@@ -199,6 +207,17 @@ export function normalizeRadio(raw: unknown): RadioState | null {
     reacquireKills: num(r.reacquireKills),
     rxZombieKills: num(r.rxZombieKills),
     validRxPacketsPerS: num(r.validRxPacketsPerS),
+    // WFB link-diagnosis verdict + received-frame counters. Optional on
+    // the wire; an unknown verdict string falls to null (no fabricated
+    // "healthy") and the counters use num() so an absent field stays null
+    // rather than a misleading 0.
+    linkDiag:
+      typeof r.linkDiag === "string" &&
+      RADIO_LINK_DIAGS.has(r.linkDiag as RadioLinkDiag)
+        ? (r.linkDiag as RadioLinkDiag)
+        : null,
+    packetsAll: num(r.packetsAll),
+    decryptErrors: num(r.decryptErrors),
     // WFB adapter selection surface. The chipset is null when unknown.
     // `adapterInjectionOk` distinguishes an explicit false (no
     // injection-capable adapter found — the agent refuses to transmit)
