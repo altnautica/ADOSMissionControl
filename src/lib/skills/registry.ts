@@ -42,6 +42,15 @@ export function setSkillNotifier(fn: SkillContext["notify"]): void {
 }
 
 /**
+ * Emit through the live toast bridge. Exposed so a context built outside this
+ * module routes its feedback through the same host instead of standing up a
+ * second notification path.
+ */
+export const notifySkill: SkillContext["notify"] = (message, status) => {
+  notifier(message, status);
+};
+
+/**
  * Build the per-drone SkillContext from the live stores. This is the single
  * seam every skill method sees; `index.ts` re-exports it as
  * `buildSkillContext`. The protocol, arm state, mode, firmware modes, and

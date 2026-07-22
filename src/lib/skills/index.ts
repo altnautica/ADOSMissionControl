@@ -44,7 +44,16 @@ export type {
   ArmRequirement,
   SkillProtocol,
 } from "./types";
-export { useSkillRegistry, setSkillNotifier } from "./registry";
+export { useSkillRegistry, setSkillNotifier, notifySkill } from "./registry";
+export {
+  buildSkillContextForNode,
+  availableModesForNode,
+  firmwareTypeForNode,
+} from "./node-context";
+export type {
+  SkillTargetNode,
+  NodeSkillContextOptions,
+} from "./node-context";
 
 /**
  * Build the per-drone SkillContext the dispatcher hands to a skill. Re-exported

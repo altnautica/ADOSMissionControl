@@ -17,19 +17,7 @@ import { useCanMonitorStore } from "./can-monitor-store";
 import { recordFrameFor } from "@/lib/telemetry-recorder";
 import { notifyArmed } from "@/lib/flight-lifecycle";
 import { usePrearmBufferStore } from "@/stores/prearm-buffer-store";
-import type { FlightMode } from "@/lib/types";
-
-/** Known flight modes that map cleanly to the UI FlightMode union. */
-const KNOWN_MODES: Set<string> = new Set([
-  "STABILIZE", "ALT_HOLD", "LOITER", "GUIDED", "AUTO", "RTL", "LAND",
-  "MANUAL", "ACRO",
-  "FBWA", "FBWB", "CRUISE", "TRAINING", "CIRCLE", "AUTOTUNE",
-  "QSTABILIZE", "QHOVER", "QLOITER", "QLAND", "QRTL",
-  "POSHOLD", "BRAKE", "SMART_RTL", "DRIFT", "SPORT",
-  "AVOID_ADSB", "THERMAL", "QAUTOTUNE", "QACRO", "FLIP", "THROW",
-  "FLOWHOLD", "FOLLOW", "ZIGZAG", "SYSTEMID", "HELI_AUTOROTATE", "AUTO_RTL",
-  "TAKEOFF", "LOITER_TO_QLAND",
-]);
+import { asFlightMode } from "@/lib/flight-mode";
 
 /**
  * Bridge protocol telemetry callbacks into the Zustand stores
@@ -249,9 +237,7 @@ export function bridgeTelemetry(
 
       const wasArmed = droneStore.armState === "armed";
 
-      const mode = KNOWN_MODES.has(data.mode)
-        ? (data.mode as FlightMode)
-        : droneStore.flightMode;
+      const mode = asFlightMode(data.mode) ?? droneStore.flightMode;
 
       const prevMode = droneStore.flightMode;
 
