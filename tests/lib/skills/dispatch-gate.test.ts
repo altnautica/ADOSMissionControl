@@ -9,7 +9,12 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { activate, deactivate } from "@/lib/skills";
+import {
+  activate,
+  deactivate,
+  getChargeCount,
+  getCooldownState,
+} from "@/lib/skills";
 import { useSkillRegistry } from "@/lib/skills/registry";
 import { armSkill } from "@/lib/skills/builtins";
 import type {
@@ -220,6 +225,83 @@ describe("skill dispatch gate", () => {
     const ctx = makeCtx();
     // Should resolve without throwing.
     await expect(deactivate("fake", ctx)).resolves.toBeUndefined();
+  });
+});
+
+describe("rejected command results", () => {
+  beforeEach(() => clearRegistry());
+
+  /** A one-shot with a real cooldown and a charge budget, so both spends are
+   * observable. Unique ids per test keep the module-singleton clocks clean. */
+  function budgetedSkill(id: string, over: Partial<Skill> = {}): Skill {
+    return makeFakeSkill({
+      id,
+      cooldownMs: 5000,
+      charges: { current: 2, max: 2, rechargeMs: 60_000 },
+      ...over,
+    });
+  }
+
+  it("surfaces the vehicle's refusal and spends neither charge nor cooldown", async () => {
+    const skill = budgetedSkill("rejected-a", {
+      activate: async () => ({
+        success: false,
+        resultCode: 2,
+        message: "Rejected by the flight controller",
+      }),
+    });
+    useSkillRegistry.getState().register(skill);
+
+    const ctx = makeCtx({ droneId: "drone-rejected-a" });
+    await activate("rejected-a", ctx);
+
+    expect(ctx.notify).toHaveBeenCalledWith(
+      "Rejected by the flight controller",
+      "error",
+    );
+    // The command did no work, so nothing may be spent on it: the charge
+    // budget is untouched and no cooldown window greys the control.
+    expect(getChargeCount("drone-rejected-a", skill)).toEqual({
+      current: 2,
+      max: 2,
+    });
+    expect(getCooldownState("drone-rejected-a", "rejected-a")).toBeNull();
+  });
+
+  it("falls back to the shared reason when the refusal carries no message", async () => {
+    const skill = budgetedSkill("rejected-b", {
+      activate: async () => ({ success: false, resultCode: -1, message: "" }),
+    });
+    useSkillRegistry.getState().register(skill);
+
+    const ctx = makeCtx({ droneId: "drone-rejected-b" });
+    await activate("rejected-b", ctx);
+
+    expect(ctx.notify).toHaveBeenCalledWith(
+      "skills.reason.commandRejected",
+      "error",
+    );
+  });
+
+  it("spends the charge and arms the cooldown on an accepted result", async () => {
+    const skill = budgetedSkill("accepted-a", {
+      activate: async () => ({
+        success: true,
+        resultCode: 0,
+        message: "Accepted",
+      }),
+    });
+    useSkillRegistry.getState().register(skill);
+
+    const ctx = makeCtx({ droneId: "drone-accepted-a" });
+    await activate("accepted-a", ctx);
+
+    expect(ctx.notify).not.toHaveBeenCalled();
+    expect(getChargeCount("drone-accepted-a", skill)).toEqual({
+      current: 1,
+      max: 2,
+    });
+    expect(getCooldownState("drone-accepted-a", "accepted-a")).not.toBeNull();
   });
 });
 

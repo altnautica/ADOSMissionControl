@@ -47,9 +47,11 @@ function makeModeSkill(preset: ModePreset): Skill {
     },
     activate: async (ctx, args) => {
       // The preset bakes its own target mode; args.targetMode is an override
-      // seam for a generic caller but defaults to the preset's mode.
+      // seam for a generic caller but defaults to the preset's mode. The
+      // vehicle's answer goes back to the dispatcher, which surfaces a
+      // refused mode change and spends nothing on it.
       const target = args?.targetMode ?? preset.mode;
-      await ctx.protocol?.setFlightMode(target);
+      return ctx.protocol?.setFlightMode(target);
     },
   };
 }

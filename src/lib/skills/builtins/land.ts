@@ -33,7 +33,7 @@ export const landSkill: Skill = {
     }
     return { kind: "idle" };
   },
-  activate: async (ctx) => {
-    await ctx.protocol?.land();
-  },
+  // The vehicle's answer goes back to the dispatcher, which surfaces a
+  // refusal and spends nothing on it.
+  activate: async (ctx) => ctx.protocol?.land(),
 };

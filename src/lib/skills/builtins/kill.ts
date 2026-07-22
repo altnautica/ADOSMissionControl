@@ -31,7 +31,7 @@ export const killSkill: Skill = {
     if (noLink) return noLink;
     return { kind: "idle" };
   },
-  activate: async (ctx) => {
-    await ctx.protocol?.killSwitch();
-  },
+  // The vehicle's answer goes back to the dispatcher, which surfaces a
+  // refusal and spends nothing on it.
+  activate: async (ctx) => ctx.protocol?.killSwitch(),
 };

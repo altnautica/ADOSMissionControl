@@ -35,7 +35,7 @@ export const rthSkill: Skill = {
     if (noLink) return noLink;
     return { kind: "idle" };
   },
-  activate: async (ctx) => {
-    await ctx.protocol?.returnToLaunch();
-  },
+  // The vehicle's answer goes back to the dispatcher, which surfaces a
+  // refusal and neither spends the cooldown nor greys the control on it.
+  activate: async (ctx) => ctx.protocol?.returnToLaunch(),
 };

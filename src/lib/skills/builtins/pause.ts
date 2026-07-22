@@ -27,13 +27,14 @@ export const pauseSkill: Skill = {
     }
     return { kind: "idle" };
   },
+  // Either branch's answer goes back to the dispatcher, which surfaces a
+  // refusal and spends nothing on it.
   activate: async (ctx) => {
     if (!ctx.protocol) return;
     const missionAware = ctx.supports("supportsMissionUpload");
     if (missionAware && ctx.flightMode === "AUTO") {
-      await ctx.protocol.pauseMission();
-    } else {
-      await ctx.protocol.setFlightMode("LOITER");
+      return ctx.protocol.pauseMission();
     }
+    return ctx.protocol.setFlightMode("LOITER");
   },
 };

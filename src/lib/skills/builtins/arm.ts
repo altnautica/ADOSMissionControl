@@ -34,7 +34,7 @@ export const armSkill: Skill = {
     }
     return { kind: "idle" };
   },
-  activate: async (ctx) => {
-    await ctx.protocol?.arm();
-  },
+  // The vehicle's answer goes back to the dispatcher, which surfaces a
+  // refusal (e.g. a prearm failure) and spends nothing on it.
+  activate: async (ctx) => ctx.protocol?.arm(),
 };

@@ -34,10 +34,11 @@ export const resumeSkill: Skill = {
       missionAware &&
       ctx.flightMode === "LOITER" &&
       ctx.previousMode === "AUTO";
+    // Either branch's answer goes back to the dispatcher, which surfaces
+    // a refusal and spends nothing on it.
     if (resumingMission) {
-      await ctx.protocol.resumeMission();
-    } else {
-      await ctx.protocol.setFlightMode("AUTO");
+      return ctx.protocol.resumeMission();
     }
+    return ctx.protocol.setFlightMode("AUTO");
   },
 };

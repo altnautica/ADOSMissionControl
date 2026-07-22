@@ -157,11 +157,24 @@ export async function activate(
 
   busy.add(key);
   try {
-    await skill.activate(ctx, args);
-    // Only a successful one-shot consumes a charge and arms the cooldown — a
-    // failed protocol call (the catch below) does neither, so the badge and the
-    // sweep never assert work that did not happen.
-    if (!skill.toggle) {
+    const result = await skill.activate(ctx, args);
+    // A returned result with success=false is the vehicle's (or its lane's)
+    // own refusal. Silence here reads as success on a surface with no other
+    // feedback, so the answer is surfaced in the operator's face.
+    const rejected = result != null && result.success === false;
+    if (rejected) {
+      ctx.notify(
+        typeof result.message === "string" && result.message.trim() !== ""
+          ? result.message
+          : "skills.reason.commandRejected",
+        "error",
+      );
+    }
+    // Only an accepted one-shot consumes a charge and arms the cooldown — a
+    // rejected result (above) and a thrown protocol call (the catch below) do
+    // neither, so the badge and the sweep never assert work that did not
+    // happen.
+    if (!skill.toggle && !rejected) {
       spendCharge(ctx.droneId, skill);
       startCooldown(ctx.droneId, skill);
     }

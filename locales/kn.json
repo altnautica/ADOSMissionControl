@@ -5218,7 +5218,8 @@
       "modeUnavailable": "Mode unavailable on this firmware",
       "noAutonomousNav": "Autonomous flight unavailable",
       "stateError": "State unavailable",
-      "noCharges": "No charges remaining"
+      "noCharges": "No charges remaining",
+      "commandRejected": "The vehicle did not accept the command"
     },
     "state": {
       "ready": "Ready",

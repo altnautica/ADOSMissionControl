@@ -8,7 +8,7 @@
  * @license GPL-3.0-only
  */
 
-import type { ProtocolCapabilities } from "@/lib/protocol/types";
+import type { CommandResult, ProtocolCapabilities } from "@/lib/protocol/types";
 import type { UnifiedFlightMode } from "@/lib/protocol/types";
 import type { FlightMode, ArmState } from "@/lib/types";
 import type { SkillProtocol } from "./skill-protocol";
@@ -140,7 +140,18 @@ export interface Skill {
   requiresAutonomousNav?: boolean;
   /** Pure, no side effects. */
   getState: (ctx: SkillContext) => SkillState;
-  activate: (ctx: SkillContext, args?: SkillActivateArgs) => Promise<void>;
+  /**
+   * Run the skill. A skill that dispatches a protocol command returns the
+   * command's own result so the dispatcher can act on the answer: a rejected
+   * result is surfaced to the operator and spends neither a charge nor the
+   * cooldown, because the vehicle did not do the work. A void return means the
+   * activation carries no single command result (behaviors) and reads as
+   * accepted.
+   */
+  activate: (
+    ctx: SkillContext,
+    args?: SkillActivateArgs,
+  ) => Promise<CommandResult | void>;
   /** Required iff toggle; must be protocol-optional. */
   deactivate?: (ctx: SkillContext) => Promise<void>;
 }

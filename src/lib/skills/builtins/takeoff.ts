@@ -43,7 +43,11 @@ export const takeoffSkill: Skill = {
       typeof args?.altitudeM === "number" && args.altitudeM > 0
         ? args.altitudeM
         : DEFAULT_TAKEOFF_M;
-    await ctx.protocol.arm();
-    await ctx.protocol.takeoff(altitudeM);
+    // A refused arm ends the take-off: commanding a climb after the vehicle
+    // declined to arm would dispatch blind, so the refusal is what goes back
+    // to the dispatcher (which surfaces it and spends nothing).
+    const armed = await ctx.protocol.arm();
+    if (armed.success === false) return armed;
+    return ctx.protocol.takeoff(altitudeM);
   },
 };
