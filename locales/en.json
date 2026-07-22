@@ -3731,6 +3731,23 @@
       "adapterUsbDegraded": "Radio USB link degraded — RF may not transmit",
       "adapterUsbDegradedSpeed": "Radio USB link degraded ({speed} Mbps) — RF may not transmit",
       "adapterUsbDegradedHint": "The radio adapter enumerated on a slow full-speed USB link instead of high-speed (480 Mbps). It can still report transmit activity while emitting no usable RF. Move the adapter to a USB-3 (blue) port or a powered hub.",
+      "adapterUsb": {
+        "label": "Radio USB link",
+        "degraded": "Degraded",
+        "degradedSpeed": "Degraded ({speed} Mbps)",
+        "ok": "OK",
+        "okSpeed": "OK ({speed} Mbps)",
+        "unknown": "Not reported"
+      },
+      "adapterInjection": {
+        "label": "Radio adapter",
+        "ok": "Injection OK",
+        "okChipset": "{chipset} — injection OK",
+        "failed": "No injection-capable adapter",
+        "failedChipset": "{chipset} — cannot inject",
+        "unknown": "Not reported",
+        "unknownChipset": "{chipset} — injection not reported"
+      },
       "validRxRate": "Valid RX rate",
       "reacquireKills": "Link reacquires",
       "reacquireKillsHint": "How many times the ground receiver has had to destructively restart to recover a valid decode. A high or climbing value means the receive link is thrashing.",
@@ -4555,7 +4572,9 @@
       "noise": "Noise",
       "rxIdle": "RX idle",
       "reacquires": "Reacquires",
-      "rxRestarts": "RX restarts"
+      "rxRestarts": "RX restarts",
+      "usbLink": "USB link",
+      "adapter": "Adapter"
     },
     "uplink": {
       "title": "Uplink",
