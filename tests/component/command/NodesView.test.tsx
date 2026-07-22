@@ -315,6 +315,33 @@ describe("NodesView", () => {
     }
   });
 
+  it("offers the cockpit action only where a cockpit surface exists", async () => {
+    const user = userEvent.setup();
+    renderBoard();
+
+    // A drone resolves a cockpit tab, so its menu navigates there.
+    await user.click(
+      within(rowFor("Alpha")).getByRole("button", { name: /alpha actions/i }),
+    );
+    expect(
+      within(screen.getByRole("menu")).getByRole("menuitem", {
+        name: /open cockpit/i,
+      }),
+    ).toBeTruthy();
+    await user.keyboard("{Escape}");
+
+    // A ground station has no cockpit surface; offering the entry would open
+    // the detail panel on Overview and read as a working action that was not.
+    await user.click(
+      within(rowFor("Bravo")).getByRole("button", { name: /bravo actions/i }),
+    );
+    expect(
+      within(screen.getByRole("menu")).queryByRole("menuitem", {
+        name: /open cockpit/i,
+      }),
+    ).toBeNull();
+  });
+
   it("counts only nodes that can take a bulk command in the ready totals", async () => {
     const user = userEvent.setup();
     renderBoard([DRONE, OFFLINE_DRONE]);

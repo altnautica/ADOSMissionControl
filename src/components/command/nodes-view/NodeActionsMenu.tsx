@@ -35,11 +35,17 @@ import {
   type NodeSkills,
 } from "./use-node-skills";
 
-/** Navigation entries, each a node-detail destination. */
+/**
+ * Navigation entries, each a node-detail destination. An entry naming a
+ * `profile` is offered only to nodes of that profile: the detail panel
+ * silently falls back to its first surface for a tab id the profile does not
+ * resolve, so an ungated entry would read as working navigation that lands
+ * somewhere else. Only the drone profile has a cockpit surface.
+ */
 const NAV_ITEMS = [
-  { id: "open-cockpit", tab: "cockpit", panel: null },
-  { id: "configure", tab: "agent", panel: "settings" },
-  { id: "view-logs", tab: "agent", panel: "logs" },
+  { id: "open-cockpit", tab: "cockpit", panel: null, profile: "drone" },
+  { id: "configure", tab: "agent", panel: "settings", profile: null },
+  { id: "view-logs", tab: "agent", panel: "logs", profile: null },
 ] as const;
 
 export function NodeActionsMenu({
@@ -60,6 +66,10 @@ export function NodeActionsMenu({
     skills.resolve(id),
   ).filter((action): action is NodeSkillAction => action !== null);
 
+  const navItems = NAV_ITEMS.filter(
+    (item) => item.profile === null || item.profile === node.profile,
+  );
+
   function navigate(tab: string, panel: string | null) {
     const ui = useUiStore.getState();
     ui.setPendingDetailTab(tab);
@@ -76,7 +86,7 @@ export function NodeActionsMenu({
       title: action.reasonKey ? safeTranslate(t, action.reasonKey) : undefined,
     })),
     { id: "nav-divider", label: "", divider: true },
-    ...NAV_ITEMS.map((item) => ({
+    ...navItems.map((item) => ({
       id: item.id,
       label: tNodes(`actions.${item.id}`),
     })),
@@ -98,7 +108,7 @@ export function NodeActionsMenu({
       flight.run();
       return;
     }
-    const nav = NAV_ITEMS.find((item) => item.id === id);
+    const nav = navItems.find((item) => item.id === id);
     if (nav) {
       navigate(nav.tab, nav.panel);
       return;
