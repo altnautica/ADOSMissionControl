@@ -215,6 +215,23 @@ export function toneBadgeClass(tone: RadioDiagTone): string {
   }
 }
 
+// Text colour for a semantic tone, for the surfaces that render a reading as a
+// plain value rather than a chip (health tiles, definition-list rows). Muted is
+// deliberately the secondary text colour, not a status colour: a reading the
+// node never sent has no status to show.
+export function toneTextClass(tone: RadioDiagTone): string {
+  switch (tone) {
+    case "success":
+      return "text-status-success";
+    case "warning":
+      return "text-status-warning";
+    case "error":
+      return "text-status-error";
+    case "muted":
+      return "text-text-secondary";
+  }
+}
+
 // Badge chip classes for the verdict, keyed to its semantic tone so the
 // LinkHealthCard and DroneRadioPanel chips match.
 export function linkDiagBadgeClass(diag: RadioLinkDiag): string {

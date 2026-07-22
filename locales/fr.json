@@ -3672,6 +3672,7 @@
         "unknown": "Not reported",
         "unknownChipset": "{chipset} — injection not reported"
       },
+      "adapterMacPinned": "MAC pinned",
       "validRxRate": "Valid RX rate",
       "reacquireKills": "Link reacquires",
       "reacquireKillsHint": "How many times the ground receiver has had to destructively restart to recover a valid decode. A high or climbing value means the receive link is thrashing.",

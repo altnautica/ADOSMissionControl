@@ -3,13 +3,25 @@
 /**
  * @module GroundStationLinkCard
  * @description Compact RX-link health card for the GroundStationOverview.
- * Surfaces RSSI, bitrate, FEC ratio, and channel for the WFB-ng radio.
+ * Surfaces RSSI, bitrate, FEC ratio, and channel for the WFB-ng radio, plus
+ * the two health readings the receive adapter makes about itself: its USB
+ * link and whether it can inject. A ground station's receive adapter can fail
+ * in exactly the ways an air-side one can, and every quality figure above it
+ * keeps reading plausibly when it does, so the adapter's own report belongs
+ * beside them rather than only on the air side.
  * @license GPL-3.0-only
  */
 
 import { useTranslations } from "next-intl";
 import { useGroundStationStore } from "@/stores/ground-station-store";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
+import { toneTextClass } from "@/components/hardware/radio/labels";
+import {
+  resolveAdapterInjection,
+  resolveAdapterUsb,
+  adapterInjectionLabel,
+  adapterUsbLabel,
+} from "@/components/hardware/radio/adapter-health";
 
 function rssiTone(dbm: number | null): string {
   if (dbm === null) return "text-text-tertiary";
@@ -36,10 +48,24 @@ function rxIdleTone(seconds: number | null): string {
 
 export function GroundStationLinkCard() {
   const t = useTranslations("groundStationOverview.link");
+  // Adapter phrases live in the shared radio catalogue so the ground station
+  // and the air side name the same reading the same way.
+  const tRadio = useTranslations("hardware.radio");
   const health = useGroundStationStore((s) => s.linkHealth);
   const radio = useAgentCapabilitiesStore((s) => s.radio);
   const fecTotal = health.fec_rec + health.fec_lost;
   const fecRatio = fecTotal > 0 ? (health.fec_lost / fecTotal) * 100 : 0;
+
+  // Both readings are the node's own; an absent one renders as unknown, never
+  // rounded up to healthy.
+  const usb = resolveAdapterUsb({
+    degraded: radio?.adapterUsbDegraded,
+    speedMbps: radio?.adapterUsbSpeedMbps,
+  });
+  const injection = resolveAdapterInjection({
+    injectionOk: radio?.adapterInjectionOk,
+    chipset: radio?.adapterChipset,
+  });
 
   return (
     <div className="rounded-lg border border-border-default bg-surface-secondary p-3 space-y-2">
@@ -141,6 +167,26 @@ export function GroundStationLinkCard() {
               </dd>
             </>
           )}
+
+          {/* Receive-adapter health. Always rendered, including the unknown
+              case: a missing reading is the operator's cue that the node
+              never reported one, which silence here would hide. */}
+          <dt className="text-text-tertiary">{t("usbLink")}</dt>
+          <dd
+            className={toneTextClass(usb.tone)}
+            title={
+              usb.state === "degraded"
+                ? tRadio("adapterUsbDegradedHint")
+                : undefined
+            }
+          >
+            {adapterUsbLabel(tRadio, usb)}
+          </dd>
+
+          <dt className="text-text-tertiary">{t("adapter")}</dt>
+          <dd className={toneTextClass(injection.tone)}>
+            {adapterInjectionLabel(tRadio, injection)}
+          </dd>
         </dl>
       )}
     </div>

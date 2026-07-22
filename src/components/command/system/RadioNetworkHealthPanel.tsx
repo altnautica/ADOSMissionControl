@@ -2,9 +2,11 @@
 
 /**
  * @module command/system/RadioNetworkHealthPanel
- * @description Curated per-drone radio + onboard-network health surface for
- * field RCA. Live indicators (regulatory domain + pin, channel + lock,
- * onboard-WiFi health, RF-unverified flag, adapter health, radio-stack
+ * @description Curated radio + onboard-network health surface for field RCA,
+ * shown for any node with a radio — a drone or a ground station alike, since
+ * both run the same radio stack and both can hit the same faults. Live
+ * indicators (regulatory domain + pin, channel + lock, onboard-WiFi health,
+ * RF-unverified flag, adapter USB + injection health, radio-stack
  * state) come from the heartbeat-backed agent-capabilities store; a compact
  * recent-activity feed of the radio/network events (reg re-asserts, bind
  * failures, RF-unverified entry/clear, WiFi self-heals) comes from the
@@ -16,11 +18,21 @@
 
 import { useEffect } from "react";
 import { Radio, RefreshCw } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { useRadioNetworkHealthStore } from "@/stores/radio-network-health-store";
 import type { RadioEventSeverity } from "@/lib/agent/radio-network-events";
-import { linkDiagTone } from "@/components/hardware/radio/labels";
+import {
+  linkDiagTone,
+  toneTextClass,
+} from "@/components/hardware/radio/labels";
+import {
+  resolveAdapterInjection,
+  resolveAdapterUsb,
+  adapterInjectionLabel,
+  adapterUsbLabel,
+} from "@/components/hardware/radio/adapter-health";
 import { resolveRfLink } from "./rf-link-reading";
 import { formatLogTime } from "../shared/LogViewer";
 
@@ -77,14 +89,7 @@ function Indicator({
   /** Optional hover text naming what the reading is based on. */
   title?: string;
 }) {
-  const valueClass =
-    tone === "muted"
-      ? "text-text-secondary"
-      : tone === "success"
-        ? "text-status-success"
-        : tone === "warning"
-          ? "text-status-warning"
-          : "text-status-error";
+  const valueClass = toneTextClass(tone);
   return (
     <div
       className="rounded border border-border-default/60 bg-bg-tertiary/40 px-3 py-2"
@@ -99,6 +104,7 @@ function Indicator({
 }
 
 export function RadioNetworkHealthPanel() {
+  const t = useTranslations("hardware.radio");
   const radio = useAgentCapabilitiesStore((s) => s.radio);
   const radioStackState = useAgentCapabilitiesStore((s) => s.radioStackState);
   const macStability = useAgentCapabilitiesStore((s) => s.macStability);
@@ -249,23 +255,29 @@ export function RadioNetworkHealthPanel() {
   // Onboard-WiFi self-heal recency is derived in the store (it reads the
   // freshness clock there, keeping this render body pure).
 
-  // Adapter health from the MAC-stability surface + radio-stack state.
-  const chipset = radio?.adapterChipset ?? null;
-  const injectionOk = radio?.adapterInjectionOk;
+  // Adapter health. Both readings come from the node's own report, so an
+  // absent one reads as unknown rather than green: a chipset name says a
+  // device was identified, never that it can inject, and nodes have reported
+  // a hardcoded injection-ok before, so inferring health from either would
+  // paint a dead radio as working.
+  const injection = resolveAdapterInjection({
+    injectionOk: radio?.adapterInjectionOk,
+    chipset: radio?.adapterChipset,
+  });
   const pinnedAdapter = macStability?.adapters?.find(
     (a) => a.state === "pinned",
   );
-  const adapterValue = chipset
-    ? injectionOk === false
-      ? `${chipset} (no injection)`
-      : pinnedAdapter
-        ? `${chipset} (MAC pinned)`
-        : chipset
-    : injectionOk === false
-      ? "No injection adapter"
-      : "n/a";
-  const adapterTone: "success" | "error" | "muted" =
-    injectionOk === false ? "error" : chipset ? "success" : "muted";
+  const adapterValue = pinnedAdapter
+    ? `${adapterInjectionLabel(t, injection)} · ${t("adapterMacPinned")}`
+    : adapterInjectionLabel(t, injection);
+
+  // USB link of the selected adapter. An adapter that enumerated below high
+  // speed advances its transmit counter while emitting almost no RF, so this
+  // is the reading that explains an otherwise healthy-looking dead link.
+  const usb = resolveAdapterUsb({
+    degraded: radio?.adapterUsbDegraded,
+    speedMbps: radio?.adapterUsbSpeedMbps,
+  });
 
   const stackValue =
     radioStackState != null
@@ -383,7 +395,19 @@ export function RadioNetworkHealthPanel() {
           }
           tone={phyMuted ? "error" : txActive ? "success" : "muted"}
         />
-        <Indicator label="Adapter" value={adapterValue} tone={adapterTone} />
+        <Indicator
+          label={t("adapterInjection.label")}
+          value={adapterValue}
+          tone={injection.tone}
+        />
+        <Indicator
+          label={t("adapterUsb.label")}
+          value={adapterUsbLabel(t, usb)}
+          tone={usb.tone}
+          title={
+            usb.state === "degraded" ? t("adapterUsbDegradedHint") : undefined
+          }
+        />
         <Indicator label="Radio stack" value={stackValue} tone={stackTone} />
         {mgmtValue ? (
           <Indicator
