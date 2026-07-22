@@ -5,6 +5,7 @@ import type {
   ApUpdate,
   EthernetConfig,
   EthernetConfigUpdate,
+  ModemDetailStatus,
   ModemStatus,
   ModemUpdate,
   NetworkStatus,
@@ -89,6 +90,12 @@ export function setModem(ctx: RequestContext, update: ModemUpdate): Promise<Mode
     method: "PUT",
     body: JSON.stringify(update),
   });
+}
+
+/** The cellular detail snapshot: modem presence + the agent's reason when
+ * none is present. */
+export function getModemDetail(ctx: RequestContext): Promise<ModemDetailStatus> {
+  return gsRequest<ModemDetailStatus>(ctx, "/api/v1/ground-station/modem-status");
 }
 
 export function getPriority(ctx: RequestContext): Promise<UplinkPriorityConfig> {

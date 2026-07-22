@@ -52,6 +52,7 @@ export class GroundStationApi {
   leaveWifiClient = () => net.leaveWifiClient(this.ctx);
   getModem = () => net.getModem(this.ctx);
   setModem = (update: ModemUpdate) => net.setModem(this.ctx, update);
+  getModemDetail = () => net.getModemDetail(this.ctx);
   getPriority = () => net.getPriority(this.ctx);
   setPriority = (priority: string[]) => net.setPriority(this.ctx, priority);
   setShareUplink = (enabled: boolean) => net.setShareUplink(this.ctx, enabled);

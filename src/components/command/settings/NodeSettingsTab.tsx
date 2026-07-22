@@ -31,6 +31,7 @@ import {
 import { PerceptionOffloadSection } from "./PerceptionOffloadSection";
 import { NetworkUplinkSection } from "./NetworkUplinkSection";
 import { WifiClientSection } from "./WifiClientSection";
+import { CellularSection } from "./CellularSection";
 import { Section } from "./Section";
 
 export function NodeSettingsTab({
@@ -137,6 +138,15 @@ export function NodeSettingsTab({
       {/* Wi-Fi — scan → join, disconnect, saved networks. Profile-agnostic
           on the agent (any node with a wlan interface can join). */}
       <WifiClientSection />
+
+      {/* Cellular — modem presence/state + APN, enable and data-cap writes
+          (ground station); config-backed keys elsewhere. */}
+      <CellularSection
+        profile={profile}
+        config={config}
+        readOnly={readOnly}
+        setValue={setValue}
+      />
 
       {/* Cloud posture — read-only in v1 (mode + backend URL are a
           transactional pair). */}

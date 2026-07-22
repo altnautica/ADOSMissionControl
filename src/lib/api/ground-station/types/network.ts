@@ -81,6 +81,37 @@ export interface ModemUpdate {
   enabled?: boolean;
 }
 
+/**
+ * The modem view the agent's network/modem read AND write routes serve:
+ * config legs (`enabled`, `apn`, `cap_mb`) plus cumulative usage
+ * (`data_used_mb`, `percent`) plus connectivity legs that report the
+ * manager's no-modem defaults (`signal_quality: -1`, `technology:
+ * "unknown"`, `operator: ""`) when no live modem is driving them — a
+ * consumer must treat those sentinels as unknown, never as facts.
+ */
+export interface ModemView {
+  enabled?: boolean;
+  connected?: boolean;
+  iface?: string | null;
+  ip?: string | null;
+  signal_quality?: number | null;
+  technology?: string | null;
+  apn?: string | null;
+  operator?: string | null;
+  data_used_mb?: number | null;
+  cap_mb?: number | null;
+  percent?: number | null;
+  state?: string | null;
+}
+
+/** The cellular detail snapshot (`GET .../modem-status`): whether a modem is
+ * present at all, with the agent's reason when it is not. */
+export interface ModemDetailStatus {
+  present: boolean;
+  reason?: string | null;
+  [key: string]: unknown;
+}
+
 export type UplinkHealth = "ok" | "degraded" | "down";
 
 export interface NetworkStatus {
