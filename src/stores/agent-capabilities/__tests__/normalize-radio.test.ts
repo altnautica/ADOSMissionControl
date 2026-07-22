@@ -260,6 +260,35 @@ describe("normalizeRadio link diagnosis", () => {
   });
 });
 
+describe("normalizeRadio transmit-proof verdict", () => {
+  it("parses an explicit unproven transmit path", () => {
+    const radio = normalizeRadio({ state: "connected", rfUnverified: true });
+    expect(radio!.rfUnverified).toBe(true);
+  });
+
+  it("keeps an explicit proven false distinct from absent", () => {
+    const radio = normalizeRadio({ state: "connected", rfUnverified: false });
+    expect(radio!.rfUnverified).toBe(false);
+  });
+
+  it("reads an absent verdict as null, never as a proven false", () => {
+    const radio = normalizeRadio({ state: "connected" });
+    expect(radio!.rfUnverified).toBeNull();
+  });
+
+  it("reads an explicit null verdict as null", () => {
+    const radio = normalizeRadio({ state: "connected", rfUnverified: null });
+    expect(radio!.rfUnverified).toBeNull();
+  });
+
+  it("coerces a non-boolean verdict to null", () => {
+    for (const raw of ["true", 1, 0, {}, []]) {
+      const radio = normalizeRadio({ state: "connected", rfUnverified: raw });
+      expect(radio!.rfUnverified).toBeNull();
+    }
+  });
+});
+
 describe("normalizeRadio PHY-muted flag", () => {
   it("parses an explicit muted PHY", () => {
     const radio = normalizeRadio({ state: "connected", phyMuted: true });

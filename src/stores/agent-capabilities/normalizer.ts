@@ -204,6 +204,12 @@ export function normalizeRadio(raw: unknown): RadioState | null {
         : null,
     channelLocked:
       typeof r.channelLocked === "boolean" ? r.channelLocked : null,
+    // The radio's own transmit-proof verdict. Anything that is not a real
+    // boolean — an absent key on an older agent, a null the agent sends when
+    // it has no radio view, a stale snapshot — normalizes to null, which the
+    // UI reads as "no verdict". Defaulting to false here would fabricate a
+    // claim that the transmit path had been proven.
+    rfUnverified: typeof r.rfUnverified === "boolean" ? r.rfUnverified : null,
     reacquireKills: num(r.reacquireKills),
     rxZombieKills: num(r.rxZombieKills),
     validRxPacketsPerS: num(r.validRxPacketsPerS),

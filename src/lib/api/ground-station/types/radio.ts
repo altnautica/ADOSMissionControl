@@ -132,6 +132,16 @@ export interface RadioState {
   // don't report these fields.
   acquireState: RadioAcquireState | null;
   channelLocked: boolean | null;
+  // The radio's own verdict on whether its transmit path was ever proven:
+  // true when the transmit counter advanced while no return signal was
+  // confirmed within the agent's grace window. An advancing counter only
+  // proves the driver accepted frames, never that the antenna radiated
+  // them, so this is the reading that separates a working link from one
+  // that merely looks busy. Null means NO VERDICT — the agent did not
+  // report one, or has no radio view to report from. Null is NOT false: a
+  // false asserts the transmit path was proven, so the two must never
+  // collapse.
+  rfUnverified: boolean | null;
   reacquireKills: number | null;
   rxZombieKills: number | null;
   validRxPacketsPerS: number | null;

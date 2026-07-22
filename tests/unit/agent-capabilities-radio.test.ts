@@ -131,6 +131,7 @@ describe("agent-capabilities-store radio", () => {
         txVideoRecvqBytes: null,
         acquireState: null,
         channelLocked: null,
+        rfUnverified: null,
         reacquireKills: null,
         rxZombieKills: null,
         validRxPacketsPerS: null,

@@ -37,6 +37,9 @@ const MOCK_RADIO: Partial<RadioState> = {
   channelLocked: true,
   adapterChipset: "RTL8812EU",
   adapterInjectionOk: true,
+  // The demo link decodes on the ground, so the radio's transmit-proof
+  // verdict is an explicit false (proven), not an absent reading.
+  rfUnverified: false,
   rssiDbm: -44,
   paired: true,
 };
