@@ -39,7 +39,19 @@ export function useNodeCommandLane(): NodeCommandSinkOptions {
   );
 
   const enqueueCloudCommand: CloudCommandEnqueuer | null = useMemo(() => {
-    if (!convexAvailable || isDemoMode()) return null;
+    if (isDemoMode()) {
+      // The simulated fleet takes commands too, so every control on the board
+      // is exercisable offline. Loaded on demand so the mock never reaches a
+      // production bundle.
+      return async ({ deviceId, args }) => {
+        const { applyDemoNodeCommand } = await import(
+          "@/mock/demo-node-commands"
+        );
+        applyDemoNodeCommand(deviceId, args.cmd, args.args);
+        return { commandId: `demo-${deviceId}-${Date.now()}` };
+      };
+    }
+    if (!convexAvailable) return null;
     return (args) => enqueue(args);
   }, [convexAvailable, enqueue]);
 

@@ -10,6 +10,10 @@ import { useDroneManager } from "@/stores/drone-manager";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
 import { usePairingStore, type PairedDrone } from "@/stores/pairing-store";
+import {
+  clearDemoNodeCommands,
+  demoTelemetryOverride,
+} from "@/mock/demo-node-commands";
 import { useCommandFleetStore, type CommandCloudStatus } from "@/stores/command-fleet-store";
 import { useNodeRegistryStore } from "@/stores/node-registry";
 import { useComputeStore } from "@/stores/compute-store";
@@ -210,6 +214,10 @@ function buildDemoStatus(
       : [{ name: "ados-mavlink", status: "running" }],
     telemetry: {
       ...DRONE_TELEMETRY[agent.deviceId],
+      // Commands sent from a fleet surface land here, so a mode change or a
+      // disarm made in demo shows up in the node's own telemetry rather than
+      // being overwritten by the next tick.
+      ...demoTelemetryOverride(agent.deviceId),
       last_update: now,
     },
   };
@@ -638,6 +646,7 @@ export function DemoProvider() {
       useFleetStore.getState().setDrones([]);
       useFleetStore.getState().clearAlerts();
       usePairingStore.getState().clear();
+      clearDemoNodeCommands();
       useCommandFleetStore.getState().clear();
       // The demo seeds the node registry (the single fleet write target);
       // clear it too so toggling demo off leaves no ghost rows for the
