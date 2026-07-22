@@ -259,14 +259,40 @@ describe("AgentClient schema fallback policy", () => {
     await expect(client.getFullStatus()).resolves.toEqual(payload);
   });
 
-  it("fails closed for malformed command responses", async () => {
+  it("fails closed for a command response carrying no acknowledgement", async () => {
     globalThis.fetch = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ ok: true }), { status: 200 }),
     );
 
     const client = new AgentClient(`http://strict-${unique}.local`);
-    await expect(client.sendCommand("arm")).rejects.toThrow(
-      "Agent API schema mismatch on /api/command",
+    // An envelope with no acknowledgement block means the vehicle never
+    // answered. That is reported as an unsuccessful command, never as a
+    // success — a caller must not read "sent" as "done".
+    const result = await client.sendCommand("arm");
+    expect(result.success).toBe(false);
+    expect(result.message).toMatch(/no acknowledgement/i);
+  });
+
+  it("names the command on the field the agent's command route reads", async () => {
+    const fetchSpy = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          status: "ok",
+          cmd: "takeoff",
+          ack: { observed: true, accepted: true, result: 0, result_name: "ACCEPTED" },
+        }),
+        { status: 200 },
+      ),
     );
+    globalThis.fetch = fetchSpy;
+
+    const client = new AgentClient(`http://wire-${unique}.local`);
+    const result = await client.sendCommand("takeoff", [25]);
+
+    const body = JSON.parse(
+      (fetchSpy.mock.calls[0][1] as { body: string }).body,
+    );
+    expect(body).toEqual({ cmd: "takeoff", args: [25] });
+    expect(result.success).toBe(true);
   });
 });
