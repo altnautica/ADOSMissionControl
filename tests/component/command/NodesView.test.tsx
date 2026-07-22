@@ -214,6 +214,42 @@ describe("NodesView", () => {
     expect(menu.parentElement).toBe(document.body);
   });
 
+  it("honours the menu keyboard contract its roles promise", async () => {
+    const user = userEvent.setup();
+    renderBoard();
+
+    const trigger = within(rowFor("Alpha")).getByRole("button", {
+      name: /change alpha flight mode/i,
+    });
+    expect(trigger.getAttribute("aria-haspopup")).toBe("menu");
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+
+    await user.click(trigger);
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
+
+    // Focus moves into the menu on open, so the announced role has a working
+    // interaction behind it in every browser, not only ones that focus a
+    // clicked button.
+    const items = within(screen.getByRole("menu"))
+      .getAllByRole("menuitem")
+      .filter((el) => !el.hasAttribute("disabled"));
+    expect(document.activeElement).toBe(items[0]);
+
+    await user.keyboard("{ArrowDown}");
+    expect(document.activeElement).toBe(items[1]);
+
+    await user.keyboard("{End}");
+    expect(document.activeElement).toBe(items[items.length - 1]);
+
+    await user.keyboard("{Home}");
+    expect(document.activeElement).toBe(items[0]);
+
+    // Escape closes and hands focus back to the trigger.
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+  });
+
   it("disables an unreachable node's actions and names the cause", async () => {
     const user = userEvent.setup();
     renderBoard();
