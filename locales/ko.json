@@ -5645,6 +5645,13 @@
     "applyFailed": "Could not save the change",
     "apply": "Apply",
     "saving": "Saving…",
+    "groups": {
+      "identity": "Identity",
+      "network": "Link & network",
+      "videoVision": "Video & vision",
+      "cloud": "Cloud & remote",
+      "system": "System & safety"
+    },
     "intInvalid": "Enter a whole number between {min} and {max}.",
     "video": {
       "title": "Video",
