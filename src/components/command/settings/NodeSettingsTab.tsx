@@ -25,28 +25,12 @@ import { featuresForProfile } from "@/components/features/registry";
 import { useNodeConfig } from "./use-node-config";
 import {
   ConfigSelectField,
-  ConfigToggleField,
   ConfigTextField,
   ConfigReadonlyRow,
 } from "./ConfigFields";
 import { PerceptionOffloadSection } from "./PerceptionOffloadSection";
-
-const CARD = "rounded border border-border-default bg-bg-secondary p-5";
-
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className={CARD}>
-      <h2 className="mb-3 text-lg font-medium text-text-primary">{title}</h2>
-      <div className="space-y-4">{children}</div>
-    </section>
-  );
-}
+import { NetworkUplinkSection } from "./NetworkUplinkSection";
+import { Section } from "./Section";
 
 export function NodeSettingsTab({
   droneId,
@@ -140,17 +124,14 @@ export function NodeSettingsTab({
         setValue={setValue}
       />
 
-      {/* Network — per-key hotspot toggle. */}
-      <Section title={t("network.title")}>
-        <ConfigToggleField
-          configKey="network.hotspot.enabled"
-          label={t("network.hotspotLabel")}
-          hint={t("network.hotspotHint")}
-          config={config}
-          readOnly={readOnly}
-          setValue={setValue}
-        />
-      </Section>
+      {/* Network — the uplink matrix + priority ladder (ground station) and
+          the config-backed hotspot switch (every profile). */}
+      <NetworkUplinkSection
+        profile={profile}
+        config={config}
+        readOnly={readOnly}
+        setValue={setValue}
+      />
 
       {/* Cloud posture — read-only in v1 (mode + backend URL are a
           transactional pair). */}
