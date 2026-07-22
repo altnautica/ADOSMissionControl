@@ -12,7 +12,6 @@ import type { PairedDrone } from "@/stores/pairing-store";
 import {
   useCommandFleetStore,
   type CommandCloudStatus,
-  type CommandTelemetrySnapshot,
 } from "@/stores/command-fleet-store";
 import {
   STALE_THRESHOLD_MS,
@@ -22,6 +21,7 @@ import {
 import { normalizeRadio } from "@/stores/agent-capabilities/normalizer";
 import { linkStateReach } from "@/components/hardware/radio/labels";
 import { isFcReachable } from "@/lib/agent/mavlink-link";
+import { telemetryValue } from "@/lib/nodes/presence";
 import type { RadioState } from "@/lib/api/ground-station/types";
 
 export type CommandAgentProfile = "drone" | "ground-station" | "workstation";
@@ -108,13 +108,6 @@ function videoUrl(status: CommandCloudStatus | undefined): string | null {
   if (status.lastIp) return `http://${status.lastIp}:${port}/main/whep`;
   // No known IP: fall back to whatever the agent advertised.
   return status.videoWhepUrl ?? null;
-}
-
-function telemetryValue(
-  telemetry: CommandTelemetrySnapshot | undefined,
-  status: CommandCloudStatus | undefined,
-): CommandTelemetrySnapshot | undefined {
-  return telemetry ?? status?.telemetry;
 }
 
 export function useCommandAgentFleet(

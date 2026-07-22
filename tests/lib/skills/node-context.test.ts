@@ -63,7 +63,7 @@ function lanNode(deviceId: string): LocalNode {
   };
 }
 
-/** Publish a telemetry snapshot for a node, the way the fleet bridges do. */
+/** Publish a heartbeat-row snapshot for a node, the way the LAN poll does. */
 function publishTelemetry(
   deviceId: string,
   telemetry: { armed?: boolean; mode?: string },
@@ -71,6 +71,14 @@ function publishTelemetry(
   useCommandFleetStore.getState().upsertCloudStatuses([
     { deviceId, telemetry, updatedAt: Date.now() },
   ]);
+}
+
+/** Publish live-stream telemetry for a node, the way the MQTT bridge does. */
+function streamTelemetry(
+  deviceId: string,
+  telemetry: { armed?: boolean; mode?: string },
+): void {
+  useCommandFleetStore.getState().setTelemetry(deviceId, telemetry);
 }
 
 beforeEach(() => {
@@ -130,6 +138,61 @@ describe("per-node state sourcing", () => {
     const ctx = buildSkillContextForNode(NODE, { originIsHttps: false });
 
     expect(ctx.droneId).toBe(NODE._id);
+  });
+});
+
+describe("cloud command lane", () => {
+  // A node paired only through the cloud relay: no LAN credentials in this
+  // browser, telemetry streamed over MQTT, and a heartbeat row that carries no
+  // telemetry snapshot at all — the exact shape production produces for it.
+  const CLOUD_DEVICE_ID = "device-cloud";
+  const CLOUD_NODE: SkillTargetNode = {
+    _id: `node:${CLOUD_DEVICE_ID}`,
+    deviceId: CLOUD_DEVICE_ID,
+    convexId: "convex-row-1",
+    fcFirmware: "ardupilot",
+    frameType: "Copter",
+  };
+  const enqueue = async () => ({ commandId: "cmd-1" });
+
+  it("offers a command surface from streamed telemetry alone", () => {
+    useCommandFleetStore.getState().upsertCloudStatuses([
+      { deviceId: CLOUD_DEVICE_ID, updatedAt: Date.now() },
+    ]);
+    streamTelemetry(CLOUD_DEVICE_ID, { armed: true, mode: "GUIDED" });
+
+    const ctx = buildSkillContextForNode(CLOUD_NODE, {
+      originIsHttps: true,
+      enqueueCloudCommand: enqueue,
+    });
+
+    // The regression this pins: the live stream is the only telemetry a
+    // cloud-paired node produces, and it must be enough to open the lane.
+    expect(ctx.protocol).not.toBeNull();
+    expect(ctx.armState).toBe("armed");
+    expect(ctx.flightMode).toBe("GUIDED");
+    expect(disarmSkill.getState(ctx).kind).toBe("idle");
+  });
+
+  it("prefers the live stream over the heartbeat row, like the display", () => {
+    useCommandFleetStore.getState().upsertCloudStatuses([
+      {
+        deviceId: CLOUD_DEVICE_ID,
+        telemetry: { armed: false, mode: "LOITER" },
+        updatedAt: Date.now(),
+      },
+    ]);
+    streamTelemetry(CLOUD_DEVICE_ID, { armed: true, mode: "AUTO" });
+
+    const ctx = buildSkillContextForNode(CLOUD_NODE, {
+      originIsHttps: true,
+      enqueueCloudCommand: enqueue,
+    });
+
+    // The display cells read stream-first; the gate must read the same value
+    // or the row would render ARMED beside controls gated on disarmed.
+    expect(ctx.armState).toBe("armed");
+    expect(ctx.flightMode).toBe("AUTO");
   });
 });
 

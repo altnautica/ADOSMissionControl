@@ -14,8 +14,11 @@
  * So every field here is sourced per node:
  *
  *  - `protocol`  the node's own command sink (LAN or cloud relay).
- *  - `armState` / `flightMode`  the node's own telemetry snapshot, keyed by its
- *    device id in the fleet store.
+ *  - `armState` / `flightMode`  the node's own telemetry, read through the same
+ *    merged view the board's display cells consume: the live stream a
+ *    cloud-paired node publishes over MQTT first, the heartbeat row's snapshot
+ *    (the LAN poll) as fallback. Reading only one map would blind the gate to
+ *    exactly the nodes the other lane serves.
  *  - `availableModes`  the mode table of the firmware the node's agent
  *    identified. Empty when the firmware is unidentified, which reports mode
  *    presets as unavailable rather than offering a mode the vehicle lacks.
@@ -43,6 +46,7 @@ import type { FirmwareType, UnifiedFlightMode } from "@/lib/protocol/types";
 import type { ArmState, FlightMode } from "@/lib/types";
 import { asFlightMode } from "@/lib/flight-mode";
 import { createFirmwareHandlerByType } from "@/lib/protocol/firmware/ardupilot";
+import { telemetryValue } from "@/lib/nodes/presence";
 import { useCommandFleetStore } from "@/stores/command-fleet-store";
 import { useSkillConfirmStore } from "@/stores/skill-confirm-store";
 import {
@@ -129,8 +133,12 @@ export function buildSkillContextForNode(
   node: SkillTargetNode,
   options: NodeSkillContextOptions = {},
 ): SkillContext {
-  const status = useCommandFleetStore.getState().cloudStatuses[node.deviceId];
-  const telemetry = status?.telemetry;
+  const fleet = useCommandFleetStore.getState();
+  const status = fleet.cloudStatuses[node.deviceId];
+  const telemetry = telemetryValue(
+    fleet.telemetryByDeviceId[node.deviceId],
+    status,
+  );
 
   // A boolean armed flag is the proof that this node's flight-controller state
   // is actually being read. Without it there is nothing to gate a flight
