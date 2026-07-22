@@ -16,7 +16,10 @@
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useTranslations } from "next-intl";
-import { useToast } from "@/components/ui/toast";
+import {
+  safeTranslate,
+  useSkillToastBridge,
+} from "@/hooks/use-skill-toast-bridge";
 import { useDroneStore } from "@/stores/drone-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useCockpitStore } from "@/stores/cockpit-store";
@@ -25,7 +28,6 @@ import {
   useSkillRegistry,
   buildSkillContext,
   activate,
-  setSkillNotifier,
   type Skill,
   type SkillState,
 } from "@/lib/skills";
@@ -37,45 +39,6 @@ const IDLE: SkillState = { kind: "idle" };
 
 /** Skills whose press is destructive enough to warrant the danger treatment. */
 const DANGER_SKILL_IDS = new Set(["arm", "disarm", "kill", "abort"]);
-
-/**
- * Translate the fully-qualified reason/notify keys the dispatcher emits
- * (e.g. "skills.reason.notArmed"). The notify callback is handed raw keys so a
- * non-React caller never needs the translator; the host resolves them here.
- */
-function useSkillToastBridge(): void {
-  const { toast } = useToast();
-  const t = useTranslations();
-  const toastRef = useRef(toast);
-  const tRef = useRef(t);
-
-  // Keep the refs current via an effect (never during render) so the notifier
-  // closure always reaches the live toast + translator without re-registering.
-  useEffect(() => {
-    toastRef.current = toast;
-    tRef.current = t;
-  }, [toast, t]);
-
-  useEffect(() => {
-    setSkillNotifier((message, status) => {
-      const text = message.startsWith("skills.")
-        ? safeTranslate(tRef.current, message)
-        : message;
-      toastRef.current(text, status ?? "info");
-    });
-  }, []);
-}
-
-function safeTranslate(
-  t: ReturnType<typeof useTranslations>,
-  key: string,
-): string {
-  try {
-    return t(key);
-  } catch {
-    return key;
-  }
-}
 
 export function SkillBar() {
   const enabled = useCockpitStore((s) => s.enabled);

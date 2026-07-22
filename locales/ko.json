@@ -6170,17 +6170,43 @@
       "withVoltage": "{volts} V"
     },
     "mode": {
-      "noReading": "The node reports no flight mode"
+      "noReading": "The node reports no flight mode",
+      "change": "Change {name} flight mode"
     },
     "relay": {
       "direct": "Direct",
       "relay": "Relay",
       "receiver": "Receiver",
       "notApplicable": "Only a ground station holds a mesh role",
-      "noReading": "The node reports no mesh role"
+      "noReading": "The node reports no mesh role",
+      "unknown": "Unknown",
+      "switching": "Switching…",
+      "change": "Change {name} mesh role",
+      "lanOnly": "A mesh role is written to the node over the LAN; this node is not reachable that way",
+      "applied": "{name} is now {role}",
+      "failed": "{name} role change failed: {error}",
+      "transitioning": "{name} is switching to {role}"
     },
     "features": {
-      "none": "No opt-in features for this node profile"
+      "none": "No opt-in features for this node profile",
+      "heading": "First-party features",
+      "change": "Change {name} features"
+    },
+    "columnActions": "Actions",
+    "reason": {
+      "notOnThisLane": "Not available over this node's command lane",
+      "noFlightState": "No live flight state is being read from this node"
+    },
+    "actions": {
+      "menuLabel": "{name} actions",
+      "open-cockpit": "Open cockpit",
+      "configure": "Configure",
+      "view-logs": "View logs",
+      "unpair": "Unpair"
+    },
+    "unpair": {
+      "title": "Unpair node",
+      "message": "Forget {name}? Its pairing is released and it disappears from the fleet until it is paired again."
     }
   }
 }

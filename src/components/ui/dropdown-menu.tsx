@@ -10,6 +10,8 @@ interface DropdownItem {
   danger?: boolean;
   divider?: boolean;
   disabled?: boolean;
+  /** Hover/focus text — used to say why a disabled item cannot run. */
+  title?: string;
 }
 
 interface DropdownMenuProps {
@@ -35,10 +37,22 @@ export function DropdownMenu({ trigger, items, onSelect, align = "left" }: Dropd
   }, [open]);
 
   return (
-    <div ref={ref} className="relative inline-flex">
+    <div
+      ref={ref}
+      className="relative inline-flex"
+      // Escape closes from anywhere inside and returns focus to the trigger, so
+      // a keyboard operator is not dropped at the top of the document.
+      onKeyDown={(e) => {
+        if (e.key !== "Escape" || !open) return;
+        e.stopPropagation();
+        setOpen(false);
+        ref.current?.querySelector<HTMLElement>("button")?.focus();
+      }}
+    >
       <div onClick={() => setOpen(!open)}>{trigger}</div>
       {open && (
         <div
+          role="menu"
           className={cn(
             "absolute top-full mt-1 z-[2000] min-w-[160px] bg-bg-secondary border border-border-default py-1",
             align === "right" ? "right-0" : "left-0"
@@ -50,6 +64,8 @@ export function DropdownMenu({ trigger, items, onSelect, align = "left" }: Dropd
             ) : (
               <button
                 key={item.id}
+                role="menuitem"
+                title={item.title}
                 disabled={item.disabled}
                 className={cn(
                   "w-full flex items-center gap-2 px-3 py-1.5 text-xs text-left transition-colors",

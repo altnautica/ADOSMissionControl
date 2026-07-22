@@ -24,6 +24,7 @@ import { useCommandAgentFleet } from "@/hooks/use-command-agent-fleet";
 import { joinNodeRows } from "@/lib/nodes/node-rows";
 import { NodeBoardRow } from "./NodeBoardRow";
 import { useNodeCommandLane } from "./use-node-command-lane";
+import { useSkillToastBridge } from "@/hooks/use-skill-toast-bridge";
 
 /** The board renders no feeds, so both video budgets are permanently empty. */
 const NO_VIDEO_IDS: Set<string> = new Set();
@@ -41,6 +42,7 @@ const COLUMNS = [
   "columnRelay",
   "columnFeatures",
   "columnLastSeen",
+  "columnActions",
 ] as const;
 
 export interface NodesViewProps {
@@ -52,6 +54,9 @@ export interface NodesViewProps {
 export function NodesView({ fleetNodes, onOpenAgent }: NodesViewProps) {
   const t = useTranslations("nodesView");
   const laneOptions = useNodeCommandLane();
+  // A rejected control has to say why. The dispatcher answers with raw keys, so
+  // without this bridge every refusal on this board would be silent.
+  useSkillToastBridge();
 
   // The same projection the grid consumes. It carries its own 1 Hz tick, so
   // liveness and the age labels below re-derive every second.

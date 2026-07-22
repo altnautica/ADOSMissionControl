@@ -25,9 +25,12 @@ import { StatusDot, type StatusLevel } from "@/components/ui/status-dot";
 import { NodeIdentityCell } from "./NodeIdentityCell";
 import { ReachCell } from "./ReachCell";
 import { LinkCell } from "./LinkCell";
-import { BatteryCell, ModeReadout } from "./StateCells";
+import { BatteryCell } from "./StateCells";
+import { FlightModeCell } from "./FlightModeCell";
 import { RelayModeCell } from "./RelayModeCell";
 import { FeaturesCell } from "./FeaturesCell";
+import { NodeActionsMenu } from "./NodeActionsMenu";
+import { useNodeSkills } from "./use-node-skills";
 import { readingFreshness } from "./cell-primitives";
 
 const CELL = "px-2 py-2 align-middle";
@@ -56,6 +59,7 @@ export function NodeBoardRow({ row, laneOptions, onOpen }: NodeBoardRowProps) {
   // imperatively, so recomputing is what keeps the row honest the moment a node
   // is paired or forgotten. The work is a map lookup and a few closures.
   const reach = describeNodeReach(node, laneOptions);
+  const skills = useNodeSkills(node, reach, laneOptions);
 
   return (
     <tr className="border-b border-border-default/60 last:border-b-0 hover:bg-bg-tertiary/40">
@@ -72,10 +76,15 @@ export function NodeBoardRow({ row, laneOptions, onOpen }: NodeBoardRowProps) {
         <BatteryCell telemetry={summary.telemetry} freshness={freshness} />
       </td>
       <td className={CELL}>
-        <ModeReadout telemetry={summary.telemetry} freshness={freshness} />
+        <FlightModeCell
+          telemetry={summary.telemetry}
+          freshness={freshness}
+          skills={skills}
+          nodeName={node.name}
+        />
       </td>
       <td className={CELL}>
-        <RelayModeCell node={node} />
+        <RelayModeCell node={node} reach={reach} />
       </td>
       <td className={CELL}>
         <FeaturesCell node={node} />
@@ -91,6 +100,9 @@ export function NodeBoardRow({ row, laneOptions, onOpen }: NodeBoardRowProps) {
             {formatCommandAge(summary.lastSeen)}
           </span>
         </span>
+      </td>
+      <td className={`${CELL} text-right`}>
+        <NodeActionsMenu node={node} skills={skills} onOpen={onOpen} />
       </td>
     </tr>
   );
