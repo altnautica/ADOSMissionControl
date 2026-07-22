@@ -34,6 +34,7 @@ import { WifiClientSection } from "./WifiClientSection";
 import { CellularSection } from "./CellularSection";
 import { MacPinSection } from "./MacPinSection";
 import { SelfHealSection } from "./SelfHealSection";
+import { MavlinkRoutingSection } from "./MavlinkRoutingSection";
 import { Section } from "./Section";
 
 export function NodeSettingsTab({
@@ -157,6 +158,15 @@ export function NodeSettingsTab({
       {/* Self-heal — the exposed protection switches, the always-on guardian
           and reconciler as live status, and the recent-heal activity feed. */}
       <SelfHealSection config={config} readOnly={readOnly} setValue={setValue} />
+
+      {/* MAVLink — FC transport + endpoints read-only, router identity and
+          relay forwarding rates writable, signing state on a drone. */}
+      <MavlinkRoutingSection
+        profile={profile}
+        config={config}
+        readOnly={readOnly}
+        setValue={setValue}
+      />
 
       {/* Cloud posture — read-only in v1 (mode + backend URL are a
           transactional pair). */}
