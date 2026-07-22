@@ -1291,7 +1291,8 @@
       "bindState": {
         "binding": "binding…",
         "failed": "bind failed: {error}",
-        "connected": "connected"
+        "connected": "connected",
+        "unverified": "transmitting, unverified"
       },
       "firstPairWarning": {
         "title": "API キーはこのブラウザに保存されています",
@@ -4129,6 +4130,7 @@
     "roleReceiver": "Receiver",
     "linked": "Linked",
     "noLink": "No link",
+    "linkUnverified": "Unverified",
     "paired": "Paired",
     "rssi": "RSSI",
     "snr": "SNR",

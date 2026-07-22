@@ -1291,7 +1291,8 @@
       "bindState": {
         "binding": "binding…",
         "failed": "bind failed: {error}",
-        "connected": "connected"
+        "connected": "connected",
+        "unverified": "transmitting, unverified"
       },
       "firstPairWarning": {
         "title": "आपकी API कुंजियाँ इसी ब्राउज़र में संग्रहीत हैं",
@@ -4129,6 +4130,7 @@
     "roleReceiver": "Receiver",
     "linked": "Linked",
     "noLink": "No link",
+    "linkUnverified": "Unverified",
     "paired": "Paired",
     "rssi": "RSSI",
     "snr": "SNR",

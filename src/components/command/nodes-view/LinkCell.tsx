@@ -20,12 +20,12 @@ import type { RadioState } from "@/lib/api/ground-station/types";
 import {
   linkDiagBadgeClass,
   linkDiagLabel,
+  linkStateBadgeClass,
   linkStateLabel,
 } from "@/components/hardware/radio/labels";
 import { cn } from "@/lib/utils";
 import {
   Chip,
-  NEUTRAL_CHIP,
   UnknownValue,
   staleClass,
   type ReadingFreshness,
@@ -58,7 +58,13 @@ export function LinkCell({
           {linkDiagLabel(tRadio, diag)}
         </Chip>
       ) : (
-        <Chip className={NEUTRAL_CHIP} title={tNodes("link.noVerdict")}>
+        // No diagnosis, so the coarse state is all there is. It still carries
+        // its own colour: a transmitting-but-unproven link rendered neutral
+        // would sit on the board looking as unremarkable as an idle one.
+        <Chip
+          className={linkStateBadgeClass(radio.state)}
+          title={tNodes("link.noVerdict")}
+        >
           <RadioIcon size={10} />
           {linkStateLabel(tRadio, radio.state)}
         </Chip>

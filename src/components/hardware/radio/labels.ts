@@ -70,6 +70,25 @@ export function linkStateBadgeClass(state: RadioLinkState): string {
   return toneBadgeClass(linkStateTone(state));
 }
 
+// Whether a link is carrying anything, for the surfaces that summarise a node
+// in one badge. Three answers, not two: "unproven" is a link whose transmitter
+// is running while nothing has confirmed reception. Collapsing it into "down"
+// reports a live transmitter as silent; collapsing it into "up" reports an
+// unproven path as working. Both are claims the reading exists to refuse.
+export type RadioLinkReach = "up" | "unproven" | "down";
+
+export function linkStateReach(state: RadioLinkState): RadioLinkReach {
+  switch (state) {
+    case "connected":
+    case "degraded":
+      return "up";
+    case "rf_unverified":
+      return "unproven";
+    default:
+      return "down";
+  }
+}
+
 export function topologyLabel(
   t: ReturnType<typeof useTranslations>,
   topology: RadioTopology,

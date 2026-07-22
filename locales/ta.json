@@ -1291,7 +1291,8 @@
       "bindState": {
         "binding": "binding…",
         "failed": "bind failed: {error}",
-        "connected": "connected"
+        "connected": "connected",
+        "unverified": "transmitting, unverified"
       },
       "firstPairWarning": {
         "title": "உங்கள் API சாவிகள் இந்த உலாவியில் சேமிக்கப்பட்டுள்ளன",
@@ -4129,6 +4130,7 @@
     "roleReceiver": "Receiver",
     "linked": "Linked",
     "noLink": "No link",
+    "linkUnverified": "Unverified",
     "paired": "Paired",
     "rssi": "RSSI",
     "snr": "SNR",

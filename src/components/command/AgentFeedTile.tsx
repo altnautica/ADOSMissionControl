@@ -50,6 +50,7 @@ import { StatTile } from "@/components/command/shared/StatTile";
 import { StatusDot, type StatusLevel } from "@/components/ui/status-dot";
 import { Badge } from "@/components/ui/badge";
 import { NodeGlyph } from "@/components/command/nodes/node-glyph";
+import { linkStateReach } from "@/components/hardware/radio/labels";
 import { profileTint, type EffProfile } from "@/lib/nodes/node-profile";
 
 interface AgentFeedTileProps {
@@ -200,7 +201,7 @@ function TileBadges({
   const liveLevel = livenessLevel(live);
   const liveVariant = live === "live" ? "success" : live === "stale" ? "warning" : "neutral";
   const radio = agent.radio;
-  const linkUp = radio?.state === "connected" || radio?.state === "degraded";
+  const reach = radio ? linkStateReach(radio.state) : "down";
   const roleLabel =
     agent.role === "direct"
       ? t("roleDirect")
@@ -248,8 +249,20 @@ function TileBadges({
       {effProfile === "ground-station" && (
         <>
           {roleLabel && <Badge variant="neutral">{roleLabel}</Badge>}
-          <Badge variant={linkUp ? "success" : "neutral"}>
-            {linkUp ? t("linked") : t("noLink")}
+          <Badge
+            variant={
+              reach === "unproven"
+                ? "warning"
+                : reach === "up"
+                  ? "success"
+                  : "neutral"
+            }
+          >
+            {reach === "unproven"
+              ? t("linkUnverified")
+              : reach === "up"
+                ? t("linked")
+                : t("noLink")}
           </Badge>
           {pairedShort && (
             <Badge variant="neutral" className="font-mono normal-case tracking-normal">

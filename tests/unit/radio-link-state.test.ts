@@ -19,6 +19,7 @@ import {
   linkStateLabel,
   linkStateTone,
   linkStateBadgeClass,
+  linkStateReach,
 } from "@/components/hardware/radio/labels";
 import type { RadioLinkState } from "@/lib/api/ground-station/types";
 
@@ -106,5 +107,39 @@ describe("radio link-state vocabulary", () => {
   it("keeps connected the only state that reads as healthy", () => {
     const healthy = ALL_STATES.filter((s) => linkStateTone(s) === "success");
     expect(healthy).toEqual(["connected"]);
+  });
+});
+
+describe("link reach classification", () => {
+  it("classifies every state", () => {
+    const byState = Object.fromEntries(
+      ALL_STATES.map((s) => [s, linkStateReach(s)]),
+    );
+    expect(byState).toEqual({
+      absent: "down",
+      disconnected: "down",
+      unpaired: "down",
+      auto_pairing: "down",
+      binding: "down",
+      connecting: "down",
+      connected: "up",
+      degraded: "up",
+      rf_unverified: "unproven",
+    });
+  });
+
+  it("refuses to fold a transmitting-but-unproven link into up or down", () => {
+    // "down" would report a running transmitter as silent; "up" would report
+    // an unproven path as working. It has to be its own answer.
+    expect(linkStateReach("rf_unverified")).not.toBe(
+      linkStateReach("connected"),
+    );
+    expect(linkStateReach("rf_unverified")).not.toBe(
+      linkStateReach("disconnected"),
+    );
+  });
+
+  it("treats a state outside the vocabulary as down, never as up", () => {
+    expect(linkStateReach("warp" as RadioLinkState)).toBe("down");
   });
 });

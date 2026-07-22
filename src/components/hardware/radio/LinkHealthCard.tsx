@@ -23,6 +23,7 @@ import type {
 import { EMPTY, rssiClass, topologyClass } from "./constants";
 import {
   linkStateLabel,
+  linkStateBadgeClass,
   linkDiagLabel,
   linkDiagBadgeClass,
   radioStackStateLabel,
@@ -175,7 +176,9 @@ export function LinkHealthCard({
           <RadioIcon size={12} />
           {topologyLabel(t, topology)}
         </span>
-        <span className="inline-flex items-center gap-1.5 rounded border border-border-default bg-bg-tertiary px-2.5 py-1 text-xs text-text-secondary">
+        <span
+          className={`inline-flex items-center gap-1.5 rounded border px-2.5 py-1 text-xs ${linkStateBadgeClass(linkState)}`}
+        >
           {linkStateLabel(t, linkState)}
         </span>
         {linkDiag != null ? (
