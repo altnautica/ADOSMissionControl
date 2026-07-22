@@ -6218,7 +6218,8 @@
     "columnActions": "Actions",
     "reason": {
       "notOnThisLane": "Not available over this node's command lane",
-      "noFlightState": "No live flight state is being read from this node"
+      "noFlightState": "No live flight state is being read from this node",
+      "nodeOffline": "The node is offline; nothing is being heard from it"
     },
     "actions": {
       "menuLabel": "{name} actions",

@@ -68,7 +68,9 @@ export function NodeBoardRow({
   // imperatively, so recomputing is what keeps the row honest the moment a node
   // is paired or forgotten. The work is a map lookup and a few closures.
   const reach = describeNodeReach(node, laneOptions);
-  const skills = useNodeSkills(node, reach, laneOptions);
+  // The same liveness the display cells dim on gates the controls, so a row
+  // whose readings have gone dark never keeps enabled flight actions.
+  const skills = useNodeSkills(node, reach, laneOptions, summary.liveness);
 
   return (
     <tr

@@ -91,13 +91,18 @@ function probeSkill(seen: string[]): Skill {
 /** Make `nodes` LAN-paired and give each a live arm-state reading. */
 function seedReachable(nodes: SkillTargetNode[]): void {
   useLocalNodesStore.setState({ nodes: nodes.map((n) => lanNode(n.deviceId)) });
-  // A command surface is only offered for a node whose arm state is being read,
-  // so each node needs a telemetry snapshot to be commandable at all.
+  // A command surface is only offered for a node whose arm state is being read
+  // AND that is currently being heard from, so each node needs a telemetry
+  // snapshot with a fresh heartbeat timestamp to be commandable at all.
   useCommandFleetStore.setState({
     cloudStatuses: Object.fromEntries(
       nodes.map((n) => [
         n.deviceId,
-        { deviceId: n.deviceId, telemetry: { armed: false } },
+        {
+          deviceId: n.deviceId,
+          telemetry: { armed: false },
+          updatedAt: Date.now(),
+        },
       ]),
     ),
   } as never);
@@ -132,6 +137,32 @@ describe("dispatchSkillForNodes", () => {
     // A single pending request would have been enough to strand the rest.
     expect(useSkillConfirmStore.getState().pending).toBeNull();
     expect(seen).toHaveLength(nodes.length);
+  });
+
+  it("leaves an offline node uncommanded even though its snapshot persists", async () => {
+    // A dead node leaves behind LAN credentials that never expire and a
+    // heartbeat row with its last telemetry. Neither is proof of anything ten
+    // minutes later, so the press-time context must refuse the dispatch.
+    const seen: string[] = [];
+    const nodes = nodesFor("offline");
+    useLocalNodesStore.setState({ nodes: nodes.map((n) => lanNode(n.deviceId)) });
+    useCommandFleetStore.setState({
+      cloudStatuses: Object.fromEntries(
+        nodes.map((n) => [
+          n.deviceId,
+          {
+            deviceId: n.deviceId,
+            telemetry: { armed: false },
+            updatedAt: Date.now() - 10 * 60_000,
+          },
+        ]),
+      ),
+    } as never);
+    useSkillRegistry.getState().register(probeSkill(seen));
+
+    await dispatchSkillForNodes("probe", nodes, { originIsHttps: false });
+
+    expect(seen).toEqual([]);
   });
 
   it("leaves an unreachable node uncommanded, as the dispatcher's own gate", async () => {

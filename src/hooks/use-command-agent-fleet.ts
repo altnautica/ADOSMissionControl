@@ -13,21 +13,22 @@ import {
   useCommandFleetStore,
   type CommandCloudStatus,
 } from "@/stores/command-fleet-store";
-import {
-  STALE_THRESHOLD_MS,
-  OFFLINE_THRESHOLD_MS,
-  useClockTick,
-} from "@/lib/agent/freshness";
+import { useClockTick } from "@/lib/agent/freshness";
 import { normalizeRadio } from "@/stores/agent-capabilities/normalizer";
 import { linkStateReach } from "@/components/hardware/radio/labels";
 import { isFcReachable } from "@/lib/agent/mavlink-link";
-import { telemetryValue } from "@/lib/nodes/presence";
+import {
+  nodeLastSeen,
+  nodeLiveness,
+  telemetryValue,
+  type CommandAgentLiveness,
+} from "@/lib/nodes/presence";
 import type { RadioState } from "@/lib/api/ground-station/types";
+
+export type { CommandAgentLiveness } from "@/lib/nodes/presence";
 
 export type CommandAgentProfile = "drone" | "ground-station" | "workstation";
 export type CommandAgentRole = "direct" | "relay" | "receiver" | null;
-
-export type CommandAgentLiveness = "live" | "stale" | "offline";
 export type CommandAgentVideoState =
   | "live"
   | "queued"
@@ -78,24 +79,6 @@ export interface CommandAgentSummary {
   };
 }
 
-function livenessFromTimestamp(ts: number | null): CommandAgentLiveness {
-  if (!ts) return "offline";
-  const elapsed = Date.now() - ts;
-  if (elapsed < STALE_THRESHOLD_MS) return "live";
-  if (elapsed < OFFLINE_THRESHOLD_MS) return "stale";
-  return "offline";
-}
-
-function latestTimestamp(
-  drone: PairedDrone,
-  status: CommandCloudStatus | undefined,
-): number | null {
-  const candidates = [drone.lastSeen, status?.updatedAt].filter(
-    (v): v is number => typeof v === "number" && Number.isFinite(v),
-  );
-  return candidates.length > 0 ? Math.max(...candidates) : null;
-}
-
 function videoUrl(status: CommandCloudStatus | undefined): string | null {
   if (!status || status.videoState !== "running") return null;
   // Prefer the IP we actually reach the agent at. The agent echoes its WHEP
@@ -131,11 +114,10 @@ export function useCommandAgentFleet(
         telemetryByDeviceId[drone.deviceId],
         status,
       );
-      const lastSeen = latestTimestamp(drone, status);
-      // A direct-connect FC is live-by-presence (it is removed on disconnect),
-      // so it never ages against the heartbeat clock — match droneLiveness.
-      const isDirectFc = (drone as { isDirectFc?: boolean }).isDirectFc === true;
-      const liveness = isDirectFc ? "live" : livenessFromTimestamp(lastSeen);
+      const lastSeen = nodeLastSeen(drone, status);
+      // Shared with the per-node command gates, so an offline row's dark cells
+      // and its disabled controls always agree — match droneLiveness.
+      const liveness: CommandAgentLiveness = nodeLiveness(drone, status);
       const profile: CommandAgentProfile = drone.profile ?? "drone";
       const radio = status?.radio ? normalizeRadio(status.radio) : null;
       // A ground station has no camera of its own — its video is the downlink

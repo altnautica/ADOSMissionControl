@@ -48,10 +48,15 @@ export function FleetActionConfirm({
 
   const targets = useMemo(() => {
     if (!skill) return [];
+    // The same gate stack as a row's own control — liveness included — so the
+    // "ready of total" numbers this dialog states are the board's truth.
     return rows.filter((row) => {
       const reach = describeNodeReach(row.node, laneOptions);
       const ctx = buildSkillContextForNode(row.node, laneOptions);
-      return resolveBoardSkillState(skill, ctx, reach).kind !== "disabled";
+      return (
+        resolveBoardSkillState(skill, ctx, reach, row.summary.liveness).kind !==
+        "disabled"
+      );
     });
   }, [skill, rows, laneOptions]);
 

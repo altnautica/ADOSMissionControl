@@ -35,7 +35,9 @@
  *    was completed for a different vehicle.
  *
  * Above all: with no telemetry snapshot proving the node's arm state, there is
- * no protocol at all. A command surface is offered only for a node whose live
+ * no protocol at all — and a snapshot from a node that is no longer being
+ * heard from proves nothing, so an offline node's persisted telemetry is read
+ * the same as none. A command surface is offered only for a node whose live
  * state can actually be read, so a flight action is never dispatched blind.
  *
  * @module skills/node-context
@@ -46,7 +48,7 @@ import type { FirmwareType, UnifiedFlightMode } from "@/lib/protocol/types";
 import type { ArmState, FlightMode } from "@/lib/types";
 import { asFlightMode } from "@/lib/flight-mode";
 import { createFirmwareHandlerByType } from "@/lib/protocol/firmware/ardupilot";
-import { telemetryValue } from "@/lib/nodes/presence";
+import { nodeLiveness, telemetryValue } from "@/lib/nodes/presence";
 import { useCommandFleetStore } from "@/stores/command-fleet-store";
 import { useSkillConfirmStore } from "@/stores/skill-confirm-store";
 import {
@@ -65,6 +67,9 @@ export interface SkillTargetNode extends CommandTargetNode {
   fcFirmware?: string;
   /** Short airframe label the node's agent reported. */
   frameType?: string;
+  /** Newest heard-from timestamp the membership entry carries. Feeds the
+   * liveness gate together with the heartbeat row's own timestamp. */
+  lastSeen?: number;
 }
 
 export type NodeSkillContextOptions = NodeCommandSinkOptions;
@@ -141,10 +146,14 @@ export function buildSkillContextForNode(
   );
 
   // A boolean armed flag is the proof that this node's flight-controller state
-  // is actually being read. Without it there is nothing to gate a flight
-  // command on, so no command surface is offered at all.
+  // is actually being read — and it only stays proof while the node itself is
+  // being heard from. Both telemetry maps persist a node's last value after it
+  // goes dark, so past the offline threshold the snapshot proves nothing: the
+  // arm state reads unknown and no command surface is offered, on the same
+  // clock the board's display cells go dark on.
+  const offline = nodeLiveness(node, status) === "offline";
   const armed =
-    typeof telemetry?.armed === "boolean" ? telemetry.armed : null;
+    !offline && typeof telemetry?.armed === "boolean" ? telemetry.armed : null;
   const armState: ArmState = armed ? "armed" : "disarmed";
   const flightMode = asFlightMode(telemetry?.mode) ?? UNRECOGNISED_MODE;
 

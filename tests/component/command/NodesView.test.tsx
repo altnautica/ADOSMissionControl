@@ -77,6 +77,28 @@ const GROUND: FleetNodeEntry = {
   isLocal: false,
 } as FleetNodeEntry;
 
+/** Ten minutes of silence: past the offline threshold on every clock. */
+const SILENT_SINCE = NOW - 10 * 60_000;
+
+/**
+ * LAN-paired like Alpha, with a persisted arm-state snapshot — but nothing has
+ * been heard from it in ten minutes. Its credentials still resolve a lane, so
+ * only the liveness gate stands between its stale snapshot and a live control.
+ */
+const OFFLINE_DRONE: FleetNodeEntry = {
+  _id: "node:charlie",
+  userId: "local",
+  deviceId: "charlie",
+  name: "Charlie",
+  apiKey: "key-charlie",
+  pairedAt: 3,
+  lastSeen: SILENT_SINCE,
+  profile: "drone",
+  isLocal: true,
+  fcFirmware: "ardupilot",
+  frameType: "copter",
+} as FleetNodeEntry;
+
 function lanNode(deviceId: string): LocalNode {
   return {
     deviceId,
@@ -108,8 +130,9 @@ function rowFor(name: string): HTMLElement {
 
 beforeEach(() => {
   registerBuiltins();
-  // Only the drone is LAN-paired, so the ground station has no command lane.
-  useLocalNodesStore.setState({ nodes: [lanNode("alpha")] });
+  // The drone and the silent drone are LAN-paired; the ground station has no
+  // command lane at all.
+  useLocalNodesStore.setState({ nodes: [lanNode("alpha"), lanNode("charlie")] });
   useCommandFleetStore.setState({
     cloudStatuses: {
       alpha: {
@@ -122,6 +145,12 @@ beforeEach(() => {
         },
       },
       bravo: { deviceId: "bravo", updatedAt: NOW },
+      // The row a dead node leaves behind: its last snapshot, ten minutes old.
+      charlie: {
+        deviceId: "charlie",
+        updatedAt: SILENT_SINCE,
+        telemetry: { armed: false, mode: "LOITER" },
+      },
     },
     telemetryByDeviceId: {},
   } as never);
@@ -180,6 +209,47 @@ describe("NodesView", () => {
     });
     expect(item).toHaveProperty("disabled", true);
     expect(item.getAttribute("title")).toMatch(/not paired|cloud/i);
+  });
+
+  it("disables an offline node's controls and names the offline cause", async () => {
+    const user = userEvent.setup();
+    renderBoard([DRONE, OFFLINE_DRONE]);
+
+    await user.click(
+      within(rowFor("Charlie")).getByRole("button", {
+        name: /charlie actions/i,
+      }),
+    );
+
+    // The persisted snapshot says disarmed and the LAN credentials resolve a
+    // lane, so without the liveness gate these would render pressable.
+    const menu = screen.getByRole("menu");
+    for (const name of [/^arm$/i, /return to home/i, /land/i]) {
+      const item = within(menu).getByRole("menuitem", { name });
+      expect(item).toHaveProperty("disabled", true);
+      expect(item.getAttribute("title")).toMatch(/offline/i);
+    }
+  });
+
+  it("counts only nodes that can take a bulk command in the ready totals", async () => {
+    const user = userEvent.setup();
+    renderBoard([DRONE, OFFLINE_DRONE]);
+
+    await user.click(
+      within(rowFor("Alpha")).getByRole("checkbox", { name: /select alpha/i }),
+    );
+    await user.click(
+      within(rowFor("Charlie")).getByRole("checkbox", {
+        name: /select charlie/i,
+      }),
+    );
+    await user.click(screen.getByRole("button", { name: "Flight action" }));
+
+    // Charlie is offline: whatever its persisted snapshot says, it is not
+    // ready, and the bar must not claim otherwise.
+    expect(
+      screen.getByRole("menuitem", { name: "Loiter · 1 of 2 ready" }),
+    ).toBeTruthy();
   });
 
   it("narrows the board by search", async () => {

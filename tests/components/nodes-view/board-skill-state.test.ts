@@ -85,11 +85,27 @@ describe("methodForSkill", () => {
 });
 
 describe("boardBlockReason", () => {
+  it("reports an offline node ahead of everything else", () => {
+    // LAN credentials never expire and a heartbeat row survives its node, so
+    // an offline node still resolves a lane — the honest cause is that it is
+    // gone, whatever else its persisted state would say.
+    expect(boardBlockReason(reachable(), ctxWith(), "arm", "offline")).toBe(
+      "nodesView.reason.nodeOffline",
+    );
+    expect(boardBlockReason(UNREACHABLE, ctxWith(), "arm", "offline")).toBe(
+      "nodesView.reason.nodeOffline",
+    );
+  });
+
+  it("keeps a stale node's controls with the skill — stale is not gone", () => {
+    expect(boardBlockReason(reachable(), ctxWith(), "arm", "stale")).toBeNull();
+  });
+
   it("reports the reach cause first — it is the most actionable", () => {
-    expect(boardBlockReason(UNREACHABLE, ctxWith(), "arm")).toBe(
+    expect(boardBlockReason(UNREACHABLE, ctxWith(), "arm", "live")).toBe(
       "nodesView.blocked.not-paired",
     );
-    expect(boardBlockReason(DIRECT_FC, ctxWith(), "arm")).toBe(
+    expect(boardBlockReason(DIRECT_FC, ctxWith(), "arm", "live")).toBe(
       "nodesView.blocked.direct-fc",
     );
   });
@@ -97,12 +113,12 @@ describe("boardBlockReason", () => {
   it("refuses a command the reaching lane cannot carry", () => {
     // Left pressable, this is the case that looks like it worked and did not.
     expect(
-      boardBlockReason(reachable(sinkWithout("killSwitch")), ctxWith(), "killSwitch"),
+      boardBlockReason(reachable(sinkWithout("killSwitch")), ctxWith(), "killSwitch", "live"),
     ).toBe("nodesView.reason.notOnThisLane");
   });
 
   it("refuses a skill the board has no lane mapping for", () => {
-    expect(boardBlockReason(reachable(), ctxWith(), null)).toBe(
+    expect(boardBlockReason(reachable(), ctxWith(), null, "live")).toBe(
       "nodesView.reason.notOnThisLane",
     );
   });
@@ -111,12 +127,12 @@ describe("boardBlockReason", () => {
     // The context withholds its command surface until the node's own arm state
     // has been read; saying "no FC link" there would point at the wrong fault.
     expect(
-      boardBlockReason(reachable(), ctxWith({ protocol: null }), "arm"),
+      boardBlockReason(reachable(), ctxWith({ protocol: null }), "arm", "live"),
     ).toBe("nodesView.reason.noFlightState");
   });
 
   it("defers to the skill when nothing about the node blocks it", () => {
-    expect(boardBlockReason(reachable(), ctxWith(), "arm")).toBeNull();
+    expect(boardBlockReason(reachable(), ctxWith(), "arm", "live")).toBeNull();
   });
 });
 
@@ -127,6 +143,7 @@ describe("resolveBoardSkillState", () => {
       landSkill,
       ctxWith({ armState: "disarmed" }),
       reachable(),
+      "live",
     );
     expect(state).toEqual({ kind: "disabled", reason: "skills.reason.notArmed" });
   });
@@ -136,6 +153,7 @@ describe("resolveBoardSkillState", () => {
       armSkill,
       ctxWith({ armState: "disarmed" }),
       reachable(),
+      "live",
     );
     expect(state.kind).toBe("idle");
   });
@@ -147,9 +165,24 @@ describe("resolveBoardSkillState", () => {
         throw new Error("the skill must not be consulted for an unreachable node");
       },
     };
-    expect(resolveBoardSkillState(exploded, ctxWith(), UNREACHABLE)).toEqual({
+    expect(
+      resolveBoardSkillState(exploded, ctxWith(), UNREACHABLE, "live"),
+    ).toEqual({
       kind: "disabled",
       reason: "nodesView.blocked.not-paired",
+    });
+  });
+
+  it("disables an offline node's control with the offline reason", () => {
+    const state = resolveBoardSkillState(
+      armSkill,
+      ctxWith({ armState: "disarmed" }),
+      reachable(),
+      "offline",
+    );
+    expect(state).toEqual({
+      kind: "disabled",
+      reason: "nodesView.reason.nodeOffline",
     });
   });
 });

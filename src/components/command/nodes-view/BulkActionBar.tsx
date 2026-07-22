@@ -41,7 +41,9 @@ import {
 /** Mode presets, then the two recoveries — the same set a row offers. */
 const BULK_SKILL_IDS: readonly string[] = [...BOARD_MODE_SKILLS, "rth", "land"];
 
-/** The nodes in `rows` that can actually take `skill` right now. */
+/** The nodes in `rows` that can actually take `skill` right now. Runs the
+ * same gate stack as a row's own control — liveness included — so the
+ * "N of M ready" count never counts a node whose controls are disabled. */
 function readyNodes(
   skill: Skill,
   rows: readonly NodeRowModel[],
@@ -50,7 +52,10 @@ function readyNodes(
   return rows.filter((row) => {
     const reach = describeNodeReach(row.node, options);
     const ctx = buildSkillContextForNode(row.node, options);
-    return resolveBoardSkillState(skill, ctx, reach).kind !== "disabled";
+    return (
+      resolveBoardSkillState(skill, ctx, reach, row.summary.liveness).kind !==
+      "disabled"
+    );
   });
 }
 

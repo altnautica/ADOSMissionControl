@@ -208,6 +208,45 @@ describe("state that cannot be sourced per node", () => {
     });
   });
 
+  it("offers no command surface for an offline node, whatever it last sent", () => {
+    // A dead node leaves its last snapshot behind in both telemetry maps and
+    // its LAN credentials never expire. Ten minutes of silence makes the
+    // persisted armed flag proof of nothing, so no control may run on it.
+    const TEN_MINUTES_AGO = Date.now() - 10 * 60_000;
+    useCommandFleetStore.getState().upsertCloudStatuses([
+      {
+        deviceId: DEVICE_ID,
+        telemetry: { armed: false, mode: "LOITER" },
+        updatedAt: TEN_MINUTES_AGO,
+      },
+    ]);
+    streamTelemetry(DEVICE_ID, { armed: false, mode: "LOITER" });
+
+    const ctx = buildSkillContextForNode(
+      { ...NODE, lastSeen: TEN_MINUTES_AGO },
+      { originIsHttps: false },
+    );
+
+    expect(ctx.protocol).toBeNull();
+    expect(armSkill.getState(ctx).kind).toBe("disabled");
+  });
+
+  it("keeps the command surface through the stale window", () => {
+    // Stale (heard from within the offline threshold) dims the readings but is
+    // not gone; blocking there would flap controls on every slow heartbeat.
+    useCommandFleetStore.getState().upsertCloudStatuses([
+      {
+        deviceId: DEVICE_ID,
+        telemetry: { armed: false, mode: "LOITER" },
+        updatedAt: Date.now() - 50_000,
+      },
+    ]);
+
+    const ctx = buildSkillContextForNode(NODE, { originIsHttps: false });
+
+    expect(ctx.protocol).not.toBeNull();
+  });
+
   it("offers a command surface once the node's state is readable", () => {
     publishTelemetry(DEVICE_ID, { armed: false, mode: "LOITER" });
 

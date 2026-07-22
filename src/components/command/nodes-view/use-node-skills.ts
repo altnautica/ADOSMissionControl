@@ -13,13 +13,15 @@
  * second command path would be a second set of safety gates to keep in step,
  * and they would not stay in step.
  *
- * Three gates run before a skill's own, because each names a cause the skill
+ * Four gates run before a skill's own, because each names a cause the skill
  * cannot see and each is more actionable than "no link":
  *
- *  1. nothing can reach this node — the reach descriptor says which cause;
- *  2. the lane that reaches it cannot carry this particular command, which is
+ *  1. the node is offline — nothing is being heard from it, so whatever lane
+ *     its credentials would resolve, no command can honestly be offered;
+ *  2. nothing can reach this node — the reach descriptor says which cause;
+ *  3. the lane that reaches it cannot carry this particular command, which is
  *     the case that would otherwise look like it worked and quietly do nothing;
- *  3. no live flight state is being read from the node, so there is no arm
+ *  4. no live flight state is being read from the node, so there is no arm
  *     state to gate on and no command is dispatched blind.
  *
  * @license GPL-3.0-only
@@ -39,6 +41,7 @@ import {
 } from "@/lib/skills";
 import type { NodeCommandSinkOptions } from "@/lib/nodes/command-sink";
 import type { NodeReachDescriptor } from "@/lib/nodes/node-reach";
+import type { CommandAgentLiveness } from "@/lib/nodes/presence";
 
 /** The flight actions this board exposes, and their labels. */
 export const BOARD_ACTION_SKILLS = ["arm", "disarm", "rth", "land"] as const;
@@ -98,7 +101,14 @@ export function boardBlockReason(
   reach: NodeReachDescriptor,
   ctx: SkillContext,
   method: keyof SkillProtocol | null,
+  liveness: CommandAgentLiveness,
 ): string | null {
+  // Offline comes first: LAN credentials never expire and a heartbeat row
+  // survives its node, so an offline node can still resolve a lane — but with
+  // nothing hearing from it, the honest cause is that it is gone, not that
+  // some particular lane or reading is missing. The context withholds its
+  // command surface on the same clock, so this is a label, not the gate.
+  if (liveness === "offline") return "nodesView.reason.nodeOffline";
   if (!reach.commandable) {
     return reach.blockedReason
       ? `nodesView.blocked.${reach.blockedReason}`
@@ -121,8 +131,14 @@ export function resolveBoardSkillState(
   skill: Skill,
   ctx: SkillContext,
   reach: NodeReachDescriptor,
+  liveness: CommandAgentLiveness,
 ): SkillState {
-  const blocked = boardBlockReason(reach, ctx, methodForSkill(skill.id));
+  const blocked = boardBlockReason(
+    reach,
+    ctx,
+    methodForSkill(skill.id),
+    liveness,
+  );
   return blocked ? { kind: "disabled", reason: blocked } : skill.getState(ctx);
 }
 
@@ -162,6 +178,7 @@ export function useNodeSkills(
   node: SkillTargetNode,
   reach: NodeReachDescriptor,
   options: NodeCommandSinkOptions,
+  liveness: CommandAgentLiveness,
 ): NodeSkills {
   // Subscribing to the registry keeps the board in step with skills that
   // register or unregister while it is open.
@@ -177,7 +194,7 @@ export function useNodeSkills(
       const skill = skills.get(skillId);
       if (!skill) return null;
 
-      const state = resolveBoardSkillState(skill, ctx, reach);
+      const state = resolveBoardSkillState(skill, ctx, reach, liveness);
       const disabled = state.kind === "disabled";
 
       return {
@@ -194,7 +211,7 @@ export function useNodeSkills(
         },
       };
     },
-    [skills, ctx, reach, node, options],
+    [skills, ctx, reach, liveness, node, options],
   );
 
   return { ctx, resolve };
