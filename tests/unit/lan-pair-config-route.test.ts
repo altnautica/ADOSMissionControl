@@ -50,13 +50,13 @@ describe("lan-pair config proxy", () => {
       }),
     );
     const res = await POST(
-      postJson({ host: "skynode.local", apiKey: "k-123", method: "GET" }),
+      postJson({ host: "bench-node.local", apiKey: "k-123", method: "GET" }),
     );
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ logging: { level: "info" } });
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe("http://skynode.local:8080/api/config");
+    expect(url).toBe("http://bench-node.local:8080/api/config");
     expect(init.method).toBe("GET");
     expect(init.body).toBeUndefined();
     const headers = init.headers as Record<string, string>;
@@ -85,7 +85,7 @@ describe("lan-pair config proxy", () => {
   it("forwards a POST envelope to the setup apply endpoint", async () => {
     const res = await POST(
       postJson({
-        host: "skynode.local",
+        host: "bench-node.local",
         apiKey: "k-123",
         method: "POST",
         body: { ui: { theme: "dark" } },
@@ -93,7 +93,7 @@ describe("lan-pair config proxy", () => {
     );
     expect(res.status).toBe(200);
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe("http://skynode.local:8080/api/v1/setup/apply");
+    expect(url).toBe("http://bench-node.local:8080/api/v1/setup/apply");
     expect(init.method).toBe("POST");
     expect(JSON.parse(init.body as string)).toEqual({ ui: { theme: "dark" } });
   });
@@ -106,7 +106,7 @@ describe("lan-pair config proxy", () => {
     );
     const res = await POST(
       postJson({
-        host: "skynode.local",
+        host: "bench-node.local",
         apiKey: "k-123",
         method: "PUT",
         body: { key: "nope", value: "1" },
@@ -126,7 +126,7 @@ describe("lan-pair config proxy", () => {
 
   it("rejects an unsupported method before reaching the agent", async () => {
     const res = await POST(
-      postJson({ host: "skynode.local", method: "DELETE" }),
+      postJson({ host: "bench-node.local", method: "DELETE" }),
     );
     expect(res.status).toBe(400);
     expect((await res.json()).error).toBe("bad_method");
@@ -135,7 +135,7 @@ describe("lan-pair config proxy", () => {
 
   it("rejects a write with no object body before reaching the agent", async () => {
     const res = await POST(
-      postJson({ host: "skynode.local", method: "PUT" }),
+      postJson({ host: "bench-node.local", method: "PUT" }),
     );
     expect(res.status).toBe(400);
     expect((await res.json()).error).toBe("bad_body");
@@ -145,7 +145,7 @@ describe("lan-pair config proxy", () => {
   it("maps an unreachable agent to 502 upstream_unreachable", async () => {
     fetchMock.mockRejectedValueOnce(new Error("connect ECONNREFUSED"));
     const res = await POST(
-      postJson({ host: "skynode.local", method: "GET" }),
+      postJson({ host: "bench-node.local", method: "GET" }),
     );
     expect(res.status).toBe(502);
     expect((await res.json()).error).toBe("upstream_unreachable");

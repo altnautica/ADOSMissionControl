@@ -115,13 +115,13 @@ describe("resolveConfigAccess", () => {
   it("falls back to the cloud pairing record for the proxy target", () => {
     usePairingStore.setState({
       pairedDrones: [
-        pairedDrone({ deviceId: "dev-2", mdnsHost: "skynode.local" }),
+        pairedDrone({ deviceId: "dev-2", mdnsHost: "bench-node.local" }),
       ],
     });
     const access = resolveConfigAccess(null, "dev-2");
     expect(access).toEqual({
       mode: "proxy",
-      target: { host: "skynode.local", apiKey: "CLOUD-KEY" },
+      target: { host: "bench-node.local", apiKey: "CLOUD-KEY" },
     });
   });
 
