@@ -20,6 +20,7 @@ import {
   useClockTick,
 } from "@/lib/agent/freshness";
 import { normalizeRadio } from "@/stores/agent-capabilities/normalizer";
+import { linkStateReach } from "@/components/hardware/radio/labels";
 import { isFcReachable } from "@/lib/agent/mavlink-link";
 import type { RadioState } from "@/lib/api/ground-station/types";
 
@@ -148,15 +149,15 @@ export function useCommandAgentFleet(
       // it receives over the WFB radio, so it can only be flowing while that
       // link is up. Gate the GS feed on the radio link state so a stale
       // videoState="running" from the agent does not keep a dead feed on
-      // screen after the link drops. "connected" and "degraded" both carry
-      // frames; every other state (and a missing radio block) means no link.
-      // The radio block reaches the cloud-relay path now that the heartbeat
-      // ingest forwards it. A drone streams its own camera over LAN/WebRTC
-      // independently of WFB, so it is never gated.
+      // screen after the link drops. Only a link classified "up" carries
+      // frames: a transmitting-but-unproven link has confirmed no reception,
+      // so it has nothing to show, and a missing radio block has no link at
+      // all. The radio block reaches the cloud-relay path now that the
+      // heartbeat ingest forwards it. A drone streams its own camera over
+      // LAN/WebRTC independently of WFB, so it is never gated.
       const radioLinkDown =
         profile === "ground-station" &&
-        radio?.state !== "connected" &&
-        radio?.state !== "degraded";
+        (radio == null || linkStateReach(radio.state) !== "up");
       const whepUrl = radioLinkDown ? null : videoUrl(status);
       const paused = pausedVideoIds.has(drone.deviceId);
       const active = activeVideoIds.has(drone.deviceId);
