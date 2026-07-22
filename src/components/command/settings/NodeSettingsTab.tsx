@@ -3,11 +3,12 @@
 /**
  * @module command/settings/NodeSettingsTab
  * @description The node-detail Settings tab. Brings the agent's web-console
- * Settings page into the GCS under the "Onboard computer" group: the first-party
- * Features (World Model), the operating Region (the existing
- * RegulatoryRegionPanel), plus per-key Network / Advanced writes and read-only
- * Profile / Cloud status. Every writable field reads its value from the live
- * agent config and writes back over the LAN with a read-back confirm.
+ * Settings page into the GCS under the "Onboard computer" group: the operating
+ * Region (the existing RegulatoryRegionPanel), the feature pages (vision &
+ * perception, world model, swarm — each gated on what the node advertises),
+ * plus per-key Network / Advanced writes and read-only Profile / Cloud status.
+ * Every writable field reads its value from the live agent config and writes
+ * back over the LAN with a read-back confirm.
  *
  * v1 writes per-key fields only (region, hotspot, log level, board override).
  * Profile and cloud posture are multi-field transactional changes, so they show
@@ -20,8 +21,6 @@ import { useTranslations } from "next-intl";
 import { Settings } from "lucide-react";
 import type { NodeProfile } from "@/components/dashboard/node-detail/surface-types";
 import { RegulatoryRegionPanel } from "@/components/command/system/RegulatoryRegionPanel";
-import { NodeFeaturesTile } from "@/components/features/NodeFeaturesTile";
-import { featuresForProfile } from "@/components/features/registry";
 import { useNodeConfig } from "./use-node-config";
 import {
   ConfigSelectField,
@@ -29,6 +28,8 @@ import {
   ConfigReadonlyRow,
 } from "./ConfigFields";
 import { VisionPerceptionSection } from "./VisionPerceptionSection";
+import { AtlasSection } from "./AtlasSection";
+import { SwarmSection } from "./SwarmSection";
 import { NetworkUplinkSection } from "./NetworkUplinkSection";
 import { WifiClientSection } from "./WifiClientSection";
 import { CellularSection } from "./CellularSection";
@@ -47,8 +48,6 @@ export function NodeSettingsTab({
 }) {
   const t = useTranslations("nodeSettings");
   const { config, loading, readOnly, error, setValue } = useNodeConfig();
-
-  const hasFeatures = featuresForProfile(profile).length > 0;
 
   const profileOptions = [
     { value: "drone", label: t("profile.optionDrone") },
@@ -98,14 +97,6 @@ export function NodeSettingsTab({
         </div>
       ) : null}
 
-      {/* First-party features (World Model, …) — opt-in per node. Renders
-          nothing on a profile with no opt-in features. */}
-      {hasFeatures ? (
-        <Section title={t("features.title")}>
-          <NodeFeaturesTile droneId={droneId} profile={profile} />
-        </Section>
-      ) : null}
-
       {/* Profile — read-only in v1 (a switch is a transactional setup change). */}
       <Section title={t("profile.title")}>
         <ConfigReadonlyRow
@@ -130,6 +121,20 @@ export function NodeSettingsTab({
         readOnly={readOnly}
         setValue={setValue}
       />
+
+      {/* World model — the master feature switch + pose-source preference.
+          Renders only when the node advertises the world-model block. */}
+      <AtlasSection
+        droneId={droneId}
+        profile={profile}
+        config={config}
+        readOnly={readOnly}
+        setValue={setValue}
+      />
+
+      {/* Swarm — the coordination config stored on the node. Renders only
+          when the node advertises the swarm block. */}
+      <SwarmSection config={config} readOnly={readOnly} setValue={setValue} />
 
       {/* Network — the uplink matrix + priority ladder (ground station) and
           the config-backed hotspot switch (every profile). */}

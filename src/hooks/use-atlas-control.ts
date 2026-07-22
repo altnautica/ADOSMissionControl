@@ -146,8 +146,9 @@ export function useAtlasControl(
     deviceId ? s.nodes.find((n) => n.deviceId === deviceId) : undefined,
   );
 
-  // The World Model is a per-node opt-in first-party feature — enabled from the
-  // Status-tab Features toggle, not a global flag. It gates the readiness poll
+  // The World Model is a per-node opt-in first-party feature — enabled from
+  // the node Settings world-model page (or the fleet board's Features cell),
+  // not a global flag. It gates the readiness poll
   // and the "actively doing Atlas" state so a lean fleet does no Atlas work on a
   // drone that never opted in.
   const featureEnabled = useNodeFeaturesStore((s) =>

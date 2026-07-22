@@ -50,6 +50,19 @@ export function readConfigPath(
   return cursor;
 }
 
+/** True when the loaded config carries `path` as a nested section object —
+ * i.e. the node's own config surface advertises that feature block. False
+ * while the config has not loaded (or the agent predates the block), so a
+ * feature page gated on this renders only for a node that actually exposes
+ * the feature. */
+export function configAdvertises(
+  config: Record<string, unknown> | null,
+  path: string,
+): boolean {
+  const v = readConfigPath(config, path);
+  return v !== null && typeof v === "object" && !Array.isArray(v);
+}
+
 export interface NodeConfig {
   /** The redacted config object from the agent, or null before it loads /
    * when no transport reaches the node. */

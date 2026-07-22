@@ -1114,9 +1114,7 @@
     "applyFailed": "Could not save the change",
     "apply": "Apply",
     "saving": "Saving…",
-    "features": {
-      "title": "Features"
-    },
+    "intInvalid": "Enter a whole number between {min} and {max}.",
     "profile": {
       "title": "Profile",
       "label": "Node profile",
@@ -1212,6 +1210,37 @@
         "gpuMemory": "Unified memory",
         "gpuUtil": "Utilization"
       }
+    },
+    "atlas": {
+      "title": "World model",
+      "blurb": "Capture pose-tagged keyframes as this drone flies; a paired compute node reconstructs a 3D world model.",
+      "featureLabel": "World Model",
+      "featureHint": "Master switch. Reveals the World Model tabs and enables the native capture service on the node.",
+      "poseTierLabel": "Pose source",
+      "poseTierHint": "Where the capture pose is estimated. Auto picks by board capability; on-board uses local VIO; offloaded runs on a paired compute node.",
+      "poseTierAuto": "Auto",
+      "poseTierLocal": "On-board",
+      "poseTierOffload": "Offloaded",
+      "poseTierHybrid": "Hybrid",
+      "captureProfileLabel": "Capture profile",
+      "reconstructStepsLabel": "Reconstruction steps",
+      "captureManagedHint": "Capture profile and reconstruction detail are managed on the World Model tab, next to the capture controls.",
+      "profileOrbit": "Orbit",
+      "profileLawnmower": "Lawnmower",
+      "profileFreeform": "Freeform",
+      "profileInspection": "Inspection"
+    },
+    "swarm": {
+      "title": "Swarm",
+      "blurb": "Multi-drone coordination configuration stored on this node's agent.",
+      "enabledLabel": "Enable swarm participation",
+      "enabledHint": "Master switch for the node's swarm services.",
+      "roleLabel": "Role",
+      "roleHint": "The node's configured swarm role. Default auto.",
+      "formationLabel": "Default formation",
+      "formationHint": "The formation preset the node starts with.",
+      "spacingLabel": "Default spacing (m)",
+      "spacingHint": "Inter-drone spacing for formations, in meters."
     },
     "wifi": {
       "title": "Wi-Fi",
@@ -1371,7 +1400,6 @@
       "systemIdHint": "The MAVLink system ID this node's router speaks with (1-255).",
       "componentIdLabel": "Component ID",
       "componentIdHint": "The MAVLink component ID this node's router speaks with (1-255).",
-      "intInvalid": "Enter a whole number between {min} and {max}.",
       "ratesTitle": "Cloud relay forwarding",
       "telemetryRateLabel": "Telemetry rate (Hz)",
       "telemetryRateHint": "How many telemetry updates per second the agent forwards to the cloud relay. Applies only when a cloud or self-hosted relay is configured; it does not change the flight controller's own stream rates.",

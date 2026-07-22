@@ -187,6 +187,90 @@ export function ConfigTextField({
   );
 }
 
+/** Parse an operator-typed integer within [min, max]. Null when invalid. */
+export function parseBoundedInt(
+  raw: string,
+  min: number,
+  max: number,
+): number | null {
+  const trimmed = raw.trim();
+  if (!/^\d+$/.test(trimmed)) return null;
+  const n = Number(trimmed);
+  if (!Number.isInteger(n) || n < min || n > max) return null;
+  return n;
+}
+
+/** An integer config field with range validation, writing on Apply through
+ * the shared config writer and re-reading via the caller's config prop. */
+export function ConfigIntField({
+  configKey,
+  label,
+  hint,
+  min,
+  max,
+  config,
+  readOnly,
+  setValue,
+}: BaseProps & { min: number; max: number }) {
+  const t = useTranslations("nodeSettings");
+  const { toast } = useToast();
+  const raw = readConfigPath(config, configKey);
+  const current =
+    typeof raw === "number" && Number.isFinite(raw) ? String(raw) : "";
+  const [draft, setDraft] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const value = draft ?? current;
+  const dirty = draft !== null && draft !== current;
+  const invalid = dirty && parseBoundedInt(value, min, max) === null;
+
+  const onApply = async () => {
+    if (readOnly || saving || !dirty || invalid) return;
+    setSaving(true);
+    try {
+      await setValue(configKey, value.trim());
+      toast(t("applied"), "success");
+      setDraft(null);
+    } catch (err) {
+      toast(err instanceof Error ? err.message : t("applyFailed"), "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-xs text-text-secondary">{label}</label>
+      <div className="flex items-end gap-2">
+        <input
+          type="text"
+          inputMode="numeric"
+          value={value}
+          onChange={(e) => setDraft(e.target.value)}
+          disabled={readOnly || saving}
+          aria-label={label}
+          aria-invalid={invalid || undefined}
+          className="h-9 w-28 rounded border border-border-default bg-bg-tertiary px-2 font-mono text-sm text-text-primary focus:border-accent-primary focus:outline-none disabled:opacity-50"
+        />
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => void onApply()}
+          disabled={readOnly || saving || !dirty || invalid}
+        >
+          {saving ? t("saving") : t("apply")}
+        </Button>
+      </div>
+      {invalid ? (
+        <p className="text-[11px] text-status-error">
+          {t("intInvalid", { min, max })}
+        </p>
+      ) : null}
+      {hint ? <p className="text-[11px] text-text-tertiary">{hint}</p> : null}
+    </div>
+  );
+}
+
 /** A labeled read-only value the operator manages in a transactional setup flow
  * (profile switch, cloud posture). Shows the real current value or "not set". */
 export function ConfigReadonlyRow({

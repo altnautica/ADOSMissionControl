@@ -14,9 +14,9 @@ import { renderWithIntl } from "../helpers/intl-wrapper";
 
 import {
   MavlinkRoutingSection,
-  parseBoundedInt,
   parseEndpoints,
 } from "@/components/command/settings/MavlinkRoutingSection";
+import { parseBoundedInt } from "@/components/command/settings/ConfigFields";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 
 const initialConnection = useAgentConnectionStore.getState();

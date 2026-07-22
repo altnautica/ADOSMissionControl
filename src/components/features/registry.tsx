@@ -5,7 +5,8 @@
  * (unlike a sandboxed extension, and unlike flight-critical infrastructure that
  * is always on). The World Model (Atlas) is the first. Each feature declares the
  * node profiles it is togglable on, the node-detail surfaces it reveals when
- * enabled, and the toggle Row rendered in the Status-tab Features tile.
+ * enabled, and the toggle Row its hosts mount (the fleet board's Features
+ * cell; the World Model row also anchors the node Settings world-model page).
  *
  * The compute / workstation profile treats these features as DEFAULT built-ins
  * (Atlas is its purpose), so it is not listed here — only profiles where the
@@ -37,7 +38,7 @@ export interface FirstPartyFeature {
   profiles: NodeProfile[];
   /** Node-detail surface ids this feature reveals when enabled (reference). */
   surfaceIds: string[];
-  /** The toggle row rendered in the Features tile. */
+  /** The toggle row the feature's host surfaces mount. */
   Row: FC<FeatureRowProps>;
 }
 
