@@ -11,7 +11,7 @@
  * @license GPL-3.0-only
  */
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Select, type SelectOption } from "@/components/ui/select";
 import { Toggle } from "@/components/ui/toggle";
@@ -147,6 +147,7 @@ export function ConfigTextField({
 }: BaseProps & { placeholder?: string }) {
   const t = useTranslations("nodeSettings");
   const { toast } = useToast();
+  const inputId = useId();
   const raw = readConfigPath(config, configKey);
   const current = typeof raw === "string" ? raw : raw != null ? String(raw) : "";
   const [draft, setDraft] = useState<string | null>(null);
@@ -171,9 +172,12 @@ export function ConfigTextField({
 
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-xs text-text-secondary">{label}</label>
+      <label htmlFor={inputId} className="text-xs text-text-secondary">
+        {label}
+      </label>
       <div className="flex items-end gap-2">
         <input
+          id={inputId}
           type="text"
           value={value}
           placeholder={placeholder}
@@ -213,6 +217,7 @@ export function ConfigSecretField({
 }: BaseProps & { placeholder?: string }) {
   const t = useTranslations("nodeSettings");
   const { toast } = useToast();
+  const inputId = useId();
   const raw = readConfigPath(config, configKey);
   const isSet = typeof raw === "string" && raw.length > 0;
   const [draft, setDraft] = useState("");
@@ -236,13 +241,16 @@ export function ConfigSecretField({
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-baseline justify-between gap-2">
-        <label className="text-xs text-text-secondary">{label}</label>
+        <label htmlFor={inputId} className="text-xs text-text-secondary">
+          {label}
+        </label>
         <span className="font-mono text-[11px] text-text-tertiary">
           {isSet ? t("set") : t("notSet")}
         </span>
       </div>
       <div className="flex items-end gap-2">
         <input
+          id={inputId}
           type="password"
           value={draft}
           placeholder={placeholder ?? t("secretPlaceholder")}
