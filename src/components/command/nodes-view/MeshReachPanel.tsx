@@ -23,6 +23,7 @@ import type { NodeCommandSinkOptions } from "@/lib/nodes/command-sink";
 import { buildMeshGraph } from "@/lib/nodes/mesh-graph";
 import { useMeshInputs } from "./use-mesh-inputs";
 import { MeshReachMap } from "./MeshReachMap";
+import { RelayStreamsList } from "./RelayStreamsList";
 
 export function MeshReachPanel({
   rows,
@@ -58,6 +59,7 @@ export function MeshReachPanel({
       {open && (
         <div className="p-3">
           <MeshReachMap graph={graph} />
+          <RelayStreamsList graph={graph} />
         </div>
       )}
     </aside>

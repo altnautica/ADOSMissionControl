@@ -630,6 +630,17 @@ body {
   to { stroke-dashoffset: -18; }
 }
 
+/* Relay-streams list — a proven, live funnel's status dot breathes. Reduced
+   motion is handled twice: the list withholds this class under a reduced-motion
+   preference, and the global reduced-motion rule below stops it regardless. */
+.relay-live-pulse {
+  animation: relay-live-pulse 1.4s ease-in-out infinite;
+}
+@keyframes relay-live-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *,

@@ -6705,6 +6705,20 @@
         "cloud": "Cloud relay",
         "direct-fc": "Direct FC",
         "none": "Unreachable"
+      },
+      "relayStreams": {
+        "heading": "Relay streams",
+        "empty": "No relay streams: every node reaches home directly",
+        "sink": "GCS",
+        "state": {
+          "live": "Live",
+          "unverified": "Unverified",
+          "stale": "Stale",
+          "down": "Down"
+        },
+        "hopRelay": "over {bearer} to {node}",
+        "hopData": "to {node}",
+        "streamAria": "{path}. {state}."
       }
     }
   },
