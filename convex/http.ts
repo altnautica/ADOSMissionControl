@@ -3,6 +3,7 @@ import { auth } from "./auth";
 import { httpAction } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
+import { snakeToCamelObject } from "./heartbeatCasing";
 
 const http = httpRouter();
 auth.addHttpRoutes(http);
@@ -238,6 +239,40 @@ function radioField(
     remapped[camelKey] = value;
   }
   return remapped as unknown as RadioPayload;
+}
+
+interface CrsfPayload {
+  v?: number | null;
+  state?: string | null;
+  rssiDbm?: number | null;
+  lqUplink?: number | null;
+  lqDownlink?: number | null;
+  snrDb?: number | null;
+  band?: string | null;
+  packetRateHz?: number | null;
+  txPowerDbm?: number | null;
+  txFramesPerS?: number | null;
+  rxFramesPerS?: number | null;
+  rfUnverified?: boolean | null;
+  mode?: string | null;
+  channelSource?: string | null;
+  relayRole?: string | null;
+}
+
+// Translate the agent's snake_case CRSF/ExpressLRS control-lane block into the
+// camelCase shape the validator and schema expect. This route PICKS fields
+// explicitly (it does not spread the body), so an emitted `crsf` block that is
+// not listed here is silently dropped from every cloud heartbeat — the OSS-twin
+// analogue of the production route missing the remap. Uses the shared,
+// unit-tested snakeToCamelObject (the same generic remap radioField applies
+// inline) so the exact transform is exercised by a route-level round-trip test.
+// Returns undefined when the block is absent or malformed so the heartbeat
+// stays additive and a bad block can never fail the strict v.object() validator.
+function crsfField(
+  body: Record<string, unknown>,
+  key: string,
+): CrsfPayload | undefined {
+  return snakeToCamelObject(body[key]) as unknown as CrsfPayload | undefined;
 }
 
 function commandResultField(
@@ -781,6 +816,10 @@ http.route({
       // never receives it and the Health surface can never show a config error.
       configErrors: configErrorsField(body),
       radio: radioField(body, "radio"),
+      // Optional CRSF/ExpressLRS control-lane block, remapped snake->camel like
+      // the radio block. Must be picked here or an emitting agent's block is
+      // silently dropped from every cloud heartbeat through this deployment.
+      crsf: crsfField(body, "crsf"),
     };
     const result = await ctx.runMutation(internal.cmdDroneStatus.pushStatus, statusPayload);
     return new Response(JSON.stringify(result), {

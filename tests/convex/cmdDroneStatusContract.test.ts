@@ -20,6 +20,8 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
+import { snakeToCamelObject } from "../../convex/heartbeatCasing";
+
 const MUTATION_PATH = path.join(process.cwd(), "convex/cmdDroneStatus.ts");
 const SCHEMA_PATH = path.join(process.cwd(), "convex/schema.ts");
 const HTTP_PATH = path.join(process.cwd(), "convex/http.ts");
@@ -756,6 +758,118 @@ describe("crsf block declares every key an agent emits", () => {
       const squashed = (await readFile(path, "utf8")).replace(/\s+/g, "");
       expect(squashed, path).toContain("crsf:v.optional(v.object({");
     }
+  });
+});
+
+describe("crsf block survives the /agent/status route transform", () => {
+  /**
+   * The declaration tests above only prove the validator DECLARES camelCase
+   * keys — they never run the route transform, so they stay green even when
+   * the route forwards the block untouched. That is exactly how the block was
+   * shipped snake_case: both producers emit snake_case, the validators expect
+   * camelCase, and if the route does not convert, the strict v.object() rejects
+   * the WHOLE heartbeat every tick for any node running the control lane.
+   *
+   * These tests exercise the ACTUAL transform the /agent/status route runs
+   * (snakeToCamelObject, the shared helper crsfField delegates to) against a
+   * block shaped exactly like the agent producers emit, and prove every key
+   * lands on a validator-declared camelCase key (nothing snake_case survives to
+   * be rejected).
+   */
+
+  // The exact snake_case field set BOTH heartbeat producers emit for the nested
+  // crsf control-lane block (the native block struct and the packaged sidecar
+  // projection carry the identical key set). A realistic value per field so
+  // value preservation through the remap is provable; rf_unverified is a real
+  // boolean so the "no verdict" null path is not the only one exercised.
+  const PRODUCER_CRSF_SNAKE_BLOCK = {
+    v: 1,
+    state: "link_ok",
+    rssi_dbm: -51,
+    lq_uplink: 100,
+    lq_downlink: 96,
+    snr_db: 9,
+    band: "900",
+    packet_rate_hz: 150,
+    tx_power_dbm: 25,
+    tx_frames_per_s: 150,
+    rx_frames_per_s: 148,
+    rf_unverified: false,
+    mode: "crsf_rc",
+    channel_source: "gemini",
+    relay_role: "direct",
+  } as const;
+
+  it("remaps every producer key to a validator-declared camelCase key", async () => {
+    const camel = snakeToCamelObject(PRODUCER_CRSF_SNAKE_BLOCK);
+    expect(camel, "a plain producer block must remap, not drop").toBeDefined();
+    const outKeys = Object.keys(camel!);
+
+    // Nothing snake_case survives — a leftover snake key is what the strict
+    // v.object() rejects, taking the whole heartbeat down.
+    for (const k of outKeys) {
+      expect(k, `${k} must be camelCase after the route transform`).not.toMatch(
+        /_/,
+      );
+    }
+
+    // The transform output must be EXACTLY the crsf validator's declared key
+    // set: every producer field lands on a declared camelCase key (so pushStatus
+    // accepts it) and there is no undeclared leftover (which would reject the
+    // whole heartbeat). This is the round-trip the declaration tests cannot see.
+    const declared = parseNestedBlockKeys(
+      await readFile(MUTATION_PATH, "utf8"),
+      "crsf",
+    );
+    expect(
+      outKeys.sort(),
+      "transformed crsf keys must equal the mutation validator's declared crsf keys",
+    ).toEqual(Array.from(declared).sort());
+  });
+
+  it("forwards field values unchanged through the key remap", () => {
+    const camel = snakeToCamelObject(PRODUCER_CRSF_SNAKE_BLOCK)!;
+    expect(camel.v).toBe(1);
+    expect(camel.state).toBe("link_ok");
+    expect(camel.rssiDbm).toBe(-51);
+    expect(camel.lqUplink).toBe(100);
+    expect(camel.lqDownlink).toBe(96);
+    expect(camel.snrDb).toBe(9);
+    expect(camel.packetRateHz).toBe(150);
+    expect(camel.txPowerDbm).toBe(25);
+    expect(camel.txFramesPerS).toBe(150);
+    expect(camel.rxFramesPerS).toBe(148);
+    // A false rf_unverified must survive as false — never coerced to null — so
+    // "transmitting provably unheard" stays distinct from "no verdict yet".
+    expect(camel.rfUnverified).toBe(false);
+    expect(camel.channelSource).toBe("gemini");
+    expect(camel.relayRole).toBe("direct");
+  });
+
+  it("drops a malformed crsf block instead of failing the heartbeat", () => {
+    // A non-object crsf must return undefined (the route then omits the key)
+    // rather than reach the strict validator and reject the whole heartbeat.
+    expect(snakeToCamelObject(undefined)).toBeUndefined();
+    expect(snakeToCamelObject(null)).toBeUndefined();
+    expect(snakeToCamelObject("nope")).toBeUndefined();
+    expect(snakeToCamelObject([{ rssi_dbm: -51 }])).toBeUndefined();
+  });
+
+  it("the OSS-twin route wires the block through the tested transform", async () => {
+    // The explicit-pick route silently drops any field it does not list, so
+    // assert the crsf pick is present AND that crsfField delegates to the exact
+    // helper the round-trip above exercises (not a private, untested copy).
+    const squash = (s: string) => s.replace(/\s+/g, "");
+    const http = squash(await readFile(HTTP_PATH, "utf8"));
+    expect(http, "route must import the shared transform").toContain(
+      'import{snakeToCamelObject}from"./heartbeatCasing"',
+    );
+    expect(http, "route must pick + remap the crsf block").toContain(
+      'crsf:crsfField(body,"crsf")',
+    );
+    expect(http, "crsfField must delegate to the tested transform").toContain(
+      "snakeToCamelObject(body[key])",
+    );
   });
 });
 
