@@ -114,9 +114,31 @@ export type CloudCommandEnqueuer = (args: {
   args: { cmd: string; args: unknown[] };
 }) => Promise<{ commandId: string }>;
 
+/**
+ * A command that has just been accepted onto the cloud relay queue. The queue
+ * row id is the handle a surface uses to watch the vehicle's own answer land:
+ * the store-and-forward lane returns only "queued" synchronously, so without the
+ * id a row could confirm queueing but never the acknowledgement. Reported the
+ * instant the queue accepts the command, before the vehicle has seen it.
+ */
+export interface NodeQueuedCloudCommand {
+  /** The device the command was queued for. */
+  deviceId: string;
+  /** The cloud queue row id, to watch its terminal status reactively. */
+  commandId: string;
+}
+
 export interface NodeCommandSinkOptions {
   /** The cloud queue writer. Without it, only the LAN transport can resolve. */
   enqueueCloudCommand?: CloudCommandEnqueuer | null;
+  /**
+   * Notified the instant a command is accepted onto the cloud relay queue,
+   * carrying the queue row id. A surface subscribes to that id's terminal status
+   * to replace the synchronous "queued" result with the vehicle's real answer.
+   * Absent when no surface is watching, in which case the queue id is simply not
+   * surfaced (the cloud dispatch still reports "queued" as before).
+   */
+  onQueued?: (queued: NodeQueuedCloudCommand) => void;
   /**
    * Whether the page is served over HTTPS, which blocks a plain-HTTP request to
    * a LAN agent. Defaults to the live page origin; pass it explicitly when the
@@ -203,6 +225,7 @@ async function dispatchOverCloud(
   deviceId: string,
   cmd: AgentCommandName,
   args: unknown[],
+  onQueued: ((queued: NodeQueuedCloudCommand) => void) | undefined,
 ): Promise<CommandResult> {
   try {
     const { commandId } = await enqueue({
@@ -210,6 +233,10 @@ async function dispatchOverCloud(
       command: "send_command",
       args: { cmd, args },
     });
+    // Hand the queue row id to whoever is watching so it can surface the
+    // vehicle's real answer when it lands; the synchronous result below still
+    // reports only "queued", which is all that is true at this instant.
+    onQueued?.({ deviceId, commandId });
     return {
       // The queue accepted the command. That is the whole of what happened —
       // the vehicle has not seen it yet, and the message says so.
@@ -290,7 +317,7 @@ export function resolveNodeCommandReach(
   if (enqueue && node.convexId) {
     return {
       sink: makeSink("cloud", false, (cmd, args) =>
-        dispatchOverCloud(enqueue, node.deviceId, cmd, args),
+        dispatchOverCloud(enqueue, node.deviceId, cmd, args, options.onQueued),
       ),
     };
   }

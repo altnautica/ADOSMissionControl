@@ -28,6 +28,7 @@ import { buildNodeTree } from "@/lib/nodes/node-tree";
 import { describeNodeReach } from "@/lib/nodes/node-reach";
 import { NodeBoardRow } from "./NodeBoardRow";
 import { useNodeCommandLane } from "./use-node-command-lane";
+import { CloudCommandAckWatcher } from "./CloudCommandAckWatcher";
 import { BulkActionBar } from "./BulkActionBar";
 import {
   NodesHeader,
@@ -74,7 +75,8 @@ export function NodesView({
   const t = useTranslations("nodesView");
   const laneOptions = useNodeCommandLane();
   // A rejected control has to say why. The dispatcher answers with raw keys, so
-  // without this bridge every refusal on this board would be silent.
+  // without this bridge every refusal on this board would be silent. The same
+  // bridge carries the cloud watcher's later accepted/rejected verdicts.
   useSkillToastBridge();
 
   const [query, setQuery] = useState("");
@@ -168,6 +170,9 @@ export function NodesView({
 
   return (
     <div className="flex-1 overflow-y-auto p-3 md:p-4">
+      {/* Watches every in-flight cloud command for the vehicle's real answer and
+          raises it through the toast bridge above. Renders nothing itself. */}
+      <CloudCommandAckWatcher nodes={fleetNodes} />
       <div className="mb-3">
         <h1 className="text-lg font-semibold text-text-primary">{t("title")}</h1>
         <p className="text-xs text-text-tertiary">{t("subtitle")}</p>

@@ -26,6 +26,7 @@ import type {
   CloudCommandEnqueuer,
   NodeCommandSinkOptions,
 } from "@/lib/nodes/command-sink";
+import { useCloudCommandAckStore } from "@/stores/cloud-command-ack-store";
 import { api } from "../../../../convex/_generated/api";
 
 export function useNodeCommandLane(): NodeCommandSinkOptions {
@@ -55,8 +56,17 @@ export function useNodeCommandLane(): NodeCommandSinkOptions {
     return (args) => enqueue(args);
   }, [convexAvailable, enqueue]);
 
+  // Record every queued cloud command so a mounted watcher can surface the
+  // vehicle's real answer. Only a real backed session mints a watchable queue
+  // row: a demo command id is synthetic and has no row to poll, so it is left
+  // unwatched and the cloud dispatch reports "queued" as before.
+  const onQueued: NodeCommandSinkOptions["onQueued"] = useMemo(() => {
+    if (isDemoMode() || !convexAvailable) return undefined;
+    return (queued) => useCloudCommandAckStore.getState().watch(queued);
+  }, [convexAvailable]);
+
   return useMemo<NodeCommandSinkOptions>(
-    () => ({ enqueueCloudCommand, originIsHttps }),
-    [enqueueCloudCommand, originIsHttps],
+    () => ({ enqueueCloudCommand, onQueued, originIsHttps }),
+    [enqueueCloudCommand, onQueued, originIsHttps],
   );
 }
