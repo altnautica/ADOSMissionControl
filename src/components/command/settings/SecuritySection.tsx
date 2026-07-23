@@ -9,7 +9,10 @@
  * exposed auth switches (raw-MAVLink WebSocket enforcement, setup-token
  * requirement) write through the shared config writer, and the
  * dashboard-access PIN renders as read-only posture pointing at the Health
- * tab's card that owns set / reset.
+ * tab's card that owns set / reset. The API surface block carries the
+ * advertised Mission Control URL (editable) and the node's REST bind
+ * (read-only — changing it needs a reinstall, so it is shown for reference,
+ * not as a control that would sever the very connection editing it).
  *
  * Honest absences: in-place key rotation is not exposed by the agent (a
  * re-pair issues a new key), so no rotate control is fabricated; a node with
@@ -29,7 +32,7 @@ import {
   getDashboardPinStatus,
   type DashboardPinStatus,
 } from "@/lib/agent/local-pair-client";
-import { ConfigToggleField } from "./ConfigFields";
+import { ConfigTextField, ConfigToggleField } from "./ConfigFields";
 import { readConfigPath } from "./use-node-config";
 import { Section } from "./Section";
 
@@ -119,6 +122,14 @@ export function SecuritySection({ config, readOnly, setValue }: SectionProps) {
     };
   }, [pinTarget]);
 
+  // ── REST bind (read-only reference — changing it needs a reinstall) ──────
+  const restHost = readConfigPath(config, "api.rest.host");
+  const restPort = readConfigPath(config, "api.rest.port");
+  const restBind =
+    typeof restHost === "string" && restHost.length > 0 && restPort != null
+      ? `${restHost}:${String(restPort)}`
+      : t("notReported");
+
   // ── API key posture (state label only — the value never renders) ─────────
   const keyState = apiKeyStateKey(config);
   const keyValue =
@@ -170,6 +181,25 @@ export function SecuritySection({ config, readOnly, setValue }: SectionProps) {
           config={config}
           readOnly={readOnly}
           setValue={setValue}
+        />
+      </div>
+
+      {/* API surface — the advertised Mission Control URL (editable) and the
+          node's REST bind (read-only reference). */}
+      <div className="space-y-3 border-t border-border-default pt-3">
+        <ConfigTextField
+          configKey="api.mission_control_url"
+          label={t("missionControlUrlLabel")}
+          hint={t("missionControlUrlHint")}
+          placeholder="https://command.altnautica.com"
+          config={config}
+          readOnly={readOnly}
+          setValue={setValue}
+        />
+        <StatusRow
+          label={t("restBindLabel")}
+          value={restBind}
+          hint={t("restBindHint")}
         />
       </div>
 

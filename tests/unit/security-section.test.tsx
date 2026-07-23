@@ -9,7 +9,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { renderWithIntl } from "../helpers/intl-wrapper";
 
 // happy-dom's localStorage.setItem is not a function in this config, so the
@@ -136,6 +136,39 @@ describe("SecuritySection auth switches", () => {
         "true",
       ),
     );
+  });
+});
+
+describe("SecuritySection API surface", () => {
+  const API_CONFIG = {
+    ...CONFIG,
+    api: {
+      rest: { host: "0.0.0.0", port: 8080, enabled: true },
+      mission_control_url: "https://mc.example",
+    },
+  };
+
+  it("binds the Mission Control URL to the real key and writes it on Apply", async () => {
+    const { setValue } = renderSection(API_CONFIG);
+    const urlInput = screen.getByDisplayValue("https://mc.example");
+    fireEvent.change(urlInput, { target: { value: "https://mc.local" } });
+    const applyBtn = within(
+      urlInput.parentElement as HTMLElement,
+    ).getByRole("button");
+    fireEvent.click(applyBtn);
+    await waitFor(() =>
+      expect(setValue).toHaveBeenCalledWith(
+        "api.mission_control_url",
+        "https://mc.local",
+      ),
+    );
+  });
+
+  it("shows the REST bind read-only, never in an editable input", () => {
+    renderSection(API_CONFIG);
+    expect(screen.getByText("0.0.0.0:8080")).toBeTruthy();
+    // The bind is reference-only — changing it needs a reinstall.
+    expect(screen.queryByDisplayValue("0.0.0.0:8080")).toBeNull();
   });
 });
 

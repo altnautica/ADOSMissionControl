@@ -6048,7 +6048,11 @@
       "pinNotSet": "No PIN set",
       "pinLocked": "Locked (failed attempts)",
       "pinHint": "Gates the node's own web dashboard when opened from another device. Set or reset it from this node's Health tab, on the Dashboard access card.",
-      "pinNoPath": "The PIN posture can only be read through a stored pairing record for this node. Manage the PIN on the node's own dashboard, or from the Health tab once the node is paired over the LAN."
+      "pinNoPath": "The PIN posture can only be read through a stored pairing record for this node. Manage the PIN on the node's own dashboard, or from the Health tab once the node is paired over the LAN.",
+      "missionControlUrlLabel": "Mission Control URL",
+      "missionControlUrlHint": "The Mission Control address this node advertises in its setup flow. Blank offers only a localhost link.",
+      "restBindLabel": "REST API bind",
+      "restBindHint": "The address and port the node's HTTP API listens on. Set at install; changing it needs a reinstall."
     },
     "set": "Set",
     "secretPlaceholder": "Enter a new value"
