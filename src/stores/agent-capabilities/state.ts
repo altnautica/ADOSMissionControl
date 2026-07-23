@@ -17,6 +17,7 @@ import {
   DEFAULT_VISION,
   normalizeCapabilities,
   normalizeRadio,
+  normalizeCrsf,
 } from "./normalizer";
 import {
   deriveCloudRelayUrl,
@@ -55,6 +56,7 @@ const INITIAL_STATE: AgentCapabilitiesState = {
   uiTheme: undefined,
   videoPipeline: undefined,
   radio: null,
+  crsf: null,
   radioStackState: undefined,
   macStability: undefined,
   managementLink: undefined,
@@ -110,6 +112,16 @@ export const useAgentCapabilitiesStore = create<AgentCapabilitiesStore>(
       const rawRadio = (caps as { radio?: unknown }).radio;
       const radio = normalizeRadio(rawRadio);
 
+      // CRSF/ExpressLRS control-lane snapshot. Like radio, the field name is
+      // camelCase here — the cloud relay remaps the agent's snake_case wire
+      // keys before the payload reaches Mission Control, and the LAN bridge
+      // merges the dedicated ground-station route's block. normalizeCrsf reads
+      // either casing and returns null for an absent lane, so a heartbeat that
+      // omits the block (the lane is down or its sidecar is stale) correctly
+      // clears the field rather than pinning the last-known reading.
+      const rawCrsf = (caps as { crsf?: unknown }).crsf;
+      const crsf = normalizeCrsf(rawCrsf);
+
       // Heartbeat health surfaces. Each is forward-permissive: the
       // store keeps the prior value when the heartbeat omits a field
       // (so a single sparse capabilities payload can't reset a count
@@ -164,6 +176,12 @@ export const useAgentCapabilitiesStore = create<AgentCapabilitiesStore>(
         // /api/capabilities call lands without it.
         navigation: normalized.navigation ?? state.navigation,
         radio,
+        // Replace every tick, matching radio: a heartbeat that omits the crsf
+        // block (the lane is down / its sidecar is stale — the block is never
+        // sent as all-null) resolves to null so the lane reads absent rather
+        // than pinning a stale reading (Rule 44). The LAN poll merges the
+        // dedicated ground-station route's block separately.
+        crsf,
         // Forward-permissive: a sparse payload that omits the
         // radio-stack health keeps whatever the store had.
         // CloudStatusBridge forwards the value every tick once the

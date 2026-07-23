@@ -18,7 +18,7 @@ import type {
   ModelCacheInfo,
   NavigationCapability,
 } from "@/lib/agent/feature-types";
-import type { RadioState } from "@/lib/api/ground-station/types";
+import type { RadioState, CrsfState } from "@/lib/api/ground-station/types";
 
 /**
  * Manual-connection URL block the agent advertises so an operator can dial
@@ -106,6 +106,14 @@ export interface AgentCapabilitiesState {
    * a profile without WFB-ng). Populated from the cloud heartbeat or
    * a future /api/capabilities response. */
   radio: RadioState | null;
+  /** CRSF / ExpressLRS control-lane snapshot from the ados-crsf service.
+   * Null when the node advertises no control lane (no ELRS transmitter, or a
+   * profile without the lane) or the lane / its sidecar is down. Populated
+   * from the cloud heartbeat `crsf` block or the dedicated LAN
+   * `GET /api/v1/ground-station/crsf` route (which is ground-station-only). An
+   * `rf_unverified` lane state is carried through as itself — transmitting,
+   * reception unproven — never collapsed to connected or down. */
+  crsf: CrsfState | null;
   /** Overall radio-stack health, distinct from the live pairing state.
    * "ok" | "no_injection" | "unpaired" | "no_bind_artifacts" |
    * "stack_incomplete". Lets the overview show a diagnostic line when

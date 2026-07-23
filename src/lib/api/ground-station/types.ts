@@ -12,6 +12,7 @@
 
 export * from "./types/status";
 export * from "./types/radio";
+export * from "./types/crsf";
 export * from "./types/network";
 export * from "./types/peripherals";
 export * from "./types/pairing";
