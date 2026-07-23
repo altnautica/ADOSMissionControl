@@ -21,7 +21,14 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { HeartPulse, RefreshCw } from "lucide-react";
+import {
+  AlertOctagon,
+  AlertTriangle,
+  CheckCircle2,
+  HeartPulse,
+  RefreshCw,
+  type LucideIcon,
+} from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
@@ -46,16 +53,18 @@ const QUERY_LIMIT = 60;
  * boot-window heals without an unbounded scan. */
 const LOOKBACK = "-24h";
 
-const SEVERITY_DOT: Record<RadioEventSeverity, string> = {
-  success: "bg-status-success",
-  warning: "bg-status-warning",
-  error: "bg-status-error",
-};
-
 const SEVERITY_TEXT: Record<RadioEventSeverity, string> = {
   success: "text-status-success",
   warning: "text-status-warning",
   error: "text-status-error",
+};
+
+/** Per-severity glyph — a distinct SHAPE so severity survives greyscale, not
+ * colour alone. Paired with an sr-only severity label for screen readers. */
+const SEVERITY_ICON: Record<RadioEventSeverity, LucideIcon> = {
+  success: CheckCircle2,
+  warning: AlertTriangle,
+  error: AlertOctagon,
 };
 
 interface SectionProps {
@@ -120,7 +129,7 @@ export function SelfHealSection({ config, readOnly, setValue }: SectionProps) {
         from: LOOKBACK,
         limit: QUERY_LIMIT,
       });
-      setEvents(mapSelfHealEvents(envelope.data, MAX_ACTIVITY));
+      setEvents(mapSelfHealEvents(t, envelope.data, MAX_ACTIVITY));
       setAvailable(true);
     } catch {
       // The durable store is unreachable (cloud mode, network error, or a
@@ -130,7 +139,7 @@ export function SelfHealSection({ config, readOnly, setValue }: SectionProps) {
     } finally {
       setLoading(false);
     }
-  }, [client]);
+  }, [client, t]);
 
   useEffect(() => {
     void loadEvents();
@@ -155,7 +164,8 @@ export function SelfHealSection({ config, readOnly, setValue }: SectionProps) {
     managementLink?.repairing && managementLink.lastRung
       ? t("guardianRepairing", {
           phrase:
-            repairRungPhrase(managementLink.lastRung) ?? managementLink.lastRung,
+            repairRungPhrase(t, managementLink.lastRung) ??
+            managementLink.lastRung,
         })
       : null;
 
@@ -266,25 +276,35 @@ export function SelfHealSection({ config, readOnly, setValue }: SectionProps) {
               {available ? t("eventsEmpty") : t("eventsUnavailable")}
             </p>
           ) : (
-            events.map((e) => (
-              <div
-                key={e.id}
-                className="flex items-center gap-2 px-3 py-1 hover:bg-bg-tertiary/40"
-              >
-                <span className="shrink-0 font-mono text-[10px] text-text-tertiary">
-                  {formatLogTime(e.ts)}
-                </span>
-                <span
-                  className={cn(
-                    "h-1.5 w-1.5 shrink-0 rounded-full",
-                    SEVERITY_DOT[e.severity],
-                  )}
-                />
-                <span className={cn("flex-1 text-xs", SEVERITY_TEXT[e.severity])}>
-                  {e.summary}
-                </span>
-              </div>
-            ))
+            events.map((e) => {
+              const Icon = SEVERITY_ICON[e.severity];
+              return (
+                <div
+                  key={e.id}
+                  className="flex items-center gap-2 px-3 py-1 hover:bg-bg-tertiary/40"
+                >
+                  <span className="shrink-0 font-mono text-[10px] text-text-tertiary">
+                    {formatLogTime(e.ts)}
+                  </span>
+                  <span
+                    role="img"
+                    aria-label={t(`severityLabel.${e.severity}`)}
+                    className="flex shrink-0 items-center"
+                  >
+                    <Icon
+                      size={12}
+                      aria-hidden="true"
+                      className={SEVERITY_TEXT[e.severity]}
+                    />
+                  </span>
+                  <span
+                    className={cn("flex-1 text-xs", SEVERITY_TEXT[e.severity])}
+                  >
+                    {e.summary}
+                  </span>
+                </div>
+              );
+            })
           )}
         </div>
       </div>

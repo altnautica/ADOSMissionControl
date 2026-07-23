@@ -5986,7 +5986,49 @@
       "eventsCount": "{count, plural, one {# event} other {# events}}",
       "eventsEmpty": "No recent self-heal events.",
       "eventsUnavailable": "Event history needs the node's on-device log store, reachable over the LAN.",
-      "refresh": "Refresh"
+      "refresh": "Refresh",
+      "events": {
+        "regRepinnedFromTo": "Regulatory domain re-pinned {from} to {to}",
+        "regRepinnedTo": "Regulatory domain re-pinned to {to}",
+        "regRepinned": "Regulatory domain re-pinned",
+        "wifiReassociatedFailures": "Onboard Wi-Fi re-associated (gateway unreachable x{failures})",
+        "wifiReassociated": "Onboard Wi-Fi re-associated",
+        "linkHealthy": "Management link healthy",
+        "linkDegraded": "Management link degraded, no data path",
+        "linkDown": "Management link down",
+        "linkStateChanged": "Management link state changed",
+        "linkRepair": "Management-link repair: {phrase}",
+        "linkRepairExhausted": "Management-link repair exhausted, hardware-level recovery may be needed",
+        "cameraRecoverySucceeded": "Camera USB recovery succeeded",
+        "cameraRecoveryExhausted": "Camera USB recovery exhausted",
+        "cameraRecoveryExhaustedAttempt": "Camera USB recovery exhausted (attempt {attempt} of {maxAttempts})",
+        "cameraNeedsReseat": "Camera needs a physical reseat or hub power-cycle",
+        "cameraHeldBack": "Camera recovery held back (a reset could disturb a shared hub)",
+        "cameraStep": "Camera USB recovery: {verb}",
+        "cameraStepAttempt": "Camera USB recovery: {verb} (attempt {attempt} of {maxAttempts})",
+        "cameraStepGeneric": "Camera USB recovery step",
+        "cameraPowerContention": "Camera USB power contention detected",
+        "withIface": "{base} ({iface})"
+      },
+      "rungs": {
+        "reassertReg": "re-asserting regulatory domain",
+        "renewDhcp": "renewing DHCP",
+        "reconnectWifi": "reconnecting Wi-Fi",
+        "bounceIface": "bouncing interface",
+        "restartBackend": "restarting network service",
+        "exhausted": "software repair exhausted, hardware-level recovery may be needed",
+        "generic": "running a repair step"
+      },
+      "cameraSteps": {
+        "rebinding": "re-binding the device",
+        "portCycling": "power-cycling the port",
+        "hubResetting": "resetting the hub"
+      },
+      "severityLabel": {
+        "success": "OK",
+        "warning": "Warning",
+        "error": "Error"
+      }
     },
     "mavlinkRouting": {
       "title": "MAVLink",
