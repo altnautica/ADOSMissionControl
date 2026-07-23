@@ -74,6 +74,16 @@ export function buildSkillContextFor(droneId: string): SkillContext {
     return Boolean(live.getCapabilities()?.[cap]);
   };
 
+  // Only a live handshake proves whether the firmware can do autonomous nav.
+  // With no live protocol the capability is genuinely unknown, not "no" — so a
+  // non-connected node's RTL / Land / Takeoff are kept (shown disabled-no-link)
+  // rather than the blanket-false `supports` above hiding them.
+  const autonomousNav: SkillContext["autonomousNav"] = live
+    ? live.getCapabilities()?.supportsGeoFence
+      ? "supported"
+      : "unsupported"
+    : "unknown";
+
   return {
     droneId,
     protocol: live,
@@ -82,6 +92,7 @@ export function buildSkillContextFor(droneId: string): SkillContext {
     availableModes,
     previousMode: droneState.previousMode,
     supports,
+    autonomousNav,
     checklistReady: useChecklistStore.getState().isReadyToArm(),
     confirm: (policy: ConfirmPolicy) =>
       useSkillConfirmStore.getState().request(policy),
@@ -180,11 +191,13 @@ export const useSkillRegistry = create<SkillRegistryState>((set, get) => ({
       if (skill.source === "plugin" && !isPluginInstalledFor(skill, droneId)) {
         continue;
       }
-      // A skill that needs autonomous nav is filtered out entirely when the
-      // firmware fundamentally cannot do it (vs shown disabled-with-reason
-      // when it merely needs arming or telemetry). Matches the existing action
-      // panel, which hides RTH/Land/Takeoff behind the autonomous-nav gate.
-      if (skill.requiresAutonomousNav && !ctx.supports("supportsGeoFence")) {
+      // A skill that needs autonomous nav is filtered out only when the
+      // firmware is KNOWN to lack it (an acro flight controller), driven off the
+      // node's real capability. A node whose capability is merely unknown — one
+      // the GCS holds no live handshake to, whose `supports` reads blanket-false
+      // — keeps the skill (shown disabled-with-reason), so a node that can
+      // actually return home is never hidden just because it is not connected.
+      if (skill.requiresAutonomousNav && ctx.autonomousNav === "unsupported") {
         continue;
       }
       visible.push(skill);

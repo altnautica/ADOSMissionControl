@@ -17,6 +17,16 @@ export type SkillCategory = "flight" | "behavior" | "camera" | "safety";
 export type SkillSource = "builtin" | "plugin";
 export type ArmRequirement = "any" | "armed" | "disarmed";
 
+/**
+ * Whether a node's firmware supports autonomous navigation (Return-to-Launch /
+ * Land / Takeoff): known-supported, known-unsupported (e.g. an acro flight
+ * controller), or not yet determinable. Drives whether those skills are offered
+ * at all. Distinguishing "unsupported" from "unknown" is the whole point — a
+ * blanket-false capability read on a node the GCS has not handshaken with must
+ * not be mistaken for "the firmware cannot do it".
+ */
+export type AutonomousNavCapability = "supported" | "unsupported" | "unknown";
+
 export interface ConfirmPolicy {
   title: string;
   message: string;
@@ -72,6 +82,16 @@ export interface SkillContext {
   /** Previous flight mode, for pause/resume. */
   previousMode: FlightMode;
   supports: (cap: keyof ProtocolCapabilities) => boolean;
+  /**
+   * Whether this node's firmware supports autonomous navigation, gating the
+   * visibility of RTL / Land / Takeoff. "supported" and "unknown" both keep
+   * those skills — an unidentified firmware may well have them, so hiding would
+   * be a guess — while a firmware known to lack it ("unsupported") hides them.
+   * Optional: a context built without any firmware signal omits it, which reads
+   * as not-"unsupported" and so keeps the skills rather than a blanket-false
+   * `supports` capability wrongly hiding them.
+   */
+  autonomousNav?: AutonomousNavCapability;
   /** Live pre-flight checklist readiness (every item pass|skipped). */
   checklistReady: boolean;
   /**

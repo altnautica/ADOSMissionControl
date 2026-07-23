@@ -62,7 +62,11 @@ import {
   type NodeCommandSinkOptions,
 } from "@/lib/nodes/command-sink";
 import { notifySkill } from "./registry";
-import type { ConfirmPolicy, SkillContext } from "./types";
+import type {
+  AutonomousNavCapability,
+  ConfirmPolicy,
+  SkillContext,
+} from "./types";
 
 /** The node fields a per-node context reads. A fleet node entry satisfies it. */
 export interface SkillTargetNode extends CommandTargetNode {
@@ -177,6 +181,32 @@ export function availableModesForNode(
 }
 
 /**
+ * Whether a node's reported firmware supports autonomous navigation (RTL / Land
+ * / Takeoff), read from the firmware family's real capabilities rather than the
+ * blanket-false `supports` a sink-backed context otherwise carries. The
+ * identified build's own geofence capability when family + airframe resolve one;
+ * "supported" for the ArduPilot family even without an airframe (every ArduPilot
+ * build has autonomous nav, mirroring {@link availableModesForNode}'s family
+ * fallback); "unknown" for any other unidentified firmware — never "unsupported",
+ * so a node whose firmware simply has not been identified keeps those skills
+ * rather than having them hidden on a guess.
+ */
+export function autonomousNavForNode(
+  fcFirmware?: string,
+  frameType?: string,
+): AutonomousNavCapability {
+  const firmwareType = firmwareTypeForNode(fcFirmware, frameType);
+  if (firmwareType) {
+    return createFirmwareHandlerByType(firmwareType).getCapabilities()
+      .supportsGeoFence
+      ? "supported"
+      : "unsupported";
+  }
+  if (fcFirmware?.trim().toLowerCase() === "ardupilot") return "supported";
+  return "unknown";
+}
+
+/**
  * Build the skill context for `node`. Safe to call for any fleet node,
  * including one that is not selected and one the GCS holds no connection to.
  */
@@ -230,6 +260,11 @@ export function buildSkillContextForNode(
     // from a mode change that was never observed.
     previousMode: flightMode,
     supports: () => false,
+    // Capability flags stay blanket-false (no handshake), but autonomous-nav
+    // visibility is driven off the node's real firmware family instead, so a
+    // sink-backed ArduPilot / PX4 / iNav node keeps RTL / Land / Takeoff while
+    // an acro flight controller drops them — a truthful answer, not a guess.
+    autonomousNav: autonomousNavForNode(node.fcFirmware, node.frameType),
     checklistReady: false,
     confirm: (policy: ConfirmPolicy) =>
       useSkillConfirmStore.getState().request(policy),

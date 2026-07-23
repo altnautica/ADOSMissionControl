@@ -10,7 +10,28 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { useSkillRegistry } from "@/lib/skills/registry";
 import { useDroneStore } from "@/stores/drone-store";
+import { useDroneManager, type ManagedDrone } from "@/stores/drone-manager";
 import type { Skill, SkillState } from "@/lib/skills/types";
+import type { ProtocolCapabilities } from "@/lib/protocol/types";
+
+/**
+ * A minimal connected drone whose firmware reports the given geofence
+ * capability. `buildSkillContextFor` reads only the id, the protocol's
+ * connected flag, its capabilities, and its firmware handler.
+ */
+function connectedDroneWithGeoFence(
+  id: string,
+  supportsGeoFence: boolean,
+): ManagedDrone {
+  return {
+    id,
+    protocol: {
+      isConnected: true,
+      getCapabilities: () => ({ supportsGeoFence }) as ProtocolCapabilities,
+      getFirmwareHandler: () => null,
+    },
+  } as unknown as ManagedDrone;
+}
 
 function clearRegistry(): void {
   useSkillRegistry.setState({
@@ -41,9 +62,10 @@ function fake(
 describe("skill registry", () => {
   beforeEach(() => {
     clearRegistry();
-    // No selected drone keeps buildSkillContext deterministic: protocol null,
-    // supports() false, so autonomous-nav skills filter out predictably.
+    // No selected drone and no managed drones: buildSkillContext holds no live
+    // protocol, so the firmware's autonomous-nav capability is unknown.
     useDroneStore.setState({ selectedId: null });
+    useDroneManager.setState({ drones: new Map(), selectedDroneId: null });
   });
 
   it("resolves skills sorted by category bucket then registration order", () => {
@@ -79,20 +101,66 @@ describe("skill registry", () => {
     expect(ids).toEqual(["first", "second"]);
   });
 
-  it("filters out autonomous-nav skills when the firmware cannot do it", () => {
+  it("keeps autonomous-nav skills when the firmware capability is unknown", () => {
     const reg = useSkillRegistry.getState();
     reg.register(fake("plain", { category: "flight" }));
     reg.register(
       fake("nav", { category: "flight", requiresAutonomousNav: true }),
     );
 
-    // No live protocol -> supports("supportsGeoFence") is false -> the nav
-    // skill is filtered out entirely (not shown disabled).
+    // No live handshake -> the capability is unknown, not "cannot" -> the nav
+    // skill is kept (shown disabled-with-reason downstream), never hidden on a
+    // guess about a node that may well be able to return home.
+    const ids = useSkillRegistry
+      .getState()
+      .resolveForDrone("drone-1")
+      .map((s) => s.id);
+    expect(ids).toEqual(["plain", "nav"]);
+  });
+
+  it("filters out autonomous-nav skills when a connected firmware cannot do it", () => {
+    const reg = useSkillRegistry.getState();
+    reg.register(fake("plain", { category: "flight" }));
+    reg.register(
+      fake("nav", { category: "flight", requiresAutonomousNav: true }),
+    );
+
+    // A live handshake that reports no geofence support is a firmware that
+    // genuinely cannot do autonomous nav (an acro flight controller), so the
+    // nav skill is filtered out — the selected-drone path is unchanged.
+    useDroneManager.setState({
+      selectedDroneId: "drone-1",
+      drones: new Map([
+        ["drone-1", connectedDroneWithGeoFence("drone-1", false)],
+      ]),
+    });
+
     const ids = useSkillRegistry
       .getState()
       .resolveForDrone("drone-1")
       .map((s) => s.id);
     expect(ids).toEqual(["plain"]);
+  });
+
+  it("keeps autonomous-nav skills when a connected firmware supports them", () => {
+    const reg = useSkillRegistry.getState();
+    reg.register(fake("plain", { category: "flight" }));
+    reg.register(
+      fake("nav", { category: "flight", requiresAutonomousNav: true }),
+    );
+
+    useDroneManager.setState({
+      selectedDroneId: "drone-1",
+      drones: new Map([
+        ["drone-1", connectedDroneWithGeoFence("drone-1", true)],
+      ]),
+    });
+
+    const ids = useSkillRegistry
+      .getState()
+      .resolveForDrone("drone-1")
+      .map((s) => s.id);
+    expect(ids).toEqual(["plain", "nav"]);
   });
 
   it("falls back to idle state for an unknown (drone, skill) pair", () => {
