@@ -1205,7 +1205,7 @@
       "title": "Cloud relay",
       "modeLabel": "Connection mode",
       "modeHint": "Local keeps everything on the LAN. Cloud or self-hosted relay adds remote reach. Managed in the setup flow.",
-      "backendLabel": "Self-hosted backend",
+      "backendLabel": "Backend URL",
       "optionLocal": "Local only",
       "optionCloud": "Altnautica cloud",
       "optionSelfHosted": "Self-hosted"

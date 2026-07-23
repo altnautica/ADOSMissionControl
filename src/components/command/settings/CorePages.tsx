@@ -15,6 +15,7 @@
 import { useTranslations } from "next-intl";
 
 import { ConfigReadonlyRow, ConfigSelectField } from "./ConfigFields";
+import { readConfigPath } from "./use-node-config";
 import { Section } from "./Section";
 
 interface PageProps {
@@ -62,6 +63,19 @@ export function CloudPage({ config }: Pick<PageProps, "config">) {
     { value: "cloud", label: t("cloud.optionCloud") },
     { value: "self_hosted", label: t("cloud.optionSelfHosted") },
   ];
+  // The active backend URL lives under a mode-specific key that GET
+  // /api/config actually emits: the managed endpoint (`server.cloud.url`) in
+  // cloud mode, the operator's deployment (`server.self_hosted.url`) in
+  // self-hosted mode. (`server.self_hosted.convex_url` was never a real key,
+  // so the row always read blank.) Local mode has no backend, so no row.
+  const mode = readConfigPath(config, "server.mode");
+  const backendKey =
+    mode === "self_hosted"
+      ? "server.self_hosted.url"
+      : mode === "cloud"
+        ? "server.cloud.url"
+        : null;
+
   return (
     <Section title={t("cloud.title")}>
       <ConfigReadonlyRow
@@ -71,11 +85,13 @@ export function CloudPage({ config }: Pick<PageProps, "config">) {
         config={config}
         format={(raw) => labelFor(cloudModeOptions, raw)}
       />
-      <ConfigReadonlyRow
-        configKey="server.self_hosted.convex_url"
-        label={t("cloud.backendLabel")}
-        config={config}
-      />
+      {backendKey ? (
+        <ConfigReadonlyRow
+          configKey={backendKey}
+          label={t("cloud.backendLabel")}
+          config={config}
+        />
+      ) : null}
     </Section>
   );
 }

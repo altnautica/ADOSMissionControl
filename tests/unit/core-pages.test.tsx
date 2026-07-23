@@ -14,7 +14,10 @@ import { describe, expect, it, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import { renderWithIntl } from "../helpers/intl-wrapper";
 
-import { AdvancedPage } from "@/components/command/settings/CorePages";
+import {
+  AdvancedPage,
+  CloudPage,
+} from "@/components/command/settings/CorePages";
 
 describe("AdvancedPage board override", () => {
   it("renders the forced board slug read-only, not in an editable input", () => {
@@ -47,5 +50,65 @@ describe("AdvancedPage board override", () => {
     );
 
     expect(screen.getByText("Auto-detect")).toBeTruthy();
+  });
+});
+
+describe("CloudPage backend URL", () => {
+  it("binds the backend row to server.self_hosted.url in self-hosted mode", () => {
+    renderWithIntl(
+      <CloudPage
+        config={{
+          server: {
+            mode: "self_hosted",
+            self_hosted: { url: "https://convex.myco.example" },
+            cloud: { url: "https://convex-site.altnautica.com" },
+          },
+        }}
+      />,
+    );
+
+    expect(screen.getByText("Backend URL")).toBeTruthy();
+    expect(screen.getByText("https://convex.myco.example")).toBeTruthy();
+    // Never the wrong-mode URL.
+    expect(
+      screen.queryByText("https://convex-site.altnautica.com"),
+    ).toBeNull();
+  });
+
+  it("binds the backend row to server.cloud.url in cloud mode", () => {
+    renderWithIntl(
+      <CloudPage
+        config={{
+          server: {
+            mode: "cloud",
+            self_hosted: { url: "" },
+            cloud: { url: "https://convex-site.altnautica.com" },
+          },
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByText("https://convex-site.altnautica.com"),
+    ).toBeTruthy();
+  });
+
+  it("shows no backend row in local mode (there is no backend)", () => {
+    renderWithIntl(
+      <CloudPage
+        config={{
+          server: {
+            mode: "local",
+            self_hosted: { url: "" },
+            cloud: { url: "https://convex-site.altnautica.com" },
+          },
+        }}
+      />,
+    );
+
+    expect(screen.queryByText("Backend URL")).toBeNull();
+    expect(
+      screen.queryByText("https://convex-site.altnautica.com"),
+    ).toBeNull();
   });
 });
