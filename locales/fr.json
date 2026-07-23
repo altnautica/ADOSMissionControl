@@ -5746,7 +5746,7 @@
       "logLevelLabel": "Log level",
       "boardOverrideLabel": "Board override",
       "boardOverrideHint": "Force a hardware board profile. Leave blank for auto-detect.",
-      "boardOverridePlaceholder": "auto-detect"
+      "boardOverrideAuto": "Auto-detect"
     },
     "perception": {
       "title": "Vision & perception",

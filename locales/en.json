@@ -1214,8 +1214,8 @@
       "title": "Advanced",
       "logLevelLabel": "Log level",
       "boardOverrideLabel": "Board override",
-      "boardOverrideHint": "Force a hardware board profile. Leave blank for auto-detect.",
-      "boardOverridePlaceholder": "auto-detect"
+      "boardOverrideHint": "The hardware board profile the agent runs. Set at install from the board override file; blank means the agent auto-detects the board.",
+      "boardOverrideAuto": "Auto-detect"
     },
     "perception": {
       "title": "Vision & perception",

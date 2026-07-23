@@ -5,18 +5,16 @@
  * @description The small core settings pages that used to live inline in the
  * Settings tab body: Profile (read-only — a switch is a transactional setup
  * change), Cloud posture (read-only — mode + backend URL are a transactional
- * pair), and Advanced (per-key log level + board override). Extracted
- * unchanged so the grouped settings navigation can address each as a page.
+ * pair), and Advanced (per-key log level + read-only board override). The
+ * board override is file-sourced (`/etc/ados/board_override`, injected onto
+ * the GET response only) and is not a writable config field, so it renders
+ * read-only rather than as a control that rejects every write.
  * @license GPL-3.0-only
  */
 
 import { useTranslations } from "next-intl";
 
-import {
-  ConfigReadonlyRow,
-  ConfigSelectField,
-  ConfigTextField,
-} from "./ConfigFields";
+import { ConfigReadonlyRow, ConfigSelectField } from "./ConfigFields";
 import { Section } from "./Section";
 
 interface PageProps {
@@ -101,14 +99,16 @@ export function AdvancedPage({ config, readOnly, setValue }: PageProps) {
         readOnly={readOnly}
         setValue={setValue}
       />
-      <ConfigTextField
+      <ConfigReadonlyRow
         configKey="agent.board_override"
         label={t("advanced.boardOverrideLabel")}
         hint={t("advanced.boardOverrideHint")}
-        placeholder={t("advanced.boardOverridePlaceholder")}
         config={config}
-        readOnly={readOnly}
-        setValue={setValue}
+        format={(raw) =>
+          typeof raw === "string" && raw.length > 0
+            ? raw
+            : t("advanced.boardOverrideAuto")
+        }
       />
     </Section>
   );
