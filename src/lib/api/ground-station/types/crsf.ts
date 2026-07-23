@@ -2,13 +2,15 @@
  * @module api/ground-station/types/crsf
  * @description CRSF / ExpressLRS control-lane snapshot, normalized to
  * camelCase. The ados-crsf service writes a snake_case "crsf-stats" sidecar;
- * two producers surface it to Mission Control, and they carry DIFFERENT field
- * sets:
- *   - the cloud heartbeat (camelCase, a projection that drops `flyable` + `pic`
- *     and carries no usable TX power — its `txPowerDbm` is always null), and
+ * two producers surface it to Mission Control, and they carry NEARLY the same
+ * field set:
+ *   - the cloud heartbeat (camelCase `tx_power_mw` → `txPowerMw`, ...; a
+ *     projection that drops only `flyable` + `pic`), and
  *   - the LAN `GET /api/v1/ground-station/crsf` route (the raw snake_case
- *     sidecar: every field, including `tx_power_mw` + `flyable` + `pic`).
- * The capability-store normalizer folds either casing onto this shape.
+ *     sidecar: every field, including `flyable` + `pic`).
+ * Both paths carry the real `tx_power_mw` and the `fc_command_down_gated`
+ * safety gate. The capability-store normalizer folds either casing onto this
+ * shape.
  *
  * @license GPL-3.0-only
  */
@@ -43,11 +45,10 @@ export interface CrsfState {
   // Band descriptor (900 / 2.4 / dual-band). Null when not reported.
   band: string | null;
   packetRateHz: number | null;
-  // Transmit power in milliwatts. Carried ONLY by the LAN sidecar
-  // (`tx_power_mw`); the cloud heartbeat's `txPowerDbm` is always null (the
-  // projection reads a field the sidecar never emits), so over the heartbeat
-  // this stays null — the honest reading, since the heartbeat carries no usable
-  // TX power. Read the real TX power from the LAN route.
+  // Transmit power in milliwatts, from the module's power-table index. Carried
+  // on BOTH casings (`tx_power_mw` on the LAN sidecar, `txPowerMw` on the cloud
+  // heartbeat), so the real TX power travels the cloud path too. Null when the
+  // lane reports no reading.
   txPowerMw: number | null;
   // Transmit / receive CRSF frame rates from the lane's liveness watchdog.
   txFramesPerS: number | null;

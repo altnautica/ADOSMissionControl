@@ -686,13 +686,14 @@ describe("crsf block declares every key an agent emits", () => {
     snrDb: "number",
     band: "string",
     packetRateHz: "number",
-    txPowerDbm: "number",
+    txPowerMw: "number",
     txFramesPerS: "number",
     rxFramesPerS: "number",
     rfUnverified: "boolean",
     mode: "string",
     channelSource: "string",
     relayRole: "string",
+    fcCommandDownGated: "boolean",
   } as const;
   const AGENT_CRSF_WIRE_KEYS = Object.keys(CRSF_FIELD_TYPES);
 
@@ -791,13 +792,14 @@ describe("crsf block survives the /agent/status route transform", () => {
     snr_db: 9,
     band: "900",
     packet_rate_hz: 150,
-    tx_power_dbm: 25,
+    tx_power_mw: 100,
     tx_frames_per_s: 150,
     rx_frames_per_s: 148,
     rf_unverified: false,
     mode: "crsf_rc",
     channel_source: "gemini",
     relay_role: "direct",
+    fc_command_down_gated: false,
   } as const;
 
   it("remaps every producer key to a validator-declared camelCase key", async () => {
@@ -836,12 +838,15 @@ describe("crsf block survives the /agent/status route transform", () => {
     expect(camel.lqDownlink).toBe(96);
     expect(camel.snrDb).toBe(9);
     expect(camel.packetRateHz).toBe(150);
-    expect(camel.txPowerDbm).toBe(25);
+    expect(camel.txPowerMw).toBe(100);
     expect(camel.txFramesPerS).toBe(150);
     expect(camel.rxFramesPerS).toBe(148);
     // A false rf_unverified must survive as false — never coerced to null — so
     // "transmitting provably unheard" stays distinct from "no verdict yet".
     expect(camel.rfUnverified).toBe(false);
+    // The command-down gate remaps the same way; a false (open) gate must
+    // survive as false, distinct from an absent "no verdict" null.
+    expect(camel.fcCommandDownGated).toBe(false);
     expect(camel.channelSource).toBe("gemini");
     expect(camel.relayRole).toBe("direct");
   });

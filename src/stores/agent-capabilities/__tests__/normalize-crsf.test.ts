@@ -130,17 +130,27 @@ describe("normalizeCrsf numeric link stats", () => {
   });
 });
 
-describe("normalizeCrsf transmit power (mW, LAN-sidecar only)", () => {
-  it("reads tx_power_mw from the LAN sidecar", () => {
+describe("normalizeCrsf transmit power (mW, both reach paths)", () => {
+  it("reads tx_power_mw from the snake_case LAN sidecar", () => {
     expect(normalizeCrsf({ tx_power_mw: 100 })!.txPowerMw).toBe(100);
-    expect(normalizeCrsf({ txPowerMw: 250 })!.txPowerMw).toBe(250);
   });
 
-  it("stays null over the heartbeat, which carries no usable TX power", () => {
-    // The heartbeat projection sends txPowerDbm (always null) and no
-    // tx_power_mw, so txPowerMw must read null — never derived from txPowerDbm.
-    const crsf = normalizeCrsf({ state: "link_ok", txPowerDbm: null })!;
-    expect(crsf.txPowerMw).toBeNull();
+  it("reads txPowerMw from the camelCase cloud heartbeat", () => {
+    // The heartbeat now carries the real TX power: the block was renamed from
+    // the old always-null txPowerDbm projection to tx_power_mw, so a
+    // cloud-reached node surfaces it — never derived from a phantom key.
+    const crsf = normalizeCrsf({ state: "link_ok", txPowerMw: 250 })!;
+    expect(crsf.txPowerMw).toBe(250);
+  });
+
+  it("maps an absent or non-finite TX power to null, never a fabricated 0", () => {
+    expect(normalizeCrsf({ state: "ready" })!.txPowerMw).toBeNull();
+    expect(normalizeCrsf({ tx_power_mw: null })!.txPowerMw).toBeNull();
+    expect(normalizeCrsf({ txPowerMw: NaN })!.txPowerMw).toBeNull();
+  });
+
+  it("keeps a real zero mW as zero, not null", () => {
+    expect(normalizeCrsf({ tx_power_mw: 0 })!.txPowerMw).toBe(0);
   });
 });
 
@@ -304,7 +314,7 @@ describe("normalizeCrsf full-block fidelity across both casings", () => {
     });
   });
 
-  it("folds the camelCase heartbeat projection (drops flyable+pic, no TX power)", () => {
+  it("folds the camelCase heartbeat projection (carries TX power + gate, drops flyable+pic)", () => {
     const crsf = normalizeCrsf({
       v: 1,
       state: "rf_unverified",
@@ -314,7 +324,7 @@ describe("normalizeCrsf full-block fidelity across both casings", () => {
       snrDb: null,
       band: "900",
       packetRateHz: 50,
-      txPowerDbm: null,
+      txPowerMw: 100,
       txFramesPerS: 50,
       rxFramesPerS: 0,
       rfUnverified: true,
@@ -333,7 +343,7 @@ describe("normalizeCrsf full-block fidelity across both casings", () => {
       snrDb: null,
       band: "900",
       packetRateHz: 50,
-      txPowerMw: null, // txPowerDbm is ignored; the heartbeat carries no mW
+      txPowerMw: 100, // the heartbeat carries the real TX power in mW
       txFramesPerS: 50,
       rxFramesPerS: 0,
       rfUnverified: true,

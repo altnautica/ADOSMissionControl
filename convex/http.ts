@@ -250,13 +250,14 @@ interface CrsfPayload {
   snrDb?: number | null;
   band?: string | null;
   packetRateHz?: number | null;
-  txPowerDbm?: number | null;
+  txPowerMw?: number | null;
   txFramesPerS?: number | null;
   rxFramesPerS?: number | null;
   rfUnverified?: boolean | null;
   mode?: string | null;
   channelSource?: string | null;
   relayRole?: string | null;
+  fcCommandDownGated?: boolean | null;
 }
 
 // Translate the agent's snake_case CRSF/ExpressLRS control-lane block into the

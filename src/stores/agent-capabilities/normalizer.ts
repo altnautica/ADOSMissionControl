@@ -308,15 +308,16 @@ const CRSF_LINK_STATES: ReadonlySet<CrsfLinkState> = new Set<CrsfLinkState>([
 
 /**
  * Normalize the CRSF / ExpressLRS control-lane block onto the GCS CrsfState
- * shape. The block reaches the GCS from two producers in two casings, and they
- * carry different field sets:
- *   - the cloud heartbeat (camelCase `rssiDbm`, ...; drops `flyable` + `pic`;
- *     its `txPowerDbm` is always null so no usable TX power travels), and
+ * shape. The block reaches the GCS from two producers in two casings that carry
+ * nearly the same field set:
+ *   - the cloud heartbeat (camelCase `rssiDbm`, `txPowerMw`, ...; drops only
+ *     `flyable` + `pic`), and
  *   - the LAN `GET /api/v1/ground-station/crsf` route (raw snake_case
- *     `rssi_dbm`, ...; carries `tx_power_mw` + `flyable` + `pic` verbatim).
- * Each field is read from whichever casing is present. A missing block — an
- * older agent that never emits crsf, or a lane that is down / whose sidecar is
- * stale (the heartbeat omits the whole block, the LAN route 404s) — returns
+ *     `rssi_dbm`, `tx_power_mw`, ...; carries `flyable` + `pic` too).
+ * Both paths carry the real TX power and the `fc_command_down_gated` safety
+ * gate. Each field is read from whichever casing is present. A missing block —
+ * an older agent that never emits crsf, or a lane that is down / whose sidecar
+ * is stale (the heartbeat omits the whole block, the LAN route 404s) — returns
  * null so the store field reads absent rather than a fabricated all-null block.
  */
 export function normalizeCrsf(raw: unknown): CrsfState | null {
@@ -346,10 +347,9 @@ export function normalizeCrsf(raw: unknown): CrsfState | null {
     snrDb: num(r.snrDb ?? r.snr_db),
     band: str(r.band),
     packetRateHz: num(r.packetRateHz ?? r.packet_rate_hz),
-    // TX power in mW comes ONLY from the LAN sidecar (`tx_power_mw`). The cloud
-    // heartbeat's `txPowerDbm` is always null (the projection reads a field the
-    // sidecar never emits), so it is never mapped here — over the heartbeat
-    // this stays null, the honest reading, since no usable TX power travels.
+    // TX power in mW, read from either casing (`tx_power_mw` on the LAN sidecar,
+    // `txPowerMw` on the cloud heartbeat) so the real TX power surfaces on both
+    // reach paths. Null when the lane reports no reading.
     txPowerMw: num(r.tx_power_mw ?? r.txPowerMw),
     txFramesPerS: num(r.txFramesPerS ?? r.tx_frames_per_s),
     rxFramesPerS: num(r.rxFramesPerS ?? r.rx_frames_per_s),
