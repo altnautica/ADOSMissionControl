@@ -61,6 +61,18 @@ const WFB_CLASS: Record<BearerVerification, string> = {
   down: "border-border-default bg-bg-tertiary text-text-tertiary",
 };
 
+/**
+ * A shape (not a colour) for each WFB verification state, appended to the chip
+ * so the verdict survives greyscale and colour-blindness where WFB_CLASS alone
+ * would not. Aria-hidden: the sr-only title already states the verdict in words.
+ */
+const WFB_MARK: Record<BearerVerification, string> = {
+  verified: "✓",
+  unverified: "?",
+  stale: "~",
+  down: "✕",
+};
+
 function chipClass(chip: NodeBearerChip): string {
   return chip.kind === "wfb"
     ? WFB_CLASS[chip.verification]
@@ -136,11 +148,27 @@ export function ReachCell({
     primary.rssiDbm != null &&
     (primary.verification === "verified" || primary.verification === "stale");
 
+  // The chip's verification / provenance / blocked reason lives only on a
+  // `title`, which is mouse-hover-only and sits on a non-focusable span, so it
+  // never reaches a keyboard or screen-reader operator. Mirror each title into a
+  // visually-hidden companion span (the UnknownValue / RelayModeCell pattern) so
+  // assistive tech hears the same answer the hover gives.
+  const primaryTitleText = primaryTitle(primary, reach, t);
+  const secondaryTitleText = secondary
+    ? t("bearer.alsoVia", { node: secondary.viaName ?? t("bearer.wfb") })
+    : undefined;
+
   return (
     <span className="inline-flex items-center gap-1.5">
-      <Chip className={chipClass(primary)} title={primaryTitle(primary, reach, t)}>
+      <Chip className={chipClass(primary)} title={primaryTitleText}>
         <PrimaryIcon size={10} />
         {chipLabel(primary, t)}
+        {primary.kind === "wfb" && (
+          <span aria-hidden="true" className="font-mono">
+            {WFB_MARK[primary.verification]}
+          </span>
+        )}
+        <span className="sr-only">{primaryTitleText}</span>
       </Chip>
       {showRssi && (
         <span className="font-mono text-[10px] tabular-nums text-text-tertiary">
@@ -148,14 +176,10 @@ export function ReachCell({
         </span>
       )}
       {secondary && (
-        <Chip
-          className={NEUTRAL_CHIP}
-          title={t("bearer.alsoVia", {
-            node: secondary.viaName ?? t("bearer.wfb"),
-          })}
-        >
+        <Chip className={NEUTRAL_CHIP} title={secondaryTitleText}>
           <CornerDownRight size={9} className="opacity-70" />+
           {chipLabel(secondary, t)}
+          <span className="sr-only">{secondaryTitleText}</span>
         </Chip>
       )}
     </span>
