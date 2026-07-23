@@ -4,8 +4,9 @@
  * @module command/settings/CorePages
  * @description The small core settings pages that used to live inline in the
  * Settings tab body: Profile (read-only — a switch is a transactional setup
- * change), Cloud posture (read-only — mode + backend URL are a transactional
- * pair), and Advanced (per-key log level + read-only board override). The
+ * change), Cloud posture (mode + backend URL read-only as a transactional
+ * pair, plus the editable remote-access / Cloudflare-tunnel controls), and
+ * Advanced (per-key log level + read-only board override). The
  * board override is file-sourced (`/etc/ados/board_override`, injected onto
  * the GET response only) and is not a writable config field, so it renders
  * read-only rather than as a control that rejects every write.
@@ -14,7 +15,11 @@
 
 import { useTranslations } from "next-intl";
 
-import { ConfigReadonlyRow, ConfigSelectField } from "./ConfigFields";
+import {
+  ConfigReadonlyRow,
+  ConfigSelectField,
+  ConfigToggleField,
+} from "./ConfigFields";
 import { readConfigPath } from "./use-node-config";
 import { Section } from "./Section";
 
@@ -54,14 +59,39 @@ export function ProfilePage({ config }: Pick<PageProps, "config">) {
   );
 }
 
-/** Cloud posture — read-only in v1 (mode + backend URL are a transactional
- * pair). */
-export function CloudPage({ config }: Pick<PageProps, "config">) {
+/** Cloud posture — the cloud mode + backend URL are read-only (a
+ * transactional setup pair), and the remote-access / Cloudflare-tunnel block
+ * is editable. */
+export function CloudPage({ config, readOnly, setValue }: PageProps) {
   const t = useTranslations("nodeSettings");
   const cloudModeOptions = [
     { value: "local", label: t("cloud.optionLocal") },
     { value: "cloud", label: t("cloud.optionCloud") },
     { value: "self_hosted", label: t("cloud.optionSelfHosted") },
+  ];
+  const remoteProviderOptions = [
+    { value: "none", label: t("cloud.remoteOptionNone") },
+    { value: "cloudflare", label: t("cloud.remoteOptionCloudflare") },
+  ];
+  // The Cloudflare tunnel publishes these reach endpoints once provisioned;
+  // show each read-only when the node reports it.
+  const tunnelUrls = [
+    {
+      key: "remote_access.cloudflare.setup_url",
+      label: t("cloud.remoteSetupUrlLabel"),
+    },
+    {
+      key: "remote_access.cloudflare.api_url",
+      label: t("cloud.remoteApiUrlLabel"),
+    },
+    {
+      key: "remote_access.cloudflare.video_whep_url",
+      label: t("cloud.remoteVideoUrlLabel"),
+    },
+    {
+      key: "remote_access.cloudflare.mavlink_ws_url",
+      label: t("cloud.remoteMavlinkUrlLabel"),
+    },
   ];
   // The active backend URL lives under a mode-specific key that GET
   // /api/config actually emits: the managed endpoint (`server.cloud.url`) in
@@ -92,6 +122,39 @@ export function CloudPage({ config }: Pick<PageProps, "config">) {
           config={config}
         />
       ) : null}
+
+      {/* Remote access — the outbound tunnel that reaches this node beyond
+          the LAN. Editable; the tunnel's published endpoints are read-only. */}
+      <div className="space-y-4 border-t border-border-default pt-4">
+        <ConfigSelectField
+          configKey="remote_access.provider"
+          label={t("cloud.remoteProviderLabel")}
+          hint={t("cloud.remoteProviderHint")}
+          options={remoteProviderOptions}
+          config={config}
+          readOnly={readOnly}
+          setValue={setValue}
+        />
+        <ConfigToggleField
+          configKey="remote_access.cloudflare.enabled"
+          label={t("cloud.remoteEnabledLabel")}
+          hint={t("cloud.remoteEnabledHint")}
+          config={config}
+          readOnly={readOnly}
+          setValue={setValue}
+        />
+        {tunnelUrls.map(({ key, label }) => {
+          const v = readConfigPath(config, key);
+          return typeof v === "string" && v.length > 0 ? (
+            <ConfigReadonlyRow
+              key={key}
+              configKey={key}
+              label={label}
+              config={config}
+            />
+          ) : null;
+        })}
+      </div>
     </Section>
   );
 }

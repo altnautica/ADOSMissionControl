@@ -5745,7 +5745,17 @@
       "backendLabel": "Self-hosted backend",
       "optionLocal": "Local only",
       "optionCloud": "Altnautica cloud",
-      "optionSelfHosted": "Self-hosted"
+      "optionSelfHosted": "Self-hosted",
+      "remoteProviderLabel": "Remote access",
+      "remoteProviderHint": "Reach this node beyond the LAN through an outbound tunnel.",
+      "remoteOptionNone": "None",
+      "remoteOptionCloudflare": "Cloudflare tunnel",
+      "remoteEnabledLabel": "Cloudflare tunnel active",
+      "remoteEnabledHint": "Bring up the tunnel service on this node. Needs a tunnel token installed on the node.",
+      "remoteSetupUrlLabel": "Setup URL",
+      "remoteApiUrlLabel": "API URL",
+      "remoteVideoUrlLabel": "Video (WHEP) URL",
+      "remoteMavlinkUrlLabel": "MAVLink WebSocket URL"
     },
     "advanced": {
       "title": "Advanced",

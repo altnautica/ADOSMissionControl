@@ -11,7 +11,7 @@
  */
 
 import { describe, expect, it, vi } from "vitest";
-import { screen } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { renderWithIntl } from "../helpers/intl-wrapper";
 
 import {
@@ -53,19 +53,23 @@ describe("AdvancedPage board override", () => {
   });
 });
 
+function renderCloud(config: Record<string, unknown>) {
+  const setValue = vi.fn(async () => {});
+  renderWithIntl(
+    <CloudPage config={config} readOnly={false} setValue={setValue} />,
+  );
+  return { setValue };
+}
+
 describe("CloudPage backend URL", () => {
   it("binds the backend row to server.self_hosted.url in self-hosted mode", () => {
-    renderWithIntl(
-      <CloudPage
-        config={{
-          server: {
-            mode: "self_hosted",
-            self_hosted: { url: "https://convex.myco.example" },
-            cloud: { url: "https://convex-site.altnautica.com" },
-          },
-        }}
-      />,
-    );
+    renderCloud({
+      server: {
+        mode: "self_hosted",
+        self_hosted: { url: "https://convex.myco.example" },
+        cloud: { url: "https://convex-site.altnautica.com" },
+      },
+    });
 
     expect(screen.getByText("Backend URL")).toBeTruthy();
     expect(screen.getByText("https://convex.myco.example")).toBeTruthy();
@@ -76,17 +80,13 @@ describe("CloudPage backend URL", () => {
   });
 
   it("binds the backend row to server.cloud.url in cloud mode", () => {
-    renderWithIntl(
-      <CloudPage
-        config={{
-          server: {
-            mode: "cloud",
-            self_hosted: { url: "" },
-            cloud: { url: "https://convex-site.altnautica.com" },
-          },
-        }}
-      />,
-    );
+    renderCloud({
+      server: {
+        mode: "cloud",
+        self_hosted: { url: "" },
+        cloud: { url: "https://convex-site.altnautica.com" },
+      },
+    });
 
     expect(
       screen.getByText("https://convex-site.altnautica.com"),
@@ -94,21 +94,60 @@ describe("CloudPage backend URL", () => {
   });
 
   it("shows no backend row in local mode (there is no backend)", () => {
-    renderWithIntl(
-      <CloudPage
-        config={{
-          server: {
-            mode: "local",
-            self_hosted: { url: "" },
-            cloud: { url: "https://convex-site.altnautica.com" },
-          },
-        }}
-      />,
-    );
+    renderCloud({
+      server: {
+        mode: "local",
+        self_hosted: { url: "" },
+        cloud: { url: "https://convex-site.altnautica.com" },
+      },
+    });
 
     expect(screen.queryByText("Backend URL")).toBeNull();
     expect(
       screen.queryByText("https://convex-site.altnautica.com"),
     ).toBeNull();
+  });
+});
+
+describe("CloudPage remote access", () => {
+  it("exposes editable remote-access controls wired to real keys", async () => {
+    const { setValue } = renderCloud({
+      server: { mode: "local" },
+      remote_access: { provider: "none", cloudflare: { enabled: false } },
+    });
+
+    // The provider control renders (its home for the remote_access block).
+    expect(screen.getByText("Remote access")).toBeTruthy();
+    // The tunnel-enable toggle writes to the real config key with read-back.
+    fireEvent.click(screen.getByText("Cloudflare tunnel active"));
+    await waitFor(() =>
+      expect(setValue).toHaveBeenCalledWith(
+        "remote_access.cloudflare.enabled",
+        "true",
+      ),
+    );
+  });
+
+  it("shows the published tunnel endpoints read-only when present", () => {
+    renderCloud({
+      server: { mode: "local" },
+      remote_access: {
+        provider: "cloudflare",
+        cloudflare: {
+          enabled: true,
+          setup_url: "https://setup.example.trycloudflare.com",
+          api_url: "",
+          video_whep_url: "",
+          mavlink_ws_url: "",
+        },
+      },
+    });
+
+    expect(screen.getByText("Setup URL")).toBeTruthy();
+    expect(
+      screen.getByText("https://setup.example.trycloudflare.com"),
+    ).toBeTruthy();
+    // Endpoints the node has not published stay hidden (not a blank row).
+    expect(screen.queryByText("API URL")).toBeNull();
   });
 });

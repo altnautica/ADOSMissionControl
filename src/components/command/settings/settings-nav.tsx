@@ -250,7 +250,13 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
     labelKey: "nodeSettings.cloud.title",
     group: "cloud",
     icon: <Cloud size={14} />,
-    render: (ctx) => <CloudPage config={ctx.config} />,
+    render: (ctx) => (
+      <CloudPage
+        config={ctx.config}
+        readOnly={ctx.readOnly}
+        setValue={ctx.setValue}
+      />
+    ),
   },
   // SYSTEM & SAFETY
   {
