@@ -29,7 +29,7 @@ vi.mock("lucide-react", () => {
 
 vi.mock("@/stores/agent-connection-store", () => ({
   useAgentConnectionStore: (sel: (s: unknown) => unknown) =>
-    sel({ agentUrl: "http://groundnode.local:8080", apiKey: null, client: null }),
+    sel({ agentUrl: "http://gs-node.local:8080", apiKey: null, client: null }),
 }));
 
 import { LcdPagePreview } from "@/components/hardware/LcdPagePreview";
@@ -83,7 +83,7 @@ describe("LcdPagePreview", () => {
       display: {
         type: "spi-lcd",
         hasTouch: true,
-        snapshotUrl: "http://groundnode.local:8080/api/v1/display/snapshot.png",
+        snapshotUrl: "http://gs-node.local:8080/api/v1/display/snapshot.png",
         activePage: "dashboard",
       },
     });
@@ -102,7 +102,7 @@ describe("LcdPagePreview", () => {
       display: {
         type: "spi-lcd",
         hasTouch: true,
-        snapshotUrl: "http://groundnode.local:8080/api/v1/display/snapshot.png",
+        snapshotUrl: "http://gs-node.local:8080/api/v1/display/snapshot.png",
       },
     });
     const { container } = renderWithIntl(<LcdPagePreview />);
@@ -122,12 +122,12 @@ describe("LcdPagePreview", () => {
       display: {
         type: "spi-lcd",
         hasTouch: true,
-        snapshotUrl: "http://groundnode.local:8080/snap.png",
+        snapshotUrl: "http://gs-node.local:8080/snap.png",
         activePage: "dashboard",
       },
     });
     renderWithIntl(<LcdPagePreview />);
-    expect(screen.getByText("groundnode - dashboard")).toBeDefined();
+    expect(screen.getByText("gs-node - dashboard")).toBeDefined();
   });
 
   it("clears the polling timer on unmount", () => {
@@ -137,7 +137,7 @@ describe("LcdPagePreview", () => {
       display: {
         type: "spi-lcd",
         hasTouch: true,
-        snapshotUrl: "http://groundnode.local:8080/snap.png",
+        snapshotUrl: "http://gs-node.local:8080/snap.png",
       },
     });
     const { unmount } = renderWithIntl(<LcdPagePreview />);

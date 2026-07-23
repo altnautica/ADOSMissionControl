@@ -105,7 +105,7 @@ const mockClient = {
 
 vi.mock("@/stores/agent-connection-store", () => ({
   useAgentConnectionStore: (sel: (s: unknown) => unknown) =>
-    sel({ agentUrl: "http://groundnode.local:8080", apiKey: null, client: mockClient }),
+    sel({ agentUrl: "http://gs-node.local:8080", apiKey: null, client: mockClient }),
 }));
 
 vi.mock("@/components/ui/toast", () => ({
@@ -138,7 +138,7 @@ beforeEach(() => {
         hasTouch: true,
         touchCalibrated: true,
         activePage: "dashboard",
-        snapshotUrl: "http://groundnode.local:8080/api/v1/display/snapshot.png",
+        snapshotUrl: "http://gs-node.local:8080/api/v1/display/snapshot.png",
       },
     },
     true,

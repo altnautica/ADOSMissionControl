@@ -197,7 +197,7 @@ describe("DroneRadioPanel", () => {
         recommendedTierName: null,
         recommendedBitrateKbps: null,
         paired: true,
-        pairedWithDeviceId: "groundnode",
+        pairedWithDeviceId: "gs-node",
         pairedAt: "2026-05-08T12:00:00Z",
         publicKeyFingerprint: "deadbeefcafefeed",
         autoPairEnabled: false,
