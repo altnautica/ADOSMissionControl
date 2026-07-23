@@ -5,7 +5,7 @@
  * transitive funneled-feed re-registration build the identical URL.
  *
  * The agent echoes its WHEP URL using the Host header of the poll, which can be
- * an mDNS name (e.g. `skynodepi.local`) the browser cannot resolve, or null on
+ * an mDNS name (e.g. `drone.local`) the browser cannot resolve, or null on
  * older agents. mediamtx serves WHEP on the same box at the WHEP port
  * (default 8889), so the URL is rebuilt from the known-reachable `lastIp`
  * whenever one is present, falling back to whatever the agent advertised.

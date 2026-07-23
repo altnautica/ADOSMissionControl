@@ -5,7 +5,7 @@ describe("rewriteWhepHost", () => {
   it("swaps the WHEP hostname to the agent base host, keeping port + path", () => {
     expect(
       rewriteWhepHost(
-        "http://skynodepi.local:8889/main/whep",
+        "http://drone.local:8889/main/whep",
         "http://192.168.2.11:8080",
       ),
     ).toBe("http://192.168.2.11:8889/main/whep");
@@ -24,9 +24,9 @@ describe("rewriteWhepHost", () => {
     expect(
       rewriteWhepHost(
         "http://192.168.200.200:8889/main/whep",
-        "http://skynodepi.local:8080",
+        "http://drone.local:8080",
       ),
-    ).toBe("http://skynodepi.local:8889/main/whep");
+    ).toBe("http://drone.local:8889/main/whep");
   });
 
   it("is a no-op when the hosts already match", () => {
@@ -35,7 +35,7 @@ describe("rewriteWhepHost", () => {
   });
 
   it("returns the WHEP url unchanged when the agent base is missing", () => {
-    const url = "http://skynodepi.local:8889/main/whep";
+    const url = "http://drone.local:8889/main/whep";
     expect(rewriteWhepHost(url, null)).toBe(url);
     expect(rewriteWhepHost(url, "")).toBe(url);
   });
@@ -77,8 +77,8 @@ describe("resolveAgentWhepUrl", () => {
       resolveAgentWhepUrl(null, "not_initialized", "http://192.168.200.200:8080"),
     ).toBe("http://192.168.200.200:8889/main/whep");
     expect(
-      resolveAgentWhepUrl(undefined, "connecting", "http://skynodepi.local:8080"),
-    ).toBe("http://skynodepi.local:8889/main/whep");
+      resolveAgentWhepUrl(undefined, "connecting", "http://drone.local:8080"),
+    ).toBe("http://drone.local:8889/main/whep");
   });
 
   it("returns null for hard-off states (stopped/disabled/error/absent)", () => {
