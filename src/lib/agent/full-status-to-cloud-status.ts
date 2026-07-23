@@ -117,8 +117,15 @@ export function mapFullStatusToCloudStatus(
 
   const videoWhepUrl = resp.video?.whep_url ?? undefined;
 
-  // WFB peers, so local-first transitive enrollment works over the LAN without
-  // the cloud relay. Prefer the list; fall back to the scalar peer.
+  // The WFB peers this node reports, mapped from the agent's snake_case
+  // `linked_peers` (device_id / rssi_dbm / role / channel / seen_at_unix — the
+  // agent remaps its sidecar's last_seen_unix to seen_at_unix on emit) onto the
+  // camelCase LinkedPeer shape. This is the LAN half of local-first transitive
+  // enrollment: with the peer list on the mapped status, extractLinkedPeers
+  // downstream prefers it and, when it is absent, falls back to the scalar
+  // peerDeviceId/peerRssiDbm (mapped below), so a WFB-linked drone enrolls over
+  // the LAN with no cloud relay. An absent list leaves this undefined; the
+  // scalar fallback still applies.
   const linkedPeers: LinkedPeer[] | undefined = Array.isArray(resp.linked_peers)
     ? resp.linked_peers
         .filter((p) => typeof p?.device_id === "string" && p.device_id.length > 0)
