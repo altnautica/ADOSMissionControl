@@ -44,6 +44,7 @@ function fleet(relayVerification: BearerVerification): MeshNodeInput[] {
       liveness: "live",
       isRelayed: false,
       reachedViaId: null,
+      reachedViaName: null,
       primary: chip("lan", "verified"),
       secondary: null,
     },
@@ -54,6 +55,7 @@ function fleet(relayVerification: BearerVerification): MeshNodeInput[] {
       liveness: relayVerification === "verified" ? "live" : "stale",
       isRelayed: true,
       reachedViaId: "node:gs",
+      reachedViaName: "GS-A",
       primary: chip("wfb", relayVerification),
       secondary: null,
     },
@@ -114,5 +116,38 @@ describe("MeshReachMap", () => {
     const svg = container.querySelector("svg");
     expect(svg?.getAttribute("role")).toBe("img");
     expect(svg?.getAttribute("aria-label")).toMatch(/2 node/);
+  });
+
+  it("draws a filtered-out relay parent as a named off-view terminal, not a fleet node", () => {
+    // Only the relayed drone is in view; its ground node is filtered out.
+    const graph = buildMeshGraph([
+      {
+        id: "node:drone",
+        name: "Drone-D",
+        profile: "drone",
+        liveness: "live",
+        isRelayed: true,
+        reachedViaId: "node:gs",
+        reachedViaName: "GS-A",
+        primary: chip("wfb", "verified"),
+        secondary: null,
+      },
+    ]);
+    const { container } = render(
+      <NextIntlClientProvider locale="en" messages={messages}>
+        <MeshReachMap graph={graph} />
+      </NextIntlClientProvider>,
+    );
+    // The off-view parent is not counted among the fleet nodes.
+    expect(container.querySelector("svg")?.getAttribute("aria-label")).toMatch(
+      /1 node/,
+    );
+    // The drone's WFB relay edge is drawn — its terminal is the off-view parent,
+    // not the GCS.
+    const edge = relayEdge(container);
+    expect(edge.getAttribute("data-bearer")).toBe("wfb");
+    expect(edge.getAttribute("data-style")).toBe("relay");
+    // The off-view parent is named on the map and marked off view.
+    expect(container.textContent).toMatch(/GS-A \(off view\)/);
   });
 });

@@ -33,6 +33,7 @@ function input(over: Partial<MeshNodeInput> & { id: string }): MeshNodeInput {
     liveness: "live",
     isRelayed: false,
     reachedViaId: null,
+    reachedViaName: null,
     primary: chip("lan", "verified"),
     secondary: null,
     ...over,
@@ -130,13 +131,63 @@ describe("buildMeshGraph", () => {
         liveness: "stale",
         isRelayed: true,
         reachedViaId: "node:gs", // ground node off-screen this render
+        reachedViaName: "GS-A",
         primary: chip("wfb", "stale", -60),
       }),
     ]);
     const e = edge(graph, "node:drone:primary");
     expect(e?.verification).toBe("stale");
-    // Ground node is not in view, so the relay falls back to the sink.
-    expect(e?.to).toBe(MESH_GCS_ID);
+    // Ground node is off-view, so the relay terminates at its off-view parent —
+    // never a false WFB peer link to the GCS.
+    expect(e?.to).not.toBe(MESH_GCS_ID);
+    expect(e?.to).toBe("node:gs");
+    expect(e?.style).toBe("relay");
+  });
+
+  it("terminates a relay at a named off-view parent, never at the GCS, when its ground node is filtered out", () => {
+    // Only the drone is in view — its ground node is filtered out of the set.
+    const graph = buildMeshGraph([
+      input({
+        id: "node:drone",
+        name: "Drone-D",
+        isRelayed: true,
+        reachedViaId: "node:gs",
+        reachedViaName: "GS-A",
+        primary: chip("wfb", "verified", -55),
+      }),
+    ]);
+    const e = edge(graph, "node:drone:primary");
+    expect(e?.bearer).toBe("wfb");
+    expect(e?.to).toBe("node:gs");
+    expect(e?.to).not.toBe(MESH_GCS_ID);
+    // No WFB bearer anywhere terminates at the GCS sink.
+    expect(
+      graph.edges.some((x) => x.bearer === "wfb" && x.to === MESH_GCS_ID),
+    ).toBe(false);
+    // The off-view parent is a distinct, named off-view vertex — not a fleet node.
+    expect(graph.vertices.find((v) => v.id === "node:gs")).toMatchObject({
+      kind: "offview",
+      name: "GS-A",
+    });
+  });
+
+  it("terminates an unknown-parent relay at a per-node off-view vertex, not the GCS", () => {
+    const graph = buildMeshGraph([
+      input({
+        id: "node:drone",
+        name: "Drone-D",
+        isRelayed: true,
+        reachedViaId: null, // no known ground node
+        reachedViaName: null,
+        primary: chip("wfb", "unverified"),
+      }),
+    ]);
+    const e = edge(graph, "node:drone:primary");
+    expect(e?.to).not.toBe(MESH_GCS_ID);
+    expect(
+      graph.edges.some((x) => x.bearer === "wfb" && x.to === MESH_GCS_ID),
+    ).toBe(false);
+    expect(graph.vertices.find((v) => v.id === e?.to)?.kind).toBe("offview");
   });
 
   it("emits an alternate relay edge for a directly-reached node also carried over WFB", () => {

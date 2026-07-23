@@ -77,6 +77,7 @@ export function useMeshInputs(
           liveness: row.summary.liveness,
           isRelayed: node.isRelayed ?? false,
           reachedViaId: node.reachedVia ?? null,
+          reachedViaName,
           primary,
           secondary,
         };

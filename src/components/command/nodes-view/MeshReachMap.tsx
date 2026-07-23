@@ -87,7 +87,9 @@ export function MeshReachMap({ graph }: { graph: MeshGraph }) {
     );
   }, [graph.edges]);
 
-  const nodeCount = graph.vertices.length - 1;
+  // Off-view relay parents are terminals, not fleet nodes, so the summary count
+  // stays honest (Rule 44).
+  const nodeCount = graph.vertices.filter((v) => v.kind === "node").length;
   const relayCount = graph.edges.filter(
     (e) => e.style === "relay" && e.primary,
   ).length;
@@ -194,10 +196,17 @@ function VertexDot({
   vertex: MeshVertex;
   at: Point | undefined;
 }) {
+  const t = useTranslations("nodesView.meshMap");
   if (!at) return null;
   const isGcs = vertex.kind === "gcs";
-  const r = isGcs ? 9 : 6;
-  const label = isGcs ? "GCS" : vertex.name;
+  const isOffView = vertex.kind === "offview";
+  const r = isGcs ? 9 : isOffView ? 5 : 6;
+  // An off-view parent is drawn dashed and dim: it names where a relay reaches
+  // without pretending to be a present, live fleet node (Rule 44).
+  const offViewLabel = vertex.name
+    ? t("offViewNode", { name: vertex.name })
+    : t("offViewRelay");
+  const label = isGcs ? "GCS" : isOffView ? offViewLabel : vertex.name;
   const anchor = at.x > SIZE / 2 ? "start" : "end";
   const labelX = at.x + (anchor === "start" ? r + 3 : -(r + 3));
   return (
@@ -209,6 +218,8 @@ function VertexDot({
         fill="var(--color-bg-secondary)"
         stroke={vertexRing(vertex)}
         strokeWidth={isGcs ? 2 : 1.5}
+        strokeOpacity={isOffView ? 0.55 : 1}
+        strokeDasharray={isOffView ? "2 2" : undefined}
       />
       <title>{label}</title>
       <text
@@ -218,6 +229,7 @@ function VertexDot({
         fontSize={9}
         fill={isGcs ? "var(--color-text-secondary)" : "var(--color-text-tertiary)"}
         fontFamily="var(--font-mono)"
+        opacity={isOffView ? 0.7 : 1}
       >
         {label.length > 12 ? `${label.slice(0, 11)}…` : label}
       </text>

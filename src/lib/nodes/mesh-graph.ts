@@ -53,22 +53,34 @@ export interface MeshNodeInput {
    * The `node:<deviceId>` id of the ground node this node's WFB path runs
    * through, when it has one. It may name a node not in the current input set
    * (filtered out, or off screen); the graph checks membership before drawing
-   * the hop and otherwise points the relay edge at the sink.
+   * the hop and otherwise terminates the relay at a named off-view parent —
+   * never at the GCS sink, which would assert a WFB link that does not exist.
    */
   reachedViaId: string | null;
+  /** The resolved display name of that ground node, when known — so an off-view
+   * relay parent can be named rather than left as a raw id (null when unknown). */
+  reachedViaName: string | null;
   primary: NodeBearerChip;
   /** An alternate path the node is also carried over (multi-path), or null. */
   secondary: NodeBearerChip | null;
 }
 
-/** A vertex: a fleet node, or the GCS sink. */
+/**
+ * A vertex kind: a fleet node, the GCS sink, or an off-view relay parent — a
+ * ground node that carries a relayed drone but is outside the current view
+ * (filtered out / off screen). The off-view parent exists only to terminate the
+ * relay funnel honestly, so the WFB bearer is never redirected to the GCS.
+ */
+export type MeshVertexKind = "gcs" | "node" | "offview";
+
+/** A vertex: a fleet node, the GCS sink, or an off-view relay parent. */
 export interface MeshVertex {
   id: string;
-  kind: "gcs" | "node";
+  kind: MeshVertexKind;
   name: string;
-  /** The node's profile, or null for the GCS sink. */
+  /** The node's profile, or null for the GCS sink / an off-view parent. */
   profile: NodeProfile | null;
-  /** The node's liveness, or null for the GCS sink. */
+  /** The node's liveness, or null for the GCS sink / an off-view parent. */
   liveness: CommandAgentLiveness | null;
 }
 
@@ -94,27 +106,61 @@ export interface MeshGraph {
   edges: MeshEdge[];
 }
 
-/** Resolve one bearer chip into its edge, pointing a relay hop at the ground
- * node when that node is in view, otherwise at the sink. */
+/**
+ * The vertex a relay hop terminates at. The ground node when it is a drawn
+ * vertex; otherwise a synthetic off-view parent that terminates the funnel
+ * where the relay actually reaches — never the GCS sink, which would render the
+ * WFB bearer as a peer link to the GCS that does not exist (Rule 44). A known
+ * off-view parent keeps its own id so several drones relayed through it funnel
+ * to the one terminal; an unknown parent gets a per-node id so two unknown
+ * relays are never merged into one false shared parent.
+ */
+function relayTerminal(
+  input: MeshNodeInput,
+  presentIds: ReadonlySet<string>,
+): { toId: string; offView: MeshVertex | null } {
+  const parentId = input.reachedViaId;
+  if (parentId != null && parentId !== input.id && presentIds.has(parentId)) {
+    return { toId: parentId, offView: null };
+  }
+  const known = parentId != null && parentId !== input.id;
+  const toId = known ? parentId : `offview:${input.id}`;
+  return {
+    toId,
+    offView: {
+      id: toId,
+      kind: "offview",
+      name: known ? (input.reachedViaName ?? "") : "",
+      profile: null,
+      liveness: null,
+    },
+  };
+}
+
+/** Resolve one bearer chip into its edge. A data path points at the GCS sink; a
+ * relay hop points at its ground node in view, or an off-view parent terminal
+ * when that node is filtered out — the relay is never redirected to the sink. */
 function edgeFor(
   input: MeshNodeInput,
   chip: NodeBearerChip,
   primary: boolean,
   presentIds: ReadonlySet<string>,
-): MeshEdge {
+): { edge: MeshEdge; offView: MeshVertex | null } {
   const relay = chip.kind === "wfb";
-  const parentPresent =
-    input.reachedViaId != null &&
-    input.reachedViaId !== input.id &&
-    presentIds.has(input.reachedViaId);
+  const { toId, offView } = relay
+    ? relayTerminal(input, presentIds)
+    : { toId: MESH_GCS_ID, offView: null };
   return {
-    id: `${input.id}:${primary ? "primary" : "secondary"}`,
-    from: input.id,
-    to: relay && parentPresent ? input.reachedViaId! : MESH_GCS_ID,
-    bearer: chip.kind,
-    verification: chip.verification,
-    style: relay ? "relay" : "data",
-    primary,
+    edge: {
+      id: `${input.id}:${primary ? "primary" : "secondary"}`,
+      from: input.id,
+      to: toId,
+      bearer: chip.kind,
+      verification: chip.verification,
+      style: relay ? "relay" : "data",
+      primary,
+    },
+    offView,
   };
 }
 
@@ -125,6 +171,28 @@ function edgeFor(
  */
 export function buildMeshGraph(inputs: readonly MeshNodeInput[]): MeshGraph {
   const presentIds = new Set(inputs.map((i) => i.id));
+  const edges: MeshEdge[] = [];
+  // Off-view relay parents, deduped by id: several drones relayed through the
+  // one off-view ground node share a single terminal vertex.
+  const offViewById = new Map<string, MeshVertex>();
+
+  const push = (resolved: { edge: MeshEdge; offView: MeshVertex | null }) => {
+    edges.push(resolved.edge);
+    if (resolved.offView && !offViewById.has(resolved.offView.id)) {
+      offViewById.set(resolved.offView.id, resolved.offView);
+    }
+  };
+
+  for (const input of inputs) {
+    push(edgeFor(input, input.primary, true, presentIds));
+    // A directly-reached node that a ground node also relays draws the WFB path
+    // as a second, alternate edge — the multi-path redundancy the map exists to
+    // show. Its verification is whatever the row proved, never more.
+    if (input.secondary) {
+      push(edgeFor(input, input.secondary, false, presentIds));
+    }
+  }
+
   const vertices: MeshVertex[] = [
     { id: MESH_GCS_ID, kind: "gcs", name: "GCS", profile: null, liveness: null },
     ...inputs.map((i) => ({
@@ -134,18 +202,8 @@ export function buildMeshGraph(inputs: readonly MeshNodeInput[]): MeshGraph {
       profile: i.profile,
       liveness: i.liveness,
     })),
+    ...offViewById.values(),
   ];
-
-  const edges: MeshEdge[] = [];
-  for (const input of inputs) {
-    edges.push(edgeFor(input, input.primary, true, presentIds));
-    // A directly-reached node that a ground node also relays draws the WFB path
-    // as a second, alternate edge — the multi-path redundancy the map exists to
-    // show. Its verification is whatever the row proved, never more.
-    if (input.secondary) {
-      edges.push(edgeFor(input, input.secondary, false, presentIds));
-    }
-  }
 
   return { vertices, edges };
 }

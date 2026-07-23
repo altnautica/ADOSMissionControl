@@ -55,13 +55,23 @@ const HOP_TONE: Record<BearerVerification, string> = {
 
 export function RelayStreamsList({ graph }: { graph: MeshGraph }) {
   const t = useTranslations("nodesView.meshMap.relayStreams");
+  const tMap = useTranslations("nodesView.meshMap");
   const tBearer = useTranslations("nodesView.meshMap.bearer");
   const reducedMotion = usePrefersReducedMotion();
   const streams = useMemo(() => buildRelayStreams(graph), [graph]);
 
-  /** Localise the GCS sink; every other vertex uses its own name. */
+  /** The GCS sink is localised; an off-view relay parent is named as such (so a
+   * funnel that stops at a filtered-out ground node never reads as a direct WFB
+   * link to the GCS, Rule 44); every other vertex uses its own name. */
   const displayName = (id: string, fallback: string) =>
     id === MESH_GCS_ID ? t("sink") : fallback;
+  const terminalLabel = (hop: RelayHop): string => {
+    if (hop.toId === MESH_GCS_ID) return t("sink");
+    if (hop.toKind === "offview") {
+      return hop.toName ? tMap("offViewNode", { name: hop.toName }) : tMap("offViewRelay");
+    }
+    return hop.toName;
+  };
 
   /** One coherent sentence per stream, so a screen reader reads the whole path
    * rather than a scatter of chips and arrow glyphs. */
@@ -70,7 +80,7 @@ export function RelayStreamsList({ graph }: { graph: MeshGraph }) {
       displayName(stream.hops[0]?.fromId ?? stream.id, stream.leafName),
     ];
     for (const hop of stream.hops) {
-      const node = displayName(hop.toId, hop.toName);
+      const node = terminalLabel(hop);
       parts.push(
         hop.style === "relay"
           ? t("hopRelay", { bearer: tBearer(hop.bearer), node })
@@ -117,7 +127,7 @@ export function RelayStreamsList({ graph }: { graph: MeshGraph }) {
                       stream.live && !reducedMotion && "relay-live-pulse",
                     )}
                   />
-                  {pathChips(stream, displayName, tBearer)}
+                  {pathChips(stream, displayName, terminalLabel, tBearer)}
                   <span
                     className={cn(
                       "ml-0.5 text-[9px] font-medium uppercase tracking-wide",
@@ -141,6 +151,7 @@ export function RelayStreamsList({ graph }: { graph: MeshGraph }) {
 function pathChips(
   stream: RelayStream,
   displayName: (id: string, fallback: string) => string,
+  terminalLabel: (hop: RelayHop) => string,
   tBearer: (key: string) => string,
 ): ReactNode[] {
   const out: ReactNode[] = [];
@@ -158,7 +169,7 @@ function pathChips(
     out.push(
       <NodeChip
         key={`${stream.id}-sink`}
-        label={displayName(last.toId, last.toName)}
+        label={terminalLabel(last)}
         sink={last.toId === MESH_GCS_ID}
       />,
     );

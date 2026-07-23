@@ -34,6 +34,7 @@ function input(over: Partial<MeshNodeInput> & { id: string }): MeshNodeInput {
     liveness: "live",
     isRelayed: false,
     reachedViaId: null,
+    reachedViaName: null,
     primary: chip("lan", "verified"),
     secondary: null,
     ...over,
@@ -116,14 +117,38 @@ describe("buildRelayStreams", () => {
         liveness: "stale",
         isRelayed: true,
         reachedViaId: "node:gs", // ground node off-screen this render
+        reachedViaName: "GS-A",
         primary: chip("wfb", "stale", -60),
       }),
     ]);
     expect(stream.live).toBe(false);
     expect(stream.worst).toBe("stale");
-    // Its ground node is not in view, so the funnel collapses to one hop home.
+    // Its ground node is off-view, so the funnel terminates at the off-view
+    // parent — never a false WFB hop home to the GCS.
     expect(stream.hops).toHaveLength(1);
-    expect(stream.hops[0].toId).toBe(MESH_GCS_ID);
+    expect(stream.hops[0].toId).not.toBe(MESH_GCS_ID);
+    expect(stream.hops[0].toId).toBe("node:gs");
+    expect(stream.hops[0].toKind).toBe("offview");
+    expect(stream.hops[0].toName).toBe("GS-A");
+  });
+
+  it("does not funnel a relayed drone home to the GCS when its ground node is filtered out", () => {
+    const streams = streamsFor([
+      input({
+        id: "node:drone",
+        name: "Drone-D",
+        isRelayed: true,
+        reachedViaId: "node:gs",
+        reachedViaName: "GS-A",
+        primary: chip("wfb", "verified", -50),
+      }),
+    ]);
+    expect(streams).toHaveLength(1);
+    const { hops } = streams[0];
+    // No hop terminates at the GCS — the WFB path stops at the off-view parent.
+    expect(hops.some((h) => h.toId === MESH_GCS_ID)).toBe(false);
+    expect(hops[hops.length - 1].toKind).toBe("offview");
+    expect(hops[hops.length - 1].toName).toBe("GS-A");
   });
 
   it("reports the weakest hop as the funnel's state", () => {

@@ -30,6 +30,7 @@ import {
   type MeshEdge,
   type MeshEdgeStyle,
   type MeshGraph,
+  type MeshVertexKind,
 } from "@/lib/nodes/mesh-graph";
 import type { BearerVerification, NodeBearerKind } from "@/lib/nodes/node-bearer";
 
@@ -37,9 +38,13 @@ import type { BearerVerification, NodeBearerKind } from "@/lib/nodes/node-bearer
 export interface RelayHop {
   fromId: string;
   fromName: string;
-  /** The next vertex up the path: a parent node, or {@link MESH_GCS_ID}. */
+  /** The next vertex up the path: a parent node, an off-view parent, or
+   * {@link MESH_GCS_ID}. */
   toId: string;
   toName: string;
+  /** The kind of the terminating vertex, so the text names an off-view relay
+   * parent honestly rather than as a GCS peer link (Rule 44). */
+  toKind: MeshVertexKind;
   bearer: NodeBearerKind;
   verification: BearerVerification;
   style: MeshEdgeStyle;
@@ -83,6 +88,7 @@ function walkStream(
   leafId: string,
   primaryBySource: ReadonlyMap<string, MeshEdge>,
   nameById: ReadonlyMap<string, string>,
+  kindById: ReadonlyMap<string, MeshVertexKind>,
 ): RelayStream {
   const hops: RelayHop[] = [];
   const seen = new Set<string>();
@@ -96,6 +102,7 @@ function walkStream(
       fromName: nameById.get(edge.from) ?? edge.from,
       toId: edge.to,
       toName: nameById.get(edge.to) ?? edge.to,
+      toKind: kindById.get(edge.to) ?? "node",
       bearer: edge.bearer,
       verification: edge.verification,
       style: edge.style,
@@ -120,6 +127,7 @@ function walkStream(
  */
 export function buildRelayStreams(graph: MeshGraph): RelayStream[] {
   const nameById = new Map(graph.vertices.map((v) => [v.id, v.name]));
+  const kindById = new Map(graph.vertices.map((v) => [v.id, v.kind]));
   // A node has exactly one primary edge — its actual path home. Indexing them
   // lets a funnel be walked hop by hop up the reach tree.
   const primaryBySource = new Map<string, MeshEdge>();
@@ -133,7 +141,7 @@ export function buildRelayStreams(graph: MeshGraph): RelayStream[] {
     // primary-relay edges the map counts — so the list and the map agree on
     // how many streams there are.
     if (edge.primary && edge.style === "relay") {
-      streams.push(walkStream(edge.from, primaryBySource, nameById));
+      streams.push(walkStream(edge.from, primaryBySource, nameById, kindById));
     }
   }
 

@@ -41,6 +41,7 @@ function node(over: Partial<MeshNodeInput> & { id: string }): MeshNodeInput {
     liveness: "live",
     isRelayed: false,
     reachedViaId: null,
+    reachedViaName: null,
     primary: chip("lan", "verified"),
     secondary: null,
     ...over,
@@ -103,6 +104,26 @@ describe("RelayStreamsList", () => {
     expect(sentence).toMatch(/over WFB to GS-A/);
     expect(sentence).toMatch(/to GCS/);
     expect(sentence).toMatch(/Live\.?$/);
+  });
+
+  it("names an off-view parent and never claims a WFB link to the GCS when the ground node is filtered out", () => {
+    // Only the relayed drone is in the visible set; its ground node is filtered
+    // out, so the funnel must stop at the off-view parent, not the GCS.
+    const { container } = renderList([
+      node({
+        id: "node:drone",
+        name: "Drone-D",
+        isRelayed: true,
+        reachedViaId: "node:gs",
+        reachedViaName: "GS-A",
+        primary: chip("wfb", "verified"),
+      }),
+    ]);
+    const row = container.querySelector('[data-stream="node:drone"]')!;
+    const sentence = row.querySelector(".sr-only")?.textContent ?? "";
+    // The off-view parent is named; the sentence never asserts a hop to the GCS.
+    expect(sentence).toMatch(/over WFB to GS-A \(off view\)/);
+    expect(sentence).not.toMatch(/to GCS/);
   });
 
   it("marks a stale funnel as stale, never as a live stream", () => {

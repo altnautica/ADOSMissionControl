@@ -6719,7 +6719,9 @@
         "hopRelay": "over {bearer} to {node}",
         "hopData": "to {node}",
         "streamAria": "{path}. {state}."
-      }
+      },
+      "offViewNode": "{name} (off view)",
+      "offViewRelay": "off-view relay"
     }
   },
   "rcElrsLink": {

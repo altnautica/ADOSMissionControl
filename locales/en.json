@@ -6699,6 +6699,8 @@
       "empty": "No nodes to map",
       "legend": "Bearer legend",
       "summary": "Fleet reach map: {nodes} node(s), {paths} reach path(s), {relays} relay stream(s).",
+      "offViewNode": "{name} (off view)",
+      "offViewRelay": "off-view relay",
       "bearer": {
         "lan": "Direct · LAN",
         "wfb": "WFB",
