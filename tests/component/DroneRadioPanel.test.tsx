@@ -49,8 +49,79 @@ vi.mock("@/components/ui/toast", () => ({
 
 import { DroneRadioPanel } from "@/components/dashboard/DroneRadioPanel";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
+import type { RadioState } from "@/lib/api/ground-station/types";
 
 const initialState = useAgentCapabilitiesStore.getState();
+
+/** A minimally-populated air-side radio snapshot with a null RSSI (the drone
+ * does not hear its own RF); override `state` to exercise the RSSI-hint copy. */
+function radioWithState(state: RadioState["state"]): RadioState {
+  return {
+    state,
+    iface: "wlan1",
+    driver: "8812eu",
+    channel: 36,
+    freqMhz: 5180,
+    bandwidthMhz: 20,
+    txPowerDbm: 6,
+    txPowerMaxDbm: 20,
+    topology: "external_5v",
+    rssiDbm: null,
+    bitrateKbps: 12000,
+    fecRecovered: 0,
+    fecLost: 0,
+    packetsLost: 0,
+    homeChannel: 149,
+    band: "u-nii-3",
+    regDomain: "US",
+    regPosture: "region",
+    pinnedRegion: "US",
+    regVerified: true,
+    monitorActive: true,
+    txActive: true,
+    peerLink: "searching",
+    hopState: "idle",
+    snrDb: null,
+    noiseDbm: null,
+    lossPercent: null,
+    mcsIndex: null,
+    rxSilentSeconds: null,
+    txVideoStalled: null,
+    txVideoStallKills: null,
+    txVideoRecvqBytes: null,
+    acquireState: null,
+    channelLocked: null,
+    rfUnverified: state === "rf_unverified",
+    reacquireKills: null,
+    rxZombieKills: null,
+    validRxPacketsPerS: null,
+    linkDiag: null,
+    packetsAll: null,
+    decryptErrors: null,
+    adapterChipset: "RTL8812EU",
+    adapterInjectionOk: true,
+    adapterUsbDegraded: false,
+    adapterUsbSpeedMbps: 480,
+    phyMuted: false,
+    fecK: null,
+    fecN: null,
+    linkPreset: null,
+    adaptiveBitrateEnabled: null,
+    recommendedTierIdx: null,
+    recommendedTierName: null,
+    recommendedBitrateKbps: null,
+    paired: true,
+    pairedWithDeviceId: "example-gs",
+    pairedAt: null,
+    publicKeyFingerprint: null,
+    autoPairEnabled: false,
+  };
+}
+
+const RSSI_AIR_NOTE =
+  "Drone does not receive its own RF; ground station reports the RSSI value.";
+const RSSI_UNVERIFIED_NOTE =
+  "Transmitting, but no reception is confirmed yet, so no RSSI is available on either side of the link.";
 
 beforeEach(() => {
   useAgentCapabilitiesStore.setState({ ...initialState, radio: null }, true);
@@ -215,5 +286,27 @@ describe("DroneRadioPanel", () => {
     expect(
       screen.getByText("WFB adapter not injection-capable"),
     ).toBeDefined();
+  });
+
+  it("points a connected drone's null RSSI at the ground station", () => {
+    useAgentCapabilitiesStore.setState({
+      ...initialState,
+      radio: radioWithState("connected"),
+    });
+    renderWithIntl(<DroneRadioPanel droneId="drone-1" />);
+    expect(screen.getByText(RSSI_AIR_NOTE)).toBeDefined();
+    expect(screen.queryByText(RSSI_UNVERIFIED_NOTE)).toBeNull();
+  });
+
+  it("does not misdirect an rf_unverified drone's null RSSI to the ground station", () => {
+    useAgentCapabilitiesStore.setState({
+      ...initialState,
+      radio: radioWithState("rf_unverified"),
+    });
+    renderWithIntl(<DroneRadioPanel droneId="drone-1" />);
+    // The unverified-reception note is shown, and the "ground station reports
+    // the RSSI value" note (which would misdirect here) is not.
+    expect(screen.getByText(RSSI_UNVERIFIED_NOTE)).toBeDefined();
+    expect(screen.queryByText(RSSI_AIR_NOTE)).toBeNull();
   });
 });

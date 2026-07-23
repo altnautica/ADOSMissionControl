@@ -27,6 +27,7 @@ import {
   linkDiagBadgeClass,
   linkStateLabel,
   linkStateBadgeClass,
+  linkStateReach,
   topologyLabel,
 } from "@/components/hardware/radio/labels";
 import { AdapterHealthPills } from "@/components/hardware/radio/AdapterHealthPills";
@@ -148,10 +149,22 @@ export function DroneRadioPanel({ droneId }: DroneRadioPanelProps) {
   const packetsAll = radio.packetsAll;
   const decryptErrors = radio.decryptErrors;
 
-  // The drone does not typically receive its own RF — the value lives
-  // on the ground side. Display a hint so operators do not interpret a
-  // null RSSI as a bug.
-  const showRssiHint = linkState === "connected" && rssiDbm == null;
+  // The drone does not typically receive its own RF, so a null RSSI here is
+  // expected — but WHICH explanation is truthful depends on the link (Rule 44).
+  // On a link that is carrying frames (connected / degraded) the value lives on
+  // the ground side, so the note points there. On an unverified link
+  // (rf_unverified) nothing has confirmed reception, so pointing the operator at
+  // the ground station would misdirect — the ground station has no RSSI to
+  // report either. On a down link the "…" placeholder is self-explanatory and
+  // no note is shown.
+  const rssiHint =
+    rssiDbm != null
+      ? undefined
+      : linkStateReach(linkState) === "up"
+        ? tDrone("rssiAirNote")
+        : linkStateReach(linkState) === "unproven"
+          ? tDrone("rssiUnverifiedNote")
+          : undefined;
 
   const onApply = async (dbm: number): Promise<SetTxPowerResult> => {
     const api = groundStationApiFromAgent(agentUrl, apiKey);
@@ -225,7 +238,7 @@ export function DroneRadioPanel({ droneId }: DroneRadioPanelProps) {
             label={t("rssi")}
             value={rssiDbm == null ? EMPTY : `${rssiDbm.toFixed(0)} dBm`}
             valueClass={rssiClass(rssiDbm)}
-            hint={showRssiHint ? tDrone("rssiAirNote") : undefined}
+            hint={rssiHint}
           />
           <StatRow
             label={t("bitrate")}

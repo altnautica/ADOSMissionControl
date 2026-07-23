@@ -1160,6 +1160,7 @@
   "droneRadio": {
     "airSideBadge": "Air side",
     "rssiAirNote": "Drone does not receive its own RF; ground station reports the RSSI value.",
+    "rssiUnverifiedNote": "Transmitting, but no reception is confirmed yet, so no RSSI is available on either side of the link.",
     "txPowerScopeHint": "Adjusts air-side TX power on this drone.",
     "noAgent": "No agent connection. TX power changes are unavailable until the drone reconnects."
   },
