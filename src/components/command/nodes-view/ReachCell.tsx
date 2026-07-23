@@ -35,7 +35,8 @@ import {
 } from "@/lib/nodes/node-bearer";
 import { useReachedViaName } from "@/lib/nodes/reach-provenance";
 import { useCommandFleetStore } from "@/stores/command-fleet-store";
-import { Chip, NEUTRAL_CHIP } from "./cell-primitives";
+import { cn } from "@/lib/utils";
+import { Chip, NEUTRAL_CHIP, staleClass } from "./cell-primitives";
 
 const KIND_ICON: Record<NodeBearerKind, typeof Wifi> = {
   lan: Wifi,
@@ -171,7 +172,15 @@ export function ReachCell({
         <span className="sr-only">{primaryTitleText}</span>
       </Chip>
       {showRssi && (
-        <span className="font-mono text-[10px] tabular-nums text-text-tertiary">
+        <span
+          className={cn(
+            "font-mono text-[10px] tabular-nums text-text-tertiary",
+            // A stale reading is dimmed so the number never reads as a live
+            // measurement (Rule 44), the same treatment the rest of the row's
+            // stale cells get.
+            staleClass(primary.verification === "stale" ? "stale" : "fresh"),
+          )}
+        >
           {primary.rssiDbm} dBm
         </span>
       )}
