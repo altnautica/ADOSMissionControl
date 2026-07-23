@@ -320,7 +320,7 @@ const CRSF_LINK_STATES: ReadonlySet<CrsfLinkState> = new Set<CrsfLinkState>([
  * null so the store field reads absent rather than a fabricated all-null block.
  */
 export function normalizeCrsf(raw: unknown): CrsfState | null {
-  if (!raw || typeof raw !== "object") return null;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const r = raw as Record<string, unknown>;
   const num = (v: unknown): number | null =>
     typeof v === "number" && Number.isFinite(v) ? v : null;
