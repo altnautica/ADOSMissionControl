@@ -94,6 +94,7 @@ const isRadioProfile = (ctx: SettingsPageContext) =>
   ctx.profile === "drone" || ctx.profile === "ground-station";
 const isVisionProfile = (ctx: SettingsPageContext) =>
   ctx.profile === "drone" || ctx.profile === "workstation";
+const isDroneProfile = (ctx: SettingsPageContext) => ctx.profile === "drone";
 
 export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
   // IDENTITY
@@ -171,6 +172,10 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
     labelKey: "nodeSettings.mavlinkRouting.title",
     group: "network",
     icon: <Route size={14} />,
+    // MAVLink routing (FC transport, router identity, signing, relay rates) is
+    // the FC-connected drone's surface — a ground station or workstation has no
+    // MAVLink router to configure, so the page never appears there.
+    when: isDroneProfile,
     render: (ctx) => (
       <MavlinkRoutingSection
         profile={ctx.profile}
@@ -185,7 +190,12 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
     labelKey: "nodeSettings.swarm.title",
     group: "network",
     icon: <Waypoints size={14} />,
-    when: (ctx) => configAdvertises(ctx.config, "swarm") || isDemoMode(),
+    // Swarm coordination is a drone-fleet surface — it does not apply to a
+    // ground station or workstation even when their stored config carries the
+    // block. Drone profile AND the node advertising the block (or demo).
+    when: (ctx) =>
+      isDroneProfile(ctx) &&
+      (configAdvertises(ctx.config, "swarm") || isDemoMode()),
     render: (ctx) => (
       <SwarmSection
         config={ctx.config}
@@ -264,6 +274,9 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
     labelKey: "operatingRegion.title",
     group: "system",
     icon: <Globe size={14} />,
+    // Operating region governs the RF radio; a radio-less workstation has no
+    // regulatory domain, so the (otherwise blank) page never appears there.
+    when: isRadioProfile,
     render: () => <RegulatoryRegionPanel />,
   },
   {
