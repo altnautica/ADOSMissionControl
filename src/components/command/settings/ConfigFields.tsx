@@ -57,6 +57,10 @@ export function ConfigSelectField({
     try {
       await setValue(configKey, next);
       toast(t("applied"), "success");
+      // `setValue` re-reads the config, so `current` now holds the persisted
+      // value. Drop the optimistic pending so the field tracks the confirmed
+      // read-back and returns to interactive.
+      setPending(null);
     } catch (err) {
       toast(err instanceof Error ? err.message : t("applyFailed"), "error");
       setPending(null);
@@ -105,6 +109,10 @@ export function ConfigToggleField({
     try {
       await setValue(configKey, next ? "true" : "false");
       toast(t("applied"), "success");
+      // `setValue` re-reads the config, so `current` now holds the persisted
+      // value. Drop the optimistic pending so the toggle tracks the confirmed
+      // read-back and returns to interactive.
+      setPending(null);
     } catch (err) {
       toast(err instanceof Error ? err.message : t("applyFailed"), "error");
       setPending(null);
