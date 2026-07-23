@@ -164,7 +164,9 @@ export function SecuritySection({ config, readOnly, setValue }: SectionProps) {
         hint={t("apiKeyHint")}
       />
 
-      {/* Exposed auth switches over the shared config writer. */}
+      {/* Exposed auth switches over the shared config writer. Turning either
+          OFF is a security downgrade, so that transition is gated behind a
+          danger confirm; turning it ON (the safe upgrade) writes immediately. */}
       <div className="space-y-4 border-t border-border-default pt-3">
         <ConfigToggleField
           configKey="mavlink.ws_proxy_enforce_auth"
@@ -173,6 +175,12 @@ export function SecuritySection({ config, readOnly, setValue }: SectionProps) {
           config={config}
           readOnly={readOnly}
           setValue={setValue}
+          confirm={{
+            when: (next) => next === false,
+            title: t("wsEnforceConfirmTitle"),
+            message: t("wsEnforceConfirmMessage"),
+            confirmLabel: t("wsEnforceConfirmAction"),
+          }}
         />
         <ConfigToggleField
           configKey="security.setup_token_required"
@@ -181,6 +189,12 @@ export function SecuritySection({ config, readOnly, setValue }: SectionProps) {
           config={config}
           readOnly={readOnly}
           setValue={setValue}
+          confirm={{
+            when: (next) => next === false,
+            title: t("setupTokenConfirmTitle"),
+            message: t("setupTokenConfirmMessage"),
+            confirmLabel: t("setupTokenConfirmAction"),
+          }}
         />
       </div>
 

@@ -16,6 +16,7 @@ import { useTranslations } from "next-intl";
 import { Select, type SelectOption } from "@/components/ui/select";
 import { Toggle } from "@/components/ui/toggle";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { readConfigPath } from "./use-node-config";
 
@@ -84,7 +85,21 @@ export function ConfigSelectField({
   );
 }
 
-/** A Toggle bound to a boolean config key; writes on change. */
+/** An optional confirmation gate for a toggle write. When `when(next)` is true
+ * for the attempted transition, the write is held behind a danger ConfirmDialog
+ * — used to gate a security downgrade (e.g. turning an auth requirement OFF) or
+ * a link-affecting change so a single stray click can't apply it. A safe
+ * transition (`when` returns false) writes immediately. */
+export interface ToggleConfirm {
+  when: (next: boolean) => boolean;
+  title: string;
+  message: string;
+  confirmLabel: string;
+}
+
+/** A Toggle bound to a boolean config key; writes on change. When a `confirm`
+ * gate is supplied and the attempted transition matches it, the write is held
+ * behind a ConfirmDialog until the operator confirms. */
 export function ConfigToggleField({
   configKey,
   label,
@@ -92,18 +107,22 @@ export function ConfigToggleField({
   config,
   readOnly,
   setValue,
-}: BaseProps) {
+  confirm,
+}: BaseProps & { confirm?: ToggleConfirm }) {
   const t = useTranslations("nodeSettings");
   const { toast } = useToast();
   const [pending, setPending] = useState<boolean | null>(null);
   const [saving, setSaving] = useState(false);
+  // The value awaiting confirmation. Null while no dialog is open; the toggle
+  // stays at its current position (pending is not set) until confirmed, so a
+  // cancel is a true no-op.
+  const [confirmNext, setConfirmNext] = useState<boolean | null>(null);
 
   const raw = readConfigPath(config, configKey);
   const current = raw === true;
   const checked = pending ?? current;
 
-  const onChange = async (next: boolean) => {
-    if (readOnly || saving) return;
+  const applyChange = async (next: boolean) => {
     setPending(next);
     setSaving(true);
     try {
@@ -121,6 +140,15 @@ export function ConfigToggleField({
     }
   };
 
+  const onChange = async (next: boolean) => {
+    if (readOnly || saving) return;
+    if (confirm && confirm.when(next)) {
+      setConfirmNext(next);
+      return;
+    }
+    await applyChange(next);
+  };
+
   return (
     <div className="flex flex-col gap-1.5">
       <Toggle
@@ -130,6 +158,21 @@ export function ConfigToggleField({
         disabled={readOnly || saving}
       />
       {hint ? <p className="text-[11px] text-text-tertiary">{hint}</p> : null}
+      {confirm ? (
+        <ConfirmDialog
+          open={confirmNext !== null}
+          title={confirm.title}
+          message={confirm.message}
+          confirmLabel={confirm.confirmLabel}
+          variant="danger"
+          onCancel={() => setConfirmNext(null)}
+          onConfirm={() => {
+            const next = confirmNext;
+            setConfirmNext(null);
+            if (next !== null) void applyChange(next);
+          }}
+        />
+      ) : null}
     </div>
   );
 }

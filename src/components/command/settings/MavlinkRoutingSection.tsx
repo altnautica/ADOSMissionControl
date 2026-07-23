@@ -30,6 +30,7 @@ import type {
   SigningCounters,
 } from "@/lib/agent/agent-client/types";
 import { Toggle } from "@/components/ui/toggle";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { formatLogTime } from "../shared/LogViewer";
 import { ConfigIntField, ConfigReadonlyRow } from "./ConfigFields";
@@ -145,6 +146,10 @@ export function MavlinkRoutingSection({
 
   const [signing, setSigning] = useState<SigningLoad>({ state: "loading" });
   const [requirePending, setRequirePending] = useState(false);
+  // Set true when an enable is held pending confirmation because no signed
+  // frames have been observed (enabling require-signing then would reject every
+  // unsigned frame from the FC and drop the link).
+  const [confirmRequire, setConfirmRequire] = useState(false);
 
   const loadSigning = useCallback(async () => {
     if (!isDrone || !client) return;
@@ -354,7 +359,17 @@ export function MavlinkRoutingSection({
                 <Toggle
                   label={t("signingRequireLabel")}
                   checked={signing.require === true}
-                  onChange={(v) => void onToggleRequire(v)}
+                  onChange={(v) => {
+                    // Enabling require-signing while no signed frames have been
+                    // observed rejects every unsigned frame the FC sends and
+                    // drops the link. Gate that transition behind a confirm;
+                    // disabling (a safe transition) never needs one.
+                    if (v && (signing.counters?.rx_signed_count ?? 0) === 0) {
+                      setConfirmRequire(true);
+                      return;
+                    }
+                    void onToggleRequire(v);
+                  }}
                   disabled={requirePending}
                 />
                 {signing.require === null ? (
@@ -397,6 +412,21 @@ export function MavlinkRoutingSection({
           )}
         </div>
       ) : null}
+
+      {/* Require-signing enable guard: no signed frames observed yet, so
+          enforcing signing now would drop the FC link. */}
+      <ConfirmDialog
+        open={confirmRequire}
+        title={t("signingRequireConfirmTitle")}
+        message={t("signingRequireConfirmMessage")}
+        confirmLabel={t("signingRequireConfirmAction")}
+        variant="danger"
+        onCancel={() => setConfirmRequire(false)}
+        onConfirm={() => {
+          setConfirmRequire(false);
+          void onToggleRequire(true);
+        }}
+      />
     </Section>
   );
 }

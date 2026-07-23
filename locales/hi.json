@@ -6080,7 +6080,10 @@
       "signingRxLabel": "Signed frames received",
       "signingLastRxLabel": "Last signed frame",
       "signingNoneSeen": "None seen",
-      "signingEnrollHint": "Key enrollment, export and clearing live in the flight controller's Setup, under Security, in the MAVLink Signing panel."
+      "signingEnrollHint": "Key enrollment, export and clearing live in the flight controller's Setup, under Security, in the MAVLink Signing panel.",
+      "signingRequireConfirmTitle": "Require signing with no signed frames seen?",
+      "signingRequireConfirmMessage": "No signed MAVLink frames have been received from the flight controller yet. Requiring signing now will reject every unsigned frame and can drop the FC link until the FC is enrolled and signing. Enrol the signing key on the FC first.",
+      "signingRequireConfirmAction": "Require signing anyway"
     },
     "security": {
       "title": "Security",
@@ -6105,7 +6108,13 @@
       "missionControlUrlLabel": "Mission Control URL",
       "missionControlUrlHint": "The Mission Control address this node advertises in its setup flow. Blank offers only a localhost link.",
       "restBindLabel": "REST API bind",
-      "restBindHint": "The address and port the node's HTTP API listens on. Set at install; changing it needs a reinstall."
+      "restBindHint": "The address and port the node's HTTP API listens on. Set at install; changing it needs a reinstall.",
+      "wsEnforceConfirmTitle": "Turn off MAVLink WebSocket auth?",
+      "wsEnforceConfirmMessage": "With enforcement off, a paired node admits off-box raw-MAVLink WebSocket connections that present no pairing key, so an unauthenticated caller on the network could send commands straight to the flight controller. Only turn this off on a trusted, isolated link.",
+      "wsEnforceConfirmAction": "Turn off enforcement",
+      "setupTokenConfirmTitle": "Stop requiring the setup token?",
+      "setupTokenConfirmMessage": "With the token no longer required, any browser that can reach the node's setup pages is trusted to change its configuration. Only turn this off on a trusted network.",
+      "setupTokenConfirmAction": "Stop requiring the token"
     },
     "set": "Set",
     "secretPlaceholder": "Enter a new value"

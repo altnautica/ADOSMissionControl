@@ -137,6 +137,84 @@ describe("SecuritySection auth switches", () => {
       ),
     );
   });
+
+  // Turning either flag ON is a safe upgrade and must not nag.
+  it("turns enforcement ON with no confirmation prompt", async () => {
+    const { setValue } = renderSection(CONFIG);
+    fireEvent.click(screen.getByText("Enforce raw MAVLink WebSocket auth"));
+    await waitFor(() =>
+      expect(setValue).toHaveBeenCalledWith(
+        "mavlink.ws_proxy_enforce_auth",
+        "true",
+      ),
+    );
+    expect(screen.queryByText("Turn off MAVLink WebSocket auth?")).toBeNull();
+  });
+});
+
+// A config where both auth flags are already ON, so a click is the OFF
+// (security-downgrade) transition that must be confirmed.
+const ENFORCED_CONFIG = {
+  security: {
+    api: { api_key: "***" },
+    setup_token_required: true,
+  },
+  mavlink: { ws_proxy_enforce_auth: true },
+};
+
+describe("SecuritySection downgrade guard", () => {
+  it("holds a WS-enforcement OFF write behind a danger confirm", async () => {
+    const { setValue } = renderSection(ENFORCED_CONFIG);
+    fireEvent.click(screen.getByText("Enforce raw MAVLink WebSocket auth"));
+    // The dialog appears and the write is NOT applied yet.
+    await waitFor(() =>
+      expect(
+        screen.getByText("Turn off MAVLink WebSocket auth?"),
+      ).toBeTruthy(),
+    );
+    expect(setValue).not.toHaveBeenCalled();
+    // Confirming applies the downgrade.
+    fireEvent.click(screen.getByText("Turn off enforcement"));
+    await waitFor(() =>
+      expect(setValue).toHaveBeenCalledWith(
+        "mavlink.ws_proxy_enforce_auth",
+        "false",
+      ),
+    );
+  });
+
+  it("cancelling the confirm leaves the flag unchanged", async () => {
+    const { setValue } = renderSection(ENFORCED_CONFIG);
+    fireEvent.click(screen.getByText("Enforce raw MAVLink WebSocket auth"));
+    await waitFor(() =>
+      expect(
+        screen.getByText("Turn off MAVLink WebSocket auth?"),
+      ).toBeTruthy(),
+    );
+    fireEvent.click(screen.getByText("Cancel"));
+    await waitFor(() =>
+      expect(
+        screen.queryByText("Turn off MAVLink WebSocket auth?"),
+      ).toBeNull(),
+    );
+    expect(setValue).not.toHaveBeenCalled();
+  });
+
+  it("holds a setup-token OFF write behind a danger confirm", async () => {
+    const { setValue } = renderSection(ENFORCED_CONFIG);
+    fireEvent.click(screen.getByText("Require setup token"));
+    await waitFor(() =>
+      expect(screen.getByText("Stop requiring the setup token?")).toBeTruthy(),
+    );
+    expect(setValue).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByText("Stop requiring the token"));
+    await waitFor(() =>
+      expect(setValue).toHaveBeenCalledWith(
+        "security.setup_token_required",
+        "false",
+      ),
+    );
+  });
 });
 
 describe("SecuritySection API surface", () => {

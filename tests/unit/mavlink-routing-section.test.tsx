@@ -41,6 +41,7 @@ const CONFIG = {
 function stubSigningClient(overrides?: {
   capability?: Record<string, unknown>;
   requireValue?: boolean | null;
+  rxSignedCount?: number;
   failWith?: Error;
 }) {
   const setSigningRequire = vi.fn(async (require: boolean) => ({
@@ -64,7 +65,7 @@ function stubSigningClient(overrides?: {
     })),
     getSigningCounters: vi.fn(async () => ({
       tx_signed_count: 12,
-      rx_signed_count: 7,
+      rx_signed_count: overrides?.rxSignedCount ?? 7,
       last_signed_rx_at: null,
     })),
     setSigningRequire,
@@ -199,6 +200,8 @@ describe("MavlinkRoutingSection signing block", () => {
   });
 
   it("writes the require flag through the agent's signing route", async () => {
+    // rx_signed_count defaults to 7 (frames arriving), so enabling is safe and
+    // writes with no confirmation.
     const { setSigningRequire } = stubSigningClient({
       capability: { supported: true, reason: "ok", firmware_name: "ArduPilot" },
       requireValue: false,
@@ -207,6 +210,47 @@ describe("MavlinkRoutingSection signing block", () => {
     await waitFor(() => expect(screen.getByText("ArduPilot")).toBeTruthy());
     fireEvent.click(screen.getByText("Require signed frames"));
     await waitFor(() => expect(setSigningRequire).toHaveBeenCalledWith(true));
+    expect(
+      screen.queryByText("Require signing with no signed frames seen?"),
+    ).toBeNull();
+  });
+
+  it("gates enabling require-signing behind a confirm when no signed frames have arrived", async () => {
+    const { setSigningRequire } = stubSigningClient({
+      capability: { supported: true, reason: "ok", firmware_name: "ArduPilot" },
+      requireValue: false,
+      rxSignedCount: 0,
+    });
+    renderSection();
+    await waitFor(() => expect(screen.getByText("ArduPilot")).toBeTruthy());
+    fireEvent.click(screen.getByText("Require signed frames"));
+    // Held pending confirmation — the write must NOT have fired yet.
+    await waitFor(() =>
+      expect(
+        screen.getByText("Require signing with no signed frames seen?"),
+      ).toBeTruthy(),
+    );
+    expect(setSigningRequire).not.toHaveBeenCalled();
+    // Confirming applies the write.
+    fireEvent.click(screen.getByText("Require signing anyway"));
+    await waitFor(() =>
+      expect(setSigningRequire).toHaveBeenCalledWith(true),
+    );
+  });
+
+  it("does not prompt when DISABLING require-signing (a safe transition)", async () => {
+    const { setSigningRequire } = stubSigningClient({
+      capability: { supported: true, reason: "ok", firmware_name: "ArduPilot" },
+      requireValue: true,
+      rxSignedCount: 0,
+    });
+    renderSection();
+    await waitFor(() => expect(screen.getByText("ArduPilot")).toBeTruthy());
+    fireEvent.click(screen.getByText("Require signed frames"));
+    await waitFor(() => expect(setSigningRequire).toHaveBeenCalledWith(false));
+    expect(
+      screen.queryByText("Require signing with no signed frames seen?"),
+    ).toBeNull();
   });
 
   it("reads 'not exposed' on an agent build without the routes", async () => {
