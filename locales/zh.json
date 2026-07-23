@@ -6723,8 +6723,6 @@
       "notReported": "Not reported",
       "heldBy": "Held by {holder}"
     },
-    "channelsTitle": "RC channels",
-    "channelsHint": "Live RC channel values, shown when the handset feeds channels through this lane.",
     "empty": {
       "title": "RC / ELRS lane not configured",
       "body": "This node advertises no ExpressLRS control lane. Attach an ELRS transmitter and enable the RC / ELRS lane to command or relay over it."

@@ -21,15 +21,9 @@
  */
 
 import { useTranslations } from "next-intl";
-import {
-  RadioTower,
-  ShieldAlert,
-  AlertTriangle,
-  Gamepad2,
-} from "lucide-react";
+import { RadioTower, ShieldAlert, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
-import { RcInputCard } from "@/components/command/shared/RcInputCard";
 import type {
   CrsfLinkState,
   CrsfState,
@@ -290,19 +284,6 @@ export function RcElrsLinkTab({ crsf: crsfProp }: RcElrsLinkTabProps = {}) {
           <ShieldAlert size={13} className="mt-px shrink-0" />
           <span>{t("rfComplianceNote")}</span>
         </p>
-      </section>
-
-      <section className="rounded border border-border-default bg-bg-secondary p-5">
-        <div className="mb-3 flex items-center gap-2">
-          <Gamepad2 size={16} className="text-accent-primary" />
-          <h3 className="text-sm font-semibold text-text-primary">
-            {t("channelsTitle")}
-          </h3>
-        </div>
-        <p className="mb-3 text-xs text-text-tertiary">{t("channelsHint")}</p>
-        {/* Reuse the shared RC input card; it shows the live channel bars where
-            channel data is available and its own waiting state otherwise. */}
-        <RcInputCard />
       </section>
     </div>
   );
