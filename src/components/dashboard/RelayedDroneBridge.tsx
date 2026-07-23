@@ -15,8 +15,9 @@
  * re-trigger it. The peer data comes from `command-fleet-store` (the scalar
  * peer today, the `linkedPeers[]` list once agents ship it). A later direct
  * pair of the same drone merges onto the same `node:<deviceId>` row — the
- * transitive row upgrades in place (DEC-187 dedup); the direct source takes
- * reach precedence and this bridge stops owning the funneled status.
+ * transitive row upgrades in place (the canonical one-row-per-device dedup); the
+ * direct source takes reach precedence and this bridge stops owning the funneled
+ * status.
  * @license GPL-3.0-only
  */
 

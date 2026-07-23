@@ -263,8 +263,8 @@ export function adaptRelayed(entry: NodeEntry): FleetNodeEntry {
  * Fold the registry's `"relayed"` nodes into the fleet list. A relayed entry
  * whose deviceId is already a directly-reached row upgrades that row in place —
  * it carries `reachedVia` as secondary provenance but stays a direct row (the
- * DEC-187 dedup guarantee: one row, both reaches). A relayed-only entry becomes
- * its own row. Pure; exported for unit tests.
+ * canonical one-row-per-device dedup: one row, both reaches). A relayed-only
+ * entry becomes its own row. Pure; exported for unit tests.
  */
 export function mergeRelayedNodes(
   base: FleetNodeEntry[],
