@@ -14,6 +14,7 @@ import { DroneOverview } from "@/components/command/overview/DroneOverview";
 import { DroneConfigureTab } from "@/components/drone-detail/DroneConfigureTab";
 import { ParametersPanel } from "@/components/fc/parameters/ParametersPanel";
 import { FcDisconnectedPlaceholder } from "@/components/fc/shared/FcDisconnectedPlaceholder";
+import { RcElrsLinkTab } from "@/components/command/nodes/RcElrsLinkTab";
 import type { SurfaceSpec } from "../surface-types";
 import { AGENT_SURFACE } from "../agent/agent-surface";
 
@@ -64,6 +65,15 @@ export const DRONE_SURFACES: SurfaceSpec[] = [
           agentBacked={ctx.agentDeviceId !== null}
         />
       ),
+  },
+  {
+    // The RC / ExpressLRS control lane, when this node hosts an agent-relay
+    // ELRS transmitter. Capability-gated: hidden unless the agent advertises a
+    // crsf block.
+    id: "rcElrs",
+    labelKey: "rcElrsLink.tabLabel",
+    when: (ctx) => ctx.crsfPresent,
+    render: () => <RcElrsLinkTab />,
   },
   AGENT_SURFACE,
 ];

@@ -25,6 +25,7 @@ function ctx(over: Partial<SurfaceContext>): SurfaceContext {
     fcLinking: false,
     radioPresent: false,
     visionPresent: false,
+    crsfPresent: false,
     role: "drone" as SurfaceContext["role"],
     showLockedTabs: false,
     isFeatureEnabled: () => false,
@@ -68,6 +69,29 @@ describe("node-detail surface registry (createContributionRegistry instance)", (
       ctx({ drone: { profile: "compute" } as unknown as SurfaceContext["drone"] }),
     ).map((s) => s.id);
     expect(ids).toEqual(["agent"]);
+  });
+
+  it("hides the RC / ELRS Link tab for a node with no crsf lane, shows it when advertised", () => {
+    // A node with no CRSF lane never surfaces the tab, on either profile.
+    for (const profile of ["drone", "ground-station"] as const) {
+      const absent = resolveSurfaces(
+        ctx({
+          drone: { profile } as SurfaceContext["drone"],
+          role: null,
+          crsfPresent: false,
+        }),
+      ).map((s) => s.id);
+      expect(absent).not.toContain("rcElrs");
+
+      const present = resolveSurfaces(
+        ctx({
+          drone: { profile } as SurfaceContext["drone"],
+          role: null,
+          crsfPresent: true,
+        }),
+      ).map((s) => s.id);
+      expect(present).toContain("rcElrs");
+    }
   });
 
   it("applies a surface `when` gate (a receiver ground station hides Radio)", () => {

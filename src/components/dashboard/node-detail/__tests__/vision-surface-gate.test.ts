@@ -15,6 +15,7 @@ function ctx(over: Partial<SurfaceContext>): SurfaceContext {
     fcLinking: false,
     radioPresent: false,
     visionPresent: false,
+    crsfPresent: false,
     role: "drone" as SurfaceContext["role"],
     showLockedTabs: true,
     isFeatureEnabled: () => false,

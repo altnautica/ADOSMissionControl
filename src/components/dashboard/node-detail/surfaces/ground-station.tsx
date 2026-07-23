@@ -21,6 +21,7 @@ import { PeripheralsTab } from "@/components/command/nodes/ground-station/Periph
 import { MeshTab } from "@/components/command/nodes/ground-station/MeshTab";
 import { DistributedRxTab } from "@/components/command/nodes/ground-station/DistributedRxTab";
 import { GroundStationAtlasRelay } from "@/components/command/nodes/ground-station/GroundStationAtlasRelay";
+import { RcElrsLinkTab } from "@/components/command/nodes/RcElrsLinkTab";
 import type { SurfaceSpec, SurfaceContext } from "../surface-types";
 import { AGENT_SURFACE } from "../agent/agent-surface";
 import { GroundStationDemoNotice } from "./GroundStationDemoNotice";
@@ -88,6 +89,17 @@ export const GROUND_STATION_SURFACES: SurfaceSpec[] = [
     // GS's side of a drone's Atlas capture, not a default GS surface.
     when: (ctx) => ctx.isFeatureEnabled("world-model"),
     render: () => gsBody(<GroundStationAtlasRelay />),
+  },
+  {
+    id: "rcElrs",
+    labelKey: "rcElrsLink.tabLabel",
+    group: LINK_GROUP,
+    // Capability-gated: the ground node is the ELRS transmitter, but the tab
+    // appears only when the agent advertises a crsf control lane. Driven by the
+    // capability store (not the GS REST API), so it renders directly rather
+    // than through the demo-notice body.
+    when: (ctx) => ctx.crsfPresent,
+    render: () => <RcElrsLinkTab />,
   },
   {
     id: "display",

@@ -6669,5 +6669,65 @@
       "confirmTitle": "{action} across the fleet",
       "confirmMessage": "{action} will be sent to {ready} of {total} nodes — the rest cannot take it right now."
     }
+  },
+  "rcElrsLink": {
+    "tabLabel": "RC / ELRS Link",
+    "title": "RC / ExpressLRS Control Lane",
+    "description": "The ExpressLRS control lane this node transmits: CRSF link statistics, transmit power, control mode, and pilot-in-command authority.",
+    "state": {
+      "unconfigured": "Not configured",
+      "ready": "Ready",
+      "linkOk": "Connected",
+      "degraded": "Degraded",
+      "rfUnverified": "Transmit unverified",
+      "disabled": "Disabled",
+      "unknown": "State unknown"
+    },
+    "rfUnverifiedBadge": "Transmit unverified",
+    "rfUnverifiedCaveat": "Frames are leaving the transmitter, but no reception from a peer has been confirmed. The lane is neither up nor down until a receiver is heard.",
+    "commandDownGated": {
+      "title": "Command path gated",
+      "body": "MAVLink-over-ExpressLRS telemetry is flowing, but the downlink command path to the flight controller is held behind a safety gate. Commands are not reaching the flight controller."
+    },
+    "rfComplianceNote": "You are responsible for RF compliance in your operating region. Transmit power and band are bounded by the hardware, not region-gated, unless a region is pinned.",
+    "relayBadge": "Relay: {role}",
+    "relayRoleNone": "None",
+    "stats": {
+      "rssi": "RSSI",
+      "snr": "SNR",
+      "lqUplink": "Uplink LQ",
+      "lqDownlink": "Downlink LQ",
+      "band": "Band",
+      "packetRate": "Packet rate",
+      "txPower": "TX power",
+      "txFrames": "TX frames",
+      "rxFrames": "RX frames",
+      "mode": "Control mode",
+      "channelSource": "Channel source",
+      "pic": "Pilot in command",
+      "relayRole": "Relay role"
+    },
+    "mode": {
+      "crsfRc": "CRSF RC channels",
+      "mavlinkElrs": "MAVLink over ELRS"
+    },
+    "channelSource": {
+      "hid": "Handset (HID joystick)",
+      "inject": "Injection API",
+      "hybrid": "Hybrid (handset + API)"
+    },
+    "pic": {
+      "claimed": "Claimed",
+      "unclaimed": "Unclaimed",
+      "unavailable": "Arbiter unavailable",
+      "notReported": "Not reported",
+      "heldBy": "Held by {holder}"
+    },
+    "channelsTitle": "RC channels",
+    "channelsHint": "Live RC channel values, shown when the handset feeds channels through this lane.",
+    "empty": {
+      "title": "RC / ELRS lane not configured",
+      "body": "This node advertises no ExpressLRS control lane. Attach an ELRS transmitter and enable the RC / ELRS lane to command or relay over it."
+    }
   }
 }

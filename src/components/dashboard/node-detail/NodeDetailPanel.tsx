@@ -84,6 +84,7 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
   const fleetNodes = useFleetNodes();
 
   const radioPresent = useAgentCapabilitiesStore((s) => s.radio !== null);
+  const crsfPresent = useAgentCapabilitiesStore((s) => s.crsf !== null);
   const visionPresent = useAgentCapabilitiesStore(
     (s) => s.visionAvailable === true,
   );
@@ -274,6 +275,7 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
     fcLinking,
     radioPresent,
     visionPresent,
+    crsfPresent,
     role: capRole ?? drone.role ?? null,
     showLockedTabs,
     isFeatureEnabled: (featureId: string) =>

@@ -30,6 +30,12 @@ export interface SurfaceContext {
   fcLinking: boolean;
   radioPresent: boolean;
   visionPresent: boolean;
+  /** Whether the focused agent advertises a CRSF / ExpressLRS control lane
+   * (`crsf !== null` on the capability store). Gates the RC / ELRS Link tab:
+   * the transmitter is the ground node, and a drone can host an agent-relay
+   * ELRS TX, so the tab appears on both profiles but only when a lane is
+   * advertised. A node with no RC lane never shows it. */
+  crsfPresent: boolean;
   role: AgentRole;
   /** Companion surfaces render as lock-badged teasers when the node has no
    * paired agent (a flight-controller-only drone). */
