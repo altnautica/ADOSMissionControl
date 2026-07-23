@@ -82,13 +82,15 @@ const perS = (n: number | null) => (n == null ? EMPTY : `${n.toFixed(0)}/s`);
 
 type T = ReturnType<typeof useTranslations>;
 
-/** Control mode label. Known modes get a friendly string; any other value is
- * shown verbatim (honest, not fabricated); null reads "…". */
+/** Control mode label. The known values are the lane's own wire tokens
+ * (`crsf_rc` | `mavlink` | `airport`); any other value is shown verbatim
+ * (honest, not fabricated); null reads "…". */
 function modeLabel(mode: string | null, t: T): string {
   if (mode == null) return EMPTY;
   const n = mode.toLowerCase();
   if (n === "crsf_rc") return t("mode.crsfRc");
-  if (n === "mavlink_elrs") return t("mode.mavlinkElrs");
+  if (n === "mavlink") return t("mode.mavlink");
+  if (n === "airport") return t("mode.airport");
   return mode;
 }
 

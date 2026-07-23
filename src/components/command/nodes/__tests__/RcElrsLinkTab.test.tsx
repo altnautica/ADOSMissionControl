@@ -49,7 +49,7 @@ describe("RcElrsLinkTab command-down safety gate", () => {
   it("shows the gated-command warning when the MAVLink-over-ELRS gate is closed", () => {
     renderTab({
       state: "link_ok",
-      mode: "mavlink_elrs",
+      mode: "mavlink",
       txPowerMw: 100,
       fcCommandDownGated: true,
     });
@@ -62,7 +62,7 @@ describe("RcElrsLinkTab command-down safety gate", () => {
   it("hides the gated-command warning when the command path is open", () => {
     renderTab({
       state: "link_ok",
-      mode: "mavlink_elrs",
+      mode: "mavlink",
       txPowerMw: 100,
       fcCommandDownGated: false,
     });

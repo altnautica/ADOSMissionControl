@@ -242,12 +242,12 @@ describe("normalizeCrsf string fields", () => {
   it("parses band / mode / channelSource / relayRole (either casing)", () => {
     const camel = normalizeCrsf({
       band: "2.4",
-      mode: "mavlink_elrs",
+      mode: "mavlink",
       channelSource: "api",
       relayRole: "origin",
     })!;
     expect(camel.band).toBe("2.4");
-    expect(camel.mode).toBe("mavlink_elrs");
+    expect(camel.mode).toBe("mavlink");
     expect(camel.channelSource).toBe("api");
     expect(camel.relayRole).toBe("origin");
 
@@ -328,7 +328,7 @@ describe("normalizeCrsf full-block fidelity across both casings", () => {
       txFramesPerS: 50,
       rxFramesPerS: 0,
       rfUnverified: true,
-      mode: "mavlink_elrs",
+      mode: "mavlink",
       // The command-down gate rides the heartbeat too (a safety verdict must be
       // visible over the cloud path), so a MAVLink-over-ELRS lane carries it.
       fcCommandDownGated: true,
@@ -348,7 +348,7 @@ describe("normalizeCrsf full-block fidelity across both casings", () => {
       rxFramesPerS: 0,
       rfUnverified: true,
       flyable: null, // dropped by the projection → no verdict over the cloud
-      mode: "mavlink_elrs",
+      mode: "mavlink",
       fcCommandDownGated: true, // safety gate is kept over the heartbeat
       channelSource: "api",
       pic: null, // dropped by the projection

@@ -6709,7 +6709,8 @@
     },
     "mode": {
       "crsfRc": "CRSF RC channels",
-      "mavlinkElrs": "MAVLink over ELRS"
+      "mavlink": "MAVLink over ELRS",
+      "airport": "Serial bridge (AirPort)"
     },
     "channelSource": {
       "hid": "Handset (HID joystick)",

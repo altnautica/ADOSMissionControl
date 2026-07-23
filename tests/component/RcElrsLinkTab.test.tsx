@@ -126,7 +126,7 @@ describe("RcElrsLinkTab command-down gate", () => {
       <RcElrsLinkTab
         crsf={makeCrsf({
           state: "link_ok",
-          mode: "mavlink_elrs",
+          mode: "mavlink",
           fcCommandDownGated: true,
         })}
       />,
@@ -140,7 +140,7 @@ describe("RcElrsLinkTab command-down gate", () => {
   it("does not show the gated-command note when the command path is not gated", () => {
     renderWithIntl(
       <RcElrsLinkTab
-        crsf={makeCrsf({ mode: "mavlink_elrs", fcCommandDownGated: false })}
+        crsf={makeCrsf({ mode: "mavlink", fcCommandDownGated: false })}
       />,
     );
     expect(screen.queryByText("Command path gated")).toBeNull();
