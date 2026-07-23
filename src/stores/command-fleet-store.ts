@@ -39,6 +39,25 @@ export interface CommandTelemetrySnapshot {
   last_update?: number;
 }
 
+/**
+ * One WFB peer a node reports it is linked to. A ground node can relay more
+ * than one drone, so its heartbeat carries a `linkedPeers[]` list; the legacy
+ * scalar `peerDeviceId`/`peerRssiDbm` is the single-peer fallback consumed until
+ * every agent ships the list.
+ */
+export interface LinkedPeer {
+  /** The peer's stable agent device id (from the decoded WFB PresenceBeacon). */
+  deviceId: string;
+  /** Peer-reported RSSI in dBm (signed). Null when unknown. */
+  rssiDbm?: number | null;
+  /** The peer's node role, when known (e.g. "drone"). */
+  role?: string | null;
+  /** WFB channel the peer was heard on. */
+  channel?: number | null;
+  /** Epoch seconds the peer was last decoded (the relay freshness signal). */
+  seenAtUnix?: number | null;
+}
+
 export interface CommandCloudStatus {
   deviceId: string;
   version?: string;
@@ -142,6 +161,11 @@ export interface CommandCloudStatus {
   peerDeviceId?: string | null;
   /** Peer-reported RSSI in dBm (signed). */
   peerRssiDbm?: number | null;
+  /** Every WFB peer this node reports (a ground node can relay more than one
+   * drone). Preferred over the scalar `peerDeviceId` when present. Undefined on
+   * agents that predate the list; the transitive-enrollment bridge falls back to
+   * the scalar peer. */
+  linkedPeers?: LinkedPeer[];
   updatedAt: number;
 }
 

@@ -45,6 +45,7 @@ import { RoleBadge } from "@/components/command/RoleBadge";
 import { AgentBridges } from "@/components/command/AgentBridges";
 import { CloudDroneBridge } from "@/components/dashboard/CloudDroneBridge";
 import { LocalDroneBridge } from "@/components/dashboard/LocalDroneBridge";
+import { RelayedDroneBridge } from "@/components/dashboard/RelayedDroneBridge";
 import { FleetProjectionBridge } from "@/components/dashboard/FleetProjectionBridge";
 // Cockpit skill platform — register the built-in skills once and keep the
 // selected drone's skill state fresh, shell-wide, so the Skill Bar + the
@@ -395,12 +396,15 @@ function CommandShellInner({ children }: { children: React.ReactNode }) {
         <MeshToastBridge />
         <Px4EventsBridge />
         <AgentBridges />
-        {/* The two presence bridges WRITE the node registry (local + cloud
-            presence); FleetProjectionBridge projects the registry into the
-            fleet store, so a node seen on both transports renders once and an
-            FC-less node never shows fabricated telemetry. */}
+        {/* The presence bridges WRITE the node registry (local + cloud
+            presence, plus relayed presence for a WFB-linked drone reached
+            through a directly-paired ground node); FleetProjectionBridge
+            projects the registry into the fleet store, so a node seen on any
+            transport renders once and an FC-less node never shows fabricated
+            telemetry. */}
         <CloudDroneBridge />
         <LocalDroneBridge />
+        <RelayedDroneBridge />
         <FleetProjectionBridge />
 
         {/* Skill confirm host — always mounted so any dispatch path (the

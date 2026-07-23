@@ -12,6 +12,7 @@ import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
 import type {
   CommandCloudStatus,
   CommandTelemetrySnapshot,
+  LinkedPeer,
 } from "@/stores/command-fleet-store";
 import type { CameraUsbRecovery, FullStatusResponse } from "./types";
 import { normalizeCameraUsbRecovery } from "./camera-recovery";
@@ -116,6 +117,20 @@ export function mapFullStatusToCloudStatus(
 
   const videoWhepUrl = resp.video?.whep_url ?? undefined;
 
+  // WFB peers, so local-first transitive enrollment works over the LAN without
+  // the cloud relay. Prefer the list; fall back to the scalar peer.
+  const linkedPeers: LinkedPeer[] | undefined = Array.isArray(resp.linked_peers)
+    ? resp.linked_peers
+        .filter((p) => typeof p?.device_id === "string" && p.device_id.length > 0)
+        .map((p) => ({
+          deviceId: p.device_id as string,
+          rssiDbm: numberOrUndefined(p.rssi_dbm) ?? null,
+          role: stringOrUndefined(p.role) ?? null,
+          channel: numberOrUndefined(p.channel) ?? null,
+          seenAtUnix: numberOrUndefined(p.seen_at_unix) ?? null,
+        }))
+    : undefined;
+
   // Air-side camera state. Clamp the discovery state to the known set so
   // a future / malformed value never pins a bad badge, and parse the
   // recovery block through the shared forward-permissive parser.
@@ -171,6 +186,9 @@ export function mapFullStatusToCloudStatus(
     videoWhepPort: parseWhepPort(videoWhepUrl),
     telemetry: mapTelemetry(resp.telemetry ?? {}),
     radio: resp.radio ?? undefined,
+    peerDeviceId: stringOrUndefined(resp.peerDeviceId) ?? null,
+    peerRssiDbm: numberOrUndefined(resp.peerRssiDbm) ?? null,
+    linkedPeers,
     cameraState,
     cameraUsbRecovery,
     updatedAt: Date.now(),

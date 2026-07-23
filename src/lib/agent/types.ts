@@ -526,6 +526,24 @@ export interface FullStatusResponse {
    * can prefer that profile's ticket-gated MAVLink endpoint. Optional for
    * older agents that predate the field on the consolidated status. */
   profile?: string;
+  /** WFB peer this node decoded from a bind PresenceBeacon (a ground node
+   * carries the drone's id; a drone carries the ground node's). Carried on the
+   * LAN-direct status so local-first transitive enrollment works without the
+   * cloud relay. Null / absent when no peer is currently decoded. */
+  peerDeviceId?: string | null;
+  /** Peer-reported RSSI in dBm (signed), paired with `peerDeviceId`. */
+  peerRssiDbm?: number | null;
+  /** Every WFB peer this node reports (a ground node can relay more than one
+   * drone). Each entry carries the peer id and, when known, rssi / role /
+   * channel / seen-at. Preferred over the scalar `peerDeviceId`. Absent on
+   * agents that predate the list. */
+  linked_peers?: Array<{
+    device_id?: string;
+    rssi_dbm?: number | null;
+    role?: string | null;
+    channel?: number | null;
+    seen_at_unix?: number | null;
+  }>;
   /** Air-side camera discovery state ("ready" | "missing" | "error").
    * Carried at the top level of `/api/status/full` so the LAN-direct
    * path lights the same "No camera" surfaces the cloud heartbeat does.

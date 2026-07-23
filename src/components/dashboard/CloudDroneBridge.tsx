@@ -19,7 +19,10 @@ import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import { STALE_THRESHOLD_MS } from "@/lib/agent/freshness";
 import { normalizeCameraUsbRecovery } from "@/lib/agent/camera-recovery";
 import { useCommandFleetStore } from "@/stores/command-fleet-store";
-import type { CommandCloudStatus } from "@/stores/command-fleet-store";
+import type {
+  CommandCloudStatus,
+  LinkedPeer,
+} from "@/stores/command-fleet-store";
 import {
   useNodeRegistryStore,
   resolveNodeId,
@@ -32,6 +35,32 @@ function pickString(value: unknown): string | undefined {
 
 function pickBoolean(value: unknown): boolean | undefined {
   return typeof value === "boolean" ? value : undefined;
+}
+
+function pickNumberOrNull(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+/** Parse the additive `linkedPeers` list off a cloud drone row (a ground node
+ * can relay more than one drone). Absent / malformed on agents that predate it,
+ * in which case the transitive-enrollment bridge falls back to the scalar peer. */
+function pickLinkedPeers(value: unknown): LinkedPeer[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const peers = value
+    .map((raw): LinkedPeer | null => {
+      const p = raw as { deviceId?: unknown; rssiDbm?: unknown; role?: unknown; channel?: unknown; seenAtUnix?: unknown };
+      const deviceId = pickString(p.deviceId);
+      if (!deviceId) return null;
+      return {
+        deviceId,
+        rssiDbm: pickNumberOrNull(p.rssiDbm),
+        role: pickString(p.role) ?? null,
+        channel: pickNumberOrNull(p.channel),
+        seenAtUnix: pickNumberOrNull(p.seenAtUnix),
+      };
+    })
+    .filter((p): p is LinkedPeer => p !== null);
+  return peers.length > 0 ? peers : undefined;
 }
 
 export function CloudDroneBridge() {
@@ -180,6 +209,9 @@ export function CloudDroneBridge() {
         ),
         peerDeviceId,
         peerRssiDbm,
+        linkedPeers: pickLinkedPeers(
+          (drone as { linkedPeers?: unknown }).linkedPeers,
+        ),
         transportOpen: pickBoolean(
           (drone as { transportOpen?: unknown }).transportOpen,
         ),

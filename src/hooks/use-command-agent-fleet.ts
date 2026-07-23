@@ -17,6 +17,7 @@ import { useClockTick } from "@/lib/agent/freshness";
 import { normalizeRadio } from "@/stores/agent-capabilities/normalizer";
 import { linkStateReach } from "@/components/hardware/radio/labels";
 import { isFcReachable } from "@/lib/agent/mavlink-link";
+import { resolveAgentVideoUrl } from "@/lib/agent/video-url";
 import {
   nodeLastSeen,
   nodeLiveness,
@@ -79,19 +80,7 @@ export interface CommandAgentSummary {
   };
 }
 
-function videoUrl(status: CommandCloudStatus | undefined): string | null {
-  if (!status || status.videoState !== "running") return null;
-  // Prefer the IP we actually reach the agent at. The agent echoes its WHEP
-  // URL using the Host header of the poll, which can be an mDNS name (e.g.
-  // skynodepi.local) the browser cannot resolve, or null on older agents.
-  // mediamtx serves WHEP on the same box at the WHEP port (default 8889), so
-  // build the URL from the known-reachable lastIp whenever we have one.
-  const port =
-    status.videoWhepPort && status.videoWhepPort > 0 ? status.videoWhepPort : 8889;
-  if (status.lastIp) return `http://${status.lastIp}:${port}/main/whep`;
-  // No known IP: fall back to whatever the agent advertised.
-  return status.videoWhepUrl ?? null;
-}
+const videoUrl = resolveAgentVideoUrl;
 
 export function useCommandAgentFleet(
   pairedDrones: PairedDrone[],
