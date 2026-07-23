@@ -619,6 +619,17 @@ body {
   100% { opacity: 0; transform: translateY(8px); }
 }
 
+/* Fleet mesh map — a proven relay stream flows toward the sink. The dash
+   marches along the edge (leaf → sink). Reduced motion is handled twice: the
+   graph withholds this class under a reduced-motion preference, and the global
+   reduced-motion rule below stops the animation regardless. */
+.mesh-flow {
+  animation: mesh-flow 1s linear infinite;
+}
+@keyframes mesh-flow {
+  to { stroke-dashoffset: -18; }
+}
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *,

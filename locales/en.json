@@ -6691,6 +6691,21 @@
       "noneReady": "No node in the fleet can take a return-to-launch command right now.",
       "confirmTitle": "{action} across the fleet",
       "confirmMessage": "{action} will be sent to {ready} of {total} nodes — the rest cannot take it right now."
+    },
+    "meshMap": {
+      "title": "Mesh & reach",
+      "collapse": "Collapse",
+      "expand": "Expand",
+      "empty": "No nodes to map",
+      "legend": "Bearer legend",
+      "summary": "Fleet reach map: {nodes} node(s), {paths} reach path(s), {relays} relay stream(s).",
+      "bearer": {
+        "lan": "Direct · LAN",
+        "wfb": "WFB",
+        "cloud": "Cloud relay",
+        "direct-fc": "Direct FC",
+        "none": "Unreachable"
+      }
     }
   },
   "rcElrsLink": {

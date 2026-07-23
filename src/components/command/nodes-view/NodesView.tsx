@@ -37,6 +37,7 @@ import {
 } from "./NodesHeader";
 import { dispatchSkillForNodes } from "./use-node-skills";
 import { FleetActionConfirm } from "./FleetActionConfirm";
+import { MeshReachPanel } from "./MeshReachPanel";
 
 /** The board renders no feeds, so both video budgets are permanently empty. */
 const NO_VIDEO_IDS: Set<string> = new Set();
@@ -188,48 +189,52 @@ export function NodesView({
         onClear={() => setSelected(new Set())}
       />
 
-      <div className="overflow-x-auto rounded-lg border border-border-default bg-bg-secondary">
-        <table className="w-full min-w-[1040px] border-collapse text-xs">
-          <caption className="sr-only">{t("tableCaption")}</caption>
-          <thead>
-            <tr className="border-b border-border-default">
-              <th scope="col" className={HEAD_CELL}>
-                <input
-                  type="checkbox"
-                  checked={allVisibleSelected}
-                  onChange={toggleAllVisible}
-                  disabled={visible.length === 0}
-                  aria-label={t("selectAll")}
-                  className="accent-[var(--alt-accent-primary)]"
-                />
-              </th>
-              {COLUMNS.map((column) => (
-                <th key={column} scope="col" className={HEAD_CELL}>
-                  {t(column)}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {tree.map(({ row, depth }) => (
-              <NodeBoardRow
-                key={row.node._id}
-                row={row}
-                depth={depth}
-                laneOptions={laneOptions}
-                selected={selected.has(row.node._id)}
-                onToggleSelected={() => toggleRow(row.node._id)}
-                onOpen={(node) => onOpenAgent(node.deviceId)}
-              />
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {visible.length === 0 && (
+      {visible.length === 0 ? (
         <p className="mt-10 text-center text-sm text-text-tertiary">
           {t("noMatches")}
         </p>
+      ) : (
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-start">
+          <div className="min-w-0 flex-1 overflow-x-auto rounded-lg border border-border-default bg-bg-secondary">
+            <table className="w-full min-w-[1040px] border-collapse text-xs">
+              <caption className="sr-only">{t("tableCaption")}</caption>
+              <thead>
+                <tr className="border-b border-border-default">
+                  <th scope="col" className={HEAD_CELL}>
+                    <input
+                      type="checkbox"
+                      checked={allVisibleSelected}
+                      onChange={toggleAllVisible}
+                      disabled={visible.length === 0}
+                      aria-label={t("selectAll")}
+                      className="accent-[var(--alt-accent-primary)]"
+                    />
+                  </th>
+                  {COLUMNS.map((column) => (
+                    <th key={column} scope="col" className={HEAD_CELL}>
+                      {t(column)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {tree.map(({ row, depth }) => (
+                  <NodeBoardRow
+                    key={row.node._id}
+                    row={row}
+                    depth={depth}
+                    laneOptions={laneOptions}
+                    selected={selected.has(row.node._id)}
+                    onToggleSelected={() => toggleRow(row.node._id)}
+                    onOpen={(node) => onOpenAgent(node.deviceId)}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <MeshReachPanel rows={visible} laneOptions={laneOptions} />
+        </div>
       )}
 
       {confirmingReturnAll && (

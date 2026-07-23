@@ -6691,6 +6691,21 @@
       "stale": "WFB reading is stale — the node has not been heard from recently",
       "down": "WFB link down — nothing is being heard",
       "alsoVia": "Also linked via WFB through {node}"
+    },
+    "meshMap": {
+      "title": "Mesh & reach",
+      "collapse": "Collapse",
+      "expand": "Expand",
+      "empty": "No nodes to map",
+      "legend": "Bearer legend",
+      "summary": "Fleet reach map: {nodes} node(s), {paths} reach path(s), {relays} relay stream(s).",
+      "bearer": {
+        "lan": "Direct · LAN",
+        "wfb": "WFB",
+        "cloud": "Cloud relay",
+        "direct-fc": "Direct FC",
+        "none": "Unreachable"
+      }
     }
   },
   "rcElrsLink": {
