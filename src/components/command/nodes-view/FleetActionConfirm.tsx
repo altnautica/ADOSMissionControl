@@ -22,12 +22,11 @@ import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 
 import { skillDisplayLabel } from "@/lib/skills/skill-label";
-import { useSkillRegistry, buildSkillContextForNode } from "@/lib/skills";
+import { useSkillRegistry } from "@/lib/skills";
 import type { NodeCommandSinkOptions } from "@/lib/nodes/command-sink";
-import { describeNodeReach } from "@/lib/nodes/node-reach";
 import type { NodeRowModel } from "@/lib/nodes/node-rows";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { resolveBoardSkillState } from "./use-node-skills";
+import { resolveFleetSkillTargets } from "./use-node-skills";
 
 const RETURN_SKILL_ID = "rth";
 
@@ -46,19 +45,12 @@ export function FleetActionConfirm({
   const tNodes = useTranslations("nodesView");
   const skill = useSkillRegistry((s) => s.skills).get(RETURN_SKILL_ID);
 
-  const targets = useMemo(() => {
-    if (!skill) return [];
-    // The same gate stack as a row's own control — liveness included — so the
-    // "ready of total" numbers this dialog states are the board's truth.
-    return rows.filter((row) => {
-      const reach = describeNodeReach(row.node, laneOptions);
-      const ctx = buildSkillContextForNode(row.node, laneOptions);
-      return (
-        resolveBoardSkillState(skill, ctx, reach, row.summary.liveness).kind !==
-        "disabled"
-      );
-    });
-  }, [skill, rows, laneOptions]);
+  // The same gate stack as a row's own control — liveness included — so the
+  // "ready of total" numbers this dialog states are the board's truth.
+  const targets = useMemo(
+    () => (skill ? resolveFleetSkillTargets(skill, rows, laneOptions) : []),
+    [skill, rows, laneOptions],
+  );
 
   if (!skill) return null;
 

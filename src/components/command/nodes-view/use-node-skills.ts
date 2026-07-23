@@ -40,7 +40,8 @@ import {
   type SkillTargetNode,
 } from "@/lib/skills";
 import type { NodeCommandSinkOptions } from "@/lib/nodes/command-sink";
-import type { NodeReachDescriptor } from "@/lib/nodes/node-reach";
+import { describeNodeReach, type NodeReachDescriptor } from "@/lib/nodes/node-reach";
+import type { NodeRowModel } from "@/lib/nodes/node-rows";
 import type { CommandAgentLiveness } from "@/lib/nodes/presence";
 
 /** The flight actions this board exposes, and their labels. */
@@ -144,6 +145,29 @@ export function resolveBoardSkillState(
 
 /** The command-lane method a board skill drives, or null when it is not one. */
 export { methodForSkill };
+
+/**
+ * The fleet rows a skill can actually be dispatched to right now — the same gate
+ * stack a single row's own control runs, applied across the fleet. A fleet-wide
+ * command fans over exactly these rows and honestly skips the rest, so "return
+ * everything home" never claims to reach a node that cannot hear it (Rule 44).
+ * Pure and exported so the fan / skip contract holds without mounting the
+ * confirmation dialog that consumes it.
+ */
+export function resolveFleetSkillTargets(
+  skill: Skill,
+  rows: readonly NodeRowModel[],
+  options: NodeCommandSinkOptions,
+): NodeRowModel[] {
+  return rows.filter((row) => {
+    const reach = describeNodeReach(row.node, options);
+    const ctx = buildSkillContextForNode(row.node, options);
+    return (
+      resolveBoardSkillState(skill, ctx, reach, row.summary.liveness).kind !==
+      "disabled"
+    );
+  });
+}
 
 /**
  * Run one skill across several nodes after the operator has already confirmed
