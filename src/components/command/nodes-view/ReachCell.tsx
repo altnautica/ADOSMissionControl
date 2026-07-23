@@ -104,7 +104,11 @@ function primaryTitle(
     }
     return t(`bearer.${chip.verification}`);
   }
-  if (chip.kind === "direct-fc") return t("blocked.direct-fc");
+  if (chip.kind === "direct-fc") {
+    // A connected direct FC is driven through its own live link and returns the
+    // vehicle's answer; only a disconnected one has no lane to offer.
+    return reach.commandable ? t("reach.directFcLive") : t("blocked.direct-fc");
+  }
   if (chip.kind === "none") {
     return reach.blockedReason
       ? t(`blocked.${reach.blockedReason}`)

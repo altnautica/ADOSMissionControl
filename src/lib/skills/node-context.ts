@@ -55,6 +55,7 @@ import { createFirmwareHandlerByType } from "@/lib/protocol/firmware/ardupilot";
 import { nodeLiveness, telemetryValue } from "@/lib/nodes/presence";
 import { useCommandFleetStore } from "@/stores/command-fleet-store";
 import { useDroneManager } from "@/stores/drone-manager";
+import { useNodeRegistryStore } from "@/stores/node-registry";
 import { useSkillConfirmStore } from "@/stores/skill-confirm-store";
 import {
   resolveNodeCommandSink,
@@ -214,6 +215,45 @@ export function buildSkillContextForNode(
   node: SkillTargetNode,
   options: NodeSkillContextOptions = {},
 ): SkillContext {
+  const managed = useDroneManager.getState().drones.get(node._id);
+  const liveFc =
+    node.isDirectFc && managed && managed.protocol.isConnected
+      ? managed.protocol
+      : null;
+
+  // A directly-connected flight controller is driven through its own live
+  // protocol — the same one the cockpit drives — so a plugged-in FC is
+  // commandable from a fleet surface for real, and each command returns the
+  // vehicle's own answer. The live connection is itself the proof its state can
+  // be read, so no telemetry snapshot is required; its arm state and mode come
+  // from the per-node registry the heartbeat writes, not the app-wide singleton
+  // whichever vehicle beat last would clobber.
+  if (liveFc) {
+    const entry = useNodeRegistryStore.getState().getEntry(node._id);
+    const armState: ArmState =
+      entry?.fc.armState === "armed" ? "armed" : "disarmed";
+    const flightMode = asFlightMode(entry?.fc.flightMode) ?? UNRECOGNISED_MODE;
+    const handler = liveFc.getFirmwareHandler();
+    return {
+      droneId: node._id,
+      protocol: liveFc,
+      armState,
+      flightMode,
+      availableModes: handler?.getAvailableModes() ?? [],
+      previousMode: flightMode,
+      // Real capabilities: the live protocol has handshaken, so its flags are
+      // truthful (unlike the sink-backed branch below).
+      supports: (cap) => Boolean(liveFc.getCapabilities()?.[cap]),
+      autonomousNav: liveFc.getCapabilities()?.supportsGeoFence
+        ? "supported"
+        : "unsupported",
+      checklistReady: false,
+      confirm: (policy: ConfirmPolicy) =>
+        useSkillConfirmStore.getState().request(policy),
+      notify: notifySkill,
+    };
+  }
+
   const fleet = useCommandFleetStore.getState();
   const status = fleet.cloudStatuses[node.deviceId];
   const telemetry = telemetryValue(
@@ -240,7 +280,7 @@ export function buildSkillContextForNode(
   // table — the same source the cockpit reads — so the board and the cockpit
   // offer one node the same presets. The family + airframe the agent reported
   // is the fallback for a node with no live FC connection in this browser.
-  const managed = useDroneManager.getState().drones.get(node._id);
+  // (`managed` is resolved once at the top for the direct-FC branch above.)
   const liveHandler =
     managed && managed.protocol.isConnected
       ? managed.protocol.getFirmwareHandler()

@@ -6594,7 +6594,8 @@
       "direct-fc": "Direct FC",
       "none": "Unreachable",
       "acknowledged": "Commands travel over the LAN and return the vehicle's own acknowledgement",
-      "queuedOnly": "Commands are queued for delivery; the vehicle acknowledges later"
+      "queuedOnly": "Commands are queued for delivery; the vehicle acknowledges later",
+      "directFcLive": "Driven directly through its live flight-controller link, returning the vehicle's own acknowledgement"
     },
     "blocked": {
       "direct-fc": "A directly connected flight controller has no agent command lane. Open the node to fly it.",

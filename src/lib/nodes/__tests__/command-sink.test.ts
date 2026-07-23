@@ -8,7 +8,9 @@
  * @license GPL-3.0-only
  */
 
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
+
+import type { SkillProtocol } from "@/lib/skills/skill-protocol";
 
 // No LAN agent resolves for the node under test, so the cloud lane is the one
 // exercised here rather than the LAN transport.
@@ -16,11 +18,52 @@ vi.mock("@/lib/agent/resolve-agent", () => ({
   resolveLocalAgentForDrone: () => null,
 }));
 
+// A controllable direct-FC protocol resolver: null by default (no FC connected),
+// set per test to a fake live protocol.
+const { directFcHolder } = vi.hoisted(() => ({
+  directFcHolder: { protocol: null as SkillProtocol | null },
+}));
+vi.mock("@/lib/nodes/direct-fc-protocol", () => ({
+  resolveDirectFcProtocol: () => directFcHolder.protocol,
+}));
+
 import { resolveNodeCommandReach } from "../command-sink";
 import type {
   CommandTargetNode,
   NodeQueuedCloudCommand,
 } from "../command-sink";
+
+/** A minimal live protocol whose nine command methods all resolve accepted. */
+function fakeLiveProtocol() {
+  const accepted = (message: string) => async () => ({
+    success: true,
+    resultCode: 0,
+    message,
+  });
+  return {
+    arm: vi.fn(accepted("armed")),
+    disarm: vi.fn(accepted("disarmed")),
+    setFlightMode: vi.fn(async () => ({
+      success: true,
+      resultCode: 0,
+      message: "mode",
+    })),
+    returnToLaunch: vi.fn(accepted("rtl")),
+    land: vi.fn(accepted("land")),
+    takeoff: vi.fn(async () => ({
+      success: true,
+      resultCode: 0,
+      message: "takeoff",
+    })),
+    killSwitch: vi.fn(accepted("kill")),
+    pauseMission: vi.fn(accepted("pause")),
+    resumeMission: vi.fn(accepted("resume")),
+  };
+}
+
+afterEach(() => {
+  directFcHolder.protocol = null;
+});
 
 const CLOUD_NODE: CommandTargetNode = { deviceId: "dev-1", convexId: "cx-1" };
 
@@ -58,5 +101,36 @@ describe("cloud command sink onQueued", () => {
     const result = await reach.sink!.arm();
     expect(result.success).toBe(false);
     expect(onQueued).not.toHaveBeenCalled();
+  });
+});
+
+describe("direct-fc command sink", () => {
+  const DIRECT_NODE: CommandTargetNode = { deviceId: "fc-1", isDirectFc: true };
+
+  it("drives a connected direct FC through its own live protocol", async () => {
+    const protocol = fakeLiveProtocol();
+    directFcHolder.protocol = protocol;
+
+    const reach = resolveNodeCommandReach(DIRECT_NODE, {});
+
+    expect(reach.blockedReason).toBeUndefined();
+    expect(reach.sink?.transport).toBe("direct-fc");
+    // The vehicle answers directly, so its result is a real acknowledgement.
+    expect(reach.sink?.reportsVehicleAck).toBe(true);
+    // Every board command is carried through the live link, autonomous nav
+    // included — the vehicle, not the lane, decides whether it takes it.
+    expect(reach.sink?.supports("returnToLaunch")).toBe(true);
+
+    const result = await reach.sink!.arm();
+    expect(protocol.arm).toHaveBeenCalledOnce();
+    expect(result.success).toBe(true);
+  });
+
+  it("falls back to the blocked state when the direct FC link is gone", () => {
+    directFcHolder.protocol = null;
+
+    const reach = resolveNodeCommandReach(DIRECT_NODE, {});
+    expect(reach.sink).toBeNull();
+    expect(reach.blockedReason).toBe("direct-fc");
   });
 });

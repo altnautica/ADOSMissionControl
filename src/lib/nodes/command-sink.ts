@@ -38,6 +38,7 @@ import {
   type AgentCommandName,
 } from "@/lib/agent/agent-client/system";
 import { resolveLocalAgentForDrone } from "@/lib/agent/resolve-agent";
+import { resolveDirectFcProtocol } from "@/lib/nodes/direct-fc-protocol";
 
 /** The node fields a sink needs. A fleet node entry satisfies this. */
 export interface CommandTargetNode {
@@ -57,7 +58,7 @@ export interface CommandTargetNode {
 }
 
 /** How a command reaches a node. */
-export type NodeCommandTransport = "lan" | "cloud";
+export type NodeCommandTransport = "lan" | "cloud" | "direct-fc";
 
 /**
  * Why no transport could carry a command to a node. Each value names something
@@ -65,7 +66,12 @@ export type NodeCommandTransport = "lan" | "cloud";
  * being dead.
  */
 export type NodeCommandBlockedReason =
-  /** A directly-connected FC has no agent, so it has no agent command lane. */
+  /**
+   * A directly-connected FC that is not currently driveable — its live protocol
+   * is gone (a transient state). A connected direct FC is NOT blocked: it is
+   * commanded through its own live flight-controller link, so this reason
+   * appears only while that link is down.
+   */
   | "direct-fc"
   /**
    * The node is reached only through a ground node's WFB radio relay. The relay
@@ -281,6 +287,31 @@ function makeSink(
 }
 
 /**
+ * Build a sink over a directly-connected FC's own live protocol. Unlike the
+ * agent lanes, every command is a real protocol call the vehicle answers, so
+ * `reportsVehicleAck` is true and every method is carried (the autonomous-nav
+ * gate, handled upstream, decides which are offered — not the lane). The
+ * protocol is used only through its command surface; a live `DroneProtocol`
+ * satisfies that surface directly.
+ */
+function makeDirectFcSink(protocol: SkillProtocol): NodeCommandSink {
+  return {
+    transport: "direct-fc",
+    reportsVehicleAck: true,
+    supports: () => true,
+    arm: () => protocol.arm(),
+    disarm: () => protocol.disarm(),
+    setFlightMode: (mode: UnifiedFlightMode) => protocol.setFlightMode(mode),
+    returnToLaunch: () => protocol.returnToLaunch(),
+    land: () => protocol.land(),
+    takeoff: (altitude: number) => protocol.takeoff(altitude),
+    killSwitch: () => protocol.killSwitch(),
+    pauseMission: () => protocol.pauseMission(),
+    resumeMission: () => protocol.resumeMission(),
+  };
+}
+
+/**
  * Resolve how commands reach `node`, preferring the LAN transport because it
  * reports the vehicle's own acknowledgement. Returns the reason nothing could
  * be resolved so a surface can disable its controls with an honest cause.
@@ -290,6 +321,14 @@ export function resolveNodeCommandReach(
   options: NodeCommandSinkOptions = {},
 ): NodeCommandReach {
   if (node.isDirectFc) {
+    // A directly-connected FC has no agent lane, but its own live protocol is a
+    // reach: drive it through that link so a plugged-in FC is commandable from a
+    // fleet surface, with the vehicle's own answer. Only when the link is gone
+    // does it fall back to the honest "no reach" state.
+    const liveFc = resolveDirectFcProtocol(node.deviceId);
+    if (liveFc) {
+      return { sink: makeDirectFcSink(liveFc) };
+    }
     return { sink: null, blockedReason: "direct-fc" };
   }
 
