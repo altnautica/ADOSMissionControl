@@ -61,6 +61,12 @@ const BIND_FAIL_REASON: Record<string, string> = {
   no_tx_key: "no transmit key",
   reg_blocked: "regulatory domain blocked",
   no_peer: "peer not found",
+  // The bind wire protocol ran to completion but no decoded peer frames ever
+  // crossed the bind link — a phantom pairing, not a real one.
+  no_peer_proof: "no verified peer (phantom pairing)",
+  // The upstream key was never refreshed this session, so nothing was actually
+  // transferred to the far side.
+  stale_key: "stale key, none transferred",
   timeout: "bind timeout",
   interrupted: "bind interrupted",
   other: "unknown error",

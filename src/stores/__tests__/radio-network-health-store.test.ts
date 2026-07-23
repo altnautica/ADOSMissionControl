@@ -73,6 +73,8 @@ describe("summarizeRadioNetworkEvent", () => {
       ["no_tx_key", "no transmit key"],
       ["reg_blocked", "regulatory domain blocked"],
       ["no_peer", "peer not found"],
+      ["no_peer_proof", "no verified peer (phantom pairing)"],
+      ["stale_key", "stale key, none transferred"],
       ["timeout", "bind timeout"],
       ["interrupted", "bind interrupted"],
       ["other", "unknown error"],
@@ -84,6 +86,13 @@ describe("summarizeRadioNetworkEvent", () => {
       );
       expect(summary).toBe(`Bind failed: ${text}`);
       expect(severity).toBe("error");
+    }
+    // Neither new reason falls through to the generic line.
+    for (const reason of ["no_peer_proof", "stale_key"]) {
+      const { summary } = summarizeRadioNetworkEvent("radio.bind_failed", {
+        reason,
+      });
+      expect(summary).not.toBe("Bind failed: unknown error");
     }
   });
 
