@@ -65,8 +65,12 @@ function BindStateBadge({
         {t("bindState.failed", { error: b.error })}
       </span>
     );
-  const connected =
-    probe.radio?.state === "connected" || probe.radioPaired === true;
+  // Paired is a completed key exchange, NOT proof RF is getting through
+  // (Rule 44): a radio-paired node may still be binding, degraded, or
+  // transmitting with no confirmed reception. The green "connected" pill
+  // reflects the real radio link state only — it must never be inferred from
+  // the pair flag.
+  const connected = probe.radio?.state === "connected";
   if (connected)
     return (
       <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-status-success/15 text-status-success font-medium">
