@@ -48,15 +48,23 @@ import { NodeBrandHeader } from "./NodeBrandHeader";
 import { OverviewTile, OverviewSection, OverviewGrid } from "./OverviewGrid";
 import type { SurfaceContext } from "@/components/dashboard/node-detail/surface-types";
 import { effectiveNodeProfile } from "@/components/dashboard/node-detail/node-brand";
+import { useReachedViaName } from "@/lib/nodes/reach-provenance";
 
 /** The unified drone Overview. Receives the surface `ctx`. */
 export function DroneOverview({ ctx }: { ctx: SurfaceContext }) {
   const hasCompanion = ctx.agentDeviceId !== null;
   const profile = effectiveNodeProfile(ctx);
+  // A WFB-linked drone reached only through a ground node names its reach hop
+  // on the hero. Undefined for a directly-reached drone (no sub-badge).
+  const reachedViaName = useReachedViaName(ctx.drone.reachedVia);
 
   return (
     <div className="space-y-4 p-4">
-      <NodeBrandHeader profile={profile} title={ctx.displayName} />
+      <NodeBrandHeader
+        profile={profile}
+        title={ctx.displayName}
+        reachedViaName={reachedViaName}
+      />
 
       {/* The ADOS agent (companion) band leads for a smart drone — the agent is
           the product, and its live video is the prime tile. A bare FC (no

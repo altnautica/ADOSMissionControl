@@ -22,11 +22,15 @@ import {
 export function NodeBrandHeader({
   profile,
   title,
+  reachedViaName,
 }: {
   profile: EffProfile;
   title: string;
+  /** Display name of the ground node this drone is reached through over WFB,
+   * when it is enrolled transitively. Surfaces the "via <node>" sub-badge. */
+  reachedViaName?: string | null;
 }) {
-  const b = useNodeBrand({ profile, title });
+  const b = useNodeBrand({ profile, title, reachedViaName });
   return (
     <div
       className="relative flex items-center gap-3 overflow-hidden rounded-xl border border-border-default bg-bg-secondary p-4"

@@ -15,6 +15,15 @@
       "roleMaster": "Master",
       "roleSlave": "Slave",
       "roleStandalone": "Standalone"
+    },
+    "provenance": {
+      "relayed": "Relayed",
+      "reach": "Reach",
+      "linkedViaWfb": "Linked via WFB through {node}",
+      "linkedViaWfbShort": "via {node}",
+      "relaying": "Relaying {node}",
+      "wfbRssi": "WFB {rssi} dBm",
+      "wfbUnverified": "WFB link unverified"
     }
   },
   "nav": {

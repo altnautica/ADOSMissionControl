@@ -54,8 +54,11 @@ function profileKey(p: EffProfile): string {
 export function useNodeBrand(args: {
   profile: EffProfile;
   title: string;
+  /** When set, the display name of the ground node this drone is reached
+   * through over WFB. Surfaces a "linked via WFB through <node>" sub-badge. */
+  reachedViaName?: string | null;
 }): NodeBrandDescriptor {
-  const { profile, title } = args;
+  const { profile, title, reachedViaName } = args;
   const t = useTranslations("nodeConsole");
   const connected = useAgentConnectionStore((s) => s.connected);
   const stale = useAgentSystemStore((s) => s.stale);
@@ -97,6 +100,11 @@ export function useNodeBrand(args: {
     } else {
       statusLine = t("hero.offline");
       statusLevel = "offline";
+    }
+    // A WFB-linked drone reached transitively through a ground node names its
+    // reach hop as the sub-badge.
+    if (reachedViaName) {
+      subBadge = t("provenance.linkedViaWfbShort", { node: reachedViaName });
     }
   }
 

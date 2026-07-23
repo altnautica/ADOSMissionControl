@@ -18,6 +18,7 @@
  */
 
 import type { ReactNode } from "react";
+import { useTranslations } from "next-intl";
 import {
   useCommandFleetStore,
   type CommandCloudStatus,
@@ -28,6 +29,10 @@ import { droneLiveness } from "../fleet/types";
 import { isFcReachable, heartbeatAgeLabel } from "@/lib/agent/mavlink-link";
 import { isMspVariant } from "@/lib/protocol/select-fc-adapter";
 import { fcFirmwareLabel } from "@/lib/protocol/fc-firmware-label";
+import {
+  useNodeDisplayName,
+  useReachedViaName,
+} from "@/lib/nodes/reach-provenance";
 
 type EffProfile = "drone" | "ground-station" | "workstation";
 
@@ -191,6 +196,40 @@ export function NodeStatusHoverCard({ node }: { node: FleetNodeEntry }) {
   );
 }
 
+/** The WFB reach hop for a transitively-enrolled drone: which ground node it is
+ * linked through, and the WFB `-p1` RSSI the ground node heard it at. Honest:
+ * an unknown hop / RSSI reads as such, never a confident value (Rule 44). */
+function RelayReachSection({
+  node,
+  status,
+}: {
+  node: FleetNodeEntry;
+  status: CommandCloudStatus | undefined;
+}) {
+  const t = useTranslations("nodeConsole");
+  const gsName = useReachedViaName(node.reachedVia);
+  const rssi = status?.peerRssiDbm;
+  const gsDisplay =
+    gsName ??
+    (node.reachedVia?.startsWith("node:")
+      ? node.reachedVia.slice("node:".length)
+      : (node.reachedVia ?? "—"));
+  return (
+    <section className="space-y-1 border-b border-border-default pb-2">
+      <SectionLabel>{t("provenance.reach")}</SectionLabel>
+      <p className="flex items-center gap-1.5 text-[11px] text-text-primary">
+        <StatusDot status="idle" size="xs" />
+        {t("provenance.linkedViaWfb", { node: gsDisplay })}
+      </p>
+      <p className="font-mono text-[10px] text-text-tertiary">
+        {typeof rssi === "number"
+          ? t("provenance.wfbRssi", { rssi })
+          : t("provenance.wfbUnverified")}
+      </p>
+    </section>
+  );
+}
+
 function DroneBody({
   node,
   status,
@@ -221,6 +260,7 @@ function DroneBody({
 
   return (
     <>
+      {node.reachedVia && <RelayReachSection node={node} status={status} />}
       <section className="space-y-1">
         <SectionLabel>Flight controller</SectionLabel>
         <p className="flex items-center gap-1.5 text-[11px] text-text-primary">
@@ -283,6 +323,7 @@ function GroundStationBody({
   total: number;
   hasHostMetrics: boolean;
 }) {
+  const t = useTranslations("nodeConsole");
   const roleLabel =
     node.role === "relay"
       ? "Relay"
@@ -291,6 +332,9 @@ function GroundStationBody({
         : "Direct";
   const peer = status?.peerDeviceId;
   const peerRssi = status?.peerRssiDbm;
+  const peerName = useNodeDisplayName(peer ?? null);
+  const peerDisplay =
+    peerName ?? (peer ? `${peer.slice(0, 8)}` : null);
 
   return (
     <section className="space-y-2">
@@ -314,10 +358,12 @@ function GroundStationBody({
           {running}/{total} services running
         </p>
       )}
-      {peer && (
+      {peerDisplay && (
         <p className="font-mono text-[10px] text-text-tertiary">
-          Peer {peer}
-          {peerRssi != null ? ` · ${peerRssi} dBm` : ""}
+          {t("provenance.relaying", { node: peerDisplay })}
+          {peerRssi != null
+            ? ` · ${t("provenance.wfbRssi", { rssi: peerRssi })}`
+            : ""}
         </p>
       )}
       <p className="text-[9px] text-text-tertiary">

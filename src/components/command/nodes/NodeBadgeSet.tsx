@@ -14,6 +14,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
 import type { EffProfile } from "@/lib/nodes/node-profile";
@@ -147,7 +148,23 @@ export function NodeBadgeSet({
   max,
   className,
 }: NodeBadgeSetProps) {
-  const badges = nodeBadges(node, effProfile);
+  const t = useTranslations("nodeConsole");
+  const base = nodeBadges(node, effProfile);
+  // A relayed-only node (reached solely through a ground node over WFB) leads
+  // with a "Relayed" badge so it reads distinctly from a directly-paired node.
+  // Suppressed when offline/stale so a dead node never shows a fresh sub-metric
+  // (Rule 44 — the liveness badge stands alone there).
+  const badges =
+    node.isRelayed && droneLiveness(node) === "live"
+      ? [
+          {
+            key: "relayed",
+            label: t("provenance.relayed"),
+            variant: "info" as const,
+          },
+          ...base,
+        ]
+      : base;
   if (badges.length === 0) return null;
   const shown = badges.slice(0, max);
   const overflow = badges.length - shown.length;
