@@ -509,6 +509,14 @@ export interface FullStatusResponse {
   capabilities?: Record<string, unknown>;
   /** WFB radio snapshot (camelCase) for the LAN-direct path. Optional for older agents. */
   radio?: Record<string, unknown> | null;
+  /** CRSF / ExpressLRS RC control-lane snapshot: the lane's crsf-stats sidecar
+   * body, folded in VERBATIM (raw snake_case) when the lane is live. The agent
+   * emits it profile-agnostically — a ground station OR a drone running the ELRS
+   * relay lane carries it — and OMITS the key entirely when the lane is down or
+   * its sidecar is stale, never a fabricated all-null block. The store's
+   * `normalizeCrsf` folds the snake_case body onto the CrsfState shape and reads
+   * an absent key as no lane. Optional for older agents. */
+  crsf?: Record<string, unknown> | null;
   /** Native-vs-packaged aggregate for the node. Lets the LAN-direct
    * path light the same per-node runtime badge the cloud heartbeat
    * does. Optional for older agents that predate the field. */

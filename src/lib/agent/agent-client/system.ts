@@ -421,33 +421,6 @@ export async function getFullStatus(
 }
 
 /**
- * Fetch the CRSF / ExpressLRS control-lane snapshot from the dedicated
- * ground-station route (`GET /api/v1/ground-station/crsf`). Unlike the WFB
- * radio block, the crsf-stats sidecar is NOT folded into `/api/status`, so it
- * needs its own request. The route is ground-station-only (a drone / workstation
- * answers `profile_mismatch`) and 404s — never 500s — when the lane is down or
- * its sidecar is stale, in which case (and on any transient failure) this
- * returns null so an absent lane reads absent. The raw snake_case sidecar is
- * passed through untouched; the capability-store `normalizeCrsf` folds it onto
- * the CrsfState shape.
- */
-export async function getGroundStationCrsf(
-  ctx: RequestContext,
-): Promise<Record<string, unknown> | null> {
-  try {
-    const raw = await agentRequest<unknown>(
-      ctx,
-      "/api/v1/ground-station/crsf",
-    );
-    return raw && typeof raw === "object" && !Array.isArray(raw)
-      ? (raw as Record<string, unknown>)
-      : null;
-  } catch {
-    return null;
-  }
-}
-
-/**
  * Enumerate the serial devices the agent's MAVLink router can bind as the
  * FC link (`GET /api/mavlink/ports`). Returns `[]` on agents that predate the
  * endpoint (or any transient failure) so the picker degrades to "no ports

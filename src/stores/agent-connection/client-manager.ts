@@ -20,7 +20,7 @@ import { useFleetNetworkStore } from "../fleet-network-store";
 import { useVideoStore } from "../video-store";
 import { resolveAgentWhepUrl } from "@/lib/video/rewrite-whep-host";
 import { useAgentCapabilitiesStore } from "../agent-capabilities-store";
-import { normalizeRadio, normalizeCrsf } from "../agent-capabilities/normalizer";
+import { normalizeRadio } from "../agent-capabilities/normalizer";
 import { useLocalNodesStore } from "../local-nodes-store";
 import { usePairingStore } from "../pairing-store";
 import { useCommandFleetStore } from "../command-fleet-store";
@@ -508,25 +508,25 @@ export const clientManagerSlice: AgentConnectionSliceCreator<
             }
             // Populate capabilities from consolidated response or infer from legacy data.
             // FullStatusResponse.capabilities is optional (older agents omit it).
-            // The air-side camera fields (cameraState / cameraUsbRecovery) are
-            // SIBLINGS of `capabilities` in the consolidated status, so fold them
-            // into the object handed to setCapabilities. Otherwise the LAN-direct
-            // path silently drops them and camera discovery / USB-recovery state
-            // never reaches the capability store — the cloud heartbeat path maps
-            // these through the same store, so without this the Fly view can't
-            // explain why a present agent has no video.
-            const cameraExtras: Record<string, unknown> = {};
+            // Several air-side status fields (camera discovery/recovery, per-leg
+            // video streams, the CRSF control lane) are SIBLINGS of `capabilities`
+            // in the consolidated status rather than nested inside it, so fold them
+            // into the object handed to setCapabilities. Folding them in (rather
+            // than a follow-up setState) means setCapabilities' single setState
+            // carries them, so each reaches the store atomically with the rest of
+            // the snapshot — no null-then-real write that flickers a dependent tab.
+            const statusExtras: Record<string, unknown> = {};
             if (typeof full.cameraState !== "undefined") {
-              cameraExtras.cameraState = full.cameraState;
+              statusExtras.cameraState = full.cameraState;
             }
             if (typeof full.cameraUsbRecovery !== "undefined") {
-              cameraExtras.cameraUsbRecovery = full.cameraUsbRecovery;
+              statusExtras.cameraUsbRecovery = full.cameraUsbRecovery;
             }
             // Per-leg video streams: re-point each leg's WHEP host to the one we
             // poll successfully (proven reachable, dodging an unreachable mDNS
             // name), so the cockpit stream switcher connects LAN-direct.
             if (full.video?.streams?.length) {
-              cameraExtras.videoStreams = full.video.streams
+              statusExtras.videoStreams = full.video.streams
                 .map((leg) => ({
                   id: leg.id,
                   role: leg.role,
@@ -536,11 +536,26 @@ export const clientManagerSlice: AgentConnectionSliceCreator<
                 }))
                 .filter((leg) => leg.id && leg.whepUrl);
             }
+            // CRSF / ExpressLRS control-lane snapshot. The agent folds the lane's
+            // crsf-stats sidecar into /api/status/full verbatim (raw snake_case),
+            // PROFILE-AGNOSTIC — a drone running the ELRS relay lane carries it
+            // exactly like a ground station — and omits the key when the lane is
+            // down or its sidecar is stale. Folding the raw block in here (rather
+            // than the old dedicated ground-station-only fetch that ran AFTER the
+            // main set, gated on the ground-station profile) means setCapabilities'
+            // single setState resolves crsf atomically: a drone relay now surfaces
+            // the lane over the local-first LAN path, and there is no null-then-real
+            // window between the capability write and a follow-up crsf fetch. An
+            // absent key normalizes to null inside setCapabilities, so a node with
+            // no lane clears the field rather than pinning a stale reading (Rule 44).
+            if (full.crsf && typeof full.crsf === "object") {
+              statusExtras.crsf = full.crsf;
+            }
             if (full.capabilities) {
               // Agent has capabilities API; normalize and store (handles shape differences).
               useAgentCapabilitiesStore.getState().setCapabilities({
                 ...(full.capabilities as Record<string, unknown>),
-                ...cameraExtras,
+                ...statusExtras,
               });
             } else {
               // Agent doesn't have capabilities API; infer from board SoC + peripherals.
@@ -554,10 +569,10 @@ export const clientManagerSlice: AgentConnectionSliceCreator<
               if (inferred) {
                 useAgentCapabilitiesStore.getState().setCapabilities({
                   ...(inferred as unknown as Record<string, unknown>),
-                  ...cameraExtras,
+                  ...statusExtras,
                 });
-              } else if (Object.keys(cameraExtras).length > 0) {
-                useAgentCapabilitiesStore.getState().setCapabilities(cameraExtras);
+              } else if (Object.keys(statusExtras).length > 0) {
+                useAgentCapabilitiesStore.getState().setCapabilities(statusExtras);
               }
             }
             // Fallback: if capabilities store still has no cameras but we know board SoC,
@@ -585,28 +600,6 @@ export const clientManagerSlice: AgentConnectionSliceCreator<
             if (full.radio && typeof full.radio === "object") {
               useAgentCapabilitiesStore.setState({
                 radio: normalizeRadio(full.radio),
-              });
-            }
-            // CRSF/ExpressLRS control-lane snapshot over the LAN-direct path.
-            // Unlike radio, the crsf-stats sidecar is NOT folded into
-            // /api/status — it is served by a dedicated, ground-station-only
-            // route (GET /api/v1/ground-station/crsf), so it needs its own
-            // fetch. Gate it on the ground-station profile: a drone /
-            // workstation answers profile_mismatch (and runs no lane), so an
-            // ungated fetch would burn a 404 every poll. The setCapabilities
-            // call above already resolved crsf to null for a node whose
-            // consolidated status carries no crsf, so a non-GS node needs no
-            // further write. The route 404s (never 500s) when the lane is down
-            // / the sidecar is stale, which normalizeCrsf reads as an absent
-            // lane (null) — a dropped lane clears the field instead of pinning
-            // a stale reading (Rule 44).
-            if (
-              full.profile === "ground-station" ||
-              full.profile === "ground_station"
-            ) {
-              const rawCrsf = await client.getGroundStationCrsf();
-              useAgentCapabilitiesStore.setState({
-                crsf: normalizeCrsf(rawCrsf),
               });
             }
             // Native-vs-packaged runtime mode over the LAN-direct path.

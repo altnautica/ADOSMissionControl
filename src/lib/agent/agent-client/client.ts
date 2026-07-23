@@ -132,17 +132,6 @@ export class AgentClient {
     return system.getFullStatus(this.ctx);
   }
 
-  /**
-   * CRSF / ExpressLRS control-lane snapshot from the dedicated ground-station
-   * route. Returns the raw snake_case sidecar, or null when the lane is down /
-   * the sidecar is stale (404) or the node is not a ground station
-   * (profile_mismatch). Not folded into `/api/status`, so it is a separate
-   * request the poll loop only issues for a ground-station node.
-   */
-  getGroundStationCrsf(): Promise<Record<string, unknown> | null> {
-    return system.getGroundStationCrsf(this.ctx);
-  }
-
   /** Enumerate serial devices the router can bind as the FC link. */
   getMavlinkPorts(): Promise<MavlinkPort[]> {
     return system.getMavlinkPorts(this.ctx);
