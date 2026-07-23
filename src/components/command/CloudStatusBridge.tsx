@@ -408,6 +408,7 @@ export function CloudStatusBridge() {
           payload.usbRehomeLastResult = extras.usbRehomeLastResult;
         }
         if (extras.radioRaw !== undefined) payload.radio = extras.radioRaw;
+        if (extras.crsfRaw !== undefined) payload.crsf = extras.crsfRaw;
         if (extras.videoPipeline !== undefined) payload.videoPipeline = extras.videoPipeline;
         payload.peerDeviceId = extras.peerDeviceId;
         payload.peerRole = extras.peerRole;
@@ -578,6 +579,7 @@ export function CloudStatusBridge() {
         perceptionTier: extras.perceptionTier,
         perceptionOffloadTarget: extras.perceptionOffloadTarget,
         ...(extras.radioRaw !== undefined ? { radio: extras.radioRaw } : {}),
+        ...(extras.crsfRaw !== undefined ? { crsf: extras.crsfRaw } : {}),
       } as Record<string, unknown>);
       }
     });

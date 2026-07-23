@@ -30,6 +30,11 @@ export interface HeartbeatExtras {
   videoPipeline: AgentCapabilities["videoPipeline"] | undefined;
   inferOverrides: Parameters<typeof inferCapabilities>[2];
   radioRaw: unknown;
+  /** Raw CRSF/ExpressLRS control-lane block off the Convex row (camelCase,
+   * already remapped by the cloud HTTP action). The capability-store
+   * normalizer folds it onto CrsfState; undefined when the heartbeat omits it
+   * (the lane is down or its sidecar is stale) so the store clears the field. */
+  crsfRaw: unknown;
   setupState: string | undefined;
   profileSource: string | undefined;
   profile: string | undefined;
@@ -256,6 +261,7 @@ export function buildHeartbeatExtras(
     videoPipeline: undefined,
     inferOverrides,
     radioRaw: cloudStatus.radio,
+    crsfRaw: cloudStatus.crsf,
     setupState,
     profileSource,
     profile,

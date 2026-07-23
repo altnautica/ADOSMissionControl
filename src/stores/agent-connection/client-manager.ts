@@ -20,7 +20,7 @@ import { useFleetNetworkStore } from "../fleet-network-store";
 import { useVideoStore } from "../video-store";
 import { resolveAgentWhepUrl } from "@/lib/video/rewrite-whep-host";
 import { useAgentCapabilitiesStore } from "../agent-capabilities-store";
-import { normalizeRadio } from "../agent-capabilities/normalizer";
+import { normalizeRadio, normalizeCrsf } from "../agent-capabilities/normalizer";
 import { useLocalNodesStore } from "../local-nodes-store";
 import { usePairingStore } from "../pairing-store";
 import { useCommandFleetStore } from "../command-fleet-store";
@@ -585,6 +585,28 @@ export const clientManagerSlice: AgentConnectionSliceCreator<
             if (full.radio && typeof full.radio === "object") {
               useAgentCapabilitiesStore.setState({
                 radio: normalizeRadio(full.radio),
+              });
+            }
+            // CRSF/ExpressLRS control-lane snapshot over the LAN-direct path.
+            // Unlike radio, the crsf-stats sidecar is NOT folded into
+            // /api/status — it is served by a dedicated, ground-station-only
+            // route (GET /api/v1/ground-station/crsf), so it needs its own
+            // fetch. Gate it on the ground-station profile: a drone /
+            // workstation answers profile_mismatch (and runs no lane), so an
+            // ungated fetch would burn a 404 every poll. The setCapabilities
+            // call above already resolved crsf to null for a node whose
+            // consolidated status carries no crsf, so a non-GS node needs no
+            // further write. The route 404s (never 500s) when the lane is down
+            // / the sidecar is stale, which normalizeCrsf reads as an absent
+            // lane (null) — a dropped lane clears the field instead of pinning
+            // a stale reading (Rule 44).
+            if (
+              full.profile === "ground-station" ||
+              full.profile === "ground_station"
+            ) {
+              const rawCrsf = await client.getGroundStationCrsf();
+              useAgentCapabilitiesStore.setState({
+                crsf: normalizeCrsf(rawCrsf),
               });
             }
             // Native-vs-packaged runtime mode over the LAN-direct path.
