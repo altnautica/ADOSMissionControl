@@ -2,15 +2,15 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { renderHook } from "@testing-library/react";
 import { useCommandFleetStore } from "@/stores/command-fleet-store";
 import { useCommandAgentFleet } from "@/hooks/use-command-agent-fleet";
-import type { PairedDrone } from "@/stores/pairing-store";
+import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
 
-function drone(over: Partial<PairedDrone>): PairedDrone {
+function drone(over: Partial<FleetNodeEntry>): FleetNodeEntry {
   return {
     _id: over.deviceId ?? "id",
     deviceId: over.deviceId ?? "dev",
     name: over.name ?? "node",
     ...over,
-  } as PairedDrone;
+  } as FleetNodeEntry;
 }
 
 describe("useCommandAgentFleet profile/role/radio", () => {

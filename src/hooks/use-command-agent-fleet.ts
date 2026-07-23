@@ -8,7 +8,7 @@
  */
 
 import { useMemo } from "react";
-import type { PairedDrone } from "@/stores/pairing-store";
+import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
 import {
   useCommandFleetStore,
   type CommandCloudStatus,
@@ -18,6 +18,7 @@ import { normalizeRadio } from "@/stores/agent-capabilities/normalizer";
 import { linkStateReach } from "@/components/hardware/radio/labels";
 import { isFcReachable } from "@/lib/agent/mavlink-link";
 import { resolveAgentVideoUrl } from "@/lib/agent/video-url";
+import { deviceIdFromNodeId } from "@/lib/agent/node-id";
 import {
   nodeLastSeen,
   nodeLiveness,
@@ -82,8 +83,33 @@ export interface CommandAgentSummary {
 
 const videoUrl = resolveAgentVideoUrl;
 
+/**
+ * Ground-station device ids whose WFB downlink is already funneled under a live
+ * relayed drone node. A ground station has no camera of its own — its video IS
+ * the drone's downlink it relays — so once that stream shows under the drone
+ * (the funneled feed a relayed node carries), rendering the ground station's own
+ * tile too would double the identical feed. Only a relayed drone that currently
+ * resolves to a playable feed counts: with the ground link down there is no
+ * funneled feed to duplicate (and the ground station's own tile is already gated
+ * off by the radio-link check). Pure, so the dedup is unit-testable without the
+ * store.
+ */
+export function groundStationsFunneledUnderDrone(
+  nodes: readonly FleetNodeEntry[],
+  cloudStatuses: Record<string, CommandCloudStatus | undefined>,
+): Set<string> {
+  const funneled = new Set<string>();
+  for (const n of nodes) {
+    if (!n.isRelayed || !n.reachedVia) continue;
+    const gsDeviceId = deviceIdFromNodeId(n.reachedVia);
+    if (!gsDeviceId) continue;
+    if (resolveAgentVideoUrl(cloudStatuses[n.deviceId])) funneled.add(gsDeviceId);
+  }
+  return funneled;
+}
+
 export function useCommandAgentFleet(
-  pairedDrones: PairedDrone[],
+  pairedDrones: FleetNodeEntry[],
   activeVideoIds: Set<string>,
   pausedVideoIds: Set<string>,
 ): CommandAgentSummary[] {
@@ -97,6 +123,12 @@ export function useCommandAgentFleet(
   const tick = useClockTick();
 
   return useMemo(() => {
+    // Ground nodes whose downlink is already shown under a relayed drone, so
+    // their own video tile is suppressed below to keep the feed on screen once.
+    const funneledGsIds = groundStationsFunneledUnderDrone(
+      pairedDrones,
+      cloudStatuses,
+    );
     const summaries = pairedDrones.map((drone): CommandAgentSummary => {
       const status = cloudStatuses[drone.deviceId];
       const telemetry = telemetryValue(
@@ -122,7 +154,14 @@ export function useCommandAgentFleet(
       const radioLinkDown =
         profile === "ground-station" &&
         (radio == null || linkStateReach(radio.state) !== "up");
-      const whepUrl = radioLinkDown ? null : videoUrl(status);
+      // The ground station's only video is the drone downlink it relays. When
+      // that same stream is funneled under the drone node, drop the ground
+      // station's own tile so the feed shows exactly once (under the drone). The
+      // ground station still reports it is relaying — it just loses the
+      // duplicate live tile.
+      const gsFeedFunneled =
+        profile === "ground-station" && funneledGsIds.has(drone.deviceId);
+      const whepUrl = radioLinkDown || gsFeedFunneled ? null : videoUrl(status);
       const paused = pausedVideoIds.has(drone.deviceId);
       const active = activeVideoIds.has(drone.deviceId);
       const canStream =

@@ -12,18 +12,21 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { renderHook } from "@testing-library/react";
 
-import { useCommandAgentFleet } from "@/hooks/use-command-agent-fleet";
+import {
+  useCommandAgentFleet,
+  groundStationsFunneledUnderDrone,
+} from "@/hooks/use-command-agent-fleet";
 import {
   useCommandFleetStore,
   type CommandCloudStatus,
 } from "@/stores/command-fleet-store";
-import type { PairedDrone } from "@/stores/pairing-store";
+import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
 
 const NOW = Date.now();
 
 function makePaired(
-  overrides: Partial<PairedDrone> & Pick<PairedDrone, "deviceId">,
-): PairedDrone {
+  overrides: Partial<FleetNodeEntry> & Pick<FleetNodeEntry, "deviceId">,
+): FleetNodeEntry {
   return {
     _id: `id-${overrides.deviceId}`,
     userId: "user-1",
@@ -31,6 +34,8 @@ function makePaired(
     apiKey: "key",
     pairedAt: NOW,
     lastSeen: NOW,
+    profile: "drone",
+    isLocal: false,
     ...overrides,
   };
 }
@@ -167,5 +172,139 @@ describe("useCommandAgentFleet — ground-station video guard", () => {
     expect(agent).toBeDefined();
     expect(agent!.video.state).toBe("live");
     expect(agent!.video.whepUrl).toBe("http://192.168.1.61:8889/main/whep");
+  });
+});
+
+const FUNNELED_URL = "http://192.168.1.50:8889/main/whep";
+
+/** A relayed drone's funneled feed row points at the ground node's WHEP with no
+ * direct reach of its own (no lastIp), so it resolves to the funneled URL. */
+function funneledRow(deviceId: string): CommandCloudStatus {
+  return makeStatus({
+    deviceId,
+    lastIp: undefined,
+    videoState: "running",
+    videoWhepUrl: FUNNELED_URL,
+  });
+}
+
+describe("groundStationsFunneledUnderDrone", () => {
+  it("flags a ground node whose relayed drone resolves to a playable funneled feed", () => {
+    const funneled = groundStationsFunneledUnderDrone(
+      [
+        makePaired({ deviceId: "gs-1", profile: "ground-station" }),
+        makePaired({
+          deviceId: "drone-a",
+          profile: "drone",
+          isRelayed: true,
+          reachedVia: "node:gs-1",
+        }),
+      ],
+      {
+        "gs-1": makeStatus({ deviceId: "gs-1", radio: { state: "connected" } }),
+        "drone-a": funneledRow("drone-a"),
+      },
+    );
+    expect([...funneled]).toEqual(["gs-1"]);
+  });
+
+  it("does not flag a ground node when its relayed drone has no playable feed", () => {
+    // Ground link down → the relayed drone carries no playable feed, so there is
+    // nothing under the drone to duplicate.
+    const funneled = groundStationsFunneledUnderDrone(
+      [
+        makePaired({ deviceId: "gs-1", profile: "ground-station" }),
+        makePaired({
+          deviceId: "drone-a",
+          profile: "drone",
+          isRelayed: true,
+          reachedVia: "node:gs-1",
+        }),
+      ],
+      {
+        "gs-1": makeStatus({ deviceId: "gs-1" }),
+        "drone-a": makeStatus({ deviceId: "drone-a", videoState: "stopped" }),
+      },
+    );
+    expect(funneled.size).toBe(0);
+  });
+
+  it("ignores a directly-paired drone that carries relay provenance but is not relay-only", () => {
+    const funneled = groundStationsFunneledUnderDrone(
+      [
+        makePaired({ deviceId: "gs-1", profile: "ground-station" }),
+        makePaired({
+          deviceId: "drone-a",
+          profile: "drone",
+          isRelayed: false,
+          reachedVia: "node:gs-1",
+        }),
+      ],
+      { "gs-1": makeStatus({ deviceId: "gs-1" }), "drone-a": funneledRow("drone-a") },
+    );
+    expect(funneled.size).toBe(0);
+  });
+});
+
+describe("useCommandAgentFleet — funneled-feed dedup", () => {
+  afterEach(() => {
+    useCommandFleetStore.getState().clear();
+  });
+
+  it("suppresses the ground station's own tile while showing the funneled feed under the drone", () => {
+    const gs = makePaired({
+      deviceId: "gs-1",
+      profile: "ground-station",
+      role: "direct",
+    });
+    const drone = makePaired({
+      deviceId: "drone-a",
+      profile: "drone",
+      isRelayed: true,
+      reachedVia: "node:gs-1",
+    });
+    seed([
+      // Ground station: radio up + its own downlink streaming (its only video).
+      makeStatus({
+        deviceId: "gs-1",
+        radio: { state: "connected" },
+        videoWhepUrl: FUNNELED_URL,
+      }),
+      // The same stream funneled under the relayed drone.
+      funneledRow("drone-a"),
+    ]);
+
+    const { result } = renderHook(() =>
+      useCommandAgentFleet([gs, drone], new Set(), new Set()),
+    );
+
+    const gsAgent = result.current.find((a) => a.identity.deviceId === "gs-1");
+    const droneAgent = result.current.find((a) => a.identity.deviceId === "drone-a");
+
+    // The feed shows exactly once: under the drone, not doubled under the GS.
+    expect(gsAgent!.video.whepUrl).toBeNull();
+    expect(droneAgent!.video.whepUrl).toBe(FUNNELED_URL);
+  });
+
+  it("keeps the ground station's own tile when no relayed drone funnels its feed", () => {
+    const gs = makePaired({
+      deviceId: "gs-1",
+      profile: "ground-station",
+      role: "direct",
+    });
+    seed([
+      makeStatus({
+        deviceId: "gs-1",
+        radio: { state: "connected" },
+        videoWhepUrl: FUNNELED_URL,
+      }),
+    ]);
+
+    const { result } = renderHook(() =>
+      useCommandAgentFleet([gs], new Set(), new Set()),
+    );
+
+    const gsAgent = result.current.find((a) => a.identity.deviceId === "gs-1");
+    expect(gsAgent!.video.whepUrl).toBe(FUNNELED_URL);
   });
 });
