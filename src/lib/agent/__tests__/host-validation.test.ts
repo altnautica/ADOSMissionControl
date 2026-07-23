@@ -36,7 +36,7 @@ describe("normaliseAndCheckHost — private-address allowlist", () => {
   });
 
   it("accepts mDNS .local and loopback", () => {
-    expect(classify("groundnode.local")).toEqual({ host: "groundnode.local" });
+    expect(classify("agent-node.local")).toEqual({ host: "agent-node.local" });
     expect(classify("localhost")).toEqual({ host: "localhost" });
     expect(classify("127.0.0.1")).toEqual({ host: "127.0.0.1" });
   });

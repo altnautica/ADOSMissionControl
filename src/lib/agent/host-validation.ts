@@ -110,7 +110,7 @@ export type HostValidationResult =
  * Normalise a user-pasted host string and confirm it points at a
  * private address Mission Control is willing to proxy to.
  *
- * Accepts bare hostnames (`groundnode.local`, `192.168.1.50`), full
+ * Accepts bare hostnames (`agent-node.local`, `192.168.1.50`), full
  * URLs (`http://192.168.1.50:8080`), and trailing slashes. Defaults
  * the port to 8080 when an http:// URL omits it (matches the agent's
  * default REST port). Rejects userinfo, non-http(s) schemes, and
