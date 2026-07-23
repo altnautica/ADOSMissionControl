@@ -57,6 +57,7 @@ export function RadioPanel() {
 
   const agentUrl = useAgentConnectionStore((s) => s.agentUrl);
   const apiKey = useAgentConnectionStore((s) => s.apiKey);
+  const nodeDeviceId = useAgentConnectionStore((s) => s.nodeDeviceId);
   const hasAgent = Boolean(agentUrl);
 
   const linkHealth = useGroundStationStore((s) => s.linkHealth);
@@ -82,9 +83,11 @@ export function RadioPanel() {
   const cloudStatuses = useConvexSkipQuery(cmdDroneStatusApi.listMyCloudStatuses, {
     enabled: hasAgent,
   });
+  // Key the radio block to THIS node — the freshest cloud row anywhere could
+  // belong to another node and render its link on this panel (Rule 44).
   const { radio: cloudRadio, hostname } = useMemo(
-    () => pickRadioFromCloud(cloudStatuses),
-    [cloudStatuses],
+    () => pickRadioFromCloud(cloudStatuses, nodeDeviceId),
+    [cloudStatuses, nodeDeviceId],
   );
 
   // Calibration measurement source: the fleet node that is RECEIVING a peer's
