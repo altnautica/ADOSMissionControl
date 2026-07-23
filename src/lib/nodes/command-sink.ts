@@ -47,6 +47,13 @@ export interface CommandTargetNode {
   convexId?: string;
   /** True for a directly-connected flight controller with no agent behind it. */
   isDirectFc?: boolean;
+  /**
+   * True when the node is enrolled SOLELY through a ground node's WFB relay —
+   * the GCS never paired with it directly. Its only path today is the radio, and
+   * that path carries no command channel yet, so it resolves to no command sink
+   * with a reason distinct from an unpaired node.
+   */
+  isRelayed?: boolean;
 }
 
 /** How a command reaches a node. */
@@ -60,6 +67,13 @@ export type NodeCommandTransport = "lan" | "cloud";
 export type NodeCommandBlockedReason =
   /** A directly-connected FC has no agent, so it has no agent command lane. */
   | "direct-fc"
+  /**
+   * The node is reached only through a ground node's WFB radio relay. The relay
+   * carries video and telemetry but no command channel yet, so no lane resolves —
+   * a distinct cause from an unpaired node, so the row can say "reached only over
+   * the radio relay" rather than "not paired".
+   */
+  | "relay-only"
   /** LAN credentials exist but the page origin blocks a plain-HTTP request. */
   | "lan-blocked-by-https"
   /** Neither LAN credentials in this browser nor a cloud pairing row. */
@@ -250,6 +264,15 @@ export function resolveNodeCommandReach(
 ): NodeCommandReach {
   if (node.isDirectFc) {
     return { sink: null, blockedReason: "direct-fc" };
+  }
+
+  if (node.isRelayed) {
+    // A relayed-only node holds no LAN credentials and no cloud pairing row (it
+    // was never paired directly), so it would otherwise fall through to
+    // "not-paired". Name the real cause: it is reached over the WFB relay, whose
+    // command path lands later. This check comes before the LAN/cloud probes
+    // because a node that is also paired directly is never marked relayed-only.
+    return { sink: null, blockedReason: "relay-only" };
   }
 
   const originIsHttps = options.originIsHttps ?? pageOriginIsHttps();

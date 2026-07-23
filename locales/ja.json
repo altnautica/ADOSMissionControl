@@ -6599,7 +6599,8 @@
       "direct-fc": "A directly connected flight controller has no agent command lane. Open the node to fly it.",
       "lan-blocked-by-https": "This page is served over HTTPS, which blocks a plain-HTTP request to a LAN agent",
       "not-paired": "Not paired on this browser and not cloud-paired",
-      "no-cloud-queue": "Cloud-paired, but no command queue is available in this session"
+      "no-cloud-queue": "Cloud-paired, but no command queue is available in this session",
+      "relay-only": "Reached only through the WFB radio relay; commanding it over the radio is not wired up yet"
     },
     "link": {
       "noRadio": "This node reports no radio",
@@ -6677,6 +6678,19 @@
       "noneReady": "No node in the fleet can take a return-to-launch command right now.",
       "confirmTitle": "{action} across the fleet",
       "confirmMessage": "{action} will be sent to {ready} of {total} nodes — the rest cannot take it right now."
+    },
+    "bearer": {
+      "lan": "Direct · LAN",
+      "wfb": "WFB",
+      "wfbVia": "WFB · via {node}",
+      "cloud": "Cloud relay",
+      "direct-fc": "Direct FC",
+      "none": "Unreachable",
+      "verified": "Frame heard at {rssi} dBm — WFB link verified",
+      "unverified": "WFB link unverified — no received-side signal confirmed yet",
+      "stale": "WFB reading is stale — the node has not been heard from recently",
+      "down": "WFB link down — nothing is being heard",
+      "alsoVia": "Also linked via WFB through {node}"
     }
   },
   "rcElrsLink": {

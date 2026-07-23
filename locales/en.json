@@ -6595,8 +6595,22 @@
       "acknowledged": "Commands travel over the LAN and return the vehicle's own acknowledgement",
       "queuedOnly": "Commands are queued for delivery; the vehicle acknowledges later"
     },
+    "bearer": {
+      "lan": "Direct · LAN",
+      "wfb": "WFB",
+      "wfbVia": "WFB · via {node}",
+      "cloud": "Cloud relay",
+      "direct-fc": "Direct FC",
+      "none": "Unreachable",
+      "verified": "Frame heard at {rssi} dBm — WFB link verified",
+      "unverified": "WFB link unverified — no received-side signal confirmed yet",
+      "stale": "WFB reading is stale — the node has not been heard from recently",
+      "down": "WFB link down — nothing is being heard",
+      "alsoVia": "Also linked via WFB through {node}"
+    },
     "blocked": {
       "direct-fc": "A directly connected flight controller has no agent command lane. Open the node to fly it.",
+      "relay-only": "Reached only through the WFB radio relay; commanding it over the radio is not wired up yet",
       "lan-blocked-by-https": "This page is served over HTTPS, which blocks a plain-HTTP request to a LAN agent",
       "not-paired": "Not paired on this browser and not cloud-paired",
       "no-cloud-queue": "Cloud-paired, but no command queue is available in this session"

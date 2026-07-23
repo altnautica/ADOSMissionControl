@@ -2,52 +2,162 @@
 
 /**
  * @module command/nodes-view/ReachCell
- * @description How the GCS reaches one node, and what that reach is worth.
+ * @description How the GCS reaches one node, over which bearer, and what that
+ * reach is worth.
  *
- * The chip is the honest answer to "if I press something in this row, what
- * carries it?" — a LAN lane returns the vehicle's own acknowledgement, a cloud
- * lane only confirms the command was queued, a directly-connected board has no
- * agent lane at all, and an unreachable node names which of the four causes it
- * is so the operator knows what to fix.
+ * The chip is the honest answer to "how does this node get here, and if I press
+ * something in this row, what carries it?" — a LAN lane is direct and returns
+ * the vehicle's own acknowledgement, a cloud lane only confirms the command was
+ * queued, a directly-connected board has no agent lane at all, and a drone the
+ * GCS never paired with is still carried over a ground node's WFB relay rather
+ * than being called unreachable. A node reached more than one way shows its
+ * primary path plus a muted secondary-bearer chip.
+ *
+ * A WFB bearer is coloured by whether its link is actually proven: verified only
+ * when the far side heard a frame from it (a received-side signal), otherwise
+ * unverified / stale / down — never a confident green from a link this row
+ * cannot prove (Rule 44 / Rule 37).
  *
  * @license GPL-3.0-only
  */
 
 import { useTranslations } from "next-intl";
-import { CircuitBoard, Cloud, Wifi, WifiOff } from "lucide-react";
+import { CircuitBoard, Cloud, CornerDownRight, Radio, Wifi, WifiOff } from "lucide-react";
 
-import type { NodeReachDescriptor, NodeReachKind } from "@/lib/nodes/node-reach";
+import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
+import type { NodeReachDescriptor } from "@/lib/nodes/node-reach";
+import type { CommandAgentLiveness } from "@/lib/nodes/presence";
+import {
+  deriveNodeBearers,
+  type BearerVerification,
+  type NodeBearerChip,
+  type NodeBearerKind,
+} from "@/lib/nodes/node-bearer";
+import { useReachedViaName } from "@/lib/nodes/reach-provenance";
+import { useCommandFleetStore } from "@/stores/command-fleet-store";
 import { Chip, NEUTRAL_CHIP } from "./cell-primitives";
 
-const KIND_ICON: Record<NodeReachKind, typeof Wifi> = {
+const KIND_ICON: Record<NodeBearerKind, typeof Wifi> = {
   lan: Wifi,
+  wfb: Radio,
   cloud: Cloud,
   "direct-fc": CircuitBoard,
   none: WifiOff,
 };
 
-const KIND_CLASS: Record<NodeReachKind, string> = {
+/** Fixed chip colour for a capability bearer (LAN / cloud / direct-fc / none). */
+const KIND_CLASS: Record<Exclude<NodeBearerKind, "wfb">, string> = {
   lan: "border-status-success/40 bg-status-success/10 text-status-success",
   cloud: "border-accent-primary/40 bg-accent-primary/10 text-accent-primary",
   "direct-fc": NEUTRAL_CHIP,
   none: "border-border-default bg-bg-tertiary text-text-tertiary",
 };
 
-export function ReachCell({ reach }: { reach: NodeReachDescriptor }) {
-  const t = useTranslations("nodesView");
-  const Icon = KIND_ICON[reach.kind];
+/** A WFB bearer's colour follows its verification — never green unless proven. */
+const WFB_CLASS: Record<BearerVerification, string> = {
+  verified: "border-status-success/40 bg-status-success/10 text-status-success",
+  unverified: "border-status-warning/40 bg-status-warning/10 text-status-warning",
+  stale: "border-border-default bg-bg-tertiary text-text-tertiary opacity-70",
+  down: "border-border-default bg-bg-tertiary text-text-tertiary",
+};
 
-  // A blocked reach explains itself; a working one says what its result means.
-  const title = reach.blockedReason
-    ? t(`blocked.${reach.blockedReason}`)
-    : reach.reportsVehicleAck
-      ? t("reach.acknowledged")
-      : t("reach.queuedOnly");
+function chipClass(chip: NodeBearerChip): string {
+  return chip.kind === "wfb"
+    ? WFB_CLASS[chip.verification]
+    : KIND_CLASS[chip.kind];
+}
+
+type Translate = ReturnType<typeof useTranslations>;
+
+/** The visible label for a bearer chip. */
+function chipLabel(chip: NodeBearerChip, t: Translate): string {
+  if (chip.kind === "wfb") {
+    return chip.viaName
+      ? t("bearer.wfbVia", { node: chip.viaName })
+      : t("bearer.wfb");
+  }
+  return t(`bearer.${chip.kind}`);
+}
+
+/** The hover / accessible explanation for the primary chip. */
+function primaryTitle(
+  chip: NodeBearerChip,
+  reach: NodeReachDescriptor,
+  t: Translate,
+): string {
+  if (chip.kind === "wfb") {
+    if (chip.verification === "verified" && chip.rssiDbm != null) {
+      return t("bearer.verified", { rssi: chip.rssiDbm });
+    }
+    return t(`bearer.${chip.verification}`);
+  }
+  if (chip.kind === "direct-fc") return t("blocked.direct-fc");
+  if (chip.kind === "none") {
+    return reach.blockedReason
+      ? t(`blocked.${reach.blockedReason}`)
+      : t("bearer.down");
+  }
+  // A working LAN / cloud lane says what its result is worth.
+  return reach.reportsVehicleAck
+    ? t("reach.acknowledged")
+    : t("reach.queuedOnly");
+}
+
+export function ReachCell({
+  node,
+  reach,
+  liveness,
+}: {
+  node: FleetNodeEntry;
+  reach: NodeReachDescriptor;
+  liveness: CommandAgentLiveness;
+}) {
+  const t = useTranslations("nodesView");
+  const reachedViaName = useReachedViaName(node.reachedVia);
+  // A relayed drone's WFB peer RSSI rides its funneled status row (the received-
+  // side signal the ground node heard it at). A directly-paired drone carries no
+  // such row, so its secondary WFB chip stays unverified by construction.
+  const wfbRssiDbm = useCommandFleetStore(
+    (s) => s.cloudStatuses[node.deviceId]?.peerRssiDbm ?? null,
+  );
+
+  const { primary, secondary } = deriveNodeBearers({
+    reachKind: reach.kind,
+    isRelayed: node.isRelayed ?? false,
+    hasReachedVia: !node.isRelayed && !!node.reachedVia,
+    reachedViaName,
+    wfbRssiDbm,
+    liveness,
+  });
+
+  const PrimaryIcon = KIND_ICON[primary.kind];
+  const showRssi =
+    primary.kind === "wfb" &&
+    primary.rssiDbm != null &&
+    (primary.verification === "verified" || primary.verification === "stale");
 
   return (
-    <Chip className={KIND_CLASS[reach.kind]} title={title}>
-      <Icon size={10} />
-      {t(`reach.${reach.kind}`)}
-    </Chip>
+    <span className="inline-flex items-center gap-1.5">
+      <Chip className={chipClass(primary)} title={primaryTitle(primary, reach, t)}>
+        <PrimaryIcon size={10} />
+        {chipLabel(primary, t)}
+      </Chip>
+      {showRssi && (
+        <span className="font-mono text-[10px] tabular-nums text-text-tertiary">
+          {primary.rssiDbm} dBm
+        </span>
+      )}
+      {secondary && (
+        <Chip
+          className={NEUTRAL_CHIP}
+          title={t("bearer.alsoVia", {
+            node: secondary.viaName ?? t("bearer.wfb"),
+          })}
+        >
+          <CornerDownRight size={9} className="opacity-70" />+
+          {chipLabel(secondary, t)}
+        </Chip>
+      )}
+    </span>
   );
 }

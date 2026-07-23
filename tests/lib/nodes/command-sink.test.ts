@@ -189,6 +189,18 @@ describe("unreachable nodes", () => {
     expect(reach.sink).toBeNull();
     expect(reach.blockedReason).toBe("direct-fc");
   });
+
+  it("names the WFB relay, not an unpaired node, for a relayed-only drone", () => {
+    // A relayed-only drone holds no LAN credentials and no cloud row, so it would
+    // otherwise read "not-paired". The relay cause is the honest one.
+    const reach = resolveNodeCommandReach(
+      { deviceId: DEVICE_ID, isRelayed: true },
+      { originIsHttps: false },
+    );
+
+    expect(reach.sink).toBeNull();
+    expect(reach.blockedReason).toBe("relay-only");
+  });
 });
 
 describe("LAN dispatch", () => {

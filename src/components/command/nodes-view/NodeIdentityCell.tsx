@@ -18,7 +18,7 @@
  */
 
 import { useTranslations } from "next-intl";
-import { Wifi } from "lucide-react";
+import { CornerDownRight, Wifi } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
@@ -36,9 +36,13 @@ import {
 
 export function NodeIdentityCell({
   node,
+  depth = 0,
   onOpen,
 }: {
   node: FleetNodeEntry;
+  /** Reach-hierarchy nesting depth: a nested relay drone indents under its
+   * ground node with a connector so the grouping reads at a glance. */
+  depth?: number;
   onOpen: (node: FleetNodeEntry) => void;
 }) {
   const t = useTranslations("nodeConsole");
@@ -59,6 +63,17 @@ export function NodeIdentityCell({
 
   return (
     <div className="flex min-w-0 items-center gap-2">
+      {depth > 0 && (
+        // Indent + connector so a relayed drone reads as nested under its ground
+        // node. Presentational only — the grouping itself lives in the row order.
+        <span
+          className="flex shrink-0 items-center text-text-tertiary"
+          style={{ paddingLeft: `${(depth - 1) * 16}px` }}
+          aria-hidden="true"
+        >
+          <CornerDownRight size={13} />
+        </span>
+      )}
       <div className="relative shrink-0">
         <div
           className={cn(

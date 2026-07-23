@@ -47,6 +47,8 @@ export interface NodeBoardRowProps {
   row: NodeRowModel;
   /** Command-lane inputs, resolved once for the whole board. */
   laneOptions: NodeCommandSinkOptions;
+  /** Reach-hierarchy nesting depth: 0 for a top-level node, +1 per relay hop. */
+  depth?: number;
   selected: boolean;
   onToggleSelected: () => void;
   onOpen: (node: FleetNodeEntry) => void;
@@ -55,6 +57,7 @@ export interface NodeBoardRowProps {
 export function NodeBoardRow({
   row,
   laneOptions,
+  depth = 0,
   selected,
   onToggleSelected,
   onOpen,
@@ -89,10 +92,10 @@ export function NodeBoardRow({
         />
       </td>
       <td className={CELL}>
-        <NodeIdentityCell node={node} onOpen={onOpen} />
+        <NodeIdentityCell node={node} depth={depth} onOpen={onOpen} />
       </td>
       <td className={CELL}>
-        <ReachCell reach={reach} />
+        <ReachCell node={node} reach={reach} liveness={summary.liveness} />
       </td>
       <td className={CELL}>
         <LinkCell radio={summary.radio} freshness={freshness} />

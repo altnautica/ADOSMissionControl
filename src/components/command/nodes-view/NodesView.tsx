@@ -24,6 +24,7 @@ import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
 import { useCommandAgentFleet } from "@/hooks/use-command-agent-fleet";
 import { useSkillToastBridge } from "@/hooks/use-skill-toast-bridge";
 import { joinNodeRows, nodeMatchesQuery } from "@/lib/nodes/node-rows";
+import { buildNodeTree } from "@/lib/nodes/node-tree";
 import { describeNodeReach } from "@/lib/nodes/node-reach";
 import { NodeBoardRow } from "./NodeBoardRow";
 import { useNodeCommandLane } from "./use-node-command-lane";
@@ -137,6 +138,11 @@ export function NodesView({
   const allVisibleSelected =
     visible.length > 0 && selectedRows.length === visible.length;
 
+  // Nest the visible rows into the reach hierarchy: a drone reached only through
+  // a ground node's WFB relay renders indented under that ground node. A pure
+  // projection over reach-path — same rows, re-sequenced with a depth.
+  const tree = useMemo(() => buildNodeTree(visible), [visible]);
+
   function toggleRow(nodeId: string) {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -205,10 +211,11 @@ export function NodesView({
             </tr>
           </thead>
           <tbody>
-            {visible.map((row) => (
+            {tree.map(({ row, depth }) => (
               <NodeBoardRow
                 key={row.node._id}
                 row={row}
+                depth={depth}
                 laneOptions={laneOptions}
                 selected={selected.has(row.node._id)}
                 onToggleSelected={() => toggleRow(row.node._id)}
