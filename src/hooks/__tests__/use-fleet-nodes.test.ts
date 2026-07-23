@@ -15,13 +15,39 @@ import {
   enrichNodeWithLiveFc,
   adaptDirectFc,
   mergeFleetWithDirectFcs,
+  adaptRelayed,
+  mergeRelayedNodes,
   type FleetNodeEntry,
 } from "../use-fleet-nodes";
 import type { PairedDrone } from "@/stores/pairing-store";
 import type { LocalNode } from "@/stores/local-nodes-store";
 import type { CommandCloudStatus } from "@/stores/command-fleet-store";
 import type { ManagedDrone } from "@/stores/drone-manager";
+import type { NodeEntry } from "@/stores/node-registry";
 import { droneLiveness } from "@/components/command/fleet/types";
+
+function relayedEntry(over: {
+  deviceId?: string;
+  name?: string;
+  reachedVia?: string;
+  sources?: NodeEntry["presence"]["sources"];
+  lastHeartbeat?: number;
+} = {}): NodeEntry {
+  const deviceId = over.deviceId ?? "drone-a";
+  return {
+    nodeId: `node:${deviceId}`,
+    presence: {
+      deviceId,
+      name: over.name ?? "Drone A",
+      profile: "drone",
+      sources: over.sources ?? ["relayed"],
+      reachedVia: over.reachedVia ?? "node:gs-1",
+      lastHeartbeat: over.lastHeartbeat ?? 100,
+    },
+    connection: { fcConnected: false },
+    fc: { managedId: null },
+  };
+}
 
 function nodeEntry(over: Partial<FleetNodeEntry> = {}): FleetNodeEntry {
   return {
@@ -180,6 +206,75 @@ describe("mergeFleetWithDirectFcs", () => {
     ]);
     expect(merged).toHaveLength(1);
     expect(merged[0]._id).toBe("node:dev");
+  });
+});
+
+describe("mergeRelayedNodes", () => {
+  it("returns the base array reference when there are no relayed nodes", () => {
+    const base = [nodeEntry()];
+    expect(mergeRelayedNodes(base, {})).toBe(base);
+  });
+
+  it("adds a relayed-only drone as its own row with the reach hop", () => {
+    const merged = mergeRelayedNodes([], {
+      "node:drone-a": relayedEntry(),
+    });
+    expect(merged).toHaveLength(1);
+    expect(merged[0]._id).toBe("node:drone-a");
+    expect(merged[0].isRelayed).toBe(true);
+    expect(merged[0].reachedVia).toBe("node:gs-1");
+    // A relayed-only drone has no direct LAN credentials.
+    expect(merged[0].apiKey).toBe("");
+  });
+
+  it("a node seen relayed-then-direct is ONE row: the direct row upgraded in place", () => {
+    // The directly-paired row (node:drone-a) and the relayed registry entry for
+    // the same deviceId collapse to one row. The direct row keeps its LAN
+    // identity and takes reach precedence (isRelayed stays false) while carrying
+    // the relay hop as secondary provenance.
+    const direct = nodeEntry({
+      _id: "node:drone-a",
+      deviceId: "drone-a",
+      apiKey: "lan-key",
+      isLocal: true,
+    });
+    const merged = mergeRelayedNodes([direct], {
+      "node:drone-a": relayedEntry({
+        deviceId: "drone-a",
+        sources: ["relayed", "local"],
+      }),
+    });
+    expect(merged).toHaveLength(1);
+    expect(merged[0]._id).toBe("node:drone-a");
+    // Direct reach is primary...
+    expect(merged[0].apiKey).toBe("lan-key");
+    expect(merged[0].isRelayed).toBeUndefined();
+    // ...and the relay hop rides along as provenance.
+    expect(merged[0].reachedVia).toBe("node:gs-1");
+    // The base row was not mutated in place.
+    expect(direct.reachedVia).toBeUndefined();
+  });
+
+  it("ignores non-relayed registry entries", () => {
+    const localOnly: NodeEntry = {
+      ...relayedEntry({ deviceId: "drone-b" }),
+      presence: {
+        ...relayedEntry({ deviceId: "drone-b" }).presence,
+        sources: ["local"],
+        reachedVia: undefined,
+      },
+    };
+    expect(mergeRelayedNodes([], { "node:drone-b": localOnly })).toEqual([]);
+  });
+});
+
+describe("adaptRelayed", () => {
+  it("mints the canonical node id so a later direct pair collapses onto it", () => {
+    const entry = adaptRelayed(relayedEntry({ deviceId: "drone-a" }));
+    expect(entry._id).toBe("node:drone-a");
+    expect(entry.deviceId).toBe("drone-a");
+    expect(entry.profile).toBe("drone");
+    expect(entry.lastSeen).toBe(100);
   });
 });
 

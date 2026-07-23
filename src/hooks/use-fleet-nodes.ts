@@ -24,6 +24,7 @@ import {
   type CommandCloudStatus,
 } from "@/stores/command-fleet-store";
 import { useDroneManager, type ManagedDrone } from "@/stores/drone-manager";
+import { useNodeRegistryStore, type NodeEntry } from "@/stores/node-registry";
 import { nodeIdForDevice } from "@/lib/agent/node-id";
 
 export interface FleetNodeEntry extends PairedDrone {
@@ -58,6 +59,15 @@ export interface FleetNodeEntry extends PairedDrone {
    * connection, present only while its transport is open. Drives always-live
    * freshness and a disconnect-on-forget in the sidebar. */
   isDirectFc?: boolean;
+  /** The `node:<deviceId>` id of the ground node this drone is linked through
+   * over WFB, when it is (also) enrolled transitively. Drives the "linked via
+   * WFB through <node>" provenance. Undefined on a directly-reached node. */
+  reachedVia?: string;
+  /** True only when this row is enrolled SOLELY through a relay (no direct
+   * reach). A drone that is also paired directly keeps `reachedVia` as secondary
+   * provenance but reads `isRelayed: false` — its direct link is the primary
+   * reach the UX shows. */
+  isRelayed?: boolean;
 }
 
 /**
@@ -214,11 +224,87 @@ export function mergeFleetWithDirectFcs(
   return directFcs.length === 0 ? paired : [...paired, ...directFcs];
 }
 
+/**
+ * Adapt a `"relayed"` node-registry entry (a WFB-linked drone reached only
+ * through a ground node — no direct pairing) into the sidebar shape. Its `_id`
+ * is the canonical `node:<deviceId>`, so a later direct pair of the same drone
+ * mints the identical id and the two collapse to one row. It carries no LAN
+ * credentials (its only reach is through the ground node), and `reachedVia`
+ * names that hop. Pure; exported for unit tests.
+ */
+export function adaptRelayed(entry: NodeEntry): FleetNodeEntry {
+  const { deviceId, name, reachedVia, lastHeartbeat } = entry.presence;
+  return {
+    _id: nodeIdForDevice(deviceId),
+    convexId: undefined,
+    userId: "relayed",
+    deviceId,
+    name: name || `Agent ${deviceId.slice(0, 8)}`,
+    apiKey: "",
+    agentVersion: undefined,
+    board: undefined,
+    tier: undefined,
+    os: undefined,
+    mdnsHost: undefined,
+    lastIp: undefined,
+    lastSeen: lastHeartbeat,
+    fcConnected: undefined,
+    pairedAt: lastHeartbeat,
+    profile: "drone",
+    role: null,
+    isLocal: false,
+    isDirectFc: false,
+    reachedVia,
+    isRelayed: true,
+  };
+}
+
+/**
+ * Fold the registry's `"relayed"` nodes into the fleet list. A relayed entry
+ * whose deviceId is already a directly-reached row upgrades that row in place —
+ * it carries `reachedVia` as secondary provenance but stays a direct row (the
+ * DEC-187 dedup guarantee: one row, both reaches). A relayed-only entry becomes
+ * its own row. Pure; exported for unit tests.
+ */
+export function mergeRelayedNodes(
+  base: FleetNodeEntry[],
+  registryNodes: Record<string, NodeEntry>,
+): FleetNodeEntry[] {
+  const relayed = Object.values(registryNodes).filter(
+    (e) => e.presence.sources.includes("relayed") && e.presence.deviceId,
+  );
+  if (relayed.length === 0) return base;
+
+  // Copy the base rows so carrying reachedVia onto an upgraded row never mutates
+  // the memoized inputs.
+  const result = base.map((n) => ({ ...n }));
+  const byDeviceId = new Map(result.map((n) => [n.deviceId, n]));
+  const extras: FleetNodeEntry[] = [];
+  const takenDeviceIds = new Set(byDeviceId.keys());
+
+  for (const e of relayed) {
+    const deviceId = e.presence.deviceId;
+    const existing = byDeviceId.get(deviceId);
+    if (existing) {
+      // Upgrade in place: the direct row keeps the relay hop as provenance.
+      existing.reachedVia = e.presence.reachedVia;
+      continue;
+    }
+    if (takenDeviceIds.has(deviceId)) continue;
+    takenDeviceIds.add(deviceId);
+    extras.push(adaptRelayed(e));
+  }
+
+  return extras.length === 0 ? result : [...result, ...extras];
+}
+
 export function useFleetNodes(): FleetNodeEntry[] {
   const cloudPaired = usePairingStore((s) => s.pairedDrones);
   const localNodes = useLocalNodesStore((s) => s.nodes);
   const cloudStatuses = useCommandFleetStore((s) => s.cloudStatuses);
   const managed = useDroneManager((s) => s.drones);
+  const registryNodes = useNodeRegistryStore((s) => s.nodes);
+  const registryUpdate = useNodeRegistryStore((s) => s.lastUpdate);
 
   const paired = useMemo(
     () =>
@@ -228,8 +314,22 @@ export function useFleetNodes(): FleetNodeEntry[] {
     [cloudPaired, localNodes, cloudStatuses],
   );
 
-  return useMemo(
+  const withDirect = useMemo(
     () => mergeFleetWithDirectFcs(paired, managed.values()),
     [paired, managed],
+  );
+
+  // Fold in the registry's relayed nodes (a WFB-linked drone reached through a
+  // paired ground node). A relayed drone that is also paired directly upgrades
+  // its direct row in place; a relayed-only drone becomes its own row.
+  return useMemo(
+    () =>
+      mergeRelayedNodes(withDirect, registryNodes).map((n) =>
+        n.isRelayed ? enrichNodeWithLiveFc(n, cloudStatuses[n.deviceId]) : n,
+      ),
+    // registryUpdate is a scalar change signal; it keeps the projection live
+    // without depending on the identity of registryNodes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [withDirect, registryNodes, registryUpdate, cloudStatuses],
   );
 }
