@@ -134,6 +134,10 @@ export function mergePresence(
       current.cloudDeviceId,
       isCloud,
     ),
+    // A supplied hop always wins (freshest relay); an absent one keeps the
+    // current value, so a later direct patch that carries no hop does not erase
+    // the relay provenance. The relayed source dropping clears it (below).
+    reachedVia: pickOptional(patch.reachedVia, current.reachedVia, true),
     sources: withSource(current.sources, source),
     lastHeartbeat: Math.max(
       current.lastHeartbeat,
@@ -153,7 +157,15 @@ export function dropPresenceSource(
   current: NodePresence,
   source: PresenceSource,
 ): NodePresence {
-  return { ...current, sources: withoutSource(current.sources, source) };
+  // Dropping the relay source clears the hop so a node that is no longer
+  // relayed cannot keep advertising a stale "linked via WFB through X"
+  // (Rule 44 — a reach surface never claims an unverified path).
+  const reachedVia = source === "relayed" ? undefined : current.reachedVia;
+  return {
+    ...current,
+    sources: withoutSource(current.sources, source),
+    reachedVia,
+  };
 }
 
 /** Merge a connection patch (only present fields override). */

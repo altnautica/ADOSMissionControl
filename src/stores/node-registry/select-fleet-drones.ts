@@ -122,6 +122,11 @@ export function nodeEntryToFleetDrone(
     fcAttached,
     // Source / cloud identity come from presence, never from FC telemetry.
     source: presence.sources.includes("cloud") ? "cloud" : "local",
+    // Transitive-reach provenance: the ground node this drone is linked
+    // through, when it is (also) enrolled via a relay. The reach precedence
+    // (a direct local/cloud source, when present) still decides the primary
+    // reach the UX shows; this only names the WFB hop.
+    reachedVia: presence.reachedVia,
     cloudDeviceId: presence.cloudDeviceId ?? deviceId ?? undefined,
     cloudPosture: presence.cloudPosture,
     profile,

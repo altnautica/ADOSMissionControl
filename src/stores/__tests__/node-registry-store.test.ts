@@ -110,6 +110,31 @@ describe("mergePresence", () => {
     expect(merged.cloudDeviceId).toBe("cd-1");
     expect(merged.name).toBe("renamed");
   });
+
+  it("carries the relay hop and lists the relayed source", () => {
+    const relayed = mergePresence(
+      emptyPresence(),
+      { deviceId: "drone-x", reachedVia: "node:gs-1", lastHeartbeat: 7 },
+      "relayed",
+    );
+    expect(relayed.sources).toEqual(["relayed"]);
+    expect(relayed.reachedVia).toBe("node:gs-1");
+  });
+
+  it("a later direct patch joins the relayed entry and keeps the hop as secondary provenance", () => {
+    // Field case: the drone is first seen relayed (via the GS), then paired
+    // directly. Both sources land on one presence; the hop is preserved so the
+    // provenance UX can still note it, while the reach precedence prefers local.
+    const relayed = mergePresence(
+      emptyPresence(),
+      { deviceId: "drone-x", reachedVia: "node:gs-1" },
+      "relayed",
+    );
+    // A direct local pair carries no hop.
+    const both = mergePresence(relayed, { deviceId: "drone-x" }, "local");
+    expect(both.sources).toEqual(["relayed", "local"]);
+    expect(both.reachedVia).toBe("node:gs-1");
+  });
 });
 
 // ── shouldRemoveEntry predicate ──────────────────────────────────
@@ -331,6 +356,35 @@ describe("useNodeRegistryStore garbage collection", () => {
     expect(store().getEntry(id)).toBeDefined();
     store().detachFc(id);
     expect(store().getEntry(id)).toBeUndefined();
+  });
+
+  it("dropping the relayed source clears the hop and GCs a relayed-only node", () => {
+    const id = resolveNodeId("drone-relayed");
+    store().upsertPresence(
+      id,
+      { deviceId: "drone-relayed", name: "n", reachedVia: "node:gs-1" },
+      "relayed",
+    );
+    expect(store().getEntry(id)?.presence.reachedVia).toBe("node:gs-1");
+    // The GS stops reporting the peer → relayed source drops → node GCs.
+    store().dropPresence(id, "relayed");
+    expect(store().getEntry(id)).toBeUndefined();
+  });
+
+  it("dropping the relayed source clears the hop but keeps a directly-paired node", () => {
+    const id = resolveNodeId("drone-both");
+    store().upsertPresence(
+      id,
+      { deviceId: "drone-both", name: "n", reachedVia: "node:gs-1" },
+      "relayed",
+    );
+    store().upsertPresence(id, { deviceId: "drone-both", name: "n" }, "local");
+    store().dropPresence(id, "relayed");
+    const entry = store().getEntry(id);
+    expect(entry).toBeDefined();
+    expect(entry?.presence.sources).toEqual(["local"]);
+    // The stale hop is gone once the relay link drops (Rule 44).
+    expect(entry?.presence.reachedVia).toBeUndefined();
   });
 });
 

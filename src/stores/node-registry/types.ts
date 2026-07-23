@@ -22,9 +22,17 @@ import type {
 
 /**
  * Which transport a presence observation arrived on. A node can be seen on
- * both at once; both must drop before the presence sub-state clears.
+ * more than one at once; every source must drop before the presence sub-state
+ * clears.
+ *
+ * `"relayed"` marks a node the GCS never paired with directly — it is enrolled
+ * transitively because a directly-paired ground node reports it as its WFB peer
+ * (the field case: pair GCS↔ground, the WFB-linked drone auto-enrolls). Its
+ * {@link NodePresence.reachedVia} names that ground node. When a `"relayed"`
+ * node is later paired directly, the direct source joins the same entry and
+ * takes display precedence — the row upgrades in place rather than duplicating.
  */
-export type PresenceSource = "local" | "cloud";
+export type PresenceSource = "local" | "cloud" | "relayed";
 
 /**
  * The wire-contract node profile. Drives node grouping and panel selection.
@@ -79,6 +87,16 @@ export interface NodePresence {
    * eligible for garbage collection.
    */
   sources: PresenceSource[];
+  /**
+   * For a `"relayed"` node, the `node:<deviceId>` id of the ground node the
+   * drone is linked through (its WFB reach hop). Undefined on a directly-reached
+   * node. Set by the relayed presence patch; cleared when the relayed source is
+   * dropped (so a node that is no longer relayed stops advertising a stale hop,
+   * Rule 44). A later direct source does not clear it, so a directly-paired node
+   * that is ALSO relay-visible keeps the hop as secondary provenance while the
+   * `sources` precedence shows the direct reach as primary.
+   */
+  reachedVia?: string;
   /** Epoch ms of the freshest presence observation across all sources. */
   lastHeartbeat: number;
 }

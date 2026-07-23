@@ -165,6 +165,59 @@ describe("selectFleetDrones — dedupe + cloud merge", () => {
   });
 });
 
+describe("nodeEntryToFleetDrone — transitive-reach provenance", () => {
+  it("projects the relay hop onto a relayed-only node", () => {
+    const row = nodeEntryToFleetDrone(
+      entry({
+        nodeId: "node:drone-x",
+        presence: {
+          deviceId: "drone-x",
+          name: "Drone X",
+          profile: "drone",
+          sources: ["relayed"],
+          reachedVia: "node:gs-1",
+          lastHeartbeat: NOW,
+        },
+      }),
+      undefined,
+      NOW,
+    );
+    expect(row.reachedVia).toBe("node:gs-1");
+    expect(row.status).toBe("online");
+  });
+
+  it("leaves reachedVia undefined on a directly-reached node", () => {
+    const row = nodeEntryToFleetDrone(entry(), undefined, NOW);
+    expect(row.reachedVia).toBeUndefined();
+  });
+
+  it("a node seen relayed-then-direct is ONE row carrying both sources plus the hop", () => {
+    // deviceId collapse: the relayed presence and the later direct pair merged
+    // onto the same node:<deviceId> in the registry (mergePresence), so the
+    // projection yields exactly ONE FleetDrone. The direct (local) source takes
+    // reach precedence; the relay hop rides along as secondary provenance.
+    const nodes: Record<string, NodeEntry> = {
+      "node:drone-x": entry({
+        nodeId: "node:drone-x",
+        presence: {
+          deviceId: "drone-x",
+          name: "Drone X",
+          profile: "drone",
+          sources: ["relayed", "local"],
+          reachedVia: "node:gs-1",
+          lastHeartbeat: NOW,
+        },
+      }),
+    };
+    const rows = selectFleetDrones({ nodes, cloudStatuses: {}, now: NOW });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].id).toBe("node:drone-x");
+    expect(rows[0].reachedVia).toBe("node:gs-1");
+    // Direct reach wins the primary source label; the hop is the provenance.
+    expect(rows[0].source).toBe("local");
+  });
+});
+
 describe("nodeEntryToFleetDrone — FC-link hint projection", () => {
   it("projects the cloud-status fcLinkHint onto the fleet row", () => {
     const status = { deviceId: "dev", fcLinkHint: "msp_detected" } as CommandCloudStatus;

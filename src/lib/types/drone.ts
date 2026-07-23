@@ -145,6 +145,12 @@ export interface FleetDrone extends DroneInfo {
     * emits a MAVLink heartbeat, so fcConnected stays false by design).
     * Undefined on agents that predate the gated FC surface. */
    transportOpen?: boolean;
+   /** When set, this node is TRANSITIVELY enrolled — reached over WFB through
+    * the ground node whose `node:<deviceId>` id this holds, not paired
+    * directly. Drives the "linked via WFB through <node>" provenance. Undefined
+    * for a directly-reached (local / cloud) node; a later direct pair keeps this
+    * as secondary provenance while the reach precedence shows the direct link. */
+   reachedVia?: string;
 }
 
 export type AlertSeverity = "info" | "warning" | "critical";
