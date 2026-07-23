@@ -284,6 +284,62 @@ describe("pushStatus optional compute args", () => {
   });
 });
 
+describe("pushStatus linkedPeers[] (transitive relay enrolment)", () => {
+  // A ground station relaying more than one drone reports the LIST here. The
+  // strict inner v.object rejects an undeclared entry key, so the entry must
+  // declare EXACTLY the producer's camelCase set; the block is conditionally
+  // emitted (absent on a drone / a peerless ground node), so it is guarded by
+  // this dedicated contract rather than the always-emitted top-level list.
+  const LINKED_PEER_ENTRY_KEYS = [
+    "deviceId",
+    "role",
+    "channel",
+    "rssiDbm",
+    "seenAtUnix",
+  ] as const;
+
+  it("declares linkedPeers as an optional array on the mutation + schema", async () => {
+    const [mutation, schema] = await Promise.all([
+      readFile(MUTATION_PATH, "utf8"),
+      readFile(SCHEMA_PATH, "utf8"),
+    ]);
+    const validator = parseArgsBlock(mutation, "pushStatus").get("linkedPeers");
+    expect(validator?.startsWith("v.optional(")).toBe(true);
+    expect(validator).toContain("v.array(");
+    // A key the mutation accepts but the table rejects still fails the write.
+    expect(schema).toContain("linkedPeers:");
+  });
+
+  it("declares exactly the producer's entry key set (deviceId required)", async () => {
+    for (const path of [MUTATION_PATH, SCHEMA_PATH]) {
+      const declared = parseNestedBlockKeys(
+        await readFile(path, "utf8"),
+        "linkedPeers",
+      );
+      expect(Array.from(declared).sort(), path).toEqual(
+        [...LINKED_PEER_ENTRY_KEYS].sort(),
+      );
+      const block = nestedBlockBody(
+        await readFile(path, "utf8"),
+        "linkedPeers",
+      ).replace(/\s+/g, "");
+      // deviceId is the enrolment key (required); the rest optional+nullable so
+      // a sparser producer never rejects the whole heartbeat.
+      expect(block, `${path} deviceId required`).toContain("deviceId:v.string()");
+      for (const key of ["role", "channel", "rssiDbm", "seenAtUnix"]) {
+        expect(block, `${path} ${key} optional`).toContain(`${key}:v.optional(`);
+      }
+    }
+  });
+
+  it("the OSS-twin route forwards linkedPeers through linkedPeersField", async () => {
+    // The explicit-pick route silently drops any field it does not list, so the
+    // mutation would never receive linkedPeers without this forward.
+    const http = (await readFile(HTTP_PATH, "utf8")).replace(/\s+/g, "");
+    expect(http).toContain("linkedPeers:linkedPeersField(body)");
+  });
+});
+
 describe("pushStatus generic plugin-state channel", () => {
   // Atlas (and any future plugin) telemetry rides ONE opaque pluginState map,
   // not per-plugin core columns — the core never grows a column per plugin. The
@@ -418,6 +474,7 @@ describe("pushStatus args / cmd_droneStatus schema parity", () => {
         "lcdRotation",
         "lcdSnapshotUrl",
         "lcdTouchCalibrated",
+        "linkedPeers",
         "logs",
         "macStability",
         "managementLink",

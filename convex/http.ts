@@ -422,6 +422,43 @@ function computeClusterSlavesField(
   return out;
 }
 
+interface LinkedPeerEntry {
+  deviceId: string;
+  role?: string | null;
+  channel?: number | null;
+  rssiDbm?: number | null;
+  seenAtUnix?: number | null;
+}
+
+// Build the linkedPeers[] list a ground station relays. The OSS-twin
+// /agent/status route PICKS fields one by one, so this must be forwarded here
+// or the mutation never receives it. Entries arrive camelCase already (the
+// heartbeat producers emit deviceId/role/channel/rssiDbm/seenAtUnix); an entry
+// with no device id, or a non-object, is DROPPED rather than failing the whole
+// heartbeat, and each field is coerced to the optional-nullable shape the
+// strict inner validator declares. Returns undefined when the agent omits it.
+function linkedPeersField(
+  body: Record<string, unknown>,
+): LinkedPeerEntry[] | undefined {
+  const raw = body.linkedPeers;
+  if (!Array.isArray(raw)) return undefined;
+  const out: LinkedPeerEntry[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) continue;
+    const row = item as Record<string, unknown>;
+    const deviceId = stringField(row, "deviceId");
+    if (!deviceId) continue;
+    out.push({
+      deviceId,
+      role: nullableString(row.role),
+      channel: nullableNumber(row.channel),
+      rssiDbm: nullableNumber(row.rssiDbm),
+      seenAtUnix: nullableNumber(row.seenAtUnix),
+    });
+  }
+  return out.length > 0 ? out : undefined;
+}
+
 interface CameraUsbRecoveryPayload {
   state?: string | null;
   case?: string | null;
@@ -809,6 +846,7 @@ http.route({
       peerChannel: nullableNumber(body.peerChannel),
       peerRssiDbm: nullableNumber(body.peerRssiDbm),
       peerSeenAtUnix: nullableNumber(body.peerSeenAtUnix),
+      linkedPeers: linkedPeersField(body),
       // Primary camera discovery state + USB camera-recovery self-heal block.
       cameraState: nullableString(body.cameraState),
       cameraUsbRecovery: cameraUsbRecoveryField(body),

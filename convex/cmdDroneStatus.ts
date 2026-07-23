@@ -437,6 +437,23 @@ export const pushStatus = internalMutation({
     peerChannel: v.optional(v.union(v.number(), v.null())),
     peerRssiDbm: v.optional(v.union(v.number(), v.null())),
     peerSeenAtUnix: v.optional(v.union(v.number(), v.null())),
+    // The LIST of WFB peers a ground station relays. A GS can be linked to
+    // more than one drone, which the scalar peer* fields above cannot carry;
+    // this is the list a GCS paired only to the ground node reads to enrol
+    // each drone. Each entry carries only what the beacon + listener decode.
+    // The inner v.object is strict, so it declares exactly the producer's
+    // camelCase key set; an undeclared key would reject the whole heartbeat.
+    linkedPeers: v.optional(
+      v.array(
+        v.object({
+          deviceId: v.string(),
+          role: v.optional(v.union(v.string(), v.null())),
+          channel: v.optional(v.union(v.number(), v.null())),
+          rssiDbm: v.optional(v.union(v.number(), v.null())),
+          seenAtUnix: v.optional(v.union(v.number(), v.null())),
+        }),
+      ),
+    ),
     // Primary camera discovery state — "ready" | "missing" | "error".
     cameraState: v.optional(v.union(v.string(), v.null())),
     // USB camera-recovery self-heal state from the air-side reconciler.

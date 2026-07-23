@@ -1211,6 +1211,24 @@ fullName: v.optional(v.string()),
     peerChannel: v.optional(v.union(v.number(), v.null())),
     peerRssiDbm: v.optional(v.union(v.number(), v.null())),
     peerSeenAtUnix: v.optional(v.union(v.number(), v.null())),
+    // The LIST of WFB peers a ground station relays (a GS can be linked to
+    // more than one drone, which the scalar peer* fields above cannot
+    // represent). Populated from the agent's linked-peers sidecar; each entry
+    // carries only what the PresenceBeacon + listener decode. A GCS paired
+    // only to the ground node reads this to enrol each drone as its own node.
+    // Absent on a drone / a peerless ground node; the strict inner v.object
+    // rejects an undeclared key, so it declares exactly the producer's set.
+    linkedPeers: v.optional(
+      v.array(
+        v.object({
+          deviceId: v.string(),
+          role: v.optional(v.union(v.string(), v.null())),
+          channel: v.optional(v.union(v.number(), v.null())),
+          rssiDbm: v.optional(v.union(v.number(), v.null())),
+          seenAtUnix: v.optional(v.union(v.number(), v.null())),
+        }),
+      ),
+    ),
     // Primary camera discovery state on the air-side video pipeline.
     // "ready" → at least one camera assigned and live. "missing" →
     // pipeline scanned but no v4l2 node enumerated. "error" → driver
