@@ -6639,7 +6639,8 @@
     "reason": {
       "notOnThisLane": "Not available over this node's command lane",
       "noFlightState": "No live flight state is being read from this node",
-      "nodeOffline": "The node is offline; nothing is being heard from it"
+      "nodeOffline": "The node is offline; nothing is being heard from it",
+      "noAutonomousNav": "This firmware cannot return, land or take off on its own"
     },
     "actions": {
       "menuLabel": "{name} actions",

@@ -89,23 +89,25 @@ describe("boardBlockReason", () => {
     // LAN credentials never expire and a heartbeat row survives its node, so
     // an offline node still resolves a lane — the honest cause is that it is
     // gone, whatever else its persisted state would say.
-    expect(boardBlockReason(reachable(), ctxWith(), "arm", "offline")).toBe(
-      "nodesView.reason.nodeOffline",
-    );
-    expect(boardBlockReason(UNREACHABLE, ctxWith(), "arm", "offline")).toBe(
-      "nodesView.reason.nodeOffline",
-    );
+    expect(
+      boardBlockReason(reachable(), ctxWith(), "arm", "offline", false),
+    ).toBe("nodesView.reason.nodeOffline");
+    expect(
+      boardBlockReason(UNREACHABLE, ctxWith(), "arm", "offline", false),
+    ).toBe("nodesView.reason.nodeOffline");
   });
 
   it("keeps a stale node's controls with the skill — stale is not gone", () => {
-    expect(boardBlockReason(reachable(), ctxWith(), "arm", "stale")).toBeNull();
+    expect(
+      boardBlockReason(reachable(), ctxWith(), "arm", "stale", false),
+    ).toBeNull();
   });
 
   it("reports the reach cause first — it is the most actionable", () => {
-    expect(boardBlockReason(UNREACHABLE, ctxWith(), "arm", "live")).toBe(
+    expect(boardBlockReason(UNREACHABLE, ctxWith(), "arm", "live", false)).toBe(
       "nodesView.blocked.not-paired",
     );
-    expect(boardBlockReason(DIRECT_FC, ctxWith(), "arm", "live")).toBe(
+    expect(boardBlockReason(DIRECT_FC, ctxWith(), "arm", "live", false)).toBe(
       "nodesView.blocked.direct-fc",
     );
   });
@@ -113,12 +115,18 @@ describe("boardBlockReason", () => {
   it("refuses a command the reaching lane cannot carry", () => {
     // Left pressable, this is the case that looks like it worked and did not.
     expect(
-      boardBlockReason(reachable(sinkWithout("killSwitch")), ctxWith(), "killSwitch", "live"),
+      boardBlockReason(
+        reachable(sinkWithout("killSwitch")),
+        ctxWith(),
+        "killSwitch",
+        "live",
+        false,
+      ),
     ).toBe("nodesView.reason.notOnThisLane");
   });
 
   it("refuses a skill the board has no lane mapping for", () => {
-    expect(boardBlockReason(reachable(), ctxWith(), null, "live")).toBe(
+    expect(boardBlockReason(reachable(), ctxWith(), null, "live", false)).toBe(
       "nodesView.reason.notOnThisLane",
     );
   });
@@ -127,12 +135,100 @@ describe("boardBlockReason", () => {
     // The context withholds its command surface until the node's own arm state
     // has been read; saying "no FC link" there would point at the wrong fault.
     expect(
-      boardBlockReason(reachable(), ctxWith({ protocol: null }), "arm", "live"),
+      boardBlockReason(
+        reachable(),
+        ctxWith({ protocol: null }),
+        "arm",
+        "live",
+        false,
+      ),
     ).toBe("nodesView.reason.noFlightState");
   });
 
   it("defers to the skill when nothing about the node blocks it", () => {
-    expect(boardBlockReason(reachable(), ctxWith(), "arm", "live")).toBeNull();
+    expect(
+      boardBlockReason(reachable(), ctxWith(), "arm", "live", false),
+    ).toBeNull();
+  });
+});
+
+describe("boardBlockReason — autonomous-nav gate", () => {
+  // A control that needs autonomous navigation (RTL/Land/Takeoff) is refused on
+  // a firmware known to lack it, but only once the node is otherwise fully
+  // reachable and live — the vehicle's real capability limit, surfaced instead
+  // of an enabled safety-return it cannot perform. The board reads the same
+  // tri-state the cockpit's resolveForDrone reads.
+
+  it("refuses an autonomous-nav control on a firmware known to lack it", () => {
+    expect(
+      boardBlockReason(
+        reachable(),
+        ctxWith({ autonomousNav: "unsupported" }),
+        "returnToLaunch",
+        "live",
+        true,
+      ),
+    ).toBe("nodesView.reason.noAutonomousNav");
+  });
+
+  it("keeps it when the firmware supports autonomous nav", () => {
+    expect(
+      boardBlockReason(
+        reachable(),
+        ctxWith({ autonomousNav: "supported" }),
+        "returnToLaunch",
+        "live",
+        true,
+      ),
+    ).toBeNull();
+  });
+
+  it("keeps it when the capability is merely unknown — not-connected is not cannot", () => {
+    expect(
+      boardBlockReason(
+        reachable(),
+        ctxWith({ autonomousNav: "unknown" }),
+        "returnToLaunch",
+        "live",
+        true,
+      ),
+    ).toBeNull();
+  });
+
+  it("never touches a control that does not need autonomous nav", () => {
+    expect(
+      boardBlockReason(
+        reachable(),
+        ctxWith({ autonomousNav: "unsupported" }),
+        "arm",
+        "live",
+        false,
+      ),
+    ).toBeNull();
+  });
+
+  it("reports offline ahead of the firmware limit", () => {
+    expect(
+      boardBlockReason(
+        reachable(),
+        ctxWith({ autonomousNav: "unsupported" }),
+        "returnToLaunch",
+        "offline",
+        true,
+      ),
+    ).toBe("nodesView.reason.nodeOffline");
+  });
+
+  it("reports an unreachable node's reach cause ahead of the firmware limit", () => {
+    expect(
+      boardBlockReason(
+        UNREACHABLE,
+        ctxWith({ autonomousNav: "unsupported" }),
+        "returnToLaunch",
+        "live",
+        true,
+      ),
+    ).toBe("nodesView.blocked.not-paired");
   });
 });
 

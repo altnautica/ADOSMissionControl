@@ -13,8 +13,9 @@
  * second command path would be a second set of safety gates to keep in step,
  * and they would not stay in step.
  *
- * Four gates run before a skill's own, because each names a cause the skill
- * cannot see and each is more actionable than "no link":
+ * Five gates run before a skill's own state is read. The first four each name a
+ * cause the skill cannot see, each more actionable than "no link"; the fifth is
+ * the vehicle's own capability limit:
  *
  *  1. the node is offline — nothing is being heard from it, so whatever lane
  *     its credentials would resolve, no command can honestly be offered;
@@ -22,7 +23,12 @@
  *  3. the lane that reaches it cannot carry this particular command, which is
  *     the case that would otherwise look like it worked and quietly do nothing;
  *  4. no live flight state is being read from the node, so there is no arm
- *     state to gate on and no command is dispatched blind.
+ *     state to gate on and no command is dispatched blind;
+ *  5. the node's firmware is known to lack autonomous navigation, so a control
+ *     that needs it (return-to-launch, land, take-off) is refused with that
+ *     real limit as the cause instead of being offered on a vehicle that cannot
+ *     perform it — the same signal the cockpit hides those skills on, so the
+ *     board and the cockpit agree for one node.
  *
  * @license GPL-3.0-only
  */
@@ -97,12 +103,19 @@ export interface NodeSkills {
  * Why a board control cannot run, ahead of the skill's own gates. Null means
  * the skill decides. Exported for tests: this ordering is the board's safety
  * contract, and it has to hold without a React tree to prove it.
+ *
+ * `requiresAutonomousNav` is the skill's own flag (true on RTL / Land / Takeoff),
+ * the same one the cockpit's `resolveForDrone` reads: on the board these controls
+ * are a fixed set that cannot be hidden the way the cockpit hides them, so they
+ * are surfaced disabled-with-reason on a firmware known to lack the capability
+ * instead.
  */
 export function boardBlockReason(
   reach: NodeReachDescriptor,
   ctx: SkillContext,
   method: keyof SkillProtocol | null,
   liveness: CommandAgentLiveness,
+  requiresAutonomousNav: boolean,
 ): string | null {
   // Offline comes first: LAN credentials never expire and a heartbeat row
   // survives its node, so an offline node can still resolve a lane — but with
@@ -121,6 +134,17 @@ export function boardBlockReason(
   // The context withholds its command surface until the node's own arm state
   // has actually been read, so this is the honest cause — not "no FC link".
   if (!ctx.protocol) return "nodesView.reason.noFlightState";
+  // Last, and only once the node is fully reachable and its live state proven:
+  // a firmware known to lack autonomous navigation (an acro flight controller)
+  // cannot return, land or take off on its own, whatever the link carries, so a
+  // control that needs it is refused with the vehicle's real limit as the cause.
+  // The board reads the same tri-state the cockpit reads — "supported" and
+  // "unknown" both keep the control (an unidentified firmware may well have it,
+  // and a blanket-false capability read on an un-handshaken node must never be
+  // mistaken for "cannot") — so only a known-unsupported firmware drops it.
+  if (requiresAutonomousNav && ctx.autonomousNav === "unsupported") {
+    return "nodesView.reason.noAutonomousNav";
+  }
   return null;
 }
 
@@ -139,6 +163,7 @@ export function resolveBoardSkillState(
     ctx,
     methodForSkill(skill.id),
     liveness,
+    Boolean(skill.requiresAutonomousNav),
   );
   return blocked ? { kind: "disabled", reason: blocked } : skill.getState(ctx);
 }
