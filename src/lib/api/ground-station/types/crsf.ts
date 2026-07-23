@@ -63,6 +63,17 @@ export interface CrsfState {
   // Control mode (CRSF RC-channel injection vs MAVLink-over-ExpressLRS). Null
   // when not reported.
   mode: string | null;
+  // MAVLink-over-ExpressLRS command-down gate. When the lane runs
+  // MAVLink-over-ELRS the full-bidirectional flight-controller command path is
+  // held behind a safety gate: telemetry flows down but commands are NOT
+  // delivered to the FC until that gate is lifted. `true` = command path gated
+  // (telemetry-only), so a surface must not imply commands reach the FC.
+  // `false` = the command path is open. Tri-state — null means NO VERDICT
+  // (absent, an older agent, or a lane not running MAVLink-over-ELRS), never a
+  // fabricated false, which would assert the command path was open. Carried on
+  // BOTH casings (a safety gate must be visible on every reach path, so unlike
+  // flyable / pic the heartbeat projection keeps it).
+  fcCommandDownGated: boolean | null;
   // Where the RC channels originate (handset joystick / injection API /
   // virtual sticks). Null when not reported.
   channelSource: string | null;

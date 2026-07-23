@@ -29,6 +29,7 @@ describe("normalizeCrsf absent / malformed block", () => {
     expect(crsf!.rfUnverified).toBeNull();
     expect(crsf!.flyable).toBeNull();
     expect(crsf!.mode).toBeNull();
+    expect(crsf!.fcCommandDownGated).toBeNull();
     expect(crsf!.channelSource).toBeNull();
     expect(crsf!.pic).toBeNull();
     expect(crsf!.relayRole).toBeNull();
@@ -192,6 +193,41 @@ describe("normalizeCrsf flyable + pic (LAN-sidecar only)", () => {
   });
 });
 
+describe("normalizeCrsf command-down gate (tri-state, both casings)", () => {
+  it("preserves an explicit gated verdict from either casing", () => {
+    expect(normalizeCrsf({ fcCommandDownGated: true })!.fcCommandDownGated).toBe(
+      true,
+    );
+    expect(
+      normalizeCrsf({ fc_command_down_gated: true })!.fcCommandDownGated,
+    ).toBe(true);
+  });
+
+  it("keeps an explicit open (not-gated) verdict distinct from absent", () => {
+    expect(
+      normalizeCrsf({ fcCommandDownGated: false })!.fcCommandDownGated,
+    ).toBe(false);
+    expect(
+      normalizeCrsf({ fc_command_down_gated: false })!.fcCommandDownGated,
+    ).toBe(false);
+  });
+
+  it("reads an absent or explicit-null gate as null, never a fabricated open", () => {
+    expect(normalizeCrsf({ state: "ready" })!.fcCommandDownGated).toBeNull();
+    expect(
+      normalizeCrsf({ fcCommandDownGated: null })!.fcCommandDownGated,
+    ).toBeNull();
+  });
+
+  it("maps a non-boolean gate to null", () => {
+    for (const raw of ["true", 1, 0, {}, []]) {
+      expect(
+        normalizeCrsf({ fcCommandDownGated: raw })!.fcCommandDownGated,
+      ).toBeNull();
+    }
+  });
+});
+
 describe("normalizeCrsf string fields", () => {
   it("parses band / mode / channelSource / relayRole (either casing)", () => {
     const camel = normalizeCrsf({
@@ -259,6 +295,9 @@ describe("normalizeCrsf full-block fidelity across both casings", () => {
       rfUnverified: false,
       flyable: true,
       mode: "crsf_rc",
+      // A CRSF RC-channel lane has no MAVLink command-down concept, so the
+      // sidecar omits the gate and it folds to null (no verdict).
+      fcCommandDownGated: null,
       channelSource: "joystick",
       pic: "ground",
       relayRole: "origin",
@@ -280,6 +319,9 @@ describe("normalizeCrsf full-block fidelity across both casings", () => {
       rxFramesPerS: 0,
       rfUnverified: true,
       mode: "mavlink_elrs",
+      // The command-down gate rides the heartbeat too (a safety verdict must be
+      // visible over the cloud path), so a MAVLink-over-ELRS lane carries it.
+      fcCommandDownGated: true,
       channelSource: "api",
       relayRole: null,
     })!;
@@ -297,6 +339,7 @@ describe("normalizeCrsf full-block fidelity across both casings", () => {
       rfUnverified: true,
       flyable: null, // dropped by the projection → no verdict over the cloud
       mode: "mavlink_elrs",
+      fcCommandDownGated: true, // safety gate is kept over the heartbeat
       channelSource: "api",
       pic: null, // dropped by the projection
       relayRole: null,

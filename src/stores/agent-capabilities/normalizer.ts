@@ -363,6 +363,13 @@ export function normalizeCrsf(raw: unknown): CrsfState | null {
     // Null over the cloud path / on older agents rather than a fabricated false.
     flyable: bool(r.flyable),
     mode: str(r.mode),
+    // MAVLink-over-ELRS command-down safety gate. A safety verdict must travel
+    // on every reach path, so it reads from either casing (unlike flyable / pic,
+    // which the heartbeat projection drops). Anything that is not a real boolean
+    // — absent, explicit null, a stale snapshot — normalizes to null ("no
+    // verdict"). Defaulting to false would fabricate a claim that the FC command
+    // path is open.
+    fcCommandDownGated: bool(r.fcCommandDownGated ?? r.fc_command_down_gated),
     channelSource: str(r.channelSource ?? r.channel_source),
     // PIC arbiter, LAN-sidecar only (the heartbeat projection drops it).
     pic: str(r.pic),
