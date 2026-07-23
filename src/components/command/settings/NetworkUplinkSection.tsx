@@ -25,7 +25,12 @@ import { groundStationApiFromAgent } from "@/lib/api/ground-station-api";
 import type { EthernetConfig, NetworkStatus } from "@/lib/api/ground-station/types";
 import { Toggle } from "@/components/ui/toggle";
 import { useToast } from "@/components/ui/toast";
-import { ConfigToggleField } from "./ConfigFields";
+import {
+  ConfigIntField,
+  ConfigSecretField,
+  ConfigTextField,
+  ConfigToggleField,
+} from "./ConfigFields";
 import { Section } from "./Section";
 
 const POLL_MS = 5000;
@@ -531,15 +536,44 @@ export function NetworkUplinkSection({
         <InfoNote>{t("network.uplinkUnsupportedProfile")}</InfoNote>
       )}
 
-      {/* Config-backed hotspot switch — every profile. */}
-      <ConfigToggleField
-        configKey="network.hotspot.enabled"
-        label={t("network.hotspotLabel")}
-        hint={t("network.hotspotHint")}
-        config={config}
-        readOnly={readOnly}
-        setValue={setValue}
-      />
+      {/* Config-backed hotspot — every profile. */}
+      <div className="space-y-4 border-t border-border-default pt-4">
+        <ConfigToggleField
+          configKey="network.hotspot.enabled"
+          label={t("network.hotspotLabel")}
+          hint={t("network.hotspotHint")}
+          config={config}
+          readOnly={readOnly}
+          setValue={setValue}
+        />
+        <ConfigTextField
+          configKey="network.hotspot.ssid"
+          label={t("network.hotspotSsidLabel")}
+          hint={t("network.hotspotSsidHint")}
+          placeholder="ADOS-{device_id}"
+          config={config}
+          readOnly={readOnly}
+          setValue={setValue}
+        />
+        <ConfigIntField
+          configKey="network.hotspot.channel"
+          label={t("network.hotspotChannelLabel")}
+          hint={t("network.hotspotChannelHint")}
+          min={1}
+          max={13}
+          config={config}
+          readOnly={readOnly}
+          setValue={setValue}
+        />
+        <ConfigSecretField
+          configKey="network.hotspot.password"
+          label={t("network.hotspotPasswordLabel")}
+          hint={t("network.hotspotPasswordHint")}
+          config={config}
+          readOnly={readOnly}
+          setValue={setValue}
+        />
+      </div>
     </Section>
   );
 }

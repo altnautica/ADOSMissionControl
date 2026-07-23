@@ -187,6 +187,76 @@ export function ConfigTextField({
   );
 }
 
+/** A write-only secret field bound to a string config key; writes a NEW value
+ * on Apply and NEVER reads or renders the current one. It shows only a
+ * set / not-set state (derived from whether the config holds a non-empty
+ * value — the value itself is never displayed), and an empty input is a no-op
+ * so a stored secret is never clobbered with "". Use for passphrases the agent
+ * emits in plain text (e.g. the hotspot passphrase, which GET does not
+ * redact). */
+export function ConfigSecretField({
+  configKey,
+  label,
+  hint,
+  placeholder,
+  config,
+  readOnly,
+  setValue,
+}: BaseProps & { placeholder?: string }) {
+  const t = useTranslations("nodeSettings");
+  const { toast } = useToast();
+  const raw = readConfigPath(config, configKey);
+  const isSet = typeof raw === "string" && raw.length > 0;
+  const [draft, setDraft] = useState("");
+  const [saving, setSaving] = useState(false);
+  const dirty = draft.length > 0;
+
+  const onApply = async () => {
+    if (readOnly || saving || !dirty) return;
+    setSaving(true);
+    try {
+      await setValue(configKey, draft);
+      toast(t("applied"), "success");
+      setDraft("");
+    } catch (err) {
+      toast(err instanceof Error ? err.message : t("applyFailed"), "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-baseline justify-between gap-2">
+        <label className="text-xs text-text-secondary">{label}</label>
+        <span className="font-mono text-[11px] text-text-tertiary">
+          {isSet ? t("set") : t("notSet")}
+        </span>
+      </div>
+      <div className="flex items-end gap-2">
+        <input
+          type="password"
+          value={draft}
+          placeholder={placeholder ?? t("secretPlaceholder")}
+          onChange={(e) => setDraft(e.target.value)}
+          disabled={readOnly || saving}
+          autoComplete="new-password"
+          className="h-9 flex-1 rounded border border-border-default bg-bg-tertiary px-2 font-mono text-sm text-text-primary focus:border-accent-primary focus:outline-none disabled:opacity-50"
+        />
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => void onApply()}
+          disabled={readOnly || saving || !dirty}
+        >
+          {saving ? t("saving") : t("apply")}
+        </Button>
+      </div>
+      {hint ? <p className="text-[11px] text-text-tertiary">{hint}</p> : null}
+    </div>
+  );
+}
+
 /** Parse an operator-typed integer within [min, max]. Null when invalid. */
 export function parseBoundedInt(
   raw: string,

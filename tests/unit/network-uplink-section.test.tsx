@@ -9,7 +9,7 @@
  */
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { renderWithIntl } from "../helpers/intl-wrapper";
 
 import {
@@ -214,5 +214,78 @@ describe("NetworkUplinkSection on other profiles", () => {
     // The config-backed hotspot switch still renders for every profile.
     expect(screen.getByText("Wi-Fi hotspot")).toBeTruthy();
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("NetworkUplinkSection hotspot fields", () => {
+  function renderHotspot() {
+    const setValue = vi.fn(async () => {});
+    renderWithIntl(
+      <NetworkUplinkSection
+        profile="drone"
+        config={{
+          network: {
+            hotspot: {
+              enabled: true,
+              ssid: "ADOS-bench",
+              channel: 6,
+              password: "supersecret",
+            },
+          },
+        }}
+        readOnly={false}
+        setValue={setValue}
+      />,
+    );
+    return { setValue };
+  }
+
+  it("binds SSID and channel to the real config keys with read-back", () => {
+    renderHotspot();
+    // SSID + channel render the current emitted values in their inputs.
+    expect(screen.getByDisplayValue("ADOS-bench")).toBeTruthy();
+    expect(screen.getByDisplayValue("6")).toBeTruthy();
+  });
+
+  it("writes a new SSID to network.hotspot.ssid", async () => {
+    const { setValue } = renderHotspot();
+    const ssidInput = screen.getByDisplayValue("ADOS-bench");
+    fireEvent.change(ssidInput, { target: { value: "ADOS-field" } });
+    const applyBtn = within(
+      ssidInput.parentElement as HTMLElement,
+    ).getByRole("button");
+    fireEvent.click(applyBtn);
+    await waitFor(() =>
+      expect(setValue).toHaveBeenCalledWith(
+        "network.hotspot.ssid",
+        "ADOS-field",
+      ),
+    );
+  });
+
+  it("never echoes the passphrase and writes a new one on Apply", async () => {
+    const { setValue } = renderHotspot();
+    const pwInput = screen.getByPlaceholderText(
+      "Enter a new value",
+    ) as HTMLInputElement;
+    // Write-only: the current passphrase is never rendered anywhere.
+    expect(pwInput.value).toBe("");
+    expect(pwInput.type).toBe("password");
+    expect(screen.queryByText("supersecret")).toBeNull();
+    expect(screen.queryByDisplayValue("supersecret")).toBeNull();
+    // A non-empty value is present → the field reads "Set" (never the value).
+    expect(screen.getByText("Set")).toBeTruthy();
+
+    fireEvent.change(pwInput, { target: { value: "newpass123" } });
+    const applyBtn = within(
+      pwInput.parentElement as HTMLElement,
+    ).getByRole("button");
+    fireEvent.click(applyBtn);
+    await waitFor(() =>
+      expect(setValue).toHaveBeenCalledWith(
+        "network.hotspot.password",
+        "newpass123",
+      ),
+    );
   });
 });

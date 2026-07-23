@@ -1199,7 +1199,13 @@
       "sharePersistedNotApplied": "Saved, but not applied to a live uplink: {reason}",
       "liveRequiresLan": "Live network status needs a direct connection to this node's agent — it is not carried over the cloud relay.",
       "loadFailed": "Could not read the node's network status.",
-      "uplinkUnsupportedProfile": "This node's agent exposes the uplink matrix on ground station nodes only."
+      "uplinkUnsupportedProfile": "This node's agent exposes the uplink matrix on ground station nodes only.",
+      "hotspotSsidLabel": "Hotspot SSID",
+      "hotspotSsidHint": "The network name the setup access point broadcasts.",
+      "hotspotChannelLabel": "Hotspot channel",
+      "hotspotChannelHint": "The 2.4 GHz Wi-Fi channel (1–13) the access point uses.",
+      "hotspotPasswordLabel": "Hotspot password",
+      "hotspotPasswordHint": "The WPA2 passphrase for the access point. Enter a new value to change it; the current one is never shown."
     },
     "cloud": {
       "title": "Cloud relay",
@@ -1512,7 +1518,9 @@
       "pinLocked": "Locked (failed attempts)",
       "pinHint": "Gates the node's own web dashboard when opened from another device. Set or reset it from this node's Health tab, on the Dashboard access card.",
       "pinNoPath": "The PIN posture can only be read through a stored pairing record for this node. Manage the PIN on the node's own dashboard, or from the Health tab once the node is paired over the LAN."
-    }
+    },
+    "set": "Set",
+    "secretPlaceholder": "Enter a new value"
   },
   "dronePlugins": {
     "titleForDrone": "Extensions on {drone}",
