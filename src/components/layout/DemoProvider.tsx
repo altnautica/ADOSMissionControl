@@ -238,6 +238,50 @@ function buildDemoStatus(
         { name: "ados-wfb-receiver", status: "running" },
         { name: "mediamtx-gs", status: "running" },
       ],
+      // A verified WFB link (received-side proof) so the transitive-enrollment
+      // bridge (RelayedDroneBridge) treats the ground node as radio-up and
+      // surfaces the funneled feed for the drones it relays (Rule 44).
+      radio: {
+        state: "connected",
+        iface: "wlan1",
+        channel: 149,
+        band: "u-nii-3",
+        rssiDbm: -58,
+        bitrateKbps: 18500,
+        linkDiag: "healthy",
+        validRxPacketsPerS: 312,
+        rfUnverified: false,
+        paired: true,
+      },
+      // The WFB peers this ground node relays. romeo-15 + whiskey-23 are NOT
+      // otherwise paired, so each transitively enrolls as its own "linked via
+      // WFB through <GS>" node (romeo-15 fresh + strong = a verified funneled
+      // feed; whiskey-23 old + weak = an honest down relay). alpha-1 IS also
+      // cloud-paired, so it keeps its direct reach and shows the WFB path as a
+      // secondary provenance chip.
+      linkedPeers: [
+        {
+          deviceId: "romeo-15",
+          role: "drone",
+          rssiDbm: -63,
+          channel: 149,
+          seenAtUnix: Math.floor(now / 1000),
+        },
+        {
+          deviceId: "whiskey-23",
+          role: "drone",
+          rssiDbm: -90,
+          channel: 149,
+          seenAtUnix: Math.floor((now - 180_000) / 1000),
+        },
+        {
+          deviceId: "alpha-1",
+          role: "drone",
+          rssiDbm: -55,
+          channel: 149,
+          seenAtUnix: Math.floor(now / 1000),
+        },
+      ],
     };
   }
 
@@ -659,7 +703,11 @@ export function DemoProvider() {
       const statuses: CommandCloudStatus[] = DEMO_AGENTS.map((agent, index) =>
         buildDemoStatus(agent, index, now),
       );
-      useCommandFleetStore.getState().setCloudStatuses(statuses);
+      // Upsert (not replace) so the transitive-enrollment bridge's funneled
+      // relayed-drone rows (romeo-15 / whiskey-23), which it writes into this
+      // same store, survive each 2s tick rather than being wiped and re-added.
+      // The demo roster is fixed, so nothing needs the replace semantics.
+      useCommandFleetStore.getState().upsertCloudStatuses(statuses);
       for (const status of statuses) {
         if (status.telemetry) {
           useCommandFleetStore.getState().setTelemetry(status.deviceId, status.telemetry);
