@@ -4,9 +4,13 @@
  * SSRF guard tests for the LAN-pair proxy host allowlist. The proxy makes
  * plain-HTTP requests on the operator's behalf (including a write-capable
  * config PUT), so `normaliseAndCheckHost` must accept ONLY private / mDNS /
- * loopback targets. The regression these tests pin: the IPv6 private-range
+ * loopback targets. Two regressions these tests pin: the IPv6 private-range
  * check used a leading-substring match (`host.startsWith("fc")`), which let a
- * public DNS name like `fd-cdn.example.com` masquerade as a ULA address.
+ * public DNS name like `fd-cdn.example.com` masquerade as a ULA address; and
+ * the IPv4 check used start-anchored prefix regexes (`^10\.`, `^192\.168\.`,
+ * …) with no dotted-quad-literal requirement, which let a public DNS name that
+ * merely STARTS with a private label (`10.attacker.example`) masquerade as an
+ * RFC1918 address and be DNS-resolved to a public IP.
  */
 
 import { describe, it, expect } from "vitest";
@@ -69,6 +73,35 @@ describe("normaliseAndCheckHost — private-address allowlist", () => {
     expect(classify("ftp://192.168.1.50")).toEqual({
       rejected: "host_not_private",
     });
+  });
+
+  // The IPv4 twin of the ULA-prefix bug: a public DNS name that merely *starts*
+  // with a private label must not be classified as an RFC1918 address (it would
+  // then be DNS-resolved to a public IP and fetched with the operator's key).
+  it("rejects public DNS names that start with a private IPv4 label", () => {
+    expect(classify("10.attacker.example")).toEqual({
+      rejected: "host_not_private",
+    });
+    expect(classify("192.168.evil.example")).toEqual({
+      rejected: "host_not_private",
+    });
+    expect(classify("172.20.exfil.example")).toEqual({
+      rejected: "host_not_private",
+    });
+    expect(classify("169.254.metadata.example")).toEqual({
+      rejected: "host_not_private",
+    });
+    // A public literal must still be rejected.
+    expect(classify("8.8.8.8")).toEqual({ rejected: "host_not_private" });
+  });
+
+  it("accepts complete private IPv4 literals and an mDNS name", () => {
+    expect(classify("10.0.0.5")).toEqual({ host: "10.0.0.5" });
+    expect(classify("192.168.1.50")).toEqual({ host: "192.168.1.50" });
+    expect(classify("172.16.0.1")).toEqual({ host: "172.16.0.1" });
+    expect(classify("127.0.0.1")).toEqual({ host: "127.0.0.1" });
+    expect(classify("169.254.1.1")).toEqual({ host: "169.254.1.1" });
+    expect(classify("foo.local")).toEqual({ host: "foo.local" });
   });
 
   // The core fix: a public DNS name that merely *starts* with the ULA/link-local

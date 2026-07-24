@@ -18,13 +18,45 @@
  * @license GPL-3.0-only
  */
 
-const PRIVATE_V4 = [
-  /^10\./,
-  /^192\.168\./,
-  /^172\.(1[6-9]|2\d|3[01])\./,
-  /^127\./,
-  /^169\.254\./, // link-local
-];
+/**
+ * Parse a dotted-quad IPv4 literal into its four octets, or null when the
+ * string is not a syntactically complete IPv4 address (exactly four decimal
+ * octets, each 0-255). A hostname that merely *starts* with a private label
+ * (`10.attacker.example`) is NOT a literal and returns null — so it can never be
+ * classified as a private address and DNS-resolved to a public IP the operator's
+ * key is then handed to. This is the IPv4 twin of the parse-not-prefix check
+ * `parseIpv6` gives the v6 side.
+ */
+function parseIpv4(input: string): [number, number, number, number] | null {
+  const m = input.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (!m) return null;
+  const octets = m.slice(1, 5).map(Number);
+  if (octets.some((n) => n > 255)) return null;
+  return octets as [number, number, number, number];
+}
+
+/**
+ * True when `input` is a complete IPv4 literal inside a private range —
+ * 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 127.0.0.0/8 (loopback), or
+ * 169.254.0.0/16 (link-local) — the only IPv4 ranges Mission Control is willing
+ * to proxy to. Checks the PARSED octets, never a leading substring, so a public
+ * hostname that begins with a private label is rejected. Exported so the
+ * server-side resolver can reuse it as a DNS-rebinding guard on a resolved
+ * address (a `.local` name is the only DNS-resolvable host the allowlist admits,
+ * and it must still land on a private IP).
+ */
+export function isPrivateIpv4(input: string): boolean {
+  const o = parseIpv4(input);
+  if (!o) return false;
+  const [a, b] = o;
+  return (
+    a === 10 || // 10.0.0.0/8
+    a === 127 || // 127.0.0.0/8 loopback
+    (a === 192 && b === 168) || // 192.168.0.0/16
+    (a === 172 && b >= 16 && b <= 31) || // 172.16.0.0/12
+    (a === 169 && b === 254) // 169.254.0.0/16 link-local
+  );
+}
 
 /**
  * Parse an IPv6 literal into its eight 16-bit groups, or null when the string
@@ -173,7 +205,11 @@ export function normaliseAndCheckHost(input: string): HostValidationResult {
     host === "localhost" ||
     host === "127.0.0.1" ||
     (v6 !== null && isLoopbackV6(v6));
-  const isPrivateV4 = v6 === null && PRIVATE_V4.some((re) => re.test(host));
+  // Classified private-v4 ONLY when `host` is a complete IPv4 literal in a
+  // private range — never a DNS name that merely *starts* with a private label
+  // (`10.attacker.example`), which the operator's key would otherwise be handed
+  // to after a public DNS resolution.
+  const isPrivateV4 = v6 === null && isPrivateIpv4(host);
   // fc00::/7 (ULA) and fe80::/10 (link-local) are the only IPv6 ranges Mission
   // Control accepts, checked against the PARSED address, never a leading
   // substring.
