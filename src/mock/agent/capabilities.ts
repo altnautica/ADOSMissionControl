@@ -14,13 +14,15 @@ import type {
   AgentCapabilities,
   NavigationCapability,
 } from "@/lib/agent/feature-types";
-import type { RadioState } from "@/lib/api/ground-station/types";
+import type { CrsfState, RadioState } from "@/lib/api/ground-station/types";
 import { jitter } from "./utils";
 
 /** Demo air-side radio snapshot so the Radio / Network Health panel renders
  * its live indicators in `npm run demo`: a US-domain link locked on its home
- * channel (so it reads "pinned"), TX active with a ground decode, and an
- * injection-capable adapter. The normalizer fills any field omitted here. */
+ * channel (so it reads "pinned"), TX active with a ground decode, an
+ * injection-capable adapter, and a healthy link-diagnosis verdict backed by a
+ * flowing received-frame count (the honest received-side proof, Rule 44). The
+ * normalizer fills any field omitted here. */
 const MOCK_RADIO: Partial<RadioState> = {
   state: "connected",
   iface: "wlan1",
@@ -41,7 +43,43 @@ const MOCK_RADIO: Partial<RadioState> = {
   // verdict is an explicit false (proven), not an absent reading.
   rfUnverified: false,
   rssiDbm: -44,
+  snrDb: 32,
+  bitrateKbps: 18500,
+  fecRecovered: 1240,
+  fecLost: 9,
+  lossPercent: 0.4,
+  // A healthy link-diagnosis verdict, proven by a flowing received-frame count.
+  linkDiag: "healthy",
+  packetsAll: 152340,
+  validRxPacketsPerS: 312,
+  decryptErrors: 0,
   paired: true,
+};
+
+/** Demo CRSF / ExpressLRS control-lane snapshot so the RC / ELRS Link tab
+ * renders a populated, honest lane in `npm run demo`: a healthy 900 MHz link
+ * transmitting handset RC channels through a relay role, with the transmit
+ * proven (rfUnverified false) and the RC command path open (fcCommandDownGated
+ * false — an RC lane's sticks reach the FC). Read loosely off the caps payload
+ * by the normalizer (camelCase), like the radio block. */
+const MOCK_CRSF: Partial<CrsfState> = {
+  state: "link_ok",
+  rssiDbm: -62,
+  lqUplink: 98,
+  lqDownlink: 95,
+  snrDb: 9,
+  band: "900 MHz",
+  packetRateHz: 150,
+  txPowerMw: 250,
+  txFramesPerS: 150,
+  rxFramesPerS: 50,
+  rfUnverified: false,
+  flyable: true,
+  mode: "crsf_rc",
+  fcCommandDownGated: false,
+  channelSource: "hid",
+  pic: "claimed",
+  relayRole: "relay",
 };
 
 type MockNavigationMode =
@@ -178,8 +216,14 @@ export function getMockCapabilities(
   // normalizer (it is not a declared AgentCapabilities field), so attach it
   // alongside the typed block. `radioStackState` + `macStability` ARE
   // declared, so they sit in the typed object directly.
-  const caps: AgentCapabilities & { radio: Partial<RadioState> } = {
+  const caps: AgentCapabilities & {
+    radio: Partial<RadioState>;
+    crsf: Partial<CrsfState>;
+  } = {
     radio: MOCK_RADIO,
+    // The agent-relay ELRS control lane a drone can host: read
+    // loosely off the payload by the normalizer, alongside radio.
+    crsf: MOCK_CRSF,
     radioStackState: "ok",
     macStability: {
       adapters: [
@@ -332,4 +376,98 @@ export function getMockCapabilities(
   }
 
   return caps;
+}
+
+/**
+ * Mock capability snapshot for the demo ground-station node: the ground-side
+ * WFB radio + the CRSF/ExpressLRS control lane it transmits (so `radioPresent`
+ * and `crsfPresent` both gate their tabs on), plus the adapter-stability /
+ * WiFi-powersave / management-link health the Network tab surfaces. Leaner than
+ * a drone's caps (no NPU / vision / cameras — a ground node does not fly a
+ * vision pipeline); the profile + role are set so the capability store reads the
+ * relay ground-station honestly.
+ */
+export function getMockGroundStationCapabilities(): AgentCapabilities & {
+  radio: Partial<RadioState>;
+  crsf: Partial<CrsfState>;
+  profile: string;
+  role: string;
+} {
+  return {
+    radio: MOCK_RADIO,
+    crsf: MOCK_CRSF,
+    radioStackState: "ok",
+    // profile / role are read loosely off the payload by deriveProfile /
+    // deriveRole (not declared AgentCapabilities fields), so the capability
+    // store reads the relay ground-station honestly.
+    profile: "ground-station",
+    role: "relay",
+    macStability: {
+      adapters: [
+        {
+          name: "wlan1",
+          vidpid: "0bda:8812",
+          state: "pinned",
+          source: "learned",
+          pinnedMac: "02:c6:75:83:1a:3e",
+          lastSeenMac: "02:c6:75:83:1a:3e",
+        },
+      ],
+    },
+    wifiPowersave: {
+      interfaces: [
+        {
+          iface: "wlan0",
+          powersaveOn: false,
+          reasserts: 1,
+          lastReassert: "2026-07-04T10:15:00Z",
+          signalDbm: -52,
+          linkState: "connected",
+        },
+      ],
+    },
+    managementLink: {
+      state: "healthy",
+      iface: "eth0",
+      transport: "ethernet",
+      backend: "networkd",
+      carrier: true,
+      hasLease: true,
+      gatewayReachable: true,
+      repairing: false,
+      lastRepairAt: null,
+      repairsInWindow: 0,
+    },
+    tier: 3,
+    cameras: [],
+    videoStreams: [],
+    compute: {
+      npu_available: false,
+      npu_runtime: null,
+      npu_tops: 0,
+      npu_utilization_pct: 0,
+      gpu_available: false,
+    },
+    vision: {
+      engine_state: "off",
+      active_behavior: null,
+      behavior_state: null,
+      fps: 0,
+      inference_ms: 0,
+      model_loaded: null,
+      track_count: 0,
+      target_locked: false,
+      target_confidence: 0,
+      obstacle_mode: "off",
+      nearest_obstacle_m: null,
+      threat_level: "green",
+    },
+    models: {
+      installed: [],
+      cache_used_mb: 0,
+      cache_max_mb: 500,
+      registry_url: "",
+    },
+    runtimeMode: "native",
+  };
 }
