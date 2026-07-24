@@ -19,7 +19,7 @@
  * @license GPL-3.0-only
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslations } from "next-intl";
 import { ChevronDown } from "lucide-react";
@@ -37,6 +37,11 @@ const ON_CHIP =
 /** Matches the popover's `w-64`, so the viewport clamp knows its footprint. */
 const POPOVER_WIDTH = 256;
 
+/** Focusable descendants inside the popover, in DOM order. Excludes the popover
+ * container itself (tabindex="-1") so focus lands on a real control. */
+const FOCUSABLE =
+  'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+
 export function FeaturesCell({ node }: { node: FleetNodeEntry }) {
   const t = useTranslations("nodesView");
   const features = featuresForProfile(node.profile);
@@ -46,11 +51,44 @@ export function FeaturesCell({ node }: { node: FleetNodeEntry }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const popRef = useRef<HTMLDivElement>(null);
+  const headingId = useId();
+  // Set when the popover opens, consumed once its portal DOM exists: focus then
+  // moves into the popover so a keyboard user reaches the toggles rather than
+  // being stranded on a trigger whose popup they cannot enter.
+  const pendingFocus = useRef(false);
   // Portaled with a fixed viewport slot so the board's scrollable table wrapper
   // cannot clip the toggles — the same machinery the Select popup uses.
   const { style, compute } = useAnchoredPosition(ref, open, {
     estimatedWidth: POPOVER_WIDTH,
     maxHeight: 360,
+  });
+
+  const restoreFocus = useCallback(() => {
+    ref.current?.querySelector<HTMLElement>("button")?.focus();
+  }, []);
+
+  const closePopover = useCallback(
+    (returnFocus: boolean) => {
+      setOpen(false);
+      if (returnFocus) restoreFocus();
+    },
+    [restoreFocus],
+  );
+
+  const openPopover = useCallback(() => {
+    compute();
+    pendingFocus.current = true;
+    setOpen(true);
+  }, [compute]);
+
+  // Move focus into the popover on the render after it opens (its portal DOM
+  // exists by then). Focuses the first toggle, or the dialog container when it
+  // has none, so assistive tech follows the popup instead of losing the thread.
+  useEffect(() => {
+    if (!open || !pendingFocus.current) return;
+    pendingFocus.current = false;
+    const first = popRef.current?.querySelector<HTMLElement>(FOCUSABLE);
+    (first ?? popRef.current)?.focus();
   });
 
   useEffect(() => {
@@ -60,11 +98,13 @@ export function FeaturesCell({ node }: { node: FleetNodeEntry }) {
       if (ref.current?.contains(target) || popRef.current?.contains(target)) {
         return;
       }
-      setOpen(false);
+      // An outside click already moves focus off the popup, so it is not
+      // returned to the trigger.
+      closePopover(false);
     };
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
-  }, [open]);
+  }, [open, closePopover]);
 
   if (features.length === 0) {
     return <UnknownValue title={t("features.none")} />;
@@ -81,21 +121,15 @@ export function FeaturesCell({ node }: { node: FleetNodeEntry }) {
       onKeyDown={(e) => {
         if (e.key !== "Escape" || !open) return;
         e.stopPropagation();
-        setOpen(false);
+        closePopover(true);
       }}
     >
       <button
         type="button"
+        aria-haspopup="dialog"
         aria-expanded={open}
         aria-label={t("features.change", { name: node.name })}
-        onClick={() => {
-          if (open) {
-            setOpen(false);
-            return;
-          }
-          compute();
-          setOpen(true);
-        }}
+        onClick={() => (open ? closePopover(false) : openPopover())}
         className="flex items-center gap-1 rounded border border-transparent px-1 py-0.5 hover:border-border-default hover:bg-bg-tertiary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary"
       >
         {features.map((feature) => (
@@ -117,9 +151,24 @@ export function FeaturesCell({ node }: { node: FleetNodeEntry }) {
           <div
             ref={popRef}
             style={style}
-            className="w-64 overflow-y-auto rounded border border-border-default bg-bg-secondary p-3 shadow-lg"
+            role="dialog"
+            aria-modal="false"
+            aria-labelledby={headingId}
+            tabIndex={-1}
+            onKeyDown={(e) => {
+              // Focus lives inside the portaled popover once it opens, so its
+              // Escape is handled here (it never bubbles to the wrapper).
+              if (e.key !== "Escape") return;
+              e.preventDefault();
+              e.stopPropagation();
+              closePopover(true);
+            }}
+            className="w-64 overflow-y-auto rounded border border-border-default bg-bg-secondary p-3 shadow-lg focus:outline-none"
           >
-            <p className="mb-2 text-[10px] uppercase tracking-wide text-text-tertiary">
+            <p
+              id={headingId}
+              className="mb-2 text-[10px] uppercase tracking-wide text-text-tertiary"
+            >
               {t("features.heading")}
             </p>
             <div className="space-y-3">
