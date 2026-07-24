@@ -60,10 +60,17 @@ export function WifiClientSection() {
   const { toast } = useToast();
   const agentUrl = useAgentConnectionStore((s) => s.agentUrl);
   const apiKey = useAgentConnectionStore((s) => s.apiKey);
+  const nodeDeviceId = useAgentConnectionStore((s) => s.nodeDeviceId);
   const ctx = useMemo(
     () => agentNetworkContext(agentUrl, apiKey),
     [agentUrl, apiKey],
   );
+  // The identity of the agent this section talks to. It changes on a node
+  // switch, a re-pair, or an unpair — and every field holding the PREVIOUS
+  // agent's state must clear then, so a passphrase (or SSID) typed for one node
+  // can never be submitted to the next. The section renders the same instances
+  // in place, so nothing resets these otherwise.
+  const agentIdentity = `${nodeDeviceId ?? ""}|${agentUrl ?? ""}|${apiKey ?? ""}`;
 
   const [status, setStatus] = useState<WifiClientLiveStatus | null>(null);
   const [statusFailed, setStatusFailed] = useState(false);
@@ -120,6 +127,26 @@ export function WifiClientSection() {
       clearInterval(timer);
     };
   }, [ctx, refresh]);
+
+  // Clear every field that carries the previous agent's state whenever the
+  // agent identity changes (node switch / re-pair / unpair). The polling effect
+  // above only resets when the context becomes null, so a switch between two
+  // reachable agents would otherwise leave A's SSID / passphrase / scan results
+  // / confirm prompts in the form — a credential typed for A could then be
+  // submitted to B. The status / saved list get refreshed by the poll; clearing
+  // them here just avoids showing A's readings against B in the interim.
+  useEffect(() => {
+    setSsid("");
+    setPassphrase("");
+    setNetworks(null);
+    setScanError(null);
+    setStatus(null);
+    setSaved(null);
+    setStatusFailed(false);
+    setForcePrompt(false);
+    setLeavePrompt(false);
+    setForgetPrompt(null);
+  }, [agentIdentity]);
 
   const onScan = useCallback(async () => {
     if (!ctx || scanning) return;
