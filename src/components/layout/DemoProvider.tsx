@@ -15,6 +15,7 @@ import {
   demoTelemetryOverride,
 } from "@/mock/demo-node-commands";
 import { useCommandFleetStore, type CommandCloudStatus } from "@/stores/command-fleet-store";
+import { useLocalNodesStore, type LocalNode } from "@/stores/local-nodes-store";
 import { useNodeRegistryStore } from "@/stores/node-registry";
 import { useComputeStore } from "@/stores/compute-store";
 import { useGroundStationStore } from "@/stores/ground-station-store";
@@ -95,6 +96,54 @@ const DEMO_AGENTS: PairedDrone[] = [
     role: "relay",
   },
 ];
+
+/**
+ * Two demo drones the operator has paired over the LAN (Add-a-Node card),
+ * so the Nodes board shows the local-first `lan` reach kind (Rule 39) — not
+ * just cloud-relay. They shadow their cloud-paired rows (same deviceId), so the
+ * LAN transport wins over cloud for those two. Generic private hostnames (no
+ * real lab host). Their `deviceId`s are the removal keys the demo teardown +
+ * residue sweep use, so a real fleet's LAN nodes are never touched. */
+const DEMO_LAN_NODES: Array<Omit<LocalNode, "pairedAt" | "lastSeenAt">> = [
+  {
+    deviceId: "foxtrot-6",
+    name: "Foxtrot-06",
+    hostname: "http://192.168.1.50:8080",
+    apiKey: "demo",
+    profile: "drone",
+    board: "Reference Companion",
+    version: AGENT_VERSION,
+    mdnsHost: "foxtrot-06.local",
+    ipv4: "192.168.1.50",
+  },
+  {
+    deviceId: "mike-13",
+    name: "Mike-13",
+    hostname: "http://192.168.1.51:8080",
+    apiKey: "demo",
+    profile: "drone",
+    board: "Reference Companion",
+    version: AGENT_VERSION,
+    mdnsHost: "mike-13.local",
+    ipv4: "192.168.1.51",
+  },
+];
+
+/** Seed the browser-local LAN-node registry with the demo LAN drones so they
+ * resolve `lan` reach. Idempotent (addNode merges by deviceId). */
+function seedDemoLanNodes(now: number): void {
+  const store = useLocalNodesStore.getState();
+  for (const node of DEMO_LAN_NODES) {
+    store.addNode({ ...node, pairedAt: now, lastSeenAt: now });
+  }
+}
+
+/** Remove ONLY the demo LAN nodes by their fixed deviceIds — never the whole
+ * store, so a real fleet's LAN-paired nodes survive toggling demo off. */
+function clearDemoLanNodes(): void {
+  const store = useLocalNodesStore.getState();
+  for (const node of DEMO_LAN_NODES) store.removeNode(node.deviceId);
+}
 
 /** Per-drone flight telemetry for the Command grid tiles (the map itself is fed
  * by the live mock engine through the node registry). Derived from DEMO_DRONES so
@@ -588,6 +637,9 @@ export function DemoProvider() {
     // Auto-connect the agent store in demo mode
     useAgentConnectionStore.getState().connect("mock://demo");
     usePairingStore.getState().setPairedDrones(DEMO_AGENTS);
+    // Two drones paired over the LAN so the Nodes board shows the local-first
+    // `lan` reach kind alongside cloud (Rule 39).
+    seedDemoLanNodes(Date.now());
 
     // The workstation compute + jobs surfaces are a default on a workstation
     // (Atlas is its purpose), so they render without any flag. The drone World
@@ -646,6 +698,8 @@ export function DemoProvider() {
       useFleetStore.getState().setDrones([]);
       useFleetStore.getState().clearAlerts();
       usePairingStore.getState().clear();
+      // Surgical: drop only the demo LAN nodes, never a real fleet's.
+      clearDemoLanNodes();
       clearDemoNodeCommands();
       useCommandFleetStore.getState().clear();
       // The demo seeds the node registry (the single fleet write target);
@@ -662,6 +716,20 @@ export function DemoProvider() {
   // library (e.g. a `npm run demo` -> `npm run dev` reload while DemoMissionSync
   // never mounts), strip them so they can never surface in a real session. Gate
   // on the plan-library's own hydration, which is async and separate.
+  // Strip any demo LAN nodes that leaked into the persisted local-nodes store
+  // (e.g. a demo -> real reload where the mount cleanup never ran), gated on the
+  // store's own async hydration so the strip runs after the persisted nodes
+  // land. Keyed on the fixed demo deviceIds, so a real fleet's LAN nodes are
+  // untouched.
+  useEffect(() => {
+    if (!hasHydrated || demoMode) return;
+    if (useLocalNodesStore.persist.hasHydrated()) {
+      clearDemoLanNodes();
+      return;
+    }
+    return useLocalNodesStore.persist.onFinishHydration(clearDemoLanNodes);
+  }, [demoMode, hasHydrated]);
+
   useEffect(() => {
     if (!hasHydrated || demoMode) return;
     const sweep = () => {

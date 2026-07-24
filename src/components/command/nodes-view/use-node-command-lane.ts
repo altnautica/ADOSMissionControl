@@ -35,8 +35,18 @@ export function useNodeCommandLane(): NodeCommandSinkOptions {
 
   // The origin cannot change without a navigation, and reading it during the
   // first render would differ between the server and the client.
+  //
+  // DEMO-MODE BRANCH (gated on isDemoMode, real fleets unaffected): the hosted
+  // demo runs on an HTTPS origin, which would block a plain-HTTP LAN agent and
+  // resolve every seeded LAN node to "none". Treat the demo origin as non-HTTPS
+  // so a demo LAN node resolves to `lan` regardless of where the demo is served
+  // — the simulated agents have no real HTTP endpoint, so nothing is actually
+  // dialed; this only lets the reach classification read the LAN path.
   const [originIsHttps] = useState(
-    () => typeof window !== "undefined" && window.location.protocol === "https:",
+    () =>
+      !isDemoMode() &&
+      typeof window !== "undefined" &&
+      window.location.protocol === "https:",
   );
 
   const enqueueCloudCommand: CloudCommandEnqueuer | null = useMemo(() => {
