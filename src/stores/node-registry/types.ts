@@ -7,9 +7,10 @@
  * attached FC, optionally seen over both local and cloud transports) collapses
  * to exactly one row.
  *
- * This module ships dark: nothing imports it yet, and it changes no existing
- * behavior. It exists so the bridges can later feed this registry and project
- * `NodeEntry` back into the existing fleet shape.
+ * The registry is live: the presence / connection / flight-controller bridges
+ * feed it and the fleet surfaces project `NodeEntry` back into the existing
+ * fleet shape, so a single physical node collapses to exactly one row across
+ * every transport it is seen on.
  *
  * @license GPL-3.0-only
  */

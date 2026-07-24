@@ -5,7 +5,8 @@
  * store reducers compose. Keeping these pure makes them unit-testable in
  * isolation and lets the store stay a thin shell around them.
  *
- * Ships dark: nothing imports this yet.
+ * These helpers back the live node registry the store composes from the
+ * presence / connection / flight-controller bridges.
  *
  * @license GPL-3.0-only
  */
