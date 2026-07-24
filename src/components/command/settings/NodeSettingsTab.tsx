@@ -16,7 +16,7 @@
  * @license GPL-3.0-only
  */
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { NodeProfile } from "@/components/dashboard/node-detail/surface-types";
 import {
@@ -98,7 +98,14 @@ export function NodeSettingsTab({
             </div>
           ) : null}
 
-          {activeItem?.render(ctx)}
+          {/* Key the page body by node id so a field's local draft / pending
+              state (an unsaved value the operator typed) cannot survive a
+              switch from node A to B — the fields render the same instances in
+              place, so without a remount `draft ?? current` would show A's
+              value over B and Apply would write it to the wrong node. The
+              active sub-page (`active`) lives outside this key, so the operator
+              stays on the same page across the switch. */}
+          <Fragment key={droneId}>{activeItem?.render(ctx)}</Fragment>
         </div>
       </div>
     </div>
