@@ -5,13 +5,12 @@
  * (ground-side radio + network/uplink + mesh + distributed RX), a Device
  * section (local display + buttons + peripherals), then the Agent page that
  * collapses the companion-computer surfaces (Health / Settings / Extensions /
- * Logs). Controls drive the agent REST surface, so each body falls back to a
- * demo notice in demo mode.
+ * Logs). Controls drive the agent REST surface; in demo the surface reads the
+ * seeded ground-station store (the demo agent URL has no REST endpoint, so the
+ * tabs' load-on-mount polls no-op — see groundStationApiFromAgent).
  * @license GPL-3.0-only
  */
 
-import type { ReactNode } from "react";
-import { isDemoMode } from "@/lib/utils";
 import { GroundStationOverview } from "@/components/command/overview/GroundStationOverview";
 import { RadioTab } from "@/components/command/nodes/ground-station/RadioTab";
 import { NetworkTab } from "@/components/command/nodes/ground-station/NetworkTab";
@@ -24,16 +23,6 @@ import { GroundStationAtlasRelay } from "@/components/command/nodes/ground-stati
 import { RcElrsLinkTab } from "@/components/command/nodes/RcElrsLinkTab";
 import type { SurfaceSpec, SurfaceContext } from "../surface-types";
 import { AGENT_SURFACE } from "../agent/agent-surface";
-import { GroundStationDemoNotice } from "./GroundStationDemoNotice";
-
-/** GS *control* surfaces drive the agent REST API, which has no backing in
- * demo — swap their body for a notice there (mirrors the prior
- * GroundStationDetailPanel demo guard). The Overview is exempt: it is a
- * read-only summary the demo seeds into the ground-station store, so it renders
- * populated in demo and in real mode alike (see the overview surface below). */
-function gsBody(node: ReactNode): ReactNode {
-  return isDemoMode() ? <GroundStationDemoNotice /> : node;
-}
 
 // Role gates mirror the prior GroundStationDetailPanel.visibleTabsForRole:
 // a receiver hides Radio (RX-only); a direct node (and unknown / null role)
@@ -50,8 +39,8 @@ export const GROUND_STATION_SURFACES: SurfaceSpec[] = [
     id: "overview",
     labelKey: "dronePanel.status",
     group: STATUS_GROUP,
-    // Read-only summary — rendered directly (not through gsBody) so the demo's
-    // seeded ground-station store surfaces its link / uplink / mesh cards.
+    // Read-only summary over the demo-seeded ground-station store (link /
+    // uplink / mesh cards).
     render: (ctx) => <GroundStationOverview name={ctx.displayName} />,
   },
   {
@@ -59,27 +48,27 @@ export const GROUND_STATION_SURFACES: SurfaceSpec[] = [
     labelKey: "command.groundStation.tabs.radio",
     group: LINK_GROUP,
     when: (ctx) => ctx.role !== "receiver",
-    render: () => gsBody(<RadioTab />),
+    render: () => <RadioTab />,
   },
   {
     id: "network",
     labelKey: "command.groundStation.tabs.network",
     group: LINK_GROUP,
-    render: () => gsBody(<NetworkTab />),
+    render: () => <NetworkTab />,
   },
   {
     id: "mesh",
     labelKey: "command.groundStation.tabs.mesh",
     group: LINK_GROUP,
     when: hasMesh,
-    render: () => gsBody(<MeshTab />),
+    render: () => <MeshTab />,
   },
   {
     id: "distributedRx",
     labelKey: "command.groundStation.tabs.distributedRx",
     group: LINK_GROUP,
     when: hasMesh,
-    render: () => gsBody(<DistributedRxTab />),
+    render: () => <DistributedRxTab />,
   },
   {
     id: "atlasRelay",
@@ -88,7 +77,7 @@ export const GROUND_STATION_SURFACES: SurfaceSpec[] = [
     // Opt-in per ground station (off by default). The World Model relay is the
     // GS's side of a drone's Atlas capture, not a default GS surface.
     when: (ctx) => ctx.isFeatureEnabled("world-model"),
-    render: () => gsBody(<GroundStationAtlasRelay />),
+    render: () => <GroundStationAtlasRelay />,
   },
   {
     id: "rcElrs",
@@ -105,19 +94,19 @@ export const GROUND_STATION_SURFACES: SurfaceSpec[] = [
     id: "display",
     labelKey: "command.groundStation.tabs.display",
     group: DEVICE_GROUP,
-    render: () => gsBody(<DisplayTab />),
+    render: () => <DisplayTab />,
   },
   {
     id: "physicalUi",
     labelKey: "dronePanel.buttons",
     group: DEVICE_GROUP,
-    render: () => gsBody(<PhysicalUiTab />),
+    render: () => <PhysicalUiTab />,
   },
   {
     id: "peripherals",
     labelKey: "command.groundStation.tabs.peripherals",
     group: DEVICE_GROUP,
-    render: () => gsBody(<PeripheralsTab />),
+    render: () => <PeripheralsTab />,
   },
   AGENT_SURFACE,
 ];

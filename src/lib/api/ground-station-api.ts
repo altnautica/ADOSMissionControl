@@ -5,6 +5,7 @@
  * @license GPL-3.0-only
  */
 // Exempt from 300 LOC soft rule: barrel re-export aggregator over per-domain HTTP modules
+import { isDemoMode } from "@/lib/utils";
 import type { WfbConfig } from "@/stores/ground-station-store";
 import type {
   ApUpdate, DisplayUpdate, EthernetConfigUpdate, GroundStationRole,
@@ -101,6 +102,12 @@ export class GroundStationApi {
 
 /** Build a GroundStationApi client from the current agent connection, if any. */
 export function groundStationApiFromAgent(agentUrl: string | null, apiKey: string | null): GroundStationApi | null {
+  // DEMO-MODE BRANCH (gated on isDemoMode, real fleets unaffected): the demo
+  // agent URL is `mock://demo`, which has no ground-station REST endpoint. Every
+  // ground-station tab guards `if (!api) return`, so returning null here makes
+  // their load-on-mount polls no-op and the demo-seeded store slices render
+  // untouched, instead of failing fetches to a non-HTTP scheme.
+  if (isDemoMode()) return null;
   if (!agentUrl) return null;
   return new GroundStationApi(agentUrl, apiKey);
 }
