@@ -27,7 +27,7 @@ vi.mock("@/lib/nodes/direct-fc-protocol", () => ({
   resolveDirectFcProtocol: () => directFcHolder.protocol,
 }));
 
-import { resolveNodeCommandReach } from "../command-sink";
+import { resolveNodeCommandReach, resolveNodeCommandSink } from "../command-sink";
 import type {
   CommandTargetNode,
   NodeQueuedCloudCommand,
@@ -102,6 +102,36 @@ describe("cloud command sink onQueued", () => {
     expect(result.success).toBe(false);
     expect(onQueued).not.toHaveBeenCalled();
   });
+});
+
+describe("kill / pause / resume are carried, not refused", () => {
+  it.each([
+    ["killSwitch", "killSwitch"],
+    ["pauseMission", "pauseMission"],
+    ["resumeMission", "resumeMission"],
+  ] as const)(
+    "dispatches %s over the agent lane",
+    async (method, cmd) => {
+      const enqueue = vi.fn(async () => ({ commandId: "cmd-x" }));
+      const sink = resolveNodeCommandSink(CLOUD_NODE, {
+        enqueueCloudCommand: enqueue,
+      });
+
+      // The lane can carry it (mapped to a real agent command, not null).
+      expect(sink?.supports(method)).toBe(true);
+
+      const result = await sink![method]();
+      // It reached the queue as the agent-native command name, not a refusal.
+      expect(enqueue).toHaveBeenCalledOnce();
+      expect(enqueue).toHaveBeenCalledWith({
+        deviceId: "dev-1",
+        command: "send_command",
+        args: { cmd, args: [] },
+      });
+      expect(result.success).toBe(true);
+      expect(result.message).not.toContain("no equivalent");
+    },
+  );
 });
 
 describe("direct-fc command sink", () => {

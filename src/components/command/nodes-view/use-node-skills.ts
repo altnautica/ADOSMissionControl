@@ -50,8 +50,22 @@ import { describeNodeReach, type NodeReachDescriptor } from "@/lib/nodes/node-re
 import type { NodeRowModel } from "@/lib/nodes/node-rows";
 import type { CommandAgentLiveness } from "@/lib/nodes/presence";
 
-/** The flight actions this board exposes, and their labels. */
-export const BOARD_ACTION_SKILLS = ["arm", "disarm", "rth", "land"] as const;
+/**
+ * The flight actions this board exposes. `pause` / `resume` hold and continue an
+ * auto flight (they require autonomous nav, so they are gated the same way RTL /
+ * Land are); `kill` is the emergency motor cut, which carries its own two-stage
+ * typed-phrase confirm through the skill dispatcher, so it is never a one click
+ * from the row menu.
+ */
+export const BOARD_ACTION_SKILLS = [
+  "arm",
+  "disarm",
+  "rth",
+  "land",
+  "pause",
+  "resume",
+  "kill",
+] as const;
 
 /** The mode presets the flight-mode control offers, in menu order. */
 export const BOARD_MODE_SKILLS = [
@@ -73,6 +87,13 @@ const SKILL_METHOD: Record<string, keyof SkillProtocol> = {
   disarm: "disarm",
   rth: "returnToLaunch",
   land: "land",
+  // pause / resume are mission-aware at runtime (a mission hold vs a LOITER
+  // fallback), but both branches — pauseMission / resumeMission and the
+  // setFlightMode fallback — are carried by every lane, so the gate keys on the
+  // mission command as the representative method.
+  pause: "pauseMission",
+  resume: "resumeMission",
+  kill: "killSwitch",
 };
 
 function methodForSkill(skillId: string): keyof SkillProtocol | null {

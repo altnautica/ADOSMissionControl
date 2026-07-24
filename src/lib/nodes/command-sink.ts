@@ -155,10 +155,10 @@ export interface NodeCommandSinkOptions {
 
 /**
  * The agent command each skill method maps to, or null when the agent's command
- * route has no equivalent. Kill, pause-mission and resume-mission are absent
- * from that route: substituting a different command (a mode change, say) would
- * silently do something other than what the operator asked for, so they are
- * refused instead.
+ * route has no equivalent. Every skill method maps to a real agent command:
+ * `killSwitch` force-disarms, `pauseMission` / `resumeMission` hold and continue
+ * an auto flight. A method left null here would be refused rather than
+ * substituting a different command that silently did something else.
  */
 const AGENT_COMMAND_FOR: Record<keyof SkillProtocol, AgentCommandName | null> =
   {
@@ -168,9 +168,9 @@ const AGENT_COMMAND_FOR: Record<keyof SkillProtocol, AgentCommandName | null> =
     returnToLaunch: "rtl",
     land: "land",
     takeoff: "takeoff",
-    killSwitch: null,
-    pauseMission: null,
-    resumeMission: null,
+    killSwitch: "killSwitch",
+    pauseMission: "pauseMission",
+    resumeMission: "resumeMission",
   };
 
 /**

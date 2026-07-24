@@ -77,10 +77,17 @@ describe("methodForSkill", () => {
     expect(methodForSkill("mode.auto")).toBe("setFlightMode");
   });
 
-  it("returns null for a skill the board does not expose", () => {
-    // Kill has no equivalent on the agent lane, so the board must not treat it
-    // as a control it knows how to carry.
-    expect(methodForSkill("kill")).toBeNull();
+  it("routes kill / pause / resume onto their lane methods", () => {
+    // These are board controls now, each mapped to the command its skill drives.
+    expect(methodForSkill("kill")).toBe("killSwitch");
+    expect(methodForSkill("pause")).toBe("pauseMission");
+    expect(methodForSkill("resume")).toBe("resumeMission");
+  });
+
+  it("returns null for a skill the board does not surface", () => {
+    // A behavior skill the board does not carry as a flight control has no
+    // board method, so it is not treated as a control it knows how to run.
+    expect(methodForSkill("follow-me")).toBeNull();
   });
 });
 

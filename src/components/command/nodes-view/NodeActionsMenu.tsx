@@ -82,7 +82,10 @@ export function NodeActionsMenu({
       id: action.id,
       label: skillDisplayLabel(action.skill, t),
       disabled: action.disabled,
-      danger: action.id === "arm" || action.id === "land",
+      danger:
+        action.id === "arm" ||
+        action.id === "land" ||
+        action.id === "kill",
       title: action.reasonKey ? safeTranslate(t, action.reasonKey) : undefined,
     })),
     { id: "nav-divider", label: "", divider: true },

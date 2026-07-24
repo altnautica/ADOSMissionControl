@@ -169,7 +169,9 @@ export function getParams(
  * catalog is rejected by the agent with a 400 before any frame is sent, so a
  * caller is better off checking membership than discovering it at dispatch.
  * `takeoff` reads `args[0]` as the altitude in metres; `mode` reads `args[0]`
- * as the flight-mode name.
+ * as the flight-mode name. `killSwitch` force-disarms (emergency motor cut) and
+ * `pauseMission` / `resumeMission` hold and continue an auto flight — the
+ * agent-native additions the fleet board drives.
  */
 export const AGENT_COMMAND_NAMES = [
   "arm",
@@ -178,6 +180,9 @@ export const AGENT_COMMAND_NAMES = [
   "land",
   "rtl",
   "mode",
+  "killSwitch",
+  "pauseMission",
+  "resumeMission",
 ] as const;
 
 export type AgentCommandName = (typeof AGENT_COMMAND_NAMES)[number];

@@ -1,7 +1,7 @@
 /**
  * Tests for the per-node command sink: which transport carries a command to a
- * given node, what each transport actually reports back, and what happens to a
- * command the transport has no equivalent for.
+ * given node, what each transport actually reports back, and that every command
+ * a skill drives maps onto a real agent command (nothing is refused).
  *
  * @license GPL-3.0-only
  */
@@ -316,14 +316,18 @@ describe("cloud dispatch", () => {
   });
 });
 
-describe("commands the transport cannot carry", () => {
+describe("kill / pause / resume are carried over the agent lane", () => {
   beforeEach(() => {
     useLocalNodesStore.setState({ nodes: [lanNode(DEVICE_ID)] });
   });
 
-  it("refuses them by name and dispatches nothing", async () => {
-    const fetchSpy = vi.fn().mockResolvedValue(ackResponse(true));
-    globalThis.fetch = fetchSpy;
+  it("dispatches them by name and reports the vehicle's answer", async () => {
+    // A fresh Response per call: the three dispatch concurrently and a body can
+    // only be read once.
+    const fetchSpy = vi.fn(
+      async (_input: unknown, _init?: RequestInit) => ackResponse(true),
+    );
+    globalThis.fetch = fetchSpy as unknown as typeof fetch;
 
     const sink = resolveNodeCommandSink(NODE, { originIsHttps: false })!;
 
@@ -332,13 +336,25 @@ describe("commands the transport cannot carry", () => {
       sink.pauseMission(),
       sink.resumeMission(),
     ])) {
-      expect(result.success).toBe(false);
-      expect(result.message).toContain("no equivalent");
+      expect(result.success).toBe(true);
+      expect(result.message).not.toContain("no equivalent");
     }
-    expect(fetchSpy).not.toHaveBeenCalled();
+    // Each reached the agent command route by its agent-native name, not a
+    // pre-dispatch refusal.
+    expect(fetchSpy).toHaveBeenCalledTimes(3);
+    const sentCmds = fetchSpy.mock.calls.map(
+      ([, init]) => JSON.parse(String(init?.body)).cmd as string,
+    );
+    expect(sentCmds).toEqual(
+      expect.arrayContaining([
+        "killSwitch",
+        "pauseMission",
+        "resumeMission",
+      ]),
+    );
   });
 
-  it("declares which commands it can carry", () => {
+  it("declares that it carries every command a skill drives", () => {
     const sink = resolveNodeCommandSink(NODE, { originIsHttps: false })!;
 
     for (const method of [
@@ -348,15 +364,11 @@ describe("commands the transport cannot carry", () => {
       "returnToLaunch",
       "land",
       "takeoff",
-    ] as const) {
-      expect(sink.supports(method)).toBe(true);
-    }
-    for (const method of [
       "killSwitch",
       "pauseMission",
       "resumeMission",
     ] as const) {
-      expect(sink.supports(method)).toBe(false);
+      expect(sink.supports(method)).toBe(true);
     }
   });
 });
