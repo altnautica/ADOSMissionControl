@@ -28,6 +28,7 @@ import type {
   RosterCamera,
 } from "@/lib/agent/feature-types";
 import { delay, jitter, startTime } from "./utils";
+import { getMockConfig, setMockConfigValue } from "./config";
 import { MOCK_PERIPHERALS } from "./peripherals";
 import { MOCK_ENROLLMENT, MOCK_PEERS } from "./fleet";
 import { getMockCapabilities } from "./capabilities";
@@ -355,6 +356,28 @@ export class MockAgentClient {
   async getCapabilities(): Promise<AgentCapabilities> {
     await delay(60);
     return getMockCapabilities();
+  }
+
+  // ── Node config (demo) ───────────────────────────────────
+  //
+  // Backs the node-Settings pages: `getConfig` returns the rich demo config
+  // tree, `setConfigValue` writes one dot-path key and the next `getConfig`
+  // reads it back (the optimistic-write + read-back the real /api/config
+  // surface has). One config carries every block; the settings-nav gates hide
+  // the pages that do not apply to a profile.
+
+  async getConfig(): Promise<Record<string, unknown>> {
+    await delay(60);
+    return getMockConfig();
+  }
+
+  async setConfigValue(
+    key: string,
+    value: string,
+  ): Promise<{ status?: string; key?: string; value?: unknown; error?: string }> {
+    await delay(80);
+    const stored = setMockConfigValue(key, value);
+    return { status: "ok", key, value: stored };
   }
 
   // ── MAVLink signing (demo) ───────────────────────────────
