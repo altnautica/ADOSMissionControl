@@ -47,7 +47,11 @@ export interface RelayedEnrollment {
   deviceId: string;
   /** `node:<groundDeviceId>` — the ground node this drone is linked through. */
   reachedVia: string;
-  /** Epoch ms of the freshest relay observation (drives the node's liveness). */
+  /**
+   * Epoch ms the drone was last actually OBSERVED over the relay, or `0` when
+   * nothing dates an observation. Drives the node's liveness, so `0` reads as
+   * offline — the registry's existing "never seen" sentinel.
+   */
   lastHeartbeat: number;
   /** WFB RSSI the ground node heard this drone at, in dBm. Null when unknown. */
   peerRssiDbm: number | null;
@@ -85,9 +89,39 @@ export function extractLinkedPeers(
   return [];
 }
 
+/**
+ * Epoch ms the drone was last demonstrably heard over the relay, or undefined
+ * when nothing dates an observation.
+ *
+ * Two things can date it. The peer's own `seenAtUnix` is a real per-peer decode
+ * timestamp and always wins. Failing that, the ground node's report time counts
+ * ONLY while its WFB link is verified up, because that is the moment it was
+ * provably decoding frames rather than replaying a remembered peer id.
+ *
+ * Taking the ground node's report time unconditionally is what made a relayed
+ * drone's liveness track the GROUND STATION's poll cadence: a ground node that
+ * keeps a cached `peerDeviceId` after the radio drops kept re-dating the drone
+ * on every one of its own heartbeats, so the drone read online forever. The
+ * ground node being alive is not evidence that the drone is (Rule 44).
+ */
+function peerObservedAt(
+  peer: LinkedPeer,
+  gs: RelayGroundNode,
+): number | undefined {
+  const seenAt = peer.seenAtUnix;
+  if (typeof seenAt === "number" && Number.isFinite(seenAt) && seenAt > 0) {
+    return seenAt * 1000;
+  }
+  return gs.radioUp ? gs.status?.updatedAt : undefined;
+}
+
 /** Build the funneled-feed status row for a relayed-only drone. Honest: the
  * feed is present only while the ground node's WFB link is verified up (Rule 44),
- * and it points at the ground node's own WHEP (the drone has no direct reach). */
+ * and it points at the ground node's own WHEP (the drone has no direct reach).
+ *
+ * `updatedAt` is the peer-observation time, not the ground node's report time,
+ * because this row is the DRONE's status and the fleet projection folds its
+ * `updatedAt` into the drone's liveness alongside the presence heartbeat. */
 function funneledStatusFor(args: {
   droneDeviceId: string;
   groundDeviceId: string;
@@ -122,9 +156,8 @@ export function planRelayedEnrollment(args: {
   groundNodes: RelayGroundNode[];
   /** Device ids the GCS pairs with directly (cloud + LAN). */
   directlyPairedDeviceIds: ReadonlySet<string>;
-  now: number;
 }): RelayedEnrollment[] {
-  const { groundNodes, directlyPairedDeviceIds, now } = args;
+  const { groundNodes, directlyPairedDeviceIds } = args;
   const enrollments: RelayedEnrollment[] = [];
   const seen = new Set<string>();
 
@@ -137,12 +170,9 @@ export function planRelayedEnrollment(args: {
       if (seen.has(droneDeviceId)) continue;
       seen.add(droneDeviceId);
 
-      const lastHeartbeat =
-        (typeof peer.seenAtUnix === "number" && Number.isFinite(peer.seenAtUnix)
-          ? peer.seenAtUnix * 1000
-          : undefined) ??
-        gs.status?.updatedAt ??
-        now;
+      // 0 when nothing dates an observation, so the drone enrolls (the link is
+      // real and named) but reads offline until something is actually heard.
+      const lastHeartbeat = peerObservedAt(peer, gs) ?? 0;
       const peerRssiDbm =
         typeof peer.rssiDbm === "number" && Number.isFinite(peer.rssiDbm)
           ? peer.rssiDbm

@@ -17,7 +17,6 @@ import { mapFullStatusToCloudStatus } from "../full-status-to-cloud-status";
 import { planRelayedEnrollment } from "../relayed-peers";
 import type { FullStatusResponse } from "../types";
 
-const NOW = 1_700_000_000_000;
 const SEEN_AT_UNIX = 1_699_999_000; // seconds
 
 /** A minimal, fully-typed `/api/status/full` body carrying only what the mapper
@@ -130,7 +129,6 @@ describe("mapFullStatusToCloudStatus — linked_peers", () => {
         },
       ],
       directlyPairedDeviceIds: new Set(),
-      now: NOW,
     });
 
     expect(enrollment.deviceId).toBe("drone-a");

@@ -99,7 +99,6 @@ export function RelayedDroneBridge() {
     const enrollments = planRelayedEnrollment({
       groundNodes,
       directlyPairedDeviceIds: directDeviceIds,
-      now: Date.now(),
     });
 
     const registry = useNodeRegistryStore.getState();

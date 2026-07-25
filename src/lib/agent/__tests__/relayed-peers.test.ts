@@ -73,7 +73,6 @@ describe("planRelayedEnrollment", () => {
     const [e] = planRelayedEnrollment({
       groundNodes: [ground({ status: gsStatus({ peerDeviceId: "drone-a", peerRssiDbm: -51 }) })],
       directlyPairedDeviceIds: new Set(),
-      now: NOW,
     });
     expect(e.nodeId).toBe("node:drone-a");
     expect(e.deviceId).toBe("drone-a");
@@ -96,7 +95,6 @@ describe("planRelayedEnrollment", () => {
         }),
       ],
       directlyPairedDeviceIds: new Set(),
-      now: NOW,
     });
     // The drone's stream shows under the DRONE node, pointing at the ground
     // node's WHEP (the drone has no direct reach), and its peer is the GS.
@@ -121,7 +119,6 @@ describe("planRelayedEnrollment", () => {
         }),
       ],
       directlyPairedDeviceIds: new Set(),
-      now: NOW,
     });
     expect(e.funneledStatus?.videoState).toBeUndefined();
     expect(e.funneledStatus?.videoWhepUrl).toBeUndefined();
@@ -142,7 +139,6 @@ describe("planRelayedEnrollment", () => {
         }),
       ],
       directlyPairedDeviceIds: new Set(["drone-a"]),
-      now: NOW,
     });
     expect(e.nodeId).toBe("node:drone-a");
     expect(e.reachedVia).toBe("node:gs-1");
@@ -153,7 +149,6 @@ describe("planRelayedEnrollment", () => {
     const out = planRelayedEnrollment({
       groundNodes: [ground({ status: gsStatus({ peerDeviceId: "gs-1" }) })],
       directlyPairedDeviceIds: new Set(),
-      now: NOW,
     });
     expect(out).toHaveLength(0);
   });
@@ -173,7 +168,6 @@ describe("planRelayedEnrollment", () => {
         }),
       ],
       directlyPairedDeviceIds: new Set(),
-      now: NOW,
     });
     expect(out).toHaveLength(1);
     expect(out[0].reachedVia).toBe("node:gs-1");
@@ -190,8 +184,129 @@ describe("planRelayedEnrollment", () => {
         }),
       ],
       directlyPairedDeviceIds: new Set(),
-      now: NOW,
     });
     expect(e.lastHeartbeat).toBe(seenAtUnix * 1000);
+  });
+});
+
+describe("planRelayedEnrollment liveness", () => {
+  it("prefers the peer's own seen-at over the ground node's report time", () => {
+    const seenAtUnix = 1_699_999_000;
+    const [e] = planRelayedEnrollment({
+      groundNodes: [
+        ground({
+          status: gsStatus({
+            updatedAt: NOW,
+            linkedPeers: [{ deviceId: "drone-a", seenAtUnix }],
+          }),
+          radioUp: true,
+        }),
+      ],
+      directlyPairedDeviceIds: new Set(),
+    });
+    expect(e.lastHeartbeat).toBe(seenAtUnix * 1000);
+    expect(e.lastHeartbeat).not.toBe(NOW);
+  });
+
+  it("dates an undated peer from the ground node's report while its link is verified up", () => {
+    // A ground node with a proven-up link was demonstrably decoding frames when
+    // it reported, so that report time is a real observation of the peer.
+    const [e] = planRelayedEnrollment({
+      groundNodes: [
+        ground({
+          status: gsStatus({ updatedAt: NOW, peerDeviceId: "drone-a" }),
+          radioUp: true,
+        }),
+      ],
+      directlyPairedDeviceIds: new Set(),
+    });
+    expect(e.lastHeartbeat).toBe(NOW);
+  });
+
+  it("reports no observation for an undated peer when the ground link is not up", () => {
+    // This is the cached-peer case: the radio dropped but the ground node keeps
+    // naming the peer. Its own heartbeat says nothing about the drone, so the
+    // drone must not inherit the ground node's liveness.
+    const [e] = planRelayedEnrollment({
+      groundNodes: [
+        ground({
+          status: gsStatus({ updatedAt: NOW, peerDeviceId: "drone-a" }),
+          radioUp: false,
+        }),
+      ],
+      directlyPairedDeviceIds: new Set(),
+    });
+    expect(e.lastHeartbeat).toBe(0);
+  });
+
+  it("still enrolls the drone when there is no observation to date", () => {
+    // The link is named and real, so the node exists and shows its reach hop.
+    // Only its liveness is withheld.
+    const [e] = planRelayedEnrollment({
+      groundNodes: [
+        ground({
+          status: gsStatus({ peerDeviceId: "drone-a" }),
+          radioUp: false,
+        }),
+      ],
+      directlyPairedDeviceIds: new Set(),
+    });
+    expect(e.nodeId).toBe("node:drone-a");
+    expect(e.reachedVia).toBe("node:gs-1");
+    expect(e.lastHeartbeat).toBe(0);
+  });
+
+  it("does not let the ground node's later heartbeats re-date a dropped drone", () => {
+    // The bug: each ground-node heartbeat refreshed the drone, so a drone that
+    // was never heard again still read online indefinitely.
+    const later = NOW + 60_000;
+    const [first] = planRelayedEnrollment({
+      groundNodes: [
+        ground({
+          status: gsStatus({ updatedAt: NOW, peerDeviceId: "drone-a" }),
+          radioUp: false,
+        }),
+      ],
+      directlyPairedDeviceIds: new Set(),
+    });
+    const [second] = planRelayedEnrollment({
+      groundNodes: [
+        ground({
+          status: gsStatus({ updatedAt: later, peerDeviceId: "drone-a" }),
+          radioUp: false,
+        }),
+      ],
+      directlyPairedDeviceIds: new Set(),
+    });
+    expect(first.lastHeartbeat).toBe(0);
+    expect(second.lastHeartbeat).toBe(0);
+  });
+
+  it("treats a zero or negative seen-at as no observation", () => {
+    const [e] = planRelayedEnrollment({
+      groundNodes: [
+        ground({
+          status: gsStatus({ linkedPeers: [{ deviceId: "drone-a", seenAtUnix: 0 }] }),
+          radioUp: false,
+        }),
+      ],
+      directlyPairedDeviceIds: new Set(),
+    });
+    expect(e.lastHeartbeat).toBe(0);
+  });
+
+  it("dates the funneled status row from the peer observation, not the ground node", () => {
+    // The fleet projection folds this row's updatedAt into the drone's
+    // liveness, so it must carry the same observation time as the presence.
+    const [e] = planRelayedEnrollment({
+      groundNodes: [
+        ground({
+          status: gsStatus({ updatedAt: NOW, peerDeviceId: "drone-a" }),
+          radioUp: false,
+        }),
+      ],
+      directlyPairedDeviceIds: new Set(),
+    });
+    expect(e.funneledStatus?.updatedAt).toBe(0);
   });
 });

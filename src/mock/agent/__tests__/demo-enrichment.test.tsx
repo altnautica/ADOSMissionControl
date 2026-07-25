@@ -133,7 +133,6 @@ describe("demo relayed-via-GS enrollment", () => {
       groundNodes: [gs],
       // alpha-1 is also cloud-paired directly; romeo-15 + whiskey-23 are not.
       directlyPairedDeviceIds: new Set([GS_DEVICE, "alpha-1"]),
-      now,
     });
 
     const byId = new Map(enrollments.map((e) => [e.deviceId, e]));
