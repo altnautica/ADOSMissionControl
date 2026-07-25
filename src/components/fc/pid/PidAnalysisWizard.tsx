@@ -3,7 +3,6 @@
 import { useState, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { usePidAnalysisStore } from "@/stores/pid-analysis-store";
-import { useArmedLock } from "@/hooks/use-armed-lock";
 import { PidLogUploader } from "./PidLogUploader";
 import { PidFFTChart } from "./PidFFTChart";
 import { PidStepResponseChart } from "./PidStepResponseChart";
@@ -43,7 +42,6 @@ export function PidAnalysisWizard({ vehicleType, params, setLocalValue, connecte
   const applyAllRecommended = usePidAnalysisStore((s) => s.applyAllRecommended);
   const saveAsComparison = usePidAnalysisStore((s) => s.saveAsComparison);
 
-  const { isLocked } = useArmedLock();
   const [analysisTab, setAnalysisTab] = useState<AnalysisTab>("summary");
   const [selectedStepEvent, setSelectedStepEvent] = useState(0);
 
@@ -199,7 +197,6 @@ export function PidAnalysisWizard({ vehicleType, params, setLocalValue, connecte
             recommendations={aiRecommendations}
             onApply={(id) => applyRecommendation(id, setLocalValue)}
             onApplyAll={() => applyAllRecommended(setLocalValue)}
-            isLocked={isLocked}
             aiLoading={aiLoading}
           />
         </div>

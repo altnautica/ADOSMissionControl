@@ -3,7 +3,6 @@
 import { useState, useCallback } from "react";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
-import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useParamLabel } from "@/hooks/use-param-label";
 import { useParamMetadataMap } from "@/hooks/use-param-metadata";
 import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
@@ -43,7 +42,6 @@ const FENCE_ACTION_OPTIONS = [
 
 export function GeofencePanel() {
   const { toast } = useToast();
-  const { isLocked } = useArmedLock();
   const { label: pl } = useParamLabel();
   const paramMeta = useParamMetadataMap();
   const lbl = (raw: string) => <ParamFieldLabel raw={pl(raw)} metadata={paramMeta} />;
@@ -125,7 +123,7 @@ export function GeofencePanel() {
           <Card icon={<Shield size={14} />} title="Geofence Enable" description="Master enable for fence enforcement">
             <div className="flex items-center gap-3">
               <label className="text-xs text-text-secondary">{pl("FENCE_ENABLE")}</label>
-              <button onClick={() => setLocalValue("FENCE_ENABLE", fenceEnable ? 0 : 1)} disabled={isLocked}
+              <button onClick={() => setLocalValue("FENCE_ENABLE", fenceEnable ? 0 : 1)}
                 className={cn("w-10 h-5 rounded-full relative transition-colors", fenceEnable ? "bg-accent-primary" : "bg-bg-tertiary border border-border-default")}>
                 <div className={cn("absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform", fenceEnable ? "translate-x-5" : "translate-x-0.5")} />
               </button>
@@ -135,24 +133,24 @@ export function GeofencePanel() {
 
           <Card icon={<MapPin size={14} />} title="Fence Type" description="Select which fence boundaries to enforce (bitmask)">
             <div className="flex gap-2">
-              <FenceTypeChip label="Altitude" icon={<ArrowUp size={10} />} active={hasAltFence} onClick={() => toggleFenceTypeBit(FENCE_TYPE_BITS.ALT_MAX)} disabled={isLocked} />
-              <FenceTypeChip label="Circle" icon={<Circle size={10} />} active={hasCircleFence} onClick={() => toggleFenceTypeBit(FENCE_TYPE_BITS.CIRCLE)} disabled={isLocked} />
-              <FenceTypeChip label="Polygon" icon={<MapPin size={10} />} active={hasPolygonFence} onClick={() => toggleFenceTypeBit(FENCE_TYPE_BITS.POLYGON)} disabled={isLocked} />
+              <FenceTypeChip label="Altitude" icon={<ArrowUp size={10} />} active={hasAltFence} onClick={() => toggleFenceTypeBit(FENCE_TYPE_BITS.ALT_MAX)} />
+              <FenceTypeChip label="Circle" icon={<Circle size={10} />} active={hasCircleFence} onClick={() => toggleFenceTypeBit(FENCE_TYPE_BITS.CIRCLE)} />
+              <FenceTypeChip label="Polygon" icon={<MapPin size={10} />} active={hasPolygonFence} onClick={() => toggleFenceTypeBit(FENCE_TYPE_BITS.POLYGON)} />
             </div>
             <p className="text-[10px] font-mono text-text-tertiary mt-1">FENCE_TYPE = {fenceType} (0x{fenceType.toString(16).padStart(2, "0")})</p>
           </Card>
 
           {hasCircleFence && (
             <Card icon={<Circle size={14} />} title="Circle Fence" description="Maximum horizontal distance from home">
-              <ParamInput label={lbl("FENCE_RADIUS — Max Radius")} value={fenceRadius} unit="m" min={0} step={10} disabled={isLocked} onChange={(v) => setLocalValue("FENCE_RADIUS", v)} />
-              <ParamInput label={lbl("FENCE_MARGIN — Warning Margin")} value={fenceMargin} unit="m" min={0} step={1} disabled={isLocked} onChange={(v) => setLocalValue("FENCE_MARGIN", v)} />
+              <ParamInput label={lbl("FENCE_RADIUS — Max Radius")} value={fenceRadius} unit="m" min={0} step={10} onChange={(v) => setLocalValue("FENCE_RADIUS", v)} />
+              <ParamInput label={lbl("FENCE_MARGIN — Warning Margin")} value={fenceMargin} unit="m" min={0} step={1} onChange={(v) => setLocalValue("FENCE_MARGIN", v)} />
             </Card>
           )}
 
           {hasAltFence && (
             <Card icon={<ArrowUp size={14} />} title="Altitude Fence" description="Altitude ceiling and floor">
-              <ParamInput label={lbl("FENCE_ALT_MAX — Max Altitude")} value={fenceAltMax} unit="m" min={0} step={5} disabled={isLocked} onChange={(v) => setLocalValue("FENCE_ALT_MAX", v)} />
-              <ParamInput label={lbl("FENCE_ALT_MIN — Min Altitude")} value={fenceAltMin} unit="m" min={-100} step={0.5} disabled={isLocked} onChange={(v) => setLocalValue("FENCE_ALT_MIN", v)} />
+              <ParamInput label={lbl("FENCE_ALT_MAX — Max Altitude")} value={fenceAltMax} unit="m" min={0} step={5} onChange={(v) => setLocalValue("FENCE_ALT_MAX", v)} />
+              <ParamInput label={lbl("FENCE_ALT_MIN — Min Altitude")} value={fenceAltMin} unit="m" min={-100} step={0.5} onChange={(v) => setLocalValue("FENCE_ALT_MIN", v)} />
               <AltitudeBandViz altMin={fenceAltMin} altMax={fenceAltMax} />
             </Card>
           )}
@@ -161,8 +159,8 @@ export function GeofencePanel() {
             <Card icon={<MapPin size={14} />} title="Polygon Fence" description="Polygon boundary fence">
               <div className="text-xs text-text-secondary">Polygon vertices: <span className="font-mono text-text-primary">{fenceTotal}</span></div>
               <div className="flex gap-2 mt-2">
-                <button onClick={handleUpload} disabled={isLocked}
-                  className={cn("flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono border border-border-default transition-colors", isLocked ? "opacity-50 cursor-not-allowed" : "text-text-primary hover:bg-bg-tertiary cursor-pointer")}>
+                <button onClick={handleUpload}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono border border-border-default transition-colors text-text-primary hover:bg-bg-tertiary cursor-pointer">
                   <Upload size={10} />{uploadState === "uploading" ? "Uploading..." : "Upload Points"}
                 </button>
                 <button onClick={handleDownload} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono border border-border-default text-text-primary hover:bg-bg-tertiary transition-colors cursor-pointer">
@@ -184,25 +182,25 @@ export function GeofencePanel() {
                   <span className="text-[10px] text-text-tertiary">{zone.type === "polygon" ? `${zone.polygonPoints.length} pts` : `${Math.round(zone.circleRadius)}m`}</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <button onClick={() => toggleZoneRole(zone.id)} disabled={isLocked} className="p-1 text-text-tertiary hover:text-text-primary transition-colors" title="Toggle inclusion/exclusion"><ToggleLeft size={12} /></button>
-                  <button onClick={() => removeZone(zone.id)} disabled={isLocked} className="p-1 text-text-tertiary hover:text-status-error transition-colors" title="Remove zone"><Trash2 size={12} /></button>
+                  <button onClick={() => toggleZoneRole(zone.id)} className="p-1 text-text-tertiary hover:text-text-primary transition-colors" title="Toggle inclusion/exclusion"><ToggleLeft size={12} /></button>
+                  <button onClick={() => removeZone(zone.id)} className="p-1 text-text-tertiary hover:text-status-error transition-colors" title="Remove zone"><Trash2 size={12} /></button>
                 </div>
               </div>
             ))}
             <div className="flex gap-2 mt-2">
-              <button onClick={() => addZone({ role: "inclusion", type: "polygon", polygonPoints: [], circleCenter: null, circleRadius: 100 })} disabled={isLocked}
-                className={cn("flex items-center gap-1.5 px-3 py-1.5 text-xs border transition-colors", "bg-green-500/10 border-green-500/30 text-green-400 hover:bg-green-500/20", isLocked && "opacity-50 cursor-not-allowed")}>
+              <button onClick={() => addZone({ role: "inclusion", type: "polygon", polygonPoints: [], circleCenter: null, circleRadius: 100 })}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs border transition-colors bg-green-500/10 border-green-500/30 text-green-400 hover:bg-green-500/20">
                 <Plus size={10} />Inclusion
               </button>
-              <button onClick={() => addZone({ role: "exclusion", type: "polygon", polygonPoints: [], circleCenter: null, circleRadius: 100 })} disabled={isLocked}
-                className={cn("flex items-center gap-1.5 px-3 py-1.5 text-xs border transition-colors", "bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20", isLocked && "opacity-50 cursor-not-allowed")}>
+              <button onClick={() => addZone({ role: "exclusion", type: "polygon", polygonPoints: [], circleCenter: null, circleRadius: 100 })}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs border transition-colors bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20">
                 <Plus size={10} />Exclusion
               </button>
             </div>
           </Card>
 
           <Card icon={<Shield size={14} />} title="Breach Action" description="Action taken when fence is breached">
-            <Select label={lbl("FENCE_ACTION")} options={FENCE_ACTION_OPTIONS} value={String(fenceAction)} onChange={(v) => setLocalValue("FENCE_ACTION", Number(v))} disabled={isLocked} />
+            <Select label={lbl("FENCE_ACTION")} options={FENCE_ACTION_OPTIONS} value={String(fenceAction)} onChange={(v) => setLocalValue("FENCE_ACTION", Number(v))} />
           </Card>
 
           {breachStatus > 0 && (
@@ -218,7 +216,7 @@ export function GeofencePanel() {
           )}
 
           <div className="flex items-center gap-3 pt-2 pb-4">
-            <Button variant="primary" size="lg" icon={<Save size={14} />} disabled={!hasDirty || isLocked} loading={saving} onClick={handleSave}>Save to RAM</Button>
+            <Button variant="primary" size="lg" icon={<Save size={14} />} disabled={!hasDirty} loading={saving} onClick={handleSave}>Save to RAM</Button>
             {hasRamWrites && <Button variant="secondary" size="lg" icon={<HardDrive size={14} />} loading={committing} onClick={handleFlash}>Write to Flash</Button>}
             {hasDirty && <span className="text-[10px] text-status-warning">Unsaved changes</span>}
           </div>

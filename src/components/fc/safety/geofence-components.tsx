@@ -36,24 +36,20 @@ export function FenceTypeChip({
   icon,
   active,
   onClick,
-  disabled,
 }: {
   label: string;
   icon: React.ReactNode;
   active: boolean;
   onClick: () => void;
-  disabled: boolean;
 }) {
   return (
     <button
       onClick={onClick}
-      disabled={disabled}
       className={cn(
         "flex items-center gap-1.5 px-3 py-1.5 text-xs border transition-colors",
         active
           ? "bg-accent-primary/10 border-accent-primary text-accent-primary"
           : "bg-bg-tertiary border-border-default text-text-tertiary hover:text-text-secondary",
-        disabled && "opacity-50 cursor-not-allowed",
       )}
     >
       {icon}
@@ -71,7 +67,6 @@ export function ParamInput({
   min,
   max,
   step,
-  disabled,
   onChange,
 }: {
   label: React.ReactNode;
@@ -80,7 +75,6 @@ export function ParamInput({
   min?: number;
   max?: number;
   step?: number;
-  disabled: boolean;
   onChange: (v: number) => void;
 }) {
   return (
@@ -93,9 +87,8 @@ export function ParamInput({
           min={min}
           max={max}
           step={step}
-          disabled={disabled}
           onChange={(e) => onChange(Number(e.target.value))}
-          className="w-24 h-7 px-1.5 bg-bg-tertiary border border-border-default text-xs font-mono text-text-primary focus:outline-none focus:border-accent-primary disabled:opacity-50"
+          className="w-24 h-7 px-1.5 bg-bg-tertiary border border-border-default text-xs font-mono text-text-primary focus:outline-none focus:border-accent-primary"
         />
         <span className="text-[10px] text-text-tertiary">{unit}</span>
       </div>

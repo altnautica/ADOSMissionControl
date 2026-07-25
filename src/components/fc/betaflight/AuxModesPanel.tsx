@@ -8,7 +8,6 @@ import { useDroneManager } from "@/stores/drone-manager";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
-import { useArmedLock } from "@/hooks/use-armed-lock";
 import { usePanelScroll } from "@/hooks/use-panel-scroll";
 import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
 import { PanelHeader } from "../shared/PanelHeader";
@@ -52,7 +51,6 @@ export function AuxModesPanel() {
   const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
   const { toast } = useToast();
   const { firmwareType } = useFirmwareCapabilities();
-  const { isLocked } = useArmedLock();
   const scrollRef = usePanelScroll("aux-modes");
 
   const [modeNames] = useState<string[]>(DEFAULT_MODE_NAMES);
@@ -250,12 +248,12 @@ export function AuxModesPanel() {
                                 onChange={(start, end) => updateRange(index, { rangeStart: start, rangeEnd: end })}
                                 activePwm={latestRc ? latestRc.channels[range.auxChannel + 4] ?? 0 : 0} />
                             </div>
-                            <Button variant="ghost" size="sm" icon={<Trash2 size={12} />} onClick={() => removeRange(index)} disabled={isLocked} />
+                            <Button variant="ghost" size="sm" icon={<Trash2 size={12} />} onClick={() => removeRange(index)} />
                           </div>
                         </div>
                       ))}
                       <Button variant="ghost" size="sm" icon={<Plus size={12} />} onClick={() => addRange(boxId)}
-                        disabled={isLocked || ranges.length >= MAX_RANGES}>Add Range</Button>
+                        disabled={ranges.length >= MAX_RANGES}>Add Range</Button>
                     </div>
                   </AuxCard>
                 );
@@ -270,7 +268,7 @@ export function AuxModesPanel() {
                   <Select label="Mode" options={addModeOptions} value={addModeId} onChange={setAddModeId} searchable searchPlaceholder="Search modes..." />
                 </div>
                 <Button variant="secondary" size="sm" icon={<Plus size={12} />} onClick={() => addRange(Number(addModeId))}
-                  disabled={isLocked || ranges.length >= MAX_RANGES}>Add</Button>
+                  disabled={ranges.length >= MAX_RANGES}>Add</Button>
               </div>
             </AuxCard>
           )}
@@ -280,7 +278,7 @@ export function AuxModesPanel() {
           )}
 
           <div className="flex items-center gap-3 pt-2 pb-4">
-            <Button variant="primary" size="lg" icon={<Save size={14} />} disabled={!isDirty || !connected || isLocked} loading={saving} onClick={saveToFc}>
+            <Button variant="primary" size="lg" icon={<Save size={14} />} disabled={!isDirty || !connected} loading={saving} onClick={saveToFc}>
               Save to Flight Controller
             </Button>
             {showFlash && (

@@ -4,7 +4,6 @@ import { useState, useCallback } from "react";
 import { Brain, ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePidAnalysisStore } from "@/stores/pid-analysis-store";
-import { useArmedLock } from "@/hooks/use-armed-lock";
 import { PidAnalysisWizard } from "./PidAnalysisWizard";
 import { PidLogUploader } from "./PidLogUploader";
 import { PidAnalysisSummary } from "./PidAnalysisSummary";
@@ -49,8 +48,6 @@ export function PidAnalysisSection({
   const requestAiAnalysis = usePidAnalysisStore((s) => s.requestAiAnalysis);
   const applyRecommendation = usePidAnalysisStore((s) => s.applyRecommendation);
   const applyAllRecommended = usePidAnalysisStore((s) => s.applyAllRecommended);
-
-  const { isLocked } = useArmedLock();
 
   const [quickTab, setQuickTab] = useState<QuickTab>("fft");
   const [stepEventIdx, setStepEventIdx] = useState(0);
@@ -236,7 +233,6 @@ export function PidAnalysisSection({
                       recommendations={aiRecommendations}
                       onApply={(id) => applyRecommendation(id, setLocalValue)}
                       onApplyAll={() => applyAllRecommended(setLocalValue)}
-                      isLocked={isLocked}
                       aiLoading={aiLoading}
                     />
                   </div>

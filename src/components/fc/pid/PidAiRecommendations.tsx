@@ -9,7 +9,6 @@ interface PidAiRecommendationsProps {
   recommendations: AiRecommendation[];
   onApply: (id: string) => void;
   onApplyAll: () => void;
-  isLocked: boolean;
   aiLoading: boolean;
 }
 
@@ -67,7 +66,6 @@ export function PidAiRecommendations({
   recommendations,
   onApply,
   onApplyAll,
-  isLocked,
   aiLoading,
 }: PidAiRecommendationsProps) {
   // Loading state
@@ -114,7 +112,6 @@ export function PidAiRecommendations({
           variant="primary"
           size="sm"
           icon={<Sparkles size={12} />}
-          disabled={isLocked}
           onClick={onApplyAll}
         >
           Apply All Recommended ({highConfidenceCount})
@@ -205,7 +202,6 @@ export function PidAiRecommendations({
                 <Button
                   variant="secondary"
                   size="sm"
-                  disabled={isLocked}
                   onClick={() => onApply(rec.id)}
                 >
                   Apply
