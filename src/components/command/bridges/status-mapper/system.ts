@@ -6,17 +6,11 @@
  * @license GPL-3.0-only
  */
 
+import {
+  normalizeServiceStatus,
+  type ServiceStatus,
+} from "@/lib/agent/service-state";
 import type { AgentStatus, ConfigError } from "@/lib/agent/types";
-
-const SERVICE_STATES = [
-  "running",
-  "stopped",
-  "error",
-  "degraded",
-  "starting",
-  "circuit_open",
-] as const;
-type ServiceState = (typeof SERVICE_STATES)[number];
 
 export interface MappedSystemUpdate {
   status: AgentStatus;
@@ -41,7 +35,7 @@ export interface MappedSystemUpdate {
   memoryHistory?: number[];
   services?: Array<{
     name: unknown;
-    status: ServiceState;
+    status: ServiceStatus;
     pid: unknown;
     cpu_percent: number;
     memory_mb: number;
@@ -113,13 +107,9 @@ export function buildSystemUpdate(
   const services = cloudStatus.services;
   if (Array.isArray(services)) {
     update.services = services.map((s: Record<string, unknown>) => {
-      const rawStatus = (s.status ?? "stopped") as string;
-      const safeStatus = (SERVICE_STATES as readonly string[]).includes(rawStatus)
-        ? (rawStatus as ServiceState)
-        : "stopped";
       return {
         name: s.name,
-        status: safeStatus,
+        status: normalizeServiceStatus(s),
         pid: s.pid ?? null,
         cpu_percent: (s.cpuPercent as number | undefined) || 0,
         memory_mb: (s.memoryMb as number | undefined) || 0,

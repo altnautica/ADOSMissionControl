@@ -26,6 +26,7 @@ import {
   type CommandAgentLiveness,
 } from "@/lib/nodes/presence";
 import type { RadioState } from "@/lib/api/ground-station/types";
+import { countRunning } from "@/lib/agent/service-state";
 
 export type { CommandAgentLiveness } from "@/lib/nodes/presence";
 
@@ -198,7 +199,7 @@ export function useCommandAgentFleet(
             transportOpen: status?.transportOpen,
           }),
           serviceCount: services.length,
-          runningServiceCount: services.filter((s) => s.status === "running").length,
+          runningServiceCount: countRunning(services),
         },
         video: {
           state:

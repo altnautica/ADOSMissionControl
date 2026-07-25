@@ -7,6 +7,7 @@
  */
 
 import type { z } from "zod";
+import { normalizeServiceStatus } from "../service-state";
 import type {
   AgentStatus,
   CommandResult,
@@ -118,7 +119,7 @@ export async function getServices(
 
     return {
       name: String(s.name ?? "unknown"),
-      status: (s.status ?? s.state ?? "stopped") as ServiceInfo["status"],
+      status: normalizeServiceStatus(s),
       pid: typeof s.pid === "number" ? s.pid : null,
       cpu_percent:
         typeof s.cpu_percent === "number"

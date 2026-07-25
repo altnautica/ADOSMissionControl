@@ -5,6 +5,7 @@ import { RotateCw, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDuration } from "@/lib/utils";
 import type { ServiceInfo } from "@/lib/agent/types";
+import { countRunning } from "@/lib/agent/service-state";
 import { useVideoStore } from "@/stores/video-store";
 import { useFreshness } from "@/lib/agent/freshness";
 
@@ -62,7 +63,7 @@ export function ServiceTable({ services, onRestart, onRestartAll, processCpu, pr
     );
   }
 
-  const runningCount = services.filter((s) => s.status === "running").length;
+  const runningCount = countRunning(services);
   // Detect multi-process mode: if any service has a real PID, show per-service columns
   const hasRealPids = services.some((s) => s.pid != null && s.pid > 0);
 

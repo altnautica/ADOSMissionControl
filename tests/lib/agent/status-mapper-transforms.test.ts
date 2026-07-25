@@ -179,7 +179,7 @@ describe("buildSystemUpdate", () => {
     expect(update.logs).toBeUndefined();
   });
 
-  it("narrows an unknown service status to stopped and carries process metrics", () => {
+  it("reports an unknown service status as degraded and carries process metrics", () => {
     const cloudStatus = {
       ...base,
       services: [
@@ -194,8 +194,10 @@ describe("buildSystemUpdate", () => {
     const update = buildSystemUpdate(mapped, cloudStatus, true);
     expect(update.services).toHaveLength(3);
     expect(update.services?.[0].status).toBe("running");
-    // Unknown status string narrows to stopped; the pid is preserved verbatim.
-    expect(update.services?.[1].status).toBe("stopped");
+    // An unrecognised status reads as degraded, never as stopped: claiming a
+    // service is down because we did not recognise its state would fabricate a
+    // negative. The pid is preserved verbatim.
+    expect(update.services?.[1].status).toBe("degraded");
     expect(update.services?.[1].cpu_percent).toBe(0);
     expect(update.services?.[1].pid).toBe(101);
     // A service with no pid falls back to null.

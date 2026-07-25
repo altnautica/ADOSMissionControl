@@ -33,6 +33,7 @@ import {
   useNodeDisplayName,
   useReachedViaName,
 } from "@/lib/nodes/reach-provenance";
+import { countRunning } from "@/lib/agent/service-state";
 
 type EffProfile = "drone" | "ground-station" | "workstation";
 
@@ -153,7 +154,7 @@ export function NodeStatusHoverCard({ node }: { node: FleetNodeEntry }) {
   }
 
   const stale = live === "stale";
-  const running = status?.services?.filter((sv) => sv.status === "running").length ?? 0;
+  const running = status?.services ? countRunning(status.services) : 0;
   const total = status?.services?.length ?? 0;
   const hasHostMetrics =
     status != null &&

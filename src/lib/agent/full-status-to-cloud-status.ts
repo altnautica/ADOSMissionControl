@@ -9,6 +9,7 @@
  */
 
 import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
+import { normalizeServiceStatus } from "./service-state";
 import type {
   CommandCloudStatus,
   CommandTelemetrySnapshot,
@@ -111,7 +112,7 @@ export function mapFullStatusToCloudStatus(
   const services = Array.isArray(resp.services)
     ? resp.services.map((svc) => ({
         name: svc.name,
-        status: svc.state,
+        status: normalizeServiceStatus(svc),
       }))
     : [];
 
