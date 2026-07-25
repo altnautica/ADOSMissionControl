@@ -23,6 +23,7 @@
 
 import type { AgentStatus } from "./types";
 import { isMspVariant } from "@/lib/protocol/select-fc-adapter";
+import { fcFirmwareLabel } from "@/lib/protocol/fc-firmware-label";
 
 export type MavlinkLinkState = "alive" | "msp" | "silent" | "down";
 
@@ -140,6 +141,27 @@ export function isFcReachable(fc: {
     fc.fcConnected === true ||
     (isMspVariant(fc.fcVariant) && fc.transportOpen === true)
   );
+}
+
+/**
+ * The connected-style label for an identified MSP flight controller, e.g.
+ * "Betaflight (MSP)". Returns null unless the link is in the `msp` state, so a
+ * caller renders it exactly when one applies and falls through to its normal
+ * MAVLink wording otherwise. An MSP FC is reachable and drivable but never
+ * emits a MAVLink heartbeat, so it carries its own label rather than the
+ * MAVLink "connected" wording or the amber "no MAVLink" warning.
+ *
+ * When the firmware family is not identified the label degrades to a bare
+ * "FC (MSP)" — the MSP state is established by the transport and variant, so
+ * saying so is honest, while naming a family we could not read would not be.
+ */
+export function mspFcLabel(
+  state: MavlinkLinkState,
+  fcFirmware: string | null | undefined,
+  fcVariant: string | null | undefined,
+): string | null {
+  if (state !== "msp") return null;
+  return `${fcFirmwareLabel(fcFirmware, fcVariant) ?? "FC"} (MSP)`;
 }
 
 /** Human-readable heartbeat-age label, e.g. "1.2s ago" or "—". */

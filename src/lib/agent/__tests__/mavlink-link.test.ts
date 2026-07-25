@@ -9,7 +9,7 @@
 
 import { describe, it, expect } from "vitest";
 
-import { deriveMavlinkLink, isFcReachable } from "../mavlink-link";
+import { deriveMavlinkLink, isFcReachable, mspFcLabel } from "../mavlink-link";
 
 describe("isFcReachable", () => {
   it("is true for a MAVLink FC that reports fcConnected", () => {
@@ -79,5 +79,27 @@ describe("deriveMavlinkLink — msp state", () => {
       fc_variant: undefined,
     });
     expect(link.state).toBe("silent");
+  });
+});
+
+describe("mspFcLabel", () => {
+  it("names the firmware family for an MSP link", () => {
+    expect(mspFcLabel("msp", "betaflight", undefined)).toBe("Betaflight (MSP)");
+    expect(mspFcLabel("msp", "inav", undefined)).toBe("iNav (MSP)");
+  });
+
+  it("falls back to the legacy variant field when firmware is absent", () => {
+    expect(mspFcLabel("msp", undefined, "betaflight")).toBe("Betaflight (MSP)");
+  });
+
+  it("degrades to a bare label rather than naming an unread family", () => {
+    expect(mspFcLabel("msp", undefined, undefined)).toBe("FC (MSP)");
+    expect(mspFcLabel("msp", "unknown", undefined)).toBe("FC (MSP)");
+  });
+
+  it("returns null for every non-MSP state so callers keep MAVLink wording", () => {
+    expect(mspFcLabel("alive", "betaflight", undefined)).toBeNull();
+    expect(mspFcLabel("silent", "betaflight", undefined)).toBeNull();
+    expect(mspFcLabel("down", "betaflight", undefined)).toBeNull();
   });
 });

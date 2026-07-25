@@ -23,8 +23,8 @@ import {
   deriveMavlinkLink,
   fcLinkRemediation,
   heartbeatAgeLabel,
+  mspFcLabel,
 } from "@/lib/agent/mavlink-link";
-import { fcFirmwareLabel } from "@/lib/protocol/fc-firmware-label";
 
 type RadioStackState = NonNullable<AgentCapabilities["radioStackState"]>;
 
@@ -82,9 +82,7 @@ export function AgentStatusCard({ status, profile }: AgentStatusCardProps) {
   // An identified MSP FC (Betaflight/iNav) reads as connected — it is reachable
   // and drivable over the MSP proxy, labelled by firmware — never the amber
   // "port open · no MAVLink" state (it never emits a MAVLink heartbeat).
-  const fcMspLabel = fcMsp
-    ? `${fcFirmwareLabel(status.fc_firmware, status.fc_variant) ?? "FC"} (MSP)`
-    : null;
+  const fcMspLabel = mspFcLabel(link.state, status.fc_firmware, status.fc_variant);
   // When the link is silent, surface an actionable reason (FC speaking MSP,
   // no heartbeat, etc.) so the operator knows what to fix rather than just
   // seeing "no MAVLink".

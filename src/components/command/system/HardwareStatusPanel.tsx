@@ -25,8 +25,8 @@ import {
   deriveMavlinkLink,
   fcLinkRemediation,
   heartbeatAgeLabel,
+  mspFcLabel,
 } from "@/lib/agent/mavlink-link";
-import { fcFirmwareLabel } from "@/lib/protocol/fc-firmware-label";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useAgentPeripheralsStore } from "@/stores/agent-peripherals-store";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
@@ -152,9 +152,7 @@ export function HardwareStatusPanel() {
   const fcSilent = link.state === "silent";
   // An identified MSP FC (Betaflight/iNav) reads as connected, labelled by
   // firmware — reachable + drivable over the MSP proxy, never amber "no MAVLink".
-  const fcMspLabel = fcMsp
-    ? `${fcFirmwareLabel(status?.fc_firmware, status?.fc_variant) ?? "FC"} (MSP)`
-    : null;
+  const fcMspLabel = mspFcLabel(link.state, status?.fc_firmware, status?.fc_variant);
   const remediation = fcSilent ? fcLinkRemediation(status) : null;
   // Board pinout + calibration need a real live link, not just an open port.
   const fcLive = fcConnected;
