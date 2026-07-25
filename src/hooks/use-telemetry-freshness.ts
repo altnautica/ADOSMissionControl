@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 
 type FreshnessLevel = "fresh" | "stale" | "lost" | "none";
@@ -102,29 +102,70 @@ function worstFreshness(levels: FreshnessLevel[]): FreshnessLevel {
   return worst;
 }
 
+type ChannelLevels = Record<TelemetryChannel, FreshnessLevel>;
+
+/**
+ * Classify every channel from the live store. Reads through `getState()` on
+ * purpose: the caller drives its own recompute schedule rather than taking a
+ * React subscription on a store whose identity churns with every sample.
+ */
+function readLevels(): ChannelLevels {
+  const state = useTelemetryStore.getState();
+  const levels = {} as ChannelLevels;
+  for (const ch of ALL_CHANNELS) {
+    levels[ch] = classifyFreshness(state[ch].latest()?.timestamp);
+  }
+  return levels;
+}
+
+function sameLevels(a: ChannelLevels, b: ChannelLevels): boolean {
+  for (const ch of ALL_CHANNELS) {
+    if (a[ch] !== b[ch]) return false;
+  }
+  return true;
+}
+
 export function useTelemetryFreshness(): TelemetryFreshnessResult {
-  const store = useTelemetryStore();
-  const [tick, setTick] = useState(0);
+  const [levels, setLevels] = useState<ChannelLevels>(readLevels);
 
   useEffect(() => {
-    const id = setInterval(() => setTick((t) => t + 1), 1000);
-    return () => clearInterval(id);
+    // Freshness moves for two independent reasons: a sample arrives (a store
+    // change) or time passes with no sample (the interval). Both recompute
+    // from live state, so a link that dies mid-flight still decays to
+    // stale/lost even though a dead link produces no store changes at all.
+    //
+    // Each recompute keeps the previous object when no channel actually
+    // changed level, which makes React bail out of the render. The telemetry
+    // store bumps its version on every sample, so subscribing to it directly
+    // would re-render this hook's consumers at the sample rate to publish a
+    // value that only moves across the 2s/5s thresholds.
+    const sync = () =>
+      setLevels((prev) => {
+        const next = readLevels();
+        return sameLevels(prev, next) ? prev : next;
+      });
+
+    const unsubscribe = useTelemetryStore.subscribe(sync);
+    const id = setInterval(sync, 1000);
+    // Catch a sample that landed between the initial render and this effect.
+    sync();
+
+    return () => {
+      clearInterval(id);
+      unsubscribe();
+    };
   }, []);
 
-  // Suppress unused warning — tick drives re-renders
-  void tick;
+  return useMemo(() => {
+    const channels = new Map<TelemetryChannel, FreshnessLevel>(
+      ALL_CHANNELS.map((ch) => [ch, levels[ch]] as const),
+    );
 
-  const channels = new Map<TelemetryChannel, FreshnessLevel>();
-  for (const ch of ALL_CHANNELS) {
-    const latest = store[ch].latest() as { timestamp?: number } | undefined;
-    channels.set(ch, classifyFreshness(latest?.timestamp));
-  }
+    const getFreshness = (channel: TelemetryChannel): FreshnessLevel =>
+      channels.get(channel) ?? "none";
 
-  const getFreshness = (channel: TelemetryChannel): FreshnessLevel =>
-    channels.get(channel) ?? "none";
+    const overall = worstFreshness(KEY_CHANNELS.map((ch) => levels[ch]));
 
-  const keyLevels = KEY_CHANNELS.map((ch) => channels.get(ch) ?? "none");
-  const overall = worstFreshness(keyLevels);
-
-  return { getFreshness, channels, overall };
+    return { getFreshness, channels, overall };
+  }, [levels]);
 }
