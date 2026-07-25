@@ -231,11 +231,6 @@ export function seedDemoHistory(): FlightRecord[] {
   return records;
 }
 
-/** @deprecated use {@link seedDemoHistory} */
-export function getFlightHistory(): FlightRecord[] {
-  return seedDemoHistory();
-}
-
 // ── Synthetic telemetry recordings ──────────────────────────
 
 const IDB_RECORDINGS_PREFIX = "altcmd:recording:";

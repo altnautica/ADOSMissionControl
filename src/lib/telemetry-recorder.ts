@@ -263,34 +263,6 @@ export function startRecording(droneId?: string, droneName?: string): string {
 }
 
 /**
- * Append a frame to the default slot.
- *
- * @deprecated Prefer {@link recordFrameFor}.
- */
-export function recordFrame(channel: string, data: unknown): void {
-  // Delegate via a synthetic per-drone-style call against the default slot.
-  const slot = _slots.get(DEFAULT_SLOT);
-  if (!slot || slot.state !== "recording") return;
-  if (slot.frames.length >= MAX_FRAMES) return;
-
-  if (!CAP_BYPASS_CHANNELS.has(channel)) {
-    const rateHz = CHANNEL_RATE_LIMIT_HZ[channel] ?? DEFAULT_RATE_HZ;
-    const minIntervalMs = 1000 / rateHz;
-    const now = Date.now();
-    const last = slot.lastWriteAt.get(channel) ?? 0;
-    if (now - last < minIntervalMs) return;
-    slot.lastWriteAt.set(channel, now);
-  }
-
-  slot.channels.add(channel);
-  slot.frames.push({
-    offsetMs: Date.now() - slot.startTime,
-    channel,
-    data,
-  });
-}
-
-/**
  * Stop the default-slot recording and persist it.
  *
  * @deprecated Prefer {@link stopRecordingFor}.

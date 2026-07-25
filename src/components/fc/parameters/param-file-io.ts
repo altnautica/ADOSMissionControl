@@ -1,8 +1,6 @@
 import type { ParameterValue } from "@/lib/protocol/types";
 import {
   serializeParamFile,
-  buildModifiedFromFile,
-  parseParamFile,
   type SerializeParamOptions,
 } from "@/lib/formats/param-file-parser";
 
@@ -48,16 +46,3 @@ export function exportParamFile(
   downloadText(`params_${dateStamp()}.${ext}`, text);
 }
 
-/**
- * Import parameters from a .param/.params file into the modified map.
- * @deprecated Prefer parseParamFile + buildModifiedFromFile at call sites when you need counts.
- */
-export function importParamFile(
-  text: string,
-  parameters: ParameterValue[],
-  modified: Map<string, number>,
-): Map<string, number> {
-  const fc = new Map<string, number>();
-  for (const p of parameters) fc.set(p.name, p.value);
-  return buildModifiedFromFile(parseParamFile(text), fc, modified).modified;
-}
