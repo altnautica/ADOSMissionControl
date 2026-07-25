@@ -32,6 +32,7 @@ import { cmdDroneStatusApi, cmdDroneCommandsApi } from "@/lib/community-api-dron
 import { useConvexAvailable } from "@/app/ConvexClientProvider";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import { STALE_THRESHOLD_MS, OFFLINE_THRESHOLD_MS } from "@/lib/agent/freshness";
+import { describeMissingCloudStatus } from "@/lib/agent/cloud-status-diagnosis";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { inferCapabilities } from "@/lib/agent/infer-capabilities";
 import type {
@@ -81,12 +82,16 @@ export function CloudStatusBridge() {
   useEffect(() => {
     if (!cloudDeviceId || !convexAvailable) return;
 
-    // Surface error if no cloud status received within 15s
+    // Surface the reason if no cloud status has arrived within 15s. Silence on
+    // the relay has several causes and only one of them is an offline agent: a
+    // LAN-only node publishes nothing to the relay by design, and an agent with
+    // its relay switched off never will either. Naming the wrong one sends the
+    // operator to check power on a node that was never expected to report here.
     const timer = setTimeout(() => {
       const current = useAgentConnectionStore.getState();
       if (current.cloudMode && !useAgentSystemStore.getState().status) {
         useAgentConnectionStore.setState({
-          connectionError: "No cloud status received. Is the agent paired and online?",
+          connectionError: describeMissingCloudStatus(cloudDeviceId),
         });
       }
     }, 15000);

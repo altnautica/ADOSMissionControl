@@ -10,8 +10,10 @@
  * On HTTPS, locally-paired nodes go through the cloud relay because
  * the browser blocks mixed-content fetches to ``http://*.local``; on
  * HTTP origins the direct REST path is preferred so the pair stays a
- * single round-trip. `selectNode` routes local nodes through it and
- * sends cloud-paired entries to the relay.
+ * single round-trip. `selectNode` routes local nodes through it, sends
+ * cloud-paired entries to the relay, and refuses a node whose only reach
+ * is another node's radio relay rather than opening a connection for it
+ * that can never answer.
  * @license GPL-3.0-only
  */
 
@@ -19,6 +21,7 @@ import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useLocalNodesStore } from "@/stores/local-nodes-store";
 import { usePairingStore } from "@/stores/pairing-store";
 import { nodeIdForDevice } from "@/lib/agent/node-id";
+import { resolveNodeCommandReach } from "@/lib/nodes/command-sink";
 import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
 
 interface SelectNodeOpts {
@@ -87,12 +90,33 @@ export async function selectNode(
     connectLocalNode(node.deviceId, opts);
     return;
   }
-  // Cloud-paired entry → relay.
   const conn = useAgentConnectionStore.getState();
   usePairingStore.getState().selectPairedDrone(node._id);
   opts.onFocusAgent();
+  // Selecting always tears down the prior node's connection, whether or not a
+  // new one can be opened, so the panel never shows the previous node's agent.
+  conn.disconnect();
+
+  // Not every non-local node is a cloud node. One enrolled solely through
+  // another node's radio relay was never paired with the GCS at all, so
+  // subscribing to a relay under its device id yields a row that will never
+  // exist and a silent connection that eventually reports the node offline.
+  // The command lane resolver already answers "what reaches this node", and it
+  // settles the relay case before it probes LAN or cloud, so ask it rather than
+  // forming a second opinion here. Only the relay verdict is consulted: the
+  // remaining reasons it can return describe a missing command queue, which is
+  // an artifact of not passing one and says nothing about reachability.
+  const { blockedReason } = resolveNodeCommandReach(node);
+  if (blockedReason === "relay-only") {
+    const message =
+      "This node is reached over another node's radio relay, which carries its feed but no connection to open. Pair it directly from the Add-a-Node card to command it.";
+    useAgentConnectionStore.setState({ connectionError: message });
+    opts.onError?.("relay_only");
+    return;
+  }
+
+  // Cloud-paired entry → relay.
   try {
-    conn.disconnect();
     conn.connectCloud(node.deviceId);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
