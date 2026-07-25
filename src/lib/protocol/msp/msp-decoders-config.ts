@@ -4,7 +4,6 @@
  * Implementation lives in per-concern files under `decoders/config/`:
  *   - pid       : MSP_PID, MSP_RC_TUNING
  *   - filters   : MSP_FILTER_CONFIG
- *   - advanced  : MSP_ADVANCED_CONFIG
  *   - failsafe  : MSP_FAILSAFE_CONFIG
  *   - serial    : MSP_CF_SERIAL_CONFIG
  *   - osd       : MSP_OSD_CONFIG
@@ -21,7 +20,6 @@
 
 export * from './decoders/config/pid';
 export * from './decoders/config/filters';
-export * from './decoders/config/advanced';
 export * from './decoders/config/failsafe';
 export * from './decoders/config/serial';
 export * from './decoders/config/osd';
