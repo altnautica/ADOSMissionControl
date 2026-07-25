@@ -42,7 +42,9 @@ export interface FleetDrone extends DroneInfo {
   position?: PositionData;
   battery?: BatteryData;
   gps?: GpsData;
-  healthScore: number; // 0-100
+  /** Measured health, 0-100. Undefined when nothing has measured it — no
+   * surface may substitute a number for the absence of a reading. */
+  healthScore?: number;
   hasAgent?: boolean;
   /** True when a flight controller is attached to this node (the node
    * registry holds a non-null managedId). When false, arm/mode/battery
@@ -52,7 +54,10 @@ export interface FleetDrone extends DroneInfo {
   fcAttached?: boolean;
   /** "local" for direct MAVLink connections, "cloud" for cloud-paired agents */
   source?: "local" | "cloud";
-  /** Cloud device ID for cloud-paired agents */
+  /** The agent device id of a node the GCS holds a pairing for, LAN or cloud.
+   * Undefined when no transport carries an agent identity for this node — a
+   * node seen only through another node's radio relay, or a bare flight
+   * controller with no companion behind it. */
   cloudDeviceId?: string;
   /** Cloud posture chosen on the agent. "local" hides the cloud-relay
    * connectivity expectation so the fleet card distinguishes an

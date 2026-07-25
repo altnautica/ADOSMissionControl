@@ -210,7 +210,11 @@ export function CompactInfoCards({ drone }: CompactInfoCardsProps) {
       <Section title={t("health")}>
         <SensorHealthBar compact />
         <div className="grid grid-cols-2 gap-2 mt-2">
-          <MetricCell label={t("health")} value={drone.healthScore} unit="%" />
+          <MetricCell
+            label={t("health")}
+            value={drone.healthScore ?? "--"}
+            unit={drone.healthScore === undefined ? "" : "%"}
+          />
           <MetricCell label={t("voltage")} value={fcLive ? (drone.battery?.voltage ?? 0).toFixed(1) : "--"} unit={fcLive ? "V" : ""} />
           <MetricCell label={t("gpsSats")} value={fcLive ? (drone.gps?.satellites ?? 0) : "--"} />
           <MetricCell label={t("fixType")} value={fcLive ? (drone.gps?.fixType && drone.gps.fixType >= 3 ? "3D" : drone.gps?.fixType === 2 ? "2D" : "No Fix") : "--"} />

@@ -218,6 +218,96 @@ describe("nodeEntryToFleetDrone — transitive-reach provenance", () => {
   });
 });
 
+describe("nodeEntryToFleetDrone — agent identity is never synthesized", () => {
+  it("carries the agent device id a paired source supplied", () => {
+    const row = nodeEntryToFleetDrone(
+      entry({
+        presence: { ...entry().presence, cloudDeviceId: "dev" },
+      }),
+      undefined,
+      NOW,
+    );
+    expect(row.cloudDeviceId).toBe("dev");
+  });
+
+  it("leaves the agent device id undefined on a relayed-only node", () => {
+    // The relayed source publishes no cloudDeviceId: the GCS never paired with
+    // this drone, its only path is another node's radio. Falling back to the
+    // bare deviceId would advertise a direct reach that does not exist, and the
+    // detail panel would dial an agent nothing can answer for.
+    const row = nodeEntryToFleetDrone(
+      entry({
+        nodeId: "node:drone-x",
+        presence: {
+          deviceId: "drone-x",
+          name: "Drone X",
+          profile: "drone",
+          sources: ["relayed"],
+          reachedVia: "node:gs-1",
+          lastHeartbeat: NOW,
+        },
+      }),
+      undefined,
+      NOW,
+    );
+    expect(row.cloudDeviceId).toBeUndefined();
+    // The hop is still named — the node is reachable, just not directly.
+    expect(row.reachedVia).toBe("node:gs-1");
+  });
+
+  it("carries the agent device id once a relayed node is also paired directly", () => {
+    const row = nodeEntryToFleetDrone(
+      entry({
+        nodeId: "node:drone-x",
+        presence: {
+          deviceId: "drone-x",
+          name: "Drone X",
+          profile: "drone",
+          sources: ["relayed", "local"],
+          cloudDeviceId: "drone-x",
+          reachedVia: "node:gs-1",
+          lastHeartbeat: NOW,
+        },
+      }),
+      undefined,
+      NOW,
+    );
+    expect(row.cloudDeviceId).toBe("drone-x");
+  });
+});
+
+describe("nodeEntryToFleetDrone — health is measured, never inferred", () => {
+  it("leaves healthScore undefined when no FC reported one", () => {
+    const online = nodeEntryToFleetDrone(entry(), undefined, NOW);
+    expect(online.status).toBe("online");
+    expect(online.healthScore).toBeUndefined();
+  });
+
+  it("leaves healthScore undefined on an offline node too", () => {
+    const row = nodeEntryToFleetDrone(
+      entry({
+        presence: {
+          ...entry().presence,
+          lastHeartbeat: NOW - OFFLINE_THRESHOLD_MS - 1,
+        },
+      }),
+      undefined,
+      NOW,
+    );
+    expect(row.status).toBe("offline");
+    expect(row.healthScore).toBeUndefined();
+  });
+
+  it("passes through a health score the FC actually reported", () => {
+    const row = nodeEntryToFleetDrone(
+      entry({ fc: { managedId: "node:dev", healthScore: 42 } }),
+      undefined,
+      NOW,
+    );
+    expect(row.healthScore).toBe(42);
+  });
+});
+
 describe("nodeEntryToFleetDrone — FC-link hint projection", () => {
   it("projects the cloud-status fcLinkHint onto the fleet row", () => {
     const status = { deviceId: "dev", fcLinkHint: "msp_detected" } as CommandCloudStatus;

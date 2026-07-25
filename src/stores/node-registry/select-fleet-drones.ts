@@ -16,6 +16,10 @@
  *    fabricated disarmed / STABILIZE / 0% reading;
  *  - a cloud presence tick never writes the FC sub-state, so it can never
  *    overwrite live flight state;
+ *  - `cloudDeviceId` and `healthScore` are carried only when a source actually
+ *    supplied them. Neither is synthesized from the deviceId or from liveness,
+ *    so a node reached only through a relay advertises no agent identity and a
+ *    node nothing measured advertises no health;
  *  - cloud-only display pills (GST / Direct / camera / nav / peer / …) come
  *    from the command-fleet status keyed by deviceId, merged in here.
  *
@@ -117,7 +121,10 @@ export function nodeEntryToFleetDrone(
     lastHeartbeat,
     firmwareVersion: fc.firmwareVersion,
     frameType: fc.frameType,
-    healthScore: fc.healthScore ?? (online ? 80 : 0),
+    // Health is real only when something measured it. Nothing derives a health
+    // score from mere liveness, so an online node with no reading leaves this
+    // undefined and the card renders a placeholder rather than a confident 80%.
+    healthScore: fc.healthScore,
     hasAgent: presence.sources.length > 0,
     fcAttached,
     // Source / cloud identity come from presence, never from FC telemetry.
@@ -127,7 +134,12 @@ export function nodeEntryToFleetDrone(
     // (a direct local/cloud source, when present) still decides the primary
     // reach the UX shows; this only names the WFB hop.
     reachedVia: presence.reachedVia,
-    cloudDeviceId: presence.cloudDeviceId ?? deviceId ?? undefined,
+    // Only the transports that actually hold an agent identity for this node
+    // (the LAN pair, the cloud pair) publish cloudDeviceId. A node seen ONLY
+    // through another node's radio relay has no such identity, so it stays
+    // undefined here — falling back to the bare deviceId would mint a reach the
+    // GCS does not have and every consumer downstream would act on it.
+    cloudDeviceId: presence.cloudDeviceId,
     cloudPosture: presence.cloudPosture,
     profile,
     role,
