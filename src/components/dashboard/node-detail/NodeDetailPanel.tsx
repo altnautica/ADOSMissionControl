@@ -32,6 +32,7 @@ import {
   isPluginTabId,
 } from "@/components/plugins/DroneDetailTabHost";
 import { PluginHostProvider } from "@/components/plugins/PluginHostProvider";
+import { SurfaceErrorBoundary } from "./SurfaceErrorBoundary";
 import { usePluginContributions } from "@/hooks/use-plugin-contributions";
 import { X, RotateCcw, Trash2, Lock } from "lucide-react";
 import { useFleetNodes } from "@/hooks/use-fleet-nodes";
@@ -500,11 +501,17 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
             association resolves to the plugin's iframe wrapper. Built-in
             surfaces share the panel div below. */}
         {isPluginTabId(visibleTab) ? (
-          <DroneDetailTabBody
-            agentId={droneId}
-            activeTabId={visibleTab}
-            nodeProfile={drone.profile}
-          />
+          <SurfaceErrorBoundary
+            key={visibleTab}
+            message={t("surfaceError")}
+            retryLabel={t("surfaceErrorRetry")}
+          >
+            <DroneDetailTabBody
+              agentId={droneId}
+              activeTabId={visibleTab}
+              nodeProfile={drone.profile}
+            />
+          </SurfaceErrorBoundary>
         ) : (
           <div
             id={`drone-tabpanel-${visibleTab}`}
@@ -518,7 +525,13 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
             // body that did not bring its own scroll container.
             className="flex-1 min-h-0 overflow-y-auto flex flex-col"
           >
-            {activeBody}
+            <SurfaceErrorBoundary
+              key={visibleTab}
+              message={t("surfaceError")}
+              retryLabel={t("surfaceErrorRetry")}
+            >
+              {activeBody}
+            </SurfaceErrorBoundary>
           </div>
         )}
 

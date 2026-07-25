@@ -998,7 +998,9 @@
         }
       }
     },
-    "cameras": "Cameras"
+    "cameras": "Cameras",
+    "surfaceError": "This view failed to render. The rest of the console is unaffected.",
+    "surfaceErrorRetry": "Try again"
   },
   "vision": {
     "title": "Vision Engine",
