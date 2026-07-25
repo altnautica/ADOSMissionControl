@@ -92,24 +92,27 @@ export const cloudStateSlice: AgentConnectionSliceCreator<CloudStateSlice> = (
       cloudMode: true,
       cloudDeviceId: deviceId,
       nodeDeviceId: deviceId,
-      connected: true,
+      // Subscribing to the relay is not reaching the node. No client is built
+      // here, no request has been answered, and the agent may have been dark
+      // for hours. `connected` flips only when the status bridge sees a
+      // heartbeat that is genuinely fresh; until then this is an attempt, and
+      // the surfaces that gate on it read the node as not yet reached rather
+      // than claiming a link that does not exist.
+      connected: false,
       connectionError: null,
       agentUrl: lanUrl,
       apiKey: lanKey,
       client: null,
       mavlinkUrl: null,
-      // Give the watchdog a grace period so it doesn't immediately re-flip
-      // the header to offline against the old stale timestamp.
-      lastCloudUpdate: Date.now(),
       consecutiveFailures: 0,
     });
-    // Reset the freshness clock to "unknown" so the UI stops showing
-    // stale/offline treatment while we wait for the first fresh heartbeat.
-    // getFreshness(null) returns state: "unknown" which every consumer
-    // treats as live-neutral (no dim, no banner, no "last seen Xm ago" chip).
-    // The next heartbeat (or the watchdog at t+STALE_THRESHOLD_MS) will
-    // reinstate the correct state.
-    useAgentSystemStore.setState({ lastUpdatedAt: null, stale: false });
+    // The freshness clock is deliberately left alone. Clearing it would read as
+    // "unknown", which every consumer treats as live-neutral: no dim, no stale
+    // banner, no "last seen" label. On the reconnect path the node's last
+    // readings are still on screen, so blanking the clock would repaint hours
+    // old telemetry as current the instant the operator pressed the button.
+    // Whatever the store already holds stays the truth until a heartbeat
+    // replaces it, and a node with no readings at all was cleared on disconnect.
   },
 
   sendCloudCommand(command, args) {
