@@ -15,6 +15,7 @@ import {
   type RelayGroundNode,
 } from "../relayed-peers";
 import type { CommandCloudStatus } from "@/stores/command-fleet-store";
+import type { RelayedPeerStatus } from "../relayed-status-client";
 
 const NOW = 1_700_000_000_000;
 
@@ -308,5 +309,128 @@ describe("planRelayedEnrollment liveness", () => {
       directlyPairedDeviceIds: new Set(),
     });
     expect(e.funneledStatus?.updatedAt).toBe(0);
+  });
+});
+
+describe("planRelayedEnrollment relayed-status funnel", () => {
+  function freshPeerStatus(
+    over: Partial<NonNullable<RelayedPeerStatus["status"]>> = {},
+  ): RelayedPeerStatus {
+    return {
+      deviceId: "drone-a",
+      statusFresh: true,
+      status: {
+        fcConnected: true,
+        mavlinkAlive: true,
+        fcVariant: "ardupilot",
+        fcFirmware: "ardupilot",
+        cpuPercent: 42,
+        memoryPercent: 55,
+        diskPercent: 30,
+        temperature: 47.5,
+        boardName: "Radxa Cubie A7S",
+        boardSoc: "Allwinner A733",
+        boardTier: 3,
+        uptimeSeconds: 600,
+        agentVersion: "0.99.244",
+        cameraState: "ready",
+        ...over,
+      },
+    };
+  }
+
+  it("populates the drone's FC, board and resource fields from a fresh relayed status", () => {
+    const [e] = planRelayedEnrollment({
+      groundNodes: [
+        ground({
+          status: gsStatus({ peerDeviceId: "drone-a" }),
+          relayedStatusByPeer: new Map([["drone-a", freshPeerStatus()]]),
+        }),
+      ],
+      directlyPairedDeviceIds: new Set(),
+    });
+    expect(e.funneledStatus?.fcConnected).toBe(true);
+    expect(e.funneledStatus?.mavlinkAlive).toBe(true);
+    expect(e.funneledStatus?.fcVariant).toBe("ardupilot");
+    expect(e.funneledStatus?.cpuPercent).toBe(42);
+    expect(e.funneledStatus?.memoryPercent).toBe(55);
+    expect(e.funneledStatus?.diskPercent).toBe(30);
+    expect(e.funneledStatus?.temperature).toBe(47.5);
+    expect(e.funneledStatus?.boardName).toBe("Radxa Cubie A7S");
+    expect(e.funneledStatus?.boardTier).toBe(3);
+    expect(e.funneledStatus?.version).toBe("0.99.244");
+    expect(e.funneledStatus?.cameraState).toBe("ready");
+  });
+
+  it("leaves every relayed-status field absent before the first poll lands", () => {
+    // No relayedStatusByPeer at all — must read absent, never a fabricated
+    // false/zero (Rule 44). This is the state every drone starts in.
+    const [e] = planRelayedEnrollment({
+      groundNodes: [ground({ status: gsStatus({ peerDeviceId: "drone-a" }) })],
+      directlyPairedDeviceIds: new Set(),
+    });
+    expect(e.funneledStatus?.fcConnected).toBeUndefined();
+    expect(e.funneledStatus?.cpuPercent).toBeUndefined();
+    expect(e.funneledStatus?.boardName).toBeUndefined();
+  });
+
+  it("leaves the status fields absent when the ground station reports the peer's status as stale", () => {
+    // The agent route itself drops an aged-out status block rather than
+    // serving it; the client must not resurrect one from a non-fresh entry.
+    const stale: RelayedPeerStatus = {
+      deviceId: "drone-a",
+      statusFresh: false,
+      statusAgeS: 45,
+    };
+    const [e] = planRelayedEnrollment({
+      groundNodes: [
+        ground({
+          status: gsStatus({ peerDeviceId: "drone-a" }),
+          relayedStatusByPeer: new Map([["drone-a", stale]]),
+        }),
+      ],
+      directlyPairedDeviceIds: new Set(),
+    });
+    expect(e.funneledStatus?.fcConnected).toBeUndefined();
+    expect(e.funneledStatus?.cpuPercent).toBeUndefined();
+  });
+
+  it("keys the relayed status by device id, so one ground node's second peer does not borrow the first peer's readings", () => {
+    const [a, b] = planRelayedEnrollment({
+      groundNodes: [
+        ground({
+          status: gsStatus({
+            linkedPeers: [
+              { deviceId: "drone-a", rssiDbm: -50 },
+              { deviceId: "drone-b", rssiDbm: -60 },
+            ],
+          }),
+          relayedStatusByPeer: new Map([
+            ["drone-a", freshPeerStatus({ cpuPercent: 10 })],
+            ["drone-b", freshPeerStatus({ cpuPercent: 90 })],
+          ]),
+        }),
+      ],
+      directlyPairedDeviceIds: new Set(),
+    });
+    expect(a.deviceId).toBe("drone-a");
+    expect(a.funneledStatus?.cpuPercent).toBe(10);
+    expect(b.deviceId).toBe("drone-b");
+    expect(b.funneledStatus?.cpuPercent).toBe(90);
+  });
+
+  it("still withholds the whole funneled status for a drone that is also paired directly", () => {
+    // A direct pair's own bridge owns the status row; the relayed-status
+    // funnel must not clobber it even when fresh data is available.
+    const [e] = planRelayedEnrollment({
+      groundNodes: [
+        ground({
+          status: gsStatus({ peerDeviceId: "drone-a" }),
+          relayedStatusByPeer: new Map([["drone-a", freshPeerStatus()]]),
+        }),
+      ],
+      directlyPairedDeviceIds: new Set(["drone-a"]),
+    });
+    expect(e.funneledStatus).toBeUndefined();
   });
 });

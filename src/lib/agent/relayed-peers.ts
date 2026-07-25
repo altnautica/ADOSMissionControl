@@ -25,6 +25,7 @@ import type {
 } from "@/stores/command-fleet-store";
 import { nodeIdForDevice } from "@/lib/agent/node-id";
 import { resolveAgentVideoUrl } from "@/lib/agent/video-url";
+import type { RelayedPeerStatus } from "@/lib/agent/relayed-status-client";
 
 /** A directly-paired ground node that may be relaying drones. */
 export interface RelayGroundNode {
@@ -37,6 +38,9 @@ export interface RelayGroundNode {
   /** True only when the ground node's WFB link is VERIFIED up. Gates the
    * funneled video honestly (Rule 44 — a down/unproven link shows no feed). */
   radioUp: boolean;
+  /** The most recently polled `relayed/status` peers this ground node
+   * reported, keyed by device id. Undefined before the first poll lands. */
+  relayedStatusByPeer?: ReadonlyMap<string, RelayedPeerStatus>;
 }
 
 /** One enrollment intent for a WFB-linked drone reached through a ground node. */
@@ -129,10 +133,24 @@ function funneledStatusFor(args: {
   groundStatus: CommandCloudStatus | undefined;
   radioUp: boolean;
   updatedAt: number;
+  /** The compact node-status snapshot the drone pushed over the aux lane, via
+   * the ground station's relayed/status route — undefined until the first
+   * poll lands, or when the ground station reports nothing fresh for this
+   * peer (Rule 44: absent, not zeroed). */
+  relayedStatus?: RelayedPeerStatus;
 }): CommandCloudStatus {
-  const { droneDeviceId, groundDeviceId, peerRssiDbm, groundStatus, radioUp, updatedAt } =
-    args;
+  const {
+    droneDeviceId,
+    groundDeviceId,
+    peerRssiDbm,
+    groundStatus,
+    radioUp,
+    updatedAt,
+    relayedStatus,
+  } = args;
   const funneledUrl = radioUp ? resolveAgentVideoUrl(groundStatus) : null;
+  const s = relayedStatus?.status;
+
   return {
     deviceId: droneDeviceId,
     // The drone's WFB peer IS the ground node it reaches through.
@@ -143,6 +161,29 @@ function funneledStatusFor(args: {
     videoState: funneledUrl ? "running" : undefined,
     videoWhepUrl: funneledUrl ?? undefined,
     updatedAt,
+    // Everything below rides the aux-lane node-status snapshot when the
+    // ground station reports one fresh for this peer. `fcConnected` here is
+    // the raw heartbeat-gated field, same caveat as the direct-connect path:
+    // an MSP flight controller can read false while genuinely reachable,
+    // because the compact snapshot does not yet carry the agent's separate
+    // `fcReachable` verdict. Left honestly absent rather than guessed.
+    fcConnected: s?.fcConnected,
+    mavlinkAlive: s?.mavlinkAlive,
+    fcVariant: s?.fcVariant,
+    fcFirmware: s?.fcFirmware,
+    cpuPercent: s?.cpuPercent,
+    memoryPercent: s?.memoryPercent,
+    diskPercent: s?.diskPercent,
+    temperature: s?.temperature,
+    boardName: s?.boardName,
+    boardSoc: s?.boardSoc,
+    boardTier: s?.boardTier,
+    uptimeSeconds: s?.uptimeSeconds,
+    version: s?.agentVersion,
+    cameraState:
+      s?.cameraState === "ready" || s?.cameraState === "missing" || s?.cameraState === "error"
+        ? s.cameraState
+        : undefined,
   };
 }
 
@@ -194,6 +235,7 @@ export function planRelayedEnrollment(args: {
               groundStatus: gs.status,
               radioUp: gs.radioUp,
               updatedAt: lastHeartbeat,
+              relayedStatus: gs.relayedStatusByPeer?.get(droneDeviceId),
             }),
       });
     }

@@ -21,7 +21,7 @@
  * @license GPL-3.0-only
  */
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { usePairingStore } from "@/stores/pairing-store";
 import { useLocalNodesStore } from "@/stores/local-nodes-store";
@@ -37,6 +37,16 @@ import {
   planRelayedEnrollment,
   type RelayGroundNode,
 } from "@/lib/agent/relayed-peers";
+import {
+  fetchRelayedStatus,
+  type RelayedPeerStatus,
+} from "@/lib/agent/relayed-status-client";
+
+/** How often each directly-paired ground station is polled for the compact
+ * status its relayed drones pushed over the aux lane. Well under the route's
+ * own 20s sidecar-staleness gate, so a poll is very unlikely to straddle a
+ * restart of the ground station's receive process. */
+const RELAYED_STATUS_POLL_MS = 5000;
 
 /** True only when the node's WFB link is verified up (frames confirmed
  * received). A missing or unproven radio block is NOT up (Rule 44). */
@@ -57,7 +67,18 @@ function funneledDiffers(
     existing.videoWhepUrl !== next.videoWhepUrl ||
     existing.peerDeviceId !== next.peerDeviceId ||
     existing.peerRssiDbm !== next.peerRssiDbm ||
-    existing.updatedAt !== next.updatedAt
+    existing.updatedAt !== next.updatedAt ||
+    // The relayed-status poll runs on its own cadence, independent of the
+    // peer-observation timestamp above, so a resource/FC-state change with an
+    // unmoved `updatedAt` must still be checked or it would silently stall.
+    existing.fcConnected !== next.fcConnected ||
+    existing.mavlinkAlive !== next.mavlinkAlive ||
+    existing.fcVariant !== next.fcVariant ||
+    existing.cpuPercent !== next.cpuPercent ||
+    existing.memoryPercent !== next.memoryPercent ||
+    existing.diskPercent !== next.diskPercent ||
+    existing.temperature !== next.temperature ||
+    existing.cameraState !== next.cameraState
   );
 }
 
@@ -70,6 +91,47 @@ export function RelayedDroneBridge() {
   const pairedDrones = usePairingStore((s) => s.pairedDrones);
   const localNodes = useLocalNodesStore((s) => s.nodes);
   const cloudStatuses = useCommandFleetStore((s) => s.cloudStatuses);
+
+  // The latest relayed/status peers reported by each LAN-paired ground
+  // station, keyed by ground deviceId -> (peer deviceId -> status). Populated
+  // by the poll effect below; read by the enrollment effect so a relayed
+  // drone's flight-controller, service and resource fields come from what the
+  // ground station actually decoded off the aux lane, not left permanently
+  // absent. Cloud-paired ground stations are not polled here: this is the
+  // LAN-direct local-first path (Rule 39), and a cloud ground station has no
+  // browser-reachable host to poll directly.
+  const [relayedStatusByGround, setRelayedStatusByGround] = useState<
+    ReadonlyMap<string, ReadonlyMap<string, RelayedPeerStatus>>
+  >(new Map());
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function pollOnce() {
+      const groundStations = useLocalNodesStore
+        .getState()
+        .nodes.filter((n) => n.profile === "ground-station");
+      if (groundStations.length === 0) return;
+
+      const results = await Promise.all(
+        groundStations.map(async (gs) => {
+          const resp = await fetchRelayedStatus(gs.hostname, gs.apiKey);
+          const byPeer = new Map<string, RelayedPeerStatus>();
+          for (const p of resp.peers) byPeer.set(p.deviceId, p);
+          return [gs.deviceId, byPeer] as const;
+        }),
+      );
+      if (cancelled) return;
+      setRelayedStatusByGround(new Map(results));
+    }
+
+    pollOnce();
+    const timer = setInterval(pollOnce, RELAYED_STATUS_POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, []);
 
   useEffect(() => {
     // Every device the GCS reaches directly (cloud + LAN). A relayed peer that
@@ -91,6 +153,7 @@ export function RelayedDroneBridge() {
         nodeId: nodeIdForDevice(deviceId),
         status,
         radioUp: radioUpFor(status),
+        relayedStatusByPeer: relayedStatusByGround.get(deviceId),
       });
     };
     for (const d of pairedDrones) addGs(d.deviceId, d.profile);
@@ -156,7 +219,7 @@ export function RelayedDroneBridge() {
 
     ownedNodeIds.current = nextNodeIds;
     ownedStatusIds.current = nextStatusIds;
-  }, [pairedDrones, localNodes, cloudStatuses]);
+  }, [pairedDrones, localNodes, cloudStatuses, relayedStatusByGround]);
 
   useEffect(() => {
     const nodeIds = ownedNodeIds.current;
