@@ -21,7 +21,6 @@ import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useLocalNodesStore } from "@/stores/local-nodes-store";
 import { usePairingStore } from "@/stores/pairing-store";
 import { nodeIdForDevice } from "@/lib/agent/node-id";
-import { resolveNodeCommandReach } from "@/lib/nodes/command-sink";
 import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
 
 interface SelectNodeOpts {
@@ -98,18 +97,20 @@ export async function selectNode(
   conn.disconnect();
 
   // Not every non-local node is a cloud node. One enrolled solely through
-  // another node's radio relay was never paired with the GCS at all, so
-  // subscribing to a relay under its device id yields a row that will never
-  // exist and a silent connection that eventually reports the node offline.
-  // The command lane resolver already answers "what reaches this node", and it
-  // settles the relay case before it probes LAN or cloud, so ask it rather than
-  // forming a second opinion here. Only the relay verdict is consulted: the
-  // remaining reasons it can return describe a missing command queue, which is
-  // an artifact of not passing one and says nothing about reachability.
-  const { blockedReason } = resolveNodeCommandReach(node);
-  if (blockedReason === "relay-only") {
+  // another node's radio relay was never paired with the GCS at all, so this
+  // store — which models ONE focused node's own LAN/cloud agent session —
+  // has nothing to dial for it: subscribing to a relay under its device id
+  // would open a connection that never exists and eventually reports the node
+  // offline. Checked directly off `node.isRelayed` (not through the command
+  // lane resolver) so this decision never drifts with what the resolver
+  // reports once a live session exists — the two questions are different:
+  // "does this store have a LAN/cloud identity to connect to" is always no
+  // for a relay-only node, independent of whether its flight-controller link
+  // is up. `RelayedMavlinkBridge` opens that FC link in the background,
+  // independent of selection, so focusing the node here is enough.
+  if (node.isRelayed) {
     const message =
-      "This node is reached over another node's radio relay, which carries its feed but no connection to open. Pair it directly from the Add-a-Node card to command it.";
+      "This node is reached over another node's radio relay. Its flight-controller link connects automatically in the background — agent-level tools (System / Plugins / Black Box) need it paired directly from the Add-a-Node card.";
     useAgentConnectionStore.setState({ connectionError: message });
     opts.onError?.("relay_only");
     return;

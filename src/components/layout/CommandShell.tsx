@@ -46,6 +46,7 @@ import { AgentBridges } from "@/components/command/AgentBridges";
 import { CloudDroneBridge } from "@/components/dashboard/CloudDroneBridge";
 import { LocalDroneBridge } from "@/components/dashboard/LocalDroneBridge";
 import { RelayedDroneBridge } from "@/components/dashboard/RelayedDroneBridge";
+import { RelayedMavlinkBridge } from "@/components/dashboard/RelayedMavlinkBridge";
 import { FleetProjectionBridge } from "@/components/dashboard/FleetProjectionBridge";
 // Cockpit skill platform — register the built-in skills once and keep the
 // selected drone's skill state fresh, shell-wide, so the Skill Bar + the
@@ -405,6 +406,10 @@ function CommandShellInner({ children }: { children: React.ReactNode }) {
         <CloudDroneBridge />
         <LocalDroneBridge />
         <RelayedDroneBridge />
+        {/* Opens the actual MAVLink session for a relay-only drone against its
+            ground station's republish endpoint, so its Setup/Parameters tabs
+            render real UI instead of the offline placeholder. */}
+        <RelayedMavlinkBridge />
         <FleetProjectionBridge />
 
         {/* Skill confirm host — always mounted so any dispatch path (the

@@ -164,3 +164,37 @@ describe("direct-fc command sink", () => {
     expect(reach.blockedReason).toBe("direct-fc");
   });
 });
+
+describe("relayed command sink", () => {
+  const RELAYED_NODE: CommandTargetNode = {
+    deviceId: "drone-1",
+    isRelayed: true,
+  };
+
+  it("drives a relayed drone through RelayedMavlinkBridge's live session once it is up", async () => {
+    const protocol = fakeLiveProtocol();
+    directFcHolder.protocol = protocol;
+
+    const reach = resolveNodeCommandReach(RELAYED_NODE, {});
+
+    // Once RelayedMavlinkBridge has registered a live protocol under this
+    // node's id in the drone manager, a relayed node is driven exactly like a
+    // direct FC — the vehicle's own acknowledgement, not a queued relay
+    // command — even though it holds neither LAN credentials nor a cloud row.
+    expect(reach.blockedReason).toBeUndefined();
+    expect(reach.sink?.transport).toBe("direct-fc");
+    expect(reach.sink?.reportsVehicleAck).toBe(true);
+
+    const result = await reach.sink!.arm();
+    expect(protocol.arm).toHaveBeenCalledOnce();
+    expect(result.success).toBe(true);
+  });
+
+  it("falls back to relay-only while no live session has connected yet", () => {
+    directFcHolder.protocol = null;
+
+    const reach = resolveNodeCommandReach(RELAYED_NODE, {});
+    expect(reach.sink).toBeNull();
+    expect(reach.blockedReason).toBe("relay-only");
+  });
+});

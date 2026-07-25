@@ -39,6 +39,7 @@ import {
 } from "@/lib/agent/agent-client/system";
 import { resolveLocalAgentForDrone } from "@/lib/agent/resolve-agent";
 import { resolveDirectFcProtocol } from "@/lib/nodes/direct-fc-protocol";
+import { nodeIdForDevice } from "@/lib/agent/node-id";
 
 /** The node fields a sink needs. A fleet node entry satisfies this. */
 export interface CommandTargetNode {
@@ -334,10 +335,17 @@ export function resolveNodeCommandReach(
 
   if (node.isRelayed) {
     // A relayed-only node holds no LAN credentials and no cloud pairing row (it
-    // was never paired directly), so it would otherwise fall through to
-    // "not-paired". Name the real cause: it is reached over the WFB relay, whose
-    // command path lands later. This check comes before the LAN/cloud probes
-    // because a node that is also paired directly is never marked relayed-only.
+    // was never paired directly). `RelayedMavlinkBridge` opens a live MAVLink
+    // session for it in the background, against its ground station's republish
+    // endpoint, keyed by this same `node:<deviceId>` id in the drone manager —
+    // once that session is up, drive it exactly like a direct FC: the vehicle's
+    // own acknowledgement, not a queued relay command. "relay-only" is the
+    // honest fallback only while that session hasn't connected yet (or has
+    // dropped), not a permanent dead end.
+    const liveFc = resolveDirectFcProtocol(nodeIdForDevice(node.deviceId));
+    if (liveFc) {
+      return { sink: makeDirectFcSink(liveFc) };
+    }
     return { sink: null, blockedReason: "relay-only" };
   }
 
