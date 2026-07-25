@@ -46,7 +46,11 @@ export function usePlannerState() {
     reorderWaypoints, uploadMission, downloadMission, uploadState, downloadState,
     undo, redo, clearMission, setWaypoints,
   } = useMissionStore();
-  const { canUndo, canRedo } = usePlannerHistoryStore();
+  // Selected field by field on purpose. The history store republishes on every
+  // timeline event, so a whole-store subscription re-rendered the planner on
+  // each edit to deliver two flags that only flip at the ends of the timeline.
+  const canUndo = usePlannerHistoryStore((s) => s.canUndo);
+  const canRedo = usePlannerHistoryStore((s) => s.canRedo);
 
   const {
     activeTool, setActiveTool,

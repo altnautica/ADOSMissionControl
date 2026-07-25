@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { act, renderHook } from '@testing-library/react';
 
 // The domain stores pull in drone-manager; stub it so no real protocol is hit.
 vi.mock('@/stores/drone-manager', () => ({
@@ -251,6 +252,39 @@ describe('planner-history (coordinated undo/redo)', () => {
     useMissionStore.getState().undo();
     expect(usePlannerHistoryStore.getState().canUndo).toBe(false);
     expect(usePlannerHistoryStore.getState().canRedo).toBe(true);
+  });
+
+  // The store republishes on every timeline event, so the planner selects the
+  // two flags field by field rather than subscribing to the whole store.
+  it('a field-selected subscriber re-renders only when a flag flips', () => {
+    let renders = 0;
+    const { result } = renderHook(() => {
+      renders += 1;
+      return {
+        canUndo: usePlannerHistoryStore((s) => s.canUndo),
+        canRedo: usePlannerHistoryStore((s) => s.canRedo),
+      };
+    });
+
+    expect(result.current.canUndo).toBe(false);
+    const initial = renders;
+
+    // The first edit flips canUndo, which has to reach the toolbar.
+    act(() => {
+      useMissionStore.getState().addWaypoint(makeWaypoint({ id: 'wp-1' }));
+    });
+    expect(result.current.canUndo).toBe(true);
+    const afterFlip = renders;
+    expect(afterFlip).toBeGreaterThan(initial);
+
+    // Later edits keep recording history points, but both flags already hold
+    // their final value, so they must not cost a render.
+    act(() => {
+      useMissionStore.getState().addWaypoint(makeWaypoint({ id: 'wp-2' }));
+      useMissionStore.getState().addWaypoint(makeWaypoint({ id: 'wp-3' }));
+    });
+    expect(result.current.canUndo).toBe(true);
+    expect(renders).toBe(afterFlip);
   });
 });
 
