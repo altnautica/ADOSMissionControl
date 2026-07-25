@@ -130,8 +130,13 @@ export function isFcReachable(fc: {
   fcConnected?: boolean | null;
   fcVariant?: string | null;
   transportOpen?: boolean | null;
+  /** The agent's own verdict, when it supplies one. Authoritative: the agent
+   * can see its serial ports and we cannot, so a true here outranks our own
+   * inference from the individual fields. */
+  fcReachable?: boolean | null;
 }): boolean {
   return (
+    fc.fcReachable === true ||
     fc.fcConnected === true ||
     (isMspVariant(fc.fcVariant) && fc.transportOpen === true)
   );

@@ -17,6 +17,7 @@ import { useLocalNodesStore } from "@/stores/local-nodes-store";
 import { usePairingStore } from "@/stores/pairing-store";
 import { useFreshness } from "@/lib/agent/freshness";
 import { isDemoMode } from "@/lib/utils";
+import { isFcReachable } from "@/lib/agent/mavlink-link";
 
 /** What a surface needs in order to show live content. */
 export type CapabilityKind =
@@ -148,8 +149,17 @@ export function useSurfaceGate(
 
   if (requirement === "fc-on-agent") {
     if (!connected) return { mode: "loading", requirement };
-    const fcConnected = cloudStatus?.fcConnected === true;
-    if (fcConnected) return OK(requirement);
+    // No status row at all means we have no evidence either way. Absence of
+    // data is not evidence of absent hardware, so never fall through to the
+    // "no flight controller" copy on it — that asserts something we did not
+    // and could not observe.
+    if (!cloudStatus) return { mode: "loading", requirement };
+    // Route through the canonical predicate rather than reading fcConnected
+    // raw: an MSP flight controller (Betaflight/iNav) never emits the MAVLink
+    // heartbeat fcConnected gates on, so the raw field reads false on a board
+    // that is present and drivable. isFcReachable also honours the agent's own
+    // fcReachable verdict, which outranks our inference.
+    if (isFcReachable(cloudStatus)) return OK(requirement);
     if (cloudStatus?.fcPort) {
       return {
         mode: "fc-unverified",

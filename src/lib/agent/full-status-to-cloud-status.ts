@@ -167,6 +167,7 @@ export function mapFullStatusToCloudStatus(
     fcBaud: resp.fc_baud,
     transportOpen: booleanOrUndefined(resp.transport_open),
     mavlinkAlive: booleanOrUndefined(resp.mavlink_alive),
+    fcReachable: booleanOrUndefined(resp.fc_reachable),
     heartbeatAgeS:
       resp.heartbeat_age_s === null
         ? null

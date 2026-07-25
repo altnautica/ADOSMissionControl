@@ -355,6 +355,8 @@ interface SnakeLiveness {
   fc_source?: FcSource;
   fc_link_hint?: string;
   fc_firmware?: string;
+  fc_variant?: string;
+  fc_reachable?: boolean;
 }
 
 /**
@@ -397,6 +399,12 @@ function snakeLivenessPatch(obj: SnakeLiveness): SnakeLiveness {
     // (`fcFirmware`); bridge it to the snake `fc_firmware` the GCS reads so a
     // LAN-direct ArduPilot/PX4 node names its firmware the same as the cloud.
     fc_firmware: str(obj.fc_firmware, raw.fcFirmware),
+    // The protocol family and the agent's own connected-or-reachable verdict.
+    // Without these a healthy MSP flight controller (which never emits the
+    // MAVLink heartbeat `fc_connected` gates on) reads as absent on the
+    // LAN-direct path, and the FC surfaces claim "no flight controller".
+    fc_variant: str(obj.fc_variant, raw.fcVariant),
+    fc_reachable: bool(obj.fc_reachable, raw.fcReachable),
   };
 }
 

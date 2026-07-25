@@ -482,6 +482,9 @@ export interface FullStatusResponse {
    * `"inav"` for an MSP FC). Drives adapter selection on the LAN-direct path.
    * Absent on ArduPilot / PX4 / an unidentified FC / older agents. */
   fc_variant?: string;
+  /** The agent's own honest connected-or-reachable verdict, true for a healthy
+   * MSP FC that never emits a MAVLink heartbeat. Absent on older agents. */
+  fc_reachable?: boolean;
   /** Canonical FC firmware family (`"ardupilot"` | `"px4"` | `"betaflight"` |
    * `"inav"` | `"unknown"`), distinguishing the two MAVLink stacks. Absent on
    * older agents. */

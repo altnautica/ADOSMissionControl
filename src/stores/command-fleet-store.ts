@@ -79,6 +79,11 @@ export interface CommandCloudStatus {
    * Undefined on agents that predate the gated surface. */
   transportOpen?: boolean;
   mavlinkAlive?: boolean;
+  /** The agent's own honest connected-or-reachable verdict. True for a healthy
+   * MSP FC that never emits the MAVLink HEARTBEAT the alive gate needs, so it
+   * is the field to trust over `fcConnected` when the agent supplies it.
+   * Undefined on agents that predate it. */
+  fcReachable?: boolean;
   heartbeatAgeS?: number | null;
   /** Which FC source the router resolved the link from. */
   fcSource?: "auto" | "serial" | "udp" | "tcp";

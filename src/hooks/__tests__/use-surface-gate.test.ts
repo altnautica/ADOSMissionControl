@@ -125,6 +125,43 @@ describe("useSurfaceGate", () => {
     expect(gate("fc-on-agent", { deviceId: "dev" }).mode).toBe("no-fc");
   });
 
+  it("fc-on-agent: a reachable MSP FC reads ok, not no-fc", () => {
+    // Betaflight/iNav never emit the MAVLink heartbeat fcConnected gates on.
+    // Reading the raw field made a present, drivable board render as absent.
+    useAgentConnectionStore.setState({ connected: true, cloudDeviceId: "dev" });
+    useCommandFleetStore.getState().upsertCloudStatuses([
+      {
+        deviceId: "dev",
+        fcConnected: false,
+        fcVariant: "betaflight",
+        transportOpen: true,
+        fcPort: "/dev/ttyACM0",
+        updatedAt: Date.now(),
+      },
+    ]);
+    expect(gate("fc-on-agent", { deviceId: "dev" }).mode).toBe("ok");
+  });
+
+  it("fc-on-agent: the agent's own fcReachable verdict wins", () => {
+    useAgentConnectionStore.setState({ connected: true, cloudDeviceId: "dev" });
+    useCommandFleetStore.getState().upsertCloudStatuses([
+      {
+        deviceId: "dev",
+        fcConnected: false,
+        fcReachable: true,
+        updatedAt: Date.now(),
+      },
+    ]);
+    expect(gate("fc-on-agent", { deviceId: "dev" }).mode).toBe("ok");
+  });
+
+  it("fc-on-agent: no status row at all does NOT assert no-fc", () => {
+    // Absence of data is not evidence of absent hardware. Falling through to
+    // "no flight controller detected" here claimed something never observed.
+    useAgentConnectionStore.setState({ connected: true, cloudDeviceId: "nostatus" });
+    expect(gate("fc-on-agent", { deviceId: "nostatus" }).mode).toBe("loading");
+  });
+
   it("capability camera missing once loaded → capability-missing", () => {
     useAgentCapabilitiesStore.setState({ loaded: true, cameras: [] });
     const r = gate("capability:camera");
