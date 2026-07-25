@@ -163,10 +163,11 @@ function funneledStatusFor(args: {
     updatedAt,
     // Everything below rides the aux-lane node-status snapshot when the
     // ground station reports one fresh for this peer. `fcConnected` here is
-    // the raw heartbeat-gated field, same caveat as the direct-connect path:
-    // an MSP flight controller can read false while genuinely reachable,
-    // because the compact snapshot does not yet carry the agent's separate
-    // `fcReachable` verdict. Left honestly absent rather than guessed.
+    // the agent's own connected-or-reachable verdict on a current build (true
+    // for a healthy MSP flight controller too); an older agent still sends
+    // only the raw heartbeat-gated field, so an MSP board on one of those can
+    // read false despite being reachable. Left honestly absent rather than
+    // guessed when the ground station has no fresh reading at all.
     fcConnected: s?.fcConnected,
     mavlinkAlive: s?.mavlinkAlive,
     fcVariant: s?.fcVariant,

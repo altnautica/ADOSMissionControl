@@ -34,11 +34,13 @@ export interface RelayedPeerStatus {
   /** Present only while `statusFresh` — an aged-out status is dropped by the
    * route itself, never served stale (Rule 44). */
   status?: {
-    /** Raw "agent considers a flight controller connected" — heartbeat-gated,
-     * so an MSP flight controller reads false here even when it is reachable.
-     * The compact snapshot does not yet carry the agent's honest `fcReachable`
-     * verdict; treat this field with the same caveat `fcConnected` carries
-     * everywhere else in the codebase. */
+    /** The honest connected-or-reachable verdict on agents that publish it:
+     * true for a live MAVLink heartbeat, and also true for a healthy MSP
+     * flight controller (Betaflight/iNav), which never emits one but is
+     * reachable and drivable over the byte-transparent proxy. An agent from
+     * before the fix falls back to the raw heartbeat-gated field, so an MSP
+     * board can still read false on those; there is no way to distinguish
+     * the two cases from this snapshot alone. */
     fcConnected?: boolean;
     mavlinkAlive?: boolean;
     fcVariant?: string;
