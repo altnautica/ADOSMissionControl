@@ -26,8 +26,11 @@ import {
 import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
 import { StatusDot, type StatusLevel } from "@/components/ui/status-dot";
 import { droneLiveness } from "../fleet/types";
-import { isFcReachable, heartbeatAgeLabel } from "@/lib/agent/mavlink-link";
-import { isMspVariant } from "@/lib/protocol/select-fc-adapter";
+import {
+  deriveMavlinkLink,
+  heartbeatAgeLabel,
+  mspFcLabel,
+} from "@/lib/agent/mavlink-link";
 import { fcFirmwareLabel } from "@/lib/protocol/fc-firmware-label";
 import {
   useNodeDisplayName,
@@ -89,10 +92,12 @@ function HostMetrics({
   );
 }
 
-/** The FC link state derived from the per-node camelCase cloud fields, mirroring
- * `deriveMavlinkLink` (which takes the snake_case agent status): alive → "FC
- * Connected"; a reachable MSP FC → "<Firmware> (MSP)"; transport-open-no-
- * heartbeat → "Port open · no MAVLink"; else "FC Disconnected". */
+/** The FC link state for this card, from the per-node camelCase cloud fields.
+ * The state itself comes from the canonical derivation (which takes the agent's
+ * snake_case status), so this only maps that state onto a label and a dot:
+ * alive → "FC Connected"; a reachable MSP FC → "<Firmware> (MSP)";
+ * transport-open-no-heartbeat → "Port open · no MAVLink"; else "FC
+ * Disconnected". */
 function fcLinkState(status: {
   fcConnected?: boolean;
   fcVariant?: string;
@@ -100,26 +105,29 @@ function fcLinkState(status: {
   transportOpen?: boolean;
   mavlinkAlive?: boolean;
 }): { label: string; level: StatusLevel } {
-  const hasGated =
-    status.transportOpen !== undefined || status.mavlinkAlive !== undefined;
-  if (!hasGated) {
-    return status.fcConnected
-      ? { label: "FC Connected", level: "good" }
-      : { label: "FC Disconnected", level: "offline" };
+  const link = deriveMavlinkLink({
+    // The agent status types fc_connected as a required boolean while the
+    // per-node cloud fields leave it absent until a status carries one. The
+    // derivation only ever tests this for `=== true`, so an absent flag and an
+    // explicit false take the identical path.
+    fc_connected: status.fcConnected ?? false,
+    transport_open: status.transportOpen,
+    mavlink_alive: status.mavlinkAlive,
+    fc_variant: status.fcVariant,
+  });
+  switch (link.state) {
+    case "alive":
+      return { label: "FC Connected", level: "good" };
+    case "msp":
+      return {
+        label: mspFcLabel(link.state, status.fcFirmware, status.fcVariant) ?? "FC (MSP)",
+        level: "good",
+      };
+    case "silent":
+      return { label: "Port open · no MAVLink", level: "warning" };
+    case "down":
+      return { label: "FC Disconnected", level: "offline" };
   }
-  const transportOpen =
-    status.transportOpen ??
-    (status.mavlinkAlive === true || status.fcConnected === true);
-  const mavlinkAlive = status.mavlinkAlive ?? false;
-  if (mavlinkAlive) return { label: "FC Connected", level: "good" };
-  if (isMspVariant(status.fcVariant) && transportOpen) {
-    return {
-      label: `${fcFirmwareLabel(status.fcFirmware, status.fcVariant) ?? "FC"} (MSP)`,
-      level: "good",
-    };
-  }
-  if (transportOpen) return { label: "Port open · no MAVLink", level: "warning" };
-  return { label: "FC Disconnected", level: "offline" };
 }
 
 /** firmware · airframe (e.g. "ArduPilot · Copter"), or null when unknown. */
