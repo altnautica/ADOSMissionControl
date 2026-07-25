@@ -211,9 +211,14 @@ export function PlannerMap({
         : null,
     [posLat, posLon],
   );
-  const fixType = gps?.fixType ?? 0;
-  const satellites = gps?.satellites ?? 0;
-  const fixLabel = GPS_FIX_LABELS[fixType] ?? `FIX ${fixType}`;
+  // Absent until a GPS message arrives. Defaulting to fix 0 / 0 satellites
+  // renders a red "NO FIX | 0 SAT", which asserts the receiver has failed to
+  // lock. Having received no fix report is not the same claim, so the badge
+  // reads unknown until there is something to report.
+  const fixType = gps?.fixType;
+  const satellites = gps?.satellites;
+  const fixLabel =
+    fixType != null ? (GPS_FIX_LABELS[fixType] ?? `FIX ${fixType}`) : "GPS --";
 
   // Guidance line settings
   const guidanceHdgLength = useSettingsStore((s) => s.guidanceHdgLength);
@@ -431,8 +436,8 @@ export function PlannerMap({
     <div className="w-full h-full relative">
       {/* GPS status badge */}
       {hasActivePlan && (
-        <span className={`absolute top-2 left-2 z-[1000] text-[10px] font-mono bg-bg-primary/80 backdrop-blur-md rounded px-1.5 py-0.5 border border-border-strong shadow-lg ${fixType >= 3 ? "text-status-success" : fixType >= 2 ? "text-status-warning" : "text-status-error"}`}>
-          {fixLabel} | {satellites} SAT
+        <span className={`absolute top-2 left-2 z-[1000] text-[10px] font-mono bg-bg-primary/80 backdrop-blur-md rounded px-1.5 py-0.5 border border-border-strong shadow-lg ${fixType == null ? "text-text-tertiary" : fixType >= 3 ? "text-status-success" : fixType >= 2 ? "text-status-warning" : "text-status-error"}`}>
+          {fixLabel} | {satellites ?? "--"} SAT
         </span>
       )}
       {hasActivePlan && <GuidanceSettingsMenu placement="top-right" />}

@@ -15,13 +15,17 @@ export function deriveCellCount(voltage: number, cellVoltages?: number[]): numbe
 /**
  * Evaluate severity for a metric value against its threshold config.
  * batteryVoltage uses per-cell thresholds scaled by detected cell count.
+ *
+ * A `rawValue` of `undefined` means the metric was never received, which is
+ * not a reading to threshold. It returns "normal" rather than tripping the
+ * low-value alarms: a link that has sent nothing is unknown, not at 0 dBm.
  */
 export function getSeverity(
   metricId: TelemetryDeckMetricId,
-  rawValue: number,
+  rawValue: number | undefined,
   context?: DeckSeverityContext,
 ): DeckSeverity {
-  if (Number.isNaN(rawValue)) return "normal";
+  if (rawValue == null || Number.isNaN(rawValue)) return "normal";
 
   // Dynamic per-cell battery voltage thresholds
   if (metricId === "batteryVoltage") {

@@ -62,6 +62,20 @@ function seedFlight(ageMs: number) {
   });
 }
 
+function seedGps(ageMs: number, satellites: number) {
+  useTelemetryStore.getState().clear();
+  const s = useTelemetryStore.getState();
+  s.gps.push({
+    timestamp: Date.now() - ageMs,
+    fixType: 3,
+    satellites,
+    hdop: 0.9,
+    lat: 12.9,
+    lon: 77.6,
+    alt: 900,
+  });
+}
+
 beforeEach(() => {
   cleanup();
   useTelemetryStore.getState().clear();
@@ -100,5 +114,37 @@ describe("TelemetryReadout flight + battery freshness gating", () => {
     expect(container.textContent).toContain("--.-m");
     expect(container.textContent).toContain("--%");
     expect(container.textContent).toContain("link silent");
+  });
+});
+
+describe("TelemetryReadout satellite count", () => {
+  it("shows the reported satellite count when the fix is fresh", () => {
+    seedGps(0, 14);
+    const { container } = render(<TelemetryReadout />);
+    expect(container.textContent).toContain("14");
+    expect(container.textContent).toContain("SAT");
+  });
+
+  it("reads unknown when no GPS message has ever arrived", () => {
+    // Never seeded. "0 SAT" would claim the receiver has locked onto nothing,
+    // which is a stronger statement than having heard no fix report at all.
+    const { container } = render(<TelemetryReadout />);
+    expect(container.textContent).toContain("--");
+    expect(container.textContent).not.toMatch(/\b0\s*SAT/);
+  });
+
+  it("keeps a genuine zero-satellite report distinct from an absent one", () => {
+    seedGps(0, 0);
+    const { container } = render(<TelemetryReadout />);
+    // A live GPS message that reports 0 satellites IS a measurement, so it
+    // renders as 0 rather than collapsing into the unknown placeholder.
+    expect(container.textContent).toMatch(/0\s*SAT/);
+  });
+
+  it("blanks the satellite count once the fix goes stale", () => {
+    seedGps(10_000, 14);
+    const { container } = render(<TelemetryReadout />);
+    expect(container.textContent).not.toContain("14");
+    expect(container.textContent).toContain("--");
   });
 });

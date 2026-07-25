@@ -31,7 +31,9 @@ export function ReceiverPanel() {
   const rcBuffer = useTelemetryStore((s) => s.rc);
   const latestRc = rcBuffer.latest();
   const channels = latestRc?.channels ?? Array.from({ length: RC_CHANNEL_COUNT }, () => 0);
-  const rssi = latestRc?.rssi ?? 0;
+  // Absent until an RC frame arrives. "RSSI 0" reads as a receiver reporting a
+  // dead link, which is a stronger claim than having heard nothing yet.
+  const rssi = latestRc?.rssi;
 
   const {
     params, loading, error, dirtyParams, hasRamWrites,
@@ -75,7 +77,10 @@ export function ReceiverPanel() {
 
   // ── RSSI percentage ────────────────────────────────────────
 
-  const rssiPct = useMemo(() => Math.round((rssi / 255) * 100), [rssi]);
+  const rssiPct = useMemo(
+    () => (rssi != null ? Math.round((rssi / 255) * 100) : undefined),
+    [rssi],
+  );
 
   const hasDirty = dirtyParams.size > 0;
 
@@ -153,8 +158,16 @@ export function ReceiverPanel() {
           <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border-default">
             <Radio size={12} className="text-text-tertiary" />
             <span className="text-[10px] text-text-secondary">RSSI:</span>
-            <span className="text-[10px] font-mono text-text-primary">{rssi}</span>
-            <span className="text-[10px] text-text-tertiary">({rssiPct}%)</span>
+            {rssi != null && rssiPct != null ? (
+              <>
+                <span className="text-[10px] font-mono text-text-primary">{rssi}</span>
+                <span className="text-[10px] text-text-tertiary">({rssiPct}%)</span>
+              </>
+            ) : (
+              <span className="text-[10px] font-mono text-text-tertiary">
+                -- (no RC telemetry)
+              </span>
+            )}
           </div>
         </Card>
 

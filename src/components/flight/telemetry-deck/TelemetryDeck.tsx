@@ -54,7 +54,10 @@ export function useTelemetryDeck(): TelemetryDeckSlots {
 
   const heading = normalizeHeading(pos?.heading ?? vfr?.heading ?? 0);
   const fixType = gps?.fixType ?? 0;
-  const satellites = gps?.satellites ?? 0;
+  // Undefined until a GPS message arrives. "0 SATS" reads as a receiver that
+  // has locked onto nothing, which is a different claim from having no fix
+  // report at all, and it trips the low-satellite alarm.
+  const satellites = gps?.satellites;
   const powerWatts = (bat?.voltage ?? 0) * (bat?.current ?? 0);
   const estimatedMinutes = estimateFlightMinutes(bat?.remaining ?? 0, bat?.consumed ?? 0, bat?.current ?? 0);
   const cellCount = deriveCellCount(bat?.voltage ?? 0, bat?.cellVoltages);
@@ -75,7 +78,7 @@ export function useTelemetryDeck(): TelemetryDeckSlots {
       throttle: `${Math.round(vfr?.throttle ?? 0)}%`,
       climbRate: `${(vfr?.climb ?? pos?.climbRate ?? 0).toFixed(1)}m/s`,
       gpsFix: gpsFixLabel(fixType),
-      satellites: `${satellites}`,
+      satellites: satellites != null ? `${satellites}` : "--",
       gpsHdop: `${(gps?.hdop ?? 0).toFixed(1)}`,
       batteryVoltage: `${(bat?.voltage ?? 0).toFixed(1)}V`,
       batteryCurrent: `${(bat?.current ?? 0).toFixed(1)}A`,
@@ -90,8 +93,10 @@ export function useTelemetryDeck(): TelemetryDeckSlots {
       targetBearing: `${String(Math.round(normalizeHeading(nav?.targetBearing ?? 0))).padStart(3, "0")}°`,
       windSpeed: `${(wind?.speed ?? 0).toFixed(1)}m/s`,
       windDirection: `${String(Math.round(normalizeHeading(wind?.direction ?? 0))).padStart(3, "0")}°`,
-      radioRssi: `${Math.round(radio?.rssi ?? 0)}`,
-      remrssi: `${Math.round(radio?.remrssi ?? 0)}`,
+      // No RADIO_STATUS received means the link strength is unknown. Rendering
+      // 0 reads as a dead link and trips the critical-RSSI alarm.
+      radioRssi: radio != null ? `${Math.round(radio.rssi)}` : "--",
+      remrssi: radio != null ? `${Math.round(radio.remrssi)}` : "--",
       noise: `${Math.round(radio?.noise ?? 0)}`,
       remnoise: `${Math.round(radio?.remnoise ?? 0)}`,
       rxerrors: `${Math.round(radio?.rxerrors ?? 0)}`,
@@ -107,7 +112,9 @@ export function useTelemetryDeck(): TelemetryDeckSlots {
     [att, bat, ekf, estimatedMinutes, fixType, gps?.hdop, heading, nav, pos, powerWatts, radio, satellites, vfr, vibration, wind],
   );
 
-  const metricRawValues = useMemo<Record<TelemetryDeckMetricId, number>>(
+  // Undefined entries are metrics that were never received. They carry no
+  // threshold verdict, so an absent link or GPS raises no false alarm.
+  const metricRawValues = useMemo<Record<TelemetryDeckMetricId, number | undefined>>(
     () => ({
       relAlt: pos?.relativeAlt ?? 0,
       airspeed: vfr?.airspeed ?? pos?.airSpeed ?? 0,
@@ -130,8 +137,8 @@ export function useTelemetryDeck(): TelemetryDeckSlots {
       targetBearing: normalizeHeading(nav?.targetBearing ?? 0),
       windSpeed: wind?.speed ?? 0,
       windDirection: normalizeHeading(wind?.direction ?? 0),
-      radioRssi: radio?.rssi ?? 0,
-      remrssi: radio?.remrssi ?? 0,
+      radioRssi: radio?.rssi,
+      remrssi: radio?.remrssi,
       noise: radio?.noise ?? 0,
       remnoise: radio?.remnoise ?? 0,
       rxerrors: radio?.rxerrors ?? 0,

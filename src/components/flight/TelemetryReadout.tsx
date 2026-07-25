@@ -64,8 +64,13 @@ export function TelemetryReadout() {
   const vs = vfr?.climb ?? pos?.climbRate ?? 0;
   const batteryPct = bat?.remaining ?? 0;
   const batteryLabel = batLive ? `${Math.round(batteryPct)}%` : "--%";
-  const satellites = gps?.satellites ?? 0;
-  const fixType = gps?.fixType ?? 0;
+  // Left absent rather than defaulted so the readout cannot render "0 SAT" for
+  // a receiver that has reported nothing. The freshness gate below already
+  // blanks a silent link; keeping the value optional means a future change to
+  // that gate cannot quietly reintroduce a fabricated zero.
+  const satellites = gps?.satellites;
+  const fixType = gps?.fixType;
+  const gpsKnown = gpsLive && satellites != null && fixType != null;
 
   return (
     <div className="bg-bg-secondary border-y border-border-default">
@@ -89,8 +94,8 @@ export function TelemetryReadout() {
         {/* GPS — gated on freshness so a silent link blanks the frozen
             sat count + fix dot instead of rendering them as live. */}
         <div className="flex items-center gap-1">
-          <span className={cn("inline-block w-1.5 h-1.5 rounded-full", !gpsLive ? "bg-text-tertiary" : fixType >= 3 ? "bg-status-success" : fixType === 2 ? "bg-status-warning" : "bg-status-error")} />
-          <span className={cn("tabular-nums", gpsLive ? gpsFixColor(fixType) : "text-text-tertiary")}>{gpsLive ? satellites : "--"}</span>
+          <span className={cn("inline-block w-1.5 h-1.5 rounded-full", !gpsKnown ? "bg-text-tertiary" : fixType >= 3 ? "bg-status-success" : fixType === 2 ? "bg-status-warning" : "bg-status-error")} />
+          <span className={cn("tabular-nums", gpsKnown ? gpsFixColor(fixType) : "text-text-tertiary")}>{gpsKnown ? satellites : "--"}</span>
           <span className="text-text-tertiary">SAT</span>
         </div>
 
