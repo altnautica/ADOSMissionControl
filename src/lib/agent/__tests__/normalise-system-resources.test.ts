@@ -62,4 +62,48 @@ describe("normaliseSystemResources", () => {
     expect(res.memory_available_mb).toBe(1536);
     expect(res.swap_used_mb).toBe(64);
   });
+
+  it("leaves an unreported utilisation reading absent instead of 0", () => {
+    // A node that sent no resource block has told us nothing about its load.
+    // Reporting 0 would render as an idle CPU and an empty disk.
+    const res = normaliseSystemResources({});
+
+    expect(res.cpu_percent).toBeUndefined();
+    expect(res.memory_percent).toBeUndefined();
+    expect(res.disk_percent).toBeUndefined();
+  });
+
+  it("leaves an unreported capacity absent instead of 0", () => {
+    const res = normaliseSystemResources({ cpu_percent: 5 });
+
+    expect(res.memory_used_mb).toBeUndefined();
+    expect(res.memory_total_mb).toBeUndefined();
+    expect(res.disk_used_gb).toBeUndefined();
+    expect(res.disk_total_gb).toBeUndefined();
+  });
+
+  it("keeps a genuine zero reading distinct from an absent one", () => {
+    const res = normaliseSystemResources({ cpu_percent: 0, disk_used_gb: 0 });
+
+    expect(res.cpu_percent).toBe(0);
+    expect(res.disk_used_gb).toBe(0);
+  });
+
+  it("coerces string-valued utilisation readings", () => {
+    const res = normaliseSystemResources({
+      cpu_percent: "12.5",
+      disk_total_gb: "32",
+    } as Record<string, unknown>);
+
+    expect(res.cpu_percent).toBeCloseTo(12.5);
+    expect(res.disk_total_gb).toBe(32);
+  });
+
+  it("treats an unparseable reading as absent, not as NaN", () => {
+    const res = normaliseSystemResources({
+      cpu_percent: "not-a-number",
+    } as Record<string, unknown>);
+
+    expect(res.cpu_percent).toBeUndefined();
+  });
 });

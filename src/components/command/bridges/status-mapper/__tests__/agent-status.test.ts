@@ -56,3 +56,50 @@ describe("mapCloudStatus — fcFirmware", () => {
     expect(status.fc_firmware).toBeUndefined();
   });
 });
+
+describe("mapCloudStatus — resource readings", () => {
+  it("maps the reported utilisation percentages", () => {
+    const status = mapCloudStatus({
+      ...base,
+      cpuPercent: 34.2,
+      memoryPercent: 61,
+      diskPercent: 42.5,
+    });
+
+    expect(status.health.cpu_percent).toBeCloseTo(34.2);
+    expect(status.health.memory_percent).toBe(61);
+    expect(status.health.disk_percent).toBeCloseTo(42.5);
+  });
+
+  it("leaves the percentages absent when the heartbeat carried no resource block", () => {
+    // The row exists but reported no load. Coercing to 0 would render a solid
+    // "CPU 0.0%", indistinguishable from a genuinely idle board.
+    const status = mapCloudStatus({ ...base });
+
+    expect(status.health.cpu_percent).toBeUndefined();
+    expect(status.health.memory_percent).toBeUndefined();
+    expect(status.health.disk_percent).toBeUndefined();
+  });
+
+  it("keeps a genuine zero reading, which is a measurement", () => {
+    const status = mapCloudStatus({ ...base, cpuPercent: 0 });
+    expect(status.health.cpu_percent).toBe(0);
+  });
+
+  it("treats a non-numeric reading as absent rather than as zero", () => {
+    const status = mapCloudStatus({ ...base, cpuPercent: "34", memoryPercent: null });
+
+    expect(status.health.cpu_percent).toBeUndefined();
+    expect(status.health.memory_percent).toBeUndefined();
+  });
+
+  it("treats a NaN reading as absent", () => {
+    const status = mapCloudStatus({ ...base, diskPercent: Number.NaN });
+    expect(status.health.disk_percent).toBeUndefined();
+  });
+
+  it("still reports temperature as null when absent, matching its prior contract", () => {
+    const status = mapCloudStatus({ ...base });
+    expect(status.health.temperature).toBeNull();
+  });
+});

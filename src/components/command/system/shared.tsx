@@ -146,7 +146,10 @@ export function ScanProgress() {
 
 // ── Small reusable pieces ──
 
-export function StatBox({ label, value, unit, warn }: { label: string; value: number; unit: string; warn?: boolean }) {
+/** A single stat tile. A `value` of `undefined` means the node reported no
+ * figure, which renders as "--" with no threshold colouring — there is no
+ * measurement to compare against a threshold (Rule 44). */
+export function StatBox({ label, value, unit, warn }: { label: string; value: number | undefined; unit: string; warn?: boolean }) {
   return (
     <div className={cn(
       "flex flex-col items-center justify-center px-3 py-1.5 rounded bg-bg-primary/60 min-w-[60px]",
@@ -154,9 +157,9 @@ export function StatBox({ label, value, unit, warn }: { label: string; value: nu
     )}>
       <span className={cn(
         "text-sm font-mono font-semibold",
-        warn ? "text-status-warning" : value > 80 ? "text-status-error" : "text-text-primary"
+        value == null ? "text-text-tertiary" : warn ? "text-status-warning" : value > 80 ? "text-status-error" : "text-text-primary"
       )}>
-        {value.toFixed(0)}{unit}
+        {value != null ? `${value.toFixed(0)}${unit}` : "--"}
       </span>
       <span className="text-[9px] uppercase tracking-wider text-text-tertiary">{label}</span>
     </div>

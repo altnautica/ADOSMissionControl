@@ -235,8 +235,10 @@ export class MockAgentClient {
     await delay(50);
     if (overrideResources) {
       const r = overrideResources;
-      cpuHistoryBuffer.push(r.cpu_percent);
-      if (cpuHistoryBuffer.length > 60) cpuHistoryBuffer.shift();
+      if (r.cpu_percent != null) {
+        cpuHistoryBuffer.push(r.cpu_percent);
+        if (cpuHistoryBuffer.length > 60) cpuHistoryBuffer.shift();
+      }
       return { ...r };
     }
     const cpu = jitter(34, 8);

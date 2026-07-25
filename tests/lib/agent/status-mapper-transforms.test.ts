@@ -170,13 +170,28 @@ describe("buildSystemUpdate", () => {
     for (const v of Object.values(update.resources)) {
       if (typeof v === "number") expect(Number.isNaN(v)).toBe(false);
     }
-    expect(update.resources.memory_used_mb).toBe(0);
     expect(update.resources.swap_percent).toBe(0);
     expect(update.resources.temperature).toBeNull();
     // No history / services / logs blocks when the row omits them.
     expect(update.cpuHistory).toBeUndefined();
     expect(update.services).toBeUndefined();
     expect(update.logs).toBeUndefined();
+  });
+
+  it("leaves an unreported utilisation or capacity absent rather than 0", () => {
+    // A heartbeat with no resource block says nothing about the node's load.
+    // Reporting 0 renders as an idle CPU and a node with no memory at all.
+    const cloudStatus = { ...base };
+    const mapped = mapCloudStatus(cloudStatus);
+    const update = buildSystemUpdate(mapped, cloudStatus, false);
+
+    expect(update.resources.cpu_percent).toBeUndefined();
+    expect(update.resources.memory_percent).toBeUndefined();
+    expect(update.resources.disk_percent).toBeUndefined();
+    expect(update.resources.memory_used_mb).toBeUndefined();
+    expect(update.resources.memory_total_mb).toBeUndefined();
+    expect(update.resources.disk_used_gb).toBeUndefined();
+    expect(update.resources.disk_total_gb).toBeUndefined();
   });
 
   it("reports an unknown service status as degraded and carries process metrics", () => {

@@ -11,8 +11,11 @@ interface SystemResourceGaugesProps {
 }
 
 /** Threshold bar colour shared by the resource gauges (blue → yellow → red).
+ * An absent reading gets the neutral fill, never a threshold colour, because
+ * there is no measurement to threshold.
  * Exported so other compute surfaces (GPU utilisation) read the same scale. */
-export function barColor(percent: number, stale: boolean): string {
+export function barColor(percent: number | undefined, stale: boolean): string {
+  if (percent == null) return "bg-text-tertiary/30";
   if (stale) return "bg-text-tertiary/60";
   if (percent >= 90) return "bg-status-error";
   if (percent >= 70) return "bg-status-warning";
@@ -20,7 +23,11 @@ export function barColor(percent: number, stale: boolean): string {
 }
 
 /** A labelled utilisation bar (icon + label + percent + thresholded fill +
- * detail line). Reused by the workstation GPU card for live utilisation. */
+ * detail line). Reused by the workstation GPU card for live utilisation.
+ *
+ * A `percent` of `undefined` means the node reported no reading. That renders
+ * as an empty bar and a "--" readout, never as 0%, which would be
+ * indistinguishable from a genuinely idle resource. */
 export function ResourceBar({
   icon: Icon,
   label,
@@ -31,11 +38,12 @@ export function ResourceBar({
 }: {
   icon: typeof Cpu;
   label: string;
-  percent: number;
+  percent: number | undefined;
   detail: string;
   stale: boolean;
   staleLabel: string;
 }) {
+  const known = percent != null;
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between">
@@ -46,22 +54,40 @@ export function ResourceBar({
         <span
           className={cn(
             "text-xs font-mono",
-            stale ? "text-text-tertiary" : "text-text-primary"
+            !known || stale ? "text-text-tertiary" : "text-text-primary"
           )}
-          title={stale ? `Last reading ${staleLabel}` : undefined}
+          title={
+            !known
+              ? "Not reported by this node"
+              : stale
+                ? `Last reading ${staleLabel}`
+                : undefined
+          }
         >
-          {percent.toFixed(1)}%
+          {known ? `${percent.toFixed(1)}%` : "--"}
         </span>
       </div>
       <div className="h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
         <div
           className={cn("h-full rounded-full transition-all", barColor(percent, stale))}
-          style={{ width: `${Math.min(percent, 100)}%` }}
+          style={{ width: known ? `${Math.min(percent, 100)}%` : "0%" }}
         />
       </div>
       <p className="text-[10px] text-text-tertiary">{detail}</p>
     </div>
   );
+}
+
+/** "13.5 / 32.0 GB", with "--" standing in for whichever side the node did not
+ * report. Symbol-only so it needs no translation. */
+function capacityDetail(
+  used: number | undefined,
+  total: number | undefined,
+  digits: number,
+  unit: string,
+): string {
+  const fmt = (v: number | undefined) => (v != null ? v.toFixed(digits) : "--");
+  return `${fmt(used)} / ${fmt(total)} ${unit}`;
 }
 
 export function SystemResourceGauges({ resources }: SystemResourceGaugesProps) {
@@ -87,8 +113,11 @@ export function SystemResourceGauges({ resources }: SystemResourceGaugesProps) {
       <ResourceBar
         icon={Cpu}
         label={t("cpu")}
-        percent={resources.cpu_percent ?? 0}
-        detail={t("utilization", { percent: (resources.cpu_percent ?? 0).toFixed(1) })}
+        percent={resources.cpu_percent}
+        detail={t("utilization", {
+          percent:
+            resources.cpu_percent != null ? resources.cpu_percent.toFixed(1) : "--",
+        })}
         stale={isStale}
         staleLabel={freshness.label}
       />
@@ -96,8 +125,13 @@ export function SystemResourceGauges({ resources }: SystemResourceGaugesProps) {
       <ResourceBar
         icon={MemoryStick}
         label={t("memory")}
-        percent={resources.memory_percent ?? 0}
-        detail={`${(resources.memory_used_mb ?? 0).toFixed(0)} / ${(resources.memory_total_mb ?? 0).toFixed(0)} MB`}
+        percent={resources.memory_percent}
+        detail={capacityDetail(
+          resources.memory_used_mb,
+          resources.memory_total_mb,
+          0,
+          "MB",
+        )}
         stale={isStale}
         staleLabel={freshness.label}
       />
@@ -105,8 +139,13 @@ export function SystemResourceGauges({ resources }: SystemResourceGaugesProps) {
       <ResourceBar
         icon={HardDrive}
         label={t("disk")}
-        percent={resources.disk_percent ?? 0}
-        detail={`${(resources.disk_used_gb ?? 0).toFixed(1)} / ${(resources.disk_total_gb ?? 0).toFixed(1)} GB`}
+        percent={resources.disk_percent}
+        detail={capacityDetail(
+          resources.disk_used_gb,
+          resources.disk_total_gb,
+          1,
+          "GB",
+        )}
         stale={isStale}
         staleLabel={freshness.label}
       />

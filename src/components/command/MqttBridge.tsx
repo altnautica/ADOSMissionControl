@@ -236,9 +236,11 @@ export function MqttBridge({
                   hw_video_codecs: [],
                 },
                 health: {
-                  cpu_percent: data.cpuPercent || 0,
-                  memory_percent: data.memoryPercent || 0,
-                  disk_percent: data.diskPercent || 0,
+                  // A reading the payload omitted stays absent, so the gauges
+                  // read unknown rather than a confident 0%.
+                  cpu_percent: typeof data.cpuPercent === "number" ? data.cpuPercent : undefined,
+                  memory_percent: typeof data.memoryPercent === "number" ? data.memoryPercent : undefined,
+                  disk_percent: typeof data.diskPercent === "number" ? data.diskPercent : undefined,
                   temperature: data.temperature ?? null,
                   timestamp: new Date().toISOString(),
                 },
@@ -248,21 +250,24 @@ export function MqttBridge({
               };
               setCloudStatus(mapped);
 
-              // Synthesize resources from health data (cloud mode only has percentages)
+              // Synthesize resources from health data. This payload carries
+              // percentages only, so the byte capacities are left absent
+              // instead of reported as "0 / 0 MB", which reads as a node with
+              // no memory rather than one that did not send the figure.
               useAgentSystemStore.setState({
                 resources: {
                   cpu_percent: mapped.health.cpu_percent,
                   memory_percent: mapped.health.memory_percent,
-                  memory_used_mb: 0,
-                  memory_total_mb: 0,
+                  memory_used_mb: undefined,
+                  memory_total_mb: undefined,
                   memory_available_mb: 0,
                   memory_cache_mb: 0,
                   swap_total_mb: 0,
                   swap_used_mb: 0,
                   swap_percent: 0,
                   disk_percent: mapped.health.disk_percent,
-                  disk_used_gb: 0,
-                  disk_total_gb: 0,
+                  disk_used_gb: undefined,
+                  disk_total_gb: undefined,
                   temperature: mapped.health.temperature,
                 },
               });

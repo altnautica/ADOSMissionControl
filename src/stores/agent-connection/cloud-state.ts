@@ -14,6 +14,7 @@ import type {
   AgentConnectionSliceCreator,
 } from "./types";
 import { MAX_CPU_HISTORY } from "./types";
+import { appendHistorySample } from "@/lib/agent/history";
 
 /** Build a LAN URL from any cached pairing record (browser-local
  * ``local-nodes-store`` or Convex-mediated ``pairing-store``). Returns
@@ -126,13 +127,18 @@ export const cloudStateSlice: AgentConnectionSliceCreator<CloudStateSlice> = (
   setCloudStatus(status, dataTimestamp) {
     const systemStore = useAgentSystemStore.getState();
     systemStore.setStatus(status);
-    const cpuHistory = [...systemStore.cpuHistory, status.health.cpu_percent];
-    if (cpuHistory.length > MAX_CPU_HISTORY) cpuHistory.shift();
-    const memoryHistory = [
-      ...systemStore.memoryHistory,
+    // A heartbeat that carried no reading contributes no history point — a
+    // charted zero would read as a load measurement that never happened.
+    const cpuHistory = appendHistorySample(
+      systemStore.cpuHistory,
+      status.health.cpu_percent,
+      MAX_CPU_HISTORY,
+    );
+    const memoryHistory = appendHistorySample(
+      systemStore.memoryHistory,
       status.health.memory_percent,
-    ];
-    if (memoryHistory.length > MAX_CPU_HISTORY) memoryHistory.shift();
+      MAX_CPU_HISTORY,
+    );
     useAgentSystemStore.setState({ cpuHistory, memoryHistory });
     // Use the actual data timestamp (when the agent last pushed) instead of
     // Date.now(). This ensures the staleness watchdog in CloudStatusBridge

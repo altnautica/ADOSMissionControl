@@ -62,9 +62,12 @@ export function AgentStatusCard({ status, profile }: AgentStatusCardProps) {
   const controlRttMs = useAgentConnectionStore((s) => s.controlRttMs);
   const freshness = useFreshness();
   const isStale = freshness.state !== "live" && freshness.state !== "unknown";
-  const cpuPct = resources?.cpu_percent ?? status.health?.cpu_percent ?? 0;
-  const memPct = resources?.memory_percent ?? status.health?.memory_percent ?? 0;
-  const diskPct = resources?.disk_percent ?? status.health?.disk_percent ?? 0;
+  // Undefined when neither source carried the reading. Rendering 0% for a node
+  // that reported nothing is the same class of false claim as a fabricated
+  // temperature, so these read "--" instead. Same treatment `temp` already had.
+  const cpuPct = resources?.cpu_percent ?? status.health?.cpu_percent;
+  const memPct = resources?.memory_percent ?? status.health?.memory_percent;
+  const diskPct = resources?.disk_percent ?? status.health?.disk_percent;
   const temp = resources?.temperature ?? status.health?.temperature ?? null;
   // FC link: derive the GATED truth from the agent's transport_open /
   // mavlink_alive / heartbeat_age_s fields (newer agents). A bare fc_connected
@@ -165,9 +168,9 @@ export function AgentStatusCard({ status, profile }: AgentStatusCardProps) {
 
       {/* Health stats */}
       <div className="flex items-center gap-4 text-xs text-text-secondary border-t border-border-default pt-2">
-        <span>CPU {cpuPct.toFixed(0)}%</span>
-        <span>MEM {memPct.toFixed(0)}%</span>
-        <span>DISK {diskPct.toFixed(0)}%</span>
+        <span>CPU {cpuPct != null ? `${cpuPct.toFixed(0)}%` : "--"}</span>
+        <span>MEM {memPct != null ? `${memPct.toFixed(0)}%` : "--"}</span>
+        <span>DISK {diskPct != null ? `${diskPct.toFixed(0)}%` : "--"}</span>
         {temp != null && (
           <span>{temp.toFixed(0)}°C</span>
         )}

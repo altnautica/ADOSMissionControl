@@ -39,6 +39,12 @@ function asInstallStatus(value: unknown): InstallStatus | undefined {
     : undefined;
 }
 
+/** A finite number, or undefined when the field is absent or not a number.
+ * Never substitutes a value: an absent reading stays absent. */
+function asNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
 function asStringArray(value: unknown): string[] | undefined {
   if (!Array.isArray(value)) return undefined;
   const strings = value.filter((item): item is string => typeof item === "string");
@@ -92,9 +98,13 @@ export function mapCloudStatus(cloudStatus: Record<string, unknown>): AgentStatu
     uptime_seconds: (cloudStatus.uptimeSeconds as number | undefined) || 0,
     board,
     health: {
-      cpu_percent: (cloudStatus.cpuPercent as number | undefined) || 0,
-      memory_percent: (cloudStatus.memoryPercent as number | undefined) || 0,
-      disk_percent: (cloudStatus.diskPercent as number | undefined) || 0,
+      // Left undefined when the agent omits the reading. Coercing to 0 renders
+      // a solid "CPU 0.0%" for a node that reported no resource block at all,
+      // which is indistinguishable from a genuinely idle board. Same guard the
+      // temperature and the transport/mavlink booleans below already use.
+      cpu_percent: asNumber(cloudStatus.cpuPercent),
+      memory_percent: asNumber(cloudStatus.memoryPercent),
+      disk_percent: asNumber(cloudStatus.diskPercent),
       temperature: (cloudStatus.temperature as number | null | undefined) ?? null,
       timestamp: new Date(cloudStatus.updatedAt as number).toISOString(),
     },

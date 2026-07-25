@@ -136,10 +136,13 @@ export function HardwareStatusPanel() {
     [peripherals, activeCategory],
   );
 
-  const cpuPct = resources?.cpu_percent ?? 0;
-  const memPct = resources?.memory_percent ?? 0;
-  const diskPct = resources?.disk_percent ?? 0;
-  const temp = resources?.temperature ?? 0;
+  // Undefined when the node reported no reading. A tile showing 0% for an
+  // unreported metric is indistinguishable from a genuinely idle board, so an
+  // absent figure renders "--" instead.
+  const cpuPct = resources?.cpu_percent;
+  const memPct = resources?.memory_percent;
+  const diskPct = resources?.disk_percent;
+  const temp = resources?.temperature ?? null;
   // Gated FC truth, same as AgentStatusCard: a bare fc_connected only means
   // "transport open", so derive alive / silent / down distinctly. A silent
   // link (port open, no MAVLink) shows amber plus an actionable remediation.
@@ -289,10 +292,10 @@ export function HardwareStatusPanel() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2 mb-3">
-            <StatBox label="CPU" value={cpuPct} unit="%" warn={cpuPct > 80} />
-            <StatBox label="MEM" value={memPct} unit="%" warn={memPct > 85} />
-            <StatBox label="DISK" value={diskPct} unit="%" warn={diskPct > 90} />
-            {temp > 0 && <StatBox label="TEMP" value={temp} unit="°" warn={temp > 70} />}
+            <StatBox label="CPU" value={cpuPct} unit="%" warn={cpuPct != null && cpuPct > 80} />
+            <StatBox label="MEM" value={memPct} unit="%" warn={memPct != null && memPct > 85} />
+            <StatBox label="DISK" value={diskPct} unit="%" warn={diskPct != null && diskPct > 90} />
+            {temp != null && <StatBox label="TEMP" value={temp} unit="°" warn={temp > 70} />}
           </div>
 
           <div className="flex items-center gap-4 text-xs border-t border-border-default pt-2">

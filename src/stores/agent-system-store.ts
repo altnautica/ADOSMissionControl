@@ -14,6 +14,7 @@ import type {
   CommandResult,
   ConfigError,
 } from "@/lib/agent/types";
+import { appendHistorySample } from "@/lib/agent/history";
 import { useAgentConnectionStore } from "./agent-connection-store";
 
 const MAX_CPU_HISTORY = 60;
@@ -113,10 +114,18 @@ export const useAgentSystemStore = create<AgentSystemStore>((set, get) => ({
     try {
       const resources = await client.getSystemResources();
       set((state) => {
-        const cpuHistory = [...state.cpuHistory, resources.cpu_percent];
-        if (cpuHistory.length > MAX_CPU_HISTORY) cpuHistory.shift();
-        const memoryHistory = [...state.memoryHistory, resources.memory_percent];
-        if (memoryHistory.length > MAX_CPU_HISTORY) memoryHistory.shift();
+        // A poll that returned no reading contributes no history point, so the
+        // chart never shows a dip the node did not report.
+        const cpuHistory = appendHistorySample(
+          state.cpuHistory,
+          resources.cpu_percent,
+          MAX_CPU_HISTORY,
+        );
+        const memoryHistory = appendHistorySample(
+          state.memoryHistory,
+          resources.memory_percent,
+          MAX_CPU_HISTORY,
+        );
         return { resources, cpuHistory, memoryHistory, lastUpdatedAt: Date.now(), stale: false };
       });
       useAgentConnectionStore.getState().noteFetchSuccess();

@@ -22,13 +22,16 @@ import { CollapsibleSection } from "./shared";
  * ramp used by the system resource gauges so the System tab reads
  * consistently across panels.
  */
-function barColor(percent: number, stale: boolean): string {
+function barColor(percent: number | undefined, stale: boolean): string {
+  if (percent == null) return "bg-text-tertiary/30";
   if (stale) return "bg-text-tertiary/60";
   if (percent >= 90) return "bg-status-error";
   if (percent >= 70) return "bg-status-warning";
   return "bg-accent-primary";
 }
 
+/** `percent` of `undefined` means the node reported no figure to compute one
+ * from. That reads as "--" over an empty bar, not as 0%. */
 function MemBar({
   label,
   percent,
@@ -36,11 +39,11 @@ function MemBar({
   stale,
 }: {
   label: string;
-  percent: number;
+  percent: number | undefined;
   detail: string;
   stale: boolean;
 }) {
-  const clamped = Math.max(0, Math.min(percent, 100));
+  const clamped = percent != null ? Math.max(0, Math.min(percent, 100)) : undefined;
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between">
@@ -48,21 +51,26 @@ function MemBar({
         <span
           className={cn(
             "text-xs font-mono shrink-0 ml-2",
-            stale ? "text-text-tertiary" : "text-text-primary",
+            clamped == null || stale ? "text-text-tertiary" : "text-text-primary",
           )}
         >
-          {clamped.toFixed(1)}%
+          {clamped != null ? `${clamped.toFixed(1)}%` : "--"}
         </span>
       </div>
       <div className="h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
         <div
           className={cn("h-full rounded-full transition-all", barColor(clamped, stale))}
-          style={{ width: `${clamped}%` }}
+          style={{ width: `${clamped ?? 0}%` }}
         />
       </div>
       <p className="text-[10px] text-text-tertiary font-mono">{detail}</p>
     </div>
   );
+}
+
+/** A megabyte figure, or "--" when the node did not report it. */
+function mb(value: number | undefined): string {
+  return value != null ? value.toFixed(0) : "--";
 }
 
 function SystemBreakdown({
@@ -76,12 +84,15 @@ function SystemBreakdown({
   const used = resources.memory_used_mb;
   const available = resources.memory_available_mb;
   const cache = resources.memory_cache_mb;
+  // Prefer the reported percentage, else derive one from used/total. When the
+  // node reported neither there is nothing to derive from, so the figure stays
+  // undefined and the bar reads unknown rather than 0% used.
   const usedPercent =
-    resources.memory_percent > 0
+    resources.memory_percent != null && resources.memory_percent > 0
       ? resources.memory_percent
-      : total > 0
+      : total != null && used != null && total > 0
         ? (used / total) * 100
-        : 0;
+        : undefined;
 
   const swapTotal = resources.swap_total_mb;
   const swapUsed = resources.swap_used_mb;
@@ -97,7 +108,7 @@ function SystemBreakdown({
       <MemBar
         label="Memory"
         percent={usedPercent}
-        detail={`${used.toFixed(0)} USED / ${available.toFixed(0)} AVAIL / ${total.toFixed(0)} TOTAL MB`}
+        detail={`${mb(used)} USED / ${available.toFixed(0)} AVAIL / ${mb(total)} TOTAL MB`}
         stale={stale}
       />
       {cache > 0 && (
@@ -120,7 +131,9 @@ function SystemBreakdown({
 interface ServiceMemRow {
   name: string;
   memoryMb: number;
-  percent: number;
+  /** Share of total RAM. Undefined when the node reported no RAM total, since
+   * a share of an unknown total cannot be computed. */
+  percent: number | undefined;
 }
 
 function PerServiceBreakdown({
@@ -129,7 +142,7 @@ function PerServiceBreakdown({
   stale,
 }: {
   services: ServiceInfo[];
-  totalMb: number;
+  totalMb: number | undefined;
   stale: boolean;
 }) {
   const rows = useMemo<ServiceMemRow[]>(() => {
@@ -138,7 +151,8 @@ function PerServiceBreakdown({
       .map((s) => ({
         name: s.name,
         memoryMb: s.memory_mb,
-        percent: totalMb > 0 ? (s.memory_mb / totalMb) * 100 : 0,
+        percent:
+          totalMb != null && totalMb > 0 ? (s.memory_mb / totalMb) * 100 : undefined,
       }))
       .sort((a, b) => b.memoryMb - a.memoryMb);
   }, [services, totalMb]);
@@ -168,9 +182,11 @@ function PerServiceBreakdown({
               </span>
               <span className="text-xs font-mono text-text-primary shrink-0">
                 {row.memoryMb.toFixed(0)} MB
-                <span className="text-text-tertiary ml-1.5">
-                  {row.percent.toFixed(1)}%
-                </span>
+                {row.percent != null && (
+                  <span className="text-text-tertiary ml-1.5">
+                    {row.percent.toFixed(1)}%
+                  </span>
+                )}
               </span>
             </div>
             <div className="h-1.5 bg-bg-tertiary rounded-full overflow-hidden">

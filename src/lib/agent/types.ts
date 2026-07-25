@@ -43,10 +43,18 @@ export interface BoardInfo {
   hw_encoder_probed?: string;
 }
 
+/**
+ * Resource utilisation the agent reported on its last heartbeat.
+ *
+ * The three percentages are optional because an agent that omits the resource
+ * block has told us nothing about its load. Absence is NOT zero utilisation, so
+ * every field is left undefined rather than coerced, and a surface renders it
+ * as unknown. `temperature` already carried this discipline as `number | null`.
+ */
 export interface HealthInfo {
-  cpu_percent: number;
-  memory_percent: number;
-  disk_percent: number;
+  cpu_percent?: number;
+  memory_percent?: number;
+  disk_percent?: number;
   temperature: number | null;
   timestamp: string;
 }
@@ -170,11 +178,20 @@ export interface ConfigError {
   error: string;
 }
 
+/**
+ * The full resource sample from the agent's system endpoint.
+ *
+ * The utilisation and capacity fields are optional for the same reason as
+ * {@link HealthInfo}: a node that reports no resource block is unknown, not
+ * idle and not empty. Rendering `0` for an absent reading is indistinguishable
+ * from a genuinely idle CPU or a genuinely full disk, so producers preserve the
+ * absence and consumers render a placeholder.
+ */
 export interface SystemResources {
-  cpu_percent: number;
-  memory_percent: number;
-  memory_used_mb: number;
-  memory_total_mb: number;
+  cpu_percent?: number;
+  memory_percent?: number;
+  memory_used_mb?: number;
+  memory_total_mb?: number;
   /** RAM available for new allocations without swapping (MemAvailable),
    * not just free. Defaults to 0 on agents that predate the field. */
   memory_available_mb: number;
@@ -187,9 +204,9 @@ export interface SystemResources {
   swap_used_mb: number;
   /** Swap utilisation as a percentage of swap_total_mb. */
   swap_percent: number;
-  disk_percent: number;
-  disk_used_gb: number;
-  disk_total_gb: number;
+  disk_percent?: number;
+  disk_used_gb?: number;
+  disk_total_gb?: number;
   temperature: number | null;
 }
 

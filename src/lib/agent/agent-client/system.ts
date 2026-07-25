@@ -32,11 +32,19 @@ import {
 import { agentRequest, type RequestContext } from "./transport";
 import { agentSupports, fetchVersionInfo } from "./version-cache";
 
+/** A finite number, or undefined when the field is absent or unparseable.
+ * `Number(undefined ?? 0)` would report a missing reading as 0, which reads on
+ * a gauge as "idle" or "empty" instead of "not reported". */
+function optionalNumber(value: unknown): number | undefined {
+  if (value == null) return undefined;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : undefined;
+}
+
 /**
  * Coerce a raw `/api/system` (or partial consolidated `/api/status/full`)
- * response into the canonical `SystemResources` shape. Every numeric
- * field defaults to `0` so downstream consumers can `.toFixed()` etc.
- * without null-checking.
+ * response into the canonical `SystemResources` shape. A reading the agent
+ * did not send stays undefined so the gauge renders it as unknown.
  *
  * The agent surfaces temperature in two shapes: `{ temperature: 45.2 }`
  * (consolidated endpoint) or `{ temperatures: { cpu_thermal: 45.2 } }`
@@ -53,19 +61,23 @@ export function normaliseSystemResources(
     const temps = res.temperatures as Record<string, number>;
     temperature = temps.cpu_thermal ?? Object.values(temps)[0] ?? null;
   }
+  // Utilisation and capacity readings preserve absence: a node that reported
+  // no figure is unknown, not idle and not empty. The swap and memory-detail
+  // fields keep their documented 0 default, where 0 is a real reading (no swap
+  // configured, no cache held) rather than a stand-in for a missing one.
   return {
-    cpu_percent: Number(res.cpu_percent ?? 0),
-    memory_percent: Number(res.memory_percent ?? 0),
-    memory_used_mb: Number(res.memory_used_mb ?? 0),
-    memory_total_mb: Number(res.memory_total_mb ?? 0),
+    cpu_percent: optionalNumber(res.cpu_percent),
+    memory_percent: optionalNumber(res.memory_percent),
+    memory_used_mb: optionalNumber(res.memory_used_mb),
+    memory_total_mb: optionalNumber(res.memory_total_mb),
     memory_available_mb: Number(res.memory_available_mb ?? 0),
     memory_cache_mb: Number(res.memory_cache_mb ?? 0),
     swap_total_mb: Number(res.swap_total_mb ?? 0),
     swap_used_mb: Number(res.swap_used_mb ?? 0),
     swap_percent: Number(res.swap_percent ?? 0),
-    disk_percent: Number(res.disk_percent ?? 0),
-    disk_used_gb: Number(res.disk_used_gb ?? 0),
-    disk_total_gb: Number(res.disk_total_gb ?? 0),
+    disk_percent: optionalNumber(res.disk_percent),
+    disk_used_gb: optionalNumber(res.disk_used_gb),
+    disk_total_gb: optionalNumber(res.disk_total_gb),
     temperature,
   };
 }
