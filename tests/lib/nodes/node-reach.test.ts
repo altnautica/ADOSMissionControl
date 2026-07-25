@@ -147,7 +147,7 @@ function summary(deviceId: string, name: string): CommandAgentSummary {
       memoryPercent: null,
       diskPercent: null,
       temperature: null,
-      fcConnected: false,
+      fcReachable: false,
       serviceCount: 0,
       runningServiceCount: 0,
     },

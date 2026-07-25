@@ -59,7 +59,7 @@ export interface CommandAgentSummary {
     memoryPercent: number | null;
     diskPercent: number | null;
     temperature: number | null;
-    fcConnected: boolean;
+    fcReachable: boolean;
     serviceCount: number;
     runningServiceCount: number;
   };
@@ -193,7 +193,8 @@ export function useCommandAgentFleet(
           // A reachable MSP FC (Betaflight/iNav) never sets fcConnected — it
           // sends no MAVLink heartbeat — but it IS a connected, drivable FC, so
           // fold the MSP variant/transport signal in rather than reading "no FC".
-          fcConnected: isFcReachable({
+          // Named for what it holds: the reachability verdict, not the raw flag.
+          fcReachable: isFcReachable({
             fcConnected: status?.fcConnected ?? drone.fcConnected,
             fcVariant: status?.fcVariant,
             transportOpen: status?.transportOpen,

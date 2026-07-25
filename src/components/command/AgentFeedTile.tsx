@@ -90,7 +90,7 @@ function tileEffProfile(agent: CommandAgentSummary): EffProfile {
     agent.system.memoryPercent == null &&
     agent.system.temperature == null;
   const noVideo = !agent.video.whepUrl && !agent.video.active;
-  if (agent.system.fcConnected && noCompanion && noVideo) {
+  if (agent.system.fcReachable && noCompanion && noVideo) {
     return "flight-controller";
   }
   return "drone";
@@ -225,8 +225,8 @@ function TileBadges({
       <Badge variant="info">{typeBadge}</Badge>
       {effProfile === "drone" && (
         <>
-          <Badge variant={agent.system.fcConnected ? "success" : "neutral"}>
-            {agent.system.fcConnected ? t("fcOn") : t("fcOff")}
+          <Badge variant={agent.system.fcReachable ? "success" : "neutral"}>
+            {agent.system.fcReachable ? t("fcOn") : t("fcOff")}
           </Badge>
           {agent.telemetry.armed != null && (
             <Badge variant={agent.telemetry.armed ? "error" : "neutral"}>

@@ -88,7 +88,7 @@ export function CommandFleetOverview({
     stale: agents.filter((agent) => agent.liveness === "stale").length,
     offline: agents.filter((agent) => agent.liveness === "offline").length,
     video: agents.filter((agent) => agent.video.state === "live").length,
-    fc: agents.filter((agent) => agent.system.fcConnected).length,
+    fc: agents.filter((agent) => agent.system.fcReachable).length,
   }), [agents]);
 
   // Profile presence drives which context-aware stat tiles + filter chips
@@ -97,7 +97,7 @@ export function CommandFleetOverview({
     hasVideoNodes: agents.some(
       (agent) => Boolean(agent.video.whepUrl) || agent.video.active,
     ),
-    hasFcNodes: agents.some((agent) => agent.system.fcConnected),
+    hasFcNodes: agents.some((agent) => agent.system.fcReachable),
     workstationCount: agents.filter((agent) => agent.profile === "workstation").length,
   }), [agents]);
 
