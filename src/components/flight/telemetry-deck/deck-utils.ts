@@ -60,6 +60,11 @@ export function getSeverity(
  * Requires at least 5% of capacity consumed before producing an estimate,
  * otherwise the math is too unstable (dividing by near-zero consumed fraction).
  *
+ * Returns `undefined` when no estimate can be made. It used to return 0, which
+ * a caller cannot tell apart from a real "no endurance left" reading: a full
+ * battery just after takeoff is under the 5% mark, so the sentinel reached the
+ * low-endurance threshold and raised a critical alarm on a full pack.
+ *
  * Future improvement: wire in BATTERY_STATUS.time_remaining from ArduPilot
  * if the MAVLink decoder is extended to parse that field.
  */
@@ -67,11 +72,13 @@ export function estimateFlightMinutes(
   remainingPct: number,
   consumedMah: number,
   currentA: number,
-): number {
-  if (currentA <= 0.01 || remainingPct <= 0 || consumedMah <= 0 || remainingPct >= 99.9) return 0;
+): number | undefined {
+  if (currentA <= 0.01 || remainingPct <= 0 || consumedMah <= 0 || remainingPct >= 99.9) {
+    return undefined;
+  }
   const consumedFraction = 1 - remainingPct / 100;
   // Wait until at least 5% consumed for a stable estimate
-  if (consumedFraction < 0.05) return 0;
+  if (consumedFraction < 0.05) return undefined;
   const estimatedTotalMah = consumedMah / consumedFraction;
   const remainingMah = Math.max(estimatedTotalMah - consumedMah, 0);
   return (remainingMah / (currentA * 1000)) * 60;
