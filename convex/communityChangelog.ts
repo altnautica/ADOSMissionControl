@@ -3,24 +3,36 @@ import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 
+// Hard upper bound on the rows the deprecated `list` query returns. The
+// changelog timeline uses `listPaginated`; this legacy query is reachable
+// from the plugin cloud-read allowlist, so it must not unbounded-`.collect()`
+// a growing table. A caller that needs the full history walks
+// `listPaginated`.
+const LEGACY_LIST_LIMIT = 1000;
+
 /**
- * @deprecated Pulls every published entry unbounded. Use listPaginated for
- * scroll surfaces and listRecent for bounded "what's new" contexts.
+ * @deprecated Returns at most {@link LEGACY_LIST_LIMIT} of the most recently
+ * published entries. Use listPaginated for scroll surfaces and listRecent for
+ * bounded "what's new" contexts.
  */
 export const list = query({
   args: {
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const q = ctx.db
+    // Bounded at the read so a large changelog stays cheap (was an
+    // unbounded `.collect()` followed by an in-memory slice).
+    const capped =
+      args.limit === undefined
+        ? LEGACY_LIST_LIMIT
+        : Math.min(Math.max(args.limit, 1), LEGACY_LIST_LIMIT);
+    const entries = await ctx.db
       .query("community_changelog")
       .withIndex("by_publishedAt", (q) => q.eq("published", true))
-      .order("desc");
+      .order("desc")
+      .take(capped);
 
-    const entries = await q.collect();
-    const sliced = args.limit ? entries.slice(0, args.limit) : entries;
-
-    return sliced.map((entry) => ({
+    return entries.map((entry) => ({
       ...entry,
       authorName: entry.authorName ?? "Unknown",
     }));
