@@ -24,6 +24,8 @@ import { cn } from "@/lib/utils";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
 import { deriveMavlinkLink, heartbeatAgeLabel } from "@/lib/agent/mavlink-link";
+import { resolveLocalAgentForDrone } from "@/lib/agent/resolve-agent";
+import { describeFcSourceReadOnly } from "./fc-source-availability";
 import type { FcSource, MavlinkPort } from "@/lib/agent/types";
 
 const SOURCE_OPTIONS: SelectOption[] = [
@@ -45,6 +47,7 @@ const BAUD_OPTIONS: SelectOption[] = [
 export function FcSourcePicker() {
   const client = useAgentConnectionStore((s) => s.client);
   const cloudMode = useAgentConnectionStore((s) => s.cloudMode);
+  const cloudDeviceId = useAgentConnectionStore((s) => s.cloudDeviceId);
   const status = useAgentSystemStore((s) => s.status);
 
   const [ports, setPorts] = useState<MavlinkPort[]>([]);
@@ -110,8 +113,10 @@ export function FcSourcePicker() {
 
   const link = deriveMavlinkLink(status);
 
-  // Cloud relay has no local write path to the config surface — surface a
-  // read-only note instead of a broken picker.
+  // Cloud relay has no write path to the config surface, so the picker can only
+  // report here. The reason names what is true of THIS node rather than
+  // promising a LAN connection it may not have, and the reading is shown
+  // alongside it instead of standing in for the explanation.
   if (cloudMode) {
     return (
       <div className="border border-border-default rounded-lg p-4 space-y-2">
@@ -119,10 +124,20 @@ export function FcSourcePicker() {
           <Plug size={14} className="text-text-tertiary" />
           <h3 className="text-sm font-medium text-text-primary">FC source</h3>
         </div>
+        {status?.fc_source && (
+          <p className="text-xs text-text-secondary">
+            Source: {status.fc_source}
+          </p>
+        )}
         <p className="text-xs text-text-tertiary">
-          {status?.fc_source
-            ? `Source: ${status.fc_source}`
-            : "Source picker is available over the LAN-direct connection."}
+          {describeFcSourceReadOnly({
+            lanPaired: cloudDeviceId
+              ? resolveLocalAgentForDrone(cloudDeviceId) !== null
+              : false,
+            originIsHttps:
+              typeof window !== "undefined" &&
+              window.location.protocol === "https:",
+          })}
         </p>
       </div>
     );
