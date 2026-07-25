@@ -21,6 +21,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { useQuery } from "convex/react";
 import { makeFunctionReference } from "convex/server";
 import { useTranslations } from "next-intl";
@@ -47,7 +48,12 @@ import {
   RegistryPluginCard,
   type RegistryPluginRow,
 } from "./RegistryPluginCard";
-import { DemoRegistryGrid } from "./DemoRegistryGrid";
+// The demo catalog is a fixture set that only ever renders under demo mode.
+// Loaded on demand so its fixtures stay out of the initial bundle.
+const DemoRegistryGrid = dynamic(
+  () => import("./DemoRegistryGrid").then((m) => m.DemoRegistryGrid),
+  { ssr: false },
+);
 
 type RegistryCategory = "drivers" | "ui" | "ai" | "telemetry" | "tools";
 type CategoryFilter = "all" | RegistryCategory;
