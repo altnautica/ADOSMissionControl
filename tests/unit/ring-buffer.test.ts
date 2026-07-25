@@ -95,6 +95,17 @@ describe('RingBuffer', () => {
     expect(rb.toArray()).toEqual([]);
   });
 
+  // Callers that only want the oldest entry (a trail home point) index the
+  // ring directly instead of copying the whole buffer out. That substitution
+  // is only safe while these two agree, empty and wrapped included.
+  it('get(0) matches toArray()[0] when empty, partial, full and wrapped', () => {
+    for (const pushes of [0, 1, 3, 5, 6, 12]) {
+      const rb = new RingBuffer<number>(5);
+      for (let i = 0; i < pushes; i++) rb.push(i);
+      expect(rb.get(0)).toBe(rb.toArray()[0]);
+    }
+  });
+
   it('last(n) returns last n items', () => {
     const rb = new RingBuffer<number>(5);
     rb.push(1);

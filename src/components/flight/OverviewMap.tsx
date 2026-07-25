@@ -203,8 +203,8 @@ export function OverviewMap({ compact = false }: { compact?: boolean } = {}) {
   const pos = useTelemetryLatest("position");
   const gps = useTelemetryLatest("gps");
   const nav = useTelemetryLatest("navController");
+  const trailRing = useTrailStore((s) => s._ring);
   useTrailStore((s) => s._version); // subscribe to updates
-  const trail = useTrailStore.getState()._ring.toArray();
 
   // Guidance line settings
   const guidanceHdgLength = useSettingsStore((s) => s.guidanceHdgLength);
@@ -237,9 +237,12 @@ export function OverviewMap({ compact = false }: { compact?: boolean } = {}) {
   const heading = pos?.heading ?? 0;
   const droneIcon = useMemo(() => createDroneIcon(heading, "#00ff41", 24), [heading]);
 
-  // Home position = first trail point
-  const homePos: [number, number] | null =
-    trail.length > 0 ? [trail[0].lat, trail[0].lon] : null;
+  // Home position = first trail point. Indexed straight out of the ring:
+  // reading element zero does not need a copy of the whole trail.
+  const homePoint = trailRing.get(0);
+  const homePos: [number, number] | null = homePoint
+    ? [homePoint.lat, homePoint.lon]
+    : null;
 
   const defaultCenter = useDefaultCenter();
   const hasGps = dronePos !== null;

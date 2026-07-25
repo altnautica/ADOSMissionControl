@@ -91,28 +91,35 @@ function buildSegments(trail: TrailPoint[]): TrailSegment[] {
 }
 
 export function AltitudeTrail() {
+  // The ring is a stable ref mutated in place, so re-read it when the version
+  // bumps. Deriving the trail through a memo keeps its identity stable, which
+  // lets everything below key off it directly instead of off the version.
+  const ring = useTrailStore((s) => s._ring);
   const version = useTrailStore((s) => s._version);
-  const trail = useTrailStore.getState()._ring.toArray();
 
-  const hasAltData = useMemo(
-    () => trail.some((p) => p.alt !== 0),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [version]
+  const trail = useMemo(() => {
+    void version; // the ring mutates in place; the version is the trigger
+    return ring.toArray();
+  }, [ring, version]);
+
+  const hasAltData = useMemo(() => trail.some((p) => p.alt !== 0), [trail]);
+
+  const segments = useMemo(
+    () => (hasAltData ? buildSegments(trail) : []),
+    [trail, hasAltData],
   );
 
-  const segments = useMemo(() => {
-    if (!hasAltData) return [];
-    return buildSegments(trail);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [version, hasAltData]);
-
   // No altitude data — render simple blue trail like VehicleTrail
+  const flatPositions = useMemo<[number, number][]>(
+    () => (hasAltData ? [] : trail.map((p) => [p.lat, p.lon])),
+    [trail, hasAltData],
+  );
+
   if (!hasAltData) {
-    if (trail.length < 2) return null;
-    const positions: [number, number][] = trail.map((p) => [p.lat, p.lon]);
+    if (flatPositions.length < 2) return null;
     return (
       <Polyline
-        positions={positions}
+        positions={flatPositions}
         pathOptions={{ color: "#3A82FF", weight: 2, opacity: 0.7 }}
       />
     );

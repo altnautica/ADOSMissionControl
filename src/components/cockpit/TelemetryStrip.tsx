@@ -53,8 +53,10 @@ export function TelemetryStrip() {
   const vfr = tState.vfr.latest();
   const pos = tState.position.latest();
 
-  const trail = useTrailStore.getState()._ring.toArray();
-  const home = trail.length > 0 ? trail[0] : null;
+  // Home is the oldest trail point. Indexed straight out of the ring: this
+  // strip re-renders on every telemetry sample, and copying the whole trail
+  // to read element zero made that cost scale with the length of the flight.
+  const home = useTrailStore.getState()._ring.get(0) ?? null;
   const hasPos = pos && pos.lat !== 0 && pos.lon !== 0;
   const homeDist =
     home && hasPos ? haversineDistance(home.lat, home.lon, pos.lat, pos.lon) : null;
