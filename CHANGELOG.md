@@ -4,6 +4,242 @@ All notable changes to ADOS Mission Control are recorded here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 the project follows [Semantic Versioning](https://semver.org/).
 
+## [0.57.1] - 2026-07-26
+
+A follow-up patch to 0.57.0, closing a gap that surfaced immediately after
+that release. Everything below is otherwise unchanged from 0.57.0, repeated
+here so an update from before that release carries the full picture.
+
+### Added
+
+- **Four-firmware flight controller configuration.** ArduPilot, PX4, Betaflight
+  and iNav each gain deep configuration surfaces. ArduPilot adds rover steering
+  and speed tuning, an EKF3 estimator panel, telemetry stream rates, QuadPlane
+  and VTOL, plane energy and navigation tuning, ArduSub, traditional
+  helicopter, non-GPS positioning, multi-instance rangefinders, airspeed,
+  harmonic notch, sailboat, gripper and ADS-B. PX4 adds flight behavior,
+  fixed-wing tuning, autotune for multicopter and fixed wing, VTOL transition,
+  GPS, control allocation, live actuator test and thermal calibration.
+  Betaflight adds serial ports, OSD with font upload, LED strip with a 16-colour
+  palette and mode-colour editor, receiver configuration, DShot special
+  commands, blackbox download and a CLI terminal with live output. iNav adds
+  per-index logic conditions, live global variables, OSD font upload and
+  editable landing datums.
+- **Parameter metadata registry with bitmask and enum editors.** Parameter
+  metadata now ships bundled with the app, so full names, ranges, units,
+  defaults and per-bit flag descriptions are available offline for every
+  firmware rather than only when an external site is reachable. A Set Bitmask
+  modal gives you labelled per-bit checkboxes with search, raw decimal and hex,
+  and preservation of bits it does not recognise, so an undocumented flag is
+  never silently cleared. Enum parameters get a real dropdown. An Options column
+  shows the decoded value at a glance, and the write confirmation shows the flag
+  difference before you commit.
+- **A hosted parameter registry overlay.** On top of the bundled floor, the app
+  can pull versioned metadata snapshots so parameter help matches the firmware
+  version actually on the board. iNav gains its full named-settings registry of
+  677 settings.
+- **A JavaScript expression compiler for iNav logic conditions.** Write a plain
+  expression and it compiles down to the underlying logic-condition slots
+  instead of hand-assembling them one row at a time.
+- **Onboard Lua scripting for ArduPilot.** A Scripts section under Setup manages
+  the scripts on the board over MAVLink file transfer, with upload by drag and
+  drop, download, delete, engine configuration and a filtered script console.
+  A starter catalog of first-party applets is one click to install.
+- **MAVLink file transfer, structured events and native sockets.** The file
+  transfer client now writes, lists and removes as well as reads, and is
+  hardened against a lossy or hostile server. PX4 structured events (message
+  410) decode into a readable feed backed by the vehicle's own event metadata,
+  so prearm, mode and failsafe messages are finally visible. Parameter metadata
+  can be served by the flight controller itself. The desktop app connects over
+  native UDP and TCP in addition to serial.
+- **Mission planning, rebuilt.** The Plan tab gains a survey solver that works
+  backwards from the ground sample distance you want to an altitude and a
+  motion-blur-safe speed, wind-optimised line orientation, fixed-wing turnaround
+  geometry, keep-out polygon skipping, a coverage footprint overlay, a quick
+  builder from the map bounds, and a change-detection resurvey planner. Landing
+  patterns cover fixed wing and VTOL.
+- **A per-waypoint action timeline.** Actions attach to the waypoint they belong
+  to, edited inline with reordering and a jump-target picker, and flatten and
+  re-nest correctly across upload, download, export and import. The command
+  palette filters to what your firmware actually supports.
+- **Mission checks before you fly.** Upload is blocked while validation errors
+  stand. Inclusion and exclusion zones, rally points and terrain clearance are
+  enforced, with a soft-buffer warning short of a hard breach. Terrain conflicts
+  are flagged along each leg and on the return-to-launch leg. There is an
+  advisory item-count check against the flight controller, a keyless airport
+  proximity gate, a flight energy model, sun times with a golden-hour card and a
+  pre-flight checklist.
+- **Weather, import, export and sharing in the planner.** A keyless go/no-go
+  weather card, boundary import from KML, KMZ and shapefiles, GeoTIFF orthophoto
+  overlay, a flight-brief PDF export, a built-in mission template library, plan
+  folders, points of interest, and shareable plan links that encode the plan in
+  the URL fragment so nothing leaves your machine.
+- **A copilot for mission intent.** Describe what you want in plain words and a
+  deterministic parser sets up the matching pattern. No key and no external
+  service.
+- **Coordinates and units throughout.** Live cursor coordinate and elevation
+  readout, a display-format preference across decimal degrees, degrees minutes
+  seconds, UTM and MGRS, forward geocoding search on the map, and one shared
+  units formatter behind the stats bar, pattern stats and altitude profile.
+- **The Cockpit.** The old Fly Mode is now the Cockpit, split into a Flight tab
+  and an immersive Cockpit tab. Flight behaviors are skills bound to hotkeys and
+  gamepad buttons on a shared skill bar, contributed by built-in commands and
+  extensions through the same registry. Widgets are arrangeable by zone and
+  persist with your loadout, information density is a per-loadout setting, and a
+  command palette on Ctrl or Cmd plus K searches and runs any drone command
+  through the same pipeline. The safety band showing arm state, battery, GPS and
+  link never hides.
+- **Target designation in the Cockpit.** Click a detection to designate it. A
+  what-is-locked chip names the current target, an aim-ahead lead reticle tracks
+  a moving one, and extensions contribute their own target actions into the
+  click popup with their own hotkeys. Detection boxes ease between batches so
+  they follow motion instead of stepping.
+- **Multi-camera video with picture-in-picture.** A node exposing more than one
+  camera gets stream tabs at the top left, switched by the number keys or by
+  cycling. A second stream can be pinned as a picture-in-picture inset whose
+  position persists per loadout. Concurrent streams flip instantly by
+  re-pointing at each leg's own address, switching is debounced so a rapid flip
+  cannot stack encoder restarts, and a dead leg is disabled rather than shown
+  as live.
+- **Camera roster management.** A Cameras surface on the node detail reads the
+  roster from the agent and round-trips per-leg bitrate and calibration.
+- **A Nodes fleet board.** A third dashboard view mode renders a dense live
+  table ordered live, then stale, then offline. Each row carries reach, link,
+  battery, mode and role, with per-row controls that act on that node over the
+  LAN or the cloud queue. Rows support selection, bulk apply-one-change and
+  search, and flight controls are gated on the same liveness the board shows.
+- **A unified per-profile node console.** One console adapts to the node in
+  front of you across drone, flight controller, ground station and workstation,
+  with a profile-aware hero header, sidebar and overview. The agent dashboard is
+  folded into Overview, the last tab you used is restored per node, and a
+  per-node feature framework lets you opt a drone into World Model capture.
+- **A node Settings tab with thirteen configuration pages.** Network uplink,
+  Wi-Fi scan and join, cellular APN, MAC pinning and adapter stability,
+  self-heal and link guardian, MAVLink routing, security, vision and
+  perception, world model, discovery and reach names, video and cameras, and
+  cloud, organised behind two-tier grouped navigation and reachable over the
+  LAN or the cloud.
+  Security downgrades and link-affecting toggles ask for confirmation first.
+- **Relayed enrollment and a live mesh map.** A drone linked to a paired ground
+  node over the radio enrolls as its own node, nested under the ground node that
+  carries it, with per-bearer reach provenance rather than a bare label. A live
+  node-to-node mesh and reach map names each relay funnel.
+- **Extensions.** What were called plugins are now Extensions, on a contribution
+  platform. One manifest block contributes tabs, settings sections, parameters,
+  models, mission templates, map overlays, skills, target actions and tools, all
+  resolved through one registry so a built-in surface and an extension surface
+  are the same shape. Parameters are described by JSON Schema and rendered
+  natively. Install works from the registry, from a URL pinned to the bytes the
+  agent reviewed, and local-first from a paired agent over the LAN with no cloud
+  round trip. The install dialog was rebuilt around trust signals, capability
+  chips and a contributions summary.
+- **An MCP tab.** Connect an AI client to your fleet through the Model Context
+  Protocol. A guided local-first setup wizard takes you from nothing to a
+  connected client in five steps with a live connection check, including a
+  one-command option that covers every drone on your LAN with no file and no
+  login. Machine credentials are scoped by capability and by node with an
+  expiry, and there is a searchable tool catalog, an audit log and a live panel
+  that shows calls as they happen.
+- **Perception.** The Vision tab is now Perception, grouped into engine,
+  execution, feed health, inputs and models. A drone without an accelerator can
+  offload detection to a paired workstation, configured per node, with the tier
+  and target surfaced honestly in the Cockpit beside streaming-session health.
+  Detections carry lock state and association confidence, are keyed by model and
+  camera stream, and reach the app over the cloud relay as well as the LAN.
+- **ADOS Workstation.** The compute profile is now the Workstation, with a
+  branded dashboard showing real GPU, CPU, memory and disk with live GPU
+  utilisation, and it is enabled by default rather than behind a flag.
+- **Atlas world model.** Capture 3D reconstructions from a drone and view them
+  as gaussian splats or point clouds, with a live-updating Live World tab, a
+  dedicated splat viewer with download progress, detail-level presets carrying a
+  gaussian budget, and a Forge workbench for the reconstruction queue.
+- **ADOS Stack Deployer.** A Rust terminal UI is now the supported way to
+  self-host the whole stack. It plans and runs a turnkey deploy, then manages
+  the running stack with status, logs, restart, upgrade and teardown, detects
+  your LAN address for the default reach, flags an already-bound port inline,
+  and recovers its configuration from an existing environment file on a re-run.
+- **Simulation.** Sky rendering that follows the map mode, quality presets, a
+  top-centre warning banner clear of the playback bar, an actual-flight-path
+  overlay, rounded-turn previews and playback driven through a sampled track
+  source.
+- **Radio link diagnosis.** The radio surfaces packets seen and decrypt-error
+  counters, prefers the radio's own transmit-proof verdict over an inferred one,
+  and names a transmitting-but-unproven link as its own state instead of reading
+  it as fully down. Adapter USB and injection health resolve into one reading.
+  Phantom-pairing and stale-key bind failures are named for what they are.
+- **A ground-station HDMI cockpit and touch calibration**, on the Display tab.
+- **An RC and ELRS control-lane tab.** The control-lane snapshot flows into the
+  per-node store from both the LAN and the cloud, carrying transmit power and
+  the command-down gate.
+- **Per-node dashboard access PIN management**, so you can set, reset and check
+  the PIN that guards a node's own web dashboard from the fleet view.
+- **Native UDP and TCP MAVLink in the desktop app**, with a helper that bridges
+  either to a WebSocket for the browser build.
+
+### Changed
+
+- **Extensions replaced plugins in all user-facing copy**, across all sixteen
+  locales. The packaging format, the SDK and the CLI keep their existing names.
+- **The standalone full-screen flight route is retired.** The immersive view is
+  now the Cockpit tab in place, with unified flight-recording control.
+- **The minimap is a clean auto-follow map.** Overlays were stripped, the
+  basemap selector collapsed behind an icon, the map enlarged, and clicking it
+  opens the Flight tab.
+- **Elevation reports as unavailable instead of a fabricated zero**, and MSL
+  placement now applies EGM96 geoid separation.
+- **Demo mode covers the whole platform.** A mixed-firmware fleet, five world
+  tour missions in the plan library, a direct-connect USB flight controller, a
+  ground station with its node tabs and control lane, relayed enrollment, per
+  stream video and a mock node configuration surface.
+- **Self-hosting documentation now points at the deployer** rather than the
+  removed command-line tool.
+
+### Fixed
+
+- **A failed parameter write surfaces instead of passing silently**, because
+  error frames now reject rather than resolve.
+- **Live telemetry is no longer faked from stale values.** Zeros are gated on
+  freshness, an unreachable configured source is surfaced, and a stale radio
+  signal is dimmed rather than shown as current.
+- **A queued cloud command reports the vehicle's real answer**, and a rejected
+  command spends nothing.
+- **Commands and settings act on the node you are looking at.** A settings draft
+  resets when you switch nodes, the radio panel keys to its own node, and a
+  section that was showing another node's channels was removed.
+- **A filtered-out relay funnel no longer implies a radio link to the app.**
+- **Return-to-launch and Land are disabled on a node whose firmware has no
+  autonomous navigation**, rather than offered and silently ignored.
+- **A host that merely starts with a private address prefix is rejected**, and
+  an incomplete address literal no longer passes the private-host guard.
+- **The MAVLink WebSocket proxy is ticket-authenticated**, and the app prefers
+  the authenticated endpoint where the agent offers one.
+- **Dropdown menus and popovers render above their scroll containers** instead
+  of being clipped, and they implement the keyboard contract their roles claim.
+- **Unpairing removes the node everywhere**, including the cloud row.
+- **Reachability failures explain themselves** instead of returning a bare
+  gateway error.
+- **A drone reached only through a ground station's radio relay now gets a
+  live flight-controller link.** Its Setup and Parameters tabs previously
+  showed the agent as offline with no heartbeat, contradicting the node's own
+  online status in the sidebar. The app now opens the same MAVLink session the
+  ground station's relay already carries, so real parameters, telemetry and
+  commands work over the radio, not just video.
+
+### Removed
+
+- **The Node self-hosting command-line tool**, superseded by the deployer.
+- **The top-level extension risk badge.** The per-capability sensitive tag
+  stays, which is the signal that tells you what an extension can actually
+  reach.
+- **Unmounted contribution slots** that had no host to render them, and the
+  registry browse pages that were not yet backed by a live service.
+
+### Notes
+
+- Pairs with ADOS Drone Agent 0.99.241.
+- Versions 0.35.0 through 0.56.0 shipped continuously and are covered here
+  rather than as separate entries.
+
 ## [0.57.0] - 2026-07-25
 
 This release rolls up everything since 0.34.4, covering versions 0.35.0 through
