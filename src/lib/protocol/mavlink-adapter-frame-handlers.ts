@@ -228,7 +228,9 @@ function handleParamValueFrame(s: FrameHandlerState, frame: MAVLinkFrame): void 
   s.paramCache.set(canonicalName, { value: pv.paramValue, timestamp: Date.now(), type: pv.paramType, index: pv.paramIndex, count: pv.paramCount })
   if (s.parameterDownload) {
     s.parameterDownload.total = pv.paramCount
+    const sizeBefore = s.parameterDownload.params.size
     s.parameterDownload.params.set(pv.paramIndex, param)
+    const grew = s.parameterDownload.params.size > sizeBefore
     if (s.parameterDownload.params.size >= pv.paramCount) {
       // Authoritative completion — every param the board reports has arrived.
       // Snapshot the exact name set so getParameter can fast-fail reads for
@@ -242,7 +244,17 @@ function handleParamValueFrame(s: FrameHandlerState, frame: MAVLinkFrame): void 
       s.parameterDownload = ctx.parameterDownload
       return
     }
-    s.parameterDownload.resetInactivityTimer()
+    // Only a genuinely NEW index resets the inactivity timer. A duplicate or
+    // retransmitted frame for an index already collected still lands here —
+    // routine on a lossy relay — and must NOT count as progress: resetting on
+    // every arrival meant a steady trickle of duplicates kept deferring the 5s
+    // silence window forever, so the retry-missing-indices fallback below
+    // never got a chance to actively re-request what was genuinely still
+    // missing. The download would sit at a fixed count indefinitely instead
+    // of recovering.
+    if (grew) {
+      s.parameterDownload.resetInactivityTimer()
+    }
   }
 }
 
