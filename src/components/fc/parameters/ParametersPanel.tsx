@@ -111,7 +111,14 @@ export function ParametersPanel() {
     // 131%"). Overwriting by index mirrors the adapter's own dedup so the
     // displayed count can never exceed reality.
     const receivedByIndex = new Map<number, ParameterValue>();
+    // A stray or malformed frame (no request-correlation id exists in
+    // PARAM_VALUE to rule one out) can report an index outside its own
+    // count — e.g. a real one seen live, `index=65535,count=1`. A real
+    // indexed parameter always satisfies 0 <= index < count; anything else
+    // is display noise, not progress, and must not blip the total downward
+    // mid-download.
     const unsub = protocol.onParameter((param) => {
+      if (param.index < 0 || param.index >= param.count) return;
       receivedByIndex.set(param.index, param);
       const now = Date.now();
       if (now - lastProgressUpdate.current >= 100 || receivedByIndex.size === param.count) {

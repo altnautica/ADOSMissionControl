@@ -226,7 +226,18 @@ function handleParamValueFrame(s: FrameHandlerState, frame: MAVLinkFrame): void 
   }
   for (const cb of s.cbs.parameterCallbacks) cb(param)
   s.paramCache.set(canonicalName, { value: pv.paramValue, timestamp: Date.now(), type: pv.paramType, index: pv.paramIndex, count: pv.paramCount })
-  if (s.parameterDownload) {
+  // MAVLink's PARAM_VALUE carries no request-correlation id, so a frame from
+  // an unrelated exchange (a stray targeted read, or a corrupted/malformed
+  // frame off the lossy relay's batch splitter) is indistinguishable, at this
+  // layer, from a genuine bulk-list entry. A real indexed parameter always
+  // satisfies 0 <= index < count; reject anything that doesn't before it can
+  // feed or complete a bulk download — seen live: a single malformed
+  // `index=65535,count=1` frame set `total=1` and immediately "completed" a
+  // download that had barely started, discarding all real progress. The
+  // targeted-read caller (paramCache/parameterCallbacks above) still resolves
+  // normally either way.
+  const indexIsValid = pv.paramIndex >= 0 && pv.paramIndex < pv.paramCount
+  if (s.parameterDownload && indexIsValid) {
     s.parameterDownload.total = pv.paramCount
     const sizeBefore = s.parameterDownload.params.size
     s.parameterDownload.params.set(pv.paramIndex, param)
