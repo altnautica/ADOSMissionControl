@@ -71,9 +71,15 @@ export function ParameterSearchFilter({
   onSave,
   onRefresh,
 }: ParameterSearchFilterProps) {
+  // Clamped defensively: current is meant to never exceed total (both sides
+  // dedupe by parameter index), but a status surface must never display an
+  // impossible reading if some future edge case lets it happen anyway.
   const progressPercent = progress.total > 0
-    ? Math.round((progress.current / progress.total) * 100)
+    ? Math.min(100, Math.round((progress.current / progress.total) * 100))
     : 0;
+  const progressCurrent = progress.total > 0
+    ? Math.min(progress.current, progress.total)
+    : progress.current;
 
   return (
     <>
@@ -178,7 +184,7 @@ export function ParameterSearchFilter({
         <div className="flex-shrink-0 px-4 py-2 bg-bg-secondary border-b border-border-default">
           <div className="flex items-center gap-3">
             <RefreshCw size={12} className="text-accent-primary animate-spin flex-shrink-0" />
-            <span className="text-xs text-text-secondary">Downloading parameters... {progress.current}/{progress.total}</span>
+            <span className="text-xs text-text-secondary">Downloading parameters... {progressCurrent}/{progress.total}</span>
             <div className="flex-1 h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
               <div className="h-full bg-accent-primary transition-all duration-200" style={{ width: `${progressPercent}%` }} />
             </div>

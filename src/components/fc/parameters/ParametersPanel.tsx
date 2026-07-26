@@ -103,13 +103,20 @@ export function ParametersPanel() {
     if (!protocol) { setError(t("noDroneConnected")); return; }
     setLoading(true); setError(null); setProgress({ current: 0, total: 0 });
     setModified(new Map());
-    const received: ParameterValue[] = [];
+    // Keyed by param index, not a raw per-frame counter: a lossy link makes
+    // the GCS re-request missing indices and the FC itself may retransmit,
+    // so the same index can legitimately arrive more than once during one
+    // download. A plain push-per-callback counter double-counts every
+    // retransmission and can run past the real total (seen live: "1452/1111,
+    // 131%"). Overwriting by index mirrors the adapter's own dedup so the
+    // displayed count can never exceed reality.
+    const receivedByIndex = new Map<number, ParameterValue>();
     const unsub = protocol.onParameter((param) => {
-      received.push(param);
+      receivedByIndex.set(param.index, param);
       const now = Date.now();
-      if (now - lastProgressUpdate.current >= 100 || received.length === param.count) {
+      if (now - lastProgressUpdate.current >= 100 || receivedByIndex.size === param.count) {
         lastProgressUpdate.current = now;
-        setProgress({ current: received.length, total: param.count || received.length });
+        setProgress({ current: receivedByIndex.size, total: param.count || receivedByIndex.size });
       }
     });
     try {

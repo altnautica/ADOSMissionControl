@@ -41,11 +41,24 @@ export class ParamAbsentError extends Error {
 export interface ParamDownloadState {
   params: Map<number, ParameterValue>
   total: number
-  resolve: (params: ParameterValue[]) => void
-  reject: (err: Error) => void
+  /**
+   * One entry per caller awaiting this download. `getAllParameters` piggybacks
+   * a second concurrent call onto the SAME in-flight download instead of
+   * starting a competing one (see the re-entrancy guard there) — every
+   * resolver fires with the identical final list when it finishes.
+   */
+  resolvers: Array<(params: ParameterValue[]) => void>
   hardTimer: ReturnType<typeof setTimeout>
   inactivityTimer: ReturnType<typeof setTimeout> | null
   retryCount: number
+  /** Missing-index count as of the last retry round, so a round that makes no
+   * progress can be told apart from one that is still genuinely converging. */
+  lastMissingCount: number
+  /** Consecutive retry rounds that made no progress. Distinct from
+   * `retryCount` (which just counts rounds) — this is what decides when to
+   * give up, so a lossy link that is slowly-but-really converging keeps
+   * getting retried instead of stopping at an arbitrary round count. */
+  noProgressRounds: number
   resetInactivityTimer: () => void
 }
 
@@ -75,7 +88,7 @@ export function finishParamDownload(ctx: ParamContext): void {
   clearTimeout(dl.hardTimer)
   if (dl.inactivityTimer) clearTimeout(dl.inactivityTimer)
   const params = Array.from(dl.params.values()).sort((a, b) => a.index - b.index)
-  dl.resolve(params)
+  for (const resolve of dl.resolvers) resolve(params)
   ctx.parameterDownload = null
 }
 
@@ -98,8 +111,19 @@ export function retryMissingParams(ctx: ParamContext): void {
     return
   }
 
+  // Keep retrying as long as each round is genuinely converging (fewer
+  // missing than the round before); only give up once a round in a row
+  // gains nothing. A fixed retry-round cap gave up on a lossy link that was
+  // still slowly closing the gap well before the 120s hard timeout that
+  // already bounds the whole download regardless.
+  if (missing.length >= dl.lastMissingCount) {
+    dl.noProgressRounds++
+  } else {
+    dl.noProgressRounds = 0
+  }
+  dl.lastMissingCount = missing.length
   dl.retryCount++
-  if (dl.retryCount > 3) {
+  if (dl.noProgressRounds >= 3) {
     finishParamDownload(ctx)
     return
   }
@@ -118,6 +142,21 @@ export function retryMissingParams(ctx: ParamContext): void {
 
 export async function getAllParameters(ctx: ParamContext): Promise<ParameterValue[]> {
   if (!ctx.transport?.isConnected) throw new Error('Not connected')
+
+  // A download is already in flight on this connection — share it instead of
+  // starting a second one. Two independent ParamDownloadState objects would
+  // both exist, but only the newest one keeps receiving incoming PARAM_VALUE
+  // frames (frame routing always reads the live, current download state), so
+  // starting a second download silently abandons the first caller's promise
+  // until its own now-orphaned 120s hard timer eventually resolves it with a
+  // stale, likely-incomplete list. Piggybacking is what actually shares one
+  // real download between callers.
+  if (ctx.parameterDownload) {
+    const dl = ctx.parameterDownload
+    return new Promise<ParameterValue[]>((resolve) => {
+      dl.resolvers.push(resolve)
+    })
+  }
 
   return new Promise<ParameterValue[]>((resolve) => {
     const hardTimer = setTimeout(() => {
@@ -144,11 +183,12 @@ export async function getAllParameters(ctx: ParamContext): Promise<ParameterValu
     ctx.parameterDownload = {
       params: new Map(),
       total: 0,
-      resolve,
-      reject: () => resolve([]),
+      resolvers: [resolve],
       hardTimer,
       inactivityTimer: createInactivityTimer(),
       retryCount: 0,
+      lastMissingCount: Infinity,
+      noProgressRounds: 0,
       resetInactivityTimer,
     }
 
