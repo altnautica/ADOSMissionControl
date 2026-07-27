@@ -82,6 +82,12 @@ export interface NodePresence {
   cloudPosture?: NodeCloudPosture;
   /** Cloud device id used for relay pairing; present for cloud-seen nodes. */
   cloudDeviceId?: string;
+  /** True once ANY source has confirmed this node runs a real companion-
+   * computer agent, distinct from `cloudDeviceId` ("the GCS can address this
+   * device directly"). A relay-only node has no `cloudDeviceId` but can still
+   * report this true once the ground station relays the peer's identity.
+   * Monotonic in `mergePresence` — never regresses once true (see there). */
+  agentIdentityKnown?: boolean;
   /**
    * The transports this presence was observed on. Empty means no live
    * presence source; combined with a null `fc.managedId` it makes the entry

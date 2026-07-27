@@ -128,6 +128,7 @@ export function CloudDroneBridge() {
           role,
           cloudPosture,
           cloudDeviceId: deviceId,
+          agentIdentityKnown: true,
           lastHeartbeat: lastSeen,
         },
         "cloud",

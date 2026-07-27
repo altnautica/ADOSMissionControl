@@ -68,6 +68,18 @@ export interface RelayedEnrollment {
    * the drone, not the ground station.
    */
   funneledStatus?: CommandCloudStatus;
+  /** True when the ground station has actually reported this peer's real
+   * identity (its `profile` field). Distinct from `funneledStatus`, which is
+   * only present for a relay-only drone. */
+  agentIdentityKnown: boolean;
+  /** The peer's real reported profile ("drone" | "ground-station" |
+   * "workstation"), when the ground station knows it. Undefined until an
+   * identity snapshot lands. */
+  realProfile?: string;
+  /** The peer's real reported name, when the ground station knows it.
+   * Undefined until an identity snapshot lands — the caller falls back to
+   * `Agent <hash>` in that case. */
+  realName?: string;
 }
 
 /**
@@ -220,6 +232,7 @@ export function planRelayedEnrollment(args: {
           ? peer.rssiDbm
           : null;
       const direct = directlyPairedDeviceIds.has(droneDeviceId);
+      const relayedStatus = gs.relayedStatusByPeer?.get(droneDeviceId);
 
       enrollments.push({
         nodeId: nodeIdForDevice(droneDeviceId),
@@ -227,6 +240,9 @@ export function planRelayedEnrollment(args: {
         reachedVia: gs.nodeId,
         lastHeartbeat,
         peerRssiDbm,
+        agentIdentityKnown: relayedStatus?.profile !== undefined,
+        realProfile: relayedStatus?.profile,
+        realName: relayedStatus?.name,
         funneledStatus: direct
           ? undefined
           : funneledStatusFor({
@@ -236,7 +252,7 @@ export function planRelayedEnrollment(args: {
               groundStatus: gs.status,
               radioUp: gs.radioUp,
               updatedAt: lastHeartbeat,
-              relayedStatus: gs.relayedStatusByPeer?.get(droneDeviceId),
+              relayedStatus,
             }),
       });
     }

@@ -39,6 +39,18 @@ describe("normaliseAndCheckHost — private-address allowlist", () => {
     expect(classify("169.254.10.1")).toEqual({ host: "169.254.10.1" });
   });
 
+  it("accepts the 100.64.0.0/10 CGNAT range (Tailscale overlay)", () => {
+    // Tailscale assigns IPs in 100.64.0.0/10 (RFC 6598) — operators reach an
+    // ADOS agent from outside the LAN via its Tailscale IP, so the SSRF guard
+    // must admit the entire range.
+    expect(classify("100.64.0.1")).toEqual({ host: "100.64.0.1" });
+    expect(classify("100.127.255.254")).toEqual({ host: "100.127.255.254" });
+    expect(classify("100.100.100.100")).toEqual({ host: "100.100.100.100" });
+    // Just outside the range on either side must still be rejected.
+    expect(classify("100.63.255.255")).toEqual({ rejected: "host_not_private" });
+    expect(classify("100.128.0.1")).toEqual({ rejected: "host_not_private" });
+  });
+
   it("accepts mDNS .local and loopback", () => {
     expect(classify("agent-node.local")).toEqual({ host: "agent-node.local" });
     expect(classify("localhost")).toEqual({ host: "localhost" });

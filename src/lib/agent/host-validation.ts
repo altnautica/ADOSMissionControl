@@ -38,11 +38,15 @@ function parseIpv4(input: string): [number, number, number, number] | null {
 /**
  * True when `input` is a complete IPv4 literal inside a private range —
  * 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 127.0.0.0/8 (loopback), or
- * 169.254.0.0/16 (link-local) — the only IPv4 ranges Mission Control is willing
- * to proxy to. Checks the PARSED octets, never a leading substring, so a public
- * hostname that begins with a private label is rejected. Exported so the
- * server-side resolver can reuse it as a DNS-rebinding guard on a resolved
- * address (a `.local` name is the only DNS-resolvable host the allowlist admits,
+ * 169.254.0.0/16 (link-local) — plus the carrier-grade NAT range
+ * 100.64.0.0/10 (RFC 6598) that Tailscale uses for its overlay network,
+ * since operators legitimately reach an ADOS agent via its Tailscale IP
+ * from outside the LAN and the SSRF proxy must let them. These are the
+ * only IPv4 ranges Mission Control is willing to proxy to. Checks the
+ * PARSED octets, never a leading substring, so a public hostname that
+ * begins with a private label is rejected. Exported so the server-side
+ * resolver can reuse it as a DNS-rebinding guard on a resolved address
+ * (a `.local` name is the only DNS-resolvable host the allowlist admits,
  * and it must still land on a private IP).
  */
 export function isPrivateIpv4(input: string): boolean {
@@ -54,7 +58,8 @@ export function isPrivateIpv4(input: string): boolean {
     a === 127 || // 127.0.0.0/8 loopback
     (a === 192 && b === 168) || // 192.168.0.0/16
     (a === 172 && b >= 16 && b <= 31) || // 172.16.0.0/12
-    (a === 169 && b === 254) // 169.254.0.0/16 link-local
+    (a === 169 && b === 254) || // 169.254.0.0/16 link-local
+    (a === 100 && b >= 64 && b <= 127) // 100.64.0.0/10 CGNAT (Tailscale)
   );
 }
 
@@ -219,7 +224,7 @@ export function normaliseAndCheckHost(input: string): HostValidationResult {
     return {
       error: "host_not_private",
       message:
-        "Only RFC1918, mDNS .local, or loopback hosts are allowed",
+        "Only RFC1918, mDNS .local, loopback, or Tailscale (100.64.0.0/10) hosts are allowed",
     };
   }
 

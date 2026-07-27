@@ -111,20 +111,20 @@ describe("retryMissingParams convergence", () => {
     expect(dl.lastMissingCount).toBe(30);
   });
 
-  it("gives up after three consecutive rounds with no progress, not a fixed round count", () => {
+  it("gives up after six consecutive rounds with no progress, not a fixed round count", () => {
     const ctx = makeCtx();
     void getAllParameters(ctx);
     const dl = ctx.parameterDownload!;
     dl.total = 10;
     dl.params.set(0, param(0, 10)); // 9 missing, never closes
 
-    retryMissingParams(ctx); // round 1: no progress yet (first reading)
-    expect(ctx.parameterDownload).not.toBeNull();
-    retryMissingParams(ctx); // round 2: still 9 missing — no progress
-    expect(ctx.parameterDownload).not.toBeNull();
-    retryMissingParams(ctx); // round 3: still 9 missing — no progress
-    expect(ctx.parameterDownload).not.toBeNull();
-    retryMissingParams(ctx); // round 4: three consecutive stalls — give up
+    // Six consecutive stalls are tolerated (grace window for a lossy link
+    // that's still inside the 120s hard backstop); the seventh stall gives up.
+    for (let round = 1; round <= 6; round++) {
+      retryMissingParams(ctx);
+      expect(ctx.parameterDownload).not.toBeNull();
+    }
+    retryMissingParams(ctx); // round 7: six consecutive stalls — give up
     expect(ctx.parameterDownload).toBeNull();
   });
 

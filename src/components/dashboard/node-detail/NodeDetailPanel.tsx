@@ -266,6 +266,8 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
   // Resolve the visible surfaces from the node's profile + role + caps. Plain
   // computation (not a hook) so it can sit after the guard; resolveSurfaces is
   // a cheap filter over the profile's descriptor list.
+  const agentIdentityKnown =
+    agentDeviceId !== null || drone.agentIdentityKnown === true;
   const ctx: SurfaceContext = {
     droneId,
     drone,
@@ -273,6 +275,7 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
     isConnected,
     firmwareType: managedDrones.get(droneId)?.vehicleInfo.firmwareType ?? null,
     agentDeviceId,
+    agentIdentityKnown,
     fcLinking,
     radioPresent,
     visionPresent,

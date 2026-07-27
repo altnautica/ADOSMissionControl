@@ -64,6 +64,17 @@ export interface FleetDrone extends DroneInfo {
    * intentionally offline drone from one that dropped off. Undefined
    * for older agents that predate the field (treated as "cloud"). */
   cloudPosture?: "local" | "cloud" | "self_hosted";
+  /** True when the node genuinely has a companion-computer agent behind it,
+   * even when the GCS cannot address it directly (a relay-only reach). Never
+   * a replacement for `cloudDeviceId` — that still answers "can the GCS
+   * reach this device's own API," this answers "does a real agent exist
+   * back there." Undefined on rows that predate the field. */
+  agentIdentityKnown?: boolean;
+  /** Board identity folded in from a live status poll (direct or relayed).
+   * Undefined until a status snapshot reports it. */
+  boardName?: string;
+  boardSoc?: string;
+  boardTier?: number;
   /** Local panel attached to the companion board over the 40-pin
    * expansion header (e.g. SPI LCD on a Cubie A7Z or Rock 5C
    * ground-station node). Undefined when no display is bound. */

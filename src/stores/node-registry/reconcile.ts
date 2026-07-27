@@ -135,6 +135,12 @@ export function mergePresence(
       current.cloudDeviceId,
       isCloud,
     ),
+    // Monotonic: once any source has confirmed a real companion-agent
+    // identity, a later patch — including one where the source currently
+    // can't tell (e.g. a relay poll gap) — never regresses this back to
+    // false, mirroring how lastHeartbeat only ever advances, never retreats.
+    agentIdentityKnown:
+      patch.agentIdentityKnown === true ? true : current.agentIdentityKnown,
     // A supplied hop always wins (freshest relay); an absent one keeps the
     // current value, so a later direct patch that carries no hop does not erase
     // the relay provenance. The relayed source dropping clears it (below).

@@ -175,17 +175,24 @@ export function RelayedDroneBridge() {
       // Skip an unchanged presence upsert so a self-triggered re-run does not
       // churn the registry.
       const entry = registry.getEntry(e.nodeId);
+      const relayedProfile: "drone" | "ground-station" | "workstation" =
+        e.realProfile === "ground-station" || e.realProfile === "workstation"
+          ? e.realProfile
+          : "drone";
       const presenceUnchanged =
         entry?.presence.sources.includes("relayed") &&
         entry.presence.reachedVia === e.reachedVia &&
-        entry.presence.lastHeartbeat >= e.lastHeartbeat;
+        entry.presence.lastHeartbeat >= e.lastHeartbeat &&
+        entry.presence.agentIdentityKnown === e.agentIdentityKnown &&
+        entry.presence.profile === relayedProfile;
       if (!presenceUnchanged) {
         registry.upsertPresence(
           e.nodeId,
           {
             deviceId: e.deviceId,
-            name: `Agent ${e.deviceId.slice(0, 8)}`,
-            profile: "drone",
+            name: e.realName || `Agent ${e.deviceId.slice(0, 8)}`,
+            profile: relayedProfile,
+            agentIdentityKnown: e.agentIdentityKnown,
             reachedVia: e.reachedVia,
             lastHeartbeat: e.lastHeartbeat,
           },

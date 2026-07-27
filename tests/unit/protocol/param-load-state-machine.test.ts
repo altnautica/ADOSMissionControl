@@ -197,7 +197,7 @@ describe('parameter batch load', () => {
     expect(retryFrames.length).toBe(50);
   });
 
-  it('gives up and resolves the partial set after the retry cap (more than 3 inactivity cycles)', async () => {
+  it('gives up and resolves the partial set after the retry cap (six inactivity stalls)', async () => {
     const t = makeTransport();
     const ctx = makeContext(t);
     const promise = getAllParameters(ctx);
@@ -205,8 +205,10 @@ describe('parameter batch load', () => {
     // Deliver index 0 of a 4-param set; 1..3 never arrive.
     deliverParam(ctx, 'P0', 0, 0, 4);
 
-    // Cycle 1, 2, 3 each re-request the missing indices; cycle 4 exceeds the cap (retryCount > 3) and resolves.
-    for (let cycle = 0; cycle < 4; cycle++) {
+    // Six stalls are tolerated (grace for a lossy link still inside the 120s
+    // hard backstop); the seventh stall exceeds the no-progress cap and
+    // resolves with whatever has arrived so far.
+    for (let cycle = 0; cycle < 7; cycle++) {
       vi.advanceTimersByTime(5000);
     }
 
@@ -248,13 +250,17 @@ describe('parameter batch load', () => {
     void getAllParameters(ctx);
     const before = t.sent.length;
 
-    // No PARAM_VALUE yet -> total stays 0. The inactivity retry must re-arm, not storm the FC.
+    // No PARAM_VALUE yet -> total stays 0. The inactivity retry must re-arm.
+    // Fix: when the very first request got zero replies, resend
+    // PARAM_REQUEST_LIST every 2nd 5s inactivity tick (~10s cadence) instead
+    // of looping forever doing nothing until the 120s hard timer resolves
+    // with an empty list. Cycle 1 (odd retryCount) keeps waiting; cycle 2
+    // (even retryCount) resends the list request once.
     vi.advanceTimersByTime(5000);
     expect(t.sent.length).toBe(before);
     expect(ctx.parameterDownload).not.toBeNull();
-    // A second cycle still does nothing but keep waiting.
     vi.advanceTimersByTime(5000);
-    expect(t.sent.length).toBe(before);
+    expect(t.sent.filter(isParamRequestList).length - before).toBe(1);
     expect(ctx.parameterDownload).not.toBeNull();
   });
 });

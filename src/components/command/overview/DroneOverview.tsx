@@ -52,7 +52,8 @@ import { useReachedViaName } from "@/lib/nodes/reach-provenance";
 
 /** The unified drone Overview. Receives the surface `ctx`. */
 export function DroneOverview({ ctx }: { ctx: SurfaceContext }) {
-  const hasCompanion = ctx.agentDeviceId !== null;
+  const agentReachable = ctx.agentDeviceId !== null;
+  const companionKnown = agentReachable || ctx.drone.agentIdentityKnown === true;
   const profile = effectiveNodeProfile(ctx);
   // A WFB-linked drone reached only through a ground node names its reach hop
   // on the hero. Undefined for a directly-reached drone (no sub-badge).
@@ -70,12 +71,12 @@ export function DroneOverview({ ctx }: { ctx: SurfaceContext }) {
           the product, and its live video is the prime tile. A bare FC (no
           companion) skips this and shows only the FC console band + the
           add-a-computer CTA below. */}
-      {hasCompanion && <CompanionBand droneId={ctx.droneId} />}
+      {agentReachable && <CompanionBand droneId={ctx.droneId} />}
 
       {/* The flight-controller console — always present. */}
       <FcBand ctx={ctx} />
 
-      {!hasCompanion && (
+      {!companionKnown && (
         <OverviewGrid>
           <OverviewTile span="half">
             <AddCompanionCta />

@@ -141,6 +141,7 @@ export function nodeEntryToFleetDrone(
     // GCS does not have and every consumer downstream would act on it.
     cloudDeviceId: presence.cloudDeviceId,
     cloudPosture: presence.cloudPosture,
+    agentIdentityKnown: presence.agentIdentityKnown,
     profile,
     role,
     // FC-gated telemetry: undefined when no FC is attached so the card shows
@@ -166,6 +167,9 @@ export function nodeEntryToFleetDrone(
     fcFirmware: status?.fcFirmware,
     fcVariant: status?.fcVariant,
     transportOpen: status?.transportOpen,
+    boardName: status?.boardName,
+    boardSoc: status?.boardSoc,
+    boardTier: status?.boardTier,
   };
 }
 

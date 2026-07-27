@@ -61,6 +61,7 @@ import {
   type CommandCloudStatus,
 } from "@/stores/command-fleet-store";
 import { useDroneManager } from "@/stores/drone-manager";
+import { useNodeRegistryStore } from "@/stores/node-registry";
 import { deviceIdFromNodeId } from "@/lib/agent/node-id";
 import { normalizeRadio } from "@/stores/agent-capabilities/normalizer";
 import { linkStateReach } from "@/components/hardware/radio/labels";
@@ -82,6 +83,8 @@ import type { Transport } from "@/lib/protocol/types/transport";
 const RETRY_INTERVAL_MS = 5000;
 
 const WS_TIMEOUT_MS = 5000;
+
+const TICKET_MINT_TIMEOUT_MS = 5000;
 
 /** True only when the node's WFB link is verified up. A missing or unproven
  * radio block is NOT up (Rule 44) — mirrors `RelayedDroneBridge`'s gate so
@@ -129,10 +132,21 @@ export function RelayedMavlinkBridge() {
         );
         if (!wsUrl) return;
 
-        const ticket = await mintWsTicket(
-          { baseUrl: agent.agentUrl, apiKey: agent.apiKey },
-          "gs.mavlink_ws",
+        const mintController = new AbortController();
+        const mintTimeout = setTimeout(
+          () => mintController.abort(),
+          TICKET_MINT_TIMEOUT_MS,
         );
+        let ticket: string | null;
+        try {
+          ticket = await mintWsTicket(
+            { baseUrl: agent.agentUrl, apiKey: agent.apiKey },
+            "gs.mavlink_ws",
+            mintController.signal,
+          );
+        } finally {
+          clearTimeout(mintTimeout);
+        }
         if (!ticket) return; // ground station reports no pairing key — nothing to authenticate the dial with
 
         const { WebSocketTransport } = await import(
@@ -251,6 +265,28 @@ export function RelayedMavlinkBridge() {
         if (!wanted.has(nodeId)) {
           connectedIds.current.delete(nodeId);
           useDroneManager.getState().removeDrone(nodeId);
+        }
+      }
+
+      // Bump presence freshness from literal MAVLink byte arrival on a session
+      // this bridge owns — a stronger, transport-level liveness signal than the
+      // ground station's WFB presence-beacon timestamp, which can stall while
+      // the aux radio lane is busy relaying a large param download even though
+      // the MAVLink session itself is live. lastByteAt advances on ANY raw byte
+      // chunk (message-type-agnostic, before frame validation) — accepted
+      // trade-off: a transport delivering garbled/non-MAVLink bytes would also
+      // bump it, but a genuinely dead/wedged transport still stops advancing it
+      // within one or two reconcile ticks, falling back to beacon-only
+      // freshness exactly as today.
+      for (const nodeId of connectedIds.current) {
+        const drone = useDroneManager.getState().drones.get(nodeId);
+        const links = drone?.protocol.linkInfo;
+        if (!links) continue; // e.g. an MSP-variant relayed FC — leave to the beacon
+        const freshestByteAt = Math.max(0, ...links.map((l) => l.lastByteAt));
+        if (freshestByteAt > 0 && Date.now() - freshestByteAt < RETRY_INTERVAL_MS * 2) {
+          useNodeRegistryStore
+            .getState()
+            .upsertPresence(nodeId, { lastHeartbeat: Date.now() }, "relayed");
         }
       }
     }

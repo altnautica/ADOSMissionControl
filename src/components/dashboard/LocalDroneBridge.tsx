@@ -59,6 +59,7 @@ export function LocalDroneBridge() {
           // connect-on-select path (it is a LAN id, not a relay id).
           cloudPosture: "local",
           cloudDeviceId: node.deviceId,
+          agentIdentityKnown: true,
           lastHeartbeat,
         },
         "local",

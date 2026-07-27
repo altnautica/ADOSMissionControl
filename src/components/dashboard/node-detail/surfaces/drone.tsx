@@ -49,7 +49,7 @@ export const DRONE_SURFACES: SurfaceSpec[] = [
         droneName={ctx.displayName}
         isConnected={ctx.isConnected}
         fcLinking={ctx.fcLinking}
-        agentBacked={ctx.agentDeviceId !== null}
+        agentBacked={ctx.agentIdentityKnown === true || ctx.agentDeviceId !== null}
       />
     ),
   },
@@ -62,7 +62,7 @@ export const DRONE_SURFACES: SurfaceSpec[] = [
       ) : (
         <FcDisconnectedPlaceholder
           droneName={ctx.displayName}
-          agentBacked={ctx.agentDeviceId !== null}
+          agentBacked={ctx.agentIdentityKnown === true || ctx.agentDeviceId !== null}
         />
       ),
   },

@@ -97,6 +97,10 @@ export function retryMissingParams(ctx: ParamContext): void {
   const dl = ctx.parameterDownload
 
   if (dl.total <= 0) {
+    dl.retryCount++
+    if (dl.retryCount % 2 === 0) {
+      ctx.transport!.send(encodeParamRequestList(ctx.targetSysId, ctx.targetCompId, ctx.sysId, ctx.compId))
+    }
     dl.resetInactivityTimer()
     return
   }
@@ -123,7 +127,7 @@ export function retryMissingParams(ctx: ParamContext): void {
   }
   dl.lastMissingCount = missing.length
   dl.retryCount++
-  if (dl.noProgressRounds >= 3) {
+  if (dl.noProgressRounds >= 6) {
     finishParamDownload(ctx)
     return
   }

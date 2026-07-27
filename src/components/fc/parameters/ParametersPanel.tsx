@@ -19,7 +19,7 @@ import { loadParamMetadata, type ParamMetadata } from "@/lib/protocol/param-meta
 import { resolveParamDocContext, type ParamDocContext } from "@/lib/protocol/param-docs";
 import { cn } from "@/lib/utils";
 import { RefreshCw, ListTree } from "lucide-react";
-import type { ParameterValue } from "@/lib/protocol/types";
+import type { ParameterValue, DroneProtocol } from "@/lib/protocol/types";
 import { exportParamFile } from "./param-file-io";
 
 /** Module-level cache — survives unmount/remount, avoids full re-download on navigation. */
@@ -86,6 +86,13 @@ export function ParametersPanel() {
     return s.drones.get(id)?.vehicleInfo ?? null;
   });
 
+  const selectedProtocol = useDroneManager((s) => {
+    const id = s.selectedDroneId;
+    if (!id) return null;
+    return s.drones.get(id)?.protocol ?? null;
+  });
+  const prevProtocolRef = useRef<DroneProtocol | null>(null);
+
   const docContext = useMemo((): ParamDocContext | null => {
     if (!vehicleInfo) return null;
     return resolveParamDocContext(
@@ -135,6 +142,13 @@ export function ParametersPanel() {
   }, []);
 
   useEffect(() => {
+    const protocolChanged =
+      selectedProtocol !== null &&
+      prevProtocolRef.current !== null &&
+      selectedProtocol !== prevProtocolRef.current;
+    if (selectedProtocol !== null) prevProtocolRef.current = selectedProtocol;
+    if (protocolChanged) invalidateParamCache();
+
     if (cachedParamList && Date.now() - cacheTimestamp < PARAM_LIST_CACHE_TTL) { setParameters(cachedParamList); }
     else { downloadParams(); }
     const drone = useDroneManager.getState().getSelectedDrone();
@@ -147,7 +161,7 @@ export function ParametersPanel() {
       }).then(setMetadata);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [selectedProtocol]);
 
   useEffect(() => {
     if (pendingParamSearch) {

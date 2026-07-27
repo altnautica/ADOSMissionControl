@@ -91,6 +91,8 @@ export function enrichNodeWithLiveFc(
     fcFirmware: status.fcFirmware ?? node.fcFirmware,
     frameType: status.frameType ?? node.frameType,
     transportOpen: status.transportOpen ?? node.transportOpen,
+    board: status.boardName ?? node.board,
+    tier: status.boardTier ?? node.tier,
   };
 }
 
@@ -233,7 +235,7 @@ export function mergeFleetWithDirectFcs(
  * names that hop. Pure; exported for unit tests.
  */
 export function adaptRelayed(entry: NodeEntry): FleetNodeEntry {
-  const { deviceId, name, reachedVia, lastHeartbeat } = entry.presence;
+  const { deviceId, name, reachedVia, lastHeartbeat, profile } = entry.presence;
   return {
     _id: nodeIdForDevice(deviceId),
     convexId: undefined,
@@ -250,7 +252,7 @@ export function adaptRelayed(entry: NodeEntry): FleetNodeEntry {
     lastSeen: lastHeartbeat,
     fcConnected: undefined,
     pairedAt: lastHeartbeat,
-    profile: "drone",
+    profile,
     role: null,
     isLocal: false,
     isDirectFc: false,

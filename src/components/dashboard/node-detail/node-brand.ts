@@ -27,7 +27,7 @@ export function effectiveNodeProfile(ctx: SurfaceContext): EffProfile {
   const p = ctx.drone.profile ?? "drone";
   if (p === "ground-station") return "ground-station";
   if (p === "workstation") return "workstation";
-  return ctx.agentDeviceId === null ? "flight-controller" : "drone";
+  return ctx.agentIdentityKnown ? "drone" : "flight-controller";
 }
 
 export interface NodeBrandDescriptor {

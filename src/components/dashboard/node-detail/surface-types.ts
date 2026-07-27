@@ -27,6 +27,11 @@ export interface SurfaceContext {
    * ArduPilot-only Scripts tab (`firmwareType?.startsWith("ardupilot")`). */
   firmwareType: FirmwareType | null;
   agentDeviceId: string | null;
+  /** OR of `agentDeviceId !== null` (direct reach) and
+   * `drone.agentIdentityKnown === true` (confirmed identity via relay).
+   * "Has a real companion agent" — never a replacement for `agentDeviceId`,
+   * which still answers "can the GCS reach it directly." */
+  agentIdentityKnown: boolean;
   fcLinking: boolean;
   radioPresent: boolean;
   visionPresent: boolean;

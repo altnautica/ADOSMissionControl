@@ -349,6 +349,7 @@ export class MAVLinkAdapter implements DroneProtocol {
     if (this.logListDownload) { clearTimeout(this.logListDownload.timer); this.logListDownload.resolve(Array.from(this.logListDownload.entries.values())); this.logListDownload = null }
     if (this.logDataDownload) { if (this.logDataDownload.inactivityTimer) clearTimeout(this.logDataDownload.inactivityTimer); clearTimeout(this.logDataDownload.hardTimer); this.logDataDownload.reject(new Error('Disconnected during log download')); this.logDataDownload = null }
     if (this.ftpDownload) { if (this.ftpDownload.inactivityTimer) clearTimeout(this.ftpDownload.inactivityTimer); clearTimeout(this.ftpDownload.hardTimer); this.ftpDownload.reject(new Error('Disconnected during FTP download')); this.ftpDownload = null }
+    if (this.parameterDownload) { prm.finishParamDownload(this.pc); this.parameterDownload = null }
     ftpWriteOps.cancelFtpOp(this._ftpCtx, 'Disconnected during FTP operation')
     // Detach all remaining links
     for (const link of Array.from(this.links.values())) {

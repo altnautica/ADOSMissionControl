@@ -28,7 +28,7 @@ import { isPrivateIpv4 } from "@/lib/agent/host-validation";
  * Defense-in-depth against DNS / mDNS rebinding: `normaliseAndCheckHost` admits
  * exactly one DNS-resolvable host — a `.local` mDNS name — but a poisoned
  * resolver could point that name at a PUBLIC address. So a resolved address that
- * is not private (RFC1918 / loopback / link-local) is refused (null) rather than
+ * is not private (RFC1918 / loopback / link-local / 100.64.0.0/10 CGNAT) is refused (null) rather than
  * handed back for the proxy to fetch with the operator's key. */
 export async function resolveIpv4(hostname: string): Promise<string | null> {
   if (/^\d+\.\d+\.\d+\.\d+$/.test(hostname)) return hostname;
