@@ -97,29 +97,36 @@ function parsePeers(raw: unknown): RelayedPeerStatus[] {
 
     const s = p.status;
     if (entry.statusFresh && s && typeof s === "object") {
+      // The ground-side sidecar expands the radio-frame's short keys into
+      // readable ones before publishing (aux_peers.rs: expand_status). The
+      // route serves that expansion verbatim, so this parser reads the
+      // long-key form — never the short wire keys, which never escape the
+      // radio process.
       const sv = s as Record<string, unknown>;
       entry.status = {
-        fcConnected: typeof sv.fc === "boolean" ? sv.fc : undefined,
-        mavlinkAlive: typeof sv.fa === "boolean" ? sv.fa : undefined,
-        fcVariant: typeof sv.fv === "string" ? sv.fv : undefined,
-        fcFirmware: typeof sv.ff === "string" ? sv.ff : undefined,
-        servicesRunning: typeof sv.sr === "number" ? sv.sr : undefined,
-        servicesFailed: typeof sv.sf === "number" ? sv.sf : undefined,
-        servicesOther: typeof sv.so === "number" ? sv.so : undefined,
-        failedServiceNames: Array.isArray(sv.sn)
-          ? (sv.sn as unknown[]).filter((n): n is string => typeof n === "string")
+        fcConnected: typeof sv.fc_connected === "boolean" ? sv.fc_connected : undefined,
+        mavlinkAlive: typeof sv.mavlink_alive === "boolean" ? sv.mavlink_alive : undefined,
+        fcVariant: typeof sv.fc_variant === "string" ? sv.fc_variant : undefined,
+        fcFirmware: typeof sv.fc_firmware === "string" ? sv.fc_firmware : undefined,
+        servicesRunning: typeof sv.services_running === "number" ? sv.services_running : undefined,
+        servicesFailed: typeof sv.services_failed === "number" ? sv.services_failed : undefined,
+        servicesOther: typeof sv.services_other === "number" ? sv.services_other : undefined,
+        failedServiceNames: Array.isArray(sv.failed_units)
+          ? (sv.failed_units as unknown[]).filter(
+              (n): n is string => typeof n === "string",
+            )
           : undefined,
-        cpuPercent: typeof sv.cp === "number" ? sv.cp : undefined,
-        memoryPercent: typeof sv.mp === "number" ? sv.mp : undefined,
-        diskPercent: typeof sv.dp === "number" ? sv.dp : undefined,
-        temperature: typeof sv.tc === "number" ? sv.tc : undefined,
-        boardName: typeof sv.bn === "string" ? sv.bn : undefined,
-        boardSoc: typeof sv.bs === "string" ? sv.bs : undefined,
-        boardTier: typeof sv.bt === "number" ? sv.bt : undefined,
-        uptimeSeconds: typeof sv.up === "number" ? sv.up : undefined,
-        agentVersion: typeof sv.ver === "string" ? sv.ver : undefined,
-        cameraState: typeof sv.cs === "string" ? sv.cs : undefined,
-        videoState: typeof sv.vs === "string" ? sv.vs : undefined,
+        cpuPercent: typeof sv.cpu_percent === "number" ? sv.cpu_percent : undefined,
+        memoryPercent: typeof sv.memory_percent === "number" ? sv.memory_percent : undefined,
+        diskPercent: typeof sv.disk_percent === "number" ? sv.disk_percent : undefined,
+        temperature: typeof sv.temperature_c === "number" ? sv.temperature_c : undefined,
+        boardName: typeof sv.board_name === "string" ? sv.board_name : undefined,
+        boardSoc: typeof sv.board_soc === "string" ? sv.board_soc : undefined,
+        boardTier: typeof sv.board_tier === "number" ? sv.board_tier : undefined,
+        uptimeSeconds: typeof sv.uptime_seconds === "number" ? sv.uptime_seconds : undefined,
+        agentVersion: typeof sv.agent_version === "string" ? sv.agent_version : undefined,
+        cameraState: typeof sv.camera_state === "string" ? sv.camera_state : undefined,
+        videoState: typeof sv.video_state === "string" ? sv.video_state : undefined,
       };
     }
     out.push(entry);

@@ -45,26 +45,29 @@ describe("fetchRelayedStatus", () => {
               agent_version: "0.99.244",
               status_fresh: true,
               status_age_s: 1.2,
+              // The ground-side sidecar publishes long keys (aux_peers.rs:
+              // expand_status), and the route serves that expansion verbatim.
+              // Short wire keys never escape the radio process.
               status: {
-                fc: true,
-                fa: true,
-                fv: "ardupilot",
-                ff: "ardupilot",
-                sr: 25,
-                sf: 0,
-                so: 3,
-                sn: ["ados-vision"],
-                cp: 42.1,
-                mp: 55.0,
-                dp: 30.0,
-                tc: 47.5,
-                bn: "Radxa Cubie A7S",
-                bs: "Allwinner A733",
-                bt: 3,
-                up: 600,
-                ver: "0.99.244",
-                cs: "ready",
-                vs: "running",
+                fc_connected: true,
+                mavlink_alive: true,
+                fc_variant: "ardupilot",
+                fc_firmware: "ardupilot",
+                services_running: 25,
+                services_failed: 0,
+                services_other: 3,
+                failed_units: ["ados-vision"],
+                cpu_percent: 42.1,
+                memory_percent: 55.0,
+                disk_percent: 30.0,
+                temperature_c: 47.5,
+                board_name: "Radxa Cubie A7S",
+                board_soc: "Allwinner A733",
+                board_tier: 3,
+                uptime_seconds: 600,
+                agent_version: "0.99.244",
+                camera_state: "ready",
+                video_state: "running",
               },
             },
           ],
@@ -90,6 +93,8 @@ describe("fetchRelayedStatus", () => {
     expect(p.status?.cpuPercent).toBe(42.1);
     expect(p.status?.boardName).toBe("Radxa Cubie A7S");
     expect(p.status?.boardTier).toBe(3);
+    expect(p.status?.temperature).toBe(47.5);
+    expect(p.status?.videoState).toBe("running");
   });
 
   it("drops the status block when status_fresh is false, even if one is present", async () => {
@@ -101,7 +106,7 @@ describe("fetchRelayedStatus", () => {
               device_id: "drone-a",
               status_fresh: false,
               status_age_s: 45,
-              status: { cp: 99 },
+              status: { cpu_percent: 99 },
             },
           ],
           peer_count: 1,
