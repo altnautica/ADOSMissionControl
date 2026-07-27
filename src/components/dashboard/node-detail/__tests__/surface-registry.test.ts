@@ -23,6 +23,7 @@ function ctx(over: Partial<SurfaceContext>): SurfaceContext {
     firmwareType: null,
     agentDeviceId: "dev-1",
     agentIdentityKnown: true,
+    relayReach: null,
     fcLinking: false,
     radioPresent: false,
     visionPresent: false,

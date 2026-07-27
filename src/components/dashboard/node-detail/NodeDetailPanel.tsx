@@ -51,7 +51,7 @@ import { TrafficPill } from "@/components/indicators/TrafficPill";
 import { useUiStore } from "@/stores/ui-store";
 import { resolveSurfaces } from "./surfaces";
 import { AGENT_SUBPAGE_IDS, agentRedirect } from "./agent/agent-redirect";
-import type { SurfaceContext } from "./surface-types";
+import type { SurfaceContext, RelayReach } from "./surface-types";
 
 interface NodeDetailPanelProps {
   droneId: string;
@@ -83,6 +83,29 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
   // carries the agent's device id (cloud-paired or LAN-paired projector).
   const agentDeviceId = drone?.cloudDeviceId ?? null;
   const fleetNodes = useFleetNodes();
+
+  // When this drone is reached ONLY through a ground node's WFB relay
+  // (reachedVia = "node:<groundDeviceId>" and no direct cloudDeviceId), and
+  // the ground node is LAN-paired with the GCS, the ground node's own
+  // host + API key + the linked drone's device id form a relay-proxy reach.
+  // The ground station's new /api/v1/ground-station/relay-proxy/{peerId}/*
+  // route forwards HTTP calls to the drone over the aux radio lane.
+  const relayReach: RelayReach | null = (() => {
+    if (agentDeviceId !== null) return null; // direct reach, no relay needed
+    if (!drone?.reachedVia) return null;
+    const groundDeviceId = drone.reachedVia.replace(/^node:/, "");
+    if (!groundDeviceId) return null;
+    const groundNode = fleetNodes.find((n) => n.deviceId === groundDeviceId);
+    if (!groundNode || !groundNode.isLocal || !groundNode.apiKey) return null;
+    const host = groundNode.mdnsHost ?? groundNode.lastIp;
+    if (!host) return null;
+    const baseUrl = host.startsWith("http") ? host : `http://${host}:8080`;
+    return {
+      baseUrl,
+      apiKey: groundNode.apiKey,
+      peerDeviceId: droneId.replace(/^node:/, "") ?? droneId,
+    };
+  })();
 
   const radioPresent = useAgentCapabilitiesStore((s) => s.radio !== null);
   const crsfPresent = useAgentCapabilitiesStore((s) => s.crsf !== null);
@@ -276,6 +299,7 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
     firmwareType: managedDrones.get(droneId)?.vehicleInfo.firmwareType ?? null,
     agentDeviceId,
     agentIdentityKnown,
+    relayReach,
     fcLinking,
     radioPresent,
     visionPresent,

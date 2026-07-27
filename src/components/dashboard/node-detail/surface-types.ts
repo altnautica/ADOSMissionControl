@@ -15,6 +15,19 @@ import type { FirmwareType } from "@/lib/protocol/types/enums";
 
 export type NodeProfile = "drone" | "ground-station" | "workstation";
 
+/** The ground-station relay-proxy reach for a WFB-linked drone. Carries
+ * the ground node's host + API key and the linked drone's peer device id,
+ * so the GCS can route `/api/...` calls through the ground station's
+ * relay-proxy route. */
+export interface RelayReach {
+  /** The ground station's base URL (e.g. `http://192.168.1.50:8080`). */
+  baseUrl: string;
+  /** The ground station's API key (X-ADOS-Key). */
+  apiKey: string;
+  /** The linked drone's device id, forwarded as a path segment. */
+  peerDeviceId: string;
+}
+
 /** Everything a surface's `when` / `render` may need, derived once per
  * render from the selected node + the focused agent's capabilities. */
 export interface SurfaceContext {
@@ -32,6 +45,13 @@ export interface SurfaceContext {
    * "Has a real companion agent" — never a replacement for `agentDeviceId`,
    * which still answers "can the GCS reach it directly." */
   agentIdentityKnown: boolean;
+  /** When the node is reached through a ground node's WFB relay but the
+   * ground station runs the relay-proxy route, this carries the ground
+   * node's host + API key + the linked drone's peer device id, so surfaces
+   * can route `/api/...` calls through the relay-proxy. `null` for a
+   * directly-paired node (use `agentDeviceId` instead) or when the relay-
+   * proxy is unavailable. */
+  relayReach: RelayReach | null;
   fcLinking: boolean;
   radioPresent: boolean;
   visionPresent: boolean;

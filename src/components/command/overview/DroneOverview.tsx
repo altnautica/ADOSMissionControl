@@ -52,7 +52,7 @@ import { useReachedViaName } from "@/lib/nodes/reach-provenance";
 
 /** The unified drone Overview. Receives the surface `ctx`. */
 export function DroneOverview({ ctx }: { ctx: SurfaceContext }) {
-  const agentReachable = ctx.agentDeviceId !== null;
+  const agentReachable = ctx.agentDeviceId !== null || ctx.relayReach !== null;
   const companionKnown = agentReachable || ctx.drone.agentIdentityKnown === true;
   const profile = effectiveNodeProfile(ctx);
   // A WFB-linked drone reached only through a ground node names its reach hop
