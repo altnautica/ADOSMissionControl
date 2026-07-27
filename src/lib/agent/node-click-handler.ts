@@ -121,6 +121,20 @@ export async function selectNode(
       reachedVia: node.reachedVia,
       droneDeviceId: node.deviceId,
     });
+    // The relay-proxy route lives at the ground station's plain-HTTP LAN
+    // address, so an HTTPS page origin blocks it as mixed content before a
+    // single request leaves the browser. Say that, rather than letting the
+    // connect fail into a generic timeout that reads as an unreachable drone.
+    const onHttps =
+      typeof window !== "undefined" && window.location.protocol === "https:";
+    if (reach && onHttps) {
+      useAgentConnectionStore.setState({
+        connectionError:
+          "This page is served over HTTPS, which blocks a plain-HTTP request to the ground station relaying this node. Open Mission Control over HTTP on the LAN to reach this drone's agent.",
+      });
+      opts.onError?.("relay_blocked_by_https");
+      return;
+    }
     if (reach) {
       await conn.connect(
         relayProxyBaseUrl(reach),

@@ -150,6 +150,13 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
   // `selectNode` opened it.
   const focusDeviceId = agentDeviceId ?? relayReach?.peerDeviceId ?? null;
   const lastAgentDeviceId = useRef<string | null>(null);
+  // A relay connect crosses a lossy radio, so a single failure is expected
+  // rather than terminal. `lastAgentDeviceId` is what makes the effect
+  // idempotent, so a failed connect must clear it or the panel stays frozen on
+  // a node it never reached; `connectRetryTick` then re-runs the effect.
+  const connectRetriesRef = useRef(0);
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [connectRetryTick, setConnectRetryTick] = useState(0);
   useEffect(() => {
     if (isDemoMode()) return;
     if (!focusDeviceId) {
@@ -157,16 +164,35 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
         useAgentConnectionStore.getState().disconnect();
         lastAgentDeviceId.current = null;
       }
+      connectRetriesRef.current = 0;
       return;
     }
     if (lastAgentDeviceId.current === focusDeviceId) return;
     const entry = fleetNodes.find((n) => n.deviceId === focusDeviceId);
     if (!entry) return;
     lastAgentDeviceId.current = focusDeviceId;
-    void selectNode(entry, { onFocusAgent: () => {} });
-  }, [focusDeviceId, fleetNodes]);
+    void (async () => {
+      await selectNode(entry, { onFocusAgent: () => {} });
+      if (useAgentConnectionStore.getState().client !== null) {
+        connectRetriesRef.current = 0;
+        return;
+      }
+      // The connect failed. Allow the effect to run again and re-arm it.
+      if (connectRetriesRef.current >= 3) return;
+      connectRetriesRef.current += 1;
+      lastAgentDeviceId.current = null;
+      retryTimerRef.current = setTimeout(
+        () => setConnectRetryTick((n) => n + 1),
+        2000 * connectRetriesRef.current,
+      );
+    })();
+  }, [focusDeviceId, fleetNodes, connectRetryTick]);
   useEffect(
     () => () => {
+      if (retryTimerRef.current) {
+        clearTimeout(retryTimerRef.current);
+        retryTimerRef.current = null;
+      }
       if (!isDemoMode()) {
         useAgentConnectionStore.getState().disconnect();
         lastAgentDeviceId.current = null;

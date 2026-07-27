@@ -441,8 +441,13 @@ export async function getFullStatus(
       allowSchemaFallback: true,
     });
     return normalizeFullStatusLiveness(full);
-  } catch {
-    return null; // Agent version older than 0.3.19, or transient failure
+  } catch (err) {
+    // A 404 means the agent predates the endpoint; anything else (timeout,
+    // relay 504, network) is transient and MUST NOT be read as unsupported —
+    // latching on it permanently quadruples poll traffic for the connection's
+    // life.
+    if (err instanceof Error && /Agent API 404/.test(err.message)) return null;
+    throw err;
   }
 }
 

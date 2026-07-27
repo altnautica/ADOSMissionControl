@@ -254,9 +254,12 @@ describe("relayed command sink", () => {
 
     // Addressed to the ground station's relay-proxy prefix for THIS peer, with
     // the ground station's key — never to the drone, which has no address here.
+    // `relay: true` rides along so the request context cannot misdescribe its
+    // own transport: nothing reads it on this path today, but a context that
+    // says "LAN" about a radio hop is a bug waiting for the first reader.
     expect(runCommandMock).toHaveBeenCalledOnce();
     expect(runCommandMock).toHaveBeenCalledWith(
-      { baseUrl: RELAY_BASE_URL, apiKey: "gs-key" },
+      { baseUrl: RELAY_BASE_URL, apiKey: "gs-key", relay: true },
       "arm",
       [],
     );

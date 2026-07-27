@@ -28,6 +28,7 @@ export const localStateSlice: AgentConnectionSliceCreator<LocalStateSlice> = (
   nodeDeviceId: null,
   stalePairing: null,
   controlRttMs: null,
+  relay: false,
 
   setApiKey(key) {
     set({ apiKey: key });

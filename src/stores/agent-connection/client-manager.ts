@@ -26,7 +26,7 @@ import { usePairingStore } from "../pairing-store";
 import { useCommandFleetStore } from "../command-fleet-store";
 import { probeAgent } from "@/lib/agent/local-pair-client";
 import { nodeIdForDevice } from "@/lib/agent/node-id";
-import { nextPollDelay } from "./poll-backoff";
+import { nextPollDelay, POLL_BASE_MS, POLL_BASE_RELAY_MS } from "./poll-backoff";
 import type {
   ClientManagerSlice,
   AgentConnectionSliceCreator,
@@ -56,6 +56,30 @@ let _visibilityCleanup: (() => void) | undefined;
 // ./poll-backoff module so it can be imported and tested without constructing
 // the agent-connection store.
 
+/** Relay connects cross a radio that drops ~1 request in 3, and unlike the LAN
+ *  path there is no ipv4/mDNS cascade to fall back on — one lost datagram would
+ *  otherwise doom the whole session. */
+async function retryGetStatus(
+  client: AgentClient,
+  attempts: number,
+  gapMs: number,
+): Promise<AgentStatus> {
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await client.getStatus();
+    } catch (e) {
+      lastErr = e;
+      if (i < attempts - 1) {
+        const { promise, resolve } = Promise.withResolvers<void>();
+        setTimeout(resolve, gapMs);
+        await promise;
+      }
+    }
+  }
+  throw lastErr;
+}
+
 export const clientManagerSlice: AgentConnectionSliceCreator<
   ClientManagerSlice
 > = (set, get) => ({
@@ -81,9 +105,15 @@ export const clientManagerSlice: AgentConnectionSliceCreator<
         apiKey: resolvedKey,
         client,
         connectionError: null,
+        relay: opts?.relay ?? false,
       });
       try {
-        const status = await client.getStatus();
+        // The relay lane loses uplink datagrams outright, so the single probe
+        // that decides the whole session gets retries it cannot get from the
+        // ipv4/mDNS cascade below (which never engages for a relay URL).
+        const status = opts?.relay
+          ? await retryGetStatus(client, 3, 400)
+          : await client.getStatus();
         // The device id this connection is registered under. Starts as the id
         // the caller asked for; the identity gate below heals it to the
         // agent's live id when a re-flashed box answers our key.
@@ -336,6 +366,7 @@ export const clientManagerSlice: AgentConnectionSliceCreator<
       consecutiveFailures: 0,
       stalePairing: null,
       controlRttMs: null,
+      relay: false,
     });
     // Clear all other stores so a freshly-focused agent never shows the
     // previous one's data. Capabilities gate the radio/vision tabs and video
@@ -384,7 +415,18 @@ export const clientManagerSlice: AgentConnectionSliceCreator<
           // ever runs on the LAN-direct path.
           const rttStart =
             typeof performance !== "undefined" ? performance.now() : Date.now();
-          const full = await client.getFullStatus();
+          // `getFullStatus` resolves null ONLY for an agent that predates the
+          // endpoint; a timeout / relay 504 / network error throws. Treating a
+          // throw as "unsupported" would latch the 4-request fallback on for
+          // the connection's life on one lost datagram, so it stays a plain
+          // failed poll and the next tick retries the consolidated endpoint.
+          let full: FullStatusResponse | null;
+          try {
+            full = await client.getFullStatus();
+          } catch {
+            get().noteFetchFailure();
+            return;
+          }
           if (full) {
             const rttEnd =
               typeof performance !== "undefined" ? performance.now() : Date.now();
@@ -627,19 +669,33 @@ export const clientManagerSlice: AgentConnectionSliceCreator<
             get().noteFetchSuccess();
             return;
           }
+          // The consolidated endpoint is one radio round trip; the fallback is
+          // four concurrent ones on a half-duplex lane. Never trade down here —
+          // retry the full endpoint on the next tick instead. The latch below
+          // is deliberately left unset so that retry actually happens.
+          if (get().relay) {
+            get().noteFetchFailure();
+            return;
+          }
           // 404 or null = agent doesn't support it.
           useFullEndpoint = false;
         }
 
-        // Fallback: parallel requests for older agents.
-        await Promise.all([
+        // Fallback: parallel requests for older agents. Each fetcher swallows
+        // its own error and reports whether it landed, so the tick's verdict is
+        // "did anything come back" rather than the unconditional success the
+        // self-catching promises used to imply — which reset the failure count
+        // every tick and made the offline threshold unreachable.
+        const results = await Promise.all([
           useAgentSystemStore.getState().fetchStatus(),
           useAgentSystemStore.getState().fetchServices(),
           useAgentSystemStore.getState().fetchResources(),
         ]);
 
-        // Video status (may not exist on all agents).
-        if (typeof client.getVideoStatus === "function") {
+        // Video status (may not exist on all agents). Under relay the
+        // consolidated response already carries `full.video`, so this extra
+        // round trip would only buy airtime contention.
+        if (!get().relay && typeof client.getVideoStatus === "function") {
           client.getVideoStatus().then((video) => {
             if (video) {
               const deps = video.dependencies
@@ -657,7 +713,8 @@ export const clientManagerSlice: AgentConnectionSliceCreator<
             }
           }).catch(() => {});
         }
-        get().noteFetchSuccess();
+        if (results.some(Boolean)) get().noteFetchSuccess();
+        else get().noteFetchFailure();
       } catch {
         get().noteFetchFailure();
       } finally {
@@ -673,7 +730,10 @@ export const clientManagerSlice: AgentConnectionSliceCreator<
       if (stopped) return;
       await poll();
       if (stopped) return;
-      const delay = nextPollDelay(get().consecutiveFailures);
+      const delay = nextPollDelay(
+        get().consecutiveFailures,
+        get().relay ? POLL_BASE_RELAY_MS : POLL_BASE_MS,
+      );
       const handle = setTimeout(tick, delay);
       set({ pollInterval: handle });
     };

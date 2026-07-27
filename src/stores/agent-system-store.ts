@@ -45,9 +45,15 @@ interface AgentSystemState {
 
 interface AgentSystemActions {
   setStatus: (status: AgentStatus) => void;
-  fetchStatus: () => Promise<void>;
-  fetchServices: () => Promise<void>;
-  fetchResources: () => Promise<void>;
+  /** Fetch and store the agent's status. Resolves `true` when a reading
+   * landed, `false` when the request failed or no request was made (cloud
+   * mode, no client). The poll loop derives its success/failure verdict from
+   * these, so a swallowed error must never read as a success. */
+  fetchStatus: () => Promise<boolean>;
+  /** @see fetchStatus */
+  fetchServices: () => Promise<boolean>;
+  /** @see fetchStatus */
+  fetchResources: () => Promise<boolean>;
   fetchLogs: (level?: string) => Promise<void>;
   /** Append one GPU-utilisation sample to `gpuHistory` (capped, ring-buffered).
    * Non-finite values are ignored. Fed by the compute-status poll. */
@@ -79,38 +85,44 @@ export const useAgentSystemStore = create<AgentSystemStore>((set, get) => ({
 
   async fetchStatus() {
     const { client, cloudMode } = useAgentConnectionStore.getState();
-    if (cloudMode) return; // Cloud status arrives via reactive query
-    if (!client) return;
+    if (cloudMode) return false; // Cloud status arrives via reactive query
+    if (!client) return false;
     try {
       const status = await client.getStatus();
       set({ status, lastUpdatedAt: Date.now(), stale: false });
       useAgentConnectionStore.getState().noteFetchSuccess();
+      return true;
     } catch {
       useAgentConnectionStore.getState().noteFetchFailure();
+      return false;
     }
   },
 
   async fetchServices() {
     const { client, cloudMode } = useAgentConnectionStore.getState();
     if (cloudMode) {
+      // A queued cloud command is a dispatch, not an answer, so it is not a
+      // reading this poll can claim.
       useAgentConnectionStore.getState().sendCloudCommand("get_services");
-      return;
+      return false;
     }
-    if (!client) return;
+    if (!client) return false;
     try {
       const agentUptime = get().status?.uptime_seconds ?? 0;
       const services = await client.getServices(agentUptime);
       set({ services, lastUpdatedAt: Date.now(), stale: false });
       useAgentConnectionStore.getState().noteFetchSuccess();
+      return true;
     } catch {
       useAgentConnectionStore.getState().noteFetchFailure();
+      return false;
     }
   },
 
   async fetchResources() {
     const { client, cloudMode } = useAgentConnectionStore.getState();
-    if (cloudMode) return; // Cloud resources arrive via status push
-    if (!client) return;
+    if (cloudMode) return false; // Cloud resources arrive via status push
+    if (!client) return false;
     try {
       const resources = await client.getSystemResources();
       set((state) => {
@@ -129,8 +141,10 @@ export const useAgentSystemStore = create<AgentSystemStore>((set, get) => ({
         return { resources, cpuHistory, memoryHistory, lastUpdatedAt: Date.now(), stale: false };
       });
       useAgentConnectionStore.getState().noteFetchSuccess();
+      return true;
     } catch {
       useAgentConnectionStore.getState().noteFetchFailure();
+      return false;
     }
   },
 

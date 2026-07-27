@@ -245,9 +245,15 @@ export interface StatsResponse {
 
 export interface HealthzResponse {
   ok: boolean;
-  db_open: boolean;
-  writer_alive: boolean;
-  integrity: boolean;
+  /** Durable-store internals. Absent when the answering tier cannot observe
+   * them at all — a radio relay reaches only the agent's `:8080`, so the store
+   * is unobservable rather than broken, and reporting `false` there would
+   * assert a failure nothing measured. */
+  db_open?: boolean;
+  /** @see db_open */
+  writer_alive?: boolean;
+  /** @see db_open */
+  integrity?: boolean;
   source: LoggingSource;
 }
 
@@ -407,6 +413,23 @@ function wrapLegacy(rows: unknown[]): LoggingEnvelope<LoggingRow> {
   };
 }
 
+/** The empty result a read surface returns when the tier that answered cannot
+ * carry it at all: the legacy `/api/logs` shape, or a radio relay where legacy
+ * is the only tier there is. Four surfaces must agree on this shape, so it is
+ * built in one place. */
+function emptyLegacyEnvelope<T>(): LoggingEnvelope<T> {
+  return {
+    data: [],
+    page: { next_cursor: null, count: 0 },
+    meta: {
+      source: "legacy",
+      v: 1,
+      ts: new Date().toISOString(),
+      db_lag_ms: 0,
+    },
+  };
+}
+
 /** Coerce a raw `/v1` JSON body into the typed envelope, tolerating the
  * agent shipping extra fields ahead of the client. */
 function asEnvelope<T>(body: unknown, source: LoggingSource): LoggingEnvelope<T> {
@@ -506,7 +529,11 @@ export class LoggingService {
       // this await forever, the catch would never run, and the tier
       // cascade would never advance past a silently-dead tier. An abort
       // surfaces here as a network-style error and cascades like any other.
-      res = await timedFetch(url, { headers });
+      // The relay client carries a longer default deadline than a LAN read
+      // (`ctx.defaultTimeoutMs`); without threading it, every relay logging
+      // read aborts at 6 s under a 10 s ground bound. `undefined` on the LAN
+      // client falls back to `AGENT_FETCH_TIMEOUT_MS` inside `timedFetch`.
+      res = await timedFetch(url, { headers }, this.ctx.defaultTimeoutMs);
     } catch (err) {
       // Network error / DNS / mixed-content block / timeout — cascade.
       throw new TierUnavailableError(
@@ -641,15 +668,16 @@ export class LoggingService {
     if (params.bucket) qs.set("bucket", params.bucket);
     if (params.agg) qs.set("agg", params.agg);
     appendList(qs, "group_by", params.group_by);
-    // Aggregate is a logd/proxy capability; legacy has no equivalent, so a
-    // legacy answer (flat array) yields an empty series rather than throwing.
+    // Aggregate is a logd/proxy capability. Over the radio relay `legacy` is
+    // the only tier, so resolving would spend a full radio round trip on an
+    // `/api/logs` body that can never be a series: answer empty here instead.
+    // Empty is all this says — the drone's agent is not old, it is remote.
+    if (this.ctx.relay) return emptyLegacyEnvelope<AggregatePoint>();
+    // Legacy has no equivalent either, so a legacy answer (flat array) yields
+    // an empty series rather than throwing.
     const { body, tier } = await this.resolve("/aggregate", qs.toString());
     if (tier === "legacy") {
-      return {
-        data: [],
-        page: { next_cursor: null, count: 0 },
-        meta: { source: "legacy", v: 1, ts: new Date().toISOString(), db_lag_ms: 0 },
-      };
+      return emptyLegacyEnvelope<AggregatePoint>();
     }
     return asEnvelope<AggregatePoint>(body, TIER_SOURCE[tier]);
   }
@@ -658,7 +686,9 @@ export class LoggingService {
 
   /** The boot / flight / manual session list. Legacy has no sessions, so
    * an old agent yields an empty list (the session picker then shows
-   * "no sessions" rather than failing). */
+   * "no sessions" rather than failing). A relayed agent yields the same empty
+   * list, for the unrelated reason that the radio lane carries no sessions
+   * endpoint at all. */
   async sessions(
     params: SessionListParams = {},
   ): Promise<LoggingEnvelope<SessionRow>> {
@@ -669,13 +699,13 @@ export class LoggingService {
     if (params.open != null) qs.set("open", String(params.open));
     if (params.limit != null) qs.set("limit", String(params.limit));
     if (params.cursor) qs.set("cursor", params.cursor);
+    // Same as `aggregate`: the relay lane has no sessions endpoint to reach,
+    // so the picker shows "no sessions" without a wasted round trip and
+    // without implying the agent predates the durable store.
+    if (this.ctx.relay) return emptyLegacyEnvelope<SessionRow>();
     const { body, tier } = await this.resolve("/sessions", qs.toString());
     if (tier === "legacy") {
-      return {
-        data: [],
-        page: { next_cursor: null, count: 0 },
-        meta: { source: "legacy", v: 1, ts: new Date().toISOString(), db_lag_ms: 0 },
-      };
+      return emptyLegacyEnvelope<SessionRow>();
     }
     return asEnvelope<SessionRow>(body, TIER_SOURCE[tier]);
   }
@@ -685,7 +715,9 @@ export class LoggingService {
   /** Stream a bulk export. Returns the raw byte stream so the caller can
    * pipe it to a Blob/download without buffering the whole window. The
    * format defaults to `jsonl.zst`. Export is a logd/proxy capability;
-   * throws on a pre-logd agent (the caller surfaces "export unavailable").
+   * throws on a pre-logd agent (the caller surfaces "export unavailable"),
+   * and throws with a relay-specific message over the radio, where neither
+   * tier is reachable and the archive could not be carried anyway.
    */
   async export(params: ExportParams = {}): Promise<{
     stream: ReadableStream<Uint8Array>;
@@ -697,11 +729,17 @@ export class LoggingService {
     qs.set("format", format);
     const query = qs.toString();
 
+    if (this.ctx.relay) {
+      // Streaming a bulk archive over a half-duplex radio is not something the
+      // relay lane can do, and `legacy` (its only tier) has no export at all.
+      // Say that specifically, the way `tail()` does, instead of falling
+      // through to the generic "no tier answered".
+      throw new Error("export unavailable over a radio relay");
+    }
+
     // Export does not parse JSON, so it resolves the tier itself with a
-    // streaming fetch. Cascade direct → proxy; legacy has no export, so a
-    // relayed client (legacy-only) falls straight through to the honest
-    // "no tier answered" error rather than streaming a bulk archive over
-    // the radio.
+    // streaming fetch. Cascade direct → proxy and skip legacy, which has no
+    // export endpoint.
     let lastErr: Error | null = null;
     for (const tier of this.tierSequence()) {
       if (tier === "legacy") continue;
@@ -806,8 +844,14 @@ export class LoggingService {
   // ── stats / healthz ────────────────────────────────────────────────────
 
   /** DB + ingest + sync health. Drives the health/sync badge. Legacy has
-   * no stats; an old agent throws (the badge then renders "unknown"). */
+   * no stats; an old agent throws (the badge then renders "unknown"), as does
+   * a relayed agent whose logd sits behind the radio. */
   async stats(): Promise<StatsResponse> {
+    if (this.ctx.relay) {
+      // The relay reaches the drone's `:8080` only; the stats body lives
+      // behind logd. Nothing here says the agent is old.
+      throw new Error("stats unavailable over a radio relay");
+    }
     const { body, tier } = await this.resolve("/stats", "");
     if (tier === "legacy") {
       throw new Error("stats unavailable on legacy agent");
@@ -856,6 +900,12 @@ export class LoggingService {
   /** Liveness/readiness probe. Returns `{ ok:false }` rather than throwing
    * when no tier answers, so a reachability check is a single await. */
   async healthz(): Promise<HealthzResponse> {
+    if (this.ctx.relay) {
+      // The relay proves reachability and nothing else: the durable store is
+      // not observable from this side, so the store fields stay absent rather
+      // than claiming a failure nothing measured.
+      return { ok: true, source: "legacy" };
+    }
     try {
       const { body, tier } = await this.resolve("/healthz", "");
       if (tier === "legacy") {

@@ -214,15 +214,24 @@ function pageOriginIsHttps(): boolean {
   );
 }
 
-/** Dispatch one agent command over the LAN and report the vehicle's answer. */
+/** Dispatch one agent command over the LAN and report the vehicle's answer.
+ * `relay` marks the ground station's relay-proxy prefix, whose requests cross
+ * the radio rather than the LAN. Nothing reads the flag on this path today
+ * (`runCommand` pins its own 15 s deadline, which already clears the ground's
+ * bound), but a request context that misdescribes its own transport is a bug
+ * the moment anything branches on it. */
 async function dispatchOverLan(
-  agent: { agentUrl: string; apiKey: string },
+  agent: { agentUrl: string; apiKey: string; relay?: boolean },
   cmd: AgentCommandName,
   args: unknown[],
 ): Promise<CommandResult> {
   try {
     const outcome = await runCommand(
-      { baseUrl: agent.agentUrl, apiKey: agent.apiKey },
+      {
+        baseUrl: agent.agentUrl,
+        apiKey: agent.apiKey,
+        relay: agent.relay ?? false,
+      },
       cmd,
       args,
     );
@@ -378,7 +387,11 @@ export function resolveNodeCommandReach(
       return {
         sink: makeSink("relay-proxy", true, (cmd, args) =>
           dispatchOverLan(
-            { agentUrl: relayProxyBaseUrl(relay), apiKey: relay.apiKey },
+            {
+              agentUrl: relayProxyBaseUrl(relay),
+              apiKey: relay.apiKey,
+              relay: true,
+            },
             cmd,
             args,
           ),
