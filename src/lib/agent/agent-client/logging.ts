@@ -308,9 +308,22 @@ class TierHardError extends Error {
 
 /** Build the base origin for a tier from the agent's REST base URL. The
  * host is taken from `ctx.baseUrl` (which already carries the resolved
- * hostname/IP) and only the port + path prefix change per tier. */
-function tierBase(baseUrl: string, tier: Tier): { origin: string; prefix: string } {
-  const u = new URL(baseUrl);
+ * hostname/IP) and only the port + path prefix change per tier.
+ *
+ * Under relay there is no port to swap: `ctx.baseUrl` is the ground
+ * station's relay-proxy prefix, and only `:8080/api/...` traverses the
+ * radio. Rebuilding an origin here would discard the prefix and dial the
+ * GROUND STATION's `:8090`, returning the ground station's own logs labelled
+ * as the drone's. So the relay pins the legacy shape and returns the prefix
+ * verbatim — no `new URL()`, no port surgery. */
+function tierBase(
+  ctx: RequestContext,
+  tier: Tier,
+): { origin: string; prefix: string } {
+  if (ctx.relay) {
+    return { origin: ctx.baseUrl, prefix: "/api/logs" };
+  }
+  const u = new URL(ctx.baseUrl);
   const proto = u.protocol; // http: on LAN; https: cloud origins won't take this path
   const host = u.hostname;
   switch (tier) {
@@ -446,8 +459,13 @@ export class LoggingService {
   }
 
   /** Tiers to try, preferred-first but always keeping the natural order so
-   * a recovered higher tier is re-probed ahead of a lower fallback. */
+   * a recovered higher tier is re-probed ahead of a lower fallback.
+   *
+   * Under relay only one tier exists: the radio lane carries `:8080/api/...`
+   * and nothing else, so probing `direct` (`:8090`) and `proxy` would each
+   * cost a full relay round trip before failing. */
   private tierSequence(): Tier[] {
+    if (this.ctx.relay) return ["legacy"];
     if (!this.preferredTier || this.preferredTier === "direct") {
       return [...TIER_ORDER];
     }
@@ -469,7 +487,7 @@ export class LoggingService {
     let origin: string;
     let prefix: string;
     try {
-      ({ origin, prefix } = tierBase(this.ctx.baseUrl, tier));
+      ({ origin, prefix } = tierBase(this.ctx, tier));
     } catch {
       throw new TierUnavailableError(null, "unusable base url");
     }
@@ -584,15 +602,23 @@ export class LoggingService {
    * The key travels as a query param because `EventSource` cannot set a
    * request header in the browser. Tail is direct-only (the legacy
    * `/api/logs/stream` is not wired here — callers fall back to polling
-   * when no tail source is available). Throws when no host is resolvable
-   * or the runtime has no EventSource (so the caller can fall back). */
+   * when no tail source is available). Throws when no host is resolvable,
+   * the runtime has no EventSource, or the agent is reached through a radio
+   * relay (so the caller can fall back). */
   tail(params: TailParams = {}): EventSource {
     if (typeof EventSource === "undefined") {
       throw new Error("EventSource unavailable");
     }
+    if (this.ctx.relay) {
+      // The relay lane is a request/response RPC over the radio; it carries
+      // no long-lived stream. Throwing here drops the caller to polling
+      // instead of opening an EventSource against the ground station's own
+      // logd, which would tail the WRONG node's logs.
+      throw new Error("tail unavailable over a radio relay");
+    }
     // Tail rides the direct tier when reachable, else the proxy bridge.
     const tier: Tier = this.preferredTier === "proxy" ? "proxy" : "direct";
-    const { origin, prefix } = tierBase(this.ctx.baseUrl, tier);
+    const { origin, prefix } = tierBase(this.ctx, tier);
     const qs = new URLSearchParams(buildQueryString(params));
     if (params.replay != null) qs.set("replay", String(params.replay));
     if (this.ctx.apiKey) qs.set("key", this.ctx.apiKey);
@@ -672,14 +698,17 @@ export class LoggingService {
     const query = qs.toString();
 
     // Export does not parse JSON, so it resolves the tier itself with a
-    // streaming fetch. Cascade direct → proxy; legacy has no export.
+    // streaming fetch. Cascade direct → proxy; legacy has no export, so a
+    // relayed client (legacy-only) falls straight through to the honest
+    // "no tier answered" error rather than streaming a bulk archive over
+    // the radio.
     let lastErr: Error | null = null;
     for (const tier of this.tierSequence()) {
       if (tier === "legacy") continue;
       let origin: string;
       let prefix: string;
       try {
-        ({ origin, prefix } = tierBase(this.ctx.baseUrl, tier));
+        ({ origin, prefix } = tierBase(this.ctx, tier));
       } catch (err) {
         lastErr = err instanceof Error ? err : new Error(String(err));
         continue;
@@ -724,15 +753,21 @@ export class LoggingService {
    * agent process is the only thing that owns the writer-control socket that
    * flips a row as exported. The browser must never reach the query port for
    * a write. Cloud (https) origins short-circuit so a remote session degrades
-   * to "push unavailable" rather than posting against the wrong host. */
+   * to "push unavailable" rather than posting against the wrong host; a
+   * relayed client posts through the relay-proxy prefix, which already lands
+   * on the drone's own `:8080`, so it must not rebuild an origin. */
   async pushWindow(params: PushParams = {}): Promise<PushResult> {
     let origin: string;
-    try {
-      const u = new URL(this.ctx.baseUrl);
-      if (u.protocol === "https:") throw new Error("cloud origin");
-      origin = `${u.protocol}//${u.hostname}:${FASTAPI_PORT}`;
-    } catch {
-      throw new Error("push unavailable: unusable base url");
+    if (this.ctx.relay) {
+      origin = this.ctx.baseUrl;
+    } else {
+      try {
+        const u = new URL(this.ctx.baseUrl);
+        if (u.protocol === "https:") throw new Error("cloud origin");
+        origin = `${u.protocol}//${u.hostname}:${FASTAPI_PORT}`;
+      } catch {
+        throw new Error("push unavailable: unusable base url");
+      }
     }
     const headers: Record<string, string> = {
       "Content-Type": "application/json",

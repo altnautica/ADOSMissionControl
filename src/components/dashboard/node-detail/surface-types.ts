@@ -12,21 +12,9 @@ import type { ReactNode } from "react";
 import type { FleetDrone } from "@/lib/types";
 import type { AgentRole } from "@/stores/agent-capabilities/types";
 import type { FirmwareType } from "@/lib/protocol/types/enums";
+import type { RelayReach } from "@/lib/nodes/relay-reach";
 
 export type NodeProfile = "drone" | "ground-station" | "workstation";
-
-/** The ground-station relay-proxy reach for a WFB-linked drone. Carries
- * the ground node's host + API key and the linked drone's peer device id,
- * so the GCS can route `/api/...` calls through the ground station's
- * relay-proxy route. */
-export interface RelayReach {
-  /** The ground station's base URL (e.g. `http://192.168.1.50:8080`). */
-  baseUrl: string;
-  /** The ground station's API key (X-ADOS-Key). */
-  apiKey: string;
-  /** The linked drone's device id, forwarded as a path segment. */
-  peerDeviceId: string;
-}
 
 /** Everything a surface's `when` / `render` may need, derived once per
  * render from the selected node + the focused agent's capabilities. */

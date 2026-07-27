@@ -143,6 +143,75 @@ describe("LoggingService transport resolution", () => {
   });
 });
 
+describe("LoggingService over a ground station's relay-proxy", () => {
+  /** The relay client's baseUrl IS the relay-proxy prefix, not an origin. */
+  const RELAY_CTX: RequestContext = {
+    baseUrl:
+      "http://192.168.200.200:8080/api/v1/ground-station/relay-proxy/77735cd38937",
+    apiKey: "gs-key",
+    relay: true,
+  };
+
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it("keeps the relay-proxy prefix instead of swapping to a port", async () => {
+    // Port-swapping here would discard the prefix and dial the GROUND
+    // STATION's own :8090, returning the ground station's logs labelled as
+    // the drone's — a shipped surface reporting known-false data.
+    fetchMock.mockResolvedValueOnce(jsonResponse([]));
+    const svc = new LoggingService(RELAY_CTX);
+    await svc.query({ limit: 5 });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const url = fetchMock.mock.calls[0][0] as string;
+    expect(url).toContain(
+      "/api/v1/ground-station/relay-proxy/77735cd38937/api/logs",
+    );
+    expect(url).toContain("limit=5");
+    expect(url).not.toContain(":8090");
+  });
+
+  it("probes exactly one tier — the radio carries only :8080/api", async () => {
+    // The direct and proxy tiers each cost a full relay round trip before
+    // failing, so they are never tried.
+    fetchMock.mockResolvedValueOnce(jsonResponse([]));
+    const svc = new LoggingService(RELAY_CTX);
+    const res = await svc.query();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(res.meta.source).toBe("legacy");
+  });
+
+  it("refuses to open a tail rather than tailing the ground station", () => {
+    // A live EventSource is available: the refusal must come from the relay
+    // guard, not from the runtime lacking the API.
+    const opened = vi.fn();
+    vi.stubGlobal("EventSource", opened);
+    const svc = new LoggingService(RELAY_CTX);
+    expect(() => svc.tail()).toThrow(/relay/i);
+    expect(opened).not.toHaveBeenCalled();
+  });
+
+  it("pushes through the relay prefix, never a rebuilt origin", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ pushed: 0 }));
+    const svc = new LoggingService(RELAY_CTX);
+    await svc.pushWindow({});
+    const url = fetchMock.mock.calls[0][0] as string;
+    expect(url).toBe(
+      "http://192.168.200.200:8080/api/v1/ground-station/relay-proxy/77735cd38937/api/logs/push",
+    );
+  });
+});
+
 describe("LoggingService pagination + aggregate + export", () => {
   let fetchMock: ReturnType<typeof vi.fn>;
 

@@ -11,9 +11,10 @@
  * the browser blocks mixed-content fetches to ``http://*.local``; on
  * HTTP origins the direct REST path is preferred so the pair stays a
  * single round-trip. `selectNode` routes local nodes through it, sends
- * cloud-paired entries to the relay, and refuses a node whose only reach
- * is another node's radio relay rather than opening a connection for it
- * that can never answer.
+ * cloud-paired entries to the relay, and dials a node reached only over
+ * another node's radio through that ground station's relay-proxy route —
+ * or, when the ground station is not paired here, says so rather than
+ * opening a connection that can never answer.
  * @license GPL-3.0-only
  */
 
@@ -22,6 +23,10 @@ import { useLocalNodesStore } from "@/stores/local-nodes-store";
 import { usePairingStore } from "@/stores/pairing-store";
 import { nodeIdForDevice } from "@/lib/agent/node-id";
 import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
+import {
+  relayProxyBaseUrl,
+  resolveRelayReach,
+} from "@/lib/nodes/relay-reach";
 
 interface SelectNodeOpts {
   /** Switch the page into single-agent view. */
@@ -97,20 +102,36 @@ export async function selectNode(
   conn.disconnect();
 
   // Not every non-local node is a cloud node. One enrolled solely through
-  // another node's radio relay was never paired with the GCS at all, so this
-  // store — which models ONE focused node's own LAN/cloud agent session —
-  // has nothing to dial for it: subscribing to a relay under its device id
-  // would open a connection that never exists and eventually reports the node
-  // offline. Checked directly off `node.isRelayed` (not through the command
-  // lane resolver) so this decision never drifts with what the resolver
-  // reports once a live session exists — the two questions are different:
-  // "does this store have a LAN/cloud identity to connect to" is always no
-  // for a relay-only node, independent of whether its flight-controller link
-  // is up. `RelayedMavlinkBridge` opens that FC link in the background,
-  // independent of selection, so focusing the node here is enough.
+  // another node's radio relay was never paired with the GCS at all, so there
+  // is no LAN or cloud identity to dial for it. What there IS, when the ground
+  // station it hangs off is LAN-paired on this browser, is that ground
+  // station's relay-proxy route: an AgentClient pointed at
+  // `<groundStation>/api/v1/ground-station/relay-proxy/<peerDeviceId>` reaches
+  // this drone's own HTTP API over the radio, so every agent surface reads the
+  // drone's real data. Checked directly off `node.isRelayed` (not through the
+  // command lane resolver) so this decision never drifts with what the
+  // resolver reports once a live session exists.
+  //
+  // `RelayedMavlinkBridge` opens the FC link in the background, independent of
+  // selection, so the relay connect deliberately skips the `mavlinkUrl`
+  // derivation (`{ relay: true }`) — that URL would name the ground station.
   if (node.isRelayed) {
+    const reach = resolveRelayReach({
+      agentDeviceId: null,
+      reachedVia: node.reachedVia,
+      droneDeviceId: node.deviceId,
+    });
+    if (reach) {
+      await conn.connect(
+        relayProxyBaseUrl(reach),
+        reach.apiKey,
+        node.deviceId,
+        { relay: true },
+      );
+      return;
+    }
     const message =
-      "This node is reached over another node's radio relay. Its flight-controller link connects automatically in the background — agent-level tools (System / Plugins / Black Box) need it paired directly from the Add-a-Node card.";
+      "This node is reached through another node's radio relay, and that ground station is not paired on this browser. Pair the ground station from the Add-a-Node card to reach this drone's agent.";
     useAgentConnectionStore.setState({ connectionError: message });
     opts.onError?.("relay_only");
     return;

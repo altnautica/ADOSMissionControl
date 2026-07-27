@@ -51,7 +51,11 @@ import { TrafficPill } from "@/components/indicators/TrafficPill";
 import { useUiStore } from "@/stores/ui-store";
 import { resolveSurfaces } from "./surfaces";
 import { AGENT_SUBPAGE_IDS, agentRedirect } from "./agent/agent-redirect";
-import type { SurfaceContext, RelayReach } from "./surface-types";
+import type { SurfaceContext } from "./surface-types";
+import {
+  type RelayReach,
+  resolveRelayReach,
+} from "@/lib/nodes/relay-reach";
 
 interface NodeDetailPanelProps {
   droneId: string;
@@ -88,24 +92,13 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
   // (reachedVia = "node:<groundDeviceId>" and no direct cloudDeviceId), and
   // the ground node is LAN-paired with the GCS, the ground node's own
   // host + API key + the linked drone's device id form a relay-proxy reach.
-  // The ground station's new /api/v1/ground-station/relay-proxy/{peerId}/*
+  // The ground station's /api/v1/ground-station/relay-proxy/{peerId}/*
   // route forwards HTTP calls to the drone over the aux radio lane.
-  const relayReach: RelayReach | null = (() => {
-    if (agentDeviceId !== null) return null; // direct reach, no relay needed
-    if (!drone?.reachedVia) return null;
-    const groundDeviceId = drone.reachedVia.replace(/^node:/, "");
-    if (!groundDeviceId) return null;
-    const groundNode = fleetNodes.find((n) => n.deviceId === groundDeviceId);
-    if (!groundNode || !groundNode.isLocal || !groundNode.apiKey) return null;
-    const host = groundNode.mdnsHost ?? groundNode.lastIp;
-    if (!host) return null;
-    const baseUrl = host.startsWith("http") ? host : `http://${host}:8080`;
-    return {
-      baseUrl,
-      apiKey: groundNode.apiKey,
-      peerDeviceId: droneId.replace(/^node:/, "") ?? droneId,
-    };
-  })();
+  const relayReach: RelayReach | null = resolveRelayReach({
+    agentDeviceId,
+    reachedVia: drone?.reachedVia,
+    droneDeviceId: droneId,
+  });
 
   const radioPresent = useAgentCapabilitiesStore((s) => s.radio !== null);
   const crsfPresent = useAgentCapabilitiesStore((s) => s.crsf !== null);
@@ -138,33 +131,40 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
   // action callbacks.
   useAtlasControl((drone?.profile ?? "drone") === "drone" ? droneId : null);
 
-  // Companion tabs (Health / Extensions) render only when this node is backed
-  // by an agent (`agentDeviceId !== null`) — a full drone, ground station, or
-  // workstation. An FC-only node (a direct MAVLink connection, no companion,
-  // incl. the demo's FC-only drone) has nothing to show there, so they hide.
-  const showAgentTabs = agentDeviceId !== null;
+  // Companion tabs (Health / Extensions) render when this node is backed by an
+  // agent the GCS can actually reach — directly (`agentDeviceId !== null`) or
+  // through its ground station's relay-proxy (`relayReach !== null`). An
+  // FC-only node (a direct MAVLink connection, no companion, incl. the demo's
+  // FC-only drone) has nothing to show there, so they hide.
+  const showAgentTabs = agentDeviceId !== null || relayReach !== null;
   const showLockedTabs = !showAgentTabs;
 
   // Focus the selected drone's agent so the (singleton) agent stores reflect
   // it. Selection is the single driver of the agent connection: switching
   // drones tears down the prior agent and connects the new one; deselecting
   // (panel unmount) releases it. Demo keeps its single mock agent untouched.
+  //
+  // The key is the reachable identity, not `agentDeviceId` alone: a relayed
+  // drone has no `agentDeviceId`, so keying on it would fire the disconnect
+  // branch on every render and tear the relay session down as fast as
+  // `selectNode` opened it.
+  const focusDeviceId = agentDeviceId ?? relayReach?.peerDeviceId ?? null;
   const lastAgentDeviceId = useRef<string | null>(null);
   useEffect(() => {
     if (isDemoMode()) return;
-    if (!agentDeviceId) {
+    if (!focusDeviceId) {
       if (lastAgentDeviceId.current) {
         useAgentConnectionStore.getState().disconnect();
         lastAgentDeviceId.current = null;
       }
       return;
     }
-    if (lastAgentDeviceId.current === agentDeviceId) return;
-    const entry = fleetNodes.find((n) => n.deviceId === agentDeviceId);
+    if (lastAgentDeviceId.current === focusDeviceId) return;
+    const entry = fleetNodes.find((n) => n.deviceId === focusDeviceId);
     if (!entry) return;
-    lastAgentDeviceId.current = agentDeviceId;
+    lastAgentDeviceId.current = focusDeviceId;
     void selectNode(entry, { onFocusAgent: () => {} });
-  }, [agentDeviceId, fleetNodes]);
+  }, [focusDeviceId, fleetNodes]);
   useEffect(
     () => () => {
       if (!isDemoMode()) {

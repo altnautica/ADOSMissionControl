@@ -55,10 +55,22 @@ export class AgentClient {
    */
   readonly logging: LoggingService;
 
-  constructor(baseUrl: string, apiKey?: string | null) {
+  /**
+   * @param baseUrl The agent's own origin, or a ground station's relay-proxy
+   *   prefix when `opts.relay` is set.
+   * @param opts.relay Marks this client as reaching its agent through another
+   *   node's radio relay. The relay bound on the ground station is 10 s, above
+   *   the 6 s global fetch default, so a relay 504 would otherwise be aborted
+   *   client-side and reported as a generic network failure instead of the
+   *   honest gateway timeout. Raising the global default instead would slow
+   *   every direct-LAN failure by 9 s.
+   */
+  constructor(baseUrl: string, apiKey?: string | null, opts?: { relay?: boolean }) {
     this.ctx = {
       baseUrl: baseUrl.replace(/\/+$/, ""),
       apiKey: apiKey ?? null,
+      relay: opts?.relay ?? false,
+      defaultTimeoutMs: opts?.relay ? 15_000 : undefined,
     };
     this.logging = new LoggingService(this.ctx);
   }

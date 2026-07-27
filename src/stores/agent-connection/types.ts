@@ -100,6 +100,9 @@ export interface ClientManagerActions {
     url: string,
     apiKey?: string | null,
     deviceId?: string | null,
+    /** `relay: true` when `url` is a ground station's relay-proxy prefix
+     *  rather than the agent's own origin. */
+    opts?: { relay?: boolean },
   ) => Promise<void>;
   disconnect: () => void;
   startPolling: () => void;

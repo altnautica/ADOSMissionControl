@@ -59,7 +59,7 @@ let _visibilityCleanup: (() => void) | undefined;
 export const clientManagerSlice: AgentConnectionSliceCreator<
   ClientManagerSlice
 > = (set, get) => ({
-  async connect(url, apiKey, deviceId) {
+  async connect(url, apiKey, deviceId, opts) {
     const resolvedKey = apiKey ?? get().apiKey;
 
     // Attempt a real-agent connect at the given URL. Returns null on
@@ -72,7 +72,9 @@ export const clientManagerSlice: AgentConnectionSliceCreator<
         const { MockAgentClient } = await import("@/mock/mock-agent");
         client = new MockAgentClient() as unknown as AgentClient;
       } else {
-        client = new AgentClient(attemptUrl, resolvedKey);
+        client = new AgentClient(attemptUrl, resolvedKey, {
+          relay: opts?.relay ?? false,
+        });
       }
       set({
         agentUrl: attemptUrl,
@@ -125,11 +127,17 @@ export const clientManagerSlice: AgentConnectionSliceCreator<
           }
         }
         set({ connected: true, stalePairing: null });
-        try {
-          const agentUrlObj = new URL(attemptUrl);
-          const mavWsUrl = `ws://${agentUrlObj.hostname}:8765/`;
-          set({ mavlinkUrl: mavWsUrl });
-        } catch { /* ignore invalid URL */ }
+        if (!opts?.relay) {
+          // Under relay `attemptUrl`'s hostname is the GROUND STATION, so this
+          // would point AgentMavlinkBridge at the ground station's own FC lane
+          // while RelayedMavlinkBridge already owns the drone's session. Leave
+          // `mavlinkUrl` untouched — the relay bridge manages its own.
+          try {
+            const agentUrlObj = new URL(attemptUrl);
+            const mavWsUrl = `ws://${agentUrlObj.hostname}:8765/`;
+            set({ mavlinkUrl: mavWsUrl });
+          } catch { /* ignore invalid URL */ }
+        }
         set({ nodeDeviceId: connectId ?? get().nodeDeviceId });
         useAgentSystemStore.getState().setStatus(status);
         useAgentSystemStore.getState().fetchServices();

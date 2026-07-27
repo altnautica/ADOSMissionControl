@@ -13,6 +13,13 @@ import { AGENT_FETCH_TIMEOUT_MS, withTimeoutSignal } from "./timeout";
 export interface RequestContext {
   baseUrl: string;
   apiKey: string | null;
+  /** True when `baseUrl` is a ground station's relay-proxy prefix rather than
+   *  the agent's own origin. Callers that port-swap or assume a bare origin
+   *  must branch on it — only `:8080/api/...` traverses the radio relay. */
+  relay?: boolean;
+  /** Overrides `AGENT_FETCH_TIMEOUT_MS` for every request on this client.
+   *  A per-request `timeoutMs` still wins. */
+  defaultTimeoutMs?: number;
 }
 
 export interface RequestOptions<T> extends Omit<RequestInit, "body"> {
@@ -33,7 +40,7 @@ export async function agentRequest<T>(
   const {
     schema,
     allowSchemaFallback = false,
-    timeoutMs = AGENT_FETCH_TIMEOUT_MS,
+    timeoutMs = ctx.defaultTimeoutMs ?? AGENT_FETCH_TIMEOUT_MS,
     signal,
     ...fetchInit
   } = init ?? {};

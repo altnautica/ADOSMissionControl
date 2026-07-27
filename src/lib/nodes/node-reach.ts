@@ -32,10 +32,17 @@ import {
 } from "@/lib/nodes/command-sink";
 
 /**
- * How a node is reached. `lan` and `cloud` can carry commands; `direct-fc` is
- * connected to this browser but has no agent lane; `none` cannot be reached.
+ * How a node is reached. `lan`, `cloud` and `relay-proxy` can carry commands;
+ * `relay-proxy` reaches a WFB-linked drone's own agent through its ground
+ * station's radio lane. `direct-fc` is connected to this browser but has no
+ * agent lane; `none` cannot be reached.
  */
-export type NodeReachKind = "lan" | "cloud" | "direct-fc" | "none";
+export type NodeReachKind =
+  | "lan"
+  | "cloud"
+  | "direct-fc"
+  | "relay-proxy"
+  | "none";
 
 export interface NodeReachDescriptor {
   kind: NodeReachKind;

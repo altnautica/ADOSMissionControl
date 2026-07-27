@@ -1,12 +1,13 @@
 /**
  * @license GPL-3.0-only
  *
- * selectNode used to send every non-local node to the cloud relay. A node
- * enrolled solely through another node's radio was never paired with the GCS,
- * so subscribing under its device id waits on a row that will never exist and
- * ends by reporting the node offline. The relay verdict comes from the command
- * lane resolver, the one place that already decides what reaches a node, so the
- * two surfaces cannot drift apart.
+ * selectNode used to send every non-local node to the cloud relay, and then
+ * to refuse a relayed node outright. Neither is right. A node enrolled solely
+ * through another node's radio was never paired with the GCS, so subscribing
+ * under its device id waits on a row that will never exist — but when the
+ * ground station it hangs off IS paired on this browser, that ground station's
+ * relay-proxy route reaches the drone's own agent API, and the connection must
+ * open against it. Only an unreachable ground station is a refusal.
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
@@ -57,8 +58,23 @@ beforeEach(() => {
   useAgentConnectionStore.setState({ connectionError: null });
 });
 
-describe("selectNode — a relayed node is not a cloud node", () => {
-  it("refuses to open a cloud subscription for a relay-only node", async () => {
+describe("selectNode — a relayed node reaches its agent through its ground station", () => {
+  it("connects through the relay-proxy when the ground station is LAN-paired", async () => {
+    useLocalNodesStore.setState({
+      nodes: [
+        {
+          deviceId: "gs-1",
+          hostname: "http://192.168.200.200:8080",
+          apiKey: "gs-key",
+          name: "Ground One",
+          pairedAt: 1,
+          profile: "ground-station",
+        },
+      ] as never,
+    });
+    const connect = vi
+      .spyOn(useAgentConnectionStore.getState(), "connect")
+      .mockResolvedValue(undefined);
     const connectCloud = vi
       .spyOn(useAgentConnectionStore.getState(), "connectCloud")
       .mockImplementation(() => {});
@@ -74,14 +90,53 @@ describe("selectNode — a relayed node is not a cloud node", () => {
     });
 
     expect(connectCloud).not.toHaveBeenCalled();
+    expect(connect).toHaveBeenCalledWith(
+      `http://192.168.200.200:8080/api/v1/ground-station/relay-proxy/${DEV}`,
+      "gs-key",
+      DEV,
+      { relay: true },
+    );
+    expect(select).toHaveBeenCalledWith(`node:${DEV}`);
+    expect(disconnect).toHaveBeenCalled();
+    expect(onError).not.toHaveBeenCalled();
+
+    vi.restoreAllMocks();
+  });
+
+  it("refuses when the relaying ground station is not paired on this browser", async () => {
+    // No local node for `gs-1`: there is no relay-proxy host to dial, and a
+    // cloud subscription would wait on a row that never appears.
+    const connect = vi
+      .spyOn(useAgentConnectionStore.getState(), "connect")
+      .mockResolvedValue(undefined);
+    const connectCloud = vi
+      .spyOn(useAgentConnectionStore.getState(), "connectCloud")
+      .mockImplementation(() => {});
+    const disconnect = vi
+      .spyOn(useAgentConnectionStore.getState(), "disconnect")
+      .mockImplementation(() => {});
+    const select = vi.spyOn(usePairingStore.getState(), "selectPairedDrone");
+    const onError = vi.fn();
+
+    await selectNode(node({ isRelayed: true, reachedVia: "node:gs-1" }), {
+      onFocusAgent: () => {},
+      onError,
+    });
+
+    expect(connect).not.toHaveBeenCalled();
+    expect(connectCloud).not.toHaveBeenCalled();
     // The row is still selected and the previous node's connection is still
-    // torn down: the operator can look at the funneled feed, they just cannot
-    // command it.
+    // torn down: the operator can look at the funneled feed.
     expect(select).toHaveBeenCalledWith(`node:${DEV}`);
     expect(disconnect).toHaveBeenCalled();
     expect(onError).toHaveBeenCalledWith("relay_only");
     expect(useAgentConnectionStore.getState().connectionError).toMatch(
       /radio relay/i,
+    );
+    // The copy must name the real cause — pairing the GROUND STATION — not
+    // the old, now-false "pair this drone directly" instruction.
+    expect(useAgentConnectionStore.getState().connectionError).toMatch(
+      /ground station/i,
     );
 
     vi.restoreAllMocks();

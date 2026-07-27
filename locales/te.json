@@ -6594,6 +6594,7 @@
       "lan": "Direct · LAN",
       "cloud": "Cloud relay",
       "direct-fc": "Direct FC",
+      "relay-proxy": "WFB relay",
       "none": "Unreachable",
       "acknowledged": "Commands travel over the LAN and return the vehicle's own acknowledgement",
       "queuedOnly": "Commands are queued for delivery; the vehicle acknowledges later",
@@ -6604,7 +6605,7 @@
       "lan-blocked-by-https": "This page is served over HTTPS, which blocks a plain-HTTP request to a LAN agent",
       "not-paired": "Not paired on this browser and not cloud-paired",
       "no-cloud-queue": "Cloud-paired, but no command queue is available in this session",
-      "relay-only": "Reached only through the WFB radio relay; commanding it over the radio is not wired up yet"
+      "relay-only": "Reached only through the WFB radio relay, and its ground station is not paired on this browser"
     },
     "link": {
       "noRadio": "This node reports no radio",
@@ -6664,6 +6665,7 @@
       "lan": "LAN",
       "cloud": "Cloud",
       "direct-fc": "Direct FC",
+      "relay-proxy": "WFB relay",
       "none": "Unreachable"
     },
     "bulk": {

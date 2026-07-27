@@ -59,6 +59,10 @@ const isDrone = (ctx: SurfaceContext) =>
   (ctx.drone.profile ?? "drone") === "drone";
 /** Hide for an FC-only node with no paired agent (nothing to show). */
 const companionPresent = (ctx: SurfaceContext) => !ctx.showLockedTabs;
+/** The GCS can talk to this node's agent — directly, or through its ground
+ *  station's relay-proxy. Both lanes serve the same `/api/...` surface. */
+const agentReachable = (ctx: SurfaceContext) =>
+  ctx.agentDeviceId !== null || ctx.relayReach !== null;
 
 export const AGENT_NAV_ITEMS: AgentNavItem[] = [
   // SYSTEM
@@ -85,7 +89,7 @@ export const AGENT_NAV_ITEMS: AgentNavItem[] = [
     labelKey: "dronePanel.perception",
     section: "perception",
     icon: <Eye size={14} />,
-    when: (ctx) => isDrone(ctx) && ctx.agentDeviceId !== null,
+    when: (ctx) => isDrone(ctx) && agentReachable(ctx),
     render: (ctx) => <DroneVisionTab droneId={ctx.droneId} />,
   },
   {
@@ -104,7 +108,7 @@ export const AGENT_NAV_ITEMS: AgentNavItem[] = [
     icon: <Boxes size={14} />,
     when: (ctx) =>
       isDrone(ctx) &&
-      ctx.agentDeviceId !== null &&
+      agentReachable(ctx) &&
       ctx.isFeatureEnabled("world-model"),
     render: (ctx) => <DroneWorldModelTab droneId={ctx.droneId} />,
   },
@@ -115,7 +119,7 @@ export const AGENT_NAV_ITEMS: AgentNavItem[] = [
     icon: <Radar size={14} />,
     when: (ctx) =>
       isDrone(ctx) &&
-      ctx.agentDeviceId !== null &&
+      agentReachable(ctx) &&
       ctx.isFeatureEnabled("world-model") &&
       ctx.atlasCapturing,
     render: (ctx) => <DroneLiveWorldTab droneId={ctx.droneId} />,

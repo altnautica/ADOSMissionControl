@@ -1,21 +1,51 @@
 /**
  * @module nodes/command-sink.test
- * @description The cloud command lane hands the queue row id to `onQueued` the
- * instant a command is accepted, so a surface can watch the vehicle's real
- * answer land — and it does so only on a genuine queue write, never on a failed
- * enqueue. The synchronous result still reports "queued", not a fabricated ack.
+ * @description What each command lane may claim about a command it carried.
+ * The cloud lane hands the queue row id to `onQueued` the instant a command is
+ * accepted, so a surface can watch the vehicle's real answer land — and it does
+ * so only on a genuine queue write, never on a failed enqueue. Its synchronous
+ * result still reports "queued", not a fabricated ack.
+ *
+ * A relayed drone is commanded through its ground station's relay-proxy route,
+ * so the lane has to address the ground station (not the drone, which has no
+ * address here) and name the right cause when it cannot resolve: an unpaired
+ * ground station and an HTTPS page origin are different faults with different
+ * fixes, and reporting one as the other sends the operator after the wrong one.
  *
  * @license GPL-3.0-only
  */
 
 import { describe, it, expect, vi, afterEach } from "vitest";
 
+import type * as AgentSystem from "@/lib/agent/agent-client/system";
 import type { SkillProtocol } from "@/lib/skills/skill-protocol";
 
-// No LAN agent resolves for the node under test, so the cloud lane is the one
-// exercised here rather than the LAN transport.
+// LAN credentials resolve per device id and default to none, so the cloud cases
+// exercise the cloud lane. A relayed drone's ground station is paired per test;
+// the drone itself never resolves one — it holds no LAN address of its own.
+const { lanHolder } = vi.hoisted(() => ({
+  lanHolder: {
+    agents: {} as Record<string, { agentUrl: string; apiKey: string }>,
+  },
+}));
 vi.mock("@/lib/agent/resolve-agent", () => ({
-  resolveLocalAgentForDrone: () => null,
+  resolveLocalAgentForDrone: (deviceId: string) =>
+    lanHolder.agents[deviceId] ?? null,
+}));
+
+// The LAN and relay-proxy lanes both terminate at the agent's command route, so
+// stubbing that route is what lets a test assert WHERE a command was addressed
+// and with whose key, rather than only that something was dispatched.
+const { runCommandMock } = vi.hoisted(() => ({
+  runCommandMock: vi.fn(async () => ({
+    accepted: true,
+    resultCode: 0,
+    message: "Accepted",
+  })),
+}));
+vi.mock("@/lib/agent/agent-client/system", async (importOriginal) => ({
+  ...(await importOriginal<typeof AgentSystem>()),
+  runCommand: runCommandMock,
 }));
 
 // A controllable direct-FC protocol resolver: null by default (no FC connected),
@@ -63,6 +93,8 @@ function fakeLiveProtocol() {
 
 afterEach(() => {
   directFcHolder.protocol = null;
+  lanHolder.agents = {};
+  runCommandMock.mockClear();
 });
 
 const CLOUD_NODE: CommandTargetNode = { deviceId: "dev-1", convexId: "cx-1" };
@@ -166,10 +198,25 @@ describe("direct-fc command sink", () => {
 });
 
 describe("relayed command sink", () => {
+  const GROUND_DEVICE_ID = "ground-7";
+  const GROUND_AGENT = {
+    agentUrl: "http://192.168.1.50:8080",
+    apiKey: "gs-key",
+  };
+  /** The relay-proxy prefix the ground station exposes for this drone. */
+  const RELAY_BASE_URL =
+    "http://192.168.1.50:8080/api/v1/ground-station/relay-proxy/drone-1";
+
   const RELAYED_NODE: CommandTargetNode = {
     deviceId: "drone-1",
     isRelayed: true,
+    reachedVia: `node:${GROUND_DEVICE_ID}`,
   };
+
+  /** LAN-pair the ground station this drone is relayed through — and only it. */
+  function pairGroundStation() {
+    lanHolder.agents[GROUND_DEVICE_ID] = GROUND_AGENT;
+  }
 
   it("drives a relayed drone through RelayedMavlinkBridge's live session once it is up", async () => {
     const protocol = fakeLiveProtocol();
@@ -190,10 +237,82 @@ describe("relayed command sink", () => {
     expect(result.success).toBe(true);
   });
 
-  it("falls back to relay-only while no live session has connected yet", () => {
-    directFcHolder.protocol = null;
+  it("commands a relayed drone over its ground station's relay-proxy route", async () => {
+    pairGroundStation();
 
-    const reach = resolveNodeCommandReach(RELAYED_NODE, {});
+    const reach = resolveNodeCommandReach(RELAYED_NODE, {
+      originIsHttps: false,
+    });
+
+    expect(reach.blockedReason).toBeUndefined();
+    expect(reach.sink?.transport).toBe("relay-proxy");
+    // The proxy projects the drone's own HTTP status back, so the result is the
+    // vehicle's answer rather than a receipt for something queued.
+    expect(reach.sink?.reportsVehicleAck).toBe(true);
+
+    const result = await reach.sink!.arm();
+
+    // Addressed to the ground station's relay-proxy prefix for THIS peer, with
+    // the ground station's key — never to the drone, which has no address here.
+    expect(runCommandMock).toHaveBeenCalledOnce();
+    expect(runCommandMock).toHaveBeenCalledWith(
+      { baseUrl: RELAY_BASE_URL, apiKey: "gs-key" },
+      "arm",
+      [],
+    );
+    expect(result.success).toBe(true);
+    expect(result.resultCode).toBe(0);
+  });
+
+  it("keeps the live MAVLink session ahead of the relay-proxy lane", async () => {
+    // Both lanes are available. The vehicle's own protocol wins, because only
+    // it answers with the vehicle's ack instead of the agent's HTTP status.
+    pairGroundStation();
+    directFcHolder.protocol = fakeLiveProtocol();
+
+    const reach = resolveNodeCommandReach(RELAYED_NODE, {
+      originIsHttps: false,
+    });
+
+    expect(reach.sink?.transport).toBe("direct-fc");
+    await reach.sink!.arm();
+    expect(runCommandMock).not.toHaveBeenCalled();
+  });
+
+  it("names the HTTPS block, not a missing pairing, when the origin blocks the lane", () => {
+    pairGroundStation();
+
+    const reach = resolveNodeCommandReach(RELAYED_NODE, {
+      originIsHttps: true,
+    });
+
+    // The ground station IS paired here; the page origin is what stops the
+    // plain-HTTP hop to it. "relay-only" would name a cause that is not true.
+    expect(reach.sink).toBeNull();
+    expect(reach.blockedReason).toBe("lan-blocked-by-https");
+  });
+
+  it("falls back to relay-only when the ground station is not paired here", () => {
+    // No LAN agent resolves for anyone, so the radio has a far end this browser
+    // can see and no near end it can address.
+    const reach = resolveNodeCommandReach(RELAYED_NODE, {
+      originIsHttps: false,
+    });
+
+    expect(reach.sink).toBeNull();
+    expect(reach.blockedReason).toBe("relay-only");
+  });
+
+  it("falls back to relay-only when the node names no ground station", () => {
+    // The ground station is paired, but nothing links this drone to it, so
+    // there is no peer id to route a relay-proxy call through.
+    pairGroundStation();
+
+    const reach = resolveNodeCommandReach(
+      { deviceId: "drone-1", isRelayed: true },
+      { originIsHttps: false },
+    );
+
     expect(reach.sink).toBeNull();
     expect(reach.blockedReason).toBe("relay-only");
   });

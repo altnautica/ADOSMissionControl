@@ -31,6 +31,7 @@ export const REACH_FILTERS = [
   "all",
   "lan",
   "cloud",
+  "relay-proxy",
   "direct-fc",
   "none",
 ] as const;

@@ -10,17 +10,19 @@
  * can actually carry a command to it and wraps that transport in the same nine
  * methods a skill drives.
  *
- * Two transports, one destination. Both terminate at the agent's command route:
- * the LAN transport posts to it directly, and the cloud transport queues a
- * relay command whose payload the agent forwards to that same route verbatim.
- * So one command map covers both, and the vocabulary a node accepts is the
- * same either way.
+ * Three transports, one destination. All terminate at the agent's command
+ * route: the LAN transport posts to it directly, the relay-proxy transport
+ * posts to it through a ground station's radio lane, and the cloud transport
+ * queues a relay command whose payload the agent forwards to that same route
+ * verbatim. So one command map covers all three, and the vocabulary a node
+ * accepts is the same however it is reached.
  *
- * What differs is the truth each transport can report. The LAN transport waits
- * for the vehicle's own acknowledgement, so its result is the vehicle's answer.
- * The cloud transport is store-and-forward: the result says the command was
+ * What differs is the truth each transport can report. LAN and relay-proxy
+ * both wait for the vehicle's own acknowledgement, so their result is the
+ * vehicle's answer — the relay simply spends a radio hop getting there. The
+ * cloud transport is store-and-forward: the result says the command was
  * accepted onto the queue, and nothing more — the vehicle's answer lands later
- * on the queued row. `reportsVehicleAck` tells the two apart so a surface can
+ * on the queued row. `reportsVehicleAck` tells them apart so a surface can
  * label them honestly instead of implying an acknowledgement that never came.
  *
  * A command with no equivalent on the agent's route is refused with a failed
@@ -39,6 +41,7 @@ import {
 } from "@/lib/agent/agent-client/system";
 import { resolveLocalAgentForDrone } from "@/lib/agent/resolve-agent";
 import { resolveDirectFcProtocol } from "@/lib/nodes/direct-fc-protocol";
+import { relayProxyBaseUrl, resolveRelayReach } from "@/lib/nodes/relay-reach";
 import { nodeIdForDevice } from "@/lib/agent/node-id";
 
 /** The node fields a sink needs. A fleet node entry satisfies this. */
@@ -51,15 +54,21 @@ export interface CommandTargetNode {
   isDirectFc?: boolean;
   /**
    * True when the node is enrolled SOLELY through a ground node's WFB relay —
-   * the GCS never paired with it directly. Its only path today is the radio, and
-   * that path carries no command channel yet, so it resolves to no command sink
-   * with a reason distinct from an unpaired node.
+   * the GCS never paired with it directly. The radio is its only path, and that
+   * path does carry commands: `reachedVia` names the ground station whose
+   * relay-proxy route forwards them to this drone's own agent.
    */
   isRelayed?: boolean;
+  /**
+   * The `node:<deviceId>` id of the ground node this drone is linked through
+   * over WFB. It is the near end of the radio lane — without it the relay has
+   * no addressable station to route a command through.
+   */
+  readonly reachedVia?: string;
 }
 
 /** How a command reaches a node. */
-export type NodeCommandTransport = "lan" | "cloud" | "direct-fc";
+export type NodeCommandTransport = "lan" | "cloud" | "direct-fc" | "relay-proxy";
 
 /**
  * Why no transport could carry a command to a node. Each value names something
@@ -75,10 +84,10 @@ export type NodeCommandBlockedReason =
    */
   | "direct-fc"
   /**
-   * The node is reached only through a ground node's WFB radio relay. The relay
-   * carries video and telemetry but no command channel yet, so no lane resolves —
-   * a distinct cause from an unpaired node, so the row can say "reached only over
-   * the radio relay" rather than "not paired".
+   * The node is reached only through a ground node's WFB radio relay, and that
+   * ground station is not paired in this browser — so the GCS holds no near end
+   * for the radio lane and nothing can carry a command. Distinct from an
+   * unpaired node: the fix is to pair the ground station, not this drone.
    */
   | "relay-only"
   /** LAN credentials exist but the page origin blocks a plain-HTTP request. */
@@ -96,9 +105,10 @@ export interface NodeCommandSink extends SkillProtocol {
   /** Which transport carries commands to this node. */
   readonly transport: NodeCommandTransport;
   /**
-   * True when a result carries the vehicle's own acknowledgement (LAN). False
-   * when a result only reports that the command was accepted for delivery
-   * (cloud) — the vehicle's outcome arrives later on the queued row.
+   * True when a result carries the vehicle's own acknowledgement (LAN or
+   * relay-proxy). False when a result only reports that the command was
+   * accepted for delivery (cloud) — the vehicle's outcome arrives later on the
+   * queued row.
    */
   readonly reportsVehicleAck: boolean;
   /** Whether this transport can carry `method` at all. */
@@ -335,17 +345,49 @@ export function resolveNodeCommandReach(
 
   if (node.isRelayed) {
     // A relayed-only node holds no LAN credentials and no cloud pairing row (it
-    // was never paired directly). `RelayedMavlinkBridge` opens a live MAVLink
-    // session for it in the background, against its ground station's republish
-    // endpoint, keyed by this same `node:<deviceId>` id in the drone manager —
-    // once that session is up, drive it exactly like a direct FC: the vehicle's
-    // own acknowledgement, not a queued relay command. "relay-only" is the
-    // honest fallback only while that session hasn't connected yet (or has
-    // dropped), not a permanent dead end.
+    // was never paired directly), so the radio is its reach — and the radio
+    // carries two lanes, tried in the order of what each can honestly report.
+    //
+    // First, `RelayedMavlinkBridge`'s live MAVLink session, opened in the
+    // background against the ground station's republish endpoint and keyed by
+    // this same `node:<deviceId>` id in the drone manager. That is the vehicle's
+    // own protocol speaking, so it keeps precedence over any HTTP lane.
     const liveFc = resolveDirectFcProtocol(nodeIdForDevice(node.deviceId));
     if (liveFc) {
       return { sink: makeDirectFcSink(liveFc) };
     }
+
+    // Second, the ground station's relay-proxy route, which forwards an HTTP
+    // call to this drone's own agent over the aux radio lane and projects the
+    // drone's real status back. Same agent command route as the direct LAN
+    // lane, one radio hop further out, so it reports the vehicle's own ack.
+    const relay = resolveRelayReach({
+      agentDeviceId: null,
+      reachedVia: node.reachedVia,
+      droneDeviceId: node.deviceId,
+    });
+    if (relay) {
+      // The ground station is reached at a plain-HTTP LAN address, so an HTTPS
+      // page origin blocks this lane as mixed content exactly as it blocks the
+      // direct LAN lane below — and for exactly the same reason, so it reports
+      // that cause. Falling through to "relay-only" here would tell the
+      // operator the ground station is unpaired when it is paired and reachable.
+      if (options.originIsHttps ?? pageOriginIsHttps()) {
+        return { sink: null, blockedReason: "lan-blocked-by-https" };
+      }
+      return {
+        sink: makeSink("relay-proxy", true, (cmd, args) =>
+          dispatchOverLan(
+            { agentUrl: relayProxyBaseUrl(relay), apiKey: relay.apiKey },
+            cmd,
+            args,
+          ),
+        ),
+      };
+    }
+
+    // No lane at all: the radio is up, but this browser has not paired the
+    // ground station that owns its near end.
     return { sink: null, blockedReason: "relay-only" };
   }
 

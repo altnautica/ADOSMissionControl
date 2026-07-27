@@ -70,10 +70,14 @@ export function AgentTab({ ctx }: { ctx: SurfaceContext }) {
     [visible, tRoot],
   );
 
-  // A drone with no companion paired: sell what an onboard computer unlocks
-  // rather than showing a near-empty page.
+  // A drone with no companion the GCS can reach: sell what an onboard computer
+  // unlocks rather than showing a near-empty page. A drone reached through its
+  // ground station's relay-proxy DOES have one, and every sub-page below reads
+  // it over that lane, so it must not land here.
   const noCompanion =
-    (ctx.drone.profile ?? "drone") === "drone" && ctx.agentDeviceId === null;
+    (ctx.drone.profile ?? "drone") === "drone" &&
+    ctx.agentDeviceId === null &&
+    ctx.relayReach === null;
   if (noCompanion) {
     return <AgentShowcase droneId={ctx.droneId} />;
   }
