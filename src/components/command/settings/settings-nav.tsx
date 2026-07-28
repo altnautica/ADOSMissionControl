@@ -1,12 +1,16 @@
 /**
  * @module command/settings/settings-nav
- * @description The Settings tab page registry: every settings page, grouped
- * into the two-tier sections the sidebar renders (Identity / Link & network /
- * Video & vision / Cloud & remote / System & safety) — the same sectioned
- * registry pattern the Agent page uses for its sub-pages. Each item carries
- * the availability gate its page already enforces internally (profile fit,
- * the node advertising a feature block), so the sidebar never offers an
- * empty page, and renders the exact same section component one level down.
+ * @description The node configuration page registry: every settings page, its
+ * label, icon, availability gate and body. Each item carries the gate its page
+ * already enforces internally (profile fit, the node advertising a feature
+ * block), so the sidebar never offers an empty page, and renders the exact same
+ * section component one level down.
+ *
+ * These pages have no sidebar of their own. They are hoisted into the Agent
+ * page's single sidebar beside the live surface for the same subsystem —
+ * ordering and section headers live in
+ * `dashboard/node-detail/agent/agent-nav-sections`, which is also what supplies
+ * the `SettingsPageContext` below from one `useNodeConfig()` call.
  * @license GPL-3.0-only
  */
 // Exempt from 300 LOC soft rule: sub-page registry data file.
@@ -51,25 +55,6 @@ import { SelfHealSection } from "./SelfHealSection";
 import { MavlinkRoutingSection } from "./MavlinkRoutingSection";
 import { SecuritySection } from "./SecuritySection";
 
-/** The five settings groups, top → bottom. Values are full i18n paths. */
-export const SETTINGS_GROUPS = {
-  identity: "nodeSettings.groups.identity",
-  network: "nodeSettings.groups.network",
-  videoVision: "nodeSettings.groups.videoVision",
-  cloud: "nodeSettings.groups.cloud",
-  system: "nodeSettings.groups.system",
-} as const;
-
-export type SettingsGroupKey = keyof typeof SETTINGS_GROUPS;
-
-export const SETTINGS_GROUP_ORDER: SettingsGroupKey[] = [
-  "identity",
-  "network",
-  "videoVision",
-  "cloud",
-  "system",
-];
-
 /** Everything a settings page (or its availability gate) needs. */
 export interface SettingsPageContext {
   droneId: string;
@@ -84,8 +69,14 @@ export interface SettingsNavItem {
   id: string;
   /** Full i18n path for the sidebar label. */
   labelKey: string;
-  group: SettingsGroupKey;
   icon: ReactNode;
+  /** Whether the page's body reads the node configuration — every page whose
+   * render takes `config` / `readOnly` / `setValue`. The Agent page shows the
+   * config loading / read-only / read-failure banners only while such a page
+   * is open: Wi-Fi scans the radio and Operating region writes the regulatory
+   * domain, each over its own endpoint, so a "could not read the node
+   * configuration" banner over either would be a false alarm. */
+  readsConfig: boolean;
   /** Availability gate. Absent = always shown. Mirrors the page's own
    * internal render-nothing gate so the sidebar never offers an empty page. */
   when?: (ctx: SettingsPageContext) => boolean;
@@ -99,20 +90,18 @@ const isVisionProfile = (ctx: SettingsPageContext) =>
 const isDroneProfile = (ctx: SettingsPageContext) => ctx.profile === "drone";
 
 export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
-  // IDENTITY
   {
     id: "profile",
     labelKey: "nodeSettings.profile.title",
-    group: "identity",
     icon: <CircleUser size={14} />,
+    readsConfig: true,
     render: (ctx) => <ProfilePage config={ctx.config} />,
   },
-  // LINK & NETWORK
   {
     id: "network",
     labelKey: "nodeSettings.network.title",
-    group: "network",
     icon: <Network size={14} />,
+    readsConfig: true,
     render: (ctx) => (
       <NetworkUplinkSection
         profile={ctx.profile}
@@ -125,15 +114,17 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
   {
     id: "wifi",
     labelKey: "nodeSettings.wifi.title",
-    group: "network",
     icon: <Wifi size={14} />,
+    // Scans and joins networks over the agent's own Wi-Fi endpoints; it never
+    // reads the persisted config, so the config banners do not apply.
+    readsConfig: false,
     render: () => <WifiClientSection />,
   },
   {
     id: "cellular",
     labelKey: "nodeSettings.cellular.title",
-    group: "network",
     icon: <Signal size={14} />,
+    readsConfig: true,
     render: (ctx) => (
       <CellularSection
         profile={ctx.profile}
@@ -146,8 +137,8 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
   {
     id: "mac-pin",
     labelKey: "nodeSettings.macPin.title",
-    group: "network",
     icon: <Fingerprint size={14} />,
+    readsConfig: true,
     render: (ctx) => (
       <MacPinSection
         config={ctx.config}
@@ -159,8 +150,8 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
   {
     id: "discovery",
     labelKey: "nodeSettings.discovery.title",
-    group: "network",
     icon: <Radar size={14} />,
+    readsConfig: true,
     render: (ctx) => (
       <DiscoverySection
         config={ctx.config}
@@ -172,8 +163,8 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
   {
     id: "mavlink",
     labelKey: "nodeSettings.mavlinkRouting.title",
-    group: "network",
     icon: <Route size={14} />,
+    readsConfig: true,
     // MAVLink routing (FC transport, router identity, signing, relay rates) is
     // the FC-connected drone's surface — a ground station or workstation has no
     // MAVLink router to configure, so the page never appears there.
@@ -188,13 +179,17 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
     ),
   },
   {
-    id: "radio",
+    // `radio-config`, not `radio`: the live air-side Link page owns `radio`,
+    // which is a retired top-level surface id a deep link still resolves
+    // through. The two now sit next to each other in one sidebar, so the ids
+    // can no longer collide.
+    id: "radio-config",
     labelKey: "nodeSettings.radio.title",
-    group: "network",
     icon: <RadioTower size={14} />,
+    readsConfig: true,
     // Fleet addressing, the link switches and the modulation rung — the WFB
     // radio's own page. A workstation carries no radio, so it never appears
-    // there; it sits beside Swarm so the two fleet-radio pages are together.
+    // there; it sits directly under the live Link page it configures.
     when: isRadioProfile,
     render: (ctx) => (
       <RadioSection
@@ -208,8 +203,8 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
   {
     id: "swarm",
     labelKey: "nodeSettings.swarm.title",
-    group: "network",
     icon: <Waypoints size={14} />,
+    readsConfig: true,
     // Swarm coordination is a drone-fleet surface — it does not apply to a
     // ground station or workstation even when their stored config carries the
     // block. Drone profile AND the node advertising the block (or demo).
@@ -224,12 +219,11 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
       />
     ),
   },
-  // VIDEO & VISION
   {
     id: "video",
     labelKey: "nodeSettings.video.title",
-    group: "videoVision",
     icon: <Video size={14} />,
+    readsConfig: true,
     // The camera and encode config of a node that actually encodes. A ground
     // station relays video it never encodes and a workstation runs no
     // pipeline, so neither is offered the page; the radio half that used to
@@ -247,8 +241,8 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
   {
     id: "vision-perception",
     labelKey: "nodeSettings.perception.title",
-    group: "videoVision",
     icon: <Layers size={14} />,
+    readsConfig: true,
     when: isVisionProfile,
     render: (ctx) => (
       <VisionPerceptionSection
@@ -261,10 +255,14 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
     ),
   },
   {
-    id: "world-model",
+    // `world-model-config`, not `world-model`: the live World Model viewer owns
+    // that id (another retired top-level surface id). This page is the Atlas
+    // capture *setup* behind it — hence the distinct "World model setup" label,
+    // so two adjacent sidebar rows can never read as the same thing.
+    id: "world-model-config",
     labelKey: "nodeSettings.atlas.title",
-    group: "videoVision",
     icon: <Boxes size={14} />,
+    readsConfig: true,
     when: (ctx) =>
       ctx.profile === "drone" &&
       (configAdvertises(ctx.config, "atlas") || isDemoMode()),
@@ -278,12 +276,11 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
       />
     ),
   },
-  // CLOUD & REMOTE
   {
     id: "cloud",
     labelKey: "nodeSettings.cloud.title",
-    group: "cloud",
     icon: <Cloud size={14} />,
+    readsConfig: true,
     render: (ctx) => (
       <CloudPage
         config={ctx.config}
@@ -292,12 +289,13 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
       />
     ),
   },
-  // SYSTEM & SAFETY
   {
     id: "region",
     labelKey: "operatingRegion.title",
-    group: "system",
     icon: <Globe size={14} />,
+    // Writes the regulatory domain straight to the agent's own region endpoint
+    // with its own read-back; it never touches the persisted config document.
+    readsConfig: false,
     // Operating region governs the RF radio; a radio-less workstation has no
     // regulatory domain, so the (otherwise blank) page never appears there.
     when: isRadioProfile,
@@ -306,8 +304,8 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
   {
     id: "self-heal",
     labelKey: "nodeSettings.selfHeal.title",
-    group: "system",
     icon: <HeartPulse size={14} />,
+    readsConfig: true,
     render: (ctx) => (
       <SelfHealSection
         config={ctx.config}
@@ -319,8 +317,8 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
   {
     id: "security",
     labelKey: "nodeSettings.security.title",
-    group: "system",
     icon: <ShieldCheck size={14} />,
+    readsConfig: true,
     render: (ctx) => (
       <SecuritySection
         config={ctx.config}
@@ -332,8 +330,8 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
   {
     id: "advanced",
     labelKey: "nodeSettings.advanced.title",
-    group: "system",
     icon: <Wrench size={14} />,
+    readsConfig: true,
     render: (ctx) => (
       <AdvancedPage
         config={ctx.config}

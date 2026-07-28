@@ -9,10 +9,12 @@
  */
 
 /** Former top-level tab id -> Agent sub-page id. Legacy Flights/Black Box map
- * to the merged Logs sub-page. */
+ * to the merged Logs sub-page; the retired Settings tab lands on the first
+ * configuration page now that the settings pages sit directly in the Agent
+ * sidebar and no `settings` host page exists to land on. */
 export const AGENT_SUBPAGE_IDS: Record<string, string> = {
   system: "system",
-  settings: "settings",
+  settings: "profile",
   plugins: "plugins",
   logs: "logs",
   radio: "radio",

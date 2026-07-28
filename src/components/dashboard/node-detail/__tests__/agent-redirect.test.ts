@@ -16,7 +16,9 @@ const GS_IDS = ["overview", "radio", "network", "display", "agent"];
 
 describe("agentRedirect", () => {
   it("redirects a persisted companion tab id to its Agent sub-page", () => {
-    expect(agentRedirect("settings", DRONE_IDS)).toBe("settings");
+    // The retired Settings tab has no host page left — the config pages sit in
+    // the Agent sidebar directly, so it lands on the first of them.
+    expect(agentRedirect("settings", DRONE_IDS)).toBe("profile");
     expect(agentRedirect("system", DRONE_IDS)).toBe("system");
     expect(agentRedirect("plugins", DRONE_IDS)).toBe("plugins");
     expect(agentRedirect("logs", DRONE_IDS)).toBe("logs");

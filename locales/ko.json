@@ -1067,7 +1067,6 @@
     "link": "Link",
     "computer": "Computer",
     "health": "Health",
-    "settings": "Settings",
     "extensions": "Extensions",
     "logs": "Logs",
     "buttons": "Buttons",
@@ -1081,8 +1080,7 @@
     "worldModel": "World Model",
     "cockpit": "Cockpit",
     "agentGroups": {
-      "system": "System",
-      "perception": "Perception",
+      "overview": "개요",
       "software": "Software"
     },
     "agentShowcase": {
@@ -1247,7 +1245,6 @@
     "sectionModels": "Models"
   },
   "nodeSettings": {
-    "title": "Settings",
     "subtitle": "Configure this node's onboard computer. Changes write straight to the agent over the LAN.",
     "loading": "Loading configuration…",
     "loadFailed": "Could not read the node configuration.",
@@ -1258,7 +1255,6 @@
     "apply": "Apply",
     "saving": "Saving…",
     "groups": {
-      "identity": "Identity",
       "network": "Link & network",
       "videoVision": "Video & vision",
       "cloud": "Cloud & remote",
@@ -1395,7 +1391,7 @@
       }
     },
     "atlas": {
-      "title": "World model",
+      "title": "World Model 설정",
       "blurb": "Capture pose-tagged keyframes as this drone flies; a paired compute node reconstructs a 3D world model.",
       "featureLabel": "World Model",
       "featureHint": "Master switch. Reveals the World Model tabs and enables the native capture service on the node.",

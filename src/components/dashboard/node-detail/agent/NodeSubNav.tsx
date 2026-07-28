@@ -7,10 +7,16 @@
  * and nav-item buttons; the active item gets the accent tint + left border.
  * Styled to match the Setup tab's Flight Controller sidebar so both read as one
  * pattern.
+ *
+ * The rail scrolls independently of the content pane and carries ~25 entries
+ * across six sections, so two things hold it together at that length: section
+ * headers stick to the top of the rail while their items scroll past, and the
+ * active item is scrolled into view whenever it changes — including the restore
+ * of a remembered sub-page that sits below the fold.
  * @license GPL-3.0-only
  */
 
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 export interface SubNavItem {
@@ -38,8 +44,22 @@ export function NodeSubNav({
   activeId,
   onSelect,
 }: NodeSubNavProps) {
+  const navRef = useRef<HTMLElement | null>(null);
+
+  // Keep the open page visible in the rail. Without this, restoring a
+  // remembered sub-page from the bottom of the list leaves the rail scrolled to
+  // the top with nothing highlighted on screen.
+  useEffect(() => {
+    navRef.current
+      ?.querySelector('[aria-current="page"]')
+      ?.scrollIntoView({ block: "nearest" });
+  }, [activeId]);
+
   return (
-    <nav className="w-[200px] border-r border-border-default bg-bg-secondary flex-shrink-0 overflow-y-auto">
+    <nav
+      ref={navRef}
+      className="w-[200px] border-r border-border-default bg-bg-secondary flex-shrink-0 overflow-y-auto"
+    >
       <div className="px-3 py-3 border-b border-border-default">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
           {title}
@@ -48,7 +68,7 @@ export function NodeSubNav({
       <div className="flex flex-col py-1">
         {sections.map((section) => (
           <div key={section.key}>
-            <div className="px-3 pt-3 pb-1">
+            <div className="sticky top-0 z-10 bg-bg-secondary px-3 pt-3 pb-1">
               <span className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">
                 {section.label}
               </span>

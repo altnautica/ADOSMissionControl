@@ -1,9 +1,13 @@
 /**
- * Tests for the node Settings "World model" page: the capability gate (renders
+ * Tests for the node "World model setup" page: the capability gate (renders
  * only when the node's config surface advertises the world-model block, drone
  * profile only), the relocated master feature switch, the writable pose-source
  * preference, and the read-only capture tuning rows that defer to the World
  * Model tab's own writer.
+ *
+ * The page is titled "World model setup", not "World model": it now sits one row
+ * under the live World Model surface in the Agent sidebar, and two adjacent rows
+ * reading the same thing is the confusion that naming resolves.
  *
  * @license GPL-3.0-only
  */
@@ -114,7 +118,7 @@ describe("AtlasSection capability gate", () => {
 describe("AtlasSection content", () => {
   it("hosts the master feature switch and the pose-source select", () => {
     renderSection("drone", ATLAS_CONFIG);
-    expect(screen.getByText("World model")).toBeTruthy();
+    expect(screen.getByText("World model setup")).toBeTruthy();
     expect(screen.getByText("World Model")).toBeTruthy();
     // The feature row is honest about an unreachable node.
     expect(screen.getByText("Pair on LAN")).toBeTruthy();

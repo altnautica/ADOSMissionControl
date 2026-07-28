@@ -11,8 +11,16 @@
  * agent client when one is attached (local-first, zero cloud round-trip),
  * else the server-side `/api/lan-pair/config` proxy when a pairing record
  * names a LAN host (this is what makes the surface writable in cloud
- * mode). The surface degrades to read-only only when there is genuinely
+ * mode), else — for a drone reached only through a ground station's WFB
+ * relay — that ground station's relay-proxy over the same server-side
+ * proxy. The surface degrades to read-only only when there is genuinely
  * no path to the node.
+ *
+ * The relay reach is a PARAMETER rather than a store read: it depends on
+ * per-node fleet data (`reachedVia`, and whether the relaying ground node is
+ * LAN-paired here) that this hook has no clean access to, while the caller
+ * already carries it on `SurfaceContext`. It stays optional so every existing
+ * no-arg call site is unchanged.
  * @license GPL-3.0-only
  */
 
@@ -26,6 +34,7 @@ import {
   setConfigValueViaAccess,
   type ConfigAccess,
 } from "@/lib/agent/config-access";
+import type { RelayReach } from "@/lib/nodes/relay-reach";
 
 /** Read a dot-separated path (e.g. `network.hotspot.enabled`) out of a nested
  * config object. Returns `undefined` when any segment is missing, so a surface
@@ -68,12 +77,16 @@ export interface NodeConfig {
    * when no transport reaches the node. */
   config: Record<string, unknown> | null;
   loading: boolean;
-  /** True only when no transport reaches the node (no direct client AND no
-   * proxy-reachable pairing record) — controls are disabled with the
-   * no-path reason. A cloud session with a stored LAN pairing stays
-   * writable through the proxy. */
+  /** True only when no transport reaches the node (no direct client, no
+   * proxy-reachable pairing record, AND no ground-station relay reach) —
+   * controls are disabled with the no-path reason. A cloud session with a
+   * stored LAN pairing stays writable through the proxy, and a relayed drone
+   * stays writable through its ground station's relay-proxy. */
   readOnly: boolean;
-  /** Which transport resolved: direct client, server-side proxy, or none. */
+  /** Which transport resolved: direct client, server-side LAN proxy, the
+   * ground station's relay-proxy, or none. Surfaced so a page can tell the
+   * operator which lane it is on rather than implying a direct LAN
+   * connection. */
   accessMode: ConfigAccess["mode"];
   error: string | null;
   refresh: () => Promise<void>;
@@ -82,7 +95,7 @@ export interface NodeConfig {
   setValue: (key: string, value: string) => Promise<void>;
 }
 
-export function useNodeConfig(): NodeConfig {
+export function useNodeConfig(relayReach?: RelayReach | null): NodeConfig {
   const client = useAgentConnectionStore((s) => s.client);
   const nodeDeviceId = useAgentConnectionStore((s) => s.nodeDeviceId);
   // Subscribed (not read imperatively) so a pair/unpair mid-session
@@ -93,10 +106,35 @@ export function useNodeConfig(): NodeConfig {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // `resolveRelayReach` mints a fresh object on every call, so callers pass an
+  // identity-unstable value. Depending on the object would make `access` — and
+  // therefore `refresh` — new every render, and the `refresh` effect would
+  // re-fetch the config in a loop. Re-key on the three fields instead, so the
+  // caller can pass `ctx.relayReach` straight in with no memo of its own.
+  const relayBaseUrl = relayReach?.baseUrl ?? null;
+  const relayApiKey = relayReach?.apiKey ?? null;
+  const relayPeerDeviceId = relayReach?.peerDeviceId ?? null;
+  const reach = useMemo<RelayReach | null>(
+    () =>
+      relayBaseUrl && relayPeerDeviceId && relayApiKey !== null
+        ? {
+            baseUrl: relayBaseUrl,
+            apiKey: relayApiKey,
+            peerDeviceId: relayPeerDeviceId,
+          }
+        : null,
+    [relayBaseUrl, relayApiKey, relayPeerDeviceId],
+  );
+
   const access = useMemo(
     () =>
-      resolveConfigAccess(client, nodeDeviceId, { localNodes, pairedDrones }),
-    [client, nodeDeviceId, localNodes, pairedDrones],
+      resolveConfigAccess(
+        client,
+        nodeDeviceId,
+        { localNodes, pairedDrones },
+        reach,
+      ),
+    [client, nodeDeviceId, localNodes, pairedDrones, reach],
   );
   const readOnly = access.mode === "none";
 

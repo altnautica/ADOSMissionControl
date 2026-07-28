@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { resolveSurfaces } from "@/components/dashboard/node-detail/surfaces";
 import { AGENT_NAV_ITEMS } from "@/components/dashboard/node-detail/agent/agent-nav-items";
+import { resolveAgentNav } from "@/components/dashboard/node-detail/agent/agent-nav-sections";
+import type { SettingsPageContext } from "@/components/command/settings/settings-nav";
 import type { SurfaceContext } from "@/components/dashboard/node-detail/surface-types";
 
 /** A minimal SurfaceContext; overrides tune the gate inputs under test. */
@@ -68,41 +70,60 @@ describe("Agent page hosts the companion surfaces", () => {
   });
 });
 
-describe("Settings sub-page gate", () => {
-  it("shows for a companion-backed drone (paired agent)", () => {
-    expect(shows("settings", ctx({ agentDeviceId: "dev-1", showLockedTabs: false }))).toBe(
-      true,
+describe("Configuration pages in the merged Agent sidebar", () => {
+  /** The pages a node offers, with a loaded config advertising every optional
+   *  feature block so profile fit is the only variable. */
+  const configPageIds = (c: SurfaceContext) => {
+    const settingsCtx: SettingsPageContext = {
+      droneId: c.droneId,
+      profile: c.drone.profile ?? "drone",
+      config: { swarm: {}, atlas: {} },
+      readOnly: false,
+      setValue: async () => {},
+    };
+    return resolveAgentNav(c, settingsCtx)
+      .entries.filter((e) => e.isConfigPage)
+      .map((e) => e.id);
+  };
+
+  it("offers them to a companion-backed drone (paired agent)", () => {
+    const ids = configPageIds(
+      ctx({ agentDeviceId: "dev-1", showLockedTabs: false }),
     );
+    expect(ids).toContain("profile");
+    expect(ids).toContain("advanced");
   });
 
-  it("shows for a workstation node", () => {
+  it("offers them to a workstation node", () => {
     expect(
-      shows(
-        "settings",
+      configPageIds(
         ctx({
           drone: { profile: "workstation" } as SurfaceContext["drone"],
+          agentDeviceId: "dev-1",
           showLockedTabs: false,
         }),
       ),
-    ).toBe(true);
+    ).toContain("profile");
   });
 
-  it("shows for a ground-station node", () => {
+  it("offers them to a ground-station node", () => {
     expect(
-      shows(
-        "settings",
+      configPageIds(
         ctx({
           drone: { profile: "ground-station" } as SurfaceContext["drone"],
+          agentDeviceId: "dev-1",
           showLockedTabs: false,
         }),
       ),
-    ).toBe(true);
+    ).toContain("profile");
   });
 
-  it("hides for an FC-only drone (no companion agent)", () => {
-    expect(shows("settings", ctx({ agentDeviceId: null, showLockedTabs: true }))).toBe(
-      false,
-    );
+  it("offers none of them on an FC-only node (no companion agent)", () => {
+    // The gate the retired `settings` sub-page carried, now inherited by the
+    // whole configuration half of the sidebar.
+    expect(
+      configPageIds(ctx({ agentDeviceId: null, showLockedTabs: true })),
+    ).toEqual([]);
   });
 
   it("Logs is always available (even on an FC-only drone)", () => {

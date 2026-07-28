@@ -44,7 +44,9 @@ import {
  */
 const NAV_ITEMS = [
   { id: "open-cockpit", tab: "cockpit", panel: null, profile: "drone" },
-  { id: "configure", tab: "agent", panel: "settings", profile: null },
+  // "Configure" opens the first configuration page in the Agent sidebar; there
+  // is no longer a `settings` host page between the two.
+  { id: "configure", tab: "agent", panel: "profile", profile: null },
   { id: "view-logs", tab: "agent", panel: "logs", profile: null },
 ] as const;
 

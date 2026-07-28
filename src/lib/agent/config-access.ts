@@ -12,23 +12,30 @@
  * over the LAN still has a stored host + pairing key — and the
  * `/api/lan-pair/config` proxy can carry the config surface to it from any
  * origin (the mixed-content hop happens server-side). So the truthful
- * resolution is three-way:
+ * resolution is four-way:
  *
  *  - `direct` — a live agent client is attached; call it.
  *  - `proxy`  — no client, but a pairing record names a LAN host; route
  *               the config read/write through the server-side proxy.
- *  - `none`   — genuinely no path (never paired, or the record has no
- *               host); the surface is read-only and says why.
+ *  - `relay`  — no client and no pairing record of its own, but the node is
+ *               a drone reached through its ground station's WFB
+ *               relay-proxy; route through the same server-side proxy with
+ *               the ground station as the host and the drone's device id as
+ *               the relay-proxy peer segment.
+ *  - `none`   — genuinely no path (never paired, no ground station, or the
+ *               record has no host); the surface is read-only and says why.
  *
  * Operations the proxy does not forward (camera roster, OTA, log
  * streaming) resolve through {@link hasClientPath} instead: they are
- * writable exactly when a direct client exists.
+ * writable exactly when a direct client exists. The relay lane does NOT
+ * change that answer — see the note on {@link hasClientPath}.
  *
  * @license GPL-3.0-only
  */
 
 import { useLocalNodesStore, type LocalNode } from "@/stores/local-nodes-store";
 import { usePairingStore, type PairedDrone } from "@/stores/pairing-store";
+import type { RelayReach } from "@/lib/nodes/relay-reach";
 
 /** Response shape of the agent's single-key config write. */
 export interface ConfigWriteResult {
@@ -61,6 +68,7 @@ export type ConfigAccessReason = "no-path";
 export type ConfigAccess =
   | { mode: "direct"; client: AgentConfigClient }
   | { mode: "proxy"; target: ConfigProxyTarget }
+  | { mode: "relay"; reach: RelayReach }
   | { mode: "none"; reason: ConfigAccessReason };
 
 /** The pairing records the proxy-target lookup searches. Callers that
@@ -107,18 +115,41 @@ export function resolveConfigProxyTarget(
 }
 
 /**
- * Resolve the transport for the config surface: the direct client when
- * one is attached, the server-side proxy when a pairing record names a
- * host, read-only (`none`) only when there is genuinely no path.
+ * Resolve the transport for the config surface.
+ *
+ * Resolution order is deliberate and load-bearing:
+ *
+ *  1. A live direct client wins. Local-first: it is the node's own API with
+ *     no third node in the path. A drone that happens to ALSO be relayed
+ *     must never be routed through its ground station's radio when it has
+ *     its own direct path — that would add a lossy hop, halve the effective
+ *     payload budget, and (on the relay's aux RPC lane) cap a response at a
+ *     size a large config read can exceed.
+ *  2. This node's OWN LAN pairing record. Still a single hop to the node
+ *     itself, just via the server-side proxy so an HTTPS origin can reach a
+ *     plain-HTTP LAN agent. Preferred over the relay for the same reason.
+ *  3. The ground station's relay-proxy. Last, because it is the only lane
+ *     that crosses a radio and depends on a THIRD node being reachable. A
+ *     relayed drone has neither a direct client (an HTTPS origin cannot dial
+ *     the ground station's plain-HTTP relay-proxy from the browser at all)
+ *     nor a pairing record of its own — it has no IP address — so without
+ *     this lane its entire settings surface resolves `none`.
+ *  4. `none` — read-only, and the surface says why.
+ *
+ * `relayReach` is an optional trailing parameter so every existing call site
+ * (which has no per-node fleet data to resolve a reach from) keeps its exact
+ * shape and behaviour.
  */
 export function resolveConfigAccess(
   client: AgentConfigClient | null | undefined,
   deviceId: string | null,
   records?: PairingRecords,
+  relayReach?: RelayReach | null,
 ): ConfigAccess {
   if (client) return { mode: "direct", client };
   const target = resolveConfigProxyTarget(deviceId, records);
   if (target) return { mode: "proxy", target };
+  if (relayReach) return { mode: "relay", reach: relayReach };
   return { mode: "none", reason: "no-path" };
 }
 
@@ -130,6 +161,24 @@ export function resolveConfigAccess(
  * every surface derives the decision from the shared resolution instead
  * of re-deriving the pair. A future cloud transport that attaches a real
  * client makes these surfaces light up with no per-site change.
+ *
+ * The `relay` lane does NOT widen this, and the gate is unchanged on
+ * purpose. Two independent reasons, both of which must hold for a surface
+ * to ride a lane:
+ *
+ *  - The server-side `/api/lan-pair/config` route fixes its upstream path
+ *    map server-side so it can never be steered at an arbitrary agent path.
+ *    The camera roster (`/api/video/roster`) and OTA (`/api/ota`) are not in
+ *    that map, and widening it to accept a caller-supplied path is exactly
+ *    the property that map exists to protect.
+ *  - Log streaming is an `EventSource` (a long-lived streaming GET). This
+ *    route buffers the upstream with `response.text()` and answers once, and
+ *    the relay is a fragmented request/response RPC over the aux radio lane —
+ *    neither can hold a stream open. `LoggingService.tail` already refuses on
+ *    `ctx.relay` for exactly this reason and drops its caller to polling.
+ *
+ * So on the relay lane those three surfaces genuinely have no path, and the
+ * gate stays truthful by staying as it is.
  */
 export function hasClientPath<T>(client: T | null | undefined): client is T {
   return client !== null && client !== undefined;
@@ -137,12 +186,24 @@ export function hasClientPath<T>(client: T | null | undefined): client is T {
 
 const NO_PATH_MESSAGE = "No connection path to this node";
 
+/** The envelope the server-side route needs for a lane it carries on the
+ * operator's behalf. `peerDeviceId` is present ONLY on the relay lane, where
+ * the route composes
+ * `/api/v1/ground-station/relay-proxy/<peerDeviceId>/api/config` from its own
+ * fixed suffix — it is a lane discriminator as much as a value, so the LAN
+ * lane must never carry the key and the relay lane must never omit it. */
+interface ProxyEnvelope {
+  target: ConfigProxyTarget;
+  peerDeviceId?: string;
+}
+
 /** POST the envelope to the server-side config proxy and surface the
  * upstream response the way a direct `agentRequest` would: non-2xx throws
  * with the upstream message, a 2xx body is returned for the caller's own
- * `{error}` check. */
+ * `{error}` check. Identical on the LAN and relay lanes, so a 422 validation
+ * message or an `{error}` payload from the drone reads the same either way. */
 async function proxyConfigRequest(
-  target: ConfigProxyTarget,
+  envelope: ProxyEnvelope,
   method: "GET" | "PUT" | "POST",
   body?: Record<string, unknown>,
 ): Promise<unknown> {
@@ -150,9 +211,12 @@ async function proxyConfigRequest(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      host: target.host,
-      ...(target.apiKey ? { apiKey: target.apiKey } : {}),
+      host: envelope.target.host,
+      ...(envelope.target.apiKey ? { apiKey: envelope.target.apiKey } : {}),
       method,
+      ...(envelope.peerDeviceId !== undefined
+        ? { peerDeviceId: envelope.peerDeviceId }
+        : {}),
       ...(body !== undefined ? { body } : {}),
     }),
   });
@@ -176,14 +240,31 @@ async function proxyConfigRequest(
   return json;
 }
 
+/** The proxy envelope for a lane the server-side route carries, or null for
+ * the two lanes it does not (`direct` calls the client; `none` has no path).
+ * Keeping the mapping here is what makes the relay lane structurally unable
+ * to send a LAN envelope: the ground station's host and the drone's peer
+ * segment are filled from the same reach in one place. */
+function proxyEnvelopeFor(access: ConfigAccess): ProxyEnvelope | null {
+  if (access.mode === "proxy") return { target: access.target };
+  if (access.mode === "relay") {
+    return {
+      target: { host: access.reach.baseUrl, apiKey: access.reach.apiKey },
+      peerDeviceId: access.reach.peerDeviceId,
+    };
+  }
+  return null;
+}
+
 /** Read the node's config over whichever transport resolved. Throws when
  * no path exists — callers gate on the access mode first. */
 export async function getConfigViaAccess(
   access: ConfigAccess,
 ): Promise<Record<string, unknown>> {
   if (access.mode === "direct") return access.client.getConfig();
-  if (access.mode === "proxy") {
-    const json = await proxyConfigRequest(access.target, "GET");
+  const envelope = proxyEnvelopeFor(access);
+  if (envelope) {
+    const json = await proxyConfigRequest(envelope, "GET");
     if (json && typeof json === "object" && !Array.isArray(json)) {
       return json as Record<string, unknown>;
     }
@@ -201,8 +282,9 @@ export async function setConfigValueViaAccess(
   value: string,
 ): Promise<ConfigWriteResult> {
   if (access.mode === "direct") return access.client.setConfigValue(key, value);
-  if (access.mode === "proxy") {
-    const json = await proxyConfigRequest(access.target, "PUT", { key, value });
+  const envelope = proxyEnvelopeFor(access);
+  if (envelope) {
+    const json = await proxyConfigRequest(envelope, "PUT", { key, value });
     return (
       json && typeof json === "object" && !Array.isArray(json) ? json : {}
     ) as ConfigWriteResult;
