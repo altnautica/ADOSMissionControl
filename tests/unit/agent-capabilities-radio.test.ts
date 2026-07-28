@@ -125,6 +125,7 @@ describe("agent-capabilities-store radio", () => {
         noiseDbm: null,
         lossPercent: null,
         mcsIndex: null,
+        mcsLadderCap: null,
         rxSilentSeconds: null,
         txVideoStalled: null,
         txVideoStallKills: null,

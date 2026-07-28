@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
-import { LayoutGrid, LayoutDashboard, Network } from "lucide-react";
+import { LayoutGrid, LayoutDashboard, Network, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useFleetStore } from "@/stores/fleet-store";
@@ -14,6 +14,7 @@ import { DroneListPanel } from "@/components/dashboard/DroneListPanel";
 import { DashboardOverview } from "@/components/dashboard/DashboardOverview";
 import { CommandFleetOverview } from "@/components/command/CommandFleetOverview";
 import { NodesView } from "@/components/command/nodes-view/NodesView";
+import { SwarmView } from "@/components/command/swarm-view/SwarmView";
 import { NodeDetailPanel } from "@/components/dashboard/node-detail/NodeDetailPanel";
 import { EmptyFleetState } from "@/components/dashboard/EmptyFleetState";
 
@@ -123,6 +124,19 @@ export default function DashboardPage() {
                 <Network size={13} />
                 {t("viewNodes")}
               </button>
+              <button
+                type="button"
+                onClick={() => setDashboardView("swarm")}
+                className={cn(
+                  "flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium transition-colors border-l border-border-default",
+                  dashboardView === "swarm"
+                    ? "bg-accent-primary text-white"
+                    : "bg-bg-secondary text-text-secondary hover:text-text-primary",
+                )}
+              >
+                <Users size={13} />
+                {t("viewSwarm")}
+              </button>
             </div>
           </div>
 
@@ -136,6 +150,13 @@ export default function DashboardPage() {
           {dashboardView === "overview" && <DashboardOverview />}
           {dashboardView === "nodes" && (
             <NodesView
+              fleetNodes={fleetNodes}
+              onOpenAgent={handleOpenAgent}
+              onOpenPairing={handleOpenPairing}
+            />
+          )}
+          {dashboardView === "swarm" && (
+            <SwarmView
               fleetNodes={fleetNodes}
               onOpenAgent={handleOpenAgent}
               onOpenPairing={handleOpenPairing}

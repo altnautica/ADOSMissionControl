@@ -104,30 +104,43 @@ describe("settings nav availability gates", () => {
     expect(gate("video")(ws)).toBe(false);
     expect(gate("world-model")(ws)).toBe(false);
     expect(gate("vision-perception")(ws)).toBe(true);
+    // A workstation carries no radio, so neither fleet-radio page appears.
+    expect(gate("radio")(ws)).toBe(false);
 
     const gs = ctxWith({ profile: "ground-station" });
-    expect(gate("video")(gs)).toBe(true);
+    // Video is the camera + encode page of a node that actually encodes. A
+    // ground station relays video it never encodes, and every `video.wfb.*`
+    // field it does own moved to the Radio page — so Video is drone-only and
+    // Radio is what a ground station is offered instead.
+    expect(gate("video")(gs)).toBe(false);
+    expect(gate("radio")(gs)).toBe(true);
     expect(gate("vision-perception")(gs)).toBe(false);
   });
 });
 
 describe("NodeSettingsTab grouped navigation", () => {
-  it("renders the five groups and switches pages without changing content", () => {
+  it("renders only the groups a profile actually fills, and switches pages without changing content", () => {
     renderWithIntl(
       <NodeSettingsTab droneId="dev-unpaired" profile="ground-station" />,
     );
 
-    // The five group headers.
+    // A ground station fills four of the five groups. Every page in
+    // "Video & vision" is drone-or-workstation gated (it encodes nothing and
+    // runs no perception), so the group header is not rendered at all rather
+    // than heading an empty list.
     expect(screen.getByText("Identity")).toBeTruthy();
     expect(screen.getByText("Link & network")).toBeTruthy();
-    expect(screen.getByText("Video & vision")).toBeTruthy();
     expect(screen.getByText("Cloud & remote")).toBeTruthy();
     expect(screen.getByText("System & safety")).toBeTruthy();
+    expect(screen.queryByText("Video & vision")).toBeNull();
 
     // Ungated pages are offered; the un-advertised feature pages are not.
     expect(screen.getByText("Wi-Fi")).toBeTruthy();
     expect(screen.queryByText("World model")).toBeNull();
     expect(screen.queryByText("Swarm")).toBeNull();
+    // The radio page is where a ground station's `video.wfb.*` fields live.
+    expect(screen.getByText("Radio")).toBeTruthy();
+    expect(screen.queryByText("Video")).toBeNull();
 
     // Default page: Profile (the same read-only section as before).
     expect(screen.getByText("Node profile")).toBeTruthy();

@@ -1,8 +1,11 @@
 /**
  * Tests for the node Settings "Video" page: the profile gates, the read-only
- * multi-stream camera list vs the single-camera fallback, the writable encode
- * and WFB link fields over the shared config writer, and the read-only rows
- * whose live writes are owned elsewhere (channel, TX power).
+ * multi-stream camera list vs the single-camera fallback, and the writable
+ * encode fields over the shared config writer.
+ *
+ * The radio half of `video.*` lives on the Radio page now, so this page must
+ * render NO `video.wfb.*` field — pinned below, because leaving one behind
+ * would give the two pages competing writers for the same key.
  *
  * @license GPL-3.0-only
  */
@@ -97,10 +100,24 @@ describe("VideoSection profile gates", () => {
     expect(utils.container.innerHTML).toBe("");
   });
 
-  it("renders only the radio link half on a ground station", () => {
-    renderSection("ground-station");
-    expect(screen.getByText("Video radio link (WFB)")).toBeTruthy();
-    expect(screen.queryByText("Camera streams")).toBeNull();
+  it("renders nothing on a ground station, which encodes no camera", () => {
+    const { utils } = renderSection("ground-station");
+    expect(utils.container.innerHTML).toBe("");
+  });
+
+  it("renders no radio field at all — that surface moved to the Radio page", () => {
+    renderSection("drone");
+    for (const label of [
+      "Video radio link (WFB)",
+      "Link preset",
+      "Frequency band",
+      "Automatic channel hopping",
+      "Adaptive bitrate",
+      "Channel",
+      "TX power (dBm)",
+    ]) {
+      expect(screen.queryByText(label)).toBeNull();
+    }
   });
 });
 
@@ -131,23 +148,16 @@ describe("VideoSection writable fields", () => {
     );
   });
 
-  it("writes the auto-hop switch through the shared config writer", async () => {
-    const { setValue } = renderSection("ground-station");
-    fireEvent.click(screen.getByText("Automatic channel hopping"));
+  it("writes the wire codec preference through the shared config writer", async () => {
+    const { setValue } = renderSection("drone");
+    // The Select is a button + portalled listbox, not a native <select>.
+    fireEvent.click(screen.getByLabelText("Wire codec preference"));
+    fireEvent.click(screen.getByText("H.265"));
     await waitFor(() =>
       expect(setValue).toHaveBeenCalledWith(
-        "video.wfb.auto_hop_enabled",
-        "false",
+        "video.camera.codec_preference",
+        "h265",
       ),
     );
-  });
-});
-
-describe("VideoSection read-only radio rows", () => {
-  it("shows channel and TX power without offering a second writer", () => {
-    renderSection("ground-station");
-    expect(screen.getByText("149")).toBeTruthy();
-    expect(screen.getByText("5")).toBeTruthy();
-    expect(screen.getByText(/Link tab's power slider/)).toBeTruthy();
   });
 });

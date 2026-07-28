@@ -4,6 +4,66 @@ All notable changes to ADOS Mission Control are recorded here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 the project follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- **Swarm tab** — a fourth fleet-overview surface beside Grid, Overview and
+  Nodes, for flying a multi-drone fleet from one screen. Five bands in
+  summary-then-exceptions-then-detail order, because 20+ healthy rows have to
+  visually disappear for the unhealthy one to be findable: a severity summary
+  strip whose chips filter the table, a fleet action bar (Hold, RTL, Land,
+  Set-Formation), a dense one-row-per-slot table sorted unhealthy-first, a
+  Leaflet fleet map with marquee select, and a video rail. Arm and Disarm are
+  deliberately absent from the bulk actions: arming is the one action whose blast
+  radius grows with the selection.
+- Each row renders **separate glyphs for armed, guided, emergency and GPS**
+  rather than blending them into one colour, since each is an independent
+  condition, and shows the **currently active** arbitration level rather than the
+  commanded mode — a drone whose separation layer has taken over reads
+  `hard-separation` even while a formation is commanded.
+- **Make Hero** is a new primitive, not a rename of Pin. Pin is multi-select,
+  personal and bandwidth-neutral; Hero is exclusive and changes the aircraft's
+  actual radio allocation by demoting the previous hero to a 1 fps thumbnail. It
+  has its own verb and icon, and the UI renders the beacon's own hero bit as
+  truth, so a failed demotion is visible rather than assumed.
+- Fleet-wide actions carry **two independent gates**: the existing typed-phrase
+  confirmation plus a broadcast toggle that must be armed first and self-reverts
+  to per-selection after five seconds.
+- Alerts aggregate rather than enumerate — "3 drones low battery" is one chip,
+  not three rows.
+- `swarm-beacon-store` holds live neighbour beacons keyed by fleet slot, fed by a
+  2 Hz bridge against the ground station's `/api/swarm/neighbors` with back-off
+  when a host does not answer. Deliberately not persisted: a beacon with a
+  three-second shelf life rehydrated from disk would render a dead aircraft's last
+  position as current. An unprovisioned node reads as unprovisioned rather than
+  defaulting to fleet 1.
+- **Radio settings page** under Link & network, carrying fleet addressing, the
+  link switches, and modulation. The fleet slot is read-only because the ground
+  station assigns it and hand-editing it degrades the shared channel for every
+  node on it. The modulation band shows the manual rung only while the adaptive
+  ladder is off and otherwise a read-only live readout of the applied rung and
+  measured SNR, so the operator always sees which rung is actually live. No
+  channel-width control, because the transmitter is pinned to 20 MHz.
+- The per-node **Swarm settings page** is expanded in place: formation is now a
+  closed set of five built-ins instead of free text (a typo previously produced no
+  formation at all, silently), flocking gains sit behind an Advanced disclosure
+  with their applied float stated, the two separation values are held behind a
+  confirmation because they are the safety envelope, task allocation shows the
+  assignment and not the algorithm, and the arbitration ladder is shown read-only.
+
+### Changed
+
+- The Video settings page is camera and encode only; every `video.wfb.*` field
+  moved to the new Radio page. Video is now offered on drone profiles alone — a
+  ground station encodes nothing, and its radio fields live on the page it does
+  get. A profile that fills none of a settings group no longer renders that
+  group's header.
+- Fleet formation and mode changes ride the config path, fanned across the
+  selection, rather than the command catalog: that catalog is a closed set the
+  agent enforces before any frame is sent, and the config path already has all
+  three transports.
+
 ## [0.57.3] - 2026-07-27
 
 A third follow-up patch to 0.57.0, shipping three hotfixes that landed the

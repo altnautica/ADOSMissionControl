@@ -189,6 +189,7 @@ export function normalizeRadio(raw: unknown): RadioState | null {
     noiseDbm: num(r.noiseDbm),
     lossPercent: num(r.lossPercent),
     mcsIndex: num(r.mcsIndex),
+    mcsLadderCap: num(r.mcsLadderCap),
     rxSilentSeconds: num(r.rxSilentSeconds),
     // Per-stream video-tx liveness. Optional on the wire; null when
     // absent so the UI can distinguish "no reading" from a real false.

@@ -48,6 +48,7 @@ import { LocalDroneBridge } from "@/components/dashboard/LocalDroneBridge";
 import { RelayedDroneBridge } from "@/components/dashboard/RelayedDroneBridge";
 import { RelayedMavlinkBridge } from "@/components/dashboard/RelayedMavlinkBridge";
 import { FleetProjectionBridge } from "@/components/dashboard/FleetProjectionBridge";
+import { SwarmBeaconBridge } from "@/components/command/SwarmBeaconBridge";
 // Cockpit skill platform — register the built-in skills once and keep the
 // selected drone's skill state fresh, shell-wide, so the Skill Bar + the
 // keyboard/gamepad dispatcher have a live registry wherever the operator flies.
@@ -411,6 +412,10 @@ function CommandShellInner({ children }: { children: React.ReactNode }) {
             render real UI instead of the offline placeholder. */}
         <RelayedMavlinkBridge />
         <FleetProjectionBridge />
+        {/* Feeds the fleet-slot beacon table the Swarm tab renders. Polls the
+            ground station's swarm-bus snapshot at the 2 Hz bus rate and evicts
+            a slot the moment its beacon ages out. */}
+        <SwarmBeaconBridge />
 
         {/* Skill confirm host — always mounted so any dispatch path (the
             cockpit's Skill Bar, keyboard, or gamepad) can open a confirm dialog

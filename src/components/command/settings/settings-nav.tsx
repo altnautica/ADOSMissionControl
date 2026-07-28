@@ -22,6 +22,7 @@ import {
   Layers,
   Network,
   Radar,
+  RadioTower,
   Route,
   ShieldCheck,
   Signal,
@@ -37,6 +38,7 @@ import { isDemoMode } from "@/lib/utils";
 import { configAdvertises } from "./use-node-config";
 import { ProfilePage, CloudPage, AdvancedPage } from "./CorePages";
 import { VideoSection } from "./VideoSection";
+import { RadioSection } from "./RadioSection";
 import { VisionPerceptionSection } from "./VisionPerceptionSection";
 import { AtlasSection } from "./AtlasSection";
 import { SwarmSection } from "./SwarmSection";
@@ -186,6 +188,24 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
     ),
   },
   {
+    id: "radio",
+    labelKey: "nodeSettings.radio.title",
+    group: "network",
+    icon: <RadioTower size={14} />,
+    // Fleet addressing, the link switches and the modulation rung — the WFB
+    // radio's own page. A workstation carries no radio, so it never appears
+    // there; it sits beside Swarm so the two fleet-radio pages are together.
+    when: isRadioProfile,
+    render: (ctx) => (
+      <RadioSection
+        profile={ctx.profile}
+        config={ctx.config}
+        readOnly={ctx.readOnly}
+        setValue={ctx.setValue}
+      />
+    ),
+  },
+  {
     id: "swarm",
     labelKey: "nodeSettings.swarm.title",
     group: "network",
@@ -210,7 +230,11 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
     labelKey: "nodeSettings.video.title",
     group: "videoVision",
     icon: <Video size={14} />,
-    when: isRadioProfile,
+    // The camera and encode config of a node that actually encodes. A ground
+    // station relays video it never encodes and a workstation runs no
+    // pipeline, so neither is offered the page; the radio half that used to
+    // live here moved to the Radio page above.
+    when: isDroneProfile,
     render: (ctx) => (
       <VideoSection
         profile={ctx.profile}

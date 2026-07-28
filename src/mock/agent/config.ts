@@ -53,8 +53,20 @@ function buildConfig(profile: MockConfigProfile): ConfigObject {
     swarm: {
       enabled: false,
       role: "member",
+      mode: "hold",
       default_formation: "column",
       default_spacing: 5,
+      flock: {
+        cohesion: 40,
+        alignment: 60,
+        separation_gain: 150,
+        radius_m: 30,
+        neighbors: 7,
+      },
+      separation: { radius_m: 8, hard_m: 4 },
+      // Assignment fields are agent-written in the field; the demo carries a
+      // plausible pair so the read-only readout is exercisable offline.
+      tasks: { enabled: true, assigned_task_id: "survey-cell-12", bundle_position: 2 },
     },
     video: {
       camera: {
@@ -68,12 +80,16 @@ function buildConfig(profile: MockConfigProfile): ConfigObject {
       },
       cameras: [{ id: "main", source: "/dev/video0", role: "eo" }],
       wfb: {
+        fleet_id: 1,
+        fleet_slot: profile === "ground-station" ? 0 : 3,
         channel: 149,
         band: "u-nii-3",
         tx_power_dbm: 20,
+        mcs_index: 1,
         wfb_link_preset: "balanced",
         auto_hop_enabled: true,
         adaptive_bitrate_enabled: true,
+        adaptive_mcs_max: 3,
       },
       usb_recovery: { enabled: true },
     },

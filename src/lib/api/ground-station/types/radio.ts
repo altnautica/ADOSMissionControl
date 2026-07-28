@@ -119,7 +119,15 @@ export interface RadioState {
   snrDb: number | null;
   noiseDbm: number | null;
   lossPercent: number | null;
+  // `mcsIndex` is MEASURED off-air on the ground side (the receiving
+  // driver's radiotap report), so it is the peer's real transmit rung, not
+  // a config echo. `mcsLadderCap` is the ceiling the adaptive ladder is
+  // allowed to climb to; without it a policy-limited rung is
+  // indistinguishable from a link that can only manage that rung. Both
+  // null before the radio writes its first snapshot — and 0 is a real
+  // (slowest) rung, never a stand-in for unknown.
   mcsIndex: number | null;
+  mcsLadderCap: number | null;
   rxSilentSeconds: number | null;
   // Per-stream video-tx liveness. `txVideoStalled` flips true when the
   // agent's watchdog sees the video radio transmitter's ingress backlog

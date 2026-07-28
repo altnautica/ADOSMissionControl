@@ -9,6 +9,7 @@ describe("normalizeRadio receive-side metrics", () => {
       noiseDbm: -90,
       lossPercent: 1.5,
       mcsIndex: 2,
+      mcsLadderCap: 3,
       rxSilentSeconds: 0.3,
     });
     expect(radio).not.toBeNull();
@@ -16,6 +17,7 @@ describe("normalizeRadio receive-side metrics", () => {
     expect(radio!.noiseDbm).toBe(-90);
     expect(radio!.lossPercent).toBe(1.5);
     expect(radio!.mcsIndex).toBe(2);
+    expect(radio!.mcsLadderCap).toBe(3);
     expect(radio!.rxSilentSeconds).toBe(0.3);
   });
 
@@ -26,6 +28,7 @@ describe("normalizeRadio receive-side metrics", () => {
     expect(radio!.noiseDbm).toBeNull();
     expect(radio!.lossPercent).toBeNull();
     expect(radio!.mcsIndex).toBeNull();
+    expect(radio!.mcsLadderCap).toBeNull();
     expect(radio!.rxSilentSeconds).toBeNull();
   });
 

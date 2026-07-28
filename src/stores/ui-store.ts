@@ -9,9 +9,11 @@ interface UiStoreState {
   immersiveMode: boolean;
   /** Dashboard no-selection body: "grid" = node tiles with live video +
    * telemetry, "overview" = fleet map + status cards, "nodes" = the
-   * fleet-operations board (one live row per node with inline controls).
+   * fleet-operations board (one live row per node with inline controls),
+   * "swarm" = the fleet-wide swarm board (one row per fleet slot, driven by
+   * the swarm-bus beacons rather than per-node polling).
    * Ephemeral; defaults to grid each load. */
-  dashboardView: "grid" | "overview" | "nodes";
+  dashboardView: "grid" | "overview" | "nodes" | "swarm";
   /** Pending param search from Cmd+K — consumed by ParametersPanel to set initial filter. */
   pendingParamSearch: string | null;
   /** Pending detail tab switch from Cmd+K — consumed by DroneDetailPanel. */
@@ -29,7 +31,7 @@ interface UiStoreState {
   rightRailPanel: "mcp" | "logs" | null;
 
   setActiveView: (view: ViewId) => void;
-  setDashboardView: (view: "grid" | "overview" | "nodes") => void;
+  setDashboardView: (view: "grid" | "overview" | "nodes" | "swarm") => void;
   togglePanel: (panel: keyof PanelState) => void;
   setPanel: (panel: keyof PanelState, open: boolean) => void;
   toggleSidebar: () => void;

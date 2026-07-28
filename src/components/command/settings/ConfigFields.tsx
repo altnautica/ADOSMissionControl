@@ -10,6 +10,9 @@
  * the surface never ships a partial, inconsistent write.
  * @license GPL-3.0-only
  */
+// Exempt from 300 LOC soft rule: one cohesive set of config-bound field
+// primitives. Splitting it would only add a re-export aggregator between
+// every settings page and the six fields they all import together.
 
 import { useId, useState } from "react";
 import { useTranslations } from "next-intl";
@@ -85,16 +88,21 @@ export function ConfigSelectField({
   );
 }
 
+/** The confirmation copy a gated config write shows. Any field that holds a
+ * write behind the danger `ConfirmDialog` renders exactly this. */
+export interface WriteConfirm {
+  title: string;
+  message: string;
+  confirmLabel: string;
+}
+
 /** An optional confirmation gate for a toggle write. When `when(next)` is true
  * for the attempted transition, the write is held behind a danger ConfirmDialog
  * — used to gate a security downgrade (e.g. turning an auth requirement OFF) or
  * a link-affecting change so a single stray click can't apply it. A safe
  * transition (`when` returns false) writes immediately. */
-export interface ToggleConfirm {
+export interface ToggleConfirm extends WriteConfirm {
   when: (next: boolean) => boolean;
-  title: string;
-  message: string;
-  confirmLabel: string;
 }
 
 /** A Toggle bound to a boolean config key; writes on change. When a `confirm`
@@ -330,7 +338,10 @@ export function parseBoundedInt(
 }
 
 /** An integer config field with range validation, writing on Apply through
- * the shared config writer and re-reading via the caller's config prop. */
+ * the shared config writer and re-reading via the caller's config prop. When
+ * a `confirm` gate is supplied, Apply opens the danger `ConfirmDialog` first
+ * and the write lands only on confirmation — for a value whose blast radius is
+ * a safety envelope rather than a preference. */
 export function ConfigIntField({
   configKey,
   label,
@@ -340,7 +351,8 @@ export function ConfigIntField({
   config,
   readOnly,
   setValue,
-}: BaseProps & { min: number; max: number }) {
+  confirm,
+}: BaseProps & { min: number; max: number; confirm?: WriteConfirm }) {
   const t = useTranslations("nodeSettings");
   const { toast } = useToast();
   const raw = readConfigPath(config, configKey);
@@ -348,13 +360,15 @@ export function ConfigIntField({
     typeof raw === "number" && Number.isFinite(raw) ? String(raw) : "";
   const [draft, setDraft] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // Open only while a gated Apply awaits confirmation. Cancelling leaves the
+  // draft intact and writes nothing, so a cancel is a true no-op.
+  const [confirming, setConfirming] = useState(false);
 
   const value = draft ?? current;
   const dirty = draft !== null && draft !== current;
   const invalid = dirty && parseBoundedInt(value, min, max) === null;
 
-  const onApply = async () => {
-    if (readOnly || saving || !dirty || invalid) return;
+  const applyChange = async () => {
     setSaving(true);
     try {
       await setValue(configKey, value.trim());
@@ -365,6 +379,15 @@ export function ConfigIntField({
     } finally {
       setSaving(false);
     }
+  };
+
+  const onApply = async () => {
+    if (readOnly || saving || !dirty || invalid) return;
+    if (confirm) {
+      setConfirming(true);
+      return;
+    }
+    await applyChange();
   };
 
   return (
@@ -396,6 +419,20 @@ export function ConfigIntField({
         </p>
       ) : null}
       {hint ? <p className="text-[11px] text-text-tertiary">{hint}</p> : null}
+      {confirm ? (
+        <ConfirmDialog
+          open={confirming}
+          title={confirm.title}
+          message={confirm.message}
+          confirmLabel={confirm.confirmLabel}
+          variant="danger"
+          onCancel={() => setConfirming(false)}
+          onConfirm={() => {
+            setConfirming(false);
+            void applyChange();
+          }}
+        />
+      ) : null}
     </div>
   );
 }
