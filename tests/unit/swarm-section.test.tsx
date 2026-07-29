@@ -6,8 +6,8 @@
  * closed set (a free-text name produced no formation at all, silently), the
  * flocking gains stay collapsed and carry their float meaning, the two
  * separation values are gated because they are the safety layer, and the
- * runtime-not-consumed banner is still telling the truth until the onboard
- * autonomy runtime consumes these keys.
+ * runtime notice stays honest about what the Enabled toggle and GUIDED mode
+ * actually gate, now that the onboard swarm runtime consumes these keys.
  *
  * @license GPL-3.0-only
  */
@@ -67,9 +67,11 @@ describe("SwarmSection gate and honesty", () => {
     expect(utils.container.innerHTML).toBe("");
   });
 
-  it("keeps the runtime-not-consumed notice while no agent runtime reads these keys", () => {
+  it("keeps the runtime notice honest about what Enabled + GUIDED gate", () => {
     renderSection();
-    expect(screen.getByText(/Configuration only/)).toBeTruthy();
+    expect(
+      screen.getByText(/commands the flight controller only while Enabled is on/),
+    ).toBeTruthy();
   });
 });
 
