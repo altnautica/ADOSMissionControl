@@ -4,27 +4,26 @@
  * @module command/PluginsTab
  * @description Per-drone plugin management surface on the Command page.
  *
- * The Command page's Plugins sub-tab. Renders the install affordance
- * and the list of installed plugins for the currently-connected drone.
+ * The Agent tab's Extensions page, rendered from `AGENT_NAV_ITEMS`
+ * (`agent-nav-items.tsx`). Renders the install affordance and the list of
+ * installed plugins for the node the panel already resolved.
  *
  * Why this is its own component rather than a thin re-export of the
  * dashboard's DronePluginsTab: the dashboard version looks up the
  * target drone in `useFleetStore`, which is only populated by demo
- * mode. The Command page connects via cloud relay or LAN-direct and
- * keeps the active drone in `agent-connection-store` +
- * `pairing-store`. This adapter resolves the active drone from those
- * stores and renders the same list + install affordance the dashboard
- * version uses.
+ * mode. This adapter instead resolves its target drone from the
+ * already-computed `SurfaceContext` that `NodeDetailPanel` derives once
+ * per render — the same contract every other Agent sub-page reads —
+ * rather than re-deriving from `agent-connection-store` / `pairing-store`
+ * / `local-nodes-store`, which never resolve a ground-relayed drone.
  *
  * @license GPL-3.0-only
  */
 
+import type { SurfaceContext } from "@/components/dashboard/node-detail/surface-types";
 import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 
-import { useAgentConnectionStore } from "@/stores/agent-connection-store";
-import { useLocalNodesStore } from "@/stores/local-nodes-store";
-import { usePairingStore } from "@/stores/pairing-store";
 import { useSurfaceGate } from "@/hooks/use-surface-gate";
 import { deviceIdFromNodeId } from "@/lib/agent/node-id";
 import { agentGateFallback } from "./shared/agent-gate-fallback";
@@ -33,55 +32,28 @@ import { InstallPluginButton } from "@/components/dashboard/drone-plugins/Instal
 import { RegistryPluginGrid } from "@/components/dashboard/drone-plugins/RegistryPluginGrid";
 import type { FleetDrone } from "@/lib/types";
 
-export function PluginsTab() {
+export function PluginsTab({ ctx }: { ctx: SurfaceContext }) {
   const t = useTranslations("dronePlugins");
-  const cloudMode = useAgentConnectionStore((s) => s.cloudMode);
   const agentGate = useSurfaceGate("agent-online");
-  const selectedPairedId = usePairingStore((s) => s.selectedPairedId);
-  const pairedDrones = usePairingStore((s) => s.pairedDrones);
-  const localNodes = useLocalNodesStore((s) => s.nodes);
 
-  // Resolve the active drone from the canonical `node:<deviceId>` selection id.
-  // A LAN-paired node resolves to its local credentials; otherwise a
-  // cloud-paired drone (matched by device id). Build a FleetDrone-shaped object
-  // large enough for InstallPluginButton (reads id / name / cloudDeviceId) and
-  // DronePluginsList (reads agentId, passed in via id).
-  const activeDrone = useMemo<FleetDrone | null>(() => {
-    const deviceId = deviceIdFromNodeId(selectedPairedId);
-    if (!deviceId) return null;
-    const node = localNodes.find((n) => n.deviceId === deviceId);
-    if (node) {
-      return {
-        id: node.deviceId,
-        name: node.name ?? node.deviceId,
-        // LocalNode has no cloudDeviceId; the install dialog falls
-        // back to targetDevice.id when cloudDeviceId is absent.
-      } as FleetDrone;
-    }
-    const paired = pairedDrones.find((d) => d.deviceId === deviceId);
-    if (!paired) return null;
-    return {
-      id: paired.deviceId,
-      name: paired.name ?? paired.deviceId,
-      cloudDeviceId: paired.deviceId,
-    } as FleetDrone;
-  }, [selectedPairedId, pairedDrones, localNodes]);
+  // ctx.drone.id is the canonical `node:<deviceId>` selection id (the same
+  // id NodeDetailPanel keys `drones.find` on); every downstream consumer
+  // here — the Convex `deviceId` key, the plugin inventory store — is
+  // keyed by the bare device id instead, the same distinction
+  // NodeDetailPanel itself draws for `atlasDeviceId`. ctx.drone is
+  // guaranteed non-null: NodeDetailPanel renders no surface until it
+  // resolves one, and this tab's nav entry only shows when the agent is
+  // reachable (`ctx.agentDeviceId !== null || ctx.relayReach !== null`),
+  // so there is no "not connected" state left to handle here — a drone
+  // reached directly (LAN or cloud) and one reached only through its
+  // ground station's relay resolve identically.
+  const activeDrone = useMemo<FleetDrone>(() => {
+    const bareDeviceId = deviceIdFromNodeId(ctx.droneId) ?? ctx.droneId;
+    return { ...ctx.drone, id: bareDeviceId };
+  }, [ctx.drone, ctx.droneId]);
 
   const blocked = agentGateFallback(agentGate);
   if (blocked) return blocked;
-
-  if (activeDrone === null) {
-    return (
-      <div className="flex flex-1 flex-col items-center justify-center p-8 text-center">
-        <p className="text-sm text-text-secondary">
-          {t("notConnectedTitle")}
-        </p>
-        <p className="mt-1 text-xs text-text-tertiary">
-          {cloudMode ? t("notConnectedCloud") : t("notConnectedLocal")}
-        </p>
-      </div>
-    );
-  }
 
   const droneName = activeDrone.name ?? activeDrone.id;
 

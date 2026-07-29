@@ -114,7 +114,7 @@ export const AGENT_NAV_ITEMS: AgentNavItem[] = [
     labelKey: "dronePanel.extensions",
     icon: <Puzzle size={14} />,
     when: companionPresent,
-    render: () => <PluginsTab />,
+    render: (ctx) => <PluginsTab ctx={ctx} />,
   },
   {
     // Always present: the Flights view reads the GCS history store and stays
