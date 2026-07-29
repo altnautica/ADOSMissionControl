@@ -740,7 +740,7 @@
       "noRssi": "The capture reported no signal strength",
       "noBeacon": "No beacon from this slot",
       "beaconAgeSeconds": "{seconds}s",
-      "pendingSwarmRuntime": "Reported once the onboard swarm control layer ships",
+      "pendingSwarmRuntime": "Not carried on the swarm beacon. This node's role and task are on its Swarm settings page.",
       "notRegistered": "This slot is not a paired node",
       "severityLabel": {
         "noBeacon": "No beacon",
@@ -1412,7 +1412,7 @@
     "swarm": {
       "title": "Swarm",
       "blurb": "This drone's place in the fleet, the formation it defaults to, and the flocking and separation envelopes it flies inside.",
-      "runtimeNotice": "Configuration only — these values are stored on the node and take effect when the swarm runtime is installed. Saving here does not by itself make the node participate in a swarm.",
+      "runtimeNotice": "These values drive the node's onboard swarm runtime. It commands the flight controller only while Enabled is on and the aircraft reports GUIDED, so saving here applies the setting without by itself putting the node under swarm control.",
       "identityTitle": "Identity",
       "slotLabel": "Fleet slot",
       "slotHint": "Issued by the ground station at pair time. Formation offsets are indexed by it, so it is reported here and edited nowhere.",

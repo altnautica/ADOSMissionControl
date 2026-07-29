@@ -28,6 +28,7 @@ import type { ReadingFreshness } from "@/components/command/nodes-view/cell-prim
 import {
   SWARM_BEACON_STALE_MS,
   type SwarmBeaconRow,
+  type SwarmFleetSlot,
 } from "@/stores/swarm-beacon-store";
 
 /**
@@ -177,21 +178,36 @@ function normalizeDeg(deg: number): number {
  * a registered slot with no beacon is an exception the operator must see, and a
  * beacon from an unregistered slot is a drone nobody provisioned — hiding
  * either would make the board lie by omission.
+ *
+ * `registeredSlots` is the ground station's fleet registry (`GET
+ * /api/swarm/neighbors`'s `slots` key): who has been ISSUED a slot, whether or
+ * not it is currently beaconing. `nodesBySlot` is a narrower, GCS-local join —
+ * which of those slots resolve to a paired `FleetNodeEntry` — so it is now a
+ * SUBSET of the registry union rather than the union's source: reading
+ * `nodesBySlot.keys()` for the slot set would lose a registered-but-silent
+ * slot the GCS has never paired with, which must still render with
+ * `node: null` and `beacon: null`.
  */
 export function buildSwarmSlotRows(
   beacons: readonly SwarmBeaconRow[],
+  registeredSlots: readonly SwarmFleetSlot[],
   nodesBySlot: ReadonlyMap<number, FleetNodeEntry>,
   summariesByDeviceId: ReadonlyMap<string, CommandAgentSummary>,
 ): SwarmSlotRow[] {
   const beaconBySlot = new Map(beacons.map((beacon) => [beacon.slot, beacon]));
-  const slots = new Set<number>(nodesBySlot.keys());
+  const registeredBySlot = new Map(
+    registeredSlots.map((entry) => [entry.slot, entry]),
+  );
+  const slots = new Set<number>(registeredBySlot.keys());
   for (const beacon of beacons) slots.add(beacon.slot);
 
   const rows: SwarmSlotRow[] = [];
   for (const slot of slots) {
     const beacon = beaconBySlot.get(slot) ?? null;
     const node = nodesBySlot.get(slot) ?? null;
-    const deviceId = node?.deviceId ?? beacon?.deviceId ?? null;
+    const registered = registeredBySlot.get(slot) ?? null;
+    const deviceId =
+      node?.deviceId ?? beacon?.deviceId ?? registered?.deviceId ?? null;
     rows.push({
       slot,
       beacon,

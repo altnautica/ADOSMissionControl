@@ -740,7 +740,7 @@
       "noRssi": "कैप्चर ने कोई सिग्नल शक्ति नहीं बताई",
       "noBeacon": "इस स्लॉट से कोई बीकन नहीं",
       "beaconAgeSeconds": "{seconds}से",
-      "pendingSwarmRuntime": "ऑनबोर्ड स्वार्म नियंत्रण परत आने पर रिपोर्ट होगा",
+      "pendingSwarmRuntime": "स्वार्म बीकन में यह जानकारी शामिल नहीं होती। इस नोड की भूमिका और कार्य इसके स्वार्म सेटिंग्स पेज पर उपलब्ध हैं।",
       "notRegistered": "यह स्लॉट युग्मित नोड नहीं है",
       "severityLabel": {
         "noBeacon": "बीकन नहीं",
@@ -1412,7 +1412,7 @@
     "swarm": {
       "title": "Swarm",
       "blurb": "Multi-drone coordination configuration stored on this node's agent.",
-      "runtimeNotice": "Configuration only — these values are stored on the node and take effect when the swarm runtime is installed. Saving here does not by itself make the node participate in a swarm.",
+      "runtimeNotice": "ये मान नोड के ऑनबोर्ड स्वार्म रनटाइम को नियंत्रित करते हैं। यह फ्लाइट कंट्रोलर को तभी कमांड देता है जब Enabled टॉगल चालू हो और एयरक्राफ्ट GUIDED मोड रिपोर्ट कर रहा हो। इसलिए यहाँ सेव करने से सेटिंग लागू हो जाती है, लेकिन इससे अपने आप नोड स्वार्म नियंत्रण में नहीं आता।",
       "identityTitle": "Identity",
       "slotLabel": "Fleet slot",
       "slotHint": "Issued by the ground station at pair time. Formation offsets are indexed by it, so it is reported here and edited nowhere.",

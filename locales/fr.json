@@ -740,7 +740,7 @@
       "noRssi": "La capture n'a signalé aucune puissance de signal",
       "noBeacon": "Aucune balise de cet emplacement",
       "beaconAgeSeconds": "{seconds} s",
-      "pendingSwarmRuntime": "Signalé dès la livraison de la couche de contrôle d'essaim embarquée",
+      "pendingSwarmRuntime": "Non transmis sur la balise d'essaim. Le rôle et la tâche de ce nœud figurent sur sa page de paramètres Essaim.",
       "notRegistered": "Cet emplacement n'est pas un nœud appairé",
       "severityLabel": {
         "noBeacon": "Aucune balise",
@@ -1412,7 +1412,7 @@
     "swarm": {
       "title": "Swarm",
       "blurb": "Multi-drone coordination configuration stored on this node's agent.",
-      "runtimeNotice": "Configuration only — these values are stored on the node and take effect when the swarm runtime is installed. Saving here does not by itself make the node participate in a swarm.",
+      "runtimeNotice": "Ces valeurs pilotent le moteur d'exécution d'essaim embarqué du nœud. Il ne commande le contrôleur de vol que lorsque le bascule Activé est actif et que l'aéronef signale GUIDED. Ainsi, l'enregistrement applique le paramètre sans, à lui seul, placer le nœud sous contrôle d'essaim.",
       "identityTitle": "Identity",
       "slotLabel": "Fleet slot",
       "slotHint": "Issued by the ground station at pair time. Formation offsets are indexed by it, so it is reported here and edited nowhere.",

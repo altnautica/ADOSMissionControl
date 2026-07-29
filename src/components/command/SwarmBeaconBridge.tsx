@@ -2,9 +2,11 @@
 
 /**
  * @module SwarmBeaconBridge
- * @description The single feed into `swarm-beacon-store`. Polls every
- * LAN-paired ground station's `GET /api/swarm/neighbors` at the bus rate
- * (2 Hz) and upserts the decoded beacon rows keyed by fleet slot.
+ * @description The single feed into `swarm-beacon-store`, from two sources:
+ * the LAN poll below and, in demo mode, the synthetic swarm bus in
+ * `@/mock/swarm-beacons`. Either way this is the store's ONLY writer — polls
+ * every LAN-paired ground station's `GET /api/swarm/neighbors` at the bus
+ * rate (2 Hz) and upserts the decoded beacon rows keyed by fleet slot.
  *
  * Ground stations are read from the LAN-paired store, matching
  * `RelayedDroneBridge`: this is the local-first direct path (Rule 39), and a
@@ -31,6 +33,7 @@
 import { useEffect } from "react";
 
 import { useLocalNodesStore } from "@/stores/local-nodes-store";
+import { isDemoMode } from "@/lib/utils";
 import {
   useSwarmBeaconStore,
   SWARM_BEACON_STALE_MS,
@@ -38,6 +41,7 @@ import {
 } from "@/stores/swarm-beacon-store";
 import {
   fetchSwarmNeighbors,
+  parseSwarmNeighbors,
   type SwarmNeighborsSnapshot,
 } from "@/lib/agent/swarm-neighbors-client";
 
@@ -54,7 +58,9 @@ export interface MergedSwarmPoll {
    * With several ground stations these are fleet-wide facts, so any provisioned
    * answer will do — but a snapshot whose bus is not running (`fleetId: null`)
    * is never chosen over one that is, or a healthy receiver's identity would be
-   * discarded in favour of a booting node's absence of one. */
+   * discarded in favour of a booting node's absence of one. `slots` (the fleet
+   * registry) rides the same choice, for the same reason: two ground stations
+   * cannot disagree about which slots the fleet has issued. */
   snapshot: SwarmNeighborsSnapshot;
 }
 
@@ -90,6 +96,39 @@ export function SwarmBeaconBridge() {
     let intervalMs = POLL_MS;
 
     async function pollOnce() {
+      // DEMO-MODE BRANCH (gated on isDemoMode, real fleets unaffected): the
+      // fake is injected as a WIRE payload rather than as store rows, so the
+      // demo exercises the real parser too — a contract drift then breaks
+      // the demo, instead of the demo silently drifting from what a real
+      // agent sends. Loaded on demand so the mock never reaches a production
+      // bundle.
+      if (isDemoMode()) {
+        const { demoSwarmNeighborsPayload } = await import(
+          "@/mock/swarm-beacons"
+        );
+        const now = Date.now();
+        const snapshot = parseSwarmNeighbors(
+          demoSwarmNeighborsPayload(now),
+          now,
+        );
+        if (snapshot !== null && snapshot.fleetId !== null) {
+          useSwarmBeaconStore
+            .getState()
+            .upsertBeacons(
+              snapshot.rows,
+              snapshot.fleetId,
+              snapshot.counters,
+              snapshot.slots,
+            );
+        }
+        // Keep the real 2 Hz bus rate so the board animates at the rate an
+        // operator would actually see, and leave the dropStale sweep in
+        // tick() untouched — demo rows carry a fresh receivedAtMs, so only a
+        // genuinely abandoned row would age out.
+        intervalMs = POLL_MS;
+        return;
+      }
+
       const groundStations = useLocalNodesStore
         .getState()
         .nodes.filter((n) => n.profile === "ground-station");
@@ -123,7 +162,7 @@ export function SwarmBeaconBridge() {
         return;
       }
 
-      const { fleetId, counters } = merged.snapshot;
+      const { fleetId, counters, slots } = merged.snapshot;
       if (fleetId === null) {
         // Answered, but no ground station in reach is running a swarm bus, so
         // there is no fleet identity to record. Writing the config default 1
@@ -139,7 +178,9 @@ export function SwarmBeaconBridge() {
       }
 
       intervalMs = POLL_MS;
-      useSwarmBeaconStore.getState().upsertBeacons(merged.rows, fleetId, counters);
+      useSwarmBeaconStore
+        .getState()
+        .upsertBeacons(merged.rows, fleetId, counters, slots);
     }
 
     async function tick() {

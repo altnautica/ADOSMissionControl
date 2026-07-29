@@ -740,7 +740,7 @@
       "noRssi": "La captura no informó intensidad de señal",
       "noBeacon": "Sin baliza de esta ranura",
       "beaconAgeSeconds": "{seconds}s",
-      "pendingSwarmRuntime": "Se informará cuando exista la capa de control de enjambre a bordo",
+      "pendingSwarmRuntime": "No se transmite en la baliza del enjambre. El rol y la tarea de este nodo se encuentran en su página de ajustes de enjambre.",
       "notRegistered": "Esta ranura no es un nodo emparejado",
       "severityLabel": {
         "noBeacon": "Sin baliza",
@@ -1412,7 +1412,7 @@
     "swarm": {
       "title": "Swarm",
       "blurb": "Multi-drone coordination configuration stored on this node's agent.",
-      "runtimeNotice": "Configuration only — these values are stored on the node and take effect when the swarm runtime is installed. Saving here does not by itself make the node participate in a swarm.",
+      "runtimeNotice": "Estos valores controlan el runtime de enjambre a bordo del nodo. Este comanda el controlador de vuelo solo cuando el activador está encendido y la aeronave reporta GUIDED, por lo que guardar aquí aplica el ajuste sin poner por sí solo al nodo bajo control de enjambre.",
       "identityTitle": "Identity",
       "slotLabel": "Fleet slot",
       "slotHint": "Issued by the ground station at pair time. Formation offsets are indexed by it, so it is reported here and edited nowhere.",

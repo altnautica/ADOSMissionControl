@@ -20,7 +20,11 @@ import { useMemo } from "react";
 
 import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
 import { useCommandAgentFleet } from "@/hooks/use-command-agent-fleet";
-import type { SwarmBeaconRow } from "@/stores/swarm-beacon-store";
+import {
+  useSwarmBeaconStore,
+  selectSwarmFleetSlots,
+  type SwarmBeaconRow,
+} from "@/stores/swarm-beacon-store";
 import {
   buildSwarmSlotRows,
   sortSwarmRowsUnhealthyFirst,
@@ -34,6 +38,12 @@ export function useSwarmSlotRows(
   beacons: readonly SwarmBeaconRow[],
   nodesBySlot: ReadonlyMap<number, FleetNodeEntry>,
 ): SwarmSlotRow[] {
+  // Read directly from the store rather than threading a third prop through
+  // all five bands — the hook's stated design is that each band works from
+  // the two inputs it already has. `nodesBySlot` (built in `SwarmView`) is
+  // already the registry's resolvable nodes joined by device id, so no
+  // second node source is needed here.
+  const registeredSlots = useSwarmBeaconStore(selectSwarmFleetSlots);
   const nodes = useMemo(() => [...nodesBySlot.values()], [nodesBySlot]);
 
   // Carries its own 1 Hz tick, so liveness and every age label below re-derive
@@ -50,8 +60,13 @@ export function useSwarmSlotRows(
   return useMemo(
     () =>
       sortSwarmRowsUnhealthyFirst(
-        buildSwarmSlotRows(beacons, nodesBySlot, summariesByDeviceId),
+        buildSwarmSlotRows(
+          beacons,
+          registeredSlots,
+          nodesBySlot,
+          summariesByDeviceId,
+        ),
       ),
-    [beacons, nodesBySlot, summariesByDeviceId],
+    [beacons, registeredSlots, nodesBySlot, summariesByDeviceId],
   );
 }

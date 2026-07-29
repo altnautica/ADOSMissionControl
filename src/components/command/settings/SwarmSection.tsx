@@ -82,9 +82,10 @@ export function SwarmSection({ config, readOnly, setValue }: SectionProps) {
 
   return (
     <Section title={t("title")} icon={Waypoints} blurb={t("blurb")}>
-      {/* Honesty: these keys are stored on the node but no agent runtime
-          consumes them yet (the swarm service has not shipped). Say so, so a
-          successful write is not read as active swarm participation. */}
+      {/* Honesty: the onboard swarm runtime does consume these keys, but it
+          only commands the flight controller while Enabled is on and the
+          aircraft reports GUIDED. Say so, so a successful write is not read
+          as active swarm participation. */}
       <div className="rounded border border-border-default/60 bg-bg-tertiary/40 px-3 py-2 text-[11px] text-text-tertiary">
         {t("runtimeNotice")}
       </div>

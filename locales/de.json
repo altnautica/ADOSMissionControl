@@ -740,7 +740,7 @@
       "noRssi": "Die Erfassung meldete keine Signalstärke",
       "noBeacon": "Kein Beacon von diesem Slot",
       "beaconAgeSeconds": "{seconds}s",
-      "pendingSwarmRuntime": "Wird gemeldet, sobald die Onboard-Schwarmsteuerung ausgeliefert ist",
+      "pendingSwarmRuntime": "Wird nicht über den Schwarm-Beacon übertragen. Rolle und Aufgabe dieses Knotens befinden sich auf dessen Schwarm-Einstellungsseite.",
       "notRegistered": "Dieser Slot ist kein gekoppelter Knoten",
       "severityLabel": {
         "noBeacon": "Kein Beacon",
@@ -1412,7 +1412,7 @@
     "swarm": {
       "title": "Swarm",
       "blurb": "Multi-drone coordination configuration stored on this node's agent.",
-      "runtimeNotice": "Configuration only — these values are stored on the node and take effect when the swarm runtime is installed. Saving here does not by itself make the node participate in a swarm.",
+      "runtimeNotice": "Diese Werte steuern die Onboard-Schwarm-Laufzeit des Knotens. Sie steuert den Flugregler nur, solange Aktiviert eingeschaltet ist und das Fluggerät GUIDED meldet. Das Speichern hier übernimmt die Einstellung, versetzt den Knoten dadurch aber nicht automatisch unter Schwarmkontrolle.",
       "identityTitle": "Identity",
       "slotLabel": "Fleet slot",
       "slotHint": "Issued by the ground station at pair time. Formation offsets are indexed by it, so it is reported here and edited nowhere.",

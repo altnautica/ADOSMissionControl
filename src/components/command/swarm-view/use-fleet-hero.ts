@@ -22,6 +22,7 @@ import { useTranslations } from "next-intl";
 
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { groundStationApiFromAgent } from "@/lib/api/ground-station-api";
+import { isDemoMode } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
 
 export interface FleetHero {
@@ -38,11 +39,24 @@ export function useFleetHero(): FleetHero {
   const agentUrl = useAgentConnectionStore((s) => s.agentUrl);
   const apiKey = useAgentConnectionStore((s) => s.apiKey);
   const [pendingDeviceId, setPendingDeviceId] = useState<string | null>(null);
+  const demo = isDemoMode();
 
   const api = groundStationApiFromAgent(agentUrl, apiKey);
 
   const makeHero = useCallback(
     (deviceId: string) => {
+      if (demo) {
+        // DEMO-MODE BRANCH (gated on isDemoMode, real fleets unaffected):
+        // loaded on demand so the mock never reaches a production bundle. No
+        // toast on success — what the board renders as hero is the beacon's
+        // own bit, so the demo bus's own payload moving it on the next tick
+        // IS the confirmation, same contract the real path has.
+        setPendingDeviceId(deviceId);
+        void import("@/mock/swarm-beacons")
+          .then(({ setDemoSwarmHero }) => setDemoSwarmHero(deviceId))
+          .finally(() => setPendingDeviceId(null));
+        return;
+      }
       const client = groundStationApiFromAgent(agentUrl, apiKey);
       if (!client) return;
       setPendingDeviceId(deviceId);
@@ -58,8 +72,12 @@ export function useFleetHero(): FleetHero {
         })
         .finally(() => setPendingDeviceId(null));
     },
-    [agentUrl, apiKey, toast, t],
+    [agentUrl, apiKey, toast, t, demo],
   );
 
-  return { pendingDeviceId, unavailable: api === null, makeHero };
+  return {
+    pendingDeviceId,
+    unavailable: demo ? false : api === null,
+    makeHero,
+  };
 }

@@ -740,7 +740,7 @@
       "noRssi": "ಕ್ಯಾಪ್ಚರ್ ಯಾವುದೇ ಸಿಗ್ನಲ್ ಬಲ ವರದಿ ಮಾಡಲಿಲ್ಲ",
       "noBeacon": "ಈ ಸ್ಲಾಟ್‌ನಿಂದ ಬೀಕನ್ ಇಲ್ಲ",
       "beaconAgeSeconds": "{seconds}ಸೆ",
-      "pendingSwarmRuntime": "ಆನ್‌ಬೋರ್ಡ್ ಸ್ವಾರ್ಮ್ ನಿಯಂತ್ರಣ ಪದರ ಬಂದ ನಂತರ ವರದಿಯಾಗುತ್ತದೆ",
+      "pendingSwarmRuntime": "ಸ್ವಾರ್ಮ್ ಬೀಕನ್‌ನಲ್ಲಿ ಇದನ್ನು ಸಾಗಿಸಲಾಗುವುದಿಲ್ಲ. ಈ ನೋಡ್‌ನ ಪಾತ್ರ ಮತ್ತು ಕಾರ್ಯ ಅದರ ಸ್ವಾರ್ಮ್ ಸೆಟ್ಟಿಂಗ್ಸ್ ಪುಟದಲ್ಲಿ ಇವೆ.",
       "notRegistered": "ಈ ಸ್ಲಾಟ್ ಜೋಡಿಸಿದ ನೋಡ್ ಅಲ್ಲ",
       "severityLabel": {
         "noBeacon": "ಬೀಕನ್ ಇಲ್ಲ",
@@ -1412,7 +1412,7 @@
     "swarm": {
       "title": "Swarm",
       "blurb": "Multi-drone coordination configuration stored on this node's agent.",
-      "runtimeNotice": "Configuration only — these values are stored on the node and take effect when the swarm runtime is installed. Saving here does not by itself make the node participate in a swarm.",
+      "runtimeNotice": "ಈ ಮೌಲ್ಯಗಳು ನೋಡ್‌ನ ಆನ್‌ಬೋರ್ಡ್ ಸ್ವಾರ್ಮ್ ರನ್‌ಟೈಮ್ ಅನ್ನು ನಿಯಂತ್ರಿಸುತ್ತವೆ. ಎನೇಬಲ್ಡ್ ಆನ್ ಆಗಿದ್ದು ಮತ್ತು ವಿಮಾನವು GUIDED ಎಂದು ವರದಿ ಮಾಡುತ್ತಿರುವಾಗ ಮಾತ್ರ ಇದು ಫ್ಲೈಟ್ ಕಂಟ್ರೋಲರ್‌ಗೆ ಆದೇಶ ನೀಡುತ್ತದೆ. ಆದ್ದರಿಂದ ಇಲ್ಲಿ ಉಳಿಸುವುದರಿಂದ ಸೆಟ್ಟಿಂಗ್ ಅನ್ವಯವಾಗುತ್ತದೆ, ಆದರೆ ಅದೊಂದೇ ನೋಡ್ ಅನ್ನು ಸ್ವಾರ್ಮ್ ನಿಯಂತ್ರಣಕ್ಕೆ ಒಳಪಡಿಸುವುದಿಲ್ಲ.",
       "identityTitle": "Identity",
       "slotLabel": "Fleet slot",
       "slotHint": "Issued by the ground station at pair time. Formation offsets are indexed by it, so it is reported here and edited nowhere.",

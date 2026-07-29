@@ -740,7 +740,7 @@
       "noRssi": "பிடிப்பு எந்த சமிக்ஞை வலிமையையும் தெரிவிக்கவில்லை",
       "noBeacon": "இந்த இடத்திலிருந்து beacon இல்லை",
       "beaconAgeSeconds": "{seconds}வி",
-      "pendingSwarmRuntime": "உள்ளிணைந்த கூட்டக் கட்டுப்பாட்டு அடுக்கு வெளியானதும் தெரிவிக்கப்படும்",
+      "pendingSwarmRuntime": "கூட்டம் beacon-இல் இது கொண்டு செல்லப்படவில்லை. இந்த கணுவின் பங்கு மற்றும் பணி அதன் Swarm settings பக்கத்தில் உள்ளன.",
       "notRegistered": "இந்த இடம் இணைக்கப்பட்ட கணு அல்ல",
       "severityLabel": {
         "noBeacon": "Beacon இல்லை",
@@ -1412,7 +1412,7 @@
     "swarm": {
       "title": "Swarm",
       "blurb": "Multi-drone coordination configuration stored on this node's agent.",
-      "runtimeNotice": "Configuration only — these values are stored on the node and take effect when the swarm runtime is installed. Saving here does not by itself make the node participate in a swarm.",
+      "runtimeNotice": "இந்த மதிப்புகள் கணுவின் உள்ளமைக்கப்பட்ட swarm runtime-ஐ இயக்குகின்றன. Enabled ஆன் நிலையில் இருந்து, விமானம் GUIDED எனத் தெரிவிக்கும்போது மட்டுமே இது flight controller-ஐ கட்டுப்படுத்தும்; எனவே இங்கு சேமிப்பது அமைப்பைப் பொருத்துகிறதே தவிர, அதுவே கணுவை கூட்டக் கட்டுப்பாட்டின் கீழ் வைக்காது.",
       "identityTitle": "Identity",
       "slotLabel": "Fleet slot",
       "slotHint": "Issued by the ground station at pair time. Formation offsets are indexed by it, so it is reported here and edited nowhere.",

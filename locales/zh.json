@@ -740,7 +740,7 @@
       "noRssi": "采集未上报信号强度",
       "noBeacon": "该机位无信标",
       "beaconAgeSeconds": "{seconds} 秒",
-      "pendingSwarmRuntime": "机载集群控制层上线后上报",
+      "pendingSwarmRuntime": "未通过集群信标传输。该节点的角色和任务信息位于其集群设置页面。",
       "notRegistered": "该机位不是已配对节点",
       "severityLabel": {
         "noBeacon": "无信标",
@@ -1412,7 +1412,7 @@
     "swarm": {
       "title": "Swarm",
       "blurb": "Multi-drone coordination configuration stored on this node's agent.",
-      "runtimeNotice": "Configuration only — these values are stored on the node and take effect when the swarm runtime is installed. Saving here does not by itself make the node participate in a swarm.",
+      "runtimeNotice": "这些值驱动该节点的机载集群运行时。仅当\"启用\"开关打开且飞行器报告为GUIDED模式时,它才会向飞控发送指令。因此,在此处保存设置只会应用该配置,并不会使节点自动进入集群控制状态。",
       "identityTitle": "Identity",
       "slotLabel": "Fleet slot",
       "slotHint": "Issued by the ground station at pair time. Formation offsets are indexed by it, so it is reported here and edited nowhere.",

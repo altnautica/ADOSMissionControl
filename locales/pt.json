@@ -740,7 +740,7 @@
       "noRssi": "A captura não reportou intensidade de sinal",
       "noBeacon": "Sem beacon deste slot",
       "beaconAgeSeconds": "{seconds}s",
-      "pendingSwarmRuntime": "Reportado quando a camada de controle de enxame embarcada for liberada",
+      "pendingSwarmRuntime": "Não é transmitido no beacon do enxame. A função e a tarefa deste nó estão na sua página de configurações de enxame.",
       "notRegistered": "Este slot não é um nó pareado",
       "severityLabel": {
         "noBeacon": "Sem beacon",
@@ -1412,7 +1412,7 @@
     "swarm": {
       "title": "Swarm",
       "blurb": "Multi-drone coordination configuration stored on this node's agent.",
-      "runtimeNotice": "Configuration only — these values are stored on the node and take effect when the swarm runtime is installed. Saving here does not by itself make the node participate in a swarm.",
+      "runtimeNotice": "Estes valores controlam o runtime de enxame embarcado no nó. Ele comanda o controlador de voo apenas quando Ativado está ligado e a aeronave reporta GUIDED, portanto salvar aqui aplica a configuração sem, por si só, colocar o nó sob controle do enxame.",
       "identityTitle": "Identity",
       "slotLabel": "Fleet slot",
       "slotHint": "Issued by the ground station at pair time. Formation offsets are indexed by it, so it is reported here and edited nowhere.",

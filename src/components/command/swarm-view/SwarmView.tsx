@@ -34,6 +34,7 @@ import { useNodeCommandLane } from "@/components/command/nodes-view/use-node-com
 import {
   useSwarmBeaconStore,
   selectSwarmRows,
+  selectSwarmFleetSlots,
 } from "@/stores/swarm-beacon-store";
 import {
   SwarmSeverityStrip,
@@ -64,33 +65,32 @@ export function SwarmView({
   useSkillToastBridge();
 
   const rows = useSwarmBeaconStore(selectSwarmRows);
+  const fleetSlots = useSwarmBeaconStore(selectSwarmFleetSlots);
   const [selected, setSelected] = useState<ReadonlySet<number>>(new Set());
   const [activeFilter, setActiveFilter] = useState<SwarmSeverityId | null>(null);
 
-  // Slot -> node, joined on the beacon's device id. A slot whose device id the
-  // ground station could not resolve simply has no node — it still renders,
-  // because an unidentified aircraft on the bus is exactly the thing an
-  // operator must be able to see.
-  //
-  // KNOWN GAP, not a bug in the severity strip: this map is derived FROM the
-  // beacons, so a slot the fleet registered but never heard from cannot appear
-  // in it, and the strip's `noBeacon` chip therefore reads a permanent 0. The
-  // GCS has no registered-slot source today — `FleetNodeEntry` and
-  // `LinkedPeer` both carry a device id and no slot, and this shell's only
-  // feed is `/api/swarm/neighbors`, which reports heard neighbours by
-  // definition. `buildSwarmSlotRows` already unions registered slots over
-  // heard ones, so the chip starts working the day a slot table exists (the
-  // ground station's `FleetRegistry`, surfaced through the pair-status route,
-  // is the intended source) with no change to the strip.
+  // Slot -> node. The registry is the slot table (who the fleet has ISSUED a
+  // slot to); beacons fill in who is currently HEARD. A slot present in one
+  // and not the other is exactly the exception this board exists to show —
+  // a registered-and-silent slot renders with `node` (once paired) and
+  // `beacon: null`; a beaconing-but-unregistered slot renders with `node`
+  // (once paired) and no registry entry. Resolve the registry first so a
+  // silent registered slot still gets a node; a beacon slot the registry
+  // does not already name fills in whatever the registry left unset.
   const nodesBySlot = useMemo(() => {
     const byDeviceId = new Map(fleetNodes.map((node) => [node.deviceId, node]));
     const out = new Map<number, FleetNodeEntry>();
+    for (const slot of fleetSlots) {
+      const node = slot.deviceId ? byDeviceId.get(slot.deviceId) : undefined;
+      if (node) out.set(slot.slot, node);
+    }
     for (const row of rows) {
+      if (out.has(row.slot)) continue;
       const node = row.deviceId ? byDeviceId.get(row.deviceId) : undefined;
       if (node) out.set(row.slot, node);
     }
     return out;
-  }, [fleetNodes, rows]);
+  }, [fleetNodes, fleetSlots, rows]);
 
   function toggleSlot(slot: number) {
     setSelected((prev) => {
@@ -115,7 +115,11 @@ export function SwarmView({
     });
   }
 
-  if (rows.length === 0) {
+  // A fleet with registered slots and zero beacons is a total-loss
+  // condition, not an empty fleet — it must render a board of `noBeacon`
+  // rows, the single most important thing this board can say, rather than
+  // the "pair a drone" card.
+  if (rows.length === 0 && fleetSlots.length === 0) {
     return (
       <div className="flex-1 overflow-y-auto p-3 md:p-4">
         <SwarmHeader title={t("title")} subtitle={t("subtitle")} />

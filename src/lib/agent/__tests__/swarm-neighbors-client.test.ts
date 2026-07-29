@@ -47,6 +47,10 @@ const WIRE = {
     beacons_stale_dropped: 1,
     neighbors_now: 3,
   },
+  slots: [
+    { slot: 3, device_id: "ados-abc123" },
+    { slot: 9, device_id: null },
+  ],
 };
 
 describe("parseSwarmNeighbors", () => {
@@ -77,6 +81,10 @@ describe("parseSwarmNeighbors", () => {
         rssiDbm: -48,
         receivedAtMs: 7_000,
       },
+    ]);
+    expect(snap?.slots).toEqual([
+      { slot: 3, deviceId: "ados-abc123" },
+      { slot: 9, deviceId: null },
     ]);
   });
 
@@ -178,6 +186,25 @@ describe("parseSwarmNeighbors", () => {
     const doc: Record<string, unknown> = { ...WIRE };
     delete doc.slot;
     expect(parseSwarmNeighbors(doc, 0)?.slot).toBeNull();
+  });
+
+  it("parses an old-agent body with no slots key as an empty array, not null", () => {
+    const doc: Record<string, unknown> = { ...WIRE };
+    delete doc.slots;
+    const snap = parseSwarmNeighbors(doc, 0);
+    expect(snap).not.toBeNull();
+    expect(snap?.slots).toEqual([]);
+  });
+
+  it("skips a slot-registry entry with no usable slot and keeps device_id null when absent", () => {
+    const snap = parseSwarmNeighbors(
+      {
+        ...WIRE,
+        slots: [{ device_id: "ados-orphan" }, { slot: 5 }],
+      },
+      0,
+    );
+    expect(snap?.slots).toEqual([{ slot: 5, deviceId: null }]);
   });
 });
 

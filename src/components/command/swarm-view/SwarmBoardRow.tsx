@@ -126,10 +126,12 @@ export function SwarmBoardRow({
         <PrecedenceCell row={row} freshness={freshness} />
       </td>
       <td className={CELL}>
-        {/* Formation role and task assignment come from the onboard swarm
-            control layer, which has not shipped. Rendered as an explained blank
-            rather than omitted, so the column means "not reported yet" instead
-            of the operator wondering whether the drone has no role. */}
+        {/* Formation role and task assignment are per-node config
+            (swarm.role, swarm.tasks.assigned_task_id), not fields in the
+            20-byte swarm beacon wire format, so the bus has no bytes to carry
+            either one here. Rendered as an explained blank rather than
+            omitted, so the column means "not reported yet" instead of the
+            operator wondering whether the drone has no role. */}
         <UnknownValue title={t("pendingSwarmRuntime")} />
       </td>
       <td className={CELL}>

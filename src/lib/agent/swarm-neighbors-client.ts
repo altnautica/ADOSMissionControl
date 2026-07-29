@@ -25,6 +25,7 @@
 import type {
   SwarmBeaconCounters,
   SwarmBeaconRow,
+  SwarmFleetSlot,
   SwarmModePrecedence,
 } from "@/stores/swarm-beacon-store";
 
@@ -46,6 +47,11 @@ export interface SwarmNeighborsSnapshot {
   slot: number | null;
   rows: SwarmBeaconRow[];
   counters: SwarmBeaconCounters;
+  /** The ground station's fleet-slot registry: every slot the fleet has
+   * issued, whether or not it is currently beaconing. `[]` for an older
+   * agent that predates the key, which is a version-skew fact, not an
+   * empty registry — the caller cannot tell the two apart from this alone. */
+  slots: SwarmFleetSlot[];
 }
 
 const MODE_PRECEDENCE: readonly SwarmModePrecedence[] = [
@@ -113,6 +119,22 @@ function parseNeighbor(
 }
 
 /**
+ * Map one wire slot-registry entry, or null when it carries no usable slot.
+ * `device_id` stays `string | null` verbatim — a slot with no resolvable
+ * identity must not become an empty string, which would render as a real
+ * (if blank) device name.
+ */
+function parseFleetSlot(raw: unknown): SwarmFleetSlot | null {
+  if (!raw || typeof raw !== "object") return null;
+  const s = raw as Record<string, unknown>;
+  if (typeof s.slot !== "number" || !Number.isFinite(s.slot)) return null;
+  return {
+    slot: s.slot,
+    deviceId: typeof s.device_id === "string" ? s.device_id : null,
+  };
+}
+
+/**
  * Narrow an unknown `GET /api/swarm/neighbors` body into a snapshot. Exported
  * for unit tests and reused by the bridge.
  *
@@ -146,6 +168,18 @@ export function parseSwarmNeighbors(
     if (row) rows.push(row);
   }
 
+  // Absent or non-array is an older agent predating this key, not a
+  // malformed reply — tolerate it as `[]`, the same posture `neighbors`
+  // itself does not need because it is required by the fleet-identity check
+  // above.
+  const slots: SwarmFleetSlot[] = [];
+  if (Array.isArray(doc.slots)) {
+    for (const entry of doc.slots) {
+      const slot = parseFleetSlot(entry);
+      if (slot) slots.push(slot);
+    }
+  }
+
   const c =
     doc.counters && typeof doc.counters === "object"
       ? (doc.counters as Record<string, unknown>)
@@ -155,6 +189,7 @@ export function parseSwarmNeighbors(
     fleetId,
     slot: typeof doc.slot === "number" ? doc.slot : null,
     rows,
+    slots,
     counters: {
       beaconsTx: num(c.beacons_tx, ZERO_COUNTERS.beaconsTx),
       beaconsRx: num(c.beacons_rx, ZERO_COUNTERS.beaconsRx),

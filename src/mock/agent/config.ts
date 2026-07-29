@@ -51,11 +51,11 @@ function buildConfig(profile: MockConfigProfile): ConfigObject {
       ],
     },
     swarm: {
-      enabled: false,
+      enabled: true,
       role: "member",
-      mode: "hold",
+      mode: "formation",
       default_formation: "column",
-      default_spacing: 5,
+      default_spacing: 25,
       flock: {
         cohesion: 40,
         alignment: 60,

@@ -740,7 +740,7 @@
       "noRssi": "캡처에 신호 세기가 보고되지 않음",
       "noBeacon": "이 슬롯에서 비컨 없음",
       "beaconAgeSeconds": "{seconds}초",
-      "pendingSwarmRuntime": "온보드 군집 제어 레이어 적용 후 보고됨",
+      "pendingSwarmRuntime": "군집 비컨에는 포함되지 않습니다. 이 노드의 역할과 작업은 해당 노드의 군집 설정 페이지에서 확인하십시오.",
       "notRegistered": "이 슬롯은 페어링된 노드가 아님",
       "severityLabel": {
         "noBeacon": "비컨 없음",
@@ -1412,7 +1412,7 @@
     "swarm": {
       "title": "Swarm",
       "blurb": "Multi-drone coordination configuration stored on this node's agent.",
-      "runtimeNotice": "Configuration only — these values are stored on the node and take effect when the swarm runtime is installed. Saving here does not by itself make the node participate in a swarm.",
+      "runtimeNotice": "이 값들은 노드의 온보드 군집 런타임을 제어합니다. 활성화 토글이 켜져 있고 기체가 GUIDED 모드로 보고되는 동안에만 비행 컨트롤러에 명령을 내리므로, 여기서 저장하면 설정은 적용되지만 그 자체로 노드가 군집 제어 하에 놓이는 것은 아닙니다.",
       "identityTitle": "Identity",
       "slotLabel": "Fleet slot",
       "slotHint": "Issued by the ground station at pair time. Formation offsets are indexed by it, so it is reported here and edited nowhere.",

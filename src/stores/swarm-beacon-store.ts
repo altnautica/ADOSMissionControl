@@ -73,6 +73,14 @@ export interface SwarmBeaconRow {
   receivedAtMs: number;
 }
 
+/** One slot in the ground station's fleet registry: issued, whether or not
+ * it is currently beaconing. Distinct from `SwarmBeaconRow` (a live
+ * observation) — this is a registry fact with no shelf life. */
+export interface SwarmFleetSlot {
+  slot: number;
+  deviceId: string | null;
+}
+
 /** Bus counters the agent reports beside the neighbour table. */
 export interface SwarmBeaconCounters {
   beaconsTx: number;
@@ -90,14 +98,25 @@ export interface SwarmBeaconState {
   fleetId: number | null;
   counters: SwarmBeaconCounters | null;
   lastUpdatedMs: number | null;
+  /** The ground station's registered-slot table, keyed by slot: every slot
+   * the fleet has issued, whether or not it is currently beaconing. */
+  registeredBySlot: Record<number, SwarmFleetSlot>;
   /** Merge a poll's rows by slot. A slot absent from `rows` is left alone —
-   * removal is `dropStale`'s job, so one dropped poll never blanks the board. */
+   * removal is `dropStale`'s job, so one dropped poll never blanks the board.
+   * `registered` REPLACES `registeredBySlot` wholesale instead — a beacon is
+   * a transient observation, so a dropped poll must not blank it, but the
+   * registry is an authoritative document, so a slot's absence means it was
+   * released, and holding a stale copy would show a drone that has been
+   * unpaired. */
   upsertBeacons: (
     rows: SwarmBeaconRow[],
     fleetId: number,
     counters: SwarmBeaconCounters,
+    registered: readonly SwarmFleetSlot[],
   ) => void;
-  /** Evict rows at or past the stale horizon. */
+  /** Evict rows at or past the stale horizon. Never touches
+   * `registeredBySlot` — a registered slot is a registry fact with no shelf
+   * life; being silent is what makes it a `noBeacon` row. */
   dropStale: (nowMs: number, staleMs: number) => void;
   clear: () => void;
 }
@@ -114,8 +133,9 @@ export const useSwarmBeaconStore = create<SwarmBeaconState>((set) => ({
   fleetId: null,
   counters: null,
   lastUpdatedMs: null,
+  registeredBySlot: {},
 
-  upsertBeacons(rows, fleetId, counters) {
+  upsertBeacons(rows, fleetId, counters, registered) {
     set((state) => ({
       bySlot:
         rows.length === 0
@@ -127,6 +147,9 @@ export const useSwarmBeaconStore = create<SwarmBeaconState>((set) => ({
       fleetId,
       counters,
       lastUpdatedMs: rows.length > 0 ? rows[0].receivedAtMs : Date.now(),
+      registeredBySlot: Object.fromEntries(
+        registered.map((slot) => [slot.slot, slot]),
+      ),
     }));
   },
 
@@ -146,7 +169,13 @@ export const useSwarmBeaconStore = create<SwarmBeaconState>((set) => ({
   },
 
   clear() {
-    set({ bySlot: {}, fleetId: null, counters: null, lastUpdatedMs: null });
+    set({
+      bySlot: {},
+      fleetId: null,
+      counters: null,
+      lastUpdatedMs: null,
+      registeredBySlot: {},
+    });
   },
 }));
 
@@ -182,4 +211,24 @@ export function selectSwarmRows(state: SwarmBeaconState): SwarmBeaconRow[] {
 export function selectSwarmRowBySlot(slot: number) {
   return (state: SwarmBeaconState): SwarmBeaconRow | undefined =>
     state.bySlot[slot];
+}
+
+let fleetSlotsCacheKey: Record<number, SwarmFleetSlot> | null = null;
+let fleetSlotsCacheValue: SwarmFleetSlot[] = [];
+
+/**
+ * Every registered slot, ascending by slot. Referentially stable between
+ * writes — same pattern as `selectSwarmRows`, for the same reason: a
+ * consumer subscribing to this at 2 Hz must not re-render when the registry
+ * has not actually changed.
+ */
+export function selectSwarmFleetSlots(
+  state: SwarmBeaconState,
+): SwarmFleetSlot[] {
+  if (fleetSlotsCacheKey === state.registeredBySlot) return fleetSlotsCacheValue;
+  fleetSlotsCacheKey = state.registeredBySlot;
+  fleetSlotsCacheValue = Object.values(state.registeredBySlot).sort(
+    (a, b) => a.slot - b.slot,
+  );
+  return fleetSlotsCacheValue;
 }

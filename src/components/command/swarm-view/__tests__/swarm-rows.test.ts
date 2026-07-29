@@ -18,6 +18,7 @@ import type { CommandAgentSummary } from "@/hooks/use-command-agent-fleet";
 import {
   SWARM_BEACON_STALE_MS,
   type SwarmBeaconRow,
+  type SwarmFleetSlot,
 } from "@/stores/swarm-beacon-store";
 import {
   buildSwarmSlotRows,
@@ -32,6 +33,7 @@ import {
 
 const NO_NODES: ReadonlyMap<number, FleetNodeEntry> = new Map();
 const NO_SUMMARIES: ReadonlyMap<string, CommandAgentSummary> = new Map();
+const NO_REGISTERED: readonly SwarmFleetSlot[] = [];
 
 function beacon(slot: number, over: Partial<SwarmBeaconRow> = {}): SwarmBeaconRow {
   return {
@@ -185,11 +187,12 @@ describe("buildSwarmSlotRows", () => {
     const node = { deviceId: "ados-9", name: "Nine" } as FleetNodeEntry;
     const rows = buildSwarmSlotRows(
       [beacon(3)],
+      [{ slot: 9, deviceId: "ados-9" }],
       new Map([[9, node]]),
       NO_SUMMARIES,
     );
     const bySlot = new Map(rows.map((r) => [r.slot, r]));
-    // Slot 9 is provisioned and silent; slot 3 is beaconing and unprovisioned.
+    // Slot 9 is registered and silent; slot 3 is beaconing and unregistered.
     expect(bySlot.get(9)?.severity).toBe("noBeacon");
     expect(bySlot.get(3)?.beacon?.deviceId).toBe("ados-3");
     expect(bySlot.get(3)?.node).toBeNull();
@@ -200,6 +203,7 @@ describe("buildSwarmSlotRows", () => {
     const summary = { identity: { deviceId: "fc-77" } } as CommandAgentSummary;
     const rows = buildSwarmSlotRows(
       [beacon(4, { deviceId: null })],
+      [],
       new Map([[4, node]]),
       new Map([["fc-77", summary]]),
     );
@@ -207,7 +211,38 @@ describe("buildSwarmSlotRows", () => {
   });
 
   it("returns nothing when neither source has a slot", () => {
-    expect(buildSwarmSlotRows([], NO_NODES, NO_SUMMARIES)).toEqual([]);
+    expect(
+      buildSwarmSlotRows([], NO_REGISTERED, NO_NODES, NO_SUMMARIES),
+    ).toEqual([]);
+  });
+
+  it("renders a registered slot with no beacon and no paired node as one noBeacon row named by its registry device id", () => {
+    const rows = buildSwarmSlotRows(
+      [],
+      [{ slot: 14, deviceId: "whiskey-23" }],
+      NO_NODES,
+      NO_SUMMARIES,
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      slot: 14,
+      beacon: null,
+      node: null,
+      severity: "noBeacon",
+    });
+  });
+
+  it("falls back to the registry's device id for the summary lookup when no beacon or node names one", () => {
+    const summary = {
+      identity: { deviceId: "whiskey-23" },
+    } as CommandAgentSummary;
+    const rows = buildSwarmSlotRows(
+      [],
+      [{ slot: 14, deviceId: "whiskey-23" }],
+      NO_NODES,
+      new Map([["whiskey-23", summary]]),
+    );
+    expect(rows[0].summary).toBe(summary);
   });
 });
 

@@ -740,7 +740,7 @@
       "noRssi": "Tangkapan tidak melaporkan kuat sinyal",
       "noBeacon": "Tidak ada beacon dari slot ini",
       "beaconAgeSeconds": "{seconds}s",
-      "pendingSwarmRuntime": "Dilaporkan setelah lapisan kendali swarm onboard tersedia",
+      "pendingSwarmRuntime": "Tidak dibawa pada beacon swarm. Peran dan tugas node ini terdapat pada halaman pengaturan Swarm miliknya.",
       "notRegistered": "Slot ini bukan node terpasang",
       "severityLabel": {
         "noBeacon": "Tanpa beacon",
@@ -1412,7 +1412,7 @@
     "swarm": {
       "title": "Swarm",
       "blurb": "Multi-drone coordination configuration stored on this node's agent.",
-      "runtimeNotice": "Configuration only — these values are stored on the node and take effect when the swarm runtime is installed. Saving here does not by itself make the node participate in a swarm.",
+      "runtimeNotice": "Nilai-nilai ini menggerakkan runtime swarm onboard node. Node hanya mengendalikan flight controller selagi toggle Enabled aktif dan pesawat melaporkan mode GUIDED, sehingga menyimpan di sini hanya menerapkan pengaturan dan tidak dengan sendirinya menempatkan node di bawah kendali swarm.",
       "identityTitle": "Identity",
       "slotLabel": "Fleet slot",
       "slotHint": "Issued by the ground station at pair time. Formation offsets are indexed by it, so it is reported here and edited nowhere.",

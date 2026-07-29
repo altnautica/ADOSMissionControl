@@ -29,6 +29,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useLocalNodesStore } from "@/stores/local-nodes-store";
 import { usePairingStore } from "@/stores/pairing-store";
+import { isDemoMode } from "@/lib/utils";
 import {
   resolveConfigAccess,
   resolveConfigProxyTarget,
@@ -174,6 +175,7 @@ export function useFleetConfigWrite(): FleetConfigWriter {
   const localNodes = useLocalNodesStore((s) => s.nodes);
   const pairedDrones = usePairingStore((s) => s.pairedDrones);
   const [pending, setPending] = useState(false);
+  const demo = isDemoMode();
 
   const transport = useMemo<FleetConfigTransport>(
     () => ({
@@ -185,21 +187,43 @@ export function useFleetConfigWrite(): FleetConfigWriter {
   );
 
   const reachable = useCallback(
-    (deviceIds: readonly string[]) =>
-      resolveFleetConfigTargets(deviceIds, transport),
-    [transport],
+    (deviceIds: readonly string[]) => {
+      // DEMO-MODE BRANCH (gated on isDemoMode, real fleets unaffected):
+      // every simulated node takes a config write, so the pre-commit count
+      // the confirm dialog shows is true.
+      if (demo) return [...new Set(deviceIds)];
+      return resolveFleetConfigTargets(deviceIds, transport);
+    },
+    [transport, demo],
   );
 
   const writeValue = useCallback(
     async (key: string, value: string, deviceIds: readonly string[]) => {
       setPending(true);
       try {
+        if (demo) {
+          // DEMO-MODE BRANCH: the demo config is one shared document (the
+          // mock's existing design), so a "fleet" write is one apply rather
+          // than N per-node round trips. Loaded on demand so the mock never
+          // reaches a production bundle.
+          const { setMockConfigValue } = await import("@/mock/agent/config");
+          setMockConfigValue(key, value);
+          const outcomes: FleetConfigOutcome[] = deviceIds.map(
+            (deviceId) => ({
+              deviceId,
+              mode: "direct" as const,
+              ok: true,
+              error: null,
+            }),
+          );
+          return { key, value, outcomes, applied: outcomes.length, failed: 0 };
+        }
         return await writeConfigForNodes(key, value, deviceIds, transport);
       } finally {
         setPending(false);
       }
     },
-    [transport],
+    [transport, demo],
   );
 
   return { reachable, writeValue, pending };
