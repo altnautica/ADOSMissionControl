@@ -25,6 +25,12 @@ import {
 } from "../transports/lan-direct";
 import { installLanDirectFromUrl } from "../transports/lan-direct-url";
 import {
+  installRelayFromUrl,
+  pollRelayInstallProgress,
+} from "../transports/relay-url";
+import { resolveRelayTarget } from "../transports/resolve-lan-url";
+import { useInstallProgressStore } from "../install-progress-store";
+import {
   installCloudRelay,
   type CreateJobMutation,
   type GenerateUploadUrlAction,
@@ -198,26 +204,88 @@ export function useInstallHandler(args: UseInstallHandlerArgs) {
           );
         }
         if (source.kind === "registry") {
-          // The agent fetches the archive itself. LAN is the only
-          // supported transport here today; cloud-relay-from-URL is a
-          // future addition and currently surfaces a clear error.
-          if (!lanTarget) {
-            throw new Error(
-              "Registry installs require a paired drone on the LAN. Pair the drone or connect on the same network and retry.",
-            );
+          // The agent fetches the archive itself, so registry installs
+          // never touch the file-upload transports. Resolution order:
+          // a LAN-paired drone installs directly; a relay-only drone
+          // (no LAN reach of its own) installs through its ground
+          // station's relay proxy — the only lane that fits the archive
+          // pointer through the radio link's per-request size cap.
+          if (lanTarget) {
+            result = await installLanDirectFromUrl({
+              agentUrl: lanTarget.url,
+              pairingKey: lanTarget.apiKey,
+              url: source.url,
+              expectedSha256: source.expectedSha256,
+              grantedPermissions: grantedArr,
+              jobId,
+              pluginId: manifest.pluginId,
+              pluginName: manifest.name,
+              deviceId: targetDevice.deviceId,
+              fromCatalog: true,
+            });
+          } else {
+            const relayTarget = resolveRelayTarget(targetDevice.deviceId);
+            if (!relayTarget) {
+              throw new Error(
+                "Registry installs require a paired drone on the LAN, or a ground station relaying it over its radio link. Pair the drone, or pair its ground station, and retry.",
+              );
+            }
+            // No LAN job-ticket WebSocket exists over the relay yet, so a
+            // fixed-interval poll stands in for live progress while the
+            // kickoff request is in flight. Stopped in both branches
+            // below so a fast agent reply never races a stale tick.
+            const stopRelayPoll = pollRelayInstallProgress({
+              relayBaseUrl: relayTarget.url,
+              apiKey: relayTarget.apiKey,
+              jobId,
+              pluginName: manifest.name,
+              pluginVersion: manifest.version,
+              deviceId: targetDevice.deviceId,
+            });
+            try {
+              result = await installRelayFromUrl({
+                relayBaseUrl: relayTarget.url,
+                apiKey: relayTarget.apiKey,
+                url: source.url,
+                sha256: source.expectedSha256,
+                jobId,
+                pluginId: manifest.pluginId,
+                pluginName: manifest.name,
+                deviceId: targetDevice.deviceId,
+              });
+              useInstallProgressStore.getState().upsert({
+                jobId,
+                stage: "completed",
+                transport: "relay",
+                updatedAt: Date.now(),
+                pluginName: manifest.name,
+                pluginVersion: manifest.version,
+                deviceId: targetDevice.deviceId,
+              });
+            } catch (err) {
+              // Never fall through to cloud-relay here: a relay install
+              // that fails must surface that failure so the operator
+              // sees it, not silently retry over a transport that is
+              // unavailable in local-only mode anyway.
+              useInstallProgressStore.getState().upsert({
+                jobId,
+                stage: "failed",
+                transport: "relay",
+                updatedAt: Date.now(),
+                error: {
+                  code:
+                    err instanceof LanDirectError ? err.cause : "unknown",
+                  message: err instanceof Error ? err.message : String(err),
+                },
+                pluginName: manifest.name,
+                pluginVersion: manifest.version,
+                deviceId: targetDevice.deviceId,
+              });
+              throw err;
+            } finally {
+              stopRelayPoll();
+            }
           }
-          result = await installLanDirectFromUrl({
-            agentUrl: lanTarget.url,
-            pairingKey: lanTarget.apiKey,
-            url: source.url,
-            expectedSha256: source.expectedSha256,
-            grantedPermissions: grantedArr,
-            jobId,
-            pluginId: manifest.pluginId,
-            pluginName: manifest.name,
-            deviceId: targetDevice.deviceId,
-            fromCatalog: true,
-          });
         } else {
           const ctx = {
             file: source.file,

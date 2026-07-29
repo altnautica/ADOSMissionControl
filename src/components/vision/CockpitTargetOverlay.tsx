@@ -279,7 +279,10 @@ export function CockpitTargetOverlay({ droneId }: { droneId: string }) {
   return (
     <div
       ref={wrapperRef}
-      className="pointer-events-none absolute inset-0 z-[6]"
+      // Host-owned interactive layer (click targets) sits ABOVE the passive
+      // plugin `video.overlay` slot (VideoOverlayHost, z-10), so a sandboxed
+      // plugin iframe can never occlude the operator's click targets.
+      className="pointer-events-none absolute inset-0 z-[12]"
       data-cockpit-layer="target-overlay"
     >
       {rect &&

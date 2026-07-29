@@ -1246,6 +1246,7 @@
   },
   "nodeSettings": {
     "subtitle": "Configure this node's onboard computer. Changes write straight to the agent over the LAN.",
+    "subtitleRelayed": "Configure this node's onboard computer. Changes reach the agent over the radio link via the ground station.",
     "loading": "Loading configuration…",
     "loadFailed": "Could not read the node configuration.",
     "readOnlyNoAgent": "No connection path to this node — configuration is read-only. Pair the node over the LAN (or connect to its agent) to edit its settings.",
@@ -1354,7 +1355,7 @@
       "boardOverrideAuto": "Auto-detect"
     },
     "perception": {
-      "title": "Vision & perception",
+      "title": "Perception setup",
       "blurb": "What this node detects and where perception runs — on its own accelerator, or offloaded to a serving workstation.",
       "detectorTitle": "Detector model",
       "detectorHint": "The engine-wide detector this node runs. Every vision consumer on the node shares it.",
@@ -4498,26 +4499,14 @@
     "missionTemplatesHeading": "Extension templates",
     "pageTitle": "Extensions",
     "pageBlurb": "Browse and manage extensions. Extensions install on a drone — pick the target below, or install from that drone's Extensions tab. They run sandboxed and only do what their granted permissions allow.",
-    "installOn": "Install on",
-    "installFromUrl": "Install from URL",
-    "installFromUrlHttpsHint": "Available on the desktop app or a GCS opened on the drone's network",
-    "installPlugin": "Install extension",
-    "noDronesPaired": "No drones paired yet. Pair a drone to install extensions on it — only GCS-only extensions install without one.",
     "loadingInstalls": "Loading…",
     "cancel": "Cancel",
     "fetching": "Fetching…",
     "install": "Install",
-    "pluginUrlLabel": "Extension URL",
-    "urlModalBlurb": "Paste an HTTPS URL to a signed .adosplug archive on an allowed host (a GitHub release asset, S3). The LAN-paired drone's agent fetches and signature-checks it, then the same install dialog you see for local files reviews permissions.",
     "scopeDrone": "Drone",
     "scopeGcs": "GCS",
     "emptyTitle": "No extensions installed yet.",
     "emptyBlurb": "Drag a .adosplug file or pick one to install.",
-    "installFirst": "Install your first extension",
-    "urlNeedsDrone": "Pair a drone on the LAN first — the agent fetches the archive from the URL.",
-    "urlNotReachableLan": "This drone is not reachable on the LAN. Connect on the same network and retry.",
-    "urlHttpsNeedsDesktop": "Installing from a URL needs the desktop app or a GCS opened on the drone's network — a browser on this page can't reach the agent directly.",
-    "urlParseFailed": "Could not fetch or parse the extension from that URL.",
     "badges": {
       "agent": "Agent",
       "gcs": "GCS",
@@ -4562,7 +4551,10 @@
         "error": {
           "title": "ఇన్‌స్టాల్ విఫలమైంది",
           "retry": "మళ్ళీ ప్రయత్నించండి"
-        }
+        },
+        "installOnNode": "Install on a node…",
+        "pickNodeHeading": "Install on which node?",
+        "pickNodeEmpty": "No node's Extensions tab is reachable yet."
       },
       "empty": {
         "title": "No extensions available right now.",

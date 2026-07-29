@@ -20,7 +20,7 @@
  * @license GPL-3.0-only
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useQuery } from "convex/react";
 import { makeFunctionReference } from "convex/server";
@@ -135,9 +135,21 @@ export interface RegistryPluginGridProps {
    * chosen target from its drone picker. Null only while no drone is
    * selectable (the grid still renders the catalog read-only). */
   target?: InstallTargetDrone | null;
+  /** Rendering context passed straight through to `RegistryPluginCard`.
+   * `"node"` (default): per-drone Extensions tab, Install kicks off the
+   * archive-fetch + review flow. `"settings"`: fleet-wide read-only
+   * overview, Install opens a node picker instead. */
+  surface?: "node" | "settings";
+  /** Registry plugin id to scroll to + highlight on mount (a Settings
+   * "Install on a node…" hand-off). */
+  preselectPluginId?: string | null;
 }
 
-export function RegistryPluginGrid({ target = null }: RegistryPluginGridProps) {
+export function RegistryPluginGrid({
+  target = null,
+  surface = "node",
+  preselectPluginId = null,
+}: RegistryPluginGridProps) {
   const t = useTranslations("pluginRegistry.browse");
   const convexAvailable = useConvexAvailable();
 
@@ -190,6 +202,8 @@ export function RegistryPluginGrid({ target = null }: RegistryPluginGridProps) {
 
   const installTarget = target;
 
+  const gridRef = useRef<HTMLUListElement | null>(null);
+
   const filtered = useMemo(() => {
     if (!catalog) return [];
     const needle = search.trim().toLowerCase();
@@ -202,6 +216,17 @@ export function RegistryPluginGrid({ target = null }: RegistryPluginGridProps) {
       return true;
     });
   }, [catalog, search, category]);
+
+  // A Settings "Install on a node…" hand-off lands here with the plugin's
+  // id; scroll it into view once the catalog has loaded far enough to
+  // contain it. `RegistryPluginCard.highlighted` draws the ring.
+  useEffect(() => {
+    if (!preselectPluginId || !gridRef.current) return;
+    const el = gridRef.current.querySelector<HTMLElement>(
+      `[data-plugin-id="${preselectPluginId}"]`,
+    );
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [preselectPluginId, filtered]);
 
   // Once the version row resolves, parse its embedded manifest yaml
   // and open the dialog with a registry-source descriptor.
@@ -298,7 +323,7 @@ export function RegistryPluginGrid({ target = null }: RegistryPluginGridProps) {
       {catalog !== undefined && filtered.length === 0 && <EmptyState t={t} />}
 
       {catalog !== undefined && filtered.length > 0 && (
-        <ul className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <ul ref={gridRef} className="grid grid-cols-1 gap-3 lg:grid-cols-2">
           {filtered.map((plugin) => (
             <RegistryPluginCard
               key={plugin._id}
@@ -306,6 +331,8 @@ export function RegistryPluginGrid({ target = null }: RegistryPluginGridProps) {
               installed={installedIds.has(plugin.plugin_id)}
               state={cardState[plugin.plugin_id]}
               onInstall={() => handleInstall(plugin)}
+              surface={surface}
+              highlighted={preselectPluginId === plugin.plugin_id}
             />
           ))}
         </ul>

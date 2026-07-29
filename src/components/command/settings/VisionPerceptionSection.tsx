@@ -2,7 +2,7 @@
 
 /**
  * @module command/settings/VisionPerceptionSection
- * @description The node Settings "Vision & perception" page: one surface for
+ * @description The node Settings "Perception setup" page: one surface for
  * WHAT this node detects (the engine-wide detector model, via the shared
  * model picker) and WHERE perception executes (the offload / serving
  * tri-states over the agent's `perception.offload.*` / `perception.serving.*`
@@ -312,7 +312,7 @@ function WorkstationServing({ droneId, config, readOnly, setValue }: HalfProps) 
   );
 }
 
-/** The Settings-tab "Vision & perception" page. Drone → detector model +
+/** The Settings-tab "Perception setup" page. Drone → detector model +
  * offload client; workstation → serving controls + GPU facts; ground-station
  * → nothing. */
 export function VisionPerceptionSection({

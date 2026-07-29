@@ -159,9 +159,11 @@ describe("useRegistryCompatibility — SoC matching", () => {
 // ── disable matrix on the card ──────────────────────────────
 //
 // These tests reason about the gating logic that lives inline in
-// RegistryPluginCard.tsx. The contract is: only "no_agent" and
-// "version" are hard blocks; board mismatch and missing
-// latestVersionRow are soft warnings the user can override.
+// RegistryPluginCard.tsx (per-node surface). The contract: "no_agent",
+// "version", AND "board" are all hard blocks — an operator must never see
+// a clickable Install next to "Not compatible with this drone's board".
+// The only surviving soft state is a still-loading version row, which
+// blocks nothing.
 describe("RegistryPluginCard disable matrix (semantic)", () => {
   function classify(opts: {
     installed?: boolean;
@@ -169,17 +171,10 @@ describe("RegistryPluginCard disable matrix (semantic)", () => {
     latestVersionRow: object | null;
     compat: { compatible: boolean; reason?: "no_agent" | "version" | "board" };
   }): { disabled: boolean; warning: boolean } {
-    const compatHardBlock =
-      !opts.compat.compatible &&
-      (opts.compat.reason === "no_agent" ||
-        opts.compat.reason === "version");
-    const compatSoftWarning =
-      !opts.latestVersionRow ||
-      (!opts.compat.compatible && opts.compat.reason === "board");
-    const disabled = Boolean(
-      opts.installed || opts.isLoading || compatHardBlock,
-    );
-    return { disabled, warning: compatSoftWarning && !disabled };
+    const compatBlock = !opts.compat.compatible;
+    const disabled = Boolean(opts.installed || opts.isLoading || compatBlock);
+    const warning = !opts.latestVersionRow && !disabled;
+    return { disabled, warning };
   }
 
   it("hard-blocks when the agent is disconnected", () => {
@@ -208,13 +203,13 @@ describe("RegistryPluginCard disable matrix (semantic)", () => {
     expect(out.warning).toBe(true);
   });
 
-  it("soft-warns + keeps clickable on board mismatch", () => {
+  it("hard-blocks on board mismatch (defect fix: no longer a clickable soft warning)", () => {
     const out = classify({
       latestVersionRow: { version: "1.0.0" },
       compat: { compatible: false, reason: "board" },
     });
-    expect(out.disabled).toBe(false);
-    expect(out.warning).toBe(true);
+    expect(out.disabled).toBe(true);
+    expect(out.warning).toBe(false);
   });
 
   it("disables when already installed", () => {

@@ -28,7 +28,7 @@ import {
 import {
   DEMO_REGISTRY_ENTRIES,
   type DemoRegistryEntry,
-} from "@/mock/demo-plugin-registry";
+} from "@/lib/plugins/first-party-registry";
 
 interface PendingInstall {
   manifest: InstallManifestSummary;

@@ -522,7 +522,7 @@ export function CockpitView({ droneId }: CockpitViewProps) {
       {/* L0 video + (as VideoCanvas children) L1 plugin overlay + the host-owned
           detection/target layers. The glass instrument HUD (attitude, tapes,
           FPM) is now composed from the widget registry via CockpitZones below. */}
-      <VideoCanvas className="absolute inset-0 z-0" hideRecordButton>
+      <VideoCanvas className="absolute inset-0 z-0" hideRecordButton droneId={droneId}>
         {/* Demo-only synthetic feed so switching visibly changes the picture in
             demo mode (no live WebRTC); self-gated, never on a real node. */}
         {droneId && <CockpitDemoStream droneId={droneId} />}

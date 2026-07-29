@@ -69,7 +69,7 @@ interface WireDetection {
 /** A detection batch as the agent forwards it (contract field names). A
  * future agent may add `frame_width` / `frame_height`; both are read
  * optionally so the overlay can scale precisely when they are present. */
-interface WireDetectionBatch {
+export interface WireDetectionBatch {
   /** Wire schema version the agent stamps on the batch (see
    * {@link SUPPORTED_DETECTION_VERSION}). Optional so batches from an agent that
    * predates it still map. */

@@ -28,8 +28,10 @@ export type InstallStage =
   | "completed"
   | "failed";
 
-/** Transport that produced the most recent update for a job. */
-export type InstallTransport = "lan" | "cloud";
+/** Transport that produced the most recent update for a job. `relay` is
+ * the ground-station-proxied path for a drone with no LAN or cloud
+ * identity of its own — see `transports/relay-url.ts`. */
+export type InstallTransport = "lan" | "cloud" | "relay";
 
 export interface InstallJobError {
   code: string;

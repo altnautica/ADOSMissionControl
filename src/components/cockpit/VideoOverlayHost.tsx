@@ -291,6 +291,11 @@ export function VideoOverlayHost({
     <div
       ref={wrapperRef}
       data-cockpit-layer="video-overlay"
+      // Passive plugin `video.overlay` slot. Stays BELOW the host-owned
+      // interactive layers (CockpitTargetOverlay / CockpitMarkLayer, z-[12])
+      // so a sandboxed plugin iframe can never occlude the operator's click
+      // targets or marks — host-owned interactive layers always sit above
+      // passive plugin overlays.
       className={className ?? "absolute inset-0 z-10 pointer-events-none"}
     >
       <PluginHostProvider deviceId={droneId} contributions={resolved}>

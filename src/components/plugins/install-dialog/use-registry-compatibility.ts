@@ -82,6 +82,13 @@ function compareVersions(a: string, b: string): number {
 
 export function useRegistryCompatibility(
   version: RegistryPluginVersion,
+  options?: {
+    /** Rendering context the copy should address. `"node"` (default): a
+     * single connected drone — "Connect to a drone...". `"settings"`: the
+     * fleet-wide overview with no single node context — "Select a node
+     * to install on." instead. */
+    surface?: "node" | "settings";
+  },
 ): CompatResult {
   const capabilitiesLoaded = useAgentCapabilitiesStore((s) => s.loaded);
   const agentVersion = useAgentSystemStore((s) => s.status?.version);
@@ -99,7 +106,10 @@ export function useRegistryCompatibility(
     return {
       compatible: false,
       reason: "no_agent",
-      detail: "Connect to a drone to install plugins.",
+      detail:
+        options?.surface === "settings"
+          ? "Select a node to install on."
+          : "Connect to a drone to install plugins.",
     };
   }
 

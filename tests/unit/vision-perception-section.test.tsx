@@ -1,5 +1,5 @@
 /**
- * Tests for the node Settings "Vision & perception" page: the consolidated
+ * Tests for the node Settings "Perception setup" page: the consolidated
  * surface for the detector model + the perception offload / serving controls.
  * Covers the profile gates (nothing on a ground-station), the honest LAN
  * requirement for the detector picker, the honest "not offloading" state, and
@@ -95,7 +95,7 @@ describe("VisionPerceptionSection profile gates", () => {
 
   it("renders the consolidated drone page: detector + offload", () => {
     renderSection("drone");
-    expect(screen.getByText("Vision & perception")).toBeTruthy();
+    expect(screen.getByText("Perception setup")).toBeTruthy();
     expect(screen.getByText("Detector model")).toBeTruthy();
     // The "Offload" subsection heading plus its enable field label.
     expect(screen.getAllByText("Offload").length).toBeGreaterThanOrEqual(2);

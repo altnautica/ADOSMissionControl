@@ -5,6 +5,8 @@ import { useVideoStore } from "@/stores/video-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useDroneMetadataStore } from "@/stores/drone-metadata-store";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
+import { useCommandFleetStore } from "@/stores/command-fleet-store";
+import { resolveAgentVideoUrl } from "@/lib/agent/video-url";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { CAMERA_RECOVERY_ACTIVE_STATES } from "@/lib/agent/camera-recovery";
@@ -28,6 +30,10 @@ interface VideoCanvasProps {
    *  flight-recording control (video + telemetry), so the per-pane video-only
    *  REC would be a duplicate there; the screenshot control is kept. */
   hideRecordButton?: boolean;
+  /** The focused drone's canonical device id. Optional so existing direct-node
+   *  callers (e.g. DroneVisionTab) are unaffected; when present it unlocks the
+   *  relayed-node WHEP fallback below (Cockpit passes it). */
+  droneId?: string;
 }
 
 const WHEP_PRESETS = [
@@ -35,7 +41,7 @@ const WHEP_PRESETS = [
   { label: "Agent (local)", url: "http://192.168.1.50:8889/stream/whep" },
 ];
 
-export function VideoCanvas({ children, className, hideRecordButton = false }: VideoCanvasProps) {
+export function VideoCanvas({ children, className, hideRecordButton = false, droneId }: VideoCanvasProps) {
   const isStreaming = useVideoStore((s) => s.isStreaming);
   const isRecording = useVideoStore((s) => s.isRecording);
   const fps = useVideoStore((s) => s.fps);
@@ -52,6 +58,22 @@ export function VideoCanvas({ children, className, hideRecordButton = false }: V
   const whepUrlOverride = useVideoStore((s) => s.whepUrlOverride);
   const agentVideoState = useVideoStore((s) => s.agentVideoState);
   const cloudDeviceId = useAgentConnectionStore((s) => s.cloudDeviceId);
+  // The singleton video store is filled by the LAN poll or a cloud
+  // heartbeat. A relayed-only drone (reached through a ground station's WFB
+  // link, no direct/cloud pairing) has neither, so the store stays empty
+  // even though the ground station already decoded the drone's downlink
+  // into its own mediamtx `main` path and published that playable URL onto
+  // the drone's funneled fleet-status row (relayed-peers.ts::funneledStatusFor).
+  // Fall back to it — same pattern as VideoFeedCard — so the Cockpit pane
+  // shows the funneled feed instead of a permanent NO SIGNAL.
+  const funneledNodeStatus = useCommandFleetStore((s) =>
+    droneId ? s.cloudStatuses[droneId] : undefined,
+  );
+  const funneledWhepUrl = resolveAgentVideoUrl(funneledNodeStatus);
+  const resolvedAgentVideoState =
+    agentVideoState && agentVideoState !== "unknown"
+      ? agentVideoState
+      : (funneledNodeStatus?.videoState ?? agentVideoState);
   const agentConnected = useAgentConnectionStore((s) => s.connected);
   const transportMode = useSettingsStore((s) => s.videoTransportMode);
   // Live air-side camera state for the focused drone (distinct from the
@@ -79,7 +101,8 @@ export function VideoCanvas({ children, className, hideRecordButton = false }: V
 
   // Manual override wins, then the stream switcher's selected concurrent leg,
   // then the auto-discovered default agent URL.
-  const effectiveWhepUrl = manualUrl || whepUrlOverride || agentWhepUrl;
+  const effectiveWhepUrl =
+    manualUrl || whepUrlOverride || agentWhepUrl || funneledWhepUrl;
 
   // Callback ref so the cascade hook re-runs once the <video> element mounts.
   // A plain useRef never triggers a re-render, so the cascade would see
@@ -160,12 +183,15 @@ export function VideoCanvas({ children, className, hideRecordButton = false }: V
   const airCameraMissing = liveCameraState === "missing";
 
   // An agent is present when the focused drone's companion is connected
-  // LAN-direct, or reachable over the cloud relay. When an agent is present
-  // the video is ITS job — so we never fall back to the manual "Configure
+  // LAN-direct, reachable over the cloud relay, or — for a WFB-relayed drone
+  // with no direct/cloud pairing at all — the ground station is already
+  // funneling its downlink (funneledWhepUrl). When an agent is present the
+  // video is ITS job — so we never fall back to the manual "Configure
   // Video Source" prompt; we auto-render its stream, or show its real state
   // (camera recovery / missing / offline) instead. The manual prompt only
   // appears for a drone with no agent at all (FC-only / SITL).
-  const agentPresent = agentConnected || Boolean(cloudDeviceId);
+  const agentPresent =
+    agentConnected || Boolean(cloudDeviceId) || Boolean(funneledWhepUrl);
   const offerManualConfig = !agentPresent && !effectiveWhepUrl;
 
   const placeholderLabel = showConnecting
@@ -177,7 +203,7 @@ export function VideoCanvas({ children, className, hideRecordButton = false }: V
         : cascadeError
           ? "NO SIGNAL"
           : agentPresent
-            ? agentVideoState === "running"
+            ? resolvedAgentVideoState === "running"
               ? "NO SIGNAL"
               : "VIDEO OFFLINE"
             : effectiveWhepUrl

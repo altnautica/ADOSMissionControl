@@ -18,9 +18,10 @@
  * @license GPL-3.0-only
  */
 
-import { useMemo } from "react";
+import { useId, useMemo, useState } from "react";
 import { useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import { Cpu, Layout, Package, PenTool, Radio, Sparkles } from "lucide-react";
 
 import { api } from "../../../../convex/_generated/api";
@@ -32,6 +33,11 @@ import {
   type PluginTargetProfile,
 } from "@/lib/plugins/types";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
+import { useFleetStore } from "@/stores/fleet-store";
+import { useDroneManager } from "@/stores/drone-manager";
+import type { FleetDrone } from "@/lib/types";
+import { resolveRelayReach } from "@/lib/nodes/relay-reach";
+import { cn } from "@/lib/utils";
 
 import { useRegistryCompatibility } from "../../plugins/install-dialog/use-registry-compatibility";
 
@@ -72,6 +78,18 @@ export interface RegistryPluginCardProps {
   /** Transient install state managed by the parent grid. */
   state: CardState;
   onInstall: () => void;
+  /** Rendering context. `"node"` (default): the per-drone Extensions tab —
+   * Install kicks off the archive-fetch + review flow directly via
+   * `onInstall`, gated by this drone's reported compatibility. `"settings"`:
+   * the fleet-wide Settings -> Extensions overview, which has no single
+   * node context to gate compatibility against — Install opens a node
+   * picker and routes the operator to that node's own Extensions tab
+   * instead of installing here (plan step 10). */
+  surface?: "node" | "settings";
+  /** True when a Settings "Install on a node…" hand-off landed on this
+   * card (the `?preselect=` query param matched its plugin id). Drives a
+   * highlight ring; the grid also scrolls it into view on mount. */
+  highlighted?: boolean;
 }
 
 /** Lucide icon + tailwind classes paired with each registry category.
@@ -131,14 +149,19 @@ export function RegistryPluginCard({
   installed,
   state,
   onInstall,
+  surface = "node",
+  highlighted = false,
 }: RegistryPluginCardProps) {
   const t = useTranslations("pluginRegistry.browse");
+  const router = useRouter();
+  const descId = useId();
+  const isSettingsSurface = surface === "settings";
 
   // The connected node's resolved profile + whether its capabilities have
   // loaded, so we can gate Install on a plugin the paired node cannot host
   // (a drone-only plugin on a workstation, a ground-station-only plugin on a
-  // drone). The profile gate applies only once the profile is known; before
-  // that the version gate's `no_agent` state already blocks Install.
+  // drone). Only meaningful on the per-node surface — Settings has no single
+  // node to gate against (plan step 10).
   const nodeProfile = useAgentCapabilitiesStore((s) => s.profile);
   const profileLoaded = useAgentCapabilitiesStore((s) => s.loaded);
 
@@ -172,37 +195,40 @@ export function RegistryPluginCard({
       agent_min_version: plugin.latest_version,
       supported_boards: undefined,
     },
+    { surface },
   );
 
   const isLoading = state === "loading";
   const errMessage =
     state && typeof state === "object" && "error" in state ? state.error : null;
 
-  // Hard blocks: the install genuinely cannot proceed.
-  //   * no_agent: no drone to install into
-  //   * version: agent version is out of range, the agent will reject
-  //   * isLoading: install in flight, debounce
-  //   * installed: already on the drone
-  // Soft warnings: the install MIGHT not work but the agent re-checks
-  // every constraint at archive time and rejects cleanly. Keep the
-  // button clickable so the operator can try; surface the warning so
-  // they know what to expect.
-  const compatHardBlock =
-    !compat.compatible &&
-    (compat.reason === "no_agent" || compat.reason === "version");
-  const compatSoftWarning =
-    !latestVersionRow ||
-    (!compat.compatible && compat.reason === "board");
+  // Every compat reason — no_agent, version, board — is a genuine hard
+  // block on the per-node surface: an operator must never see a clickable
+  // Install next to "Not compatible with this drone's board" (defect: the
+  // per-node page used to render that exact combination). The only
+  // remaining soft state is a still-loading version row, which blocks
+  // nothing.
+  //
+  // On Settings, Install no longer installs onto a specific node — it
+  // opens a node picker — so a compat reading against whichever node
+  // happens to be globally focused elsewhere in the app must not disable
+  // the button here.
+  const compatBlock = !isSettingsSurface && !compat.compatible;
+  const loadingVersionDetail = !latestVersionRow;
 
-  // The paired node cannot host this plugin's target profile. A hard block:
-  // installing would land an archive the agent (or the node's surface tree)
-  // has no home for. Only asserted once the profile is known.
+  // The paired node cannot host this plugin's target profile. A hard block
+  // on the per-node surface only; Settings has no single node to check.
   const profileBlock =
-    profileLoaded && !pluginMatchesProfile(plugin.target_profiles, nodeProfile);
+    !isSettingsSurface &&
+    profileLoaded &&
+    !pluginMatchesProfile(plugin.target_profiles, nodeProfile);
 
-  const disabled = installed || isLoading || compatHardBlock || profileBlock;
+  const disabled = installed || isLoading || compatBlock || profileBlock;
 
-  const tooltip = (() => {
+  // Reason text, threaded through as BOTH the hover `title` and an
+  // `aria-describedby`-linked accessible description below — a `title`
+  // alone is invisible to keyboard and screen-reader users.
+  const incompatibilityReason = (() => {
     if (installed) return undefined;
     if (profileBlock) {
       return t("card.notCompatible.profile");
@@ -215,25 +241,34 @@ export function RegistryPluginCard({
         version: compat.detail ?? "?",
       });
     }
-    if (!latestVersionRow) {
-      return t("card.notCompatible.loadingDetail");
-    }
     if (compat.reason === "board") {
       return t("card.notCompatible.board");
+    }
+    if (loadingVersionDetail) {
+      return t("card.notCompatible.loadingDetail");
     }
     return undefined;
   })();
 
-  const warningText = (() => {
-    if (!compatSoftWarning) return null;
-    if (!latestVersionRow) {
-      return t("card.notCompatible.loadingDetail");
-    }
-    if (compat.reason === "board") {
-      return t("card.notCompatible.board");
-    }
-    return null;
-  })();
+  // Settings has nothing to disable Install on, but `no_agent` still fires
+  // whenever no node happens to be globally focused elsewhere in the app.
+  // Reworded for a fleet-wide context and shown as an informational
+  // description rather than a disable reason.
+  const settingsHint =
+    isSettingsSurface && compat.reason === "no_agent"
+      ? (compat.detail ?? t("card.notCompatible.noAgent"))
+      : undefined;
+
+  const accessibleDescription = isSettingsSurface
+    ? settingsHint
+    : incompatibilityReason;
+
+  // A still-loading version row never disables the button; it just
+  // surfaces a "still loading" note underneath.
+  const warningText =
+    !isSettingsSurface && !disabled && loadingVersionDetail
+      ? t("card.notCompatible.loadingDetail")
+      : null;
 
   const tierKey =
     plugin.tier ?? (plugin.verified_publisher ? "verified" : "community");
@@ -249,23 +284,75 @@ export function RegistryPluginCard({
     ? resolveNamedIcon(declaredIconName)
     : CategoryIcon;
 
+  // ── Settings-surface node picker ──────────────────────────────────────
+  // Install has no single node to target here, so it opens a picker of
+  // every node whose own Extensions tab can accept an install — the same
+  // reach gate `DronePluginsTab.tsx` widens (`agentDeviceId !== null ||
+  // relayReach !== null`). Picking one focuses that drone (the same store
+  // `NodeDetailPanel` reads) and hands off to the dashboard with this
+  // plugin flagged for preselection.
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const drones = useFleetStore((s) => s.drones);
+  const selectDrone = useDroneManager((s) => s.selectDrone);
+  const eligibleNodes = useMemo<FleetDrone[]>(() => {
+    if (!isSettingsSurface) return [];
+    return drones.filter((d) => {
+      const agentDeviceId = d.cloudDeviceId ?? null;
+      if (agentDeviceId !== null) return true;
+      return (
+        resolveRelayReach({
+          agentDeviceId,
+          reachedVia: d.reachedVia,
+          droneDeviceId: d.id,
+        }) !== null
+      );
+    });
+  }, [isSettingsSurface, drones]);
+
+  function handlePickNode(node: FleetDrone) {
+    setPickerOpen(false);
+    selectDrone(node.id);
+    router.push(`/?preselect=${encodeURIComponent(plugin.plugin_id)}`);
+  }
+
+  function handlePrimaryAction() {
+    if (isSettingsSurface) {
+      setPickerOpen((v) => !v);
+      return;
+    }
+    onInstall();
+  }
+
+  const installLabel = installed
+    ? t("card.installed")
+    : isLoading
+      ? t("card.installing")
+      : isSettingsSurface
+        ? t("card.installOnNode")
+        : t("card.install");
+
   return (
-    <li className="h-full">
-      {/* The whole card is the click target: it opens the install/detail
-       * modal (the same action as the Install button). Keyboard-operable
-       * via role=button + Enter/Space. */}
+    <li className="h-full" data-plugin-id={plugin.plugin_id}>
+      {/* The whole card is the click target. On the per-node surface it
+       * opens the install/detail modal (the same action as the Install
+       * button). On Settings there is no separate pre-install manifest
+       * preview to route to, so it opens the same node picker as Install.
+       * Keyboard-operable via role=button + Enter/Space. */}
       <div
         role="button"
         tabIndex={0}
-        onClick={onInstall}
+        onClick={handlePrimaryAction}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
-            onInstall();
+            handlePrimaryAction();
           }
         }}
-        aria-label={t("card.viewDetails")}
-        className="flex h-full cursor-pointer flex-col gap-2 rounded-lg border border-border-default bg-bg-secondary p-3 transition-colors hover:border-border-strong hover:bg-bg-tertiary/40 focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-primary"
+        aria-label={`${t("card.viewDetails")} — ${plugin.name}`}
+        className={cn(
+          "flex h-full cursor-pointer flex-col gap-2 rounded-lg border border-border-default bg-bg-secondary p-3 transition-colors hover:border-border-strong hover:bg-bg-tertiary/40 focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-primary",
+          highlighted && "ring-2 ring-accent-primary",
+        )}
       >
         <div className="flex items-start gap-3">
           <div
@@ -318,25 +405,27 @@ export function RegistryPluginCard({
           <Button
             size="sm"
             variant={
-              installed || compatHardBlock || profileBlock
-                ? "secondary"
-                : "primary"
+              installed || compatBlock || profileBlock ? "secondary" : "primary"
             }
             disabled={disabled}
             onClick={(e) => {
               e.stopPropagation();
-              onInstall();
+              handlePrimaryAction();
             }}
-            title={tooltip}
+            title={accessibleDescription}
+            aria-label={`${installLabel} — ${plugin.name}`}
+            aria-describedby={accessibleDescription ? descId : undefined}
             className="shrink-0"
           >
-            {installed
-              ? t("card.installed")
-              : isLoading
-                ? t("card.installing")
-                : t("card.install")}
+            {installLabel}
           </Button>
         </div>
+
+        {accessibleDescription && (
+          <span id={descId} className="sr-only">
+            {accessibleDescription}
+          </span>
+        )}
 
         <p className="line-clamp-2 text-xs text-text-secondary">
           {plugin.description}
@@ -345,6 +434,39 @@ export function RegistryPluginCard({
         <p className="mt-auto truncate text-[11px] text-text-tertiary">
           {t("card.byAuthor", { author: plugin.author_id })}
         </p>
+
+        {isSettingsSurface && pickerOpen && (
+          <div
+            className="space-y-1 rounded-md border border-border-default bg-bg-tertiary p-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="px-1 text-[11px] font-medium text-text-tertiary">
+              {t("card.pickNodeHeading")}
+            </p>
+            {eligibleNodes.length === 0 ? (
+              <p className="px-1 text-[11px] text-text-tertiary">
+                {t("card.pickNodeEmpty")}
+              </p>
+            ) : (
+              <ul className="space-y-0.5">
+                {eligibleNodes.map((node) => (
+                  <li key={node.id}>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handlePickNode(node);
+                      }}
+                      className="w-full rounded px-2 py-1 text-left text-xs text-text-primary hover:bg-bg-primary"
+                    >
+                      {node.name ?? node.id}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
 
         {errMessage && (
           <div

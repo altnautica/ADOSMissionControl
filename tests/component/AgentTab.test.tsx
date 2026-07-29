@@ -93,6 +93,7 @@ import en from "../../locales/en.json";
 
 const NO_PATH = en.nodeSettings.readOnlyNoAgent;
 const CONFIG_SUBTITLE = en.nodeSettings.subtitle;
+const CONFIG_SUBTITLE_RELAYED = en.nodeSettings.subtitleRelayed;
 
 const initialConnectionState = useAgentConnectionStore.getState();
 
@@ -199,7 +200,7 @@ describe("the Agent page has one sidebar", () => {
     expect(labels.indexOf("Radio")).toBe(labels.indexOf("Link") + 1);
     expect(labels).toContain("World Model");
     expect(labels).toContain("Cameras");
-    expect(labels).toContain("Vision & perception");
+    expect(labels).toContain("Perception setup");
   });
 
   it("reaches every page that used to live behind the third sidebar", () => {
@@ -214,7 +215,7 @@ describe("the Agent page has one sidebar", () => {
       "Discovery",
       "MAVLink",
       "Video",
-      "Vision & perception",
+      "Perception setup",
       "Cloud relay",
       "Operating region",
       "Self-heal",
@@ -250,6 +251,24 @@ describe("the config banners follow the pages that read the config", () => {
     fireEvent.click(screen.getByText("Logs"));
     expect(screen.getByText("agent-logs-body")).toBeTruthy();
     expect(screen.queryByText(NO_PATH)).toBeNull();
+  });
+
+  it("swaps the transport clause for a relayed node without changing the rest of the sentence", () => {
+    renderWithIntl(
+      <AgentTab
+        ctx={ctxFor("ground-station", {
+          agentDeviceId: null,
+          relayReach: {
+            baseUrl: "http://192.168.1.50:8080",
+            apiKey: "key",
+            peerDeviceId: "dev-2",
+          },
+        })}
+      />,
+    );
+    fireEvent.click(screen.getByText("Cloud relay"));
+    expect(screen.getByText(CONFIG_SUBTITLE_RELAYED)).toBeTruthy();
+    expect(screen.queryByText(CONFIG_SUBTITLE)).toBeNull();
   });
 });
 

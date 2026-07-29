@@ -142,7 +142,9 @@ export function AgentTab({ ctx }: { ctx: SurfaceContext }) {
         {activeItem?.isConfigPage ? (
           <div className="flex-1 min-w-0 overflow-y-auto">
             <div className="space-y-4 p-4">
-              <p className="text-xs text-text-secondary">{t("subtitle")}</p>
+              <p className="text-xs text-text-secondary">
+                {ctx.relayReach !== null ? t("subtitleRelayed") : t("subtitle")}
+              </p>
 
               {activeItem.readsConfig ? (
                 <ConfigBanner

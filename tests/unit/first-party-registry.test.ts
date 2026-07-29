@@ -1,13 +1,13 @@
 import { describe, it, expect } from "vitest";
 
-import { DEMO_REGISTRY_ENTRIES } from "@/mock/demo-plugin-registry";
+import { DEMO_REGISTRY_ENTRIES } from "@/lib/plugins/first-party-registry";
 import {
   parseManifestYaml,
   toInstallSummary,
 } from "@/components/plugins/transports/manifest-parse";
 import { deriveTrustSignals } from "@/lib/plugins/trust-signals";
 
-describe("demo plugin registry fixture", () => {
+describe("first-party registry demo fixture", () => {
   it("every entry parses into a summary whose id matches the catalog row", () => {
     for (const entry of DEMO_REGISTRY_ENTRIES) {
       const summary = toInstallSummary(

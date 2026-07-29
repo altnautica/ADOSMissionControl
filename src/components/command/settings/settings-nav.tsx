@@ -238,6 +238,11 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
       />
     ),
   },
+  // `vision-perception`, not `vision`: the live Perception dashboard (engine
+  // tier, session health, usage, detection overlay) owns that id in
+  // `agent-nav-items.tsx`. This page is the detector-model + offload/serving
+  // *config* behind it — hence the distinct "Perception setup" label, so two
+  // adjacent sidebar rows can never read as the same thing.
   {
     id: "vision-perception",
     labelKey: "nodeSettings.perception.title",

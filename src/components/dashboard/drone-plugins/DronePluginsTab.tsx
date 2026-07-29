@@ -24,6 +24,7 @@ import { useTranslations } from "next-intl";
 
 import { useFleetStore } from "@/stores/fleet-store";
 import type { FleetDrone } from "@/lib/types";
+import { resolveRelayReach, type RelayReach } from "@/lib/nodes/relay-reach";
 
 import { DronePluginsList } from "./DronePluginsList";
 import { InstallPluginButton } from "./InstallPluginButton";
@@ -32,9 +33,18 @@ import { RegistryPluginGrid } from "./RegistryPluginGrid";
 interface DronePluginsTabProps {
   /** Drone the panel is scoped to. */
   agentId: string;
+  /** Registry plugin id to scroll to / highlight on mount, set by a
+   * Settings-surface "Install on a node…" hand-off (`RegistryPluginCard`).
+   * Optional and unused until a caller wires a `?preselect=` query param
+   * through — kept as a plain prop rather than reading `next/navigation`
+   * directly so this component stays router-agnostic and test-friendly. */
+  preselectPluginId?: string | null;
 }
 
-export function DronePluginsTab({ agentId }: DronePluginsTabProps) {
+export function DronePluginsTab({
+  agentId,
+  preselectPluginId = null,
+}: DronePluginsTabProps) {
   const t = useTranslations("dronePlugins");
   const drone = useFleetStore((s) =>
     s.drones.find((d) => d.id === agentId),
@@ -46,6 +56,21 @@ export function DronePluginsTab({ agentId }: DronePluginsTabProps) {
     () => drone?.name ?? agentId,
     [drone, agentId],
   );
+
+  // This node's agent is reachable directly (`agentDeviceId !== null`) or
+  // through its ground station's relay-proxy (`relayReach !== null`) — the
+  // same reach gate `NodeDetailPanel.tsx` / `agent-nav-items.tsx` use to
+  // decide whether the per-node Extensions tab shows at all. A relay-only
+  // node has no `cloudDeviceId`, so anything that still fell back to
+  // `drone.id` (the node-shaped id) for the registry grid's device-keyed
+  // install-lookup query would resolve the wrong key.
+  const agentDeviceId = drone?.cloudDeviceId ?? null;
+  const relayReach: RelayReach | null = resolveRelayReach({
+    agentDeviceId,
+    reachedVia: drone?.reachedVia,
+    droneDeviceId: drone?.id ?? agentId,
+  });
+  const agentReachable = agentDeviceId !== null || relayReach !== null;
 
   if (!drone) {
     return (
@@ -88,10 +113,12 @@ export function DronePluginsTab({ agentId }: DronePluginsTabProps) {
           </section>
           <RegistryPluginGrid
             target={{
-              _id: drone.cloudDeviceId ?? drone.id,
-              deviceId: drone.cloudDeviceId ?? drone.id,
+              _id: relayReach?.peerDeviceId ?? (drone.cloudDeviceId ?? drone.id),
+              deviceId:
+                relayReach?.peerDeviceId ?? (drone.cloudDeviceId ?? drone.id),
               name: drone.name ?? drone.id,
             }}
+            preselectPluginId={agentReachable ? preselectPluginId : null}
           />
         </div>
       </div>

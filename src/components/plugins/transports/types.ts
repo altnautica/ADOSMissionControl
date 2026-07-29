@@ -9,8 +9,11 @@
 
 import type { InstallManifestSummary } from "../install-dialog/types";
 
-/** Which wire path will carry the archive bytes. */
-export type InstallTransport = "lan" | "cloud";
+/** Which wire path will carry the archive bytes. `relay` is a drone
+ * reached only through a ground station's WFB radio relay — the archive
+ * bytes never cross the relay itself (see `relay-url.ts`); the agent
+ * fetches them from the URL directly. */
+export type InstallTransport = "lan" | "cloud" | "relay";
 
 /** Result of a successful install kickoff. The dialog hands this back to
  * the caller so the progress toast can subscribe by job id and the

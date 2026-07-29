@@ -31,6 +31,7 @@ import { PluginInstallDialog } from "@/components/plugins/PluginInstallDialog";
 import type { InstallTargetDrone } from "@/components/plugins/install-dialog/types";
 import { isDemoMode } from "@/lib/utils";
 import type { FleetDrone } from "@/lib/types";
+import { resolveRelayReach, type RelayReach } from "@/lib/nodes/relay-reach";
 
 interface InstallPluginButtonProps {
   /** Drone the install will land on. */
@@ -56,14 +57,32 @@ export function InstallPluginButton({
   // Resolve the FleetDrone into the structural shape the dialog
   // wants. The dialog stays decoupled from FleetDrone so it can be
   // driven from any store that exposes a (_id, deviceId, name) tuple.
-  const installTarget = useMemo<InstallTargetDrone>(
-    () => ({
-      _id: targetDevice.cloudDeviceId ?? targetDevice.id,
-      deviceId: targetDevice.cloudDeviceId ?? targetDevice.id,
+  //
+  // A relay-only node (reached solely through a ground station's WFB
+  // relay) has no `cloudDeviceId` of its own — `cloudDeviceId ?? id`
+  // would fall back to the drone's node-shaped id, which is not a
+  // wire-level agent device id the install transport can resolve. For
+  // that carve-out, route the AGENT device id `resolveRelayReach`
+  // reports (the same pattern `resolveRelayTarget` uses for the LAN
+  // transport resolver); a direct node keeps the existing
+  // `cloudDeviceId ?? id` derivation unchanged. Deliberate, narrow
+  // carve-out for relay-only nodes.
+  const agentDeviceId = targetDevice.cloudDeviceId ?? null;
+  const relayReach: RelayReach | null = resolveRelayReach({
+    agentDeviceId,
+    reachedVia: targetDevice.reachedVia,
+    droneDeviceId: targetDevice.id,
+  });
+  const installTarget = useMemo<InstallTargetDrone>(() => {
+    const resolvedDeviceId =
+      relayReach?.peerDeviceId ??
+      (targetDevice.cloudDeviceId ?? targetDevice.id);
+    return {
+      _id: resolvedDeviceId,
+      deviceId: resolvedDeviceId,
       name: targetDevice.name ?? targetDevice.id,
-    }),
-    [targetDevice],
-  );
+    };
+  }, [targetDevice, relayReach]);
 
   const buttonLabel = label ?? t("installOnThisDrone");
 
