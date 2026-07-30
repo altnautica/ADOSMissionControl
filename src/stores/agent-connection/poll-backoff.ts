@@ -21,8 +21,15 @@ export const POLL_BASE_RELAY_MS = 10_000;
  * (`noteFetchFailure`), so backoff begins exactly when the header flips
  * offline. */
 export const OFFLINE_FAILURE_THRESHOLD = 6;
-/** Backoff ceiling once the agent is declared offline. */
-export const POLL_MAX_MS = 30000;
+/** Backoff ceiling once the agent is declared offline, expressed as a
+ * multiple of the caller's own base cadence rather than an absolute
+ * duration. A shared absolute ceiling scales with neither lane: at 30 s
+ * the LAN lane (3 s base) backs off 10x while the relay lane (10 s base)
+ * backs off only 3x — the least backoff on the lane whose polls cost
+ * scarce radio airtime rather than idle LAN traffic. Deriving the
+ * ceiling from the base gives both lanes the same shape: 30 s on the
+ * LAN, 100 s over the relay. */
+export const POLL_BACKOFF_MAX_MULTIPLE = 10;
 
 /** Reschedule delay derived from the consecutive-failure count. Stays at the
  * caller's base cadence until the agent is declared offline, then ramps
@@ -39,9 +46,13 @@ export function nextPollDelay(
   baseMs: number = POLL_BASE_MS,
 ): number {
   if (consecutiveFailures < OFFLINE_FAILURE_THRESHOLD) return baseMs;
-  // 0 extra steps → 2x base, then 4x, 8x … capped at POLL_MAX_MS.
+  // 0 extra steps → 2x base, then 4x, 8x … capped at
+  // POLL_BACKOFF_MAX_MULTIPLE x base.
   const steps = consecutiveFailures - OFFLINE_FAILURE_THRESHOLD;
-  const backoff = Math.min(baseMs * 2 ** (steps + 1), POLL_MAX_MS);
+  const backoff = Math.min(
+    baseMs * 2 ** (steps + 1),
+    baseMs * POLL_BACKOFF_MAX_MULTIPLE,
+  );
   const jitter = Math.floor(Math.random() * 1000);
   return backoff + jitter;
 }
