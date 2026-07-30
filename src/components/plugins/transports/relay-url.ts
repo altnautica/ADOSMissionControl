@@ -34,11 +34,16 @@ import {
   type InstallStage,
 } from "../install-progress-store";
 
-/** Longer than the LAN path's 60s total ceiling: the agent downloads and
- * verifies the archive itself, agent-side, before it ever answers this
- * request, and the request/response round trip additionally crosses the
- * WFB radio twice. Also the polling loop's hard cap. */
-export const RELAY_INSTALL_TIMEOUT_MS = 90_000;
+/** Client-side bound on one relay-proxy call, sat just above the two
+ * agent-side bounds it rides on: the drone bounds its own local HTTP
+ * call at 5s (`HTTP_TIMEOUT`, `aux_rpc_handler.rs`) and the ground
+ * station bounds the whole relay call at 10s (`RPC_DEFAULT_TIMEOUT`,
+ * `aux_rpc_proxy.rs`). Sitting above 10s means the ground station's own
+ * 504 lands first and names the real failure, rather than this client
+ * aborting on top of a call that was about to answer; sitting close to
+ * it means the operator is not left watching a spinner long after the
+ * ladder below has already given up. Also the polling loop's hard cap. */
+export const RELAY_INSTALL_TIMEOUT_MS = 15_000;
 
 /** How often `pollRelayInstallProgress` re-checks job status while a
  * relay install is in flight. */
@@ -71,11 +76,18 @@ export interface RelayInstallFromUrlInputs {
 
 /**
  * Drive the agent through the install-from-URL endpoint over the relay
- * proxy. Resolves with the kickoff result once the agent's response
- * lands (the agent answers only after it has downloaded, verified, and
- * installed the archive, so a 200 here means the install is already
- * done); throws `LanDirectError` on any wire-level failure so the dialog
+ * proxy. Throws `LanDirectError` on any wire-level failure so the dialog
  * can render its message.
+ *
+ * What a response actually means, given the ladder below: the endpoint
+ * is synchronous agent-side, so a 200 does mean the drone downloaded,
+ * verified and installed the archive. The converse does not hold. The
+ * drone's relay handler bounds that local call at 5s and answers 503
+ * once it elapses, so an install slower than 5s — which is most of them,
+ * since the drone fetches the archive off its own uplink first — reports
+ * a failure here while it is still running on the drone. A non-200 is
+ * therefore "no answer within the bound", not "the install failed", and
+ * `pollRelayInstallProgress` is what establishes the real outcome.
  *
  * Deliberately has no failover branch: a relay install that fails must
  * surface that failure, never fall through to cloud-relay silently — the
