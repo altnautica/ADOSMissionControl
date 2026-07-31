@@ -339,7 +339,14 @@ export interface DroneProtocol {
   startCompassMotCal?(): Promise<CommandResult>;
 
   // ── Manual Control ──────────────────────────────────────
-  /** Send MANUAL_CONTROL at up to 50 Hz. Fire-and-forget (no ACK). */
+  /**
+   * Send one normalized stick frame at up to 50 Hz. Fire-and-forget (no ACK).
+   *
+   * `roll`, `pitch`, and `yaw` are -1..1 with 0 at center. `throttle` is a
+   * deliberately different range, 0..1 with 0 at idle: on an MSP flight
+   * controller the center of a bipolar range is half throttle, so a throttle
+   * that shares the stick scale idles the aircraft at half power.
+   */
   sendManualControl(
     roll: number,
     pitch: number,

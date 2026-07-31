@@ -10,7 +10,7 @@
  * bytes, then round-trips the captured frame through the real codec +
  * parser to prove the bytes survive the wire.
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   mspArm,
   mspDisarm,
@@ -27,6 +27,8 @@ import {
 import type { MspSerialQueue } from '@/lib/protocol/msp/msp-serial-queue';
 import { MSP } from '@/lib/protocol/msp/msp-constants';
 import type { ModeRange } from '@/lib/protocol/msp/msp-mode-map';
+import { MspRcOverride } from '@/lib/protocol/msp/msp-rc-override';
+import { RC_THROTTLE_CUT } from '@/lib/protocol/msp/msp-rc-channels';
 import { encodeMsp } from '@/lib/protocol/msp/msp-codec';
 import { MspParser } from '@/lib/protocol/msp/msp-parser';
 
@@ -93,9 +95,23 @@ const ARM_RANGE: ModeRange = {
   rangeEnd: 2100,
 };
 
-function ctxWith(ranges: ModeRange[]): { ctx: MspCommandContext; frames: CapturedFrame[] } {
+/**
+ * Build a command context around a capturing queue and a real RC override, so
+ * every MSP_SET_RAW_RC assertion runs through the production channel model.
+ * `rxMspEnabled` defaults to true because most cases are about the frame
+ * contents; the cases that are about the receiver gate pass it explicitly.
+ */
+function ctxWith(
+  ranges: ModeRange[],
+  { rxMspEnabled = true }: { rxMspEnabled?: boolean } = {},
+): { ctx: MspCommandContext; frames: CapturedFrame[]; rc: MspRcOverride } {
   const { queue, frames } = createCapturingQueue();
-  return { ctx: { queue, modeRanges: ranges }, frames };
+  const rc = new MspRcOverride({
+    send: (payload) => queue.sendNoReply(MSP.MSP_SET_RAW_RC, payload),
+    modeRanges: ranges,
+    rxMspEnabled,
+  });
+  return { ctx: { queue, modeRanges: ranges, rc }, frames, rc };
 }
 
 // ── Arm / Disarm without an arm mode range ─────────────────
@@ -243,6 +259,103 @@ describe('mspKillSwitch', () => {
     const rt = roundTrip(frame);
     expect(readU16(rt.payload, 2 * 2)).toBe(885);
   });
+
+  it('holds the cut on the wire instead of lasting a single frame', async () => {
+    vi.useFakeTimers();
+    try {
+      const { ctx, frames, rc } = ctxWith([]);
+      await mspKillSwitch(ctx);
+      expect(frames).toHaveLength(1);
+
+      vi.advanceTimersByTime(500);
+      expect(frames.length).toBeGreaterThan(5);
+      for (const f of frames) {
+        expect(f.command).toBe(MSP.MSP_SET_RAW_RC);
+        expect(readU16(f.payload, 2 * 2)).toBe(RC_THROTTLE_CUT);
+      }
+      rc.destroy();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('refuses stick frames while the cut is latched', async () => {
+    const { ctx, frames, rc } = ctxWith([]);
+    await mspKillSwitch(ctx);
+    const afterCut = frames.length;
+
+    mspSendManualControl(ctx, 1, 1, 1, 1);
+    expect(frames).toHaveLength(afterCut);
+    rc.destroy();
+  });
+
+  it('drops the arm channel with the cut, and arming is what releases it', async () => {
+    const { ctx, frames, rc } = ctxWith([ARM_RANGE]);
+    const armChannel = ARM_RANGE.auxChannel + 4;
+
+    await mspArm(ctx);
+    expect(readU16(frames[frames.length - 1].payload, armChannel * 2)).toBe(1900);
+
+    await mspKillSwitch(ctx);
+    const cutFrame = frames[frames.length - 1];
+    expect(readU16(cutFrame.payload, 2 * 2)).toBe(RC_THROTTLE_CUT);
+    expect(readU16(cutFrame.payload, armChannel * 2)).toBe(1000);
+    expect(rc.isCut).toBe(true);
+
+    await mspArm(ctx);
+    expect(rc.isCut).toBe(false);
+    const rearmed = frames[frames.length - 1];
+    expect(readU16(rearmed.payload, 2 * 2)).toBe(1000);
+    expect(readU16(rearmed.payload, armChannel * 2)).toBe(1900);
+    rc.destroy();
+  });
+
+  it('reports failure rather than success when the receiver is not MSP', async () => {
+    const { ctx, frames } = ctxWith([], { rxMspEnabled: false });
+    const result = await mspKillSwitch(ctx);
+    expect(result.success).toBe(false);
+    expect(result.message).toContain('MSP receiver');
+    expect(frames).toHaveLength(0);
+  });
+});
+
+// ── AUX writes past the stock four ─────────────────────────
+
+describe('AUX channel writes', () => {
+  it('reaches AUX5 and beyond by widening the frame to cover the mode range', async () => {
+    // AUX6 is RC channel index 9, past the eight-channel frame the old sender
+    // built, so the write used to be dropped while still reporting success.
+    const aux6Arm: ModeRange = { boxId: 0, auxChannel: 5, rangeStart: 1700, rangeEnd: 2100 };
+    const { ctx, frames, rc } = ctxWith([aux6Arm]);
+
+    const result = await mspArm(ctx);
+    expect(result.success).toBe(true);
+    expect(rc.channelCount).toBe(10);
+
+    const frame = frames[0];
+    expect(frame.payload).toHaveLength(20);
+    expect(readU16(frame.payload, (aux6Arm.auxChannel + 4) * 2)).toBe(1900);
+  });
+
+  it('fails honestly when the AUX channel is past the widest frame the link carries', async () => {
+    // AUX15 is RC channel index 18, past the 18-channel cap both firmwares
+    // enforce on MSP_SET_RAW_RC.
+    const outOfRange: ModeRange = { boxId: 0, auxChannel: 14, rangeStart: 1700, rangeEnd: 2100 };
+    const { ctx, frames } = ctxWith([outOfRange]);
+
+    const result = await mspArm(ctx);
+    expect(result.success).toBe(false);
+    expect(result.message).toContain('AUX15');
+    expect(frames).toHaveLength(0);
+  });
+
+  it('fails honestly when the flight controller receiver is not MSP', async () => {
+    const { ctx, frames } = ctxWith([ARM_RANGE], { rxMspEnabled: false });
+    const result = await mspArm(ctx);
+    expect(result.success).toBe(false);
+    expect(result.message).toContain('MSP receiver');
+    expect(frames).toHaveLength(0);
+  });
 });
 
 // ── Reboot / bootloader ────────────────────────────────────
@@ -317,26 +430,41 @@ describe('mspCommitParamsToFlash', () => {
 // ── Manual control (RC override stream) ────────────────────
 
 describe('mspSendManualControl', () => {
-  it('maps -1000..1000 stick axes to 1000..2000 PWM via MSP_SET_RAW_RC', () => {
+  it('maps the normalized stick contract to 1000..2000 PWM via MSP_SET_RAW_RC', () => {
     const { ctx, frames } = ctxWith([]);
-    mspSendManualControl(ctx, 1000, -1000, 0, 500);
+    // The only production caller (the gamepad poller) emits roll/pitch/yaw in
+    // -1..1 and throttle in 0..1, matching what the MAVLink adapter scales by
+    // 1000. Full deflection must reach the rail, not sit at center.
+    mspSendManualControl(ctx, 1, -1, 0.5, 0.5);
     expect(frames).toHaveLength(1);
 
     const frame = frames[0];
     expect(frame.command).toBe(MSP.MSP_SET_RAW_RC);
     expect(frame.awaited).toBe(false);
-    expect(frame.payload).toHaveLength(16);
 
-    // value / 2 + 1500: roll 1000 -> 2000, pitch -1000 -> 1000,
-    // throttle 0 -> 1500, yaw 500 -> 1750.
-    expect(readU16(frame.payload, 0)).toBe(2000);
-    expect(readU16(frame.payload, 1 * 2)).toBe(1000);
-    expect(readU16(frame.payload, 2 * 2)).toBe(1500);
-    expect(readU16(frame.payload, 3 * 2)).toBe(1750);
-    // The four AUX channels hold center.
-    for (let i = 4; i < 8; i++) {
-      expect(readU16(frame.payload, i * 2)).toBe(1500);
-    }
+    expect(readU16(frame.payload, 0)).toBe(2000);        // roll +1 -> full right
+    expect(readU16(frame.payload, 1 * 2)).toBe(1000);    // pitch -1 -> full down
+    expect(readU16(frame.payload, 2 * 2)).toBe(1500);    // throttle 0.5 -> mid
+    expect(readU16(frame.payload, 3 * 2)).toBe(1750);    // yaw +0.5 -> three quarters
+  });
+
+  it('throttle 0 is idle, not the 1500 mid-throttle center', () => {
+    const { ctx, frames } = ctxWith([]);
+    mspSendManualControl(ctx, 0, 0, 0, 0);
+    expect(readU16(frames[0].payload, 2 * 2)).toBe(1000);
+  });
+
+  it('never parks an AUX channel inside a configured arm range', () => {
+    // A 1300-2100 arm range is a common setup and it contains 1500. A stick
+    // frame that writes center into every AUX channel therefore arms the
+    // aircraft on the first frame of the override stream.
+    const wideArm: ModeRange = { boxId: 0, auxChannel: 0, rangeStart: 1300, rangeEnd: 2100 };
+    const { ctx, frames } = ctxWith([wideArm]);
+    mspSendManualControl(ctx, 0, 0, 0, 0);
+
+    const armChannel = wideArm.auxChannel + 4;
+    const pwm = readU16(frames[0].payload, armChannel * 2);
+    expect(pwm).toBeLessThan(wideArm.rangeStart);
   });
 });
 
@@ -356,7 +484,7 @@ describe('mspSetFlightMode', () => {
 
 describe('not-connected guard', () => {
   it('every command returns "Not connected" when the queue is null and sends nothing', async () => {
-    const ctx: MspCommandContext = { queue: null, modeRanges: [] };
+    const ctx: MspCommandContext = { queue: null, modeRanges: [], rc: null };
     for (const result of [
       await mspArm(ctx),
       await mspDisarm(ctx),

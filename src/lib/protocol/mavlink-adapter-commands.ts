@@ -60,12 +60,18 @@ export function cmdTakeoff(ctx: CommandContext, altitude: number): Promise<Comma
   return ctx.sendCommandLong(22, [0, 0, 0, 0, 0, 0, altitude])
 }
 
+/**
+ * MANUAL_CONTROL from a normalized stick frame. Roll, pitch, and yaw are -1..1
+ * and map to the full -1000..1000 axis range. Throttle is 0..1 and maps to
+ * 0..1000, the range the message defines for a vehicle with no reverse thrust.
+ */
 export function cmdSendManualControl(ctx: CommandContext, roll: number, pitch: number, throttle: number, yaw: number, buttons: number): void {
   if (!ctx.transport?.isConnected) return
-  const x = Math.round(pitch * 1000)
-  const y = Math.round(roll * 1000)
-  const z = Math.round(throttle * 1000)
-  const r = Math.round(yaw * 1000)
+  const clampAxis = (v: number) => Math.max(-1, Math.min(1, Number.isFinite(v) ? v : 0))
+  const x = Math.round(clampAxis(pitch) * 1000)
+  const y = Math.round(clampAxis(roll) * 1000)
+  const z = Math.round(Math.max(0, Math.min(1, Number.isFinite(throttle) ? throttle : 0)) * 1000)
+  const r = Math.round(clampAxis(yaw) * 1000)
   ctx.transport.send(encodeManualControl(ctx.targetSysId, x, y, z, r, buttons, ctx.sysId, ctx.compId))
 }
 

@@ -163,7 +163,7 @@ export function startGamepadPolling(): void {
       if (!protocol?.isConnected) return;
 
       const { axes, buttons } = useInputStore.getState();
-      const [roll, pitch, throttle, yaw] = axes;
+      const [roll, pitch, throttleAxis, yaw] = axes;
 
       // Convert boolean[] to bitmask
       let bitmask = 0;
@@ -171,7 +171,10 @@ export function startGamepadPolling(): void {
         if (buttons[i]) bitmask |= 1 << i;
       }
 
-      protocol.sendManualControl(roll, pitch, throttle, yaw, bitmask);
+      // The throttle axis is bipolar (-1 stick down, +1 stick up) while the
+      // protocol takes throttle as 0..1 with 0 at idle, so it is remapped
+      // here rather than sharing the stick scale.
+      protocol.sendManualControl(roll, pitch, (throttleAxis + 1) / 2, yaw, bitmask);
     }, 20);
   }
 }

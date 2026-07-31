@@ -19,8 +19,9 @@ import type {
 import { MspParser } from './msp/msp-parser'
 import { MspSerialQueue } from './msp/msp-serial-queue'
 import { MspTelemetryPoller } from './msp/msp-telemetry-poller'
-import { MSP, MSP2 } from './msp/msp-constants'
+import { MSP, MSP2, FEATURE_FLAG } from './msp/msp-constants'
 import { buildBoxMap, parseModeRanges } from './msp/msp-mode-map'
+import { MspRcOverride } from './msp/msp-rc-override'
 import type { ModeRange } from './msp/msp-mode-map'
 import { betaflightHandler } from './firmware/betaflight'
 import { inavHandler } from './firmware/inav'
@@ -96,6 +97,9 @@ export class MSPAdapter implements DroneProtocol {
   private inCliMode = false
   private boxIds: number[] = []
   private modeRanges: ModeRange[] = []
+  /** True only when the FC's receiver provider is MSP; RC override is inert otherwise. */
+  private rxMspEnabled = false
+  private rcOverride: MspRcOverride | null = null
   private paramCache: Map<number, Uint8Array> = new Map()
   private paramNameCache: string[] = []
   private settingsClient: SettingsClient | null = null
@@ -110,7 +114,7 @@ export class MSPAdapter implements DroneProtocol {
   get isConnected(): boolean { return this._connected }
 
   // ── Context helpers ─────────────────────────────────────────
-  private get cmdCtx(): cmds.MspCommandContext { return { queue: this.queue, modeRanges: this.modeRanges } }
+  private get cmdCtx(): cmds.MspCommandContext { return { queue: this.queue, modeRanges: this.modeRanges, rc: this.rcOverride } }
   private get prmCtx(): prm.MspParamContext { return { queue: this.queue, paramCache: this.paramCache, paramNameCache: this.paramNameCache, parameterCallbacks: this.cbs.parameterCallbacks, settingsClient: this.settingsClient, isInav: this.vehicleInfo?.firmwareType === 'inav' } }
 
   // ── Connection ──────────────────────────────────────────────
@@ -156,6 +160,26 @@ export class MSPAdapter implements DroneProtocol {
       this.modeRanges = parseModeRanges(modeRangesFrame.payload)
     } catch { this.modeRanges = [] }
 
+    // MSP_SET_RAW_RC only reaches rcData[] when the receiver provider is MSP.
+    // With any other receiver the FC parses the frame and discards it, so an
+    // override that reported success would be describing nothing. A feature
+    // word we could not read is not evidence either way, so it reads as off.
+    try {
+      const featureFrame = await this.queue.send(MSP.MSP_FEATURE_CONFIG)
+      const fp = featureFrame.payload
+      const features = fp.length >= 4
+        ? ((fp[0] | (fp[1] << 8) | (fp[2] << 16) | (fp[3] << 24)) >>> 0)
+        : 0
+      this.rxMspEnabled = ((features >>> FEATURE_FLAG.RX_MSP) & 1) === 1
+    } catch { this.rxMspEnabled = false }
+
+    const rcQueue = this.queue
+    this.rcOverride = new MspRcOverride({
+      send: (payload) => rcQueue.sendNoReply(MSP.MSP_SET_RAW_RC, payload),
+      modeRanges: this.modeRanges,
+      rxMspEnabled: this.rxMspEnabled,
+    })
+
     const isBetaflight = variantStr.trim() === 'BTFL'
     const isInav = variantStr.trim() === 'INAV'
     this.firmwareHandler = isInav ? inavHandler : betaflightHandler
@@ -191,6 +215,8 @@ export class MSPAdapter implements DroneProtocol {
   private handleDisconnect(): void {
     if (!this._connected && !this.poller) return
     this._connected = false
+    if (this.rcOverride) { this.rcOverride.destroy(); this.rcOverride = null }
+    this.rxMspEnabled = false
     if (this.poller) { this.poller.stop(); this.poller = null }
     if (this.queue) { this.queue.destroy(); this.queue = null }
     this.parser.reset(); this.paramCache.clear(); this.paramNameCache = []; this.inCliMode = false; this.settingsClient = null; this.settingsCapability = null; this.bfCli = null; this.cliSettingsCapability = null

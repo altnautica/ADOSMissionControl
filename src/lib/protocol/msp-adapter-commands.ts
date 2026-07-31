@@ -11,6 +11,7 @@ import { formatErrorMessage } from '@/lib/utils'
 import type { MspSerialQueue } from './msp/msp-serial-queue'
 import { MSP } from './msp/msp-constants'
 import { findModeRange, type ModeRange } from './msp/msp-mode-map'
+import type { MspRcOverride } from './msp/msp-rc-override'
 
 const NOT_SUPPORTED: CommandResult = {
   success: false, resultCode: -1, message: 'Not supported by MSP firmware',
@@ -18,6 +19,10 @@ const NOT_SUPPORTED: CommandResult = {
 
 const NOT_CONNECTED: CommandResult = {
   success: false, resultCode: -1, message: 'Not connected',
+}
+
+const NO_RC_OVERRIDE: CommandResult = {
+  success: false, resultCode: -1, message: 'RC override is not available on this link',
 }
 
 function writeU16(buf: Uint8Array, offset: number, value: number): void {
@@ -28,10 +33,15 @@ function writeU16(buf: Uint8Array, offset: number, value: number): void {
 export interface MspCommandContext {
   queue: MspSerialQueue | null
   modeRanges: ModeRange[]
+  /** Owns every `MSP_SET_RAW_RC` frame on this link. Null before connect. */
+  rc: MspRcOverride | null
 }
 
 export async function mspArm(ctx: MspCommandContext): Promise<CommandResult> {
   if (!ctx.queue) return NOT_CONNECTED
+  // Arming is the operator asking to fly, so it is the one command that
+  // releases a latched motor cut. Nothing else clears the latch.
+  ctx.rc?.releaseCut()
   const armRange = findModeRange(ctx.modeRanges, 0)
   if (!armRange) {
     try {
@@ -59,7 +69,16 @@ export async function mspDisarm(ctx: MspCommandContext): Promise<CommandResult> 
       return { success: false, resultCode: -1, message: `Disarm failed: ${formatErrorMessage(err)}` }
     }
   }
-  return mspSetAuxChannel(ctx, armRange.auxChannel, 1000)
+  // Drive the arm channel to the value the model proved sits outside every
+  // range configured on it, rather than assuming a literal 1000 is low enough.
+  const idle = ctx.rc?.idleValueFor(armRange.auxChannel)
+  if (idle == null) {
+    return {
+      success: false, resultCode: -1,
+      message: `Disarm failed: no value on AUX${armRange.auxChannel + 1} leaves the arm range`,
+    }
+  }
+  return mspSetAuxChannel(ctx, armRange.auxChannel, idle)
 }
 
 export async function mspSetFlightMode(_ctx: MspCommandContext, _mode: UnifiedFlightMode): Promise<CommandResult> {
@@ -69,18 +88,13 @@ export async function mspSetFlightMode(_ctx: MspCommandContext, _mode: UnifiedFl
   }
 }
 
+/**
+ * Emit one live stick frame. Roll, pitch, and yaw are -1..1; throttle is 0..1
+ * with 0 as idle, matching what the MAVLink adapter scales. The channel model
+ * decides whether the frame reaches the wire; a refused frame is not sent.
+ */
 export function mspSendManualControl(ctx: MspCommandContext, roll: number, pitch: number, throttle: number, yaw: number): void {
-  if (!ctx.queue) return
-  const payload = new Uint8Array(16)
-  writeU16(payload, 0, Math.round(roll / 2 + 1500))
-  writeU16(payload, 2, Math.round(pitch / 2 + 1500))
-  writeU16(payload, 4, Math.round(throttle / 2 + 1500))
-  writeU16(payload, 6, Math.round(yaw / 2 + 1500))
-  writeU16(payload, 8, 1500)
-  writeU16(payload, 10, 1500)
-  writeU16(payload, 12, 1500)
-  writeU16(payload, 14, 1500)
-  ctx.queue.sendNoReply(MSP.MSP_SET_RAW_RC, payload)
+  ctx.rc?.sendSticks(roll, pitch, throttle, yaw)
 }
 
 export async function mspMotorTest(ctx: MspCommandContext, motor: number, throttle: number): Promise<CommandResult> {
@@ -160,16 +174,18 @@ export async function mspCommitParamsToFlash(ctx: MspCommandContext): Promise<Co
   }
 }
 
+/**
+ * Cut the motors and hold the cut. A single low-throttle frame lasts exactly
+ * one frame, so the override latches and re-emits it; only arming releases it.
+ */
 export async function mspKillSwitch(ctx: MspCommandContext): Promise<CommandResult> {
   if (!ctx.queue) return NOT_CONNECTED
-  const payload = new Uint8Array(16)
-  writeU16(payload, 0, 1500)
-  writeU16(payload, 2, 1500)
-  writeU16(payload, 4, 885)
-  writeU16(payload, 6, 1500)
-  for (let i = 4; i < 8; i++) writeU16(payload, i * 2, 1000)
-  ctx.queue.sendNoReply(MSP.MSP_SET_RAW_RC, payload)
-  return { success: true, resultCode: 0, message: 'Kill switch activated' }
+  if (!ctx.rc) return NO_RC_OVERRIDE
+  const cut = ctx.rc.engageCut()
+  if (!cut.ok) {
+    return { success: false, resultCode: -1, message: `Motor cut refused: ${cut.reason}` }
+  }
+  return { success: true, resultCode: 0, message: 'Motor cut latched — held until the aircraft is armed again' }
 }
 
 export async function mspDoPreArmCheck(ctx: MspCommandContext): Promise<CommandResult> {
@@ -213,15 +229,10 @@ export async function mspEraseAllLogs(): Promise<CommandResult> { return NOT_SUP
 
 async function mspSetAuxChannel(ctx: MspCommandContext, auxIndex: number, pwmValue: number): Promise<CommandResult> {
   if (!ctx.queue) return NOT_CONNECTED
-  const channelCount = 8
-  const payload = new Uint8Array(channelCount * 2)
-  writeU16(payload, 0, 1500)
-  writeU16(payload, 2, 1500)
-  writeU16(payload, 4, 1000)
-  writeU16(payload, 6, 1500)
-  for (let i = 4; i < channelCount; i++) writeU16(payload, i * 2, 1000)
-  const channelIndex = auxIndex + 4
-  if (channelIndex < channelCount) writeU16(payload, channelIndex * 2, pwmValue)
-  ctx.queue.sendNoReply(MSP.MSP_SET_RAW_RC, payload)
+  if (!ctx.rc) return NO_RC_OVERRIDE
+  const write = ctx.rc.setAux(auxIndex, pwmValue)
+  if (!write.ok) {
+    return { success: false, resultCode: -1, message: `AUX${auxIndex + 1} write refused: ${write.reason}` }
+  }
   return { success: true, resultCode: 0, message: `AUX${auxIndex + 1} set to ${pwmValue}` }
 }
