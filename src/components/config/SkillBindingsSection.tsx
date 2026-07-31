@@ -42,8 +42,10 @@ export function SkillBindingsSection() {
   const tRoot = useTranslations();
   const { toast } = useToast();
 
-  // A browser gamepad only reports while a poller runs; start one for this
-  // section so a "press a button" capture can resolve.
+  // A browser gamepad only reports while a poller runs, so this section starts
+  // the reader for its "press a button" capture. It never starts the
+  // manual-control stream: a keybinding panel must not open an RC override on
+  // whatever aircraft happens to be connected.
   useEffect(() => {
     startGamepadPolling();
     return () => stopGamepadPolling();

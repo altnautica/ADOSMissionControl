@@ -28,6 +28,8 @@ vi.mock("@/components/flight/VideoCanvas", () => ({
 vi.mock("@/lib/input/gamepad-poller", () => ({
   startGamepadPolling: vi.fn(),
   stopGamepadPolling: vi.fn(),
+  startManualControlStream: vi.fn(),
+  stopManualControlStream: vi.fn(),
 }));
 
 // Unified flight recording drives MediaRecorder + the telemetry recorder; stub

@@ -25,6 +25,7 @@ import {
   getActiveGamepadName,
   startGamepadPolling,
   stopGamepadPolling,
+  startManualControlStream,
 } from "@/lib/input/gamepad-poller";
 import { useInputStore } from "@/stores/input-store";
 import { useTelemetryStore } from "@/stores/telemetry-store";
@@ -154,10 +155,11 @@ function GamepadIndicator() {
 }
 
 function FullHud() {
-  // Start gamepad polling on mount. Safe to call repeatedly (guarded by
-  // internal animation-frame singleton in gamepad-poller).
+  // Read the gamepad and open the stick stream on mount. Both are idempotent
+  // singletons; the stream itself stays gated frame by frame.
   useEffect(() => {
     startGamepadPolling();
+    startManualControlStream();
     return () => {
       stopGamepadPolling();
     };
@@ -180,6 +182,7 @@ function FullHud() {
 function MinimalHud() {
   useEffect(() => {
     startGamepadPolling();
+    startManualControlStream();
     return () => {
       stopGamepadPolling();
     };

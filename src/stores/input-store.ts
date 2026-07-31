@@ -22,6 +22,12 @@ interface InputStoreState {
   deadzone: number;
   expo: number;
   calibration: GamepadCalibration | null;
+  /**
+   * The operator opted in to flying with the gamepad. Off at every start and
+   * revoked whenever the controller drops, because the stream it authorizes is
+   * an RC override, not a display preference.
+   */
+  manualControlEnabled: boolean;
 
   setController: (controller: InputController) => void;
   setAxes: (axes: [number, number, number, number]) => void;
@@ -31,6 +37,7 @@ interface InputStoreState {
   setExpo: (expo: number) => void;
   setCalibration: (cal: GamepadCalibration) => void;
   clearCalibration: () => void;
+  setManualControlEnabled: (enabled: boolean) => void;
   resetInput: () => void;
 }
 
@@ -42,6 +49,7 @@ export const useInputStore = create<InputStoreState>((set) => ({
   deadzone: 0.05,
   expo: 0.3,
   calibration: loadCalibration(),
+  manualControlEnabled: false,
 
   setController: (activeController) => set({ activeController }),
   setAxes: (axes) => set({ axes }),
@@ -57,11 +65,15 @@ export const useInputStore = create<InputStoreState>((set) => ({
     localStorage.removeItem(CAL_STORAGE_KEY);
     set({ calibration: null });
   },
+  setManualControlEnabled: (manualControlEnabled) => set({ manualControlEnabled }),
   resetInput: () =>
     set({
       activeController: "none",
       axes: [0, 0, 0, 0],
       rawAxes: [0, 0, 0, 0],
       buttons: new Array(16).fill(false),
+      // Losing the controller revokes the opt-in. Re-attaching one must be an
+      // explicit decision to fly again, not a silent resumption.
+      manualControlEnabled: false,
     }),
 }));

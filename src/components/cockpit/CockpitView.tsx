@@ -61,6 +61,7 @@ import { useVideoStreams } from "@/hooks/use-video-streams";
 import {
   startGamepadPolling,
   stopGamepadPolling,
+  startManualControlStream,
 } from "@/lib/input/gamepad-poller";
 import { useUiStore } from "@/stores/ui-store";
 import { useInputStore } from "@/stores/input-store";
@@ -156,9 +157,11 @@ export function CockpitView({ droneId }: CockpitViewProps) {
   // resetting to standard on every remount.
   const density = layout.density ?? DEFAULT_DENSITY;
 
-  // Gamepad polling for the cockpit (idempotent singleton).
+  // The cockpit is a flying surface, so it reads the gamepad and opens the
+  // stick stream. The stream stays gated frame by frame regardless.
   useEffect(() => {
     startGamepadPolling();
+    startManualControlStream();
     return () => {
       stopGamepadPolling();
     };

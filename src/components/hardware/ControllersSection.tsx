@@ -50,12 +50,15 @@ function AxisBar({ label, value }: { label: string; value: number }) {
 
 export function ControllersSection() {
   const t = useTranslations("inputDevices");
-  const { activeController, axes, deadzone, expo, setDeadzone, setExpo, calibration, clearCalibration } =
-    useInputStore();
+  const {
+    activeController, axes, deadzone, expo, setDeadzone, setExpo, calibration, clearCalibration,
+    manualControlEnabled, setManualControlEnabled,
+  } = useInputStore();
   const { toast } = useToast();
   const [showCalWizard, setShowCalWizard] = useState(false);
 
   const isConnected = activeController !== "none";
+  const hasGamepad = activeController === "gamepad";
 
   const controllerLabel: Record<string, string> = {
     keyboard: t("keyboard"),
@@ -80,6 +83,43 @@ export function ControllersSection() {
           >
             {controllerLabel[activeController]}
           </span>
+        </div>
+      </Card>
+
+      {/* Stick control opt-in */}
+      <Card title="Stick control">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-1 min-w-0">
+            <p className="text-xs text-text-secondary leading-relaxed">
+              Lets the gamepad fly the selected aircraft. Sticks are sent as a
+              receiver override, so nothing is transmitted until the aircraft is
+              armed and in a mode where the pilot holds the sticks. Turning it on
+              here is the only thing that opens the stream, and unplugging the
+              controller turns it back off.
+            </p>
+            {!hasGamepad && (
+              <p className="text-[10px] text-text-tertiary">
+                No gamepad is reporting. Connect one and press a button.
+              </p>
+            )}
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={manualControlEnabled}
+            aria-label="Stick control"
+            disabled={!hasGamepad}
+            onClick={() => setManualControlEnabled(!manualControlEnabled)}
+            className={cn(
+              "shrink-0 px-3 py-1 text-xs font-medium rounded transition-opacity",
+              manualControlEnabled
+                ? "bg-status-warning/20 text-status-warning border border-status-warning/40"
+                : "bg-bg-tertiary text-text-secondary border border-border-default",
+              !hasGamepad && "opacity-40 cursor-not-allowed"
+            )}
+          >
+            {manualControlEnabled ? "On" : "Off"}
+          </button>
         </div>
       </Card>
 

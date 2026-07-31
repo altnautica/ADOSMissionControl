@@ -1,13 +1,24 @@
 /**
- * Gamepad polling system for Altnautica Command GCS.
+ * Gamepad polling for Altnautica Command GCS.
  *
- * Polls navigator.getGamepads() at 60Hz, applies deadzone + expo curves,
- * and feeds axes/buttons to the input store. Sends MANUAL_CONTROL to the
- * connected drone at 50Hz via a separate interval.
+ * Two independent lifecycles, deliberately kept apart:
+ *
+ * - `startGamepadPolling` reads `navigator.getGamepads()` at display rate,
+ *   applies calibration, deadzone, and expo, and publishes axes and buttons to
+ *   the input store. It transmits nothing. Any surface that needs to see a
+ *   button press — binding capture, a calibration wizard — wants this one.
+ * - `startManualControlStream` transmits those sticks to the aircraft at 50 Hz
+ *   as an RC override, and only while every condition in
+ *   {@link manualControlAllowed} holds. Only a flying surface starts this.
+ *
+ * They were one function, which meant opening a keybinding panel opened an RC
+ * override on the connected aircraft.
  */
 
 import { useInputStore } from "@/stores/input-store";
 import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneStore } from "@/stores/drone-store";
+import { manualControlAllowed } from "./manual-control-gate";
 
 // TX mode: which physical stick controls which axis
 export type TxMode = 1 | 2; // Mode 1: throttle right. Mode 2: throttle left (default)
@@ -83,7 +94,10 @@ export function setTxMode(mode: TxMode): void {
   currentMapping = getMappingForMode(mode);
 }
 
-/** Start gamepad polling. Call once on app init or when gamepad connects. */
+/**
+ * Start reading the gamepad into the input store. Transmits nothing — call
+ * {@link startManualControlStream} as well to fly with it.
+ */
 export function startGamepadPolling(): void {
   if (pollAnimFrame !== null) return; // Already running
 
@@ -155,40 +169,66 @@ export function startGamepadPolling(): void {
   }
 
   pollAnimFrame = requestAnimationFrame(poll);
-
-  // Start MANUAL_CONTROL at 50Hz (20ms interval)
-  if (!manualControlInterval) {
-    manualControlInterval = setInterval(() => {
-      const protocol = useDroneManager.getState().getSelectedProtocol();
-      if (!protocol?.isConnected) return;
-
-      const { axes, buttons } = useInputStore.getState();
-      const [roll, pitch, throttleAxis, yaw] = axes;
-
-      // Convert boolean[] to bitmask
-      let bitmask = 0;
-      for (let i = 0; i < Math.min(buttons.length, 16); i++) {
-        if (buttons[i]) bitmask |= 1 << i;
-      }
-
-      // The throttle axis is bipolar (-1 stick down, +1 stick up) while the
-      // protocol takes throttle as 0..1 with 0 at idle, so it is remapped
-      // here rather than sharing the stick scale.
-      protocol.sendManualControl(roll, pitch, (throttleAxis + 1) / 2, yaw, bitmask);
-    }, 20);
-  }
 }
 
-/** Stop gamepad polling and MANUAL_CONTROL sending. */
+/**
+ * Start transmitting the sticks to the selected drone as a 50 Hz RC override.
+ *
+ * Every frame re-checks the gate, so the stream stops the moment the aircraft
+ * disarms, the mode changes to one the autopilot is flying, the controller
+ * drops, or the operator revokes the opt-in. Nothing is sent until all of
+ * those hold.
+ */
+export function startManualControlStream(): void {
+  if (manualControlInterval) return;
+
+  manualControlInterval = setInterval(() => {
+    const protocol = useDroneManager.getState().getSelectedProtocol();
+    const { axes, buttons, activeController, manualControlEnabled } = useInputStore.getState();
+    const { armState, flightMode } = useDroneStore.getState();
+
+    const allowed = manualControlAllowed({
+      enabled: manualControlEnabled,
+      controller: activeController,
+      connected: protocol?.isConnected === true,
+      armState,
+      flightMode,
+    });
+    if (!allowed || !protocol) return;
+
+    const [roll, pitch, throttleAxis, yaw] = axes;
+
+    // Convert boolean[] to bitmask
+    let bitmask = 0;
+    for (let i = 0; i < Math.min(buttons.length, 16); i++) {
+      if (buttons[i]) bitmask |= 1 << i;
+    }
+
+    // The throttle axis is bipolar (-1 stick down, +1 stick up) while the
+    // protocol takes throttle as 0..1 with 0 at idle, so it is remapped here
+    // rather than sharing the stick scale.
+    protocol.sendManualControl(roll, pitch, (throttleAxis + 1) / 2, yaw, bitmask);
+  }, 20);
+}
+
+/** Stop transmitting sticks. Leaves gamepad reading running. */
+export function stopManualControlStream(): void {
+  if (manualControlInterval === null) return;
+  clearInterval(manualControlInterval);
+  manualControlInterval = null;
+}
+
+/**
+ * Stop reading the gamepad. Also stops the manual-control stream: once the
+ * axes stop updating the last frame is stale, and a stale stick frame is not
+ * something to keep transmitting.
+ */
 export function stopGamepadPolling(): void {
   if (pollAnimFrame !== null) {
     cancelAnimationFrame(pollAnimFrame);
     pollAnimFrame = null;
   }
-  if (manualControlInterval !== null) {
-    clearInterval(manualControlInterval);
-    manualControlInterval = null;
-  }
+  stopManualControlStream();
   activeGamepadIndex = null;
 
   const inputStore = useInputStore.getState();
