@@ -16,6 +16,7 @@ export const CONTRACT_VERSIONS = {
   "mavlink.ingest": 0,
   "aux.frame": 1,
   "aux.node_status": 1,
+  "aux.link_feedback": 1,
   "rest.openapi": 0,
   "state.v1": 1,
   "ws_ticket": 1,
@@ -159,6 +160,13 @@ export const CONTRACT_CATALOG: Record<string, ContractMeta> = {
     transport: "udp",
     status: "active",
     description: "Compact node status and identity carried on the auxiliary lane's status and identity channels, so a ground station can describe the node it relays.",
+  },
+  "aux.link_feedback": {
+    version: 1,
+    wire: "binary",
+    transport: "udp",
+    status: "active",
+    description: "Ground-measured video-link quality reported back to the transmitting drone, so its adaptive bitrate ladder steps on a real loss sample instead of the sentinel a transmit-only radio can never leave.",
   },
   "rest.openapi": {
     version: 0,
