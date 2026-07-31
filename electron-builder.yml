@@ -26,6 +26,16 @@ extraResources:
     to: "standalone/public"
 
 mac:
+  # There is no Developer ID certificate available to the release build, so the
+  # macOS app is unsigned and un-notarized. Declaring that here rather than
+  # leaving it to whatever certificates happen to be in the builder's keychain
+  # keeps every macOS artifact identical, and it is the reason the updater
+  # reports macOS as manual-download only: Squirrel.Mac validates the code
+  # signature of an update against the running app, which an unsigned app
+  # cannot satisfy. Restoring signing means restoring both lines below and the
+  # matching branch in electron/updater.ts.
+  identity: null
+  notarize: false
   artifactName: "AltnauticaCommand-${version}-${arch}.${ext}"
   target:
     - target: dmg
