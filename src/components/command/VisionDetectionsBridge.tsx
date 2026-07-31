@@ -60,10 +60,18 @@ import {
   type RelayReach,
 } from "@/lib/nodes/relay-reach";
 
-/** Poll interval for the relay lane's detection feed. ~4 Hz: inside the
- * follow-me plugin's own `output_rate_hz: 6` ceiling, above the documented
- * 3-4/s floor a click-to-track loop stays usable at. */
-const RELAY_POLL_INTERVAL_MS = 250;
+/** Pacing for the relay lane's detection feed.
+ *
+ * Every tick is a full request and response over the radio's auxiliary lane,
+ * shared with telemetry, status and any relay-proxy call the operator makes.
+ * The interval adapts so an idle drone — the common case, since vision may not
+ * be running at all — stops spending that airtime, while a fresh batch snaps
+ * the loop straight back to the fast rate. */
+import {
+  nextPollIntervalMs,
+  RELAY_POLL_BASE_MS,
+  type PollOutcome,
+} from "@/lib/agent/relay-poll-backoff";
 
 /** Fetch one detection batch through the relay-proxy poll route, or null on
  * any failure (caller just tries again next tick — a poll miss is not an
@@ -103,11 +111,14 @@ function connectRelayVisionDetections(opts: {
   let closed = false;
   let inFlight: AbortController | null = null;
   let polling = false;
+  let intervalMs = RELAY_POLL_BASE_MS;
+  let timer: ReturnType<typeof setTimeout> | null = null;
 
   async function tick() {
     if (closed || polling) return;
     polling = true;
     inFlight = new AbortController();
+    let outcome: PollOutcome = "empty";
     try {
       const raw = await pollRelayDetections(reach, inFlight.signal);
       if (
@@ -117,23 +128,35 @@ function connectRelayVisionDetections(opts: {
         !Array.isArray(raw)
       ) {
         const batch = mapWireBatch(raw as WireDetectionBatch);
-        if (batch) setBatch(droneId, batch);
+        if (batch) {
+          setBatch(droneId, batch);
+          outcome = "fresh";
+        }
       }
     } catch {
-      // Transient poll failure — the next tick tries again.
+      // Transient poll failure — the next tick tries again, a little later.
+      outcome = "error";
     } finally {
       inFlight = null;
       polling = false;
+      intervalMs = nextPollIntervalMs(intervalMs, outcome);
+      schedule();
     }
   }
 
+  // Self-scheduling rather than a fixed interval, so the pacing can change
+  // between ticks. Cleared on close so no tick outlives the bridge.
+  function schedule() {
+    if (closed) return;
+    timer = setTimeout(() => void tick(), intervalMs);
+  }
+
   void tick();
-  const timer = setInterval(() => void tick(), RELAY_POLL_INTERVAL_MS);
 
   return {
     close: () => {
       closed = true;
-      clearInterval(timer);
+      if (timer) clearTimeout(timer);
       inFlight?.abort();
       clearBatch(droneId);
     },
