@@ -35,9 +35,20 @@ import { isValidPeerDeviceId } from "../_peer-device-id";
 export const runtime = "nodejs";
 
 /** The relay lane crosses a WFB radio; mirrors the config route's relay
- * ceiling. A poll that times out just means the caller's next tick tries
- * again — this is never the sole source of truth for liveness. */
-const RELAY_UPSTREAM_TIMEOUT_MS = 8000;
+ * ceiling, which sits ABOVE the ground station's own ~10 s relay bound.
+ *
+ * This previously read 8000 while claiming to mirror that ceiling, which put it
+ * below the agent's bound and inverted the layering: the client aborted first,
+ * so the agent's honest gateway timeout — the one carrying how many fragments
+ * of the answer actually arrived — was never delivered, and a merely slow radio
+ * surfaced as a generic unreachable-upstream error instead. The aborted call
+ * also kept retransmitting on the agent side for the remaining two seconds,
+ * spending airtime on an answer nobody was waiting for.
+ *
+ * A poll that times out just means the caller's next tick tries again; the
+ * caller holds a re-entrancy guard, so a longer ceiling cannot pile requests up.
+ * This is never the sole source of truth for liveness. */
+const RELAY_UPSTREAM_TIMEOUT_MS = 15000;
 
 const RELAY_PROXY_PREFIX = "/api/v1/ground-station/relay-proxy";
 const UPSTREAM_PATH = "/api/vision/detections/latest";
