@@ -41,6 +41,7 @@ import type { SettingValue, SettingInfo } from "@/lib/protocol/msp/settings";
 import { SettingType } from "@/lib/protocol/msp/settings";
 import { createCallbackArrays } from "./mock-protocol-callbacks";
 import type { MockCallbackArrays } from "./mock-protocol-callbacks";
+import type { ManualControlSample, PositionTargetSample, AttitudeTargetSample } from "./mock-control-samples";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 
 // ── Helpers ───────────────────────────────────────────────────
@@ -182,6 +183,9 @@ export class INavMockProtocol implements DroneProtocol {
     units: 1, statsEnergyUnit: 0, adsbWarningStyle: 0,
   };
   private waypoints: INavWaypoint[] = [];
+  private _lastManualControl: ManualControlSample | null = null;
+  private _lastPositionTarget: PositionTargetSample | null = null;
+  private _lastAttitudeTarget: AttitudeTargetSample | null = null;
   private safehomeSlots: Array<INavSafehome | null> = Array(16).fill(null);
   private geozoneSlots: Array<INavGeozone | null> = Array(15).fill(null);
 
@@ -467,10 +471,23 @@ export class INavMockProtocol implements DroneProtocol {
   async startRxPair(): Promise<CommandResult>      { return ok("RX pair started"); }
   async setMessageInterval(): Promise<CommandResult> { return ok("Interval set"); }
   async sendCommand(): Promise<CommandResult>      { return ok("Command sent"); }
-  sendManualControl(): void {}
-  sendPositionTarget(): void {}
-  sendAttitudeTarget(): void {}
+  sendManualControl(roll: number, pitch: number, throttle: number, yaw: number, buttons: number): void {
+    this._lastManualControl = { roll, pitch, throttle, yaw, buttons };
+  }
+  sendPositionTarget(lat: number, lon: number, alt: number): void {
+    this._lastPositionTarget = { lat, lon, alt };
+  }
+  sendAttitudeTarget(roll: number, pitch: number, yaw: number, thrust: number): void {
+    this._lastAttitudeTarget = { roll, pitch, yaw, thrust };
+  }
   setRcChannelValues(): void {}
+
+  /** Last stick frame handed to this mock, or null if none. */
+  getLastManualControl(): ManualControlSample | null { return this._lastManualControl; }
+  /** Last guided position setpoint handed to this mock, or null if none. */
+  getLastPositionTarget(): PositionTargetSample | null { return this._lastPositionTarget; }
+  /** Last attitude setpoint handed to this mock, or null if none. */
+  getLastAttitudeTarget(): AttitudeTargetSample | null { return this._lastAttitudeTarget; }
 
   async doPreArmCheck(): Promise<CommandResult> { setTimeout(() => this._emit("statusText", 6, "PreArm: Ready to arm"), 200); return ok("Pre-arm check"); }
 

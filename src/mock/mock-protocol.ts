@@ -24,6 +24,7 @@ import { betaflightHandler } from "@/lib/protocol/firmware/betaflight";
 import { inavHandler } from "@/lib/protocol/firmware/inav";
 import { MOCK_PARAMS, HELI_MOCK_PARAMS, PX4_MOCK_PARAMS, BETAFLIGHT_MOCK_PARAMS, QUADPLANE_MOCK_PARAMS, TAILSITTER_MOCK_PARAMS, TILTROTOR_MOCK_PARAMS, ROVER_MOCK_PARAMS, BOAT_MOCK_PARAMS, type MockParam } from "./mock-params";
 import { createCallbackArrays, bindOnMethods } from "./mock-protocol-callbacks";
+import type { ManualControlSample, PositionTargetSample, AttitudeTargetSample } from "./mock-control-samples";
 import * as E from "./mock-protocol-emitters";
 import { mockStartCalibration, type CalibrationContext } from "./mock-protocol-calibration";
 import { handleSerialCommand, startTelemetryTick, type TelemetryTickContext } from "./mock-protocol-serial";
@@ -64,6 +65,9 @@ export class MockProtocol implements DroneProtocol {
   private tickTimers: ReturnType<typeof setInterval>[] = [];
   private imageCounter = { value: 0 };
   private _rcChannelValues: number[] = Array(16).fill(1500);
+  private _lastManualControl: ManualControlSample | null = null;
+  private _lastPositionTarget: PositionTargetSample | null = null;
+  private _lastAttitudeTarget: AttitudeTargetSample | null = null;
   private rallyPoints: Array<{ lat: number; lon: number; alt: number }> = [];
   private fenceElements: FenceElement[] = [];
 
@@ -195,10 +199,23 @@ export class MockProtocol implements DroneProtocol {
   async startRxPair(): Promise<CommandResult> { return ok("RX pair started"); }
   async setMessageInterval(): Promise<CommandResult> { return ok("Interval set"); }
   async sendCommand(): Promise<CommandResult> { return ok("Command sent"); }
-  sendManualControl(): void {}
-  sendPositionTarget(): void {}
-  sendAttitudeTarget(): void {}
+  sendManualControl(roll: number, pitch: number, throttle: number, yaw: number, buttons: number): void {
+    this._lastManualControl = { roll, pitch, throttle, yaw, buttons };
+  }
+  sendPositionTarget(lat: number, lon: number, alt: number): void {
+    this._lastPositionTarget = { lat, lon, alt };
+  }
+  sendAttitudeTarget(roll: number, pitch: number, yaw: number, thrust: number): void {
+    this._lastAttitudeTarget = { roll, pitch, yaw, thrust };
+  }
   setRcChannelValues(channels: number[]): void { this._rcChannelValues = channels; }
+
+  /** Last stick frame handed to this mock, or null if none. */
+  getLastManualControl(): ManualControlSample | null { return this._lastManualControl; }
+  /** Last guided position setpoint handed to this mock, or null if none. */
+  getLastPositionTarget(): PositionTargetSample | null { return this._lastPositionTarget; }
+  /** Last attitude setpoint handed to this mock, or null if none. */
+  getLastAttitudeTarget(): AttitudeTargetSample | null { return this._lastAttitudeTarget; }
 
   async doPreArmCheck(): Promise<CommandResult> {
     const names = ["Roll", "Pitch", "Throttle", "Yaw"];
