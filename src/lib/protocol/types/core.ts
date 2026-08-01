@@ -50,6 +50,13 @@ export interface ProtocolCapabilities {
   supportsCalibration: boolean;
   supportsSerialPassthrough: boolean;
   supportsMotorTest: boolean;
+  /**
+   * The vehicle can be commanded to navigate on its own: return to home, take
+   * off, hold, resume a mission. Whether a particular aircraft has the switch
+   * or the mission for it is answered by the command itself; this says only
+   * that the firmware has the capability at all.
+   */
+  supportsAutonomousNav: boolean;
   supportsGeoFence: boolean;
   supportsRally: boolean;
   supportsLogDownload: boolean;

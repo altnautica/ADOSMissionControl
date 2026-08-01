@@ -51,7 +51,7 @@ export function ActionsPanel() {
   const protocol = getProtocol();
   const { supports } = useFirmwareCapabilities();
   const hasMissions = supports("supportsMissionUpload");
-  const hasAutonomousFlight = supports("supportsGeoFence"); // RTL/Land/Takeoff require autonomous nav
+  const hasAutonomousFlight = supports("supportsAutonomousNav"); // RTL/Land/Takeoff
 
   // Every action fires through the single skill-dispatch pipeline so confirm,
   // arm-gating, and idempotency are uniform with the keyboard + gamepad paths.

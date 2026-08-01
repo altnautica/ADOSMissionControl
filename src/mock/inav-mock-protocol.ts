@@ -47,6 +47,16 @@ import { useTelemetryStore } from "@/stores/telemetry-store";
 // ── Helpers ───────────────────────────────────────────────────
 
 function ok(message = "OK"): CommandResult { return { success: true, resultCode: 0, message }; }
+
+/** The refusals the real iNav adapter gives, so demo shows the same answer. */
+const INAV_NO_LAND: CommandResult = {
+  success: false, resultCode: -1,
+  message: 'Land is not available: iNav has no separate landing mode. Use return to home, which lands at the home point.',
+};
+const INAV_NO_GOTO: CommandResult = {
+  success: false, resultCode: -1,
+  message: 'Fly-to is not available: iNav takes a target position as an uploaded waypoint mission, not as a single command.',
+};
 function sub<T>(arr: T[], cb: T): () => void {
   arr.push(cb);
   return () => { const i = arr.indexOf(cb); if (i >= 0) arr.splice(i, 1); };
@@ -433,11 +443,15 @@ export class INavMockProtocol implements DroneProtocol {
   async arm(): Promise<CommandResult>   { this._emit("statusText", 6, "Arming motors"); return ok("Armed"); }
   async disarm(): Promise<CommandResult> { this._emit("statusText", 6, "Disarming motors"); return ok("Disarmed"); }
   async setFlightMode(m: UnifiedFlightMode): Promise<CommandResult> { this._emit("statusText", 6, `Mode change to ${m}`); return ok(`Mode: ${m}`); }
+  // The navigation commands mirror the real adapter: iNav drives them by moving
+  // an AUX switch into its mode range, and the demo aircraft has NAV RTH, NAV
+  // LAUNCH, NAV WP and NAV POSHOLD assigned. Land is the exception and refuses
+  // the same way, because iNav has no separate landing mode to switch to.
   async returnToLaunch(): Promise<CommandResult>   { this._emit("statusText", 6, "Returning to launch"); return ok("RTL"); }
-  async land(): Promise<CommandResult>             { this._emit("statusText", 6, "Landing"); return ok("Landing"); }
+  async land(): Promise<CommandResult>             { return INAV_NO_LAND; }
   async takeoff(alt: number): Promise<CommandResult> { this._emit("statusText", 6, `Taking off to ${alt}m`); return ok(`Takeoff ${alt}m`); }
   async killSwitch(): Promise<CommandResult>       { this._emit("statusText", 2, "KILL SWITCH ACTIVATED"); return ok("Kill switch"); }
-  async guidedGoto(): Promise<CommandResult>       { return ok("Goto"); }
+  async guidedGoto(): Promise<CommandResult>       { return INAV_NO_GOTO; }
   async pauseMission(): Promise<CommandResult>     { return ok("Mission paused"); }
   async resumeMission(): Promise<CommandResult>    { return ok("Mission resumed"); }
   async commitParamsToFlash(): Promise<CommandResult> { return ok("Params saved to flash"); }

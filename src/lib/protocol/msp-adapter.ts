@@ -114,7 +114,7 @@ export class MSPAdapter implements DroneProtocol {
   get isConnected(): boolean { return this._connected }
 
   // ── Context helpers ─────────────────────────────────────────
-  private get cmdCtx(): cmds.MspCommandContext { return { queue: this.queue, modeRanges: this.modeRanges, rc: this.rcOverride } }
+  private get cmdCtx(): cmds.MspCommandContext { return { queue: this.queue, modeRanges: this.modeRanges, rc: this.rcOverride, firmwareType: this.vehicleInfo?.firmwareType } }
   private get prmCtx(): prm.MspParamContext { return { queue: this.queue, paramCache: this.paramCache, paramNameCache: this.paramNameCache, parameterCallbacks: this.cbs.parameterCallbacks, settingsClient: this.settingsClient, isInav: this.vehicleInfo?.firmwareType === 'inav' } }
 
   // ── Connection ──────────────────────────────────────────────
@@ -239,12 +239,12 @@ export class MSPAdapter implements DroneProtocol {
   async commitParamsToFlash() { return cmds.mspCommitParamsToFlash(this.cmdCtx) }
   async killSwitch() { return cmds.mspKillSwitch(this.cmdCtx) }
   async doPreArmCheck() { return cmds.mspDoPreArmCheck(this.cmdCtx) }
-  async returnToLaunch() { return cmds.mspReturnToLaunch() }
-  async land() { return cmds.mspLand() }
-  async takeoff(_alt: number) { return cmds.mspTakeoff() }
-  async guidedGoto(_lat: number, _lon: number, _alt: number) { return cmds.mspGuidedGoto() }
-  async pauseMission() { return cmds.mspPauseMission() }
-  async resumeMission() { return cmds.mspResumeMission() }
+  async returnToLaunch() { return cmds.mspReturnToLaunch(this.cmdCtx) }
+  async land() { return cmds.mspLand(this.cmdCtx) }
+  async takeoff(alt: number) { return cmds.mspTakeoff(this.cmdCtx, alt) }
+  async guidedGoto(lat: number, lon: number, alt: number) { return cmds.mspGuidedGoto(this.cmdCtx, lat, lon, alt) }
+  async pauseMission() { return cmds.mspPauseMission(this.cmdCtx) }
+  async resumeMission() { return cmds.mspResumeMission(this.cmdCtx) }
   async clearMission() { return cmds.mspClearMission() }
   async setHome(_uc: boolean) { return cmds.mspSetHome() }
   async changeSpeed(_st: number, _sp: number) { return cmds.mspChangeSpeed() }
@@ -607,7 +607,7 @@ export class MSPAdapter implements DroneProtocol {
       supportsArming: false, supportsFlightModes: false, supportsMissionUpload: false,
       supportsMissionDownload: false, supportsManualControl: false, supportsParameters: false,
       supportsCalibration: false, supportsSerialPassthrough: false, supportsMotorTest: false,
-      supportsGeoFence: false, supportsRally: false, supportsLogDownload: false,
+      supportsAutonomousNav: false, supportsGeoFence: false, supportsRally: false, supportsLogDownload: false,
       supportsOsd: false, supportsDisplayPort: false, supportsPidTuning: false, supportsPorts: false,
       supportsFailsafe: false, supportsPowerConfig: false, supportsReceiver: false,
       supportsFirmwareFlash: false, supportsCliShell: false, supportsMavlinkInspector: false,

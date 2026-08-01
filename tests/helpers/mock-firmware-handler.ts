@@ -9,6 +9,7 @@ import type { FirmwareHandler, FirmwareType, VehicleClass, UnifiedFlightMode, Pr
 const DEFAULT_CAPABILITIES: ProtocolCapabilities = {
   supportsArming: true,
   supportsFlightModes: true,
+  supportsAutonomousNav: true,
   supportsMissionUpload: true,
   supportsMissionDownload: true,
   supportsManualControl: true,

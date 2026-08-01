@@ -19,15 +19,19 @@ import type { ProtocolCapabilities } from "@/lib/protocol/types";
  * capability. `buildSkillContextFor` reads only the id, the protocol's
  * connected flag, its capabilities, and its firmware handler.
  */
-function connectedDroneWithGeoFence(
+function connectedDroneWithAutonomousNav(
   id: string,
-  supportsGeoFence: boolean,
+  supportsAutonomousNav: boolean,
 ): ManagedDrone {
   return {
     id,
     protocol: {
       isConnected: true,
-      getCapabilities: () => ({ supportsGeoFence }) as ProtocolCapabilities,
+      // The gate reads the navigation capability itself. It used to read the
+      // geofence flag as a stand-in, which offered the skills to a firmware
+      // whose navigation commands all refused.
+      getCapabilities: () =>
+        ({ supportsAutonomousNav, supportsGeoFence: false }) as ProtocolCapabilities,
       getFirmwareHandler: () => null,
     },
   } as unknown as ManagedDrone;
@@ -131,7 +135,7 @@ describe("skill registry", () => {
     useDroneManager.setState({
       selectedDroneId: "drone-1",
       drones: new Map([
-        ["drone-1", connectedDroneWithGeoFence("drone-1", false)],
+        ["drone-1", connectedDroneWithAutonomousNav("drone-1", false)],
       ]),
     });
 
@@ -152,7 +156,7 @@ describe("skill registry", () => {
     useDroneManager.setState({
       selectedDroneId: "drone-1",
       drones: new Map([
-        ["drone-1", connectedDroneWithGeoFence("drone-1", true)],
+        ["drone-1", connectedDroneWithAutonomousNav("drone-1", true)],
       ]),
     });
 

@@ -45,6 +45,7 @@ export const ARDUPILOT_CAPABILITIES: ProtocolCapabilities = {
   supportsCalibration: true,
   supportsSerialPassthrough: true,
   supportsMotorTest: true,
+  supportsAutonomousNav: true,
   supportsGeoFence: true,
   supportsRally: true,
   supportsLogDownload: true,

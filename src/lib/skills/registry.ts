@@ -21,6 +21,7 @@ import type {
   ConfirmPolicy,
 } from "./types";
 import type { ProtocolCapabilities } from "@/lib/protocol/types";
+import { autonomousNavFromCapabilities } from "./autonomous-nav";
 import { getCooldownState, getChargeCount } from "./cooldown";
 import { useDroneStore } from "@/stores/drone-store";
 import { useDroneManager } from "@/stores/drone-manager";
@@ -79,9 +80,7 @@ export function buildSkillContextFor(droneId: string): SkillContext {
   // non-connected node's RTL / Land / Takeoff are kept (shown disabled-no-link)
   // rather than the blanket-false `supports` above hiding them.
   const autonomousNav: SkillContext["autonomousNav"] = live
-    ? live.getCapabilities()?.supportsGeoFence
-      ? "supported"
-      : "unsupported"
+    ? autonomousNavFromCapabilities(live.getCapabilities())
     : "unknown";
 
   return {

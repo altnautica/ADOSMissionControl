@@ -30,6 +30,7 @@ const BETAFLIGHT_CAPABILITIES: ProtocolCapabilities = {
   supportsCalibration: true,
   supportsSerialPassthrough: true,
   supportsMotorTest: true,
+  supportsAutonomousNav: false,
   supportsGeoFence: false,
   supportsRally: false,
   supportsLogDownload: true,

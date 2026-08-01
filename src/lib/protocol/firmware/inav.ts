@@ -53,7 +53,7 @@ export const INAV_BOX_TO_MODE: Record<number, UnifiedFlightMode> = {
  * Reverse map: UnifiedFlightMode to iNav box ID.
  * For modes that map to multiple box IDs, the primary (most common) is used.
  */
-const MODE_TO_INAV_BOX: Partial<Record<UnifiedFlightMode, number>> = {
+export const MODE_TO_INAV_BOX: Partial<Record<UnifiedFlightMode, number>> = {
   STABILIZE: 1,
   ALT_HOLD: 10,   // NAV ALTHOLD preferred over HORIZON
   // MANUAL is intentionally unmapped: id 5 is BOXHEADFREE, not a manual box,
@@ -65,6 +65,22 @@ const MODE_TO_INAV_BOX: Partial<Record<UnifiedFlightMode, number>> = {
   RTL: 45,
   MISSION: 46,
   TAKEOFF: 47,
+}
+
+/**
+ * The name iNav's own modes tab shows for each box, so a message about a mode
+ * that has no switch assigned names it the way the operator will find it.
+ */
+export const INAV_BOX_LABELS: Record<number, string> = {
+  1: 'ANGLE',
+  2: 'HORIZON',
+  10: 'NAV ALTHOLD',
+  11: 'NAV POSHOLD',
+  12: 'HEADING HOLD',
+  28: 'NAV CRUISE',
+  45: 'NAV RTH',
+  46: 'NAV WP',
+  47: 'NAV LAUNCH',
 }
 
 // ---------------------------------------------------------------------------
@@ -98,6 +114,9 @@ const INAV_CAPABILITIES: ProtocolCapabilities = {
   supportsCalibration: true,
   supportsSerialPassthrough: true,
   supportsMotorTest: true,
+  // Navigation modes are selected through AUX ranges, and the navigation
+  // commands drive them that way.
+  supportsAutonomousNav: true,
   supportsGeoFence: true,
   supportsRally: false,
   supportsLogDownload: true,

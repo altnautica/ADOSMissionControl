@@ -6,7 +6,8 @@
  * @module protocol/msp-adapter-commands
  */
 
-import type { CommandResult, UnifiedFlightMode, MissionItem, LogEntry, LogDownloadProgressCallback } from './types'
+import type { CommandResult, UnifiedFlightMode, MissionItem, LogEntry, LogDownloadProgressCallback, FirmwareType } from './types'
+import { MODE_TO_INAV_BOX, INAV_BOX_LABELS } from './firmware/inav'
 import { formatErrorMessage } from '@/lib/utils'
 import type { MspSerialQueue } from './msp/msp-serial-queue'
 import { MSP } from './msp/msp-constants'
@@ -35,6 +36,12 @@ export interface MspCommandContext {
   modeRanges: ModeRange[]
   /** Owns every `MSP_SET_RAW_RC` frame on this link. Null before connect. */
   rc: MspRcOverride | null
+  /**
+   * Which MSP firmware answered the handshake. Navigation modes exist only on
+   * iNav, and their box ids differ from Betaflight's, so a command that drives
+   * one has to know which firmware it is talking to.
+   */
+  firmwareType?: FirmwareType
 }
 
 export async function mspArm(ctx: MspCommandContext): Promise<CommandResult> {
@@ -204,13 +211,94 @@ export async function mspDoPreArmCheck(ctx: MspCommandContext): Promise<CommandR
   }
 }
 
+// ── Navigation commands ─────────────────────────────────────
+
+/**
+ * Drive an iNav navigation mode by moving its AUX channel into the range the
+ * aircraft has configured for it. This is how iNav selects a mode: there is no
+ * direct set, which is why arming already works the same way.
+ *
+ * Both refusals are specific. A firmware without navigation modes says so, and
+ * an aircraft that simply has no switch assigned to that mode names the mode,
+ * because the operator's fix is to assign it in the modes tab.
+ */
+async function mspActivateNavMode(
+  ctx: MspCommandContext,
+  mode: UnifiedFlightMode,
+  action: string,
+): Promise<CommandResult> {
+  if (!ctx.queue) return NOT_CONNECTED
+  if (ctx.firmwareType !== 'inav') {
+    return {
+      success: false, resultCode: -1,
+      message: `${action} is not available: this firmware has no navigation modes`,
+    }
+  }
+  const boxId = MODE_TO_INAV_BOX[mode]
+  if (boxId === undefined) {
+    return {
+      success: false, resultCode: -1,
+      message: `${action} is not available: iNav has no mode for it`,
+    }
+  }
+  const boxLabel = INAV_BOX_LABELS[boxId] ?? mode
+  const range = findModeRange(ctx.modeRanges, boxId)
+  if (!range) {
+    return {
+      success: false, resultCode: -1,
+      message: `${action} is not available: no AUX switch is assigned to ${boxLabel} on this aircraft. Assign one in the modes tab, then retry.`,
+    }
+  }
+  return mspSetAuxChannel(ctx, range.auxChannel, Math.round((range.rangeStart + range.rangeEnd) / 2))
+}
+
+export async function mspReturnToLaunch(ctx: MspCommandContext): Promise<CommandResult> {
+  return mspActivateNavMode(ctx, 'RTL', 'Return to home')
+}
+
+export async function mspLand(ctx: MspCommandContext): Promise<CommandResult> {
+  if (!ctx.queue) return NOT_CONNECTED
+  if (ctx.firmwareType !== 'inav') return NOT_SUPPORTED
+  // iNav has no standalone land box: the landing is the last leg of NAV RTH.
+  // Quietly returning home under a "land" command would fly the aircraft
+  // somewhere the operator did not ask for, so this refuses and says why.
+  return {
+    success: false, resultCode: -1,
+    message: 'Land is not available: iNav has no separate landing mode. Use return to home, which lands at the home point.',
+  }
+}
+
+export async function mspTakeoff(ctx: MspCommandContext, _alt?: number): Promise<CommandResult> {
+  return mspActivateNavMode(ctx, 'TAKEOFF', 'Takeoff')
+}
+
+export async function mspGuidedGoto(
+  ctx: MspCommandContext,
+  _lat?: number,
+  _lon?: number,
+  _alt?: number,
+): Promise<CommandResult> {
+  if (!ctx.queue) return NOT_CONNECTED
+  if (ctx.firmwareType !== 'inav') return NOT_SUPPORTED
+  // A mode range switches a mode on; it cannot carry a coordinate. iNav takes
+  // a target position only as an uploaded waypoint mission.
+  return {
+    success: false, resultCode: -1,
+    message: 'Fly-to is not available: iNav takes a target position as an uploaded waypoint mission, not as a single command.',
+  }
+}
+
+export async function mspPauseMission(ctx: MspCommandContext): Promise<CommandResult> {
+  // Leaving the waypoint mode for position hold is how a mission is paused on
+  // iNav; the mission resumes when waypoint mode is selected again.
+  return mspActivateNavMode(ctx, 'POSHOLD', 'Pause')
+}
+
+export async function mspResumeMission(ctx: MspCommandContext): Promise<CommandResult> {
+  return mspActivateNavMode(ctx, 'MISSION', 'Resume')
+}
+
 // Unsupported commands
-export async function mspReturnToLaunch(): Promise<CommandResult> { return NOT_SUPPORTED }
-export async function mspLand(): Promise<CommandResult> { return NOT_SUPPORTED }
-export async function mspTakeoff(): Promise<CommandResult> { return NOT_SUPPORTED }
-export async function mspGuidedGoto(): Promise<CommandResult> { return NOT_SUPPORTED }
-export async function mspPauseMission(): Promise<CommandResult> { return NOT_SUPPORTED }
-export async function mspResumeMission(): Promise<CommandResult> { return NOT_SUPPORTED }
 export async function mspClearMission(): Promise<CommandResult> { return NOT_SUPPORTED }
 export async function mspSetHome(): Promise<CommandResult> { return NOT_SUPPORTED }
 export async function mspChangeSpeed(): Promise<CommandResult> { return NOT_SUPPORTED }

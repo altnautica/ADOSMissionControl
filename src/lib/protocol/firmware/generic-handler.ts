@@ -24,6 +24,7 @@ const GENERIC_CAPABILITIES: ProtocolCapabilities = {
   supportsCalibration: false,
   supportsSerialPassthrough: false,
   supportsMotorTest: false,
+  supportsAutonomousNav: false,
   supportsGeoFence: false,
   supportsRally: false,
   supportsLogDownload: false,

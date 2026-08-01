@@ -14,6 +14,13 @@
 import { describe, it, expect } from "vitest";
 
 import { autonomousNavForNode } from "../node-context";
+import { autonomousNavFromCapabilities } from "../autonomous-nav";
+import type { ProtocolCapabilities } from "@/lib/protocol/types";
+
+/** A capability set with everything off except the flags a test sets. */
+function caps(over: Partial<ProtocolCapabilities>): ProtocolCapabilities {
+  return { supportsGeoFence: false, supportsAutonomousNav: false, ...over } as ProtocolCapabilities;
+}
 
 describe("autonomousNavForNode", () => {
   it("reports ArduPilot with an airframe as supported", () => {
@@ -40,5 +47,25 @@ describe("autonomousNavForNode", () => {
     expect(autonomousNavForNode(undefined, undefined)).toBe("unknown");
     expect(autonomousNavForNode("", "")).toBe("unknown");
     expect(autonomousNavForNode("some-unrecognised-fw")).toBe("unknown");
+  });
+});
+
+describe("autonomousNavFromCapabilities", () => {
+  // The gate used to read the geofence flag as a stand-in, which ties whether
+  // the skill bar offers a return-to-home to an unrelated feature. It reads the
+  // navigation flag itself now, so the two can differ without the skills going
+  // wrong in either direction.
+  it("reads the navigation flag, not the geofence one", () => {
+    expect(
+      autonomousNavFromCapabilities(caps({ supportsAutonomousNav: true, supportsGeoFence: false })),
+    ).toBe("supported");
+    expect(
+      autonomousNavFromCapabilities(caps({ supportsAutonomousNav: false, supportsGeoFence: true })),
+    ).toBe("unsupported");
+  });
+
+  it("reports unknown when there are no capabilities to read", () => {
+    expect(autonomousNavFromCapabilities(undefined)).toBe("unknown");
+    expect(autonomousNavFromCapabilities(null)).toBe("unknown");
   });
 });

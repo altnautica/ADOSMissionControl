@@ -21,6 +21,7 @@ export const PX4_CAPABILITIES: ProtocolCapabilities = {
   supportsCalibration: true,
   supportsSerialPassthrough: false,
   supportsMotorTest: true,
+  supportsAutonomousNav: true,
   supportsGeoFence: true,
   supportsRally: false,
   supportsLogDownload: true,

@@ -62,6 +62,7 @@ import {
   type CommandTargetNode,
   type NodeCommandSinkOptions,
 } from "@/lib/nodes/command-sink";
+import { autonomousNavFromCapabilities } from "./autonomous-nav";
 import { notifySkill } from "./registry";
 import type {
   AutonomousNavCapability,
@@ -198,10 +199,9 @@ export function autonomousNavForNode(
 ): AutonomousNavCapability {
   const firmwareType = firmwareTypeForNode(fcFirmware, frameType);
   if (firmwareType) {
-    return createFirmwareHandlerByType(firmwareType).getCapabilities()
-      .supportsGeoFence
-      ? "supported"
-      : "unsupported";
+    return autonomousNavFromCapabilities(
+      createFirmwareHandlerByType(firmwareType).getCapabilities(),
+    );
   }
   if (fcFirmware?.trim().toLowerCase() === "ardupilot") return "supported";
   return "unknown";
@@ -244,9 +244,7 @@ export function buildSkillContextForNode(
       // Real capabilities: the live protocol has handshaken, so its flags are
       // truthful (unlike the sink-backed branch below).
       supports: (cap) => Boolean(liveFc.getCapabilities()?.[cap]),
-      autonomousNav: liveFc.getCapabilities()?.supportsGeoFence
-        ? "supported"
-        : "unsupported",
+      autonomousNav: autonomousNavFromCapabilities(liveFc.getCapabilities()),
       checklistReady: false,
       confirm: (policy: ConfirmPolicy) =>
         useSkillConfirmStore.getState().request(policy),
