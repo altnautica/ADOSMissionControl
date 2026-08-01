@@ -82,7 +82,10 @@ export function dispatchMspTelemetry(
       const sensorFlags = u16(payload, 4)
       const modeFlags = u32(payload, 6)
       const cpuLoad = u16(payload, 11)
-      const { mode, armed } = resolveActiveMode(modeFlags, boxIds)
+      // The box ids are firmware-specific, so the decode needs to know which
+      // firmware reported them; an iNav navigation box read against the
+      // Betaflight table names a manual mode for an autonomous one.
+      const { mode, armed } = resolveActiveMode(modeFlags, boxIds, vehicleInfo?.firmwareType)
       if (vehicleInfo) {
         for (const cb of cbs.heartbeatCallbacks) {
           cb({ mode, armed, systemStatus: armed ? 4 : 3, vehicleInfo })

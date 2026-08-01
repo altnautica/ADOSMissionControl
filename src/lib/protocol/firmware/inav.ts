@@ -32,7 +32,7 @@ import type {
  * Only modes that map to a unified mode are included; hardware-toggle
  * boxes (BEEPER, LEDLOW, etc.) are excluded.
  */
-const INAV_BOX_TO_MODE: Record<number, UnifiedFlightMode> = {
+export const INAV_BOX_TO_MODE: Record<number, UnifiedFlightMode> = {
   // 0: ARM (not a flight mode)
   1: 'STABILIZE',     // BOXANGLE
   2: 'STABILIZE',     // BOXHORIZON (self-leveling, treat as stabilize)
