@@ -100,7 +100,7 @@ export interface TelemetryTickContext {
   emitGimbalAttitude(data: { timestamp: number; pitch: number; roll: number; yaw: number; angularVelocityX: number; angularVelocityY: number; angularVelocityZ: number }): void;
   emitObstacleDistance(data: { timestamp: number; distances: number[]; minDistance: number; maxDistance: number; increment: number; incrementF: number; angleOffset: number; frame: number }): void;
   emitLocalPosition(data: { timestamp: number; x: number; y: number; z: number; vx: number; vy: number; vz: number }): void;
-  emitCameraImageCaptured(data: { timestamp: number; lat: number; lon: number; alt: number; imageIndex: number; captureResult: number; fileUrl: string }): void;
+  emitCameraImageCaptured(data: { timestamp: number; lat: number; lon: number; alt: number; imageIndex: number; cameraId: number; captureResult: number; fileUrl: string }): void;
 }
 
 const MOCK_HOME_LAT = 0.0;
@@ -186,6 +186,7 @@ export function startTelemetryTick(
         lon: MOCK_HOME_LON + (Math.random() - 0.5) * 0.001,
         alt: 50 + Math.random() * 10,
         imageIndex: imageCounter.value,
+        cameraId: 0,
         captureResult: 1,
         fileUrl: `IMG_${String(imageCounter.value).padStart(4, "0")}.jpg`,
       });

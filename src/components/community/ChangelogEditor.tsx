@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useMutation } from "convex/react";
 import { X } from "lucide-react";
+import { Select } from "@/components/ui/select";
 import { communityApi } from "@/lib/community-api";
 import type { ChangelogEntry } from "@/lib/community-types";
 
@@ -176,15 +177,14 @@ export function ChangelogEditor({ entry, onClose }: ChangelogEditorProps) {
           <div className="border-t border-border-default pt-4 mt-4">
             <p className="text-xs font-medium text-text-secondary mb-2">Add Translation (optional)</p>
             <div className="flex gap-2 mb-2">
-              <select
+              <Select
                 value={translationLocale}
-                onChange={e => setTranslationLocale(e.target.value)}
-                className="text-xs bg-bg-tertiary border border-border-default px-2 py-1 text-text-primary"
-              >
-                {["de", "zh", "fr", "es"].map(code => (
-                  <option key={code} value={code}>{code.toUpperCase()}</option>
-                ))}
-              </select>
+                onChange={setTranslationLocale}
+                options={["de", "zh", "fr", "es"].map((code) => ({
+                  value: code,
+                  label: code.toUpperCase(),
+                }))}
+              />
             </div>
             <input
               value={translationTitle}

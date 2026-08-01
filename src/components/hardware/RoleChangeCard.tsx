@@ -13,6 +13,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
+import { Select } from "@/components/ui/select";
 import { useGroundStationStore } from "@/stores/ground-station-store";
 import {
   groundStationApiFromAgent,
@@ -118,19 +119,13 @@ export function RoleChangeCard({ variant = "switch" }: RoleChangeCardProps) {
         </p>
       )}
       <div className="flex items-center gap-2">
-        <select
+        <Select
           value={selected}
-          onChange={(e) => setSelected(e.target.value as GroundStationRole)}
+          onChange={(v) => setSelected(v as GroundStationRole)}
           disabled={disabled}
-          aria-label="Select deployment role"
-          className="rounded-sm bg-surface-primary text-text-primary text-sm px-2 py-1 border border-border-default focus:outline-none focus:ring-1 focus:ring-accent-primary disabled:opacity-50"
-        >
-          {ROLES.map((r) => (
-            <option key={r} value={r}>
-              {r}
-            </option>
-          ))}
-        </select>
+          className="min-w-[8rem]"
+          options={ROLES.map((r) => ({ value: r, label: r }))}
+        />
         <button
           type="button"
           onClick={onApply}

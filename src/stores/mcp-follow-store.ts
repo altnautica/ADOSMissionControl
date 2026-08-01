@@ -58,6 +58,8 @@ export const useMcpFollowStore = create<McpFollowState>()(
       ),
       // Only the opt-in persists; the live follow state resets each load.
       partialize: (s) => ({ followLock: s.followLock }),
+      version: 1,
+      migrate: (persisted) => persisted as McpFollowState,
     },
   ),
 );

@@ -310,12 +310,17 @@ class MockFlightEngine {
 
   stop(): void {
     if (this.intervalId) { clearInterval(this.intervalId); this.intervalId = null; }
-    // The iNav mock owns a self-driven telemetry interval — tear it down too.
+    // Tear down every protocol so no interval/timer leaks across stop: the
+    // MAVLink mock's telemetry tick and cal timers and the iNav mock's
+    // self-driven tick are all cleared by disconnect/stop. This holds even
+    // when the engine stops without an explicit disconnect.
     for (const state of this.states) {
-      if (state.protocol instanceof INavMockProtocol) {
-        state.protocol.stopMockTelemetryTick();
+      const p = state.protocol;
+      if (p instanceof INavMockProtocol) {
+        p.stopMockTelemetryTick();
         state.inavTicking = false;
       }
+      void p.disconnect();
     }
     this.running = false;
   }

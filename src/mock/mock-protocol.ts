@@ -154,7 +154,7 @@ export class MockProtocol implements DroneProtocol {
   // ── Connection ─────────────────────────────────────────
   get isConnected(): boolean { return this._connected; }
   async connect(_t: Transport): Promise<VehicleInfo> { this._connected = true; return this._vehicleInfo; }
-  async disconnect(): Promise<void> { this._connected = false; }
+  async disconnect(): Promise<void> { this.stopMockTelemetryTick(); this.clearAccelTimers(); this.clearCompassTimers(); this._connected = false; }
 
   // ── Commands ───────────────────────────────────────────
   async arm(): Promise<CommandResult> { this.emitStatusText(6, "Arming motors"); return ok("Armed"); }

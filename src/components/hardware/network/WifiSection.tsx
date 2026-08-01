@@ -10,6 +10,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Toggle } from "@/components/ui/toggle";
 import type { ApStatus, WifiClientStatus } from "@/lib/api/ground-station/types";
 import { StatRow } from "./StatRow";
@@ -110,21 +111,15 @@ export function WifiSection({
             </div>
 
             <div className="flex flex-col gap-1">
-              <label htmlFor="ap-channel" className="text-xs text-text-secondary">
-                Channel
-              </label>
-              <select
-                id="ap-channel"
-                value={form.channel}
-                onChange={(e) => setChannel(Number(e.target.value))}
-                className="h-8 px-2 bg-bg-tertiary border border-border-default text-sm text-text-primary focus:outline-none focus:border-accent-primary transition-colors"
-              >
-                {CHANNEL_OPTIONS.map((ch) => (
-                  <option key={ch} value={ch}>
-                    CH {ch}
-                  </option>
-                ))}
-              </select>
+              <Select
+                label="Channel"
+                value={String(form.channel)}
+                onChange={(v) => setChannel(Number(v))}
+                options={CHANNEL_OPTIONS.map((ch) => ({
+                  value: String(ch),
+                  label: `CH ${ch}`,
+                }))}
+              />
             </div>
 
             <Toggle

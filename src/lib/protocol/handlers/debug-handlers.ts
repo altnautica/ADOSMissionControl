@@ -58,8 +58,9 @@ export function handleCameraImageCaptured(payload: DataView, callbacks: CameraIm
       timestamp: Date.now(),
       lat: data.lat, lon: data.lon, alt: data.alt,
       imageIndex: data.imageIndex,
+      cameraId: data.cameraId,
       captureResult: data.captureResult,
-      fileUrl: "",
+      fileUrl: data.fileUrl,
     })
   }
 }

@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useShallow } from "zustand/react/shallow";
 import { useSettingsStore, type GuidanceLineType } from "@/stores/settings-store";
+import { Select } from "@/components/ui/select";
 import { ChevronDown, RotateCcw } from "lucide-react";
 
 interface LineConfig {
@@ -218,13 +219,16 @@ function LineSettings({ config }: { config: LineConfig }) {
           </div>
           <div className="col-span-2">
             <label className="text-[8px] text-text-secondary font-mono uppercase block mb-1">{t("lineType")}</label>
-            <select value={config.lineType}
-              onChange={(e) => config.setLineType(e.target.value as GuidanceLineType)}
-              className="w-full px-2 py-1 text-[10px] font-mono bg-bg-primary border border-border-default rounded text-text-primary focus:outline-none focus:border-accent-primary">
-              <option value="solid">{t("solid")}</option>
-              <option value="dashed">{t("dashed")}</option>
-              <option value="dotted">{t("dotted")}</option>
-            </select>
+            <Select
+              className="w-full"
+              value={config.lineType}
+              onChange={(v) => config.setLineType(v as GuidanceLineType)}
+              options={[
+                { value: "solid", label: t("solid") },
+                { value: "dashed", label: t("dashed") },
+                { value: "dotted", label: t("dotted") },
+              ]}
+            />
           </div>
           <div className="col-span-2">
             <label className="text-[8px] text-text-secondary font-mono uppercase block mb-1">{t("color")}</label>

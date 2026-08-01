@@ -177,6 +177,45 @@ describe('getElevations', () => {
     const result = await getElevations([{ lat: lat1, lon: 77.5 }]);
     expect(result.length).toBe(1); expect(result[0]).toBeNaN();
   });
+
+  it('fills every point with NaN when the response has fewer results than requested', async () => {
+    const lat1 = uniqueLat();
+    const lat2 = uniqueLat();
+    // Partial / truncated response: only one result for a two-point request.
+    // Index-correlating results[0] against chunk[0] would silently misassign,
+    // so the batch must fall back to per-point NaN for the whole chunk.
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ results: [{ elevation: 100 }] }),
+    });
+    const result = await getElevations([
+      { lat: lat1, lon: 77.5 },
+      { lat: lat2, lon: 77.5 },
+    ]);
+    expect(result).toEqual([NaN, NaN]);
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('keys results by the response location rather than request order', async () => {
+    const lat1 = uniqueLat();
+    const lat2 = uniqueLat();
+    // The response returns elevations in the OPPOSITE order, each tagged with
+    // its own location. Elevations must be assigned by coordinate, not index.
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        results: [
+          { latitude: lat2, longitude: 77.5, elevation: 222 },
+          { latitude: lat1, longitude: 77.5, elevation: 111 },
+        ],
+      }),
+    });
+    const result = await getElevations([
+      { lat: lat1, lon: 77.5 },
+      { lat: lat2, lon: 77.5 },
+    ]);
+    expect(result).toEqual([111, 222]);
+  });
 });
 
 describe('getElevationAlongPath', () => {

@@ -300,7 +300,9 @@ export interface CameraImageCapturedMsg {
   relativeAlt: number;
   q: [number, number, number, number];
   imageIndex: number;
+  cameraId: number;
   captureResult: number;
+  fileUrl: string;
 }
 
 /**
@@ -324,6 +326,11 @@ export interface CameraImageCapturedMsg {
 export function decodeCameraImageCaptured(dv: DataView): CameraImageCapturedMsg {
   const low = dv.getUint32(0, true);
   const high = dv.getUint32(4, true);
+  // fileUrl: UTF-8, up to 205 bytes null-terminated, starting at offset 50.
+  const urlEnd = Math.min(50 + 205, dv.byteLength);
+  let urlLen = 0;
+  while (50 + urlLen < urlEnd && dv.getUint8(50 + urlLen) !== 0) urlLen++;
+  const urlBytes = new Uint8Array(dv.buffer, dv.byteOffset + 50, urlLen);
   return {
     timeUtcUs: high * 0x100000000 + low,
     q: [
@@ -338,7 +345,9 @@ export function decodeCameraImageCaptured(dv: DataView): CameraImageCapturedMsg 
     relativeAlt: dv.getInt32(36, true) / 1000,
     timeBootMs: dv.getUint32(40, true),
     imageIndex: dv.getInt32(44, true),
+    cameraId: dv.getUint8(48),
     captureResult: dv.getInt8(49),
+    fileUrl: new TextDecoder("utf-8").decode(urlBytes),
   };
 }
 

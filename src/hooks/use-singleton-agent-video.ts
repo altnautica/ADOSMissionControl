@@ -20,7 +20,7 @@
  * @license GPL-3.0-only
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useVideoStore } from "@/stores/video-store";
 import {
   useVideoTransportCascade,
@@ -81,19 +81,27 @@ export function useSingletonAgentVideo({
     setRetryKey((k) => k + 1);
   }, []);
 
-  // Stabilise the enabled flag SYNCHRONOUSLY: require 3 consecutive
-  // non-"running" polls (~9s) before disabling so a single transient agent
-  // poll doesn't kill a healthy WebRTC session, and so the gate is already
-  // true on the first render when video is running. A manual override forces
-  // it on regardless of the agent's reported state.
+  // Stabilise the enabled flag: require 3 consecutive non-"running" polls
+  // (~9s) before disabling so a single transient agent poll doesn't kill a
+  // healthy WebRTC session, and so the gate is already true on the first
+  // render when video is running. A manual override forces it on regardless
+  // of the agent's reported state.
+  //
+  // The backoff counter must NOT be mutated during render (a `useMemo` side
+  // effect was the bug): React 19 StrictMode double-invokes render bodies in
+  // dev, which double-counted every strike and halved the 3-strike debounce.
+  // Mutating the ref in an effect (once per committed update) keeps the count
+  // exact.
   const nonRunningCountRef = useRef(0);
-  const stableEnabled = useMemo(() => {
+  const [stableEnabled, setStableEnabled] = useState(true);
+  useEffect(() => {
     if (forceEnabled || agentVideoState === "running") {
       nonRunningCountRef.current = 0;
-      return true;
+      setStableEnabled(true);
+      return;
     }
     nonRunningCountRef.current += 1;
-    return nonRunningCountRef.current < 3;
+    setStableEnabled(nonRunningCountRef.current < 3);
   }, [agentVideoState, forceEnabled]);
 
   const cascade = useVideoTransportCascade({

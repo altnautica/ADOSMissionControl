@@ -339,6 +339,7 @@ export type CameraImageCapturedCallback = (data: {
   lon: number;
   alt: number;
   imageIndex: number;
+  cameraId: number;
   captureResult: number;
   fileUrl: string;
 }) => void;

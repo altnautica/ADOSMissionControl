@@ -54,7 +54,10 @@ export function useHeartbeatRate(): HeartbeatRate {
     const id = setInterval(() => {
       const ring = stampsRef.current;
       const last = ring[ring.length - 1];
-      const stale = last !== undefined && Date.now() - last > STALE_MS;
+      // An empty ring (FC connected but no HEARTBEAT yet, or just after a
+      // drone switch) must read stale once subscribed past the horizon,
+      // not healthy — otherwise a silent link shows `stale: false` forever.
+      const stale = last === undefined ? true : Date.now() - last > STALE_MS;
       if (ring.length < 2) {
         setRate({ hz: null, stale });
         return;

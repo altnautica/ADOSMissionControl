@@ -100,6 +100,8 @@ interface DiagnosticsStoreState {
   connectionLog: ConnectionLogEntry[];
   calibrationHistory: CalibrationHistoryEntry[];
   messageRates: Map<number, MessageRateEntry>;
+  /** Monotonic counter bumped on every mutation so selectors re-render. */
+  _version: number;
 
   /** Timestamp of most recent connect event, used to compute duration on disconnect */
   _lastConnectTimestamp: number | null;
@@ -158,6 +160,7 @@ export const useDiagnosticsStore = create<DiagnosticsStoreState>((set, get) => (
   calibrationHistory: [],
   messageRates: new Map(),
   _lastConnectTimestamp: null,
+  _version: 0,
   commandQueueSnapshot: { pendingCount: 0, entries: [], totalSent: 0, totalSuccess: 0, totalFailed: 0 },
   ringBufferInfo: [],
   performanceMetrics: { parseRateHz: 0, avgCallbackLatencyMs: 0, frameProcessingTimeMs: 0, lastUpdated: 0 },
@@ -200,6 +203,7 @@ export const useDiagnosticsStore = create<DiagnosticsStoreState>((set, get) => (
     } else {
       rates.set(msgId, { msgId, msgName, timestamps: [now], hz: 0 });
     }
+    set((s) => ({ _version: s._version + 1 }));
   },
 
   logEvent: (type, description) => {
@@ -208,16 +212,16 @@ export const useDiagnosticsStore = create<DiagnosticsStoreState>((set, get) => (
       type,
       description,
     });
-    set({ eventTimeline: get().eventTimeline });
+    set((s) => ({ _version: s._version + 1 }));
   },
 
   logConnection: (type, details, errorCategory) => {
     const now = Date.now();
-    const log = get().connectionLog;
+    const log = [...get().connectionLog];
 
     if (type === "connect") {
       log.push({ type, timestamp: now, details });
-      set({ connectionLog: [...log].slice(-MAX_CONNECTION_LOG), _lastConnectTimestamp: now });
+      set({ connectionLog: log.slice(-MAX_CONNECTION_LOG), _lastConnectTimestamp: now, _version: get()._version + 1 });
       return;
     }
 
@@ -225,23 +229,23 @@ export const useDiagnosticsStore = create<DiagnosticsStoreState>((set, get) => (
       const connectTs = get()._lastConnectTimestamp;
       const durationMs = connectTs ? now - connectTs : undefined;
       log.push({ type, timestamp: now, details, durationMs });
-      set({ connectionLog: [...log].slice(-MAX_CONNECTION_LOG), _lastConnectTimestamp: null });
+      set({ connectionLog: log.slice(-MAX_CONNECTION_LOG), _lastConnectTimestamp: null, _version: get()._version + 1 });
       return;
     }
 
     if (type === "error") {
       log.push({ type, timestamp: now, details, errorCategory: errorCategory ?? "unknown" });
-      set({ connectionLog: [...log].slice(-MAX_CONNECTION_LOG) });
+      set({ connectionLog: log.slice(-MAX_CONNECTION_LOG), _version: get()._version + 1 });
       return;
     }
 
     // reconnect_attempt
     log.push({ type, timestamp: now, details });
-    set({ connectionLog: [...log].slice(-MAX_CONNECTION_LOG) });
+    set({ connectionLog: log.slice(-MAX_CONNECTION_LOG), _version: get()._version + 1 });
   },
 
   logCalibration: (type, result, extra) => {
-    const history = get().calibrationHistory;
+    const history = [...get().calibrationHistory];
     history.push({
       type,
       result,
@@ -251,7 +255,7 @@ export const useDiagnosticsStore = create<DiagnosticsStoreState>((set, get) => (
       compassId: extra?.compassId,
       preCalOffsets: extra?.preCalOffsets,
     });
-    set({ calibrationHistory: [...history].slice(-MAX_CALIBRATION_HISTORY) });
+    set({ calibrationHistory: history.slice(-MAX_CALIBRATION_HISTORY), _version: get()._version + 1 });
   },
 
   updateRates: () => {
@@ -327,6 +331,7 @@ export const useDiagnosticsStore = create<DiagnosticsStoreState>((set, get) => (
       calibrationHistory: [],
       messageRates: new Map(),
       _lastConnectTimestamp: null,
+      _version: 0,
       commandQueueSnapshot: { pendingCount: 0, entries: [], totalSent: 0, totalSuccess: 0, totalFailed: 0 },
       ringBufferInfo: [],
       performanceMetrics: { parseRateHz: 0, avgCallbackLatencyMs: 0, frameProcessingTimeMs: 0, lastUpdated: 0 },

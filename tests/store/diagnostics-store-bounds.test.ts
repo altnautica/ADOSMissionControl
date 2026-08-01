@@ -45,3 +45,59 @@ describe('diagnostics-store message-rate timestamp bounds', () => {
     expect(entry!.timestamps[0]).toBe(1_000_000 + 60_000);
   });
 });
+
+/**
+ * logMessage/logEvent/logConnection/logCalibration must bump _version so
+ * selectors re-read the mutated ring buffers, and must not mutate the live
+ * state arrays in place before copying them.
+ */
+describe('diagnostics-store re-render + immutability', () => {
+  beforeEach(() => {
+    useDiagnosticsStore.getState().clear();
+  });
+
+  it('bumps _version on logMessage so subscription re-renders', () => {
+    const before = useDiagnosticsStore.getState()._version;
+    useDiagnosticsStore.getState().logMessage(30, 'ATTITUDE', 'in', 28);
+    const after = useDiagnosticsStore.getState()._version;
+    expect(after).toBeGreaterThan(before);
+    expect(useDiagnosticsStore.getState().messageLog.toArray().length).toBe(1);
+  });
+
+  it('bumps _version on logEvent and appends the event timeline', () => {
+    const before = useDiagnosticsStore.getState()._version;
+    useDiagnosticsStore.getState().logEvent('arm', 'armed');
+    const after = useDiagnosticsStore.getState()._version;
+    expect(after).toBeGreaterThan(before);
+    const timeline = useDiagnosticsStore.getState().eventTimeline.toArray();
+    expect(timeline.length).toBe(1);
+    expect(timeline[0].type).toBe('arm');
+  });
+
+  it('does not mutate the live connectionLog array before copying', () => {
+    useDiagnosticsStore.getState().logConnection('connect', 'serial');
+    // A held reference from before the mutation must not see the new entry:
+    // the fix copies first, then pushes.
+    const ref = useDiagnosticsStore.getState().connectionLog;
+    const refLen = ref.length;
+    useDiagnosticsStore.getState().logConnection('error', 'link lost');
+    expect(ref.length).toBe(refLen);
+    expect(useDiagnosticsStore.getState().connectionLog.length).toBe(refLen + 1);
+  });
+
+  it('caps connectionLog at MAX_CONNECTION_LOG (500)', () => {
+    for (let i = 0; i < 600; i++) {
+      useDiagnosticsStore.getState().logConnection('error', `err ${i}`);
+    }
+    expect(useDiagnosticsStore.getState().connectionLog.length).toBe(500);
+  });
+
+  it('copies before mutating calibrationHistory', () => {
+    useDiagnosticsStore.getState().logCalibration('mag', 'success');
+    const ref = useDiagnosticsStore.getState().calibrationHistory;
+    const refLen = ref.length;
+    useDiagnosticsStore.getState().logCalibration('mag', 'failed');
+    expect(ref.length).toBe(refLen);
+    expect(useDiagnosticsStore.getState().calibrationHistory.length).toBe(refLen + 1);
+  });
+});

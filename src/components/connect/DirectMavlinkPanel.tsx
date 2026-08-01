@@ -15,6 +15,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { SerialPanel } from "@/components/connect/SerialPanel";
 import { WebSocketPanel } from "@/components/connect/WebSocketPanel";
 import { BluetoothPanel } from "@/components/connect/BluetoothPanel";
@@ -233,18 +234,18 @@ export function DirectMavlinkPanel({ onClose }: { onClose: () => void }) {
               <label className="text-[10px] text-text-tertiary uppercase tracking-wider block mb-1">
                 {t("targetDroneLabel")}
               </label>
-              <select
+              <Select
                 value={selectedTargetDroneId ?? ""}
-                onChange={(e) => setSelectedTargetDroneId(e.target.value || null)}
-                className="w-full px-2.5 py-1.5 text-xs bg-bg-primary border border-border-default rounded text-text-primary outline-none focus:border-accent-primary"
-              >
-                <option value="">{t("selectDrone")}</option>
-                {Array.from(drones.values()).map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name} (sysid {d.vehicleInfo.systemId})
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => setSelectedTargetDroneId(v || null)}
+                className="w-full"
+                options={[
+                  { value: "", label: t("selectDrone") },
+                  ...Array.from(drones.values()).map((d) => ({
+                    value: d.id,
+                    label: `${d.name} (sysid ${d.vehicleInfo.systemId})`,
+                  })),
+                ]}
+              />
               <p className="text-[10px] text-text-tertiary mt-1">
                 {t("targetDroneHint")}
               </p>

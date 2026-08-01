@@ -121,11 +121,38 @@ export async function getElevations(
         for (const item of chunk) results[item.index] = NaN;
         continue;
       }
-      const data = await response.json() as { results: Array<{ elevation: number }> };
+      const data = await response.json() as {
+        results: Array<{ latitude: number; longitude: number; elevation: number }>;
+      };
+      const resultsArr = data.results;
+      if (!resultsArr || resultsArr.length !== chunk.length) {
+        // Partial / truncated response: the server did not answer every point,
+        // so index-correlating `results[j]` against `chunk[j]` would silently
+        // misalign elevations. Fall back to per-point NaN, never a fabricated 0.
+        for (const item of chunk) results[item.index] = NaN;
+        continue;
+      }
       for (let j = 0; j < chunk.length; j++) {
-        const elev = data.results?.[j]?.elevation ?? NaN;
-        results[chunk[j].index] = elev;
-        if (Number.isFinite(elev)) cacheSet(cacheKey(chunk[j].lat, chunk[j].lon), elev);
+        const item = chunk[j];
+        const resp = resultsArr[j];
+        let elev = NaN;
+        if (resp && Number.isFinite(resp.latitude) && Number.isFinite(resp.longitude)) {
+          // Key by the response's own location rather than assuming
+          // request-order preservation, matching the cache's 4-decimal rounding.
+          const match = resultsArr.find(
+            (r) =>
+              Number.isFinite(r.latitude) &&
+              Number.isFinite(r.longitude) &&
+              r.latitude.toFixed(4) === item.lat.toFixed(4) &&
+              r.longitude.toFixed(4) === item.lon.toFixed(4),
+          );
+          elev = match?.elevation ?? NaN;
+        } else {
+          // No location in the response: fall back to request-order correlation.
+          elev = resp?.elevation ?? NaN;
+        }
+        results[item.index] = elev;
+        if (Number.isFinite(elev)) cacheSet(cacheKey(item.lat, item.lon), elev);
       }
     } catch (err) {
       if ((err as Error).name === "AbortError") throw err;

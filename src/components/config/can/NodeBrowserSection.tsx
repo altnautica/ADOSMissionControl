@@ -10,17 +10,14 @@
  * history. Per-node parameter editing is deferred to the next release;
  * the slide-over carries a placeholder for that surface.
  *
- * The auto-refresh toggle enables/disables the live store read; the
- * rescan button is a stub for this revision (it will call into
- * `client.getNodeInfo` when wired in the follow-up gate).
+ * The auto-refresh toggle enables/disables the live store read.
  *
  * @license GPL-3.0-only
  */
 
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { RefreshCw, EyeOff, AlertCircle, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { EyeOff, X } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Toggle } from "@/components/ui/toggle";
 import { useDroneCanNodeStore, type NodeEntry } from "@/stores/dronecan/node-store";
@@ -138,7 +135,6 @@ export function NodeBrowserSection({ onSelectNode }: NodeBrowserSectionProps = {
   const nodesMap = useDroneCanNodeStore((s) => s.nodes);
 
   const [autoRefresh, setAutoRefresh] = useState(true);
-  const [anonymousDiscovery, setAnonymousDiscovery] = useState(false);
   const [selectedNodeId, setSelectedNodeId] = useState<number | null>(null);
 
   // Snapshot the node list. The version counter forces a re-render on
@@ -153,10 +149,11 @@ export function NodeBrowserSection({ onSelectNode }: NodeBrowserSectionProps = {
   }, [nodesMap, version, autoRefresh]);
 
   const selectedNode = selectedNodeId !== null ? (nodesMap.get(selectedNodeId) ?? null) : null;
-
-  // Compute the conflict count: any node-id that has seen more than
-  // one distinct unique_id across the session.
-  const conflictCount = 0; // Wired in the follow-up gate; the store does not yet track per-uid history.
+  // GCS audit Step 8: removed the three deferred roadmap stubs that shipped
+  // no real behaviour — the hardcoded id-conflict count (conflictCount = 0),
+  // the no-op DroneCAN rescan button, and the unconsumed anonymous-discovery
+  // toggle. Clean cutover per DEC-010: no dead UI left behind. Wiring any of
+  // these to the store/protocol is a separate feature task, not done here.
 
   return (
     <div className="space-y-4">
@@ -165,15 +162,6 @@ export function NodeBrowserSection({ onSelectNode }: NodeBrowserSectionProps = {
           <h3 className="text-sm font-medium text-text-primary">{t("title")}</h3>
           <div className="flex flex-wrap items-center gap-4">
             <Toggle label={t("autoRefresh")} checked={autoRefresh} onChange={setAutoRefresh} />
-            <Toggle label={t("anonymousDiscovery")} checked={anonymousDiscovery} onChange={setAnonymousDiscovery} />
-            <Button variant="ghost" size="sm" icon={<RefreshCw size={12} />} onClick={() => { /* rescan stub */ }}>
-              {t("rescan")}
-            </Button>
-            <div className="flex items-center gap-1.5 text-[11px]">
-              <AlertCircle size={12} className={conflictCount > 0 ? "text-status-warning" : "text-text-tertiary"} />
-              <span className="text-text-tertiary">{t("idConflicts")}</span>
-              <span className="font-mono text-text-primary">{conflictCount}</span>
-            </div>
           </div>
         </div>
       </Card>

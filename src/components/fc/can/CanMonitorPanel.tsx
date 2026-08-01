@@ -11,12 +11,15 @@
  * @license GPL-3.0-only
  */
 
-import { useMemo, useEffect, useState } from "react";
+import { useMemo, useEffect, useRef, useState } from "react";
 import { Activity, Power, Trash2, Cpu } from "lucide-react";
 import { cn, isDemoMode } from "@/lib/utils";
 import { useCanMonitorStore } from "@/stores/can-monitor-store";
 import { getCanIdHint } from "@/lib/can/known-ids";
-import { mockCanBus, type CanNodeSummary } from "@/mock/mock-can-bus";
+// Type-only imports: the mock module itself is loaded lazily in the demo-gated
+// effect below so it is never statically bundled into production builds.
+import type { CanNodeSummary } from "@/mock/mock-can-bus";
+import type * as MockCanBus from "@/mock/mock-can-bus";
 
 /** Format a number as hex with the given digit width. */
 function hex(n: number, digits: number): string {
@@ -57,12 +60,19 @@ export function CanMonitorPanel() {
     }
   }, [enabled, setEnabled]);
 
-  // Poll node summaries from the mock CAN bus in demo mode.
+  // Poll node summaries from the mock CAN bus in demo mode. The mock module
+  // is loaded dynamically (never statically imported into a production build)
+  // and its reference is held in a ref until the effect tears down.
+  const mockBusRef = useRef<typeof MockCanBus | null>(null);
   const [nodeSummaries, setNodeSummaries] = useState<CanNodeSummary[]>([]);
   useEffect(() => {
     if (!isDemoMode()) return;
+    void import("@/mock/mock-can-bus").then((mod) => {
+      mockBusRef.current = mod;
+    });
     const id = setInterval(() => {
-      setNodeSummaries(mockCanBus.getNodeSummaries());
+      if (!mockBusRef.current) return;
+      setNodeSummaries(mockBusRef.current.mockCanBus.getNodeSummaries());
     }, 500);
     return () => clearInterval(id);
   }, []);

@@ -10,6 +10,7 @@ import { useMemo, useState, useRef, useEffect } from "react";
 import uPlot from "uplot";
 import "uplot/dist/uPlot.min.css";
 import { Card } from "@/components/ui/card";
+import { Select } from "@/components/ui/select";
 import type { TelemetryFrame } from "@/lib/telemetry-recorder";
 
 // ── Field registry (shared with CustomChartBuilder) ──────────
@@ -172,22 +173,22 @@ function FieldPicker({
   return (
     <div className="flex items-center gap-1">
       <span className="text-[10px] font-semibold text-text-secondary uppercase">{label}:</span>
-      <select
-        className="text-[10px] bg-bg-tertiary text-text-primary border border-border-default rounded px-1.5 py-0.5 outline-none focus:border-accent-primary"
+      <Select
+        className="min-w-[12rem]"
         value={value ? `${value.channel}:${value.key}` : ""}
-        onChange={(e) => {
-          const [ch, k] = e.target.value.split(":");
+        onChange={(v) => {
+          const [ch, k] = v.split(":");
           const f = options.find((o) => o.channel === ch && o.key === k);
           if (f) onChange(f);
         }}
-      >
-        <option value="">Select…</option>
-        {options.map((f) => (
-          <option key={`${f.channel}:${f.key}`} value={`${f.channel}:${f.key}`}>
-            {f.channelLabel} · {f.label}
-          </option>
-        ))}
-      </select>
+        options={[
+          { value: "", label: "Select…" },
+          ...options.map((f) => ({
+            value: `${f.channel}:${f.key}`,
+            label: `${f.channelLabel} · ${f.label}`,
+          })),
+        ]}
+      />
     </div>
   );
 }

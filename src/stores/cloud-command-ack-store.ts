@@ -23,13 +23,25 @@ export interface OutstandingCloudCommand {
   commandId: string;
   /** The device the command was queued for, for a node-specific message. */
   deviceId: string;
+  /** Epoch ms when the command was queued; used to sweep lost commands. */
+  queuedAt: number;
 }
+
+/** A queued command still awaiting a terminal status as handed into `watch`. */
+export type NewOutstandingCloudCommand = Omit<OutstandingCloudCommand, "queuedAt">;
+
+/**
+ * Sweep horizon: a cloud command that has not resolved within 5 minutes is
+ * presumed lost (e.g. a dropped network lane). Without this, a command whose
+ * ACK never arrives would accumulate in `pending` forever.
+ */
+const PENDING_TTL_MS = 5 * 60 * 1000;
 
 interface CloudCommandAckState {
   /** Queue rows still awaiting a terminal status. */
   pending: OutstandingCloudCommand[];
   /** Record a freshly-queued command to watch. Idempotent per commandId. */
-  watch: (command: OutstandingCloudCommand) => void;
+  watch: (command: NewOutstandingCloudCommand) => void;
   /** Drop a command once its status is terminal (or it can no longer resolve). */
   resolve: (commandId: string) => void;
 }
@@ -37,11 +49,15 @@ interface CloudCommandAckState {
 export const useCloudCommandAckStore = create<CloudCommandAckState>((set) => ({
   pending: [],
   watch: (command) =>
-    set((s) =>
-      s.pending.some((c) => c.commandId === command.commandId)
-        ? s
-        : { pending: [...s.pending, command] },
-    ),
+    set((s) => {
+      const now = Date.now();
+      if (s.pending.some((c) => c.commandId === command.commandId)) return s;
+      // Sweep entries that outlived the TTL before adding, so a lost cloud
+      // command cannot accumulate unbounded. Keeps `pending` bounded by the
+      // command rate over one sweep horizon.
+      const live = s.pending.filter((c) => now - c.queuedAt < PENDING_TTL_MS);
+      return { pending: [...live, { ...command, queuedAt: now }] };
+    }),
   resolve: (commandId) =>
     set((s) => {
       const next = s.pending.filter((c) => c.commandId !== commandId);

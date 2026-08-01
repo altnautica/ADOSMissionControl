@@ -37,6 +37,75 @@ const DEFAULT_CONFIG: MqttConfig = {
   tls: true,
 };
 
+/** How long to wait for the broker probe before declaring it unreachable. */
+const PROBE_TIMEOUT_MS = 5000;
+
+/**
+ * GCS connects to MQTT over a WebSocket URL, so the honest in-browser probe
+ * is a real WebSocket dial to that endpoint (the app has no raw TCP socket
+ * in the renderer). Derive the WebSocket URL from the user's broker field:
+ * a bare host[:port] becomes ws(s)://host[:port]/mqtt, an http(s) URL is
+ * scheme-swapped, and an existing ws(s) URL is used verbatim.
+ */
+function deriveMqttWsUrl(broker: string, tls: boolean): string {
+  const trimmed = broker.trim();
+  if (/^wss?:\/\//i.test(trimmed)) return trimmed;
+  const http = /^(https?):\/\/(.+)$/i.exec(trimmed);
+  if (http) return `${tls ? "wss" : "ws"}://${http[2]}`;
+  if (!trimmed) return "";
+  return `${tls ? "wss" : "ws"}://${trimmed}/mqtt`;
+}
+
+/**
+ * Probe the broker by opening a WebSocket with a timeout, surfacing the
+ * actual error. Never fabricates a green result: reports only what the
+ * dial observed. Falls back to `ok:false` with an explicit "not
+ * implemented" message when no WebSocket probe is feasible, so the form
+ * never lies.
+ */
+function probeBroker(wsUrl: string): Promise<{ ok: boolean; message: string }> {
+  const { promise, resolve } = Promise.withResolvers<{ ok: boolean; message: string }>();
+  if (!wsUrl || typeof WebSocket === "undefined") {
+    resolve({ ok: false, message: "Connection test not yet implemented" });
+    return promise;
+  }
+  let settled = false;
+  let socket: WebSocket;
+  try {
+    socket = new WebSocket(wsUrl);
+  } catch (err) {
+    resolve({
+      ok: false,
+      message: `Invalid broker URL: ${err instanceof Error ? err.message : String(err)}`,
+    });
+    return promise;
+  }
+  const finish = (ok: boolean, message: string) => {
+    if (settled) return;
+    settled = true;
+    clearTimeout(timer);
+    try {
+      socket.close();
+    } catch {
+      // already closed
+    }
+    resolve({ ok, message });
+  };
+  const timer = setTimeout(() => finish(false, "Connection test timed out"), PROBE_TIMEOUT_MS);
+  socket.onopen = () => finish(true, "Connection established");
+  socket.onerror = () =>
+    finish(false, "Broker unreachable (connection refused or DNS failure)");
+  socket.onclose = (ev) =>
+    finish(
+      false,
+      ev.reason
+        ? `Broker closed the connection: ${ev.reason}`
+        : `Broker closed the connection (code ${ev.code})`,
+    );
+  return promise;
+}
+
+
 export interface UseMqttConfigResult {
   config: MqttConfig;
   setMode: (mode: MqttMode) => void;
@@ -82,16 +151,13 @@ export function useMqttConfig(initial?: Partial<MqttConfig>): UseMqttConfigResul
   const testConnection = useCallback(async () => {
     setIsTesting(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      setLastResult({
-        ok: true,
-        message: "Connection test completed",
-        at: Date.now(),
-      });
+      const wsUrl = deriveMqttWsUrl(config.brokerUrl, config.tls);
+      const { ok, message } = await probeBroker(wsUrl);
+      setLastResult({ ok, message, at: Date.now() });
     } finally {
       setIsTesting(false);
     }
-  }, []);
+  }, [config.brokerUrl, config.tls]);
 
   return {
     config,

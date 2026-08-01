@@ -289,6 +289,13 @@ export const AGENT_CAPABILITY_CATALOG: Record<string, CapabilityMeta> = {
     risk: "high",
     risk_reason: "Commands vehicle motion in guided mode; a faulty stream can fly the aircraft.",
   },
+  "flight.rate_setpoint": {
+    label: "Emit attitude/rate setpoints",
+    description: "Lets a control lane command the flight controller with body-rate/thrust SET_ATTITUDE_TARGET setpoints through a scoped sender (the attitude rung). This is a second way to fly the aircraft on top of guided-mode setpoints; until the G3 gate (a real Betaflight FC) passes it must never emit a live command to an airframe.",
+    category: "flight_control",
+    risk: "critical",
+    risk_reason: "Directly commands aircraft body rates and thrust at tick rate; a faulty rate stream can fly the aircraft outside guided-mode limits.",
+  },
   "mavlink.tunnel": {
     label: "Send and receive MAVLink TUNNEL payloads",
     description: "Lets the plugin exchange application payloads over MAVLink TUNNEL frames (a private payload_type) on the existing link, without the full MAVLink write surface. Used for plugin-to-plugin or node-to-node application data carried inside the MAVLink stream.",

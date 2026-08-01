@@ -6,15 +6,20 @@ import { Binary } from "lucide-react";
 
 /** Show last 50 raw MAVLink frames as hex dump with timestamp + msg ID + name */
 export function FrameInspector() {
-  const messageLog = useDiagnosticsStore((s) => s.messageLog);
+  // Subscribe to the version counter: the RingBuffer is mutated in place, so
+  // subscribing to `messageLog` (a stable reference) would never re-render on
+  // new frames, and keying the memo on it never recomputes. Memoize the
+  // toArray() allocation on `_version` per the RingBuffer gotcha.
+  const version = useDiagnosticsStore((s) => s._version);
 
   const frames = useMemo(() => {
-    return messageLog
-      .toArray()
+    return useDiagnosticsStore
+      .getState()
+      .messageLog.toArray()
       .filter((m) => m.rawHex)
       .slice(-50)
       .reverse();
-  }, [messageLog]);
+  }, [version]);
 
   return (
     <div className="flex flex-col h-full">

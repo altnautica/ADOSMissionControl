@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { usePidAnalysisStore } from "@/stores/pid-analysis-store";
 import { PidLogUploader } from "./PidLogUploader";
 import { PidFFTChart } from "./PidFFTChart";
@@ -149,17 +150,15 @@ export function PidAnalysisWizard({ vehicleType, params, setLocalValue, connecte
                 <>
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] text-text-tertiary">Event:</span>
-                    <select
-                      value={selectedStepEvent}
-                      onChange={(e) => setSelectedStepEvent(Number(e.target.value))}
-                      className="bg-bg-tertiary border border-border-default px-2 py-1 text-[10px] text-text-primary"
-                    >
-                      {stepEvents.map((ev, i) => (
-                        <option key={i} value={i}>
-                          {ev.axis} #{i + 1} ({ev.overshootPercent.toFixed(1)}% overshoot)
-                        </option>
-                      ))}
-                    </select>
+                    <Select
+                      value={String(selectedStepEvent)}
+                      onChange={(v) => setSelectedStepEvent(Number(v))}
+                      className="min-w-[16rem]"
+                      options={stepEvents.map((ev, i) => ({
+                        value: String(i),
+                        label: `${ev.axis} #${i + 1} (${ev.overshootPercent.toFixed(1)}% overshoot)`,
+                      }))}
+                    />
                   </div>
                   {stepEvents[selectedStepEvent] && (
                     <PidStepResponseChart
