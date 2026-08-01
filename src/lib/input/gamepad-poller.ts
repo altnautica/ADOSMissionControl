@@ -40,10 +40,12 @@ const MODE_2_MAPPING: GamepadMapping = {
   txMode: 2,
 };
 
+// Mode 1: pitch and throttle swap sticks relative to mode 2, so the left stick
+// carries yaw and pitch and the right stick carries roll and throttle.
 const MODE_1_MAPPING: GamepadMapping = {
   rollAxis: 2, // right stick X
-  pitchAxis: 1, // right stick Y (swapped with throttle)
-  throttleAxis: 3, // left stick Y (swapped with pitch)
+  pitchAxis: 1, // left stick Y (swapped with throttle)
+  throttleAxis: 3, // right stick Y (swapped with pitch)
   yawAxis: 0, // left stick X
   txMode: 1,
 };
