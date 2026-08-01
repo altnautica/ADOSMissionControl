@@ -70,13 +70,20 @@ function applyExpo(value: number, expo: number): number {
   return (1 - expo) * value + expo * value * value * value;
 }
 
-/** Convert gamepad buttons to boolean array for the input store. Reuses array to reduce GC. */
-const _buttonsBuf: boolean[] = new Array(16).fill(false);
+/**
+ * Convert gamepad buttons to a boolean array for the input store.
+ *
+ * Each call returns its own array. Sharing one buffer would publish the same
+ * reference on every frame, so a store subscriber comparing references would
+ * never see a press, and a consumer holding a previous frame would find it
+ * rewritten underneath. Sixteen booleans per frame is the same order as the
+ * axes array published alongside it.
+ */
 function buttonsToArray(buttons: readonly GamepadButton[]): boolean[] {
+  const out: boolean[] = new Array(16).fill(false);
   const len = Math.min(buttons.length, 16);
-  for (let i = 0; i < len; i++) _buttonsBuf[i] = buttons[i]?.pressed ?? false;
-  for (let i = len; i < 16; i++) _buttonsBuf[i] = false;
-  return _buttonsBuf;
+  for (let i = 0; i < len; i++) out[i] = buttons[i]?.pressed ?? false;
+  return out;
 }
 
 let pollAnimFrame: number | null = null;
