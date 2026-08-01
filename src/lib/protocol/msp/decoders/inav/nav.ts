@@ -9,6 +9,7 @@
  */
 
 import { readU8, readU16, readU32, readS16, readS32 } from "./helpers";
+import { writeU8, writeI32, writeBits16 } from "../../../encoders/bounds";
 import type {
   INavWaypoint,
   INavStatus,
@@ -56,15 +57,18 @@ export function encodeMspSetWp(wp: INavWaypoint): Uint8Array {
   const buf = new Uint8Array(21);
   const dv = new DataView(buf.buffer);
 
-  dv.setUint8(0, wp.number);
-  dv.setUint8(1, wp.action);
-  dv.setInt32(2, Math.round(wp.lat * 1e7), true);
-  dv.setInt32(6, Math.round(wp.lon * 1e7), true);
-  dv.setInt32(10, wp.altitude, true);
-  dv.setUint16(14, wp.p1, true);
-  dv.setUint16(16, wp.p2, true);
-  dv.setUint16(18, wp.p3, true);
-  dv.setUint8(20, wp.flag);
+  // Each field is range-checked rather than narrowed: waypoint 256 narrowed to
+  // 0 addresses the first mission item and overwrites it, which reads on the
+  // aircraft as a mission that uploaded cleanly.
+  writeU8(dv, 0, wp.number, 'waypoint number');
+  writeU8(dv, 1, wp.action, 'waypoint action');
+  writeI32(dv, 2, Math.round(wp.lat * 1e7), 'waypoint latitude');
+  writeI32(dv, 6, Math.round(wp.lon * 1e7), 'waypoint longitude');
+  writeI32(dv, 10, wp.altitude, 'waypoint altitude');
+  writeBits16(dv, 14, wp.p1, 'waypoint p1');
+  writeBits16(dv, 16, wp.p2, 'waypoint p2');
+  writeBits16(dv, 18, wp.p3, 'waypoint p3');
+  writeU8(dv, 20, wp.flag, 'waypoint flag');
 
   return buf;
 }

@@ -2,6 +2,13 @@
  * Byte-buffer helpers for MSP payload encoders. All multi-byte writes are
  * little-endian to match MSP wire convention.
  *
+ * The `push*` writers below narrow silently: an out-of-range value becomes a
+ * different in-range one rather than an error. They remain for the settings
+ * encoders that have always used them, and are folder-local — nothing outside
+ * this directory imports them. New encoders, and any encoder on a path that
+ * writes to a flying aircraft, use the range-checked writers in
+ * `protocol/encoders/bounds` instead, which refuse an out-of-range value.
+ *
  * @module protocol/msp/encoders/helpers
  */
 

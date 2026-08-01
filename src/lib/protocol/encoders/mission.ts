@@ -5,6 +5,7 @@
  */
 
 import { buildFrame } from "./frame";
+import { setU8, writeI32, writeU16 } from "./bounds";
 
 /** MAVLink mission types */
 export const MAV_MISSION_TYPE_MISSION = 0;
@@ -38,6 +39,12 @@ export function encodeMissionCount(
 
 /** Encode a single mission item (INT variant — lat/lon as int32 * 1e7).
  * @param missionType - 0=mission, 1=fence, 2=rally (v2 extension field)
+ *
+ * The integer fields are range-checked rather than narrowed. A sequence number
+ * or command id past its field used to wrap to a different, valid-looking item,
+ * which uploads without complaint and flies as something else.
+ *
+ * @throws RangeError when an integer field is outside the field it is written to.
  */
 export function encodeMissionItemInt(
   targetSys: number,
@@ -65,17 +72,17 @@ export function encodeMissionItemInt(
   dv.setFloat32(4, p2, true);
   dv.setFloat32(8, p3, true);
   dv.setFloat32(12, p4, true);
-  dv.setInt32(16, x, true);      // lat * 1e7
-  dv.setInt32(20, y, true);      // lon * 1e7
+  writeI32(dv, 16, x, "mission item latitude");
+  writeI32(dv, 20, y, "mission item longitude");
   dv.setFloat32(24, z, true);    // alt
-  dv.setUint16(28, seq, true);
-  dv.setUint16(30, command, true);
-  payload[32] = targetSys;
-  payload[33] = targetComp;
-  payload[34] = frame;
-  payload[35] = current;
-  payload[36] = autocontinue;
-  if (missionType > 0) payload[37] = missionType;
+  writeU16(dv, 28, seq, "mission item sequence");
+  writeU16(dv, 30, command, "mission item command");
+  setU8(payload, 32, targetSys, "mission item target system");
+  setU8(payload, 33, targetComp, "mission item target component");
+  setU8(payload, 34, frame, "mission item frame");
+  setU8(payload, 35, current, "mission item current");
+  setU8(payload, 36, autocontinue, "mission item autocontinue");
+  if (missionType > 0) setU8(payload, 37, missionType, "mission item mission type");
   return buildFrame(73, payload, sysId, compId);
 }
 

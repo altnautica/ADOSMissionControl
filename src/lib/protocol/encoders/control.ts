@@ -4,6 +4,11 @@
  */
 
 import { buildFrame } from "./frame";
+import { setU8, writeI16, writeU16 } from "./bounds";
+
+/** The axis range MANUAL_CONTROL defines, and what the callers normalise to. */
+const AXIS_MIN = -1000;
+const AXIS_MAX = 1000;
 
 // ── MANUAL_CONTROL (ID 69) ──────────────────────────────────
 
@@ -12,6 +17,13 @@ import { buildFrame } from "./frame";
  *
  * Sent at up to 50 Hz for real-time joystick/gamepad control.
  * Axes are int16 (-1000 to 1000), buttons is uint16 bitmask.
+ *
+ * The axis range is enforced rather than narrowed. Callers clamp their
+ * normalised stick values on the way in; this refuses anything that arrives
+ * unclamped instead of wrapping it into a different, in-range stick position.
+ *
+ * @throws RangeError when an axis, the button mask, or the target system id is
+ *   outside the field it is written to.
  */
 export function encodeManualControl(
   targetSys: number,
@@ -25,13 +37,25 @@ export function encodeManualControl(
 ): Uint8Array {
   const payload = new Uint8Array(11);
   const dv = new DataView(payload.buffer);
-  dv.setInt16(0, x, true);        // pitch (forward/back)
-  dv.setInt16(2, y, true);        // roll (left/right)
-  dv.setInt16(4, z, true);        // throttle (up/down)
-  dv.setInt16(6, r, true);        // yaw (rotation)
-  dv.setUint16(8, buttons, true); // button bitmask
-  payload[10] = targetSys;        // target system
+  requireAxis(x, "manual control pitch");
+  requireAxis(y, "manual control roll");
+  requireAxis(z, "manual control throttle");
+  requireAxis(r, "manual control yaw");
+  writeI16(dv, 0, x, "manual control pitch");        // pitch (forward/back)
+  writeI16(dv, 2, y, "manual control roll");         // roll (left/right)
+  writeI16(dv, 4, z, "manual control throttle");     // throttle (up/down)
+  writeI16(dv, 6, r, "manual control yaw");          // yaw (rotation)
+  writeU16(dv, 8, buttons, "manual control buttons");
+  setU8(payload, 10, targetSys, "manual control target system");
   return buildFrame(69, payload, sysId, compId);
+}
+
+function requireAxis(value: number, field: string): void {
+  if (!Number.isInteger(value) || value < AXIS_MIN || value > AXIS_MAX) {
+    throw new RangeError(
+      `${field}: expected ${AXIS_MIN}..${AXIS_MAX}, received ${String(value)}`,
+    );
+  }
 }
 
 // ── SET_POSITION_TARGET_GLOBAL_INT (ID 86) ───────────────────
@@ -124,6 +148,13 @@ export function encodeSetAttitudeTarget(
  *
  * Overrides RC input channels. Channel value of 0 means "release" (stop override).
  * @param channels - Up to 8 channel values (1000-2000 us, 0 = release)
+ *
+ * The check here is the field's own range rather than the typical 1000-2000
+ * pulse width, because the message defines two values outside it: 0 releases
+ * the channel and 65535 leaves it untouched. Refusing those would reject legal
+ * frames, so only a value the field cannot hold is refused.
+ *
+ * @throws RangeError when a channel value or an id is outside its field.
  */
 export function encodeRcChannelsOverride(
   targetSys: number,
@@ -136,9 +167,9 @@ export function encodeRcChannelsOverride(
   const dv = new DataView(payload.buffer);
   // Wire order: 8 x uint16 channels, then uint8 targetSys, uint8 targetComp
   for (let i = 0; i < 8; i++) {
-    dv.setUint16(i * 2, channels[i] ?? 0, true);
+    writeU16(dv, i * 2, channels[i] ?? 0, `rc override channel ${i + 1}`);
   }
-  payload[16] = targetSys;
-  payload[17] = targetComp;
+  setU8(payload, 16, targetSys, "rc override target system");
+  setU8(payload, 17, targetComp, "rc override target component");
   return buildFrame(70, payload, sysId, compId);
 }
