@@ -547,6 +547,12 @@ fullName: v.optional(v.string()),
     userId: v.string(),
     deviceId: v.string(),
     name: v.string(),
+    // An empty string means "paired, but no agent key yet" -- the browser can
+    // claim a pairing code before the agent has connected, and the field is
+    // required so there is no `undefined` to store. Such a row must NEVER
+    // authenticate: compare with `agentKeyMatches` (convex/lib/credentials.ts),
+    // which refuses a blank on either side. A plain `stored !== presented`
+    // check authenticates any caller who sends an empty key.
     apiKey: v.string(),
     agentVersion: v.optional(v.string()),
     board: v.optional(v.string()),

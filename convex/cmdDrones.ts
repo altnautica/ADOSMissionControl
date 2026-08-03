@@ -9,6 +9,7 @@
 import { v } from "convex/values";
 import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { agentKeyMatches } from "./lib/credentials";
 
 /** List all drones for the authenticated user. */
 export const listMyDrones = query({
@@ -97,7 +98,7 @@ export const deduplicateDrones = internalMutation({
  * Agent heartbeat — called from HTTP handler.
  * Validates using deviceId + apiKey (no user auth).
  */
-export const updateHeartbeat = mutation({
+export const updateHeartbeat = internalMutation({
   args: {
     deviceId: v.string(),
     apiKey: v.string(),
@@ -112,7 +113,9 @@ export const updateHeartbeat = mutation({
       .withIndex("by_deviceId", (q) => q.eq("deviceId", args.deviceId))
       .first();
     if (!drone) return { error: "not_found" };
-    if (drone.apiKey !== args.apiKey) return { error: "invalid_key" };
+    if (!agentKeyMatches(drone.apiKey, args.apiKey)) {
+      return { error: "invalid_key" };
+    }
     await ctx.db.patch(drone._id, {
       lastSeen: Date.now(),
       lastIp: args.lastIp,

@@ -4,6 +4,7 @@ import { httpAction } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { snakeToCamelObject } from "./heartbeatCasing";
+import { agentKeyMatches } from "./lib/credentials";
 
 const http = httpRouter();
 auth.addHttpRoutes(http);
@@ -601,7 +602,7 @@ http.route({
         { status: 400, headers: jsonHeaders }
       );
     }
-    const result = await ctx.runMutation(api.cmdDrones.updateHeartbeat, {
+    const result = await ctx.runMutation(internal.cmdDrones.updateHeartbeat, {
       deviceId,
       apiKey,
       lastIp: stringField(body, "lastIp"),
@@ -638,7 +639,7 @@ http.route({
 
     // Validate API key matches the paired drone
     const drone = await ctx.runQuery(internal.cmdDrones.getDroneByDeviceId, { deviceId });
-    if (!drone || drone.apiKey !== apiKey) {
+    if (!drone || !agentKeyMatches(drone.apiKey, apiKey)) {
       return new Response(
         JSON.stringify({ error: "Invalid device or API key" }),
         { status: 401, headers: jsonHeaders }
@@ -906,7 +907,7 @@ http.route({
     const poster = await ctx.runQuery(internal.cmdDrones.getDroneByDeviceId, {
       deviceId: posterDeviceId,
     });
-    if (!poster || poster.apiKey !== apiKey) {
+    if (!poster || !agentKeyMatches(poster.apiKey, apiKey)) {
       return new Response(
         JSON.stringify({ error: "Invalid device or API key" }),
         { status: 401, headers: jsonHeaders }
@@ -968,7 +969,7 @@ http.route({
 
     // Validate API key
     const drone = await ctx.runQuery(internal.cmdDrones.getDroneByDeviceId, { deviceId });
-    if (!drone || drone.apiKey !== apiKey) {
+    if (!drone || !agentKeyMatches(drone.apiKey, apiKey)) {
       return new Response(
         JSON.stringify({ error: "Invalid device or API key" }),
         { status: 401, headers: jsonHeaders }
@@ -1007,7 +1008,7 @@ http.route({
 
     // Validate API key
     const drone = await ctx.runQuery(internal.cmdDrones.getDroneByDeviceId, { deviceId });
-    if (!drone || drone.apiKey !== apiKey) {
+    if (!drone || !agentKeyMatches(drone.apiKey, apiKey)) {
       return new Response(
         JSON.stringify({ error: "Invalid device or API key" }),
         { status: 401, headers: jsonHeaders }
@@ -1066,7 +1067,7 @@ http.route({
 
     // Validate API key matches the paired drone
     const drone = await ctx.runQuery(internal.cmdDrones.getDroneByDeviceId, { deviceId });
-    if (!drone || drone.apiKey !== apiKey) {
+    if (!drone || !agentKeyMatches(drone.apiKey, apiKey)) {
       return new Response(
         JSON.stringify({ error: "Invalid device or API key" }),
         { status: 401, headers: jsonHeaders }

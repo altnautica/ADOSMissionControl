@@ -12,7 +12,10 @@ export const cmdDronesApi = {
   getDrone: api.cmdDrones.getDrone,
   renameDrone: api.cmdDrones.renameDrone,
   unpairDrone: api.cmdDrones.unpairDrone,
-  updateHeartbeat: api.cmdDrones.updateHeartbeat,
+  // `updateHeartbeat` is deliberately absent: it is an internal mutation
+  // reached only through the `/heartbeat` HTTP route, which authenticates the
+  // agent. Exposing it to the browser gave any caller a directly-invokable
+  // write path that bypassed that route's checks.
 };
 
 export const cmdPairingApi = {
