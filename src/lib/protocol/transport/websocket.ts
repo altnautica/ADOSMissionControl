@@ -13,6 +13,11 @@ type TransportEventMap = {
 
 export class WebSocketTransport implements Transport {
   readonly type = "websocket" as const;
+  /**
+   * A direct link: bytes written here go to the flight controller over this
+   * connection, so a command that leaves is a command that arrives.
+   */
+  readonly canCommand = true;
 
   private ws: WebSocket | null = null;
   private _connected = false;

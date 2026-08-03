@@ -184,6 +184,7 @@ export function mergeConnection(
     mavlinkUrl: pickOptional(patch.mavlinkUrl, current.mavlinkUrl, true),
     transport: pickOptional(patch.transport, current.transport, true),
     fcConnected: patch.fcConnected ?? current.fcConnected,
+    canCommand: pickOptional(patch.canCommand, current.canCommand, true),
   };
 }
 

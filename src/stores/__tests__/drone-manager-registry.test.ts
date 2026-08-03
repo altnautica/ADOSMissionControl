@@ -35,6 +35,7 @@ function fakeTransport(): Transport {
     on: () => {},
     off: () => {},
     isConnected: true,
+    canCommand: true,
   };
 }
 

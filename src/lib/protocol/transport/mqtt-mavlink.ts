@@ -29,7 +29,29 @@ export class MqttMavlinkTransport implements Transport {
   private client: any = null;
   private _connected = false;
   private _disconnecting = false;
+  private _canPublish = false;
   private deviceId = "";
+
+  /**
+   * Whether the broker will accept what this transport publishes.
+   *
+   * Unlike a direct transport, an open socket here proves only that the broker
+   * accepted the CONNECT. The subscribe side and the publish side are
+   * authorised separately, so a credential that streams telemetry perfectly can
+   * have every publish discarded — and at QoS 0 the discard is silent, because
+   * the protocol acknowledges nothing at that quality of service. There is no
+   * error to observe and no callback to wait for; the frames simply stop.
+   *
+   * So this is answered from the credential the caller supplied rather than
+   * from anything observed on the wire, and it defaults to false. A caller that
+   * does not say its credential may publish gets told it may not, which is the
+   * safe direction to be wrong in: an under-claim shows the operator a limit
+   * that is not there, an over-claim shows a working link that silently drops
+   * every command.
+   */
+  get canCommand(): boolean {
+    return this._canPublish;
+  }
   /** Topic lane: "mavlink" for a MAVLink FC, "msp" for a Betaflight/iNav FC. */
   private readonly lane: MqttRelayLane;
   private listeners: Map<
@@ -55,12 +77,18 @@ export class MqttMavlinkTransport implements Transport {
    * @param brokerUrl — MQTT WebSocket URL (default: the managed broker, see config/endpoints)
    * @param auth — Optional broker username/password (production broker
    *   enforces auth via the `gcs-viewer` credential published from
-   *   Convex `clientConfig.getClientConfig`).
+   *   Convex `clientConfig.getClientConfig`). Set `canPublish` only for a
+   *   credential the broker will accept writes from; the shared viewer
+   *   credential is read-only and must leave it unset.
    */
   async connect(
     deviceId: string,
     brokerUrl?: string,
-    auth?: { username?: string | null; password?: string | null },
+    auth?: {
+      username?: string | null;
+      password?: string | null;
+      canPublish?: boolean;
+    },
   ): Promise<void> {
     if (this._connected) {
       throw new Error("Already connected");
@@ -108,6 +136,11 @@ export class MqttMavlinkTransport implements Transport {
           connectOptions.username = cred.username;
           connectOptions.password = cred.password;
         }
+        // Fail closed: only an explicit claim grants publish authority. The
+        // process-wide fallback credential is the shared read-only viewer, so
+        // it can never arrive here carrying one.
+        this._canPublish =
+          auth?.canPublish === true && Boolean(cred?.username && cred?.password);
         this.client = (connectFn as typeof mqttModule.connect)(
           brokerUrl || MQTT_WS_URL,
           connectOptions,
@@ -183,6 +216,16 @@ export class MqttMavlinkTransport implements Transport {
   send(data: Uint8Array): void {
     if (!this._connected || !this.client) {
       throw new Error("Not connected");
+    }
+    // Refuse rather than publish into a void. Handing this frame to the broker
+    // would look identical to success — QoS 0 acknowledges nothing, so the
+    // caller would wait out a command timeout and blame the aircraft for a
+    // refusal that happened here. Failing at the call site names the cause
+    // while the caller still has the context to report it.
+    if (!this._canPublish) {
+      throw new Error(
+        "Relay credential is receive-only: this session cannot send commands to the vehicle",
+      );
     }
     // QoS-0 publish is unreliable by design (no broker ACK), so a frame
     // can vanish while the caller waits on a COMMAND_ACK. Surface the

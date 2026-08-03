@@ -14,6 +14,11 @@ type TransportEventMap = {
 
 export class WebSerialTransport implements Transport {
   readonly type = "webserial" as const;
+  /**
+   * A direct link: bytes written here go to the flight controller over this
+   * connection, so a command that leaves is a command that arrives.
+   */
+  readonly canCommand = true;
 
   private port: SerialPort | null = null;
   private reader: ReadableStreamDefaultReader<Uint8Array> | null = null;

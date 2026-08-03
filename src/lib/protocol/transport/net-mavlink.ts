@@ -82,6 +82,11 @@ export function parseEndpointSpec(spec: string): NetConnectOptions | null {
 
 export class NetMavlinkTransport implements Transport {
   readonly type: "udp-proxy" | "tcp";
+  /**
+   * A direct link: bytes written here go to the flight controller over this
+   * connection, so a command that leaves is a command that arrives.
+   */
+  readonly canCommand = true;
 
   private readonly proto: NetProto;
   private _connected = false;

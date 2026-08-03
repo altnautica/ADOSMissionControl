@@ -11,6 +11,11 @@ import type { Transport } from "@/lib/protocol/types";
 
 export class MockTransport implements Transport {
   readonly type = "websocket" as const;
+  /**
+   * A direct link: bytes written here go to the flight controller over this
+   * connection, so a command that leaves is a command that arrives.
+   */
+  readonly canCommand = true;
 
   get isConnected(): boolean {
     return true;

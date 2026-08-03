@@ -405,6 +405,32 @@ describe("useNodeRegistryStore connection + telemetry", () => {
     expect(conn?.fcConnected).toBe(true);
   });
 
+  it("keeps command authority distinct from the flight controller being connected", () => {
+    // The relay case: the flight controller is attached and reporting, and the
+    // send lane is refused. Collapsing the two is what let an uncommandable
+    // node render as a live command link.
+    const id = resolveNodeId("dev-relay");
+    store().upsertPresence(id, { deviceId: "dev-relay", name: "n" }, "cloud");
+    store().updateConnection(id, {
+      transport: "mqtt-mavlink",
+      fcConnected: true,
+      canCommand: false,
+    });
+    const conn = store().getEntry(id)?.connection;
+    expect(conn?.fcConnected).toBe(true);
+    expect(conn?.canCommand).toBe(false);
+  });
+
+  it("does not let an unrelated connection patch clear command authority", () => {
+    // A later patch that says nothing about authority must leave it alone,
+    // rather than resetting it to a default that happens to read as refused.
+    const id = resolveNodeId("dev-keep");
+    store().upsertPresence(id, { deviceId: "dev-keep", name: "n" }, "local");
+    store().updateConnection(id, { canCommand: true });
+    store().updateConnection(id, { fcConnected: true });
+    expect(store().getEntry(id)?.connection.canCommand).toBe(true);
+  });
+
   it("ignores connection / telemetry updates for an unknown node", () => {
     store().updateConnection("node:ghost", { fcConnected: true });
     store().updateFcTelemetry("node:ghost", { flightMode: "AUTO" });

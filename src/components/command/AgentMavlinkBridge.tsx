@@ -310,9 +310,20 @@ export function AgentMavlinkBridge() {
             const mqttTransport = new MqttMavlinkTransport(
               mspLane ? "msp" : "mavlink",
             );
+            // No write grant is passed, so this connects receive-only: the
+            // shared broker credential subscribes and cannot publish. The
+            // session is still worth establishing — telemetry, state and
+            // vehicle identity all arrive over it — but it is not a command
+            // link, and the transport reports that rather than implying one.
             await mqttTransport.connect(cloudDeviceId);
             transport = mqttTransport;
             connType = "mqtt-mavlink";
+            if (!mqttTransport.canCommand) {
+              console.warn(
+                "[AgentMavlinkBridge] Relay session is receive-only: telemetry will " +
+                  "flow but commands cannot be sent to this vehicle",
+              );
+            }
           } catch (mqttErr) {
             console.warn("[AgentMavlinkBridge] MQTT relay failed:", mqttErr);
           }
@@ -372,6 +383,11 @@ export function AgentMavlinkBridge() {
           transport: connType,
           mavlinkUrl: mavlinkUrl || undefined,
           fcConnected: true,
+          // Recorded from the transport rather than assumed from the fact that
+          // a connection was established. These differ on the relay: the FC is
+          // attached and talking while the send lane is refused, and reporting
+          // only `fcConnected` is what let that read as a live command link.
+          canCommand: transport.canCommand,
         });
 
         useDroneManager.getState().addDrone(

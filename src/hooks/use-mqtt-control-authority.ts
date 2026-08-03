@@ -37,6 +37,13 @@ export function useMqttControlAuthority(): MqttControlAuthority {
     const id = s.selectedDroneId;
     return id ? (s.drones.get(id)?.transport.type ?? null) : null;
   });
+  // The transport's own answer, not an inference from which lane it is. A relay
+  // transport holding a write grant is commandable and one without is not, and
+  // only the transport knows which it holds.
+  const transportCanCommand = useDroneManager((s) => {
+    const id = s.selectedDroneId;
+    return id ? (s.drones.get(id)?.transport.canCommand ?? false) : false;
+  });
   const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
 
   // Ride the shared 1Hz clock rather than reading Date.now() during render.
@@ -50,10 +57,24 @@ export function useMqttControlAuthority(): MqttControlAuthority {
   const lane: ControlLane =
     transportType === "mqtt-mavlink" ? "cloud-relay" : "direct";
 
+  // A relay transport that reports it can publish is holding a write grant, so
+  // the resolver is told about one. Synthesised from the transport rather than
+  // fetched, because the transport is what the broker actually accepted and no
+  // grant store is wired yet; the expiry is deliberately absent-equivalent
+  // (far future) so this never claims a lifetime it cannot know.
+  const grant =
+    lane === "cloud-relay" && transportCanCommand
+      ? {
+          deviceIds: [selectedDroneId ?? ""],
+          expiresAt: Number.POSITIVE_INFINITY,
+          writeConfirmed: false,
+        }
+      : null;
+
   return resolveMqttControlAuthority({
     lane,
     deviceId: selectedDroneId ?? "",
-    grant: null,
+    grant,
     now,
   });
 }

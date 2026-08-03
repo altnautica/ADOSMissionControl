@@ -119,6 +119,17 @@ export interface NodeConnection {
   transport?: NodeTransport;
   /** True when the agent reports a connected flight controller. */
   fcConnected: boolean;
+  /**
+   * True when a command sent over that transport actually reaches the vehicle.
+   *
+   * Distinct from `fcConnected`, which says the flight controller is attached
+   * and talking. Over the cloud relay both can disagree: telemetry arrives on
+   * the receive lane while the send lane is refused by the broker, so the node
+   * is connected, healthy, and uncommandable at the same time. Absent means not
+   * yet established rather than false, so a reader must not treat a missing
+   * value as a refusal.
+   */
+  canCommand?: boolean;
 }
 
 /**
