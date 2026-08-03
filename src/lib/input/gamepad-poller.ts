@@ -212,8 +212,17 @@ export function manualControlPeriodMs(hz: number): number | null {
  */
 export function manualControlTick(): number {
   const protocol = useDroneManager.getState().getSelectedProtocol();
-  const { axes, buttons, activeController, manualControlEnabled } = useInputStore.getState();
+  const input = useInputStore.getState();
+  const { axes, buttons, activeController, manualControlEnabled } = input;
   const { armState, flightMode } = useDroneStore.getState();
+
+  // Republish the link's own refusal whether or not the gate would let a frame
+  // through, so an operator who has not armed yet still learns that arming
+  // will not help.
+  const linkBlock = protocol?.getManualControlBlockedReason?.() ?? null;
+  if (input.manualControlLinkBlock !== linkBlock) {
+    input.setManualControlLinkBlock(linkBlock);
+  }
 
   const allowed = manualControlAllowed({
     enabled: manualControlEnabled,

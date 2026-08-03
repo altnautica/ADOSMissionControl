@@ -355,6 +355,16 @@ export interface DroneProtocol {
     buttons: number,
   ): void;
 
+  /**
+   * Why this link cannot carry stick frames, in operator-readable terms, or
+   * null when it can.
+   *
+   * `sendManualControl` is fire-and-forget, so a link that refuses every frame
+   * refuses them silently. This is how that refusal reaches a surface. Absent
+   * on links that have no such condition.
+   */
+  getManualControlBlockedReason?(): string | null;
+
   // ── Parameters ──────────────────────────────────────────
   getAllParameters(): Promise<ParameterValue[]>;
   getParameter(name: string): Promise<ParameterValue>;

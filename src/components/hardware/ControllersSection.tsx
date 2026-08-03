@@ -52,7 +52,7 @@ export function ControllersSection() {
   const t = useTranslations("inputDevices");
   const {
     activeController, axes, deadzone, expo, setDeadzone, setExpo, calibration, clearCalibration,
-    manualControlEnabled, setManualControlEnabled,
+    manualControlEnabled, setManualControlEnabled, manualControlLinkBlock,
   } = useInputStore();
   const { toast } = useToast();
   const [showCalWizard, setShowCalWizard] = useState(false);
@@ -100,6 +100,15 @@ export function ControllersSection() {
             {!hasGamepad && (
               <p className="text-[10px] text-text-tertiary">
                 No gamepad is reporting. Connect one and press a button.
+              </p>
+            )}
+            {manualControlLinkBlock && (
+              <p
+                role="status"
+                className="text-[10px] text-status-warning leading-relaxed"
+              >
+                Sticks will not reach this aircraft: {manualControlLinkBlock}.
+                Nothing is being transmitted.
               </p>
             )}
           </div>

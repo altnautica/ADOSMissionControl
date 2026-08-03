@@ -603,6 +603,18 @@ export class MSPAdapter implements DroneProtocol {
   // ── Info ────────────────────────────────────────────────────
   getVehicleInfo(): VehicleInfo | null { return this.vehicleInfo }
 
+  /**
+   * Why the RC override is inert, or null when it will reach `rcData[]`.
+   *
+   * The override object computes this once at connect from the feature word
+   * and the configured mode ranges. Before connect there is no override, and
+   * a link with no override sends nothing.
+   */
+  getManualControlBlockedReason(): string | null {
+    if (!this.rcOverride) return this._connected ? 'the RC override is not set up on this link' : null
+    return this.rcOverride.blockedReason
+  }
+
   getCapabilities(): ProtocolCapabilities {
     const base = this.firmwareHandler?.getCapabilities() ?? this.emptyCapabilities()
     // The firmware handler declares the rate its flight controller expects; it

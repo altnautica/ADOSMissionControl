@@ -6,6 +6,10 @@
  * read. A declared rate that no sender honours is not a rate, and a sender
  * that ignores a declared 0 transmits into a link that says it will discard
  * the frames.
+ *
+ * The stream also has to carry the link's own refusal back out. It is
+ * fire-and-forget, so a flight controller that throws every frame away is
+ * indistinguishable from one that flies, unless the reason is published.
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
@@ -29,13 +33,15 @@ interface FakeProtocol {
   isConnected: boolean
   sendManualControl: ReturnType<typeof vi.fn>
   getCapabilities: () => { manualControlHz: number }
+  getManualControlBlockedReason?: () => string | null
 }
 
-function fakeProtocol(hz: number): FakeProtocol {
+function fakeProtocol(hz: number, blocked: string | null = null): FakeProtocol {
   return {
     isConnected: true,
     sendManualControl: vi.fn(),
     getCapabilities: () => ({ manualControlHz: hz }),
+    getManualControlBlockedReason: () => blocked,
   }
 }
 
@@ -90,5 +96,52 @@ describe('manual-control stream cadence', () => {
     // link up if it starts declaring a rate. It just puts nothing on the wire.
     expect(manualControlTick()).toBeGreaterThan(0)
     expect(p.sendManualControl).not.toHaveBeenCalled()
+  })
+})
+
+describe('manual-control link refusal', () => {
+  beforeEach(() => {
+    protocol = null
+    const s = useInputStore.getState()
+    s.setController('gamepad')
+    s.setManualControlEnabled(true)
+  })
+
+  afterEach(() => {
+    stopManualControlStream()
+    useInputStore.getState().resetInput()
+  })
+
+  it('publishes the reason the link gives so the operator can read it', () => {
+    protocol = fakeProtocol(0, 'the flight controller is not configured for an MSP receiver')
+
+    manualControlTick()
+
+    expect(useInputStore.getState().manualControlLinkBlock).toBe(
+      'the flight controller is not configured for an MSP receiver',
+    )
+  })
+
+  it('clears the reason once the link will carry sticks', () => {
+    protocol = fakeProtocol(0, 'the receiver is not MSP')
+    manualControlTick()
+    expect(useInputStore.getState().manualControlLinkBlock).not.toBeNull()
+
+    protocol = fakeProtocol(50, null)
+    manualControlTick()
+    expect(useInputStore.getState().manualControlLinkBlock).toBeNull()
+  })
+
+  it('reports nothing for a link that has no such condition', () => {
+    // A MAVLink adapter does not implement the getter at all; that must read
+    // as "no refusal", not as a crash.
+    const p = fakeProtocol(50)
+    delete p.getManualControlBlockedReason
+    protocol = p
+
+    manualControlTick()
+
+    expect(useInputStore.getState().manualControlLinkBlock).toBeNull()
+    expect(p.sendManualControl).toHaveBeenCalledTimes(1)
   })
 })
