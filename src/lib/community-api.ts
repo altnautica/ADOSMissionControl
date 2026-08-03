@@ -49,6 +49,11 @@ export const communityApi = {
   },
   clientConfig: {
     get: api.clientConfig.getClientConfig,
+    // The broker credential is a SEPARATE, auth-gated read. It used to ride on
+    // `get`, which has no auth check, so anyone who could reach the deployment
+    // could take a password granting a subscription to every topic of every
+    // drone in the fleet.
+    brokerViewerCredential: api.clientConfig.getBrokerViewerCredential,
   },
   aiUsage: {
     checkAndRecord: api.cmdAiUsage.checkAndRecord,

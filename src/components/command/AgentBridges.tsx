@@ -44,8 +44,14 @@ export function AgentBridges() {
   const pairedDrones = usePairingStore((s) => s.pairedDrones);
   const demoMode = useSettingsStore((s) => s.demoMode);
   const fleetNodes = useFleetNodes();
-  // clientConfig is a public read; the cloud relay broker creds come from it.
+  // Two reads, deliberately. The public config carries the broker URL and other
+  // non-secrets; the viewer credential is auth-gated and comes back null for a
+  // signed-out visitor, which the bridges below already treat as "no cloud
+  // telemetry" rather than as an error.
   const clientConfig = useConvexSkipQuery(communityApi.clientConfig.get);
+  const brokerCred = useConvexSkipQuery(
+    communityApi.clientConfig.brokerViewerCredential,
+  );
 
   // In demo the mock engine seeds the fleet + agent stores directly; the real
   // cloud/MQTT/LAN bridges would only fail to reach a broker and spam retries.
@@ -61,16 +67,16 @@ export function AgentBridges() {
       <CommandFleetMqttBridge
         pairedDrones={pairedDrones}
         mqttBrokerUrl={clientConfig?.mqttBrokerUrl}
-        mqttViewerUsername={clientConfig?.mqttViewerUsername}
-        mqttViewerPassword={clientConfig?.mqttViewerPassword}
+        mqttViewerUsername={brokerCred?.mqttViewerUsername}
+        mqttViewerPassword={brokerCred?.mqttViewerPassword}
       />
       {cloudMode && <CloudStatusBridge />}
       {cloudMode && <CloudCommandResultBridge />}
       {cloudMode && (
         <MqttBridge
           mqttBrokerUrl={clientConfig?.mqttBrokerUrl}
-          mqttViewerUsername={clientConfig?.mqttViewerUsername}
-          mqttViewerPassword={clientConfig?.mqttViewerPassword}
+          mqttViewerUsername={brokerCred?.mqttViewerUsername}
+          mqttViewerPassword={brokerCred?.mqttViewerPassword}
         />
       )}
     </>
