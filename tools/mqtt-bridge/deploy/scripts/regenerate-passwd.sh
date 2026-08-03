@@ -15,7 +15,17 @@
 # canonical username, set DROP_LEGACY_USERNAMES=1 to stop emitting the
 # `ados-<id>` rows.
 #
-# Safe to run from cron. Idempotent. Atomic-swap on success.
+# Also emits per-operator write grants, which is what lets a browser publish
+# at all: the shared viewer principal is read-only by design.
+#
+# Safe to run from cron. Idempotent. Writes the two files IN PLACE (see the
+# note by the write) because they are file-level bind mounts -- a rename would
+# leave the broker reading the old inode and look like a working sync.
+#
+# PATHS AND CONTAINER NAME DEFAULT TO THE PRE-MIGRATION DEPLOYMENT. On the
+# current host, override BROKER_CONTAINER / PASSWD_PATH / ACL_PATH (see
+# regenerate-passwd.env next to this script). Defaults left alone so an older
+# deployment is not silently repointed.
 
 set -euo pipefail
 
@@ -125,6 +135,42 @@ ACL_LEGACY
       fi
     done
 
+# Operator write grants.
+#
+# The shared viewer principal is read-only by design, so a browser has never
+# been able to publish a command -- flight frames and video signalling were
+# accepted by the client and then discarded by the broker. A grant is what
+# gives one operator write access, scoped to the devices they owned when it
+# was minted, and it expires on its own.
+#
+# `passwdEntry` is already a broker password line (a PBKDF2 verifier, never the
+# secret), so it is appended verbatim rather than re-hashed -- the plaintext
+# never reaches this host. Convex has already dropped expired and revoked
+# grants, so everything here is live.
+grants_count=$(printf '%s' "${response}" | jq -r '(.grants // []) | length')
+if [[ "${grants_count}" != "0" ]]; then
+  printf '%s' "${response}" \
+    | jq -r '(.grants // [])[] | "\(.principal)\t\(.passwdEntry)\t\(.deviceIds | join(","))"' \
+    | while IFS=$'\t' read -r principal passwd_entry device_csv; do
+        [[ -z "${principal}" || -z "${passwd_entry}" ]] && continue
+
+        # passwd: append the pre-hashed verifier straight into the staging file.
+        docker exec -i "${BROKER_CONTAINER}" \
+          sh -c "cat >> '${STAGING_PASSWD}'" <<< "${passwd_entry}"
+
+        {
+          echo "# Operator grant. Expires on its own; revoking in Convex drops"
+          echo "# it from the next sync."
+          echo "user ${principal}"
+          IFS=',' read -ra _devs <<< "${device_csv}"
+          for d in "${_devs[@]}"; do
+            [[ -n "${d}" ]] && echo "topic readwrite ados/${d}/#"
+          done
+          echo ""
+        } >> "${host_acl_staging}"
+      done
+fi
+
 # Bridge service account in passwd.
 docker exec "${BROKER_CONTAINER}" \
   mosquitto_passwd -b "${STAGING_PASSWD}" "${BRIDGE_USER}" "${BRIDGE_PASS}"
@@ -139,17 +185,30 @@ chmod 600 "${host_passwd_staging}"
 docker exec "${BROKER_CONTAINER}" /bin/cat "${STAGING_PASSWD}" > "${host_passwd_staging}"
 docker exec "${BROKER_CONTAINER}" rm -f "${STAGING_PASSWD}"
 
-mv -f "${host_passwd_staging}" "${PASSWD_PATH}"
+# Write IN PLACE, never rename.
+#
+# These paths are FILE-level bind mounts into the broker container. A rename
+# gives the host path a NEW inode while the container keeps the old one, so
+# `mv` would report success and the broker would go on reading the previous
+# file forever -- a silent no-op that looks like a working sync. Truncating and
+# rewriting keeps the inode, so the container sees the new bytes.
+#
+# The cost is that the write is no longer atomic. That is acceptable here: the
+# broker only re-reads on the SIGHUP below, so it never observes a partial file
+# in normal operation.
+cat "${host_passwd_staging}" > "${PASSWD_PATH}"
+rm -f "${host_passwd_staging}"
 # Mosquitto inside the container runs as uid 1883; the host-side file must
 # be readable by that uid. 640 means owner-read/group-read, others-none.
 chown 1883:1883 "${PASSWD_PATH}"
 chmod 640 "${PASSWD_PATH}"
 
-mv -f "${host_acl_staging}" "${ACL_PATH}"
+cat "${host_acl_staging}" > "${ACL_PATH}"
+rm -f "${host_acl_staging}"
 chown 1883:1883 "${ACL_PATH}"
 chmod 640 "${ACL_PATH}"
 
 # Reload the broker without dropping connections.
 docker exec "${BROKER_CONTAINER}" sh -c 'kill -HUP 1' 2>/dev/null || true
 
-echo "regenerate-passwd: wrote ${PASSWD_PATH} + ${ACL_PATH} (${entries_count} devices + bridge + viewer)"
+echo "regenerate-passwd: wrote ${PASSWD_PATH} + ${ACL_PATH} (${entries_count} devices, ${grants_count:-0} operator grants, + bridge + viewer)"
