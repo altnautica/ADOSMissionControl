@@ -1631,6 +1631,38 @@ fullName: v.optional(v.string()),
     .index("by_user", ["userId"])
     .index("by_tokenHash", ["tokenHash"]),
 
+  // Per-operator broker write grants for the cloud relay. The browser's shared
+  // broker credential is read-only, so a relay session can watch a drone and
+  // cannot command it; a grant is the scoped, expiring credential that lets one
+  // operator publish FC frames and video signaling offers for the devices they
+  // own, without handing every browser a fleet-wide write key.
+  //
+  // `passwdEntry` is the broker's own verifier (see `mosquittoPasswd`), not the
+  // secret: the plaintext is returned once at mint and never stored, so a read
+  // of this table cannot authenticate anything. `principal` is deliberately
+  // opaque rather than derived from the user id, because it is written into a
+  // file on the broker host and should not carry operator identity.
+  //
+  // Writes are narrowed per device at the ACL, not here: holding a grant is not
+  // the same as being permitted a topic, and the broker remains the authority.
+  cmd_mqttControlGrants: defineTable({
+    userId: v.string(),
+    /** Opaque broker username, e.g. `gcs-op-<random>`. */
+    principal: v.string(),
+    /** Broker password-file line. A verifier, never the secret. */
+    passwdEntry: v.string(),
+    /** Devices this grant authorises writes for, at mint time. */
+    deviceIds: v.array(v.string()),
+    createdAt: v.number(),
+    expiresAt: v.number(),
+    revokedAt: v.optional(v.number()),
+    /** Last time the holder proved the broker accepted a write. */
+    lastConfirmedAt: v.optional(v.number()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_principal", ["principal"])
+    .index("by_expiresAt", ["expiresAt"]),
+
   // ADOS MCP audit mirror: one lean, already-redacted row per tool call an AI
   // client made through the MCP server, so the Mission Control MCP tab reads a
   // single cross-node history instead of each node's local store. The full
