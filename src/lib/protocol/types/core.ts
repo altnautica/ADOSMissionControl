@@ -159,6 +159,15 @@ export interface ProtocolCapabilities {
   /** Full settings reachable only over the text CLI (Betaflight `get`/`set`/`dump`) */
   supportsCliSettings: boolean;
   // Metadata
+  /**
+   * The cadence the manual-control stream transmits stick frames at, in Hz.
+   *
+   * Read by the stream itself, so it is the rate that is actually sent rather
+   * than a recommendation. **0 means nothing is put on the wire**: an unknown
+   * autopilot that declares no stick support, or an MSP link whose flight
+   * controller would discard the frames. A link that will transmit must not
+   * report 0, and a link that will not must not report a rate.
+   */
   manualControlHz: number;
   parameterCount: number;
 }

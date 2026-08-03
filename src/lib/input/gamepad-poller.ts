@@ -7,9 +7,10 @@
  *   applies calibration, deadzone, and expo, and publishes axes and buttons to
  *   the input store. It transmits nothing. Any surface that needs to see a
  *   button press — binding capture, a calibration wizard — wants this one.
- * - `startManualControlStream` transmits those sticks to the aircraft at 50 Hz
- *   as an RC override, and only while every condition in
- *   {@link manualControlAllowed} holds. Only a flying surface starts this.
+ * - `startManualControlStream` transmits those sticks to the aircraft as an RC
+ *   override, at the rate the connected link declares, and only while every
+ *   condition in {@link manualControlAllowed} holds. Only a flying surface
+ *   starts this.
  *
  * They were one function, which meant opening a keybinding panel opened an RC
  * override on the connected aircraft.
@@ -88,8 +89,20 @@ function buttonsToArray(buttons: readonly GamepadButton[]): boolean[] {
   return out;
 }
 
+/**
+ * How often the stream re-checks itself while it is not transmitting.
+ *
+ * Not a transmit rate — nothing goes on the wire on these ticks. It is only
+ * how quickly the stream notices that the aircraft armed, the mode changed, or
+ * a link that declares a rate was selected.
+ */
+const GATE_RECHECK_MS = 20;
+
+/** Rate below which a declared cadence is treated as absent. */
+const MIN_HZ = 1;
+
 let pollAnimFrame: number | null = null;
-let manualControlInterval: ReturnType<typeof setInterval> | null = null;
+let manualControlTimer: ReturnType<typeof setTimeout> | null = null;
 let activeGamepadIndex: number | null = null;
 let currentMapping: GamepadMapping = MODE_2_MAPPING;
 
@@ -181,50 +194,85 @@ export function startGamepadPolling(): void {
 }
 
 /**
- * Start transmitting the sticks to the selected drone as a 50 Hz RC override.
+ * The gap between stick frames for a declared rate, or null when the rate says
+ * nothing will be transmitted.
  *
- * Every frame re-checks the gate, so the stream stops the moment the aircraft
+ * A link reports 0 Hz when it puts nothing on the wire — an unknown autopilot
+ * that declares no stick support, or an MSP flight controller that would
+ * discard the frames. Sending anyway would make that report false.
+ */
+export function manualControlPeriodMs(hz: number): number | null {
+  if (!Number.isFinite(hz) || hz < MIN_HZ) return null;
+  return 1000 / hz;
+}
+
+/**
+ * One pass of the manual-control stream. Returns how long to wait before the
+ * next pass. Exported for tests; the stream schedules it.
+ */
+export function manualControlTick(): number {
+  const protocol = useDroneManager.getState().getSelectedProtocol();
+  const { axes, buttons, activeController, manualControlEnabled } = useInputStore.getState();
+  const { armState, flightMode } = useDroneStore.getState();
+
+  const allowed = manualControlAllowed({
+    enabled: manualControlEnabled,
+    controller: activeController,
+    connected: protocol?.isConnected === true,
+    armState,
+    flightMode,
+  });
+  if (!allowed || !protocol) return GATE_RECHECK_MS;
+
+  const period = manualControlPeriodMs(protocol.getCapabilities().manualControlHz);
+  if (period === null) return GATE_RECHECK_MS;
+
+  const [roll, pitch, throttleAxis, yaw] = axes;
+
+  // Convert boolean[] to bitmask
+  let bitmask = 0;
+  for (let i = 0; i < Math.min(buttons.length, 16); i++) {
+    if (buttons[i]) bitmask |= 1 << i;
+  }
+
+  // The throttle axis is bipolar (-1 stick down, +1 stick up) while the
+  // protocol takes throttle as 0..1 with 0 at idle, so it is remapped here
+  // rather than sharing the stick scale.
+  protocol.sendManualControl(roll, pitch, (throttleAxis + 1) / 2, yaw, bitmask);
+  return period;
+}
+
+/**
+ * Start transmitting the sticks to the selected drone as an RC override, at
+ * the cadence that drone's link declares.
+ *
+ * Every pass re-checks the gate, so the stream stops the moment the aircraft
  * disarms, the mode changes to one the autopilot is flying, the controller
  * drops, or the operator revokes the opt-in. Nothing is sent until all of
  * those hold.
+ *
+ * The cadence is re-read every pass rather than fixed at start, because the
+ * selected drone can change under a running stream and a Betaflight link's
+ * rate is not an ArduPilot link's.
  */
 export function startManualControlStream(): void {
-  if (manualControlInterval) return;
+  if (manualControlTimer) return;
 
-  manualControlInterval = setInterval(() => {
-    const protocol = useDroneManager.getState().getSelectedProtocol();
-    const { axes, buttons, activeController, manualControlEnabled } = useInputStore.getState();
-    const { armState, flightMode } = useDroneStore.getState();
+  const run = () => {
+    const wait = manualControlTick();
+    // A tick that stopped the stream must not schedule another pass.
+    if (manualControlTimer === null) return;
+    manualControlTimer = setTimeout(run, wait);
+  };
 
-    const allowed = manualControlAllowed({
-      enabled: manualControlEnabled,
-      controller: activeController,
-      connected: protocol?.isConnected === true,
-      armState,
-      flightMode,
-    });
-    if (!allowed || !protocol) return;
-
-    const [roll, pitch, throttleAxis, yaw] = axes;
-
-    // Convert boolean[] to bitmask
-    let bitmask = 0;
-    for (let i = 0; i < Math.min(buttons.length, 16); i++) {
-      if (buttons[i]) bitmask |= 1 << i;
-    }
-
-    // The throttle axis is bipolar (-1 stick down, +1 stick up) while the
-    // protocol takes throttle as 0..1 with 0 at idle, so it is remapped here
-    // rather than sharing the stick scale.
-    protocol.sendManualControl(roll, pitch, (throttleAxis + 1) / 2, yaw, bitmask);
-  }, 20);
+  manualControlTimer = setTimeout(run, 0);
 }
 
 /** Stop transmitting sticks. Leaves gamepad reading running. */
 export function stopManualControlStream(): void {
-  if (manualControlInterval === null) return;
-  clearInterval(manualControlInterval);
-  manualControlInterval = null;
+  if (manualControlTimer === null) return;
+  clearTimeout(manualControlTimer);
+  manualControlTimer = null;
 }
 
 /**

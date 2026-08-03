@@ -602,8 +602,20 @@ export class MSPAdapter implements DroneProtocol {
 
   // ── Info ────────────────────────────────────────────────────
   getVehicleInfo(): VehicleInfo | null { return this.vehicleInfo }
+
   getCapabilities(): ProtocolCapabilities {
-    return this.firmwareHandler?.getCapabilities() ?? {
+    const base = this.firmwareHandler?.getCapabilities() ?? this.emptyCapabilities()
+    // The firmware handler declares the rate its flight controller expects; it
+    // cannot know whether this particular flight controller is configured to
+    // read the frames at all. When the override is blocked or absent nothing
+    // is transmitted, and reporting a rate would describe traffic that does
+    // not exist.
+    const sends = this.rcOverride !== null && this.rcOverride.blockedReason === null
+    return sends ? base : { ...base, manualControlHz: 0 }
+  }
+
+  private emptyCapabilities(): ProtocolCapabilities {
+    return {
       supportsArming: false, supportsFlightModes: false, supportsMissionUpload: false,
       supportsMissionDownload: false, supportsManualControl: false, supportsParameters: false,
       supportsCalibration: false, supportsSerialPassthrough: false, supportsMotorTest: false,
@@ -624,7 +636,7 @@ export class MSPAdapter implements DroneProtocol {
       supportsMixerProfile: false, supportsBatteryProfile: false, supportsTempSensors: false,
       supportsServoMixer: false, supportsOutputMappingExt: false, supportsRateDynamics: false,
       supportsMcBraking: false, supportsSettings: false, supportsCliSettings: false,
-      manualControlHz: 50, parameterCount: 0,
+      manualControlHz: 0, parameterCount: 0,
     }
   }
   getFirmwareHandler(): FirmwareHandler | null { return this.firmwareHandler }

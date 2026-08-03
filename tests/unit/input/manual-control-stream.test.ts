@@ -13,7 +13,19 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 const sendManualControl = vi.fn();
-const protocol = { isConnected: true, sendManualControl };
+/**
+ * `manualControlHz` is a gate as much as a cadence: the stream reads it and
+ * sends nothing at 0, which is what an MSP link reports when its flight
+ * controller would discard the frames.
+ */
+const protocol = {
+  isConnected: true,
+  sendManualControl,
+  manualControlHz: 50,
+  getCapabilities() {
+    return { manualControlHz: protocol.manualControlHz };
+  },
+};
 
 vi.mock('@/stores/drone-manager', () => ({
   useDroneManager: {
@@ -49,6 +61,7 @@ function allowEverything() {
   useDroneStore.getState().setArmState('armed');
   useDroneStore.getState().setFlightMode('STABILIZE');
   protocol.isConnected = true;
+  protocol.manualControlHz = 50;
 }
 
 describe('manual-control stream gating', () => {
@@ -110,6 +123,16 @@ describe('manual-control stream gating', () => {
     startManualControlStream();
     allowEverything();
     useInputStore.getState().setController('none');
+    vi.advanceTimersByTime(200);
+    expect(sendManualControl).not.toHaveBeenCalled();
+  });
+
+  it('holds off when the link says it would discard the frames', () => {
+    startManualControlStream();
+    allowEverything();
+    // What an MSP adapter reports when the flight controller's receiver is not
+    // set to MSP: every frame would be parsed and thrown away.
+    protocol.manualControlHz = 0;
     vi.advanceTimersByTime(200);
     expect(sendManualControl).not.toHaveBeenCalled();
   });
