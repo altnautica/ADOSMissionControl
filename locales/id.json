@@ -24,6 +24,69 @@
       "relaying": "Relaying {node}",
       "wfbRssi": "WFB {rssi} dBm",
       "wfbUnverified": "WFB link unverified"
+    },
+    "liveness": {
+      "offline": "Offline",
+      "stale": "Usang"
+    },
+    "role": {
+      "relay": "Relai",
+      "receiver": "Penerima",
+      "direct": "Langsung"
+    },
+    "badge": {
+      "compute": "Compute",
+      "fc": "FC",
+      "lan": "LAN"
+    },
+    "actions": {
+      "menu": "Tindakan",
+      "nodeActions": "Tindakan node",
+      "unacknowledged": "{count} belum diakui"
+    },
+    "transport": {
+      "webserial": "USB serial",
+      "websocket": "WebSocket",
+      "tcp": "TCP",
+      "udpProxy": "UDP",
+      "mqttMavlink": "Relai cloud",
+      "ble": "Bluetooth"
+    },
+    "arm": {
+      "armed": "Aktif",
+      "prearmBlocked": "Pra-aktivasi diblokir",
+      "disarmed": "Nonaktif"
+    },
+    "authority": {
+      "provisioning": "Mendapatkan otoritas perintah, belum siap",
+      "receiveOnly": "Hanya terima. Perintah terbang dan video cloud tidak dapat dikirim lewat relai. Perintah agen tetap berfungsi.",
+      "receiveOnlyShort": "Hanya terima"
+    },
+    "statusText": {
+      "title": "Pesan status",
+      "empty": "Belum ada pesan"
+    },
+    "params": {
+      "label": "Parameter",
+      "openHint": "Buka Parameter →"
+    },
+    "jobs": {
+      "groupBy": "Kelompokkan menurut",
+      "flat": "Datar",
+      "byDataset": "Menurut dataset",
+      "byStatus": "Menurut status",
+      "noDataset": "Tanpa dataset",
+      "title": "Pekerjaan Compute",
+      "viewAll": "Lihat semua",
+      "unavailable": "Pekerjaan Compute tidak tersedia",
+      "awaiting": "Menunggu node Compute",
+      "none": "Belum ada pekerjaan",
+      "running": "Berjalan",
+      "queued": "Dalam antrean",
+      "failed": "Gagal"
+    },
+    "groups": {
+      "compute": "Compute"
     }
   },
   "nav": {

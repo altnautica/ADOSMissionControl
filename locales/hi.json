@@ -24,6 +24,69 @@
       "relaying": "Relaying {node}",
       "wfbRssi": "WFB {rssi} dBm",
       "wfbUnverified": "WFB link unverified"
+    },
+    "liveness": {
+      "offline": "ऑफ़लाइन",
+      "stale": "पुराना"
+    },
+    "role": {
+      "relay": "रिले",
+      "receiver": "रिसीवर",
+      "direct": "सीधा"
+    },
+    "badge": {
+      "compute": "Compute",
+      "fc": "FC",
+      "lan": "LAN"
+    },
+    "actions": {
+      "menu": "क्रियाएँ",
+      "nodeActions": "नोड क्रियाएँ",
+      "unacknowledged": "{count} अपुष्ट"
+    },
+    "transport": {
+      "webserial": "USB serial",
+      "websocket": "WebSocket",
+      "tcp": "TCP",
+      "udpProxy": "UDP",
+      "mqttMavlink": "क्लाउड रिले",
+      "ble": "Bluetooth"
+    },
+    "arm": {
+      "armed": "आर्म्ड",
+      "prearmBlocked": "प्री-आर्म अवरुद्ध",
+      "disarmed": "डिसआर्म्ड"
+    },
+    "authority": {
+      "provisioning": "कमांड अधिकार प्राप्त किया जा रहा है, अभी तैयार नहीं",
+      "receiveOnly": "केवल रिसीव। उड़ान कमांड और क्लाउड वीडियो रिले से नहीं भेजे जा सकते। एजेंट कमांड अब भी काम करते हैं।",
+      "receiveOnlyShort": "केवल रिसीव"
+    },
+    "statusText": {
+      "title": "स्थिति संदेश",
+      "empty": "अभी कोई संदेश नहीं"
+    },
+    "params": {
+      "label": "पैरामीटर",
+      "openHint": "पैरामीटर खोलें →"
+    },
+    "jobs": {
+      "groupBy": "इसके अनुसार समूहित करें",
+      "flat": "सपाट",
+      "byDataset": "डेटासेट के अनुसार",
+      "byStatus": "स्थिति के अनुसार",
+      "noDataset": "कोई डेटासेट नहीं",
+      "title": "Compute जॉब",
+      "viewAll": "सभी देखें",
+      "unavailable": "Compute जॉब उपलब्ध नहीं",
+      "awaiting": "Compute नोड की प्रतीक्षा",
+      "none": "अभी कोई जॉब नहीं",
+      "running": "चल रहा है",
+      "queued": "कतार में",
+      "failed": "विफल"
+    },
+    "groups": {
+      "compute": "Compute"
     }
   },
   "nav": {

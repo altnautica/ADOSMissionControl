@@ -24,6 +24,69 @@
       "relaying": "Relaying {node}",
       "wfbRssi": "WFB {rssi} dBm",
       "wfbUnverified": "WFB link unverified"
+    },
+    "liveness": {
+      "offline": "ఆఫ్‌లైన్",
+      "stale": "పాతది"
+    },
+    "role": {
+      "relay": "రిలే",
+      "receiver": "రిసీవర్",
+      "direct": "ప్రత్యక్ష"
+    },
+    "badge": {
+      "compute": "Compute",
+      "fc": "FC",
+      "lan": "LAN"
+    },
+    "actions": {
+      "menu": "చర్యలు",
+      "nodeActions": "నోడ్ చర్యలు",
+      "unacknowledged": "{count} అంగీకరించని"
+    },
+    "transport": {
+      "webserial": "USB serial",
+      "websocket": "WebSocket",
+      "tcp": "TCP",
+      "udpProxy": "UDP",
+      "mqttMavlink": "క్లౌడ్ రిలే",
+      "ble": "Bluetooth"
+    },
+    "arm": {
+      "armed": "సక్రియం",
+      "prearmBlocked": "ప్రీ-ఆర్మ్ నిరోధించబడింది",
+      "disarmed": "నిష్క్రియం"
+    },
+    "authority": {
+      "provisioning": "కమాండ్ అధికారం పొందుతోంది, ఇంకా సిద్ధంగా లేదు",
+      "receiveOnly": "స్వీకరణ మాత్రమే. ఫ్లైట్ కమాండ్‌లు మరియు క్లౌడ్ వీడియో రిలే ద్వారా పంపలేరు. ఏజెంట్ కమాండ్‌లు ఇంకా పని చేస్తాయి.",
+      "receiveOnlyShort": "స్వీకరణ మాత్రమే"
+    },
+    "statusText": {
+      "title": "స్థితి సందేశాలు",
+      "empty": "ఇంకా సందేశాలు లేవు"
+    },
+    "params": {
+      "label": "పారామీటర్‌లు",
+      "openHint": "పారామీటర్‌లు తెరవండి →"
+    },
+    "jobs": {
+      "groupBy": "దీని ప్రకారం సమూహం",
+      "flat": "సమతలం",
+      "byDataset": "డేటాసెట్ ప్రకారం",
+      "byStatus": "స్థితి ప్రకారం",
+      "noDataset": "డేటాసెట్ లేదు",
+      "title": "Compute జాబ్‌లు",
+      "viewAll": "అన్నీ చూడండి",
+      "unavailable": "Compute జాబ్‌లు అందుబాటులో లేవు",
+      "awaiting": "Compute నోడ్ కోసం వేచి ఉంది",
+      "none": "ఇంకా జాబ్‌లు లేవు",
+      "running": "నడుస్తోంది",
+      "queued": "క్యూలో",
+      "failed": "విఫలమైంది"
+    },
+    "groups": {
+      "compute": "Compute"
     }
   },
   "nav": {

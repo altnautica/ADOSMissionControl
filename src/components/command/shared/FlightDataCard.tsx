@@ -1,6 +1,7 @@
 "use client";
 
 import { Cpu, Radio, Navigation } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useTelemetryFreshness } from "@/hooks/use-telemetry-freshness";
@@ -17,13 +18,15 @@ interface FlightDataCardProps {
   className?: string;
 }
 
-const TRANSPORT_LABEL: Record<Transport["type"], string> = {
-  webserial: "USB serial", // i18n
-  websocket: "WebSocket", // i18n
-  tcp: "TCP", // i18n
-  "udp-proxy": "UDP", // i18n
-  "mqtt-mavlink": "Cloud relay", // i18n
-  ble: "Bluetooth", // i18n
+/** Transport type -> its `nodeConsole.transport.*` key. Protocol names stay
+ * untranslated in every locale; only the relay lane carries prose. */
+const TRANSPORT_KEY: Record<Transport["type"], string> = {
+  webserial: "webserial",
+  websocket: "websocket",
+  tcp: "tcp",
+  "udp-proxy": "udpProxy",
+  "mqtt-mavlink": "mqttMavlink",
+  ble: "ble",
 };
 
 /** Stable empty reference — a fresh `[]` from the selector breaks the
@@ -66,6 +69,7 @@ function normalizeHeading(deg: number) {
 }
 
 export function FlightDataCard({ className }: FlightDataCardProps) {
+  const t = useTranslations("nodeConsole");
   useTelemetryStore((s) => s._version);
   const attitude = useTelemetryStore((s) => s.attitude);
   const position = useTelemetryStore((s) => s.position);
@@ -151,10 +155,10 @@ export function FlightDataCard({ className }: FlightDataCardProps) {
   const armLabel = !fcConnected
     ? "—"
     : armed
-      ? "Armed" // i18n
+      ? t("arm.armed")
       : prearmBlocked
-        ? "Prearm blocked" // i18n
-        : "Disarmed"; // i18n
+        ? t("arm.prearmBlocked")
+        : t("arm.disarmed");
   const hbLevel: StatusLevel = !fcConnected
     ? "offline"
     : hbStale
@@ -171,7 +175,9 @@ export function FlightDataCard({ className }: FlightDataCardProps) {
   // `fcConnected` alone is what made that state invisible.
   const authority = useMqttControlAuthority();
   const canCommand = canPublishFcFrames(authority);
-  const linkValue = transportType ? TRANSPORT_LABEL[transportType] : "—";
+  const linkValue = transportType
+    ? t(`transport.${TRANSPORT_KEY[transportType]}`)
+    : "—";
   const linkLevel: StatusLevel = !fcConnected
     ? "offline"
     : canCommand
@@ -183,8 +189,8 @@ export function FlightDataCard({ className }: FlightDataCardProps) {
   const authorityNote =
     fcConnected && !canCommand
       ? authority.reason === "provisioning"
-        ? "Obtaining command authority — not ready yet" // i18n
-        : "Receive only — flight commands and cloud video cannot be sent over the relay. Agent commands still work." // i18n
+        ? t("authority.provisioning")
+        : t("authority.receiveOnly")
       : null;
 
   return (

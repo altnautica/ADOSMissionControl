@@ -24,6 +24,69 @@
       "relaying": "Relaying {node}",
       "wfbRssi": "WFB {rssi} dBm",
       "wfbUnverified": "WFB link unverified"
+    },
+    "liveness": {
+      "offline": "ஆஃப்லைன்",
+      "stale": "பழையது"
+    },
+    "role": {
+      "relay": "ரிலே",
+      "receiver": "ரிசீவர்",
+      "direct": "நேரடி"
+    },
+    "badge": {
+      "compute": "Compute",
+      "fc": "FC",
+      "lan": "LAN"
+    },
+    "actions": {
+      "menu": "செயல்கள்",
+      "nodeActions": "நோடு செயல்கள்",
+      "unacknowledged": "{count} உறுதிப்படுத்தப்படாத"
+    },
+    "transport": {
+      "webserial": "USB serial",
+      "websocket": "WebSocket",
+      "tcp": "TCP",
+      "udpProxy": "UDP",
+      "mqttMavlink": "கிளவுட் ரிலே",
+      "ble": "Bluetooth"
+    },
+    "arm": {
+      "armed": "ஆர்ம்டு",
+      "prearmBlocked": "ப்ரீ-ஆர்ம் தடுக்கப்பட்டது",
+      "disarmed": "டிசார்ம்டு"
+    },
+    "authority": {
+      "provisioning": "கட்டளை அதிகாரம் பெறப்படுகிறது, இன்னும் தயாராகவில்லை",
+      "receiveOnly": "பெறுதல் மட்டும். பறப்பு கட்டளைகளையும் கிளவுட் வீடியோவையும் ரிலே வழியாக அனுப்ப முடியாது. ஏஜென்ட் கட்டளைகள் இன்னும் வேலை செய்கின்றன.",
+      "receiveOnlyShort": "பெறுதல் மட்டும்"
+    },
+    "statusText": {
+      "title": "நிலை செய்திகள்",
+      "empty": "இன்னும் செய்திகள் இல்லை"
+    },
+    "params": {
+      "label": "பாராமீட்டர்கள்",
+      "openHint": "பாராமீட்டர்களைத் திற →"
+    },
+    "jobs": {
+      "groupBy": "இதன்படி தொகு",
+      "flat": "தட்டையானது",
+      "byDataset": "தரவுத்தொகுப்பு வாரியாக",
+      "byStatus": "நிலை வாரியாக",
+      "noDataset": "தரவுத்தொகுப்பு இல்லை",
+      "title": "Compute பணிகள்",
+      "viewAll": "அனைத்தையும் பார்",
+      "unavailable": "Compute பணிகள் கிடைக்கவில்லை",
+      "awaiting": "Compute நோடுக்காகக் காத்திருக்கிறது",
+      "none": "இன்னும் பணிகள் இல்லை",
+      "running": "இயங்குகிறது",
+      "queued": "வரிசையில்",
+      "failed": "தோல்வி"
+    },
+    "groups": {
+      "compute": "Compute"
     }
   },
   "nav": {

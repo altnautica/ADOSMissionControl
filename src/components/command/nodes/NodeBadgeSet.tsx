@@ -53,38 +53,64 @@ function flavorLabel(node: FleetNodeEntry): string | null {
 }
 
 /**
+ * The resolved `nodeConsole.*` strings `nodeBadges` needs. Passed in rather than
+ * read from a hook so the function stays pure and unit-testable.
+ */
+export interface NodeBadgeLabels {
+  offline: string;
+  stale: string;
+  relay: string;
+  receiver: string;
+  direct: string;
+  compute: string;
+  fc: string;
+}
+
+/** Resolve the badge labels from a `nodeConsole` translator. */
+export function nodeBadgeLabels(t: (key: string) => string): NodeBadgeLabels {
+  return {
+    offline: t("liveness.offline"),
+    stale: t("liveness.stale"),
+    relay: t("role.relay"),
+    receiver: t("role.receiver"),
+    direct: t("role.direct"),
+    compute: t("badge.compute"),
+    fc: t("badge.fc"),
+  };
+}
+
+/**
  * The ordered candidate badge list for a node, honest to the fields the sidebar
  * actually has. Offline/stale short-circuits to a single liveness badge.
  */
 export function nodeBadges(
   node: FleetNodeEntry,
   effProfile: EffProfile,
+  labels: NodeBadgeLabels,
 ): NodeBadge[] {
   const live = droneLiveness(node);
   if (live === "offline") {
-    // i18n — single liveness badge, no sub-metrics
-    return [{ key: "offline", label: "Offline", variant: "neutral", dot: "offline" }];
+    // Single liveness badge, no sub-metrics.
+    return [{ key: "offline", label: labels.offline, variant: "neutral", dot: "offline" }];
   }
 
   const badges: NodeBadge[] = [];
   if (live === "stale") {
-    // i18n — stale wins the top slot; live sub-metrics are unverifiable
-    badges.push({ key: "stale", label: "Stale", variant: "serious", dot: "serious" });
+    // Stale wins the top slot; live sub-metrics are unverifiable.
+    badges.push({ key: "stale", label: labels.stale, variant: "serious", dot: "serious" });
   }
 
   switch (effProfile) {
     case "ground-station": {
       // role -> identity
       if (node.role && node.role !== "direct") {
-        // i18n — role label
         badges.push({
           key: "role",
-          label: node.role === "relay" ? "Relay" : "Receiver",
+          label: node.role === "relay" ? labels.relay : labels.receiver,
           variant: "info",
         });
       } else {
-        // i18n
-        badges.push({ key: "role", label: "Direct", variant: "neutral" });
+        badges.push({ key: "role", label: labels.direct, variant: "neutral" });
       }
       if (node.tier != null) {
         badges.push({ key: "tier", label: `T${node.tier}`, variant: "neutral" });
@@ -94,7 +120,7 @@ export function nodeBadges(
     case "workstation": {
       // A workstation carries no flight metrics by construction — identity only
       // until live cluster state is wired per-node (P8/P9).
-      badges.push({ key: "type", label: "Compute", variant: "info" }); // i18n
+      badges.push({ key: "type", label: labels.compute, variant: "info" });
       if (node.tier != null) {
         badges.push({ key: "tier", label: `T${node.tier}`, variant: "neutral" });
       }
@@ -103,7 +129,7 @@ export function nodeBadges(
     case "flight-controller": {
       const flavor = flavorLabel(node);
       if (flavor) badges.push({ key: "flavor", label: flavor, variant: "info" });
-      badges.push({ key: "fc", label: "FC", variant: "info" }); // i18n
+      badges.push({ key: "fc", label: labels.fc, variant: "info" });
       if (node.tier != null) {
         badges.push({ key: "tier", label: `T${node.tier}`, variant: "neutral" });
       }
@@ -125,7 +151,7 @@ export function nodeBadges(
           transportOpen: node.transportOpen,
         })
       ) {
-        badges.push({ key: "fc", label: "FC", variant: "success" });
+        badges.push({ key: "fc", label: labels.fc, variant: "success" });
       }
       break;
     }
@@ -149,7 +175,7 @@ export function NodeBadgeSet({
   className,
 }: NodeBadgeSetProps) {
   const t = useTranslations("nodeConsole");
-  const base = nodeBadges(node, effProfile);
+  const base = nodeBadges(node, effProfile, nodeBadgeLabels(t));
   // A relayed-only node (reached solely through a ground node over WFB) leads
   // with a "Relayed" badge so it reads distinctly from a directly-paired node.
   // Suppressed when offline/stale so a dead node never shows a fresh sub-metric

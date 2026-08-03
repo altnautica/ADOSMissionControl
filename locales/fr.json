@@ -24,6 +24,69 @@
       "relaying": "Relaying {node}",
       "wfbRssi": "WFB {rssi} dBm",
       "wfbUnverified": "WFB link unverified"
+    },
+    "liveness": {
+      "offline": "Hors ligne",
+      "stale": "Obsolète"
+    },
+    "role": {
+      "relay": "Relais",
+      "receiver": "Récepteur",
+      "direct": "Direct"
+    },
+    "badge": {
+      "compute": "Compute",
+      "fc": "FC",
+      "lan": "LAN"
+    },
+    "actions": {
+      "menu": "Actions",
+      "nodeActions": "Actions du nœud",
+      "unacknowledged": "{count} non acquittées"
+    },
+    "transport": {
+      "webserial": "USB serial",
+      "websocket": "WebSocket",
+      "tcp": "TCP",
+      "udpProxy": "UDP",
+      "mqttMavlink": "Relais cloud",
+      "ble": "Bluetooth"
+    },
+    "arm": {
+      "armed": "Armé",
+      "prearmBlocked": "Préarmement bloqué",
+      "disarmed": "Désarmé"
+    },
+    "authority": {
+      "provisioning": "Obtention de l'autorité de commande, pas encore prêt",
+      "receiveOnly": "Réception seule. Les commandes de vol et la vidéo cloud ne peuvent pas être envoyées par le relais. Les commandes de l'agent fonctionnent toujours.",
+      "receiveOnlyShort": "Réception seule"
+    },
+    "statusText": {
+      "title": "Messages d'état",
+      "empty": "Aucun message pour l'instant"
+    },
+    "params": {
+      "label": "Paramètres",
+      "openHint": "Ouvrir les paramètres →"
+    },
+    "jobs": {
+      "groupBy": "Grouper par",
+      "flat": "Plat",
+      "byDataset": "Par jeu de données",
+      "byStatus": "Par état",
+      "noDataset": "Aucun jeu de données",
+      "title": "Tâches Compute",
+      "viewAll": "Tout afficher",
+      "unavailable": "Tâches Compute indisponibles",
+      "awaiting": "En attente du nœud Compute",
+      "none": "Aucune tâche pour l'instant",
+      "running": "En cours",
+      "queued": "En file d'attente",
+      "failed": "Échec"
+    },
+    "groups": {
+      "compute": "Compute"
     }
   },
   "nav": {

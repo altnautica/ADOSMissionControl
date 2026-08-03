@@ -12,6 +12,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { ScrollText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StatusDot, type StatusLevel } from "@/components/ui/status-dot";
@@ -38,6 +39,7 @@ interface StatusTextCardProps {
 }
 
 export function StatusTextCard({ className }: StatusTextCardProps) {
+  const t = useTranslations("nodeConsole");
   const getProtocol = useDroneManager((s) => s.getSelectedProtocol);
   const selectedId = useDroneManager((s) => s.selectedDroneId);
   const [lines, setLines] = useState<StatusLine[]>([]);
@@ -71,16 +73,14 @@ export function StatusTextCard({ className }: StatusTextCardProps) {
     >
       <div className="mb-2 flex items-center gap-1.5">
         <ScrollText className="h-3.5 w-3.5 text-text-tertiary" />
-        {/* i18n */}
         <span className="text-xs font-medium text-text-secondary">
-          Status Messages
+          {t("statusText.title")}
         </span>
       </div>
 
       {lines.length === 0 ? (
-        // i18n
         <p className="flex flex-1 items-center justify-center text-[11px] text-text-tertiary">
-          No messages yet
+          {t("statusText.empty")}
         </p>
       ) : (
         <ul className="flex flex-col gap-1">

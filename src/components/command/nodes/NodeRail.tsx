@@ -10,6 +10,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
 import {
@@ -53,6 +54,7 @@ export function NodeRail({
   onSelect,
   onContext,
 }: NodeRailProps) {
+  const t = useTranslations("nodeConsole");
   const effProfile = effProfileForNode(node);
   const status = nodeStatusLevel(node);
   // Personalization overlay (pure presentation) keyed by the stable deviceId.
@@ -143,7 +145,7 @@ export function NodeRail({
 
       {showPill && (
         <span
-          aria-label={`${pillText} unacknowledged`} // i18n
+          aria-label={t("actions.unacknowledged", { count: pillText })}
           className={cn(
             "absolute -bottom-0.5 -right-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full border border-bg-secondary px-0.5 text-[8px] font-bold leading-none text-bg-primary",
             PILL_BG[countLevel],

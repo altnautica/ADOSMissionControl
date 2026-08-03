@@ -11,23 +11,12 @@
  */
 
 import type { ReactNode } from "react";
+import { useTranslations } from "next-intl";
 import { Layers, ChevronRight } from "lucide-react";
 import { StatusDot, type StatusLevel } from "@/components/ui/status-dot";
 import { useUiStore } from "@/stores/ui-store";
 import { useComputeJobs } from "@/hooks/use-compute-jobs";
 import type { ComputeJob } from "@/lib/agent/compute-client";
-
-// i18n: literal copy pending nodeConsole locale backfill.
-const COPY = {
-  title: "Compute jobs",
-  viewAll: "View all",
-  unavailable: "Compute jobs unavailable",
-  awaiting: "Awaiting compute node",
-  none: "No jobs yet",
-  running: "Running",
-  queued: "Queued",
-  failed: "Failed",
-};
 
 function stateLevel(state: string): StatusLevel {
   switch (state) {
@@ -60,6 +49,7 @@ function CountPill({
 }
 
 export function JobsSummaryCard({ nodeId }: { nodeId?: string }) {
+  const t = useTranslations("nodeConsole");
   const { jobs, loading, unreachable, client } = useComputeJobs(nodeId);
   const setPendingDetailTab = useUiStore((s) => s.setPendingDetailTab);
 
@@ -72,7 +62,7 @@ export function JobsSummaryCard({ nodeId }: { nodeId?: string }) {
   let body: ReactNode;
   if (!client) {
     // Not local-first for this node (Atlas off / no LAN key): no counts.
-    body = <p className="text-[11px] text-text-tertiary">{COPY.unavailable}</p>;
+    body = <p className="text-[11px] text-text-tertiary">{t("jobs.unavailable")}</p>;
   } else if (loading) {
     body = (
       <div className="flex items-center justify-center py-4">
@@ -80,21 +70,21 @@ export function JobsSummaryCard({ nodeId }: { nodeId?: string }) {
       </div>
     );
   } else if (unreachable) {
-    body = <p className="text-[11px] text-text-tertiary">{COPY.awaiting}</p>;
+    body = <p className="text-[11px] text-text-tertiary">{t("jobs.awaiting")}</p>;
   } else {
     body = (
       <div className="space-y-2">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
-          <CountPill level="good" label={COPY.running} value={running.length} />
-          <CountPill level="idle" label={COPY.queued} value={queued.length} />
+          <CountPill level="good" label={t("jobs.running")} value={running.length} />
+          <CountPill level="idle" label={t("jobs.queued")} value={queued.length} />
           <CountPill
             level={failed.length ? "critical" : "idle"}
-            label={COPY.failed}
+            label={t("jobs.failed")}
             value={failed.length}
           />
         </div>
         {top.length === 0 ? (
-          <p className="text-[10px] text-text-tertiary">{COPY.none}</p>
+          <p className="text-[10px] text-text-tertiary">{t("jobs.none")}</p>
         ) : (
           <div className="space-y-1">
             {top.map((j) => (
@@ -128,14 +118,14 @@ export function JobsSummaryCard({ nodeId }: { nodeId?: string }) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-text-tertiary">
           <Layers size={12} />
-          <span>{COPY.title}</span>
+          <span>{t("jobs.title")}</span>
         </div>
         <button
           type="button"
           onClick={() => setPendingDetailTab("jobs")}
           className="group flex items-center gap-0.5 text-[10px] text-text-tertiary transition-colors hover:text-accent-primary"
         >
-          {COPY.viewAll}
+          {t("jobs.viewAll")}
           <ChevronRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
         </button>
       </div>

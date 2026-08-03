@@ -19,8 +19,7 @@ import type { SurfaceSpec } from "../surface-types";
 import { AGENT_SURFACE } from "../agent/agent-surface";
 
 const STATUS_GROUP = "command.groundStation.groups.status";
-// i18n: a dedicated "Compute" section key can replace this reused label.
-const COMPUTE_GROUP = "atlas.compute";
+const COMPUTE_GROUP = "nodeConsole.groups.compute";
 
 /** The Viewer tab body: the reconstruction viewer over the node's finished
  * jobs (renamed from "Outputs"). Adapts the selected node to ForgeOutputs, with

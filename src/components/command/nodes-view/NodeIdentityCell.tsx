@@ -31,6 +31,7 @@ import {
   effProfileForNode,
   nodeStatusLevel,
   nodeSubtitle,
+  nodeSubtitleLabels,
   profileTypeKey,
 } from "@/components/command/nodes/NodeRow";
 
@@ -118,7 +119,7 @@ export function NodeIdentityCell({
         </button>
         <div className="mt-0.5 flex items-center gap-1">
           <span className="truncate text-[10px] text-text-tertiary">
-            {nodeSubtitle(node, effProfile, typeLabel)}
+            {nodeSubtitle(node, effProfile, typeLabel, nodeSubtitleLabels(t))}
           </span>
           <NodeBadgeSet node={node} effProfile={effProfile} max={1} />
         </div>

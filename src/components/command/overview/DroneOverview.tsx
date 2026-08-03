@@ -20,6 +20,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Sliders } from "lucide-react";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
@@ -222,6 +223,7 @@ function AddCompanionCta() {
 
 /** Params snapshot — cached-param count + a jump to the Parameters tab. */
 function ParamsSnapshotTile({ isConnected }: { isConnected: boolean }) {
+  const t = useTranslations("nodeConsole");
   const getProtocol = useDroneManager((s) => s.getSelectedProtocol);
   const setPendingDetailTab = useUiStore((s) => s.setPendingDetailTab);
   const [count, setCount] = useState<number | null>(null);
@@ -251,12 +253,10 @@ function ParamsSnapshotTile({ isConnected }: { isConnected: boolean }) {
     >
       <StatTile
         icon={<Sliders className="h-3 w-3" />}
-        // i18n
-        label="Parameters"
+        label={t("params.label")}
         value={value}
         level={isConnected ? "good" : "offline"}
-        // i18n
-        hint="Open Parameters →"
+        hint={t("params.openHint")}
       />
     </button>
   );

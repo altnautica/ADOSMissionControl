@@ -21,14 +21,12 @@ import { ForgeJobs } from "./ForgeJobs";
 
 type GroupBy = "flat" | "dataset" | "status";
 
-// i18n: group-by literals pending nodeConsole locale backfill.
-const GROUP_BY_LABEL = "Group by";
-const GROUP_LABELS: Record<GroupBy, string> = {
-  flat: "Flat",
-  dataset: "By dataset",
-  status: "By status",
+/** Group-by option -> its `nodeConsole.jobs.*` key. */
+const GROUP_LABEL_KEYS: Record<GroupBy, string> = {
+  flat: "jobs.flat",
+  dataset: "jobs.byDataset",
+  status: "jobs.byStatus",
 };
-const NO_DATASET = "No dataset";
 
 /** Preferred ordering for the "By status" bands; unknown states trail after. */
 const STATUS_ORDER = ["queued", "running", "completed", "failed", "cancelled"];
@@ -81,6 +79,7 @@ function GroupHeader({ label, count }: { label: string; count: number }) {
 
 export function JobsPanel({ nodeId }: { nodeId?: string }) {
   const t = useTranslations("atlas");
+  const tNode = useTranslations("nodeConsole");
   const { jobs, loading, unreachable, client } = useComputeJobs(nodeId);
   const [groupBy, setGroupBy] = useState<GroupBy>("flat");
 
@@ -97,7 +96,7 @@ export function JobsPanel({ nodeId }: { nodeId?: string }) {
       const map = bucket(sorted, (j) => j.datasetId ?? "__none__");
       return [...map.entries()].map(([key, list]) => ({
         key,
-        label: key === "__none__" ? NO_DATASET : key,
+        label: key === "__none__" ? tNode("jobs.noDataset") : key,
         jobs: list,
       }));
     }
@@ -114,15 +113,15 @@ export function JobsPanel({ nodeId }: { nodeId?: string }) {
       }));
     }
     return [];
-  }, [groupBy, sorted, t]);
+  }, [groupBy, sorted, t, tNode]);
 
   // Atlas is a default on a workstation; the calm state covers an unreachable
   // compute API over the LAN.
   if (!client) return <Calm message={t("forgeLocalOnly")} />;
 
   const groupOptions: SelectOption[] = (
-    Object.keys(GROUP_LABELS) as GroupBy[]
-  ).map((g) => ({ value: g, label: GROUP_LABELS[g] }));
+    Object.keys(GROUP_LABEL_KEYS) as GroupBy[]
+  ).map((g) => ({ value: g, label: tNode(GROUP_LABEL_KEYS[g]) }));
 
   const table = () => {
     if (loading) {
@@ -153,7 +152,9 @@ export function JobsPanel({ nodeId }: { nodeId?: string }) {
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-2 border-b border-border-default p-2">
-        <span className="text-[11px] text-text-tertiary">{GROUP_BY_LABEL}</span>
+        <span className="text-[11px] text-text-tertiary">
+          {tNode("jobs.groupBy")}
+        </span>
         <Select
           options={groupOptions}
           value={groupBy}

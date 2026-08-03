@@ -24,6 +24,69 @@
       "relaying": "Relaying {node}",
       "wfbRssi": "WFB {rssi} dBm",
       "wfbUnverified": "WFB link unverified"
+    },
+    "liveness": {
+      "offline": "オフライン",
+      "stale": "古い情報"
+    },
+    "role": {
+      "relay": "中継",
+      "receiver": "受信機",
+      "direct": "直接"
+    },
+    "badge": {
+      "compute": "Compute",
+      "fc": "FC",
+      "lan": "LAN"
+    },
+    "actions": {
+      "menu": "操作",
+      "nodeActions": "ノード操作",
+      "unacknowledged": "未確認 {count} 件"
+    },
+    "transport": {
+      "webserial": "USB serial",
+      "websocket": "WebSocket",
+      "tcp": "TCP",
+      "udpProxy": "UDP",
+      "mqttMavlink": "クラウド中継",
+      "ble": "Bluetooth"
+    },
+    "arm": {
+      "armed": "アーム済み",
+      "prearmBlocked": "プリアーム阻止",
+      "disarmed": "ディスアーム"
+    },
+    "authority": {
+      "provisioning": "コマンド権限を取得中です。まだ使用できません",
+      "receiveOnly": "受信のみ。飛行コマンドとクラウド映像は中継経由で送信できません。エージェントコマンドは引き続き使用できます。",
+      "receiveOnlyShort": "受信のみ"
+    },
+    "statusText": {
+      "title": "ステータスメッセージ",
+      "empty": "メッセージはまだありません"
+    },
+    "params": {
+      "label": "パラメータ",
+      "openHint": "パラメータを開く →"
+    },
+    "jobs": {
+      "groupBy": "グループ化",
+      "flat": "フラット",
+      "byDataset": "データセット別",
+      "byStatus": "ステータス別",
+      "noDataset": "データセットなし",
+      "title": "Compute ジョブ",
+      "viewAll": "すべて表示",
+      "unavailable": "Compute ジョブを利用できません",
+      "awaiting": "Compute ノードを待機中",
+      "none": "ジョブはまだありません",
+      "running": "実行中",
+      "queued": "待機中",
+      "failed": "失敗"
+    },
+    "groups": {
+      "compute": "Compute"
     }
   },
   "nav": {

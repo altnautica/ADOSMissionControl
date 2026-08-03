@@ -24,6 +24,69 @@
       "relaying": "Relaying {node}",
       "wfbRssi": "WFB {rssi} dBm",
       "wfbUnverified": "WFB link unverified"
+    },
+    "liveness": {
+      "offline": "오프라인",
+      "stale": "오래됨"
+    },
+    "role": {
+      "relay": "중계",
+      "receiver": "수신기",
+      "direct": "직접"
+    },
+    "badge": {
+      "compute": "Compute",
+      "fc": "FC",
+      "lan": "LAN"
+    },
+    "actions": {
+      "menu": "작업",
+      "nodeActions": "노드 작업",
+      "unacknowledged": "미확인 {count}건"
+    },
+    "transport": {
+      "webserial": "USB serial",
+      "websocket": "WebSocket",
+      "tcp": "TCP",
+      "udpProxy": "UDP",
+      "mqttMavlink": "클라우드 중계",
+      "ble": "Bluetooth"
+    },
+    "arm": {
+      "armed": "시동 걸림",
+      "prearmBlocked": "시동 전 점검 차단",
+      "disarmed": "시동 꺼짐"
+    },
+    "authority": {
+      "provisioning": "명령 권한을 가져오는 중이며 아직 준비되지 않았습니다",
+      "receiveOnly": "수신 전용. 비행 명령과 클라우드 영상은 중계로 보낼 수 없습니다. 에이전트 명령은 계속 사용할 수 있습니다.",
+      "receiveOnlyShort": "수신 전용"
+    },
+    "statusText": {
+      "title": "상태 메시지",
+      "empty": "아직 메시지가 없습니다"
+    },
+    "params": {
+      "label": "파라미터",
+      "openHint": "파라미터 열기 →"
+    },
+    "jobs": {
+      "groupBy": "그룹화 기준",
+      "flat": "평면",
+      "byDataset": "데이터셋별",
+      "byStatus": "상태별",
+      "noDataset": "데이터셋 없음",
+      "title": "Compute 작업",
+      "viewAll": "모두 보기",
+      "unavailable": "Compute 작업을 사용할 수 없음",
+      "awaiting": "Compute 노드 대기 중",
+      "none": "아직 작업이 없습니다",
+      "running": "실행 중",
+      "queued": "대기열",
+      "failed": "실패"
+    },
+    "groups": {
+      "compute": "Compute"
     }
   },
   "nav": {

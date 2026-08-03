@@ -24,6 +24,69 @@
       "relaying": "Relaying {node}",
       "wfbRssi": "WFB {rssi} dBm",
       "wfbUnverified": "WFB link unverified"
+    },
+    "liveness": {
+      "offline": "ઑફલાઇન",
+      "stale": "જૂનું"
+    },
+    "role": {
+      "relay": "રિલે",
+      "receiver": "રિસીવર",
+      "direct": "સીધું"
+    },
+    "badge": {
+      "compute": "Compute",
+      "fc": "FC",
+      "lan": "LAN"
+    },
+    "actions": {
+      "menu": "ક્રિયાઓ",
+      "nodeActions": "નોડ ક્રિયાઓ",
+      "unacknowledged": "{count} સ્વીકાર ન થયેલ"
+    },
+    "transport": {
+      "webserial": "USB serial",
+      "websocket": "WebSocket",
+      "tcp": "TCP",
+      "udpProxy": "UDP",
+      "mqttMavlink": "ક્લાઉડ રિલે",
+      "ble": "Bluetooth"
+    },
+    "arm": {
+      "armed": "સક્રિય",
+      "prearmBlocked": "પ્રી-આર્મ અવરોધિત",
+      "disarmed": "નિષ્ક્રિય"
+    },
+    "authority": {
+      "provisioning": "કમાન્ડ અધિકાર મેળવાઈ રહ્યો છે, હજી તૈયાર નથી",
+      "receiveOnly": "ફક્ત રિસીવ. ફ્લાઇટ કમાન્ડ અને ક્લાઉડ વિડિયો રિલે પર મોકલી શકાતા નથી. એજન્ટ કમાન્ડ હજી કામ કરે છે.",
+      "receiveOnlyShort": "ફક્ત રિસીવ"
+    },
+    "statusText": {
+      "title": "સ્ટેટસ સંદેશા",
+      "empty": "હજી કોઈ સંદેશ નથી"
+    },
+    "params": {
+      "label": "પેરામીટર્સ",
+      "openHint": "પેરામીટર્સ ખોલો →"
+    },
+    "jobs": {
+      "groupBy": "આના દ્વારા જૂથ કરો",
+      "flat": "સપાટ",
+      "byDataset": "ડેટાસેટ પ્રમાણે",
+      "byStatus": "સ્ટેટસ પ્રમાણે",
+      "noDataset": "કોઈ ડેટાસેટ નથી",
+      "title": "Compute જોબ્સ",
+      "viewAll": "બધું જુઓ",
+      "unavailable": "Compute જોબ્સ ઉપલબ્ધ નથી",
+      "awaiting": "Compute નોડની રાહ જોવાઈ રહી છે",
+      "none": "હજી કોઈ જોબ નથી",
+      "running": "ચાલુ",
+      "queued": "કતારમાં",
+      "failed": "નિષ્ફળ"
+    },
+    "groups": {
+      "compute": "Compute"
     }
   },
   "nav": {

@@ -24,6 +24,69 @@
       "relaying": "Relaying {node}",
       "wfbRssi": "WFB {rssi} dBm",
       "wfbUnverified": "WFB link unverified"
+    },
+    "liveness": {
+      "offline": "ಆಫ್‌ಲೈನ್",
+      "stale": "ಹಳೆಯದು"
+    },
+    "role": {
+      "relay": "ರಿಲೇ",
+      "receiver": "ರಿಸೀವರ್",
+      "direct": "ನೇರ"
+    },
+    "badge": {
+      "compute": "Compute",
+      "fc": "FC",
+      "lan": "LAN"
+    },
+    "actions": {
+      "menu": "ಕ್ರಿಯೆಗಳು",
+      "nodeActions": "ನೋಡ್ ಕ್ರಿಯೆಗಳು",
+      "unacknowledged": "{count} ಅಂಗೀಕರಿಸದ"
+    },
+    "transport": {
+      "webserial": "USB serial",
+      "websocket": "WebSocket",
+      "tcp": "TCP",
+      "udpProxy": "UDP",
+      "mqttMavlink": "ಕ್ಲೌಡ್ ರಿಲೇ",
+      "ble": "Bluetooth"
+    },
+    "arm": {
+      "armed": "ಆರ್ಮ್ಡ್",
+      "prearmBlocked": "ಪ್ರೀ-ಆರ್ಮ್ ತಡೆಯಲಾಗಿದೆ",
+      "disarmed": "ಡಿಸ್‌ಆರ್ಮ್ಡ್"
+    },
+    "authority": {
+      "provisioning": "ಕಮಾಂಡ್ ಅಧಿಕಾರ ಪಡೆಯಲಾಗುತ್ತಿದೆ, ಇನ್ನೂ ಸಿದ್ಧವಿಲ್ಲ",
+      "receiveOnly": "ಸ್ವೀಕರಿಸುವುದು ಮಾತ್ರ. ಹಾರಾಟದ ಕಮಾಂಡ್‌ಗಳು ಮತ್ತು ಕ್ಲೌಡ್ ವೀಡಿಯೊವನ್ನು ರಿಲೇ ಮೂಲಕ ಕಳುಹಿಸಲಾಗದು. ಏಜೆಂಟ್ ಕಮಾಂಡ್‌ಗಳು ಇನ್ನೂ ಕೆಲಸ ಮಾಡುತ್ತವೆ.",
+      "receiveOnlyShort": "ಸ್ವೀಕರಿಸುವುದು ಮಾತ್ರ"
+    },
+    "statusText": {
+      "title": "ಸ್ಥಿತಿ ಸಂದೇಶಗಳು",
+      "empty": "ಇನ್ನೂ ಸಂದೇಶಗಳಿಲ್ಲ"
+    },
+    "params": {
+      "label": "ಪ್ಯಾರಾಮೀಟರ್‌ಗಳು",
+      "openHint": "ಪ್ಯಾರಾಮೀಟರ್‌ಗಳನ್ನು ತೆರೆಯಿರಿ →"
+    },
+    "jobs": {
+      "groupBy": "ಗುಂಪು ಮಾಡಿ",
+      "flat": "ಸಮತಟ್ಟು",
+      "byDataset": "ಡೇಟಾಸೆಟ್ ಪ್ರಕಾರ",
+      "byStatus": "ಸ್ಥಿತಿ ಪ್ರಕಾರ",
+      "noDataset": "ಡೇಟಾಸೆಟ್ ಇಲ್ಲ",
+      "title": "Compute ಜಾಬ್‌ಗಳು",
+      "viewAll": "ಎಲ್ಲವನ್ನೂ ನೋಡಿ",
+      "unavailable": "Compute ಜಾಬ್‌ಗಳು ಲಭ್ಯವಿಲ್ಲ",
+      "awaiting": "Compute ನೋಡ್‌ಗಾಗಿ ಕಾಯಲಾಗುತ್ತಿದೆ",
+      "none": "ಇನ್ನೂ ಜಾಬ್‌ಗಳಿಲ್ಲ",
+      "running": "ಚಾಲನೆಯಲ್ಲಿದೆ",
+      "queued": "ಸರತಿಯಲ್ಲಿ",
+      "failed": "ವಿಫಲವಾಗಿದೆ"
+    },
+    "groups": {
+      "compute": "Compute"
     }
   },
   "nav": {

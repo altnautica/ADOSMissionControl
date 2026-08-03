@@ -191,6 +191,7 @@ function TileBadges({
   agent: CommandAgentSummary;
 }) {
   const t = useTranslations("commandFleet");
+  const tNode = useTranslations("nodeConsole");
   const live = agent.liveness;
   const liveLevel = livenessLevel(live);
   const liveVariant = live === "live" ? "success" : live === "stale" ? "warning" : "neutral";
@@ -213,8 +214,8 @@ function TileBadges({
       : effProfile === "drone"
         ? t("profileDrone")
         : effProfile === "workstation"
-          ? "Workstation" // i18n: nodeConsole workstation type badge
-          : "Flight Controller"; // i18n: nodeConsole flight-controller type badge
+          ? tNode("type.workstation")
+          : tNode("type.flightController");
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">

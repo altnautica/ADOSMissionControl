@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { render } from "@testing-library/react";
+import { NextIntlClientProvider } from "next-intl";
 import { FlightDataCard } from "@/components/command/shared/FlightDataCard";
+import messages from "../../../locales/en.json";
 
 describe("FlightDataCard", () => {
   it("renders with empty stores without an infinite render loop", () => {
@@ -10,6 +12,12 @@ describe("FlightDataCard", () => {
     // constant). A selector that returns a fresh `[]` each render makes
     // useSyncExternalStore fail to cache the snapshot and React throws
     // "Maximum update depth exceeded".
-    expect(() => render(<FlightDataCard />)).not.toThrow();
+    expect(() =>
+      render(
+        <NextIntlClientProvider locale="en" messages={messages}>
+          <FlightDataCard />
+        </NextIntlClientProvider>,
+      ),
+    ).not.toThrow();
   });
 });

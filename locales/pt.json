@@ -24,6 +24,69 @@
       "relaying": "Relaying {node}",
       "wfbRssi": "WFB {rssi} dBm",
       "wfbUnverified": "WFB link unverified"
+    },
+    "liveness": {
+      "offline": "Desconectado",
+      "stale": "Desatualizado"
+    },
+    "role": {
+      "relay": "Retransmissor",
+      "receiver": "Receptor",
+      "direct": "Direto"
+    },
+    "badge": {
+      "compute": "Compute",
+      "fc": "FC",
+      "lan": "LAN"
+    },
+    "actions": {
+      "menu": "Ações",
+      "nodeActions": "Ações do nó",
+      "unacknowledged": "{count} não confirmados"
+    },
+    "transport": {
+      "webserial": "USB serial",
+      "websocket": "WebSocket",
+      "tcp": "TCP",
+      "udpProxy": "UDP",
+      "mqttMavlink": "Relé na nuvem",
+      "ble": "Bluetooth"
+    },
+    "arm": {
+      "armed": "Armado",
+      "prearmBlocked": "Pré-armamento bloqueado",
+      "disarmed": "Desarmado"
+    },
+    "authority": {
+      "provisioning": "Obtendo autoridade de comando, ainda não está pronto",
+      "receiveOnly": "Somente recepção. Comandos de voo e vídeo na nuvem não podem ser enviados pelo relé. Comandos do agente continuam funcionando.",
+      "receiveOnlyShort": "Somente recepção"
+    },
+    "statusText": {
+      "title": "Mensagens de status",
+      "empty": "Ainda sem mensagens"
+    },
+    "params": {
+      "label": "Parâmetros",
+      "openHint": "Abrir Parâmetros →"
+    },
+    "jobs": {
+      "groupBy": "Agrupar por",
+      "flat": "Plano",
+      "byDataset": "Por conjunto de dados",
+      "byStatus": "Por status",
+      "noDataset": "Sem conjunto de dados",
+      "title": "Trabalhos de Compute",
+      "viewAll": "Ver tudo",
+      "unavailable": "Trabalhos de Compute indisponíveis",
+      "awaiting": "Aguardando nó Compute",
+      "none": "Ainda sem trabalhos",
+      "running": "Em execução",
+      "queued": "Na fila",
+      "failed": "Falhou"
+    },
+    "groups": {
+      "compute": "Compute"
     }
   },
   "nav": {

@@ -11,8 +11,10 @@
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, cleanup } from "@testing-library/react";
+import { NextIntlClientProvider } from "next-intl";
 
 import { FlightDataCard } from "@/components/command/shared/FlightDataCard";
+import messages from "../../../../locales/en.json";
 import { TelemetryReadout } from "@/components/flight/TelemetryReadout";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 
@@ -81,17 +83,26 @@ beforeEach(() => {
   useTelemetryStore.getState().clear();
 });
 
+/** FlightDataCard translates its FC-link labels, so it needs the intl context. */
+function renderFlightDataCard() {
+  return render(
+    <NextIntlClientProvider locale="en" messages={messages}>
+      <FlightDataCard />
+    </NextIntlClientProvider>,
+  );
+}
+
 describe("FlightDataCard attitude freshness gating", () => {
   it("shows live attitude when the channel is fresh", () => {
     seedAttitude(0);
-    const { container } = render(<FlightDataCard />);
+    const { container } = renderFlightDataCard();
     expect(container.textContent).toContain("12.3");
     expect(container.textContent).not.toContain("link silent");
   });
 
   it("blanks stale attitude to the placeholder and flags the link silent", () => {
     seedAttitude(10_000); // older than the freshness window
-    const { container } = render(<FlightDataCard />);
+    const { container } = renderFlightDataCard();
     expect(container.textContent).not.toContain("12.3");
     expect(container.textContent).toContain("--.-");
     expect(container.textContent).toContain("link silent");

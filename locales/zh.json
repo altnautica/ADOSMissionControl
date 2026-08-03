@@ -24,6 +24,69 @@
       "relaying": "Relaying {node}",
       "wfbRssi": "WFB {rssi} dBm",
       "wfbUnverified": "WFB link unverified"
+    },
+    "liveness": {
+      "offline": "离线",
+      "stale": "已过期"
+    },
+    "role": {
+      "relay": "中继",
+      "receiver": "接收端",
+      "direct": "直连"
+    },
+    "badge": {
+      "compute": "Compute",
+      "fc": "FC",
+      "lan": "LAN"
+    },
+    "actions": {
+      "menu": "操作",
+      "nodeActions": "节点操作",
+      "unacknowledged": "{count} 项未确认"
+    },
+    "transport": {
+      "webserial": "USB serial",
+      "websocket": "WebSocket",
+      "tcp": "TCP",
+      "udpProxy": "UDP",
+      "mqttMavlink": "云中继",
+      "ble": "Bluetooth"
+    },
+    "arm": {
+      "armed": "已解锁",
+      "prearmBlocked": "解锁前检查未通过",
+      "disarmed": "已加锁"
+    },
+    "authority": {
+      "provisioning": "正在获取指令权限，尚未就绪",
+      "receiveOnly": "仅接收。飞行指令和云端视频无法通过中继发送。代理指令仍可使用。",
+      "receiveOnlyShort": "仅接收"
+    },
+    "statusText": {
+      "title": "状态消息",
+      "empty": "暂无消息"
+    },
+    "params": {
+      "label": "参数",
+      "openHint": "打开参数 →"
+    },
+    "jobs": {
+      "groupBy": "分组方式",
+      "flat": "平铺",
+      "byDataset": "按数据集",
+      "byStatus": "按状态",
+      "noDataset": "无数据集",
+      "title": "Compute 任务",
+      "viewAll": "查看全部",
+      "unavailable": "Compute 任务不可用",
+      "awaiting": "等待 Compute 节点",
+      "none": "暂无任务",
+      "running": "运行中",
+      "queued": "排队中",
+      "failed": "失败"
+    },
+    "groups": {
+      "compute": "Compute"
     }
   },
   "nav": {

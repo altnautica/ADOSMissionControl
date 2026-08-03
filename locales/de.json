@@ -24,6 +24,69 @@
       "relaying": "Relaying {node}",
       "wfbRssi": "WFB {rssi} dBm",
       "wfbUnverified": "WFB link unverified"
+    },
+    "liveness": {
+      "offline": "Offline",
+      "stale": "Veraltet"
+    },
+    "role": {
+      "relay": "Relais",
+      "receiver": "Empfänger",
+      "direct": "Direkt"
+    },
+    "badge": {
+      "compute": "Compute",
+      "fc": "FC",
+      "lan": "LAN"
+    },
+    "actions": {
+      "menu": "Aktionen",
+      "nodeActions": "Knotenaktionen",
+      "unacknowledged": "{count} nicht bestätigt"
+    },
+    "transport": {
+      "webserial": "USB serial",
+      "websocket": "WebSocket",
+      "tcp": "TCP",
+      "udpProxy": "UDP",
+      "mqttMavlink": "Cloud-Relais",
+      "ble": "Bluetooth"
+    },
+    "arm": {
+      "armed": "Armiert",
+      "prearmBlocked": "Vorstart-Prüfung blockiert",
+      "disarmed": "Disarmiert"
+    },
+    "authority": {
+      "provisioning": "Befehlsberechtigung wird angefordert, noch nicht bereit",
+      "receiveOnly": "Nur Empfang. Flugbefehle und Cloud-Video können nicht über das Relais gesendet werden. Agent-Befehle funktionieren weiterhin.",
+      "receiveOnlyShort": "Nur Empfang"
+    },
+    "statusText": {
+      "title": "Statusmeldungen",
+      "empty": "Noch keine Meldungen"
+    },
+    "params": {
+      "label": "Parameter",
+      "openHint": "Parameter öffnen →"
+    },
+    "jobs": {
+      "groupBy": "Gruppieren nach",
+      "flat": "Flach",
+      "byDataset": "Nach Datensatz",
+      "byStatus": "Nach Status",
+      "noDataset": "Kein Datensatz",
+      "title": "Compute-Jobs",
+      "viewAll": "Alle anzeigen",
+      "unavailable": "Compute-Jobs nicht verfügbar",
+      "awaiting": "Warte auf Compute-Knoten",
+      "none": "Noch keine Jobs",
+      "running": "Läuft",
+      "queued": "In Warteschlange",
+      "failed": "Fehlgeschlagen"
+    },
+    "groups": {
+      "compute": "Compute"
     }
   },
   "nav": {

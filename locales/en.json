@@ -24,6 +24,69 @@
       "relaying": "Relaying {node}",
       "wfbRssi": "WFB {rssi} dBm",
       "wfbUnverified": "WFB link unverified"
+    },
+    "liveness": {
+      "offline": "Offline",
+      "stale": "Stale"
+    },
+    "role": {
+      "relay": "Relay",
+      "receiver": "Receiver",
+      "direct": "Direct"
+    },
+    "badge": {
+      "compute": "Compute",
+      "fc": "FC",
+      "lan": "LAN"
+    },
+    "actions": {
+      "menu": "Actions",
+      "nodeActions": "Node actions",
+      "unacknowledged": "{count} unacknowledged"
+    },
+    "transport": {
+      "webserial": "USB serial",
+      "websocket": "WebSocket",
+      "tcp": "TCP",
+      "udpProxy": "UDP",
+      "mqttMavlink": "Cloud relay",
+      "ble": "Bluetooth"
+    },
+    "arm": {
+      "armed": "Armed",
+      "prearmBlocked": "Prearm blocked",
+      "disarmed": "Disarmed"
+    },
+    "authority": {
+      "provisioning": "Obtaining command authority — not ready yet",
+      "receiveOnly": "Receive only — flight commands and cloud video cannot be sent over the relay. Agent commands still work.",
+      "receiveOnlyShort": "Receive only"
+    },
+    "statusText": {
+      "title": "Status Messages",
+      "empty": "No messages yet"
+    },
+    "params": {
+      "label": "Parameters",
+      "openHint": "Open Parameters →"
+    },
+    "jobs": {
+      "groupBy": "Group by",
+      "flat": "Flat",
+      "byDataset": "By dataset",
+      "byStatus": "By status",
+      "noDataset": "No dataset",
+      "title": "Compute jobs",
+      "viewAll": "View all",
+      "unavailable": "Compute jobs unavailable",
+      "awaiting": "Awaiting compute node",
+      "none": "No jobs yet",
+      "running": "Running",
+      "queued": "Queued",
+      "failed": "Failed"
+    },
+    "groups": {
+      "compute": "Compute"
     }
   },
   "nav": {
