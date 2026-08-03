@@ -5799,7 +5799,13 @@
       "batt": "BATT",
       "time": "TIME"
     },
-    "mapLayer": "Map layer"
+    "mapLayer": "Map layer",
+    "command": {
+      "label": "CMD",
+      "receiveOnly": "RECEIVE ONLY",
+      "provisioning": "AUTHORISING",
+      "expiring": "ENDING SOON"
+    }
   },
   "skills": {
     "arm": {

@@ -23,6 +23,8 @@ import { useDroneStore } from "@/stores/drone-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useDroneMetadataStore } from "@/stores/drone-metadata-store";
 import { useHudTopBarData } from "@/hooks/use-hud-topbar-data";
+import { useMqttControlAuthority } from "@/hooks/use-mqtt-control-authority";
+import { needsOperatorAttention } from "@/lib/nodes/mqtt-control-authority";
 
 const LOW_BATTERY_PERCENT = 20;
 
@@ -106,6 +108,22 @@ function CockpitTopBarInner({ onExit, controls, lean = false }: CockpitTopBarPro
   const level = sigLevel(radio?.rssi);
   const rssi = radio ? fmt(radio.rssi, 0) : "--";
 
+  // LINK above is the vehicle's own radio: how well the aircraft hears its
+  // transmitter. It says nothing about whether this browser can reach the
+  // aircraft, and on the cloud relay the two diverge completely — a strong RF
+  // link with a receive-only relay credential means the pilot is watching a
+  // healthy aircraft they cannot command. Surfaced only when authority is
+  // limited or ending, because a band that carries a chip at all times trains
+  // the eye to skip it.
+  const authority = useMqttControlAuthority();
+  const commandWarning = needsOperatorAttention(authority)
+    ? authority.fcFrames === "provisioning"
+      ? t("command.provisioning")
+      : authority.fcFrames === "expiring"
+        ? t("command.expiring")
+        : t("command.receiveOnly")
+    : null;
+
   return (
     <div className="safety">
       {onExit && (
@@ -174,6 +192,16 @@ function CockpitTopBarInner({ onExit, controls, lean = false }: CockpitTopBarPro
         </span>
         <span className="v">{rssi}</span>
       </div>
+
+      {/* command authority — only when the pilot cannot fully command */}
+      {commandWarning && (
+        <div className="stat" role="status">
+          <span className="k">{t("command.label")}</span>
+          <span className="v" style={{ color: "var(--warn, #f5a524)" }}>
+            {commandWarning}
+          </span>
+        </div>
+      )}
 
       {/* flight time */}
       <div className="stat d-std">
