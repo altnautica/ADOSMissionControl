@@ -41,6 +41,7 @@ export const SIDECAR_VERSIONS = {
   "camera-state": 1,
   "video-streams": 2,
   "camera-usb-recovery": 1,
+  "janitor": 1,
   "pic-state": 1,
   "gpio-output": 1,
   "board": 1,
@@ -317,6 +318,13 @@ export const SIDECAR_CATALOG: Record<string, ContractMeta> = {
     transport: "/run/ados/camera-usb-recovery.json",
     status: "sidecar",
     description: "Camera USB-recovery reconciler state.",
+  },
+  "janitor": {
+    version: 1,
+    wire: "json",
+    transport: "/run/ados/janitor.json",
+    status: "sidecar",
+    description: "Disk-janitor state: the agent's footprint per category against its budget, the rung the last pass ran at, the bytes it reclaimed per category, what is still reclaimable, and the free space it left behind.",
   },
   "pic-state": {
     version: 1,
