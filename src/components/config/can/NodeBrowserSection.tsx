@@ -152,7 +152,7 @@ export function NodeBrowserSection({ onSelectNode }: NodeBrowserSectionProps = {
   // GCS audit Step 8: removed the three deferred roadmap stubs that shipped
   // no real behaviour — the hardcoded id-conflict count (conflictCount = 0),
   // the no-op DroneCAN rescan button, and the unconsumed anonymous-discovery
-  // toggle. Clean cutover per DEC-010: no dead UI left behind. Wiring any of
+  // toggle. Clean cutover: no dead UI left behind. Wiring any of
   // these to the store/protocol is a separate feature task, not done here.
 
   return (

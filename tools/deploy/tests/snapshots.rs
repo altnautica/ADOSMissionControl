@@ -5,7 +5,7 @@
 //! background paints edge to edge with no ragged rows. This is the same
 //! invariant the vendored `wizard::frame` tests enforce, exercised here through
 //! the public compositor with representative deployer content (menu + a wizard
-//! review body). Phase 2 extends this with the pure per-stage bodies.
+//! review body). The pure per-stage bodies are a later extension.
 
 use ados_deploy::ui::theme::{ColorTier, Theme};
 use ados_deploy::wizard::frame::{self, Chrome, Screen, TermSize};

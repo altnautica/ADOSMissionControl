@@ -2373,10 +2373,9 @@ export interface paths {
          * Put Peripheral Config
          * @description Persist a config blob for the given peripheral.
          *
-         *     Wave 3 behavior: validate against the manifest's ``config_schema``
-         *     if one is declared, then write ``/etc/ados/peripherals/<id>.config.json``
-         *     atomically. Plugin-side consumption of this file arrives with
-         *     Track B.
+         *     Validates against the manifest's ``config_schema`` if one is declared,
+         *     then writes ``/etc/ados/peripherals/<id>.config.json`` atomically.
+         *     Plugin-side consumption of this file is not implemented yet.
          */
         post: operations["put_peripheral_config_api_v1_peripherals__peripheral_id__config_post"];
         delete?: never;
