@@ -9,6 +9,8 @@ import { useDroneStore } from "@/stores/drone-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { usePrearmBufferStore } from "@/stores/prearm-buffer-store";
 import { useHeartbeatRate } from "@/hooks/use-heartbeat-rate";
+import { useMqttControlAuthority } from "@/hooks/use-mqtt-control-authority";
+import { canPublishFcFrames } from "@/lib/nodes/mqtt-control-authority";
 import type { Transport } from "@/lib/protocol/types/transport";
 
 interface FlightDataCardProps {
@@ -161,8 +163,29 @@ export function FlightDataCard({ className }: FlightDataCardProps) {
         ? "good"
         : "idle";
   const hbValue = fcConnected && hz != null ? `${hz.toFixed(1)} Hz` : "—";
+  // The transport being open is not the same as the transport being able to
+  // carry a command. On the cloud relay the browser's broker credential is
+  // read-only, so FC frames are published into a broker that discards them:
+  // telemetry keeps arriving on the receive lane and the link reads healthy
+  // while nothing sent from here reaches the aircraft. Grading this dot on
+  // `fcConnected` alone is what made that state invisible.
+  const authority = useMqttControlAuthority();
+  const canCommand = canPublishFcFrames(authority);
   const linkValue = transportType ? TRANSPORT_LABEL[transportType] : "—";
-  const linkLevel: StatusLevel = fcConnected ? "good" : "offline";
+  const linkLevel: StatusLevel = !fcConnected
+    ? "offline"
+    : canCommand
+      ? "good"
+      : "warning";
+  // Deliberately narrow: agent commands (service restart, configuration,
+  // update) ride the cloud database rather than the broker and are unaffected,
+  // so this must not read as a total loss of control.
+  const authorityNote =
+    fcConnected && !canCommand
+      ? authority.reason === "provisioning"
+        ? "Obtaining command authority — not ready yet" // i18n
+        : "Receive only — flight commands and cloud video cannot be sent over the relay. Agent commands still work." // i18n
+      : null;
 
   return (
     <div
@@ -196,6 +219,11 @@ export function FlightDataCard({ className }: FlightDataCardProps) {
         <LinkStat label="Heartbeat" value={hbValue} level={hbLevel} />
         <LinkStat label="Link" value={linkValue} level={linkLevel} />
       </div>
+      {authorityNote && (
+        <p className="mt-1 text-[10px] leading-snug text-status-warning">
+          {authorityNote}
+        </p>
+      )}
       {prearmBlocked && (
         <p className="mt-1 truncate text-[10px] text-status-warning">
           {prearmLines[prearmLines.length - 1]}
