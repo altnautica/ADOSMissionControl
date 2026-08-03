@@ -14,7 +14,13 @@ import type { FirmwareType } from '../../../src/lib/protocol/types'
 function streamCtx(firmwareType: FirmwareType) {
   const sent: Uint8Array[] = []
   const s = {
-    transport: { isConnected: true, send: (f: Uint8Array) => sent.push(f) },
+    // canCommand: a direct link, so stream requests can actually be delivered.
+    // Housekeeping is skipped on a link that cannot carry a command.
+    transport: {
+      isConnected: true,
+      canCommand: true,
+      send: (f: Uint8Array) => sent.push(f),
+    },
     firmwareHandler: createFirmwareHandlerByType(firmwareType),
     targetSysId: 1,
     targetCompId: 1,

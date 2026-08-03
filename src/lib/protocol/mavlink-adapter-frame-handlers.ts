@@ -437,7 +437,12 @@ const PX4_STREAM_RATES: [number, number][] = [
 const MAV_CMD_SET_MESSAGE_INTERVAL = 511
 
 export function requestDataStreams(s: Pick<FrameHandlerState, 'transport' | 'firmwareHandler' | 'targetSysId' | 'targetCompId' | 'sysId' | 'compId'>): void {
-  if (!s.transport?.isConnected) return
+  // Housekeeping, not an operator action: nothing awaits these and the vehicle
+  // streams on its defaults without them. On a receive-only link they cannot be
+  // delivered, so skip rather than send — the transport refuses a write it
+  // cannot carry, and turning that refusal into a thrown error here would take
+  // down a session that is still perfectly good for telemetry.
+  if (!s.transport?.isConnected || !s.transport.canCommand) return
   // PX4 uses per-message SET_MESSAGE_INTERVAL, not the legacy REQUEST_DATA_STREAM.
   if (s.firmwareHandler?.firmwareType === 'px4') {
     for (const [msgId, hz] of PX4_STREAM_RATES) {

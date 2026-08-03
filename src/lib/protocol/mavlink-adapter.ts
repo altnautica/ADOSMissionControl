@@ -213,10 +213,19 @@ export class MAVLinkAdapter implements DroneProtocol {
     })
 
     this._connected = true
+    // The GCS heartbeat is housekeeping: it announces us to the vehicle and
+    // nothing awaits it. A receive-only link cannot carry it, so skip rather
+    // than send — the transport refuses a write it cannot deliver, and letting
+    // that throw here would reject connect() and cost the operator the
+    // telemetry the link still carries perfectly well.
     this.heartbeatInterval = setInterval(() => {
-      if (this.transport?.isConnected) this.sendWrapped(encodeHeartbeat(this.sysId, this.compId))
+      if (this.transport?.isConnected && this.transport.canCommand) {
+        this.sendWrapped(encodeHeartbeat(this.sysId, this.compId))
+      }
     }, 1000)
-    this.sendWrapped(encodeHeartbeat(this.sysId, this.compId))
+    if (transport.canCommand) {
+      this.sendWrapped(encodeHeartbeat(this.sysId, this.compId))
+    }
     requestDataStreams(this.fhs)
     this.streamRequestInterval = setInterval(() => requestDataStreams(this.fhs), 10000)
     this.lastVehicleHeartbeat = Date.now(); this.linkIsLost = false
