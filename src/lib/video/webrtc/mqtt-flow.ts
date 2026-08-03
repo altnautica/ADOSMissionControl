@@ -69,7 +69,16 @@ export async function startStreamViaMqttSignaling(
   type MqttClient = {
     on: (event: string, cb: (...args: unknown[]) => void) => void;
     subscribe: (topic: string, cb?: (err: Error | null) => void) => void;
-    publish: (topic: string, payload: string | Buffer, opts?: { qos?: 0 | 1 | 2 }) => void;
+    // The publish callback carries broker-side refusals. At QoS 1 an
+    // unauthorized publish arrives here as an error built from the PUBACK
+    // reason code; at QoS 0 the protocol provides no acknowledgement at
+    // all, so a refusal there is undetectable by design.
+    publish: (
+      topic: string,
+      payload: string | Buffer,
+      opts?: { qos?: 0 | 1 | 2 },
+      cb?: (err?: Error | null) => void,
+    ) => void;
     end: (force?: boolean) => void;
   };
   let mqttClient: MqttClient | null = null;
@@ -230,9 +239,27 @@ export async function startStreamViaMqttSignaling(
             reject(new Error(`MQTT subscribe failed: ${err.message}`));
             return;
           }
-          // Subscribed → publish offer (with low-latency SDP hint)
+          // Subscribed → publish offer (with low-latency SDP hint).
+          //
+          // The offer goes out at QoS 1, so the broker returns a PUBACK
+          // carrying a reason code. A broker that refuses the publish
+          // (reason 135, "Not authorized" — the credential can subscribe
+          // but not publish) reports that refusal here and nowhere else:
+          // the answer simply never arrives, and without this callback the
+          // only symptom is the composite timeout above firing 30s later
+          // with a message blaming the agent for a broker-side denial.
+          // Surface it immediately, and name the real cause.
           const offerSdp = localPc!.localDescription!.sdp;
-          mqttClient!.publish(topicOffer, offerSdp, { qos: 1 });
+          mqttClient!.publish(topicOffer, offerSdp, { qos: 1 }, (pubErr) => {
+            if (!pubErr) return;
+            clearTimeout(timer);
+            reject(
+              new Error(
+                `Broker refused the video signaling offer (${pubErr.message}). ` +
+                  "This session can receive video state but cannot start a stream.",
+              ),
+            );
+          });
         });
       }),
       signal,
