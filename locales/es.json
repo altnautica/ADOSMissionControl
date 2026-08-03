@@ -60,7 +60,10 @@
     "authority": {
       "provisioning": "Obteniendo autoridad de mando, aún no está listo",
       "receiveOnly": "Solo recepción. Los comandos de vuelo y el vídeo en la nube no pueden enviarse por el relé. Los comandos del agente siguen funcionando.",
-      "receiveOnlyShort": "Solo recepción"
+      "receiveOnlyShort": "Solo recepción",
+      "provisioningShort": "Obteniendo autoridad",
+      "expiring": "La autoridad de mando está expirando y la renovación falló. Envíe ahora lo que necesite.",
+      "expiringShort": "Autoridad por expirar"
     },
     "statusText": {
       "title": "Mensajes de estado",

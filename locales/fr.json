@@ -60,7 +60,10 @@
     "authority": {
       "provisioning": "Obtention de l'autorité de commande, pas encore prêt",
       "receiveOnly": "Réception seule. Les commandes de vol et la vidéo cloud ne peuvent pas être envoyées par le relais. Les commandes de l'agent fonctionnent toujours.",
-      "receiveOnlyShort": "Réception seule"
+      "receiveOnlyShort": "Réception seule",
+      "provisioningShort": "Obtention de l'autorité",
+      "expiring": "L'autorité de commande expire et le renouvellement a échoué. Envoyez maintenant ce dont vous avez besoin.",
+      "expiringShort": "Autorité expirante"
     },
     "statusText": {
       "title": "Messages d'état",

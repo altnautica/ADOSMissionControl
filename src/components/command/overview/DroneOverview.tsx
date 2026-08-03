@@ -50,6 +50,8 @@ import { OverviewTile, OverviewSection, OverviewGrid } from "./OverviewGrid";
 import type { SurfaceContext } from "@/components/dashboard/node-detail/surface-types";
 import { effectiveNodeProfile } from "@/components/dashboard/node-detail/node-brand";
 import { useReachedViaName } from "@/lib/nodes/reach-provenance";
+import { useMqttControlAuthority } from "@/hooks/use-mqtt-control-authority";
+import { useControlAuthorityNotice } from "@/hooks/use-node-control-authority";
 
 /** The unified drone Overview. Receives the surface `ctx`. */
 export function DroneOverview({ ctx }: { ctx: SurfaceContext }) {
@@ -224,6 +226,12 @@ function AddCompanionCta() {
 /** Params snapshot — cached-param count + a jump to the Parameters tab. */
 function ParamsSnapshotTile({ isConnected }: { isConnected: boolean }) {
   const t = useTranslations("nodeConsole");
+  // A parameter WRITE is an FC frame, so this tile's jump-off leads somewhere
+  // that cannot land while the browser holds no publish grant. Grading it on
+  // `isConnected` alone is the same mistake the Flight Data link dot was fixed
+  // for: the transport is open and the writes go nowhere. The cached count
+  // itself is a read and stays exactly as accurate as before.
+  const authority = useControlAuthorityNotice(useMqttControlAuthority());
   const getProtocol = useDroneManager((s) => s.getSelectedProtocol);
   const setPendingDetailTab = useUiStore((s) => s.setPendingDetailTab);
   const [count, setCount] = useState<number | null>(null);
@@ -255,8 +263,10 @@ function ParamsSnapshotTile({ isConnected }: { isConnected: boolean }) {
         icon={<Sliders className="h-3 w-3" />}
         label={t("params.label")}
         value={value}
-        level={isConnected ? "good" : "offline"}
-        hint={t("params.openHint")}
+        level={
+          !isConnected ? "offline" : authority.show ? authority.level : "good"
+        }
+        hint={authority.show ? authority.detail : t("params.openHint")}
       />
     </button>
   );

@@ -60,7 +60,10 @@
     "authority": {
       "provisioning": "명령 권한을 가져오는 중이며 아직 준비되지 않았습니다",
       "receiveOnly": "수신 전용. 비행 명령과 클라우드 영상은 중계로 보낼 수 없습니다. 에이전트 명령은 계속 사용할 수 있습니다.",
-      "receiveOnlyShort": "수신 전용"
+      "receiveOnlyShort": "수신 전용",
+      "provisioningShort": "권한 획득 중",
+      "expiring": "명령 권한이 만료되고 있으며 갱신에 실패했습니다. 필요한 명령은 지금 보내십시오.",
+      "expiringShort": "권한 만료 임박"
     },
     "statusText": {
       "title": "상태 메시지",

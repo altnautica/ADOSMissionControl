@@ -60,7 +60,10 @@
     "authority": {
       "provisioning": "Mendapatkan otoritas perintah, belum siap",
       "receiveOnly": "Hanya terima. Perintah terbang dan video cloud tidak dapat dikirim lewat relai. Perintah agen tetap berfungsi.",
-      "receiveOnlyShort": "Hanya terima"
+      "receiveOnlyShort": "Hanya terima",
+      "provisioningShort": "Mengambil otoritas",
+      "expiring": "Otoritas perintah akan berakhir dan pembaruan gagal. Kirim yang Anda perlukan sekarang.",
+      "expiringShort": "Otoritas akan berakhir"
     },
     "statusText": {
       "title": "Pesan status",

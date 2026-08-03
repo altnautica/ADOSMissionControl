@@ -60,7 +60,10 @@
     "authority": {
       "provisioning": "Obtaining command authority — not ready yet",
       "receiveOnly": "Receive only — flight commands and cloud video cannot be sent over the relay. Agent commands still work.",
-      "receiveOnlyShort": "Receive only"
+      "receiveOnlyShort": "Receive only",
+      "provisioningShort": "Getting authority",
+      "expiring": "Command authority is expiring and renewal has failed. Send what you need now.",
+      "expiringShort": "Authority expiring"
     },
     "statusText": {
       "title": "Status Messages",

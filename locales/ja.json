@@ -60,7 +60,10 @@
     "authority": {
       "provisioning": "コマンド権限を取得中です。まだ使用できません",
       "receiveOnly": "受信のみ。飛行コマンドとクラウド映像は中継経由で送信できません。エージェントコマンドは引き続き使用できます。",
-      "receiveOnlyShort": "受信のみ"
+      "receiveOnlyShort": "受信のみ",
+      "provisioningShort": "権限を取得中",
+      "expiring": "コマンド権限の期限が近づいており、更新に失敗しました。必要な操作は今のうちに送信してください。",
+      "expiringShort": "権限の期限切れ間近"
     },
     "statusText": {
       "title": "ステータスメッセージ",

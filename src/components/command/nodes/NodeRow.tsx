@@ -32,6 +32,7 @@ import { droneLiveness } from "../fleet/types";
 import { NodeBadgeSet } from "./NodeBadgeSet";
 import { useNodePersonalizationStore } from "@/stores/node-personalization-store";
 import { resolveFeatureDot } from "@/lib/nodes/node-feature-dots";
+import { useNodeControlAuthorityNotice } from "@/hooks/use-node-control-authority";
 import { useTranslations } from "next-intl";
 
 /** Map a merged fleet entry to the presentation profile discriminator. A paired
@@ -180,6 +181,13 @@ export function NodeRow({
   const accentColor = `var(${tileCssVar})`;
   const featureDots = personalization?.dots ?? [];
 
+  // Command authority is its own badge, NEVER folded into `status` above: the
+  // ring is health-only by contract and shared with two other surfaces, and a
+  // live node this browser cannot publish FC frames to is healthy and
+  // uncommandable at the same time. Grading the row on liveness alone is what
+  // left that state invisible.
+  const authority = useNodeControlAuthorityNotice(node._id);
+
   const row = (
     <div
       role="option"
@@ -305,6 +313,21 @@ export function NodeRow({
               {personalization?.badge && (
                 <Badge variant="neutral" className="rounded normal-case tracking-normal">
                   {personalization.badge}
+                </Badge>
+              )}
+              {authority.show && (
+                <Badge
+                  variant={authority.level === "warning" ? "warning" : "neutral"}
+                  className="gap-1 rounded normal-case tracking-normal"
+                >
+                  {/* The dot carries the full sentence as its aria-label and
+                      title, so the reason survives the short badge text. */}
+                  <StatusDot
+                    status={authority.level}
+                    size="xs"
+                    label={authority.detail}
+                  />
+                  {authority.label}
                 </Badge>
               )}
               <NodeBadgeSet node={node} effProfile={effProfile} max={3} />

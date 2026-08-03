@@ -60,7 +60,10 @@
     "authority": {
       "provisioning": "Befehlsberechtigung wird angefordert, noch nicht bereit",
       "receiveOnly": "Nur Empfang. Flugbefehle und Cloud-Video können nicht über das Relais gesendet werden. Agent-Befehle funktionieren weiterhin.",
-      "receiveOnlyShort": "Nur Empfang"
+      "receiveOnlyShort": "Nur Empfang",
+      "provisioningShort": "Berechtigung wird geholt",
+      "expiring": "Die Befehlsberechtigung läuft ab und die Erneuerung ist fehlgeschlagen. Senden Sie jetzt, was nötig ist.",
+      "expiringShort": "Berechtigung läuft ab"
     },
     "statusText": {
       "title": "Statusmeldungen",

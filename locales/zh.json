@@ -60,7 +60,10 @@
     "authority": {
       "provisioning": "正在获取指令权限，尚未就绪",
       "receiveOnly": "仅接收。飞行指令和云端视频无法通过中继发送。代理指令仍可使用。",
-      "receiveOnlyShort": "仅接收"
+      "receiveOnlyShort": "仅接收",
+      "provisioningShort": "正在获取权限",
+      "expiring": "指令权限即将到期且续期失败。请立即发送需要的指令。",
+      "expiringShort": "权限即将到期"
     },
     "statusText": {
       "title": "状态消息",

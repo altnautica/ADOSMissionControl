@@ -25,6 +25,8 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { DroneStatusBadge } from "@/components/shared/drone-status-badge";
+import { StatusDot } from "@/components/ui/status-dot";
+import { useNodeControlAuthorityNotice } from "@/hooks/use-node-control-authority";
 import { LinkUpPlaceholder } from "@/components/shared/link-up/LinkUpPlaceholder";
 import {
   DroneDetailTabHeaders,
@@ -109,6 +111,14 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
   // focused agent (selection drives the connection), so the capabilities
   // store is authoritative; the fleet row's role is the synchronous fallback.
   const capRole = useAgentCapabilitiesStore((s) => s.role);
+
+  // Whether this browser may publish FC frames to THIS node. Surfaced on the
+  // header rather than inside one tab, because every tab that writes to the
+  // vehicle — parameters, mission, the flight controls — rides the same lane,
+  // so a limit shown only on Overview would be missed by exactly the operator
+  // about to use one of the others. Separate from `drone.status`, which is
+  // liveness: a node can be online and uncommandable at the same time.
+  const authority = useNodeControlAuthorityNotice(droneId);
 
   // Atlas gating, sourced reactively so enabling the World Model feature or a
   // capture start/stop re-renders the tab strip live. The World Model tab shows
@@ -406,6 +416,20 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
           <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border-default bg-bg-secondary flex-shrink-0">
             <h1 className="text-sm font-semibold text-text-primary shrink-0">{displayName}</h1>
             <DroneStatusBadge status={drone.status} />
+            {authority.show && (
+              <span
+                className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded border border-status-warning/40 bg-status-warning/10 px-1.5 py-0.5 text-[10px] font-medium text-status-warning"
+                title={authority.detail}
+              >
+                <StatusDot
+                  status={authority.level}
+                  size="xs"
+                  label={authority.detail}
+                />
+                {authority.label}
+                <span className="sr-only">{authority.detail}</span>
+              </span>
+            )}
             <Button
               variant="ghost"
               size="sm"

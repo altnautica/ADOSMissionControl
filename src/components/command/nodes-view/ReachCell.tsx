@@ -22,7 +22,15 @@
  */
 
 import { useTranslations } from "next-intl";
-import { CircuitBoard, Cloud, CornerDownRight, Radio, Wifi, WifiOff } from "lucide-react";
+import {
+  CircuitBoard,
+  Cloud,
+  CornerDownRight,
+  Radio,
+  ShieldOff,
+  Wifi,
+  WifiOff,
+} from "lucide-react";
 
 import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
 import type { NodeReachDescriptor } from "@/lib/nodes/node-reach";
@@ -34,6 +42,7 @@ import {
   type NodeBearerKind,
 } from "@/lib/nodes/node-bearer";
 import { useReachedViaName } from "@/lib/nodes/reach-provenance";
+import { useNodeControlAuthorityNotice } from "@/hooks/use-node-control-authority";
 import { useCommandFleetStore } from "@/stores/command-fleet-store";
 import { cn } from "@/lib/utils";
 import { Chip, NEUTRAL_CHIP, staleClass } from "./cell-primitives";
@@ -137,6 +146,12 @@ export function ReachCell({
   const wfbRssiDbm = useCommandFleetStore(
     (s) => s.cloudStatuses[node.deviceId]?.peerRssiDbm ?? null,
   );
+  // The bearer chips above answer the AGENT lane — service restart, config,
+  // update — which the broker's write policy cannot affect. Publishing FC
+  // frames is a different lane with a different answer, so it gets its own chip
+  // rather than recolouring the bearer. Neither subsumes the other; a row that
+  // showed one as if it were the other would over- or under-state the outage.
+  const authority = useNodeControlAuthorityNotice(node._id);
 
   const { primary, secondary } = deriveNodeBearers({
     reachKind: reach.kind,
@@ -193,6 +208,20 @@ export function ReachCell({
           <CornerDownRight size={9} className="opacity-70" />+
           {chipLabel(secondary, t)}
           <span className="sr-only">{secondaryTitleText}</span>
+        </Chip>
+      )}
+      {authority.show && (
+        <Chip
+          className={
+            authority.level === "warning"
+              ? "border-status-warning/40 bg-status-warning/10 text-status-warning"
+              : NEUTRAL_CHIP
+          }
+          title={authority.detail}
+        >
+          <ShieldOff size={10} />
+          {authority.label}
+          <span className="sr-only">{authority.detail}</span>
         </Chip>
       )}
     </span>
