@@ -10,7 +10,7 @@
 import { describe, it, expect } from "vitest";
 
 import { writeU8, writeU16, writeI16, writeI32, writeBits16, setU8 } from "../bounds";
-import { encodeManualControl, encodeRcChannelsOverride } from "../control";
+import { encodeManualControl } from "../control";
 import { encodeMissionItemInt } from "../mission";
 import { encodeMspSetWp } from "../../msp/decoders/inav/nav";
 import type { INavWaypoint } from "../../msp/decoders/inav/types";
@@ -133,17 +133,6 @@ describe("MANUAL_CONTROL encoding", () => {
 
   it("refuses a target system id past a byte", () => {
     expect(() => encodeManualControl(256, 0, 0, 0, 0, 0)).toThrow(RangeError);
-  });
-});
-
-describe("RC_CHANNELS_OVERRIDE encoding", () => {
-  it("accepts release, a normal pulse width, and the ignore sentinel", () => {
-    expect(() => encodeRcChannelsOverride(1, 1, [0, 1500, 65535])).not.toThrow();
-  });
-
-  it("refuses a channel value the field cannot hold", () => {
-    expect(() => encodeRcChannelsOverride(1, 1, [65536])).toThrow(RangeError);
-    expect(() => encodeRcChannelsOverride(1, 1, [-1])).toThrow(RangeError);
   });
 });
 

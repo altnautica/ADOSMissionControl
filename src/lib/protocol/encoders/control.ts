@@ -1,5 +1,5 @@
 /**
- * MAVLink control encoders: ManualControl, PositionTarget, AttitudeTarget, RC override.
+ * MAVLink control encoders: ManualControl, PositionTarget, AttitudeTarget.
  * @module protocol/encoders/control
  */
 
@@ -141,35 +141,7 @@ export function encodeSetAttitudeTarget(
   return buildFrame(82, payload, sysId, compId);
 }
 
-// ── RC_CHANNELS_OVERRIDE (ID 70) ────────────────────────────
-
-/**
- * Encode RC_CHANNELS_OVERRIDE.
- *
- * Overrides RC input channels. Channel value of 0 means "release" (stop override).
- * @param channels - Up to 8 channel values (1000-2000 us, 0 = release)
- *
- * The check here is the field's own range rather than the typical 1000-2000
- * pulse width, because the message defines two values outside it: 0 releases
- * the channel and 65535 leaves it untouched. Refusing those would reject legal
- * frames, so only a value the field cannot hold is refused.
- *
- * @throws RangeError when a channel value or an id is outside its field.
- */
-export function encodeRcChannelsOverride(
-  targetSys: number,
-  targetComp: number,
-  channels: number[],
-  sysId = 255,
-  compId = 190,
-): Uint8Array {
-  const payload = new Uint8Array(18);
-  const dv = new DataView(payload.buffer);
-  // Wire order: 8 x uint16 channels, then uint8 targetSys, uint8 targetComp
-  for (let i = 0; i < 8; i++) {
-    writeU16(dv, i * 2, channels[i] ?? 0, `rc override channel ${i + 1}`);
-  }
-  setU8(payload, 16, targetSys, "rc override target system");
-  setU8(payload, 17, targetComp, "rc override target component");
-  return buildFrame(70, payload, sysId, compId);
-}
+// RC_CHANNELS_OVERRIDE (ID 70) is deliberately not encoded here. The stick
+// path is MANUAL_CONTROL (69) on MAVLink and MSP_SET_RAW_RC on MSP, both of
+// which are live and exercised. An RC-override encoder with no adapter method
+// and no caller is a trap: it reads as a tested control path and is not one.
