@@ -613,7 +613,8 @@
     "deadzone": "デッドゾーン",
     "expoCurve": "エキスポカーブ",
     "testMode": "テストモード",
-    "testModeUnavailable": "デモではゲームパッドのテストモードは利用できません"
+    "testModeUnavailable": "デモではゲームパッドのテストモードは利用できません",
+    "manualControlLinkBlocked": "スティック操作はこの機体に届きません: {reason}。送信されていません。"
   },
   "data": {
     "title": "データ管理",

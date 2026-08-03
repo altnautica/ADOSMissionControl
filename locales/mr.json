@@ -613,7 +613,8 @@
     "deadzone": "डेडझोन",
     "expoCurve": "एक्स्पो कर्व्ह",
     "testMode": "टेस्ट मोड",
-    "testModeUnavailable": "डेमोमध्ये गेमपॅड टेस्ट मोड उपलब्ध नाही"
+    "testModeUnavailable": "डेमोमध्ये गेमपॅड टेस्ट मोड उपलब्ध नाही",
+    "manualControlLinkBlocked": "स्टिक इनपुट या विमानापर्यंत पोहोचत नाहीत: {reason}. काहीही प्रसारित होत नाही."
   },
   "data": {
     "title": "डेटा व्यवस्थापन",

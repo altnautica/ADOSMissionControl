@@ -613,7 +613,8 @@
     "deadzone": "Totzone",
     "expoCurve": "Expo-Kurve",
     "testMode": "Testmodus",
-    "testModeUnavailable": "Gamepad-Testmodus ist im Demo nicht verfügbar"
+    "testModeUnavailable": "Gamepad-Testmodus ist im Demo nicht verfügbar",
+    "manualControlLinkBlocked": "Die Steuerknüppel erreichen dieses Fluggerät nicht: {reason}. Es wird nichts gesendet."
   },
   "data": {
     "title": "Datenverwaltung",

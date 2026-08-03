@@ -613,7 +613,8 @@
     "deadzone": "데드존",
     "expoCurve": "지수 곡선",
     "testMode": "테스트 모드",
-    "testModeUnavailable": "데모에서는 게임패드 테스트 모드를 사용할 수 없습니다"
+    "testModeUnavailable": "데모에서는 게임패드 테스트 모드를 사용할 수 없습니다",
+    "manualControlLinkBlocked": "조종간 입력이 이 기체에 전달되지 않습니다: {reason}. 전송되는 것이 없습니다."
   },
   "data": {
     "title": "데이터 관리",

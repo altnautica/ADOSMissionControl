@@ -613,7 +613,8 @@
     "deadzone": "ડેડઝોન",
     "expoCurve": "એક્સ્પો કર્વ",
     "testMode": "ટેસ્ટ મોડ",
-    "testModeUnavailable": "ડેમોમાં ગેમપેડ ટેસ્ટ મોડ ઉપલબ્ધ નથી"
+    "testModeUnavailable": "ડેમોમાં ગેમપેડ ટેસ્ટ મોડ ઉપલબ્ધ નથી",
+    "manualControlLinkBlocked": "સ્ટિક ઇનપુટ આ વિમાન સુધી પહોંચતા નથી: {reason}. કંઈ પ્રસારિત થઈ રહ્યું નથી."
   },
   "data": {
     "title": "ડેટા વ્યવસ્થાપન",

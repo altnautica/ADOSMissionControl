@@ -613,7 +613,8 @@
     "deadzone": "Deadzone",
     "expoCurve": "Expo Curve",
     "testMode": "Test Mode",
-    "testModeUnavailable": "Gamepad test mode not available in demo"
+    "testModeUnavailable": "Gamepad test mode not available in demo",
+    "manualControlLinkBlocked": "ਸਟਿੱਕ ਇਨਪੁੱਟ ਇਸ ਜਹਾਜ਼ ਤੱਕ ਨਹੀਂ ਪਹੁੰਚ ਰਹੇ: {reason}। ਕੁਝ ਵੀ ਪ੍ਰਸਾਰਿਤ ਨਹੀਂ ਹੋ ਰਿਹਾ।"
   },
   "data": {
     "title": "Data Management",

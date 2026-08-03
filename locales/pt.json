@@ -613,7 +613,8 @@
     "deadzone": "Zona morta",
     "expoCurve": "Curva Expo",
     "testMode": "Modo de Teste",
-    "testModeUnavailable": "Modo de teste do gamepad não disponível na demonstração"
+    "testModeUnavailable": "Modo de teste do gamepad não disponível na demonstração",
+    "manualControlLinkBlocked": "Os comandos não chegam a esta aeronave: {reason}. Nada está a ser transmitido."
   },
   "data": {
     "title": "Gerenciamento de Dados",

@@ -107,8 +107,7 @@ export function ControllersSection() {
                 role="status"
                 className="text-[10px] text-status-warning leading-relaxed"
               >
-                Sticks will not reach this aircraft: {manualControlLinkBlock}.
-                Nothing is being transmitted.
+                {t("manualControlLinkBlocked", { reason: manualControlLinkBlock })}
               </p>
             )}
           </div>

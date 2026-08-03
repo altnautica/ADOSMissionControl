@@ -613,7 +613,8 @@
     "deadzone": "Zona Mati",
     "expoCurve": "Kurva Expo",
     "testMode": "Mode Uji",
-    "testModeUnavailable": "Mode uji gamepad tidak tersedia dalam demo"
+    "testModeUnavailable": "Mode uji gamepad tidak tersedia dalam demo",
+    "manualControlLinkBlocked": "Stik tidak sampai ke pesawat ini: {reason}. Tidak ada yang dikirim."
   },
   "data": {
     "title": "Manajemen Data",

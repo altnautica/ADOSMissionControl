@@ -613,7 +613,8 @@
     "deadzone": "Zone morte",
     "expoCurve": "Courbe Expo",
     "testMode": "Mode test",
-    "testModeUnavailable": "Le mode test manette n'est pas disponible en démo"
+    "testModeUnavailable": "Le mode test manette n'est pas disponible en démo",
+    "manualControlLinkBlocked": "Les manches n'atteignent pas cet aéronef : {reason}. Rien n'est transmis."
   },
   "data": {
     "title": "Gestion des données",

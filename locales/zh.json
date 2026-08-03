@@ -613,7 +613,8 @@
     "deadzone": "死区",
     "expoCurve": "Expo 曲线",
     "testMode": "测试模式",
-    "testModeUnavailable": "手柄测试模式在演示中不可用"
+    "testModeUnavailable": "手柄测试模式在演示中不可用",
+    "manualControlLinkBlocked": "摇杆指令无法送达该飞行器：{reason}。当前没有任何发送。"
   },
   "data": {
     "title": "数据管理",
