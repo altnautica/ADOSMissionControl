@@ -33,6 +33,7 @@ export const SIDECAR_VERSIONS = {
   "mgmt-link": 1,
   "wifi-powersave": 1,
   "wfb_failover": 1,
+  "wfb-pair-proof": 1,
   "bind-state": 1,
   "crsf-stats": 1,
   "tunnel-config": 1,
@@ -262,6 +263,13 @@ export const SIDECAR_CATALOG: Record<string, ContractMeta> = {
     transport: "/run/ados/wfb_failover.json",
     status: "sidecar",
     description: "Local-bind to cloud-relay failover state.",
+  },
+  "wfb-pair-proof": {
+    version: 1,
+    wire: "json",
+    transport: "/var/lib/ados/wfb-pair-proof.json",
+    status: "sidecar",
+    description: "Per-key WFB pair proof: whether a radio key's fingerprint has ever been confirmed to carry a link, plus the bounded auto-pair re-arm budget. Persistent, so the budget survives a reboot.",
   },
   "bind-state": {
     version: 1,

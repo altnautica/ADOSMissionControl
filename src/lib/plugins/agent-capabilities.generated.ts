@@ -184,13 +184,6 @@ export const AGENT_CAPABILITY_CATALOG: Record<string, CapabilityMeta> = {
     risk: "medium",
     risk_reason: "Reconfigures which video sources the vehicle serves and restarts the video pipeline; a wrong source list can black out the operator's video.",
   },
-  "hardware.audio": {
-    label: "Access audio capture and playback devices",
-    description: "Lets the plugin record from microphones or play to speakers connected to the host. Required by audio alert and voice plugins.",
-    category: "hardware",
-    risk: "medium",
-    risk_reason: "Audio capture may pick up private conversations near the aircraft.",
-  },
   "vehicle.command": {
     label: "Issue high-level vehicle commands",
     description: "Lets the plugin send high-level vehicle commands (arm, takeoff, RTL, land, mode change) through the agent's command pipeline rather than raw MAVLink.",
