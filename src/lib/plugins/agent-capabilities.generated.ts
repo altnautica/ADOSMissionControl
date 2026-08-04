@@ -247,6 +247,13 @@ export const AGENT_CAPABILITY_CATALOG: Record<string, CapabilityMeta> = {
     risk: "medium",
     risk_reason: "A model can consume the shared accelerator and CPU; a heavy or faulty model can starve other vision consumers.",
   },
+  "vision.model.read": {
+    label: "Read the plugin's resolved model delivery status",
+    description: "Lets the plugin read the resolution of its own declared models: for each model the state (resolved, needs-model, verify-failed), the resolved on-disk path and runtime when resolved, and the reason otherwise. This is how a plugin finds where its delivered model was cached so it can load it. Reads only this plugin's own resolution; it does not read frames, other plugins' models, or command the vehicle.",
+    category: "compute_process",
+    risk: "low",
+    risk_reason: "Read-only access to the plugin's own model-delivery metadata; no frames, no other plugin's data, no vehicle command.",
+  },
   "vision.detection.publish": {
     label: "Publish detections to the vision engine",
     description: "Lets the plugin publish detection results (bounding boxes, class labels, confidence, track ids) that other plugins, overlays, and mission logic can consume. Detections are derived data; they do not command the vehicle.",
