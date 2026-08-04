@@ -30,6 +30,20 @@ export const AGENT_CAPABILITY_CATALOG: Record<string, CapabilityMeta> = {
     risk: "high",
     risk_reason: "Can change flight mode, arm motors, and alter parameters in flight.",
   },
+  "msp.read": {
+    label: "Read MSP messages from the flight controller",
+    description: "Lets the plugin observe the raw MSP byte stream from a Betaflight / iNav / KISS flight controller, so it can decode telemetry, sensor, and status replies. Read-only on the MSP stream; the sibling of mavlink.read for an FC that speaks MSP instead of MAVLink.",
+    category: "flight_control",
+    risk: "low",
+    risk_reason: "Read-only on the MSP stream.",
+  },
+  "msp.write": {
+    label: "Send MSP commands to the flight controller",
+    description: "Lets the plugin write raw MSP commands to a Betaflight / iNav / KISS flight controller, including MSP_SET_RAW_RC (the RC channel values that fly the aircraft in a rate mode). An untrusted plugin with this capability can command the aircraft, exactly like mavlink.write on a MAVLink FC.",
+    category: "flight_control",
+    risk: "high",
+    risk_reason: "Can drive the RC channels and arm the aircraft on an MSP flight controller.",
+  },
   "mavlink.component.camera": {
     label: "Act as a MAVLink camera component",
     description: "Lets the plugin register itself as a MAVLink camera component and respond to camera-related MAVLink messages from the GCS and the autopilot.",
