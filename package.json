@@ -40,7 +40,6 @@
     "convex:dev": "npx convex dev",
     "convex:deploy": "npx convex deploy",
     "deploy": "cargo run --release --quiet --manifest-path tools/deploy/Cargo.toml --",
-    "generate:agent-types": "openapi-typescript ../ADOSDroneAgent/dist/openapi.json -o src/lib/agent/api-types.gen.ts",
     "postinstall": "patch-package"
   },
   "dependencies": {
@@ -110,7 +109,6 @@
     "eslint-config-next": "^16.2.4",
     "happy-dom": "^20.8.3",
     "msw": "^2.12.10",
-    "openapi-typescript": "^7.13.0",
     "patch-package": "^8.0.1",
     "tailwindcss": "^4",
     "tsx": "^4.19.0",
