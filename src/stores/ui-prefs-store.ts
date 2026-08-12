@@ -54,6 +54,34 @@ export const useUiPrefsStore = create<UiPrefsState>()(
             },
       ),
       version: 1,
+      // Identity at v1, but the two maps are coerced rather than cast straight
+      // through. Both are read by index the moment a node detail panel opens
+      // (`getLastTab`, `getLastAgentPanel`), so a persisted value that is not an
+      // object -- a hand-edited key, a half-written record, or a payload from
+      // before `lastAgentPanelByNode` existed -- would throw during the first
+      // render rather than degrade to "no remembered tab". Non-string entries
+      // are dropped for the same reason: a tab id is looked up in a registry.
+      //
+      // Bump `version` and add a branch here the moment the persisted shape
+      // changes.
+      migrate: (persisted) => {
+        const stringMap = (value: unknown): Record<string, string> => {
+          if (!value || typeof value !== "object" || Array.isArray(value)) {
+            return {};
+          }
+          return Object.fromEntries(
+            Object.entries(value as Record<string, unknown>).filter(
+              (entry): entry is [string, string] => typeof entry[1] === "string",
+            ),
+          );
+        };
+        const prev = (persisted ?? {}) as Partial<UiPrefsState>;
+        return {
+          ...prev,
+          lastTabByNode: stringMap(prev.lastTabByNode),
+          lastAgentPanelByNode: stringMap(prev.lastAgentPanelByNode),
+        } as UiPrefsState;
+      },
     },
   ),
 );
