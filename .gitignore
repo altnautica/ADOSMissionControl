@@ -38,7 +38,9 @@ yarn-error.log*
 next-env.d.ts
 
 # tools
-/tools/sitl/node_modules
+# Every tools/* project resolves its imports from the root node_modules (TS and
+# node both walk up), so none of these need their own installed tree committed.
+/tools/*/node_modules
 
 # electron
 /dist-electron
