@@ -269,12 +269,7 @@ export function VideoLatencyBreakdown({
                       <Row
                         label="SEI EWMA"
                         value={fmtMs(latency.airLatencyMs)}
-                        tooltip="Drone-side glass-to-glass: time from capture to the frame being read back at the drone's local LCD tap. Includes camera capture, encode, GStreamer pipeline buffer."
-                      />
-                      <Row
-                        label="Pipeline buffer"
-                        value={fmtMs(latency.airPipelineMs)}
-                        tooltip="GStreamer Gst.Query.new_latency() on the drone's local-tap pipeline. The minimum latency the local pipeline reports it needs to deliver a frame."
+                        tooltip="Drone-side glass-to-glass: time from capture to the frame being read back on the drone itself, off its own RTSP feed. Covers camera capture, encode, and the drone-side buffering before the frame leaves the aircraft."
                       />
                       <Row
                         label="Samples (1s)"

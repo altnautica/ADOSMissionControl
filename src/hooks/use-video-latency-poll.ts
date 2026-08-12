@@ -12,14 +12,13 @@ const POLL_INTERVAL_MS = 1000;
 interface VideoLatencyResponse {
   latency_ms: number | null;
   ewma_ms?: number | null;
-  pipeline_latency_ms?: number | null;
   samples?: number | null;
   source?: string;
 }
 
 /**
  * Polls the agent's `/api/video/latency` endpoint at 1 Hz and writes
- * the air-side SEI EWMA + pipeline buffer into the video store. The
+ * the air-side SEI EWMA and sample count into the video store. The
  * agent feeds the same numbers shown on the LCD; surfacing them in
  * the GCS breakdown popover lets operators attribute latency to the
  * camera->encoder leg vs the network leg vs the browser receive leg.
@@ -50,11 +49,9 @@ export function useVideoLatencyPoll(): void {
       const tick = () => {
         // Walking-jitter mock so the breakdown popover doesn't look frozen.
         const air = 88 + Math.sin(Date.now() / 1700) * 12 + Math.random() * 4;
-        const pipe = 9 + Math.cos(Date.now() / 2300) * 3;
         const samples = 25 + Math.floor(Math.random() * 6);
         setAirLatency({
           airLatencyMs: Math.round(air),
-          airPipelineMs: Math.round(pipe),
           airSamples: samples,
           airSource: "sei",
         });
@@ -75,7 +72,6 @@ export function useVideoLatencyPoll(): void {
       // render "not measured" instead of stale values.
       setAirLatency({
         airLatencyMs: null,
-        airPipelineMs: null,
         airSamples: null,
         airSource: null,
       });
@@ -96,10 +92,6 @@ export function useVideoLatencyPoll(): void {
               : typeof raw.latency_ms === "number"
                 ? raw.latency_ms
                 : null,
-          airPipelineMs:
-            typeof raw.pipeline_latency_ms === "number"
-              ? raw.pipeline_latency_ms
-              : null,
           airSamples: typeof raw.samples === "number" ? raw.samples : null,
           airSource: raw.source ?? null,
         });
@@ -107,8 +99,7 @@ export function useVideoLatencyPoll(): void {
         if (cancelled) return;
         setAirLatency({
           airLatencyMs: null,
-          airPipelineMs: null,
-          airSamples: null,
+            airSamples: null,
           airSource: "unavailable",
         });
       }

@@ -87,7 +87,6 @@ type VideoConfig = {
 type VideoLatency = {
   latency_ms: number | null;
   ewma_ms?: number | null;
-  pipeline_latency_ms?: number | null;
   samples?: number | null;
   source?: string;
 };

@@ -88,7 +88,6 @@ export interface VideoLatencyBreakdown {
   framesDropped: number;
   // Agent air side (from GET /api/video/latency)
   airLatencyMs: number | null;    // SEI EWMA, camera -> drone LCD
-  airPipelineMs: number | null;   // Gst.Query.new_latency on local_tap
   airSamples: number | null;
   airSource: string | null;       // "sei" | "unavailable" | "read_failed" | ...
   // True end-to-end (Phase B, from browser SEI parser + presentationTime)
@@ -107,7 +106,6 @@ const emptyBreakdown = (): VideoLatencyBreakdown => ({
   framesDecoded: 0,
   framesDropped: 0,
   airLatencyMs: null,
-  airPipelineMs: null,
   airSamples: null,
   airSource: null,
   trueG2GMs: null,
@@ -202,7 +200,7 @@ interface VideoStoreState {
   // Latency breakdown setters. Each writer touches only its own slice
   // so the polls/parsers don't fight each other on every update.
   setReceiveLatency: (m: { rttMs?: number; jitterBufferMs?: number; rtpJitterMs?: number; framesDecoded?: number; framesDropped?: number }) => void;
-  setAirLatency: (m: { airLatencyMs?: number | null; airPipelineMs?: number | null; airSamples?: number | null; airSource?: string | null }) => void;
+  setAirLatency: (m: { airLatencyMs?: number | null; airSamples?: number | null; airSource?: string | null }) => void;
   setClockOffset: (m: { clockOffsetMs: number | null; clockOffsetUncertaintyMs: number | null }) => void;
   // Records one G2G sample and recomputes the rolling EWMA + std-dev
   // surfaced in latency.trueG2GMs / latency.trueG2GStdDevMs. Caller
@@ -348,8 +346,6 @@ export const useVideoStore = create<VideoStoreState>((set) => ({
         ...prev.latency,
         airLatencyMs:
           m.airLatencyMs !== undefined ? m.airLatencyMs : prev.latency.airLatencyMs,
-        airPipelineMs:
-          m.airPipelineMs !== undefined ? m.airPipelineMs : prev.latency.airPipelineMs,
         airSamples:
           m.airSamples !== undefined ? m.airSamples : prev.latency.airSamples,
         airSource:
