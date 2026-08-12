@@ -4,46 +4,6 @@
  */
 
 export interface paths {
-    "/api/command": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Execute Command
-         * @description Execute a text command.
-         */
-        post: operations["execute_command_api_command_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/commands": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Commands
-         * @description List available commands.
-         */
-        get: operations["list_commands_api_commands_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/config": {
         parameters: {
             query?: never;
@@ -83,49 +43,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/fleet/enrollment": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Enrollment
-         * @description Get fleet enrollment status for this device.
-         */
-        get: operations["get_enrollment_api_fleet_enrollment_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/fleet/peers": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Peers
-         * @description List peers discovered for this device's fleet.
-         *
-         *     Empty list = no peers known yet; with enrollment off, this is the
-         *     expected steady-state response.
-         */
-        get: operations["list_peers_api_fleet_peers_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/logs": {
         parameters: {
             query?: never;
@@ -135,7 +52,11 @@ export interface paths {
         };
         /**
          * Get Logs
-         * @description Recent log entries with optional filtering.
+         * @description Recent log entries, sourced from the durable store.
+         *
+         *     Maps the store's rows to the legacy response shape so existing clients keep
+         *     working. If the store is unreachable the endpoint returns an empty list with
+         *     a ``warning`` field instead of a 500 — history is observability, not flight.
          */
         get: operations["get_logs_api_logs_get"];
         put?: never;
@@ -155,237 +76,17 @@ export interface paths {
         };
         /**
          * Stream Logs
-         * @description Server-Sent Events stream of new log entries.
+         * @description Server-Sent Events stream proxied from the store's live tail.
          *
-         *     Each entry produces one ``data: <json>\n\n`` frame. The stream
-         *     sends an initial snapshot of the last 100 buffered entries, then
-         *     appends each new entry as it arrives. Clients reconnect with the
-         *     EventSource API; backpressure is best-effort — a slow client is
-         *     dropped rather than blocking the producer.
-         *
-         *     Concurrent client cap (``_SSE_MAX_CLIENTS``) prevents a LAN
-         *     attacker pre-pairing from pinning the board by opening hundreds
-         *     of connections. Configurable via the ``ADOS_SSE_MAX_CLIENTS``
-         *     environment variable.
+         *     Each store tail row is re-mapped to the legacy ``data: <json>`` frame so
+         *     existing EventSource clients keep working. A replay of the most recent
+         *     entries is requested so a fresh stream shows recent context, matching the
+         *     old snapshot behavior. Keep-alive comment frames pass through. If the store
+         *     is unreachable the stream closes cleanly so the client reconnects.
          */
         get: operations["stream_logs_api_logs_stream_get"];
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/mavlink/signing/capability": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Capability
-         * @description Report whether the connected FC supports MAVLink signing.
-         *
-         *     Returns {supported, reason, firmware_name, firmware_version, signing_params_present}.
-         *     reason enum: ok | fc_not_connected | firmware_not_supported | firmware_too_old
-         *                  | firmware_px4_no_persistent_store | msp_protocol.
-         */
-        get: operations["capability_api_mavlink_signing_capability_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/mavlink/signing/counters": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Counters
-         * @description Signed-frame counters from the passive IPC observer.
-         *
-         *     These are observational: the agent does not validate signatures (it
-         *     holds no key). Counters just confirm signed frames are transiting.
-         */
-        get: operations["counters_api_mavlink_signing_counters_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/mavlink/signing/disable-on-fc": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Disable On Fc Route
-         * @description Clear the FC's signing store (SETUP_SIGNING with all-zero key).
-         */
-        post: operations["disable_on_fc_route_api_mavlink_signing_disable_on_fc_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/mavlink/signing/enroll-fc": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Enroll Fc Route
-         * @description Push a 32-byte signing key to the FC via SETUP_SIGNING.
-         *
-         *     Body `{key_hex, link_id, target_system, target_component}`. The key is
-         *     zeroized from memory before this route returns. The returned `key_id`
-         *     is a short fingerprint (first 8 hex chars of sha256), not the key.
-         */
-        post: operations["enroll_fc_route_api_mavlink_signing_enroll_fc_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/mavlink/signing/require": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Require Get
-         * @description Current SIGNING_REQUIRE param value as cached by ParamCache.
-         */
-        get: operations["require_get_api_mavlink_signing_require_get"];
-        /**
-         * Require Put
-         * @description Set SIGNING_REQUIRE on the FC.
-         */
-        put: operations["require_put_api_mavlink_signing_require_put"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/ota": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Ota Status
-         * @description Current OTA state: version, update status, download progress.
-         */
-        get: operations["get_ota_status_api_ota_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/ota/check": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Trigger Check
-         * @description Trigger a manual update check.
-         */
-        post: operations["trigger_check_api_ota_check_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/ota/install": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Trigger Install
-         * @description Start download and installation of a pending update.
-         */
-        post: operations["trigger_install_api_ota_install_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/ota/restart": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Trigger Restart
-         * @description Restart the agent service after an update.
-         */
-        post: operations["trigger_restart_api_ota_restart_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/ota/rollback": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Trigger Rollback
-         * @description Rollback to a previous version via pip install from PyPI.
-         */
-        post: operations["trigger_rollback_api_ota_rollback_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -410,159 +111,6 @@ export interface paths {
          *     the device code into Mission Control.
          */
         post: operations["accept_pairing_code_api_pairing_accept_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/pairing/claim": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Claim Pairing
-         * @description Claim this agent for a user (local pairing). No auth required, only works when unpaired.
-         */
-        post: operations["claim_pairing_api_pairing_claim_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/pairing/code": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Pairing Code
-         * @description Get just the pairing code. No auth required.
-         */
-        get: operations["get_pairing_code_api_pairing_code_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/pairing/info": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Pairing Info
-         * @description Get pairing info. No auth required.
-         *
-         *     Doubles as the Mission Control "probe" endpoint when a user pastes
-         *     a hostname into Add-a-Node — the response carries the node identity
-         *     (device_id, name, board, version), pairing state, and the
-         *     ``profile`` + ``role`` discriminators that drive GCS panel selection.
-         *
-         *     Every field read is guarded: a partially-configured agent (fresh
-         *     flash, profile not yet picked, board detect not yet run) used to
-         *     surface as a 500 here, which broke the GCS pairing-probe flow.
-         *     Defaults stand in for missing identity fields so the response is
-         *     always a 200 with a usable shape.
-         */
-        get: operations["get_pairing_info_api_pairing_info_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/pairing/unpair": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Unpair
-         * @description Unpair this agent. Requires valid API key (enforced by auth middleware).
-         */
-        post: operations["unpair_api_pairing_unpair_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/params": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get All Params
-         * @description All cached FC parameters, served from ParamCache when available.
-         *
-         *     The response carries a ``priming`` flag and a ``progress`` block so
-         *     the Telemetry page can render an in-flight progress bar between the
-         *     PARAM_REQUEST_LIST sweep firing and the cache catching up to the
-         *     FC's advertised total. ``priming_timeout`` flips true when the FC
-         *     stayed silent past the sweep deadline; ``priming_send_failed`` flips
-         *     true when the PARAM_REQUEST_LIST send itself raised at the link
-         *     layer. The dashboard reads these to swap the spinner for an
-         *     actionable empty state instead of looping forever.
-         */
-        get: operations["get_all_params_api_params_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/params/{name}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Param
-         * @description Get a single parameter by name.
-         */
-        get: operations["get_param_api_params__name__get"];
-        put?: never;
-        /**
-         * Set Param
-         * @description Write a parameter to the FC.
-         *
-         *     The endpoint refuses to write parameters the agent has never seen
-         *     (i.e., not present in ParamCache or VehicleState). This guards against
-         *     typos that would push garbage parameters into the FC.
-         *
-         *     The write is fire-and-forget at the MAVLink level: the FC echoes
-         *     back PARAM_VALUE asynchronously, the inbound stream updates the
-         *     cache, and we poll the cache for up to 2 seconds to confirm the
-         *     new value landed.
-         */
-        post: operations["set_param_api_params__name__post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -770,6 +318,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/plugins/parse_from_url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Parse Plugin From Url
+         * @description Download an allowlisted ``.adosplug`` URL and return its manifest summary
+         *     WITHOUT committing the install — the URL companion to the multipart
+         *     ``/parse``, so the install dialog can review permissions before consent for
+         *     an operator-supplied URL. Same allowlist + size cap + optional SHA-256 pin
+         *     as ``/install_from_url``; nothing is written to the plugin store.
+         */
+        post: operations["parse_plugin_from_url_api_plugins_parse_from_url_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/plugins/{plugin_id}": {
         parameters: {
             query?: never;
@@ -822,6 +394,37 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/plugins/{plugin_id}/gcs/{asset_path}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Plugin Gcs Asset
+         * @description Serve a file from an installed plugin's unpacked ``gcs/`` directory.
+         *
+         *     Lets a LAN-paired Mission Control fetch a plugin's iframe bundle
+         *     (``gcs/plugin.bundle.js`` and any sibling assets) straight from the
+         *     agent that holds it, so the GCS half mounts with no cloud. The agent
+         *     auth posture (unpaired open / paired ``X-ADOS-Key`` / on-box trust)
+         *     is applied by the API layer; this handler only adds path-containment.
+         *
+         *     Traversal-guarded: the requested path is resolved and must stay
+         *     inside ``<install>/<id>/gcs/`` (``..`` escapes and symlinks that
+         *     point outside resolve away and are rejected), and only regular files
+         *     are served.
+         */
+        get: operations["get_plugin_gcs_asset_api_plugins__plugin_id__gcs__asset_path__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/plugins/{plugin_id}/grant": {
         parameters: {
             query?: never;
@@ -856,27 +459,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/scripting/command": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Execute Text Command
-         * @description Execute a single text command through the scripting engine.
-         */
-        post: operations["execute_text_command_api_scripting_command_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/scripting/status": {
+    "/api/plugins/{plugin_id}/readiness": {
         parameters: {
             query?: never;
             header?: never;
@@ -884,438 +467,16 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Scripting Status
-         * @description Overall scripting engine status.
-         */
-        get: operations["scripting_status_api_scripting_status_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/scripts": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Scripts
-         * @description List saved scripts, recent executions, and the command log.
+         * Get Plugin Readiness
+         * @description Per-service readiness for an installed plugin.
          *
-         *     The ``scripts`` field carries the persistent library — the rows
-         *     the Mission Control Scripts tab and the agent webapp render and
-         *     edit. ``executions`` carries the per-run history (state, pid,
-         *     output tail) so an operator can still inspect what fired off
-         *     most recently. ``command_log`` is the text-command audit trail.
+         *     Probes each service the plugin declares under
+         *     ``agent.contributes.services`` and returns whether it is up and
+         *     serving. Same probe the enable flow persists onto the heartbeat;
+         *     this surface lets the GCS poll on demand. 404 when the plugin is
+         *     not installed.
          */
-        get: operations["list_scripts_api_scripts_get"];
-        put?: never;
-        /**
-         * Save Script
-         * @description Persist a script to disk and return its server-assigned id.
-         *
-         *     The library is a disk-backed shared resource, so the API process
-         *     handles the write directly. The supervisor process (which owns
-         *     the runner) reads the same files when an operator launches a
-         *     script.
-         */
-        post: operations["save_script_api_scripts_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/scripts/run": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Run Script
-         * @description Start a Python script.
-         */
-        post: operations["run_script_api_scripts_run_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/scripts/stop": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Stop Script
-         * @description Stop a running script.
-         */
-        post: operations["stop_script_api_scripts_stop_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/scripts/{script_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /**
-         * Delete Script
-         * @description Remove a saved script by id. 404 when the id is unknown.
-         */
-        delete: operations["delete_script_api_scripts__script_id__delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/scripts/{script_id}/run": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Run Script By Id
-         * @description Run a saved script by its server-assigned id. The runner
-         *     materialises the persisted source to a temp file and queues it
-         *     through the regular execution path.
-         */
-        post: operations["run_script_by_id_api_scripts__script_id__run_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/services": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Services
-         * @description List all running services with state machine info and process metrics.
-         *
-         *     The API runs in its own process under the multi-process supervisor,
-         *     so the asyncio task list and ServiceTracker on this process only
-         *     report API-process work. When the tracker has no actionable entries
-         *     (empty or all stopped) the route falls back to systemd's view of
-         *     every ``ados-*`` unit so Diagnostics shows the real fleet of agent
-         *     services without the supervisor injecting per-unit state into the
-         *     API process.
-         */
-        get: operations["list_services_api_services_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/services/{name}/restart": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Restart Service
-         * @description Restart a named systemd service.
-         *
-         *     Confirms the restart actually happened by sampling the unit's
-         *     MainPID before and after. PolKit on Debian Bookworm can let
-         *     `systemctl restart` return 0 without actually restarting the unit
-         *     when the caller lacks the right capability — earlier this returned
-         *     `status: ok` to the GCS even when the unit never restarted, so
-         *     operators thought their config change had taken effect when it
-         *     had not.
-         */
-        post: operations["restart_service_api_services__name__restart_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/status": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Status
-         * @description Agent status: version, uptime, board, FC connection state.
-         *
-         *     Under the multi-process supervisor (the normal production path), the
-         *     API service is a separate process from ados-mavlink and has no direct
-         *     access to the FC connection. The `_StandaloneAgent` shim in
-         *     services/api/__main__.py keeps `_fc_connection` as None, so the
-         *     endpoint reads the StateIPC client instead (the mavlink service
-         *     publishes `fc_connected`, `fc_port`, `fc_baud`, and `service_uptime`
-         *     alongside the vehicle state dict at 10Hz on `/run/ados/state.sock`).
-         */
-        get: operations["get_status_api_status_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/status/full": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Full Status
-         * @description Consolidated status: agent info, services, resources, video, telemetry.
-         *
-         *     Single endpoint that replaces 4 separate GCS poll requests (/api/status,
-         *     /api/services, /api/system, /api/video) with one round-trip. Cuts polling
-         *     latency from ~300-400ms (4 sequential requests) to ~100ms (1 request).
-         *
-         *     Per-component TTL caches memoize the expensive lookups (video deps,
-         *     profile YAML, mesh state, services list). Volatile fields (telemetry,
-         *     resources, FC connection state) are recomputed every call. Responses
-         *     carry an ETag and honor `If-None-Match` for 304 replies.
-         */
-        get: operations["get_full_status_api_status_full_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/system": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get System Resources
-         * @description Return CPU, memory, disk, and temperature info.
-         */
-        get: operations["get_system_resources_api_system_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/telemetry": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Telemetry
-         * @description Current vehicle state from VehicleState.
-         */
-        get: operations["get_telemetry_api_telemetry_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/time": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Time
-         * @description Return monotonic + wall-clock timestamps for client clock-offset estimation.
-         *
-         *     The GCS browser uses Cristian's algorithm against this endpoint to
-         *     estimate the drone↔browser clock offset, which lets it map the
-         *     drone-side SEI timestamps embedded in the H.264 stream into the
-         *     browser's own monotonic clock for true glass-to-glass latency.
-         *
-         *     Cost: one ``time.time_ns()`` + one ``time.monotonic_ns()`` plus a
-         *     bounded chrony / timedatectl probe. Safe at 30 s polling.
-         */
-        get: operations["get_time_api_time_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/ground-station/bluetooth/pair": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Post Bluetooth Pair
-         * @description Attempt to pair with a Bluetooth device by MAC address.
-         */
-        post: operations["post_bluetooth_pair_api_v1_ground_station_bluetooth_pair_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/ground-station/bluetooth/paired": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Bluetooth Paired
-         * @description List paired Bluetooth devices.
-         */
-        get: operations["get_bluetooth_paired_api_v1_ground_station_bluetooth_paired_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/ground-station/bluetooth/scan": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Post Bluetooth Scan
-         * @description Run a BlueZ scan for nearby gamepads. Default duration 10 s.
-         */
-        post: operations["post_bluetooth_scan_api_v1_ground_station_bluetooth_scan_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/ground-station/bluetooth/{mac}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /**
-         * Delete Bluetooth
-         * @description Forget a previously-paired Bluetooth device.
-         */
-        delete: operations["delete_bluetooth_api_v1_ground_station_bluetooth__mac__delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/ground-station/camera/switch": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Post Camera Switch
-         * @description Switch the paired drone's active camera source.
-         *
-         *     Returns 501 when the paired drone does not advertise multi-camera
-         *     support; the GCS surfaces this as "not supported by this drone".
-         *     Returns 400 when the camera_id is malformed (non-numeric or
-         *     out-of-range). Returns 503 when the local MAVLink IPC bus cannot
-         *     be reached. Returns 200 + accepted=True otherwise.
-         */
-        post: operations["post_camera_switch_api_v1_ground_station_camera_switch_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/ground-station/captive-token": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Captive Token
-         * @description Mint a single-use captive-portal token for the setup webapp.
-         *
-         *     Gated on the AP subnet (192.168.4.0/24). Hosts connecting over any
-         *     other interface get 403. The token is attached by the webapp as
-         *     `X-ADOS-Captive-Key` on destructive operations.
-         */
-        get: operations["get_captive_token_api_v1_ground_station_captive_token_get"];
+        get: operations["get_plugin_readiness_api_plugins__plugin_id__readiness_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1336,11 +497,7 @@ export interface paths {
          * @description Return the persisted HDMI kiosk display config.
          */
         get: operations["get_ground_station_display_api_v1_ground_station_display_get"];
-        /**
-         * Put Ground Station Display
-         * @description Update the HDMI kiosk display config and persist.
-         */
-        put: operations["put_ground_station_display_api_v1_ground_station_display_put"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -1367,204 +524,6 @@ export interface paths {
          *     live device.
          */
         post: operations["post_factory_reset_api_v1_ground_station_factory_reset_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/ground-station/gamepads": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Gamepads
-         * @description List connected gamepads and the current primary device id.
-         */
-        get: operations["get_gamepads_api_v1_ground_station_gamepads_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/ground-station/gamepads/primary": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /**
-         * Put Gamepad Primary
-         * @description Select the primary gamepad used by the PIC arbiter.
-         */
-        put: operations["put_gamepad_primary_api_v1_ground_station_gamepads_primary_put"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/ground-station/mesh": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Mesh Health
-         * @description Snapshot of batman-adv state. 404 with E_NOT_IN_MESH on direct nodes.
-         */
-        get: operations["get_mesh_health_api_v1_ground_station_mesh_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/ground-station/mesh/config": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Mesh Config */
-        get: operations["get_mesh_config_api_v1_ground_station_mesh_config_get"];
-        /** Put Mesh Config */
-        put: operations["put_mesh_config_api_v1_ground_station_mesh_config_put"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/ground-station/mesh/gateway_preference": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /**
-         * Put Gateway Preference
-         * @description Pin a gateway, let batman auto-pick, or disable client mode.
-         *
-         *     Persists the preference to `/etc/ados/mesh/gateway.json` so a pin
-         *     survives agent and mesh restarts. `mesh_manager` re-applies the
-         *     pin at setup time. Direct exec also happens here as a convenience
-         *     so operators see immediate feedback without waiting for a restart.
-         */
-        put: operations["put_gateway_preference_api_v1_ground_station_mesh_gateway_preference_put"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/ground-station/mesh/gateways": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Mesh Gateways */
-        get: operations["get_mesh_gateways_api_v1_ground_station_mesh_gateways_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/ground-station/mesh/neighbors": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Mesh Neighbors */
-        get: operations["get_mesh_neighbors_api_v1_ground_station_mesh_neighbors_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/ground-station/mesh/routes": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Mesh Routes */
-        get: operations["get_mesh_routes_api_v1_ground_station_mesh_routes_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/ground-station/modem-status": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Modem Status
-         * @description Cellular modem snapshot. Returns ``present: false`` when no modem.
-         */
-        get: operations["get_modem_status_api_v1_ground_station_modem_status_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/ground-station/network": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Ground Station Network
-         * @description Network uplinks view.
-         *
-         *     Covers all four uplinks (wifi_client, ethernet, modem_4g) plus the
-         *     active_uplink + priority surfaced by UplinkRouter and the
-         *     share_uplink flag.
-         */
-        get: operations["get_ground_station_network_api_v1_ground_station_network_get"];
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1604,6 +563,8 @@ export interface paths {
         /**
          * Delete Network Client
          * @description Disconnect the current WiFi client connection.
+         *
+         *     Forwards to the native uplink daemon's command socket when it owns net.
          */
         delete: operations["delete_network_client_api_v1_ground_station_network_client_delete"];
         options?: never;
@@ -1622,125 +583,12 @@ export interface paths {
         /**
          * Put Network Client Join
          * @description Join a WiFi network. 409 on AP mutex conflict without force.
+         *
+         *     Forwards to the native uplink daemon's command socket when it owns net so
+         *     the REST process never drives nmcli on wlan0 and races the daemon's WiFi
+         *     manager for the radio.
          */
         put: operations["put_network_client_join_api_v1_ground_station_network_client_join_put"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/ground-station/network/client/scan": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Network Client Scan
-         * @description Scan for nearby WiFi networks via nmcli.
-         */
-        get: operations["get_network_client_scan_api_v1_ground_station_network_client_scan_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/ground-station/network/ethernet": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Network Ethernet
-         * @description Return the configured Ethernet profile plus live link state.
-         */
-        get: operations["get_network_ethernet_api_v1_ground_station_network_ethernet_get"];
-        /**
-         * Put Network Ethernet
-         * @description Apply Ethernet IPv4 config. mode=dhcp or mode=static.
-         */
-        put: operations["put_network_ethernet_api_v1_ground_station_network_ethernet_put"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/ground-station/network/modem": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Network Modem
-         * @description Return modem status + data usage + configured cap.
-         */
-        get: operations["get_network_modem_api_v1_ground_station_network_modem_get"];
-        /**
-         * Put Network Modem
-         * @description Update modem config (apn, cap_gb, enabled). Returns refreshed view.
-         */
-        put: operations["put_network_modem_api_v1_ground_station_network_modem_put"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/ground-station/network/priority": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Network Priority
-         * @description Return the current uplink priority list.
-         */
-        get: operations["get_network_priority_api_v1_ground_station_network_priority_get"];
-        /**
-         * Put Network Priority
-         * @description Set the uplink priority list. Router persists to its own JSON.
-         */
-        put: operations["put_network_priority_api_v1_ground_station_network_priority_put"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/ground-station/network/share_uplink": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /**
-         * Put Network Share Uplink
-         * @description Toggle IPv4 forwarding + NAT masquerade for AP clients.
-         *
-         *     POC implementation: writes net.ipv4.ip_forward via sysctl and adds
-         *     a MASQUERADE rule on the active uplink. On failure the flag is
-         *     still persisted and the error is surfaced in the response. Full
-         *     firewall management comes in a later phase.
-         */
-        put: operations["put_network_share_uplink_api_v1_ground_station_network_share_uplink_put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1847,23 +695,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/ground-station/pair/pending": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Pair Pending */
-        get: operations["get_pair_pending_api_v1_ground_station_pair_pending_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/ground-station/pair/revoke/{device_id}": {
         parameters: {
             query?: never;
@@ -1875,106 +706,6 @@ export interface paths {
         put?: never;
         /** Post Pair Revoke */
         post: operations["post_pair_revoke_api_v1_ground_station_pair_revoke__device_id__post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/ground-station/pic": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Pic State
-         * @description Return the current PIC state dict.
-         */
-        get: operations["get_pic_state_api_v1_ground_station_pic_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/ground-station/pic/claim": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Post Pic Claim
-         * @description Claim PIC. Returns 409 with needs_confirm=True when re-claim is required.
-         */
-        post: operations["post_pic_claim_api_v1_ground_station_pic_claim_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/ground-station/pic/confirm-token": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Post Pic Confirm Token
-         * @description Mint a short-lived PIC takeover confirmation token.
-         */
-        post: operations["post_pic_confirm_token_api_v1_ground_station_pic_confirm_token_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/ground-station/pic/heartbeat": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Post Pic Heartbeat
-         * @description Refresh the PIC session TTL. 410 if the client does not hold PIC.
-         */
-        post: operations["post_pic_heartbeat_api_v1_ground_station_pic_heartbeat_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/ground-station/pic/release": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Post Pic Release
-         * @description Release PIC held by the given client id.
-         */
-        post: operations["post_pic_release_api_v1_ground_station_pic_release_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2045,53 +776,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/ground-station/role": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Role
-         * @description Read current mesh role plus a capability hint.
-         */
-        get: operations["get_role_api_v1_ground_station_role_get"];
-        /**
-         * Put Role
-         * @description Change mesh role. Applies mask/unmask + start/stop in order.
-         */
-        put: operations["put_role_api_v1_ground_station_role_put"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/ground-station/status": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Ground Station Status
-         * @description Full ground-station snapshot aligned with the OLED schema.
-         *
-         *     Matches the fields the OLED service polls at 1 Hz. Fields not yet
-         *     sourced (paired drone telemetry, gcs clients, uplink) return None.
-         */
-        get: operations["get_ground_station_status_api_v1_ground_station_status_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/ground-station/ui": {
         parameters: {
             query?: never;
@@ -2112,66 +796,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/ground-station/ui/buttons": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /**
-         * Put Ground Station Ui Buttons
-         * @description Replace the button mapping. Persisted to config and SIGHUP'd live.
-         */
-        put: operations["put_ground_station_ui_buttons_api_v1_ground_station_ui_buttons_put"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/ground-station/ui/oled": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /**
-         * Put Ground Station Ui Oled
-         * @description Update OLED settings, persist to config.yaml, signal oled_service.
-         */
-        put: operations["put_ground_station_ui_oled_api_v1_ground_station_ui_oled_put"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/ground-station/ui/screens": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /**
-         * Put Ground Station Ui Screens
-         * @description Update screen order and/or enabled set. SIGHUPs oled_service live.
-         */
-        put: operations["put_ground_station_ui_screens_api_v1_ground_station_ui_screens_put"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/ground-station/wfb": {
         parameters: {
             query?: never;
@@ -2179,11 +803,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Get Ground Station Wfb
-         * @description Current radio config as stored in agent config.
-         */
-        get: operations["get_ground_station_wfb_api_v1_ground_station_wfb_get"];
+        get?: never;
         /**
          * Put Ground Station Wfb
          * @description Update channel, bitrate profile, or FEC and persist.
@@ -2226,66 +846,6 @@ export interface paths {
          * @description Remove the installed pair key on the GS side.
          */
         delete: operations["delete_wfb_pair_api_v1_ground_station_wfb_pair_delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/ground-station/wfb/receiver/combined": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Wfb Receiver Combined
-         * @description Receiver's combined FEC output stats + stream bitrate.
-         */
-        get: operations["get_wfb_receiver_combined_api_v1_ground_station_wfb_receiver_combined_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/ground-station/wfb/receiver/relays": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Wfb Receiver Relays
-         * @description Per-relay fragment counters on the receiver side.
-         */
-        get: operations["get_wfb_receiver_relays_api_v1_ground_station_wfb_receiver_relays_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/ground-station/wfb/relay/status": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Wfb Relay Status
-         * @description Relay-side WFB fragment counters + receiver reachability.
-         */
-        get: operations["get_wfb_relay_status_api_v1_ground_station_wfb_relay_status_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2413,88 +973,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/system/restart-supervisor": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Post Restart Supervisor
-         * @description Trigger ``systemctl restart ados-supervisor``.
-         *
-         *     The supervisor unit owns the agent process tree, so a restart
-         *     here brings every child (api, video, wfb, ...) back through the
-         *     same lifecycle the install script set up. The HTTP response is
-         *     returned immediately because ``systemctl restart`` blocks until
-         *     the unit settles, and the unit kills the agent process which
-         *     serves this very route. The systemctl call runs as a FastAPI
-         *     background task so the route handler can flush the response
-         *     first.
-         *
-         *     The endpoint reports ``ok=True`` when it manages to schedule the
-         *     systemctl call; the actual restart is asynchronous. A False
-         *     result here means the operator cannot launch a restart from this
-         *     surface (no systemctl binary, scheduling rejected, etc.), and
-         *     the caller should surface the error string.
-         */
-        post: operations["post_restart_supervisor_api_v1_system_restart_supervisor_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/video/air-pipeline": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Air Pipeline Status
-         * @description Return the air-side GStreamer pipeline's live stats snapshot.
-         *
-         *     Reads the same ``/run/ados/air-pipeline.json`` the heartbeat
-         *     enricher reads. Returns 204 when the air pipeline is not in use
-         *     (legacy bash air pipeline owns the stream).
-         */
-        get: operations["get_air_pipeline_status_api_v1_video_air_pipeline_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/version": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Version
-         * @description Wire-protocol version + capability flags.
-         *
-         *     Stable shape. Add new keys at will; do not rename or remove existing
-         *     keys without bumping `api_version`.
-         */
-        get: operations["get_version_api_version_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/video": {
         parameters: {
             query?: never;
@@ -2573,17 +1051,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Get Video Config
-         * @description Live snapshot of the adaptive bitrate + FEC + radio config.
-         *
-         *     Combines the static wfb config (channel, mcs, fec_k/fec_n
-         *     persisted to /etc/ados/config.yaml) with the dynamic ladder
-         *     state from the BitrateController. Shape is stable enough that
-         *     the GCS Video Link panel can render its sparklines without a
-         *     schema migration when an additional metric is added.
-         */
-        get: operations["get_video_config_api_video_config_get"];
+        get?: never;
         put?: never;
         /**
          * Set Video Config
@@ -2596,31 +1064,6 @@ export interface paths {
          *     surface in ``warnings`` so a partial success is visible.
          */
         post: operations["set_video_config_api_video_config_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/video/latency": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Video Latency
-         * @description Return the most recent SEI-probe glass-to-glass latency.
-         *
-         *     Reads from the state file written by the LCD-side local tap
-         *     when the SEI latency feature is enabled
-         *     (WfbConfig.sei_latency = true). Returns latency_ms=None when
-         *     the probe is disabled or no SEI samples have arrived yet.
-         */
-        get: operations["get_video_latency_api_video_latency_get"];
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2730,7 +1173,7 @@ export interface paths {
         };
         /**
          * List Vision Models
-         * @description List available and installed vision models.
+         * @description List available, installed, and custom vision models plus the active one.
          */
         get: operations["list_vision_models_api_vision_models_get"];
         put?: never;
@@ -2773,140 +1216,6 @@ export interface paths {
          * @description Get download progress and installed status for a model.
          */
         get: operations["get_model_status_api_vision_models__model_id__status_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/wfb": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Wfb Status
-         * @description Current WFB-ng link status: state, RSSI, channel, packet stats, adapter info.
-         */
-        get: operations["get_wfb_status_api_wfb_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/wfb/channel": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Set Wfb Channel
-         * @description Set the WFB-ng channel manually.
-         *
-         *     Body:
-         *         channel: Channel number (e.g. 36, 48, 149, 153, 157, 161, 165).
-         */
-        post: operations["set_wfb_channel_api_wfb_channel_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/wfb/history": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Wfb History
-         * @description Link quality history for the last N seconds.
-         *
-         *     Query params:
-         *         seconds: Number of seconds of history (default 60, max 300).
-         */
-        get: operations["get_wfb_history_api_wfb_history_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/wfb/pair": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Wfb Pair Status
-         * @description Pair-state snapshot (paired, peer device-id, fingerprint, auto-pair).
-         */
-        get: operations["get_wfb_pair_status_api_wfb_pair_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/wfb/pair/auto-pair": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /**
-         * Put Wfb Pair Auto Pair
-         * @description Toggle `wfb.auto_pair_enabled`.
-         *
-         *     Re-arming on a paired rig returns `rearm_blocked: true`; the
-         *     operator must `unpair` first.
-         */
-        put: operations["put_wfb_pair_auto_pair_api_wfb_pair_auto_pair_put"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/wfb/pair/failover-status": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Failover Status
-         * @description Return the current local-bind to cloud-relay failover state.
-         *
-         *     Reads the sidecar at ``/run/ados/wfb_failover.json`` written by the
-         *     auto_pair supervisor in the ados-cloud process. Default is ``local``
-         *     when the sidecar is missing or unreadable, which matches the
-         *     supervisor's startup state.
-         */
-        get: operations["get_failover_status_api_wfb_pair_failover_status_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2970,37 +1279,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/wfb/tx-power": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /**
-         * Set Wfb Tx Power
-         * @description Set the WFB-ng TX power at runtime.
-         *
-         *     Body:
-         *         tx_power_dbm: Requested TX power in dBm.
-         *
-         *     Validation:
-         *         * Refuses values below 1 dBm.
-         *         * Refuses values above the configured `tx_power_max_dbm` ceiling.
-         *
-         *     On accept the running manager applies the value via the kernel,
-         *     persists `video.wfb.tx_power_dbm` to /etc/ados/config.yaml, and
-         *     returns the requested + effective dBm reported by the driver.
-         */
-        put: operations["set_wfb_tx_power_api_wfb_tx_power_put"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3039,55 +1317,15 @@ export interface components {
             /** Ssid */
             ssid?: string | null;
         };
-        /**
-         * AutoPairToggleRequest
-         * @description PUT body for `/wfb/pair/auto-pair`.
-         */
-        AutoPairToggleRequest: {
-            /** Enabled */
-            enabled: boolean;
-        };
-        /**
-         * BluetoothPairRequest
-         * @description POST body for Bluetooth pairing.
-         */
-        BluetoothPairRequest: {
-            /** Mac */
-            mac: string;
-        };
-        /**
-         * BluetoothScanRequest
-         * @description POST body for the Bluetooth scan endpoint.
-         */
-        BluetoothScanRequest: {
-            /** Duration S */
-            duration_s?: number | null;
-        };
         /** Body_install_plugin_api_plugins_install_post */
         Body_install_plugin_api_plugins_install_post: {
-            /**
-             * File
-             * Format: binary
-             */
+            /** File */
             file: string;
         };
         /** Body_parse_plugin_archive_api_plugins_parse_post */
         Body_parse_plugin_archive_api_plugins_parse_post: {
-            /**
-             * File
-             * Format: binary
-             */
+            /** File */
             file: string;
-        };
-        /**
-         * ButtonsUpdate
-         * @description PUT body for button remap. Opaque dict of action bindings.
-         */
-        ButtonsUpdate: {
-            /** Mapping */
-            mapping?: {
-                [key: string]: string;
-            } | null;
         };
         /**
          * CameraSwitchBody
@@ -3106,26 +1344,6 @@ export interface components {
              */
             role: "primary" | "secondary";
         };
-        /**
-         * CameraSwitchRequest
-         * @description POST body for selecting a camera source on the paired drone.
-         */
-        CameraSwitchRequest: {
-            /** Camera Id */
-            camera_id: string;
-        };
-        /**
-         * CameraSwitchResponse
-         * @description Result of a camera switch request.
-         */
-        CameraSwitchResponse: {
-            /** Accepted */
-            accepted: boolean;
-            /** Camera Id */
-            camera_id: string;
-            /** Reason */
-            reason?: string | null;
-        };
         /** CapabilityTokenRequest */
         CapabilityTokenRequest: {
             /** Operator Id */
@@ -3135,109 +1353,12 @@ export interface components {
             /** Ttl Seconds */
             ttl_seconds?: number | null;
         };
-        /**
-         * ChannelRequest
-         * @description Request body for channel change.
-         */
-        ChannelRequest: {
-            /** Channel */
-            channel: number;
-        };
-        /** ClaimRequest */
-        ClaimRequest: {
-            /** User Id */
-            user_id: string;
-        };
-        /** ClaimResponse */
-        ClaimResponse: {
-            /** Api Key */
-            api_key: string;
-            /** Device Id */
-            device_id: string;
-            /** Mdns Host */
-            mdns_host: string;
-            /** Name */
-            name: string;
-        };
-        /** CommandRequest */
-        CommandRequest: {
-            /**
-             * Args
-             * @default []
-             */
-            args: (number | string)[];
-            /** Cmd */
-            cmd: string;
-        };
         /** ConfigUpdate */
         ConfigUpdate: {
             /** Key */
             key: string;
             /** Value */
-            value: string;
-        };
-        /**
-         * DisplayUpdate
-         * @description PUT body for HDMI kiosk display config.
-         */
-        DisplayUpdate: {
-            /** Kiosk Enabled */
-            kiosk_enabled?: boolean | null;
-            /** Kiosk Target Url */
-            kiosk_target_url?: string | null;
-            /** Resolution */
-            resolution?: string | null;
-        };
-        /**
-         * EnrollRequest
-         * @description Body for POST /mavlink/signing/enroll-fc.
-         *
-         *     key_hex is the 32-byte MAVLink signing key as 64 lowercase hex chars.
-         *     NEVER log this field. The route strips it before handing off.
-         */
-        EnrollRequest: {
-            /** Key Hex */
-            key_hex: string;
-            /**
-             * Link Id
-             * @default 0
-             */
-            link_id: number;
-            /**
-             * Target Component
-             * @default 1
-             */
-            target_component: number;
-            /**
-             * Target System
-             * @default 1
-             */
-            target_system: number;
-        };
-        /**
-         * EthernetConfigUpdate
-         * @description PUT body for /network/ethernet.
-         */
-        EthernetConfigUpdate: {
-            /** Dns */
-            dns?: string[] | null;
-            /** Gateway */
-            gateway?: string | null;
-            /** Ip */
-            ip?: string | null;
-            /**
-             * Mode
-             * @enum {string}
-             */
-            mode: "dhcp" | "static";
-        };
-        /**
-         * GamepadPrimaryUpdate
-         * @description PUT body for primary-gamepad selection.
-         */
-        GamepadPrimaryUpdate: {
-            /** Device Id */
-            device_id: string;
+            value: boolean | number | string;
         };
         /** GrantRequest */
         GrantRequest: {
@@ -3295,52 +1416,6 @@ export interface components {
              */
             role?: string | null;
         };
-        /** MeshConfigUpdate */
-        MeshConfigUpdate: {
-            /** Carrier */
-            carrier?: ("802.11s" | "ibss") | null;
-            /** Channel */
-            channel?: number | null;
-            /** Mesh Id */
-            mesh_id?: string | null;
-        };
-        /** MeshGatewayPreferenceUpdate */
-        MeshGatewayPreferenceUpdate: {
-            /**
-             * Mode
-             * @enum {string}
-             */
-            mode: "auto" | "pinned" | "off";
-            /** Pinned Mac */
-            pinned_mac?: string | null;
-        };
-        /**
-         * ModemConfigUpdate
-         * @description PUT body for /network/modem.
-         */
-        ModemConfigUpdate: {
-            /** Apn */
-            apn?: string | null;
-            /** Cap Gb */
-            cap_gb?: number | null;
-            /** Enabled */
-            enabled?: boolean | null;
-        };
-        /**
-         * OledUpdate
-         * @description PUT body for OLED UI settings.
-         *
-         *     Server and OLED both use the 0-255 native scale. This matches
-         *     luma.oled device.contrast() directly and the GCS slider range.
-         */
-        OledUpdate: {
-            /** Auto Dim Enabled */
-            auto_dim_enabled?: boolean | null;
-            /** Brightness */
-            brightness?: number | null;
-            /** Screen Cycle Seconds */
-            screen_cycle_seconds?: number | null;
-        };
         /** PairAcceptRequest */
         PairAcceptRequest: {
             /**
@@ -3374,64 +1449,16 @@ export interface components {
             /** Pair Key */
             pair_key?: string | null;
         };
-        /** PairingInfo */
-        PairingInfo: {
-            /** Board */
-            board: string;
-            /** Device Id */
-            device_id: string;
-            /** Mdns Host */
-            mdns_host: string;
-            /** Name */
-            name: string;
-            /** Owner Id */
-            owner_id?: string | null;
-            /** Paired */
-            paired: boolean;
-            /** Paired At */
-            paired_at?: number | null;
-            /** Pairing Code */
-            pairing_code?: string | null;
-            /** Profile */
-            profile: string;
-            /**
-             * Radio Paired
-             * @default false
-             */
-            radio_paired: boolean;
-            /** Radio Peer Device Id */
-            radio_peer_device_id?: string | null;
-            /** Role */
-            role?: string | null;
-            /** Version */
-            version: string;
-        };
         /**
-         * ParamSetRequest
-         * @description Body for ``POST /api/params/{name}``.
+         * ParseFromUrlRequest
+         * @description Body of ``POST /api/plugins/parse_from_url``: an allowlisted ``.adosplug``
+         *     URL and an optional SHA-256 pin. The URL twin of the multipart ``/parse``.
          */
-        ParamSetRequest: {
-            /**
-             * Value
-             * @description New numeric value to write to the FC.
-             */
-            value: number;
-        };
-        /** ParamSetResponse */
-        ParamSetResponse: {
-            /** Ack */
-            ack: boolean;
-            /** Cached Value */
-            cached_value?: number | null;
-            /**
-             * Message
-             * @default
-             */
-            message: string;
-            /** Name */
-            name: string;
-            /** Value */
-            value: number;
+        ParseFromUrlRequest: {
+            /** Expected Sha256 */
+            expected_sha256?: string | null;
+            /** Url */
+            url: string;
         };
         /**
          * PeripheralActionRequest
@@ -3446,45 +1473,6 @@ export interface components {
             };
         };
         /**
-         * PicClaimRequest
-         * @description POST body for PIC claim.
-         */
-        PicClaimRequest: {
-            /** Client Id */
-            client_id: string;
-            /** Confirm Token */
-            confirm_token?: string | null;
-            /**
-             * Force
-             * @default false
-             */
-            force: boolean | null;
-        };
-        /**
-         * PicConfirmTokenRequest
-         * @description POST body for PIC confirm-token mint.
-         */
-        PicConfirmTokenRequest: {
-            /** Client Id */
-            client_id: string;
-        };
-        /**
-         * PicHeartbeatRequest
-         * @description POST body for PIC session heartbeat.
-         */
-        PicHeartbeatRequest: {
-            /** Client Id */
-            client_id: string;
-        };
-        /**
-         * PicReleaseRequest
-         * @description POST body for PIC release.
-         */
-        PicReleaseRequest: {
-            /** Client Id */
-            client_id: string;
-        };
-        /**
          * RecordingStartRequest
          * @description POST body for starting a recording.
          */
@@ -3492,88 +1480,12 @@ export interface components {
             /** Filename Hint */
             filename_hint?: string | null;
         };
-        /** RequireRequest */
-        RequireRequest: {
-            /** Require */
-            require: boolean;
-        };
-        /** RoleChangeRequest */
-        RoleChangeRequest: {
-            /** Confirm Token */
-            confirm_token?: string | null;
-            /**
-             * Role
-             * @enum {string}
-             */
-            role: "direct" | "relay" | "receiver";
-        };
-        /** RunScriptRequest */
-        RunScriptRequest: {
-            /** Path */
-            path: string;
-        };
-        /** SaveScriptRequest */
-        SaveScriptRequest: {
-            /** Content */
-            content: string;
-            /** Name */
-            name: string;
-            /** Suite */
-            suite?: string | null;
-        };
-        /**
-         * ScreensUpdate
-         * @description PUT body for screen order + enabled list.
-         */
-        ScreensUpdate: {
-            /** Enabled */
-            enabled?: string[] | null;
-            /** Order */
-            order?: string[] | null;
-        };
-        /**
-         * ShareUplinkUpdate
-         * @description PUT body for /network/share_uplink.
-         */
-        ShareUplinkUpdate: {
-            /** Enabled */
-            enabled: boolean;
-        };
-        /** StopScriptRequest */
-        StopScriptRequest: {
-            /** Script Id */
-            script_id: string;
-        };
-        /** TextCommandRequest */
-        TextCommandRequest: {
-            /** Command */
-            command: string;
-        };
-        /**
-         * TxPowerRequest
-         * @description Request body for runtime TX power change.
-         *
-         *     The driver applies the value via `iw dev <iface> set txpower fixed`.
-         *     Operators override the boot default at runtime; the new value is
-         *     persisted to /etc/ados/config.yaml so it survives a service restart.
-         */
-        TxPowerRequest: {
-            /**
-             * Tx Power Dbm
-             * @description Requested TX power in dBm.
-             */
-            tx_power_dbm: number;
-        };
-        /**
-         * UplinkPriorityUpdate
-         * @description PUT body for /network/priority.
-         */
-        UplinkPriorityUpdate: {
-            /** Priority */
-            priority: string[];
-        };
         /** ValidationError */
         ValidationError: {
+            /** Context */
+            ctx?: Record<string, never>;
+            /** Input */
+            input?: unknown;
             /** Location */
             loc: (string | number)[];
             /** Message */
@@ -3617,6 +1529,11 @@ export interface components {
              */
             mcs?: number | null;
             /**
+             * Preset
+             * @description Apply a named link preset's (mcs, fec_k, fec_n) trio. Leaves adaptive control as-is.
+             */
+            preset?: ("conservative" | "balanced" | "aggressive") | null;
+            /**
              * Tier Idx
              * @description Pin a specific tier on the bitrate/FEC ladder. Implicitly sets auto=False.
              */
@@ -3658,59 +1575,6 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    execute_command_api_command_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CommandRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    list_commands_api_commands_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
     get_config_api_config_get: {
         parameters: {
             query?: never;
@@ -3760,46 +1624,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_enrollment_api_fleet_enrollment_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
-    list_peers_api_fleet_peers_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
                 };
             };
         };
@@ -3870,275 +1694,6 @@ export interface operations {
             };
         };
     };
-    capability_api_mavlink_signing_capability_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-        };
-    };
-    counters_api_mavlink_signing_counters_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-        };
-    };
-    disable_on_fc_route_api_mavlink_signing_disable_on_fc_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-        };
-    };
-    enroll_fc_route_api_mavlink_signing_enroll_fc_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["EnrollRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    require_get_api_mavlink_signing_require_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-        };
-    };
-    require_put_api_mavlink_signing_require_put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RequireRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_ota_status_api_ota_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
-    trigger_check_api_ota_check_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
-    trigger_install_api_ota_install_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
-    trigger_restart_api_ota_restart_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
-    trigger_rollback_api_ota_rollback_post: {
-        parameters: {
-            query?: {
-                version?: string | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     accept_pairing_code_api_pairing_accept_post: {
         parameters: {
             query?: never;
@@ -4159,185 +1714,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AcceptCodeResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    claim_pairing_api_pairing_claim_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ClaimRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ClaimResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_pairing_code_api_pairing_code_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
-    get_pairing_info_api_pairing_info_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PairingInfo"];
-                };
-            };
-        };
-    };
-    unpair_api_pairing_unpair_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
-    get_all_params_api_params_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
-    get_param_api_params__name__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                name: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    set_param_api_params__name__post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                name: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ParamSetRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ParamSetResponse"];
                 };
             };
             /** @description Validation Error */
@@ -4581,6 +1957,39 @@ export interface operations {
             };
         };
     };
+    parse_plugin_from_url_api_plugins_parse_from_url_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ParseFromUrlRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_plugin_api_plugins__plugin_id__get: {
         parameters: {
             query?: never;
@@ -4707,6 +2116,38 @@ export interface operations {
             };
         };
     };
+    get_plugin_gcs_asset_api_plugins__plugin_id__gcs__asset_path__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plugin_id: string;
+                asset_path: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     grant_permission_api_plugins__plugin_id__grant_post: {
         parameters: {
             query?: never;
@@ -4774,184 +2215,12 @@ export interface operations {
             };
         };
     };
-    execute_text_command_api_scripting_command_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["TextCommandRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    scripting_status_api_scripting_status_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
-    list_scripts_api_scripts_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
-    save_script_api_scripts_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SaveScriptRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    run_script_api_scripts_run_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RunScriptRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    stop_script_api_scripts_stop_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["StopScriptRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    delete_script_api_scripts__script_id__delete: {
+    get_plugin_readiness_api_plugins__plugin_id__readiness_get: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                script_id: string;
+                plugin_id: string;
             };
             cookie?: never;
         };
@@ -4973,370 +2242,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    run_script_by_id_api_scripts__script_id__run_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                script_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    list_services_api_services_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
-    restart_service_api_services__name__restart_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                name: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_status_api_status_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
-    get_full_status_api_status_full_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
-    get_system_resources_api_system_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
-    get_telemetry_api_telemetry_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
-    get_time_api_time_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-        };
-    };
-    post_bluetooth_pair_api_v1_ground_station_bluetooth_pair_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["BluetoothPairRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_bluetooth_paired_api_v1_ground_station_bluetooth_paired_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-        };
-    };
-    post_bluetooth_scan_api_v1_ground_station_bluetooth_scan_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["BluetoothScanRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    delete_bluetooth_api_v1_ground_station_bluetooth__mac__delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                mac: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    post_camera_switch_api_v1_ground_station_camera_switch_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CameraSwitchRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CameraSwitchResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_captive_token_api_v1_ground_station_captive_token_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
                 };
             };
         };
@@ -5359,41 +2264,6 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
-                };
-            };
-        };
-    };
-    put_ground_station_display_api_v1_ground_station_display_put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["DisplayUpdate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -5428,287 +2298,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_gamepads_api_v1_ground_station_gamepads_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-        };
-    };
-    put_gamepad_primary_api_v1_ground_station_gamepads_primary_put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["GamepadPrimaryUpdate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_mesh_health_api_v1_ground_station_mesh_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-        };
-    };
-    get_mesh_config_api_v1_ground_station_mesh_config_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-        };
-    };
-    put_mesh_config_api_v1_ground_station_mesh_config_put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["MeshConfigUpdate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    put_gateway_preference_api_v1_ground_station_mesh_gateway_preference_put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["MeshGatewayPreferenceUpdate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_mesh_gateways_api_v1_ground_station_mesh_gateways_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-        };
-    };
-    get_mesh_neighbors_api_v1_ground_station_mesh_neighbors_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-        };
-    };
-    get_mesh_routes_api_v1_ground_station_mesh_routes_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-        };
-    };
-    get_modem_status_api_v1_ground_station_modem_status_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-        };
-    };
-    get_ground_station_network_api_v1_ground_station_network_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
                 };
             };
         };
@@ -5780,234 +2369,6 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["WifiJoinRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_network_client_scan_api_v1_ground_station_network_client_scan_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-        };
-    };
-    get_network_ethernet_api_v1_ground_station_network_ethernet_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-        };
-    };
-    put_network_ethernet_api_v1_ground_station_network_ethernet_put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["EthernetConfigUpdate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_network_modem_api_v1_ground_station_network_modem_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-        };
-    };
-    put_network_modem_api_v1_ground_station_network_modem_put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ModemConfigUpdate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_network_priority_api_v1_ground_station_network_priority_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-        };
-    };
-    put_network_priority_api_v1_ground_station_network_priority_put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UplinkPriorityUpdate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    put_network_share_uplink_api_v1_ground_station_network_share_uplink_put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ShareUplinkUpdate"];
             };
         };
         responses: {
@@ -6158,28 +2519,6 @@ export interface operations {
             };
         };
     };
-    get_pair_pending_api_v1_ground_station_pair_pending_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-        };
-    };
     post_pair_revoke_api_v1_ground_station_pair_revoke__device_id__post: {
         parameters: {
             query?: never;
@@ -6190,168 +2529,6 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_pic_state_api_v1_ground_station_pic_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-        };
-    };
-    post_pic_claim_api_v1_ground_station_pic_claim_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PicClaimRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    post_pic_confirm_token_api_v1_ground_station_pic_confirm_token_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PicConfirmTokenRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    post_pic_heartbeat_api_v1_ground_station_pic_heartbeat_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PicHeartbeatRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    post_pic_release_api_v1_ground_station_pic_release_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PicReleaseRequest"];
-            };
-        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -6454,213 +2631,7 @@ export interface operations {
             };
         };
     };
-    get_role_api_v1_ground_station_role_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-        };
-    };
-    put_role_api_v1_ground_station_role_put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RoleChangeRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_ground_station_status_api_v1_ground_station_status_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-        };
-    };
     get_ground_station_ui_api_v1_ground_station_ui_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-        };
-    };
-    put_ground_station_ui_buttons_api_v1_ground_station_ui_buttons_put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ButtonsUpdate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    put_ground_station_ui_oled_api_v1_ground_station_ui_oled_put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["OledUpdate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    put_ground_station_ui_screens_api_v1_ground_station_ui_screens_put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ScreensUpdate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_ground_station_wfb_api_v1_ground_station_wfb_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -6753,72 +2724,6 @@ export interface operations {
         };
     };
     delete_wfb_pair_api_v1_ground_station_wfb_pair_delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-        };
-    };
-    get_wfb_receiver_combined_api_v1_ground_station_wfb_receiver_combined_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-        };
-    };
-    get_wfb_receiver_relays_api_v1_ground_station_wfb_receiver_relays_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-        };
-    };
-    get_wfb_relay_status_api_v1_ground_station_wfb_relay_status_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -6993,68 +2898,6 @@ export interface operations {
             };
         };
     };
-    post_restart_supervisor_api_v1_system_restart_supervisor_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-        };
-    };
-    get_air_pipeline_status_api_v1_video_air_pipeline_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
-    get_version_api_version_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
     get_video_status_api_video_get: {
         parameters: {
             query?: never;
@@ -7128,28 +2971,6 @@ export interface operations {
             };
         };
     };
-    get_video_config_api_video_config_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-        };
-    };
     set_video_config_api_video_config_post: {
         parameters: {
             query?: never;
@@ -7181,28 +3002,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_video_latency_api_video_latency_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
                 };
             };
         };
@@ -7302,7 +3101,9 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -7365,169 +3166,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_wfb_status_api_wfb_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
-    set_wfb_channel_api_wfb_channel_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ChannelRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_wfb_history_api_wfb_history_get: {
-        parameters: {
-            query?: {
-                seconds?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_wfb_pair_status_api_wfb_pair_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-        };
-    };
-    put_wfb_pair_auto_pair_api_wfb_pair_auto_pair_put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["AutoPairToggleRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_failover_status_api_wfb_pair_failover_status_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: string;
-                    };
                 };
             };
         };
@@ -7607,39 +3245,6 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
-                };
-            };
-        };
-    };
-    set_wfb_tx_power_api_wfb_tx_power_put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["TxPowerRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
