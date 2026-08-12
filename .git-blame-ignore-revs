@@ -1,0 +1,15 @@
+# Commits that moved or reformatted code without changing behaviour.
+#
+# `git blame` follows the last commit to touch a line, so a formatting sweep or
+# a file split re-points every line in it at that sweep, and the change that
+# actually introduced the line stops being reachable from it. Decomposition work
+# moves a lot of lines, so those commits are listed here rather than allowed to
+# bury the history.
+#
+# Enable it once per clone:
+#
+#     git config blame.ignoreRevsFile .git-blame-ignore-revs
+#
+# Only add a commit that provably changed no behaviour -- a pure move, a
+# re-export split, a formatter run. If in doubt, leave it out: a wrongly-listed
+# commit hides the change that actually caused a bug.
