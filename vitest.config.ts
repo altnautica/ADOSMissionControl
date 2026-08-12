@@ -29,8 +29,11 @@ export default defineConfig({
       'tests/**/*.test.tsx',
       // Co-located component tests under __tests__ directories.
       // Used by per-domain feature folders (e.g. drone-plugins/__tests__/).
-      'src/**/__tests__/*.test.ts',
-      'src/**/__tests__/*.test.tsx',
+      // The inner `**` matters: with a single `*` a test grouped one level
+      // deeper (__tests__/<area>/x.test.ts) is silently never collected, and a
+      // skipped test is indistinguishable from a passing one in the summary.
+      'src/**/__tests__/**/*.test.ts',
+      'src/**/__tests__/**/*.test.tsx',
     ],
     exclude: ['tests/e2e/**', '**/*.node-test.ts'],
     setupFiles: ['tests/setup.ts'],
