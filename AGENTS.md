@@ -48,7 +48,6 @@ npm run desktop:dev
 npm test -- --run path/to/test
 npx eslint path/to/file.ts path/to/file.tsx
 npm run typecheck
-npm run generate:agent-types
 ```
 
 Use the focused commands first when they cover the touched surface. Run
