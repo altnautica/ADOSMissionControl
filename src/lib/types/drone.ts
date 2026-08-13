@@ -84,17 +84,6 @@ export interface FleetDrone extends DroneInfo {
    * "default", "override", "user", or undefined for legacy
    * heartbeats that predate this field. */
   profileSource?: "detected" | "tiebreaker" | "default" | "override" | "user";
-  /** Air-side video pipeline flavor. Populated by the cloud heartbeat
-   * when the agent runs the in-process GStreamer pipeline; undefined
-   * when the legacy bash composition is in force. Drives the "GST"
-   * pill on the fleet card. */
-  videoPipelineFlavor?: string;
-  /** GStreamer element factory name of the chosen H.264 encoder
-   * ("v4l2h264enc", "mpph264enc", "x264enc", ...). Surfaced on the
-   * fleet card tooltip and the drone Configure tab. */
-  videoEncoderName?: string;
-  /** True when the chosen encoder is a hardware path. */
-  videoEncoderHwAccel?: boolean;
   /** Wire-contract node profile. "drone" or "ground-station" today,
    * "workstation" in the future. Drives node grouping in the
    * Command-tab sidebar and panel selection in the right pane.

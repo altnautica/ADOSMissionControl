@@ -484,25 +484,6 @@ export interface AgentCapabilities {
    * video stream to disk. Drives the "REC" badge on the drone card
    * and the recording status pill in the Video sub-view. */
   videoRecording?: boolean;
-  /** Optional. Air-side video pipeline identity. Populated by the
-   * cloud heartbeat when the agent has opted into the in-process
-   * GStreamer pipeline; absent when the legacy bash composition is
-   * in force on the agent. Drives the "GST" pill on the drone card
-   * and the encoder row on the Configure tab. */
-  videoPipeline?: {
-    /** "gst-native" when the in-process pipeline owns the stream. */
-    flavor?: string;
-    /** Element factory name of the chosen H.264 encoder
-     * (e.g. "v4l2h264enc", "mpph264enc", "x264enc"). */
-    encoderName?: string;
-    /** True when the chosen encoder is a hardware path. */
-    encoderHwAccel?: boolean;
-    /** GStreamer source element kind (e.g. "libcamerasrc",
-     * "v4l2src", "rpicamsrc", "videotestsrc"). */
-    cameraSource?: string;
-    /** Current pipeline state — "playing" | "paused" | "error" | ... */
-    state?: string;
-  };
   /** Optional. Theme the operator picked for the local LCD UI. The
    * GCS mirrors this back into the WelcomeModal preference flow so
    * the drone and the desktop stay in sync. */

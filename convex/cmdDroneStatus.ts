@@ -146,13 +146,6 @@ export const pushStatus = internalMutation({
       ),
     ),
     videoRestartAttempts: v.optional(v.number()),
-    // Air-side in-process GStreamer pipeline identity. Absent when the
-    // agent is on the legacy bash air pipeline.
-    videoPipelineFlavor: v.optional(v.string()),
-    videoEncoderName: v.optional(v.string()),
-    videoEncoderHwAccel: v.optional(v.boolean()),
-    videoCameraSource: v.optional(v.string()),
-    videoPipelineState: v.optional(v.string()),
     mavlinkWsPort: v.optional(v.number()),
     mavlinkWsUrl: v.optional(v.string()),
     mavlinkWsUrlPrev: v.optional(v.string()),

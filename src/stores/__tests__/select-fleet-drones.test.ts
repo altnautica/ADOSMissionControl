@@ -149,15 +149,15 @@ describe("selectFleetDrones — dedupe + cloud merge", () => {
     const cloudStatuses: Record<string, CommandCloudStatus> = {
       b: {
         deviceId: "b",
-        videoPipelineFlavor: "gst-native",
         navigationMode: "vio",
+        attachedDisplayType: "hdmi",
         updatedAt: NOW,
       },
     };
     const rows = selectFleetDrones({ nodes, cloudStatuses, now: NOW });
     // Pills merged in...
-    expect(rows[0].videoPipelineFlavor).toBe("gst-native");
     expect(rows[0].navigationMode).toBe("vio");
+    expect(rows[0].attachedDisplayType).toBe("hdmi");
     // ...while the live FC flight state is untouched (the cloud row carried no
     // arm/mode, so a cloud tick can never overwrite it).
     expect(rows[0].armState).toBe("armed");

@@ -572,6 +572,29 @@ export interface FullStatusResponse {
   /** Air-side USB camera recovery state. Carried at the top level of
    * `/api/status/full`. Absent on agents that predate the surface. */
   cameraUsbRecovery?: CameraUsbRecovery;
+  /** Reconciler verdicts the agent folds in beside the camera keys, each present
+   * only while its `/run/ados` sidecar is fresh. Absent on agents that predate
+   * the readers (the supervisor wrote every one of these sidecars and nothing
+   * read them, so all four rendered empty in the GCS).
+   *
+   * The two object blocks are pass-throughs, typed like their `radio` / `crsf`
+   * siblings above: `agent-capabilities/normalizer.ts` clamps them onto
+   * `ManagementLink` / `WifiPowersave` and reads an absent or malformed block as
+   * no reading. Typing them structurally here would make this module depend on
+   * `feature-types`, which already depends on this one. */
+  managementLink?: Record<string, unknown> | null;
+  wifiPowersave?: Record<string, unknown> | null;
+  mgmtLinkMode?: "primary" | "wifi_heartbeat" | "none";
+  mgmtFailoverIface?: string | null;
+  mgmtFailoverReason?: string | null;
+  usbRehomeState?: "idle" | "rehoming" | "exhausted" | "guard_blocked";
+  usbRehomeAttempts?: number | null;
+  usbRehomeMaxAttempts?: number | null;
+  usbRehomeLastResult?: string | null;
+  /** Per-adapter stable-MAC verdicts (`{adapters: [...]}`) from the agent's
+   * mac-pins state. Absent on a node that has pinned nothing. Already camelCase
+   * at the source — never remap it. */
+  macStability?: Record<string, unknown> | null;
   /** MAVLink access descriptor (ground-station profile). Carries the
    * ticket-gated authenticated WebSocket endpoint as an absolute URL
    * and/or a path relative to the agent's :8080 front. Absent on agents

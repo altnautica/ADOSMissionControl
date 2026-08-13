@@ -150,12 +150,6 @@ export interface CommandCloudStatus {
   attachedDisplayType?: "spi-lcd" | "hdmi" | "none";
   /** How the agent landed on its current profile (drives the "auto" pill). */
   profileSource?: "detected" | "tiebreaker" | "default" | "override" | "user";
-  /** Air-side video pipeline flavor (drives the "GST" pill). */
-  videoPipelineFlavor?: string;
-  /** GStreamer H.264 encoder factory name. */
-  videoEncoderName?: string;
-  /** True when the chosen encoder is a hardware path. */
-  videoEncoderHwAccel?: boolean;
   /** Direct LAN MAVLink WebSocket URL the agent advertises (drives "Direct"). */
   manualMavlinkWsUrl?: string;
   /** True when the agent reports an active GPS-denied estimator. */

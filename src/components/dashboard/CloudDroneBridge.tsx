@@ -4,7 +4,7 @@
  * @module CloudDroneBridge
  * @description Feeds cloud-paired ADOS agents into the canonical node registry
  * as `"cloud"` presence (identity, profile, role, posture). The cloud-only
- * display pills (GST / Direct / nav / peer / camera / profile-source / …) are
+ * display pills (Direct / nav / peer / camera / profile-source / …) are
  * pushed into `command-fleet-store` keyed by deviceId; the FleetProjectionBridge
  * merges them back onto the projected row. Staleness drops the cloud presence
  * source (and the pills) so an offline cloud node collapses to whatever the LAN
@@ -190,15 +190,6 @@ export function CloudDroneBridge() {
         deviceId,
         attachedDisplayType,
         profileSource,
-        videoPipelineFlavor: pickString(
-          (drone as { videoPipelineFlavor?: unknown }).videoPipelineFlavor,
-        ),
-        videoEncoderName: pickString(
-          (drone as { videoEncoderName?: unknown }).videoEncoderName,
-        ),
-        videoEncoderHwAccel: pickBoolean(
-          (drone as { videoEncoderHwAccel?: unknown }).videoEncoderHwAccel,
-        ),
         manualMavlinkWsUrl: pickString(
           (drone as { manualMavlinkWsUrl?: unknown }).manualMavlinkWsUrl,
         ),

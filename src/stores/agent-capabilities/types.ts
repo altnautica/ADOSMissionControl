@@ -98,9 +98,6 @@ export interface AgentCapabilitiesState {
   /** Theme the operator picked for the local LCD UI. Undefined when
    * the agent has no LCD or hasn't reported a theme yet. */
   uiTheme: AgentCapabilities["uiTheme"];
-  /** Air-side video pipeline identity. Undefined when the agent
-   * runs the legacy bash composition or hasn't reported yet. */
-  videoPipeline: AgentCapabilities["videoPipeline"];
   /** Air-side WFB-ng radio snapshot. Null when the agent does not
    * advertise a radio service (drone has no air-side adapter, or runs
    * a profile without WFB-ng). Populated from the cloud heartbeat or

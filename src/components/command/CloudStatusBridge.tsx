@@ -414,7 +414,6 @@ export function CloudStatusBridge() {
         }
         if (extras.radioRaw !== undefined) payload.radio = extras.radioRaw;
         if (extras.crsfRaw !== undefined) payload.crsf = extras.crsfRaw;
-        if (extras.videoPipeline !== undefined) payload.videoPipeline = extras.videoPipeline;
         payload.peerDeviceId = extras.peerDeviceId;
         payload.peerRole = extras.peerRole;
         payload.peerChannel = extras.peerChannel;
@@ -547,7 +546,6 @@ export function CloudStatusBridge() {
         // Latest heartbeat wins for the air-side pipeline identity; if
         // the current tick omits it, fall back to whatever the store
         // already had so a sparse heartbeat doesn't blank the pill.
-        videoPipeline: extras.videoPipeline ?? capState.videoPipeline,
         // Latest heartbeat wins for the navigation block; sparse
         // heartbeats keep the prior value so flow / VIO indicators
         // don't flicker.

@@ -20,7 +20,7 @@
  *    supplied them. Neither is synthesized from the deviceId or from liveness,
  *    so a node reached only through a relay advertises no agent identity and a
  *    node nothing measured advertises no health;
- *  - cloud-only display pills (GST / Direct / camera / nav / peer / …) come
+ *  - cloud-only display pills (Direct / camera / nav / peer / …) come
  *    from the command-fleet status keyed by deviceId, merged in here.
  *
  * @license GPL-3.0-only
@@ -152,9 +152,6 @@ export function nodeEntryToFleetDrone(
     // ── Cloud-only display pills, merged by deviceId ──────────────
     attachedDisplayType: status?.attachedDisplayType,
     profileSource: status?.profileSource,
-    videoPipelineFlavor: status?.videoPipelineFlavor,
-    videoEncoderName: status?.videoEncoderName,
-    videoEncoderHwAccel: status?.videoEncoderHwAccel,
     manualMavlinkWsUrl:
       status?.manualMavlinkWsUrl ?? connection.mavlinkUrl ?? undefined,
     navigationGpsDenied: status?.navigationGpsDenied,

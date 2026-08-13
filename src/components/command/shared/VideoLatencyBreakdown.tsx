@@ -269,7 +269,7 @@ export function VideoLatencyBreakdown({
                       <Row
                         label="SEI EWMA"
                         value={fmtMs(latency.airLatencyMs)}
-                        tooltip="Drone-side glass-to-glass: time from capture to the frame being read back on the drone itself, off its own RTSP feed. Covers camera capture, encode, and the drone-side buffering before the frame leaves the aircraft."
+                        tooltip="Drone-side stamp-to-readback: the time between the encoder emitting a frame (where the SEI timestamp is injected, after encode) and that frame being read back off the drone's own RTSP feed. Covers muxing, the mediamtx publish and the drone-side buffering — not camera capture or encode."
                       />
                       <Row
                         label="Samples (1s)"

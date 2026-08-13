@@ -572,6 +572,32 @@ export const clientManagerSlice: AgentConnectionSliceCreator<
             if (typeof full.cameraUsbRecovery !== "undefined") {
               statusExtras.cameraUsbRecovery = full.cameraUsbRecovery;
             }
+            // Reconciler verdicts the agent folds in beside the camera keys:
+            // management-link health, reach-back mode, USB rehome, WiFi
+            // power-save. Each has a normalizer clamp and a card already; the
+            // agent never produced them on either transport, so all four rendered
+            // empty. This pick list is explicit, so an unpicked sibling silently
+            // never reaches the store.
+            const reconcilerKeys = [
+              "managementLink",
+              "mgmtLinkMode",
+              "mgmtFailoverIface",
+              "mgmtFailoverReason",
+              "usbRehomeState",
+              "usbRehomeAttempts",
+              "usbRehomeMaxAttempts",
+              "usbRehomeLastResult",
+              "wifiPowersave",
+              // Per-adapter stable-MAC verdicts. Six readers and three cards
+              // consumed this key while no transport produced it.
+              "macStability",
+            ] as const;
+            for (const key of reconcilerKeys) {
+              const value = full[key];
+              if (typeof value !== "undefined") {
+                statusExtras[key] = value;
+              }
+            }
             // Per-leg video streams: re-point each leg's WHEP host to the one we
             // poll successfully (proven reachable, dodging an unreachable mDNS
             // name), so the cockpit stream switcher connects LAN-direct.

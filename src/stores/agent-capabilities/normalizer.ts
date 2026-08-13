@@ -646,13 +646,6 @@ export function normalizeCapabilities(raw: unknown): AgentCapabilities {
       ? usbRehomeLastResultRaw
       : undefined;
 
-  const videoPipelineCandidate = (raw as { videoPipeline?: unknown })
-    .videoPipeline;
-  const videoPipeline =
-    videoPipelineCandidate && typeof videoPipelineCandidate === "object"
-      ? (videoPipelineCandidate as AgentCapabilities["videoPipeline"])
-      : undefined;
-
   // Pass-through: camera + vision navigation block. The Zod raw
   // schema validates the inner shape (four required keys + optional
   // metrics); a payload that fails the schema falls through to
@@ -809,7 +802,6 @@ export function normalizeCapabilities(raw: unknown): AgentCapabilities {
     usbRehomeState,
     usbRehomeAttempts,
     usbRehomeLastResult,
-    videoPipeline,
     navigation,
     peerDeviceId,
     peerRole,

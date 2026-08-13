@@ -54,7 +54,6 @@ const INITIAL_STATE: AgentCapabilitiesState = {
   videoLocalTap: undefined,
   videoRecording: undefined,
   uiTheme: undefined,
-  videoPipeline: undefined,
   radio: null,
   crsf: null,
   radioStackState: undefined,
@@ -168,7 +167,6 @@ export const useAgentCapabilitiesStore = create<AgentCapabilitiesStore>(
           normalized.runtimeMode === undefined
             ? state.runtimeMode
             : normalized.runtimeMode,
-        videoPipeline: normalized.videoPipeline,
         // Forward-permissive: a sparse heartbeat that omits the
         // navigation block keeps whatever the store had on the prior
         // tick. CloudStatusBridge always passes the freshest block when

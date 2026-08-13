@@ -27,7 +27,6 @@ export interface HeartbeatExtras {
     | null;
   cloudRelayUrl: string | null;
   cloudflareUrl: string | null;
-  videoPipeline: AgentCapabilities["videoPipeline"] | undefined;
   inferOverrides: Parameters<typeof inferCapabilities>[2];
   radioRaw: unknown;
   /** Raw CRSF/ExpressLRS control-lane block off the Convex row (camelCase,
@@ -258,7 +257,6 @@ export function buildHeartbeatExtras(
     // undefined. The store's merge keeps the prior value through the sparse
     // tick. Kept on the shape so the capability bridge stays type-stable for
     // when a producer ships these on the wire.
-    videoPipeline: undefined,
     inferOverrides,
     radioRaw: cloudStatus.radio,
     crsfRaw: cloudStatus.crsf,

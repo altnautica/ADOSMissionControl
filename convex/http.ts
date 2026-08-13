@@ -460,6 +460,70 @@ function linkedPeersField(
   return out.length > 0 ? out : undefined;
 }
 
+interface VideoStreamEntry {
+  id: string;
+  role?: string;
+  codec?: string;
+  live?: boolean;
+}
+
+// Build the per-leg video-stream list, keeping only entries the strict inner
+// validator declares. A leg with no `id` is dropped rather than failing the
+// whole heartbeat. Returns undefined when the agent omits the key.
+function videoStreamsField(
+  body: Record<string, unknown>,
+): VideoStreamEntry[] | undefined {
+  const raw = body.videoStreams;
+  if (!Array.isArray(raw)) return undefined;
+  const out: VideoStreamEntry[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) continue;
+    const row = item as Record<string, unknown>;
+    const id = stringField(row, "id");
+    if (!id) continue;
+    out.push({
+      id,
+      role: stringField(row, "role"),
+      codec: stringField(row, "codec"),
+      live: booleanField(row, "live"),
+    });
+  }
+  return out.length > 0 ? out : undefined;
+}
+
+interface CanBusEntry {
+  port: number;
+  driver: number;
+  bitrate: number;
+  protocol: number;
+}
+
+// Build the FC CAN-bus table. Every field is required by the inner validator,
+// so an entry missing one is dropped rather than rejecting the heartbeat.
+function canBusesField(body: Record<string, unknown>): CanBusEntry[] | undefined {
+  const raw = body.canBuses;
+  if (!Array.isArray(raw)) return undefined;
+  const out: CanBusEntry[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) continue;
+    const row = item as Record<string, unknown>;
+    const port = numberField(row, "port");
+    const driver = numberField(row, "driver");
+    const bitrate = numberField(row, "bitrate");
+    const protocol = numberField(row, "protocol");
+    if (
+      port === undefined ||
+      driver === undefined ||
+      bitrate === undefined ||
+      protocol === undefined
+    ) {
+      continue;
+    }
+    out.push({ port, driver, bitrate, protocol });
+  }
+  return out.length > 0 ? out : undefined;
+}
+
 interface CameraUsbRecoveryPayload {
   state?: string | null;
   case?: string | null;
@@ -860,6 +924,34 @@ http.route({
       // the radio block. Must be picked here or an emitting agent's block is
       // silently dropped from every cloud heartbeat through this deployment.
       crsf: crsfField(body, "crsf"),
+      // The LCD / local-display surface, the on-board decoder + recording
+      // legs, the operator's theme, the resolved display path, the plugin
+      // update-sweep stamp, the per-leg video streams, the FC CAN-bus table and
+      // the vision summary. Every one of these is emitted by the agent, declared
+      // on `pushStatus`, and has a `cmd_droneStatus` column — and this route,
+      // which picks explicitly rather than spreading, forwarded none of them. On
+      // a self-hosted deployment that is the whole LCD tab, the CAN rows, the
+      // vision panel and the stream switcher reading empty off the cloud path
+      // while the same agent fills them over the LAN.
+      lcdActivePage: stringField(body, "lcdActivePage"),
+      lcdTouchCalibrated: booleanField(body, "lcdTouchCalibrated"),
+      lcdRotation: numberField(body, "lcdRotation"),
+      lcdSnapshotUrl: stringField(body, "lcdSnapshotUrl"),
+      lcdLastTouchAt: numberField(body, "lcdLastTouchAt"),
+      lcdLastGesture: stringField(body, "lcdLastGesture"),
+      videoLocalDecoderActive: booleanField(body, "videoLocalDecoderActive"),
+      videoLocalDecoderType: stringField(body, "videoLocalDecoderType"),
+      videoLocalDecoderFps: numberField(body, "videoLocalDecoderFps"),
+      videoRecording: booleanField(body, "videoRecording"),
+      uiTheme: stringField(body, "uiTheme"),
+      displayType: stringField(body, "displayType"),
+      last_plugin_update_check_at: numberField(body, "last_plugin_update_check_at"),
+      videoStreams: videoStreamsField(body),
+      canBuses: canBusesField(body),
+      visionActiveModel: nullableString(body.visionActiveModel),
+      visionBackend: nullableString(body.visionBackend),
+      visionDetectionsPerSec: numberField(body, "visionDetectionsPerSec"),
+      visionFps: numberField(body, "visionFps"),
     };
     const result = await ctx.runMutation(internal.cmdDroneStatus.pushStatus, statusPayload);
     return new Response(JSON.stringify(result), {
