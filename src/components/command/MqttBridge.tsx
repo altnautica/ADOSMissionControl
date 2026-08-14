@@ -24,18 +24,21 @@ import {
 import { useToast } from "@/components/ui/toast";
 import type { AgentStatus } from "@/lib/agent/types";
 import { OFFICIAL_MQTT_WS_URL } from "@/lib/config/endpoints";
+import { getMqttBrokerCredential } from "@/lib/mqtt-broker-credential";
+import { useMqttControlGrantStore } from "@/stores/mqtt-control-grant-store";
 
 const MQTT_WS_URL_DEFAULT = OFFICIAL_MQTT_WS_URL;
 
 export function MqttBridge({
   mqttBrokerUrl,
-  mqttViewerUsername,
-  mqttViewerPassword,
 }: {
   mqttBrokerUrl?: string | null;
-  mqttViewerUsername?: string | null;
-  mqttViewerPassword?: string | null;
 }) {
+  // Not the credential itself, only a counter that changes when it does. The
+  // credential is read at connect time from the singleton every MQTT client
+  // shares, so it never travels through props; this is what makes the effect
+  // re-run once it lands.
+  const credentialEpoch = useMqttControlGrantStore((s) => s.credentialEpoch);
   const cloudDeviceId = useAgentConnectionStore((s) => s.cloudDeviceId);
   const setCloudStatus = useAgentConnectionStore((s) => s.setCloudStatus);
   const setMqttConnected = useAgentConnectionStore((s) => s.setMqttConnected);
@@ -85,19 +88,20 @@ export function MqttBridge({
           throw new Error("mqtt.connect not found in module");
         }
 
-        // Pass viewer credentials when the broker requires auth. The
-        // broker's ACL grants this user read-only access on `ados/+/#`;
-        // it cannot publish. When the credentials are absent (bench
-        // broker / OSS self-host with anonymous mode), connect without
-        // username so the legacy anonymous path keeps working.
+        // Pass the operator's broker credential when one has been minted. The
+        // grant is scoped to the drones this operator owns, so it subscribes to
+        // exactly the telemetry they are entitled to. When it is absent (bench
+        // broker / OSS self-host with anonymous mode, or a signed-out visitor)
+        // connect without a username so the anonymous path keeps working.
         const connectOptions: Record<string, unknown> = {
           protocolVersion: 5,
           clean: true,
           reconnectPeriod: 5000,
         };
-        if (mqttViewerUsername && mqttViewerPassword) {
-          connectOptions.username = mqttViewerUsername;
-          connectOptions.password = mqttViewerPassword;
+        const cred = getMqttBrokerCredential();
+        if (cred) {
+          connectOptions.username = cred.username;
+          connectOptions.password = cred.password;
         }
         const client = (connectFn as typeof mqttModule.connect)(
           mqttBrokerUrl || MQTT_WS_URL_DEFAULT,
@@ -322,16 +326,15 @@ export function MqttBridge({
     cloudDeviceId,
     selectedIsPaired,
     visionViaCloud,
-    // The broker URL + viewer credentials are resolved from clientConfig, which
-    // is `undefined` on the first render and populated a tick later. Without
-    // these in the deps the initial connect would fire credential-less (to the
-    // default broker) and never re-run when the real creds arrive, so cloud
-    // status and the cloud-relay vision-detections topic would silently never
-    // connect. clientConfig resolves once and is then stable, so this tears
-    // down + reconnects exactly once (no per-render thrash).
+    // The broker URL is resolved from clientConfig and the credential from the
+    // grant the operator mints, both of which land a tick or more after the
+    // first render. Without them in the deps the initial connect would fire
+    // credential-less (to the default broker) and never re-run, so cloud status
+    // and the cloud-relay vision-detections topic would silently never connect.
+    // Both settle once and are then stable, so this tears down + reconnects
+    // exactly once per change (no per-render thrash).
     mqttBrokerUrl,
-    mqttViewerUsername,
-    mqttViewerPassword,
+    credentialEpoch,
     setCloudStatus,
     setMqttConnected,
   ]);

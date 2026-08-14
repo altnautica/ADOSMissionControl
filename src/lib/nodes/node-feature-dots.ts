@@ -11,7 +11,10 @@
  * never borrows a last value or defaults to a fresh green. Level -> colour comes
  * from the reserved status tokens; identity comes from the glyph + position +
  * tooltip, so the set is colour-blind-safe and a screen reader announces
- * "link: healthy".
+ * "link: healthy". Human text lives in the locale files: a resolved dot carries
+ * translation keys (`labelKey`, `stateKey`) under the `nodeConsole` namespace
+ * and the rendering component resolves them, so this pure module never pulls in
+ * a translator.
  *
  * @license GPL-3.0-only
  */
@@ -67,38 +70,55 @@ export interface ResolvedDot {
   known: boolean;
   /** Identity glyph (used in labels / tooltips, never colour alone). */
   glyph: string;
-  /** Short human name for the signal. */
-  label: string;
-  /** Full "name: state" tooltip + aria-label. */
-  tooltip: string;
+  /**
+   * Translation key for the signal's short name, relative to the
+   * `nodeConsole` namespace (e.g. `signals.link`). This module is not a
+   * component, so it carries keys and the caller resolves them with
+   * `useTranslations("nodeConsole")`.
+   */
+  labelKey: string;
+  /**
+   * Translation key for the reading's state word, relative to `nodeConsole`
+   * (e.g. `signalState.good`). Compose the tooltip with
+   * `t("signalTooltip", { signal: t(labelKey), state: t(stateKey) })`.
+   */
+  stateKey: string;
 }
 
 interface SignalMeta {
   glyph: string;
-  label: string;
 }
 
-/** Per-signal identity metadata. Labels are plain English (P10 backfill). */
+/**
+ * Per-signal identity metadata. The human label is NOT stored here: it is
+ * `nodeConsole.signals.<signal>` in the locale files, resolved by the rendering
+ * component, so a pure module never imports a translator.
+ */
 export const SIGNAL_META: Record<SignalKey, SignalMeta> = {
-  link: { glyph: "L", label: "Link" } /* i18n */,
-  battery: { glyph: "B", label: "Battery" } /* i18n */,
-  gps: { glyph: "G", label: "GPS" } /* i18n */,
-  arm: { glyph: "A", label: "Arming" } /* i18n */,
-  prearm: { glyph: "P", label: "Pre-arm" } /* i18n */,
-  rc: { glyph: "R", label: "RC" } /* i18n */,
-  rx: { glyph: "Rx", label: "Receive" } /* i18n */,
-  uplink: { glyph: "U", label: "Uplink" } /* i18n */,
-  mesh: { glyph: "M", label: "Mesh" } /* i18n */,
-  mqtt: { glyph: "Q", label: "Cloud relay" } /* i18n */,
-  gpu: { glyph: "GP", label: "GPU" } /* i18n */,
-  jobs: { glyph: "J", label: "Jobs" } /* i18n */,
-  cluster: { glyph: "C", label: "Cluster" } /* i18n */,
-  thermal: { glyph: "Th", label: "Thermal" } /* i18n */,
-  cpu: { glyph: "Cp", label: "CPU" } /* i18n */,
-  temp: { glyph: "T", label: "Temperature" } /* i18n */,
-  services: { glyph: "Sv", label: "Services" } /* i18n */,
-  alerts: { glyph: "!", label: "Alerts" } /* i18n */,
+  link: { glyph: "L" },
+  battery: { glyph: "B" },
+  gps: { glyph: "G" },
+  arm: { glyph: "A" },
+  prearm: { glyph: "P" },
+  rc: { glyph: "R" },
+  rx: { glyph: "Rx" },
+  uplink: { glyph: "U" },
+  mesh: { glyph: "M" },
+  mqtt: { glyph: "Q" },
+  gpu: { glyph: "GP" },
+  jobs: { glyph: "J" },
+  cluster: { glyph: "C" },
+  thermal: { glyph: "Th" },
+  cpu: { glyph: "Cp" },
+  temp: { glyph: "T" },
+  services: { glyph: "Sv" },
+  alerts: { glyph: "!" },
 };
+
+/** The translation key for a signal's short name, under `nodeConsole`. */
+export function signalLabelKey(signal: SignalKey): string {
+  return `signals.${signal}`;
+}
 
 /** The verified fields the sidebar node view-model actually carries. */
 export interface NodeSignalData {
@@ -120,22 +140,12 @@ function liveness(lastSeen?: number): Liveness {
   return "offline";
 }
 
-/** The human word for a status band, used in the tooltip. */
-function levelWord(level: StatusLevel): string {
-  switch (level) {
-    case "good":
-      return "healthy" /* i18n */;
-    case "warning":
-      return "warning" /* i18n */;
-    case "serious":
-      return "degraded" /* i18n */;
-    case "critical":
-      return "critical" /* i18n */;
-    case "idle":
-      return "idle" /* i18n */;
-    case "offline":
-      return "offline" /* i18n */;
-  }
+/**
+ * The translation key for a status band's state word, under `nodeConsole`.
+ * `unknown` is the honest "no reading" state, not a band.
+ */
+function stateKeyFor(level: StatusLevel): string {
+  return `signalState.${level}`;
 }
 
 /**
@@ -150,8 +160,11 @@ export function resolveFeatureDot(
   signal: SignalKey,
   node: NodeSignalData,
 ): ResolvedDot {
-  const meta = SIGNAL_META[signal];
-  const base = { signal, glyph: meta.glyph, label: meta.label };
+  const base = {
+    signal,
+    glyph: SIGNAL_META[signal].glyph,
+    labelKey: signalLabelKey(signal),
+  };
 
   if (signal === "link") {
     const live = liveness(node.lastSeen);
@@ -161,7 +174,7 @@ export function resolveFeatureDot(
       ...base,
       level,
       known: true,
-      tooltip: `${meta.label}: ${levelWord(level)}`,
+      stateKey: stateKeyFor(level),
     };
   }
 
@@ -170,7 +183,7 @@ export function resolveFeatureDot(
     ...base,
     level: "offline",
     known: false,
-    tooltip: `${meta.label}: no reading` /* i18n */,
+    stateKey: "signalState.unknown",
   };
 }
 

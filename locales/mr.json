@@ -63,7 +63,8 @@
       "receiveOnlyShort": "फक्त प्राप्त",
       "provisioningShort": "अधिकार मिळवत आहे",
       "expiring": "कमांड अधिकार संपत आहे आणि नूतनीकरण अयशस्वी झाले. जे आवश्यक आहे ते आत्ताच पाठवा.",
-      "expiringShort": "अधिकार संपत आहे"
+      "expiringShort": "अधिकार संपत आहे",
+      "requestControl": "कमांड अधिकाराची विनंती करा"
     },
     "statusText": {
       "title": "स्थिती संदेश",
@@ -90,6 +91,75 @@
     },
     "groups": {
       "compute": "Compute"
+    },
+    "signals": {
+      "link": "लिंक",
+      "battery": "बॅटरी",
+      "gps": "GPS",
+      "arm": "आर्मिंग",
+      "prearm": "प्री-आर्म",
+      "rc": "RC",
+      "rx": "स्वीकार",
+      "uplink": "अपलिंक",
+      "mesh": "मेश",
+      "mqtt": "क्लाउड रिले",
+      "gpu": "GPU",
+      "jobs": "जॉब्स",
+      "cluster": "क्लस्टर",
+      "thermal": "थर्मल",
+      "cpu": "CPU",
+      "temp": "तापमान",
+      "services": "सेवा",
+      "alerts": "सूचना"
+    },
+    "signalState": {
+      "good": "ठीक",
+      "warning": "इशारा",
+      "serious": "घसरलेले",
+      "critical": "गंभीर",
+      "idle": "निष्क्रिय",
+      "offline": "ऑफलाइन",
+      "unknown": "वाचन नाही"
+    },
+    "signalTooltip": "{signal}: {state}",
+    "signalDots": "नोड सिग्नल",
+    "contextMenu": {
+      "menuLabel": "{node} साठी क्रिया",
+      "copyFailed": "कॉपी करता आले नाही",
+      "rename": "नाव बदला",
+      "setInitials": "आद्याक्षरे नेमा",
+      "customBadge": "स्वतःचा बॅज",
+      "addToGroup": "गटात जोडा",
+      "setTileColour": "टाइलचा रंग नेमा",
+      "tileColours": "टाइलचे रंग",
+      "defaultColour": "डिफॉल्ट",
+      "configureDots": "ठिपके ठरवा",
+      "pin": "पिन करा",
+      "unpin": "पिन काढा",
+      "open": "उघडा",
+      "openInCockpit": "कॉकपिटमध्ये उघडा",
+      "copyNodeId": "नोड ID कॉपी करा",
+      "nodeIdCopied": "नोड ID कॉपी झाला",
+      "copyHost": "होस्ट कॉपी करा",
+      "hostCopied": "होस्ट कॉपी झाला",
+      "muteAlerts": "सूचना बंद करा",
+      "unmuteAlerts": "सूचना चालू करा",
+      "resetPersonalization": "वैयक्तिकरण रीसेट करा",
+      "personalizationReset": "वैयक्तिकरण रीसेट झाले",
+      "forget": "काढा",
+      "forgetTitle": "नोड काढा",
+      "forgetMessage": "{node} काढायचा? यामुळे जोडणी संपते आणि त्याचे वैयक्तिकरण पुसले जाते."
+    },
+    "dotEditor": {
+      "title": "ठिपके ठरवा",
+      "none": "काहीही नाही",
+      "hint": "या नोडवर कमाल {max} पडताळलेले सिग्नल ठिपके म्हणून पिन करा. वाचन नसलेला सिग्नल पोकळ रिंग दाखवतो, कधीच खोटी स्थिती नाही.",
+      "slot": "ठिपका {index}"
+    },
+    "companionCta": {
+      "title": "कंपॅनियन संगणक जोडा",
+      "body": "या फ्लाइट कंट्रोलरसोबत कोणताही ऑनबोर्ड संगणक जोडलेला नाही. व्हिडिओ, व्हिजन, वर्ल्ड मॉडेल आणि विस्तार जोडण्यासाठी एक जोडा.",
+      "action": "संगणक जोडा"
     }
   },
   "nav": {
@@ -1309,7 +1379,12 @@
     "sectionExecution": "Execution",
     "sectionHealth": "Feed health",
     "sectionInputs": "Inputs & pipelines",
-    "sectionModels": "Models"
+    "sectionModels": "Models",
+    "targetActions": {
+      "dismiss": "बंद करा",
+      "none": "या लक्ष्यासाठी कोणतीही क्रिया नाही",
+      "pluginBadge": "प्लगिन"
+    }
   },
   "nodeSettings": {
     "subtitle": "Configure this node's onboard computer. Changes write straight to the agent over the LAN.",
@@ -2208,7 +2283,8 @@
     "chip": "Chip",
     "cores": "Cores",
     "gpu": "GPU",
-    "gpuHistory": "GPU History (5m)"
+    "gpuHistory": "GPU History (5m)",
+    "groundStationFallbackTitle": "ग्राउंड स्टेशन"
   },
   "fleetNetwork": {
     "title": "ताफा नेटवर्क",
@@ -4865,7 +4941,8 @@
       "all": "All",
       "live": "Live",
       "video": "Video",
-      "offline": "Stale/offline"
+      "offline": "Stale/offline",
+      "workstation": "वर्कस्टेशन"
     },
     "feedBudget": "{active}/{max} feeds active",
     "noAgentsTitle": "No paired agents",
@@ -4909,7 +4986,14 @@
     "rssi": "RSSI",
     "snr": "SNR",
     "loss": "Loss",
-    "link": "Link"
+    "link": "Link",
+    "arm": "आर्म",
+    "heartbeat": "हार्टबीट",
+    "uplink": "अपलिंक",
+    "mesh": "मेश",
+    "disk": "डिस्क",
+    "gpuNodes": "GPU नोड",
+    "jobs": "जॉब्स"
   },
   "flashTool": {
     "ados": {
@@ -5872,7 +5956,8 @@
       "receiveOnly": "RECEIVE ONLY",
       "provisioning": "AUTHORISING",
       "expiring": "ENDING SOON"
-    }
+    },
+    "openFlight": "फ्लाइट उघडा"
   },
   "skills": {
     "arm": {

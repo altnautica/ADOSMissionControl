@@ -17,13 +17,22 @@ quick anonymous bench broker (CI fixtures), see the comments at the bottom of
 
 ## Auth model
 
-Three principal types connect to the broker:
+Four principal types connect to the broker:
 
 | Principal | Username | Password source | Permissions |
 |---|---|---|---|
 | Drone agent | `<device_id>` (current firmware) or `ados-<device_id>` (legacy firmware; transitional) | `cmd_drones.apiKey` from Convex; same value the agent uses for HTTP `X-ADOS-Key` | `readwrite ados/<device_id>/#` |
 | Bridge service account | `ados` | `MQTT_PASSWORD` env var on the broker host | `read ados/#` |
-| GCS browser session | `gcs-viewer` | `MQTT_VIEWER_PASSWORD` published via Convex `clientConfig.getClientConfig` query | `read ados/+/#` |
+| GCS browser session | `gcs-op-<random>` | minted per operator by Convex `cmdMqttControlGrants.mint`, returned in plaintext once and held in the tab's memory | `readwrite ados/<device_id>/#` for each drone that operator owns |
+| Legacy shared viewer | `gcs-viewer` | `MQTT_VIEWER_PASSWORD` env var on the broker host | `read ados/#` |
+
+No browser reads `gcs-viewer` any more. It granted every operator read access to
+every topic of every drone in the fleet and could not publish at all, so no
+browser session could command over the relay; per-operator write grants replaced
+it on both counts. The principal is still generated so a broker mid-rollout keeps
+serving a Mission Control build that predates the grant path; retiring it means
+removing it from `regenerate-passwd.sh`, which currently refuses to run without
+`MQTT_VIEWER_PASSWORD`.
 
 The ACL is generated alongside the passwd file from the device list in
 Convex; both files are atomic-swapped into place on every regen.
@@ -61,18 +70,18 @@ it** — see `.gitignore` in this directory.
    `MQTT_AUTH_RELAY_SECRET` BOTH on the Convex deployment AND in
    `/opt/relay/.env` on the broker host. This gates the
    `/admin/mqtt-auth-entries` httpAction that the regen script reads.
-3. Pick a strong viewer password (`openssl rand -base64 24`). Set it as
-   `MQTT_VIEWER_PASSWORD` on the Convex deployment AND in `/opt/relay/.env`
-   on the broker host. The Convex `clientConfig.getClientConfig` query
-   publishes it to every browser session; the broker's ACL gives this
-   user read-only access on `ados/+/#`.
+3. Pick a strong viewer password (`openssl rand -base64 24`) and set
+   `MQTT_VIEWER_PASSWORD` in `/opt/relay/.env` on the broker host. Nothing
+   publishes it to a browser: it exists only for Mission Control builds that
+   predate per-operator grants. `regenerate-passwd.sh` still aborts without it,
+   so it is required until that principal is retired from the script.
 4. Deploy the Convex functions (`npx convex deploy`) so the
-   `clientConfig`, `cmdPairing.listMqttAuthEntries`, and
+   `clientConfig`, `cmdMqttControlGrants`, `cmdPairing.listMqttAuthEntries`, and
    `/admin/mqtt-auth-entries` paths are live.
-5. Make sure Mission Control's MqttBridge has been rebuilt with the
-   viewer-auth path landed (this monorepo's `src/components/command/MqttBridge.tsx`
-   + `CommandFleetMqttBridge.tsx` consume `clientConfig.mqttViewerPassword`).
-   Coolify auto-rebuilds on push to `main`.
+5. Make sure Mission Control has been rebuilt with the grant path landed (this
+   monorepo's `src/stores/mqtt-control-grant-store.ts` mints the credential and
+   injects it into `src/lib/mqtt-broker-credential.ts`, which every MQTT client
+   reads at connect time). Coolify auto-rebuilds on push to `main`.
 6. Copy `mosquitto.conf`, `acl.conf` (will be auto-generated; see below),
    `regenerate-passwd.sh`, `activate-auth.sh`, and `deactivate-auth.sh`
    from this directory to the broker host's `/opt/relay/`.

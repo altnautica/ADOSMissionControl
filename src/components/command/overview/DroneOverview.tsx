@@ -52,6 +52,7 @@ import { effectiveNodeProfile } from "@/components/dashboard/node-detail/node-br
 import { useReachedViaName } from "@/lib/nodes/reach-provenance";
 import { useMqttControlAuthority } from "@/hooks/use-mqtt-control-authority";
 import { useControlAuthorityNotice } from "@/hooks/use-node-control-authority";
+import { requestGrant } from "@/stores/mqtt-control-grant-store";
 
 /** The unified drone Overview. Receives the surface `ctx`. */
 export function DroneOverview({ ctx }: { ctx: SurfaceContext }) {
@@ -197,18 +198,16 @@ function CompanionBand({ droneId }: { droneId: string }) {
 /** Inline recognition affordance shown on an FC-only node — the FC console is
  * complete without a companion, this just explains the upgrade path. */
 function AddCompanionCta() {
+  const t = useTranslations("nodeConsole");
   const openDialog = usePairDialogStore((s) => s.openDialog);
   return (
     <div className="flex h-full flex-col justify-between rounded-lg border border-dashed border-border-default bg-bg-secondary p-4">
       <div>
-        {/* i18n */}
         <h3 className="text-sm font-semibold text-text-primary">
-          Add a companion computer
+          {t("companionCta.title")}
         </h3>
-        {/* i18n */}
         <p className="mt-1 text-xs text-text-secondary">
-          This flight controller has no onboard computer paired. Pair one to add
-          video, vision, world model, and extensions.
+          {t("companionCta.body")}
         </p>
       </div>
       <button
@@ -216,14 +215,16 @@ function AddCompanionCta() {
         onClick={() => openDialog("add")}
         className="mt-3 self-start rounded-md border border-border-default bg-bg-tertiary px-3 py-1.5 text-xs font-medium text-text-primary transition-colors hover:border-accent-primary hover:text-accent-primary"
       >
-        {/* i18n */}
-        Pair a computer
+        {t("companionCta.action")}
       </button>
     </div>
   );
 }
 
-/** Params snapshot — cached-param count + a jump to the Parameters tab. */
+/**
+ * Params snapshot — cached-param count, plus the one operator-actionable
+ * authority affordance on this surface.
+ */
 function ParamsSnapshotTile({ isConnected }: { isConnected: boolean }) {
   const t = useTranslations("nodeConsole");
   // A parameter WRITE is an FC frame, so this tile's jump-off leads somewhere
@@ -231,10 +232,19 @@ function ParamsSnapshotTile({ isConnected }: { isConnected: boolean }) {
   // `isConnected` alone is the same mistake the Flight Data link dot was fixed
   // for: the transport is open and the writes go nowhere. The cached count
   // itself is a read and stays exactly as accurate as before.
-  const authority = useControlAuthorityNotice(useMqttControlAuthority());
+  const authority = useMqttControlAuthority();
+  const notice = useControlAuthorityNotice(authority);
   const getProtocol = useDroneManager((s) => s.getSelectedProtocol);
   const setPendingDetailTab = useUiStore((s) => s.setPendingDetailTab);
   const [count, setCount] = useState<number | null>(null);
+
+  // The three states a mint fixes: none held, one lapsed, one lapsing with a
+  // failed renewal. `provisioning` is deliberately absent — a mint is already in
+  // flight and a second click would only queue a redundant one.
+  const canRequestControl =
+    authority.reason === "no-grant" ||
+    authority.reason === "grant-expired" ||
+    authority.reason === "grant-expiring";
 
   useEffect(() => {
     const read = () => {
@@ -256,17 +266,30 @@ function ParamsSnapshotTile({ isConnected }: { isConnected: boolean }) {
   return (
     <button
       type="button"
-      onClick={() => setPendingDetailTab("parameters")}
+      // Sending the operator to a tab whose every write is refused is worse than
+      // useless, so while control is the missing piece this button obtains it
+      // instead of navigating.
+      onClick={() => {
+        if (canRequestControl) {
+          void requestGrant();
+          return;
+        }
+        setPendingDetailTab("parameters");
+      }}
       className="h-full w-full text-left transition-transform hover:-translate-y-px"
     >
       <StatTile
         icon={<Sliders className="h-3 w-3" />}
         label={t("params.label")}
         value={value}
-        level={
-          !isConnected ? "offline" : authority.show ? authority.level : "good"
+        level={!isConnected ? "offline" : notice.show ? notice.level : "good"}
+        hint={
+          canRequestControl
+            ? t("authority.requestControl")
+            : notice.show
+              ? notice.detail
+              : t("params.openHint")
         }
-        hint={authority.show ? authority.detail : t("params.openHint")}
       />
     </button>
   );

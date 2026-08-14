@@ -30,6 +30,23 @@ export async function requireOwnedDroneByDeviceId(
   return drone;
 }
 
+/**
+ * A stored user identifier belongs to the authenticated caller.
+ *
+ * Two forms exist in these tables. Rows written now hold the bare id
+ * `getAuthUserId` returns. Rows written before the userId migration hold the
+ * compound `"<userId>|<sessionId>"` subject, which is the same principal
+ * written differently. `profiles` already resolves both through an indexed
+ * prefix range; command rows are fetched by id, so the same equivalence is
+ * expressed directly here.
+ *
+ * Comparing only the bare form would lock every pre-migration row away from
+ * its own owner, which reads as a permission error on a row they created.
+ */
+function isCallersId(stored: string, userId: string): boolean {
+  return stored === userId || stored.startsWith(`${userId}|`);
+}
+
 export async function requireOwnedCommand(
   ctx: AuthCtx,
   commandId: Id<"cmd_droneCommands">,
@@ -38,7 +55,7 @@ export async function requireOwnedCommand(
   if (!userId) throw new Error("Not authenticated");
 
   const command = await ctx.db.get(commandId);
-  if (!command || command.userId !== userId) {
+  if (!command || !isCallersId(command.userId, userId)) {
     throw new Error("Not found");
   }
 

@@ -63,7 +63,8 @@
       "receiveOnlyShort": "仅接收",
       "provisioningShort": "正在获取权限",
       "expiring": "指令权限即将到期且续期失败。请立即发送需要的指令。",
-      "expiringShort": "权限即将到期"
+      "expiringShort": "权限即将到期",
+      "requestControl": "请求指令权限"
     },
     "statusText": {
       "title": "状态消息",
@@ -90,6 +91,75 @@
     },
     "groups": {
       "compute": "Compute"
+    },
+    "signals": {
+      "link": "链路",
+      "battery": "电池",
+      "gps": "GPS",
+      "arm": "解锁",
+      "prearm": "解锁前检查",
+      "rc": "遥控",
+      "rx": "接收",
+      "uplink": "上行链路",
+      "mesh": "网状网络",
+      "mqtt": "云中继",
+      "gpu": "GPU",
+      "jobs": "任务",
+      "cluster": "集群",
+      "thermal": "热成像",
+      "cpu": "CPU",
+      "temp": "温度",
+      "services": "服务",
+      "alerts": "告警"
+    },
+    "signalState": {
+      "good": "正常",
+      "warning": "警告",
+      "serious": "降级",
+      "critical": "严重",
+      "idle": "空闲",
+      "offline": "离线",
+      "unknown": "无读数"
+    },
+    "signalTooltip": "{signal}：{state}",
+    "signalDots": "节点信号",
+    "contextMenu": {
+      "menuLabel": "{node} 的操作",
+      "copyFailed": "复制失败",
+      "rename": "重命名",
+      "setInitials": "设置缩写",
+      "customBadge": "自定义徽标",
+      "addToGroup": "添加到分组",
+      "setTileColour": "设置卡片颜色",
+      "tileColours": "卡片颜色",
+      "defaultColour": "默认",
+      "configureDots": "配置圆点",
+      "pin": "置顶",
+      "unpin": "取消置顶",
+      "open": "打开",
+      "openInCockpit": "在座舱中打开",
+      "copyNodeId": "复制节点 ID",
+      "nodeIdCopied": "已复制节点 ID",
+      "copyHost": "复制主机",
+      "hostCopied": "已复制主机",
+      "muteAlerts": "静音告警",
+      "unmuteAlerts": "取消静音告警",
+      "resetPersonalization": "重置个性化设置",
+      "personalizationReset": "个性化设置已重置",
+      "forget": "移除",
+      "forgetTitle": "移除节点",
+      "forgetMessage": "移除 {node}？这将解除配对并清除其个性化设置。"
+    },
+    "dotEditor": {
+      "title": "配置圆点",
+      "none": "无",
+      "hint": "最多可将 {max} 个已验证信号固定为此节点上的圆点。没有读数的信号显示为空心环，绝不显示虚假状态。",
+      "slot": "圆点 {index}"
+    },
+    "companionCta": {
+      "title": "添加机载计算机",
+      "body": "此飞控尚未配对机载计算机。配对一台即可添加视频、视觉、世界模型和扩展功能。",
+      "action": "配对计算机"
     }
   },
   "nav": {
@@ -1309,7 +1379,12 @@
     "sectionExecution": "Execution",
     "sectionHealth": "Feed health",
     "sectionInputs": "Inputs & pipelines",
-    "sectionModels": "Models"
+    "sectionModels": "Models",
+    "targetActions": {
+      "dismiss": "关闭",
+      "none": "该目标没有可用操作",
+      "pluginBadge": "插件"
+    }
   },
   "nodeSettings": {
     "subtitle": "Configure this node's onboard computer. Changes write straight to the agent over the LAN.",
@@ -2208,7 +2283,8 @@
     "chip": "Chip",
     "cores": "Cores",
     "gpu": "GPU",
-    "gpuHistory": "GPU History (5m)"
+    "gpuHistory": "GPU History (5m)",
+    "groundStationFallbackTitle": "地面站"
   },
   "fleetNetwork": {
     "title": "机队网络",
@@ -4865,7 +4941,8 @@
       "all": "All",
       "live": "Live",
       "video": "Video",
-      "offline": "Stale/offline"
+      "offline": "Stale/offline",
+      "workstation": "工作站"
     },
     "feedBudget": "{active}/{max} feeds active",
     "noAgentsTitle": "No paired agents",
@@ -4909,7 +4986,14 @@
     "rssi": "RSSI",
     "snr": "SNR",
     "loss": "Loss",
-    "link": "Link"
+    "link": "Link",
+    "arm": "解锁",
+    "heartbeat": "心跳",
+    "uplink": "上行链路",
+    "mesh": "网状网络",
+    "disk": "磁盘",
+    "gpuNodes": "GPU 节点",
+    "jobs": "任务"
   },
   "flashTool": {
     "ados": {
@@ -5872,7 +5956,8 @@
       "receiveOnly": "RECEIVE ONLY",
       "provisioning": "AUTHORISING",
       "expiring": "ENDING SOON"
-    }
+    },
+    "openFlight": "打开飞行"
   },
   "skills": {
     "arm": {

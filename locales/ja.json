@@ -63,7 +63,8 @@
       "receiveOnlyShort": "受信のみ",
       "provisioningShort": "権限を取得中",
       "expiring": "コマンド権限の期限が近づいており、更新に失敗しました。必要な操作は今のうちに送信してください。",
-      "expiringShort": "権限の期限切れ間近"
+      "expiringShort": "権限の期限切れ間近",
+      "requestControl": "コマンド権限を要求"
     },
     "statusText": {
       "title": "ステータスメッセージ",
@@ -90,6 +91,75 @@
     },
     "groups": {
       "compute": "Compute"
+    },
+    "signals": {
+      "link": "リンク",
+      "battery": "バッテリー",
+      "gps": "GPS",
+      "arm": "アーム",
+      "prearm": "プリアーム",
+      "rc": "RC",
+      "rx": "受信",
+      "uplink": "アップリンク",
+      "mesh": "メッシュ",
+      "mqtt": "クラウド中継",
+      "gpu": "GPU",
+      "jobs": "ジョブ",
+      "cluster": "クラスター",
+      "thermal": "サーマル",
+      "cpu": "CPU",
+      "temp": "温度",
+      "services": "サービス",
+      "alerts": "アラート"
+    },
+    "signalState": {
+      "good": "正常",
+      "warning": "警告",
+      "serious": "性能低下",
+      "critical": "重大",
+      "idle": "待機",
+      "offline": "オフライン",
+      "unknown": "測定値なし"
+    },
+    "signalTooltip": "{signal}: {state}",
+    "signalDots": "ノード信号",
+    "contextMenu": {
+      "menuLabel": "{node} の操作",
+      "copyFailed": "コピーできませんでした",
+      "rename": "名前を変更",
+      "setInitials": "イニシャルを設定",
+      "customBadge": "カスタムバッジ",
+      "addToGroup": "グループに追加",
+      "setTileColour": "タイルの色を設定",
+      "tileColours": "タイルの色",
+      "defaultColour": "既定",
+      "configureDots": "ドットを設定",
+      "pin": "ピン留め",
+      "unpin": "ピン留めを解除",
+      "open": "開く",
+      "openInCockpit": "コックピットで開く",
+      "copyNodeId": "ノード ID をコピー",
+      "nodeIdCopied": "ノード ID をコピーしました",
+      "copyHost": "ホストをコピー",
+      "hostCopied": "ホストをコピーしました",
+      "muteAlerts": "アラートをミュート",
+      "unmuteAlerts": "アラートのミュートを解除",
+      "resetPersonalization": "個人設定をリセット",
+      "personalizationReset": "個人設定をリセットしました",
+      "forget": "削除",
+      "forgetTitle": "ノードを削除",
+      "forgetMessage": "{node} を削除しますか？ペアリングを解除し、個人設定を消去します。"
+    },
+    "dotEditor": {
+      "title": "ドットを設定",
+      "none": "なし",
+      "hint": "検証済みの信号を最大 {max} 件までこのノードのドットとしてピン留めできます。測定値のない信号は中空のリングで表示し、偽の状態は表示しません。",
+      "slot": "ドット {index}"
+    },
+    "companionCta": {
+      "title": "コンパニオンコンピューターを追加",
+      "body": "このフライトコントローラーにはオンボードコンピューターがペアリングされていません。ペアリングすると、映像、ビジョン、ワールドモデル、拡張機能を追加できます。",
+      "action": "コンピューターをペアリング"
     }
   },
   "nav": {
@@ -1309,7 +1379,12 @@
     "sectionExecution": "Execution",
     "sectionHealth": "Feed health",
     "sectionInputs": "Inputs & pipelines",
-    "sectionModels": "Models"
+    "sectionModels": "Models",
+    "targetActions": {
+      "dismiss": "閉じる",
+      "none": "この目標に利用できる操作はありません",
+      "pluginBadge": "プラグイン"
+    }
   },
   "nodeSettings": {
     "subtitle": "Configure this node's onboard computer. Changes write straight to the agent over the LAN.",
@@ -2208,7 +2283,8 @@
     "chip": "Chip",
     "cores": "Cores",
     "gpu": "GPU",
-    "gpuHistory": "GPU History (5m)"
+    "gpuHistory": "GPU History (5m)",
+    "groundStationFallbackTitle": "地上局"
   },
   "fleetNetwork": {
     "title": "フリートネットワーク",
@@ -4865,7 +4941,8 @@
       "all": "All",
       "live": "Live",
       "video": "Video",
-      "offline": "Stale/offline"
+      "offline": "Stale/offline",
+      "workstation": "ワークステーション"
     },
     "feedBudget": "{active}/{max} feeds active",
     "noAgentsTitle": "No paired agents",
@@ -4909,7 +4986,14 @@
     "rssi": "RSSI",
     "snr": "SNR",
     "loss": "Loss",
-    "link": "Link"
+    "link": "Link",
+    "arm": "アーム",
+    "heartbeat": "ハートビート",
+    "uplink": "アップリンク",
+    "mesh": "メッシュ",
+    "disk": "ディスク",
+    "gpuNodes": "GPU ノード",
+    "jobs": "ジョブ"
   },
   "flashTool": {
     "ados": {
@@ -5872,7 +5956,8 @@
       "receiveOnly": "RECEIVE ONLY",
       "provisioning": "AUTHORISING",
       "expiring": "ENDING SOON"
-    }
+    },
+    "openFlight": "フライトを開く"
   },
   "skills": {
     "arm": {

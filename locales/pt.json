@@ -63,7 +63,8 @@
       "receiveOnlyShort": "Somente recepção",
       "provisioningShort": "Obtendo autoridade",
       "expiring": "A autoridade de comando está expirando e a renovação falhou. Envie agora o que precisar.",
-      "expiringShort": "Autoridade expirando"
+      "expiringShort": "Autoridade expirando",
+      "requestControl": "Solicitar autoridade de comando"
     },
     "statusText": {
       "title": "Mensagens de status",
@@ -90,6 +91,75 @@
     },
     "groups": {
       "compute": "Compute"
+    },
+    "signals": {
+      "link": "Enlace",
+      "battery": "Bateria",
+      "gps": "GPS",
+      "arm": "Armamento",
+      "prearm": "Pré-armamento",
+      "rc": "RC",
+      "rx": "Recepção",
+      "uplink": "Enlace de subida",
+      "mesh": "Malha",
+      "mqtt": "Relé na nuvem",
+      "gpu": "GPU",
+      "jobs": "Trabalhos",
+      "cluster": "Cluster",
+      "thermal": "Térmica",
+      "cpu": "CPU",
+      "temp": "Temperatura",
+      "services": "Serviços",
+      "alerts": "Alertas"
+    },
+    "signalState": {
+      "good": "em ordem",
+      "warning": "aviso",
+      "serious": "degradado",
+      "critical": "crítico",
+      "idle": "inativo",
+      "offline": "offline",
+      "unknown": "sem leitura"
+    },
+    "signalTooltip": "{signal}: {state}",
+    "signalDots": "Sinais do nó",
+    "contextMenu": {
+      "menuLabel": "Ações para {node}",
+      "copyFailed": "Falha ao copiar",
+      "rename": "Renomear",
+      "setInitials": "Definir iniciais",
+      "customBadge": "Selo personalizado",
+      "addToGroup": "Adicionar ao grupo",
+      "setTileColour": "Definir cor do bloco",
+      "tileColours": "Cores do bloco",
+      "defaultColour": "Padrão",
+      "configureDots": "Configurar pontos",
+      "pin": "Fixar",
+      "unpin": "Desafixar",
+      "open": "Abrir",
+      "openInCockpit": "Abrir na cabine",
+      "copyNodeId": "Copiar ID do nó",
+      "nodeIdCopied": "ID do nó copiado",
+      "copyHost": "Copiar host",
+      "hostCopied": "Host copiado",
+      "muteAlerts": "Silenciar alertas",
+      "unmuteAlerts": "Reativar alertas",
+      "resetPersonalization": "Redefinir personalização",
+      "personalizationReset": "Personalização redefinida",
+      "forget": "Esquecer",
+      "forgetTitle": "Esquecer nó",
+      "forgetMessage": "Esquecer {node}? Isso remove o emparelhamento e apaga a personalização."
+    },
+    "dotEditor": {
+      "title": "Configurar pontos",
+      "none": "Nenhum",
+      "hint": "Fixe até {max} sinais verificados como pontos neste nó. Um sinal sem leitura mostra um anel vazado, nunca um estado falso.",
+      "slot": "Ponto {index}"
+    },
+    "companionCta": {
+      "title": "Adicionar um computador companheiro",
+      "body": "Este controlador de voo não tem computador de bordo emparelhado. Emparelhe um para acrescentar vídeo, visão, modelo do mundo e extensões.",
+      "action": "Emparelhar um computador"
     }
   },
   "nav": {
@@ -1309,7 +1379,12 @@
     "sectionExecution": "Execution",
     "sectionHealth": "Feed health",
     "sectionInputs": "Inputs & pipelines",
-    "sectionModels": "Models"
+    "sectionModels": "Models",
+    "targetActions": {
+      "dismiss": "Dispensar",
+      "none": "Nenhuma ação para este alvo",
+      "pluginBadge": "extensão"
+    }
   },
   "nodeSettings": {
     "subtitle": "Configure this node's onboard computer. Changes write straight to the agent over the LAN.",
@@ -2208,7 +2283,8 @@
     "chip": "Chip",
     "cores": "Cores",
     "gpu": "GPU",
-    "gpuHistory": "GPU History (5m)"
+    "gpuHistory": "GPU History (5m)",
+    "groundStationFallbackTitle": "Estação terrestre"
   },
   "fleetNetwork": {
     "title": "Rede da Frota",
@@ -4865,7 +4941,8 @@
       "all": "All",
       "live": "Live",
       "video": "Video",
-      "offline": "Stale/offline"
+      "offline": "Stale/offline",
+      "workstation": "Estação de trabalho"
     },
     "feedBudget": "{active}/{max} feeds active",
     "noAgentsTitle": "No paired agents",
@@ -4909,7 +4986,14 @@
     "rssi": "RSSI",
     "snr": "SNR",
     "loss": "Loss",
-    "link": "Link"
+    "link": "Link",
+    "arm": "Armamento",
+    "heartbeat": "Pulsação",
+    "uplink": "Enlace de subida",
+    "mesh": "Malha",
+    "disk": "Disco",
+    "gpuNodes": "Nós GPU",
+    "jobs": "Trabalhos"
   },
   "flashTool": {
     "ados": {
@@ -5872,7 +5956,8 @@
       "receiveOnly": "RECEIVE ONLY",
       "provisioning": "AUTHORISING",
       "expiring": "ENDING SOON"
-    }
+    },
+    "openFlight": "Abrir voo"
   },
   "skills": {
     "arm": {

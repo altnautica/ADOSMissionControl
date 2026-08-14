@@ -63,7 +63,8 @@
       "receiveOnlyShort": "பெறுதல் மட்டும்",
       "provisioningShort": "அதிகாரம் பெறப்படுகிறது",
       "expiring": "கட்டளை அதிகாரம் முடிவடைகிறது, புதுப்பிப்பும் தோல்வியடைந்தது. தேவையானதை இப்போதே அனுப்புங்கள்.",
-      "expiringShort": "அதிகாரம் முடிவடைகிறது"
+      "expiringShort": "அதிகாரம் முடிவடைகிறது",
+      "requestControl": "கட்டளை அதிகாரத்தை கோரவும்"
     },
     "statusText": {
       "title": "நிலை செய்திகள்",
@@ -90,6 +91,75 @@
     },
     "groups": {
       "compute": "Compute"
+    },
+    "signals": {
+      "link": "இணைப்பு",
+      "battery": "பேட்டரி",
+      "gps": "GPS",
+      "arm": "ஆர்மிங்",
+      "prearm": "முன்-ஆர்ம்",
+      "rc": "RC",
+      "rx": "பெறுதல்",
+      "uplink": "அப்லிங்க்",
+      "mesh": "மெஷ்",
+      "mqtt": "கிளவுட் ரிலே",
+      "gpu": "GPU",
+      "jobs": "பணிகள்",
+      "cluster": "கிளஸ்டர்",
+      "thermal": "தெர்மல்",
+      "cpu": "CPU",
+      "temp": "வெப்பநிலை",
+      "services": "சேவைகள்",
+      "alerts": "எச்சரிக்கைகள்"
+    },
+    "signalState": {
+      "good": "நலம்",
+      "warning": "எச்சரிக்கை",
+      "serious": "தரம் குறைந்தது",
+      "critical": "ஆபத்தானது",
+      "idle": "செயலற்றது",
+      "offline": "ஆஃப்லைன்",
+      "unknown": "அளவீடு இல்லை"
+    },
+    "signalTooltip": "{signal}: {state}",
+    "signalDots": "நோட் சிக்னல்கள்",
+    "contextMenu": {
+      "menuLabel": "{node} க்கான செயல்கள்",
+      "copyFailed": "நகலெடுக்க முடியவில்லை",
+      "rename": "பெயர் மாற்று",
+      "setInitials": "முதலெழுத்துகளை அமை",
+      "customBadge": "தனிப்பயன் பேட்ஜ்",
+      "addToGroup": "குழுவில் சேர்",
+      "setTileColour": "டைல் நிறத்தை அமை",
+      "tileColours": "டைல் நிறங்கள்",
+      "defaultColour": "இயல்புநிலை",
+      "configureDots": "புள்ளிகளை அமை",
+      "pin": "பின் செய்",
+      "unpin": "பின் நீக்கு",
+      "open": "திற",
+      "openInCockpit": "காக்பிட்டில் திற",
+      "copyNodeId": "நோட் ID நகலெடு",
+      "nodeIdCopied": "நோட் ID நகலெடுக்கப்பட்டது",
+      "copyHost": "ஹோஸ்ட்டை நகலெடு",
+      "hostCopied": "ஹோஸ்ட் நகலெடுக்கப்பட்டது",
+      "muteAlerts": "எச்சரிக்கைகளை முடக்கு",
+      "unmuteAlerts": "எச்சரிக்கைகளை இயக்கு",
+      "resetPersonalization": "தனிப்பயனாக்கத்தை மீட்டமை",
+      "personalizationReset": "தனிப்பயனாக்கம் மீட்டமைக்கப்பட்டது",
+      "forget": "நீக்கு",
+      "forgetTitle": "நோட்டை நீக்கு",
+      "forgetMessage": "{node} நீக்கவா? இது இணைப்பை நீக்கி அதன் தனிப்பயனாக்கத்தை அழிக்கும்."
+    },
+    "dotEditor": {
+      "title": "புள்ளிகளை அமை",
+      "none": "எதுவுமில்லை",
+      "hint": "இந்த நோட்டில் அதிகபட்சம் {max} சரிபார்க்கப்பட்ட சிக்னல்களை புள்ளிகளாக பின் செய்யுங்கள். அளவீடு இல்லாத சிக்னல் வெற்று வளையமாக காட்டப்படும், போலி நிலை ஒருபோதும் காட்டப்படாது.",
+      "slot": "புள்ளி {index}"
+    },
+    "companionCta": {
+      "title": "கம்பேனியன் கணினியைச் சேர்",
+      "body": "இந்த ஃபிளைட் கண்ட்ரோலருடன் எந்த ஆன்போர்டு கணினியும் இணைக்கப்படவில்லை. வீடியோ, விஷன், வேர்ல்ட் மாடல் மற்றும் நீட்டிப்புகளைச் சேர்க்க ஒன்றை இணைக்கவும்.",
+      "action": "கணினியை இணை"
     }
   },
   "nav": {
@@ -1309,7 +1379,12 @@
     "sectionExecution": "Execution",
     "sectionHealth": "Feed health",
     "sectionInputs": "Inputs & pipelines",
-    "sectionModels": "Models"
+    "sectionModels": "Models",
+    "targetActions": {
+      "dismiss": "மூடு",
+      "none": "இந்த இலக்குக்கு செயல்கள் இல்லை",
+      "pluginBadge": "பிளக்-இன்"
+    }
   },
   "nodeSettings": {
     "subtitle": "Configure this node's onboard computer. Changes write straight to the agent over the LAN.",
@@ -2208,7 +2283,8 @@
     "chip": "Chip",
     "cores": "Cores",
     "gpu": "GPU",
-    "gpuHistory": "GPU History (5m)"
+    "gpuHistory": "GPU History (5m)",
+    "groundStationFallbackTitle": "தரை நிலையம்"
   },
   "fleetNetwork": {
     "title": "ஃப்ளீட் நெட்வொர்க்",
@@ -4865,7 +4941,8 @@
       "all": "All",
       "live": "Live",
       "video": "Video",
-      "offline": "Stale/offline"
+      "offline": "Stale/offline",
+      "workstation": "வொர்க்ஸ்டேஷன்"
     },
     "feedBudget": "{active}/{max} feeds active",
     "noAgentsTitle": "No paired agents",
@@ -4909,7 +4986,14 @@
     "rssi": "RSSI",
     "snr": "SNR",
     "loss": "Loss",
-    "link": "Link"
+    "link": "Link",
+    "arm": "ஆர்ம்",
+    "heartbeat": "ஹார்ட்பீட்",
+    "uplink": "அப்லிங்க்",
+    "mesh": "மெஷ்",
+    "disk": "வட்டு",
+    "gpuNodes": "GPU நோடுகள்",
+    "jobs": "பணிகள்"
   },
   "flashTool": {
     "ados": {
@@ -5872,7 +5956,8 @@
       "receiveOnly": "RECEIVE ONLY",
       "provisioning": "AUTHORISING",
       "expiring": "ENDING SOON"
-    }
+    },
+    "openFlight": "பயணத்தைத் திற"
   },
   "skills": {
     "arm": {

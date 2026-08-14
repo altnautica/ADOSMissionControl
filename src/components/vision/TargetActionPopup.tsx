@@ -12,6 +12,7 @@
  */
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 
 import { useToast } from "@/components/ui/toast";
 import {
@@ -28,6 +29,7 @@ export function TargetActionPopup({
   onClose: () => void;
 }) {
   const { toast } = useToast();
+  const t = useTranslations("vision");
   const [busy, setBusy] = useState<string | null>(null);
   const actions = resolveTargetActions(target);
 
@@ -63,7 +65,7 @@ export function TargetActionPopup({
         <button
           type="button"
           onClick={onClose}
-          aria-label="Dismiss" /* i18n */
+          aria-label={t("targetActions.dismiss")}
           className="text-text-tertiary hover:text-text-primary"
         >
           ×
@@ -71,8 +73,7 @@ export function TargetActionPopup({
       </div>
       {actions.length === 0 ? (
         <div className="px-2.5 py-2 text-[11px] text-text-tertiary">
-          {/* i18n */}
-          No actions for this target
+          {t("targetActions.none")}
         </div>
       ) : (
         <div className="p-1">
@@ -90,8 +91,7 @@ export function TargetActionPopup({
               <span className="flex-1 truncate">{a.label}</span>
               {a.source === "plugin" ? (
                 <span className="rounded bg-bg-tertiary px-1 text-[9px] uppercase tracking-wide text-text-tertiary">
-                  {/* i18n */}
-                  plugin
+                  {t("targetActions.pluginBadge")}
                 </span>
               ) : null}
               {a.defaultKey ? (

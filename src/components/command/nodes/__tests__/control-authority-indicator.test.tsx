@@ -45,6 +45,7 @@ import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
 import { useDroneManager, type ManagedDrone } from "@/stores/drone-manager";
 import { useCommandFleetStore } from "@/stores/command-fleet-store";
 import { useNodePersonalizationStore } from "@/stores/node-personalization-store";
+import { useMqttControlGrantStore } from "@/stores/mqtt-control-grant-store";
 
 const NODE_ID = "node:drone-a";
 
@@ -73,6 +74,24 @@ function seedTransport(transport: { type: string; canCommand: boolean }) {
   useDroneManager.setState({ drones: new Map([[NODE_ID, managed]]) });
 }
 
+/**
+ * Hold a live write grant covering this node. The badge answers from two facts
+ * ANDed together — the grant this browser minted, and the transport's own report
+ * that the session it dialled is carrying it — so a test that wants silence has
+ * to supply both.
+ */
+function seedGrant(over: { deviceIds?: string[]; writeConfirmed?: boolean } = {}) {
+  useMqttControlGrantStore.setState({
+    principal: "gcs-op-test",
+    grant: {
+      deviceIds: over.deviceIds ?? ["drone-a"],
+      expiresAt: Date.now() + 60 * 60 * 1000,
+      writeConfirmed: over.writeConfirmed ?? true,
+      renewalFailed: false,
+    },
+  });
+}
+
 function renderRow(node: FleetNodeEntry) {
   return render(
     <NextIntlClientProvider locale="en" messages={messages}>
@@ -97,6 +116,12 @@ afterEach(() => {
   useDroneManager.setState({ drones: new Map(), selectedDroneId: null });
   useCommandFleetStore.getState().clear();
   useNodePersonalizationStore.setState({ byNode: {} });
+  useMqttControlGrantStore.setState({
+    grant: null,
+    principal: null,
+    minting: false,
+    lastError: null,
+  });
 });
 
 describe("NodeRow — command-authority indicator", () => {
@@ -117,10 +142,28 @@ describe("NodeRow — command-authority indicator", () => {
     expect(nodeStatusLevel(node)).toBe("good");
   });
 
-  it("stays silent when the relay transport CAN publish", () => {
+  it("stays silent when the relay transport CAN publish under a held grant", () => {
+    seedGrant();
     seedTransport({ type: "mqtt-mavlink", canCommand: true });
     renderRow(liveDrone());
     expect(screen.queryByText("Receive only")).toBeNull();
+  });
+
+  it("badges a relay transport claiming publish after the grant is gone", () => {
+    // Revoked, or lapsed and swept: the socket is still open and still claims it
+    // may publish, and the broker will now refuse every frame. The transport's
+    // claim alone must not carry the badge, or the row would report authority
+    // that no longer exists.
+    seedTransport({ type: "mqtt-mavlink", canCommand: true });
+    renderRow(liveDrone());
+    expect(screen.getByText("Receive only")).toBeTruthy();
+  });
+
+  it("badges a relay transport whose grant covers a different drone", () => {
+    seedGrant({ deviceIds: ["drone-b"] });
+    seedTransport({ type: "mqtt-mavlink", canCommand: true });
+    renderRow(liveDrone());
+    expect(screen.getByText("Receive only")).toBeTruthy();
   });
 
   it("stays silent on a direct transport", () => {

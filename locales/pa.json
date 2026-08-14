@@ -63,7 +63,8 @@
       "receiveOnlyShort": "ਸਿਰਫ਼ ਪ੍ਰਾਪਤੀ",
       "provisioningShort": "ਅਧਿਕਾਰ ਲਿਆ ਜਾ ਰਿਹਾ ਹੈ",
       "expiring": "ਕਮਾਂਡ ਅਧਿਕਾਰ ਖਤਮ ਹੋ ਰਿਹਾ ਹੈ ਅਤੇ ਨਵੀਨੀਕਰਨ ਅਸਫਲ ਰਿਹਾ। ਜੋ ਲੋੜੀਂਦਾ ਹੈ ਹੁਣੇ ਭੇਜੋ।",
-      "expiringShort": "ਅਧਿਕਾਰ ਖਤਮ ਹੋ ਰਿਹਾ ਹੈ"
+      "expiringShort": "ਅਧਿਕਾਰ ਖਤਮ ਹੋ ਰਿਹਾ ਹੈ",
+      "requestControl": "ਕਮਾਂਡ ਅਧਿਕਾਰ ਦੀ ਮੰਗ ਕਰੋ"
     },
     "statusText": {
       "title": "ਸਥਿਤੀ ਸੁਨੇਹੇ",
@@ -90,6 +91,75 @@
     },
     "groups": {
       "compute": "Compute"
+    },
+    "signals": {
+      "link": "ਲਿੰਕ",
+      "battery": "ਬੈਟਰੀ",
+      "gps": "GPS",
+      "arm": "ਆਰਮਿੰਗ",
+      "prearm": "ਪ੍ਰੀ-ਆਰਮ",
+      "rc": "RC",
+      "rx": "ਪ੍ਰਾਪਤੀ",
+      "uplink": "ਅੱਪਲਿੰਕ",
+      "mesh": "ਮੈਸ਼",
+      "mqtt": "ਕਲਾਉਡ ਰੀਲੇਅ",
+      "gpu": "GPU",
+      "jobs": "ਜੌਬਸ",
+      "cluster": "ਕਲੱਸਟਰ",
+      "thermal": "ਥਰਮਲ",
+      "cpu": "CPU",
+      "temp": "ਤਾਪਮਾਨ",
+      "services": "ਸੇਵਾਵਾਂ",
+      "alerts": "ਚਿਤਾਵਨੀਆਂ"
+    },
+    "signalState": {
+      "good": "ਠੀਕ",
+      "warning": "ਚਿਤਾਵਨੀ",
+      "serious": "ਘਟੀ ਹਾਲਤ",
+      "critical": "ਗੰਭੀਰ",
+      "idle": "ਵਿਹਲਾ",
+      "offline": "ਆਫ਼ਲਾਈਨ",
+      "unknown": "ਕੋਈ ਰੀਡਿੰਗ ਨਹੀਂ"
+    },
+    "signalTooltip": "{signal}: {state}",
+    "signalDots": "ਨੋਡ ਸਿਗਨਲ",
+    "contextMenu": {
+      "menuLabel": "{node} ਲਈ ਕਾਰਵਾਈਆਂ",
+      "copyFailed": "ਕਾਪੀ ਨਹੀਂ ਹੋਇਆ",
+      "rename": "ਨਾਂ ਬਦਲੋ",
+      "setInitials": "ਸ਼ੁਰੂਆਤੀ ਅੱਖਰ ਸੈੱਟ ਕਰੋ",
+      "customBadge": "ਆਪਣਾ ਬੈਜ",
+      "addToGroup": "ਗਰੁੱਪ ਵਿੱਚ ਸ਼ਾਮਲ ਕਰੋ",
+      "setTileColour": "ਟਾਈਲ ਰੰਗ ਸੈੱਟ ਕਰੋ",
+      "tileColours": "ਟਾਈਲ ਰੰਗ",
+      "defaultColour": "ਮੂਲ",
+      "configureDots": "ਬਿੰਦੂ ਸੈੱਟ ਕਰੋ",
+      "pin": "ਪਿੰਨ ਕਰੋ",
+      "unpin": "ਪਿੰਨ ਹਟਾਓ",
+      "open": "ਖੋਲ੍ਹੋ",
+      "openInCockpit": "ਕਾਕਪਿਟ ਵਿੱਚ ਖੋਲ੍ਹੋ",
+      "copyNodeId": "ਨੋਡ ID ਕਾਪੀ ਕਰੋ",
+      "nodeIdCopied": "ਨੋਡ ID ਕਾਪੀ ਹੋ ਗਿਆ",
+      "copyHost": "ਹੋਸਟ ਕਾਪੀ ਕਰੋ",
+      "hostCopied": "ਹੋਸਟ ਕਾਪੀ ਹੋ ਗਿਆ",
+      "muteAlerts": "ਚਿਤਾਵਨੀਆਂ ਬੰਦ ਕਰੋ",
+      "unmuteAlerts": "ਚਿਤਾਵਨੀਆਂ ਚਾਲੂ ਕਰੋ",
+      "resetPersonalization": "ਨਿੱਜੀਕਰਨ ਰੀਸੈੱਟ ਕਰੋ",
+      "personalizationReset": "ਨਿੱਜੀਕਰਨ ਰੀਸੈੱਟ ਹੋ ਗਿਆ",
+      "forget": "ਹਟਾਓ",
+      "forgetTitle": "ਨੋਡ ਹਟਾਓ",
+      "forgetMessage": "{node} ਹਟਾਉਣਾ ਹੈ? ਇਸ ਨਾਲ ਜੋੜੀ ਟੁੱਟ ਜਾਵੇਗੀ ਅਤੇ ਇਸ ਦਾ ਨਿੱਜੀਕਰਨ ਮਿੱਟ ਜਾਵੇਗਾ।"
+    },
+    "dotEditor": {
+      "title": "ਬਿੰਦੂ ਸੈੱਟ ਕਰੋ",
+      "none": "ਕੋਈ ਨਹੀਂ",
+      "hint": "ਇਸ ਨੋਡ ਉੱਤੇ ਵੱਧ ਤੋਂ ਵੱਧ {max} ਪਰਖੇ ਹੋਏ ਸਿਗਨਲ ਬਿੰਦੂਆਂ ਵਜੋਂ ਪਿੰਨ ਕਰੋ। ਰੀਡਿੰਗ ਤੋਂ ਬਿਨਾਂ ਸਿਗਨਲ ਖੋਖਲਾ ਛੱਲਾ ਦਿਖਾਉਂਦਾ ਹੈ, ਕਦੇ ਝੂਠੀ ਹਾਲਤ ਨਹੀਂ।",
+      "slot": "ਬਿੰਦੂ {index}"
+    },
+    "companionCta": {
+      "title": "ਕੰਪੈਨੀਅਨ ਕੰਪਿਊਟਰ ਜੋੜੋ",
+      "body": "ਇਸ ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਨਾਲ ਕੋਈ ਆਨਬੋਰਡ ਕੰਪਿਊਟਰ ਜੋੜਿਆ ਨਹੀਂ ਹੈ। ਵੀਡੀਓ, ਵਿਜ਼ਨ, ਵਰਲਡ ਮਾਡਲ ਅਤੇ ਐਕਸਟੈਂਸ਼ਨ ਜੋੜਨ ਲਈ ਇੱਕ ਜੋੜੋ।",
+      "action": "ਕੰਪਿਊਟਰ ਜੋੜੋ"
     }
   },
   "nav": {
@@ -1309,7 +1379,12 @@
     "sectionExecution": "Execution",
     "sectionHealth": "Feed health",
     "sectionInputs": "Inputs & pipelines",
-    "sectionModels": "Models"
+    "sectionModels": "Models",
+    "targetActions": {
+      "dismiss": "ਬੰਦ ਕਰੋ",
+      "none": "ਇਸ ਨਿਸ਼ਾਨੇ ਲਈ ਕੋਈ ਕਾਰਵਾਈ ਨਹੀਂ",
+      "pluginBadge": "ਪਲੱਗਇਨ"
+    }
   },
   "nodeSettings": {
     "subtitle": "Configure this node's onboard computer. Changes write straight to the agent over the LAN.",
@@ -2208,7 +2283,8 @@
     "chip": "Chip",
     "cores": "Cores",
     "gpu": "GPU",
-    "gpuHistory": "GPU History (5m)"
+    "gpuHistory": "GPU History (5m)",
+    "groundStationFallbackTitle": "ਗਰਾਊਂਡ ਸਟੇਸ਼ਨ"
   },
   "fleetNetwork": {
     "title": "Fleet Network",
@@ -4865,7 +4941,8 @@
       "all": "All",
       "live": "Live",
       "video": "Video",
-      "offline": "Stale/offline"
+      "offline": "Stale/offline",
+      "workstation": "ਵਰਕਸਟੇਸ਼ਨ"
     },
     "feedBudget": "{active}/{max} feeds active",
     "noAgentsTitle": "No paired agents",
@@ -4909,7 +4986,14 @@
     "rssi": "RSSI",
     "snr": "SNR",
     "loss": "Loss",
-    "link": "Link"
+    "link": "Link",
+    "arm": "ਆਰਮ",
+    "heartbeat": "ਹਾਰਟਬੀਟ",
+    "uplink": "ਅੱਪਲਿੰਕ",
+    "mesh": "ਮੈਸ਼",
+    "disk": "ਡਿਸਕ",
+    "gpuNodes": "GPU ਨੋਡ",
+    "jobs": "ਜੌਬਸ"
   },
   "flashTool": {
     "ados": {
@@ -5872,7 +5956,8 @@
       "receiveOnly": "RECEIVE ONLY",
       "provisioning": "AUTHORISING",
       "expiring": "ENDING SOON"
-    }
+    },
+    "openFlight": "ਫਲਾਈਟ ਖੋਲ੍ਹੋ"
   },
   "skills": {
     "arm": {

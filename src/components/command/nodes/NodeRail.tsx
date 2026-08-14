@@ -136,7 +136,10 @@ export function NodeRail({
                 status={resolved.level}
                 shape={resolved.known ? "dot" : "ring"}
                 size="xs"
-                label={resolved.tooltip}
+                label={t("signalTooltip", {
+                  signal: t(resolved.labelKey),
+                  state: t(resolved.stateKey),
+                })}
               />
             );
           })}

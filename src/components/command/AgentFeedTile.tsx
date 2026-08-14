@@ -500,7 +500,7 @@ function ConsoleAgentFeedTile({
             <>
               <StatTile
                 icon={<Power size={12} />}
-                label="Arm" /* i18n: nodeConsole FC arm-state tile */
+                label={t("arm")}
                 value={agent.telemetry.armed == null ? "--" : agent.telemetry.armed ? t("armed") : t("disarmed")}
                 level={agent.telemetry.armed == null ? undefined : agent.telemetry.armed ? "warning" : "good"}
               />
@@ -509,7 +509,7 @@ function ConsoleAgentFeedTile({
               <StatTile icon={<Battery size={12} />} label={t("battery")} value={pct(agent.telemetry.batteryRemaining)} level={batteryLevel} />
               <StatTile
                 icon={<HeartPulse size={12} />}
-                label="Heartbeat" /* i18n: nodeConsole FC heartbeat-Hz tile (honest grey until on the heartbeat) */
+                label={t("heartbeat")}
                 value="--"
                 level="idle"
               />
@@ -524,13 +524,13 @@ function ConsoleAgentFeedTile({
               <StatTile icon={<Wifi size={12} />} label={t("link")} value={radio?.bitrateKbps == null ? "--" : `${(radio.bitrateKbps / 1000).toFixed(1)} Mbps`} />
               <StatTile
                 icon={<Network size={12} />}
-                label="Uplink" /* i18n: nodeConsole GS uplink tile (honest grey until on the fleet summary) */
+                label={t("uplink")}
                 value="--"
                 level="idle"
               />
               <StatTile
                 icon={<Network size={12} />}
-                label="Mesh" /* i18n: nodeConsole GS mesh tile (honest grey until on the fleet summary) */
+                label={t("mesh")}
                 value="--"
                 level="idle"
               />
@@ -543,7 +543,7 @@ function ConsoleAgentFeedTile({
             <>
               <StatTile icon={<Cpu size={12} />} label={t("cpu")} value={pct(agent.system.cpuPercent)} />
               <StatTile icon={<Radio size={12} />} label={t("mem")} value={pct(agent.system.memoryPercent)} />
-              <StatTile icon={<HardDrive size={12} />} label="Disk" /* i18n: nodeConsole workstation disk tile */ value={pct(agent.system.diskPercent)} />
+              <StatTile icon={<HardDrive size={12} />} label={t("disk")} value={pct(agent.system.diskPercent)} />
               <StatTile icon={<Thermometer size={12} />} label={t("temp")} value={fixed(agent.system.temperature, 0, "C")} />
             </>
           )}

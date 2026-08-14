@@ -10,6 +10,8 @@ import { useEffect, useMemo, useRef } from "react";
 import type { PairedDrone } from "@/stores/pairing-store";
 import { useCommandFleetStore, type CommandTelemetrySnapshot } from "@/stores/command-fleet-store";
 import { OFFICIAL_MQTT_WS_URL } from "@/lib/config/endpoints";
+import { getMqttBrokerCredential } from "@/lib/mqtt-broker-credential";
+import { useMqttControlGrantStore } from "@/stores/mqtt-control-grant-store";
 
 const MQTT_WS_URL_DEFAULT = OFFICIAL_MQTT_WS_URL;
 
@@ -22,14 +24,14 @@ type MqttClient = {
 export function CommandFleetMqttBridge({
   pairedDrones,
   mqttBrokerUrl,
-  mqttViewerUsername,
-  mqttViewerPassword,
 }: {
   pairedDrones: PairedDrone[];
   mqttBrokerUrl?: string | null;
-  mqttViewerUsername?: string | null;
-  mqttViewerPassword?: string | null;
 }) {
+  // A counter, not the credential. The credential is read at connect time from
+  // the singleton every MQTT client shares; this is only what tells the effect
+  // the one it dialled with has been replaced.
+  const credentialEpoch = useMqttControlGrantStore((s) => s.credentialEpoch);
   const deviceIds = useMemo(
     () => pairedDrones.map((drone) => drone.deviceId).sort(),
     [pairedDrones],
@@ -56,9 +58,10 @@ export function CommandFleetMqttBridge({
           clean: true,
           reconnectPeriod: 5000,
         };
-        if (mqttViewerUsername && mqttViewerPassword) {
-          connectOptions.username = mqttViewerUsername;
-          connectOptions.password = mqttViewerPassword;
+        const cred = getMqttBrokerCredential();
+        if (cred) {
+          connectOptions.username = cred.username;
+          connectOptions.password = cred.password;
         }
         const client = (connectFn as typeof mqttModule.connect)(
           mqttBrokerUrl || MQTT_WS_URL_DEFAULT,
@@ -100,7 +103,11 @@ export function CommandFleetMqttBridge({
       clientRef.current?.end(true);
       clientRef.current = null;
     };
-  }, [deviceIds, mqttBrokerUrl]);
+    // The credential epoch belongs here for the same reason the broker URL does:
+    // both arrive after the first render, and an effect that ignored them would
+    // dial anonymously once and never retry, leaving every paired drone's
+    // telemetry row empty on a broker that requires auth.
+  }, [deviceIds, mqttBrokerUrl, credentialEpoch]);
 
   return null;
 }

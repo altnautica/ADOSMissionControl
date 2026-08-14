@@ -4,9 +4,11 @@
 # Prereqs (the script will refuse to flip if any are missing):
 #   - /mosquitto/config/passwd exists and is non-empty
 #   - /mosquitto/config/acl.conf exists
-#   - Mission Control has been redeployed with the MqttBridge auth path
-#     (clientConfig.mqttViewerPassword consumed by MqttBridge.tsx +
-#     CommandFleetMqttBridge.tsx; check by viewing the deployed bundle).
+#   - Mission Control has been redeployed with the broker-credential path
+#     (mqtt-control-grant-store mints the operator's grant and injects it into
+#     mqtt-broker-credential.ts, which MqttBridge.tsx, CommandFleetMqttBridge.tsx
+#     and the relay transport all read at connect time; check by viewing the
+#     deployed bundle).
 #
 # Run on the broker host:
 #   ./activate-auth.sh

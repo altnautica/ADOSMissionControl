@@ -49,11 +49,10 @@ export const communityApi = {
   },
   clientConfig: {
     get: api.clientConfig.getClientConfig,
-    // The broker credential is a SEPARATE, auth-gated read. It used to ride on
-    // `get`, which has no auth check, so anyone who could reach the deployment
-    // could take a password granting a subscription to every topic of every
-    // drone in the fleet.
-    brokerViewerCredential: api.clientConfig.getBrokerViewerCredential,
+    // No credential rides here or anywhere else in this barrel. The browser's
+    // broker credential is the operator's own minted write grant
+    // (`cmdMqttControlGrantsApi.mint`), scoped to the drones they own, held in
+    // memory for the life of the tab and never returned twice.
   },
   aiUsage: {
     checkAndRecord: api.cmdAiUsage.checkAndRecord,

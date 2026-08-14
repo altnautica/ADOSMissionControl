@@ -63,7 +63,8 @@
       "receiveOnlyShort": "Réception seule",
       "provisioningShort": "Obtention de l'autorité",
       "expiring": "L'autorité de commande expire et le renouvellement a échoué. Envoyez maintenant ce dont vous avez besoin.",
-      "expiringShort": "Autorité expirante"
+      "expiringShort": "Autorité expirante",
+      "requestControl": "Demander l'autorité de commande"
     },
     "statusText": {
       "title": "Messages d'état",
@@ -90,6 +91,75 @@
     },
     "groups": {
       "compute": "Compute"
+    },
+    "signals": {
+      "link": "Liaison",
+      "battery": "Batterie",
+      "gps": "GPS",
+      "arm": "Armement",
+      "prearm": "Pré-armement",
+      "rc": "RC",
+      "rx": "Réception",
+      "uplink": "Liaison montante",
+      "mesh": "Maillage",
+      "mqtt": "Relais cloud",
+      "gpu": "GPU",
+      "jobs": "Tâches",
+      "cluster": "Grappe",
+      "thermal": "Thermique",
+      "cpu": "CPU",
+      "temp": "Température",
+      "services": "Services",
+      "alerts": "Alertes"
+    },
+    "signalState": {
+      "good": "correct",
+      "warning": "avertissement",
+      "serious": "dégradé",
+      "critical": "critique",
+      "idle": "inactif",
+      "offline": "hors ligne",
+      "unknown": "aucune mesure"
+    },
+    "signalTooltip": "{signal} : {state}",
+    "signalDots": "Signaux du nœud",
+    "contextMenu": {
+      "menuLabel": "Actions pour {node}",
+      "copyFailed": "Échec de la copie",
+      "rename": "Renommer",
+      "setInitials": "Définir les initiales",
+      "customBadge": "Badge personnalisé",
+      "addToGroup": "Ajouter au groupe",
+      "setTileColour": "Définir la couleur de la tuile",
+      "tileColours": "Couleurs de tuile",
+      "defaultColour": "Par défaut",
+      "configureDots": "Configurer les points",
+      "pin": "Épingler",
+      "unpin": "Désépingler",
+      "open": "Ouvrir",
+      "openInCockpit": "Ouvrir dans le cockpit",
+      "copyNodeId": "Copier l'ID du nœud",
+      "nodeIdCopied": "ID du nœud copié",
+      "copyHost": "Copier l'hôte",
+      "hostCopied": "Hôte copié",
+      "muteAlerts": "Couper les alertes",
+      "unmuteAlerts": "Réactiver les alertes",
+      "resetPersonalization": "Réinitialiser la personnalisation",
+      "personalizationReset": "Personnalisation réinitialisée",
+      "forget": "Oublier",
+      "forgetTitle": "Oublier le nœud",
+      "forgetMessage": "Oublier {node} ? Cela supprime l'appairage et efface sa personnalisation."
+    },
+    "dotEditor": {
+      "title": "Configurer les points",
+      "none": "Aucun",
+      "hint": "Épinglez jusqu'à {max} signaux vérifiés comme points sur ce nœud. Un signal sans mesure affiche un anneau creux, jamais un état inventé.",
+      "slot": "Point {index}"
+    },
+    "companionCta": {
+      "title": "Ajouter un ordinateur compagnon",
+      "body": "Ce contrôleur de vol n'a aucun ordinateur de bord appairé. Appairez-en un pour ajouter la vidéo, la vision, le modèle du monde et les extensions.",
+      "action": "Appairer un ordinateur"
     }
   },
   "nav": {
@@ -1309,7 +1379,12 @@
     "sectionExecution": "Execution",
     "sectionHealth": "Feed health",
     "sectionInputs": "Inputs & pipelines",
-    "sectionModels": "Models"
+    "sectionModels": "Models",
+    "targetActions": {
+      "dismiss": "Fermer",
+      "none": "Aucune action pour cette cible",
+      "pluginBadge": "extension"
+    }
   },
   "nodeSettings": {
     "subtitle": "Configure this node's onboard computer. Changes write straight to the agent over the LAN.",
@@ -2208,7 +2283,8 @@
     "chip": "Chip",
     "cores": "Cores",
     "gpu": "GPU",
-    "gpuHistory": "GPU History (5m)"
+    "gpuHistory": "GPU History (5m)",
+    "groundStationFallbackTitle": "Station sol"
   },
   "fleetNetwork": {
     "title": "Réseau de flotte",
@@ -4865,7 +4941,8 @@
       "all": "All",
       "live": "Live",
       "video": "Video",
-      "offline": "Stale/offline"
+      "offline": "Stale/offline",
+      "workstation": "Station de travail"
     },
     "feedBudget": "{active}/{max} feeds active",
     "noAgentsTitle": "No paired agents",
@@ -4909,7 +4986,14 @@
     "rssi": "RSSI",
     "snr": "SNR",
     "loss": "Loss",
-    "link": "Link"
+    "link": "Link",
+    "arm": "Armement",
+    "heartbeat": "Battement",
+    "uplink": "Liaison montante",
+    "mesh": "Maillage",
+    "disk": "Disque",
+    "gpuNodes": "Nœuds GPU",
+    "jobs": "Tâches"
   },
   "flashTool": {
     "ados": {
@@ -5872,7 +5956,8 @@
       "receiveOnly": "RECEIVE ONLY",
       "provisioning": "AUTHORISING",
       "expiring": "ENDING SOON"
-    }
+    },
+    "openFlight": "Ouvrir le vol"
   },
   "skills": {
     "arm": {

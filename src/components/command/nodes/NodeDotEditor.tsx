@@ -11,6 +11,7 @@
  */
 
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -19,7 +20,7 @@ import type { EffProfile } from "@/lib/nodes/node-profile";
 import {
   allowedSignals,
   defaultDots,
-  SIGNAL_META,
+  signalLabelKey,
   type FeatureDot,
   type SignalKey,
 } from "@/lib/nodes/node-feature-dots";
@@ -43,6 +44,8 @@ export function NodeDotEditor({
   open,
   onClose,
 }: NodeDotEditorProps) {
+  const t = useTranslations("nodeConsole");
+  const tCommon = useTranslations("common");
   const setDots = useNodePersonalizationStore((s) => s.setDots);
   const stored = useNodePersonalizationStore((s) => s.byNode[deviceId]?.dots);
   const allowed = useMemo(() => allowedSignals(effProfile), [effProfile]);
@@ -72,10 +75,10 @@ export function NodeDotEditor({
 
   const options: SelectOption[] = useMemo(
     () => [
-      { value: NONE, label: "None" } /* i18n */,
-      ...allowed.map((s) => ({ value: s, label: SIGNAL_META[s].label })),
+      { value: NONE, label: t("dotEditor.none") },
+      ...allowed.map((s) => ({ value: s, label: t(signalLabelKey(s)) })),
     ],
-    [allowed],
+    [allowed, t],
   );
 
   function setSlot(index: number, value: string) {
@@ -101,33 +104,31 @@ export function NodeDotEditor({
     <Modal
       open={open}
       onClose={onClose}
-      title="Configure dots" /* i18n */
+      title={t("dotEditor.title")}
       size="sm"
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            Cancel {/* i18n */}
+            {tCommon("cancel")}
           </Button>
           <Button variant="primary" onClick={save}>
-            Save {/* i18n */}
+            {tCommon("save")}
           </Button>
         </>
       }
     >
       <div className="flex flex-col gap-3">
         <p className="text-xs text-text-tertiary">
-          {/* i18n */}
-          Pin up to {MAX_SLOTS} verified signals as dots on this node. A signal
-          with no reading shows a hollow ring, never a fake status.
+          {t("dotEditor.hint", { max: MAX_SLOTS })}
         </p>
         {slots.map((value, index) => (
           <Select
             key={index}
-            label={`Dot ${index + 1}` /* i18n */}
+            label={t("dotEditor.slot", { index: index + 1 })}
             options={options}
             value={value}
             onChange={(v) => setSlot(index, v)}
-            placeholder="None" /* i18n */
+            placeholder={t("dotEditor.none")}
           />
         ))}
       </div>

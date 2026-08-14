@@ -13,7 +13,10 @@
  */
 
 import type { Transport, TransportEventMap } from "../types/transport";
-import { getMqttBrokerCredential } from "@/lib/mqtt-broker-credential";
+import {
+  getMqttBrokerCredential,
+  notifyBrokerWriteAccepted,
+} from "@/lib/mqtt-broker-credential";
 import { OFFICIAL_MQTT_WS_URL } from "@/lib/config/endpoints";
 
 const MQTT_WS_URL = OFFICIAL_MQTT_WS_URL;
@@ -75,11 +78,11 @@ export class MqttMavlinkTransport implements Transport {
    * Connect to MQTT broker and subscribe to MAVLink frame topic.
    * @param deviceId — Agent device ID (used in topic path)
    * @param brokerUrl — MQTT WebSocket URL (default: the managed broker, see config/endpoints)
-   * @param auth — Optional broker username/password (production broker
-   *   enforces auth via the `gcs-viewer` credential published from
-   *   Convex `clientConfig.getClientConfig`). Set `canPublish` only for a
-   *   credential the broker will accept writes from; the shared viewer
-   *   credential is read-only and must leave it unset.
+   * @param auth — Optional broker username/password (the production broker
+   *   enforces auth against the operator's own minted write grant). Set
+   *   `canPublish` only for a credential the broker will accept writes from;
+   *   `relayWriteAuthFor` in the grant store is the one producer of that claim,
+   *   and a session without a grant must leave it unset.
    */
   async connect(
     deviceId: string,
@@ -137,8 +140,10 @@ export class MqttMavlinkTransport implements Transport {
           connectOptions.password = cred.password;
         }
         // Fail closed: only an explicit claim grants publish authority. The
-        // process-wide fallback credential is the shared read-only viewer, so
-        // it can never arrive here carrying one.
+        // process-wide fallback credential is a grant scoped to the drones this
+        // operator owns, and this transport cannot tell whether the drone it was
+        // handed is one of them — so the caller that resolved the grant has to
+        // say, and silence means no.
         this._canPublish =
           auth?.canPublish === true && Boolean(cred?.username && cred?.password);
         this.client = (connectFn as typeof mqttModule.connect)(
@@ -239,7 +244,13 @@ export class MqttMavlinkTransport implements Transport {
       (err: Error | null | undefined) => {
         if (err) {
           this.emit("error", err);
+          return;
         }
+        // The broker took the frame. That is the only proof a write grant is
+        // live that this browser can ever obtain — QoS 0 acknowledges nothing —
+        // so report it, and the grant owner stops hedging what it tells the
+        // operator. Reported once per credential; a no-op after that.
+        notifyBrokerWriteAccepted();
       },
     );
   }

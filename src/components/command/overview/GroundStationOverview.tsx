@@ -63,7 +63,10 @@ export function GroundStationOverview({ name }: { name?: string }) {
   }
 
   const title =
-    name || status.board?.name || status.board?.model || "Ground station"; // TODO(i18n): localize fallback title
+    name ||
+    status.board?.name ||
+    status.board?.model ||
+    t("groundStationFallbackTitle");
   return (
     <div className="p-4 space-y-4">
       <NodeBrandHeader profile="ground-station" title={title} />

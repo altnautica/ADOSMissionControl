@@ -295,7 +295,7 @@ export function NodeRow({
                 dots, wrapping so they never steal width from the name. */}
             <div className="mt-1 flex flex-wrap items-center gap-1">
               {featureDots.length > 0 && (
-                <div className="flex items-center gap-0.5" aria-label="Node signals" /* i18n */>
+                <div className="flex items-center gap-0.5" aria-label={t("signalDots")}>
                   {featureDots.slice(0, 4).map((dot) => {
                     const resolved = resolveFeatureDot(dot.signal, node);
                     return (
@@ -304,7 +304,10 @@ export function NodeRow({
                         status={resolved.level}
                         shape={resolved.known ? "dot" : "ring"}
                         size="xs"
-                        label={resolved.tooltip}
+                        label={t("signalTooltip", {
+                          signal: t(resolved.labelKey),
+                          state: t(resolved.stateKey),
+                        })}
                       />
                     );
                   })}

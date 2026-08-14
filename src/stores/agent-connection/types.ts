@@ -7,6 +7,7 @@
 import type { StateCreator } from "zustand";
 import type { AgentClient } from "@/lib/agent/client";
 import type { AgentStatus } from "@/lib/agent/types";
+import type { RelayCommandName } from "../../../convex/commandVocabulary";
 
 /**
  * Why a locally-paired card could not connect even though the box is reachable:
@@ -93,7 +94,18 @@ export interface LocalActions {
  */
 export interface CloudActions {
   connectCloud: (deviceId: string) => void;
-  sendCloudCommand: (command: string, args?: Record<string, unknown>) => void;
+  /**
+   * Queue a command for the selected drone over the cloud relay.
+   *
+   * The name is the closed relay vocabulary, not a free string. The Convex
+   * mutation validates it at insert time, but that rejection surfaces as a
+   * console warning on a fire-and-forget dispatch, so a typo would read as a
+   * control that silently does nothing. Typing it here fails the build instead.
+   */
+  sendCloudCommand: (
+    command: RelayCommandName,
+    args?: Record<string, unknown>,
+  ) => void;
   setCloudStatus: (status: AgentStatus, dataTimestamp?: number) => void;
   setMqttConnected: (connected: boolean) => void;
 }

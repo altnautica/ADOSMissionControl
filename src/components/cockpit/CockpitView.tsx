@@ -566,8 +566,8 @@ export function CockpitView({ droneId }: CockpitViewProps) {
                 exitImmersiveMode();
                 useUiStore.getState().setPendingDetailTab("flight");
               }}
-              title="Open Flight" /* i18n */
-              aria-label="Open Flight" /* i18n */
+              title={tCockpit("openFlight")}
+              aria-label={tCockpit("openFlight")}
               className="absolute inset-0 z-[1001] cursor-pointer transition-colors hover:bg-white/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-primary"
             />
             {/* Map-type selector collapsed behind a layers icon so it does not

@@ -10,19 +10,19 @@
  * drone's authority and paint it on every row: twenty rows would show twenty
  * copies of one node's truth. This hook keys on the node instead.
  *
- * It answers from a PROVEN fact and nothing else: an open transport this
- * browser holds for that node, and what that transport itself reports about
- * publishing. A node with no open transport gets no claim at all — the browser
- * has not tried to reach it, so whether a command would land is not yet a fact,
- * and "receive only" on a node we never dialled would be a fabricated reading
- * exactly as much as a healthy dot would be (Rule 44). What the surface must
- * never do is show a node as fully commandable when the transport it is
- * actually carried on has already reported that it cannot publish, and that is
- * the case this closes.
+ * It answers from PROVEN facts and nothing else: the write grant this browser
+ * has actually minted and holds the secret for, and what the open transport for
+ * that node reports about publishing. A node with no open transport gets no
+ * claim at all — the browser has not tried to reach it, so whether a command
+ * would land is not yet a fact, and "receive only" on a node we never dialled
+ * would be a fabricated reading exactly as much as a healthy dot would be
+ * (Rule 44). What the surface must never do is show a node as fully commandable
+ * when the transport it is actually carried on has already reported that it
+ * cannot publish, and that is the case this closes.
  *
- * When per-operator write grants land, `useMqttControlAuthority` is where they
- * are supplied; this hook resolves through the same pure resolver, so both
- * become correct together.
+ * The grant comes from `mqtt-control-grant-store`, the same source
+ * `useMqttControlAuthority` reads, so the selected-drone header and every fleet
+ * row give one answer rather than two.
  *
  * @module hooks/use-node-control-authority
  * @license GPL-3.0-only
@@ -31,8 +31,9 @@
 import { useTranslations } from "next-intl";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useClockStore } from "@/stores/clock-store";
+import { useMqttControlGrantStore } from "@/stores/mqtt-control-grant-store";
 import { useClockTick } from "@/lib/agent/freshness";
-import { nodeIdForDevice } from "@/lib/agent/node-id";
+import { deviceIdFromNodeId, nodeIdForDevice } from "@/lib/agent/node-id";
 import type { StatusLevel } from "@/components/ui/status-dot";
 import {
   needsOperatorAttention,
@@ -67,19 +68,20 @@ export function useNodeControlAuthority(
   const lane: ControlLane =
     transportType === "mqtt-mavlink" ? "cloud-relay" : "direct";
 
-  const grant =
-    lane === "cloud-relay" && transportCanCommand
-      ? {
-          deviceIds: [nodeId ?? ""],
-          expiresAt: Number.POSITIVE_INFINITY,
-          writeConfirmed: false,
-        }
-      : null;
+  // The grant store is the single source every authority surface reads, so a
+  // fleet row and the selected-drone header cannot disagree. It is ANDed with the
+  // transport's own answer because the two can genuinely differ for a moment: a
+  // grant minted before the relay reconnected is held and still unusable.
+  const heldGrant = useMqttControlGrantStore((s) => s.grant);
+  const minting = useMqttControlGrantStore((s) => s.minting);
+  const grant = lane === "cloud-relay" && transportCanCommand ? heldGrant : null;
 
   return resolveMqttControlAuthority({
     lane,
-    deviceId: nodeId ?? "",
+    // The grant's scope is agent device ids; a fleet id is `node:<deviceId>`.
+    deviceId: deviceIdFromNodeId(nodeId) ?? "",
     grant,
+    minting,
     now,
   });
 }

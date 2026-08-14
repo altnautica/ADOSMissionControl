@@ -34,6 +34,10 @@ import {
 } from "@/lib/api/ground-station/ws-ticket";
 import { isMspVariant } from "@/lib/protocol/select-fc-adapter";
 import { isFcReachable } from "@/lib/agent/mavlink-link";
+import {
+  relayWriteAuthFor,
+  useMqttControlGrantStore,
+} from "@/stores/mqtt-control-grant-store";
 
 const WS_TIMEOUT_MS = 3000;
 
@@ -91,6 +95,9 @@ export function AgentMavlinkBridge() {
   const connectingRef = useRef(false);
   const connectedDroneIdRef = useRef<string | null>(null);
   const prevFcActiveRef = useRef(fcActive);
+  const grantEpoch = useMqttControlGrantStore((s) => s.credentialEpoch);
+  const prevGrantEpochRef = useRef(grantEpoch);
+  const reselectAfterGrantRef = useRef<string | null>(null);
 
   // Tear down the MAVLink session the moment the agent reports the FC
   // disconnected, rather than waiting for the transport "close" event (which
@@ -114,6 +121,31 @@ export function AgentMavlinkBridge() {
       registry.detachFc(droneId);
     }
   }, [fcActive]);
+
+  // A minted write grant changes the broker principal, and an MQTT client cannot
+  // swap credentials on a live socket. So when the credential changes under a
+  // relay session, drop it: the dial below re-establishes it in the same breath,
+  // this time as a command link rather than a receive-only one. Only the relay
+  // lane cares — a direct WebSocket or serial FC carries its own authority and
+  // must not be disturbed by a broker credential it never used.
+  useEffect(() => {
+    const prev = prevGrantEpochRef.current;
+    prevGrantEpochRef.current = grantEpoch;
+    if (prev === grantEpoch) return;
+    const droneId = connectedDroneIdRef.current;
+    if (!droneId) return;
+    const manager = useDroneManager.getState();
+    const drone = manager.drones.get(droneId);
+    if (drone?.transport.type !== "mqtt-mavlink") return;
+    // Read the selection BEFORE removing: removeDrone clears it when the drone
+    // going away is the selected one, and a credential renewal must not move the
+    // operator off the vehicle they are flying.
+    if (manager.selectedDroneId === droneId) {
+      reselectAfterGrantRef.current = droneId;
+    }
+    connectedDroneIdRef.current = null;
+    manager.removeDrone(droneId);
+  }, [grantEpoch]);
 
   useEffect(() => {
     // Latest-value reads that must NOT re-trigger this effect: the agent URL
@@ -310,12 +342,18 @@ export function AgentMavlinkBridge() {
             const mqttTransport = new MqttMavlinkTransport(
               mspLane ? "msp" : "mavlink",
             );
-            // No write grant is passed, so this connects receive-only: the
-            // shared broker credential subscribes and cannot publish. The
-            // session is still worth establishing — telemetry, state and
-            // vehicle identity all arrive over it — but it is not a command
-            // link, and the transport reports that rather than implying one.
-            await mqttTransport.connect(cloudDeviceId);
+            // The operator's minted write grant, when one covers this drone.
+            // Read at execution time from the grant store rather than closed
+            // over, so a dial that races a renewal uses the credential that is
+            // live now. Absent (signed out, no grant yet, or a drone this
+            // operator does not own) the session still connects receive-only —
+            // telemetry, state and vehicle identity all arrive over it — and the
+            // transport says so rather than implying a command link.
+            await mqttTransport.connect(
+              cloudDeviceId,
+              undefined,
+              relayWriteAuthFor(cloudDeviceId),
+            );
             transport = mqttTransport;
             connType = "mqtt-mavlink";
             if (!mqttTransport.canCommand) {
@@ -400,6 +438,14 @@ export function AgentMavlinkBridge() {
           { ownsFleetRow },
         );
 
+        // Restore the selection a credential-driven teardown cleared. addDrone
+        // auto-selects only the FIRST managed drone, so an operator flying one of
+        // several would otherwise be moved off it every time a grant renewed.
+        if (reselectAfterGrantRef.current === droneId) {
+          reselectAfterGrantRef.current = null;
+          useDroneManager.getState().selectDrone(droneId);
+        }
+
         handedOff = true;
         connectedDroneIdRef.current = droneId;
       } catch (err) {
@@ -434,6 +480,10 @@ export function AgentMavlinkBridge() {
     connected,
     fcActive,
     nodeDeviceId,
+    // Re-dial when the broker credential changes: the effect above has already
+    // dropped the relay session that was holding the old one, so this is what
+    // rebuilds it with the new grant.
+    grantEpoch,
   ]);
 
   return null;

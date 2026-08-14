@@ -63,7 +63,8 @@
       "receiveOnlyShort": "수신 전용",
       "provisioningShort": "권한 획득 중",
       "expiring": "명령 권한이 만료되고 있으며 갱신에 실패했습니다. 필요한 명령은 지금 보내십시오.",
-      "expiringShort": "권한 만료 임박"
+      "expiringShort": "권한 만료 임박",
+      "requestControl": "명령 권한 요청"
     },
     "statusText": {
       "title": "상태 메시지",
@@ -90,6 +91,75 @@
     },
     "groups": {
       "compute": "Compute"
+    },
+    "signals": {
+      "link": "링크",
+      "battery": "배터리",
+      "gps": "GPS",
+      "arm": "암",
+      "prearm": "프리암",
+      "rc": "RC",
+      "rx": "수신",
+      "uplink": "업링크",
+      "mesh": "메시",
+      "mqtt": "클라우드 중계",
+      "gpu": "GPU",
+      "jobs": "작업",
+      "cluster": "클러스터",
+      "thermal": "열화상",
+      "cpu": "CPU",
+      "temp": "온도",
+      "services": "서비스",
+      "alerts": "경고"
+    },
+    "signalState": {
+      "good": "정상",
+      "warning": "경고",
+      "serious": "성능 저하",
+      "critical": "심각",
+      "idle": "대기",
+      "offline": "오프라인",
+      "unknown": "측정값 없음"
+    },
+    "signalTooltip": "{signal}: {state}",
+    "signalDots": "노드 신호",
+    "contextMenu": {
+      "menuLabel": "{node} 작업",
+      "copyFailed": "복사 실패",
+      "rename": "이름 변경",
+      "setInitials": "이니셜 설정",
+      "customBadge": "사용자 배지",
+      "addToGroup": "그룹에 추가",
+      "setTileColour": "타일 색 설정",
+      "tileColours": "타일 색",
+      "defaultColour": "기본",
+      "configureDots": "점 구성",
+      "pin": "고정",
+      "unpin": "고정 해제",
+      "open": "열기",
+      "openInCockpit": "조종석에서 열기",
+      "copyNodeId": "노드 ID 복사",
+      "nodeIdCopied": "노드 ID를 복사했습니다",
+      "copyHost": "호스트 복사",
+      "hostCopied": "호스트를 복사했습니다",
+      "muteAlerts": "경고 음소거",
+      "unmuteAlerts": "경고 음소거 해제",
+      "resetPersonalization": "개인 설정 초기화",
+      "personalizationReset": "개인 설정을 초기화했습니다",
+      "forget": "삭제",
+      "forgetTitle": "노드 삭제",
+      "forgetMessage": "{node}을(를) 삭제할까요? 페어링이 해제되고 개인 설정이 지워집니다."
+    },
+    "dotEditor": {
+      "title": "점 구성",
+      "none": "없음",
+      "hint": "검증된 신호를 최대 {max}개까지 이 노드의 점으로 고정할 수 있습니다. 측정값이 없는 신호는 빈 고리로 표시하며 가짜 상태를 보이지 않습니다.",
+      "slot": "점 {index}"
+    },
+    "companionCta": {
+      "title": "보조 컴퓨터 추가",
+      "body": "이 비행 컨트롤러에는 페어링된 온보드 컴퓨터가 없습니다. 하나를 페어링하면 영상, 비전, 월드 모델, 확장 기능을 추가할 수 있습니다.",
+      "action": "컴퓨터 페어링"
     }
   },
   "nav": {
@@ -1309,7 +1379,12 @@
     "sectionExecution": "Execution",
     "sectionHealth": "Feed health",
     "sectionInputs": "Inputs & pipelines",
-    "sectionModels": "Models"
+    "sectionModels": "Models",
+    "targetActions": {
+      "dismiss": "닫기",
+      "none": "이 표적에 사용할 수 있는 작업이 없습니다",
+      "pluginBadge": "플러그인"
+    }
   },
   "nodeSettings": {
     "subtitle": "Configure this node's onboard computer. Changes write straight to the agent over the LAN.",
@@ -2208,7 +2283,8 @@
     "chip": "Chip",
     "cores": "Cores",
     "gpu": "GPU",
-    "gpuHistory": "GPU History (5m)"
+    "gpuHistory": "GPU History (5m)",
+    "groundStationFallbackTitle": "지상국"
   },
   "fleetNetwork": {
     "title": "편대 네트워크",
@@ -4865,7 +4941,8 @@
       "all": "All",
       "live": "Live",
       "video": "Video",
-      "offline": "Stale/offline"
+      "offline": "Stale/offline",
+      "workstation": "워크스테이션"
     },
     "feedBudget": "{active}/{max} feeds active",
     "noAgentsTitle": "No paired agents",
@@ -4909,7 +4986,14 @@
     "rssi": "RSSI",
     "snr": "SNR",
     "loss": "Loss",
-    "link": "Link"
+    "link": "Link",
+    "arm": "암",
+    "heartbeat": "하트비트",
+    "uplink": "업링크",
+    "mesh": "메시",
+    "disk": "디스크",
+    "gpuNodes": "GPU 노드",
+    "jobs": "작업"
   },
   "flashTool": {
     "ados": {
@@ -5872,7 +5956,8 @@
       "receiveOnly": "RECEIVE ONLY",
       "provisioning": "AUTHORISING",
       "expiring": "ENDING SOON"
-    }
+    },
+    "openFlight": "비행 열기"
   },
   "skills": {
     "arm": {

@@ -15,7 +15,9 @@
 
 import { useDroneManager } from "@/stores/drone-manager";
 import { useClockStore } from "@/stores/clock-store";
+import { useMqttControlGrantStore } from "@/stores/mqtt-control-grant-store";
 import { useClockTick } from "@/lib/agent/freshness";
+import { deviceIdFromNodeId } from "@/lib/agent/node-id";
 import {
   resolveMqttControlAuthority,
   type ControlLane,
@@ -25,12 +27,9 @@ import {
 /**
  * Authority for the currently selected drone.
  *
- * The grant is `null` here because no credential is minted yet: the browser's
- * only broker credential is the shared read-only one, which cannot publish. So
- * on the relay lane this resolves to `no-grant`, which is the honest and
- * currently correct answer — the relay session can receive telemetry and cannot
- * command. When per-operator write grants land, this is the single place that
- * supplies one, and every surface reading this hook becomes correct at once.
+ * The grant comes from the grant store, which mints it, holds its secret, and
+ * renews it — the same source every fleet row reads, so the selected-drone
+ * surface and the board cannot disagree about whether this operator can command.
  */
 export function useMqttControlAuthority(): MqttControlAuthority {
   const transportType = useDroneManager((s) => {
@@ -57,24 +56,22 @@ export function useMqttControlAuthority(): MqttControlAuthority {
   const lane: ControlLane =
     transportType === "mqtt-mavlink" ? "cloud-relay" : "direct";
 
-  // A relay transport that reports it can publish is holding a write grant, so
-  // the resolver is told about one. Synthesised from the transport rather than
-  // fetched, because the transport is what the broker actually accepted and no
-  // grant store is wired yet; the expiry is deliberately absent-equivalent
-  // (far future) so this never claims a lifetime it cannot know.
-  const grant =
-    lane === "cloud-relay" && transportCanCommand
-      ? {
-          deviceIds: [selectedDroneId ?? ""],
-          expiresAt: Number.POSITIVE_INFINITY,
-          writeConfirmed: false,
-        }
-      : null;
+  // Two facts, and both are needed. The store knows which devices the grant
+  // covers, when it lapses, and whether a write under it has ever been accepted;
+  // the transport knows whether the session it actually dialled is carrying that
+  // grant. A grant minted a moment ago that the relay has not reconnected with
+  // yet still cannot publish, so claiming otherwise would recreate exactly the
+  // silent-failure this module exists to prevent.
+  const heldGrant = useMqttControlGrantStore((s) => s.grant);
+  const minting = useMqttControlGrantStore((s) => s.minting);
+  const grant = lane === "cloud-relay" && transportCanCommand ? heldGrant : null;
 
   return resolveMqttControlAuthority({
     lane,
-    deviceId: selectedDroneId ?? "",
+    // The grant's scope is agent device ids; a selection id is `node:<deviceId>`.
+    deviceId: deviceIdFromNodeId(selectedDroneId) ?? "",
     grant,
+    minting,
     now,
   });
 }

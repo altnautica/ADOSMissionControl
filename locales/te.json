@@ -63,7 +63,8 @@
       "receiveOnlyShort": "స్వీకరణ మాత్రమే",
       "provisioningShort": "అధికారం పొందుతోంది",
       "expiring": "కమాండ్ అధికారం ముగుస్తోంది మరియు పునరుద్ధరణ విఫలమైంది. అవసరమైనది ఇప్పుడే పంపండి.",
-      "expiringShort": "అధికారం ముగుస్తోంది"
+      "expiringShort": "అధికారం ముగుస్తోంది",
+      "requestControl": "కమాండ్ అధికారాన్ని అభ్యర్థించండి"
     },
     "statusText": {
       "title": "స్థితి సందేశాలు",
@@ -90,6 +91,75 @@
     },
     "groups": {
       "compute": "Compute"
+    },
+    "signals": {
+      "link": "లింక్",
+      "battery": "బ్యాటరీ",
+      "gps": "GPS",
+      "arm": "ఆర్మింగ్",
+      "prearm": "ప్రీ-ఆర్మ్",
+      "rc": "RC",
+      "rx": "స్వీకరణ",
+      "uplink": "అప్‌లింక్",
+      "mesh": "మెష్",
+      "mqtt": "క్లౌడ్ రిలే",
+      "gpu": "GPU",
+      "jobs": "జాబ్‌లు",
+      "cluster": "క్లస్టర్",
+      "thermal": "థర్మల్",
+      "cpu": "CPU",
+      "temp": "ఉష్ణోగ్రత",
+      "services": "సేవలు",
+      "alerts": "హెచ్చరికలు"
+    },
+    "signalState": {
+      "good": "ఆరోగ్యం",
+      "warning": "హెచ్చరిక",
+      "serious": "క్షీణించింది",
+      "critical": "క్లిష్టం",
+      "idle": "నిష్క్రియం",
+      "offline": "ఆఫ్‌లైన్",
+      "unknown": "రీడింగ్ లేదు"
+    },
+    "signalTooltip": "{signal}: {state}",
+    "signalDots": "నోడ్ సిగ్నల్‌లు",
+    "contextMenu": {
+      "menuLabel": "{node} కోసం చర్యలు",
+      "copyFailed": "కాపీ చేయడం విఫలమైంది",
+      "rename": "పేరు మార్చు",
+      "setInitials": "మొదటి అక్షరాలు సెట్ చేయి",
+      "customBadge": "అనుకూల బ్యాడ్జ్",
+      "addToGroup": "సమూహానికి జోడించు",
+      "setTileColour": "టైల్ రంగు సెట్ చేయి",
+      "tileColours": "టైల్ రంగులు",
+      "defaultColour": "డిఫాల్ట్",
+      "configureDots": "చుక్కలను అమర్చు",
+      "pin": "పిన్ చేయి",
+      "unpin": "పిన్ తీసివేయి",
+      "open": "తెరువు",
+      "openInCockpit": "కాక్‌పిట్‌లో తెరువు",
+      "copyNodeId": "నోడ్ ID కాపీ చేయి",
+      "nodeIdCopied": "నోడ్ ID కాపీ అయింది",
+      "copyHost": "హోస్ట్ కాపీ చేయి",
+      "hostCopied": "హోస్ట్ కాపీ అయింది",
+      "muteAlerts": "హెచ్చరికలు మ్యూట్ చేయి",
+      "unmuteAlerts": "హెచ్చరికలు అన్‌మ్యూట్ చేయి",
+      "resetPersonalization": "వ్యక్తిగతీకరణను రీసెట్ చేయి",
+      "personalizationReset": "వ్యక్తిగతీకరణ రీసెట్ అయింది",
+      "forget": "తీసివేయి",
+      "forgetTitle": "నోడ్‌ను తీసివేయి",
+      "forgetMessage": "{node}ను తీసివేయాలా? ఇది జతను తొలగించి దాని వ్యక్తిగతీకరణను తుడిచివేస్తుంది."
+    },
+    "dotEditor": {
+      "title": "చుక్కలను అమర్చు",
+      "none": "ఏదీ లేదు",
+      "hint": "ఈ నోడ్‌పై గరిష్ఠంగా {max} ధ్రువీకరించిన సిగ్నల్‌లను చుక్కలుగా పిన్ చేయండి. రీడింగ్ లేని సిగ్నల్ ఖాళీ వలయాన్ని చూపుతుంది, ఎప్పుడూ నకిలీ స్థితిని చూపదు.",
+      "slot": "చుక్క {index}"
+    },
+    "companionCta": {
+      "title": "కంపానియన్ కంప్యూటర్ జోడించు",
+      "body": "ఈ ఫ్లైట్ కంట్రోలర్‌తో ఏ ఆన్‌బోర్డ్ కంప్యూటర్ జత కాలేదు. వీడియో, విజన్, వరల్డ్ మోడల్ మరియు పొడిగింపులు జోడించడానికి ఒకటి జత చేయండి.",
+      "action": "కంప్యూటర్‌ను జత చేయి"
     }
   },
   "nav": {
@@ -1309,7 +1379,12 @@
     "sectionExecution": "Execution",
     "sectionHealth": "Feed health",
     "sectionInputs": "Inputs & pipelines",
-    "sectionModels": "Models"
+    "sectionModels": "Models",
+    "targetActions": {
+      "dismiss": "మూసివేయి",
+      "none": "ఈ లక్ష్యానికి చర్యలు లేవు",
+      "pluginBadge": "ప్లగిన్"
+    }
   },
   "nodeSettings": {
     "subtitle": "Configure this node's onboard computer. Changes write straight to the agent over the LAN.",
@@ -2208,7 +2283,8 @@
     "chip": "Chip",
     "cores": "Cores",
     "gpu": "GPU",
-    "gpuHistory": "GPU History (5m)"
+    "gpuHistory": "GPU History (5m)",
+    "groundStationFallbackTitle": "గ్రౌండ్ స్టేషన్"
   },
   "fleetNetwork": {
     "title": "ఫ్లీట్ నెట్‌వర్క్",
@@ -4865,7 +4941,8 @@
       "all": "All",
       "live": "Live",
       "video": "Video",
-      "offline": "Stale/offline"
+      "offline": "Stale/offline",
+      "workstation": "వర్క్‌స్టేషన్"
     },
     "feedBudget": "{active}/{max} feeds active",
     "noAgentsTitle": "No paired agents",
@@ -4909,7 +4986,14 @@
     "rssi": "RSSI",
     "snr": "SNR",
     "loss": "Loss",
-    "link": "Link"
+    "link": "Link",
+    "arm": "ఆర్మ్",
+    "heartbeat": "హార్ట్‌బీట్",
+    "uplink": "అప్‌లింక్",
+    "mesh": "మెష్",
+    "disk": "డిస్క్",
+    "gpuNodes": "GPU నోడ్‌లు",
+    "jobs": "జాబ్‌లు"
   },
   "flashTool": {
     "ados": {
@@ -5872,7 +5956,8 @@
       "receiveOnly": "RECEIVE ONLY",
       "provisioning": "AUTHORISING",
       "expiring": "ENDING SOON"
-    }
+    },
+    "openFlight": "ఫ్లైట్ తెరువు"
   },
   "skills": {
     "arm": {

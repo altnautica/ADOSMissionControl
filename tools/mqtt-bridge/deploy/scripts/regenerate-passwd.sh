@@ -94,10 +94,12 @@ cat >> "${host_acl_staging}" <<ACL_BRIDGE
 user ${BRIDGE_USER}
 topic read ados/#
 
-# GCS browser sessions: read-only across all `ados/+/...` topics. Password is
-# published via the public Convex clientConfig query and is intentionally
-# shared by every browser session. Protect telemetry beyond that via TLS +
-# Cloudflare Tunnel; do NOT grant write access here.
+# Legacy shared viewer: read-only across every `ados/...` topic. No browser reads
+# it any more -- a Mission Control session authenticates with the operator's own
+# minted write grant (below), scoped to the devices they own. This principal
+# survives only for a deployment still serving a build that predates that path.
+# Protect telemetry beyond this via TLS + Cloudflare Tunnel; do NOT grant write
+# access here.
 user ${VIEWER_USER}
 topic read ados/#
 

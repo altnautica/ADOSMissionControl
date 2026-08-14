@@ -23,6 +23,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useTranslations } from "next-intl";
 import { useUiStore } from "@/stores/ui-store";
 import {
   Bell,
@@ -82,6 +83,8 @@ export function NodeContextMenu({
   onOpen,
   onForget,
 }: NodeContextMenuProps) {
+  const t = useTranslations("nodeConsole");
+  const tCommon = useTranslations("common");
   const { toast } = useToast();
   const deviceId = node.deviceId;
   const effProfile = effProfileForNode(node);
@@ -269,7 +272,7 @@ export function NodeContextMenu({
     navigator.clipboard
       .writeText(text)
       .then(() => toast(message, "success"))
-      .catch(() => toast("Copy failed", "error") /* i18n */);
+      .catch(() => toast(t("contextMenu.copyFailed"), "error"));
     closeMenu();
   }
 
@@ -284,10 +287,10 @@ export function NodeContextMenu({
   }
 
   const inputTitles: Record<Exclude<InputMode, null>, string> = {
-    label: "Rename" /* i18n */,
-    icon: "Set initials" /* i18n */,
-    badge: "Custom badge" /* i18n */,
-    group: "Add to group" /* i18n */,
+    label: t("contextMenu.rename"),
+    icon: t("contextMenu.setInitials"),
+    badge: t("contextMenu.customBadge"),
+    group: t("contextMenu.addToGroup"),
   };
   const inputMax: Record<Exclude<InputMode, null>, number> = {
     label: 40,
@@ -302,7 +305,7 @@ export function NodeContextMenu({
         <div
           ref={panelRef}
           role="menu"
-          aria-label={`Actions for ${node.name}`} /* i18n */
+          aria-label={t("contextMenu.menuLabel", { node: node.name })}
           tabIndex={-1}
           onKeyDown={onMenuKeyDown}
           style={{ left: pos.left, top: pos.top, width: MENU_WIDTH }}
@@ -340,14 +343,14 @@ export function NodeContextMenu({
                   onClick={() => setInputMode(null)}
                   className="rounded px-2 py-1 text-[11px] text-text-tertiary hover:bg-bg-tertiary hover:text-text-primary"
                 >
-                  Cancel {/* i18n */}
+                  {tCommon("cancel")}
                 </button>
                 <button
                   data-menuitem="true"
                   onClick={submitInput}
                   className="rounded bg-accent-primary/15 px-2 py-1 text-[11px] font-medium text-accent-primary hover:bg-accent-primary/25"
                 >
-                  Save {/* i18n */}
+                  {tCommon("save")}
                 </button>
               </div>
             </div>
@@ -356,7 +359,7 @@ export function NodeContextMenu({
               {/* Recognition */}
               <MenuItem
                 icon={<Palette size={13} />}
-                label="Set tile colour" /* i18n */
+                label={t("contextMenu.setTileColour")}
                 onClick={() => setColorOpen((v) => !v)}
                 expanded={colorOpen}
               />
@@ -364,11 +367,11 @@ export function NodeContextMenu({
                 <div
                   className="flex flex-wrap items-center gap-1.5 px-3 py-1.5"
                   role="group"
-                  aria-label="Tile colours" /* i18n */
+                  aria-label={t("contextMenu.tileColours")}
                 >
                   <SwatchChip
                     active={!personalization?.color}
-                    label="Default" /* i18n */
+                    label={t("contextMenu.defaultColour")}
                     onClick={() => chooseColor(undefined)}
                   />
                   {NODE_SWATCHES.map((swatch) => (
@@ -384,19 +387,19 @@ export function NodeContextMenu({
               )}
               <MenuItem
                 icon={<Pencil size={13} />}
-                label="Rename" /* i18n */
+                label={t("contextMenu.rename")}
                 onClick={() =>
                   openInput("label", personalization?.label ?? node.name)
                 }
               />
               <MenuItem
                 icon={<Type size={13} />}
-                label="Set initials" /* i18n */
+                label={t("contextMenu.setInitials")}
                 onClick={() => openInput("icon", personalization?.icon ?? "")}
               />
               <MenuItem
                 icon={<SlidersHorizontal size={13} />}
-                label="Configure dots" /* i18n */
+                label={t("contextMenu.configureDots")}
                 onClick={() => setDotEditorOpen(true)}
               />
 
@@ -413,8 +416,8 @@ export function NodeContextMenu({
                 }
                 label={
                   personalization?.pinned
-                    ? "Unpin" /* i18n */
-                    : "Pin" /* i18n */
+                    ? t("contextMenu.unpin")
+                    : t("contextMenu.pin")
                 }
                 onClick={() => {
                   setPinned(deviceId, !personalization?.pinned);
@@ -423,14 +426,14 @@ export function NodeContextMenu({
               />
               <MenuItem
                 icon={<FolderPlus size={13} />}
-                label="Add to group" /* i18n */
+                label={t("contextMenu.addToGroup")}
                 onClick={() =>
                   openInput("group", personalization?.group ?? "")
                 }
               />
               <MenuItem
                 icon={<Tag size={13} />}
-                label="Custom badge" /* i18n */
+                label={t("contextMenu.customBadge")}
                 onClick={() =>
                   openInput("badge", personalization?.badge ?? "")
                 }
@@ -441,7 +444,7 @@ export function NodeContextMenu({
               {/* Nav */}
               <MenuItem
                 icon={<SquareArrowOutUpRight size={13} />}
-                label="Open" /* i18n */
+                label={t("contextMenu.open")}
                 onClick={() => {
                   onOpen(node);
                   closeMenu();
@@ -450,22 +453,20 @@ export function NodeContextMenu({
               {cockpitEligible && (
                 <MenuItem
                   icon={<Plane size={13} />}
-                  label="Open in cockpit" /* i18n */
+                  label={t("contextMenu.openInCockpit")}
                   onClick={openCockpit}
                 />
               )}
               <MenuItem
                 icon={<Copy size={13} />}
-                label="Copy node ID" /* i18n */
-                onClick={() =>
-                  copy(deviceId, "Node ID copied") /* i18n */
-                }
+                label={t("contextMenu.copyNodeId")}
+                onClick={() => copy(deviceId, t("contextMenu.nodeIdCopied"))}
               />
               {host && (
                 <MenuItem
                   icon={<Globe size={13} />}
-                  label="Copy host" /* i18n */
-                  onClick={() => copy(host, "Host copied") /* i18n */}
+                  label={t("contextMenu.copyHost")}
+                  onClick={() => copy(host, t("contextMenu.hostCopied"))}
                 />
               )}
 
@@ -482,8 +483,8 @@ export function NodeContextMenu({
                 }
                 label={
                   personalization?.muted
-                    ? "Unmute alerts" /* i18n */
-                    : "Mute alerts" /* i18n */
+                    ? t("contextMenu.unmuteAlerts")
+                    : t("contextMenu.muteAlerts")
                 }
                 onClick={() => {
                   setMuted(deviceId, !personalization?.muted);
@@ -493,17 +494,17 @@ export function NodeContextMenu({
               {hasOverlay && (
                 <MenuItem
                   icon={<RotateCcw size={13} />}
-                  label="Reset personalization" /* i18n */
+                  label={t("contextMenu.resetPersonalization")}
                   onClick={() => {
                     reset(deviceId);
-                    toast("Personalization reset", "info") /* i18n */;
+                    toast(t("contextMenu.personalizationReset"), "info");
                     closeMenu();
                   }}
                 />
               )}
               <MenuItem
                 icon={<Unplug size={13} />}
-                label="Forget" /* i18n */
+                label={t("contextMenu.forget")}
                 danger
                 onClick={() => setConfirmOpen(true)}
               />
@@ -524,9 +525,9 @@ export function NodeContextMenu({
 
       <ConfirmDialog
         open={confirmOpen}
-        title="Forget node" /* i18n */
-        message={`Forget ${node.name}? This removes the pairing and clears its personalization.`} /* i18n */
-        confirmLabel="Forget" /* i18n */
+        title={t("contextMenu.forgetTitle")}
+        message={t("contextMenu.forgetMessage", { node: node.name })}
+        confirmLabel={t("contextMenu.forget")}
         variant="danger"
         onCancel={() => setConfirmOpen(false)}
         onConfirm={() => {

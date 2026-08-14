@@ -44,6 +44,16 @@ export const cmdDroneCommandsApi = {
   listRecentCommands: api.cmdDroneCommands.listRecentCommands,
 };
 
+export const cmdMqttControlGrantsApi = {
+  mint: api.cmdMqttControlGrants.mint,
+  myCurrent: api.cmdMqttControlGrants.myCurrent,
+  revoke: api.cmdMqttControlGrants.revoke,
+  confirmWrite: api.cmdMqttControlGrants.confirmWrite,
+  // `ownedDeviceIds` and `insert` are deliberately absent: both are internal,
+  // reached only from inside `mint`, which derives the grant's scope rather than
+  // accepting it from the caller.
+};
+
 export const cmdRadioPairingApi = {
   enqueueWfbPairInit: api.cmdRadioPairing.enqueueWfbPairInit,
   enqueueWfbPairApply: api.cmdRadioPairing.enqueueWfbPairApply,

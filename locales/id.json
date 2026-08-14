@@ -63,7 +63,8 @@
       "receiveOnlyShort": "Hanya terima",
       "provisioningShort": "Mengambil otoritas",
       "expiring": "Otoritas perintah akan berakhir dan pembaruan gagal. Kirim yang Anda perlukan sekarang.",
-      "expiringShort": "Otoritas akan berakhir"
+      "expiringShort": "Otoritas akan berakhir",
+      "requestControl": "Minta otoritas perintah"
     },
     "statusText": {
       "title": "Pesan status",
@@ -90,6 +91,75 @@
     },
     "groups": {
       "compute": "Compute"
+    },
+    "signals": {
+      "link": "Tautan",
+      "battery": "Baterai",
+      "gps": "GPS",
+      "arm": "Pengaktifan",
+      "prearm": "Pra-aktivasi",
+      "rc": "RC",
+      "rx": "Penerimaan",
+      "uplink": "Uplink",
+      "mesh": "Mesh",
+      "mqtt": "Relai cloud",
+      "gpu": "GPU",
+      "jobs": "Pekerjaan",
+      "cluster": "Klaster",
+      "thermal": "Termal",
+      "cpu": "CPU",
+      "temp": "Suhu",
+      "services": "Layanan",
+      "alerts": "Peringatan"
+    },
+    "signalState": {
+      "good": "sehat",
+      "warning": "peringatan",
+      "serious": "menurun",
+      "critical": "kritis",
+      "idle": "diam",
+      "offline": "offline",
+      "unknown": "tanpa bacaan"
+    },
+    "signalTooltip": "{signal}: {state}",
+    "signalDots": "Sinyal node",
+    "contextMenu": {
+      "menuLabel": "Tindakan untuk {node}",
+      "copyFailed": "Gagal menyalin",
+      "rename": "Ganti nama",
+      "setInitials": "Atur inisial",
+      "customBadge": "Lencana khusus",
+      "addToGroup": "Tambahkan ke grup",
+      "setTileColour": "Atur warna kartu",
+      "tileColours": "Warna kartu",
+      "defaultColour": "Bawaan",
+      "configureDots": "Konfigurasi titik",
+      "pin": "Sematkan",
+      "unpin": "Lepas sematan",
+      "open": "Buka",
+      "openInCockpit": "Buka di kokpit",
+      "copyNodeId": "Salin ID node",
+      "nodeIdCopied": "ID node disalin",
+      "copyHost": "Salin host",
+      "hostCopied": "Host disalin",
+      "muteAlerts": "Bisukan peringatan",
+      "unmuteAlerts": "Aktifkan peringatan",
+      "resetPersonalization": "Setel ulang personalisasi",
+      "personalizationReset": "Personalisasi disetel ulang",
+      "forget": "Lupakan",
+      "forgetTitle": "Lupakan node",
+      "forgetMessage": "Lupakan {node}? Ini melepas penyandingan dan menghapus personalisasinya."
+    },
+    "dotEditor": {
+      "title": "Konfigurasi titik",
+      "none": "Tidak ada",
+      "hint": "Sematkan hingga {max} sinyal terverifikasi sebagai titik pada node ini. Sinyal tanpa bacaan menampilkan cincin kosong, bukan status palsu.",
+      "slot": "Titik {index}"
+    },
+    "companionCta": {
+      "title": "Tambahkan komputer pendamping",
+      "body": "Pengendali terbang ini belum disandingkan dengan komputer onboard. Sandingkan satu untuk menambahkan video, visi, model dunia, dan ekstensi.",
+      "action": "Sandingkan komputer"
     }
   },
   "nav": {
@@ -1309,7 +1379,12 @@
     "sectionExecution": "Execution",
     "sectionHealth": "Feed health",
     "sectionInputs": "Inputs & pipelines",
-    "sectionModels": "Models"
+    "sectionModels": "Models",
+    "targetActions": {
+      "dismiss": "Tutup",
+      "none": "Tidak ada tindakan untuk target ini",
+      "pluginBadge": "plugin"
+    }
   },
   "nodeSettings": {
     "subtitle": "Configure this node's onboard computer. Changes write straight to the agent over the LAN.",
@@ -2208,7 +2283,8 @@
     "chip": "Chip",
     "cores": "Cores",
     "gpu": "GPU",
-    "gpuHistory": "GPU History (5m)"
+    "gpuHistory": "GPU History (5m)",
+    "groundStationFallbackTitle": "Stasiun darat"
   },
   "fleetNetwork": {
     "title": "Jaringan Armada",
@@ -4865,7 +4941,8 @@
       "all": "All",
       "live": "Live",
       "video": "Video",
-      "offline": "Stale/offline"
+      "offline": "Stale/offline",
+      "workstation": "Workstation"
     },
     "feedBudget": "{active}/{max} feeds active",
     "noAgentsTitle": "No paired agents",
@@ -4909,7 +4986,14 @@
     "rssi": "RSSI",
     "snr": "SNR",
     "loss": "Loss",
-    "link": "Link"
+    "link": "Link",
+    "arm": "Aktivasi",
+    "heartbeat": "Detak",
+    "uplink": "Uplink",
+    "mesh": "Mesh",
+    "disk": "Disk",
+    "gpuNodes": "Node GPU",
+    "jobs": "Pekerjaan"
   },
   "flashTool": {
     "ados": {
@@ -5872,7 +5956,8 @@
       "receiveOnly": "RECEIVE ONLY",
       "provisioning": "AUTHORISING",
       "expiring": "ENDING SOON"
-    }
+    },
+    "openFlight": "Buka Penerbangan"
   },
   "skills": {
     "arm": {

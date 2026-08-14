@@ -63,7 +63,8 @@
       "receiveOnlyShort": "Receive only",
       "provisioningShort": "Getting authority",
       "expiring": "Command authority is expiring and renewal has failed. Send what you need now.",
-      "expiringShort": "Authority expiring"
+      "expiringShort": "Authority expiring",
+      "requestControl": "Request command authority"
     },
     "statusText": {
       "title": "Status Messages",
@@ -90,6 +91,75 @@
     },
     "groups": {
       "compute": "Compute"
+    },
+    "signals": {
+      "link": "Link",
+      "battery": "Battery",
+      "gps": "GPS",
+      "arm": "Arming",
+      "prearm": "Pre-arm",
+      "rc": "RC",
+      "rx": "Receive",
+      "uplink": "Uplink",
+      "mesh": "Mesh",
+      "mqtt": "Cloud relay",
+      "gpu": "GPU",
+      "jobs": "Jobs",
+      "cluster": "Cluster",
+      "thermal": "Thermal",
+      "cpu": "CPU",
+      "temp": "Temperature",
+      "services": "Services",
+      "alerts": "Alerts"
+    },
+    "signalState": {
+      "good": "healthy",
+      "warning": "warning",
+      "serious": "degraded",
+      "critical": "critical",
+      "idle": "idle",
+      "offline": "offline",
+      "unknown": "no reading"
+    },
+    "signalTooltip": "{signal}: {state}",
+    "signalDots": "Node signals",
+    "contextMenu": {
+      "menuLabel": "Actions for {node}",
+      "copyFailed": "Copy failed",
+      "rename": "Rename",
+      "setInitials": "Set initials",
+      "customBadge": "Custom badge",
+      "addToGroup": "Add to group",
+      "setTileColour": "Set tile colour",
+      "tileColours": "Tile colours",
+      "defaultColour": "Default",
+      "configureDots": "Configure dots",
+      "pin": "Pin",
+      "unpin": "Unpin",
+      "open": "Open",
+      "openInCockpit": "Open in cockpit",
+      "copyNodeId": "Copy node ID",
+      "nodeIdCopied": "Node ID copied",
+      "copyHost": "Copy host",
+      "hostCopied": "Host copied",
+      "muteAlerts": "Mute alerts",
+      "unmuteAlerts": "Unmute alerts",
+      "resetPersonalization": "Reset personalization",
+      "personalizationReset": "Personalization reset",
+      "forget": "Forget",
+      "forgetTitle": "Forget node",
+      "forgetMessage": "Forget {node}? This removes the pairing and clears its personalization."
+    },
+    "dotEditor": {
+      "title": "Configure dots",
+      "none": "None",
+      "hint": "Pin up to {max} verified signals as dots on this node. A signal with no reading shows a hollow ring, never a fake status.",
+      "slot": "Dot {index}"
+    },
+    "companionCta": {
+      "title": "Add a companion computer",
+      "body": "This flight controller has no onboard computer paired. Pair one to add video, vision, world model, and extensions.",
+      "action": "Pair a computer"
     }
   },
   "nav": {
@@ -1309,7 +1379,12 @@
     "sectionExecution": "Execution",
     "sectionHealth": "Feed health",
     "sectionInputs": "Inputs & pipelines",
-    "sectionModels": "Models"
+    "sectionModels": "Models",
+    "targetActions": {
+      "dismiss": "Dismiss",
+      "none": "No actions for this target",
+      "pluginBadge": "plugin"
+    }
   },
   "nodeSettings": {
     "subtitle": "Configure this node's onboard computer. Changes write straight to the agent over the LAN.",
@@ -2208,7 +2283,8 @@
     "chip": "Chip",
     "cores": "Cores",
     "gpu": "GPU",
-    "gpuHistory": "GPU History (5m)"
+    "gpuHistory": "GPU History (5m)",
+    "groundStationFallbackTitle": "Ground station"
   },
   "fleetNetwork": {
     "title": "Fleet Network",
@@ -4865,7 +4941,8 @@
       "all": "All",
       "live": "Live",
       "video": "Video",
-      "offline": "Stale/offline"
+      "offline": "Stale/offline",
+      "workstation": "Workstation"
     },
     "feedBudget": "{active}/{max} feeds active",
     "noAgentsTitle": "No paired agents",
@@ -4909,7 +4986,14 @@
     "rssi": "RSSI",
     "snr": "SNR",
     "loss": "Loss",
-    "link": "Link"
+    "link": "Link",
+    "arm": "Arm",
+    "heartbeat": "Heartbeat",
+    "uplink": "Uplink",
+    "mesh": "Mesh",
+    "disk": "Disk",
+    "gpuNodes": "GPU nodes",
+    "jobs": "Jobs"
   },
   "flashTool": {
     "ados": {
@@ -5872,7 +5956,8 @@
       "receiveOnly": "RECEIVE ONLY",
       "provisioning": "AUTHORISING",
       "expiring": "ENDING SOON"
-    }
+    },
+    "openFlight": "Open Flight"
   },
   "skills": {
     "arm": {

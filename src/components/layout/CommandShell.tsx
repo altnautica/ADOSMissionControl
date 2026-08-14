@@ -14,6 +14,7 @@ import { PluginCrashBanner } from "@/components/plugins/PluginCrashBanner";
 import { SlcanModeBanner } from "@/components/shared/SlcanModeBanner";
 import { useFleetStore } from "@/stores/fleet-store";
 import { useAuthStore } from "@/stores/auth-store";
+import { releaseGrant } from "@/stores/mqtt-control-grant-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { LocalStorageBanner } from "@/components/ui/local-storage-banner";
 import { useUiStore } from "@/stores/ui-store";
@@ -105,7 +106,12 @@ function ConvexUserMenu() {
           <button
             onClick={() => {
               setMenuOpen(false);
-              if (signOut) void signOut();
+              // Give up the broker write grant while the session can still
+              // authorise the revoke. After signOut the mutation has no
+              // identity, so this is the only moment the server-side row can be
+              // closed rather than left to lapse on its own hour-long expiry.
+              // The local credential is dropped either way.
+              if (signOut) void releaseGrant().finally(() => signOut());
             }}
             className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary hover:bg-bg-primary transition-colors"
           >

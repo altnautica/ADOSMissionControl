@@ -11,7 +11,7 @@
  *   - a WebSocket failure falls through to the MQTT relay.
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, cleanup, waitFor } from "@testing-library/react";
 
 interface ConnState {
@@ -40,11 +40,18 @@ const h = vi.hoisted(() => {
     conn,
     wsConnect:
       vi.fn<(url: string, protocols?: string | string[]) => Promise<void>>(),
-    mqttConnect: vi.fn<(deviceId: string) => Promise<void>>(),
+    mqttConnect: vi.fn<
+      (
+        deviceId: string,
+        brokerUrl?: string,
+        auth?: { username?: string | null; password?: string | null; canPublish?: boolean },
+      ) => Promise<void>
+    >(),
     adapterConnect: vi.fn(async () => ({ firmware: "ardupilot" })),
     mintWsTicket: vi.fn<() => Promise<string | null>>(),
     addDrone: vi.fn(),
     removeDrone: vi.fn(),
+    selectDrone: vi.fn(),
   };
 });
 
@@ -61,8 +68,12 @@ vi.mock("@/lib/protocol/transport/websocket", () => ({
 }));
 vi.mock("@/lib/protocol/transport/mqtt-mavlink", () => ({
   MqttMavlinkTransport: class {
-    connect(deviceId: string) {
-      return h.mqttConnect(deviceId);
+    connect(
+      deviceId: string,
+      brokerUrl?: string,
+      auth?: { username?: string | null; password?: string | null; canPublish?: boolean },
+    ) {
+      return h.mqttConnect(deviceId, brokerUrl, auth);
     }
     disconnect() {}
   },
@@ -105,7 +116,13 @@ vi.mock("@/stores/agent-capabilities-store", () => {
 });
 
 vi.mock("@/stores/drone-manager", () => {
-  const state = { drones: new Map(), addDrone: h.addDrone, removeDrone: h.removeDrone };
+  const state = {
+    drones: new Map(),
+    selectedDroneId: null,
+    addDrone: h.addDrone,
+    removeDrone: h.removeDrone,
+    selectDrone: h.selectDrone,
+  };
   const hook = () => state;
   hook.getState = () => state;
   return { useDroneManager: hook };
@@ -119,8 +136,24 @@ vi.mock("@/stores/fleet-store", () => {
 });
 
 import { AgentMavlinkBridge } from "../AgentMavlinkBridge";
+import { useMqttControlGrantStore } from "@/stores/mqtt-control-grant-store";
+import { setMqttBrokerCredential } from "@/lib/mqtt-broker-credential";
 
 const { wsConnect, mqttConnect, mintWsTicket, addDrone } = h;
+
+/** Hold a live write grant covering the cloud device the bridge will dial. */
+function holdGrant() {
+  setMqttBrokerCredential({ username: "gcs-op-1", password: "secret-1" });
+  useMqttControlGrantStore.setState({
+    principal: "gcs-op-1",
+    grant: {
+      deviceIds: ["cloud-1"],
+      expiresAt: Date.now() + 60 * 60 * 1000,
+      writeConfirmed: false,
+      renewalFailed: false,
+    },
+  });
+}
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -136,6 +169,16 @@ beforeEach(() => {
     cloudDeviceId: "cloud-1",
     apiKey: "key-abc",
   };
+});
+
+afterEach(() => {
+  setMqttBrokerCredential(null);
+  useMqttControlGrantStore.setState({
+    grant: null,
+    principal: null,
+    minting: false,
+    lastError: null,
+  });
 });
 
 describe("AgentMavlinkBridge connection cascade", () => {
@@ -170,7 +213,42 @@ describe("AgentMavlinkBridge connection cascade", () => {
     await waitFor(() => expect(mqttConnect).toHaveBeenCalledTimes(1));
     // Authenticated + legacy WS both attempted, both rejected.
     expect(wsConnect).toHaveBeenCalledTimes(2);
-    expect(mqttConnect).toHaveBeenCalledWith("cloud-1");
+    // No grant held, so no publish claim is passed and the relay session is
+    // receive-only. The transport refuses to infer authority from a credential
+    // it was not told to publish with.
+    expect(mqttConnect).toHaveBeenCalledWith("cloud-1", undefined, undefined);
     expect(addDrone).toHaveBeenCalledTimes(1);
+  });
+
+  it("carries the operator's write grant into the relay dial", async () => {
+    holdGrant();
+    wsConnect.mockRejectedValue(new Error("refused"));
+    render(<AgentMavlinkBridge />);
+
+    await waitFor(() => expect(mqttConnect).toHaveBeenCalledTimes(1));
+    // The claim is what flips the transport's `canCommand`, and it comes from
+    // the grant store rather than being inferred from an open socket.
+    expect(mqttConnect).toHaveBeenCalledWith("cloud-1", undefined, {
+      username: "gcs-op-1",
+      password: "secret-1",
+      canPublish: true,
+    });
+  });
+
+  it("passes no claim when the held grant covers a different drone", async () => {
+    holdGrant();
+    useMqttControlGrantStore.setState({
+      grant: {
+        deviceIds: ["cloud-2"],
+        expiresAt: Date.now() + 60 * 60 * 1000,
+        writeConfirmed: false,
+        renewalFailed: false,
+      },
+    });
+    wsConnect.mockRejectedValue(new Error("refused"));
+    render(<AgentMavlinkBridge />);
+
+    await waitFor(() => expect(mqttConnect).toHaveBeenCalledTimes(1));
+    expect(mqttConnect).toHaveBeenCalledWith("cloud-1", undefined, undefined);
   });
 });

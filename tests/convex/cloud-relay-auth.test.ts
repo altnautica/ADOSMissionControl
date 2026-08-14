@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
@@ -162,6 +163,44 @@ describe("cloud relay authorization helpers", () => {
     ).rejects.toThrow("Not found");
   });
 
+  it("still admits the owner of a row written before the userId migration", async () => {
+    // Command rows carry one of two spellings of the same principal: the bare
+    // id, and the older compound "userId|sessionId" subject. Comparing only the
+    // bare form would tell an operator "Not found" for a command they queued
+    // themselves, and nothing prunes a pending row, so it would never clear.
+    const legacy = {
+      _id: "command-legacy",
+      userId: "user-a|session-xyz",
+      deviceId: "device-a",
+      command: "wfb_pair_init_remote",
+      status: "pending",
+    };
+
+    await expect(
+      requireOwnedCommand(
+        makeCtx({
+          userId: "user-a",
+          drones: [{ _id: "drone-a", userId: "user-a", deviceId: "device-a" }],
+          commands: [legacy],
+        }) as never,
+        "command-legacy" as never,
+      ),
+    ).resolves.toMatchObject({ _id: "command-legacy" });
+
+    // The prefix must not become a wildcard: "user-a10" is a different account
+    // whose id merely starts with this one.
+    await expect(
+      requireOwnedCommand(
+        makeCtx({
+          userId: "user-a",
+          drones: [{ _id: "drone-a", userId: "user-a", deviceId: "device-a" }],
+          commands: [{ ...legacy, _id: "command-other", userId: "user-a10" }],
+        }) as never,
+        "command-other" as never,
+      ),
+    ).rejects.toThrow("Not found");
+  });
+
   it("wires cancelCommand to the owner-checked authz path", async () => {
     const radio = await readFile(
       path.join(process.cwd(), "convex/cmdRadioPairing.ts"),
@@ -187,5 +226,36 @@ describe("cloud relay authorization helpers", () => {
     expect(commands).toContain("export const ackCommand = internalMutation");
     expect(status).toContain("export const pushStatus = internalMutation");
     expect(drones).toContain("export const getDroneByDeviceId = internalQuery");
+  });
+
+  it("holds the production command relay to the same authz posture", async () => {
+    // The hosted deployment is a separate tree, so a lone-repo checkout has
+    // nothing to compare against and reports skipped rather than a false green.
+    const prodPath = path.resolve(
+      process.cwd(),
+      "../website/convex/cmdDroneCommands.ts",
+    );
+    if (!existsSync(prodPath)) return;
+    const prod = await readFile(prodPath, "utf8");
+
+    // Every one of these shipped absent from production while present here.
+    // The exposure gate could not see it: both sides are a plain query or
+    // mutation, so only the body distinguishes them. Queueing was the worst of
+    // the four, because the agent authenticates itself when it polls and
+    // nothing downstream re-checks who enqueued.
+    expect(prod).toContain("await requireOwnedDroneByDeviceId(ctx, args.deviceId)");
+    expect(prod).toContain("command: relayCommandValidator");
+    expect(prod).toContain("return await requireOwnedCommand(ctx, commandId)");
+    expect(prod).toContain("await requireOwnedDroneByDeviceId(ctx, deviceId)");
+    expect(prod).toContain("await requireCommandForDevice(ctx, commandId, deviceId)");
+
+    // The queued row must record the OWNER. Recording the caller was harmless
+    // only while the two could differ, which is precisely the bug.
+    expect(prod).toContain("userId: drone.userId");
+    expect(prod).not.toContain("userId: identity.subject");
+
+    // An unconstrained command name lets a forged value land a row the agent
+    // silently ignores, and removes the one place the vocabulary is reviewable.
+    expect(prod).not.toMatch(/command:\s*v\.string\(\)/);
   });
 });

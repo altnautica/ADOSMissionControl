@@ -12,6 +12,10 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { MqttMavlinkTransport } from "../mqtt-mavlink";
+import {
+  onBrokerWriteAccepted,
+  setMqttBrokerCredential,
+} from "@/lib/mqtt-broker-credential";
 
 /** Minimal stand-in for an mqtt.js client that connects successfully. */
 function fakeClient() {
@@ -96,5 +100,42 @@ describe("MqttMavlinkTransport publish authority", () => {
     // authorises a principal, and an anonymous connection has none.
     const t = await connected({ canPublish: true });
     expect(t.canCommand).toBe(false);
+  });
+
+  it("reports the broker's acceptance of a publish, once per credential", async () => {
+    // Holding a grant and having proven it are different facts, and only the
+    // publishing client can observe the second one: at QoS 0 there is no round
+    // trip for the grant owner to wait on, so the broker taking the frame is the
+    // only evidence that exists.
+    setMqttBrokerCredential({ username: "gcs-op-x", password: "secret" });
+    const accepted: string[] = [];
+    const off = onBrokerWriteAccepted((username) => accepted.push(username));
+    const t = await connected({
+      username: "gcs-op-x",
+      password: "secret",
+      canPublish: true,
+    });
+
+    t.send(new Uint8Array([1]));
+    t.send(new Uint8Array([2]));
+    // Two frames, one report. This runs on every outbound FC frame, and a report
+    // per frame would be a Convex mutation per frame.
+    expect(accepted).toEqual(["gcs-op-x"]);
+
+    off();
+    setMqttBrokerCredential(null);
+  });
+
+  it("reports nothing when the session was refused the publish", async () => {
+    setMqttBrokerCredential({ username: "viewer", password: "secret" });
+    const accepted: string[] = [];
+    const off = onBrokerWriteAccepted((username) => accepted.push(username));
+    const t = await connected({ username: "viewer", password: "secret" });
+
+    expect(() => t.send(new Uint8Array([1]))).toThrow(/receive-only/i);
+    expect(accepted).toEqual([]);
+
+    off();
+    setMqttBrokerCredential(null);
   });
 });

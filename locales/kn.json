@@ -63,7 +63,8 @@
       "receiveOnlyShort": "ಸ್ವೀಕರಿಸುವುದು ಮಾತ್ರ",
       "provisioningShort": "ಅಧಿಕಾರ ಪಡೆಯಲಾಗುತ್ತಿದೆ",
       "expiring": "ಕಮಾಂಡ್ ಅಧಿಕಾರ ಮುಗಿಯುತ್ತಿದೆ ಮತ್ತು ನವೀಕರಣ ವಿಫಲವಾಗಿದೆ. ಬೇಕಾದುದನ್ನು ಈಗಲೇ ಕಳುಹಿಸಿ.",
-      "expiringShort": "ಅಧಿಕಾರ ಮುಗಿಯುತ್ತಿದೆ"
+      "expiringShort": "ಅಧಿಕಾರ ಮುಗಿಯುತ್ತಿದೆ",
+      "requestControl": "ಕಮಾಂಡ್ ಅಧಿಕಾರವನ್ನು ವಿನಂತಿಸಿ"
     },
     "statusText": {
       "title": "ಸ್ಥಿತಿ ಸಂದೇಶಗಳು",
@@ -90,6 +91,75 @@
     },
     "groups": {
       "compute": "Compute"
+    },
+    "signals": {
+      "link": "ಲಿಂಕ್",
+      "battery": "ಬ್ಯಾಟರಿ",
+      "gps": "GPS",
+      "arm": "ಆರ್ಮಿಂಗ್",
+      "prearm": "ಪ್ರೀ-ಆರ್ಮ್",
+      "rc": "RC",
+      "rx": "ಸ್ವೀಕರಣೆ",
+      "uplink": "ಅಪ್‌ಲಿಂಕ್",
+      "mesh": "ಮೆಶ್",
+      "mqtt": "ಕ್ಲೌಡ್ ರಿಲೇ",
+      "gpu": "GPU",
+      "jobs": "ಜಾಬ್‌ಗಳು",
+      "cluster": "ಕ್ಲಸ್ಟರ್",
+      "thermal": "ಥರ್ಮಲ್",
+      "cpu": "CPU",
+      "temp": "ತಾಪಮಾನ",
+      "services": "ಸೇವೆಗಳು",
+      "alerts": "ಎಚ್ಚರಿಕೆಗಳು"
+    },
+    "signalState": {
+      "good": "ಆರೋಗ್ಯಕರ",
+      "warning": "ಎಚ್ಚರಿಕೆ",
+      "serious": "ಕುಸಿದಿದೆ",
+      "critical": "ಗಂಭೀರ",
+      "idle": "ನಿಷ್ಕ್ರಿಯ",
+      "offline": "ಆಫ್‌ಲೈನ್",
+      "unknown": "ಓದುವಿಕೆ ಇಲ್ಲ"
+    },
+    "signalTooltip": "{signal}: {state}",
+    "signalDots": "ನೋಡ್ ಸಿಗ್ನಲ್‌ಗಳು",
+    "contextMenu": {
+      "menuLabel": "{node} ಗಾಗಿ ಕ್ರಿಯೆಗಳು",
+      "copyFailed": "ನಕಲಿಸಲು ವಿಫಲವಾಯಿತು",
+      "rename": "ಹೆಸರು ಬದಲಿಸಿ",
+      "setInitials": "ಮೊದಲಕ್ಷರಗಳನ್ನು ಹೊಂದಿಸಿ",
+      "customBadge": "ಕಸ್ಟಮ್ ಬ್ಯಾಡ್ಜ್",
+      "addToGroup": "ಗುಂಪಿಗೆ ಸೇರಿಸಿ",
+      "setTileColour": "ಟೈಲ್ ಬಣ್ಣ ಹೊಂದಿಸಿ",
+      "tileColours": "ಟೈಲ್ ಬಣ್ಣಗಳು",
+      "defaultColour": "ಡೀಫಾಲ್ಟ್",
+      "configureDots": "ಚುಕ್ಕಿಗಳನ್ನು ಹೊಂದಿಸಿ",
+      "pin": "ಪಿನ್ ಮಾಡಿ",
+      "unpin": "ಪಿನ್ ತೆಗೆಯಿರಿ",
+      "open": "ತೆರೆಯಿರಿ",
+      "openInCockpit": "ಕಾಕ್‌ಪಿಟ್‌ನಲ್ಲಿ ತೆರೆಯಿರಿ",
+      "copyNodeId": "ನೋಡ್ ID ನಕಲಿಸಿ",
+      "nodeIdCopied": "ನೋಡ್ ID ನಕಲಾಗಿದೆ",
+      "copyHost": "ಹೋಸ್ಟ್ ನಕಲಿಸಿ",
+      "hostCopied": "ಹೋಸ್ಟ್ ನಕಲಾಗಿದೆ",
+      "muteAlerts": "ಎಚ್ಚರಿಕೆಗಳನ್ನು ಮ್ಯೂಟ್ ಮಾಡಿ",
+      "unmuteAlerts": "ಎಚ್ಚರಿಕೆಗಳನ್ನು ಅನ್‌ಮ್ಯೂಟ್ ಮಾಡಿ",
+      "resetPersonalization": "ವೈಯಕ್ತೀಕರಣ ಮರುಹೊಂದಿಸಿ",
+      "personalizationReset": "ವೈಯಕ್ತೀಕರಣ ಮರುಹೊಂದಿಸಲಾಗಿದೆ",
+      "forget": "ತೆಗೆದುಹಾಕಿ",
+      "forgetTitle": "ನೋಡ್ ತೆಗೆದುಹಾಕಿ",
+      "forgetMessage": "{node} ತೆಗೆದುಹಾಕಬೇಕೆ? ಇದು ಜೋಡಣೆಯನ್ನು ತೆಗೆದು ಅದರ ವೈಯಕ್ತೀಕರಣವನ್ನು ಅಳಿಸುತ್ತದೆ."
+    },
+    "dotEditor": {
+      "title": "ಚುಕ್ಕಿಗಳನ್ನು ಹೊಂದಿಸಿ",
+      "none": "ಯಾವುದೂ ಇಲ್ಲ",
+      "hint": "ಈ ನೋಡ್‌ನಲ್ಲಿ ಗರಿಷ್ಠ {max} ಪರಿಶೀಲಿತ ಸಿಗ್ನಲ್‌ಗಳನ್ನು ಚುಕ್ಕಿಗಳಾಗಿ ಪಿನ್ ಮಾಡಿ. ಓದುವಿಕೆ ಇಲ್ಲದ ಸಿಗ್ನಲ್ ಟೊಳ್ಳಾದ ಉಂಗುರವನ್ನು ತೋರಿಸುತ್ತದೆ, ಎಂದಿಗೂ ಸುಳ್ಳು ಸ್ಥಿತಿಯನ್ನಲ್ಲ.",
+      "slot": "ಚುಕ್ಕಿ {index}"
+    },
+    "companionCta": {
+      "title": "ಕಂಪ್ಯಾನಿಯನ್ ಕಂಪ್ಯೂಟರ್ ಸೇರಿಸಿ",
+      "body": "ಈ ಫ್ಲೈಟ್ ಕಂಟ್ರೋಲರ್‌ಗೆ ಯಾವುದೇ ಆನ್‌ಬೋರ್ಡ್ ಕಂಪ್ಯೂಟರ್ ಜೋಡಿಸಿಲ್ಲ. ವಿಡಿಯೊ, ವಿಷನ್, ವರ್ಲ್ಡ್ ಮಾಡೆಲ್ ಮತ್ತು ವಿಸ್ತರಣೆಗಳನ್ನು ಸೇರಿಸಲು ಒಂದನ್ನು ಜೋಡಿಸಿ.",
+      "action": "ಕಂಪ್ಯೂಟರ್ ಜೋಡಿಸಿ"
     }
   },
   "nav": {
@@ -1309,7 +1379,12 @@
     "sectionExecution": "Execution",
     "sectionHealth": "Feed health",
     "sectionInputs": "Inputs & pipelines",
-    "sectionModels": "Models"
+    "sectionModels": "Models",
+    "targetActions": {
+      "dismiss": "ಮುಚ್ಚಿ",
+      "none": "ಈ ಗುರಿಗೆ ಯಾವುದೇ ಕ್ರಿಯೆಗಳಿಲ್ಲ",
+      "pluginBadge": "ಪ್ಲಗಿನ್"
+    }
   },
   "nodeSettings": {
     "subtitle": "Configure this node's onboard computer. Changes write straight to the agent over the LAN.",
@@ -2208,7 +2283,8 @@
     "chip": "Chip",
     "cores": "Cores",
     "gpu": "GPU",
-    "gpuHistory": "GPU History (5m)"
+    "gpuHistory": "GPU History (5m)",
+    "groundStationFallbackTitle": "ಗ್ರೌಂಡ್ ಸ್ಟೇಷನ್"
   },
   "fleetNetwork": {
     "title": "Fleet Network",
@@ -4865,7 +4941,8 @@
       "all": "All",
       "live": "Live",
       "video": "Video",
-      "offline": "Stale/offline"
+      "offline": "Stale/offline",
+      "workstation": "ವರ್ಕ್‌ಸ್ಟೇಷನ್"
     },
     "feedBudget": "{active}/{max} feeds active",
     "noAgentsTitle": "No paired agents",
@@ -4909,7 +4986,14 @@
     "rssi": "RSSI",
     "snr": "SNR",
     "loss": "Loss",
-    "link": "Link"
+    "link": "Link",
+    "arm": "ಆರ್ಮ್",
+    "heartbeat": "ಹಾರ್ಟ್‌ಬೀಟ್",
+    "uplink": "ಅಪ್‌ಲಿಂಕ್",
+    "mesh": "ಮೆಶ್",
+    "disk": "ಡಿಸ್ಕ್",
+    "gpuNodes": "GPU ನೋಡ್‌ಗಳು",
+    "jobs": "ಜಾಬ್‌ಗಳು"
   },
   "flashTool": {
     "ados": {
@@ -5872,7 +5956,8 @@
       "receiveOnly": "RECEIVE ONLY",
       "provisioning": "AUTHORISING",
       "expiring": "ENDING SOON"
-    }
+    },
+    "openFlight": "ಫ್ಲೈಟ್ ತೆರೆಯಿರಿ"
   },
   "skills": {
     "arm": {

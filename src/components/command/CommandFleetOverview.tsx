@@ -158,13 +158,13 @@ export function CommandFleetOverview({
             <>
               <StatTile
                 icon={<Server size={13} />}
-                label="GPU nodes" /* i18n: nodeConsole compute-node count tile */
+                label={t("gpuNodes")}
                 value={presence.workstationCount}
                 className="min-w-24 p-2.5"
               />
               <StatTile
                 icon={<ListChecks size={13} />}
-                label="Jobs" /* i18n: nodeConsole running-jobs aggregate (honest grey until on the fleet summary) */
+                label={t("jobs")}
                 value="--"
                 level="idle"
                 className="min-w-24 p-2.5"
@@ -201,7 +201,7 @@ export function CommandFleetOverview({
                 : "bg-bg-secondary text-text-secondary hover:text-text-primary border border-border-default",
             )}
           >
-            Workstation{/* i18n: nodeConsole workstation filter chip */}
+            {t("filter.workstation")}
           </button>
         )}
         <span className="ml-auto text-[11px] text-text-tertiary">

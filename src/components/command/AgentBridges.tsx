@@ -22,6 +22,7 @@ import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import { communityApi } from "@/lib/community-api";
 import { isDemoMode } from "@/lib/utils";
 import { CommandFleetMqttBridge } from "./CommandFleetMqttBridge";
+import { MqttControlGrantBridge } from "./MqttControlGrantBridge";
 import { CommandFleetStatusBridge } from "./CommandFleetStatusBridge";
 import { CommandFleetLocalBridge } from "./CommandFleetLocalBridge";
 import { VisionDetectionsBridge } from "./VisionDetectionsBridge";
@@ -44,14 +45,11 @@ export function AgentBridges() {
   const pairedDrones = usePairingStore((s) => s.pairedDrones);
   const demoMode = useSettingsStore((s) => s.demoMode);
   const fleetNodes = useFleetNodes();
-  // Two reads, deliberately. The public config carries the broker URL and other
-  // non-secrets; the viewer credential is auth-gated and comes back null for a
-  // signed-out visitor, which the bridges below already treat as "no cloud
-  // telemetry" rather than as an error.
+  // The public config carries the broker URL and other non-secrets. It carries
+  // no credential: the browser's broker credential is the operator's own minted
+  // write grant, which `MqttControlGrantBridge` obtains and injects into the
+  // singleton every MQTT client below reads at connect time.
   const clientConfig = useConvexSkipQuery(communityApi.clientConfig.get);
-  const brokerCred = useConvexSkipQuery(
-    communityApi.clientConfig.brokerViewerCredential,
-  );
 
   // In demo the mock engine seeds the fleet + agent stores directly; the real
   // cloud/MQTT/LAN bridges would only fail to reach a broker and spam retries.
@@ -59,6 +57,7 @@ export function AgentBridges() {
 
   return (
     <>
+      <MqttControlGrantBridge />
       <CommandFleetStatusBridge enabled={pairedDrones.length > 0} />
       <CommandFleetLocalBridge enabled={fleetNodes.length > 0} />
       {/* Opens the selected drone's detection WS local-first (host+key from
@@ -67,17 +66,11 @@ export function AgentBridges() {
       <CommandFleetMqttBridge
         pairedDrones={pairedDrones}
         mqttBrokerUrl={clientConfig?.mqttBrokerUrl}
-        mqttViewerUsername={brokerCred?.mqttViewerUsername}
-        mqttViewerPassword={brokerCred?.mqttViewerPassword}
       />
       {cloudMode && <CloudStatusBridge />}
       {cloudMode && <CloudCommandResultBridge />}
       {cloudMode && (
-        <MqttBridge
-          mqttBrokerUrl={clientConfig?.mqttBrokerUrl}
-          mqttViewerUsername={brokerCred?.mqttViewerUsername}
-          mqttViewerPassword={brokerCred?.mqttViewerPassword}
-        />
+        <MqttBridge mqttBrokerUrl={clientConfig?.mqttBrokerUrl} />
       )}
     </>
   );
