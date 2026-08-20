@@ -31,6 +31,9 @@ export interface VideoStreamLeg {
   codec?: string;
   /** Fully-resolved WHEP URL against the node's reachable host. */
   whepUrl: string;
+  /** Fully-resolved HLS playlist URL for this leg (the remote/relay-safe
+   * fallback), when the agent advertised one. Absent on older agents. */
+  hlsUrl?: string;
   /** Agent-sampled per-leg liveness: `false` = a known-dead leg (its source is
    * not producing), rendered disabled and never auto-selected; `true` = live;
    * absent/`null` = not-yet-sampled or an idle on-demand secondary with no

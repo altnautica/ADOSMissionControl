@@ -1419,7 +1419,17 @@
       "codecPrefHint": "Auto picks H.264 for browser compatibility; H.265 needs the receive side to also speak it. Applies at the next pipeline start.",
       "codecPrefAuto": "Auto",
       "bitrateLabel": "Encode bitrate (kbps)",
-      "bitrateHint": "Base encoder bitrate. The adaptive ladder steps around it as the link changes. Applies at the next pipeline start."
+      "bitrateHint": "Base encoder bitrate. The adaptive ladder steps around it as the link changes. Applies at the next pipeline start.",
+      "orientationTitle": "Image orientation",
+      "orientationHint": "Rotate or flip the camera image. Applied on the encode pipeline before compression; applies at the next pipeline start.",
+      "rotationLabel": "Rotation",
+      "rotationHint": "Clockwise rotation in 90° steps.",
+      "rotation0": "0°",
+      "rotationDefault": "0° (default)",
+      "hflipLabel": "Horizontal flip",
+      "hflipHint": "Mirror the image left–right (helps a downward camera mounted upside-down).",
+      "vflipLabel": "Vertical flip",
+      "vflipHint": "Mirror the image top–bottom."
     },
     "profile": {
       "title": "Profile",

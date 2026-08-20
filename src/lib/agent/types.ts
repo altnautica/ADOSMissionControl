@@ -511,6 +511,10 @@ export interface FullStatusResponse {
   video: {
     state: string;
     whep_url: string | null;
+    /** Primary HLS playlist (relative `/hls/main/index.m3u8` on current
+     * agents), the remote/relay-safe fallback. Absent on agents that predate
+     * it. */
+    hls_url?: string | null;
     /** Per-leg video streams on a multi-stream node (each `whep` is the agent's
      * own-host WHEP URL, re-pointed to the reachable host by the client).
      * `live` is the agent's per-leg liveness sample: `false` = a known-dead leg;
@@ -521,6 +525,8 @@ export interface FullStatusResponse {
       role?: string;
       codec?: string;
       whep: string;
+      /** Relative HLS playlist for this leg (`/hls/<id>/index.m3u8`). */
+      hls?: string;
       live?: boolean | null;
     }[];
   };

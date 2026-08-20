@@ -14,16 +14,61 @@
 
 import type { CommandCloudStatus } from "@/stores/command-fleet-store";
 
+/** The agent's control front that the GCS reaches `/api/*` against, rebuilt
+ * from the known-reachable LAN IP. Current agents proxy WHEP (`/whep`) and HLS
+ * (`/hls/…`) on this same `:8080` front, so a RELATIVE video path resolves to
+ * that origin — same-origin with the `/api/*` poll and (through the LAN-pair
+ * proxy on a hosted GCS) HTTPS-mixed-content-safe. A `.local`/mDNS host is
+ * never used here. `null` when we have no reachable IP to build an origin
+ * from. */
+export function agentMediaBase(lastIp: string | undefined): string | null {
+  return lastIp ? `http://${lastIp}:8080` : null;
+}
+
+/** Resolve a media path the agent advertised (WHEP/HLS) into a playable URL.
+ * A RELATIVE path (starts with `/`) — the contract of current agents — is
+ * prefixed with the agent base to become an absolute same-origin URL. An
+ * already-absolute URL (older agent / CDN / relay) is left untouched. Returns
+ * `null` when nothing is advertised or a relative path has no base to resolve
+ * against. */
+export function resolveMediaPath(
+  path: string | null | undefined,
+  base: string | null,
+): string | null {
+  if (!path) return null;
+  if (path.startsWith("/")) return base ? `${base}${path}` : null;
+  return path;
+}
+
+/** The playable WHEP and HLS URLs for a node's primary feed. `whep` is the
+ * low-latency path; `hls` is the remote fallback (won't ICE-traverse over
+ * Tailscale/relay, but plays over plain HTTP through the same origin). */
+export function resolveAgentVideoUrls(
+  status: CommandCloudStatus | undefined,
+): { whep: string | null; hls: string | null } {
+  if (!status || status.videoState !== "running") {
+    return { whep: null, hls: null };
+  }
+  const base = agentMediaBase(status.lastIp);
+  const advertised = status.videoWhepUrl;
+  const whep = advertised
+    ? resolveMediaPath(advertised, base)
+    : // Older agent with no advertised URL: rebuild from IP + port.
+      status.lastIp
+      ? `http://${status.lastIp}:${
+          status.videoWhepPort && status.videoWhepPort > 0
+            ? status.videoWhepPort
+            : 8889
+        }/main/whep`
+      : null;
+  const hls = resolveMediaPath(status.videoHlsUrl, base);
+  return { whep, hls };
+}
+
 /** The playable WHEP URL for a node's primary (`/main`) feed, or null when the
  * node is not streaming. */
 export function resolveAgentVideoUrl(
   status: CommandCloudStatus | undefined,
 ): string | null {
-  if (!status || status.videoState !== "running") return null;
-  const port =
-    status.videoWhepPort && status.videoWhepPort > 0
-      ? status.videoWhepPort
-      : 8889;
-  if (status.lastIp) return `http://${status.lastIp}:${port}/main/whep`;
-  return status.videoWhepUrl ?? null;
+  return resolveAgentVideoUrls(status).whep;
 }

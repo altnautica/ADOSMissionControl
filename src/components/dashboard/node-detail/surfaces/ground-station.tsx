@@ -12,6 +12,7 @@
  */
 
 import { GroundStationOverview } from "@/components/command/overview/GroundStationOverview";
+import { CockpitView } from "@/components/cockpit/CockpitView";
 import { RadioTab } from "@/components/command/nodes/ground-station/RadioTab";
 import { NetworkTab } from "@/components/command/nodes/ground-station/NetworkTab";
 import { DisplayTab } from "@/components/command/nodes/ground-station/DisplayTab";
@@ -42,6 +43,16 @@ export const GROUND_STATION_SURFACES: SurfaceSpec[] = [
     // Read-only summary over the demo-seeded ground-station store (link /
     // uplink / mesh cards).
     render: (ctx) => <GroundStationOverview name={ctx.displayName} />,
+  },
+  {
+    // The immersive piloting cockpit (received video + HUD + skill bar). A
+    // ground station has no local video/detections, so it degrades to a clean
+    // no-signal state rather than fabricating boxes. Shown for every ground
+    // node (no role gate).
+    id: "cockpit",
+    labelKey: "dronePanel.cockpit",
+    group: STATUS_GROUP,
+    render: (ctx) => <CockpitView droneId={ctx.droneId} />,
   },
   {
     id: "radio",

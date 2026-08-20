@@ -117,6 +117,7 @@ export function mapFullStatusToCloudStatus(
     : [];
 
   const videoWhepUrl = resp.video?.whep_url ?? undefined;
+  const videoHlsUrl = resp.video?.hls_url ?? undefined;
 
   // The WFB peers this node reports, mapped from the agent's snake_case
   // `linked_peers` (device_id / rssi_dbm / role / channel / seen_at_unix — the
@@ -193,6 +194,7 @@ export function mapFullStatusToCloudStatus(
     videoState: resp.video?.state,
     videoWhepUrl: videoWhepUrl ?? undefined,
     videoWhepPort: parseWhepPort(videoWhepUrl),
+    videoHlsUrl: videoHlsUrl ?? undefined,
     telemetry: mapTelemetry(resp.telemetry ?? {}),
     radio: resp.radio ?? undefined,
     peerDeviceId: stringOrUndefined(resp.peerDeviceId) ?? null,

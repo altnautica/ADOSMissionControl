@@ -38,6 +38,17 @@ export function rewriteWhepHost(
 ): string | null {
   if (!whepUrl) return whepUrl ?? null;
   if (!agentBaseUrl) return whepUrl;
+  // Current agents advertise a RELATIVE, same-origin media path (/whep) served
+  // by the agent's own :8080 front — the same origin the GCS polls `/api/*`
+  // against. Resolve it against that base instead of host-swapping (a relative
+  // URL has no host to swap). Kept raw when the base is unparseable.
+  if (whepUrl.startsWith("/")) {
+    try {
+      return `${new URL(agentBaseUrl).origin}${whepUrl}`;
+    } catch {
+      return whepUrl;
+    }
+  }
   try {
     const whep = new URL(whepUrl);
     const base = new URL(agentBaseUrl);

@@ -50,6 +50,26 @@ describe("rewriteWhepHost", () => {
     expect(rewriteWhepHost(null, "http://192.168.2.11:8080")).toBeNull();
     expect(rewriteWhepHost("", "http://192.168.2.11:8080")).toBe("");
   });
+
+  it("resolves a RELATIVE same-origin media path against the agent base", () => {
+    // Current agents advertise /whep (no scheme/host) — prefix the base
+    // origin instead of host-swapping, which would produce a scheme-less URL.
+    expect(
+      rewriteWhepHost("/whep", "http://192.168.2.11:8080"),
+    ).toBe("http://192.168.2.11:8080/whep");
+    expect(
+      rewriteWhepHost("/whep?camera=ir", "http://192.168.2.11:8080"),
+    ).toBe("http://192.168.2.11:8080/whep?camera=ir");
+    expect(
+      rewriteWhepHost("/hls/main/index.m3u8", "http://192.168.2.11:8080"),
+    ).toBe("http://192.168.2.11:8080/hls/main/index.m3u8");
+  });
+
+  it("keeps a raw relative path when the agent base is missing/unparseable", () => {
+    expect(rewriteWhepHost("/whep", null)).toBe("/whep");
+    expect(rewriteWhepHost("/whep", "")).toBe("/whep");
+    expect(rewriteWhepHost("/whep", "not a url")).toBe("/whep");
+  });
 });
 
 describe("resolveAgentWhepUrl", () => {

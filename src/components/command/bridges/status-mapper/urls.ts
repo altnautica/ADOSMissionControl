@@ -8,6 +8,10 @@
  */
 
 import type { VideoStreamLeg } from "@/lib/agent/feature-types";
+import {
+  agentMediaBase,
+  resolveMediaPath,
+} from "@/lib/agent/video-url";
 
 /** Swap a `.local` host in `url` for `lastIp` when known. Resolving `.local`
  * in the browser tries AAAA/IPv6 first and hangs ~5s on a box with no usable
@@ -30,6 +34,7 @@ function preferIpv4Host(url: string, lastIp: string | undefined): string {
 export interface VideoStreamUrls {
   state: string | undefined;
   whepUrl: string | null;
+  hlsUrl: string | null;
   lanHost: string | null;
 }
 
@@ -44,11 +49,22 @@ export function resolveVideoUrls(
   const videoState = cloudStatus.videoState as string | undefined;
   const videoWhepPort = cloudStatus.videoWhepPort as number | undefined;
   const videoWhepUrl = cloudStatus.videoWhepUrl as string | undefined;
+  const videoHlsUrl = cloudStatus.videoHlsUrl as string | undefined;
   const lastIp = cloudStatus.lastIp as string | undefined;
+
+  // Current agents advertise RELATIVE same-origin media paths (/whep, /hls/…)
+  // served by the agent's own :8080 front — the same origin this GCS reaches
+  // `/api/*` against. Resolve them against that base; an ABSOLUTE URL from an
+  // older agent is kept (optionally `.local`→IPv4 swapped).
+  const base = agentMediaBase(lastIp);
 
   let whepUrl: string | null = null;
   if (videoState === "running" && videoWhepUrl) {
-    whepUrl = preferIpv4Host(videoWhepUrl, lastIp);
+    if (videoWhepUrl.startsWith("/")) {
+      whepUrl = resolveMediaPath(videoWhepUrl, base);
+    } else {
+      whepUrl = preferIpv4Host(videoWhepUrl, lastIp);
+    }
   } else if (
     videoState === "running" &&
     lastIp &&
@@ -60,12 +76,20 @@ export function resolveVideoUrls(
     // mediamtx default WHEP port is stable across deployments.
     whepUrl = `http://${lanHost}:8889/main/whep`;
   }
-  return { state: videoState, whepUrl, lanHost };
+
+  const hlsUrl =
+    videoState === "running" && videoHlsUrl
+      ? videoHlsUrl.startsWith("/")
+        ? resolveMediaPath(videoHlsUrl, base)
+        : preferIpv4Host(videoHlsUrl, lastIp)
+      : null;
+
+  return { state: videoState, whepUrl, hlsUrl, lanHost };
 }
 
 /** Resolve the per-leg video streams a cloud-relayed multi-stream node
- * advertises to dialable WHEP URLs against the node's reachable host (its LAN
- * IP, else the resolved LAN host), for the cockpit stream switcher. Empty unless
+ * advertises to dialable URLs against the node's reachable base (its LAN IP,
+ * else the resolved LAN host), for the cockpit stream switcher. Empty unless
  * the pipeline is running and the node advertised more than the default leg. */
 export function resolveVideoStreams(
   cloudStatus: Record<string, unknown>,
@@ -73,21 +97,43 @@ export function resolveVideoStreams(
 ): VideoStreamLeg[] {
   const videoState = cloudStatus.videoState as string | undefined;
   const streams = cloudStatus.videoStreams as
-    | { id: string; role?: string; codec?: string; live?: boolean | null }[]
+    | {
+        id: string;
+        role?: string;
+        codec?: string;
+        live?: boolean | null;
+        whep?: string;
+        hls?: string;
+      }[]
     | undefined;
   if (videoState !== "running" || !streams?.length) return [];
   const lastIp = cloudStatus.lastIp as string | undefined;
   const host = lastIp || lanHost;
+  const base = agentMediaBase(lastIp);
   if (!host) return [];
   return streams
     .filter((s) => s.id)
-    .map((s) => ({
-      id: s.id,
-      role: s.role,
-      codec: s.codec,
-      live: s.live,
-      whepUrl: `http://${host}:8889/${s.id}/whep`,
-    }));
+    .map((s) => {
+      // Prefer the advertised RELATIVE path (current agents) resolved against
+      // the agent base; fall back to rebuilding the legacy path form against
+      // the reachable host.
+      const whepUrl = s.whep
+        ? s.whep.startsWith("/")
+          ? resolveMediaPath(s.whep, base) ?? `http://${host}:8889/${s.id}/whep`
+          : s.whep
+        : `http://${host}:8889/${s.id}/whep`;
+      const hlsUrl = s.hls
+        ? resolveMediaPath(s.hls, base) ?? undefined
+        : undefined;
+      return {
+        id: s.id,
+        role: s.role,
+        codec: s.codec,
+        live: s.live,
+        whepUrl,
+        hlsUrl,
+      };
+    });
 }
 
 export interface MavlinkUrl {

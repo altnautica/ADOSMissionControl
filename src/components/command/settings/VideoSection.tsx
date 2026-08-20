@@ -27,6 +27,7 @@ import {
   ConfigIntField,
   ConfigReadonlyRow,
   ConfigSelectField,
+  ConfigToggleField,
 } from "./ConfigFields";
 import { readConfigPath } from "./use-node-config";
 import { Section } from "./Section";
@@ -49,6 +50,12 @@ export interface CameraLegEntry {
   height: number | null;
   fps: number | null;
   enabled: boolean;
+  /** Clockwise image rotation in degrees (0|90|180|270), default 0. */
+  rotation: number;
+  /** Horizontal image flip, default false. */
+  hflip: boolean;
+  /** Vertical image flip, default false. */
+  vflip: boolean;
 }
 
 /** Parse the `video.cameras` config list. Returns null when the config does
@@ -63,6 +70,10 @@ export function parseCameraLegs(
     typeof v === "string" && v.length > 0 ? v : null;
   const num = (v: unknown): number | null =>
     typeof v === "number" && Number.isFinite(v) ? v : null;
+  const rotation = (v: unknown): number => {
+    const n = num(v);
+    return n === 90 || n === 180 || n === 270 ? n : 0;
+  };
   return raw
     .filter((e): e is Record<string, unknown> => !!e && typeof e === "object")
     .map((e) => ({
@@ -76,7 +87,24 @@ export function parseCameraLegs(
       // Absent reads enabled (the agent's model default), an explicit false
       // reads disabled.
       enabled: e.enabled !== false,
+      rotation: rotation(e.rotation),
+      hflip: e.hflip === true,
+      vflip: e.vflip === true,
     }));
+}
+
+/** Render the orientation transforms of a camera leg as a compact label, or
+ * null when everything is at its identity default. */
+function formatOrientation(
+  rotation: number,
+  hflip: boolean,
+  vflip: boolean,
+): string | null {
+  const parts: string[] = [];
+  if (rotation) parts.push(`${rotation}°`);
+  if (hflip) parts.push("hflip");
+  if (vflip) parts.push("vflip");
+  return parts.length ? parts.join(" ") : null;
 }
 
 /** Format `WxH @ fps` from whatever the entry actually carries. */
@@ -156,7 +184,12 @@ export function VideoSection({
                   ) : null}
                 </span>
                 <span className="min-w-0 truncate text-right font-mono text-[11px] text-text-secondary">
-                  {[leg.source, leg.codec, formatShape(leg.width, leg.height, leg.fps)]
+                  {[
+                    leg.source,
+                    leg.codec,
+                    formatShape(leg.width, leg.height, leg.fps),
+                    formatOrientation(leg.rotation, leg.hflip, leg.vflip),
+                  ]
                     .filter((p): p is string => p != null)
                     .join(" · ")}
                 </span>
@@ -194,6 +227,49 @@ export function VideoSection({
             </div>
           </div>
         )}
+
+        {/* Image orientation — writable, applies to the live encoder. */}
+        <div className="space-y-4 border-t border-border-default pt-3">
+          <div>
+            <div className="text-xs text-text-secondary">
+              {t("orientationTitle")}
+            </div>
+            <p className="mt-0.5 text-[11px] text-text-tertiary">
+              {t("orientationHint")}
+            </p>
+          </div>
+          <ConfigSelectField
+            configKey="video.camera.rotation"
+            label={t("rotationLabel")}
+            hint={t("rotationHint")}
+            options={[
+              { value: "0", label: t("rotation0") },
+              { value: "90", label: "90°" },
+              { value: "180", label: "180°" },
+              { value: "270", label: "270°" },
+            ]}
+            placeholder={t("rotationDefault")}
+            config={config}
+            readOnly={readOnly}
+            setValue={setValue}
+          />
+          <ConfigToggleField
+            configKey="video.camera.hflip"
+            label={t("hflipLabel")}
+            hint={t("hflipHint")}
+            config={config}
+            readOnly={readOnly}
+            setValue={setValue}
+          />
+          <ConfigToggleField
+            configKey="video.camera.vflip"
+            label={t("vflipLabel")}
+            hint={t("vflipHint")}
+            config={config}
+            readOnly={readOnly}
+            setValue={setValue}
+          />
+        </div>
 
         {/* Encode preferences — writable, no other writer owns them. */}
         <div className="space-y-4 border-t border-border-default pt-3">
