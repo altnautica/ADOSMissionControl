@@ -13,3 +13,5 @@ electron/dist
 electron/out
 out
 desktop-build
+.omp
+.claude

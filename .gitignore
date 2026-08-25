@@ -64,6 +64,5 @@ next-env.d.ts
 /tools/selfhost/.deploy-state
 /tools/selfhost/docker-compose.override.yml
 
-# Local agent tooling directory (not part of the project)
-.opencode/
-opencode.jsonc
+# Local omp agent tooling directory (not part of the project)
+.omp/
