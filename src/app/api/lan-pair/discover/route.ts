@@ -8,9 +8,9 @@
  * on each, and picks the one whose ``pairing_code`` matches.
  *
  * Runs Node-only (mDNS multicast over UDP 5353 needs raw sockets).
- * Inside Docker containers without ``network_mode: host`` (e.g. the
- * default Coolify deploy) the multicast scan returns an empty list;
- * the caller's Convex fallback path takes over there.
+ * Inside a Docker container without ``network_mode: host`` — the usual
+ * hosted deployment — the multicast scan returns an empty list; the
+ * caller's Convex fallback path takes over there.
  *
  * @license GPL-3.0-only
  */

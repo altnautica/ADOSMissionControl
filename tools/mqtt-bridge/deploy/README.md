@@ -81,7 +81,8 @@ it** — see `.gitignore` in this directory.
 5. Make sure Mission Control has been rebuilt with the grant path landed (this
    monorepo's `src/stores/mqtt-control-grant-store.ts` mints the credential and
    injects it into `src/lib/mqtt-broker-credential.ts`, which every MQTT client
-   reads at connect time). Coolify auto-rebuilds on push to `main`.
+   reads at connect time). **A push alone does not rebuild anything** — rebuild
+   and redeploy Mission Control explicitly before relying on the grant path.
 6. Copy `mosquitto.conf`, `acl.conf` (will be auto-generated; see below),
    `regenerate-passwd.sh`, `activate-auth.sh`, and `deactivate-auth.sh`
    from this directory to the broker host's `/opt/relay/`.
