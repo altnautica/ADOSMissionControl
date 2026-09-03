@@ -308,6 +308,35 @@ class MockFlightEngine {
     };
   }
 
+  /**
+   * Stop and resume telemetry without tearing the demo down, so the
+   * freshness-gated surfaces can be exercised without hardware.
+   *
+   * The cockpit safety band, the HUD attitude flag, the proximity radar and
+   * the LINK STALE badge all key off a sample's age, and every one of those
+   * paths shipped broken precisely because nothing in demo mode could produce
+   * a stale reading: the ring buffers were always being fed, so the bug only
+   * appeared on a real link loss in the field. Freezing the tick leaves the
+   * last samples in place and lets the clock age them, which is exactly what
+   * a dead radio looks like from the GCS.
+   *
+   * `stop()` remains the full teardown; this is deliberately narrower.
+   */
+  freezeTelemetry(): void {
+    if (this.intervalId) { clearInterval(this.intervalId); this.intervalId = null; }
+  }
+
+  /** Resume the tick after {@link freezeTelemetry}. */
+  resumeTelemetry(): void {
+    if (!this.running || this.intervalId) return;
+    this.intervalId = setInterval(() => this.tick(), this.tickRate);
+  }
+
+  /** Whether telemetry is currently flowing (false while frozen). */
+  get telemetryFlowing(): boolean {
+    return this.running && this.intervalId !== null;
+  }
+
   stop(): void {
     if (this.intervalId) { clearInterval(this.intervalId); this.intervalId = null; }
     // Tear down every protocol so no interval/timer leaks across stop: the

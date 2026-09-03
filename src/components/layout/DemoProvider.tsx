@@ -36,6 +36,31 @@ import {
 } from "@/mock/agent/capabilities";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 
+/** The subset of the mock engine this provider drives. */
+interface MockEngineHandle {
+  start: (ms: number) => void;
+  stop: () => void;
+  freezeTelemetry: () => void;
+  resumeTelemetry: () => void;
+  readonly telemetryFlowing: boolean;
+}
+
+declare global {
+  interface Window {
+    /**
+     * Demo-only scenario controls, present only while demo mode is on. Used to
+     * drive the freshness-gated surfaces from the console without hardware;
+     * see the install site below for why they exist.
+     */
+    __adosDemo?: {
+      freezeTelemetry: () => void;
+      resumeTelemetry: () => void;
+      readonly telemetryFlowing: boolean;
+    };
+  }
+}
+
+
 const AGENT_VERSION = "0.99.80";
 
 /**
@@ -857,11 +882,30 @@ export function DemoProvider() {
     if (!hasHydrated || !demoMode) return;
 
     let mounted = true;
-    let engine: { start: (ms: number) => void; stop: () => void } | undefined;
+    let engine: MockEngineHandle | undefined;
     import("@/mock/engine").then((mod) => {
       if (!mounted) return;
       engine = mod.mockEngine;
       engine.start(200);
+      // Demo-only scenario handle. The freshness-gated surfaces — the cockpit
+      // safety band, the HUD attitude flag, the proximity radar, the telemetry
+      // strip, the LINK STALE badge — all key off a sample's age, and every
+      // one of them shipped painting a dead link as live precisely because
+      // demo mode had no way to produce a stale reading. Freezing the tick
+      // leaves the last samples in place and lets the clock age them, which
+      // is what a dead radio looks like from here.
+      //
+      //   __adosDemo.freezeTelemetry()   // watch the surfaces blank out
+      //   __adosDemo.resumeTelemetry()
+      //
+      // Installed only while demo mode is on, removed on teardown.
+      window.__adosDemo = {
+        freezeTelemetry: () => engine?.freezeTelemetry(),
+        resumeTelemetry: () => engine?.resumeTelemetry(),
+        get telemetryFlowing() {
+          return engine?.telemetryFlowing ?? false;
+        },
+      };
     });
 
     // Auto-connect the agent store in demo mode
@@ -943,6 +987,7 @@ export function DemoProvider() {
       // Reset the profile-specific stores so demo leaves no residue in real mode.
       useComputeStore.getState().clear();
       useGroundStationStore.getState().resetAll();
+      delete window.__adosDemo;
     };
   }, [demoMode, hasHydrated]);
 
