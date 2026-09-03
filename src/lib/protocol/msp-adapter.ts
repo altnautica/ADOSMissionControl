@@ -108,13 +108,19 @@ export class MSPAdapter implements DroneProtocol {
   private cliSettingsCapability: CliSettingsCapability | null = null
   private cbs = createCallbackStore()
   private cbm = bindCallbackMethods(this.cbs)
+  /**
+   * Last armed flag decoded from MSP_STATUS_EX. MSP has no separate arm query,
+   * so this is the only arm state the link has, and a safety gate that needs
+   * it (motor test) reads it from here rather than guessing.
+   */
+  private lastArmed = false
   private dataHandler: ((data: Uint8Array) => void) | null = null
   private closeHandler: (() => void) | null = null
 
   get isConnected(): boolean { return this._connected }
 
   // ── Context helpers ─────────────────────────────────────────
-  private get cmdCtx(): cmds.MspCommandContext { return { queue: this.queue, modeRanges: this.modeRanges, rc: this.rcOverride, firmwareType: this.vehicleInfo?.firmwareType } }
+  private get cmdCtx(): cmds.MspCommandContext { return { queue: this.queue, modeRanges: this.modeRanges, rc: this.rcOverride, firmwareType: this.vehicleInfo?.firmwareType, isArmed: () => this.lastArmed } }
   private get prmCtx(): prm.MspParamContext { return { queue: this.queue, paramCache: this.paramCache, paramNameCache: this.paramNameCache, parameterCallbacks: this.cbs.parameterCallbacks, settingsClient: this.settingsClient, isInav: this.vehicleInfo?.firmwareType === 'inav' } }
 
   // ── Connection ──────────────────────────────────────────────
@@ -200,6 +206,9 @@ export class MSPAdapter implements DroneProtocol {
     }
     this.vehicleInfo = info
 
+    // Retain the armed flag as it goes past: the motor-test gate needs it and
+    // MSP offers no way to ask for it on demand.
+    this.cbs.heartbeatCallbacks.push((hb) => { this.lastArmed = hb.armed })
     this.poller = new MspTelemetryPoller(this.queue, (command, payload) =>
       dispatchMspTelemetry(command, payload, this.cbs, this.vehicleInfo, this.boxIds))
     this.poller.start()
@@ -218,8 +227,8 @@ export class MSPAdapter implements DroneProtocol {
     if (this.rcOverride) { this.rcOverride.destroy(); this.rcOverride = null }
     this.rxMspEnabled = false
     if (this.poller) { this.poller.stop(); this.poller = null }
-    if (this.queue) { this.queue.destroy(); this.queue = null }
-    this.parser.reset(); this.paramCache.clear(); this.paramNameCache = []; this.inCliMode = false; this.settingsClient = null; this.settingsCapability = null; this.bfCli = null; this.cliSettingsCapability = null
+    if (this.queue) { cmds.mspCancelMotorTest(this.queue); this.queue.destroy(); this.queue = null }
+    this.parser.reset(); this.paramCache.clear(); this.paramNameCache = []; this.inCliMode = false; this.lastArmed = false; this.settingsClient = null; this.settingsCapability = null; this.bfCli = null; this.cliSettingsCapability = null
     if (this.transport && this.dataHandler) {
       this.transport.off('data', this.dataHandler)
       this.transport.off('close', this.closeHandler as (data: void) => void)
@@ -232,7 +241,7 @@ export class MSPAdapter implements DroneProtocol {
   async disarm() { return cmds.mspDisarm(this.cmdCtx) }
   async setFlightMode(m: UnifiedFlightMode) { return cmds.mspSetFlightMode(this.cmdCtx, m) }
   sendManualControl(r: number, p: number, t: number, y: number, _b: number) { cmds.mspSendManualControl(this.cmdCtx, r, p, t, y) }
-  async motorTest(m: number, t: number, _d: number) { return cmds.mspMotorTest(this.cmdCtx, m, t) }
+  async motorTest(m: number, t: number, d: number) { return cmds.mspMotorTest(this.cmdCtx, m, t, d) }
   async reboot() { return cmds.mspReboot(this.cmdCtx) }
   async rebootToBootloader() { return cmds.mspRebootToBootloader(this.cmdCtx) }
   async startCalibration(type: 'accel'|'gyro'|'compass'|'level'|'airspeed'|'baro'|'rc'|'esc'|'compassmot') { return cmds.mspStartCalibration(this.cmdCtx, type) }
@@ -661,7 +670,6 @@ export class MSPAdapter implements DroneProtocol {
   async cancelCalibration(): Promise<CommandResult> { return { success: false, resultCode: -1, message: 'Not supported by MSP firmware' } }
   async startGnssMagCal(): Promise<CommandResult> { return { success: false, resultCode: -1, message: 'Not supported by MSP firmware' } }
   async startEscCalibration(): Promise<CommandResult> { return { success: false, resultCode: -1, message: 'Not supported by MSP firmware' } }
-  async startCompassMotCal(): Promise<CommandResult> { return { success: false, resultCode: -1, message: 'Not supported by MSP firmware' } }
   sendPositionTarget(): void { /* no-op */ }
   sendAttitudeTarget(): void { /* no-op */ }
   async enableFence(): Promise<CommandResult> { return { success: false, resultCode: -1, message: 'Not supported by MSP firmware' } }

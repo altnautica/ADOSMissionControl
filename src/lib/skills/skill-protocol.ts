@@ -42,8 +42,11 @@ export interface SkillProtocol {
   land(): Promise<CommandResult>;
   /** Arm-and-climb to `altitude` metres. */
   takeoff(altitude: number): Promise<CommandResult>;
-  /** Emergency motor cut. */
-  killSwitch(): Promise<CommandResult>;
+  /**
+   * Emergency motor cut. `confirmed` carries the operator confirmation the
+   * dispatcher already collected; the protocol layer refuses without it.
+   */
+  killSwitch(confirmed: boolean): Promise<CommandResult>;
   /** Hold an in-progress mission at the current item. */
   pauseMission(): Promise<CommandResult>;
   /** Continue a held mission. */

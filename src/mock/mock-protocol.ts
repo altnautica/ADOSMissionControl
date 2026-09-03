@@ -163,7 +163,13 @@ export class MockProtocol implements DroneProtocol {
   async returnToLaunch(): Promise<CommandResult> { this.emitStatusText(6, "Returning to launch"); return ok("RTL"); }
   async land(): Promise<CommandResult> { this.emitStatusText(6, "Landing"); return ok("Landing"); }
   async takeoff(alt: number): Promise<CommandResult> { this.emitStatusText(6, `Taking off to ${alt}m`); return ok(`Takeoff ${alt}m`); }
-  async killSwitch(): Promise<CommandResult> { this.emitStatusText(2, "KILL SWITCH ACTIVATED"); return ok("Kill switch"); }
+  async killSwitch(confirmed: boolean): Promise<CommandResult> {
+    // Demo mode mirrors the real refusal so a caller that skips the confirm
+    // fails the same way here as it does against a vehicle.
+    if (!confirmed) return { success: false, resultCode: -1, message: "Flight termination requires explicit confirmation" };
+    this.emitStatusText(2, "KILL SWITCH ACTIVATED");
+    return ok("Kill switch");
+  }
   async guidedGoto(lat: number, lon: number, alt: number): Promise<CommandResult> { return ok(`Goto ${lat.toFixed(6)}, ${lon.toFixed(6)} @ ${alt}m`); }
   async pauseMission(): Promise<CommandResult> { return ok("Mission paused"); }
   async resumeMission(): Promise<CommandResult> { return ok("Mission resumed"); }
@@ -191,7 +197,6 @@ export class MockProtocol implements DroneProtocol {
     return { ok: true };
   }
   async startEscCalibration(): Promise<CommandResult> { this.emitStatusText(3, "WARNING: ESC calibration will spin motors! Remove props!"); return ok("ESC calibration started"); }
-  async startCompassMotCal(): Promise<CommandResult> { this.emitStatusText(6, "CompassMot calibration started — increase throttle slowly"); return ok("CompassMot calibration started"); }
   async enableFence(): Promise<CommandResult> { return ok("Fence updated"); }
   async doLandStart(): Promise<CommandResult> { return ok("Land start"); }
   async controlVideo(): Promise<CommandResult> { return ok("Video control"); }

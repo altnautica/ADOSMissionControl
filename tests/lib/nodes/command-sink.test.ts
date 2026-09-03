@@ -332,7 +332,7 @@ describe("kill / pause / resume are carried over the agent lane", () => {
     const sink = resolveNodeCommandSink(NODE, { originIsHttps: false })!;
 
     for (const result of await Promise.all([
-      sink.killSwitch(),
+      sink.killSwitch(true),
       sink.pauseMission(),
       sink.resumeMission(),
     ])) {

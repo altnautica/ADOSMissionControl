@@ -152,7 +152,10 @@ describe("kill / pause / resume are carried, not refused", () => {
       // The lane can carry it (mapped to a real agent command, not null).
       expect(sink?.supports(method)).toBe(true);
 
-      const result = await sink![method]();
+      // killSwitch now takes the operator confirmation the dispatcher already
+      // collected; pause/resume take nothing. Calling each with `true` is
+      // harmless for the no-arg ones and is what the kill lane requires.
+      const result = await sink![method](true);
       // It reached the queue as the agent-native command name, not a refusal.
       expect(enqueue).toHaveBeenCalledOnce();
       expect(enqueue).toHaveBeenCalledWith({

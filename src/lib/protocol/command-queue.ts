@@ -4,7 +4,7 @@
  */
 
 import type { CommandResult } from "./types";
-import { encodeCommandLong } from "./mavlink-encoder";
+import { encodeCommandInt, encodeCommandLong } from "./mavlink-encoder";
 
 // MAVLink COMMAND_ACK result codes
 export const MAV_RESULT = {
@@ -43,6 +43,9 @@ interface PendingCommand {
   // not ours to consume.
   sysId: number;
   compId: number;
+  // COMMAND_INT has no confirmation byte, so its retry is a byte-identical
+  // resend rather than a re-encode with an incremented confirmation.
+  isCommandInt?: boolean;
   // Inputs retained so retries can re-encode the COMMAND_LONG with an
   // incremented confirmation byte rather than resending byte-identical frames.
   encodeArgs: {
@@ -170,6 +173,83 @@ export class CommandQueue {
   }
 
   /**
+   * Send a COMMAND_INT and wait for its COMMAND_ACK.
+   *
+   * COMMAND_INT exists so lat/lon keep 1e7 integer precision instead of being
+   * squeezed through a float32 param. The ack is the same COMMAND_ACK, so
+   * tracking is identical to {@link sendCommand} — the only difference is the
+   * frame the first transmission carries. There is no confirmation byte in
+   * COMMAND_INT, so a retry resends the same frame.
+   */
+  sendCommandInt(
+    command: number,
+    params: [number, number, number, number],
+    x: number,
+    y: number,
+    z: number,
+    frame: number,
+    sendFn: (data: Uint8Array) => void,
+    targetSys: number,
+    targetComp: number,
+    sysId: number,
+    compId: number,
+    timeoutMs?: number,
+  ): Promise<CommandResult> {
+    const effectiveTimeout = timeoutMs ?? this.timeout;
+
+    if (this.pending.size >= MAX_PENDING) {
+      return Promise.resolve({
+        success: false,
+        resultCode: -1,
+        message: `Command queue full (${MAX_PENDING} in flight)`,
+      });
+    }
+
+    const ticket = this.nextTicket++;
+    const encoded = encodeCommandInt(
+      targetSys, targetComp, frame, command, 0, 0,
+      params[0], params[1], params[2], params[3],
+      x, y, z, sysId, compId,
+    );
+
+    return new Promise<CommandResult>((resolve) => {
+      const timer = setTimeout(() => {
+        this.pending.delete(ticket);
+        resolve({
+          success: false,
+          resultCode: -1,
+          message: `Command ${command} timed out after ${effectiveTimeout}ms`,
+        });
+      }, effectiveTimeout);
+
+      this.pending.set(ticket, {
+        command, resolve, timer, retryCount: 0,
+        frame: encoded, sendFn, timeoutMs: effectiveTimeout,
+        targetSys, sysId, compId, isCommandInt: true,
+        // Retained only to satisfy the shared entry shape; the retry path
+        // skips the COMMAND_LONG re-encode for a COMMAND_INT entry.
+        encodeArgs: {
+          targetSys, targetComp, command,
+          params: [params[0], params[1], params[2], params[3], x, y, z],
+          sysId, compId,
+        },
+      });
+
+      try {
+        sendFn(encoded);
+      } catch (err) {
+        clearTimeout(timer);
+        this.pending.delete(ticket);
+        resolve({
+          success: false,
+          resultCode: -1,
+          message: `Send failed: ${err instanceof Error ? err.message : String(err)}`,
+        });
+      }
+    });
+  }
+
+  /**
    * Handle an incoming COMMAND_ACK message.
    * Call this when the MAVLink parser decodes a COMMAND_ACK (msg ID 77).
    *
@@ -231,14 +311,16 @@ export class CommandQueue {
       // retry count. ArduPilot/PX4 distinguish a fresh command from a repeat
       // by this byte; resending confirmation=0 looks like a duplicate first
       // attempt rather than a confirmation.
-      const a = entry.encodeArgs;
-      entry.frame = encodeCommandLong(
-        a.targetSys, a.targetComp, a.command,
-        a.params[0], a.params[1], a.params[2], a.params[3],
-        a.params[4], a.params[5], a.params[6],
-        a.sysId, a.compId,
-        entry.retryCount,
-      );
+      if (!entry.isCommandInt) {
+        const a = entry.encodeArgs;
+        entry.frame = encodeCommandLong(
+          a.targetSys, a.targetComp, a.command,
+          a.params[0], a.params[1], a.params[2], a.params[3],
+          a.params[4], a.params[5], a.params[6],
+          a.sysId, a.compId,
+          entry.retryCount,
+        );
+      }
       setTimeout(() => {
         // Entry may have been cleared during the delay
         if (!this.pending.has(ticket)) return;

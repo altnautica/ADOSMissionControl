@@ -196,7 +196,7 @@ describe('mspArm / mspDisarm with an arm ModeRange (AUX channel path)', () => {
 describe('mspMotorTest', () => {
   it('sends MSP_SET_MOTOR scaling only the selected motor, others at 1000', async () => {
     const { ctx, frames } = ctxWith([]);
-    const result = await mspMotorTest(ctx, 2, 50);
+    const result = await mspMotorTest(ctx, 2, 50, 0);
     expect(result.success).toBe(true);
     expect(frames).toHaveLength(1);
 
@@ -220,14 +220,65 @@ describe('mspMotorTest', () => {
 
   it('100% throttle on motor 0 maps to the full 2000 PWM', async () => {
     const { ctx, frames } = ctxWith([]);
-    await mspMotorTest(ctx, 0, 100);
+    await mspMotorTest(ctx, 0, 100, 0);
     expect(readU16(frames[0].payload, 0)).toBe(2000);
   });
 
   it('0% throttle leaves the selected motor at the 1000 stop value', async () => {
     const { ctx, frames } = ctxWith([]);
-    await mspMotorTest(ctx, 5, 0);
+    await mspMotorTest(ctx, 5, 0, 0);
     expect(readU16(frames[0].payload, 5 * 2)).toBe(1000);
+  });
+
+  it('idles every output once the duration elapses', async () => {
+    vi.useFakeTimers();
+    try {
+      const { ctx, frames } = ctxWith([]);
+      await mspMotorTest(ctx, 3, 40, 2);
+      expect(frames).toHaveLength(1);
+
+      // MSP_SET_MOTOR is a level, not a pulse, so nothing stops the motor
+      // before the duration is up.
+      await vi.advanceTimersByTimeAsync(1_900);
+      expect(frames).toHaveLength(1);
+
+      await vi.advanceTimersByTimeAsync(200);
+      expect(frames).toHaveLength(2);
+      expect(frames[1].command).toBe(MSP.MSP_SET_MOTOR);
+      for (let i = 0; i < 8; i++) {
+        expect(readU16(frames[1].payload, i * 2)).toBe(1000);
+      }
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('refuses while the vehicle is armed and writes no outputs', async () => {
+    const { ctx, frames } = ctxWith([]);
+    const result = await mspMotorTest({ ...ctx, isArmed: () => true }, 1, 60, 2);
+    expect(result.success).toBe(false);
+    expect(result.message).toContain('armed');
+    expect(frames).toHaveLength(0);
+  });
+
+  it('a second test cancels the first stop timer instead of idling mid-test', async () => {
+    vi.useFakeTimers();
+    try {
+      const { ctx, frames } = ctxWith([]);
+      await mspMotorTest(ctx, 1, 50, 4);
+      await vi.advanceTimersByTimeAsync(3_000);
+      await mspMotorTest(ctx, 1, 50, 4);
+
+      // The first schedule would have fired here; it was replaced.
+      await vi.advanceTimersByTimeAsync(1_500);
+      expect(frames).toHaveLength(2);
+
+      await vi.advanceTimersByTimeAsync(2_600);
+      expect(frames).toHaveLength(3);
+      expect(readU16(frames[2].payload, 1 * 2)).toBe(1000);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
@@ -488,7 +539,7 @@ describe('not-connected guard', () => {
     for (const result of [
       await mspArm(ctx),
       await mspDisarm(ctx),
-      await mspMotorTest(ctx, 0, 50),
+      await mspMotorTest(ctx, 0, 50, 0),
       await mspKillSwitch(ctx),
       await mspReboot(ctx),
       await mspRebootToBootloader(ctx),

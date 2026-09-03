@@ -450,7 +450,11 @@ export class INavMockProtocol implements DroneProtocol {
   async returnToLaunch(): Promise<CommandResult>   { this._emit("statusText", 6, "Returning to launch"); return ok("RTL"); }
   async land(): Promise<CommandResult>             { return INAV_NO_LAND; }
   async takeoff(alt: number): Promise<CommandResult> { this._emit("statusText", 6, `Taking off to ${alt}m`); return ok(`Takeoff ${alt}m`); }
-  async killSwitch(): Promise<CommandResult>       { this._emit("statusText", 2, "KILL SWITCH ACTIVATED"); return ok("Kill switch"); }
+  async killSwitch(confirmed: boolean): Promise<CommandResult> {
+    if (!confirmed) return { success: false, resultCode: -1, message: "Flight termination requires explicit confirmation" };
+    this._emit("statusText", 2, "KILL SWITCH ACTIVATED");
+    return ok("Kill switch");
+  }
   async guidedGoto(): Promise<CommandResult>       { return INAV_NO_GOTO; }
   async pauseMission(): Promise<CommandResult>     { return ok("Mission paused"); }
   async resumeMission(): Promise<CommandResult>    { return ok("Mission resumed"); }
@@ -477,7 +481,6 @@ export class INavMockProtocol implements DroneProtocol {
     return { ok: false, reason: "rejected" };
   }
   async startEscCalibration(): Promise<CommandResult> { return ok("ESC calibration started"); }
-  async startCompassMotCal(): Promise<CommandResult>  { return ok("CompassMot calibration started"); }
   async enableFence(): Promise<CommandResult>      { return ok("Fence updated"); }
   async doLandStart(): Promise<CommandResult>      { return ok("Land start"); }
   async controlVideo(): Promise<CommandResult>     { return ok("Video control"); }

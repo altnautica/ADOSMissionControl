@@ -33,5 +33,7 @@ export const killSkill: Skill = {
   },
   // The vehicle's answer goes back to the dispatcher, which surfaces a
   // refusal and spends nothing on it.
-  activate: async (ctx) => ctx.protocol?.killSwitch(),
+  // `true` is the confirm block above: the dispatcher only reaches activate
+  // after the two-stage countdown and the typed KILL phrase.
+  activate: async (ctx) => ctx.protocol?.killSwitch(true),
 };

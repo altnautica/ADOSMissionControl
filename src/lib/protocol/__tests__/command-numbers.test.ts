@@ -70,6 +70,10 @@ function ctxCapturing(
       sent.push({ command, params: [...params] });
       return Promise.resolve({ success: true, resultCode: 0, message: "ok" });
     },
+    sendCommandInt: (command, params, x, y, z, frame): Promise<CommandResult> => {
+      sent.push({ command, params: [...params, x, y, z, frame] });
+      return Promise.resolve({ success: true, resultCode: 0, message: "ok" });
+    },
   };
 }
 

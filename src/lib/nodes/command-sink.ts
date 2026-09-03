@@ -300,7 +300,17 @@ function makeSink(
     returnToLaunch: () => run("returnToLaunch"),
     land: () => run("land"),
     takeoff: (altitude: number) => run("takeoff", [altitude]),
-    killSwitch: () => run("killSwitch"),
+    // The confirmation lives at the dispatcher; the lane refuses to enqueue a
+    // flight termination it was not told was confirmed rather than trusting a
+    // caller that skipped the confirm.
+    killSwitch: (confirmed: boolean) =>
+      confirmed
+        ? run("killSwitch")
+        : Promise.resolve({
+            success: false,
+            resultCode: -1,
+            message: "Flight termination requires explicit confirmation",
+          }),
     pauseMission: () => run("pauseMission"),
     resumeMission: () => run("resumeMission"),
   };
@@ -325,7 +335,7 @@ function makeDirectFcSink(protocol: SkillProtocol): NodeCommandSink {
     returnToLaunch: () => protocol.returnToLaunch(),
     land: () => protocol.land(),
     takeoff: (altitude: number) => protocol.takeoff(altitude),
-    killSwitch: () => protocol.killSwitch(),
+    killSwitch: (confirmed: boolean) => protocol.killSwitch(confirmed),
     pauseMission: () => protocol.pauseMission(),
     resumeMission: () => protocol.resumeMission(),
   };

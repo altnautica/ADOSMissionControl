@@ -162,7 +162,12 @@ export interface DroneProtocol {
   returnToLaunch(): Promise<CommandResult>;
   land(): Promise<CommandResult>;
   takeoff(altitude: number): Promise<CommandResult>;
-  killSwitch(): Promise<CommandResult>;
+  /**
+   * Flight termination. Irreversible in flight. `confirmed` must carry a real
+   * operator confirmation; the protocol layer refuses without it rather than
+   * guessing that a bare click meant it.
+   */
+  killSwitch(confirmed: boolean): Promise<CommandResult>;
   guidedGoto(lat: number, lon: number, alt: number): Promise<CommandResult>;
   pauseMission(): Promise<CommandResult>;
   resumeMission(): Promise<CommandResult>;
@@ -336,7 +341,6 @@ export interface DroneProtocol {
 
   // ── Advanced Calibration ──────────────────────────────────
   startEscCalibration?(): Promise<CommandResult>;
-  startCompassMotCal?(): Promise<CommandResult>;
 
   // ── Manual Control ──────────────────────────────────────
   /**

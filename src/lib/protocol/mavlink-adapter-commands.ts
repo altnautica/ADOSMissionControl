@@ -18,6 +18,31 @@ import {
  */
 const MAV_MOUNT_MODE_MAVLINK_TARGETING = 2
 
+/**
+ * Whether ArduPilot's vendor calibration commands (the 424xx and 42006 range)
+ * can be sent to whatever is connected.
+ *
+ * They were sent unconditionally. On PX4 they return UNSUPPORTED and the
+ * calibration UI waits on an ack that means nothing, so the operator sees a
+ * wizard that hangs rather than a surface that says the vehicle cannot do it.
+ *
+ * Gated on `fcVariant`, never on link liveness: a firmware that is present but
+ * not the one assumed is exactly the case that shows confident wrong data.
+ */
+function isArduPilot(ctx: CommandContext): boolean {
+  // The union is per-vehicle-class: ardupilot-copter / -plane / -rover / -sub.
+  return ctx.firmwareHandler?.firmwareType?.startsWith('ardupilot') ?? false
+}
+
+function refuseNonArduPilot(ctx: CommandContext, what: string): CommandResult {
+  const variant = ctx.firmwareHandler?.firmwareType ?? 'unknown'
+  return {
+    success: false,
+    resultCode: 3, // MAV_RESULT_UNSUPPORTED
+    message: `${what} is an ArduPilot vendor command; connected firmware is ${variant}`,
+  }
+}
+
 export interface CommandContext {
   transport: Transport | null
   firmwareHandler: FirmwareHandler | null
@@ -27,6 +52,16 @@ export interface CommandContext {
   sysId: number
   compId: number
   sendCommandLong: (command: number, params: [number, number, number, number, number, number, number], timeoutMs?: number) => Promise<CommandResult>
+  /** Ack-tracked COMMAND_INT, for commands whose x/y need 1e7 integer precision. */
+  sendCommandInt: (
+    command: number,
+    params: [number, number, number, number],
+    x: number,
+    y: number,
+    z: number,
+    frame: number,
+    timeoutMs?: number,
+  ) => Promise<CommandResult>
 }
 
 export function cmdArm(ctx: CommandContext): Promise<CommandResult> {
@@ -97,6 +132,9 @@ export function cmdStartCalibration(
     return Promise.resolve({ success: true, resultCode: 0, message: 'RC calibration ready — follow on-screen instructions' })
   }
   if (type === 'compassmot') {
+    // PREFLIGHT_CALIBRATION param6 is ArduPilot's CompassMot slot; on other
+    // firmware the command is accepted and does nothing recognisable.
+    if (!isArduPilot(ctx)) return Promise.resolve(refuseNonArduPilot(ctx, 'CompassMot calibration'))
     return ctx.sendCommandLong(241, [0, 0, 0, 0, 0, 1, 0], 120000)
   }
   const params: [number, number, number, number, number, number, number] = [0, 0, 0, 0, 0, 0, 0]
@@ -113,6 +151,7 @@ export function cmdStartCalibration(
 
 export function cmdConfirmAccelCalPos(ctx: CommandContext, position: number): void {
   if (!ctx.transport?.isConnected) return
+  if (!isArduPilot(ctx)) return
   ctx.commandQueue.sendCommandNoAck(
     42429, [position, 0, 0, 0, 0, 0, 0],
     (data) => ctx.transport!.send(data),
@@ -122,18 +161,23 @@ export function cmdConfirmAccelCalPos(ctx: CommandContext, position: number): vo
 }
 
 export function cmdAcceptCompassCal(ctx: CommandContext, compassMask = 0): Promise<CommandResult> {
+  if (!isArduPilot(ctx)) return Promise.resolve(refuseNonArduPilot(ctx, 'Accept compass calibration'))
   return ctx.sendCommandLong(42425, [compassMask, 0, 0, 0, 0, 0, 0])
 }
 
 export function cmdCancelCompassCal(ctx: CommandContext, compassMask = 0): Promise<CommandResult> {
+  if (!isArduPilot(ctx)) return Promise.resolve(refuseNonArduPilot(ctx, 'Cancel compass calibration'))
   return ctx.sendCommandLong(42426, [compassMask, 0, 0, 0, 0, 0, 0])
 }
 
 export function cmdCancelCalibration(ctx: CommandContext): Promise<CommandResult> {
+  // PREFLIGHT_CALIBRATION with all-zero params is the standard cancel across
+  // every firmware, so this one is deliberately not gated.
   return ctx.sendCommandLong(241, [0, 0, 0, 0, 0, 0, 0])
 }
 
 export function cmdStartGnssMagCal(ctx: CommandContext): Promise<CommandResult> {
+  if (!isArduPilot(ctx)) return Promise.resolve(refuseNonArduPilot(ctx, 'GNSS/mag calibration'))
   return ctx.sendCommandLong(42006, [0, 0, 0, 0, 0, 0, 0])
 }
 
@@ -202,22 +246,42 @@ export function cmdResetParametersToDefault(ctx: CommandContext): CommandResult 
   }
 }
 
-export function cmdKillSwitch(ctx: CommandContext): Promise<CommandResult> {
+/**
+ * MAV_CMD_DO_FLIGHTTERMINATION. Irreversible in flight: it cuts the outputs
+ * and the airframe falls.
+ *
+ * The protocol layer will not guess whether an operator meant it, so the
+ * confirmation is the CALLER's job and this signature makes that explicit
+ * rather than accepting a bare click. `confirmed` must come from a real
+ * operator confirmation (the armed-write confirm dialog), never a default.
+ */
+export function cmdKillSwitch(ctx: CommandContext, confirmed: boolean): Promise<CommandResult> {
+  if (!confirmed) {
+    return Promise.resolve({
+      success: false,
+      resultCode: -1,
+      message: 'Flight termination requires explicit confirmation',
+    })
+  }
   return ctx.sendCommandLong(185, [1, 0, 0, 0, 0, 0, 0])
 }
 
-export function cmdGuidedGoto(ctx: CommandContext, lat: number, lon: number, alt: number): CommandResult {
+export function cmdGuidedGoto(ctx: CommandContext, lat: number, lon: number, alt: number): Promise<CommandResult> {
   if (!ctx.transport?.isConnected) {
-    return { success: false, resultCode: -1, message: 'Not connected' }
+    return Promise.resolve({ success: false, resultCode: -1, message: 'Not connected' })
   }
-  const frame = encodeCommandInt(
-    ctx.targetSysId, ctx.targetCompId, 6, 192, 0, 0,
-    -1, 1, 0, 0,
-    Math.round(lat * 1e7), Math.round(lon * 1e7), alt,
-    ctx.sysId, ctx.compId,
+  // MAV_CMD_DO_REPOSITION (192) as a COMMAND_INT so lat/lon keep 1e7 integer
+  // precision. It used to be a raw transport write that reported success on
+  // the WRITE, so a rejected or unsupported reposition read as accepted; it is
+  // ack-tracked now like every other flight-affecting command.
+  return ctx.sendCommandInt(
+    192,
+    [-1, 1, 0, 0],
+    Math.round(lat * 1e7),
+    Math.round(lon * 1e7),
+    alt,
+    6, // MAV_FRAME_GLOBAL_RELATIVE_ALT_INT
   )
-  ctx.transport.send(frame)
-  return { success: true, resultCode: 0, message: 'Goto sent' }
 }
 
 export function cmdPauseMission(ctx: CommandContext): Promise<CommandResult> {
@@ -330,10 +394,6 @@ export function cmdRequestMessage(ctx: CommandContext, msgId: number): Promise<C
 
 export function cmdSetMessageInterval(ctx: CommandContext, msgId: number, intervalUs: number): Promise<CommandResult> {
   return ctx.sendCommandLong(511, [msgId, intervalUs, 0, 0, 0, 0, 0])
-}
-
-export function cmdStartCompassMotCal(ctx: CommandContext): Promise<CommandResult> {
-  return ctx.sendCommandLong(241, [0, 0, 0, 0, 0, 1, 0], 120000)
 }
 
 export function cmdSendSerialData(ctx: CommandContext, text: string): void {

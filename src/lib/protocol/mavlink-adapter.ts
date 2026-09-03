@@ -406,7 +406,7 @@ export class MAVLinkAdapter implements DroneProtocol {
   }
 
   // ── Context helpers ────────────────────────────────────
-  private get cc(): cmds.CommandContext { return { transport: this.transport, firmwareHandler: this.firmwareHandler, commandQueue: this.commandQueue, targetSysId: this.targetSysId, targetCompId: this.targetCompId, sysId: this.sysId, compId: this.compId, sendCommandLong: this.sendCommandLong.bind(this) } }
+  private get cc(): cmds.CommandContext { return { transport: this.transport, firmwareHandler: this.firmwareHandler, commandQueue: this.commandQueue, targetSysId: this.targetSysId, targetCompId: this.targetCompId, sysId: this.sysId, compId: this.compId, sendCommandLong: this.sendCommandLong.bind(this), sendCommandInt: this.sendCommandIntTracked.bind(this) } }
   private get pc(): prm.ParamContext { return { transport: this.transport, firmwareHandler: this.firmwareHandler, targetSysId: this.targetSysId, targetCompId: this.targetCompId, sysId: this.sysId, compId: this.compId, paramCache: this.paramCache, PARAM_CACHE_TTL_MS: 300000, parameterDownload: this.parameterDownload, downloadedParamNames: this.downloadedParamNames, onParameter: this.onParameter.bind(this) } }
   private get mc(): msn.MissionContext { return { transport: this.transport, firmwareHandler: this.firmwareHandler, targetSysId: this.targetSysId, targetCompId: this.targetCompId, sysId: this.sysId, compId: this.compId, missionUpload: this.missionUpload, missionDownload: this.missionDownload, rallyUpload: this.rallyUpload, rallyDownload: this.rallyDownload, fenceUpload: this.fenceUpload, fenceDownload: this.fenceDownload, sendCommandLong: this.sendCommandLong.bind(this), onParameter: this.onParameter.bind(this), onFencePoint: this.onFencePoint.bind(this), getParameter: this.getParameter.bind(this) } }
   private get lc(): logOps.LogContext { return { transport: this.transport, targetSysId: this.targetSysId, targetCompId: this.targetCompId, sysId: this.sysId, compId: this.compId, logListDownload: this.logListDownload, logDataDownload: this.logDataDownload } }
@@ -431,7 +431,7 @@ export class MAVLinkAdapter implements DroneProtocol {
   async rebootToBootloader() { return cmds.cmdRebootToBootloader(this.cc) }
   async reboot() { return cmds.cmdReboot(this.cc) }
   async resetParametersToDefault() { return cmds.cmdResetParametersToDefault(this.cc) }
-  async killSwitch() { return cmds.cmdKillSwitch(this.cc) }
+  async killSwitch(confirmed: boolean) { return cmds.cmdKillSwitch(this.cc, confirmed) }
   async guidedGoto(lat: number, lon: number, alt: number) { return cmds.cmdGuidedGoto(this.cc, lat, lon, alt) }
   async pauseMission() { return cmds.cmdPauseMission(this.cc) }
   async resumeMission() { return cmds.cmdResumeMission(this.cc) }
@@ -452,7 +452,6 @@ export class MAVLinkAdapter implements DroneProtocol {
   async startRxPair(s: number) { return cmds.cmdStartRxPair(this.cc, s) }
   async requestMessage(id: number) { return cmds.cmdRequestMessage(this.cc, id) }
   async setMessageInterval(id: number, us: number) { return cmds.cmdSetMessageInterval(this.cc, id, us) }
-  async startCompassMotCal() { return cmds.cmdStartCompassMotCal(this.cc) }
   async setGimbalROI(lat: number, lon: number, alt: number) { return cmds.cmdSetRoiLocation(this.cc, lat, lon, alt) }
   async setRoiLocation(lat: number, lon: number, alt: number) { return cmds.cmdSetRoiLocation(this.cc, lat, lon, alt) }
   async clearRoi() { return cmds.cmdSetRoiNone(this.cc) }
@@ -642,6 +641,20 @@ export class MAVLinkAdapter implements DroneProtocol {
   private sendCommandLong(cmd: number, p: [number, number, number, number, number, number, number], timeout?: number): Promise<CommandResult> {
     if (!this.transport?.isConnected) return Promise.resolve({ success: false, resultCode: -1, message: 'Not connected' })
     return this.commandQueue.sendCommand(cmd, p, (d) => this.sendWrapped(d), this.targetSysId, this.targetCompId, this.sysId, this.compId, timeout)
+  }
+
+  /** Ack-tracked COMMAND_INT, for commands whose x/y need 1e7 integer precision. */
+  private sendCommandIntTracked(
+    cmd: number,
+    p: [number, number, number, number],
+    x: number,
+    y: number,
+    z: number,
+    frame: number,
+    timeout?: number,
+  ): Promise<CommandResult> {
+    if (!this.transport?.isConnected) return Promise.resolve({ success: false, resultCode: -1, message: 'Not connected' })
+    return this.commandQueue.sendCommandInt(cmd, p, x, y, z, frame, (d) => this.sendWrapped(d), this.targetSysId, this.targetCompId, this.sysId, this.compId, timeout)
   }
 
   /** Send data through transport, applying outbound middleware if set.
