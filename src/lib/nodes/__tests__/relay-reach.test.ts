@@ -32,7 +32,7 @@ import { useLocalNodesStore } from "@/stores/local-nodes-store";
 
 const GS = {
   deviceId: "gs-1",
-  hostname: "http://192.168.200.200:8080",
+  hostname: "http://192.168.1.50:8080",
   apiKey: "gs-key",
   name: "Ground One",
   pairedAt: 1,
@@ -53,7 +53,7 @@ describe("resolveRelayReach", () => {
       droneDeviceId: "77735cd38937",
     });
     expect(reach).toEqual({
-      baseUrl: "http://192.168.200.200:8080",
+      baseUrl: "http://192.168.1.50:8080",
       apiKey: "gs-key",
       peerDeviceId: "77735cd38937",
     });
@@ -124,12 +124,12 @@ describe("relayProxyBaseUrl", () => {
     // reach the drone's own `/api/status`.
     expect(
       relayProxyBaseUrl({
-        baseUrl: "http://192.168.200.200:8080",
+        baseUrl: "http://192.168.1.50:8080",
         apiKey: "k",
         peerDeviceId: "77735cd38937",
       }),
     ).toBe(
-      "http://192.168.200.200:8080/api/v1/ground-station/relay-proxy/77735cd38937",
+      "http://192.168.1.50:8080/api/v1/ground-station/relay-proxy/77735cd38937",
     );
   });
 });

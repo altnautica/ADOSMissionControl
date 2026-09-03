@@ -64,7 +64,7 @@ describe("selectNode — a relayed node reaches its agent through its ground sta
       nodes: [
         {
           deviceId: "gs-1",
-          hostname: "http://192.168.200.200:8080",
+          hostname: "http://192.168.1.50:8080",
           apiKey: "gs-key",
           name: "Ground One",
           pairedAt: 1,
@@ -91,7 +91,7 @@ describe("selectNode — a relayed node reaches its agent through its ground sta
 
     expect(connectCloud).not.toHaveBeenCalled();
     expect(connect).toHaveBeenCalledWith(
-      `http://192.168.200.200:8080/api/v1/ground-station/relay-proxy/${DEV}`,
+      `http://192.168.1.50:8080/api/v1/ground-station/relay-proxy/${DEV}`,
       "gs-key",
       DEV,
       { relay: true },

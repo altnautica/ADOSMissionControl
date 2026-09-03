@@ -23,7 +23,7 @@ describe("rewriteWhepHost", () => {
   it("rewrites when the agent base is itself a hostname", () => {
     expect(
       rewriteWhepHost(
-        "http://192.168.200.200:8889/main/whep",
+        "http://192.168.1.50:8889/main/whep",
         "http://drone.local:8080",
       ),
     ).toBe("http://drone.local:8889/main/whep");
@@ -78,9 +78,9 @@ describe("resolveAgentWhepUrl", () => {
       resolveAgentWhepUrl(
         "http://127.0.0.1:8889/main/whep",
         "running",
-        "http://192.168.200.200:8080",
+        "http://192.168.1.50:8080",
       ),
-    ).toBe("http://192.168.200.200:8889/main/whep");
+    ).toBe("http://192.168.1.50:8889/main/whep");
   });
 
   it("synthesizes a WHEP url from the connected host when the agent omits it", () => {
@@ -88,14 +88,14 @@ describe("resolveAgentWhepUrl", () => {
     // transient mediamtx-readiness miss — synthesize instead of null so the
     // cascade has a reachable URL to dial.
     expect(
-      resolveAgentWhepUrl(null, "running", "http://192.168.200.200:8080"),
-    ).toBe("http://192.168.200.200:8889/main/whep");
+      resolveAgentWhepUrl(null, "running", "http://192.168.1.50:8080"),
+    ).toBe("http://192.168.1.50:8889/main/whep");
   });
 
   it("synthesizes for not_initialized / connecting (pipeline may be coming up)", () => {
     expect(
-      resolveAgentWhepUrl(null, "not_initialized", "http://192.168.200.200:8080"),
-    ).toBe("http://192.168.200.200:8889/main/whep");
+      resolveAgentWhepUrl(null, "not_initialized", "http://192.168.1.50:8080"),
+    ).toBe("http://192.168.1.50:8889/main/whep");
     expect(
       resolveAgentWhepUrl(undefined, "connecting", "http://drone.local:8080"),
     ).toBe("http://drone.local:8889/main/whep");
@@ -104,7 +104,7 @@ describe("resolveAgentWhepUrl", () => {
   it("returns null for hard-off states (stopped/disabled/error/absent)", () => {
     for (const s of ["stopped", "disabled", "error", "absent"]) {
       expect(
-        resolveAgentWhepUrl(null, s, "http://192.168.200.200:8080"),
+        resolveAgentWhepUrl(null, s, "http://192.168.1.50:8080"),
       ).toBeNull();
     }
   });

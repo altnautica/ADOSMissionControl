@@ -45,7 +45,6 @@ next-env.d.ts
 # electron
 /dist-electron
 /release
-.vercel
 
 # monaco editor static assets (copied from node_modules by predev/prebuild)
 /public/monaco-vs

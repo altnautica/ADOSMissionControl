@@ -5,8 +5,8 @@ import { useLocalNodesStore, type LocalNode } from "@/stores/local-nodes-store";
 function node(overrides: Partial<LocalNode>): LocalNode {
   return {
     deviceId: "dev-1",
-    name: "skynodepi",
-    hostname: "http://skynodepi.local:8080",
+    name: "ados-x",
+    hostname: "http://ados-x.local:8080",
     apiKey: "k",
     profile: "drone",
     pairedAt: 1,
@@ -29,7 +29,7 @@ afterEach(() => {
 describe("pairedAgentDeviceIdForUrl", () => {
   it("matches an FC WebSocket against the node's .local hostname", () => {
     withNodes([node({})]);
-    expect(pairedAgentDeviceIdForUrl("ws://skynodepi.local:8765/")).toBe("dev-1");
+    expect(pairedAgentDeviceIdForUrl("ws://ados-x.local:8765/")).toBe("dev-1");
   });
 
   it("matches against the node's mDNS host", () => {
@@ -40,8 +40,8 @@ describe("pairedAgentDeviceIdForUrl", () => {
   });
 
   it("matches against the node's captured IPv4", () => {
-    withNodes([node({ ipv4: "192.168.200.201" })]);
-    expect(pairedAgentDeviceIdForUrl("ws://192.168.200.201:8765/")).toBe("dev-1");
+    withNodes([node({ ipv4: "192.168.1.51" })]);
+    expect(pairedAgentDeviceIdForUrl("ws://192.168.1.51:8765/")).toBe("dev-1");
   });
 
   it("returns null for a host that is not a paired agent", () => {

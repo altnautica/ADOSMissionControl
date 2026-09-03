@@ -2,7 +2,7 @@
 
 Reference deployment for the ADOS cloud relay stack: a Mosquitto MQTT broker
 plus a Node bridge that forwards agent heartbeats to Convex. Designed to run
-behind a Cloudflare Tunnel on a small VM or LXC container.
+behind a Cloudflare Tunnel on any Docker host.
 
 ```
 agent (drone)  ─MQTT(S)─►  mosquitto  ─►  mqtt-bridge  ─►  Convex
@@ -117,7 +117,7 @@ it** — see `.gitignore` in this directory.
 
 ### Generating passwd
 
-#### Altnautica production (this monorepo)
+#### Automated: the regen helper script
 
 Use the helper script. It hits a Convex httpAction (gated by
 `MQTT_AUTH_RELAY_SECRET`) to pull paired devices, runs `mosquitto_passwd`
@@ -139,7 +139,7 @@ One-time setup (operator):
    `chmod +x`, run once to seed `/opt/relay/mosquitto/passwd`.
 
 ```bash
-# On the broker host (alt-services):
+# On the broker host:
 cd /opt/relay
 set -a; source .env; set +a
 ./regenerate-passwd.sh
@@ -149,7 +149,7 @@ set -a; source .env; set +a
    60 seconds so newly-paired devices authenticate without operator
    intervention. Example unit at the bottom of this README.
 
-#### OSS self-hosters
+#### Manual: mosquitto_passwd
 
 Use `mosquitto_passwd` directly. For each paired device, you'll need its
 `device_id` (the username) and its `api_key` (the password). Both are stored
@@ -175,18 +175,17 @@ manager — never from a shell history file.
 After a new agent finishes pairing through Mission Control, it will appear
 in the `cmd_drones` Convex table with a fresh `apiKey`. The broker won't let
 the agent connect until that `(device_id, api_key)` lands in `passwd`. Run
-the regen script (Altnautica) or `mosquitto_passwd` (OSS) and SIGHUP the
+the regen script, or add the entry with `mosquitto_passwd`, then SIGHUP the
 broker.
 
-For Altnautica production, the regen script is also wired to a 60-second
-systemd timer so new devices authenticate within 1 minute of pairing without
-operator intervention.
+If the regen script is wired to the 60-second systemd timer below, new devices
+authenticate within a minute of pairing without operator intervention.
 
 ### Revoking a device
 
 1. Delete the device row from Convex (`cmd_drones`).
-2. Re-run the regen script (Altnautica) OR manually remove the line from
-   `passwd` and SIGHUP the broker (OSS).
+2. Re-run the regen script, or manually remove the line from `passwd` and
+   SIGHUP the broker.
 
 Existing connections from the revoked device persist until the next reconnect.
 For immediate disconnect, restart the broker container.

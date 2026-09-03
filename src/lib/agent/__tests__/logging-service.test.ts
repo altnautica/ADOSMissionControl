@@ -147,7 +147,7 @@ describe("LoggingService over a ground station's relay-proxy", () => {
   /** The relay client's baseUrl IS the relay-proxy prefix, not an origin. */
   const RELAY_CTX: RequestContext = {
     baseUrl:
-      "http://192.168.200.200:8080/api/v1/ground-station/relay-proxy/77735cd38937",
+      "http://192.168.1.50:8080/api/v1/ground-station/relay-proxy/77735cd38937",
     apiKey: "gs-key",
     relay: true,
   };
@@ -207,7 +207,7 @@ describe("LoggingService over a ground station's relay-proxy", () => {
     await svc.pushWindow({});
     const url = fetchMock.mock.calls[0][0] as string;
     expect(url).toBe(
-      "http://192.168.200.200:8080/api/v1/ground-station/relay-proxy/77735cd38937/api/logs/push",
+      "http://192.168.1.50:8080/api/v1/ground-station/relay-proxy/77735cd38937/api/logs/push",
     );
   });
 });
