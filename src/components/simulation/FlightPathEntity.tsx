@@ -33,6 +33,7 @@ import { haversineDistance } from "@/lib/telemetry-utils";
 import { useSettingsStore } from "@/stores/settings-store";
 import { roundCorners, type LatLonAlt } from "@/lib/simulation/spline-path";
 import { mslToEllipsoidal } from "@/lib/terrain/geoid";
+import { altitudeDatumFor } from "@/lib/mission/altitude-frame";
 
 /**
  * Corner-rounding defaults for the display-only smoothed path.
@@ -89,12 +90,15 @@ function getSegmentColor(camTriggerActive: boolean, roiActive: boolean, cmd: Way
 }
 
 /**
- * Absolute altitude (meters above the ellipsoid) for waypoint `i`, used to seed
+ * Absolute altitude (metres above the ellipsoid) for waypoint `i`, used to seed
  * the display-only smoothed path so it sits at the same height as the resolved
- * path. An `absolute`-frame waypoint carries an MSL/AMSL altitude, so it is
- * geoid-corrected to ellipsoidal height and terrain is NOT added (matching
- * `resolveAGLToAbsolute`). Otherwise it prefers terrain height + AGL, falls back
- * to the resolved cartesian, then to the raw AGL value.
+ * path. Frame handling matches `resolveAGLToAbsolute` exactly:
+ *  - `absolute` is MSL, geoid-corrected, terrain NOT added;
+ *  - `relative` is above HOME, so the HOME terrain height is the datum — using
+ *    this waypoint's terrain would draw the smoothed path riding over hills the
+ *    vehicle would fly into;
+ *  - `terrain` is above the ground below the point.
+ * Falls back to the resolved cartesian, then to the raw altitude value.
  */
 function waypointAbsoluteAlt(
   i: number,
@@ -104,8 +108,9 @@ function waypointAbsoluteAlt(
   terrainHeights: number[] | undefined,
 ): number {
   const wp = waypoints[i];
-  if (wp.frame === "absolute") return mslToEllipsoidal(wp.alt, wp.lat, wp.lon);
-  const terrain = terrainHeights?.[i];
+  const datum = altitudeDatumFor(wp.frame);
+  if (datum === "absolute") return mslToEllipsoidal(wp.alt, wp.lat, wp.lon);
+  const terrain = datum === "home" ? terrainHeights?.[0] : terrainHeights?.[i];
   if (terrain !== undefined) return terrain + wp.alt;
   const idx = waypointIndices?.[i];
   if (idx !== undefined && resolvedPositions?.[idx]) {
@@ -368,10 +373,17 @@ export function FlightPathEntity({
       entities.push(pathEntity);
     }
 
+    // Under `requestRenderMode` the scene only paints when something asks it
+    // to. An entity mutation Cesium does not observe therefore leaves a STALE
+    // frame on screen, which on a flight surface is a false display — so every
+    // add and every removal explicitly requests one.
+    viewer.scene.requestRender();
+
     return () => {
       for (const entity of entities) {
         if (!viewer.isDestroyed()) viewer.entities.remove(entity);
       }
+      if (!viewer.isDestroyed()) viewer.scene.requestRender();
     };
   }, [viewer, waypoints, resolvedPositions, waypointIndices, terrainHeights, showLabels, isResolving, roundedTurnsPreview]);
 

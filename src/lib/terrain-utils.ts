@@ -12,9 +12,10 @@ import {
   sampleTerrainMostDetailed,
   type TerrainProvider,
 } from "cesium";
-import type { Waypoint } from "@/lib/types";
+import type { AltitudeFrame, Waypoint } from "@/lib/types";
 import { haversineDistance } from "@/lib/telemetry-utils";
 import { loadGeoidGrid, mslToEllipsoidal } from "@/lib/terrain/geoid";
+import { altitudeDatumFor } from "@/lib/mission/altitude-frame";
 
 /** Spacing between intermediate sub-sample points (meters). */
 const SUBSAMPLE_INTERVAL = 100;
@@ -31,16 +32,23 @@ export interface ResolvedPath {
 
 /**
  * Resolve waypoint altitudes to absolute (ellipsoidal) positions for Cesium.
- * Adds intermediate sub-sample points every ~100m between waypoints for smooth
- * terrain-following visualization.
+ * Adds intermediate sub-sample points every ~100m between waypoints so a
+ * terrain-following leg is drawn against the real contour.
  *
- * Frame-aware: an `absolute`-frame waypoint carries an MSL/AMSL altitude, so it
- * is placed at `mslToEllipsoidal(alt)` (geoid-corrected height above the
- * ellipsoid) and terrain is NOT added — it sits at the same absolute height
- * regardless of the ground below. `relative` / `terrain` / undefined frames stay
- * `terrainHeight + AGL`. A segment's sub-samples inherit the frame of its start
- * waypoint (an absolute leg holds constant MSL; a relative leg follows terrain).
- * The geoid grid is warmed here so the conversion is correct on first resolve
+ * FRAME-CORRECT, and this is the whole point of the function:
+ *  - `absolute` carries an MSL/AMSL altitude, so it is placed at
+ *    `mslToEllipsoidal(alt)` and terrain is NOT added — the same height
+ *    regardless of the ground below.
+ *  - `relative` is height above HOME, so it is placed at
+ *    `homeTerrainHeight + alt`. It does NOT follow terrain. Drawing it as
+ *    `terrainHeight + alt` (the previous behaviour) hid every terrain conflict
+ *    in the 3D view: the path was painted riding over each hill it would
+ *    actually fly into.
+ *  - `terrain` is height above the ground below the point, so it is
+ *    `terrainHeight + alt` — the only frame that follows the contour.
+ *
+ * A segment's sub-samples inherit the frame of its start waypoint. The geoid
+ * grid is warmed here so the MSL conversion is correct on the first resolve
  * (absent grid -> honest MSL-as-ellipsoidal passthrough).
  */
 export async function resolveAGLToAbsolute(
@@ -57,24 +65,24 @@ export async function resolveAGLToAbsolute(
   await loadGeoidGrid();
 
   // Build cartographic positions: original waypoints + intermediate points.
-  // Track, per point, its geographic degrees, its altitude value, and whether
-  // that altitude is an absolute (MSL) height rather than AGL.
+  // Track, per point, its geographic degrees, its altitude value, and the frame
+  // that altitude is measured in.
   const cartographics: Cartographic[] = [];
   const lonLatDeg: Array<{ lat: number; lon: number }> = [];
   const altValues: number[] = [];
-  const isAbsolute: boolean[] = [];
+  const frames: AltitudeFrame[] = [];
   const waypointIndices: number[] = [];
 
   for (let i = 0; i < waypoints.length; i++) {
     const wp = waypoints[i];
-    const absolute = wp.frame === "absolute";
+    const frame: AltitudeFrame = wp.frame ?? "relative";
 
     // Record this index as an original waypoint
     waypointIndices.push(cartographics.length);
     cartographics.push(Cartographic.fromDegrees(wp.lon, wp.lat));
     lonLatDeg.push({ lat: wp.lat, lon: wp.lon });
     altValues.push(wp.alt);
-    isAbsolute.push(absolute);
+    frames.push(frame);
 
     // Add intermediate points to next waypoint for smooth terrain following
     if (i < waypoints.length - 1) {
@@ -91,7 +99,7 @@ export async function resolveAGLToAbsolute(
         cartographics.push(Cartographic.fromDegrees(lon, lat));
         lonLatDeg.push({ lat, lon });
         altValues.push(alt);
-        isAbsolute.push(absolute); // sub-samples inherit the segment's start frame
+        frames.push(frame); // sub-samples inherit the segment's start frame
       }
     }
   }
@@ -99,14 +107,26 @@ export async function resolveAGLToAbsolute(
   // Sample terrain heights at all points
   const sampled = await sampleTerrainMostDetailed(terrainProvider, cartographics);
 
-  // Build absolute Cartesian3 positions. Absolute-frame points are placed at the
-  // geoid-corrected ellipsoidal height (no terrain add); AGL points at terrain +
-  // AGL.
+  // The launch point's terrain height is the datum every relative-frame
+  // altitude is measured from. Everything here is in ellipsoidal height, so no
+  // geoid conversion is needed for the two offset frames.
+  const homeTerrainHeight = sampled[waypointIndices[0]]?.height || 0;
+
   const positions = sampled.map((carto, i) => {
     const { lat, lon } = lonLatDeg[i];
-    const absoluteAlt = isAbsolute[i]
-      ? mslToEllipsoidal(altValues[i], lat, lon)
-      : (carto.height || 0) + altValues[i];
+    const terrainHeight = carto.height || 0;
+    let absoluteAlt: number;
+    switch (altitudeDatumFor(frames[i])) {
+      case "absolute":
+        absoluteAlt = mslToEllipsoidal(altValues[i], lat, lon);
+        break;
+      case "home":
+        absoluteAlt = homeTerrainHeight + altValues[i];
+        break;
+      case "waypointGround":
+        absoluteAlt = terrainHeight + altValues[i];
+        break;
+    }
     return Cartesian3.fromRadians(carto.longitude, carto.latitude, absoluteAlt);
   });
 

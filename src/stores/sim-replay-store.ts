@@ -2,159 +2,167 @@
  * @module sim-replay-store
  * @description Session-only Zustand store holding a recorded flight track that
  * the operator loads to overlay the ACTUAL flown path on the planned mission in
- * the simulation viewer. Reuses the existing dataflash / ulog / tlog parsers to
- * turn a raw log file into an ordered `{ lat, lon, alt }[]` position array —
- * only real logged positions are kept; a parse failure or a log with no GPS fix
- * leaves the track null and records a stable error code (never a fabricated
- * path). NOT persisted — the loaded track lives for the current session only.
+ * the simulation viewer.
+ *
+ * Parsing happens in a `Worker` (`simulation/log-track-worker`) with the buffer
+ * transferred, so a large log no longer freezes the UI while it is read. Where
+ * no `Worker` exists (SSR, tests) the same pure core runs in-thread — identical
+ * results, and the fallback is explicit rather than a silent difference.
+ *
+ * Only real logged positions are kept; a failure leaves the track null and
+ * records a TYPED error (never a fabricated path). The track keeps full
+ * resolution for analysis and carries a decimated copy for the draw path.
+ * NOT persisted — the loaded track lives for the current session only.
+ *
  * @license GPL-3.0-only
  */
 
 import { create } from "zustand";
-import type { TelemetryFrame } from "@/lib/telemetry-recorder";
+import {
+  decimateTrack,
+  extensionOf,
+  parseLogTrack,
+  type LogTrackError,
+  type TrackPoint,
+} from "@/lib/simulation/log-track";
+import type {
+  LogTrackWorkerRequest,
+  LogTrackWorkerResponse,
+} from "@/lib/simulation/log-track-worker";
 
-/** A single ordered point of the flown track. `alt` is the logged altitude in metres. */
-export interface TrackPoint {
-  lat: number;
-  lon: number;
-  alt: number;
-  /**
-   * True when `alt` is an absolute MSL/AMSL altitude (the log's `alt` channel);
-   * false when it is the `relativeAlt` fallback (height above home, already
-   * ellipsoidal-ish for placement). Lets the Cesium overlay geoid-correct only
-   * the AMSL points so the flown track does not float off the plan by the geoid
-   * undulation.
-   */
-  amsl?: boolean;
-}
+export { extractPositions, decimateTrack } from "@/lib/simulation/log-track";
+export type { TrackPoint, LogTrackError } from "@/lib/simulation/log-track";
 
 /** A loaded actual track. */
 export interface ActualTrack {
+  /** Every logged position, full resolution — the analysis surface. */
   positions: TrackPoint[];
+  /**
+   * The same track simplified for rendering. A raw log is tens of thousands of
+   * sub-metre-apart vertices; submitting all of them to one Cesium polyline
+   * every frame costs a lot and shows nothing extra.
+   */
+  renderPositions: TrackPoint[];
   /** Source log filename, shown in the control. */
   name: string;
 }
 
 /**
- * Stable, i18n-agnostic error codes. The control maps each to a translated hint
- * so the store never holds user-facing text.
- * - `unsupported`   — file extension is not a recognised log format.
- * - `no-positions`  — log parsed but carried fewer than two GPS-fixed positions.
- * - `parse-failed`  — the parser threw on a corrupt / unreadable file.
+ * Why the last load failed. Structured rather than a bare code so the control
+ * can say "truncated at 4,194,304 bytes" instead of "parse failed" — those need
+ * different operator responses and used to be indistinguishable.
  */
-export type SimReplayErrorCode = "unsupported" | "no-positions" | "parse-failed";
+export type SimReplayError = LogTrackError;
+
+/** Stable, i18n-agnostic error code. The control maps each to a translated hint. */
+export type SimReplayErrorCode = LogTrackError["code"];
 
 interface SimReplayState {
   /** The loaded actual track, or null when nothing is loaded. */
   track: ActualTrack | null;
-  /** Last error code, or null. Cleared on a successful load or `clear()`. */
-  error: SimReplayErrorCode | null;
+  /** Last error, or null. Cleared on a successful load or `clear()`. */
+  error: SimReplayError | null;
+  /** True while a log is being parsed. */
+  loading: boolean;
   /** Parse a recorded log file and extract its flown positions. */
   loadFromFile: (file: File) => Promise<void>;
   /** Drop the loaded track and any error (reset). */
   clear: () => void;
 }
 
-/** True when a lat/lon pair is a plausible real fix (finite, in range, not the 0/0 null-island no-fix). */
-function isValidFix(lat: number, lon: number): boolean {
-  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return false;
-  if (Math.abs(lat) > 90 || Math.abs(lon) > 180) return false;
-  if (lat === 0 && lon === 0) return false;
-  return true;
-}
+/** The in-flight parse worker, so a second load cancels the first. */
+let activeWorker: Worker | null = null;
 
 /**
- * Extract an ordered position array from parsed telemetry frames.
- *
- * Reads only `position` / `globalPosition` channel frames (the parsers emit
- * these from ArduPilot POS / MAVLink GLOBAL_POSITION_INT rows), preferring the
- * absolute `alt` and falling back to `relativeAlt` so the overlay sits at a
- * defensible height. Frames without a valid GPS fix are skipped — never faked.
- *
- * Exported for unit testing of the parse→positions mapping.
+ * Parse in a worker when the environment has one, otherwise in-thread.
+ * The in-thread path is the SSR / test environment, not a silent degradation:
+ * both run the same pure {@link parseLogTrack}.
  */
-export function extractPositions(frames: TelemetryFrame[]): TrackPoint[] {
-  const positions: TrackPoint[] = [];
-  for (const frame of frames) {
-    if (frame.channel !== "position" && frame.channel !== "globalPosition") continue;
-    const d = frame.data as Record<string, unknown>;
-    const lat = typeof d.lat === "number" ? d.lat : NaN;
-    const lon = typeof d.lon === "number" ? d.lon : NaN;
-    if (!isValidFix(lat, lon)) continue;
-    // The absolute `alt` channel is MSL/AMSL and needs geoid correction for
-    // Cesium placement; the `relativeAlt` fallback is height-above-home and does
-    // not. Tag the point so the overlay only corrects the AMSL ones.
-    let alt: number;
-    let amsl: boolean;
-    if (typeof d.alt === "number") {
-      alt = d.alt;
-      amsl = true;
-    } else if (typeof d.relativeAlt === "number") {
-      alt = d.relativeAlt;
-      amsl = false;
-    } else {
-      alt = 0;
-      amsl = false;
-    }
-    positions.push({ lat, lon, alt, amsl });
+function parseInWorker(
+  request: LogTrackWorkerRequest,
+): Promise<LogTrackWorkerResponse> {
+  if (typeof Worker === "undefined") {
+    const result = parseLogTrack(request.ext, request.buffer, request.name);
+    return Promise.resolve(
+      result.ok
+        ? { ok: true, positions: result.positions }
+        : { ok: false, error: result.error },
+    );
   }
-  return positions;
-}
 
-/** Lowercase file extension (without the dot), or "". */
-function extensionOf(name: string): string {
-  const dot = name.lastIndexOf(".");
-  return dot >= 0 ? name.slice(dot + 1).toLowerCase() : "";
+  return new Promise<LogTrackWorkerResponse>((resolve) => {
+    const worker = new Worker(
+      new URL("../lib/simulation/log-track-worker.ts", import.meta.url),
+      { type: "module" },
+    );
+    activeWorker?.terminate();
+    activeWorker = worker;
+
+    worker.onmessage = (e: MessageEvent<LogTrackWorkerResponse>) => {
+      worker.terminate();
+      if (activeWorker === worker) activeWorker = null;
+      resolve(e.data);
+    };
+    worker.onerror = (e) => {
+      worker.terminate();
+      if (activeWorker === worker) activeWorker = null;
+      resolve({
+        ok: false,
+        error: { code: "parse-failed", detail: e.message || "log parse worker crashed" },
+      });
+    };
+
+    // Transfer the buffer: a flight log is tens to hundreds of megabytes and
+    // structured-cloning it would double peak memory for no reason.
+    worker.postMessage(request, [request.buffer]);
+  });
 }
 
 export const useSimReplayStore = create<SimReplayState>((set) => ({
   track: null,
   error: null,
+  loading: false,
 
   loadFromFile: async (file: File) => {
     const name = file.name;
     const ext = extensionOf(name);
+    set({ loading: true, error: null });
 
+    let response: LogTrackWorkerResponse;
     try {
       const buffer = await file.arrayBuffer();
-      let positions: TrackPoint[] = [];
-
-      if (ext === "bin" || ext === "log") {
-        // ArduPilot DataFlash binary. Parse in-memory and pull frames directly —
-        // deliberately NOT via import.ts, which also persists to IndexedDB.
-        const { parseDataflashLog } = await import("@/lib/dataflash/parser");
-        const { dataflashToFlightRecords } = await import("@/lib/dataflash/to-flight-record");
-        const log = parseDataflashLog(new Uint8Array(buffer));
-        const flights = dataflashToFlightRecords(log, { sourceFilename: name });
-        positions = extractPositions(flights.flatMap((f) => f.frames));
-      } else if (ext === "ulg") {
-        // PX4 ULog.
-        const { parseUlog } = await import("@/lib/ulog/parser");
-        const { ulogToFlightRecords } = await import("@/lib/ulog/to-flight-record");
-        const log = parseUlog(buffer);
-        const flights = ulogToFlightRecords(log, name);
-        positions = extractPositions(flights.flatMap((f) => f.frames));
-      } else if (ext === "tlog") {
-        // MAVLink telemetry log.
-        const { parseTlog, tlogToFlightRecord } = await import("@/lib/tlog/parser");
-        const packets = parseTlog(buffer);
-        const result = tlogToFlightRecord(packets, name);
-        positions = result ? extractPositions(result.frames) : [];
-      } else {
-        set({ error: "unsupported", track: null });
-        return;
-      }
-
-      if (positions.length < 2) {
-        set({ error: "no-positions", track: null });
-        return;
-      }
-
-      set({ track: { positions, name }, error: null });
-    } catch {
-      set({ error: "parse-failed", track: null });
+      response = await parseInWorker({ ext, name, buffer });
+    } catch (err) {
+      set({
+        loading: false,
+        track: null,
+        error: {
+          code: "parse-failed",
+          detail: err instanceof Error ? err.message : String(err),
+        },
+      });
+      return;
     }
+
+    if (!response.ok) {
+      set({ loading: false, error: response.error, track: null });
+      return;
+    }
+
+    set({
+      loading: false,
+      track: {
+        positions: response.positions,
+        renderPositions: decimateTrack(response.positions),
+        name,
+      },
+      error: null,
+    });
   },
 
-  clear: () => set({ track: null, error: null }),
+  clear: () => {
+    activeWorker?.terminate();
+    activeWorker = null;
+    set({ track: null, error: null, loading: false });
+  },
 }));

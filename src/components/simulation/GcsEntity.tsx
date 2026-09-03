@@ -83,6 +83,12 @@ export function GcsEntity({ viewer }: GcsEntityProps) {
     });
     ellipseRef.current = ellipse;
 
+    // Under `requestRenderMode` the scene only paints when something asks it
+    // to. An entity mutation Cesium does not observe therefore leaves a STALE
+    // frame on screen, which on a flight surface is a false display — so every
+    // add and every removal explicitly requests one.
+    viewer.scene.requestRender();
+
     return () => {
       if (viewer && !viewer.isDestroyed()) {
         viewer.entities.removeById(GCS_ENTITY_ID);
@@ -90,6 +96,7 @@ export function GcsEntity({ viewer }: GcsEntityProps) {
       }
       billboardRef.current = null;
       ellipseRef.current = null;
+      if (!viewer.isDestroyed()) viewer.scene.requestRender();
     };
   }, [viewer, locationEnabled, !!position]); // eslint-disable-line react-hooks/exhaustive-deps
 

@@ -3067,6 +3067,7 @@
       "loaded": "{name} · {count} pontos",
       "errorUnsupported": "Ficheiro não suportado. Use um registo de voo .bin, .log, .tlog ou .ulg.",
       "errorNoPositions": "Sem posições fixadas por GPS nesse registo.",
+      "errorTruncated": "Esse registo termina a meio de um registo aos {offset} bytes — o voo foi interrompido.",
       "errorParseFailed": "Não foi possível ler esse ficheiro de registo.",
       "emptyHint": "Carregue um voo gravado para sobrepor o seu percurso real ao plano."
     },

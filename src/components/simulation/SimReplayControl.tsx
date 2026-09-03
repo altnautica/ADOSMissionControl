@@ -15,15 +15,33 @@ import { useTranslations } from "next-intl";
 import { FileUp, X } from "lucide-react";
 import {
   useSimReplayStore,
+  type SimReplayError,
   type SimReplayErrorCode,
 } from "@/stores/sim-replay-store";
 
 /** Map a store error code to its translation key under `simulate.replay.*`. */
 const ERROR_KEY: Record<SimReplayErrorCode, string> = {
   unsupported: "errorUnsupported",
+  truncated: "errorTruncated",
   "no-positions": "errorNoPositions",
   "parse-failed": "errorParseFailed",
 };
+
+/**
+ * The operator-facing sentence for a typed replay error. Only `truncated`
+ * carries a value into its message — the byte offset where the log ran out,
+ * which is what tells the operator the flight was cut short rather than the
+ * file being unreadable.
+ */
+function errorText(
+  error: SimReplayError,
+  t: (key: string, values?: Record<string, string | number>) => string,
+): string {
+  if (error.code === "truncated") {
+    return t("errorTruncated", { offset: error.offset });
+  }
+  return t(ERROR_KEY[error.code]);
+}
 
 export function SimReplayControl() {
   const t = useTranslations("simulate.replay");
@@ -78,7 +96,7 @@ export function SimReplayControl() {
           {t("loaded", { name: track.name, count: track.positions.length })}
         </p>
       ) : error ? (
-        <p className="text-xs text-status-warning">{t(ERROR_KEY[error])}</p>
+        <p className="text-xs text-status-warning">{errorText(error, t)}</p>
       ) : (
         <p className="text-xs text-text-tertiary">{t("emptyHint")}</p>
       )}

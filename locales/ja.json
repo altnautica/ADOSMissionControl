@@ -3067,6 +3067,7 @@
       "loaded": "{name} · {count} ポイント",
       "errorUnsupported": "対応していないファイルです。.bin、.log、.tlog、.ulg の飛行ログを使用してください。",
       "errorNoPositions": "そのログにGPS測位済みの位置情報がありません。",
+      "errorTruncated": "このログは {offset} バイト目でレコードの途中で終わっています。飛行が中断されました。",
       "errorParseFailed": "そのログファイルを読み込めませんでした。",
       "emptyHint": "記録した飛行を読み込むと、実際の経路を計画上に重ねて表示できます。"
     },

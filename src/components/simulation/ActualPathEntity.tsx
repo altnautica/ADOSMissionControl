@@ -55,7 +55,7 @@ export function ActualPathEntity({ viewer }: ActualPathEntityProps) {
   }, []);
 
   useEffect(() => {
-    if (!viewer || viewer.isDestroyed() || !track || track.positions.length < 2) return;
+    if (!viewer || viewer.isDestroyed() || !track || track.renderPositions.length < 2) return;
 
     const entities: Entity[] = [];
     const amber = Color.fromCssColorString(ACTUAL_PATH_COLOR);
@@ -67,7 +67,12 @@ export function ActualPathEntity({ viewer }: ActualPathEntityProps) {
     // ellipsoidal height so the flown track does not float off the planned path
     // by the geoid undulation; relativeAlt-fallback points pass through. Place
     // the polyline at that height above the ellipsoid rather than clamping.
-    const positions = track.positions.map((p) =>
+    //
+    // Drawn from the DECIMATED track: a raw log is tens of thousands of
+    // sub-metre-apart vertices, and submitting all of them to one polyline
+    // every frame costs real time while showing nothing extra. The
+    // full-resolution array stays on the track for analysis.
+    const positions = track.renderPositions.map((p) =>
       Cartesian3.fromDegrees(
         p.lon,
         p.lat,
@@ -134,10 +139,17 @@ export function ActualPathEntity({ viewer }: ActualPathEntityProps) {
       entities.push(dot);
     }
 
+    // Entities added outside Cesium's own change tracking do not schedule a
+    // frame under `requestRenderMode`, so the track would not appear until some
+    // other interaction happened to redraw. A missed request shows a stale
+    // frame, which on a piloting surface is a false display.
+    viewer.scene.requestRender();
+
     return () => {
       for (const entity of entities) {
         if (!viewer.isDestroyed()) viewer.entities.remove(entity);
       }
+      if (!viewer.isDestroyed()) viewer.scene.requestRender();
     };
   }, [viewer, track, geoidReady]);
 

@@ -3,11 +3,11 @@
  * @description Mission save/load/autosave utilities for the .altmission file format.
  *
  * File format: `.altmission` — JSON with `{ version, metadata, waypoints }`
- * plus optional `geofence` and `rally` blocks so the native format captures the
- * whole plan (path + fence + rally), not just the waypoint path.
- * Autosave uses a 2-second debounce timer writing to IndexedDB under
- * the key `altcmd_autosave`. Call {@link cancelAutoSave} on page unmount
- * to prevent stale timer fires after navigation.
+ * plus optional `geofence`, `rally` and `pois` blocks so the native format
+ * captures the whole plan (path + fence + rally + POIs), not just the path.
+ * Autosave uses a 2-second debounce timer writing to IndexedDB under the key
+ * `altcmd_autosave`, carrying the same blocks. Call {@link flushAutoSave} on
+ * page unmount so the last debounce window is written rather than discarded.
  *
  * Data persisted via idb-keyval (IndexedDB). On first load, any existing
  * localStorage data is migrated to IndexedDB automatically.
@@ -19,6 +19,7 @@ import { get, set, del } from "idb-keyval";
 import type { Waypoint } from "@/lib/types";
 import type { GeofenceSnapshot } from "@/stores/geofence-store";
 import type { RallyPoint } from "@/stores/rally-store";
+import type { PointOfInterest } from "@/stores/plan-poi-store";
 import { parseKML } from "@/lib/formats/kml-parser";
 import { parseKMZ } from "@/lib/formats/kmz-handler";
 import { parseKmlBoundary } from "@/lib/formats/kml-boundary";
@@ -63,6 +64,8 @@ export interface MissionFile {
   geofence?: GeofenceSnapshot;
   /** Rally (safe return) points, preserved on native round-trip. */
   rally?: RallyPoint[];
+  /** Plan-attached points of interest, preserved on native round-trip. */
+  pois?: PointOfInterest[];
 }
 
 /** Current native-file schema version written on every export. */
@@ -81,10 +84,15 @@ export function migrateMissionFile(data: MissionFile): MissionFile {
   return data;
 }
 
-/** Optional fence + rally payload written alongside the waypoints on export. */
+/**
+ * Optional fence + rally + POI payload written alongside the waypoints. The
+ * planner's autosave carries these too: a mission is not just its path, and an
+ * autosave that drops the fence loses work the operator did draw.
+ */
 export interface MissionExtras {
   geofence?: GeofenceSnapshot;
   rally?: RallyPoint[];
+  pois?: PointOfInterest[];
 }
 
 /**
@@ -192,30 +200,64 @@ export async function loadMissionFile(file: File): Promise<MissionFile> {
 // ── Autosave ────────────────────────────────────────────────
 
 let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
+/** The payload the pending timer would write, so it can be flushed early. */
+let pendingAutoSave: MissionFile | null = null;
 
-export function autoSave(waypoints: Waypoint[], metadata: Partial<MissionMetadata>): void {
-  if (autoSaveTimer) clearTimeout(autoSaveTimer);
+/** Write the debounced snapshot. Storage failures are non-fatal by design. */
+function writeAutoSave(data: MissionFile): Promise<void> {
+  return set(AUTOSAVE_KEY, data).catch(() => {});
+}
+
+
+export function autoSave(
+  waypoints: Waypoint[],
+  metadata: Partial<MissionMetadata>,
+  extras?: MissionExtras,
+): void {
+  clearTimeout(autoSaveTimer ?? undefined);
+  pendingAutoSave = {
+    version: MISSION_FILE_VERSION,
+    metadata: {
+      name: metadata.name || "Untitled",
+      droneId: metadata.droneId,
+      createdAt: metadata.createdAt || Date.now(),
+      updatedAt: Date.now(),
+    },
+    waypoints,
+    geofence: extras?.geofence,
+    rally: extras?.rally,
+    pois: extras?.pois,
+  };
   autoSaveTimer = setTimeout(() => {
-    const data: MissionFile = {
-      version: MISSION_FILE_VERSION,
-      metadata: {
-        name: metadata.name || "Untitled",
-        droneId: metadata.droneId,
-        createdAt: metadata.createdAt || Date.now(),
-        updatedAt: Date.now(),
-      },
-      waypoints,
-    };
-    set(AUTOSAVE_KEY, data).catch(() => {});
+    autoSaveTimer = null;
+    const data = pendingAutoSave;
+    pendingAutoSave = null;
+    if (data) void writeAutoSave(data);
   }, 2000);
 }
 
-/** Cancel any pending auto-save timer. Call on page unmount. */
+/**
+ * Write any pending autosave immediately. Call on unmount and on `beforeunload`
+ * instead of {@link cancelAutoSave}: cancelling threw away up to the last two
+ * seconds of edits every time the operator navigated away from the planner.
+ */
+export async function flushAutoSave(): Promise<void> {
+  clearTimeout(autoSaveTimer ?? undefined);
+  autoSaveTimer = null;
+  const data = pendingAutoSave;
+  pendingAutoSave = null;
+  if (data) await writeAutoSave(data);
+}
+
+/**
+ * Discard any pending auto-save without writing it. Only for paths that
+ * deliberately drop the mission (a clear / new plan); a navigation away must
+ * use {@link flushAutoSave}.
+ */
 export function cancelAutoSave(): void {
-  if (autoSaveTimer) {
-    clearTimeout(autoSaveTimer);
-    autoSaveTimer = null;
-  }
+  clearTimeout(autoSaveTimer ?? undefined);
+  autoSaveTimer = null;
+  pendingAutoSave = null;
 }
 
 /** Get auto-saved mission data. */

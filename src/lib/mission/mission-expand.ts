@@ -28,18 +28,32 @@ import type {
   MissionAction,
   Waypoint,
 } from "@/lib/types/mission";
-import { cmdMap, frameToMav, reverseCmd } from "@/lib/mission-io-formats";
+import { cmdMap, reverseCmd } from "@/lib/mission-io-formats";
+import { frameToMav, mavToFrame } from "@/lib/mission/altitude-frame";
 import { isActionCommand, isNavCommand } from "./command-classes";
 
 // `cmdMap.DO_JUMP` (177) is read inside functions rather than captured at module
 // load, so this module never touches an imported binding at load time — that
 // keeps the mission-expand ⇄ mission-io-formats import cycle safe from TDZ.
+// The frame mapping comes from `mission/altitude-frame`, which has no cycle.
 
 /** Commands whose position (lat/lon/alt) is meaningful as an action item. */
 const POSITION_BEARING_ACTIONS: ReadonlySet<ActionCommand> = new Set<ActionCommand>([
   "ROI",
   "DO_SET_HOME",
 ]);
+
+/**
+ * One row of the legacy FLAT waypoint model, where an action rides as its own
+ * top-level row rather than nested under a navigation waypoint. Identical to a
+ * `Waypoint` plus the action's fourth parameter, which has no navigation
+ * counterpart (a nav waypoint's fourth wire slot is `param3`) and was
+ * previously dropped on every flatten.
+ */
+export interface FlatWaypointRow extends Waypoint {
+  /** Only meaningful on a flattened ACTION row: the action's `param4`. */
+  param4?: number;
+}
 
 /** Options for {@link expandToItems}. */
 export interface ExpandOptions {
@@ -171,8 +185,12 @@ function actionItem(
  * greatest NAV seq ≤ the target). A leading action item (before any navigation
  * item) is dropped.
  *
- * Frame is intentionally not restored onto waypoints (matching the existing
- * mission-download behavior), and `0` parameter slots collapse to `undefined`.
+ * Each navigation waypoint's altitude FRAME is restored from the item's
+ * `MAV_FRAME`. Dropping it (the previous behaviour) made every download and
+ * every file import re-label MSL altitudes as relative-to-home, so a
+ * download-then-reupload silently changed the mission's vertical datum.
+ * `0` parameter slots collapse to `undefined` (the model treats absent and zero
+ * as the same value, and `expandToItems` re-emits `0` for both).
  */
 export function collapseFromItems(items: readonly MissionItem[]): Waypoint[] {
   const waypoints: Waypoint[] = [];
@@ -193,6 +211,7 @@ export function collapseFromItems(items: readonly MissionItem[]): Waypoint[] {
         lon: item.y / 1e7,
         alt: item.z,
         command,
+        frame: mavToFrame(item.frame),
         holdTime: item.param1 || undefined,
         param1: item.param2 || undefined,
         param2: item.param3 || undefined,
@@ -268,7 +287,7 @@ function ownerNavId(
  * Idempotent: a list with no top-level action rows (already nested, or pure
  * navigation) passes through with its waypoints and attached actions preserved.
  */
-export function foldLegacyWaypoints(flat: readonly Waypoint[]): Waypoint[] {
+export function foldLegacyWaypoints(flat: readonly FlatWaypointRow[]): Waypoint[] {
   // Pre-resolve each legacy DO_JUMP's 1-based flat target index → an id.
   const jumpTargetIds = new Map<number, string | undefined>();
   flat.forEach((wp, idx) => {
@@ -282,14 +301,15 @@ export function foldLegacyWaypoints(flat: readonly Waypoint[]): Waypoint[] {
     jumpTargetIds.set(idx, resolveLegacyJumpTarget(flat, targetIdx));
   });
 
-  const out: Waypoint[] = [];
+  const out: FlatWaypointRow[] = [];
   let current: Waypoint | undefined;
 
   flat.forEach((wp, idx) => {
     const command = wp.command ?? "WAYPOINT";
 
     if (isNavCommand(command)) {
-      const nav: Waypoint = { ...wp, actions: wp.actions ? [...wp.actions] : [] };
+      const nav: FlatWaypointRow = { ...wp, actions: wp.actions ? [...wp.actions] : [] };
+      delete nav.param4; // an action-only slot; never meaningful on a nav row
       out.push(nav);
       current = nav;
       return;
@@ -314,6 +334,7 @@ export function foldLegacyWaypoints(flat: readonly Waypoint[]): Waypoint[] {
       param1: isJump ? undefined : wp.param1,
       param2: wp.param2,
       param3: wp.param3,
+      param4: wp.param4,
       lat: positional ? wp.lat : undefined,
       lon: positional ? wp.lon : undefined,
       alt: positional ? wp.alt : undefined,
@@ -333,24 +354,28 @@ export function foldLegacyWaypoints(flat: readonly Waypoint[]): Waypoint[] {
  * Flatten the nested per-waypoint action model into a flat waypoint list where
  * each attached action becomes its own top-level action-command row right after
  * its navigation waypoint. This is the exact inverse of {@link foldLegacyWaypoints}
- * and the shape the flat interop formats (`.plan`, `.waypoints`, CSV) serialize.
+ * and the shape the human-readable CSV interop format serializes. (The MAVLink
+ * flat formats — `.waypoints`, `.plan` — go through {@link expandToItems}
+ * instead, so they carry raw wire parameter slots.)
  *
  * A `DO_JUMP` action's target is written back as a legacy 1-based flat index in
  * `param1` (the convention every flat format + {@link foldLegacyWaypoints} read),
  * so exporting a nested mission then re-importing it preserves the jump. A
  * position-bearing action (`ROI` / `DO_SET_HOME`) keeps its own coordinates; any
  * other action inherits its parent waypoint's position + frame so the flat row
- * is well-formed.
+ * is well-formed. An action's `param4` rides in the row's own `param4`, which
+ * has no navigation counterpart — dropping it was a silent data loss on every
+ * flatten.
  */
-export function flattenForSerialization(waypoints: readonly Waypoint[]): Waypoint[] {
-  const flat: Waypoint[] = [];
+export function flattenForSerialization(waypoints: readonly Waypoint[]): FlatWaypointRow[] {
+  const flat: FlatWaypointRow[] = [];
   /** Navigation-waypoint id → its 1-based row index in the flat list. */
   const navFlatIndex = new Map<string, number>();
   /** DO_JUMP rows awaiting their target's 1-based index in `param1`. */
-  const jumpRows: Array<{ row: Waypoint; targetId: string | undefined }> = [];
+  const jumpRows: Array<{ row: FlatWaypointRow; targetId: string | undefined }> = [];
 
   for (const wp of waypoints) {
-    const navRow: Waypoint = { ...wp };
+    const navRow: FlatWaypointRow = { ...wp };
     delete navRow.actions; // the NAV row carries no nested actions in flat form
     flat.push(navRow);
     navFlatIndex.set(wp.id, flat.length); // 1-based position of the row just pushed
@@ -358,7 +383,7 @@ export function flattenForSerialization(waypoints: readonly Waypoint[]): Waypoin
     for (const act of wp.actions ?? []) {
       const positional = POSITION_BEARING_ACTIONS.has(act.command);
       const isJump = act.command === "DO_JUMP";
-      const row: Waypoint = {
+      const row: FlatWaypointRow = {
         id: act.id,
         lat: positional ? act.lat ?? wp.lat : wp.lat,
         lon: positional ? act.lon ?? wp.lon : wp.lon,
@@ -370,6 +395,7 @@ export function flattenForSerialization(waypoints: readonly Waypoint[]): Waypoin
         param1: isJump ? undefined : act.param1,
         param2: act.param2,
         param3: act.param3,
+        param4: act.param4,
       };
       flat.push(row);
       if (isJump) jumpRows.push({ row, targetId: act.jumpTargetId });
@@ -388,7 +414,7 @@ export function flattenForSerialization(waypoints: readonly Waypoint[]): Waypoin
  * navigation waypoint, otherwise the nearest preceding navigation waypoint's id.
  */
 function resolveLegacyJumpTarget(
-  flat: readonly Waypoint[],
+  flat: readonly FlatWaypointRow[],
   targetIdx: number,
 ): string | undefined {
   if (targetIdx < 0 || targetIdx >= flat.length) return undefined;

@@ -23,7 +23,7 @@ import type { Waypoint } from "@/lib/types";
 import type { DrawnPolygon, DrawnCircle } from "@/lib/drawing/types";
 import type { DrawingFor } from "@/lib/planner-mode";
 import { datumPatternFor } from "@/lib/planner-mode";
-import { getElevation } from "@/lib/terrain/terrain-provider";
+import { getElevation, getElevations } from "@/lib/terrain/terrain-provider";
 
 interface ActionsDeps {
   waypoints: Waypoint[];
@@ -59,24 +59,73 @@ interface ActionsDeps {
   toast: (message: string, status?: "success" | "warning" | "error" | "info") => void;
 }
 
+/**
+ * Map toolbar tool -> the NAVIGATION command it places. `roi` is deliberately
+ * absent: ROI is an action, not a navigation command, so placing it as its own
+ * top-level row produced a mission the validator rejects (`ACTION_AS_NAV`) and
+ * the FC mis-sequences. The ROI tool attaches an action to the nearest
+ * waypoint instead — see `attachRoiAction`.
+ */
 const TOOL_COMMAND_MAP: Record<string, Waypoint["command"]> = {
   select: "WAYPOINT",
   waypoint: "WAYPOINT",
   takeoff: "TAKEOFF",
   land: "LAND",
   loiter: "LOITER",
-  roi: "ROI",
 };
 
 /** Fire-and-forget terrain elevation lookup for a waypoint. */
 function fetchGroundElevation(wpId: string, lat: number, lon: number): void {
   getElevation(lat, lon).then((elev) => {
-    // getElevation returns NaN on failure; a real 0m (sea level) is a valid
-    // sample, so gate on finiteness — not `!== 0` (which dropped coastal points).
-    if (Number.isFinite(elev)) {
+    // `null` means the lookup failed; a real 0 m (sea level) is a valid sample,
+    // so the guard is on null — not on `!== 0`, which dropped coastal points.
+    if (elev !== null) {
       useMissionStore.getState().updateWaypoint(wpId, { groundElevation: elev });
     }
   }).catch(() => { /* offline / API error — leave groundElevation unset */ });
+}
+
+/**
+ * Populate `groundElevation` for a whole generated mission in one batched
+ * lookup. Without this, a pattern-generated mission carried no elevation
+ * samples at all and the terrain-clearance rule had nothing to check — it was
+ * skipped silently for every survey, orbit and corridor pattern ever applied.
+ */
+function fetchGroundElevations(waypoints: readonly Waypoint[]): void {
+  if (waypoints.length === 0) return;
+  const ids = waypoints.map((wp) => wp.id);
+  getElevations(waypoints.map((wp) => ({ lat: wp.lat, lon: wp.lon })))
+    .then((elevations) => {
+      const store = useMissionStore.getState();
+      for (let i = 0; i < ids.length; i++) {
+        const elev = elevations[i];
+        if (elev !== null) store.updateWaypoint(ids[i], { groundElevation: elev });
+      }
+    })
+    .catch(() => { /* offline / API error — the validator reports it unchecked */ });
+}
+
+/**
+ * Attach an ROI action to a navigation waypoint. ROI is a non-navigation
+ * command: on the wire it is a mission item sequenced after the waypoint it
+ * fires at, so it must ride in that waypoint's `actions[]`. Returns false when
+ * there is no waypoint to attach to.
+ */
+function attachRoiAction(
+  waypoints: readonly Waypoint[],
+  lat: number,
+  lon: number,
+  alt: number,
+): boolean {
+  const parent = waypoints[waypoints.length - 1];
+  if (!parent) return false;
+  useMissionStore.getState().updateWaypoint(parent.id, {
+    actions: [
+      ...(parent.actions ?? []),
+      { id: randomId(), command: "ROI", lat, lon, alt },
+    ],
+  });
+  return true;
 }
 
 export function usePlannerActions(deps: ActionsDeps) {
@@ -127,6 +176,18 @@ export function usePlannerActions(deps: ActionsDeps) {
         }
         return;
       }
+      // The ROI tool attaches an action to the last navigation waypoint rather
+      // than creating a top-level ROI row, which is not a navigation command.
+      if (activeTool === "roi") {
+        if (!activePlanId) { toast("Create or select a flight plan first", "info"); return; }
+        recordHistory();
+        const attached = attachRoiAction(waypoints, clampLat(lat), clampLon(lon), clampAlt(defaultAlt));
+        toast(
+          attached ? "ROI attached to the last waypoint" : "Add a waypoint before setting an ROI",
+          attached ? "success" : "info",
+        );
+        return;
+      }
       const command = TOOL_COMMAND_MAP[activeTool];
       if (!command) return;
       if (!activePlanId) { toast("Create or select a flight plan first", "info"); return; }
@@ -137,7 +198,7 @@ export function usePlannerActions(deps: ActionsDeps) {
       addWaypoint(wp);
       fetchGroundElevation(wp.id, wp.lat, wp.lon);
     },
-    [activePlanId, activeTool, addWaypoint, addRallyPoint, defaultAlt, defaultSpeed, toast]
+    [activePlanId, activeTool, addWaypoint, addRallyPoint, defaultAlt, defaultSpeed, toast, waypoints]
   );
 
   const handleMapRightClick = useCallback(
@@ -193,7 +254,15 @@ export function usePlannerActions(deps: ActionsDeps) {
         case "add-wp": { const w = makeWp("WAYPOINT"); addWaypoint(w); fetchGroundElevation(w.id, w.lat, w.lon); break; }
         case "add-takeoff": { const w = makeWp("TAKEOFF"); addWaypoint(w); fetchGroundElevation(w.id, w.lat, w.lon); break; }
         case "add-land": { const w = makeWp("LAND"); addWaypoint(w); fetchGroundElevation(w.id, w.lat, w.lon); break; }
-        case "add-roi": { const w = makeWp("ROI"); addWaypoint(w); fetchGroundElevation(w.id, w.lat, w.lon); break; }
+        // ROI is an action, not a navigation command: it attaches to the last
+        // waypoint instead of becoming a top-level row the FC mis-sequences.
+        case "add-roi": {
+          const attached = attachRoiAction(
+            waypoints, clampLat(lat ?? 0), clampLon(lon ?? 0), clampAlt(defaultAlt),
+          );
+          if (!attached) toast("Add a waypoint before setting an ROI", "info");
+          break;
+        }
         case "add-rally":
           addRallyPoint({ id: randomId(), lat: clampLat(lat ?? 0), lon: clampLon(lon ?? 0), alt: clampAlt(defaultAlt) });
           break;
@@ -380,6 +449,11 @@ export function usePlannerActions(deps: ActionsDeps) {
     const lastWp = newWaypoints[newWaypoints.length - 1];
     newWaypoints.push({ id: randomId(), lat: lastWp.lat, lon: lastWp.lon, alt: 0, command: "RTL" });
     setWaypoints(newWaypoints);
+    // Sample terrain under every generated waypoint. Without this a
+    // pattern-generated mission carried no `groundElevation` at all, so the
+    // terrain-clearance rule had nothing to compare and was skipped for every
+    // survey / orbit / corridor mission the planner produced.
+    fetchGroundElevations(newWaypoints);
     patternStore.clear();
     const stats = result.stats;
     const distStr = stats.totalDistance >= 1000 ? `${(stats.totalDistance / 1000).toFixed(1)} km` : `${Math.round(stats.totalDistance)} m`;

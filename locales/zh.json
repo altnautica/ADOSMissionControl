@@ -3067,6 +3067,7 @@
       "loaded": "{name} · {count} 个点",
       "errorUnsupported": "不支持的文件。请使用 .bin、.log、.tlog 或 .ulg 飞行日志。",
       "errorNoPositions": "该日志中没有 GPS 定位点。",
+      "errorTruncated": "该日志在第 {offset} 字节处于记录中间结束——飞行被中断。",
       "errorParseFailed": "无法读取该日志文件。",
       "emptyHint": "加载已记录的飞行，将其实际路径叠加到规划上。"
     },

@@ -3067,6 +3067,7 @@
       "loaded": "{name} · {count} points",
       "errorUnsupported": "Fichier non pris en charge. Utilisez un journal de vol .bin, .log, .tlog ou .ulg.",
       "errorNoPositions": "Aucune position GPS fixée dans ce journal.",
+      "errorTruncated": "Ce journal s'arrête au milieu d'un enregistrement à {offset} octets — le vol a été interrompu.",
       "errorParseFailed": "Impossible de lire ce fichier journal.",
       "emptyHint": "Chargez un vol enregistré pour superposer sa trajectoire réelle au plan."
     },

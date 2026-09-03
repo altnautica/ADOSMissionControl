@@ -3067,6 +3067,7 @@
       "loaded": "{name} · {count} titik",
       "errorUnsupported": "Berkas tidak didukung. Gunakan log penerbangan .bin, .log, .tlog, atau .ulg.",
       "errorNoPositions": "Tidak ada posisi terkunci GPS dalam log tersebut.",
+      "errorTruncated": "Log itu berakhir di tengah rekaman pada {offset} bita — penerbangan terputus.",
       "errorParseFailed": "Tidak dapat membaca berkas log tersebut.",
       "emptyHint": "Muat penerbangan terekam untuk menampilkan jalur sebenarnya di atas rencana."
     },

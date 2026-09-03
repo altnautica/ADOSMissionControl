@@ -10,6 +10,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import type { TelemetryFrame } from "@/lib/telemetry-recorder";
 import {
+  decimateTrack,
   extractPositions,
   useSimReplayStore,
 } from "@/stores/sim-replay-store";
@@ -75,8 +76,12 @@ describe("useSimReplayStore", () => {
 
   it("clear() resets track and error", () => {
     useSimReplayStore.setState({
-      track: { positions: [{ lat: 1, lon: 2, alt: 3 }], name: "x.bin" },
-      error: "parse-failed",
+      track: {
+        positions: [{ lat: 1, lon: 2, alt: 3 }],
+        renderPositions: [{ lat: 1, lon: 2, alt: 3 }],
+        name: "x.bin",
+      },
+      error: { code: "parse-failed", detail: "boom" },
     });
     useSimReplayStore.getState().clear();
     expect(useSimReplayStore.getState().track).toBeNull();
@@ -89,6 +94,48 @@ describe("useSimReplayStore", () => {
     });
     await useSimReplayStore.getState().loadFromFile(file);
     expect(useSimReplayStore.getState().track).toBeNull();
-    expect(useSimReplayStore.getState().error).toBe("unsupported");
+    // Typed error, carrying WHICH extension was rejected — a truncated log and
+    // an unsupported one are different situations and used to look identical.
+    expect(useSimReplayStore.getState().error).toEqual({
+      code: "unsupported",
+      detail: "csv",
+    });
+    expect(useSimReplayStore.getState().loading).toBe(false);
+  });
+});
+
+describe("decimateTrack", () => {
+  it("keeps the endpoints and drops collinear interior points", () => {
+    // 200 points along a straight line: everything between the ends is within
+    // tolerance of the segment, so only the two endpoints survive.
+    const straight = Array.from({ length: 200 }, (_, i) => ({
+      lat: 12.9,
+      lon: 77.5 + i * 0.00001,
+      alt: 50,
+    }));
+    const out = decimateTrack(straight, 2);
+    expect(out).toHaveLength(2);
+    expect(out[0]).toEqual(straight[0]);
+    expect(out[1]).toEqual(straight[straight.length - 1]);
+  });
+
+  it("keeps a vertex whose deviation exceeds the tolerance", () => {
+    // ~55m north of the straight line between the ends: far outside 2m.
+    const dogleg = [
+      { lat: 12.9, lon: 77.5, alt: 50 },
+      { lat: 12.9005, lon: 77.505, alt: 50 },
+      { lat: 12.9, lon: 77.51, alt: 50 },
+    ];
+    expect(decimateTrack(dogleg, 2)).toHaveLength(3);
+    // With a tolerance wider than the deviation the corner is dropped.
+    expect(decimateTrack(dogleg, 200)).toHaveLength(2);
+  });
+
+  it("passes a two-point track through untouched", () => {
+    const pair = [
+      { lat: 1, lon: 2, alt: 3 },
+      { lat: 4, lon: 5, alt: 6 },
+    ];
+    expect(decimateTrack(pair)).toEqual(pair);
   });
 });

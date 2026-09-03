@@ -5,10 +5,17 @@
  *
  * CRITICAL: KML coordinate order is lon,lat,alt — opposite of our lat,lon convention.
  *
+ * A Placemark's vertical datum is read rather than discarded: our own exports
+ * carry the exact frame in `ExtendedData`, and a third-party document is read
+ * from its `altitudeMode` (`absolute` -> AMSL, `relativeToGround` /
+ * `clampToGround` -> above terrain). Dropping it made every imported KML
+ * default to relative-to-home, which silently changes what the altitude means.
+ *
  * @license GPL-3.0-only
  */
 
-import type { Waypoint } from "@/lib/types";
+import type { AltitudeFrame, Waypoint } from "@/lib/types";
+import { KML_FRAME_KEY } from "./kml-exporter";
 
 export interface KmlStyle {
   lineColor: string;  // CSS hex (#RRGGBB)
@@ -55,6 +62,9 @@ export function parseKML(text: string): KmlParseResult {
   const placemarks = findElements(doc, "Placemark");
 
   for (const pm of placemarks) {
+    // Vertical datum for every geometry in this Placemark.
+    const frame = placemarkFrame(pm);
+
     // Point → single waypoint + overlay point
     const pointElements = findElements(pm, "Point");
     for (const point of pointElements) {
@@ -70,6 +80,7 @@ export function parseKML(text: string): KmlParseResult {
             lon,
             alt: alt ?? 0,
             command: "WAYPOINT",
+            frame,
           });
         }
       }
@@ -93,6 +104,7 @@ export function parseKML(text: string): KmlParseResult {
               lon: p[1],
               alt: p[2] ?? 0,
               command: "WAYPOINT",
+              frame,
             });
           }
         }
@@ -132,6 +144,29 @@ export function parseKML(text: string): KmlParseResult {
 }
 
 // ── Helpers ──────────────────────────────────────────────────
+
+/**
+ * The altitude frame a Placemark's coordinates are expressed in.
+ *
+ * Our own export records the exact frame in `ExtendedData`, so that wins.
+ * Otherwise the standard `altitudeMode` is honoured: `absolute` is AMSL and
+ * `relativeToGround` / `clampToGround` are heights above the terrain below the
+ * point — which is our `terrain` frame, NOT `relative` (above home). Returns
+ * `undefined` when the document says nothing, so the mission default applies
+ * rather than a guess.
+ */
+function placemarkFrame(pm: Element): AltitudeFrame | undefined {
+  for (const data of findElements(pm, "Data")) {
+    if (data.getAttribute("name") !== KML_FRAME_KEY) continue;
+    const raw = findElements(data, "value")[0]?.textContent?.trim();
+    if (raw === "relative" || raw === "absolute" || raw === "terrain") return raw;
+  }
+
+  const mode = findElements(pm, "altitudeMode")[0]?.textContent?.trim();
+  if (mode === "absolute") return "absolute";
+  if (mode === "relativeToGround" || mode === "clampToGround") return "terrain";
+  return undefined;
+}
 
 /**
  * Parse a KML coordinates string into [lat, lon, alt] arrays.

@@ -1,15 +1,24 @@
 /**
  * @module formats/csv-handler
  * @description CSV import/export for mission waypoints.
- * Columns: seq,lat,lon,alt,command,frame,speed,holdTime,param1,param2,param3
+ * Columns: seq,lat,lon,alt,command,frame,speed,holdTime,param1,param2,param3,param4
+ *
+ * `param4` is only populated on a flattened ACTION row (a navigation waypoint's
+ * fourth wire slot is `param3`), and exists so an action's fourth parameter
+ * survives the round trip instead of being dropped.
  * @license GPL-3.0-only
  */
 
 import type { AltitudeFrame, Waypoint, WaypointCommand } from "@/lib/types";
 import { cmdMap } from "@/lib/mission-io-formats";
-import { flattenForSerialization, foldLegacyWaypoints } from "@/lib/mission/mission-expand";
+import {
+  flattenForSerialization,
+  foldLegacyWaypoints,
+  type FlatWaypointRow,
+} from "@/lib/mission/mission-expand";
 
-const CSV_HEADER = "seq,lat,lon,alt,command,frame,speed,holdTime,param1,param2,param3";
+const CSV_HEADER =
+  "seq,lat,lon,alt,command,frame,speed,holdTime,param1,param2,param3,param4";
 
 /**
  * Every command in the WaypointCommand union, derived from the command map so
@@ -39,6 +48,7 @@ export function exportCSV(waypoints: Waypoint[]): string {
       wp.param1 ?? "",
       wp.param2 ?? "",
       wp.param3 ?? "",
+      wp.param4 ?? "",
     ];
     lines.push(row.join(","));
   }
@@ -90,8 +100,9 @@ export function parseCSV(text: string): Waypoint[] {
   const p1Idx = colIndex["param1"] ?? colIndex["p1"] ?? -1;
   const p2Idx = colIndex["param2"] ?? colIndex["p2"] ?? -1;
   const p3Idx = colIndex["param3"] ?? colIndex["p3"] ?? -1;
+  const p4Idx = colIndex["param4"] ?? colIndex["p4"] ?? -1;
 
-  const waypoints: Waypoint[] = [];
+  const rows: FlatWaypointRow[] = [];
 
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i].trim();
@@ -120,8 +131,9 @@ export function parseCSV(text: string): Waypoint[] {
     const param1 = p1Idx >= 0 ? parseFloat(cols[p1Idx] ?? "") : NaN;
     const param2 = p2Idx >= 0 ? parseFloat(cols[p2Idx] ?? "") : NaN;
     const param3 = p3Idx >= 0 ? parseFloat(cols[p3Idx] ?? "") : NaN;
+    const param4 = p4Idx >= 0 ? parseFloat(cols[p4Idx] ?? "") : NaN;
 
-    waypoints.push({
+    rows.push({
       id: Math.random().toString(36).substring(2, 10),
       lat,
       lon,
@@ -133,11 +145,12 @@ export function parseCSV(text: string): Waypoint[] {
       param1: isNaN(param1) ? undefined : param1,
       param2: isNaN(param2) ? undefined : param2,
       param3: isNaN(param3) ? undefined : param3,
+      param4: isNaN(param4) ? undefined : param4,
     });
   }
 
   // Fold any action-command rows into the navigation waypoint they follow.
-  return foldLegacyWaypoints(waypoints);
+  return foldLegacyWaypoints(rows);
 }
 
 /**

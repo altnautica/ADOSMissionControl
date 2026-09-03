@@ -3067,6 +3067,7 @@
       "loaded": "{name} · {count} Punkte",
       "errorUnsupported": "Nicht unterstützte Datei. Verwenden Sie ein .bin-, .log-, .tlog- oder .ulg-Flugprotokoll.",
       "errorNoPositions": "Keine GPS-fixierten Positionen in diesem Log.",
+      "errorTruncated": "Dieses Log endet nach {offset} Bytes mitten in einem Datensatz — der Flug wurde abgebrochen.",
       "errorParseFailed": "Diese Log-Datei konnte nicht gelesen werden.",
       "emptyHint": "Laden Sie einen aufgezeichneten Flug, um seinen tatsächlichen Pfad über den Plan zu legen."
     },

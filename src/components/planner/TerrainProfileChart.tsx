@@ -22,6 +22,7 @@ import { useTerrainProfile } from "@/hooks/use-terrain-profile";
 import { usePlannerStore } from "@/stores/planner-store";
 import { MAP_COLORS } from "@/lib/map-constants";
 import { findCollisionSegments, DEFAULT_MIN_TERRAIN_CLEARANCE } from "@/lib/terrain/terrain-clearance";
+import { waypointAbsoluteAltitude } from "@/lib/mission/altitude-frame";
 
 /** Terrain profile chart colors. */
 const TERRAIN_FILL = "#8B6914";
@@ -99,20 +100,18 @@ export function TerrainProfileChart({ waypoints }: TerrainProfileChartProps) {
     // Ground at the takeoff point is the datum for relative-frame altitudes.
     const homeGround = profilePoints[0].elevation;
 
-    // MSL flight altitude at each waypoint per its resolved frame.
-    const wpMsl = waypoints.map((wp, i) => {
-      const frame: AltitudeFrame = wp.frame ?? displayFrame;
-      const wpGround = wp.groundElevation ?? terrainElevAt(wpDistances[i]);
-      switch (frame) {
-        case "absolute":
-          return wp.alt;
-        case "terrain":
-          return wpGround + wp.alt;
-        case "relative":
-        default:
-          return homeGround + wp.alt;
-      }
-    });
+    // MSL flight altitude at each waypoint, resolved through the shared
+    // frame model so the chart, the validator and the 3D view cannot disagree
+    // about what a `relative` altitude means. A waypoint with no elevation
+    // sample of its own borrows the interpolated terrain at its distance.
+    const wpMsl = waypoints.map(
+      (wp, i) =>
+        waypointAbsoluteAltitude(
+          wp,
+          { homeGroundElevation: homeGround, defaultFrame: displayFrame },
+          wp.groundElevation ?? terrainElevAt(wpDistances[i]),
+        ) ?? homeGround + wp.alt,
+    );
 
     return profilePoints.map((tp) => {
       // Interpolate the flight MSL for this terrain sample's distance.

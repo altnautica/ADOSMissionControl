@@ -3067,6 +3067,7 @@
       "loaded": "{name} · {count} puntos",
       "errorUnsupported": "Archivo no compatible. Usa un registro de vuelo .bin, .log, .tlog o .ulg.",
       "errorNoPositions": "No hay posiciones con fijación GPS en ese registro.",
+      "errorTruncated": "Ese registro termina a mitad de un registro a los {offset} bytes: el vuelo se interrumpió.",
       "errorParseFailed": "No se pudo leer ese archivo de registro.",
       "emptyHint": "Carga un vuelo grabado para superponer su trayectoria real sobre el plan."
     },

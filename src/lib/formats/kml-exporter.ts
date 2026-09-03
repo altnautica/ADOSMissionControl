@@ -5,10 +5,29 @@
  *
  * CRITICAL: KML coordinate order is lon,lat,alt — opposite of our lat,lon convention.
  *
+ * Each Placemark carries the `altitudeMode` its waypoint's altitude frame maps
+ * onto instead of a hardcoded `relativeToGround`, so a third-party viewer draws
+ * an AMSL waypoint at the right height. KML has no "above home" mode, so a
+ * `relative`-frame waypoint is written as `relativeToGround` for interop AND
+ * its true frame is recorded in `ExtendedData` — that is what makes our own
+ * re-import lossless rather than silently re-labelling the vertical datum.
+ *
  * @license GPL-3.0-only
  */
 
-import type { Waypoint } from "@/lib/types";
+import type { AltitudeFrame, Waypoint } from "@/lib/types";
+
+/** Our frame name, written verbatim into ExtendedData for a lossless re-import. */
+export const KML_FRAME_KEY = "adosAltitudeFrame";
+
+/**
+ * KML `altitudeMode` for an altitude frame. `absolute` is AMSL in both models;
+ * `terrain` is exactly KML's `relativeToGround`; `relative` (above home) has no
+ * KML equivalent and degrades to `relativeToGround`.
+ */
+function altitudeModeFor(frame: AltitudeFrame | undefined): string {
+  return frame === "absolute" ? "absolute" : "relativeToGround";
+}
 
 /**
  * Export waypoints as a KML XML string.
@@ -46,7 +65,9 @@ export function generateKML(waypoints: Waypoint[], name: string): string {
     lines.push(`      <name>Flight Path</name>`);
     lines.push("      <styleUrl>#pathStyle</styleUrl>");
     lines.push("      <LineString>");
-    lines.push("        <altitudeMode>relativeToGround</altitudeMode>");
+    // The path renders in the first waypoint's mode; per-point frames ride on
+    // the individual Placemarks below, which is where re-import reads them.
+    lines.push(`        <altitudeMode>${altitudeModeFor(waypoints[0]?.frame)}</altitudeMode>`);
     lines.push("        <coordinates>");
 
     const coords = waypoints
@@ -67,8 +88,13 @@ export function generateKML(waypoints: Waypoint[], name: string): string {
     lines.push("    <Placemark>");
     lines.push(`      <name>${escapeXml(label)}</name>`);
     lines.push("      <styleUrl>#waypointStyle</styleUrl>");
+    if (wp.frame !== undefined) {
+      lines.push("      <ExtendedData>");
+      lines.push(`        <Data name="${KML_FRAME_KEY}"><value>${wp.frame}</value></Data>`);
+      lines.push("      </ExtendedData>");
+    }
     lines.push("      <Point>");
-    lines.push("        <altitudeMode>relativeToGround</altitudeMode>");
+    lines.push(`        <altitudeMode>${altitudeModeFor(wp.frame)}</altitudeMode>`);
     // KML order: lon,lat,alt
     lines.push(`        <coordinates>${wp.lon},${wp.lat},${wp.alt}</coordinates>`);
     lines.push("      </Point>");

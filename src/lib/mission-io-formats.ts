@@ -1,51 +1,79 @@
 /**
  * @module mission-io-formats
  * @description Import/export for .waypoints and .plan file formats.
+ *
+ * Both flat formats serialize the SAME `MissionItem[]` the MAVLink uploader
+ * sends, produced by {@link expandToItems} and read back by
+ * {@link collapseFromItems}. That is deliberate and load-bearing: these formats
+ * carry raw MAVLink parameter slots, so a second slot mapping here is a second
+ * source of truth, and the two used to disagree — a nav row's `param1` landed
+ * in wire slot 2 from one path and slot 3 from the other, and an action's
+ * `param4` was written as a hardcoded `0`. Everything about how the model maps
+ * onto wire parameter slots lives in `mission/mission-expand`; this module only
+ * knows how to write those items as text.
+ *
  * @license GPL-3.0-only
  */
 
-import type { AltitudeFrame, Waypoint, WaypointCommand } from "@/lib/types";
+import type { Waypoint, WaypointCommand, AltitudeFrame } from "@/lib/types";
+import type { MissionItem } from "@/lib/protocol/types/mission";
 import type { GeofenceSnapshot, FenceZone } from "@/stores/geofence-store";
 import type { RallyPoint } from "@/stores/rally-store";
-import { flattenForSerialization, foldLegacyWaypoints } from "@/lib/mission/mission-expand";
+import { expandToItems, collapseFromItems } from "@/lib/mission/mission-expand";
+import {
+  DEFAULT_ALTITUDE_FRAME,
+  frameToMav,
+  mavToFrame,
+} from "@/lib/mission/altitude-frame";
 
 /**
- * MAV_FRAME numbers used for waypoint altitude reference.
- * - 0  = MAV_FRAME_GLOBAL          (absolute altitude, MSL)
- * - 3  = MAV_FRAME_GLOBAL_RELATIVE_ALT (relative to home, AGL)
- * - 10 = MAV_FRAME_GLOBAL_TERRAIN_ALT  (above terrain)
+ * The altitude-frame ⇄ MAV_FRAME mapping lives in `mission/altitude-frame`
+ * alongside the rest of the frame semantics. Re-exported here because
+ * `frameToMav` is this module's long-standing public surface.
  */
-const FRAME_GLOBAL = 0;
-const FRAME_RELATIVE = 3;
-const FRAME_TERRAIN = 10;
+export { frameToMav, mavToFrame };
 
 /** Mission default frame applied when a waypoint carries no explicit frame. */
-const DEFAULT_FRAME: AltitudeFrame = "relative";
+const DEFAULT_FRAME: AltitudeFrame = DEFAULT_ALTITUDE_FRAME;
 
-/** Map an altitude reference frame to its MAV_FRAME number. */
-export function frameToMav(frame: AltitudeFrame | undefined): number {
-  switch (frame ?? DEFAULT_FRAME) {
-    case "absolute":
-      return FRAME_GLOBAL;
-    case "terrain":
-      return FRAME_TERRAIN;
-    case "relative":
-    default:
-      return FRAME_RELATIVE;
-  }
+/**
+ * Flat-file sequence numbering offset. Both interop formats number their first
+ * mission item `1`: `.waypoints` reserves row `0` for the home position (the
+ * ArduPilot convention) and `.plan` numbers `doJumpId` from 1. Our wire items
+ * are 0-based, so the offset is applied to the row sequence AND to a `DO_JUMP`
+ * target — which is a sequence number, not a user parameter, and would
+ * otherwise point one item early in every exported file.
+ */
+const FILE_SEQ_OFFSET = 1;
+
+/** Optional explicit home position written into a flat file's home slot. */
+export interface FlatExportOptions {
+  /** Mission default altitude frame for waypoints carrying none. */
+  defaultFrame?: AltitudeFrame;
+  /**
+   * The real home / launch position. When absent the first waypoint's
+   * coordinates stand in as a PLANNED home at 0 m — a placeholder the format
+   * requires, not a surveyed home.
+   */
+  home?: { lat: number; lon: number; alt?: number };
 }
 
-/** Map a MAV_FRAME number back to an altitude reference frame. */
-function mavToFrame(mav: number | undefined): AltitudeFrame {
-  switch (mav) {
-    case FRAME_GLOBAL:
-      return "absolute";
-    case FRAME_TERRAIN:
-      return "terrain";
-    case FRAME_RELATIVE:
-    default:
-      return "relative";
-  }
+/** Parse a numeric column, falling back to `fallback` for a non-numeric cell. */
+function num(raw: string | undefined, fallback: number): number {
+  const v = Number.parseFloat(raw ?? "");
+  return Number.isFinite(v) ? v : fallback;
+}
+
+/**
+ * Apply the flat-file sequence offset to the wire items of one mission.
+ * A `DO_JUMP`'s `param1` is a target sequence, so it shifts with the rows.
+ */
+function toFileItems(waypoints: readonly Waypoint[], defaultFrame: AltitudeFrame): MissionItem[] {
+  return expandToItems(waypoints, { defaultFrame }).map((item) =>
+    item.command === cmdMap.DO_JUMP
+      ? { ...item, seq: item.seq + FILE_SEQ_OFFSET, param1: item.param1 + FILE_SEQ_OFFSET }
+      : { ...item, seq: item.seq + FILE_SEQ_OFFSET },
+  );
 }
 
 /** MAVLink command string -> number mapping. */
@@ -71,28 +99,33 @@ export const reverseCmd: Record<number, WaypointCommand> = Object.fromEntries(
 /**
  * Export waypoints as a `.waypoints` file (QGC WPL 110 format).
  * Tab-separated plain text compatible with Mission Planner and ArduPilot.
+ *
+ * Row 0 is the home position the format mandates; rows 1..N are the mission
+ * items exactly as the MAVLink uploader would send them, so a nav waypoint's
+ * parameters land in the same wire slots on disk as on the wire and an action's
+ * `param4` is written rather than zeroed.
  */
-export function exportWaypointsFormat(waypoints: Waypoint[], name: string): void {
+export function exportWaypointsFormat(
+  waypoints: Waypoint[],
+  name: string,
+  opts?: FlatExportOptions,
+): void {
+  const items = toFileItems(waypoints, opts?.defaultFrame ?? DEFAULT_FRAME);
+  const home = opts?.home ?? { lat: waypoints[0]?.lat ?? 0, lon: waypoints[0]?.lon ?? 0, alt: 0 };
+
   const lines: string[] = ["QGC WPL 110"];
-
-  // Flatten attached actions into sibling rows so external tools see them.
-  const flat = flattenForSerialization(waypoints);
-  const home = flat[0];
   lines.push(
-    `0\t1\t0\t16\t0\t0\t0\t0\t${home?.lat ?? 0}\t${home?.lon ?? 0}\t0\t1`
+    `0\t1\t0\t16\t0\t0\t0\t0\t${home.lat}\t${home.lon}\t${home.alt ?? 0}\t1`,
   );
-
-  flat.forEach((wp, i) => {
-    const cmd = cmdMap[wp.command ?? "WAYPOINT"] ?? 16;
-    const frame = frameToMav(wp.frame);
-    const p1 = wp.holdTime ?? wp.param1 ?? 0;
-    const p2 = wp.param2 ?? 0;
-    const p3 = wp.param3 ?? 0;
-    const p4 = 0;
+  for (const it of items) {
     lines.push(
-      `${i + 1}\t0\t${frame}\t${cmd}\t${p1}\t${p2}\t${p3}\t${p4}\t${wp.lat}\t${wp.lon}\t${wp.alt}\t1`
+      [
+        it.seq, it.current, it.frame, it.command,
+        it.param1, it.param2, it.param3, it.param4,
+        it.x / 1e7, it.y / 1e7, it.z, it.autocontinue,
+      ].join("\t"),
     );
-  });
+  }
 
   const blob = new Blob([lines.join("\n")], { type: "text/plain" });
   const url = URL.createObjectURL(blob);
@@ -112,43 +145,44 @@ export function parseWaypointsFile(text: string): Waypoint[] {
     throw new Error("Invalid .waypoints file — missing QGC WPL header");
   }
 
-  const flat: Waypoint[] = [];
+  const items: MissionItem[] = [];
   for (let i = 1; i < lines.length; i++) {
     const cols = lines[i].trim().split("\t");
     if (cols.length < 12) continue;
 
-    const seq = parseInt(cols[0]);
-    if (seq === 0) continue;
+    // Row 0 is the home position, not a mission item.
+    const fileSeq = num(cols[0], items.length + FILE_SEQ_OFFSET);
+    if (fileSeq === 0) continue;
 
-    const frameNum = parseInt(cols[2]);
-    const frame = mavToFrame(Number.isFinite(frameNum) ? frameNum : undefined);
-    const cmdNum = parseInt(cols[3]);
-    const command = reverseCmd[cmdNum] ?? "WAYPOINT";
-    const lat = parseFloat(cols[8]);
-    const lon = parseFloat(cols[9]);
-    const alt = parseFloat(cols[10]);
+    const lat = Number.parseFloat(cols[8]);
+    const lon = Number.parseFloat(cols[9]);
     // Skip malformed rows: a non-numeric lat/lon would otherwise create a
     // waypoint at NaN,NaN that renders nowhere and fails validation silently.
     if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
-    const safeAlt = Number.isFinite(alt) ? alt : 0;
-    const p1 = parseFloat(cols[4]) || undefined;
-    const p2 = parseFloat(cols[5]) || undefined;
-    const p3 = parseFloat(cols[6]) || undefined;
 
-    flat.push({
-      id: Math.random().toString(36).substring(2, 10),
-      lat, lon, alt: safeAlt,
-      command,
-      frame,
-      holdTime: (command === "LOITER" || command === "LOITER_TIME") ? p1 : undefined,
-      param1: (command !== "LOITER" && command !== "LOITER_TIME") ? p1 : undefined,
-      param2: p2,
-      param3: p3,
+    items.push({
+      seq: fileSeq,
+      current: num(cols[1], 0),
+      frame: num(cols[2], frameToMav(DEFAULT_FRAME)),
+      command: num(cols[3], cmdMap.WAYPOINT),
+      // A legitimate 0 is a real parameter value, so parse then check
+      // finiteness — `parseFloat(x) || 0` would be identical here but
+      // `parseFloat(x) || undefined` (the old form) silently ate every zero.
+      param1: num(cols[4], 0),
+      param2: num(cols[5], 0),
+      param3: num(cols[6], 0),
+      param4: num(cols[7], 0),
+      x: Math.round(lat * 1e7),
+      y: Math.round(lon * 1e7),
+      z: num(cols[10], 0),
+      autocontinue: num(cols[11], 1),
     });
   }
 
-  // Fold any action-command rows into the navigation waypoint they follow.
-  return foldLegacyWaypoints(flat);
+  // Collapse the wire items back into nav waypoints with attached actions.
+  // DO_JUMP targets resolve in the file's own sequence space, which is why the
+  // export shifted them alongside the rows.
+  return collapseFromItems(items);
 }
 
 // ── Extra plan payload (fence + rally) carried alongside waypoints ──
@@ -245,31 +279,25 @@ function rallyToQGC(rally: RallyPoint[] | undefined): {
  * Export waypoints as a `.plan` file (QGC JSON format). When `extras` carries a
  * geofence and/or rally points they are serialized into the geoFence and
  * rallyPoints blocks so the plan round-trips the full mission, not just the path.
+ *
+ * Items are the wire `MissionItem[]`, so `params[0..3]` are MAVLink `param1..4`
+ * — including an action's `param4`, which used to be a hardcoded `0`.
  */
 export function exportQGCPlan(
   waypoints: Waypoint[],
   name: string,
   metadata?: { cruiseSpeed?: number; vehicleType?: number },
   extras?: PlanExtras,
+  opts?: FlatExportOptions,
 ): void {
-  // Flatten attached actions into sibling SimpleItems, the way QGC stores DO
-  // commands, so a plan round-trips its per-waypoint actions.
-  const flat = flattenForSerialization(waypoints);
-  const home = flat[0];
-  const items = flat.map((wp, i) => ({
-    autoContinue: true,
-    command: cmdMap[wp.command ?? "WAYPOINT"] ?? 16,
-    doJumpId: i + 1,
-    frame: frameToMav(wp.frame),
-    params: [
-      wp.holdTime ?? wp.param1 ?? 0,
-      wp.param2 ?? 0,
-      wp.param3 ?? 0,
-      0,
-      wp.lat,
-      wp.lon,
-      wp.alt,
-    ],
+  const wireItems = toFileItems(waypoints, opts?.defaultFrame ?? DEFAULT_FRAME);
+  const home = opts?.home ?? { lat: waypoints[0]?.lat ?? 0, lon: waypoints[0]?.lon ?? 0, alt: 0 };
+  const items = wireItems.map((it) => ({
+    autoContinue: it.autocontinue === 1,
+    command: it.command,
+    doJumpId: it.seq,
+    frame: it.frame,
+    params: [it.param1, it.param2, it.param3, it.param4, it.x / 1e7, it.y / 1e7, it.z],
     type: "SimpleItem",
   }));
 
@@ -281,7 +309,7 @@ export function exportQGCPlan(
       cruiseSpeed: metadata?.cruiseSpeed ?? 15,
       firmwareType: 3,
       items,
-      plannedHomePosition: [home?.lat ?? 0, home?.lon ?? 0, 0],
+      plannedHomePosition: [home.lat, home.lon, home.alt ?? 0],
       vehicleType: metadata?.vehicleType ?? 2,
       version: 2,
     },
@@ -306,6 +334,7 @@ interface QGCMissionItem {
   command?: number;
   frame?: number;
   params?: number[];
+  autoContinue?: boolean;
   complexItemType?: string;
   TransectStyleComplexItem?: QGCTransectStyle;
   // Present when the item itself is a TransectStyleComplexItem (transect fields inline).
@@ -340,40 +369,43 @@ function nextImportRallyId(): string {
   return `rally-import-${++importRallyCounter}`;
 }
 
-/** Convert one QGC SimpleItem into a Waypoint (shared by top-level items and expanded transects). */
-function simpleItemToWaypoint(item: QGCMissionItem): Waypoint {
-  const cmdNum = item.command ?? 16;
-  const command = reverseCmd[cmdNum] ?? "WAYPOINT";
-  const frame = mavToFrame(typeof item.frame === "number" ? item.frame : undefined);
+/**
+ * Convert one QGC SimpleItem into a wire `MissionItem`. `params[0..3]` are
+ * MAVLink `param1..4` verbatim — including a legitimate `0`, which the old
+ * `params[n] || undefined` form silently discarded. `seq` is assigned by the
+ * caller from row order so a `DO_JUMP`'s `doJumpId`-space target resolves.
+ */
+function simpleItemToWireItem(item: QGCMissionItem, seq: number): MissionItem {
   const params = item.params ?? [];
-  const lat = params[4] ?? 0;
-  const lon = params[5] ?? 0;
-  const alt = params[6] ?? 0;
-  const p1 = params[0] || undefined;
-  const p2 = params[1] || undefined;
-  const p3 = params[2] || undefined;
-
+  const lat = Number.isFinite(params[4]) ? params[4] : 0;
+  const lon = Number.isFinite(params[5]) ? params[5] : 0;
   return {
-    id: Math.random().toString(36).substring(2, 10),
-    lat, lon, alt,
-    command,
-    frame,
-    holdTime: (command === "LOITER" || command === "LOITER_TIME") ? p1 : undefined,
-    param1: (command !== "LOITER" && command !== "LOITER_TIME") ? p1 : undefined,
-    param2: p2,
-    param3: p3,
+    seq,
+    current: seq === FILE_SEQ_OFFSET ? 1 : 0,
+    frame: typeof item.frame === "number" ? item.frame : frameToMav(DEFAULT_FRAME),
+    command: typeof item.command === "number" ? item.command : cmdMap.WAYPOINT,
+    param1: Number.isFinite(params[0]) ? params[0] : 0,
+    param2: Number.isFinite(params[1]) ? params[1] : 0,
+    param3: Number.isFinite(params[2]) ? params[2] : 0,
+    param4: Number.isFinite(params[3]) ? params[3] : 0,
+    x: Math.round(lat * 1e7),
+    y: Math.round(lon * 1e7),
+    z: Number.isFinite(params[6]) ? params[6] : 0,
+    autocontinue: item.autoContinue === false ? 0 : 1,
   };
 }
 
 /**
- * Expand a single mission item into waypoints. SimpleItems map 1:1; a
+ * Expand a single mission item into wire items. SimpleItems map 1:1; a
  * ComplexItem / TransectStyleComplexItem (survey / corridor / structure grid)
  * is expanded from its embedded transect items or coordinates. A complex item
  * that carries no expandable geometry throws rather than being silently dropped.
+ * Sequence numbers come from output position, not the file, so an expanded grid
+ * does not collide with the surrounding items.
  */
-function expandPlanItem(item: QGCMissionItem, out: Waypoint[]): void {
+function expandPlanItem(item: QGCMissionItem, out: MissionItem[]): void {
   if (item.type === "SimpleItem") {
-    out.push(simpleItemToWaypoint(item));
+    out.push(simpleItemToWireItem(item, out.length + FILE_SEQ_OFFSET));
     return;
   }
 
@@ -392,11 +424,17 @@ function expandPlanItem(item: QGCMissionItem, out: Waypoint[]): void {
     if (Array.isArray(visual) && visual.length > 0) {
       for (const pt of visual) {
         if (Array.isArray(pt) && pt.length >= 2 && Number.isFinite(pt[0]) && Number.isFinite(pt[1])) {
+          const seq = out.length + FILE_SEQ_OFFSET;
           out.push({
-            id: Math.random().toString(36).substring(2, 10),
-            lat: pt[0], lon: pt[1], alt: 0,
-            command: "WAYPOINT",
-            frame: DEFAULT_FRAME,
+            seq,
+            current: seq === FILE_SEQ_OFFSET ? 1 : 0,
+            frame: frameToMav(DEFAULT_FRAME),
+            command: cmdMap.WAYPOINT,
+            param1: 0, param2: 0, param3: 0, param4: 0,
+            x: Math.round(pt[0] * 1e7),
+            y: Math.round(pt[1] * 1e7),
+            z: 0,
+            autocontinue: 1,
           });
         }
       }
@@ -502,14 +540,15 @@ export function parseQGCPlan(text: string): ParsedPlan {
     throw new Error("Invalid .plan file — missing Plan fileType or mission items");
   }
 
-  const flat: Waypoint[] = [];
+  const items: MissionItem[] = [];
   for (const item of data.mission.items) {
-    expandPlanItem(item, flat);
+    expandPlanItem(item, items);
   }
 
   return {
-    // Fold DO / CONDITION sibling items into their navigation waypoint's actions.
-    waypoints: foldLegacyWaypoints(flat),
+    // Collapse DO / CONDITION sibling items into their navigation waypoint's
+    // actions, restoring each item's frame and every parameter slot.
+    waypoints: collapseFromItems(items),
     geofence: parseQGCGeoFence(data.geoFence),
     rally: parseQGCRally(data.rallyPoints),
   };

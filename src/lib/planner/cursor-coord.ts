@@ -112,7 +112,9 @@ export function useCursorCoord(): CursorCoordState {
         getElevation(detail.lat, detail.lon, controller.signal)
           .then((el) => {
             // Drop a result whose lookup was superseded by a newer move.
-            if (!controller.signal.aborted) setElevation(el);
+            // `null` means the lookup failed, which the readout shows as "—";
+            // a real 0 m sea-level sample renders as 0.
+            if (!controller.signal.aborted) setElevation(el === null ? NaN : el);
           })
           .catch(() => {
             if (!controller.signal.aborted) setElevation(NaN);

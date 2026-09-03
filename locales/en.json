@@ -3067,6 +3067,7 @@
       "loaded": "{name} · {count} points",
       "errorUnsupported": "Unsupported file. Use a .bin, .log, .tlog, or .ulg flight log.",
       "errorNoPositions": "No GPS-fixed positions in that log.",
+      "errorTruncated": "That log ends mid-record at {offset} bytes — the flight was cut short.",
       "errorParseFailed": "Couldn't read that log file.",
       "emptyHint": "Load a recorded flight to overlay its actual path on the plan."
     },

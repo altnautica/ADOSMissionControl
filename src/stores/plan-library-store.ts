@@ -13,6 +13,7 @@ import type { RallyPoint } from "@/stores/rally-store";
 import type { PointOfInterest } from "@/stores/plan-poi-store";
 import { indexedDBStorage } from "@/lib/storage";
 import { foldLegacyWaypoints } from "@/lib/mission/mission-expand";
+import { planSnapshotString } from "@/lib/plan-snapshot";
 
 /** Fence + rally + POI geometry captured alongside a plan's waypoints on save. */
 export interface PlanExtras {
@@ -133,7 +134,7 @@ export const usePlanLibraryStore = create<PlanLibraryState>()(
           plans: [plan, ...s.plans],
           activePlanId: id,
           isDirty: false,
-          savedSnapshot: JSON.stringify(waypoints || []),
+          savedSnapshot: planSnapshotString(waypoints || [], extras),
         }));
         return id;
       },
@@ -156,7 +157,7 @@ export const usePlanLibraryStore = create<PlanLibraryState>()(
               : p
           ),
           isDirty: false,
-          savedSnapshot: JSON.stringify(waypoints),
+          savedSnapshot: planSnapshotString(waypoints, extras),
         }));
       },
 

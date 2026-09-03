@@ -142,7 +142,7 @@ function IssueRow({
   issue: ValidationIssue;
   onClick: (issue: ValidationIssue) => void;
 }) {
-  const isError = issue.type === "error";
+  const isError = issue.severity === "blocking";
 
   return (
     <button

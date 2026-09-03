@@ -53,7 +53,23 @@ interface CesiumSceneProps {
   buildingsEnabled?: boolean;
   /** Terrain exaggeration factor. Defaults to 1 (no exaggeration). */
   terrainExaggeration?: number;
+  /**
+   * Reports the 3D-tileset memory footprint in bytes each time a tileset
+   * loads, so the surface can show what the scene is actually holding instead
+   * of leaving a 1 GiB default cache invisible.
+   */
+  onTilesetMemory?: (bytes: number) => void;
 }
+
+/**
+ * 3D-tileset memory clamp. Cesium's defaults are 512 MiB of cache plus 512 MiB
+ * of permitted overflow — up to 1 GiB per tileset — before it degrades
+ * screen-space error to stay inside budget. A GCS tab lives for hours across
+ * repeated route entry and exit, so the budget is set explicitly and low
+ * enough that quality degrades before the tab does.
+ */
+const TILESET_CACHE_BYTES = 192 * 1024 * 1024;
+const TILESET_CACHE_OVERFLOW_BYTES = 64 * 1024 * 1024;
 
 // Replace Cesium's default `console.error({})` on tile failures with a readable line.
 // The listener must not throw.
@@ -120,6 +136,7 @@ export default function CesiumScene({
   quality = "balanced",
   buildingsEnabled = false,
   terrainExaggeration = 1,
+  onTilesetMemory,
 }: CesiumSceneProps) {
   // SimulationViewer already resolves Convex token → env-var fallback before passing in.
   const effectiveToken = cesiumToken;
@@ -130,11 +147,13 @@ export default function CesiumScene({
   // Stable refs for callbacks so mount effect doesn't re-run
   const onReadyRef = useRef(onReady);
   const onErrorRef = useRef(onError);
+  const onTilesetMemoryRef = useRef(onTilesetMemory);
 
   useEffect(() => {
     onReadyRef.current = onReady;
     onErrorRef.current = onError;
-  }, [onReady, onError]);
+    onTilesetMemoryRef.current = onTilesetMemory;
+  }, [onReady, onError, onTilesetMemory]);
 
   // Effect 1: Mount-only — create viewer with basic config
   useEffect(() => {
@@ -159,6 +178,12 @@ export default function CesiumScene({
         selectionIndicator: false,
         vrButton: false,
         orderIndependentTranslucency: false,
+        // Idle CPU reclamation: with `requestRenderMode` the scene only paints
+        // when something asks it to. `maximumRenderTimeChange: 0` deliberately
+        // keeps clock-driven repaints — the sim drone rides a
+        // `SampledPositionProperty` off `viewer.clock`, and the commonly-quoted
+        // `Infinity` would stop it moving during playback. A paused clock does
+        // not advance simulation time, so idle already costs nothing.
         requestRenderMode: true,
         maximumRenderTimeChange: 0,
       });
@@ -340,9 +365,16 @@ export default function CesiumScene({
         tileset.style = new Cesium3DTileStyle({
           color: buildingColor,
         });
+        // Clamp GPU/CPU tile memory. Cesium defaults to 512 MiB of cache plus
+        // another 512 MiB of permitted overflow before it starts degrading
+        // screen-space error — up to 1 GiB per tileset, which is how a
+        // long-running control-room tab OOMs after repeated route entry/exit.
+        tileset.cacheBytes = TILESET_CACHE_BYTES;
+        tileset.maximumCacheOverflowBytes = TILESET_CACHE_OVERFLOW_BYTES;
         viewer.scene.primitives.add(tileset);
         localTileset = tileset;
         tilesetRef.current = tileset;
+        onTilesetMemoryRef.current?.(tileset.totalMemoryUsageInBytes);
         viewer.scene.requestRender();
       }).catch(() => {
         // Silently ignore — buildings are a non-critical enhancement

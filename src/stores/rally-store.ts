@@ -6,6 +6,8 @@
  */
 
 import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
+import { indexedDBStorage } from "@/lib/storage";
 import { useDroneManager } from "./drone-manager";
 
 export interface RallyPoint {
@@ -37,7 +39,9 @@ interface RallyStoreState {
   restore: (snap: RallySnapshot) => void;
 }
 
-export const useRallyStore = create<RallyStoreState>()((set, get) => ({
+export const useRallyStore = create<RallyStoreState>()(
+  persist(
+    (set, get) => ({
   points: [],
 
   addPoint: (point) =>
@@ -84,4 +88,22 @@ export const useRallyStore = create<RallyStoreState>()((set, get) => ({
 
   restore: (snap) =>
     set({ points: snap.points.map((p) => ({ ...p })) }),
-}));
+    }),
+    {
+      name: "altcmd:rally-store",
+      storage: createJSONStorage(indexedDBStorage.storage),
+      version: 1,
+      // Only the operator-placed points persist; upload/download state is FC-driven.
+      partialize: (state) => ({ points: state.points }),
+      migrate: (persisted, version) => {
+        const state = persisted as Record<string, unknown>;
+        if (version < 1 || !Array.isArray(state.points)) {
+          // v1 is the first persisted version; anything older carried no rally
+          // geometry, so start empty rather than inventing return points.
+          state.points = [];
+        }
+        return state as unknown as RallyStoreState;
+      },
+    },
+  ),
+);

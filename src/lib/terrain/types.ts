@@ -12,6 +12,19 @@ export interface TerrainPoint {
   elevation: number;   // meters MSL
 }
 
+/**
+ * One elevation sample along a path. `elevation` is `null` when the lookup
+ * failed — distinct from a real 0 m sea-level reading, which is a valid value.
+ */
+export interface PathElevationSample {
+  lat: number;
+  lon: number;
+  /** Meters from path start. */
+  distance: number;
+  /** Meters MSL, or `null` when the elevation is unknown. */
+  elevation: number | null;
+}
+
 /** A complete terrain elevation profile along a waypoint path. */
 export interface TerrainProfile {
   points: TerrainPoint[];

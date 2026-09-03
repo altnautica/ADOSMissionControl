@@ -52,19 +52,32 @@ describe('getElevation', () => {
     expect(elev2).toBe(200);
     expect(mockFetch).toHaveBeenCalledTimes(1);
   });
-
-  it('returns NaN on network error', async () => {
+  it('returns null on network error', async () => {
     const lat = uniqueLat();
     mockFetch.mockRejectedValueOnce(new Error('Network error'));
     const elev = await getElevation(lat, 77.5);
-    expect(elev).toBeNaN();
+    // null, not 0 and not NaN: "unknown" must be a value the caller cannot
+    // accidentally use in arithmetic, or a mission validates against sea level.
+    expect(elev).toBeNull();
   });
 
-  it('returns NaN on non-OK response', async () => {
+  it('returns null on non-OK response', async () => {
     const lat = uniqueLat();
     mockFetch.mockResolvedValueOnce({ ok: false, status: 500 });
     const elev = await getElevation(lat, 77.5);
-    expect(elev).toBeNaN();
+    expect(elev).toBeNull();
+  });
+
+  it('caches and returns a genuine 0m sea-level reading', async () => {
+    const lat = uniqueLat();
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ results: [{ elevation: 0 }] }),
+    });
+    expect(await getElevation(lat, 77.5)).toBe(0);
+    // Second call must hit the cache: a real 0 is a value, not a miss.
+    expect(await getElevation(lat, 77.5)).toBe(0);
+    expect(mockFetch).toHaveBeenCalledTimes(1);
   });
 
   it('does not warn on AbortError', async () => {
@@ -73,7 +86,7 @@ describe('getElevation', () => {
     mockFetch.mockRejectedValueOnce(abortErr);
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const elev = await getElevation(lat, 77.5);
-    expect(elev).toBeNaN();
+    expect(elev).toBeNull();
     // console.warn should NOT have been called with the terrain message
     const terrainWarns = warnSpy.mock.calls.filter((c) =>
       typeof c[0] === 'string' && c[0].includes('[terrain] Elevation fetch failed'),
@@ -82,20 +95,31 @@ describe('getElevation', () => {
     warnSpy.mockRestore();
   });
 
-  it('cache key rounds to 4 decimal places', async () => {
+  it('does NOT collide two points 11m apart (the old 4-decimal key merged them)', async () => {
     const baseLat = uniqueLat();
-    // Two coords that differ at the 5th decimal place should share a cache key
-    const lat1 = parseFloat((baseLat + 0.00001).toFixed(5));
-    const lat2 = parseFloat((baseLat + 0.00002).toFixed(5));
+    // ~0.0001 deg of latitude is ~11m. Under the old `toFixed(4)` key these two
+    // shared one cache entry, so the second point silently reported the first
+    // point's elevation — and the batch reader bound values by that same key.
+    const lat1 = Number.parseFloat(baseLat.toFixed(4));
+    const lat2 = Number.parseFloat((baseLat + 0.0001).toFixed(4));
 
+    mockFetch
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ results: [{ elevation: 300 }] }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ results: [{ elevation: 900 }] }) });
+    expect(await getElevation(lat1, 77.5)).toBe(300);
+    expect(await getElevation(lat2, 77.5)).toBe(900);
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('still caches a repeat lookup of the same point (quantised grid cell)', async () => {
+    const lat = uniqueLat();
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ results: [{ elevation: 300 }] }),
+      json: async () => ({ results: [{ elevation: 42 }] }),
     });
-    await getElevation(lat1, 77.5);
-    const elev2 = await getElevation(lat2, 77.5);
-    // Should use cache (same 4-decimal-place key)
-    expect(elev2).toBe(300);
+    expect(await getElevation(lat, 77.5)).toBe(42);
+    // Sub-centimetre jitter lands in the same ~1.1m grid cell.
+    expect(await getElevation(lat + 0.0000001, 77.5)).toBe(42);
     expect(mockFetch).toHaveBeenCalledTimes(1);
   });
 });
@@ -171,19 +195,19 @@ describe('getElevations', () => {
     expect(mockFetch).toHaveBeenCalledTimes(2);
   });
 
-  it('fills with NaN on network error', async () => {
+  it('fills with null on network error', async () => {
     const lat1 = uniqueLat();
     mockFetch.mockRejectedValueOnce(new Error('fail'));
     const result = await getElevations([{ lat: lat1, lon: 77.5 }]);
-    expect(result.length).toBe(1); expect(result[0]).toBeNaN();
+    expect(result).toEqual([null]);
   });
 
-  it('fills every point with NaN when the response has fewer results than requested', async () => {
+  it('discards the whole chunk when the response has fewer results than requested', async () => {
     const lat1 = uniqueLat();
     const lat2 = uniqueLat();
     // Partial / truncated response: only one result for a two-point request.
-    // Index-correlating results[0] against chunk[0] would silently misassign,
-    // so the batch must fall back to per-point NaN for the whole chunk.
+    // Index correlation is no longer meaningful for ANY of them, so nothing is
+    // bound rather than binding a possibly-wrong elevation.
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({ results: [{ elevation: 100 }] }),
@@ -192,22 +216,21 @@ describe('getElevations', () => {
       { lat: lat1, lon: 77.5 },
       { lat: lat2, lon: 77.5 },
     ]);
-    expect(result).toEqual([NaN, NaN]);
+    expect(result).toEqual([null, null]);
     expect(mockFetch).toHaveBeenCalledTimes(1);
   });
 
-  it('keys results by the response location rather than request order', async () => {
-    const lat1 = uniqueLat();
-    const lat2 = uniqueLat();
-    // The response returns elevations in the OPPOSITE order, each tagged with
-    // its own location. Elevations must be assigned by coordinate, not index.
+  it('correlates batch results by REQUEST INDEX, keeping co-rounded points distinct', async () => {
+    const baseLat = uniqueLat();
+    // Two points ~11m apart: identical under the old 4-decimal matcher, which
+    // used `.find()` on the rounded coordinate and could bind either value to
+    // either point. Index correlation is the only sound mapping the API offers.
+    const lat1 = Number.parseFloat(baseLat.toFixed(4));
+    const lat2 = Number.parseFloat((baseLat + 0.0001).toFixed(4));
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
-        results: [
-          { latitude: lat2, longitude: 77.5, elevation: 222 },
-          { latitude: lat1, longitude: 77.5, elevation: 111 },
-        ],
+        results: [{ elevation: 111 }, { elevation: 222 }],
       }),
     });
     const result = await getElevations([
@@ -215,6 +238,20 @@ describe('getElevations', () => {
       { lat: lat2, lon: 77.5 },
     ]);
     expect(result).toEqual([111, 222]);
+  });
+
+  it('preserves a genuine 0m elevation in a batch instead of dropping it', async () => {
+    const lat1 = uniqueLat();
+    const lat2 = uniqueLat();
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ results: [{ elevation: 0 }, { elevation: 12 }] }),
+    });
+    const result = await getElevations([
+      { lat: lat1, lon: 77.5 },
+      { lat: lat2, lon: 77.5 },
+    ]);
+    expect(result).toEqual([0, 12]);
   });
 });
 

@@ -3067,6 +3067,7 @@
       "loaded": "{name} · {count}개 지점",
       "errorUnsupported": "지원되지 않는 파일입니다. .bin, .log, .tlog 또는 .ulg 비행 로그를 사용하세요.",
       "errorNoPositions": "해당 로그에 GPS 측위 위치가 없습니다.",
+      "errorTruncated": "해당 로그는 {offset} 바이트에서 레코드 중간에 끝납니다 — 비행이 중단되었습니다.",
       "errorParseFailed": "로그 파일을 읽을 수 없습니다.",
       "emptyHint": "기록된 비행을 불러와 실제 경로를 계획 위에 겹쳐 보세요."
     },

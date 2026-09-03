@@ -15,6 +15,7 @@ import { useGeofenceStore } from "@/stores/geofence-store";
 import { useRallyStore } from "@/stores/rally-store";
 import { usePlanPoiStore } from "@/stores/plan-poi-store";
 import { usePlannerStore } from "@/stores/planner-store";
+import { planSnapshotString } from "@/lib/plan-snapshot";
 import type { SavedPlan } from "@/lib/types";
 
 /**
@@ -26,7 +27,13 @@ export function applyPlanToWorkspace(plan: SavedPlan): void {
   const lib = usePlanLibraryStore.getState();
   lib.setActivePlan(plan.id);
   useMissionStore.getState().setWaypoints(plan.waypoints);
-  lib.setSavedSnapshot(JSON.stringify(plan.waypoints));
+  lib.setSavedSnapshot(
+    planSnapshotString(plan.waypoints, {
+      geofence: plan.geofence,
+      rally: plan.rally,
+      pois: plan.pois,
+    }),
+  );
 
   const geofence = useGeofenceStore.getState();
   if (plan.geofence) geofence.restore(plan.geofence);

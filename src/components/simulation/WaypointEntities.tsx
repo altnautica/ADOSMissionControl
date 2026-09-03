@@ -96,6 +96,12 @@ export function WaypointEntities({ viewer, waypoints, resolvedPositions }: Waypo
 
     entityMapRef.current = entityMap;
 
+    // Under `requestRenderMode` the scene only paints when something asks it
+    // to. An entity mutation Cesium does not observe therefore leaves a STALE
+    // frame on screen, which on a flight surface is a false display — so every
+    // add and every removal explicitly requests one.
+    viewer.scene.requestRender();
+
     return () => {
       for (const entity of entityMap.values()) {
         if (viewer && !viewer.isDestroyed()) {
@@ -103,6 +109,7 @@ export function WaypointEntities({ viewer, waypoints, resolvedPositions }: Waypo
         }
       }
       entityMapRef.current = new Map();
+      if (!viewer.isDestroyed()) viewer.scene.requestRender();
     };
   }, [viewer, waypoints, resolvedPositions]);
 

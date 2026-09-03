@@ -7,6 +7,8 @@
  */
 
 import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
+import { indexedDBStorage } from "@/lib/storage";
 import { useDroneManager } from "./drone-manager";
 import { polygonBounds } from "@/lib/drawing/geo-utils";
 import type { FenceElement } from "@/lib/protocol/types";
@@ -234,7 +236,9 @@ function elementToZone(el: FenceElement): FenceZone {
   };
 }
 
-export const useGeofenceStore = create<GeofenceStoreState>()((set, get) => ({
+export const useGeofenceStore = create<GeofenceStoreState>()(
+  persist(
+    (set, get) => ({
   enabled: false,
   fenceType: "circle",
   maxAltitude: 120,
@@ -472,4 +476,41 @@ export const useGeofenceStore = create<GeofenceStoreState>()((set, get) => ({
         circleCenter: z.circleCenter ? [z.circleCenter[0], z.circleCenter[1]] as [number, number] : null,
       })),
     }),
-}));
+    }),
+    {
+      name: "altcmd:geofence-store",
+      storage: createJSONStorage(indexedDBStorage.storage),
+      version: 1,
+      // Only the operator-editable fence geometry persists. Live FENCE_STATUS
+      // breach fields and async upload/download state are driven by the FC, so
+      // restoring them would report a stale breach on a fresh session.
+      partialize: (state) => ({
+        enabled: state.enabled,
+        fenceType: state.fenceType,
+        maxAltitude: state.maxAltitude,
+        minAltitude: state.minAltitude,
+        breachAction: state.breachAction,
+        circleCenter: state.circleCenter,
+        circleRadius: state.circleRadius,
+        polygonPoints: state.polygonPoints,
+        zones: state.zones,
+      }),
+      migrate: (persisted, version) => {
+        const state = persisted as Record<string, unknown>;
+        if (version < 1) {
+          // v1 is the first persisted version: nothing was stored before, so a
+          // payload claiming v0 predates the schema. Drop its geometry rather
+          // than restoring a shape whose vertex order is unknown — a wrong
+          // fence uploaded to the FC is a flight-safety defect.
+          state.zones = [];
+          state.polygonPoints = [];
+          state.circleCenter = null;
+          state.enabled = false;
+        }
+        if (!Array.isArray(state.zones)) state.zones = [];
+        if (!Array.isArray(state.polygonPoints)) state.polygonPoints = [];
+        return state as unknown as GeofenceStoreState;
+      },
+    },
+  ),
+);

@@ -126,10 +126,17 @@ export function CameraTriggerEntities({ viewer, waypoints, visible }: CameraTrig
       entities.push(entity);
     }
 
+    // Under `requestRenderMode` the scene only paints when something asks it
+    // to. An entity mutation Cesium does not observe therefore leaves a STALE
+    // frame on screen, which on a flight surface is a false display — so every
+    // add and every removal explicitly requests one.
+    viewer.scene.requestRender();
+
     return () => {
       for (const entity of entities) {
         if (!viewer.isDestroyed()) viewer.entities.remove(entity);
       }
+      if (!viewer.isDestroyed()) viewer.scene.requestRender();
     };
   }, [viewer, triggerPoints, visible]);
 

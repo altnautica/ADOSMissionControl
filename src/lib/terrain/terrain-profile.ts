@@ -59,7 +59,7 @@ export async function computeTerrainProfile(
   // Sort by cumulative distance (intermediate points were inserted before their end waypoint)
   samplePoints.sort((a, b) => a.cumDist - b.cumDist);
 
-  // Fetch elevations (NaN for any failed lookup)
+  // Fetch elevations (null at any index whose lookup failed)
   const elevations = await getElevations(
     samplePoints.map((p) => ({ lat: p.lat, lon: p.lon })),
     signal,
@@ -74,7 +74,7 @@ export async function computeTerrainProfile(
 
   for (let i = 0; i < samplePoints.length; i++) {
     const elev = elevations[i];
-    if (!Number.isFinite(elev)) continue;
+    if (elev === null) continue;
     if (elev < minElevation) minElevation = elev;
     if (elev > maxElevation) maxElevation = elev;
     points.push({
