@@ -63,6 +63,6 @@ jobs:
           [[ "${{ matrix.os }}" == "windows-latest" ]] && bin="ados-deploy.exe"
           mkdir -p dist
           cp "target/${{ matrix.target }}/release/$bin" "dist/ados-deploy-${{ matrix.target }}${bin##ados-deploy}"
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           files: tools/deploy/dist/*
