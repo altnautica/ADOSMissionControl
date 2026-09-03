@@ -40,6 +40,38 @@ import {
   type MqttAuthorityReason,
 } from "@/lib/nodes/mqtt-control-authority";
 
+// happy-dom in this config does not provide a working Web Storage, and Node's
+// own experimental `globalThis.localStorage` is undefined without
+// `--localstorage-file`, so reading `.length` off it throws. Install a real
+// in-memory pair before the store modules load (`vi.hoisted` runs before
+// imports). The secret-leak test below then walks storage that actually exists.
+vi.hoisted(() => {
+  const install = (name: "localStorage" | "sessionStorage") => {
+    const map = new Map<string, string>();
+    const storage = {
+      get length() {
+        return map.size;
+      },
+      clear: () => map.clear(),
+      getItem: (k: string) => (map.has(k) ? map.get(k)! : null),
+      key: (i: number) => Array.from(map.keys())[i] ?? null,
+      removeItem: (k: string) => {
+        map.delete(k);
+      },
+      setItem: (k: string, v: string) => {
+        map.set(k, String(v));
+      },
+    };
+    const descriptor = { value: storage, configurable: true, writable: true };
+    Object.defineProperty(globalThis, name, descriptor);
+    if (typeof window !== "undefined") {
+      Object.defineProperty(window, name, descriptor);
+    }
+  };
+  install("localStorage");
+  install("sessionStorage");
+});
+
 /** Matches `cmdMqttControlGrants.GRANT_TTL_MS`. */
 const TTL_MS = 60 * 60 * 1000;
 const BASE_TIME = 1_760_000_000_000;
@@ -347,11 +379,19 @@ describe("mqtt control grant — the secret", () => {
     expect(snapshot).not.toContain("secret-1");
     expect(snapshot).toContain("gcs-op-1");
 
+    // Seed each storage so the walk below has something to walk: an empty
+    // storage (or one whose `length` is undefined) would make this assertion
+    // vacuous, which is how it passed while asserting nothing.
     for (const store of [localStorage, sessionStorage]) {
+      store.setItem("canary", "not-the-secret");
+      expect(store.length).toBeGreaterThan(0);
+      let walked = 0;
       for (let i = 0; i < store.length; i += 1) {
         const key = store.key(i);
+        walked += 1;
         expect(store.getItem(key ?? "") ?? "").not.toContain("secret-1");
       }
+      expect(walked).toBe(store.length);
     }
   });
 
