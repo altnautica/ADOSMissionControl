@@ -11,6 +11,8 @@
 
 import { useTranslations } from "next-intl";
 import { useTelemetryStore } from "@/stores/telemetry-store";
+import { useClockTick } from "@/lib/agent/freshness";
+import { freshOnly } from "@/lib/telemetry/freshness";
 import { useTrailStore } from "@/stores/trail-store";
 import { haversineDistance } from "@/lib/drawing/geo-utils";
 
@@ -48,10 +50,16 @@ export function TelemetryStrip() {
 
   useTelemetryStore((s) => s._version);
   useTrailStore((s) => s._version);
+  // Subscribed for its re-render, like the two _version reads above. Without
+  // a time-passing signal a link loss stops `_version` changing, so the strip
+  // would keep the last distance, heading, and climb rate on screen forever,
+  // reading as current.
+  useClockTick();
 
   const tState = useTelemetryStore.getState();
-  const vfr = tState.vfr.latest();
-  const pos = tState.position.latest();
+  const now = Date.now();
+  const vfr = freshOnly(tState.vfr.latest(), now);
+  const pos = freshOnly(tState.position.latest(), now);
 
   // Home is the oldest trail point. Indexed straight out of the ring: this
   // strip re-renders on every telemetry sample, and copying the whole trail

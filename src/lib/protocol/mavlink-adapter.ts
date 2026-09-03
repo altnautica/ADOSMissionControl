@@ -22,6 +22,7 @@ import { encodeHeartbeat, MAV_CMD_SET_EKF_SOURCE_SET } from './mavlink-encoder'
 import { MAV_CMD_CAN_FORWARD, encodeCanFrame, encodeCanFdFrame } from './encoders/can-forward'
 import { decodeHeartbeat } from './mavlink-messages'
 import { CommandQueue, MAV_RESULT } from './command-queue'
+import { TELEMETRY_STALE_MS } from '@/lib/telemetry/freshness'
 import { createFirmwareHandler } from './firmware/ardupilot'
 import { useDiagnosticsStore } from '@/stores/diagnostics-store'
 import { createCallbackStore, bindCallbackMethods } from './mavlink-adapter-callbacks'
@@ -163,7 +164,7 @@ export class MAVLinkAdapter implements DroneProtocol {
     parameterDownload: null, downloadedParamNames: null, missionUpload: null, missionDownload: null,
     rallyUpload: null, rallyDownload: null, fenceUpload: null, fenceDownload: null,
     logListDownload: null, logDataDownload: null, ftpCtx: this._ftpCtx,
-    lastVehicleHeartbeat: 0, linkIsLost: false, HEARTBEAT_TIMEOUT_MS: 5000,
+    lastVehicleHeartbeat: 0, linkIsLost: false, HEARTBEAT_TIMEOUT_MS: TELEMETRY_STALE_MS,
     componentMetadataUri: null,
   }
   private get fhs(): FrameHandlerState {

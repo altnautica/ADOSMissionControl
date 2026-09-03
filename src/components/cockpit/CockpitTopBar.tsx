@@ -16,7 +16,7 @@
 
 "use client";
 
-import { memo, useEffect, useState, type ReactNode } from "react";
+import { memo, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { ChevronLeft } from "lucide-react";
 import { useDroneStore } from "@/stores/drone-store";
@@ -25,6 +25,7 @@ import { useDroneMetadataStore } from "@/stores/drone-metadata-store";
 import { useHudTopBarData } from "@/hooks/use-hud-topbar-data";
 import { useMqttControlAuthority } from "@/hooks/use-mqtt-control-authority";
 import { needsOperatorAttention } from "@/lib/nodes/mqtt-control-authority";
+import { useClockTick } from "@/lib/agent/freshness";
 
 const LOW_BATTERY_PERCENT = 20;
 
@@ -49,18 +50,26 @@ function sigLevel(rssi: number | undefined | null): number {
   return Math.round(q * 4);
 }
 
-/** mm:ss flight clock, started when the vehicle first arms and reset on disarm. */
-function useFlightTimer(armed: boolean): string {
-  const [elapsedSec, setElapsedSec] = useState(0);
-  useEffect(() => {
-    if (!armed) return;
-    const startedAt = Date.now();
-    const tick = () => setElapsedSec(Math.floor((Date.now() - startedAt) / 1000));
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [armed]);
-  if (!armed) return "--:--";
+/**
+ * mm:ss flight clock, measured from the vehicle's arm transition.
+ *
+ * The elapsed time is derived from `armedAt` in the drone store rather than
+ * from a `Date.now()` captured inside an effect, because the effect version
+ * restarted at 0:00 on every remount: leaving the cockpit for the map and
+ * coming back reset the flight timer mid-flight, which made it a
+ * component-lifetime clock wearing a flight-time label.
+ *
+ * `Date.now()` on the render path trips `react-hooks/purity`, and it stays:
+ * reading the wall clock is the entire job of a clock, `useClockTick()` is
+ * what makes it advance, and the alternative — deriving from the clock
+ * store's once-per-second `now` snapshot — is seeded at module load, so a
+ * component mounting minutes later would render a badly wrong first frame.
+ * A cosmetically pure clock that lies on mount is the worse trade.
+ */
+function useFlightTimer(armedAt: number | null): string {
+  useClockTick();
+  if (armedAt === null) return "--:--";
+  const elapsedSec = Math.max(0, Math.floor((Date.now() - armedAt) / 1000));
   const m = Math.floor(elapsedSec / 60);
   const s = elapsedSec % 60;
   return `${m}:${String(s).padStart(2, "0")}`;
@@ -82,6 +91,7 @@ function CockpitTopBarInner({ onExit, controls, lean = false }: CockpitTopBarPro
   const { radio, battery, gps } = useHudTopBarData();
   const mode = useDroneStore((s) => s.flightMode);
   const armState = useDroneStore((s) => s.armState);
+  const armedAt = useDroneStore((s) => s.armedAt);
   const armed = armState === "armed";
 
   const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
@@ -90,7 +100,7 @@ function CockpitTopBarInner({ onExit, controls, lean = false }: CockpitTopBarPro
   );
   const name = displayName ?? selectedDroneId ?? t("noDrone");
 
-  const timer = useFlightTimer(armed);
+  const timer = useFlightTimer(armedAt);
 
   const batteryPct = battery?.remaining;
   const batteryLow =

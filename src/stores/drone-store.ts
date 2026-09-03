@@ -8,6 +8,16 @@ interface DroneStoreState {
   flightMode: FlightMode;
   previousMode: FlightMode;
   armState: ArmState;
+  /**
+   * When the vehicle last transitioned into `armed`, or null while disarmed.
+   *
+   * Flight time has to be measured from here rather than from a component
+   * effect: the cockpit clock used to start at `Date.now()` inside its own
+   * `useEffect`, so it restarted at 0:00 on every remount — switching to the
+   * map and back reset the flight timer mid-flight. It is a property of the
+   * vehicle's arm state, not of whichever component happens to be mounted.
+   */
+  armedAt: number | null;
   lastHeartbeat: number;
   firmwareVersion: string;
   frameType: string;
@@ -30,6 +40,7 @@ export const useDroneStore = create<DroneStoreState>((set) => ({
   flightMode: "STABILIZE",
   previousMode: "STABILIZE",
   armState: "disarmed",
+  armedAt: null,
   lastHeartbeat: 0,
   firmwareVersion: "",
   frameType: "",
@@ -39,7 +50,13 @@ export const useDroneStore = create<DroneStoreState>((set) => ({
   selectDrone: (id) => set({ selectedId: id }),
   setConnectionState: (connectionState) => set({ connectionState }),
   setFlightMode: (flightMode) => set((s) => ({ previousMode: s.flightMode, flightMode })),
-  setArmState: (armState) => set({ armState }),
+  setArmState: (armState) =>
+    set((s) => {
+      if (armState === s.armState) return { armState };
+      // Stamped on the transition into armed, and cleared on the way out, so a
+      // re-arm starts a fresh clock instead of continuing the previous one.
+      return { armState, armedAt: armState === "armed" ? Date.now() : null };
+    }),
   heartbeat: () => set({ lastHeartbeat: Date.now() }),
   setFirmwareInfo: (firmwareVersion, frameType) => set({ firmwareVersion, frameType }),
   setSystemStatus: (systemStatus) => set({ systemStatus }),

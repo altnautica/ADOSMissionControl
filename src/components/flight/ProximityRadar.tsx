@@ -12,6 +12,8 @@
 
 import { useMemo } from "react";
 import { useTelemetryStore } from "@/stores/telemetry-store";
+import { useClockTick } from "@/lib/agent/freshness";
+import { freshOnly } from "@/lib/telemetry/freshness";
 
 const CENTER = 60;
 const OUTER_R = 52;
@@ -48,9 +50,15 @@ function arcPath(startDeg: number, endDeg: number): string {
 }
 
 export function ProximityRadar() {
-  const version = useTelemetryStore((s) => s._version);
-  const obstacleBuffer = useTelemetryStore((s) => s.obstacle);
-  const latest = obstacleBuffer.latest();
+  // The ring keeps its last OBSTACLE_DISTANCE forever, so reading `latest()`
+  // raw left the radar painting red DANGER arcs from a dead link — the one
+  // reading an operator must never see fabricated. Both subscriptions are
+  // load-bearing: `_version` says new data arrived, and the clock tick says
+  // time passed, which is the only signal that arrives after a link loss.
+  useTelemetryStore((s) => s._version);
+  useClockTick();
+  const obstacleBuffer = useTelemetryStore.getState().obstacle;
+  const latest = freshOnly(obstacleBuffer.latest(), Date.now());
 
   const { hasData, sectors, closestM } = useMemo(() => {
     if (!latest || !latest.distances || latest.distances.length === 0) {
@@ -74,8 +82,12 @@ export function ProximityRadar() {
       sectors: paths,
       closestM: closest < INVALID_DISTANCE ? (closest / 100).toFixed(1) : null,
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [latest, version]);
+    // `latest` is the whole dependency: it is a stable object reference while
+    // the sample stands, and becomes `undefined` the moment it goes stale, so
+    // the memo recomputes exactly when the answer changes. The version and
+    // clock subscriptions above are what re-run this component; they are not
+    // inputs to the arc geometry.
+  }, [latest]);
 
   if (!hasData) return null;
 
