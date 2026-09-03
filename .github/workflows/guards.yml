@@ -1,0 +1,353 @@
+name: Guards
+
+# Repository guards that are not tests and not lint: they assert properties of
+# the tree and of the commits, and each one exists because the property it
+# checks was violated at least once without anything noticing.
+#
+# A guard that cannot fail is worse than no guard, because it is read as proof.
+# Every job below therefore carries a self-test that plants a known-positive
+# sample and asserts the matcher fires on it. That is not paranoia: a `\b` in a
+# `git grep -E` pattern silently matches nothing and reports a clean tree,
+# which is exactly how one of these checks passed for months while leaking.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  leak-guard:
+    name: Tree and commit hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The commit-message scan needs the range, so shallow will not do.
+          fetch-depth: 0
+
+      - name: Tracked tree has no private bridge, planning tag, or absolute home path
+        run: |
+          set -uo pipefail
+          fail=0
+
+          # A planning tag is an internal record number. It is individually
+          # harmless-looking, which is why it slips: a changelog entry
+          # explaining WHY a change was made reaches for the record by number,
+          # and that number then sits in public history forever.
+          #
+          # The digit run is {2,} rather than {3}: a two-digit and a
+          # four-digit tag are both real, and a fixed {3} makes both invisible.
+          # No \b anywhere — git grep's ERE does not support it and silently
+          # matches nothing when it appears.
+          TAG_PATTERN='(^|[^A-Za-z])(DEC|MSN|LRN)-[0-9]{2,}|(^|[^A-Za-z])Wave [0-9]'
+
+          # An absolute path under a home directory is a developer machine
+          # baked into shipped source. Obvious placeholders are allowed
+          # because tests legitimately need one, and the service accounts a
+          # board really uses are named here too.
+          HOME_PATTERN='/(Users|home)/[A-Za-z][A-Za-z0-9_.-]*/'
+          HOME_ALLOW='/(Users|home)/(tester|test|op|x|y|user|username|you|me|someone|somebody|developer|dev|example|alice|bob|runner|ubuntu|pi|root|node)/'
+
+          # ---- self-test: prove the matchers fire before trusting a clean run
+          # The sample is assembled at run time. Writing the literal tag into
+          # this file would make the file its own first hit, and "the guard
+          # found itself" is indistinguishable from a real leak.
+          SAMPLE_TAG="$(printf 'DEC%s284' '-')"
+          SAMPLE_HOME="$(printf '/Users/%s/src/x' 'realname')"
+          printf 'ref %s and path %s\n' "$SAMPLE_TAG" "$SAMPLE_HOME" > .guard-selftest
+          git add -f .guard-selftest
+          if ! git grep -qIE "$TAG_PATTERN" -- .guard-selftest; then
+            echo "SELF-TEST FAILED: the planning-tag pattern does not match a known tag."
+            echo "  The pattern is broken; this job would have reported a clean tree."
+            fail=1
+          fi
+          if ! git grep -IE "$HOME_PATTERN" -- .guard-selftest | grep -qvE "$HOME_ALLOW"; then
+            echo "SELF-TEST FAILED: the home-path pattern does not match a known absolute home path."
+            fail=1
+          fi
+          git rm -q --cached .guard-selftest
+          rm -f .guard-selftest
+          [ "$fail" -eq 0 ] || exit 1
+
+          # ---- check 1: the private agent-context bridge is gitignored and
+          # must never be tracked. Checked by path, so no private vocabulary
+          # has to appear in this public file to express it.
+          if git ls-files | grep -E '(^|/)\.omp/'; then
+            echo "FAIL: a file under .omp/ is tracked. That directory is generated, private, and gitignored."
+            fail=1
+          fi
+
+          # ---- check 2: planning tags in tracked files
+          #
+          # This file is deliberately NOT excluded from its own scan. Every
+          # literal here is assembled at run time precisely so it does not
+          # self-match, and an exclusion would be a hole: a real leak added to
+          # this file would then be the one place the guard cannot see.
+          if git grep -nIE "$TAG_PATTERN" -- .; then
+            echo "FAIL: an internal planning tag is present in a tracked file (see above)."
+            echo "  Describe the change, not the record that authorised it."
+            fail=1
+          fi
+
+          # ---- check 3: absolute home paths in tracked files
+          hits="$(git grep -nIE "$HOME_PATTERN" -- . | grep -vE "$HOME_ALLOW" || true)"
+          if [ -n "$hits" ]; then
+            printf '%s\n' "$hits"
+            echo "FAIL: an absolute home-directory path is present in a tracked file (see above)."
+            echo "  Use a relative path, an env var, or one of the placeholder names."
+            fail=1
+          fi
+
+          [ "$fail" -eq 0 ] && echo "PASS: tracked tree is clean."
+          exit "$fail"
+
+      - name: Commit messages in this range carry no AI co-author trailer
+        run: |
+          set -uo pipefail
+          BASE="${{ github.event.pull_request.base.sha || github.event.before }}"
+          if [ -z "$BASE" ] || ! git cat-file -e "$BASE" 2>/dev/null; then
+            # A new branch or a force-push has no usable base. Fall back to
+            # everything not already on another remote branch rather than
+            # silently checking nothing.
+            RANGE="HEAD --not --remotes=origin"
+          else
+            RANGE="$BASE..HEAD"
+          fi
+
+          # GitHub maps a vendor noreply address to a bot account, which then
+          # appears in the contributor sidebar of this repository permanently.
+          TRAILER='(Co-[Aa]uthored-[Bb]y|Signed-off-by):.*(claude|anthropic|copilot|openai|chatgpt|cursor|codex|gemini)'
+
+          # self-test on a synthesised message, same reasoning as above
+          if ! printf 'x\n\nCo-Authored-By: Bot <noreply@%s>\n' 'anthropic.com' | grep -qiE "$TRAILER"; then
+            echo "SELF-TEST FAILED: the trailer pattern does not match a known trailer."
+            exit 1
+          fi
+
+          # shellcheck disable=SC2086
+          msgs="$(git log --format='%H %s%n%b%n' $RANGE || true)"
+          if printf '%s' "$msgs" | grep -inE "$TRAILER"; then
+            echo "FAIL: a commit in this range carries an AI co-author trailer."
+            exit 1
+          fi
+          echo "PASS: no AI co-author trailer in $RANGE."
+
+  changelog-order:
+    name: CHANGELOG is newest-first
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # This file is read top-down by humans and, on a release tag, by the
+      # desktop-release workflow's section extractor. At 1,800+ lines an entry
+      # appended at the bottom is invisible to both.
+      - name: Version headings decrease, top to bottom
+        run: |
+          set -uo pipefail
+          awk '
+            function vercmp(a, b,   x, y, i) {
+              split(a, x, "."); split(b, y, ".")
+              for (i = 1; i <= 3; i++) {
+                if ((x[i] + 0) < (y[i] + 0)) return -1
+                if ((x[i] + 0) > (y[i] + 0)) return 1
+              }
+              return 0
+            }
+            /^## / {
+              if ($0 ~ /^## *\[[Uu]nreleased\]/) {
+                if (entries > 0) { print "FAIL:" NR ": [Unreleased] appears below a released entry"; bad++ }
+                next
+              }
+              ver = ""; date = ""
+              if (match($0, /\[[0-9]+\.[0-9]+\.[0-9]+[^]]*\]/)) ver = substr($0, RSTART + 1, RLENGTH - 2)
+              if (match($0, /[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/)) date = substr($0, RSTART, RLENGTH)
+              if (ver == "" && date == "") next
+              entries++
+              if (prev_ver != "" && ver != "") {
+                c = vercmp(ver, prev_ver)
+                if (c > 0) { print "FAIL:" NR ": version " ver " is higher than " prev_ver " above it"; bad++ }
+                else if (c == 0) { print "FAIL:" NR ": version " ver " repeats the entry above it"; bad++ }
+              }
+              if (prev_date != "" && date != "" && date > prev_date) {
+                print "FAIL:" NR ": date " date " is newer than " prev_date " above it"; bad++
+              }
+              if (ver != "") prev_ver = ver
+              if (date != "") prev_date = date
+              next
+            }
+            END {
+              # The parser engaging at all is part of what is being asserted.
+              # A heading-format change would otherwise reduce this job to
+              # reading a file, matching nothing, and reporting success.
+              if (entries + 0 < 3) { print "FAIL: only " entries + 0 " entries parsed; the heading format changed and this check stopped measuring anything"; bad++ }
+              if (bad + 0 > 0) exit 1
+              print "PASS: " entries " entries, newest-first"
+            }
+          ' CHANGELOG.md
+
+  convex-exposure:
+    name: Convex exposure and authorization
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The authorization-parity and twin-exposure gates for the Convex
+      # backend live outside this repository and therefore never ran on a push
+      # here. That is precisely how a first-user-becomes-admin bootstrap with
+      # no allowlist survived in this tree while the production twin had one:
+      # both gates compared the two trees and neither could see inside a
+      # handler. These checks look inside, on this tree alone.
+      - name: Convex exposure invariants
+        env:
+          CONVEX_DIR: convex
+        run: |
+          set -uo pipefail
+          mkdir -p "$RUNNER_TEMP/guard"
+          cat > "$RUNNER_TEMP/guard/convex-guard.mjs" <<'GUARD'
+          import { readFileSync, readdirSync } from 'node:fs';
+          import { join } from 'node:path';
+
+          const dir = process.env.CONVEX_DIR || 'convex';
+          const files = readdirSync(dir).filter((f) => f.endsWith('.ts'));
+          let failed = 0;
+          const fail = (m) => { console.log('FAIL: ' + m); failed = 1; };
+
+          // ---- invariant 1: the private research corpus never reaches this tree.
+          // Expressed as a prefix on tables and functions; the tripwire is that
+          // the prefix appears at all.
+          const RESEARCH = /research_/;
+          for (const f of files) {
+            if (RESEARCH.test(readFileSync(join(dir, f), 'utf8'))) {
+              fail(`${f} references the private research_ prefix`);
+            }
+          }
+
+          // ---- invariant 2: the first-user admin bootstrap is allowlist-gated.
+          // The defect this pins: "the first profile in the table becomes admin"
+          // with no allowlist, on a tree every self-host deploys fresh, where
+          // admin reads every profile and every contact submission.
+          const profilesPath = join(dir, 'profiles.ts');
+          const profiles = readFileSync(profilesPath, 'utf8');
+          const mints = [...profiles.matchAll(/role\s*=\s*["']admin["']/g)];
+          if (mints.length === 0) {
+            fail('profiles.ts has no admin-mint path at all; this check has stopped measuring anything');
+          }
+          // The guard must be in the ENCLOSING CONDITION, and comments do not
+          // count. The first version of this check looked back 400 characters
+          // for the word "allowlist" and was satisfied by the comment block
+          // that sits directly above the mint explaining the allowlist — so
+          // deleting the actual `&& isFounderAdminEmail(...)` from the `if`
+          // still passed. Strip comments, then require the identifier inside
+          // the nearest preceding `if (`.
+          const stripComments = (s) =>
+            s.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/[^\n]*/g, '$1 ');
+          const GUARD_ID = /(FOUNDER_ADMIN_EMAILS|isFounderAdminEmail)/;
+          for (const m of mints) {
+            const before = stripComments(profiles.slice(0, m.index));
+            const ifAt = before.lastIndexOf('if (');
+            const cond = ifAt < 0 ? '' : before.slice(ifAt);
+            const line = profiles.slice(0, m.index).split('\n').length;
+            if (ifAt < 0) {
+              fail(`profiles.ts:${line}: admin is minted with no enclosing conditional at all`);
+            } else if (!GUARD_ID.test(cond)) {
+              fail(`profiles.ts:${line}: admin is minted from a condition that does not consult the founder allowlist`);
+            }
+          }
+
+          // ---- invariant 3: no NEW publicly-callable function without a
+          // recognised authorization guard.
+          //
+          // A ratchet, not a blanket rule. 40 functions are publicly callable
+          // with no guard matched by this pattern today; most are deliberately
+          // public (the community changelog, the plugin catalog, the contact
+          // form) and several authorise by verifying a device credential in a
+          // shape this matcher does not recognise. Auditing them is real work
+          // and belongs in the tree, not here. What this pins is the thing that
+          // must never happen again: a brand-new unauthenticated mutation
+          // appearing beside the credential-issuing ones without review.
+          //
+          // Removing a name from this list is always correct. Adding one
+          // requires reviewing the function first.
+          const KNOWN_UNGUARDED = new Set(`
+          clientConfig.ts:getClientConfig
+          cmdDroneCommands.ts:enqueueCommand
+          cmdDroneCommands.ts:getCommandStatus
+          cmdDroneCommands.ts:listRecentCommands
+          cmdDroneStatus.ts:getCloudStatus
+          cmdLogdWindows.ts:getLogdWindows
+          cmdMcpReach.ts:verifyCredential
+          cmdMcpReach.ts:listNodes
+          cmdMcpReach.ts:getStatus
+          cmdMcpReach.ts:enqueue
+          cmdMcpReach.ts:getCommandStatus
+          cmdMcpReach.ts:recordAudit
+          cmdPairing.ts:issueBrowserSession
+          cmdPluginArchives.ts:getSignedDownloadUrl
+          cmdRadioPairing.ts:enqueueWfbPairInit
+          cmdRadioPairing.ts:enqueueWfbPairApply
+          cmdRadioPairing.ts:enqueueWfbPairUnpair
+          cmdRadioPairing.ts:getCommandWithData
+          cmdRadioPairing.ts:finalizePairing
+          cmdRadioPairing.ts:cancelCommand
+          comments.ts:countByTarget
+          comments.ts:countByTargets
+          communityChangelog.ts:list
+          communityChangelog.ts:listPaginated
+          communityChangelog.ts:listRecent
+          communityChangelog.ts:listCount
+          communityChangelog.ts:getByVersion
+          communityChangelog.ts:getById
+          communityChangelog.ts:reactionCounts
+          communityItems.ts:list
+          communityItems.ts:get
+          communityItems.ts:listByStatus
+          contactSubmissions.ts:submit
+          paramRegistry.ts:getSnapshot
+          pluginRegistry.ts:listPlugins
+          pluginRegistry.ts:getPlugin
+          pluginRegistry.ts:getVersion
+          pluginRegistry.ts:getDownloadUrl
+          pluginRegistry.ts:getRevokedList
+          pluginRegistryDownload.ts:downloadArchive
+          `.trim().split('\n').map((s) => s.trim()).filter(Boolean));
+
+          const AUTH = /getAuthUserId|requireAdmin|requireRole|requireUser|assertAdmin|ctx\.auth\.getUserIdentity/;
+          const DECL = /export const (\w+)\s*=\s*(internalMutation|internalQuery|internalAction|mutation|query|action|httpAction)\s*\(/g;
+
+          let total = 0;
+          let unguarded = 0;
+          const fresh = [];
+          for (const f of files) {
+            const src = readFileSync(join(dir, f), 'utf8');
+            for (const m of src.matchAll(DECL)) {
+              const [, name, kind] = m;
+              if (kind.startsWith('internal')) continue;
+              total++;
+              const next = src.indexOf('\nexport const', m.index + 10);
+              const body = src.slice(m.index, next < 0 ? src.length : next);
+              if (AUTH.test(body)) continue;
+              unguarded++;
+              const key = `${f}:${name}`;
+              if (!KNOWN_UNGUARDED.has(key)) fresh.push(key);
+            }
+          }
+
+          // The declaration matcher engaging is itself an assertion: a syntax
+          // or naming change that stops it matching would turn this into a
+          // guard that inspects nothing and passes.
+          if (total < 50) {
+            fail(`only ${total} public functions found; the declaration matcher stopped working`);
+          }
+          for (const k of fresh) {
+            fail(`${k} is publicly callable with no recognised authorization guard, and is not on the reviewed list`);
+          }
+
+          console.log(`public functions: ${total}, unguarded: ${unguarded}, new-unguarded: ${fresh.length}`);
+          if (!failed) console.log('PASS: Convex exposure invariants hold');
+          process.exit(failed);
+          GUARD
+          node "$RUNNER_TEMP/guard/convex-guard.mjs"

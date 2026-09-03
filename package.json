@@ -16,6 +16,7 @@
     "start": "next start --port 4000",
     "demo": "NEXT_PUBLIC_DEMO_MODE=true next dev --turbo --port 4000",
     "lint": "eslint",
+    "lint:ci": "eslint src convex electron tools --max-warnings 157",
     "typecheck": "npm run typecheck:app && npm run typecheck:convex && npm run typecheck:electron && npm run typecheck:tools",
     "typecheck:app": "tsc --noEmit -p tsconfig.json",
     "typecheck:convex": "tsc --noEmit -p convex/tsconfig.json",

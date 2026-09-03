@@ -21,8 +21,16 @@ jobs:
         run: npm ci
       # Lint and type-check run first so a style or type regression fails
       # fast, before the slower test and coverage steps.
+      #
+      # lint:ci, not lint. Bare `eslint` reports warnings and exits 0, so
+      # every advisory finding was invisible to this gate — including six
+      # react-hooks CORRECTNESS rules, which is not style. `--max-warnings`
+      # turns the current level into a ceiling: 157 measured on this tree
+      # (src 156, convex 1, electron 0, tools 0; 0 errors). It is a ratchet.
+      # Lower it as warnings are fixed, never raise it to make a build pass —
+      # raising it is how the number got to 157.
       - name: Lint
-        run: npm run lint
+        run: npm run lint:ci
       - name: Type-check
         run: npm run typecheck
       - name: Run tests
@@ -37,6 +45,29 @@ jobs:
         with:
           name: coverage-report
           path: coverage/
+
+  # `next build` ran only on a v* tag, so routing, dynamic imports, generated
+  # types and Convex usage were first compiled at release time — the one
+  # moment a failure is most expensive. Nothing in the vitest or tsc steps
+  # above exercises the App Router build.
+  build:
+    name: Production Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      # `prebuild` copies the Cesium assets and `postbuild` stages the
+      # standalone output; both run automatically through the npm lifecycle.
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_CONVEX_URL: https://convex.altnautica.com
 
   security:
     name: Dependency Audit
