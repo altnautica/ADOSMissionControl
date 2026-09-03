@@ -10,10 +10,20 @@
  *
  * Replaces the inline transport-selection logic that previously lived in
  * VideoFeedCard's useEffect. Extracted so it can be unit-tested in
- * isolation and reused by future video surfaces (e.g. PiP popout).
+ * isolation and reused by every video surface.
  *
  * Cloud WHEP and Cloud MSE modes are deferred — the cascade stops at P2P
  * MQTT for now.
+ *
+ * ## Holding the shared stream
+ *
+ * `startStream` takes a hold on the shared receive session and `stopStream`
+ * releases one, so this hook must release exactly what it took. It used to
+ * call `stopStream()` unconditionally from its cleanup — including for the
+ * effect runs that bail before connecting (`off`, `!enabled`, no video
+ * element) — which, with several instances of this hook mounted on the same
+ * feed, meant one surface's unmount tore down another surface's live stream.
+ * `holdsSession` is what makes the release symmetric.
  *
  * All mutable cascade state lives in useRef to survive Turbopack HMR
  * cleanly. Module-level globals get reset on HMR.
@@ -79,14 +89,23 @@ export function useVideoTransportCascade(opts: CascadeOpts): CascadeResult {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Whether THIS effect run holds a hold on the shared session. Only a run
+    // that acquired one may release one; see the module note.
+    let holdsSession = false;
+
     if (transportMode === "off") {
-      // User explicitly turned off video — tear down everything
-      stopStream();
+      // The operator turned video off on this surface. The hold this
+      // surface had was already released by the previous run's cleanup when
+      // the deps changed, and the connection goes when the LAST hold goes —
+      // so switching one pane off no longer blanks another pane that is
+      // still watching.
       if (videoEl) videoEl.srcObject = null;
       setState("idle");
       setActiveTransport("off");
       setError(null);
-      return;
+      return () => {
+        if (holdsSession) void stopStream();
+      };
     }
     if (!enabled) {
       // Agent reports not-running, but DON'T tear down an active WebRTC
@@ -97,9 +116,15 @@ export function useVideoTransportCascade(opts: CascadeOpts): CascadeResult {
       // Just stop auto-reconnecting — don't touch the active stream.
       setState("idle");
       setError(null);
-      return;
+      return () => {
+        if (holdsSession) void stopStream();
+      };
     }
-    if (!videoEl) return;
+    if (!videoEl) {
+      return () => {
+        if (holdsSession) void stopStream();
+      };
+    }
 
     // Part I P0-2 + P0-3: per-run cancellation token. Each effect invocation
     // gets its OWN local `cancelled` flag (closed-over by runCascade) plus
@@ -201,11 +226,16 @@ export function useVideoTransportCascade(opts: CascadeOpts): CascadeResult {
         if (cancelled) return;
         setActiveTransport(mode);
         const stream = await tryMode(mode);
+        // A resolved stream means `startStream` handed this run a hold on
+        // the shared session, whatever happens next.
+        if (stream) holdsSession = true;
         if (cancelled) {
           // We were cancelled mid-mode. If a stream slipped through despite
-          // the abort (rare race), clean it up.
+          // the abort (rare race), give the hold back. The connection only
+          // closes if nothing else is holding it.
           if (stream) {
-            stopStream();
+            holdsSession = false;
+            void stopStream();
             if (videoEl) videoEl.srcObject = null;
           }
           return;
@@ -213,11 +243,13 @@ export function useVideoTransportCascade(opts: CascadeOpts): CascadeResult {
         if (stream) {
           // videoEl was non-null at effect entry, but defensively null-check
           // anyway: a caller could pass a ref that unmounted mid-cascade.
-          // If the element is gone, stop the tracks to avoid leaking the
-          // camera capture.
           if (!videoEl) {
-            stream.getTracks().forEach((t) => t.stop());
-            stopStream();
+            // Do NOT stop the tracks here. They belong to the shared
+            // session, which other surfaces may be rendering; stopping them
+            // would blank those. Releasing the hold is the whole of this
+            // run's obligation.
+            holdsSession = false;
+            void stopStream();
             setState("failed");
             setActiveTransport("unknown");
             setError("Video element unavailable");
@@ -253,7 +285,12 @@ export function useVideoTransportCascade(opts: CascadeOpts): CascadeResult {
         clearTimeout(modeTimeoutHandle);
         modeTimeoutHandle = null;
       }
-      stopStream();
+      // Release only what this run took. An unconditional release here is
+      // what let one surface's unmount close another surface's connection.
+      if (holdsSession) {
+        holdsSession = false;
+        void stopStream();
+      }
       // Part I P0-4: clear srcObject on teardown
       if (videoEl) videoEl.srcObject = null;
     };

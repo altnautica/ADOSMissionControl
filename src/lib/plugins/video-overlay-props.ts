@@ -8,10 +8,12 @@
  * (letterbox-corrected) video rect, the stream resolution, the latest
  * attitude, and the latest detection batch.
  *
- * Cadence: pushed at DETECTION rate (when a new batch lands), not video rate.
+ * Cadence: pushed when a new detection batch lands, and on the shared 1 Hz
+ * clock so a freshness transition is observable with no new data arriving.
  * Geometry is re-pushed only on resize / resolution change. When no batch has
  * arrived within the staleness window the host pushes `detections: null` so
- * overlays drop their boxes.
+ * overlays drop their boxes, and `attitude: null` once the attitude samples
+ * behind it have gone stale.
  *
  * @module plugins/video-overlay-props
  * @license GPL-3.0-only
@@ -63,6 +65,17 @@ export interface VideoOverlayHostProps {
   renderedRect: RenderedRect;
   /** Timestamp (ms) of the frame the detections/attitude are coalesced to. */
   frameTimestampMs: number;
-  attitude: { rollDeg: number; pitchDeg: number; yawDeg: number };
+  /**
+   * Latest attitude in degrees, or `null` when it is unknown or stale.
+   *
+   * Nullable on purpose, for the same reason `HorizonSvg` made its own
+   * inputs nullable: this used to be `roll ?? 0`, so an overlay drawing a
+   * horizon off a dead link painted a perfectly wings-level aircraft — the
+   * one reading a pilot must never be shown when the attitude is unknown,
+   * and the one that is indistinguishable from a correct reading. An
+   * overlay must raise its own failure flag on `null`, never substitute a
+   * zero.
+   */
+  attitude: { rollDeg: number; pitchDeg: number; yawDeg: number } | null;
   detections: VideoOverlayDetections | null;
 }

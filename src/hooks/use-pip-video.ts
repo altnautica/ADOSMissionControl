@@ -1,18 +1,34 @@
 /**
  * @module hooks/use-pip-video
- * @description An ISOLATED WHEP player for the cockpit picture-in-picture inset.
- * The main cockpit feed runs through the module-global singleton peer connection
- * (`video/webrtc/session-state`), so a second live feed needs its own connection
- * that never touches those globals. This hook owns a private `RTCPeerConnection`
- * per PiP `whepUrl`, mirrors the main WHEP SDP exchange (recv-only transceivers +
- * low-latency receiver hints, offer → ICE gather → POST → answer → ontrack), and
- * attaches the resulting stream to the passed `<video>` element. It writes no
- * shared state and polls no stats — a naive second `startStream()` would tear
- * down the main feed.
+ * @description An ISOLATED WHEP player for the cockpit picture-in-picture
+ * inset. The main cockpit feed is the *shared* receive session in
+ * `video/webrtc/session-state`, which holds exactly one connection at a time;
+ * the PiP is a genuinely different stream, so it needs its own. This hook
+ * owns a private `RTCPeerConnection` per PiP `whepUrl`, mirrors the main WHEP
+ * SDP exchange (recv-only transceivers + low-latency receiver hints, offer →
+ * ICE gather → POST → answer → ontrack), and attaches the resulting stream to
+ * the passed `<video>` element. It writes no shared state and polls no stats.
  *
- * Only the `concurrent` switch mechanism (N addressable WHEP paths) supports PiP;
- * a single-encoder `switchable` node has just one live stream. Exercised on a
- * real multi-stream node (a smart pod); in demo mode the inset uses the
+ * ## Why not just call `startStream()`
+ *
+ * This used to say a second `startStream()` would tear down the main feed,
+ * and it was right: `startStream` opened by closing whatever connection was
+ * installed, so a second caller — for any URL, same stream or not — killed
+ * the first surface's video. That hazard is gone. `startStream` now acquires
+ * through the session registry, which shares a live connection with every
+ * caller asking for the same stream identity and refuses to evict an
+ * incumbent until a replacement has actually produced a track.
+ *
+ * The reason this hook still exists is the part the registry did not change:
+ * there is one shared receive session, by design, so acquiring a *second,
+ * different* stream through it displaces the first. A PiP leg is a different
+ * stream by definition. Rendering EO and thermal at once means two
+ * connections, and this hook owns the second one — as
+ * `useAgentVideoSession` and `CameraThumbnail` own theirs.
+ *
+ * Only the `concurrent` switch mechanism (N addressable WHEP paths) supports
+ * PiP; a single-encoder `switchable` node has just one live stream. Exercised
+ * on a real multi-stream node (a smart pod); in demo mode the inset uses the
  * synthetic canvas feed instead of this hook.
  *
  * @license GPL-3.0-only
@@ -26,6 +42,10 @@ import {
   LAN_ICE_GATHER_TIMEOUT_MS,
   LAN_ONTRACK_TIMEOUT_MS,
 } from "@/lib/video/webrtc-constants";
+import {
+  applyJitterTarget,
+  jitterTargetForRung,
+} from "@/lib/video/webrtc/jitter-controller";
 
 /** Connection state of the isolated PiP player, so the inset can show a
  * spinner / NO SIGNAL + retry instead of a silent black rectangle. */
@@ -69,19 +89,14 @@ export function usePipVideo(
       try {
         const newPc = new RTCPeerConnection({ iceServers: [] });
         pc = newPc;
-        const videoTransceiver = newPc.addTransceiver("video", {
-          direction: "recvonly",
-        });
-        try {
-          const recv = videoTransceiver.receiver as RTCRtpReceiver & {
-            playoutDelayHint?: number;
-            jitterBufferTarget?: number;
-          };
-          if ("playoutDelayHint" in recv) recv.playoutDelayHint = 0;
-          if ("jitterBufferTarget" in recv) recv.jitterBufferTarget = 50;
-        } catch {
-          // Browser without the receiver-side hint API — use its defaults.
-        }
+        newPc.addTransceiver("video", { direction: "recvonly" });
+        // Ladder rung 0 — add no buffer. This is the same helper the main
+        // flows use, replacing a second copy of the hardcoded 50 ms nobody
+        // measured. The inset runs no stats poll, so unlike the main
+        // session it stays at rung 0 rather than closing a loop: an inset
+        // has no latency budget of its own to spend, and inventing a second
+        // control loop for a corner window is not worth the code.
+        applyJitterTarget(newPc, jitterTargetForRung(0));
         newPc.addTransceiver("audio", { direction: "recvonly" });
 
         const stream = new Promise<MediaStream>((resolve, reject) => {

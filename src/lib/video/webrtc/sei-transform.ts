@@ -1,15 +1,31 @@
 /**
  * @module video/webrtc/sei-transform
- * @description SEI receiver-worker plumbing for the true glass-to-glass
- * latency probe. Installs `RTCRtpScriptTransform` on the video receiver
- * (no-ops on browsers without the API), maintains a small ring buffer
- * of (rtpTimestamp, seiMs, recvMs) samples, and binds the
- * requestVideoFrameCallback so each rendered frame can be matched
- * against an air-side timestamp.
+ * @description Receiver-side frame instrumentation. Two things ride the same
+ * `requestVideoFrameCallback` loop:
+ *
+ * 1. The SEI glass-to-glass probe. `RTCRtpScriptTransform` (no-op on browsers
+ *    without the API) lets a worker read the air-side wall-clock stamp the
+ *    agent splices into the bitstream, kept in a small
+ *    (rtpTimestamp, seiMs, recvMs) ring and matched to each rendered frame.
+ *    This is the only estimator that can see the camera-to-encoder leg, which
+ *    is upstream of every timestamp the browser has.
+ * 2. The per-hop receive budget in `@/lib/video/latency-budget`, derived from
+ *    the frame metadata the user agent supplies directly. It needs no
+ *    transform and no agent-side cooperation, so it works where the SEI probe
+ *    does not — and it splits the receive path instead of yielding one number.
+ *
+ * The two are kept separate rather than folded into one field: they are
+ * different estimators of overlapping quantities, and a surface that shows a
+ * number has to be able to say which one produced it.
+ *
  * @license GPL-3.0-only
  */
 
 import { useVideoStore } from "@/stores/video-store";
+import {
+  observeFrameLatency,
+  type FrameLatencyMetadata,
+} from "../latency-budget";
 import { getVideoElement } from "./session-state";
 
 let seiWorker: Worker | null = null;
@@ -122,15 +138,13 @@ export function detachSeiTransform(): void {
   seiRing.length = 0;
 }
 
-// requestVideoFrameCallback is present in modern Chromium/WebKit but
-// the TS lib type uses a more permissive shape than we care about
-// here. Use a lightweight local type + cast to keep the call site
-// readable without conflicting with lib.dom's declaration.
-interface FrameMetaLite {
-  presentationTime: number;
-  rtpTimestamp?: number;
-}
-type FrameCb = (now: number, metadata: FrameMetaLite) => void;
+// requestVideoFrameCallback is present in modern Chromium/WebKit but not in
+// lib.dom's declarations, and the WebRTC-source fields (captureTime,
+// receiveTime, processingDuration) are absent from every published type. The
+// metadata shape the budget module needs is declared there;
+// `FrameLatencyMetadata` is reused here rather than kept as a second partial
+// copy that could drift from the arithmetic that consumes it.
+type FrameCb = (now: number, metadata: FrameLatencyMetadata) => void;
 interface RvfcCarrier {
   requestVideoFrameCallback?: (cb: FrameCb) => number;
 }
@@ -142,6 +156,11 @@ export function bindFrameCallback(el: HTMLVideoElement): void {
 
   const handler: FrameCb = (_now, metadata) => {
     if (el !== getVideoElement()) return; // element swapped, stop the loop
+
+    // Per-hop receive budget. Needs no transform and no agent cooperation,
+    // so this runs on every browser that implements the callback at all.
+    observeFrameLatency(metadata);
+
     if (typeof metadata.rtpTimestamp === "number") {
       const match = findSeiByRtpTimestamp(metadata.rtpTimestamp);
       const offset =

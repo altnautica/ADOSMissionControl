@@ -4,6 +4,12 @@
  * when attempting the `lan-whep` mode; this module handles the SDP
  * exchange against mediamtx, ICE gathering, ontrack wait, and the
  * receiver-side latency hints.
+ *
+ * Acquisition is deduped by stream identity through the session registry, so
+ * the four surfaces that render the same feed share one negotiation and one
+ * connection instead of closing each other's. See
+ * `./session-state` for why that is ownership rather than politeness.
+ *
  * @license GPL-3.0-only
  */
 
@@ -17,55 +23,75 @@ import {
   checkAborted,
   classifyError,
 } from "../webrtc-helpers";
+import { applyJitterTarget, jitterTargetForRung } from "./jitter-controller";
 import {
   closePeerConnection,
   reportHealth,
   tryIceRestart,
 } from "./peer-utils";
 import { attachSeiTransform } from "./sei-transform";
-import { getPc, setPc } from "./session-state";
+import {
+  acquireSession,
+  getPc,
+  installSession,
+  setPc,
+  whepSessionKey,
+} from "./session-state";
 import { startStatsPolling, stopStatsPolling } from "./stats-tracker";
 
 /**
- * Start a WebRTC stream from a WHEP endpoint.
+ * Acquire the LAN-direct WHEP stream at `whepUrl`.
+ *
+ * Deduped by stream identity: a surface asking for a feed that is already
+ * live gets the same `MediaStream` and a lease on the existing connection,
+ * and one asking for a feed whose handshake is in flight joins that
+ * handshake. Only a genuinely different stream negotiates.
  *
  * @param whepUrl — Full WHEP URL, e.g. `http://192.168.1.50:8889/stream/whep`
- * @param signal  — Optional AbortSignal. When fired, the function aborts at
- *                  the next checkpoint and throws AbortError. Used by the
- *                  cascade hook to cancel a mode mid-attempt without
- *                  leaving a stale background continuation.
+ * @param signal  — Optional AbortSignal. When fired, this caller stops
+ *                  waiting and throws AbortError. The underlying handshake
+ *                  is only cancelled once no caller is waiting on it, so the
+ *                  cascade cancelling a mode can no longer cancel a
+ *                  handshake another surface still needs.
  * @returns The MediaStream to attach to a <video> element.
  */
-export async function startStream(
+export function startStream(
   whepUrl: string,
   signal?: AbortSignal,
 ): Promise<MediaStream> {
+  return acquireSession(whepSessionKey(whepUrl), signal, (negotiationSignal) =>
+    negotiateWhep(whepUrl, negotiationSignal),
+  );
+}
+
+/** The SDP exchange itself. Runs at most once per stream identity. */
+async function negotiateWhep(
+  whepUrl: string,
+  signal: AbortSignal,
+): Promise<MediaStream> {
   const store = useVideoStore.getState();
   const startedAt = Date.now();
-  // startStream is the LAN-direct WHEP path; the cascade hook only calls
-  // it when attempting lan-whep. The URL itself may be a Cloudflare
-  // tunnel (relay.altnautica.com) on cloud-routed deployments, but the
-  // *mode* the cascade attached to is still lan-whep. Trust the cascade,
-  // not detectTransportFromUrl which mis-classifies tunneled URLs.
+  // This is the LAN-direct WHEP path; the cascade hook only calls it when
+  // attempting lan-whep. The URL itself may be a Cloudflare tunnel on
+  // cloud-routed deployments, but the *mode* the cascade attached to is
+  // still lan-whep. Trust the cascade, not detectTransportFromUrl which
+  // mis-classifies tunneled URLs.
   const transport: VideoTransport = "lan-whep";
 
   // Report testing state for the cascade UX
   reportHealth(transport, { state: "testing", stage: "starting" });
 
-  // Clean up any stale connection before starting fresh
-  const existing = getPc();
-  if (existing) {
-    closePeerConnection(existing);
-    setPc(null);
-    stopStatsPolling();
-  }
+  // No pre-emptive teardown of whatever is currently installed. The registry
+  // displaces the incumbent in `installSession`, i.e. only once this
+  // handshake has actually produced a track — closing it here is what used
+  // to blank a working surface the moment a second one mounted, and blanked
+  // it permanently when the new attempt then failed.
 
   // Hold a local reference so handlers can verify they're still the
-  // active pc. The module-level `pc` may be replaced by a parallel call
-  // (e.g. cascade switching modes) and we don't want stale handlers to
-  // operate on the wrong connection.
+  // active pc. `getPc()` may move to a newer connection (e.g. the cascade
+  // switching modes) and we don't want stale handlers to operate on the
+  // wrong one.
   let localPc: RTCPeerConnection | null = null;
-
   try {
     checkAborted(signal);
 
@@ -100,51 +126,29 @@ export async function startStream(
       }
     };
 
-    // Receive-only transceiver. Capture the video transceiver so the
-    // receiver-side playout hints can be set before negotiation begins.
+    // Receive-only transceivers. The receiver-side latency knobs are set
+    // before negotiation so the first frames are not buffered against a
+    // default nobody chose.
     //
-    // playoutDelayHint=0: the default RTCRtpReceiver targets a playout
-    // buffer in the 100-200 ms range for live streams. With a healthy
-    // LAN link this is pure latency tax; the value is a hint (not a
-    // hard ceiling) so the stack still grows the buffer if jitter
-    // demands it. Browsers that don't implement the property ignore
-    // the assignment (silent no-op via property check).
+    // The starting depth is ladder rung 0 — add nothing — rather than the
+    // 50 ms this used to hardcode and call "the FPV-grade default". No
+    // measurement produced 50, and it is wrong in both directions: pure
+    // latency tax on a clean LAN, and far too shallow to conceal a loss
+    // burst on a radio link. From here the depth is a closed loop over what
+    // the receiver actually measures (`jitter-controller`, driven from the
+    // 1 Hz stats poll), so it lands where the link puts it instead of where
+    // a constant guessed.
     //
-    // jitterBufferTarget=50: Chrome-only and experimental, sets a
-    // preferred lower bound on the jitter buffer in ms. 50 ms is the
-    // FPV-grade default; on a flaky link the buffer still expands
-    // automatically. Strictly additive to playoutDelayHint.
-    //
-    // Distinct from the previously-removed mungeForLowLatency() SDP
-    // hack. That mechanism pinned Chrome's MINIMUM jitter buffer via
-    // the conference flag and caused decoder stalls on WiFi
-    // reordering. These are *receiver-side runtime properties* — they
-    // suggest a target without forcing a hard floor — so the failure
-    // mode of the prior approach does not apply.
-    const videoTransceiver = localPc.addTransceiver("video", {
-      direction: "recvonly",
-    });
-    try {
-      const recv = videoTransceiver.receiver as RTCRtpReceiver & {
-        playoutDelayHint?: number;
-        jitterBufferTarget?: number;
-      };
-      if ("playoutDelayHint" in recv) {
-        recv.playoutDelayHint = 0;
-      }
-      if ("jitterBufferTarget" in recv) {
-        recv.jitterBufferTarget = 50;
-      }
-    } catch (err) {
-      // Browser without the receiver-side hint API — log once and
-      // continue. Default Chrome / Edge / Opera support it; older
-      // Firefox and Safari builds fall back to their internal
-      // defaults.
-      console.debug(
-        "[webrtc-client] receiver-side latency hints unavailable",
-        err,
-      );
-    }
+    // Distinct from the previously-removed mungeForLowLatency() SDP hack.
+    // That pinned Chrome's MINIMUM jitter buffer via the conference flag
+    // and caused decoder stalls on WiFi reordering. These are
+    // *receiver-side runtime properties* — a target, not a floor — so the
+    // failure mode of the prior approach does not apply.
+    localPc.addTransceiver("video", { direction: "recvonly" });
+    // Reports 0 on a browser that implements neither property (WebKit
+    // implements neither and cannot be tuned from JS at all), which is the
+    // honest answer rather than a silent assumption that it took effect.
+    applyJitterTarget(localPc, jitterTargetForRung(0));
     localPc.addTransceiver("audio", { direction: "recvonly" });
 
     const offer = await abortable(localPc.createOffer(), signal);
@@ -214,6 +218,12 @@ export async function startStream(
     await abortable(localPc.setRemoteDescription({ type: "answer", sdp: answerSdp }), signal);
     const stream = await abortable(trackPromise, signal);
     checkAborted(signal);
+
+    // Publish as the shared session before any store write, so a concurrent
+    // acquisition of the same stream is served from here rather than
+    // starting a second handshake. This is also where a session for a
+    // different stream is displaced and closed.
+    installSession(whepSessionKey(whepUrl), localPc, stream);
 
     store.setStreamUrl(whepUrl);
     store.setStreaming(true);

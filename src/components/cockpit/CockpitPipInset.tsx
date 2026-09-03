@@ -8,9 +8,11 @@
  * is set (the operator toggles it with `P` or a tab affordance). Overlays follow
  * the MAIN active stream, not this inset.
  *
- * The inset uses an isolated WHEP player (`usePipVideo`) so the second live feed
- * never disturbs the main singleton session. In demo mode there is no live
- * WebRTC, so it renders the synthetic per-stream canvas instead.
+ * The inset uses an isolated WHEP player (`usePipVideo`) because the main feed
+ * is the one *shared* receive session, and a PiP leg is a different stream —
+ * acquiring a second, different stream through the shared session would
+ * displace the first. In demo mode there is no live WebRTC, so it renders the
+ * synthetic per-stream canvas instead.
  *
  * @license GPL-3.0-only
  */

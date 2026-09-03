@@ -155,4 +155,48 @@ describe("VideoOverlayHost", () => {
       lockState: "locked",
     });
   });
+
+  it("collapses a stale attitude to null instead of a wings-level lie", () => {
+    const { container } = render(
+      <VideoOverlayHost
+        droneId="drone-1"
+        contributions={[OVERLAY_CONTRIBUTION]}
+      />,
+    );
+    const posted = captureIframePosts(container);
+
+    act(() => {
+      // A sample from well beyond TELEMETRY_STALE_MS: the link is gone and
+      // the ring is still holding its last value, as a ring should.
+      useTelemetryStore.getState().pushAttitude({
+        timestamp: Date.now() - 60_000,
+        roll: 5,
+        pitch: -3,
+        yaw: 90,
+        rollSpeed: 0,
+        pitchSpeed: 0,
+        yawSpeed: 0,
+      });
+      useVisionDetectionsStore.getState().setBatch("drone-1", {
+        modelId: "yolo",
+        cameraId: "cam0",
+        frameId: 8,
+        tsMs: 1234,
+        frameWidth: 640,
+        frameHeight: 480,
+        detections: [],
+      });
+    });
+
+    const events = posted
+      .map((p) => p.data as { method?: string; args?: VideoOverlayHostProps })
+      .filter((d) => d.method === VIDEO_OVERLAY_PROPS_EVENT);
+    expect(events.length).toBeGreaterThan(0);
+
+    // This used to be `roll ?? 0`, which handed every overlay a perfectly
+    // wings-level aircraft forever after the link died — the one reading a
+    // pilot must never be shown when the attitude is unknown, and the one
+    // indistinguishable from a correct reading.
+    expect(events[events.length - 1].args!.attitude).toBeNull();
+  });
 });

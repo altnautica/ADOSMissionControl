@@ -27,8 +27,15 @@ import {
   reportHealth,
   tryIceRestart,
 } from "./peer-utils";
+import { applyJitterTarget, jitterTargetForRung } from "./jitter-controller";
 import { attachSeiTransform } from "./sei-transform";
-import { getPc, setPc } from "./session-state";
+import {
+  acquireSession,
+  getPc,
+  installSession,
+  mqttSessionKey,
+  setPc,
+} from "./session-state";
 import { startStatsPolling, stopStatsPolling } from "./stats-tracker";
 import {
   getMqttBrokerCredential,
@@ -36,17 +43,33 @@ import {
 } from "@/lib/mqtt-broker-credential";
 
 /**
- * Start a WebRTC stream via MQTT-relayed SDP signaling.
+ * Acquire the MQTT-signalled P2P stream for `deviceId`.
  *
  * Used when the browser cannot reach the agent's local WHEP endpoint
  * directly (cross-network case — cellular phone, different LAN).
  *
+ * Deduped by stream identity through the session registry, exactly as the
+ * LAN WHEP path is: a second surface asking for the same device shares the
+ * live session or joins the handshake in flight rather than starting a
+ * second one and closing the first.
+ *
  * @param deviceId — Cloud device ID of the paired agent.
  * @returns The MediaStream to attach to a <video> element.
  */
-export async function startStreamViaMqttSignaling(
+export function startStreamViaMqttSignaling(
   deviceId: string,
   signal?: AbortSignal,
+  auth?: { username?: string | null; password?: string | null },
+): Promise<MediaStream> {
+  return acquireSession(mqttSessionKey(deviceId), signal, (negotiationSignal) =>
+    negotiateViaMqtt(deviceId, negotiationSignal, auth),
+  );
+}
+
+/** The MQTT-relayed SDP exchange itself. Runs at most once per device. */
+async function negotiateViaMqtt(
+  deviceId: string,
+  signal: AbortSignal,
   auth?: { username?: string | null; password?: string | null },
 ): Promise<MediaStream> {
   const store = useVideoStore.getState();
@@ -56,13 +79,10 @@ export async function startStreamViaMqttSignaling(
   // attempt.
   reportHealth("p2p-mqtt", { state: "testing", stage: "starting" });
 
-  // Clean up any stale connection before starting fresh.
-  const existing = getPc();
-  if (existing) {
-    closePeerConnection(existing);
-    setPc(null);
-    stopStatsPolling();
-  }
+  // No pre-emptive teardown: the incumbent session is displaced in
+  // `installSession`, once this handshake has produced a track. Closing it
+  // here would blank a working surface on every attempt, including the ones
+  // that then fail — and on this path the attempt takes up to 28 s.
 
   // mqtt.js client lives outside the inner Promise so the outer try/finally
   // guarantees cleanup on every code path (success, timeout, error).
@@ -122,6 +142,12 @@ export async function startStreamViaMqttSignaling(
     };
 
     localPc.addTransceiver("video", { direction: "recvonly" });
+    // Ladder rung 0 — add no buffer until something measured asks for it.
+    // The closed loop in `jitter-controller`, driven from the stats poll,
+    // takes it from here. This path is cross-network, so it is the one where
+    // the loop earns the most: the correct depth for a cellular hop is not
+    // the correct depth for the same code on a LAN.
+    applyJitterTarget(localPc, jitterTargetForRung(0));
     localPc.addTransceiver("audio", { direction: "recvonly" });
 
     const offer = await abortable(localPc.createOffer(), signal);
@@ -287,6 +313,9 @@ export async function startStreamViaMqttSignaling(
 
     // === Stage: connected ===
     const elapsedMs = Date.now() - startedAt;
+    // Publish before any store write so a concurrent acquisition of the
+    // same device shares this session instead of negotiating again.
+    installSession(mqttSessionKey(deviceId), localPc, stream);
     store.setStreamUrl(`mqtt://${deviceId}/webrtc`);
     store.setStreaming(true);
     store.setTransport("p2p-mqtt");

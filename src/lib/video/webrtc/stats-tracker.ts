@@ -5,6 +5,12 @@
  * periodic `pc.getStats()` sweep, then publishes a single atomic patch
  * to the video store.
  *
+ * It is also the control loop for the receiver's jitter-buffer depth. The
+ * same sweep already reads everything the decision needs — reported freezes,
+ * RTP interarrival jitter, packet loss — so the depth is chosen from what
+ * this connection measured rather than from a constant chosen once for every
+ * link. See `./jitter-controller` for the law and the hysteresis.
+ *
  * The polling state (`lastFramesDecoded`, `lastStatsTime`, etc.) lives
  * in `useVideoStore._pollState` so Turbopack HMR re-evaluating this
  * module does not reset the deltas to 0 mid-session.
@@ -13,9 +19,35 @@
  */
 
 import { useVideoStore } from "@/stores/video-store";
+import {
+  applyJitterTarget,
+  initialJitterState,
+  nextJitterTarget,
+  type JitterControllerState,
+} from "./jitter-controller";
 import { getPc } from "./session-state";
 
 let statsInterval: ReturnType<typeof setInterval> | null = null;
+
+/**
+ * Jitter-buffer control state, and the counters the loop differentiates.
+ *
+ * `freezeCount` and the packet counters are cumulative for the life of the
+ * connection, so the decision needs the delta over one window — a cumulative
+ * read would keep escalating forever off a freeze that happened during
+ * connection ramp-up and never recurred.
+ */
+let jitterState: JitterControllerState = initialJitterState();
+let lastFreezeCount = 0;
+let lastPacketsLost = 0;
+let lastPacketsReceived = 0;
+/** The depth currently asked of the receiver, for the diagnostics surface. */
+let appliedJitterTargetMs = 0;
+
+/** The jitter-buffer depth the loop last asked the receiver for, in ms. */
+export function currentJitterTargetMs(): number {
+  return appliedJitterTargetMs;
+}
 
 // Frozen-stream watchdog window. If neither framesDecoded nor
 // bytesReceived advances for this long while pc.connectionState stays
@@ -75,6 +107,13 @@ export function startStatsPolling(): void {
     lastFrameTime: Date.now(),
     lastProgressTime: Date.now(),
   });
+  // A new session starts the loop over. Carrying a rung across a reconnect
+  // would apply the previous link's verdict to a link nobody has measured.
+  jitterState = initialJitterState();
+  lastFreezeCount = 0;
+  lastPacketsLost = 0;
+  lastPacketsReceived = 0;
+  appliedJitterTargetMs = 0;
   armVisibilityReset();
 
   statsInterval = setInterval(async () => {
@@ -109,6 +148,9 @@ export function startStatsPolling(): void {
     let inboundJitterRtpMs = 0;
     let bytesReceived = 0;
     let inboundCodecId: string | undefined;
+    // Cumulative counters the jitter loop differentiates over this window.
+    let freezeCount = 0;
+    let packetsReceived = 0;
 
     stats.forEach((report) => {
       if (report.type === "codec") {
@@ -128,7 +170,10 @@ export function startStatsPolling(): void {
           codecId?: string;
           bytesReceived?: number;
           packetsLost?: number;
+          packetsReceived?: number;
           jitter?: number;
+          /** Cumulative freezes the decoder reported. Chromium-only today. */
+          freezeCount?: number;
         };
         const r = report as ExtendedInbound;
 
@@ -175,6 +220,8 @@ export function startStatsPolling(): void {
         packetsLost = r.packetsLost ?? 0;
         // r.jitter is in seconds (per spec)
         inboundJitterRtpMs = Math.round((r.jitter ?? 0) * 1000);
+        packetsReceived = r.packetsReceived ?? 0;
+        freezeCount = r.freezeCount ?? 0;
         return;
       }
 
@@ -249,6 +296,40 @@ export function startStatsPolling(): void {
         lastFrameTime: computedFps > 0 ? Date.now() : ps.lastFrameTime,
         lastProgressTime: progressed ? Date.now() : ps.lastProgressTime,
       });
+
+      // Jitter-buffer control step. Deltas, not cumulative reads: a freeze
+      // during connection ramp-up must not hold the buffer deep for the
+      // rest of the flight. A counter that went backwards means the
+      // connection was replaced, so the window is discarded rather than
+      // read as a negative rate.
+      const freezeDelta = Math.max(freezeCount - lastFreezeCount, 0);
+      const lostDelta = Math.max(packetsLost - lastPacketsLost, 0);
+      const receivedDelta = Math.max(packetsReceived - lastPacketsReceived, 0);
+      lastFreezeCount = freezeCount;
+      lastPacketsLost = packetsLost;
+      lastPacketsReceived = packetsReceived;
+
+      const decision = nextJitterTarget(jitterState, {
+        freezeDelta,
+        rtpJitterMs: inboundJitterRtpMs,
+        lossFraction:
+          lostDelta + receivedDelta > 0
+            ? lostDelta / (lostDelta + receivedDelta)
+            : 0,
+        nowMs: Date.now(),
+      });
+      jitterState = decision;
+      if (decision.changed) {
+        const applied = applyJitterTarget(pc, decision.targetMs);
+        // Only record the depth as applied when a receiver accepted it.
+        // On a browser that implements neither property nothing changed,
+        // and reporting the requested value would be a claim about the
+        // buffer that the buffer never heard.
+        appliedJitterTargetMs = applied > 0 ? decision.targetMs : 0;
+        console.debug(
+          `[video-latency] jitter target -> ${decision.targetMs}ms (${decision.reason}, ${applied} receiver(s))`,
+        );
+      }
     }
 
     // Frozen-stream watchdog. The native pc.onconnectionstatechange

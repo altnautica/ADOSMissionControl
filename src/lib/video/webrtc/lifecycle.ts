@@ -1,46 +1,41 @@
 /**
  * @module video/webrtc/lifecycle
- * @description Cross-flow lifecycle helpers: stop the active stream,
- * bind a video element for screenshot/recording reference, and the
+ * @description Cross-flow lifecycle helpers: release a hold on the shared
+ * stream, bind a video element for screenshot/recording reference, and the
  * is-stream-active probe that consumers use to gate UI affordances.
  * @license GPL-3.0-only
  */
 
 import { useVideoStore } from "@/stores/video-store";
-import { closePeerConnection, resetIceRestartCooldown } from "./peer-utils";
-import { detachSeiTransform, bindFrameCallback } from "./sei-transform";
+import { bindFrameCallback } from "./sei-transform";
 import {
-  getMediaRecorder,
   getPc,
-  setPc,
+  releaseSession,
   setVideoElementRef,
 } from "./session-state";
-import { stopStatsPolling } from "./stats-tracker";
-import { stopRecording } from "./recording";
+// Imported for its module-level side effect as well as nothing else: it is
+// where the session registry's teardown sequence is registered.
+import "./peer-utils";
 
-/** Stop the active WebRTC stream. */
+/**
+ * Release this caller's hold on the shared receive session.
+ *
+ * Not "stop the stream" any more, and that is the point. Four surfaces
+ * render the same feed, and an unconditional teardown here meant whichever
+ * one unmounted first blanked the others. The connection is torn down when
+ * the last hold goes, by the registry; a release from a caller that never
+ * acquired — several cascade cleanup paths do exactly that, because the
+ * cleanup runs even for an effect run that bailed before connecting — is a
+ * no-op.
+ *
+ * The store reset only runs on real teardown, so a surface unmounting does
+ * not blank the transport badge and latency readout of a surface that is
+ * still streaming.
+ */
 export async function stopStream(): Promise<void> {
+  if (!releaseSession()) return;
+
   const store = useVideoStore.getState();
-
-  if (getMediaRecorder()?.state === "recording") {
-    stopRecording();
-  }
-
-  stopStatsPolling();
-  detachSeiTransform();
-
-  const current = getPc();
-  if (current) {
-    // closePeerConnection nulls handlers, stops every receiver+sender
-    // track (Safari camera-stuck fix), then closes the connection.
-    closePeerConnection(current);
-    setPc(null);
-  }
-
-  // Reset ICE restart cooldown so the next session can restart immediately
-  // instead of being gated by the previous session's 5s cooldown.
-  resetIceRestartCooldown();
-
   store.setStreaming(false);
   store.setStreamUrl(null);
   store.updateStats(0, 0);
@@ -74,8 +69,8 @@ export function setVideoElement(el: HTMLVideoElement | null): void {
         .setResolution(`${el.videoWidth}x${el.videoHeight}`);
     };
     el.addEventListener("loadedmetadata", metadataHandler);
-    // Hook requestVideoFrameCallback for the SEI-driven true G2G
-    // computation. No-op when the browser lacks the API.
+    // Hook requestVideoFrameCallback for the per-hop latency budget and the
+    // SEI-driven true G2G computation. No-op when the browser lacks the API.
     bindFrameCallback(el);
   }
 }

@@ -46,6 +46,9 @@ import {
   type VideoOverlayDetections,
   type VideoOverlayHostProps,
 } from "@/lib/plugins/video-overlay-props";
+import { useClockTick } from "@/lib/agent/freshness";
+import { freshOnly } from "@/lib/telemetry/freshness";
+import { useClockStore } from "@/stores/clock-store";
 
 /** Mirror DetectionOverlay's default staleness window. */
 const DEFAULT_STALE_MS = 2000;
@@ -215,17 +218,23 @@ export function VideoOverlayHost({
     };
   }, [droneId]);
 
-  // ── Staleness clock: drop detections after the window even with no new
-  // batch, by re-evaluating on an interval while a batch is present. ──
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    if (!batch) return;
-    const id = setInterval(() => setNow(Date.now()), 500);
-    return () => clearInterval(id);
-  }, [batch]);
+  // ── Staleness clock: the shared 1 Hz ticker, so both the detection window
+  // and the telemetry-freshness gate below re-evaluate even when no new data
+  // arrives — which is exactly the case that matters, because "nothing is
+  // arriving" is what staleness means. This replaces a per-instance 500 ms
+  // interval that only ran while a batch was present, so attitude could go
+  // stale unobserved the moment detections stopped.
+  //
+  // `useClockTick` takes the refcounted subscription that keeps the one
+  // process-wide interval running; `now` is the wall clock captured at that
+  // tick, and it is the value every age below is measured against. The tick
+  // itself is a COUNTER — using it as a clock would make every age hugely
+  // negative, which both gates read as "from the future" and therefore
+  // fresh: a gate that can never fire, which is the bug this closes.
+  useClockTick();
+  const now = useClockStore((s) => s.now);
 
-  // ── Build the host-props payload at detection rate. Attitude is read at
-  // batch time (coalesced), not on the telemetry tick. ──
+  // ── Build the host-props payload when a batch lands or the clock ticks. ──
   const hostProps = useMemo<VideoOverlayHostProps>(() => {
     const fresh = batch != null && now - batch.receivedAt <= staleAfterMs;
     const detections: VideoOverlayDetections | null =
@@ -258,8 +267,15 @@ export function VideoOverlayHost({
           }
         : null;
 
-    // Coalesce attitude to the batch moment (latest sample at push time).
-    const att = useTelemetryStore.getState().attitude.latest();
+    // Attitude, coalesced to the batch moment, gated through the telemetry
+    // freshness contract. It used to be `att?.roll ?? 0`, which on a dead
+    // link handed every overlay a perfectly wings-level aircraft forever.
+    // `freshOnly` collapses a stale sample to absent and the prop is
+    // nullable, so an overlay has to raise a flag rather than draw a lie.
+    const att = freshOnly(
+      useTelemetryStore.getState().attitude.latest(),
+      now,
+    );
 
     return {
       droneId,
@@ -268,14 +284,13 @@ export function VideoOverlayHost({
       streamHeight: geometry.streamHeight,
       renderedRect: geometry.rect,
       frameTimestampMs: batch?.tsMs ?? 0,
-      attitude: {
-        rollDeg: att?.roll ?? 0,
-        pitchDeg: att?.pitch ?? 0,
-        yawDeg: att?.yaw ?? 0,
-      },
+      attitude: att
+        ? { rollDeg: att.roll, pitchDeg: att.pitch, yawDeg: att.yaw }
+        : null,
       detections,
     };
-    // `now` is a dependency so the staleness transition re-pushes detections:null.
+    // `now` is a dependency so a staleness transition re-pushes with
+    // detections and attitude collapsed to null, with no new data arriving.
   }, [droneId, batch, geometry, staleAfterMs, now]);
 
   const hostEvent = useMemo(
