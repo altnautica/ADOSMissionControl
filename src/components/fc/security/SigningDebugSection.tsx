@@ -68,10 +68,8 @@ export function SigningDebugSection({ droneId }: Props) {
             <dd>{String(state?.requireOnFc ?? "—")}</dd>
             <dt className="text-text-tertiary">TX signed</dt>
             <dd>{state?.txSignedCount ?? 0}</dd>
-            <dt className="text-text-tertiary">RX signed</dt>
+            <dt className="text-text-tertiary">RX signed (observed)</dt>
             <dd>{state?.rxSignedCount ?? 0}</dd>
-            <dt className="text-text-tertiary">RX invalid</dt>
-            <dd>{state?.rxInvalidCount ?? 0}</dd>
             <dt className="text-text-tertiary">Last signed frame</dt>
             <dd>
               {state?.lastSignedFrameAt
@@ -113,7 +111,6 @@ interface SigningStateSubset {
   enrollmentState: string;
   txSignedCount: number;
   rxSignedCount: number;
-  rxInvalidCount: number;
   lastSignedFrameAt: number | null;
   agentCounters: { tx_signed_count: number; rx_signed_count: number; last_signed_rx_at: number | null } | null;
 }
@@ -135,7 +132,6 @@ export function buildDiagnostics(
       requireOnFc: state?.requireOnFc ?? null,
       txSignedCount: state?.txSignedCount ?? 0,
       rxSignedCount: state?.rxSignedCount ?? 0,
-      rxInvalidCount: state?.rxInvalidCount ?? 0,
       lastSignedFrameAt: state?.lastSignedFrameAt ?? null,
       agentCounters: state?.agentCounters ?? null,
     },

@@ -2,13 +2,10 @@ import { describe, it, expect } from "vitest";
 
 import {
   classifyVariant,
-  MISMATCH_WINDOW_MS,
   VARIANTS,
   type BadgeClassifyInput,
   type SigningBadgeVariant,
 } from "@/components/command/SigningStatusBadge";
-
-const NOW = 1_700_000_000_000;
 
 function input(partial: Partial<BadgeClassifyInput>): BadgeClassifyInput {
   return {
@@ -20,16 +17,16 @@ function input(partial: Partial<BadgeClassifyInput>): BadgeClassifyInput {
 
 describe("classifyVariant", () => {
   it("returns loading when state is missing", () => {
-    expect(classifyVariant(undefined, NOW)).toBe("loading");
+    expect(classifyVariant(undefined)).toBe("loading");
   });
 
   it("returns loading when capability is null", () => {
-    expect(classifyVariant(input({ capability: null }), NOW)).toBe("loading");
+    expect(classifyVariant(input({ capability: null }))).toBe("loading");
   });
 
   it("returns na when firmware does not support signing", () => {
     expect(
-      classifyVariant(input({ capability: { supported: false } }), NOW),
+      classifyVariant(input({ capability: { supported: false } })),
     ).toBe("na");
   });
 
@@ -40,37 +37,23 @@ describe("classifyVariant", () => {
         hasBrowserKey: false,
         enrollmentState: "key_missing",
       }),
-      NOW,
     );
     expect(r).toBe("key_missing");
   });
 
-  it("returns mismatch when recent signed frames were rejected", () => {
-    const r = classifyVariant(
-      input({
-        capability: { supported: true },
-        hasBrowserKey: true,
-        enrollmentState: "enrolled",
-        rxInvalidCount: 5,
-        lastSignedFrameAt: NOW - 1000,
-      }),
-      NOW,
-    );
-    expect(r).toBe("mismatch");
-  });
-
-  it("does not return mismatch when the last signed frame is outside the window", () => {
-    const r = classifyVariant(
-      input({
-        capability: { supported: true },
-        hasBrowserKey: true,
-        enrollmentState: "enrolled",
-        rxInvalidCount: 5,
-        lastSignedFrameAt: NOW - (MISMATCH_WINDOW_MS + 1000),
-      }),
-      NOW,
-    );
-    expect(r).toBe("signed");
+  // There is no "mismatch" variant, and this pins that. The old one was
+  // gated on a counter nothing incremented, so the branch was unreachable in
+  // production while this very test passed by injecting the counter by hand.
+  // A signing-mismatch badge may only come back with a real detector behind
+  // it, at which point this assertion is the thing that has to change.
+  it("classifies an enrolled key as signed, with no mismatch state to reach", () => {
+    const enrolled = input({
+      capability: { supported: true },
+      hasBrowserKey: true,
+      enrollmentState: "enrolled",
+    });
+    expect(classifyVariant(enrolled)).toBe("signed");
+    expect(Object.keys(VARIANTS)).not.toContain("mismatch");
   });
 
   it("returns signed when enrolled and require is off", () => {
@@ -81,7 +64,6 @@ describe("classifyVariant", () => {
         enrollmentState: "enrolled",
         requireOnFc: false,
       }),
-      NOW,
     );
     expect(r).toBe("signed");
   });
@@ -94,7 +76,6 @@ describe("classifyVariant", () => {
         enrollmentState: "enrolled",
         requireOnFc: true,
       }),
-      NOW,
     );
     expect(r).toBe("signed_required");
   });
@@ -102,26 +83,27 @@ describe("classifyVariant", () => {
   it("returns unsigned when supported but no browser key", () => {
     const r = classifyVariant(
       input({ capability: { supported: true }, hasBrowserKey: false }),
-      NOW,
     );
     expect(r).toBe("unsigned");
   });
 });
 
 describe("VARIANTS", () => {
-  it("has every variant present", () => {
+  it("has every variant present, and no more", () => {
     const expected: SigningBadgeVariant[] = [
       "signed",
       "signed_required",
       "unsigned",
       "key_missing",
-      "mismatch",
       "na",
       "loading",
     ];
     for (const k of expected) {
       expect(VARIANTS[k]).toBeDefined();
     }
+    // A variant with no classifier branch is a state the operator can never
+    // be shown, which is how the mismatch pill went unnoticed.
+    expect(Object.keys(VARIANTS).sort()).toEqual([...expected].sort());
   });
 
   it("every variant ships an aria-label distinct from its sibling variants", () => {

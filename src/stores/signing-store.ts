@@ -33,10 +33,15 @@ export interface DroneSigningState {
   enrollmentState: EnrollmentUIState;
   /** Signed frames we have emitted in this session. Incremented by the encoder. */
   txSignedCount: number;
-  /** Signed frames received from the FC (observed by the parser). */
+  /**
+   * Signed frames received from the FC.
+   *
+   * Observed, not verified: the parser reports that a frame carried the
+   * MAVLINK_IFLAG_SIGNED bit and passed CRC. No HMAC is checked on the
+   * receive path, because that needs the FC's key distributed to the agent
+   * and no such distribution exists. Do not label this "verified" anywhere.
+   */
   rxSignedCount: number;
-  /** Signed frames that failed HMAC verification. */
-  rxInvalidCount: number;
   /** Wall-clock ms of the last accepted signed rx frame. */
   lastSignedFrameAt: number | null;
   /** Last agent-reported counters, polled. */
@@ -64,7 +69,6 @@ interface SigningStoreState {
   setEnrollmentState(droneId: string, state: EnrollmentUIState): void;
   bumpTxSigned(droneId: string, n?: number): void;
   bumpRxSigned(droneId: string, n?: number): void;
-  bumpRxInvalid(droneId: string, n?: number): void;
   setAgentCounters(droneId: string, counters: SigningCounters): void;
 
   /** Drop every record. Used on sign-out / user-switch purge pairs. */
@@ -85,7 +89,6 @@ function blankState(droneId: string): DroneSigningState {
     enrollmentState: "unknown",
     txSignedCount: 0,
     rxSignedCount: 0,
-    rxInvalidCount: 0,
     lastSignedFrameAt: null,
     agentCounters: null,
   };
@@ -195,17 +198,6 @@ export const useSigningStore = create<SigningStoreState>()((set, get) => ({
     });
   },
 
-  bumpRxInvalid(droneId, n = 1) {
-    set((s) => {
-      const prev = s.drones[droneId] ?? blankState(droneId);
-      return {
-        drones: {
-          ...s.drones,
-          [droneId]: { ...prev, rxInvalidCount: prev.rxInvalidCount + n },
-        },
-      };
-    });
-  },
 
   setAgentCounters(droneId, counters) {
     set((s) => ({
