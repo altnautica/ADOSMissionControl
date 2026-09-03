@@ -19,7 +19,7 @@
  */
 
 import { useId, useMemo, useState } from "react";
-import { useQuery } from "convex/react";
+import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { Cpu, Layout, Package, PenTool, Radio, Sparkles } from "lucide-react";
@@ -169,8 +169,14 @@ export function RegistryPluginCard({
   // compatibility envelope. `getPlugin` fills in `agent_min_version`
   // and `supported_boards`; Convex deduplicates the subscription
   // across cards that share an id.
-  const detail = useQuery(api.pluginRegistry.getPlugin, {
-    pluginId: plugin.plugin_id,
+  //
+  // Skip-aware: this card renders in demo mode and on a self-host with no
+  // Convex deployment, where a bare `useQuery` subscribes to a function that is
+  // not there and throws out of render. The wrapper is the project rule for
+  // every Convex read (see `use-convex-skip-query`), enforced by
+  // `tests/lib/convex-usequery-skip.test.ts`.
+  const detail = useConvexSkipQuery(api.pluginRegistry.getPlugin, {
+    args: { pluginId: plugin.plugin_id },
   }) as
     | {
         versions: ReadonlyArray<{

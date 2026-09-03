@@ -21,10 +21,16 @@ export const cmdDronesApi = {
 export const cmdPairingApi = {
   claimPairingCode: api.cmdPairing.claimPairingCode,
   claimPairingCodeAnon: api.cmdPairing.claimPairingCodeAnon,
+  issueBrowserSession: api.cmdPairing.issueBrowserSession,
   preGenerateCode: api.cmdPairing.preGenerateCode,
-  getPairingStatus: api.cmdPairing.getPairingStatus,
   getMyPendingCodes: api.cmdPairing.getMyPendingCodes,
   wipePairStateForOwnedDevice: api.cmdPairing.wipePairStateForOwnedDevice,
+  // `getPairingStatus` and `registerAgent` are deliberately absent: both are
+  // internal, reached only through their HTTP routes, which supply the device's
+  // own API key and the source-address rate-limit bucket respectively. As
+  // public functions the first was a claim oracle for any guessed deviceId and
+  // the second let any browser write an attacker-chosen apiKey keyed by any
+  // deviceId. Nothing in the GCS ever called either one.
 };
 
 export const cmdDroneStatusApi = {

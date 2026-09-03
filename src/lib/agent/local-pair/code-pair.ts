@@ -9,7 +9,6 @@
  * @license GPL-3.0-only
  */
 
-import { getBrowserId } from "@/stores/browser-identity-store";
 import { findHostByCodeOnLan as findHostByCodeOnLanImpl } from "../discovery/mdns-client";
 import type { CodeClaimResult, ProbeResult } from "./types";
 import { AgentAlreadyPairedError, PairClientError } from "./errors";
@@ -50,10 +49,11 @@ export function findHostByCodeOnLan(
  */
 export async function probeByCode(
   rawCode: string,
-  claimAnon?: (args: {
-    code: string;
-    browserUserId: string;
-  }) => Promise<CodeClaimResult>,
+  // Takes the code only. Acquiring the anonymous cloud session the relay needs
+  // is the caller's job (see `AddNodeForm`), so this module stays free of both
+  // Convex and credential handling — and there is no argument here that names
+  // an owner, which is the property the relay now enforces server-side.
+  claimAnon?: (args: { code: string }) => Promise<CodeClaimResult>,
   signal?: AbortSignal,
 ): Promise<ProbeResult> {
   const cleaned = rawCode.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
@@ -88,10 +88,7 @@ export async function probeByCode(
   //    normal result, not a throw, when it does not know the code, which keeps
   //    the browser console clean.
   if (claimAnon) {
-    const lookup = await claimAnon({
-      code: cleaned,
-      browserUserId: getBrowserId(),
-    });
+    const lookup = await claimAnon({ code: cleaned });
     if (lookup.error === "device_owned_by_other") {
       throw new AgentAlreadyPairedError(
         "This drone is already paired to another owner. Unpair it on the device, or sign in to claim it.",

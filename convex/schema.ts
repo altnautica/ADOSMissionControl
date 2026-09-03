@@ -1357,6 +1357,46 @@ fullName: v.optional(v.string()),
     // indexed range scan instead of a full-table .filter().collect().
     .index("by_expiresAt", ["expiresAt"]),
 
+  // Attempt counters with escalating lockout, for every surface reachable
+  // without a session: anonymous pairing claims, first-contact agent
+  // registration, credential verification and the contact form. Before this
+  // table nothing in either Convex tree counted a failed attempt, so a
+  // six-character pairing code was a free guessing target. One row per bucket
+  // key; see convex/lib/rateLimit.ts for the policy and the key namespaces.
+  cmd_authAttempts: defineTable({
+    /** Namespaced bucket, e.g. `claim:browser:<id>` or `register:ip:<addr>`. */
+    key: v.string(),
+    attempts: v.number(),
+    firstAttemptAt: v.number(),
+    lastAttemptAt: v.number(),
+    /** Epoch ms the lockout ends. 0 when not locked. Never permanent. */
+    lockedUntil: v.number(),
+  })
+    .index("by_key", ["key"])
+    // Bounded indexed range for the retention sweep, same shape as the
+    // pairing-request cleaner.
+    .index("by_lastAttemptAt", ["lastAttemptAt"]),
+
+  // Server-minted anonymous browser sessions.
+  //
+  // The anonymous code-pair flow used to take a client-supplied `browserUserId`
+  // and write it straight into `cmd_drones.userId` as the owner. Anyone who
+  // learned another browser's UUID could therefore assert ownership of that
+  // browser's nodes. The owner is now DERIVED from a secret this server minted:
+  // the caller presents the secret, the server resolves the row, and the owner
+  // marker is `browser:<row id>`, which the caller never chooses.
+  //
+  // Only the SHA-256 of the secret is stored, matching the verifier-only rule
+  // `cmd_mcpTokens` and `cmd_mqttControlGrants` already follow: the plaintext
+  // exists in the mint response and the operator's browser, never in the table.
+  cmd_browserSessions: defineTable({
+    secretHash: v.string(),
+    createdAt: v.number(),
+    lastSeenAt: v.number(),
+  })
+    .index("by_secretHash", ["secretHash"])
+    .index("by_lastSeenAt", ["lastSeenAt"]),
+
   // Legacy rows for MAVLink v2 signing-key cloud sync. New plaintext uploads
   // are disabled until encrypted storage is available. Function logs MUST NOT
   // echo keyHex. See convex/cmdSigningKeys.ts.

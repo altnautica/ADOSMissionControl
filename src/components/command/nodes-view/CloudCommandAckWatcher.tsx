@@ -20,9 +20,9 @@
  */
 
 import { useEffect, useMemo } from "react";
-import { useQuery } from "convex/react";
 
 import { useConvexAvailable } from "@/app/ConvexClientProvider";
+import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
 import { notifySkill } from "@/lib/skills";
 import {
@@ -71,8 +71,15 @@ function CommandAckWatch({
   nodeName: string;
 }) {
   const resolve = useCloudCommandAckStore((s) => s.resolve);
-  const status = useQuery(api.cmdDroneCommands.getCommandStatus, {
-    commandId: command.commandId as Id<"cmd_droneCommands">,
+  // `getCommandStatus` resolves the caller's ownership of the command, so it
+  // throws for an anonymous caller. A bare `useQuery` propagates that throw out
+  // of render and into the nearest error.tsx — a session that expired while a
+  // command was in flight BLACK-SCREENED the whole nodes view. The skip-aware
+  // wrapper skips when Convex is unavailable or demo mode is on, and resolves a
+  // server-side throw to `undefined`, which is the same shape as "still loading"
+  // and is exactly how the effect below already treats it.
+  const status = useConvexSkipQuery(api.cmdDroneCommands.getCommandStatus, {
+    args: { commandId: command.commandId as Id<"cmd_droneCommands"> },
   });
 
   useEffect(() => {

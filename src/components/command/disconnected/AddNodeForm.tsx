@@ -20,7 +20,7 @@
  * @license GPL-3.0-only
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { AlertTriangle, Loader2, Plus, Search, X } from "lucide-react";
 import { useMutation } from "convex/react";
@@ -31,7 +31,10 @@ import {
   PairClientError,
   type ProbeResult,
 } from "@/lib/agent/local-pair-client";
-import { useBrowserIdentityStore } from "@/stores/browser-identity-store";
+import {
+  getCloudSessionSecret,
+  useBrowserIdentityStore,
+} from "@/stores/browser-identity-store";
 import { useLocalNodesStore } from "@/stores/local-nodes-store";
 import { usePairingStore } from "@/stores/pairing-store";
 import { useDiscoveredAgents } from "@/hooks/use-discovered-agents";
@@ -63,6 +66,40 @@ export function AddNodeForm({ onPaired }: AddNodeFormProps) {
   // useMutation must be called unconditionally; the call site below
   // gates the actual invocation on convexAvailable.
   const claimAnon = useMutation(cmdPairingApi.claimPairingCodeAnon);
+  const issueBrowserSession = useMutation(cmdPairingApi.issueBrowserSession);
+  const setCloudSessionSecret = useBrowserIdentityStore(
+    (s) => s.setCloudSessionSecret,
+  );
+
+  // The relay derives the anonymous owner from a secret IT minted, so this
+  // browser has to hold one before it can claim. Minted lazily on the first
+  // code pair and reused thereafter; the previous design sent the browser's
+  // own UUID as an owner argument, which any caller could simply assert.
+  const claimAnonWithSession = useCallback(
+    async (args: { code: string }) => {
+      let secret = getCloudSessionSecret();
+      if (!secret) {
+        secret = (await issueBrowserSession({})).browserSessionSecret;
+        setCloudSessionSecret(secret);
+      }
+      const result = await claimAnon({
+        code: args.code,
+        browserSessionSecret: secret,
+      });
+      // A secret the relay no longer recognises (swept, or a wiped backend)
+      // is recoverable in one step: mint a fresh session and retry once.
+      if (result.error === "invalid_browser_session") {
+        const fresh = (await issueBrowserSession({})).browserSessionSecret;
+        setCloudSessionSecret(fresh);
+        return await claimAnon({
+          code: args.code,
+          browserSessionSecret: fresh,
+        });
+      }
+      return result;
+    },
+    [claimAnon, issueBrowserSession, setCloudSessionSecret],
+  );
 
   useEffect(() => {
     return () => {
@@ -94,7 +131,7 @@ export function AddNodeForm({ onPaired }: AddNodeFormProps) {
         // probeByCode skips the cross-network fallback when it is omitted.
         result = await probeByCode(
           trimmed,
-          convexAvailable ? claimAnon : undefined,
+          convexAvailable ? claimAnonWithSession : undefined,
           ctrl.signal,
         );
       } else {

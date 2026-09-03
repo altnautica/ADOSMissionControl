@@ -17,6 +17,16 @@ crons.interval(
   internal.cmdPairing.cleanExpiredRequests
 );
 
+// Rate-limit buckets and anonymous browser sessions are both written by
+// unauthenticated callers, so both grow without a sweep. Settled buckets only:
+// the mutation re-checks `lockedUntil` per row, because deleting a bucket that
+// is still locked would hand an attacker a free reset.
+crons.interval(
+  "clean-expired-security-state",
+  { minutes: 30 },
+  internal.cmdPairing.cleanExpiredSecurityState
+);
+
 // Retention: terminal cloud-relay command rows and exported log windows are
 // append-mostly tables that otherwise grow without bound. Each sweep deletes
 // only rows past its retention window via a bounded indexed range, so the

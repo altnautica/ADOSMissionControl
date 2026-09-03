@@ -15,6 +15,13 @@
 import { v } from "convex/values";
 import { internalMutation, internalQuery } from "./_generated/server";
 import { relayCommandValidator } from "./commandVocabulary";
+import {
+  CREDENTIAL_GLOBAL_POLICY,
+  CREDENTIAL_POLICY,
+  clearAttempts,
+  consumeAttempt,
+  sha256Hex,
+} from "./lib/rateLimit";
 
 export const lookupByHash = internalQuery({
   args: { tokenHash: v.string() },
@@ -30,6 +37,38 @@ export const touchLastUsed = internalMutation({
   args: { id: v.id("cmd_mcpTokens") },
   handler: async (ctx, { id }) => {
     await ctx.db.patch(id, { lastUsedAt: Date.now() });
+  },
+});
+
+/**
+ * Charge one credential-verification attempt against the presenting party,
+ * refusing once the bucket locks.
+ *
+ * Two buckets, because neither alone is sufficient. The per-credential bucket
+ * stops one stolen-but-revoked token from being hammered; the global bucket is
+ * the only bound available against a walk across many distinct guesses, since
+ * a Convex action sees no source address. Both are consumed BEFORE the lookup,
+ * so a rejected credential is always counted.
+ *
+ * The digest, not the credential, is the bucket key: a rate-limit table is not
+ * a place to accumulate presented secrets.
+ */
+export const consumeCredentialAttempt = internalMutation({
+  args: { credential: v.string() },
+  handler: async (ctx, { credential }) => {
+    const digest = await sha256Hex(credential);
+    await consumeAttempt(ctx, `mcp:cred:${digest}`, CREDENTIAL_POLICY);
+    await consumeAttempt(ctx, "mcp:cred:global", CREDENTIAL_GLOBAL_POLICY);
+  },
+});
+
+/** Clear both buckets once a credential verified, so a live token never ladders. */
+export const clearCredentialAttempts = internalMutation({
+  args: { credential: v.string() },
+  handler: async (ctx, { credential }) => {
+    const digest = await sha256Hex(credential);
+    await clearAttempts(ctx, `mcp:cred:${digest}`);
+    await clearAttempts(ctx, "mcp:cred:global");
   },
 });
 

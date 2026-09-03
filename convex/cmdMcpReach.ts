@@ -58,18 +58,43 @@ interface ReachNode {
 }
 
 /**
+ * Raised when a credential is not live. A NAMED class, because
+ * `verifyCredential` has to tell "this credential is invalid" apart from "the
+ * backend broke" — a bare `catch {}` there reported both as `null`, so an MCP
+ * server could not distinguish a rejected token from an outage, and neither
+ * could anyone reading the logs.
+ */
+class CredentialRejected extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "CredentialRejected";
+  }
+}
+
+/**
  * Verify a presented credential is live (not revoked, not expired) and resolve its
  * principal. Throws on an invalid, revoked, or expired credential. Touches
  * lastUsedAt. Per-command scope enforcement is done by `assertCommandScope`, and
  * the node allowlist by `assertNodeAllowed`, so a read only needs a live credential.
+ *
+ * Every call charges a rate-limit attempt BEFORE the lookup and clears it after
+ * a live credential resolves. This whole surface is a set of public actions
+ * taking a bearer string, so without a lockout it is a free, unlimited oracle
+ * for guessing one.
  */
 async function authorize(ctx: ActionCtx, credential: string): Promise<Authorized> {
+  await ctx.runMutation(internal.cmdMcpReachDb.consumeCredentialAttempt, {
+    credential,
+  });
   const tokenHash = await sha256Hex(credential);
   const row = await ctx.runQuery(internal.cmdMcpReachDb.lookupByHash, { tokenHash });
   if (!row || row.revokedAt || (row.expiresAt !== undefined && row.expiresAt < Date.now())) {
-    throw new Error("invalid or revoked credential");
+    throw new CredentialRejected("invalid or revoked credential");
   }
   await ctx.runMutation(internal.cmdMcpReachDb.touchLastUsed, { id: row._id });
+  await ctx.runMutation(internal.cmdMcpReachDb.clearCredentialAttempts, {
+    credential,
+  });
   return {
     userId: row.userId,
     scopes: row.scopes,
@@ -123,14 +148,24 @@ function assertNodeAllowed(auth: Authorized, deviceId: string): void {
   }
 }
 
-/** Resolve a credential to its principal (for the server to build its auth context). */
+/**
+ * Resolve a credential to its principal (for the server to build its auth
+ * context). `null` means exactly one thing: the credential is not live.
+ *
+ * The blanket `catch {}` this replaces folded a lockout, a backend outage and a
+ * schema error into the same `null` an invalid token returns, so an MCP server
+ * saw "your credential is bad" for all four and an operator had nothing to act
+ * on. Only `CredentialRejected` is answered with `null`; a lockout and every
+ * other failure propagate as the errors they are.
+ */
 export const verifyCredential = action({
   args: { credential: v.string() },
   handler: async (ctx, { credential }): Promise<Authorized | null> => {
     try {
       return await authorize(ctx, credential);
-    } catch {
-      return null;
+    } catch (err) {
+      if (err instanceof Error && err.name === "CredentialRejected") return null;
+      throw err;
     }
   },
 });

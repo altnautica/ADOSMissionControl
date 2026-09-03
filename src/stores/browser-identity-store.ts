@@ -1,17 +1,30 @@
 /**
  * @module BrowserIdentityStore
- * @description Per-browser stable UUID used as the local pair's
- * ``user_id`` when claiming an agent over LAN. The agent's
- * ``/api/pairing/claim`` accepts any string; we use a browser-local
- * UUID so the same browser keeps a consistent owner identity across
- * paired nodes without ever round-tripping through a cloud account.
+ * @description Two distinct anonymous identities, deliberately separate.
  *
- * Persisted to localStorage. Generated once on first read.
+ * `browserId` — a per-browser UUID used as the local pair's ``user_id`` when
+ * claiming an agent over LAN. The agent's ``/api/pairing/claim`` accepts any
+ * string; a browser-local UUID keeps a consistent owner identity across paired
+ * nodes without ever round-tripping through a cloud account.
+ *
+ * `cloudSessionSecret` — a SERVER-MINTED bearer secret for the anonymous Convex
+ * code-pair path. It is not interchangeable with `browserId` and must never be
+ * substituted for it. The cloud path used to take the browser's own UUID as the
+ * owner argument, and an argument is whatever the caller says it is: anyone who
+ * learned another browser's UUID could assert ownership of that browser's cloud
+ * rows. The relay now mints the secret (`cmdPairing.issueBrowserSession`),
+ * stores only its digest, and derives the owner from the row it resolves — so
+ * the value below is a credential, not an identifier.
+ *
+ * Both persisted to localStorage. Generated / fetched on first use.
  *
  * THREAT MODEL (local-first credential storage):
- *   - The UUID is the pair OWNER identifier the agent uses to scope
- *     unpair / re-pair requests. Anyone with access to this UUID can
- *     unpair the agent from this browser.
+ *   - `browserId` is the pair OWNER identifier the agent uses to scope
+ *     unpair / re-pair requests. Anyone with access to it can unpair the
+ *     agent from this browser.
+ *   - `cloudSessionSecret` is a bearer credential for the anonymous cloud
+ *     identity. Anyone holding it is that anonymous owner. It grants nothing
+ *     on a signed-in account and cannot read a signed-in user's fleet.
  *   - localStorage is plaintext. XSS that runs on the GCS origin
  *     reads everything. Browser-extension access also reads
  *     localStorage; devtools sees the same. This is the local-first
@@ -33,10 +46,13 @@ import { persist } from "zustand/middleware";
 
 interface BrowserIdentityState {
   browserId: string;
+  /** Server-minted anonymous cloud session secret, or "" before first mint. */
+  cloudSessionSecret: string;
   /** Epoch ms when the operator dismissed the first-pair UX warning,
    * or 0 if it has never been dismissed. */
   localPairWarningDismissedAt: number;
   ensureBrowserId: () => string;
+  setCloudSessionSecret: (secret: string) => void;
   dismissLocalPairWarning: () => void;
 }
 
@@ -54,6 +70,7 @@ export const useBrowserIdentityStore = create<BrowserIdentityState>()(
   persist(
     (set, get) => ({
       browserId: "",
+      cloudSessionSecret: "",
       localPairWarningDismissedAt: 0,
       ensureBrowserId: () => {
         let id = get().browserId;
@@ -63,19 +80,26 @@ export const useBrowserIdentityStore = create<BrowserIdentityState>()(
         }
         return id;
       },
+      setCloudSessionSecret: (secret: string) => {
+        set({ cloudSessionSecret: secret });
+      },
       dismissLocalPairWarning: () => {
         set({ localPairWarningDismissedAt: Date.now() });
       },
     }),
     {
       name: "altcmd:browser-identity",
-      version: 1,
-      // TODO(schema-bump): when a future version adds a required
-      // field, replace this identity passthrough with an explicit
-      // version branch that validates and back-fills the persisted
-      // payload (see src/stores/settings-store/migrations.ts for a
-      // reference chain).
-      migrate: (persisted, _version) => persisted as BrowserIdentityState,
+      version: 2,
+      // v1 predates `cloudSessionSecret`. Back-fill it as empty rather than
+      // synthesising one: the secret is only valid if the relay minted it, so
+      // an upgraded browser mints on its next anonymous pair.
+      migrate: (persisted, version) => {
+        const state = persisted as Partial<BrowserIdentityState>;
+        if (version < 2) {
+          return { ...state, cloudSessionSecret: "" } as BrowserIdentityState;
+        }
+        return state as BrowserIdentityState;
+      },
     },
   ),
 );
@@ -83,4 +107,9 @@ export const useBrowserIdentityStore = create<BrowserIdentityState>()(
 /** Read or generate the browser-local UUID synchronously. */
 export function getBrowserId(): string {
   return useBrowserIdentityStore.getState().ensureBrowserId();
+}
+
+/** Read the stored anonymous cloud-session secret ("" when none is held). */
+export function getCloudSessionSecret(): string {
+  return useBrowserIdentityStore.getState().cloudSessionSecret;
 }

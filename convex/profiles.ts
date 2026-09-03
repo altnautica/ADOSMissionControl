@@ -4,6 +4,36 @@ import { QueryCtx, MutationCtx } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 
 /**
+ * Founder-email allowlist for the first-user-admin bootstrap.
+ *
+ * SECURITY: the old branch was "the first profile in the table becomes admin",
+ * with no allowlist at all. On a freshly-deployed or freshly-purged backend —
+ * which every self-host is on day one — whoever signs up first self-minted
+ * admin, and admin here reads every profile and every contact submission. The
+ * bootstrap now grants admin only when the first profile's email is on this
+ * explicit list; everyone else is created "pending" and a real admin promotes
+ * them through `updateRole`.
+ *
+ * Kept identical to the production twin. Neither gate script could see this
+ * divergence: the exposure gate compares `mutation` vs `internalMutation` and
+ * both sides were `mutation`, and the authz gate skipped every body that
+ * authorizes inline rather than through a named `require*` helper.
+ *
+ * Lower-cased compare. Keep this list to the actual founders.
+ */
+const FOUNDER_ADMIN_EMAILS = [
+  "team@altnautica.com",
+  "hello@ajaym.co",
+  "ajay@altnautica.com",
+  "gagan@altnautica.com",
+];
+
+function isFounderAdminEmail(email: string | undefined | null): boolean {
+  if (!email) return false;
+  return FOUNDER_ADMIN_EMAILS.includes(email.trim().toLowerCase());
+}
+
+/**
  * Internal helper: fetch profile by userId using .first() instead of .unique().
  * Resilient to duplicate profiles — always returns the oldest (first-created) one.
  * Includes fallback for legacy compound userId format (userId|sessionId).
@@ -19,10 +49,21 @@ async function getProfileByUserId(
     .first();
   if (profile) return profile;
 
-  // Fallback: find legacy profile with compound format (userId|sessionId)
-  // Handles transition period before migrateProfileUserIds runs
-  const allProfiles = await ctx.db.query("profiles").collect();
-  return allProfiles.find((p) => p.userId.startsWith(userId + "|")) ?? null;
+  // Fallback: find a legacy profile with the compound format (userId|sessionId).
+  // An INDEXED PREFIX RANGE, not a full-table `.collect()` + `.find()`: this
+  // path runs on `getMyProfile`, which is called on every page load and returns
+  // null for an anonymous caller, so an unbounded scan of the whole profiles
+  // table was reachable without a session. "|" is 0x7C, so the exclusive upper
+  // bound is the same prefix with "}" (0x7D) — every compound id for this user
+  // and nothing else.
+  const prefix = `${userId}|`;
+  const legacy = await ctx.db
+    .query("profiles")
+    .withIndex("by_userId", (q) =>
+      q.gte("userId", prefix).lt("userId", `${userId}}`)
+    )
+    .first();
+  return legacy ?? null;
 }
 
 export const getMyProfile = query({
@@ -174,13 +215,6 @@ export const ensureProfile = mutation({
       return existing._id;
     }
 
-    // First user is admin, everyone else starts as pending
-    let role: "pending" | "investor" | "admin" = "pending";
-    const anyProfile = await ctx.db.query("profiles").first();
-    if (!anyProfile) {
-      role = "admin";
-    }
-
     // Get email from auth user table if identity doesn't have it
     let authEmail = identity.email;
     if (!authEmail) {
@@ -188,6 +222,17 @@ export const ensureProfile = mutation({
       if (user && typeof user === "object" && "email" in user) {
         authEmail = (user as any).email;
       }
+    }
+
+    // First-user bootstrap (SECURITY): mint admin only when the profiles table
+    // is empty AND this first user's email is on the founder allowlist. On a
+    // fresh or freshly-purged backend an arbitrary signup must NOT inherit
+    // admin just by being first. Anyone not on the allowlist starts as
+    // "pending" and a real admin promotes them via updateRole.
+    let role: "pending" | "investor" | "admin" = "pending";
+    const anyProfile = await ctx.db.query("profiles").first();
+    if (!anyProfile && isFounderAdminEmail(authEmail)) {
+      role = "admin";
     }
 
     return await ctx.db.insert("profiles", {

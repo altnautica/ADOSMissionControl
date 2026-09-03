@@ -4,7 +4,7 @@ import { httpAction } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { snakeToCamelObject } from "./heartbeatCasing";
-import { agentKeyMatches } from "./lib/credentials";
+import { agentKeyMatches, constantTimeEqual } from "./lib/credentials";
 
 const http = httpRouter();
 auth.addHttpRoutes(http);
@@ -588,6 +588,37 @@ function configErrorsField(
 
 // ── ADOS Pairing: agent registers its pairing code ──────────
 
+/**
+ * Salted digest of the request's source address, for use as a rate-limit
+ * bucket key only.
+ *
+ * Hashed rather than stored raw: the bucket table would otherwise be a log of
+ * every address that ever touched the pairing endpoint, which is personal data
+ * this system has no reason to retain. Salted with the same relay secret the
+ * admin route uses so the digest is not a rainbow-table lookup of the IPv4
+ * space; falls back to an unsalted digest when unconfigured, which is still
+ * fine for bucketing.
+ *
+ * `x-forwarded-for` is a hop list; the FIRST entry is the client as seen by the
+ * outermost proxy. Convex terminates TLS in front of this handler, so there is
+ * always at least one hop. A request arriving with no header at all buckets
+ * into one shared "unknown" pool rather than escaping the limit entirely.
+ */
+async function sourceBucketKey(request: Request): Promise<string> {
+  const forwarded = request.headers.get("x-forwarded-for") ?? "";
+  const first = forwarded.split(",")[0]?.trim();
+  const source = first || "unknown";
+  const salt = process.env.MQTT_AUTH_RELAY_SECRET ?? "";
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(`${salt}:${source}`),
+  );
+  return [...new Uint8Array(digest)]
+    .slice(0, 12)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 http.route({
   path: "/pairing/register",
   method: "POST",
@@ -596,27 +627,48 @@ http.route({
     if (body instanceof Response) return body;
     const deviceId = stringField(body, "deviceId");
     const pairingCode = stringField(body, "pairingCode");
+    const apiKey = stringField(body, "apiKey");
 
-    if (!deviceId || !pairingCode) {
+    // apiKey is required, not optional. It is the value the paired-device
+    // binding in `registerAgent` anchors to, and a blank one persisted a row
+    // that could never be authenticated.
+    if (!deviceId || !pairingCode || !apiKey) {
       return new Response(
-        JSON.stringify({ error: "deviceId and pairingCode required" }),
+        JSON.stringify({ error: "deviceId, pairingCode and apiKey required" }),
         { status: 400, headers: jsonHeaders }
       );
     }
 
-    const result = await ctx.runMutation(api.cmdPairing.registerAgent, {
-      deviceId,
-      pairingCode,
-      apiKey: stringField(body, "apiKey"),
-      name: stringField(body, "name"),
-      version: stringField(body, "version"),
-      board: stringField(body, "board"),
-      tier: numberField(body, "tier"),
-      os: stringField(body, "os"),
-      mdnsHost: stringField(body, "mdnsHost"),
-      localIp: stringField(body, "localIp"),
-      pairingCodeExpiresAt: numberField(body, "pairingCodeExpiresAt"),
-    });
+    let result;
+    try {
+      result = await ctx.runMutation(internal.cmdPairing.registerAgent, {
+        clientKey: await sourceBucketKey(request),
+        deviceId,
+        pairingCode,
+        apiKey,
+        name: stringField(body, "name"),
+        version: stringField(body, "version"),
+        board: stringField(body, "board"),
+        tier: numberField(body, "tier"),
+        os: stringField(body, "os"),
+        mdnsHost: stringField(body, "mdnsHost"),
+        localIp: stringField(body, "localIp"),
+        pairingCodeExpiresAt: numberField(body, "pairingCodeExpiresAt"),
+      });
+    } catch (err) {
+      // A lockout is a distinct, temporary, actionable condition. Reporting it
+      // as a generic 500 would leave an operator unable to tell a throttled
+      // beacon from a broken backend, which is the same indistinguishable
+      // failure the limiter exists to remove.
+      const message = err instanceof Error ? err.message : String(err);
+      if (message.startsWith("rate_limited")) {
+        return new Response(JSON.stringify({ error: "rate_limited" }), {
+          status: 429,
+          headers: jsonHeaders,
+        });
+      }
+      throw err;
+    }
 
     return new Response(JSON.stringify(result), {
       status: 200,
@@ -633,20 +685,80 @@ http.route({
   handler: httpAction(async (ctx, request) => {
     const url = new URL(request.url);
     const deviceId = url.searchParams.get("deviceId");
-    if (!deviceId) {
+    // The agent presents the key it registered with. Without this the route is
+    // a claim oracle: a deviceId alone revealed whether a device was
+    // registered, whether it had been claimed, and by whom.
+    const apiKey = request.headers.get("X-ADOS-Key") ?? "";
+    if (!deviceId || !apiKey) {
       return new Response(
-        JSON.stringify({ error: "deviceId required" }),
+        JSON.stringify({ error: "deviceId and X-ADOS-Key required" }),
         { status: 400, headers: jsonHeaders }
       );
     }
 
-    const status = await ctx.runQuery(api.cmdPairing.getPairingStatus, {
+    const status = await ctx.runQuery(internal.cmdPairing.getPairingStatus, {
       deviceId,
+      apiKey,
     });
-    return new Response(JSON.stringify(status), {
+    if (!status.authorized) {
+      return new Response(JSON.stringify({ error: "unauthorized" }), {
+        status: 401,
+        headers: jsonHeaders,
+      });
+    }
+    const { authorized: _authorized, ...payload } = status;
+    return new Response(JSON.stringify(payload), {
       status: 200,
       headers: jsonHeaders,
     });
+  }),
+});
+
+// ── Broker auth sync: mosquitto passwd + ACL regeneration ───
+//
+// The self-host counterpart to the production deployment's route of the same
+// name. Its absence here was invisible to both twin gates -- they compare only
+// functions present in BOTH trees, so a one-sided ABSENCE reads as agreement --
+// and it meant `tools/mqtt-bridge/deploy/scripts/regenerate-passwd.sh` shipped
+// in this repo pointing at an endpoint this repo's own deployment did not
+// serve. Device MQTT auth and operator write grants were therefore dead on
+// every self-host: the script 404s, the passwd file never regenerates, and the
+// broker silently refuses every device.
+http.route({
+  path: "/admin/mqtt-auth-entries",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    const expected = process.env.MQTT_AUTH_RELAY_SECRET;
+    if (!expected) {
+      return new Response(
+        JSON.stringify({ error: "MQTT_AUTH_RELAY_SECRET not configured" }),
+        { status: 503, headers: jsonHeaders }
+      );
+    }
+    const header = request.headers.get("Authorization") ?? "";
+    const presented = header.startsWith("Bearer ")
+      ? header.slice("Bearer ".length)
+      : "";
+    // Constant-time: this route returns every paired drone's username and API
+    // key, so a plain `!==` that returns at the first differing byte is a
+    // timing oracle on the one secret guarding the whole set.
+    if (!presented || !constantTimeEqual(presented, expected)) {
+      return new Response(
+        JSON.stringify({ error: "unauthorized" }),
+        { status: 401, headers: jsonHeaders }
+      );
+    }
+    // The query returns `{ entries, grants, truncated }`. Spread rather than
+    // re-wrap: wrapping would nest it as `{ entries: { entries, ... } }` and
+    // the regeneration script reads `.entries[]` directly.
+    const payload = await ctx.runQuery(
+      internal.cmdPairing.listMqttAuthEntries,
+      {},
+    );
+    return new Response(
+      JSON.stringify(payload),
+      { status: 200, headers: jsonHeaders }
+    );
   }),
 });
 

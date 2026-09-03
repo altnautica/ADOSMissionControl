@@ -63,6 +63,18 @@ if [[ -z "${entries_count}" || "${entries_count}" == "null" ]]; then
   exit 1
 fi
 
+# The Convex query is bounded, and reports when it hit its cap. A truncated
+# payload means the tail of the estate is missing from the file about to be
+# written, and the broker's only symptom is "those devices cannot connect" --
+# a silent partial sync is worse than a failed one, so refuse to write.
+truncated=$(printf '%s' "${response}" | jq -r '.truncated // false')
+if [[ "${truncated}" == "true" ]]; then
+  echo "regenerate-passwd: Convex truncated the auth payload at its cap;" >&2
+  echo "  refusing to write a partial passwd/ACL. Raise MAX_MQTT_AUTH_ENTRIES" >&2
+  echo "  in convex/cmdPairing.ts (both twins) and redeploy." >&2
+  exit 1
+fi
+
 # Build passwd inside the broker container at a staging path.
 STAGING_PASSWD="/tmp/.mqtt-passwd-stage"
 docker exec "${BROKER_CONTAINER}" sh -c \

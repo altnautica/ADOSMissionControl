@@ -69,6 +69,8 @@ export function MqttBridge({
   const toastRef = useRef(toast);
   toastRef.current = toast;
   const clientRef = useRef<unknown>(null);
+  // Set once the client exists; releases subscriptions, listeners and socket.
+  const teardownRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     if (!cloudDeviceId) return;
@@ -114,39 +116,99 @@ export function MqttBridge({
         // We resubscribe each time because the previous session's
         // subscriptions are dropped on a `clean: true` reconnect.
         // Cast loosely because the dynamic-import client type omits the
-        // (topic, callback) subscribe overload.
+        // (topicObject, callback) subscribe overload.
         const c = client as unknown as {
           on: (event: string, cb: (...args: unknown[]) => void) => void;
+          removeAllListeners: () => void;
           subscribe: (
-            topic: string,
+            topics: Record<string, { qos: 0 | 1 | 2 }>,
             cb: (err: Error | null) => void,
           ) => void;
+          unsubscribe: (topics: string[], cb?: (err?: Error) => void) => void;
+          end: (force?: boolean) => void;
         };
+
+        // The subscription SET, computed once from the effect's own inputs.
+        //
+        // QoS is split by what a lost message costs. Status and plugin-update
+        // are discrete control-plane events — a dropped status leaves the node
+        // card reading the previous state until the next emission, and a
+        // dropped update event is simply never seen — so they take QoS 1.
+        // Telemetry and detection batches are a continuous stream where the
+        // next sample supersedes the last within a frame, so QoS 1's
+        // acknowledgement round trip would buy latency for nothing.
+        const subscriptions: Record<string, { qos: 0 | 1 | 2 }> = {
+          [`ados/${cloudDeviceId}/status`]: { qos: 1 },
+          [`ados/${cloudDeviceId}/plugin/update_available`]: { qos: 1 },
+        };
+        // Skip telemetry for paired drones — the fleet-wide bridge owns it.
+        if (!selectedIsPaired) {
+          subscriptions[`ados/${cloudDeviceId}/telemetry`] = { qos: 0 };
+        }
+        // Vision detections only when there is no LAN WebSocket path (LAN
+        // wins; this is the hosted/HTTPS or no-LAN-pairing fallback).
+        if (visionViaCloud) {
+          subscriptions[`ados/${cloudDeviceId}/vision/detections`] = { qos: 0 };
+        }
+        const subscribedTopics = Object.keys(subscriptions);
+
+        teardownRef.current = () => {
+          try {
+            c.unsubscribe(subscribedTopics);
+          } catch {
+            /* a client already closed by the broker has nothing to release */
+          }
+          try {
+            c.removeAllListeners();
+          } catch {
+            /* ignore */
+          }
+          try {
+            c.end(true);
+          } catch {
+            /* ignore */
+          }
+        };
+
         c.on("connect", () => {
           if (cancelled) return;
           setMqttConnected(true);
-          const onSubErr = (err: Error | null) => {
-            if (err) {
-              console.warn(
-                "[MqttBridge] subscribe failed:",
-                err.message,
+          // ONE SUBSCRIBE packet carrying the whole set, rather than three or
+          // four sequential calls. The broker replaces any existing
+          // subscription for the same filter, so re-running this on every
+          // reconnect is idempotent by construction — and a single packet
+          // cannot interleave with a reconnect partway through the set and
+          // leave the client subscribed to some topics and not others.
+          c.subscribe(subscriptions, (err: Error | null) => {
+            if (!err) return;
+            console.warn("[MqttBridge] subscribe failed:", err.message);
+            // A failed subscribe means this client is connected but deaf. Say
+            // so rather than leaving the surface reading "connected" while no
+            // message will ever arrive.
+            if (!cancelled) {
+              setMqttConnected(false);
+              toastRef.current(
+                "Cloud telemetry subscription failed; the broker refused it.",
+                "error",
               );
             }
-          };
-          c.subscribe(`ados/${cloudDeviceId}/status`, onSubErr);
-          // Skip telemetry for paired drones — the fleet-wide bridge owns it.
-          if (!selectedIsPaired) {
-            c.subscribe(`ados/${cloudDeviceId}/telemetry`, onSubErr);
-          }
-          c.subscribe(
-            `ados/${cloudDeviceId}/plugin/update_available`,
-            onSubErr,
-          );
-          // Vision detections only when there is no LAN WebSocket path (LAN
-          // wins; this is the hosted/HTTPS or no-LAN-pairing fallback).
-          if (visionViaCloud) {
-            c.subscribe(`ados/${cloudDeviceId}/vision/detections`, onSubErr);
-          }
+          });
+        });
+
+        // mqtt.js emits 'error' on a broker outage, a refused connection and a
+        // rejected credential. Client extends EventEmitter, so an 'error' with
+        // NO listener is rethrown as an uncaught exception — a broker going
+        // down took out the page rather than degrading. The client keeps its
+        // own reconnect timer, so this reports and lets it retry.
+        c.on("error", (...args: unknown[]) => {
+          const err = args[0];
+          const message = err instanceof Error ? err.message : String(err);
+          console.warn("[MqttBridge] client error:", message);
+          if (!cancelled) setMqttConnected(false);
+        });
+
+        c.on("offline", () => {
+          if (!cancelled) setMqttConnected(false);
         });
 
         c.on("close", () => {
@@ -315,11 +377,19 @@ export function MqttBridge({
 
     return () => {
       cancelled = true;
-      if (clientRef.current) {
-        const c = clientRef.current as { end?: () => void };
-        if (typeof c.end === "function") c.end();
-        clientRef.current = null;
-      }
+      const teardown = teardownRef.current;
+      teardownRef.current = null;
+      clientRef.current = null;
+      // Explicit release, in order: drop the broker-side subscriptions, drop
+      // every local listener, then force the socket shut.
+      //
+      // The previous teardown called `end()` alone. That leaves the client's
+      // listeners attached while it drains, so an 'error' or a late 'message'
+      // arriving during the graceful close still ran handlers that write into
+      // stores — for a device the component has already stopped tracking. With
+      // `cloudDeviceId` in the deps this effect re-runs on every node switch,
+      // so that is one leaked listener set per switch.
+      teardown?.();
       setMqttConnected(false);
     };
   }, [

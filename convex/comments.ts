@@ -1,5 +1,7 @@
 import { query, mutation } from "./_generated/server";
+import type { QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
+import type { Infer } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 
 const targetTypeValidator = v.union(
@@ -13,6 +15,8 @@ const targetTypeValidator = v.union(
 );
 
 const COMMUNITY_TARGET_TYPES = new Set(["changelog", "community_item"]);
+
+type TargetType = Infer<typeof targetTypeValidator>;
 
 export const list = query({
   args: {
@@ -115,21 +119,43 @@ export const remove = mutation({
   },
 });
 
+/**
+ * Upper bound on the comments either count query walks per target. A badge
+ * renders "99+" long before this; the point is that an unbounded `.collect()`
+ * on a growing thread is a per-request cost an anonymous caller sets.
+ */
+const MAX_COUNTED_PER_TARGET = 500;
+
+/**
+ * Upper bound on the targets one batch call may ask about. Unbounded, this was
+ * request amplification: one anonymous query, N indexed `.collect()`s, N chosen
+ * by the caller. A comment-count row renders one badge per visible card, so a
+ * page never legitimately asks for more than a screenful.
+ */
+const MAX_COUNT_TARGETS = 64;
+
+/** Live (non-deleted) comments on one target, capped at MAX_COUNTED_PER_TARGET. */
+async function countLiveComments(
+  ctx: QueryCtx,
+  targetType: TargetType,
+  targetId: string,
+): Promise<number> {
+  const comments = await ctx.db
+    .query("comments")
+    .withIndex("by_target", (q) =>
+      q.eq("targetType", targetType).eq("targetId", targetId)
+    )
+    .take(MAX_COUNTED_PER_TARGET);
+  return comments.filter((c) => !c.deleted).length;
+}
+
 export const countByTarget = query({
   args: {
     targetType: targetTypeValidator,
     targetId: v.string(),
   },
-  handler: async (ctx, args) => {
-    const comments = await ctx.db
-      .query("comments")
-      .withIndex("by_target", (q) =>
-        q.eq("targetType", args.targetType).eq("targetId", args.targetId)
-      )
-      .collect();
-
-    return comments.filter((c) => !c.deleted).length;
-  },
+  handler: async (ctx, args) =>
+    await countLiveComments(ctx, args.targetType, args.targetId),
 });
 
 export const countByTargets = query({
@@ -142,22 +168,25 @@ export const countByTargets = query({
     ),
   },
   handler: async (ctx, args) => {
+    if (args.targets.length > MAX_COUNT_TARGETS) {
+      throw new Error(`targets may not exceed ${MAX_COUNT_TARGETS} entries`);
+    }
+    // De-duplicate before reading: a caller repeating one target 64 times
+    // otherwise buys 64 index scans for one answer.
+    const seen = new Set<string>();
     const out: Array<{
-      targetType: (typeof args.targets)[number]["targetType"];
+      targetType: TargetType;
       targetId: string;
       count: number;
     }> = [];
     for (const { targetType, targetId } of args.targets) {
-      const comments = await ctx.db
-        .query("comments")
-        .withIndex("by_target", (q) =>
-          q.eq("targetType", targetType).eq("targetId", targetId)
-        )
-        .collect();
+      const key = `${targetType}\u0000${targetId}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
       out.push({
         targetType,
         targetId,
-        count: comments.filter((c) => !c.deleted).length,
+        count: await countLiveComments(ctx, targetType, targetId),
       });
     }
     return out;
