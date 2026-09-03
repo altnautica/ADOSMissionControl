@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState, useEffect, useCallback } from "react";
 import { useSensorHealthStore } from "@/stores/sensor-health-store";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
@@ -35,6 +36,7 @@ import { cn } from "@/lib/utils";
 // ── Component ────────────────────────────────────────────────
 
 export function PreArmPanel() {
+  const t = useTranslations("navigation.panel");
   const healthyCount = useSensorHealthStore((s) => s.getHealthySensorCount());
   const totalPresent = useSensorHealthStore((s) => s.getTotalPresentCount());
   const protocol = useDroneManager.getState().getSelectedProtocol();
@@ -160,7 +162,7 @@ export function PreArmPanel() {
             is populated by the telemetry bridge from the vision-nav
             plugin's companion-state and navigation events. */}
         {visionMode && (
-          <Section icon={<Eye size={14} />} title="Vision Navigation" subtitle="Companion process and EKF origin">
+          <Section icon={<Eye size={14} />} title={t("title")} subtitle="Companion process and EKF origin">
             <VisionChannelRow state={vision} />
           </Section>
         )}

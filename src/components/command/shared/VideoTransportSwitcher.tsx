@@ -80,15 +80,15 @@ const STAGE_LABELS: Record<string, string> = {
 };
 
 function dotColorForHealth(h: TransportHealth, isActive: boolean): string {
-  if (isActive && h.state === "ok") return "bg-green-400";
-  if (h.state === "testing") return "bg-blue-400 animate-pulse";
-  if (h.state === "ok") return "bg-green-400";
-  if (h.state === "failed") return "bg-red-400";
-  return "bg-yellow-400"; // unknown / not tried
+  if (isActive && h.state === "ok") return "bg-status-success";
+  if (h.state === "testing") return "bg-accent-primary animate-pulse";
+  if (h.state === "ok") return "bg-status-success";
+  if (h.state === "failed") return "bg-status-error";
+  return "bg-status-warning"; // unknown / not tried
 }
 
 function dotColorForUnavailable(): string {
-  return "bg-gray-500";
+  return "bg-text-tertiary";
 }
 
 function pillDotColor(
@@ -97,17 +97,17 @@ function pillDotColor(
   agentVideoStopped: boolean,
   retryDelaySec: number,
 ): string {
-  if (agentVideoStopped) return "bg-gray-500";
-  if (retryDelaySec > 0) return "bg-orange-400 animate-pulse";
-  if (state === "connecting") return "bg-blue-400 animate-pulse";
-  if (state === "failed") return "bg-red-400";
+  if (agentVideoStopped) return "bg-text-tertiary";
+  if (retryDelaySec > 0) return "bg-status-serious animate-pulse";
+  if (state === "connecting") return "bg-accent-primary animate-pulse";
+  if (state === "failed") return "bg-status-error";
   if (state === "connected") {
-    if (transport === "lan-whep") return "bg-green-400";
-    if (transport === "p2p-mqtt") return "bg-yellow-400";
-    if (transport === "off") return "bg-gray-500";
-    return "bg-blue-400";
+    if (transport === "lan-whep") return "bg-status-success";
+    if (transport === "p2p-mqtt") return "bg-status-warning";
+    if (transport === "off") return "bg-text-tertiary";
+    return "bg-accent-primary";
   }
-  return "bg-gray-500";
+  return "bg-text-tertiary";
 }
 
 // Part I P2-21: keyboard nav uses option indices in this fixed order
@@ -358,7 +358,7 @@ function DropdownPanel(props: DropdownProps) {
       {agentVideoStopped && (
         <>
           <Divider />
-          <div className="px-2 py-1.5 text-orange-400 text-[10px] leading-tight">
+          <div className="px-2 py-1.5 text-status-serious text-[10px] leading-tight">
             <div className="font-semibold mb-0.5">⚠ Agent video stopped</div>
             <div className="text-text-tertiary">
               The agent&apos;s video service is not running. Check
@@ -370,7 +370,7 @@ function DropdownPanel(props: DropdownProps) {
       {cascadeError && !agentVideoStopped && (
         <>
           <Divider />
-          <div className="px-2 py-1.5 text-red-400 text-[10px] leading-tight">
+          <div className="px-2 py-1.5 text-status-error text-[10px] leading-tight">
             <div className="font-semibold mb-0.5">⚠ Last attempt failed</div>
             <div className="text-text-tertiary">{cascadeError}</div>
             <button
@@ -404,7 +404,7 @@ function Option(props: OptionProps) {
     ? dotColorForUnavailable()
     : health
       ? dotColorForHealth(health, active)
-      : "bg-yellow-400";
+      : "bg-status-warning";
   const failed = health?.state === "failed";
   const stageLabel =
     health?.lastAttemptStage && health.lastAttemptStage in STAGE_LABELS
@@ -438,7 +438,7 @@ function Option(props: OptionProps) {
       {health?.connectMs != null && health.state === "ok" && (
         <span className="text-text-tertiary text-[9px]">Connect {health.connectMs}ms</span>
       )}
-      {failed && <span className="text-red-400 text-[9px]">⚠</span>}
+      {failed && <span className="text-status-error text-[9px]">⚠</span>}
       {selected && <span className="text-accent-primary">●</span>}
     </button>
   );

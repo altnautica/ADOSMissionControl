@@ -212,13 +212,14 @@ export function DropdownMenu({ trigger, items, onSelect, align = "left" }: Dropd
                     if (el) itemRefs.current.set(index, el);
                     else itemRefs.current.delete(index);
                   }}
+                  type="button"
                   role="menuitem"
                   tabIndex={index === focusIdx ? 0 : -1}
                   title={item.title}
                   aria-disabled={item.disabled || undefined}
                   aria-describedby={reasonId}
                   className={cn(
-                    "w-full flex items-center gap-2 px-3 py-1.5 text-xs text-left transition-colors focus:outline-none",
+                    "w-full flex items-center gap-2 px-3 py-1.5 text-xs text-left transition-colors focus:outline-none focus-ring-inset",
                     item.disabled
                       ? "text-text-tertiary opacity-50 cursor-not-allowed focus:bg-bg-tertiary"
                       : item.danger

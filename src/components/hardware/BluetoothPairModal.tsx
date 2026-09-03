@@ -7,6 +7,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,7 @@ interface BluetoothPairModalProps {
 }
 
 export function BluetoothPairModal({ open, onClose }: BluetoothPairModalProps) {
+  const t = useTranslations("hardware.bluetooth");
   const agentUrl = useAgentConnectionStore((s) => s.agentUrl);
   const apiKey = useAgentConnectionStore((s) => s.apiKey);
 
@@ -68,10 +70,10 @@ export function BluetoothPairModal({ open, onClose }: BluetoothPairModalProps) {
     if (!client) return;
     const ok = await pairBluetooth(client, mac);
     if (ok) {
-      toast("Paired " + name, "success");
+      toast(`${t("pairSuccess")} ${name}`, "success");
       onClose();
     } else {
-      toast("Failed to pair " + name, "error");
+      toast(`${t("pairFailed")} ${name}`, "error");
     }
   };
 

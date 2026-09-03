@@ -338,7 +338,8 @@
       "otherFieldPlaceholder": "e.g. FR",
       "unrestrictedNote": "Operator responsible for local RF compliance.",
       "perDroneNote": "This is the default applied when a drone is paired. Each drone can be set individually on its System tab."
-    }
+    },
+    "dialogLabel": "ಮಿಷನ್ ಕಂಟ್ರೋಲ್ ಸೆಟಪ್"
   },
   "common": {
     "save": "ಉಳಿಸಿ",
@@ -360,7 +361,8 @@
       "message": "You have unsaved changes to the current plan. What would you like to do?",
       "saveAndSwitch": "Save & Switch",
       "discardAndSwitch": "Discard & Switch"
-    }
+    },
+    "confirmTypePhrase": "ದೃಢೀಕರಿಸಲು <phrase></phrase> ಎಂದು ಟೈಪ್ ಮಾಡಿ"
   },
   "status": {
     "connected": "ಸಂಪರ್ಕಿತ",
@@ -533,7 +535,8 @@
     "data": "ಡೇಟಾ",
     "flashTool": "ಫ್ಲ್ಯಾಶ್ ಟೂಲ್",
     "operator": "Operator & Aircraft",
-    "plugins": "ವಿಸ್ತರಣೆಗಳು"
+    "plugins": "ವಿಸ್ತರಣೆಗಳು",
+    "can": "DroneCAN"
   },
   "general": {
     "title": "ಸಾಮಾನ್ಯ ಸೆಟ್ಟಿಂಗ್‌ಗಳು",
@@ -1267,7 +1270,10 @@
     },
     "cameras": "Cameras",
     "surfaceError": "This view failed to render. The rest of the console is unaffected.",
-    "surfaceErrorRetry": "Try again"
+    "surfaceErrorRetry": "Try again",
+    "openHud": "ಪೂರ್ಣ-ಪರದೆ HUD ತೆರೆಯಿರಿ",
+    "nodeDetailTabs": "ನೋಡ್ ವಿವರ ಟ್ಯಾಬ್‌ಗಳು",
+    "nodeNotFound": "Drone “{id}” ಕಂಡುಬಂದಿಲ್ಲ"
   },
   "vision": {
     "title": "Vision Engine",
@@ -2025,7 +2031,9 @@
       "enterCodeSubtitle": "Works over HTTPS. No LAN access required.",
       "enterCodeHint": "Run `ados status` on your drone to see its current code, or copy it from the install banner.",
       "pair": "Pair",
-      "pairing": "Pairing"
+      "pairing": "Pairing",
+      "tabsLabel": "ಜೋಡಣೆ ವಿಧಾನ",
+      "lanRelayNudge": "ನಿಮ್ಮ LAN ಹೊರಗಿನಿಂದ ಈ ನೋಡ್ ತಲುಪಲು ಸೈನ್ ಇನ್ ಮಾಡಿ ಕ್ಲೌಡ್ ರಿಲೇ ಸಕ್ರಿಯಗೊಳಿಸಿ. ಮೇಲಿನ LAN ಜೋಡಣೆ ಖಾತೆ ಇಲ್ಲದೆಯೇ ಕೆಲಸ ಮಾಡುತ್ತದೆ."
     },
     "unpair": "Unpair",
     "disconnect": "Disconnect",
@@ -3299,7 +3307,20 @@
     "shortcutSearch": "/ — ಹುಡುಕಾಟಕ್ಕೆ ಗಮನ",
     "shortcutTrash": "T — ಟ್ರ್ಯಾಶ್ ಟಾಗಲ್",
     "shortcutEsc": "Esc — ಪ್ಯಾನೆಲ್ ಮುಚ್ಚಿ / ಆಯ್ಕೆ ತೆರವುಗೊಳಿಸಿ",
-    "shortcutDelete": "Del — ಆಯ್ಕೆಯನ್ನು ಟ್ರ್ಯಾಶ್‌ಗೆ ಸರಿಸಿ"
+    "shortcutDelete": "Del — ಆಯ್ಕೆಯನ್ನು ಟ್ರ್ಯಾಶ್‌ಗೆ ಸರಿಸಿ",
+    "preset90d": "ಕಳೆದ 90 ದಿನಗಳು",
+    "presetYear": "ಕಳೆದ ವರ್ಷ",
+    "reports": {
+      "totalFlights": "ಒಟ್ಟು ಹಾರಾಟಗಳು",
+      "totalHours": "ಒಟ್ಟು ಗಂಟೆಗಳು",
+      "totalDistance": "ಒಟ್ಟು ದೂರ",
+      "totalBattery": "ಒಟ್ಟು ಬ್ಯಾಟರಿ",
+      "averages": "ಸರಾಸರಿಗಳು",
+      "avgDuration": "ಸರಾ. ಅವಧಿ",
+      "avgDistance": "ಸರಾ. ದೂರ",
+      "avgMaxAlt": "ಸರಾ. ಗರಿ. ಎತ್ತರ",
+      "byDrone": "Drone ಪ್ರಕಾರ"
+    }
   },
   "library": {
     "title": "FLIGHT PLANS",
@@ -3564,6 +3585,15 @@
       "ekf": "EKF",
       "wind": "ಗಾಳಿ",
       "navController": "ನವಿಗೇಶನ್ ನಿಯಂತ್ರಕ"
+    },
+    "gpsFix": {
+      "noGps": "GPS ಇಲ್ಲ",
+      "noFix": "ಸ್ಥಾನ ಇಲ್ಲ",
+      "fix2d": "2D ಸ್ಥಾನ",
+      "fix3d": "3D ಸ್ಥಾನ",
+      "dgps": "DGPS",
+      "rtkFloat": "RTK ತೇಲುವ",
+      "rtk": "RTK ದೃಢ"
     }
   },
   "flightInfo": {
@@ -3847,8 +3877,8 @@
     "disconnected": "DISCONNECTED",
     "cpu": "CPU",
     "mem": "MEM",
-    "disk": "Disk",
-    "temp": "Temp"
+    "disk": "ಡಿಸ್ಕ್",
+    "temp": "ತಾಪ"
   },
   "missionProgress": {
     "mission": "ಮಿಷನ್",
@@ -4036,17 +4066,19 @@
       "title": "OLED ಪ್ರದರ್ಶನ",
       "brightness": "ಹೊಳಪು",
       "autoDim": "60 ಸೆ ನಿಷ್ಕ್ರಿಯ ನಂತರ ಸ್ವಯಂ ಮಂದ",
-      "cycleSeconds": "ಸೈಕಲ್ ಅಂತರ (ಸೆಕೆಂಡುಗಳು)"
+      "cycleSeconds": "ಸೈಕಲ್ ಅಂತರ (ಸೆಕೆಂಡುಗಳು)",
+      "refreshHint": "ಸೆಕೆಂಡಿಗೆ ಒಮ್ಮೆ ರಿಫ್ರೆಶ್ ಆಗುತ್ತದೆ"
     },
     "buttons": {
       "title": "ಬಟನ್‌ಗಳು",
       "shortPress": "ಸಣ್ಣ ಒತ್ತಿ",
       "longPress": "ದೀರ್ಘ ಒತ್ತಿ",
-      "phase2Note": "Remapping is on the roadmap"
+      "readOnlyNote": "ಓದಲು ಮಾತ್ರ: ಈ ಬಿಲ್ಡ್‌ನಲ್ಲಿ ಬಟನ್ ಕ್ರಿಯೆಗಳು ನಿಗದಿತವಾಗಿವೆ.",
+      "bindingHint": "ಉದ್ದ ಒತ್ತಿ ಮರುನಿಯೋಜಿಸಬಹುದು. ಸಣ್ಣ ಒತ್ತಿ ಪ್ರೊಫೈಲ್‌ನಿಂದ ನಿಗದಿತ."
     },
     "screens": {
       "title": "ಪರದೆಗಳು",
-      "phase2Note": "Enable and reorder is on the roadmap"
+      "readOnlyNote": "ಓದಲು ಮಾತ್ರ: ಈ ಬಿಲ್ಡ್‌ನಲ್ಲಿ ಪರದೆಗಳ ಕ್ರಮ ಮತ್ತು ಗೋಚರತೆ ನಿಗದಿತವಾಗಿವೆ."
     },
     "pic": {
       "title": "ಪೈಲಟ್ ಇನ್ ಕಮಾಂಡ್",
@@ -4084,7 +4116,8 @@
       "pairSuccess": "ಜೋಡಿಸಲಾಗಿದೆ",
       "pairFailed": "ಜೋಡಿಸುವಿಕೆ ವಿಫಲವಾಗಿದೆ",
       "noDevicesFound": "ಸಾಧನಗಳು ಕಂಡುಬಂದಿಲ್ಲ.",
-      "pairNewDevice": "ಹೊಸ ಸಾಧನವನ್ನು ಜೋಡಿಸಿ"
+      "pairNewDevice": "ಹೊಸ ಸಾಧನವನ್ನು ಜೋಡಿಸಿ",
+      "forgot": "{name} ಅನ್ನು ಮರೆಯಿರಿ"
     },
     "display": {
       "title": "ಡಿಸ್ಪ್ಲೇ",
@@ -4621,6 +4654,9 @@
       "autoDetectedAs": "Auto-detected as {label}",
       "componentsOk": "{ok} of {total} required components OK",
       "moreItems": " and {count} more"
+    },
+    "physicalUiPage": {
+      "description": "ಗ್ರೌಂಡ್ ಸ್ಟೇಷನ್ ಬಾಕ್ಸ್‌ನ OLED ಪರದೆ ಮತ್ತು ನಾಲ್ಕು ಮುಂಭಾಗದ ಬಟನ್‌ಗಳ ನೇರ ಮುನ್ನೋಟ. Bluetooth ಪರಿಕರಗಳನ್ನೂ ಇಲ್ಲಿಯೇ ಜೋಡಿಸಿ."
     }
   },
   "toast": {
@@ -4638,7 +4674,10 @@
       "bindWaiting": "Waiting for peer on the radio…",
       "bindTransferring": "Transferring keys…",
       "pairFailed": "Pair failed: {message}"
-    }
+    },
+    "dismiss": "ಅಧಿಸೂಚನೆ ಮುಚ್ಚಿ",
+    "dismissWarning": "ಎಚ್ಚರಿಕೆ ಅಧಿಸೂಚನೆ ಮುಚ್ಚಿ",
+    "dismissError": "ದೋಷ ಅಧಿಸೂಚನೆ ಮುಚ್ಚಿ"
   },
   "plugins": {
     "revokePermission": "Revoke permission",
@@ -5385,7 +5424,7 @@
   "navigation": {
     "tabTitle": "Vision Nav",
     "panel": {
-      "title": "Vision Navigation",
+      "title": "ದೃಷ್ಟಿ ಸಂಚಾರ",
       "subtitle": "GPS-denied flight via optical flow and visual inertial odometry"
     },
     "sourceSet": {
@@ -5393,7 +5432,7 @@
       "gpsPrimary": "GPS primary",
       "vioPrimary": "Vision (VIO) primary",
       "ofPrimary": "Optical flow primary",
-      "switchConfirm": "Switch to {{name}}? This will replan the EKF source for in-flight navigation.",
+      "switchConfirm": "Switch to {name}? This will replan the EKF source for in-flight navigation.",
       "switchButton": "Use this set",
       "px4NotSupported": "PX4 does not support runtime source switching. Update parameters and restart the EKF."
     },
@@ -5420,7 +5459,7 @@
     },
     "preArm": {
       "ready": "Vision navigation: ready",
-      "companionBlocker": "Vision companion process is {{state}}. Vision navigation cannot arm.",
+      "companionBlocker": "Vision companion process is {state}. Vision navigation cannot arm.",
       "originBlocker": "EKF origin not set. Plugin will auto-set via SET_GPS_GLOBAL_ORIGIN, retry in a few seconds.",
       "pending": "Vision navigation: status pending",
       "waitingHeartbeat": "Vision navigation: waiting for companion heartbeat"
@@ -6392,7 +6431,44 @@
       "highDesc": "Full detail (recommended)",
       "maximumLabel": "Maximum",
       "maximumDesc": "Best detail, slowest"
-    }
+    },
+    "worldGeneration": "ಜನರೇಶನ್ {generation}",
+    "worldSession": "ಸೆಷನ್",
+    "worldUnknown": "ಗೊತ್ತಿಲ್ಲ",
+    "worldNotProduced": "ಈ ಜನರೇಶನ್‌ನಲ್ಲಿ ರಚನೆಯಾಗಿಲ್ಲ",
+    "worldAbsentTitle": "ವರ್ಲ್ಡ್ ಮಾಡೆಲ್ ಇಲ್ಲ",
+    "worldEmptyTitle": "ವರ್ಲ್ಡ್ ಮಾಡೆಲ್ ಖಾಲಿಯಿದೆ",
+    "worldEmptyBody": "ಇತ್ತೀಚಿನ ಜನರೇಶನ್ ಅಳೆದ ಸೊನ್ನೆಯನ್ನು ವರದಿ ಮಾಡಿದೆ. ಪುನರ್ರಚನೆ ನಡೆಯಿತು, ಯಾವುದೇ ಜಿಯೊಮೆಟ್ರಿ ರಚನೆಯಾಗಿಲ್ಲ.",
+    "worldUnknownTitle": "ವಿಷಯ ಘೋಷಿಸಿಲ್ಲ",
+    "worldUnknownBody": "ಇತ್ತೀಚಿನ ಜನರೇಶನ್ ಓದಬಹುದಾದ ಎಣಿಕೆ ಇಲ್ಲದೆ ಬಂದಿದೆ, ಆದ್ದರಿಂದ ಅದರಲ್ಲಿ ಏನಿದೆ ಎಂಬುದು ಗೊತ್ತಿಲ್ಲ — ಖಾಲಿ ಅಲ್ಲ.",
+    "worldSplat": "ಸ್ಪ್ಲ್ಯಾಟ್",
+    "worldPointcloud": "ಪಾಯಿಂಟ್ ಕ್ಲೌಡ್",
+    "worldMesh": "ಮೆಶ್",
+    "worldOccupancy": "ಆಕ್ಯುಪೆನ್ಸಿ",
+    "worldGaussians": "ಗಾಸಿಯನ್",
+    "worldTrainingStep": "ಟ್ರೈನಿಂಗ್ ಹಂತ",
+    "worldLodLevels": "LOD ಹಂತಗಳು",
+    "worldPoints": "ಪಾಯಿಂಟ್‌ಗಳು",
+    "worldExtent": "ವ್ಯಾಪ್ತಿ",
+    "worldExtentUnmeasured": "ಅಳೆದಿಲ್ಲ",
+    "worldVertices": "ಶಿರೋಬಿಂದುಗಳು",
+    "worldFaces": "ಮುಖಗಳು",
+    "worldField": "ಫೀಲ್ಡ್",
+    "worldFieldEsdf": "ಸೈನ್ಡ್ ದೂರ (ESDF)",
+    "worldFieldOccupancy": "ಆಕ್ಯುಪೆನ್ಸಿ ಸಂಭವನೀಯತೆ",
+    "worldVoxels": "ವಾಕ್ಸೆಲ್‌ಗಳು",
+    "worldVoxelSize": "ವಾಕ್ಸೆಲ್ ಗಾತ್ರ",
+    "worldTruncation": "ಈ ದೂರದಲ್ಲಿ ಕತ್ತರಿಸಲಾಗಿದೆ",
+    "worldPartialDescriptor": "ಅಪೂರ್ಣ ಡಿಸ್ಕ್ರಿಪ್ಟರ್: {fields} ಘೋಷಿಸಿಲ್ಲ",
+    "worldStreamIdle": "ಡಿಸ್ಕ್ರಿಪ್ಟರ್ ಸ್ಟ್ರೀಮ್ ಚಂದಾ ಆಗಿಲ್ಲ.",
+    "worldStreamDemo": "ಡೆಮೊದಲ್ಲಿ ಡಿಸ್ಕ್ರಿಪ್ಟರ್ ಸ್ಟ್ರೀಮ್ ಲಭ್ಯವಿಲ್ಲ.",
+    "worldStreamBlockedOrigin": "HTTPS ಮೂಲದ ಬ್ರೌಸರ್ LAN ಡಿಸ್ಕ್ರಿಪ್ಟರ್ ಸ್ಟ್ರೀಮ್ ತೆರೆಯಲಾರದು. HTTP ಅಥವಾ ಡೆಸ್ಕ್‌ಟಾಪ್ ಆ್ಯಪ್ ಬಳಸಿ.",
+    "worldStreamConnecting": "ಡಿಸ್ಕ್ರಿಪ್ಟರ್ ಸ್ಟ್ರೀಮ್‌ಗೆ ಸಂಪರ್ಕಿಸುತ್ತಿದೆ…",
+    "worldStreamConnected": "ಡಿಸ್ಕ್ರಿಪ್ಟರ್ ಸ್ಟ್ರೀಮ್ ಸಂಪರ್ಕಗೊಂಡಿದೆ.",
+    "worldStreamReconnecting": "ಡಿಸ್ಕ್ರಿಪ್ಟರ್ ಸ್ಟ್ರೀಮ್ ಮತ್ತೆ ಸಂಪರ್ಕಿಸುತ್ತಿದೆ…",
+    "worldSuperseded": "{count} ಹಳೆಯ ಡಿಸ್ಕ್ರಿಪ್ಟರ್‌ಗಳನ್ನು ಬಿಡಲಾಗಿದೆ",
+    "worldVersionRejected": "{count} ಫ್ರೇಮ್‌ಗಳು ತಿರಸ್ಕೃತ: ಈ ಬಿಲ್ಡ್‌ಗೆ ಎನ್ವೆಲಪ್ ಆವೃತ್ತಿ {version} ಗೊತ್ತಿಲ್ಲ",
+    "worldMalformed": "{count} ಓದಲಾಗದ ಫ್ರೇಮ್‌ಗಳು"
   },
   "workstation": {
     "rail": {
@@ -6417,12 +6493,6 @@
       "gps": "GPS",
       "battery": "Battery",
       "offline": "Offline",
-      "fixNone": "No fix",
-      "fix2d": "2D",
-      "fix3d": "3D",
-      "fixDgps": "DGPS",
-      "fixRtkFloat": "RTK float",
-      "fixRtk": "RTK fixed",
       "sats": "{count} sats",
       "rssi": "{value} dBm"
     },

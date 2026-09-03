@@ -55,17 +55,20 @@ export function LocalStorageBanner({ onSignIn }: LocalStorageBannerProps) {
       </div>
       <div className="flex items-center gap-2 shrink-0">
         <button
+          type="button"
           onClick={onSignIn}
-          className="flex items-center gap-1 text-xs text-accent-primary hover:underline"
+          className="flex items-center gap-1 text-xs text-accent-primary hover:underline focus-ring"
         >
           <Cloud size={12} />
           {t("localStorageBanner.signInToBackup")}
         </button>
         <button
+          type="button"
           onClick={handleDismiss}
-          className="text-text-tertiary hover:text-text-secondary"
+          aria-label={t("close")}
+          className="text-text-tertiary hover:text-text-secondary focus-ring"
         >
-          <X size={14} />
+          <X size={14} aria-hidden="true" />
         </button>
       </div>
     </div>

@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { getSeverity, estimateFlightMinutes } from "../deck-utils";
+import { getSeverity, estimateFlightMinutes, gpsFixKey } from "../deck-utils";
 
 describe("getSeverity with an absent reading", () => {
   it("returns normal for an absent satellite count", () => {
@@ -96,5 +96,23 @@ describe("estimateFlightMinutes when it cannot compute", () => {
   it("still produces an estimate once enough is consumed", () => {
     const minutes = estimateFlightMinutes(50, 1000, 20);
     expect(minutes).toBeGreaterThan(0);
+  });
+});
+
+describe("gpsFixKey", () => {
+  // The deck used to format its own English fix label. It now returns an
+  // `indicators.gpsFix.*` key for the calling component to resolve, keeping
+  // the coarse three-way reading its truncating four-column cells can hold.
+  it("maps the fix types the deck distinguishes", () => {
+    expect(gpsFixKey(0)).toBe("noFix");
+    expect(gpsFixKey(1)).toBe("noFix");
+    expect(gpsFixKey(2)).toBe("fix2d");
+    expect(gpsFixKey(3)).toBe("fix3d");
+    expect(gpsFixKey(6)).toBe("fix3d");
+  });
+
+  it("keeps reading the STATIC/PPP tail as a 3D fix, as it did before", () => {
+    expect(gpsFixKey(7)).toBe("fix3d");
+    expect(gpsFixKey(8)).toBe("fix3d");
   });
 });

@@ -3,13 +3,13 @@
 /**
  * @module PhysicalUiTab
  * @description Command-tab home for the physical-UI surface (OLED
- * live card, Buttons, Screens — buttons and screens stay read-only
- * placeholders until remapping and reorder ship). Lifted from the
- * prior /hardware/ui route.
+ * live card, Buttons, Screens — buttons and screens are read-only
+ * in this build). Lifted from the prior /hardware/ui route.
  * @license GPL-3.0-only
  */
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { BluetoothPairModal } from "@/components/hardware/BluetoothPairModal";
 import { CloudModeLimitedNotice } from "@/components/command/shared/CloudModeLimitedNotice";
 import { LocalDisplayCard } from "@/components/hardware/LocalDisplayCard";
@@ -39,6 +39,8 @@ export function PhysicalUiTab() {
   const bluetooth = useGroundStationStore((s) => s.bluetooth);
   const loadPairedBluetooth = useGroundStationStore((s) => s.loadPairedBluetooth);
   const forgetBluetooth = useGroundStationStore((s) => s.forgetBluetooth);
+
+  const t = useTranslations("hardware");
 
   const { toast } = useToast();
   const [btPairOpen, setBtPairOpen] = useState(false);
@@ -116,7 +118,7 @@ export function PhysicalUiTab() {
     return (
       <div className="flex flex-col">
         <PageIntro
-          title="Physical UI"
+          title={t("physicalUi")}
           description="Live preview of the OLED screen and four front buttons on the ground station box. Pair Bluetooth peripherals here too."
         />
         <CloudModeLimitedNotice feature="physicalUi" />
@@ -127,7 +129,7 @@ export function PhysicalUiTab() {
   return (
     <div className="flex flex-col">
       <PageIntro
-        title="Physical UI"
+        title={t("physicalUi")}
         description="Live preview of the OLED screen and four front buttons on the ground station box. Pair Bluetooth peripherals here too."
       />
       <div className="flex flex-col gap-4">
@@ -146,7 +148,7 @@ export function PhysicalUiTab() {
       {/* OLED card */}
       <section className="rounded border border-border-default bg-bg-secondary p-5">
         <div className="mb-4 flex flex-wrap items-center gap-2">
-          <h2 className="text-lg font-medium text-text-primary">OLED Display</h2>
+          <h2 className="text-lg font-medium text-text-primary">{t("oled.title")}</h2>
           <HintChip>Refreshes once per second</HintChip>
         </div>
 
@@ -154,7 +156,7 @@ export function PhysicalUiTab() {
           <div className="flex flex-col gap-1">
             <div className="flex items-center justify-between">
               <label htmlFor="oled-brightness" className="text-xs text-text-secondary">
-                Brightness
+                {t("oled.brightness")}
               </label>
               <span className="font-mono text-xs text-text-primary">{brightness}</span>
             </div>
@@ -166,19 +168,19 @@ export function PhysicalUiTab() {
               step={1}
               value={brightness}
               onChange={(e) => handleBrightness(Number(e.target.value))}
-              className="w-full accent-accent-primary"
+              className="w-full accent-accent-primary focus-ring"
             />
           </div>
 
           <Toggle
-            label="Auto-dim after 60 s idle"
+            label={t("oled.autoDim")}
             checked={autoDim}
             onChange={handleAutoDim}
           />
 
           <div className="flex flex-col gap-1">
             <label htmlFor="oled-cycle" className="text-xs text-text-secondary">
-              Cycle interval (seconds)
+              {t("oled.cycleSeconds")}
             </label>
             <input
               id="oled-cycle"
@@ -188,7 +190,7 @@ export function PhysicalUiTab() {
               step={1}
               value={cycleSeconds}
               onChange={(e) => handleCycle(Number(e.target.value))}
-              className="w-28 h-8 px-2 bg-bg-tertiary border border-border-default text-sm font-mono text-text-primary focus:outline-none focus:border-accent-primary transition-colors"
+              className="w-28 h-8 px-2 bg-bg-tertiary border border-border-default text-sm font-mono text-text-primary focus-ring focus:border-accent-primary transition-colors"
             />
           </div>
 
@@ -203,7 +205,7 @@ export function PhysicalUiTab() {
       {/* Buttons card (read-only) */}
       <section className="rounded border border-border-default bg-bg-secondary p-5">
         <div className="mb-4 flex flex-wrap items-center gap-2">
-          <h2 className="text-lg font-medium text-text-primary">Buttons</h2>
+          <h2 className="text-lg font-medium text-text-primary">{t("buttons.title")}</h2>
           <HintChip>Long-press is remappable. Short-press is fixed by profile.</HintChip>
         </div>
         <div className="overflow-hidden rounded border border-border-default">
@@ -211,8 +213,8 @@ export function PhysicalUiTab() {
             <thead className="bg-bg-tertiary text-xs uppercase tracking-wide text-text-secondary">
               <tr>
                 <th className="px-3 py-2 text-left">Button</th>
-                <th className="px-3 py-2 text-left">Short press</th>
-                <th className="px-3 py-2 text-left">Long press</th>
+                <th className="px-3 py-2 text-left">{t("buttons.shortPress")}</th>
+                <th className="px-3 py-2 text-left">{t("buttons.longPress")}</th>
               </tr>
             </thead>
             <tbody>
@@ -234,13 +236,13 @@ export function PhysicalUiTab() {
           </table>
         </div>
         <p className="mt-3 text-xs text-text-secondary">
-          Remapping ships in a follow-up release.
+          {t("buttons.readOnlyNote")}
         </p>
       </section>
 
       {/* Screens card (read-only) */}
       <section className="rounded border border-border-default bg-bg-secondary p-5">
-        <h2 className="mb-4 text-lg font-medium text-text-primary">Screens</h2>
+        <h2 className="mb-4 text-lg font-medium text-text-primary">{t("screens.title")}</h2>
         <ol className="space-y-1">
           {screenOrder.map((name, idx) => (
             <li
@@ -263,16 +265,16 @@ export function PhysicalUiTab() {
           ))}
         </ol>
         <p className="mt-3 text-xs text-text-secondary">
-          Enable and reorder ships in a follow-up release.
+          {t("screens.readOnlyNote")}
         </p>
       </section>
 
       {/* Bluetooth pairing */}
       <section className="rounded border border-border-default bg-bg-secondary p-5">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-medium text-text-primary">Bluetooth</h2>
+          <h2 className="text-lg font-medium text-text-primary">{t("bluetooth.title")}</h2>
           <Button variant="primary" size="sm" onClick={() => setBtPairOpen(true)}>
-            Pair new device
+            {t("bluetooth.pairNewDevice")}
           </Button>
         </div>
         {bluetooth.paired.length === 0 ? (
@@ -295,7 +297,7 @@ export function PhysicalUiTab() {
                   size="sm"
                   onClick={() => handleForgetBt(dev.mac, dev.name || dev.mac)}
                 >
-                  Forget
+                  {t("bluetooth.forget")}
                 </Button>
               </li>
             ))}

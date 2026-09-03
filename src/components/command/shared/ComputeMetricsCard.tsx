@@ -223,7 +223,7 @@ export function ComputeMetricsCard({ className, profile }: ComputeMetricsCardPro
                   <span
                     className={cn(
                       "w-1.5 h-1.5 rounded-full flex-shrink-0",
-                      cam.streaming ? "bg-green-500/80" : "bg-gray-500/60"
+                      cam.streaming ? "bg-status-success/80" : "bg-text-tertiary/60"
                     )}
                     title={cam.streaming ? t("streaming") : t("idle")}
                   />
@@ -365,7 +365,7 @@ export function ComputeMetricsCard({ className, profile }: ComputeMetricsCardPro
                 <span
                   className={cn(
                     "w-1.5 h-1.5 rounded-full flex-shrink-0",
-                    m.loaded ? "bg-green-500/80" : "bg-gray-500/60"
+                    m.loaded ? "bg-status-success/80" : "bg-text-tertiary/60"
                   )}
                   title={m.loaded ? t("loaded") : t("installed")}
                 />
@@ -396,7 +396,7 @@ export function ComputeMetricsCard({ className, profile }: ComputeMetricsCardPro
               <span
                 className={cn(
                   "w-1.5 h-1.5 rounded-full flex-shrink-0",
-                  cam.streaming ? "bg-green-500/80" : "bg-gray-500/60"
+                  cam.streaming ? "bg-status-success/80" : "bg-text-tertiary/60"
                 )}
                 title={cam.streaming ? t("streaming") : t("idle")}
               />

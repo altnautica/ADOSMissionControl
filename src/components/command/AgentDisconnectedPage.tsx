@@ -49,7 +49,7 @@ export function AgentDisconnectedPage({
       <div className="max-w-4xl mx-auto px-6 py-10 space-y-10">
         {/* Hero */}
         <div className="text-center space-y-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1 text-sm font-medium bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 rounded-full">
+          <div className="inline-flex items-center gap-2 px-3 py-1 text-sm font-medium bg-status-warning/10 text-status-warning border border-status-warning/20 rounded-full">
             <AlertTriangle size={12} />
             {t("alpha")}
           </div>

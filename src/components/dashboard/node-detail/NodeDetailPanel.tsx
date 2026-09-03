@@ -27,7 +27,6 @@ import { cn } from "@/lib/utils";
 import { DroneStatusBadge } from "@/components/shared/drone-status-badge";
 import { StatusDot } from "@/components/ui/status-dot";
 import { useNodeControlAuthorityNotice } from "@/hooks/use-node-control-authority";
-import { LinkUpPlaceholder } from "@/components/shared/link-up/LinkUpPlaceholder";
 import {
   DroneDetailTabHeaders,
   DroneDetailTabBody,
@@ -36,7 +35,7 @@ import {
 import { PluginHostProvider } from "@/components/plugins/PluginHostProvider";
 import { SurfaceErrorBoundary } from "./SurfaceErrorBoundary";
 import { usePluginContributions } from "@/hooks/use-plugin-contributions";
-import { X, RotateCcw, Trash2, Lock } from "lucide-react";
+import { X, RotateCcw, Trash2, MonitorPlay } from "lucide-react";
 import { useFleetNodes } from "@/hooks/use-fleet-nodes";
 import { selectNode } from "@/lib/agent/node-click-handler";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
@@ -52,7 +51,7 @@ import { RuntimeModeBadge } from "@/components/indicators/RuntimeModeBadge";
 import { TrafficPill } from "@/components/indicators/TrafficPill";
 import { useUiStore } from "@/stores/ui-store";
 import { resolveSurfaces } from "./surfaces";
-import { AGENT_SUBPAGE_IDS, agentRedirect } from "./agent/agent-redirect";
+import { agentRedirect } from "./agent/agent-redirect";
 import type { SurfaceContext } from "./surface-types";
 import {
   type RelayReach,
@@ -64,9 +63,23 @@ interface NodeDetailPanelProps {
   onClose: () => void;
 }
 
+/**
+ * Commits the one side effect of the Agent deep-link redirect. It is a
+ * component rather than an effect in `NodeDetailPanel` because the redirect
+ * decision depends on the profile's resolved `surfaceIds`, which are only
+ * available after the panel's `!drone` guard — and a hook cannot live after an
+ * early return. Mounting it only when the redirect fires keeps `agentRedirect`
+ * the single decision point and runs the handoff once per redirect.
+ */
+function AgentSubpageHandoff({ subpage }: { subpage: string }) {
+  useEffect(() => {
+    useUiStore.getState().setPendingAgentPanel(subpage);
+  }, [subpage]);
+  return null;
+}
+
 export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
   const t = useTranslations("dronePanel");
-  const tLink = useTranslations("linkUp");
   // Namespace-less translator so a surface can reuse any existing key
   // (drone labels live under dronePanel.*, ground-station labels under
   // command.groundStation.tabs.*).
@@ -257,21 +270,24 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
     }
   }, [pendingDetailTab, setPendingDetailTab]);
 
-  // Migrate a persisted/deep-linked jump to a now-nested Agent sub-page: pin the
-  // top tab to "agent" once and hand the sub-page to AgentTab, so the Agent
-  // page's own per-node sub-page memory then takes over. Guarded so the
-  // ground-station's top-level Radio tab is never captured (matches the
-  // surfaceIds-based render remap below).
-  useEffect(() => {
-    const profile = drone?.profile ?? "drone";
-    const isTopLevelRadio =
-      activeTab === "radio" && profile === "ground-station";
-    const sub = isTopLevelRadio ? undefined : AGENT_SUBPAGE_IDS[activeTab];
-    if (sub) {
-      setActiveTab("agent");
-      useUiStore.getState().setPendingAgentPanel(sub);
-    }
-  }, [activeTab, drone?.profile]);
+  // The Agent deep-link redirect lives in exactly one place: `agentRedirect`,
+  // called once during render (below) and guarded on the profile's live
+  // `surfaceIds`. There used to be a second copy here, an effect guarded on a
+  // hardcoded `activeTab === "radio" && profile === "ground-station"` string
+  // instead. The two disagreed in two ways that an operator felt:
+  //
+  //  * On a ground station whose `radio` surface is gated off by its own
+  //    `when` predicate, the string guard skipped while `agentRedirect`
+  //    mapped radio -> agent, so the panel opened the Agent page WITHOUT the
+  //    pending sub-page and landed on whatever it last remembered. The
+  //    operator deep-linked to Radio and arrived somewhere else, silently.
+  //  * The effect also called `setActiveTab("agent")`, which the persistence
+  //    effect below then wrote to `setLastTab`, permanently rewriting the
+  //    node's remembered tab to "agent" and discarding the deep-linked id.
+  //
+  // `visibleTab` already resolves the render to "agent" purely, so nothing
+  // needs to mutate `activeTab`; the redirect's only side effect is handing
+  // the sub-page to the Agent page, committed by `AgentSubpageHandoff`.
 
   // Exit immersive mode if the tab changes away from the immersive surface.
   // Immersive full-bleed belongs to the `cockpit` tab.
@@ -313,7 +329,7 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center h-full gap-3">
         <p className="text-sm text-text-secondary">
-          Drone &quot;{droneId}&quot; not found
+          {t("nodeNotFound", { id: droneId })}
         </p>
         <Button variant="secondary" size="sm" onClick={onClose}>
           {t("backToDashboard")}
@@ -369,7 +385,6 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
   const tabs = surfaces.map((s) => ({
     id: s.id,
     label: tRoot(s.labelKey),
-    locked: s.locked ? s.locked(ctx) : false,
   }));
 
   // Group consecutive surfaces that share a `group` key into sections for the
@@ -396,20 +411,11 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
   const activeSurface = isPluginTabId(visibleTab)
     ? undefined
     : surfaces.find((s) => s.id === visibleTab);
-  const activeBody = activeSurface
-    ? activeSurface.locked?.(ctx)
-      ? (
-        <LinkUpPlaceholder
-          variant="locked"
-          surface={tRoot(activeSurface.labelKey)}
-          droneName={displayName}
-        />
-      )
-      : activeSurface.render(ctx)
-    : null;
+  const activeBody = activeSurface ? activeSurface.render(ctx) : null;
 
   return (
     <PluginHostProvider deviceId={droneId} contributions={pluginContributions}>
+      {agentSubpage && <AgentSubpageHandoff subpage={agentSubpage} />}
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Merged header + tabs bar */}
         {!immersiveMode && (
@@ -434,6 +440,9 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
               variant="ghost"
               size="sm"
               icon={<X size={14} />}
+              // Icon-only, so without this the panel's close control announced
+              // as an unnamed "button".
+              aria-label={t("backToDashboard")}
               onClick={onClose}
             />
 
@@ -441,7 +450,7 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
 
             <div
               role="tablist"
-              aria-label="Node detail"
+              aria-label={t("nodeDetailTabs")}
               // `flex-1 min-w-0` lets the strip take the free row space and
               // SCROLL its own overflow — without it the strip expands to its
               // full content width and shoves the right-side header actions
@@ -504,23 +513,13 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
                               ?.focus();
                           });
                         }}
-                        title={
-                          tab.locked
-                            ? tLink("locked.title", { surface: tab.label })
-                            : undefined
-                        }
                         className={cn(
                           "self-stretch flex items-center gap-1 px-2.5 text-xs font-medium transition-colors cursor-pointer shrink-0 -mb-px border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary",
                           visibleTab === tab.id
                             ? "text-accent-primary border-accent-primary"
-                            : tab.locked
-                              ? "text-text-tertiary hover:text-text-secondary border-transparent"
-                              : "text-text-secondary hover:text-text-primary border-transparent",
+                            : "text-text-secondary hover:text-text-primary border-transparent",
                         )}
                       >
-                        {tab.locked && (
-                          <Lock size={10} className="opacity-70" />
-                        )}
                         {tab.label}
                       </button>
                     );
@@ -549,7 +548,7 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
               icon={<Trash2 size={12} />}
               onClick={() => setDeleteOpen(true)}
               className="text-status-error hover:text-status-error shrink-0"
-              title="Remove this node"
+              title={tRoot("linkUp.cta.removeNode")}
             >
               {t("delete")}
             </Button>
@@ -557,6 +556,23 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
             {isConnected && <NavStatePill />}
             {isConnected && <TrafficPill />}
             {isConnected && <ConnectionQualityMeter />}
+            {isConnected && drone.profile === "drone" && (
+              // `/hud` is the chromeless HDMI kiosk surface and had no entry
+              // point anywhere in the app — the only way in was to type the
+              // URL. It opens in a new tab deliberately: the route strips all
+              // GCS chrome, so navigating in place would leave the operator
+              // with no way back.
+              <a
+                href="/hud"
+                target="_blank"
+                rel="noopener noreferrer"
+                title={t("openHud")}
+                aria-label={t("openHud")}
+                className="flex h-7 shrink-0 items-center gap-1 px-2 text-xs font-medium text-text-secondary transition-colors hover:text-text-primary focus-ring"
+              >
+                <MonitorPlay size={12} aria-hidden="true" />
+              </a>
+            )}
             {isConnected && (
               <Button
                 variant="danger"

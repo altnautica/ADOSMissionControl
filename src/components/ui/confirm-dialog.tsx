@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Modal } from "./modal";
 import { Button } from "./button";
@@ -38,6 +38,7 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   const t = useTranslations("common");
   const [typed, setTyped] = useState("");
+  const cancelRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!open) setTyped("");
@@ -52,9 +53,15 @@ export function ConfirmDialog({
       onClose={onCancel}
       title={title}
       className="max-w-lg"
+      // A destructive confirmation is an alert, not an ordinary dialog, and
+      // opening it with focus on the confirm button means one stray Enter
+      // commits the action. Pin focus to Cancel instead. The typed-phrase
+      // variant autofocuses its input, which is the correct target there.
+      role={variant === "danger" ? "alertdialog" : "dialog"}
+      initialFocusRef={typedPhrase ? undefined : cancelRef}
       footer={
         <>
-          <Button variant="ghost" onClick={onCancel}>
+          <Button ref={cancelRef} variant="ghost" onClick={onCancel}>
             {cancelLabel ?? t("cancel")}
           </Button>
           <Button
@@ -71,7 +78,12 @@ export function ConfirmDialog({
       {typedPhrase ? (
         <div className="mt-3 flex flex-col gap-1">
           <label htmlFor="confirm-typed-phrase" className="text-xs text-text-secondary">
-            Type <span className="font-mono text-text-primary">{typedPhrase}</span> to confirm
+            {/* Was hardcoded English on a destructive gate (factory reset and
+                friends), so a non-English operator saw the one instruction
+                that unlocks the action in a language they may not read. */}
+            {t.rich("confirmTypePhrase", {
+              phrase: () => <span className="font-mono text-text-primary">{typedPhrase}</span>,
+            })}
           </label>
           <input
             id="confirm-typed-phrase"
@@ -81,7 +93,7 @@ export function ConfirmDialog({
             autoFocus
             spellCheck={false}
             autoComplete="off"
-            className="w-full h-9 px-2 bg-bg-tertiary border border-border-default text-sm font-mono text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent-primary transition-colors"
+            className="w-full h-9 px-2 bg-bg-tertiary border border-border-default text-sm font-mono text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent-primary focus-ring transition-colors"
           />
         </div>
       ) : null}

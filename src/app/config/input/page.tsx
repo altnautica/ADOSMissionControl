@@ -8,6 +8,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { Gamepad2 } from "lucide-react";
 import { BluetoothPairModal } from "@/components/hardware/BluetoothPairModal";
@@ -27,6 +28,7 @@ import { registerBuiltins } from "@/lib/skills";
 const POLL_INTERVAL_MS = 2000;
 
 export default function InputDevicesPage() {
+  const t = useTranslations("status");
   const agentUrl = useAgentConnectionStore((s) => s.agentUrl);
   const apiKey = useAgentConnectionStore((s) => s.apiKey);
 
@@ -195,7 +197,7 @@ export default function InputDevicesPage() {
                                     : "text-xs text-text-tertiary"
                                 }
                               >
-                                {dev.connected ? "Connected" : "Disconnected"}
+                                {dev.connected ? t("connected") : t("disconnected")}
                               </span>
                             </td>
                             <td className="px-3 py-2 text-right">

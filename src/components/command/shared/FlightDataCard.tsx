@@ -54,14 +54,19 @@ function LinkStat({
   );
 }
 
-const FIX_LABELS: Record<number, { label: string; color: string }> = {
-  0: { label: "No Fix", color: "text-status-error" },
-  1: { label: "No Fix", color: "text-status-error" },
-  2: { label: "2D Fix", color: "text-status-warning" },
-  3: { label: "3D Fix", color: "text-status-success" },
-  4: { label: "DGPS", color: "text-status-success" },
-  5: { label: "RTK Float", color: "text-accent-primary" },
-  6: { label: "RTK Fix", color: "text-accent-primary" },
+/**
+ * MAVLink GPS_FIX_TYPE -> its `indicators.gpsFix.*` key plus severity colour.
+ * Fix types above 6 (STATIC, PPP) have no entry and fall back to 0, which is
+ * the pre-existing behaviour of this card.
+ */
+const FIX_LABELS: Record<number, { key: string; color: string }> = {
+  0: { key: "noGps", color: "text-status-error" },
+  1: { key: "noFix", color: "text-status-error" },
+  2: { key: "fix2d", color: "text-status-warning" },
+  3: { key: "fix3d", color: "text-status-success" },
+  4: { key: "dgps", color: "text-status-success" },
+  5: { key: "rtkFloat", color: "text-accent-primary" },
+  6: { key: "rtk", color: "text-accent-primary" },
 };
 
 function normalizeHeading(deg: number) {
@@ -70,6 +75,7 @@ function normalizeHeading(deg: number) {
 
 export function FlightDataCard({ className }: FlightDataCardProps) {
   const t = useTranslations("nodeConsole");
+  const tFix = useTranslations("indicators.gpsFix");
   useTelemetryStore((s) => s._version);
   const attitude = useTelemetryStore((s) => s.attitude);
   const position = useTelemetryStore((s) => s.position);
@@ -279,7 +285,7 @@ export function FlightDataCard({ className }: FlightDataCardProps) {
               gpsLive ? fix.color : "text-text-tertiary"
             )}
           >
-            {gpsLive ? fix.label : "--"}
+            {gpsLive ? tFix(fix.key) : "--"}
           </span>
         </div>
 

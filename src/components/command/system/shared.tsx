@@ -36,13 +36,13 @@ import type { PeripheralInfo } from "@/lib/agent/types";
 // ── Peripheral category config ──
 
 export const CATEGORY_CONFIG: Record<string, { color: string; label: string }> = {
-  sensor: { color: "border-blue-500 bg-blue-500/10 text-blue-400", label: "sensor" },
-  camera: { color: "border-green-500 bg-green-500/10 text-green-400", label: "camera" },
-  codec: { color: "border-orange-500 bg-orange-500/10 text-orange-400", label: "codec" },
-  isp: { color: "border-cyan-500 bg-cyan-500/10 text-cyan-400", label: "isp" },
-  decoder: { color: "border-pink-500 bg-pink-500/10 text-pink-400", label: "decoder" },
-  video: { color: "border-yellow-500 bg-yellow-500/10 text-yellow-400", label: "radio" },
-  workstation: { color: "border-gray-500 bg-gray-500/10 text-gray-400", label: "Workstation" },
+  sensor: { color: "border-[var(--node-swatch-blue)] bg-[var(--node-swatch-blue)]/10 text-[var(--node-swatch-blue)]", label: "sensor" },
+  camera: { color: "border-[var(--node-swatch-green)] bg-[var(--node-swatch-green)]/10 text-[var(--node-swatch-green)]", label: "camera" },
+  codec: { color: "border-[var(--node-swatch-orange)] bg-[var(--node-swatch-orange)]/10 text-[var(--node-swatch-orange)]", label: "codec" },
+  isp: { color: "border-[var(--node-swatch-cyan)] bg-[var(--node-swatch-cyan)]/10 text-[var(--node-swatch-cyan)]", label: "isp" },
+  decoder: { color: "border-[var(--node-swatch-pink)] bg-[var(--node-swatch-pink)]/10 text-[var(--node-swatch-pink)]", label: "decoder" },
+  video: { color: "border-[var(--node-swatch-amber)] bg-[var(--node-swatch-amber)]/10 text-[var(--node-swatch-amber)]", label: "radio" },
+  workstation: { color: "border-[var(--node-swatch-slate)] bg-[var(--node-swatch-slate)]/10 text-[var(--node-swatch-slate)]", label: "Workstation" },
 };
 
 // ── NPU Badge (for hero card) ──
@@ -171,7 +171,7 @@ export function StatBox({ label, value, unit, warn }: { label: string; value: nu
  * neutral badge instead of crashing the whole Health tab (Rule 44: degrade, do
  * not fabricate; here, degrade instead of throw). */
 const DEFAULT_CATEGORY = {
-  color: "border-gray-500 bg-gray-500/10 text-gray-400",
+  color: "border-[var(--node-swatch-slate)] bg-[var(--node-swatch-slate)]/10 text-[var(--node-swatch-slate)]",
   label: "device",
 } as const;
 

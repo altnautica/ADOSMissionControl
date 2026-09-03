@@ -112,11 +112,11 @@ export function AltitudeBandViz({ altMin, altMax }: { altMin: number; altMax: nu
     <div className="flex items-start gap-3 mt-2">
       <div className="relative" style={{ width: 24, height: BAR_HEIGHT }}>
         <div
-          className="absolute inset-0 bg-red-500/15 border border-red-500/20"
+          className="absolute inset-0 bg-status-error/15 border border-status-error/20"
           style={{ borderRadius: 2 }}
         />
         <div
-          className="absolute left-0 right-0 bg-green-500/25 border-l-2 border-green-500"
+          className="absolute left-0 right-0 bg-status-success/25 border-l-2 border-status-success"
           style={{
             bottom: `${minPct}%`,
             height: `${bandPct}%`,
@@ -124,15 +124,15 @@ export function AltitudeBandViz({ altMin, altMax }: { altMin: number; altMax: nu
           }}
         />
         <div
-          className="absolute left-0 right-0 h-px bg-red-500"
+          className="absolute left-0 right-0 h-px bg-status-error"
           style={{ bottom: `${100}%`, transform: "translateY(1px)" }}
         />
       </div>
       <div className="flex flex-col justify-between" style={{ height: BAR_HEIGHT }}>
-        <div className="text-[10px] font-mono text-red-400">
+        <div className="text-[10px] font-mono text-status-error">
           {altMax}m MAX
         </div>
-        <div className="text-[10px] font-mono text-green-400">
+        <div className="text-[10px] font-mono text-status-success">
           Valid: {displayMin}m - {altMax}m
         </div>
         <div className="text-[10px] font-mono text-text-tertiary">

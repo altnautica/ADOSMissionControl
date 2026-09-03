@@ -29,6 +29,13 @@
   --color-accent-primary: var(--alt-accent-primary);
   --color-accent-primary-hover: var(--alt-accent-primary-hover);
   --color-accent-secondary: var(--alt-accent-secondary);
+  /* Legible foreground for anything painted on `--alt-accent-primary`
+     (primary buttons, selected pills). Hardcoded `text-white` failed WCAG AA
+     against 18 of the 22 accents in this file — worst is `nvg` at 1.37:1,
+     where white also breaks night-vision discipline outright. Every theme
+     block below states its own value; `tests/unit/theme-contrast.test.ts`
+     fails the build if a theme omits it or drops below 4.5:1. */
+  --color-accent-foreground: var(--alt-accent-foreground);
   --color-border-default: var(--alt-border-default);
   --color-border-strong: var(--alt-border-strong);
   --color-status-success: var(--alt-status-success);
@@ -61,6 +68,8 @@
   --alt-accent-primary: #3a82ff;
   --alt-accent-primary-hover: #5b9aff;
   --alt-accent-secondary: #dff140;
+  /* Reads on --alt-accent-primary at >= 4.5:1. See the note in @theme. */
+  --alt-accent-foreground: #000000;
 
   /* Border */
   --alt-border-default: #1a1a1a;
@@ -112,6 +121,7 @@ html[data-theme="light"] {
   --alt-accent-primary: #2f6feb;
   --alt-accent-primary-hover: #4b82ef;
   --alt-accent-secondary: #8ba000;
+  --alt-accent-foreground: #000000;
 
   --alt-border-default: #d6dce8;
   --alt-border-strong: #bec9da;
@@ -135,6 +145,7 @@ html[data-theme="solarized-dark"] {
   --alt-accent-primary: #268bd2;
   --alt-accent-primary-hover: #2aa1de;
   --alt-accent-secondary: #b58900;
+  --alt-accent-foreground: #000000;
 
   --alt-border-default: #073642;
   --alt-border-strong: #586e75;
@@ -158,6 +169,7 @@ html[data-theme="solarized-light"] {
   --alt-accent-primary: #268bd2;
   --alt-accent-primary-hover: #2aa1de;
   --alt-accent-secondary: #b58900;
+  --alt-accent-foreground: #000000;
 
   --alt-border-default: #eee8d5;
   --alt-border-strong: #d6d0c8;
@@ -178,6 +190,7 @@ html[data-theme="nvg"] {
   --alt-accent-primary: #00FF00;
   --alt-accent-primary-hover: #00CC00;
   --alt-accent-secondary: #008800;
+  --alt-accent-foreground: #000000;
   --alt-border-default: #002200;
   --alt-border-strong: #003300;
   --alt-status-success: #005500;
@@ -201,6 +214,7 @@ html[data-theme="dracula"] {
   --alt-accent-primary: #bd93f9;
   --alt-accent-primary-hover: #ff79c6;
   --alt-accent-secondary: #8be9fd;
+  --alt-accent-foreground: #000000;
   --alt-border-default: #383a4a;
   --alt-border-strong: #44475a;
   --alt-status-success: #50fa7b;
@@ -222,6 +236,7 @@ html[data-theme="catppuccin-mocha"] {
   --alt-accent-primary: #cba6f7;
   --alt-accent-primary-hover: #b4befe;
   --alt-accent-secondary: #94e2d5;
+  --alt-accent-foreground: #000000;
   --alt-border-default: #313244;
   --alt-border-strong: #6c7086;
   --alt-status-success: #a6e3a1;
@@ -243,6 +258,7 @@ html[data-theme="catppuccin-frappe"] {
   --alt-accent-primary: #ca9ee6;
   --alt-accent-primary-hover: #babbf1;
   --alt-accent-secondary: #81c8be;
+  --alt-accent-foreground: #000000;
   --alt-border-default: #414559;
   --alt-border-strong: #737994;
   --alt-status-success: #a6d189;
@@ -264,6 +280,7 @@ html[data-theme="nord"] {
   --alt-accent-primary: #88c0d0;
   --alt-accent-primary-hover: #8fbcbb;
   --alt-accent-secondary: #81a1c1;
+  --alt-accent-foreground: #000000;
   --alt-border-default: #3b4252;
   --alt-border-strong: #4c566a;
   --alt-status-success: #a3be8c;
@@ -285,6 +302,7 @@ html[data-theme="gruvbox-dark"] {
   --alt-accent-primary: #83a598;
   --alt-accent-primary-hover: #8ec07c;
   --alt-accent-secondary: #d3869b;
+  --alt-accent-foreground: #000000;
   --alt-border-default: #3c3836;
   --alt-border-strong: #504945;
   --alt-status-success: #b8bb26;
@@ -306,6 +324,7 @@ html[data-theme="one-dark"] {
   --alt-accent-primary: #61afef;
   --alt-accent-primary-hover: #528bff;
   --alt-accent-secondary: #c678dd;
+  --alt-accent-foreground: #000000;
   --alt-border-default: #21252b;
   --alt-border-strong: #3a3f4b;
   --alt-status-success: #98c379;
@@ -327,6 +346,7 @@ html[data-theme="tokyo-night"] {
   --alt-accent-primary: #7aa2f7;
   --alt-accent-primary-hover: #7dcfff;
   --alt-accent-secondary: #bb9af7;
+  --alt-accent-foreground: #000000;
   --alt-border-default: #292e42;
   --alt-border-strong: #3b4261;
   --alt-status-success: #9ece6a;
@@ -348,6 +368,7 @@ html[data-theme="rose-pine"] {
   --alt-accent-primary: #c4a7e7;
   --alt-accent-primary-hover: #ebbcba;
   --alt-accent-secondary: #9ccfd8;
+  --alt-accent-foreground: #000000;
   --alt-border-default: #403d52;
   --alt-border-strong: #524f67;
   --alt-status-success: #9ccfd8;
@@ -369,6 +390,7 @@ html[data-theme="monokai"] {
   --alt-accent-primary: #a6e22e;
   --alt-accent-primary-hover: #66d9ef;
   --alt-accent-secondary: #ae81ff;
+  --alt-accent-foreground: #000000;
   --alt-border-default: #3e3d32;
   --alt-border-strong: #75715e;
   --alt-status-success: #a6e22e;
@@ -390,6 +412,7 @@ html[data-theme="kanagawa"] {
   --alt-accent-primary: #7e9cd8;
   --alt-accent-primary-hover: #7fb4ca;
   --alt-accent-secondary: #957fb8;
+  --alt-accent-foreground: #000000;
   --alt-border-default: #363646;
   --alt-border-strong: #54546d;
   --alt-status-success: #98bb6c;
@@ -411,6 +434,7 @@ html[data-theme="synthwave"] {
   --alt-accent-primary: #ff7edb;
   --alt-accent-primary-hover: #f97e72;
   --alt-accent-secondary: #36f9f6;
+  --alt-accent-foreground: #000000;
   --alt-border-default: #2a2139;
   --alt-border-strong: #495495;
   --alt-status-success: #72f1b8;
@@ -432,6 +456,7 @@ html[data-theme="github-dark"] {
   --alt-accent-primary: #1f6feb;
   --alt-accent-primary-hover: #388bfd;
   --alt-accent-secondary: #58a6ff;
+  --alt-accent-foreground: #ffffff;
   --alt-border-default: #2f3742;
   --alt-border-strong: #656c76;
   --alt-status-success: #238636;
@@ -455,6 +480,7 @@ html[data-theme="catppuccin-latte"] {
   --alt-accent-primary: #8839ef;
   --alt-accent-primary-hover: #7287fd;
   --alt-accent-secondary: #179299;
+  --alt-accent-foreground: #ffffff;
   --alt-border-default: #ccd0da;
   --alt-border-strong: #9ca0b0;
   --alt-status-success: #40a02b;
@@ -476,6 +502,7 @@ html[data-theme="gruvbox-light"] {
   --alt-accent-primary: #076678;
   --alt-accent-primary-hover: #458588;
   --alt-accent-secondary: #8f3f71;
+  --alt-accent-foreground: #ffffff;
   --alt-border-default: #ebdbb2;
   --alt-border-strong: #d5c4a1;
   --alt-status-success: #79740e;
@@ -499,6 +526,7 @@ html[data-theme="ayu-dark"] {
   --alt-accent-primary: #e6b450;
   --alt-accent-primary-hover: #ffb454;
   --alt-accent-secondary: #39bae6;
+  --alt-accent-foreground: #000000;
   --alt-border-default: #1c2028;
   --alt-border-strong: #2a3040;
   --alt-status-success: #aad94c;
@@ -520,6 +548,7 @@ html[data-theme="ayu-mirage"] {
   --alt-accent-primary: #ffcc66;
   --alt-accent-primary-hover: #ffd173;
   --alt-accent-secondary: #5ccfe6;
+  --alt-accent-foreground: #000000;
   --alt-border-default: #2a3040;
   --alt-border-strong: #3d4455;
   --alt-status-success: #d5ff80;
@@ -541,6 +570,7 @@ html[data-theme="everforest-dark"] {
   --alt-accent-primary: #a7c080;
   --alt-accent-primary-hover: #83c092;
   --alt-accent-secondary: #7fbbb3;
+  --alt-accent-foreground: #000000;
   --alt-border-default: #475258;
   --alt-border-strong: #4f585e;
   --alt-status-success: #a7c080;
@@ -589,6 +619,35 @@ body {
   scrollbar-width: none;    /* Firefox */
   &::-webkit-scrollbar {
     display: none;          /* Chromium/WebKit/Electron */
+  }
+}
+
+/* The single focus-ring recipe for every focusable control.
+
+   `outline` rather than a `ring-*`/box-shadow: an outline is painted outside
+   the border box, so it stays visible on a control whose own background is the
+   accent colour. `focus-visible:ring-2 focus-visible:ring-accent-primary` —
+   the pattern used ad hoc across the app — renders an invisible ring on a
+   primary button, which is exactly the control a keyboard operator most needs
+   to locate.
+
+   `:focus-visible` (not `:focus`) so a pointer click never paints a ring.
+   Applied via the `focus-ring` class from `src/components/ui/*`; app surfaces
+   that already hand-rolled a ring keep theirs. */
+@utility focus-ring {
+  &:focus-visible {
+    outline: 2px solid var(--alt-accent-primary);
+    outline-offset: 2px;
+  }
+}
+
+/* Same ring drawn inside the border box, for a control that is flush against
+   a container edge (table header cell, tab strip leg, list row) where a 2px
+   outset ring would be clipped by the parent's `overflow`. */
+@utility focus-ring-inset {
+  &:focus-visible {
+    outline: 2px solid var(--alt-accent-primary);
+    outline-offset: -2px;
   }
 }
 

@@ -177,7 +177,7 @@ export function GeofencePanel() {
             {zones.map((zone) => (
               <div key={zone.id} className="flex items-center justify-between py-1.5 border-b border-border-default last:border-0">
                 <div className="flex items-center gap-2">
-                  <span className={cn("w-2.5 h-2.5 rounded-full", zone.role === "inclusion" ? "bg-green-500" : "bg-red-500")} />
+                  <span className={cn("w-2.5 h-2.5 rounded-full", zone.role === "inclusion" ? "bg-status-success" : "bg-status-error")} />
                   <span className="text-xs text-text-primary font-mono">{zone.role === "inclusion" ? "INCL" : "EXCL"} {zone.type}</span>
                   <span className="text-[10px] text-text-tertiary">{zone.type === "polygon" ? `${zone.polygonPoints.length} pts` : `${Math.round(zone.circleRadius)}m`}</span>
                 </div>
@@ -189,11 +189,11 @@ export function GeofencePanel() {
             ))}
             <div className="flex gap-2 mt-2">
               <button onClick={() => addZone({ role: "inclusion", type: "polygon", polygonPoints: [], circleCenter: null, circleRadius: 100 })}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs border transition-colors bg-green-500/10 border-green-500/30 text-green-400 hover:bg-green-500/20">
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs border transition-colors bg-status-success/10 border-status-success/30 text-status-success hover:bg-status-success/20">
                 <Plus size={10} />Inclusion
               </button>
               <button onClick={() => addZone({ role: "exclusion", type: "polygon", polygonPoints: [], circleCenter: null, circleRadius: 100 })}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs border transition-colors bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20">
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs border transition-colors bg-status-error/10 border-status-error/30 text-status-error hover:bg-status-error/20">
                 <Plus size={10} />Exclusion
               </button>
             </div>

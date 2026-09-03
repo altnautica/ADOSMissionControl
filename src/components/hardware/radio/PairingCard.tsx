@@ -176,9 +176,9 @@ export function PairingCard({
       {wfbFailoverState === "cloud_relay" ? (
         <div
           role="alert"
-          className="mb-3 flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm"
+          className="mb-3 flex items-start gap-2 rounded-md border border-status-warning/40 bg-status-warning/10 px-3 py-2 text-sm"
         >
-          <AlertTriangle className="size-4 shrink-0 mt-0.5 text-amber-500" />
+          <AlertTriangle className="size-4 shrink-0 mt-0.5 text-status-warning" />
           <div className="flex-1">
             <p className="font-medium text-text-primary">
               {t("pairing.failover.cloudRelay.title")}
@@ -295,9 +295,9 @@ export function PairingCard({
             <div
               role="alert"
               aria-live="polite"
-              className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs"
+              className="flex items-start gap-2 rounded-md border border-status-warning/40 bg-status-warning/10 px-3 py-2 text-xs"
             >
-              <AlertTriangle className="size-4 shrink-0 mt-0.5 text-amber-500" />
+              <AlertTriangle className="size-4 shrink-0 mt-0.5 text-status-warning" />
               <span className="flex-1 text-text-secondary">{precheckWarning}</span>
             </div>
           ) : null}

@@ -338,7 +338,8 @@
       "otherFieldPlaceholder": "e.g. FR",
       "unrestrictedNote": "Operator responsible for local RF compliance.",
       "perDroneNote": "This is the default applied when a drone is paired. Each drone can be set individually on its System tab."
-    }
+    },
+    "dialogLabel": "任务控制设置"
   },
   "common": {
     "save": "保存",
@@ -360,7 +361,8 @@
       "message": "You have unsaved changes to the current plan. What would you like to do?",
       "saveAndSwitch": "Save & Switch",
       "discardAndSwitch": "Discard & Switch"
-    }
+    },
+    "confirmTypePhrase": "输入 <phrase></phrase> 以确认"
   },
   "status": {
     "connected": "已连接",
@@ -533,7 +535,8 @@
     "data": "数据",
     "flashTool": "刷写工具",
     "operator": "Operator & Aircraft",
-    "plugins": "扩展程序"
+    "plugins": "扩展程序",
+    "can": "DroneCAN"
   },
   "general": {
     "title": "常规设置",
@@ -1267,7 +1270,10 @@
     },
     "cameras": "Cameras",
     "surfaceError": "This view failed to render. The rest of the console is unaffected.",
-    "surfaceErrorRetry": "Try again"
+    "surfaceErrorRetry": "Try again",
+    "openHud": "打开全屏 HUD",
+    "nodeDetailTabs": "节点详情选项卡",
+    "nodeNotFound": "未找到无人机“{id}”"
   },
   "vision": {
     "title": "Vision Engine",
@@ -2025,7 +2031,9 @@
       "enterCodeSubtitle": "Works over HTTPS. No LAN access required.",
       "enterCodeHint": "Run `ados status` on your drone to see its current code, or copy it from the install banner.",
       "pair": "Pair",
-      "pairing": "Pairing"
+      "pairing": "Pairing",
+      "tabsLabel": "配对方式",
+      "lanRelayNudge": "登录以启用云中继，即可从 LAN 之外访问此节点。上方的 LAN 配对无需账号即可使用。"
     },
     "unpair": "取消配对",
     "disconnect": "断开",
@@ -3299,7 +3307,20 @@
     "shortcutSearch": "/ — 聚焦搜索",
     "shortcutTrash": "T — 切换回收站",
     "shortcutEsc": "Esc — 关闭面板 / 取消选择",
-    "shortcutDelete": "Del — 将选中项移至回收站"
+    "shortcutDelete": "Del — 将选中项移至回收站",
+    "preset90d": "最近90天",
+    "presetYear": "最近一年",
+    "reports": {
+      "totalFlights": "总飞行次数",
+      "totalHours": "总飞行小时",
+      "totalDistance": "总飞行距离",
+      "totalBattery": "总电池消耗",
+      "averages": "平均值",
+      "avgDuration": "平均时长",
+      "avgDistance": "平均距离",
+      "avgMaxAlt": "平均最大高度",
+      "byDrone": "按无人机"
+    }
   },
   "library": {
     "title": "飞行计划",
@@ -3564,6 +3585,15 @@
       "ekf": "EKF",
       "wind": "风",
       "navController": "导航控制器"
+    },
+    "gpsFix": {
+      "noGps": "无 GPS 模块",
+      "noFix": "无定位",
+      "fix2d": "2D 定位",
+      "fix3d": "3D 定位",
+      "dgps": "DGPS",
+      "rtkFloat": "RTK 浮点解",
+      "rtk": "RTK 固定解"
     }
   },
   "flightInfo": {
@@ -3847,7 +3877,7 @@
     "disconnected": "已断开",
     "cpu": "CPU",
     "mem": "MEM",
-    "disk": "Disk",
+    "disk": "磁盘",
     "temp": "温度"
   },
   "missionProgress": {
@@ -4036,17 +4066,19 @@
       "title": "OLED 显示屏",
       "brightness": "亮度",
       "autoDim": "空闲 60 秒后自动变暗",
-      "cycleSeconds": "循环间隔（秒）"
+      "cycleSeconds": "循环间隔（秒）",
+      "refreshHint": "每秒刷新一次"
     },
     "buttons": {
       "title": "按钮",
       "shortPress": "短按",
       "longPress": "长按",
-      "phase2Note": "Remapping is on the roadmap"
+      "readOnlyNote": "只读：本版本中按键功能已固定，无法更改。",
+      "bindingHint": "长按可重新映射；短按由配置文件固定。"
     },
     "screens": {
       "title": "屏幕",
-      "phase2Note": "Enable and reorder is on the roadmap"
+      "readOnlyNote": "只读：本版本中屏幕顺序和显示与否已固定，无法更改。"
     },
     "pic": {
       "title": "主控飞行员",
@@ -4084,7 +4116,8 @@
       "pairSuccess": "已配对",
       "pairFailed": "配对失败",
       "noDevicesFound": "未找到设备。",
-      "pairNewDevice": "配对新设备"
+      "pairNewDevice": "配对新设备",
+      "forgot": "忽略 {name}"
     },
     "display": {
       "title": "显示",
@@ -4621,6 +4654,9 @@
       "autoDetectedAs": "Auto-detected as {label}",
       "componentsOk": "{ok} of {total} required components OK",
       "moreItems": " and {count} more"
+    },
+    "physicalUiPage": {
+      "description": "实时预览地面站机箱上的 OLED 显示屏和四个前面板按键。也可在此配对 Bluetooth 外设。"
     }
   },
   "toast": {
@@ -4638,7 +4674,10 @@
       "bindWaiting": "Waiting for peer on the radio…",
       "bindTransferring": "Transferring keys…",
       "pairFailed": "Pair failed: {message}"
-    }
+    },
+    "dismiss": "关闭通知",
+    "dismissWarning": "关闭警告通知",
+    "dismissError": "关闭错误通知"
   },
   "plugins": {
     "revokePermission": "Revoke permission",
@@ -5385,7 +5424,7 @@
   "navigation": {
     "tabTitle": "Vision Nav",
     "panel": {
-      "title": "Vision Navigation",
+      "title": "视觉导航",
       "subtitle": "GPS-denied flight via optical flow and visual inertial odometry"
     },
     "sourceSet": {
@@ -5393,7 +5432,7 @@
       "gpsPrimary": "GPS primary",
       "vioPrimary": "Vision (VIO) primary",
       "ofPrimary": "Optical flow primary",
-      "switchConfirm": "Switch to {{name}}? This will replan the EKF source for in-flight navigation.",
+      "switchConfirm": "Switch to {name}? This will replan the EKF source for in-flight navigation.",
       "switchButton": "Use this set",
       "px4NotSupported": "PX4 does not support runtime source switching. Update parameters and restart the EKF."
     },
@@ -5420,7 +5459,7 @@
     },
     "preArm": {
       "ready": "Vision navigation: ready",
-      "companionBlocker": "Vision companion process is {{state}}. Vision navigation cannot arm.",
+      "companionBlocker": "Vision companion process is {state}. Vision navigation cannot arm.",
       "originBlocker": "EKF origin not set. Plugin will auto-set via SET_GPS_GLOBAL_ORIGIN, retry in a few seconds.",
       "pending": "Vision navigation: status pending",
       "waitingHeartbeat": "Vision navigation: waiting for companion heartbeat"
@@ -6392,7 +6431,44 @@
       "highDesc": "Full detail (recommended)",
       "maximumLabel": "Maximum",
       "maximumDesc": "Best detail, slowest"
-    }
+    },
+    "worldGeneration": "第 {generation} 代",
+    "worldSession": "会话",
+    "worldUnknown": "未知",
+    "worldNotProduced": "本代未生成",
+    "worldAbsentTitle": "没有世界模型",
+    "worldEmptyTitle": "世界模型为空",
+    "worldEmptyBody": "最新代次报告了实测为零。重建已执行，但未生成任何几何数据。",
+    "worldUnknownTitle": "未申报内容",
+    "worldUnknownBody": "最新代次到达时没有可读的计数，因此其内容为未知，而不是为空。",
+    "worldSplat": "高斯splat",
+    "worldPointcloud": "点云",
+    "worldMesh": "网格",
+    "worldOccupancy": "占据",
+    "worldGaussians": "高斯基元",
+    "worldTrainingStep": "训练步数",
+    "worldLodLevels": "LOD 层级",
+    "worldPoints": "点数",
+    "worldExtent": "范围",
+    "worldExtentUnmeasured": "未测量",
+    "worldVertices": "顶点",
+    "worldFaces": "面",
+    "worldField": "字段",
+    "worldFieldEsdf": "有符号距离 (ESDF)",
+    "worldFieldOccupancy": "占据概率",
+    "worldVoxels": "体素",
+    "worldVoxelSize": "体素尺寸",
+    "worldTruncation": "截断距离",
+    "worldPartialDescriptor": "描述符不完整：{fields} 未申报",
+    "worldStreamIdle": "未订阅描述符流。",
+    "worldStreamDemo": "演示模式下无法使用描述符流。",
+    "worldStreamBlockedOrigin": "HTTPS 源下的浏览器无法打开局域网描述符流。请使用 HTTP 或桌面应用。",
+    "worldStreamConnecting": "正在连接描述符流…",
+    "worldStreamConnected": "描述符流已连接。",
+    "worldStreamReconnecting": "正在重新连接描述符流…",
+    "worldSuperseded": "已丢弃 {count} 个过期描述符",
+    "worldVersionRejected": "已拒绝 {count} 帧：本版本不支持信封版本 {version}",
+    "worldMalformed": "{count} 帧无法读取"
   },
   "workstation": {
     "rail": {
@@ -6417,12 +6493,6 @@
       "gps": "GPS",
       "battery": "Battery",
       "offline": "Offline",
-      "fixNone": "No fix",
-      "fix2d": "2D",
-      "fix3d": "3D",
-      "fixDgps": "DGPS",
-      "fixRtkFloat": "RTK float",
-      "fixRtk": "RTK fixed",
       "sats": "{count} sats",
       "rssi": "{value} dBm"
     },

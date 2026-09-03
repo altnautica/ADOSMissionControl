@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import { useTranslations } from "next-intl";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { randomId } from "@/lib/utils";
@@ -45,6 +46,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
+  // The three dismiss labels were hardcoded English accessible names, so on a
+  // non-English locale the only control on an error toast announced in the
+  // wrong language.
+  const tToast = useTranslations("toast");
+
   // Separate the polite from the assertive container so screen readers
   // receive errors and warnings immediately while info/success updates
   // queue politely. Warnings mirror errors here because mesh transient
@@ -71,11 +77,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             >
               <span className="text-xs text-text-primary flex-1">{t.message}</span>
               <button
+                type="button"
                 onClick={() => dismiss(t.id)}
-                aria-label="Dismiss notification"
-                className="text-text-tertiary hover:text-text-primary"
+                aria-label={tToast("dismiss")}
+                className="text-text-tertiary hover:text-text-primary focus-ring"
               >
-                <X size={12} />
+                <X size={12} aria-hidden="true" />
               </button>
             </div>
           ))}
@@ -91,15 +98,16 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             >
               <span className="text-xs text-text-primary flex-1">{t.message}</span>
               <button
+                type="button"
                 onClick={() => dismiss(t.id)}
                 aria-label={
                   t.status === "warning"
-                    ? "Dismiss warning notification"
-                    : "Dismiss error notification"
+                    ? tToast("dismissWarning")
+                    : tToast("dismissError")
                 }
-                className="text-text-tertiary hover:text-text-primary"
+                className="text-text-tertiary hover:text-text-primary focus-ring"
               >
-                <X size={12} />
+                <X size={12} aria-hidden="true" />
               </button>
             </div>
           ))}

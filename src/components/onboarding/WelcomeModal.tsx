@@ -68,6 +68,7 @@ export function WelcomeModal() {
   const requestPermission = useGcsLocationStore((s) => s.requestPermission);
   const isSupported = useGcsLocationStore((s) => s.isSupported);
   const t = useTranslations("welcome.themeSync");
+  const tWelcome = useTranslations("welcome");
   const { toast } = useToast();
 
   // Step state (not persisted -- always starts from 0 if modal shows)
@@ -218,7 +219,9 @@ export function WelcomeModal() {
       className="fixed inset-0 z-[200] bg-bg-primary overflow-hidden transition-colors duration-300"
       role="dialog"
       aria-modal="true"
-      aria-label="Welcome setup"
+      // Was a hardcoded English string — and this is the very first dialog an
+      // operator meets, on the step where they pick their language.
+      aria-label={tWelcome("dialogLabel")}
     >
       <div className="relative w-full h-full">
         {/* Step 0: Language */}

@@ -23,6 +23,17 @@ type EditSection = "vehicle" | "identity" | "stats" | null;
 
 // Weight and suite options are built inside the component with translations
 
+/** MAVLink GPS_FIX_TYPE -> its `indicators.gpsFix.*` label key. */
+const GPS_FIX_KEYS: Record<number, string> = {
+  0: "noGps",
+  1: "noFix",
+  2: "fix2d",
+  3: "fix3d",
+  4: "dgps",
+  5: "rtkFloat",
+  6: "rtk",
+};
+
 function MetricCell({ label, value, unit }: { label: string; value: string | number; unit?: string }) {
   return (
     <div className="bg-bg-tertiary/50 rounded px-2.5 py-2">
@@ -60,8 +71,9 @@ function Section({
         </h4>
         {editable && !editing && (
           <button
+            type="button"
             onClick={onEdit}
-            className="p-0.5 text-text-tertiary hover:text-text-secondary transition-colors cursor-pointer"
+            className="focus-ring p-0.5 text-text-tertiary hover:text-text-secondary transition-colors cursor-pointer"
           >
             <Pencil size={10} />
           </button>
@@ -69,14 +81,16 @@ function Section({
         {editing && (
           <div className="flex items-center gap-1">
             <button
+              type="button"
               onClick={onSave}
-              className="p-0.5 text-status-success hover:text-status-success/80 transition-colors cursor-pointer"
+              className="focus-ring p-0.5 text-status-success hover:text-status-success/80 transition-colors cursor-pointer"
             >
               <Check size={12} />
             </button>
             <button
+              type="button"
               onClick={onCancel}
-              className="p-0.5 text-text-tertiary hover:text-status-error transition-colors cursor-pointer"
+              className="focus-ring p-0.5 text-text-tertiary hover:text-status-error transition-colors cursor-pointer"
             >
               <X size={12} />
             </button>
@@ -100,7 +114,7 @@ function EditField({ label, value, onChange, type = "text" }: {
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full text-sm font-mono font-semibold text-text-primary bg-transparent outline-none border-b border-accent-primary/40 pb-0.5"
+        className="focus-ring w-full text-sm font-mono font-semibold text-text-primary bg-transparent outline-none border-b border-accent-primary/40 pb-0.5"
       />
       <p className="text-[10px] text-text-tertiary mt-0.5">{label}</p>
     </div>
@@ -127,6 +141,7 @@ function EditSelect({ label, value, onChange, options }: {
 
 export function CompactInfoCards({ drone }: CompactInfoCardsProps) {
   const t = useTranslations("flightInfo");
+  const tFix = useTranslations("indicators.gpsFix");
   const jurisdiction = useSettingsStore((s) => s.jurisdiction);
 
   const WEIGHT_OPTIONS = useMemo(() => [
@@ -204,6 +219,11 @@ export function CompactInfoCards({ drone }: CompactInfoCardsProps) {
   // battery/gps undefined, so a `?? 0` fallback would fabricate a confident
   // "0.0 V / No Fix / 0%". Blank those to placeholders instead.
   const fcLive = drone.fcAttached !== false;
+  const fixType = drone.gps?.fixType;
+  // MAVLink GPS_FIX_TYPE -> `indicators.gpsFix.*`. Types above 6 (STATIC,
+  // PPP) have no entry and read as 3D, which is what the old `>= 3` branch
+  // showed them as; an absent GPS report reads as "no fix", also as before.
+  const fixKey = fixType == null ? "noFix" : (GPS_FIX_KEYS[fixType] ?? "fix3d");
   return (
     <div className="bg-bg-secondary">
       {/* Health — READ-ONLY */}
@@ -217,7 +237,7 @@ export function CompactInfoCards({ drone }: CompactInfoCardsProps) {
           />
           <MetricCell label={t("voltage")} value={fcLive ? (drone.battery?.voltage ?? 0).toFixed(1) : "--"} unit={fcLive ? "V" : ""} />
           <MetricCell label={t("gpsSats")} value={fcLive ? (drone.gps?.satellites ?? 0) : "--"} />
-          <MetricCell label={t("fixType")} value={fcLive ? (drone.gps?.fixType && drone.gps.fixType >= 3 ? "3D" : drone.gps?.fixType === 2 ? "2D" : "No Fix") : "--"} />
+          <MetricCell label={t("fixType")} value={fcLive ? tFix(fixKey) : "--"} />
         </div>
         <div className="mt-2">
           <div className="flex items-center justify-between text-[10px] text-text-tertiary mb-1">

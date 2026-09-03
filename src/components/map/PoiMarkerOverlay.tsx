@@ -57,7 +57,7 @@ export function PoiMarkerOverlay() {
               <br />
               <button
                 onClick={() => removeMarker(m.id)}
-                className="mt-1 text-[10px] text-red-400 hover:text-red-300 underline cursor-pointer"
+                className="mt-1 text-[10px] text-status-error hover:text-status-error/80 underline cursor-pointer"
               >
                 Remove
               </button>

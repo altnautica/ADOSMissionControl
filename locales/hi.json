@@ -338,7 +338,8 @@
       "otherFieldPlaceholder": "e.g. FR",
       "unrestrictedNote": "Operator responsible for local RF compliance.",
       "perDroneNote": "This is the default applied when a drone is paired. Each drone can be set individually on its System tab."
-    }
+    },
+    "dialogLabel": "मिशन कंट्रोल सेटअप"
   },
   "common": {
     "save": "सेव करें",
@@ -360,7 +361,8 @@
       "message": "You have unsaved changes to the current plan. What would you like to do?",
       "saveAndSwitch": "Save & Switch",
       "discardAndSwitch": "Discard & Switch"
-    }
+    },
+    "confirmTypePhrase": "पुष्टि के लिए <phrase></phrase> टाइप करें"
   },
   "status": {
     "connected": "कनेक्टेड",
@@ -533,7 +535,8 @@
     "data": "डेटा",
     "flashTool": "फ़्लैश टूल",
     "operator": "Operator & Aircraft",
-    "plugins": "एक्सटेंशन"
+    "plugins": "एक्सटेंशन",
+    "can": "DroneCAN"
   },
   "general": {
     "title": "सामान्य सेटिंग्स",
@@ -1267,7 +1270,10 @@
     },
     "cameras": "Cameras",
     "surfaceError": "This view failed to render. The rest of the console is unaffected.",
-    "surfaceErrorRetry": "Try again"
+    "surfaceErrorRetry": "Try again",
+    "openHud": "फुल-स्क्रीन HUD खोलें",
+    "nodeDetailTabs": "नोड विवरण टैब",
+    "nodeNotFound": "Drone \"{id}\" नहीं मिला"
   },
   "vision": {
     "title": "Vision Engine",
@@ -2025,7 +2031,9 @@
       "enterCodeSubtitle": "Works over HTTPS. No LAN access required.",
       "enterCodeHint": "Run `ados status` on your drone to see its current code, or copy it from the install banner.",
       "pair": "Pair",
-      "pairing": "Pairing"
+      "pairing": "Pairing",
+      "tabsLabel": "जोड़ने की विधि",
+      "lanRelayNudge": "अपने LAN के बाहर से इस नोड तक पहुँचने के लिए साइन इन करके क्लाउड रिले सक्षम करें। ऊपर दी गई LAN पेयरिंग बिना खाते के काम करती है।"
     },
     "unpair": "अनपेयर",
     "disconnect": "डिस्कनेक्ट",
@@ -3299,7 +3307,20 @@
     "shortcutSearch": "/ — खोज पर फोकस",
     "shortcutTrash": "T — ट्रैश टॉगल करें",
     "shortcutEsc": "Esc — पैनल बंद करें / चयन साफ़ करें",
-    "shortcutDelete": "Del — चयनित को ट्रैश में ले जाएँ"
+    "shortcutDelete": "Del — चयनित को ट्रैश में ले जाएँ",
+    "preset90d": "पिछले 90 दिन",
+    "presetYear": "पिछला वर्ष",
+    "reports": {
+      "totalFlights": "कुल उड़ानें",
+      "totalHours": "कुल घंटे",
+      "totalDistance": "कुल दूरी",
+      "totalBattery": "कुल बैटरी",
+      "averages": "औसत",
+      "avgDuration": "औसत अवधि",
+      "avgDistance": "औसत दूरी",
+      "avgMaxAlt": "औसत अधि. ऊँचाई",
+      "byDrone": "Drone अनुसार"
+    }
   },
   "library": {
     "title": "फ़्लाइट प्लान",
@@ -3564,6 +3585,15 @@
       "ekf": "EKF",
       "wind": "हवा",
       "navController": "नेविगेशन कंट्रोलर"
+    },
+    "gpsFix": {
+      "noGps": "GPS नहीं",
+      "noFix": "फिक्स नहीं",
+      "fix2d": "2D फिक्स",
+      "fix3d": "3D फिक्स",
+      "dgps": "DGPS",
+      "rtkFloat": "RTK अस्थिर",
+      "rtk": "RTK स्थिर"
     }
   },
   "flightInfo": {
@@ -3847,8 +3877,8 @@
     "disconnected": "डिस्कनेक्टेड",
     "cpu": "CPU",
     "mem": "MEM",
-    "disk": "Disk",
-    "temp": "Temp"
+    "disk": "डिस्क",
+    "temp": "तापमान"
   },
   "missionProgress": {
     "mission": "मिशन",
@@ -4036,17 +4066,19 @@
       "title": "OLED डिस्प्ले",
       "brightness": "चमक",
       "autoDim": "60 से निष्क्रिय रहने पर स्वतः मंद करें",
-      "cycleSeconds": "साइकल अंतराल (सेकंड)"
+      "cycleSeconds": "साइकल अंतराल (सेकंड)",
+      "refreshHint": "प्रति सेकंड एक बार रिफ्रेश होता है"
     },
     "buttons": {
       "title": "बटन",
       "shortPress": "छोटा प्रेस",
       "longPress": "लंबा प्रेस",
-      "phase2Note": "Remapping is on the roadmap"
+      "readOnlyNote": "केवल पढ़ने योग्य: इस बिल्ड में बटन क्रियाएँ नियत हैं।",
+      "bindingHint": "लंबा प्रेस पुनः असाइन किया जा सकता है। छोटा प्रेस प्रोफ़ाइल द्वारा नियत है।"
     },
     "screens": {
       "title": "स्क्रीन",
-      "phase2Note": "Enable and reorder is on the roadmap"
+      "readOnlyNote": "केवल पढ़ने योग्य: इस बिल्ड में स्क्रीन क्रम और दृश्यता नियत हैं।"
     },
     "pic": {
       "title": "पायलट इन कमांड",
@@ -4084,7 +4116,8 @@
       "pairSuccess": "जोड़ा गया",
       "pairFailed": "जोड़ने में विफल",
       "noDevicesFound": "कोई डिवाइस नहीं मिला।",
-      "pairNewDevice": "नया डिवाइस जोड़ें"
+      "pairNewDevice": "नया डिवाइस जोड़ें",
+      "forgot": "{name} को हटाएँ"
     },
     "display": {
       "title": "डिस्प्ले",
@@ -4621,6 +4654,9 @@
       "autoDetectedAs": "Auto-detected as {label}",
       "componentsOk": "{ok} of {total} required components OK",
       "moreItems": " and {count} more"
+    },
+    "physicalUiPage": {
+      "description": "ग्राउंड स्टेशन बॉक्स पर OLED स्क्रीन और चार फ्रंट बटनों का लाइव पूर्वावलोकन। Bluetooth पेरिफेरल्स भी यहीं जोड़ें।"
     }
   },
   "toast": {
@@ -4638,7 +4674,10 @@
       "bindWaiting": "Waiting for peer on the radio…",
       "bindTransferring": "Transferring keys…",
       "pairFailed": "Pair failed: {message}"
-    }
+    },
+    "dismiss": "सूचना बंद करें",
+    "dismissWarning": "चेतावनी सूचना बंद करें",
+    "dismissError": "त्रुटि सूचना बंद करें"
   },
   "plugins": {
     "revokePermission": "Revoke permission",
@@ -5385,7 +5424,7 @@
   "navigation": {
     "tabTitle": "Vision Nav",
     "panel": {
-      "title": "Vision Navigation",
+      "title": "विज़न नेविगेशन",
       "subtitle": "GPS-denied flight via optical flow and visual inertial odometry"
     },
     "sourceSet": {
@@ -5393,7 +5432,7 @@
       "gpsPrimary": "GPS primary",
       "vioPrimary": "Vision (VIO) primary",
       "ofPrimary": "Optical flow primary",
-      "switchConfirm": "Switch to {{name}}? This will replan the EKF source for in-flight navigation.",
+      "switchConfirm": "Switch to {name}? This will replan the EKF source for in-flight navigation.",
       "switchButton": "Use this set",
       "px4NotSupported": "PX4 does not support runtime source switching. Update parameters and restart the EKF."
     },
@@ -5420,7 +5459,7 @@
     },
     "preArm": {
       "ready": "Vision navigation: ready",
-      "companionBlocker": "Vision companion process is {{state}}. Vision navigation cannot arm.",
+      "companionBlocker": "Vision companion process is {state}. Vision navigation cannot arm.",
       "originBlocker": "EKF origin not set. Plugin will auto-set via SET_GPS_GLOBAL_ORIGIN, retry in a few seconds.",
       "pending": "Vision navigation: status pending",
       "waitingHeartbeat": "Vision navigation: waiting for companion heartbeat"
@@ -6392,7 +6431,44 @@
       "highDesc": "Full detail (recommended)",
       "maximumLabel": "Maximum",
       "maximumDesc": "Best detail, slowest"
-    }
+    },
+    "worldGeneration": "जनरेशन {generation}",
+    "worldSession": "सेशन",
+    "worldUnknown": "अज्ञात",
+    "worldNotProduced": "इस जनरेशन में नहीं बना",
+    "worldAbsentTitle": "कोई वर्ल्ड मॉडल नहीं",
+    "worldEmptyTitle": "वर्ल्ड मॉडल खाली है",
+    "worldEmptyBody": "सबसे नए जनरेशन ने मापा हुआ शून्य बताया। पुनर्निर्माण चला और कोई ज्यामिति नहीं बनी।",
+    "worldUnknownTitle": "सामग्री बताई नहीं गई",
+    "worldUnknownBody": "सबसे नया जनरेशन पढ़ने योग्य गिनती के बिना आया, इसलिए उसमें क्या है यह अज्ञात है — खाली नहीं।",
+    "worldSplat": "स्प्लैट",
+    "worldPointcloud": "पॉइंट क्लाउड",
+    "worldMesh": "मेश",
+    "worldOccupancy": "ऑक्यूपेंसी",
+    "worldGaussians": "गॉसियन",
+    "worldTrainingStep": "ट्रेनिंग स्टेप",
+    "worldLodLevels": "LOD स्तर",
+    "worldPoints": "पॉइंट",
+    "worldExtent": "विस्तार",
+    "worldExtentUnmeasured": "मापा नहीं गया",
+    "worldVertices": "शीर्ष",
+    "worldFaces": "फलक",
+    "worldField": "फ़ील्ड",
+    "worldFieldEsdf": "साइन्ड दूरी (ESDF)",
+    "worldFieldOccupancy": "ऑक्यूपेंसी संभावना",
+    "worldVoxels": "वॉक्सेल",
+    "worldVoxelSize": "वॉक्सेल आकार",
+    "worldTruncation": "इस दूरी पर काटा गया",
+    "worldPartialDescriptor": "अपूर्ण डिस्क्रिप्टर: {fields} नहीं बताया गया",
+    "worldStreamIdle": "डिस्क्रिप्टर स्ट्रीम सब्सक्राइब नहीं है।",
+    "worldStreamDemo": "डेमो में डिस्क्रिप्टर स्ट्रीम उपलब्ध नहीं है।",
+    "worldStreamBlockedOrigin": "HTTPS ऑरिजिन पर चल रहा ब्राउज़र LAN डिस्क्रिप्टर स्ट्रीम नहीं खोल सकता। HTTP या डेस्कटॉप ऐप का उपयोग करें।",
+    "worldStreamConnecting": "डिस्क्रिप्टर स्ट्रीम से जुड़ रहा है…",
+    "worldStreamConnected": "डिस्क्रिप्टर स्ट्रीम जुड़ा है।",
+    "worldStreamReconnecting": "डिस्क्रिप्टर स्ट्रीम फिर जुड़ रहा है…",
+    "worldSuperseded": "{count} पुराने डिस्क्रिप्टर छोड़े गए",
+    "worldVersionRejected": "{count} फ़्रेम अस्वीकृत: यह बिल्ड एनवेलप वर्शन {version} नहीं समझता",
+    "worldMalformed": "{count} अपठनीय फ़्रेम"
   },
   "workstation": {
     "rail": {
@@ -6417,12 +6493,6 @@
       "gps": "GPS",
       "battery": "Battery",
       "offline": "Offline",
-      "fixNone": "No fix",
-      "fix2d": "2D",
-      "fix3d": "3D",
-      "fixDgps": "DGPS",
-      "fixRtkFloat": "RTK float",
-      "fixRtk": "RTK fixed",
       "sats": "{count} sats",
       "rssi": "{value} dBm"
     },

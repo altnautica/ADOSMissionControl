@@ -407,7 +407,7 @@ function DronePairingTile({
                 : t("pairing.statusUnpaired")}
           </span>
           {wfbFailoverState === "cloud_relay" ? (
-            <span className="inline-flex items-center gap-1.5 rounded border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 text-xs text-amber-500">
+            <span className="inline-flex items-center gap-1.5 rounded border border-status-warning/40 bg-status-warning/10 px-2.5 py-1 text-xs text-status-warning">
               <AlertTriangle size={12} />
               {t("pairing.failover.cloudRelay.title")}
             </span>

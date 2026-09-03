@@ -14,6 +14,8 @@
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import { renderWithIntl } from "../../../../tests/helpers/intl-wrapper";
+
 import { HorizonSvg } from "@/components/hud/HorizonSvg";
 import { BottomBar } from "@/components/hud/BottomBar";
 import { useTelemetryStore } from "@/stores/telemetry-store";
@@ -93,9 +95,15 @@ describe("HUD kiosk bottom bar", () => {
     });
   }
 
+  // `BottomBar` reads its HDG/ALT labels from the `cockpit` namespace, so it
+  // needs the locale context the app supplies. Rendering it bare threw
+  // "the context from NextIntlClientProvider was not found" — a defect in the
+  // harness, not in the component. `HorizonSvg` above stays on plain `render`
+  // because it takes its readings as props and translates nothing.
+
   it("flies the instrument from fresh telemetry", () => {
     pushAttitude(0);
-    const { container } = render(<BottomBar />);
+    const { container } = renderWithIntl(<BottomBar />);
     expect(container.querySelector("[data-testid='horizon-attitude-flag']")).toBeNull();
     expect(container.innerHTML).toContain("rotate(-15 100 100)");
     expect(container.textContent).toContain("120");
@@ -103,7 +111,7 @@ describe("HUD kiosk bottom bar", () => {
 
   it("flags the instrument and blanks the tapes once telemetry goes stale", () => {
     pushAttitude(TELEMETRY_STALE_MS + 1_000);
-    const { container } = render(<BottomBar />);
+    const { container } = renderWithIntl(<BottomBar />);
 
     // The sample is still in the ring; the kiosk must not present it.
     expect(useTelemetryStore.getState().attitude.latest()?.roll).toBe(15);

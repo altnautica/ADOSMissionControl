@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter, usePathname } from "next/navigation";
-import { Search, LayoutDashboard, Route, History, BarChart3, Settings, Zap, Battery, Home, HeartPulse, Plug, SlidersHorizontal } from "lucide-react";
+import { Search, LayoutDashboard, Route, History, Settings, Zap, Battery, Home, Plug, SlidersHorizontal } from "lucide-react";
 import { useFleetStore } from "@/stores/fleet-store";
 import { useDroneStore } from "@/stores/drone-store";
 import { useDroneManager } from "@/stores/drone-manager";
@@ -32,13 +32,15 @@ export function CommandPalette() {
   const pathname = usePathname();
   const { toast } = useToast();
 
+  // `/analytics` and `/wizard` had entries here and neither route exists under
+  // `src/app`, so two localised palette items navigated straight to a 404 from
+  // the app's primary command surface. Removed rather than stubbed: a route
+  // that was never built is not a navigation target.
   const actions: CommandAction[] = [
     { id: "nav-dashboard", label: t("goToDashboard"), category: t("navigation"), icon: <LayoutDashboard size={14} />, action: () => router.push("/") },
     { id: "nav-plan", label: t("goToPlan"), category: t("navigation"), icon: <Route size={14} />, action: () => router.push("/plan") },
     { id: "nav-history", label: t("goToHistory"), category: t("navigation"), icon: <History size={14} />, action: () => router.push("/flight-logs") },
-    { id: "nav-analytics", label: t("goToAnalytics"), category: t("navigation"), icon: <BarChart3 size={14} />, action: () => router.push("/analytics") },
     { id: "nav-config", label: t("goToConfig"), category: t("navigation"), icon: <Settings size={14} />, action: () => router.push("/config") },
-    { id: "nav-wizard", label: t("goToWizard"), category: t("navigation"), icon: <HeartPulse size={14} />, action: () => router.push("/wizard") },
     {
       id: "cmd-connect", label: t("connectDrone"), category: t("commands"), icon: <Plug size={14} />,
       action: () => useConnectDialogStore.getState().openDialog(),
@@ -157,25 +159,37 @@ export function CommandPalette() {
       className="fixed inset-0 z-[200] flex items-start justify-center pt-[20vh] bg-black/60"
       onClick={() => setOpen(false)}
     >
+      {/* The app's primary command surface had no dialog semantics at all: no
+          role, no aria-modal, no accessible name, and the result list was a
+          flat run of buttons with no selected-option relationship to the
+          input. `CockpitCommandPalette` is the in-repo model. */}
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={t("title")}
         className="w-full max-w-md bg-bg-secondary border border-border-default"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-2 px-3 py-2 border-b border-border-default">
-          <Search size={14} className="text-text-tertiary" />
+          <Search size={14} className="text-text-tertiary" aria-hidden="true" />
           <input
             ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t("placeholder")}
+            aria-label={t("title")}
+            role="combobox"
+            aria-expanded={true}
+            aria-controls="command-palette-results"
+            aria-activedescendant={filtered[selectedIndex] ? `command-palette-${filtered[selectedIndex].id}` : undefined}
             className="flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-tertiary outline-none"
           />
           <kbd className="text-[10px] text-text-tertiary border border-border-default px-1 py-0.5 font-mono">ESC</kbd>
         </div>
-        <div className="max-h-64 overflow-auto py-1">
+        <div id="command-palette-results" role="listbox" aria-label={t("title")} className="max-h-64 overflow-auto py-1">
           {categories.map((cat) => (
-            <div key={cat}>
-              <div className="px-3 py-1 text-[10px] uppercase tracking-wider text-text-tertiary">
+            <div key={cat} role="group" aria-label={cat}>
+              <div className="px-3 py-1 text-[10px] uppercase tracking-wider text-text-tertiary" aria-hidden="true">
                 {cat}
               </div>
               {filtered
@@ -183,8 +197,11 @@ export function CommandPalette() {
                 .map((action) => {
                   const idx = filtered.indexOf(action);
                   return (
-                    <button
+                    <div
                       key={action.id}
+                      id={`command-palette-${action.id}`}
+                      role="option"
+                      aria-selected={idx === selectedIndex}
                       className={cn(
                         "w-full flex items-center gap-2 px-3 py-1.5 text-xs text-left transition-colors cursor-pointer",
                         idx === selectedIndex ? "bg-accent-primary/10 text-accent-primary" : "text-text-primary hover:bg-bg-tertiary"
@@ -197,7 +214,7 @@ export function CommandPalette() {
                     >
                       {action.icon}
                       {action.label}
-                    </button>
+                    </div>
                   );
                 })}
             </div>

@@ -84,10 +84,31 @@ export function estimateFlightMinutes(
   return (remainingMah / (currentA * 1000)) * 60;
 }
 
-export function gpsFixLabel(fixType: number): string {
-  if (fixType >= 3) return "3D";
-  if (fixType === 2) return "2D";
-  return "No Fix";
+/** The `indicators.gpsFix.*` label keys, one per MAVLink GPS_FIX_TYPE. */
+export type GpsFixKey =
+  | "noGps"
+  | "noFix"
+  | "fix2d"
+  | "fix3d"
+  | "dgps"
+  | "rtkFloat"
+  | "rtk";
+
+/**
+ * MAVLink GPS_FIX_TYPE -> its `indicators.gpsFix.*` key, resolved by the
+ * calling component (this module is hook-free).
+ *
+ * The deck keeps the coarse three-way reading it always had: its cells sit in
+ * a four-column grid that truncates, so DGPS/RTK stay under the 3D heading
+ * rather than introducing longer labels. The 3D branch is `>= 3`, so the
+ * STATIC (7) and PPP (8) tail reads as 3D exactly as it did before, and every
+ * input resolves to a real key. Severity comes from the raw fix number, never
+ * from this label.
+ */
+export function gpsFixKey(fixType: number): GpsFixKey {
+  if (fixType >= 3) return "fix3d";
+  if (fixType === 2) return "fix2d";
+  return "noFix";
 }
 
 /**

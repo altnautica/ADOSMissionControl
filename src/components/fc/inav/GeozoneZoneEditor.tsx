@@ -93,8 +93,8 @@ export function GeozoneZoneEditor({
           className={cn(
             "text-[10px] font-mono px-1.5 py-0.5 rounded",
             zone.type === GEOZONE_TYPE.EXCLUSIVE
-              ? "bg-red-500/15 text-red-400"
-              : "bg-green-500/15 text-green-400",
+              ? "bg-status-error/15 text-status-error"
+              : "bg-status-success/15 text-status-success",
           )}
         >
           {zone.type === GEOZONE_TYPE.EXCLUSIVE ? "EXCL" : "INCL"}

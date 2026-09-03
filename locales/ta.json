@@ -338,7 +338,8 @@
       "otherFieldPlaceholder": "e.g. FR",
       "unrestrictedNote": "Operator responsible for local RF compliance.",
       "perDroneNote": "This is the default applied when a drone is paired. Each drone can be set individually on its System tab."
-    }
+    },
+    "dialogLabel": "Mission Control அமைவு"
   },
   "common": {
     "save": "சேமி",
@@ -360,7 +361,8 @@
       "message": "You have unsaved changes to the current plan. What would you like to do?",
       "saveAndSwitch": "Save & Switch",
       "discardAndSwitch": "Discard & Switch"
-    }
+    },
+    "confirmTypePhrase": "உறுதிப்படுத்த <phrase></phrase> என தட்டச்சு செய்யவும்"
   },
   "status": {
     "connected": "இணைக்கப்பட்டது",
@@ -533,7 +535,8 @@
     "data": "தரவு",
     "flashTool": "ஃப்ளாஷ் கருவி",
     "operator": "Operator & Aircraft",
-    "plugins": "நீட்டிப்புகள்"
+    "plugins": "நீட்டிப்புகள்",
+    "can": "DroneCAN"
   },
   "general": {
     "title": "பொது அமைப்புகள்",
@@ -1267,7 +1270,10 @@
     },
     "cameras": "Cameras",
     "surfaceError": "This view failed to render. The rest of the console is unaffected.",
-    "surfaceErrorRetry": "Try again"
+    "surfaceErrorRetry": "Try again",
+    "openHud": "முழுத்திரை HUD ஐத் திற",
+    "nodeDetailTabs": "முனை விவரத் தாவல்கள்",
+    "nodeNotFound": "“{id}” Drone கண்டறியப்படவில்லை"
   },
   "vision": {
     "title": "Vision Engine",
@@ -2025,7 +2031,9 @@
       "enterCodeSubtitle": "Works over HTTPS. No LAN access required.",
       "enterCodeHint": "Run `ados status` on your drone to see its current code, or copy it from the install banner.",
       "pair": "Pair",
-      "pairing": "Pairing"
+      "pairing": "Pairing",
+      "tabsLabel": "இணைக்கும் முறை",
+      "lanRelayNudge": "உங்கள் LAN வெளியே இருந்து இந்த நோடை அணுக, உள்நுழைந்து cloud relay ஐ இயக்கவும். மேலே உள்ள LAN இணைப்புக்கு கணக்கு தேவையில்லை."
     },
     "unpair": "அன்பேர்",
     "disconnect": "டிஸ்கனெக்ட்",
@@ -3299,7 +3307,20 @@
     "shortcutSearch": "/ — தேடலில் கவனம்",
     "shortcutTrash": "T — குப்பை நிலைமாற்று",
     "shortcutEsc": "Esc — பேனல் மூடு / தேர்வு அழி",
-    "shortcutDelete": "Del — தேர்ந்தவற்றை குப்பைக்கு நகர்த்து"
+    "shortcutDelete": "Del — தேர்ந்தவற்றை குப்பைக்கு நகர்த்து",
+    "preset90d": "கடந்த 90 நாட்கள்",
+    "presetYear": "கடந்த ஆண்டு",
+    "reports": {
+      "totalFlights": "மொத்த பறப்புகள்",
+      "totalHours": "மொத்த மணிநேரங்கள்",
+      "totalDistance": "மொத்த தூரம்",
+      "totalBattery": "மொத்த பேட்டரி",
+      "averages": "சராசரிகள்",
+      "avgDuration": "சரா. கால அளவு",
+      "avgDistance": "சரா. தூரம்",
+      "avgMaxAlt": "சரா. அதிக உயரம்",
+      "byDrone": "Drone வாரியாக"
+    }
   },
   "library": {
     "title": "FLIGHT PLAN-கள்",
@@ -3564,6 +3585,15 @@
       "ekf": "EKF",
       "wind": "காற்று",
       "navController": "வழிசெலுத்தல் கட்டுப்படுத்தி"
+    },
+    "gpsFix": {
+      "noGps": "GPS இல்லை",
+      "noFix": "நிலை இல்லை",
+      "fix2d": "2D நிலை",
+      "fix3d": "3D நிலை",
+      "dgps": "DGPS",
+      "rtkFloat": "RTK மிதவை",
+      "rtk": "RTK உறுதி"
     }
   },
   "flightInfo": {
@@ -3847,8 +3877,8 @@
     "disconnected": "DISCONNECTED",
     "cpu": "CPU",
     "mem": "MEM",
-    "disk": "Disk",
-    "temp": "Temp"
+    "disk": "வட்டு",
+    "temp": "வெப்பம்"
   },
   "missionProgress": {
     "mission": "மிஷன்",
@@ -4036,17 +4066,19 @@
       "title": "OLED திரை",
       "brightness": "ஒளி",
       "autoDim": "60 வினாடிகள் செயலற்ற பின் தானாகவே மங்கும்",
-      "cycleSeconds": "சுழற்சி இடைவெளி (வினாடிகள்)"
+      "cycleSeconds": "சுழற்சி இடைவெளி (வினாடிகள்)",
+      "refreshHint": "வினாடிக்கு ஒருமுறை புதுப்பிக்கப்படும்"
     },
     "buttons": {
       "title": "பட்டன்கள்",
       "shortPress": "குறுகிய அழுத்தம்",
       "longPress": "நீண்ட அழுத்தம்",
-      "phase2Note": "Remapping is on the roadmap"
+      "readOnlyNote": "படிக்க மட்டும்: இந்த பதிப்பில் பொத்தான் செயல்கள் நிலையானவை; மாற்ற முடியாது.",
+      "bindingHint": "நீண்ட அழுத்தத்தை மாற்றி அமைக்கலாம். குறுகிய அழுத்தம் சுயவிவரத்தால் நிர்ணயிக்கப்படுகிறது."
     },
     "screens": {
       "title": "திரைகள்",
-      "phase2Note": "Enable and reorder is on the roadmap"
+      "readOnlyNote": "படிக்க மட்டும்: இந்த பதிப்பில் திரை வரிசையும் தெரிவும் நிலையானவை; மாற்ற முடியாது."
     },
     "pic": {
       "title": "கட்டளையில் உள்ள பைலட்",
@@ -4084,7 +4116,8 @@
       "pairSuccess": "இணைக்கப்பட்டது",
       "pairFailed": "இணைப்பு தோல்வி",
       "noDevicesFound": "சாதனங்கள் இல்லை.",
-      "pairNewDevice": "புதிய சாதனத்தை இணை"
+      "pairNewDevice": "புதிய சாதனத்தை இணை",
+      "forgot": "{name} ஐ மறக்கவும்"
     },
     "display": {
       "title": "காட்சி",
@@ -4621,6 +4654,9 @@
       "autoDetectedAs": "Auto-detected as {label}",
       "componentsOk": "{ok} of {total} required components OK",
       "moreItems": " and {count} more"
+    },
+    "physicalUiPage": {
+      "description": "தரை நிலைய பெட்டியில் உள்ள OLED திரை மற்றும் நான்கு முன் பொத்தான்களின் நேரடி முன்னோட்டம். Bluetooth சாதனங்களையும் இங்கே இணைக்கலாம்."
     }
   },
   "toast": {
@@ -4638,7 +4674,10 @@
       "bindWaiting": "Waiting for peer on the radio…",
       "bindTransferring": "Transferring keys…",
       "pairFailed": "Pair failed: {message}"
-    }
+    },
+    "dismiss": "அறிவிப்பை மூடு",
+    "dismissWarning": "எச்சரிக்கை அறிவிப்பை மூடு",
+    "dismissError": "பிழை அறிவிப்பை மூடு"
   },
   "plugins": {
     "revokePermission": "Revoke permission",
@@ -5385,7 +5424,7 @@
   "navigation": {
     "tabTitle": "Vision Nav",
     "panel": {
-      "title": "Vision Navigation",
+      "title": "பார்வை வழிசெலுத்தல்",
       "subtitle": "GPS-denied flight via optical flow and visual inertial odometry"
     },
     "sourceSet": {
@@ -5393,7 +5432,7 @@
       "gpsPrimary": "GPS primary",
       "vioPrimary": "Vision (VIO) primary",
       "ofPrimary": "Optical flow primary",
-      "switchConfirm": "Switch to {{name}}? This will replan the EKF source for in-flight navigation.",
+      "switchConfirm": "Switch to {name}? This will replan the EKF source for in-flight navigation.",
       "switchButton": "Use this set",
       "px4NotSupported": "PX4 does not support runtime source switching. Update parameters and restart the EKF."
     },
@@ -5420,7 +5459,7 @@
     },
     "preArm": {
       "ready": "Vision navigation: ready",
-      "companionBlocker": "Vision companion process is {{state}}. Vision navigation cannot arm.",
+      "companionBlocker": "Vision companion process is {state}. Vision navigation cannot arm.",
       "originBlocker": "EKF origin not set. Plugin will auto-set via SET_GPS_GLOBAL_ORIGIN, retry in a few seconds.",
       "pending": "Vision navigation: status pending",
       "waitingHeartbeat": "Vision navigation: waiting for companion heartbeat"
@@ -6392,7 +6431,44 @@
       "highDesc": "Full detail (recommended)",
       "maximumLabel": "Maximum",
       "maximumDesc": "Best detail, slowest"
-    }
+    },
+    "worldGeneration": "தலைமுறை {generation}",
+    "worldSession": "அமர்வு",
+    "worldUnknown": "தெரியவில்லை",
+    "worldNotProduced": "இந்த தலைமுறையில் உருவாக்கப்படவில்லை",
+    "worldAbsentTitle": "வேர்ல்டு மாடல் இல்லை",
+    "worldEmptyTitle": "வேர்ல்டு மாடல் காலியாக உள்ளது",
+    "worldEmptyBody": "சமீபத்திய தலைமுறை அளவிடப்பட்ட பூஜ்ஜியத்தைத் தெரிவித்தது. மறுகட்டமைப்பு இயங்கியது, எந்த வடிவவியலும் உருவாகவில்லை.",
+    "worldUnknownTitle": "உள்ளடக்கம் தெரிவிக்கப்படவில்லை",
+    "worldUnknownBody": "சமீபத்திய தலைமுறை படிக்கக்கூடிய எண்ணிக்கை இல்லாமல் வந்தது, எனவே அதில் என்ன உள்ளது என்பது தெரியவில்லை — காலி அல்ல.",
+    "worldSplat": "ஸ்பிலாட்",
+    "worldPointcloud": "பாயின்ட் கிளவுட்",
+    "worldMesh": "மெஷ்",
+    "worldOccupancy": "ஆக்கிரமிப்பு",
+    "worldGaussians": "காசியன்",
+    "worldTrainingStep": "பயிற்சி படி",
+    "worldLodLevels": "LOD நிலைகள்",
+    "worldPoints": "புள்ளிகள்",
+    "worldExtent": "பரப்பு",
+    "worldExtentUnmeasured": "அளவிடப்படவில்லை",
+    "worldVertices": "முனைகள்",
+    "worldFaces": "முகங்கள்",
+    "worldField": "புலம்",
+    "worldFieldEsdf": "குறியிட்ட தூரம் (ESDF)",
+    "worldFieldOccupancy": "ஆக்கிரமிப்பு நிகழ்தகவு",
+    "worldVoxels": "வாக்செல்கள்",
+    "worldVoxelSize": "வாக்செல் அளவு",
+    "worldTruncation": "இந்த தூரத்தில் வெட்டப்பட்டது",
+    "worldPartialDescriptor": "பகுதி டிஸ்க்ரிப்டர்: {fields} தெரிவிக்கப்படவில்லை",
+    "worldStreamIdle": "டிஸ்க்ரிப்டர் ஸ்ட்ரீம் சந்தா செய்யப்படவில்லை.",
+    "worldStreamDemo": "டெமோவில் டிஸ்க்ரிப்டர் ஸ்ட்ரீம் கிடைக்காது.",
+    "worldStreamBlockedOrigin": "HTTPS மூலத்தில் இயங்கும் உலாவி LAN டிஸ்க்ரிப்டர் ஸ்ட்ரீமைத் திறக்க முடியாது. HTTP அல்லது டெஸ்க்டாப் செயலியைப் பயன்படுத்தவும்.",
+    "worldStreamConnecting": "டிஸ்க்ரிப்டர் ஸ்ட்ரீமுடன் இணைக்கிறது…",
+    "worldStreamConnected": "டிஸ்க்ரிப்டர் ஸ்ட்ரீம் இணைக்கப்பட்டது.",
+    "worldStreamReconnecting": "டிஸ்க்ரிப்டர் ஸ்ட்ரீம் மீண்டும் இணைக்கிறது…",
+    "worldSuperseded": "{count} காலாவதியான டிஸ்க்ரிப்டர்கள் நிராகரிக்கப்பட்டன",
+    "worldVersionRejected": "{count} ஃபிரேம்கள் நிராகரிக்கப்பட்டன: இந்த பில்டுக்கு என்வலப் பதிப்பு {version} தெரியாது",
+    "worldMalformed": "{count} படிக்க முடியாத ஃபிரேம்கள்"
   },
   "workstation": {
     "rail": {
@@ -6417,12 +6493,6 @@
       "gps": "GPS",
       "battery": "Battery",
       "offline": "Offline",
-      "fixNone": "No fix",
-      "fix2d": "2D",
-      "fix3d": "3D",
-      "fixDgps": "DGPS",
-      "fixRtkFloat": "RTK float",
-      "fixRtk": "RTK fixed",
       "sats": "{count} sats",
       "rssi": "{value} dBm"
     },

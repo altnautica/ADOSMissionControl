@@ -160,7 +160,7 @@ export function ParameterGrid({ parameters, modified, onModify, filter, showModi
                   key={`${param.name}-${param.index}`}
                   data-index={virtualRow.index}
                   ref={rowVirtualizer.measureElement}
-                  className={cn("grid items-center border-b border-border-default h-8 transition-colors", isModified ? "bg-status-warning/5" : isPendingRam ? "bg-orange-500/8" : differsFromDefault && "border-l-2 border-l-accent-primary bg-accent-primary/5")}
+                  className={cn("grid items-center border-b border-border-default h-8 transition-colors", isModified ? "bg-status-warning/5" : isPendingRam ? "bg-status-serious/8" : differsFromDefault && "border-l-2 border-l-accent-primary bg-accent-primary/5")}
                   style={{
                     position: "absolute",
                     top: 0,
@@ -208,10 +208,10 @@ export function ParameterGrid({ parameters, modified, onModify, filter, showModi
                           </div>
                         ) : (
                           <>
-                            <button onClick={() => !readOnly && startEdit(param)} title={readOnly ? "Read-only parameter" : outOfRange && meta?.range ? `Out of range: expected ${meta.range.min} .. ${meta.range.max}` : isPendingRam && !isModified ? "Written to RAM — not yet committed to flash" : undefined} className={cn("flex-1 h-6 px-1.5 text-left font-mono transition-colors flex items-center gap-1 min-w-0", readOnly ? "text-text-tertiary cursor-not-allowed" : outOfRange ? "text-status-warning border border-status-warning/60 bg-status-warning/5 cursor-pointer hover:bg-bg-tertiary" : isModified ? "text-status-warning border border-status-warning/40 cursor-pointer hover:bg-bg-tertiary" : isPendingRam ? "text-orange-400 border border-orange-500/40 cursor-pointer hover:bg-bg-tertiary" : "text-text-primary border border-transparent cursor-pointer hover:bg-bg-tertiary")}>
+                            <button onClick={() => !readOnly && startEdit(param)} title={readOnly ? "Read-only parameter" : outOfRange && meta?.range ? `Out of range: expected ${meta.range.min} .. ${meta.range.max}` : isPendingRam && !isModified ? "Written to RAM — not yet committed to flash" : undefined} className={cn("flex-1 h-6 px-1.5 text-left font-mono transition-colors flex items-center gap-1 min-w-0", readOnly ? "text-text-tertiary cursor-not-allowed" : outOfRange ? "text-status-warning border border-status-warning/60 bg-status-warning/5 cursor-pointer hover:bg-bg-tertiary" : isModified ? "text-status-warning border border-status-warning/40 cursor-pointer hover:bg-bg-tertiary" : isPendingRam ? "text-status-serious border border-status-serious/40 cursor-pointer hover:bg-bg-tertiary" : "text-text-primary border border-transparent cursor-pointer hover:bg-bg-tertiary")}>
                               <span className="truncate">{formatParamDisplayValue(displayValue, meta)}</span>
                               {outOfRange && <span className="text-[10px]" title={`Range: ${meta?.range?.min} .. ${meta?.range?.max}`}>!</span>}
-                              {isPendingRam && !isModified && <span className="flex-shrink-0" title="RAM only, not flashed"><HardDrive size={10} className="text-orange-400" /></span>}
+                              {isPendingRam && !isModified && <span className="flex-shrink-0" title="RAM only, not flashed"><HardDrive size={10} className="text-status-serious" /></span>}
                             </button>
                             {!readOnly && meta?.increment && !hasEnum && !hasBitmask && (
                               <div className="flex flex-col">

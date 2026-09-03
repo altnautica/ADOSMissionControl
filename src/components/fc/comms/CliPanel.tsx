@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useDroneManager } from "@/stores/drone-manager";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,7 @@ function formatTs(ts: number): string {
 let nextId = 0;
 
 export function CliPanel() {
+  const t = useTranslations("telemetryStrip");
   const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
   const { firmwareType } = useFirmwareCapabilities();
   const isBetaflight = firmwareType === 'betaflight';
@@ -189,7 +191,7 @@ export function CliPanel() {
               connected ? "bg-status-success/20 text-status-success" : "bg-bg-tertiary text-text-tertiary",
             )}
           >
-            {connected ? "CONNECTED" : "DISCONNECTED"}
+            {connected ? t("connected") : t("disconnected")}
           </span>
         </div>
         <div className="flex items-center gap-1">

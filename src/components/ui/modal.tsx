@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode, type RefObject } from "react";
+import { useTranslations } from "next-intl";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -10,6 +11,14 @@ interface ModalProps {
   onClose: () => void;
   title: string;
   children: ReactNode;
+  /** `alertdialog` for a dialog that interrupts to confirm a consequential or
+   * destructive action, so assistive tech announces it as an alert rather than
+   * an ordinary dialog. Defaults to `dialog`. */
+  role?: "dialog" | "alertdialog";
+  /** Element to receive focus on open. Defaults to the first focusable node,
+   * which for a destructive confirmation is the wrong choice — point this at
+   * the cancel control so a stray Enter cannot commit the action. */
+  initialFocusRef?: RefObject<HTMLElement | null>;
   footer?: ReactNode;
   className?: string;
   /** Modal width preset. Sized to keep the per-modal width policy in
@@ -61,11 +70,14 @@ export function Modal({
   footer,
   className,
   size = "md",
+  role = "dialog",
+  initialFocusRef,
   disableBackdropClose,
   noBodyPadding,
   closeBlocked,
   hideTitleBar,
 }: ModalProps) {
+  const t = useTranslations("common");
   const overlayRef = useRef<HTMLDivElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
 
@@ -105,12 +117,14 @@ export function Modal({
     if (!open) return;
     const previouslyFocused = document.activeElement as HTMLElement | null;
     const node = dialogRef.current;
-    const target = node?.querySelector<HTMLElement>(
-      'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])',
-    );
+    const target =
+      initialFocusRef?.current ??
+      node?.querySelector<HTMLElement>(
+        'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])',
+      );
     (target ?? node)?.focus();
     return () => previouslyFocused?.focus?.();
-  }, [open]);
+  }, [open, initialFocusRef]);
 
   if (!open) return null;
 
@@ -125,7 +139,7 @@ export function Modal({
     >
       <div
         ref={dialogRef}
-        role="dialog"
+        role={role}
         aria-modal="true"
         aria-label={title}
         tabIndex={-1}
@@ -139,20 +153,25 @@ export function Modal({
           <div className="flex items-center justify-between px-4 py-3 border-b border-border-default">
             <h2 className="text-sm font-semibold text-text-primary">{title}</h2>
             <button
+              type="button"
               onClick={() => {
                 if (closeBlocked) return;
                 onClose();
               }}
               disabled={closeBlocked}
               aria-disabled={closeBlocked}
+              // The X carried no accessible name, so all 20+ consumers of the
+              // shared Modal shipped an unlabelled close control that a screen
+              // reader announced only as "button".
+              aria-label={t("close")}
               className={cn(
-                "transition-colors",
+                "transition-colors focus-ring",
                 closeBlocked
                   ? "text-text-tertiary/40 cursor-not-allowed"
                   : "text-text-tertiary hover:text-text-primary",
               )}
             >
-              <X size={16} />
+              <X size={16} aria-hidden="true" />
             </button>
           </div>
         )}

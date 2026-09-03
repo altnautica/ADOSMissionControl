@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import { ChevronDown, SlidersHorizontal } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useTelemetryLatest } from "@/hooks/use-telemetry-latest";
 import { useDroneStore } from "@/stores/drone-store";
 import {
@@ -14,7 +15,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
 import type { DeckSeverity, DeckSeverityContext } from "./deck-types";
 import { DECK_PAGE_TABS, DECK_PRESETS, METRIC_LABELS_BY_ID } from "./deck-constants";
-import { getSeverity, estimateFlightMinutes, gpsFixLabel, deriveCellCount } from "./deck-utils";
+import { getSeverity, estimateFlightMinutes, gpsFixKey, deriveCellCount } from "./deck-utils";
 import { DeckCell } from "./DeckCell";
 import { DeckCustomizer } from "./DeckCustomizer";
 import { DetachedDeckPortal } from "./DetachedDeckPortal";
@@ -51,6 +52,7 @@ export function useTelemetryDeck(): TelemetryDeckSlots {
   const [dragOverMetricId, setDragOverMetricId] = useState<TelemetryDeckMetricId | null>(null);
   const thresholdRef = useRef<Partial<Record<TelemetryDeckMetricId, DeckSeverity>>>({});
   const { toast } = useToast();
+  const tFix = useTranslations("indicators.gpsFix");
 
   const heading = normalizeHeading(pos?.heading ?? vfr?.heading ?? 0);
   // Undefined until a GPS message arrives. "0 SATS" reads as a receiver that
@@ -79,7 +81,7 @@ export function useTelemetryDeck(): TelemetryDeckSlots {
       groundspeedMs: `${(pos?.groundSpeed ?? vfr?.groundspeed ?? 0).toFixed(1)}m/s`,
       throttle: `${Math.round(vfr?.throttle ?? 0)}%`,
       climbRate: `${(vfr?.climb ?? pos?.climbRate ?? 0).toFixed(1)}m/s`,
-      gpsFix: fixType != null ? gpsFixLabel(fixType) : "--",
+      gpsFix: fixType != null ? tFix(gpsFixKey(fixType)) : "--",
       satellites: satellites != null ? `${satellites}` : "--",
       gpsHdop: hdop != null ? hdop.toFixed(1) : "--",
       batteryVoltage: `${(bat?.voltage ?? 0).toFixed(1)}V`,
@@ -113,7 +115,7 @@ export function useTelemetryDeck(): TelemetryDeckSlots {
       vibeY: `${(vibration?.vibrationY ?? 0).toFixed(1)}`,
       vibeZ: `${(vibration?.vibrationZ ?? 0).toFixed(1)}`,
     }),
-    [att, bat, ekf, estimatedMinutes, fixType, hdop, heading, nav, pos, powerWatts, radio, satellites, vfr, vibration, wind],
+    [att, bat, ekf, estimatedMinutes, fixType, hdop, heading, nav, pos, powerWatts, radio, satellites, tFix, vfr, vibration, wind],
   );
 
   // Undefined entries are metrics that were never received. They carry no

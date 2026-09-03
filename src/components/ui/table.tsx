@@ -62,19 +62,44 @@ export function Table<T extends Record<string, unknown>>({
             {columns.map((col) => (
               <th
                 key={col.key}
+                // `aria-sort` on the header cell is how a screen reader
+                // announces which column orders the table and in which
+                // direction. Without it the chevron is the only channel.
+                aria-sort={
+                  col.sortable
+                    ? sortKey === col.key
+                      ? sortDir === "asc"
+                        ? "ascending"
+                        : "descending"
+                      : "none"
+                    : undefined
+                }
                 className={cn(
                   "px-3 py-2 text-left font-semibold text-text-secondary uppercase tracking-wider",
-                  col.sortable && "cursor-pointer hover:text-text-primary select-none"
+                  col.sortable && "select-none"
                 )}
                 style={col.width ? { width: col.width } : undefined}
-                onClick={() => col.sortable && handleSort(col.key)}
               >
-                <div className="flex items-center gap-1">
-                  {col.label}
-                  {col.sortable && sortKey === col.key && (
-                    sortDir === "asc" ? <ChevronUp size={12} /> : <ChevronDown size={12} />
-                  )}
-                </div>
+                {col.sortable ? (
+                  // Sorting used to live on `<th onClick>`: not focusable and
+                  // inert to the keyboard, so ordering a table was
+                  // pointer-only. A real button carries the affordance.
+                  <button
+                    type="button"
+                    onClick={() => handleSort(col.key)}
+                    className="flex w-full items-center gap-1 text-left uppercase tracking-wider cursor-pointer hover:text-text-primary focus-ring-inset"
+                  >
+                    {col.label}
+                    {sortKey === col.key &&
+                      (sortDir === "asc" ? (
+                        <ChevronUp size={12} aria-hidden="true" />
+                      ) : (
+                        <ChevronDown size={12} aria-hidden="true" />
+                      ))}
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-1">{col.label}</div>
+                )}
               </th>
             ))}
           </tr>
@@ -82,15 +107,30 @@ export function Table<T extends Record<string, unknown>>({
         <tbody>
           {sortedData.map((row, i) => {
             const key = rowKey ? rowKey(row) : String(i);
+            const interactive = Boolean(onRowClick);
             return (
               <tr
                 key={key}
                 className={cn(
                   "border-b border-border-default transition-colors",
-                  onRowClick && "cursor-pointer hover:bg-bg-tertiary",
+                  interactive && "cursor-pointer hover:bg-bg-tertiary focus-ring-inset",
                   selectedRow === key && "bg-accent-primary/10"
                 )}
                 onClick={() => onRowClick?.(row)}
+                // A clickable row had no way in from the keyboard. `<tr>`
+                // cannot host a button without breaking table semantics, so
+                // the row itself becomes focusable and activatable.
+                tabIndex={interactive ? 0 : undefined}
+                aria-selected={interactive ? selectedRow === key : undefined}
+                onKeyDown={
+                  interactive
+                    ? (e) => {
+                        if (e.key !== "Enter" && e.key !== " ") return;
+                        e.preventDefault();
+                        onRowClick?.(row);
+                      }
+                    : undefined
+                }
               >
                 {columns.map((col) => (
                   <td key={col.key} className="px-3 py-2 text-text-primary">

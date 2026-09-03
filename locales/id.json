@@ -338,7 +338,8 @@
       "otherFieldPlaceholder": "e.g. FR",
       "unrestrictedNote": "Operator responsible for local RF compliance.",
       "perDroneNote": "This is the default applied when a drone is paired. Each drone can be set individually on its System tab."
-    }
+    },
+    "dialogLabel": "Penyiapan Mission Control"
   },
   "common": {
     "save": "Simpan",
@@ -360,7 +361,8 @@
       "message": "You have unsaved changes to the current plan. What would you like to do?",
       "saveAndSwitch": "Save & Switch",
       "discardAndSwitch": "Discard & Switch"
-    }
+    },
+    "confirmTypePhrase": "Ketik <phrase></phrase> untuk mengonfirmasi"
   },
   "status": {
     "connected": "Terhubung",
@@ -533,7 +535,8 @@
     "data": "Data",
     "flashTool": "Alat Flash",
     "operator": "Operator & Aircraft",
-    "plugins": "Ekstensi"
+    "plugins": "Ekstensi",
+    "can": "DroneCAN"
   },
   "general": {
     "title": "Pengaturan Umum",
@@ -1267,7 +1270,10 @@
     },
     "cameras": "Cameras",
     "surfaceError": "This view failed to render. The rest of the console is unaffected.",
-    "surfaceErrorRetry": "Try again"
+    "surfaceErrorRetry": "Try again",
+    "openHud": "Buka HUD layar penuh",
+    "nodeDetailTabs": "Tab detail node",
+    "nodeNotFound": "Drone “{id}” tidak ditemukan"
   },
   "vision": {
     "title": "Vision Engine",
@@ -2025,7 +2031,9 @@
       "enterCodeSubtitle": "Works over HTTPS. No LAN access required.",
       "enterCodeHint": "Run `ados status` on your drone to see its current code, or copy it from the install banner.",
       "pair": "Pair",
-      "pairing": "Pairing"
+      "pairing": "Pairing",
+      "tabsLabel": "Metode pemasangan",
+      "lanRelayNudge": "Jangkau node ini dari luar LAN Anda dengan masuk untuk mengaktifkan relai cloud. Pemasangan LAN di atas tetap berfungsi tanpa akun."
     },
     "unpair": "Lepas Pasangan",
     "disconnect": "Putuskan",
@@ -3299,7 +3307,20 @@
     "shortcutSearch": "/ — Fokus pencarian",
     "shortcutTrash": "T — Beralih tempat sampah",
     "shortcutEsc": "Esc — Tutup panel / hapus pilihan",
-    "shortcutDelete": "Del — Pindahkan pilihan ke tempat sampah"
+    "shortcutDelete": "Del — Pindahkan pilihan ke tempat sampah",
+    "preset90d": "90 hari terakhir",
+    "presetYear": "Tahun terakhir",
+    "reports": {
+      "totalFlights": "Total penerbangan",
+      "totalHours": "Total jam",
+      "totalDistance": "Total jarak",
+      "totalBattery": "Total baterai",
+      "averages": "Rata-rata",
+      "avgDuration": "Rata2 durasi",
+      "avgDistance": "Rata2 jarak",
+      "avgMaxAlt": "Rata2 alt maks",
+      "byDrone": "Per drone"
+    }
   },
   "library": {
     "title": "RENCANA TERBANG",
@@ -3564,6 +3585,15 @@
       "ekf": "EKF",
       "wind": "Angin",
       "navController": "Pengendali navigasi"
+    },
+    "gpsFix": {
+      "noGps": "Tanpa GPS",
+      "noFix": "Tanpa Fix",
+      "fix2d": "Fix 2D",
+      "fix3d": "Fix 3D",
+      "dgps": "DGPS",
+      "rtkFloat": "RTK Mengambang",
+      "rtk": "RTK Terkunci"
     }
   },
   "flightInfo": {
@@ -4036,17 +4066,19 @@
       "title": "Layar OLED",
       "brightness": "Kecerahan",
       "autoDim": "Redupkan otomatis setelah diam 60 dtk",
-      "cycleSeconds": "Interval siklus (detik)"
+      "cycleSeconds": "Interval siklus (detik)",
+      "refreshHint": "Disegarkan sekali per detik"
     },
     "buttons": {
       "title": "Tombol",
       "shortPress": "Tekan singkat",
       "longPress": "Tekan lama",
-      "phase2Note": "Remapping is on the roadmap"
+      "readOnlyNote": "Hanya baca: aksi tombol tetap pada build ini dan tidak dapat diubah.",
+      "bindingHint": "Tekan lama dapat dipetakan ulang. Tekan singkat ditetapkan oleh profil."
     },
     "screens": {
       "title": "Layar",
-      "phase2Note": "Enable and reorder is on the roadmap"
+      "readOnlyNote": "Hanya baca: urutan dan visibilitas layar tetap pada build ini dan tidak dapat diubah."
     },
     "pic": {
       "title": "Pilot dalam Komando",
@@ -4084,7 +4116,8 @@
       "pairSuccess": "Terpasangkan",
       "pairFailed": "Gagal memasangkan",
       "noDevicesFound": "Perangkat tidak ditemukan.",
-      "pairNewDevice": "Pasangkan perangkat baru"
+      "pairNewDevice": "Pasangkan perangkat baru",
+      "forgot": "Lupakan {name}"
     },
     "display": {
       "title": "Layar",
@@ -4621,6 +4654,9 @@
       "autoDetectedAs": "Auto-detected as {label}",
       "componentsOk": "{ok} of {total} required components OK",
       "moreItems": " and {count} more"
+    },
+    "physicalUiPage": {
+      "description": "Pratinjau langsung Layar OLED dan empat tombol depan pada boks ground station. Pasangkan juga periferal Bluetooth di sini."
     }
   },
   "toast": {
@@ -4638,7 +4674,10 @@
       "bindWaiting": "Waiting for peer on the radio…",
       "bindTransferring": "Transferring keys…",
       "pairFailed": "Pair failed: {message}"
-    }
+    },
+    "dismiss": "Tutup notifikasi",
+    "dismissWarning": "Tutup notifikasi peringatan",
+    "dismissError": "Tutup notifikasi kesalahan"
   },
   "plugins": {
     "revokePermission": "Revoke permission",
@@ -5385,7 +5424,7 @@
   "navigation": {
     "tabTitle": "Vision Nav",
     "panel": {
-      "title": "Vision Navigation",
+      "title": "Navigasi Visual",
       "subtitle": "GPS-denied flight via optical flow and visual inertial odometry"
     },
     "sourceSet": {
@@ -5393,7 +5432,7 @@
       "gpsPrimary": "GPS primary",
       "vioPrimary": "Vision (VIO) primary",
       "ofPrimary": "Optical flow primary",
-      "switchConfirm": "Switch to {{name}}? This will replan the EKF source for in-flight navigation.",
+      "switchConfirm": "Switch to {name}? This will replan the EKF source for in-flight navigation.",
       "switchButton": "Use this set",
       "px4NotSupported": "PX4 does not support runtime source switching. Update parameters and restart the EKF."
     },
@@ -5420,7 +5459,7 @@
     },
     "preArm": {
       "ready": "Vision navigation: ready",
-      "companionBlocker": "Vision companion process is {{state}}. Vision navigation cannot arm.",
+      "companionBlocker": "Vision companion process is {state}. Vision navigation cannot arm.",
       "originBlocker": "EKF origin not set. Plugin will auto-set via SET_GPS_GLOBAL_ORIGIN, retry in a few seconds.",
       "pending": "Vision navigation: status pending",
       "waitingHeartbeat": "Vision navigation: waiting for companion heartbeat"
@@ -6392,7 +6431,44 @@
       "highDesc": "Full detail (recommended)",
       "maximumLabel": "Maximum",
       "maximumDesc": "Best detail, slowest"
-    }
+    },
+    "worldGeneration": "Generasi {generation}",
+    "worldSession": "Sesi",
+    "worldUnknown": "Tidak diketahui",
+    "worldNotProduced": "Tidak dihasilkan pada generasi ini",
+    "worldAbsentTitle": "Tidak ada model dunia",
+    "worldEmptyTitle": "Model dunia kosong",
+    "worldEmptyBody": "Generasi terbaru melaporkan nol hasil pengukuran. Rekonstruksi berjalan dan tidak menghasilkan geometri.",
+    "worldUnknownTitle": "Isi tidak dinyatakan",
+    "worldUnknownBody": "Generasi terbaru datang tanpa jumlah yang dapat dibaca, jadi isinya tidak diketahui — bukan kosong.",
+    "worldSplat": "Splat",
+    "worldPointcloud": "Awan titik",
+    "worldMesh": "Mesh",
+    "worldOccupancy": "Okupansi",
+    "worldGaussians": "Gaussian",
+    "worldTrainingStep": "Langkah pelatihan",
+    "worldLodLevels": "Tingkat LOD",
+    "worldPoints": "Titik",
+    "worldExtent": "Rentang",
+    "worldExtentUnmeasured": "Tidak terukur",
+    "worldVertices": "Verteks",
+    "worldFaces": "Sisi",
+    "worldField": "Bidang",
+    "worldFieldEsdf": "Jarak bertanda (ESDF)",
+    "worldFieldOccupancy": "Probabilitas okupansi",
+    "worldVoxels": "Voxel",
+    "worldVoxelSize": "Ukuran voxel",
+    "worldTruncation": "Dipotong pada",
+    "worldPartialDescriptor": "Deskriptor sebagian: {fields} tidak dinyatakan",
+    "worldStreamIdle": "Aliran deskriptor tidak dilanggan.",
+    "worldStreamDemo": "Aliran deskriptor tidak tersedia dalam mode demo.",
+    "worldStreamBlockedOrigin": "Peramban pada origin HTTPS tidak dapat membuka aliran deskriptor LAN. Gunakan HTTP atau aplikasi desktop.",
+    "worldStreamConnecting": "Menghubungkan ke aliran deskriptor…",
+    "worldStreamConnected": "Aliran deskriptor tersambung.",
+    "worldStreamReconnecting": "Menyambungkan ulang aliran deskriptor…",
+    "worldSuperseded": "{count} deskriptor kedaluwarsa dibuang",
+    "worldVersionRejected": "{count} frame ditolak: versi envelope {version} tidak didukung build ini",
+    "worldMalformed": "{count} frame tidak terbaca"
   },
   "workstation": {
     "rail": {
@@ -6417,12 +6493,6 @@
       "gps": "GPS",
       "battery": "Battery",
       "offline": "Offline",
-      "fixNone": "No fix",
-      "fix2d": "2D",
-      "fix3d": "3D",
-      "fixDgps": "DGPS",
-      "fixRtkFloat": "RTK float",
-      "fixRtk": "RTK fixed",
       "sats": "{count} sats",
       "rssi": "{value} dBm"
     },

@@ -338,7 +338,8 @@
       "otherFieldPlaceholder": "e.g. FR",
       "unrestrictedNote": "Operator responsible for local RF compliance.",
       "perDroneNote": "This is the default applied when a drone is paired. Each drone can be set individually on its System tab."
-    }
+    },
+    "dialogLabel": "મિશન કંટ્રોલ સેટઅપ"
   },
   "common": {
     "save": "સાચવો",
@@ -360,7 +361,8 @@
       "message": "You have unsaved changes to the current plan. What would you like to do?",
       "saveAndSwitch": "Save & Switch",
       "discardAndSwitch": "Discard & Switch"
-    }
+    },
+    "confirmTypePhrase": "પુષ્ટિ કરવા માટે <phrase></phrase> ટાઇપ કરો"
   },
   "status": {
     "connected": "જોડાયેલ",
@@ -533,7 +535,8 @@
     "data": "ડેટા",
     "flashTool": "Flash ટૂલ",
     "operator": "Operator & Aircraft",
-    "plugins": "એક્સટેન્શન"
+    "plugins": "એક્સટેન્શન",
+    "can": "DroneCAN"
   },
   "general": {
     "title": "સામાન્ય સેટિંગ્સ",
@@ -1267,7 +1270,10 @@
     },
     "cameras": "Cameras",
     "surfaceError": "This view failed to render. The rest of the console is unaffected.",
-    "surfaceErrorRetry": "Try again"
+    "surfaceErrorRetry": "Try again",
+    "openHud": "પૂર્ણ-સ્ક્રીન HUD ખોલો",
+    "nodeDetailTabs": "નોડ વિગત ટૅબ્સ",
+    "nodeNotFound": "ડ્રોન “{id}” મળ્યું નથી"
   },
   "vision": {
     "title": "Vision Engine",
@@ -2025,7 +2031,9 @@
       "enterCodeSubtitle": "Works over HTTPS. No LAN access required.",
       "enterCodeHint": "Run `ados status` on your drone to see its current code, or copy it from the install banner.",
       "pair": "Pair",
-      "pairing": "Pairing"
+      "pairing": "Pairing",
+      "tabsLabel": "જોડાણ પદ્ધતિ",
+      "lanRelayNudge": "તમારા LAN ની બહારથી આ નોડ સુધી પહોંચવા માટે સાઇન ઇન કરીને ક્લાઉડ રિલે ચાલુ કરો. ઉપરનું LAN જોડાણ ખાતા વગર પણ કામ કરે છે."
     },
     "unpair": "અનપેર",
     "disconnect": "ડિસ્કનેક્ટ કરો",
@@ -3299,7 +3307,20 @@
     "shortcutSearch": "/ — શોધ પર ફોકસ",
     "shortcutTrash": "T — ટ્રેશ ટૉગલ",
     "shortcutEsc": "Esc — પેનલ બંધ / પસંદગી સાફ",
-    "shortcutDelete": "Del — પસંદ કરેલને ટ્રેશમાં ખસેડો"
+    "shortcutDelete": "Del — પસંદ કરેલને ટ્રેશમાં ખસેડો",
+    "preset90d": "છેલ્લા 90 દિવસ",
+    "presetYear": "છેલ્લું વર્ષ",
+    "reports": {
+      "totalFlights": "કુલ ઉડાનો",
+      "totalHours": "કુલ કલાકો",
+      "totalDistance": "કુલ અંતર",
+      "totalBattery": "કુલ બેટરી",
+      "averages": "સરેરાશ",
+      "avgDuration": "સ. સમયગાળો",
+      "avgDistance": "સ. અંતર",
+      "avgMaxAlt": "સ. મહત્તમ ઊંચાઈ",
+      "byDrone": "ડ્રોન પ્રમાણે"
+    }
   },
   "library": {
     "title": "ઉડાન યોજનાઓ",
@@ -3564,6 +3585,15 @@
       "ekf": "EKF",
       "wind": "પવન",
       "navController": "નેવિગેશન કંટ્રોલર"
+    },
+    "gpsFix": {
+      "noGps": "GPS નથી",
+      "noFix": "ફિક્સ નથી",
+      "fix2d": "2D ફિક્સ",
+      "fix3d": "3D ફિક્સ",
+      "dgps": "DGPS",
+      "rtkFloat": "RTK અસ્થિર",
+      "rtk": "RTK સ્થિર"
     }
   },
   "flightInfo": {
@@ -3848,7 +3878,7 @@
     "cpu": "CPU",
     "mem": "MEM",
     "disk": "ડિસ્ક",
-    "temp": "તાપ"
+    "temp": "તાપ."
   },
   "missionProgress": {
     "mission": "મિશન",
@@ -4036,17 +4066,19 @@
       "title": "OLED ડિસ્પ્લે",
       "brightness": "ચમક",
       "autoDim": "60 સેકન્ડ નિષ્ક્રિય પછી સ્વતઃ ઝાંખું",
-      "cycleSeconds": "સાયકલ અંતરાલ (સેકન્ડ)"
+      "cycleSeconds": "સાયકલ અંતરાલ (સેકન્ડ)",
+      "refreshHint": "દર સેકન્ડે એક વાર રિફ્રેશ થાય છે"
     },
     "buttons": {
       "title": "બટન",
       "shortPress": "ટૂંકું દબાણ",
       "longPress": "લાંબું દબાણ",
-      "phase2Note": "Remapping is on the roadmap"
+      "readOnlyNote": "ફક્ત વાંચવા માટે: આ બિલ્ડમાં બટન ક્રિયાઓ નિશ્ચિત છે.",
+      "bindingHint": "લાંબું દબાણ ફરીથી સોંપી શકાય છે. ટૂંકું દબાણ પ્રોફાઇલ દ્વારા નિશ્ચિત છે."
     },
     "screens": {
       "title": "સ્ક્રીન",
-      "phase2Note": "Enable and reorder is on the roadmap"
+      "readOnlyNote": "ફક્ત વાંચવા માટે: આ બિલ્ડમાં સ્ક્રીનનો ક્રમ અને દૃશ્યતા નિશ્ચિત છે."
     },
     "pic": {
       "title": "પાયલટ ઇન કમાન્ડ",
@@ -4084,7 +4116,8 @@
       "pairSuccess": "જોડાયું",
       "pairFailed": "જોડવામાં નિષ્ફળ",
       "noDevicesFound": "કોઈ ઉપકરણો મળ્યા નથી.",
-      "pairNewDevice": "નવું ઉપકરણ જોડો"
+      "pairNewDevice": "નવું ઉપકરણ જોડો",
+      "forgot": "{name} ભૂલી જાઓ"
     },
     "display": {
       "title": "ડિસ્પ્લે",
@@ -4621,6 +4654,9 @@
       "autoDetectedAs": "Auto-detected as {label}",
       "componentsOk": "{ok} of {total} required components OK",
       "moreItems": " and {count} more"
+    },
+    "physicalUiPage": {
+      "description": "ગ્રાઉન્ડ સ્ટેશન બોક્સ પરના OLED સ્ક્રીન અને ચાર આગળના બટનોનું જીવંત પૂર્વાવલોકન. Bluetooth ઉપકરણો પણ અહીં જોડો."
     }
   },
   "toast": {
@@ -4638,7 +4674,10 @@
       "bindWaiting": "Waiting for peer on the radio…",
       "bindTransferring": "Transferring keys…",
       "pairFailed": "Pair failed: {message}"
-    }
+    },
+    "dismiss": "સૂચના બંધ કરો",
+    "dismissWarning": "ચેતવણી સૂચના બંધ કરો",
+    "dismissError": "ભૂલ સૂચના બંધ કરો"
   },
   "plugins": {
     "revokePermission": "Revoke permission",
@@ -5385,7 +5424,7 @@
   "navigation": {
     "tabTitle": "Vision Nav",
     "panel": {
-      "title": "Vision Navigation",
+      "title": "વિઝન નેવિગેશન",
       "subtitle": "GPS-denied flight via optical flow and visual inertial odometry"
     },
     "sourceSet": {
@@ -5393,7 +5432,7 @@
       "gpsPrimary": "GPS primary",
       "vioPrimary": "Vision (VIO) primary",
       "ofPrimary": "Optical flow primary",
-      "switchConfirm": "Switch to {{name}}? This will replan the EKF source for in-flight navigation.",
+      "switchConfirm": "Switch to {name}? This will replan the EKF source for in-flight navigation.",
       "switchButton": "Use this set",
       "px4NotSupported": "PX4 does not support runtime source switching. Update parameters and restart the EKF."
     },
@@ -5420,7 +5459,7 @@
     },
     "preArm": {
       "ready": "Vision navigation: ready",
-      "companionBlocker": "Vision companion process is {{state}}. Vision navigation cannot arm.",
+      "companionBlocker": "Vision companion process is {state}. Vision navigation cannot arm.",
       "originBlocker": "EKF origin not set. Plugin will auto-set via SET_GPS_GLOBAL_ORIGIN, retry in a few seconds.",
       "pending": "Vision navigation: status pending",
       "waitingHeartbeat": "Vision navigation: waiting for companion heartbeat"
@@ -6392,7 +6431,44 @@
       "highDesc": "Full detail (recommended)",
       "maximumLabel": "Maximum",
       "maximumDesc": "Best detail, slowest"
-    }
+    },
+    "worldGeneration": "જનરેશન {generation}",
+    "worldSession": "સેશન",
+    "worldUnknown": "અજ્ઞાત",
+    "worldNotProduced": "આ જનરેશનમાં બન્યું નથી",
+    "worldAbsentTitle": "કોઈ વર્લ્ડ મોડેલ નથી",
+    "worldEmptyTitle": "વર્લ્ડ મોડેલ ખાલી છે",
+    "worldEmptyBody": "સૌથી નવા જનરેશને માપેલ શૂન્ય નોંધ્યું છે. પુનર્નિર્માણ ચાલ્યું અને કોઈ જ્યોમેટ્રી બની નહીં.",
+    "worldUnknownTitle": "સામગ્રી જણાવેલ નથી",
+    "worldUnknownBody": "સૌથી નવું જનરેશન વાંચી શકાય એવી ગણતરી વગર આવ્યું, તેથી તેમાં શું છે તે અજ્ઞાત છે — ખાલી નથી.",
+    "worldSplat": "સ્પ્લેટ",
+    "worldPointcloud": "પોઇન્ટ ક્લાઉડ",
+    "worldMesh": "મેશ",
+    "worldOccupancy": "ઓક્યુપન્સી",
+    "worldGaussians": "ગૌસિયન",
+    "worldTrainingStep": "ટ્રેનિંગ સ્ટેપ",
+    "worldLodLevels": "LOD સ્તર",
+    "worldPoints": "પોઇન્ટ",
+    "worldExtent": "વિસ્તાર",
+    "worldExtentUnmeasured": "માપ્યું નથી",
+    "worldVertices": "શિરોબિંદુ",
+    "worldFaces": "ફલક",
+    "worldField": "ફીલ્ડ",
+    "worldFieldEsdf": "સાઇન કરેલ અંતર (ESDF)",
+    "worldFieldOccupancy": "ઓક્યુપન્સી સંભાવના",
+    "worldVoxels": "વોક્સેલ",
+    "worldVoxelSize": "વોક્સેલ માપ",
+    "worldTruncation": "આ અંતરે કાપેલું",
+    "worldPartialDescriptor": "અધૂરો ડિસ્ક્રિપ્ટર: {fields} જણાવેલ નથી",
+    "worldStreamIdle": "ડિસ્ક્રિપ્ટર સ્ટ્રીમ સબ્સ્ક્રાઇબ કરેલ નથી.",
+    "worldStreamDemo": "ડેમોમાં ડિસ્ક્રિપ્ટર સ્ટ્રીમ ઉપલબ્ધ નથી.",
+    "worldStreamBlockedOrigin": "HTTPS ઓરિજિન પરનું બ્રાઉઝર LAN ડિસ્ક્રિપ્ટર સ્ટ્રીમ ખોલી શકતું નથી. HTTP અથવા ડેસ્કટોપ એપ વાપરો.",
+    "worldStreamConnecting": "ડિસ્ક્રિપ્ટર સ્ટ્રીમ સાથે જોડાઈ રહ્યું છે…",
+    "worldStreamConnected": "ડિસ્ક્રિપ્ટર સ્ટ્રીમ જોડાયેલ છે.",
+    "worldStreamReconnecting": "ડિસ્ક્રિપ્ટર સ્ટ્રીમ ફરી જોડાઈ રહ્યું છે…",
+    "worldSuperseded": "{count} જૂના ડિસ્ક્રિપ્ટર છોડી દેવાયા",
+    "worldVersionRejected": "{count} ફ્રેમ નકારાયા: આ બિલ્ડ એન્વેલપ વર્ઝન {version} સમજતું નથી",
+    "worldMalformed": "{count} વાંચી ન શકાય એવા ફ્રેમ"
   },
   "workstation": {
     "rail": {
@@ -6417,12 +6493,6 @@
       "gps": "GPS",
       "battery": "Battery",
       "offline": "Offline",
-      "fixNone": "No fix",
-      "fix2d": "2D",
-      "fix3d": "3D",
-      "fixDgps": "DGPS",
-      "fixRtkFloat": "RTK float",
-      "fixRtk": "RTK fixed",
       "sats": "{count} sats",
       "rssi": "{value} dBm"
     },

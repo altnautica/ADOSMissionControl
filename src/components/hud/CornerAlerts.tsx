@@ -70,7 +70,7 @@ export function CornerAlerts() {
         <div
           key={key}
           data-testid={`hud-alert-${key}`}
-          className="text-xs font-mono uppercase px-2 py-1 bg-red-900/80 text-white border border-red-400"
+          className="text-xs font-mono uppercase px-2 py-1 bg-status-error/70 text-white border border-status-error"
         >
           {t(key)}
         </div>

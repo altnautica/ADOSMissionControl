@@ -9,9 +9,9 @@
 
 import { useState } from "react";
 import { useAuthActions } from "@convex-dev/auth/react";
-import { X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
+import { Modal } from "@/components/ui/modal";
 import { useAuthStore } from "@/stores/auth-store";
 import { useConvexAvailable } from "@/app/ConvexClientProvider";
 
@@ -28,49 +28,76 @@ interface SignInModalProps {
   onClose: () => void;
 }
 
+/**
+ * The overlay was hand-rolled and had none of the modal affordances: no
+ * Escape handling, no `role`, no `aria-modal`, no accessible name, no focus
+ * trap and no focus restore, and its close X carried no accessible name.
+ * Focus escaping a dialog that hosts a password field is a real trap for a
+ * keyboard user, so this now renders through the shared `Modal`.
+ *
+ * `SignInModal` stays a thin gate with no hooks of its own so the dialog
+ * mounts fresh on every open, which is what resets the form mode and fields.
+ */
 export function SignInModal({ open, onClose }: SignInModalProps) {
+  if (!open) return null;
+  return <SignInDialog onClose={onClose} />;
+}
+
+function SignInDialog({ onClose }: { onClose: () => void }) {
   const convexAvailable = useConvexAvailable();
   const t = useTranslations("auth");
+  // The heading doubles as the dialog's accessible name, so the sign-in /
+  // sign-up mode lives here rather than inside the form.
+  const [mode, setMode] = useState<"signIn" | "signUp">("signIn");
 
-  if (!open) return null;
+  const title = !convexAvailable
+    ? t("cloudNotAvailable")
+    : mode === "signIn"
+      ? t("signIn")
+      : t("createAccount");
 
   return (
-    <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="bg-bg-secondary border border-border-default w-full max-w-sm mx-4 p-6 relative">
-        <button
-          onClick={onClose}
-          className="absolute top-3 right-3 text-text-tertiary hover:text-text-primary transition-colors"
-        >
-          <X size={16} />
-        </button>
-
-        {convexAvailable ? (
-          <ConvexSignInForm onClose={onClose} />
-        ) : (
-          <div className="text-center py-4">
-            <h2 className="text-lg font-display font-semibold text-text-primary mb-2">
-              {t("cloudNotAvailable")}
-            </h2>
-            <p className="text-xs text-text-secondary mb-4">
-              {t("cloudRequiresConvex")}
-            </p>
-            <button
-              onClick={onClose}
-              className="text-xs text-text-tertiary hover:text-text-secondary"
-            >
-              {t("continueLocalMode")}
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
+    <Modal
+      open
+      onClose={onClose}
+      title={title}
+      size="sm"
+      // A backdrop click would discard half-typed credentials, and the
+      // hand-rolled overlay never dismissed on one. Escape and the X close.
+      disableBackdropClose
+    >
+      {convexAvailable ? (
+        <ConvexSignInForm onClose={onClose} mode={mode} onModeChange={setMode} />
+      ) : (
+        <div className="text-center py-4">
+          <p className="text-xs text-text-secondary mb-4">
+            {t("cloudRequiresConvex")}
+          </p>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-xs text-text-tertiary hover:text-text-secondary focus-ring"
+          >
+            {t("continueLocalMode")}
+          </button>
+        </div>
+      )}
+    </Modal>
   );
 }
 
 /**
  * Inner form component that uses useAuthActions (must be inside ConvexAuthNextjsProvider).
  */
-function ConvexSignInForm({ onClose }: { onClose: () => void }) {
+function ConvexSignInForm({
+  onClose,
+  mode,
+  onModeChange,
+}: {
+  onClose: () => void;
+  mode: "signIn" | "signUp";
+  onModeChange: (mode: "signIn" | "signUp") => void;
+}) {
   const { signIn } = useAuthActions();
   const setAuth = useAuthStore((s) => s.setAuth);
   const t = useTranslations("auth");
@@ -78,7 +105,6 @@ function ConvexSignInForm({ onClose }: { onClose: () => void }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
-  const [mode, setMode] = useState<"signIn" | "signUp">("signIn");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -113,9 +139,6 @@ function ConvexSignInForm({ onClose }: { onClose: () => void }) {
 
   return (
     <>
-      <h2 className="text-lg font-display font-semibold text-text-primary mb-1">
-        {mode === "signIn" ? t("signIn") : t("createAccount")}
-      </h2>
       <p className="text-xs text-text-secondary mb-4">
         {mode === "signIn"
           ? t("signInSyncDescription")
@@ -186,10 +209,10 @@ function ConvexSignInForm({ onClose }: { onClose: () => void }) {
         <button
           type="button"
           onClick={() => {
-            setMode(mode === "signIn" ? "signUp" : "signIn");
+            onModeChange(mode === "signIn" ? "signUp" : "signIn");
             setError(null);
           }}
-          className="text-xs text-accent-primary hover:underline"
+          className="text-xs text-accent-primary hover:underline focus-ring"
         >
           {mode === "signIn" ? t("createAccount") : t("alreadyHaveAccountSignIn")}
         </button>
@@ -199,7 +222,7 @@ function ConvexSignInForm({ onClose }: { onClose: () => void }) {
         <button
           type="button"
           onClick={onClose}
-          className="text-xs text-text-tertiary hover:text-text-secondary"
+          className="text-xs text-text-tertiary hover:text-text-secondary focus-ring"
         >
           {t("continueWithoutAccount")}
         </button>

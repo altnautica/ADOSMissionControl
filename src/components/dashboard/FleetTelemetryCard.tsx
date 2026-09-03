@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { useFleetStore } from "@/stores/fleet-store";
 import { useDroneMetadataStore } from "@/stores/drone-metadata-store";
@@ -9,6 +10,7 @@ import { MODE_DESCRIPTIONS } from "@/components/fc/flight-modes/flight-mode-cons
 import type { UnifiedFlightMode } from "@/lib/protocol/types";
 
 export function FleetTelemetryCard() {
+  const t = useTranslations("status");
   const drones = useFleetStore((s) => s.drones);
   const profiles = useDroneMetadataStore((s) => s.profiles);
 
@@ -43,13 +45,13 @@ export function FleetTelemetryCard() {
       {/* Summary row */}
       <div className="flex items-center gap-3 mb-3">
         <div className="flex items-center gap-1.5">
-          <span className="text-[10px] text-text-tertiary">Connected</span>
+          <span className="text-[10px] text-text-tertiary">{t("connected")}</span>
           <span className="text-xs font-mono font-semibold text-text-primary tabular-nums">
             {connected.length}
           </span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="text-[10px] text-text-tertiary">Armed</span>
+          <span className="text-[10px] text-text-tertiary">{t("armed")}</span>
           <span className="text-xs font-mono font-semibold text-status-warning tabular-nums">
             {armed.length}
           </span>

@@ -8,8 +8,9 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { X, ChevronRight, RotateCcw, Save } from "lucide-react";
+import { ChevronRight, RotateCcw, Save } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Modal } from "@/components/ui/modal";
 import { useInputStore, type GamepadCalibration } from "@/stores/input-store";
 
 type Step = "center" | "range" | "verify";
@@ -175,117 +176,125 @@ export function JoystickCalibrationWizard({ onClose }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="w-[420px] bg-surface-primary border border-border-default rounded-lg shadow-2xl">
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border-default">
-          <h2 className="text-sm font-semibold text-text-primary">Joystick Calibration</h2>
-          <button onClick={onClose} className="text-text-tertiary hover:text-text-primary transition-colors">
-            <X size={16} />
-          </button>
-        </div>
-
-        {/* Step indicator */}
-        <div className="flex items-center gap-2 px-4 py-2 border-b border-border-default">
-          {(["center", "range", "verify"] as Step[]).map((s, i) => (
-            <div key={s} className="flex items-center gap-2">
-              {i > 0 && <ChevronRight size={10} className="text-text-tertiary" />}
-              <span className={cn(
-                "text-[10px] font-medium uppercase tracking-wider",
-                step === s ? "text-accent-primary" : "text-text-tertiary"
-              )}>
-                {i + 1}. {s}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        {/* Body */}
-        <div className="p-4 space-y-4 min-h-[220px]">
-          {step === "center" && (
-            <>
-              <p className="text-xs text-text-secondary">
-                Release all sticks and leave them centered. Do not touch the controller.
-              </p>
-              {sampling && (
-                <div className="space-y-2">
-                  <div className="h-1.5 bg-bg-primary rounded overflow-hidden">
-                    <div
-                      className="h-full bg-accent-primary transition-all duration-100"
-                      style={{ width: `${progress * 100}%` }}
-                    />
-                  </div>
-                  <p className="text-[10px] text-text-tertiary text-center">Sampling center position...</p>
-                </div>
-              )}
-              <div className="space-y-2">
-                {AXIS_LABELS.map((label, i) => (
-                  <AxisBar key={label} label={label} raw={rawAxes[i]} />
-                ))}
-              </div>
-            </>
-          )}
-
-          {step === "range" && (
-            <>
-              <p className="text-xs text-text-secondary">
-                Move all sticks to their full range. Push each stick to all four corners, then return to center.
-              </p>
-              {sampling && (
-                <div className="space-y-2">
-                  <div className="h-1.5 bg-bg-primary rounded overflow-hidden">
-                    <div
-                      className="h-full bg-accent-primary transition-all duration-100"
-                      style={{ width: `${progress * 100}%` }}
-                    />
-                  </div>
-                  <p className="text-[10px] text-text-tertiary text-center">Recording axis range...</p>
-                </div>
-              )}
-              <div className="space-y-2">
-                {AXIS_LABELS.map((label, i) => (
-                  <AxisBar key={label} label={label} raw={rawAxes[i]} />
-                ))}
-              </div>
-            </>
-          )}
-
-          {step === "verify" && (
-            <>
-              <p className="text-xs text-text-secondary">
-                Move sticks to verify calibration. Gray = raw input, blue = calibrated output. Center should read 0.000, extremes should reach -1.000 / 1.000.
-              </p>
-              <div className="space-y-2">
-                {AXIS_LABELS.map((label, i) => (
-                  <AxisBar key={label} label={label} raw={rawAxes[i]} calibrated={axes[i]} />
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-border-default">
+    <Modal
+      open
+      onClose={onClose}
+      // Hardcoded English title: no locale key exists for it, so the literal
+      // is passed through unchanged rather than pointing at an invented key.
+      title="Joystick Calibration"
+      size="sm"
+      // A backdrop click mid-sampling would throw away the samples already
+      // collected, and the hand-rolled overlay never dismissed on one. Escape
+      // and the X close, which the overlay did not offer at all.
+      disableBackdropClose
+      // The step strip is full-bleed with its own divider, so the child owns
+      // its padding.
+      noBodyPadding
+      // Always a node, so the action strip keeps its height across all three
+      // steps and the panel does not resize when the buttons appear.
+      footer={
+        <>
           {step === "verify" && (
             <>
               <button
+                type="button"
                 onClick={handleRedo}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-text-secondary border border-border-default rounded hover:border-accent-primary hover:text-accent-primary transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-text-secondary border border-border-default rounded hover:border-accent-primary hover:text-accent-primary transition-colors focus-ring"
               >
-                <RotateCcw size={12} />
+                <RotateCcw size={12} aria-hidden="true" />
                 Redo
               </button>
               <button
+                type="button"
                 onClick={handleSave}
-                className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium bg-accent-primary text-white rounded hover:opacity-90 transition-opacity"
+                className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium bg-accent-primary text-accent-foreground rounded hover:opacity-90 transition-opacity focus-ring"
               >
-                <Save size={12} />
+                <Save size={12} aria-hidden="true" />
                 Save Calibration
               </button>
             </>
           )}
-        </div>
+        </>
+      }
+    >
+      {/* Step indicator */}
+      <div className="flex items-center gap-2 px-4 py-2 border-b border-border-default">
+        {(["center", "range", "verify"] as Step[]).map((s, i) => (
+          <div key={s} className="flex items-center gap-2">
+            {i > 0 && <ChevronRight size={10} className="text-text-tertiary" aria-hidden="true" />}
+            <span className={cn(
+              "text-[10px] font-medium uppercase tracking-wider",
+              step === s ? "text-accent-primary" : "text-text-tertiary"
+            )}>
+              {i + 1}. {s}
+            </span>
+          </div>
+        ))}
       </div>
-    </div>
+
+      {/* Body */}
+      <div className="p-4 space-y-4 min-h-[220px]">
+        {step === "center" && (
+          <>
+            <p className="text-xs text-text-secondary">
+              Release all sticks and leave them centered. Do not touch the controller.
+            </p>
+            {sampling && (
+              <div className="space-y-2">
+                <div className="h-1.5 bg-bg-primary rounded overflow-hidden">
+                  <div
+                    className="h-full bg-accent-primary transition-all duration-100"
+                    style={{ width: `${progress * 100}%` }}
+                  />
+                </div>
+                <p className="text-[10px] text-text-tertiary text-center">Sampling center position...</p>
+              </div>
+            )}
+            <div className="space-y-2">
+              {AXIS_LABELS.map((label, i) => (
+                <AxisBar key={label} label={label} raw={rawAxes[i]} />
+              ))}
+            </div>
+          </>
+        )}
+
+        {step === "range" && (
+          <>
+            <p className="text-xs text-text-secondary">
+              Move all sticks to their full range. Push each stick to all four corners, then return to center.
+            </p>
+            {sampling && (
+              <div className="space-y-2">
+                <div className="h-1.5 bg-bg-primary rounded overflow-hidden">
+                  <div
+                    className="h-full bg-accent-primary transition-all duration-100"
+                    style={{ width: `${progress * 100}%` }}
+                  />
+                </div>
+                <p className="text-[10px] text-text-tertiary text-center">Recording axis range...</p>
+              </div>
+            )}
+            <div className="space-y-2">
+              {AXIS_LABELS.map((label, i) => (
+                <AxisBar key={label} label={label} raw={rawAxes[i]} />
+              ))}
+            </div>
+          </>
+        )}
+
+        {step === "verify" && (
+          <>
+            <p className="text-xs text-text-secondary">
+              Move sticks to verify calibration. Gray = raw input, blue = calibrated output. Center should read 0.000, extremes should reach -1.000 / 1.000.
+            </p>
+            <div className="space-y-2">
+              {AXIS_LABELS.map((label, i) => (
+                <AxisBar key={label} label={label} raw={rawAxes[i]} calibrated={axes[i]} />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    </Modal>
   );
 }

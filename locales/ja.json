@@ -338,7 +338,8 @@
       "otherFieldPlaceholder": "e.g. FR",
       "unrestrictedNote": "Operator responsible for local RF compliance.",
       "perDroneNote": "This is the default applied when a drone is paired. Each drone can be set individually on its System tab."
-    }
+    },
+    "dialogLabel": "ミッションコントロール設定"
   },
   "common": {
     "save": "保存",
@@ -360,7 +361,8 @@
       "message": "You have unsaved changes to the current plan. What would you like to do?",
       "saveAndSwitch": "Save & Switch",
       "discardAndSwitch": "Discard & Switch"
-    }
+    },
+    "confirmTypePhrase": "<phrase></phrase> と入力して確認"
   },
   "status": {
     "connected": "接続済み",
@@ -533,7 +535,8 @@
     "data": "データ",
     "flashTool": "書き込みツール",
     "operator": "Operator & Aircraft",
-    "plugins": "拡張機能"
+    "plugins": "拡張機能",
+    "can": "DroneCAN"
   },
   "general": {
     "title": "一般設定",
@@ -1267,7 +1270,10 @@
     },
     "cameras": "Cameras",
     "surfaceError": "This view failed to render. The rest of the console is unaffected.",
-    "surfaceErrorRetry": "Try again"
+    "surfaceErrorRetry": "Try again",
+    "openHud": "全画面HUDを開く",
+    "nodeDetailTabs": "ノード詳細タブ",
+    "nodeNotFound": "ドローン「{id}」が見つかりません"
   },
   "vision": {
     "title": "Vision Engine",
@@ -2025,7 +2031,9 @@
       "enterCodeSubtitle": "Works over HTTPS. No LAN access required.",
       "enterCodeHint": "Run `ados status` on your drone to see its current code, or copy it from the install banner.",
       "pair": "Pair",
-      "pairing": "Pairing"
+      "pairing": "Pairing",
+      "tabsLabel": "ペアリング方法",
+      "lanRelayNudge": "LAN外からこのノードに接続するには、サインインしてクラウドリレーを有効にしてください。上のLANペアリングはアカウントなしで利用できます。"
     },
     "unpair": "ペアリング解除",
     "disconnect": "切断",
@@ -3299,7 +3307,20 @@
     "shortcutSearch": "/ — 検索にフォーカス",
     "shortcutTrash": "T — ゴミ箱を切り替え",
     "shortcutEsc": "Esc — パネルを閉じる / 選択をクリア",
-    "shortcutDelete": "Del — 選択をゴミ箱に移動"
+    "shortcutDelete": "Del — 選択をゴミ箱に移動",
+    "preset90d": "過去90日間",
+    "presetYear": "過去1年間",
+    "reports": {
+      "totalFlights": "総フライト数",
+      "totalHours": "総飛行時間",
+      "totalDistance": "総距離",
+      "totalBattery": "総バッテリー消費量",
+      "averages": "平均",
+      "avgDuration": "平均飛行時間",
+      "avgDistance": "平均距離",
+      "avgMaxAlt": "平均最高高度",
+      "byDrone": "ドローン別"
+    }
   },
   "library": {
     "title": "飛行プラン",
@@ -3564,6 +3585,15 @@
       "ekf": "EKF",
       "wind": "風",
       "navController": "航法コントローラー"
+    },
+    "gpsFix": {
+      "noGps": "GPS未接続",
+      "noFix": "測位不能",
+      "fix2d": "2D測位",
+      "fix3d": "3D測位",
+      "dgps": "DGPS",
+      "rtkFloat": "RTKフロート(未確定)",
+      "rtk": "RTK固定解(確定)"
     }
   },
   "flightInfo": {
@@ -3847,7 +3877,7 @@
     "disconnected": "切断",
     "cpu": "CPU",
     "mem": "MEM",
-    "disk": "Disk",
+    "disk": "ディスク",
     "temp": "温度"
   },
   "missionProgress": {
@@ -4036,17 +4066,19 @@
       "title": "OLEDディスプレイ",
       "brightness": "明るさ",
       "autoDim": "60秒アイドル後に自動減光",
-      "cycleSeconds": "切替間隔 (秒)"
+      "cycleSeconds": "切替間隔 (秒)",
+      "refreshHint": "1秒ごとに更新"
     },
     "buttons": {
       "title": "ボタン",
       "shortPress": "短押し",
       "longPress": "長押し",
-      "phase2Note": "Remapping is on the roadmap"
+      "readOnlyNote": "読み取り専用：このビルドではボタンの動作は固定されており変更できません。",
+      "bindingHint": "長押しは再割り当て可能です。短押しはプロファイルで固定されています。"
     },
     "screens": {
       "title": "画面",
-      "phase2Note": "Enable and reorder is on the roadmap"
+      "readOnlyNote": "読み取り専用：このビルドでは画面の順序と表示は固定されており変更できません。"
     },
     "pic": {
       "title": "パイロット・イン・コマンド",
@@ -4084,7 +4116,8 @@
       "pairSuccess": "ペアリング完了",
       "pairFailed": "ペアリング失敗",
       "noDevicesFound": "デバイスが見つかりません。",
-      "pairNewDevice": "新しいデバイスをペア"
+      "pairNewDevice": "新しいデバイスをペア",
+      "forgot": "{name} の登録を削除"
     },
     "display": {
       "title": "ディスプレイ",
@@ -4621,6 +4654,9 @@
       "autoDetectedAs": "Auto-detected as {label}",
       "componentsOk": "{ok} of {total} required components OK",
       "moreItems": " and {count} more"
+    },
+    "physicalUiPage": {
+      "description": "地上局ボックスのOLED画面と前面4つのボタンのライブプレビューです。Bluetooth周辺機器のペアリングもここで行えます。"
     }
   },
   "toast": {
@@ -4638,7 +4674,10 @@
       "bindWaiting": "Waiting for peer on the radio…",
       "bindTransferring": "Transferring keys…",
       "pairFailed": "Pair failed: {message}"
-    }
+    },
+    "dismiss": "通知を閉じる",
+    "dismissWarning": "警告通知を閉じる",
+    "dismissError": "エラー通知を閉じる"
   },
   "plugins": {
     "revokePermission": "Revoke permission",
@@ -5385,7 +5424,7 @@
   "navigation": {
     "tabTitle": "Vision Nav",
     "panel": {
-      "title": "Vision Navigation",
+      "title": "ビジョンナビゲーション",
       "subtitle": "GPS-denied flight via optical flow and visual inertial odometry"
     },
     "sourceSet": {
@@ -5393,7 +5432,7 @@
       "gpsPrimary": "GPS primary",
       "vioPrimary": "Vision (VIO) primary",
       "ofPrimary": "Optical flow primary",
-      "switchConfirm": "Switch to {{name}}? This will replan the EKF source for in-flight navigation.",
+      "switchConfirm": "Switch to {name}? This will replan the EKF source for in-flight navigation.",
       "switchButton": "Use this set",
       "px4NotSupported": "PX4 does not support runtime source switching. Update parameters and restart the EKF."
     },
@@ -5420,7 +5459,7 @@
     },
     "preArm": {
       "ready": "Vision navigation: ready",
-      "companionBlocker": "Vision companion process is {{state}}. Vision navigation cannot arm.",
+      "companionBlocker": "Vision companion process is {state}. Vision navigation cannot arm.",
       "originBlocker": "EKF origin not set. Plugin will auto-set via SET_GPS_GLOBAL_ORIGIN, retry in a few seconds.",
       "pending": "Vision navigation: status pending",
       "waitingHeartbeat": "Vision navigation: waiting for companion heartbeat"
@@ -6392,7 +6431,44 @@
       "highDesc": "Full detail (recommended)",
       "maximumLabel": "Maximum",
       "maximumDesc": "Best detail, slowest"
-    }
+    },
+    "worldGeneration": "世代 {generation}",
+    "worldSession": "セッション",
+    "worldUnknown": "不明",
+    "worldNotProduced": "この世代では生成されていません",
+    "worldAbsentTitle": "ワールドモデルなし",
+    "worldEmptyTitle": "ワールドモデルは空です",
+    "worldEmptyBody": "最新世代は実測値ゼロを報告しました。再構成は実行され、ジオメトリは生成されませんでした。",
+    "worldUnknownTitle": "内容が申告されていません",
+    "worldUnknownBody": "最新世代は読み取れる件数を伴わずに届いたため、内容は空ではなく不明です。",
+    "worldSplat": "スプラット",
+    "worldPointcloud": "点群",
+    "worldMesh": "メッシュ",
+    "worldOccupancy": "占有",
+    "worldGaussians": "ガウシアン",
+    "worldTrainingStep": "学習ステップ",
+    "worldLodLevels": "LOD 段数",
+    "worldPoints": "点数",
+    "worldExtent": "範囲",
+    "worldExtentUnmeasured": "未計測",
+    "worldVertices": "頂点",
+    "worldFaces": "面",
+    "worldField": "フィールド",
+    "worldFieldEsdf": "符号付き距離 (ESDF)",
+    "worldFieldOccupancy": "占有確率",
+    "worldVoxels": "ボクセル",
+    "worldVoxelSize": "ボクセルサイズ",
+    "worldTruncation": "打ち切り距離",
+    "worldPartialDescriptor": "不完全なディスクリプタ: {fields} が未申告",
+    "worldStreamIdle": "ディスクリプタストリームは購読していません。",
+    "worldStreamDemo": "デモではディスクリプタストリームを利用できません。",
+    "worldStreamBlockedOrigin": "HTTPS オリジンのブラウザーは LAN のディスクリプタストリームを開けません。HTTP かデスクトップアプリを使用してください。",
+    "worldStreamConnecting": "ディスクリプタストリームに接続中…",
+    "worldStreamConnected": "ディスクリプタストリームに接続しました。",
+    "worldStreamReconnecting": "ディスクリプタストリームを再接続中…",
+    "worldSuperseded": "失効したディスクリプタ {count} 件を破棄",
+    "worldVersionRejected": "{count} フレームを拒否: エンベロープバージョン {version} はこのビルドでは扱えません",
+    "worldMalformed": "読み取れないフレーム {count} 件"
   },
   "workstation": {
     "rail": {
@@ -6417,12 +6493,6 @@
       "gps": "GPS",
       "battery": "Battery",
       "offline": "Offline",
-      "fixNone": "No fix",
-      "fix2d": "2D",
-      "fix3d": "3D",
-      "fixDgps": "DGPS",
-      "fixRtkFloat": "RTK float",
-      "fixRtk": "RTK fixed",
       "sats": "{count} sats",
       "rssi": "{value} dBm"
     },

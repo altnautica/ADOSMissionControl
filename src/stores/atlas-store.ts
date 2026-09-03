@@ -38,6 +38,28 @@ export interface AtlasLiveState {
   lastKfAt: number | null;
   /** The active world-model bearer: "direct-lan" | "wfb-relay" | "cloud". */
   bearer: string | null;
+  /** Whether the ACTIVE bearer can carry a full keyframe, as the agent's own
+   * contract decides it. `false` means the world-model lane is degraded to pose
+   * and status — i.e. NO world model — while the bearer still reads as live, so
+   * without this the Stream card showed a working transport and produced
+   * nothing. Null when the agent reported no bearer, where there is nothing
+   * honest to claim either way. */
+  keyframesCarried: boolean | null;
+  /** True once the session-wide keyframe cap stopped selection: the capture is
+   * still `capturing` and the count is frozen on purpose, which is otherwise
+   * indistinguishable from a stalled camera. */
+  capped: boolean | null;
+  /** True once the session's geo anchor latched. Keyframe selection is refused
+   * before it, so a capture with `anchored: false` is running and producing
+   * nothing. */
+  anchored: boolean | null;
+  /** Which producer filled the pose being tagged ("local_vio" |
+   * "offloaded_slam" | "hybrid"), so a silent switch to offloaded SLAM is
+   * visible rather than inferred. */
+  poseTier: string | null;
+  /** Keyframes the capture path produced but the bus could not deliver, so the
+   * ingested count is not read as reconstruction input that exists. */
+  droppedKeyframes: number | null;
   /** The ground agent relaying WFB<->LAN, when bearer = "wfb-relay". */
   relayGroundAgentId: string | null;
   /** Keyframe decimation on the relay lane (1 = none). */
@@ -56,6 +78,11 @@ export const EMPTY_ATLAS_LIVE: AtlasLiveState = {
   computeNodeId: null,
   lastKfAt: null,
   bearer: null,
+  keyframesCarried: null,
+  capped: null,
+  anchored: null,
+  poseTier: null,
+  droppedKeyframes: null,
   relayGroundAgentId: null,
   relayDecimation: null,
   updatedAt: null,

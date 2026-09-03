@@ -7,9 +7,12 @@ interface ProgressBarProps {
   color?: string;
   showLabel?: boolean;
   className?: string;
+  /** Accessible name. A bare bar with no label conveys its whole meaning
+   * through width and colour, so a screen reader gets nothing at all. */
+  label?: string;
 }
 
-export function ProgressBar({ value, color, showLabel, className }: ProgressBarProps) {
+export function ProgressBar({ value, color, showLabel, className, label }: ProgressBarProps) {
   const clamped = Math.max(0, Math.min(100, value));
   const defaultColor =
     clamped > 50
@@ -20,7 +23,15 @@ export function ProgressBar({ value, color, showLabel, className }: ProgressBarP
 
   return (
     <div className={cn("flex items-center gap-2", className)}>
-      <div className="flex-1 h-1.5 bg-bg-tertiary">
+      <div
+        className="flex-1 h-1.5 bg-bg-tertiary"
+        role="progressbar"
+        aria-valuenow={Math.round(clamped)}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuetext={`${Math.round(clamped)}%`}
+        aria-label={label}
+      >
         <div
           className="h-full transition-all duration-300"
           style={{ width: `${clamped}%`, backgroundColor: color || defaultColor }}

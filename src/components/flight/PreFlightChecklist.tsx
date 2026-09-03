@@ -15,8 +15,20 @@ import { useGeofenceStore } from "@/stores/geofence-store";
 import { cn } from "@/lib/utils";
 import { CATEGORY_ORDER, CATEGORY_LABEL_KEYS, ChecklistRow } from "./checklist-helpers";
 
+/** MAVLink GPS_FIX_TYPE -> its `indicators.gpsFix.*` label key. */
+const GPS_FIX_KEYS: Record<number, string> = {
+  0: "noGps",
+  1: "noFix",
+  2: "fix2d",
+  3: "fix3d",
+  4: "dgps",
+  5: "rtkFloat",
+  6: "rtk",
+};
+
 export function PreFlightChecklist({ className }: { className?: string }) {
   const t = useTranslations("checklist");
+  const tFix = useTranslations("indicators.gpsFix");
   const items = useChecklistStore((s) => s.items);
   const sessionId = useChecklistStore((s) => s.sessionId);
   const startSession = useChecklistStore((s) => s.startSession);
@@ -56,10 +68,13 @@ export function PreFlightChecklist({ className }: { className?: string }) {
     // GPS checks
     const latestGps = gps.latest();
     if (latestGps) {
+      // The pass gate stays on fix type >= 3; only the reported value is
+      // translated. Types above 6 (STATIC, PPP) have no key entry and report
+      // as 3D, which is what the old `>= 3` branch showed for them.
       updateAutoItem(
         "gps-fix",
         latestGps.fixType >= 3 ? "pass" : "fail",
-        latestGps.fixType >= 3 ? "3D Fix" : latestGps.fixType === 2 ? "2D" : "No Fix",
+        tFix(GPS_FIX_KEYS[latestGps.fixType] ?? "fix3d"),
       );
       updateAutoItem(
         "gps-sats",
@@ -105,7 +120,7 @@ export function PreFlightChecklist({ className }: { className?: string }) {
       geofenceEnabled ? "pass" : "fail",
       geofenceEnabled ? "Enabled" : "Disabled",
     );
-  }, [battery, gps, ekf, healthyCount, totalPresent, waypoints.length, geofenceEnabled, updateAutoItem]);
+  }, [battery, gps, ekf, healthyCount, totalPresent, waypoints.length, geofenceEnabled, updateAutoItem, tFix]);
 
   // Run auto-checks on telemetry updates (debounced by _version)
   useEffect(() => {

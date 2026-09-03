@@ -38,12 +38,12 @@ const EVENT_CONFIG: Record<EventType, EventTypeConfig> = {
   disarm: { label: "Disarm", color: "text-status-warning", bgColor: "bg-status-warning/15", Icon: ShieldOff },
   mode_change: { label: "Mode", color: "text-accent-primary", bgColor: "bg-accent-primary/15", Icon: RotateCw },
   error: { label: "Error", color: "text-status-error", bgColor: "bg-status-error/15", Icon: AlertTriangle },
-  calibration: { label: "Calibration", color: "text-purple-400", bgColor: "bg-purple-400/15", Icon: Wrench },
+  calibration: { label: "Calibration", color: "text-[var(--node-swatch-purple)]", bgColor: "bg-[var(--node-swatch-purple)]/15", Icon: Wrench },
   param_write: { label: "Param Write", color: "text-status-warning", bgColor: "bg-status-warning/15", Icon: PenLine },
-  flash_commit: { label: "Flash", color: "text-orange-400", bgColor: "bg-orange-400/15", Icon: Save },
-  mission_upload: { label: "Mission Up", color: "text-cyan-400", bgColor: "bg-cyan-400/15", Icon: Upload },
-  mission_download: { label: "Mission Down", color: "text-cyan-400", bgColor: "bg-cyan-400/15", Icon: Download },
-  reconnect_attempt: { label: "Reconnect", color: "text-yellow-400", bgColor: "bg-yellow-400/15", Icon: RefreshCw },
+  flash_commit: { label: "Flash", color: "text-status-serious", bgColor: "bg-status-serious/15", Icon: Save },
+  mission_upload: { label: "Mission Up", color: "text-[var(--node-swatch-cyan)]", bgColor: "bg-[var(--node-swatch-cyan)]/15", Icon: Upload },
+  mission_download: { label: "Mission Down", color: "text-[var(--node-swatch-cyan)]", bgColor: "bg-[var(--node-swatch-cyan)]/15", Icon: Download },
+  reconnect_attempt: { label: "Reconnect", color: "text-status-warning", bgColor: "bg-status-warning/15", Icon: RefreshCw },
 };
 
 const ALL_EVENT_TYPES: EventType[] = [

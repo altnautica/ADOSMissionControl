@@ -1,21 +1,32 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { cn } from "@/lib/utils";
 import { Satellite } from "lucide-react";
 import type { GpsData } from "@/lib/types";
 
-const FIX_TYPES: Record<number, { label: string; color: string }> = {
-  0: { label: "No GPS", color: "text-text-tertiary" },
-  1: { label: "No Fix", color: "text-status-error" },
-  2: { label: "2D Fix", color: "text-status-warning" },
-  3: { label: "3D Fix", color: "text-status-success" },
-  4: { label: "DGPS", color: "text-status-success" },
-  5: { label: "RTK Float", color: "text-accent-primary" },
-  6: { label: "RTK Fixed", color: "text-accent-primary" },
+/**
+ * MAVLink GPS_FIX_TYPE -> its `indicators.gpsFix.*` key plus severity colour.
+ * Fix types above 6 (STATIC, PPP) have no entry and fall back to 0, which is
+ * the pre-existing behaviour of this indicator.
+ */
+const FIX_TYPES: Record<number, { key: string; color: string }> = {
+  0: { key: "noGps", color: "text-text-tertiary" },
+  1: { key: "noFix", color: "text-status-error" },
+  2: { key: "fix2d", color: "text-status-warning" },
+  3: { key: "fix3d", color: "text-status-success" },
+  4: { key: "dgps", color: "text-status-success" },
+  5: { key: "rtkFloat", color: "text-accent-primary" },
+  6: { key: "rtk", color: "text-accent-primary" },
 };
 
 function GpsRow({ label, data }: { label: string; data: GpsData }) {
+  const t = useTranslations("indicators.gpsFix");
+  // "sats"/"HDOP" are shared GPS column abbreviations; they live under the
+  // CAN test-utility GPS block, which is the only place they are already
+  // translated in every locale.
+  const tUnits = useTranslations("canConfig.testUtilities.gpsFix");
   const fix = FIX_TYPES[data.fixType] ?? FIX_TYPES[0];
   const hdopColor = data.hdop < 1.5 ? "text-status-success"
     : data.hdop < 3.0 ? "text-status-warning"
@@ -26,13 +37,13 @@ function GpsRow({ label, data }: { label: string; data: GpsData }) {
       <Satellite size={12} className={fix.color} />
       <span className="text-[10px] font-mono text-text-tertiary w-6">{label}</span>
       <span className={cn("text-[10px] font-mono font-medium", fix.color)}>
-        {fix.label}
+        {t(fix.key)}
       </span>
       <span className="text-[10px] font-mono text-text-secondary">
-        {data.satellites} sats
+        {data.satellites} {tUnits("sats")}
       </span>
       <span className={cn("text-[10px] font-mono", hdopColor)}>
-        HDOP {data.hdop.toFixed(1)}
+        {tUnits("hdop")} {data.hdop.toFixed(1)}
       </span>
     </div>
   );
@@ -43,6 +54,7 @@ function GpsRow({ label, data }: { label: string; data: GpsData }) {
  * Shows GPS2 alongside GPS1 when available.
  */
 export function GpsSkyView({ className }: { className?: string }) {
+  const t = useTranslations("indicators.gpsFix");
   const gps = useTelemetryStore((s) => s.gps);
   const gps2 = useTelemetryStore((s) => s.gps2);
   const latest = gps.latest();
@@ -52,7 +64,7 @@ export function GpsSkyView({ className }: { className?: string }) {
     return (
       <div className={cn("flex items-center gap-1 text-text-tertiary", className)}>
         <Satellite size={12} />
-        <span className="text-[10px] font-mono">No GPS</span>
+        <span className="text-[10px] font-mono">{t("noGps")}</span>
       </div>
     );
   }

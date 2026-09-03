@@ -26,7 +26,7 @@ function formatGb(mb: number): string {
 
 function colorForState(state: DataCapState): string {
   if (state === "blocked_100") return "bg-status-error";
-  if (state === "throttle_95") return "bg-orange-500";
+  if (state === "throttle_95") return "bg-status-serious";
   if (state === "warn_80") return "bg-status-warning";
   return "bg-status-success";
 }

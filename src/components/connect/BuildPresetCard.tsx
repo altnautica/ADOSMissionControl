@@ -12,12 +12,12 @@ import {
 } from "lucide-react";
 
 const CATEGORY_COLORS: Record<string, string> = {
-  fpv: "text-orange-400",
-  "long-range": "text-blue-400",
-  "heavy-lift": "text-red-400",
-  cine: "text-purple-400",
-  racing: "text-yellow-400",
-  micro: "text-green-400",
+  fpv: "text-[var(--node-swatch-orange)]",
+  "long-range": "text-[var(--node-swatch-blue)]",
+  "heavy-lift": "text-[var(--node-swatch-red)]",
+  cine: "text-[var(--node-swatch-purple)]",
+  racing: "text-[var(--node-swatch-amber)]",
+  micro: "text-[var(--node-swatch-green)]",
   reference: "text-accent-primary",
 };
 
@@ -100,7 +100,7 @@ export function BuildPresetCard({
         </div>
         <div className="flex items-center gap-1">
           {specs.hasGps ? (
-            <Navigation size={10} className="text-green-400 shrink-0" />
+            <Navigation size={10} className="text-status-success shrink-0" />
           ) : (
             <Navigation size={10} className="text-text-tertiary shrink-0" />
           )}
@@ -116,12 +116,12 @@ export function BuildPresetCard({
           </span>
         )}
         {specs.hasRangefinder && (
-          <span className="px-1.5 py-0.5 text-[8px] font-mono bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+          <span className="px-1.5 py-0.5 text-[8px] font-mono bg-[var(--node-swatch-teal)]/15 text-[var(--node-swatch-teal)] border border-[var(--node-swatch-teal)]/30">
             LIDAR
           </span>
         )}
         {specs.hasCompass && (
-          <span className="px-1.5 py-0.5 text-[8px] font-mono bg-sky-500/15 text-sky-400 border border-sky-500/30">
+          <span className="px-1.5 py-0.5 text-[8px] font-mono bg-[var(--node-swatch-cyan)]/15 text-[var(--node-swatch-cyan)] border border-[var(--node-swatch-cyan)]/30">
             MAG
           </span>
         )}

@@ -60,15 +60,15 @@ const SHORT_LABELS: Record<string, string> = {
 function statusColor(status: string): string {
   switch (status) {
     case "healthy":
-      return "bg-green-500/80";
+      return "bg-status-success/80";
     case "unhealthy":
-      return "bg-gray-500/60";
+      return "bg-text-tertiary/60";
     case "error":
-      return "bg-red-500/80";
+      return "bg-status-error/80";
     case "not_present":
       return "bg-transparent border border-text-tertiary/30";
     default:
-      return "bg-gray-700/60";
+      return "bg-text-tertiary/40";
   }
 }
 

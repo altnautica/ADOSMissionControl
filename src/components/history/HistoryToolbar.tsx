@@ -2,10 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import Link from "next/link";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Download, Star, X, HardDrive, Upload, Image, Trash2, RotateCcw, Archive, FolderInput } from "lucide-react";
+import { Download, Star, X, HardDrive, Upload, Image, Trash2, RotateCcw, Archive, FolderInput, BarChart3 } from "lucide-react";
 import type { FlightRecord } from "@/lib/types";
 import { exportFlightRecordsAsCsv } from "@/lib/csv-export";
 import { CloudSyncBadge } from "./CloudSyncBadge";
@@ -254,6 +255,16 @@ export function HistoryToolbar({
       >
         Restore
       </Button>
+      <Link href="/flight-logs/reports">
+        <Button
+          variant="ghost"
+          size="md"
+          icon={<BarChart3 size={14} />}
+          title={t("reportsTitle")}
+        >
+          {t("reportsTitle")}
+        </Button>
+      </Link>
       <ComplianceAlertBell />
       <CloudSyncBadge />
 

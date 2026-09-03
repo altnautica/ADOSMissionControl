@@ -18,7 +18,7 @@ import { cmdPairingApi } from "@/lib/community-api-drones";
 import { useAuthStore } from "@/stores/auth-store";
 import { usePairingStore } from "@/stores/pairing-store";
 import { SignInModal } from "@/components/auth/SignInModal";
-import { Tabs } from "@/components/ui/tabs";
+import { Tabs, tabButtonId } from "@/components/ui/tabs";
 import { AddNodeForm } from "./disconnected/AddNodeForm";
 import { InstallAgentStrip } from "./disconnected/InstallAgentStrip";
 import { PairingPrompt } from "./pairing/PairingPrompt";
@@ -92,6 +92,7 @@ function AgentConnectPanelBase({
   requiresSignIn,
 }: BaseProps) {
   const t = useTranslations("command");
+  const tAuth = useTranslations("auth");
   const [signInOpen, setSignInOpen] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedInstall, setCopiedInstall] = useState(false);
@@ -160,14 +161,20 @@ function AgentConnectPanelBase({
       <Tabs
         activeTab={activeTab}
         onChange={(id) => setActiveTab(id as DialogTab)}
+        label={t("pairing.tabsLabel")}
         tabs={[
-          { id: "add", label: t("pairing.tab.addDrone") },
-          { id: "generate", label: t("pairing.tab.generateCode") },
+          { id: "add", label: t("pairing.tab.addDrone"), panelId: "agent-connect-add" },
+          { id: "generate", label: t("pairing.tab.generateCode"), panelId: "agent-connect-generate" },
         ]}
       />
       <div className="pt-4 space-y-5">
         {activeTab === "add" && (
-          <>
+          <div
+            id="agent-connect-add"
+            role="tabpanel"
+            aria-labelledby={tabButtonId("add")}
+            className="space-y-5"
+          >
             <AddNodeForm
               onPaired={(deviceId) => {
                 // apiKey is already persisted in the local-nodes-store by
@@ -182,22 +189,25 @@ function AgentConnectPanelBase({
               // Informational nudge only — LAN pair via the form above works
               // without an account. Sign-in unlocks cross-network reach.
               <div className="flex items-start gap-3 p-3 bg-bg-tertiary border border-border-default rounded text-xs text-text-tertiary leading-relaxed">
-                <p className="flex-1">
-                  Want to reach this node from outside your LAN? Sign in to
-                  enable cloud relay. LAN pair above works without an account.
-                </p>
+                <p className="flex-1">{t("pairing.lanRelayNudge")}</p>
                 <button
+                  type="button"
                   onClick={() => setSignInOpen(true)}
-                  className="shrink-0 px-2.5 py-1 text-[11px] font-medium text-accent-primary border border-accent-primary/30 rounded hover:bg-accent-primary/10 transition-colors"
+                  className="shrink-0 px-2.5 py-1 text-[11px] font-medium text-accent-primary border border-accent-primary/30 rounded hover:bg-accent-primary/10 transition-colors focus-ring"
                 >
-                  Sign in
+                  {tAuth("signInButton")}
                 </button>
               </div>
             )}
-          </>
+          </div>
         )}
         {activeTab === "generate" && (
-          <>
+          <div
+            id="agent-connect-generate"
+            role="tabpanel"
+            aria-labelledby={tabButtonId("generate")}
+            className="space-y-5"
+          >
             {requiresSignIn ? (
               <PairingPrompt
                 variant="sign-in"
@@ -236,7 +246,7 @@ function AgentConnectPanelBase({
                 )}
               </>
             )}
-          </>
+          </div>
         )}
       </div>
       <SignInModal open={signInOpen} onClose={() => setSignInOpen(false)} />

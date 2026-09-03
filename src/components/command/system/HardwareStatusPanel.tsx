@@ -90,6 +90,7 @@ const INSTALL_STATUS_LABEL: Record<InstallStatus, string> = {
 
 export function HardwareStatusPanel() {
   const t = useTranslations("agent");
+  const tStrip = useTranslations("telemetryStrip");
   const connected = useAgentConnectionStore((s) => s.connected);
   const peripherals = useAgentPeripheralsStore((s) => s.peripherals);
   const scanPeripherals = useAgentPeripheralsStore((s) => s.scanPeripherals);
@@ -290,10 +291,10 @@ export function HardwareStatusPanel() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2 mb-3">
-            <StatBox label="CPU" value={cpuPct} unit="%" warn={cpuPct != null && cpuPct > 80} />
-            <StatBox label="MEM" value={memPct} unit="%" warn={memPct != null && memPct > 85} />
-            <StatBox label="DISK" value={diskPct} unit="%" warn={diskPct != null && diskPct > 90} />
-            {temp != null && <StatBox label="TEMP" value={temp} unit="°" warn={temp > 70} />}
+            <StatBox label={tStrip("cpu")} value={cpuPct} unit="%" warn={cpuPct != null && cpuPct > 80} />
+            <StatBox label={tStrip("mem")} value={memPct} unit="%" warn={memPct != null && memPct > 85} />
+            <StatBox label={tStrip("disk")} value={diskPct} unit="%" warn={diskPct != null && diskPct > 90} />
+            {temp != null && <StatBox label={tStrip("temp")} value={temp} unit="°" warn={temp > 70} />}
           </div>
 
           <div className="flex items-center gap-4 text-xs border-t border-border-default pt-2">

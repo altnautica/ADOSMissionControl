@@ -338,7 +338,8 @@
       "otherFieldPlaceholder": "e.g. FR",
       "unrestrictedNote": "Operator responsible for local RF compliance.",
       "perDroneNote": "This is the default applied when a drone is paired. Each drone can be set individually on its System tab."
-    }
+    },
+    "dialogLabel": "Configuration du centre de contrôle"
   },
   "common": {
     "save": "Enregistrer",
@@ -360,7 +361,8 @@
       "message": "You have unsaved changes to the current plan. What would you like to do?",
       "saveAndSwitch": "Save & Switch",
       "discardAndSwitch": "Discard & Switch"
-    }
+    },
+    "confirmTypePhrase": "Saisissez <phrase></phrase> pour confirmer"
   },
   "status": {
     "connected": "Connecté",
@@ -533,7 +535,8 @@
     "data": "Données",
     "flashTool": "Outil de flash",
     "operator": "Operator & Aircraft",
-    "plugins": "Extensions"
+    "plugins": "Extensions",
+    "can": "DroneCAN"
   },
   "general": {
     "title": "Paramètres généraux",
@@ -1267,7 +1270,10 @@
     },
     "cameras": "Cameras",
     "surfaceError": "This view failed to render. The rest of the console is unaffected.",
-    "surfaceErrorRetry": "Try again"
+    "surfaceErrorRetry": "Try again",
+    "openHud": "Ouvrir le HUD en plein écran",
+    "nodeDetailTabs": "Onglets de détail du nœud",
+    "nodeNotFound": "Drone «*{id}*» introuvable"
   },
   "vision": {
     "title": "Vision Engine",
@@ -2025,7 +2031,9 @@
       "enterCodeSubtitle": "Works over HTTPS. No LAN access required.",
       "enterCodeHint": "Run `ados status` on your drone to see its current code, or copy it from the install banner.",
       "pair": "Pair",
-      "pairing": "Pairing"
+      "pairing": "Pairing",
+      "tabsLabel": "Méthode d'appairage",
+      "lanRelayNudge": "Pour atteindre ce nœud depuis l'extérieur de votre LAN, connectez-vous afin d'activer le relais cloud. L'appairage LAN ci-dessus fonctionne sans compte."
     },
     "unpair": "Désappairer",
     "disconnect": "Déconnecter",
@@ -3299,7 +3307,20 @@
     "shortcutSearch": "/ — Accéder à la recherche",
     "shortcutTrash": "T — Basculer la corbeille",
     "shortcutEsc": "Esc — Fermer le panneau / effacer la sélection",
-    "shortcutDelete": "Suppr — Déplacer la sélection vers la corbeille"
+    "shortcutDelete": "Suppr — Déplacer la sélection vers la corbeille",
+    "preset90d": "90 derniers jours",
+    "presetYear": "Dernière année",
+    "reports": {
+      "totalFlights": "Vols totaux",
+      "totalHours": "Heures totales",
+      "totalDistance": "Distance totale",
+      "totalBattery": "Batterie totale",
+      "averages": "Moyennes",
+      "avgDuration": "Durée moy.",
+      "avgDistance": "Distance moy.",
+      "avgMaxAlt": "Alt. max moy.",
+      "byDrone": "Par drone"
+    }
   },
   "library": {
     "title": "PLANS DE VOL",
@@ -3564,6 +3585,15 @@
       "ekf": "EKF",
       "wind": "Vent",
       "navController": "Contrôleur de navigation"
+    },
+    "gpsFix": {
+      "noGps": "Pas de GPS",
+      "noFix": "Aucun point",
+      "fix2d": "Point 2D",
+      "fix3d": "Point 3D",
+      "dgps": "DGPS",
+      "rtkFloat": "RTK flottant",
+      "rtk": "RTK fixé"
     }
   },
   "flightInfo": {
@@ -3847,8 +3877,8 @@
     "disconnected": "DÉCONNECTÉ",
     "cpu": "CPU",
     "mem": "MEM",
-    "disk": "Disk",
-    "temp": "Temp"
+    "disk": "Disque",
+    "temp": "Temp."
   },
   "missionProgress": {
     "mission": "Mission",
@@ -4036,17 +4066,19 @@
       "title": "Écran OLED",
       "brightness": "Luminosité",
       "autoDim": "Atténuer après 60 s d'inactivité",
-      "cycleSeconds": "Intervalle de cycle (secondes)"
+      "cycleSeconds": "Intervalle de cycle (secondes)",
+      "refreshHint": "Rafraîchi une fois par seconde"
     },
     "buttons": {
       "title": "Boutons",
       "shortPress": "Appui court",
       "longPress": "Appui long",
-      "phase2Note": "Remapping is on the roadmap"
+      "readOnlyNote": "Lecture seule : les actions des boutons sont figées dans cette version.",
+      "bindingHint": "L'appui long est reconfigurable. L'appui court est figé par le profil."
     },
     "screens": {
       "title": "Écrans",
-      "phase2Note": "Enable and reorder is on the roadmap"
+      "readOnlyNote": "Lecture seule : l'ordre et la visibilité des écrans sont figés dans cette version."
     },
     "pic": {
       "title": "Pilote en commande",
@@ -4084,7 +4116,8 @@
       "pairSuccess": "Appairé",
       "pairFailed": "Échec de l appairage",
       "noDevicesFound": "Aucun appareil trouvé.",
-      "pairNewDevice": "Appairer un nouvel appareil"
+      "pairNewDevice": "Appairer un nouvel appareil",
+      "forgot": "Oublier {name}"
     },
     "display": {
       "title": "Affichage",
@@ -4621,6 +4654,9 @@
       "autoDetectedAs": "Auto-detected as {label}",
       "componentsOk": "{ok} of {total} required components OK",
       "moreItems": " and {count} more"
+    },
+    "physicalUiPage": {
+      "description": "Aperçu en direct de l'écran OLED et des quatre boutons en façade du boîtier de la station sol. Appairez aussi ici les périphériques Bluetooth."
     }
   },
   "toast": {
@@ -4638,7 +4674,10 @@
       "bindWaiting": "Waiting for peer on the radio…",
       "bindTransferring": "Transferring keys…",
       "pairFailed": "Pair failed: {message}"
-    }
+    },
+    "dismiss": "Fermer la notification",
+    "dismissWarning": "Fermer la notification d'avertissement",
+    "dismissError": "Fermer la notification d'erreur"
   },
   "plugins": {
     "revokePermission": "Revoke permission",
@@ -5385,7 +5424,7 @@
   "navigation": {
     "tabTitle": "Vision Nav",
     "panel": {
-      "title": "Vision Navigation",
+      "title": "Navigation visuelle",
       "subtitle": "GPS-denied flight via optical flow and visual inertial odometry"
     },
     "sourceSet": {
@@ -5393,7 +5432,7 @@
       "gpsPrimary": "GPS primary",
       "vioPrimary": "Vision (VIO) primary",
       "ofPrimary": "Optical flow primary",
-      "switchConfirm": "Switch to {{name}}? This will replan the EKF source for in-flight navigation.",
+      "switchConfirm": "Switch to {name}? This will replan the EKF source for in-flight navigation.",
       "switchButton": "Use this set",
       "px4NotSupported": "PX4 does not support runtime source switching. Update parameters and restart the EKF."
     },
@@ -5420,7 +5459,7 @@
     },
     "preArm": {
       "ready": "Vision navigation: ready",
-      "companionBlocker": "Vision companion process is {{state}}. Vision navigation cannot arm.",
+      "companionBlocker": "Vision companion process is {state}. Vision navigation cannot arm.",
       "originBlocker": "EKF origin not set. Plugin will auto-set via SET_GPS_GLOBAL_ORIGIN, retry in a few seconds.",
       "pending": "Vision navigation: status pending",
       "waitingHeartbeat": "Vision navigation: waiting for companion heartbeat"
@@ -6392,7 +6431,44 @@
       "highDesc": "Full detail (recommended)",
       "maximumLabel": "Maximum",
       "maximumDesc": "Best detail, slowest"
-    }
+    },
+    "worldGeneration": "Génération {generation}",
+    "worldSession": "Session",
+    "worldUnknown": "Inconnu",
+    "worldNotProduced": "Non produit dans cette génération",
+    "worldAbsentTitle": "Aucun modèle du monde",
+    "worldEmptyTitle": "Le modèle du monde est vide",
+    "worldEmptyBody": "La génération la plus récente rapporte un zéro mesuré. La reconstruction s'est exécutée et n'a produit aucune géométrie.",
+    "worldUnknownTitle": "Contenu non déclaré",
+    "worldUnknownBody": "La génération la plus récente est arrivée sans décompte exploitable : son contenu est donc inconnu, et non vide.",
+    "worldSplat": "Splat",
+    "worldPointcloud": "Nuage de points",
+    "worldMesh": "Maillage",
+    "worldOccupancy": "Occupation",
+    "worldGaussians": "Gaussiennes",
+    "worldTrainingStep": "Étape d'entraînement",
+    "worldLodLevels": "Niveaux LOD",
+    "worldPoints": "Points",
+    "worldExtent": "Étendue",
+    "worldExtentUnmeasured": "Non mesurée",
+    "worldVertices": "Sommets",
+    "worldFaces": "Faces",
+    "worldField": "Champ",
+    "worldFieldEsdf": "Distance signée (ESDF)",
+    "worldFieldOccupancy": "Probabilité d'occupation",
+    "worldVoxels": "Voxels",
+    "worldVoxelSize": "Taille de voxel",
+    "worldTruncation": "Tronqué à",
+    "worldPartialDescriptor": "Descripteur partiel : {fields} non déclaré(s)",
+    "worldStreamIdle": "Flux de descripteurs non abonné.",
+    "worldStreamDemo": "Le flux de descripteurs n'est pas disponible en démo.",
+    "worldStreamBlockedOrigin": "Un navigateur sur une origine HTTPS ne peut pas ouvrir le flux de descripteurs du réseau local. Utilise HTTP ou l'application de bureau.",
+    "worldStreamConnecting": "Connexion au flux de descripteurs…",
+    "worldStreamConnected": "Flux de descripteurs connecté.",
+    "worldStreamReconnecting": "Reconnexion du flux de descripteurs…",
+    "worldSuperseded": "{count} descripteurs périmés abandonnés",
+    "worldVersionRejected": "{count} trames rejetées : la version d'enveloppe {version} n'est pas prise en charge par cette version du logiciel",
+    "worldMalformed": "{count} trames illisibles"
   },
   "workstation": {
     "rail": {
@@ -6417,12 +6493,6 @@
       "gps": "GPS",
       "battery": "Battery",
       "offline": "Offline",
-      "fixNone": "No fix",
-      "fix2d": "2D",
-      "fix3d": "3D",
-      "fixDgps": "DGPS",
-      "fixRtkFloat": "RTK float",
-      "fixRtk": "RTK fixed",
       "sats": "{count} sats",
       "rssi": "{value} dBm"
     },

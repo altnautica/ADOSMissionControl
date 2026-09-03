@@ -248,7 +248,7 @@ export function ActionsPanel() {
                 variant="danger"
                 size="sm"
                 icon={<Skull size={14} />}
-                className="w-full bg-red-800 hover:bg-red-700 border-red-600"
+                className="w-full bg-status-error/35 hover:bg-status-error/50 border-status-error/70"
                 onClick={() => fire("kill")}
               />
             </Tooltip>

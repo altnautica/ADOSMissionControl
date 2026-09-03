@@ -3,12 +3,9 @@
 /**
  * @module DroneDetailTabHost
  * @description Orchestrates per-drone plugin tabs inside
- * `DroneDetailPanel.tsx`. Reads the `node.detail.tab` contributions
+ * `NodeDetailPanel.tsx`. Reads the `node.detail.tab` contributions
  * for the currently-selected drone and exposes two render surfaces:
  *
- *   - `<DroneDetailTabHost>`: convenience wrapper that renders both
- *     the plugin tab headers and the active plugin's body. Useful for
- *     stories / tests / standalone host layouts.
  *   - `<DroneDetailTabHeaders>`: headers-only. Mount this inside the
  *     static tablist alongside the other static-tab buttons.
  *   - `<DroneDetailTabBody>`: body-only. Mount this inside the static
@@ -216,45 +213,5 @@ export function DroneDetailTabBody({
         iframeClassName="flex-1 w-full"
       />
     </div>
-  );
-}
-
-/**
- * Convenience wrapper for non-DroneDetailPanel hosts (stories,
- * standalone test pages). DroneDetailPanel itself mounts
- * `DroneDetailTabHeaders` inside the static tablist and
- * `DroneDetailTabBody` inside the static tabpanel switch.
- */
-export function DroneDetailTabHost({
-  agentId,
-  activeTabId,
-  onSelectPluginTab,
-  nodeProfile,
-  headersClassName,
-  bodyClassName,
-}: {
-  agentId: string;
-  activeTabId: string;
-  onSelectPluginTab: (tabId: string) => void;
-  nodeProfile?: PairedNodeProfile;
-  headersClassName?: string;
-  bodyClassName?: string;
-}) {
-  return (
-    <>
-      <DroneDetailTabHeaders
-        agentId={agentId}
-        activeTabId={activeTabId}
-        onSelectPluginTab={onSelectPluginTab}
-        nodeProfile={nodeProfile}
-        className={headersClassName}
-      />
-      <DroneDetailTabBody
-        agentId={agentId}
-        activeTabId={activeTabId}
-        nodeProfile={nodeProfile}
-        className={bodyClassName}
-      />
-    </>
   );
 }

@@ -10,6 +10,7 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card";
 import { DataValue } from "@/components/ui/data-value";
 import { Button } from "@/components/ui/button";
@@ -71,10 +72,23 @@ function computeAggregateKpis(records: readonly FlightRecord[]): AggregateKpis {
 type DatePreset = "all" | "7d" | "30d" | "90d" | "year";
 
 export default function ReportsPage() {
+  const t = useTranslations("history");
+  const tr = useTranslations("history.reports");
   const records = useHistoryStore((s) => s.records);
   const loadFromIDB = useHistoryStore((s) => s.loadFromIDB);
   const clockNow = useClockStore((s) => s.now);
   const [preset, setPreset] = useState<DatePreset>("30d");
+
+  const PRESET_LABELS = useMemo<Record<DatePreset, string>>(
+    () => ({
+      all: t("presetAll"),
+      "7d": t("preset7d"),
+      "30d": t("preset30d"),
+      "90d": t("preset90d"),
+      year: t("presetYear"),
+    }),
+    [t],
+  );
 
   useEffect(() => {
     void loadFromIDB();
@@ -96,25 +110,31 @@ export default function ReportsPage() {
         <div className="flex items-center gap-3">
           <Link href="/flight-logs">
             <Button variant="ghost" size="sm" icon={<ArrowLeft size={14} />}>
-              Flight Logs
+              {t("title")}
             </Button>
           </Link>
           <h2 className="text-sm font-semibold text-text-primary uppercase tracking-wider">
-            Reports
+            {t("reportsTitle")}
           </h2>
         </div>
-        <div className="flex items-center gap-1">
+        <div
+          role="group"
+          aria-label={t("datePresetLabel")}
+          className="flex items-center gap-1"
+        >
           {(["7d", "30d", "90d", "year", "all"] as DatePreset[]).map((p) => (
             <button
               key={p}
+              type="button"
               onClick={() => setPreset(p)}
-              className={`text-[10px] px-2 py-0.5 rounded ${
+              aria-pressed={preset === p}
+              className={`focus-ring text-[10px] px-2 py-0.5 rounded ${
                 preset === p
                   ? "bg-accent-primary/20 text-accent-primary"
                   : "text-text-secondary hover:text-text-primary"
               }`}
             >
-              {p === "all" ? "All time" : p === "year" ? "1 year" : `Last ${p}`}
+              {PRESET_LABELS[p]}
             </button>
           ))}
         </div>
@@ -126,37 +146,37 @@ export default function ReportsPage() {
           {/* Summary cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <Card padding={true}>
-              <DataValue label="Total flights" value={kpis.totalFlights} />
+              <DataValue label={tr("totalFlights")} value={kpis.totalFlights} />
             </Card>
             <Card padding={true}>
-              <DataValue label="Total hours" value={kpis.totalHours.toFixed(1)} unit="h" />
+              <DataValue label={tr("totalHours")} value={kpis.totalHours.toFixed(1)} unit="h" />
             </Card>
             <Card padding={true}>
-              <DataValue label="Total distance" value={kpis.totalDistanceKm.toFixed(1)} unit="km" />
+              <DataValue label={tr("totalDistance")} value={kpis.totalDistanceKm.toFixed(1)} unit="km" />
             </Card>
             <Card padding={true}>
-              <DataValue label="Total battery" value={kpis.totalBatteryUsed.toFixed(0)} unit="%" />
+              <DataValue label={tr("totalBattery")} value={kpis.totalBatteryUsed.toFixed(0)} unit="%" />
             </Card>
           </div>
 
           {/* Averages */}
-          <Card title="Averages" padding={true}>
+          <Card title={tr("averages")} padding={true}>
             <div className="grid grid-cols-3 gap-3">
-              <DataValue label="Avg duration" value={kpis.avgDurationMin.toFixed(1)} unit="min" />
-              <DataValue label="Avg distance" value={kpis.avgDistanceKm.toFixed(2)} unit="km" />
-              <DataValue label="Avg max alt" value={kpis.avgMaxAlt.toFixed(0)} unit="m" />
+              <DataValue label={tr("avgDuration")} value={kpis.avgDurationMin.toFixed(1)} unit="min" />
+              <DataValue label={tr("avgDistance")} value={kpis.avgDistanceKm.toFixed(2)} unit="km" />
+              <DataValue label={tr("avgMaxAlt")} value={kpis.avgMaxAlt.toFixed(0)} unit="m" />
             </div>
           </Card>
 
           {/* By drone */}
           {kpis.byDrone.length > 0 && (
-            <Card title="By Drone" padding={true}>
+            <Card title={tr("byDrone")} padding={true}>
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-border-default">
-                    <th className="text-left py-1.5 px-2 text-[10px] uppercase text-text-secondary font-semibold">Drone</th>
-                    <th className="text-right py-1.5 px-2 text-[10px] uppercase text-text-secondary font-semibold">Flights</th>
-                    <th className="text-right py-1.5 px-2 text-[10px] uppercase text-text-secondary font-semibold">Hours</th>
+                    <th scope="col" className="text-left py-1.5 px-2 text-[10px] uppercase text-text-secondary font-semibold">{t("drone")}</th>
+                    <th scope="col" className="text-right py-1.5 px-2 text-[10px] uppercase text-text-secondary font-semibold">{t("statsFlights")}</th>
+                    <th scope="col" className="text-right py-1.5 px-2 text-[10px] uppercase text-text-secondary font-semibold">{t("statsHours")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -175,7 +195,7 @@ export default function ReportsPage() {
           {filtered.length === 0 && (
             <Card padding={true}>
               <p className="text-[10px] text-text-tertiary text-center py-8">
-                No flights in this period.
+                {t("reportsNoFlights")}
               </p>
             </Card>
           )}

@@ -82,9 +82,6 @@ export interface SurfaceSpec {
   group?: string;
   /** Availability gate (capability / role / connection). Absent = always. */
   when?: (ctx: SurfaceContext) => boolean;
-  /** When true the tab shows a lock badge and the panel renders the link-up
-   * teaser instead of the body. Absent = never locked. */
-  locked?: (ctx: SurfaceContext) => boolean;
   /** Body renderer. Returns an existing surface component. */
   render: (ctx: SurfaceContext) => ReactNode;
 }

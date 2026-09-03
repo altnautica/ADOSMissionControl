@@ -9,9 +9,9 @@ interface BatteryCardProps {
 }
 
 function barColor(pct: number): string {
-  if (pct <= 20) return "bg-red-500";
-  if (pct <= 50) return "bg-yellow-500";
-  return "bg-green-500";
+  if (pct <= 20) return "bg-status-error";
+  if (pct <= 50) return "bg-status-warning";
+  return "bg-status-success";
 }
 
 export function BatteryCard({ className }: BatteryCardProps) {
@@ -88,9 +88,9 @@ export function BatteryCard({ className }: BatteryCardProps) {
                   <span
                     className={cn(
                       v < 3.3
-                        ? "text-red-400"
+                        ? "text-status-error"
                         : v < 3.5
-                          ? "text-yellow-400"
+                          ? "text-status-warning"
                           : "text-text-primary"
                     )}
                   >

@@ -182,7 +182,7 @@ export function MavlinkInspectorPanel() {
                 <div key={msg.id}>
                   <div className={`flex items-start gap-0 px-4 py-0.5 hover:bg-bg-tertiary/50 cursor-pointer ${isExpanded ? "bg-bg-tertiary/30" : ""}`} onClick={() => setExpandedId(isExpanded ? null : msg.id)}>
                     <span className="w-[90px] shrink-0 text-text-tertiary">{formatTime(msg.timestamp)}</span>
-                    <span className={`w-[20px] shrink-0 ${msg.direction === "tx" ? "text-accent-primary" : "text-green-400"}`}>{msg.direction === "tx" ? "TX" : "RX"}</span>
+                    <span className={`w-[20px] shrink-0 ${msg.direction === "tx" ? "text-accent-primary" : "text-gcs-hud-green"}`}>{msg.direction === "tx" ? "TX" : "RX"}</span>
                     <span className="w-[40px] shrink-0 text-right text-text-secondary">{msg.msgId}</span>
                     <span className="w-[180px] shrink-0 pl-2 text-accent-primary">{msg.msgName}</span>
                     <span className="w-[30px] shrink-0 text-right text-text-secondary">{msg.systemId}</span>

@@ -46,7 +46,8 @@ export function CollapsibleSection({
         tabIndex={0}
         onClick={() => toggle?.()}
         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle?.(); } }}
-        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-bg-tertiary transition-colors cursor-pointer"
+        aria-expanded={open}
+        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-bg-tertiary transition-colors cursor-pointer focus-ring-inset"
       >
         {open ? (
           <ChevronDown size={12} className="text-text-tertiary shrink-0" />

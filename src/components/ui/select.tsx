@@ -169,15 +169,18 @@ export function Select({
     <div className="flex flex-col gap-1">
       {label && <label htmlFor={selectId} className="text-xs text-text-secondary">{label}</label>}
       <button ref={triggerRef} id={selectId} type="button" role="combobox" aria-expanded={isOpen} aria-haspopup="listbox"
+        // `role="combobox"` requires aria-controls as well as aria-expanded;
+        // without it assistive tech cannot find the popup it opens.
+        aria-controls={`${selectId}-listbox`}
         disabled={disabled} onClick={toggle} onKeyDown={handleKeyDown}
         className={cn("relative w-full h-8 px-2 pr-7 bg-bg-tertiary border border-border-default text-sm text-text-primary text-left",
-          "focus:outline-none focus:border-accent-primary transition-colors cursor-pointer",
+          "focus:outline-none focus:border-accent-primary focus-ring transition-colors cursor-pointer",
           "disabled:opacity-50 disabled:cursor-not-allowed", className)}>
         <span className="block truncate">{selectedOption ? selectedOption.label : placeholder || "\u00A0"}</span>
         <ChevronDown size={14} className={cn("absolute right-2 top-1/2 -translate-y-1/2 text-text-tertiary pointer-events-none transition-transform", isOpen && "rotate-180")} />
       </button>
       {isOpen && typeof document !== "undefined" && createPortal(
-        <div ref={listboxRef} role="listbox" style={dropdownStyle} className="bg-bg-secondary border border-border-default shadow-lg" onKeyDown={handleKeyDown}>
+        <div ref={listboxRef} id={`${selectId}-listbox`} role="listbox" aria-label={typeof label === "string" ? label : undefined} style={dropdownStyle} className="bg-bg-secondary border border-border-default shadow-lg" onKeyDown={handleKeyDown}>
           {searchable && (
             <div className="sticky top-0 bg-bg-secondary border-b border-border-default p-1.5 z-10">
               <div className="relative">
@@ -185,7 +188,7 @@ export function Select({
                 <input ref={searchRef} type="text" value={search}
                   onChange={(e) => { setSearch(e.target.value); setFocusedIndex(0); }}
                   onKeyDown={handleKeyDown} placeholder={searchPlaceholder}
-                  className="w-full h-7 pl-7 pr-2 bg-bg-tertiary border border-border-default text-xs text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent-primary" />
+                  className="w-full h-7 pl-7 pr-2 bg-bg-tertiary border border-border-default text-xs text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent-primary focus-ring" />
               </div>
             </div>
           )}

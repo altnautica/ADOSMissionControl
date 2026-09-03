@@ -18,7 +18,7 @@ import { useTranslations } from "next-intl";
 import { Pause, Play, Trash2, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Tabs } from "@/components/ui/tabs";
+import { Tabs, tabButtonId } from "@/components/ui/tabs";
 import { CanMonitorPanel } from "@/components/fc/can/CanMonitorPanel";
 import { useDroneCanBusStore, type DecodedFrame } from "@/stores/dronecan/bus-store";
 
@@ -148,14 +148,23 @@ export function BusMonitorSection() {
     <div className="space-y-3">
       <Tabs
         tabs={[
-          { id: "raw", label: t("tabs.raw") },
-          { id: "decoded", label: t("tabs.decoded") },
+          { id: "raw", label: t("tabs.raw"), panelId: "can-bus-monitor-raw" },
+          { id: "decoded", label: t("tabs.decoded"), panelId: "can-bus-monitor-decoded" },
         ]}
         activeTab={activeTab}
         onChange={(id) => setActiveTab(id as "raw" | "decoded")}
+        label={t("title")}
       />
 
-      {activeTab === "raw" ? <CanMonitorPanel /> : <DecodedFramesView />}
+      {activeTab === "raw" ? (
+        <div id="can-bus-monitor-raw" role="tabpanel" aria-labelledby={tabButtonId("raw")}>
+          <CanMonitorPanel />
+        </div>
+      ) : (
+        <div id="can-bus-monitor-decoded" role="tabpanel" aria-labelledby={tabButtonId("decoded")}>
+          <DecodedFramesView />
+        </div>
+      )}
     </div>
   );
 }

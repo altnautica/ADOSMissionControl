@@ -293,12 +293,12 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
             worst === 0
               ? "text-text-tertiary"
               : worst < 100
-                ? "text-green-400"
+                ? "text-status-success"
                 : worst < 300
-                  ? "text-yellow-400"
+                  ? "text-status-warning"
                   : worst < 600
-                    ? "text-orange-400"
-                    : "text-red-400";
+                    ? "text-status-serious"
+                    : "text-status-error";
           return (
             <div className="absolute bottom-0 left-0 right-0 flex flex-wrap items-center gap-x-3 gap-y-0.5 px-2 py-1 bg-black/60 backdrop-blur-sm text-[10px] font-mono text-text-secondary">
               <span>{fps > 0 ? `${fps} FPS` : "-- FPS"}</span>
@@ -331,7 +331,7 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
                 </span>
               )}
               {packetsLost > 0 && (
-                <span className="text-orange-400">{packetsLost} pkts lost</span>
+                <span className="text-status-serious">{packetsLost} pkts lost</span>
               )}
             </div>
           );
@@ -424,8 +424,8 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
       {/* REC indicator (top-center, inside the video frame) */}
       {hasVideo && isRecording && (
         <div className="absolute top-2 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2 py-0.5 rounded bg-black/70 backdrop-blur-sm">
-          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-          <span className="text-[10px] font-mono font-semibold text-red-400 tracking-widest">
+          <span className="w-2 h-2 rounded-full bg-status-error animate-pulse" />
+          <span className="text-[10px] font-mono font-semibold text-status-error tracking-widest">
             REC
           </span>
         </div>
@@ -448,7 +448,7 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
               className={cn(
                 "p-1 rounded bg-black/50 hover:bg-black/70 transition-colors",
                 isRecording
-                  ? "text-red-400 hover:text-red-300"
+                  ? "text-status-error hover:text-status-error/80"
                   : "text-text-tertiary hover:text-text-primary"
               )}
               title={isRecording ? "Stop recording" : "Start recording"}

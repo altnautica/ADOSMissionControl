@@ -1,14 +1,30 @@
 /**
  * @module node-detail/surfaces
- * @description The profile -> surface registry, one instance of the generic
- * contribution factory (`createContributionRegistry`). Every node-detail tab —
- * a built-in profile surface OR a plugin-contributed tab — is a registered
- * contribution of one shape, so a built-in tab and a plugin tab resolve through
- * the same ordered list. This generalizes the Skill / cockpit-widget gold
- * pattern (built-in == plugin, one registry, one resolve) to the node-detail
- * surface. `resolveSurfaces` returns the visible set for a node (profile /
- * capability / role filtered); an unknown/future profile registered nothing so
- * it falls back to the Agent page and the panel never renders empty.
+ * @description The profile -> surface registry for BUILT-IN node-detail tabs,
+ * one instance of the generic contribution factory
+ * (`createContributionRegistry`). `resolveSurfaces` returns the visible set for
+ * a node (profile / capability / role filtered); an unknown/future profile
+ * registered nothing, so it falls back to the Agent page and the panel never
+ * renders empty.
+ *
+ * Scope, stated precisely because the earlier version of this note was wrong:
+ * **plugin-contributed node-detail tabs do NOT register here.** They reach the
+ * UI through `useDronePluginContributions`, rendered by
+ * `DroneDetailTabHeaders` / `DroneDetailTabBody` as a sibling strip after the
+ * resolved built-in tabs (`NodeDetailPanel` short-circuits the registry for a
+ * `plugin:` tab id). The only exerciser of a `source: "plugin"` contribution on
+ * this registry is `__tests__/surface-registry.test.ts`.
+ *
+ * That split is deliberate, not a missing migration. This registry is
+ * populated once at module load from three static arrays, and `resolveSurfaces`
+ * is a pure synchronous function of `SurfaceContext` — which is what makes the
+ * profile/capability/role gates unit-testable without a store or a network.
+ * Plugin tabs are per-node async data (a Convex query joined with signed bundle
+ * blobs), so routing them through here would mean mutating module-global state
+ * from a network-driven effect, keying registrations per node rather than per
+ * profile, and reconciling a static list against one that arrives later. The
+ * generic factory's built-in-equals-plugin duality is real for Skills and
+ * cockpit widgets, whose contributions are also static; it is not real here.
  * @license GPL-3.0-only
  */
 
@@ -29,8 +45,9 @@ export interface SurfaceContribution {
    * repeat across profiles (every profile has an "overview" + "agent") stay
    * unique in the single registry. */
   id: string;
-  /** Provenance — a built-in surface and a plugin-contributed tab are one
-   * shape, distinguished only by this tag. */
+  /** Provenance tag carried by the generic contribution shape. Every
+   * contribution on THIS registry is `"builtin"`; see the module note for why
+   * plugin node-detail tabs take a different path. */
   source: "builtin" | "plugin";
   /** Sort hint; an unordered contribution sorts after every ordered one, then
    * by registration order — so a profile's built-in array keeps its authored
@@ -43,15 +60,14 @@ export interface SurfaceContribution {
    * without unwrapping the payload. */
   when?: (ctx: SurfaceContext) => boolean;
   /** The surface descriptor the panel renders unchanged. Its `id` is the bare
-   * tab id ("overview"); it carries labelKey / group / locked / render. */
+   * tab id ("overview"); it carries labelKey / group / render. */
   payload: SurfaceSpec;
 }
 
 /**
  * The node-detail surface registry. A Zustand hook; call `.getState()` for
  * imperative access (register/unregister/resolve) and use a selector in
- * components. Built-in surfaces register at module load; a plugin tab
- * contribution registers into the SAME registry with `source: "plugin"`.
+ * components. Built-in surfaces register at module load.
  */
 export const useSurfaceRegistry =
   createContributionRegistry<SurfaceContribution>();

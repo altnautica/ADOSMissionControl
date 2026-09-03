@@ -1,11 +1,26 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { useParamSafetyStore } from "@/stores/param-safety-store";
 import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Modal } from "@/components/ui/modal";
 import { cn } from "@/lib/utils";
 
+/**
+ * Destructive confirmation shown when disconnecting with parameter writes that
+ * are in RAM but not committed to flash. One of its three actions discards
+ * those writes outright.
+ *
+ * It was a bare `fixed inset-0` overlay with none of the modal affordances: no
+ * Escape handling, no `role`, no `aria-modal`, no accessible name, no focus
+ * trap, no focus restore, no backdrop dismissal and no close control. Assistive
+ * tech got no modal announcement, and keyboard focus stayed on the page behind
+ * the overlay — so a keyboard user could tab into the controls they had just
+ * been warned about instead of the ones in the dialog. It now renders through
+ * the shared `Modal` as an `alertdialog` with initial focus pinned to Cancel,
+ * the least destructive of the three actions.
+ */
 interface DisconnectGuardProps {
   open: boolean;
   onCommitAndDisconnect: () => void;
@@ -29,20 +44,52 @@ export function DisconnectGuard({
     [pendingWrites],
   );
 
+  // Cancel keeps the connection and the pending writes, so it is the safe
+  // landing spot for focus when the dialog opens.
+  const cancelRef = useRef<HTMLButtonElement>(null);
+
   if (!open || pendingCount === 0) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="bg-bg-primary border border-border-default w-[460px] p-6 space-y-4">
-        <div className="flex items-center gap-3">
-          <AlertTriangle size={20} className="text-status-warning shrink-0" />
-          <h2 className="text-sm font-semibold text-text-primary">Uncommitted Parameter Changes</h2>
+    <Modal
+      open={open}
+      onClose={onCancel}
+      // Hardcoded English title: no locale key exists for it, so the literal
+      // is passed through unchanged rather than pointing at an invented key.
+      title="Uncommitted Parameter Changes"
+      role="alertdialog"
+      initialFocusRef={cancelRef}
+      size="sm"
+      // Discarding flight-controller parameter writes should not be reachable
+      // by a stray click on the backdrop; Escape still cancels, which is the
+      // non-destructive outcome.
+      disableBackdropClose
+      footer={
+        <>
+          <Button variant="primary" size="sm" onClick={onCommitAndDisconnect}>
+            Commit to Flash & Disconnect
+          </Button>
+          <Button variant="danger" size="sm" onClick={onDiscardAndDisconnect}>
+            Discard & Disconnect
+          </Button>
+          <Button ref={cancelRef} variant="ghost" size="sm" onClick={onCancel}>
+            Cancel
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <div className="flex items-start gap-3">
+          <AlertTriangle
+            size={20}
+            className="text-status-warning shrink-0"
+            aria-hidden="true"
+          />
+          <p className="text-xs text-text-secondary">
+            {pendingCount} parameter{pendingCount !== 1 ? "s have" : " has"} been written to RAM but not committed to flash.
+            Disconnecting now will lose these changes on next reboot.
+          </p>
         </div>
-
-        <p className="text-xs text-text-secondary">
-          {pendingCount} parameter{pendingCount !== 1 ? "s have" : " has"} been written to RAM but not committed to flash.
-          Disconnecting now will lose these changes on next reboot.
-        </p>
 
         {/* Pending writes table */}
         <div className="max-h-[200px] overflow-y-auto border border-border-default">
@@ -93,19 +140,7 @@ export function DisconnectGuard({
             </p>
           </div>
         )}
-
-        <div className="flex items-center gap-2 pt-2">
-          <Button variant="primary" size="sm" onClick={onCommitAndDisconnect}>
-            Commit to Flash & Disconnect
-          </Button>
-          <Button variant="danger" size="sm" onClick={onDiscardAndDisconnect}>
-            Discard & Disconnect
-          </Button>
-          <Button variant="ghost" size="sm" onClick={onCancel}>
-            Cancel
-          </Button>
-        </div>
       </div>
-    </div>
+    </Modal>
   );
 }

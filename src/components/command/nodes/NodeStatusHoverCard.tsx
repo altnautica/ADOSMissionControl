@@ -83,11 +83,12 @@ function HostMetrics({
   mem?: number;
   temp?: number | null;
 }) {
+  const t = useTranslations("telemetryStrip");
   return (
     <div className="grid grid-cols-3 gap-1.5">
-      <Metric label="CPU" value={fmtPct(cpu)} />
-      <Metric label="MEM" value={fmtPct(mem)} />
-      <Metric label="TEMP" value={temp != null ? `${Math.round(temp)}°` : "—"} />
+      <Metric label={t("cpu")} value={fmtPct(cpu)} />
+      <Metric label={t("mem")} value={fmtPct(mem)} />
+      <Metric label={t("temp")} value={temp != null ? `${Math.round(temp)}°` : "—"} />
     </div>
   );
 }

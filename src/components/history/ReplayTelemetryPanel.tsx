@@ -6,7 +6,7 @@
  */
 "use client";
 
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useDroneStore } from "@/stores/drone-store";
 import { formatDecimal } from "@/lib/i18n/format";
@@ -31,6 +31,20 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
+/**
+ * MAVLink GPS_FIX_TYPE -> its `indicators.gpsFix.*` key. Fix type 1 and the
+ * 7/8 STATIC/PPP tail have no entry and read as "no fix", which is what this
+ * panel showed for them before.
+ */
+const FIX_KEYS: Record<number, string> = {
+  0: "noGps",
+  2: "fix2d",
+  3: "fix3d",
+  4: "dgps",
+  5: "rtkFloat",
+  6: "rtk",
+};
+
 export function ReplayTelemetryPanel() {
   const posBuffer = useTelemetryStore((s) => s.position);
   const attBuffer = useTelemetryStore((s) => s.attitude);
@@ -39,6 +53,7 @@ export function ReplayTelemetryPanel() {
   const vfrBuffer = useTelemetryStore((s) => s.vfr);
   const flightMode = useDroneStore((s) => s.flightMode);
   const locale = useLocale();
+  const t = useTranslations("indicators.gpsFix");
 
   const pos = posBuffer.latest();
   const att = attBuffer.latest();
@@ -46,13 +61,7 @@ export function ReplayTelemetryPanel() {
   const gps = gpsBuffer.latest();
   const vfr = vfrBuffer.latest();
 
-  const fixLabel = gps ? (
-    gps.fixType === 6 ? "RTK Fix" :
-    gps.fixType === 5 ? "RTK Flt" :
-    gps.fixType === 3 ? "3D" :
-    gps.fixType === 2 ? "2D" :
-    "No Fix"
-  ) : "—";
+  const fixLabel = gps ? t(FIX_KEYS[gps.fixType] ?? "noFix") : "—";
 
   return (
     <div className="w-48 bg-bg-secondary border-l border-border-default overflow-y-auto shrink-0">

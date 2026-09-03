@@ -226,7 +226,7 @@ export const ServoAssembly = memo(function ServoAssembly({
       </mesh>
 
       <Html position={[0, 0.3, 0]} center distanceFactor={6} style={{ pointerEvents: "none" }}>
-        <span className="text-[10px] font-mono text-amber-400 pointer-events-none select-none drop-shadow-md">
+        <span className="text-[10px] font-mono text-[var(--node-swatch-amber)] pointer-events-none select-none drop-shadow-md">
           S{motor.number}
         </span>
       </Html>

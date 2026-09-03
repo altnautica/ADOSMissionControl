@@ -16,12 +16,12 @@ export function RequirementsFooter() {
   return (
     <>
       {/* Alpha Disclaimer */}
-      <div className="flex items-start gap-3 p-4 bg-yellow-500/5 border border-yellow-500/20 rounded">
+      <div className="flex items-start gap-3 p-4 bg-status-warning/5 border border-status-warning/20 rounded">
         <AlertTriangle
           size={16}
-          className="text-yellow-400 shrink-0 mt-0.5"
+          className="text-status-warning shrink-0 mt-0.5"
         />
-        <p className="text-sm text-yellow-200/80 leading-relaxed">
+        <p className="text-sm text-status-warning/80 leading-relaxed">
           {t("alphaDisclaimer")}
         </p>
       </div>

@@ -338,7 +338,8 @@
       "otherFieldPlaceholder": "e.g. FR",
       "unrestrictedNote": "Operator responsible for local RF compliance.",
       "perDroneNote": "This is the default applied when a drone is paired. Each drone can be set individually on its System tab."
-    }
+    },
+    "dialogLabel": "Mission Control setup"
   },
   "common": {
     "save": "Save",
@@ -360,7 +361,8 @@
       "message": "You have unsaved changes to the current plan. What would you like to do?",
       "saveAndSwitch": "Save & Switch",
       "discardAndSwitch": "Discard & Switch"
-    }
+    },
+    "confirmTypePhrase": "Type <phrase></phrase> to confirm"
   },
   "status": {
     "connected": "Connected",
@@ -533,7 +535,8 @@
     "data": "Data",
     "flashTool": "Flash Tool",
     "operator": "Operator & Aircraft",
-    "plugins": "Extensions"
+    "plugins": "Extensions",
+    "can": "DroneCAN"
   },
   "general": {
     "title": "General Settings",
@@ -1267,7 +1270,10 @@
     },
     "cameras": "Cameras",
     "surfaceError": "This view failed to render. The rest of the console is unaffected.",
-    "surfaceErrorRetry": "Try again"
+    "surfaceErrorRetry": "Try again",
+    "openHud": "Open full-screen HUD",
+    "nodeDetailTabs": "Node detail tabs",
+    "nodeNotFound": "Drone “{id}” not found"
   },
   "vision": {
     "title": "Perception",
@@ -2025,7 +2031,9 @@
       "enterCodeSubtitle": "Works over HTTPS. No LAN access required.",
       "enterCodeHint": "Run `ados status` on your drone to see its current code, or copy it from the install banner.",
       "pair": "Pair",
-      "pairing": "Pairing"
+      "pairing": "Pairing",
+      "tabsLabel": "Pairing method",
+      "lanRelayNudge": "Reach this node from outside your LAN by signing in to enable cloud relay. LAN pairing above works without an account."
     },
     "unpair": "Unpair",
     "disconnect": "Disconnect",
@@ -3299,7 +3307,20 @@
     "shortcutSearch": "/ — Focus search",
     "shortcutTrash": "T — Toggle trash",
     "shortcutEsc": "Esc — Close panel / clear selection",
-    "shortcutDelete": "Del — Move selected to trash"
+    "shortcutDelete": "Del — Move selected to trash",
+    "preset90d": "Last 90 days",
+    "presetYear": "Last year",
+    "reports": {
+      "totalFlights": "Total flights",
+      "totalHours": "Total hours",
+      "totalDistance": "Total distance",
+      "totalBattery": "Total battery",
+      "averages": "Averages",
+      "avgDuration": "Avg duration",
+      "avgDistance": "Avg distance",
+      "avgMaxAlt": "Avg max alt",
+      "byDrone": "By drone"
+    }
   },
   "library": {
     "title": "FLIGHT PLANS",
@@ -3564,6 +3585,15 @@
       "ekf": "EKF",
       "wind": "Wind",
       "navController": "Nav Controller"
+    },
+    "gpsFix": {
+      "noGps": "No GPS",
+      "noFix": "No Fix",
+      "fix2d": "2D Fix",
+      "fix3d": "3D Fix",
+      "dgps": "DGPS",
+      "rtkFloat": "RTK Float",
+      "rtk": "RTK Fixed"
     }
   },
   "flightInfo": {
@@ -4036,17 +4066,19 @@
       "title": "OLED Display",
       "brightness": "Brightness",
       "autoDim": "Auto-dim after 60 s idle",
-      "cycleSeconds": "Cycle interval (seconds)"
+      "cycleSeconds": "Cycle interval (seconds)",
+      "refreshHint": "Refreshes once per second"
     },
     "buttons": {
       "title": "Buttons",
       "shortPress": "Short press",
       "longPress": "Long press",
-      "phase2Note": "Remapping is on the roadmap"
+      "readOnlyNote": "Read-only: button actions are fixed in this build.",
+      "bindingHint": "Long-press is remappable. Short-press is fixed by profile."
     },
     "screens": {
       "title": "Screens",
-      "phase2Note": "Enable and reorder is on the roadmap"
+      "readOnlyNote": "Read-only: screen order and visibility are fixed in this build."
     },
     "pic": {
       "title": "Pilot in Command",
@@ -4084,7 +4116,8 @@
       "pairSuccess": "Paired",
       "pairFailed": "Failed to pair",
       "noDevicesFound": "No devices found.",
-      "pairNewDevice": "Pair new device"
+      "pairNewDevice": "Pair new device",
+      "forgot": "Forgot {name}"
     },
     "display": {
       "title": "Display",
@@ -4621,6 +4654,9 @@
       "autoDetectedAs": "Auto-detected as {label}",
       "componentsOk": "{ok} of {total} required components OK",
       "moreItems": " and {count} more"
+    },
+    "physicalUiPage": {
+      "description": "Live preview of the OLED screen and four front buttons on the ground station box. Pair Bluetooth peripherals here too."
     }
   },
   "toast": {
@@ -4638,7 +4674,10 @@
       "bindWaiting": "Waiting for peer on the radio…",
       "bindTransferring": "Transferring keys…",
       "pairFailed": "Pair failed: {message}"
-    }
+    },
+    "dismiss": "Dismiss notification",
+    "dismissWarning": "Dismiss warning notification",
+    "dismissError": "Dismiss error notification"
   },
   "plugins": {
     "revokePermission": "Revoke permission",
@@ -5393,7 +5432,7 @@
       "gpsPrimary": "GPS primary",
       "vioPrimary": "Vision (VIO) primary",
       "ofPrimary": "Optical flow primary",
-      "switchConfirm": "Switch to {{name}}? This will replan the EKF source for in-flight navigation.",
+      "switchConfirm": "Switch to {name}? This will replan the EKF source for in-flight navigation.",
       "switchButton": "Use this set",
       "px4NotSupported": "PX4 does not support runtime source switching. Update parameters and restart the EKF."
     },
@@ -5420,7 +5459,7 @@
     },
     "preArm": {
       "ready": "Vision navigation: ready",
-      "companionBlocker": "Vision companion process is {{state}}. Vision navigation cannot arm.",
+      "companionBlocker": "Vision companion process is {state}. Vision navigation cannot arm.",
       "originBlocker": "EKF origin not set. Plugin will auto-set via SET_GPS_GLOBAL_ORIGIN, retry in a few seconds.",
       "pending": "Vision navigation: status pending",
       "waitingHeartbeat": "Vision navigation: waiting for companion heartbeat"
@@ -6392,7 +6431,44 @@
       "highDesc": "Full detail (recommended)",
       "maximumLabel": "Maximum",
       "maximumDesc": "Best detail, slowest"
-    }
+    },
+    "worldGeneration": "Generation {generation}",
+    "worldSession": "Session",
+    "worldUnknown": "Unknown",
+    "worldNotProduced": "Not produced this generation",
+    "worldAbsentTitle": "No world model",
+    "worldEmptyTitle": "World model is empty",
+    "worldEmptyBody": "The newest generation reported a measured zero. The reconstruction ran and produced no geometry.",
+    "worldUnknownTitle": "Content not stated",
+    "worldUnknownBody": "The newest generation arrived without a readable count, so what it contains is unknown rather than empty.",
+    "worldSplat": "Splat",
+    "worldPointcloud": "Point cloud",
+    "worldMesh": "Mesh",
+    "worldOccupancy": "Occupancy",
+    "worldGaussians": "Gaussians",
+    "worldTrainingStep": "Training step",
+    "worldLodLevels": "LOD levels",
+    "worldPoints": "Points",
+    "worldExtent": "Extent",
+    "worldExtentUnmeasured": "Not measured",
+    "worldVertices": "Vertices",
+    "worldFaces": "Faces",
+    "worldField": "Field",
+    "worldFieldEsdf": "Signed distance (ESDF)",
+    "worldFieldOccupancy": "Occupancy probability",
+    "worldVoxels": "Voxels",
+    "worldVoxelSize": "Voxel size",
+    "worldTruncation": "Truncated at",
+    "worldPartialDescriptor": "Partial descriptor: {fields} not stated",
+    "worldStreamIdle": "Descriptor stream not subscribed.",
+    "worldStreamDemo": "The descriptor stream is not available in demo.",
+    "worldStreamBlockedOrigin": "A browser on an HTTPS origin cannot open the LAN descriptor stream. Use HTTP or the desktop app.",
+    "worldStreamConnecting": "Connecting to the descriptor stream…",
+    "worldStreamConnected": "Descriptor stream connected.",
+    "worldStreamReconnecting": "Descriptor stream reconnecting…",
+    "worldSuperseded": "{count} superseded descriptors dropped",
+    "worldVersionRejected": "{count} frames rejected: envelope version {version} is not spoken by this build",
+    "worldMalformed": "{count} unreadable frames"
   },
   "workstation": {
     "rail": {
@@ -6417,12 +6493,6 @@
       "gps": "GPS",
       "battery": "Battery",
       "offline": "Offline",
-      "fixNone": "No fix",
-      "fix2d": "2D",
-      "fix3d": "3D",
-      "fixDgps": "DGPS",
-      "fixRtkFloat": "RTK float",
-      "fixRtk": "RTK fixed",
       "sats": "{count} sats",
       "rssi": "{value} dBm"
     },

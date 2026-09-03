@@ -338,7 +338,8 @@
       "otherFieldPlaceholder": "e.g. FR",
       "unrestrictedNote": "Operator responsible for local RF compliance.",
       "perDroneNote": "This is the default applied when a drone is paired. Each drone can be set individually on its System tab."
-    }
+    },
+    "dialogLabel": "మిషన్ కంట్రోల్ సెటప్"
   },
   "common": {
     "save": "సేవ్ చేయండి",
@@ -360,7 +361,8 @@
       "message": "You have unsaved changes to the current plan. What would you like to do?",
       "saveAndSwitch": "Save & Switch",
       "discardAndSwitch": "Discard & Switch"
-    }
+    },
+    "confirmTypePhrase": "నిర్ధారించడానికి <phrase></phrase> టైప్ చేయండి"
   },
   "status": {
     "connected": "కనెక్ట్ అయింది",
@@ -533,7 +535,8 @@
     "data": "డేటా",
     "flashTool": "Flash Tool",
     "operator": "Operator & Aircraft",
-    "plugins": "పొడిగింపులు"
+    "plugins": "పొడిగింపులు",
+    "can": "DroneCAN"
   },
   "general": {
     "title": "సాధారణ సెట్టింగ్‌లు",
@@ -1267,7 +1270,10 @@
     },
     "cameras": "Cameras",
     "surfaceError": "This view failed to render. The rest of the console is unaffected.",
-    "surfaceErrorRetry": "Try again"
+    "surfaceErrorRetry": "Try again",
+    "openHud": "పూర్తి స్క్రీన్ HUD తెరవండి",
+    "nodeDetailTabs": "నోడ్ వివరాల ట్యాబ్‌లు",
+    "nodeNotFound": "డ్రోన్ “{id}” కనుగొనబడలేదు"
   },
   "vision": {
     "title": "Vision Engine",
@@ -2025,7 +2031,9 @@
       "enterCodeSubtitle": "Works over HTTPS. No LAN access required.",
       "enterCodeHint": "Run `ados status` on your drone to see its current code, or copy it from the install banner.",
       "pair": "Pair",
-      "pairing": "Pairing"
+      "pairing": "Pairing",
+      "tabsLabel": "జత చేసే విధానం",
+      "lanRelayNudge": "మీ LAN వెలుపలి నుండి ఈ నోడ్‌ను చేరుకోవాలంటే సైన్ ఇన్ చేసి క్లౌడ్ రిలేను ప్రారంభించండి. పైన ఉన్న LAN జత చేయడం ఖాతా లేకుండానే పనిచేస్తుంది."
     },
     "unpair": "జత తొలగించు",
     "disconnect": "డిస్‌కనెక్ట్",
@@ -3299,7 +3307,20 @@
     "shortcutSearch": "/ — వెతుకుపై దృష్టి",
     "shortcutTrash": "T — ట్రాష్ టాగుల్",
     "shortcutEsc": "Esc — ప్యానల్ మూసివేయి / ఎంపిక క్లియర్",
-    "shortcutDelete": "Del — ఎంపిక చేసినవి ట్రాష్‌కు తరలించు"
+    "shortcutDelete": "Del — ఎంపిక చేసినవి ట్రాష్‌కు తరలించు",
+    "preset90d": "గత 90 రోజులు",
+    "presetYear": "గత సంవత్సరం",
+    "reports": {
+      "totalFlights": "మొత్తం విమానాలు",
+      "totalHours": "మొత్తం గంటలు",
+      "totalDistance": "మొత్తం దూరం",
+      "totalBattery": "మొత్తం బ్యాటరీ",
+      "averages": "సగటులు",
+      "avgDuration": "సగటు వ్యవధి",
+      "avgDistance": "సగటు దూరం",
+      "avgMaxAlt": "సగటు గరిష్ఠ ఎత్తు",
+      "byDrone": "డ్రోన్ వారీగా"
+    }
   },
   "library": {
     "title": "ఫ్లైట్ ప్లాన్‌లు",
@@ -3564,6 +3585,15 @@
       "ekf": "EKF",
       "wind": "గాలి",
       "navController": "నావిగేషన్ కంట్రోలర్"
+    },
+    "gpsFix": {
+      "noGps": "GPS లేదు",
+      "noFix": "ఫిక్స్ లేదు",
+      "fix2d": "2D ఫిక్స్",
+      "fix3d": "3D ఫిక్స్",
+      "dgps": "DGPS",
+      "rtkFloat": "RTK తేలిక",
+      "rtk": "RTK స్థిరం"
     }
   },
   "flightInfo": {
@@ -3848,7 +3878,7 @@
     "cpu": "CPU",
     "mem": "MEM",
     "disk": "డిస్క్",
-    "temp": "ఉష్ణం"
+    "temp": "ఉష్ణోగ్రత"
   },
   "missionProgress": {
     "mission": "మిషన్",
@@ -4036,17 +4066,19 @@
       "title": "OLED డిస్ప్లే",
       "brightness": "కాంతి",
       "autoDim": "60 సె నిష్క్రియ తర్వాత స్వయంచాలకంగా మసకబారు",
-      "cycleSeconds": "చక్ర వ్యవధి (సెకన్లు)"
+      "cycleSeconds": "చక్ర వ్యవధి (సెకన్లు)",
+      "refreshHint": "సెకనుకు ఒకసారి రిఫ్రెష్ అవుతుంది"
     },
     "buttons": {
       "title": "బటన్లు",
       "shortPress": "చిన్న నొక్కు",
       "longPress": "పొడవైన నొక్కు",
-      "phase2Note": "Remapping is on the roadmap"
+      "readOnlyNote": "చదవడానికి మాత్రమే: ఈ బిల్డ్‌లో బటన్ చర్యలు స్థిరంగా ఉంటాయి, మార్చలేరు.",
+      "bindingHint": "పొడవు నొక్కును తిరిగి కేటాయించవచ్చు. చిన్న నొక్కు ప్రొఫైల్ ద్వారా స్థిరం."
     },
     "screens": {
       "title": "స్క్రీన్‌లు",
-      "phase2Note": "Enable and reorder is on the roadmap"
+      "readOnlyNote": "చదవడానికి మాత్రమే: ఈ బిల్డ్‌లో స్క్రీన్ క్రమం మరియు కనిపించడం స్థిరంగా ఉంటాయి, మార్చలేరు."
     },
     "pic": {
       "title": "పైలట్ ఇన్ కమాండ్",
@@ -4084,7 +4116,8 @@
       "pairSuccess": "జత చేయబడింది",
       "pairFailed": "జతచేయడం విఫలమైంది",
       "noDevicesFound": "పరికరాలు లేవు.",
-      "pairNewDevice": "కొత్త పరికరాన్ని జత చేయండి"
+      "pairNewDevice": "కొత్త పరికరాన్ని జత చేయండి",
+      "forgot": "{name} మర్చిపోయారు"
     },
     "display": {
       "title": "డిస్ప్లే",
@@ -4621,6 +4654,9 @@
       "autoDetectedAs": "Auto-detected as {label}",
       "componentsOk": "{ok} of {total} required components OK",
       "moreItems": " and {count} more"
+    },
+    "physicalUiPage": {
+      "description": "గ్రౌండ్ స్టేషన్ బాక్స్‌పై ఉన్న OLED స్క్రీన్ మరియు నాలుగు ముందు బటన్‌ల ప్రత్యక్ష ప్రివ్యూ. Bluetooth పరికరాలను కూడా ఇక్కడే జత చేయండి."
     }
   },
   "toast": {
@@ -4638,7 +4674,10 @@
       "bindWaiting": "Waiting for peer on the radio…",
       "bindTransferring": "Transferring keys…",
       "pairFailed": "Pair failed: {message}"
-    }
+    },
+    "dismiss": "నోటిఫికేషన్‌ను మూసివేయి",
+    "dismissWarning": "హెచ్చరిక నోటిఫికేషన్‌ను మూసివేయి",
+    "dismissError": "లోపం నోటిఫికేషన్‌ను మూసివేయి"
   },
   "plugins": {
     "revokePermission": "Revoke permission",
@@ -5385,7 +5424,7 @@
   "navigation": {
     "tabTitle": "Vision Nav",
     "panel": {
-      "title": "Vision Navigation",
+      "title": "విజన్ నావిగేషన్",
       "subtitle": "GPS-denied flight via optical flow and visual inertial odometry"
     },
     "sourceSet": {
@@ -5393,7 +5432,7 @@
       "gpsPrimary": "GPS primary",
       "vioPrimary": "Vision (VIO) primary",
       "ofPrimary": "Optical flow primary",
-      "switchConfirm": "Switch to {{name}}? This will replan the EKF source for in-flight navigation.",
+      "switchConfirm": "Switch to {name}? This will replan the EKF source for in-flight navigation.",
       "switchButton": "Use this set",
       "px4NotSupported": "PX4 does not support runtime source switching. Update parameters and restart the EKF."
     },
@@ -5420,7 +5459,7 @@
     },
     "preArm": {
       "ready": "Vision navigation: ready",
-      "companionBlocker": "Vision companion process is {{state}}. Vision navigation cannot arm.",
+      "companionBlocker": "Vision companion process is {state}. Vision navigation cannot arm.",
       "originBlocker": "EKF origin not set. Plugin will auto-set via SET_GPS_GLOBAL_ORIGIN, retry in a few seconds.",
       "pending": "Vision navigation: status pending",
       "waitingHeartbeat": "Vision navigation: waiting for companion heartbeat"
@@ -6392,7 +6431,44 @@
       "highDesc": "Full detail (recommended)",
       "maximumLabel": "Maximum",
       "maximumDesc": "Best detail, slowest"
-    }
+    },
+    "worldGeneration": "జనరేషన్ {generation}",
+    "worldSession": "సెషన్",
+    "worldUnknown": "తెలియదు",
+    "worldNotProduced": "ఈ జనరేషన్‌లో తయారు కాలేదు",
+    "worldAbsentTitle": "వరల్డ్ మోడల్ లేదు",
+    "worldEmptyTitle": "వరల్డ్ మోడల్ ఖాళీగా ఉంది",
+    "worldEmptyBody": "తాజా జనరేషన్ కొలిచిన సున్నాను నివేదించింది. పునర్నిర్మాణం జరిగింది, ఏ జామెట్రీ తయారు కాలేదు.",
+    "worldUnknownTitle": "విషయం ప్రకటించలేదు",
+    "worldUnknownBody": "తాజా జనరేషన్ చదవగలిగే లెక్క లేకుండా వచ్చింది, కాబట్టి దానిలో ఏమి ఉందో తెలియదు — ఖాళీ కాదు.",
+    "worldSplat": "స్ప్లాట్",
+    "worldPointcloud": "పాయింట్ క్లౌడ్",
+    "worldMesh": "మెష్",
+    "worldOccupancy": "ఆక్యుపెన్సీ",
+    "worldGaussians": "గాసియన్",
+    "worldTrainingStep": "ట్రైనింగ్ స్టెప్",
+    "worldLodLevels": "LOD స్థాయులు",
+    "worldPoints": "పాయింట్లు",
+    "worldExtent": "విస్తీర్ణం",
+    "worldExtentUnmeasured": "కొలవలేదు",
+    "worldVertices": "శీర్షాలు",
+    "worldFaces": "ముఖాలు",
+    "worldField": "ఫీల్డ్",
+    "worldFieldEsdf": "సైన్డ్ దూరం (ESDF)",
+    "worldFieldOccupancy": "ఆక్యుపెన్సీ సంభావ్యత",
+    "worldVoxels": "వాక్సెల్‌లు",
+    "worldVoxelSize": "వాక్సెల్ పరిమాణం",
+    "worldTruncation": "ఈ దూరంలో కత్తిరించబడింది",
+    "worldPartialDescriptor": "అసంపూర్ణ డిస్క్రిప్టర్: {fields} ప్రకటించలేదు",
+    "worldStreamIdle": "డిస్క్రిప్టర్ స్ట్రీమ్ సబ్‌స్క్రైబ్ చేయలేదు.",
+    "worldStreamDemo": "డెమోలో డిస్క్రిప్టర్ స్ట్రీమ్ అందుబాటులో లేదు.",
+    "worldStreamBlockedOrigin": "HTTPS ఆరిజిన్‌లోని బ్రౌజర్ LAN డిస్క్రిప్టర్ స్ట్రీమ్‌ను తెరవలేదు. HTTP లేదా డెస్క్‌టాప్ యాప్ వాడండి.",
+    "worldStreamConnecting": "డిస్క్రిప్టర్ స్ట్రీమ్‌కు కనెక్ట్ అవుతోంది…",
+    "worldStreamConnected": "డిస్క్రిప్టర్ స్ట్రీమ్ కనెక్ట్ అయింది.",
+    "worldStreamReconnecting": "డిస్క్రిప్టర్ స్ట్రీమ్ మళ్లీ కనెక్ట్ అవుతోంది…",
+    "worldSuperseded": "{count} పాత డిస్క్రిప్టర్‌లు వదిలేయబడ్డాయి",
+    "worldVersionRejected": "{count} ఫ్రేమ్‌లు తిరస్కరించబడ్డాయి: ఈ బిల్డ్‌కు ఎన్వలప్ వెర్షన్ {version} తెలియదు",
+    "worldMalformed": "{count} చదవలేని ఫ్రేమ్‌లు"
   },
   "workstation": {
     "rail": {
@@ -6417,12 +6493,6 @@
       "gps": "GPS",
       "battery": "Battery",
       "offline": "Offline",
-      "fixNone": "No fix",
-      "fix2d": "2D",
-      "fix3d": "3D",
-      "fixDgps": "DGPS",
-      "fixRtkFloat": "RTK float",
-      "fixRtk": "RTK fixed",
       "sats": "{count} sats",
       "rssi": "{value} dBm"
     },

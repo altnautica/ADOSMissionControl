@@ -46,7 +46,7 @@ export function DisplayPortOsdPanel() {
         <div className="overflow-x-auto">
           <div className="inline-block bg-black border border-border-default p-3">
             <div
-              className="font-mono text-[11px] leading-[1.35] text-emerald-400"
+              className="font-mono text-[11px] leading-[1.35] text-gcs-hud-green"
               style={{ letterSpacing: "0.08em" }}
             >
               {lines.length > 0 ? (

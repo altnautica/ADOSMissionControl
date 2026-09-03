@@ -110,9 +110,9 @@ export function BitmaskEditor({
           <span>{t("bitmaskBitsSet", { count: setCount, total: bitmask.size })}</span>
           {!readOnly && (
             <div className="flex items-center gap-2">
-              <button onClick={selectAll} className="text-accent-primary hover:underline cursor-pointer">{t("selectAll")}</button>
+              <button type="button" onClick={selectAll} className="text-accent-primary hover:underline cursor-pointer focus-ring">{t("selectAll")}</button>
               <span className="text-border-default">|</span>
-              <button onClick={clearAll} className="text-accent-primary hover:underline cursor-pointer">{t("clearAll")}</button>
+              <button type="button" onClick={clearAll} className="text-accent-primary hover:underline cursor-pointer focus-ring">{t("clearAll")}</button>
             </div>
           )}
         </div>
@@ -171,7 +171,7 @@ export function BitmaskEditor({
             onChange={(e) => onRawChange(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") apply(); }}
             disabled={readOnly}
-            className="w-28 h-7 px-2 bg-bg-tertiary border border-border-default text-xs font-mono text-text-primary focus:outline-none focus:border-accent-primary disabled:opacity-60"
+            className="w-28 h-7 px-2 bg-bg-tertiary border border-border-default text-xs font-mono text-text-primary focus:outline-none focus:border-accent-primary focus-ring disabled:opacity-60"
           />
           <span className="text-[11px] text-text-tertiary font-mono">0x{intVal.toString(16).toUpperCase()}</span>
         </div>
