@@ -59,6 +59,8 @@ export class MAVLinkAdapter implements DroneProtocol {
   private commandQueue = new CommandQueue(3000)
   /** Multi-link support — Map of active transports reaching this drone. */
   private links = new Map<string, LinkState>()
+  /** Link whose bytes are currently being fed to the shared parser. */
+  private feedingLinkId: string | null = null
   private firmwareHandler: FirmwareHandler | null = null
   private vehicleInfo: VehicleInfo | null = null
   private targetSysId = 1
@@ -70,7 +72,13 @@ export class MAVLinkAdapter implements DroneProtocol {
   private heartbeatInterval: ReturnType<typeof setInterval> | null = null
   private streamRequestInterval: ReturnType<typeof setInterval> | null = null
 
-  /** Returns the "primary" transport — the link with the most recent byte activity. */
+  /**
+   * The "primary" transport — the link with the most recent byte activity.
+   *
+   * This is the liveness notion: which link is currently carrying this
+   * vehicle's telemetry. It is deliberately *not* the send target, because
+   * the busiest link can be receive-only.
+   */
   private get transport(): Transport | null {
     if (this.links.size === 0) return null
     let primary: LinkState | null = null
@@ -78,6 +86,31 @@ export class MAVLinkAdapter implements DroneProtocol {
       if (!primary || link.lastByteAt > primary.lastByteAt) primary = link
     }
     return primary?.transport ?? null
+  }
+
+  /**
+   * The link every outbound byte goes through.
+   *
+   * A receive-only link (`canCommand === false`) can easily be the busiest —
+   * a relay downlink pushing video-rate telemetry while the uplink sits idle
+   * between operator actions. Selecting purely on byte recency therefore
+   * aimed every command at the link that discards it, while a perfectly good
+   * commanding link sat unused beside it.
+   *
+   * So: prefer the most recently active link that can actually command. When
+   * none can, fall back to the primary rather than null, so the honest
+   * `canCommand` refusals downstream still read the real link state instead
+   * of reporting "Not connected" for a link that is connected and simply
+   * cannot carry a command.
+   */
+  private get commandTransport(): Transport | null {
+    if (this.links.size === 0) return null
+    let best: LinkState | null = null
+    for (const link of this.links.values()) {
+      if (!link.transport.canCommand || !link.transport.isConnected) continue
+      if (!best || link.lastByteAt > best.lastByteAt) best = link
+    }
+    return best?.transport ?? this.transport
   }
   private cbs = createCallbackStore()
   private cbm = bindCallbackMethods(this.cbs)
@@ -135,7 +168,7 @@ export class MAVLinkAdapter implements DroneProtocol {
   }
   private get fhs(): FrameHandlerState {
     const s = this._fhs
-    s.transport = this.transport; s.firmwareHandler = this.firmwareHandler; s.vehicleInfo = this.vehicleInfo
+    s.transport = this.commandTransport; s.firmwareHandler = this.firmwareHandler; s.vehicleInfo = this.vehicleInfo
     s.targetSysId = this.targetSysId; s.targetCompId = this.targetCompId; s.sysId = this.sysId; s.compId = this.compId
     s.parameterDownload = this.parameterDownload; s.downloadedParamNames = this.downloadedParamNames; s.missionUpload = this.missionUpload
     s.missionDownload = this.missionDownload; s.rallyUpload = this.rallyUpload; s.rallyDownload = this.rallyDownload
@@ -170,7 +203,18 @@ export class MAVLinkAdapter implements DroneProtocol {
       lastByteAt: 0,
       dataHandler: (data: Uint8Array) => {
         link.lastByteAt = Date.now()
-        this.parser.feed(this.middleware ? this.middleware.unwrapInbound(data) : data)
+        // Every link feeds one shared parser, so a frame handler has no way to
+        // tell which link delivered the frame it is looking at. Record it for
+        // the duration of the feed: `addLink` needs to attribute a heartbeat
+        // to a specific link, and inferring that from byte-recency is a race
+        // that mis-attributes whenever two links land in the same millisecond.
+        const previous = this.feedingLinkId
+        this.feedingLinkId = link.id
+        try {
+          this.parser.feed(this.middleware ? this.middleware.unwrapInbound(data) : data)
+        } finally {
+          this.feedingLinkId = previous
+        }
       },
       closeHandler: () => this.handleLinkClose(id),
     }
@@ -227,7 +271,8 @@ export class MAVLinkAdapter implements DroneProtocol {
     // that throw here would reject connect() and cost the operator the
     // telemetry the link still carries perfectly well.
     this.heartbeatInterval = setInterval(() => {
-      if (this.transport?.isConnected && this.transport.canCommand) {
+      const link = this.commandTransport
+      if (link?.isConnected && link.canCommand) {
         this.sendWrapped(encodeHeartbeat(this.sysId, this.compId))
       }
     }, 1000)
@@ -274,9 +319,9 @@ export class MAVLinkAdapter implements DroneProtocol {
         if (frame.msgId !== 0) return
         const hb = decodeHeartbeat(frame.payload)
         if (hb.type === 6) return
-        // Heuristic: the link with the most recent byte activity just delivered this heartbeat
-        const recentLink = this.findMostRecentlyActiveLink()
-        if (recentLink?.id !== link.id) return
+        // Only a heartbeat that arrived on *this* link says anything about
+        // where this link reaches.
+        if (this.feedingLinkId !== link.id) return
         if (frame.systemId !== expectedSysId) {
           clearTimeout(timeout); unsub()
           this.detachLink(link)
@@ -321,14 +366,6 @@ export class MAVLinkAdapter implements DroneProtocol {
       })
     }
     return result.sort((a, b) => a.connectedAt - b.connectedAt)
-  }
-
-  private findMostRecentlyActiveLink(): LinkState | null {
-    let best: LinkState | null = null
-    for (const link of this.links.values()) {
-      if (!best || link.lastByteAt > best.lastByteAt) best = link
-    }
-    return best
   }
 
   private formatLinkLabel(transport: Transport): string {
@@ -406,11 +443,11 @@ export class MAVLinkAdapter implements DroneProtocol {
   }
 
   // ── Context helpers ────────────────────────────────────
-  private get cc(): cmds.CommandContext { return { transport: this.transport, firmwareHandler: this.firmwareHandler, commandQueue: this.commandQueue, targetSysId: this.targetSysId, targetCompId: this.targetCompId, sysId: this.sysId, compId: this.compId, sendCommandLong: this.sendCommandLong.bind(this), sendCommandInt: this.sendCommandIntTracked.bind(this) } }
-  private get pc(): prm.ParamContext { return { transport: this.transport, firmwareHandler: this.firmwareHandler, targetSysId: this.targetSysId, targetCompId: this.targetCompId, sysId: this.sysId, compId: this.compId, paramCache: this.paramCache, PARAM_CACHE_TTL_MS: 300000, parameterDownload: this.parameterDownload, downloadedParamNames: this.downloadedParamNames, onParameter: this.onParameter.bind(this) } }
-  private get mc(): msn.MissionContext { return { transport: this.transport, firmwareHandler: this.firmwareHandler, targetSysId: this.targetSysId, targetCompId: this.targetCompId, sysId: this.sysId, compId: this.compId, missionUpload: this.missionUpload, missionDownload: this.missionDownload, rallyUpload: this.rallyUpload, rallyDownload: this.rallyDownload, fenceUpload: this.fenceUpload, fenceDownload: this.fenceDownload, sendCommandLong: this.sendCommandLong.bind(this), onParameter: this.onParameter.bind(this), onFencePoint: this.onFencePoint.bind(this), getParameter: this.getParameter.bind(this) } }
-  private get lc(): logOps.LogContext { return { transport: this.transport, targetSysId: this.targetSysId, targetCompId: this.targetCompId, sysId: this.sysId, compId: this.compId, logListDownload: this.logListDownload, logDataDownload: this.logDataDownload } }
-  private get fc(): ftpOps.FtpContext { const c = this._ftpCtx; c.transport = this.transport; c.targetSysId = this.targetSysId; c.targetCompId = this.targetCompId; c.sysId = this.sysId; c.compId = this.compId; return c }
+  private get cc(): cmds.CommandContext { return { transport: this.commandTransport, firmwareHandler: this.firmwareHandler, commandQueue: this.commandQueue, targetSysId: this.targetSysId, targetCompId: this.targetCompId, sysId: this.sysId, compId: this.compId, sendCommandLong: this.sendCommandLong.bind(this), sendCommandInt: this.sendCommandIntTracked.bind(this) } }
+  private get pc(): prm.ParamContext { return { transport: this.commandTransport, firmwareHandler: this.firmwareHandler, targetSysId: this.targetSysId, targetCompId: this.targetCompId, sysId: this.sysId, compId: this.compId, paramCache: this.paramCache, PARAM_CACHE_TTL_MS: 300000, parameterDownload: this.parameterDownload, downloadedParamNames: this.downloadedParamNames, onParameter: this.onParameter.bind(this) } }
+  private get mc(): msn.MissionContext { return { transport: this.commandTransport, firmwareHandler: this.firmwareHandler, targetSysId: this.targetSysId, targetCompId: this.targetCompId, sysId: this.sysId, compId: this.compId, missionUpload: this.missionUpload, missionDownload: this.missionDownload, rallyUpload: this.rallyUpload, rallyDownload: this.rallyDownload, fenceUpload: this.fenceUpload, fenceDownload: this.fenceDownload, sendCommandLong: this.sendCommandLong.bind(this), onParameter: this.onParameter.bind(this), onFencePoint: this.onFencePoint.bind(this), getParameter: this.getParameter.bind(this) } }
+  private get lc(): logOps.LogContext { return { transport: this.commandTransport, targetSysId: this.targetSysId, targetCompId: this.targetCompId, sysId: this.sysId, compId: this.compId, logListDownload: this.logListDownload, logDataDownload: this.logDataDownload } }
+  private get fc(): ftpOps.FtpContext { const c = this._ftpCtx; c.transport = this.commandTransport; c.targetSysId = this.targetSysId; c.targetCompId = this.targetCompId; c.sysId = this.sysId; c.compId = this.compId; return c }
 
   // ── Delegated Commands ─────────────────────────────────
   async arm() { return cmds.cmdArm(this.cc) }
@@ -639,7 +676,7 @@ export class MAVLinkAdapter implements DroneProtocol {
   getCommandQueueSnapshot() { return { pendingCount: this.commandQueue.pendingCount, entries: this.commandQueue.getSnapshot() } }
 
   private sendCommandLong(cmd: number, p: [number, number, number, number, number, number, number], timeout?: number): Promise<CommandResult> {
-    if (!this.transport?.isConnected) return Promise.resolve({ success: false, resultCode: -1, message: 'Not connected' })
+    if (!this.commandTransport?.isConnected) return Promise.resolve({ success: false, resultCode: -1, message: 'Not connected' })
     return this.commandQueue.sendCommand(cmd, p, (d) => this.sendWrapped(d), this.targetSysId, this.targetCompId, this.sysId, this.compId, timeout)
   }
 
@@ -653,7 +690,7 @@ export class MAVLinkAdapter implements DroneProtocol {
     frame: number,
     timeout?: number,
   ): Promise<CommandResult> {
-    if (!this.transport?.isConnected) return Promise.resolve({ success: false, resultCode: -1, message: 'Not connected' })
+    if (!this.commandTransport?.isConnected) return Promise.resolve({ success: false, resultCode: -1, message: 'Not connected' })
     return this.commandQueue.sendCommandInt(cmd, p, x, y, z, frame, (d) => this.sendWrapped(d), this.targetSysId, this.targetCompId, this.sysId, this.compId, timeout)
   }
 
@@ -664,7 +701,7 @@ export class MAVLinkAdapter implements DroneProtocol {
    * commands). The command queue additionally fails the command on throw. */
   private sendWrapped(data: Uint8Array): void {
     try {
-      this.transport?.send(this.middleware ? this.middleware.wrapOutbound(data) : data)
+      this.commandTransport?.send(this.middleware ? this.middleware.wrapOutbound(data) : data)
     } catch (err) {
       console.warn('[MAVLinkAdapter] transport send failed:', err)
     }
