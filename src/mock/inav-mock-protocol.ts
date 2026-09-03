@@ -30,12 +30,15 @@ import type {
   GimbalManagerStatusCallback, CanFrameCallback,
   OpticalFlowCallback, OpticalFlowRadCallback, OdometryCallback,
   VisionPositionEstimateCallback, VisionPositionDeltaCallback,
+  MspSerialPort, MspOsdConfig, HsvColor, BfLedModeColor,
 } from "@/lib/protocol/types";
 import { inavHandler } from "@/lib/protocol/firmware/inav";
 import { INAV_WP_FLAG_LAST, INAV_WP_ACTION } from "@/lib/protocol/msp/msp-decoders-inav";
 import type {
   INavWaypoint, INavSafehome, MotorMixerRule, INavServoMixerRule,
   INavEzTune, INavOsdAlarms, INavOsdPreferences, INavOsdLayoutsHeader,
+  INavBatteryConfig, INavMixer, INavServoConfig, INavMcBraking, INavGvarStatus,
+  INavTimerOutputModeEntry, INavOutputMappingExt2Entry, INavTempSensorConfigEntry,
 } from "@/lib/protocol/msp/msp-decoders-inav";
 import type { SettingValue, SettingInfo } from "@/lib/protocol/msp/settings";
 import { SettingType } from "@/lib/protocol/msp/settings";
@@ -108,6 +111,13 @@ interface SettingEntry {
   value: number | string;
 }
 
+/** Last DShot special command handed to the mock, for tests and debug panels. */
+export interface INavMockDshotCommand {
+  commandType: number;
+  motorIndex: number;
+  commands: number[];
+}
+
 // ── Vehicle info constants ────────────────────────────────────
 
 const INAV_QUAD_VEHICLE_INFO: VehicleInfo = {
@@ -157,6 +167,275 @@ function seedSettings(vehicleClass: "copter" | "plane"): Map<string, SettingEntr
 
   return m;
 }
+
+// ── FC configuration seeds ───────────────────────────────────
+// The demo airframe is a 5-inch iNav quad (or the small plane variant) on an
+// F7 board: 8 outputs across 4 timers, a 4S 2200 mAh pack, a 4-LED strip, and
+// USB + 5 UARTs. Every seed below stays consistent with `seedSettings` above.
+// Instance state clones these, so one drone's edits never leak into another's.
+
+/** iNav legacy mixer preset ids for the two demo airframes. */
+const MIXER_PRESET_QUADX = 3;
+const MIXER_PRESET_AIRPLANE = 14;
+
+/**
+ * Three battery profiles, all wired for the same 4S pack the telemetry tick
+ * drains, differing only in capacity. Profile 0 matches `seedSettings`.
+ */
+const BATTERY_PROFILE_SEED: readonly INavBatteryConfig[] = [
+  {
+    capacityMah: 2200, capacityWarningMah: 440, capacityCriticalMah: 220,
+    capacityUnit: 0, voltageSource: 0, cells: 4, cellDetect: 1,
+    cellMin: 3300, cellMax: 4200, cellWarning: 3500, currentScale: 400, currentOffset: 0,
+  },
+  {
+    capacityMah: 1500, capacityWarningMah: 300, capacityCriticalMah: 150,
+    capacityUnit: 0, voltageSource: 0, cells: 4, cellDetect: 1,
+    cellMin: 3300, cellMax: 4200, cellWarning: 3500, currentScale: 400, currentOffset: 0,
+  },
+  {
+    capacityMah: 3000, capacityWarningMah: 600, capacityCriticalMah: 300,
+    capacityUnit: 0, voltageSource: 0, cells: 4, cellDetect: 1,
+    cellMin: 3300, cellMax: 4200, cellWarning: 3500, currentScale: 400, currentOffset: 0,
+  },
+];
+
+/**
+ * Two mixer profiles for the same airframe. Profile 1 reverses the yaw motors,
+ * which is the real reason a non-VTOL build carries a second mixer profile.
+ */
+function seedMixerProfiles(vehicleClass: "copter" | "plane"): INavMixer[] {
+  const plane = vehicleClass === "plane";
+  const profile: INavMixer = {
+    platformType: plane ? 1 : 0,
+    yawMotorsReversed: false,
+    hasFlaps: plane,
+    appliedMixerPreset: plane ? MIXER_PRESET_AIRPLANE : MIXER_PRESET_QUADX,
+    motorCount: plane ? 1 : 4,
+    servoCount: plane ? 5 : 0,
+  };
+  return [profile, { ...profile, yawMotorsReversed: true }];
+}
+
+/** Timer output usage flags: 1 = motor, 2 = servo, 4 = LED, 8 = serial. */
+const OUTPUT_USAGE_MOTOR_SERVO = 0x03;
+const OUTPUT_USAGE_SERVO_LED = 0x06;
+const OUTPUT_USAGE_SERVO_SERIAL = 0x0a;
+
+/** Eight outputs sharing four timers, the usual F7 stack layout. */
+const OUTPUT_MAPPING_SEED: readonly INavOutputMappingExt2Entry[] = [
+  { timerId: 0, usageFlags: OUTPUT_USAGE_MOTOR_SERVO, specialLabels: 0 },
+  { timerId: 0, usageFlags: OUTPUT_USAGE_MOTOR_SERVO, specialLabels: 0 },
+  { timerId: 1, usageFlags: OUTPUT_USAGE_MOTOR_SERVO, specialLabels: 0 },
+  { timerId: 1, usageFlags: OUTPUT_USAGE_MOTOR_SERVO, specialLabels: 0 },
+  { timerId: 2, usageFlags: OUTPUT_USAGE_MOTOR_SERVO, specialLabels: 0 },
+  { timerId: 2, usageFlags: OUTPUT_USAGE_MOTOR_SERVO, specialLabels: 0 },
+  { timerId: 3, usageFlags: OUTPUT_USAGE_SERVO_LED, specialLabels: 0 },
+  { timerId: 3, usageFlags: OUTPUT_USAGE_SERVO_SERIAL, specialLabels: 0 },
+];
+
+/**
+ * iNav outputMode_e per timer: 0 = AUTO, 1 = MOTORS, 2 = SERVOS, 3 = LED.
+ * Timers 0 and 1 carry the four motors, timer 3 the servo and LED pads.
+ */
+const TIMER_OUTPUT_MODE_SEED: readonly INavTimerOutputModeEntry[] = [
+  { timerId: 0, mode: 1 },
+  { timerId: 1, mode: 1 },
+  { timerId: 2, mode: 0 },
+  { timerId: 3, mode: 2 },
+];
+
+/** Servo slots iNav reports regardless of how many the mixer actually drives. */
+const SERVO_SLOT_COUNT = 8;
+
+/** Unassigned servo slot: 1000-2000 us travel, iNav's no-forward sentinel 255. */
+const SERVO_CONFIG_DEFAULT: Readonly<INavServoConfig> = {
+  rate: 100, min: 1000, max: 2000, middle: 1500,
+  forwardFromChannel: 255, reversedInputSources: 0, flags: 0,
+};
+
+/** iNav tempSensorType_e: 0 = none, 1 = LM75, 2 = DS18B20. Alarms in 0.1 C. */
+const TEMP_SENSOR_SLOT_COUNT = 8;
+
+/** One 1-wire ESC probe and one I2C regulator probe; the rest unpopulated. */
+const TEMP_SENSOR_SEED: readonly INavTempSensorConfigEntry[] = [
+  {
+    type: 2, address: [0x28, 0x1a, 0x4c, 0x0b, 0x00, 0x00, 0x80, 0x3f],
+    alarmMin: -100, alarmMax: 900, label: "ESC",
+  },
+  {
+    type: 1, address: [0x48, 0, 0, 0, 0, 0, 0, 0],
+    alarmMin: -100, alarmMax: 800, label: "VREG",
+  },
+];
+
+const TEMP_SENSOR_EMPTY: Readonly<INavTempSensorConfigEntry> = {
+  type: 0, address: [0, 0, 0, 0, 0, 0, 0, 0], alarmMin: 0, alarmMax: 0, label: "",
+};
+
+/** Serial function bits (serialPortFunction_e) used by the seed. */
+const SERIAL_FN_MSP = 1 << 0;
+const SERIAL_FN_GPS = 1 << 1;
+const SERIAL_FN_RX_SERIAL = 1 << 6;
+const SERIAL_FN_ESC_SENSOR = 1 << 10;
+
+/** Baud indices into the port table: 0 = auto, 4 = 57600, 5 = 115200, 7 = 250000. */
+const PORT_BAUD_DEFAULTS = {
+  mspBaudRate: 5, gpsBaudRate: 4, telemetryBaudRate: 0, blackboxBaudRate: 7,
+} as const;
+
+/** USB VCP (identifier 20) plus UART1-4 and UART6 (identifiers 0-3 and 5). */
+const SERIAL_PORT_SEED: readonly MspSerialPort[] = [
+  { identifier: 20, functions: SERIAL_FN_MSP, ...PORT_BAUD_DEFAULTS },
+  { identifier: 0, functions: SERIAL_FN_MSP, ...PORT_BAUD_DEFAULTS },
+  { identifier: 1, functions: SERIAL_FN_RX_SERIAL, ...PORT_BAUD_DEFAULTS },
+  { identifier: 2, functions: SERIAL_FN_GPS, ...PORT_BAUD_DEFAULTS },
+  { identifier: 3, functions: 0, ...PORT_BAUD_DEFAULTS },
+  { identifier: 5, functions: SERIAL_FN_ESC_SENSOR, ...PORT_BAUD_DEFAULTS },
+];
+
+/** LED_MAX_STRIP_LENGTH on the target boards. */
+const LED_STRIP_LENGTH = 32;
+
+/** Palette indices of the stock 16-colour LED table. */
+const COLOR_BLACK = 0;
+const COLOR_WHITE = 1;
+const COLOR_RED = 2;
+const COLOR_ORANGE = 3;
+const COLOR_YELLOW = 4;
+const COLOR_LIME_GREEN = 5;
+const COLOR_GREEN = 6;
+const COLOR_MINT_GREEN = 7;
+const COLOR_CYAN = 8;
+const COLOR_LIGHT_BLUE = 9;
+const COLOR_BLUE = 10;
+const COLOR_DARK_VIOLET = 11;
+const COLOR_DEEP_PINK = 13;
+
+/** Direction flag bits: N, E, S, W, up, down. */
+const LED_DIR_NORTH = 1 << 0;
+const LED_DIR_EAST = 1 << 1;
+const LED_DIR_SOUTH = 1 << 2;
+const LED_DIR_WEST = 1 << 3;
+/** Overlay flag bits: bit 5 = indicator, bit 6 = warning. */
+const LED_OVERLAY_INDICATOR = 1 << 5;
+const LED_OVERLAY_WARNING = 1 << 6;
+/** LED function index: 0 = colour, 1 = flight mode. */
+const LED_FN_COLOR = 0;
+const LED_FN_FLIGHT_MODE = 1;
+
+/**
+ * Pack one LED config the way the strip panel unpacks it: y bits 0-3, x bits
+ * 4-7, function bits 8-11, overlays bits 12-21, colour bits 22-25, directions
+ * bits 26-31. The final shift keeps it an unsigned 32-bit value.
+ */
+function packLedConfig(
+  x: number, y: number, fn: number, overlays: number, color: number, directions: number,
+): number {
+  return (
+    (((x & 0x0f) << 4) | (y & 0x0f)) |
+    ((fn & 0x0f) << 8) |
+    ((overlays & 0x3ff) << 12) |
+    ((color & 0x0f) << 22) |
+    ((directions & 0x3f) << 26)
+  ) >>> 0;
+}
+
+/** Four arm LEDs on the 16x16 grid; the rest of the strip is unconfigured. */
+function seedLedStrip(): number[] {
+  const leds = new Array<number>(LED_STRIP_LENGTH).fill(0);
+  leds[0] = packLedConfig(0, 0, LED_FN_FLIGHT_MODE, LED_OVERLAY_INDICATOR, COLOR_WHITE, LED_DIR_NORTH | LED_DIR_WEST);
+  leds[1] = packLedConfig(15, 0, LED_FN_FLIGHT_MODE, LED_OVERLAY_INDICATOR, COLOR_WHITE, LED_DIR_NORTH | LED_DIR_EAST);
+  leds[2] = packLedConfig(15, 15, LED_FN_COLOR, LED_OVERLAY_WARNING, COLOR_RED, LED_DIR_SOUTH | LED_DIR_EAST);
+  leds[3] = packLedConfig(0, 15, LED_FN_COLOR, LED_OVERLAY_WARNING, COLOR_RED, LED_DIR_SOUTH | LED_DIR_WEST);
+  return leds;
+}
+
+/** The stock 16-entry HSV palette (hue 0-359, saturation and value 0-255). */
+const LED_COLOR_SEED: readonly HsvColor[] = [
+  { h: 0, s: 0, v: 0 },       // black
+  { h: 0, s: 0, v: 255 },     // white
+  { h: 0, s: 255, v: 255 },   // red
+  { h: 30, s: 255, v: 255 },  // orange
+  { h: 60, s: 255, v: 255 },  // yellow
+  { h: 90, s: 255, v: 255 },  // lime green
+  { h: 120, s: 255, v: 255 }, // green
+  { h: 150, s: 255, v: 255 }, // mint green
+  { h: 180, s: 255, v: 255 }, // cyan
+  { h: 210, s: 255, v: 255 }, // light blue
+  { h: 240, s: 255, v: 255 }, // blue
+  { h: 270, s: 255, v: 255 }, // dark violet
+  { h: 300, s: 255, v: 255 }, // magenta
+  { h: 330, s: 255, v: 255 }, // deep pink
+  { h: 0, s: 0, v: 0 },
+  { h: 0, s: 0, v: 0 },
+];
+
+/** Per-mode direction colours: mode 0-5 x direction 0-5 (N, E, S, W, up, down). */
+const LED_MODE_DIRECTION_COLORS: ReadonlyArray<readonly number[]> = [
+  [COLOR_WHITE, COLOR_DARK_VIOLET, COLOR_RED, COLOR_DEEP_PINK, COLOR_BLUE, COLOR_ORANGE],
+  [COLOR_LIME_GREEN, COLOR_DARK_VIOLET, COLOR_ORANGE, COLOR_DEEP_PINK, COLOR_BLUE, COLOR_ORANGE],
+  [COLOR_BLUE, COLOR_DARK_VIOLET, COLOR_YELLOW, COLOR_DEEP_PINK, COLOR_BLUE, COLOR_ORANGE],
+  [COLOR_CYAN, COLOR_DARK_VIOLET, COLOR_YELLOW, COLOR_DEEP_PINK, COLOR_BLUE, COLOR_ORANGE],
+  [COLOR_MINT_GREEN, COLOR_DARK_VIOLET, COLOR_ORANGE, COLOR_DEEP_PINK, COLOR_BLUE, COLOR_ORANGE],
+  [COLOR_LIGHT_BLUE, COLOR_DARK_VIOLET, COLOR_RED, COLOR_DEEP_PINK, COLOR_BLUE, COLOR_ORANGE],
+];
+
+/** Special-colour slots (mode 6, functions 0-10). */
+const LED_SPECIAL_COLORS: readonly number[] = [
+  COLOR_GREEN, COLOR_BLUE, COLOR_WHITE, COLOR_BLACK, COLOR_BLACK,
+  COLOR_RED, COLOR_ORANGE, COLOR_GREEN, COLOR_BLACK, COLOR_BLACK, COLOR_BLACK,
+];
+
+/** Mode index of the special-colour group and of the aux-channel entry. */
+const LED_SPECIAL_MODE = 6;
+const LED_AUX_MODE = 7;
+
+/**
+ * The 48 mode-colour triplets a real FC returns: 36 mode/direction entries,
+ * 11 special colours, then the aux entry whose `color` is an RC channel.
+ */
+function seedLedModeColors(): BfLedModeColor[] {
+  const out: BfLedModeColor[] = [];
+  LED_MODE_DIRECTION_COLORS.forEach((colors, mode) => {
+    colors.forEach((color, fun) => out.push({ mode, fun, color }));
+  });
+  LED_SPECIAL_COLORS.forEach((color, fun) => out.push({ mode: LED_SPECIAL_MODE, fun, color }));
+  out.push({ mode: LED_AUX_MODE, fun: 0, color: 0 });
+  return out;
+}
+
+/** OSD item count, matching the `getOsdLayoutsHeader()` the mock reports. */
+const OSD_ITEM_COUNT = 79;
+/** MSP_OSD_CONFIG flags bit 0: the OSD feature is enabled. */
+const OSD_FLAG_FEATURE_ENABLED = 0x01;
+
+/**
+ * Packed OSD element position: x bits 0-4, y bits 5-10, page bits 11-14,
+ * visible bit 15 — the layout the OSD editor encodes and decodes.
+ */
+function packOsdPosition(x: number, y: number, visible: boolean): number {
+  return (x & 0x1f) | ((y & 0x3f) << 5) | (visible ? 0x8000 : 0);
+}
+
+/**
+ * Elements a stock layout shows, as `[itemIndex, x, y]`. Every other slot
+ * reads back at position 0 with the visible bit clear.
+ */
+const OSD_VISIBLE_SEED: ReadonlyArray<readonly [number, number, number]> = [
+  [0, 1, 1], [1, 12, 1], [2, 15, 8], [3, 14, 2], [5, 22, 1], [6, 1, 11],
+  [7, 13, 11], [8, 10, 12], [9, 1, 7], [11, 1, 12], [12, 1, 13], [13, 26, 6],
+  [14, 19, 1], [15, 23, 7], [22, 12, 2], [30, 14, 9], [31, 25, 9],
+];
+
+function seedOsdItems(): Array<{ position: number }> {
+  const items = Array.from({ length: OSD_ITEM_COUNT }, () => ({ position: 0 }));
+  for (const [idx, x, y] of OSD_VISIBLE_SEED) items[idx] = { position: packOsdPosition(x, y, true) };
+  return items;
+}
+
+/** Eight live global-variable slots, as logic conditions would leave them. */
+const GVAR_SEED: readonly number[] = [0, 1, 250, 0, 0, 1500, 0, 0];
 
 // ── INavMockProtocol ──────────────────────────────────────────
 
@@ -213,6 +492,7 @@ export class INavMockProtocol implements DroneProtocol {
   constructor(config: INavMockConfig) {
     this._vehicleInfo = config.vehicleClass === "plane" ? INAV_PLANE_VEHICLE_INFO : INAV_QUAD_VEHICLE_INFO;
     this.settingStore = seedSettings(config.vehicleClass);
+    this.mixerProfiles = seedMixerProfiles(config.vehicleClass);
 
     // Seed provided state
     if (config.missionWaypoints) this.waypoints = [...config.missionWaypoints];
@@ -436,6 +716,264 @@ export class INavMockProtocol implements DroneProtocol {
     }
     this.geozoneSlots[index] = null;
     return ok(`Geozone ${index} cleared`);
+  }
+
+  // ── FC configuration blocks ─────────────────────────────────
+  // The surface the real MSP adapter answers for iNav: battery and mixer
+  // profiles, output mapping, servos, temperature sensors, MC braking, serial
+  // ports, DShot, LED strip, OSD, and global variables. Every reader answers
+  // from instance state and every writer mutates it, so a panel's
+  // save-then-reload round trip behaves the same in demo mode as on hardware.
+
+  private batteryProfiles: INavBatteryConfig[] = BATTERY_PROFILE_SEED.map((p) => ({ ...p }));
+  private activeBatteryProfile = 0;
+  private mixerProfiles: INavMixer[];
+  private activeMixerProfile = 0;
+  /** iNav nav_mc_braking_* defaults. */
+  private mcBraking: INavMcBraking = {
+    speedThreshold: 100, disengageSpeed: 75, timeout: 2000, boostFactor: 100,
+    boostTimeout: 750, boostSpeedThreshold: 150, boostDisengage: 100, bankAngle: 40,
+  };
+  private outputMapping: INavOutputMappingExt2Entry[] = OUTPUT_MAPPING_SEED.map((e) => ({ ...e }));
+  private timerOutputModes: INavTimerOutputModeEntry[] = TIMER_OUTPUT_MODE_SEED.map((e) => ({ ...e }));
+  private servoConfigs: INavServoConfig[] =
+    Array.from({ length: SERVO_SLOT_COUNT }, () => ({ ...SERVO_CONFIG_DEFAULT }));
+  private tempSensorConfigs: INavTempSensorConfigEntry[] =
+    Array.from({ length: TEMP_SENSOR_SLOT_COUNT }, (_, i) => {
+      const seed = TEMP_SENSOR_SEED[i] ?? TEMP_SENSOR_EMPTY;
+      return { ...seed, address: [...seed.address] };
+    });
+  private serialPorts: MspSerialPort[] = SERIAL_PORT_SEED.map((p) => ({ ...p }));
+  /** Null until the first read, then true: iNav 7 answers the 32-bit MSP2 config. */
+  private serialUsesV2: boolean | null = null;
+  private ledStrip: number[] = seedLedStrip();
+  private ledColors: HsvColor[] = LED_COLOR_SEED.map((c) => ({ ...c }));
+  private ledModeColors: BfLedModeColor[] = seedLedModeColors();
+  private osdItems: Array<{ position: number }> = seedOsdItems();
+  private gvarValues: number[] = [...GVAR_SEED];
+  private _lastDshotCommand: INavMockDshotCommand | null = null;
+
+  // Battery profiles ───────────────────────────────────────────
+
+  async getBatteryConfig(): Promise<INavBatteryConfig> {
+    return { ...this.batteryProfiles[this.activeBatteryProfile] };
+  }
+
+  async setBatteryConfig(cfg: INavBatteryConfig): Promise<CommandResult> {
+    this.batteryProfiles[this.activeBatteryProfile] = { ...cfg };
+    this._syncBatterySettings();
+    return ok("Battery config saved");
+  }
+
+  async selectBatteryProfile(idx: number): Promise<CommandResult> {
+    if (!Number.isInteger(idx) || idx < 0 || idx >= this.batteryProfiles.length) {
+      return {
+        success: false, resultCode: 1,
+        message: `Battery profile out of range (0-${this.batteryProfiles.length - 1})`,
+      };
+    }
+    this.activeBatteryProfile = idx;
+    this._syncBatterySettings();
+    return ok(`Battery profile ${idx} selected`);
+  }
+
+  /**
+   * The named settings and the battery parameter group are one store on a real
+   * FC, so a profile write or switch has to move both. Cell voltages are mV in
+   * the config block and tens of mV in the named settings.
+   */
+  private _syncBatterySettings(): void {
+    const cfg = this.batteryProfiles[this.activeBatteryProfile];
+    this.settingStore.set("battery_capacity", { type: SettingType.UINT16, value: cfg.capacityMah });
+    this.settingStore.set("bat_cells", { type: SettingType.UINT8, value: cfg.cells });
+    this.settingStore.set("vbat_min_cell_voltage", { type: SettingType.UINT8, value: Math.round(cfg.cellMin / 10) });
+    this.settingStore.set("vbat_max_cell_voltage", { type: SettingType.UINT8, value: Math.round(cfg.cellMax / 10) });
+    this.settingStore.set("vbat_warning_cell_voltage", { type: SettingType.UINT8, value: Math.round(cfg.cellWarning / 10) });
+  }
+
+  // Mixer profiles ─────────────────────────────────────────────
+
+  async getMixerConfig(): Promise<INavMixer> {
+    return { ...this.mixerProfiles[this.activeMixerProfile] };
+  }
+
+  async selectMixerProfile(idx: number): Promise<CommandResult> {
+    if (!Number.isInteger(idx) || idx < 0 || idx >= this.mixerProfiles.length) {
+      return {
+        success: false, resultCode: 1,
+        message: `Mixer profile out of range (0-${this.mixerProfiles.length - 1})`,
+      };
+    }
+    this.activeMixerProfile = idx;
+    const mixer = this.mixerProfiles[idx];
+    this.settingStore.set("platform_type", { type: SettingType.UINT8, value: mixer.platformType });
+    this.settingStore.set("motor_count", { type: SettingType.UINT8, value: mixer.motorCount });
+    this.settingStore.set("servo_count", { type: SettingType.UINT8, value: mixer.servoCount });
+    return ok(`Mixer profile ${idx} selected`);
+  }
+
+  // Outputs, servos, temperature sensors ───────────────────────
+
+  async getOutputMapping(): Promise<INavOutputMappingExt2Entry[]> {
+    return this.outputMapping.map((e) => ({ ...e }));
+  }
+
+  async getTimerOutputModes(): Promise<INavTimerOutputModeEntry[]> {
+    return this.timerOutputModes.map((e) => ({ ...e }));
+  }
+
+  async setTimerOutputMode(entries: INavTimerOutputModeEntry[]): Promise<CommandResult> {
+    // A real FC ignores a timer id its target does not have, so only the
+    // timers this board reports move.
+    for (const entry of entries) {
+      const slot = this.timerOutputModes.find((t) => t.timerId === entry.timerId);
+      if (slot) slot.mode = entry.mode;
+    }
+    return ok("Timer output modes saved");
+  }
+
+  async getServoConfigs(): Promise<INavServoConfig[]> {
+    return this.servoConfigs.map((s) => ({ ...s }));
+  }
+
+  async setServoConfig(idx: number, cfg: INavServoConfig): Promise<CommandResult> {
+    if (!Number.isInteger(idx) || idx < 0 || idx >= this.servoConfigs.length) {
+      return {
+        success: false, resultCode: 1,
+        message: `Servo index out of range (0-${this.servoConfigs.length - 1})`,
+      };
+    }
+    this.servoConfigs[idx] = { ...cfg };
+    return ok(`Servo ${idx} config saved`);
+  }
+
+  async getTempSensorConfigs(): Promise<INavTempSensorConfigEntry[]> {
+    return this.tempSensorConfigs.map((s) => ({ ...s, address: [...s.address] }));
+  }
+
+  // MC braking ─────────────────────────────────────────────────
+
+  async getMcBraking(): Promise<INavMcBraking> { return { ...this.mcBraking }; }
+
+  async setMcBraking(braking: INavMcBraking): Promise<CommandResult> {
+    this.mcBraking = { ...braking };
+    return ok("MC braking saved");
+  }
+
+  // Serial ports ───────────────────────────────────────────────
+
+  async getSerialConfig(): Promise<MspSerialPort[]> {
+    // iNav 7 answers MSP2_COMMON_SERIAL_CONFIG, so the 32-bit function mask
+    // (bits above 15) is live once a read has happened.
+    this.serialUsesV2 = true;
+    return this.serialPorts.map((p) => ({ ...p }));
+  }
+
+  serialConfigExtended(): boolean { return this.serialUsesV2 === true; }
+
+  async setSerialConfig(ports: MspSerialPort[]): Promise<CommandResult> {
+    this.serialPorts = ports.map((p) => ({ ...p }));
+    return ok("Serial config saved");
+  }
+
+  // DShot ──────────────────────────────────────────────────────
+
+  /**
+   * Fire-and-forget like the real adapter: the FC acts on a DShot special
+   * command only while disarmed and never replies.
+   */
+  async sendDshotCommand(commandType: number, motorIndex: number, commands: number[]): Promise<CommandResult> {
+    this._lastDshotCommand = { commandType, motorIndex, commands: [...commands] };
+    return ok("DShot command sent");
+  }
+
+  /** Last DShot special command handed to this mock, or null if none. */
+  getLastDshotCommand(): INavMockDshotCommand | null {
+    if (!this._lastDshotCommand) return null;
+    return { ...this._lastDshotCommand, commands: [...this._lastDshotCommand.commands] };
+  }
+
+  // OSD ────────────────────────────────────────────────────────
+
+  /**
+   * The video system, units, RSSI alarm, and capacity warning come from the
+   * OSD preference, alarm, and battery state this mock already holds, so the
+   * config block cannot disagree with the panels that write those.
+   */
+  async getOsdConfig(): Promise<MspOsdConfig> {
+    return {
+      flags: OSD_FLAG_FEATURE_ENABLED,
+      videoSystem: this.osdPreferences.videoSystem,
+      units: this.osdPreferences.units,
+      rssiAlarm: this.osdAlarms.rssi,
+      capacityWarning: this.batteryProfiles[this.activeBatteryProfile].capacityWarningMah,
+      items: this.osdItems.map((i) => ({ ...i })),
+    };
+  }
+
+  async writeOsdLayout(items: Array<{ index: number; position: number }>, videoSystem?: number): Promise<CommandResult> {
+    if (videoSystem !== undefined) this.osdPreferences.videoSystem = videoSystem;
+    for (const item of items) {
+      if (item.index >= 0 && item.index < this.osdItems.length) {
+        this.osdItems[item.index] = { position: item.position };
+      }
+    }
+    return ok(`${items.length} OSD elements saved`);
+  }
+
+  /**
+   * One MSP_OSD_CHAR_WRITE per glyph on hardware, so the progress callback
+   * fires per glyph here too and the upload takes real wall time.
+   */
+  async uploadOsdFont(glyphs: Uint8Array[], onProgress?: (done: number, total: number) => void): Promise<CommandResult> {
+    for (let i = 0; i < glyphs.length; i++) {
+      await new Promise<void>((r) => setTimeout(r, 2));
+      onProgress?.(i + 1, glyphs.length);
+    }
+    return ok(`Wrote ${glyphs.length} glyphs`);
+  }
+
+  // LED strip ──────────────────────────────────────────────────
+
+  async getLedStripConfig(): Promise<number[]> { return [...this.ledStrip]; }
+
+  async setLedStripConfig(leds: number[]): Promise<CommandResult> {
+    // The FC takes one write per LED index and leaves untouched slots alone.
+    const written = Math.min(leds.length, this.ledStrip.length);
+    for (let i = 0; i < written; i++) this.ledStrip[i] = leds[i] >>> 0;
+    return ok(`${written} LEDs saved`);
+  }
+
+  async getLedColors(): Promise<HsvColor[]> { return this.ledColors.map((c) => ({ ...c })); }
+
+  async setLedColors(colors: HsvColor[]): Promise<CommandResult> {
+    this.ledColors = colors.map((c) => ({ ...c }));
+    return ok("LED palette saved");
+  }
+
+  async getLedStripModeColors(): Promise<BfLedModeColor[]> {
+    return this.ledModeColors.map((m) => ({ ...m }));
+  }
+
+  async setLedStripModeColor(mode: number, fun: number, color: number): Promise<CommandResult> {
+    const slot = this.ledModeColors.find((m) => m.mode === mode && m.fun === fun);
+    if (slot) slot.color = color;
+    else this.ledModeColors.push({ mode, fun, color });
+    return ok(`Mode colour ${mode}/${fun} saved`);
+  }
+
+  // Programming global variables ───────────────────────────────
+
+  async downloadGvarStatus(): Promise<INavGvarStatus> { return { values: [...this.gvarValues] }; }
+
+  // FTP ────────────────────────────────────────────────────────
+
+  /**
+   * MSP has no MAVLink FTP transport. Refuse the way the real MSP adapter
+   * does rather than hand back fabricated bytes.
+   */
+  async downloadFileViaFtp(): Promise<Uint8Array> {
+    throw new Error("MAVLink FTP is not available over MSP");
   }
 
   // ── Commands ────────────────────────────────────────────────
