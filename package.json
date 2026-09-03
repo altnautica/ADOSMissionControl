@@ -53,7 +53,7 @@
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",
     "@rerun-io/web-viewer": "^0.33.1",
-    "@tanstack/react-virtual": "^3.13.22",
+    "@tanstack/react-virtual": "^3.14.5",
     "@types/shpjs": "^3.4.7",
     "@xyflow/react": "^12.10.2",
     "ajv": "^8.20.0",
