@@ -25,6 +25,7 @@ import type { ReactNode } from "react";
 import { createContributionRegistry } from "@/lib/plugins/registries/contribution-registry";
 import type { CockpitLayout } from "@/stores/settings/keybindings-slice";
 import { type CockpitZone } from "@/lib/cockpit/zones";
+import { meetsDensity, type CockpitDensity } from "@/lib/cockpit/density";
 
 export type { CockpitZone };
 
@@ -67,6 +68,16 @@ export interface CockpitWidget {
   /** Visibility when no `layoutKey` and no per-widget override governs it.
    * Defaults to visible. */
   defaultVisible?: boolean;
+  /**
+   * Least dense cockpit mode at which this widget shows. Absent = every mode.
+   *
+   * This replaces the `.d-std` / `.d-full` CSS classes, which each widget hung
+   * on its own positioning wrapper. A widget composed into a shared zone
+   * container has no wrapper to carry a class, and having the stylesheet
+   * decide density while the registry decides visibility meant two mechanisms
+   * answering one question.
+   */
+  minDensity?: CockpitDensity;
   /** Render the widget for the active drone. */
   render: (ctx: CockpitWidgetContext) => ReactNode;
 }
@@ -114,6 +125,12 @@ export function isCockpitWidgetVisible(
   widget: CockpitWidget,
   layout: CockpitLayout,
 ): boolean {
+  // Density is a hard floor: a widget the operator has thinned out of the
+  // cockpit is hidden regardless of the flags below, which is what the CSS
+  // rules it replaces did.
+  if (widget.minDensity && !meetsDensity(widget.minDensity, layout.density)) {
+    return false;
+  }
   if (widget.layoutKey) return layout[widget.layoutKey];
   const hidden = layout.widgets?.[widget.id]?.hidden;
   if (hidden !== undefined) return !hidden;

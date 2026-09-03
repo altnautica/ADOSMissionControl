@@ -678,12 +678,17 @@ body {
   color: var(--ink);
 }
 
-/* overlay zones */
+/* overlay zones — the self-anchoring fixture cards.
+   `.bl` and `.br` are deliberately absent: the telemetry strip and the
+   proximity radar used to anchor there, at the same coordinates and the same
+   z-index as the arrangeable-widget containers below, so an operator widget in
+   that corner overlapped them with paint order deciding the winner. Both are
+   registry widgets now and are placed by `.cockpit-zone.*`. Anchoring a new
+   fixture at `.bl`/`.br` would recreate the collision; register a widget
+   instead. */
 .ados-cockpit .zone { position: absolute; z-index: 20; }
 .ados-cockpit .zone.tl { top: 52px; left: 18px; }
 .ados-cockpit .zone.tr { top: 52px; right: 18px; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
-.ados-cockpit .zone.bl { bottom: 92px; left: 18px; }
-.ados-cockpit .zone.br { bottom: 92px; right: 18px; }
 .ados-cockpit .zone.bc { left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 30; }
 .ados-cockpit .zone.tls { top: 52px; left: 238px; }
 
@@ -889,6 +894,10 @@ body {
 .ados-cockpit .pipinset .pipbody { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #05121e; }
 
 /* density hiding */
+/* Density for the remaining CSS-positioned chrome. The registry now owns the
+   density decision for widgets (`minDensity`), because a widget composed into
+   a shared zone container has no wrapper of its own to carry a class; these
+   rules stay for the fixtures that still bring their own. */
 .ados-cockpit[data-density="minimal"] .d-std,
 .ados-cockpit[data-density="minimal"] .d-full { display: none; }
 .ados-cockpit[data-density="standard"] .d-full { display: none; }
@@ -899,7 +908,12 @@ body {
   .ados-cockpit .strmtab.switching::after { animation: none; }
 }
 @media (max-width: 720px) {
-  .ados-cockpit .tape, .ados-cockpit .zone.bl { display: none; }
+  /* On a narrow viewport the tapes and the bottom-left column cost more video
+     than they return. `.zone.bl` no longer exists, so this targets the zone
+     container the telemetry strip now lives in — the previous selector had
+     silently stopped matching anything. */
+  .ados-cockpit .tape,
+  .ados-cockpit .cockpit-zone.bl { display: none; }
 }
 
 /* Changelog markdown body */

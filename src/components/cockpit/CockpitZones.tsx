@@ -36,8 +36,16 @@ import {
   type CockpitWidgetContext,
 } from "@/lib/cockpit/widget-registry";
 
-/** The built-in cockpit widgets, in one registry with any plugin widgets. */
-const BUILTIN_WIDGETS: readonly CockpitWidget[] = [
+/**
+ * The built-in cockpit widgets, in one registry with any plugin widgets.
+ *
+ * Exported so a test can register the real definitions into a cleared
+ * registry: `registerBuiltinCockpitWidgets` is module-guarded and becomes a
+ * no-op after the first call, and a test that retyped these definitions would
+ * not notice one of them losing `arrangeable` and going back to
+ * self-anchoring.
+ */
+export const BUILTIN_WIDGETS: readonly CockpitWidget[] = [
   {
     // The artificial horizon: pitch ladder + roll arc + boresight, over video.
     id: "builtin.attitude",
@@ -63,18 +71,32 @@ const BUILTIN_WIDGETS: readonly CockpitWidget[] = [
     render: () => <AltTape />,
   },
   {
+    // Arrangeable, so it shares the bottom-right zone container with any
+    // operator or plugin widget there instead of self-anchoring on top of it:
+    // both used to sit at the same coordinates and the same z-index, leaving
+    // paint order (i.e. DOM order) to decide which one the operator saw.
     id: "builtin.proximity-radar",
     zone: "bottom-right",
     source: "builtin",
+    arrangeable: true,
+    title: "Proximity radar",
     layoutKey: "proximityRadar",
+    // Was the `.d-std` class on its own wrapper, which a widget composed into
+    // a shared container has nowhere to put.
+    minDensity: "standard",
     order: 10,
     render: () => <ProximityRadar />,
   },
   {
+    // Same, for the bottom-left container it shared with the camera roster.
     id: "builtin.telemetry-strip",
     zone: "bottom-left",
     source: "builtin",
+    arrangeable: true,
+    title: "Telemetry strip",
     layoutKey: "telemetryStrip",
+    // Was the `.d-full` class on its own wrapper.
+    minDensity: "full",
     order: 10,
     render: () => <TelemetryStrip />,
   },

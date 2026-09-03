@@ -74,9 +74,12 @@ export function TelemetryStrip() {
   const vspd = vfr?.climb ?? pos?.climbRate;
   const throttle = typeof vfr?.throttle === "number" ? vfr.throttle : null;
 
+  // No positioning wrapper: the cockpit zone container places this. It used to
+  // carry `zone bl d-full`, which anchored it to the same bottom-left
+  // coordinates as the arrangeable-widget container at the same z-index, so a
+  // widget the operator moved into that corner painted straight over it.
   return (
-    <div className="zone bl d-full">
-      <div className="telem panel">
+    <div className="telem panel">
         <Row label={t("strip.dist")}>
           {homeDist === null ? "--" : fmt(homeDist, 0)} <small>m</small>
         </Row>
@@ -95,7 +98,6 @@ export function TelemetryStrip() {
           <small>%</small>
         </Row>
         <Row label={t("strip.eta")}>--:--</Row>
-      </div>
     </div>
   );
 }

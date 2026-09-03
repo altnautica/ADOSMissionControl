@@ -94,30 +94,31 @@ export function ProximityRadar() {
   const nearest = closestM ? parseFloat(closestM) : null;
   const labelColor = nearest === null ? "var(--good)" : nearest < 2 ? "var(--crit)" : "var(--warn)";
 
+  // No positioning wrapper: the cockpit zone container places this. It used to
+  // carry `zone br d-std`, anchoring it to the same bottom-right coordinates
+  // as the arrangeable-widget container at the same z-index.
   return (
-    <div className="zone br d-std">
-      <div className="radar panel">
-        <svg viewBox="0 0 120 120" aria-hidden="true">
-          <g fill="none" stroke="var(--hair)">
-            <circle cx={CENTER} cy={CENTER} r={52} />
-            <circle cx={CENTER} cy={CENTER} r={34} />
-            <circle cx={CENTER} cy={CENTER} r={16} />
-          </g>
-          <g stroke="var(--hair-2)">
-            <line x1={CENTER} y1={8} x2={CENTER} y2={112} />
-            <line x1={8} y1={CENTER} x2={112} y2={CENTER} />
-          </g>
-          {sectors.map((s, i) => (
-            <path key={i} d={s.d} fill={s.fill} stroke={s.stroke} strokeWidth={1} />
-          ))}
-          <circle cx={CENTER} cy={CENTER} r={3} fill="var(--hud)" />
-          <text x={CENTER} y={18} fill="var(--muted)" fontSize={8} textAnchor="middle" fontFamily="var(--mono)">
-            N
-          </text>
-        </svg>
-        <div className="rlabel lbl" style={{ color: labelColor }}>
-          {closestM ? `nearest ${closestM} m` : "clear"}
-        </div>
+    <div className="radar panel">
+      <svg viewBox="0 0 120 120" aria-hidden="true">
+        <g fill="none" stroke="var(--hair)">
+          <circle cx={CENTER} cy={CENTER} r={52} />
+          <circle cx={CENTER} cy={CENTER} r={34} />
+          <circle cx={CENTER} cy={CENTER} r={16} />
+        </g>
+        <g stroke="var(--hair-2)">
+          <line x1={CENTER} y1={8} x2={CENTER} y2={112} />
+          <line x1={8} y1={CENTER} x2={112} y2={CENTER} />
+        </g>
+        {sectors.map((s, i) => (
+          <path key={i} d={s.d} fill={s.fill} stroke={s.stroke} strokeWidth={1} />
+        ))}
+        <circle cx={CENTER} cy={CENTER} r={3} fill="var(--hud)" />
+        <text x={CENTER} y={18} fill="var(--muted)" fontSize={8} textAnchor="middle" fontFamily="var(--mono)">
+          N
+        </text>
+      </svg>
+      <div className="rlabel lbl" style={{ color: labelColor }}>
+        {closestM ? `nearest ${closestM} m` : "clear"}
       </div>
     </div>
   );
