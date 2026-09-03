@@ -10,6 +10,14 @@ import {
   encodeSerialControl, encodeCommandInt, encodeSetGpsGlobalOrigin,
 } from './mavlink-encoder'
 
+/**
+ * `MAV_MOUNT_MODE_MAVLINK_TARGETING` — the only mount mode under which
+ * DO_MOUNT_CONTROL's pitch/roll/yaw params mean anything. Named because the
+ * default 0 is `RETRACT`, and passing it while commanding an angle stows the
+ * gimbal, which is not a mistake a magic number makes obvious.
+ */
+const MAV_MOUNT_MODE_MAVLINK_TARGETING = 2
+
 export interface CommandContext {
   transport: Transport | null
   firmwareHandler: FirmwareHandler | null
@@ -148,7 +156,12 @@ export function cmdRebootToBootloader(ctx: CommandContext): CommandResult {
     (data) => ctx.transport!.send(data),
     ctx.targetSysId, ctx.targetCompId, ctx.sysId, ctx.compId,
   )
-  return { success: true, resultCode: 0, message: 'Bootloader reboot command sent' }
+  return {
+    success: true,
+    resultCode: 0,
+    acknowledged: false,
+    message: 'Bootloader reboot command sent, unacknowledged',
+  }
 }
 
 export function cmdReboot(ctx: CommandContext): CommandResult {
@@ -160,19 +173,33 @@ export function cmdReboot(ctx: CommandContext): CommandResult {
     (data) => ctx.transport!.send(data),
     ctx.targetSysId, ctx.targetCompId, ctx.sysId, ctx.compId,
   )
-  return { success: true, resultCode: 0, message: 'Reboot command sent' }
+  return {
+    success: true,
+    resultCode: 0,
+    acknowledged: false,
+    message: 'Reboot command sent, unacknowledged',
+  }
 }
 
 export function cmdResetParametersToDefault(ctx: CommandContext): CommandResult {
   if (!ctx.transport?.isConnected) {
     return { success: false, resultCode: -1, message: 'Not connected' }
   }
+  // MAV_CMD_PREFLIGHT_STORAGE (245). param1 = 2 resets parameter storage to
+  // defaults; param2 is the MISSION storage action and 0 means "no action".
+  // It used to pass -1, which is outside the enum — a receiver is free to
+  // interpret that however it likes, including wiping the mission.
   ctx.commandQueue.sendCommandNoAck(
-    245, [2, -1, 0, 0, 0, 0, 0],
+    245, [2, 0, 0, 0, 0, 0, 0],
     (data) => ctx.transport!.send(data),
     ctx.targetSysId, ctx.targetCompId, ctx.sysId, ctx.compId,
   )
-  return { success: true, resultCode: 0, message: 'Reset command sent' }
+  return {
+    success: true,
+    resultCode: 0,
+    acknowledged: false,
+    message: 'Reset command sent, unacknowledged',
+  }
 }
 
 export function cmdKillSwitch(ctx: CommandContext): Promise<CommandResult> {
@@ -205,12 +232,23 @@ export function cmdCommitParamsToFlash(ctx: CommandContext): CommandResult {
   if (!ctx.transport?.isConnected) {
     return { success: false, resultCode: -1, message: 'Not connected' }
   }
+  // Deliberately fire-and-forget: ArduPilot writes PARAM_SET straight to
+  // EEPROM, so this is a belt-and-braces PREFLIGHT_STORAGE and no caller may
+  // block on its ack. What was wrong is the RETURN VALUE — an unconditional
+  // `success: true` that surfaces rendered as "written to flash" for a write
+  // nothing confirmed. `acknowledged: false` is the honest shape; do not add
+  // an ack wait here.
   ctx.commandQueue.sendCommandNoAck(
     245, [1, 0, 0, 0, 0, 0, 0],
     (data) => ctx.transport!.send(data),
     ctx.targetSysId, ctx.targetCompId, ctx.sysId, ctx.compId,
   )
-  return { success: true, resultCode: 0, message: 'Flash commit command sent' }
+  return {
+    success: true,
+    resultCode: 0,
+    acknowledged: false,
+    message: 'Flash commit command sent, unacknowledged',
+  }
 }
 
 export function cmdSetHome(ctx: CommandContext, useCurrent: boolean, lat = 0, lon = 0, alt = 0): Promise<CommandResult> {
@@ -244,7 +282,11 @@ export function cmdSetGimbalAngle(ctx: CommandContext, pitch: number, roll: numb
   // MAV_CMD_DO_MOUNT_CONTROL (205) takes float DEGREES for pitch/roll/yaw.
   // (The centidegree convention belongs to the deprecated MOUNT_CONTROL
   // message, not this command.)
-  return ctx.sendCommandLong(205, [pitch, roll, yaw, 0, 0, 0, 0])
+  //
+  // param7 is the MOUNT MODE, and it was left at 0 — MAV_MOUNT_MODE_RETRACT.
+  // Commanding an angle therefore STOWED the gimbal instead of pointing it.
+  // MAVLINK_TARGETING (2) is the mode that makes params 1-3 mean anything.
+  return ctx.sendCommandLong(205, [pitch, roll, yaw, 0, 0, 0, MAV_MOUNT_MODE_MAVLINK_TARGETING])
 }
 
 export function cmdSetGimbalMode(ctx: CommandContext, mode: number): Promise<CommandResult> {
@@ -256,7 +298,10 @@ export function cmdDoPreArmCheck(ctx: CommandContext): Promise<CommandResult> {
 }
 
 export function cmdEnableFence(ctx: CommandContext, enable: boolean): Promise<CommandResult> {
-  return ctx.sendCommandLong(217, [enable ? 1 : 0, 0, 0, 0, 0, 0, 0])
+  // One implementation, one command number. This used to send 217, which is
+  // not in the MAV_CMD enum at all, while cmdSetGeoFenceEnabled sent the real
+  // MAV_CMD_DO_FENCE_ENABLE (207) for the same operator intent.
+  return cmdSetGeoFenceEnabled(ctx, enable)
 }
 
 export function cmdDoLandStart(ctx: CommandContext): Promise<CommandResult> {
@@ -272,7 +317,11 @@ export function cmdSetRelay(ctx: CommandContext, relayNum: number, on: boolean):
 }
 
 export function cmdStartRxPair(ctx: CommandContext, spektrum: number): Promise<CommandResult> {
-  return ctx.sendCommandLong(243, [spektrum, 0, 0, 0, 0, 0, 0])
+  // MAV_CMD_START_RX_PAIR (500). This used to send 243, which is
+  // MAV_CMD_PREFLIGHT_UAVCAN — whose param1 = 1 triggers a one-time DroneCAN
+  // actuator ID assignment and direction mapping. Pressing "bind receiver"
+  // re-enumerated the CAN actuators instead of binding anything.
+  return ctx.sendCommandLong(500, [spektrum, 0, 0, 0, 0, 0, 0])
 }
 
 export function cmdRequestMessage(ctx: CommandContext, msgId: number): Promise<CommandResult> {

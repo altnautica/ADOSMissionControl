@@ -117,6 +117,7 @@ export class MAVLinkParser {
   private writePos = 0;
   private callbacks: FrameCallback[] = [];
   private signedObservers: SignedFrameObserver[] = [];
+  private crcFailures = 0;
 
   constructor(initialCapacity = 4096) {
     this.buffer = new Uint8Array(initialCapacity);
@@ -155,9 +156,23 @@ export class MAVLinkParser {
     };
   }
 
+  /**
+   * How many candidate frames failed CRC since the last {@link reset}.
+   *
+   * This replaced a `console.debug` inside the parse loop that fired per
+   * mismatched COMMAND_ACK: on a noisy link that is an unbounded console write
+   * inside `feed()`, and it was only ever readable by someone with devtools
+   * open at the right moment. A counter is cheap, bounded, and something a
+   * diagnostics surface can actually show.
+   */
+  get crcFailureCount(): number {
+    return this.crcFailures;
+  }
+
   /** Clear the internal buffer and discard any partial frames. */
   reset(): void {
     this.writePos = 0;
+    this.crcFailures = 0;
   }
 
   // ── Internal ────────────────────────────────────────────
@@ -213,7 +228,14 @@ export class MAVLinkParser {
       // Validate CRC
       const crcExtra = CRC_EXTRA.get(msgId);
       if (crcExtra === undefined) {
-        // Unknown message — skip this byte and keep scanning
+        // Unknown message — advance ONE byte and keep scanning.
+        //
+        // Deliberate, and do not "optimise" it into a `readPos += totalLen`
+        // skip. With no CRC_EXTRA there is no way to validate that this is a
+        // frame at all: the 0xFD may be a payload byte of the frame we are
+        // actually inside. Skipping the header's claimed length would then
+        // discard up to 255 bytes of real stream. Every reference
+        // implementation resyncs by one byte for the same reason.
         readPos++;
         continue;
       }
@@ -227,10 +249,9 @@ export class MAVLinkParser {
       const wireCrc = wireCrcLo | (wireCrcHi << 8);
 
       if (crc !== wireCrc) {
-        if (msgId === 77) {
-          console.debug(`[MAVLink] CRC mismatch for COMMAND_ACK: computed=${crc} wire=${wireCrc} payloadLen=${payloadLen}`)
-        }
-        // CRC mismatch — skip this STX and try the next byte
+        // CRC mismatch — this is not a valid frame at this offset. Same
+        // one-byte resync, same reason as above.
+        this.crcFailures++;
         readPos++;
         continue;
       }

@@ -207,20 +207,43 @@ export function decodeCommandLong(dv: DataView): CommandLongMsg {
 export interface CommandAckMsg {
   command: number;
   result: number;
+  /** 0-100 for a long-running command, 255 when the sender reports none. */
+  progress: number;
+  /** Command-specific detail; for MAV_RESULT_FAILED it carries the reason. */
+  resultParam2: number;
+  /** The GCS this ack is addressed to. 0 means "any". */
+  targetSystem: number;
+  /** The component this ack is addressed to. 0 means "any". */
+  targetComponent: number;
 }
 
 /**
  * Decode COMMAND_ACK (msg ID 77).
  *
- * | Offset | Type   | Field   |
- * |--------|--------|---------|
- * | 0      | uint16 | command |
- * | 2      | uint8  | result  |
+ * | Offset | Type   | Field            |
+ * |--------|--------|------------------|
+ * | 0      | uint16 | command          |
+ * | 2      | uint8  | result           |
+ * | 3      | uint8  | progress         |
+ * | 4      | int32  | result_param2    |
+ * | 8      | uint8  | target_system    |
+ * | 9      | uint8  | target_component |
+ *
+ * Everything from offset 3 is a MAVLink extension field. The canonical length
+ * was pinned at 3 for a long time, which truncated the payload before the
+ * parser's zero-restore could reach these, so `progress` had no source and an
+ * ack addressed to a different GCS on a shared link resolved our own pending
+ * command. Reads are guarded on byteLength so a genuinely short frame from an
+ * old sender still decodes its base fields.
  */
 export function decodeCommandAck(dv: DataView): CommandAckMsg {
   return {
     command: dv.getUint16(0, true),
     result: dv.getUint8(2),
+    progress: dv.byteLength >= 4 ? dv.getUint8(3) : 255,
+    resultParam2: dv.byteLength >= 8 ? dv.getInt32(4, true) : 0,
+    targetSystem: dv.byteLength >= 9 ? dv.getUint8(8) : 0,
+    targetComponent: dv.byteLength >= 10 ? dv.getUint8(9) : 0,
   };
 }
 

@@ -165,7 +165,7 @@ export function routeFrame(s: FrameHandlerState, frame: MAVLinkFrame, p: DataVie
     case 231: handleWindCov(p, c.windCovCallbacks); break
     case 241: handleVibration(p, c.vibrationCallbacks); break
     case 242: handleHomePosition(p, c.homePositionCallbacks); break
-    case 335: handleEkfStatus(p, c.ekfCallbacks); break
+    case 193: handleEkfStatus(p, c.ekfCallbacks); break
     case 230: handleEstimatorStatus(p, c.estimatorStatusCallbacks); break
     case 76:  handleIncomingCommandLong(p, c.accelCalPosCallbacks); break
     case 191: handleMagCalProgress(p, c.magCalProgressCallbacks); break
@@ -179,11 +179,11 @@ export function routeFrame(s: FrameHandlerState, frame: MAVLinkFrame, p: DataVie
     case 251: handleNamedValueFloat(p, c.debugCallbacks); break
     case 252: handleNamedValueInt(p, c.debugCallbacks); break
     case 254: handleDebugValue(p, c.debugCallbacks); break
-    case 246: handleAisVessel(p, c.aisVesselCallbacks); break
+    case 301: handleAisVessel(p, c.aisVesselCallbacks); break
     case 263: handleCameraImageCaptured(p, c.cameraImageCallbacks); break
-    case 284: handleGimbalAttitude(p, c.gimbalAttitudeCallbacks); break
-    case 285: handleGimbalManagerInfo(p, c.gimbalManagerInfoCallbacks); break
-    case 286: handleGimbalManagerStatus(p, c.gimbalManagerStatusCallbacks); break
+    case 285: handleGimbalAttitude(p, c.gimbalAttitudeCallbacks); break
+    case 280: handleGimbalManagerInfo(p, c.gimbalManagerInfoCallbacks); break
+    case 281: handleGimbalManagerStatus(p, c.gimbalManagerStatusCallbacks); break
     case 330: handleObstacleDistance(p, c.obstacleDistanceCallbacks); break
     case 386: handleCanFrame(p, c.canFrameCallbacks); break
     case 387: handleCanFdFrame(p, c.canFdFrameCallbacks); break
@@ -472,9 +472,10 @@ export const MSG_NAMES: Record<number, string> = {
   65: 'RC_CHANNELS', 70: 'RC_CHANNELS_OVERRIDE', 73: 'MISSION_ITEM_INT', 74: 'VFR_HUD', 76: 'COMMAND_LONG', 77: 'COMMAND_ACK', 109: 'RADIO_STATUS',
   110: 'FILE_TRANSFER_PROTOCOL', 112: 'CAMERA_TRIGGER', 118: 'LOG_ENTRY', 120: 'LOG_DATA', 125: 'POWER_STATUS', 126: 'SERIAL_CONTROL', 132: 'DISTANCE_SENSOR', 136: 'TERRAIN_REPORT',
   141: 'ALTITUDE', 147: 'BATTERY_STATUS', 148: 'AUTOPILOT_VERSION', 160: 'FENCE_POINT', 162: 'FENCE_STATUS', 168: 'WIND', 191: 'MAG_CAL_PROGRESS',
-  192: 'MAG_CAL_REPORT', 230: 'ESTIMATOR_STATUS', 231: 'WIND_COV', 241: 'VIBRATION', 242: 'HOME_POSITION', 245: 'EXTENDED_SYS_STATE', 246: 'AIS_VESSEL',
-  251: 'NAMED_VALUE_FLOAT', 252: 'NAMED_VALUE_INT', 253: 'STATUSTEXT', 254: 'DEBUG', 263: 'CAMERA_IMAGE_CAPTURED', 284: 'GIMBAL_DEVICE_ATTITUDE_STATUS',
-  285: 'GIMBAL_MANAGER_INFORMATION', 286: 'GIMBAL_MANAGER_STATUS', 330: 'OBSTACLE_DISTANCE', 335: 'EKF_STATUS_REPORT',
+  192: 'MAG_CAL_REPORT', 193: 'EKF_STATUS_REPORT', 230: 'ESTIMATOR_STATUS', 231: 'WIND_COV', 241: 'VIBRATION', 242: 'HOME_POSITION', 245: 'EXTENDED_SYS_STATE',
+  246: 'ADSB_VEHICLE', 251: 'NAMED_VALUE_FLOAT', 252: 'NAMED_VALUE_INT', 253: 'STATUSTEXT', 254: 'DEBUG', 263: 'CAMERA_IMAGE_CAPTURED',
+  280: 'GIMBAL_MANAGER_INFORMATION', 281: 'GIMBAL_MANAGER_STATUS', 284: 'GIMBAL_DEVICE_SET_ATTITUDE', 285: 'GIMBAL_DEVICE_ATTITUDE_STATUS',
+  286: 'AUTOPILOT_STATE_FOR_GIMBAL_DEVICE', 301: 'AIS_VESSEL', 330: 'OBSTACLE_DISTANCE', 335: 'ISBD_LINK_STATUS',
   100: 'OPTICAL_FLOW', 102: 'VISION_POSITION_ESTIMATE', 106: 'OPTICAL_FLOW_RAD', 331: 'ODOMETRY', 11011: 'VISION_POSITION_DELTA',
   386: 'CAN_FRAME', 387: 'CANFD_FRAME', 388: 'CAN_FILTER_MODIFY', 397: 'COMPONENT_METADATA', 410: 'EVENT',
 }

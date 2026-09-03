@@ -27,6 +27,16 @@ export interface CommandResult {
   /** Raw MAV_RESULT enum value. */
   resultCode: number;
   message: string;
+  /**
+   * Whether the vehicle actually acknowledged the command.
+   *
+   * Absent means "acknowledged, or the caller does not distinguish". `false`
+   * means the command reached the wire and nothing confirmed it — the honest
+   * answer for the deliberately fire-and-forget senders (flash commit, reboot,
+   * parameter reset), which previously reported a plain `success: true` and
+   * let surfaces render "written to flash" for a write nobody confirmed.
+   */
+  acknowledged?: boolean;
 }
 
 /** A single on-board parameter value. */

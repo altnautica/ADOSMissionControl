@@ -49,7 +49,7 @@ export const CRC_EXTRA: ReadonlyMap<number, number> = new Map([
   [191, 92],  // MAG_CAL_PROGRESS
   [192, 36],  // MAG_CAL_REPORT
   [241, 90],  // VIBRATION
-  [335, 71],  // EKF_STATUS_REPORT
+  [193, 71],  // EKF_STATUS_REPORT (ArduPilot dialect)
   [66, 148],  // REQUEST_DATA_STREAM
   [242, 104], // HOME_POSITION
   [148, 178], // AUTOPILOT_VERSION
@@ -77,7 +77,7 @@ export const CRC_EXTRA: ReadonlyMap<number, number> = new Map([
   [252, 44],    // NAMED_VALUE_INT
   [254, 46],    // DEBUG
   [263, 133],   // CAMERA_IMAGE_CAPTURED
-  [284, 227],   // GIMBAL_DEVICE_ATTITUDE_STATUS
+  [285, 137],   // GIMBAL_DEVICE_ATTITUDE_STATUS
   [330, 23],    // OBSTACLE_DISTANCE
   [160, 78],    // FENCE_POINT
   [161, 68],    // FENCE_FETCH_POINT
@@ -92,9 +92,9 @@ export const CRC_EXTRA: ReadonlyMap<number, number> = new Map([
   [39, 254],    // MISSION_ITEM
   [141, 47],    // ALTITUDE
   [231, 105],   // WIND_COV
-  [246, 245],   // AIS_VESSEL
-  [285, 166],   // GIMBAL_MANAGER_INFORMATION
-  [286, 48],    // GIMBAL_MANAGER_STATUS
+  [301, 243],   // AIS_VESSEL
+  [280, 70],    // GIMBAL_MANAGER_INFORMATION
+  [281, 48],    // GIMBAL_MANAGER_STATUS
   [386, 132],   // CAN_FRAME
   [387, 4],     // CANFD_FRAME
   [388, 8],     // CAN_FILTER_MODIFY
@@ -119,7 +119,7 @@ export const PAYLOAD_LENGTHS: ReadonlyMap<number, number> = new Map([
   [21, 2],    // PARAM_REQUEST_LIST
   [22, 25],   // PARAM_VALUE
   [23, 23],   // PARAM_SET
-  [24, 30],   // GPS_RAW_INT
+  [24, 52],   // GPS_RAW_INT (30 base + alt_ellipsoid/h_acc/v_acc/vel_acc/hdg_acc/yaw extensions)
   [30, 28],   // ATTITUDE
   [33, 28],   // GLOBAL_POSITION_INT
   [41, 4],    // MISSION_SET_CURRENT
@@ -134,9 +134,9 @@ export const PAYLOAD_LENGTHS: ReadonlyMap<number, number> = new Map([
   [74, 20],   // VFR_HUD
   [75, 35],   // COMMAND_INT
   [76, 33],   // COMMAND_LONG
-  [77, 3],    // COMMAND_ACK
+  [77, 10],   // COMMAND_ACK (3 base + progress/result_param2/target_system/target_component)
   [126, 79],  // SERIAL_CONTROL
-  [147, 36],  // BATTERY_STATUS
+  [147, 54],  // BATTERY_STATUS (36 base + time_remaining/charge_state/voltages_ext/mode/fault_bitmask)
   [253, 54],  // STATUSTEXT (severity + 50 chars + 3 id bytes)
   [42, 2],    // MISSION_CURRENT
   [43, 3],    // MISSION_REQUEST_LIST (2 base + 1 missionType extension)
@@ -149,12 +149,12 @@ export const PAYLOAD_LENGTHS: ReadonlyMap<number, number> = new Map([
   [191, 27],  // MAG_CAL_PROGRESS
   [192, 54],  // MAG_CAL_REPORT (with orientation/scale extensions)
   [241, 32],  // VIBRATION
-  [335, 22],  // EKF_STATUS_REPORT
+  [193, 26],  // EKF_STATUS_REPORT (22 base + airspeed_variance extension)
   [66, 6],    // REQUEST_DATA_STREAM
   [242, 52],  // HOME_POSITION (base, without time_usec extension)
   [148, 60],  // AUTOPILOT_VERSION (base, without uid2 extension)
   [125, 6],   // POWER_STATUS
-  [132, 14],  // DISTANCE_SENSOR (base)
+  [132, 39],  // DISTANCE_SENSOR (14 base + horizontal_fov/vertical_fov/quaternion/signal_quality)
   [162, 8],   // FENCE_STATUS
   [62, 26],   // NAV_CONTROLLER_OUTPUT
   [26, 22],   // SCALED_IMU
@@ -177,7 +177,7 @@ export const PAYLOAD_LENGTHS: ReadonlyMap<number, number> = new Map([
   [252, 18],    // NAMED_VALUE_INT
   [254, 9],     // DEBUG
   [263, 255],   // CAMERA_IMAGE_CAPTURED
-  [284, 40],    // GIMBAL_DEVICE_ATTITUDE_STATUS
+  [285, 49],    // GIMBAL_DEVICE_ATTITUDE_STATUS
   [330, 158],   // OBSTACLE_DISTANCE
   [160, 12],    // FENCE_POINT
   [161, 6],     // FENCE_FETCH_POINT
@@ -192,9 +192,9 @@ export const PAYLOAD_LENGTHS: ReadonlyMap<number, number> = new Map([
   [39, 37],     // MISSION_ITEM
   [141, 32],    // ALTITUDE
   [231, 40],    // WIND_COV
-  [246, 58],    // AIS_VESSEL
-  [285, 33],    // GIMBAL_MANAGER_INFORMATION
-  [286, 13],    // GIMBAL_MANAGER_STATUS
+  [301, 58],    // AIS_VESSEL
+  [280, 33],    // GIMBAL_MANAGER_INFORMATION
+  [281, 13],    // GIMBAL_MANAGER_STATUS
   [386, 16],    // CAN_FRAME
   [387, 72],    // CANFD_FRAME (8 header + 64 data bytes)
   [388, 37],    // CAN_FILTER_MODIFY (16 x uint16 ids + 5 bytes fields = 37)

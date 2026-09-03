@@ -257,20 +257,30 @@ export function usePanelParams(
       return false;
     }
     try {
-      onEvent?.({ type: "flash", message: "Writing to flash..." });
+      onEvent?.({ type: "flash", message: "Sending flash commit..." });
       const result = await protocol.commitParamsToFlash();
       if (result.success) {
         commitFlashStore(true);
         setHasRamWrites(false);
         useDiagnosticsStore.getState().logEvent("flash_commit", "Flash commit");
-        onEvent?.({ type: "flash", message: "Written to flash" });
+        // The command is deliberately fire-and-forget, so a `success` here
+        // means "reached the wire", not "the vehicle stored it". Saying
+        // "written to flash" for an unacknowledged write trains an operator to
+        // trust a claim nothing verified; report what actually happened.
+        onEvent?.({
+          type: "flash",
+          message:
+            result.acknowledged === false
+              ? "Flash commit sent (unacknowledged)"
+              : "Written to flash",
+        });
         return true;
       }
-      onEvent?.({ type: "error", message: "Failed to write to flash" });
+      onEvent?.({ type: "error", message: "Failed to send flash commit" });
       return false;
     } catch (err) {
       console.error(`[${panelId}] commitParamsToFlash error:`, err);
-      onEvent?.({ type: "error", message: "Error writing to flash" });
+      onEvent?.({ type: "error", message: "Error sending flash commit" });
       return false;
     }
   }, [getProtocol, commitFlashStore, panelId, onEvent]);
