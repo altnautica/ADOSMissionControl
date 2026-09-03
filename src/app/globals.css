@@ -656,7 +656,17 @@ body {
 /* ══ ADOS Cockpit — faithful port of the reference artifact (ados-cockpit.html) ══
    A committed dark, immersive piloting world. Every rule is scoped under the
    .ados-cockpit root so the artifact's generic class names never touch app
-   styles; token/blur/radius/spacing values are the artifact's, verbatim. */
+   styles; token/blur/radius/spacing values are the artifact's, verbatim.
+
+   The palette below is the DEFAULT-theme palette, written as literals because
+   it is the artifact's and the default cockpit must look exactly like it. It
+   is not a theme opt-out: a theme with an opinion about status colour or ink
+   overrides these under `html[data-theme=…] .ados-cockpit`, immediately after
+   this block. That override exists because the cockpit used to hardcode the
+   whole palette, so it ignored every theme — including `nvg`, whose entire
+   purpose is to preserve dark adaptation on a night flight. The one surface an
+   operator actually flies from was the one that stayed bright blue and amber
+   after they selected the night-vision theme. */
 .ados-cockpit {
   --hud: #63b3ff;
   --hud-dim: #4b7fb5;
@@ -676,6 +686,37 @@ body {
   overflow: hidden;
   user-select: none;
   color: var(--ink);
+}
+
+/* Night-vision: the whole reason this theme exists is dark adaptation, so the
+   cockpit follows it. Status colours come from the theme's own muted status
+   tokens and the HUD from its green, rather than the artifact's bright blue. */
+html[data-theme="nvg"] .ados-cockpit {
+  --hud: var(--gcs-hud-green);
+  --hud-dim: var(--alt-accent-secondary);
+  --ink: var(--alt-text-primary);
+  --ink-2: var(--alt-text-secondary);
+  --muted: var(--alt-text-tertiary);
+  --good: var(--alt-status-success);
+  --warn: var(--alt-status-warning);
+  --crit: var(--alt-status-error);
+  --lock: var(--alt-status-success);
+  --glass: var(--gcs-hud-bg);
+  --glass-2: var(--gcs-hud-bg);
+  --hair: var(--alt-border-strong);
+  --hair-2: var(--alt-border-default);
+}
+
+/* Light themes: a glass-over-video cockpit still needs dark chrome to stay
+   readable over bright imagery, so only the status colours and the ink follow
+   the theme — the glass stays dark on purpose. */
+html[data-theme="light"] .ados-cockpit,
+html[data-theme="solarized-light"] .ados-cockpit,
+html[data-theme="catppuccin-latte"] .ados-cockpit,
+html[data-theme="gruvbox-light"] .ados-cockpit {
+  --good: var(--alt-status-success);
+  --warn: var(--alt-status-warning);
+  --crit: var(--alt-status-error);
 }
 
 /* overlay zones — the self-anchoring fixture cards.
