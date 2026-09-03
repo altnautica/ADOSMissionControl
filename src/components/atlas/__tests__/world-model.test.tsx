@@ -63,6 +63,15 @@ describe("DroneWorldModelTab (setup surface)", () => {
     expect(screen.getByText(messages.atlas.capture.reqService)).toBeTruthy();
     expect(screen.getByText(messages.atlas.capture.enableCapture)).toBeTruthy();
   });
+
+  // The shared-data world model mounts INSIDE this node-detail tab, never as a
+  // route or a second dashboard surface. With nothing published it reports the
+  // absent state, which is not the empty-world state.
+  it("mounts the shared world-model descriptor card in the setup surface", () => {
+    renderTab();
+    expect(screen.getByTestId("world-presence").dataset.presence).toBe("absent");
+    expect(screen.getByTestId("world-stream-status")).toBeTruthy();
+  });
 });
 
 describe("WorldModelViewport", () => {

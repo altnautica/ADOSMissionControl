@@ -85,6 +85,56 @@ describe("buildAtlasPatch", () => {
     expect(patch!.live.relayDecimation).toBe(4);
   });
 
+  // The agent's atlas-state sidecar carries four capture-honesty fields the GCS
+  // previously dropped on the floor. Each one exists because its absence made a
+  // known-false reading indistinguishable from a healthy one.
+  it("maps the capture-honesty fields (capped / anchored / pose tier / drops)", () => {
+    const patch = buildAtlasPatch(
+      hb({
+        state: "capturing",
+        keyframesIngested: 400,
+        capped: true,
+        anchored: false,
+        poseTier: "offloaded_slam",
+        droppedKeyframes: 7,
+      }),
+      current,
+      11,
+    );
+    // `capped` is why a frozen keyframe count against "capturing" is not a
+    // stalled camera; `anchored: false` is a capture that is running and
+    // producing nothing; `droppedKeyframes` is why the ingested count overstates
+    // the reconstruction input.
+    expect(patch!.live.capped).toBe(true);
+    expect(patch!.live.anchored).toBe(false);
+    expect(patch!.live.poseTier).toBe("offloaded_slam");
+    expect(patch!.live.droppedKeyframes).toBe(7);
+  });
+
+  it("maps keyframesCarried, including the false the WFB relay reports", () => {
+    // A `false` here means the world-model lane is degraded to pose and status —
+    // no world model — while the bearer still reads as live. It must survive the
+    // merge rather than being treated as absent.
+    const patch = buildAtlasPatch(
+      hb({ state: "capturing", bearer: "wfb-relay", keyframesCarried: false }),
+      current,
+      13,
+    );
+    expect(patch!.live.keyframesCarried).toBe(false);
+    expect(patch!.live.bearer).toBe("wfb-relay");
+  });
+
+  it("leaves the honesty fields null when the agent reports none", () => {
+    // No claim either way is the honest reading for a pre-field agent, so these
+    // must not default to a confident false.
+    const patch = buildAtlasPatch(hb({ state: "idle" }), current, 17);
+    expect(patch!.live.keyframesCarried).toBeNull();
+    expect(patch!.live.capped).toBeNull();
+    expect(patch!.live.anchored).toBeNull();
+    expect(patch!.live.poseTier).toBeNull();
+    expect(patch!.live.droppedKeyframes).toBeNull();
+  });
+
   it("merges a sparse slice over the current slice", () => {
     const prior = {
       live: {

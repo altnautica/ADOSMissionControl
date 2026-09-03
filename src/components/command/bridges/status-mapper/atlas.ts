@@ -21,6 +21,10 @@ function asString(v: unknown): string | null {
   return typeof v === "string" && v.length > 0 ? v : null;
 }
 
+function asBool(v: unknown): boolean | null {
+  return typeof v === "boolean" ? v : null;
+}
+
 /** Pull the `atlas` slice out of the generic plugin-state map, or null. */
 function atlasSlice(cloudStatus: Record<string, unknown>): Record<string, unknown> | null {
   const pluginState = cloudStatus.pluginState;
@@ -71,6 +75,11 @@ export function mapAtlasSlice(
   const computeNodeId = asString(slice.computeNodeId);
   const lastKfAt = asNumber(slice.lastKfAt);
   const bearer = asString(slice.bearer);
+  const keyframesCarried = asBool(slice.keyframesCarried);
+  const capped = asBool(slice.capped);
+  const anchored = asBool(slice.anchored);
+  const poseTier = asString(slice.poseTier);
+  const droppedKeyframes = asNumber(slice.droppedKeyframes);
   const relayGroundAgentId = asString(slice.relayGroundAgentId);
   const relayDecimation = asNumber(slice.relayDecimation);
 
@@ -85,6 +94,11 @@ export function mapAtlasSlice(
     computeNodeId === null &&
     lastKfAt === null &&
     bearer === null &&
+    keyframesCarried === null &&
+    capped === null &&
+    anchored === null &&
+    poseTier === null &&
+    droppedKeyframes === null &&
     relayGroundAgentId === null &&
     relayDecimation === null
   ) {
@@ -103,6 +117,11 @@ export function mapAtlasSlice(
     computeNodeId: computeNodeId ?? current.live.computeNodeId,
     lastKfAt: lastKfAt ?? current.live.lastKfAt,
     bearer: bearer ?? current.live.bearer,
+    keyframesCarried: keyframesCarried ?? current.live.keyframesCarried,
+    capped: capped ?? current.live.capped,
+    anchored: anchored ?? current.live.anchored,
+    poseTier: poseTier ?? current.live.poseTier,
+    droppedKeyframes: droppedKeyframes ?? current.live.droppedKeyframes,
     relayGroundAgentId: relayGroundAgentId ?? current.live.relayGroundAgentId,
     relayDecimation: relayDecimation ?? current.live.relayDecimation,
     updatedAt: nowMs,

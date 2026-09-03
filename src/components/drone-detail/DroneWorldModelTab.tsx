@@ -32,6 +32,7 @@ import {
   type AtlasViewer,
 } from "@/components/atlas/viewer-types";
 import { WorldModelViewport } from "@/components/atlas/WorldModelViewport";
+import { WorldGenerationCard } from "@/components/atlas/WorldGenerationCard";
 import { ViewerSwitcher } from "@/components/atlas/ViewerSwitcher";
 import { MiniVideoView } from "@/components/command/shared/MiniVideoView";
 import { AtlasRequirementsChecklist } from "@/components/drone-detail/atlas/AtlasRequirementsChecklist";
@@ -237,12 +238,24 @@ export function DroneWorldModelTab({ droneId }: { droneId?: string }) {
             ariaLabel={t("viewerGroupLabel")}
           />
         </div>
-        <div className="flex-1 relative min-h-[320px]">
-          <WorldModelViewport
-            viewer={viewer}
-            artifactUrl={artifactUrl}
-            backend={backend}
-          />
+        <div className="flex-1 flex min-h-[320px]">
+          <div className="flex-1 relative">
+            <WorldModelViewport
+              viewer={viewer}
+              artifactUrl={artifactUrl}
+              backend={backend}
+            />
+          </div>
+          {/* The shared-data facts beside the picture: which generation is on
+              screen and what it actually contains. The viewer shows an
+              artifact; only the descriptors say whether a planning input
+              exists for it. */}
+          <aside className="w-72 shrink-0 overflow-auto border-l border-border-default p-2">
+            <WorldGenerationCard
+              droneDeviceId={control.deviceId}
+              computeNodeDeviceId={local.computeNodeDeviceId}
+            />
+          </aside>
         </div>
       </div>
     );
@@ -313,6 +326,10 @@ export function DroneWorldModelTab({ droneId }: { droneId?: string }) {
 
           {/* Right: requirements + controls */}
           <div className="space-y-3">
+            <WorldGenerationCard
+              droneDeviceId={control.deviceId}
+              computeNodeDeviceId={local.computeNodeDeviceId}
+            />
             <div className="border border-border-default rounded-lg p-3">
               <AtlasRequirementsChecklist requirements={gate.requirements} />
             </div>
