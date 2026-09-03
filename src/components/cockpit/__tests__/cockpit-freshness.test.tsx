@@ -76,7 +76,7 @@ describe("cockpit safety band freshness", () => {
     seedTelemetry(0);
     renderBand();
     expect(screen.getByText(/76/)).toBeTruthy();
-    expect(screen.getByText(/3D · 14/)).toBeTruthy();
+    expect(screen.getByText(/3D \/ 14/)).toBeTruthy();
   });
 
   it("blanks the same readings once they age past the staleness window", () => {
@@ -89,8 +89,8 @@ describe("cockpit safety band freshness", () => {
     expect(screen.queryByText(/76/)).toBeNull();
 
     // "NO FIX" rather than a stale 3D lock with 14 satellites.
-    expect(screen.queryByText(/3D · 14/)).toBeNull();
-    expect(screen.getByText("NO FIX")).toBeTruthy();
+    expect(screen.queryByText(/3D \/ 14/)).toBeNull();
+    expect(screen.getByText(messages.cockpit.strip.gpsNoFix)).toBeTruthy();
   });
 
   it("treats a sample exactly at the threshold as stale", () => {

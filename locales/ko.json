@@ -5968,7 +5968,13 @@
       "provisioning": "AUTHORISING",
       "expiring": "ENDING SOON"
     },
-    "openFlight": "비행 열기"
+    "openFlight": "비행 열기",
+    "alerts": {
+      "battCrit": "배터리 위험",
+      "battLow": "배터리 부족",
+      "fenceBreach": "펜스 이탈",
+      "linkStale": "링크 끊김"
+    }
   },
   "skills": {
     "arm": {

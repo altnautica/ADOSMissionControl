@@ -5968,7 +5968,13 @@
       "provisioning": "AUTHORISING",
       "expiring": "ENDING SOON"
     },
-    "openFlight": "ఫ్లైట్ తెరువు"
+    "openFlight": "ఫ్లైట్ తెరువు",
+    "alerts": {
+      "battCrit": "బ్యాటరీ ప్రమాదం",
+      "battLow": "బ్యాటరీ తక్కువ",
+      "fenceBreach": "సరిహద్దు ఉల్లంఘన",
+      "linkStale": "లింక్ పాతది"
+    }
   },
   "skills": {
     "arm": {

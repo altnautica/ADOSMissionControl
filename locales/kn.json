@@ -5968,7 +5968,13 @@
       "provisioning": "AUTHORISING",
       "expiring": "ENDING SOON"
     },
-    "openFlight": "ಫ್ಲೈಟ್ ತೆರೆಯಿರಿ"
+    "openFlight": "ಫ್ಲೈಟ್ ತೆರೆಯಿರಿ",
+    "alerts": {
+      "battCrit": "ಬ್ಯಾಟರಿ ಗಂಭೀರ",
+      "battLow": "ಬ್ಯಾಟರಿ ಕಡಿಮೆ",
+      "fenceBreach": "ಗಡಿ ಉಲ್ಲಂಘನೆ",
+      "linkStale": "ಲಿಂಕ್ ಹಳೆಯದು"
+    }
   },
   "skills": {
     "arm": {

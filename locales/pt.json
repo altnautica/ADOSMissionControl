@@ -5968,7 +5968,13 @@
       "provisioning": "AUTHORISING",
       "expiring": "ENDING SOON"
     },
-    "openFlight": "Abrir voo"
+    "openFlight": "Abrir voo",
+    "alerts": {
+      "battCrit": "BAT CRÍTICA",
+      "battLow": "BAT BAIXA",
+      "fenceBreach": "CERCA VIOLADA",
+      "linkStale": "LIGAÇÃO OBSOLETA"
+    }
   },
   "skills": {
     "arm": {

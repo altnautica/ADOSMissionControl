@@ -5968,7 +5968,13 @@
       "provisioning": "AUTHORISING",
       "expiring": "ENDING SOON"
     },
-    "openFlight": "Buka Penerbangan"
+    "openFlight": "Buka Penerbangan",
+    "alerts": {
+      "battCrit": "BATERAI KRITIS",
+      "battLow": "BATERAI RENDAH",
+      "fenceBreach": "PAGAR DILANGGAR",
+      "linkStale": "TAUTAN KEDALUWARSA"
+    }
   },
   "skills": {
     "arm": {

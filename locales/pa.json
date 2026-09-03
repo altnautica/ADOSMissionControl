@@ -5968,7 +5968,13 @@
       "provisioning": "AUTHORISING",
       "expiring": "ENDING SOON"
     },
-    "openFlight": "ਫਲਾਈਟ ਖੋਲ੍ਹੋ"
+    "openFlight": "ਫਲਾਈਟ ਖੋਲ੍ਹੋ",
+    "alerts": {
+      "battCrit": "ਬੈਟਰੀ ਗੰਭੀਰ",
+      "battLow": "ਬੈਟਰੀ ਘੱਟ",
+      "fenceBreach": "ਹੱਦ ਉਲੰਘਣਾ",
+      "linkStale": "ਲਿੰਕ ਪੁਰਾਣਾ"
+    }
   },
   "skills": {
     "arm": {

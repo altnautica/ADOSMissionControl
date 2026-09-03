@@ -5968,7 +5968,13 @@
       "provisioning": "AUTHORISING",
       "expiring": "ENDING SOON"
     },
-    "openFlight": "Flug öffnen"
+    "openFlight": "Flug öffnen",
+    "alerts": {
+      "battCrit": "AKKU KRIT",
+      "battLow": "AKKU NIEDRIG",
+      "fenceBreach": "ZAUN VERLETZT",
+      "linkStale": "LINK VERALTET"
+    }
   },
   "skills": {
     "arm": {

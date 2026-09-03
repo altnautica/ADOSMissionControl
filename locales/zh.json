@@ -5968,7 +5968,13 @@
       "provisioning": "AUTHORISING",
       "expiring": "ENDING SOON"
     },
-    "openFlight": "打开飞行"
+    "openFlight": "打开飞行",
+    "alerts": {
+      "battCrit": "电量危急",
+      "battLow": "电量偏低",
+      "fenceBreach": "越界",
+      "linkStale": "链路失效"
+    }
   },
   "skills": {
     "arm": {

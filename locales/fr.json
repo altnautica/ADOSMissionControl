@@ -5968,7 +5968,13 @@
       "provisioning": "AUTHORISING",
       "expiring": "ENDING SOON"
     },
-    "openFlight": "Ouvrir le vol"
+    "openFlight": "Ouvrir le vol",
+    "alerts": {
+      "battCrit": "BATT CRITIQUE",
+      "battLow": "BATT FAIBLE",
+      "fenceBreach": "CLÔTURE FRANCHIE",
+      "linkStale": "LIEN PÉRIMÉ"
+    }
   },
   "skills": {
     "arm": {

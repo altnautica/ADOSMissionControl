@@ -110,10 +110,19 @@ function CockpitTopBarInner({ onExit, controls, lean = false }: CockpitTopBarPro
       ? Math.max(0, Math.min(100, batteryPct))
       : 0;
 
+  // The locale already carried gpsRtk / gps3d / gps2d / gpsNoFix; this band was
+  // building its own English strings beside them, so the one surface an
+  // operator stares at during a flight was the one that never translated.
   const fix = gps?.fixType ?? 0;
   const sats = fmt(gps?.satellites, 0);
   const gpsLabel =
-    fix >= 5 ? `RTK · ${sats}` : fix >= 3 ? `3D · ${sats}` : fix >= 2 ? `2D · ${sats}` : "NO FIX";
+    fix >= 5
+      ? t("strip.gpsRtk", { sats })
+      : fix >= 3
+        ? t("strip.gps3d", { sats })
+        : fix >= 2
+          ? t("strip.gps2d", { sats })
+          : t("strip.gpsNoFix");
 
   const level = sigLevel(radio?.rssi);
   const rssi = radio ? fmt(radio.rssi, 0) : "--";

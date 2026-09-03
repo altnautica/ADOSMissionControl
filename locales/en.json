@@ -5968,7 +5968,13 @@
       "provisioning": "AUTHORISING",
       "expiring": "ENDING SOON"
     },
-    "openFlight": "Open Flight"
+    "openFlight": "Open Flight",
+    "alerts": {
+      "battCrit": "BATT CRIT",
+      "battLow": "BATT LOW",
+      "fenceBreach": "FENCE BREACH",
+      "linkStale": "LINK STALE"
+    }
   },
   "skills": {
     "arm": {

@@ -5968,7 +5968,13 @@
       "provisioning": "AUTHORISING",
       "expiring": "ENDING SOON"
     },
-    "openFlight": "フライトを開く"
+    "openFlight": "フライトを開く",
+    "alerts": {
+      "battCrit": "バッテリー危険",
+      "battLow": "バッテリー低下",
+      "fenceBreach": "フェンス違反",
+      "linkStale": "リンク停止"
+    }
   },
   "skills": {
     "arm": {

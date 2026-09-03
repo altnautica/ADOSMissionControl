@@ -5968,7 +5968,13 @@
       "provisioning": "AUTHORISING",
       "expiring": "ENDING SOON"
     },
-    "openFlight": "फ्लाइट उघडा"
+    "openFlight": "फ्लाइट उघडा",
+    "alerts": {
+      "battCrit": "बॅटरी गंभीर",
+      "battLow": "बॅटरी कमी",
+      "fenceBreach": "सीमा उल्लंघन",
+      "linkStale": "दुवा जुना"
+    }
   },
   "skills": {
     "arm": {

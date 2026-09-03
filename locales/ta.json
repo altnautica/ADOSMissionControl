@@ -5968,7 +5968,13 @@
       "provisioning": "AUTHORISING",
       "expiring": "ENDING SOON"
     },
-    "openFlight": "பயணத்தைத் திற"
+    "openFlight": "பயணத்தைத் திற",
+    "alerts": {
+      "battCrit": "பேட்டரி ஆபத்து",
+      "battLow": "பேட்டரி குறைவு",
+      "fenceBreach": "எல்லை மீறல்",
+      "linkStale": "இணைப்பு பழசு"
+    }
   },
   "skills": {
     "arm": {
