@@ -8,6 +8,20 @@ const ALLOWED_PERMISSIONS = new Set([
   "notifications",
   "serial",
   "usb",
+  // Local Network Access. Chromium gates a page's access to loopback and
+  // private (RFC1918 / .local) endpoints behind a permission, and that gate was
+  // extended to cover WebSocket and WebTransport, not just fetch/XHR. Reaching
+  // a drone agent by LAN IP or `<host>.local` — the default and correct
+  // topology for this GCS — is exactly what it targets, so without these
+  // entries both handlers below deny every agent request and the operator sees
+  // a network outage rather than a permission denial. Electron exposes the
+  // split `local-network` / `loopback-network` pair plus the legacy combined
+  // `local-network-access` spelling, and which one a given Chromium asks for
+  // depends on its version, so all three are accepted. Still origin-gated:
+  // `isTrustedOrigin` keeps this to the app's own loopback window.
+  "local-network",
+  "loopback-network",
+  "local-network-access",
 ]);
 
 function isTrustedOrigin(origin?: string): boolean {

@@ -1,6 +1,21 @@
 {
   "compilerOptions": {
-    "target": "ES2017",
+    /* ES2022, matching electron/ and the four tools/ projects; convex/ is
+     * ESNext because Convex requires it. This project was the last one left on
+     * the Next scaffold default of ES2017, which was never a decision and was
+     * incoherent with the `lib` below: the checker was told every modern API
+     * exists while the emitter was told to downlevel to 2017.
+     *
+     * `target` here governs `tsc --noEmit` only. Next transpiles with SWC
+     * against its own browser targets and does not read this value -- verified
+     * against the ES2017-target bundle in .next/static/chunks, which already
+     * emits `?.`, `??`, `??=`, `#private` fields, `Object.hasOwn` and
+     * `Array.prototype.at`, i.e. ES2022 syntax. So the only thing ES2017 was
+     * still doing was making `tsc` reject syntax the shipped bundle already
+     * contains -- BigInt literals being the one the tree now needs, for the
+     * 64-bit msgpack integers on the agent IPC contract.
+     */
+    "target": "ES2022",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
