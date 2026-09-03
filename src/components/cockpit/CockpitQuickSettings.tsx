@@ -35,7 +35,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { X } from "lucide-react";
 
-import { useDroneStore } from "@/stores/drone-store";
+import { useDroneManager } from "@/stores/drone-manager";
 import { useDronePluginContributions } from "@/hooks/use-drone-plugin-contributions";
 import { usePluginContributions } from "@/hooks/use-plugin-contributions";
 import {
@@ -94,7 +94,7 @@ export function CockpitQuickSettings({
   const tVision = useTranslations("vision");
   const drawerRef = useRef<HTMLDivElement>(null);
 
-  const droneId = useDroneStore((s) => s.selectedId);
+  const droneId = useDroneManager((s) => s.selectedDroneId);
 
   // The per-drone plugin contributions carry each plugin's declarative
   // parameters (the same source the per-drone tab body reads). We render a

@@ -46,6 +46,7 @@ function relayedEntry(over: {
     },
     connection: { fcConnected: false },
     fc: { managedId: null },
+    rev: 0,
   };
 }
 

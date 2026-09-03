@@ -20,7 +20,7 @@ import { useTranslations } from "next-intl";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Backpack, X, Trash2 } from "lucide-react";
-import { useDroneStore } from "@/stores/drone-store";
+import { useDroneManager } from "@/stores/drone-manager";
 import { useBatteryRegistryStore } from "@/stores/battery-registry-store";
 import { useEquipmentRegistryStore } from "@/stores/equipment-registry-store";
 import { useLoadoutStore } from "@/stores/loadout-store";
@@ -98,7 +98,7 @@ function BatterySlot({ selectedIds, packs, onChange, label }: BatterySlotProps) 
 
 export function LoadoutSelector() {
   const t = useTranslations("history");
-  const droneId = useDroneStore((s) => s.selectedId);
+  const droneId = useDroneManager((s) => s.selectedDroneId);
 
   // Pull and reactively subscribe to all stores.
   const loadoutMap = useLoadoutStore((s) => s.loadouts);

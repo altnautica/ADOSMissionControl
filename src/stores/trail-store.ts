@@ -7,6 +7,7 @@
  */
 
 import { create } from "zustand";
+import { createVersionBumper } from "./coalesced-version";
 import { RingBuffer } from "@/lib/ring-buffer";
 
 export interface TrailPoint {
@@ -26,6 +27,17 @@ interface TrailStoreState {
 
 const DEFAULT_MAX_POINTS = 1000;
 
+/**
+ * Coalesced `_version` bumper. Position arrives at 5 Hz per drone and every
+ * bump rebuilds a 1000-element tuple array in `VehicleTrail` / `ReplayMap`.
+ */
+const bumper = createVersionBumper(() =>
+  useTrailStore.setState((s) => ({ _version: s._version + 1 })),
+);
+
+/** Test/debug affordance: true while a coalesced bump is pending. */
+export const trailBumpPending = bumper.hasPendingBump;
+
 export const useTrailStore = create<TrailStoreState>((set, get) => ({
   _ring: new RingBuffer<TrailPoint>(DEFAULT_MAX_POINTS),
   maxPoints: DEFAULT_MAX_POINTS,
@@ -41,10 +53,11 @@ export const useTrailStore = create<TrailStoreState>((set, get) => ({
       if (dlat < 0.00001 && dlon < 0.00001) return;
     }
     ring.push({ lat, lon, alt });
-    set({ _version: get()._version + 1 });
+    bumper.scheduleVersionBump();
   },
 
   clear: () => {
+    bumper.cancelVersionBump();
     const ring = new RingBuffer<TrailPoint>(get().maxPoints);
     set({ _ring: ring, _version: 0 });
   },

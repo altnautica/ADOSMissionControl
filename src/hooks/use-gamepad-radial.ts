@@ -20,7 +20,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useInputStore } from "@/stores/input-store";
-import { useDroneStore } from "@/stores/drone-store";
+import { useDroneManager } from "@/stores/drone-manager";
 import { useSettingsStore } from "@/stores/settings-store";
 import {
   useSkillRegistry,
@@ -94,7 +94,7 @@ export function nearestWedge(wedges: RadialWedge[], angle: number): number {
  * skill ever fires from this path.
  */
 export function useGamepadRadial(enabled: boolean): GamepadRadialModel {
-  const selectedId = useDroneStore((s) => s.selectedId);
+  const selectedId = useDroneManager((s) => s.selectedDroneId);
 
   const activeLoadoutId = useSettingsStore((s) => s.activeLoadoutId);
   const loadouts = useSettingsStore((s) => s.loadouts);

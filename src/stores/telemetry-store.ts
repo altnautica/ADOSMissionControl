@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { RingBuffer } from "@/lib/ring-buffer";
+import { createVersionBumper } from "./coalesced-version";
 import type { AttitudeData, PositionData, BatteryData, GpsData, VfrData, RcData, SysStatusData, RadioData, EkfData, VibrationData, ServoOutputData, WindData, TerrainData, LocalPositionData, DebugData, GimbalData, ObstacleData, ScaledImuData, HomePositionData, PowerStatusData, DistanceSensorData, FenceStatusData, EstimatorStatusData, CameraTriggerData, NavControllerData } from "@/lib/types";
 import type { INavAdsbVehicle } from "@/lib/protocol/msp/msp-decoders-inav";
 
@@ -138,24 +139,16 @@ interface TelemetryStoreState {
   clear: () => void;
 }
 
-// Coalesce version bumps — at 35+ pushes/sec, batch into one Zustand set() per animation frame
-let _rafScheduled = false;
-function scheduleVersionBump() {
-  if (_rafScheduled) return;
-  _rafScheduled = true;
-  if (typeof requestAnimationFrame !== 'undefined') {
-    requestAnimationFrame(() => {
-      _rafScheduled = false;
-      useTelemetryStore.setState((s) => ({ _version: s._version + 1 }));
-    });
-  } else {
-    // SSR / Node fallback
-    setTimeout(() => {
-      _rafScheduled = false;
-      useTelemetryStore.setState((s) => ({ _version: s._version + 1 }));
-    }, 16);
-  }
-}
+// Coalesce version bumps — at 35+ pushes/sec, batch into one Zustand set() per
+// animation frame. The bumper itself is the shared store primitive; every store
+// fed by live telemetry uses it (see `./coalesced-version`).
+const bumper = createVersionBumper(() =>
+  useTelemetryStore.setState((s) => ({ _version: s._version + 1 })),
+);
+const scheduleVersionBump = bumper.scheduleVersionBump;
+
+/** Test/debug affordance: true while a coalesced bump is pending. */
+export const telemetryBumpPending = bumper.hasPendingBump;
 
 export const useTelemetryStore = create<TelemetryStoreState>((set, get) => ({
   _version: 0,
@@ -259,7 +252,10 @@ export const useTelemetryStore = create<TelemetryStoreState>((set, get) => ({
     if (batch.navController) s.navController.push(batch.navController);
     scheduleVersionBump();
   },
-  clear: () =>
+  clear: () => {
+    // Drop any bump scheduled by a push that landed in this frame; without
+    // this it fires after the reset and notifies against the fresh rings.
+    bumper.cancelVersionBump();
     set({
       attitude: new RingBuffer<AttitudeData>(600),
       position: new RingBuffer<PositionData>(300),
@@ -295,5 +291,6 @@ export const useTelemetryStore = create<TelemetryStoreState>((set, get) => ({
       navStatusUpdated: 0,
       armingFlags: null,
       adsbVehicles: [],
-    }),
+    });
+  },
 }));

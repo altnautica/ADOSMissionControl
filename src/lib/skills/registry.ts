@@ -215,7 +215,7 @@ export const useSkillRegistry = create<SkillRegistryState>((set, get) => ({
   },
 
   recomputeSelected: () => {
-    const droneId = useDroneStore.getState().selectedId;
+    const droneId = useDroneManager.getState().selectedDroneId;
     if (!droneId) return;
 
     const { skills } = get();

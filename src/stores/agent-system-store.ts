@@ -183,11 +183,16 @@ export const useAgentSystemStore = create<AgentSystemStore>((set, get) => ({
   },
 
   pushGpuUtilization(pct: number) {
-    if (!Number.isFinite(pct)) return;
+    // Same bounded-append helper as cpuHistory / memoryHistory: one path for
+    // all three series so a non-finite reading is skipped rather than charted
+    // as a dip, and the cap cannot drift between them.
     set((state) => {
-      const gpuHistory = [...state.gpuHistory, pct];
-      if (gpuHistory.length > MAX_CPU_HISTORY) gpuHistory.shift();
-      return { gpuHistory };
+      const gpuHistory = appendHistorySample(
+        state.gpuHistory,
+        pct,
+        MAX_CPU_HISTORY,
+      );
+      return gpuHistory === state.gpuHistory ? state : { gpuHistory };
     });
   },
 

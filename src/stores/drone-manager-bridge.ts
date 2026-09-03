@@ -7,6 +7,7 @@
 import type { DroneProtocol } from "@/lib/protocol/types";
 import { useTelemetryStore, computeVioQuality } from "./telemetry-store";
 import { useDroneStore } from "./drone-store";
+import { useDroneManager } from "./drone-manager";
 import { useNodeRegistryStore } from "./node-registry";
 import { useSettingsStore } from "./settings-store";
 import { useTrailStore } from "./trail-store";
@@ -39,8 +40,19 @@ export function bridgeTelemetry(
    * rings. Fleet-store updates and the per-drone recorder stay ungated below —
    * those are keyed by droneId and correctly per-drone. The drone-manager keeps
    * the singleton store in sync with selection by clearing it on switch.
+   *
+   * The gate reads `drone-manager.selectedDroneId`, which is the ONE owner of
+   * selection. It used to read a `drone-store.selectedId` mirror that the
+   * manager only sometimes updated (`selectDrone(null)` and `clear()` both
+   * skipped it), so the gate could pass for a drone the operator had already
+   * switched away from — the exact interleave it exists to prevent.
+   *
+   * `useDroneManager` is read lazily inside the closure, not at module scope:
+   * `drone-manager` imports this module, so the binding is still in its TDZ
+   * while this module body runs and is only guaranteed populated by callback
+   * time.
    */
-  const isSelected = () => useDroneStore.getState().selectedId === droneId;
+  const isSelected = () => useDroneManager.getState().selectedDroneId === droneId;
 
   /** Record a frame to the recorder slot for this drone. Noop if no recording is active. */
   const rec = (channel: string, data: unknown) => recordFrameFor(droneId, channel, data);
@@ -52,12 +64,19 @@ export function bridgeTelemetry(
     }),
 
     protocol.onPosition((data) => {
-      if (isSelected()) telemetry.pushPosition(data);
+      if (isSelected()) {
+        telemetry.pushPosition(data);
+        // The trail ring is a single global set of slots, exactly like the
+        // telemetry rings, so it belongs inside the same gate. Ungated, two
+        // connected drones interleaved their position streams into one ring
+        // and `TelemetryStrip` read `_ring.get(0)` as "home" — which would be
+        // whichever drone happened to report first.
+        useTrailStore.getState().pushPoint(data.lat, data.lon, data.relativeAlt);
+      }
       // Flight telemetry mirrors into the node registry (the single fleet
       // identity write target); the projection turns it into the fleet row.
       // The data is already in degrees — the registry is a pass-through mirror.
       registry.updateFcTelemetry(droneId, { position: data });
-      useTrailStore.getState().pushPoint(data.lat, data.lon, data.relativeAlt);
       rec("position", data);
     }),
 

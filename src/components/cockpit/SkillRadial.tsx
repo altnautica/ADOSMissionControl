@@ -27,7 +27,7 @@ import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useDroneStore } from "@/stores/drone-store";
+import { useDroneManager } from "@/stores/drone-manager";
 import { useSkillRegistry, type SkillState } from "@/lib/skills";
 import { resolveSkillIcon } from "@/lib/skills/skill-icon";
 import { skillDisplayLabel } from "@/lib/skills/skill-label";
@@ -47,7 +47,7 @@ export function SkillRadial({ enabled }: SkillRadialProps) {
   const t = useTranslations();
   const { open, wedges, highlightedIndex } = useGamepadRadial(enabled);
 
-  const selectedId = useDroneStore((s) => s.selectedId);
+  const selectedId = useDroneManager((s) => s.selectedDroneId);
   const registryStates = useSkillRegistry((s) => s.states);
 
   const stateMap = selectedId ? registryStates.get(selectedId) : undefined;

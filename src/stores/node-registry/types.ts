@@ -178,4 +178,16 @@ export interface NodeEntry {
   presence: NodePresence;
   connection: NodeConnection;
   fc: NodeFc;
+  /**
+   * Monotonic mutation counter for this row.
+   *
+   * FC telemetry is merged into `fc` IN PLACE at 5-30 Hz (see the store's
+   * `updateFcTelemetry`), so entry object identity is deliberately NOT a
+   * change signal — cloning the whole `nodes` map per position packet is what
+   * made one packet re-render the dashboard cards, both maps, node detail and
+   * the planner. `rev` is the per-row signal the fleet projection memoizes on:
+   * an unchanged row keeps its projected `FleetDrone` object identity and its
+   * consumers bail out of re-rendering.
+   */
+  rev: number;
 }

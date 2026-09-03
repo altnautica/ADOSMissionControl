@@ -23,7 +23,7 @@
 
 import { useEffect, useRef } from "react";
 
-import { useDroneStore } from "@/stores/drone-store";
+import { useDroneManager } from "@/stores/drone-manager";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useSkillRegistry } from "@/lib/skills";
 import { buildPluginSkill } from "@/lib/skills/plugin-skills";
@@ -35,7 +35,7 @@ import { useDroneSkillContributions } from "@/hooks/use-drone-skill-contribution
 import { usePluginSkillEgress } from "@/hooks/use-plugin-skill-egress";
 
 export function PluginSkillHost() {
-  const selectedId = useDroneStore((s) => s.selectedId);
+  const selectedId = useDroneManager((s) => s.selectedDroneId);
   const contributions = useDroneSkillContributions(selectedId ?? undefined);
 
   // Poll the selected drone's plugins for their published state over the LAN

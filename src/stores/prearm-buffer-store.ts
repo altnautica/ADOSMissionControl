@@ -55,6 +55,14 @@ interface Actions {
   drain: (droneId: string) => string[];
   /** Read the buffered lines without clearing. */
   peek: (droneId: string) => string[];
+  /**
+   * Drop one drone's buffered lines (on disconnect). `drain` is the only other
+   * shrink path and it only runs on arm, so a drone that connects and leaves
+   * without arming would otherwise pin its lines for the whole session.
+   */
+  clearForDrone: (droneId: string) => void;
+  /** Drop every drone's buffered lines (on a full drone-manager reset). */
+  clearAll: () => void;
   /** Publish a new snapshot for the vision pre-arm channel. Idempotent
    * — passing an identical snapshot does not trigger subscribers. */
   setVisionState: (state: PrearmChannelState) => void;
@@ -95,6 +103,20 @@ export const usePrearmBufferStore = create<State & Actions>((set, get) => ({
       return;
     }
     set({ vision: next });
+  },
+
+  clearForDrone: (droneId) => {
+    if (!(droneId in get().buffers)) return;
+    set((s) => {
+      const next = { ...s.buffers };
+      delete next[droneId];
+      return { buffers: next };
+    });
+  },
+
+  clearAll: () => {
+    if (Object.keys(get().buffers).length === 0) return;
+    set({ buffers: {} });
   },
 }));
 

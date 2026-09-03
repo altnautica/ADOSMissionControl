@@ -27,7 +27,7 @@ export function ActionsPanel() {
   const armState = useDroneStore((s) => s.armState);
   const flightMode = useDroneStore((s) => s.flightMode);
   const previousMode = useDroneStore((s) => s.previousMode);
-  const selectedId = useDroneStore((s) => s.selectedId);
+  const selectedId = useDroneManager((s) => s.selectedDroneId);
   const setFlightMode = useDroneStore((s) => s.setFlightMode);
   const getProtocol = useDroneManager((s) => s.getSelectedProtocol);
 

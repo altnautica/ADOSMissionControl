@@ -1,9 +1,27 @@
+/**
+ * @module drone-store
+ * @description Live flight state of the SELECTED vehicle: connection, mode,
+ * arm state, heartbeat, firmware. Single-slot by design — the drone manager
+ * clears it on a selection switch so a newly selected drone never shows the
+ * previous one's readings.
+ *
+ * Selection itself lives in `drone-manager.selectedDroneId` and nowhere else.
+ * This store used to carry a `selectedId` mirror that the manager kept in
+ * sync, but the sync was not reliable: `selectDrone(null)` skipped the
+ * propagation entirely and `clear()` never propagated, so the mirror could
+ * name a drone the manager had already deselected. The telemetry write gate in
+ * `drone-manager-bridge` read the mirror, so it could pass for the wrong drone
+ * and interleave a background vehicle's frames into the shared telemetry
+ * rings. Read `useDroneManager((s) => s.selectedDroneId)` instead.
+ *
+ * @license GPL-3.0-only
+ */
+
 import { create } from "zustand";
 import type { ConnectionState, FlightMode, ArmState } from "@/lib/types";
 import type { FirmwareType } from "@/lib/protocol/types";
 
 interface DroneStoreState {
-  selectedId: string | null;
   connectionState: ConnectionState;
   flightMode: FlightMode;
   previousMode: FlightMode;
@@ -24,7 +42,6 @@ interface DroneStoreState {
   systemStatus: number;
   firmwareType: FirmwareType | null;
 
-  selectDrone: (id: string | null) => void;
   setConnectionState: (state: ConnectionState) => void;
   setFlightMode: (mode: FlightMode) => void;
   setArmState: (state: ArmState) => void;
@@ -35,7 +52,6 @@ interface DroneStoreState {
 }
 
 export const useDroneStore = create<DroneStoreState>((set) => ({
-  selectedId: null,
   connectionState: "disconnected",
   flightMode: "STABILIZE",
   previousMode: "STABILIZE",
@@ -47,7 +63,6 @@ export const useDroneStore = create<DroneStoreState>((set) => ({
   systemStatus: 0,
   firmwareType: null,
 
-  selectDrone: (id) => set({ selectedId: id }),
   setConnectionState: (connectionState) => set({ connectionState }),
   setFlightMode: (flightMode) => set((s) => ({ previousMode: s.flightMode, flightMode })),
   setArmState: (armState) =>

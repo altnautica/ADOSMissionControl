@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { RingBuffer } from "@/lib/ring-buffer";
+import { createVersionBumper } from "./coalesced-version";
 
 export interface MessageLogEntry {
   timestamp: number;
@@ -7,7 +8,17 @@ export interface MessageLogEntry {
   msgName: string;
   direction: "in" | "out";
   size: number;
-  /** Raw frame bytes for hex inspector (last 50 only) */
+  /**
+   * Raw frame bytes, pre-formatted as hex, for the hex inspector.
+   *
+   * The producer already gates capture: `MAVLinkAdapter.diagnosticsEnabled`
+   * is set true only while the Frames tab is mounted
+   * (`components/diagnostics/DiagnosticsPanel.tsx`), so nothing is formatted
+   * on a closed panel. This field is additionally released off all but the
+   * newest {@link RAW_HEX_RETAIN} entries — the inspector only ever renders
+   * the last 50, so retaining hex across the whole 2000-slot log pinned
+   * ~200 KB of strings for rows no surface can reach.
+   */
   rawHex?: string;
 }
 
@@ -130,6 +141,8 @@ interface DiagnosticsStoreState {
     preCalOffsets?: { ofsX: number; ofsY: number; ofsZ: number };
   }) => void;
   updateRates: () => void;
+  /** Release retained `rawHex` off every log entry (the Frames tab closed). */
+  releaseRawHex: () => void;
   updateCommandQueueSnapshot: (snapshot: CommandQueueSnapshot) => void;
   updateRingBufferInfo: (info: RingBufferInfo[]) => void;
   recordParseEvent: () => void;
@@ -153,6 +166,29 @@ const MAX_PERF_SAMPLES = 500;
 const MAX_CONNECTION_LOG = 500;
 const MAX_CALIBRATION_HISTORY = 500;
 
+/**
+ * How many of the newest `messageLog` entries keep their `rawHex`.
+ *
+ * `FrameInspector` renders `.filter(m => m.rawHex).slice(-50)`, so hex on any
+ * older row is unreachable memory. 64 gives the inspector its full 50 rows
+ * plus headroom for interleaved rows that carried no hex.
+ */
+export const RAW_HEX_RETAIN = 64;
+
+/**
+ * Coalesced `_version` bumper. `logMessage` runs on every decoded frame
+ * (100-400 Hz on a full ArduPilot stream), so a `set()` per call re-rendered
+ * the frame inspector, the message-rate panel and the event timeline at wire
+ * rate. One bump per animation frame instead.
+ */
+const bumper = createVersionBumper(() =>
+  useDiagnosticsStore.setState((s) => ({ _version: s._version + 1 })),
+);
+const scheduleVersionBump = bumper.scheduleVersionBump;
+
+/** Test/debug affordance: true while a coalesced bump is pending. */
+export const diagnosticsBumpPending = bumper.hasPendingBump;
+
 export const useDiagnosticsStore = create<DiagnosticsStoreState>((set, get) => ({
   messageLog: new RingBuffer<MessageLogEntry>(2000),
   eventTimeline: new RingBuffer<EventTimelineEntry>(500),
@@ -170,7 +206,8 @@ export const useDiagnosticsStore = create<DiagnosticsStoreState>((set, get) => (
 
   logMessage: (msgId, msgName, direction, size, rawHex) => {
     const now = Date.now();
-    get().messageLog.push({
+    const log = get().messageLog;
+    log.push({
       timestamp: now,
       msgId,
       msgName,
@@ -178,6 +215,13 @@ export const useDiagnosticsStore = create<DiagnosticsStoreState>((set, get) => (
       size,
       rawHex,
     });
+    // Release hex off the entry falling out of the retention window. One
+    // constant-time step per push keeps at most RAW_HEX_RETAIN strings alive
+    // without a sweep.
+    if (rawHex !== undefined && log.length > RAW_HEX_RETAIN) {
+      const evicted = log.get(log.length - 1 - RAW_HEX_RETAIN);
+      if (evicted !== undefined) evicted.rawHex = undefined;
+    }
 
     // Track timestamps per message type for rate calculation
     // Mutate in place — updateRates() (called on interval) triggers re-render
@@ -203,7 +247,7 @@ export const useDiagnosticsStore = create<DiagnosticsStoreState>((set, get) => (
     } else {
       rates.set(msgId, { msgId, msgName, timestamps: [now], hz: 0 });
     }
-    set((s) => ({ _version: s._version + 1 }));
+    scheduleVersionBump();
   },
 
   logEvent: (type, description) => {
@@ -212,7 +256,7 @@ export const useDiagnosticsStore = create<DiagnosticsStoreState>((set, get) => (
       type,
       description,
     });
-    set((s) => ({ _version: s._version + 1 }));
+    scheduleVersionBump();
   },
 
   logConnection: (type, details, errorCategory) => {
@@ -263,16 +307,36 @@ export const useDiagnosticsStore = create<DiagnosticsStoreState>((set, get) => (
     const cutoff = now - RATE_WINDOW_MS;
     const rates = get().messageRates;
     for (const [msgId, entry] of rates) {
-      // Trim old timestamps
-      entry.timestamps = entry.timestamps.filter((t) => t > cutoff);
-      if (entry.timestamps.length === 0) {
-        // Prune stale entries to prevent unbounded Map growth
+      // Prune in place from the head. `logMessage` already trims to the same
+      // cutoff on every push, so this normally drops nothing; the previous
+      // `filter()` allocated a fresh array per message type per tick anyway.
+      const ts = entry.timestamps;
+      let drop = 0;
+      while (drop < ts.length && ts[drop] <= cutoff) drop++;
+      if (drop > 0) ts.splice(0, drop);
+      if (ts.length === 0) {
+        // Prune stale entries to prevent unbounded Map growth.
         rates.delete(msgId);
       } else {
-        entry.hz = entry.timestamps.length / (RATE_WINDOW_MS / 1000);
+        entry.hz = ts.length / (RATE_WINDOW_MS / 1000);
       }
     }
-    set({ messageRates: new Map(rates) });
+    // `MessageRatePanel` selects `messageRates` and memoizes on its identity,
+    // so the clone is the panel's change signal and must stay. It is cheap:
+    // this runs at 1 Hz and only while that panel is mounted. What was
+    // expensive is the per-entry `filter()` above, now an in-place splice.
+    set((s) => ({ messageRates: new Map(rates), _version: s._version + 1 }));
+  },
+
+  releaseRawHex: () => {
+    let released = false;
+    get().messageLog.forEach((entry) => {
+      if (entry.rawHex !== undefined) {
+        entry.rawHex = undefined;
+        released = true;
+      }
+    });
+    if (released) set((s) => ({ _version: s._version + 1 }));
   },
 
   updateCommandQueueSnapshot: (snapshot) => {
@@ -323,7 +387,10 @@ export const useDiagnosticsStore = create<DiagnosticsStoreState>((set, get) => (
     });
   },
 
-  clear: () =>
+  clear: () => {
+    // A bump scheduled by a push earlier in this frame would otherwise land
+    // after the reset and re-notify against the fresh buffers.
+    bumper.cancelVersionBump();
     set({
       messageLog: new RingBuffer<MessageLogEntry>(2000),
       eventTimeline: new RingBuffer<EventTimelineEntry>(500),
@@ -338,5 +405,6 @@ export const useDiagnosticsStore = create<DiagnosticsStoreState>((set, get) => (
       _parseTimestamps: new RingBuffer<number>(MAX_PERF_SAMPLES),
       _callbackLatencies: new RingBuffer<number>(MAX_PERF_SAMPLES),
       _frameProcessingTimes: new RingBuffer<number>(MAX_PERF_SAMPLES),
-    }),
+    });
+  },
 }));

@@ -20,7 +20,7 @@ import {
   safeTranslate,
   useSkillToastBridge,
 } from "@/hooks/use-skill-toast-bridge";
-import { useDroneStore } from "@/stores/drone-store";
+import { useDroneManager } from "@/stores/drone-manager";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useCockpitStore } from "@/stores/cockpit-store";
 import { useFlyQuickSettingsStore } from "@/stores/fly-quick-settings-store";
@@ -48,7 +48,7 @@ export function SkillBar() {
   // surfaces feedback even when the bar itself is hidden.
   useSkillToastBridge();
 
-  const selectedId = useDroneStore((s) => s.selectedId);
+  const selectedId = useDroneManager((s) => s.selectedDroneId);
 
   const activeLoadoutId = useSettingsStore((s) => s.activeLoadoutId);
   const loadouts = useSettingsStore((s) => s.loadouts);

@@ -73,6 +73,7 @@ export function emptyEntry(nodeId: string): NodeEntry {
     presence: emptyPresence(),
     connection: emptyConnection(),
     fc: emptyFc(),
+    rev: 0,
   };
 }
 
@@ -218,6 +219,87 @@ export function mergeFcTelemetry(
       ? { ...current.position, ...patch.position }
       : current.position,
   };
+}
+
+/**
+ * Merge an FC telemetry patch into `target` IN PLACE and return whether
+ * anything changed.
+ *
+ * The allocating {@link mergeFcTelemetry} above stays the reference semantics
+ * and is what the unit tests pin. This is the hot-path variant: the FC bridge
+ * calls it on every POSITION (5 Hz), BATTERY, GPS and HEARTBEAT frame, per
+ * connected drone, so it must not allocate a new `NodeFc`, a new `NodeEntry`
+ * or a new `nodes` map per packet.
+ *
+ * Returns false when the patch carried no defined field, so a no-op patch does
+ * not bump the row's `rev` and does not invalidate the fleet projection.
+ */
+export function mergeFcTelemetryInPlace(
+  target: NodeFc,
+  patch: Partial<NodeFc>,
+): boolean {
+  let changed = false;
+  if (patch.managedId !== undefined && patch.managedId !== target.managedId) {
+    target.managedId = patch.managedId;
+    changed = true;
+  }
+  if (patch.status !== undefined && patch.status !== target.status) {
+    target.status = patch.status;
+    changed = true;
+  }
+  if (patch.flightMode !== undefined && patch.flightMode !== target.flightMode) {
+    target.flightMode = patch.flightMode;
+    changed = true;
+  }
+  if (patch.armState !== undefined && patch.armState !== target.armState) {
+    target.armState = patch.armState;
+    changed = true;
+  }
+  if (patch.healthScore !== undefined && patch.healthScore !== target.healthScore) {
+    target.healthScore = patch.healthScore;
+    changed = true;
+  }
+  if (
+    patch.firmwareVersion !== undefined &&
+    patch.firmwareVersion !== target.firmwareVersion
+  ) {
+    target.firmwareVersion = patch.firmwareVersion;
+    changed = true;
+  }
+  if (patch.frameType !== undefined && patch.frameType !== target.frameType) {
+    target.frameType = patch.frameType;
+    changed = true;
+  }
+  if (
+    patch.lastHeartbeat !== undefined &&
+    patch.lastHeartbeat !== target.lastHeartbeat
+  ) {
+    target.lastHeartbeat = patch.lastHeartbeat;
+    changed = true;
+  }
+  // The three telemetry sub-objects are replaced rather than field-merged: a
+  // decoder always emits a complete BatteryData / GpsData / PositionData, so a
+  // partial merge would only preserve fields the FC has since stopped
+  // reporting. One allocation per changed channel, not per patch.
+  if (patch.battery !== undefined) {
+    target.battery = target.battery
+      ? Object.assign(target.battery, patch.battery)
+      : { ...patch.battery };
+    changed = true;
+  }
+  if (patch.gps !== undefined) {
+    target.gps = target.gps
+      ? Object.assign(target.gps, patch.gps)
+      : { ...patch.gps };
+    changed = true;
+  }
+  if (patch.position !== undefined) {
+    target.position = target.position
+      ? Object.assign(target.position, patch.position)
+      : { ...patch.position };
+    changed = true;
+  }
+  return changed;
 }
 
 /** Return `value` when it is not undefined, otherwise `fallback`. */

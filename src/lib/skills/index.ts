@@ -24,6 +24,7 @@ import {
   setCooldownTick,
 } from "./cooldown";
 import { useDroneStore } from "@/stores/drone-store";
+import { useDroneManager } from "@/stores/drone-manager";
 import { useFollowMeStore } from "@/stores/follow-me-store";
 
 export type { SkillCharges } from "./types";
@@ -261,9 +262,16 @@ export function initSkillSubscriptions(): void {
       next.armState !== prev.armState ||
       next.flightMode !== prev.flightMode ||
       next.previousMode !== prev.previousMode ||
-      next.selectedId !== prev.selectedId ||
       next.connectionState !== prev.connectionState
     ) {
+      schedule();
+    }
+  });
+
+  // Selection lives in the drone manager, so it needs its own subscription
+  // rather than riding the flight-state store.
+  useDroneManager.subscribe((next, prev) => {
+    if (next.selectedDroneId !== prev.selectedDroneId) {
       schedule();
     }
   });

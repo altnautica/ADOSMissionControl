@@ -10,6 +10,7 @@
  */
 
 import { create } from "zustand";
+import { createVersionBumper } from "../coalesced-version";
 import { RingBuffer } from "@/lib/ring-buffer";
 
 export type RpcEventKind =
@@ -50,6 +51,17 @@ interface RpcTraceStoreState {
   setFilters: (partial: Partial<RpcTraceFilters>) => void;
 }
 
+/**
+ * Coalesced `_version` bumper. Broadcast traffic pushes at bus rate and
+ * `RpcTraceTable` re-projects the whole event list on each bump.
+ */
+const bumper = createVersionBumper(() =>
+  useDroneCanRpcTraceStore.setState((s) => ({ _version: s._version + 1 })),
+);
+
+/** Test/debug affordance: true while a coalesced bump is pending. */
+export const rpcTraceBumpPending = bumper.hasPendingBump;
+
 export const useDroneCanRpcTraceStore = create<RpcTraceStoreState>(
   (set, get) => ({
     events: new RingBuffer<RpcEvent>(EVENT_CAP),
@@ -58,10 +70,11 @@ export const useDroneCanRpcTraceStore = create<RpcTraceStoreState>(
 
     pushEvent: (event) => {
       get().events.push(event);
-      set({ _version: get()._version + 1 });
+      bumper.scheduleVersionBump();
     },
 
     clear: () => {
+      bumper.cancelVersionBump();
       get().events.clear();
       set({ _version: get()._version + 1 });
     },

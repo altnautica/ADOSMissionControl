@@ -35,7 +35,6 @@ import { emitSelectedDroneTelemetry } from "./engine-telemetry";
 import { DEMO_PX4_EVENT_FRAMES } from "./px4-demo-events";
 import { mockCanBus } from "./mock-can-bus";
 import { useFleetStore } from "@/stores/fleet-store";
-import { useDroneStore } from "@/stores/drone-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useDroneMetadataStore } from "@/stores/drone-metadata-store";
 import {
@@ -226,7 +225,7 @@ class MockFlightEngine {
         const p = state.protocol;
         const st = state;
         void p.connect(st.transport).then(() => {
-          const selected = nid(st.config.id) === useDroneStore.getState().selectedId;
+          const selected = nid(st.config.id) === useDroneManager.getState().selectedDroneId;
           if (!selected) p.stopMockTelemetryTick();
           st.inavTicking = selected;
         });
@@ -359,7 +358,7 @@ class MockFlightEngine {
     // The fleet store still owns alerts (registry holds only identity + FC
     // telemetry); keep a reference for addAlert / touch.
     const fleetStore = useFleetStore.getState();
-    const selectedId = useDroneStore.getState().selectedId;
+    const selectedId = useDroneManager.getState().selectedDroneId;
     const now = Date.now();
 
     for (const state of this.states) {

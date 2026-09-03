@@ -23,7 +23,7 @@ import { RotateCcw, Gamepad2 } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { useSettingsStore } from "@/stores/settings-store";
-import { useDroneStore } from "@/stores/drone-store";
+import { useDroneManager } from "@/stores/drone-manager";
 import { useSkillRegistry, type Skill } from "@/lib/skills";
 import { skillDisplayLabel } from "@/lib/skills/skill-label";
 import { formatChord } from "@/lib/skills/chord";
@@ -46,7 +46,7 @@ export function SkillBarEditor({ onClose }: SkillBarEditorProps) {
   const tRoot = useTranslations();
   const { toast } = useToast();
 
-  const selectedId = useDroneStore((s) => s.selectedId);
+  const selectedId = useDroneManager((s) => s.selectedDroneId);
 
   const loadouts = useSettingsStore((s) => s.loadouts);
   const activeLoadoutId = useSettingsStore((s) => s.activeLoadoutId);

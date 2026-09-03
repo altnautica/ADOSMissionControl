@@ -72,7 +72,7 @@ import { migrateSettings } from "@/stores/settings-store/migrations";
 import { useCockpitStore } from "@/stores/cockpit-store";
 import { useSkillRegistry } from "@/lib/skills/registry";
 import { useInputStore } from "@/stores/input-store";
-import { useDroneStore } from "@/stores/drone-store";
+import { useDroneManager } from "@/stores/drone-manager";
 
 function resetLoadouts(): void {
   useSettingsStore.setState({
@@ -101,7 +101,7 @@ describe("Cockpit enable toggle", () => {
 describe("gamepad remap dispatches the bound skill", () => {
   beforeEach(() => {
     resetLoadouts();
-    useDroneStore.setState({ selectedId: "drone-x" });
+    useDroneManager.setState({ selectedDroneId: "drone-x" });
     // Reset input buttons to all-off.
     useInputStore.getState().setButtons(new Array(16).fill(false));
   });

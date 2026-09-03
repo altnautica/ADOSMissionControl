@@ -11,6 +11,8 @@ import { useSettingsStore } from "./settings-store";
 import { useVideoStore } from "./video-store";
 import { useVideoStreamsStore } from "./video-streams-store";
 import { useAgentCapabilitiesStore } from "./agent-capabilities-store";
+import { useTrailStore } from "./trail-store";
+import { usePrearmBufferStore } from "./prearm-buffer-store";
 import { useGroundStationStore } from "./ground-station-store";
 import { useDiagnosticsStore } from "./diagnostics-store";
 import { usePanelCacheStore } from "./panel-cache-store";
@@ -263,12 +265,15 @@ export const useDroneManager = create<DroneManagerState>((set, get) => ({
       return { drones: newMap, selectedDroneId: selectedId };
     });
 
-    // If we just deselected, reset downstream stores
+    // If we just deselected, reset the downstream single-slot flight state.
     if (get().selectedDroneId === null) {
-      useDroneStore.getState().selectDrone(null);
       useDroneStore.getState().setConnectionState("disconnected");
       invalidateParamCache();
     }
+    // The removed drone's prearm STATUSTEXT buffer is keyed by droneId and only
+    // otherwise drains on arm, so a drone that connects and leaves without
+    // arming would pin its lines for the session.
+    usePrearmBufferStore.getState().clearForDrone(id);
   },
 
   disconnectDrone: (id) => {
@@ -364,6 +369,12 @@ export const useDroneManager = create<DroneManagerState>((set, get) => ({
     // bleed across the selection.
     if (id !== previousId) {
       useTelemetryStore.getState().clear();
+      // The trail ring is the same shape of single-slot global state as the
+      // telemetry rings and the bridge writes it under the same selection
+      // gate, so it has to be cleared on the same transition — otherwise the
+      // newly selected drone inherits the previous one's track and its "home"
+      // fix.
+      useTrailStore.getState().clear();
       const droneStore = useDroneStore.getState();
       droneStore.setConnectionState("disconnected");
       droneStore.setFlightMode("STABILIZE");
@@ -391,10 +402,6 @@ export const useDroneManager = create<DroneManagerState>((set, get) => ({
         useVideoStreamsStore.getState().clearForDevice(previousId);
       }
     }
-
-    if (id) {
-      useDroneStore.getState().selectDrone(id);
-    }
   },
 
   getSelectedProtocol: () => {
@@ -421,6 +428,10 @@ export const useDroneManager = create<DroneManagerState>((set, get) => ({
     set({ drones: new Map(), selectedDroneId: null });
     useDroneStore.getState().setConnectionState("disconnected");
     useTelemetryStore.getState().clear();
+    // Same single-slot global state as the telemetry rings; clearing one
+    // without the other leaves a track on the map with no vehicle behind it.
+    useTrailStore.getState().clear();
+    usePrearmBufferStore.getState().clearAll();
   },
 }));
 

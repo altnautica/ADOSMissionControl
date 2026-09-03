@@ -22,7 +22,7 @@ import {
   type PluginConfigWriter,
 } from "@/lib/skills/plugin-skill-host-store";
 import { useSkillRegistry } from "@/lib/skills/registry";
-import { useDroneStore } from "@/stores/drone-store";
+import { useDroneManager } from "@/stores/drone-manager";
 import { buildSkillContext, activate } from "@/lib/skills";
 import type { SkillContext } from "@/lib/skills/types";
 
@@ -123,7 +123,7 @@ describe("buildPluginSkill", () => {
   beforeEach(() => {
     clearRegistry();
     usePluginSkillHostStore.setState({ writer: null, states: new Map() });
-    useDroneStore.setState({ selectedId: null });
+    useDroneManager.setState({ selectedDroneId: null });
   });
 
   it("registers and resolves for the drone it was built for", () => {
@@ -200,7 +200,7 @@ describe("buildPluginSkill", () => {
     });
     const skill = buildPluginSkill(contribution({ confirm: false }));
     useSkillRegistry.getState().register(skill);
-    useDroneStore.setState({ selectedId: "drone-1" });
+    useDroneManager.setState({ selectedDroneId: "drone-1" });
 
     const ctx: SkillContext = {
       ...buildSkillContext("drone-1"),

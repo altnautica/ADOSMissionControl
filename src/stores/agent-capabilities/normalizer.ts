@@ -1,14 +1,17 @@
 /**
  * @module AgentCapabilities/Normalizer
- * @description Pure shape mappers that flatten the on-wire agent capabilities
- * payload onto the GCS-side TypeScript types. The agent has shipped several
- * legacy shapes over time (features as an array OR { enabled, active }, models
- * as an array OR { installed, cache_used_mb, ... }); the normalizer collapses
- * those into a single canonical shape the store can hold.
+ * @description Maps the on-wire agent capabilities payload onto the GCS-side
+ * TypeScript types. The agent has shipped several legacy shapes over time
+ * (features as an array OR { enabled, active }, models as an array OR
+ * { installed, cache_used_mb, ... }); the normalizer collapses those into a
+ * single canonical shape the store can hold.
  *
- * Smaller forward-permissive per-field parsers live in `./derivers`. Defaults
- * for compute / vision / models / features are exported here so the state
- * module can seed the initial Zustand state.
+ * Barrel over the per-concern modules, matching the `ground-station-store` /
+ * `settings-store` pattern: the radio block (`./normalize-radio`), the CRSF
+ * block (`./normalize-crsf`) and the neutral seed values
+ * (`./normalize-defaults`) each change on their own schedule and are each
+ * separately testable. Smaller forward-permissive per-field parsers live in
+ * `./derivers`.
  *
  * Every helper here is a pure function: no Zustand access, no side effects.
  *
@@ -18,365 +21,24 @@
 import type {
   AgentCapabilities,
   CameraCapability,
-  VideoStreamLeg,
   ComputeCapability,
-  VisionState,
-  ModelCacheInfo,
   InstalledModel,
+  ModelCacheInfo,
   NavigationCapability,
+  VideoStreamLeg,
+  VisionState,
 } from "@/lib/agent/feature-types";
 import { AgentCapabilitiesRawSchema } from "@/lib/agent/schemas";
 import { normalizeCameraUsbRecovery } from "@/lib/agent/camera-recovery";
-import type {
-  RadioState,
-  RadioLinkState,
-  RadioTopology,
-  RadioPeerLink,
-  RadioHopState,
-  RadioAcquireState,
-  RadioLinkDiag,
-  CrsfState,
-  CrsfLinkState,
-} from "@/lib/api/ground-station/types";
+import {
+  DEFAULT_COMPUTE,
+  DEFAULT_MODELS,
+  DEFAULT_VISION,
+} from "./normalize-defaults";
 
-export const DEFAULT_COMPUTE: ComputeCapability = {
-  npu_available: false,
-  npu_runtime: null,
-  npu_tops: 0,
-  npu_utilization_pct: 0,
-  gpu_available: false,
-};
-
-export const DEFAULT_VISION: VisionState = {
-  engine_state: "off",
-  active_behavior: null,
-  behavior_state: null,
-  fps: 0,
-  inference_ms: 0,
-  model_loaded: null,
-  track_count: 0,
-  target_locked: false,
-  target_confidence: 0,
-  obstacle_mode: "off",
-  nearest_obstacle_m: null,
-  threat_level: "green",
-};
-
-export const DEFAULT_MODELS: ModelCacheInfo = {
-  installed: [],
-  cache_used_mb: 0,
-  cache_max_mb: 500,
-  registry_url: "",
-};
-
-// Recognized literal values for the radio link state and the power
-// topology. Unknown values fall back to safe defaults so the UI never
-// crashes on a future agent that ships an extension.
-const RADIO_LINK_STATES: ReadonlySet<RadioLinkState> = new Set<RadioLinkState>([
-  "absent",
-  "disconnected",
-  "unpaired",
-  "auto_pairing",
-  "binding",
-  "connecting",
-  "connected",
-  "degraded",
-  "rf_unverified",
-]);
-const RADIO_TOPOLOGIES: ReadonlySet<RadioTopology> = new Set<RadioTopology>([
-  "host_vbus",
-  "powered_hub",
-  "external_5v",
-]);
-const RADIO_PEER_LINKS: ReadonlySet<RadioPeerLink> = new Set<RadioPeerLink>([
-  "linked",
-  "searching",
-  "no_peer",
-]);
-const RADIO_HOP_STATES: ReadonlySet<RadioHopState> = new Set<RadioHopState>([
-  "idle",
-  "searching",
-  "locked",
-  "hopping",
-]);
-const RADIO_ACQUIRE_STATES: ReadonlySet<RadioAcquireState> =
-  new Set<RadioAcquireState>(["idle", "searching", "locked", "no-peer"]);
-const RADIO_LINK_DIAGS: ReadonlySet<RadioLinkDiag> = new Set<RadioLinkDiag>([
-  "deaf",
-  "mis_keyed",
-  "jammed",
-  "healthy",
-  "searching",
-]);
-
-/** Normalize the on-wire radio block onto the GCS RadioState shape. */
-export function normalizeRadio(raw: unknown): RadioState | null {
-  if (!raw || typeof raw !== "object") return null;
-  const r = raw as Record<string, unknown>;
-  const stateRaw = typeof r.state === "string" ? r.state : "absent";
-  const state: RadioLinkState = RADIO_LINK_STATES.has(
-    stateRaw as RadioLinkState,
-  )
-    ? (stateRaw as RadioLinkState)
-    : "absent";
-  const topologyRaw = typeof r.topology === "string" ? r.topology : "host_vbus";
-  const topology: RadioTopology = RADIO_TOPOLOGIES.has(
-    topologyRaw as RadioTopology,
-  )
-    ? (topologyRaw as RadioTopology)
-    : "host_vbus";
-  const num = (v: unknown): number | null => {
-    if (typeof v === "number" && Number.isFinite(v)) return v;
-    return null;
-  };
-  const numOrZero = (v: unknown): number => {
-    const n = num(v);
-    return n ?? 0;
-  };
-  return {
-    state,
-    iface: typeof r.iface === "string" ? r.iface : null,
-    driver: typeof r.driver === "string" ? r.driver : null,
-    channel: num(r.channel),
-    freqMhz: num(r.freqMhz),
-    bandwidthMhz: numOrZero(r.bandwidthMhz),
-    txPowerDbm: num(r.txPowerDbm),
-    txPowerMaxDbm: numOrZero(r.txPowerMaxDbm),
-    topology,
-    rssiDbm: num(r.rssiDbm),
-    bitrateKbps: num(r.bitrateKbps),
-    fecRecovered: numOrZero(r.fecRecovered),
-    fecLost: numOrZero(r.fecLost),
-    packetsLost: numOrZero(r.packetsLost),
-    // Channel rendezvous + hop surface. Both sides start on the fixed
-    // home channel and only hop once the link is up. Optional on the
-    // wire; null when absent so the UI can skip a missing row.
-    homeChannel: num(r.homeChannel),
-    band: typeof r.band === "string" ? r.band : null,
-    regDomain:
-      typeof r.regDomain === "string" && r.regDomain.length > 0
-        ? r.regDomain
-        : null,
-    // Operating-region posture. "unrestricted" | "region" only; any other
-    // string (or absent field) normalizes to null so an older agent that
-    // omits it renders the unrestricted default without a bad badge.
-    regPosture:
-      r.regPosture === "unrestricted" || r.regPosture === "region"
-        ? r.regPosture
-        : null,
-    pinnedRegion:
-      typeof r.pinnedRegion === "string" && r.pinnedRegion.length > 0
-        ? r.pinnedRegion
-        : null,
-    regVerified:
-      typeof r.regVerified === "boolean" ? r.regVerified : null,
-    monitorActive:
-      typeof r.monitorActive === "boolean" ? r.monitorActive : null,
-    txActive: typeof r.txActive === "boolean" ? r.txActive : null,
-    peerLink:
-      typeof r.peerLink === "string" &&
-      RADIO_PEER_LINKS.has(r.peerLink as RadioPeerLink)
-        ? (r.peerLink as RadioPeerLink)
-        : null,
-    hopState:
-      typeof r.hopState === "string" &&
-      RADIO_HOP_STATES.has(r.hopState as RadioHopState)
-        ? (r.hopState as RadioHopState)
-        : null,
-    // Receive-side link quality. Optional on the wire; null when a
-    // field is absent or non-finite so the UI can skip a missing row.
-    snrDb: num(r.snrDb),
-    noiseDbm: num(r.noiseDbm),
-    lossPercent: num(r.lossPercent),
-    mcsIndex: num(r.mcsIndex),
-    mcsLadderCap: num(r.mcsLadderCap),
-    rxSilentSeconds: num(r.rxSilentSeconds),
-    // Per-stream video-tx liveness. Optional on the wire; null when
-    // absent so the UI can distinguish "no reading" from a real false.
-    txVideoStalled:
-      typeof r.txVideoStalled === "boolean" ? r.txVideoStalled : null,
-    txVideoStallKills: num(r.txVideoStallKills),
-    txVideoRecvqBytes: num(r.txVideoRecvqBytes),
-    // Ground-side receive acquisition surface. Optional on the wire;
-    // null when absent or non-finite so the UI can skip a missing row.
-    // An unknown acquireState string falls to null rather than pinning a
-    // bad badge.
-    acquireState:
-      typeof r.acquireState === "string" &&
-      RADIO_ACQUIRE_STATES.has(r.acquireState as RadioAcquireState)
-        ? (r.acquireState as RadioAcquireState)
-        : null,
-    channelLocked:
-      typeof r.channelLocked === "boolean" ? r.channelLocked : null,
-    // The radio's own transmit-proof verdict. Anything that is not a real
-    // boolean — an absent key on an older agent, a null the agent sends when
-    // it has no radio view, a stale snapshot — normalizes to null, which the
-    // UI reads as "no verdict". Defaulting to false here would fabricate a
-    // claim that the transmit path had been proven.
-    rfUnverified: typeof r.rfUnverified === "boolean" ? r.rfUnverified : null,
-    reacquireKills: num(r.reacquireKills),
-    rxZombieKills: num(r.rxZombieKills),
-    validRxPacketsPerS: num(r.validRxPacketsPerS),
-    // WFB link-diagnosis verdict + received-frame counters. Optional on
-    // the wire; an unknown verdict string falls to null (no fabricated
-    // "healthy") and the counters use num() so an absent field stays null
-    // rather than a misleading 0.
-    linkDiag:
-      typeof r.linkDiag === "string" &&
-      RADIO_LINK_DIAGS.has(r.linkDiag as RadioLinkDiag)
-        ? (r.linkDiag as RadioLinkDiag)
-        : null,
-    packetsAll: num(r.packetsAll),
-    decryptErrors: num(r.decryptErrors),
-    // WFB adapter selection surface. The chipset is null when unknown.
-    // `adapterInjectionOk` distinguishes an explicit false (no
-    // injection-capable adapter found — the agent refuses to transmit)
-    // from absent (older agent that doesn't report it) so the UI only
-    // warns when the agent actually says the adapter can't inject.
-    // Newer agents nest these as adapterChipset / adapterInjectionOk; the
-    // top-level wfbAdapterChipset / wfbAdapterInjectionOk are accepted as
-    // a fallback for the same reading.
-    adapterChipset:
-      typeof r.adapterChipset === "string" && r.adapterChipset.length > 0
-        ? r.adapterChipset
-        : typeof r.wfbAdapterChipset === "string" &&
-            r.wfbAdapterChipset.length > 0
-          ? r.wfbAdapterChipset
-          : null,
-    adapterInjectionOk:
-      typeof r.adapterInjectionOk === "boolean"
-        ? r.adapterInjectionOk
-        : typeof r.wfbAdapterInjectionOk === "boolean"
-          ? r.wfbAdapterInjectionOk
-          : null,
-    // USB link health of the selected adapter. `adapterUsbDegraded` true means
-    // the adapter enumerated on a slow (full-speed, 12 Mbps) USB link and can
-    // advance tx_bytes yet emit no usable RF — a loud warning state. Accept the
-    // nested or the top-level wfbAdapter* spelling, same as injectionOk.
-    adapterUsbDegraded:
-      typeof r.adapterUsbDegraded === "boolean"
-        ? r.adapterUsbDegraded
-        : typeof r.wfbAdapterUsbDegraded === "boolean"
-          ? r.wfbAdapterUsbDegraded
-          : null,
-    adapterUsbSpeedMbps: num(r.adapterUsbSpeedMbps ?? r.wfbAdapterUsbSpeedMbps),
-    // PHY at the muted txpower floor: injects frames yet radiates nothing.
-    // Optional on the wire; null when absent so the UI distinguishes "no
-    // reading" from a real false. Defensive boolean pass-through like txActive.
-    phyMuted: typeof r.phyMuted === "boolean" ? r.phyMuted : null,
-    // Pair-state fields are optional on the wire (older agents omit
-    // them). Treat absent / null as "unpaired, auto-pair unknown" so
-    // the UI never confuses a missing field with an explicit false.
-    paired: r.paired === true,
-    pairedWithDeviceId:
-      typeof r.pairedWithDeviceId === "string" ? r.pairedWithDeviceId : null,
-    pairedAt: typeof r.pairedAt === "string" ? r.pairedAt : null,
-    publicKeyFingerprint:
-      typeof r.publicKeyFingerprint === "string"
-        ? r.publicKeyFingerprint
-        : null,
-    // autoPairEnabled defaults to false when absent so the UI does
-    // not show a misleading "armed" badge against an old agent that
-    // doesn't actually run the auto-pair supervisor.
-    autoPairEnabled: r.autoPairEnabled === true,
-    // Live radio tuning surface. Optional on the wire; null when absent so the
-    // tuning card knows "no reading" from a real value on an older agent.
-    fecK: num(r.fecK),
-    fecN: num(r.fecN),
-    linkPreset: typeof r.linkPreset === "string" ? r.linkPreset : null,
-    adaptiveBitrateEnabled:
-      typeof r.adaptiveBitrateEnabled === "boolean"
-        ? r.adaptiveBitrateEnabled
-        : null,
-    recommendedTierIdx: num(r.recommendedTierIdx),
-    recommendedTierName:
-      typeof r.recommendedTierName === "string" ? r.recommendedTierName : null,
-    recommendedBitrateKbps: num(r.recommendedBitrateKbps),
-  };
-}
-
-// The ados-crsf service's own coarse-state vocabulary. An unknown value (or an
-// explicit null) normalizes to null so a future state the agent adds never
-// pins a bad reading — the lane's own state, not this app's sentinel.
-const CRSF_LINK_STATES: ReadonlySet<CrsfLinkState> = new Set<CrsfLinkState>([
-  "unconfigured",
-  "ready",
-  "link_ok",
-  "degraded",
-  "rf_unverified",
-  "disabled",
-]);
-
-/**
- * Normalize the CRSF / ExpressLRS control-lane block onto the GCS CrsfState
- * shape. The block reaches the GCS from two producers in two casings that carry
- * nearly the same field set:
- *   - the cloud heartbeat (camelCase `rssiDbm`, `txPowerMw`, ...; drops only
- *     `flyable` + `pic`), and
- *   - the LAN `GET /api/v1/ground-station/crsf` route (raw snake_case
- *     `rssi_dbm`, `tx_power_mw`, ...; carries `flyable` + `pic` too).
- * Both paths carry the real TX power and the `fc_command_down_gated` safety
- * gate. Each field is read from whichever casing is present. A missing block —
- * an older agent that never emits crsf, or a lane that is down / whose sidecar
- * is stale (the heartbeat omits the whole block, the LAN route 404s) — returns
- * null so the store field reads absent rather than a fabricated all-null block.
- */
-export function normalizeCrsf(raw: unknown): CrsfState | null {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
-  const r = raw as Record<string, unknown>;
-  const num = (v: unknown): number | null =>
-    typeof v === "number" && Number.isFinite(v) ? v : null;
-  const str = (v: unknown): string | null =>
-    typeof v === "string" && v.length > 0 ? v : null;
-  const bool = (v: unknown): boolean | null =>
-    typeof v === "boolean" ? v : null;
-  // Read either casing. `??` is the right fold: a value that is legitimately
-  // null on the present casing maps to null anyway, while a real `false` / `0`
-  // survives (nullish coalescing skips only null/undefined). A payload is
-  // one casing OR the other, never a mix, so there is no ambiguity.
-  const stateRaw = r.state;
-  const state: CrsfLinkState | null =
-    typeof stateRaw === "string" &&
-    CRSF_LINK_STATES.has(stateRaw as CrsfLinkState)
-      ? (stateRaw as CrsfLinkState)
-      : null;
-  return {
-    state,
-    rssiDbm: num(r.rssiDbm ?? r.rssi_dbm),
-    lqUplink: num(r.lqUplink ?? r.lq_uplink),
-    lqDownlink: num(r.lqDownlink ?? r.lq_downlink),
-    snrDb: num(r.snrDb ?? r.snr_db),
-    band: str(r.band),
-    packetRateHz: num(r.packetRateHz ?? r.packet_rate_hz),
-    // TX power in mW, read from either casing (`tx_power_mw` on the LAN sidecar,
-    // `txPowerMw` on the cloud heartbeat) so the real TX power surfaces on both
-    // reach paths. Null when the lane reports no reading.
-    txPowerMw: num(r.tx_power_mw ?? r.txPowerMw),
-    txFramesPerS: num(r.txFramesPerS ?? r.tx_frames_per_s),
-    rxFramesPerS: num(r.rxFramesPerS ?? r.rx_frames_per_s),
-    // The lane's own transmit-proof verdict. Anything that is not a real
-    // boolean — an absent key, an explicit null, a stale snapshot — normalizes
-    // to null, which reads as "no verdict". Defaulting to false would fabricate
-    // a claim that the transmit path had been proven (the crsf sibling of the
-    // radio rfUnverified tri-state).
-    rfUnverified: bool(r.rfUnverified ?? r.rf_unverified),
-    // Arm-safety verdict, LAN-sidecar only (the heartbeat projection drops it).
-    // Null over the cloud path / on older agents rather than a fabricated false.
-    flyable: bool(r.flyable),
-    mode: str(r.mode),
-    // MAVLink-over-ELRS command-down safety gate. A safety verdict must travel
-    // on every reach path, so it reads from either casing (unlike flyable / pic,
-    // which the heartbeat projection drops). Anything that is not a real boolean
-    // — absent, explicit null, a stale snapshot — normalizes to null ("no
-    // verdict"). Defaulting to false would fabricate a claim that the FC command
-    // path is open.
-    fcCommandDownGated: bool(r.fcCommandDownGated ?? r.fc_command_down_gated),
-    channelSource: str(r.channelSource ?? r.channel_source),
-    // PIC arbiter, LAN-sidecar only (the heartbeat projection drops it).
-    pic: str(r.pic),
-    relayRole: str(r.relayRole ?? r.relay_role),
-  };
-}
+export { DEFAULT_COMPUTE, DEFAULT_MODELS, DEFAULT_VISION } from "./normalize-defaults";
+export { normalizeRadio } from "./normalize-radio";
+export { normalizeCrsf } from "./normalize-crsf";
 
 /**
  * Map a raw agent capabilities payload onto the GCS AgentCapabilities shape.

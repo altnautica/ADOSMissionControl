@@ -43,6 +43,93 @@ import {
   foldLegacyWaypoints,
 } from "@/lib/mission/mission-expand";
 
+/**
+ * The execution half of a {@link Mission}, reset to "not running".
+ *
+ * A persisted mission is a plan. Anything describing what the vehicle is
+ * currently doing has to be re-derived from live telemetry, never restored, so
+ * these fields are neutralised both on the way out (`partialize`) and on the
+ * way in for a payload written before that rule existed (`migrate` v4).
+ */
+const IDLE_EXECUTION = {
+  state: "planning",
+  progress: 0,
+  currentWaypoint: 0,
+  startedAt: undefined,
+  completedAt: undefined,
+} as const satisfies Partial<Mission>;
+
+/** The subset of mission state written to IndexedDB. */
+export interface PersistedMissionState {
+  waypoints: Waypoint[];
+  activeMission: Mission | null;
+}
+
+/**
+ * Select what persists.
+ *
+ * The PLAN half of the mission persists; the EXECUTION half does not.
+ * `Mission` carries `state` / `progress` / `currentWaypoint` / `startedAt`
+ * alongside the plan, and persisting them verbatim meant a reload with
+ * `state: "running"` put `MissionExecutionOverlay` and `OverviewMap`'s mission
+ * controls on screen for a mission that is not running, with nothing
+ * connected — while the top-level `progress` and `currentWaypoint` (correctly
+ * not persisted) read 0. Two surfaces, two answers. `flight-lifecycle` would
+ * also stamp the stale mission id and name onto the next flight's record.
+ *
+ * Exported so the shape is testable without driving the persist middleware.
+ */
+export function missionPartialize(
+  state: MissionStoreState,
+): PersistedMissionState {
+  return {
+    waypoints: state.waypoints,
+    activeMission: state.activeMission
+      ? { ...state.activeMission, ...IDLE_EXECUTION }
+      : null,
+  };
+}
+
+/**
+ * Migrate a persisted mission payload forward. Exported so each branch is
+ * unit-testable in isolation.
+ */
+export function migrateMissionStore(
+  persisted: unknown,
+  version: number,
+): MissionStoreState {
+  const state = persisted as Record<string, unknown>;
+  if (version < 2) {
+    // v2 retired the suite framework. Strip the dropped ``suiteType`` field off
+    // ``activeMission`` so the persisted shape matches the TypeScript
+    // interface verbatim rather than relying on excess-property tolerance.
+    const active = state.activeMission as Record<string, unknown> | null;
+    if (active && "suiteType" in active) {
+      delete active.suiteType;
+      state.activeMission = active;
+    }
+  }
+  if (version < 3) {
+    // v3 nests action commands (DO_/CONDITION_) under the navigation waypoint
+    // they fire at. Fold a legacy flat list, where actions were their own
+    // top-level rows, into the per-waypoint ``actions[]`` model.
+    if (Array.isArray(state.waypoints)) {
+      state.waypoints = foldLegacyWaypoints(state.waypoints as Waypoint[]);
+    }
+  }
+  if (version < 4) {
+    // v4 stopped persisting live mission-execution state. A payload written by
+    // v3 or earlier can still name a running mission, so reset the execution
+    // fields on the way in — a persisted record is a plan, never a report of
+    // what the vehicle is doing.
+    const active = state.activeMission as Record<string, unknown> | null;
+    if (active) {
+      state.activeMission = { ...active, ...IDLE_EXECUTION };
+    }
+  }
+  return state as unknown as MissionStoreState;
+}
+
 interface MissionStoreState {
   activeMission: Mission | null;
   waypoints: Waypoint[];
@@ -248,35 +335,9 @@ export const useMissionStore = create<MissionStoreState>()(
     {
       name: "altcmd:mission-store",
       storage: createJSONStorage(indexedDBStorage.storage),
-      version: 3,
-      partialize: (state) => ({
-        waypoints: state.waypoints,
-        activeMission: state.activeMission,
-      }),
-      migrate: (persisted, version) => {
-        const state = persisted as Record<string, unknown>;
-        if (version < 2) {
-          // v2 retired the suite framework. Strip the dropped
-          // ``suiteType`` field off ``activeMission`` so the
-          // persisted shape matches the TypeScript interface
-          // verbatim rather than relying on excess-property
-          // tolerance.
-          const active = state.activeMission as Record<string, unknown> | null;
-          if (active && "suiteType" in active) {
-            delete active.suiteType;
-            state.activeMission = active;
-          }
-        }
-        if (version < 3) {
-          // v3 nests action commands (DO_/CONDITION_) under the navigation
-          // waypoint they fire at. Fold a legacy flat list, where actions were
-          // their own top-level rows, into the per-waypoint ``actions[]`` model.
-          if (Array.isArray(state.waypoints)) {
-            state.waypoints = foldLegacyWaypoints(state.waypoints as Waypoint[]);
-          }
-        }
-        return state as unknown as MissionStoreState;
-      },
+      version: 4,
+      partialize: missionPartialize,
+      migrate: migrateMissionStore,
     }
   )
 );

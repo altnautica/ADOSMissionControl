@@ -62,7 +62,6 @@ vi.mock("@/stores/cockpit-store", async () => {
 import { CockpitView } from "@/components/cockpit/CockpitView";
 import { useCockpitStore } from "@/stores/cockpit-store";
 import { useDroneManager } from "@/stores/drone-manager";
-import { useDroneStore } from "@/stores/drone-store";
 import { useUiStore } from "@/stores/ui-store";
 import { useSkillConfirmStore } from "@/stores/skill-confirm-store";
 
@@ -106,7 +105,7 @@ describe("CockpitView", () => {
     // The Skill Bar self-gates to the skill layer; enable it so the bar projects.
     useCockpitStore.setState({ enabled: true });
     useDroneManager.setState({ selectedDroneId: "drone-1" });
-    useDroneStore.setState({ selectedId: "drone-1" });
+    useDroneManager.setState({ selectedDroneId: "drone-1" });
     useUiStore.setState({ immersiveMode: false });
     useSkillConfirmStore.setState({ pending: null });
   });
@@ -116,7 +115,7 @@ describe("CockpitView", () => {
     vi.restoreAllMocks();
     useCockpitStore.setState({ enabled: false });
     useDroneManager.setState({ selectedDroneId: null });
-    useDroneStore.setState({ selectedId: null });
+    useDroneManager.setState({ selectedDroneId: null });
     useUiStore.setState({ immersiveMode: false });
   });
 

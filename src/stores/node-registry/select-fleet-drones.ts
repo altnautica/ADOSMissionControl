@@ -59,6 +59,21 @@ function asCameraState(s: string | null | undefined): string | null {
 }
 
 /**
+ * The freshest heartbeat across every source for a node. Single-sourced so the
+ * row projection and the projector's liveness cache key cannot drift apart.
+ */
+export function freshestHeartbeat(
+  entry: NodeEntry,
+  status: CommandCloudStatus | undefined,
+): number {
+  return Math.max(
+    entry.presence.lastHeartbeat,
+    entry.fc.lastHeartbeat ?? 0,
+    status?.updatedAt ?? 0,
+  );
+}
+
+/**
  * Project a single {@link NodeEntry} (plus its cloud display status, if any)
  * into a {@link FleetDrone}. Pure: identical inputs yield identical output.
  */
@@ -76,11 +91,7 @@ export function nodeEntryToFleetDrone(
   // ticks on the shared 1Hz clock). A LAN-only node with a fresh presence
   // heartbeat but no cloud row stays online (fixes the false-OFFLINE bug); a
   // node is offline only once EVERY source is past the offline threshold.
-  const lastHeartbeat = Math.max(
-    presence.lastHeartbeat,
-    fc.lastHeartbeat ?? 0,
-    status?.updatedAt ?? 0,
-  );
+  const lastHeartbeat = freshestHeartbeat(entry, status);
   const online =
     lastHeartbeat > 0 && now - lastHeartbeat < OFFLINE_THRESHOLD_MS;
 
@@ -184,4 +195,100 @@ export function selectFleetDrones(input: SelectFleetDronesInput): FleetDrone[] {
     return nodeEntryToFleetDrone(entry, status, now);
   });
   return rows.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** One cached projection of one node. */
+interface CachedRow {
+  /** The entry `rev` this row was projected from. */
+  rev: number;
+  /** The cloud status object identity this row was projected from. */
+  status: CommandCloudStatus | undefined;
+  /** Whether the row read as online at projection time. */
+  online: boolean;
+  row: FleetDrone;
+}
+
+/**
+ * A stateful, identity-preserving fleet projector. One instance per consumer.
+ */
+export type FleetDronesProjector = (
+  input: SelectFleetDronesInput,
+) => FleetDrone[];
+
+/**
+ * Create a memoizing wrapper around {@link selectFleetDrones} that preserves
+ * object identity for rows — and for the whole array — that did not change.
+ *
+ * Why this exists: `useFleetStore((s) => s.drones)` selects the array, so a
+ * fresh array reference re-renders all nine of its consumers even when nothing
+ * about the fleet moved. The projection itself is cheap; replacing the array is
+ * what cost. Reference stability turns a fleet tick with no change into zero
+ * re-renders.
+ *
+ * `online` is derived from `now`, so it is part of the cache key: the 1 Hz
+ * clock tick correctly re-projects any row crossing the offline threshold and
+ * leaves every other row alone.
+ *
+ * Stateful by design — one instance per consumer. Not for use inside a pure
+ * test of the projection; call {@link selectFleetDrones} for that.
+ */
+export function createFleetDronesProjector(): FleetDronesProjector {
+  let cache: Record<string, CachedRow> = {};
+  let lastResult: FleetDrone[] = [];
+
+  return (input) => {
+    const { nodes, cloudStatuses, now } = input;
+    const nextCache: Record<string, CachedRow> = {};
+    const rows: FleetDrone[] = [];
+    let changed = false;
+    let seen = 0;
+
+    for (const nodeId in nodes) {
+      const entry = nodes[nodeId];
+      const status = entry.presence.deviceId
+        ? cloudStatuses[entry.presence.deviceId]
+        : undefined;
+      const cached = cache[nodeId];
+      // `online` flips purely on elapsed time, so a cached row is only valid
+      // while its liveness verdict still holds at this `now`.
+      const online = isOnline(entry, status, now);
+      if (
+        cached !== undefined &&
+        cached.rev === entry.rev &&
+        cached.status === status &&
+        cached.online === online
+      ) {
+        nextCache[nodeId] = cached;
+        rows.push(cached.row);
+      } else {
+        const row = nodeEntryToFleetDrone(entry, status, now);
+        nextCache[nodeId] = { rev: entry.rev, status, online, row };
+        rows.push(row);
+        changed = true;
+      }
+      seen++;
+    }
+
+    // A removed node changes the set without invalidating any surviving row.
+    if (seen !== lastResult.length) changed = true;
+
+    cache = nextCache;
+    if (!changed) return lastResult;
+    rows.sort((a, b) => a.name.localeCompare(b.name));
+    lastResult = rows;
+    return rows;
+  };
+}
+
+/**
+ * The liveness verdict {@link nodeEntryToFleetDrone} derives, extracted so the
+ * projector can use it as a cache key without building a whole row.
+ */
+function isOnline(
+  entry: NodeEntry,
+  status: CommandCloudStatus | undefined,
+  now: number,
+): boolean {
+  const lastHeartbeat = freshestHeartbeat(entry, status);
+  return lastHeartbeat > 0 && now - lastHeartbeat < OFFLINE_THRESHOLD_MS;
 }

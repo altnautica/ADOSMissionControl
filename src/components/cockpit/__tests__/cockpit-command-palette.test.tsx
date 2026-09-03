@@ -16,7 +16,7 @@ vi.mock("@/lib/skills", async () => {
 
 import { CockpitCommandPalette } from "@/components/cockpit/CockpitCommandPalette";
 import { activate, registerBuiltins } from "@/lib/skills";
-import { useDroneStore } from "@/stores/drone-store";
+import { useDroneManager } from "@/stores/drone-manager";
 
 const DRONE = "drone-1";
 
@@ -34,12 +34,12 @@ function renderPalette(onClose = vi.fn()) {
 describe("CockpitCommandPalette", () => {
   beforeEach(() => {
     registerBuiltins();
-    useDroneStore.setState({ selectedId: DRONE });
+    useDroneManager.setState({ selectedDroneId: DRONE });
     (activate as unknown as ReturnType<typeof vi.fn>).mockClear();
   });
   afterEach(() => {
     cleanup();
-    useDroneStore.setState({ selectedId: null });
+    useDroneManager.setState({ selectedDroneId: null });
   });
 
   it("lists the drone's available commands", () => {

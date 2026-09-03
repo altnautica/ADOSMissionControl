@@ -50,28 +50,52 @@ describe('diagnostics-store message-rate timestamp bounds', () => {
  * logMessage/logEvent/logConnection/logCalibration must bump _version so
  * selectors re-read the mutated ring buffers, and must not mutate the live
  * state arrays in place before copying them.
+ *
+ * `logMessage` and `logEvent` run at wire rate (100-400 Hz on a full ArduPilot
+ * stream), so their bump is COALESCED to one per animation frame rather than
+ * one per call. The contract these assert is therefore "the bump lands", not
+ * "the bump is synchronous": N calls inside one frame must produce exactly one
+ * notification. The batching itself is pinned in
+ * `state-perf-regressions.test.ts`. `logConnection` / `logCalibration` are
+ * operator-rate and stay synchronous.
  */
 describe('diagnostics-store re-render + immutability', () => {
   beforeEach(() => {
     useDiagnosticsStore.getState().clear();
   });
 
-  it('bumps _version on logMessage so subscription re-renders', () => {
+  /** Resolve after the next animation frame, when a coalesced bump applies. */
+  const nextFrame = (): Promise<void> => {
+    const { promise, resolve } = Promise.withResolvers<void>();
+    requestAnimationFrame(() => resolve());
+    return promise;
+  };
+
+  it('bumps _version on logMessage so subscription re-renders', async () => {
     const before = useDiagnosticsStore.getState()._version;
     useDiagnosticsStore.getState().logMessage(30, 'ATTITUDE', 'in', 28);
-    const after = useDiagnosticsStore.getState()._version;
-    expect(after).toBeGreaterThan(before);
     expect(useDiagnosticsStore.getState().messageLog.toArray().length).toBe(1);
+    await nextFrame();
+    expect(useDiagnosticsStore.getState()._version).toBeGreaterThan(before);
   });
 
-  it('bumps _version on logEvent and appends the event timeline', () => {
+  it('coalesces a burst of logMessage calls into one bump', async () => {
+    const before = useDiagnosticsStore.getState()._version;
+    for (let i = 0; i < 40; i++) {
+      useDiagnosticsStore.getState().logMessage(30, 'ATTITUDE', 'in', 28);
+    }
+    await nextFrame();
+    expect(useDiagnosticsStore.getState()._version).toBe(before + 1);
+  });
+
+  it('bumps _version on logEvent and appends the event timeline', async () => {
     const before = useDiagnosticsStore.getState()._version;
     useDiagnosticsStore.getState().logEvent('arm', 'armed');
-    const after = useDiagnosticsStore.getState()._version;
-    expect(after).toBeGreaterThan(before);
     const timeline = useDiagnosticsStore.getState().eventTimeline.toArray();
     expect(timeline.length).toBe(1);
     expect(timeline[0].type).toBe('arm');
+    await nextFrame();
+    expect(useDiagnosticsStore.getState()._version).toBeGreaterThan(before);
   });
 
   it('does not mutate the live connectionLog array before copying', () => {

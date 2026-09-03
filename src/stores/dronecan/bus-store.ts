@@ -11,6 +11,7 @@
  */
 
 import { create } from "zustand";
+import { createVersionBumper } from "../coalesced-version";
 import { RingBuffer } from "@/lib/ring-buffer";
 
 export interface DecodedFrame {
@@ -60,6 +61,19 @@ const ZERO_COUNTERS: BusCounters = {
   bytesOut: 0,
 };
 
+/**
+ * Coalesced `_version` bumper. A saturated DroneCAN bus pushes several
+ * thousand frames/sec; one `set()` per frame was one React commit per frame.
+ * The counters below still mutate per frame — only the notification is
+ * coalesced.
+ */
+const bumper = createVersionBumper(() =>
+  useDroneCanBusStore.setState((s) => ({ _version: s._version + 1 })),
+);
+
+/** Test/debug affordance: true while a coalesced bump is pending. */
+export const droneCanBusBumpPending = bumper.hasPendingBump;
+
 export const useDroneCanBusStore = create<BusStoreState>((set, get) => ({
   frames: new RingBuffer<DecodedFrame>(FRAME_CAP),
   counters: { ...ZERO_COUNTERS },
@@ -99,11 +113,12 @@ export const useDroneCanBusStore = create<BusStoreState>((set, get) => ({
       _lastTallyAt: lastTally,
       _framesSinceTally: framesSinceTally,
       _errorsSinceTally: errorsSinceTally,
-      _version: state._version + 1,
     });
+    bumper.scheduleVersionBump();
   },
 
   clear: () => {
+    bumper.cancelVersionBump();
     get().frames.clear();
     set({
       counters: { ...ZERO_COUNTERS },

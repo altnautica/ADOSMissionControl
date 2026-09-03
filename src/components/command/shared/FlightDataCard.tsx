@@ -123,7 +123,7 @@ export function FlightDataCard({ className }: FlightDataCardProps) {
   const connectionState = useDroneStore((s) => s.connectionState);
   const flightMode = useDroneStore((s) => s.flightMode);
   const armState = useDroneStore((s) => s.armState);
-  const selectedId = useDroneStore((s) => s.selectedId);
+  const selectedId = useDroneManager((s) => s.selectedDroneId);
   const prearmBuffers = usePrearmBufferStore((s) => s.buffers);
   const prearmLines = selectedId
     ? (prearmBuffers[selectedId] ?? EMPTY_LINES)

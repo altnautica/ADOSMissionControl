@@ -17,7 +17,7 @@ import {
   resetCooldownState,
 } from "@/lib/skills/cooldown";
 import { useSkillRegistry } from "@/lib/skills/registry";
-import { useDroneStore } from "@/stores/drone-store";
+import { useDroneManager } from "@/stores/drone-manager";
 import type { Skill, SkillContext, SkillState } from "@/lib/skills/types";
 
 function clearRegistry(): void {
@@ -63,7 +63,7 @@ describe("cooldown clock", () => {
   beforeEach(() => {
     clearRegistry();
     resetCooldownState();
-    useDroneStore.setState({ selectedId: "drone-c" });
+    useDroneManager.setState({ selectedDroneId: "drone-c" });
   });
   afterEach(() => {
     vi.restoreAllMocks();
@@ -139,7 +139,7 @@ describe("charge budget", () => {
   beforeEach(() => {
     clearRegistry();
     resetCooldownState();
-    useDroneStore.setState({ selectedId: "drone-c" });
+    useDroneManager.setState({ selectedDroneId: "drone-c" });
   });
   afterEach(() => {
     vi.restoreAllMocks();

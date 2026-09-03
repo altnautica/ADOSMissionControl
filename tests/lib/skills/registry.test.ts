@@ -9,7 +9,6 @@
 
 import { describe, it, expect, beforeEach } from "vitest";
 import { useSkillRegistry } from "@/lib/skills/registry";
-import { useDroneStore } from "@/stores/drone-store";
 import { useDroneManager, type ManagedDrone } from "@/stores/drone-manager";
 import type { Skill, SkillState } from "@/lib/skills/types";
 import type { ProtocolCapabilities } from "@/lib/protocol/types";
@@ -68,7 +67,7 @@ describe("skill registry", () => {
     clearRegistry();
     // No selected drone and no managed drones: buildSkillContext holds no live
     // protocol, so the firmware's autonomous-nav capability is unknown.
-    useDroneStore.setState({ selectedId: null });
+    useDroneManager.setState({ selectedDroneId: null });
     useDroneManager.setState({ drones: new Map(), selectedDroneId: null });
   });
 
@@ -201,7 +200,7 @@ describe("skill registry", () => {
         },
       }),
     );
-    useDroneStore.setState({ selectedId: "drone-1" });
+    useDroneManager.setState({ selectedDroneId: "drone-1" });
 
     // recomputeSelected must not propagate the throw; it caches a disabled
     // fallback so the bar stays alive.

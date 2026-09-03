@@ -143,6 +143,7 @@ describe("shouldRemoveEntry", () => {
   const base = {
     nodeId: "node:x",
     connection: { fcConnected: false },
+    rev: 0,
   };
 
   it("keeps an entry with a presence source", () => {

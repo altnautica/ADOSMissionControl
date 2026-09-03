@@ -34,6 +34,38 @@ import { RingBuffer } from "@/lib/ring-buffer";
 const RATE_WINDOW_CAP = 128;
 
 /**
+ * Ceiling on concurrent detection STREAMS tracked per drone.
+ *
+ * A stream is keyed `modelId::cameraId`, both supplied by the agent's vision
+ * engine, so the key space is open: a plugin that rotates model ids (a version
+ * suffix, a per-run identifier) added a permanent entry per rotation and the
+ * map only ever shrank on `clearBatch`. A rig runs a handful of pipelines; 32
+ * is far past any real fan-out. When full, the stream whose last batch is
+ * oldest is evicted — the ones actively producing survive.
+ */
+const MAX_STREAMS_PER_DRONE = 32;
+
+/**
+ * Insert `batch` under `key`, evicting the stalest stream once the per-drone
+ * ceiling is reached.
+ */
+function withStream(
+  streams: Record<string, VisionDetectionBatch>,
+  key: string,
+  batch: VisionDetectionBatch,
+): Record<string, VisionDetectionBatch> {
+  const next = { ...streams, [key]: batch };
+  const keys = Object.keys(next);
+  if (keys.length <= MAX_STREAMS_PER_DRONE) return next;
+  let stalest = keys[0];
+  for (const k of keys) {
+    if (k !== key && next[k].receivedAt < next[stalest].receivedAt) stalest = k;
+  }
+  if (stalest !== key) delete next[stalest];
+  return next;
+}
+
+/**
  * How long a detection batch stays "fresh" after it was received. Past this
  * age the overlay drops boxes and the perception health surfaces flip a live
  * feed to "stale / offload link lost" (distinct from "no targets"). Shared by
@@ -190,9 +222,11 @@ export const useVisionDetectionsStore = create<VisionDetectionsState>(
           batches: { ...state.batches, [droneId]: stamped },
           // Per-stream (the hub's per-pipeline view) — this batch replaces only
           // its own stream, so a second model no longer overwrites the first.
+          // Bounded per drone: the (model, camera) key space is agent-supplied
+          // and therefore open-ended.
           streams: {
             ...state.streams,
-            [droneId]: { ...(state.streams[droneId] ?? {}), [key]: stamped },
+            [droneId]: withStream(state.streams[droneId] ?? {}, key, stamped),
           },
           rateWindows,
         };

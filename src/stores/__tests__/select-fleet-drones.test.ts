@@ -33,6 +33,7 @@ function entry(over: Partial<NodeEntry> = {}): NodeEntry {
     },
     connection: { fcConnected: false, ...over.connection },
     fc: { managedId: null, ...over.fc },
+    rev: 0,
     ...over,
   };
 }

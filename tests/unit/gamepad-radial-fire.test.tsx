@@ -54,7 +54,7 @@ import {
   RADIAL_GAMEPAD_BUTTON,
 } from "@/hooks/use-gamepad-radial";
 import { useInputStore } from "@/stores/input-store";
-import { useDroneStore } from "@/stores/drone-store";
+import { useDroneManager } from "@/stores/drone-manager";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useSkillRegistry } from "@/lib/skills";
 import {
@@ -108,7 +108,7 @@ describe("gamepad radial firing", () => {
     activateMock.mockClear();
     clearRegistry();
     releaseAll();
-    useDroneStore.setState({ selectedId: "drone-r" });
+    useDroneManager.setState({ selectedDroneId: "drone-r" });
     // Two bound wedges: aiming up selects the first, down selects the second.
     const loadout = cloneDefaultLoadout();
     loadout.slots = [

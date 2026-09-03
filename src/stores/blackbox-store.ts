@@ -31,6 +31,17 @@ export interface BlackBoxFilters {
 }
 
 const LOG_PAGE_SIZE = 200;
+/**
+ * Ceiling on the accumulated log table.
+ *
+ * `fetchMore` used to append a page onto the previous array with no ceiling, so
+ * an operator holding "load more" on a busy flight session grew one array
+ * without limit and reallocated the whole thing on each page. 50 pages of
+ * on-screen scrollback is far past what anyone reads before filtering; older
+ * rows are dropped from the head and are still reachable by narrowing the
+ * filters or the session, which re-queries the store.
+ */
+const MAX_ROWS = LOG_PAGE_SIZE * 50;
 /** Metrics charted in the post-flight review pane. */
 const HISTORY_METRICS = ["system.cpu_percent", "system.memory_percent"] as const;
 
@@ -176,12 +187,20 @@ export const useBlackBoxStore = create<BlackBoxStore>((set, get) => ({
         limit: LOG_PAGE_SIZE,
         cursor: nextCursor,
       });
-      set((s) => ({
-        rows: [...s.rows, ...envelope.data],
-        nextCursor: envelope.page.next_cursor,
-        hasMore: envelope.page.next_cursor !== null,
-        loadingMore: false,
-      }));
+      set((s) => {
+        const merged = [...s.rows, ...envelope.data];
+        return {
+          // Drop from the head once past the ceiling: the newest page is the
+          // one the operator just asked for.
+          rows:
+            merged.length > MAX_ROWS
+              ? merged.slice(merged.length - MAX_ROWS)
+              : merged,
+          nextCursor: envelope.page.next_cursor,
+          hasMore: envelope.page.next_cursor !== null,
+          loadingMore: false,
+        };
+      });
     } catch {
       set({ loadingMore: false });
     }
