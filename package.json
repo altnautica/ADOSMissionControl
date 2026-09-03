@@ -74,7 +74,7 @@
     "next": "^16.2.4",
     "next-intl": "^4.11.0",
     "pako": "^2.1.0",
-    "react": "19.2.3",
+    "react": "19.2.7",
     "react-dom": "19.2.3",
     "react-leaflet": "^5.0.0",
     "recharts": "^2.15.3",
