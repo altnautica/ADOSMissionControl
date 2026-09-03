@@ -30,6 +30,7 @@ import {
   type CommandContext,
 } from "../mavlink-adapter-commands";
 import { CommandQueue } from "../command-queue";
+import { buildFrame, resetSequences } from "../encoders/frame";
 import type { CommandResult } from "../types";
 
 /** From the MAVLink MAV_CMD enum. */
@@ -141,5 +142,39 @@ describe("fire-and-forget senders", () => {
     expect(result.success).toBe(false);
     expect(result.acknowledged).toBeUndefined();
     expect(result.message).toBe("Not connected");
+  });
+});
+
+describe("frame builder", () => {
+  it("keeps a separate sequence stream per sending identity", () => {
+    resetSequences();
+    // ArduPilot computes GCS-to-FC packet loss from the sequence byte of the
+    // sending (sysid, compid). One global counter shared by two senders makes
+    // each receiver see a stream with holes where the other sender's frames
+    // went, so the reported loss rate is fiction.
+    const seqOf = (frame: Uint8Array) => frame[4];
+    const a1 = seqOf(buildFrame(0, new Uint8Array(9), 255, 190));
+    const b1 = seqOf(buildFrame(0, new Uint8Array(9), 254, 190));
+    const a2 = seqOf(buildFrame(0, new Uint8Array(9), 255, 190));
+    const b2 = seqOf(buildFrame(0, new Uint8Array(9), 254, 190));
+    expect([a1, a2]).toEqual([0, 1]);
+    expect([b1, b2]).toEqual([0, 1]);
+  });
+
+  it("wraps at 255 rather than emitting an out-of-range sequence byte", () => {
+    resetSequences();
+    let last = 0;
+    for (let i = 0; i < 257; i++) {
+      last = buildFrame(0, new Uint8Array(9), 7, 7)[4];
+      expect(last).toBeGreaterThanOrEqual(0);
+      expect(last).toBeLessThanOrEqual(255);
+    }
+    expect(last).toBe(0); // 257 sends: 0..255 then 0
+  });
+
+  it("throws for a message with no CRC_EXTRA seed instead of emitting a dead frame", () => {
+    // A frame with no seed carries a CRC the receiver cannot match, so it is
+    // silently rejected on arrival and the caller is told nothing.
+    expect(() => buildFrame(0xfffff, new Uint8Array(4))).toThrow(/no CRC_EXTRA seed/);
   });
 });

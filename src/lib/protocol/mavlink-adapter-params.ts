@@ -247,38 +247,79 @@ export async function getParameter(ctx: ParamContext, name: string): Promise<Par
   })
 }
 
+/**
+ * Attempts for one PARAM_SET before reporting failure, and the gap between
+ * them. MAVLink's parameter protocol puts retransmission on the GCS: the
+ * vehicle answers a write with a PARAM_VALUE echo and nothing else, so a
+ * dropped write is indistinguishable from a slow one until the GCS resends.
+ * Reporting a hard failure on the first miss made a single lost frame look
+ * like a rejected write.
+ */
+const PARAM_SET_ATTEMPTS = 3
+const PARAM_SET_ATTEMPT_MS = 1000
+
 export async function setParameter(ctx: ParamContext, name: string, value: number, type = 9): Promise<CommandResult> {
   if (!ctx.transport?.isConnected) return { success: false, resultCode: -1, message: 'Not connected' }
 
   const firmwareName = ctx.firmwareHandler?.mapParameterName(name) ?? name
   ctx.paramCache.delete(name)
 
-  return new Promise<CommandResult>((resolve) => {
-    const timer = setTimeout(() => {
-      resolve({ success: false, resultCode: -1, message: `Param set timed out: ${name}` })
-    }, 3000)
+  // PX4 integer params need byte-wise encoding
+  let encodedValue = value
+  if (ctx.firmwareHandler?.firmwareType === 'px4' && type !== 9) {
+    const tmp = new DataView(new ArrayBuffer(4))
+    tmp.setInt32(0, Math.round(value), true)
+    encodedValue = tmp.getFloat32(0, true)
+  }
 
+  return new Promise<CommandResult>((resolve) => {
+    let attempt = 0
+    let timer: ReturnType<typeof setTimeout>
+
+    // One subscription for the whole exchange, released on EVERY exit path.
+    // The timeout path used to resolve without unsubscribing, so each timed-out
+    // write left a permanent callback still writing paramCache for that name —
+    // one leaked subscriber per failed write, and a bulk panel save on a lossy
+    // link leaks one per parameter.
     const unsub = ctx.onParameter((param) => {
-      if (param.name === firmwareName) {
-        clearTimeout(timer)
-        unsub()
-        ctx.paramCache.set(name, { value: param.value, timestamp: Date.now(), type: param.type, index: param.index, count: param.count })
-        resolve({
-          success: Math.abs(param.value - value) < 0.001,
-          resultCode: 0,
-          message: `Parameter ${name} = ${param.value}`,
-        })
-      }
+      if (param.name !== firmwareName) return
+      clearTimeout(timer)
+      unsub()
+      ctx.paramCache.set(name, { value: param.value, timestamp: Date.now(), type: param.type, index: param.index, count: param.count })
+      resolve({
+        success: Math.abs(param.value - value) < 0.001,
+        resultCode: 0,
+        message: `Parameter ${name} = ${param.value}`,
+      })
     })
 
-    // PX4 integer params need byte-wise encoding
-    let encodedValue = value
-    if (ctx.firmwareHandler?.firmwareType === 'px4' && type !== 9) {
-      const tmp = new DataView(new ArrayBuffer(4))
-      tmp.setInt32(0, Math.round(value), true)
-      encodedValue = tmp.getFloat32(0, true)
+    const attemptWrite = () => {
+      attempt += 1
+      try {
+        ctx.transport!.send(encodeParamSet(ctx.targetSysId, ctx.targetCompId, firmwareName, encodedValue, type, ctx.sysId, ctx.compId))
+      } catch (err) {
+        unsub()
+        resolve({
+          success: false,
+          resultCode: -1,
+          message: `Param set failed: ${err instanceof Error ? err.message : String(err)}`,
+        })
+        return
+      }
+      timer = setTimeout(() => {
+        if (attempt < PARAM_SET_ATTEMPTS) {
+          attemptWrite()
+          return
+        }
+        unsub()
+        resolve({
+          success: false,
+          resultCode: -1,
+          message: `Param set timed out after ${attempt} attempts: ${name}`,
+        })
+      }, PARAM_SET_ATTEMPT_MS)
     }
 
-    ctx.transport!.send(encodeParamSet(ctx.targetSysId, ctx.targetCompId, firmwareName, encodedValue, type, ctx.sysId, ctx.compId))
+    attemptWrite()
   })
 }

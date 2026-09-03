@@ -123,7 +123,7 @@ export function routeFrame(s: FrameHandlerState, frame: MAVLinkFrame, p: DataVie
   switch (frame.msgId) {
     case 0:   handleHeartbeat(s, frame); break
     case 22:  handleParamValueFrame(s, frame); break
-    case 77:  { const ack = decodeCommandAck(frame.payload); s.commandQueue.handleAck(ack.command, ack.result, frame.systemId); break }
+    case 77:  { const ack = decodeCommandAck(frame.payload); s.commandQueue.handleAck(ack.command, ack.result, frame.systemId, ack.targetSystem, ack.targetComponent); break }
     case 40:  handleMissionRequestFrame(s, frame); break
     case 44:  handleMissionCountResponse(s, frame); break
     case 47:  handleMissionAckFrame(s, frame); break

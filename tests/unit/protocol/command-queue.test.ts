@@ -128,17 +128,72 @@ describe('CommandQueue', () => {
     expect(result.message).toContain('IN_PROGRESS');
   });
 
-  // ── Superseding ──
+  // ── Concurrent same-id commands ──
 
-  it('superseding: duplicate command ID rejects old, replaces', async () => {
+  it('two commands with the same id both stay in flight; acks resolve FIFO', async () => {
+    // This used to assert the opposite: the second send cancelled the first
+    // with "Superseded by new command". Three REQUEST_MESSAGE (512) calls fire
+    // back to back on connect, so the first two cancelled themselves before
+    // the vehicle could answer. COMMAND_ACK carries no correlation id, so the
+    // best available resolution is oldest-first.
     const promise1 = queue.sendCommand(400, params, sendFn, 1, 1, 255, 190);
     const promise2 = queue.sendCommand(400, params, sendFn, 1, 1, 255, 190);
-    const result1 = await promise1;
-    expect(result1.success).toBe(false);
-    expect(result1.message).toContain('Superseded');
+    expect(queue.pendingCount).toBe(2);
+    expect(sendFn).toHaveBeenCalledTimes(2);
+
     queue.handleAck(400, MAV_RESULT.ACCEPTED);
+    const result1 = await promise1;
+    expect(result1.success).toBe(true);
+    expect(queue.pendingCount).toBe(1);
+
+    queue.handleAck(400, MAV_RESULT.DENIED);
     const result2 = await promise2;
-    expect(result2.success).toBe(true);
+    expect(result2.success).toBe(false);
+    expect(result2.resultCode).toBe(MAV_RESULT.DENIED);
+    expect(queue.pendingCount).toBe(0);
+  });
+
+  it('ignores an ack addressed to a different GCS', async () => {
+    const promise = queue.sendCommand(400, params, sendFn, 1, 1, 255, 190);
+    // Addressed to system 42, not our 255: not ours to consume.
+    queue.handleAck(400, MAV_RESULT.ACCEPTED, 1, 42, 190);
+    expect(queue.pendingCount).toBe(1);
+    // Addressed to us resolves it.
+    queue.handleAck(400, MAV_RESULT.ACCEPTED, 1, 255, 190);
+    expect((await promise).success).toBe(true);
+  });
+
+  it('accepts an ack that leaves the target fields at zero', async () => {
+    const promise = queue.sendCommand(400, params, sendFn, 1, 1, 255, 190);
+    // 0 means "any", and a sender that omits the extension fields decodes as
+    // 0 too, so this must stay permissive rather than dropping the ack.
+    queue.handleAck(400, MAV_RESULT.ACCEPTED, 1, 0, 0);
+    expect((await promise).success).toBe(true);
+  });
+
+  it('survives the connect burst: three REQUEST_MESSAGE calls all reach the wire', async () => {
+    // The concrete regression. The adapter fires REQUEST_MESSAGE (512) three
+    // times back to back on connect, once each for AUTOPILOT_VERSION,
+    // COMPONENT_METADATA and the protocol version. Keyed by command id, the
+    // first two were cancelled by the third before the vehicle could answer,
+    // so two of the three requests silently never happened.
+    const a = queue.sendCommand(512, [148, 0, 0, 0, 0, 0, 0], sendFn, 1, 1, 255, 190);
+    const b = queue.sendCommand(512, [397, 0, 0, 0, 0, 0, 0], sendFn, 1, 1, 255, 190);
+    const c = queue.sendCommand(512, [300, 0, 0, 0, 0, 0, 0], sendFn, 1, 1, 255, 190);
+
+    expect(sendFn).toHaveBeenCalledTimes(3);
+    expect(queue.pendingCount).toBe(3);
+
+    queue.handleAck(512, MAV_RESULT.ACCEPTED);
+    queue.handleAck(512, MAV_RESULT.ACCEPTED);
+    queue.handleAck(512, MAV_RESULT.UNSUPPORTED);
+
+    expect((await a).success).toBe(true);
+    expect((await b).success).toBe(true);
+    const third = await c;
+    expect(third.success).toBe(false);
+    expect(third.resultCode).toBe(MAV_RESULT.UNSUPPORTED);
+    expect(queue.pendingCount).toBe(0);
   });
 
   // ── TEMPORARILY_REJECTED auto-retry ──

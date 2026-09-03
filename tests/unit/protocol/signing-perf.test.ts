@@ -35,7 +35,7 @@ describe("signing perf micro-bench", () => {
     const durationMs = performance.now() - t0;
     const perOpUs = (durationMs * 1000) / N;
 
-    // eslint-disable-next-line no-console
+     
     console.log(
       `[signing-perf] ${N} sign() ops in ${durationMs.toFixed(1)}ms, ${perOpUs.toFixed(1)}us/op`,
     );
@@ -65,7 +65,7 @@ describe("signing perf micro-bench", () => {
     const durationMs = performance.now() - t0;
     const perOpUs = (durationMs * 1000) / tails.length;
 
-    // eslint-disable-next-line no-console
+     
     console.log(
       `[signing-perf] ${tails.length} verify() ops in ${durationMs.toFixed(1)}ms, ${perOpUs.toFixed(1)}us/op`,
     );

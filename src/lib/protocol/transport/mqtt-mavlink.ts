@@ -28,7 +28,7 @@ export type MqttRelayLane = "mavlink" | "msp";
 export class MqttMavlinkTransport implements Transport {
   readonly type = "mqtt-mavlink" as const;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   private client: any = null;
   private _connected = false;
   private _disconnecting = false;
@@ -116,7 +116,7 @@ export class MqttMavlinkTransport implements Transport {
 
         // Handle ESM/CJS module resolution (same as MqttBridge.tsx)
         const connectFn = mqttModule.connect
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+           
           ?? (mqttModule.default as any)?.connect
           ?? mqttModule.default;
 

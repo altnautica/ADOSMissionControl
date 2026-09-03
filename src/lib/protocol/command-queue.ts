@@ -39,6 +39,10 @@ interface PendingCommand {
   // COMMAND_ACKs from a different source sysid are ignored so a co-channel
   // vehicle's ack cannot resolve this drone's pending command.
   targetSys: number;
+  // Who we sent as. An ack addressed to a different GCS on a shared link is
+  // not ours to consume.
+  sysId: number;
+  compId: number;
   // Inputs retained so retries can re-encode the COMMAND_LONG with an
   // incremented confirmation byte rather than resending byte-identical frames.
   encodeArgs: {
@@ -51,8 +55,30 @@ interface PendingCommand {
   };
 }
 
+/**
+ * Upper bound on concurrently-pending commands. Generous next to real usage
+ * (a connect burst is three) and small enough that a caller looping without
+ * awaiting fails loudly instead of growing the map without limit.
+ */
+const MAX_PENDING = 32;
+
 export class CommandQueue {
+  /**
+   * Pending commands keyed by a monotonic ticket, NOT by MAV_CMD id.
+   *
+   * Keying by command id meant a second in-flight command with the same id
+   * cancelled the first with "Superseded by new command". Three
+   * REQUEST_MESSAGE (512) calls fire back to back on connect, so the first two
+   * cancelled themselves before the vehicle could answer; the same collision
+   * hit concurrent setServo, setRelay and setMessageInterval calls.
+   *
+   * COMMAND_ACK carries no correlation id, only the command number, so an ack
+   * for one of several same-id commands is matched FIFO — the oldest matching
+   * entry wins. That is the best available resolution and it is why insertion
+   * order matters here (Map preserves it).
+   */
   private pending: Map<number, PendingCommand> = new Map();
+  private nextTicket = 1;
   private timeout: number;
 
   constructor(timeoutMs: number = 3000) {
@@ -83,17 +109,15 @@ export class CommandQueue {
   ): Promise<CommandResult> {
     const effectiveTimeout = timeoutMs ?? this.timeout;
 
-    // If there's already a pending command with the same ID, reject the old one
-    const existing = this.pending.get(command);
-    if (existing) {
-      clearTimeout(existing.timer);
-      existing.resolve({
+    if (this.pending.size >= MAX_PENDING) {
+      return Promise.resolve({
         success: false,
         resultCode: -1,
-        message: "Superseded by new command",
+        message: `Command queue full (${MAX_PENDING} in flight)`,
       });
-      this.pending.delete(command);
     }
+
+    const ticket = this.nextTicket++;
 
     // First transmission carries confirmation=0. Retries re-encode with an
     // incremented confirmation count, so keep the encode inputs around.
@@ -112,7 +136,7 @@ export class CommandQueue {
     return new Promise<CommandResult>((resolve) => {
       // Set up timeout
       const timer = setTimeout(() => {
-        this.pending.delete(command);
+        this.pending.delete(ticket);
         resolve({
           success: false,
           resultCode: -1,
@@ -121,10 +145,10 @@ export class CommandQueue {
       }, effectiveTimeout);
 
       // Track the pending command
-      this.pending.set(command, {
+      this.pending.set(ticket, {
         command, resolve, timer, retryCount: 0,
         frame, sendFn, timeoutMs: effectiveTimeout,
-        targetSys, encodeArgs,
+        targetSys, sysId, compId, encodeArgs,
       });
 
       // Send. A transport can throw synchronously (e.g. "Not connected"
@@ -135,7 +159,7 @@ export class CommandQueue {
         sendFn(frame);
       } catch (err) {
         clearTimeout(timer);
-        this.pending.delete(command);
+        this.pending.delete(ticket);
         resolve({
           success: false,
           resultCode: -1,
@@ -154,20 +178,42 @@ export class CommandQueue {
    * @param sourceSys — the source system id of the ACK frame. When provided,
    *   an ACK whose source does not match the command's target sysid is ignored
    *   so a wrong-vehicle or stale ack cannot resolve this pending command.
+   * @param targetSys — the ack's `target_system`, i.e. the GCS it is addressed
+   *   to. 0 means "any". An ack addressed to a different GCS on a shared link
+   *   must not resolve our command.
+   * @param targetComp — the ack's `target_component`, same rule.
    */
-  handleAck(command: number, result: number, sourceSys?: number): void {
-    const entry = this.pending.get(command);
-    if (!entry) return;
-
-    // Drop acks that did not come from the vehicle the command was sent to.
-    // A broadcast source (0) is accepted.
-    if (sourceSys !== undefined && sourceSys !== 0 && sourceSys !== entry.targetSys) return;
+  handleAck(
+    command: number,
+    result: number,
+    sourceSys?: number,
+    targetSys?: number,
+    targetComp?: number,
+  ): void {
+    // FIFO over insertion order: the oldest pending entry for this command id
+    // that the ack could belong to. COMMAND_ACK carries no correlation id, so
+    // this is the finest resolution the protocol allows.
+    let ticket: number | undefined;
+    let entry: PendingCommand | undefined;
+    for (const [t, e] of this.pending) {
+      if (e.command !== command) continue;
+      // Not from the vehicle we addressed. A broadcast source (0) is accepted.
+      if (sourceSys !== undefined && sourceSys !== 0 && sourceSys !== e.targetSys) continue;
+      // Not addressed to us. 0 means "any", and an old sender that leaves the
+      // extension fields off decodes as 0 too, so this stays permissive.
+      if (targetSys !== undefined && targetSys !== 0 && targetSys !== e.sysId) continue;
+      if (targetComp !== undefined && targetComp !== 0 && targetComp !== e.compId) continue;
+      ticket = t;
+      entry = e;
+      break;
+    }
+    if (ticket === undefined || entry === undefined) return;
 
     // IN_PROGRESS: reset timeout, keep waiting for final ACK
     if (result === MAV_RESULT.IN_PROGRESS) {
       clearTimeout(entry.timer);
       entry.timer = setTimeout(() => {
-        this.pending.delete(command);
+        this.pending.delete(ticket);
         entry.resolve({
           success: false,
           resultCode: -1,
@@ -195,10 +241,10 @@ export class CommandQueue {
       );
       setTimeout(() => {
         // Entry may have been cleared during the delay
-        if (!this.pending.has(command)) return;
+        if (!this.pending.has(ticket)) return;
         // Reset timeout
         entry.timer = setTimeout(() => {
-          this.pending.delete(command);
+          this.pending.delete(ticket);
           entry.resolve({
             success: false,
             resultCode: MAV_RESULT.TEMPORARILY_REJECTED,
@@ -213,7 +259,7 @@ export class CommandQueue {
           entry.sendFn(entry.frame);
         } catch (err) {
           clearTimeout(entry.timer);
-          this.pending.delete(command);
+          this.pending.delete(ticket);
           entry.resolve({
             success: false,
             resultCode: -1,
@@ -226,7 +272,7 @@ export class CommandQueue {
 
     // Final result — resolve
     clearTimeout(entry.timer);
-    this.pending.delete(command);
+    this.pending.delete(ticket);
 
     entry.resolve({
       success: result === MAV_RESULT.ACCEPTED,

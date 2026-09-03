@@ -98,10 +98,20 @@ function makeHeartbeatPayload(customMode: number, type: number, baseMode: number
  * offset 0: uint16 command
  * offset 2: uint8 result
  */
-function makeCommandAckPayload(command: number, result: number): DataView {
-  const dv = makeDataView(3);
+function makeCommandAckPayload(
+  command: number,
+  result: number,
+  opts: { progress?: number; resultParam2?: number; targetSys?: number; targetComp?: number } = {},
+): DataView {
+  // Full 10-byte COMMAND_ACK. It used to build only the 3-byte base, which is
+  // what the canonical length was wrongly pinned at.
+  const dv = makeDataView(10);
   dv.setUint16(0, command, true);
   dv.setUint8(2, result);
+  dv.setUint8(3, opts.progress ?? 0);
+  dv.setInt32(4, opts.resultParam2 ?? 0, true);
+  dv.setUint8(8, opts.targetSys ?? 0);
+  dv.setUint8(9, opts.targetComp ?? 0);
   return dv;
 }
 
@@ -304,7 +314,7 @@ describe('routeFrame — COMMAND_ACK (ID 77)', () => {
     const payload = makeCommandAckPayload(400, 0);
     routeFrame(s, makeFrame(77, payload), new DataView(payload.buffer));
 
-    expect(s.commandQueue.handleAck).toHaveBeenCalledWith(400, 0, 1);
+    expect(s.commandQueue.handleAck).toHaveBeenCalledWith(400, 0, 1, 0, 0);
   });
 
   it('passes correct result code', () => {
@@ -312,7 +322,17 @@ describe('routeFrame — COMMAND_ACK (ID 77)', () => {
     const payload = makeCommandAckPayload(246, 4);
     routeFrame(s, makeFrame(77, payload), new DataView(payload.buffer));
 
-    expect(s.commandQueue.handleAck).toHaveBeenCalledWith(246, 4, 1);
+    expect(s.commandQueue.handleAck).toHaveBeenCalledWith(246, 4, 1, 0, 0);
+  });
+
+  it('forwards the ack target ids so a different GCS cannot be answered for', () => {
+    // The queue needs these to reject an ack addressed to another GCS on a
+    // shared link; they were unreachable while the canonical length was 3.
+    const s = makeState();
+    const payload = makeCommandAckPayload(400, 0, { targetSys: 42, targetComp: 190 });
+    routeFrame(s, makeFrame(77, payload), new DataView(payload.buffer));
+
+    expect(s.commandQueue.handleAck).toHaveBeenCalledWith(400, 0, 1, 42, 190);
   });
 
   it('drops a COMMAND_ACK from a co-channel vehicle (sysid mismatch)', () => {

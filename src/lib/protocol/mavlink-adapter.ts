@@ -54,6 +54,8 @@ export class MAVLinkAdapter implements DroneProtocol {
 
   // Internal state
   private parser = new MAVLinkParser()
+  /** Releases the per-connection `parser.onFrame` subscription. */
+  private frameUnsub: (() => void) | null = null
   private commandQueue = new CommandQueue(3000)
   /** Multi-link support — Map of active transports reaching this drone. */
   private links = new Map<string, LinkState>()
@@ -190,7 +192,13 @@ export class MAVLinkAdapter implements DroneProtocol {
     this._disconnected = false
     const label = this.formatLinkLabel(transport)
     this.attachLink(transport, label)
-    this.parser.onFrame((frame) => this.handleFrame(frame))
+    // One frame subscription per connection, released in handleDisconnect.
+    // It used to be registered here and never removed, so reconnecting through
+    // the same adapter instance double-dispatched every frame: two telemetry
+    // emissions per packet, and the mission and param state machines driven
+    // twice per frame.
+    this.frameUnsub?.()
+    this.frameUnsub = this.parser.onFrame((frame) => this.handleFrame(frame))
 
     const vehicleInfo = await new Promise<VehicleInfo>((resolve, reject) => {
       const timeout = setTimeout(() => reject(new Error('No heartbeat received within 10 seconds')), 10000)
@@ -354,6 +362,7 @@ export class MAVLinkAdapter implements DroneProtocol {
     if (this.streamRequestInterval) { clearInterval(this.streamRequestInterval); this.streamRequestInterval = null }
     if (this.linkLostCheckInterval) { clearInterval(this.linkLostCheckInterval); this.linkLostCheckInterval = null }
     this.commandQueue.clear(); this.paramCache.clear(); this.downloadedParamNames = null; this.parser.reset()
+    this.frameUnsub?.(); this.frameUnsub = null
     this.componentMetadataUri = null
     if (this.logListDownload) { clearTimeout(this.logListDownload.timer); this.logListDownload.resolve(Array.from(this.logListDownload.entries.values())); this.logListDownload = null }
     if (this.logDataDownload) { if (this.logDataDownload.inactivityTimer) clearTimeout(this.logDataDownload.inactivityTimer); clearTimeout(this.logDataDownload.hardTimer); this.logDataDownload.reject(new Error('Disconnected during log download')); this.logDataDownload = null }

@@ -21,6 +21,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   getAllParameters,
   retryMissingParams,
+  setParameter,
   finishParamDownload,
   type ParamContext,
 } from "../mavlink-adapter-params";
@@ -137,5 +138,77 @@ describe("retryMissingParams convergence", () => {
 
     retryMissingParams(ctx);
     expect(ctx.parameterDownload).toBeNull();
+  });
+});
+
+describe("setParameter write path", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  /** A ctx whose onParameter subscriptions are observable and drivable. */
+  function writeCtx() {
+    const subs = new Set<(p: ParameterValue) => void>();
+    const ctx = makeCtx();
+    ctx.onParameter = (cb: (p: ParameterValue) => void) => {
+      subs.add(cb);
+      return () => subs.delete(cb);
+    };
+    return {
+      ctx,
+      subs,
+      echo: (name: string, value: number) => {
+        for (const cb of [...subs]) cb({ name, value, type: 9, index: 0, count: 1 });
+      },
+      sent: () => (ctx.transport!.send as unknown as { mock: { calls: unknown[] } }).mock.calls.length,
+    };
+  }
+
+  it("resolves on the vehicle's echo and releases its subscription", async () => {
+    const h = writeCtx();
+    const promise = setParameter(h.ctx, "SR0_POSITION", 4);
+    expect(h.subs.size).toBe(1);
+    h.echo("SR0_POSITION", 4);
+    const result = await promise;
+    expect(result.success).toBe(true);
+    expect(h.subs.size).toBe(0);
+  });
+
+  it("retransmits a lost write instead of failing on the first miss", async () => {
+    const h = writeCtx();
+    const promise = setParameter(h.ctx, "SR0_POSITION", 4);
+    expect(h.sent()).toBe(1);
+
+    // MAVLink puts retransmission on the GCS: the vehicle answers a write with
+    // a PARAM_VALUE echo and nothing else, so silence means resend.
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(h.sent()).toBe(2);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(h.sent()).toBe(3);
+
+    // The echo for the third attempt still resolves it successfully.
+    h.echo("SR0_POSITION", 4);
+    expect((await promise).success).toBe(true);
+  });
+
+  it("leaks no subscription when every attempt is lost", async () => {
+    const h = writeCtx();
+    const promise = setParameter(h.ctx, "SR0_POSITION", 4);
+    await vi.advanceTimersByTimeAsync(3000);
+    const result = await promise;
+    expect(result.success).toBe(false);
+    expect(result.message).toMatch(/timed out after 3 attempts/);
+    // The timeout path used to resolve without unsubscribing, so a bulk panel
+    // save on a lossy link left one permanent callback per failed write.
+    expect(h.subs.size).toBe(0);
+  });
+
+  it("reports a value the vehicle refused to take", async () => {
+    const h = writeCtx();
+    const promise = setParameter(h.ctx, "SR0_POSITION", 4);
+    h.echo("SR0_POSITION", 0); // clamped or rejected by the FC
+    const result = await promise;
+    expect(result.success).toBe(false);
+    expect(result.message).toContain("= 0");
+    expect(h.subs.size).toBe(0);
   });
 });
