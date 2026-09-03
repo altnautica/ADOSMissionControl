@@ -1,10 +1,15 @@
 "use client";
 
 // HUD bottom bar. Heading + altitude tape readouts plus the artificial
-// horizon. All values come from the telemetry-store ring buffers.
+// horizon. All values come from the telemetry-store ring buffers, freshness-
+// gated: the ring keeps its last sample forever, so an ungated read left the
+// kiosk showing a heading, an altitude, and an attitude from a link that had
+// been gone for hours.
 
 import { HorizonSvg } from "./HorizonSvg";
 import { useTelemetryStore } from "@/stores/telemetry-store";
+import { useClockTick } from "@/lib/agent/freshness";
+import { freshOnly } from "@/lib/telemetry/freshness";
 
 function fmt(n: number | undefined | null, digits = 0): string {
   if (n === undefined || n === null || !Number.isFinite(n)) return "--";
@@ -13,12 +18,19 @@ function fmt(n: number | undefined | null, digits = 0): string {
 
 export function BottomBar() {
   useTelemetryStore((s) => s._version);
+  // Time-passing signal: on link loss `_version` stops changing, so without
+  // this the last frame would stay on screen indefinitely.
+  useClockTick();
 
-  const attitude = useTelemetryStore((s) => s.attitude.latest());
-  const vfr = useTelemetryStore((s) => s.vfr.latest());
+  const buffers = useTelemetryStore.getState();
+  const now = Date.now();
+  const attitude = freshOnly(buffers.attitude.latest(), now);
+  const vfr = freshOnly(buffers.vfr.latest(), now);
 
-  const pitchDeg = attitude?.pitch ?? 0;
-  const rollDeg = attitude?.roll ?? 0;
+  // Null, not zero. Zero is a wings-level attitude, and the horizon drew it
+  // whenever attitude was missing — a fabricated flight instrument.
+  const pitchDeg = attitude?.pitch ?? null;
+  const rollDeg = attitude?.roll ?? null;
   const headingDeg = vfr ? fmt(vfr.heading, 0) : "--";
   const altitudeM = vfr ? fmt(vfr.alt, 0) : "--";
 
