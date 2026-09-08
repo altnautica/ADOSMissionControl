@@ -4,11 +4,31 @@ All notable changes to ADOS Mission Control are recorded here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 the project follows [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.58.0] - 2026-09-08
+
+This release covers everything since 0.57.3, about six weeks of work. Two
+threads run through it.
+
+The first is reach. A drone that can only be heard through a ground station's
+radio is now a first-class node: it gets the whole agent surface, every
+configuration page, extension installs, cockpit video and live vision
+detections, and it commands with the vehicle's own acknowledgement coming back.
+Above that sits a Swarm tab for flying a fleet from one screen, and below it a
+credential model where an operator holds their own expiring, device-scoped
+broker grant instead of a shared read-only one.
+
+The second is honesty. Nine protocol constants addressed the wrong message or
+sent the wrong command. A waypoint altitude meant two different things depending
+on which surface read it. The cockpit painted a dead link as live telemetry, the
+HUD drew a level horizon with no attitude data, and the badge whose only job is
+to announce a stale link could never appear. A browser holding a receive-only
+relay credential showed a healthy commanding link while the broker discarded
+every frame it sent. All of that is corrected, and most of it is now provable in
+demo mode without hardware.
 
 ### Added
 
-- **Swarm tab** — a fourth fleet-overview surface beside Grid, Overview and
+- **A Swarm tab**, a fourth fleet-overview surface beside Grid, Overview and
   Nodes, for flying a multi-drone fleet from one screen. Five bands in
   summary-then-exceptions-then-detail order, because 20+ healthy rows have to
   visually disappear for the unhealthy one to be findable: a severity summary
@@ -29,16 +49,16 @@ the project follows [Semantic Versioning](https://semver.org/).
   truth, so a failed demotion is visible rather than assumed.
 - Fleet-wide actions carry **two independent gates**: the existing typed-phrase
   confirmation plus a broadcast toggle that must be armed first and self-reverts
-  to per-selection after five seconds.
-- Alerts aggregate rather than enumerate — "3 drones low battery" is one chip,
-  not three rows.
+  to per-selection after five seconds. Alerts aggregate rather than enumerate —
+  "3 drones low battery" is one chip, not three rows.
 - `swarm-beacon-store` holds live neighbour beacons keyed by fleet slot, fed by a
   2 Hz bridge against the ground station's `/api/swarm/neighbors` with back-off
   when a host does not answer. Deliberately not persisted: a beacon with a
-  three-second shelf life rehydrated from disk would render a dead aircraft's last
-  position as current. An unprovisioned node reads as unprovisioned rather than
-  defaulting to fleet 1.
-- **Radio settings page** under Link & network, carrying fleet addressing, the
+  three-second shelf life rehydrated from disk would render a dead aircraft's
+  last position as current. A slot the fleet registry knows about but that is
+  currently silent gets its own row rather than vanishing from the board, and an
+  unprovisioned node reads as unprovisioned rather than defaulting to fleet 1.
+- **A Radio settings page** under Link & network, carrying fleet addressing, the
   link switches, and modulation. The fleet slot is read-only because the ground
   station assigns it and hand-editing it degrades the shared channel for every
   node on it. The modulation band shows the manual rung only while the adaptive
@@ -46,23 +66,423 @@ the project follows [Semantic Versioning](https://semver.org/).
   measured SNR, so the operator always sees which rung is actually live. No
   channel-width control, because the transmitter is pinned to 20 MHz.
 - The per-node **Swarm settings page** is expanded in place: formation is now a
-  closed set of five built-ins instead of free text (a typo previously produced no
-  formation at all, silently), flocking gains sit behind an Advanced disclosure
-  with their applied float stated, the two separation values are held behind a
-  confirmation because they are the safety envelope, task allocation shows the
-  assignment and not the algorithm, and the arbitration ladder is shown read-only.
+  closed set of five built-ins instead of free text (a typo previously produced
+  no formation at all, silently), flocking gains sit behind an Advanced
+  disclosure with their applied float stated, the two separation values are held
+  behind a confirmation because they are the safety envelope, task allocation
+  shows the assignment and not the algorithm, and the arbitration ladder is shown
+  read-only.
+- **A drone reached only over a ground station's radio now gets its whole agent
+  surface.** Clicking it connects, the Agent tab and its sub-nav render for real,
+  every configuration page resolves through the relay instead of reporting that
+  the node configuration could not be read, the Status tab's companion band
+  appears, the Extensions tab lists what is installed and can install over the
+  relay, and the cockpit gets the ground station's video and polled live vision
+  detections. Commands return the vehicle's own acknowledgement, and a "WFB
+  relay" transport label appears wherever the reach chip is shown. Log tailing
+  and the camera roster stay deliberately unavailable over the relay rather than
+  quietly answering with the ground station's own data.
+- **Command authority is now a first-class state, separate from a socket being
+  open.** The flight-controller uplink publishes at a quality of service that
+  acknowledges nothing, so a browser holding a receive-only broker credential
+  kept a transport that read healthy while every frame it sent was discarded with
+  no error to catch. The cockpit safety band gains a CMD chip that appears only
+  while authority is limited or ending (`RECEIVE ONLY`, `AUTHORISING`, `ENDING
+  SOON`), the flight data card's Link dot is graded on whether a command can
+  actually be published and explains itself in one line underneath, and the
+  sidebar row, fleet tile, nodes-board reach cell, node-detail header and the
+  Overview parameters tile each carry the same badge. The health ring is left
+  alone: a node can be alive and uncommandable at once, and one channel cannot
+  carry both.
+- **Per-operator broker write grants.** An operator requests command authority
+  from the drone overview and receives their own broker principal, scoped
+  server-side to the drones they own, expiring on its own after an hour, renewed
+  ahead of expiry, revocable instantly, and confirmed by the first publish the
+  broker actually accepts. The plaintext secret is returned once at mint and
+  never persisted — the database keeps only a verifier, the same bar the broker
+  itself holds — and it is deliberately kept out of store state so no persist
+  wrapper or devtools serialiser can pick it up.
+- **A World Model generation card.** The paired compute node publishes a
+  descriptor stream for each completed reconstruct generation, and the GCS now
+  subscribes to it and renders the generation's four artifact slots (Gaussian
+  splat, point cloud, mesh, occupancy grid) in the drone's world-model surface
+  and in the Atlas setup surface. A slot the generation did not produce stays
+  absent rather than rendering an empty one, silence renders as "no world model
+  was produced" rather than as a surveyed-and-empty world, and every stand-down
+  reason is its own stated status. The page appears only when the node's own
+  config surface advertises the world-model block, so an agent that predates the
+  feature shows nothing rather than an empty page.
+- **Image orientation** on the Video settings page: rotation in 90° clockwise
+  steps plus horizontal and vertical flip, applied on the encode pipeline before
+  compression and taking effect at the next pipeline start.
+- **Demo mode covers the new surfaces.** A 14-slot simulated fleet with formation
+  geometry, a synthetic swarm bus, hero promotion and fleet-wide config fan-out
+  makes the whole Swarm tab explorable with no hardware. The iNav demo vehicle
+  now renders the flight-controller configuration surfaces its firmware badge
+  advertises — mixer and servo rules, per-timer output modes, temperature
+  sensors, serial ports, battery profiles, OSD layouts and EzTune — and a save
+  then reload round trip behaves as it does on hardware. Demo mode can also
+  produce a genuinely stale link on demand, which is what makes every
+  freshness-gated surface verifiable offline; the staleness bugs fixed in this
+  release previously only appeared on a real link loss in the field.
+- **New plugin permissions and contracts**: `msp.read` and `msp.write` for MSP
+  flight controllers, the second marked high risk because it can drive the RC
+  channels and arm the aircraft; `vision.model.read` for a plugin's own resolved
+  model delivery status; a `janitor` sidecar carrying disk-janitor footprint,
+  budget and reclaim state; a `wfb-pair-proof` sidecar carrying whether a radio
+  key has ever been confirmed to carry a link and the remaining auto-pair re-arm
+  budget; and an `aux.link_feedback` contract so ground-measured video link
+  quality reaches the transmitting drone and its bitrate ladder steps on a real
+  loss sample instead of the sentinel a transmit-only radio can never leave.
 
 ### Changed
 
-- The Video settings page is camera and encode only; every `video.wfb.*` field
-  moved to the new Radio page. Video is now offered on drone profiles alone — a
-  ground station encodes nothing, and its radio fields live on the page it does
-  get. A profile that fills none of a settings group no longer renders that
-  group's header.
+- **The node Agent page is one sub-nav instead of three stacked sidebars.** All
+  seventeen configuration pages are now entries beside the live surface for the
+  same subsystem, twenty-five entries across Overview, Link & network, Video &
+  vision, Cloud & remote, System & safety and Software, with an empty section
+  omitted entirely. The Atlas page reads "World model setup" and the vision
+  settings page reads "Perception setup".
+- **The Video settings page is camera, encode and orientation only**; every
+  `video.wfb.*` field moved to the new Radio page. Video is offered on drone
+  profiles alone — a ground station encodes nothing, and its radio fields live on
+  the page it does get. A profile that fills none of a settings group no longer
+  renders that group's header.
+- **Settings → Extensions is a read-only fleet overview** of what is installed
+  per node. Its registry cards open a node picker instead of installing, and the
+  install-from-URL affordance is gone from that page; installing is done from the
+  node you are installing onto. The first-party registry entries now carry a real
+  checksum, size and supported-board list, and the stale download URLs are fixed.
 - Fleet formation and mode changes ride the config path, fanned across the
   selection, rather than the command catalog: that catalog is a closed set the
   agent enforces before any frame is sent, and the config path already has all
   three transports.
+- **The desktop app tells you the truth about updating itself.** The update check
+  still runs and still reports a newer version, but install-on-quit is armed only
+  where it genuinely works. macOS builds are unsigned and un-notarized and the
+  macOS updater validates an update's signature against the running app, so on
+  macOS — and on Linux started outside an AppImage — the app now points you at
+  the releases page instead of accepting an install that could never happen.
+  Windows and AppImage Linux are unchanged. Download and install failures are
+  reported rather than discarded: the updater's logger was previously set to null
+  and the check's rejection swallowed, which made a broken updater
+  indistinguishable from an app that was already current.
+- **Video latency is measured per hop instead of assumed.** The old single number
+  was network round-trip plus the decoder's jitter wait, which is not the same
+  quantity as end-to-end latency and contained no part of the capture or encode
+  leg. Each hop is now derived from the timestamps the browser supplies per
+  rendered frame and carries its provenance — measured, RTCP-synchronised,
+  derived or user-agent-estimated — and the two hops no browser API can see are
+  named as unavailable rather than left as a gap that reads as zero. The jitter
+  buffer target is a closed loop over what the receiver actually measures rather
+  than a hardcoded 50 ms, and where the agent injects a frame timestamp the app
+  reports true glass-to-glass.
+- **Radio airtime is spent deliberately.** The poll backoff ceiling is a multiple
+  of each lane's own cadence rather than one absolute wall, so an unreachable
+  relayed node settles at 100 s instead of retrying on the LAN's 30 s wall; the
+  vision-detection poll steps out while nothing is being tracked and snaps back
+  on the first fresh batch instead of running at a fixed 4 Hz; and the relay
+  timeouts are layered so the ground station's real error is what surfaces
+  instead of a client abort.
+- **Each cockpit corner has one placement system.** Widgets previously either
+  self-anchored or were placed by the host, so two could collide in the same
+  corner and an operator's layout override only worked for some of them. Every
+  arrangeable widget is now grouped into one of nine zones plus a full-bleed
+  centre layer, so it can be moved between corners and hidden per loadout. The
+  fixed instrument HUD and the edge tapes still self-position.
+- **More of the app speaks the operator's language.** The node console — node
+  rows, badges, liveness and role labels, the node actions menu, and the flight,
+  jobs and status cards — is translated across all sixteen locales, as are the
+  command-authority badges, the cockpit corner alerts and the stick-block
+  warning. Protocol and product nouns stay identical in every locale on purpose.
+  The cockpit safety-band strings ship English in every locale for now: a safety
+  string translated wrongly is worse than one visibly untranslated.
+
+### Fixed
+
+- **Nine protocol constants addressed the wrong thing.** Five messages were keyed
+  to another message's id, so every frame of them failed CRC or was skipped as
+  unknown and the surface above stayed empty with no error: `EKF_STATUS_REPORT`
+  335 → 193, `GIMBAL_DEVICE_ATTITUDE_STATUS` 284 → 285,
+  `GIMBAL_MANAGER_INFORMATION` 285 → 280, `GIMBAL_MANAGER_STATUS` 286 → 281, and
+  `AIS_VESSEL` 246 → 301, which had been keyed to the id of `ADSB_VEHICLE`. Four
+  commands sent a different instruction than the label: "bind receiver" sent
+  `PREFLIGHT_UAVCAN`, whose first parameter triggers a one-time DroneCAN actuator
+  ID assignment, so pressing it re-enumerated the CAN actuators instead of
+  binding anything; one of the two fence-enable paths sent a number that is not
+  in the command enum at all, so an operator could believe the geofence was armed
+  when it was not; commanding a gimbal angle left the mount mode at RETRACT, so
+  it stowed the gimbal instead of pointing it; and a parameter reset passed −1 as
+  the mission-storage action, outside the enum, where 0 means no action. Four
+  canonical payload lengths were also pinned at their pre-extension size, so the
+  parser's zero-restore stopped short and the extension fields had no source:
+  `GPS_RAW_INT` 30 → 52 (which is why GPS-for-yaw reported nothing),
+  `BATTERY_STATUS` 36 → 54, `DISTANCE_SENSOR` 14 → 39, and `COMMAND_ACK` 3 → 10.
+- **A waypoint altitude means one thing everywhere.** A `relative` altitude is
+  measured above the home point, and several surfaces read it as above ground
+  level. Over terrain that rises between home and a waypoint, a healthy-looking
+  50 m then sits below the ridge in front of it, which made an unsafe mission
+  validate clean and draw as safe. There is now one resolver every consumer goes
+  through — validator, terrain profile, flight path, mission expansion, import
+  and export — mapping the three frames onto their real datums and returning
+  nothing rather than a fabricated zero when the datum it needs is missing. Saved
+  missions are not rewritten and each waypoint keeps its own frame, so a mission
+  uploads exactly the frames it was saved with; what changes is that the GCS now
+  flags and draws it correctly.
+- **The command queue no longer cancels itself, and a parameter write no longer
+  lies.** Pending commands were keyed by command id, so a second in-flight
+  command with the same id superseded the first: the adapter fires
+  `REQUEST_MESSAGE` three times back to back on connect, and two of the three
+  were cancelled before the vehicle could answer. Entries are keyed by a
+  monotonic ticket now, with same-id acknowledgements resolving the oldest match
+  because the protocol carries no correlation id, and a cap of 32 in flight makes
+  a caller that loops without awaiting fail loudly. An acknowledgement addressed
+  to a different ground station on a shared link no longer resolves our command.
+  `setParameter` graded success on reaching the wire; it now grades on the
+  vehicle's own echo matching the value written, retries three times before
+  calling a dropped write a rejected one, and releases its subscription on every
+  exit path — the timeout path used to leak one permanent callback per failed
+  write, one per parameter on a bulk save over a lossy link. Reconnecting through
+  the same adapter double-dispatched every frame; the frame handler is released
+  on disconnect. The send-sequence counter is per sending system and component
+  rather than one global, which is what makes a firmware's packet-loss figure
+  meaningful once a second sender exists.
+- **Commands that could act on the wrong vehicle, or act unasked, are gated.**
+  ArduPilot's vendor calibration range went out on any firmware, so on PX4 and
+  the MSP firmwares the calibration wizard waited on an acknowledgement that
+  meant nothing; each path now refuses with the connected firmware named.
+  CompassMot had a second entry point that bypassed the firmware check, and it is
+  gone. The kill switch is flight termination and irreversible in flight, so the
+  protocol layer now refuses it unless the caller states the operator confirmed
+  it. Guided goto was a raw socket write reporting success for reaching the
+  socket, with coordinates squeezed through 32-bit floats; it is an
+  acknowledgement-tracked integer command that keeps full precision. The MSP
+  motor test accepted a duration and dropped it — the MSP motor command is a
+  level, not a pulse, so the motor held its last written value; the stop is now
+  scheduled per link, cancelled on disconnect, and the test is refused while
+  armed.
+- **Commands are aimed at the link that can carry them.** With a vehicle
+  reachable over more than one link the send target was chosen by byte recency,
+  and on the cloud relay the receive-only downlink pushing telemetry is easily
+  the busiest, so every command was published into a broker that discarded it.
+  Liveness and commanding are now separate notions, and a link that cannot
+  command still connects and still streams telemetry rather than failing its
+  connect on housekeeping frames it cannot send.
+- **The cockpit stopped painting a dead link as live telemetry.** Every telemetry
+  ring keeps its last sample forever, and the safety band read it with no
+  freshness gate despite its own documentation claiming otherwise, so the last
+  battery percentage, GPS fix and signal bars stayed on screen for as long as the
+  tab was open after a link loss. Readings now collapse to absent past five
+  seconds and each surface renders the honest placeholder it already had. The HUD
+  drew a perfectly level pitch ladder at zero pitch and zero roll with no
+  attitude data at all — a confident straight-and-level indication produced by a
+  null-coalesce — and now draws the fixed reticle without the earth-referenced
+  marks; overlays receive no attitude rather than a permanently wings-level one.
+  The LINK STALE badge, whose entire job is to appear when telemetry stops, could
+  never appear, because its age check sat in a memo with no time dependency and
+  nothing re-rendered once the link died; it rides the shared clock now, the
+  battery and fence badges are freshness-gated with it, and it stays suppressed
+  on a session that never had a link. The flight clock restarted at zero when the
+  cockpit remounted, so switching to the map and back reset the timer mid-flight.
+- **The signing panel no longer implies it verified anything.** No message
+  authentication code is checked on the receive path, so the received-frame
+  counter reads "RX signed (observed)" and is documented as observed; the
+  enforcement banner appears only on a real readback of the flight controller's
+  requirement rather than on an unknown; and the status row states the actual
+  enrollment state instead of implying enrollment.
+- **The stick path stopped being able to fly the aircraft by accident.** Reading a
+  gamepad and transmitting an RC override were one function, which meant opening
+  a keybinding panel opened an override on the connected aircraft; they are two
+  lifecycles now, and only the cockpit and HUD start the transmitting one. Every
+  frame re-checks an allow list, so transmission stops the moment the aircraft
+  disarms or the mode leaves pilot authority, a mode nobody classified blocks
+  rather than opens, and the opt-in defaults off and is revoked when the
+  controller drops so re-attaching a pad never silently resumes flying. An MSP
+  link now keeps one authoritative picture of every RC channel: throttle idles at
+  its low end rather than centre, an AUX channel nobody wrote rests at a value
+  proven to activate none of the modes configured on it — a resting value inside
+  the arm range arms the aircraft — the frame width is sized once at connect and
+  can never narrow, and a motor cut is latched and re-emitted rather than lasting
+  one frame. When a flight controller will discard override frames because its
+  receiver is not MSP, the Controllers section says so and says nothing is being
+  transmitted, instead of leaving a live-looking stick display and silence. The
+  stream transmits at the rate the link declares and puts nothing on the wire for
+  a link declaring none, where it previously transmitted at a hardcoded 50 Hz
+  regardless. Gamepad buttons reach their subscribers, which is what makes
+  binding capture and the skill radial respond to a press.
+- **iNav navigation commands do something.** Return-to-home, takeoff, pause and
+  resume refused unconditionally on every MSP firmware while the skill bar still
+  offered them, so an operator could confirm a return-to-home and have nothing
+  happen. Each drives its configured AUX switch now, and a refusal names what is
+  missing: a firmware with no navigation modes says so, an aircraft with no
+  switch assigned names the mode and points at the modes tab, and land explains
+  that iNav lands as the last leg of return-to-home.
+- **An MSP vehicle's flight mode is decoded against its own firmware.** Every MSP
+  aircraft was decoded against Betaflight's box numbering, where iNav's
+  navigation boxes are absent or mean something else, so an aircraft in a
+  navigation mode could display as a manual one — the dangerous direction,
+  because the stick-authority allow list would then let a gamepad override
+  transmit at an aircraft the autopilot is flying. An unidentified firmware now
+  falls back to unknown rather than to acro.
+- **Encoders refuse an out-of-range value instead of narrowing it.** 256 written
+  to a byte becomes 0 and 70000 written to a 16-bit field becomes 4464, each a
+  plausible-looking value on the wire, so a caller's mistake reached the aircraft
+  as a different instruction rather than as an error: waypoint 256 addressing
+  waypoint 0 and overwriting the first item of a mission is the shape of it. The
+  manual-control, mission-item and iNav waypoint encoders now throw with the
+  offending field named.
+- **One video stream, one session.** Four surfaces reach the same stream — the
+  cockpit canvas, the focused-drone card, the HDMI kiosk background and the
+  context rail — and each opened by closing any existing connection, so mounting
+  the second blacked out the first and either unmount tore down the survivor. A
+  session is now held by a lease count: joining a live stream returns the same
+  media stream, joining one still negotiating joins that negotiation, and only
+  the last release tears it down.
+- **A relayed drone's fleet-card fields populate.** CPU, memory, disk,
+  temperature, board, uptime, agent version, camera and video state, flight
+  controller identity and the service counts read blank because the parser read
+  short wire keys that never leave the radio process while the ground station
+  serves the long-key expansion. Opening a relayed node also retries a failed
+  connect instead of freezing on a link that loses roughly one uplink datagram in
+  three, an HTTPS page blocking a plain-HTTP relay request says so rather than
+  timing out as an unreachable drone, and logging health fields a relay cannot
+  observe report absent rather than false.
+- **A broker that refuses a video signaling offer says so** immediately, instead
+  of the offer hanging for thirty seconds and then blaming the agent. The offer
+  is published at a quality of service that returns a reason code, and the code
+  was being discarded.
+- **Persisted state survives a browser with no IndexedDB.** Every persisted store
+  threw as its middleware hydrated in Safari private browsing, which refuses to
+  open a database; storage now degrades to memory for the session with one
+  warning, because a store that forgets is the truth where a throw is a crash.
+  The UI-preferences store also gained the migration handler it was missing, so
+  the next version bump cannot wipe every remembered per-node tab through a throw
+  inside rehydration.
+- **The fleet has one write path and the selected drone one owner.** Two writers
+  produced a race that could lock the agent tabs and show "No Drones Connected"
+  while a direct connection was live; the node registry is the single write
+  target and the fleet view is projected from it. A duplicate selection mirror
+  that failed to propagate a deselect is gone, which is what let a background
+  vehicle's frames interleave into the shared telemetry rings.
+- **Every theme has a legible button and every control a visible focus ring.**
+  Controls painted on the accent colour hardcoded white text, which fails WCAG AA
+  against eighteen of the twenty-two accent colours in the stylesheet and reaches
+  1.37:1 on the night-vision theme, where white also breaks dark adaptation. Each
+  theme now states its own accent foreground and a test fails the build below
+  4.5:1. The old focus ring was a box shadow painted against the control's own
+  accent background, so it was invisible on exactly the buttons a keyboard
+  operator most needs to find; one outline utility replaces it, drawn outside the
+  border box and only for keyboard focus.
+- **The cockpit obeys the selected theme, night vision above all.** It hardcoded
+  its entire palette, so the one surface an operator flies from stayed bright
+  blue and amber after selecting the night-vision theme whose only purpose is
+  preserving dark adaptation. The palette is now themed, and night vision derives
+  the whole HUD from the theme's green.
+- **The desktop app can still reach a LAN agent on current Chromium**, which
+  denies local-network requests unless they are asked for; without the permission
+  a drone on a LAN address or a `.local` host read as a network outage rather
+  than as a denial. Origin gating is unchanged.
+- **The broker credential is no longer served to anyone who asks.** A public
+  query with no authentication check returned the shared broker username and
+  password in its payload to any caller who could reach the deployment, and that
+  principal reads every topic for every drone in the fleet. It is gone from the
+  client entirely, replaced by the per-operator grants above; plugins lose that
+  route to it as well, with no allowlist change.
+- **Agent credentials are no longer handed to unauthenticated callers.** Agent
+  registration was a public mutation, so any browser could write an
+  attacker-chosen agent key against any device id and drive the auto-match branch
+  as fast as it could guess six-character codes; it is now reachable only through
+  its HTTP route, requires a non-empty key, and re-registering a device that
+  already holds one requires presenting it. Redeeming a pairing code returned the
+  agent's API key, which the browser never needed; it no longer returns it on any
+  path. The pairing-status route now demands the device's own key and answers
+  identically for an unknown device and a wrong key, so it cannot be walked to
+  enumerate device ids. Anonymous ownership was a client-asserted argument, so
+  knowing another browser's id was enough to claim its nodes; it is derived from
+  a server-minted session whose secret is stored only as a hash. Every anonymous
+  entry point now consumes a rate-limit attempt with an escalating, never
+  permanent lockout, and a drone re-presenting its own key is free so a real
+  aircraft cannot ladder itself out.
+- **An empty agent key no longer authenticates.** A drone paired before its agent
+  connects was stored with an empty key, and the check was a plain inequality, so
+  a caller presenting an empty key authenticated as that drone and could patch
+  fields feeding an operator-facing reach surface. A blank on either side is
+  refused, comparison is constant-time at all six checks, and the heartbeat
+  mutation is internal so it cannot be invoked directly from a browser and skip
+  the route's validation.
+- **Twenty-eight dependency advisories cleared, three of them critical**, among
+  them an email-normalisation bypass in the authentication core that let a
+  homoglyph address pass as another account's, and a path type confusion in an
+  archive library. Notable moves: Next 16.3.4, Electron 44.1.1, electron-builder
+  26.15.3, electron-updater 6.8.9, the Convex auth package pinned at 0.0.95. The
+  schema validator the app runs on every agent response was also a phantom
+  dependency, resolved only through a lint config's transitive tree, so an
+  install without dev dependencies would have broken the production bundle.
+- **A session expiry no longer blanks the command screen.** One query per
+  in-flight cloud command resolved ownership without a skip guard, so an expired
+  session threw out of render into the error boundary. The MQTT bridge also had
+  no error listener, and the client library rethrows an unhandled error as an
+  uncaught exception, so a broker outage escaped the component; control-plane
+  topics moved to a quality of service that acknowledges, a refused subscribe
+  stops claiming the surface is connected, and teardown drops its listeners
+  instead of leaking a set per node switch.
+- **Nineteen heartbeat fields reached the cloud path again.** The status route
+  picks fields explicitly and had drifted behind the writer, so fields that had
+  been added and given a column were accepted, declared, stored and never
+  written: the LCD legs, the local-decoder and recording legs, theme and display
+  type, the plugin-update check, the video stream list, the CAN bus list and the
+  vision legs. For a self-hoster that is the LCD tab, the CAN rows, the vision
+  panel and the stream switcher reading empty over the cloud while the same agent
+  fills them over the LAN. Five reconciler verdicts the agent already folds in —
+  management-link health, reach-back mode, USB rehome, Wi-Fi power save and MAC
+  stability — are picked up on the LAN transport too; MAC stability had six
+  readers and three cards and no transport that produced it.
+
+### Removed
+
+- **The Pipeline buffer row** in the video latency breakdown, and the field
+  behind it. The agent's producer was a query on a pipeline that no longer
+  exists, so the row rendered a permanent dash beside live ones. The neighbouring
+  tooltip is corrected: it measures capture to readback on the drone, not the
+  pipeline buffer.
+- **Five video encoder-identity fields and the pipeline pill** they fed. Nothing
+  on the agent side produced them and nothing here read them.
+- **The MAVLink `RC_CHANNELS_OVERRIDE` encoder.** It had no adapter method and no
+  caller, which makes it read as a tested control path when it is not. The live
+  stick paths are unchanged, and inbound frames of that message still decode and
+  display.
+- **The `hardware.audio` plugin capability**, which no longer appears in the
+  permission catalog.
+- **The shared read-only broker credential**, in favour of per-operator grants.
+- **The generated agent API type mirror**, its generation script and the
+  dependency that existed only for it. Nothing imported it, which is why it
+  drifted from 131 declared paths to the agent's real 54 unnoticed. A vendored
+  `node_modules` tree of about 46 MB under `tools/` is untracked too, so a clone
+  is that much smaller.
+
+### Notes
+
+- Pairs with ADOS Drone Agent 0.99.371.
+- Self-hosters: the Convex schema gains tables for control grants, anonymous auth
+  attempts and browser sessions, and drops five columns from the drone status
+  table; schema changes are additive with no migration. The broker password
+  generator now reads its device and operator entries from a new
+  admin-authenticated route and writes the password and ACL files in place rather
+  than renaming them, because a file-level bind mount keeps the old inode through
+  a rename and the sync would report success while changing nothing the broker
+  could see. It needs its relay secret set, and per-deployment path overrides
+  where the broker container is not at the default path. Agents must send a
+  non-empty key when registering and the device's own key on the pairing-status
+  route. A push to the main branch does not rebuild anything: rebuild and
+  redeploy explicitly before relying on the control-grant path.
+- On macOS, and on Linux started outside an AppImage, the desktop app reports a
+  newer version and points at the releases page instead of installing it.
+  Windows and AppImage Linux still self-update.
+- The typecheck gate now covers the Convex backend, the desktop wrapper and the
+  four tools packages in addition to the app; CI lints with a warning ceiling
+  rather than blind to warnings, builds the production bundle on every push
+  instead of only on a release tag, and asserts tree, commit and backend
+  authorization invariants with guards that self-test before reporting clean.
 
 ## [0.57.3] - 2026-07-27
 
