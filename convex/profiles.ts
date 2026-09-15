@@ -4,33 +4,52 @@ import { QueryCtx, MutationCtx } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 
 /**
- * Founder-email allowlist for the first-user-admin bootstrap.
+ * Bootstrap-admin policy for the first profile created on an empty table.
  *
- * SECURITY: the old branch was "the first profile in the table becomes admin",
- * with no allowlist at all. On a freshly-deployed or freshly-purged backend —
- * which every self-host is on day one — whoever signs up first self-minted
- * admin, and admin here reads every profile and every contact submission. The
- * bootstrap now grants admin only when the first profile's email is on this
- * explicit list; everyone else is created "pending" and a real admin promotes
- * them through `updateRole`.
+ * SECURITY: the original branch was "the first profile in the table becomes
+ * admin", with no allowlist at all. On a freshly-deployed or freshly-purged
+ * backend — which every deployment is on day one — whoever signed up first
+ * self-minted admin, and admin here reads every profile and every contact
+ * submission.
  *
- * Kept identical to the production twin. Neither gate script could see this
- * divergence: the exposure gate compares `mutation` vs `internalMutation` and
- * both sides were `mutation`, and the authz gate skipped every body that
- * authorizes inline rather than through a named `require*` helper.
+ * The allowlist is supplied by the deployment, never compiled in. Set
+ * `ADOS_BOOTSTRAP_ADMIN_EMAILS` in the Convex deployment environment to a
+ * comma-separated list of mailboxes; the comparison is trimmed and
+ * lower-cased. It is read inside the handler, not at module load, so
+ * changing the deployment variable takes effect without a redeploy.
  *
- * Lower-cased compare. Keep this list to the actual founders.
+ * With no allowlist configured the default is to mint nothing: every signup
+ * is created "pending" and stays there. A deployment that cannot name a
+ * mailbox up front can instead set `ADOS_ALLOW_FIRST_USER_ADMIN=1`, which
+ * grants admin to the first profile on an empty table whatever its email.
+ * That is only safe before the deployment is reachable by anyone else, so it
+ * is opt-in, and it is ignored whenever the allowlist is non-empty.
  */
-const FOUNDER_ADMIN_EMAILS = [
-  "team@altnautica.com",
-  "hello@ajaym.co",
-  "ajay@altnautica.com",
-  "gagan@altnautica.com",
-];
+const BOOTSTRAP_ADMIN_EMAILS_VAR = "ADOS_BOOTSTRAP_ADMIN_EMAILS";
+const FIRST_USER_ADMIN_VAR = "ADOS_ALLOW_FIRST_USER_ADMIN";
 
-function isFounderAdminEmail(email: string | undefined | null): boolean {
+function bootstrapAdminEmails(): string[] {
+  return (process.env[BOOTSTRAP_ADMIN_EMAILS_VAR] ?? "")
+    .split(",")
+    .map((entry) => entry.trim().toLowerCase())
+    .filter((entry) => entry.length > 0);
+}
+
+/** Comparison helper: is `email` on the deployment's bootstrap allowlist? */
+function isBootstrapAdminEmail(email: string | undefined | null): boolean {
+  const allowlist = bootstrapAdminEmails();
+  if (allowlist.length === 0) return false;
   if (!email) return false;
-  return FOUNDER_ADMIN_EMAILS.includes(email.trim().toLowerCase());
+  return allowlist.includes(email.trim().toLowerCase());
+}
+
+/**
+ * Whether the first profile on an empty table may be minted admin. Guards
+ * the only admin-mint path in this module.
+ */
+function firstProfileMintsAdmin(email: string | undefined | null): boolean {
+  if (bootstrapAdminEmails().length > 0) return isBootstrapAdminEmail(email);
+  return process.env[FIRST_USER_ADMIN_VAR] === "1";
 }
 
 /**
@@ -224,14 +243,14 @@ export const ensureProfile = mutation({
       }
     }
 
-    // First-user bootstrap (SECURITY): mint admin only when the profiles table
-    // is empty AND this first user's email is on the founder allowlist. On a
-    // fresh or freshly-purged backend an arbitrary signup must NOT inherit
-    // admin just by being first. Anyone not on the allowlist starts as
-    // "pending" and a real admin promotes them via updateRole.
+    // First-profile bootstrap (SECURITY): mint admin only when the profiles
+    // table is empty AND the deployment's bootstrap policy admits this email.
+    // On a fresh or freshly-purged backend an arbitrary signup must NOT
+    // inherit admin just by being first. Everyone else starts as "pending"
+    // and a real admin promotes them via updateRole.
     let role: "pending" | "investor" | "admin" = "pending";
     const anyProfile = await ctx.db.query("profiles").first();
-    if (!anyProfile && isFounderAdminEmail(authEmail)) {
+    if (!anyProfile && firstProfileMintsAdmin(authEmail)) {
       role = "admin";
     }
 

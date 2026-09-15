@@ -127,6 +127,48 @@ A self-hosted Convex backend exposes two origins that are not interchangeable:
 Cross them and the GCS loads but no drone ever appears, or sign-in works but commands never reach the agent.
 </details>
 
+### Naming the first admin
+
+Every profile is created `pending`. `pending` cannot read other profiles, cannot
+promote anyone, and cannot see contact submissions — so a deployment with no
+admin has no way to grant one, and a deployment that hands admin to whoever
+signs up first can be taken over by a stranger. Pick one of the two bootstrap
+paths before you open the GCS to anyone else.
+
+**Path A — name the mailboxes up front (recommended).** Set a comma-separated
+allowlist as a Convex deployment variable. The first profile created on an empty
+`profiles` table is minted `admin` only if its email is on the list; every other
+signup is `pending` as usual.
+
+```bash
+npx convex env set ADOS_BOOTSTRAP_ADMIN_EMAILS "admin@example.com,ops@example.com" \
+  --url http://convex.your.domain:3210 --admin-key <your-admin-key>
+```
+
+The comparison is trimmed and lower-cased, and the variable is read on every
+call — change it and the next signup sees the new list, no redeploy needed.
+
+**Path B — first signup wins, deliberately.** If you cannot name a mailbox in
+advance (SSO, a shared inbox, a throwaway trial), opt in explicitly:
+
+```bash
+npx convex env set ADOS_ALLOW_FIRST_USER_ADMIN 1 \
+  --url http://convex.your.domain:3210 --admin-key <your-admin-key>
+```
+
+This grants `admin` to the first profile on an empty table whatever its email,
+so it is only safe while nobody else can reach the deployment. Sign in, confirm
+you hold `admin`, then unset it:
+
+```bash
+npx convex env remove ADOS_ALLOW_FIRST_USER_ADMIN \
+  --url http://convex.your.domain:3210 --admin-key <your-admin-key>
+```
+
+`ADOS_ALLOW_FIRST_USER_ADMIN` is ignored whenever `ADOS_BOOTSTRAP_ADMIN_EMAILS`
+is non-empty, so Path A always wins over Path B. With neither variable set
+nothing is minted: a fresh deployment stays admin-less until you choose.
+
 ---
 
 ## Step 2: MQTT Relay (Real-Time Telemetry)

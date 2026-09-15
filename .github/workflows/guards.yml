@@ -226,10 +226,16 @@ jobs:
             }
           }
 
-          // ---- invariant 2: the first-user admin bootstrap is allowlist-gated.
-          // The defect this pins: "the first profile in the table becomes admin"
-          // with no allowlist, on a tree every self-host deploys fresh, where
-          // admin reads every profile and every contact submission.
+          // ---- invariant 2: the first-profile admin bootstrap is gated, and
+          // the gate is a deployment-supplied allowlist rather than a
+          // compiled-in list of mailboxes.
+          //
+          // The defect this pins has two halves. (a) "the first profile in the
+          // table becomes admin" with no gate at all, on a tree every
+          // self-host deploys fresh, where admin reads every profile and every
+          // contact submission. (b) the gate being a hardcoded array of real
+          // mailboxes, which publishes who holds admin on the hosted
+          // deployment and leaves a self-host with no reachable admin at all.
           const profilesPath = join(dir, 'profiles.ts');
           const profiles = readFileSync(profilesPath, 'utf8');
           const mints = [...profiles.matchAll(/role\s*=\s*["']admin["']/g)];
@@ -240,22 +246,42 @@ jobs:
           // count. The first version of this check looked back 400 characters
           // for the word "allowlist" and was satisfied by the comment block
           // that sits directly above the mint explaining the allowlist — so
-          // deleting the actual `&& isFounderAdminEmail(...)` from the `if`
+          // deleting the actual `&& firstProfileMintsAdmin(...)` from the `if`
           // still passed. Strip comments, then require the identifier inside
           // the nearest preceding `if (`.
+          // Blanks comments in place: every non-newline character becomes a
+          // space, so offsets and line numbers still line up with the source.
           const stripComments = (s) =>
-            s.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/[^\n]*/g, '$1 ');
-          const GUARD_ID = /(FOUNDER_ADMIN_EMAILS|isFounderAdminEmail)/;
+            s.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
+             .replace(/(^|[^:])\/\/[^\n]*/g, (m, p1) => p1 + ' '.repeat(m.length - p1.length));
+          const lineAt = (offset) => profiles.slice(0, offset).split('\n').length;
+          const source = stripComments(profiles);
+          const GUARD_ID = /(firstProfileMintsAdmin|isBootstrapAdminEmail)/;
           for (const m of mints) {
-            const before = stripComments(profiles.slice(0, m.index));
+            const before = source.slice(0, m.index);
             const ifAt = before.lastIndexOf('if (');
             const cond = ifAt < 0 ? '' : before.slice(ifAt);
-            const line = profiles.slice(0, m.index).split('\n').length;
+            const line = lineAt(m.index);
             if (ifAt < 0) {
               fail(`profiles.ts:${line}: admin is minted with no enclosing conditional at all`);
             } else if (!GUARD_ID.test(cond)) {
-              fail(`profiles.ts:${line}: admin is minted from a condition that does not consult the founder allowlist`);
+              fail(`profiles.ts:${line}: admin is minted from a condition that does not consult the bootstrap allowlist`);
             }
+          }
+          // The allowlist itself must come from the deployment environment.
+          // Without this clause the check above stays green if someone
+          // reintroduces `const ADMINS = [<a mailbox literal>]` and keeps
+          // calling the helper, which is exactly the shape the removed list
+          // had.
+          if (!/ADOS_BOOTSTRAP_ADMIN_EMAILS/.test(source)) {
+            fail('profiles.ts no longer reads the bootstrap allowlist from ADOS_BOOTSTRAP_ADMIN_EMAILS');
+          }
+          // No mailbox literal in executable source. Comments are blanked
+          // first, so a doc comment may spell out an example address while
+          // source may not.
+          const EMAIL_LITERAL = /["'][A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}["']/g;
+          for (const hit of source.matchAll(EMAIL_LITERAL)) {
+            fail(`profiles.ts:${lineAt(hit.index)}: mailbox literal ${hit[0]} in source; the bootstrap allowlist belongs in the deployment environment`);
           }
 
           // ---- invariant 3: no NEW publicly-callable function without a
