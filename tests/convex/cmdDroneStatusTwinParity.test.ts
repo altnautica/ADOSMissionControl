@@ -136,15 +136,16 @@ describe("cmd_droneStatus twin parity", () => {
     const http = readFileSync(OSS_HTTP, "utf-8");
 
     // Server-stamped / route-supplied fields never come off the body, plus the
-    // five the route deliberately does not forward because the cloud heartbeat
-    // does not carry them (see the comment beside `pluginInventory` in
-    // `convex/http.ts`). Every other declared arg MUST be picked; the list is
-    // asserted below so a sixth entry has to be added on purpose.
+    // four the route does not forward because the cloud heartbeat does not
+    // carry them at the root (see the comment beside `peripherals` in
+    // `convex/http.ts`). `peripherals` is NOT among them: the agent does send
+    // it, and dropping it left cmd_drones.attachedDisplayType permanently
+    // undefined. Every other declared arg MUST be picked; the list is asserted
+    // below so an eighth entry has to be added on purpose.
     const NOT_FROM_BODY: Record<string, true> = {
       updatedAt: true,
       apiKey: true,
       agentVersion: true,
-      peripherals: true,
       scripts: true,
       peers: true,
       enrollment: true,
@@ -156,7 +157,6 @@ describe("cmd_droneStatus twin parity", () => {
       "enrollment",
       "logs",
       "peers",
-      "peripherals",
       "scripts",
       "updatedAt",
     ]);

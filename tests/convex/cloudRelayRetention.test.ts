@@ -8,13 +8,25 @@
  *     wired into the cron schedule.
  *   - storage has no generic getUrl resolver that mints a signed URL for any
  *     blob to any authenticated user.
+ *
+ * The sweeps added for the append-only tables are exercised behaviourally
+ * against their real handlers at the bottom of the file: a retention rule is a
+ * cutoff and a bound, and neither is visible in a source-shape assertion.
  */
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
+import * as commands from "../../convex/cmdDroneCommands";
+import * as drones from "../../convex/cmdDrones";
+import * as mcpTokens from "../../convex/cmdMcpTokens";
+import * as plugins from "../../convex/cmdPlugins";
+import { invoke, makeCtx } from "./fakeConvexCtx";
+
 const read = (rel: string) =>
   readFile(path.join(process.cwd(), rel), "utf8");
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 describe("expired-pairing cleanup is cron-only + indexed", () => {
   it("declares cleanExpiredRequests as an internalMutation", async () => {
@@ -81,5 +93,140 @@ describe("storage has no over-permissive generic resolver", () => {
     expect(text).not.toContain("export const getUrl");
     // generateUploadUrl stays (admin-gated).
     expect(text).toContain("export const generateUploadUrl = mutation");
+  });
+});
+
+describe("stuck commands are expired, not left pending forever", () => {
+  const seedCommands = () => {
+    const ctx = makeCtx();
+    const now = Date.now();
+    ctx.db.seed("cmd_droneCommands", [
+      // Queued two hours ago and never delivered.
+      { deviceId: "dev-1", userId: "u", command: "service_restart", status: "pending", createdAt: now - 2 * 60 * 60 * 1000 },
+      // Claimed two hours ago and never acked.
+      { deviceId: "dev-1", userId: "u", command: "wfb_pair_apply", status: "delivering", createdAt: now - 2 * 60 * 60 * 1000, claimedAt: now - 2 * 60 * 60 * 1000, attempts: 1 },
+      // Queued a minute ago: the node is simply between polls.
+      { deviceId: "dev-1", userId: "u", command: "reboot", status: "pending", createdAt: now - 60_000 },
+      // Already terminal: the other sweep owns this one.
+      { deviceId: "dev-1", userId: "u", command: "reboot", status: "completed", createdAt: now - 3 * 60 * 60 * 1000, completedAt: now - 3 * 60 * 60 * 1000 },
+    ]);
+    return ctx;
+  };
+
+  it("fails a command the node never picked up and says why", async () => {
+    const ctx = seedCommands();
+
+    const result = await invoke(commands.expireStuckCommands, ctx);
+
+    expect(result).toEqual({ expired: 2 });
+    const rows = ctx.db.rows("cmd_droneCommands");
+    const restart = rows.find((r) => r.command === "service_restart");
+    expect(restart?.status).toBe("failed");
+    // The operator's command list has to account for the row, not lose it: a
+    // non-idempotent action that silently vanished is indistinguishable from
+    // one that ran.
+    expect(restart?.result).toEqual({
+      success: false,
+      message: "command expired: never delivered to the node",
+    });
+    // Stamped terminal so the 7-day sweep is what finally frees the space.
+    expect(typeof restart?.completedAt).toBe("number");
+
+    const claimed = rows.find((r) => r.command === "wfb_pair_apply");
+    expect(claimed?.status).toBe("failed");
+    expect(claimed?.result).toEqual({
+      success: false,
+      message: "command expired: claimed by the node but never acknowledged",
+    });
+  });
+
+  it("leaves a fresh command and an already-terminal row alone", async () => {
+    const ctx = seedCommands();
+
+    await invoke(commands.expireStuckCommands, ctx);
+
+    const rows = ctx.db.rows("cmd_droneCommands");
+    expect(rows.filter((r) => r.status === "pending")).toHaveLength(1);
+    expect(rows.find((r) => r.status === "pending")?.command).toBe("reboot");
+    expect(rows.filter((r) => r.status === "completed")).toHaveLength(1);
+  });
+});
+
+describe("the append-only event tables are swept", () => {
+  it("deletes plugin events past 30 days and keeps the rest", async () => {
+    const ctx = makeCtx();
+    const now = Date.now();
+    ctx.db.seed("cmd_pluginEvents", [
+      { userId: "u", pluginInstallId: "i", pluginId: "p", type: "started", severity: "info", message: "old", createdAt: now - 31 * DAY_MS },
+      { userId: "u", pluginInstallId: "i", pluginId: "p", type: "crashed", severity: "error", message: "recent", createdAt: now - 29 * DAY_MS },
+    ]);
+
+    const result = await invoke(plugins.pruneOldEvents, ctx);
+
+    expect(result).toEqual({ deleted: 1 });
+    expect(ctx.db.rows("cmd_pluginEvents").map((r) => r.message)).toEqual(["recent"]);
+  });
+
+  it("deletes MCP audit rows past 30 days and keeps the rest", async () => {
+    const ctx = makeCtx();
+    const now = Date.now();
+    ctx.db.seed("cmd_mcpAuditEvents", [
+      { userId: "u", tokenId: "t", tool: "flight.arm", node: "dev-1", decision: "denied", result: "old", plane: "cloud_relay", latencyMs: 1, tsUs: 1, contentHash: "a", createdAt: now - 31 * DAY_MS },
+      { userId: "u", tokenId: "t", tool: "flight.arm", node: "dev-1", decision: "allowed", result: "recent", plane: "cloud_relay", latencyMs: 1, tsUs: 2, contentHash: "b", createdAt: now - 1 * DAY_MS },
+    ]);
+
+    const result = await invoke(mcpTokens.pruneOldAuditEvents, ctx);
+
+    expect(result).toEqual({ deleted: 1 });
+    expect(ctx.db.rows("cmd_mcpAuditEvents").map((r) => r.result)).toEqual(["recent"]);
+  });
+
+  it("wires both sweeps into the cron schedule as internal functions", async () => {
+    const crons = await read("convex/crons.ts");
+    expect(crons).toContain("internal.cmdPlugins.pruneOldEvents");
+    expect(crons).toContain("internal.cmdMcpTokens.pruneOldAuditEvents");
+    expect(crons).toContain("internal.cmdDroneCommands.expireStuckCommands");
+    expect(crons).not.toContain("api.cmdPlugins.pruneOldEvents");
+  });
+});
+
+describe("unpairing a drone takes its data with it", () => {
+  it("runs the device wipe instead of deleting the pairing row alone", async () => {
+    const wiped: unknown[] = [];
+    const ctx = makeCtx({
+      subject: "user-1|s",
+      run: async (_ref, args) => {
+        wiped.push(args);
+        return { removedDrones: 1 };
+      },
+    });
+    const [row] = ctx.db.seed("cmd_drones", [
+      { userId: "user-1", deviceId: "dev-1", name: "drone", apiKey: "k", pairedAt: Date.now() },
+    ]);
+
+    await invoke(drones.unpairDrone, ctx, { droneId: row._id });
+
+    // The cascade owns every keyed table; unpair must not hand-roll a subset.
+    expect(wiped).toEqual([{ deviceIds: ["dev-1"] }]);
+  });
+
+  it("refuses a drone owned by another account and wipes nothing", async () => {
+    const wiped: unknown[] = [];
+    const ctx = makeCtx({
+      subject: "user-B|s",
+      run: async (_ref, args) => {
+        wiped.push(args);
+        return {};
+      },
+    });
+    const [row] = ctx.db.seed("cmd_drones", [
+      { userId: "owner-A", deviceId: "dev-1", name: "drone", apiKey: "k", pairedAt: Date.now() },
+    ]);
+
+    await expect(
+      invoke(drones.unpairDrone, ctx, { droneId: row._id }),
+    ).rejects.toThrow(/Not found/);
+    expect(wiped).toEqual([]);
+    expect(ctx.db.rows("cmd_drones")).toHaveLength(1);
   });
 });

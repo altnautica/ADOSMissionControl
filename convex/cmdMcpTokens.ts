@@ -183,3 +183,35 @@ export const revoke = mutation({
     return { ok: true };
   },
 });
+
+/** MCP audit rows are kept for 30 days. */
+const AUDIT_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+/** Bounded so a backlog cannot blow the per-call limits. */
+const AUDIT_PRUNE_BATCH = 256;
+
+/**
+ * Cron job: delete MCP audit rows past the retention window.
+ *
+ * One row per MCP tool call, append-only, with no natural end -- the highest
+ * write cadence of the two event tables and previously swept by nothing. Reads
+ * through `by_createdAt` so the cost tracks what is deleted, not the table.
+ *
+ * Retention is deliberate, not incidental: the audit trail is what an operator
+ * reviews after an incident, so 30 days has to survive a sweep that runs daily.
+ */
+export const pruneOldAuditEvents = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const cutoff = Date.now() - AUDIT_RETENTION_MS;
+    const stale = await ctx.db
+      .query("cmd_mcpAuditEvents")
+      .withIndex("by_createdAt", (q) => q.lt("createdAt", cutoff))
+      .take(AUDIT_PRUNE_BATCH);
+    let deleted = 0;
+    for (const row of stale) {
+      await ctx.db.delete(row._id);
+      deleted += 1;
+    }
+    return { deleted };
+  },
+});

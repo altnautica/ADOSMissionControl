@@ -1326,7 +1326,11 @@ fullName: v.optional(v.string()),
     // Retention sweep: range terminal rows by completion time so the cleanup
     // cron deletes old completed/failed rows with a bounded indexed scan
     // instead of a full-table walk.
-    .index("by_status_completedAt", ["status", "completedAt"]),
+    .index("by_status_completedAt", ["status", "completedAt"])
+    // Stuck sweep: a non-terminal row ranged by AGE, so the expiry pass reads
+    // only rows older than its cutoff. `by_status_completedAt` cannot serve
+    // this -- a pending row has no completedAt.
+    .index("by_status_createdAt", ["status", "createdAt"]),
 
   cmd_pairingRequests: defineTable({
     deviceId: v.optional(v.string()),
@@ -1541,8 +1545,8 @@ fullName: v.optional(v.string()),
     .index("by_install_perm", ["pluginInstallId", "permissionId"]),
 
   // Append-only event log per plugin: lifecycle, capability denials,
-  // crashes, operator actions. TTL 30 days enforced by `cleanup_pluginEvents`
-  // cron (added when the cleanup function lands).
+  // crashes, operator actions. 30-day retention, swept by the
+  // `prune-old-plugin-events` cron (cmdPlugins.pruneOldEvents).
   cmd_pluginEvents: defineTable({
     userId: v.string(),
     pluginInstallId: v.id("cmd_pluginInstalls"),
@@ -1574,7 +1578,11 @@ fullName: v.optional(v.string()),
     .index("by_install", ["pluginInstallId"])
     .index("by_user_plugin", ["userId", "pluginId"])
     .index("by_install_type", ["pluginInstallId", "type"])
-    .index("by_user_created", ["userId", "createdAt"]),
+    .index("by_user_created", ["userId", "createdAt"])
+    // Retention sweep: range every user's rows by age in one bounded indexed
+    // read. `by_user_created` cannot serve it — the sweep is fleet-wide and
+    // would have to walk one range per user to use that index.
+    .index("by_createdAt", ["createdAt"]),
 
   // Uploaded .adosplug archive blobs keyed by (userId, sha256). One
   // row per uploaded archive; reused across drones via refCount so a
@@ -1729,7 +1737,11 @@ fullName: v.optional(v.string()),
     createdAt: v.number(),
   })
     .index("by_user_created", ["userId", "createdAt"])
-    .index("by_contentHash", ["contentHash"]),
+    .index("by_contentHash", ["contentHash"])
+    // Retention sweep: one bounded fleet-wide read by age. Every MCP tool call
+    // appends a row here, so this table has the highest write cadence of the
+    // append-only pair and no natural end.
+    .index("by_createdAt", ["createdAt"]),
 
   // Explicitly exported on-device log windows. The agent's durable
   // local log store stays the source of truth; an operator can push a

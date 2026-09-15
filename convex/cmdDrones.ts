@@ -9,6 +9,7 @@
 import { v } from "convex/values";
 import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { internal } from "./_generated/api";
 import { agentKeyMatches } from "./lib/credentials";
 import type { Doc, Id } from "./_generated/dataModel";
 
@@ -186,15 +187,30 @@ export const renameDrone = mutation({
   },
 });
 
-/** Unpair (delete) a drone. */
+/**
+ * Unpair a drone: delete the pairing row AND every row keyed to its device.
+ *
+ * Deleting `cmd_drones` alone left the status row (last LAN IP, mDNS host, the
+ * whole telemetry snapshot), any queued commands, its Atlas jobs and its
+ * exported log windows behind. `cmd_droneStatus` is keyed by deviceId with no
+ * userId, so re-pairing the same device from a different account adopted the
+ * previous operator's last-known state, and no retention sweep could reach any
+ * of it. Ownership is checked here; the cascade itself is internal and bounded.
+ */
 export const unpairDrone = mutation({
   args: { droneId: v.id("cmd_drones") },
-  handler: async (ctx, { droneId }) => {
+  // Explicit return type: the cascade runs an internal mutation declared in
+  // another module, and inferring through `internal` from here would make this
+  // file's exported types self-referential. `void` keeps the mutation's
+  // published shape exactly as it was.
+  handler: async (ctx, { droneId }): Promise<void> => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
     const drone = await ctx.db.get(droneId);
     if (!drone || drone.userId !== userId) throw new Error("Not found");
-    await ctx.db.delete(droneId);
+    await ctx.runMutation(internal.cmdPairing.wipeByDeviceIds, {
+      deviceIds: [drone.deviceId],
+    });
   },
 });
 

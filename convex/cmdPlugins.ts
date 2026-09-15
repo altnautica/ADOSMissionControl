@@ -16,7 +16,7 @@
  */
 
 import { v } from "convex/values";
-import { mutation, query, type MutationCtx } from "./_generated/server";
+import { internalMutation, mutation, query, type MutationCtx } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import {
@@ -573,6 +573,40 @@ export const recordEvent = mutation({
       payload,
       createdAt: Date.now(),
     });
+  },
+});
+
+// ──────────────────────────────────────────────────────────────
+// Retention sweep (cron-only)
+// ──────────────────────────────────────────────────────────────
+
+/** Plugin lifecycle events are kept for 30 days. */
+const EVENT_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+/** Bounded so a backlog cannot blow the per-call limits. */
+const EVENT_PRUNE_BATCH = 256;
+
+/**
+ * Cron job: delete plugin events past the retention window.
+ *
+ * `cmd_pluginEvents` is append-only and written at machine cadence (every
+ * install, enable, start, stop, crash and capability denial), and the table's
+ * own schema comment promised this sweep while nothing swept it. Reads through
+ * `by_createdAt` so the cost tracks what is deleted, not the table.
+ */
+export const pruneOldEvents = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const cutoff = Date.now() - EVENT_RETENTION_MS;
+    const stale = await ctx.db
+      .query("cmd_pluginEvents")
+      .withIndex("by_createdAt", (q) => q.lt("createdAt", cutoff))
+      .take(EVENT_PRUNE_BATCH);
+    let deleted = 0;
+    for (const row of stale) {
+      await ctx.db.delete(row._id);
+      deleted += 1;
+    }
+    return { deleted };
   },
 });
 

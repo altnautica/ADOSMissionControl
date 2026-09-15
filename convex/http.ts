@@ -1007,13 +1007,24 @@ http.route({
       runtimeMode: stringField(body, "runtimeMode"),
       remoteAccess: body.remoteAccess,
       // Webapp-side plugin installs + compact peripheral connection states.
-      // These are the fields the active heartbeat actually emits (the agent
-      // does not send the free-form `peripherals` manifest, `scripts`,
-      // `peers`, `enrollment`, or `logs` over the cloud path, so those are
-      // not forwarded). Both are shape-validated so a malformed entry can
-      // never fail the whole heartbeat.
+      // Both are shape-validated so a malformed entry can never fail the whole
+      // heartbeat.
       pluginInventory: pluginInventoryField(body),
       peripheralStates: peripheralStatesField(body),
+      // The free-form peripheral manifest. The agent DOES send this over the
+      // cloud path (`Peripheral { category, type, ... }` on the Rust heartbeat),
+      // and dropping it here is what left `cmd_drones.attachedDisplayType`
+      // permanently undefined on every self-hosted deployment: `pushStatus`
+      // derives the LCD pill from `peripherals[].category === "display"`, so the
+      // derivation had no input and the pill was dead. Forwarded verbatim when
+      // it is an array; the column is `v.any()` so shape is the agent's business.
+      peripherals: Array.isArray(body.peripherals) ? body.peripherals : undefined,
+      // `scripts`, `peers`, `enrollment` and `logs` are declared on pushStatus
+      // and reserved -- the current heartbeat does not carry them at the root,
+      // so there is nothing to forward yet. Reserved, not absent from the
+      // agent: when one starts being emitted it gets picked here, the same way
+      // `peripherals` above had to be. The twin gate holds the list of four so
+      // a fifth cannot join them by omission.
       telemetry: body.telemetry,
       // Inter-rig peer presence (drives the WFB "Peer" badge). Drone
       // heartbeats carry the GS identity; GS heartbeats carry the drone's.

@@ -110,12 +110,26 @@ describe("cloud-relay /agent/status forwards the agent-emitted fields", () => {
     expect(text).toContain("peerSeenAtUnix: nullableNumber(body.peerSeenAtUnix),");
   });
 
-  it("forwards plugin inventory + peripheral states, drops the unsent fields", async () => {
+  it("forwards plugin inventory, peripheral states and the peripheral manifest", async () => {
     const text = await readFile(HTTP_PATH, "utf8");
     expect(text).toContain("pluginInventory: pluginInventoryField(body),");
     expect(text).toContain("peripheralStates: peripheralStatesField(body),");
-    // The active heartbeat never emits these over the cloud path; they
-    // must not be forwarded (they round-tripped as permanently-undefined).
+    // The agent DOES send the free-form `peripherals` manifest over the cloud
+    // path, and `pushStatus` derives cmd_drones.attachedDisplayType from
+    // `peripherals[].category === "display"`. Without this pick the derivation
+    // has no input, so the LCD pill was dead on every self-hosted deployment
+    // while the same agent filled it over the LAN.
+    expect(text).toContain(
+      "peripherals: Array.isArray(body.peripherals) ? body.peripherals : undefined,",
+    );
+  });
+
+  it("does not forward the four reserved fields the heartbeat does not carry", async () => {
+    const text = await readFile(HTTP_PATH, "utf8");
+    // Declared on pushStatus and reserved: the current heartbeat carries none
+    // of them at the root, so a pick would round-trip as permanently
+    // undefined. The twin gate holds this same list of four, so a fifth
+    // unpicked field fails there rather than joining them silently.
     expect(text).not.toContain("scripts: body.scripts,");
     expect(text).not.toContain("peers: body.peers,");
     expect(text).not.toContain("enrollment: body.enrollment,");

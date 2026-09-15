@@ -276,11 +276,26 @@ describe("wipePairStateForOwnedDevice", () => {
     expect(ctx.db.rows("cmd_drones")).toHaveLength(1);
   });
 
-  it("wipes request, drone and status rows for the owner's own device", async () => {
+  it("wipes every row keyed to the owner's own device, blobs included", async () => {
     const ctx = makeCtx({ subject: "user-1|s" });
     request(ctx, { deviceId: "dev-1" });
     drone(ctx, { userId: "user-1", deviceId: "dev-1" });
     ctx.db.seed("cmd_droneStatus", [{ deviceId: "dev-1", updatedAt: NOW }]);
+    // A queued command is the one the terminal-row sweep can never reach: it
+    // has no completedAt, so before the cascade it outlived the pairing and
+    // would be handed to the agent if the device were ever re-paired.
+    ctx.db.seed("cmd_droneCommands", [
+      { deviceId: "dev-1", userId: "user-1", command: "service_restart", status: "pending", createdAt: NOW },
+      { deviceId: "dev-1", userId: "user-1", command: "reboot", status: "completed", createdAt: NOW, completedAt: NOW },
+      { deviceId: "dev-2", userId: "user-1", command: "reboot", status: "pending", createdAt: NOW },
+    ]);
+    ctx.db.seed("cmd_atlasJobs", [
+      { deviceId: "dev-1", computeNodeId: "ws-1", kind: "splat", status: "done" },
+      { deviceId: "dev-2", computeNodeId: "ws-1", kind: "splat", status: "done" },
+    ]);
+    ctx.db.seed("logd_windows", [
+      { userId: "user-1", deviceId: "dev-1", storageId: "blob-1", pushedAt: NOW },
+    ]);
     // The public mutation delegates the sweep through ctx.runMutation so the
     // wipe stays one code path; dispatch straight at the internal handler.
     Object.assign(ctx, {
@@ -295,9 +310,20 @@ describe("wipePairStateForOwnedDevice", () => {
       removedRequests: 1,
       removedDrones: 1,
       removedStatus: 1,
+      removedCommands: 2,
+      removedAtlasJobs: 1,
+      removedLogWindows: 1,
+      truncated: false,
     });
     expect(ctx.db.rows("cmd_drones")).toHaveLength(0);
     expect(ctx.db.rows("cmd_pairingRequests")).toHaveLength(0);
+    expect(ctx.db.rows("cmd_droneStatus")).toHaveLength(0);
+    // Another device's rows are untouched.
+    expect(ctx.db.rows("cmd_droneCommands").map((r) => r.deviceId)).toEqual(["dev-2"]);
+    expect(ctx.db.rows("cmd_atlasJobs").map((r) => r.deviceId)).toEqual(["dev-2"]);
+    // The window's blob goes with its row.
+    expect(ctx.db.rows("logd_windows")).toHaveLength(0);
+    expect(ctx.deletedStorage).toEqual(["blob-1"]);
   });
 });
 

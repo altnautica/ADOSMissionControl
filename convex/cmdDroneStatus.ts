@@ -11,11 +11,17 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { requireOwnedDroneByDeviceId } from "./cmdDroneAccess";
 
 /**
- * Push status from agent (called via HTTP action, no auth — validated by API key match).
- * Upserts by deviceId.
+ * Every top-level key the cloud heartbeat may carry.
+ *
+ * Declared as a named object rather than inline on the mutation so the key set
+ * has ONE definition. The `/agent/status` route in `convex/http.ts` picks the
+ * fields it forwards one at a time, and the parity gate asserts that every key
+ * declared here is picked there -- a validator added without a matching pick is
+ * a column this deployment can never fill, however the agent emits it. The
+ * hosted superset deployment reads the same object to filter its incoming body,
+ * because an undeclared key rejects the WHOLE call and takes the node dark.
  */
-export const pushStatus = internalMutation({
-  args: {
+export const pushStatusArgs = {
     deviceId: v.string(),
     version: v.string(),
     uptimeSeconds: v.number(),
@@ -502,7 +508,14 @@ export const pushStatus = internalMutation({
         }),
       ),
     ),
-  },
+};
+
+/**
+ * Push status from agent (called via HTTP action, no auth — validated by API key match).
+ * Upserts by deviceId.
+ */
+export const pushStatus = internalMutation({
+  args: pushStatusArgs,
   handler: async (ctx, args) => {
     const existing = await ctx.db
       .query("cmd_droneStatus")
@@ -549,13 +562,18 @@ export const pushStatus = internalMutation({
     // entry with category="display"; we cherry-pick the type so the
     // drone card can render an "LCD" badge without re-querying the
     // full status row.
+    // `peripherals` is a `v.any()` passthrough, so narrow each entry rather
+    // than asserting a shape onto it: a manifest that renames either key must
+    // read as "no display", never as a fabricated one.
     let attachedDisplayType: string | undefined;
     if (Array.isArray(args.peripherals)) {
-      const display = (args.peripherals as Array<Record<string, unknown>>).find(
-        (p) => p && (p as { category?: unknown }).category === "display",
-      );
-      if (display && typeof display.type === "string") {
-        attachedDisplayType = display.type;
+      for (const entry of args.peripherals as unknown[]) {
+        if (!entry || typeof entry !== "object") continue;
+        if (!("category" in entry) || entry.category !== "display") continue;
+        if ("type" in entry && typeof entry.type === "string") {
+          attachedDisplayType = entry.type;
+        }
+        break;
       }
     }
 

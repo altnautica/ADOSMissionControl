@@ -25,15 +25,37 @@
  * This is deliberately string-based: we want to catch a future refactor
  * that changes the validator shape (e.g. `v.optional(v.string())` →
  * `v.string()` would silently break agents that omit the field).
+ *
+ * Handles both spellings of the declaration: the args object written inline on
+ * the registration, and `args: someArgs` pointing at an `export const someArgs
+ * = { ... }` in the same file. `pushStatus` uses the second so the production
+ * route can filter an incoming body against the same object the validator is
+ * built from, instead of a second hand-maintained copy of 140 key names.
  */
 export function parseArgsBlock(source: string, exportName: string): Map<string, string> {
-  const exportIdx = source.indexOf(`export const ${exportName}`);
+  // `export const ${name} =`, not a bare prefix: `pushStatus` must not match
+  // `pushStatusArgs`.
+  const signature = `export const ${exportName} =`;
+  const exportIdx = source.indexOf(signature);
   if (exportIdx < 0) throw new Error(`export ${exportName} not found`);
-  const argsIdx = source.indexOf("args:", exportIdx);
-  if (argsIdx < 0) throw new Error(`args block for ${exportName} not found`);
-  const openBrace = source.indexOf("{", argsIdx);
-  if (openBrace < 0) throw new Error("args open brace not found");
+  const afterEquals = source.slice(exportIdx + signature.length);
 
+  let openBrace: number;
+  if (/^\s*\{/.test(afterEquals)) {
+    // `export const someArgs = { ... }` — this export IS the args object.
+    openBrace = exportIdx + signature.length + afterEquals.indexOf("{");
+  } else {
+    const argsIdx = source.indexOf("args:", exportIdx);
+    if (argsIdx < 0) throw new Error(`args block for ${exportName} not found`);
+    // `args: someArgs,` — follow it to the object it names. That object is an
+    // object literal, so the recursion takes the branch above and stops.
+    const named = /^args:\s*([A-Za-z_$][A-Za-z0-9_$]*)\s*,/.exec(
+      source.slice(argsIdx),
+    );
+    if (named) return parseArgsBlock(source, named[1]);
+    openBrace = source.indexOf("{", argsIdx);
+    if (openBrace < 0) throw new Error("args open brace not found");
+  }
   // Walk to the matching close brace, tracking nesting depth so nested
   // `v.object({ ... })` validators don't terminate the args block early.
   let depth = 0;

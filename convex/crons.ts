@@ -43,4 +43,29 @@ crons.interval(
   internal.cmdLogdWindows.pruneOldWindows
 );
 
+// A command the node never picked up is expired hourly rather than left
+// `pending` forever: the relay vocabulary includes non-idempotent actions, so a
+// stale queued command is a surprise waiting for the node to come back, not
+// just a row. Expiry stamps it terminal, which hands it to the sweep above.
+crons.interval(
+  "expire-stuck-commands",
+  { hours: 1 },
+  internal.cmdDroneCommands.expireStuckCommands
+);
+
+// The two append-only event tables. Both are written at machine cadence
+// (plugin lifecycle; one row per MCP tool call) and neither had a sweep, so
+// they grew for the lifetime of the deployment. 30-day retention, daily.
+crons.interval(
+  "prune-old-plugin-events",
+  { hours: 24 },
+  internal.cmdPlugins.pruneOldEvents
+);
+
+crons.interval(
+  "prune-old-mcp-audit-events",
+  { hours: 24 },
+  internal.cmdMcpTokens.pruneOldAuditEvents
+);
+
 export default crons;

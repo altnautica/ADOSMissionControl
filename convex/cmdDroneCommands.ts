@@ -240,3 +240,58 @@ export const pruneTerminalCommands = internalMutation({
     return { deleted };
   },
 });
+
+/**
+ * How long a command may sit undelivered before the sweep calls it stuck.
+ *
+ * The agent polls every 5 s, so an hour without delivery means the node was
+ * away, not slow. Expiring the row matters more than reaping it: the relay
+ * vocabulary includes non-idempotent actions (service restart, WFB pair
+ * init/apply/unpair), and a `pending` row is handed to the agent the moment it
+ * comes back -- so an hour-old restart executes long after the operator who
+ * queued it stopped watching.
+ */
+const COMMAND_STUCK_MS = 60 * 60 * 1000;
+
+/**
+ * Cron job: fail commands that were never delivered, or were claimed and never
+ * acked, before their age makes execution a surprise.
+ *
+ * Failed rather than deleted, on purpose: the operator's command list then says
+ * "expired: never delivered" instead of the row vanishing with no account of
+ * what happened. Stamping `completedAt` hands the row to the terminal sweep
+ * above, which is what finally frees the space. Reads through
+ * `by_status_createdAt` (a non-terminal row has no `completedAt`, so the
+ * terminal index cannot range it) and is bounded per tick.
+ */
+export const expireStuckCommands = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const now = Date.now();
+    const cutoff = now - COMMAND_STUCK_MS;
+    let expired = 0;
+    for (const status of ["pending", "delivering"] as const) {
+      const stuck = await ctx.db
+        .query("cmd_droneCommands")
+        .withIndex("by_status_createdAt", (q) =>
+          q.eq("status", status).lt("createdAt", cutoff),
+        )
+        .take(COMMAND_PRUNE_BATCH);
+      for (const row of stuck) {
+        await ctx.db.patch(row._id, {
+          status: "failed",
+          result: {
+            success: false,
+            message:
+              status === "pending"
+                ? "command expired: never delivered to the node"
+                : "command expired: claimed by the node but never acknowledged",
+          },
+          completedAt: now,
+        });
+        expired += 1;
+      }
+    }
+    return { expired };
+  },
+});

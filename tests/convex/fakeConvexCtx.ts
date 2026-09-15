@@ -192,12 +192,21 @@ export interface FakeCtx {
   auth: { getUserIdentity: () => Promise<{ subject: string; email?: string } | null> };
   scheduler: { runAfter: (delay: number, ref: unknown, args: unknown) => Promise<void> };
   scheduled: Array<{ ref: unknown; args: unknown }>;
+  /**
+   * Blob store. Only `delete` is modelled, because the only thing the server
+   * code under test does with a blob is drop it alongside its row -- an
+   * orphaned blob is storage nobody can find or bill for, so a sweep that
+   * forgets it has to be visible here.
+   */
+  storage: { delete: (id: string) => Promise<void> };
+  deletedStorage: string[];
   runMutation: (ref: unknown, args: unknown) => Promise<unknown>;
   runQuery: (ref: unknown, args: unknown) => Promise<unknown>;
 }
 
 export function makeCtx(options: FakeCtxOptions = {}): FakeCtx {
   const scheduled: Array<{ ref: unknown; args: unknown }> = [];
+  const deletedStorage: string[] = [];
   const run =
     options.run ??
     (async () => {
@@ -217,6 +226,12 @@ export function makeCtx(options: FakeCtxOptions = {}): FakeCtx {
       },
     },
     scheduled,
+    storage: {
+      delete: async (id: string) => {
+        deletedStorage.push(id);
+      },
+    },
+    deletedStorage,
     runMutation: run,
     runQuery: run,
   };
