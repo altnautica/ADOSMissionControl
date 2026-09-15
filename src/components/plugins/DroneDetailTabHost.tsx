@@ -73,6 +73,17 @@ export function isPluginTabId(tabId: string): boolean {
   return tabId.startsWith("plugin:");
 }
 
+/**
+ * The tab ids a node's plugin contributions render, in strip order. The host
+ * panel appends these to its built-in ids so the strip's roving keyboard
+ * navigation spans plugin tabs too.
+ */
+export function pluginTabIds(
+  contributions: ReadonlyArray<{ installId: string }>,
+): string[] {
+  return contributions.map((c) => pluginTabId(c.installId));
+}
+
 interface DroneDetailTabHeadersProps {
   /** Currently-selected node's id. Drives the contribution lookup. */
   agentId: string;
@@ -83,6 +94,16 @@ interface DroneDetailTabHeadersProps {
   /** Resolved profile of the selected node, so a `node.detail.tab` with a
    * `profile` narrowing only surfaces on a matching profile. */
   nodeProfile?: PairedNodeProfile;
+  /**
+   * Strip-level roving navigation. The host panel owns the full ordered id
+   * list (built-in tabs THEN plugin tabs) because only it knows the built-in
+   * half; this forwards the key and reports whether it moved.
+   *
+   * Without it an unselected plugin tab carries `tabIndex={-1}` and no key
+   * handler, and the static strip's own arrow handler wraps within the
+   * built-ins — so there was no keyboard path to any plugin tab at all.
+   */
+  onNavigate?: (key: string) => boolean;
   /** Optional class on the headers strip. */
   className?: string;
 }
@@ -97,6 +118,7 @@ export function DroneDetailTabHeaders({
   activeTabId,
   onSelectPluginTab,
   nodeProfile,
+  onNavigate,
   className,
 }: DroneDetailTabHeadersProps) {
   const contributions = useDronePluginContributions(agentId, nodeProfile);
@@ -115,6 +137,9 @@ export function DroneDetailTabHeaders({
             aria-controls={`drone-tabpanel-${tabId}`}
             tabIndex={selected ? 0 : -1}
             onClick={() => onSelectPluginTab(tabId)}
+            onKeyDown={(e) => {
+              if (onNavigate?.(e.key)) e.preventDefault();
+            }}
             className={cn(
               "self-stretch flex items-center px-2.5 text-xs font-medium transition-colors cursor-pointer shrink-0 -mb-px border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary",
               selected
@@ -180,6 +205,11 @@ export function DroneDetailTabBody({
       id={`drone-tabpanel-${tabId}`}
       role="tabpanel"
       aria-labelledby={`drone-tab-${tabId}`}
+      // A scrollable region with no focusable content cannot be scrolled by
+      // keyboard at all (WCAG 2.1.1): arrow keys pressed on the tab strip
+      // move between TABS, so a keyboard operator could not read past the
+      // fold. This gives the panel a landing target.
+      tabIndex={0}
       className={cn(
         "flex-1 min-h-0 overflow-y-auto flex flex-col",
         className,

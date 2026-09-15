@@ -849,14 +849,14 @@ function seedFocusedCapabilities(): void {
   if (agent.profile === "ground-station") {
     useAgentCapabilitiesStore
       .getState()
-      .setCapabilities(getMockGroundStationCapabilities());
+      .setCapabilities(getMockGroundStationCapabilities(), devId);
     return;
   }
   const perception = demoPerceptionFor(agent);
   if (!perception) return;
   useAgentCapabilitiesStore
     .getState()
-    .setCapabilities(getMockCapabilities("optical_flow", perception));
+    .setCapabilities(getMockCapabilities("optical_flow", perception), devId);
 }
 
 export function DemoProvider() {
