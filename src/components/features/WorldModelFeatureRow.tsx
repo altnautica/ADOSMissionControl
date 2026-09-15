@@ -31,11 +31,19 @@ export function WorldModelFeatureRow({ droneId }: { droneId: string }) {
   const setEnabled = useNodeFeaturesStore((s) => s.setEnabled);
   const control = useAtlasControl(droneId);
   const [busy, setBusy] = useState(false);
+  // The last write the node REFUSED. Without it a failed enable left the
+  // toggle checked and the pill on "Enabling…" forever, and a failed disable
+  // hid the Atlas tabs while the drone kept capturing.
+  const [writeFailed, setWriteFailed] = useState<"on" | "off" | null>(null);
 
   const available = control.demo || control.reachable;
   const r = control.readiness;
 
-  const status = !available
+  const status = writeFailed === "on"
+    ? "Could not enable"
+    : writeFailed === "off"
+      ? "Still capturing — could not disable"
+      : !available
     ? "Pair on LAN"
     : !enabled
       ? "Off"
@@ -49,14 +57,21 @@ export function WorldModelFeatureRow({ droneId }: { droneId: string }) {
     if (busy) return;
     setBusy(true);
     try {
+      setWriteFailed(null);
       if (on) {
-        // Reveal the tabs + start the poll first, then enable the service so
-        // the readiness poll confirms it came up.
+        // Reveal the tabs + start the poll first so the readiness poll can
+        // confirm the service came up — but roll the flag back when the node
+        // refuses, rather than leaving the operator believing it is on.
         setEnabled(deviceId, "world-model", true);
-        await control.enable();
-      } else {
-        await control.disable();
+        if (!(await control.enable())) {
+          setEnabled(deviceId, "world-model", false);
+          setWriteFailed("on");
+        }
+      } else if (await control.disable()) {
         setEnabled(deviceId, "world-model", false);
+      } else {
+        // Keep the tabs: the node is still capturing and forwarding.
+        setWriteFailed("off");
       }
     } finally {
       setBusy(false);

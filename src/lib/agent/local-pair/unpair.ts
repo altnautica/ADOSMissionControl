@@ -7,8 +7,8 @@
  * @license GPL-3.0-only
  */
 
-import { PairClientError } from "./errors";
-import { normaliseHost, shouldUseProxy } from "./transport";
+import { normaliseHost, safeJson, shouldUseProxy } from "./transport";
+import { pairFailureFromResponse } from "./failure-copy";
 
 /** POST ``/api/pairing/unpair`` with the stored API key in the header. */
 export async function unpairLocal(
@@ -50,10 +50,6 @@ export async function unpairLocal(
     return;
   }
   if (!resp.ok && resp.status !== 409) {
-    throw new PairClientError(
-      "unpairFailedStatusError",
-      `Unpair failed: ${resp.status} ${resp.statusText}`,
-      { status: resp.status, statusText: resp.statusText },
-    );
+    throw pairFailureFromResponse("unpair", host, resp, await safeJson(resp));
   }
 }

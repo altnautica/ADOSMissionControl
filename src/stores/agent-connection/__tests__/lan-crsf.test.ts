@@ -129,7 +129,7 @@ describe("LAN-direct CRSF lane folding", () => {
     expect(crsf.relayRole).toBe("origin");
   });
 
-  it("sets the lane atomically via setCapabilities, never a separate crsf setState (no null-flicker)", async () => {
+  it("sets the lane AND the radio atomically via setCapabilities, never a follow-up setState (no null-flicker)", async () => {
     const setStateSpy = vi.spyOn(useAgentCapabilitiesStore, "setState");
 
     await useAgentConnectionStore.getState().connect(HOST, "key");
@@ -138,10 +138,10 @@ describe("LAN-direct CRSF lane folding", () => {
       expect(useAgentCapabilitiesStore.getState().crsf).not.toBeNull();
     });
 
-    // The direct capability-store setState calls the poll makes (radio, runtime
-    // mode) must never carry a `crsf` key: crsf reaches the store only through
-    // setCapabilities' single write, so it is never set to null and then patched
-    // to the real value in a follow-up setState.
+    // `setCapabilities` normalizes and REPLACES both `radio` and `crsf` on
+    // every call, so a follow-up `setState({ radio })` meant one tick where
+    // the Radio tab's gate read false before reading true — a visible strip
+    // flicker on every poll. Neither key may arrive through a bare setState.
     const objectArgs = setStateSpy.mock.calls
       .map((call) => call[0] as unknown)
       .filter(
@@ -149,8 +149,8 @@ describe("LAN-direct CRSF lane folding", () => {
           typeof arg === "object" && arg !== null,
       );
     expect(objectArgs.some((arg) => "crsf" in arg)).toBe(false);
-    // Sanity: the poll DID drive direct setState writes (the radio snapshot),
-    // so the "no crsf key" assertion is meaningful and not vacuous.
-    expect(objectArgs.some((arg) => "radio" in arg)).toBe(true);
+    expect(objectArgs.some((arg) => "radio" in arg)).toBe(false);
+    // Sanity: both DID land, so the assertions above are not vacuous.
+    expect(useAgentCapabilitiesStore.getState().radio).not.toBeNull();
   });
 });

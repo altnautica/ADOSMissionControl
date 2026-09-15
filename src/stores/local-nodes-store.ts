@@ -20,8 +20,9 @@
  *     hardware-backed key isolation. This is the local-first
  *     trade-off and the pragmatic posture for v1.
  *   - If the operator clears browser storage the apiKeys are lost.
- *     Recovery: unpair the agent from its own setup webapp at
- *     ``http://<host>:8080/setup.html``, then re-pair from the GCS.
+ *     Recovery: run ``ados unpair`` on the node (or release it from
+ *     the node's own dashboard under Settings), then pair again from
+ *     the GCS.
  *   - See also ``browser-identity-store.ts`` for the per-browser
  *     UUID that acts as pair-owner identifier on the same threat
  *     surface.
@@ -31,6 +32,10 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+// From the narrow transport module, not the `local-pair-client` barrel: the
+// barrel pulls the whole pair flow (and the mDNS scan) into every consumer of
+// this store, and `transport.ts` has no imports of its own.
+import { normaliseHost } from "@/lib/agent/local-pair/transport";
 import type {
   AgentBindState,
   AgentRadioSnapshot,
@@ -86,7 +91,9 @@ export interface LocalNode {
   board?: string;
   /** Agent version string at pair time. */
   version?: string;
-  /** mDNS hostname (``ados-<id>.local``) — used as the canonical reach. */
+  /** mDNS hostname the agent reports for itself. Only ever as good as what
+   * the agent publishes — treat it as a candidate reach, not a proven one;
+   * `lastReachOk` records which reach actually answered. */
   mdnsHost?: string;
   /** Server-resolved IPv4 captured at pair time. Used as a fallback
    * when the browser stops resolving the .local hostname (Safari,
@@ -107,6 +114,19 @@ export interface LocalNode {
    * re-pair / re-flash of the same node can re-apply the operator's choice.
    * Undefined for entries paired before this field existed. */
   region?: string | null;
+  /** The reach that last answered a probe, and when. This is the only field
+   * that records an address as PROVEN rather than merely stored: a node
+   * carries up to three candidate reaches (`hostname`, `mdnsHost`, `ipv4`)
+   * and different consumers pick different ones, so without this an operator
+   * cannot tell which address is carrying their session — nor, when a node
+   * greys out, whether the agent is down, the `.local` name stopped
+   * resolving, or the DHCP lease moved. Written by the LAN fleet bridge on
+   * every successful probe. */
+  lastReachOk?: { host: string; at: number };
+  /** The reach that last failed, why, and when. Cleared the moment any reach
+   * succeeds, so its presence means "the stored address is not answering
+   * right now" and never a stale scare. */
+  lastReachError?: { host: string; error: string; at: number };
 }
 
 interface LocalNodesState {
@@ -136,6 +156,18 @@ interface LocalNodesState {
   /** Record the operator-pinned operating region for a node (null =
    * unrestricted) so a re-pair / re-flash re-applies it. */
   setNodeRegion: (deviceId: string, region: string | null) => void;
+  /** Rewrite the base URL the GCS reaches this node at. Backs the reach
+   * block's "use this address" action, so an operator whose `.local` name
+   * stopped resolving can switch the node onto the IP that answered without
+   * re-pairing (which would mint a new key and orphan the card). */
+  setNodeHostname: (deviceId: string, hostname: string) => void;
+  /** Record that `host` answered for this node, clearing any recorded reach
+   * failure. Coalesced on the same interval as `touchLastSeen`. */
+  recordReachOk: (deviceId: string, host: string) => void;
+  /** Record that `host` did not answer, and why. Leaves `lastReachOk` in
+   * place: "the address that used to work" is exactly the fact the operator
+   * needs when the current one stops. */
+  recordReachError: (deviceId: string, host: string, error: string) => void;
   touchLastSeen: (deviceId: string) => void;
   clear: () => void;
 }
@@ -215,6 +247,60 @@ export const useLocalNodesStore = create<LocalNodesState>()(
             n.deviceId === deviceId ? { ...n, region } : n,
           ),
         })),
+      setNodeHostname: (deviceId, hostname) =>
+        set((state) => {
+          // `hostname` is a BASE URL for every consumer (`AgentClient` appends
+          // a path to it verbatim and adds no scheme), so a bare address from
+          // a reach block or a settings field is normalised here rather than
+          // at each call site.
+          const next = normaliseHost(hostname);
+          if (!next) return state;
+          return {
+            nodes: state.nodes.map((n) =>
+              n.deviceId === deviceId ? { ...n, hostname: next } : n,
+            ),
+          };
+        }),
+      recordReachOk: (deviceId, host) =>
+        set((state) => {
+          const node = state.nodes.find((n) => n.deviceId === deviceId);
+          if (!node) return state;
+          const now = Date.now();
+          // Coalesce on the same interval as `touchLastSeen` — this runs off
+          // the same ~5s poll and rewrites the persisted array. A CHANGE of
+          // reach, or a failure that needs clearing, always writes through:
+          // those are the two facts the operator is watching for.
+          const unchanged =
+            node.lastReachOk?.host === host &&
+            node.lastReachError === undefined &&
+            now - node.lastReachOk.at < PRESENCE_STAMP_MIN_MS;
+          if (unchanged) return state;
+          return {
+            nodes: state.nodes.map((n) =>
+              n.deviceId === deviceId
+                ? { ...n, lastReachOk: { host, at: now }, lastReachError: undefined }
+                : n,
+            ),
+          };
+        }),
+      recordReachError: (deviceId, host, error) =>
+        set((state) => {
+          const node = state.nodes.find((n) => n.deviceId === deviceId);
+          if (!node) return state;
+          const now = Date.now();
+          const unchanged =
+            node.lastReachError?.host === host &&
+            node.lastReachError.error === error &&
+            now - node.lastReachError.at < PRESENCE_STAMP_MIN_MS;
+          if (unchanged) return state;
+          return {
+            nodes: state.nodes.map((n) =>
+              n.deviceId === deviceId
+                ? { ...n, lastReachError: { host, error, at: now } }
+                : n,
+            ),
+          };
+        }),
       touchLastSeen: (deviceId) =>
         set((state) => {
           const now = Date.now();
@@ -236,10 +322,10 @@ export const useLocalNodesStore = create<LocalNodesState>()(
     }),
     {
       name: "altcmd:local-nodes",
-      version: 4,
+      version: 5,
       // v1→v2 added ipv4; v2→v3 added optional bindState + radio; v3→v4 added
-      // optional region. All optional additions, so migration is an identity
-      // passthrough.
+      // optional region; v4→v5 added optional lastReachOk / lastReachError.
+      // All optional additions, so migration is an identity passthrough.
       migrate: (persisted, version) => {
         void version;
         return persisted as LocalNodesState;

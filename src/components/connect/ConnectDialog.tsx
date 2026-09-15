@@ -21,7 +21,7 @@ import { AgentConnectPanel } from "@/components/command/AgentConnectPanel";
 import { useConnectDialogStore } from "@/stores/connect-dialog-store";
 import { usePairDialogStore } from "@/stores/pair-dialog-store";
 import { useDroneManager } from "@/stores/drone-manager";
-import { useLocalNodesStore } from "@/stores/local-nodes-store";
+import { nodeIdForDevice } from "@/lib/agent/node-id";
 import { usePlatform } from "@/hooks/use-platform";
 import { GITHUB_RELEASES_URL } from "@/components/onboarding/constants";
 import { Radio, Cpu, Plug, ExternalLink } from "lucide-react";
@@ -55,14 +55,16 @@ export function ConnectDialog() {
   );
 
   function handleAgentPaired(deviceId: string) {
-    const isLocal = useLocalNodesStore
-      .getState()
-      .nodes.some((n) => n.deviceId === deviceId);
-    const fleetId = `${isLocal ? "local" : "cloud"}-${deviceId}`;
+    // The one canonical selection id is `node:<deviceId>` (see
+    // `@/lib/agent/node-id`). The retired `local-<deviceId>` /
+    // `cloud-<deviceId>` projector forms match no fleet row, so selecting one
+    // closed the modal and fired the success toast while leaving the operator
+    // on an unchanged screen with nothing open.
+    const nodeId = nodeIdForDevice(deviceId);
     if (selectTimer.current !== null) window.clearTimeout(selectTimer.current);
     selectTimer.current = window.setTimeout(() => {
       selectTimer.current = null;
-      useDroneManager.getState().selectDrone(fleetId);
+      useDroneManager.getState().selectDrone(nodeId);
     }, 150);
   }
 

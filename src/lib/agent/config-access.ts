@@ -195,16 +195,16 @@ export function resolveConfigAccess(
  *
  *  - The server-side `/api/lan-pair/config` route fixes its upstream path
  *    map server-side so it can never be steered at an arbitrary agent path.
- *    The camera roster (`/api/video/roster`) and OTA (`/api/ota`) are not in
- *    that map, and widening it to accept a caller-supplied path is exactly
- *    the property that map exists to protect.
+ *    The camera roster (`/api/video/roster`) is not in that map, and widening
+ *    it to accept a caller-supplied path is exactly the property that map
+ *    exists to protect.
  *  - Log streaming is an `EventSource` (a long-lived streaming GET). This
  *    route buffers the upstream with `response.text()` and answers once, and
  *    the relay is a fragmented request/response RPC over the aux radio lane —
  *    neither can hold a stream open. `LoggingService.tail` already refuses on
  *    `ctx.relay` for exactly this reason and drops its caller to polling.
  *
- * So on the relay lane those three surfaces genuinely have no path, and the
+ * So on the relay lane those two surfaces genuinely have no path, and the
  * gate stays truthful by staying as it is.
  */
 export function hasClientPath<T>(client: T | null | undefined): client is T {

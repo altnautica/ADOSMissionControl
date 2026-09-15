@@ -339,24 +339,4 @@ export class AgentClient {
   getSigningCounters(): Promise<SigningCounters> {
     return extras.getSigningCounters(this.ctx);
   }
-
-  getOtaStatus(): Promise<extras.OtaStatus> {
-    return extras.getOtaStatus(this.ctx);
-  }
-
-  checkOtaUpdate(): Promise<{
-    status?: string;
-    version?: string | null;
-    changelog?: string | null;
-  }> {
-    return extras.checkOtaUpdate(this.ctx);
-  }
-
-  installOtaUpdate(): Promise<{ status?: string; message?: string }> {
-    return extras.installOtaUpdate(this.ctx);
-  }
-
-  restartAfterOta(): Promise<{ status?: string; message?: string }> {
-    return extras.restartAfterOta(this.ctx);
-  }
 }

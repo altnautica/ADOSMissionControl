@@ -93,29 +93,29 @@ describe("inferCapabilities vision flag", () => {
 });
 
 describe("cmd_droneStatus vision mapping", () => {
-  // No agent path emits the vision-summary fields on the cloud heartbeat
-  // today, so the bridge no longer reads visionActiveModel / visionBackend /
-  // visionFps / visionDetectionsPerSec off a cloud row — forwarding
-  // always-undefined fields would make the contract lie. The inference path
-  // still accepts the overrides directly (see the suite above); only the
-  // heartbeat-row extraction is gone until a producer ships them on the wire.
-  it("does not read vision summary fields off a cloud row", () => {
+  // The vision-summary fields ARE on the cloud wire: Convex declares them as
+  // `cmd_droneStatus` columns and `convex/http.ts` picks them off the ingest
+  // body. The bridge used to discard them one layer from their consumers, so
+  // `visionAvailable` fell back to "is this SoC in the NPU table with
+  // TOPS > 0" and a Pi-class drone running a USB/CPU vision engine showed the
+  // Vision tab over LAN and not over the cloud relay.
+  it("reads the vision summary fields off a cloud row", () => {
     const extras = buildHeartbeatExtras({
       visionActiveModel: "com.example.weeds",
       visionBackend: "ort",
       visionDetectionsPerSec: 8,
       visionFps: 15,
     });
-    expect(extras.inferOverrides?.visionActiveModel).toBeUndefined();
-    expect(extras.inferOverrides?.visionBackend).toBeUndefined();
-    expect(extras.inferOverrides?.visionDetectionsPerSec).toBeUndefined();
-    expect(extras.inferOverrides?.visionFps).toBeUndefined();
+    expect(extras.inferOverrides?.visionActiveModel).toBe("com.example.weeds");
+    expect(extras.inferOverrides?.visionBackend).toBe("ort");
+    expect(extras.inferOverrides?.visionDetectionsPerSec).toBe(8);
+    expect(extras.inferOverrides?.visionFps).toBe(15);
   });
 
-  it("does not fabricate a vision summary from a cloud row", () => {
-    // A cloud row carrying vision fields must not light up the Vision tab,
-    // because the bridge drops them; only hardware inference (an NPU-bearing
-    // SoC) can set visionAvailable absent an advertised surface.
+  it("lights up vision from the advertised surface on a board with no NPU", () => {
+    // BCM2711 (Pi 4) is not in the NPU table, so hardware inference alone
+    // leaves vision unknown. The agent advertising an engine is the fact that
+    // decides it — and that fact now survives the relay.
     const extras = buildHeartbeatExtras({
       visionActiveModel: "com.example.people",
       visionBackend: "rknn",
@@ -127,8 +127,11 @@ describe("cmd_droneStatus vision mapping", () => {
       [],
       extras.inferOverrides,
     );
-    expect(caps!.visionAvailable).toBeUndefined();
-    expect(caps!.visionSummary).toBeUndefined();
+    expect(caps!.visionAvailable).toBe(true);
+    expect(caps!.visionSummary).toMatchObject({
+      activeModel: "com.example.people",
+      backend: "rknn",
+    });
   });
 
   it("leaves vision overrides undefined when the row omits them", () => {

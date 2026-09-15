@@ -49,8 +49,11 @@ export const FIRST_PARTY_FEATURES: FirstPartyFeature[] = [
     description:
       "Capture pose-tagged keyframes as this drone flies; a paired compute node reconstructs a 3D world model.",
     icon: Boxes,
-    profiles: ["drone"],
-    surfaceIds: ["world-model", "live-world"],
+    // The ground station's Atlas relay surface is gated on this same flag, so
+    // without the ground-station profile here that surface could only be
+    // revealed by toggling the feature from an unrelated node's row.
+    profiles: ["drone", "ground-station"],
+    surfaceIds: ["world-model", "live-world", "atlasRelay"],
     Row: WorldModelFeatureRow,
   },
 ];

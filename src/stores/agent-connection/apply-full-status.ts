@@ -32,7 +32,6 @@ import { useAgentCapabilitiesStore } from "../agent-capabilities-store";
 import { useAgentPeripheralsStore } from "../agent-peripherals-store";
 import { useAgentSystemStore } from "../agent-system-store";
 import { useVideoStore } from "../video-store";
-import { normalizeRadio } from "../agent-capabilities/normalizer";
 
 /**
  * Project the consolidated response's top-level fields onto the canonical
@@ -94,10 +93,15 @@ export function fullStatusToAgentStatus(full: FullStatusResponse): AgentStatus {
  *
  * `agentUrl` is the base URL currently being polled successfully; WHEP URLs are
  * re-pointed at its host.
+ *
+ * `nodeDeviceId` names the node the response describes so the capability write
+ * is filed per device — the node-detail tab strip resolves from that per-device
+ * slice, not from the focused one.
  */
 export function applyFullStatus(
   full: FullStatusResponse,
   agentUrl: string | null,
+  nodeDeviceId: string | null,
 ): void {
   const status = fullStatusToAgentStatus(full);
   useAgentSystemStore.getState().setStatus(status as AgentStatus);
@@ -251,12 +255,34 @@ export function applyFullStatus(
   if (full.crsf && typeof full.crsf === "object") {
     statusExtras.crsf = full.crsf;
   }
+  // Radio snapshot over the LAN-direct path. The consolidated status carries
+  // the same camelCase radio block the cloud heartbeat does (RSSI/SNR/noise/
+  // loss/MCS/FEC + receive-liveness). Folded in for the same reason as crsf:
+  // `setCapabilities` normalizes and REPLACES `radio` on every call, so a
+  // follow-up `setState({ radio })` meant one tick where the Radio tab's gate
+  // read false before reading true — a visible strip flicker on every poll.
+  if (full.radio && typeof full.radio === "object") {
+    statusExtras.radio = full.radio;
+  }
+  // Native-vs-packaged runtime mode over the LAN-direct path, clamped to the
+  // known union. Folded in rather than patched afterwards so the whole
+  // snapshot reaches the store — and the per-device slice — in one write.
+  if (
+    full.runtimeMode === "native" ||
+    full.runtimeMode === "hybrid" ||
+    full.runtimeMode === "packaged"
+  ) {
+    statusExtras.runtimeMode = full.runtimeMode;
+  }
   if (full.capabilities) {
     // Agent has capabilities API; normalize and store (handles shape differences).
-    useAgentCapabilitiesStore.getState().setCapabilities({
-      ...(full.capabilities as Record<string, unknown>),
-      ...statusExtras,
-    });
+    useAgentCapabilitiesStore.getState().setCapabilities(
+      {
+        ...(full.capabilities as Record<string, unknown>),
+        ...statusExtras,
+      },
+      nodeDeviceId,
+    );
   } else {
     // Agent doesn't have capabilities API; infer from board SoC + peripherals.
     const peripherals = useAgentPeripheralsStore.getState().peripherals;
@@ -267,12 +293,17 @@ export function applyFullStatus(
       full.profile,
     );
     if (inferred) {
-      useAgentCapabilitiesStore.getState().setCapabilities({
-        ...(inferred as unknown as Record<string, unknown>),
-        ...statusExtras,
-      });
+      useAgentCapabilitiesStore.getState().setCapabilities(
+        {
+          ...(inferred as unknown as Record<string, unknown>),
+          ...statusExtras,
+        },
+        nodeDeviceId,
+      );
     } else if (Object.keys(statusExtras).length > 0) {
-      useAgentCapabilitiesStore.getState().setCapabilities(statusExtras);
+      useAgentCapabilitiesStore
+        .getState()
+        .setCapabilities(statusExtras, nodeDeviceId);
     }
   }
   // Fallback: if capabilities store still has no cameras but we know board SoC,
@@ -288,32 +319,16 @@ export function applyFullStatus(
         full.profile,
       );
       if (inferred && inferred.cameras.length > 0) {
-        useAgentCapabilitiesStore.getState().setCapabilities(inferred);
+        // Carry the extras again: this call REPLACES radio/crsf, so omitting
+        // them would drop the lane the write above just established.
+        useAgentCapabilitiesStore.getState().setCapabilities(
+          {
+            ...(inferred as unknown as Record<string, unknown>),
+            ...statusExtras,
+          },
+          nodeDeviceId,
+        );
       }
     }
-  }
-  // Radio snapshot over the LAN-direct path. The consolidated
-  // status carries the same camelCase radio block the cloud
-  // heartbeat does (RSSI/SNR/noise/loss/MCS/FEC + receive-
-  // liveness). Shallow-merge only the radio field so this never
-  // clobbers profile/cameras set by setCapabilities above.
-  if (full.radio && typeof full.radio === "object") {
-    useAgentCapabilitiesStore.setState({
-      radio: normalizeRadio(full.radio),
-    });
-  }
-  // Native-vs-packaged runtime mode over the LAN-direct path.
-  // The consolidated status carries the same aggregate the
-  // cloud heartbeat does. Clamp to the known union and merge
-  // only this field so it never clobbers the deeper capability
-  // shape set above.
-  if (
-    full.runtimeMode === "native" ||
-    full.runtimeMode === "hybrid" ||
-    full.runtimeMode === "packaged"
-  ) {
-    useAgentCapabilitiesStore.setState({
-      runtimeMode: full.runtimeMode,
-    });
   }
 }

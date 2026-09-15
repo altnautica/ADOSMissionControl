@@ -10,6 +10,7 @@ import { isDemoMode } from "@/lib/utils";
 import type { ProbeResult } from "./types";
 import { PairClientError } from "./errors";
 import { combineSignals, normaliseHost, safeJson, shouldUseProxy } from "./transport";
+import { pairFailureFromResponse } from "./failure-copy";
 
 /** Hit ``/api/pairing/info`` and return the agent identity.
  * Times out after 8s so a non-responsive host doesn't hang the UI.
@@ -66,50 +67,28 @@ export async function probeAgent(
       signal: combineSignals(signal),
     });
     if (!resp.ok) {
-      const parsed = (await safeJson(resp)) as
-        | { error?: string; message?: string }
-        | null;
-      // The proxy reaches the agent from Mission Control's OWN server, not the
-      // browser. `upstream_unreachable` (502) means that server could not reach
-      // the agent. When Mission Control is served remotely (hosted over https,
-      // not localhost) its server is not on the operator's Wi-Fi and can never
-      // reach a LAN agent — surface that instead of a bare "502", because the
-      // agent itself is usually fine and the operator just needs a Mission
-      // Control on the same network (the desktop app) or a cloud code.
-      if (parsed?.error === "upstream_unreachable") {
-        const servedRemotely =
-          typeof window !== "undefined" &&
-          window.location.protocol === "https:" &&
-          !/^(localhost|127\.|\[?::1\]?)/.test(window.location.hostname);
-        throw new PairClientError(
-          "probeFailedStatusError",
-          servedRemotely
-            ? `Mission Control couldn't reach "${host}" from its server. This Mission Control is hosted remotely, so it can't see your local network. To pair an agent on your Wi-Fi, open the ADOS desktop app (or run Mission Control) on the same network — or enable cloud relay on the agent and pair with a 6-character code.`
-            : `Couldn't reach "${host}". Check the agent is powered on and on this network, and that the hostname or IP is correct.`,
-          { status: resp.status, statusText: resp.statusText },
-        );
-      }
-      throw new PairClientError(
-        parsed?.error === "host_not_private"
-          ? "hostNotPrivateError"
-          : "probeFailedStatusError",
-        parsed?.message ?? `Probe failed: ${resp.status} ${resp.statusText}`,
-        { status: resp.status, statusText: resp.statusText },
-      );
+      throw pairFailureFromResponse("probe", host, resp, await safeJson(resp));
     }
     body = (await resp.json()) as Record<string, unknown>;
   } else {
-    const resp = await fetch(`${host}/api/pairing/info`, {
-      method: "GET",
-      headers: { Accept: "application/json" },
-      signal: combineSignals(signal),
-    });
+    // Direct path (desktop build / http origin): a fetch rejection here is a
+    // real "nothing answered" — DNS failure, connection refused, or the 8 s
+    // timeout — so it maps onto the same unreachable branch the proxy's 502
+    // produces rather than escaping as a raw TypeError. An operator-triggered
+    // abort is not a failure and is re-thrown untouched.
+    let resp: Response;
+    try {
+      resp = await fetch(`${host}/api/pairing/info`, {
+        method: "GET",
+        headers: { Accept: "application/json" },
+        signal: combineSignals(signal),
+      });
+    } catch (e) {
+      if (signal?.aborted) throw e;
+      throw pairFailureFromResponse("probe", host, { status: 0 }, null);
+    }
     if (!resp.ok) {
-      throw new PairClientError(
-        "probeFailedStatusError",
-        `Probe failed: ${resp.status} ${resp.statusText}`,
-        { status: resp.status, statusText: resp.statusText },
-      );
+      throw pairFailureFromResponse("probe", host, resp, await safeJson(resp));
     }
     body = (await resp.json()) as Record<string, unknown>;
   }

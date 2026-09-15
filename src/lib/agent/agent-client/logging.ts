@@ -637,11 +637,16 @@ export class LoggingService {
       throw new Error("EventSource unavailable");
     }
     if (this.ctx.relay) {
-      // The relay lane is a request/response RPC over the radio; it carries
-      // no long-lived stream. Throwing here drops the caller to polling
-      // instead of opening an EventSource against the ground station's own
-      // logd, which would tail the WRONG node's logs.
-      throw new Error("tail unavailable over a radio relay");
+      // Not a radio limit — the measured link carries 4 Mbps of H.264
+      // continuously. The aux lane's Request/Response channels are unary by
+      // construction (`aux_mux.rs`), so a long-lived stream has no channel to
+      // ride yet; a bounded-rate unary poll does, which is the substitution
+      // `VisionDetectionsBridge` already makes for detections. Throwing drops
+      // the caller to that poll rather than opening an EventSource against
+      // the ground station's own logd, which would tail the WRONG node.
+      throw new Error(
+        "log tail is not yet multiplexed onto the relay lane — polling instead",
+      );
     }
     // Tail rides the direct tier when reachable, else the proxy bridge.
     const tier: Tier = this.preferredTier === "proxy" ? "proxy" : "direct";
@@ -730,11 +735,16 @@ export class LoggingService {
     const query = qs.toString();
 
     if (this.ctx.relay) {
-      // Streaming a bulk archive over a half-duplex radio is not something the
-      // relay lane can do, and `legacy` (its only tier) has no export at all.
-      // Say that specifically, the way `tail()` does, instead of falling
-      // through to the generic "no tier answered".
-      throw new Error("export unavailable over a radio relay");
+      // The one genuinely size-bound case. A relayed response is capped at
+      // MAX_RESPONSE_BODY (69 060 B, `aux_rpc/response.rs`) and an export is a
+      // bulk archive, so carrying it needs server-side paging on the export
+      // endpoint plus a paging client here — not more radio. Named as a gap
+      // with its cause rather than as a property of the link.
+      throw new Error(
+        "log export is not yet multiplexed onto the relay lane: an archive " +
+          "exceeds the lane's 69 KB per-response ceiling and the endpoint has " +
+          "no paging yet. Reach this node over the LAN or the cloud to export.",
+      );
     }
 
     // Export does not parse JSON, so it resolves the tier itself with a
@@ -848,9 +858,16 @@ export class LoggingService {
    * a relayed agent whose logd sits behind the radio. */
   async stats(): Promise<StatsResponse> {
     if (this.ctx.relay) {
-      // The relay reaches the drone's `:8080` only; the stats body lives
-      // behind logd. Nothing here says the agent is old.
-      throw new Error("stats unavailable over a radio relay");
+      // The stats body is small unary JSON and would cross the lane fine; what
+      // is missing is a route on the drone's `:8080` that serves it, because
+      // the relay reaches only that port and the stats live behind logd. The
+      // agent-side work is a native forwarder for `/api/v2/observability/*`
+      // onto `/run/ados/logd-query.sock`; once that exists this branch is
+      // deleted and the relay tier reads stats like any other unary GET.
+      throw new Error(
+        "log store stats are not yet multiplexed onto the relay lane — the " +
+          "drone serves them on a port the lane does not reach",
+      );
     }
     const { body, tier } = await this.resolve("/stats", "");
     if (tier === "legacy") {

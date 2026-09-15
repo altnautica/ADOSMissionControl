@@ -17,13 +17,24 @@ interface PairDialogState {
   open: boolean;
   /** Preferred tab when the dialog opens. Consumers may ignore it. */
   initialTab: PairDialogTab;
-  openDialog: (initialTab?: PairDialogTab) => void;
+  /** A host to pre-load into the Add-a-Node field, or null. Set when the
+   * operator picks an agent the GCS already found on the network, so the
+   * discovery list is a genuinely zero-typing path instead of a display that
+   * makes them retype what it just showed them. Consumed once: the form clears
+   * it as it reads it, so reopening the dialog does not re-probe. */
+  prefillHost: string | null;
+  openDialog: (initialTab?: PairDialogTab, prefillHost?: string) => void;
+  /** Clear the pre-loaded host after the form has taken it. */
+  consumePrefillHost: () => void;
   closeDialog: () => void;
 }
 
 export const usePairDialogStore = create<PairDialogState>((set) => ({
   open: false,
   initialTab: "add",
-  openDialog: (initialTab: PairDialogTab = "add") => set({ open: true, initialTab }),
-  closeDialog: () => set({ open: false }),
+  prefillHost: null,
+  openDialog: (initialTab: PairDialogTab = "add", prefillHost?: string) =>
+    set({ open: true, initialTab, prefillHost: prefillHost ?? null }),
+  consumePrefillHost: () => set({ prefillHost: null }),
+  closeDialog: () => set({ open: false, prefillHost: null }),
 }));

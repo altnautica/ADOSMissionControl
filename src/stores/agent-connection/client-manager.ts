@@ -169,7 +169,8 @@ export const clientManagerSlice: AgentConnectionSliceCreator<
             set({ mavlinkUrl: mavWsUrl });
           } catch { /* ignore invalid URL */ }
         }
-        set({ nodeDeviceId: connectId ?? get().nodeDeviceId });
+        const nodeDeviceId = connectId ?? get().nodeDeviceId;
+        set({ nodeDeviceId });
         useAgentSystemStore.getState().setStatus(status);
         useAgentSystemStore.getState().fetchServices();
         useAgentSystemStore.getState().fetchResources();
@@ -184,7 +185,10 @@ export const clientManagerSlice: AgentConnectionSliceCreator<
             if (caps && typeof caps === "object") {
               useAgentCapabilitiesStore
                 .getState()
-                .setCapabilities(caps as Record<string, unknown>);
+                .setCapabilities(
+                  caps as Record<string, unknown>,
+                  nodeDeviceId,
+                );
               capsLoaded = true;
             }
           } catch { /* capabilities optional */ }
@@ -193,7 +197,9 @@ export const clientManagerSlice: AgentConnectionSliceCreator<
           const peripherals = useAgentPeripheralsStore.getState().peripherals;
           const inferred = inferCapabilities(status, peripherals);
           if (inferred)
-            useAgentCapabilitiesStore.getState().setCapabilities(inferred);
+            useAgentCapabilitiesStore
+              .getState()
+              .setCapabilities(inferred, nodeDeviceId);
         }
         get().startPolling();
         return null;
@@ -434,7 +440,7 @@ export const clientManagerSlice: AgentConnectionSliceCreator<
             get().setControlRttMs(Math.max(0, Math.round(rttEnd - rttStart)));
             useFullEndpoint = true;
             // Map consolidated response to the same stores as the 4-endpoint path.
-            applyFullStatus(full, get().agentUrl);
+            applyFullStatus(full, get().agentUrl, get().nodeDeviceId);
             get().noteFetchSuccess();
             return;
           }
