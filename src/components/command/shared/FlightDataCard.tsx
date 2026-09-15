@@ -196,7 +196,9 @@ export function FlightDataCard({ className }: FlightDataCardProps) {
     fcConnected && !canCommand
       ? authority.reason === "provisioning"
         ? t("authority.provisioning")
-        : t("authority.receiveOnly")
+        : authority.reason === "no-transport"
+          ? t("authority.noTransport")
+          : t("authority.receiveOnly")
       : null;
 
   return (

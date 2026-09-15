@@ -33,6 +33,42 @@ export class RingBuffer<T> {
     return this.buffer[(this.head - 1 + this.capacity) % this.capacity];
   }
 
+  /**
+   * The entry whose timestamp is closest to `targetTs`, or `undefined` on an
+   * empty buffer.
+   *
+   * For reading a time series at an instant other than "now" — compositing
+   * telemetry over a video frame that was captured 200 ms ago needs the
+   * sample that was true when the frame was captured, not the newest one.
+   *
+   * Binary search over the logical order, which is valid because pushes are
+   * monotonic in time for every buffer in the telemetry store. Allocates
+   * nothing: `toArray()` would copy the whole buffer per lookup, and these
+   * are read on the frame path.
+   */
+  nearest(targetTs: number, tsOf: (item: T) => number): T | undefined {
+    if (this._length === 0) return undefined;
+    const start = this._length < this.capacity ? 0 : this.head;
+    const at = (i: number): T =>
+      this.buffer[(start + i) % this.capacity] as T;
+
+    let lo = 0;
+    let hi = this._length - 1;
+    // Narrow to the bracketing pair rather than to an exact hit: the target
+    // instant almost never coincides with a sample instant.
+    while (hi - lo > 1) {
+      const mid = (lo + hi) >> 1;
+      if (tsOf(at(mid)) <= targetTs) lo = mid;
+      else hi = mid;
+    }
+    const low = at(lo);
+    if (lo === hi) return low;
+    const high = at(hi);
+    return Math.abs(tsOf(low) - targetTs) <= Math.abs(tsOf(high) - targetTs)
+      ? low
+      : high;
+  }
+
   /** Convert to array, oldest first. Returns cached copy if unchanged since last call. */
   toArray(): T[] {
     if (this._length === 0) return [];

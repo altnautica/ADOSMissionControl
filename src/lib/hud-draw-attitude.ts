@@ -8,21 +8,57 @@ import { degToRad } from "@/lib/telemetry-utils";
 import {
   HUD_INK, SHADOW, FONT,
   SKY_TOP, SKY_HORIZON, GROUND_HORIZON, GROUND_BOTTOM, HORIZON_LINE,
+  NO_DATA_INK, NO_DATA_FIELD,
   clearShadow,
 } from "./hud-draw";
 
 /**
- * Draw sky/ground gradient background that tilts with pitch and roll.
+ * Label drawn where the horizon would be when no attitude sample backs it. A
+ * level horizon on a vehicle nobody is hearing from reads as "the aircraft is
+ * level", which is the single most dangerous thing this HUD could claim.
+ */
+const NO_ATTITUDE_LABEL = "NO ATTITUDE";
+
+/** Flat unlit field + the no-attitude label. Never tilted: there is no angle. */
+function drawNoAttitudeField(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  w: number,
+  h: number,
+) {
+  ctx.save();
+  ctx.fillStyle = NO_DATA_FIELD;
+  ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = NO_DATA_INK;
+  ctx.font = `bold 13px ${FONT}`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(NO_ATTITUDE_LABEL, cx, cy);
+  ctx.restore();
+}
+
+/**
+ * Draw the sky/ground gradient background that tilts with pitch and roll, or a
+ * flat NO ATTITUDE field when either is unknown.
  */
 export function drawSkyGround(
   ctx: CanvasRenderingContext2D,
   w: number,
   h: number,
-  pitch: number,
-  roll: number
+  pitch: number | null,
+  roll: number | null
 ) {
   const cx = w / 2;
   const cy = h / 2;
+
+  // No attitude, no horizon. The flat field is deliberately not a gradient
+  // with a line through the middle — that is indistinguishable from level.
+  if (pitch === null || roll === null) {
+    drawNoAttitudeField(ctx, cx, cy, w, h);
+    return;
+  }
+
   const ladderH = h * 0.4;
   const pxPerDeg = ladderH / 40;
 
@@ -78,11 +114,27 @@ export function drawCrosshair(ctx: CanvasRenderingContext2D, cx: number, cy: num
   clearShadow(ctx);
 }
 
+/**
+ * Pitch ladder + horizon bars. Draws the NO ATTITUDE label in place of the
+ * ladder when either angle is unknown — on the transparent OSD this is the only
+ * attitude cue there is, so it cannot just be skipped.
+ */
 export function drawPitchLadder(
   ctx: CanvasRenderingContext2D,
   cx: number, cy: number,
-  pitch: number, roll: number, h: number
+  pitch: number | null, roll: number | null, h: number
 ) {
+  if (pitch === null || roll === null) {
+    ctx.save();
+    ctx.fillStyle = NO_DATA_INK;
+    ctx.font = `bold 13px ${FONT}`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(NO_ATTITUDE_LABEL, cx, cy);
+    ctx.restore();
+    return;
+  }
+
   const ladderH = h * 0.4;
   const pxPerDeg = ladderH / 40;
 
@@ -145,11 +197,17 @@ export function drawPitchLadder(
   ctx.restore();
 }
 
+/**
+ * Roll scale + pointer. Drawn only when a roll angle is known: an arc with its
+ * pointer parked at 0 is a reading, and there is none.
+ */
 export function drawRollArc(
   ctx: CanvasRenderingContext2D,
   cx: number, cy: number,
-  roll: number, h: number
+  roll: number | null, h: number
 ) {
+  if (roll === null) return;
+
   const radius = h * 0.18;
   const arcCy = cy - h * 0.22;
   const ticks = [-60, -45, -30, -20, -10, 0, 10, 20, 30, 45, 60];

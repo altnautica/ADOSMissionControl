@@ -24,6 +24,14 @@ export const GROUND_HORIZON = "#3a4a2a";
 export const GROUND_BOTTOM = "#1a2510";
 export const HORIZON_LINE = "rgba(255, 255, 255, 0.3)";
 
+/**
+ * Unlit instrument ink and field, used wherever a reading is unknown. Visually
+ * distinct from every live colour so "no data" cannot be mistaken for a value.
+ */
+export const NO_DATA_INK = "rgba(255, 255, 255, 0.45)";
+export const NO_DATA_FIELD = "#12161c";
+export const NO_DATA_GLYPH = "\u2014";
+
 // ── Utility ─────────────────────────────────────────────────────
 
 export function batColor(pct: number): string {

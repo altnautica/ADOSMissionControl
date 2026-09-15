@@ -22,6 +22,7 @@ import {
 import L from "leaflet";
 import dynamic from "next/dynamic";
 import { DrawingManager } from "@/lib/drawing/drawing-manager";
+import { buildSkillContext, activate } from "@/lib/skills";
 
 const GcsMarker = dynamic(
   () => import("@/components/map/GcsMarker").then((m) => ({ default: m.GcsMarker })),
@@ -191,8 +192,6 @@ export function OverviewMap({ compact = false }: { compact?: boolean } = {}) {
   // Mission pause/resume state
   const flightMode = useDroneStore((s) => s.flightMode);
   const previousMode = useDroneStore((s) => s.previousMode);
-  const setFlightMode = useDroneStore((s) => s.setFlightMode);
-  const getProtocol = useDroneManager((s) => s.getSelectedProtocol);
   const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
   const missionState = useMissionStore((s) => s.activeMission?.state);
   const isAutoMode = flightMode === "AUTO";
@@ -418,14 +417,14 @@ export function OverviewMap({ compact = false }: { compact?: boolean } = {}) {
       {!compact && showMissionControls && (
         <button
           onClick={() => {
-            const protocol = getProtocol();
-            if (isAutoMode) {
-              if (protocol) protocol.pauseMission();
-              else setFlightMode("LOITER");
-            } else {
-              if (protocol) protocol.resumeMission();
-              else setFlightMode("AUTO");
-            }
+            if (!selectedDroneId) return;
+            // Through the dispatcher, like every other flight action. The old
+            // no-protocol branch wrote LOITER/AUTO into the local drone store,
+            // so the mode label moved for a command nothing transmitted.
+            void activate(
+              isAutoMode ? "pause" : "resume",
+              buildSkillContext(selectedDroneId),
+            );
           }}
           className={`absolute top-2 right-2 z-[1000] flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-mono font-semibold border rounded backdrop-blur-md shadow-lg transition-colors ${
             isAutoMode

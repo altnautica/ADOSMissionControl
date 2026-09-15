@@ -6,6 +6,7 @@
 
 import {
   HUD_INK, ARMED_RED, DISARMED_GREEN, SHADOW, FONT,
+  NO_DATA_INK, NO_DATA_GLYPH,
   batColor, formatTimerFromMs, setHudStyle, clearShadow,
 } from "./hud-draw";
 
@@ -39,16 +40,23 @@ export function drawBatteryHud(
   clearShadow(ctx);
 }
 
+/**
+ * Satellite count + flight mode. A null mode renders the no-data glyph: the
+ * mode label is a claim about what the aircraft is doing, and the last mode
+ * heard from a link that has since gone silent is not that claim.
+ */
 export function drawGpsAndMode(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
   satellites: number | null,
-  mode: string
+  mode: string | null
 ) {
   setHudStyle(ctx, HUD_INK, 11, "left", "bottom");
-  ctx.fillText(`\u2736 ${satellites !== null ? satellites : "\u2014"} SAT`, x, y);
-  ctx.fillText(mode, x, y + 16);
+  ctx.fillText(`\u2736 ${satellites !== null ? satellites : NO_DATA_GLYPH} SAT`, x, y);
+  clearShadow(ctx);
+  setHudStyle(ctx, mode !== null ? HUD_INK : NO_DATA_INK, 11, "left", "bottom");
+  ctx.fillText(mode !== null ? mode : NO_DATA_GLYPH, x, y + 16);
   clearShadow(ctx);
 }
 
@@ -69,29 +77,44 @@ export function drawArmedStatus(
   clearShadow(ctx);
 }
 
+/**
+ * Radio-link strength meter. `bars` is a real measurement or null — it was once
+ * the literal 4, which drew a full-strength link on a dead radio and on a node
+ * with no radio at all. Null draws every bar unlit plus the no-data glyph, so
+ * "not measured" is visibly different from a measured zero.
+ */
 export function drawSignalBars(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
-  bars: number
+  bars: number | null
 ) {
   const barW = 3;
   const gap = 2;
   const maxH = 12;
+  const count = 4;
 
   ctx.shadowColor = SHADOW;
   ctx.shadowBlur = 1;
   ctx.shadowOffsetX = 1;
   ctx.shadowOffsetY = 1;
 
-  for (let i = 0; i < 4; i++) {
-    const bh = ((i + 1) / 4) * maxH;
+  for (let i = 0; i < count; i++) {
+    const bh = ((i + 1) / count) * maxH;
     const bx = x + i * (barW + gap);
     const by = y - bh;
-    ctx.fillStyle = i < bars ? HUD_INK : "rgba(255,255,255,0.2)";
+    ctx.fillStyle =
+      bars !== null && i < bars ? HUD_INK : "rgba(255,255,255,0.2)";
     ctx.fillRect(bx, by, barW, bh);
   }
   clearShadow(ctx);
+
+  if (bars === null) {
+    const meterW = count * barW + (count - 1) * gap;
+    setHudStyle(ctx, NO_DATA_INK, 10, "center", "bottom");
+    ctx.fillText(NO_DATA_GLYPH, x + meterW / 2, y - maxH - 2);
+    clearShadow(ctx);
+  }
 }
 
 export function drawFlightTimer(
