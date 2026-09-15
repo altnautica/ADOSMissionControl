@@ -8,6 +8,17 @@
 
 import { create } from "zustand";
 
+/**
+ * A cloud-paired drone as mirrored from `cmdDrones.listMyDrones`.
+ *
+ * `apiKey` is the agent credential for that device. For a cloud-paired node
+ * the Convex row is the only place the browser can get it — such a node was
+ * never paired on this network, so `local-nodes-store` has no record — and
+ * the post-pair connect, theme sync, config writes and the LAN-direct
+ * fallback all resolve it from here. New code should prefer
+ * `cmdDronesApi.getAgentKey` for a single device over reading the whole
+ * mirrored fleet; the Convex read is owner-scoped either way.
+ */
 export interface PairedDrone {
   _id: string;
   userId: string;

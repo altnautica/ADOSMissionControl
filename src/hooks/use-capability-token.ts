@@ -73,6 +73,13 @@ export function useCapabilityToken(
     const host = paired.mdnsHost ?? paired.lastIp ?? null;
     return host ? `http://${host}:8080` : null;
   });
+  // LAN mint key. Read from the mirrored fleet row, which is where a
+  // cloud-paired node's key lives (it was never paired on this network, so
+  // `local-nodes-store` has no record of it). The mint fires from an effect
+  // keyed on the cache key, so the key has to be present on the first render
+  // of this hook — an async per-device read would mint with no key and never
+  // retry. `cmdDrones.getAgentKey` is the right read for a caller that can
+  // await, such as the bridge's per-envelope secret resolver.
   const lanKey = usePairingStore(
     (s) => s.pairedDrones.find((d) => d.deviceId === deviceId)?.apiKey ?? null,
   );

@@ -9,6 +9,11 @@
  * Log discipline: this module NEVER logs `keyHex`. `keyId` (the 8-char
  * fingerprint) is the only public-safe identifier for display or log.
  *
+ * Read discipline: the cloud row carries NO key material. `getForDrone`
+ * answers "is there a synced key, and which one" and nothing more; the
+ * backend hands out `keyHex` only through `cmdSigningKeys.exportKey`,
+ * an explicit operator export that writes its own audit row.
+ *
  * @license GPL-3.0-only
  */
 
@@ -19,11 +24,12 @@ export function isCloudSigningKeySyncEnabled(): boolean {
   return false;
 }
 
+/** A synced key's metadata. Deliberately no `keyHex`: the query that
+ *  returns this shape does not carry key material. */
 export interface CloudSigningKey {
   _id: string;
   userId: string;
   droneId: string;
-  keyHex: string;
   keyId: string;
   linkIdOwner: number;
   linkIdsInUse: number[];
@@ -111,13 +117,27 @@ export async function releaseCloudLinkId(
 }
 
 /**
- * Convert a cloud row to a raw key byte buffer. The caller owns the
- * buffer and must zeroize it immediately after `importNonExtractableKey`.
+ * Export the raw key for one drone. The only path that returns key
+ * material, and it is audited server-side as an `export` signing event.
+ * The caller owns the returned buffer and must zeroize it immediately
+ * after `importNonExtractableKey`.
+ *
+ * `deviceFingerprint` is the same short opaque browser hash the signing
+ * event log takes — never a userId, never PII.
  */
-export function cloudKeyToBytes(row: CloudSigningKey): Uint8Array {
-  const out = new Uint8Array(32);
+export async function exportCloudKeyBytes(
+  client: ConvexReactClient,
+  droneId: string,
+  deviceFingerprint: string,
+): Promise<{ bytes: Uint8Array; keyId: string } | null> {
+  const exported = (await client.mutation(cmdSigningKeysApi.exportKey, {
+    droneId,
+    deviceFingerprint,
+  })) as { keyHex: string; keyId: string } | null;
+  if (!exported) return null;
+  const bytes = new Uint8Array(32);
   for (let i = 0; i < 32; i++) {
-    out[i] = parseInt(row.keyHex.substr(i * 2, 2), 16);
+    bytes[i] = parseInt(exported.keyHex.slice(i * 2, i * 2 + 2), 16);
   }
-  return out;
+  return { bytes, keyId: exported.keyId };
 }

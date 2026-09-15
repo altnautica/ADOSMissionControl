@@ -10,12 +10,21 @@ import { api } from "../../convex/_generated/api";
 export const cmdDronesApi = {
   listMyDrones: api.cmdDrones.listMyDrones,
   getDrone: api.cmdDrones.getDrone,
+  getAgentKey: api.cmdDrones.getAgentKey,
   renameDrone: api.cmdDrones.renameDrone,
   unpairDrone: api.cmdDrones.unpairDrone,
   // `updateHeartbeat` is deliberately absent: it is an internal mutation
   // reached only through the `/heartbeat` HTTP route, which authenticates the
   // agent. Exposing it to the browser gave any caller a directly-invokable
   // write path that bypassed that route's checks.
+  //
+  // `listMyDrones` and `getDrone` return an explicit owner projection, so a
+  // credential-shaped column added to `cmd_drones` later is omitted unless it
+  // is named there deliberately. The device `apiKey` is named, because a
+  // cloud-paired node has no local pairing record and the row is the only
+  // place the browser can obtain its key. `getAgentKey` is the scoped
+  // single-device read new code should use instead of taking the key off the
+  // fleet-wide list.
 };
 
 export const cmdPairingApi = {
@@ -76,6 +85,10 @@ export const cmdSigningKeysApi = {
   removeKey: api.cmdSigningKeys.removeKey,
   allocateLinkId: api.cmdSigningKeys.allocateLinkId,
   releaseLinkId: api.cmdSigningKeys.releaseLinkId,
+  // `listMine` and `getForDrone` return metadata only. `exportKey` is the one
+  // path that returns `keyHex`, and it writes an `export` audit event in the
+  // same transaction.
+  exportKey: api.cmdSigningKeys.exportKey,
 };
 
 export const cmdSigningEventsApi = {

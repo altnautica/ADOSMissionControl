@@ -28,6 +28,12 @@
  *
  * Crypto: Web Crypto (`crypto.subtle`), no "use node" needed.
  *
+ * Signing key: NOT the operator's root HMAC secret. Every token is
+ * signed with a key derived from that secret and the (install, device)
+ * pair being minted for (`lib/capabilityTokenKeys`), which is the same
+ * key `operatorHmacSecrets.getMyVerificationKey` hands the GCS bridge
+ * for that one iframe. The root secret stays on the backend.
+ *
  * @license GPL-3.0-only
  */
 
@@ -35,6 +41,7 @@ import { v } from "convex/values";
 import { action } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { api, internal } from "./_generated/api";
+import { deriveCapabilityTokenKey } from "./lib/capabilityTokenKeys";
 import type { Doc } from "./_generated/dataModel";
 
 /** Tokens expire 10 minutes after mint. */
@@ -157,11 +164,19 @@ export const mintToken = action({
       iss: `cloud:${userId}`,
     };
 
-    const secretBase64: string = await ctx.runAction(
+    // Sign with the per-(install, device) derived key, not the root
+    // secret: the browser that verifies this token only ever holds the
+    // derived one, so the two must agree on the derivation.
+    const rootSecretBase64: string = await ctx.runAction(
       internal.operatorHmacSecrets.getOrCreateCurrent,
       { userId },
     );
-    const token = await signTokenCanonical(claims, secretBase64);
+    const signingKeyBase64 = await deriveCapabilityTokenKey(
+      rootSecretBase64,
+      args.pluginInstallId,
+      args.deviceId,
+    );
+    const token = await signTokenCanonical(claims, signingKeyBase64);
     return { token, expiresAt };
   },
 });

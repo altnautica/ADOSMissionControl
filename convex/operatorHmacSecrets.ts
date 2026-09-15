@@ -9,11 +9,13 @@
  * stay valid until they expire (TTL bounded by the capability-token
  * action; see `cmdPluginCapabilityTokens.mintToken`).
  *
- * The secret is exposed to the operator's GCS via `getMyCurrent`
- * so the GCS can verify tokens locally when running in offline /
- * LAN-direct mode. Plugin code never reads either current or
- * previous secrets directly — only the cloud issuer signs, and
- * only the agent verifies.
+ * The root secret never leaves the backend. `getMyVerificationKey`
+ * hands the operator's GCS a key derived from it for one (plugin
+ * install, device) pair, so the browser can verify that pair's
+ * tokens locally in offline / LAN-direct mode without holding the
+ * key that mints for the whole account. Plugin code never reads any
+ * of it — only the cloud issuer signs, and only the GCS bridge and
+ * the agent verify.
  *
  * Crypto: uses Web Crypto (`crypto.getRandomValues`), no "use node"
  * directive needed.
@@ -29,6 +31,7 @@ import {
   query,
 } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { deriveCapabilityTokenKey } from "./lib/capabilityTokenKeys";
 import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 
@@ -88,9 +91,9 @@ export const getOrCreateCurrent = internalAction({
 // Internal queries / mutations
 // ──────────────────────────────────────────────────────────────
 
-/** Read the current row for `userId`. Internal because the secret
- * material is never exposed to public queries beyond
- * `getMyCurrent`, which gates on auth. */
+/** Read the current row for `userId`. Internal because the root
+ * secret is never returned to a caller: the only public read is
+ * `getMyVerificationKey`, which returns a scope-derived key. */
 export const getCurrentInternal = internalQuery({
   args: { userId: v.string() },
   handler: async (
@@ -135,15 +138,33 @@ export const rotate = internalMutation({
 // ──────────────────────────────────────────────────────────────
 
 /**
- * Return the current HMAC secret for the authenticated user, plus
- * the previous secret if one exists. The GCS uses both to verify
- * locally-signed tokens during the rotation overlap window. The
- * secret is gated by auth — only the owning operator can read it.
+ * Return the token verification key for one (plugin install, device)
+ * pair, plus the previous-rotation key when one exists, so the GCS
+ * bridge can verify that iframe's `cloud:` tokens locally — including
+ * in offline / LAN-direct mode — across a rotation overlap.
+ *
+ * Both values are DERIVED (`lib/capabilityTokenKeys`), never the root
+ * minting secret. This query used to return `secretBase64` straight
+ * off the row: the key that signs every capability token for the
+ * account, handed to the browser on page load. Any XSS or stolen
+ * session could then forge a token for any install and any drone the
+ * operator owned, without touching Convex again — and rotation did not
+ * help, because the previous secret came back too. A derived key
+ * forges only for the pair the caller already proved it owns and
+ * already mints for, which is no authority gain at all.
+ *
+ * Returns null — never throws — for an unauthenticated caller, an
+ * install the caller does not own, an install not bound to `deviceId`,
+ * or an operator with no secret row yet, so a render-time read is safe.
  */
-export const getMyCurrent = query({
-  args: {},
+export const getMyVerificationKey = query({
+  args: {
+    pluginInstallId: v.id("cmd_pluginInstalls"),
+    deviceId: v.string(),
+  },
   handler: async (
     ctx,
+    args,
   ): Promise<{
     secretBase64: string;
     previousSecretBase64?: string;
@@ -151,14 +172,34 @@ export const getMyCurrent = query({
   } | null> => {
     const userId = await getAuthUserId(ctx);
     if (!userId) return null;
+
+    // Ownership + scope binding, mirroring `mintToken`: the install must
+    // belong to the caller and must target the device whose key is asked
+    // for. Without the second check an operator could pull the key for a
+    // (install, drone) pair they cannot mint for.
+    const install = await ctx.db.get(args.pluginInstallId);
+    if (!install || install.userId !== userId) return null;
+    if (install.droneId !== args.deviceId) return null;
+
     const row = await ctx.db
       .query("operator_hmac_secrets")
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .first();
     if (!row) return null;
+
     return {
-      secretBase64: row.secretBase64,
-      previousSecretBase64: row.previousSecretBase64,
+      secretBase64: await deriveCapabilityTokenKey(
+        row.secretBase64,
+        args.pluginInstallId,
+        args.deviceId,
+      ),
+      previousSecretBase64: row.previousSecretBase64
+        ? await deriveCapabilityTokenKey(
+            row.previousSecretBase64,
+            args.pluginInstallId,
+            args.deviceId,
+          )
+        : undefined,
       rotatedAt: row.rotatedAt,
     };
   },

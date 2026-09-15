@@ -3,30 +3,40 @@
 /**
  * @module use-plugin-token-validator
  * @description Builds a `BridgeTokenValidatorOptions` for one plugin
- * iframe. The bridge runs this on every RPC envelope and rejects any
- * call whose token fails one of the 5 checks (presence, expiry, plugin
- * id, agent id, signature against the right issuer secret).
+ * iframe, AND returns the minted token the iframe must stamp onto its
+ * envelopes. The bridge runs the validator on every RPC envelope and
+ * rejects any call whose token fails one of the 5 checks (presence,
+ * expiry, plugin id, agent id, signature against the right issuer
+ * secret).
  *
  * Composition:
  *
  *   1. `useCapabilityToken(installId, deviceId, transport)` mints and
  *      refreshes the operator's token for this (plugin, drone) pair.
- *      The bridge does not embed this token in envelopes itself; the
- *      iframe SDK reads it via the bridge's token-publish channel and
- *      stamps each RPC envelope. Here we wire `onTokenExpired` to
- *      `refresh()` so the next mint runs the moment a stale token is
- *      detected at the verifier.
+ *      Both halves of the mint are returned: `validator` for the bridge
+ *      and `token` for the caller to publish into the iframe. The two
+ *      MUST come from one hook call — a second `useCapabilityToken` for
+ *      the same pair would mint twice and could hand the iframe a token
+ *      the validator is not expecting.
  *
- *   2. Operator HMAC secret (`operatorHmacSecrets.getMyCurrent`)
- *      resolves the `cloud:<userId>` issuer family. The secret rotates
- *      every 30 days; the GCS sees current + previous so tokens minted
- *      just before a rotation still verify until they expire.
+ *      `onTokenExpired` is wired to `refresh()` so a verifier-side
+ *      expiry immediately triggers a fresh mint, which re-renders and
+ *      re-publishes through the same channel.
  *
- *   3. Per-pairing HMAC secret (`deriveAgentTokenSecret(apiKey)`)
+ *   2. Operator HMAC verification key
+ *      (`operatorHmacSecrets.getMyVerificationKey`) resolves the
+ *      `cloud:<userId>` issuer family. The key is derived per
+ *      (install, device) and rotates; the GCS sees current + previous so
+ *      tokens minted just before a rotation still verify until they
+ *      expire.
+ *
+ *   3. Per-pairing HMAC secret (`deriveAgentTokenSecret(pairingKey)`)
  *      resolves the `agent:<deviceId>` issuer family. HKDF-SHA256
  *      derivation mirrors the agent's `derive_agent_token_secret`, so
  *      a token signed by the agent verifies here without round-tripping
- *      the raw pairing key over the network.
+ *      the raw pairing key over the network. The pairing key comes from
+ *      the local-nodes store when this node was paired on the LAN, and
+ *      otherwise from an owner-gated per-device Convex read.
  *
  *   4. `local` issuer raises `TokenInvalid` so any production envelope
  *      claiming `iss: local` against the GCS bridge is rejected.
@@ -52,9 +62,12 @@ import {
   importHmacKeyFromBase64,
   type IssuerKind,
 } from "@/lib/plugins/capability-token-claims";
+import { cmdDronesApi } from "@/lib/community-api-drones";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
-import { usePairingStore } from "@/stores/pairing-store";
+import { useAuthStore } from "@/stores/auth-store";
+import { useLocalNodesStore } from "@/stores/local-nodes-store";
 import { api as convexApi } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
 
 interface UsePluginTokenValidatorOptions {
   pluginInstallId: string;
@@ -64,13 +77,30 @@ interface UsePluginTokenValidatorOptions {
 }
 
 /**
- * Build the validator for one (plugin install, deviceId) pair.
- * The caller passes the resulting options to `<PluginIframeHost>`;
- * the bridge wires it into the dispatch pipeline.
+ * What the caller needs to run a validated plugin iframe: the bridge's
+ * verification options AND the token the iframe must stamp onto its
+ * envelopes. Both come from a single mint.
+ */
+export interface PluginTokenValidator {
+  validator: BridgeTokenValidatorOptions;
+  /**
+   * The minted capability token, or `null` while the first mint is in flight
+   * or after a mint error. The caller publishes this into the iframe; the
+   * bridge answers `capability_denied:token_missing` for any envelope that
+   * arrives without it.
+   */
+  token: string | null;
+}
+
+/**
+ * Build the validator for one (plugin install, deviceId) pair, and surface
+ * the minted token alongside it. The caller passes `validator` and `token`
+ * to `<PluginIframeHost>`; the host wires the first into the bridge dispatch
+ * pipeline and posts the second into the iframe.
  */
 export function usePluginTokenValidator(
   opts: UsePluginTokenValidatorOptions,
-): BridgeTokenValidatorOptions {
+): PluginTokenValidator {
   const { pluginInstallId, deviceId } = opts;
 
   // Transport picks between cloud-issuer and LAN-direct-issuer minting
@@ -80,38 +110,54 @@ export function usePluginTokenValidator(
   // unreachable, matching the install dialog's resolver logic.
   const cloudMode = useAgentConnectionStore((s) => s.cloudMode);
   const transport: "cloud" | "lan" = cloudMode ? "cloud" : "lan";
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
-  // Operator HMAC secret. The query soft-fails when the operator is
-  // signed out, returning `undefined`; in that case the cloud-issuer
-  // resolver below raises and the bridge maps the failure to
+  // Operator HMAC verification key, scoped to this (install, device). The
+  // query soft-fails to `undefined` when the operator is signed out and
+  // returns `null` for an install they do not own; in either case the
+  // cloud-issuer resolver below raises and the bridge maps the failure to
   // `signature_invalid` / `token_invalid` for the offending RPC.
-  const hmac = useConvexSkipQuery(convexApi.operatorHmacSecrets.getMyCurrent);
-
-  // Paired-drone row for this deviceId. We use the api key (pairing
-  // key) as HKDF input material to derive the per-pairing HMAC secret
-  // the agent signed with.
-  const apiKey = usePairingStore(
-    (s) => s.pairedDrones.find((d) => d.deviceId === deviceId)?.apiKey ?? null,
+  const hmac = useConvexSkipQuery(
+    convexApi.operatorHmacSecrets.getMyVerificationKey,
+    {
+      args: {
+        pluginInstallId: pluginInstallId as Id<"cmd_pluginInstalls">,
+        deviceId,
+      },
+    },
   );
 
-  // Delegate mint orchestration to `useCapabilityToken`. The bridge
-  // does not need the token itself (it reads it from `env.token`); we
-  // only consume the `refresh` callback so a verifier-side expiry can
-  // immediately trigger a fresh mint for the iframe to pick up.
-  const tokenForRefresh = useCapabilityToken(
+  // Pairing key for this deviceId, used as HKDF input material to derive the
+  // per-pairing HMAC secret the agent signed with. A LAN pairing already put
+  // it in the local-nodes store; otherwise read it per-device through the
+  // owner-gated Convex query rather than mirroring it onto every fleet row.
+  const localPairingKey = useLocalNodesStore(
+    (s) => s.nodes.find((n) => n.deviceId === deviceId)?.apiKey ?? null,
+  );
+  const cloudPairingKey =
+    useConvexSkipQuery(cmdDronesApi.getAgentKey, {
+      args: { deviceId },
+      enabled: isAuthenticated && !localPairingKey,
+    })?.apiKey ?? null;
+  const pairingKey = localPairingKey ?? cloudPairingKey;
+
+  // One mint per (install, device): `token` goes to the iframe, `refresh`
+  // arms the validator's expiry callback. Minting twice for the same pair
+  // would let the published token and the verified token diverge.
+  const capabilityToken = useCapabilityToken(
     pluginInstallId,
     deviceId,
     transport,
   );
-  const refresh = tokenForRefresh.refresh;
+  const refresh = capabilityToken.refresh;
 
   // Stash latest secret material in refs so the resolver closure stays
   // pinned across renders (the bridge captures the validator object
   // once; we want fresh secrets read on every dispatch).
   const hmacRef = useRef(hmac);
-  const apiKeyRef = useRef(apiKey);
+  const pairingKeyRef = useRef(pairingKey);
   hmacRef.current = hmac;
-  apiKeyRef.current = apiKey;
+  pairingKeyRef.current = pairingKey;
 
   // Per-validator key caches. Importing a CryptoKey is async and the
   // result is stable for the lifetime of the secret; cache by the
@@ -156,7 +202,7 @@ export function usePluginTokenValidator(
         return minted;
       }
       // kind === "agent"
-      const pairing = apiKeyRef.current;
+      const pairing = pairingKeyRef.current;
       if (!pairing) {
         throw new TokenInvalid(
           "pairing key unavailable; cannot derive per-pairing HMAC secret",
@@ -164,9 +210,9 @@ export function usePluginTokenValidator(
       }
       const cached = agentKeyCache.current.get(pairing);
       if (cached) return cached;
-      const minted = deriveAgentTokenSecret(pairing);
-      agentKeyCache.current.set(pairing, minted);
-      return minted;
+      const derived = deriveAgentTokenSecret(pairing);
+      agentKeyCache.current.set(pairing, derived);
+      return derived;
     },
     [],
   );
@@ -174,14 +220,14 @@ export function usePluginTokenValidator(
   const onTokenExpired = useCallback(() => {
     // Fire-and-forget. The hook surfaces the error if the mint fails;
     // the bridge has already responded `capability_denied:token_expired`
-    // to the iframe, and the iframe SDK retries from the fresh cache
-    // on its next RPC.
+    // to the iframe, and the fresh token is re-published by the host on
+    // the next render.
     void refresh().catch(() => {
       /* swallowed; surfaced via `useCapabilityToken` */
     });
   }, [refresh]);
 
-  return useMemo<BridgeTokenValidatorOptions>(
+  const validator = useMemo<BridgeTokenValidatorOptions>(
     () => ({
       expectedAgentId: deviceId,
       secretResolver,
@@ -189,4 +235,6 @@ export function usePluginTokenValidator(
     }),
     [deviceId, secretResolver, onTokenExpired],
   );
+
+  return { validator, token: capabilityToken.token };
 }

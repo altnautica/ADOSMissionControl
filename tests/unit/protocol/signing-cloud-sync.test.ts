@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 
 import {
   allocateCloudLinkId,
-  cloudKeyToBytes,
+  exportCloudKeyBytes,
   getCloudKeyForDrone,
   listMyCloudKeys,
   releaseCloudLinkId,
@@ -23,12 +23,15 @@ function fakeClient(overrides: {
   } as unknown as Parameters<typeof uploadKey>[0];
 }
 
+const KEY_HEX =
+  "3c5e2bdf8a40219157f0d1b6afe43a0c7e58cb4d2f9a1e306b8cafdfe87c52d9";
+
+/** A cloud row as the metadata reads return it: no key material. */
 function row(droneId: string): CloudSigningKey {
   return {
     _id: `id-${droneId}`,
     userId: "user-A",
     droneId,
-    keyHex: "3c5e2bdf8a40219157f0d1b6afe43a0c7e58cb4d2f9a1e306b8cafdfe87c52d9",
     keyId: "3c5e2bdf",
     linkIdOwner: 7,
     linkIdsInUse: [7],
@@ -103,13 +106,33 @@ describe("signing-cloud-sync", () => {
     });
   });
 
-  describe("cloudKeyToBytes", () => {
-    it("converts a 64-char hex to 32-byte Uint8Array", () => {
-      const bytes = cloudKeyToBytes(row("drone-a"));
-      expect(bytes.length).toBe(32);
-      // First byte: 0x3c
-      expect(bytes[0]).toBe(0x3c);
-      expect(bytes[1]).toBe(0x5e);
+  describe("exportCloudKeyBytes", () => {
+    it("converts the exported 64-char hex to a 32-byte buffer", async () => {
+      const mutation = vi
+        .fn()
+        .mockResolvedValue({ keyHex: KEY_HEX, keyId: "3c5e2bdf" });
+      const client = fakeClient({ mutation });
+
+      const result = await exportCloudKeyBytes(client, "drone-a", "fp-abcd");
+
+      expect(result?.keyId).toBe("3c5e2bdf");
+      expect(result?.bytes.length).toBe(32);
+      expect(result?.bytes[0]).toBe(0x3c);
+      expect(result?.bytes[1]).toBe(0x5e);
+      // The device fingerprint travels with the export so the server-side
+      // audit row records which browser took the key out.
+      expect(mutation).toHaveBeenCalledWith(expect.anything(), {
+        droneId: "drone-a",
+        deviceFingerprint: "fp-abcd",
+      });
+    });
+
+    it("returns null when the drone has no synced key", async () => {
+      const mutation = vi.fn().mockResolvedValue(null);
+      const client = fakeClient({ mutation });
+      expect(
+        await exportCloudKeyBytes(client, "drone-a", "fp-abcd"),
+      ).toBeNull();
     });
   });
 });

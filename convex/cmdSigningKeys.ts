@@ -7,6 +7,14 @@
  * present. New plaintext uploads are disabled until client-side
  * encrypted storage is available.
  *
+ * **Read discipline:** the list and per-drone reads return METADATA
+ * ONLY. `keyHex` authenticates MAVLink command frames to the aircraft,
+ * so a read that ships it to the browser on every Signing-panel render
+ * hands forged-command capability to any XSS, any extension, and any
+ * devtools screenshot in a support thread. Key material leaves the
+ * backend through exactly one door, `exportKey`, which is an explicit
+ * operator action and writes an audit row in the same transaction.
+ *
  * **Log discipline:** NEVER log `keyHex`. Log `keyId` (the 8-char
  * sha256 fingerprint) and `droneId` only. Any `console.log` with
  * `keyHex` in scope is a bug.
@@ -22,6 +30,7 @@
 
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import type { Doc, Id } from "./_generated/dataModel";
 import { getAuthUserId } from "@convex-dev/auth/server";
 
 function cloudSigningKeyUploadsEnabled(): boolean {
@@ -29,34 +38,72 @@ function cloudSigningKeyUploadsEnabled(): boolean {
 }
 
 // ──────────────────────────────────────────────────────────────
+// Projection
+// ──────────────────────────────────────────────────────────────
+
+/** Everything about a synced key except the key. */
+interface SigningKeyMetadata {
+  _id: Id<"cmd_signingKeys">;
+  _creationTime: number;
+  userId: string;
+  droneId: string;
+  keyId: string;
+  linkIdOwner: number;
+  linkIdsInUse: number[];
+  enrolledAt: string;
+  updatedAt: number;
+}
+
+/** Drop `keyHex`. Written as an explicit field list, not a rest-spread
+ *  delete, so a column added to the table is omitted by default rather
+ *  than published by default. */
+function toMetadata(row: Doc<"cmd_signingKeys">): SigningKeyMetadata {
+  return {
+    _id: row._id,
+    _creationTime: row._creationTime,
+    userId: row.userId,
+    droneId: row.droneId,
+    keyId: row.keyId,
+    linkIdOwner: row.linkIdOwner,
+    linkIdsInUse: row.linkIdsInUse,
+    enrolledAt: row.enrolledAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+// ──────────────────────────────────────────────────────────────
 // Queries
 // ──────────────────────────────────────────────────────────────
 
-/** List every signing key the authenticated user has cloud-synced. */
+/** List every signing key the authenticated user has cloud-synced.
+ *  Metadata only — see the read discipline note above. */
 export const listMine = query({
   args: {},
-  handler: async (ctx) => {
+  handler: async (ctx): Promise<SigningKeyMetadata[]> => {
     const userId = await getAuthUserId(ctx);
     if (!userId) return [];
-    return await ctx.db
+    const rows = await ctx.db
       .query("cmd_signingKeys")
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .collect();
+    return rows.map(toMetadata);
   },
 });
 
-/** Fetch a single drone's cloud-synced key, if any, scoped to the user. */
+/** Whether this drone has a cloud-synced key, and its metadata if so.
+ *  Metadata only; `keyHex` comes from `exportKey`. */
 export const getForDrone = query({
   args: { droneId: v.string() },
-  handler: async (ctx, { droneId }) => {
+  handler: async (ctx, { droneId }): Promise<SigningKeyMetadata | null> => {
     const userId = await getAuthUserId(ctx);
     if (!userId) return null;
-    return await ctx.db
+    const row = await ctx.db
       .query("cmd_signingKeys")
       .withIndex("by_user_drone", (q) =>
         q.eq("userId", userId).eq("droneId", droneId),
       )
       .first();
+    return row ? toMetadata(row) : null;
   },
 });
 
@@ -225,5 +272,51 @@ export const releaseLinkId = mutation({
       updatedAt: Date.now(),
     });
     return { released: true };
+  },
+});
+
+/**
+ * The one door key material leaves by.
+ *
+ * A mutation rather than a query or an action, deliberately: the export
+ * and its audit row land in the same transaction, so an export cannot
+ * succeed and go unlogged. `deviceFingerprint` is the same short opaque
+ * hash `cmdSigningEvents.append` takes — never a userId, never PII.
+ *
+ * The caller must already own the row (the `by_user_drone` index scopes
+ * the lookup to the authenticated user). Returns null when this drone
+ * has no synced key, and writes nothing in that case.
+ */
+export const exportKey = mutation({
+  args: { droneId: v.string(), deviceFingerprint: v.string() },
+  handler: async (
+    ctx,
+    { droneId, deviceFingerprint },
+  ): Promise<{ keyHex: string; keyId: string } | null> => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("unauthenticated");
+    if (deviceFingerprint.length < 4 || deviceFingerprint.length > 64) {
+      throw new Error("deviceFingerprint must be 4-64 chars");
+    }
+
+    const existing = await ctx.db
+      .query("cmd_signingKeys")
+      .withIndex("by_user_drone", (q) =>
+        q.eq("userId", userId).eq("droneId", droneId),
+      )
+      .first();
+    if (!existing) return null;
+    if (existing.userId !== userId) throw new Error("ownership mismatch");
+
+    await ctx.db.insert("cmd_signingEvents", {
+      userId,
+      droneId,
+      eventType: "export",
+      keyIdNew: existing.keyId,
+      deviceFingerprint,
+      createdAt: Date.now(),
+    });
+
+    return { keyHex: existing.keyHex, keyId: existing.keyId };
   },
 });
