@@ -38,6 +38,7 @@ function manifest(
     version: "1.0.0",
     name: "Example",
     halves: ["gcs"],
+    signatureState: "unsigned",
     trustSignals: [],
     permissions: [],
     ...over,

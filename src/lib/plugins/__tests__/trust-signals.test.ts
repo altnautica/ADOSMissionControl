@@ -1,115 +1,105 @@
 /**
  * @license GPL-3.0-only
  *
- * The one trust vocabulary: a plugin resolves the same {@link displayTrustSignals}
- * set on every surface (the install pop-up header, the drone plugin card, the
- * MCP tab), so a first-party or an unsigned plugin never reads as one badge set
- * here and a different one there.
+ * The two producers that feed the install pop-up must both refuse to turn a
+ * manifest's own `signer_id` into trust.
+ *
+ * `toInstallSummary` (file drop, registry preview) and `agentSummaryToManifest`
+ * (agent-mediated parse from a URL) each receive a `signer_id` that came out of
+ * the archive the operator supplied. Neither may carry it onto the summary or
+ * badge it unless the archive's signature actually verified — which only the
+ * first of the two ever does, and only when the GCS holds the bytes.
  */
 
 import { describe, it, expect } from "vitest";
 
-import {
-  deriveTrustSignals,
-  displayTrustSignals,
-  isFirstPartySignerId,
-} from "../trust-signals";
 import { toInstallSummary } from "@/components/plugins/transports/manifest-parse";
 import { agentSummaryToManifest } from "@/components/plugins/transports/agent-summary-to-manifest";
 import type { ParsedManifest } from "@/components/plugins/transports/manifest-parse";
 import type { PluginAgentParseSummary } from "@/lib/agent/plugin-client";
 
-describe("trust-signals · single derivation", () => {
-  it("a first-party signer subsumes verified-publisher into first-party", () => {
-    const signals = displayTrustSignals({ signerId: "altnautica-2026-A" });
-    expect(signals).toContain("signed");
-    expect(signals).toContain("first-party");
-    expect(signals).not.toContain("verified-publisher");
+/** A manifest that declares the first-party signer id inside the archive. */
+const parsed = {
+  pluginId: "com.example.cam",
+  version: "1.0.0",
+  name: "Example Cam",
+  risk: "medium",
+  halves: ["gcs"],
+  signerId: "altnautica-2026-A",
+  license: "GPL-3.0-or-later",
+  permissions: [],
+} as unknown as ParsedManifest;
+
+describe("toInstallSummary · the manifest's signer claim is not trust", () => {
+  it("drops the declared signer and badges nothing when nothing was verified", () => {
+    const summary = toInstallSummary(parsed, "hash", {
+      signatureState: "unverified",
+    });
+    expect(summary.signerId).toBeUndefined();
+    expect(summary.trustSignals).not.toContain("signed");
+    expect(summary.trustSignals).not.toContain("first-party");
+    // The license signal does not depend on the signature.
+    expect(summary.trustSignals).toEqual(["open-source"]);
   });
 
-  it("an unsigned plugin yields no trust signals (never 'unsigned')", () => {
-    expect(displayTrustSignals({})).toEqual([]);
+  it("drops the declared signer when verification actively failed", () => {
+    const summary = toInstallSummary(parsed, "hash", {
+      signatureState: "invalid",
+      signerId: "altnautica-2026-A",
+    });
+    expect(summary.signerId).toBeUndefined();
+    expect(summary.trustSignals).toEqual(["open-source"]);
   });
 
-  it("a non-first-party signer is only 'signed'", () => {
-    expect(displayTrustSignals({ signerId: "some-vendor-key" })).toEqual([
+  it("carries the signer and the badges once the archive verified", () => {
+    const summary = toInstallSummary(parsed, "hash", {
+      signatureState: "verified",
+      signerId: "altnautica-2026-A",
+    });
+    expect(summary.signerId).toBe("altnautica-2026-A");
+    expect(summary.trustSignals).toEqual([
       "signed",
-    ]);
-  });
-
-  it("deriveTrustSignals keeps verified-publisher for a first-party signer", () => {
-    expect(deriveTrustSignals({ signerId: "altnautica-2026-A" })).toEqual([
-      "signed",
-      "verified-publisher",
       "first-party",
+      "open-source",
     ]);
   });
 
-  it("isFirstPartySignerId matches only the allowlist form", () => {
-    expect(isFirstPartySignerId("altnautica-2026-A")).toBe(true);
-    expect(isFirstPartySignerId("altnautica-26-A")).toBe(false);
-    expect(isFirstPartySignerId("someone-2026-A")).toBe(false);
-    expect(isFirstPartySignerId(undefined)).toBe(false);
+  it("records the state it was given so a consumer can tell the cases apart", () => {
+    for (const signatureState of [
+      "verified",
+      "unsigned",
+      "invalid",
+      "unverified",
+    ] as const) {
+      const summary = toInstallSummary(parsed, "hash", { signatureState });
+      expect(summary.signatureState).toBe(signatureState);
+    }
   });
 });
 
-describe("trust-signals · both pop-up producers route through the derivation", () => {
-  const parsed: ParsedManifest = {
-    pluginId: "com.example.cam",
+describe("agentSummaryToManifest · the agent's parse carries no trust", () => {
+  const agent = {
+    ok: true,
+    plugin_id: "com.example.cam",
     version: "1.0.0",
     name: "Example Cam",
-    risk: "medium",
-    halves: ["gcs"],
-    signerId: "altnautica-2026-A",
+    description: "",
+    author: "",
     license: "GPL-3.0-or-later",
+    risk: "medium",
+    signer_id: "altnautica-2026-A",
+    // The agent's `signed` field reports only that a SIGNATURE entry exists.
+    signed: true,
+    halves: ["gcs"],
     permissions: [],
-  } as unknown as ParsedManifest;
+  } as unknown as PluginAgentParseSummary;
 
-  it("toInstallSummary stamps the shared display set", () => {
-    const summary = toInstallSummary(parsed, "hash");
-    expect(summary.trustSignals).toEqual(
-      displayTrustSignals({
-        signerId: "altnautica-2026-A",
-        license: "GPL-3.0-or-later",
-      }),
-    );
-    // First-party + an open license → signed + first-party + open-source.
-    expect(summary.trustSignals).toEqual(
-      expect.arrayContaining(["signed", "first-party", "open-source"]),
-    );
-    expect(summary.trustSignals).not.toContain("verified-publisher");
-  });
-
-  it("agentSummaryToManifest stamps the same set from the agent parse", () => {
-    const agent = {
-      ok: true,
-      plugin_id: "com.example.cam",
-      version: "1.0.0",
-      name: "Example Cam",
-      description: "",
-      author: "",
-      license: "GPL-3.0-or-later",
-      risk: "medium",
-      signer_id: "altnautica-2026-A",
-      signed: true,
-      halves: ["gcs"],
-      permissions: [],
-    } as unknown as PluginAgentParseSummary;
+  it("reports unverified and badges no signature even when the agent says signed", () => {
     const summary = agentSummaryToManifest(agent);
-    expect(summary.trustSignals).toEqual(
-      displayTrustSignals({
-        signerId: "altnautica-2026-A",
-        license: "GPL-3.0-or-later",
-      }),
-    );
-  });
-
-  it("an unsigned manifest yields the same empty set for both surfaces", () => {
-    const unsigned = { ...parsed, signerId: undefined, license: undefined };
-    const summary = toInstallSummary(
-      unsigned as unknown as ParsedManifest,
-      "hash",
-    );
-    expect(summary.trustSignals).toEqual([]);
+    expect(summary.signatureState).toBe("unverified");
+    expect(summary.signerId).toBeUndefined();
+    expect(summary.trustSignals).not.toContain("signed");
+    expect(summary.trustSignals).not.toContain("first-party");
+    expect(summary.trustSignals).toEqual(["open-source"]);
   });
 });

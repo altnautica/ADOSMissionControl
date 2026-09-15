@@ -244,7 +244,7 @@ describe("parseManifestYaml — nested agent + gcs permissions", () => {
 
   it("propagates the half tag onto the install summary", () => {
     const parsed = parseManifestYaml(NESTED);
-    const summary = toInstallSummary(parsed, "abc123");
+    const summary = toInstallSummary(parsed, "abc123", { signatureState: "unsigned" });
     const agentSide = summary.permissions.filter((p) => p.half === "agent");
     const gcsSide = summary.permissions.filter((p) => p.half === "gcs");
     expect(agentSide).toHaveLength(15);
@@ -260,9 +260,10 @@ describe("parseManifestYaml — nested agent + gcs permissions", () => {
     expect(slot?.category).toBe("ui_slot");
   });
 
-  it("accepts vendor_attribution + signerId overrides from the registry row", () => {
+  it("accepts vendor_attribution + a verified signer from the registry row", () => {
     const parsed = parseManifestYaml(NESTED);
     const summary = toInstallSummary(parsed, "abc123", {
+      signatureState: "verified",
       signerId: "altnautica-2026-A",
       vendorAttribution: [
         {
@@ -471,7 +472,7 @@ describe("parseManifestYaml — PyYAML-emitted Convex fixture", () => {
 describe("toInstallSummary — rich fields", () => {
   it("passes every rich field through to the install summary", () => {
     const parsed = parseManifestYaml(RICH);
-    const summary = toInstallSummary(parsed, "deadbeef");
+    const summary = toInstallSummary(parsed, "deadbeef", { signatureState: "unsigned" });
 
     expect(summary.descriptionLong).toContain("Long description line one.");
     expect(summary.features).toEqual([
@@ -520,7 +521,7 @@ version: 1.0.0
 description: A legacy plugin
 `;
     const parsed = parseManifestYaml(legacy);
-    const summary = toInstallSummary(parsed, "cafebabe");
+    const summary = toInstallSummary(parsed, "cafebabe", { signatureState: "unsigned" });
     expect(summary.descriptionLong).toBeUndefined();
     expect(summary.features).toBeUndefined();
     expect(summary.hardwareRequirements).toBeUndefined();
@@ -585,14 +586,14 @@ gcs:
 
   it("surfaces contributesSlots on the install summary and undefined for legacy manifests", () => {
     const parsed = parseManifestYaml(SLOTS);
-    const summary = toInstallSummary(parsed, "hash");
+    const summary = toInstallSummary(parsed, "hash", { signatureState: "unsigned" });
     expect(summary.contributesSlots).toEqual(parsed.contributesSlots);
 
     const legacy = parseManifestYaml(
       "id: com.example.legacy\nname: Legacy\nversion: 1.0.0\n",
     );
     expect(legacy.contributesSlots).toBeUndefined();
-    expect(toInstallSummary(legacy, "h").contributesSlots).toBeUndefined();
+    expect(toInstallSummary(legacy, "h", { signatureState: "unsigned" }).contributesSlots).toBeUndefined();
   });
 
   const FOLLOW_ME_MANIFEST = path.join(

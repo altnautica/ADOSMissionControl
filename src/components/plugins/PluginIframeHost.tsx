@@ -68,11 +68,24 @@ interface PluginIframeHostProps {
    * Optional token validator wired into the bridge. When set, every
    * iframe RPC envelope MUST carry a signed capability token; the
    * bridge runs the 5-check verification pipeline before dispatch.
-   * Built by the parent component (e.g. via `useCapabilityToken` plus
-   * the operator HMAC + per-pairing HKDF resolvers) and passed through
-   * as a stable object reference for the bridge effect.
+   * Built by the parent component (e.g. via `usePluginTokenValidator`)
+   * and passed through as a stable object reference for the bridge effect.
+   *
+   * A validator without a matching {@link token} denies every RPC with
+   * `token_missing`, so the two MUST be supplied together from one mint.
    */
   tokenValidator?: BridgeTokenValidatorOptions;
+  /**
+   * The minted capability token for this (plugin, node) pair. Published
+   * into the iframe as a `capability.token` event on load and on every
+   * change, which is how the plugin SDK learns the value it must stamp
+   * onto each RPC envelope. `null` while a mint is in flight.
+   *
+   * This is the delivery half of {@link tokenValidator}: the bridge
+   * verifies `env.token`, and nothing else in the host tells the iframe
+   * what that value is.
+   */
+  token?: string | null;
   /**
    * Optional one-way host event streamed into the iframe as a bridge
    * `event` whenever its identity changes — the same mechanism theme
@@ -110,13 +123,24 @@ function isLifecycleAck(data: unknown): data is LifecycleAckPayload {
 /**
  * Sandboxed plugin iframe.
  *
- * The iframe runs in `sandbox="allow-scripts"` (no allow-same-origin)
- * so the bundle has a null origin, cannot read the host's storage,
- * and cannot reach the network. Every I/O round-trips through the
- * postMessage bridge where the host enforces capability checks.
+ * The iframe runs in `sandbox="allow-scripts"` (no allow-same-origin) so the
+ * bundle has a null origin and cannot read the host's storage, carries an empty
+ * `allow` so no Permissions-Policy feature is delegated to it, and loads a
+ * document that declares the `plugins/iframe-csp` policy — `default-src 'none'`
+ * with `connect-src 'none'`, so it cannot open a network connection. Every I/O
+ * round-trips through the postMessage bridge where the host enforces capability
+ * checks.
  *
- * Theming is one-way (host -> iframe) via `theme.changed` events on
- * the bridge. Plugins subscribe via `plugin.theme.useTheme(...)`.
+ * The network half is load-bearing and non-obvious: the frame's `src` is a
+ * `blob:` URL, and a blob document inherits its creator's CSP. The app's own
+ * policy must allow bare `http:`/`ws:` to reach LAN agents at arbitrary
+ * RFC1918 addresses, so inheritance alone would give a sandboxed plugin full
+ * outbound reach. The in-document policy injected by `buildIframeHtml` /
+ * `ensurePluginFrameCsp` is what closes that.
+ *
+ * Capability tokens are one-way (host -> iframe) via `capability.token`, and
+ * theming via `theme.changed`, both on the bridge's event channel. Plugins
+ * subscribe to the theme via `plugin.theme.useTheme(...)`.
  *
  * Lifecycle: parents (typically the drone-switcher) call `pause()` /
  * `resume()` via a ref. The host posts a `lifecycle` event and waits
@@ -140,6 +164,7 @@ export const PluginIframeHost = forwardRef<
     onSecurityEvent,
     agentId,
     tokenValidator,
+    token,
     hostEvent,
   },
   ref,
@@ -258,6 +283,36 @@ export const PluginIframeHost = forwardRef<
     };
   }, [themeVars]);
 
+  // Publish the minted capability token into the iframe on load and on every
+  // change, over the same one-way channel theme vars use. The bridge verifies
+  // `env.token` on every RPC but never tells the iframe what that value is —
+  // without this post, a validated iframe's every call is answered
+  // `capability_denied:token_missing`. Re-posting on `load` covers the mint
+  // resolving before the document is ready; re-posting on change covers a
+  // refresh after a verifier-side expiry.
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!iframe || !token) return;
+    const post = () => {
+      iframe.contentWindow?.postMessage(
+        {
+          id: "token-" + Date.now(),
+          type: "event",
+          method: "capability.token",
+          capability: "",
+          args: { token },
+          version: 1,
+        },
+        "*",
+      );
+    };
+    iframe.addEventListener("load", post);
+    post();
+    return () => {
+      iframe.removeEventListener("load", post);
+    };
+  }, [token]);
+
   // Stream the latest host event to the iframe (e.g. video-overlay host
   // props). Re-posts on every change and once on iframe load so an overlay
   // that mounts mid-stream still receives the current payload. One-way and
@@ -345,6 +400,13 @@ export const PluginIframeHost = forwardRef<
       ref={iframeRef}
       src={bundleUrl}
       sandbox="allow-scripts"
+      // No delegated permissions: an empty `allow` denies every
+      // Permissions-Policy-gated feature (camera, microphone, geolocation,
+      // usb, serial, …) to the frame regardless of what the page holds.
+      allow=""
+      // The frame must not leak the operator's URL (which carries node ids)
+      // to anything it references.
+      referrerPolicy="no-referrer"
       title={title ?? pluginId}
       data-plugin-id={pluginId}
       data-slot={slot}

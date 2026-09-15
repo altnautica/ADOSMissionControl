@@ -106,7 +106,7 @@ describe("parseManifestYaml — target actions", () => {
 
 describe("toInstallSummary — skills carry full fields", () => {
   it("threads the full skill wiring (not just id/label) into the summary", () => {
-    const summary = toInstallSummary(parseManifestYaml(MANIFEST), "hash");
+    const summary = toInstallSummary(parseManifestYaml(MANIFEST), "hash", { signatureState: "unsigned" });
     expect(summary.contributesSkills).toEqual([
       {
         id: "follow-me",
@@ -124,7 +124,7 @@ describe("toInstallSummary — skills carry full fields", () => {
   });
 
   it("threads the target actions into the summary", () => {
-    const summary = toInstallSummary(parseManifestYaml(MANIFEST), "hash");
+    const summary = toInstallSummary(parseManifestYaml(MANIFEST), "hash", { signatureState: "unsigned" });
     expect(summary.contributesTargetActions?.map((a) => a.id)).toEqual([
       "follow",
       "stop-follow",
@@ -162,7 +162,7 @@ gcs:
 
 describe("parseManifestYaml — MCP tools", () => {
   it("merges agent + gcs contributes.tools and stamps the half", () => {
-    const summary = toInstallSummary(parseManifestYaml(TOOLS_MANIFEST), "hash");
+    const summary = toInstallSummary(parseManifestYaml(TOOLS_MANIFEST), "hash", { signatureState: "unsigned" });
     expect(summary.contributesTools?.map((tool) => tool.name)).toEqual([
       "set_zoom",
       "status",

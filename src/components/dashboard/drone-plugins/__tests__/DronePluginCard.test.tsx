@@ -114,13 +114,17 @@ describe("DronePluginCard", () => {
     expect(getByText("Crashed")).toBeDefined();
   });
 
-  it("renders the first-party trust badge for first-party signers", () => {
-    const { getByTitle } = renderCard(
+  it("renders no trust badge for a stored signer id", () => {
+    // `install.signerId` is a client-supplied column on `recordInstall` with no
+    // server-side enrolled-key check, so it is a declared value rather than a
+    // verification result. The card must not turn it into a Signed / Verified /
+    // First-party badge — the archive signature is verified at install time and
+    // badged by the install pop-up instead.
+    const { queryByTitle } = renderCard(
       makeInstall({ signerId: "altnautica-2026-A" }),
     );
-    // The card routes through the shared trust derivation, so a first-party
-    // signer renders the "First-party" badge (first-party subsumes
-    // verified-publisher), the same badge the install pop-up shows.
-    expect(getByTitle(/first-party bar/i)).toBeDefined();
+    expect(queryByTitle(/first-party/i)).toBeNull();
+    expect(queryByTitle(/Ed25519 signature/i)).toBeNull();
+    expect(queryByTitle(/first-party allowlist/i)).toBeNull();
   });
 });

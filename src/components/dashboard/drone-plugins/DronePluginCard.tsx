@@ -15,7 +15,7 @@
  * @license GPL-3.0-only
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   MoreHorizontal,
@@ -35,8 +35,6 @@ import { DropdownMenu } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/components/ui/toast";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import { cn, isDemoMode } from "@/lib/utils";
-import { TrustBadge } from "@/components/plugins/TrustBadge";
-import { displayTrustSignals } from "@/lib/plugins/trust-signals";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import type { PluginInstallSummary } from "@/lib/plugins/types";
 import type {
@@ -196,13 +194,17 @@ export function DronePluginCard({ install, className }: DronePluginCardProps) {
     toast,
   ]);
 
-  // One trust vocabulary with the install pop-up + the MCP tab: the same
-  // shared derivation renders the card badges, so a plugin never shows one set
-  // on its card and a different set in the pop-up.
-  const trustSignals = useMemo(
-    () => displayTrustSignals({ signerId: install.signerId }),
-    [install.signerId],
-  );
+  // No trust badge post-install, deliberately. The only trust-bearing field on
+  // an install row is `signerId`, which is a client-supplied argument on
+  // `plugins.recordInstall` with no server-side enrolled-key check — a declared
+  // value, not a verification result. Rendering Signed / Verified / First-party
+  // from it is the fabricated trust cue this card must not produce.
+  //
+  // The archive's signature IS verified at install time against the archive
+  // bytes (`transports/finalize-gcs-install`), and the install pop-up badges
+  // that outcome. Until that outcome has a column to live in, the card shows
+  // status only. The row carries no license or vendor-attribution field either,
+  // so there is nothing else here to badge.
 
   const statusLabel: DronePluginStatusLabel =
     install.status === "running"
@@ -400,9 +402,6 @@ export function DronePluginCard({ install, className }: DronePluginCardProps) {
             onClick={() => setUpdateSettingsOpen(true)}
           />
           <DronePluginStatusPill label={statusLabel} />
-          {trustSignals.map((s) => (
-            <TrustBadge key={s} signal={s} />
-          ))}
         </div>
       </div>
 

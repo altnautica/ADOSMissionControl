@@ -10,9 +10,19 @@
  * signed URL once and returns the blob URL plus a revoke handle the
  * caller invokes on unmount to release the object URL.
  *
+ * The fetched document is normalised through `ensurePluginFrameCsp` before the
+ * blob is minted. `buildIframeHtml` already embeds the policy for documents
+ * built in this session, but this path re-fetches a shell that was uploaded to
+ * Convex storage at install time — an install recorded before the policy
+ * existed would otherwise mint a frame that only inherits the app's permissive
+ * `connect-src`. Normalising here makes the blob-mint the single choke point
+ * where every plugin frame acquires the policy, with no storage migration.
+ *
  * @module plugins/bundle-loader
  * @license GPL-3.0-only
  */
+
+import { ensurePluginFrameCsp } from "./iframe-csp";
 
 export async function loadPluginBundle(
   signedUrl: string,
@@ -23,8 +33,8 @@ export async function loadPluginBundle(
       `failed to load plugin bundle (${res.status} ${res.statusText})`,
     );
   }
-  const blob = await res.blob();
-  const blobUrl = URL.createObjectURL(blob);
+  const html = ensurePluginFrameCsp(await res.text());
+  const blobUrl = URL.createObjectURL(new Blob([html], { type: "text/html" }));
   return {
     blobUrl,
     revoke: () => URL.revokeObjectURL(blobUrl),

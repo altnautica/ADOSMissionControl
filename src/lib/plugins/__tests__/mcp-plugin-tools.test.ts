@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import {
   countExposedPlugins,
   filterPlugins,
-  isFirstPartySigner,
   type McpPluginView,
 } from "../mcp-plugin-tools";
 
@@ -16,15 +15,6 @@ const view = (over: Partial<McpPluginView> & { pluginId: string; name: string })
   resources: [],
   prompts: [],
   ...over,
-});
-
-describe("isFirstPartySigner", () => {
-  it("matches the first-party allowlist form only", () => {
-    expect(isFirstPartySigner("altnautica-2026-A")).toBe(true);
-    expect(isFirstPartySigner("altnautica-2026-AB")).toBe(false);
-    expect(isFirstPartySigner("example-2026-A")).toBe(false);
-    expect(isFirstPartySigner(undefined)).toBe(false);
-  });
 });
 
 describe("countExposedPlugins", () => {

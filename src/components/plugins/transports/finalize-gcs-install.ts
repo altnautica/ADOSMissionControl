@@ -25,14 +25,26 @@
  * fetched through the same-origin `/api/registry-archive` proxy so the
  * browser is not subject to the release CDN's cross-origin policy.
  *
+ * Because this step holds the exact bytes whose bundle will run in an iframe
+ * under the operator's session, it is also the GCS's signature gate: the
+ * archive's detached Ed25519 signature is verified against an enrolled public
+ * key (`plugins/archive-signature`) before anything is extracted, uploaded or
+ * recorded, and the install row carries the signer id that VERIFIED rather than
+ * the one the manifest or registry row declared.
+ *
  * @license GPL-3.0-only
  */
 
 import JSZip from "jszip";
 
+import { PLUGIN_FRAME_CSP_META } from "@/lib/plugins/iframe-csp";
 import type { InstallManifestSummary } from "../install-dialog/types";
 import type { PluginParameter } from "@/lib/plugins/parameters/schema";
 import type { PairedNodeProfile } from "@/lib/plugins/types";
+import {
+  verifyArchiveSignature,
+  type ArchiveSignatureResult,
+} from "@/lib/plugins/archive-signature";
 import {
   buildGcsContributes,
   buildGcsParameters,
@@ -129,6 +141,7 @@ export class FinalizeGcsInstallError extends Error {
 
 export type FinalizeStage =
   | "fetch-archive"
+  | "verify-signature"
   | "extract-bundle"
   | "upload-bundle"
   | "record"
@@ -140,6 +153,13 @@ export type FinalizeStage =
  * iframe can load and execute. The `</script` escape keeps a bundle that
  * happens to contain that byte sequence (in a string literal) from
  * closing the inline module early.
+ *
+ * The document declares the shared plugin-frame policy from
+ * `plugins/iframe-csp` as its first head element. The frame is a `blob:`
+ * document, which inherits the app's policy — and the app has to allow bare
+ * `http:`/`ws:` in `connect-src` to reach LAN agents, so inheritance alone
+ * leaves a sandboxed plugin with full outbound network reach. The in-document
+ * policy is what actually pins it to `connect-src 'none'`.
  */
 export function buildIframeHtml(bundleJs: string): string {
   const safe = bundleJs.replace(/<\/(script)/gi, "<\\/$1");
@@ -147,6 +167,7 @@ export function buildIframeHtml(bundleJs: string): string {
     "<!doctype html>",
     '<html lang="en">',
     "<head>",
+    PLUGIN_FRAME_CSP_META,
     '<meta charset="utf-8">',
     '<meta name="color-scheme" content="dark light">',
     "<style>html,body{margin:0;padding:0;height:100%;background:transparent;overflow:hidden}</style>",
@@ -173,6 +194,16 @@ export async function finalizeGcsInstall(
 
   let bundleStorageId: string | undefined;
   let gcsContributes: RecordInstallArgs["gcsContributes"];
+  /**
+   * The signer id the archive's signature actually verified under, or
+   * undefined. Recorded on the install row in place of `manifest.signerId` so
+   * the row can never carry a signer the GCS did not verify.
+   *
+   * An agent-only plugin (no GCS half) never reaches the GCS as bytes, so this
+   * stays undefined and the row carries no signer — the agent's own
+   * `/etc/ados/plugin-keys/` check is the gate for that half.
+   */
+  let verifiedSignerId: string | undefined;
   // Declarative parameters, flight skills, and target actions are recorded for
   // every plugin that declares them, independent of whether it ships an iframe
   // GCS half — a skill / target-action drives a cockpit behavior with no iframe.
@@ -211,10 +242,34 @@ export async function finalizeGcsInstall(
       );
     }
 
-    // 2. Extract the built GCS bundle.
+    // 2. Verify the archive's detached Ed25519 signature BEFORE any of its
+    // contents are extracted, uploaded or recorded. This is the GCS's own
+    // trust gate: these are the exact bytes whose bundle is about to run in an
+    // iframe under the operator's session, so a declared-but-unbacked signer,
+    // an unenrolled signer, or contents that do not match the signature are
+    // refused here rather than trusted from a manifest or registry field.
+    let signature: ArchiveSignatureResult;
+    let zip: JSZip;
+    try {
+      zip = await JSZip.loadAsync(archive);
+      signature = await verifyArchiveSignature(zip, manifest.signerId);
+    } catch (err) {
+      throw new FinalizeGcsInstallError(
+        "verify-signature",
+        err instanceof Error ? err.message : String(err),
+      );
+    }
+    if (signature.state === "invalid") {
+      throw new FinalizeGcsInstallError(
+        "verify-signature",
+        `archive signature did not verify: ${signature.reason ?? "unknown reason"}`,
+      );
+    }
+    verifiedSignerId = signature.verifiedSignerId;
+
+    // 3. Extract the built GCS bundle.
     let bundleJs: string;
     try {
-      const zip = await JSZip.loadAsync(archive);
       const entry =
         zip.file(GCS_BUNDLE_PATH) ?? zip.file(`./${GCS_BUNDLE_PATH}`);
       if (!entry) {
@@ -228,7 +283,7 @@ export async function finalizeGcsInstall(
       );
     }
 
-    // 3. Wrap + upload the iframe document to Convex storage.
+    // 4. Wrap + upload the iframe document to Convex storage.
     try {
       const uploadUrl = await callables.generateUploadUrl();
       const html = buildIframeHtml(bundleJs);
@@ -251,7 +306,7 @@ export async function finalizeGcsInstall(
     gcsContributes = buildGcsContributes(manifest);
   }
 
-  // 4. Record the install row (every install, GCS half or not).
+  // 5. Record the install row (every install, GCS half or not).
   let installId: string;
   try {
     installId = await callables.recordInstall({
@@ -261,7 +316,7 @@ export async function finalizeGcsInstall(
       name: manifest.name,
       source: inputs.source,
       sourceUri: inputs.sourceUri,
-      signerId: manifest.signerId,
+      signerId: verifiedSignerId,
       manifestHash: inputs.manifestHash,
       halves: [...manifest.halves],
       declaredPermissions: manifest.permissions.map((p) => ({
@@ -281,7 +336,7 @@ export async function finalizeGcsInstall(
     );
   }
 
-  // 5. Grant the operator-approved permissions. Only ids the manifest
+  // 6. Grant the operator-approved permissions. Only ids the manifest
   // declared are grantable; the server rejects anything else.
   const declared = new Set(manifest.permissions.map((p) => p.id));
   for (const permissionId of inputs.grantedPermissions) {
@@ -296,7 +351,7 @@ export async function finalizeGcsInstall(
     }
   }
 
-  // 6. Enable so the contribution producer mounts the GCS half. The
+  // 7. Enable so the contribution producer mounts the GCS half. The
   // producer filters to enabled/running installs.
   try {
     await callables.setStatus({ installId, status: "enabled" });

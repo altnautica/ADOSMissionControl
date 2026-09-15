@@ -42,6 +42,7 @@ const baseManifest: InstallManifestSummary = {
   description: "GPS-denied estimator",
   license: "GPL-3.0-or-later",
   halves: ["agent", "gcs"],
+  signatureState: "verified",
   signerId: "altnautica-2026-A",
   trustSignals: ["signed", "verified-publisher"],
   permissions: [

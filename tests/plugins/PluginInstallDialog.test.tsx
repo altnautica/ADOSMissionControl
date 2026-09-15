@@ -47,10 +47,7 @@ import {
   type CreateJobMutation,
 } from "@/components/plugins/transports/cloud-relay";
 import { resolveLanTarget } from "@/components/plugins/transports/resolve-lan-url";
-import {
-  parseManifestYaml,
-  toInstallSummary,
-} from "@/components/plugins/transports/manifest-parse";
+import { parseManifestYaml } from "@/components/plugins/transports/manifest-parse";
 import { useLocalNodesStore } from "@/stores/local-nodes-store";
 import { usePairingStore } from "@/stores/pairing-store";
 
@@ -78,6 +75,7 @@ function fakeManifest() {
     halves: ["agent"] as const,
     permissions: [{ id: "telemetry.subscribe", required: true }],
     trustSignals: ["signed" as const],
+    signatureState: "verified" as const,
     signerId: "altnautica-2026-A",
   };
 }
@@ -337,40 +335,5 @@ permissions:
       // false here; the yaml-library rewrite aligns with the agent.
       { id: "event.publish", required: true },
     ]);
-  });
-
-  it("attaches trust signals based on signer id format", () => {
-    const summary = toInstallSummary(
-      {
-        pluginId: "com.example.basic",
-        version: "0.1.0",
-        name: "Basic",
-        halves: ["agent"],
-        permissions: [],
-        signerId: "altnautica-2026-A",
-      },
-      "deadbeef",
-    );
-    expect(summary.trustSignals).toContain("signed");
-    // First-party subsumes verified-publisher in the shared display set.
-    expect(summary.trustSignals).toContain("first-party");
-    expect(summary.trustSignals).not.toContain("verified-publisher");
-  });
-
-  it("omits the unsigned trust signal until the signing pipeline ships", () => {
-    // The dialog suppresses the "unsigned" badge until every published
-    // archive carries a verifiable signature. Once that lands, this
-    // assertion flips back to `toContain("unsigned")`.
-    const summary = toInstallSummary(
-      {
-        pluginId: "com.example.basic",
-        version: "0.1.0",
-        name: "Basic",
-        halves: ["agent"],
-        permissions: [],
-      },
-      "deadbeef",
-    );
-    expect(summary.trustSignals).not.toContain("unsigned");
   });
 });

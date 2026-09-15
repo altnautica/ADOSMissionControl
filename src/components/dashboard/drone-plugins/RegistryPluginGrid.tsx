@@ -253,10 +253,13 @@ export function RegistryPluginGrid({
         const manifestHash = Array.from(new Uint8Array(hashBytes))
           .map((b) => b.toString(16).padStart(2, "0"))
           .join("");
-        // The Convex row wins for signing + vendor binaries because
-        // the row is what the registry actually signed and seeded.
+        // The browser holds no archive bytes at preview time (the row carries
+        // manifest YAML and a URL), and the row's `signer_key_id` is a stored
+        // claim, not a verification result — so the preview asserts no trust.
+        // `finalizeGcsInstall` fetches the archive it is about to execute and
+        // verifies the signature there before anything is recorded.
         const summary = toInstallSummary(parsed, manifestHash, {
-          signerId: versionRow.signer_key_id,
+          signatureState: "unverified",
           vendorAttribution: versionRow.vendor_attribution
             ? versionRow.vendor_attribution.map((v) => ({ ...v }))
             : undefined,

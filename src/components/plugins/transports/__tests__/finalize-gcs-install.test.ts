@@ -20,12 +20,26 @@ async function makeArchive(withBundle: boolean): Promise<Blob> {
   return new Blob([bytes], { type: "application/zip" });
 }
 
+/** An archive whose manifest self-declares the first-party signer id and
+ * carries no SIGNATURE entry to back it. */
+async function makeClaimantArchive(): Promise<Blob> {
+  const zip = new JSZip();
+  zip.file(
+    "manifest.yaml",
+    "id: com.altnautica.follow-me\nversion: 0.1.0\nsigner_id: altnautica-2026-A\n",
+  );
+  zip.file("gcs/plugin.bundle.js", BUNDLE_JS);
+  const bytes = await zip.generateAsync({ type: "arraybuffer" });
+  return new Blob([bytes], { type: "application/zip" });
+}
+
 function gcsManifest(): FinalizeGcsInstallInputs["manifest"] {
   return {
     pluginId: "com.altnautica.follow-me",
     version: "0.1.0",
     name: "ADOS Follow-Me",
     halves: ["agent", "gcs"],
+    signatureState: "verified",
     trustSignals: ["signed", "verified-publisher"],
     permissions: [
       { id: "command.send", required: true, half: "gcs" },
@@ -180,6 +194,50 @@ describe("finalizeGcsInstall", () => {
     ).rejects.toMatchObject({ stage: "extract-bundle" });
     expect(callables.recordInstall).not.toHaveBeenCalled();
   });
+
+  it("refuses an archive whose manifest declares a signer it cannot back", async () => {
+    // The install blocker: a third party self-declares the first-party signer
+    // id and ships no SIGNATURE entry. Nothing may be extracted, uploaded or
+    // recorded, and no install row may carry the claimed signer.
+    const { callables, fetchImpl } = makeHarness();
+    await expect(
+      finalizeGcsInstall({
+        archive: await makeClaimantArchive(),
+        manifest: { ...gcsManifest(), signerId: "altnautica-2026-A" },
+        manifestHash: "hash-abc",
+        grantedPermissions: ["command.send"],
+        deviceId: "drone-9",
+        source: "local_file",
+        callables,
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+      }),
+    ).rejects.toMatchObject({ stage: "verify-signature" });
+    expect(callables.generateUploadUrl).not.toHaveBeenCalled();
+    expect(callables.recordInstall).not.toHaveBeenCalled();
+    expect(callables.setStatus).not.toHaveBeenCalled();
+  });
+
+  it("records no signer id for an unsigned archive", async () => {
+    // An unsigned archive still installs (developer builds) and the row carries
+    // no signer, because `signerId` on the row now means "this signature
+    // verified here" rather than "the manifest said so".
+    const { callables, fetchImpl } = makeHarness();
+    await finalizeGcsInstall({
+      archive: await makeArchive(true),
+      manifest: gcsManifest(),
+      manifestHash: "hash-abc",
+      grantedPermissions: [],
+      deviceId: "drone-9",
+      source: "local_file",
+      callables,
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    const recArgs = callables.recordInstall.mock.calls[0][0] as Record<
+      string,
+      unknown
+    >;
+    expect(recArgs.signerId).toBeUndefined();
+  });
 });
 
 describe("buildIframeHtml", () => {
@@ -191,5 +249,20 @@ describe("buildIframeHtml", () => {
     // does not terminate the inline module early.
     expect(html).not.toContain('"</script>"');
     expect(html).toContain("<\\/script>");
+  });
+
+  it("declares the plugin frame policy so the frame cannot reach the network", () => {
+    // A blob: frame inherits the app's CSP, and the app must allow bare
+    // http:/ws: to reach LAN agents. Only the in-document policy pins the
+    // frame to connect-src 'none'.
+    const html = buildIframeHtml("export const x = 1;");
+    expect(html).toContain('http-equiv="Content-Security-Policy"');
+    expect(html).toContain("connect-src 'none'");
+    expect(html).toContain("default-src 'none'");
+    expect(html).not.toContain("unsafe-eval");
+    // The policy must precede the inline module, or the module runs unpoliced.
+    expect(html.indexOf("Content-Security-Policy")).toBeLessThan(
+      html.indexOf("<script"),
+    );
   });
 });

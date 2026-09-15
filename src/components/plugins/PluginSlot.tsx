@@ -164,9 +164,13 @@ interface PluginSlotMountValidatedProps
 
 /**
  * Validator-on mount. Calls the Convex-aware token validator hook to
- * build the bridge's per-RPC verification options. Used when Convex
- * is available AND the slot is bound to a drone; the bridge then runs
- * the full 5-check verification pipeline on every iframe RPC.
+ * build the bridge's per-RPC verification options AND to obtain the
+ * minted token the iframe must stamp onto its envelopes. Used when
+ * Convex is available AND the slot is bound to a drone; the bridge then
+ * runs the full 5-check verification pipeline on every iframe RPC.
+ *
+ * Both halves come from one hook call. Passing the validator without the
+ * token would deny every RPC with `token_missing`.
  */
 function PluginSlotMountValidated({
   contribution: c,
@@ -177,7 +181,7 @@ function PluginSlotMountValidated({
   hostEvent,
 }: PluginSlotMountValidatedProps) {
   const installId = c.pluginInstallId ?? c.pluginId;
-  const tokenValidator = usePluginTokenValidator({
+  const { validator, token } = usePluginTokenValidator({
     pluginInstallId: installId,
     deviceId,
   });
@@ -193,7 +197,8 @@ function PluginSlotMountValidated({
       className={c.iframeClassName ?? iframeClassName}
       onSecurityEvent={onSecurityEvent}
       agentId={deviceId}
-      tokenValidator={tokenValidator}
+      tokenValidator={validator}
+      token={token}
       hostEvent={hostEvent}
     />
   );

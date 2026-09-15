@@ -46,7 +46,12 @@ export function DemoRegistryGrid({
 
   const open = useCallback((entry: DemoRegistryEntry) => {
     const parsed = parseManifestYaml(entry.manifestYaml);
+    // Demo mode has no archive bytes to verify — the fixture stands in for an
+    // archive that verified under its signer key, so the pop-up renders the
+    // same badge row a real first-party install produces. Every non-demo path
+    // derives this from `verifyArchiveSignature` instead.
     const manifest = toInstallSummary(parsed, entry.archiveSha256, {
+      signatureState: "verified",
       signerId: entry.signerKeyId,
       archiveSha256: entry.archiveSha256,
     });

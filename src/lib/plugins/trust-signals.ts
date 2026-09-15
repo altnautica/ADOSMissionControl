@@ -1,24 +1,31 @@
 /**
  * @module plugins/trust-signals
  * @description The ONE derivation of a plugin's trust signals from its
- * manifest facts. Every surface that shows trust badges — the install
+ * verification result. Every surface that shows trust badges — the install
  * pop-up header, the plugin cards, the MCP tab — resolves the same signal
  * set here so a plugin never reads as "verified" on one surface and
  * "unsigned" on another.
  *
- * A first-party signer id (`altnautica-YYYY-X`) is the strongest claim: it
- * implies the archive is signed AND published by a verified first-party
- * publisher. Any other signer id means only that the archive is signed. An
- * open (auditable) license adds the open-source signal, and a declared
- * closed vendor binary adds the vendor-binary signal.
+ * A trust signal is the RESULT of verification, never a claim. The `signed`,
+ * `verified-publisher` and `first-party` signals are emitted only when
+ * `signatureState === "verified"`, i.e. the archive's detached Ed25519
+ * signature verified against an enrolled public key in
+ * `plugins/archive-signature`. A `signer_id` inside the archive is an
+ * unauthenticated string and produces nothing on its own.
+ *
+ * First-party is the strongest claim: a verified signature under a signer id
+ * on the hand-maintained first-party allowlist. Any other verified signer
+ * means only that the archive is signed. An open (auditable) license adds the
+ * open-source signal, and a declared closed vendor binary adds the
+ * vendor-binary signal — neither depends on the signature.
  *
  * @license GPL-3.0-only
  */
 
 import type { TrustSignal } from "@/components/plugins/TrustBadge";
 
-/** A first-party Ed25519 signer key id, e.g. `altnautica-2026-A`. */
-const FIRST_PARTY_SIGNER = /^altnautica-\d{4}-[A-Z]$/;
+import type { PluginSignatureState } from "./archive-signature";
+import { isEnrolledFirstPartySigner } from "./signing-keys";
 
 /**
  * Open-source SPDX license id fragments. A license string containing any of
@@ -42,12 +49,22 @@ const OPEN_LICENSE_HINTS: readonly string[] = [
 ];
 
 /**
- * The manifest facts the trust derivation reads. A structural subset of
+ * The facts the trust derivation reads. A structural subset of
  * `InstallManifestSummary` so any caller can pass the summary (or a lean
  * card row) without a cast.
  */
 export interface TrustSignalInput {
-  /** Ed25519 signer key id from the signed archive, when present. */
+  /**
+   * Outcome of verifying the archive's detached signature. REQUIRED, and the
+   * gate on every signature-derived signal: a caller that has not verified
+   * must pass `"unverified"` and gets no signature badge, rather than being
+   * able to omit the field and fall through to trusting `signerId`.
+   */
+  signatureState: PluginSignatureState;
+  /**
+   * The signer id the signature verified under. Read only when
+   * `signatureState === "verified"`; ignored otherwise.
+   */
   signerId?: string;
   /** SPDX license string declared in the manifest. */
   license?: string;
@@ -62,10 +79,9 @@ export interface TrustSignalInput {
  */
 export function deriveTrustSignals(input: TrustSignalInput): TrustSignal[] {
   const signals: TrustSignal[] = [];
-  const signer = input.signerId?.trim();
-  if (signer) {
+  if (input.signatureState === "verified") {
     signals.push("signed");
-    if (isFirstPartySignerId(signer)) {
+    if (isEnrolledFirstPartySigner(input.signerId)) {
       signals.push("verified-publisher");
       signals.push("first-party");
     }
@@ -92,19 +108,10 @@ export function displayTrustSignals(input: TrustSignalInput): TrustSignal[] {
 }
 
 /**
- * True for a signer key id in the first-party allowlist form
- * `altnautica-YYYY-X`. The single predicate every surface shares so the
- * `altnautica-\d{4}-[A-Z]` shape is written down exactly once.
+ * True for a license string that names an open, publicly auditable SPDX id.
+ * Substring matching keeps `GPL-3.0-or-later`, `Apache-2.0` and friends
+ * resolving without an exhaustive SPDX table.
  */
-export function isFirstPartySignerId(signerId?: string | null): boolean {
-  return !!signerId && FIRST_PARTY_SIGNER.test(signerId.trim());
-}
-
-/** True when a plugin is first-party (a verified-publisher signer). */
-export function isFirstParty(input: TrustSignalInput): boolean {
-  return isFirstPartySignerId(input.signerId);
-}
-
 function isOpenLicense(license?: string): boolean {
   if (!license) return false;
   const l = license.toLowerCase();

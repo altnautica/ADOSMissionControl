@@ -23,6 +23,11 @@ import type { InstallManifestSummary } from "../install-dialog/types";
 import { getMergedCapabilityMeta } from "@/lib/plugins/capabilities";
 import { displayTrustSignals } from "@/lib/plugins/trust-signals";
 import {
+  verifyArchiveSignature,
+  type ArchiveSignatureResult,
+  type PluginSignatureState,
+} from "@/lib/plugins/archive-signature";
+import {
   parseParameterContributions,
   type ParsedParameterContribution,
 } from "@/lib/plugins/parameters/parse";
@@ -57,10 +62,24 @@ export async function computeSha256(file: File): Promise<string> {
 }
 
 /**
- * Pull `manifest.yaml` text out of the .adosplug archive.
- * Throws when the file is not a valid zip or the manifest is absent.
+ * Open a `.adosplug` once and return both the manifest text and the archive's
+ * Ed25519 verification result.
+ *
+ * One zip load for both, deliberately: the signature covers a canonical hash
+ * over the same entry set the manifest came from, so reading the manifest from
+ * one load and verifying from another would let the two disagree.
+ *
+ * The manifest's own `signer_id` is fed to the verifier so a declared signer
+ * the archive cannot back resolves `"invalid"` rather than `"unsigned"`.
+ *
+ * Throws when the file is not a valid zip or the manifest is absent. A signature
+ * problem is never a throw — it comes back as `signature.state === "invalid"`
+ * with a reason, so the caller decides how to refuse.
  */
-export async function extractManifestYaml(file: File): Promise<string> {
+export async function inspectArchive(file: File): Promise<{
+  manifestYaml: string;
+  signature: ArchiveSignatureResult;
+}> {
   const zip = await JSZip.loadAsync(file);
   const entry = zip.file("manifest.yaml") ?? zip.file("MANIFEST.yaml");
   if (!entry) {
@@ -68,7 +87,12 @@ export async function extractManifestYaml(file: File): Promise<string> {
       "Archive is missing manifest.yaml. Is this a valid .adosplug file?",
     );
   }
-  return entry.async("string");
+  const manifestYaml = await entry.async("string");
+  const declaredSigner = parseManifestYaml(manifestYaml).signerId;
+  return {
+    manifestYaml,
+    signature: await verifyArchiveSignature(zip, declaredSigner),
+  };
 }
 
 /**
@@ -776,12 +800,23 @@ function stripQuotes(s: string): string {
   return s.replace(/^["']|["']$/g, "");
 }
 
-/** Side inputs the registry path passes through that the manifest YAML
- * text itself does not carry. The Convex `registry_versions` row is
- * authoritative for these — the manifest copy is just for display. */
+/** Side inputs the caller supplies that the manifest YAML text itself cannot
+ * carry: the verification outcome, and the registry-row facts the Convex
+ * `registry_versions` row is authoritative for. */
 export interface InstallSummaryOverrides {
-  /** Signer key id from the registry row. Overrides the manifest's
-   * embedded `signer_id` field when present. */
+  /**
+   * Outcome of verifying the archive's detached signature. REQUIRED so a new
+   * call site cannot omit it and inherit trust from the manifest's own
+   * `signer_id`. Pass `"unverified"` when the GCS never held the archive bytes
+   * (registry preview, agent-mediated parse) — the install path verifies the
+   * bytes it actually executes before recording anything.
+   */
+  signatureState: PluginSignatureState;
+  /**
+   * Signer id the signature verified under. Ignored unless
+   * `signatureState === "verified"`; a claim from the manifest or from a
+   * registry row never reaches the summary on its own.
+   */
   signerId?: string;
   /** Vendor-attribution rows from the registry. The manifest YAML's
    * agent block carries the same data, but the parser does not walk
@@ -799,25 +834,27 @@ export interface InstallSummaryOverrides {
 }
 
 /**
- * Convert a `ParsedManifest` into the dialog's `InstallManifestSummary`
- * by attaching trust signals derived from the signer id format. The
- * agent-side parse endpoint computes the same signals server-side; this
- * keeps the cloud-relay path consistent when the agent isn't reachable.
+ * Convert a `ParsedManifest` into the dialog's `InstallManifestSummary`,
+ * attaching the trust signals that follow from `overrides.signatureState`.
+ *
+ * The manifest's embedded `signer_id` is NOT carried through. It is an
+ * unauthenticated string inside the archive the operator supplied, so the
+ * summary exposes a signer id only when the archive's signature verified
+ * under an enrolled key.
  */
 export function toInstallSummary(
   parsed: ParsedManifest,
   manifestHash: string,
-  overrides: InstallSummaryOverrides = {},
+  overrides: InstallSummaryOverrides,
 ): InstallManifestSummary & { manifestHash: string } {
-  // Registry row wins over the manifest's embedded signer_id because
-  // the row is what the registry actually signed.
-  const signerId = overrides.signerId ?? parsed.signerId;
+  const { signatureState } = overrides;
+  const signerId =
+    signatureState === "verified" ? overrides.signerId : undefined;
 
   // The single trust derivation (shared with the cards + the MCP tab) so a
-  // plugin never reads as one badge set here and another elsewhere. The
-  // "unsigned" signal is intentionally not produced until the signing
-  // pipeline signs every published archive.
+  // plugin never reads as one badge set here and another elsewhere.
   const trustSignals = displayTrustSignals({
+    signatureState,
     signerId,
     license: parsed.license,
     vendorAttribution: overrides.vendorAttribution,
@@ -831,6 +868,7 @@ export function toInstallSummary(
     license: parsed.license,
     halves: [...parsed.halves],
     signerId,
+    signatureState,
     trustSignals,
     icon: parsed.icon,
     homepageUrl: parsed.homepageUrl,

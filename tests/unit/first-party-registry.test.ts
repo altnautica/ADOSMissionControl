@@ -13,14 +13,22 @@ describe("first-party registry demo fixture", () => {
       const summary = toInstallSummary(
         parseManifestYaml(entry.manifestYaml),
         entry.archiveSha256,
-        { signerId: entry.signerKeyId, archiveSha256: entry.archiveSha256 },
+        {
+          signatureState: "verified",
+          signerId: entry.signerKeyId,
+          archiveSha256: entry.archiveSha256,
+        },
       );
       expect(summary.pluginId).toBe(entry.row.plugin_id);
       expect(summary.version).toBe(entry.row.latest_version);
-      // First-party signer → the badge row shows first-party.
-      expect(deriveTrustSignals({ signerId: summary.signerId })).toContain(
-        "first-party",
-      );
+      // The demo fixtures stand in for verified first-party archives, so the
+      // badge row must resolve first-party from the verified signer.
+      expect(
+        deriveTrustSignals({
+          signatureState: summary.signatureState,
+          signerId: summary.signerId,
+        }),
+      ).toContain("first-party");
     }
   });
 
@@ -32,7 +40,7 @@ describe("first-party registry demo fixture", () => {
     const summary = toInstallSummary(
       parseManifestYaml(entry!.manifestYaml),
       entry!.archiveSha256,
-      { signerId: entry!.signerKeyId },
+      { signatureState: "verified", signerId: entry!.signerKeyId },
     );
     expect(summary.halves).toEqual(["agent", "gcs"]);
     expect(summary.icon).toBe("camera");
@@ -57,7 +65,7 @@ describe("first-party registry demo fixture", () => {
     const summary = toInstallSummary(
       parseManifestYaml(entry!.manifestYaml),
       entry!.archiveSha256,
-      { signerId: entry!.signerKeyId },
+      { signatureState: "verified", signerId: entry!.signerKeyId },
     );
     expect(summary.halves).toEqual(["gcs"]);
   });

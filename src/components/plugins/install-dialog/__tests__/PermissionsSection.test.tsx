@@ -35,6 +35,7 @@ const baseManifest: InstallManifestSummary = {
   version: "0.2.4",
   name: "Vision Nav",
   halves: ["agent"],
+  signatureState: "unsigned",
   trustSignals: [],
   permissions: [
     {

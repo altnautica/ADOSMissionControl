@@ -16,6 +16,7 @@ const base: InstallManifestSummary = {
   version: "0.1.0",
   name: "Demo",
   halves: ["agent"],
+  signatureState: "unsigned",
   trustSignals: [],
   permissions: [],
 };

@@ -1,0 +1,9 @@
+{
+  "_comment": "Cross-implementation conformance vector for the .adosplug detached-signature format. Emitted by the agent's plugin-host interop fixture generator, which signs with a throwaway keypair; the archive is synthetic and the key has no production role. archiveB64: a .adosplug with three entries and no SIGNATURE entry. payloadHashHex: the canonical payload hash the agent computes over those entries. signatureB64 / tamperedSignatureB64: Ed25519 over those 32 raw digest bytes. signerSpkiBase64: the matching public key, SubjectPublicKeyInfo DER in base64.",
+  "archiveB64": "UEsDBBQAAAAAAMtVvVwgqR1jHAAAABwAAAATAAAAYWdlbnQvcHkvZXhhbXBsZS5weXByaW50KCdoZWxsbyBmcm9tIGV4YW1wbGUnKQpQSwMEFAAAAAAAy1W9XAXQQX7CAAAAwgAAAA0AAABtYW5pZmVzdC55YW1saWQ6IGNvbS5hbHRuYXV0aWNhLmV4YW1wbGUKdmVyc2lvbjogMS4yLjMKbmFtZTogRXhhbXBsZQpyaXNrOiBtZWRpdW0KY29tcGF0aWJpbGl0eToKICBhZG9zX3ZlcnNpb246ICI+PTAuMS4wLDwyLjAuMCIKYWdlbnQ6CiAgZW50cnlwb2ludDogYWdlbnQvcHkvZXhhbXBsZS5weQogIHBlcm1pc3Npb25zOgogICAgLSB0ZWxlbWV0cnkucmVhZApQSwMEFAAAAAAAy1W9XGx7GIoQAAAAEAAAABAAAABhc3NldHMvbW9kZWwuYmluAAECA2JpbmFyeS1hc3NldFBLAQIUAxQAAAAAAMtVvVwgqR1jHAAAABwAAAATAAAAAAAAAAAAAACAAQAAAABhZ2VudC9weS9leGFtcGxlLnB5UEsBAhQDFAAAAAAAy1W9XAXQQX7CAAAAwgAAAA0AAAAAAAAAAAAAAIABTQAAAG1hbmlmZXN0LnlhbWxQSwECFAMUAAAAAADLVb1cbHsYihAAAAAQAAAAEAAAAAAAAAAAAAAAgAE6AQAAYXNzZXRzL21vZGVsLmJpblBLBQYAAAAAAwADALoAAAB4AQAAAAA=",
+  "payloadHashHex": "d32e65b7b9f1156441b4f65e302c17afac6fb0e7ad3136df2209c2604c52068a",
+  "signerId": "altnautica-2026-A",
+  "signerSpkiBase64": "MCowBQYDK2VwAyEAA6EHv/POEL4dcN0Y50vAmWfk1jCbpQ1fHdyGZBJVMbg=",
+  "signatureB64": "AVID9YtMn7KEp3kvkB204mizlGI3nlV/aNaiGnrJ5KPhBz8/Y1kc76CboD557FtoJxlJymRZJbc4yCSzixRNAg==",
+  "tamperedSignatureB64": "AVID9YtMn7KEp3kvkB204mizlGI3nlV/aNaiGnrJ5KPhBz8/Y1kc76CboD557FtoJxlJymRZJbc4yCSzixRNAw=="
+}

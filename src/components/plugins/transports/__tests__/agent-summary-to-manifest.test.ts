@@ -10,7 +10,6 @@
 import { describe, it, expect } from "vitest";
 
 import { agentSummaryToManifest } from "../agent-summary-to-manifest";
-import { displayTrustSignals } from "@/lib/plugins/trust-signals";
 import type { PluginAgentParseSummary } from "@/lib/agent/plugin-client";
 
 function summary(
@@ -59,15 +58,5 @@ describe("agentSummaryToManifest", () => {
     const m = agentSummaryToManifest(summary());
     expect(m.archiveSha256).toBe("abc123");
     expect(m.icon).toBe("camera");
-  });
-
-  it("stamps the shared trust-signal display set", () => {
-    const m = agentSummaryToManifest(summary());
-    expect(m.trustSignals).toEqual(
-      displayTrustSignals({
-        signerId: "altnautica-2026-A",
-        license: "GPL-3.0-or-later",
-      }),
-    );
   });
 });

@@ -14,6 +14,7 @@
 import type { PluginHalf, PairedNodeProfile } from "@/lib/plugins/types";
 import type { PluginParameter } from "@/lib/plugins/parameters/schema";
 import type { ParsedToolContribution } from "@/lib/plugins/contributions/parse";
+import type { PluginSignatureState } from "@/lib/plugins/archive-signature";
 
 import type { TrustSignal } from "../TrustBadge";
 
@@ -26,7 +27,15 @@ export interface InstallManifestSummary {
   author?: string;
   license?: string;
   halves: ReadonlyArray<PluginHalf>;
+  /**
+   * The signer id the archive's Ed25519 signature verified under. Present ONLY
+   * when `signatureState === "verified"` — a `signer_id` declared inside the
+   * archive never reaches this field.
+   */
   signerId?: string;
+  /** Outcome of verifying the archive's detached signature. The gate every
+   * trust badge derives from; see `plugins/archive-signature`. */
+  signatureState: PluginSignatureState;
   trustSignals: ReadonlyArray<TrustSignal>;
   /** A shared-vocabulary named icon the manifest declares at the top level
    * (e.g. `icon: "camera"`). Drives the pop-up header glyph. */

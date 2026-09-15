@@ -43,7 +43,7 @@ import { communityApi } from "@/lib/community-api";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
 
 import {
-  extractManifestYaml,
+  inspectArchive,
   parseManifestYaml,
   toInstallSummary,
 } from "./transports/manifest-parse";
@@ -226,16 +226,31 @@ export function PluginInstallDialog({
   const parseFile = useCallback(async (file: File) => {
     setError(null);
     try {
-      const text = await extractManifestYaml(file);
-      const parsed = parseManifestYaml(text);
+      // One archive open yields both the manifest text and the Ed25519
+      // verification result, so the badge row the operator consents against is
+      // a verification outcome rather than a string from inside the archive.
+      const { manifestYaml, signature } = await inspectArchive(file);
+      if (signature.state === "invalid") {
+        // A declared-but-unbacked signer, an unenrolled signer, or contents
+        // that do not match the signature. Refuse before the review stage: the
+        // operator must never be asked to consent to an archive whose publisher
+        // claim is provably false.
+        throw new Error(
+          `Refusing to install: the archive's signature did not verify. ${signature.reason ?? ""}`.trim(),
+        );
+      }
+      const parsed = parseManifestYaml(manifestYaml);
       const hashBytes = await crypto.subtle.digest(
         "SHA-256",
-        new TextEncoder().encode(text),
+        new TextEncoder().encode(manifestYaml),
       );
       const hash = Array.from(new Uint8Array(hashBytes))
         .map((b) => b.toString(16).padStart(2, "0"))
         .join("");
-      const summary = toInstallSummary(parsed, hash);
+      const summary = toInstallSummary(parsed, hash, {
+        signatureState: signature.state,
+        signerId: signature.verifiedSignerId,
+      });
       setManifest(summary);
       setSource({ kind: "file", file, manifestHash: hash });
       setManifestHash(hash);

@@ -4,8 +4,15 @@
  * parse_from_url`) to the install dialog's manifest shape, so an
  * operator-supplied URL gets the same permission-review surface as a dropped
  * file. The browser cannot fetch + parse an arbitrary URL itself (CORS /
- * mixed-content), so the agent fetches + signature-checks the archive and
- * returns this summary; this mirrors the file-parse trust-signal derivation.
+ * mixed-content), so the agent fetches the archive and returns this summary.
+ *
+ * Trust is NOT carried across this hop. The agent's `signed` field reports only
+ * that a `SIGNATURE` entry exists (`ados.api.routes.plugins`: `signature_b64 is
+ * not None`) and its `signer_id` is read out of the archive's own manifest, so
+ * neither is a verification result. The summary is therefore `"unverified"` and
+ * shows no signature badge; the agent verifies against its own
+ * `/etc/ados/plugin-keys/` store before it unpacks, and `finalizeGcsInstall`
+ * verifies the bytes the GCS itself is about to execute.
  * @license GPL-3.0-only
  */
 
@@ -18,7 +25,7 @@ export function agentSummaryToManifest(
   s: PluginAgentParseSummary,
 ): InstallManifestSummary {
   const trustSignals = displayTrustSignals({
-    signerId: s.signer_id ?? undefined,
+    signatureState: "unverified",
     license: s.license || undefined,
   });
   return {
@@ -29,7 +36,7 @@ export function agentSummaryToManifest(
     author: s.author || undefined,
     license: s.license || undefined,
     halves: [...s.halves],
-    signerId: s.signer_id ?? undefined,
+    signatureState: "unverified",
     trustSignals,
     icon: s.icon ?? undefined,
     archiveSha256: s.archive_sha256,
