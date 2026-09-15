@@ -31,6 +31,10 @@ import {
 } from "../schemas";
 import { agentRequest, type RequestContext } from "./transport";
 import { agentSupports, fetchVersionInfo } from "./version-cache";
+import {
+  configWriteFailure,
+  type ConfigWriteResult,
+} from "@/lib/agent/config-write";
 
 /** A finite number, or undefined when the field is absent or unparseable.
  * `Number(undefined ?? 0)` would report a missing reading as 0, which reads on
@@ -323,13 +327,8 @@ export function setConfigValue(
   ctx: RequestContext,
   key: string,
   value: string,
-): Promise<{ status?: string; key?: string; value?: unknown; error?: string }> {
-  return agentRequest<{
-    status?: string;
-    key?: string;
-    value?: unknown;
-    error?: string;
-  }>(ctx, "/api/config", {
+): Promise<ConfigWriteResult> {
+  return agentRequest<ConfigWriteResult>(ctx, "/api/config", {
     method: "PUT",
     body: JSON.stringify({ key, value }),
   });
@@ -481,19 +480,28 @@ export async function getMavlinkPorts(
  * through the existing PUT /api/config surface so the agent's config validator
  * owns the coercion. The caller then watches `mavlink_alive` / `heartbeat_age_s`
  * on the next status poll to confirm a live link.
+ *
+ * Throws when a write did not land. The agent answers a rejected value with
+ * HTTP 200 + `{error}`, and a value it took in memory but could not write to
+ * disk with HTTP 200 + `persisted: false` — so discarding these results
+ * reports an applied FC source that reverts at the next agent restart. The
+ * first failure stops the sequence: writing a serial port for a source the
+ * node never accepted would leave a half-applied configuration.
  */
 export async function setMavlinkSource(
   ctx: RequestContext,
   source: FcSource,
   opts?: { serialPort?: string; baudRate?: number },
 ): Promise<void> {
-  await setConfigValue(ctx, "mavlink.source", source);
+  const write = async (key: string, value: string): Promise<void> => {
+    const failure = configWriteFailure(await setConfigValue(ctx, key, value));
+    if (failure) throw new Error(failure);
+  };
+  await write("mavlink.source", source);
   if (source === "serial") {
-    if (opts?.serialPort) {
-      await setConfigValue(ctx, "mavlink.serial_port", opts.serialPort);
-    }
+    if (opts?.serialPort) await write("mavlink.serial_port", opts.serialPort);
     if (typeof opts?.baudRate === "number") {
-      await setConfigValue(ctx, "mavlink.baud_rate", String(opts.baudRate));
+      await write("mavlink.baud_rate", String(opts.baudRate));
     }
   }
 }

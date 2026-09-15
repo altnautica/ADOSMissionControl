@@ -22,6 +22,8 @@ import {
 function ctxWith(overrides: Partial<SettingsPageContext>): SettingsPageContext {
   return {
     droneId: "node:dev-1",
+    nodeDeviceId: "dev-1",
+    relayReach: null,
     profile: "drone",
     config: null,
     readOnly: false,

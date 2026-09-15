@@ -31,6 +31,7 @@ import { useLocalNodesStore } from "@/stores/local-nodes-store";
 import { usePairingStore } from "@/stores/pairing-store";
 import { isDemoMode } from "@/lib/utils";
 import {
+  directClientForNode,
   resolveConfigAccess,
   resolveConfigProxyTarget,
   setConfigValueViaAccess,
@@ -38,6 +39,7 @@ import {
   type ConfigAccess,
   type PairingRecords,
 } from "@/lib/agent/config-access";
+import { configWriteFailure } from "@/lib/agent/config-write";
 
 /** Everything the per-node transport resolution needs, captured so the
  * resolution stays a pure function of state the caller can hand a test. */
@@ -74,17 +76,24 @@ const NO_PATH_MESSAGE = "No connection path to this node";
  *
  * The direct client is handed to the focused node only. Reusing it for every
  * node in the selection would write the focused node's config N times and
- * report N successes — the failure mode this function exists to prevent.
+ * report N successes — the failure mode this function exists to prevent. The
+ * gate is `directClientForNode`, the same one every single-node surface uses,
+ * so "the attached client belongs to exactly one node" is asserted in one
+ * place rather than re-derived per caller.
  */
 export function resolveFleetConfigAccess(
   deviceId: string,
   transport: FleetConfigTransport,
 ): ConfigAccess {
-  const direct =
-    transport.client && deviceId === transport.focusedDeviceId
-      ? transport.client
-      : null;
-  return resolveConfigAccess(direct, deviceId, transport.records);
+  return resolveConfigAccess(
+    directClientForNode(
+      transport.client,
+      transport.focusedDeviceId,
+      deviceId,
+    ),
+    deviceId,
+    transport.records,
+  );
 }
 
 /**
@@ -129,10 +138,14 @@ export async function writeConfigForNodes(
         }
         try {
           const res = await setConfigValueViaAccess(access, key, value);
-          // The agent answers 200 with an `{error}` body for a rejected
-          // value, so a 2xx is not by itself a success.
-          if (res && typeof res.error === "string") {
-            return { deviceId, mode: access.mode, ok: false, error: res.error };
+          // The agent answers 200 with an `{error}` body for a rejected value
+          // and 200 with `persisted: false` for one it took in memory but
+          // could not write to disk, so a 2xx is not by itself a success. A
+          // fleet directive that survives on 19 of 24 nodes and evaporates on
+          // the rest at their next restart must be reported as a failure now.
+          const failure = configWriteFailure(res);
+          if (failure) {
+            return { deviceId, mode: access.mode, ok: false, error: failure };
           }
           return { deviceId, mode: access.mode, ok: true, error: null };
         } catch (err) {

@@ -71,7 +71,7 @@ beforeEach(() => {
 
 describe("useNodeConfig with a relay reach", () => {
   it("reports the relay lane and stays writable", async () => {
-    const { result } = renderHook(() => useNodeConfig(REACH));
+    const { result } = renderHook(() => useNodeConfig(DRONE, REACH));
 
     await waitFor(() => expect(result.current.config).not.toBeNull());
 
@@ -94,7 +94,7 @@ describe("useNodeConfig with a relay reach", () => {
   });
 
   it("writes through the relay and re-reads to confirm the round-trip", async () => {
-    const { result } = renderHook(() => useNodeConfig(REACH));
+    const { result } = renderHook(() => useNodeConfig(DRONE, REACH));
     await waitFor(() => expect(result.current.config).not.toBeNull());
     calls = [];
 
@@ -112,7 +112,7 @@ describe("useNodeConfig with a relay reach", () => {
   });
 
   it("is read-only with no reach, which is the bug being fixed", async () => {
-    const { result } = renderHook(() => useNodeConfig());
+    const { result } = renderHook(() => useNodeConfig(DRONE));
 
     await waitFor(() => expect(result.current.accessMode).toBe("none"));
     expect(result.current.readOnly).toBe(true);
@@ -124,7 +124,7 @@ describe("useNodeConfig with a relay reach", () => {
     // is identity-unstable. Depending on the object would make `refresh` new
     // every render and spin the effect forever.
     const { result, rerender } = renderHook(() =>
-      useNodeConfig({ ...REACH }),
+      useNodeConfig(DRONE, { ...REACH }),
     );
     await waitFor(() => expect(result.current.config).not.toBeNull());
     const afterFirstLoad = calls.length;
@@ -153,7 +153,7 @@ describe("useNodeConfig with a relay reach", () => {
       ],
     });
 
-    const { result } = renderHook(() => useNodeConfig(REACH));
+    const { result } = renderHook(() => useNodeConfig(DRONE, REACH));
     await waitFor(() => expect(result.current.config).not.toBeNull());
 
     expect(result.current.accessMode).toBe("proxy");

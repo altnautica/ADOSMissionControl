@@ -48,6 +48,7 @@ import { StatTile } from "../shared/StatTile";
 import { NodeBrandHeader } from "./NodeBrandHeader";
 import { OverviewTile, OverviewSection, OverviewGrid } from "./OverviewGrid";
 import type { SurfaceContext } from "@/components/dashboard/node-detail/surface-types";
+import { surfaceNodeDeviceId } from "@/components/dashboard/node-detail/surface-types";
 import { effectiveNodeProfile } from "@/components/dashboard/node-detail/node-brand";
 import { useReachedViaName } from "@/lib/nodes/reach-provenance";
 import { useMqttControlAuthority } from "@/hooks/use-mqtt-control-authority";
@@ -75,7 +76,12 @@ export function DroneOverview({ ctx }: { ctx: SurfaceContext }) {
           the product, and its live video is the prime tile. A bare FC (no
           companion) skips this and shows only the FC console band + the
           add-a-computer CTA below. */}
-      {agentReachable && <CompanionBand droneId={ctx.droneId} />}
+      {agentReachable && (
+        <CompanionBand
+          droneId={ctx.droneId}
+          nodeDeviceId={surfaceNodeDeviceId(ctx)}
+        />
+      )}
 
       {/* The flight-controller console — always present. */}
       <FcBand ctx={ctx} />
@@ -123,8 +129,18 @@ function FcBand({ ctx }: { ctx: SurfaceContext }) {
 }
 
 /** The agent-dashboard cards, shown only when a companion computer is paired.
- * The live video is the prime tile (top-left, half × 2 rows). */
-function CompanionBand({ droneId }: { droneId: string }) {
+ * The live video is the prime tile (top-left, half × 2 rows).
+ *
+ * `nodeDeviceId` is this node's agent identity: the FC-source picker below
+ * WRITES the node's config, so it resolves its transport from this id rather
+ * than from the focused-node connection store. */
+function CompanionBand({
+  droneId,
+  nodeDeviceId,
+}: {
+  droneId: string;
+  nodeDeviceId: string | null;
+}) {
   const connected = useAgentConnectionStore((s) => s.connected);
   const status = useAgentSystemStore((s) => s.status);
   const services = useAgentSystemStore((s) => s.services);
@@ -176,7 +192,7 @@ function CompanionBand({ droneId }: { droneId: string }) {
           <MemorySparkline />
         </OverviewTile>
         <OverviewTile span="half">
-          <FcSourcePicker />
+          <FcSourcePicker nodeDeviceId={nodeDeviceId} />
         </OverviewTile>
         <OverviewTile span="half">
           <ServiceTable

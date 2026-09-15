@@ -153,12 +153,12 @@ afterEach(() => {
 
 describe("HardwareDisplayPage", () => {
   it("renders the page title and description", () => {
-    renderWithIntl(<HardwareDisplayPage />);
+    renderWithIntl(<HardwareDisplayPage nodeDeviceId="gs-1" />);
     expect(screen.getByText("Display")).toBeDefined();
   });
 
   it("composes the display cards", () => {
-    renderWithIntl(<HardwareDisplayPage />);
+    renderWithIntl(<HardwareDisplayPage nodeDeviceId="gs-1" />);
     // LocalDisplayCard
     expect(screen.getByText("Local Display")).toBeDefined();
     // HdmiKioskCard

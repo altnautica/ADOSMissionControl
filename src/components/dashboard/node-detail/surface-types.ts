@@ -67,6 +67,23 @@ export interface SurfaceContext {
   atlasCapturing: boolean;
 }
 
+/**
+ * The device id of the node a surface is rendered for: its direct agent
+ * identity when the GCS has one, else — for a drone reached only over a ground
+ * node's radio — that drone's own peer id on the relay. Null when the node has
+ * no agent identity at all (a bare flight controller).
+ *
+ * Every surface that writes to a node's agent resolves its transport from
+ * THIS, never from `agent-connection-store`: that store names the focused node
+ * and lags the render, so an ambient resolution can send the write to the
+ * previously connected node.
+ */
+export function surfaceNodeDeviceId(
+  ctx: Pick<SurfaceContext, "agentDeviceId" | "relayReach">,
+): string | null {
+  return ctx.agentDeviceId ?? ctx.relayReach?.peerDeviceId ?? null;
+}
+
 export interface SurfaceSpec {
   /** Tab id; also the aria + active-tab key. Unique within a profile.
    * Stable across label renames so persisted/deep-linked tabs keep resolving. */

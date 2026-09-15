@@ -23,7 +23,14 @@ import { LcdRecordingMonitor } from "@/components/hardware/LcdRecordingMonitor";
 import { PageIntro } from "@/components/hardware/PageIntro";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 
-export function DisplayTab() {
+export interface DisplayTabProps {
+  /** The node this tab is rendered for. Forwarded to the cards that WRITE the
+   * node's config (`ground_station.display.type`, the kiosk URL) so a write
+   * cannot land on the previously focused node. */
+  nodeDeviceId: string | null;
+}
+
+export function DisplayTab({ nodeDeviceId }: DisplayTabProps) {
   const agentUrl = useAgentConnectionStore((s) => s.agentUrl);
   const t = useTranslations("hardware.displayPage");
 
@@ -43,14 +50,14 @@ export function DisplayTab() {
       <div className="flex flex-col gap-4">
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <div className="lg:col-span-2">
-            <LocalDisplayCard />
+            <LocalDisplayCard nodeDeviceId={nodeDeviceId} />
           </div>
           <div>
             <LcdPagePreview />
           </div>
         </div>
 
-        <HdmiKioskCard />
+        <HdmiKioskCard nodeDeviceId={nodeDeviceId} />
 
         <LcdRemoteControl />
 

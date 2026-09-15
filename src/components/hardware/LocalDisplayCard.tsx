@@ -20,6 +20,14 @@ import { useTranslations } from "next-intl";
 import { Monitor } from "lucide-react";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
+import { useLocalNodesStore } from "@/stores/local-nodes-store";
+import { usePairingStore } from "@/stores/pairing-store";
+import {
+  directClientForNode,
+  resolveConfigAccess,
+  setConfigValueViaAccess,
+} from "@/lib/agent/config-access";
+import { configWriteFailure } from "@/lib/agent/config-write";
 import { useToast } from "@/components/ui/toast";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
@@ -38,14 +46,42 @@ function formatLastTouch(ts: number | undefined): string | null {
   return `${days} d`;
 }
 
-export function LocalDisplayCard() {
+export interface LocalDisplayCardProps {
+  /** The node this card is rendered for. The renderer override is a config
+   * WRITE, so its transport resolves from this id — the attached client serves
+   * the FOCUSED node and focus lags the render, so an ambient write can retire
+   * the display on a different box. */
+  nodeDeviceId: string | null;
+}
+
+export function LocalDisplayCard({ nodeDeviceId }: LocalDisplayCardProps) {
   const display = useAgentCapabilitiesStore((s) => s.display);
   const displayType = useAgentCapabilitiesStore((s) => s.displayType);
   const uiTheme = useAgentCapabilitiesStore((s) => s.uiTheme);
   const loaded = useAgentCapabilitiesStore((s) => s.loaded);
-  const client = useAgentConnectionStore((s) => s.client);
+  const storeClient = useAgentConnectionStore((s) => s.client);
+  const attachedDeviceId = useAgentConnectionStore((s) => s.nodeDeviceId);
+  const localNodes = useLocalNodesStore((s) => s.nodes);
+  const pairedDrones = usePairingStore((s) => s.pairedDrones);
   const t = useTranslations("hardware.localDisplay");
   const { toast } = useToast();
+
+  // The direct client ONLY when it is this node's. `startDisplayCalibration`
+  // is a direct-only endpoint (the server-side config proxy forwards a fixed
+  // path map that does not include it), so it needs the client itself;
+  // calibrating a different box's panel is the same class of mistake as
+  // writing its config.
+  const nodeClient = directClientForNode(
+    storeClient,
+    attachedDeviceId,
+    nodeDeviceId,
+  );
+  // This node's own config lane: its direct client when the attached one
+  // serves it, else the server-side proxy against its stored LAN pairing.
+  const access = resolveConfigAccess(nodeClient, nodeDeviceId, {
+    localNodes,
+    pairedDrones,
+  });
 
   const [calibrating, setCalibrating] = useState(false);
   // The override picker holds an operator-pending selection until the
@@ -123,18 +159,22 @@ export function LocalDisplayCard() {
   })();
 
   const onOverrideChange = async (next: string) => {
-    if (!client || overrideSaving) return;
+    if (access.mode === "none" || overrideSaving) return;
     if (next === overrideValue) return;
     setPendingOverride(next);
     setOverrideSaving(true);
     try {
-      const res = await client.setConfigValue(
+      const res = await setConfigValueViaAccess(
+        access,
         "ground_station.display.type",
         next,
       );
-      if (res && typeof res.error === "string") {
-        throw new Error(res.error);
-      }
+      // Both halves of the agent's 200-means-nothing contract: a rejected
+      // value, and a value taken in RAM the agent could not write to disk.
+      // The display service reads this key at boot, so a RAM-only write is a
+      // renderer choice that silently reverts at the next start.
+      const failure = configWriteFailure(res);
+      if (failure) throw new Error(failure);
       toast(t("overrideSaved"), "info");
     } catch (err) {
       const msg = err instanceof Error ? err.message : t("overrideError");
@@ -198,10 +238,10 @@ export function LocalDisplayCard() {
     ) : null;
 
   const onCalibrate = async () => {
-    if (!client || calibrating) return;
+    if (!nodeClient || calibrating) return;
     setCalibrating(true);
     try {
-      await client.startDisplayCalibration();
+      await nodeClient.startDisplayCalibration();
       toast(t("calibrateStarted"), "info");
     } catch (err) {
       const msg = err instanceof Error ? err.message : t("calibrateError");
@@ -259,7 +299,7 @@ export function LocalDisplayCard() {
               onChange={(next) => {
                 void onOverrideChange(next);
               }}
-              disabled={!client || overrideSaving}
+              disabled={access.mode === "none" || overrideSaving}
             />
           </div>
         </div>
@@ -329,7 +369,7 @@ export function LocalDisplayCard() {
             variant="secondary"
             size="sm"
             onClick={onCalibrate}
-            disabled={!client || calibrating}
+            disabled={!nodeClient || calibrating}
           >
             {t("calibrateButton")}
           </Button>

@@ -24,7 +24,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { ShieldCheck } from "lucide-react";
 
-import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useLocalNodesStore } from "@/stores/local-nodes-store";
 import { usePairingStore } from "@/stores/pairing-store";
 import { resolveConfigProxyTarget } from "@/lib/agent/config-access";
@@ -37,6 +36,11 @@ import { readConfigPath } from "./use-node-config";
 import { Section } from "./Section";
 
 interface SectionProps {
+  /** The node this page is rendered for. The PIN-posture read below resolves
+   * its LAN target from THIS id, never from the focused-node connection store:
+   * a lagging focus would answer with the previously connected node's posture
+   * under this node's name. */
+  nodeDeviceId: string | null;
   config: Record<string, unknown> | null;
   readOnly: boolean;
   setValue: (key: string, value: string) => Promise<void>;
@@ -90,9 +94,13 @@ interface PinRead {
   failed: boolean;
 }
 
-export function SecuritySection({ config, readOnly, setValue }: SectionProps) {
+export function SecuritySection({
+  nodeDeviceId,
+  config,
+  readOnly,
+  setValue,
+}: SectionProps) {
   const t = useTranslations("nodeSettings.security");
-  const nodeDeviceId = useAgentConnectionStore((s) => s.nodeDeviceId);
   // Subscribed so a pair/unpair mid-session re-resolves the PIN target.
   const localNodes = useLocalNodesStore((s) => s.nodes);
   const pairedDrones = usePairingStore((s) => s.pairedDrones);

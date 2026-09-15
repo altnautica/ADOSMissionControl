@@ -37,12 +37,23 @@ import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { connectVisionDetections } from "@/lib/agent/vision-detections-ws";
 import { isDemoMode } from "@/lib/utils";
+import type { RelayReach } from "@/lib/nodes/relay-reach";
 
 interface DroneVisionTabProps {
   droneId: string;
+  /** The node's agent device id (or a relayed drone's peer id). Forwarded to
+   * the execution-tier card, whose offload pin is a config WRITE: it must
+   * resolve its transport from this node, not from the focused-node store. */
+  nodeDeviceId: string | null;
+  /** The relaying ground station's reach for a WFB-relayed drone, else null. */
+  relayReach?: RelayReach | null;
 }
 
-export function DroneVisionTab({ droneId }: DroneVisionTabProps) {
+export function DroneVisionTab({
+  droneId,
+  nodeDeviceId,
+  relayReach = null,
+}: DroneVisionTabProps) {
   const t = useTranslations("vision");
   const agentUrl = useAgentConnectionStore((s) => s.agentUrl);
   const apiKey = useAgentConnectionStore((s) => s.apiKey);
@@ -129,7 +140,11 @@ export function DroneVisionTab({ droneId }: DroneVisionTabProps) {
           </Section>
 
           <Section title={t("sectionExecution")}>
-            <PerceptionTierCard droneId={droneId} />
+            <PerceptionTierCard
+              droneId={droneId}
+              nodeDeviceId={nodeDeviceId}
+              relayReach={relayReach}
+            />
           </Section>
 
           <Section title={t("sectionHealth")}>

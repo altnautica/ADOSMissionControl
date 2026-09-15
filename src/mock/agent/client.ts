@@ -376,10 +376,20 @@ export class MockAgentClient {
   async setConfigValue(
     key: string,
     value: string,
-  ): Promise<{ status?: string; key?: string; value?: unknown; error?: string }> {
+  ): Promise<{
+    status?: string;
+    key?: string;
+    value?: unknown;
+    error?: string;
+    persisted?: boolean;
+  }> {
     await delay(80);
     const stored = setMockConfigValue(key, value);
-    return { status: "ok", key, value: stored };
+    // The real agent reports whether the value reached disk, and the GCS
+    // refuses to call a RAM-only write "Saved". The demo document is in
+    // memory but durable for the session, so it answers the honest `true`
+    // rather than omitting the field.
+    return { status: "ok", key, value: stored, persisted: true };
   }
 
   // ── MAVLink signing (demo) ───────────────────────────────

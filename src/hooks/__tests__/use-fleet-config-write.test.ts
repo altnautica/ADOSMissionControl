@@ -13,10 +13,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 import type { LocalNode } from "@/stores/local-nodes-store";
 import type { PairedDrone } from "@/stores/pairing-store";
-import type {
-  AgentConfigClient,
-  ConfigWriteResult,
-} from "@/lib/agent/config-access";
+import type { AgentConfigClient } from "@/lib/agent/config-access";
+import type { ConfigWriteResult } from "@/lib/agent/config-write";
 import {
   resolveFleetConfigAccess,
   resolveFleetConfigTargets,

@@ -27,6 +27,8 @@ import type { NodeProfile } from "@/components/dashboard/node-detail/surface-typ
 function ctxFor(profile: NodeProfile): SettingsPageContext {
   return {
     droneId: "drone-1",
+    nodeDeviceId: "drone-1",
+    relayReach: null,
     profile,
     // Advertise the blocks the swarm/atlas gates check so the only variable
     // under test is the profile.

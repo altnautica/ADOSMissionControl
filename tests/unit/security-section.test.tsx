@@ -70,7 +70,12 @@ afterEach(() => {
 function renderSection(config: Record<string, unknown> | null) {
   const setValue = vi.fn(async () => {});
   renderWithIntl(
-    <SecuritySection config={config} readOnly={false} setValue={setValue} />,
+    <SecuritySection
+      nodeDeviceId="dev-1"
+      config={config}
+      readOnly={false}
+      setValue={setValue}
+    />,
   );
   return { setValue };
 }

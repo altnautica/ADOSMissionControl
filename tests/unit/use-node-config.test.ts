@@ -122,7 +122,7 @@ describe("useNodeConfig in cloud mode with a stored LAN pairing", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    const { result } = renderHook(() => useNodeConfig());
+    const { result } = renderHook(() => useNodeConfig("dev-1"));
 
     await waitFor(() => {
       expect(result.current.config).not.toBeNull();
@@ -166,7 +166,7 @@ describe("useNodeConfig in cloud mode with a stored LAN pairing", () => {
       }),
     );
 
-    const { result } = renderHook(() => useNodeConfig());
+    const { result } = renderHook(() => useNodeConfig("dev-1"));
     await waitFor(() => expect(result.current.readOnly).toBe(false));
     await expect(
       result.current.setValue("nope.key", "1"),
@@ -184,7 +184,7 @@ describe("useNodeConfig with no path to the node", () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
-    const { result } = renderHook(() => useNodeConfig());
+    const { result } = renderHook(() => useNodeConfig("dev-unpaired"));
 
     expect(result.current.readOnly).toBe(true);
     expect(result.current.accessMode).toBe("none");
@@ -193,5 +193,179 @@ describe("useNodeConfig with no path to the node", () => {
       result.current.setValue("logging.level", "debug"),
     ).rejects.toThrow(/no connection path/i);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("useNodeConfig honours the agent's persisted flag", () => {
+  /** The exact shape `PUT /api/config` returns when it took the value into the
+   * running model but could not write `/etc/ados/config.yaml`: HTTP 200,
+   * `status: "ok"`, the new value echoed back, `persisted: false`. */
+  function wireRamOnlyAgent(persistError?: string) {
+    useAgentConnectionStore.setState({
+      client: null,
+      cloudMode: true,
+      nodeDeviceId: "dev-1",
+    });
+    useLocalNodesStore.setState({ nodes: [node({ deviceId: "dev-1" })] });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: unknown, init?: RequestInit) => {
+        const envelope = JSON.parse((init?.body as string) ?? "{}") as {
+          method: string;
+        };
+        if (envelope.method === "GET") {
+          return new Response(JSON.stringify({ logging: { level: "info" } }), {
+            status: 200,
+          });
+        }
+        return new Response(
+          JSON.stringify({
+            status: "ok",
+            key: "logging.level",
+            value: "debug",
+            persisted: false,
+            ...(persistError ? { persist_error: persistError } : {}),
+          }),
+          { status: 200 },
+        );
+      }),
+    );
+  }
+
+  it("rejects a write the node could not put on disk, naming the consequence and the action", async () => {
+    wireRamOnlyAgent("[Errno 30] Read-only file system: '/etc/ados/config.yaml'");
+    const { result } = renderHook(() => useNodeConfig("dev-1"));
+    await waitFor(() => expect(result.current.config).not.toBeNull());
+
+    // A resolved promise here is what every field primitive turns into the
+    // green "Saved" toast, so the write MUST reject.
+    const write = result.current.setValue("logging.level", "debug");
+    await expect(write).rejects.toThrow(/lost when the node restarts/i);
+    await expect(
+      result.current.setValue("logging.level", "debug"),
+    ).rejects.toThrow(/Read-only file system/);
+  });
+
+  it("still rejects when the agent reports no reason (a non-root agent)", async () => {
+    wireRamOnlyAgent();
+    const { result } = renderHook(() => useNodeConfig("dev-1"));
+    await waitFor(() => expect(result.current.config).not.toBeNull());
+
+    await expect(
+      result.current.setValue("logging.level", "debug"),
+    ).rejects.toThrow(/could not write it to disk/i);
+  });
+
+  it("accepts a write the node persisted", async () => {
+    useAgentConnectionStore.setState({
+      client: null,
+      cloudMode: true,
+      nodeDeviceId: "dev-1",
+    });
+    useLocalNodesStore.setState({ nodes: [node({ deviceId: "dev-1" })] });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(
+          JSON.stringify({
+            status: "ok",
+            key: "logging.level",
+            value: "debug",
+            persisted: true,
+            logging: { level: "debug" },
+          }),
+          { status: 200 },
+        ),
+      ),
+    );
+
+    const { result } = renderHook(() => useNodeConfig("dev-1"));
+    await waitFor(() => expect(result.current.config).not.toBeNull());
+    await expect(
+      result.current.setValue("logging.level", "debug"),
+    ).resolves.toBeUndefined();
+  });
+});
+
+describe("useNodeConfig transport belongs to the rendered node", () => {
+  it("never writes through a client attached to a different node", async () => {
+    // The defect: the store holds node A's client while the page renders node
+    // B. Resolving the ambient client would send B's write to A.
+    const writes: Array<[string, string]> = [];
+    const nodeAClient = {
+      getConfig: async () => ({ logging: { level: "info" } }),
+      setConfigValue: async (key: string, value: string) => {
+        writes.push([key, value]);
+        return { status: "ok", key, value, persisted: true };
+      },
+    };
+    useAgentConnectionStore.setState({
+      client: nodeAClient as unknown as never,
+      cloudMode: false,
+      nodeDeviceId: "node-a",
+    });
+    // Node B has no pairing record of its own, so with the client correctly
+    // refused there is genuinely no path.
+    useLocalNodesStore.setState({ nodes: [] });
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { result } = renderHook(() => useNodeConfig("node-b"));
+
+    expect(result.current.accessMode).toBe("none");
+    expect(result.current.readOnly).toBe(true);
+    await expect(
+      result.current.setValue("logging.level", "debug"),
+    ).rejects.toThrow(/no connection path/i);
+    expect(writes).toEqual([]);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("uses the direct client when it is attached to this very node", async () => {
+    const writes: Array<[string, string]> = [];
+    const client = {
+      getConfig: async () => ({ logging: { level: "info" } }),
+      setConfigValue: async (key: string, value: string) => {
+        writes.push([key, value]);
+        return { status: "ok", key, value, persisted: true };
+      },
+    };
+    useAgentConnectionStore.setState({
+      client: client as unknown as never,
+      cloudMode: false,
+      nodeDeviceId: "node-a",
+    });
+
+    const { result } = renderHook(() => useNodeConfig("node-a"));
+    await waitFor(() => expect(result.current.accessMode).toBe("direct"));
+    await act(async () => {
+      await result.current.setValue("logging.level", "debug");
+    });
+    expect(writes).toEqual([["logging.level", "debug"]]);
+  });
+
+  it("drops the loaded document when the node identity changes", async () => {
+    const client = {
+      getConfig: async () => ({ logging: { level: "info" } }),
+      setConfigValue: async () => ({ status: "ok", persisted: true }),
+    };
+    useAgentConnectionStore.setState({
+      client: client as unknown as never,
+      cloudMode: false,
+      nodeDeviceId: "node-a",
+    });
+    useLocalNodesStore.setState({ nodes: [] });
+
+    const { result, rerender } = renderHook(
+      ({ id }: { id: string }) => useNodeConfig(id),
+      { initialProps: { id: "node-a" } },
+    );
+    await waitFor(() => expect(result.current.config).not.toBeNull());
+
+    // Switching to a node this browser cannot reach must blank the document
+    // rather than render node A's values under node B.
+    rerender({ id: "node-b" });
+    expect(result.current.config).toBeNull();
+    expect(result.current.accessMode).toBe("none");
   });
 });

@@ -14,11 +14,20 @@
  * @license GPL-3.0-only
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { MonitorPlay } from "lucide-react";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
+import { useLocalNodesStore } from "@/stores/local-nodes-store";
+import { usePairingStore } from "@/stores/pairing-store";
+import {
+  directClientForNode,
+  getConfigViaAccess,
+  resolveConfigAccess,
+  setConfigValueViaAccess,
+} from "@/lib/agent/config-access";
+import { configWriteFailure } from "@/lib/agent/config-write";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,13 +56,44 @@ function readKioskUrl(config: Record<string, unknown> | null): string {
   return typeof url === "string" ? url : "";
 }
 
-export function HdmiKioskCard() {
+export interface HdmiKioskCardProps {
+  /** The node this card is rendered for. The kiosk-URL read and write resolve
+   * their transport from this id, not from the focused-node connection store:
+   * that store lags the render, so an ambient write would re-point a different
+   * ground station's kiosk. */
+  nodeDeviceId: string | null;
+}
+
+export function HdmiKioskCard({ nodeDeviceId }: HdmiKioskCardProps) {
   const displayType = useAgentCapabilitiesStore((s) => s.displayType);
   const display = useAgentCapabilitiesStore((s) => s.display);
   const loaded = useAgentCapabilitiesStore((s) => s.loaded);
-  const client = useAgentConnectionStore((s) => s.client);
+  const storeClient = useAgentConnectionStore((s) => s.client);
+  const attachedDeviceId = useAgentConnectionStore((s) => s.nodeDeviceId);
+  const localNodes = useLocalNodesStore((s) => s.nodes);
+  const pairedDrones = usePairingStore((s) => s.pairedDrones);
   const t = useTranslations("hardware.hdmiKiosk");
   const { toast } = useToast();
+
+  // The direct client only when it is THIS node's. The touch-calibration
+  // routes are direct-only (the server-side config proxy forwards a fixed path
+  // map that does not include them), so they need the client itself.
+  const nodeClient = directClientForNode(
+    storeClient,
+    attachedDeviceId,
+    nodeDeviceId,
+  );
+  // The config lane for this node: its own client, else the server-side proxy
+  // against its stored LAN pairing — so the kiosk URL stays editable from a
+  // cloud session exactly as the settings pages are.
+  const access = useMemo(
+    () =>
+      resolveConfigAccess(nodeClient, nodeDeviceId, {
+        localNodes,
+        pairedDrones,
+      }),
+    [nodeClient, nodeDeviceId, localNodes, pairedDrones],
+  );
 
   // Kiosk target URL editor state.
   const [urlValue, setUrlValue] = useState("");
@@ -71,9 +111,9 @@ export function HdmiKioskCard() {
   // Load the persisted kiosk URL once (config changes are infrequent and we
   // re-read after a save to reflect the reconciled value).
   const refreshUrl = useCallback(async () => {
-    if (!client) return;
+    if (access.mode === "none") return;
     try {
-      const config = await client.getConfig();
+      const config = await getConfigViaAccess(access);
       const url = readKioskUrl(config);
       setSavedUrl(url);
       setUrlValue(url);
@@ -82,7 +122,7 @@ export function HdmiKioskCard() {
     } finally {
       setUrlLoaded(true);
     }
-  }, [client]);
+  }, [access]);
 
   useEffect(() => {
     void refreshUrl();
@@ -91,9 +131,9 @@ export function HdmiKioskCard() {
   // Seed the calibration pill with the on-disk state so it reads accurately
   // before the operator ever runs the wizard.
   useEffect(() => {
-    if (!client) return;
+    if (!nodeClient) return;
     let cancelled = false;
-    client
+    nodeClient
       .getTouchCalibrationStatus()
       .then((s) => {
         if (!cancelled) setCalibStatus(s);
@@ -104,14 +144,14 @@ export function HdmiKioskCard() {
     return () => {
       cancelled = true;
     };
-  }, [client]);
+  }, [nodeClient]);
 
   // While a calibration is in flight, poll the live status so the step counter
   // advances as the operator taps each crosshair on the panel. The wizard is
   // terminal once `in_progress` drops back to false after having been true.
   const sawInProgressRef = useRef(false);
   useEffect(() => {
-    if (!calibrating || !client) return;
+    if (!calibrating || !nodeClient) return;
     let cancelled = false;
     const startedAt = Date.now();
     let failures = 0;
@@ -119,7 +159,7 @@ export function HdmiKioskCard() {
     const tick = async () => {
       if (cancelled) return;
       try {
-        const status = await client.getTouchCalibrationStatus();
+        const status = await nodeClient.getTouchCalibrationStatus();
         if (cancelled) return;
         failures = 0;
         setCalibStatus(status);
@@ -159,21 +199,28 @@ export function HdmiKioskCard() {
       cancelled = true;
       clearInterval(timer);
     };
-  }, [calibrating, client, t, toast]);
+  }, [calibrating, nodeClient, t, toast]);
 
   if (!loaded) return null;
 
   const dirty = urlLoaded && urlValue !== savedUrl;
 
   const onSaveUrl = async () => {
-    if (!client || savingUrl) return;
+    if (access.mode === "none" || savingUrl) return;
     const next = urlValue.trim();
     setSavingUrl(true);
     try {
-      const res = await client.setConfigValue(KIOSK_URL_CONFIG_KEY, next);
-      if (res && typeof res.error === "string") {
-        throw new Error(res.error);
-      }
+      const res = await setConfigValueViaAccess(
+        access,
+        KIOSK_URL_CONFIG_KEY,
+        next,
+      );
+      // Both halves of the agent's 200-means-nothing contract: a rejected
+      // value, and one taken in RAM the agent could not write to disk. The
+      // kiosk service reads this key at boot, so a RAM-only write is a target
+      // that silently reverts at the next start.
+      const failure = configWriteFailure(res);
+      if (failure) throw new Error(failure);
       toast(t("urlSaved"), "success");
       // Re-read so the field reflects the reconciled value the agent stored.
       await refreshUrl();
@@ -186,11 +233,11 @@ export function HdmiKioskCard() {
   };
 
   const onStartCalibrate = async () => {
-    if (!client || calibrating) return;
+    if (!nodeClient || calibrating) return;
     sawInProgressRef.current = false;
     setCalibrating(true);
     try {
-      const started = await client.startTouchCalibration();
+      const started = await nodeClient.startTouchCalibration();
       setCalibTotal(
         typeof started.target_count === "number" && started.target_count > 0
           ? started.target_count
@@ -274,7 +321,7 @@ export function HdmiKioskCard() {
               label={t("urlLabel")}
               value={urlValue}
               placeholder={t("urlPlaceholder")}
-              disabled={!client || !urlLoaded || savingUrl}
+              disabled={access.mode === "none" || !urlLoaded || savingUrl}
               onChange={(e) => setUrlValue(e.target.value)}
             />
           </div>
@@ -282,7 +329,7 @@ export function HdmiKioskCard() {
             variant="secondary"
             size="sm"
             onClick={() => void onSaveUrl()}
-            disabled={!client || !dirty || savingUrl}
+            disabled={access.mode === "none" || !dirty || savingUrl}
             loading={savingUrl}
           >
             {t("urlSave")}
@@ -323,7 +370,7 @@ export function HdmiKioskCard() {
           variant="secondary"
           size="sm"
           onClick={() => void onStartCalibrate()}
-          disabled={!client || calibrating}
+          disabled={!nodeClient || calibrating}
           loading={calibrating}
         >
           {t("calibrateButton")}

@@ -23,8 +23,10 @@ import { useTranslations } from "next-intl";
 import { useUiStore } from "@/stores/ui-store";
 import { useUiPrefsStore } from "@/stores/ui-prefs-store";
 import { useNodeConfig } from "@/components/command/settings/use-node-config";
+import { useStableRelayReach } from "@/hooks/use-stable-relay-reach";
 import type { SettingsPageContext } from "@/components/command/settings/settings-nav";
 import type { SurfaceContext } from "../surface-types";
+import { surfaceNodeDeviceId } from "../surface-types";
 import { NodeSubNav, type SubNavSection } from "./NodeSubNav";
 import { AgentShowcase } from "./AgentShowcase";
 import { resolveAgentNav } from "./agent-nav-sections";
@@ -63,12 +65,20 @@ export function AgentTab({ ctx }: { ctx: SurfaceContext }) {
   const tRoot = useTranslations();
   const pendingAgentPanel = useUiStore((s) => s.pendingAgentPanel);
   const setPendingAgentPanel = useUiStore((s) => s.setPendingAgentPanel);
-  // Pass the relay reach straight in: a drone reached only through its ground
-  // station's relay-proxy has a real config path, so its pages must be writable
-  // rather than banner-ed as unreachable. The hook re-keys the reach on its own
-  // fields, so this identity-unstable object needs no memo here.
+  // The node this page is rendered FOR — direct reach when the GCS has it,
+  // else the relayed drone's own peer id. Passed explicitly so the config
+  // surface can never read or write the previously focused node: the singleton
+  // connection store lags this render (focus is applied asynchronously, and a
+  // failed connect or a node with no LAN credentials leaves the prior client
+  // attached).
+  const nodeDeviceId = surfaceNodeDeviceId(ctx);
+  // `ctx.relayReach` is re-minted every render; the pages that resolve their
+  // own transport from it need a stable reference or their effects re-fire on
+  // every parent render.
+  const relayReach = useStableRelayReach(ctx.relayReach);
   const { config, loading, readOnly, error, setValue } = useNodeConfig(
-    ctx.relayReach,
+    nodeDeviceId,
+    relayReach,
   );
 
   const [active, setActive] = useState(
@@ -78,8 +88,24 @@ export function AgentTab({ ctx }: { ctx: SurfaceContext }) {
 
   const profile = ctx.drone.profile ?? "drone";
   const settingsCtx: SettingsPageContext = useMemo(
-    () => ({ droneId: ctx.droneId, profile, config, readOnly, setValue }),
-    [ctx.droneId, profile, config, readOnly, setValue],
+    () => ({
+      droneId: ctx.droneId,
+      nodeDeviceId,
+      relayReach,
+      profile,
+      config,
+      readOnly,
+      setValue,
+    }),
+    [
+      ctx.droneId,
+      nodeDeviceId,
+      relayReach,
+      profile,
+      config,
+      readOnly,
+      setValue,
+    ],
   );
 
   const { sections, entries } = useMemo(

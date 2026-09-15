@@ -28,7 +28,13 @@ const SLIDER_DEBOUNCE_MS = 300;
 const DEFAULT_SCREEN_ORDER = ["Link", "Drone", "GCS", "Net", "System"];
 const DEFAULT_BUTTONS = ["B1", "B2", "B3", "B4"];
 
-export function PhysicalUiTab() {
+export interface PhysicalUiTabProps {
+  /** The node this tab is rendered for. Forwarded to the cards that WRITE the
+   * node's config so the write cannot land on the previously focused node. */
+  nodeDeviceId: string | null;
+}
+
+export function PhysicalUiTab({ nodeDeviceId }: PhysicalUiTabProps) {
   const agentUrl = useAgentConnectionStore((s) => s.agentUrl);
   const apiKey = useAgentConnectionStore((s) => s.apiKey);
 
@@ -138,7 +144,7 @@ export function PhysicalUiTab() {
           Rock 5C with Waveshare 3.5") render here. */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <LocalDisplayCard />
+          <LocalDisplayCard nodeDeviceId={nodeDeviceId} />
         </div>
         <div>
           <LcdPagePreview />

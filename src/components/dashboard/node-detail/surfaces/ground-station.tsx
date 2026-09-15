@@ -23,6 +23,7 @@ import { DistributedRxTab } from "@/components/command/nodes/ground-station/Dist
 import { GroundStationAtlasRelay } from "@/components/command/nodes/ground-station/GroundStationAtlasRelay";
 import { RcElrsLinkTab } from "@/components/command/nodes/RcElrsLinkTab";
 import type { SurfaceSpec, SurfaceContext } from "../surface-types";
+import { surfaceNodeDeviceId } from "../surface-types";
 import { AGENT_SURFACE } from "../agent/agent-surface";
 
 // Role gates mirror the prior GroundStationDetailPanel.visibleTabsForRole:
@@ -105,13 +106,13 @@ export const GROUND_STATION_SURFACES: SurfaceSpec[] = [
     id: "display",
     labelKey: "command.groundStation.tabs.display",
     group: DEVICE_GROUP,
-    render: () => <DisplayTab />,
+    render: (ctx) => <DisplayTab nodeDeviceId={surfaceNodeDeviceId(ctx)} />,
   },
   {
     id: "physicalUi",
     labelKey: "dronePanel.buttons",
     group: DEVICE_GROUP,
-    render: () => <PhysicalUiTab />,
+    render: (ctx) => <PhysicalUiTab nodeDeviceId={surfaceNodeDeviceId(ctx)} />,
   },
   {
     id: "peripherals",

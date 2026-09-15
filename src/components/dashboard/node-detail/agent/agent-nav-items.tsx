@@ -33,6 +33,7 @@ import { CameraManagerTab } from "@/components/drone-detail/cameras/CameraManage
 import { DroneLiveWorldTab } from "@/components/drone-detail/DroneLiveWorldTab";
 import { DroneWorldModelTab } from "@/components/drone-detail/DroneWorldModelTab";
 import type { SurfaceContext } from "../surface-types";
+import { surfaceNodeDeviceId } from "../surface-types";
 
 export interface AgentNavItem {
   /** Stable id — matches the retired top-level surface id, so a persisted or
@@ -63,7 +64,13 @@ export const AGENT_NAV_ITEMS: AgentNavItem[] = [
     labelKey: "dronePanel.health",
     icon: <HeartPulse size={14} />,
     when: companionPresent,
-    render: (ctx) => <SystemTab profile={ctx.drone.profile ?? "drone"} />,
+    render: (ctx) => (
+      <SystemTab
+        profile={ctx.drone.profile ?? "drone"}
+        nodeDeviceId={surfaceNodeDeviceId(ctx)}
+        relayReach={ctx.relayReach}
+      />
+    ),
   },
   {
     id: "radio",
@@ -78,7 +85,13 @@ export const AGENT_NAV_ITEMS: AgentNavItem[] = [
     labelKey: "dronePanel.perception",
     icon: <Eye size={14} />,
     when: (ctx) => isDrone(ctx) && agentReachable(ctx),
-    render: (ctx) => <DroneVisionTab droneId={ctx.droneId} />,
+    render: (ctx) => (
+      <DroneVisionTab
+        droneId={ctx.droneId}
+        nodeDeviceId={surfaceNodeDeviceId(ctx)}
+        relayReach={ctx.relayReach}
+      />
+    ),
   },
   {
     id: "cameras",

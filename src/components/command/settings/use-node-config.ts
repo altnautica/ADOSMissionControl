@@ -2,25 +2,32 @@
 
 /**
  * @module command/settings/use-node-config
- * @description Loads the focused node's agent configuration
- * (`GET /api/config`) and exposes a per-key writer (`PUT /api/config`) that
- * re-reads the config after a write so the UI confirms the round-trip — the
- * same optimistic-write + read-back posture `RegulatoryRegionPanel` uses.
+ * @description Loads ONE node's agent configuration (`GET /api/config`) and
+ * exposes a per-key writer (`PUT /api/config`) that re-reads the config after a
+ * write so the UI confirms the round-trip.
  *
- * Transport comes from the shared config-access resolution: the direct
- * agent client when one is attached (local-first, zero cloud round-trip),
- * else the server-side `/api/lan-pair/config` proxy when a pairing record
- * names a LAN host (this is what makes the surface writable in cloud
- * mode), else — for a drone reached only through a ground station's WFB
- * relay — that ground station's relay-proxy over the same server-side
- * proxy. The surface degrades to read-only only when there is genuinely
- * no path to the node.
+ * The node is a PARAMETER, never ambient state. `agent-connection-store` holds
+ * a single client for the focused node, and focus lags the rendered surface (it
+ * is applied asynchronously after render, a failed connect leaves the previous
+ * node's client attached, and a node with no LAN credentials never replaces
+ * it) — so resolving the transport from the store would let a settings page
+ * render node A's document under node B's name and write node B's toggle to
+ * node A. The caller passes the node's device id; the attached client is used
+ * only when it serves exactly that node (`directClientForNode`), and the
+ * loaded document is dropped the moment the identity changes.
  *
- * The relay reach is a PARAMETER rather than a store read: it depends on
- * per-node fleet data (`reachedVia`, and whether the relaying ground node is
- * LAN-paired here) that this hook has no clean access to, while the caller
- * already carries it on `SurfaceContext`. It stays optional so every existing
- * no-arg call site is unchanged.
+ * Transport comes from the shared config-access resolution: the direct agent
+ * client when one is attached for THIS node (local-first, zero cloud
+ * round-trip), else the server-side `/api/lan-pair/config` proxy when a pairing
+ * record names a LAN host (this is what makes the surface writable in cloud
+ * mode), else — for a drone reached only through a ground station's WFB relay —
+ * that ground station's relay-proxy over the same server-side proxy. The
+ * surface degrades to read-only only when there is genuinely no path.
+ *
+ * The relay reach is likewise a parameter: it depends on per-node fleet data
+ * (`reachedVia`, and whether the relaying ground node is LAN-paired here) that
+ * this hook has no clean access to, while the caller already carries it on
+ * `SurfaceContext`.
  * @license GPL-3.0-only
  */
 
@@ -28,13 +35,17 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useLocalNodesStore } from "@/stores/local-nodes-store";
 import { usePairingStore } from "@/stores/pairing-store";
+import { isDemoMode } from "@/lib/utils";
 import {
+  directClientForNode,
   getConfigViaAccess,
   resolveConfigAccess,
   setConfigValueViaAccess,
   type ConfigAccess,
 } from "@/lib/agent/config-access";
+import { configWriteFailure } from "@/lib/agent/config-write";
 import type { RelayReach } from "@/lib/nodes/relay-reach";
+import { useStableRelayReach } from "@/hooks/use-stable-relay-reach";
 
 /** Read a dot-separated path (e.g. `network.hotspot.enabled`) out of a nested
  * config object. Returns `undefined` when any segment is missing, so a surface
@@ -91,13 +102,27 @@ export interface NodeConfig {
   error: string | null;
   refresh: () => Promise<void>;
   /** Write a single dot-path key. Throws with the agent's error message when
-   * the agent rejects the value (422); re-reads the config on success. */
+   * the agent rejects the value (422), and when the agent accepted the value
+   * in memory but could not write it to disk (`persisted: false`) — a change
+   * that dies at the next restart is not a saved change. Re-reads the config
+   * on success. */
   setValue: (key: string, value: string) => Promise<void>;
 }
 
-export function useNodeConfig(relayReach?: RelayReach | null): NodeConfig {
-  const client = useAgentConnectionStore((s) => s.client);
-  const nodeDeviceId = useAgentConnectionStore((s) => s.nodeDeviceId);
+/**
+ * @param nodeDeviceId The device id of the node this surface is rendered for
+ *   (`ctx.agentDeviceId ?? ctx.relayReach?.peerDeviceId ?? null`). Required,
+ *   not optional: a node-less call would resolve the ambient transport, which
+ *   is the defect this parameter exists to close.
+ * @param relayReach The ground station's relay-proxy reach for a WFB-relayed
+ *   drone, when it has one.
+ */
+export function useNodeConfig(
+  nodeDeviceId: string | null,
+  relayReach?: RelayReach | null,
+): NodeConfig {
+  const storeClient = useAgentConnectionStore((s) => s.client);
+  const attachedDeviceId = useAgentConnectionStore((s) => s.nodeDeviceId);
   // Subscribed (not read imperatively) so a pair/unpair mid-session
   // re-resolves the transport without a remount.
   const localNodes = useLocalNodesStore((s) => s.nodes);
@@ -109,22 +134,20 @@ export function useNodeConfig(relayReach?: RelayReach | null): NodeConfig {
   // `resolveRelayReach` mints a fresh object on every call, so callers pass an
   // identity-unstable value. Depending on the object would make `access` — and
   // therefore `refresh` — new every render, and the `refresh` effect would
-  // re-fetch the config in a loop. Re-key on the three fields instead, so the
-  // caller can pass `ctx.relayReach` straight in with no memo of its own.
-  const relayBaseUrl = relayReach?.baseUrl ?? null;
-  const relayApiKey = relayReach?.apiKey ?? null;
-  const relayPeerDeviceId = relayReach?.peerDeviceId ?? null;
-  const reach = useMemo<RelayReach | null>(
-    () =>
-      relayBaseUrl && relayPeerDeviceId && relayApiKey !== null
-        ? {
-            baseUrl: relayBaseUrl,
-            apiKey: relayApiKey,
-            peerDeviceId: relayPeerDeviceId,
-          }
-        : null,
-    [relayBaseUrl, relayApiKey, relayPeerDeviceId],
-  );
+  // re-fetch the config in a loop. The shared hook re-keys it on its three
+  // fields, so the caller can pass `ctx.relayReach` straight in with no memo.
+  const reach = useStableRelayReach(relayReach);
+
+  // The attached client serves the focused node only, so it carries this
+  // surface's write ONLY when the focused node IS this node.
+  //
+  // DEMO-MODE BRANCH (gated on isDemoMode, real fleets unaffected): the demo
+  // attaches one MockAgentClient over a shared mock config document and never
+  // sets a focused device id, so the identity gate would drop every simulated
+  // node to the (unreachable) proxy lane.
+  const client = isDemoMode()
+    ? storeClient
+    : directClientForNode(storeClient, attachedDeviceId, nodeDeviceId);
 
   const access = useMemo(
     () =>
@@ -137,6 +160,15 @@ export function useNodeConfig(relayReach?: RelayReach | null): NodeConfig {
     [client, nodeDeviceId, localNodes, pairedDrones, reach],
   );
   const readOnly = access.mode === "none";
+
+  // A document belongs to the node it was read from. Drop it the instant the
+  // identity changes so a stale config can never render — or be written back —
+  // under a new node's name. The refresh effect below re-reads immediately;
+  // this only guarantees nothing of node A survives the gap.
+  useEffect(() => {
+    setConfig(null);
+    setError(null);
+  }, [nodeDeviceId]);
 
   const refresh = useCallback(async () => {
     if (access.mode === "none") {
@@ -163,7 +195,13 @@ export function useNodeConfig(relayReach?: RelayReach | null): NodeConfig {
   const setValue = useCallback(
     async (key: string, value: string) => {
       const res = await setConfigValueViaAccess(access, key, value);
-      if (res && typeof res.error === "string") throw new Error(res.error);
+      // Covers both halves of the agent's 200-means-nothing contract: a
+      // rejected value (`{error}`) and a value accepted in RAM but never
+      // written to disk (`persisted: false`). Throwing routes into the same
+      // error toast + optimistic-rollback path every field primitive already
+      // has, so no caller reports "Saved" for a write that did not land.
+      const failure = configWriteFailure(res);
+      if (failure) throw new Error(failure);
       // Re-read so the field reflects the real persisted value, not an
       // optimistic guess (the surface confirms the round-trip) — over the
       // proxy exactly as over the direct client.

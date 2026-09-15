@@ -76,6 +76,8 @@ describe("Configuration pages in the merged Agent sidebar", () => {
   const configPageIds = (c: SurfaceContext) => {
     const settingsCtx: SettingsPageContext = {
       droneId: c.droneId,
+      nodeDeviceId: c.agentDeviceId,
+      relayReach: c.relayReach,
       profile: c.drone.profile ?? "drone",
       config: { swarm: {}, atlas: {} },
       readOnly: false,

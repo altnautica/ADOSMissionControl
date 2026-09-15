@@ -35,6 +35,7 @@ import {
   nodeToOffloadAddr,
   workstationForOffloadAddr,
 } from "@/lib/vision/offload-target";
+import type { RelayReach } from "@/lib/nodes/relay-reach";
 
 /** The config key holding this node's pinned offload workstation address. */
 const PIN_KEY = "perception.offload.compute_node_addr";
@@ -49,7 +50,21 @@ const TIER_STYLE: Record<Tier, string> = {
   unknown: "border-border-default bg-bg-tertiary text-text-tertiary",
 };
 
-export function PerceptionTierCard({ droneId }: { droneId: string }) {
+interface PerceptionTierCardProps {
+  droneId: string;
+  /** The node this card is rendered for. The offload pin is a config write, so
+   * the transport resolves from THIS id rather than from the focused-node
+   * connection store, which lags the render. */
+  nodeDeviceId: string | null;
+  /** The relaying ground station's reach for a WFB-relayed drone, else null. */
+  relayReach?: RelayReach | null;
+}
+
+export function PerceptionTierCard({
+  droneId,
+  nodeDeviceId,
+  relayReach = null,
+}: PerceptionTierCardProps) {
   const t = useTranslations("vision");
   const { toast } = useToast();
 
@@ -77,8 +92,13 @@ export function PerceptionTierCard({ droneId }: { droneId: string }) {
   const nodes = useLocalNodesStore((s) => s.nodes);
 
   // The pinned workstation is the persisted config link, not local state, so it
-  // survives unmount and matches what the Settings tab shows.
-  const { config, readOnly, setValue } = useNodeConfig();
+  // survives unmount and matches what the Settings tab shows. Scoped to THIS
+  // node: the pin names where this drone offloads, so a write resolved from the
+  // ambient connection could re-point a different aircraft.
+  const { config, readOnly, setValue } = useNodeConfig(
+    nodeDeviceId,
+    relayReach,
+  );
   const storedAddr =
     (readConfigPath(config, PIN_KEY) as string | undefined) ?? "";
   // A local override while a write is in flight (and the only selectable value

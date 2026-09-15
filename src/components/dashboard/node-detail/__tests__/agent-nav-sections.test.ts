@@ -57,6 +57,8 @@ function ctxFor(
 function settingsCtxFor(profile: NodeProfile): SettingsPageContext {
   return {
     droneId: "node:d1",
+    nodeDeviceId: "d1",
+    relayReach: null,
     profile,
     config: { swarm: {}, atlas: {}, video: { wfb: {} } },
     readOnly: false,

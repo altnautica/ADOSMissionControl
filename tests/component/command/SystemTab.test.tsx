@@ -49,7 +49,7 @@ import { SystemTab } from "@/components/command/SystemTab";
 
 describe("SystemTab", () => {
   it("renders the three sub-panels when connected", () => {
-    const { getByTestId } = render(<SystemTab />);
+    const { getByTestId } = render(<SystemTab nodeDeviceId="node-1" />);
     expect(getByTestId("hardware-status-panel")).toBeTruthy();
     expect(getByTestId("services-panel")).toBeTruthy();
     expect(getByTestId("fleet-network-panel")).toBeTruthy();

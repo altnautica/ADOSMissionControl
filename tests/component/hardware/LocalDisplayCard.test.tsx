@@ -38,9 +38,18 @@ const mockClient = {
     .mockResolvedValue({ status: "ok", key: "ground_station.display.type", value: "hdmi" }),
 };
 
+/** Which node the singleton connection store is attached to. The card's write
+ * uses the attached client ONLY when this matches the rendered node. */
+let attachedDeviceId: string | null = "gs-1";
+
 vi.mock("@/stores/agent-connection-store", () => ({
   useAgentConnectionStore: (sel: (s: unknown) => unknown) =>
-    sel({ agentUrl: "http://gs-node.local:8080", apiKey: null, client: mockClient }),
+    sel({
+      agentUrl: "http://gs-node.local:8080",
+      apiKey: null,
+      client: mockClient,
+      nodeDeviceId: attachedDeviceId,
+    }),
 }));
 
 const toastFn = vi.fn();
@@ -54,6 +63,7 @@ import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 const initial = useAgentCapabilitiesStore.getState();
 
 beforeEach(() => {
+  attachedDeviceId = "gs-1";
   toastFn.mockClear();
   mockClient.startDisplayCalibration.mockClear();
   mockClient.setConfigValue.mockClear();
@@ -72,7 +82,7 @@ describe("LocalDisplayCard", () => {
       display: { type: "none" },
       displayType: undefined,
     });
-    const { container } = renderWithIntl(<LocalDisplayCard />);
+    const { container } = renderWithIntl(<LocalDisplayCard nodeDeviceId="gs-1" />);
     expect(container.firstChild).toBeNull();
   });
 
@@ -83,7 +93,7 @@ describe("LocalDisplayCard", () => {
       display: undefined,
       displayType: "hdmi",
     });
-    renderWithIntl(<LocalDisplayCard />);
+    renderWithIntl(<LocalDisplayCard nodeDeviceId="gs-1" />);
     // Effective-primary row + override picker render even when no SPI
     // panel is bound. We assert both surfaces are present.
     expect(screen.getByText("Effective primary path")).toBeDefined();
@@ -99,7 +109,7 @@ describe("LocalDisplayCard", () => {
       display: undefined,
       displayType: "hdmi",
     });
-    renderWithIntl(<LocalDisplayCard />);
+    renderWithIntl(<LocalDisplayCard nodeDeviceId="gs-1" />);
     // Open the override Select; the trigger button carries the
     // currently selected label ("HDMI") inside it.
     const trigger = screen
@@ -131,7 +141,7 @@ describe("LocalDisplayCard", () => {
         touchCalibrated: true,
       },
     });
-    renderWithIntl(<LocalDisplayCard />);
+    renderWithIntl(<LocalDisplayCard nodeDeviceId="gs-1" />);
     const pill = screen.getByText("Calibrated");
     expect(pill).toBeDefined();
     expect(pill.className).toMatch(/text-status-success/);
@@ -147,7 +157,7 @@ describe("LocalDisplayCard", () => {
         touchCalibrated: false,
       },
     });
-    renderWithIntl(<LocalDisplayCard />);
+    renderWithIntl(<LocalDisplayCard nodeDeviceId="gs-1" />);
     const pill = screen.getByText("Not calibrated");
     expect(pill).toBeDefined();
     expect(pill.className).toMatch(/text-status-warning/);
@@ -162,7 +172,7 @@ describe("LocalDisplayCard", () => {
         hasTouch: false,
       },
     });
-    renderWithIntl(<LocalDisplayCard />);
+    renderWithIntl(<LocalDisplayCard nodeDeviceId="gs-1" />);
     const pills = screen.getAllByText("No touch");
     expect(pills.length).toBeGreaterThan(0);
   });
@@ -174,7 +184,7 @@ describe("LocalDisplayCard", () => {
       uiTheme: "light",
       display: { type: "spi-lcd", hasTouch: true, touchCalibrated: true },
     });
-    renderWithIntl(<LocalDisplayCard />);
+    renderWithIntl(<LocalDisplayCard nodeDeviceId="gs-1" />);
     expect(screen.getByText("Light")).toBeDefined();
   });
 
@@ -191,7 +201,7 @@ describe("LocalDisplayCard", () => {
         activePage: "dashboard",
       },
     });
-    renderWithIntl(<LocalDisplayCard />);
+    renderWithIntl(<LocalDisplayCard nodeDeviceId="gs-1" />);
     expect(screen.getByText(/3 s ago/)).toBeDefined();
     expect(screen.getByText("dashboard")).toBeDefined();
   });
@@ -202,7 +212,7 @@ describe("LocalDisplayCard", () => {
       loaded: true,
       display: { type: "spi-lcd", hasTouch: true, touchCalibrated: true },
     });
-    renderWithIntl(<LocalDisplayCard />);
+    renderWithIntl(<LocalDisplayCard nodeDeviceId="gs-1" />);
     expect(screen.queryByText(/Last touch/)).toBeNull();
   });
 
@@ -212,7 +222,7 @@ describe("LocalDisplayCard", () => {
       loaded: true,
       display: { type: "spi-lcd", hasTouch: true, touchCalibrated: false },
     });
-    renderWithIntl(<LocalDisplayCard />);
+    renderWithIntl(<LocalDisplayCard nodeDeviceId="gs-1" />);
     fireEvent.click(screen.getByText("Calibrate touch"));
     await waitFor(() => {
       expect(mockClient.startDisplayCalibration).toHaveBeenCalledTimes(1);
@@ -223,13 +233,35 @@ describe("LocalDisplayCard", () => {
     );
   });
 
+  it("refuses the renderer write when the attached client serves another node", async () => {
+    // The blocker: the store still holds node A's client while this card is
+    // rendered for node B. Writing `ground_station.display.type` on A can dark
+    // its on-box display, which is the surface an operator recovers A from.
+    attachedDeviceId = "some-other-node";
+    useAgentCapabilitiesStore.setState({
+      ...initial,
+      loaded: true,
+      displayType: "lcd",
+      display: { type: "spi-lcd", hasTouch: true, touchCalibrated: true },
+    });
+    renderWithIntl(<LocalDisplayCard nodeDeviceId="gs-1" />);
+
+    // No pairing record for gs-1 either, so there is genuinely no lane: the
+    // picker is disabled rather than writing to the wrong box.
+    const picker = screen.getByRole("combobox");
+    expect(picker.getAttribute("disabled")).not.toBeNull();
+    fireEvent.click(picker);
+    await Promise.resolve();
+    expect(mockClient.setConfigValue).not.toHaveBeenCalled();
+  });
+
   it("does not show the calibrate button when the panel has no touch", () => {
     useAgentCapabilitiesStore.setState({
       ...initial,
       loaded: true,
       display: { type: "spi-lcd", hasTouch: false },
     });
-    renderWithIntl(<LocalDisplayCard />);
+    renderWithIntl(<LocalDisplayCard nodeDeviceId="gs-1" />);
     expect(screen.queryByText("Calibrate touch")).toBeNull();
   });
 });

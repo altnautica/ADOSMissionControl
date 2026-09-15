@@ -3,7 +3,7 @@
 /**
  * @module agent/config-access
  * @description The single shared resolution for "does this surface have a
- * working path to the focused node's agent, and over which transport?".
+ * working path to the node it is rendered for, and over which transport?".
  *
  * Historically every config-adjacent surface re-derived its own
  * `cloudMode || !client` clamp, which conflated two different facts: the
@@ -25,10 +25,19 @@
  *  - `none`   — genuinely no path (never paired, no ground station, or the
  *               record has no host); the surface is read-only and says why.
  *
+ * The node is always an explicit parameter. The direct client belongs to the
+ * FOCUSED node, which is not necessarily the rendered one (focus is applied
+ * asynchronously, and a failed connect leaves the prior client attached), so
+ * callers pass it through {@link directClientForNode} first — an ambient
+ * client is how a write lands on the previously connected node.
+ *
+ * Success of a write is never the HTTP status: see
+ * {@link configWriteFailure} in `agent/config-write`.
+ *
  * Operations the proxy does not forward (camera roster, OTA, log
  * streaming) resolve through {@link hasClientPath} instead: they are
- * writable exactly when a direct client exists. The relay lane does NOT
- * change that answer — see the note on {@link hasClientPath}.
+ * writable exactly when a direct client for that node exists. The relay lane
+ * does NOT change that answer — see the note on {@link hasClientPath}.
  *
  * @license GPL-3.0-only
  */
@@ -36,14 +45,7 @@
 import { useLocalNodesStore, type LocalNode } from "@/stores/local-nodes-store";
 import { usePairingStore, type PairedDrone } from "@/stores/pairing-store";
 import type { RelayReach } from "@/lib/nodes/relay-reach";
-
-/** Response shape of the agent's single-key config write. */
-export interface ConfigWriteResult {
-  status?: string;
-  key?: string;
-  value?: unknown;
-  error?: string;
-}
+import type { ConfigWriteResult } from "@/lib/agent/config-write";
 
 /** The slice of the agent client the config surface needs. Structural, so
  * tests (and any future transport) can satisfy it without the full client
@@ -112,6 +114,31 @@ export function resolveConfigProxyTarget(
     if (host) return { host, apiKey: pairedDrone.apiKey ?? null };
   }
   return null;
+}
+
+/**
+ * The attached direct client, but ONLY when it serves `nodeDeviceId`.
+ *
+ * `agent-connection-store` holds ONE client for the focused node. A surface
+ * rendered for a node is not automatically that node: focus is applied
+ * asynchronously after render, a failed connect leaves the previous node's
+ * client attached, and a node with no LAN credentials never replaces it. Using
+ * the ambient client as if it belonged to the rendered node is how a settings
+ * write lands on the previously connected drone.
+ *
+ * So identity is a parameter. An unknown node id (`null`) resolves NO direct
+ * client rather than the ambient one — the proxy / relay lanes below still
+ * resolve from the pairing records, and `none` is the honest answer when
+ * nothing reaches the node.
+ */
+export function directClientForNode<T>(
+  client: T | null | undefined,
+  attachedDeviceId: string | null | undefined,
+  nodeDeviceId: string | null | undefined,
+): T | null {
+  if (client === null || client === undefined) return null;
+  if (!attachedDeviceId || !nodeDeviceId) return null;
+  return attachedDeviceId === nodeDeviceId ? client : null;
 }
 
 /**

@@ -37,6 +37,7 @@ import {
 } from "lucide-react";
 
 import type { NodeProfile } from "@/components/dashboard/node-detail/surface-types";
+import type { RelayReach } from "@/lib/nodes/relay-reach";
 import { RegulatoryRegionPanel } from "@/components/command/system/RegulatoryRegionPanel";
 import { isDemoMode } from "@/lib/utils";
 import { configAdvertises } from "./use-node-config";
@@ -55,9 +56,21 @@ import { SelfHealSection } from "./SelfHealSection";
 import { MavlinkRoutingSection } from "./MavlinkRoutingSection";
 import { SecuritySection } from "./SecuritySection";
 
-/** Everything a settings page (or its availability gate) needs. */
+/** Everything a settings page (or its availability gate) needs.
+ *
+ * `nodeDeviceId` / `relayReach` identify the node the page is rendered for. A
+ * page that resolves its own transport (the operating-region panel, the
+ * security page's PIN posture read) MUST resolve it from these and never from
+ * `agent-connection-store`, which tracks the focused node and lags this
+ * render — that is how a write lands on the previously connected drone. */
 export interface SettingsPageContext {
   droneId: string;
+  /** The node's agent device id (direct reach), or the relayed drone's own
+   * peer id. Null when the GCS has no identity for it. */
+  nodeDeviceId: string | null;
+  /** The relaying ground station's reach for a WFB-relayed drone, else null.
+   * Identity-stable, so a page may depend on it in an effect. */
+  relayReach: RelayReach | null;
   profile: NodeProfile;
   config: Record<string, unknown> | null;
   readOnly: boolean;
@@ -304,7 +317,12 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
     // Operating region governs the RF radio; a radio-less workstation has no
     // regulatory domain, so the (otherwise blank) page never appears there.
     when: isRadioProfile,
-    render: () => <RegulatoryRegionPanel />,
+    render: (ctx) => (
+      <RegulatoryRegionPanel
+        nodeDeviceId={ctx.nodeDeviceId}
+        relayReach={ctx.relayReach}
+      />
+    ),
   },
   {
     id: "self-heal",
@@ -326,6 +344,7 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
     readsConfig: true,
     render: (ctx) => (
       <SecuritySection
+        nodeDeviceId={ctx.nodeDeviceId}
         config={ctx.config}
         readOnly={ctx.readOnly}
         setValue={ctx.setValue}

@@ -19,7 +19,7 @@ import { loadParamMetadata, type ParamMetadata } from "@/lib/protocol/param-meta
 import { resolveParamDocContext, type ParamDocContext } from "@/lib/protocol/param-docs";
 import { cn } from "@/lib/utils";
 import { RefreshCw, ListTree } from "lucide-react";
-import type { ParameterValue, DroneProtocol } from "@/lib/protocol/types";
+import type { ParameterValue, DroneProtocol, CommandResult } from "@/lib/protocol/types";
 import { exportParamFile } from "./param-file-io";
 
 /** Module-level cache — survives unmount/remount, avoids full re-download on navigation. */
@@ -218,6 +218,13 @@ export function ParametersPanel() {
     if (!protocol || modified.size === 0) return;
     setSaving(true); setError(null);
     const failures: string[] = [];
+    // Which names the FC actually acknowledged. A lossy link makes a batch
+    // PARTIALLY land, and the grid has to show the vehicle's real state: the
+    // writes that succeeded are no longer pending, and the ones that failed
+    // still are. Reporting the whole batch as failed left all N rows marked
+    // modified with their old values, so Save re-wrote what had already landed
+    // and Revert silently discarded the record that the vehicle had changed.
+    const written = new Set<string>();
     const entries = Array.from(modified.entries());
     setWriteProgress({ current: 0, total: entries.length });
     for (let i = 0; i < entries.length; i++) {
@@ -226,23 +233,54 @@ export function ParametersPanel() {
       const param = paramsByName.get(name);
       try {
         const result = await protocol.setParameter(name, value, param?.type);
-        if (!result.success) failures.push(`${name}: ${result.message}`);
+        if (result.success) written.add(name);
+        else failures.push(`${name}: ${result.message}`);
       } catch { failures.push(`${name}: write failed`); }
     }
-    if (failures.length > 0) {
-      setError(`Failed to write ${failures.length} param(s): ${failures.join(", ")}`);
-      toast(`Failed to write ${failures.length} parameter(s)`, "error");
-    } else {
-      const needsReboot = entries.some(([name]) => metadata.get(name)?.rebootRequired);
+
+    // Commit what landed, whether or not the rest did.
+    if (written.size > 0) {
       setParameters((prev) => {
-        const updated = prev.map((p) => { const nv = modified.get(p.name); return nv !== undefined ? { ...p, value: nv } : p; });
+        const updated = prev.map((p) => {
+          const nv = modified.get(p.name);
+          return written.has(p.name) && nv !== undefined ? { ...p, value: nv } : p;
+        });
         cachedParamList = updated; cacheTimestamp = Date.now(); return updated;
       });
-      setModified(new Map());
-      toast(`Wrote ${entries.length} parameter(s) to FC`, "success");
-      // Auto-commit to flash (belt-and-suspenders, fire-and-forget)
-      try { protocol.commitParamsToFlash(); } catch { /* fire-and-forget */ }
-      if (needsReboot) setShowRebootPrompt(true);
+      setModified((prev) => {
+        const next = new Map(prev);
+        for (const name of written) next.delete(name);
+        return next;
+      });
+    }
+
+    if (failures.length > 0) {
+      setError(`Failed to write ${failures.length} of ${entries.length} param(s): ${failures.join(", ")}`);
+    }
+
+    if (written.size > 0) {
+      // Belt-and-braces PREFLIGHT_STORAGE: ArduPilot writes PARAM_SET straight
+      // to EEPROM, and this command is deliberately sent without waiting for an
+      // ack (`acknowledged: false`), so awaiting it does NOT block on the
+      // vehicle — it only reads what the send reported. Claiming "saved to
+      // flash" for a command nothing confirmed is the failure being fixed.
+      let flash: CommandResult | null = null;
+      try { flash = await protocol.commitParamsToFlash(); }
+      catch { flash = null; }
+      const wrote = `Wrote ${written.size}/${entries.length} parameter(s) to FC`;
+      if (!flash || !flash.success) {
+        toast(`${wrote} — flash commit FAILED, changes are RAM-only`, "error");
+      } else if (flash.acknowledged === false) {
+        toast(`${wrote}; flash commit sent (unacknowledged)`, "info");
+      } else {
+        toast(`${wrote} and saved to flash`, "success");
+      }
+      // Only the parameters that landed can require a reboot.
+      if (entries.some(([name]) => written.has(name) && metadata.get(name)?.rebootRequired)) {
+        setShowRebootPrompt(true);
+      }
+    } else {
+      toast(`Failed to write ${failures.length} parameter(s)`, "error");
     }
     setSaving(false); setWriteProgress({ current: 0, total: 0 });
   }, [modified, paramsByName, metadata, toast]);
@@ -252,6 +290,24 @@ export function ParametersPanel() {
   })), [modified, paramsByName]);
 
   const handleRevert = useCallback(() => { setModified(new Map()); }, []);
+
+  /** The reboot the "parameters need a restart" prompt offers. The FC can
+   * refuse the command (wrong mode, armed, unsupported); closing the dialog on
+   * a refusal reads as a reboot that happened, so report the refusal. */
+  const handleReboot = useCallback(async () => {
+    const protocol = useDroneManager.getState().getSelectedProtocol();
+    if (!protocol) { setShowRebootPrompt(false); return; }
+    try {
+      const result = await protocol.reboot();
+      if (!result.success) {
+        toast(result.message || "The FC refused the reboot command", "error");
+      }
+    } catch {
+      toast("Reboot command failed", "error");
+    } finally {
+      setShowRebootPrompt(false);
+    }
+  }, [toast]);
 
   const handleResetConfirm = useCallback(async () => {
     setShowResetConfirm(false);
@@ -355,7 +411,7 @@ export function ParametersPanel() {
         <ParamDefaultsDiff parameters={parameters} modified={modified} metadata={metadata} />
       </Modal>
       <ConfirmDialog open={showRebootPrompt} onCancel={() => setShowRebootPrompt(false)}
-        onConfirm={async () => { const protocol = useDroneManager.getState().getSelectedProtocol(); if (protocol) await protocol.reboot(); setShowRebootPrompt(false); }}
+        onConfirm={handleReboot}
         title={t("rebootTitle")} message={t("rebootMessage")}
         confirmLabel={t("rebootConfirmLabel")} variant="primary" />
     </div>

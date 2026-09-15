@@ -22,6 +22,7 @@ import type { SelectOption } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
+import { directClientForNode } from "@/lib/agent/config-access";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
 import { deriveMavlinkLink, heartbeatAgeLabel } from "@/lib/agent/mavlink-link";
 import { resolveLocalAgentForDrone } from "@/lib/agent/resolve-agent";
@@ -44,11 +45,37 @@ const BAUD_OPTIONS: SelectOption[] = [
   "1500000",
 ].map((b) => ({ value: b, label: b }));
 
-export function FcSourcePicker() {
-  const client = useAgentConnectionStore((s) => s.client);
+/** Shown (and returned from a refused apply) when no direct agent client for
+ * THIS node is attached: the FC-source write is a direct-only endpoint, so
+ * there is no lane for it and the picker says so instead of no-oping. */
+const NO_WRITE_PATH =
+  "No direct LAN connection to this node, so its FC source cannot be changed from here. Select the node to connect to it over the LAN.";
+
+export interface FcSourcePickerProps {
+  /** The node this picker is rendered for. The apply path WRITES this node's
+   * `mavlink.*` config, so it uses the attached client only when that client
+   * serves this node — the connection store tracks the FOCUSED node and lags
+   * the render, and re-pointing a different aircraft's FC source is not a
+   * recoverable mistake from the GCS. */
+  nodeDeviceId: string | null;
+}
+
+export function FcSourcePicker({ nodeDeviceId }: FcSourcePickerProps) {
+  const storeClient = useAgentConnectionStore((s) => s.client);
+  const attachedDeviceId = useAgentConnectionStore((s) => s.nodeDeviceId);
   const cloudMode = useAgentConnectionStore((s) => s.cloudMode);
   const cloudDeviceId = useAgentConnectionStore((s) => s.cloudDeviceId);
   const status = useAgentSystemStore((s) => s.status);
+
+  // The port enumeration and the FC-source write are both direct-only agent
+  // endpoints (the server-side config proxy forwards a fixed path map that
+  // does not include `/api/mavlink/ports`), so this surface needs the client
+  // itself — and only when it is this node's.
+  const client = directClientForNode(
+    storeClient,
+    attachedDeviceId,
+    nodeDeviceId,
+  );
 
   const [ports, setPorts] = useState<MavlinkPort[]>([]);
   const [source, setSource] = useState<FcSource>("auto");
@@ -92,11 +119,18 @@ export function FcSourcePicker() {
   }, [loadPorts]);
 
   const apply = useCallback(async () => {
-    if (!client || typeof client.setMavlinkSource !== "function") return;
+    if (!client || typeof client.setMavlinkSource !== "function") {
+      // Not reachable from the UI (Apply is disabled without a client), but a
+      // silent return here would be a write the operator thinks happened.
+      setError(NO_WRITE_PATH);
+      return;
+    }
     setApplying(true);
     setApplied(false);
     setError(null);
     try {
+      // Throws when the agent rejected a value or could not write it to disk,
+      // so "applied" below is never claimed for a change that did not land.
       await client.setMavlinkSource(source, {
         serialPort: source === "serial" ? serialPort || undefined : undefined,
         baudRate: source === "serial" ? Number(baud) : undefined,
@@ -216,7 +250,10 @@ export function FcSourcePicker() {
           variant="secondary"
           size="sm"
           loading={applying}
-          disabled={applying || (source === "serial" && !serialPort)}
+          disabled={
+            !client || applying || (source === "serial" && !serialPort)
+          }
+          title={!client ? NO_WRITE_PATH : undefined}
           onClick={() => void apply()}
         >
           Apply
@@ -252,6 +289,7 @@ export function FcSourcePicker() {
         ) : null}
       </div>
 
+      {!client && <p className="text-xs text-text-tertiary">{NO_WRITE_PATH}</p>}
       {error && <p className="text-xs text-status-error">{error}</p>}
     </div>
   );

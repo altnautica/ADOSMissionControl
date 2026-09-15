@@ -2,8 +2,8 @@
 
 /**
  * @module command/system/RegulatoryRegionPanel
- * @description Writable operating-region control for the focused agent's
- * radio. A fresh agent ships UNRESTRICTED: it brings the radio up and
+ * @description Writable operating-region control for one node's radio.
+ * A fresh agent ships UNRESTRICTED: it brings the radio up and
  * transmits on the configured channel without a verified regulatory
  * domain. The operator opts into a region (an ISO 3166-1 alpha-2 country
  * code) to re-enable the strict regulatory gate and the region's legal
@@ -13,11 +13,15 @@
  * The live posture is read back from the heartbeat (`regPosture` /
  * `pinnedRegion` / `regVerified`, falling back to `regDomain`) so the
  * operator sees the effective state confirm the round-trip. Writes ride
- * the shared config-access resolution: the direct agent client over the
- * LAN when one is attached (local-first, zero cloud round-trip), else the
- * server-side config proxy against the stored LAN pairing — so a cloud
- * session stays writable. The control degrades to read-only only when no
- * path reaches the node at all.
+ * the shared config-access resolution FOR THE NODE THIS PANEL IS RENDERED
+ * FOR — its device id and (for a WFB-relayed drone) its relay reach arrive
+ * as props, never from the focused-node connection store: that store lags
+ * the render, so an ambient resolution can pin a region on the previously
+ * connected aircraft. The direct client carries the write only when it is
+ * attached to this node; otherwise the server-side config proxy against
+ * this node's stored LAN pairing does, so a cloud session stays writable,
+ * and a relayed drone writes over its ground station's relay-proxy. The
+ * control degrades to read-only only when no path reaches the node.
  * @license GPL-3.0-only
  */
 
@@ -29,9 +33,12 @@ import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useLocalNodesStore } from "@/stores/local-nodes-store";
 import { usePairingStore } from "@/stores/pairing-store";
 import {
+  directClientForNode,
   resolveConfigAccess,
   setConfigValueViaAccess,
 } from "@/lib/agent/config-access";
+import { configWriteFailure } from "@/lib/agent/config-write";
+import type { RelayReach } from "@/lib/nodes/relay-reach";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Select, type SelectOption } from "@/components/ui/select";
@@ -45,12 +52,24 @@ import {
 } from "@/lib/operating-region";
 import { UnrestrictedRegionBadge } from "./UnrestrictedRegionBadge";
 
-export function RegulatoryRegionPanel() {
+export interface RegulatoryRegionPanelProps {
+  /** The node this panel is rendered for: its agent device id (direct reach),
+   * or a WFB-relayed drone's own peer id. Null when the GCS has no identity
+   * for it, which resolves read-only rather than writing somewhere else. */
+  nodeDeviceId: string | null;
+  /** The relaying ground station's reach, for a drone with no address of its
+   * own. Null for a directly-paired node. */
+  relayReach?: RelayReach | null;
+}
+
+export function RegulatoryRegionPanel({
+  nodeDeviceId,
+  relayReach = null,
+}: RegulatoryRegionPanelProps) {
   const radio = useAgentCapabilitiesStore((s) => s.radio);
   const radioStackState = useAgentCapabilitiesStore((s) => s.radioStackState);
-  const client = useAgentConnectionStore((s) => s.client);
-  const nodeDeviceId = useAgentConnectionStore((s) => s.nodeDeviceId);
-  const activeUrl = useAgentConnectionStore((s) => s.agentUrl);
+  const storeClient = useAgentConnectionStore((s) => s.client);
+  const attachedDeviceId = useAgentConnectionStore((s) => s.nodeDeviceId);
   const setNodeRegion = useLocalNodesStore((s) => s.setNodeRegion);
   const nodes = useLocalNodesStore((s) => s.nodes);
   const pairedDrones = usePairingStore((s) => s.pairedDrones);
@@ -82,22 +101,24 @@ export function RegulatoryRegionPanel() {
       : "unrestricted";
   const regVerified = radio?.regVerified ?? null;
 
-  // Resolve the per-node device id for the focused agent so the chosen
-  // region is remembered across a re-pair / re-flash of that same node.
-  // Device-id match first (works in cloud mode, where no direct agent URL
-  // is attached); hostname match covers pre-device-id connects.
+  // The node's own LAN record, so the chosen region is remembered across a
+  // re-pair / re-flash of that same node. Keyed strictly by the rendered
+  // node's device id — an `agentUrl` fallback would match whichever node the
+  // connection store currently holds, i.e. the wrong one.
   const activeNode =
     nodes.find((n) => nodeDeviceId !== null && n.deviceId === nodeDeviceId) ??
-    nodes.find((n) => n.hostname === activeUrl) ??
     null;
 
-  // Shared writable-path resolution: direct client, else the server-side
-  // config proxy against the stored LAN pairing, read-only only when no
-  // path reaches the node at all.
-  const access = resolveConfigAccess(client, nodeDeviceId, {
-    localNodes: nodes,
-    pairedDrones,
-  });
+  // Shared writable-path resolution for THIS node: its direct client when the
+  // attached one serves it, else the server-side config proxy against its
+  // stored LAN pairing, else its ground station's relay-proxy, and read-only
+  // only when no path reaches it at all.
+  const access = resolveConfigAccess(
+    directClientForNode(storeClient, attachedDeviceId, nodeDeviceId),
+    nodeDeviceId,
+    { localNodes: nodes, pairedDrones },
+    relayReach,
+  );
   const readOnly = access.mode === "none";
 
   const options: SelectOption[] = [
@@ -147,23 +168,28 @@ export function RegulatoryRegionPanel() {
     try {
       // Mode first, then region. The agent coerces both at its config
       // boundary; an empty region string clears any prior pin. The writes
-      // ride whichever transport resolved (direct client or config proxy).
-      const modeRes = await setConfigValueViaAccess(
-        access,
-        "network.regulatory.mode",
-        resolvedMode,
+      // ride whichever transport resolved for this node.
+      //
+      // `configWriteFailure` covers both halves of the agent's
+      // 200-means-nothing contract: a rejected value (`{error}`) and a value
+      // taken in RAM but never written to disk (`persisted: false`). A legal
+      // RF posture that dies at the next restart must not report "applied".
+      const modeFailure = configWriteFailure(
+        await setConfigValueViaAccess(
+          access,
+          "network.regulatory.mode",
+          resolvedMode,
+        ),
       );
-      if (modeRes && typeof modeRes.error === "string") {
-        throw new Error(modeRes.error);
-      }
-      const regionRes = await setConfigValueViaAccess(
-        access,
-        "network.regulatory.region",
-        resolvedRegion ?? "",
+      if (modeFailure) throw new Error(modeFailure);
+      const regionFailure = configWriteFailure(
+        await setConfigValueViaAccess(
+          access,
+          "network.regulatory.region",
+          resolvedRegion ?? "",
+        ),
       );
-      if (regionRes && typeof regionRes.error === "string") {
-        throw new Error(regionRes.error);
-      }
+      if (regionFailure) throw new Error(regionFailure);
       // Remember the choice against this node so a re-pair / re-flash can
       // re-apply it. Keyed by the agent's stable device id.
       if (activeNode) {
