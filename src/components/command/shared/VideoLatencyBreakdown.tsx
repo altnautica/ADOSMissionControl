@@ -138,17 +138,13 @@ export function VideoLatencyBreakdown({
     typeof (window as unknown as { RTCRtpScriptTransform?: unknown })
       .RTCRtpScriptTransform !== "undefined";
 
-  const seiEnabled = latency.airSource === "sei";
   const hasG2G = latency.trueG2GMs !== null;
-  // True when the GCS is reaching the drone via cloud relay rather than
-  // LAN-direct. The /api/video/latency and /api/time pollers hit the
-  // agent's LAN URL, which is unreachable when the browser is on a
-  // different network — they fail silently and leave airSource as null.
-  // Surface a distinct message so the operator doesn't chase a phantom
-  // "SEI is off" hint.
-  const cloudTransport =
-    transport === "cloud-whep" || transport === "cloud-mse";
-  const lanPollUnreachable = latency.airSource === null && cloudTransport;
+  // There is no cloud-transport branch here any more. It read
+  // `transport === "cloud-whep" || transport === "cloud-mse"` — two values
+  // nothing could ever set — so `lanPollUnreachable` was permanently false
+  // and both of the notes it guarded were unreachable text. The honest
+  // "AIR / G2G not measured" reasons are the ones below: no script
+  // transform, SEI off on the agent, or still waiting for the first sample.
   const bitrateLabel =
     bitrateKbps > 0
       ? bitrateKbps >= 1000
@@ -241,13 +237,9 @@ export function VideoLatencyBreakdown({
                     <Note>
                       {!supportsScriptTransform
                         ? "Not measured — this browser does not expose RTCRtpScriptTransform. Use a recent Chromium-based browser to enable true glass-to-glass."
-                        : lanPollUnreachable
-                          ? "Not measured over cloud relay — AIR / G2G metrics need a LAN-direct connection to the agent. Switch transport to LAN to see them."
-                          : latency.airSource === "unavailable"
-                            ? "Not measured — SEI is off on the agent. Set wfb.sei_latency: true in /etc/ados/config.yaml and restart ados-supervisor."
-                            : !seiEnabled
-                              ? "Measuring… waiting for the first SEI sample to land."
-                              : "Measuring… waiting for the first SEI sample to land."}
+                        : latency.airSource === "unavailable"
+                          ? "Not measured — SEI is off on the agent. Set wfb.sei_latency: true in /etc/ados/config.yaml and restart ados-supervisor."
+                          : "Measuring… waiting for the first SEI sample to land."}
                     </Note>
                   )}
                 </Section>
@@ -257,13 +249,7 @@ export function VideoLatencyBreakdown({
                   title="Air side"
                   subtitle="camera → drone LCD tap"
                 >
-                  {lanPollUnreachable ? (
-                    <Note>
-                      Unreachable over cloud relay. The agent emits these
-                      metrics on its LAN interface; connect to the drone
-                      on the same network to see them.
-                    </Note>
-                  ) : latency.airSource === "unavailable" ? (
+                  {latency.airSource === "unavailable" ? (
                     <Note>
                       SEI is off on the agent. Enable
                       wfb.sei_latency: true in /etc/ados/config.yaml

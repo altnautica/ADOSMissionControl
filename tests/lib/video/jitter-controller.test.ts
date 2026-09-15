@@ -1,14 +1,21 @@
 /**
  * Regression net for the measured jitter-buffer target.
  *
- * The bug: `jitterBufferTarget = 50` hardcoded, described in the source as
- * "the FPV-grade default". No measurement produced 50, and it is wrong in
- * both directions — pure latency tax on a clean LAN, too shallow to conceal a
- * loss burst on a radio link.
+ * The original bug: `jitterBufferTarget = 50` hardcoded, described in the
+ * source as "the FPV-grade default". No measurement produced 50.
  *
- * What has to hold: the target starts at "add nothing", moves only on
- * measured harm, cannot oscillate, cannot leave the spec's accepted range,
- * and the two receiver knobs get their values in their own units.
+ * The second bug, which these tests now pin: the ladder started at rung 0 and
+ * the target was written BEFORE `setRemoteDescription`, where it does not
+ * survive the receiver's association with the negotiated media description.
+ * So the receiver ran on the browser's own adaptive target — commonly 200 ms
+ * and more — while the code claimed to have asked for nothing. The loop now
+ * starts at a deliberate 100 ms baseline applied after the answer, and can
+ * still relax BELOW it to 0 on a link that measures clean.
+ *
+ * What has to hold: the target starts at the negotiated baseline, moves only
+ * on measured harm, can return below the baseline on a sustained clean run,
+ * cannot oscillate, cannot leave the spec's accepted range, and the two
+ * receiver knobs get their values in their own units.
  */
 
 import { describe, expect, it, vi } from "vitest";
@@ -19,10 +26,12 @@ import {
   jitterTargetForRung,
   nextJitterTarget,
   CLEAN_WINDOWS_TO_RELAX,
+  INITIAL_JITTER_RUNG,
   JITTER_ESCALATE_MS,
   JITTER_TARGET_LADDER_MS,
   JITTER_TARGET_MAX_MS,
   MIN_DWELL_MS,
+  NEGOTIATED_JITTER_TARGET_MS,
   type JitterSample,
 } from "@/lib/video/webrtc/jitter-controller";
 
@@ -33,9 +42,15 @@ const CLEAN: Omit<JitterSample, "nowMs"> = {
 };
 
 describe("jitter target ladder", () => {
-  it("starts at zero: no buffer until something measured asks for one", () => {
-    expect(initialJitterState().rung).toBe(0);
+  it("starts at the deliberate 100 ms baseline, not at the browser default", () => {
+    expect(initialJitterState().rung).toBe(INITIAL_JITTER_RUNG);
+    expect(NEGOTIATED_JITTER_TARGET_MS).toBe(100);
+    expect(jitterTargetForRung(INITIAL_JITTER_RUNG)).toBe(100);
+  });
+
+  it("keeps a rung BELOW the baseline, so a clean link can pay nothing", () => {
     expect(jitterTargetForRung(0)).toBe(0);
+    expect(INITIAL_JITTER_RUNG).toBeGreaterThan(0);
   });
 
   it("clamps a rung outside the ladder into the spec range", () => {
@@ -57,7 +72,9 @@ describe("escalation on measured harm", () => {
     });
     expect(decision.reason).toBe("freeze");
     expect(decision.changed).toBe(true);
-    expect(decision.targetMs).toBe(JITTER_TARGET_LADDER_MS[1]);
+    expect(decision.targetMs).toBe(
+      JITTER_TARGET_LADDER_MS[INITIAL_JITTER_RUNG + 1],
+    );
   });
 
   it("steps up on RTP jitter at or above a frame period", () => {
@@ -67,7 +84,7 @@ describe("escalation on measured harm", () => {
       nowMs: 1_000,
     });
     expect(decision.reason).toBe("jitter");
-    expect(decision.targetMs).toBeGreaterThan(0);
+    expect(decision.targetMs).toBeGreaterThan(NEGOTIATED_JITTER_TARGET_MS);
   });
 
   it("steps up on packet loss above the threshold", () => {
@@ -85,7 +102,7 @@ describe("escalation on measured harm", () => {
       nowMs: 1_000,
     });
     expect(decision.changed).toBe(false);
-    expect(decision.targetMs).toBe(0);
+    expect(decision.targetMs).toBe(NEGOTIATED_JITTER_TARGET_MS);
   });
 
   it("stops at the top of the ladder", () => {
@@ -165,7 +182,7 @@ describe("hysteresis", () => {
       nowMs: now,
     });
     const escalated = state.rung;
-    expect(escalated).toBe(1);
+    expect(escalated).toBe(INITIAL_JITTER_RUNG + 1);
 
     for (let i = 0; i < CLEAN_WINDOWS_TO_RELAX - 1; i += 1) {
       now += WINDOW_MS;
@@ -188,10 +205,13 @@ describe("hysteresis", () => {
     expect(state.rung).toBe(escalated);
   });
 
-  it("stays at the bottom of the ladder on a permanently clean link", () => {
+  it("relaxes BELOW the negotiated baseline on a permanently clean link", () => {
+    // The baseline is a deliberate starting depth, not a floor: a link that
+    // measures clean for long enough should pay nothing for a buffer it does
+    // not need.
     let state = initialJitterState();
     let now = 0;
-    for (let i = 0; i < CLEAN_WINDOWS_TO_RELAX * 3; i += 1) {
+    for (let i = 0; i < CLEAN_WINDOWS_TO_RELAX * 4; i += 1) {
       now += 1_000;
       state = nextJitterTarget(state, { ...CLEAN, nowMs: now });
     }

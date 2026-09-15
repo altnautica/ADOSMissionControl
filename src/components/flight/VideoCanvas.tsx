@@ -38,8 +38,35 @@ interface VideoCanvasProps {
 
 const WHEP_PRESETS = [
   { label: "Gazebo SITL", url: "http://localhost:8889/gazebo-cam/whep" },
-  { label: "Agent (local)", url: "http://192.168.1.50:8889/stream/whep" },
+  // A genuinely local example. The second entry used to be a fixed private
+  // LAN address on mediamtx's port, presented to operators as "Agent
+  // (local)" — a preset that works for nobody but the developer whose
+  // network it was, and one that teaches the wrong port: the agent's own
+  // front is :8080, not :8889.
+  { label: "Agent (this host)", url: "http://localhost:8080/whep" },
 ];
+
+/**
+ * Which node is actually producing the picture, derived from which URL won
+ * the resolution order below.
+ *
+ * The placeholder used to collapse to the single string "NO SIGNAL" for three
+ * different conditions, and `agentPresent` folded direct, cloud and
+ * ground-relayed reachability into one boolean — so on a ground station an
+ * operator could not tell whether the radio link was down, the drone was not
+ * streaming, or this node simply has no camera. Worse, a relayed feed (decoded
+ * by a ground station and republished, with materially higher latency) was
+ * indistinguishable from a direct one.
+ */
+type VideoSource = "manual" | "direct" | "relayed" | "cloud" | "none";
+
+const SOURCE_BADGE: Record<VideoSource, string | null> = {
+  manual: "MANUAL",
+  direct: "DIRECT",
+  relayed: "VIA GROUND",
+  cloud: "VIA CLOUD",
+  none: null,
+};
 
 export function VideoCanvas({ children, className, hideRecordButton = false, droneId }: VideoCanvasProps) {
   const isStreaming = useVideoStore((s) => s.isStreaming);
@@ -84,6 +111,14 @@ export function VideoCanvas({ children, className, hideRecordButton = false, dro
   const cameraUsbRecovery = useAgentCapabilitiesStore(
     (s) => s.cameraUsbRecovery,
   );
+  // Whether this node advertises ANY camera. A node with an empty roster has
+  // no video to be missing, so it gets "NO CAMERA ON THIS NODE" rather than
+  // a NO SIGNAL that implies a broken link — the common case on a ground
+  // station, where the cockpit surface is registered regardless.
+  const hasCameraCapability = useAgentCapabilitiesStore(
+    (s) => s.cameras.length > 0,
+  );
+  const degradedReason = useVideoStore((s) => s.degradedReason);
 
   // Per-drone manual override (SITL / Gazebo / forced URL), persisted in
   // drone metadata. When set it wins over the auto-discovered agent URL.
@@ -100,9 +135,22 @@ export function VideoCanvas({ children, className, hideRecordButton = false, dro
   };
 
   // Manual override wins, then the stream switcher's selected concurrent leg,
-  // then the auto-discovered default agent URL.
+  // then the auto-discovered default agent URL, then a ground station's
+  // funneled republish of this drone's downlink.
   const effectiveWhepUrl =
     manualUrl || whepUrlOverride || agentWhepUrl || funneledWhepUrl;
+
+  // Which of those won, so the surface can NAME the producer instead of
+  // implying every feed is equivalent. Same precedence, one branch per rung.
+  const videoSource: VideoSource = manualUrl
+    ? "manual"
+    : whepUrlOverride || agentWhepUrl
+      ? agentConnected
+        ? "direct"
+        : "cloud"
+      : funneledWhepUrl
+        ? "relayed"
+        : "none";
 
   // Callback ref so the cascade hook re-runs once the <video> element mounts.
   // A plain useRef never triggers a re-render, so the cascade would see
@@ -194,21 +242,35 @@ export function VideoCanvas({ children, className, hideRecordButton = false, dro
     agentConnected || Boolean(cloudDeviceId) || Boolean(funneledWhepUrl);
   const offerManualConfig = !agentPresent && !effectiveWhepUrl;
 
+  // Placeholder label. Each branch names a DISTINCT condition; the three
+  // different situations that used to share the bare string "NO SIGNAL" are
+  // now separated, because on a ground station an operator has to be able to
+  // tell a down radio link from a drone that is not streaming from a node
+  // that has no camera at all.
   const placeholderLabel = showConnecting
     ? "CONNECTING..."
     : airCameraRecovering
       ? "CAMERA RECOVERING..."
       : airCameraMissing
         ? "NO CAMERA"
-        : cascadeError
-          ? "NO SIGNAL"
-          : agentPresent
-            ? resolvedAgentVideoState === "running"
+        : videoSource === "none"
+          ? hasCameraCapability
+            ? "NO VIDEO SOURCE"
+            : "NO CAMERA ON THIS NODE"
+          : cascadeError
+            ? videoSource === "relayed"
+              ? "NO SIGNAL FROM GROUND RELAY"
+              : "NO SIGNAL"
+            : resolvedAgentVideoState === "running"
               ? "NO SIGNAL"
-              : "VIDEO OFFLINE"
-            : effectiveWhepUrl
-              ? "NO SIGNAL"
-              : "NO VIDEO SOURCE";
+              : agentPresent
+                ? "VIDEO OFFLINE"
+                : "NO SIGNAL";
+
+  // Which node owns the picture, shown under the placeholder and beside the
+  // stats while streaming. `VIA GROUND` and `DIRECT` have materially
+  // different latency, so conflating them is a piloting-relevant omission.
+  const sourceBadge = SOURCE_BADGE[videoSource];
 
   return (
     <div
@@ -250,6 +312,17 @@ export function VideoCanvas({ children, className, hideRecordButton = false, dro
             <span className="text-sm font-mono text-text-tertiary tracking-wider">
               {placeholderLabel}
             </span>
+            {/* Which node the absent video belongs to. Without it, a NO
+                SIGNAL on a ground station says nothing about whose camera
+                is missing. */}
+            {sourceBadge && (
+              <span
+                className="text-[10px] font-mono tracking-wider text-text-tertiary"
+                data-video-source={videoSource}
+              >
+                {sourceBadge}
+              </span>
+            )}
             {cascadeError && (
               <span className="text-[10px] text-status-error max-w-[200px] text-center">
                 {cascadeError}
@@ -273,6 +346,24 @@ export function VideoCanvas({ children, className, hideRecordButton = false, dro
               </button>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Degraded band. The receive path is still installed and the last
+          decoded frame is still on screen, but nothing is arriving. Without
+          this the operator saw a frozen picture with a green transport badge
+          and stale-but-nonzero stats — a paused feed reading as healthy. */}
+      {hasVideo && degradedReason && (
+        <div
+          className="absolute inset-x-0 top-0 z-20 flex items-center justify-center gap-2 bg-status-error/85 px-2 py-1"
+          data-video-degraded={degradedReason}
+          role="status"
+        >
+          <span className="text-[11px] font-mono font-semibold tracking-wider text-white">
+            {degradedReason === "ice-disconnect"
+              ? "LINK LOST — PICTURE FROZEN, RECONNECTING"
+              : "NO FRAMES — PICTURE FROZEN, RECONNECTING"}
+          </span>
         </div>
       )}
 
@@ -364,8 +455,16 @@ export function VideoCanvas({ children, className, hideRecordButton = false, dro
 
       {/* Top-right: Video stats + config gear */}
       <div className="absolute top-3 right-3 z-10 flex items-center gap-2">
+        {/* The live source, beside the stats, for the same reason it appears
+            under the placeholder: DIRECT and VIA GROUND are different
+            latencies and an operator must be able to tell which they have. */}
+        {hasVideo && sourceBadge && (
+          <Badge variant="neutral" size="sm" data-video-source={videoSource}>
+            {sourceBadge}
+          </Badge>
+        )}
         <Badge variant="neutral" size="sm">
-          {resolution}
+          {resolution || "—"}
         </Badge>
         <Badge
           variant={fps > 0 ? "success" : "neutral"}
@@ -373,11 +472,14 @@ export function VideoCanvas({ children, className, hideRecordButton = false, dro
         >
           {fps} FPS
         </Badge>
+        {/* Explicitly `net`: this is RTT plus decoder buffer wait, not a
+            glass-to-glass figure. An unqualified "ms" here read as
+            end-to-end and understated the real delay by roughly 10x. */}
         <Badge
           variant={latencyMs > 200 ? "warning" : latencyMs > 0 ? "success" : "neutral"}
           size="sm"
         >
-          {latencyMs}ms
+          {latencyMs}ms net
         </Badge>
         <button
           onClick={() => { setConfigUrl(manualUrl); setShowConfig(!showConfig); }}

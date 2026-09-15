@@ -15,6 +15,12 @@
  * overlays drop their boxes, and `attitude: null` once the attitude samples
  * behind it have gone stale.
  *
+ * Frame alignment: the attitude is the sample that was true at
+ * `now - frameAgeMs`, not the newest one, so it belongs to the same instant
+ * as the frame the overlay is drawn over. `frameAgeMs` and
+ * `attitudeAtFrameTime` state which of those the payload actually carries, so
+ * an overlay never has to guess whether the two halves share a clock.
+ *
  * @module plugins/video-overlay-props
  * @license GPL-3.0-only
  */
@@ -66,6 +72,15 @@ export interface VideoOverlayHostProps {
   /** Timestamp (ms) of the frame the detections/attitude are coalesced to. */
   frameTimestampMs: number;
   /**
+   * Measured age of the frame on screen, in ms, or `null` when no estimator
+   * knows it.
+   *
+   * The host's own delay estimate, from `lib/video/frame-age`. An overlay
+   * that does its own dead reckoning or lead computation needs this: it is
+   * the offset between the picture and the live world.
+   */
+  frameAgeMs: number | null;
+  /**
    * Latest attitude in degrees, or `null` when it is unknown or stale.
    *
    * Nullable on purpose, for the same reason `HorizonSvg` made its own
@@ -77,5 +92,17 @@ export interface VideoOverlayHostProps {
    * zero.
    */
   attitude: { rollDeg: number; pitchDeg: number; yawDeg: number } | null;
+  /**
+   * Whether `attitude` is the sample that was true when the frame was
+   * captured, rather than the newest sample available.
+   *
+   * `true` when the host knew the frame age and reached back by it; `false`
+   * when it did not and handed over the newest sample instead. The payload
+   * used to pair a timestamped frame with an untimestamped current attitude
+   * and ship both as one instant, so an overlay could not even correct for
+   * the skew. Now it can: `false` plus a `null` `frameAgeMs` says "these two
+   * are from different moments and I cannot tell you how far apart".
+   */
+  attitudeAtFrameTime: boolean;
   detections: VideoOverlayDetections | null;
 }

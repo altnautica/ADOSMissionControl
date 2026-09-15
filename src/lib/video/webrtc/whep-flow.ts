@@ -17,18 +17,14 @@ import { useVideoStore, type VideoTransport } from "@/stores/video-store";
 import {
   LAN_ICE_GATHER_TIMEOUT_MS,
   LAN_ONTRACK_TIMEOUT_MS,
+  type TimerHandle,
 } from "../webrtc-constants";
 import {
   abortable,
   checkAborted,
   classifyError,
 } from "../webrtc-helpers";
-import { applyJitterTarget, jitterTargetForRung } from "./jitter-controller";
-import {
-  closePeerConnection,
-  reportHealth,
-  tryIceRestart,
-} from "./peer-utils";
+import { closePeerConnection, reportHealth } from "./peer-utils";
 import { attachSeiTransform } from "./sei-transform";
 import {
   acquireSession,
@@ -37,7 +33,23 @@ import {
   setPc,
   whepSessionKey,
 } from "./session-state";
-import { startStatsPolling, stopStatsPolling } from "./stats-tracker";
+import {
+  applyNegotiatedJitterTarget,
+  startStatsPolling,
+  stopStatsPolling,
+} from "./stats-tracker";
+
+/**
+ * How long a `disconnected` peer connection is given to come back on its own
+ * before the session is re-cascaded.
+ *
+ * ICE can recover from a WiFi/radio glitch without a new offer, so tearing
+ * down on the first `disconnected` event would throw away a session that was
+ * about to resume. Three seconds is long enough for that recovery and short
+ * enough that a link which is genuinely gone is re-dialled while the operator
+ * is still looking at the same manoeuvre.
+ */
+const ICE_DISCONNECT_GRACE_MS = 3000;
 
 /**
  * Acquire the LAN-direct WHEP stream at `whepUrl`.
@@ -92,6 +104,14 @@ async function negotiateWhep(
   // switching modes) and we don't want stale handlers to operate on the
   // wrong one.
   let localPc: RTCPeerConnection | null = null;
+  // Armed while this connection sits in `disconnected`, cleared the moment it
+  // comes back. Module-free so a second negotiation cannot inherit it.
+  let disconnectGrace: TimerHandle | null = null;
+  const clearDisconnectGrace = () => {
+    if (disconnectGrace === null) return;
+    clearTimeout(disconnectGrace);
+    disconnectGrace = null;
+  };
   try {
     checkAborted(signal);
 
@@ -108,12 +128,53 @@ async function negotiateWhep(
     newPc.onconnectionstatechange = () => {
       if (newPc !== getPc()) return; // a newer pc has taken over
       const state = newPc.connectionState;
+      const s = useVideoStore.getState();
       if (state === "disconnected") {
-        console.warn("[webrtc-client] LAN WHEP disconnected — attempting ICE restart");
-        tryIceRestart(newPc);
-      } else if (state === "failed" || state === "closed") {
+        // `disconnected` used to fire a bare `restartIce()` and nothing
+        // else: no store write, no health report, no recovery that could
+        // ever reach mediamtx (WHEP has no in-place renegotiation and this
+        // flow keeps no resource URL to PATCH). The operator was left with
+        // a frozen frame, a green transport badge, and no reconnection —
+        // the exact "process is alive so the work must be happening"
+        // failure the delta-counter rule exists to prevent.
+        //
+        // It is now an OBSERVABLE, RECOVERABLE state: the surfaces learn
+        // about it immediately, and if connectivity has not returned inside
+        // the grace window the stall edge re-cascades the session (the same
+        // edge the frozen-stream watchdog raises). No attempt cap, no
+        // terminal state — the retry loop above this runs until the link
+        // comes back.
+        console.warn(
+          "[webrtc-client] LAN WHEP disconnected — degraded, re-cascading if it does not recover",
+        );
+        s.setVideoDegraded("ice-disconnect");
+        reportHealth(transport, {
+          state: "failed",
+          stage: "connected",
+          code: "ice-disconnect",
+          error: "ICE disconnected",
+        });
+        if (disconnectGrace === null) {
+          disconnectGrace = setTimeout(() => {
+            disconnectGrace = null;
+            if (newPc !== getPc()) return;
+            if (newPc.connectionState === "connected") return;
+            useVideoStore.getState().signalVideoStall();
+          }, ICE_DISCONNECT_GRACE_MS);
+        }
+        return;
+      }
+      if (state === "connected") {
+        // Recovered on its own inside the grace window.
+        clearDisconnectGrace();
+        s.setVideoDegraded(null);
+        reportHealth(transport, { state: "ok", stage: "connected" });
+        return;
+      }
+      if (state === "failed" || state === "closed") {
         console.warn("[webrtc-client] LAN WHEP terminal state:", state);
-        const s = useVideoStore.getState();
+        clearDisconnectGrace();
+        s.setVideoDegraded(null);
         s.setStreaming(false);
         s.updateStats(0, 0);
         stopStatsPolling();
@@ -126,29 +187,23 @@ async function negotiateWhep(
       }
     };
 
-    // Receive-only transceivers. The receiver-side latency knobs are set
-    // before negotiation so the first frames are not buffered against a
-    // default nobody chose.
+    // Receive-only transceivers.
     //
-    // The starting depth is ladder rung 0 — add nothing — rather than the
-    // 50 ms this used to hardcode and call "the FPV-grade default". No
-    // measurement produced 50, and it is wrong in both directions: pure
-    // latency tax on a clean LAN, and far too shallow to conceal a loss
-    // burst on a radio link. From here the depth is a closed loop over what
-    // the receiver actually measures (`jitter-controller`, driven from the
-    // 1 Hz stats poll), so it lands where the link puts it instead of where
-    // a constant guessed.
+    // The receiver's jitter-buffer depth is NOT set here. It used to be —
+    // `applyJitterTarget(pc, jitterTargetForRung(0))` right after
+    // `addTransceiver` — and that write does not survive the transceiver
+    // being associated with the negotiated media description, so every
+    // session ran on the browser's own adaptive target (commonly 200 ms and
+    // more on Chromium) while this line claimed otherwise. The deliberate
+    // baseline is applied after `setRemoteDescription` below, which is the
+    // first point at which it sticks.
     //
     // Distinct from the previously-removed mungeForLowLatency() SDP hack.
     // That pinned Chrome's MINIMUM jitter buffer via the conference flag
-    // and caused decoder stalls on WiFi reordering. These are
-    // *receiver-side runtime properties* — a target, not a floor — so the
-    // failure mode of the prior approach does not apply.
+    // and caused decoder stalls on WiFi reordering. The receiver property is
+    // a target, not a floor, so the failure mode of the prior approach does
+    // not apply.
     localPc.addTransceiver("video", { direction: "recvonly" });
-    // Reports 0 on a browser that implements neither property (WebKit
-    // implements neither and cannot be tuned from JS at all), which is the
-    // honest answer rather than a silent assumption that it took effect.
-    applyJitterTarget(localPc, jitterTargetForRung(0));
     localPc.addTransceiver("audio", { direction: "recvonly" });
 
     const offer = await abortable(localPc.createOffer(), signal);
@@ -216,6 +271,19 @@ async function negotiateWhep(
     });
 
     await abortable(localPc.setRemoteDescription({ type: "answer", sdp: answerSdp }), signal);
+
+    // The deliberate receiver buffer depth, applied HERE and nowhere else on
+    // this path. `setRemoteDescription` is the first moment the video
+    // transceiver's receiver is associated with the negotiated media
+    // description; a target written before that is discarded by the
+    // association, which is why this used to sit above `createOffer` and do
+    // nothing. It is also before the first frame arrives (ontrack is still
+    // pending below), so no frame is ever presented against a depth nobody
+    // chose. Reports 0 tuned receivers on a browser that implements neither
+    // knob — WebKit implements neither and cannot be tuned from JS at all —
+    // which is the honest answer rather than a silent assumption.
+    applyNegotiatedJitterTarget(localPc);
+
     const stream = await abortable(trackPromise, signal);
     checkAborted(signal);
 
@@ -227,8 +295,8 @@ async function negotiateWhep(
 
     store.setStreamUrl(whepUrl);
     store.setStreaming(true);
-    // Classify and publish the active transport so the UI can show
-    // "LAN DIRECT" / "CLOUD WHEP" badges.
+    store.setVideoDegraded(null);
+    // Publish the active transport so the UI can show its badge.
     store.setTransport(transport);
     // Report success with connection establishment time (NOT live RTT,
     // which is tracked separately).
@@ -249,6 +317,7 @@ async function negotiateWhep(
   } catch (err) {
     // Tear down the local pc on any failure. Only clear the global if we're
     // still the active pc (a parallel call may have already replaced us).
+    clearDisconnectGrace();
     if (localPc) {
       closePeerConnection(localPc);
       if (localPc === getPc()) setPc(null);

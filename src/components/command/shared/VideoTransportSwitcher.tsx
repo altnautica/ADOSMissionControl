@@ -65,8 +65,6 @@ interface Props {
 const TRANSPORT_LABELS: Record<VideoTransport, string> = {
   "lan-whep": "LAN DIRECT",
   "p2p-mqtt": "P2P MQTT",
-  "cloud-whep": "CLOUD WHEP",
-  "cloud-mse": "CLOUD MSE",
   "off": "OFF",
   "unknown": "—",
 };

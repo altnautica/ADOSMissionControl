@@ -38,6 +38,12 @@ export function MiniVideoView() {
   const transportMode = useSettingsStore((s) => s.videoTransportMode);
   const clientConfig = useConvexSkipQuery(communityApi.clientConfig.get);
   const playerRef = useRef<{ stop: () => void } | null>(null);
+  // The real cloud-relay failure reason, or null. The MSE player reported
+  // every one of `mse-unsupported` / `codec-unknown` / `codec-unsupported` /
+  // `source-buffer-rejected` to the console only, because this surface passed
+  // no `onError` — so a relay that was unreachable and a camera that was off
+  // looked identical: a black rectangle with `cloudStreaming` reading true.
+  const [cloudError, setCloudError] = useState<string | null>(null);
 
   // Callback ref so the cascade re-runs once the <video> element mounts. A
   // plain ref never triggers a render, so the hook would never see it.
@@ -60,6 +66,20 @@ export function MiniVideoView() {
     if (!cloudMode || !cloudDeviceId || !videoEl || directStreaming) return;
 
     let cancelled = false;
+    const el = videoEl;
+    setCloudError(null);
+
+    // `cloudStreaming` is set from the element's own `playing` event, never
+    // from construction. It used to be set synchronously right after
+    // `player.start()` — before a socket opened, before a byte was decoded,
+    // before a codec was known — which removed the only placeholder this
+    // surface had and published a fabricated live state to the whole app.
+    const onPlaying = () => {
+      if (cancelled) return;
+      setCloudError(null);
+      setCloudStreaming(true);
+    };
+    el.addEventListener("playing", onPlaying);
 
     async function startPlayer() {
       // Deliberately lazy, and kept lazy: the MSE player is only reachable
@@ -67,25 +87,33 @@ export function MiniVideoView() {
       // machinery in the bundle of every LAN-mode session that never
       // instantiates it.
       const { MsePlayer } = await import("@/lib/video/mse-player");
-      if (cancelled || !videoEl) return;
+      if (cancelled) return;
 
       const player = new MsePlayer();
       playerRef.current = player;
       player.start(
         cloudDeviceId!,
-        videoEl,
+        el,
         clientConfig?.videoRelayUrl ?? undefined,
+        {
+          onError: (err) => {
+            if (cancelled) return;
+            setCloudStreaming(false);
+            setCloudError(err.message);
+          },
+        },
       );
-      setCloudStreaming(true);
     }
 
     startPlayer();
 
     return () => {
       cancelled = true;
+      el.removeEventListener("playing", onPlaying);
       playerRef.current?.stop();
       playerRef.current = null;
       setCloudStreaming(false);
+      setCloudError(null);
     };
   }, [
     cloudMode,
@@ -108,10 +136,19 @@ export function MiniVideoView() {
           className="w-full h-[112px] object-cover bg-black"
         />
         {!cloudStreaming && !directStreaming && (
-          <div className="absolute inset-0 flex items-center justify-center text-text-tertiary">
-            <div className="flex flex-col items-center gap-1">
-              <VideoOff size={18} />
-              <span className="text-[10px]">CONNECTING...</span>
+          <div className="absolute inset-0 flex items-center justify-center p-1 text-text-tertiary">
+            <div className="flex flex-col items-center gap-1 text-center">
+              <VideoOff
+                size={18}
+                className={cloudError ? "text-status-error" : undefined}
+              />
+              {cloudError ? (
+                <span className="text-[9px] leading-tight text-status-error">
+                  {cloudError}
+                </span>
+              ) : (
+                <span className="text-[10px]">CONNECTING...</span>
+              )}
             </div>
           </div>
         )}

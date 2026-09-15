@@ -13,9 +13,10 @@
  *   single flaky agent poll can't tear down a healthy session, and so the gate
  *   is `true` on the first render when video is already running (a deferred
  *   effect-based gate was the bug — it missed the first cascade pass);
- * - indefinite exponential-backoff auto-retry while the agent reports the video
+ * - indefinite fixed-interval auto-retry while the agent reports the video
  *   service running, so the feed self-heals whenever the link recovers;
- * - a stall re-cascade driven by the frozen-stream watchdog.
+ * - a stall re-cascade driven by the frozen-stream watchdog and by a
+ *   `disconnected` peer connection that did not come back.
  *
  * @license GPL-3.0-only
  */
@@ -29,11 +30,17 @@ import {
 
 type TransportMode = "auto" | "lan-whep" | "p2p-mqtt" | "off";
 
-// Auto-recovery backoff. The base delay doubles per attempt, clamps at the
-// ceiling, then keeps retrying at the ceiling so a link that recovers hours
-// later still reconnects with no operator action.
-const RETRY_BASE_DELAY_SEC = 3;
-const RETRY_MAX_DELAY_SEC = 30;
+/**
+ * Auto-recovery interval, fixed.
+ *
+ * Not exponential, and with no attempt cap. The previous loop doubled 3 s to
+ * a 30 s ceiling, which on a link that flaps for a minute leaves the operator
+ * waiting half a minute for a reconnect that would have succeeded
+ * immediately. A recovery loop on an aircraft has one job — keep trying at a
+ * rate that is cheap and predictable — and any ceiling, cap, or terminal
+ * failed state is a state that needs a human to clear.
+ */
+const RETRY_DELAY_SEC = 3;
 
 interface SingletonAgentVideoOpts {
   /** Effective LAN WHEP URL to dial (a manual override URL wins over the
@@ -55,9 +62,9 @@ export interface SingletonAgentVideoResult {
   state: CascadeResult["state"];
   activeTransport: CascadeResult["activeTransport"];
   error: string | null;
-  /** Manual reconnect: resets the backoff and re-runs the cascade. */
+  /** Manual reconnect: re-runs the cascade immediately. */
   retry: () => void;
-  /** Seconds until the next automatic retry (0 when not backing off). */
+  /** Seconds until the next automatic retry (0 when not waiting). */
   retryDelaySec: number;
 }
 
@@ -72,11 +79,9 @@ export function useSingletonAgentVideo({
   const videoStallSignal = useVideoStore((s) => s.videoStallSignal);
 
   const [retryKey, setRetryKey] = useState(0);
-  const retryAttemptRef = useRef(0);
   const [retryDelaySec, setRetryDelaySec] = useState(0);
 
   const handleRetry = useCallback(() => {
-    retryAttemptRef.current = 0;
     setRetryDelaySec(0);
     setRetryKey((k) => k + 1);
   }, []);
@@ -113,17 +118,15 @@ export function useSingletonAgentVideo({
     enabled: stableEnabled,
   });
 
-  // Reset the backoff counter on a healthy connect.
+  // A healthy connect stops any pending countdown display.
   useEffect(() => {
-    if (cascade.state === "connected") {
-      retryAttemptRef.current = 0;
-      setRetryDelaySec(0);
-    }
+    if (cascade.state === "connected") setRetryDelaySec(0);
   }, [cascade.state]);
 
-  // The frozen-stream watchdog raised the stall signal: the link looked
-  // "connected" but stopped delivering frames. Re-cascade so the WHEP offer is
-  // re-fetched (WHEP cannot renegotiate in place).
+  // The stall edge: either the frozen-stream watchdog saw both counters flat,
+  // or a `disconnected` peer connection did not come back inside its grace
+  // window. Re-cascade so the WHEP offer is re-fetched (WHEP cannot
+  // renegotiate in place).
   const lastHandledStallRef = useRef(videoStallSignal);
   useEffect(() => {
     if (videoStallSignal === lastHandledStallRef.current) return;
@@ -133,24 +136,20 @@ export function useSingletonAgentVideo({
     setRetryKey((k) => k + 1);
   }, [videoStallSignal, agentVideoState]);
 
-  // Indefinite auto-retry with capped exponential backoff while the agent
-  // reports the video service running (or a manual override is forcing the
-  // session) — the feed self-heals whenever the link recovers.
+  // Indefinite fixed-interval auto-retry while the agent reports the video
+  // service running (or a manual override is forcing the session) — the feed
+  // self-heals whenever the link recovers, at the same predictable rate on
+  // attempt one and attempt one thousand.
   useEffect(() => {
     const shouldRetry =
       cascade.state === "failed" &&
       (agentVideoState === "running" || forceEnabled);
     if (!shouldRetry) return;
-    const delaySec = Math.min(
-      RETRY_BASE_DELAY_SEC * Math.pow(2, retryAttemptRef.current),
-      RETRY_MAX_DELAY_SEC,
-    );
-    setRetryDelaySec(delaySec);
+    setRetryDelaySec(RETRY_DELAY_SEC);
     const handle = setTimeout(() => {
-      retryAttemptRef.current += 1;
       setRetryDelaySec(0);
       setRetryKey((k) => k + 1);
-    }, delaySec * 1000);
+    }, RETRY_DELAY_SEC * 1000);
     return () => clearTimeout(handle);
   }, [cascade.state, agentVideoState, forceEnabled]);
 

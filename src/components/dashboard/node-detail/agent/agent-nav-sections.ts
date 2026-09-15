@@ -81,7 +81,10 @@ export const NAV_SECTIONS: NavSectionSpec[] = [
   {
     key: "system",
     labelKey: "nodeSettings.groups.system",
-    items: ["region", "self-heal", "security", "advanced"],
+    // `display` before the rest: on a ground station it carries the one
+    // boot-critical write on this node (which renderer comes up at boot), and
+    // it is gated to that profile so it is absent everywhere else.
+    items: ["display", "region", "self-heal", "security", "advanced"],
   },
   {
     key: "software",

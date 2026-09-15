@@ -4,15 +4,21 @@ import { create } from "zustand";
 // "lan-whep"   = WHEP from a private/loopback URL (LAN direct, lowest latency)
 // "p2p-mqtt"   = Direct WebRTC P2P, SDP signaling relayed via MQTT.
 //                Cross-network via STUN.
-// "cloud-whep" = deferred, kept in the type for future use
-// "cloud-mse"  = deferred, kept in the type for future use
 // "off"        = user selected "no video"
 // "unknown"    = no stream OR transport not yet detected
+//
+// There is no "cloud-whep" / "cloud-mse" member. Both used to sit here
+// "kept in the type for future use", which gave the transport switcher two
+// labels it could display but never select, the health map two entries
+// nothing ever wrote, and the latency popover a branch nothing could reach.
+// A transport value that no code path can set is not a deferred feature, it
+// is a lie about what the system can do. The cloud MSE relay the browser
+// half of `lib/video/mse-player` drives is a per-surface fallback with its
+// own `cloudStreaming` flag, not a cascade transport: it never reaches this
+// union. Re-add a member with the implementation, not before.
 export type VideoTransport =
   | "lan-whep"
   | "p2p-mqtt"
-  | "cloud-whep"
-  | "cloud-mse"
   | "off"
   | "unknown";
 
@@ -75,6 +81,25 @@ const emptyHealth = (): TransportHealth => ({
   lastErrorCode: null,
   lastAttemptStage: null,
 });
+
+/**
+ * Why a still-installed receive path has stopped delivering frames.
+ *
+ * A degraded session is NOT a failed one: the peer connection is alive, the
+ * last decoded frame is still on screen, and the path is expected to come
+ * back on its own. It needs its own state because the alternative shipped
+ * for a while — `isStreaming` stayed true, the transport badge stayed green,
+ * fps and latency stayed stale-but-nonzero, and the operator was looking at
+ * a frozen picture that every surface called healthy.
+ *
+ * - `ice-disconnect` — the peer connection reported `disconnected`. Transient
+ *   loss of ICE connectivity on a WiFi/radio glitch, recoverable without a
+ *   new offer if connectivity returns inside the grace window.
+ * - `no-progress`   — the delta-counter watchdog saw neither `framesDecoded`
+ *   nor `bytesReceived` advance while the connection still claimed to be
+ *   usable. A decoder wedge or a silently frozen transport.
+ */
+export type VideoDegradedReason = "ice-disconnect" | "no-progress";
 
 // Rich latency breakdown surfaced behind the bottom-strip chip. Phase A
 // fills the GCS-receive + agent-air-side fields; Phase B adds true
@@ -172,6 +197,20 @@ interface VideoStoreState {
   videoStallSignal: number;
   signalVideoStall: () => void;
 
+  /**
+   * The live receive path has stopped delivering while still installed, or
+   * `null` when it is healthy. Read by every surface that renders the feed so
+   * a frozen picture is labelled instead of passing for a live one.
+   *
+   * Two scalars rather than one object: both are read through selectors on
+   * hot surfaces, and a nullable object would hand each of them a new
+   * identity on every write of an unchanged reason.
+   */
+  degradedReason: VideoDegradedReason | null;
+  /** `Date.now()` of the transition into the current degraded reason. */
+  degradedSince: number | null;
+  setVideoDegraded: (reason: VideoDegradedReason | null) => void;
+
   // Cloud video state
   cloudStreamUrl: string | null;
   cloudStreaming: boolean;
@@ -238,7 +277,11 @@ export const useVideoStore = create<VideoStoreState>((set) => ({
   isRecording: false,
   fps: 0,
   latencyMs: 0,
-  resolution: "1280x720",
+  // Empty, not "1280x720". A fabricated default is truthy, so the `|| "—"`
+  // fallback every readout uses could never fire and the cockpit showed a
+  // confident resolution for a stream whose metadata had not arrived — and
+  // for a 1920x1080 or 640x480 stream it showed the wrong one.
+  resolution: "",
 
   codec: "",
   bitrateKbps: 0,
@@ -261,13 +304,14 @@ export const useVideoStore = create<VideoStoreState>((set) => ({
   transportHealth: {
     "lan-whep": emptyHealth(),
     "p2p-mqtt": emptyHealth(),
-    "cloud-whep": emptyHealth(),
-    "cloud-mse": emptyHealth(),
     "off": emptyHealth(),
     "unknown": emptyHealth(),
   },
 
   videoStallSignal: 0,
+
+  degradedReason: null,
+  degradedSince: null,
 
   cloudStreamUrl: null,
   cloudStreaming: false,
@@ -316,13 +360,22 @@ export const useVideoStore = create<VideoStoreState>((set) => ({
       transportHealth: {
         "lan-whep": emptyHealth(),
         "p2p-mqtt": emptyHealth(),
-        "cloud-whep": emptyHealth(),
-        "cloud-mse": emptyHealth(),
         "off": emptyHealth(),
         "unknown": emptyHealth(),
       },
     }),
   signalVideoStall: () => set((prev) => ({ videoStallSignal: prev.videoStallSignal + 1 })),
+  setVideoDegraded: (reason) =>
+    set((prev) => {
+      // Re-asserting the same reason must not restamp `degradedSince`: the
+      // banner counts up from the moment the feed went bad, and a poll loop
+      // re-reporting the same condition every second would hold it at "0s".
+      if (prev.degradedReason === reason) return prev;
+      return {
+        degradedReason: reason,
+        degradedSince: reason === null ? null : Date.now(),
+      };
+    }),
   setCloudStreamUrl: (cloudStreamUrl) => set({ cloudStreamUrl }),
   setCloudStreaming: (cloudStreaming) => set({ cloudStreaming }),
   setAgentVideoStatus: (agentVideoState, agentWhepUrl, deps) =>
@@ -382,13 +435,27 @@ export const useVideoStore = create<VideoStoreState>((set) => ({
     set({
       agentVideoState: "unknown",
       agentWhepUrl: null,
-  whepUrlOverride: null,
+      whepUrlOverride: null,
       agentDependencies: null,
       streamUrl: null,
       isStreaming: false,
       cloudStreamUrl: null,
       cloudStreaming: false,
       transport: "unknown",
+      degradedReason: null,
+      degradedSince: null,
+      // The per-stream readouts belong to the node that produced them. Left
+      // behind, the top-right cluster and the latency popover attributed the
+      // previous node's resolution, fps, codec and bitrate to the new one for
+      // as long as it took the first frame to arrive — or forever, on a node
+      // that never streams.
+      resolution: "",
+      fps: 0,
+      latencyMs: 0,
+      codec: "",
+      bitrateKbps: 0,
+      packetsLost: 0,
+      jitterMs: 0,
       latency: emptyBreakdown(),
       _pollState: {
         lastFrameTime: 0,
@@ -402,8 +469,6 @@ export const useVideoStore = create<VideoStoreState>((set) => ({
       transportHealth: {
         "lan-whep": emptyHealth(),
         "p2p-mqtt": emptyHealth(),
-        "cloud-whep": emptyHealth(),
-        "cloud-mse": emptyHealth(),
         "off": emptyHealth(),
         "unknown": emptyHealth(),
       },

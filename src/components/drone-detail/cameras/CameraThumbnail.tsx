@@ -13,6 +13,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import {
+  applyJitterTarget,
+  NEGOTIATED_JITTER_TARGET_MS,
+} from "@/lib/video/webrtc/jitter-controller";
 
 /** Resolve once ICE gathering completes, or after a short cap (a LAN peer
  * gathers host candidates almost immediately). */
@@ -96,6 +100,10 @@ export function CameraThumbnail({
         const answer = await res.text();
         if (cancelled) return;
         await pc.setRemoteDescription({ type: "answer", sdp: answer });
+        // The negotiated receiver depth, at the one point it sticks. A
+        // thumbnail on the browser default ran deeper than every other
+        // surface showing the same camera.
+        applyJitterTarget(pc, NEGOTIATED_JITTER_TARGET_MS);
       } catch {
         // Best-effort preview: the card falls back to its placeholder.
         if (!cancelled) setPlaying(false);

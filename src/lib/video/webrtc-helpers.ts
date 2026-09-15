@@ -107,23 +107,3 @@ export function classifyError(err: unknown): { code: TransportErrorCode; message
   return { code: "other", message };
 }
 
-/** Classify a WHEP URL as LAN-direct or cloud relay based on hostname. */
-export function detectTransportFromUrl(url: string): "lan-whep" | "cloud-whep" {
-  try {
-    const u = new URL(url);
-    const host = u.hostname;
-    // Loopback or RFC1918 private addresses route via LAN direct.
-    if (
-      host === "localhost" ||
-      host === "127.0.0.1" ||
-      host.startsWith("10.") ||
-      host.startsWith("192.168.") ||
-      /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(host)
-    ) {
-      return "lan-whep";
-    }
-    return "cloud-whep";
-  } catch {
-    return "lan-whep";
-  }
-}

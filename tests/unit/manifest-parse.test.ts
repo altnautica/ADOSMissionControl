@@ -343,28 +343,32 @@ gcs:
     expect(ids.some((id) => /license/.test(id))).toBe(false);
   });
 
-  // Real vision-nav fixture; needs to parse to exactly 17 permissions.
+  // Real vision-nav fixture. No exact permission count is asserted here: the
+  // exact-list contract is pinned above against the inline TRAP fixture, which
+  // cannot drift, while this manifest lives in another repository and changes
+  // whenever that extension's permissions legitimately change. Pinning its
+  // count made a correct manifest edit fail this suite and taught nothing about
+  // the parser. What this case is for is the shapes a hand-written real file
+  // produces: spurious ids leaking in from sibling keys, and duplicates.
   const hasFixture = fs.existsSync(VISION_NAV_MANIFEST);
   const maybeIt = hasFixture ? it : it.skip;
 
-  maybeIt(
-    "vision-nav manifest parses to exactly 17 permissions with no spurious entries",
-    () => {
-      const yaml = fs.readFileSync(VISION_NAV_MANIFEST, "utf-8");
-      const parsed = parseManifestYaml(yaml);
-      expect(parsed.permissions).toHaveLength(17);
-      const ids = parsed.permissions.map((p) => p.id);
-      // Spurious ids that used to leak through must be absent.
-      expect(ids.some((id) => /^ados_.*_shim$/.test(id))).toBe(false);
-      expect(ids).not.toContain("drone");
-      expect(ids.some((id) => /license/.test(id))).toBe(false);
-      // Every id must look like a dotted capability id. Hyphens are
-      // valid (e.g. `ui.slot.node-detail-tab`).
-      for (const id of ids) {
-        expect(id).toMatch(/^[a-z][\w.-]*[a-z0-9]$/);
-      }
-    },
-  );
+  maybeIt("collects no spurious entries from the real vision-nav manifest", () => {
+    const yaml = fs.readFileSync(VISION_NAV_MANIFEST, "utf-8");
+    const parsed = parseManifestYaml(yaml);
+    const ids = parsed.permissions.map((p) => p.id);
+    // Spurious ids that used to leak through must be absent.
+    expect(ids.some((id) => /^ados_.*_shim$/.test(id))).toBe(false);
+    expect(ids).not.toContain("drone");
+    expect(ids.some((id) => /license/.test(id))).toBe(false);
+    // A permission collected twice would grant once and display twice.
+    expect(new Set(ids).size).toBe(ids.length);
+    // Every id must look like a dotted capability id. Hyphens are
+    // valid (e.g. `ui.slot.node-detail-tab`).
+    for (const id of ids) {
+      expect(id).toMatch(/^[a-z][\w.-]*[a-z0-9]$/);
+    }
+  });
 });
 
 describe("parseManifestYaml — block-literal rendering", () => {

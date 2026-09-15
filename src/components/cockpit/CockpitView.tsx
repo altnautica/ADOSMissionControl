@@ -52,6 +52,7 @@ import { CockpitStreamTabs } from "@/components/cockpit/CockpitStreamTabs";
 import { CockpitDemoStream } from "@/components/cockpit/CockpitDemoStream";
 import { CockpitPipInset } from "@/components/cockpit/CockpitPipInset";
 import { DEFAULT_DENSITY } from "@/lib/cockpit/density";
+import { zoneContainerClass } from "@/lib/cockpit/zones";
 
 import { registerBuiltinTargetActions } from "@/lib/skills/target-actions";
 import { useTargetActionHotkeys } from "@/hooks/use-target-action-hotkeys";
@@ -234,16 +235,18 @@ export function CockpitView({ droneId }: CockpitViewProps) {
   useEffect(() => {
     if (!cockpitEnabled && quickOpen) closeQuick();
   }, [cockpitEnabled, quickOpen, closeQuick]);
-  useEffect(() => {
-    if (!cockpitEnabled && paletteOpen) setPaletteOpen(false);
-  }, [cockpitEnabled, paletteOpen]);
 
   // Command palette open chord: Ctrl/Cmd+K toggles a searchable list of every
   // command available on this drone (the same skills the bar reads). Handled at
-  // the cockpit level so it never collides with a bound slot, and only while
-  // the skill layer is on and nothing modal owns input.
+  // the cockpit level so it never collides with a bound slot.
+  //
+  // NOT gated on `cockpitEnabled`. The palette lists the same skills the bar
+  // would, so it is the discovery surface for the feature an operator would be
+  // opting into — gating it meant the one affordance that could explain the
+  // skill layer was unavailable until the skill layer was already on, while
+  // the ungated keys (stream digits, PiP) still responded. Half a working
+  // keyboard with no indication which half is worse than either extreme.
   useEffect(() => {
-    if (!cockpitEnabled) return;
     const handler = (e: KeyboardEvent) => {
       if (e.key.toLowerCase() !== "k" || !(e.ctrlKey || e.metaKey) || e.altKey) {
         return;
@@ -255,7 +258,7 @@ export function CockpitView({ droneId }: CockpitViewProps) {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [cockpitEnabled, editing]);
+  }, [editing]);
 
   // Escape closes the palette. Registered capture-phase so it runs BEFORE the
   // shell's bubble-phase immersive-exit handler and stops it — pressing Escape
@@ -670,21 +673,28 @@ export function CockpitView({ droneId }: CockpitViewProps) {
         )}
       </div>
 
-      {/* Enable-skills prompt. The cockpit shell (video / HUD / map / controls)
-          renders even with the skill layer off; the operator opts in here. */}
+      {/* Re-enable-skills prompt. The skill layer is ON by default, so this is
+          only reachable after an explicit opt-out — but it must still never
+          sit over the boresight. It used to render as a centred card at
+          `inset-0`, i.e. parked across the middle of the live video, which is
+          the one region of a piloting surface that has to stay clear. It is
+          now a strip in the bottom-left zone container, above the Skill Bar,
+          leaving the video, HUD, tapes and stream switcher unobstructed. */}
       {!cockpitEnabled && (
-        <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center p-4">
-          <div className="pointer-events-auto max-w-sm border border-border-default bg-bg-secondary/95 p-5 text-center shadow-lg backdrop-blur-sm">
-            <h2 className="text-sm font-semibold text-text-primary">
+        <div className={`${zoneContainerClass("bottom-left")} pointer-events-auto z-40`}>
+          <div className="max-w-xs border border-border-default bg-bg-secondary/95 p-3 shadow-lg backdrop-blur-sm">
+            <h2 className="text-xs font-semibold text-text-primary">
               {tFly("enableTitle")}
             </h2>
-            <p className="mt-2 text-xs text-text-secondary">{tFly("enableBody")}</p>
+            <p className="mt-1 text-[11px] leading-snug text-text-secondary">
+              {tFly("enableBody")}
+            </p>
             <Button
               variant="primary"
-              size="md"
-              icon={<Plane size={14} aria-hidden="true" />}
+              size="sm"
+              icon={<Plane size={12} aria-hidden="true" />}
               onClick={() => useCockpitStore.getState().setEnabled(true)}
-              className="mt-4"
+              className="mt-2"
             >
               {tFly("enableButton")}
             </Button>
@@ -704,8 +714,9 @@ export function CockpitView({ droneId }: CockpitViewProps) {
       )}
 
       {/* Command palette (Ctrl/⌘ K): a searchable list of every command
-          available on this drone, firing through the shared skill pipeline. */}
-      {cockpitEnabled && paletteOpen && droneId && (
+          available on this drone, firing through the shared skill pipeline.
+          Not gated on the skill layer — it is how the feature is discovered. */}
+      {paletteOpen && droneId && (
         <CockpitCommandPalette
           droneId={droneId}
           onClose={() => setPaletteOpen(false)}

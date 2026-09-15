@@ -15,6 +15,11 @@
  * in `useVideoStore._pollState` so Turbopack HMR re-evaluating this
  * module does not reset the deltas to 0 mid-session.
  *
+ * The frozen-stream watchdog also lives here, and it is armed in every
+ * build. A silent stall is the one video failure that reports healthy on
+ * every surface, so the recovery path for it must also be the one that runs
+ * during development.
+ *
  * @license GPL-3.0-only
  */
 
@@ -23,6 +28,7 @@ import {
   applyJitterTarget,
   initialJitterState,
   nextJitterTarget,
+  NEGOTIATED_JITTER_TARGET_MS,
   type JitterControllerState,
 } from "./jitter-controller";
 import { getPc } from "./session-state";
@@ -49,18 +55,52 @@ export function currentJitterTargetMs(): number {
   return appliedJitterTargetMs;
 }
 
+/**
+ * Ask the receiver for the negotiated baseline depth and record what stuck.
+ *
+ * Called by each flow immediately AFTER `setRemoteDescription`. Before the
+ * answer is applied the transceiver's receiver has not been associated with
+ * the negotiated media description, and the write does not survive the
+ * association — which is why the pre-negotiation call this replaced left
+ * every session on the browser's own adaptive target.
+ *
+ * Returns the number of receivers tuned, so a browser that implements
+ * neither knob (WebKit implements neither) records 0 rather than a claim
+ * about a buffer that never heard the request.
+ */
+export function applyNegotiatedJitterTarget(
+  pc: RTCPeerConnection | null,
+): number {
+  const applied = applyJitterTarget(pc, NEGOTIATED_JITTER_TARGET_MS);
+  appliedJitterTargetMs = applied > 0 ? NEGOTIATED_JITTER_TARGET_MS : 0;
+  return applied;
+}
+
 // Frozen-stream watchdog window. If neither framesDecoded nor
-// bytesReceived advances for this long while pc.connectionState stays
-// "connected", the stream has silently stalled (decoder wedge, transport
-// freeze) without any connectionstatechange event. We tear down and
-// re-fetch the offer.
+// bytesReceived advances for this long while the peer connection still
+// claims to be usable, the stream has silently stalled (decoder wedge,
+// transport freeze) without any connectionstatechange event. We tear down
+// and re-fetch the offer.
 const FROZEN_STREAM_TIMEOUT_MS = 7000;
 
-// The watchdog only arms outside development. Turbopack HMR re-evaluates
-// modules on unrelated edits, which can momentarily flatten the deltas and
-// produce a false stall. In production there is no HMR, so the watchdog is
-// safe to arm.
-const WATCHDOG_ARMED = process.env.NODE_ENV === "production";
+/**
+ * Consecutive poll windows with no progress required before the watchdog
+ * declares a stall.
+ *
+ * The watchdog is armed in EVERY build. It used to be gated on
+ * `NODE_ENV === "production"`, which meant the single most safety-relevant
+ * recovery path in the video stack never ran under `npm run dev`, never ran
+ * in an Electron dev build, never ran on a staging deployment, and was
+ * therefore never exercised until the field. The gate existed to suppress
+ * one false positive: Turbopack HMR re-evaluates modules on unrelated edits
+ * and can momentarily flatten the deltas. Requiring two consecutive flat
+ * windows suppresses that transient without disarming anything — a genuine
+ * stall stays flat for as long as it lasts.
+ */
+const STALE_WINDOWS_TO_STALL = 2;
+
+/** Consecutive no-progress windows seen. Reset by any progress. */
+let staleWindows = 0;
 
 // When the page is hidden the browser legitimately pauses frame
 // production for a backgrounded <video>. We reset the progress baseline on
@@ -84,14 +124,15 @@ function disarmVisibilityReset(): void {
 
 /**
  * Stop polling, tear down the active stream, and raise the stall signal
- * so the owning video surface re-fetches the offer with backoff. Mirrors
- * the "failed"-path teardown in the per-flow modules (setStreaming(false)
- * + stopStatsPolling) and adds the one-way stall edge that the cascade
- * hook watches.
+ * so the owning video surface re-fetches the offer. Mirrors the
+ * "failed"-path teardown in the per-flow modules (setStreaming(false) +
+ * stopStatsPolling) and adds the one-way stall edge that the cascade hook
+ * watches.
  */
 function handleFrozenStream(): void {
   const store = useVideoStore.getState();
   stopStatsPolling();
+  store.setVideoDegraded("no-progress");
   store.setStreaming(false);
   store.updateStats(0, 0);
   store.signalVideoStall();
@@ -109,11 +150,15 @@ export function startStatsPolling(): void {
   });
   // A new session starts the loop over. Carrying a rung across a reconnect
   // would apply the previous link's verdict to a link nobody has measured.
+  // `appliedJitterTargetMs` is NOT reset here: the negotiation already
+  // applied the baseline through `applyNegotiatedJitterTarget` and recorded
+  // whether the receiver accepted it, and `initialJitterState()` starts the
+  // loop at that same rung.
   jitterState = initialJitterState();
   lastFreezeCount = 0;
   lastPacketsLost = 0;
   lastPacketsReceived = 0;
-  appliedJitterTargetMs = 0;
+  staleWindows = 0;
   armVisibilityReset();
 
   statsInterval = setInterval(async () => {
@@ -332,26 +377,40 @@ export function startStatsPolling(): void {
       }
     }
 
-    // Frozen-stream watchdog. The native pc.onconnectionstatechange
-    // handler detects transport-level disconnects, but a decoder wedge or
-    // a silently-frozen transport keeps connectionState at "connected"
-    // while frames and bytes both stop advancing — the user sees a frozen
-    // last frame with no error. When neither counter has moved for the
-    // timeout window, tear down and re-fetch the offer. The previous
-    // frame-arrival timeout was removed because it false-triggered under
-    // Turbopack HMR; this version only arms in production and resets its
-    // baseline on visibility change, so the two failure modes do not
-    // overlap.
+    // Frozen-stream watchdog. The native pc.onconnectionstatechange handler
+    // detects transport-level disconnects, but a decoder wedge or a silently
+    // frozen transport keeps connectionState at "connected" while frames and
+    // bytes both stop advancing — the user sees a frozen last frame with no
+    // error. When neither counter has moved for the timeout window across
+    // STALE_WINDOWS_TO_STALL consecutive polls, tear down and re-fetch the
+    // offer.
+    //
+    // `disconnected` is judged too, not just `connected`. That state is
+    // exactly the one where the picture freezes with everything still
+    // reporting healthy, and skipping it left the one case the delta-counter
+    // rule exists for as the one case with no delta-counter check.
+    //
     // A hidden tab legitimately pauses frame production for a backgrounded
-    // <video>. Skip the stall judgement entirely while hidden, independent
-    // of the visibilitychange baseline reset — a poll tick can race the
-    // reset and otherwise misfire on the first tick after the tab un-hides.
+    // <video>. Skip the stall judgement entirely while hidden, independent of
+    // the visibilitychange baseline reset — a poll tick can race the reset
+    // and otherwise misfire on the first tick after the tab un-hides.
     const pageHidden = typeof document !== "undefined" && document.hidden;
-    if (WATCHDOG_ARMED && !pageHidden && pc.connectionState === "connected") {
-      const sinceProgressMs = Date.now() - useVideoStore.getState()._pollState.lastProgressTime;
-      if (sinceProgressMs > FROZEN_STREAM_TIMEOUT_MS) {
+    const judgeable =
+      pc.connectionState === "connected" || pc.connectionState === "disconnected";
+    if (pageHidden || !judgeable) {
+      staleWindows = 0;
+      return;
+    }
+    const sinceProgressMs =
+      Date.now() - useVideoStore.getState()._pollState.lastProgressTime;
+    if (sinceProgressMs > FROZEN_STREAM_TIMEOUT_MS) {
+      staleWindows += 1;
+      if (staleWindows >= STALE_WINDOWS_TO_STALL) {
+        staleWindows = 0;
         handleFrozenStream();
       }
+    } else {
+      staleWindows = 0;
     }
   }, 1000);
 }

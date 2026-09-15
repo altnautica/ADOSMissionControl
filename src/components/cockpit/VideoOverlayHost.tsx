@@ -47,8 +47,12 @@ import {
   type VideoOverlayHostProps,
 } from "@/lib/plugins/video-overlay-props";
 import { useClockTick } from "@/lib/agent/freshness";
-import { freshOnly } from "@/lib/telemetry/freshness";
+import { freshOnly, type Timestamped } from "@/lib/telemetry/freshness";
+import { useVideoFrameAge } from "@/hooks/use-video-frame-age";
 import { useClockStore } from "@/stores/clock-store";
+
+/** Timestamp accessor for the nearest-sample lookup. */
+const sampleTs = (s: Timestamped): number => s.timestamp;
 
 /** Mirror DetectionOverlay's default staleness window. */
 const DEFAULT_STALE_MS = 2000;
@@ -234,6 +238,11 @@ export function VideoOverlayHost({
   useClockTick();
   const now = useClockStore((s) => s.now);
 
+  // How far behind the live world the presented frame is. Drives the attitude
+  // lookup below and is published so an overlay can correct for the skew
+  // itself. `null` when no estimator knows it.
+  const frameAge = useVideoFrameAge();
+
   // ── Build the host-props payload when a batch lands or the clock ticks. ──
   const hostProps = useMemo<VideoOverlayHostProps>(() => {
     const fresh = batch != null && now - batch.receivedAt <= staleAfterMs;
@@ -267,13 +276,23 @@ export function VideoOverlayHost({
           }
         : null;
 
-    // Attitude, coalesced to the batch moment, gated through the telemetry
-    // freshness contract. It used to be `att?.roll ?? 0`, which on a dead
-    // link handed every overlay a perfectly wings-level aircraft forever.
-    // `freshOnly` collapses a stale sample to absent and the prop is
-    // nullable, so an overlay has to raise a flag rather than draw a lie.
+    // Attitude sampled at the instant the FRAME was captured, then gated
+    // through the telemetry freshness contract.
+    //
+    // Two bugs used to live in this one read. It was `att?.roll ?? 0`, which
+    // on a dead link handed every overlay a perfectly wings-level aircraft
+    // forever — `freshOnly` plus a nullable prop closed that. And it was
+    // `latest()`, which paired a timestamped frame with the CURRENT attitude
+    // and shipped the two as one payload: a plugin drawing a horizon or a
+    // lead reticle was compositing a now-reading over a 180-240 ms old
+    // picture with no way to detect it, let alone correct it. The lookup now
+    // reaches back by the measured frame age, and the payload states whether
+    // it managed to.
+    const frameAgeMs = frameAge?.ms ?? null;
     const att = freshOnly(
-      useTelemetryStore.getState().attitude.latest(),
+      useTelemetryStore
+        .getState()
+        .attitude.nearest(now - (frameAgeMs ?? 0), sampleTs),
       now,
     );
 
@@ -284,14 +303,16 @@ export function VideoOverlayHost({
       streamHeight: geometry.streamHeight,
       renderedRect: geometry.rect,
       frameTimestampMs: batch?.tsMs ?? 0,
+      frameAgeMs,
       attitude: att
         ? { rollDeg: att.roll, pitchDeg: att.pitch, yawDeg: att.yaw }
         : null,
+      attitudeAtFrameTime: frameAgeMs !== null,
       detections,
     };
     // `now` is a dependency so a staleness transition re-pushes with
     // detections and attitude collapsed to null, with no new data arriving.
-  }, [droneId, batch, geometry, staleAfterMs, now]);
+  }, [droneId, batch, geometry, staleAfterMs, now, frameAge]);
 
   const hostEvent = useMemo(
     () => ({

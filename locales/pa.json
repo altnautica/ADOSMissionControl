@@ -62,6 +62,8 @@
       "receiveOnly": "ਸਿਰਫ਼ ਪ੍ਰਾਪਤੀ। ਉਡਾਣ ਕਮਾਂਡ ਅਤੇ ਕਲਾਉਡ ਵੀਡੀਓ ਰੀਲੇਅ ਰਾਹੀਂ ਨਹੀਂ ਭੇਜੇ ਜਾ ਸਕਦੇ। ਏਜੰਟ ਕਮਾਂਡ ਹਾਲੇ ਵੀ ਕੰਮ ਕਰਦੇ ਹਨ।",
       "receiveOnlyShort": "ਸਿਰਫ਼ ਪ੍ਰਾਪਤੀ",
       "provisioningShort": "ਅਧਿਕਾਰ ਲਿਆ ਜਾ ਰਿਹਾ ਹੈ",
+      "noTransport": "ਇਸ ਬ੍ਰਾਊਜ਼ਰ ਤੋਂ ਜੁੜਿਆ ਨਹੀਂ — ਇਸ ਨੋਡ ਤੱਕ ਕੋਈ ਕਮਾਂਡ ਰਾਹ ਹਾਲੇ ਨਹੀਂ ਖੋਲ੍ਹਿਆ ਗਿਆ, ਇਸ ਲਈ ਇਹ ਪਤਾ ਨਹੀਂ ਕਿ ਉਡਾਣ ਕਮਾਂਡ ਪਹੁੰਚੇਗਾ ਜਾਂ ਨਹੀਂ। ਜੁੜਨ ਲਈ ਨੋਡ ਖੋਲ੍ਹੋ।",
+      "noTransportShort": "ਜੁੜਿਆ ਨਹੀਂ",
       "expiring": "ਕਮਾਂਡ ਅਧਿਕਾਰ ਖਤਮ ਹੋ ਰਿਹਾ ਹੈ ਅਤੇ ਨਵੀਨੀਕਰਨ ਅਸਫਲ ਰਿਹਾ। ਜੋ ਲੋੜੀਂਦਾ ਹੈ ਹੁਣੇ ਭੇਜੋ।",
       "expiringShort": "ਅਧਿਕਾਰ ਖਤਮ ਹੋ ਰਿਹਾ ਹੈ",
       "requestControl": "ਕਮਾਂਡ ਅਧਿਕਾਰ ਦੀ ਮੰਗ ਕਰੋ"
@@ -1957,6 +1959,17 @@
       "mcsCapLabel": "Adaptive ceiling (MCS)",
       "mcsCapHint": "The highest rung the ladder may climb to. Defaults to 3; anything above it is bench-only until the driver sweep says the rung holds at range. A ceiling of 1 pins the ladder to the floor.",
       "rungCapped": "{rung}, capped {cap}"
+    },
+    "display": {
+      "title": "Display",
+      "rendererTitle": "Local display renderer",
+      "rendererBlurb": "Which renderer this ground station brings up at boot. The display service gates its startup on this, and the on-box display is how you recover a node whose network is down, so only renderers the node reports as attached can be selected.",
+      "kioskTitle": "HDMI kiosk",
+      "kioskBlurb": "The full-screen browser the HDMI output runs. Applies when the renderer resolves to HDMI.",
+      "kioskEnabled": "Run the kiosk browser",
+      "kioskEnabledHint": "Starts the full-screen browser on the HDMI output at boot. Takes effect when the kiosk service next starts.",
+      "kioskTargetUrl": "Kiosk page",
+      "kioskTargetUrlHint": "The page the kiosk opens. Leave empty to use this node's own console."
     }
   },
   "dronePlugins": {
@@ -4201,7 +4214,12 @@
         "auto": "Auto-detect",
         "hdmi": "HDMI",
         "lcd": "LCD",
-        "none": "None"
+        "none": "None",
+        "notDetected": "Not detected on this node",
+        "blockedAbsent": "That renderer is not attached to this node. Selecting it would leave the on-box display dark.",
+        "confirmTitle": "Change the boot display renderer?",
+        "confirmBody": "This node will bring up {renderer} at its next start. If that renderer is not wired, the on-box display goes dark — and the local display is how you recover a node whose network is down.",
+        "confirmAction": "Change renderer"
       },
       "overrideNote": "Changes apply at the next display service restart.",
       "overrideSaved": "Display preference saved.",
@@ -5389,7 +5407,9 @@
       "reacquires": "Reacquires",
       "rxRestarts": "RX restarts",
       "usbLink": "USB link",
-      "adapter": "Adapter"
+      "adapter": "Adapter",
+      "stale": "ਪੁਰਾਣਾ",
+      "notRead": "ਪੜ੍ਹਿਆ ਨਹੀਂ"
     },
     "uplink": {
       "title": "Uplink",
@@ -6111,6 +6131,10 @@
     "modeAuto": {
       "label": "Auto",
       "effect": "Switches to Auto mode"
+    },
+    "setMode": {
+      "label": "ਮੋਡ ਸੈੱਟ ਕਰੋ",
+      "effect": "ਵਾਹਨ ਨੂੰ ਚੁਣੇ ਹੋਏ ਉਡਾਣ ਮੋਡ ਵਿੱਚ ਬਦਲਦਾ ਹੈ"
     },
     "reason": {
       "noFcLink": "No flight-controller link",

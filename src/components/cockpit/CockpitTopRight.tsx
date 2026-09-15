@@ -4,7 +4,7 @@
  * @module fly/cockpit/CockpitTopRight
  * @description The top-right cockpit cluster — a faithful port of the reference
  * artifact's `.zone.tr`: the density segmented control (Min / Std / Full), the
- * live video stats (resolution · fps · latency), and a camera pill.
+ * live video stats (resolution · fps · frame age), and a camera pill.
  *
  * The camera pill names the node's primary (streaming) camera from the agent
  * capability probe — never a fabricated "main" label (Rule 44). When the node
@@ -12,12 +12,26 @@
  * when it advertises more than one, a `+N` hint points at the roster PiP. On a
  * multi-stream node the top-left stream switcher already names the active
  * stream, so the pill is omitted there to avoid a duplicate indicator.
+ *
+ * ## The latency figure
+ *
+ * This cluster used to render `latencyMs` — network RTT plus decoder buffer
+ * wait, typically 10-30 ms — with a bare `ms` suffix, on a path whose real
+ * camera-to-monitor delay is around 200 ms. An operator glancing at "18 ms"
+ * flies as if the picture were current. It now shows the FRAME AGE from
+ * `useVideoFrameAge`, always with a suffix naming which estimator produced
+ * it, and `—` when neither can answer. No figure here is ever an unqualified
+ * `ms`, and the roll-up is labelled `net` so it cannot be misread as
+ * end-to-end.
+ *
  * @license GPL-3.0-only
  */
 
 import { useVideoStore } from "@/stores/video-store";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { useVideoStreamsStore } from "@/stores/video-streams-store";
+import { useVideoFrameAge } from "@/hooks/use-video-frame-age";
+import { frameAgeLabel } from "@/lib/video/frame-age";
 import type { CockpitDensity } from "@/lib/cockpit/density";
 
 const MODES: { id: CockpitDensity; label: string }[] = [
@@ -39,6 +53,8 @@ export function CockpitTopRight({ density, onDensity, droneId }: Props) {
   const fps = useVideoStore((s) => s.fps);
   const latencyMs = useVideoStore((s) => s.latencyMs);
   const resolution = useVideoStore((s) => s.resolution);
+  const degradedReason = useVideoStore((s) => s.degradedReason);
+  const frameAge = useVideoFrameAge();
   const cameras = useAgentCapabilitiesStore((s) => s.cameras);
   const streamCount = useVideoStreamsStore((s) =>
     droneId ? (s.streamsByDrone[droneId]?.length ?? 0) : 0,
@@ -78,9 +94,37 @@ export function CockpitTopRight({ density, onDensity, droneId }: Props) {
             <span className="s">
               <b>{Math.round(fps) || 0}</b>fps
             </span>
-            <span className="s">
-              <b>{Math.round(latencyMs) || 0}</b>ms
+            {/* Frame age: how far behind the live world the picture is. The
+                suffix names the estimator, and `—` is shown when neither can
+                answer — an operator must never read an unqualified number
+                here and take it for glass-to-glass. */}
+            <span
+              className="s"
+              data-frame-age-source={frameAge?.source ?? "unknown"}
+              title={
+                frameAge?.source === "sei-g2g"
+                  ? "Measured camera-to-monitor delay (SEI timestamps in the bitstream + WebRTC presentationTime + a drone/browser clock offset estimate)."
+                  : frameAge?.source === "frame-metadata"
+                    ? "Sender-capture to presented frame, from the browser's frame metadata (RTCP-synchronised). Excludes the camera and encoder legs, so the true delay is higher."
+                    : "Frame age unknown: no SEI probe and no usable frame timestamps."
+              }
+            >
+              VIDEO <b>{frameAge ? `+${frameAgeLabel(frameAge)}` : "—"}</b>
             </span>
+            {/* The network roll-up, explicitly labelled. It is RTT plus
+                decoder buffer wait, which is not an end-to-end quantity. */}
+            <span className="s" title="Network round-trip plus decoder jitter-buffer wait. Not an end-to-end latency.">
+              <b>{Math.round(latencyMs) || 0}</b>ms net
+            </span>
+            {degradedReason && (
+              <span className="s" data-video-degraded={degradedReason}>
+                <b>
+                  {degradedReason === "ice-disconnect"
+                    ? "LINK LOST"
+                    : "NO FRAMES"}
+                </b>
+              </span>
+            )}
           </>
         ) : (
           <span className="s">OFFLINE</span>

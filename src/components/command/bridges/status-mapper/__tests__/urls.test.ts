@@ -21,8 +21,8 @@ describe("resolveVideoUrls — relative same-origin resolution", () => {
     expect(whepUrl).toBe("http://192.168.1.50:8080/whep");
   });
 
-  it("resolves the HLS fallback the same way", () => {
-    const { hlsUrl } = resolveVideoUrls(
+  it("resolves no HLS URL — nothing in this app can play a playlist", () => {
+    const urls = resolveVideoUrls(
       {
         videoState: "running",
         videoWhepUrl: "/whep",
@@ -31,7 +31,8 @@ describe("resolveVideoUrls — relative same-origin resolution", () => {
       },
       null,
     );
-    expect(hlsUrl).toBe("http://192.168.1.50:8080/hls/main/index.m3u8");
+    expect(urls.whepUrl).toBe("http://192.168.1.50:8080/whep");
+    expect("hlsUrl" in urls).toBe(false);
   });
 
   it("keeps an absolute URL from an older agent (optionally .local-swapped)", () => {
@@ -48,7 +49,7 @@ describe("resolveVideoUrls — relative same-origin resolution", () => {
 });
 
 describe("resolveVideoStreams — per-leg relative resolution", () => {
-  it("resolves per-leg relative whep + hls against the agent base", () => {
+  it("resolves the per-leg relative whep against the agent base, and no hls", () => {
     const legs = resolveVideoStreams(
       {
         videoState: "running",
@@ -60,11 +61,13 @@ describe("resolveVideoStreams — per-leg relative resolution", () => {
       null,
     );
     expect(legs).toEqual([
-      expect.objectContaining({
+      {
         id: "ir",
+        role: undefined,
+        codec: undefined,
+        live: undefined,
         whepUrl: "http://192.168.1.50:8080/whep?camera=ir",
-        hlsUrl: "http://192.168.1.50:8080/hls/ir/index.m3u8",
-      }),
+      },
     ]);
   });
 
@@ -78,7 +81,7 @@ describe("resolveVideoStreams — per-leg relative resolution", () => {
       null,
     );
     expect(legs[0].whepUrl).toBe("http://192.168.1.50:8889/ir/whep");
-    expect(legs[0].hlsUrl).toBeUndefined();
+    expect("hlsUrl" in legs[0]).toBe(false);
   });
 });
 

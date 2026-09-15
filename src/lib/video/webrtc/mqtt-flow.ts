@@ -27,7 +27,6 @@ import {
   reportHealth,
   tryIceRestart,
 } from "./peer-utils";
-import { applyJitterTarget, jitterTargetForRung } from "./jitter-controller";
 import { attachSeiTransform } from "./sei-transform";
 import {
   acquireSession,
@@ -36,7 +35,11 @@ import {
   mqttSessionKey,
   setPc,
 } from "./session-state";
-import { startStatsPolling, stopStatsPolling } from "./stats-tracker";
+import {
+  applyNegotiatedJitterTarget,
+  startStatsPolling,
+  stopStatsPolling,
+} from "./stats-tracker";
 import {
   getMqttBrokerCredential,
   getMqttBrokerUrl,
@@ -116,19 +119,39 @@ async function negotiateViaMqtt(
     localPc = newPc;
     setPc(newPc);
 
-    // ICE restart on transient disconnect. Closure captures newPc (const),
-    // so even if pc has been replaced by a parallel call, this handler
-    // still acts on its own connection (and bails via the
-    // newPc !== getPc() check).
+    // Transient disconnect. Unlike WHEP, this path CAN renegotiate in place:
+    // the agent is the signalling peer and an ICE restart reaches it over the
+    // same MQTT topics, so `restartIce()` is a real recovery here. It is
+    // still reported as a degraded state first, because an in-place restart
+    // that does not succeed otherwise looks identical to a healthy feed.
+    //
+    // Closure captures newPc (const), so even if pc has been replaced by a
+    // parallel call, this handler still acts on its own connection (and bails
+    // via the newPc !== getPc() check).
     newPc.onconnectionstatechange = () => {
       if (newPc !== getPc()) return; // a newer pc has taken over
       const state = newPc.connectionState;
+      const s = useVideoStore.getState();
       if (state === "disconnected") {
-        console.warn("[webrtc-client] P2P MQTT disconnected — attempting ICE restart");
+        console.warn("[webrtc-client] P2P MQTT disconnected — degraded, restarting ICE");
+        s.setVideoDegraded("ice-disconnect");
+        reportHealth("p2p-mqtt", {
+          state: "failed",
+          stage: "connected",
+          code: "ice-disconnect",
+          error: "ICE disconnected",
+        });
         tryIceRestart(newPc);
-      } else if (state === "failed" || state === "closed") {
+        return;
+      }
+      if (state === "connected") {
+        s.setVideoDegraded(null);
+        reportHealth("p2p-mqtt", { state: "ok", stage: "connected" });
+        return;
+      }
+      if (state === "failed" || state === "closed") {
         console.warn("[webrtc-client] P2P MQTT terminal state:", state);
-        const s = useVideoStore.getState();
+        s.setVideoDegraded(null);
         s.setStreaming(false);
         s.updateStats(0, 0);
         stopStatsPolling();
@@ -141,13 +164,12 @@ async function negotiateViaMqtt(
       }
     };
 
+    // The receiver buffer depth is applied after `setRemoteDescription`, not
+    // here: a target written onto an unassociated receiver is discarded. This
+    // path is cross-network, so it is the one where the closed loop in
+    // `jitter-controller` earns the most — the correct depth for a cellular
+    // hop is not the correct depth for the same code on a LAN.
     localPc.addTransceiver("video", { direction: "recvonly" });
-    // Ladder rung 0 — add no buffer until something measured asks for it.
-    // The closed loop in `jitter-controller`, driven from the stats poll,
-    // takes it from here. This path is cross-network, so it is the one where
-    // the loop earns the most: the correct depth for a cellular hop is not
-    // the correct depth for the same code on a LAN.
-    applyJitterTarget(localPc, jitterTargetForRung(0));
     localPc.addTransceiver("audio", { direction: "recvonly" });
 
     const offer = await abortable(localPc.createOffer(), signal);
@@ -308,6 +330,11 @@ async function negotiateViaMqtt(
     });
 
     await abortable(localPc.setRemoteDescription({ type: "answer", sdp: answerSdp }), signal);
+
+    // First moment the video receiver is associated with the negotiated media
+    // description, and therefore the first moment a buffer target sticks.
+    applyNegotiatedJitterTarget(localPc);
+
     const stream = await abortable(trackPromise, signal);
     checkAborted(signal);
 
@@ -318,6 +345,7 @@ async function negotiateViaMqtt(
     installSession(mqttSessionKey(deviceId), localPc, stream);
     store.setStreamUrl(`mqtt://${deviceId}/webrtc`);
     store.setStreaming(true);
+    store.setVideoDegraded(null);
     store.setTransport("p2p-mqtt");
     // Report connection establishment time, NOT live RTT.
     reportHealth("p2p-mqtt", { state: "ok", stage: "connected", connectMs: elapsedMs });

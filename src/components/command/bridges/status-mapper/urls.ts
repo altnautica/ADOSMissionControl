@@ -31,10 +31,23 @@ function preferIpv4Host(url: string, lastIp: string | undefined): string {
   return url;
 }
 
+/**
+ * The video URLs a node advertises, as the GCS can actually use them.
+ *
+ * WHEP only. The agent also advertises an HLS playlist, and this used to
+ * resolve it end-to-end — into `VideoStreamUrls.hlsUrl` and a per-leg
+ * `hlsUrl` — for zero consumers: nothing in this app imports hls.js, builds a
+ * `MediaSource` for a playlist, or assigns an `.m3u8` to a `<video>`. That is
+ * not a latent fallback, it is a resolved URL that no surface can play, and it
+ * read as a fallback to anyone reading the types. HLS is also 2-6 s behind
+ * live, which is not a figure a piloting surface can present as current, and
+ * the case it would serve — a drone behind a ground station — is already
+ * carried over WHEP by the funneled feed. The agent keeps serving `/hls/…`
+ * for its own on-box cockpit; that client is not this one.
+ */
 export interface VideoStreamUrls {
   state: string | undefined;
   whepUrl: string | null;
-  hlsUrl: string | null;
   lanHost: string | null;
 }
 
@@ -49,12 +62,11 @@ export function resolveVideoUrls(
   const videoState = cloudStatus.videoState as string | undefined;
   const videoWhepPort = cloudStatus.videoWhepPort as number | undefined;
   const videoWhepUrl = cloudStatus.videoWhepUrl as string | undefined;
-  const videoHlsUrl = cloudStatus.videoHlsUrl as string | undefined;
   const lastIp = cloudStatus.lastIp as string | undefined;
 
-  // Current agents advertise RELATIVE same-origin media paths (/whep, /hls/…)
+  // Current agents advertise a RELATIVE same-origin WHEP path (`/whep`)
   // served by the agent's own :8080 front — the same origin this GCS reaches
-  // `/api/*` against. Resolve them against that base; an ABSOLUTE URL from an
+  // `/api/*` against. Resolve it against that base; an ABSOLUTE URL from an
   // older agent is kept (optionally `.local`→IPv4 swapped).
   const base = agentMediaBase(lastIp);
 
@@ -77,14 +89,7 @@ export function resolveVideoUrls(
     whepUrl = `http://${lanHost}:8889/main/whep`;
   }
 
-  const hlsUrl =
-    videoState === "running" && videoHlsUrl
-      ? videoHlsUrl.startsWith("/")
-        ? resolveMediaPath(videoHlsUrl, base)
-        : preferIpv4Host(videoHlsUrl, lastIp)
-      : null;
-
-  return { state: videoState, whepUrl, hlsUrl, lanHost };
+  return { state: videoState, whepUrl, lanHost };
 }
 
 /** Resolve the per-leg video streams a cloud-relayed multi-stream node
@@ -103,7 +108,6 @@ export function resolveVideoStreams(
         codec?: string;
         live?: boolean | null;
         whep?: string;
-        hls?: string;
       }[]
     | undefined;
   if (videoState !== "running" || !streams?.length) return [];
@@ -122,16 +126,12 @@ export function resolveVideoStreams(
           ? resolveMediaPath(s.whep, base) ?? `http://${host}:8889/${s.id}/whep`
           : s.whep
         : `http://${host}:8889/${s.id}/whep`;
-      const hlsUrl = s.hls
-        ? resolveMediaPath(s.hls, base) ?? undefined
-        : undefined;
       return {
         id: s.id,
         role: s.role,
         codec: s.codec,
         live: s.live,
         whepUrl,
-        hlsUrl,
       };
     });
 }

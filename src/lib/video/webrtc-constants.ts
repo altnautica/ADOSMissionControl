@@ -9,6 +9,16 @@
  */
 
 /**
+ * A pending-timer handle, in either host environment.
+ *
+ * `setTimeout` returns `number` under `lib.dom` and a `Timeout` object under
+ * Node's types, and this tree is checked against both. Named once here so a
+ * consumer imports a type instead of restating the conditional at each
+ * declaration site.
+ */
+export type TimerHandle = ReturnType<typeof setTimeout>;
+
+/**
  * Per-stage MQTT timeouts. Slow cellular initial signaling needs more
  * headroom than LAN-direct paths get.
  */

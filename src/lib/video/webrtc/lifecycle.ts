@@ -40,13 +40,16 @@ export async function stopStream(): Promise<void> {
   store.setStreamUrl(null);
   store.updateStats(0, 0);
   store.setTransport("unknown");
+  // A degraded verdict belongs to the session that earned it. Carried past
+  // teardown it would label the next session's first frames as frozen.
+  store.setVideoDegraded(null);
   store.setVideoMetrics({ codec: "", bitrateKbps: 0, packetsLost: 0, jitterMs: 0 });
   store.resetLatency();
 }
 
-// Tracks the element + handler for the loadedmetadata listener so a re-bind
-// or unbind detaches the previous one instead of stacking listeners on a
-// reused <video> element across mounts.
+// Tracks the element + handler for the resolution listeners so a re-bind or
+// unbind detaches the previous ones instead of stacking listeners on a reused
+// <video> element across mounts.
 let metadataEl: HTMLVideoElement | null = null;
 let metadataHandler: (() => void) | null = null;
 
@@ -56,19 +59,24 @@ export function setVideoElement(el: HTMLVideoElement | null): void {
 
   if (metadataEl && metadataHandler) {
     metadataEl.removeEventListener("loadedmetadata", metadataHandler);
+    metadataEl.removeEventListener("resize", metadataHandler);
     metadataEl = null;
     metadataHandler = null;
   }
 
   if (el) {
-    // Track resolution changes
     metadataEl = el;
     metadataHandler = () => {
       useVideoStore
         .getState()
         .setResolution(`${el.videoWidth}x${el.videoHeight}`);
     };
+    // `loadedmetadata` for the first frame's dimensions, `resize` for every
+    // later change. Adaptive encoders drop resolution under load, and with
+    // only the first event bound the readout kept naming the resolution the
+    // stream started at for the rest of the session.
     el.addEventListener("loadedmetadata", metadataHandler);
+    el.addEventListener("resize", metadataHandler);
     // Hook requestVideoFrameCallback for the per-hop latency budget and the
     // SEI-driven true G2G computation. No-op when the browser lacks the API.
     bindFrameCallback(el);

@@ -44,7 +44,7 @@ import {
 } from "@/lib/video/webrtc-constants";
 import {
   applyJitterTarget,
-  jitterTargetForRung,
+  NEGOTIATED_JITTER_TARGET_MS,
 } from "@/lib/video/webrtc/jitter-controller";
 
 /** Connection state of the isolated PiP player, so the inset can show a
@@ -90,13 +90,6 @@ export function usePipVideo(
         const newPc = new RTCPeerConnection({ iceServers: [] });
         pc = newPc;
         newPc.addTransceiver("video", { direction: "recvonly" });
-        // Ladder rung 0 — add no buffer. This is the same helper the main
-        // flows use, replacing a second copy of the hardcoded 50 ms nobody
-        // measured. The inset runs no stats poll, so unlike the main
-        // session it stays at rung 0 rather than closing a loop: an inset
-        // has no latency budget of its own to spend, and inventing a second
-        // control loop for a corner window is not worth the code.
-        applyJitterTarget(newPc, jitterTargetForRung(0));
         newPc.addTransceiver("audio", { direction: "recvonly" });
 
         const stream = new Promise<MediaStream>((resolve, reject) => {
@@ -138,6 +131,14 @@ export function usePipVideo(
         const answerSdp = await response.text();
         if (signal.aborted) return;
         await newPc.setRemoteDescription({ type: "answer", sdp: answerSdp });
+        // The negotiated baseline depth, applied here because a target
+        // written before the answer is applied does not survive the
+        // receiver's association with the media description. The inset runs
+        // no stats poll, so it holds this depth for its life rather than
+        // closing a loop: an inset has no latency budget of its own to spend,
+        // and a second control loop for a corner window is not worth the
+        // code.
+        applyJitterTarget(newPc, NEGOTIATED_JITTER_TARGET_MS);
         const media = await stream;
         if (cancelled || signal.aborted) return;
         if (videoEl) videoEl.srcObject = media;

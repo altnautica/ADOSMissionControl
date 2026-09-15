@@ -512,8 +512,12 @@ export interface FullStatusResponse {
     state: string;
     whep_url: string | null;
     /** Primary HLS playlist (relative `/hls/main/index.m3u8` on current
-     * agents), the remote/relay-safe fallback. Absent on agents that predate
-     * it. */
+     * agents). Consumed by the AGENT's own on-box cockpit, which falls back
+     * WHEP→HLS on the drone's local display; Mission Control never plays it
+     * and resolves no URL from it, because HLS sits 2-6 s behind live and a
+     * piloting surface cannot present that as current. Modelled here so the
+     * wire contract stays complete, not because this client uses it. Absent
+     * on agents that predate it. */
     hls_url?: string | null;
     /** Per-leg video streams on a multi-stream node (each `whep` is the agent's
      * own-host WHEP URL, re-pointed to the reachable host by the client).
@@ -525,7 +529,9 @@ export interface FullStatusResponse {
       role?: string;
       codec?: string;
       whep: string;
-      /** Relative HLS playlist for this leg (`/hls/<id>/index.m3u8`). */
+      /** Relative HLS playlist for this leg (`/hls/<id>/index.m3u8`). Same
+       * consumer as `hls_url` above: the agent's on-box cockpit, not this
+       * client. */
       hls?: string;
       live?: boolean | null;
     }[];

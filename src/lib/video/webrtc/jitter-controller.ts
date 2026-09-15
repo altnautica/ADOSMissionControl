@@ -33,13 +33,36 @@
  */
 
 /**
- * Buffer depths in ms, ascending. Rung 0 is "add nothing" — the correct
- * answer on a link with no measured harm. The steps above it are sized
- * against frame periods at 30 fps (33 ms): ~2 frames, ~4 frames, ~6 frames,
- * which is the range over which a receiver can conceal a loss burst without
- * the delay becoming the dominant term.
+ * Buffer depths in ms, ascending.
+ *
+ * Rung 0 is "add nothing", the correct answer on a link the loop has watched
+ * go quiet. The loop does NOT start there: the starting point is
+ * {@link INITIAL_JITTER_RUNG}, because a receiver left at rung 0 for the
+ * first seconds of a session is not actually running a 0 ms buffer — it is
+ * running whatever the browser's own adaptive target settles on, which on
+ * Chromium is commonly 200 ms and more, unreported and untunable from a
+ * surface. Asking for a deliberate 100 ms at negotiation replaces that
+ * default with a number this codebase chose, and the loop then takes it down
+ * to rung 0 on a link that earns it or up on a link that needs it.
+ *
+ * The steps above the baseline are sized against frame periods at 30 fps
+ * (33 ms): ~3 frames, ~5 frames, ~7 frames, which is the range over which a
+ * receiver can conceal a loss burst without the delay becoming the dominant
+ * term.
  */
-export const JITTER_TARGET_LADDER_MS: readonly number[] = [0, 60, 120, 200];
+export const JITTER_TARGET_LADDER_MS: readonly number[] = [0, 100, 160, 220];
+
+/**
+ * The rung applied at negotiation, and the rung a fresh session starts the
+ * control loop at.
+ *
+ * Not rung 0: see the ladder note. The depth is applied AFTER
+ * `setRemoteDescription`, not before — a target written onto a transceiver's
+ * receiver while the answer is still unapplied does not survive the
+ * association, so the pre-negotiation write this replaced left the receiver
+ * on the browser default it was meant to override.
+ */
+export const INITIAL_JITTER_RUNG = 1;
 
 /**
  * Spec range for `RTCRtpReceiver.jitterBufferTarget`. A value outside it
@@ -67,8 +90,15 @@ export const JITTER_RELAX_MS = 15;
 export const LOSS_ESCALATE = 0.02;
 export const LOSS_RELAX = 0.005;
 
-/** Consecutive clean windows required before stepping down one rung. */
-export const CLEAN_WINDOWS_TO_RELAX = 5;
+/**
+ * Consecutive clean windows required before stepping down one rung.
+ *
+ * Three, not five: with the 2 s dwell this returns a clean link to the rung
+ * below in ~5 s instead of ~7 s. Five windows of buffer nobody needs is
+ * five windows of latency nobody asked for, and the dwell gate is what
+ * actually prevents oscillation.
+ */
+export const CLEAN_WINDOWS_TO_RELAX = 3;
 
 /** One poll window's worth of receiver measurements. */
 export interface JitterSample {
@@ -109,9 +139,19 @@ export interface JitterDecision extends JitterControllerState {
   reason: "freeze" | "jitter" | "loss" | "sustained-clean" | null;
 }
 
-/** Rung 0: the starting point is "assume nothing". */
+/**
+ * A fresh session starts at {@link INITIAL_JITTER_RUNG}, matching the depth
+ * the negotiation applied. Starting the loop at rung 0 while the receiver
+ * actually holds the negotiated baseline would make the controller's model
+ * disagree with the receiver from the first tick: it would read a "no
+ * change" decision as confirmation of a depth nobody applied.
+ */
 export function initialJitterState(): JitterControllerState {
-  return { rung: 0, lastChangeAtMs: null, cleanWindows: 0 };
+  return {
+    rung: INITIAL_JITTER_RUNG,
+    lastChangeAtMs: null,
+    cleanWindows: 0,
+  };
 }
 
 /** Ladder depth for a rung, clamped into the spec's accepted range. */
@@ -123,6 +163,15 @@ export function jitterTargetForRung(rung: number): number {
   const raw = JITTER_TARGET_LADDER_MS[idx];
   return Math.min(Math.max(raw, JITTER_TARGET_MIN_MS), JITTER_TARGET_MAX_MS);
 }
+
+/**
+ * The depth asked of the receiver at negotiation, in ms. Derived from the
+ * ladder rather than written twice, so the loop's first rung and the
+ * negotiated target can never disagree.
+ */
+export const NEGOTIATED_JITTER_TARGET_MS = jitterTargetForRung(
+  INITIAL_JITTER_RUNG,
+);
 
 function normalizedLoss(value: number): number {
   if (!Number.isFinite(value) || value <= 0) return 0;

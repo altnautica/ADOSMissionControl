@@ -9,6 +9,10 @@
 
 import { useEffect, useState } from "react";
 import { LAN_ICE_GATHER_TIMEOUT_MS, LAN_ONTRACK_TIMEOUT_MS } from "@/lib/video/webrtc-constants";
+import {
+  applyJitterTarget,
+  NEGOTIATED_JITTER_TARGET_MS,
+} from "@/lib/video/webrtc/jitter-controller";
 
 export type AgentVideoSessionState = "idle" | "connecting" | "connected" | "failed";
 
@@ -142,6 +146,12 @@ export function useAgentVideoSession({
         });
 
         await pc.setRemoteDescription({ type: "answer", sdp: answerSdp });
+        // Same negotiated receiver depth the cockpit session gets, applied at
+        // the same point (a target set before the answer is applied does not
+        // survive the receiver's association). A tile used to get whatever
+        // the browser chose while the cockpit got a deliberate value, so the
+        // two surfaces showed the same feed at different latencies.
+        applyJitterTarget(pc, NEGOTIATED_JITTER_TARGET_MS);
         const stream = await trackPromise;
         if (cancelled || !pc) {
           stream.getTracks().forEach((track) => track.stop());

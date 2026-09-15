@@ -12,8 +12,10 @@
  * VideoFeedCard's useEffect. Extracted so it can be unit-tested in
  * isolation and reused by every video surface.
  *
- * Cloud WHEP and Cloud MSE modes are deferred — the cascade stops at P2P
- * MQTT for now.
+ * The cascade is LAN Direct → P2P MQTT and stops there. There is no cloud
+ * rung: `cloud-whep` / `cloud-mse` used to exist as transport VALUES with no
+ * implementation behind them, and have been removed from `VideoTransport`
+ * rather than left as labels the switcher could display but never select.
  *
  * ## Holding the shared stream
  *
@@ -92,6 +94,14 @@ export function useVideoTransportCascade(opts: CascadeOpts): CascadeResult {
     // Whether THIS effect run holds a hold on the shared session. Only a run
     // that acquired one may release one; see the module note.
     let holdsSession = false;
+    // The element THIS run actually attached a stream to, if any. Only such a
+    // run may detach it. An unconditional clear in the cleanup blanked a pane
+    // whose stream was still live and still being delivered — the effect
+    // re-runs whenever `enabled` flips, and the `!enabled` branch exists
+    // precisely to leave an active session alone, so the cleanup was undoing
+    // the branch's whole purpose: a black rectangle with `isStreaming` still
+    // true, i.e. no placeholder either.
+    let attachedEl: HTMLVideoElement | null = null;
 
     if (transportMode === "off") {
       // The operator turned video off on this surface. The hold this
@@ -256,6 +266,7 @@ export function useVideoTransportCascade(opts: CascadeOpts): CascadeResult {
             return;
           }
           videoEl.srcObject = stream;
+          attachedEl = videoEl;
           setState("connected");
           setActiveTransport(mode);
           setError(null);
@@ -291,8 +302,14 @@ export function useVideoTransportCascade(opts: CascadeOpts): CascadeResult {
         holdsSession = false;
         void stopStream();
       }
-      // Part I P0-4: clear srcObject on teardown
-      if (videoEl) videoEl.srcObject = null;
+      // Detach only an element THIS run attached, and only when it is also
+      // giving the session hold back. A run that never drove the element
+      // (the `!enabled` debounce flipping, a dep change while another surface
+      // owns the feed) must leave a live MediaStream attached.
+      if (attachedEl) {
+        attachedEl.srcObject = null;
+        attachedEl = null;
+      }
     };
   }, [
     agentWhepUrl,

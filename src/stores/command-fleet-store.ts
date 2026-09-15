@@ -120,9 +120,6 @@ export interface CommandCloudStatus {
   videoState?: string;
   videoWhepPort?: number;
   videoWhepUrl?: string;
-  /** Relative or absolute HLS URL for the primary feed, resolved downstream
-   * against the agent base. Absent on agents that predate it. */
-  videoHlsUrl?: string;
   mavlinkWsPort?: number;
   mavlinkWsUrl?: string;
   remoteAccess?: {

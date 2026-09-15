@@ -47,11 +47,16 @@ export { currentJitterTargetMs } from "./webrtc/stats-tracker";
 
 // Re-exports of the helpers that the cascade hook + tests pull off the
 // same module today.
+//
+// `detectTransportFromUrl` is gone: it classified a WHEP URL as `lan-whep` or
+// `cloud-whep`, had no caller but this re-export, and `cloud-whep` is no
+// longer a transport. The active transport comes from the cascade mode that
+// dialled, which is authoritative — the hostname heuristic mis-classified a
+// tunnelled LAN URL anyway.
 export {
   abortable,
   checkAborted,
   classifyError,
-  detectTransportFromUrl,
   mungeForLowLatency,
 } from "./webrtc-helpers";
 

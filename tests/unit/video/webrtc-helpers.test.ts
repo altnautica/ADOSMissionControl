@@ -14,7 +14,6 @@ import {
   checkAborted,
   abortable,
   mungeForLowLatency,
-  detectTransportFromUrl,
 } from "@/lib/video/webrtc-client";
 
 describe("classifyError", () => {
@@ -158,39 +157,5 @@ describe("mungeForLowLatency", () => {
   it("returns the SDP unchanged when no video m-line is present", () => {
     const sdp = "v=0\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111\r\n";
     expect(mungeForLowLatency(sdp)).toBe(sdp);
-  });
-});
-
-describe("detectTransportFromUrl", () => {
-  it("classifies localhost as lan-whep", () => {
-    expect(detectTransportFromUrl("http://localhost:8889/stream/whep")).toBe("lan-whep");
-    expect(detectTransportFromUrl("http://127.0.0.1:8889/stream/whep")).toBe("lan-whep");
-  });
-
-  it("classifies 10.0.0.0/8 as lan-whep", () => {
-    expect(detectTransportFromUrl("http://10.1.2.3:8889/stream/whep")).toBe("lan-whep");
-  });
-
-  it("classifies 192.168.0.0/16 as lan-whep", () => {
-    expect(detectTransportFromUrl("http://192.168.1.50:8889/stream/whep")).toBe("lan-whep");
-  });
-
-  it("classifies 172.16.0.0/12 as lan-whep", () => {
-    expect(detectTransportFromUrl("http://172.16.0.1:8889/stream/whep")).toBe("lan-whep");
-    expect(detectTransportFromUrl("http://172.31.255.254:8889/stream/whep")).toBe("lan-whep");
-  });
-
-  it("classifies a public host as cloud-whep", () => {
-    expect(detectTransportFromUrl("https://video.altnautica.com/stream/whep")).toBe("cloud-whep");
-    expect(detectTransportFromUrl("https://1.1.1.1:8889/stream/whep")).toBe("cloud-whep");
-  });
-
-  it("falls back to lan-whep on a malformed URL", () => {
-    expect(detectTransportFromUrl("not-a-url")).toBe("lan-whep");
-  });
-
-  it("does not match 172.15 or 172.32 (outside the private range)", () => {
-    expect(detectTransportFromUrl("http://172.15.0.1:8889/stream/whep")).toBe("cloud-whep");
-    expect(detectTransportFromUrl("http://172.32.0.1:8889/stream/whep")).toBe("cloud-whep");
   });
 });

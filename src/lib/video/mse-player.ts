@@ -47,17 +47,16 @@ const MAX_QUEUED_SEGMENTS = 12;
 const RETAINED_BEHIND_S = 5;
 
 /**
- * Drift from the live edge that triggers a seek.
+ * Drift from the live edge that triggers a seek, and where to land.
  *
- * A live stream that falls behind stays behind: MSE plays what is buffered
- * from wherever `currentTime` is, and nothing pulls it forward. After a
- * stall, a queue overflow, or a backgrounded tab, the buffer's leading edge
- * runs away from the playhead and the operator watches a delayed feed with
- * no indication it is delayed.
+ * 0.6 s / 0.15 s, not 2 s / 0.3 s. This is a piloting feed: allowing two
+ * seconds of drift before chasing, then landing 300 ms behind the edge, is up
+ * to 2.3 s of delay the operator has no indication of. The tighter pair still
+ * leaves ~5 frames of decode headroom at 30 fps.
  */
-const MAX_LIVE_DRIFT_S = 2;
+const MAX_LIVE_DRIFT_S = 0.6;
 /** Where to land relative to the leading edge, leaving decode headroom. */
-const LIVE_EDGE_MARGIN_S = 0.3;
+const LIVE_EDGE_MARGIN_S = 0.15;
 
 /** Why a session failed, so a surface can say something specific. */
 export type MsePlayerErrorCode =
@@ -92,6 +91,13 @@ export class MsePlayer {
   private videoRelayUrl: string = VIDEO_RELAY_URL_DEFAULT;
   private reconnectTimer: TimerHandle | null = null;
   private onError: ((err: MsePlayerError) => void) | null = null;
+  /**
+   * The options this session was started with, retained so `reconnect()` can
+   * re-pass them. `reconnect()` used to call `start()` with three arguments,
+   * which dropped the caller's `onError` on the first reconnect — so a relay
+   * that failed after one successful minute went silent again.
+   */
+  private options: MsePlayerOptions | undefined;
   /** Segments dropped to hold the queue bound, for the reconnect decision. */
   private droppedSegments = 0;
 
@@ -121,7 +127,8 @@ export class MsePlayer {
     this.videoElement = videoElement;
     this.droppedSegments = 0;
     if (videoRelayUrl) this.videoRelayUrl = videoRelayUrl;
-    if (options?.onError !== undefined) this.onError = options.onError;
+    if (options !== undefined) this.options = options;
+    if (this.options?.onError !== undefined) this.onError = this.options.onError;
 
     if (!("MediaSource" in window)) {
       this.fail("mse-unsupported", "MediaSource is not available in this browser");
@@ -287,11 +294,14 @@ export class MsePlayer {
     const video = this.videoElement;
     const deviceId = this.deviceId;
     const relayUrl = this.videoRelayUrl;
+    const options = this.options;
     if (!video || !deviceId) return;
     // stop() clears timers + tracks + nulls videoElement; re-issue start
-    // with the captured references to rebuild the pipeline.
+    // with the captured references to rebuild the pipeline. The options go
+    // back in too: without them the caller's error handler survived exactly
+    // one session.
     this.stop();
-    this.start(deviceId, video, relayUrl);
+    this.start(deviceId, video, relayUrl, options);
   }
 
   private appendBuffer(data: ArrayBuffer): void {
