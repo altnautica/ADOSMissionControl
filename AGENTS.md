@@ -23,13 +23,14 @@ being touched.
 ## Stack and Commands
 
 - Next.js 16 App Router, React 19, TypeScript strict, Tailwind v4, Zustand 5,
-  Convex, Electron 35. License GPL-3.0-only.
+  Convex, Electron 44. License GPL-3.0-only.
 - Dev server port: `4000` for dev, demo, and production.
 - Protocol: custom MAVLink v2 binary parser and encoder behind the
   `DroneProtocol` abstraction, plus an MSPv1/MSPv2 codec with iNav decoders and
   a name-based settings client.
-- Surface size: ~64 Zustand stores with ring-buffered telemetry, ~58 FC
-  configuration panels, 83 MAVLink message decoders, 33 `MAV_CMD` handlers.
+- Surface size: 96 Zustand stores with ring-buffered telemetry, 87 FC
+  configuration panels under `src/components/fc/<domain>/`, 83 MAVLink message
+  decoders, 33 `MAV_CMD` handlers.
 - Firmware support: ArduPilot, PX4, Betaflight, and iNav.
 - Common commands:
 
@@ -58,7 +59,7 @@ types, Convex usage, or production-only behavior.
 
 - App routes: `src/app/`
 - Shared UI: `src/components/ui/`
-- FC panels: `src/components/fc/*Panel.tsx`
+- FC panels: `src/components/fc/<domain>/*Panel.tsx`
 - Indicators: `src/components/indicators/*Indicator.tsx`
 - Stores: `src/stores/*-store.ts`, with large stores split into domain slices.
 - Agent connection: `src/stores/agent-connection/` and `src/lib/agent/`
@@ -136,7 +137,7 @@ code.
 
 | Type | Naming | Location |
 |---|---|---|
-| FC panel component | `PascalCase` + `Panel` | `src/components/fc/` |
+| FC panel component | `PascalCase` + `Panel` | `src/components/fc/<domain>/` |
 | Indicator component | `PascalCase` + `Indicator` | `src/components/indicators/` |
 | Zustand store | `kebab-case` + `-store` | `src/stores/` |
 | Store sub-slices | `kebab-case-(slice\|store).ts` | `src/stores/<domain>/` |
@@ -176,7 +177,9 @@ Mark an intentional exemption with `// Exempt from 300 LOC soft rule: <reason>`.
 
 ## Checklists
 
-**New FC panel.** Create `src/components/fc/MyNewPanel.tsx` with `"use client"`.
+**New FC panel.** Create `src/components/fc/<domain>/MyNewPanel.tsx` with
+`"use client"`. Every panel lives in a domain subdirectory, none at the top
+level of `src/components/fc/`.
 Define module-level `paramNames` (and optional `optionalParams`) constants, call
 `usePanelParams({ paramNames, optionalParams, panelId, autoLoad: false })`,
 render through `PanelHeader`, edit with `setLocalValue()`, persist with
