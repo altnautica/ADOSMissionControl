@@ -143,7 +143,7 @@ Usage:
 Options:
   --drones <N>        Number of ArduCopter instances (default: 1)
   --ws-port <port>    WebSocket port for GCS connection (default: 5760)
-  --lat <degrees>     Home latitude (default: 12.9716 — Bangalore)
+  --lat <degrees>     Home latitude (default: 12.9716)
   --lon <degrees>     Home longitude (default: 77.5946)
   --speedup <N>       Simulation speed multiplier (default: 1)
   --wind <spd,dir>    Wind speed (m/s) and direction (degrees)
@@ -157,7 +157,7 @@ Options:
   -h, --help          Show this help
 
 Examples:
-  npx tsx src/index.ts                                # Single drone, Bangalore
+  npx tsx src/index.ts                                # Single drone, default origin
   npx tsx src/index.ts --drones 3                     # Three drones
   npx tsx src/index.ts --preset 7in-long-range        # 7" LR build preset
   npx tsx src/index.ts --preset 10in-heavy-lifter     # Hexa heavy lifter

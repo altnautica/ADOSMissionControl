@@ -1,13 +1,13 @@
 <?xml version="1.0" ?>
 <!--
-  bangalore-real.sdf — Real-world Bangalore terrain with satellite imagery + 3D buildings
+  terrain-real.sdf — Real-world terrain DEM with satellite imagery + 3D buildings
   SPDX-License-Identifier: GPL-3.0-only
   Generated via gazebo_terrain_generator from Mapbox DEM + satellite
-  GPS Origin: 13.0233°N, 77.6676°E, 900m elevation (East Bangalore)
+  GPS Origin: 13.0233°N, 77.6676°E, 900m elevation
   Area: ~1.8km x 1.8km
 -->
 <sdf version="1.9">
-  <world name="ados_bangalore">
+  <world name="ados_terrain_real">
 
     <gravity>0 0 -9.8066</gravity>
 
@@ -36,7 +36,7 @@
       <sky></sky>
     </scene>
 
-    <!-- GPS origin: East Bangalore -->
+    <!-- Georeferenced origin of the terrain tile -->
     <spherical_coordinates>
       <surface_model>EARTH_WGS84</surface_model>
       <latitude_deg>13.023290004843895</latitude_deg>
@@ -89,9 +89,9 @@
       </link>
     </model>
 
-    <!-- Real Bangalore terrain (DEM heightmap + satellite imagery + 3D buildings) -->
+    <!-- Real-world terrain (DEM heightmap + satellite imagery + 3D buildings) -->
     <include>
-      <uri>model://bangalore-terrain</uri>
+      <uri>model://sitl-terrain</uri>
     </include>
 
     <!-- Iris quadcopter with camera gimbal + ArduPilot plugin -->

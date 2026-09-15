@@ -41,7 +41,7 @@ npm install
 ## Usage
 
 ```bash
-# Single drone (Bangalore)
+# Single drone (default origin)
 npx tsx src/index.ts
 
 # Multiple drones
@@ -66,7 +66,7 @@ npx tsx src/index.ts --vehicle ArduPlane
 |------|---------|-------------|
 | `--drones` | `1` | Number of drone instances |
 | `--ws-port` | `5760` | WebSocket port for GCS |
-| `--lat` | `12.9716` | Home latitude (Bangalore) |
+| `--lat` | `12.9716` | Home latitude (default origin) |
 | `--lon` | `77.5946` | Home longitude |
 | `--speedup` | `1` | Simulation speed multiplier |
 | `--wind` | — | Wind speed,direction (e.g. `5,180`) |

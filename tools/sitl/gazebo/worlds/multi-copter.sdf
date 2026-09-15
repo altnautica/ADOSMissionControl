@@ -2,7 +2,7 @@
 <!--
   multi-copter.sdf — Multi-drone test world for ADOS SITL
   SPDX-License-Identifier: GPL-3.0-only
-  Location: Bangalore, India (12.9716, 77.5946, 920m)
+  Origin: 12.9716, 77.5946, 920m
 -->
 <sdf version="1.9">
   <world name="ados_multi_copter">

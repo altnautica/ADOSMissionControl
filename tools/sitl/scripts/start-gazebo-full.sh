@@ -8,7 +8,7 @@ SITL_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 MC_DIR="$(cd "$SITL_DIR/../.." && pwd)"
 RELAY_DIR="$MC_DIR/tools/video-relay"
 
-WORLD="bangalore-real"
+WORLD="terrain-real"
 HEADLESS=""
 
 while [[ $# -gt 0 ]]; do
@@ -57,7 +57,7 @@ echo "  OK (pid $PID1)"
 # 2. SITL + Gazebo
 echo "[2/4] Starting ArduPilot SITL + Gazebo ($WORLD)..."
 cd "$SITL_DIR"
-npx tsx src/index.ts --scenario bangalore-gazebo --no-dashboard > /tmp/gazebo-sitl.log 2>&1 &
+npx tsx src/index.ts --scenario terrain-gazebo --no-dashboard > /tmp/gazebo-sitl.log 2>&1 &
 PID2=$!
 echo "  Waiting for SITL (15s)..."
 sleep 15
@@ -66,7 +66,7 @@ echo "  OK (pid $PID2)"
 # 2b. Enable camera streaming in Gazebo
 echo "  Enabling camera streaming..."
 # Enable camera streaming (world name may vary)
-for world_name in ados_bangalore ados_multi_copter ados_urban ados_agriculture; do
+for world_name in ados_terrain_real ados_multi_copter ados_urban ados_agriculture; do
   gz topic -t "/world/$world_name/model/iris_with_gimbal/model/gimbal/link/pitch_link/sensor/camera/image/enable_streaming" -m gz.msgs.Boolean -p 'data: true' 2>/dev/null || true
 done
 

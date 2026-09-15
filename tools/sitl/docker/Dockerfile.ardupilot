@@ -30,7 +30,7 @@ WORKDIR /ardupilot
 # Install Python dependencies for sim_vehicle.py
 RUN pip3 install pexpect pymavlink
 
-# Default: single copter at Bangalore
+# Default: single copter at the default SITL origin
 ENV VEHICLE=ArduCopter
 ENV DRONE_COUNT=1
 ENV LAT=12.9716

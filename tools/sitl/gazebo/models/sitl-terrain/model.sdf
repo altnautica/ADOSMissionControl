@@ -8,7 +8,7 @@
         <collision name="collision">
           <geometry>
             <heightmap>
-              <uri>model://bangalore-terrain/textures/height_map.tif</uri>
+              <uri>model://sitl-terrain/textures/height_map.tif</uri>
               <size>1787.65 1776.22 29.8</size>
               <pos>-571.46 296.02  -26.48</pos>
             </heightmap>
@@ -19,11 +19,11 @@
             <heightmap>
               <use_terrain_paging>false</use_terrain_paging>
               <texture>
-                <diffuse>model://bangalore-terrain/textures/aerial.png</diffuse>
-                <normal>model://bangalore-terrain/textures/aerial.png</normal>
+                <diffuse>model://sitl-terrain/textures/aerial.png</diffuse>
+                <normal>model://sitl-terrain/textures/aerial.png</normal>
                 <size>1787.65 1776.22 29.8</size>
               </texture>
-              <uri>model://bangalore-terrain/textures/height_map.tif</uri>
+              <uri>model://sitl-terrain/textures/height_map.tif</uri>
               <size>1787.65 1776.22 29.8</size>
               <pos>-571.46 296.02 -26.48</pos>
               <sampling>2</sampling>
@@ -44,7 +44,7 @@
           <visual name="buildings_visual">
             <geometry>
               <mesh>
-                <uri>model://bangalore-terrain/textures/buildings.dae</uri>
+                <uri>model://sitl-terrain/textures/buildings.dae</uri>
                 <scale>1 1 1</scale>
               </mesh>
             </geometry>
@@ -60,7 +60,7 @@
           <collision name="buildings_collision">
             <geometry>
               <mesh>
-                <uri>model://bangalore-terrain/textures/buildings.dae</uri>
+                <uri>model://sitl-terrain/textures/buildings.dae</uri>
                 <scale>1 1 1</scale>
               </mesh>
             </geometry>
