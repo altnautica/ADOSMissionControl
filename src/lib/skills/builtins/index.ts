@@ -19,8 +19,9 @@ import { resumeSkill } from "./resume";
 import { abortSkill } from "./abort";
 import { killSkill } from "./kill";
 import { modeSkills } from "./modes";
+import { setModeSkill } from "./set-mode";
 
-/** All 14 built-in skills, in registration order. */
+/** Every built-in skill, in registration order. */
 export const builtinSkills: Skill[] = [
   armSkill,
   disarmSkill,
@@ -32,6 +33,8 @@ export const builtinSkills: Skill[] = [
   abortSkill,
   killSkill,
   ...modeSkills,
+  // Parameterised, not bindable: dispatched by the flight-mode dropdown.
+  setModeSkill,
 ];
 
 export {
@@ -45,4 +48,5 @@ export {
   abortSkill,
   killSkill,
   modeSkills,
+  setModeSkill,
 };

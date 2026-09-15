@@ -186,6 +186,9 @@ export const useSkillRegistry = create<SkillRegistryState>((set, get) => ({
 
     const visible: Skill[] = [];
     for (const skill of skills.values()) {
+      // A skill with no meaning without an argument has nothing to bind and no
+      // slot to occupy; it is dispatched from its own control.
+      if (skill.bindable === false) continue;
       // Plugin skills appear only for drones that have the plugin installed.
       if (skill.source === "plugin" && !isPluginInstalledFor(skill, droneId)) {
         continue;

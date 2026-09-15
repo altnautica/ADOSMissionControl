@@ -19,6 +19,7 @@ import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
 import { useFlightShortcuts } from "@/hooks/use-flight-shortcuts";
 import { useShallow } from "zustand/react/shallow";
 import { buildSkillContext, activate } from "@/lib/skills";
+import type { SkillActivateArgs } from "@/lib/skills";
 import { cn } from "@/lib/utils";
 
 
@@ -28,8 +29,6 @@ export function ActionsPanel() {
   const flightMode = useDroneStore((s) => s.flightMode);
   const previousMode = useDroneStore((s) => s.previousMode);
   const selectedId = useDroneManager((s) => s.selectedDroneId);
-  const setFlightMode = useDroneStore((s) => s.setFlightMode);
-  const getProtocol = useDroneManager((s) => s.getSelectedProtocol);
 
   const [takeoffAlt, setTakeoffAlt] = useState("10");
   const [showChecklist, setShowChecklist] = useState(false);
@@ -48,7 +47,6 @@ export function ActionsPanel() {
   );
 
   const isArmed = armState === "armed";
-  const protocol = getProtocol();
   const { supports } = useFirmwareCapabilities();
   const hasMissions = supports("supportsMissionUpload");
   const hasAutonomousFlight = supports("supportsAutonomousNav"); // RTL/Land/Takeoff
@@ -56,7 +54,7 @@ export function ActionsPanel() {
   // Every action fires through the single skill-dispatch pipeline so confirm,
   // arm-gating, and idempotency are uniform with the keyboard + gamepad paths.
   // A panel onClick is identical to a hotkey press or a Skill Bar press.
-  const fire = (skillId: string, args?: { altitudeM?: number }) => {
+  const fire = (skillId: string, args?: SkillActivateArgs) => {
     if (!selectedId) return;
     void activate(skillId, buildSkillContext(selectedId), args);
   };
@@ -82,6 +80,7 @@ export function ActionsPanel() {
     onTakeoffConfirm: fireTakeoff,
     onLandConfirm: () => fire("land"),
     onAbortConfirm: () => fire("abort"),
+    onPauseResume: firePauseResume,
     takeoffAlt,
   });
 
@@ -133,10 +132,7 @@ export function ActionsPanel() {
           <div className="flex-1">
             <FlightModeSelector
               value={flightMode}
-              onChange={(mode) => {
-                if (protocol) protocol.setFlightMode(mode);
-                else setFlightMode(mode);
-              }}
+              onChange={(mode) => fire("set-mode", { targetMode: mode })}
               className="w-full h-9"
             />
           </div>

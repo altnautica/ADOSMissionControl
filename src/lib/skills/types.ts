@@ -138,6 +138,15 @@ export interface Skill {
   pluginId?: string;
   toggle: boolean;
   confirm?: ConfirmPolicy;
+  /**
+   * False for a skill that carries no meaning without an argument — the
+   * parameterised mode change is the only one today. Such a skill is dispatched
+   * from its own control and is deliberately absent from every bar, drawer,
+   * palette and key-binding surface, because there is nothing to bind: a slot
+   * labelled "set mode" with no mode chosen would do nothing when pressed.
+   * Defaults to true when omitted.
+   */
+  bindable?: boolean;
   /** Default "any" when omitted. */
   armRequirement?: ArmRequirement;
   /**

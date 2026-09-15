@@ -3,12 +3,18 @@
  * @description Keyboard shortcuts for flight actions (Shift+key).
  * ARM/DISARM, RTH, Land, Takeoff, Pause/Hold/Resume, Abort.
  * Kill has no shortcut (too dangerous, requires 2-step click).
+ *
+ * Every key hands off to a caller-supplied dispatch, which is the skill
+ * pipeline: a hotkey and a panel press must produce the same confirm, the same
+ * arm gate and the same refusal feedback. The Pause key used to command the
+ * vehicle itself and, with no protocol, write LOITER into the local drone store
+ * and toast "Mission paused" — a mode change and a success message for a
+ * command that was never transmitted.
  * @license GPL-3.0-only
  */
 
 import { useEffect } from "react";
 import { useDroneStore } from "@/stores/drone-store";
-import { useDroneManager } from "@/stores/drone-manager";
 import { useToast } from "@/components/ui/toast";
 
 interface UseFlightShortcutsParams {
@@ -19,6 +25,8 @@ interface UseFlightShortcutsParams {
   onTakeoffConfirm: () => void;
   onLandConfirm: () => void;
   onAbortConfirm: () => void;
+  /** Mission-aware pause/resume/hold, chosen by the caller from live state. */
+  onPauseResume: () => void;
   takeoffAlt: string;
 }
 
@@ -30,6 +38,7 @@ export function useFlightShortcuts({
   onTakeoffConfirm,
   onLandConfirm,
   onAbortConfirm,
+  onPauseResume,
   takeoffAlt,
 }: UseFlightShortcutsParams) {
   const { toast } = useToast();
@@ -86,25 +95,12 @@ export function useFlightShortcuts({
           break;
         }
         case "P": {
-          // Pause / Hold / Resume (context-dependent)
+          // Pause / Hold / Resume. The caller picks which of the three from the
+          // same mode/mission state the panel button uses, and dispatches it
+          // through the skill pipeline — which is also what reports whether the
+          // vehicle accepted it. Nothing is claimed here.
           e.preventDefault();
-          const mode = droneState.flightMode;
-          const prevMode = droneState.previousMode;
-          const protocol = useDroneManager.getState().getSelectedProtocol();
-
-          if (mode === "AUTO") {
-            if (protocol) protocol.pauseMission();
-            else droneState.setFlightMode("LOITER");
-            toast("Mission paused", "info");
-          } else if (mode === "LOITER" && prevMode === "AUTO") {
-            if (protocol) protocol.resumeMission();
-            else droneState.setFlightMode("AUTO");
-            toast("Mission resumed", "success");
-          } else {
-            if (protocol) protocol.setFlightMode("LOITER");
-            else droneState.setFlightMode("LOITER");
-            toast("Hold position", "info");
-          }
+          onPauseResume();
           break;
         }
         case "X": {
@@ -128,6 +124,7 @@ export function useFlightShortcuts({
     onTakeoffConfirm,
     onLandConfirm,
     onAbortConfirm,
+    onPauseResume,
     takeoffAlt,
     toast,
   ]);
