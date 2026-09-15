@@ -5,11 +5,11 @@
  * in `/api/v1/ground-station/relay-proxy/<peerDeviceId>/...`.
  *
  * A path segment built from a client-supplied string is a path-traversal
- * surface, so it gets an allow-list rather than a deny-list. The vocabulary is
- * taken from `src/lib/protocol/firmware/ap-periph-path.ts` — the repo's
- * existing validator for exactly this situation (a caller-supplied string
- * spliced into an upstream URL path), which pairs the same
- * `/^[A-Za-z0-9._-]+$/` segment charset with an explicit dot-segment refusal.
+ * surface, so it gets an allow-list rather than a deny-list. It uses the same
+ * segment charset as `src/lib/protocol/firmware/ap-periph-path.ts`, the
+ * repo's validator for exactly this situation (a caller-supplied string
+ * spliced into an upstream URL path): `/^[A-Za-z0-9._-]+$/` plus an explicit
+ * dot-segment refusal.
  * The length ceiling is the agent protocol's own device-id bound
  * (`MAX_DEVICE_ID = 32`, `ados-protocol/src/node_status.rs`), so an id this
  * route accepts is one the aux RPC lane can actually address.
