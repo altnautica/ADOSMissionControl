@@ -63,6 +63,7 @@ export const displayDefaults: Partial<SettingsStoreState> = {
   autoRecordOnConnect: false,
   autoRecordOnArm: true,
   showNoFlyZones: false,
+  noFlyRegion: null,
   offlineTileCaching: false,
   locale: "en",
   themeMode: "dark",
@@ -124,6 +125,7 @@ export const createDisplayActions: SettingsSliceFactory<
     | "setAutoRecordOnConnect"
     | "setAutoRecordOnArm"
     | "setShowNoFlyZones"
+    | "setNoFlyRegion"
     | "setOfflineTileCaching"
     | "saveParamFilterPreset"
     | "removeParamFilterPreset"
@@ -203,6 +205,7 @@ export const createDisplayActions: SettingsSliceFactory<
   setAutoRecordOnConnect: (autoRecordOnConnect) => set({ autoRecordOnConnect }),
   setAutoRecordOnArm: (autoRecordOnArm) => set({ autoRecordOnArm }),
   setShowNoFlyZones: (showNoFlyZones) => set({ showNoFlyZones }),
+  setNoFlyRegion: (noFlyRegion) => set({ noFlyRegion }),
   setOfflineTileCaching: (offlineTileCaching) => set({ offlineTileCaching }),
   saveParamFilterPreset: (preset) =>
     set((s) => ({

@@ -83,6 +83,13 @@ export interface SettingsStoreState {
   autoRecordOnConnect: boolean;
   autoRecordOnArm: boolean;
   showNoFlyZones: boolean;
+  /**
+   * ISO 3166-1 alpha-2 region whose no-fly dataset the map draws, or null
+   * when the operator has not said. Null is NOT "no restrictions": with no
+   * region the overlay renders its unknown state, because an empty layer
+   * looks exactly like clear airspace.
+   */
+  noFlyRegion: string | null;
   offlineTileCaching: boolean;
   locale: string;
   themeMode: ThemeMode;
@@ -170,6 +177,8 @@ export interface SettingsStoreState {
   setAutoRecordOnConnect: (enabled: boolean) => void;
   setAutoRecordOnArm: (enabled: boolean) => void;
   setShowNoFlyZones: (show: boolean) => void;
+  /** Set the no-fly dataset region, or null to clear it. */
+  setNoFlyRegion: (region: string | null) => void;
   setOfflineTileCaching: (enabled: boolean) => void;
   saveParamFilterPreset: (preset: ParameterFilterPreset) => void;
   removeParamFilterPreset: (id: string) => void;

@@ -13,6 +13,7 @@ import { MapContainer, TileLayer, Polyline, Marker, useMap } from "react-leaflet
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { FlightRecord } from "@/lib/types";
+import { DEFAULT_CENTER } from "@/lib/map-constants";
 
 // ── Heatmap layer (leaflet.heat) ─────────────────────────────
 
@@ -280,7 +281,8 @@ export default function FleetCoverageMapInner({
     return null;
   }, [records]);
 
-  let center: [number, number] = [12.97, 77.59]; // Bangalore fallback
+  // Nothing located yet: prefer a record's own path or takeoff point below.
+  let center: [number, number] = DEFAULT_CENTER;
   for (const r of records) {
     if (r.path && r.path.length > 0) { center = r.path[0]; break; }
     if (r.takeoffLat !== undefined && r.takeoffLon !== undefined) {

@@ -281,5 +281,13 @@ export function migrateSettings(
     // needs no change — absent reads as "the default bottom-right corner". No-op
     // branch, kept for the version fence.
   }
+  if (version < 47) {
+    // v47: `noFlyRegion`. The no-fly dataset used to be a single unlabelled
+    // table, so a pre-v47 operator had it drawn whatever their region. Null
+    // means "not stated", which renders the overlay's unknown state rather
+    // than an empty layer — the migration must NOT guess a region, because
+    // guessing is what made the overlay wrong in the first place.
+    state.noFlyRegion = null;
+  }
   return state as unknown as SettingsStoreState;
 }

@@ -87,7 +87,7 @@ types, Convex usage, or production-only behavior.
   `cargo test`, `cargo clippy --all-targets -- -D warnings`, `cargo fmt --check`.
   Generated secrets go only to gitignored files or `npx convex env set`, never
   to source, logs, snapshots, or fixtures. Example screens use placeholders
-  such as `mycompany-fleet`, `192.168.1.50`, and `fleet.example.com`.
+  such as `mycompany-fleet`, `192.168.1.50`, and `cloud.example.com`.
 
 Keep code files near 300 lines when practical. Split files before they become
 hard to review, except generated files, fixtures, data tables, and vendored

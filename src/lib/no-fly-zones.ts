@@ -1,7 +1,15 @@
 /**
  * @module no-fly-zones
- * @description Static no-fly zone data for major Indian airports and restricted areas.
- * Rendered as red semi-transparent polygons on the map.
+ * @description Per-region no-fly zone data, rendered as red semi-transparent
+ * polygons on the map.
+ *
+ * The table is keyed by ISO 3166-1 alpha-2 country code and it is NOT
+ * complete: most regions have no entries. That distinction is the whole
+ * point of {@link noFlyZonesForRegion} returning `null` rather than `[]` —
+ * an empty overlay is visually identical to clear airspace, so a dataset
+ * that silently covers one country only told every operator elsewhere that
+ * their airspace was clear. A caller MUST render the unknown state rather
+ * than an empty layer.
  * @license GPL-3.0-only
  */
 
@@ -33,44 +41,67 @@ function circlePolygon(lat: number, lon: number, radiusM: number, points = 32): 
   return result;
 }
 
-/** 5 km radius around major Indian airports (DGCA standard no-fly perimeter). */
+/** 5 km radius, the perimeter most civil authorities publish around an airport. */
 const AIRPORT_RADIUS = 5000;
 
-export const NO_FLY_ZONES: NoFlyZone[] = [
-  {
-    name: "DEL - Indira Gandhi Intl",
-    type: "airport",
-    center: [28.5562, 77.1000],
-    polygon: circlePolygon(28.5562, 77.1000, AIRPORT_RADIUS),
-  },
-  {
-    name: "BLR - Kempegowda Intl",
-    type: "airport",
-    center: [13.1979, 77.7063],
-    polygon: circlePolygon(13.1979, 77.7063, AIRPORT_RADIUS),
-  },
-  {
-    name: "BOM - Chhatrapati Shivaji Intl",
-    type: "airport",
-    center: [19.0896, 72.8656],
-    polygon: circlePolygon(19.0896, 72.8656, AIRPORT_RADIUS),
-  },
-  {
-    name: "MAA - Chennai Intl",
-    type: "airport",
-    center: [12.9941, 80.1709],
-    polygon: circlePolygon(12.9941, 80.1709, AIRPORT_RADIUS),
-  },
-  {
-    name: "HYD - Rajiv Gandhi Intl",
-    type: "airport",
-    center: [17.2403, 78.4294],
-    polygon: circlePolygon(17.2403, 78.4294, AIRPORT_RADIUS),
-  },
-  {
-    name: "CCU - Netaji Subhas Chandra Bose Intl",
-    type: "airport",
-    center: [22.6547, 88.4467],
-    polygon: circlePolygon(22.6547, 88.4467, AIRPORT_RADIUS),
-  },
-];
+/**
+ * No-fly zones by ISO 3166-1 alpha-2 region code.
+ *
+ * A region absent from this table has no dataset, which is not the same as
+ * having no restrictions. Adding a region means adding real surveyed data,
+ * not a placeholder.
+ */
+export const NO_FLY_ZONES_BY_REGION: Record<string, NoFlyZone[]> = {
+  IN: [
+    {
+      name: "DEL - Indira Gandhi Intl",
+      type: "airport",
+      center: [28.5562, 77.1000],
+      polygon: circlePolygon(28.5562, 77.1000, AIRPORT_RADIUS),
+    },
+    {
+      name: "BLR - Kempegowda Intl",
+      type: "airport",
+      center: [13.1979, 77.7063],
+      polygon: circlePolygon(13.1979, 77.7063, AIRPORT_RADIUS),
+    },
+    {
+      name: "BOM - Chhatrapati Shivaji Intl",
+      type: "airport",
+      center: [19.0896, 72.8656],
+      polygon: circlePolygon(19.0896, 72.8656, AIRPORT_RADIUS),
+    },
+    {
+      name: "MAA - Chennai Intl",
+      type: "airport",
+      center: [12.9941, 80.1709],
+      polygon: circlePolygon(12.9941, 80.1709, AIRPORT_RADIUS),
+    },
+    {
+      name: "HYD - Rajiv Gandhi Intl",
+      type: "airport",
+      center: [17.2403, 78.4294],
+      polygon: circlePolygon(17.2403, 78.4294, AIRPORT_RADIUS),
+    },
+    {
+      name: "CCU - Netaji Subhas Chandra Bose Intl",
+      type: "airport",
+      center: [22.6547, 88.4467],
+      polygon: circlePolygon(22.6547, 88.4467, AIRPORT_RADIUS),
+    },
+  ],
+};
+
+/**
+ * The zones for `region`, or `null` when this build carries no data for it.
+ *
+ * `null` and `[]` mean different things and callers must not conflate them:
+ * `[]` would be "surveyed, nothing restricted", which no region in this
+ * table claims. An unset or malformed region code is also `null`.
+ */
+export function noFlyZonesForRegion(
+  region: string | null | undefined,
+): NoFlyZone[] | null {
+  if (!region) return null;
+  return NO_FLY_ZONES_BY_REGION[region.trim().toUpperCase()] ?? null;
+}

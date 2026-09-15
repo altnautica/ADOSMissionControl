@@ -17,6 +17,7 @@ import { CAMERA_PROFILES, computeGSD, computeLineSpacing, computeTriggerDistance
 import { optimalLineBearing, windPenalty } from "@/lib/patterns/wind-optimized";
 import { Grid3X3, Camera, ChevronDown, SquareDashed, Wind } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
+import { useToast } from "@/components/ui/toast";
 import { cn, randomId } from "@/lib/utils";
 import { usePlannerStore } from "@/stores/planner-store";
 import {
@@ -28,6 +29,7 @@ import { CoverageStats } from "./CoverageStats";
 
 export function SurveyConfig() {
   const t = useTranslations("planner");
+  const { toast } = useToast();
   const surveyConfig = usePatternStore((s) => s.surveyConfig);
   const updateSurveyConfig = usePatternStore((s) => s.updateSurveyConfig);
   const drawnPolygons = useDrawingStore((s) => s.polygons);
@@ -47,10 +49,15 @@ export function SurveyConfig() {
 
   const mapCenter = usePlannerStore((s) => s.mapCenter);
   const handleQuickRect = useCallback(() => {
-    // Use current map center, fall back to 0,0 if not set
-    const center: [number, number] = (mapCenter[0] !== 0 || mapCenter[1] !== 0)
-      ? mapCenter
-      : [12.9716, 77.5946]; // Fallback only if map hasn't loaded yet
+    // A seeded rectangle is only meaningful where the operator is looking. The
+    // previous fallback dropped it on a city centroid whenever the map had not
+    // positioned yet, which put a survey area thousands of km from anyone
+    // outside that city. Refuse instead, and say what to do.
+    if (mapCenter[0] === 0 && mapCenter[1] === 0) {
+      toast(t("noCenterHint"), "info");
+      return;
+    }
+    const center: [number, number] = mapCenter;
     const offset = 0.001; // ~100m per side
     const vertices: [number, number][] = [
       [center[0] - offset, center[1] - offset],
@@ -61,7 +68,7 @@ export function SurveyConfig() {
     const side = offset * 2 * 111320;
     const area = side * side * Math.cos(center[0] * Math.PI / 180);
     useDrawingStore.getState().addPolygon({ id: randomId(), vertices, area });
-  }, [mapCenter]);
+  }, [mapCenter, toast, t]);
 
   const extConfig = surveyConfig as { _cameraName?: string; _sidelap?: number; _frontlap?: number; _preset?: string; crosshatch?: boolean };
 
