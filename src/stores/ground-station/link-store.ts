@@ -17,6 +17,14 @@ import type {
   WfbConfig,
 } from "./types";
 
+/**
+ * How old the LAN status snapshot may be and still count as a live reading.
+ * The poll runs at ~2 Hz, so anything older than this means the poll is not
+ * landing — a link that reads "connected, -58 dBm" from a snapshot nobody has
+ * refreshed in six seconds is a latched value, not a measurement.
+ */
+export const LAN_SNAPSHOT_STALE_MS = 6000;
+
 export interface LinkSlice {
   linkHealth: GroundStationLinkHealth;
   wfbConfig: WfbConfig | null;
@@ -33,6 +41,13 @@ export interface LinkSlice {
   setWfbConfig: (partial: Partial<WfbConfig>) => void;
   setLoading: (loading: boolean) => void;
   setError: (message: string | null) => void;
+  /**
+   * Drop the link-health snapshot because the poll failed. Without this the
+   * store kept merging into the last good values forever, so pulling the
+   * ground station's power left the Radio tab and the Overview link card
+   * reporting a healthy radio indefinitely.
+   */
+  invalidateLinkHealth: (message: string | null) => void;
   reset: () => void;
 }
 
@@ -56,6 +71,13 @@ export const createLinkSlice: GroundStationSliceCreator<LinkSlice> = (
       lastError: null,
     });
   },
+
+  invalidateLinkHealth: (message) =>
+    set({
+      linkHealth: INITIAL_LINK_HEALTH,
+      lastFetchedAt: null,
+      lastError: message,
+    }),
 
   loadWfb: (wfb) => {
     set({ wfbConfig: wfb, lastFetchedAt: Date.now(), lastError: null });

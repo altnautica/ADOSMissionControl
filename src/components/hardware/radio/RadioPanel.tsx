@@ -12,6 +12,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Radio as RadioIcon } from "lucide-react";
 import { useGroundStationStore } from "@/stores/ground-station-store";
+import { useClockStore } from "@/stores/clock-store";
+import { useClockTick } from "@/lib/agent/freshness";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { groundStationApiFromAgent } from "@/lib/api/ground-station-api";
@@ -40,7 +42,11 @@ import {
   PAIR_POLL_INTERVAL_MS,
   POLL_INTERVAL_MS,
 } from "./constants";
-import { pickRadioFromCloud, pickReceiverFromCloud } from "./cloud-radio";
+import {
+  pickRadioFromCloud,
+  pickReceiverFromCloud,
+  resolveRadioSource,
+} from "./cloud-radio";
 import { LinkHealthCard } from "./LinkHealthCard";
 import { ChannelStateCard } from "./ChannelStateCard";
 import { PairingCard } from "./PairingCard";
@@ -61,7 +67,15 @@ export function RadioPanel() {
   const hasAgent = Boolean(agentUrl);
 
   const linkHealth = useGroundStationStore((s) => s.linkHealth);
+  const lanFetchedAt = useGroundStationStore((s) => s.lastFetchedAt);
   const loadStatus = useGroundStationStore((s) => s.loadStatus);
+  const invalidateLinkHealth = useGroundStationStore(
+    (s) => s.invalidateLinkHealth,
+  );
+  // Staleness has to move on its own: a poll that stops landing must age the
+  // card out without waiting for an unrelated re-render.
+  useClockTick();
+  const now = useClockStore((s) => s.now);
 
   const [wfbTxPowerDbm, setWfbTxPowerDbm] = useState<number | null>(null);
   const [pollError, setPollError] = useState<string | null>(null);
@@ -85,7 +99,7 @@ export function RadioPanel() {
   });
   // Key the radio block to THIS node — the freshest cloud row anywhere could
   // belong to another node and render its link on this panel (Rule 44).
-  const { radio: cloudRadio, hostname } = useMemo(
+  const { radio: cloudRadioRow, hostname, updatedAt: cloudUpdatedAt } = useMemo(
     () => pickRadioFromCloud(cloudStatuses, nodeDeviceId),
     [cloudStatuses, nodeDeviceId],
   );
@@ -103,28 +117,43 @@ export function RadioPanel() {
   receiverRadioRef.current = receiverRadio;
   const [calibrateOpen, setCalibrateOpen] = useState(false);
 
-  // Effective values: prefer the cloud `radio` block (authoritative
-  // air-side snapshot), fall back to local link_health and the WFB
-  // config endpoint.
-  const linkState: RadioLinkState = cloudRadio?.state
-    ? (cloudRadio.state as RadioLinkState)
-    : linkHealth.rssi_dbm != null
-      ? "connected"
-      : "disconnected";
+  // Which source may speak. Local-first: the LAN poll is this node's own agent
+  // answering at 2 Hz, and the cloud row is a heartbeat fan-out that keeps its
+  // last value forever. A stale cloud row is not a reading, and it overrides a
+  // shared value only when its own timestamp proves it is newer.
+  const source = resolveRadioSource({ cloudUpdatedAt, lanFetchedAt, now });
+  const cloudRadio = source.cloudFresh ? cloudRadioRow : null;
+  const lan = source.lanFresh ? linkHealth : null;
+  /** LAN-first pick for a reading both sources carry. */
+  const shared = <T,>(
+    lanValue: T | null | undefined,
+    cloudValue: T | null | undefined,
+  ): T | null =>
+    source.cloudWinsShared
+      ? (cloudValue ?? lanValue ?? null)
+      : (lanValue ?? cloudValue ?? null);
+
+  const linkState: RadioLinkState =
+    source.cloudWinsShared && cloudRadio?.state
+      ? (cloudRadio.state as RadioLinkState)
+      : lan?.rssi_dbm != null
+        ? "connected"
+        : cloudRadio?.state
+          ? (cloudRadio.state as RadioLinkState)
+          : "disconnected";
   const topology: RadioTopology = cloudRadio?.topology
     ? (cloudRadio.topology as RadioTopology)
     : "host_vbus";
-  const rssiDbm = cloudRadio?.rssiDbm ?? linkHealth.rssi_dbm;
-  const bitrateKbps = cloudRadio?.bitrateKbps;
-  const bitrateMbps =
-    bitrateKbps != null
-      ? bitrateKbps / 1000
-      : linkHealth.bitrate_mbps;
-  const channel = cloudRadio?.channel ?? linkHealth.channel;
+  const rssiDbm = shared(lan?.rssi_dbm, cloudRadio?.rssiDbm);
+  const bitrateMbps = shared(
+    lan?.bitrate_mbps,
+    cloudRadio?.bitrateKbps != null ? cloudRadio.bitrateKbps / 1000 : null,
+  );
+  const channel = shared(lan?.channel, cloudRadio?.channel);
   const freqMhz = cloudRadio?.freqMhz ?? null;
   const bandwidthMhz = cloudRadio?.bandwidthMhz ?? null;
-  const fecRecovered = cloudRadio?.fecRecovered ?? linkHealth.fec_rec;
-  const fecLost = cloudRadio?.fecLost ?? linkHealth.fec_lost;
+  const fecRecovered = shared(lan?.fec_rec, cloudRadio?.fecRecovered);
+  const fecLost = shared(lan?.fec_lost, cloudRadio?.fecLost);
   const driver = cloudRadio?.driver ?? null;
   const iface = cloudRadio?.iface ?? null;
   const snrDb = cloudRadio?.snrDb ?? null;
@@ -239,6 +268,10 @@ export function RadioPanel() {
         if (cancelled) return;
         const msg = err instanceof Error ? err.message : "poll failed";
         setPollError(msg);
+        // The agent did not answer, so the last snapshot is no longer a
+        // reading. Keeping it is what let the card report "connected, -58 dBm"
+        // indefinitely after the ground station lost power.
+        invalidateLinkHealth(msg);
       } finally {
         if (!cancelled) timer = setTimeout(poll, POLL_INTERVAL_MS);
       }
@@ -248,7 +281,7 @@ export function RadioPanel() {
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
-  }, [agentUrl, apiKey, loadStatus]);
+  }, [agentUrl, apiKey, loadStatus, invalidateLinkHealth]);
 
   // Pair-state poller. Cheap (single GET against /api/wfb/pair); the
   // 2 Hz cadence is fine and matches the link-health poll above. Same

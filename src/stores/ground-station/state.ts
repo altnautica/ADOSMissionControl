@@ -84,6 +84,8 @@ export interface GroundStationState {
   setWfbConfig: (partial: Partial<WfbConfig>) => void;
   setLoading: (loading: boolean) => void;
   setError: (message: string | null) => void;
+  /** Drop the link-health snapshot after a failed poll (see link-store). */
+  invalidateLinkHealth: (message: string | null) => void;
   reset: () => void;
 
   // pair / network actions

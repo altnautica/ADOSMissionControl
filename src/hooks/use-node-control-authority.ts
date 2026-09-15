@@ -36,6 +36,7 @@ import { useClockTick } from "@/lib/agent/freshness";
 import { deviceIdFromNodeId, nodeIdForDevice } from "@/lib/agent/node-id";
 import type { StatusLevel } from "@/components/ui/status-dot";
 import {
+  laneForTransport,
   needsOperatorAttention,
   resolveMqttControlAuthority,
   type ControlLane,
@@ -65,8 +66,10 @@ export function useNodeControlAuthority(
   useClockTick();
   const now = useClockStore((s) => s.now);
 
-  const lane: ControlLane =
-    transportType === "mqtt-mavlink" ? "cloud-relay" : "direct";
+  // No managed transport is `none`, never `direct`: a node this browser has
+  // never dialled has no proven command path, and calling that a direct link
+  // reported full authority for every row in the fleet.
+  const lane: ControlLane = laneForTransport(transportType);
 
   // The grant store is the single source every authority surface reads, so a
   // fleet row and the selected-drone header cannot disagree. It is ANDed with the
@@ -120,6 +123,15 @@ export function useControlAuthorityNotice(
 ): ControlAuthorityNotice {
   const t = useTranslations("nodeConsole");
   const show = needsOperatorAttention(authority);
+  if (authority.reason === "no-transport") {
+    return {
+      show,
+      label: t("authority.noTransportShort"),
+      detail: t("authority.noTransport"),
+      // Not a fault: nothing has been tried. Idle, and `show` is false.
+      level: "idle",
+    };
+  }
   if (authority.fcFrames === "provisioning") {
     return {
       show,

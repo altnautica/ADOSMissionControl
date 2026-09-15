@@ -24,6 +24,7 @@ import {
   Globe,
   HeartPulse,
   Layers,
+  Monitor,
   Network,
   Radar,
   RadioTower,
@@ -48,6 +49,7 @@ import { VisionPerceptionSection } from "./VisionPerceptionSection";
 import { AtlasSection } from "./AtlasSection";
 import { SwarmSection } from "./SwarmSection";
 import { NetworkUplinkSection } from "./NetworkUplinkSection";
+import { DisplaySection } from "./DisplaySection";
 import { WifiClientSection } from "./WifiClientSection";
 import { CellularSection } from "./CellularSection";
 import { MacPinSection } from "./MacPinSection";
@@ -321,6 +323,24 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
       <RegulatoryRegionPanel
         nodeDeviceId={ctx.nodeDeviceId}
         relayReach={ctx.relayReach}
+      />
+    ),
+  },
+  {
+    // The ground station's boot-critical local renderer + the HDMI kiosk it
+    // feeds. `ground_station.*` had no settings page at all, so the one key
+    // that can leave a box with no local UI lived only on a hardware card.
+    id: "display",
+    labelKey: "nodeSettings.display.title",
+    icon: <Monitor size={14} />,
+    readsConfig: true,
+    when: (ctx) => ctx.profile === "ground-station",
+    render: (ctx) => (
+      <DisplaySection
+        nodeDeviceId={ctx.nodeDeviceId}
+        config={ctx.config}
+        readOnly={ctx.readOnly}
+        setValue={ctx.setValue}
       />
     ),
   },

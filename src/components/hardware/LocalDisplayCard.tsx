@@ -31,6 +31,7 @@ import { configWriteFailure } from "@/lib/agent/config-write";
 import { useToast } from "@/components/ui/toast";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Select, type SelectOption } from "@/components/ui/select";
 
 /** Format an absolute epoch ms into a short relative string. */
@@ -91,6 +92,9 @@ export function LocalDisplayCard({ nodeDeviceId }: LocalDisplayCardProps) {
   // tracks the agent again.
   const [pendingOverride, setPendingOverride] = useState<string | null>(null);
   const [overrideSaving, setOverrideSaving] = useState(false);
+  // The renderer the operator picked and has not yet confirmed. The write is
+  // boot-critical, so nothing reaches the agent until this is acknowledged.
+  const [confirmTarget, setConfirmTarget] = useState<string | null>(null);
 
   // Clear the pending selection once the agent's reported displayType
   // matches it. For "auto" we wait for the resolved value the agent
@@ -135,12 +139,52 @@ export function LocalDisplayCard({ nodeDeviceId }: LocalDisplayCardProps) {
   const overrideValue: string =
     pendingOverride ?? (displayType && displayType !== null ? displayType : "auto");
 
+  // PRESENCE DETECTION. `ground_station.display.type` is boot-critical: the
+  // display service gates its early startup on it, so selecting a renderer
+  // that is not wired takes the on-box UI dark at the next start — and the
+  // box's local UI is how an operator recovers a node whose network is down,
+  // so the recovery path for this mistake is the very thing the mistake
+  // removes. A renderer is offerable only when the node REPORTS it: either as
+  // the bound peripheral, or as the value the agent itself resolved under
+  // auto-detect (which means it found one).
+  const lcdPresent = display?.type === "spi-lcd" || displayType === "lcd";
+  const hdmiPresent = display?.type === "hdmi" || displayType === "hdmi";
+
   const overrideOptions: SelectOption[] = [
     { value: "auto", label: t("override.auto") },
-    { value: "hdmi", label: t("override.hdmi") },
-    { value: "lcd", label: t("override.lcd") },
+    {
+      value: "hdmi",
+      label: t("override.hdmi"),
+      disabled: !hdmiPresent,
+      // Kept visible-but-disabled rather than hidden: an operator who cannot
+      // find the option they expect needs to be told the renderer was not
+      // detected, not left guessing where it went.
+      description: hdmiPresent ? undefined : t("override.notDetected"),
+    },
+    {
+      value: "lcd",
+      label: t("override.lcd"),
+      disabled: !lcdPresent,
+      description: lcdPresent ? undefined : t("override.notDetected"),
+    },
     { value: "none", label: t("override.none") },
   ];
+
+  /** The operator-facing name of a renderer value, for the confirmation copy. */
+  const rendererLabel = (value: string): string => {
+    switch (value) {
+      case "hdmi":
+        return t("override.hdmi");
+      case "lcd":
+        return t("override.lcd");
+      case "none":
+        return t("override.none");
+      case "auto":
+        return t("override.auto");
+      default:
+        return value;
+    }
+  };
 
   const effectiveLabel = (() => {
     if (!hasDisplayTypeField) return t("effectiveUnknown");
@@ -158,9 +202,11 @@ export function LocalDisplayCard({ nodeDeviceId }: LocalDisplayCardProps) {
     }
   })();
 
-  const onOverrideChange = async (next: string) => {
+  /** Commit the renderer override. Only reached past the presence gate and,
+   * for anything other than the agent's own resolved value, past the
+   * confirmation. */
+  const commitOverride = async (next: string) => {
     if (access.mode === "none" || overrideSaving) return;
-    if (next === overrideValue) return;
     setPendingOverride(next);
     setOverrideSaving(true);
     try {
@@ -185,6 +231,27 @@ export function LocalDisplayCard({ nodeDeviceId }: LocalDisplayCardProps) {
     } finally {
       setOverrideSaving(false);
     }
+  };
+
+  const onOverrideChange = (next: string) => {
+    if (access.mode === "none" || overrideSaving) return;
+    if (next === overrideValue) return;
+    // Fail closed on a renderer the node does not report. The Select already
+    // refuses a disabled option; this is the backstop, because the write is
+    // boot-critical and a UI-only gate is not a gate.
+    if ((next === "hdmi" && !hdmiPresent) || (next === "lcd" && !lcdPresent)) {
+      toast(t("override.blockedAbsent"), "error");
+      return;
+    }
+    // Anything that is not the agent's own resolved value changes which
+    // renderer the box brings up at boot, so it goes behind an explicit
+    // confirmation naming the consequence. Re-selecting the resolved value is
+    // a no-op-shaped write and needs no ceremony.
+    if (next !== displayType) {
+      setConfirmTarget(next);
+      return;
+    }
+    void commitOverride(next);
   };
 
   // Local helpers below are only meaningful when a peripheral is bound.
@@ -296,15 +363,29 @@ export function LocalDisplayCard({ nodeDeviceId }: LocalDisplayCardProps) {
               label={t("override.label")}
               options={overrideOptions}
               value={overrideValue}
-              onChange={(next) => {
-                void onOverrideChange(next);
-              }}
+              onChange={onOverrideChange}
               disabled={access.mode === "none" || overrideSaving}
             />
           </div>
         </div>
         <p className="mt-2 text-[11px] text-text-tertiary">{t("overrideNote")}</p>
       </div>
+
+      <ConfirmDialog
+        open={confirmTarget !== null}
+        variant="danger"
+        title={t("override.confirmTitle")}
+        message={t("override.confirmBody", {
+          renderer: confirmTarget ? rendererLabel(confirmTarget) : "",
+        })}
+        confirmLabel={t("override.confirmAction")}
+        onCancel={() => setConfirmTarget(null)}
+        onConfirm={() => {
+          const next = confirmTarget;
+          setConfirmTarget(null);
+          if (next) void commitOverride(next);
+        }}
+      />
 
       {hasBoundDisplay ? (
         <dl className="grid grid-cols-2 gap-x-6 gap-y-2 px-4 py-3 text-xs text-text-secondary sm:grid-cols-4">

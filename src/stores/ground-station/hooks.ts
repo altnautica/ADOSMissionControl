@@ -27,6 +27,7 @@ export const useLinkSlice = <T,>(selector: (slice: LinkSlice) => T): T =>
       setWfbConfig: s.setWfbConfig,
       setLoading: s.setLoading,
       setError: s.setError,
+      invalidateLinkHealth: s.invalidateLinkHealth,
       reset: s.reset,
     }),
   );

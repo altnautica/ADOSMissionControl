@@ -102,11 +102,13 @@ describe("LocalDisplayCard", () => {
     expect(triggers.length).toBeGreaterThan(0);
   });
 
-  it("calls setConfigValue with ground_station.display.type when the operator picks a new value", async () => {
+  it("writes ground_station.display.type once the operator confirms a detected renderer", async () => {
+    // The node reports an SPI panel, so LCD is a renderer it can actually
+    // drive. Selecting one it does not report is covered below.
     useAgentCapabilitiesStore.setState({
       ...initial,
       loaded: true,
-      display: undefined,
+      display: { type: "spi-lcd", controller: "ili9486" },
       displayType: "hdmi",
     });
     renderWithIntl(<LocalDisplayCard nodeDeviceId="gs-1" />);
@@ -120,12 +122,39 @@ describe("LocalDisplayCard", () => {
     // The portal renders the option list; pick "LCD".
     const lcdOption = screen.getByRole("option", { name: /^LCD$/ });
     fireEvent.click(lcdOption);
+    // The renderer write provisions a boot-critical overlay, so it is held
+    // behind an explicit confirmation rather than applied on selection.
+    expect(mockClient.setConfigValue).not.toHaveBeenCalled();
+    const confirm = await screen.findByRole("button", {
+      name: /change renderer/i,
+    });
+    fireEvent.click(confirm);
     await waitFor(() => {
       expect(mockClient.setConfigValue).toHaveBeenCalledWith(
         "ground_station.display.type",
         "lcd",
       );
     });
+  });
+
+  it("offers no undetected renderer to select", () => {
+    // Only HDMI is reported. An overlay provisioned for an absent panel is an
+    // unbootable board, so the option is present-but-disabled and explains
+    // itself rather than being silently missing.
+    useAgentCapabilitiesStore.setState({
+      ...initial,
+      loaded: true,
+      display: undefined,
+      displayType: "hdmi",
+    });
+    renderWithIntl(<LocalDisplayCard nodeDeviceId="gs-1" />);
+    const trigger = screen
+      .getAllByRole("combobox")
+      .find((el) => el.textContent?.includes("HDMI"));
+    fireEvent.click(trigger!);
+    const lcd = screen.queryByRole("option", { name: /^LCD$/ });
+    expect(lcd).toBeNull();
+    expect(mockClient.setConfigValue).not.toHaveBeenCalled();
   });
 
   it("shows the green calibrated pill when touch is calibrated", () => {

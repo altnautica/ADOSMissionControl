@@ -19,6 +19,7 @@ import { useMqttControlGrantStore } from "@/stores/mqtt-control-grant-store";
 import { useClockTick } from "@/lib/agent/freshness";
 import { deviceIdFromNodeId } from "@/lib/agent/node-id";
 import {
+  laneForTransport,
   resolveMqttControlAuthority,
   type ControlLane,
   type MqttControlAuthority,
@@ -53,8 +54,9 @@ export function useMqttControlAuthority(): MqttControlAuthority {
   useClockTick();
   const now = useClockStore((s) => s.now);
 
-  const lane: ControlLane =
-    transportType === "mqtt-mavlink" ? "cloud-relay" : "direct";
+  // `null` means no managed transport for the selection, which is the `none`
+  // lane: no command path has been established, so no authority can be claimed.
+  const lane: ControlLane = laneForTransport(transportType);
 
   // Two facts, and both are needed. The store knows which devices the grant
   // covers, when it lapses, and whether a write under it has ever been accepted;

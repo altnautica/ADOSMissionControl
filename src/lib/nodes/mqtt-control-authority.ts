@@ -34,9 +34,24 @@
 /**
  * How the browser is currently carrying FC frames. Only the cloud relay routes
  * them through the broker; a direct link carries its own authority and is not
- * this module's business to characterise.
+ * this module's business to characterise. `none` is the third case and not a
+ * degenerate one: the browser holds no transport for this node at all, so
+ * whether a frame would land is not a fact anyone has established yet.
  */
-export type ControlLane = "direct" | "cloud-relay";
+export type ControlLane = "direct" | "cloud-relay" | "none";
+
+/**
+ * The lane a managed transport type carries FC frames on. `null`/`undefined`
+ * means no transport is open for that node — the browser has never dialled it —
+ * which is `none`, never `direct`. One function so the selected-drone hook and
+ * the per-node hook cannot classify the same transport two ways.
+ */
+export function laneForTransport(
+  transportType: string | null | undefined,
+): ControlLane {
+  if (transportType == null) return "none";
+  return transportType === "mqtt-mavlink" ? "cloud-relay" : "direct";
+}
 
 /** A minted broker-write grant, as the browser holds it. */
 export interface ControlGrant {
@@ -75,6 +90,7 @@ export type CapabilityState =
  */
 export type MqttAuthorityReason =
   | "direct-link"
+  | "no-transport"
   | "no-grant"
   | "provisioning"
   | "grant-expired"
@@ -117,6 +133,19 @@ export function resolveMqttControlAuthority(
   input: MqttAuthorityInput,
 ): MqttControlAuthority {
   const { lane, deviceId, grant, minting, now } = input;
+
+  // No transport for this node. The browser has not tried to reach it, so
+  // nothing here is a measurement: "receive only" would be as fabricated as a
+  // healthy dot. Report it as unavailable with the reason named, and let the
+  // surface decide whether a node it never dialled is worth shouting about.
+  if (lane === "none") {
+    return {
+      fcFrames: "unavailable",
+      videoSignaling: "unavailable",
+      reason: "no-transport",
+      expiresAt: null,
+    };
+  }
 
   // A direct link does not route FC frames through the broker, so the broker's
   // write policy is irrelevant here. Reporting anything would be inventing a
@@ -200,10 +229,17 @@ export function canPublishFcFrames(authority: MqttControlAuthority): boolean {
 /**
  * True when the surface should tell the operator, unprompted, that their
  * ability to command is limited or ending.
+ *
+ * A node with no transport is excluded deliberately. It is unavailable — the
+ * command layer must treat it that way — but the cause is that this browser has
+ * never dialled it, which is the ordinary state of every fleet row the operator
+ * has not opened. Shouting there would put a warning on twenty idle rows and
+ * train the operator to ignore the one row that means something.
  */
 export function needsOperatorAttention(
   authority: MqttControlAuthority,
 ): boolean {
+  if (authority.reason === "no-transport") return false;
   return (
     authority.fcFrames === "unavailable" ||
     authority.fcFrames === "expiring" ||

@@ -15,6 +15,9 @@
 import { useTranslations } from "next-intl";
 import { useGroundStationStore } from "@/stores/ground-station-store";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
+import { useClockStore } from "@/stores/clock-store";
+import { useClockTick } from "@/lib/agent/freshness";
+import { LAN_SNAPSHOT_STALE_MS } from "@/stores/ground-station/link-store";
 import { toneTextClass } from "@/components/hardware/radio/labels";
 import {
   resolveAdapterInjection,
@@ -52,9 +55,21 @@ export function GroundStationLinkCard() {
   // and the air side name the same reading the same way.
   const tRadio = useTranslations("hardware.radio");
   const health = useGroundStationStore((s) => s.linkHealth);
+  const lastFetchedAt = useGroundStationStore((s) => s.lastFetchedAt);
   const radio = useAgentCapabilitiesStore((s) => s.radio);
-  const fecTotal = health.fec_rec + health.fec_lost;
+  // The card had no freshness gate at all, so it kept painting a green RSSI
+  // from a snapshot that stopped being refreshed — including on this tab, where
+  // nothing polls the ground station at all. Ride the shared clock so the card
+  // ages out on its own rather than on an unrelated re-render.
+  useClockTick();
+  const now = useClockStore((s) => s.now);
+  const live =
+    lastFetchedAt !== null && now - lastFetchedAt <= LAN_SNAPSHOT_STALE_MS;
+  const fecTotal = live ? health.fec_rec + health.fec_lost : 0;
   const fecRatio = fecTotal > 0 ? (health.fec_lost / fecTotal) * 100 : 0;
+  const rssi = live ? health.rssi_dbm : null;
+  const bitrate = live ? health.bitrate_mbps : null;
+  const channel = live ? health.channel : null;
 
   // Both readings are the node's own; an absent one renders as unknown, never
   // rounded up to healthy.
@@ -69,20 +84,23 @@ export function GroundStationLinkCard() {
 
   return (
     <div className="rounded-lg border border-border-default bg-surface-secondary p-3 space-y-2">
-      <h3 className="text-xs uppercase tracking-wide text-text-tertiary">
+      <h3 className="text-xs uppercase tracking-wide text-text-tertiary flex items-center gap-2">
         {t("title")}
+        {!live && (
+          <span className="rounded border border-status-warning/40 bg-status-warning/10 px-1.5 py-0.5 text-[10px] normal-case text-status-warning">
+            {lastFetchedAt === null ? t("notRead") : t("stale")}
+          </span>
+        )}
       </h3>
       <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
         <dt className="text-text-tertiary">{t("rssi")}</dt>
-        <dd className={`${rssiTone(health.rssi_dbm)} tabular-nums`}>
-          {health.rssi_dbm !== null ? `${health.rssi_dbm} dBm` : "—"}
+        <dd className={`${rssiTone(rssi)} tabular-nums`}>
+          {rssi !== null ? `${rssi} dBm` : "—"}
         </dd>
 
         <dt className="text-text-tertiary">{t("bitrate")}</dt>
         <dd className="text-text-primary tabular-nums">
-          {health.bitrate_mbps !== null
-            ? `${health.bitrate_mbps.toFixed(1)} Mbps`
-            : "—"}
+          {bitrate !== null ? `${bitrate.toFixed(1)} Mbps` : "—"}
         </dd>
 
         <dt className="text-text-tertiary">{t("fecLost")}</dt>
@@ -98,7 +116,7 @@ export function GroundStationLinkCard() {
 
         <dt className="text-text-tertiary">{t("channel")}</dt>
         <dd className="text-text-primary tabular-nums">
-          {health.channel ?? "—"}
+          {channel ?? "—"}
         </dd>
       </dl>
 

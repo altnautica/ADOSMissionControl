@@ -12,6 +12,7 @@ import { describe, it, expect } from "vitest";
 import {
   resolveMqttControlAuthority,
   canPublishFcFrames,
+  laneForTransport,
   needsOperatorAttention,
   EXPIRY_WARNING_MS,
   type ControlGrant,
@@ -173,5 +174,35 @@ describe("resolveMqttControlAuthority", () => {
       });
       expect(a.videoSignaling).toBe(a.fcFrames);
     }
+  });
+
+  it("refuses authority for a node with no transport, without shouting", () => {
+    // The defect: a node this browser has never dialled fell into the `direct`
+    // lane and reported full command authority on every fleet row.
+    const a = resolveMqttControlAuthority({
+      lane: "none",
+      deviceId: DEVICE,
+      grant: grant(),
+      now: NOW,
+    });
+    expect(a.reason).toBe("no-transport");
+    expect(a.fcFrames).toBe("unavailable");
+    expect(a.videoSignaling).toBe("unavailable");
+    expect(canPublishFcFrames(a)).toBe(false);
+    // Unavailable, but not an alarm: nothing was tried.
+    expect(needsOperatorAttention(a)).toBe(false);
+  });
+});
+
+describe("laneForTransport", () => {
+  it("maps an absent transport to the none lane, never direct", () => {
+    expect(laneForTransport(null)).toBe("none");
+    expect(laneForTransport(undefined)).toBe("none");
+  });
+
+  it("maps the broker transport to the relay lane and everything else direct", () => {
+    expect(laneForTransport("mqtt-mavlink")).toBe("cloud-relay");
+    expect(laneForTransport("serial")).toBe("direct");
+    expect(laneForTransport("websocket")).toBe("direct");
   });
 });

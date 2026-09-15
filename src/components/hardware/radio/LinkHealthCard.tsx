@@ -38,8 +38,12 @@ export interface LinkHealthCardProps {
   channel: number | null;
   freqMhz: number | null;
   bandwidthMhz: number | null;
-  fecRecovered: number;
-  fecLost: number;
+  /**
+   * Recovered / unrecoverable FEC block counts. Null when no live source
+   * reported them: a stale snapshot rendering "0 lost" reads as a clean link.
+   */
+  fecRecovered: number | null;
+  fecLost: number | null;
   driver: string | null;
   iface: string | null;
   // Receive-side link quality. Optional — older agents and the local
@@ -261,8 +265,14 @@ export function LinkHealthCard({
           label={t("bandwidth")}
           value={bandwidthMhz == null ? EMPTY : `${bandwidthMhz} MHz`}
         />
-        <StatRow label={t("fecRecovered")} value={String(fecRecovered)} />
-        <StatRow label={t("fecLost")} value={String(fecLost)} />
+        <StatRow
+          label={t("fecRecovered")}
+          value={fecRecovered == null ? EMPTY : String(fecRecovered)}
+        />
+        <StatRow
+          label={t("fecLost")}
+          value={fecLost == null ? EMPTY : String(fecLost)}
+        />
         {packetsAll != null ? (
           <StatRow
             label={t("packetsAll")}

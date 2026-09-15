@@ -48,6 +48,7 @@ describe("pickRadioFromCloud", () => {
     expect(pickRadioFromCloud(rows, null)).toEqual({
       radio: null,
       hostname: null,
+      updatedAt: null,
     });
   });
 
@@ -55,6 +56,7 @@ describe("pickRadioFromCloud", () => {
     expect(pickRadioFromCloud(rows, "node-c")).toEqual({
       radio: null,
       hostname: null,
+      updatedAt: null,
     });
   });
 
@@ -65,6 +67,7 @@ describe("pickRadioFromCloud", () => {
     expect(pickRadioFromCloud(noRadio, "node-a")).toEqual({
       radio: null,
       hostname: null,
+      updatedAt: null,
     });
   });
 
@@ -72,10 +75,23 @@ describe("pickRadioFromCloud", () => {
     expect(pickRadioFromCloud([], "node-a")).toEqual({
       radio: null,
       hostname: null,
+      updatedAt: null,
     });
     expect(pickRadioFromCloud(undefined, "node-a")).toEqual({
       radio: null,
       hostname: null,
+      updatedAt: null,
     });
+  });
+
+  it("carries the matched row's own stamp, and null when it has none", () => {
+    expect(pickRadioFromCloud(rows, "node-b").updatedAt).toBe(9000);
+    const unstamped = [
+      {
+        drone: { deviceId: "node-a" },
+        status: { deviceId: "node-a", radio: radio("connected", "wlan-a") },
+      },
+    ];
+    expect(pickRadioFromCloud(unstamped, "node-a").updatedAt).toBeNull();
   });
 });
