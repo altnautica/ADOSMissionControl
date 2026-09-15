@@ -21,6 +21,7 @@ import { useCommandFleetStore } from "@/stores/command-fleet-store";
 import { mapFullStatusToCloudStatus } from "@/lib/agent/full-status-to-cloud-status";
 import { isStaleLocalIdentity } from "@/lib/agent/stale-local-identity";
 import { nodeIdForDevice } from "@/lib/agent/node-id";
+import { reachErrorBucket } from "@/lib/nodes/local-reach";
 import { isDemoMode } from "@/lib/utils";
 
 // Lighter cadence than the single-agent System tab (3s) — overview
@@ -124,6 +125,11 @@ export function CommandFleetLocalBridge({
             const info = await probeAgent(live.hostname);
             if (!alive.has(deviceId)) return;
             probeReachable = true;
+            // Provenance: this is the one place the GCS learns which of a
+            // node's up-to-three candidate reaches actually answers. Record
+            // it so the node surface can name the address carrying the
+            // session instead of leaving the operator to guess.
+            useLocalNodesStore.getState().recordReachOk(deviceId, live.hostname);
             const staleIdentity = isStaleLocalIdentity(info, deviceId);
             if (staleIdentity) {
               stop(deviceId);
@@ -146,10 +152,22 @@ export function CommandFleetLocalBridge({
               }
               return;
             }
-          } catch {
-            // Unreachable / probe failed — transient. Fall through to the
-            // telemetry poll, which degrades the tile to offline via the
-            // freshness watchdog. Never remove the node on an unreachable probe.
+          } catch (e) {
+            if (!alive.has(deviceId)) return;
+            // Unreachable / probe failed — transient for presence purposes, so
+            // the node is never removed. But "which address failed, and how"
+            // is exactly the fact that was being thrown away here: without it
+            // an agent that is powered off, a name that stopped resolving and
+            // a DHCP lease that moved all produce one identical grey tile.
+            // Record the bucket we can actually prove. We deliberately do NOT
+            // claim "the name did not resolve": through the server-side proxy
+            // a DNS failure and a dead host are the same 502, and guessing
+            // between them would be a fabricated diagnosis.
+            useLocalNodesStore
+              .getState()
+              .recordReachError(deviceId, live.hostname, reachErrorBucket(e));
+            // Fall through to the telemetry poll, which degrades the tile to
+            // offline via the freshness watchdog.
           }
         }
 

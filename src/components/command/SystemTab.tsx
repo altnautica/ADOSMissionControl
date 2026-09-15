@@ -21,7 +21,6 @@ import { AdapterStabilityCard } from "@/components/hardware/network/AdapterStabi
 import { RadioNetworkHealthPanel } from "./system/RadioNetworkHealthPanel";
 import { RegulatoryRegionPanel } from "./system/RegulatoryRegionPanel";
 import { DashboardAccessPinCard } from "./system/DashboardAccessPinCard";
-import { SoftwareUpdateCard } from "./system/SoftwareUpdateCard";
 import { PluginHardwarePanels } from "./system/PluginHardwarePanels";
 import { ComputeMetricsCard } from "./shared/ComputeMetricsCard";
 import { ComputeClusterCard } from "./shared/ComputeClusterCard";
@@ -57,7 +56,6 @@ export function SystemTab({
     return (
       <div className="p-4 space-y-4 max-w-5xl overflow-y-auto">
         <ConfigErrorPanel />
-        <SoftwareUpdateCard />
         <ComputeMetricsCard />
         <ComputeClusterCard />
         <MemoryPanel />
@@ -75,7 +73,6 @@ export function SystemTab({
     <div className="p-4 space-y-4 max-w-5xl overflow-y-auto">
       <ConfigErrorPanel />
       <HardwareStatusPanel />
-      <SoftwareUpdateCard />
       <MemoryPanel />
       <ServicesPanel />
       <FleetNetworkPanel />

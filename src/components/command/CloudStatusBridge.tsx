@@ -33,7 +33,10 @@ import { useConvexAvailable } from "@/app/ConvexClientProvider";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import { STALE_THRESHOLD_MS, OFFLINE_THRESHOLD_MS } from "@/lib/agent/freshness";
 import { describeMissingCloudStatus } from "@/lib/agent/cloud-status-diagnosis";
-import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
+import {
+  useAgentCapabilitiesStore,
+  selectDeviceCapabilities,
+} from "@/stores/agent-capabilities-store";
 import { inferCapabilities } from "@/lib/agent/infer-capabilities";
 import type {
   MeshNetEnrollment,
@@ -367,10 +370,20 @@ export function CloudStatusBridge() {
     }
 
     // Infer capabilities from cloud status (board SoC → NPU, peripherals → cameras).
-    const capState = useAgentCapabilitiesStore.getState();
+    // Read THIS node's remembered slice, not the focused one: the focused slice
+    // belongs to whichever node the operator has open, so merging the relay
+    // heartbeat over it cross-contaminated two nodes' capability sets.
+    const capState =
+      selectDeviceCapabilities(
+        useAgentCapabilitiesStore.getState(),
+        cloudDeviceId,
+      ) ?? useAgentCapabilitiesStore.getState();
     const extras = buildHeartbeatExtras(cloudRecord);
 
-    if (!capState.loaded || capState.cameras.length === 0) {
+    // An empty camera list is a legitimate steady state (a ground station has
+    // none), so it must not force a full re-infer on every tick — that made the
+    // merge branch below dead code on any node with no cameras.
+    if (!capState.loaded) {
       const periphList = useAgentPeripheralsStore.getState().peripherals;
       const inferred = inferCapabilities(
         mapped,
@@ -428,7 +441,9 @@ export function CloudStatusBridge() {
         // clamps the tier; null target = runs locally, undefined = keep prior).
         payload.perceptionTier = extras.perceptionTier;
         payload.perceptionOffloadTarget = extras.perceptionOffloadTarget;
-        useAgentCapabilitiesStore.getState().setCapabilities(payload);
+        useAgentCapabilitiesStore
+          .getState()
+          .setCapabilities(payload, cloudDeviceId);
       }
     } else {
       // Capabilities are already loaded but several heartbeat-derived
@@ -583,7 +598,7 @@ export function CloudStatusBridge() {
         perceptionOffloadTarget: extras.perceptionOffloadTarget,
         ...(extras.radioRaw !== undefined ? { radio: extras.radioRaw } : {}),
         ...(extras.crsfRaw !== undefined ? { crsf: extras.crsfRaw } : {}),
-      } as Record<string, unknown>);
+      } as Record<string, unknown>, cloudDeviceId);
       }
     });
 

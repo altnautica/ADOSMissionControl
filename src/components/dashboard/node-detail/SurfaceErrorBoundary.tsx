@@ -16,6 +16,19 @@
 
 import { Component, type ErrorInfo, type ReactNode } from "react";
 
+/**
+ * Calls a surface's render function INSIDE the boundary's subtree.
+ *
+ * A boundary only catches errors thrown while rendering its descendants.
+ * `<SurfaceErrorBoundary>{spec.render(ctx)}</SurfaceErrorBoundary>` evaluates
+ * the call in the PARENT's render, so the throw unwound straight past the
+ * boundary to the route-level one and took the whole console down — the exact
+ * failure this boundary exists to prevent.
+ */
+export function SurfaceBody({ render }: { render: () => ReactNode }) {
+  return <>{render()}</>;
+}
+
 interface SurfaceErrorBoundaryProps {
   children: ReactNode;
   /** Translated sentence rendered in place of the surface that threw. */

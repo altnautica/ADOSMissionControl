@@ -37,10 +37,6 @@ vi.mock("@/components/command/system/RegulatoryRegionPanel", () => ({
   RegulatoryRegionPanel: () => <div data-testid="regulatory-region-panel" />,
 }));
 
-vi.mock("@/components/command/system/SoftwareUpdateCard", () => ({
-  SoftwareUpdateCard: () => <div data-testid="software-update-card" />,
-}));
-
 vi.mock("@/components/command/system/PluginHardwarePanels", () => ({
   PluginHardwarePanels: () => <div data-testid="plugin-hardware-panels" />,
 }));

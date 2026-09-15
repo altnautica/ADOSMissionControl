@@ -35,6 +35,8 @@ import {
 import type {
   AgentCapabilitiesState,
   AgentCapabilitiesStore,
+  AgentCapabilitySnapshot,
+  CapabilityPresence,
 } from "./types";
 
 const INITIAL_STATE: AgentCapabilitiesState = {
@@ -89,13 +91,50 @@ const INITIAL_STATE: AgentCapabilitiesState = {
   npuTops: undefined,
   hasAccelerator: undefined,
   loaded: false,
+  focusedDeviceId: null,
+  byDevice: {},
 };
+
+/** The flat-slice keys, i.e. everything except the two routing fields. */
+function snapshotOf(state: AgentCapabilitiesState): AgentCapabilitySnapshot {
+  const { focusedDeviceId: _f, byDevice: _b, ...slice } = state;
+  return slice;
+}
+
+/**
+ * One node's capability reading, or null when this browser has never heard
+ * that node describe itself. Returns a stored object reference (never a fresh
+ * literal) so it is safe to use directly as a Zustand selector result.
+ *
+ * Prefer the remembered per-device slice over the focused one: the focused
+ * slice is cleared by `disconnect()` mid-node-switch, which is exactly the
+ * window the tab strip renders in.
+ */
+export function selectDeviceCapabilities(
+  state: AgentCapabilitiesStore,
+  deviceId: string | null,
+): AgentCapabilitySnapshot | null {
+  if (!deviceId) return null;
+  return state.byDevice[deviceId] ?? null;
+}
+
+/** Tri-state read of a capability off a possibly-unknown device slice. */
+export function capabilityPresence(
+  snapshot: AgentCapabilitySnapshot | null,
+  read: (s: AgentCapabilitySnapshot) => boolean,
+): CapabilityPresence {
+  if (snapshot === null) return "unknown";
+  return read(snapshot) ? "present" : "absent";
+}
 
 export const useAgentCapabilitiesStore = create<AgentCapabilitiesStore>(
   (set) => ({
     ...INITIAL_STATE,
 
-    setCapabilities(caps: AgentCapabilities | Record<string, unknown>) {
+    setCapabilities(
+      caps: AgentCapabilities | Record<string, unknown>,
+      deviceId?: string | null,
+    ) {
       const normalized = normalizeCapabilities(caps);
 
       // Wire-contract identity derives cleanly from the raw payload.
@@ -135,7 +174,8 @@ export const useAgentCapabilitiesStore = create<AgentCapabilitiesStore>(
       const cloudflareUrl = deriveCloudflareUrl(caps);
       const wfbFailoverState = deriveWfbFailoverState(caps);
 
-      set((state) => ({
+      set((state) => {
+        const patch = {
         tier: normalized.tier,
         cameras: normalized.cameras,
         videoStreams: normalized.videoStreams,
@@ -328,11 +368,45 @@ export const useAgentCapabilitiesStore = create<AgentCapabilitiesStore>(
             ? state.hasAccelerator
             : normalized.hasAccelerator,
         loaded: true,
-      }));
+        };
+        // File the reading under the node it describes. A node switch then
+        // paints the target node's own gates on the first frame instead of the
+        // previous node's, and a `clear()` in between does not erase it.
+        const target = deviceId ?? state.focusedDeviceId;
+        if (!target) return patch;
+        return {
+          ...patch,
+          focusedDeviceId: target,
+          byDevice: {
+            ...state.byDevice,
+            [target]: { ...snapshotOf(state), ...patch },
+          },
+        };
+      });
     },
 
     clear() {
-      set({ ...INITIAL_STATE });
+      // Routing state is deliberately preserved: `byDevice` is what the node
+      // detail tab strip reads, and a disconnect is not evidence that a node's
+      // hardware changed.
+      set((state) => ({
+        ...INITIAL_STATE,
+        focusedDeviceId: state.focusedDeviceId,
+        byDevice: state.byDevice,
+      }));
+    },
+
+    forgetDevice(deviceId: string) {
+      set((state) => {
+        if (!(deviceId in state.byDevice)) return state;
+        const byDevice = { ...state.byDevice };
+        delete byDevice[deviceId];
+        return {
+          byDevice,
+          focusedDeviceId:
+            state.focusedDeviceId === deviceId ? null : state.focusedDeviceId,
+        };
+      });
     },
   }),
 );

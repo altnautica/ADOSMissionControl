@@ -7,7 +7,7 @@
  * camera switch, recording monitor. Calibration is captured on the
  * device panel itself (the operator taps the crosshairs shown on the
  * LCD); the live preview mirrors it and the status pill reflects the
- * result. Lifted from the prior /hardware/display route.
+ * result. Renders the local-display surface for a ground-station node.
  * @license GPL-3.0-only
  */
 

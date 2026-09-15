@@ -20,17 +20,26 @@ import {
   type GroundStationRole,
 } from "@/lib/api/ground-station-api";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
+import { useTranslations } from "next-intl";
+import { useToast } from "@/components/ui/toast";
+import { isDemoMode } from "@/lib/utils";
 
 interface RoleChangeCardProps {
-  /** Copy variant. `empty` renders the "you are in direct mode" framing.
-   * `switch` renders a generic role picker inside the role-active views. */
+  /** Copy variant. `empty` renders the "this node carries no mesh yet"
+   * framing. `switch` renders a generic role picker inside the role-active
+   * views. */
   variant?: "empty" | "switch";
 }
 
+/** Selectable roles. `unset` is a state the agent REPORTS for a box that has
+ * never had a role chosen; it is not something an operator picks, so it is
+ * absent here while still rendering correctly as the current value. */
 const ROLES: GroundStationRole[] = ["direct", "relay", "receiver"];
 const SWITCHING_TIMEOUT_MS = 20_000;
 
 export function RoleChangeCard({ variant = "switch" }: RoleChangeCardProps) {
+  const t = useTranslations("hardware.role");
+  const { toast } = useToast();
   const role = useGroundStationStore((s) => s.role);
   const applyRole = useGroundStationStore((s) => s.applyRole);
   const agentUrl = useAgentConnectionStore((s) => s.agentUrl);
@@ -91,12 +100,23 @@ export function RoleChangeCard({ variant = "switch" }: RoleChangeCardProps) {
     if (!agentUrl || selected === role.info?.current) return;
     setLocalTimeoutError(null);
     const api = groundStationApiFromAgent(agentUrl, apiKey);
-    if (!api) return;
+    if (!api) {
+      // Demo mode has a truthy agent URL but no REST endpoint, so a bare
+      // early return here left Apply looking live and doing nothing.
+      if (isDemoMode()) toast(t("demoReadOnly"), "info");
+      return;
+    }
     await applyRole(api, selected);
   };
 
+  const current = role.info?.current ?? null;
   const disabled = role.switching || !role.info || !agentUrl;
-  const showingEmpty = variant === "empty" && role.info?.current === "direct";
+  // The empty framing belongs to any node that is not yet carrying mesh
+  // traffic — `unset` (imaged, never configured) as much as `direct`. Gating
+  // it on `direct` alone left an unset node reading as if it had chosen solo
+  // operation.
+  const showingEmpty =
+    variant === "empty" && (current === "direct" || current === "unset");
 
   return (
     <div
@@ -107,15 +127,15 @@ export function RoleChangeCard({ variant = "switch" }: RoleChangeCardProps) {
       {showingEmpty ? (
         <>
           <p className="text-sm text-text-primary font-medium mb-1">
-            You are in direct mode.
+            {current === "unset" ? t("emptyUnsetTitle") : t("emptyDirectTitle")}
           </p>
           <p className="text-xs text-text-secondary mb-3">
-            Switch to relay or receiver to see this view with live data.
+            {t("emptyHint")}
           </p>
         </>
       ) : (
         <p className="text-xs text-text-secondary mb-2 uppercase tracking-wider">
-          Deployment role
+          {t("label")}
         </p>
       )}
       <div className="flex items-center gap-2">

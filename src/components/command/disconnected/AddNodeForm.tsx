@@ -37,6 +37,7 @@ import {
 } from "@/stores/browser-identity-store";
 import { useLocalNodesStore } from "@/stores/local-nodes-store";
 import { usePairingStore } from "@/stores/pairing-store";
+import { usePairDialogStore } from "@/stores/pair-dialog-store";
 import { useDiscoveredAgents } from "@/hooks/use-discovered-agents";
 import { useToast } from "@/components/ui/toast";
 import { useConvexAvailable } from "@/app/ConvexClientProvider";
@@ -110,59 +111,82 @@ export function AddNodeForm({ onPaired }: AddNodeFormProps) {
   useDiscoveredAgents();
   const discoveredAgents = usePairingStore((s) => s.discoveredAgents);
 
-  async function handleSubmit() {
-    const trimmed = input.trim();
-    if (!trimmed || probing) return;
-
-    setProbeError(null);
-    setCodeFailed(false);
-    setProbe(null);
-    setProbing(true);
-    abortRef.current?.abort();
-    const ctrl = new AbortController();
-    abortRef.current = ctrl;
-
-    try {
-      let result: ProbeResult;
-      if (looksLikePairCode(trimmed)) {
-        // Local-first: the LAN mDNS scan inside probeByCode needs no Convex.
-        // Pass the anon claim mutation only when the relay is actually
-        // available so a fully-offline GCS still resolves a code over the LAN;
-        // probeByCode skips the cross-network fallback when it is omitted.
-        result = await probeByCode(
-          trimmed,
-          convexAvailable ? claimAnonWithSession : undefined,
-          ctrl.signal,
-        );
-      } else {
-        result = await probeAgent(trimmed, ctrl.signal);
-      }
-      if (!ctrl.signal.aborted) setProbe(result);
-    } catch (e) {
-      if (ctrl.signal.aborted) return;
-      let msg: string;
+  /** Translate a thrown pair-flow failure into operator-facing copy. Every
+   * `PairClientError` code resolves to a message under `command.addNode.*`
+   * that names a next action; the fallbacks are for a non-pair-flow throw. */
+  const describeFailure = useCallback(
+    (e: unknown): string => {
       if (e instanceof PairClientError) {
         try {
-          msg = t(e.code, e.details);
+          return t(e.code, e.details);
         } catch {
-          msg = e.message;
+          return e.message;
         }
-      } else if (e instanceof Error) {
-        msg = e.message;
-      } else {
-        msg = t("probeFailedError");
       }
-      setProbeError(msg);
-      if (looksLikePairCode(trimmed)) setCodeFailed(true);
-    } finally {
-      if (!ctrl.signal.aborted) setProbing(false);
-    }
-  }
+      if (e instanceof Error) return e.message;
+      return t("probeFailedError");
+    },
+    [t],
+  );
+
+  /** The one probe path. A 6-character value is a pair code, anything else is
+   * a host — the charsets are disjoint (see `looksLikePairCode`). Shared by
+   * the text field, the discovered-agent list and the pre-filled open, so all
+   * three get identical error mapping. */
+  const probeTarget = useCallback(
+    async (raw: string) => {
+      const trimmed = raw.trim();
+      if (!trimmed || probing) return;
+
+      setProbeError(null);
+      setCodeFailed(false);
+      setProbe(null);
+      setProbing(true);
+      abortRef.current?.abort();
+      const ctrl = new AbortController();
+      abortRef.current = ctrl;
+
+      try {
+        const result = looksLikePairCode(trimmed)
+          ? // Local-first: the LAN mDNS scan inside probeByCode needs no
+            // Convex. Pass the anon claim mutation only when the relay is
+            // actually available so a fully-offline GCS still resolves a code
+            // over the LAN; probeByCode skips the cross-network fallback when
+            // it is omitted.
+            await probeByCode(
+              trimmed,
+              convexAvailable ? claimAnonWithSession : undefined,
+              ctrl.signal,
+            )
+          : await probeAgent(trimmed, ctrl.signal);
+        if (!ctrl.signal.aborted) setProbe(result);
+      } catch (e) {
+        if (ctrl.signal.aborted) return;
+        setProbeError(describeFailure(e));
+        if (looksLikePairCode(trimmed)) setCodeFailed(true);
+      } finally {
+        if (!ctrl.signal.aborted) setProbing(false);
+      }
+    },
+    [claimAnonWithSession, convexAvailable, describeFailure, probing],
+  );
+
+  // An agent the operator picked from a discovery list (here or on the
+  // first-run screen) arrives pre-loaded, and is probed straight away —
+  // probing is read-only, and it is exactly what the click asked for.
+  const prefillHost = usePairDialogStore((s) => s.prefillHost);
+  const consumePrefillHost = usePairDialogStore((s) => s.consumePrefillHost);
+  useEffect(() => {
+    if (!prefillHost) return;
+    consumePrefillHost();
+    setInput(prefillHost);
+    void probeTarget(prefillHost);
+  }, [prefillHost, consumePrefillHost, probeTarget]);
 
   function handleKey(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter") {
       e.preventDefault();
-      void handleSubmit();
+      void probeTarget(input);
     }
   }
 
@@ -171,37 +195,16 @@ export function AddNodeForm({ onPaired }: AddNodeFormProps) {
     localIp?: string;
     name: string;
   }) {
-    const target = agent.mdnsHost || agent.localIp;
+    // Aim at the address that PROVED reachable. `localIp` is set by the
+    // discovery proxy only after a successful server-side resolve, so it is
+    // evidence; `mdnsHost` is whatever the agent says its own name is, which
+    // the browser may not be able to resolve at all. Preferring the name here
+    // produced "Couldn't reach …" immediately after the GCS had displayed the
+    // agent as found — on the only zero-typing path in the product.
+    const target = agent.localIp || agent.mdnsHost;
     if (!target) return;
     setInput(target);
-    // Defer through the regular path so the typed-error mapping fires.
-    void (async () => {
-      setProbeError(null);
-      setProbe(null);
-      setProbing(true);
-      abortRef.current?.abort();
-      const ctrl = new AbortController();
-      abortRef.current = ctrl;
-      try {
-        const result = await probeAgent(target, ctrl.signal);
-        if (!ctrl.signal.aborted) setProbe(result);
-      } catch (e) {
-        if (ctrl.signal.aborted) return;
-        if (e instanceof PairClientError) {
-          try {
-            setProbeError(t(e.code, e.details));
-          } catch {
-            setProbeError(e.message);
-          }
-        } else if (e instanceof Error) {
-          setProbeError(e.message);
-        } else {
-          setProbeError(t("probeFailedError"));
-        }
-      } finally {
-        if (!ctrl.signal.aborted) setProbing(false);
-      }
-    })();
+    void probeTarget(target);
   }
 
   const localNodeCount = useLocalNodesStore((s) => s.nodes.length);
@@ -309,7 +312,7 @@ export function AddNodeForm({ onPaired }: AddNodeFormProps) {
             className="flex-1 px-3 py-2 bg-bg-primary border border-border-default rounded text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent-primary disabled:opacity-50"
           />
           <button
-            onClick={() => void handleSubmit()}
+            onClick={() => void probeTarget(input)}
             disabled={probing || !input.trim()}
             className="px-3 py-2 text-xs font-medium bg-accent-primary text-white rounded hover:bg-accent-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
           >

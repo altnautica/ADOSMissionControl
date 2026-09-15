@@ -66,9 +66,9 @@ describe("normaliseHost", () => {
 
 describe("PairClientError", () => {
   it("carries code + message", () => {
-    const e = new PairClientError("probeFailedStatusError", "Probe failed: 404");
-    expect(e.code).toBe("probeFailedStatusError");
-    expect(e.message).toBe("Probe failed: 404");
+    const e = new PairClientError("pairUnreachableError", "Nothing answered");
+    expect(e.code).toBe("pairUnreachableError");
+    expect(e.message).toBe("Nothing answered");
     expect(e.name).toBe("PairClientError");
   });
 

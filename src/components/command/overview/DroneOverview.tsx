@@ -28,7 +28,6 @@ import { useDroneManager } from "@/stores/drone-manager";
 import { useUiStore } from "@/stores/ui-store";
 import { usePairDialogStore } from "@/stores/pair-dialog-store";
 import { AgentStatusCard } from "../shared/AgentStatusCard";
-import { FcSourcePicker } from "../shared/FcSourcePicker";
 import { ServiceTable } from "../shared/ServiceTable";
 import { SystemResourceGauges } from "../shared/SystemResourceGauges";
 import { CpuSparkline } from "../shared/CpuSparkline";
@@ -38,13 +37,11 @@ import { StaleOverlay } from "@/components/shared/link-up/StaleOverlay";
 import { StaleBanner } from "../shared/StaleBanner";
 import { VideoRestartBanner } from "../shared/VideoRestartBanner";
 import { VideoFeedCard } from "../shared/VideoFeedCard";
-import { BatteryCard } from "../shared/BatteryCard";
-import { RcInputCard } from "../shared/RcInputCard";
-import { FlightDataCard } from "../shared/FlightDataCard";
-import { SensorStatusCard } from "../shared/SensorStatusCard";
 import { ComputeMetricsCard } from "../shared/ComputeMetricsCard";
-import { StatusTextCard } from "../shared/StatusTextCard";
 import { StatTile } from "../shared/StatTile";
+import { Button } from "@/components/ui/button";
+import { openPairNode } from "@/components/shared/link-up/link-up-actions";
+import { NodeReachBlock } from "../shared/NodeReachBlock";
 import { NodeBrandHeader } from "./NodeBrandHeader";
 import { OverviewTile, OverviewSection, OverviewGrid } from "./OverviewGrid";
 import type { SurfaceContext } from "@/components/dashboard/node-detail/surface-types";
@@ -55,7 +52,16 @@ import { useMqttControlAuthority } from "@/hooks/use-mqtt-control-authority";
 import { useControlAuthorityNotice } from "@/hooks/use-node-control-authority";
 import { requestGrant } from "@/stores/mqtt-control-grant-store";
 
-/** The unified drone Overview. Receives the surface `ctx`. */
+/**
+ * The drone Status surface — the node HOME.
+ *
+ * Identity, reach, health, the companion band and the per-node actions. It
+ * deliberately carries no live telemetry: attitude, GPS, battery, RC and the
+ * FC message stream all live on Flight. The two surfaces used to answer the
+ * same question from different sources with different freshness gating, so a
+ * dead link produced "link silent / Roll --.-°" on one tile and a confident
+ * "68% · 15.9V" on the next, and the frozen one looked the healthier.
+ */
 export function DroneOverview({ ctx }: { ctx: SurfaceContext }) {
   const agentReachable = ctx.agentDeviceId !== null || ctx.relayReach !== null;
   const companionKnown = agentReachable || ctx.drone.agentIdentityKnown === true;
@@ -72,15 +78,30 @@ export function DroneOverview({ ctx }: { ctx: SurfaceContext }) {
         reachedViaName={reachedViaName}
       />
 
+      {/* How this browser last reached the node, and the address it used.
+          Renders nothing until a reach has actually been recorded. */}
+      <NodeReachBlock deviceId={surfaceNodeDeviceId(ctx) ?? ""} />
+
       {/* The ADOS agent (companion) band leads for a smart drone — the agent is
           the product, and its live video is the prime tile. A bare FC (no
           companion) skips this and shows only the FC console band + the
           add-a-computer CTA below. */}
       {agentReachable && (
-        <CompanionBand
-          droneId={ctx.droneId}
-          nodeDeviceId={surfaceNodeDeviceId(ctx)}
-        />
+        <CompanionBand droneId={ctx.droneId} />
+      )}
+
+      {/* A companion this node HAS but the GCS cannot reach. Rendering
+          nothing here lost half the surface with no explanation, and the
+          add-a-computer CTA was suppressed because the companion IS known. */}
+      {!agentReachable && companionKnown && (
+        <OverviewGrid>
+          <OverviewTile span="half">
+            <CompanionOfflineNotice
+              droneId={ctx.droneId}
+              reachedViaName={reachedViaName ?? undefined}
+            />
+          </OverviewTile>
+        </OverviewGrid>
       )}
 
       {/* The flight-controller console — always present. */}
@@ -98,49 +119,71 @@ export function DroneOverview({ ctx }: { ctx: SurfaceContext }) {
 }
 
 /**
- * The flight-controller console band. The consolidated Flight Data card (FC
- * link + attitude + GPS + radio) is the anchor tile; battery, params, sensors,
- * RC input, and FC status messages fill the rest of the 12-column grid without
- * gaps.
+ * The flight-controller band on the node home: the cached-parameter snapshot
+ * and the one operator-actionable authority affordance.
+ *
+ * The live tiles that used to sit here (Flight Data, Battery, Sensors, RC,
+ * FC status messages) are on Flight. Battery and GPS were already rendered
+ * there by the telemetry readout and the info cards, from a different source
+ * with different gating; sensors, RC and the message stream moved across
+ * wholesale.
  */
 function FcBand({ ctx }: { ctx: SurfaceContext }) {
   return (
     <OverviewSection>
-      <OverviewTile span="half" rowSpan={2}>
-        <FlightDataCard className="h-full" />
-      </OverviewTile>
-      <OverviewTile span="quarter">
-        <BatteryCard className="h-full" />
-      </OverviewTile>
-      <OverviewTile span="quarter">
+      <OverviewTile span="half">
         <ParamsSnapshotTile isConnected={ctx.isConnected} />
       </OverviewTile>
-      <OverviewTile span="half">
-        <SensorStatusCard className="h-full" />
-      </OverviewTile>
-      <OverviewTile span="half">
-        <RcInputCard className="h-full" />
-      </OverviewTile>
-      <OverviewTile span="half">
-        <StatusTextCard className="h-full" />
-      </OverviewTile>
     </OverviewSection>
+  );
+}
+
+/**
+ * A companion the node HAS but this browser cannot reach right now. Names it,
+ * says so, and offers the two things that recover it.
+ */
+function CompanionOfflineNotice({
+  droneId,
+  reachedViaName,
+}: {
+  droneId: string;
+  reachedViaName?: string;
+}) {
+  const t = useTranslations("dronePanel.companionOffline");
+  const setPendingDetailTab = useUiStore((s) => s.setPendingDetailTab);
+  return (
+    <div className="rounded-lg border border-status-warning/40 bg-status-warning/5 p-3 space-y-2">
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-status-warning">
+        {t("title")}
+      </h3>
+      <p className="text-xs text-text-secondary">
+        {reachedViaName ? t("viaHop", { hop: reachedViaName }) : t("body")}
+      </p>
+      <div className="flex items-center gap-3">
+        <Button size="sm" variant="secondary" onClick={openPairNode}>
+          {t("repair")}
+        </Button>
+        <button
+          type="button"
+          onClick={() => setPendingDetailTab("agent")}
+          className="text-xs font-medium text-accent-primary hover:underline cursor-pointer"
+        >
+          {t("openAgent")}
+        </button>
+      </div>
+      <span className="sr-only">{droneId}</span>
+    </div>
   );
 }
 
 /** The agent-dashboard cards, shown only when a companion computer is paired.
  * The live video is the prime tile (top-left, half × 2 rows).
  *
- * `nodeDeviceId` is this node's agent identity: the FC-source picker below
- * WRITES the node's config, so it resolves its transport from this id rather
- * than from the focused-node connection store. */
-function CompanionBand({
-  droneId,
-  nodeDeviceId,
-}: {
-  droneId: string;
-  nodeDeviceId: string | null;
-}) {
+ * The agent-side FC source picker used to live here. It is the single control
+ * that fixes "the companion can't find my flight controller", and it sat on a
+ * different tab from the placeholder that reports the problem — inside a band
+ * that only renders when the companion is reachable. It is on Setup now. */
+function CompanionBand({ droneId }: { droneId: string }) {
   const connected = useAgentConnectionStore((s) => s.connected);
   const status = useAgentSystemStore((s) => s.status);
   const services = useAgentSystemStore((s) => s.services);
@@ -190,9 +233,6 @@ function CompanionBand({
         </OverviewTile>
         <OverviewTile span="quarter">
           <MemorySparkline />
-        </OverviewTile>
-        <OverviewTile span="half">
-          <FcSourcePicker nodeDeviceId={nodeDeviceId} />
         </OverviewTile>
         <OverviewTile span="half">
           <ServiceTable

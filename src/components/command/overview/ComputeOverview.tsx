@@ -25,6 +25,8 @@ import { StaleBanner } from "../shared/StaleBanner";
 import { ComputeMetricsCard } from "../shared/ComputeMetricsCard";
 import { ComputeClusterCard } from "../shared/ComputeClusterCard";
 import { JobsSummaryCard } from "../shared/JobsSummaryCard";
+import { NodeReachBlock } from "../shared/NodeReachBlock";
+import { deviceIdFromNodeId } from "@/lib/agent/node-id";
 import { NodeBrandHeader } from "./NodeBrandHeader";
 import { OverviewGrid, OverviewTile } from "./OverviewGrid";
 import { useComputeLocalState } from "@/hooks/use-compute-local-state";
@@ -71,6 +73,9 @@ export function ComputeOverview({ nodeId }: { nodeId?: string }) {
     <div className="h-full space-y-4 overflow-y-auto p-4">
       <StaleBanner />
       <NodeBrandHeader profile="workstation" title={host} />
+      <NodeReachBlock
+        deviceId={nodeId ? (deviceIdFromNodeId(nodeId) ?? nodeId) : ""}
+      />
       {/* Surface the compute node's LAN posture: its job API + world-model
           artifacts are reachable by drones and other GCS on the same network,
           and that exposure is pairing-gated. */}

@@ -115,10 +115,11 @@ function ctxFor(
     agentIdentityKnown: true,
     relayReach: null,
     fcLinking: false,
-    radioPresent: true,
-    visionPresent: true,
-    crsfPresent: true,
+    radioPresent: "present",
+    visionPresent: "present",
+    crsfPresent: "present",
     role: "drone" as SurfaceContext["role"],
+    capabilitiesKnown: true,
     showLockedTabs: false,
     isFeatureEnabled: () => true,
     atlasCapturing: true,
@@ -170,13 +171,16 @@ describe("the Agent page has one sidebar", () => {
     // A ground station encodes no video and runs no perception, so every page
     // under Video & vision is gated away and the header is not rendered at all.
     expect(sectionHeaders(container)).toEqual([
-      "Overview",
-      "Link & network",
+      "Node",
+      "Radio & link",
+      "Networking",
       "Cloud & remote",
       "System & safety",
       "Software",
     ]);
-    // Radio is what it gets instead of Video — its `video.wfb.*` fields live there.
+    // A ground station's LIVE radio is a top-level tab, so it has no `radio`
+    // sub-page to merge into — the WFB configuration keeps its own row here
+    // rather than disappearing with the host it has none of.
     expect(screen.getByText("Radio")).toBeTruthy();
     expect(screen.queryByText("Video")).toBeNull();
   });
@@ -184,38 +188,42 @@ describe("the Agent page has one sidebar", () => {
   it("groups a drone's live surfaces with the configuration for the same subsystem", () => {
     const { container } = renderWithIntl(<AgentTab ctx={ctxFor("drone")} />);
     expect(sectionHeaders(container)).toEqual([
-      "Overview",
-      "Link & network",
+      "Node",
+      "Radio & link",
+      "Networking",
       "Video & vision",
       "Cloud & remote",
       "System & safety",
       "Software",
     ]);
 
-    // The live surface and its configuration are one click apart, not one
-    // sidebar apart: Link above Radio, World Model above its setup page.
+    // One row per subsystem: the live surface and its configuration are two
+    // segments of one page, not two adjacent rows whose labels differ by the
+    // word "setup".
     const labels = Array.from(container.querySelectorAll("nav button")).map(
       (b) => b.textContent,
     );
-    expect(labels.indexOf("Radio")).toBe(labels.indexOf("Link") + 1);
+    expect(labels).toContain("Link");
     expect(labels).toContain("World Model");
     expect(labels).toContain("Cameras");
-    expect(labels).toContain("Perception setup");
+    for (const retired of ["Radio", "Video", "Perception setup", "World model setup"]) {
+      expect(labels).not.toContain(retired);
+    }
   });
 
   it("reaches every page that used to live behind the third sidebar", () => {
     renderWithIntl(<AgentTab ctx={ctxFor("drone")} />);
     for (const label of [
       "Profile",
-      "Radio",
+      "Link",
       "Network",
       "Wi-Fi",
       "Cellular",
       "MAC pinning",
       "Discovery",
       "MAVLink",
-      "Video",
-      "Perception setup",
+      "Cameras",
+      "Perception",
       "Cloud relay",
       "Operating region",
       "Self-heal",
@@ -248,8 +256,8 @@ describe("the config banners follow the pages that read the config", () => {
     expect(screen.getByText(CONFIG_SUBTITLE)).toBeTruthy();
     expect(screen.queryByText(NO_PATH)).toBeNull();
 
-    fireEvent.click(screen.getByText("Logs"));
-    expect(screen.getByText("agent-logs-body")).toBeTruthy();
+    // Health is a live surface: no config chrome, no config banner.
+    fireEvent.click(screen.getByText("Health"));
     expect(screen.queryByText(NO_PATH)).toBeNull();
   });
 
@@ -297,12 +305,19 @@ describe("deep links and per-node memory across the merged id space", () => {
     expect(currentLabel(container)).toBe("Health");
   });
 
-  it("opens a remembered configuration page directly", () => {
+  it("lands a retired setup id on its host page with the Setup segment open", () => {
+    // `radio-config` merged into the live Link page. The remembered id must
+    // resolve to that page AND open the half the operator asked for, not the
+    // live view beside it.
     useUiPrefsStore.setState({
       lastAgentPanelByNode: { "node:drone": "radio-config" },
     });
     const { container } = renderWithIntl(<AgentTab ctx={ctxFor("drone")} />);
-    expect(currentLabel(container)).toBe("Radio");
+    expect(currentLabel(container)).toBe("Link");
+    const selected = container.querySelector(
+      '[role="tab"][aria-selected="true"]',
+    );
+    expect(selected?.textContent).toBe("Setup");
   });
 
   it("consumes a deep-link handoff to a hoisted configuration page", () => {

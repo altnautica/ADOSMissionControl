@@ -1,13 +1,24 @@
 /**
  * @module node-detail/surfaces/ground-station
- * @description Surfaces for a ground-station node in two-tier order, role-gated
- * (direct / relay / receiver): a Status section (its overview), a Link section
- * (ground-side radio + network/uplink + mesh + distributed RX), a Device
- * section (local display + buttons + peripherals), then the Agent page that
- * collapses the companion-computer surfaces (Health / Settings / Extensions /
- * Logs). Controls drive the agent REST surface; in demo the surface reads the
- * seeded ground-station store (the demo agent URL has no REST endpoint, so the
- * tabs' load-on-mount polls no-op — see groundStationApiFromAgent).
+ * @description Surfaces for a ground-station node in two tiers.
+ *
+ * A **Status** band — overview, the received-video cockpit, the drones this
+ * box carries, and the Atlas relay it forwards their frames through. A
+ * **Link** band — the ground radio, IP networking, the mesh and its
+ * distributed-receive data plane, and the RC/ELRS control lane. A **Device**
+ * band — the physical box: display, buttons, peripherals. Then Logs and the
+ * Agent page.
+ *
+ * Mesh and Distributed RX used to be two role-gated tabs polling `/role`
+ * separately and each rendering a role picker, both hidden unless the node
+ * was ALREADY a relay or receiver — so the only role picker in node detail
+ * was unreachable from exactly the `direct` and `unset` nodes that needed it.
+ * They are one always-present "Mesh & RX" surface.
+ *
+ * Controls drive the agent REST surface; in demo the surface reads the seeded
+ * ground-station store (the demo agent URL has no REST endpoint, so the tabs'
+ * polls no-op — see groundStationApiFromAgent). Demo WRITES are inert and say
+ * so rather than swallowing the click.
  * @license GPL-3.0-only
  */
 
@@ -19,30 +30,20 @@ import { DisplayTab } from "@/components/command/nodes/ground-station/DisplayTab
 import { PhysicalUiTab } from "@/components/command/nodes/ground-station/PhysicalUiTab";
 import { PeripheralsTab } from "@/components/command/nodes/ground-station/PeripheralsTab";
 import { MeshTab } from "@/components/command/nodes/ground-station/MeshTab";
-import { DistributedRxTab } from "@/components/command/nodes/ground-station/DistributedRxTab";
+import { CarriedDronesTab } from "@/components/command/nodes/ground-station/CarriedDronesTab";
 import { GroundStationAtlasRelay } from "@/components/command/nodes/ground-station/GroundStationAtlasRelay";
 import { RcElrsLinkTab } from "@/components/command/nodes/RcElrsLinkTab";
-import type { SurfaceSpec, SurfaceContext } from "../surface-types";
+import { LogsTab } from "@/components/drone-detail/LogsTab";
+import type { SurfaceSpec } from "../surface-types";
 import { surfaceNodeDeviceId } from "../surface-types";
+import { STATUS_GROUP, LINK_GROUP, DEVICE_GROUP } from "../surface-groups";
 import { AGENT_SURFACE } from "../agent/agent-surface";
-
-// Role gates mirror the prior GroundStationDetailPanel.visibleTabsForRole:
-// a receiver hides Radio (RX-only); a direct node (and unknown / null role)
-// hides Mesh + Distributed RX (solo node).
-const hasMesh = (ctx: SurfaceContext) =>
-  ctx.role === "relay" || ctx.role === "receiver";
-
-const STATUS_GROUP = "command.groundStation.groups.status";
-const LINK_GROUP = "command.groundStation.groups.link";
-const DEVICE_GROUP = "command.groundStation.groups.device";
 
 export const GROUND_STATION_SURFACES: SurfaceSpec[] = [
   {
     id: "overview",
-    labelKey: "dronePanel.status",
+    labelKey: "dronePanel.overview",
     group: STATUS_GROUP,
-    // Read-only summary over the demo-seeded ground-station store (link /
-    // uplink / mesh cards).
     render: (ctx) => <GroundStationOverview name={ctx.displayName} />,
   },
   {
@@ -54,6 +55,24 @@ export const GROUND_STATION_SURFACES: SurfaceSpec[] = [
     labelKey: "dronePanel.cockpit",
     group: STATUS_GROUP,
     render: (ctx) => <CockpitView droneId={ctx.droneId} />,
+  },
+  {
+    // The aircraft this box is relaying, and the authority it holds over
+    // each. Reach used to be modelled only from the drone's side.
+    id: "carriedDrones",
+    labelKey: "groundStationOverview.carriedDrones.title",
+    group: STATUS_GROUP,
+    render: (ctx) => <CarriedDronesTab nodeDeviceId={surfaceNodeDeviceId(ctx)} />,
+  },
+  {
+    // The GS's side of a drone's Atlas capture: a compute-pipeline surface
+    // that happens to ride the radio, so it sits with Status rather than
+    // among the transports. Opt-in per ground station (off by default).
+    id: "atlasRelay",
+    labelKey: "atlas.atlasRelay",
+    group: STATUS_GROUP,
+    when: (ctx) => ctx.isFeatureEnabled("world-model"),
+    render: () => <GroundStationAtlasRelay />,
   },
   {
     id: "radio",
@@ -69,37 +88,21 @@ export const GROUND_STATION_SURFACES: SurfaceSpec[] = [
     render: () => <NetworkTab />,
   },
   {
+    // Mesh control plane + distributed-RX data plane, and the node's one role
+    // picker. Always present: a `direct` or `unset` node reaches the picker
+    // here, which is the whole point.
     id: "mesh",
-    labelKey: "command.groundStation.tabs.mesh",
+    labelKey: "command.groundStation.tabs.meshAndRx",
     group: LINK_GROUP,
-    when: hasMesh,
     render: () => <MeshTab />,
   },
   {
-    id: "distributedRx",
-    labelKey: "command.groundStation.tabs.distributedRx",
-    group: LINK_GROUP,
-    when: hasMesh,
-    render: () => <DistributedRxTab />,
-  },
-  {
-    id: "atlasRelay",
-    labelKey: "atlas.atlasRelay",
-    group: LINK_GROUP,
-    // Opt-in per ground station (off by default). The World Model relay is the
-    // GS's side of a drone's Atlas capture, not a default GS surface.
-    when: (ctx) => ctx.isFeatureEnabled("world-model"),
-    render: () => <GroundStationAtlasRelay />,
-  },
-  {
+    // Capability-gated on a PROVEN crsf lane: `unknown` is not `present`, so
+    // the tab is never advertised on a reading we do not have.
     id: "rcElrs",
     labelKey: "rcElrsLink.tabLabel",
     group: LINK_GROUP,
-    // Capability-gated: the ground node is the ELRS transmitter, but the tab
-    // appears only when the agent advertises a crsf control lane. Driven by the
-    // capability store (not the GS REST API), so it renders directly rather
-    // than through the demo-notice body.
-    when: (ctx) => ctx.crsfPresent,
+    when: (ctx) => ctx.crsfPresent === "present",
     render: () => <RcElrsLinkTab />,
   },
   {
@@ -119,6 +122,11 @@ export const GROUND_STATION_SURFACES: SurfaceSpec[] = [
     labelKey: "command.groundStation.tabs.peripherals",
     group: DEVICE_GROUP,
     render: () => <PeripheralsTab />,
+  },
+  {
+    id: "logs",
+    labelKey: "dronePanel.logs",
+    render: (ctx) => <LogsTab droneId={ctx.droneId} showFlights={false} />,
   },
   AGENT_SURFACE,
 ];

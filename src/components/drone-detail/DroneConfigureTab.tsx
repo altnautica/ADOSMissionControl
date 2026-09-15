@@ -18,6 +18,7 @@ import { PluginHostProvider } from "@/components/plugins/PluginHostProvider";
 import { useFleetPluginContributions } from "@/hooks/use-fleet-plugin-contributions";
 import { FC_NAV_ITEMS, type FcNavItem } from "./fc-nav-items";
 import { FcPanelRouter } from "./FcPanelRouter";
+import { FcSourcePicker } from "@/components/command/shared/FcSourcePicker";
 
 /** Prefix for a plugin-contributed FC tab's active-panel id, so the panel
  * switch can tell a plugin tab from a built-in FC panel. */
@@ -35,9 +36,20 @@ interface DroneConfigureTabProps {
    * "companion online, no autopilot" empty state over the "connect an FC over
    * USB" one when no FC is present. */
   agentBacked?: boolean;
+  /** This node's agent identity. The FC-source panel WRITES the agent's own
+   * config, so it resolves its transport from this id rather than from the
+   * focused-node connection store. */
+  nodeDeviceId?: string | null;
 }
 
-export function DroneConfigureTab({ droneId, droneName, isConnected, fcLinking = false, agentBacked = false }: DroneConfigureTabProps) {
+export function DroneConfigureTab({
+  droneId,
+  droneName,
+  isConnected,
+  fcLinking = false,
+  agentBacked = false,
+  nodeDeviceId = null,
+}: DroneConfigureTabProps) {
   const t = useTranslations("fcNav");
   const lastActivePanel = useSettingsStore((s) => s.lastActivePanel);
   const setLastActivePanelSetting = useSettingsStore((s) => s.setLastActivePanel);
@@ -82,6 +94,7 @@ export function DroneConfigureTab({ droneId, droneName, isConnected, fcLinking =
     led: t("ledStrip"),
     vtx: t("vtx"),
     ports: t("ports"),
+    "fc-source": t("fcSource"),
     radio: t("radioConfig"),
     "bf-config": t("configuration"),
     firmware: t("firmwarePanel"),
@@ -116,9 +129,15 @@ export function DroneConfigureTab({ droneId, droneName, isConnected, fcLinking =
     "inav-nav-pid": "Nav PID",
   };
 
+  // Persist only while the FC link is up. `supports()` returns all-false the
+  // moment the link drops, so the reset effect below would jump the selection
+  // to the first surviving item and an unconditional persist would write that
+  // jump into settings — the operator's place in EKF3 or Harmonic Notch lost
+  // on every link blip, with no indication.
   useEffect(() => {
+    if (!isConnected) return;
     setLastActivePanelSetting(activePanel);
-  }, [activePanel, setLastActivePanelSetting]);
+  }, [activePanel, isConnected, setLastActivePanelSetting]);
 
   const saveToRam = useFcPanelActionsStore((s) => s.saveToRam);
   const refresh = useFcPanelActionsStore((s) => s.refresh);
@@ -136,9 +155,13 @@ export function DroneConfigureTab({ droneId, droneName, isConnected, fcLinking =
             (vehicleClass != null && item.vehicleClasses.includes(vehicleClass))) &&
           (item.requiredVehicleType == null ||
             vehicleType === item.requiredVehicleType) &&
+          // An excludeFirmware list needs a KNOWN firmware to clear. Treating
+          // `null` as "passes" showed the ArduPilot-only Scripts panel on a
+          // Betaflight board for the whole connect window, and again on every
+          // reconnect blip (firmwareType returns to null while disconnected).
           (!item.excludeFirmware ||
-            firmwareType == null ||
-            !item.excludeFirmware.includes(firmwareType)),
+            (firmwareType != null &&
+              !item.excludeFirmware.includes(firmwareType))),
       ),
     [supports, vehicleClass, vehicleType, firmwareType],
   );
@@ -147,8 +170,9 @@ export function DroneConfigureTab({ droneId, droneName, isConnected, fcLinking =
     const map = new Map<string, FcNavItem[]>();
     for (const item of visibleItems) {
       const s = item.section ?? "Other";
-      if (!map.has(s)) map.set(s, []);
-      map.get(s)!.push(item);
+      const list = map.get(s) ?? [];
+      list.push(item);
+      map.set(s, list);
     }
     return map;
   }, [visibleItems]);
@@ -176,6 +200,12 @@ export function DroneConfigureTab({ droneId, droneName, isConnected, fcLinking =
     : null;
 
   useEffect(() => {
+    // A disconnect must never re-select: `supports()` is all-false while the
+    // link is down, so every capability-gated item leaves `visibleItems` and
+    // this would jump the operator off the panel they were working in. The
+    // panel area already renders the disconnected placeholder, so the
+    // selection does not need to be valid meanwhile.
+    if (!isConnected) return;
     // Reset to the first built-in only when the active panel is neither a
     // visible built-in NOR a live plugin tab. A plugin tab's active id is
     // `plugin:<panelId>` — it's never in the built-in nav (`visibleItems`), so
@@ -190,7 +220,7 @@ export function DroneConfigureTab({ droneId, droneName, isConnected, fcLinking =
     if (!isBuiltinVisible && !isLivePluginTab && visibleItems.length > 0) {
       setActivePanel(visibleItems[0].id);
     }
-  }, [visibleItems, activePanel, fcPluginTabs]);
+  }, [visibleItems, activePanel, fcPluginTabs, isConnected]);
 
   return (
     <div className="flex-1 flex min-h-0 overflow-hidden">
@@ -214,6 +244,15 @@ export function DroneConfigureTab({ droneId, droneName, isConnected, fcLinking =
               Betaflight firmware. Some panels differ from ArduPilot.
             </span>
           )}
+          {!isConnected && (
+            // Without this the column is 200px of greyed-out rows that ignore
+            // clicks, with the reason pushed into the panel body the operator
+            // may have scrolled past — it reads as broken UI rather than as a
+            // disconnected vehicle.
+            <span className="mt-1 block text-[10px] text-status-warning">
+              {fcLinking ? t("linkingTitle") : t("fcDisconnectedShort")}
+            </span>
+          )}
         </div>
         <div className="flex flex-col py-1">
           {[...sections.entries()].map(([section, items]) => (
@@ -223,24 +262,33 @@ export function DroneConfigureTab({ droneId, droneName, isConnected, fcLinking =
                   {sectionLabels[section] ?? section}
                 </span>
               </div>
-              {items.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => isConnected && setActivePanel(item.id)}
-                  disabled={!isConnected}
-                  className={cn(
-                    "flex items-center gap-2 px-3 py-1.5 text-xs text-left transition-colors cursor-pointer w-full",
-                    !isConnected && "opacity-40 cursor-not-allowed",
-                    isConnected && activePanel === item.id
-                      ? "text-accent-primary bg-accent-primary/10 border-l-2 border-l-accent-primary"
-                      : "text-text-secondary hover:text-text-primary hover:bg-bg-tertiary border-l-2 border-l-transparent",
-                    !isConnected && "hover:bg-transparent hover:text-text-secondary",
-                  )}
-                >
-                  {item.icon}
-                  {(firmwareType && item.labelOverride?.[firmwareType]) ?? navLabels[item.id] ?? item.label}
-                </button>
-              ))}
+              {items.map((item) => {
+                // An agent-side panel configures the COMPANION, not the FC, so
+                // a down FC link is exactly when it is needed.
+                const selectable = isConnected || item.agentSide === true;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => selectable && setActivePanel(item.id)}
+                    disabled={!selectable}
+                    title={selectable ? undefined : t("navDisabledHint")}
+                    className={cn(
+                      "flex items-center gap-2 px-3 py-1.5 text-xs text-left transition-colors cursor-pointer w-full",
+                      !selectable && "opacity-40 cursor-not-allowed",
+                      selectable && activePanel === item.id
+                        ? "text-accent-primary bg-accent-primary/10 border-l-2 border-l-accent-primary"
+                        : "text-text-secondary hover:text-text-primary hover:bg-bg-tertiary border-l-2 border-l-transparent",
+                      !selectable &&
+                        "hover:bg-transparent hover:text-text-secondary",
+                    )}
+                  >
+                    {item.icon}
+                    {(firmwareType && item.labelOverride?.[firmwareType]) ??
+                      navLabels[item.id] ??
+                      item.label}
+                  </button>
+                );
+              })}
             </div>
           ))}
 
@@ -280,7 +328,13 @@ export function DroneConfigureTab({ droneId, droneName, isConnected, fcLinking =
       </nav>
 
       <div className="flex-1 min-w-0 min-h-0 overflow-hidden flex flex-col">
-        {!isConnected ? (
+        {activePanel === "fc-source" ? (
+          // Agent-side, not FC-side: rendered before the connection gate
+          // because this is the control that fixes a down FC link.
+          <div className="flex-1 min-w-0 overflow-y-auto p-4">
+            <FcSourcePicker nodeDeviceId={nodeDeviceId} />
+          </div>
+        ) : !isConnected ? (
           fcLinking ? (
             <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center px-6">
               <div className="h-6 w-6 rounded-full border-2 border-accent-primary/30 border-t-accent-primary animate-spin" />
@@ -288,18 +342,38 @@ export function DroneConfigureTab({ droneId, droneName, isConnected, fcLinking =
               <p className="text-xs text-text-tertiary max-w-sm">
                 {t("linkingHint")}
               </p>
+              <button
+                type="button"
+                onClick={() => setActivePanel("fc-source")}
+                className="text-xs font-medium text-accent-primary hover:underline cursor-pointer"
+              >
+                {t("fcSourceCta")}
+              </button>
             </div>
           ) : (
-            <FcDisconnectedPlaceholder droneName={droneName} agentBacked={agentBacked} />
+            <>
+              <FcDisconnectedPlaceholder
+                droneName={droneName}
+                agentBacked={agentBacked}
+              />
+              {agentBacked && (
+                <div className="pb-6 text-center">
+                  <button
+                    type="button"
+                    onClick={() => setActivePanel("fc-source")}
+                    className="text-xs font-medium text-accent-primary hover:underline cursor-pointer"
+                  >
+                    {t("fcSourceCta")}
+                  </button>
+                </div>
+              )}
+            </>
           )
         ) : isPluginPanel ? (
           // Render the active plugin FC tab's sandboxed iframe. The slot host
           // mounts a fleet-scoped provider over the single active contribution.
           <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
-            <FcPluginPanel
-              activePanelId={activePluginPanelId}
-              fallback={<FcPanelRouter activePanel={activePanel} firmwareType={firmwareType} />}
-            />
+            <FcPluginPanel activePanelId={activePluginPanelId} />
           </div>
         ) : (
           <>
@@ -316,22 +390,29 @@ export function DroneConfigureTab({ droneId, droneName, isConnected, fcLinking =
 /**
  * Renders the active plugin-contributed FC tab's iframe. Filters the fleet
  * `fc.tab` contributions to the active panel and mounts a fleet-scoped
- * provider + slot over the single match. Falls back when the active id no
- * longer resolves to a contribution (e.g. the plugin was removed).
+ * provider + slot over the single match.
+ *
+ * When the active id no longer resolves to a contribution (the plugin was
+ * removed or disabled) this says so. It used to fall back to the built-in FC
+ * router for whatever `activePanel` happened to name — which rendered an
+ * unrelated FC panel under the plugin's own nav label.
  */
-function FcPluginPanel({
-  activePanelId,
-  fallback,
-}: {
-  activePanelId: string | null;
-  fallback: React.ReactNode;
-}) {
+function FcPluginPanel({ activePanelId }: { activePanelId: string | null }) {
+  const t = useTranslations("fcNav");
   const contributions = useFleetPluginContributions("fc.tab");
   const active = useMemo(
     () => contributions.filter((c) => c.panelId === activePanelId),
     [contributions, activePanelId],
   );
-  if (active.length === 0) return <>{fallback}</>;
+  if (active.length === 0) {
+    return (
+      <div className="flex-1 flex items-center justify-center p-8 text-center">
+        <p className="max-w-sm text-xs text-text-tertiary">
+          {t("pluginPanelGone")}
+        </p>
+      </div>
+    );
+  }
   return (
     <PluginHostProvider deviceId={null} contributions={active}>
       <PluginSlot

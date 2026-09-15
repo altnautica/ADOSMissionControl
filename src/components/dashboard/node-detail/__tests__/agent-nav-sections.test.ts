@@ -42,10 +42,11 @@ function ctxFor(
     agentIdentityKnown: true,
     relayReach: null,
     fcLinking: false,
-    radioPresent: true,
-    visionPresent: true,
-    crsfPresent: true,
+    radioPresent: "present",
+    visionPresent: "present",
+    crsfPresent: "present",
     role: "drone" as SurfaceContext["role"],
+    capabilitiesKnown: true,
     showLockedTabs: false,
     isFeatureEnabled: () => true,
     atlasCapturing: true,
@@ -98,39 +99,61 @@ describe("resolveAgentNav", () => {
   it("puts each live surface beside the configuration for the same subsystem, in the shipped order", () => {
     const { sections } = nav("drone");
     expect(sections.map((s) => s.key)).toEqual([
-      "overview",
-      "network",
+      "node",
+      "radioLink",
+      "networking",
+      "fleet",
       "videoVision",
       "cloud",
       "system",
       "software",
     ]);
+    // One row per subsystem: `radio-config`, `video`, `vision-perception` and
+    // `world-model-config` are the Setup segments of the live page above
+    // them, not rows of their own.
     expect(sections.map((s) => s.items.map((i) => i.id))).toEqual([
       ["system", "profile"],
-      [
-        "radio",
-        "radio-config",
-        "network",
-        "wifi",
-        "cellular",
-        "mac-pin",
-        "discovery",
-        "mavlink",
-        "swarm",
-      ],
-      [
-        "cameras",
-        "video",
-        "vision",
-        "vision-perception",
-        "world-model",
-        "world-model-config",
-        "live-world",
-      ],
+      ["radio"],
+      ["network", "wifi", "cellular", "mac-pin", "discovery", "mavlink"],
+      ["swarm"],
+      ["cameras", "vision", "world-model", "live-world"],
       ["cloud"],
       ["region", "self-heal", "security", "advanced"],
-      ["plugins", "logs"],
+      ["plugins"],
     ]);
+  });
+
+  it("gives a merged subsystem one row carrying both halves", () => {
+    const byId = (id: string) =>
+      nav("drone").entries.find((e) => e.id === id);
+    for (const [host, setupKey] of [
+      ["radio", "nodeSettings.radio.title"],
+      ["cameras", "nodeSettings.video.title"],
+      ["vision", "nodeSettings.perception.title"],
+      ["world-model", "nodeSettings.atlas.title"],
+    ] as const) {
+      expect(byId(host)?.setup?.labelKey).toBe(setupKey);
+      expect(byId(host)?.setup?.readsConfig).toBe(true);
+    }
+    // ...and the retired halves are not rows.
+    for (const retired of [
+      "radio-config",
+      "video",
+      "vision-perception",
+      "world-model-config",
+    ]) {
+      expect(nav("drone").entries.map((e) => e.id)).not.toContain(retired);
+    }
+  });
+
+  it("keeps a merged page as its own row where the profile has no live host", () => {
+    // A ground station's live radio is a TOP-LEVEL tab, so it has no `radio`
+    // sub-page to merge into — the WFB configuration must still be reachable.
+    const entries = nav("ground-station").entries;
+    expect(entries.map((e) => e.id)).toContain("radio-config");
+    expect(entries.find((e) => e.id === "radio-config")?.isConfigPage).toBe(
+      true,
+    );
   });
 
   it("omits a section outright when a profile's gates close every page in it", () => {
@@ -162,7 +185,7 @@ describe("resolveAgentNav", () => {
 
     // A live surface is never rendered in the config chrome.
     expect(byId("system")?.isConfigPage).toBe(false);
-    expect(byId("logs")?.readsConfig).toBe(false);
+    expect(byId("system")?.readsConfig).toBe(false);
 
     // A config page that reads the config document: banners apply.
     expect(byId("advanced")?.isConfigPage).toBe(true);
@@ -182,10 +205,12 @@ describe("resolveAgentNav", () => {
       agentDeviceId: null,
       agentIdentityKnown: false,
       showLockedTabs: true,
-      radioPresent: false,
+      radioPresent: "absent",
       isFeatureEnabled: () => false,
       atlasCapturing: false,
     }).entries.map((e) => e.id);
-    expect(ids).toEqual(["logs"]);
+    // Nothing at all: Logs is a top-level surface now, not a sub-page, so the
+    // Agent sidebar for a companion-less node is genuinely empty.
+    expect(ids).toEqual([]);
   });
 });

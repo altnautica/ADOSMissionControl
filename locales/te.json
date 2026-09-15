@@ -922,9 +922,9 @@
   },
   "emptyState": {
     "title": "డ్రోన్‌లు కనెక్ట్ కాలేదు",
-    "description": "ADOS Mission Control తో ప్రారంభించడానికి USB లేదా నెట్‌వర్క్ ద్వారా ఫ్లైట్ కంట్రోలర్‌ను కనెక్ట్ చేయండి.",
-    "connectDrone": "డ్రోన్ కనెక్ట్ చేయండి",
-    "commandPaletteHint": "కమాండ్ ప్యాలెట్ తెరవడానికి"
+    "commandPaletteHint": "కమాండ్ ప్యాలెట్ తెరవడానికి",
+    "scanEmpty": "No ADOS agents found on this network yet. Add one by hostname or IP above, or install the agent on a board below.",
+    "tryDemo": "Explore with a simulated fleet"
   },
   "connect": {
     "title": "డ్రోన్‌కు కనెక్ట్",
@@ -1170,7 +1170,12 @@
     "logAnalysis": "లాగ్ విశ్లేషణ",
     "loadingPanel": "ప్యానెల్ లోడ్ అవుతోంది...",
     "linkingTitle": "Linking to flight controller…",
-    "linkingHint": "The agent reports a flight controller. Establishing the live MAVLink link…"
+    "linkingHint": "The agent reports a flight controller. Establishing the live MAVLink link…",
+    "fcSource": "FC source",
+    "fcSourceCta": "Change the FC source",
+    "fcDisconnectedShort": "FC link down",
+    "navDisabledHint": "Connect a flight controller to open this panel.",
+    "pluginPanelGone": "This extension is no longer installed on this node."
   },
   "droneStatus": {
     "online": "ఆన్‌లైన్",
@@ -1223,7 +1228,8 @@
     "cockpit": "Cockpit",
     "agentGroups": {
       "overview": "అవలోకనం",
-      "software": "Software"
+      "software": "Software",
+      "node": "నోడ్"
     },
     "agentShowcase": {
       "title": "Add an onboard computer",
@@ -1275,7 +1281,15 @@
     "surfaceErrorRetry": "Try again",
     "openHud": "పూర్తి స్క్రీన్ HUD తెరవండి",
     "nodeDetailTabs": "నోడ్ వివరాల ట్యాబ్‌లు",
-    "nodeNotFound": "డ్రోన్ “{id}” కనుగొనబడలేదు"
+    "nodeNotFound": "డ్రోన్ “{id}” కనుగొనబడలేదు",
+    "retryConnect": "మళ్లీ ప్రయత్నించు",
+    "companionOffline": {
+      "title": "కంపానియన్ చేరుకోలేకపోయింది",
+      "body": "This node has an onboard computer, but this browser cannot reach it right now. Its video, services and logs are unavailable until it answers.",
+      "viaHop": "This node's onboard computer is reached through {hop}, which is not answering right now. Its video, services and logs are unavailable until it does.",
+      "repair": "మళ్లీ జత చేయి",
+      "openAgent": "Open the Agent page"
+    }
   },
   "vision": {
     "title": "Vision Engine",
@@ -1409,7 +1423,10 @@
       "network": "Link & network",
       "videoVision": "Video & vision",
       "cloud": "Cloud & remote",
-      "system": "System & safety"
+      "system": "System & safety",
+      "radioLink": "రేడియో & లింక్",
+      "networking": "నెట్‌వర్కింగ్",
+      "fleet": "ఫ్లీట్"
     },
     "intInvalid": "Enter a whole number between {min} and {max}.",
     "video": {
@@ -1970,7 +1987,10 @@
       "kioskEnabledHint": "Starts the full-screen browser on the HDMI output at boot. Takes effect when the kiosk service next starts.",
       "kioskTargetUrl": "Kiosk page",
       "kioskTargetUrlHint": "The page the kiosk opens. Leave empty to use this node's own console."
-    }
+    },
+    "pageUnavailableHere": "{page} is not available on this node. Showing the first page this node offers.",
+    "segmentLive": "లైవ్",
+    "segmentSetup": "సెటప్"
   },
   "dronePlugins": {
     "titleForDrone": "Extensions on {drone}",
@@ -2144,16 +2164,13 @@
       "pairingButton": "జత చేస్తోంది",
       "cancelButton": "రద్దు చేయండి",
       "mixedContentError": "ఈ Mission Control HTTPS ద్వారా అందించబడుతుంది. HTTPS పేజీల నుండి సాధారణ HTTP ప్రోబ్‌లను బ్రౌజర్‌లు బ్లాక్ చేస్తాయి. LAN ఏజెంట్‌లను జత చేయడానికి Mission Control‌ను http:// ద్వారా లోడ్ చేయండి (లేదా localhost బిల్డ్‌ను ఉపయోగించండి).",
-      "hostNotPrivateError": "Only private network hosts (RFC1918 IPs, *.local names, or loopback) are allowed for LAN pairing.",
+      "hostNotPrivateError": "\"{host}\" is not an address on your own network. Use an RFC1918 IP (for example 192.168.1.50), a `.local` name, loopback, or a Tailscale 100.64.0.0/10 address — a bare LAN name needs `.local` on the end.",
       "missingDeviceIdError": "ప్రోబ్ ప్రతిస్పందనలో device_id లేదు",
-      "probeFailedStatusError": "పరిశీలన విఫలమైంది: {status} {statusText}",
-      "pairFailedStatusError": "జత చేయడం విఫలమైంది: {status} {statusText}",
-      "unpairFailedStatusError": "జత తొలగింపు విఫలమైంది: {status} {statusText}",
       "pairedButConnectFailed": "జతచేయబడింది, కానీ లైవ్ కనెక్షన్‌ని ఏర్పాటు చేయలేకపోయింది: {error}. నోడ్ సేవ్ చేయబడింది. సైడ్‌బార్ నుండి మళ్లీ ప్రయత్నించండి.",
       "pairSuccess": "కనెక్ట్ అయింది. మీ డ్రోన్ లైవ్‌లో ఉంది.",
       "pairSuccessNode": "కనెక్ట్ అయింది. {name} లైవ్‌లో ఉంది.",
       "wipePairState": "Wipe pair state and retry",
-      "wipePairStateConfirm": "This deletes the cloud pair record and any heartbeat history for this device. The agent itself stays paired; unpair it from the agent's setup webapp if needed. Continue?",
+      "wipePairStateConfirm": "This deletes the cloud pair record and any heartbeat history for this device. The node itself stays paired — run `ados unpair` on it to release it. Continue?",
       "wipePairStateSuccess": "Pair state wiped. Try pairing again.",
       "profileLabel": {
         "drone": "డ్రోన్",
@@ -2169,7 +2186,17 @@
         "title": "మీ API కీలు ఈ బ్రౌజర్‌లోనే నిల్వ ఉన్నాయి",
         "body": "బ్రౌజర్ నిల్వను తొలగిస్తే స్థానికంగా జత చేయబడిన అన్ని నోడ్‌ల జతలు తొలగిపోతాయి. తిరిగి పొందడానికి, ఏజెంట్ సెటప్ వెబ్‌యాప్‌లో (http://your-agent.local:8080/setup.html) జతను తొలగించి, ఇక్కడ నుండి మళ్ళీ జత చేయండి.",
         "dismiss": "అర్థమైంది"
-      }
+      },
+      "pairUnreachableError": "Nothing answered at {host}. Check the node is powered on and on this network, then press Pair again. If its address has changed, try its IP instead of its name.",
+      "pairHostedRemotelyError": "This Mission Control is hosted off your network, so its server cannot reach {host} — the node itself is probably fine. Open a Mission Control on the same network and pair from there: the desktop app, or a local build. If the node really is remote, enable cloud relay on it and pair with its 6-character code.",
+      "pairKeyRejectedError": "{host} answered and refused this browser's key — the node is already claimed by a different browser. Run `ados unpair` on the node, or open {settingsUrl} to release it, then press Pair again.",
+      "pairPinRequiredError": "{host} answered but will not pair until its dashboard PIN is set. Open {settingsUrl} on this network to set the PIN, then press Pair again.",
+      "pairRouteMissingError": "{host} answered but has no pairing endpoint — it is running an older agent, or it is not an ADOS node. Run `ados update` on it, then press Pair again.",
+      "pairTimedOutError": "{host} answered but did not finish pairing in time. Press Pair again; if it keeps timing out, check the link with `ados diag link` on the node.",
+      "pairAgentNotReadyError": "{host} answered but its pairing service is still starting. Wait a few seconds, then press Pair again.",
+      "pairAgentFaultError": "{host} could not save the pairing: {detail}. Check its disk space and service health with `ados status` on the node, then press Pair again.",
+      "pairRefusedError": "{host} answered and refused the pairing request. Run `ados status` on the node to check its pairing state, then press Pair again.",
+      "unpairFailedError": "Couldn't release {host} from this browser. Run `ados unpair` on the node to release it, then remove it here."
     },
     "nodes": {
       "label": "Nodes",
@@ -2197,7 +2224,8 @@
         "physicalUi": "భౌతిక UI",
         "peripherals": "పరిధీయ పరికరాలు",
         "mesh": "మెష్",
-        "distributedRx": "పంపిణీ చేయబడిన RX"
+        "distributedRx": "పంపిణీ చేయబడిన RX",
+        "meshAndRx": "మెష్ & RX"
       },
       "groups": {
         "status": "Status",
@@ -2225,6 +2253,18 @@
         "peripherals": "Peripheral rescan and per-peripheral actions route through the agent's REST surface, which is only reachable on the same LAN. The list below comes from the cloud heartbeat and is read-only.",
         "mesh": "batman-adv mesh topology (neighbours, routes, gateways) is local to the ground station and never relayed through the cloud. Connect on LAN to inspect mesh health.",
         "distributedRx": "Distributed receive fragment counters and pairing controls are local to the ground station and never relayed through the cloud. Connect on LAN for the live view."
+      }
+    },
+    "nodeReach": {
+      "reachedAt": "Reached at {host} · confirmed {ago}",
+      "lastTried": "Last tried {host} — {reason} ({ago})",
+      "previouslyReachedAt": "Last worked at {host}.",
+      "useThisAddress": "Use {host}",
+      "reason": {
+        "no-answer": "nothing answered",
+        "refused": "answered and refused",
+        "fault": "answered with an internal fault",
+        "unknown": "the attempt failed"
       }
     }
   },
@@ -3922,7 +3962,12 @@
       "direct": "Direct",
       "relay": "Relay",
       "receiver": "Receiver",
-      "unset": "Unset"
+      "unset": "Unset",
+      "label": "Deployment role",
+      "emptyDirectTitle": "This node is in direct mode.",
+      "emptyUnsetTitle": "This node has no role set.",
+      "emptyHint": "Switch to relay or receiver to carry mesh traffic and see this view with live data.",
+      "demoReadOnly": "Demo mode is read-only — this control is disabled on the sample fleet."
     },
     "confirms": {
       "unpair": {
@@ -4023,7 +4068,8 @@
       "downloadLogsAction": "Download",
       "downloadLogsComingSoon": "Backend bundle endpoint not yet available.",
       "emptyDirect": "This node is in direct mode. Set the role to relay or receiver to view the mesh.",
-      "pinHint": "మెష్ సేవ పునఃప్రారంభంలో పిన్ వర్తిస్తుంది. ఆటో తిరిగి సెట్ చేస్తుంది."
+      "pinHint": "మెష్ సేవ పునఃప్రారంభంలో పిన్ వర్తిస్తుంది. ఆటో తిరిగి సెట్ చేస్తుంది.",
+      "emptyUnset": "This node has no role set. Choose relay or receiver above, or set it from the device's own display."
     },
     "overview": "అవలోకనం",
     "network": "నెట్‌వర్క్",
@@ -5439,6 +5485,17 @@
       "live": "Live",
       "connecting": "Connecting",
       "noSignal": "No downlink"
+    },
+    "carriedDrones": {
+      "title": "Carried drones",
+      "description": "The aircraft this ground node is relaying, when each was last heard, and what authority this browser holds over it.",
+      "hint": "Last heard is a decode, not a heartbeat from the drone's own uplink.",
+      "none": "This node is not relaying any drone.",
+      "neverHeard": "never heard",
+      "heardSecondsAgo": "heard {seconds}s ago",
+      "heardMinutesAgo": "heard {minutes}m ago",
+      "authorityFull": "This ground node is paired on this browser, so commands and configuration for this drone route through its relay-proxy lane.",
+      "authorityNotPaired": "This ground node is not paired on this browser, so nothing can be sent to this drone through it. Pair the ground node to reach the drone."
     }
   },
   "navigation": {
@@ -6332,7 +6389,7 @@
     "forgeAwaiting": "Awaiting compute node. Connect a workstation or compute node on your network to dispatch and review reconstruction jobs.",
     "forgeNoJobs": "No reconstruction jobs yet.",
     "forgeNoOutputs": "No outputs for this job yet.",
-    "forgeNoDatasets": "No datasets yet. Datasets are created by the capture pipeline.",
+    "forgeNoDatasets": "No datasets on this node yet.",
     "forgeSelectJob": "Select a job",
     "forgeCancel": "Cancel",
     "forgeJobCount": "{count} jobs",
@@ -6492,7 +6549,17 @@
     "worldStreamReconnecting": "డిస్క్రిప్టర్ స్ట్రీమ్ మళ్లీ కనెక్ట్ అవుతోంది…",
     "worldSuperseded": "{count} పాత డిస్క్రిప్టర్‌లు వదిలేయబడ్డాయి",
     "worldVersionRejected": "{count} ఫ్రేమ్‌లు తిరస్కరించబడ్డాయి: ఈ బిల్డ్‌కు ఎన్వలప్ వెర్షన్ {version} తెలియదు",
-    "worldMalformed": "{count} చదవలేని ఫ్రేమ్‌లు"
+    "worldMalformed": "{count} చదవలేని ఫ్రేమ్‌లు",
+    "computePaneLabel": "Compute views",
+    "forgeSubmit": "Queue job",
+    "forgeSubmitCancel": "Cancel",
+    "forgeSteps": "Training steps",
+    "forgeSubmitQueued": "Reconstruction queued.",
+    "forgeSubmitFailed": "The compute node refused the job.",
+    "forgeRetry": "Run again",
+    "forgeRetryQueued": "Job re-queued.",
+    "forgeRetryFailed": "The compute node refused the re-run.",
+    "forgeCancelFailed": "The compute node did not cancel that job."
   },
   "workstation": {
     "rail": {
@@ -7250,6 +7317,15 @@
     "empty": {
       "title": "RC / ELRS lane not configured",
       "body": "This node advertises no ExpressLRS control lane. Attach an ELRS transmitter and enable the RC / ELRS lane to command or relay over it."
+    }
+  },
+  "nodeDetail": {
+    "groups": {
+      "status": "స్థితి",
+      "vehicle": "వాహనం",
+      "link": "లింక్",
+      "device": "పరికరం",
+      "compute": "కంప్యూట్"
     }
   }
 }

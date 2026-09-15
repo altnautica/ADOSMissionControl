@@ -4,7 +4,7 @@
  * @module PhysicalUiTab
  * @description Command-tab home for the physical-UI surface (OLED
  * live card, Buttons, Screens — buttons and screens are read-only
- * in this build). Lifted from the prior /hardware/ui route.
+ * in this build). Renders the physical-UI surface for a ground-station node.
  * @license GPL-3.0-only
  */
 

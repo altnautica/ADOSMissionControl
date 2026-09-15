@@ -13,6 +13,9 @@ import { useGroundStationStore } from "@/stores/ground-station-store";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { groundStationApiFromAgent } from "@/lib/api/ground-station-api";
 
+/** Cadence of the pairing-window poll while the window is open. */
+const PAIRING_POLL_MS = 1000;
+
 export function PairingStatusCard() {
   const t = useTranslations("hardware.distributedRx");
   const role = useGroundStationStore((s) => s.role.info?.current ?? "direct");
@@ -42,8 +45,27 @@ export function PairingStatusCard() {
     if (role !== "receiver" || !distRx.pairingWindowOpen) return;
     const api = groundStationApiFromAgent(agentUrl, apiKey);
     if (!api) return;
-    const interval = setInterval(() => loadPairingPending(api), 1000);
-    return () => clearInterval(interval);
+    // Self-scheduling: a 1 Hz fixed interval with no in-flight guard and no
+    // `document.hidden` check stacked requests onto the agent while the tab
+    // was in the background.
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const tick = async () => {
+      if (cancelled) return;
+      if (!document.hidden) {
+        try {
+          await loadPairingPending(api);
+        } catch {
+          // The store owns the operator-visible error.
+        }
+      }
+      if (!cancelled) timer = setTimeout(tick, PAIRING_POLL_MS);
+    };
+    void tick();
+    return () => {
+      cancelled = true;
+      clearTimeout(timer ?? undefined);
+    };
   }, [role, distRx.pairingWindowOpen, agentUrl, apiKey, loadPairingPending]);
 
   if (role !== "receiver") {

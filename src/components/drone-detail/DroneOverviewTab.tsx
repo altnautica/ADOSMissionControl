@@ -6,6 +6,9 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { TelemetryReadout } from "@/components/flight/TelemetryReadout";
 import { ActionsPanel } from "@/components/flight/ActionsPanel";
 import { CompactInfoCards } from "@/components/flight/CompactInfoCards";
+import { SensorStatusCard } from "@/components/command/shared/SensorStatusCard";
+import { RcInputCard } from "@/components/command/shared/RcInputCard";
+import { StatusTextCard } from "@/components/command/shared/StatusTextCard";
 import type { FleetDrone } from "@/lib/types";
 
 const OverviewHud = dynamic(
@@ -34,21 +37,36 @@ const OverviewMap = dynamic(
 
 interface DroneOverviewTabProps {
   drone: FleetDrone;
+  /**
+   * Render the RC channel card here. RC state gets exactly one home: the
+   * RC/ELRS tab when the node advertises a CRSF lane, otherwise this card.
+   * It used to render on Status as well, sourced differently and gated
+   * differently, so an operator debugging "my sticks aren't reaching the
+   * aircraft" had two readings and nothing saying which was authoritative.
+   */
+  showRcCard?: boolean;
 }
 
 /**
- * The drone "Flight" tab: the left telemetry/instrument column + the map. The
- * piloting cockpit (video / HUD / skill bar) is its own "Cockpit" tab, so this
- * surface carries no video, no sub-tab toolbar, and no immersive/record controls
- * — just instruments and the map, with a slim handle to collapse the left column
- * for a full-width map.
+ * The drone "Flight" tab: the ONE live-telemetry surface. Instruments, the
+ * vehicle readouts, the actions and the map, plus the FC message stream and
+ * sensor health that used to sit on Status beside a static summary of the
+ * same vehicle.
+ *
+ * The piloting cockpit (video / HUD / skill bar) is its own tab, so this
+ * surface carries no video, no sub-tab toolbar and no immersive/record
+ * controls; the node home (identity, reach, the companion band) is Status.
  */
-export function DroneOverviewTab({ drone }: DroneOverviewTabProps) {
+export function DroneOverviewTab({
+  drone,
+  showRcCard = false,
+}: DroneOverviewTabProps) {
   const [telemetryCollapsed, setTelemetryCollapsed] = useState(false);
 
   return (
     <div className="flex-1 flex overflow-hidden">
-      {/* Left column: HUD + Telemetry + Actions + Info */}
+      {/* Left column: HUD + Telemetry + Actions + Info + the FC message and
+          sensor-health readouts that moved off Status. */}
       {!telemetryCollapsed && (
         <div className="w-[22rem] shrink-0 flex flex-col overflow-y-auto border-r border-border-default">
           <div className="h-60 shrink-0">
@@ -57,6 +75,11 @@ export function DroneOverviewTab({ drone }: DroneOverviewTabProps) {
           <TelemetryReadout />
           <ActionsPanel />
           <CompactInfoCards drone={drone} />
+          <div className="flex flex-col gap-2 p-2">
+            <SensorStatusCard />
+            {showRcCard && <RcInputCard />}
+            <StatusTextCard />
+          </div>
         </div>
       )}
 

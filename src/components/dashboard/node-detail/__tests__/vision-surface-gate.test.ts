@@ -15,10 +15,11 @@ function ctx(over: Partial<SurfaceContext>): SurfaceContext {
     agentIdentityKnown: false,
     relayReach: null,
     fcLinking: false,
-    radioPresent: false,
-    visionPresent: false,
-    crsfPresent: false,
+    radioPresent: "absent",
+    visionPresent: "absent",
+    crsfPresent: "absent",
     role: "drone" as SurfaceContext["role"],
+    capabilitiesKnown: true,
     showLockedTabs: true,
     isFeatureEnabled: () => false,
     atlasCapturing: false,
@@ -37,7 +38,7 @@ describe("Perception (vision) sub-page gate", () => {
     expect(
       shows(
         "vision",
-        ctx({ agentDeviceId: "dev-1", showLockedTabs: false, visionPresent: false }),
+        ctx({ agentDeviceId: "dev-1", showLockedTabs: false, visionPresent: "absent" }),
       ),
     ).toBe(true);
   });
@@ -46,7 +47,7 @@ describe("Perception (vision) sub-page gate", () => {
     expect(
       shows(
         "vision",
-        ctx({ agentDeviceId: "dev-1", showLockedTabs: false, visionPresent: true }),
+        ctx({ agentDeviceId: "dev-1", showLockedTabs: false, visionPresent: "present" }),
       ),
     ).toBe(true);
   });
@@ -55,7 +56,7 @@ describe("Perception (vision) sub-page gate", () => {
     expect(
       shows(
         "vision",
-        ctx({ agentDeviceId: null, showLockedTabs: true, visionPresent: true }),
+        ctx({ agentDeviceId: null, showLockedTabs: true, visionPresent: "present" }),
       ),
     ).toBe(false);
   });
@@ -79,11 +80,11 @@ describe("Perception (vision) sub-page gate", () => {
 describe("Perception section extra gates", () => {
   it("Link (radio) shows only for a drone with a radio present", () => {
     expect(
-      shows("radio", ctx({ agentDeviceId: "dev-1", showLockedTabs: false, radioPresent: true })),
+      shows("radio", ctx({ agentDeviceId: "dev-1", showLockedTabs: false, radioPresent: "present" })),
     ).toBe(true);
     // no radio -> hidden
     expect(
-      shows("radio", ctx({ agentDeviceId: "dev-1", showLockedTabs: false, radioPresent: false })),
+      shows("radio", ctx({ agentDeviceId: "dev-1", showLockedTabs: false, radioPresent: "absent" })),
     ).toBe(false);
     // ground station keeps its own top-level Radio tab, so it is not an Agent sub-page here
     expect(
@@ -92,7 +93,7 @@ describe("Perception section extra gates", () => {
         ctx({
           drone: { profile: "ground-station" } as SurfaceContext["drone"],
           showLockedTabs: false,
-          radioPresent: true,
+          radioPresent: "present",
         }),
       ),
     ).toBe(false);

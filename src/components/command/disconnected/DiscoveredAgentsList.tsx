@@ -57,10 +57,15 @@ export function DiscoveredAgentsList({
               </p>
               <p className="text-[10px] text-text-tertiary truncate">
                 {agent.board}
-                {agent.mdnsHost ? (
+                {/* Show the address the pair will actually aim at — the
+                    proxy-resolved IP when there is one — so the operator is
+                    never shown one reach and paired against another. */}
+                {agent.localIp || agent.mdnsHost ? (
                   <>
                     {" · "}
-                    <span className="font-mono">{agent.mdnsHost}</span>
+                    <span className="font-mono">
+                      {agent.localIp || agent.mdnsHost}
+                    </span>
                   </>
                 ) : null}
               </p>

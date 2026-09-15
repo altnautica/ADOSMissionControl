@@ -18,7 +18,11 @@ import { useDroneManager } from "@/stores/drone-manager";
 import { useDroneMetadataStore } from "@/stores/drone-metadata-store";
 import { useForgetNode } from "@/hooks/use-forget-node";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
-import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
+import {
+  useAgentCapabilitiesStore,
+  selectDeviceCapabilities,
+  capabilityPresence,
+} from "@/stores/agent-capabilities-store";
 import { useUiPrefsStore } from "@/stores/ui-prefs-store";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -31,11 +35,13 @@ import {
   DroneDetailTabHeaders,
   DroneDetailTabBody,
   isPluginTabId,
+  pluginTabIds,
 } from "@/components/plugins/DroneDetailTabHost";
 import { PluginHostProvider } from "@/components/plugins/PluginHostProvider";
-import { SurfaceErrorBoundary } from "./SurfaceErrorBoundary";
+import { SurfaceErrorBoundary, SurfaceBody } from "./SurfaceErrorBoundary";
 import { usePluginContributions } from "@/hooks/use-plugin-contributions";
-import { X, RotateCcw, Trash2, MonitorPlay } from "lucide-react";
+import { useDronePluginContributions } from "@/hooks/use-drone-plugin-contributions";
+import { X, RotateCcw, Trash2, MonitorPlay, PlugZap } from "lucide-react";
 import { useFleetNodes } from "@/hooks/use-fleet-nodes";
 import { selectNode } from "@/lib/agent/node-click-handler";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
@@ -51,7 +57,7 @@ import { RuntimeModeBadge } from "@/components/indicators/RuntimeModeBadge";
 import { TrafficPill } from "@/components/indicators/TrafficPill";
 import { useUiStore } from "@/stores/ui-store";
 import { resolveSurfaces } from "./surfaces";
-import { agentRedirect } from "./agent/agent-redirect";
+import { agentRedirect, topLevelAlias } from "./agent/agent-redirect";
 import type { SurfaceContext } from "./surface-types";
 import {
   type RelayReach,
@@ -62,6 +68,9 @@ interface NodeDetailPanelProps {
   droneId: string;
   onClose: () => void;
 }
+
+/** Attempts a node's agent gets before the panel stops dialling and asks. */
+const CONNECT_RETRY_LIMIT = 3;
 
 /**
  * Commits the one side effect of the Agent deep-link redirect. It is a
@@ -78,6 +87,61 @@ function AgentSubpageHandoff({ subpage }: { subpage: string }) {
   return null;
 }
 
+/**
+ * Persists the node's tab, and scrolls it into view in the overflowing strip.
+ *
+ * Both need `visibleTab` — the id the node actually RESOLVED — which is only
+ * known after the panel's `!drone` guard, so like `AgentSubpageHandoff` this is
+ * a mounted child rather than an effect in the panel body.
+ *
+ * `resolved` is false when the node could not offer the requested tab and the
+ * panel fell back to the first surface. Persisting in that case would destroy
+ * the operator's remembered position the moment a capability blipped (or the
+ * first time they opened a node whose remembered tab had not re-appeared yet),
+ * which is exactly how a workstation's record ended up holding `cockpit`.
+ */
+function TabMemory({
+  droneId,
+  visibleTab,
+  requestedTab,
+  resolved,
+}: {
+  droneId: string;
+  visibleTab: string;
+  requestedTab: string;
+  resolved: boolean;
+}) {
+  useEffect(() => {
+    if (!resolved) return;
+    useUiPrefsStore.getState().setLastTab(droneId, requestedTab);
+  }, [droneId, requestedTab, resolved]);
+  useEffect(() => {
+    // The strip hides its scrollbar, so a restored tab off the left edge reads
+    // as "the panel is showing the wrong content" with no hint more exists.
+    document
+      .getElementById(`drone-tab-${visibleTab}`)
+      ?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [visibleTab]);
+  return null;
+}
+
+/**
+ * Leaves immersive mode when the resolved surface is not the cockpit.
+ *
+ * Keyed on `visibleTab`, not the requested tab: switching from a drone parked
+ * on Cockpit to a workstation leaves the request at `cockpit` while the panel
+ * renders the workstation Overview, and gating on the request left the
+ * operator full-bleed on a surface with no chrome and no way back.
+ */
+function ImmersiveGuard({ visibleTab }: { visibleTab: string }) {
+  const immersiveMode = useUiStore((s) => s.immersiveMode);
+  const exitImmersiveMode = useUiStore((s) => s.exitImmersiveMode);
+  useEffect(() => {
+    if (immersiveMode && visibleTab !== "cockpit") exitImmersiveMode();
+  }, [visibleTab, immersiveMode, exitImmersiveMode]);
+  return null;
+}
+
 export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
   const t = useTranslations("dronePanel");
   // Namespace-less translator so a surface can reuse any existing key
@@ -85,10 +149,20 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
   // command.groundStation.tabs.*).
   const tRoot = useTranslations();
   const drones = useFleetStore((s) => s.drones);
-  // Seed the first-open tab from the per-node last-tab (falling back to Overview).
+  // Seed the first-open tab from the per-node last-tab (falling back to
+  // Overview), and RESEED it whenever the selected node changes. The panel is
+  // deliberately not remounted per node (no `key` at the call site: the plugin
+  // host's pause grace and the Agent page's sub-page memory both depend on the
+  // instance surviving), so a lazy initializer alone would carry node A's tab
+  // onto node B and the persist effect would then write it into B's record.
   const [activeTab, setActiveTab] = useState(
     () => useUiPrefsStore.getState().getLastTab(droneId) ?? "overview",
   );
+  const seededForNode = useRef(droneId);
+  if (seededForNode.current !== droneId) {
+    seededForNode.current = droneId;
+    setActiveTab(useUiPrefsStore.getState().getLastTab(droneId) ?? "overview");
+  }
   const [deleteOpen, setDeleteOpen] = useState(false);
   const { toast } = useToast();
 
@@ -115,15 +189,33 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
     droneDeviceId: droneId,
   });
 
-  const radioPresent = useAgentCapabilitiesStore((s) => s.radio !== null);
-  const crsfPresent = useAgentCapabilitiesStore((s) => s.crsf !== null);
-  const visionPresent = useAgentCapabilitiesStore(
-    (s) => s.visionAvailable === true,
+  // The reachable identity of THIS node's agent: direct when the GCS holds it,
+  // else the relayed drone's own peer id. Also the key the connect effect is
+  // idempotent on.
+  const focusDeviceId = agentDeviceId ?? relayReach?.peerDeviceId ?? null;
+
+  // Capability gates resolve from THIS node's remembered slice, never from the
+  // process-wide focused one. Reading the focused slice painted node A's tabs
+  // on node B for one frame, then `disconnect()` cleared the store and the
+  // strip collapsed, then B's first heartbeat re-expanded it — two reflows per
+  // node switch, with a clickable tab belonging to the previous node in
+  // between. The per-device slice survives the disconnect, so B's own last
+  // known gates paint on the first frame.
+  const caps = useAgentCapabilitiesStore((s) =>
+    selectDeviceCapabilities(s, focusDeviceId),
   );
-  // Ground-station role of the focused agent. The selected node IS the
-  // focused agent (selection drives the connection), so the capabilities
-  // store is authoritative; the fleet row's role is the synchronous fallback.
-  const capRole = useAgentCapabilitiesStore((s) => s.role);
+  // Tri-state: a node this browser has never heard describe itself is
+  // `unknown`, which is not `absent`. A surface must neither advertise the
+  // capability nor claim the hardware is missing.
+  const radioPresent = capabilityPresence(caps, (c) => c.radio !== null);
+  const crsfPresent = capabilityPresence(caps, (c) => c.crsf !== null);
+  const visionPresent = capabilityPresence(
+    caps,
+    (c) => c.visionAvailable === true,
+  );
+  // Ground-station role as this node last reported it; the fleet row's role is
+  // the synchronous fallback for a node with no capability reading yet.
+  const capRole = caps?.role;
 
   // Whether this browser may publish FC frames to THIS node. Surfaced on the
   // header rather than inside one tab, because every tab that writes to the
@@ -167,11 +259,10 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
   // drones tears down the prior agent and connects the new one; deselecting
   // (panel unmount) releases it. Demo keeps its single mock agent untouched.
   //
-  // The key is the reachable identity, not `agentDeviceId` alone: a relayed
-  // drone has no `agentDeviceId`, so keying on it would fire the disconnect
-  // branch on every render and tear the relay session down as fast as
-  // `selectNode` opened it.
-  const focusDeviceId = agentDeviceId ?? relayReach?.peerDeviceId ?? null;
+  // The key is the reachable identity (`focusDeviceId`, resolved above), not
+  // `agentDeviceId` alone: a relayed drone has no `agentDeviceId`, so keying on
+  // it would fire the disconnect branch on every render and tear the relay
+  // session down as fast as `selectNode` opened it.
   const lastAgentDeviceId = useRef<string | null>(null);
   // A relay connect crosses a lossy radio, so a single failure is expected
   // rather than terminal. `lastAgentDeviceId` is what makes the effect
@@ -180,6 +271,11 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
   const connectRetriesRef = useRef(0);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [connectRetryTick, setConnectRetryTick] = useState(0);
+  // The budget is spent and the node is unreachable. Surfaced as a header chip
+  // with a manual retry: without it the effect's idempotence guard stays
+  // pinned to a device it never reached and the panel never dials again for
+  // the rest of the session, with nothing on screen saying so.
+  const [connectExhausted, setConnectExhausted] = useState(false);
   useEffect(() => {
     if (isDemoMode()) return;
     if (!focusDeviceId) {
@@ -193,23 +289,66 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
     if (lastAgentDeviceId.current === focusDeviceId) return;
     const entry = fleetNodes.find((n) => n.deviceId === focusDeviceId);
     if (!entry) return;
-    lastAgentDeviceId.current = focusDeviceId;
+    // A different node than the one the budget was spent on: it gets its own
+    // three attempts. Inheriting an exhausted counter meant the second of two
+    // flaky nodes never connected at all, which reads as "that node is dead".
+    if (lastAgentDeviceId.current !== null) {
+      connectRetriesRef.current = 0;
+      if (retryTimerRef.current) {
+        clearTimeout(retryTimerRef.current);
+        retryTimerRef.current = null;
+      }
+    }
+    // The device this run is dialling. Every post-await mutation is guarded on
+    // it: node A's `selectNode` can resolve after node B's effect has already
+    // claimed the refs, and an unguarded stale closure either clears B's guard
+    // (redialling a healthy connection) or reads B's live client as proof that
+    // A succeeded.
+    const forDevice = focusDeviceId;
+    lastAgentDeviceId.current = forDevice;
     void (async () => {
       await selectNode(entry, { onFocusAgent: () => {} });
+      // The generation guard, and the only one needed: this effect re-runs on
+      // every `fleetNodes` identity change, so an AbortController-style
+      // cancelled flag here would abort a healthy in-flight connect's own
+      // bookkeeping. A mismatch means a later run claimed the refs.
+      if (lastAgentDeviceId.current !== forDevice) return;
       if (useAgentConnectionStore.getState().client !== null) {
         connectRetriesRef.current = 0;
+        setConnectExhausted(false);
         return;
       }
-      // The connect failed. Allow the effect to run again and re-arm it.
-      if (connectRetriesRef.current >= 3) return;
-      connectRetriesRef.current += 1;
+      // The connect failed. Clear the guard FIRST so the effect stays
+      // re-armable whatever happens next — leaving it pinned at the cap is
+      // what wedged the panel on an unreachable node.
       lastAgentDeviceId.current = null;
+      if (connectRetriesRef.current >= CONNECT_RETRY_LIMIT) {
+        setConnectExhausted(true);
+        return;
+      }
+      connectRetriesRef.current += 1;
+      clearTimeout(retryTimerRef.current ?? undefined);
       retryTimerRef.current = setTimeout(
         () => setConnectRetryTick((n) => n + 1),
         2000 * connectRetriesRef.current,
       );
     })();
   }, [focusDeviceId, fleetNodes, connectRetryTick]);
+  // A retry armed for node A must not fire against node B: it would bump the
+  // tick and re-enter the connect effect on a torn-down path.
+  useEffect(
+    () => () => {
+      if (retryTimerRef.current) {
+        clearTimeout(retryTimerRef.current);
+        retryTimerRef.current = null;
+      }
+    },
+    [focusDeviceId],
+  );
+  // A fresh node starts with a clean verdict.
+  useEffect(() => {
+    setConnectExhausted(false);
+  }, [focusDeviceId]);
   useEffect(
     () => () => {
       if (retryTimerRef.current) {
@@ -223,6 +362,12 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
     },
     [],
   );
+  const retryConnectNow = () => {
+    connectRetriesRef.current = 0;
+    lastAgentDeviceId.current = null;
+    setConnectExhausted(false);
+    setConnectRetryTick((n) => n + 1);
+  };
 
   const metadata = useDroneMetadataStore((s) => s.profiles[droneId]);
   const managedDrones = useDroneManager((s) => s.drones);
@@ -244,7 +389,6 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
   const fcLinking = !isConnected && agentDeviceId !== null && agentFcReachable;
 
   const immersiveMode = useUiStore((s) => s.immersiveMode);
-  const exitImmersiveMode = useUiStore((s) => s.exitImmersiveMode);
   const pendingDetailTab = useUiStore((s) => s.pendingDetailTab);
   const setPendingDetailTab = useUiStore((s) => s.setPendingDetailTab);
 
@@ -259,6 +403,14 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
   const pluginContributions = usePluginContributions(
     droneId,
     undefined,
+    drone?.profile,
+  );
+  // The same list `DroneDetailTabHeaders` renders, resolved here too so the
+  // strip's roving keyboard navigation can span plugin tabs. The hook is
+  // memoized per (node, profile), so the second call is a cache read rather
+  // than a second query.
+  const nodeDetailTabContributions = useDronePluginContributions(
+    droneId,
     drone?.profile,
   );
 
@@ -289,18 +441,9 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
   // needs to mutate `activeTab`; the redirect's only side effect is handing
   // the sub-page to the Agent page, committed by `AgentSubpageHandoff`.
 
-  // Exit immersive mode if the tab changes away from the immersive surface.
-  // Immersive full-bleed belongs to the `cockpit` tab.
-  useEffect(() => {
-    if (immersiveMode && activeTab !== "cockpit") {
-      exitImmersiveMode();
-    }
-  }, [activeTab, immersiveMode, exitImmersiveMode]);
-
-  // Remember the last tab per node so re-opening returns to it.
-  useEffect(() => {
-    useUiPrefsStore.getState().setLastTab(droneId, activeTab);
-  }, [droneId, activeTab]);
+  // Immersive exit and the per-node tab memory both key on the RESOLVED tab,
+  // which is only known after the `!drone` guard — they live in the mounted
+  // `<ImmersiveGuard>` / `<TabMemory>` children below.
 
   // Select this drone in drone-manager so getSelectedProtocol() returns the right protocol
   useEffect(() => {
@@ -357,6 +500,7 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
     visionPresent,
     crsfPresent,
     role: capRole ?? drone.role ?? null,
+    capabilitiesKnown: caps !== null,
     showLockedTabs,
     isFeatureEnabled: (featureId: string) =>
       (nodeFeatureIds ?? []).includes(featureId),
@@ -365,22 +509,25 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
   const surfaces = resolveSurfaces(ctx);
   const surfaceIds = surfaces.map((s) => s.id);
 
-  // Redirect a persisted/deep-linked id that moved into the Agent page (the
-  // former companion-computer tabs + Perception + Link, and the legacy
-  // Flights/Black Box) to the "agent" top tab. agentRedirect guards on
-  // surfaceIds so a profile that still owns the id at top level (the
-  // ground-station Radio tab) keeps it.
-  const agentSubpage = agentRedirect(activeTab, surfaceIds);
-  const requestedTab = agentSubpage ? "agent" : activeTab;
+  // Two migrations, in order. A retired id whose surface merged into a
+  // sibling still at top level (Distributed RX -> Mesh & RX, Jobs/Viewer ->
+  // Compute, Flights/Black Box -> Logs) resolves to the survivor FIRST, so it
+  // is not pushed into the Agent page. What remains is the set that genuinely
+  // moved inside the Agent page (the companion-computer tabs + Perception +
+  // Link); `agentRedirect` guards on `surfaceIds` so a profile that still owns
+  // an id at top level (the ground-station Radio tab) keeps it.
+  const aliasedTab = topLevelAlias(activeTab, surfaceIds);
+  const agentSubpage = agentRedirect(aliasedTab, surfaceIds);
+  const requestedTab = agentSubpage ? "agent" : aliasedTab;
 
   // Fall the active tab back to the first surface when its surface is no
   // longer present (a conditional capability dropped, a role flipped, or a
   // plugin tab unmounted). Plugin tabs keep their own active id.
-  const visibleTab = surfaceIds.includes(requestedTab)
+  const tabResolved =
+    surfaceIds.includes(requestedTab) || isPluginTabId(requestedTab);
+  const visibleTab = tabResolved
     ? requestedTab
-    : isPluginTabId(requestedTab)
-      ? requestedTab
-      : (surfaces[0]?.id ?? "overview");
+    : (surfaces[0]?.id ?? "overview");
 
   const tabs = surfaces.map((s) => ({
     id: s.id,
@@ -411,17 +558,73 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
   const activeSurface = isPluginTabId(visibleTab)
     ? undefined
     : surfaces.find((s) => s.id === visibleTab);
-  const activeBody = activeSurface ? activeSurface.render(ctx) : null;
+  // NOT called here: the call must happen inside the error boundary's own
+  // subtree or a throwing surface unwinds straight past it.
+  const renderActiveBody = activeSurface
+    ? () => activeSurface.render(ctx)
+    : null;
+  // The ordered id list the roving tab navigation spans: every built-in tab
+  // AND every plugin tab. Built from `tabs` alone, the arrow keys wrapped
+  // within the built-ins and plugin headers carry `tabIndex={-1}`, so there
+  // was no keyboard path to a plugin tab at all.
+  const stripIds = [
+    ...tabs.map((tt) => tt.id),
+    ...pluginTabIds(nodeDetailTabContributions),
+  ];
+  const moveTab = (key: string) => {
+    const idx = stripIds.indexOf(visibleTab);
+    let next = idx;
+    if (key === "ArrowRight") next = (idx + 1) % stripIds.length;
+    else if (key === "ArrowLeft")
+      next = (idx - 1 + stripIds.length) % stripIds.length;
+    else if (key === "Home") next = 0;
+    else if (key === "End") next = stripIds.length - 1;
+    else return false;
+    const nextId = stripIds[next];
+    setActiveTab(nextId);
+    requestAnimationFrame(() => {
+      document.getElementById(`drone-tab-${nextId}`)?.focus();
+    });
+    return true;
+  };
 
   return (
     <PluginHostProvider deviceId={droneId} contributions={pluginContributions}>
       {agentSubpage && <AgentSubpageHandoff subpage={agentSubpage} />}
+      <ImmersiveGuard visibleTab={visibleTab} />
+      <TabMemory
+        droneId={droneId}
+        visibleTab={visibleTab}
+        requestedTab={activeTab}
+        resolved={tabResolved}
+      />
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Merged header + tabs bar */}
         {!immersiveMode && (
           <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border-default bg-bg-secondary flex-shrink-0">
             <h1 className="text-sm font-semibold text-text-primary shrink-0">{displayName}</h1>
-            <DroneStatusBadge status={drone.status} />
+            {/* Flight vocabulary belongs to a node that flies. A workstation
+                or ground station reading "In Mission" / "Returning" off the
+                shared fleet projection is the wrong domain entirely. */}
+            {drone.profile === "drone" && (
+              <DroneStatusBadge status={drone.status} />
+            )}
+            {connectExhausted && (
+              // Visible from every tab: the panel stopped dialling this
+              // node's agent and will not resume on its own. Silence here is
+              // what made an unreachable node read as a dead one.
+              <span className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded border border-status-error/40 bg-status-error/10 px-1.5 py-0.5 text-[10px] font-medium text-status-error">
+                <PlugZap size={11} aria-hidden="true" />
+                {tRoot("nodeConsole.hero.offline")}
+                <button
+                  type="button"
+                  onClick={retryConnectNow}
+                  className="underline underline-offset-2 hover:text-status-error/80 cursor-pointer"
+                >
+                  {t("retryConnect")}
+                </button>
+              </span>
+            )}
             {authority.show && (
               <span
                 className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded border border-status-warning/40 bg-status-warning/10 px-1.5 py-0.5 text-[10px] font-medium text-status-warning"
@@ -458,11 +661,18 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
               className="flex items-center self-stretch overflow-x-auto scrollbar-hide flex-1 min-w-0"
             >
               {/* Two-tier strip: each group renders a small section label
-                  followed by its tab buttons. Arrow-key roving nav still spans
-                  the whole flat `tabs` order so focus moves across sections. */}
+                  followed by its tab buttons. The wrapper is
+                  `role="presentation"` so it leaves the accessibility tree
+                  and the tablist still OWNS its tabs directly — a plain div
+                  between a tablist and its tabs breaks that ownership, and a
+                  screen reader then announces neither the tab count nor the
+                  position. The section label is `aria-hidden` for the same
+                  reason: it is decoration, and each tab's own text already
+                  names it. */}
               {tabGroups.map((group, groupIdx) => (
                 <div
                   key={group.key}
+                  role="presentation"
                   className={cn(
                     "flex items-center self-stretch",
                     groupIdx > 0 &&
@@ -470,7 +680,10 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
                   )}
                 >
                   {group.labelKey && (
-                    <span className="self-center mr-1.5 text-[10px] font-medium uppercase tracking-wider text-text-tertiary select-none shrink-0">
+                    <span
+                      aria-hidden="true"
+                      className="self-center mr-1.5 text-[10px] font-medium uppercase tracking-wider text-text-tertiary select-none shrink-0"
+                    >
                       {tRoot(group.labelKey)}
                     </span>
                   )}
@@ -488,30 +701,9 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
                         onClick={() => setActiveTab(tab.id)}
                         onKeyDown={(e) => {
                           // Roving-tabindex + arrow-key nav per WAI-ARIA tab
-                          // pattern. Left/Right/Home/End move + activate
-                          // across the full flat tab order (all sections).
-                          const idsArr = tabs.map((tt) => tt.id);
-                          const idx = idsArr.indexOf(visibleTab);
-                          let nextIdx = idx;
-                          if (e.key === "ArrowRight") {
-                            nextIdx = (idx + 1) % idsArr.length;
-                          } else if (e.key === "ArrowLeft") {
-                            nextIdx = (idx - 1 + idsArr.length) % idsArr.length;
-                          } else if (e.key === "Home") {
-                            nextIdx = 0;
-                          } else if (e.key === "End") {
-                            nextIdx = idsArr.length - 1;
-                          } else {
-                            return;
-                          }
-                          e.preventDefault();
-                          const nextId = idsArr[nextIdx];
-                          setActiveTab(nextId);
-                          requestAnimationFrame(() => {
-                            document
-                              .getElementById(`drone-tab-${nextId}`)
-                              ?.focus();
-                          });
+                          // pattern, spanning the WHOLE strip: built-in tabs
+                          // and plugin tabs alike.
+                          if (moveTab(e.key)) e.preventDefault();
                         }}
                         className={cn(
                           "self-stretch flex items-center gap-1 px-2.5 text-xs font-medium transition-colors cursor-pointer shrink-0 -mb-px border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary",
@@ -530,12 +722,16 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
                   static strip, sorted by manifest `order` then pluginId.
                   Only the tab headers live here; the body is rendered
                   inside the tabpanel switch below so the lazy mount
-                  stays in sync with the static-tab switcher. */}
+                  stays in sync with the static-tab switcher. They share the
+                  strip's roving navigation via `onNavigate` — a plugin tab
+                  with no keyboard path is an entire third-party surface that
+                  a gloved or keyboard-only operator cannot reach. */}
               <DroneDetailTabHeaders
                 agentId={droneId}
                 activeTabId={visibleTab}
                 onSelectPluginTab={setActiveTab}
                 nodeProfile={drone.profile}
+                onNavigate={moveTab}
               />
             </div>
 
@@ -610,6 +806,11 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
             id={`drone-tabpanel-${visibleTab}`}
             role="tabpanel"
             aria-labelledby={`drone-tab-${visibleTab}`}
+            // Focusable so a keyboard operator can scroll it: a long Logs
+            // list or the GS device tabs have no focusable content of their
+            // own, and arrow keys on the strip move between TABS (WCAG
+            // 2.1.1).
+            tabIndex={0}
             // The tabpanel is the single scroll owner: content-height bodies
             // (the GS device tabs, LogsTab, the overviews) scroll here, while
             // self-scrolling `h-full` bodies (ComputeOverview, the FC panels,
@@ -623,7 +824,7 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
               message={t("surfaceError")}
               retryLabel={t("surfaceErrorRetry")}
             >
-              {activeBody}
+              {renderActiveBody && <SurfaceBody render={renderActiveBody} />}
             </SurfaceErrorBoundary>
           </div>
         )}

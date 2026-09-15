@@ -13,13 +13,19 @@
  * @license GPL-3.0-only
  */
 
-export { useAgentCapabilitiesStore } from "./agent-capabilities/state";
+export {
+  useAgentCapabilitiesStore,
+  selectDeviceCapabilities,
+  capabilityPresence,
+} from "./agent-capabilities/state";
 export type {
   AgentCapabilitiesActions,
   AgentCapabilitiesState,
   AgentCapabilitiesStore,
+  AgentCapabilitySnapshot,
   AgentProfile,
   AgentRole,
+  CapabilityPresence,
   ManualConnectionUrls,
   RuntimeMode,
   WfbFailoverState,

@@ -10,7 +10,10 @@
 
 import type { ReactNode } from "react";
 import type { FleetDrone } from "@/lib/types";
-import type { AgentRole } from "@/stores/agent-capabilities/types";
+import type {
+  AgentRole,
+  CapabilityPresence,
+} from "@/stores/agent-capabilities/types";
 import type { FirmwareType } from "@/lib/protocol/types/enums";
 import type { RelayReach } from "@/lib/nodes/relay-reach";
 
@@ -41,15 +44,26 @@ export interface SurfaceContext {
    * proxy is unavailable. */
   relayReach: RelayReach | null;
   fcLinking: boolean;
-  radioPresent: boolean;
-  visionPresent: boolean;
+  /**
+   * Tri-state capability gates for THIS node, read from the per-device
+   * capability slice. `"unknown"` means the GCS has never heard this node
+   * describe itself — it is NOT `"absent"`, so a surface must neither
+   * advertise the capability nor claim the hardware is missing. A gate
+   * therefore tests `=== "present"`.
+   */
+  radioPresent: CapabilityPresence;
+  visionPresent: CapabilityPresence;
   /** Whether the focused agent advertises a CRSF / ExpressLRS control lane
    * (`crsf !== null` on the capability store). Gates the RC / ELRS Link tab:
    * the transmitter is the ground node, and a drone can host an agent-relay
    * ELRS TX, so the tab appears on both profiles but only when a lane is
    * advertised. A node with no RC lane never shows it. */
-  crsfPresent: boolean;
+  crsfPresent: CapabilityPresence;
   role: AgentRole;
+  /** False until this node has reported its capabilities at least once. A
+   * surface that must not disappear mid-use reads this to hold its previous
+   * answer rather than collapsing on a gap in the reading. */
+  capabilitiesKnown: boolean;
   /** Companion surfaces render as lock-badged teasers when the node has no
    * paired agent (a flight-controller-only drone). */
   showLockedTabs: boolean;

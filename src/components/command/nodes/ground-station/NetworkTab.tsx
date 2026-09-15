@@ -6,7 +6,7 @@
  * configuration. Composes per-uplink sections (WiFi AP + client,
  * Ethernet, 4G modem) and the uplink priority + share-uplink
  * panel. Polls /network at 2 Hz. The Overview tab owns the uplink
- * WS subscription. Lifted from the prior /hardware/network route.
+ * WS subscription. Renders the networking surface for a ground-station node.
  * @license GPL-3.0-only
  */
 
@@ -16,6 +16,7 @@ import { CloudModeLimitedNotice } from "@/components/command/shared/CloudModeLim
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { groundStationApiFromAgent } from "@/lib/api/ground-station-api";
+import { useGroundStationPoll } from "./use-gs-poll";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useGroundStationStore } from "@/stores/ground-station-store";
 import { WifiSection } from "@/components/hardware/network/WifiSection";
@@ -73,42 +74,12 @@ export function NetworkTab() {
   const [modemEnabledDraft, setModemEnabledDraft] = useState(true);
   const [savingModem, setSavingModem] = useState(false);
 
-  const agentUrlRef = useRef(agentUrl);
-  const apiKeyRef = useRef(apiKey);
-  agentUrlRef.current = agentUrl;
-  apiKeyRef.current = apiKey;
 
-  // Poll /network at 2 Hz for connected clients and live stats.
-  useEffect(() => {
-    let cancelled = false;
-    let timer: ReturnType<typeof setInterval> | null = null;
-
-    const poll = async () => {
-      if (typeof document !== "undefined" && document.hidden) return;
-      const client = groundStationApiFromAgent(agentUrlRef.current, apiKeyRef.current);
-      if (!client) return;
-      if (cancelled) return;
-      await loadNetwork(client);
-    };
-
-    poll();
-    timer = setInterval(poll, POLL_INTERVAL_MS);
-
-    const onVisibility = () => {
-      if (!document.hidden) poll();
-    };
-    if (typeof document !== "undefined") {
-      document.addEventListener("visibilitychange", onVisibility);
-    }
-
-    return () => {
-      cancelled = true;
-      if (timer) clearInterval(timer);
-      if (typeof document !== "undefined") {
-        document.removeEventListener("visibilitychange", onVisibility);
-      }
-    };
-  }, [loadNetwork]);
+  // One in-flight request at a time, backing off when the agent stops
+  // answering. A fixed 500 ms interval queued overlapping requests onto an
+  // already-slow agent, which is the load that made it slow, and hammered an
+  // unreachable one at full cadence for as long as the tab was open.
+  useGroundStationPoll(agentUrl, apiKey, POLL_INTERVAL_MS, loadNetwork);
 
   // Load modem and priority once on mount (they change infrequently).
   useEffect(() => {

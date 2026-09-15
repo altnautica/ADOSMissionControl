@@ -3,6 +3,8 @@
  * registry, and Convex client wrappers.
  */
 
+import type { GcsCapability } from "./capabilities";
+
 export type PluginHalf = "agent" | "gcs";
 
 export type PluginInstallStatus =
@@ -115,20 +117,24 @@ export interface PluginRpcResponse extends PluginRpcEnvelope {
   result?: unknown;
 }
 
-/** Capability identifiers known to the host. */
-export type PluginCapability =
-  | "telemetry.subscribe"
-  | "command.send"
-  | "recording.write"
-  | "mission.read"
-  | "mission.write"
-  | "event.subscribe"
-  | "event.publish"
-  | "cloud.read"
-  | "cloud.write"
-  | "perception.read"
-  | "perception.subscribe"
-  | `ui.slot.${string}`;
+/**
+ * Capability identifiers known to the GCS host.
+ *
+ * Derived from the generated catalog rather than hand-written. The
+ * hand-maintained union this replaced had drifted from
+ * `gcs-capabilities.generated.ts` in both directions: it listed `event.*`
+ * capabilities the catalog did not have (so a manifest declaring one
+ * type-checked here and was rejected by `isKnownGcsCapability` and by the
+ * agent-side validator) and omitted `mcp.expose` (so a manifest legitimately
+ * declaring it failed the typed check). Both event capabilities are now in
+ * the catalog, where the GCS event-bus handlers already assumed they were.
+ *
+ * The `ui.slot.*` template literal is gone with the drift: every slot the
+ * host can actually mount is enumerated in the catalog, and an open template
+ * let a plugin declare a slot no registry had — which parsed everywhere and
+ * then silently never rendered.
+ */
+export type PluginCapability = GcsCapability;
 
 /**
  * Capability token shape held by the host. Plugin code never sees the

@@ -22,11 +22,9 @@ import {
   Puzzle,
   Radar,
   RadioTower,
-  ScrollText,
 } from "lucide-react";
 import { SystemTab } from "@/components/command/SystemTab";
 import { PluginsTab } from "@/components/command/PluginsTab";
-import { LogsTab } from "@/components/drone-detail/LogsTab";
 import { DroneRadioPanel } from "@/components/dashboard/DroneRadioPanel";
 import { DroneVisionTab } from "@/components/drone-detail/DroneVisionTab";
 import { CameraManagerTab } from "@/components/drone-detail/cameras/CameraManagerTab";
@@ -76,8 +74,10 @@ export const AGENT_NAV_ITEMS: AgentNavItem[] = [
     id: "radio",
     labelKey: "dronePanel.link",
     icon: <RadioTower size={14} />,
-    // Air-side WFB link — a drone concept; a ground station has its own Link tab.
-    when: (ctx) => isDrone(ctx) && ctx.radioPresent,
+    // Air-side WFB link — a drone concept; a ground station has its own Link
+    // tab. Gated on a PROVEN radio: `unknown` (no reading from this node yet)
+    // is not `present`, so the page is never offered on a guess.
+    when: (ctx) => isDrone(ctx) && ctx.radioPresent === "present",
     render: (ctx) => <DroneRadioPanel droneId={ctx.droneId} />,
   },
   {
@@ -128,18 +128,5 @@ export const AGENT_NAV_ITEMS: AgentNavItem[] = [
     icon: <Puzzle size={14} />,
     when: companionPresent,
     render: (ctx) => <PluginsTab ctx={ctx} />,
-  },
-  {
-    // Always present: the Flights view reads the GCS history store and stays
-    // reachable without a paired agent.
-    id: "logs",
-    labelKey: "dronePanel.logs",
-    icon: <ScrollText size={14} />,
-    render: (ctx) => (
-      <LogsTab
-        droneId={ctx.droneId}
-        showFlights={(ctx.drone.profile ?? "drone") === "drone"}
-      />
-    ),
   },
 ];

@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
+import { isDemoMode } from "@/lib/utils";
+import { nextPollDelay } from "@/stores/agent-connection/poll-backoff";
 import { AgentClient } from "@/lib/agent/client";
 import {
   ChannelHistoryChart,
@@ -121,7 +123,10 @@ export function VideoLinkPanel() {
   const [now, setNow] = useState(() => Date.now());
 
   const client = useMemo(() => {
-    if (!agentUrl) return null;
+    // `mock://demo` is truthy but is not an HTTP endpoint; without this the
+    // panel polled an unsupported scheme at 1 Hz forever while rendering
+    // nothing.
+    if (!agentUrl || isDemoMode()) return null;
     return new AgentClient(agentUrl, apiKey);
   }, [agentUrl, apiKey]);
 
@@ -148,16 +153,34 @@ export function VideoLinkPanel() {
 
   useEffect(() => {
     if (!client) return;
-    void refresh();
-    pollRef.current = window.setInterval(() => {
-      void refresh();
-      // Tick a clock so the stale badge reflects the gap even when polls
-      // stop returning data.
-      setNow(Date.now());
-    }, _POLL_INTERVAL_MS);
+    // Self-scheduling: at most one request in flight, and an unreachable
+    // agent is backed off rather than polled at 1 Hz indefinitely.
+    let cancelled = false;
+    let failures = 0;
+    const tick = async () => {
+      if (cancelled) return;
+      if (!document.hidden) {
+        try {
+          await refresh();
+          failures = 0;
+        } catch {
+          failures += 1;
+        }
+        // Tick a clock so the stale badge reflects the gap even when polls
+        // stop returning data.
+        setNow(Date.now());
+      }
+      if (cancelled) return;
+      pollRef.current = window.setTimeout(
+        tick,
+        nextPollDelay(failures, _POLL_INTERVAL_MS),
+      );
+    };
+    void tick();
     return () => {
+      cancelled = true;
       if (pollRef.current !== null) {
-        window.clearInterval(pollRef.current);
+        window.clearTimeout(pollRef.current);
         pollRef.current = null;
       }
     };

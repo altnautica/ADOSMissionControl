@@ -287,7 +287,10 @@ export function RadioPanel() {
   // 2 Hz cadence is fine and matches the link-health poll above. Same
   // self-scheduling shape so a stalled request never stacks the next tick.
   useEffect(() => {
-    if (!agentUrl) return;
+    // Gate on the GS CLIENT as well as the URL: in demo `agentUrl` is the
+    // truthy non-HTTP string `mock://demo`, so a URL-only gate produced a
+    // continuous stream of failed fetches to an unsupported scheme.
+    if (!agentUrl || !groundStationApiFromAgent(agentUrl, apiKey)) return;
     const ctx = { baseUrl: agentUrl, apiKey };
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
@@ -318,7 +321,10 @@ export function RadioPanel() {
   // protocol to completion (≤60s) and returns the terminal session.
   const handleOpenLocalBind = useCallback(async () => {
     if (bindBusy) return;
-    if (!agentUrl) return;
+    // Gate on the GS CLIENT as well as the URL: in demo `agentUrl` is the
+    // truthy non-HTTP string `mock://demo`, so a URL-only gate produced a
+    // continuous stream of failed fetches to an unsupported scheme.
+    if (!agentUrl || !groundStationApiFromAgent(agentUrl, apiKey)) return;
     setBindBusy(true);
     setBindSession({
       session_id: "pending",
@@ -365,7 +371,10 @@ export function RadioPanel() {
 
   const handleUnpair = useCallback(async () => {
     if (unpairBusy) return;
-    if (!agentUrl) return;
+    // Gate on the GS CLIENT as well as the URL: in demo `agentUrl` is the
+    // truthy non-HTTP string `mock://demo`, so a URL-only gate produced a
+    // continuous stream of failed fetches to an unsupported scheme.
+    if (!agentUrl || !groundStationApiFromAgent(agentUrl, apiKey)) return;
     if (typeof window !== "undefined") {
       const confirmed = window.confirm(t("pairing.confirmUnpairBody"));
       if (!confirmed) return;
@@ -394,7 +403,10 @@ export function RadioPanel() {
   // tick should clear the cloud_relay state.
   const handleRetryLocal = useCallback(async () => {
     if (retryBusy) return;
-    if (!agentUrl) return;
+    // Gate on the GS CLIENT as well as the URL: in demo `agentUrl` is the
+    // truthy non-HTTP string `mock://demo`, so a URL-only gate produced a
+    // continuous stream of failed fetches to an unsupported scheme.
+    if (!agentUrl || !groundStationApiFromAgent(agentUrl, apiKey)) return;
     setRetryBusy(true);
     try {
       await setAutoPairOnRig({ baseUrl: agentUrl, apiKey }, true);

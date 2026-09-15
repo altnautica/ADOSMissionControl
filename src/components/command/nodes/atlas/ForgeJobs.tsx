@@ -3,14 +3,20 @@
 /**
  * @module ForgeJobs
  * @description Jobs sub-view of the Atlas Forge workbench: the compute node's
- * reconstruction / offload job list with state badges, progress, and a cancel
- * affordance for in-flight jobs. Reads the live list from `use-compute-jobs`.
+ * reconstruction / offload job list with state badges, progress, a cancel
+ * affordance for in-flight jobs and a re-run for terminal ones. Reads the live
+ * list from `use-compute-jobs`.
+ *
+ * Both write paths consume their result. A cancel the engine refuses puts the
+ * button back and says so; discarding the boolean hid the control for the
+ * lifetime of the component while the job kept running.
  * @license GPL-3.0-only
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Layers, X } from "lucide-react";
+import { Layers, RotateCcw, X } from "lucide-react";
+import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import type {
   ComputeAgentClient,
@@ -60,14 +66,17 @@ function ago(ms: number): string {
 function JobRow({
   job,
   onCancel,
+  onRetry,
 }: {
   job: ComputeJob;
   onCancel: ((id: string) => void) | null;
+  onRetry: ((job: ComputeJob) => void) | null;
 }) {
   const t = useTranslations("atlas");
   const stateKey = jobStateKey(job.state);
   const stateLabel = stateKey ? t(stateKey) : job.state;
   const cancellable = job.state === "queued" || job.state === "running";
+  const retryable = job.state === "failed" || job.state === "cancelled";
 
   return (
     <div className="flex items-center gap-2 px-2 py-1.5 rounded bg-bg-tertiary">
@@ -128,6 +137,17 @@ function JobRow({
           <X size={12} />
         </button>
       )}
+      {retryable && onRetry && (
+        <button
+          type="button"
+          onClick={() => onRetry(job)}
+          title={t("forgeRetry")}
+          aria-label={t("forgeRetry")}
+          className="text-text-tertiary hover:text-accent-primary transition-colors flex-shrink-0"
+        >
+          <RotateCcw size={12} />
+        </button>
+      )}
     </div>
   );
 }
@@ -140,14 +160,52 @@ export function ForgeJobs({
   client: ComputeAgentClient | null;
 }) {
   const t = useTranslations("atlas");
+  const { toast } = useToast();
   // Track ids we have asked to cancel so the button hides immediately (the
   // next poll reflects the engine's terminal state).
   const [cancelling, setCancelling] = useState<Set<string>>(new Set());
 
+  // A node switch mints a new client. Carrying the optimistic set across it
+  // would hide the cancel control on an unrelated node's job with the same id.
+  useEffect(() => {
+    setCancelling(new Set());
+  }, [client]);
+
   const onCancel = client
     ? (id: string) => {
         setCancelling((prev) => new Set(prev).add(id));
-        void client.cancelJob(id);
+        void (async () => {
+          const ok = await client.cancelJob(id);
+          if (ok) return;
+          // The engine refused (the job already finished, the node went
+          // unreachable, a 5xx). Put the control back and say so — hiding it
+          // for the lifetime of the component reads as "cancel is broken".
+          setCancelling((prev) => {
+            const next = new Set(prev);
+            next.delete(id);
+            return next;
+          });
+          toast(t("forgeCancelFailed"), "error");
+        })();
+      }
+    : null;
+
+  const onRetry = client
+    ? (job: ComputeJob) => {
+        void (async () => {
+          const result = await client.submitJob({
+            kind: job.kind,
+            datasetId: job.datasetId ?? undefined,
+            params: {
+              ...(job.sessionId ? { session_id: job.sessionId } : {}),
+              ...(job.steps !== null ? { steps: job.steps } : {}),
+            },
+          });
+          toast(
+            result === null ? t("forgeRetryFailed") : t("forgeRetryQueued"),
+            result === null ? "error" : "success",
+          );
+        })();
       }
     : null;
 
@@ -166,6 +224,7 @@ export function ForgeJobs({
           key={job.id}
           job={job}
           onCancel={cancelling.has(job.id) ? null : onCancel}
+          onRetry={onRetry}
         />
       ))}
     </div>

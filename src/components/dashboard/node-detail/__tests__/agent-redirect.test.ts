@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { agentRedirect } from "@/components/dashboard/node-detail/agent/agent-redirect";
+import {
+  agentRedirect,
+  topLevelAlias,
+} from "@/components/dashboard/node-detail/agent/agent-redirect";
 
 // The drone's top-level surfaces after the Agent-page consolidation.
 const DRONE_IDS = [
@@ -9,10 +12,11 @@ const DRONE_IDS = [
   "cockpit",
   "configure",
   "parameters",
+  "logs",
   "agent",
 ];
 // A ground station keeps its own top-level Radio tab.
-const GS_IDS = ["overview", "radio", "network", "display", "agent"];
+const GS_IDS = ["overview", "radio", "network", "mesh", "display", "logs", "agent"];
 
 describe("agentRedirect", () => {
   it("redirects a persisted companion tab id to its Agent sub-page", () => {
@@ -21,7 +25,6 @@ describe("agentRedirect", () => {
     expect(agentRedirect("settings", DRONE_IDS)).toBe("profile");
     expect(agentRedirect("system", DRONE_IDS)).toBe("system");
     expect(agentRedirect("plugins", DRONE_IDS)).toBe("plugins");
-    expect(agentRedirect("logs", DRONE_IDS)).toBe("logs");
     expect(agentRedirect("vision", DRONE_IDS)).toBe("vision");
     expect(agentRedirect("world-model", DRONE_IDS)).toBe("world-model");
   });
@@ -30,9 +33,36 @@ describe("agentRedirect", () => {
     expect(agentRedirect("radio", DRONE_IDS)).toBe("radio");
   });
 
-  it("maps legacy Flights / Black Box ids to the Logs sub-page", () => {
-    expect(agentRedirect("flights", DRONE_IDS)).toBe("logs");
-    expect(agentRedirect("blackbox", DRONE_IDS)).toBe("logs");
+  it("leaves Logs at top level — it is a surface on every profile now", () => {
+    expect(agentRedirect("logs", DRONE_IDS)).toBeNull();
+    expect(topLevelAlias("logs", DRONE_IDS)).toBe("logs");
+  });
+});
+
+describe("topLevelAlias", () => {
+  it("maps legacy Flights / Black Box ids to the Logs surface", () => {
+    expect(topLevelAlias("flights", DRONE_IDS)).toBe("logs");
+    expect(topLevelAlias("blackbox", DRONE_IDS)).toBe("logs");
+  });
+
+  it("maps the retired Distributed RX tab to the merged Mesh & RX surface", () => {
+    expect(topLevelAlias("distributedRx", GS_IDS)).toBe("mesh");
+  });
+
+  it("maps the workstation's retired Jobs / Viewer tabs to Compute", () => {
+    const WS_IDS = ["overview", "compute", "logs", "agent"];
+    expect(topLevelAlias("jobs", WS_IDS)).toBe("compute");
+    expect(topLevelAlias("viewer", WS_IDS)).toBe("compute");
+  });
+
+  it("never rewrites an id the profile still owns", () => {
+    // A hypothetical profile that kept `jobs` at top level keeps its meaning.
+    expect(topLevelAlias("jobs", ["jobs", "agent"])).toBe("jobs");
+  });
+
+  it("leaves an id with no alias, or whose alias this profile lacks, alone", () => {
+    expect(topLevelAlias("does-not-exist", DRONE_IDS)).toBe("does-not-exist");
+    expect(topLevelAlias("distributedRx", DRONE_IDS)).toBe("distributedRx");
   });
 
   it("never captures an id a profile still owns at top level (GS Radio)", () => {

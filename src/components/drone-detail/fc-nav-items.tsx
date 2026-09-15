@@ -77,6 +77,11 @@ export interface FcNavItem {
    *  that either configure it over MSP or have their own dedicated surface. This
    *  is the firmware-scope escape hatch the capability gate can't express. */
   excludeFirmware?: FirmwareType[];
+  /** The panel writes the COMPANION AGENT's configuration, not the flight
+   *  controller's. It therefore stays selectable while the FC link is down —
+   *  it is how the operator fixes a down link — and needs a reachable agent
+   *  rather than a connected FC. */
+  agentSide?: boolean;
   section?: string;
   labelOverride?: Partial<Record<string, string>>;
 }
@@ -129,6 +134,11 @@ export const FC_NAV_ITEMS: FcNavItem[] = [
   { id: "led", label: "LED Strip", icon: <Lightbulb size={14} />, requiredCapability: "supportsLed", excludeFirmware: ["inav"], section: "Display" },
   { id: "vtx", label: "VTX", icon: <Radio size={14} />, requiredCapability: "supportsVtx", section: "Display" },
   // System
+  // The agent-side MAVLink source (auto / serial / udp / tcp + port + baud).
+  // This is the control that fixes "the companion can't find my flight
+  // controller", so it lives on the same tab as the placeholder that reports
+  // the problem, and it is reachable while the FC link is down.
+  { id: "fc-source", label: "FC Source", icon: <Cable size={14} />, agentSide: true, section: "System" },
   { id: "ports", label: "Ports", icon: <Cable size={14} />, requiredCapability: "supportsPorts", section: "System" },
   { id: "stream-rates", label: "Stream Rates", icon: <Gauge size={14} />, requiredCapability: "supportsStreamRates", section: "System" },
   { id: "radio", label: "Radio Config", icon: <Wifi size={14} />, excludeFirmware: ["betaflight", "inav"], section: "System" },

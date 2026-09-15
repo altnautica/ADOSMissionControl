@@ -18,10 +18,11 @@ function ctx(over: Partial<SurfaceContext>): SurfaceContext {
     agentIdentityKnown: false,
     relayReach: null,
     fcLinking: false,
-    radioPresent: false,
-    visionPresent: false,
-    crsfPresent: false,
+    radioPresent: "absent",
+    visionPresent: "absent",
+    crsfPresent: "absent",
     role: "drone" as SurfaceContext["role"],
+    capabilitiesKnown: true,
     showLockedTabs: true,
     isFeatureEnabled: () => false,
     atlasCapturing: false,
@@ -55,13 +56,12 @@ describe("Agent page hosts the companion surfaces", () => {
 
   it("no longer surfaces the moved companion tabs at the top level", () => {
     const ids = resolveSurfaces(
-      ctx({ agentDeviceId: "dev-1", showLockedTabs: false, radioPresent: true }),
+      ctx({ agentDeviceId: "dev-1", showLockedTabs: false, radioPresent: "present" }),
     ).map((s) => s.id);
     for (const moved of [
       "system",
       "settings",
       "plugins",
-      "logs",
       "radio",
       "vision",
     ]) {
@@ -128,7 +128,11 @@ describe("Configuration pages in the merged Agent sidebar", () => {
     ).toEqual([]);
   });
 
-  it("Logs is always available (even on an FC-only drone)", () => {
-    expect(shows("logs", ctx({ agentDeviceId: null, showLockedTabs: true }))).toBe(true);
+  it("Logs is a top-level surface on an FC-only drone, not an Agent sub-page", () => {
+    // It used to be registry-available as a sub-page while the rendered Agent
+    // page returned the pair-a-computer showcase instead, so the one page that
+    // needs no companion was the one the empty state hid. It is top level now.
+    const c = ctx({ agentDeviceId: null, showLockedTabs: true });
+    expect(resolveSurfaces(c).map((s) => s.id)).toContain("logs");
   });
 });

@@ -78,15 +78,18 @@ export interface AtlasControl {
   live: boolean;
   /** Demo mode — actions simulate a session; no network. */
   demo: boolean;
-  /** Enable the Atlas capture service on this drone (PUT config enabled=true). */
-  enable: () => Promise<void>;
-  /** Disable the Atlas capture service (PUT config enabled=false). */
-  disable: () => Promise<void>;
+  /** Enable the Atlas capture service on this drone (PUT config enabled=true).
+   *  Resolves false when the node refused or could not be reached — the
+   *  caller must not flip a local flag on a write that did not land. */
+  enable: () => Promise<boolean>;
+  /** Disable the Atlas capture service (PUT config enabled=false). False when
+   *  the write did not land; the node is still capturing. */
+  disable: () => Promise<boolean>;
   /** Set the capture profile (PUT config capture_profile). */
-  setCaptureProfile: (profile: string) => Promise<void>;
+  setCaptureProfile: (profile: string) => Promise<boolean>;
   /** Set the default reconstruction detail level, in Brush steps (PUT config
    * reconstruct_steps). Read at reconstruct-submit time. */
-  setReconstructSteps: (steps: number) => Promise<void>;
+  setReconstructSteps: (steps: number) => Promise<boolean>;
   start: () => Promise<CaptureResult>;
   stop: () => Promise<CaptureResult>;
   pause: () => Promise<CaptureResult>;
@@ -220,13 +223,23 @@ export function useAtlasControl(
     };
   }, [live, deviceId, host]);
 
+  /**
+   * Run one config write at a time and report whether it LANDED.
+   *
+   * The result used to be discarded. A failed enable (agent 400 on an invalid
+   * `atlas:` block, 500 on a config-write error, an `ados-atlas` restart
+   * failure) left the toggle checked and the status pill on "Enabling…"
+   * forever; a failed disable hid both Atlas tabs and stopped the readiness
+   * poll while the drone kept capturing and forwarding keyframes with no
+   * surface that said so.
+   */
   const runAction = useCallback(
-    async (fn: () => Promise<void>): Promise<void> => {
-      if (busyRef.current) return;
+    async (fn: () => Promise<boolean>): Promise<boolean> => {
+      if (busyRef.current) return false;
       busyRef.current = true;
       setBusy(true);
       try {
-        await fn();
+        return await fn();
       } finally {
         busyRef.current = false;
         setBusy(false);
@@ -281,12 +294,13 @@ export function useAtlasControl(
       runAction(async () => {
         if (demo) {
           demoPatch({ enabled: true, serviceRunning: true });
-          return;
+          return true;
         }
-        if (!reachable) return;
+        if (!reachable) return false;
         const client = new AtlasControlClient(host, apiKeyRef.current);
-        await client.setConfig({ enabled: true });
+        const res = await client.setConfig({ enabled: true });
         await refreshReadiness();
+        return res !== null;
       }),
     [runAction, demo, reachable, host, demoPatch, refreshReadiness],
   );
@@ -303,12 +317,13 @@ export function useAtlasControl(
             sessionId: null,
             ingestRateHz: 0,
           });
-          return;
+          return true;
         }
-        if (!reachable) return;
+        if (!reachable) return false;
         const client = new AtlasControlClient(host, apiKeyRef.current);
-        await client.setConfig({ enabled: false });
+        const res = await client.setConfig({ enabled: false });
         await refreshReadiness();
+        return res !== null;
       }),
     [runAction, demo, reachable, host, demoPatch, refreshReadiness],
   );
@@ -318,12 +333,13 @@ export function useAtlasControl(
       runAction(async () => {
         if (demo) {
           demoPatch({ captureProfile: profile });
-          return;
+          return true;
         }
-        if (!live) return;
+        if (!live) return false;
         const client = new AtlasControlClient(host, apiKeyRef.current);
-        await client.setConfig({ captureProfile: profile });
+        const res = await client.setConfig({ captureProfile: profile });
         await refreshReadiness();
+        return res !== null;
       }),
     [runAction, demo, live, host, demoPatch, refreshReadiness],
   );
@@ -333,12 +349,13 @@ export function useAtlasControl(
       runAction(async () => {
         if (demo) {
           demoPatch({ reconstructSteps: steps });
-          return;
+          return true;
         }
-        if (!live) return;
+        if (!live) return false;
         const client = new AtlasControlClient(host, apiKeyRef.current);
-        await client.setConfig({ reconstructSteps: steps });
+        const res = await client.setConfig({ reconstructSteps: steps });
         await refreshReadiness();
+        return res !== null;
       }),
     [runAction, demo, live, host, demoPatch, refreshReadiness],
   );
@@ -353,11 +370,11 @@ export function useAtlasControl(
       return runAction(async () => {
         if (demo) {
           result = demoCapture(sub, demoPatch);
-          return;
+          return result.ok;
         }
         if (!live) {
           result = { ok: false, serviceDown: false, message: "inactive" };
-          return;
+          return false;
         }
         const client = new AtlasControlClient(host, apiKeyRef.current);
         const r =
@@ -371,6 +388,7 @@ export function useAtlasControl(
         result = r;
         if (r.ok) mergeCaptureStatus(r.status);
         await refreshReadiness();
+        return r.ok;
       }).then(() => result);
     },
     [

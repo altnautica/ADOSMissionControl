@@ -15,9 +15,17 @@ import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Boxes } from "lucide-react";
 import { Select, type SelectOption } from "@/components/ui/select";
-import type { ComputeJob } from "@/lib/agent/compute-client";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
+import type {
+  ComputeAgentClient,
+  ComputeJob,
+} from "@/lib/agent/compute-client";
 import { useComputeJobs } from "@/hooks/use-compute-jobs";
 import { ForgeJobs } from "./ForgeJobs";
+
+/** Brush's shipped default training-step count for a new reconstruction. */
+const DEFAULT_RECONSTRUCT_STEPS = 30000;
 
 type GroupBy = "flat" | "dataset" | "status";
 
@@ -88,6 +96,15 @@ export function JobsPanel({ nodeId }: { nodeId?: string }) {
     () => [...jobs].sort((a, b) => (b.createdMs ?? 0) - (a.createdMs ?? 0)),
     [jobs],
   );
+
+  // The datasets this node has actually produced work for. Derived from the
+  // job list rather than a second fetch: every dataset the engine knows about
+  // reached it through a job.
+  const datasetIds = useMemo(() => {
+    const seen = new Set<string>();
+    for (const job of sorted) if (job.datasetId) seen.add(job.datasetId);
+    return [...seen];
+  }, [sorted]);
 
   const groups = useMemo<
     { key: string; label: string; jobs: ComputeJob[] }[]
@@ -161,8 +178,100 @@ export function JobsPanel({ nodeId }: { nodeId?: string }) {
           onChange={(v) => setGroupBy(v as GroupBy)}
           className="w-40"
         />
+        <div className="ml-auto">
+          <SubmitJobButton client={client} datasetIds={datasetIds} />
+        </div>
       </div>
       <div className="flex-1 overflow-y-auto">{table()}</div>
+    </div>
+  );
+}
+
+/**
+ * Queue a reconstruction from the workstation itself.
+ *
+ * Submission previously existed only on the drone's Live World tab and the
+ * perception tier card, so a compute node's own Jobs surface could cancel work
+ * but never start any — including re-running the dataset of a job that failed
+ * before this list existed.
+ */
+function SubmitJobButton({
+  client,
+  datasetIds,
+}: {
+  client: ComputeAgentClient;
+  datasetIds: string[];
+}) {
+  const t = useTranslations("atlas");
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [datasetId, setDatasetId] = useState("");
+  const [steps, setSteps] = useState(String(DEFAULT_RECONSTRUCT_STEPS));
+  const [busy, setBusy] = useState(false);
+
+  const effectiveDataset = datasetId || (datasetIds[0] ?? "");
+
+  const submit = async () => {
+    if (!effectiveDataset) return;
+    setBusy(true);
+    const parsed = Number.parseInt(steps, 10);
+    const result = await client.submitJob({
+      kind: "reconstruct",
+      datasetId: effectiveDataset,
+      params: {
+        steps: Number.isFinite(parsed) ? parsed : DEFAULT_RECONSTRUCT_STEPS,
+      },
+    });
+    setBusy(false);
+    if (result === null) {
+      toast(t("forgeSubmitFailed"), "error");
+      return;
+    }
+    toast(t("forgeSubmitQueued"), "success");
+    setOpen(false);
+  };
+
+  if (datasetIds.length === 0) {
+    // Nothing to reconstruct FROM. Offering a submit control that can only
+    // fail would be worse than saying why it is absent.
+    return (
+      <span className="text-[11px] text-text-tertiary">
+        {t("forgeNoDatasets")}
+      </span>
+    );
+  }
+
+  if (!open) {
+    return (
+      <Button size="sm" variant="secondary" onClick={() => setOpen(true)}>
+        {t("forgeSubmit")}
+      </Button>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <Select
+        options={datasetIds.map((id) => ({ value: id, label: id }))}
+        value={effectiveDataset}
+        onChange={setDatasetId}
+        className="w-44"
+      />
+      <input
+        type="number"
+        min={1000}
+        step={1000}
+        value={steps}
+        onChange={(e) => setSteps(e.target.value)}
+        aria-label={t("forgeSteps")}
+        className="w-24 rounded border border-border-default bg-bg-tertiary px-2 py-1 text-xs text-text-primary"
+      />
+      <Button size="sm" onClick={submit} disabled={busy}>
+        {t("forgeSubmit")}
+      </Button>
+      <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>
+        {t("forgeSubmitCancel")}
+      </Button>
     </div>
   );
 }

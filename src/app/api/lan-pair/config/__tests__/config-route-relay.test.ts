@@ -146,7 +146,7 @@ describe("relay peer segment validation", () => {
     ["a dot-dot traversal", "../../../etc/passwd"],
     ["a bare dot-dot segment", ".."],
     ["a bare dot segment", "."],
-    ["a slash", "drone-a/api/v1/ota/apply"],
+    ["a slash", "drone-a/api/v1/setup/apply"],
     ["a leading slash", "/api/status/full"],
     ["a query character", "drone-a?x=1"],
     ["a fragment character", "drone-a#frag"],

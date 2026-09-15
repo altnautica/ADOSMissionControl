@@ -922,9 +922,9 @@
   },
   "emptyState": {
     "title": "ドローン未接続",
-    "description": "USBまたはネットワーク経由でフライトコントローラーを接続してADOS Mission Controlを開始してください。",
-    "connectDrone": "ドローンを接続",
-    "commandPaletteHint": "でコマンドパレットを開く"
+    "commandPaletteHint": "でコマンドパレットを開く",
+    "scanEmpty": "No ADOS agents found on this network yet. Add one by hostname or IP above, or install the agent on a board below.",
+    "tryDemo": "Explore with a simulated fleet"
   },
   "connect": {
     "title": "ドローンに接続",
@@ -1170,7 +1170,12 @@
     "logAnalysis": "ログ解析",
     "loadingPanel": "パネルを読み込み中...",
     "linkingTitle": "Linking to flight controller…",
-    "linkingHint": "The agent reports a flight controller. Establishing the live MAVLink link…"
+    "linkingHint": "The agent reports a flight controller. Establishing the live MAVLink link…",
+    "fcSource": "FC source",
+    "fcSourceCta": "Change the FC source",
+    "fcDisconnectedShort": "FC link down",
+    "navDisabledHint": "Connect a flight controller to open this panel.",
+    "pluginPanelGone": "This extension is no longer installed on this node."
   },
   "droneStatus": {
     "online": "オンライン",
@@ -1223,7 +1228,8 @@
     "cockpit": "Cockpit",
     "agentGroups": {
       "overview": "概要",
-      "software": "Software"
+      "software": "Software",
+      "node": "ノード"
     },
     "agentShowcase": {
       "title": "Add an onboard computer",
@@ -1275,7 +1281,15 @@
     "surfaceErrorRetry": "Try again",
     "openHud": "全画面HUDを開く",
     "nodeDetailTabs": "ノード詳細タブ",
-    "nodeNotFound": "ドローン「{id}」が見つかりません"
+    "nodeNotFound": "ドローン「{id}」が見つかりません",
+    "retryConnect": "再試行",
+    "companionOffline": {
+      "title": "コンパニオンに到達できません",
+      "body": "This node has an onboard computer, but this browser cannot reach it right now. Its video, services and logs are unavailable until it answers.",
+      "viaHop": "This node's onboard computer is reached through {hop}, which is not answering right now. Its video, services and logs are unavailable until it does.",
+      "repair": "再ペアリング",
+      "openAgent": "Open the Agent page"
+    }
   },
   "vision": {
     "title": "Vision Engine",
@@ -1409,7 +1423,10 @@
       "network": "Link & network",
       "videoVision": "Video & vision",
       "cloud": "Cloud & remote",
-      "system": "System & safety"
+      "system": "System & safety",
+      "radioLink": "無線とリンク",
+      "networking": "ネットワーク",
+      "fleet": "フリート"
     },
     "intInvalid": "Enter a whole number between {min} and {max}.",
     "video": {
@@ -1970,7 +1987,10 @@
       "kioskEnabledHint": "Starts the full-screen browser on the HDMI output at boot. Takes effect when the kiosk service next starts.",
       "kioskTargetUrl": "Kiosk page",
       "kioskTargetUrlHint": "The page the kiosk opens. Leave empty to use this node's own console."
-    }
+    },
+    "pageUnavailableHere": "{page} is not available on this node. Showing the first page this node offers.",
+    "segmentLive": "ライブ",
+    "segmentSetup": "設定"
   },
   "dronePlugins": {
     "titleForDrone": "Extensions on {drone}",
@@ -2144,16 +2164,13 @@
       "pairingButton": "ペアリング中",
       "cancelButton": "キャンセル",
       "mixedContentError": "このMission ControlはHTTPS経由で提供されています。ブラウザはHTTPSページからの平文HTTPプローブをブロックします。LANエージェントをペアリングするには、http://経由でMission Controlを読み込む（またはlocalhostビルドを使用する）必要があります。",
-      "hostNotPrivateError": "Only private network hosts (RFC1918 IPs, *.local names, or loopback) are allowed for LAN pairing.",
+      "hostNotPrivateError": "\"{host}\" is not an address on your own network. Use an RFC1918 IP (for example 192.168.1.50), a `.local` name, loopback, or a Tailscale 100.64.0.0/10 address — a bare LAN name needs `.local` on the end.",
       "missingDeviceIdError": "プローブ応答にdevice_idがありません",
-      "probeFailedStatusError": "プローブに失敗しました: {status} {statusText}",
-      "pairFailedStatusError": "ペアリングに失敗しました: {status} {statusText}",
-      "unpairFailedStatusError": "ペアリング解除に失敗しました: {status} {statusText}",
       "pairedButConnectFailed": "ペアリングは完了しましたが、ライブ接続を確立できませんでした：{error}。ノードは保存されています。サイドバーから再試行してください。",
       "pairSuccess": "接続しました。ドローンが稼働中です。",
       "pairSuccessNode": "接続しました。{name} が稼働中です。",
       "wipePairState": "Wipe pair state and retry",
-      "wipePairStateConfirm": "This deletes the cloud pair record and any heartbeat history for this device. The agent itself stays paired; unpair it from the agent's setup webapp if needed. Continue?",
+      "wipePairStateConfirm": "This deletes the cloud pair record and any heartbeat history for this device. The node itself stays paired — run `ados unpair` on it to release it. Continue?",
       "wipePairStateSuccess": "Pair state wiped. Try pairing again.",
       "profileLabel": {
         "drone": "ドローン",
@@ -2169,7 +2186,17 @@
         "title": "API キーはこのブラウザに保存されています",
         "body": "ブラウザストレージを消去すると、ローカルでペアリングされたすべてのノードのペアリングが解除されます。復旧するには、エージェントのセットアップ Web アプリ (http://your-agent.local:8080/setup.html) からペアリングを解除し、ここから再ペアリングしてください。",
         "dismiss": "了解しました"
-      }
+      },
+      "pairUnreachableError": "Nothing answered at {host}. Check the node is powered on and on this network, then press Pair again. If its address has changed, try its IP instead of its name.",
+      "pairHostedRemotelyError": "This Mission Control is hosted off your network, so its server cannot reach {host} — the node itself is probably fine. Open a Mission Control on the same network and pair from there: the desktop app, or a local build. If the node really is remote, enable cloud relay on it and pair with its 6-character code.",
+      "pairKeyRejectedError": "{host} answered and refused this browser's key — the node is already claimed by a different browser. Run `ados unpair` on the node, or open {settingsUrl} to release it, then press Pair again.",
+      "pairPinRequiredError": "{host} answered but will not pair until its dashboard PIN is set. Open {settingsUrl} on this network to set the PIN, then press Pair again.",
+      "pairRouteMissingError": "{host} answered but has no pairing endpoint — it is running an older agent, or it is not an ADOS node. Run `ados update` on it, then press Pair again.",
+      "pairTimedOutError": "{host} answered but did not finish pairing in time. Press Pair again; if it keeps timing out, check the link with `ados diag link` on the node.",
+      "pairAgentNotReadyError": "{host} answered but its pairing service is still starting. Wait a few seconds, then press Pair again.",
+      "pairAgentFaultError": "{host} could not save the pairing: {detail}. Check its disk space and service health with `ados status` on the node, then press Pair again.",
+      "pairRefusedError": "{host} answered and refused the pairing request. Run `ados status` on the node to check its pairing state, then press Pair again.",
+      "unpairFailedError": "Couldn't release {host} from this browser. Run `ados unpair` on the node to release it, then remove it here."
     },
     "nodes": {
       "label": "Nodes",
@@ -2197,7 +2224,8 @@
         "physicalUi": "物理UI",
         "peripherals": "周辺機器",
         "mesh": "メッシュ",
-        "distributedRx": "分散RX"
+        "distributedRx": "分散RX",
+        "meshAndRx": "メッシュ & RX"
       },
       "groups": {
         "status": "Status",
@@ -2225,6 +2253,18 @@
         "peripherals": "Peripheral rescan and per-peripheral actions route through the agent's REST surface, which is only reachable on the same LAN. The list below comes from the cloud heartbeat and is read-only.",
         "mesh": "batman-adv mesh topology (neighbours, routes, gateways) is local to the ground station and never relayed through the cloud. Connect on LAN to inspect mesh health.",
         "distributedRx": "Distributed receive fragment counters and pairing controls are local to the ground station and never relayed through the cloud. Connect on LAN for the live view."
+      }
+    },
+    "nodeReach": {
+      "reachedAt": "Reached at {host} · confirmed {ago}",
+      "lastTried": "Last tried {host} — {reason} ({ago})",
+      "previouslyReachedAt": "Last worked at {host}.",
+      "useThisAddress": "Use {host}",
+      "reason": {
+        "no-answer": "nothing answered",
+        "refused": "answered and refused",
+        "fault": "answered with an internal fault",
+        "unknown": "the attempt failed"
       }
     }
   },
@@ -3922,7 +3962,12 @@
       "direct": "Direct",
       "relay": "Relay",
       "receiver": "Receiver",
-      "unset": "Unset"
+      "unset": "Unset",
+      "label": "Deployment role",
+      "emptyDirectTitle": "This node is in direct mode.",
+      "emptyUnsetTitle": "This node has no role set.",
+      "emptyHint": "Switch to relay or receiver to carry mesh traffic and see this view with live data.",
+      "demoReadOnly": "Demo mode is read-only — this control is disabled on the sample fleet."
     },
     "confirms": {
       "unpair": {
@@ -4023,7 +4068,8 @@
       "downloadLogsAction": "Download",
       "downloadLogsComingSoon": "Backend bundle endpoint not yet available.",
       "emptyDirect": "This node is in direct mode. Set the role to relay or receiver to view the mesh.",
-      "pinHint": "ピンはメッシュサービスの次回再起動時に適用されます。Auto で元に戻ります。"
+      "pinHint": "ピンはメッシュサービスの次回再起動時に適用されます。Auto で元に戻ります。",
+      "emptyUnset": "This node has no role set. Choose relay or receiver above, or set it from the device's own display."
     },
     "overview": "概要",
     "network": "ネットワーク",
@@ -5439,6 +5485,17 @@
       "live": "Live",
       "connecting": "Connecting",
       "noSignal": "No downlink"
+    },
+    "carriedDrones": {
+      "title": "Carried drones",
+      "description": "The aircraft this ground node is relaying, when each was last heard, and what authority this browser holds over it.",
+      "hint": "Last heard is a decode, not a heartbeat from the drone's own uplink.",
+      "none": "This node is not relaying any drone.",
+      "neverHeard": "never heard",
+      "heardSecondsAgo": "heard {seconds}s ago",
+      "heardMinutesAgo": "heard {minutes}m ago",
+      "authorityFull": "This ground node is paired on this browser, so commands and configuration for this drone route through its relay-proxy lane.",
+      "authorityNotPaired": "This ground node is not paired on this browser, so nothing can be sent to this drone through it. Pair the ground node to reach the drone."
     }
   },
   "navigation": {
@@ -6332,7 +6389,7 @@
     "forgeAwaiting": "Awaiting compute node. Connect a workstation or compute node on your network to dispatch and review reconstruction jobs.",
     "forgeNoJobs": "No reconstruction jobs yet.",
     "forgeNoOutputs": "No outputs for this job yet.",
-    "forgeNoDatasets": "No datasets yet. Datasets are created by the capture pipeline.",
+    "forgeNoDatasets": "No datasets on this node yet.",
     "forgeSelectJob": "Select a job",
     "forgeCancel": "Cancel",
     "forgeJobCount": "{count} jobs",
@@ -6492,7 +6549,17 @@
     "worldStreamReconnecting": "ディスクリプタストリームを再接続中…",
     "worldSuperseded": "失効したディスクリプタ {count} 件を破棄",
     "worldVersionRejected": "{count} フレームを拒否: エンベロープバージョン {version} はこのビルドでは扱えません",
-    "worldMalformed": "読み取れないフレーム {count} 件"
+    "worldMalformed": "読み取れないフレーム {count} 件",
+    "computePaneLabel": "Compute views",
+    "forgeSubmit": "Queue job",
+    "forgeSubmitCancel": "Cancel",
+    "forgeSteps": "Training steps",
+    "forgeSubmitQueued": "Reconstruction queued.",
+    "forgeSubmitFailed": "The compute node refused the job.",
+    "forgeRetry": "Run again",
+    "forgeRetryQueued": "Job re-queued.",
+    "forgeRetryFailed": "The compute node refused the re-run.",
+    "forgeCancelFailed": "The compute node did not cancel that job."
   },
   "workstation": {
     "rail": {
@@ -7250,6 +7317,15 @@
     "empty": {
       "title": "RC / ELRS lane not configured",
       "body": "This node advertises no ExpressLRS control lane. Attach an ELRS transmitter and enable the RC / ELRS lane to command or relay over it."
+    }
+  },
+  "nodeDetail": {
+    "groups": {
+      "status": "ステータス",
+      "vehicle": "機体",
+      "link": "リンク",
+      "device": "デバイス",
+      "compute": "コンピュート"
     }
   }
 }

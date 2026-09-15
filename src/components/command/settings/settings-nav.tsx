@@ -95,6 +95,17 @@ export interface SettingsNavItem {
   /** Availability gate. Absent = always shown. Mirrors the page's own
    * internal render-nothing gate so the sidebar never offers an empty page. */
   when?: (ctx: SettingsPageContext) => boolean;
+  /**
+   * The live sub-page this configuration page is the Setup half of. A merged
+   * page gets no sidebar row of its own: it renders as the second segment of
+   * the named live page.
+   *
+   * Three subsystems used to be six adjacent rows whose labels the registry
+   * itself admitted "would otherwise read as the same thing" (Link / Radio,
+   * Perception / Perception setup, World Model / World model setup). The
+   * suffix was carrying the whole information architecture.
+   */
+  mergeInto?: string;
   render: (ctx: SettingsPageContext) => ReactNode;
 }
 
@@ -200,6 +211,7 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
     // can no longer collide.
     id: "radio-config",
     labelKey: "nodeSettings.radio.title",
+    mergeInto: "radio",
     icon: <RadioTower size={14} />,
     readsConfig: true,
     // Fleet addressing, the link switches and the modulation rung — the WFB
@@ -237,6 +249,7 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
   {
     id: "video",
     labelKey: "nodeSettings.video.title",
+    mergeInto: "cameras",
     icon: <Video size={14} />,
     readsConfig: true,
     // The camera and encode config of a node that actually encodes. A ground
@@ -261,6 +274,7 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
   {
     id: "vision-perception",
     labelKey: "nodeSettings.perception.title",
+    mergeInto: "vision",
     icon: <Layers size={14} />,
     readsConfig: true,
     when: isVisionProfile,
@@ -281,6 +295,7 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
     // so two adjacent sidebar rows can never read as the same thing.
     id: "world-model-config",
     labelKey: "nodeSettings.atlas.title",
+    mergeInto: "world-model",
     icon: <Boxes size={14} />,
     readsConfig: true,
     when: (ctx) =>

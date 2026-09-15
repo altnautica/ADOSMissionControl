@@ -18,9 +18,19 @@ import { Button } from "@/components/ui/button";
 import { LogsTab } from "@/components/drone-detail/LogsTab";
 import { AGENT_SHOWCASE_ITEMS } from "./agent-showcase-items";
 
-export function AgentShowcase({ droneId }: { droneId: string }) {
+export function AgentShowcase({
+  droneId,
+  initialShowLogs,
+}: {
+  droneId: string;
+  /** Open straight into the flight logs. The Agent page passes this when a
+   *  deep link asked for the Logs sub-page on a drone with no companion: Logs
+   *  is the one page that works without one, so landing on the upsell instead
+   *  would discard the request. */
+  initialShowLogs?: boolean;
+}) {
   const t = useTranslations("dronePanel.agentShowcase");
-  const [showLogs, setShowLogs] = useState(false);
+  const [showLogs, setShowLogs] = useState(initialShowLogs ?? false);
 
   if (showLogs) {
     return (

@@ -5,8 +5,7 @@
  * @description Command-tab home for the Peripheral Manager. Lists
  * registered peripheral plugins reported by the agent. When no
  * plugins are registered the backend returns {peripherals: [],
- * count: 0} and we render an empty state. Lifted from the prior
- * /hardware/peripherals route.
+ * count: 0} and we render an empty state.
  * @license GPL-3.0-only
  */
 
@@ -21,6 +20,7 @@ import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useGroundStationStore } from "@/stores/ground-station-store";
 import { CloudModeLimitedNotice } from "@/components/command/shared/CloudModeLimitedNotice";
 import { PluginHardwarePanels } from "@/components/command/system/PluginHardwarePanels";
+import { useGroundStationPoll } from "./use-gs-poll";
 
 const POLL_INTERVAL_MS = 5000;
 const RESCAN_TIMEOUT_MS = 10_000;
@@ -61,10 +61,6 @@ export function PeripheralsTab() {
   const [rescanning, setRescanning] = useState(false);
   const [rescanError, setRescanError] = useState<string | null>(null);
 
-  const agentUrlRef = useRef(agentUrl);
-  const apiKeyRef = useRef(apiKey);
-  agentUrlRef.current = agentUrl;
-  apiKeyRef.current = apiKey;
 
   const onRescan = async () => {
     if (rescanning) return;
@@ -83,10 +79,7 @@ export function PeripheralsTab() {
           console.warn("scanPeripherals failed:", err);
         }
       }
-      const client = groundStationApiFromAgent(
-        agentUrlRef.current,
-        apiKeyRef.current,
-      );
+      const client = groundStationApiFromAgent(agentUrl, apiKey);
       if (client) {
         await withTimeout(loadPeripherals(client), RESCAN_TIMEOUT_MS);
       }
@@ -98,26 +91,8 @@ export function PeripheralsTab() {
     }
   };
 
-  useEffect(() => {
-    let cancelled = false;
-
-    const poll = () => {
-      if (typeof document !== "undefined" && document.hidden) return;
-      const client = groundStationApiFromAgent(
-        agentUrlRef.current,
-        apiKeyRef.current,
-      );
-      if (!client || cancelled) return;
-      void loadPeripherals(client);
-    };
-
-    poll();
-    const timer = setInterval(poll, POLL_INTERVAL_MS);
-    return () => {
-      cancelled = true;
-      clearInterval(timer);
-    };
-  }, [loadPeripherals]);
+  // Self-scheduling with backoff; see `use-gs-poll`.
+  useGroundStationPoll(agentUrl, apiKey, POLL_INTERVAL_MS, loadPeripherals);
 
   const onToggleRow = (id: string) => {
     if (expandedId === id) {
@@ -125,10 +100,7 @@ export function PeripheralsTab() {
       return;
     }
     setExpandedId(id);
-    const client = groundStationApiFromAgent(
-      agentUrlRef.current,
-      apiKeyRef.current,
-    );
+    const client = groundStationApiFromAgent(agentUrl, apiKey);
     if (!client) return;
     void loadPeripheralDetail(client, id);
   };

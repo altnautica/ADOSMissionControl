@@ -25,10 +25,11 @@ function ctx(over: Partial<SurfaceContext>): SurfaceContext {
     agentIdentityKnown: true,
     relayReach: null,
     fcLinking: false,
-    radioPresent: false,
-    visionPresent: false,
-    crsfPresent: false,
+    radioPresent: "absent",
+    visionPresent: "absent",
+    crsfPresent: "absent",
     role: "drone" as SurfaceContext["role"],
+    capabilitiesKnown: true,
     showLockedTabs: false,
     isFeatureEnabled: () => false,
     atlasCapturing: false,
@@ -49,6 +50,7 @@ describe("node-detail surface registry (createContributionRegistry instance)", (
       "cockpit",
       "configure",
       "parameters",
+      "logs",
       "agent",
     ]);
   });
@@ -80,7 +82,7 @@ describe("node-detail surface registry (createContributionRegistry instance)", (
         ctx({
           drone: { profile } as SurfaceContext["drone"],
           role: null,
-          crsfPresent: false,
+          crsfPresent: "absent",
         }),
       ).map((s) => s.id);
       expect(absent).not.toContain("rcElrs");
@@ -89,7 +91,7 @@ describe("node-detail surface registry (createContributionRegistry instance)", (
         ctx({
           drone: { profile } as SurfaceContext["drone"],
           role: null,
-          crsfPresent: true,
+          crsfPresent: "present",
         }),
       ).map((s) => s.id);
       expect(present).toContain("rcElrs");
@@ -147,6 +149,7 @@ describe("node-detail surface registry (createContributionRegistry instance)", (
         "cockpit",
         "configure",
         "parameters",
+        "logs",
         "agent",
       ]);
     } finally {

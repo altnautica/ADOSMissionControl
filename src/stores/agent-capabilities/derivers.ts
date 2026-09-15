@@ -78,10 +78,21 @@ export function deriveProfile(caps: unknown): AgentProfile {
  * agent omits the field entirely (older agents) so the merge step keeps the
  * prior value. Explicit null means "no role yet"; on drones the agent emits
  * null and we keep it null.
+ *
+ * `"unset"` is a real answer the ground-station REST contract defines — a box
+ * that has been imaged but never had a role chosen. Dropping it here collapsed
+ * it to `undefined`, which the merge reads as "keep prior", so a fresh ground
+ * station resolved to role `null` forever and never reached the surface that
+ * carries the "choose a role" guidance.
  */
 export function deriveRole(caps: unknown): AgentRole | undefined {
   const rawRole = (caps as { role?: unknown }).role;
-  if (rawRole === "direct" || rawRole === "relay" || rawRole === "receiver") {
+  if (
+    rawRole === "direct" ||
+    rawRole === "relay" ||
+    rawRole === "receiver" ||
+    rawRole === "unset"
+  ) {
     return rawRole;
   }
   if (rawRole === null) return null;

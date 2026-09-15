@@ -1,15 +1,15 @@
 /**
  * @module command/settings/settings-nav.radio-page.test
  * @description The radio half of the node config moved off the Video page onto
- * its own Radio page. Two things must hold for that split to be real: the Radio
- * page sits directly under the live air-side Link surface in the Agent sidebar's
- * Link & network section (so the page that configures the radio is one row below
- * the page that shows it), and it is offered only to a node that actually
- * carries a radio. A workstation seeing a Radio page — or Radio drifting away
- * from Link on the next insert — is the regression.
+ * its own page, and then merged INTO the live air-side Link page as its Setup
+ * segment — one sidebar row per subsystem rather than two whose labels differ
+ * by a suffix. Two things must hold: the pair still resolves in the Radio &
+ * link section (a drone gets one row, a ground station whose live radio is a
+ * top-level tab gets the config page on its own), and the page is offered only
+ * to a node that actually carries a radio. A workstation seeing it is the
+ * regression.
  *
- * Its id is `radio-config`: the live Link surface owns `radio`, and both now
- * live in one sidebar.
+ * Its id is `radio-config`: the live Link page owns `radio`.
  * @license GPL-3.0-only
  */
 
@@ -45,12 +45,17 @@ function visibleIds(profile: NodeProfile): string[] {
 }
 
 describe("settings-nav radio page", () => {
-  it("places the radio config directly under the live Link surface", () => {
-    const network = NAV_SECTIONS.find((s) => s.key === "network");
-    if (!network) throw new Error("no Link & network section");
-    const link = network.items.indexOf("radio");
+  it("places the radio config with the live Link surface it merges into", () => {
+    const section = NAV_SECTIONS.find((s) => s.key === "radioLink");
+    if (!section) throw new Error("no Radio & link section");
+    const link = section.items.indexOf("radio");
     expect(link).toBeGreaterThanOrEqual(0);
-    expect(network.items[link + 1]).toBe("radio-config");
+    expect(section.items[link + 1]).toBe("radio-config");
+  });
+
+  it("declares the radio config as the Setup half of the live Link page", () => {
+    const item = SETTINGS_NAV_ITEMS.find((i) => i.id === "radio-config");
+    expect(item?.mergeInto).toBe("radio");
   });
 
   it("offers the radio page to a drone and a ground station", () => {

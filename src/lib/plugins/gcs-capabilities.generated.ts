@@ -22,6 +22,9 @@ export const GCS_CAPABILITIES = [
   "perception.read",
   "perception.subscribe",
   "mcp.expose",
+  "event.publish",
+  "event.subscribe",
+  "agent.request",
 ] as const;
 
 export const GCS_CAPABILITY_CATALOG: Record<string, CapabilityMeta> = {
@@ -164,5 +167,26 @@ export const GCS_CAPABILITY_CATALOG: Record<string, CapabilityMeta> = {
     category: "data_network",
     risk: "medium",
     risk_reason: "Publishes a callable interface to an AI client; effect is bounded by the plugin's other capabilities and the token scope.",
+  },
+  "event.publish": {
+    label: "Publish events on the GCS plugin event bus",
+    description: "Lets the plugin emit events on the in-memory GCS event bus other installed plugin panels subscribe to. The bus never leaves the browser tab; it carries no host authority of its own.",
+    category: "data_network",
+    risk: "low",
+    risk_reason: "In-tab message bus between plugin panels; no host or vehicle effect.",
+  },
+  "event.subscribe": {
+    label: "Receive events from the GCS plugin event bus",
+    description: "Lets the plugin subscribe to topics on the in-memory GCS event bus and see payloads other installed plugin panels publish.",
+    category: "data_network",
+    risk: "low",
+    risk_reason: "Read-only on an in-tab message bus.",
+  },
+  "agent.request": {
+    label: "Call the plugin's own agent half",
+    description: "Lets the plugin's GCS panel invoke a request handler its OWN agent half registered on this node, and read the reply. The host resolves the target from the install row, so a panel can only ever reach the agent half of the same plugin on the node the operator has open; it cannot address another plugin, another node, or any core agent service. The agent half must also hold mcp.expose for the host to route the call.",
+    category: "data_network",
+    risk: "medium",
+    risk_reason: "Reaches the plugin's own on-vehicle process; the effect is bounded by what that agent half's own capabilities already permit.",
   },
 };

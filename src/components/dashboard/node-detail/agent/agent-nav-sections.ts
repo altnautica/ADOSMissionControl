@@ -38,27 +38,44 @@ export interface NavSectionSpec {
   items: string[];
 }
 
-/** The Agent sidebar, section by section, top -> bottom. */
+/** The Agent sidebar, section by section, top -> bottom.
+ *
+ * A page whose `mergeInto` names a live page that THIS profile offers renders
+ * as that page's Setup segment rather than a row of its own, so the subsystem
+ * occupies one row. It is still named here: a profile whose live host is
+ * gated away (a ground station has no air-side Link sub-page, its radio is a
+ * top-level tab) still needs the configuration page, and it appears in this
+ * position.
+ */
 export const NAV_SECTIONS: NavSectionSpec[] = [
   {
-    key: "overview",
-    labelKey: "dronePanel.agentGroups.overview",
+    // Was labelled "Overview" while containing neither an overview nor
+    // anything the word predicts.
+    key: "node",
+    labelKey: "dronePanel.agentGroups.node",
     items: ["system", "profile"],
   },
   {
-    key: "network",
-    labelKey: "nodeSettings.groups.network",
-    items: [
-      "radio",
-      "radio-config",
-      "network",
-      "wifi",
-      "cellular",
-      "mac-pin",
-      "discovery",
-      "mavlink",
-      "swarm",
-    ],
+    // Radio physics. On a drone, `radio-config` merges into `radio` as its
+    // Setup segment; on a ground station the live half lives at top level, so
+    // the config page stands alone here.
+    key: "radioLink",
+    labelKey: "nodeSettings.groups.radioLink",
+    items: ["radio", "radio-config"],
+  },
+  {
+    // IP networking and how this node is found and addressed.
+    key: "networking",
+    labelKey: "nodeSettings.groups.networking",
+    items: ["network", "wifi", "cellular", "mac-pin", "discovery", "mavlink"],
+  },
+  {
+    // Fleet autonomy. A nine-row bucket mixing radio physics, IP networking
+    // and swarm coordination defeated the sticky-header scanning the rail was
+    // built for, and nobody hunting swarm settings scans a networking band.
+    key: "fleet",
+    labelKey: "nodeSettings.groups.fleet",
+    items: ["swarm"],
   },
   {
     key: "videoVision",
@@ -87,11 +104,46 @@ export const NAV_SECTIONS: NavSectionSpec[] = [
     items: ["display", "region", "self-heal", "security", "advanced"],
   },
   {
+    // Logs are a top-level surface on every profile now — "what happened on
+    // this node" is a first question, not a configuration sub-page.
     key: "software",
     labelKey: "dronePanel.agentGroups.software",
-    items: ["plugins", "logs"],
+    items: ["plugins"],
   },
 ];
+
+/**
+ * Retired sub-page id -> the live page that absorbed it. A persisted or
+ * deep-linked id for a merged half resolves to its host with the Setup
+ * segment preselected, so the operator lands where they asked.
+ */
+export const MERGED_SUBPAGE_HOSTS: Record<string, string> = {
+  "radio-config": "radio",
+  video: "cameras",
+  "vision-perception": "vision",
+  "world-model-config": "world-model",
+};
+
+/** Which pane of a (possibly merged) sub-page a requested id names. */
+export interface ResolvedSubpage {
+  id: string;
+  segment: "live" | "setup";
+}
+
+export function resolveSubpage(requested: string): ResolvedSubpage {
+  const host = MERGED_SUBPAGE_HOSTS[requested];
+  return host
+    ? { id: host, segment: "setup" }
+    : { id: requested, segment: "live" };
+}
+
+/** The Setup half of a merged sub-page. */
+export interface AgentNavSetupPane {
+  /** Full i18n path for the segment's own label, used in the page header. */
+  labelKey: string;
+  readsConfig: boolean;
+  render: () => ReactNode;
+}
 
 /** One resolved sidebar entry: a sub-page this node actually offers. */
 export interface AgentNavEntry {
@@ -108,6 +160,9 @@ export interface AgentNavEntry {
    * live surface never does, and neither do the two config pages that talk to
    * their own agent endpoints (Wi-Fi, Operating region). */
   readsConfig: boolean;
+  /** Present when a configuration page merged into this live page. The page
+   * then renders as a Live | Setup segmented pane rather than one body. */
+  setup?: AgentNavSetupPane;
   render: () => ReactNode;
 }
 
@@ -126,6 +181,10 @@ export interface ResolvedAgentNav {
  * carried (`companionPresent`) on top of each page's own gate, so an FC-only
  * node with no reachable agent is offered no config pages — exactly the set it
  * could reach before the flattening, no more and no less.
+ *
+ * A configuration page carrying `mergeInto` is attached to the named live page
+ * as its Setup segment rather than becoming a row of its own — unless this
+ * profile has no such live page, in which case it keeps its own row.
  */
 export function resolveAgentNav(
   ctx: SurfaceContext,
@@ -148,6 +207,22 @@ export function resolveAgentNav(
   if (companionPresent(ctx)) {
     for (const item of SETTINGS_NAV_ITEMS) {
       if (item.when && !item.when(settingsCtx)) continue;
+      const host = item.mergeInto ? byId.get(item.mergeInto) : undefined;
+      if (host) {
+        byId.set(host.id, {
+          ...host,
+          setup: {
+            labelKey: item.labelKey,
+            readsConfig: item.readsConfig,
+            render: () => item.render(settingsCtx),
+          },
+        });
+        continue;
+      }
+      // No live host on this profile (a ground station's live radio is a
+      // TOP-LEVEL tab, not a sub-page), so the configuration page stands on
+      // its own row in the position the section table gives it. Dropping it
+      // would take the node's WFB configuration with it.
       byId.set(item.id, {
         id: item.id,
         labelKey: item.labelKey,

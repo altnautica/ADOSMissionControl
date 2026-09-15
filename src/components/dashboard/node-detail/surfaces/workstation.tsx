@@ -2,10 +2,14 @@
 
 /**
  * @module node-detail/surfaces/workstation
- * @description Surfaces for a workstation node: Overview + Jobs + Viewer + the
- * Agent page (companion-computer surfaces). The Forge 4-subview wrapper is collapsed
- * into first-class Jobs (a group-by that absorbs Datasets) and Viewer tabs,
- * with GPU folded into the Overview vitals.
+ * @description Surfaces for a workstation node: Overview, one Compute tab
+ * (Jobs | Viewer), Logs, and the Agent page.
+ *
+ * Jobs and Viewer used to be two tabs that a freshly-paired node rendered as
+ * two identical empty cards, so the profile advertised depth it had none of
+ * for the whole first-run experience. They are two views of the same job list
+ * — the Viewer previews the artifact of a finished one — so they are one tab
+ * with a segmented control.
  * @license GPL-3.0-only
  */
 
@@ -14,17 +18,15 @@ import { Boxes } from "lucide-react";
 import { ComputeOverview } from "@/components/command/overview/ComputeOverview";
 import { JobsPanel } from "@/components/command/nodes/atlas/JobsPanel";
 import { ForgeOutputs } from "@/components/command/nodes/atlas/ForgeOutputs";
+import { LogsTab } from "@/components/drone-detail/LogsTab";
 import { useComputeJobs } from "@/hooks/use-compute-jobs";
 import type { SurfaceSpec } from "../surface-types";
+import { SegmentedPane } from "../SegmentedPane";
+import { STATUS_GROUP, COMPUTE_GROUP } from "../surface-groups";
 import { AGENT_SURFACE } from "../agent/agent-surface";
 
-const STATUS_GROUP = "command.groundStation.groups.status";
-const COMPUTE_GROUP = "nodeConsole.groups.compute";
-
-/** The Viewer tab body: the reconstruction viewer over the node's finished
- * jobs (renamed from "Outputs"). Adapts the selected node to ForgeOutputs, with
- * a calm state when the compute node is unreachable (Rule 39). Atlas is a default
- * on a workstation. */
+/** The Viewer half: the reconstruction viewer over the node's finished jobs.
+ * Calm state when the compute node is unreachable (Rule 39). */
 function WorkstationViewer({ nodeId }: { nodeId?: string }) {
   const t = useTranslations("atlas");
   const { jobs, client } = useComputeJobs(nodeId);
@@ -43,26 +45,45 @@ function WorkstationViewer({ nodeId }: { nodeId?: string }) {
   return <ForgeOutputs jobs={jobs} client={client} />;
 }
 
+/** The one Compute surface: the job queue and the artifact viewer over it. */
+function ComputePane({ nodeId }: { nodeId: string }) {
+  const t = useTranslations("atlas");
+  return (
+    <SegmentedPane
+      ariaLabel={t("computePaneLabel")}
+      segments={[
+        {
+          id: "jobs",
+          label: t("forgeJobs"),
+          render: () => <JobsPanel nodeId={nodeId} />,
+        },
+        {
+          id: "viewer",
+          label: t("viewerGroupLabel"),
+          render: () => <WorkstationViewer nodeId={nodeId} />,
+        },
+      ]}
+    />
+  );
+}
+
 export const WORKSTATION_SURFACES: SurfaceSpec[] = [
-  // Overview (GPU folded in).
   {
     id: "overview",
     labelKey: "dronePanel.overview",
     group: STATUS_GROUP,
     render: (ctx) => <ComputeOverview nodeId={ctx.droneId} />,
   },
-  // Compute band: Jobs (absorbs Datasets) + Viewer.
   {
-    id: "jobs",
-    labelKey: "atlas.forgeJobs",
+    id: "compute",
+    labelKey: "nodeDetail.groups.compute",
     group: COMPUTE_GROUP,
-    render: (ctx) => <JobsPanel nodeId={ctx.droneId} />,
+    render: (ctx) => <ComputePane nodeId={ctx.droneId} />,
   },
   {
-    id: "viewer",
-    labelKey: "atlas.viewerGroupLabel",
-    group: COMPUTE_GROUP,
-    render: (ctx) => <WorkstationViewer nodeId={ctx.droneId} />,
+    id: "logs",
+    labelKey: "dronePanel.logs",
+    render: (ctx) => <LogsTab droneId={ctx.droneId} showFlights={false} />,
   },
   AGENT_SURFACE,
 ];

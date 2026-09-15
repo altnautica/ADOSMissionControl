@@ -72,6 +72,48 @@ const FAILOVER_STATES = ["local", "cloud_relay", "failed"] as const;
 const pickStringOrNull = (v: unknown): string | null =>
   typeof v === "string" && v.length > 0 ? v : null;
 
+/** Read a wire string. `undefined` = the key was absent (keep the previous
+ * frame's value); `null` = the agent explicitly cleared it. A value of the
+ * wrong type is treated as absent rather than coerced — a reading nobody took
+ * must not become a reading. The three readers exist so all ~15 flat
+ * capability fields decode identically. */
+const readString = (v: unknown): string | null | undefined =>
+  typeof v === "string" ? v : v === null ? null : undefined;
+
+const readBoolean = (v: unknown): boolean | null | undefined =>
+  typeof v === "boolean" ? v : v === null ? null : undefined;
+
+const readNumber = (v: unknown): number | null | undefined =>
+  typeof v === "number" && Number.isFinite(v) ? v : v === null ? null : undefined;
+
+/** The FC CAN-bus inventory, validated entry by entry. Every field is read as
+ * a number by `FirmwareApPeriphSection` and the CAN surface gate counts the
+ * entries, so a malformed row would render NaN rather than be ignored. A row
+ * that fails the shape check drops the whole block to `undefined` (unknown),
+ * never a partial inventory that would read as "this node has one bus". */
+function readCanBuses(v: unknown): AgentCapabilities["canBuses"] {
+  if (!Array.isArray(v)) return undefined;
+  const buses: NonNullable<AgentCapabilities["canBuses"]> = [];
+  for (const entry of v) {
+    if (!entry || typeof entry !== "object") return undefined;
+    const row = entry as Record<string, unknown>;
+    const port = readNumber(row.port);
+    const driver = readNumber(row.driver);
+    const bitrate = readNumber(row.bitrate);
+    const protocol = readNumber(row.protocol);
+    if (
+      typeof port !== "number" ||
+      typeof driver !== "number" ||
+      typeof bitrate !== "number" ||
+      typeof protocol !== "number"
+    ) {
+      return undefined;
+    }
+    buses.push({ port, driver, bitrate, protocol });
+  }
+  return buses;
+}
+
 /**
  * Pull every heartbeat-derived extra field out of the Convex row.
  * Returned shape is forward-permissive: the bridge can hand each
@@ -126,23 +168,42 @@ export function buildHeartbeatExtras(
         }
       : null;
 
-  // Local-display + UI-theme + navigation overrides the agent forwards on
-  // the cloud heartbeat. The LCD/HDMI display-pipeline, local-decoder,
-  // video-recording, display-type, and vision-summary fields are NOT on the
-  // cloud wire — no agent path emits them today — so they are not read here
-  // (forwarding always-undefined fields makes the contract lie). They return
-  // through the store's merge as a sparse tick when a producer eventually
-  // ships them on the wire.
+  // Every flat capability field the agent forwards on the cloud heartbeat.
+  //
+  // These were previously dropped on the floor with a comment claiming no
+  // agent path emits them. Convex declares them as columns on
+  // `cmd_droneStatus` and `convex/http.ts` explicitly picks them off the
+  // ingest body, so they were arriving and being discarded one layer from
+  // their consumers. The visible cost: `inferCapabilities` sets
+  // `visionAvailable` from `visionBackend`/`visionActiveModel` presence, so
+  // with both dropped it fell back to "is this SoC in the NPU table with
+  // TOPS > 0" — a Pi-class drone running a USB/CPU vision engine showed the
+  // Vision tab over LAN and not over the relay, and `visionSummary` read idle
+  // forever.
+  //
+  // Absent means UNKNOWN, never false/empty: the agent omits a key entirely
+  // when its sidecar is missing or stale, and the capability store's merge
+  // keeps the previous value through such a sparse tick. So each reader
+  // returns `undefined` for an absent field and only a real wire value (or an
+  // explicit null) overwrites.
   const inferOverrides: Parameters<typeof inferCapabilities>[2] = {
-    lcdTouchCalibrated: cloudStatus.lcdTouchCalibrated as
-      | boolean
-      | null
-      | undefined,
-    lcdSnapshotUrl: cloudStatus.lcdSnapshotUrl as string | null | undefined,
-    lcdLastTouchAt: cloudStatus.lcdLastTouchAt as number | null | undefined,
-    lcdLastGesture: cloudStatus.lcdLastGesture as string | null | undefined,
-    uiTheme: cloudStatus.uiTheme as string | null | undefined,
+    lcdActivePage: readString(cloudStatus.lcdActivePage),
+    lcdTouchCalibrated: readBoolean(cloudStatus.lcdTouchCalibrated),
+    lcdRotation: readNumber(cloudStatus.lcdRotation),
+    lcdSnapshotUrl: readString(cloudStatus.lcdSnapshotUrl),
+    lcdLastTouchAt: readNumber(cloudStatus.lcdLastTouchAt),
+    lcdLastGesture: readString(cloudStatus.lcdLastGesture),
+    videoLocalDecoderActive: readBoolean(cloudStatus.videoLocalDecoderActive),
+    videoLocalDecoderType: readString(cloudStatus.videoLocalDecoderType),
+    videoLocalDecoderFps: readNumber(cloudStatus.videoLocalDecoderFps),
+    videoRecording: readBoolean(cloudStatus.videoRecording),
+    uiTheme: readString(cloudStatus.uiTheme),
+    displayType: readString(cloudStatus.displayType),
     navigation: cloudStatus.navigation,
+    visionActiveModel: readString(cloudStatus.visionActiveModel),
+    visionBackend: readString(cloudStatus.visionBackend),
+    visionDetectionsPerSec: readNumber(cloudStatus.visionDetectionsPerSec),
+    visionFps: readNumber(cloudStatus.visionFps),
   };
 
   const setupState =
@@ -252,11 +313,10 @@ export function buildHeartbeatExtras(
     cloudRelayUrl: pickStringOrNull(cloudStatus.cloudRelayUrl),
     cloudflareUrl: pickStringOrNull(cloudStatus.cloudflareUrl),
     // The air-side in-process video-pipeline identity (flavor / encoder /
-    // camera-source / state) and the FC CAN-bus inventory are not on the
-    // cloud heartbeat wire — no agent path emits them — so they are always
-    // undefined. The store's merge keeps the prior value through the sparse
-    // tick. Kept on the shape so the capability bridge stays type-stable for
-    // when a producer ships these on the wire.
+    // camera-source / state) is not on the cloud heartbeat wire — no agent
+    // path emits it — so it stays undefined and the store's merge keeps the
+    // prior value through the sparse tick. Kept on the shape so the capability
+    // bridge stays type-stable for when a producer ships it on the wire.
     inferOverrides,
     radioRaw: cloudStatus.radio,
     crsfRaw: cloudStatus.crsf,
@@ -290,10 +350,12 @@ export function buildHeartbeatExtras(
     // Camera-recovery block: validated through the shared parser. The
     // store keeps the prior value on a sparse tick that omits it.
     cameraUsbRecovery: normalizeCameraUsbRecovery(cloudStatus.cameraUsbRecovery),
-    // canBuses is not on the cloud heartbeat wire — no agent path emits the
-    // FC CAN-bus inventory there — so it is always undefined and the store's
-    // merge keeps the prior value through the sparse tick.
-    canBuses: undefined,
+    // The FC CAN-bus inventory. Convex declares `canBuses` as a column and
+    // `convex/http.ts` picks it off the ingest body, so hardcoding `undefined`
+    // here kept the CAN-forward control disabled and
+    // `useSurfaceGate("capability:can")` reporting `capability-missing` for
+    // every cloud-relayed node regardless of what the agent sent.
+    canBuses: readCanBuses(cloudStatus.canBuses),
     // Perception execution tier + offload target. The two fields travel
     // together: the Rust beacon sends `perceptionTier` whenever perception is
     // active but OMITS `perceptionOffloadTarget` (skip_serializing_if) when

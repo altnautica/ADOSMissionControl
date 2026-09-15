@@ -43,8 +43,13 @@ export type AgentProfile = "drone" | "ground-station" | "workstation";
  * agents that don't report a runtime mode. */
 export type RuntimeMode = "native" | "hybrid" | "packaged";
 
-/** Ground-station role; null on drones and compute nodes. */
-export type AgentRole = "direct" | "relay" | "receiver" | null;
+/**
+ * Ground-station role. `null` on drones and compute nodes (the agent emits an
+ * explicit null); `"unset"` is the agent's own answer for a ground station that
+ * has been imaged but never had a role chosen, and is distinct from "the field
+ * is missing" — the Mesh & RX surface renders its own guidance for it.
+ */
+export type AgentRole = "direct" | "relay" | "receiver" | "unset" | null;
 
 /** Current pairing/uplink failover state. */
 export type WfbFailoverState = "local" | "cloud_relay" | "failed";
@@ -224,13 +229,55 @@ export interface AgentCapabilitiesState {
   hasAccelerator?: AgentCapabilities["hasAccelerator"];
   /** True once we've received at least one capabilities payload. */
   loaded: boolean;
+  /**
+   * The node the flat slice above describes, when a writer named it. Null
+   * before the first identified payload.
+   */
+  focusedDeviceId: string | null;
+  /**
+   * Last-known slice per node device id. The node-detail tab strip resolves
+   * from here rather than from the focused slice, so switching nodes paints
+   * the target node's own gates on the first frame. Survives `clear()`.
+   */
+  byDevice: Record<string, AgentCapabilitySnapshot>;
 }
 
+/**
+ * One node's capability reading. This is the flat state shape without the
+ * routing fields, so the focused slice and a remembered per-device slice are
+ * the same type.
+ */
+export type AgentCapabilitySnapshot = Omit<
+  AgentCapabilitiesState,
+  "focusedDeviceId" | "byDevice"
+>;
+
+/**
+ * Tri-state answer to "does this node have X". `unknown` is not `absent`: the
+ * GCS has never heard this node describe itself, so a surface must neither
+ * advertise the capability nor claim the hardware is missing.
+ */
+export type CapabilityPresence = "present" | "absent" | "unknown";
+
 export interface AgentCapabilitiesActions {
-  /** Update all capabilities from a parsed API response (normalizes shape). */
-  setCapabilities: (caps: AgentCapabilities | Record<string, unknown>) => void;
-  /** Reset store on disconnect. */
+  /**
+   * Update all capabilities from a parsed API response (normalizes shape).
+   * `deviceId` names the node the payload describes; passing it files the
+   * resulting slice under `byDevice` so a later node switch can paint that
+   * node's own gates on the first frame instead of the previous node's.
+   */
+  setCapabilities: (
+    caps: AgentCapabilities | Record<string, unknown>,
+    deviceId?: string | null,
+  ) => void;
+  /**
+   * Reset the focused slice on disconnect. The per-device memory is kept: a
+   * disconnect is not evidence that the node's hardware changed, and dropping
+   * it is what made the tab strip collapse and re-expand on every node switch.
+   */
   clear: () => void;
+  /** Drop one node's remembered slice (the node was forgotten / re-imaged). */
+  forgetDevice: (deviceId: string) => void;
 }
 
 export type AgentCapabilitiesStore = AgentCapabilitiesState &

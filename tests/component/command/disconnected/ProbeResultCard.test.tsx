@@ -188,11 +188,15 @@ describe("ProbeResultCard", () => {
     expect(alert.textContent).toMatch(/another browser/);
   });
 
-  it("maps PairClientError code through useTranslations", async () => {
+  it("maps a PairClientError code to copy that names the fault and a next action", () => {
+    // The agent's own fault sentence is the point of the 5xx branch: an
+    // operator must be able to tell a full disk from a broken pairing service.
+    // The raw status never appears — it goes to the console instead.
     pairLocallyMock.mockRejectedValueOnce(
-      new PairClientError("pairFailedStatusError", "raw", {
-        status: 500,
-        statusText: "Internal",
+      new PairClientError("pairAgentFaultError", "raw", {
+        host: "skynode.local",
+        settingsUrl: "http://skynode.local:8080/settings",
+        detail: "No space left on device",
       }),
     );
     const { getByText, findByRole } = renderWithIntl(
@@ -203,8 +207,11 @@ describe("ProbeResultCard", () => {
       />,
     );
     fireEvent.click(getByText(/Pair locally/));
-    const alert = await findByRole("alert");
-    expect(alert.textContent).toMatch(/500/);
+    return findByRole("alert").then((alert) => {
+      expect(alert.textContent).toMatch(/No space left on device/);
+      expect(alert.textContent).toMatch(/ados status/);
+      expect(alert.textContent).not.toMatch(/\b5\d\d\b/);
+    });
   });
 
   it("Cancel button fires onCancel", () => {
