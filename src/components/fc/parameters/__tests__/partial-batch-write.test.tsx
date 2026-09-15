@@ -12,6 +12,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import type { CommandResult, ParameterValue } from "@/lib/protocol/types";
+import { useDroneStore } from "@/stores/drone-store";
+import { useArmedConfirmStore } from "@/stores/armed-confirm-store";
+import { useParamSafetyStore } from "@/stores/param-safety-store";
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
@@ -59,16 +62,24 @@ vi.mock("../ParameterGrid", () => ({
 vi.mock("../ParameterSearchFilter", () => ({
   ParameterSearchFilter: ({
     onSave,
-    error,
+    onResetDefaults,
+    resetBlocked,
   }: {
     onSave: () => void;
-    error: string | null;
+    onResetDefaults: () => void;
+    resetBlocked?: boolean;
   }) => (
     <div>
       <button data-testid="save" onClick={onSave}>
         save
       </button>
-      <div data-testid="error">{error ?? ""}</div>
+      <button
+        data-testid="reset"
+        disabled={resetBlocked === true}
+        onClick={onResetDefaults}
+      >
+        reset
+      </button>
     </div>
   ),
 }));
@@ -133,7 +144,17 @@ const protocol = {
 
 const droneState = {
   selectedDroneId: "d1",
-  drones: new Map([[String("d1"), { protocol, vehicleInfo: null }]]),
+  drones: new Map([
+    [
+      String("d1"),
+      {
+        protocol,
+        vehicleInfo: null,
+        // The control-authority hook classifies the lane from this.
+        transport: { type: "serial", canCommand: true },
+      },
+    ],
+  ]),
   getSelectedProtocol: () => protocol,
   getSelectedDrone: () => ({ protocol, vehicleInfo: null }),
 };
@@ -179,6 +200,9 @@ async function save() {
 
 beforeEach(() => {
   invalidateParamCache();
+  useDroneStore.setState({ armState: "disarmed", connectionState: "connected" });
+  useArmedConfirmStore.setState({ open: false, context: null, _resolve: null });
+  useParamSafetyStore.getState().clear();
   toast.mockClear();
   written.length = 0;
   refuse = new Set();
@@ -210,9 +234,11 @@ describe("ParametersPanel batch write outcome", () => {
       ["ATC_RAT_PIT_P", 11],
       ["ATC_RAT_RLL_P", 12],
     ]);
-    expect(screen.getByTestId("error").textContent).toBe(
-      "Failed to write 1 of 3 param(s): WPNAV_SPEED: timeout",
-    );
+    // The failure is reported by the shared PanelHeader, the same surface every
+    // FC panel reports its errors on.
+    expect(
+      screen.getByTitle("Failed to write 1 of 3 param(s): WPNAV_SPEED: timeout"),
+    ).toBeTruthy();
     expect(toast).toHaveBeenCalledWith(
       "Wrote 2/3 parameter(s) to FC; flash commit sent (unacknowledged)",
       "info",
@@ -267,5 +293,94 @@ describe("ParametersPanel batch write outcome", () => {
     expect(screen.getByTestId("pending").textContent).toBe(
       "ATC_RAT_PIT_P=11,ATC_RAT_RLL_P=12,WPNAV_SPEED=510",
     );
+  });
+});
+
+describe("ParametersPanel FC panel write conventions", () => {
+  it("asks for confirmation before writing to an armed vehicle, and honours a cancel", async () => {
+    useDroneStore.setState({ armState: "armed", connectionState: "armed" });
+    await renderWithEdits();
+    await save();
+
+    // The shared armed-confirm dialog is open and names this panel's batch.
+    await waitFor(() =>
+      expect(useArmedConfirmStore.getState().open).toBe(true),
+    );
+    expect(useArmedConfirmStore.getState().context).toEqual({
+      panelId: "parameters",
+      paramNames: ["ATC_RAT_PIT_P", "ATC_RAT_RLL_P", "WPNAV_SPEED"],
+    });
+    // Nothing has been written while the operator is being asked.
+    expect(written).toEqual([]);
+
+    useArmedConfirmStore.getState().cancel();
+    await waitFor(() =>
+      expect(useArmedConfirmStore.getState().open).toBe(false),
+    );
+    expect(written).toEqual([]);
+    // The edits survive the cancel: nothing was silently discarded.
+    expect(screen.getByTestId("pending").textContent).toBe(
+      "ATC_RAT_PIT_P=11,ATC_RAT_RLL_P=12,WPNAV_SPEED=510",
+    );
+  });
+
+  it("writes after the operator confirms an armed write", async () => {
+    useDroneStore.setState({ armState: "armed", connectionState: "armed" });
+    await renderWithEdits();
+    await save();
+
+    await waitFor(() =>
+      expect(useArmedConfirmStore.getState().open).toBe(true),
+    );
+    useArmedConfirmStore.getState().confirm();
+
+    await waitFor(() => expect(written).toHaveLength(3));
+  });
+
+  it("does not interrupt a disarmed write", async () => {
+    await renderWithEdits();
+    await save();
+
+    await waitFor(() => expect(written).toHaveLength(3));
+    expect(useArmedConfirmStore.getState().open).toBe(false);
+  });
+
+  it("records each landed write as pending until a flash commit clears it", async () => {
+    // The grid's own pending highlight and the reboot banner read this store;
+    // this panel used to write nothing to it, so its feedback was the exact
+    // opposite of the identical write from a curated FC panel.
+    flashResult = { success: false, resultCode: -1, message: "Not connected" };
+    await renderWithEdits();
+    await save();
+
+    await waitFor(() => expect(written).toHaveLength(3));
+    const pending = useParamSafetyStore.getState().pendingWrites;
+    expect([...pending.keys()].sort()).toEqual([
+      "ATC_RAT_PIT_P",
+      "ATC_RAT_RLL_P",
+      "WPNAV_SPEED",
+    ]);
+    expect(pending.get("ATC_RAT_PIT_P")).toMatchObject({
+      panel: "parameters",
+      oldValue: 1,
+      newValue: 11,
+    });
+  });
+
+  it("blocks a factory reset of every parameter while the vehicle is armed", async () => {
+    useDroneStore.setState({ armState: "armed", connectionState: "armed" });
+    await renderWithEdits();
+    expect(
+      (screen.getByTestId("reset") as HTMLButtonElement).disabled,
+    ).toBe(true);
+  });
+
+  it("guards navigation away from unsaved edits", async () => {
+    const added = vi.spyOn(window, "addEventListener");
+    await renderWithEdits();
+    expect(
+      added.mock.calls.some(([type]) => type === "beforeunload"),
+    ).toBe(true);
+    added.mockRestore();
   });
 });

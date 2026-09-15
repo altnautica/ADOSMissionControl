@@ -58,9 +58,13 @@ export function PanelHeader({
           </div>
         )}
 
-        {/* Inline error badge */}
+        {/* Truncated to keep the header one line; `title` carries the whole
+            message, which matters for a batch write that names every failure. */}
         {error && !loading && (
-          <div className="flex items-center gap-1.5 px-2 py-1 bg-status-error/10 border border-status-error/20">
+          <div
+            className="flex items-center gap-1.5 px-2 py-1 bg-status-error/10 border border-status-error/20"
+            title={error}
+          >
             <AlertCircle size={10} className="text-status-error shrink-0" />
             <span className="text-[10px] text-status-error max-w-[200px] truncate">{error}</span>
           </div>

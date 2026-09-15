@@ -1,7 +1,16 @@
 "use client";
 
+/**
+ * Search, filters and the change/file actions for the raw parameter grid.
+ *
+ * The panel title, the read/refresh action and the error state live in the
+ * shared `PanelHeader` above this bar, as they do on every FC panel — this file
+ * used to render its own copy of all three.
+ *
+ * @license GPL-3.0-only
+ */
+
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { ColumnVisibilityToggle } from "../shared/ColumnVisibilityToggle";
 import { cn } from "@/lib/utils";
 import {
@@ -12,7 +21,6 @@ import {
   RotateCcw,
   RotateCw,
   RefreshCw,
-  AlertTriangle,
   Filter,
   Star,
   Zap,
@@ -33,16 +41,20 @@ interface ParameterSearchFilterProps {
   saving: boolean;
   progress: { current: number; total: number };
   writeProgress: { current: number; total: number };
-  error: string | null;
-  onDismissError: () => void;
   onExport: () => void;
   onExportQgc?: () => void;
   onCompare: () => void;
   onDefaultsDiff: () => void;
   onRevert: () => void;
   onResetDefaults: () => void;
+  /**
+   * True while a factory reset of every parameter is unsafe (armed + connected).
+   * The individual writes stay available behind the armed confirmation; wiping
+   * the whole parameter set in flight does not.
+   */
+  resetBlocked?: boolean;
+  resetBlockedReason?: string;
   onSave: () => void;
-  onRefresh: () => void;
 }
 
 export function ParameterSearchFilter({
@@ -60,16 +72,15 @@ export function ParameterSearchFilter({
   saving,
   progress,
   writeProgress,
-  error,
-  onDismissError,
   onExport,
   onExportQgc,
   onCompare,
   onDefaultsDiff,
   onRevert,
   onResetDefaults,
+  resetBlocked,
+  resetBlockedReason,
   onSave,
-  onRefresh,
 }: ParameterSearchFilterProps) {
   // Clamped defensively: current is meant to never exceed total (both sides
   // dedupe by parameter index), but a status surface must never display an
@@ -84,18 +95,6 @@ export function ParameterSearchFilter({
   return (
     <>
       <div className="flex-shrink-0 border-b border-border-default bg-bg-secondary px-4 py-3">
-        <div className="flex items-center gap-3 mb-3">
-          <h1 className="text-sm font-display font-semibold text-text-primary">
-            FC Parameters
-          </h1>
-          {paramCount > 0 && (
-            <Badge variant="info" size="sm">{paramCount} params</Badge>
-          )}
-          {modifiedCount > 0 && (
-            <Badge variant="warning" size="sm">{modifiedCount} changed</Badge>
-          )}
-        </div>
-
         <div className="flex items-center gap-2 flex-wrap">
           {/* Search */}
           <div className="relative flex-1 max-w-sm">
@@ -168,15 +167,23 @@ export function ParameterSearchFilter({
 
           {/* Changes */}
           <Button variant="ghost" size="sm" icon={<RotateCcw size={12} />} onClick={onRevert} disabled={modifiedCount === 0} title="Discard all unsaved changes (does not affect FC)">Revert</Button>
-          <Button variant="ghost" size="sm" icon={<RotateCw size={12} />} onClick={onResetDefaults} disabled={paramCount === 0 || saving} title="Reset ALL FC parameters to firmware factory defaults">Reset to Default</Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={<RotateCw size={12} />}
+            onClick={onResetDefaults}
+            disabled={paramCount === 0 || saving || resetBlocked === true}
+            title={
+              resetBlocked === true && resetBlockedReason
+                ? resetBlockedReason
+                : "Reset ALL FC parameters to firmware factory defaults"
+            }
+          >
+            Reset to Default
+          </Button>
           <Button variant="primary" size="sm" icon={<PenLine size={12} />} onClick={onSave} disabled={modifiedCount === 0} loading={saving} title="Send changed parameters to the flight controller">
             {saving ? `Writing ${writeProgress.current}/${writeProgress.total}...` : `Write to FC (${modifiedCount})`}
           </Button>
-
-          <div className="w-px h-5 bg-border-default" />
-
-          {/* Sync */}
-          <Button variant="secondary" size="sm" icon={<RefreshCw size={12} />} onClick={onRefresh} disabled={loading} loading={loading} title="Re-download all parameters from FC">Refresh</Button>
         </div>
       </div>
 
@@ -203,14 +210,6 @@ export function ParameterSearchFilter({
             </div>
             <span className="text-xs text-text-tertiary font-mono">{Math.round((writeProgress.current / writeProgress.total) * 100)}%</span>
           </div>
-        </div>
-      )}
-
-      {error && (
-        <div className="flex-shrink-0 px-4 py-2 bg-status-error/10 border-b border-status-error/30 flex items-center gap-2">
-          <AlertTriangle size={14} className="text-status-error flex-shrink-0" />
-          <span className="text-xs text-status-error">{error}</span>
-          <button onClick={onDismissError} className="ml-auto text-xs text-status-error hover:text-status-error/80 cursor-pointer">Dismiss</button>
         </div>
       )}
     </>

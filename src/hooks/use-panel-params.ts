@@ -1,11 +1,10 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useDroneManager } from "@/stores/drone-manager";
-import { useDroneStore } from "@/stores/drone-store";
 import { useParamSafetyStore } from "@/stores/param-safety-store";
 import { usePanelCacheStore } from "@/stores/panel-cache-store";
 import { useFcPanelActionsStore } from "@/stores/fc-panel-actions-store";
 import { useDiagnosticsStore } from "@/stores/diagnostics-store";
-import { useArmedConfirmStore } from "@/stores/armed-confirm-store";
+import { confirmArmedParamWrite, writeParamToFc } from "@/lib/protocol/param-write";
 import { cachePanelToIDB, getCachedPanelFromIDB } from "@/lib/param-cache-idb";
 import type { PanelParamOptions, PanelParamState, PanelParamActions, UndoEntry } from "./use-panel-params-types";
 import { MAX_UNDO_STACK, RETRY_DELAYS, DEFAULT_BATCH_SIZE, EMPTY_ARRAY } from "./use-panel-params-types";
@@ -34,8 +33,6 @@ export function usePanelParams(
   const abortedRef = useRef(false);
 
   const getProtocol = useDroneManager((s) => s.getSelectedProtocol);
-  const trackWrite = useParamSafetyStore((s) => s.trackWrite);
-  const trackRebootParam = useParamSafetyStore((s) => s.trackRebootParam);
   const commitFlashStore = useParamSafetyStore((s) => s.commitFlash);
   const markPanelLoaded = useParamSafetyStore((s) => s.markPanelLoaded);
   const cachePanel = usePanelCacheStore((s) => s.cachePanel);
@@ -197,17 +194,19 @@ export function usePanelParams(
       return false;
     }
     try {
-      const oldValue = originalValues.current.get(name) ?? 0;
       onEvent?.({ type: "write", message: `Saving ${name} = ${value} to RAM...` });
-      const result = await protocol.setParameter(name, value);
+      const result = await writeParamToFc({
+        writer: protocol,
+        name,
+        value,
+        oldValue: originalValues.current.get(name) ?? 0,
+        panelId,
+        rebootRequired: externalMetadata?.get(name)?.rebootRequired,
+      });
       if (result.success) {
-        trackWrite(name, oldValue, value, panelId);
-        const meta = externalMetadata?.get(name);
-        if (meta?.rebootRequired) trackRebootParam(name);
         setDirtyParams((prev) => { const next = new Set(prev); next.delete(name); return next; });
         originalValues.current.set(name, value);
         setHasRamWrites(true);
-        useDiagnosticsStore.getState().logEvent("param_write", name + " = " + value);
         onEvent?.({ type: "write", message: `Saved ${name} = ${value} to RAM` });
         return true;
       }
@@ -217,29 +216,21 @@ export function usePanelParams(
       onEvent?.({ type: "error", message: `Error saving ${name}` });
       return false;
     }
-  }, [getProtocol, panelId, trackWrite, trackRebootParam, externalMetadata, onEvent]);
+  }, [getProtocol, panelId, externalMetadata, onEvent]);
 
   const saveAllToRam = useCallback(async (): Promise<boolean> => {
-    // Armed-write guard. When the vehicle is armed, pop a confirm dialog
-    // listing the pending parameter writes. User must explicitly opt in.
-    // See `use-armed-lock.ts` and `armed-confirm-store.ts` for the pattern.
-    if (dirtyParams.size > 0) {
-      const armState = useDroneStore.getState().armState;
-      const connectionState = useDroneStore.getState().connectionState;
-      const isArmed =
-        armState === "armed" && connectionState !== "disconnected";
-      if (isArmed) {
-        const confirmed = await useArmedConfirmStore
-          .getState()
-          .requestConfirm({ panelId, paramNames: Array.from(dirtyParams) });
-        if (!confirmed) {
-          onEvent?.({
-            type: "info",
-            message: "Save cancelled — vehicle is armed",
-          });
-          return false;
-        }
-      }
+    // Armed-write guard, shared with the raw Parameters grid so both surfaces
+    // ask the same question in the same words.
+    const confirmed = await confirmArmedParamWrite(
+      panelId,
+      Array.from(dirtyParams),
+    );
+    if (!confirmed) {
+      onEvent?.({
+        type: "info",
+        message: "Save cancelled — vehicle is armed",
+      });
+      return false;
     }
 
     let allOk = true;

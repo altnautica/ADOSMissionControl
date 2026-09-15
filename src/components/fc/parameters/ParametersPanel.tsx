@@ -1,8 +1,22 @@
 "use client";
 
+/**
+ * The raw parameter grid: every parameter on the vehicle, uncurated.
+ *
+ * It writes through the same contract as the curated FC panels — the armed
+ * confirmation, the unsaved-change guard, the pending-write/reboot records, and
+ * the shared panel header — rather than its own weaker one. It keeps its own
+ * loader because it downloads the whole parameter set in one streamed pass,
+ * which is a different job from `usePanelParams`' fixed named list.
+ *
+ * @module fc/parameters/ParametersPanel
+ * @license GPL-3.0-only
+ */
+
 import { useTranslations } from "next-intl";
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Modal } from "@/components/ui/modal";
 import { ParameterGrid } from "./ParameterGrid";
@@ -17,10 +31,24 @@ import { useSettingsStore } from "@/stores/settings-store";
 import { useUiStore } from "@/stores/ui-store";
 import { loadParamMetadata, type ParamMetadata } from "@/lib/protocol/param-metadata";
 import { resolveParamDocContext, type ParamDocContext } from "@/lib/protocol/param-docs";
+import { useArmedLock } from "@/hooks/use-armed-lock";
+import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
+import { useMqttControlAuthority } from "@/hooks/use-mqtt-control-authority";
+import { useControlAuthorityNotice } from "@/hooks/use-node-control-authority";
+import { PanelHeader } from "../shared/PanelHeader";
+import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
+import { confirmArmedParamWrite, writeParamToFc } from "@/lib/protocol/param-write";
+import { useParamSafetyStore } from "@/stores/param-safety-store";
 import { cn } from "@/lib/utils";
-import { RefreshCw, ListTree } from "lucide-react";
+import { ListTree, RefreshCw, SlidersHorizontal } from "lucide-react";
 import type { ParameterValue, DroneProtocol, CommandResult } from "@/lib/protocol/types";
 import { exportParamFile } from "./param-file-io";
+
+/**
+ * Panel id every write from this surface is attributed to, in the armed-confirm
+ * dialog and the pending-write records. The FC panels use their own ids.
+ */
+const PANEL_ID = "parameters";
 
 /** Module-level cache — survives unmount/remount, avoids full re-download on navigation. */
 let cachedParamList: ParameterValue[] | null = null;
@@ -91,6 +119,18 @@ export function ParametersPanel() {
     if (!id) return null;
     return s.drones.get(id)?.protocol ?? null;
   });
+
+  // The four FC panel conventions. `useArmedLock` gates the one control here
+  // that is genuinely unsafe in flight (a full factory reset of every
+  // parameter); individual writes stay allowed behind the armed confirmation,
+  // exactly as in every other panel. `PanelHeader` and the shared write path
+  // are used below.
+  const { isHardBlocked, hardBlockMessage } = useArmedLock();
+  useUnsavedGuard(modified.size > 0);
+  // On a cloud relay with no write grant, a parameter write is published into a
+  // broker that discards it and nothing fails. The panel says so before the
+  // operator stages forty edits.
+  const authority = useControlAuthorityNotice(useMqttControlAuthority());
   const prevProtocolRef = useRef<DroneProtocol | null>(null);
 
   const docContext = useMemo((): ParamDocContext | null => {
@@ -216,6 +256,16 @@ export function ParametersPanel() {
     setShowWriteConfirm(false);
     const protocol = useDroneManager.getState().getSelectedProtocol();
     if (!protocol || modified.size === 0) return;
+
+    const entries = Array.from(modified.entries());
+    // Armed-write guard, the same one every FC panel pops: an armed vehicle
+    // gets an explicit confirmation naming the parameters about to change.
+    const confirmed = await confirmArmedParamWrite(
+      PANEL_ID,
+      entries.map(([name]) => name),
+    );
+    if (!confirmed) return;
+
     setSaving(true); setError(null);
     const failures: string[] = [];
     // Which names the FC actually acknowledged. A lossy link makes a batch
@@ -225,14 +275,24 @@ export function ParametersPanel() {
     // modified with their old values, so Save re-wrote what had already landed
     // and Revert silently discarded the record that the vehicle had changed.
     const written = new Set<string>();
-    const entries = Array.from(modified.entries());
     setWriteProgress({ current: 0, total: entries.length });
     for (let i = 0; i < entries.length; i++) {
       const [name, value] = entries[i];
       setWriteProgress({ current: i + 1, total: entries.length });
       const param = paramsByName.get(name);
       try {
-        const result = await protocol.setParameter(name, value, param?.type);
+        // Shared write path: records the pending write and the reboot
+        // requirement, so this grid's own highlights and the reboot banner
+        // light exactly as they do for the identical write from an FC panel.
+        const result = await writeParamToFc({
+          writer: protocol,
+          name,
+          value,
+          type: param?.type,
+          oldValue: param?.value ?? 0,
+          panelId: PANEL_ID,
+          rebootRequired: metadata.get(name)?.rebootRequired,
+        });
         if (result.success) written.add(name);
         else failures.push(`${name}: ${result.message}`);
       } catch { failures.push(`${name}: write failed`); }
@@ -267,10 +327,16 @@ export function ParametersPanel() {
       let flash: CommandResult | null = null;
       try { flash = await protocol.commitParamsToFlash(); }
       catch { flash = null; }
+      const flashOk = flash !== null && flash.success;
+      // Same bookkeeping usePanelParams does: the pending-write records clear
+      // only when a commit actually went out. A failed commit leaves the values
+      // RAM-only on the vehicle, which is precisely what "pending" means, so
+      // the grid's highlight has to stay lit.
+      if (flashOk) useParamSafetyStore.getState().commitFlash(true);
       const wrote = `Wrote ${written.size}/${entries.length} parameter(s) to FC`;
-      if (!flash || !flash.success) {
+      if (!flashOk) {
         toast(`${wrote} — flash commit FAILED, changes are RAM-only`, "error");
-      } else if (flash.acknowledged === false) {
+      } else if (flash?.acknowledged === false) {
         toast(`${wrote}; flash commit sent (unacknowledged)`, "info");
       } else {
         toast(`${wrote} and saved to flash`, "success");
@@ -344,18 +410,49 @@ export function ParametersPanel() {
   }, [parameters, modified]);
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden">
+    <ArmedLockOverlay className="h-full overflow-hidden">
+      <div className="flex-shrink-0 border-b border-border-default bg-bg-secondary px-4 py-3">
+        <PanelHeader
+          title={t("title")}
+          icon={<SlidersHorizontal size={16} />}
+          loading={loading}
+          loadProgress={
+            progress.total > 0
+              ? { loaded: progress.current, total: progress.total }
+              : null
+          }
+          hasLoaded={parameters.length > 0}
+          onRead={downloadParams}
+          connected={selectedProtocol !== null}
+          error={error}
+        >
+          {parameters.length > 0 && (
+            <Badge variant="info" size="sm">{t("totalParams", { count: parameters.length })}</Badge>
+          )}
+          {modified.size > 0 && (
+            <Badge variant="warning" size="sm">{t("modifiedCount", { count: modified.size })}</Badge>
+          )}
+        </PanelHeader>
+        {/* A write that cannot leave this browser must be said before the
+            operator stages a batch, not after it silently lands nowhere. */}
+        {authority.show && (
+          <p role="alert" className="mt-2 text-[11px] leading-snug text-status-warning">
+            {authority.detail}
+          </p>
+        )}
+      </div>
+
       <ParameterSearchFilter filter={filter} onFilterChange={setFilter}
         showModifiedOnly={showModifiedOnly} onToggleModified={() => setShowModifiedOnly(!showModifiedOnly)}
         showNonDefault={showNonDefault} onToggleNonDefault={() => setShowNonDefault(!showNonDefault)}
         showFavorites={showFavorites} onToggleFavorites={() => setShowFavorites(!showFavorites)}
         paramCount={parameters.length} modifiedCount={modified.size}
         loading={loading} saving={saving} progress={progress} writeProgress={writeProgress}
-        error={error} onDismissError={() => setError(null)}
         onExport={handleExport} onExportQgc={handleExportQgc} onCompare={() => setShowCompare(true)}
         onDefaultsDiff={() => setShowDefaultsDiff(true)}
         onRevert={handleRevert} onResetDefaults={() => setShowResetConfirm(true)}
-        onSave={handleSave} onRefresh={downloadParams} />
+        resetBlocked={isHardBlocked} resetBlockedReason={hardBlockMessage}
+        onSave={handleSave} />
 
       <div className="flex-1 flex min-h-0 overflow-hidden">
         {!loading && parameters.length === 0 ? (
@@ -414,6 +511,6 @@ export function ParametersPanel() {
         onConfirm={handleReboot}
         title={t("rebootTitle")} message={t("rebootMessage")}
         confirmLabel={t("rebootConfirmLabel")} variant="primary" />
-    </div>
+    </ArmedLockOverlay>
   );
 }
