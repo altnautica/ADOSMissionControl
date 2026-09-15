@@ -5,6 +5,16 @@ node_modules
 npm-debug.log
 .env
 .env*.local
+# Docker ignore patterns are rooted, so the two lines above match only /.env
+# and /.env*.local. The self-host deployer writes a Convex admin key and
+# instance secret to tools/selfhost/.env, which `COPY . .` would otherwise put
+# straight into the build context and the builder layer.
+**/.env
+**/.env.*
+!**/.env.example
+tools/selfhost/passwd
+tools/selfhost/.deploy-state
+tools/selfhost/docker-compose.override.yml
 .dockerignore
 Dockerfile
 .vscode
