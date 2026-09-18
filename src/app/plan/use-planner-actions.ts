@@ -19,7 +19,8 @@ import { useRallyStore } from "@/stores/rally-store";
 import { recordHistory } from "@/lib/planner-history";
 import { clampLat, clampLon, clampAlt } from "./use-planner-state";
 import type { ContextMenuState } from "./use-planner-state";
-import type { Waypoint } from "@/lib/types";
+import type { MissionAction, Waypoint } from "@/lib/types";
+import { isActionCommand } from "@/lib/mission/command-classes";
 import type { DrawnPolygon, DrawnCircle } from "@/lib/drawing/types";
 import type { DrawingFor } from "@/lib/planner-mode";
 import { datumPatternFor } from "@/lib/planner-mode";
@@ -438,16 +439,52 @@ export function usePlannerActions(deps: ActionsDeps) {
     const result = patternStore.patternResult;
     if (!result || result.waypoints.length === 0) { toast("No pattern generated yet", "info"); return; }
     if (!activePlanId) { toast("Create or select a flight plan first", "info"); return; }
-    const newWaypoints: Waypoint[] = result.waypoints.map((pw) => ({
-      id: randomId(), lat: pw.lat, lon: pw.lon, alt: pw.alt, speed: pw.speed,
-      command: (pw.command ?? "WAYPOINT") as Waypoint["command"], param1: pw.param1, param2: pw.param2,
-    }));
+
+    // Generated rows are a FLAT list that mixes NAV waypoints with action
+    // commands (`ROI`, `DO_SET_CAM_TRIGG` from orbit / structure-scan /
+    // camera-survey). Those were emitted as top-level `Waypoint`s, which is a
+    // shape the model does not allow: `expandToItems` skips a non-NAV
+    // top-level row so the camera trigger never reached the aircraft, and the
+    // flat-file exporters wrote its params into the wrong MAVLink slots. Fold
+    // each action onto the NAV waypoint it follows, which is exactly where the
+    // wire sequences it.
+    //
+    // Every generated waypoint also carries the mission's default frame
+    // EXPLICITLY, so a pattern flown at a `terrain` default cannot be
+    // re-interpreted as above-home by an export or a re-import.
+    const defaultFrame = usePlannerStore.getState().defaultFrame;
+    const newWaypoints: Waypoint[] = [];
+    for (const pw of result.waypoints) {
+      const command = (pw.command ?? "WAYPOINT") as Waypoint["command"];
+      if (isActionCommand(command) && newWaypoints.length > 0) {
+        const parent = newWaypoints[newWaypoints.length - 1];
+        const action: MissionAction = {
+          id: randomId(),
+          command: command as MissionAction["command"],
+          param1: pw.param1,
+          param2: pw.param2,
+          // Position-bearing actions (ROI, DO_SET_HOME) keep their coordinates;
+          // the rest encode x=y=z=0 downstream.
+          lat: pw.lat,
+          lon: pw.lon,
+          alt: pw.alt,
+        };
+        parent.actions = [...(parent.actions ?? []), action];
+        continue;
+      }
+      newWaypoints.push({
+        id: randomId(), lat: pw.lat, lon: pw.lon, alt: pw.alt, speed: pw.speed,
+        command, param1: pw.param1, param2: pw.param2, frame: defaultFrame,
+      });
+    }
+    if (newWaypoints.length === 0) { toast("Pattern produced no navigation waypoints", "warning"); return; }
+
     const firstCmd = newWaypoints[0]?.command;
     if (firstCmd !== "TAKEOFF") {
-      newWaypoints.unshift({ id: randomId(), lat: newWaypoints[0].lat, lon: newWaypoints[0].lon, alt: newWaypoints[0].alt, command: "TAKEOFF" });
+      newWaypoints.unshift({ id: randomId(), lat: newWaypoints[0].lat, lon: newWaypoints[0].lon, alt: newWaypoints[0].alt, command: "TAKEOFF", frame: defaultFrame });
     }
     const lastWp = newWaypoints[newWaypoints.length - 1];
-    newWaypoints.push({ id: randomId(), lat: lastWp.lat, lon: lastWp.lon, alt: 0, command: "RTL" });
+    newWaypoints.push({ id: randomId(), lat: lastWp.lat, lon: lastWp.lon, alt: 0, command: "RTL", frame: defaultFrame });
     setWaypoints(newWaypoints);
     // Sample terrain under every generated waypoint. Without this a
     // pattern-generated mission carried no `groundElevation` at all, so the

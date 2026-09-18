@@ -25,6 +25,7 @@ import {
   exportMissionCSV,
   exportMissionKMZ,
   downloadMissionFile,
+  currentExportOptions,
 } from "@/lib/mission-io";
 import type { Waypoint } from "@/lib/types";
 
@@ -201,12 +202,12 @@ export function usePlannerIO(deps: IODeps) {
   }, [waypoints, missionName, selectedDroneId, toast]);
 
   const handleExportWaypoints = useCallback(() => {
-    exportWaypointsFormat(waypoints, missionName || "mission");
+    exportWaypointsFormat(waypoints, missionName || "mission", currentExportOptions());
     toast("Exported (.waypoints)", "success");
   }, [waypoints, missionName, toast]);
 
   const handleExportPlan = useCallback(() => {
-    exportQGCPlan(waypoints, missionName || "mission", undefined, capturePlanExtras());
+    exportQGCPlan(waypoints, missionName || "mission", undefined, capturePlanExtras(), currentExportOptions());
     toast("Exported (.plan)", "success");
   }, [waypoints, missionName, toast]);
 
@@ -265,6 +266,15 @@ export function usePlannerIO(deps: IODeps) {
   // ── Download from drone ───────────────────────────────────
   const executeDownloadFromDrone = useCallback(async () => {
     const downloaded = await downloadMission();
+    // A truncated or stalled transfer rejects inside the adapter and the
+    // store catches it into `downloadState: "error"` with an empty list. That
+    // is NOT "no mission on the drone" — saying so would tell the operator the
+    // aircraft is empty when the download simply failed, and previously the
+    // short list was loaded as if it were the mission.
+    if (useMissionStore.getState().downloadState === "error") {
+      toast("Mission download failed — nothing was loaded", "error");
+      return;
+    }
     if (downloaded.length === 0) { toast("No mission found on drone", "info"); return; }
     const time = new Date().toLocaleTimeString("en-US", { hour12: false });
     const name = `Drone Mission (${time})`;

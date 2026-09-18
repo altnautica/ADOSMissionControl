@@ -55,7 +55,8 @@ export type AgentRole = "direct" | "relay" | "receiver" | "unset" | null;
 export type WfbFailoverState = "local" | "cloud_relay" | "failed";
 
 export interface AgentCapabilitiesState {
-  tier: number;
+  /** Board tier, or undefined when nothing reported one. Never 0-as-unknown. */
+  tier?: number;
   cameras: CameraCapability[];
   /** Addressable per-leg video streams a multi-stream node serves (host-resolved
    * WHEP URLs), for the cockpit stream switcher. Empty on a single-stream node. */

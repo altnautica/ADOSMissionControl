@@ -56,7 +56,11 @@ function sourceFiles(dir: string): string[] {
  * nested inside a ternary two lines down still counts, and a `"skip"` belonging
  * to the NEXT call does not.
  */
-function useQueryCalls(source: string): string[] {
+// NOT named `useQueryCalls`: a plain function whose name starts with `use`
+// is treated as a React hook by `react-hooks/rules-of-hooks`, and calling
+// it inside the loops below was reported as a conditional hook call. This
+// is a static-analysis helper over file text, not a hook.
+function findUseQueryCalls(source: string): string[] {
   const calls: string[] = [];
   const re = /\buseQuery\s*\(/g;
   for (const match of source.matchAll(re)) {
@@ -118,7 +122,7 @@ describe("Convex useQuery call sites", () => {
 
   it("finds the call sites it is meant to police", () => {
     const withCalls = files.filter((f) =>
-      useQueryCalls(readFileSync(f, "utf8")).length > 0,
+      findUseQueryCalls(readFileSync(f, "utf8")).length > 0,
     );
     expect(withCalls.length).toBeGreaterThan(0);
   });
@@ -131,7 +135,7 @@ describe("Convex useQuery call sites", () => {
       const source = readFileSync(file, "utf8");
       // A file that only routes through the wrapper never matches `useQuery(`
       // at all; the scan below is for files importing it from convex/react.
-      for (const call of useQueryCalls(source)) {
+      for (const call of findUseQueryCalls(source)) {
         if (hasReachableSkip(call, source)) continue;
         offenders.push(`${rel}: useQuery${call.split("\n")[0]}…`);
       }
@@ -150,7 +154,7 @@ describe("Convex useQuery call sites", () => {
       if (!/import\s*\{[^}]*\buseQuery\b[^}]*\}\s*from\s*["']convex\/react["']/.test(source)) {
         continue;
       }
-      const calls = useQueryCalls(source);
+      const calls = findUseQueryCalls(source);
       if (calls.length === 0) {
         offenders.push(`${rel}: imports useQuery from convex/react but never calls it`);
       }

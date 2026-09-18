@@ -26,7 +26,13 @@ export const INAV_MSP = {
   // Retained as a legacy alias so existing callers are not broken; treat with caution.
   // See decodeMspINavNavConfigLegacy below.
   MSP2_INAV_NAV_CONFIG_LEGACY: 0x2100,
-  MSP_NAV_STATUS: 0x2101,
+  /**
+   * MSPv1 `MSP_NAV_STATUS`, command 121. It was declared here as `0x2101`,
+   * which is an MSP2 id (and the one that collides with
+   * MSP2_INAV_CUSTOM_OSD_ELEMENTS) — nothing polled it, so nav state was
+   * being invented from the wrong offsets of MSP2_INAV_STATUS instead.
+   */
+  MSP_NAV_STATUS: 121,
   MSP_WP: 118,
   MSP_SET_WP: 209,
 

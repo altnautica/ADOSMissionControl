@@ -2,31 +2,52 @@
  * @module param-getset
  * @description Codec for `uavcan.protocol.param.GetSet` (service type id 11).
  *
- * Request layout:
- *   uint13 index       (zero-extended to two bytes, little-endian)
- *   Value  value       (tagged union, see ValueTag)
- *   uint8[<=92] name   (tail-array, no length prefix when last)
+ * This is a BIT-PACKED structure, not a byte-aligned one, and it was previously
+ * encoded and decoded one byte off:
  *
- * Response layout (same shape, four Value fields then name):
- *   Value  value
- *   Value  default_value
- *   NumericValue max_value
- *   NumericValue min_value
- *   uint8[<=92] name   (tail-array)
+ *  - The request's `index` is `uint13`, not `uint16`, and the `Value` union tag
+ *    is **3 bits**, not a whole byte. 13 + 3 = 16, so the union payload starts
+ *    at byte 2 — but only if the tag occupies the top three bits of byte 1.
+ *    Writing the index as a full 16 bits and the tag as a byte at offset 2 made
+ *    a receiver read `tag = (byte1 >> 5) & 7 = 0` (Empty) and take the rest as
+ *    the TAO `name` tail-array, so `paramGet(node, i)` sent a non-empty name
+ *    `"\0"` — and DSDL says name is "always preferred over index if nonempty",
+ *    so the node answered with an empty response for every index.
+ *  - `max_value` and `min_value` are `NumericValue`, a THREE-member union whose
+ *    tag is **2 bits**. Decoding them with the 3-bit `Value` tag (previously a
+ *    whole byte) desynchronises the rest of the response.
  *
- * Value tagged union (1-byte tag + payload):
- *   0 Empty
- *   1 Integer  int64  (8 bytes little-endian)
- *   2 Real     float32
- *   3 Boolean  uint8
- *   4 String   uint8[<=128]  (tail-array within Value)
+ * Request layout (bit stream, LSB-first within each byte per DroneCAN):
+ *   uint13         index
+ *   Value          value        (3-bit tag + payload)
+ *   uint8[<=92]    name         (tail-array, no length prefix — last field)
  *
- * Implementation note: this codec covers the common index-walk usage pattern.
- * Tail-array string fields are encoded without an explicit length prefix when
- * they are the last field of the structure, matching DSDL tail array
- * optimisation rules.
+ * Response layout:
+ *   Value          value              (3-bit tag)
+ *   Value          default_value      (3-bit tag)
+ *   NumericValue   max_value          (2-bit tag)
+ *   NumericValue   min_value          (2-bit tag)
+ *   uint8[<=92]    name               (tail-array)
+ *
+ * `Value` union (5 members → 3-bit tag):
+ *   0 Empty      (0 bits)
+ *   1 Integer    int64
+ *   2 Real       float32
+ *   3 Boolean    uint8
+ *   4 String     uint8[<=128]  (tail-array within the enclosing structure)
+ *
+ * `NumericValue` union (3 members → 2-bit tag):
+ *   0 Empty      (0 bits)
+ *   1 Integer    int64
+ *   2 Real       float32
+ *
+ * Bit packing goes through the repo's shared {@link BitWriter}/{@link BitReader},
+ * the same helpers every other bit-packed DSDL codec here uses, so the bit order
+ * convention is stated in exactly one place.
  * @license GPL-3.0-only
  */
+
+import { BitReader, BitWriter } from "../bit-buffer";
 
 export enum ValueTag {
   Empty = 0,
@@ -35,6 +56,19 @@ export enum ValueTag {
   Boolean = 3,
   String = 4,
 }
+
+/** Width of the `Value` union tag: 5 members → ceil(log2(5)) = 3 bits. */
+const VALUE_TAG_BITS = 3;
+
+/**
+ * Width of the `NumericValue` union tag: 3 members → ceil(log2(3)) = 2 bits.
+ * `max_value` and `min_value` are NumericValue, NOT Value.
+ */
+const NUMERIC_VALUE_TAG_BITS = 2;
+
+/** DSDL caps `GetSet.name` at 92 bytes and `Value.string_value` at 128. */
+const NAME_MAX_BYTES = 92;
+const STRING_VALUE_MAX_BYTES = 128;
 
 export type Value =
   | { tag: ValueTag.Empty }
@@ -57,115 +91,123 @@ export interface ParamGetSetResponse {
   name: string;
 }
 
-const VAL_ZERO = BigInt(0);
-const VAL_ONE = BigInt(1);
-const VAL_FF = BigInt(0xff);
-const VAL_EIGHT = BigInt(8);
-const MASK_64 = (VAL_ONE << BigInt(64)) - VAL_ONE;
-const TWO_POW_64 = VAL_ONE << BigInt(64);
-const SIGN_BIT_64 = VAL_ONE << BigInt(63);
-
-function encodeValue(value: Value): Uint8Array {
+/**
+ * Write a union tag plus its payload. `tagBits` selects the union: 3 for
+ * `Value`, 2 for `NumericValue` (which has no Boolean or String member, so
+ * those tags cannot be represented there).
+ */
+function writeValue(w: BitWriter, value: Value, tagBits: number): void {
+  if (
+    tagBits === NUMERIC_VALUE_TAG_BITS &&
+    value.tag !== ValueTag.Empty &&
+    value.tag !== ValueTag.Integer &&
+    value.tag !== ValueTag.Real
+  ) {
+    throw new Error(
+      `NumericValue cannot carry tag ${value.tag}: only Empty, Integer and Real exist`,
+    );
+  }
+  w.write(value.tag, tagBits);
   switch (value.tag) {
     case ValueTag.Empty:
-      return new Uint8Array([ValueTag.Empty]);
-    case ValueTag.Integer: {
-      const out = new Uint8Array(9);
-      out[0] = ValueTag.Integer;
-      const v = value.value;
-      // Convert to signed 64-bit two's complement little-endian.
-      let u = v & MASK_64;
-      if (v < VAL_ZERO) u = (MASK_64 + VAL_ONE + v) & MASK_64;
-      for (let i = 0; i < 8; i++) {
-        out[1 + i] = Number(u & VAL_FF);
-        u >>= VAL_EIGHT;
-      }
-      return out;
-    }
-    case ValueTag.Real: {
-      const out = new Uint8Array(5);
-      out[0] = ValueTag.Real;
-      new DataView(out.buffer).setFloat32(1, value.value, true);
-      return out;
-    }
-    case ValueTag.Boolean: {
-      return new Uint8Array([ValueTag.Boolean, value.value ? 1 : 0]);
-    }
+      return;
+    case ValueTag.Integer:
+      w.writeBig(value.value, 64);
+      return;
+    case ValueTag.Real:
+      w.writeFloat32(value.value);
+      return;
+    case ValueTag.Boolean:
+      w.write(value.value ? 1 : 0, 8);
+      return;
     case ValueTag.String: {
-      const strBytes = new TextEncoder().encode(value.value);
-      if (strBytes.length > 128) {
-        throw new Error("Value.String must be <= 128 bytes");
+      const bytes = new TextEncoder().encode(value.value);
+      if (bytes.length > STRING_VALUE_MAX_BYTES) {
+        throw new Error(
+          `Value.String must be <= ${STRING_VALUE_MAX_BYTES} bytes`,
+        );
       }
-      const out = new Uint8Array(1 + strBytes.length);
-      out[0] = ValueTag.String;
-      out.set(strBytes, 1);
-      return out;
+      // Tail-array optimised: no length prefix, and it consumes the rest of
+      // the structure. Written bit-wise because the stream may be unaligned.
+      for (const b of bytes) w.write(b, 8);
+      return;
     }
   }
 }
 
-function decodeValueAt(
-  buf: Uint8Array,
-  off: number,
-): { value: Value; next: number } {
-  if (off >= buf.length) {
-    return { value: { tag: ValueTag.Empty }, next: off };
-  }
-  const tag = buf[off] as ValueTag;
+/**
+ * Read a union tag plus its payload at the reader's current bit offset.
+ * Returns `null` when the stream has too few bits left for the declared
+ * payload, so a truncated frame is reported rather than silently producing a
+ * zero-filled value.
+ */
+function readValue(r: BitReader, tagBits: number): Value | null {
+  if (r.remaining() < tagBits) return null;
+  const tag = r.read(tagBits) as ValueTag;
   switch (tag) {
     case ValueTag.Empty:
-      return { value: { tag: ValueTag.Empty }, next: off + 1 };
-    case ValueTag.Integer: {
-      let u = VAL_ZERO;
-      for (let i = 0; i < 8; i++) {
-        u |= BigInt(buf[off + 1 + i] ?? 0) << BigInt(i * 8);
-      }
-      const value = (u & SIGN_BIT_64) !== VAL_ZERO ? u - TWO_POW_64 : u;
-      return { value: { tag: ValueTag.Integer, value }, next: off + 9 };
-    }
-    case ValueTag.Real: {
-      const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
-      const v = dv.getFloat32(off + 1, true);
-      return { value: { tag: ValueTag.Real, value: v }, next: off + 5 };
-    }
-    case ValueTag.Boolean: {
-      const v = (buf[off + 1] ?? 0) !== 0;
-      return { value: { tag: ValueTag.Boolean, value: v }, next: off + 2 };
-    }
+      return { tag: ValueTag.Empty };
+    case ValueTag.Integer:
+      if (r.remaining() < 64) return null;
+      return { tag: ValueTag.Integer, value: r.readBig(64, true) };
+    case ValueTag.Real:
+      if (r.remaining() < 32) return null;
+      return { tag: ValueTag.Real, value: r.readFloat32() };
+    case ValueTag.Boolean:
+      if (r.remaining() < 8) return null;
+      return { tag: ValueTag.Boolean, value: r.read(8) !== 0 };
     case ValueTag.String: {
-      const tail = buf.subarray(off + 1);
-      return {
-        value: { tag: ValueTag.String, value: new TextDecoder().decode(tail) },
-        next: buf.length,
-      };
+      // Tail array: consumes every remaining whole byte.
+      return { tag: ValueTag.String, value: readTailString(r) };
     }
     default:
-      return { value: { tag: ValueTag.Empty }, next: off + 1 };
+      // A tag outside the union is a malformed frame, not an Empty value.
+      return null;
   }
+}
+
+/** Read the remaining whole bytes of the stream as a UTF-8 string. */
+function readTailString(r: BitReader): string {
+  const count = Math.floor(r.remaining() / 8);
+  const out = new Uint8Array(count);
+  for (let i = 0; i < count; i++) out[i] = r.read(8);
+  return new TextDecoder().decode(out);
 }
 
 export function encodeParamGetSetRequest(req: ParamGetSetRequest): Uint8Array {
   const nameBytes = new TextEncoder().encode(req.name);
-  if (nameBytes.length > 92) {
-    throw new Error("ParamGetSetRequest.name must be <= 92 bytes");
+  if (nameBytes.length > NAME_MAX_BYTES) {
+    throw new Error(
+      `ParamGetSetRequest.name must be <= ${NAME_MAX_BYTES} bytes`,
+    );
   }
-  const valueBytes = encodeValue(req.value);
-  const out = new Uint8Array(2 + valueBytes.length + nameBytes.length);
-  const idx = req.index & 0x1fff;
-  out[0] = idx & 0xff;
-  out[1] = (idx >> 8) & 0xff;
-  out.set(valueBytes, 2);
-  out.set(nameBytes, 2 + valueBytes.length);
-  return out;
+  if (!Number.isInteger(req.index) || req.index < 0 || req.index > 0x1fff) {
+    throw new RangeError(
+      `ParamGetSetRequest.index must be a uint13 (0..8191), got ${req.index}`,
+    );
+  }
+
+  const w = new BitWriter();
+  w.write(req.index, 13);
+  writeValue(w, req.value, VALUE_TAG_BITS);
+  // 13 + 3 = 16 bits, and every Value payload is a whole number of bytes, so
+  // the name tail-array always starts byte aligned on the request side.
+  for (const b of nameBytes) w.write(b, 8);
+  return w.toUint8Array();
 }
 
 export function decodeParamGetSetRequest(buf: Uint8Array): ParamGetSetRequest {
-  if (buf.length < 3) {
+  if (buf.length < 2) {
     throw new Error(`ParamGetSetRequest payload too short: ${buf.length}`);
   }
-  const index = (buf[0] | (buf[1] << 8)) & 0x1fff;
-  const { value, next } = decodeValueAt(buf, 2);
-  const name = new TextDecoder().decode(buf.subarray(next));
+  const r = new BitReader(buf);
+  const index = r.read(13);
+  const value = readValue(r, VALUE_TAG_BITS);
+  if (value === null) {
+    throw new Error("ParamGetSetRequest: truncated Value field");
+  }
+  const name =
+    value.tag === ValueTag.String ? "" : readTailString(r);
   return { index, value, name };
 }
 
@@ -173,75 +215,62 @@ export function encodeParamGetSetResponse(
   res: ParamGetSetResponse,
 ): Uint8Array {
   const nameBytes = new TextEncoder().encode(res.name);
-  if (nameBytes.length > 92) {
-    throw new Error("ParamGetSetResponse.name must be <= 92 bytes");
+  if (nameBytes.length > NAME_MAX_BYTES) {
+    throw new Error(
+      `ParamGetSetResponse.name must be <= ${NAME_MAX_BYTES} bytes`,
+    );
   }
-  const parts = [
-    encodeValue(res.value),
-    encodeValue(res.default_value),
-    encodeValue(res.max_value),
-    encodeValue(res.min_value),
-  ];
-  let total = nameBytes.length;
-  for (const p of parts) total += p.length;
-  const out = new Uint8Array(total);
-  let off = 0;
-  for (const p of parts) {
-    out.set(p, off);
-    off += p.length;
-  }
-  out.set(nameBytes, off);
-  return out;
+  const w = new BitWriter();
+  writeValue(w, res.value, VALUE_TAG_BITS);
+  writeValue(w, res.default_value, VALUE_TAG_BITS);
+  writeValue(w, res.max_value, NUMERIC_VALUE_TAG_BITS);
+  writeValue(w, res.min_value, NUMERIC_VALUE_TAG_BITS);
+  for (const b of nameBytes) w.write(b, 8);
+  return w.toUint8Array();
 }
 
 export function decodeParamGetSetResponse(
   buf: Uint8Array,
 ): ParamGetSetResponse {
-  let off = 0;
-  const a = decodeValueAt(buf, off);
-  off = a.next;
-  // For string values the tail-array consumes the rest of the buffer; we
-  // cannot continue decoding subsequent fields. In that case the remaining
-  // fields are absent and default to Empty.
-  if (off >= buf.length) {
+  const r = new BitReader(buf);
+  const empty: Value = { tag: ValueTag.Empty };
+
+  const value = readValue(r, VALUE_TAG_BITS);
+  if (value === null) {
+    throw new Error("ParamGetSetResponse: truncated value field");
+  }
+  // A String value is tail-array optimised and consumes the rest of the
+  // structure, so nothing follows it.
+  if (value.tag === ValueTag.String) {
     return {
-      value: a.value,
-      default_value: { tag: ValueTag.Empty },
-      max_value: { tag: ValueTag.Empty },
-      min_value: { tag: ValueTag.Empty },
+      value,
+      default_value: empty,
+      max_value: empty,
+      min_value: empty,
       name: "",
     };
   }
-  const b = decodeValueAt(buf, off);
-  off = b.next;
-  if (off >= buf.length) {
+
+  const defaultValue = readValue(r, VALUE_TAG_BITS) ?? empty;
+  if (defaultValue.tag === ValueTag.String) {
     return {
-      value: a.value,
-      default_value: b.value,
-      max_value: { tag: ValueTag.Empty },
-      min_value: { tag: ValueTag.Empty },
+      value,
+      default_value: defaultValue,
+      max_value: empty,
+      min_value: empty,
       name: "",
     };
   }
-  const c = decodeValueAt(buf, off);
-  off = c.next;
-  if (off >= buf.length) {
-    return {
-      value: a.value,
-      default_value: b.value,
-      max_value: c.value,
-      min_value: { tag: ValueTag.Empty },
-      name: "",
-    };
-  }
-  const d = decodeValueAt(buf, off);
-  off = d.next;
-  const name = new TextDecoder().decode(buf.subarray(off));
+
+  const maxValue = readValue(r, NUMERIC_VALUE_TAG_BITS) ?? empty;
+  const minValue = readValue(r, NUMERIC_VALUE_TAG_BITS) ?? empty;
+  const name = readTailString(r);
+
   return {
-    value: a.value,
-    default_value: b.value,
-    max_value: c.value,
-    min_value: d.value,
+    value,
+    default_value: defaultValue,
+    max_value: maxValue,
+    min_value: minValue,
     name,
   };
 }

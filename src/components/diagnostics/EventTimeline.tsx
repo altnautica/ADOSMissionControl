@@ -44,10 +44,12 @@ const EVENT_CONFIG: Record<EventType, EventTypeConfig> = {
   mission_upload: { label: "Mission Up", color: "text-[var(--node-swatch-cyan)]", bgColor: "bg-[var(--node-swatch-cyan)]/15", Icon: Upload },
   mission_download: { label: "Mission Down", color: "text-[var(--node-swatch-cyan)]", bgColor: "bg-[var(--node-swatch-cyan)]/15", Icon: Download },
   reconnect_attempt: { label: "Reconnect", color: "text-status-warning", bgColor: "bg-status-warning/15", Icon: RefreshCw },
+  link_lost: { label: "Link Lost", color: "text-status-error", bgColor: "bg-status-error/15", Icon: WifiOff },
+  link_restored: { label: "Link Restored", color: "text-status-success", bgColor: "bg-status-success/15", Icon: Wifi },
 };
 
 const ALL_EVENT_TYPES: EventType[] = [
-  "connect", "disconnect", "arm", "disarm", "mode_change",
+  "connect", "disconnect", "link_lost", "link_restored", "arm", "disarm", "mode_change",
   "error", "calibration", "param_write", "flash_commit",
   "mission_upload", "mission_download", "reconnect_attempt",
 ];

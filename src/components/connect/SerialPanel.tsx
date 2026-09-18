@@ -109,8 +109,14 @@ export function SerialPanel({
     setError(null);
     setConnecting(true);
 
+    // Held outside the try so the catch can release it. A WebSerial port
+    // whose reader lock is never released cannot be reopened for the rest
+    // of the page's life, so a single failed FC detection used to make the
+    // operator reload the GCS to try the same cable again.
+    let transport: WebSerialTransport | null = null;
+    let owned = true;
     try {
-      const transport = new WebSerialTransport();
+      transport = new WebSerialTransport();
       const baud = parseInt(selectedBaudRate, 10);
       const portIdx = parseInt(selectedPortIndex);
 
@@ -126,13 +132,11 @@ export function SerialPanel({
       if (targetDroneId) {
         const result = await attachLinkToDrone(targetDroneId, transport);
         if (!result.ok) {
-          try { await transport.disconnect(); } catch { /* ignore */ }
           setError(result.error);
-          setConnecting(false);
           return;
         }
+        owned = false;
         onConnected?.("link", "serial", baud);
-        setConnecting(false);
         return;
       }
 
@@ -145,6 +149,7 @@ export function SerialPanel({
       const droneName = `${vehicleInfo.firmwareVersionString} (${vehicleInfo.vehicleClass})`;
 
       const portInfo = portIdx >= 0 && portIdx < knownPorts.length ? knownPorts[portIdx] : undefined;
+      owned = false;
       addDrone(droneId, droneName, adapter, transport, vehicleInfo, {
         type: "serial",
         baudRate: baud,
@@ -163,6 +168,16 @@ export function SerialPanel({
     } catch (err) {
       setError(err instanceof Error ? err.message : "Connection failed");
     } finally {
+      // Anything the drone manager did not take ownership of is ours to
+      // close — including the common case where `connectWithDetection`
+      // throws on a port that opened fine.
+      if (owned && transport) {
+        try {
+          await transport.disconnect();
+        } catch {
+          /* already closed */
+        }
+      }
       setConnecting(false);
     }
   }

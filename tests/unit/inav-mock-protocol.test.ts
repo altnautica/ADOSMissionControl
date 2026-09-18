@@ -80,11 +80,14 @@ describe("settings.getSetting", () => {
     expect(sv.value).toBe(2500);
   });
 
-  it("reads an unknown setting name as a zero uint8 default", async () => {
+  it("rejects an unknown setting name instead of reading it as zero", async () => {
+    // Real iNav fails MSP2_COMMON_SETTING for a name it does not have. The mock
+    // used to answer a zero uint8, so any panel addressing a name outside the
+    // seed rendered a fabricated 0 that looked like a measurement.
     const proto = makeCopter();
-    const sv = await proto.settings.getSetting("nonexistent_setting");
-    expect(sv.type).toBe("uint8");
-    expect(sv.value).toBe(0);
+    await expect(proto.settings.getSetting("nonexistent_setting")).rejects.toThrow(
+      /nonexistent_setting/,
+    );
   });
 
   it("platform_type is 0 for copter, 1 for plane", async () => {

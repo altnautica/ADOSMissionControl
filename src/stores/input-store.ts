@@ -11,12 +11,49 @@ export interface GamepadCalibration {
   max: [number, number, number, number];    // axis maximums
 }
 
-const loadCalibration = (): GamepadCalibration | null =>
-  safeLocalRead<GamepadCalibration | null>(CAL_STORAGE_KEY, null);
+/** A four-element numeric tuple, as the calibration shape requires. */
+function isAxisTuple(v: unknown): v is [number, number, number, number] {
+  return (
+    Array.isArray(v) &&
+    v.length === 4 &&
+    v.every((n) => typeof n === "number" && Number.isFinite(n))
+  );
+}
+
+/**
+ * Read the persisted calibration, rejecting anything that is not the exact
+ * shape the poller indexes.
+ *
+ * `safeLocalRead` only guarantees the JSON parsed. A corrupt or hand-edited
+ * `ados-gamepad-cal` entry therefore reached `calibration.center[0]` inside
+ * the RAF poll body and THREW — which killed the poll loop permanently while
+ * `activeController` stayed `"gamepad"`, so the manual-control gate kept
+ * passing and the stream kept re-sending the last stick snapshot.
+ */
+const loadCalibration = (): GamepadCalibration | null => {
+  const raw = safeLocalRead<unknown>(CAL_STORAGE_KEY, null);
+  if (!raw || typeof raw !== "object") return null;
+  const c = raw as Partial<GamepadCalibration>;
+  if (!isAxisTuple(c.center) || !isAxisTuple(c.min) || !isAxisTuple(c.max)) {
+    return null;
+  }
+  return { center: c.center, min: c.min, max: c.max };
+};
 
 interface InputStoreState {
   activeController: InputController;
   axes: [number, number, number, number]; // roll, pitch, throttle, yaw
+  /**
+   * When `axes` was last produced by a real gamepad read, or null when nothing
+   * has read one.
+   *
+   * The sticks are produced by a `requestAnimationFrame` loop and transmitted
+   * by an independent `setTimeout` chain. Backgrounding the window pauses RAF
+   * entirely while `setTimeout` keeps firing, so without a liveness stamp the
+   * last snapshot was re-sent to an ARMED aircraft indefinitely — inside
+   * ArduPilot's 3 s `RC_OVERRIDE_TIME`, so the vehicle never saw a dropout.
+   */
+  axesAt: number | null;
   rawAxes: [number, number, number, number]; // pre-calibration raw values
   buttons: boolean[];
   deadzone: number;
@@ -56,6 +93,7 @@ interface InputStoreState {
 export const useInputStore = create<InputStoreState>((set) => ({
   activeController: "none",
   axes: [0, 0, 0, 0],
+  axesAt: null,
   rawAxes: [0, 0, 0, 0],
   buttons: new Array(16).fill(false),
   deadzone: 0.05,
@@ -65,7 +103,7 @@ export const useInputStore = create<InputStoreState>((set) => ({
   manualControlLinkBlock: null,
 
   setController: (activeController) => set({ activeController }),
-  setAxes: (axes) => set({ axes }),
+  setAxes: (axes) => set({ axes, axesAt: Date.now() }),
   setRawAxes: (rawAxes) => set({ rawAxes }),
   setButtons: (buttons) => set({ buttons }),
   setDeadzone: (deadzone) => set({ deadzone }),
@@ -84,6 +122,7 @@ export const useInputStore = create<InputStoreState>((set) => ({
     set({
       activeController: "none",
       axes: [0, 0, 0, 0],
+      axesAt: null,
       rawAxes: [0, 0, 0, 0],
       buttons: new Array(16).fill(false),
       // The reason belongs to a link that is no longer being written to.

@@ -39,19 +39,32 @@ export default defineConfig({
     setupFiles: ['tests/setup.ts'],
     coverage: {
       provider: 'v8',
-      include: ['src/lib/**', 'src/stores/**', 'src/hooks/**'],
+      // `src/components/**` and `src/app/**` are IN. They used to be
+      // excluded outright, which meant 183k LOC — every FC panel, every
+      // cockpit surface, every route handler — was invisible to the
+      // coverage gate, so a threshold measured only over lib/stores/hooks
+      // said nothing about the code that renders a safety surface.
+      include: [
+        'src/lib/**',
+        'src/stores/**',
+        'src/hooks/**',
+        'src/components/**',
+        'src/app/**',
+      ],
       exclude: ['src/mock/**'],
       reporter: ['text', 'html', 'lcov'],
       // Global floor seeded a few points below the measured level so a drop
       // toward zero fails the build while normal run-to-run variance does
       // not. This floor is a ratchet: raise it as coverage climbs, never
-      // lower it. Measured at the time of seeding: statements ~31%,
-      // branches ~28%, functions ~29%, lines ~32%.
+      // lower it. Re-measured after `src/components/**` and `src/app/**`
+      // joined `include`: statements 37.4%, branches 33.4%, functions
+      // 32.3%, lines 39.0% — higher than the old lib-only numbers, so the
+      // previous 28/24/25/29 floor would have been slack on a wider base.
       thresholds: {
-        statements: 28,
-        branches: 24,
-        functions: 25,
-        lines: 29,
+        statements: 34,
+        branches: 30,
+        functions: 29,
+        lines: 35,
       },
     },
     benchmark: { include: ['tests/bench/**/*.bench.ts'] },

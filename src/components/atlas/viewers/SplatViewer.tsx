@@ -9,7 +9,7 @@
  *
  * Three things this viewer must do that the library does not do for us:
  *  1. **Pass an explicit format.** The artifact is reached through the
- *     same-origin proxy `/api/lan-pair/artifact?…&key=<apiKey>`, so the URL ends
+ *     same-origin proxy `/api/lan-pair/artifact?host=…&path=…`, so the URL ends
  *     in the key, not a file extension — the loader's `endsWith('.ply')` sniffing
  *     fails and `addSplatScene` throws "file format not supported". We derive the
  *     real format from the proxy `path` param (see `splat-format`).

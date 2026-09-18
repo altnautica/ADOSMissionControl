@@ -18,7 +18,7 @@ import { handlePointCamera, handleClearRoi, handleTriggerCamera } from "./action
 import { handleSetEkfOrigin } from "./actions/home";
 import { handleAddRally, handleSetHeading } from "./actions/markers";
 import { handleCopyCoords, handleMeasureFromDrone } from "./actions/utility";
-import type { MenuPosition } from "./types";
+import type { MenuPosition, MenuReport } from "./types";
 
 interface DroneTelemetry {
   lat: number;
@@ -35,6 +35,8 @@ interface UseMenuActionsArgs {
   openOrbitPanel: () => void;
   openHomeConfirmPanel: () => void;
   openPoiInputPanel: () => void;
+  /** How a flight-affecting action reports what the vehicle actually did. */
+  report: MenuReport;
 }
 
 export interface MenuActionResult {
@@ -51,6 +53,7 @@ export function useMenuActions({
   openOrbitPanel,
   openHomeConfirmPanel,
   openPoiInputPanel,
+  report,
 }: UseMenuActionsArgs): MenuActionResult {
   const getProtocol = useDroneManager((s) => s.getSelectedProtocol);
   const showConfirm = useGuidedStore((s) => s.showConfirm);
@@ -80,23 +83,23 @@ export function useMenuActions({
           return false;
         }
         case "loiter-here": {
-          handleLoiterHere({ protocol, menuPos, relativeAlt });
+          void handleLoiterHere({ protocol, menuPos, relativeAlt, report });
           return true;
         }
         case "land-here": {
-          handleLandHere({ protocol, menuPos, relativeAlt });
+          void handleLandHere({ protocol, menuPos, relativeAlt, report });
           return true;
         }
         case "point-camera": {
-          handlePointCamera({ protocol, menuPos, relativeAlt });
+          void handlePointCamera({ protocol, menuPos, relativeAlt, report });
           return true;
         }
         case "clear-roi": {
-          handleClearRoi(protocol);
+          void handleClearRoi(protocol, report);
           return true;
         }
         case "trigger-camera": {
-          handleTriggerCamera(protocol);
+          void handleTriggerCamera(protocol, report);
           return true;
         }
         case "set-home": {
@@ -104,7 +107,7 @@ export function useMenuActions({
           return false;
         }
         case "set-ekf-origin": {
-          handleSetEkfOrigin({ protocol, menuPos });
+          void handleSetEkfOrigin({ protocol, menuPos, report });
           return true;
         }
         case "add-rally": {
@@ -150,6 +153,7 @@ export function useMenuActions({
       openOrbitPanel,
       openHomeConfirmPanel,
       openPoiInputPanel,
+      report,
     ],
   );
 

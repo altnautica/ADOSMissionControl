@@ -12,6 +12,13 @@
  * its true frame is recorded in `ExtendedData` — that is what makes our own
  * re-import lossless rather than silently re-labelling the vertical datum.
  *
+ * The `ExtendedData` frame is written for EVERY waypoint, resolving one that
+ * carries no explicit frame against the mission default. It used to be emitted
+ * only when `wp.frame !== undefined`, and planner-drawn waypoints carry
+ * `frame: undefined` — so a `relative` mission exported with no marker at all,
+ * and re-import read the interop `relativeToGround` and flipped it to
+ * `terrain`. Altitudes above HOME then flew as altitudes above TERRAIN.
+ *
  * @license GPL-3.0-only
  */
 
@@ -32,7 +39,14 @@ function altitudeModeFor(frame: AltitudeFrame | undefined): string {
 /**
  * Export waypoints as a KML XML string.
  */
-export function generateKML(waypoints: Waypoint[], name: string): string {
+export function generateKML(
+  waypoints: Waypoint[],
+  name: string,
+  opts?: { defaultFrame?: AltitudeFrame },
+): string {
+  const defaultFrame: AltitudeFrame = opts?.defaultFrame ?? "relative";
+  const frameOf = (wp: Waypoint | undefined): AltitudeFrame =>
+    wp?.frame ?? defaultFrame;
   const lines: string[] = [];
   lines.push('<?xml version="1.0" encoding="UTF-8"?>');
   lines.push('<kml xmlns="http://www.opengis.net/kml/2.2">');
@@ -67,7 +81,7 @@ export function generateKML(waypoints: Waypoint[], name: string): string {
     lines.push("      <LineString>");
     // The path renders in the first waypoint's mode; per-point frames ride on
     // the individual Placemarks below, which is where re-import reads them.
-    lines.push(`        <altitudeMode>${altitudeModeFor(waypoints[0]?.frame)}</altitudeMode>`);
+    lines.push(`        <altitudeMode>${altitudeModeFor(frameOf(waypoints[0]))}</altitudeMode>`);
     lines.push("        <coordinates>");
 
     const coords = waypoints
@@ -88,13 +102,13 @@ export function generateKML(waypoints: Waypoint[], name: string): string {
     lines.push("    <Placemark>");
     lines.push(`      <name>${escapeXml(label)}</name>`);
     lines.push("      <styleUrl>#waypointStyle</styleUrl>");
-    if (wp.frame !== undefined) {
-      lines.push("      <ExtendedData>");
-      lines.push(`        <Data name="${KML_FRAME_KEY}"><value>${wp.frame}</value></Data>`);
-      lines.push("      </ExtendedData>");
-    }
+    // Always written: an absent marker is what let re-import re-label the
+    // vertical datum.
+    lines.push("      <ExtendedData>");
+    lines.push(`        <Data name="${KML_FRAME_KEY}"><value>${frameOf(wp)}</value></Data>`);
+    lines.push("      </ExtendedData>");
     lines.push("      <Point>");
-    lines.push(`        <altitudeMode>${altitudeModeFor(wp.frame)}</altitudeMode>`);
+    lines.push(`        <altitudeMode>${altitudeModeFor(frameOf(wp))}</altitudeMode>`);
     // KML order: lon,lat,alt
     lines.push(`        <coordinates>${wp.lon},${wp.lat},${wp.alt}</coordinates>`);
     lines.push("      </Point>");
@@ -110,8 +124,12 @@ export function generateKML(waypoints: Waypoint[], name: string): string {
 /**
  * Download waypoints as a .kml file.
  */
-export function exportKML(waypoints: Waypoint[], name: string): void {
-  const kml = generateKML(waypoints, name);
+export function exportKML(
+  waypoints: Waypoint[],
+  name: string,
+  opts?: { defaultFrame?: AltitudeFrame },
+): void {
+  const kml = generateKML(waypoints, name, opts);
   const blob = new Blob([kml], { type: "application/vnd.google-earth.kml+xml" });
   downloadBlob(blob, `${name || "mission"}.kml`);
 }
@@ -120,8 +138,12 @@ export function exportKML(waypoints: Waypoint[], name: string): void {
  * Download waypoints as a .kmz file (KML compressed in ZIP).
  * Uses a minimal ZIP builder (no external deps beyond pako which is already available).
  */
-export async function exportKMZ(waypoints: Waypoint[], name: string): Promise<void> {
-  const kml = generateKML(waypoints, name);
+export async function exportKMZ(
+  waypoints: Waypoint[],
+  name: string,
+  opts?: { defaultFrame?: AltitudeFrame },
+): Promise<void> {
+  const kml = generateKML(waypoints, name, opts);
   const kmlBytes = new TextEncoder().encode(kml);
 
   // Use pako for deflation

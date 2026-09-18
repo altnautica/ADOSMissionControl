@@ -5,13 +5,13 @@ import { useTranslations } from "next-intl";
 import { useRouter, usePathname } from "next/navigation";
 import { Search, LayoutDashboard, Route, History, Settings, Zap, Battery, Home, Plug, SlidersHorizontal } from "lucide-react";
 import { useFleetStore } from "@/stores/fleet-store";
-import { useDroneStore } from "@/stores/drone-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useConnectDialogStore } from "@/stores/connect-dialog-store";
 import { useUiStore } from "@/stores/ui-store";
 import { useToast } from "@/components/ui/toast";
 import { getRegisteredCommands } from "@/lib/command-palette-registry";
 import { cn } from "@/lib/utils";
+import { activeFleetDrones, describeFleetOutcome, returnFleetToLaunch } from "@/lib/fleet-commands";
 
 
 interface CommandAction {
@@ -48,16 +48,30 @@ export function CommandPalette() {
     {
       id: "cmd-rth", label: t("returnToHomeAll"), category: t("commands"), icon: <Home size={14} />,
       action: () => {
-        const drones = useFleetStore.getState().drones;
-        const inFlight = drones.filter((d) => d.connectionState === "in_flight" || d.connectionState === "armed");
-        toast(inFlight.length > 0 ? `RTH command sent to ${inFlight.length} drone${inFlight.length > 1 ? "s" : ""}` : "No active drones to recall");
+        if (activeFleetDrones().length === 0) { toast("No active drones to recall"); return; }
+        void (async () => {
+          const outcome = await returnFleetToLaunch();
+          const { message, variant } = describeFleetOutcome(outcome, "RTH");
+          toast(message, variant);
+        })();
       },
     },
     {
       id: "cmd-arm", label: t("armVehicle"), category: t("commands"), icon: <Zap size={14} />,
       action: () => {
-        useDroneStore.getState().setArmState("armed");
-        toast("Arm command sent", "success");
+        const protocol = useDroneManager.getState().getSelectedProtocol();
+        if (!protocol) { toast("No drone selected", "error"); return; }
+        void (async () => {
+          try {
+            // Arm state has exactly one writer — the HEARTBEAT handler in
+            // drone-manager-bridge. Never write it here: a fabricated "armed"
+            // hard-blocks every FC panel on a vehicle that never armed.
+            const result = await protocol.arm();
+            toast(result.success ? "Arm acknowledged by vehicle" : `Arm failed: ${result.message}`, result.success ? "success" : "error");
+          } catch (err) {
+            toast(`Arm failed: ${err instanceof Error ? err.message : String(err)}`, "error");
+          }
+        })();
       },
     },
     {

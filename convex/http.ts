@@ -5,11 +5,39 @@ import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { snakeToCamelObject } from "./heartbeatCasing";
 import { agentKeyMatches, constantTimeEqual } from "./lib/credentials";
+import { pushStatusArgs } from "./cmdDroneStatus";
+import {
+  booleanField,
+  jsonHeaders,
+  boundedField,
+  cameraUsbRecoveryField,
+  canBusesField,
+  commandResultField,
+  commandStatusField,
+  computeClusterSlavesField,
+  configErrorsField,
+  crsfField,
+  linkedPeersField,
+  manualConnectionUrlsField,
+  nullableBoolean,
+  nullableNumber,
+  nullableString,
+  numberArrayField,
+  numberField,
+  peripheralStatesField,
+  pluginInventoryField,
+  radioField,
+  serviceListField,
+  stringArrayField,
+  stringField,
+  videoStreamsField,
+} from "./lib/heartbeatFields";
+
 
 const http = httpRouter();
 auth.addHttpRoutes(http);
 
-const jsonHeaders = { "Content-Type": "application/json" };
+
 
 // Upper bound on a JSON control/heartbeat body. The heartbeat carries
 // bounded telemetry + a handful of free-form objects; a well-behaved agent
@@ -61,529 +89,6 @@ async function readJsonObject(request: Request): Promise<Record<string, unknown>
       headers: jsonHeaders,
     });
   }
-}
-
-function stringField(body: Record<string, unknown>, key: string): string | undefined {
-  const value = body[key];
-  return typeof value === "string" ? value : undefined;
-}
-
-function numberField(body: Record<string, unknown>, key: string): number | undefined {
-  const value = body[key];
-  return typeof value === "number" ? value : undefined;
-}
-
-function booleanField(body: Record<string, unknown>, key: string): boolean | undefined {
-  const value = body[key];
-  return typeof value === "boolean" ? value : undefined;
-}
-
-function numberArrayField(
-  body: Record<string, unknown>,
-  key: string,
-): number[] | undefined {
-  const value = body[key];
-  if (!Array.isArray(value)) return undefined;
-  return value.every((item) => typeof item === "number") ? value : undefined;
-}
-
-function stringArrayField(
-  body: Record<string, unknown>,
-  key: string,
-): string[] | undefined {
-  const value = body[key];
-  if (!Array.isArray(value)) return undefined;
-  return value.every((item) => typeof item === "string")
-    ? (value as string[])
-    : undefined;
-}
-
-interface ServiceStatusPayload {
-  name: string;
-  status: string;
-  cpuPercent?: number;
-  memoryMb?: number;
-  uptimeSeconds?: number;
-  pid?: number;
-  category?: string;
-}
-
-function serviceListField(
-  body: Record<string, unknown>,
-  key: string,
-): ServiceStatusPayload[] | undefined {
-  const value = body[key];
-  if (!Array.isArray(value)) return undefined;
-  const services: ServiceStatusPayload[] = [];
-  for (const item of value) {
-    if (!item || typeof item !== "object" || Array.isArray(item)) continue;
-    const row = item as Record<string, unknown>;
-    const name = stringField(row, "name");
-    const status = stringField(row, "status");
-    if (!name || !status) continue;
-    services.push({
-      name,
-      status,
-      cpuPercent: numberField(row, "cpuPercent"),
-      memoryMb: numberField(row, "memoryMb"),
-      uptimeSeconds: numberField(row, "uptimeSeconds"),
-      pid: numberField(row, "pid"),
-      category: stringField(row, "category"),
-    });
-  }
-  return services;
-}
-
-function commandStatusField(value: string | undefined): "completed" | "failed" {
-  return value === "failed" ? "failed" : "completed";
-}
-
-interface RadioPayload {
-  state: string;
-  iface: string | null;
-  driver: string | null;
-  channel: number | null;
-  freqMhz: number | null;
-  bandwidthMhz: number;
-  txPowerDbm: number | null;
-  txPowerMaxDbm: number;
-  topology: string;
-  rssiDbm: number | null;
-  bitrateKbps: number | null;
-  fecRecovered: number;
-  fecLost: number;
-  packetsLost: number;
-  homeChannel: number | null;
-  band: string | null;
-  regDomain: string | null;
-  regPosture: string | null;
-  pinnedRegion: string | null;
-  regVerified: boolean | null;
-  monitorActive: boolean | null;
-  txActive: boolean | null;
-  peerLink: string | null;
-  hopState: string | null;
-  snrDb: number | null;
-  noiseDbm: number | null;
-  lossPercent: number | null;
-  mcsIndex: number | null;
-  rxSilentSeconds: number | null;
-  txVideoStalled: boolean | null;
-  txVideoStallKills: number | null;
-  txVideoRecvqBytes: number | null;
-  acquireState: string | null;
-  channelLocked: boolean | null;
-  // Null means "no verdict" — distinct from false, which asserts the transmit
-  // path was proven. Optional: older agents omit the key entirely.
-  rfUnverified?: boolean | null;
-  reacquireKills: number | null;
-  rxZombieKills: number | null;
-  validRxPacketsPerS: number | null;
-  adapterChipset?: string | null;
-  adapterInjectionOk?: boolean | null;
-  adapterUsbDegraded?: boolean | null;
-  adapterUsbSpeedMbps?: number | null;
-  phyMuted?: boolean | null;
-  fecK?: number | null;
-  fecN?: number | null;
-  linkPreset?: string | null;
-  adaptiveBitrateEnabled?: boolean | null;
-  recommendedTierIdx?: number | null;
-  recommendedTierName?: string | null;
-  recommendedBitrateKbps?: number | null;
-  txZombieKills?: number | null;
-  txBytesPerS?: number | null;
-  restartCount?: number | null;
-  paired?: boolean;
-  pairedWithDeviceId?: string | null;
-  pairedAt?: string | null;
-  publicKeyFingerprint?: string | null;
-  autoPairEnabled?: boolean | null;
-}
-
-function nullableNumber(value: unknown): number | null | undefined {
-  if (value === null) return null;
-  if (typeof value === "number") return value;
-  return undefined;
-}
-
-function nullableBoolean(value: unknown): boolean | null | undefined {
-  if (value === null) return null;
-  if (typeof value === "boolean") return value;
-  return undefined;
-}
-
-function nullableString(value: unknown): string | null | undefined {
-  if (value === null) return null;
-  if (typeof value === "string") return value;
-  return undefined;
-}
-
-// Translate the agent's snake_case radio block into the camelCase shape the
-// validator and schema expect. Every key is converted generically, so any
-// current or future radio field reaches pushStatus already camelCased with no
-// per-field plumbing to maintain here — a field can never slip through as
-// snake_case and get rejected by the strict validator. Adding a new field then
-// only needs the validator + schema (this stays untouched). Returns undefined
-// when the block is absent so the heartbeat stays additive. The RadioPayload
-// interface above documents the known fields; the cast bridges the generic
-// object onto it for the typed status payload.
-function radioField(
-  body: Record<string, unknown>,
-  key: string,
-): RadioPayload | undefined {
-  const raw = body[key];
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
-  const remapped: Record<string, unknown> = {};
-  for (const [k, value] of Object.entries(raw as Record<string, unknown>)) {
-    const camelKey = k.replace(/_([a-z0-9])/g, (_m, c: string) => c.toUpperCase());
-    remapped[camelKey] = value;
-  }
-  return remapped as unknown as RadioPayload;
-}
-
-interface CrsfPayload {
-  v?: number | null;
-  state?: string | null;
-  rssiDbm?: number | null;
-  lqUplink?: number | null;
-  lqDownlink?: number | null;
-  snrDb?: number | null;
-  band?: string | null;
-  packetRateHz?: number | null;
-  txPowerMw?: number | null;
-  txFramesPerS?: number | null;
-  rxFramesPerS?: number | null;
-  rfUnverified?: boolean | null;
-  mode?: string | null;
-  channelSource?: string | null;
-  relayRole?: string | null;
-  fcCommandDownGated?: boolean | null;
-}
-
-// Translate the agent's snake_case CRSF/ExpressLRS control-lane block into the
-// camelCase shape the validator and schema expect. This route PICKS fields
-// explicitly (it does not spread the body), so an emitted `crsf` block that is
-// not listed here is silently dropped from every cloud heartbeat — the OSS-twin
-// analogue of the production route missing the remap. Uses the shared,
-// unit-tested snakeToCamelObject (the same generic remap radioField applies
-// inline) so the exact transform is exercised by a route-level round-trip test.
-// Returns undefined when the block is absent or malformed so the heartbeat
-// stays additive and a bad block can never fail the strict v.object() validator.
-function crsfField(
-  body: Record<string, unknown>,
-  key: string,
-): CrsfPayload | undefined {
-  return snakeToCamelObject(body[key]) as unknown as CrsfPayload | undefined;
-}
-
-function commandResultField(
-  value: unknown,
-): { success: boolean; message: string } | undefined {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
-  const row = value as Record<string, unknown>;
-  const success = booleanField(row, "success");
-  const message = stringField(row, "message");
-  if (success === undefined || !message) return undefined;
-  return { success, message };
-}
-
-interface ManualConnectionUrlsPayload {
-  mavlinkTcp?: string | null;
-  mavlinkWs?: string | null;
-  mavlinkWsAuthenticated?: string | null;
-  videoViewer?: string | null;
-  videoWhep?: string | null;
-}
-
-// Build the typed manual-connection-URLs block from the agent body. Each
-// member is forwarded only when it is a string or explicit null so the
-// strict pushStatus validator never rejects a malformed entry and fails the
-// whole heartbeat. Returns undefined when the agent omits the block.
-function manualConnectionUrlsField(
-  body: Record<string, unknown>,
-): ManualConnectionUrlsPayload | undefined {
-  const raw = body.manualConnectionUrls;
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
-  const row = raw as Record<string, unknown>;
-  const out: ManualConnectionUrlsPayload = {};
-  const mavlinkTcp = nullableString(row.mavlinkTcp);
-  const mavlinkWs = nullableString(row.mavlinkWs);
-  const mavlinkWsAuthenticated = nullableString(row.mavlinkWsAuthenticated);
-  const videoViewer = nullableString(row.videoViewer);
-  const videoWhep = nullableString(row.videoWhep);
-  if (mavlinkTcp !== undefined) out.mavlinkTcp = mavlinkTcp;
-  if (mavlinkWs !== undefined) out.mavlinkWs = mavlinkWs;
-  if (mavlinkWsAuthenticated !== undefined)
-    out.mavlinkWsAuthenticated = mavlinkWsAuthenticated;
-  if (videoViewer !== undefined) out.videoViewer = videoViewer;
-  if (videoWhep !== undefined) out.videoWhep = videoWhep;
-  return out;
-}
-
-interface PluginInventoryEntry {
-  plugin_id: string;
-  version?: string | null;
-  status?: string | null;
-}
-
-// Build the plugin-inventory array, dropping any entry that lacks a string
-// plugin_id so the strict pushStatus validator accepts the whole block.
-// Returns undefined when the agent omits the field.
-function pluginInventoryField(
-  body: Record<string, unknown>,
-): PluginInventoryEntry[] | undefined {
-  const raw = body.pluginInventory;
-  if (!Array.isArray(raw)) return undefined;
-  const out: PluginInventoryEntry[] = [];
-  for (const item of raw) {
-    if (!item || typeof item !== "object" || Array.isArray(item)) continue;
-    const row = item as Record<string, unknown>;
-    const pluginId = stringField(row, "plugin_id");
-    if (!pluginId) continue;
-    const entry: PluginInventoryEntry = { plugin_id: pluginId };
-    const version = nullableString(row.version);
-    const status = nullableString(row.status);
-    if (version !== undefined) entry.version = version;
-    if (status !== undefined) entry.status = status;
-    out.push(entry);
-  }
-  return out;
-}
-
-interface PeripheralStateEntry {
-  id: string;
-  connected: boolean;
-  last_seen?: number | null;
-}
-
-// Build the compact per-peripheral connection-state array (drives the
-// connected/disconnected dot on the drone card). Drops any entry missing a
-// string id or a boolean connected flag so the strict validator accepts the
-// block. Returns undefined when the agent omits the field.
-function peripheralStatesField(
-  body: Record<string, unknown>,
-): PeripheralStateEntry[] | undefined {
-  const raw = body.peripheralStates;
-  if (!Array.isArray(raw)) return undefined;
-  const out: PeripheralStateEntry[] = [];
-  for (const item of raw) {
-    if (!item || typeof item !== "object" || Array.isArray(item)) continue;
-    const row = item as Record<string, unknown>;
-    const id = stringField(row, "id");
-    const connected = booleanField(row, "connected");
-    if (!id || connected === undefined) continue;
-    const entry: PeripheralStateEntry = { id, connected };
-    const lastSeen = nullableNumber(row.last_seen);
-    if (lastSeen !== undefined) entry.last_seen = lastSeen;
-    out.push(entry);
-  }
-  return out;
-}
-
-interface ComputeSlaveEntry {
-  nodeId: string;
-  accelerators: string[];
-  workersIdle: number;
-  queueDepth: number;
-}
-
-// Build the compute cluster's slave list, forwarding only well-formed entries
-// and coercing each field to the validator-accepted shape so a malformed agent
-// payload cannot fail the whole heartbeat. An entry without a node id is
-// dropped; the numeric/array fields default so the strict inner validator
-// (every field required) never throws. Returns undefined when absent.
-function computeClusterSlavesField(
-  body: Record<string, unknown>,
-): ComputeSlaveEntry[] | undefined {
-  const raw = body.computeClusterSlaves;
-  if (!Array.isArray(raw)) return undefined;
-  const out: ComputeSlaveEntry[] = [];
-  for (const item of raw) {
-    if (!item || typeof item !== "object" || Array.isArray(item)) continue;
-    // The heartbeat producer serializes slave entries camelCase already
-    // (nodeId / workersIdle / queueDepth), so this generic snake->camel remap is
-    // a defensive no-op on the live wire — it also accepts the snake_case
-    // cluster-registration shape, coercing either to the camelCase the strict
-    // inner validator expects.
-    const row: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(item as Record<string, unknown>)) {
-      const camelKey = k.replace(/_([a-z0-9])/g, (_, c) => c.toUpperCase());
-      row[camelKey] = v;
-    }
-    const nodeId = stringField(row, "nodeId");
-    if (!nodeId) continue;
-    out.push({
-      nodeId,
-      accelerators: stringArrayField(row, "accelerators") ?? [],
-      workersIdle: numberField(row, "workersIdle") ?? 0,
-      queueDepth: numberField(row, "queueDepth") ?? 0,
-    });
-  }
-  return out;
-}
-
-interface LinkedPeerEntry {
-  deviceId: string;
-  role?: string | null;
-  channel?: number | null;
-  rssiDbm?: number | null;
-  seenAtUnix?: number | null;
-}
-
-// Build the linkedPeers[] list a ground station relays. The OSS-twin
-// /agent/status route PICKS fields one by one, so this must be forwarded here
-// or the mutation never receives it. Entries arrive camelCase already (the
-// heartbeat producers emit deviceId/role/channel/rssiDbm/seenAtUnix); an entry
-// with no device id, or a non-object, is DROPPED rather than failing the whole
-// heartbeat, and each field is coerced to the optional-nullable shape the
-// strict inner validator declares. Returns undefined when the agent omits it.
-function linkedPeersField(
-  body: Record<string, unknown>,
-): LinkedPeerEntry[] | undefined {
-  const raw = body.linkedPeers;
-  if (!Array.isArray(raw)) return undefined;
-  const out: LinkedPeerEntry[] = [];
-  for (const item of raw) {
-    if (!item || typeof item !== "object" || Array.isArray(item)) continue;
-    const row = item as Record<string, unknown>;
-    const deviceId = stringField(row, "deviceId");
-    if (!deviceId) continue;
-    out.push({
-      deviceId,
-      role: nullableString(row.role),
-      channel: nullableNumber(row.channel),
-      rssiDbm: nullableNumber(row.rssiDbm),
-      seenAtUnix: nullableNumber(row.seenAtUnix),
-    });
-  }
-  return out.length > 0 ? out : undefined;
-}
-
-interface VideoStreamEntry {
-  id: string;
-  role?: string;
-  codec?: string;
-  live?: boolean;
-}
-
-// Build the per-leg video-stream list, keeping only entries the strict inner
-// validator declares. A leg with no `id` is dropped rather than failing the
-// whole heartbeat. Returns undefined when the agent omits the key.
-function videoStreamsField(
-  body: Record<string, unknown>,
-): VideoStreamEntry[] | undefined {
-  const raw = body.videoStreams;
-  if (!Array.isArray(raw)) return undefined;
-  const out: VideoStreamEntry[] = [];
-  for (const item of raw) {
-    if (!item || typeof item !== "object" || Array.isArray(item)) continue;
-    const row = item as Record<string, unknown>;
-    const id = stringField(row, "id");
-    if (!id) continue;
-    out.push({
-      id,
-      role: stringField(row, "role"),
-      codec: stringField(row, "codec"),
-      live: booleanField(row, "live"),
-    });
-  }
-  return out.length > 0 ? out : undefined;
-}
-
-interface CanBusEntry {
-  port: number;
-  driver: number;
-  bitrate: number;
-  protocol: number;
-}
-
-// Build the FC CAN-bus table. Every field is required by the inner validator,
-// so an entry missing one is dropped rather than rejecting the heartbeat.
-function canBusesField(body: Record<string, unknown>): CanBusEntry[] | undefined {
-  const raw = body.canBuses;
-  if (!Array.isArray(raw)) return undefined;
-  const out: CanBusEntry[] = [];
-  for (const item of raw) {
-    if (!item || typeof item !== "object" || Array.isArray(item)) continue;
-    const row = item as Record<string, unknown>;
-    const port = numberField(row, "port");
-    const driver = numberField(row, "driver");
-    const bitrate = numberField(row, "bitrate");
-    const protocol = numberField(row, "protocol");
-    if (
-      port === undefined ||
-      driver === undefined ||
-      bitrate === undefined ||
-      protocol === undefined
-    ) {
-      continue;
-    }
-    out.push({ port, driver, bitrate, protocol });
-  }
-  return out.length > 0 ? out : undefined;
-}
-
-interface CameraUsbRecoveryPayload {
-  state?: string | null;
-  case?: string | null;
-  attempts?: number | null;
-  maxAttempts?: number | null;
-  cameraPresent?: boolean | null;
-  expected?: boolean | null;
-  pppsCapable?: boolean | null;
-}
-
-// Build the camera USB-recovery block, forwarding only the known fields and
-// coercing each to its validator-accepted shape so a malformed agent payload
-// cannot fail the whole heartbeat. Returns undefined when the agent omits it.
-function cameraUsbRecoveryField(
-  body: Record<string, unknown>,
-): CameraUsbRecoveryPayload | undefined {
-  const raw = body.cameraUsbRecovery;
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
-  const row = raw as Record<string, unknown>;
-  const out: CameraUsbRecoveryPayload = {};
-  const state = nullableString(row.state);
-  const caseValue = nullableString(row.case);
-  const attempts = nullableNumber(row.attempts);
-  const maxAttempts = nullableNumber(row.maxAttempts);
-  const cameraPresent = nullableBoolean(row.cameraPresent);
-  const expected = nullableBoolean(row.expected);
-  const pppsCapable = nullableBoolean(row.pppsCapable);
-  if (state !== undefined) out.state = state;
-  if (caseValue !== undefined) out.case = caseValue;
-  if (attempts !== undefined) out.attempts = attempts;
-  if (maxAttempts !== undefined) out.maxAttempts = maxAttempts;
-  if (cameraPresent !== undefined) out.cameraPresent = cameraPresent;
-  if (expected !== undefined) out.expected = expected;
-  if (pppsCapable !== undefined) out.pppsCapable = pppsCapable;
-  return out;
-}
-
-interface ConfigErrorEntry {
-  service: string;
-  error: string;
-}
-
-// Build the per-service config-load-error array, dropping any entry that lacks a
-// string service or a string error so the strict pushStatus validator accepts
-// the whole block. Returns undefined when the agent omits the field.
-function configErrorsField(
-  body: Record<string, unknown>,
-): ConfigErrorEntry[] | undefined {
-  const raw = body.configErrors;
-  if (!Array.isArray(raw)) return undefined;
-  const out: ConfigErrorEntry[] = [];
-  for (const item of raw) {
-    if (!item || typeof item !== "object" || Array.isArray(item)) continue;
-    const row = item as Record<string, unknown>;
-    const service = stringField(row, "service");
-    const error = stringField(row, "error");
-    if (!service || !error) continue;
-    out.push({ service, error });
-  }
-  return out;
 }
 
 // ── ADOS Pairing: agent registers its pairing code ──────────
@@ -771,7 +276,10 @@ http.route({
     const body = await readJsonObject(request);
     if (body instanceof Response) return body;
     const deviceId = stringField(body, "deviceId");
-    const apiKey = stringField(body, "apiKey");
+    // The key is accepted from the `X-ADOS-Key` header like every other
+    // device route; the body field stays readable for agents that predate
+    // the header.
+    const apiKey = request.headers.get("X-ADOS-Key") ?? stringField(body, "apiKey");
     if (!deviceId || !apiKey) {
       return new Response(
         JSON.stringify({ error: "deviceId and apiKey required" }),
@@ -786,6 +294,20 @@ http.route({
       fcConnected: booleanField(body, "fcConnected"),
       agentVersion: stringField(body, "agentVersion"),
     });
+    // ONE uniform refusal for both `not_found` and `invalid_key`, at 401.
+    //
+    // This used to serialise the mutation's distinguishable error at HTTP
+    // 200, so an unauthenticated caller learned whether any guessed
+    // `deviceId` was registered — exactly the enumeration oracle
+    // `getPairingStatus` was deliberately hardened against with its uniform
+    // `{authorized:false}`. A real agent whose key had been rotated also saw
+    // 200 and could not tell an accepted heartbeat from a rejected one.
+    if (result && typeof result === "object" && "error" in result) {
+      return new Response(
+        JSON.stringify({ error: "unauthorized" }),
+        { status: 401, headers: jsonHeaders }
+      );
+    }
     return new Response(JSON.stringify(result), {
       status: 200,
       headers: jsonHeaders,
@@ -1076,11 +598,24 @@ http.route({
       visionDetectionsPerSec: numberField(body, "visionDetectionsPerSec"),
       visionFps: numberField(body, "visionFps"),
     };
-    const result = await ctx.runMutation(internal.cmdDroneStatus.pushStatus, statusPayload);
-    return new Response(JSON.stringify(result), {
-      status: 200,
-      headers: jsonHeaders,
-    });
+    // A payload the strict validator rejects degrades to a 400 with a stable
+    // code, NOT an unhandled 500. The 500 path stopped `lastSeen` advancing,
+    // so the aircraft read OFFLINE — an outage indistinguishable from a real
+    // one and with no cause visible in the UI. One bad telemetry block must
+    // never take the whole 5 s heartbeat down.
+    try {
+      const result = await ctx.runMutation(internal.cmdDroneStatus.pushStatus, statusPayload);
+      return new Response(JSON.stringify(result), {
+        status: 200,
+        headers: jsonHeaders,
+      });
+    } catch (err) {
+      console.error("[/agent/status] pushStatus rejected the payload", err);
+      return new Response(
+        JSON.stringify({ error: "invalid_status_payload" }),
+        { status: 400, headers: jsonHeaders },
+      );
+    }
   }),
 });
 
@@ -1117,8 +652,7 @@ http.route({
       );
     }
 
-    // Authenticate the POSTER (a paired workstation node), not the capturing
-    // drone — the drone id is attribution, resolved by the owner-gated reads.
+    // Authenticate the POSTER (a paired workstation node).
     const poster = await ctx.runQuery(internal.cmdDrones.getDroneByDeviceId, {
       deviceId: posterDeviceId,
     });
@@ -1128,6 +662,43 @@ http.route({
         { status: 401, headers: jsonHeaders }
       );
     }
+
+    // The SUBJECT drone must belong to the same owner as the poster.
+    //
+    // `deviceId` is attribution, and it used to be taken from the body and
+    // never proved: reads are gated by ownership of `deviceId`
+    // (`cmdAtlasJobs`), which is what made it exploitable — one valid device
+    // key wrote rows that surfaced in ANOTHER account's World Model tab,
+    // carrying an attacker-chosen `outputUrl` the viewer then dials.
+    if (deviceId !== posterDeviceId) {
+      const subject = await ctx.runQuery(internal.cmdDrones.getDroneByDeviceId, {
+        deviceId,
+      });
+      if (!subject || subject.userId !== poster.userId) {
+        return new Response(
+          JSON.stringify({ error: "Subject device is not in this fleet" }),
+          { status: 403, headers: jsonHeaders }
+        );
+      }
+    }
+
+    // Bound the attacker-chosen strings. None had a length cap, unlike
+    // `requireBoundedString` on the pairing routes, and every one of them is
+    // persisted and rendered.
+    const outputUrl = boundedField(body, "outputUrl", 2048);
+    if (outputUrl instanceof Response) return outputUrl;
+    if (outputUrl !== undefined && !/^https?:\/\//i.test(outputUrl)) {
+      return new Response(
+        JSON.stringify({ error: "outputUrl must be an http(s) URL" }),
+        { status: 400, headers: jsonHeaders }
+      );
+    }
+    const sessionId = boundedField(body, "sessionId", 128);
+    if (sessionId instanceof Response) return sessionId;
+    const inputBag = boundedField(body, "inputBag", 512);
+    if (inputBag instanceof Response) return inputBag;
+    const derivedFrom = boundedField(body, "derivedFrom", 128);
+    if (derivedFrom instanceof Response) return derivedFrom;
 
     // metadata is a free-form object (backend badge, viewer hint, gaussian
     // count); forward it verbatim when it is a plain object, else omit.
@@ -1143,10 +714,10 @@ http.route({
       computeNodeId,
       kind,
       status,
-      sessionId: stringField(body, "sessionId"),
-      inputBag: stringField(body, "inputBag"),
-      outputUrl: stringField(body, "outputUrl"),
-      derivedFrom: stringField(body, "derivedFrom"),
+      sessionId,
+      inputBag,
+      outputUrl,
+      derivedFrom,
       metadata,
       startedAt: numberField(body, "startedAt"),
       finishedAt: numberField(body, "finishedAt"),

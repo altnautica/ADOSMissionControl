@@ -508,13 +508,10 @@ exports[`iNav decoder parity > decodeMspINavServoMixer (two rules) 1`] = `
 exports[`iNav decoder parity > decodeMspINavStatus 1`] = `
 {
   "armingFlags": 250000,
-  "cpuLoad": 42,
-  "currentProfile": 2,
+  "averageLoadPercent": 42,
   "cycleTime": 1234,
   "i2cErrors": 5,
-  "modeFlags": 10,
-  "navAction": 2,
-  "navState": 5,
+  "profiles": 18,
   "sensors": 7,
 }
 `;

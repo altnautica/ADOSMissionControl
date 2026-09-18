@@ -1,13 +1,25 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Settings, AlertTriangle, LogOut, CloudOff, Zap, Minimize2, X, Star, BookOpen } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import { CommandNav } from "./CommandNav";
 import { RightRail } from "./RightRail";
-import { DemoProvider } from "./DemoProvider";
+/**
+ * Demo mode pulls in the whole 11.8k-LOC `src/mock/` tree — the mock
+ * protocol, the iNav mock and a 1427-line parameter table. A static import
+ * here put every byte of it in the shared chunk of every production page,
+ * for a feature gated behind a persisted settings boolean that is off by
+ * default. `next/dynamic` with `ssr: false` moves it to its own chunk,
+ * fetched only when demo mode is actually on.
+ */
+const DemoProvider = dynamic(
+  () => import("./DemoProvider").then((m) => m.DemoProvider),
+  { ssr: false },
+);
 import { CommandPalette } from "@/components/shared/command-palette";
 import { FailsafeAlertBanner } from "@/components/flight/FailsafeAlertBanner";
 import { PluginCrashBanner } from "@/components/plugins/PluginCrashBanner";

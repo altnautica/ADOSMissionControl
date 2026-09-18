@@ -1,26 +1,47 @@
 /**
  * Unit tests for decodeArmingFlags.
+ *
+ * iNav's `armingFlag_e` (`src/main/fc/runtime_config.h`) starts at
+ * `ARMED = (1 << 2)`: bits 0 and 1 are undefined and the firmware NEVER sets
+ * them. The table used to declare `0: OK_TO_ARM` / `1: PREVENT_ARMING` and
+ * `okToArm` required bit 0, so it was permanently false and `PreArmPanel`
+ * rendered a red BLOCKED badge with "0 blockers preventing arming" on an
+ * airworthy aircraft. These tests assert against the real word, so the old
+ * shape can't come back.
+ *
  * @license GPL-3.0-only
  */
 
 import { describe, it, expect } from "vitest";
-import { decodeArmingFlags } from "@/lib/protocol/msp/inav-arming-flags";
+import {
+  INAV_ARMING_FLAGS,
+  decodeArmingFlags,
+} from "@/lib/protocol/msp/inav-arming-flags";
 
 describe("decodeArmingFlags", () => {
-  it("returns okToArm=true when bit 0 is set and no blockers are active", () => {
-    const result = decodeArmingFlags(0b0001); // bit 0 only
+  it("declares no entry for the two bits iNav never sets", () => {
+    expect(INAV_ARMING_FLAGS[0]).toBeUndefined();
+    expect(INAV_ARMING_FLAGS[1]).toBeUndefined();
+  });
+
+  it("reports ok-to-arm for the empty word, which is what a ready iNav sends", () => {
+    // The word carries only the REASONS arming is disabled; no reasons means
+    // the aircraft is ready. There is no positive "ok to arm" bit to wait for.
+    const result = decodeArmingFlags(0);
     expect(result.okToArm).toBe(true);
+    expect(result.blockers).toHaveLength(0);
+    expect(result.notes).toHaveLength(0);
+  });
+
+  it("reports ok-to-arm for an armed aircraft with no blockers", () => {
+    const result = decodeArmingFlags(1 << 2); // ARMED
+    expect(result.okToArm).toBe(true);
+    expect(result.notes).toContain("Armed");
     expect(result.blockers).toHaveLength(0);
   });
 
-  it("returns okToArm=false when bit 0 is clear", () => {
-    const result = decodeArmingFlags(0b0000);
-    expect(result.okToArm).toBe(false);
-  });
-
-  it("returns okToArm=false when a blocker bit is set even if bit 0 is also set", () => {
-    // bit 0 (OK_TO_ARM) + bit 8 (NOT_LEVEL)
-    const result = decodeArmingFlags((1 << 0) | (1 << 8));
+  it("refuses ok-to-arm when any blocker bit is set", () => {
+    const result = decodeArmingFlags(1 << 8); // NOT_LEVEL
     expect(result.okToArm).toBe(false);
     expect(result.blockers).toContain("Not level");
   });
@@ -35,33 +56,16 @@ describe("decodeArmingFlags", () => {
     expect(result.blockers).toHaveLength(3);
   });
 
-  it("puts ARMED bit into notes, not blockers", () => {
-    // bit 2 (ARMED) + bit 0 (OK_TO_ARM)
-    const result = decodeArmingFlags((1 << 2) | (1 << 0));
+  it("puts ARMED and WAS_EVER_ARMED into notes, not blockers", () => {
+    const result = decodeArmingFlags((1 << 2) | (1 << 3));
     expect(result.notes).toContain("Armed");
+    expect(result.notes).toContain("Was ever armed");
     expect(result.blockers).toHaveLength(0);
   });
 
-  it("does not add bit 0 label to notes (handled separately)", () => {
-    const result = decodeArmingFlags(0b0001);
-    expect(result.notes).not.toContain("OK to arm");
-  });
-
-  it("returns empty blockers and notes for zero bitmask", () => {
-    const result = decodeArmingFlags(0);
-    expect(result.blockers).toHaveLength(0);
-    expect(result.notes).toHaveLength(0);
-    expect(result.okToArm).toBe(false);
-  });
-
-  it("decodes PREVENT_ARMING bit as a blocker", () => {
-    const result = decodeArmingFlags(1 << 1);
-    expect(result.blockers).toContain("Arming prevented");
-  });
-
-  it("decodes SIMULATOR_MODE into notes", () => {
-    const result = decodeArmingFlags((1 << 4) | (1 << 0));
-    expect(result.notes).toContain("Simulator mode");
+  it("decodes both simulator bits into notes", () => {
+    expect(decodeArmingFlags(1 << 4).notes).toContain("Simulator mode (HITL)");
+    expect(decodeArmingFlags(1 << 5).notes).toContain("Simulator mode (SITL)");
   });
 
   it("ignores unknown bit positions gracefully", () => {
@@ -69,5 +73,6 @@ describe("decodeArmingFlags", () => {
     const result = decodeArmingFlags((1 << 31) >>> 0);
     expect(result.blockers).toHaveLength(0);
     expect(result.notes).toHaveLength(0);
+    expect(result.okToArm).toBe(true);
   });
 });

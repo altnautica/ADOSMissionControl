@@ -110,6 +110,7 @@ function makeContext(t: FakeTransport): MissionContext & FrameHandlerState {
     onParameter: () => () => {},
     onFencePoint: () => () => {},
     getParameter: vi.fn(async () => ({ value: 0 })),
+    setParameter: vi.fn(async () => ({ success: true, resultCode: 0, message: 'ok' })),
   };
 }
 
@@ -150,6 +151,17 @@ function makeRequestPayload(seq: number, missionType = 0): DataView {
 function makeCountPayload(count: number, missionType = 0): DataView {
   const dv = new DataView(new ArrayBuffer(missionType > 0 ? 5 : 4));
   dv.setUint16(0, count, true);
+  dv.setUint8(2, 1);
+  dv.setUint8(3, 1);
+  if (missionType > 0) dv.setUint8(4, missionType);
+  return dv;
+}
+
+// MISSION_REQUEST / MISSION_REQUEST_INT (40 / 51):
+// uint16 seq, uint8 targetSystem, uint8 targetComponent, [uint8 missionType].
+function makeMissionRequestPayload(seq: number, missionType = 0): DataView {
+  const dv = new DataView(new ArrayBuffer(missionType > 0 ? 5 : 4));
+  dv.setUint16(0, seq, true);
   dv.setUint8(2, 1);
   dv.setUint8(3, 1);
   if (missionType > 0) dv.setUint8(4, missionType);
@@ -274,7 +286,7 @@ describe('mission upload state machine', () => {
     expect(decoded.seq).toBe(0);
   });
 
-  it('times out at 15s and resolves a failure, clearing state', async () => {
+  it('fails after 15s of FC silence, clearing state', async () => {
     const t = makeTransport();
     const ctx = makeContext(t);
     const promise = uploadMission(ctx, [makeItem(0)]);
@@ -282,7 +294,31 @@ describe('mission upload state machine', () => {
     vi.advanceTimersByTime(15000);
     const result = await promise;
     expect(result.success).toBe(false);
-    expect(result.message).toMatch(/timed out/i);
+    expect(result.message).toMatch(/stalled/i);
+    expect(ctx.missionUpload).toBeNull();
+  });
+
+  it('does not abandon an upload the FC is still driving', async () => {
+    // The budget bounds SILENCE, not total transfer time. A flat wall clock
+    // abandoned a long mission over a slow radio mid-walk and reported a
+    // timeout for an upload still in progress.
+    const t = makeTransport();
+    const ctx = makeContext(t);
+    const items = Array.from({ length: 4 }, (_, i) => makeItem(i));
+    const promise = uploadMission(ctx, items);
+
+    for (let seq = 0; seq < items.length; seq++) {
+      // Each request lands just inside the window; the total elapses past it.
+      vi.advanceTimersByTime(14000);
+      const payload = makeMissionRequestPayload(seq);
+      routeFrame(ctx, makeFrame(40, payload), payload);
+      expect(ctx.missionUpload).not.toBeNull();
+    }
+
+    // 56 s in, still alive. Now go silent.
+    vi.advanceTimersByTime(15000);
+    const result = await promise;
+    expect(result.success).toBe(false);
     expect(ctx.missionUpload).toBeNull();
   });
 
@@ -318,8 +354,11 @@ describe('mission download state machine', () => {
 
     routeFrame(ctx, makeFrame(73, makeItemIntPayload(item2)), makeItemIntPayload(item2));
     lastReq = t.sent[t.sent.length - 1];
-    // After an item it requests the next seq after the one just received (data.seq + 1 = 3).
-    expect(decodeMissionRequestInt(new DataView(lastReq.buffer, lastReq.byteOffset + 10, lastReq[1])).seq).toBe(3);
+    // It re-requests the LOWEST missing seq (0), not `received + 1`. Blindly
+    // asking for the next number left a permanent hole whenever an item was
+    // dropped: the FC never re-sent it and the walk stalled until the deadline
+    // handed back a short list.
+    expect(decodeMissionRequestInt(new DataView(lastReq.buffer, lastReq.byteOffset + 10, lastReq[1])).seq).toBe(0);
 
     routeFrame(ctx, makeFrame(73, makeItemIntPayload(item0)), makeItemIntPayload(item0));
     routeFrame(ctx, makeFrame(73, makeItemIntPayload(item1)), makeItemIntPayload(item1));
@@ -346,7 +385,10 @@ describe('mission download state machine', () => {
     expect(ctx.missionDownload).toBeNull();
   });
 
-  it('returns the partial set on a mid-handshake 15s timeout and clears state', async () => {
+  it('REJECTS a truncated download rather than returning the partial set', async () => {
+    // A short list is a failed download, never a mission. Resolving it as a
+    // success let the planner replace the plan with a truncated one, and the
+    // operator could then save it to disk or upload it back.
     const t = makeTransport();
     const ctx = makeContext(t);
     const promise = downloadMission(ctx);
@@ -357,9 +399,24 @@ describe('mission download state machine', () => {
     routeFrame(ctx, makeFrame(73, makeItemIntPayload(item1)), makeItemIntPayload(item1));
 
     vi.advanceTimersByTime(15000);
-    const items = await promise;
-    expect(items.map((i) => i.seq)).toEqual([1]);
+    await expect(promise).rejects.toThrow(/incomplete: received 1 of 3/);
     expect(ctx.missionDownload).toBeNull();
+  });
+
+  it('keeps walking while items keep arriving, past the flat 15s budget', async () => {
+    const t = makeTransport();
+    const ctx = makeContext(t);
+    const promise = downloadMission(ctx);
+
+    routeFrame(ctx, makeFrame(44, makeCountPayload(3)), makeCountPayload(3));
+    for (let seq = 0; seq < 3; seq++) {
+      vi.advanceTimersByTime(14000);
+      const item = makeItem(seq);
+      routeFrame(ctx, makeFrame(73, makeItemIntPayload(item)), makeItemIntPayload(item));
+    }
+
+    const items = await promise;
+    expect(items.map((i) => i.seq)).toEqual([0, 1, 2]);
   });
 });
 

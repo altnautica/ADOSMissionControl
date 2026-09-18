@@ -14,7 +14,7 @@ import { usePlanLibraryStore } from "@/stores/plan-library-store";
 import { useMissionStore } from "@/stores/mission-store";
 import { useSimulationStore } from "@/stores/simulation-store";
 import { useToast } from "@/components/ui/toast";
-import { exportWaypointsFormat, exportQGCPlan } from "@/lib/mission-io";
+import { exportWaypointsFormat, exportQGCPlan, currentExportOptions } from "@/lib/mission-io";
 
 interface PlanContextMenuProps {
   planId: string;
@@ -88,7 +88,7 @@ export function PlanContextMenu({ planId, x, y, onClose, onPlanRenamed }: PlanCo
 
   const handleExportWaypoints = useCallback(() => {
     if (!plan) return;
-    exportWaypointsFormat(getExportWaypoints(), plan.name);
+    exportWaypointsFormat(getExportWaypoints(), plan.name, currentExportOptions());
     toast(t("exportedWaypoints"), "success");
     onClose();
   }, [plan, getExportWaypoints, toast, onClose, t]);
@@ -96,7 +96,7 @@ export function PlanContextMenu({ planId, x, y, onClose, onPlanRenamed }: PlanCo
   const handleExportPlan = useCallback(() => {
     if (!plan) return;
     // Export the plan's own saved fence/rally (not the live editor's).
-    exportQGCPlan(getExportWaypoints(), plan.name, undefined, { geofence: plan.geofence, rally: plan.rally });
+    exportQGCPlan(getExportWaypoints(), plan.name, undefined, { geofence: plan.geofence, rally: plan.rally }, currentExportOptions());
     toast(t("exportedPlan"), "success");
     onClose();
   }, [plan, getExportWaypoints, toast, onClose, t]);

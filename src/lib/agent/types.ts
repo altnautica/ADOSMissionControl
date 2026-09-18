@@ -17,9 +17,12 @@ export interface AgentVersionInfo {
 export interface BoardInfo {
   name: string;
   model: string;
-  tier: number;
-  ram_mb: number;
-  cpu_cores: number;
+  /** Absent on a node with no board sidecar (compute/workstation, or any
+   *  board the HAL did not match). Never substitute 0 — a tier-0 board with
+   *  0 MB of RAM and 0 cores is a fabricated hardware fact. */
+  tier?: number;
+  ram_mb?: number;
+  cpu_cores?: number;
   vendor: string;
   soc: string;
   arch: string;
@@ -278,11 +281,13 @@ export interface MeshNetEnrollment {
 export interface NetworkPeer {
   id: string;
   name: string;
-  signal_dbm: number;
+  /** Absent when the peer did not report a measurement. Rendering 0 here
+   *  turns "unreported" into a 0 dBm perfect link and a 0% dead battery. */
+  signal_dbm?: number;
   last_seen: string;
-  battery_percent: number;
-  distance_m: number;
-  tier: number;
+  battery_percent?: number;
+  distance_m?: number;
+  tier?: number;
   link_type: string;
 }
 

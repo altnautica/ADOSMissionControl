@@ -26,6 +26,8 @@ import { useHudTopBarData } from "@/hooks/use-hud-topbar-data";
 import { useMqttControlAuthority } from "@/hooks/use-mqtt-control-authority";
 import { needsOperatorAttention } from "@/lib/nodes/mqtt-control-authority";
 import { useClockTick } from "@/lib/agent/freshness";
+import { deriveHudStatus } from "@/lib/hud-readings";
+import { NO_DATA_GLYPH } from "@/lib/hud-draw";
 
 const LOW_BATTERY_PERCENT = 20;
 
@@ -40,14 +42,6 @@ function batColor(pct: number | undefined | null): string {
   if (pct > 50) return "var(--good)";
   if (pct > 25) return "var(--warn)";
   return "var(--crit)";
-}
-
-/** Signal quality → 0..4 bars, honestly derived from the same rssi shown. */
-function sigLevel(rssi: number | undefined | null): number {
-  if (rssi === undefined || rssi === null || !Number.isFinite(rssi)) return 0;
-  const q =
-    rssi <= 0 ? Math.min(1, Math.max(0, (rssi + 95) / 45)) : Math.min(1, Math.max(0, rssi / 255));
-  return Math.round(q * 4);
 }
 
 /**
@@ -89,10 +83,22 @@ const SIG_HEIGHTS = [4, 7, 10, 13];
 function CockpitTopBarInner({ onExit, controls, lean = false }: CockpitTopBarProps) {
   const t = useTranslations("cockpit");
   const { radio, battery, gps } = useHudTopBarData();
-  const mode = useDroneStore((s) => s.flightMode);
+  const rawMode = useDroneStore((s) => s.flightMode);
   const armState = useDroneStore((s) => s.armState);
   const armedAt = useDroneStore((s) => s.armedAt);
-  const armed = armState === "armed";
+  const lastHeartbeat = useDroneStore((s) => s.lastHeartbeat);
+
+  // Battery, GPS and link on this band are freshness-gated by
+  // `useHudTopBarData`; arm state and mode used to be read STRAIGHT from
+  // drone-store, so with nothing connected the band rendered the store
+  // defaults "disarmed" / "STABILIZE" as though they were measured — a safety
+  // strip asserting a confirmed-safe state it never observed. They go through
+  // the same heartbeat gate the canvas HUD uses (`hud-draw-status`), which
+  // renders the no-data glyph for null.
+  const { armed, mode, signalBars } = deriveHudStatus(
+    { battery, gps, radio },
+    { armState, flightMode: rawMode, lastHeartbeat },
+  );
 
   const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
   const displayName = useDroneMetadataStore((s) =>
@@ -124,8 +130,10 @@ function CockpitTopBarInner({ onExit, controls, lean = false }: CockpitTopBarPro
           ? t("strip.gps2d", { sats })
           : t("strip.gpsNoFix");
 
-  const level = sigLevel(radio?.rssi);
-  const rssi = radio ? fmt(radio.rssi, 0) : "--";
+  // 0 bars and "no reading" are different states: `signalBars` is null when
+  // nothing has reported a link, 0 when a link was measured and is dead.
+  const level = signalBars ?? 0;
+  const rssi = radio ? fmt(radio.rssi, 0) : NO_DATA_GLYPH;
 
   // LINK above is the vehicle's own radio: how well the aircraft hears its
   // transmitter. It says nothing about whether this browser can reach the
@@ -161,15 +169,19 @@ function CockpitTopBarInner({ onExit, controls, lean = false }: CockpitTopBarPro
         <>
           <span className="brand">ADOS</span>
           <span className="node">
-            {name} · {mode}
+            {name} · {mode ?? NO_DATA_GLYPH}
           </span>
         </>
       )}
       <span className="spacer" />
 
-      {/* ARMED / DISARMED pill */}
+      {/* ARMED / DISARMED pill. `armed === null` means no live heartbeat backs
+          either reading, and a stale "DISARMED" reads as a confirmed safe
+          state — so it renders the no-data glyph instead. */}
       <div className="stat">
-        {armed ? (
+        {armed === null ? (
+          <span className="pill mode">{NO_DATA_GLYPH}</span>
+        ) : armed ? (
           <span className="pill armed">
             <i className="led" />
             {t("armed").toUpperCase()}

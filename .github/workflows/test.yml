@@ -81,12 +81,13 @@ jobs:
           cache-dependency-path: package-lock.json
       - name: Install dependencies
         run: npm ci
-      # Surface high/critical advisories on every push and PR. Kept
-      # non-blocking while the advisory baseline is cleared; flip
-      # continue-on-error off once the tree is clean to make it a gate.
+      # High/critical advisories FAIL the build. This step carried
+      # `continue-on-error: true` "while the advisory baseline is cleared",
+      # which made it a log line rather than a gate — it could not have
+      # failed for any advisory, ever. A gate that cannot fail is worse
+      # than no gate, because it reads as coverage that does not exist.
       - name: Audit dependencies
         run: npm run audit:security
-        continue-on-error: true
 
   bench:
     name: Benchmarks

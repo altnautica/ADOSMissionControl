@@ -74,7 +74,6 @@ export function SurveyConfig() {
 
   const selectedCamera = useMemo(
     () => CAMERA_PROFILES.find((c) => c.name === extConfig._cameraName),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [extConfig._cameraName]
   );
 

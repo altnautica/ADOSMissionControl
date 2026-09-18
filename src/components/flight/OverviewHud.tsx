@@ -90,6 +90,9 @@ export function OverviewHud() {
     detach();
   }, [detach, isDetached, reattach]);
 
+  /** Parent size, measured on resize rather than read inside the RAF loop. */
+  const sizeRef = useRef({ width: 0, height: 0 });
+
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -97,9 +100,14 @@ export function OverviewHud() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const parent = canvas.parentElement;
-    if (!parent) return;
-    const rect = parent.getBoundingClientRect();
+    // From the ResizeObserver, not `getBoundingClientRect()`: that forces a
+    // synchronous layout flush, and this loop runs at 60 Hz for a value that
+    // only changes when the pane resizes.
+    const rect = sizeRef.current;
+    if (rect.width <= 0 || rect.height <= 0) {
+      rafRef.current = requestAnimationFrame(draw);
+      return;
+    }
     const dpr = window.devicePixelRatio || 1;
 
     if (
@@ -146,8 +154,18 @@ export function OverviewHud() {
   }, []);
 
   useEffect(() => {
+    const parent = canvasRef.current?.parentElement;
+    const measure = () => {
+      if (!parent) return;
+      const box = parent.getBoundingClientRect();
+      sizeRef.current = { width: box.width, height: box.height };
+    };
+    measure();
+    const ro = parent ? new ResizeObserver(measure) : null;
+    if (parent && ro) ro.observe(parent);
     rafRef.current = requestAnimationFrame(draw);
     return () => {
+      ro?.disconnect();
       cancelAnimationFrame(rafRef.current);
       const popup = popupRef.current;
       if (popup && !popup.closed) popup.close();

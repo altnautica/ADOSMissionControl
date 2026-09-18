@@ -210,7 +210,17 @@ export class DroneCanOtaOrchestrator {
       this.state.retries += 1;
     }
     this.restartStallTimer();
-    if (len === 0) {
+
+    // Completion is "the last byte of the image has been served", NOT "the
+    // node asked for an offset past EOF". A node only makes that extra
+    // zero-length request when the file length is an exact multiple of 256,
+    // because `isFileReadEof` treats any shorter chunk as the end — and an
+    // AP_Periph binary essentially never is. So after the final short chunk
+    // the node went quiet to write and reboot, and the 5 s stall timer fired
+    // `failWith("TIMEOUT")` and tore down the file server: a SUCCESSFUL flash
+    // was reported as a timeout.
+    const totalBytes = this.opts?.fileBytes.length ?? 0;
+    if (len === 0 || (totalBytes > 0 && offset + len >= totalBytes)) {
       this.transferComplete();
       return;
     }
@@ -307,17 +317,23 @@ export class DroneCanOtaOrchestrator {
       ok: true,
     });
 
+    // A version mismatch is a FAILED verify, not a note attached to DONE.
+    // `VERIFYING → DONE` was unconditional with no failure branch, so
+    // `VERSION_MISMATCH` was unreachable and the state verified nothing —
+    // and `flashApPeriph` never passes `expectedSwVersion`, so the whole
+    // stage was a round trip with no assertion at all.
     const expected = this.opts.expectedSwVersion;
-    let versionNote: string | undefined;
     if (expected) {
-      const matches =
-        info.software_version.major === expected.major &&
-        info.software_version.minor === expected.minor;
-      if (!matches) {
-        versionNote = `version mismatch: expected ${expected.major}.${expected.minor}, got ${info.software_version.major}.${info.software_version.minor}`;
+      const got = info.software_version;
+      if (got.major !== expected.major || got.minor !== expected.minor) {
+        this.failWith(
+          "VERSION_MISMATCH",
+          `verify failed: expected software version ${expected.major}.${expected.minor}, node reports ${got.major}.${got.minor}`,
+        );
+        return;
       }
     }
-    this.transition("VERIFYING", "DONE", versionNote);
+    this.transition("VERIFYING", "DONE");
     this.state.resolved = true;
     this.cleanup();
     this.emit();

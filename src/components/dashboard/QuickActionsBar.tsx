@@ -5,8 +5,13 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
-import { Map, Plug, FileText, Home } from "lucide-react";
+import { Map, Plug, Home } from "lucide-react";
 import { useConnectDialogStore } from "@/stores/connect-dialog-store";
+import {
+  activeFleetDrones,
+  describeFleetOutcome,
+  returnFleetToLaunch,
+} from "@/lib/fleet-commands";
 
 export function QuickActionsBar() {
   const router = useRouter();
@@ -34,14 +39,6 @@ export function QuickActionsBar() {
           Connect Drone
         </Button>
         <Button
-          variant="secondary"
-          size="sm"
-          icon={<FileText size={14} />}
-          onClick={() => toast("Fleet report generated", "success")}
-        >
-          Fleet Report
-        </Button>
-        <Button
           variant="danger"
           size="sm"
           icon={<Home size={14} />}
@@ -55,7 +52,15 @@ export function QuickActionsBar() {
         open={rthOpen}
         onConfirm={() => {
           setRthOpen(false);
-          toast("Return-to-Home sent to all drones", "warning");
+          if (activeFleetDrones().length === 0) {
+            toast("No active drones to recall", "warning");
+            return;
+          }
+          void (async () => {
+            const outcome = await returnFleetToLaunch();
+            const { message, variant } = describeFleetOutcome(outcome, "RTH");
+            toast(message, variant);
+          })();
         }}
         onCancel={() => setRthOpen(false)}
         title="Return to Home — All Drones"

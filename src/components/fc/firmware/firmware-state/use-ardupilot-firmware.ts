@@ -53,7 +53,7 @@ export function useArduPilotFirmware(
       setSelectedApVersion("");
       loadApVersions(selectedApBoard, selectedVehicleType);
     }
-  }, [selectedApBoard, selectedVehicleType, firmwareStack]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedApBoard, selectedVehicleType, firmwareStack]);
 
   useEffect(() => {
     if (drone && apBoards.length > 0 && !selectedApBoard && firmwareStack === "ardupilot") {
@@ -65,7 +65,7 @@ export function useArduPilotFirmware(
       const vc = info.vehicleClass;
       if (vc && classMap[vc]) setSelectedVehicleType(classMap[vc]);
     }
-  }, [drone, apBoards, selectedApBoard, firmwareStack]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [drone, apBoards, selectedApBoard, firmwareStack]);
 
   return {
     apBoards, apLoading, apError, apVersions,

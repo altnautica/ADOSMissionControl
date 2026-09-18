@@ -182,7 +182,7 @@ export const PAYLOAD_LENGTHS: ReadonlyMap<number, number> = new Map([
   [160, 12],    // FENCE_POINT
   [161, 6],     // FENCE_FETCH_POINT
   [70, 18],     // RC_CHANNELS_OVERRIDE
-  [112, 24],    // CAMERA_TRIGGER
+  [112, 12],    // CAMERA_TRIGGER — uint64 time_usec + uint32 seq, nothing else
   [230, 42],    // ESTIMATOR_STATUS
   [27, 26],     // RAW_IMU
   [105, 62],    // HIGHRES_IMU

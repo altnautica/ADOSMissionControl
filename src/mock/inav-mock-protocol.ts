@@ -33,6 +33,8 @@ import type {
   MspSerialPort, MspOsdConfig, HsvColor, BfLedModeColor,
 } from "@/lib/protocol/types";
 import { inavHandler } from "@/lib/protocol/firmware/inav";
+import { ParamAbsentError } from "@/lib/protocol/mavlink-adapter-params";
+import { SettingsError } from "@/lib/protocol/msp/settings";
 import { INAV_WP_FLAG_LAST, INAV_WP_ACTION } from "@/lib/protocol/msp/msp-decoders-inav";
 import type {
   INavWaypoint, INavSafehome, MotorMixerRule, INavServoMixerRule,
@@ -553,14 +555,17 @@ export class INavMockProtocol implements DroneProtocol {
   /**
    * Name-indexed settings surface (`DroneProtocol.settings`).
    *
-   * Reads/writes the in-memory seed map with no MSP round-trip. Unknown names
-   * read back as a zero uint8 and write into the store, so settings panels that
-   * address names outside the seed still load and round-trip in demo mode.
+   * Reads/writes the in-memory seed map with no MSP round-trip. A name outside
+   * the seed REJECTS with `SettingsError`, matching what real iNav does when
+   * MSP2_COMMON_SETTING has no such setting — it used to read back as a zero
+   * uint8, so any settings panel addressing a name the seed does not carry
+   * rendered a fabricated 0 that was indistinguishable from a real reading.
    */
   settings: SettingsCapability = {
     getSetting: async (name) => {
       const entry = this.settingStore.get(name);
-      return entry ? settingEntryToValue(entry) : { type: "uint8", value: 0 };
+      if (!entry) throw new SettingsError(`Failed to read setting "${name}"`, name);
+      return settingEntryToValue(entry);
     },
     setSetting: async (name, value) => {
       const existing = this.settingStore.get(name);
@@ -1057,7 +1062,11 @@ export class INavMockProtocol implements DroneProtocol {
 
   getCachedParameterNames(): string[] { return []; }
   async getAllParameters(): Promise<ParameterValue[]> { return []; }
-  async getParameter(name: string): Promise<ParameterValue> { return { name, value: 0, type: 9, index: -1, count: 0 }; }
+  /** iNav exposes no MAVLink parameters at all — every name is absent, and the
+   *  honest answer is a rejection, not `value: 0`. Returning 0 made every
+   *  ArduPilot-shaped panel render fabricated zeros against an iNav demo
+   *  vehicle, and left the `param_absent` UI branch unreachable in demo. */
+  async getParameter(name: string): Promise<ParameterValue> { throw new ParamAbsentError(name); }
   async setParameter(name: string, value: number, type = 9): Promise<CommandResult> { void type; return ok(`${name} = ${value}`); }
   async resetParametersToDefault(): Promise<CommandResult> { return ok("Parameters reset"); }
 
@@ -1182,9 +1191,13 @@ export class INavMockProtocol implements DroneProtocol {
       const actionCycle = [0, 2, 4];
       const cycleIdx = Math.floor(ts / 15000) % stateCycle.length;
       store.setNavStatus(stateCycle[cycleIdx], actionCycle[cycleIdx]);
-      // Arming flags: usually OK_TO_ARM (bit 0). Every ~30 s drop to NOT_LEVEL so
-      // the PreArmPanel section shows a real blocker label.
-      const flagCycle = Math.floor(ts / 30000) % 2 === 0 ? 0x00000001 : 0x00000100;
+      // Arming flags: iNav's word carries ONLY the reasons arming is disabled,
+      // and its enum starts at ARMED = 1<<2 — bits 0 and 1 are undefined and
+      // the firmware never sets them. So "ready to arm" is the empty word, not
+      // a bit-0 flag; the mock used to synthesise 0x00000001 to match an
+      // imagined layout, which masked the real `okToArm` defect in demo.
+      // Every ~30 s raise NOT_LEVEL (bit 8) so PreArmPanel shows a blocker.
+      const flagCycle = Math.floor(ts / 30000) % 2 === 0 ? 0x00000000 : 0x00000100;
       store.setArmingFlags(flagCycle);
       // One simulated ADS-B aircraft orbiting 2 km east of the copter so the
       // TrafficPill renders a live entry with distance, altitude, and TTL.

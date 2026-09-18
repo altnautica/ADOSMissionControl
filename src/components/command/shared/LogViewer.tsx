@@ -135,19 +135,40 @@ export function LogViewer({ logs, onRefresh }: LogViewerProps) {
       return;
     }
     const stream = es;
+    // Batch arrivals. The agent can burst hundreds of rows a second during
+    // a boot or a fault cascade, and one `setLiveLogs` per row is one full
+    // copy of a `MAX_LIVE_LINES`-long array plus one React commit each.
+    // Draining on an animation frame caps both at the display rate and
+    // costs nothing when rows trickle in.
+    let pending: LogEntry[] = [];
+    let flushHandle: number | null = null;
+    const flush = () => {
+      flushHandle = null;
+      if (cancelled || pending.length === 0) return;
+      const batch = pending;
+      pending = [];
+      setLiveActive(true);
+      setLiveLogs((prev) => {
+        const next = prev.concat(batch);
+        if (next.length > MAX_LIVE_LINES) {
+          next.splice(0, next.length - MAX_LIVE_LINES);
+        }
+        return next;
+      });
+    };
     const onMessage = (ev: MessageEvent) => {
       if (cancelled) return;
       try {
         const row = JSON.parse(ev.data) as LoggingRow;
         if (!row || typeof row.message !== "string") return;
-        setLiveActive(true);
-        setLiveLogs((prev) => {
-          const next = [...prev, rowToEntry(row)];
-          if (next.length > MAX_LIVE_LINES) {
-            next.splice(0, next.length - MAX_LIVE_LINES);
-          }
-          return next;
-        });
+        pending.push(rowToEntry(row));
+        // Never let the pending buffer outgrow the window it feeds.
+        if (pending.length > MAX_LIVE_LINES) {
+          pending.splice(0, pending.length - MAX_LIVE_LINES);
+        }
+        if (flushHandle === null) {
+          flushHandle = requestAnimationFrame(flush);
+        }
       } catch {
         /* tolerate a malformed frame */
       }
@@ -165,6 +186,7 @@ export function LogViewer({ logs, onRefresh }: LogViewerProps) {
 
     return () => {
       cancelled = true;
+      if (flushHandle !== null) cancelAnimationFrame(flushHandle);
       stream.removeEventListener("message", onMessage);
       stream.removeEventListener("error", onError);
       stream.close();

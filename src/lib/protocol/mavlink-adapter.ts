@@ -236,7 +236,7 @@ export class MAVLinkAdapter implements DroneProtocol {
   async connect(transport: Transport): Promise<VehicleInfo> {
     this._disconnected = false
     const label = this.formatLinkLabel(transport)
-    this.attachLink(transport, label)
+    const link = this.attachLink(transport, label)
     // One frame subscription per connection, released in handleDisconnect.
     // It used to be registered here and never removed, so reconnecting through
     // the same adapter instance double-dispatched every frame: two telemetry
@@ -245,25 +245,45 @@ export class MAVLinkAdapter implements DroneProtocol {
     this.frameUnsub?.()
     this.frameUnsub = this.parser.onFrame((frame) => this.handleFrame(frame))
 
-    const vehicleInfo = await new Promise<VehicleInfo>((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error('No heartbeat received within 10 seconds')), 10000)
-      const unsub = this.parser.onFrame((frame) => {
-        if (frame.msgId === 0) {
-          const hb = decodeHeartbeat(frame.payload)
-          if (hb.type === 6) return
-          clearTimeout(timeout); unsub()
-          this.targetSysId = frame.systemId; this.targetCompId = frame.componentId
-          this.firmwareHandler = createFirmwareHandler(hb.autopilot, hb.type)
-          const info: VehicleInfo = {
-            firmwareType: this.firmwareHandler.firmwareType, vehicleClass: this.firmwareHandler.vehicleClass,
-            firmwareVersionString: this.firmwareHandler.getFirmwareVersion(),
-            systemId: frame.systemId, componentId: frame.componentId,
-            autopilotType: hb.autopilot, vehicleType: hb.type,
-          }
-          this.vehicleInfo = info; resolve(info)
+    // The heartbeat wait, with BOTH exits cleaned up. The timeout used to
+    // reject without calling `unsub()`, so every failed connect left a
+    // frame listener on the parser and left the transport attached — the
+    // dialog reported a failure while the link kept running underneath,
+    // and each retry added another listener.
+    const gate = Promise.withResolvers<VehicleInfo>()
+    const timeout = setTimeout(
+      () => gate.reject(new Error('No heartbeat received within 10 seconds')),
+      10000,
+    )
+    const unsub = this.parser.onFrame((frame) => {
+      if (frame.msgId === 0) {
+        const hb = decodeHeartbeat(frame.payload)
+        if (hb.type === 6) return
+        this.targetSysId = frame.systemId; this.targetCompId = frame.componentId
+        this.firmwareHandler = createFirmwareHandler(hb.autopilot, hb.type)
+        const info: VehicleInfo = {
+          firmwareType: this.firmwareHandler.firmwareType, vehicleClass: this.firmwareHandler.vehicleClass,
+          firmwareVersionString: this.firmwareHandler.getFirmwareVersion(),
+          systemId: frame.systemId, componentId: frame.componentId,
+          autopilotType: hb.autopilot, vehicleType: hb.type,
         }
-      })
+        this.vehicleInfo = info; gate.resolve(info)
+      }
     })
+
+    let vehicleInfo: VehicleInfo
+    try {
+      vehicleInfo = await gate.promise
+    } catch (err) {
+      clearTimeout(timeout)
+      unsub()
+      this.frameUnsub?.()
+      this.frameUnsub = null
+      this.detachLink(link)
+      throw err
+    }
+    clearTimeout(timeout)
+    unsub()
 
     this._connected = true
     // The GCS heartbeat is housekeeping: it announces us to the vehicle and
@@ -446,7 +466,7 @@ export class MAVLinkAdapter implements DroneProtocol {
   // ── Context helpers ────────────────────────────────────
   private get cc(): cmds.CommandContext { return { transport: this.commandTransport, firmwareHandler: this.firmwareHandler, commandQueue: this.commandQueue, targetSysId: this.targetSysId, targetCompId: this.targetCompId, sysId: this.sysId, compId: this.compId, sendCommandLong: this.sendCommandLong.bind(this), sendCommandInt: this.sendCommandIntTracked.bind(this) } }
   private get pc(): prm.ParamContext { return { transport: this.commandTransport, firmwareHandler: this.firmwareHandler, targetSysId: this.targetSysId, targetCompId: this.targetCompId, sysId: this.sysId, compId: this.compId, paramCache: this.paramCache, PARAM_CACHE_TTL_MS: 300000, parameterDownload: this.parameterDownload, downloadedParamNames: this.downloadedParamNames, onParameter: this.onParameter.bind(this) } }
-  private get mc(): msn.MissionContext { return { transport: this.commandTransport, firmwareHandler: this.firmwareHandler, targetSysId: this.targetSysId, targetCompId: this.targetCompId, sysId: this.sysId, compId: this.compId, missionUpload: this.missionUpload, missionDownload: this.missionDownload, rallyUpload: this.rallyUpload, rallyDownload: this.rallyDownload, fenceUpload: this.fenceUpload, fenceDownload: this.fenceDownload, sendCommandLong: this.sendCommandLong.bind(this), onParameter: this.onParameter.bind(this), onFencePoint: this.onFencePoint.bind(this), getParameter: this.getParameter.bind(this) } }
+  private get mc(): msn.MissionContext { return { transport: this.commandTransport, firmwareHandler: this.firmwareHandler, targetSysId: this.targetSysId, targetCompId: this.targetCompId, sysId: this.sysId, compId: this.compId, missionUpload: this.missionUpload, missionDownload: this.missionDownload, rallyUpload: this.rallyUpload, rallyDownload: this.rallyDownload, fenceUpload: this.fenceUpload, fenceDownload: this.fenceDownload, sendCommandLong: this.sendCommandLong.bind(this), onParameter: this.onParameter.bind(this), onFencePoint: this.onFencePoint.bind(this), getParameter: this.getParameter.bind(this), setParameter: this.setParameter.bind(this) } }
   private get lc(): logOps.LogContext { return { transport: this.commandTransport, targetSysId: this.targetSysId, targetCompId: this.targetCompId, sysId: this.sysId, compId: this.compId, logListDownload: this.logListDownload, logDataDownload: this.logDataDownload } }
   private get fc(): ftpOps.FtpContext { const c = this._ftpCtx; c.transport = this.commandTransport; c.targetSysId = this.targetSysId; c.targetCompId = this.targetCompId; c.sysId = this.sysId; c.compId = this.compId; return c }
 
@@ -455,7 +475,7 @@ export class MAVLinkAdapter implements DroneProtocol {
   async disarm() { return cmds.cmdDisarm(this.cc) }
   async setFlightMode(m: UnifiedFlightMode) { return cmds.cmdSetFlightMode(this.cc, m) }
   async returnToLaunch() { return cmds.cmdReturnToLaunch(this.cc) }
-  async land() { return cmds.cmdLand(this.cc) }
+  async land(at?: { lat: number; lon: number }) { return cmds.cmdLand(this.cc, at) }
   async takeoff(alt: number) { return cmds.cmdTakeoff(this.cc, alt) }
   sendManualControl(r: number, p: number, t: number, y: number, b: number) { cmds.cmdSendManualControl(this.cc, r, p, t, y, b) }
   async startCalibration(type: 'accel'|'gyro'|'compass'|'level'|'airspeed'|'baro'|'rc'|'esc'|'compassmot') { return cmds.cmdStartCalibration(this.cc, type) }

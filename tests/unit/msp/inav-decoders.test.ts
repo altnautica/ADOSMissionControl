@@ -154,47 +154,39 @@ describe('decodeMspWp', () => {
 // ── decodeMspINavStatus ───────────────────────────────────────
 
 describe('decodeMspINavStatus', () => {
-  it('decodes status fields correctly', () => {
-    const cycleTime = 1000
+  it('decodes the layout iNav actually writes', () => {
+    // From iNav `fc_msp.c` `mspFcProcessOutCommand`, case MSP2_INAV_STATUS:
+    //   U16 cycleTime, U16 i2cErrors, U16 sensorStatus, U16 averageSystemLoad,
+    //   U8 batteryProfile<<4|configProfile, U32 armingFlags, boxModeFlags...
+    // The decoder previously assumed a reserved gap at 6, modeFlags at 8,
+    // armingFlags at 17 and nav fields at 21/22 — every field past byte 6 was
+    // read from the wrong offset, and nav state is not in this message at all.
+    const cycleTime = 1234
     const i2cErrors = 2
     const sensors = 0x0049
-    const modeFlags = 0x00000003
-    const currentProfile = 1
-    const cpuLoad = 42
-    const armingFlags = 0x00000001
-    const navState = 5
-    const navAction = 2
+    const averageLoad = 42
+    const profiles = 0x21 // battery profile 2, config profile 1
+    const armingFlags = 0x00000100 // NOT_LEVEL
 
     const bytes: number[] = [
       ...le16(cycleTime),
       ...le16(i2cErrors),
       ...le16(sensors),
-      0, 0,                   // reserved
-      ...le32(modeFlags),
-      currentProfile,
-      ...le16(cpuLoad),
-      0,                      // profile count
-      0,                      // rate profile
+      ...le16(averageLoad),
+      profiles,
       ...le32(armingFlags),
-      navState,
-      navAction,
+      // boxModeFlags tail — present on the wire, not decoded here.
+      0xff, 0x00, 0x00, 0x00,
     ]
     const result = decodeMspINavStatus(dv(bytes))
     expect(result.cycleTime).toBe(cycleTime)
     expect(result.i2cErrors).toBe(i2cErrors)
-    expect(result.modeFlags).toBe(modeFlags)
-    expect(result.cpuLoad).toBe(cpuLoad)
+    expect(result.sensors).toBe(sensors)
+    expect(result.averageLoadPercent).toBe(averageLoad)
+    expect(result.profiles).toBe(profiles)
+    // The box bitmask must NOT be mistaken for the arming word: reading it
+    // there made active mode boxes render as arming blockers.
     expect(result.armingFlags).toBe(armingFlags)
-    expect(result.navState).toBe(navState)
-    expect(result.navAction).toBe(navAction)
-  })
-
-  it('defaults navState/navAction to 0 for short payloads', () => {
-    // Provide only up to armingFlags (21 bytes)
-    const bytes = new Array(21).fill(0)
-    const result = decodeMspINavStatus(dv(bytes))
-    expect(result.navState).toBe(0)
-    expect(result.navAction).toBe(0)
   })
 })
 

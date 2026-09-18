@@ -27,7 +27,7 @@
 
 import { useCallback, useState } from "react";
 import { useToast } from "@/components/ui/toast";
-import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
+import { useFlashCommitToast, type FlashCommitOutcome } from "@/hooks/use-flash-commit-toast";
 import type { PanelParamActions } from "@/hooks/use-panel-params-types";
 
 export interface ParamPanelActionsOptions {
@@ -55,7 +55,7 @@ export interface ParamPanelActions {
    * Commit the current RAM state to flash and surface the standard
    * flash-commit toast. Returns the success flag from `commitToFlash`.
    */
-  flash: () => Promise<boolean>;
+  flash: () => Promise<FlashCommitOutcome>;
   /**
    * Revert every parameter back to the value last loaded from the FC and
    * surface an info toast.
@@ -93,13 +93,13 @@ export function useParamPanelActions(
     }
   }, [saveAllToRam, toast, options.successMessage, options.warningMessage]);
 
-  const flash = useCallback(async (): Promise<boolean> => {
-    const ok = await commitToFlash();
-    showFlashResult(ok, {
+  const flash = useCallback(async (): Promise<FlashCommitOutcome> => {
+    const outcome = await commitToFlash();
+    showFlashResult(outcome, {
       successMessage: options.flashSuccessMessage,
       errorMessage: options.flashErrorMessage,
     });
-    return ok;
+    return outcome;
   }, [commitToFlash, showFlashResult, options.flashSuccessMessage, options.flashErrorMessage]);
 
   const revert = useCallback(() => {

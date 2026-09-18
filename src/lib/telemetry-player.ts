@@ -31,30 +31,55 @@ export interface PlaybackStatus {
 
 // ── Channel → Store Dispatch Map ─────────────────────────────
 
+/** The telemetry-store push methods replay is allowed to drive. */
+type PushMethod =
+  | "pushAttitude"
+  | "pushPosition"
+  | "pushBattery"
+  | "pushGps"
+  | "pushRadio"
+  | "pushRc"
+  | "pushVfr"
+  | "pushSysStatus"
+  | "pushEkf"
+  | "pushVibration"
+  | "pushServoOutput"
+  | "pushWind"
+  | "pushTerrain"
+  | "pushLocalPosition"
+  | "pushDebug"
+  | "pushGimbal"
+  | "pushObstacle";
+
 /**
  * Maps recording channel names to telemetry store push methods.
  * Channels not in this map are silently skipped during playback.
+ *
+ * Naming the METHOD rather than wrapping each one in a closure is what
+ * removes the sixteen `as any` casts this table used to carry: each
+ * closure asserted its own payload type independently, so the replay path
+ * had no type contract with the store at all and a recorder-side field
+ * rename would have gone unnoticed. The single widening now lives in
+ * `dispatchFrame`, where it is stated once and explained.
  */
-const CHANNEL_DISPATCH: Record<string, (data: unknown) => void> = {
-  attitude:      (d) => useTelemetryStore.getState().pushAttitude(d as Parameters<ReturnType<typeof useTelemetryStore.getState>["pushAttitude"]>[0]),
-  position:      (d) => useTelemetryStore.getState().pushPosition(d as any),
-  battery:       (d) => useTelemetryStore.getState().pushBattery(d as any),
-  gps:           (d) => useTelemetryStore.getState().pushGps(d as any),
-  radio:         (d) => useTelemetryStore.getState().pushRadio(d as any),
-  rc:            (d) => useTelemetryStore.getState().pushRc(d as any),
-  vfr:           (d) => useTelemetryStore.getState().pushVfr(d as any),
-  sysStatus:     (d) => useTelemetryStore.getState().pushSysStatus(d as any),
-  ekf:           (d) => useTelemetryStore.getState().pushEkf(d as any),
-  vibration:     (d) => useTelemetryStore.getState().pushVibration(d as any),
-  servoOutput:   (d) => useTelemetryStore.getState().pushServoOutput(d as any),
-  wind:          (d) => useTelemetryStore.getState().pushWind(d as any),
-  terrain:       (d) => useTelemetryStore.getState().pushTerrain(d as any),
-  localPosition: (d) => useTelemetryStore.getState().pushLocalPosition(d as any),
-  debug:         (d) => useTelemetryStore.getState().pushDebug(d as any),
-  gimbal:        (d) => useTelemetryStore.getState().pushGimbal(d as any),
-  obstacle:      (d) => useTelemetryStore.getState().pushObstacle(d as any),
-  // heartbeat — update drone store last-heartbeat timestamp
-  heartbeat:     () => useDroneStore.getState().heartbeat(),
+const CHANNEL_DISPATCH: Record<string, PushMethod> = {
+  attitude: "pushAttitude",
+  position: "pushPosition",
+  battery: "pushBattery",
+  gps: "pushGps",
+  radio: "pushRadio",
+  rc: "pushRc",
+  vfr: "pushVfr",
+  sysStatus: "pushSysStatus",
+  ekf: "pushEkf",
+  vibration: "pushVibration",
+  servoOutput: "pushServoOutput",
+  wind: "pushWind",
+  terrain: "pushTerrain",
+  localPosition: "pushLocalPosition",
+  debug: "pushDebug",
+  gimbal: "pushGimbal",
+  obstacle: "pushObstacle",
 };
 
 // ── Singleton State ──────────────────────────────────────────
@@ -73,8 +98,17 @@ let _playStartOffset = 0;
 
 let _rafId: number | null = null;
 
-/** Optional listener notified on every state change. */
-let _onChange: ((status: PlaybackStatus) => void) | null = null;
+/**
+ * Listeners notified on every state change.
+ *
+ * A SET, not a single slot. `onPlaybackChange` used to overwrite one
+ * variable, so the second subscriber silently unsubscribed the first —
+ * mount a transport bar beside a scrubber and one of them stops updating,
+ * with the loser depending on mount order. The unsubscribe is also now
+ * exact: the old one compared identity against the slot, so unmounting
+ * the FIRST of two subscribers was a no-op that left it attached.
+ */
+const _onChange = new Set<(status: PlaybackStatus) => void>();
 
 // ── Internal Helpers ─────────────────────────────────────────
 
@@ -87,12 +121,29 @@ function currentTimeMs(): number {
 }
 
 function emitChange(): void {
-  _onChange?.(getPlaybackState());
+  if (_onChange.size === 0) return;
+  const status = getPlaybackState();
+  for (const cb of _onChange) cb(status);
 }
 
 function dispatchFrame(frame: TelemetryFrame): void {
-  const handler = CHANNEL_DISPATCH[frame.channel];
-  if (handler) handler(frame.data);
+  if (frame.channel === "heartbeat") {
+    useDroneStore.getState().heartbeat();
+    return;
+  }
+  const method = CHANNEL_DISPATCH[frame.channel];
+  if (!method) return;
+  // The ONE widening on the replay path, and the reason it is an unchecked
+  // cast rather than a schema parse: these frames were written by
+  // `telemetry-recorder` from the same in-process types on the way in, so
+  // the shape is ours, not external, and per-channel validation of a
+  // 17-way union at replay frame rate would cost more than it proves. The
+  // table above is what keeps the channel→method mapping honest; this line
+  // only tells the compiler the payload matches the method it picked.
+  const push = useTelemetryStore.getState()[method] as (
+    data: unknown,
+  ) => void;
+  push(frame.data);
 }
 
 /**
@@ -152,12 +203,24 @@ export async function loadPlayback(recordingId: string): Promise<void> {
 
 /**
  * Start playback from the beginning.
+ *
+ * Refuses while a vehicle is connected. Replay writes into the SAME
+ * telemetry singleton the live link writes into, so with both running the
+ * rings interleave a recorded flight with the aircraft in front of the
+ * operator — and every consumer downstream (the HUD, the cockpit band,
+ * the analyser) reads the result as current. There is no marker on a
+ * pushed sample saying which one it came from, so the only safe rule is
+ * that exactly one producer owns the store at a time.
  */
 export function play(): void {
   if (_frames.length === 0) {
     throw new Error("No recording loaded — call loadPlayback() first");
   }
-
+  if (useDroneStore.getState().connectionState === "connected") {
+    throw new Error(
+      "Disconnect the vehicle before replaying: playback and live telemetry share one store, and interleaving them renders a recording as live flight data",
+    );
+  }
   // Reset to start
   _frameIndex = 0;
   _playStartOffset = 0;
@@ -303,10 +366,12 @@ export function getPlaybackState(): PlaybackStatus {
  * Subscribe to playback state changes.
  * Returns an unsubscribe function.
  */
-export function onPlaybackChange(cb: (status: PlaybackStatus) => void): () => void {
-  _onChange = cb;
+export function onPlaybackChange(
+  cb: (status: PlaybackStatus) => void,
+): () => void {
+  _onChange.add(cb);
   return () => {
-    if (_onChange === cb) _onChange = null;
+    _onChange.delete(cb);
   };
 }
 

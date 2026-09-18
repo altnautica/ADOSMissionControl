@@ -5,6 +5,7 @@
  */
 
 import type { ParamMetadata } from "@/lib/protocol/param-metadata";
+import type { FlashCommitOutcome } from "./use-flash-commit-toast";
 
 export interface PanelParamEvent {
   type: "read" | "write" | "flash" | "error" | "info";
@@ -66,8 +67,10 @@ export interface PanelParamActions {
   saveToRam: (name: string, value: number) => Promise<boolean>;
   /** Write all dirty params to RAM */
   saveAllToRam: () => Promise<boolean>;
-  /** Commit all RAM writes to flash */
-  commitToFlash: () => Promise<boolean>;
+  /** Commit all RAM writes to flash. Reports whether the command reached the
+   *  vehicle AND whether the vehicle acknowledged it — a sent-but-unacked
+   *  commit is not a confirmed write. */
+  commitToFlash: () => Promise<FlashCommitOutcome>;
   /** Revert a param to its loaded value */
   revert: (name: string) => void;
   /** Revert all dirty params */

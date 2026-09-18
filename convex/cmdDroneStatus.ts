@@ -9,6 +9,8 @@ import { internalMutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { requireOwnedDroneByDeviceId } from "./cmdDroneAccess";
+import type { Doc } from "./_generated/dataModel";
+import type { WithoutSystemFields } from "convex/server";
 
 /**
  * Every top-level key the cloud heartbeat may carry.
@@ -524,37 +526,35 @@ export const pushStatus = internalMutation({
 
     const now = Date.now();
 
-    // Local display + theme fields are forwarded through the same args
-    // spread, but pinned here explicitly so a future refactor that
-    // narrows the spread cannot silently drop the LCD/theme surface.
-    const localSurfaceFields = {
-      lcdActivePage: args.lcdActivePage,
-      lcdTouchCalibrated: args.lcdTouchCalibrated,
-      lcdRotation: args.lcdRotation,
-      lcdSnapshotUrl: args.lcdSnapshotUrl,
-      lcdLastTouchAt: args.lcdLastTouchAt,
-      lcdLastGesture: args.lcdLastGesture,
-      videoLocalDecoderActive: args.videoLocalDecoderActive,
-      videoLocalDecoderType: args.videoLocalDecoderType,
-      videoLocalDecoderFps: args.videoLocalDecoderFps,
-      videoRecording: args.videoRecording,
-      uiTheme: args.uiTheme,
-      displayType: args.displayType,
-      last_plugin_update_check_at: args.last_plugin_update_check_at,
-    };
+    // EVERY declared column is written on every tick, present-with-undefined
+    // for the ones the agent did not send.
+    //
+    // Convex drops `undefined`-valued keys when serializing mutation
+    // ARGUMENTS, so a field the agent omits is simply absent from `args` —
+    // `{...args}` does not carry the key and `db.patch` leaves the previous
+    // value in place forever. Radio, linked peers, video streams and CAN all
+    // decayed that way: a remote operator saw a dead link as healthy, with a
+    // plausible RSSI and a fresh `updatedAt`. The `localSurfaceFields` block
+    // below was the proof — it names its keys explicitly, so they ARE present
+    // with value `undefined`, which Convex encodes as `{$undefined:null}` and
+    // which DELETES the column. The LCD block cleared correctly; nothing else
+    // did.
+    //
+    // Building the patch from `pushStatusArgs`' key list makes that the rule
+    // rather than the exception, and it cannot drift: a new arg is covered the
+    // moment it is declared.
+    type StatusRow = WithoutSystemFields<Doc<"cmd_droneStatus">>;
+    const patch: Record<string, unknown> = {};
+    for (const key of Object.keys(pushStatusArgs)) {
+      patch[key] = (args as Record<string, unknown>)[key];
+    }
+    patch.updatedAt = now;
+    const row = patch as unknown as StatusRow;
 
     if (existing) {
-      await ctx.db.patch(existing._id, {
-        ...args,
-        ...localSurfaceFields,
-        updatedAt: now,
-      });
+      await ctx.db.patch(existing._id, row);
     } else {
-      await ctx.db.insert("cmd_droneStatus", {
-        ...args,
-        ...localSurfaceFields,
-        updatedAt: now,
-      });
+      await ctx.db.insert("cmd_droneStatus", row);
     }
 
     // Derive attached display type from peripherals[] for the

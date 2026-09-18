@@ -3,6 +3,7 @@
 import { useEffect, useCallback } from "react";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useParamSafetyStore } from "@/stores/param-safety-store";
+import type { PanelSaveOutcome } from "@/stores/fc-panel-actions-store";
 import { useToast } from "@/components/ui/toast";
 
 /**
@@ -12,11 +13,13 @@ import { useToast } from "@/components/ui/toast";
  * - Ctrl+Shift+S: Commit all RAM writes to flash
  * - Ctrl+R: Refresh current panel params
  *
- * @param onSaveToRam - Called when Ctrl+S is pressed
+ * @param onSaveToRam - Called when Ctrl+S is pressed. Reports how many dirty
+ *   parameters it tried to write and whether every write landed, so the toast
+ *   states what happened instead of asserting a save unconditionally.
  * @param onRefresh - Called when Ctrl+R is pressed
  */
 export function useFcKeyboardShortcuts(
-  onSaveToRam?: () => Promise<void>,
+  onSaveToRam?: () => Promise<PanelSaveOutcome>,
   onRefresh?: () => Promise<void>,
 ) {
   const { toast } = useToast();
@@ -29,8 +32,10 @@ export function useFcKeyboardShortcuts(
       if (isCtrl && !e.shiftKey && e.key === "s") {
         e.preventDefault();
         if (onSaveToRam) {
-          await onSaveToRam();
-          toast("Parameters saved to RAM", "success");
+          const { attempted, ok } = await onSaveToRam();
+          if (attempted === 0) toast("No unsaved parameter changes", "info");
+          else if (ok) toast(`${attempted} parameter${attempted === 1 ? "" : "s"} saved to RAM`, "success");
+          else toast("Some parameters failed to save", "error");
         }
         return;
       }
@@ -44,7 +49,14 @@ export function useFcKeyboardShortcuts(
           const result = await protocol.commitParamsToFlash();
           if (result.success) {
             store.commitFlash();
-            toast("Parameters committed to flash", "success");
+            // PREFLIGHT_STORAGE is fire-and-forget; `acknowledged === false`
+            // means the command reached the wire and nothing confirmed the
+            // write. Never render that as "committed to flash".
+            if (result.acknowledged === false) {
+              toast("Flash commit sent — vehicle did not acknowledge it", "warning");
+            } else {
+              toast("Parameters committed to flash", "success");
+            }
           } else {
             toast(`Flash commit failed: ${result.message}`, "error");
           }

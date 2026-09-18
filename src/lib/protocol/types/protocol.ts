@@ -160,7 +160,9 @@ export interface DroneProtocol {
   disarm(): Promise<CommandResult>;
   setFlightMode(mode: UnifiedFlightMode): Promise<CommandResult>;
   returnToLaunch(): Promise<CommandResult>;
-  land(): Promise<CommandResult>;
+  /** Land. `at` commands a landing POINT; without it the vehicle lands in
+   *  place, so a surface promising "land here" must pass one. */
+  land(at?: { lat: number; lon: number }): Promise<CommandResult>;
   takeoff(altitude: number): Promise<CommandResult>;
   /**
    * Flight termination. Irreversible in flight. `confirmed` must carry a real

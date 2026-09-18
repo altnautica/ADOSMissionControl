@@ -10,7 +10,7 @@ export const CONTRACT_VERSIONS = {
   "vision.detection": 2,
   "atlas.envelope": 1,
   "compute": 1,
-  "state.v2": 2,
+  "state.v2": 3,
   "frame": 0,
   "mavlink.socket": 0,
   "mavlink.ingest": 0,
@@ -124,11 +124,11 @@ export const CONTRACT_CATALOG: Record<string, ContractMeta> = {
     description: "Compute-offload job submit and read contract.",
   },
   "state.v2": {
-    version: 2,
+    version: 3,
     wire: "msgpack",
     transport: "unix-stream",
     status: "active",
-    description: "Length-prefixed msgpack vehicle-state frame (the current state-socket format).",
+    description: "Length-prefixed msgpack vehicle-state frame (the current state-socket format). v3 adds position_age_ms: how long since the flight controller's last decoded POSITION, which the swarm beacon's suppression gate reads — without it a consumer cannot tell a live fix from a frozen one under a producer that is still publishing.",
   },
   "frame": {
     version: 0,

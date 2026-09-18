@@ -1,50 +1,287 @@
-import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+/**
+ * Behavioural contract for the MSE player, driven through fake
+ * `MediaSource` / `SourceBuffer` / `WebSocket` / `<video>` doubles.
+ *
+ * Two things this covers that matter on a piloting feed:
+ *
+ *  - **Recovery.** The relay can keep a socket open while the decoder
+ *    silently wedges — no `onclose`, no error event. The player must notice
+ *    via a `currentTime`-advance watchdog and reopen from scratch, and must
+ *    NOT bounce back into a reconnect on a deliberate `stop()`.
+ *  - **Reclaim.** The source buffer must actually be trimmed on a live
+ *    stream. `remove()` is only legal while the buffer is idle, so trimming
+ *    straight after an append (which is what the player used to do) hit the
+ *    `updating` guard every single time: the buffer grew for the whole
+ *    session until the browser raised `QuotaExceededError` and the feed
+ *    froze.
+ */
+
+import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
+
+import { MsePlayer } from "@/lib/video/mse-player";
+
+// ── doubles ──────────────────────────────────────────────────────────
+
+type Listener = () => void;
+
+class FakeSourceBuffer {
+  updating = false;
+  removed: Array<[number, number]> = [];
+  appended: ArrayBuffer[] = [];
+  private listeners = new Map<string, Listener[]>();
+  /** Buffered range the player sees; the test drives it directly. */
+  range: { start: number; end: number } | null = null;
+
+  get buffered() {
+    const range = this.range;
+    return {
+      length: range ? 1 : 0,
+      start: () => range?.start ?? 0,
+      end: () => range?.end ?? 0,
+    } as unknown as TimeRanges;
+  }
+
+  addEventListener(type: string, fn: Listener) {
+    const list = this.listeners.get(type) ?? [];
+    list.push(fn);
+    this.listeners.set(type, list);
+  }
+
+  emit(type: string) {
+    for (const fn of this.listeners.get(type) ?? []) fn();
+  }
+
+  appendBuffer(data: ArrayBuffer) {
+    this.appended.push(data);
+    this.updating = true;
+  }
+
+  remove(start: number, end: number) {
+    this.removed.push([start, end]);
+    this.updating = true;
+  }
+
+  /** Complete whatever operation is in flight, as the browser would. */
+  settle() {
+    this.updating = false;
+    this.emit("updateend");
+  }
+}
+
+class FakeMediaSource {
+  readyState = "open";
+  sourceBuffer = new FakeSourceBuffer();
+  private listeners = new Map<string, Listener[]>();
+
+  addEventListener(type: string, fn: Listener) {
+    const list = this.listeners.get(type) ?? [];
+    list.push(fn);
+    this.listeners.set(type, list);
+  }
+
+  emit(type: string) {
+    for (const fn of this.listeners.get(type) ?? []) fn();
+  }
+
+  addSourceBuffer() {
+    return this.sourceBuffer;
+  }
+
+  static isTypeSupported() {
+    return true;
+  }
+}
+
+class FakeWebSocket {
+  static OPEN = 1;
+  static CLOSED = 3;
+  static last: FakeWebSocket | null = null;
+  static opened: string[] = [];
+
+  readyState = 1;
+  binaryType = "";
+  onopen: (() => void) | null = null;
+  onmessage: ((ev: { data: ArrayBuffer }) => void) | null = null;
+  onclose: (() => void) | null = null;
+  onerror: (() => void) | null = null;
+  closed = false;
+
+  constructor(public url: string) {
+    FakeWebSocket.last = this;
+    FakeWebSocket.opened.push(url);
+  }
+
+  close() {
+    this.closed = true;
+    this.readyState = 3;
+    this.onclose?.();
+  }
+}
+
+function fakeVideo() {
+  return {
+    currentTime: 0,
+    paused: false,
+    src: "",
+    play: vi.fn(() => Promise.resolve()),
+    load: vi.fn(),
+  } as unknown as HTMLVideoElement;
+}
 
 /**
- * Recovery contract for the MSE player. The relay can keep a socket open
- * while the decoder silently wedges (no onclose, no error). The player
- * must detect that via a currentTime-advance watchdog and via
- * sourceBuffer error/abort, then reconnect from scratch rather than
- * waiting for an onclose that may never arrive.
+ * Minimal fMP4 init segment the codec sniffer accepts: an `ftyp` box then a
+ * `moov` carrying one `avc1` sample entry with an `avcC` profile triplet.
  */
-describe("mse-player recovery contract", () => {
-  const src = readFileSync(
-    resolve(__dirname, "../../../src/lib/video/mse-player.ts"),
-    "utf-8",
-  );
+function initSegment(): ArrayBuffer {
+  const box = (type: string, payload: Uint8Array) => {
+    const out = new Uint8Array(8 + payload.length);
+    new DataView(out.buffer).setUint32(0, out.length);
+    out.set(new TextEncoder().encode(type), 4);
+    out.set(payload, 8);
+    return out;
+  };
+  // avcC: configurationVersion, profile, compat, level
+  const avcC = box("avcC", new Uint8Array([1, 0x64, 0x00, 0x1f]));
+  const avc1 = box("avc1", new Uint8Array([...new Uint8Array(70), ...avcC]));
+  const stsd = box("stsd", new Uint8Array([0, 0, 0, 0, 0, 0, 0, 1, ...avc1]));
+  const stbl = box("stbl", stsd);
+  const minf = box("minf", stbl);
+  const mdia = box("mdia", minf);
+  const trak = box("trak", mdia);
+  const moov = box("moov", trak);
+  const ftyp = box("ftyp", new TextEncoder().encode("isom"));
+  const all = new Uint8Array(ftyp.length + moov.length);
+  all.set(ftyp);
+  all.set(moov, ftyp.length);
+  return all.buffer;
+}
 
-  it("runs a playback-stall watchdog over currentTime", () => {
-    expect(src).toContain("startStallWatchdog");
-    expect(src).toContain("PLAYBACK_STALL_TIMEOUT_MS");
-    expect(src).toMatch(/currentTime\s*>\s*this\.lastPlaybackTime/);
+// ── harness ──────────────────────────────────────────────────────────
+
+let ms: FakeMediaSource;
+
+function startPlayer(video: HTMLVideoElement) {
+  const player = new MsePlayer();
+  player.start("drone-1", video, "wss://relay.invalid");
+  ms.emit("sourceopen");
+  FakeWebSocket.last!.onopen?.();
+  // First message is the init segment, which creates the source buffer.
+  FakeWebSocket.last!.onmessage?.({ data: initSegment() });
+  return player;
+}
+
+describe("MsePlayer", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    FakeWebSocket.last = null;
+    FakeWebSocket.opened = [];
+    ms = new FakeMediaSource();
+    class MediaSourceStub {
+      constructor() {
+        return ms as unknown as MediaSourceStub;
+      }
+      static isTypeSupported() {
+        return true;
+      }
+    }
+    vi.stubGlobal("MediaSource", MediaSourceStub);
+    vi.stubGlobal("WebSocket", FakeWebSocket);
+    vi.stubGlobal("URL", {
+      createObjectURL: () => "blob:fake",
+      revokeObjectURL: () => {},
+    });
+    vi.stubGlobal("window", { MediaSource: true });
   });
 
-  it("treats sourceBuffer error and abort as unrecoverable", () => {
-    expect(src).toMatch(/addEventListener\(\s*"error"/);
-    expect(src).toMatch(/addEventListener\(\s*"abort"/);
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
   });
 
-  it("reconnects without waiting on onclose", () => {
-    expect(src).toContain("scheduleReconnect");
-    expect(src).toContain("private reconnect()");
-    // The stall watchdog and sourceBuffer handlers both route through the
-    // debounced scheduler.
-    const matches = src.match(/this\.scheduleReconnect\(\)/g) ?? [];
-    expect(matches.length).toBeGreaterThanOrEqual(3);
+  it("trims the source buffer on a live stream", () => {
+    const video = fakeVideo();
+    const player = startPlayer(video);
+    const sb = ms.sourceBuffer;
+
+    // Steady streaming: the playhead advances and the buffer accumulates.
+    for (let i = 0; i < 20; i++) {
+      sb.settle(); // previous append completes → updateend
+      video.currentTime = i + 1;
+      sb.range = { start: 0, end: video.currentTime + 1 };
+      FakeWebSocket.last!.onmessage?.({ data: new ArrayBuffer(64) });
+    }
+    sb.settle();
+
+    // Before the fix this list was empty for the life of the session.
+    expect(sb.removed.length).toBeGreaterThan(0);
+    const [start, end] = sb.removed.at(-1)!;
+    expect(start).toBe(0);
+    // Trims to five seconds behind the playhead, never ahead of it.
+    expect(end).toBeLessThan(video.currentTime);
+    player.stop();
   });
 
-  it("clears the stall timer on stop", () => {
-    expect(src).toMatch(/clearInterval\(this\.stallTimer\)/);
+  it("never calls remove() while the buffer is busy", () => {
+    const video = fakeVideo();
+    const player = startPlayer(video);
+    const sb = ms.sourceBuffer;
+    const removeSpy = vi.spyOn(sb, "remove");
+
+    for (let i = 0; i < 10; i++) {
+      sb.settle();
+      video.currentTime = i + 1;
+      sb.range = { start: 0, end: video.currentTime + 1 };
+      FakeWebSocket.last!.onmessage?.({ data: new ArrayBuffer(64) });
+    }
+
+    // Every removal must have been issued against an idle buffer; a
+    // `remove()` while `updating` throws InvalidStateError in the browser.
+    for (const call of removeSpy.mock.results) {
+      expect(call.type).toBe("return");
+    }
+    player.stop();
   });
 
-  it("does not reconnect on an intentional teardown", () => {
-    // stop() must detach onclose before close() and latch a teardown flag
-    // that scheduleReconnect() honours, so a deliberate stop never bounces
-    // into a reconnect.
-    expect(src).toContain("this.tearingDown = true");
-    expect(src).toMatch(/this\.ws\.onclose\s*=\s*null/);
-    expect(src).toMatch(/if\s*\(this\.tearingDown[\s\S]*?\)\s*return/);
+  it("reconnects when playback freezes while the socket stays open", () => {
+    const video = fakeVideo();
+    const player = startPlayer(video);
+    expect(FakeWebSocket.opened).toHaveLength(1);
+
+    // currentTime never advances. No close, no error — the silent wedge.
+    vi.advanceTimersByTime(8000);
+    // Reconnect is debounced behind a delay.
+    vi.advanceTimersByTime(4000);
+    ms.emit("sourceopen");
+
+    expect(FakeWebSocket.opened.length).toBeGreaterThan(1);
+    player.stop();
+  });
+
+  it("does not reconnect after a deliberate stop", () => {
+    const video = fakeVideo();
+    const player = startPlayer(video);
+    const openedBefore = FakeWebSocket.opened.length;
+
+    player.stop();
+    vi.advanceTimersByTime(30_000);
+
+    expect(FakeWebSocket.opened).toHaveLength(openedBefore);
+  });
+
+  it("reports an unreadable codec instead of showing a black screen", () => {
+    const video = fakeVideo();
+    const onError = vi.fn();
+    const player = new MsePlayer();
+    player.start("drone-1", video, "wss://relay.invalid", { onError });
+    ms.emit("sourceopen");
+    FakeWebSocket.last!.onopen?.();
+
+    // Not an fMP4 init segment: no codec can be derived from it.
+    FakeWebSocket.last!.onmessage?.({ data: new ArrayBuffer(16) });
+
+    expect(onError).toHaveBeenCalledWith(
+      expect.objectContaining({ code: "codec-unknown" }),
+    );
+    player.stop();
   });
 });

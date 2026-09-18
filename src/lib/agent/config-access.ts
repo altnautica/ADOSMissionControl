@@ -46,6 +46,7 @@ import { useLocalNodesStore, type LocalNode } from "@/stores/local-nodes-store";
 import { usePairingStore, type PairedDrone } from "@/stores/pairing-store";
 import type { RelayReach } from "@/lib/nodes/relay-reach";
 import type { ConfigWriteResult } from "@/lib/agent/config-write";
+import { timedFetch } from "@/lib/agent/agent-client/timeout";
 
 /** The slice of the agent client the config surface needs. Structural, so
  * tests (and any future transport) can satisfy it without the full client
@@ -106,9 +107,7 @@ export function resolveConfigProxyTarget(
     const host = localNode.hostname || localNode.mdnsHost || localNode.ipv4;
     if (host) return { host, apiKey: localNode.apiKey ?? null };
   }
-  const pairedDrone = records.pairedDrones.find(
-    (d) => d.deviceId === deviceId,
-  );
+  const pairedDrone = records.pairedDrones.find((d) => d.deviceId === deviceId);
   if (pairedDrone) {
     const host = pairedDrone.mdnsHost || pairedDrone.lastIp;
     if (host) return { host, apiKey: pairedDrone.apiKey ?? null };
@@ -234,7 +233,7 @@ async function proxyConfigRequest(
   method: "GET" | "PUT" | "POST",
   body?: Record<string, unknown>,
 ): Promise<unknown> {
-  const res = await fetch("/api/lan-pair/config", {
+  const res = await timedFetch("/api/lan-pair/config", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

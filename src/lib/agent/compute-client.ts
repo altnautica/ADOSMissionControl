@@ -20,7 +20,8 @@
  */
 
 import type { ComputeGpuInfo } from "@/stores/compute-store";
-import { proxiedArtifactUrl } from "./compute-artifact";
+import { grantArtifactAccess, proxiedArtifactUrl } from "./compute-artifact";
+import { timedFetch } from "@/lib/agent/agent-client/timeout";
 
 /** The ados-compute engine's own job-API port, distinct from the ados-control
  * front on `:8080` that serves {@link ComputeAgentClient.getStatus}. */
@@ -200,8 +201,7 @@ function coerceOutput(raw: unknown): ComputeOutput | null {
     typeof meta?.backend === "string" && meta.backend.length > 0
       ? meta.backend
       : null;
-  const backend =
-    metaBackend ?? (e.uri.startsWith("mock://") ? "mock" : null);
+  const backend = metaBackend ?? (e.uri.startsWith("mock://") ? "mock" : null);
   return {
     id: e.id,
     jobId: str(e.job_id),
@@ -270,7 +270,7 @@ export class ComputeAgentClient {
   async getStatus(): Promise<Record<string, unknown> | null> {
     let res: Response;
     try {
-      res = await fetch(`${this.baseUrl}/api/compute/status`, {
+      res = await timedFetch(`${this.baseUrl}/api/compute/status`, {
         headers: this.authHeader(),
       });
     } catch {
@@ -302,7 +302,7 @@ export class ComputeAgentClient {
     let res: Response;
     try {
       if (this.useProxy) {
-        res = await fetch("/api/lan-pair/compute", {
+        res = await timedFetch("/api/lan-pair/compute", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -315,7 +315,7 @@ export class ComputeAgentClient {
         });
       } else {
         const hasBody = body !== undefined;
-        res = await fetch(`${this.jobBase}/api/compute/${path}`, {
+        res = await timedFetch(`${this.jobBase}/api/compute/${path}`, {
           method,
           headers: {
             Accept: "application/json",
@@ -364,16 +364,21 @@ export class ComputeAgentClient {
     );
     if (body === null) return null;
     if (!Array.isArray(body)) return [];
+    // The proxy takes this node's key from an HttpOnly cookie rather than
+    // from the URL, so mint the grant before handing any URL to a viewer.
+    await grantArtifactAccess(this.baseUrl, this.apiKey);
     return body.flatMap((o) => {
       const out = coerceOutput(o);
       if (!out) return [];
-      out.uri = proxiedArtifactUrl(out.uri, this.baseUrl, this.apiKey);
+      out.uri = proxiedArtifactUrl(out.uri, this.baseUrl);
       return [out];
     });
   }
 
   /** Submit a job. Returns the assigned id + initial state, or `null` on failure. */
-  async submitJob(req: ComputeSubmitRequest): Promise<ComputeSubmitResult | null> {
+  async submitJob(
+    req: ComputeSubmitRequest,
+  ): Promise<ComputeSubmitResult | null> {
     const body = await this.jobRequest("jobs", "POST", {
       job_id: req.jobId,
       kind: req.kind,

@@ -1,15 +1,23 @@
 /**
  * Tests for the pushStatus mutation surface.
  *
- * Convex internal mutations cannot be imported directly without a
- * runtime; we pin the surface by reading the source file and asserting
- * (a) the args declare every new optional field, and (b) the handler
- * forwards every new field through to db.insert / db.patch (no field
- * silently dropped on a future refactor).
+ * The persistence tests invoke the REAL `pushStatus` handler against the fake
+ * Convex ctx and assert the row that lands in the db. They used to assert
+ * against a `simulateInsert` re-implementation of the handler written inside
+ * this file, so the whole block passed unchanged if the real handler dropped
+ * a field, inverted the undefined-strip, or stopped patching — which is
+ * exactly the defect that shipped.
+ *
+ * The remaining source-text assertions pin VALIDATOR DECLARATIONS, which have
+ * no runtime surface to exercise: an undeclared field is rejected by Convex
+ * before any handler runs.
  */
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+
+import * as cmdDroneStatus from "@/../convex/cmdDroneStatus";
+import { invoke, makeCtx } from "./fakeConvexCtx";
 
 const MUTATION_PATH = path.join(process.cwd(), "convex/cmdDroneStatus.ts");
 
@@ -137,71 +145,32 @@ describe("cloud-relay /agent/status forwards the agent-emitted fields", () => {
   });
 });
 
-describe("pushStatus persistence wiring", () => {
-  it.each(NEW_OPTIONAL_FIELDS)(
-    "forwards %s through to the persistence call",
-    async (field) => {
-      const text = await readFile(MUTATION_PATH, "utf8");
-      // Each new field must appear as a property assignment from args
-      // (e.g. `lcdActivePage: args.lcdActivePage`) so a future refactor
-      // that narrows `...args` cannot silently drop it.
-      const expected = `${field}: args.${field}`;
-      expect(text).toContain(expected);
-    },
-  );
+describe("pushStatus persistence", () => {
+  const BASE = { deviceId: "drone-a", version: "0.18.4", uptimeSeconds: 60 };
 
-  it("calls both db.insert and db.patch with a localSurfaceFields spread", async () => {
-    const text = await readFile(MUTATION_PATH, "utf8");
-    expect(text).toContain("...localSurfaceFields");
-    expect(text).toContain('ctx.db.insert("cmd_droneStatus"');
-    expect(text).toContain("ctx.db.patch(existing._id");
-  });
-});
-
-/**
- * Runtime simulation: rebuild the handler-relevant logic with a fake
- * db so we can assert the stored row matches expectations both for the
- * full payload (all 11 fields) and the empty payload (none of them).
- *
- * This mirrors the structure of the real handler: pick the fields off
- * args explicitly, spread them into the row, leave undefined values
- * untouched (Convex stores `undefined` as missing, not `null`).
- */
-type Row = Record<string, unknown>;
-
-function simulateInsert(args: Row): Row {
-  const localSurfaceFields = {
-    lcdActivePage: args.lcdActivePage,
-    lcdTouchCalibrated: args.lcdTouchCalibrated,
-    lcdRotation: args.lcdRotation,
-    lcdSnapshotUrl: args.lcdSnapshotUrl,
-    lcdLastTouchAt: args.lcdLastTouchAt,
-    lcdLastGesture: args.lcdLastGesture,
-    videoLocalDecoderActive: args.videoLocalDecoderActive,
-    videoLocalDecoderType: args.videoLocalDecoderType,
-    videoLocalDecoderFps: args.videoLocalDecoderFps,
-    videoRecording: args.videoRecording,
-    uiTheme: args.uiTheme,
-  };
-  // Strip undefined values to mirror Convex's `optional` semantics
-  // (a missing field is not the same as a null field on the row).
-  const row: Row = {};
-  for (const [k, v] of Object.entries({
-    ...args,
-    ...localSurfaceFields,
-    updatedAt: 1234567890,
-  })) {
-    if (v !== undefined) row[k] = v;
+  /** Run the REAL handler against a fake db and return the stored row. */
+  async function push(args: Record<string, unknown>) {
+    const ctx = makeCtx();
+    await invoke(cmdDroneStatus.pushStatus, ctx, args);
+    return ctx.db.rows("cmd_droneStatus")[0];
   }
-  return row;
-}
 
-describe("pushStatus row shape", () => {
-  it("persists every new field when all 11 are present in args", () => {
-    const args: Row = {
-      deviceId: "drone-a",
-      version: "0.18.4",
-      uptimeSeconds: 60,
+  /** Run the REAL handler twice against the same fake db. */
+  async function pushTwice(
+    first: Record<string, unknown>,
+    second: Record<string, unknown>,
+  ) {
+    const ctx = makeCtx();
+    await invoke(cmdDroneStatus.pushStatus, ctx, first);
+    await invoke(cmdDroneStatus.pushStatus, ctx, second);
+    const rows = ctx.db.rows("cmd_droneStatus");
+    expect(rows).toHaveLength(1);
+    return rows[0];
+  }
+
+  it("persists every local-surface field the agent sends", async () => {
+    const row = await push({
+      ...BASE,
       lcdActivePage: "dashboard",
       lcdTouchCalibrated: true,
       lcdRotation: 90,
@@ -213,8 +182,7 @@ describe("pushStatus row shape", () => {
       videoLocalDecoderFps: 30,
       videoRecording: false,
       uiTheme: "dark",
-    };
-    const row = simulateInsert(args);
+    });
     expect(row.lcdActivePage).toBe("dashboard");
     expect(row.lcdTouchCalibrated).toBe(true);
     expect(row.lcdRotation).toBe(90);
@@ -230,42 +198,65 @@ describe("pushStatus row shape", () => {
     expect(row.uiTheme).toBe("dark");
   });
 
-  it("omits every new field when args do not include them (undefined, not null)", () => {
-    const args: Row = {
-      deviceId: "drone-b",
-      version: "0.18.4",
-      uptimeSeconds: 30,
-    };
-    const row = simulateInsert(args);
-    for (const field of [
-      "lcdActivePage",
-      "lcdTouchCalibrated",
-      "lcdRotation",
-      "lcdSnapshotUrl",
-      "lcdLastTouchAt",
-      "lcdLastGesture",
-      "videoLocalDecoderActive",
-      "videoLocalDecoderType",
-      "videoLocalDecoderFps",
-      "videoRecording",
-      "uiTheme",
-    ]) {
-      expect(row[field]).toBeUndefined();
-      expect(field in row).toBe(false);
-    }
+  it("sets updatedAt server-side, never from args", async () => {
+    const before = Date.now();
+    const row = await push({ ...BASE, updatedAt: 1 });
+    expect(typeof row.updatedAt).toBe("number");
+    expect(row.updatedAt as number).toBeGreaterThanOrEqual(before);
   });
 
-  it("preserves existing identifiers alongside the new fields", () => {
-    const args: Row = {
-      deviceId: "drone-c",
-      version: "0.18.4",
-      uptimeSeconds: 90,
-      lcdActivePage: "video",
-    };
-    const row = simulateInsert(args);
+  it("preserves the identifiers alongside the telemetry", async () => {
+    const row = await push({ ...BASE, deviceId: "drone-c", lcdActivePage: "video" });
     expect(row.deviceId).toBe("drone-c");
     expect(row.version).toBe("0.18.4");
-    expect(row.uptimeSeconds).toBe(90);
+    expect(row.uptimeSeconds).toBe(60);
     expect(row.lcdActivePage).toBe("video");
+  });
+
+  // THE stale-cloud-status defect. The handler used to patch with `{...args}`,
+  // and Convex drops undefined-valued keys when serializing mutation
+  // ARGUMENTS — so a field the agent stops sending is simply absent from
+  // `args`, the spread does not carry the key, and `db.patch` leaves the old
+  // value in place forever. A remote operator saw a dead radio as healthy,
+  // with a plausible RSSI and a fresh `updatedAt`.
+  it("CLEARS a field the agent stops sending", async () => {
+    const row = await pushTwice(
+      { ...BASE, uiTheme: "dark", lcdActivePage: "dashboard" },
+      { ...BASE },
+    );
+    expect(row.uiTheme).toBeUndefined();
+    expect(row.lcdActivePage).toBeUndefined();
+  });
+
+  it("CLEARS the radio block when the radio service goes away", async () => {
+    const radio = {
+      state: "up",
+      iface: "wlan1",
+      driver: "rtl88xxau",
+      channel: 161,
+      freqMhz: 5805,
+      bandwidthMhz: 20,
+      txPowerDbm: 20,
+      txPowerMaxDbm: 30,
+      topology: "unicast",
+      rssiDbm: -40,
+      bitrateKbps: 4057,
+      fecRecovered: 0,
+      fecLost: 0,
+      packetsLost: 0,
+    };
+    const row = await pushTwice({ ...BASE, radio }, { ...BASE });
+    expect(row.radio).toBeUndefined();
+  });
+
+  it("stores an EMPTY peer list as empty, not as the previous list", async () => {
+    // An empty list is a real reading: the node has no linked peers right
+    // now. The relay used to translate it into "no update", so the last
+    // non-empty list persisted.
+    const row = await pushTwice(
+      { ...BASE, linkedPeers: [{ deviceId: "gs-1", role: "ground-station" }] },
+      { ...BASE, linkedPeers: [] },
+    );
+    expect(row.linkedPeers).toEqual([]);
   });
 });

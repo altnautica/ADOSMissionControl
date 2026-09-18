@@ -113,6 +113,10 @@ export function FlightDataCard({ className }: FlightDataCardProps) {
   const gpsLive = isChannelLive(freshness.getFreshness("gps"));
   const gpsShow = hasFix && gpsLive;
   const posShow = hasFix && posLive;
+  // Radio was the one readout on this card with NO freshness gate, so a dead
+  // link kept rendering its last RSSI / remote RSSI / TX buffer / RX errors as
+  // current — the strongest-looking block on the card was the stalest.
+  const radioShow = radioData !== undefined && isChannelLive(freshness.getFreshness("radio"));
   // Attitude/heading in the telemetry store are ALREADY in degrees (the
   // ingest handler converts MAVLink radians once). Format them directly —
   // re-applying a rad->deg conversion here yielded the ~57x garbage.
@@ -358,25 +362,25 @@ export function FlightDataCard({ className }: FlightDataCardProps) {
           <div className="flex justify-between">
             <span className="text-text-tertiary">RSSI</span>
             <span className="font-mono text-text-primary">
-              {radioData ? `${radioData.rssi} dBm` : "-- dBm"}
+              {radioShow && radioData ? `${radioData.rssi} dBm` : "-- dBm"}
             </span>
           </div>
           <div className="flex justify-between">
             <span className="text-text-tertiary">Remote</span>
             <span className="font-mono text-text-primary">
-              {radioData ? `${radioData.remrssi} dBm` : "-- dBm"}
+              {radioShow && radioData ? `${radioData.remrssi} dBm` : "-- dBm"}
             </span>
           </div>
           <div className="flex justify-between">
             <span className="text-text-tertiary">TX</span>
             <span className="font-mono text-text-primary">
-              {radioData ? `${radioData.txbuf}%` : "--%"}
+              {radioShow && radioData ? `${radioData.txbuf}%` : "--%"}
             </span>
           </div>
           <div className="flex justify-between">
             <span className="text-text-tertiary">RX Err</span>
             <span className="font-mono text-text-primary">
-              {radioData ? `${radioData.rxerrors}` : "--"}
+              {radioShow && radioData ? `${radioData.rxerrors}` : "--"}
             </span>
           </div>
         </div>

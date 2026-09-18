@@ -35,7 +35,6 @@ export class HudErrorBoundary extends Component<
 
   componentDidCatch(error: unknown, info: unknown) {
     // Keep this lightweight. The kiosk runs headless; console is the only sink.
-    // eslint-disable-next-line no-console
     console.error("[HudErrorBoundary]", error, info);
   }
 

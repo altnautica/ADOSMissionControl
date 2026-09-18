@@ -88,6 +88,38 @@ describe('manual-control stream cadence', () => {
     expect(p.sendManualControl).toHaveBeenCalledTimes(1)
   })
 
+  it('refuses to transmit a stale stick sample', () => {
+    // THE frozen-stick hazard. The sticks are produced by a
+    // `requestAnimationFrame` loop and transmitted by an independent
+    // `setTimeout` chain: backgrounding the window pauses RAF while Chrome
+    // keeps firing hidden-tab timers at ~1 Hz, still inside ArduPilot's 3.0 s
+    // `RC_OVERRIDE_TIME`. Without a sample-age gate the last stick snapshot
+    // was re-sent to an ARMED aircraft indefinitely and the vehicle never saw
+    // a dropout.
+    const p = fakeProtocol(50)
+    protocol = p
+
+    const now = Date.now()
+    vi.spyOn(Date, 'now').mockReturnValue(now + 5_000)
+    try {
+      manualControlTick()
+      expect(p.sendManualControl).not.toHaveBeenCalled()
+    } finally {
+      vi.mocked(Date.now).mockRestore()
+    }
+  })
+
+  it('refuses to transmit when nothing has ever read the sticks', () => {
+    useInputStore.getState().resetInput()
+    useInputStore.getState().setController('gamepad')
+    useInputStore.getState().setManualControlEnabled(true)
+    const p = fakeProtocol(50)
+    protocol = p
+
+    manualControlTick()
+    expect(p.sendManualControl).not.toHaveBeenCalled()
+  })
+
   it('transmits nothing when the link declares no rate', () => {
     const p = fakeProtocol(0)
     protocol = p
@@ -105,6 +137,8 @@ describe('manual-control link refusal', () => {
     const s = useInputStore.getState()
     s.setController('gamepad')
     s.setManualControlEnabled(true)
+    // A live stick sample; the tick refuses a stale one.
+    s.setAxes([0, 0, 0, 0])
   })
 
   afterEach(() => {

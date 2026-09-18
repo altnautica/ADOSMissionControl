@@ -245,9 +245,16 @@ export function VideoLatencyBreakdown({
                 </Section>
 
                 {/* Air side */}
+                {/* NOT "camera → tap": the SEI stamp is injected AFTER
+                    encode, and the readback is off the drone's own RTSP
+                    feed, so this figure excludes capture, encode, the
+                    radio, the ground ingest and the browser. Calling it
+                    anything wider is the difference between a 74 ms
+                    publish-side number and a glass-to-glass number that
+                    has never been measured. */}
                 <Section
-                  title="Air side"
-                  subtitle="camera → drone LCD tap"
+                  title="Drone publish side"
+                  subtitle="encoder output → drone RTSP readback"
                 >
                   {latency.airSource === "unavailable" ? (
                     <Note>
@@ -258,9 +265,9 @@ export function VideoLatencyBreakdown({
                   ) : (
                     <>
                       <Row
-                        label="SEI EWMA"
+                        label="Stamp-to-readback EWMA"
                         value={fmtMs(latency.airLatencyMs)}
-                        tooltip="Drone-side stamp-to-readback: the time between the encoder emitting a frame (where the SEI timestamp is injected, after encode) and that frame being read back off the drone's own RTSP feed. Covers muxing, the mediamtx publish and the drone-side buffering — not camera capture or encode."
+                        tooltip="Drone-side stamp-to-readback: the time between the encoder emitting a frame (where the SEI timestamp is injected, after encode) and that frame being read back off the drone's own RTSP feed. Covers the publish mux, the RTSP publish and the drone-side buffering. It EXCLUDES camera capture, encode, the radio link, the ground ingest and the browser — it is not a glass-to-glass figure."
                       />
                       <Row
                         label="Samples (1s)"

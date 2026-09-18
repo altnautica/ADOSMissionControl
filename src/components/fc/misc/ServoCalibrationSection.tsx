@@ -1,14 +1,16 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
+import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useToast } from "@/components/ui/toast";
 import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
 import { Button } from "@/components/ui/button";
-import { Save, HardDrive, Play, ChevronDown, ChevronRight } from "lucide-react";
+import { Toggle } from "@/components/ui/toggle";
+import { Save, HardDrive, Play, ChevronDown, ChevronRight, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const SERVO_COUNT = 16;
@@ -229,12 +231,33 @@ export function ServoCalibrationSection() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [servoBuffer, telVersion]);
 
+  // Armed hard-block. `SERVOn_FUNCTION` 33-40 are MOTOR outputs, so Test at
+  // PWM 2000 spins a motor — and this control had no armed gate and no
+  // props-removed acknowledgement at all, unlike every sibling actuation
+  // control (MotorTestSection, ServoTestSection, BfMotorTest, Px4ActuatorTest,
+  // BfDshotCommands). Its host's `ArmedLockOverlay` is deliberately
+  // non-blocking, so nothing upstream stopped it either: the button stayed
+  // clickable while the aircraft was armed and airborne.
+  const { isHardBlocked, hardBlockMessage } = useArmedLock();
+  const [testEnabled, setTestEnabled] = useState(false);
+  useEffect(() => {
+    if (isHardBlocked) setTestEnabled(false);
+  }, [isHardBlocked]);
+
   const handleTest = useCallback((servo: number, pwm: number) => {
+    if (isHardBlocked) {
+      toast(hardBlockMessage, "error");
+      return;
+    }
+    if (!testEnabled) {
+      toast("Enable servo output test first — outputs 33-40 are motors", "warning");
+      return;
+    }
     const protocol = getSelectedProtocol();
     if (!protocol) return;
     protocol.setServo(servo, pwm);
     toast(`Servo ${servo} set to ${pwm}`, "info");
-  }, [getSelectedProtocol, toast]);
+  }, [getSelectedProtocol, toast, isHardBlocked, hardBlockMessage, testEnabled]);
 
   async function handleSave() {
     setSaving(true);
@@ -245,8 +268,7 @@ export function ServoCalibrationSection() {
   }
 
   async function handleFlash() {
-    const ok = await commitToFlash();
-    showFlashResult(ok, { successMessage: "Written to flash" });
+    showFlashResult(await commitToFlash(), { successMessage: "Written to flash" });
   }
 
   return (
@@ -262,6 +284,29 @@ export function ServoCalibrationSection() {
           <Button variant="secondary" size="sm" onClick={refresh} loading={loading}>
             Read
           </Button>
+        )}
+      </div>
+
+      {/* Actuation safety gate, matching every sibling actuation control. */}
+      <div className="space-y-2 mb-3">
+        <div className="flex items-center gap-2 p-2 bg-status-error/10 border border-status-error/20">
+          <AlertTriangle size={14} className="text-status-error shrink-0" />
+          <span className="text-[10px] text-status-error">
+            Remove propellers before testing outputs. Outputs 33-40 are MOTORS —
+            a test at high PWM spins them.
+          </span>
+        </div>
+        <Toggle
+          label="Enable output test (props removed)"
+          checked={testEnabled}
+          onChange={setTestEnabled}
+          disabled={isHardBlocked || !connected}
+        />
+        {isHardBlocked && (
+          <div className="flex items-center gap-2 p-2 bg-status-error/10 border border-status-error/20">
+            <AlertTriangle size={14} className="text-status-error shrink-0" />
+            <span className="text-[10px] text-status-error">{hardBlockMessage}</span>
+          </div>
         )}
       </div>
 

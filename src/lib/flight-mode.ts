@@ -13,23 +13,35 @@
 
 import type { FlightMode } from "@/lib/types";
 
-/** Every mode name that maps cleanly onto the `FlightMode` union. */
+/**
+ * Every mode name that maps cleanly onto the `FlightMode` union.
+ *
+ * `FlightMode` IS `UnifiedFlightMode`, so this set must list every member of
+ * that union or a real vehicle mode narrows to null and the caller renders a
+ * stale one. Keep it in step with `protocol/types/enums.ts`; the test asserts
+ * a representative mode from every firmware family.
+ */
 export const KNOWN_FLIGHT_MODES: ReadonlySet<string> = new Set<FlightMode>([
+  // Common
   "STABILIZE",
+  "ACRO",
   "ALT_HOLD",
-  "LOITER",
-  "GUIDED",
   "AUTO",
+  "GUIDED",
+  "LOITER",
   "RTL",
   "LAND",
+  "CIRCLE",
+  "POSHOLD",
+  "AUTOTUNE",
   "MANUAL",
-  "ACRO",
+  // ArduPlane
+  "TRAINING",
   "FBWA",
   "FBWB",
   "CRUISE",
-  "TRAINING",
-  "CIRCLE",
-  "AUTOTUNE",
+  "AVOID_ADSB",
+  "THERMAL",
   "QSTABILIZE",
   "QHOVER",
   "QLOITER",
@@ -37,23 +49,44 @@ export const KNOWN_FLIGHT_MODES: ReadonlySet<string> = new Set<FlightMode>([
   "QRTL",
   "QAUTOTUNE",
   "QACRO",
-  "AVOID_ADSB",
-  "THERMAL",
-  "POSHOLD",
-  "BRAKE",
-  "SMART_RTL",
+  "LOITER_TO_QLAND",
+  "AUTOLAND",
+  // ArduCopter
   "DRIFT",
   "SPORT",
   "FLIP",
   "THROW",
+  "BRAKE",
+  "SMART_RTL",
   "FLOWHOLD",
   "FOLLOW",
   "ZIGZAG",
   "SYSTEMID",
   "HELI_AUTOROTATE",
   "AUTO_RTL",
+  "GUIDED_NOGPS",
+  "TURTLE",
+  // ArduRover
+  "STEERING",
+  "HOLD",
+  "SIMPLE",
+  "DOCK",
+  // ArduSub
+  "SURFACE",
+  "MOTOR_DETECT",
+  "SURFTRAK",
+  // PX4
+  "OFFBOARD",
+  "RATTITUDE",
+  "MISSION",
   "TAKEOFF",
-  "LOITER_TO_QLAND",
+  "FOLLOW_ME",
+  "ORBIT",
+  "READY",
+  "PRECLAND",
+  "RTGS",
+  // Generic
+  "UNKNOWN",
 ]);
 
 /** Narrow a mode name to a `FlightMode`, or null when it is not one. */

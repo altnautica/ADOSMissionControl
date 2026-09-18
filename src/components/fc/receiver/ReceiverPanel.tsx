@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Toggle } from "@/components/ui/toggle";
 import { useToast } from "@/components/ui/toast";
+import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { usePanelParams } from "@/hooks/use-panel-params";
@@ -14,10 +15,11 @@ import { PanelHeader } from "../shared/PanelHeader";
 import { RcChannelBar } from "./RcChannelBar";
 import { ReceiverBindingUI } from "./ReceiverBindingUI";
 import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
+import { BitmaskEditor } from "@/components/ui/bitmask-editor";
 import { Save, Radio, HardDrive } from "lucide-react";
 
 import {
-  RC_CHANNEL_COUNT, CHANNEL_OPTIONS, RC_PROTOCOLS_OPTIONS,
+  RC_CHANNEL_COUNT, CHANNEL_OPTIONS, RC_PROTOCOLS_BITMASK,
   RSSI_TYPE_OPTIONS, RECEIVER_PARAMS,
 } from "./receiver-constants";
 
@@ -25,6 +27,7 @@ export function ReceiverPanel() {
   const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
   const protocol = getSelectedProtocol();
   const { toast } = useToast();
+  const { showFlashResult } = useFlashCommitToast();
   const [saving, setSaving] = useState(false);
 
   // Live RC data from telemetry store
@@ -51,6 +54,19 @@ export function ReceiverPanel() {
   const getChannelReversed = (i: number) => (params.get(`RC${i + 1}_REVERSED`) ?? 0) !== 0;
   const getChannelDz = (i: number) => params.get(`RC${i + 1}_DZ`) ?? 30;
 
+  // ── RC_PROTOCOLS bitmask ───────────────────────────────────
+
+  const [protocolsEditOpen, setProtocolsEditOpen] = useState(false);
+  const rcProtocolsValue = Number(params.get("RC_PROTOCOLS") ?? 1) >>> 0;
+  const rcProtocolsLabel = useMemo(() => {
+    const set: string[] = [];
+    for (const [bit, label] of RC_PROTOCOLS_BITMASK) {
+      if (rcProtocolsValue & (1 << bit)) set.push(label);
+    }
+    if (set.length === 0) return "None";
+    return set.join(", ");
+  }, [rcProtocolsValue]);
+
   // ── Save / Flash ───────────────────────────────────────────
 
   async function handleSave() {
@@ -62,9 +78,7 @@ export function ReceiverPanel() {
   }
 
   async function handleFlash() {
-    const ok = await commitToFlash();
-    if (ok) toast("Parameters written to flash", "success");
-    else toast("Failed to write to flash", "error");
+    showFlashResult(await commitToFlash(), { successMessage: "Parameters written to flash" });
   }
 
   // ── RC data guard ─────────────────────────────────────────
@@ -206,14 +220,28 @@ export function ReceiverPanel() {
 
         <Card title="RC Protocol & RSSI">
           <div className="space-y-3">
-            <Select
-              label="RC_PROTOCOLS — Allowed RC Protocols (bitmask)"
-              options={RC_PROTOCOLS_OPTIONS}
-              value={String(params.get("RC_PROTOCOLS") ?? "1")}
-              onChange={(v) => setLocalValue("RC_PROTOCOLS", Number(v))}
-            />
+            {/* RC_PROTOCOLS is a real bitmask: several protocols can be
+                allowed at once and bit 0 means "All". A Select could only ever
+                write one bit, and its option values were one bit position
+                short of the parameter's encoding — picking "CRSF" wrote SRXL2
+                and the FC stopped decoding the receiver after a reboot. */}
+            <div className="space-y-1">
+              <div className="text-[10px] uppercase tracking-wide text-text-secondary">
+                RC_PROTOCOLS — Allowed RC Protocols (bitmask)
+              </div>
+              <button
+                type="button"
+                onClick={() => setProtocolsEditOpen(true)}
+                className="w-full flex items-center justify-between gap-2 px-2 py-1.5 text-xs font-mono
+                  text-text-primary border border-border-default hover:bg-bg-tertiary transition-colors cursor-pointer"
+              >
+                <span>{rcProtocolsLabel}</span>
+                <span className="text-text-tertiary">{rcProtocolsValue}</span>
+              </button>
+            </div>
             <p className="text-[10px] text-text-tertiary">
-              Bitmask of allowed RC input protocols. Set to match your receiver type.
+              Bitmask of allowed RC input protocols. Bit 0 (&ldquo;All&rdquo;) accepts every
+              protocol; otherwise set the bits matching your receiver.
             </p>
             <Select
               label="RSSI_TYPE — RSSI Source"
@@ -303,6 +331,15 @@ export function ReceiverPanel() {
           onSetParameter={onSetParameter}
         />
       </div>
+
+      <BitmaskEditor
+        open={protocolsEditOpen}
+        onClose={() => setProtocolsEditOpen(false)}
+        title="RC_PROTOCOLS — Allowed RC Protocols"
+        bitmask={RC_PROTOCOLS_BITMASK}
+        value={rcProtocolsValue}
+        onApply={(next) => setLocalValue("RC_PROTOCOLS", next)}
+      />
     </div>
     </ArmedLockOverlay>
   );

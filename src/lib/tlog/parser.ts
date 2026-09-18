@@ -151,7 +151,12 @@ export function tlogToFlightRecord(
       });
     }
 
-    // SYS_STATUS (1): voltage, current, remaining
+    // SYS_STATUS (1): voltage, current, remaining.
+    //
+    // Wire order is size-descending, so `battery_remaining` is the int8 at
+    // offset 30 — offset 18 is `drop_rate_comm`, a uint16. This read the
+    // battery percentage out of the comms drop-rate counter; the repo's own
+    // live decoder has it right at `protocol/messages/core.ts:88`.
     if (msgId === 1 && raw[1] >= 31) {
       frames.push({
         offsetMs,
@@ -159,7 +164,7 @@ export function tlogToFlightRecord(
         data: {
           voltage: pdv.getUint16(14, true) / 1000,
           current: pdv.getInt16(16, true) / 100,
-          remaining: pdv.getInt8(18),
+          remaining: pdv.getInt8(30),
         },
       });
     }

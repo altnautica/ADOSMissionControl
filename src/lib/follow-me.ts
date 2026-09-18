@@ -12,11 +12,24 @@
 
 import { useGcsLocationStore } from "@/stores/gcs-location-store";
 import { useFollowMeStore } from "@/stores/follow-me-store";
+import { useTelemetryStore } from "@/stores/telemetry-store";
 import type { DroneProtocol } from "@/lib/protocol/types/protocol";
 
 const SEND_INTERVAL_MS = 250;       // 4 Hz
 const GPS_TIMEOUT_MS = 5000;         // pause after 5s without GCS position update
 const GPS_STOP_TIMEOUT_MS = 30000;   // stop entirely after 30s GPS loss
+
+/**
+ * Reported horizontal accuracy above which a browser fix is not a position
+ * this may fly an aircraft to.
+ *
+ * A Wi-Fi or IP-fallback fix routinely reports hundreds to thousands of
+ * metres while being non-null and perfectly fresh, and the only rejection
+ * here used to be staleness — so the aircraft was commanded to a point that
+ * could be kilometres away. `FollowMeButton` colours the accuracy dot red
+ * above 50 m and kept streaming underneath it; this is the gate that stops.
+ */
+const MAX_ACCURACY_M = 50;
 
 let sendInterval: ReturnType<typeof setInterval> | null = null;
 let gpsCheckInterval: ReturnType<typeof setInterval> | null = null;
@@ -73,8 +86,33 @@ export async function startFollowMe(protocol: DroneProtocol, minAltitude = 10): 
     const gcsPos = useGcsLocationStore.getState().position;
     if (!gcsPos) return;
 
-    // Use minimum altitude to prevent drone from descending
-    const targetAlt = Math.max(minAltitude, 2);
+    // Altitude FLOOR, not a fixed altitude. `Math.max(minAltitude, 2)` is a
+    // constant (10 m by default) that was sent 4x/s as
+    // `MAV_CMD_DO_REPOSITION` in `MAV_FRAME_GLOBAL_RELATIVE_ALT_INT`, so a
+    // vehicle cruising at 60-100 m AGL and put into Follow-Me was commanded
+    // DOWN to 10 m above home. The comment on the old line claimed the
+    // opposite intent; this floors the CURRENT altitude instead.
+    const currentAlt = useTelemetryStore.getState().position.latest()?.relativeAlt;
+    const floor = Math.max(minAltitude, 2);
+    const targetAlt =
+      typeof currentAlt === "number" && Number.isFinite(currentAlt)
+        ? Math.max(currentAlt, floor)
+        : floor;
+
+    // An imprecise fix is not a flight target. Pause rather than stop, so the
+    // stream resumes by itself when the fix improves — the same shape as the
+    // staleness pause below.
+    if (
+      typeof gcsPos.accuracy === "number" &&
+      Number.isFinite(gcsPos.accuracy) &&
+      gcsPos.accuracy > MAX_ACCURACY_M
+    ) {
+      useFollowMeStore.getState().updateAccuracy(gcsPos.accuracy);
+      if (!useFollowMeStore.getState().isPaused) {
+        useFollowMeStore.getState().pause();
+      }
+      return;
+    }
 
     // Fire-and-forget: guidedGoto sends DO_REPOSITION synchronously
     // (it encodes and sends immediately, no ACK wait)

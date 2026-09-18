@@ -8,8 +8,16 @@
  * shared with the canvas HUDs' rAF loop, so a DOM instrument and the canvas
  * beside it cannot disagree about whether a reading is known. A stale/absent
  * sample yields `null`, so an instrument shows "—" rather than a fabricated 0
- * (Rule 44). Re-renders are driven by the store's `_version` freshness
- * signal; ring-buffer refs are stable.
+ * (Rule 44).
+ *
+ * Re-renders are driven by TWO signals, and both are load-bearing:
+ * the store's `_version` (new telemetry arrived) and the shared 1 Hz clock tick
+ * (time passed). `deriveHudInstruments` gates every reading against
+ * `Date.now()` at CALL time, so without the tick a silent link stops bumping
+ * `_version`, this memo never re-runs, and the last attitude/speed/altitude
+ * stays painted forever — while the canvas HUD, which reads inside a rAF loop,
+ * decays correctly and disagrees with the DOM instruments beside it.
+ * Ring-buffer refs are stable.
  *
  * ## Frame alignment
  *
@@ -35,6 +43,7 @@
 
 import { useMemo } from "react";
 import { useTelemetryStore } from "@/stores/telemetry-store";
+import { useClockTick } from "@/lib/agent/freshness";
 import { useVideoFrameAge } from "@/hooks/use-video-frame-age";
 import { deriveHudInstruments, type HudInstruments } from "@/lib/hud-readings";
 import type { Timestamped } from "@/lib/telemetry/freshness";
@@ -50,6 +59,7 @@ export function useHudInstruments(): HudInstruments {
   const positionBuf = useTelemetryStore((s) => s.position);
   const vfrBuf = useTelemetryStore((s) => s.vfr);
   const frameAgeMs = useVideoFrameAge()?.ms ?? 0;
+  const tick = useClockTick();
 
   return useMemo<HudInstruments>(() => {
     const at = Date.now() - frameAgeMs;
@@ -58,7 +68,7 @@ export function useHudInstruments(): HudInstruments {
       position: positionBuf.nearest(at, sampleTs),
       vfr: vfrBuf.nearest(at, sampleTs),
     });
-    // version is the freshness trigger; buffer refs are stable.
+    // version and tick are the freshness triggers; buffer refs are stable.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [version, attitudeBuf, positionBuf, vfrBuf, frameAgeMs]);
+  }, [version, tick, attitudeBuf, positionBuf, vfrBuf, frameAgeMs]);
 }

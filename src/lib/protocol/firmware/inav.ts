@@ -26,45 +26,58 @@ import type {
 // ---------------------------------------------------------------------------
 
 /**
- * iNav box IDs mapped to unified flight modes.
+ * iNav box PERMANENT IDs mapped to unified flight modes.
  *
- * Box IDs from inav/src/main/fc/rc_modes.h (BOXARM=0, BOXANGLE=1, etc.)
- * Only modes that map to a unified mode are included; hardware-toggle
- * boxes (BEEPER, LEDLOW, etc.) are excluded.
+ * These are iNav's permanent box IDs (`boxId` in `inav/src/main/fc/fc_msp_box.c`
+ * `activeBoxIds` / `boxes[]`), which is what both `MSP_BOXIDS` and
+ * `MSP_MODE_RANGES` carry on the wire. They are NOT the enum ordinals from
+ * `rc_modes.h`.
+ *
+ * The table used to hold a third set of numbers that matched neither, and it
+ * was wrong in both directions:
+ *
+ *  - Command path: `mspActivateNavMode` drives the looked-up box's AUX range,
+ *    so "Return to home" engaged box 45 (NAV COURSE HOLD — hold heading and
+ *    fly AWAY), "Takeoff" engaged 47 (USER1), "Resume mission" engaged 46
+ *    (MC BRAKING), and "Altitude hold" engaged 10 (NAV RTH).
+ *  - Decode path: an aircraft flying NAV RTH was reported as ALT_HOLD, which
+ *    is in `STICK_AUTHORITY_MODES`, so the 50 Hz gamepad override was
+ *    permitted while the autopilot flew an autonomous return.
+ *
+ * A box with no honest unified equivalent is deliberately absent and decodes
+ * to UNKNOWN rather than to a neighbouring mode:
+ *  - 5 HEADING HOLD holds heading, NOT position — mapping it to LOITER would
+ *    claim a position hold the aircraft is not doing.
+ *  - 45 NAV COURSE HOLD holds a ground course without altitude hold, so it is
+ *    not CRUISE (53, course + altitude).
+ *  - 46 MC BRAKING and 47 USER1 are not flight modes at all.
  */
 export const INAV_BOX_TO_MODE: Record<number, UnifiedFlightMode> = {
   // 0: ARM (not a flight mode)
-  1: 'STABILIZE',     // BOXANGLE
-  2: 'STABILIZE',     // BOXHORIZON (self-leveling, treat as stabilize)
-  // BOXHEADFREE (id 5) is a heading-free behavior, not ACRO and not MANUAL;
-  // it has no unified equivalent, so it is intentionally not mapped and
-  // decodes to UNKNOWN rather than a wrong active mode.
-  10: 'ALT_HOLD',     // BOXNAVALTHOLD
-  11: 'POSHOLD',      // BOXNAVPOSHOLD
-  12: 'LOITER',       // BOXHEADINGHOLD (heading hold while loitering)
-  28: 'CRUISE',       // BOXNAVCRUISE
-  // 29: NAV COURSE HOLD (no unified equivalent, maps to CRUISE)
-  45: 'RTL',          // BOXNAVRTH
-  46: 'MISSION',      // BOXNAVWP
-  47: 'TAKEOFF',      // BOXNAVLAUNCH
+  1: 'STABILIZE',     // ANGLE
+  2: 'STABILIZE',     // HORIZON (self-levelling, treat as stabilize)
+  3: 'ALT_HOLD',      // NAV ALTHOLD
+  10: 'RTL',          // NAV RTH
+  11: 'POSHOLD',      // NAV POSHOLD
+  12: 'MANUAL',       // MANUAL
+  28: 'MISSION',      // NAV WP
+  36: 'TAKEOFF',      // NAV LAUNCH
+  53: 'CRUISE',       // NAV CRUISE (course + altitude)
 }
 
 /**
- * Reverse map: UnifiedFlightMode to iNav box ID.
+ * Reverse map: UnifiedFlightMode to iNav box permanent ID.
  * For modes that map to multiple box IDs, the primary (most common) is used.
  */
 export const MODE_TO_INAV_BOX: Partial<Record<UnifiedFlightMode, number>> = {
   STABILIZE: 1,
-  ALT_HOLD: 10,   // NAV ALTHOLD preferred over HORIZON
-  // MANUAL is intentionally unmapped: id 5 is BOXHEADFREE, not a manual box,
-  // and there is no reliable unified-to-box mapping for it here. (iNav mode
-  // selection over MSP is driven by AUX-channel ranges, not a direct set.)
+  ALT_HOLD: 3,    // NAV ALTHOLD preferred over HORIZON
+  MANUAL: 12,
   POSHOLD: 11,
-  LOITER: 12,
-  CRUISE: 28,
-  RTL: 45,
-  MISSION: 46,
-  TAKEOFF: 47,
+  CRUISE: 53,
+  RTL: 10,
+  MISSION: 28,
+  TAKEOFF: 36,
 }
 
 /**
@@ -74,13 +87,17 @@ export const MODE_TO_INAV_BOX: Partial<Record<UnifiedFlightMode, number>> = {
 export const INAV_BOX_LABELS: Record<number, string> = {
   1: 'ANGLE',
   2: 'HORIZON',
-  10: 'NAV ALTHOLD',
+  3: 'NAV ALTHOLD',
+  5: 'HEADING HOLD',
+  10: 'NAV RTH',
   11: 'NAV POSHOLD',
-  12: 'HEADING HOLD',
-  28: 'NAV CRUISE',
-  45: 'NAV RTH',
-  46: 'NAV WP',
-  47: 'NAV LAUNCH',
+  12: 'MANUAL',
+  28: 'NAV WP',
+  36: 'NAV LAUNCH',
+  45: 'NAV COURSE HOLD',
+  46: 'MC BRAKING',
+  47: 'USER1',
+  53: 'NAV CRUISE',
 }
 
 // ---------------------------------------------------------------------------

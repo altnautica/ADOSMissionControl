@@ -17,6 +17,7 @@ import {
   NullableNumber,
   NullableString,
   NumberLike,
+  OptionalNumberLike,
 } from "./primitives";
 import { AgentCapabilitiesRawSchema } from "./capabilities";
 
@@ -29,9 +30,13 @@ export const BoardInfoSchema = z
     // these would reject a valid boardless status and spam schema warnings.
     name: z.string().optional(),
     model: z.string().optional(),
-    tier: NumberLike,
-    ram_mb: NumberLike,
-    cpu_cores: NumberLike,
+    // A node with no board sidecar returns `board: {}`. These three used to be
+    // non-optional `NumberLike`, which Zod invokes for an ABSENT key too, so a
+    // boardless node parsed clean with tier 0 / 0 MB RAM / 0 cores — three
+    // fabricated hardware facts that the capability inference then read.
+    tier: OptionalNumberLike,
+    ram_mb: OptionalNumberLike,
+    cpu_cores: OptionalNumberLike,
     vendor: z.string().optional(),
     soc: z.string().optional(),
     arch: z.string().optional(),
@@ -41,9 +46,11 @@ export const BoardInfoSchema = z
 
 export const HealthInfoSchema = z
   .object({
-    cpu_percent: NumberLike,
-    memory_percent: NumberLike,
-    disk_percent: NumberLike,
+    // Absent host metrics are absent, not 0%. A stock node ships the durable
+    // store off, so the agent legitimately omits these.
+    cpu_percent: OptionalNumberLike,
+    memory_percent: OptionalNumberLike,
+    disk_percent: OptionalNumberLike,
     temperature: NullableNumber,
     timestamp: z.string(),
   })
@@ -230,16 +237,26 @@ const FullStatusServiceSchema = z
   })
   .passthrough();
 
+/**
+ * `/api/status/full`'s resource block.
+ *
+ * `cpu_percent`, `memory_percent` and `disk_percent` are `OptionalNumberLike`,
+ * NOT the bare `NumberLike` they used to be. The agent now emits an explicit
+ * `null` for a reading it could not take, rather than the `0.0` it used to
+ * fabricate — and a required `NumberLike` here would have coerced that null
+ * straight back to 0, re-creating the same lie one layer further along. An
+ * idle CPU and an unreadable CPU must not render identically.
+ */
 const FullStatusResourcesSchema = z
   .object({
-    cpu_percent: NumberLike,
-    memory_percent: NumberLike,
-    memory_available_mb: NumberLike.optional(),
-    memory_cache_mb: NumberLike.optional(),
-    swap_total_mb: NumberLike.optional(),
-    swap_used_mb: NumberLike.optional(),
-    swap_percent: NumberLike.optional(),
-    disk_percent: NumberLike,
+    cpu_percent: OptionalNumberLike,
+    memory_percent: OptionalNumberLike,
+    memory_available_mb: OptionalNumberLike,
+    memory_cache_mb: OptionalNumberLike,
+    swap_total_mb: OptionalNumberLike,
+    swap_used_mb: OptionalNumberLike,
+    swap_percent: OptionalNumberLike,
+    disk_percent: OptionalNumberLike,
     temperature: NullableNumber,
   })
   .passthrough();

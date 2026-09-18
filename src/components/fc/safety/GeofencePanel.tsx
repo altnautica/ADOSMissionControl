@@ -9,6 +9,7 @@ import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
 import { PanelHeader } from "../shared/PanelHeader";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
+import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
 import { Select } from "@/components/ui/select";
 import { useGeofenceStore } from "@/stores/geofence-store";
 import { Shield, HardDrive, Save, MapPin, ArrowUp, Circle, Download, Upload, Plus, Trash2, ToggleLeft } from "lucide-react";
@@ -42,6 +43,7 @@ const FENCE_ACTION_OPTIONS = [
 
 export function GeofencePanel() {
   const { toast } = useToast();
+  const { showFlashResult } = useFlashCommitToast();
   const { label: pl } = useParamLabel();
   const paramMeta = useParamMetadataMap();
   const lbl = (raw: string) => <ParamFieldLabel raw={pl(raw)} metadata={paramMeta} />;
@@ -95,19 +97,19 @@ export function GeofencePanel() {
 
   const handleFlash = useCallback(async () => {
     setCommitting(true);
-    const ok = await commitToFlash();
+    const outcome = await commitToFlash();
     setCommitting(false);
-    toast(ok ? "Written to flash — persists after reboot" : "Failed to write to flash", ok ? "success" : "error");
-  }, [commitToFlash, toast]);
+    showFlashResult(outcome);
+  }, [commitToFlash, showFlashResult]);
 
   const handleUpload = useCallback(async () => {
-    await uploadFence();
-    toast("Fence points uploaded to FC", "success");
+    const result = await uploadFence();
+    toast(result.message, result.success ? "success" : "error");
   }, [uploadFence, toast]);
 
   const handleDownload = useCallback(async () => {
-    await downloadFence();
-    toast("Fence points downloaded from FC", "success");
+    const result = await downloadFence();
+    toast(result.message, result.success ? "success" : "error");
   }, [downloadFence, toast]);
 
   const breachLabel = breachType === 0 ? "None" : breachType === 1 ? "Min Altitude" : breachType === 2 ? "Max Altitude" : "Boundary";

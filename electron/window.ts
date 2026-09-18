@@ -94,8 +94,28 @@ export function createMainWindow(port: number): BrowserWindow {
   // Load the Next.js app
   win.loadURL(`http://127.0.0.1:${port}`);
 
-  // Open external links in the default browser, not in Electron
-  win.webContents.setWindowOpenHandler(({ url }) => {
+  // Navigation policy, applied to EVERY WebContents this app creates.
+  //
+  // It used to be registered on `win.webContents` only, and an allowed
+  // same-origin popup inherits `webPreferences` — including the preload, and
+  // therefore `electronAPI.net`. With no guard of its own, that popup could
+  // then be navigated (or REDIRECTED — `will-redirect` had no handler at all)
+  // to a remote origin, yielding a remote page holding a raw-socket bridge.
+  applyNavigationPolicy(win.webContents, port);
+
+  return win;
+}
+
+/**
+ * Deny every navigation and popup that leaves the local app origin, on one
+ * WebContents. Registered for the main window and, via
+ * `app.on("web-contents-created")`, for every child it opens.
+ */
+export function applyNavigationPolicy(
+  contents: Electron.WebContents,
+  port: number,
+): void {
+  contents.setWindowOpenHandler(({ url }) => {
     if (isLocalAppUrl(url, port)) {
       return { action: "allow" };
     }
@@ -103,13 +123,25 @@ export function createMainWindow(port: number): BrowserWindow {
     return { action: "deny" };
   });
 
-  // Also handle navigation to external URLs
-  win.webContents.on("will-navigate", (event, url) => {
+  contents.on("will-navigate", (event, url) => {
     if (!isLocalAppUrl(url, port)) {
       event.preventDefault();
       openExternalUrl(url);
     }
   });
 
-  return win;
+  // A server-side redirect is a navigation the `will-navigate` handler never
+  // sees: it fires once for the initial URL and not for the hop.
+  contents.on("will-redirect", (event, url) => {
+    if (!isLocalAppUrl(url, port)) {
+      event.preventDefault();
+      openExternalUrl(url);
+    }
+  });
+
+  // No renderer in this app embeds a webview, and one would inherit the
+  // preload; refuse the attach outright rather than rely on the default.
+  contents.on("will-attach-webview", (event) => {
+    event.preventDefault();
+  });
 }

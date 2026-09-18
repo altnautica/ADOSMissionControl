@@ -61,6 +61,21 @@ export function resolveUpdateCapability(
     };
   }
 
+  if (env.platform === "win32") {
+    // `electron-builder.yml` carries no Windows signing block and no
+    // `publisherName`, so electron-updater SKIPS signature verification
+    // entirely and the only integrity control is the SHA-512 in the
+    // HTTPS-fetched metadata. The macOS branch above is honest about being
+    // unsigned; this one used to return `{mode:"auto"}` and arm
+    // `autoInstallOnAppQuit`, i.e. silently install an unverified binary at
+    // quit. Restore `auto` together with real code signing, not before.
+    return {
+      mode: "manual",
+      reason:
+        "this Windows build is not code-signed, so an update cannot be verified before it installs itself",
+    };
+  }
+
   if (env.platform === "linux" && !env.appImagePath) {
     // The Linux updater installs by replacing the running AppImage file, which
     // it locates through the APPIMAGE environment variable. Without it there is

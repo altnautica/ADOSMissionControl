@@ -104,16 +104,14 @@ export function AuxModesPanel() {
       setHasLoaded(true);
       toast("Loaded auxiliary mode configuration", "success");
     } catch {
-      const demoRanges: ModeRange[] = [
-        { boxId: 0, auxChannel: 0, rangeStart: pwmToStep(1700), rangeEnd: pwmToStep(2100) },
-        { boxId: 1, auxChannel: 1, rangeStart: pwmToStep(1300), rangeEnd: pwmToStep(1700) },
-        { boxId: 19, auxChannel: 0, rangeStart: pwmToStep(900), rangeEnd: pwmToStep(2100) },
-        { boxId: 36, auxChannel: 2, rangeStart: pwmToStep(1800), rangeEnd: pwmToStep(2100) },
-      ];
-      setRanges(demoRanges);
-      setOriginalRanges(demoRanges.map((r) => ({ ...r })));
-      setHasLoaded(true);
-      toast("Loaded default mode ranges (unable to read from FC)", "info");
+      // A read failure leaves the panel EMPTY and unloaded. It used to install
+      // four hardcoded ranges — including `boxId: 0` (ARM) on AUX1 1700-2100 —
+      // mark them `hasLoaded` and adopt them as `originalRanges`. `saveToFc`
+      // then writes all 20 slots, so one MSP timeout plus one edit relocated
+      // the vehicle's ARM switch and zeroed every other mode. The fallback was
+      // not even gated on demo mode.
+      setError("Could not read mode ranges from the flight controller");
+      toast("Could not read mode ranges — nothing loaded", "error");
     } finally { setLoading(false); }
   }, [getSelectedProtocol, toast]);
 

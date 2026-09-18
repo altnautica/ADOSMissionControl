@@ -170,22 +170,23 @@ export function decodeGps2Raw(dv: DataView): Gps2RawMsg {
 export interface CameraTriggerMsg {
   timeUsec: number;
   seq: number;
-  lat: number;
-  lon: number;
-  alt: number;
 }
 
 /**
  * Decode CAMERA_TRIGGER (msg ID 112).
  *
- * Wire order (uint64 → uint32 → int32 → float32):
- * | Offset | Type    | Field          |
- * |--------|---------|----------------|
- * | 0      | uint64  | timeUsec       |
- * | 8      | uint32  | seq            |
- * | 12     | int32   | lat (degE7)    |
- * | 16     | int32   | lon (degE7)    |
- * | 20     | float32 | alt (m, AMSL)  |
+ * The message is exactly twelve bytes and carries NO position:
+ * | Offset | Type    | Field    |
+ * |--------|---------|----------|
+ * | 0      | uint64  | timeUsec |
+ * | 8      | uint32  | seq      |
+ *
+ * This used to read lat/lon/alt at 12/16/20 against a `PAYLOAD_LENGTHS[112]`
+ * of 24. The parser's zero-restore padded the 12 wire bytes out to 24, so the
+ * reads silently returned 0 and `handleCameraTrigger` pushed `lat: 0, lon: 0`
+ * into the trail ring AND into the persisted flight record — recording 0°N 0°E
+ * as a real photo position. A triggered-photo position comes from
+ * CAMERA_IMAGE_CAPTURED, which actually carries one.
  */
 export function decodeCameraTrigger(dv: DataView): CameraTriggerMsg {
   const low = dv.getUint32(0, true);
@@ -193,9 +194,6 @@ export function decodeCameraTrigger(dv: DataView): CameraTriggerMsg {
   return {
     timeUsec: high * 0x100000000 + low,
     seq: dv.getUint32(8, true),
-    lat: dv.getInt32(12, true),
-    lon: dv.getInt32(16, true),
-    alt: dv.getFloat32(20, true),
   };
 }
 
@@ -308,20 +306,26 @@ export interface CameraImageCapturedMsg {
 /**
  * Decode CAMERA_IMAGE_CAPTURED (msg ID 263).
  *
- * Wire order (uint64/uint32/int32/float32 → int32 → uint8):
+ * Wire order is size-descending, so `time_boot_ms` and the four int32
+ * position fields all precede the float32 quaternion array:
  * | Offset | Type       | Field         |
  * |--------|------------|---------------|
  * | 0      | uint64     | timeUtcUs     |
- * | 8      | float32[4] | q             |
- * | 24     | int32      | lat (degE7)   |
- * | 28     | int32      | lon (degE7)   |
- * | 32     | int32      | alt (mm)      |
- * | 36     | int32      | relativeAlt   |
- * | 40     | uint32     | timeBootMs    |
+ * | 8      | uint32     | timeBootMs    |
+ * | 12     | int32      | lat (degE7)   |
+ * | 16     | int32      | lon (degE7)   |
+ * | 20     | int32      | alt (mm)      |
+ * | 24     | int32      | relativeAlt   |
+ * | 28     | float32[4] | q             |
  * | 44     | int32      | imageIndex    |
  * | 48     | uint8      | cameraId      |
  * | 49     | int8       | captureResult |
  * | 50     | char[205]  | fileUrl       |
+ *
+ * This read `q` at 8-20 and `lat` at 24, i.e. every field from offset 8 to 44
+ * came from the wrong place. `image_index` / `camera_id` / `file_url` landed
+ * correctly, which is why the 255-byte total hid it: for the common
+ * `q = [1,0,0,0]`, `lon` decoded as `1065353216 / 1e7 = 106.535°`.
  */
 export function decodeCameraImageCaptured(dv: DataView): CameraImageCapturedMsg {
   const low = dv.getUint32(0, true);
@@ -333,17 +337,17 @@ export function decodeCameraImageCaptured(dv: DataView): CameraImageCapturedMsg 
   const urlBytes = new Uint8Array(dv.buffer, dv.byteOffset + 50, urlLen);
   return {
     timeUtcUs: high * 0x100000000 + low,
+    timeBootMs: dv.getUint32(8, true),
+    lat: dv.getInt32(12, true) / 1e7,
+    lon: dv.getInt32(16, true) / 1e7,
+    alt: dv.getInt32(20, true) / 1000,
+    relativeAlt: dv.getInt32(24, true) / 1000,
     q: [
-      dv.getFloat32(8, true),
-      dv.getFloat32(12, true),
-      dv.getFloat32(16, true),
-      dv.getFloat32(20, true),
+      dv.getFloat32(28, true),
+      dv.getFloat32(32, true),
+      dv.getFloat32(36, true),
+      dv.getFloat32(40, true),
     ],
-    lat: dv.getInt32(24, true) / 1e7,
-    lon: dv.getInt32(28, true) / 1e7,
-    alt: dv.getInt32(32, true) / 1000,
-    relativeAlt: dv.getInt32(36, true) / 1000,
-    timeBootMs: dv.getUint32(40, true),
     imageIndex: dv.getInt32(44, true),
     cameraId: dv.getUint8(48),
     captureResult: dv.getInt8(49),

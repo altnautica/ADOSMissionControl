@@ -45,6 +45,7 @@ export function PreFlightChecklist({ className }: { className?: string }) {
   const _version = useTelemetryStore((s) => s._version);
   const healthyCount = useSensorHealthStore((s) => s.getHealthySensorCount());
   const totalPresent = useSensorHealthStore((s) => s.getTotalPresentCount());
+  const getSensorByName = useSensorHealthStore((s) => s.getSensorByName);
   const waypoints = useMissionStore((s) => s.waypoints);
   const geofenceEnabled = useGeofenceStore((s) => s.enabled);
 
@@ -101,12 +102,24 @@ export function PreFlightChecklist({ className }: { className?: string }) {
       );
     }
 
-    // Pre-arm checks: pass if sensors look good (firmware pre-arm is checked via PreArmChecks component separately)
-    // For the checklist, we treat this as pass if other software checks pass
-    if (totalPresent > 0 && healthyCount === totalPresent) {
-      updateAutoItem("prearm-pass", "pass");
-    } else if (totalPresent > 0) {
-      updateAutoItem("prearm-pass", "fail");
+    // Pre-arm: the FLIGHT CONTROLLER's own verdict, SYS_STATUS sensor bit 28
+    // (`MAV_SYS_STATUS_PREARM_CHECK`). The item is declared "No PreArm
+    // failures from FC", and it used to be derived from `totalPresent` /
+    // `healthyCount` — exactly the inputs already driving the separate
+    // `sensors-healthy` item — so the FC's real prearm status was never read.
+    // A flight controller actively emitting PreArm failures showed a green
+    // tick, and `isReadyToArm()` then returned true, which suppresses the
+    // checklist-aware OVERRIDE escalation for Arm and Takeoff.
+    //
+    // A vehicle that does not publish the bit leaves the item UNSET (manual),
+    // rather than inheriting an unrelated check's verdict.
+    const prearmSensor = getSensorByName("pre_arm_check");
+    if (prearmSensor?.present) {
+      updateAutoItem(
+        "prearm-pass",
+        prearmSensor.healthy ? "pass" : "fail",
+        prearmSensor.healthy ? undefined : "FC reports pre-arm failures",
+      );
     }
 
     // Mission checks
@@ -120,7 +133,7 @@ export function PreFlightChecklist({ className }: { className?: string }) {
       geofenceEnabled ? "pass" : "fail",
       geofenceEnabled ? "Enabled" : "Disabled",
     );
-  }, [battery, gps, ekf, healthyCount, totalPresent, waypoints.length, geofenceEnabled, updateAutoItem, tFix]);
+  }, [battery, gps, ekf, healthyCount, totalPresent, getSensorByName, waypoints.length, geofenceEnabled, updateAutoItem, tFix]);
 
   // Run auto-checks on telemetry updates (debounced by _version)
   useEffect(() => {

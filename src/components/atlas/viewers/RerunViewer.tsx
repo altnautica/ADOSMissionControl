@@ -8,7 +8,7 @@
  * under SSR or a test render).
  *
  * We do NOT hand Rerun the recording URL to fetch itself. The artifact is reached
- * through the same-origin proxy `/api/lan-pair/artifact?…&key=<apiKey>`, whose
+ * through the same-origin proxy `/api/lan-pair/artifact?host=…&path=…`, whose
  * query string (no `.rrd` extension) Rerun's own loader does not reliably open —
  * it silently falls back to its empty "welcome" screen. Instead we fetch the
  * recording bytes through the same proxy the other viewers use (which also gives

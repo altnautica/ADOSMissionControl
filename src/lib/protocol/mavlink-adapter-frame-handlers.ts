@@ -320,6 +320,9 @@ function handleMissionRequestFrame(s: FrameHandlerState, frame: MAVLinkFrame): v
     return
   }
   if (s.missionUpload && req.seq < s.missionUpload.items.length) {
+    // The FC asking for the next item is progress: re-arm the inactivity
+    // budget so a long mission over a slow radio is not abandoned mid-walk.
+    s.missionUpload.restartTimer()
     const item = s.missionUpload.items[req.seq]
     s.transport?.send(encodeMissionItemInt(
       s.targetSysId, s.targetCompId,
@@ -350,17 +353,36 @@ function handleMissionCountResponse(s: FrameHandlerState, frame: MAVLinkFrame): 
   s.transport?.send(encodeMissionRequestInt(s.targetSysId, s.targetCompId, 0, s.sysId, s.compId))
 }
 
+/**
+ * The lowest sequence number in `[0, total)` that has not arrived, or `null`
+ * when the walk is complete.
+ *
+ * The walk used to blindly request `receivedSeq + 1`, so a dropped
+ * MISSION_REQUEST_INT left a permanent hole: the FC never re-sent the missing
+ * item and the transfer stalled until the deadline handed back a short list.
+ * Re-requesting the lowest gap makes the walk self-healing.
+ */
+function firstMissingSeq(items: ReadonlyMap<number, unknown>, total: number): number | null {
+  for (let seq = 0; seq < total; seq++) {
+    if (!items.has(seq)) return seq
+  }
+  return null
+}
+
 function handleMissionItemIntResponse(s: FrameHandlerState, frame: MAVLinkFrame): void {
   const data = decodeMissionItemIntMsg(frame.payload)
+
   if (data.missionType === 2 && s.rallyDownload) {
     s.rallyDownload.items.set(data.seq, { lat: data.x / 1e7, lon: data.y / 1e7, alt: data.z })
-    if (s.rallyDownload.items.size >= s.rallyDownload.total) {
+    s.rallyDownload.restartTimer()
+    const next = firstMissingSeq(s.rallyDownload.items, s.rallyDownload.total)
+    if (next === null) {
       clearTimeout(s.rallyDownload.timer)
       const items = Array.from(s.rallyDownload.items.entries()).sort((a, b) => a[0] - b[0]).map(([, pt]) => pt)
       s.transport?.send(encodeMissionAck(s.targetSysId, s.targetCompId, 0, s.sysId, s.compId, 2))
       s.rallyDownload.resolve(items); s.rallyDownload = null
     } else {
-      s.transport?.send(encodeMissionRequestInt(s.targetSysId, s.targetCompId, data.seq + 1, s.sysId, s.compId, 2))
+      s.transport?.send(encodeMissionRequestInt(s.targetSysId, s.targetCompId, next, s.sysId, s.compId, 2))
     }
     return
   }
@@ -369,13 +391,15 @@ function handleMissionItemIntResponse(s: FrameHandlerState, frame: MAVLinkFrame)
       seq: data.seq, frame: data.frame, command: data.command,
       param1: data.param1, param2: data.param2, x: data.x, y: data.y, z: data.z,
     })
-    if (s.fenceDownload.items.size >= s.fenceDownload.total) {
+    s.fenceDownload.restartTimer()
+    const next = firstMissingSeq(s.fenceDownload.items, s.fenceDownload.total)
+    if (next === null) {
       clearTimeout(s.fenceDownload.timer)
       const elements = decodeFenceMissionItems(Array.from(s.fenceDownload.items.values()))
       s.transport?.send(encodeMissionAck(s.targetSysId, s.targetCompId, 0, s.sysId, s.compId, 1))
       s.fenceDownload.resolve(elements); s.fenceDownload = null
     } else {
-      s.transport?.send(encodeMissionRequestInt(s.targetSysId, s.targetCompId, data.seq + 1, s.sysId, s.compId, 1))
+      s.transport?.send(encodeMissionRequestInt(s.targetSysId, s.targetCompId, next, s.sysId, s.compId, 1))
     }
     return
   }
@@ -387,13 +411,15 @@ function handleMissionItemIntResponse(s: FrameHandlerState, frame: MAVLinkFrame)
     x: data.x, y: data.y, z: data.z,
   }
   s.missionDownload.items.set(data.seq, item)
-  if (s.missionDownload.items.size >= s.missionDownload.total) {
+  s.missionDownload.restartTimer()
+  const next = firstMissingSeq(s.missionDownload.items, s.missionDownload.total)
+  if (next === null) {
     clearTimeout(s.missionDownload.timer)
     const items = Array.from(s.missionDownload.items.values()).sort((a, b) => a.seq - b.seq)
     s.transport?.send(encodeMissionAck(s.targetSysId, s.targetCompId, 0, s.sysId, s.compId))
     s.missionDownload.resolve(items); s.missionDownload = null
   } else {
-    s.transport?.send(encodeMissionRequestInt(s.targetSysId, s.targetCompId, data.seq + 1, s.sysId, s.compId))
+    s.transport?.send(encodeMissionRequestInt(s.targetSysId, s.targetCompId, next, s.sysId, s.compId))
   }
 }
 

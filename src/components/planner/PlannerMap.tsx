@@ -286,6 +286,19 @@ export function PlannerMap({
     drawingManagerRef.current?.setSnapTargets(targets);
   }, [waypoints, drawnPolysForSnap, drawnCircsForSnap, mapInstance]);
 
+  // `mapInstance` is in the dep array, and that is the whole fix.
+  //
+  // The manager is created in the effect above, keyed on `mapInstance`, so it
+  // can only exist from the commit AFTER `mapInstance` becomes non-null. This
+  // effect bailed on `if (!manager) return` during the first commit, and its
+  // dep array held only stable references (Zustand actions are fixed members of
+  // the created store; `onDrawingComplete` is a `useCallback`), so it NEVER ran
+  // again — the manager kept its empty `{}` default callbacks. Polygon, circle
+  // and measure all completed into nothing, and `completePolygon()` then
+  // `requestAnimationFrame`d `clearDrawingLayers()`, so the shape vanished with
+  // no toast and no store write. Drawing a geofence boundary, a survey area, a
+  // corridor or a measurement was inert. The two sibling effects above already
+  // list `mapInstance` for exactly this reason.
   useEffect(() => {
     const manager = drawingManagerRef.current;
     if (!manager) return;
@@ -310,7 +323,7 @@ export function PlannerMap({
       // right-click) never leaves a residual measurement rendered on the map.
       onCancel: () => { setDrawingMode(null); setActiveDrawingVertices([]); setMeasureLine(null); },
     });
-  }, [addPolygon, addCircle, setMeasureLine, setDrawingMode, setActiveDrawingVertices, onDrawingComplete]);
+  }, [mapInstance, addPolygon, addCircle, setMeasureLine, setDrawingMode, setActiveDrawingVertices, onDrawingComplete]);
 
   useEffect(() => {
     const manager = drawingManagerRef.current;
@@ -319,7 +332,7 @@ export function PlannerMap({
     else if (activeTool === "circle") { setDrawingMode("circle"); manager.startCircleDraw(); }
     else if (activeTool === "measure") { setDrawingMode("measure"); setMeasureLine(null); manager.startMeasure(); }
     else if (manager.getMode() !== null) { manager.cancelDraw(); setDrawingMode(null); setActiveDrawingVertices([]); }
-  }, [activeTool, setDrawingMode, setMeasureLine, setActiveDrawingVertices]);
+  }, [mapInstance, activeTool, setDrawingMode, setMeasureLine, setActiveDrawingVertices]);
 
   useEffect(() => {
     if (!mapInstance) return;

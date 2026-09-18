@@ -289,11 +289,17 @@ export class MockAgentClient {
 
   async getPeers(): Promise<NetworkPeer[]> {
     await delay(80);
+    // The fixtures always carry these three, so the jitter falls back to the
+    // fixture value rather than fabricating a reading for an absent one.
     return MOCK_PEERS.map((p) => ({
       ...p,
-      signal_dbm: Math.round(jitter(p.signal_dbm, 3)),
-      battery_percent: Math.max(0, Math.min(100, Math.round(jitter(p.battery_percent, 2)))),
-      distance_m: Math.max(0, Math.round(jitter(p.distance_m, 15))),
+      signal_dbm: p.signal_dbm === undefined ? undefined : Math.round(jitter(p.signal_dbm, 3)),
+      battery_percent:
+        p.battery_percent === undefined
+          ? undefined
+          : Math.max(0, Math.min(100, Math.round(jitter(p.battery_percent, 2)))),
+      distance_m:
+        p.distance_m === undefined ? undefined : Math.max(0, Math.round(jitter(p.distance_m, 15))),
     }));
   }
 

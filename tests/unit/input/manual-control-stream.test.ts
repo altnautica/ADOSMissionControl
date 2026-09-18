@@ -56,6 +56,11 @@ function fakePad(axes: number[] = [0, 0, 0, 0]): Gamepad {
 
 /** Put every gate condition in the "allowed" position. */
 function allowEverything() {
+  // A live stick sample. `manualControlTick` refuses to transmit one older
+  // than ~3 frames, because a hidden tab pauses the RAF reader while the
+  // setTimeout transmit chain keeps running and would otherwise re-send a
+  // frozen stick position to an armed aircraft.
+  useInputStore.getState().setAxes([0, 0, 0, 0]);
   useInputStore.getState().setManualControlEnabled(true);
   useInputStore.getState().setController('gamepad');
   useDroneStore.getState().setArmState('armed');

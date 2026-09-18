@@ -186,7 +186,7 @@ export function GeofenceEditor({ onDrawOnMap }: GeofenceEditorProps) {
           {/* Upload / Download buttons */}
           <div className="flex gap-2">
             <button
-              onClick={() => uploadFence()}
+              onClick={() => { void uploadFence().then((r) => { if (!r.success) toast(r.message, "error"); }); }}
               disabled={!hasFenceGeometry}
               className={cn(
                 "flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-mono transition-colors cursor-pointer",
@@ -200,7 +200,7 @@ export function GeofenceEditor({ onDrawOnMap }: GeofenceEditorProps) {
               {uploadState === "uploading" ? t("uploading") : t("uploadFence")}
             </button>
             <button
-              onClick={() => downloadFence()}
+              onClick={() => { void downloadFence().then((r) => { if (!r.success) toast(r.message, "error"); }); }}
               className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-mono
                 text-text-primary border border-border-default hover:bg-bg-tertiary transition-colors cursor-pointer"
             >

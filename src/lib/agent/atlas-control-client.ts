@@ -25,6 +25,7 @@
  */
 
 import { DEFAULT_RECONSTRUCTION_STEPS } from "@/lib/atlas/reconstruction-quality";
+import { timedFetch } from "@/lib/agent/agent-client/timeout";
 
 /** Pose-estimation source the capture rig runs. Left open so a richer agent can
  * advertise another source without breaking the type. */
@@ -210,7 +211,7 @@ export class AtlasControlClient {
     let res: Response;
     try {
       if (this.useProxy) {
-        res = await fetch("/api/lan-pair/atlas", {
+        res = await timedFetch("/api/lan-pair/atlas", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -223,7 +224,7 @@ export class AtlasControlClient {
         });
       } else {
         const hasBody = body !== undefined && body !== null;
-        res = await fetch(`${this.baseUrl}/api/atlas/${path}`, {
+        res = await timedFetch(`${this.baseUrl}/api/atlas/${path}`, {
           method,
           headers: {
             Accept: "application/json",

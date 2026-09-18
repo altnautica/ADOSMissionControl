@@ -90,7 +90,28 @@ export function FcSourcePicker({ nodeDeviceId }: FcSourcePickerProps) {
   // it reflects reality rather than always defaulting to "auto". Only seeds
   // until the operator first edits (the ref guards against clobbering edits on
   // every poll).
+  //
+  // The seed ref is RESET when `nodeDeviceId` changes. Without that, the ref
+  // was set on the first non-null status and short-circuited forever while
+  // `client` DID re-resolve to the new node — so switching node A → B kept A's
+  // source/port/baud in the form and Apply wrote A's FC binding to B. That is
+  // not a recoverable mistake from the GCS.
   const seededRef = useRef(false);
+  const seenNodeRef = useRef(nodeDeviceId);
+  if (seenNodeRef.current !== nodeDeviceId) {
+    seenNodeRef.current = nodeDeviceId;
+    seededRef.current = false;
+  }
+  useEffect(() => {
+    // Clear the form on a node switch so a stale value cannot survive into the
+    // window before the new node's status arrives.
+    setSource("auto");
+    setSerialPort("");
+    setBaud("115200");
+    setApplied(false);
+    setError(null);
+    setPorts([]);
+  }, [nodeDeviceId]);
   useEffect(() => {
     if (seededRef.current || !status) return;
     if (status.fc_source) setSource(status.fc_source);

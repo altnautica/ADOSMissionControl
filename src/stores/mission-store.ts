@@ -17,7 +17,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { Mission, Waypoint, MissionState } from "@/lib/types";
-import type { MissionItem } from "@/lib/protocol/types";
+import type { DroneProtocol, MissionItem } from "@/lib/protocol/types";
 import { useDroneManager } from "./drone-manager";
 import { usePlannerStore } from "./planner-store";
 import { indexedDBStorage } from "@/lib/storage";
@@ -157,8 +157,11 @@ interface MissionStoreState {
   setDownloadState: (state: "idle" | "downloading" | "downloaded" | "error") => void;
   createMission: (name: string, droneId: string) => void;
   clearMission: () => void;
-  /** Upload the mission to the FC. Resolves true on success, false on failure. */
-  uploadMission: () => Promise<boolean>;
+  /** Upload the current waypoints. `target` pins the destination drone; when
+   *  omitted the operator's selected drone is used. A caller scoped to one
+   *  drone MUST pass `target` — the selection fallback sent a plugin's mission
+   *  write to whichever aircraft the operator happened to be watching. */
+  uploadMission: (target?: DroneProtocol) => Promise<boolean>;
   downloadMission: () => Promise<Waypoint[]>;
   undo: () => void;
   redo: () => void;
@@ -284,8 +287,11 @@ export const useMissionStore = create<MissionStoreState>()(
 
   redo: () => redoHistory(),
 
-  uploadMission: async () => {
-    const protocol = useDroneManager.getState().getSelectedProtocol();
+  uploadMission: async (target) => {
+    // The target is explicit for callers scoped to a specific drone (the
+    // plugin host, which must never fall back to the operator's selection);
+    // it defaults to the selected drone for the planner's own Upload button.
+    const protocol = target ?? useDroneManager.getState().getSelectedProtocol();
     if (!protocol) return false;
     const { waypoints } = get();
     if (waypoints.length === 0) return false;

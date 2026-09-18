@@ -113,7 +113,7 @@ export async function GET(): Promise<NextResponse> {
 
     if (!res.ok) {
       const errorBody = await res.text().catch(() => "");
-      const detail = errorBody.includes("rate limit") ? " (GitHub API rate limit exceeded — set GITHUB_TOKEN in .env for 5000 req/hr)" : "";
+      const detail = errorBody.includes("rate limit") ? " (GitHub API rate limit exceeded — export GITHUB_TOKEN in the server shell for 5000 req/hr)" : "";
       return NextResponse.json(
         { error: `GitHub API returned ${res.status}${detail}` },
         { status: 502 },

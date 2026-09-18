@@ -101,8 +101,14 @@ describe("resolveUpdateCapability", () => {
     );
   });
 
-  it("reports Windows as fully self-updating", () => {
-    expect(resolveUpdateCapability(PACKAGED_WIN)).toEqual({ mode: "auto" });
+  it("refuses to self-install on Windows while the build is unsigned", () => {
+    // `electron-builder.yml` carries no Windows signing block and no
+    // `publisherName`, so electron-updater skips signature verification
+    // entirely. Returning `auto` here armed `autoInstallOnAppQuit` and
+    // silently installed an unverified binary at quit.
+    const cap = resolveUpdateCapability(PACKAGED_WIN);
+    expect(cap.mode).toBe("manual");
+    expect(cap.mode === "manual" && cap.reason).toMatch(/code-signed/);
   });
 
   it("reports Linux as self-updating only when running from an AppImage", () => {
@@ -140,9 +146,14 @@ describe("setupAutoUpdater", () => {
   });
 
   it("keeps the quit-time install armed where it works", () => {
-    setupAutoUpdater(fakeWindow(), PACKAGED_WIN);
+    setupAutoUpdater(fakeWindow(), PACKAGED_APPIMAGE);
     expect(autoUpdater.autoInstallOnAppQuit).toBe(true);
     expect(autoUpdater.autoDownload).toBe(false);
+  });
+
+  it("does NOT arm the quit-time install on an unsigned Windows build", () => {
+    setupAutoUpdater(fakeWindow(), PACKAGED_WIN);
+    expect(autoUpdater.autoInstallOnAppQuit).toBe(false);
   });
 
   it("leaves the updater logger wired to a real sink", () => {
@@ -175,7 +186,7 @@ describe("setupAutoUpdater", () => {
   });
 
   it("still installs where an install works", () => {
-    setupAutoUpdater(fakeWindow(), PACKAGED_WIN);
+    setupAutoUpdater(fakeWindow(), PACKAGED_APPIMAGE);
     ipcHandlers.get("update:install")!();
     expect(autoUpdater.quitAndInstall).toHaveBeenCalledTimes(1);
   });

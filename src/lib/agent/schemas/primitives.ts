@@ -10,8 +10,16 @@
 import { z } from "zod";
 
 /**
- * Numeric coercion for fields that older agents shipped as strings.
- * Falls back to 0 on parse failure so the UI degrades gracefully.
+ * Numeric coercion for fields an older agent shipped as a string but which are
+ * ALWAYS present on the wire.
+ *
+ * Falls back to 0 on parse failure. Use this ONLY where 0 is a real reading —
+ * never for a field the agent may omit, because Zod's object parser invokes
+ * every non-optional shape entry with `input[key]` even when the key is
+ * absent, so an omitted field parses clean as `0` with no schema issue and the
+ * schema-fallback path never engages. That turned an unreported peer battery
+ * into a red 0% and an unreported signal into a 0 dBm "perfect link".
+ * {@link OptionalNumberLike} is the form for anything that can be absent.
  */
 export const NumberLike = z.preprocess(
   (val) => {
@@ -23,6 +31,23 @@ export const NumberLike = z.preprocess(
     return 0;
   },
   z.number(),
+);
+
+/**
+ * Same string tolerance as {@link NumberLike}, but an absent or unparseable
+ * value yields `undefined` rather than a fabricated 0, so a surface renders
+ * the no-data glyph instead of a plausible measurement.
+ */
+export const OptionalNumberLike = z.preprocess(
+  (val) => {
+    if (typeof val === "number") return Number.isFinite(val) ? val : undefined;
+    if (typeof val === "string") {
+      const n = Number(val);
+      return Number.isFinite(n) ? n : undefined;
+    }
+    return undefined;
+  },
+  z.number().optional(),
 );
 
 export const NullableNumber = z.union([z.number(), z.null()]).nullable();

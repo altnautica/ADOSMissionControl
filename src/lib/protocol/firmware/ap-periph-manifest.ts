@@ -506,6 +506,13 @@ export class ApPeriphManifest {
   /**
    * Convenience: fetch the OTA payload (`AP_Periph.bin`). Throws when
    * the board folder does not advertise an app binary.
+   *
+   * The bytes are checked against the size the directory index advertises
+   * before they are handed to the flasher. Upstream publishes no hash beside
+   * the binary, so the advertised length is the only integrity signal there
+   * is — and this used to return the fetched body with NO check at all, so a
+   * truncated response (a proxy timeout, a partial transfer) went straight
+   * into a CAN bootloader write.
    */
   async downloadFirmware(channel: string, board: string): Promise<Uint8Array> {
     const manifest = await this.getBoardManifest(channel, board);
@@ -518,7 +525,16 @@ export class ApPeriphManifest {
       throw new Error(`Failed to download AP_Periph.bin: ${res.status} ${res.statusText}`);
     }
     const buf = await res.arrayBuffer();
-    return new Uint8Array(buf);
+    const bytes = new Uint8Array(buf);
+    if (bytes.length === 0) {
+      throw new Error("Refusing to flash: AP_Periph.bin downloaded as an empty file");
+    }
+    if (app.sizeBytes !== undefined && bytes.length !== app.sizeBytes) {
+      throw new Error(
+        `Refusing to flash: AP_Periph.bin is ${bytes.length} bytes but the index advertises ${app.sizeBytes} — the download is incomplete or the index is stale`,
+      );
+    }
+    return bytes;
   }
 
   /** Clear every cached entry (memory + IndexedDB). */

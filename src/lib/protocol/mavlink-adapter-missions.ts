@@ -38,19 +38,35 @@ export interface FenceMissionItem {
   z: number
 }
 
-export interface MissionUploadState {
+export interface MissionUploadState extends TransferDeadline {
   items: MissionItem[]
   resolve: (result: CommandResult) => void
   reject: (err: Error) => void
+}
+
+/**
+ * Shared shape of a `MISSION_REQUEST_INT` walk.
+ *
+ * `restartTimer` re-arms the inactivity deadline on EVERY received item, and
+ * `reject` fires when that deadline expires with a short list. The three
+ * downloads previously shared one 15 s wall-clock budget that RESOLVED
+ * successfully with whatever had arrived: a single dropped
+ * `MISSION_REQUEST_INT` stalled the walk, the timer handed back a truncated
+ * list, `mission-store` set `downloadState: "downloaded"` and replaced the
+ * plan, and the operator could save that short plan to disk or upload it back.
+ * 15 s was also a hard cap on usable mission size over a 57k6 link.
+ */
+interface TransferDeadline {
+  /** Re-arm the inactivity deadline. Called on each received item. */
+  restartTimer: () => void;
   timer: ReturnType<typeof setTimeout>
 }
 
-export interface MissionDownloadState {
+export interface MissionDownloadState extends TransferDeadline {
   items: Map<number, MissionItem>
   total: number
   resolve: (items: MissionItem[]) => void
   reject: (err: Error) => void
-  timer: ReturnType<typeof setTimeout>
 }
 
 export interface RallyUploadState {
@@ -59,11 +75,11 @@ export interface RallyUploadState {
   timer: ReturnType<typeof setTimeout>
 }
 
-export interface RallyDownloadState {
+export interface RallyDownloadState extends TransferDeadline {
   items: Map<number, { lat: number; lon: number; alt: number }>
   total: number
   resolve: (items: Array<{ lat: number; lon: number; alt: number }>) => void
-  timer: ReturnType<typeof setTimeout>
+  reject: (err: Error) => void
 }
 
 export interface FenceUploadState {
@@ -72,11 +88,11 @@ export interface FenceUploadState {
   timer: ReturnType<typeof setTimeout>
 }
 
-export interface FenceDownloadState {
+export interface FenceDownloadState extends TransferDeadline {
   items: Map<number, FenceMissionItem>
   total: number
   resolve: (elements: FenceElement[]) => void
-  timer: ReturnType<typeof setTimeout>
+  reject: (err: Error) => void
 }
 
 export interface MissionContext {
@@ -96,6 +112,7 @@ export interface MissionContext {
   onParameter: (cb: ParameterCallback) => () => void
   onFencePoint: (cb: FencePointCallback) => () => void
   getParameter: (name: string) => Promise<{ value: number }>
+  setParameter: (name: string, value: number, type?: number) => Promise<CommandResult>
 }
 
 /**
@@ -191,32 +208,71 @@ export function decodeFenceMissionItems(items: FenceMissionItem[]): FenceElement
 export async function uploadMission(ctx: MissionContext, items: MissionItem[]): Promise<CommandResult> {
   if (!ctx.transport?.isConnected) return { success: false, resultCode: -1, message: 'Not connected' }
 
-  return new Promise<CommandResult>((resolve, reject) => {
-    const timer = setTimeout(() => {
-      ctx.missionUpload = null
-      resolve({ success: false, resultCode: -1, message: 'Mission upload timed out' })
-    }, 15000)
+  const { promise, resolve, reject } = Promise.withResolvers<CommandResult>()
 
-    ctx.missionUpload = { items, resolve, reject, timer }
-    ctx.transport!.send(encodeMissionCount(ctx.targetSysId, ctx.targetCompId, items.length, ctx.sysId, ctx.compId))
-  })
+  // Inactivity budget, re-armed on every MISSION_REQUEST the FC sends. A flat
+  // 15 s wall clock abandoned a transfer the flight controller was still
+  // driving — a long mission over a slow radio simply cannot finish inside it,
+  // and the GCS then reported a timeout for an upload still in progress.
+  const onIdle = () => {
+    ctx.missionUpload = null
+    resolve({ success: false, resultCode: -1, message: 'Mission upload stalled: flight controller stopped requesting items' })
+  }
+  const state: MissionUploadState = {
+    items,
+    resolve,
+    reject,
+    timer: setTimeout(onIdle, TRANSFER_IDLE_TIMEOUT_MS),
+    restartTimer: () => {
+      clearTimeout(state.timer)
+      state.timer = setTimeout(onIdle, TRANSFER_IDLE_TIMEOUT_MS)
+    },
+  }
+  ctx.missionUpload = state
+  ctx.transport.send(encodeMissionCount(ctx.targetSysId, ctx.targetCompId, items.length, ctx.sysId, ctx.compId))
+  return promise
 }
+
+/**
+ * Inactivity window for a mission/rally/fence item walk.
+ *
+ * Re-armed on EVERY received item, so the budget bounds a silent link rather
+ * than the total transfer — a 300-item mission over a 57k6 radio is a long
+ * transfer, not a failed one.
+ */
+const TRANSFER_IDLE_TIMEOUT_MS = 15000
 
 export async function downloadMission(ctx: MissionContext): Promise<MissionItem[]> {
   if (!ctx.transport?.isConnected) throw new Error('Not connected')
 
-  return new Promise<MissionItem[]>((resolve, reject) => {
-    const timer = setTimeout(() => {
-      if (ctx.missionDownload) {
-        const items = Array.from(ctx.missionDownload.items.values()).sort((a, b) => a.seq - b.seq)
-        ctx.missionDownload = null
-        resolve(items)
-      }
-    }, 15000)
+  const { promise, resolve, reject } = Promise.withResolvers<MissionItem[]>()
 
-    ctx.missionDownload = { items: new Map(), total: 0, resolve, reject, timer }
-    ctx.transport!.send(encodeMissionRequestList(ctx.targetSysId, ctx.targetCompId, ctx.sysId, ctx.compId))
-  })
+  const onIdle = () => {
+    const state = ctx.missionDownload
+    if (!state) return
+    ctx.missionDownload = null
+    // A short list is a FAILED download, never a mission. Resolving it as
+    // success let the planner replace the plan with a truncated one and let
+    // the operator save it to disk or upload it back.
+    reject(new Error(
+      `Mission download incomplete: received ${state.items.size} of ${state.total} items`,
+    ))
+  }
+
+  const state: MissionDownloadState = {
+    items: new Map(),
+    total: 0,
+    resolve,
+    reject,
+    timer: setTimeout(onIdle, TRANSFER_IDLE_TIMEOUT_MS),
+    restartTimer: () => {
+      clearTimeout(state.timer)
+      state.timer = setTimeout(onIdle, TRANSFER_IDLE_TIMEOUT_MS)
+    },
+  }
+  ctx.missionDownload = state
+  ctx.transport.send(encodeMissionRequestList(ctx.targetSysId, ctx.targetCompId, ctx.sysId, ctx.compId))
+  return promise
 }
 
 export async function setCurrentMissionItem(ctx: MissionContext, seq: number): Promise<CommandResult> {
@@ -226,27 +282,56 @@ export async function setCurrentMissionItem(ctx: MissionContext, seq: number): P
 export async function clearMission(ctx: MissionContext): Promise<CommandResult> {
   if (!ctx.transport?.isConnected) return { success: false, resultCode: -1, message: 'Not connected' }
 
-  return new Promise<CommandResult>((resolve) => {
-    const timer = setTimeout(() => {
-      resolve({ success: false, resultCode: -1, message: 'Mission clear timed out' })
+  const { promise, resolve } = Promise.withResolvers<CommandResult>()
+
+  // A clear is a single MISSION_CLEAR_ALL awaiting one MISSION_ACK; there are
+  // no items, so there is nothing to re-arm the deadline on.
+  const state: MissionUploadState = {
+    items: [],
+    resolve,
+    reject: () => resolve({ success: false, resultCode: -1, message: 'Mission clear failed' }),
+    timer: setTimeout(() => {
       ctx.missionUpload = null
-    }, 5000)
-
-    ctx.missionUpload = {
-      items: [],
-      resolve,
-      reject: () => resolve({ success: false, resultCode: -1, message: 'Mission clear failed' }),
-      timer,
-    }
-
-    ctx.transport!.send(encodeMissionClearAll(ctx.targetSysId, ctx.targetCompId, ctx.sysId, ctx.compId))
-  })
+      resolve({ success: false, resultCode: -1, message: 'Mission clear timed out' })
+    }, 5000),
+    restartTimer: () => {},
+  }
+  ctx.missionUpload = state
+  ctx.transport.send(encodeMissionClearAll(ctx.targetSysId, ctx.targetCompId, ctx.sysId, ctx.compId))
+  return promise
 }
 
+/**
+ * Upload the geofence over the legacy FENCE_POINT protocol.
+ *
+ * The legacy protocol has no per-point acknowledgement: the FC sizes its fence
+ * table from `FENCE_TOTAL` and then accepts that many FENCE_POINT writes. So
+ * this does three things, and reports failure at each — it previously sent the
+ * points blind, never wrote FENCE_TOTAL at all (leaving the FC's table at its
+ * previous size, silently truncating or ignoring the upload), and returned an
+ * unconditional `success: true`:
+ *
+ *  1. write `FENCE_TOTAL` and require the FC's PARAM_VALUE echo to match,
+ *  2. emit the FENCE_POINTs,
+ *  3. fetch every index back and compare coordinates.
+ */
 export async function uploadFence(ctx: MissionContext, points: Array<{ lat: number; lon: number }>): Promise<CommandResult> {
   if (!ctx.transport?.isConnected) {
     return { success: false, resultCode: -1, message: 'Not connected' }
   }
+
+  const totalWrite = await ctx.setParameter('FENCE_TOTAL', points.length)
+  if (!totalWrite.success) {
+    return {
+      success: false,
+      resultCode: -1,
+      message: `Flight controller did not accept FENCE_TOTAL=${points.length}: ${totalWrite.message}`,
+    }
+  }
+  if (points.length === 0) {
+    return { success: true, resultCode: 0, message: 'Fence cleared' }
+  }
+
   for (let i = 0; i < points.length; i++) {
     ctx.transport.send(encodeFencePoint(
       ctx.targetSysId, ctx.targetCompId,
@@ -254,7 +339,66 @@ export async function uploadFence(ctx: MissionContext, points: Array<{ lat: numb
       ctx.sysId, ctx.compId,
     ))
   }
-  return { success: true, resultCode: 0, message: `Uploaded ${points.length} fence points` }
+
+  const readback = await fetchFencePoints(ctx, points.length)
+  if (readback.size < points.length) {
+    const missing = points.length - readback.size
+    return {
+      success: false,
+      resultCode: -1,
+      message: `Fence upload unverified: flight controller returned ${readback.size} of ${points.length} points (${missing} missing)`,
+    }
+  }
+  for (let i = 0; i < points.length; i++) {
+    const got = readback.get(i)
+    if (!got) continue
+    if (Math.abs(got.lat - points[i].lat) > FENCE_COORD_EPSILON || Math.abs(got.lon - points[i].lon) > FENCE_COORD_EPSILON) {
+      return {
+        success: false,
+        resultCode: -1,
+        message: `Fence upload mismatch at point ${i}: sent ${points[i].lat.toFixed(7)},${points[i].lon.toFixed(7)} but flight controller holds ${got.lat.toFixed(7)},${got.lon.toFixed(7)}`,
+      }
+    }
+  }
+  return { success: true, resultCode: 0, message: `Uploaded and verified ${points.length} fence points` }
+}
+
+/** ~1.1 cm at the equator — a FENCE_POINT is transported as float32 degrees. */
+const FENCE_COORD_EPSILON = 1e-7 * 1000
+
+/** Fetch fence indices `0..total-1` back from the FC. Resolves with whatever
+ *  arrived when the deadline expires, so the caller reports a short readback as
+ *  an unverified upload rather than as a success. */
+function fetchFencePoints(
+  ctx: MissionContext,
+  total: number,
+): Promise<Map<number, { lat: number; lon: number }>> {
+  const { promise, resolve } = Promise.withResolvers<Map<number, { lat: number; lon: number }>>()
+  const received = new Map<number, { lat: number; lon: number }>()
+
+  const timeout = setTimeout(() => {
+    unsub()
+    resolve(received)
+  }, 10000)
+
+  const unsub = ctx.onFencePoint((data) => {
+    if (data.idx < 0 || data.idx >= total) return
+    received.set(data.idx, { lat: data.lat, lon: data.lon })
+    if (received.size >= total) {
+      clearTimeout(timeout)
+      unsub()
+      resolve(received)
+    }
+  })
+
+  for (let i = 0; i < total; i++) {
+    ctx.transport!.send(encodeFenceFetchPoint(
+      ctx.targetSysId, ctx.targetCompId,
+      i, ctx.sysId, ctx.compId,
+    ))
+  }
+
+  return promise
 }
 
 export async function downloadFence(ctx: MissionContext): Promise<Array<{ idx: number; lat: number; lon: number }>> {
@@ -335,23 +479,37 @@ export async function uploadFenceMission(ctx: MissionContext, elements: FenceEle
 export async function downloadFenceMission(ctx: MissionContext): Promise<FenceElement[]> {
   if (!ctx.transport?.isConnected) return []
 
-  return new Promise<FenceElement[]>((resolve) => {
-    const timer = setTimeout(() => {
-      if (ctx.fenceDownload) {
-        const items = Array.from(ctx.fenceDownload.items.values())
-        ctx.fenceDownload = null
-        resolve(decodeFenceMissionItems(items))
-      } else {
-        resolve([])
-      }
-    }, 15000)
+  const { promise, resolve, reject } = Promise.withResolvers<FenceElement[]>()
 
-    ctx.fenceDownload = { items: new Map(), total: 0, resolve, timer }
-    ctx.transport!.send(encodeMissionRequestList(
-      ctx.targetSysId, ctx.targetCompId,
-      ctx.sysId, ctx.compId, MAV_MISSION_TYPE_FENCE,
+  const onIdle = () => {
+    const state = ctx.fenceDownload
+    if (!state) {
+      reject(new Error('Fence download stalled before the flight controller answered'))
+      return
+    }
+    ctx.fenceDownload = null
+    reject(new Error(
+      `Fence download incomplete: received ${state.items.size} of ${state.total} items`,
     ))
-  })
+  }
+
+  const state: FenceDownloadState = {
+    items: new Map(),
+    total: 0,
+    resolve,
+    reject,
+    timer: setTimeout(onIdle, TRANSFER_IDLE_TIMEOUT_MS),
+    restartTimer: () => {
+      clearTimeout(state.timer)
+      state.timer = setTimeout(onIdle, TRANSFER_IDLE_TIMEOUT_MS)
+    },
+  }
+  ctx.fenceDownload = state
+  ctx.transport.send(encodeMissionRequestList(
+    ctx.targetSysId, ctx.targetCompId,
+    ctx.sysId, ctx.compId, MAV_MISSION_TYPE_FENCE,
+  ))
+  return promise
 }
 
 export async function uploadRallyPoints(ctx: MissionContext, points: Array<{ lat: number; lon: number; alt: number }>): Promise<CommandResult> {
@@ -375,23 +533,36 @@ export async function uploadRallyPoints(ctx: MissionContext, points: Array<{ lat
 export async function downloadRallyPoints(ctx: MissionContext): Promise<Array<{ lat: number; lon: number; alt: number }>> {
   if (!ctx.transport?.isConnected) return []
 
-  return new Promise<Array<{ lat: number; lon: number; alt: number }>>((resolve) => {
-    const timer = setTimeout(() => {
-      if (ctx.rallyDownload) {
-        const items = Array.from(ctx.rallyDownload.items.entries())
-          .sort((a, b) => a[0] - b[0])
-          .map(([, pt]) => pt)
-        ctx.rallyDownload = null
-        resolve(items)
-      } else {
-        resolve([])
-      }
-    }, 15000)
+  const { promise, resolve, reject } =
+    Promise.withResolvers<Array<{ lat: number; lon: number; alt: number }>>()
 
-    ctx.rallyDownload = { items: new Map(), total: 0, resolve, timer }
-    ctx.transport!.send(encodeMissionRequestList(
-      ctx.targetSysId, ctx.targetCompId,
-      ctx.sysId, ctx.compId, 2,
+  const onIdle = () => {
+    const state = ctx.rallyDownload
+    if (!state) {
+      reject(new Error('Rally download stalled before the flight controller answered'))
+      return
+    }
+    ctx.rallyDownload = null
+    reject(new Error(
+      `Rally download incomplete: received ${state.items.size} of ${state.total} points`,
     ))
-  })
+  }
+
+  const state: RallyDownloadState = {
+    items: new Map(),
+    total: 0,
+    resolve,
+    reject,
+    timer: setTimeout(onIdle, TRANSFER_IDLE_TIMEOUT_MS),
+    restartTimer: () => {
+      clearTimeout(state.timer)
+      state.timer = setTimeout(onIdle, TRANSFER_IDLE_TIMEOUT_MS)
+    },
+  }
+  ctx.rallyDownload = state
+  ctx.transport.send(encodeMissionRequestList(
+    ctx.targetSysId, ctx.targetCompId,
+    ctx.sysId, ctx.compId, 2,
+  ))
+  return promise
 }

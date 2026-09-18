@@ -237,6 +237,7 @@ describe('routeFrame — legacy MISSION_REQUEST (ID 40)', () => {
         resolve: vi.fn(),
         reject: vi.fn(),
         timer,
+        restartTimer: vi.fn(),
       } as any,
     });
 

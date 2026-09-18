@@ -168,8 +168,14 @@ export function bridgeTelemetry(
       rec("distanceSensor", data);
     })] : []),
     ...(protocol.onFenceStatus ? [protocol.onFenceStatus((data) => {
-      if (isSelected()) telemetry.pushFenceStatus(data);
-      useGeofenceStore.getState().updateBreachState(data.breachStatus, data.breachCount, data.breachType);
+      // Single-slot breach state, so it belongs inside the selection gate like
+      // every other singleton push here. Ungated, a FENCE_STATUS from ANY
+      // connected drone raised `FenceBreachIndicator` and `CornerAlerts` for
+      // whichever drone the operator was watching.
+      if (isSelected()) {
+        telemetry.pushFenceStatus(data);
+        useGeofenceStore.getState().updateBreachState(data.breachStatus, data.breachCount, data.breachType);
+      }
       rec("fenceStatus", data);
     })] : []),
     ...(protocol.onEstimatorStatus ? [protocol.onEstimatorStatus((data) => {
@@ -230,7 +236,12 @@ export function bridgeTelemetry(
     ...(protocol.onOdometry ? [protocol.onOdometry((data) => {
       const ts = Date.now();
       if (isSelected()) {
-        const q = data.quality ?? computeVioQuality(data.poseCovariance);
+        // `-1` is MAVLink's "odometry has failed", not a quality score: it
+        // must reach the surface as 0 (worst), never as 255 or as a fallback.
+        const q =
+          data.quality === undefined
+            ? computeVioQuality(data.poseCovariance)
+            : Math.max(0, data.quality);
         useTelemetryStore.getState().pushVioQuality(ts, q);
       }
       rec("odometry", data);
@@ -254,16 +265,35 @@ export function bridgeTelemetry(
     protocol.onHeartbeat((data) => {
       const droneStore = useDroneStore.getState();
 
-      const wasArmed = droneStore.armState === "armed";
+      // Previous arm state and mode come from THIS drone's registry entry, not
+      // from the single-slot drone-store: the store holds the selected drone
+      // only, so deriving arm/disarm and mode-change events from it attributed
+      // one drone's transitions to another.
+      const prevEntry = useNodeRegistryStore.getState().getEntry(droneId)?.fc;
+      const wasArmed = prevEntry?.armState === "armed";
+      const prevMode = prevEntry?.flightMode;
 
-      const mode = asFlightMode(data.mode) ?? droneStore.flightMode;
+      // A mode outside the union is reported as UNKNOWN, never as the last
+      // known mode: a stale mode name reads as a confirmed vehicle state.
+      const mode = asFlightMode(data.mode) ?? "UNKNOWN";
 
-      const prevMode = droneStore.flightMode;
-
-      droneStore.setFlightMode(mode);
-      droneStore.setArmState(data.armed ? "armed" : "disarmed");
-      droneStore.setConnectionState(data.armed ? "armed" : "connected");
-      droneStore.heartbeat();
+      // drone-store is a single slot scoped to the operator's selection. Every
+      // other push in this bridge is gated on `isSelected()`; this handler was
+      // not, so every connected drone's heartbeat overwrote the selected
+      // drone's arm state, mode, system status and firmware info.
+      if (isSelected()) {
+        droneStore.setFlightMode(mode);
+        droneStore.setArmState(data.armed ? "armed" : "disarmed");
+        droneStore.setConnectionState(data.armed ? "armed" : "connected");
+        droneStore.heartbeat();
+        droneStore.setSystemStatus(data.systemStatus);
+        if (data.vehicleInfo) {
+          droneStore.setFirmwareInfo(
+            data.vehicleInfo.firmwareVersionString,
+            data.vehicleInfo.vehicleClass,
+          );
+        }
+      }
 
       if (data.armed && !wasArmed) {
         useDiagnosticsStore.getState().logEvent("arm", "Vehicle armed");
@@ -278,13 +308,13 @@ export function bridgeTelemetry(
       // telemetry ring — the ring only holds the selected drone's history, so a
       // heartbeat from a non-selected drone would otherwise pick up the wrong
       // coordinates.
-      const lastPos = useNodeRegistryStore.getState().getEntry(droneId)?.fc.position;
+      const lastPos = prevEntry?.position;
       notifyArmed(droneId, droneName, data.armed, {
         lat: lastPos?.lat,
         lon: lastPos?.lon,
       });
 
-      if (mode !== prevMode) {
+      if (prevMode !== undefined && mode !== prevMode) {
         useDiagnosticsStore.getState().logEvent("mode_change", `Mode: ${prevMode} → ${mode}`);
       }
 
@@ -292,15 +322,6 @@ export function bridgeTelemetry(
       if (settings.audioEnabled && settings.alertArmDisarm) {
         if (data.armed && !wasArmed) audioEngine.play("arm");
         if (!data.armed && wasArmed) audioEngine.play("disarm");
-      }
-
-      droneStore.setSystemStatus(data.systemStatus);
-
-      if (data.vehicleInfo) {
-        droneStore.setFirmwareInfo(
-          data.vehicleInfo.firmwareVersionString,
-          data.vehicleInfo.vehicleClass,
-        );
       }
 
       // Flight-state mirrors into the registry FC sub-state. The projection
@@ -314,5 +335,30 @@ export function bridgeTelemetry(
         lastHeartbeat: Date.now(),
       });
     }),
+
+    // Link-loss decay. The producer side of this has existed since the
+    // adapter's 1 Hz `linkLostCheckInterval` was written and had ZERO
+    // subscribers, so on a link that goes silent while the transport stays open
+    // (UDP-listen, an MQTT relay, the agent's WS proxy with a dead FC serial
+    // link, an SiK radio whose USB port stays enumerated) the last heartbeat's
+    // ARMED / CONNECTED persisted forever: `FlightDataCard` rendered ARMED and
+    // `useArmedLock()` hard-blocked every FC panel on a vehicle that was gone.
+    ...(protocol.onLinkLost ? [protocol.onLinkLost(() => {
+      if (isSelected()) {
+        const droneStore = useDroneStore.getState();
+        droneStore.setConnectionState("disconnected");
+        droneStore.setArmState("disarmed");
+      }
+      registry.updateFcTelemetry(droneId, { status: "offline" });
+      useDiagnosticsStore.getState().logEvent("link_lost", `Link lost: ${droneName}`);
+    })] : []),
+
+    ...(protocol.onLinkRestored ? [protocol.onLinkRestored(() => {
+      if (isSelected()) {
+        useDroneStore.getState().setConnectionState("connected");
+      }
+      registry.updateFcTelemetry(droneId, { status: "online" });
+      useDiagnosticsStore.getState().logEvent("link_restored", `Link restored: ${droneName}`);
+    })] : []),
   ];
 }

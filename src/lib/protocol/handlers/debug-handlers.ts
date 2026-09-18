@@ -41,13 +41,7 @@ export function handleDebugValue(payload: DataView, callbacks: DebugCallback[]):
 export function handleCameraTrigger(payload: DataView, callbacks: CameraTriggerCallback[]): void {
   const data = decodeCameraTrigger(payload)
   for (const cb of callbacks) {
-    cb({
-      timestamp: Date.now(),
-      seq: data.seq,
-      lat: data.lat / 1e7,
-      lon: data.lon / 1e7,
-      alt: data.alt,
-    })
+    cb({ timestamp: Date.now(), seq: data.seq })
   }
 }
 

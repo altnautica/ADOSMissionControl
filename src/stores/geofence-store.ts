@@ -66,6 +66,13 @@ export interface GeofenceSnapshot {
   zones: FenceZone[];
 }
 
+/** Outcome of a fence upload or download, carrying the reason on failure so
+ *  the calling surface can report it instead of toasting an affirmative. */
+export interface FenceTransferResult {
+  success: boolean;
+  message: string;
+}
+
 interface GeofenceStoreState {
   enabled: boolean;
   fenceType: FenceType;
@@ -87,6 +94,10 @@ interface GeofenceStoreState {
   breachType: number;    // FENCE_BREACH enum (0=none, 1=minAlt, 2=maxAlt, 3=boundary)
 
   updateBreachState: (breachStatus: number, breachCount: number, breachType: number) => void;
+  /** Reset the breach readout. FENCE_STATUS is latched — the FC stops sending
+   *  it once the breach clears, so nothing else ever lowers the alarm. Called
+   *  on connection reset and on a selected-drone switch. */
+  clearBreachState: () => void;
   setEnabled: (enabled: boolean) => void;
   setFenceType: (type: FenceType) => void;
   setMaxAltitude: (alt: number) => void;
@@ -115,8 +126,10 @@ interface GeofenceStoreState {
   /** Toggle zone role between inclusion/exclusion */
   toggleZoneRole: (id: string) => void;
 
-  uploadFence: () => Promise<void>;
-  downloadFence: () => Promise<void>;
+  /** Upload the fence and report what the flight controller acknowledged.
+   *  Never resolves `success: true` for an upload the FC did not confirm. */
+  uploadFence: () => Promise<FenceTransferResult>;
+  downloadFence: () => Promise<FenceTransferResult>;
   clearFence: () => void;
 
   /** Capture the operator-editable fence state for the coordinated undo timeline. */
@@ -257,6 +270,8 @@ export const useGeofenceStore = create<GeofenceStoreState>()(
 
   updateBreachState: (breachStatus, breachCount, breachType) =>
     set({ breachStatus, breachCount, breachType }),
+
+  clearBreachState: () => set({ breachStatus: 0, breachCount: 0, breachType: 0 }),
   setEnabled: (enabled) => set({ enabled }),
   setFenceType: (fenceType) => set({ fenceType }),
   setMaxAltitude: (maxAltitude) => set({ maxAltitude }),
@@ -322,7 +337,9 @@ export const useGeofenceStore = create<GeofenceStoreState>()(
 
   uploadFence: async () => {
     const protocol = useDroneManager.getState().getSelectedProtocol();
-    if (!protocol?.uploadFence) return;
+    if (!protocol?.uploadFence) {
+      return { success: false, message: "No flight controller connected" };
+    }
 
     const { fenceType, polygonPoints, circleCenter, circleRadius, breachAction, zones } = get();
     const firmware = protocol.getVehicleInfo()?.firmwareType;
@@ -337,10 +354,14 @@ export const useGeofenceStore = create<GeofenceStoreState>()(
     let points: Array<{ lat: number; lon: number }> = [];
     if (useMissionFence) {
       elements = buildFenceElements(fenceType, polygonPoints, circleCenter, circleRadius, zones);
-      if (elements.length === 0) return;
+      if (elements.length === 0) {
+        return { success: false, message: "Nothing to upload — the fence is empty" };
+      }
     } else {
       points = flattenToPolygon(fenceType, polygonPoints, circleCenter, circleRadius);
-      if (points.length < 3) return;
+      if (points.length < 3) {
+        return { success: false, message: "A fence needs at least 3 boundary points" };
+      }
     }
 
     set({ uploadState: "uploading" });
@@ -361,14 +382,21 @@ export const useGeofenceStore = create<GeofenceStoreState>()(
           // FENCE_ACTION write is advisory; ignore.
         }
       }
-    } catch {
+      return { success: result.success, message: result.message };
+    } catch (err) {
       set({ uploadState: "error" });
+      return {
+        success: false,
+        message: err instanceof Error ? err.message : String(err),
+      };
     }
   },
 
   downloadFence: async () => {
     const protocol = useDroneManager.getState().getSelectedProtocol();
-    if (!protocol?.downloadFence) return;
+    if (!protocol?.downloadFence) {
+      return { success: false, message: "No flight controller connected" };
+    }
 
     const firmware = protocol.getVehicleInfo()?.firmwareType;
     const useMissionFence =
@@ -380,7 +408,7 @@ export const useGeofenceStore = create<GeofenceStoreState>()(
         const elements = await protocol.downloadFenceMission!();
         if (elements.length === 0) {
           set({ downloadState: "downloaded" });
-          return;
+          return { success: true, message: "No fence stored on the flight controller" };
         }
         // The first inclusion element (else the first element) is the primary
         // fence; every remaining element becomes an inclusion/exclusion zone.
@@ -407,7 +435,7 @@ export const useGeofenceStore = create<GeofenceStoreState>()(
             downloadState: "downloaded",
           });
         }
-        return;
+        return { success: true, message: `Loaded ${elements.length} fence elements` };
       }
 
       const points = await protocol.downloadFence();
@@ -418,11 +446,16 @@ export const useGeofenceStore = create<GeofenceStoreState>()(
           enabled: true,
           downloadState: "downloaded",
         });
-      } else {
-        set({ downloadState: "downloaded" });
+        return { success: true, message: `Loaded ${points.length} fence points` };
       }
-    } catch {
+      set({ downloadState: "downloaded" });
+      return { success: true, message: "No fence stored on the flight controller" };
+    } catch (err) {
       set({ downloadState: "error" });
+      return {
+        success: false,
+        message: err instanceof Error ? err.message : String(err),
+      };
     }
   },
 

@@ -29,7 +29,7 @@ const DEFAULT_MAX_POINTS = 1000;
 
 /**
  * Coalesced `_version` bumper. Position arrives at 5 Hz per drone and every
- * bump rebuilds a 1000-element tuple array in `VehicleTrail` / `ReplayMap`.
+ * bump rebuilds a 1000-element tuple array in `AltitudeTrail` / `ReplayMap`.
  */
 const bumper = createVersionBumper(() =>
   useTrailStore.setState((s) => ({ _version: s._version + 1 })),

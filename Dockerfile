@@ -6,7 +6,10 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY patches ./patches
-RUN npm install --no-audit --no-fund
+# `npm ci`, not `npm install`: install may resolve a newer dependency tree
+# than `package-lock.json` pins, so the container could ship versions CI
+# never gated. `ci` fails instead when the lockfile and manifest disagree.
+RUN npm ci --no-audit --no-fund
 
 FROM base AS builder
 WORKDIR /app

@@ -85,6 +85,7 @@ export function usePipVideo(
     let pc: RTCPeerConnection | null = null;
     let cancelled = false;
 
+    let trackTimeout: ReturnType<typeof setTimeout> | undefined;
     const start = async () => {
       try {
         const newPc = new RTCPeerConnection({ iceServers: [] });
@@ -92,18 +93,24 @@ export function usePipVideo(
         newPc.addTransceiver("video", { direction: "recvonly" });
         newPc.addTransceiver("audio", { direction: "recvonly" });
 
-        const stream = new Promise<MediaStream>((resolve, reject) => {
-          const timeout = setTimeout(
-            () => reject(new Error("pip: no video track")),
-            LAN_ONTRACK_TIMEOUT_MS,
-          );
-          newPc.ontrack = (event) => {
-            if (event.streams[0]) {
-              clearTimeout(timeout);
-              resolve(event.streams[0]);
-            }
-          };
-        });
+        const track = Promise.withResolvers<MediaStream>();
+        trackTimeout = setTimeout(
+          () => track.reject(new Error("pip: no video track")),
+          LAN_ONTRACK_TIMEOUT_MS,
+        );
+        newPc.ontrack = (event) => {
+          if (event.streams[0]) {
+            clearTimeout(trackTimeout);
+            track.resolve(event.streams[0]);
+          }
+        };
+        // Every path below can return early on abort — a teardown, a camera
+        // switch — and leave nobody awaiting this promise. Its timeout then
+        // rejected into nothing, which the runtime reports as an unhandled
+        // rejection on every switch. Marking it handled here costs nothing;
+        // the `await` below still observes the real value or error.
+        const stream = track.promise;
+        void stream.catch(() => {});
 
         const offer = await newPc.createOffer();
         if (signal.aborted) return;
@@ -148,6 +155,11 @@ export function usePipVideo(
         // it is surfaced (spinner → NO SIGNAL + retry) rather than swallowed.
         // A teardown-triggered abort is not a real failure, so it is ignored.
         if (!cancelled && !signal.aborted) setStatus("error");
+      } finally {
+        // Every early return above (abort, teardown, camera switch) skips
+        // the clear inline, and an abandoned 10 s timer holding a rejection
+        // is still a pending rejection.
+        clearTimeout(trackTimeout);
       }
     };
     void start();

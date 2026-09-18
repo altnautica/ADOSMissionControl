@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
+import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { SERVO_FUNCTION_GROUPS } from "@/lib/servo-functions";
@@ -67,6 +68,7 @@ export function OutputsPanel() {
   const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
   const protocol = getSelectedProtocol();
   const { toast } = useToast();
+  const { showFlashResult } = useFlashCommitToast();
   const { isHardBlocked, hardBlockMessage } = useArmedLock();
   const [saving, setSaving] = useState(false);
 
@@ -139,9 +141,7 @@ export function OutputsPanel() {
   }
 
   async function handleFlash() {
-    const ok = await commitToFlash();
-    if (ok) toast("Parameters written to flash", "success");
-    else toast("Failed to write to flash", "error");
+    showFlashResult(await commitToFlash(), { successMessage: "Parameters written to flash" });
   }
 
   if (!protocol) {

@@ -64,11 +64,11 @@ export function useBetaflightFirmware(firmwareStack: FirmwareStack, toast: Toast
 
   useEffect(() => {
     if (firmwareStack === "betaflight" && selectedBfTarget) loadBfReleases(selectedBfTarget);
-  }, [selectedBfTarget, firmwareStack]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedBfTarget, firmwareStack]);
 
   useEffect(() => {
     if (firmwareStack === "betaflight" && bfCustomBuild && selectedBfRelease) loadBfBuildOptions(selectedBfRelease);
-  }, [selectedBfRelease, bfCustomBuild, firmwareStack]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedBfRelease, bfCustomBuild, firmwareStack]);
 
   async function handleBfCloudBuild() {
     if (!selectedBfTarget || !selectedBfRelease) return;

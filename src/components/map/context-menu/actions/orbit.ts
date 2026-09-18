@@ -6,7 +6,7 @@
  */
 
 import type { DroneProtocol } from "@/lib/protocol/types";
-import type { MenuPosition } from "../types";
+import type { MenuPosition, MenuReport } from "../types";
 
 interface OrbitArgs {
   protocol: DroneProtocol | null;
@@ -14,16 +14,36 @@ interface OrbitArgs {
   radius: number;
   clockwise: boolean;
   relativeAlt: number | undefined;
+  report: MenuReport;
 }
 
-export function handleOrbitConfirmed({
+export async function handleOrbitConfirmed({
   protocol,
   menuPos,
   radius,
   clockwise,
   relativeAlt,
-}: OrbitArgs): void {
-  if (!protocol?.orbit) return;
+  report,
+}: OrbitArgs): Promise<void> {
+  if (!protocol?.orbit) {
+    report("This firmware does not support orbit", "error");
+    return;
+  }
   const signedRadius = clockwise ? radius : -radius;
-  protocol.orbit(signedRadius, 2, 2, menuPos.lat, menuPos.lon, relativeAlt ?? 20);
+  // Ack-tracked COMMAND_INT: the handler used to discard the result, so an
+  // orbit the vehicle refused reported nothing at all.
+  const result = await protocol.orbit(
+    signedRadius,
+    2,
+    2,
+    menuPos.lat,
+    menuPos.lon,
+    relativeAlt ?? 20,
+  );
+  report(
+    result.success
+      ? `Orbiting at ${Math.round(radius)} m`
+      : `Orbit failed: ${result.message}`,
+    result.success ? "success" : "error",
+  );
 }

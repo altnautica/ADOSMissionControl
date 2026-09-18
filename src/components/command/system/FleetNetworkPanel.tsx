@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Loader2, Network, Radio, ScanLine, Wifi } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { NO_DATA_GLYPH } from "@/lib/hud-draw";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useFleetNetworkStore } from "@/stores/fleet-network-store";
 import { useMqttConfig } from "@/hooks/use-mqtt-config";
@@ -247,28 +248,32 @@ export function FleetNetworkPanel() {
                       </div>
                     </td>
                     <td className="py-1.5 pr-3 text-right font-mono text-text-secondary">
-                      {peer.signal_dbm} dBm
+                      {peer.signal_dbm === undefined ? NO_DATA_GLYPH : `${peer.signal_dbm} dBm`}
                     </td>
                     <td className="py-1.5 pr-3 text-right font-mono text-text-secondary">
-                      {peer.distance_m} m
+                      {peer.distance_m === undefined ? NO_DATA_GLYPH : `${peer.distance_m} m`}
                     </td>
                     <td className="py-1.5 pr-3 text-right">
+                      {/* An unreported battery is NOT 0%: rendering it as one
+                          painted every peer that omits the field red-critical. */}
                       <span
                         className={cn(
                           "font-mono",
-                          peer.battery_percent < 30
-                            ? "text-status-error"
-                            : peer.battery_percent < 50
-                              ? "text-status-warning"
-                              : "text-text-secondary"
+                          peer.battery_percent === undefined
+                            ? "text-text-tertiary"
+                            : peer.battery_percent < 30
+                              ? "text-status-error"
+                              : peer.battery_percent < 50
+                                ? "text-status-warning"
+                                : "text-text-secondary"
                         )}
                       >
-                        {peer.battery_percent}%
+                        {peer.battery_percent === undefined ? NO_DATA_GLYPH : `${peer.battery_percent}%`}
                       </span>
                     </td>
                     <td className="py-1.5 pr-3 text-center">
                       <span className="px-1.5 py-0.5 text-[10px] rounded bg-bg-tertiary text-text-tertiary">
-                        T{peer.tier}
+                        {peer.tier === undefined ? NO_DATA_GLYPH : `T${peer.tier}`}
                       </span>
                     </td>
                     <td className="py-1.5 text-right text-text-tertiary">

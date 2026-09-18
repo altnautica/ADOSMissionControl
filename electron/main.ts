@@ -1,7 +1,7 @@
-import { app, dialog, ipcMain } from "electron";
+import { app, BrowserWindow, dialog, ipcMain } from "electron";
 import { setupPermissions } from "./permissions";
 import { startServer, stopServer } from "./server";
-import { createMainWindow } from "./window";
+import { applyNavigationPolicy, createMainWindow } from "./window";
 import { setupAutoUpdater } from "./updater";
 import { setupNetSockets, closeAllSockets } from "./net-sockets";
 
@@ -62,19 +62,34 @@ app.whenReady().then(async () => {
       });
     }
 
+    // Every WebContents the app creates gets the navigation policy, not just
+    // the main window: a same-origin popup inherits the preload (and so
+    // `electronAPI.net`) but inherited none of the guards.
+    app.on("web-contents-created", (_event, contents) => {
+      applyNavigationPolicy(contents, port);
+    });
+
     // Create the main browser window
     const win = createMainWindow(port);
 
-    // IPC handlers for window controls
-    ipcMain.handle("window:minimize", () => win.minimize());
-    ipcMain.handle("window:maximize", () => {
-      if (win.isMaximized()) {
-        win.unmaximize();
+    // IPC handlers for window controls.
+    //
+    // Resolved from the SENDER, not from the captured `win`: a popup calling
+    // `window:close` used to close the main window, which on the only
+    // platform-independent path quits the app.
+    const senderWindow = (e: Electron.IpcMainInvokeEvent) =>
+      BrowserWindow.fromWebContents(e.sender);
+    ipcMain.handle("window:minimize", (e) => senderWindow(e)?.minimize());
+    ipcMain.handle("window:maximize", (e) => {
+      const w = senderWindow(e);
+      if (!w) return;
+      if (w.isMaximized()) {
+        w.unmaximize();
       } else {
-        win.maximize();
+        w.maximize();
       }
     });
-    ipcMain.handle("window:close", () => win.close());
+    ipcMain.handle("window:close", (e) => senderWindow(e)?.close());
     ipcMain.handle("app:version", () => app.getVersion());
 
     // Native UDP/TCP MAVLink sockets (the browser can't open raw sockets).
@@ -94,6 +109,10 @@ app.whenReady().then(async () => {
     // the user sees a dock icon / Task Manager entry but nothing to interact
     // with. Surface the failure and exit cleanly instead.
     console.error("[main] startup failed:", err);
+    // The forked Next child survives this path otherwise: no window ever
+    // existed, so `window-all-closed` never fires and every FAILED launch
+    // leaked another server holding the port.
+    await stopServer().catch(() => undefined);
     const message = err?.stack || err?.message || String(err);
     try {
       dialog.showErrorBox(
@@ -119,8 +138,26 @@ app.on("second-instance", () => {
   }
 });
 
-app.on("window-all-closed", async () => {
+/**
+ * Single teardown path.
+ *
+ * `window-all-closed` is the ONE quit path Cmd+Q and `app.quit()` skip, and
+ * it used to be the sole caller of `closeAllSockets()` / `stopServer()` — so
+ * the forked Next child survived every macOS Quit and every
+ * `quitAndInstall()`, holding port 4000 and keeping the GCS reachable after
+ * the operator closed it. `will-quit` fires for every path.
+ */
+let teardownDone = false;
+app.on("will-quit", (event) => {
+  if (teardownDone) return;
+  event.preventDefault();
+  teardownDone = true;
   closeAllSockets();
-  await stopServer();
+  void stopServer()
+    .catch((err) => console.error("[main] stopServer failed:", err))
+    .finally(() => app.exit(0));
+});
+
+app.on("window-all-closed", () => {
   app.quit();
 });

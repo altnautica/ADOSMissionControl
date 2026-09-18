@@ -13,7 +13,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { ChevronRight } from "lucide-react";
 import type { Waypoint } from "@/lib/types";
-import { exportWaypointsFormat } from "@/lib/mission-io";
+import { exportWaypointsFormat, currentExportOptions } from "@/lib/mission-io";
 import { useSimulationStore } from "@/stores/simulation-store";
 import { useInterpolatedPosition } from "@/hooks/use-interpolated-position";
 import { usePlanLibraryStore } from "@/stores/plan-library-store";
@@ -94,7 +94,7 @@ export function SimulationPanel({
   const handleExport = () => {
     if (missionWaypoints.length === 0) return;
     const name = activePlan?.name || "simulation";
-    exportWaypointsFormat(missionWaypoints, name);
+    exportWaypointsFormat(missionWaypoints, name, currentExportOptions());
     toast("Exported .waypoints", "success");
   };
 

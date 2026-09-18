@@ -17,26 +17,71 @@ const ALT_LOW = 10;
 const ALT_MID = 50;
 const ALT_HIGH = 120;
 
-/** Color for altitude value using green-yellow-red gradient. */
-function altitudeColor(alt: number): string {
-  if (alt <= ALT_LOW) return "#22c55e";   // green
-  if (alt <= ALT_MID) {
+/**
+ * How many discrete colour bands the gradient is quantised into.
+ *
+ * This is the whole performance story of this component. `altitudeColor`
+ * used to interpolate CONTINUOUSLY, so two consecutive telemetry samples a
+ * few centimetres apart produced two different `rgb(...)` strings, the
+ * "same colour as the previous point?" test in `buildSegments` essentially
+ * never held, and every trail point became its own `<Polyline>` — an SVG
+ * path plus a `<Tooltip>` per sample. A 2000-point trail meant ~2000 live
+ * Leaflet layers, each re-projected on every pan and zoom.
+ *
+ * Quantising first means a climb through the whole range produces at most
+ * this many segments, and level flight produces one, while the rendered
+ * gradient is visually unchanged at 2.5 px stroke width.
+ */
+const BANDS = 16;
+const BAND_HEIGHT_M = ALT_HIGH / BANDS;
+
+/**
+ * Dead zone around a band edge, in metres.
+ *
+ * Quantising alone is not enough: a hover sitting exactly on a boundary
+ * (30 m is one, with 7.5 m bands) flaps between two bands on sub-decimetre
+ * jitter and reproduces the per-sample-layer explosion in miniature. A
+ * sample only leaves the current band once it is this far past the edge.
+ */
+const BAND_HYSTERESIS_M = 1;
+
+/** The band index an altitude falls in, ignoring hysteresis. */
+function altitudeBand(alt: number): number {
+  if (!Number.isFinite(alt)) return 0;
+  const clamped = Math.min(Math.max(alt, 0), ALT_HIGH);
+  return Math.min(Math.floor(clamped / BAND_HEIGHT_M), BANDS - 1);
+}
+
+/**
+ * The band to draw `alt` in, given the band the trail is currently in.
+ * Stays put until `alt` clears the current band's edge by the dead zone.
+ */
+function nextBand(alt: number, current: number): number {
+  const value = Number.isFinite(alt) ? alt : 0;
+  const low = current * BAND_HEIGHT_M - BAND_HYSTERESIS_M;
+  const high = (current + 1) * BAND_HEIGHT_M + BAND_HYSTERESIS_M;
+  if (value >= low && value < high) return current;
+  return altitudeBand(value);
+}
+
+/** Colour for a band, on a green-yellow-red gradient through its midpoint. */
+function bandColor(band: number): string {
+  const mid = (band + 0.5) * BAND_HEIGHT_M;
+  if (mid <= ALT_LOW) return "#22c55e"; // green
+  if (mid <= ALT_MID) {
     // green to yellow
-    const t = (alt - ALT_LOW) / (ALT_MID - ALT_LOW);
+    const t = (mid - ALT_LOW) / (ALT_MID - ALT_LOW);
     const r = Math.round(34 + t * (234 - 34));
     const g = Math.round(197 + t * (179 - 197));
     const b = Math.round(94 + t * (8 - 94));
     return `rgb(${r},${g},${b})`;
   }
-  if (alt <= ALT_HIGH) {
-    // yellow to red
-    const t = (alt - ALT_MID) / (ALT_HIGH - ALT_MID);
-    const r = Math.round(234 + t * (239 - 234));
-    const g = Math.round(179 - t * 179);
-    const b = Math.round(8 - t * 8);
-    return `rgb(${r},${g},${b})`;
-  }
-  return "#ef4444"; // red for above HIGH
+  // yellow to red
+  const t = (mid - ALT_MID) / (ALT_HIGH - ALT_MID);
+  const r = Math.round(234 + t * (239 - 234));
+  const g = Math.round(179 - t * 179);
+  const b = Math.round(8 - t * 8);
+  return `rgb(${r},${g},${b})`;
 }
 
 interface TrailSegment {
@@ -45,21 +90,21 @@ interface TrailSegment {
   avgAlt: number;
 }
 
-/** Group consecutive trail points into segments of the same color band. */
-function buildSegments(trail: TrailPoint[]): TrailSegment[] {
+/** Group consecutive trail points into segments sharing one altitude band. */
+export function buildSegments(trail: TrailPoint[]): TrailSegment[] {
   if (trail.length < 2) return [];
 
   const segments: TrailSegment[] = [];
-  let currentColor = altitudeColor(trail[0].alt);
+  let currentBand = altitudeBand(trail[0].alt);
   let currentPositions: [number, number][] = [[trail[0].lat, trail[0].lon]];
   let altSum = trail[0].alt;
   let altCount = 1;
 
   for (let i = 1; i < trail.length; i++) {
-    const color = altitudeColor(trail[i].alt);
+    const band = nextBand(trail[i].alt, currentBand);
     const pos: [number, number] = [trail[i].lat, trail[i].lon];
 
-    if (color === currentColor) {
+    if (band === currentBand) {
       currentPositions.push(pos);
       altSum += trail[i].alt;
       altCount++;
@@ -67,12 +112,12 @@ function buildSegments(trail: TrailPoint[]): TrailSegment[] {
       // Close current segment (overlap the last point for continuity)
       segments.push({
         positions: currentPositions,
-        color: currentColor,
+        color: bandColor(currentBand),
         avgAlt: altSum / altCount,
       });
       // Start new segment from previous point
       currentPositions = [currentPositions[currentPositions.length - 1], pos];
-      currentColor = color;
+      currentBand = band;
       altSum = trail[i].alt;
       altCount = 1;
     }
@@ -82,7 +127,7 @@ function buildSegments(trail: TrailPoint[]): TrailSegment[] {
   if (currentPositions.length >= 2) {
     segments.push({
       positions: currentPositions,
-      color: currentColor,
+      color: bandColor(currentBand),
       avgAlt: altSum / altCount,
     });
   }
@@ -109,7 +154,7 @@ export function AltitudeTrail() {
     [trail, hasAltData],
   );
 
-  // No altitude data — render simple blue trail like VehicleTrail
+  // No altitude data — one plain accent-blue polyline for the whole track.
   const flatPositions = useMemo<[number, number][]>(
     () => (hasAltData ? [] : trail.map((p) => [p.lat, p.lon])),
     [trail, hasAltData],

@@ -719,12 +719,22 @@ export const registerAgent = internalMutation({
 const CLEAN_EXPIRED_BATCH = 256;
 
 /**
- * Cron job: clean expired pairing requests.
+ * Cron job: clean expired UNCLAIMED pairing requests.
  *
  * Internal (cron-only): a public no-auth mutation let any client trigger the
  * scan on demand. The query walks the `by_expiresAt` index range below `now`
  * instead of a full-table `.filter().collect()`, and the batch is bounded so
  * a backlog cannot blow the per-call limits.
+ *
+ * A CLAIMED row is never deleted. `expiresAt` is `now + 15 min` and bounds how
+ * long an unclaimed CODE stays offerable; it is not a lifetime for the pairing
+ * itself. Deleting claimed rows meant `/pairing/status` — which reads only
+ * `cmd_pairingRequests` — started answering `{authorized:false}` → 401 about
+ * fifteen minutes after a SUCCESSFUL pairing, indistinguishable from a bad
+ * key. If the agent then re-registered, `registerAgent` found no row and
+ * inserted a fresh UNCLAIMED one returning `{registered:true}`, so the node
+ * displayed a new pairing code to the operator for a drone that was already
+ * paired.
  */
 export const cleanExpiredRequests = internalMutation({
   args: {},
@@ -734,10 +744,13 @@ export const cleanExpiredRequests = internalMutation({
       .query("cmd_pairingRequests")
       .withIndex("by_expiresAt", (q) => q.lt("expiresAt", now))
       .take(CLEAN_EXPIRED_BATCH);
+    let deleted = 0;
     for (const req of expired) {
+      if (req.claimedBy) continue;
       await ctx.db.delete(req._id);
+      deleted += 1;
     }
-    return { deleted: expired.length };
+    return { deleted };
   },
 });
 

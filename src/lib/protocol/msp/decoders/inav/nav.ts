@@ -78,46 +78,32 @@ export function encodeMspSetWp(wp: INavWaypoint): Uint8Array {
 /**
  * MSP2_INAV_STATUS (0x2000)
  *
- * U16 cycleTime
- * U16 i2cErrors
- * U16 sensors
- * U16 (reserved, skip 2 bytes)
- * U32 modeFlags
- * U8  currentProfile
- * U16 cpuLoad
- * U8  (profile count, skip)
- * U8  (rate profile, skip)
- * U32 armingFlags
- * U8  navState
- * U8  navAction
+ * Layout from iNav `fc_msp.c` `mspFcProcessOutCommand`:
  *
- * Layout handles the common fields present in iNav 6.x+ (API 2.5+).
+ * ```
+ * U16 cycleTime                     @0
+ * U16 i2cErrorCounter               @2
+ * U16 sensorStatus                  @4
+ * U16 averageSystemLoadPercent      @6
+ * U8  batteryProfile<<4 | profile   @8
+ * U32 armingFlags                   @9
+ * ... boxModeFlags                  @13
+ * ```
+ *
+ * There is NO nav state in this message — `MSP_NAV_STATUS` (121) carries it.
+ * This decoder previously read a reserved gap at 6, `modeFlags` at 8,
+ * `armingFlags` at 17 and invented `navState`/`navAction` at 21/22, so every
+ * field after byte 6 was wrong.
  */
 export function decodeMspINavStatus(dv: DataView): INavStatus {
-  const cycleTime = readU16(dv, 0);
-  const i2cErrors = readU16(dv, 2);
-  const sensors = readU16(dv, 4);
-  // offset 6-7: reserved
-  const modeFlags = readU32(dv, 8);
-  const currentProfile = readU8(dv, 12);
-  const cpuLoad = readU16(dv, 13);
-  // offset 15: profile count
-  // offset 16: rate profile
-  const armingFlags = readU32(dv, 17);
-
-  const navState = dv.byteLength > 21 ? readU8(dv, 21) : 0;
-  const navAction = dv.byteLength > 22 ? readU8(dv, 22) : 0;
-
   return {
-    cycleTime,
-    i2cErrors,
-    sensors,
-    modeFlags,
-    currentProfile,
-    cpuLoad,
-    armingFlags,
-    navState,
-    navAction,
+    cycleTime: readU16(dv, 0),
+    i2cErrors: readU16(dv, 2),
+    sensors: readU16(dv, 4),
+    averageLoadPercent: readU16(dv, 6),
+    /** Low nibble is the config profile, high nibble the battery profile. */
+    profiles: readU8(dv, 8),
+    armingFlags: readU32(dv, 9),
   };
 }
 

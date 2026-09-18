@@ -111,13 +111,44 @@ function evictQuietestId(
 }
 
 /**
+ * Frame tallies, accumulated OUT of store state.
+ *
+ * `pushFrame` used to `set()` these four on every frame, which notifies
+ * every subscriber synchronously and defeats the coalescing bumper sitting
+ * on the very next line — a 1000 fps bus produced 1000 React notification
+ * passes per second through the `set()` and one more through the bump.
+ * Accumulating here and publishing inside `bump` keeps the whole store to
+ * one notification per animation frame, which is what the bumper promises.
+ */
+const tally = {
+  totalFrames: 0,
+  framesPerSecond: 0,
+  lastTallyAt: Date.now(),
+  countSinceTally: 0,
+};
+
+/**
  * Coalesced `_version` bumper. A DroneCAN bus at 1000 fps produced 1000
  * notifications/sec, and `BusMonitorSection` re-runs
  * `frames.last(80).slice().reverse()` on each one. Capped at one per frame.
  */
 const bumper = createVersionBumper(() =>
-  useCanMonitorStore.setState((s) => ({ _version: s._version + 1 })),
+  useCanMonitorStore.setState((s) => ({
+    _version: s._version + 1,
+    totalFrames: tally.totalFrames,
+    framesPerSecond: tally.framesPerSecond,
+    _lastTallyAt: tally.lastTallyAt,
+    _countSinceTally: tally.countSinceTally,
+  })),
 );
+
+/** Zero the out-of-store tally. Must accompany every state reset below. */
+function resetTally(): void {
+  tally.totalFrames = 0;
+  tally.framesPerSecond = 0;
+  tally.lastTallyAt = Date.now();
+  tally.countSinceTally = 0;
+}
 
 /** Test/debug affordance: true while a coalesced bump is pending. */
 export const canMonitorBumpPending = bumper.hasPendingBump;
@@ -150,21 +181,14 @@ export const useCanMonitorStore = create<CanMonitorState>((set, get) => ({
     }
     state.idCounts.set(frame.id, tallyId(idBuckets, now));
 
-    const elapsed = now - state._lastTallyAt;
-    let fps = state.framesPerSecond;
-    let lastTally = state._lastTallyAt;
-    let count = state._countSinceTally + 1;
+    const elapsed = now - tally.lastTallyAt;
+    tally.totalFrames += 1;
+    tally.countSinceTally += 1;
     if (elapsed >= 1000) {
-      fps = Math.round((count * 1000) / elapsed);
-      lastTally = now;
-      count = 0;
+      tally.framesPerSecond = Math.round((tally.countSinceTally * 1000) / elapsed);
+      tally.lastTallyAt = now;
+      tally.countSinceTally = 0;
     }
-    set({
-      totalFrames: state.totalFrames + 1,
-      framesPerSecond: fps,
-      _lastTallyAt: lastTally,
-      _countSinceTally: count,
-    });
     bumper.scheduleVersionBump();
   },
 
@@ -174,6 +198,7 @@ export const useCanMonitorStore = create<CanMonitorState>((set, get) => ({
       // Reset stats when disabling
       bumper.cancelVersionBump();
       get().frames.clear();
+      resetTally();
       set({
         enabled: false,
         idCounts: new Map(),
@@ -181,13 +206,14 @@ export const useCanMonitorStore = create<CanMonitorState>((set, get) => ({
         totalFrames: 0,
         framesPerSecond: 0,
         _countSinceTally: 0,
-        _lastTallyAt: Date.now(),
+        _lastTallyAt: tally.lastTallyAt,
         _version: get()._version + 1,
       });
     } else {
+      resetTally();
       set({
         enabled: true,
-        _lastTallyAt: Date.now(),
+        _lastTallyAt: tally.lastTallyAt,
         _countSinceTally: 0,
         _version: get()._version + 1,
       });
@@ -197,13 +223,14 @@ export const useCanMonitorStore = create<CanMonitorState>((set, get) => ({
   clear: () => {
     bumper.cancelVersionBump();
     get().frames.clear();
+    resetTally();
     set({
       idCounts: new Map(),
       _idBuckets: new Map(),
       totalFrames: 0,
       framesPerSecond: 0,
       _countSinceTally: 0,
-      _lastTallyAt: Date.now(),
+      _lastTallyAt: tally.lastTallyAt,
       _version: get()._version + 1,
     });
   },

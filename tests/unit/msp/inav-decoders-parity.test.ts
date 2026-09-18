@@ -104,20 +104,17 @@ describe("iNav decoder parity", () => {
   });
 
   it("decodeMspINavStatus", () => {
-    // MSP2_INAV_STATUS (0x2000) — 23-byte layout with navState/navAction.
+    // MSP2_INAV_STATUS (0x2000) — the layout iNav's fc_msp.c actually writes:
+    // cycleTime, i2cErrors, sensorStatus, averageSystemLoad, profiles byte,
+    // armingFlags, then the box bitmask tail.
     const bytes = [
       ...u16(1234), // cycleTime
       ...u16(5), // i2cErrors
-      ...u16(0x0007), // sensors
-      0x00, 0x00, // reserved
-      ...u32(0x0000000a), // modeFlags
-      0x02, // currentProfile
-      ...u16(42), // cpuLoad
-      0x03, // profile count (skipped)
-      0x01, // rate profile (skipped)
+      ...u16(0x0007), // sensorStatus
+      ...u16(42), // averageSystemLoadPercent
+      0x12, // batteryProfile << 4 | configProfile
       ...u32(250000), // armingFlags
-      0x05, // navState
-      0x02, // navAction
+      0x0a, 0x00, 0x00, 0x00, // boxModeFlags tail (not decoded here)
     ];
     expect(normalise(decodeMspINavStatus(dv(bytes)))).toMatchSnapshot();
   });

@@ -66,6 +66,7 @@ function createDefaultGroups(): PollGroup[] {
         MSP.MSP_ALTITUDE,                   // 109
         MSP.MSP_RAW_GPS,                    // 106
         INAV_MSP.MSP2_INAV_STATUS,          // 0x2000 iNav extended status
+        INAV_MSP.MSP_NAV_STATUS,            // 121 iNav nav state / WP action
         INAV_MSP.MSP2_ADSB_VEHICLE_LIST,    // 0x2090 ADS-B traffic (2 Hz via slow-group 500 ms)
       ],
       intervalMs: 500,

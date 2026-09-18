@@ -1,8 +1,8 @@
 /**
  * @module atlas/viewers/splat-format
  * @description Derive a splat artifact's real format from its URL. The artifact
- * is reached through the same-origin proxy `/api/lan-pair/artifact?host=…&path=…&key=…`,
- * so the URL itself ends in `&key=<apiKey>`, not a file extension — which defeats
+ * is reached through the same-origin proxy `/api/lan-pair/artifact?host=…&path=…`,
+ * so the URL itself ends in a query string, not a file extension — which defeats
  * the splat loader's `endsWith('.ply')` sniffing. We read the extension from the
  * proxy's `path` query param (the real relative path) when present, else the
  * pathname (a direct URL), so the viewer can pass an explicit format.

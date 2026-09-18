@@ -14,6 +14,7 @@ import { useAgentCapabilitiesStore } from "./agent-capabilities-store";
 import { useTrailStore } from "./trail-store";
 import { usePrearmBufferStore } from "./prearm-buffer-store";
 import { useGroundStationStore } from "./ground-station-store";
+import { useGeofenceStore } from "./geofence-store";
 import { useDiagnosticsStore } from "./diagnostics-store";
 import { usePanelCacheStore } from "./panel-cache-store";
 import {
@@ -380,6 +381,11 @@ export const useDroneManager = create<DroneManagerState>((set, get) => ({
       droneStore.setFlightMode("STABILIZE");
       droneStore.setArmState("disarmed");
       droneStore.setSystemStatus(0);
+      // FENCE_STATUS is a latched single slot: the FC stops sending it once a
+      // breach clears, so nothing else ever lowers the alarm. Without this,
+      // a breach raised on the previous drone kept `FenceBreachIndicator` and
+      // `CornerAlerts` lit over the newly selected aircraft.
+      useGeofenceStore.getState().clearBreachState();
       droneStore.setFirmwareType(null);
       if (previousId) {
         usePanelCacheStore.getState().clearForDrone(previousId);
@@ -432,6 +438,10 @@ export const useDroneManager = create<DroneManagerState>((set, get) => ({
     // without the other leaves a track on the map with no vehicle behind it.
     useTrailStore.getState().clear();
     usePrearmBufferStore.getState().clearAll();
+    // Latched breach state: nothing else lowers it once the FC stops sending
+    // FENCE_STATUS, so a teardown that leaves it set keeps the alarm lit with
+    // no vehicle behind it.
+    useGeofenceStore.getState().clearBreachState();
   },
 }));
 

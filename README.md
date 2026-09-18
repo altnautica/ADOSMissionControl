@@ -328,7 +328,7 @@ All variables are optional. Set them by editing `.env.local` directly (or re-run
 | `NEXT_PUBLIC_DEMO_MODE` | Enable demo mode with simulated drones |
 | `NEXT_PUBLIC_DEMO_DRONE_COUNT` | Number of simulated drones (1, 3, 5, or 10) |
 | `NEXT_PUBLIC_CONVEX_URL` | Convex backend URL for cloud fleet features |
-| `GITHUB_TOKEN` | Raises the PX4 releases API limit from 60 to 5000 req/hr |
+| `GITHUB_TOKEN` | Raises the PX4 releases API limit from 60 to 5000 req/hr. Server-side only — export it in the server shell rather than writing it into `.env` |
 | `GROQ_API_KEY` | AI PID tuning suggestions. Free at [console.groq.com](https://console.groq.com) |
 | `CESIUM_BASE_URL` | Self-hosted Cesium JS URL (falls back to CDN if unset) |
 

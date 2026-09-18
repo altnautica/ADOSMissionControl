@@ -77,7 +77,9 @@ export const communityApi = {
     // `makeFunctionReference` so this barrel does not need a typed
     // import that the generated api surface has not picked up yet.
     recordArchive: api.cmdPluginArchives.recordArchive,
-    getSignedDownloadUrl: api.cmdPluginArchives.getSignedDownloadUrl,
+    // `getSignedDownloadUrl` is deliberately absent: it is an internalAction
+    // with no auth of its own, and exposing it let any caller mint a signed
+    // download URL for any archive.
     getArchive: api.cmdPluginArchives.getArchive,
     listMine: api.cmdPluginArchives.listMine,
   },

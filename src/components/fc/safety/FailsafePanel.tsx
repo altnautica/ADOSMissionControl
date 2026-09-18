@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
+import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
 import { useDroneManager } from "@/stores/drone-manager";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
@@ -43,6 +44,7 @@ export function FailsafePanel() {
   const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
   const getSelectedDrone = useDroneManager((s) => s.getSelectedDrone);
   const { toast } = useToast();
+  const { showFlashResult } = useFlashCommitToast();
   const { label: pl } = useParamLabel();
   const metadata = useParamMetadataMap();
   const lbl = (raw: string) => <ParamFieldLabel raw={pl(raw)} metadata={metadata} />;
@@ -66,9 +68,17 @@ export function FailsafePanel() {
          ...(isPx4 ? ["COM_POS_FS_DELAY", "COM_POS_FS_EPH", "COM_POS_FS_EPV", "COM_VEL_FS_EVH"] : [])],
     [isPlane, isPx4, isBetaflight],
   );
+  // PX4 has no equivalent for `FENCE_ACTION` or `FENCE_ALT_MIN`
+  // (`PX4_PARAM_MAP` maps neither), so they are optional there rather than a
+  // hard read failure that blanks the whole panel.
   const optionalParams = useMemo(
-    () => isBetaflight ? [] : (isPlane ? COPTER_FS_PARAMS : PLANE_FS_PARAMS),
-    [isPlane, isBetaflight],
+    () => isBetaflight
+      ? []
+      : [
+          ...(isPlane ? COPTER_FS_PARAMS : PLANE_FS_PARAMS),
+          ...(isPx4 ? ["FENCE_ACTION", "FENCE_ALT_MIN"] : []),
+        ],
+    [isPlane, isPx4, isBetaflight],
   );
 
   const {
@@ -93,9 +103,7 @@ export function FailsafePanel() {
   }
 
   async function handleFlash() {
-    const ok = await commitToFlash();
-    if (ok) toast("Written to flash — persists after reboot", "success");
-    else toast("Failed to write to flash", "error");
+    showFlashResult(await commitToFlash());
   }
 
   return (
@@ -185,12 +193,38 @@ export function FailsafePanel() {
           </div>
         </Card>}
 
-        {!isBetaflight && <Card icon={<MapPin size={14} />} title="Geofence" description="Geographical boundary enforcement">
+        {/* ArduPilot geofence. NOT rendered for PX4: `FENCE_ENABLE` maps to
+            PX4's `GF_ACTION` (see PX4_PARAM_MAP), which is a BREACH ACTION
+            enum, not a fence-type bitmask — so the "4 — Polygon Only" option
+            on this control configured PX4 Flight Termination. PX4 gets its own
+            card below with its own enum. */}
+        {!isBetaflight && !isPx4 && <Card icon={<MapPin size={14} />} title="Geofence" description="Geographical boundary enforcement">
           <Select label={lbl("FENCE_ENABLE — Fence Type")} options={[{ value: "0", label: "0 — Disabled" }, { value: "1", label: "1 — Altitude Only" }, { value: "2", label: "2 — Circle Only" }, { value: "3", label: "3 — Altitude + Circle" }, { value: "4", label: "4 — Polygon Only" }, { value: "5", label: "5 — Altitude + Polygon" }, { value: "6", label: "6 — Circle + Polygon" }, { value: "7", label: "7 — All" }]} value={p("FENCE_ENABLE")} onChange={(v) => set("FENCE_ENABLE", v)} />
           <Select label={lbl("FENCE_ACTION — Breach Action")} options={[{ value: "0", label: "0 — Report Only" }, { value: "1", label: "1 — RTL or Land" }, { value: "2", label: "2 — Always Land" }, { value: "3", label: "3 — SmartRTL or RTL or Land" }, { value: "4", label: "4 — Brake or Land" }, { value: "5", label: "5 — SmartRTL or Land" }]} value={p("FENCE_ACTION")} onChange={(v) => set("FENCE_ACTION", v)} />
           <Input label={lbl("FENCE_ALT_MAX — Max Altitude")} type="number" step="1" min="0" unit="m" value={p("FENCE_ALT_MAX", "100")} onChange={(e) => set("FENCE_ALT_MAX", e.target.value)} />
           <Input label={lbl("FENCE_RADIUS — Max Radius")} type="number" step="1" min="0" unit="m" value={p("FENCE_RADIUS", "300")} onChange={(e) => set("FENCE_RADIUS", e.target.value)} />
           <Input label={lbl("FENCE_ALT_MIN — Min Altitude")} type="number" step="0.5" min="-100" unit="m" value={p("FENCE_ALT_MIN")} onChange={(e) => set("FENCE_ALT_MIN", e.target.value)} />
+        </Card>}
+
+        {isPx4 && <Card icon={<MapPin size={14} />} title="Geofence (PX4)" description="PX4 geofence action and limits">
+          {/* PX4's own enum. Value 4 is Flight Termination — an irreversible
+              motors-off action — so it is labelled as such rather than hidden
+              behind an ArduPilot fence-type label. */}
+          <Select
+            label={lbl("GF_ACTION — Breach Action")}
+            options={[
+              { value: "0", label: "0 — None" },
+              { value: "1", label: "1 — Warning" },
+              { value: "2", label: "2 — Hold" },
+              { value: "3", label: "3 — Return" },
+              { value: "4", label: "4 — Flight Termination (motors off)" },
+              { value: "5", label: "5 — Land" },
+            ]}
+            value={p("FENCE_ENABLE")}
+            onChange={(v) => set("FENCE_ENABLE", v)}
+          />
+          <Input label={lbl("FENCE_ALT_MAX — Max Altitude")} type="number" step="1" min="0" unit="m" value={p("FENCE_ALT_MAX", "100")} onChange={(e) => set("FENCE_ALT_MAX", e.target.value)} />
+          <Input label={lbl("FENCE_RADIUS — Max Radius")} type="number" step="1" min="0" unit="m" value={p("FENCE_RADIUS", "300")} onChange={(e) => set("FENCE_RADIUS", e.target.value)} />
         </Card>}
 
         {isPx4 && hasLoaded && (

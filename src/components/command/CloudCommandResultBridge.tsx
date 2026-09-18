@@ -64,7 +64,6 @@ export function CloudCommandResultBridge() {
       processedRef.current.add(cmdId);
 
       // Route data results to the store
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const data = (cmd as any).data;
       if (data !== undefined && data !== null) {
         const target = COMMAND_RESULT_MAP[cmd.command];

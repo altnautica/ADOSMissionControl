@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useLogActivityStore } from "@/stores/log-activity-store";
@@ -37,23 +37,55 @@ const MAX_LOG_MESSAGES = 1000;
 
 // ── Highlight helper ─────────────────────────────────────────
 
-function HighlightedText({ text, query }: { text: string; query: string }) {
-  if (!query) return <>{text}</>;
-  const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi");
+/**
+ * Split a row's text around the search query.
+ *
+ * `String.prototype.split` with ONE capturing group interleaves the
+ * captures into the result, so every odd index is a match and every even
+ * index is the text between matches. That parity is exact and costs
+ * nothing — the previous version re-ran `regex.test(part)` per part with
+ * a `/g` regex, which is stateful through `lastIndex` and therefore
+ * alternated true/false down the row, highlighting the wrong halves.
+ *
+ * The regex is also built ONCE per query rather than once per rendered
+ * row: this list holds up to `MAX_LOG_MESSAGES` rows and re-renders on
+ * every STATUSTEXT.
+ */
+function HighlightedText({
+  text,
+  query,
+  regex,
+}: {
+  text: string;
+  query: string;
+  regex: RegExp | null;
+}) {
+  if (!query || !regex) return <>{text}</>;
   const parts = text.split(regex);
   return (
     <>
       {parts.map((part, i) =>
-        regex.test(part) ? (
-          <mark key={i} className="bg-accent-primary/30 text-text-primary rounded-sm px-0.5">
+        i % 2 === 1 ? (
+          <mark
+            key={i}
+            className="bg-accent-primary/30 text-text-primary rounded-sm px-0.5"
+          >
             {part}
           </mark>
         ) : (
           <span key={i}>{part}</span>
-        )
+        ),
       )}
     </>
   );
+}
+
+/** The split regex for a query, or null when there is nothing to highlight. */
+function highlightRegex(query: string): RegExp | null {
+  if (!query) return null;
+  // No `/g`: `split` uses the pattern globally regardless, and a sticky
+  // `lastIndex` on a shared instance is exactly the bug above.
+  return new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "i");
 }
 
 // ── Sort icon component ──────────────────────────────────────
@@ -89,6 +121,13 @@ export function DroneLogsPanel({ droneId }: DroneLogsPanelProps) {
     handleSort,
     processedMessages,
   } = useDroneLogFilter(messages);
+
+  // One regex per query, not one per rendered row: this list holds up to
+  // MAX_LOG_MESSAGES rows and re-renders on every STATUSTEXT.
+  const searchRegex = useMemo(
+    () => highlightRegex(debouncedSearch),
+    [debouncedSearch],
+  );
 
   // Graph
   const [showGraph, setShowGraph] = useState(false);
@@ -315,7 +354,11 @@ export function DroneLogsPanel({ droneId }: DroneLogsPanelProps) {
                 {SEVERITY_LABELS[msg.severity] ?? "?"}
               </span>
               <span className="text-text-primary break-all">
-                <HighlightedText text={msg.text} query={debouncedSearch} />
+                <HighlightedText
+                  text={msg.text}
+                  query={debouncedSearch}
+                  regex={searchRegex}
+                />
               </span>
             </div>
           ))

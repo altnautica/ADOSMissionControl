@@ -7,6 +7,8 @@
 import { memo } from "react";
 import { useDroneStore } from "@/stores/drone-store";
 import { useHudTopBarData } from "@/hooks/use-hud-topbar-data";
+import { deriveHudStatus } from "@/lib/hud-readings";
+import { NO_DATA_GLYPH } from "@/lib/hud-draw";
 
 function fmt(n: number | undefined | null, digits = 0): string {
   if (n === undefined || n === null || !Number.isFinite(n)) return "--";
@@ -15,7 +17,18 @@ function fmt(n: number | undefined | null, digits = 0): string {
 
 function TopBarInner() {
   const { radio, vfr, battery, gps } = useHudTopBarData();
-  const mode = useDroneStore((s) => s.flightMode);
+  const rawMode = useDroneStore((s) => s.flightMode);
+  const armState = useDroneStore((s) => s.armState);
+  const lastHeartbeat = useDroneStore((s) => s.lastHeartbeat);
+
+  // Every other reading on this bar is freshness-gated by `useHudTopBarData`;
+  // MODE was read straight from drone-store, so the kiosk rendered the store
+  // default "STABILIZE" with nothing connected and kept the last mode name on
+  // screen after the link died. Gate it on heartbeat age like the canvas HUD.
+  const { mode } = deriveHudStatus(
+    { battery, gps, radio, vfr },
+    { armState, flightMode: rawMode, lastHeartbeat },
+  );
 
   const rssi = radio ? fmt(radio.rssi, 0) : "--";
   const batteryPct = battery ? fmt(battery.remaining, 0) : "--";
@@ -26,7 +39,7 @@ function TopBarInner() {
   return (
     <div className="absolute top-0 left-0 right-0 h-10 px-4 flex items-center justify-between bg-black/40 backdrop-blur-sm text-xs font-mono uppercase tracking-wide text-white/90 pointer-events-none">
       <div className="flex items-center gap-4">
-        <span>MODE {mode}</span>
+        <span>MODE {mode ?? NO_DATA_GLYPH}</span>
         <span>RSSI {rssi}</span>
         <span>SATS {gpsSats}</span>
       </div>

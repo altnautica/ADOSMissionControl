@@ -23,11 +23,22 @@ import {
 import type { ModeRange } from "../msp/msp-mode-map";
 import type { FirmwareType, CommandResult } from "../types";
 
-/** iNav permanent box ids, from its own mode table. */
+/**
+ * iNav permanent box ids, from `inav/src/main/fc/fc_msp_box.c`.
+ *
+ * These are the ids `MSP_MODE_RANGES` carries. The GCS table used to hold a
+ * different set, so "Return to home" drove box 45 — NAV COURSE HOLD, which
+ * holds heading and flies AWAY from home — "Takeoff" drove 47 (USER1) and
+ * "Resume mission" drove 46 (MC BRAKING).
+ */
 const BOX_NAV_POSHOLD = 11;
-const BOX_NAV_RTH = 45;
-const BOX_NAV_WP = 46;
-const BOX_NAV_LAUNCH = 47;
+const BOX_NAV_RTH = 10;
+const BOX_NAV_WP = 28;
+const BOX_NAV_LAUNCH = 36;
+/** Deliberately unmapped: these are what the wrong table used to reach. */
+const BOX_NAV_COURSE_HOLD = 45;
+const BOX_MC_BRAKING = 46;
+const BOX_USER1 = 47;
 
 function range(boxId: number, auxChannel = 1): ModeRange {
   return { boxId, auxChannel, rangeStart: 1700, rangeEnd: 2100 };
@@ -111,4 +122,20 @@ describe("iNav navigation commands over AUX ranges", () => {
     expect(result.success).toBe(false);
     expect(result.message).toMatch(/cut/);
   });
+
+  it.each<[string, number, (c: MspCommandContext) => Promise<CommandResult>]>([
+    ["return to home", BOX_NAV_COURSE_HOLD, (c) => mspReturnToLaunch(c)],
+    ["takeoff", BOX_USER1, (c) => mspTakeoff(c, 10)],
+    ["resume mission", BOX_MC_BRAKING, (c) => mspResumeMission(c)],
+  ])(
+    "refuses %s rather than driving the wrong box",
+    async (_label, wrongBoxId, run) => {
+      // Only the WRONG box has a switch assigned. The command must refuse and
+      // name the missing mode, never engage the box that happens to be there.
+      const { ctx, setAux } = ctxFor("inav", [range(wrongBoxId, 2)]);
+      const result = await run(ctx);
+      expect(result.success).toBe(false);
+      expect(setAux).not.toHaveBeenCalled();
+    },
+  );
 });

@@ -99,7 +99,9 @@ const _POLL_INTERVAL_MS = 1000;
  * Live operator surface for the closed-loop video bitrate / FEC
  * controller. Polls /api/video/config + /api/video/latency at 1 Hz
  * and surfaces the controller's tier ladder, the current radio
- * config, and the SEI-probe glass-to-glass latency. Manual override
+ * config, and the SEI-probe PUBLISH-SIDE latency — stamp-to-readback
+ * on the drone, which excludes capture, encode, the radio and the
+ * browser, and is therefore not glass-to-glass. Manual override
  * controls let an operator pin a specific tier or toggle the
  * controller into manual mode.
  *

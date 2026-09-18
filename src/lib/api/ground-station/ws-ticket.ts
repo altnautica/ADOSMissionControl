@@ -8,7 +8,8 @@
 // subprotocol header instead of the URL. URLs end up in DevTools, HAR
 // exports, and reverse-proxy access logs; the ticket does not.
 
-import type { RequestContext } from "./request";
+import { GS_FETCH_TIMEOUT_MS, type RequestContext } from "./request";
+import { timedFetch } from "@/lib/agent/agent-client/timeout";
 
 /** Subprotocol marker the agent expects as the first entry when a
  *  browser presents a one-shot ticket. The agent echoes this exact
@@ -51,15 +52,22 @@ export async function mintWsTicket(
     return null;
   }
   const url = `${ctx.baseUrl.replace(/\/$/, "")}/api/_ws/ticket`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-ADOS-Key": ctx.apiKey,
+  // A ticket mint gates the WebSocket dial behind it, so an unbounded one
+  // wedges the whole relayed-MAVLink bring-up: `signal` is optional and
+  // both call sites pass nothing, leaving the browser default (~300 s).
+  const res = await timedFetch(
+    url,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-ADOS-Key": ctx.apiKey,
+      },
+      body: JSON.stringify({ scope }),
+      signal,
     },
-    body: JSON.stringify({ scope }),
-    signal,
-  });
+    GS_FETCH_TIMEOUT_MS,
+  );
   if (!res.ok) {
     throw new Error(`ticket mint failed: HTTP ${res.status}`);
   }

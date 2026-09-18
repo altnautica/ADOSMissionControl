@@ -108,7 +108,10 @@ export function FailsafeAlertBanner() {
   if (systemStatus === 5 || systemStatus === 6) {
     conditions.push({
       type: "EMERGENCY",
-      label: systemStatus === 6 ? "CRITICAL STATE" : "EMERGENCY STATE",
+      // MAV_STATE 5 = CRITICAL, 6 = EMERGENCY (the table is documented above).
+      // These two labels were inverted, so a vehicle declaring it had LOST
+      // CONTROL was banner-labelled the less severe "CRITICAL STATE".
+      label: systemStatus === 6 ? "EMERGENCY STATE" : "CRITICAL STATE",
       icon: FAILSAFE_ICONS.EMERGENCY,
     });
   }

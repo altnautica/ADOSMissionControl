@@ -145,9 +145,11 @@ export function FrameLogPanel() {
 
   const visible = useMemo(() => {
     const all = ringBuffer.toArray();
-    const filtered = applyFilters(all, filters);
-    // Reverse so newest is at the top
-    return filtered.slice().reverse();
+    // `applyFilters` already returns a fresh array, so the `.slice()` that
+    // used to sit here was a second full copy of the CAN ring on every
+    // version bump — i.e. per rAF at bus rate, with the ring holding
+    // thousands of frames.
+    return applyFilters(all, filters).reverse();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ringBuffer, filters, version]);
 

@@ -79,6 +79,16 @@ export interface MsePlayerOptions {
    * and quiet.
    */
   onError?: (err: MsePlayerError) => void;
+  /**
+   * Viewer token scoped to THIS device, minted by the same shared secret the
+   * relay holds.
+   *
+   * The relay refuses an unauthenticated upgrade: it used to accept any
+   * WebSocket and attach the client to that device's camera. A browser
+   * `WebSocket` cannot set an `Authorization` header, so the token rides in
+   * the query string.
+   */
+  relayToken?: string;
 }
 
 export class MsePlayer {
@@ -245,7 +255,10 @@ export class MsePlayer {
   }
 
   private connectWebSocket(): void {
-    const url = `${this.videoRelayUrl}/ws/stream/${this.deviceId}`;
+    const token = this.options?.relayToken;
+    const url = token
+      ? `${this.videoRelayUrl}/ws/stream/${this.deviceId}?token=${encodeURIComponent(token)}`
+      : `${this.videoRelayUrl}/ws/stream/${this.deviceId}`;
     this.ws = new WebSocket(url);
     this.ws.binaryType = "arraybuffer";
 
@@ -313,8 +326,10 @@ export class MsePlayer {
     // every subsequent append is refused, and nothing says so.
     if (!this.sourceBuffer && !this.openSourceBuffer(data)) return;
 
+    // NOT followed by a trim: `enqueue` has just called `appendBuffer`, so
+    // `updating` is true and `remove()` would throw. The trim runs from
+    // `updateend`, the only moment it is legal.
     this.enqueue(data);
-    this.trimBehindPlayhead();
   }
 
   /**
@@ -354,6 +369,16 @@ export class MsePlayer {
       return false;
     }
     this.sourceBuffer.addEventListener("updateend", () => {
+      // Reclaim before appending more. `remove()` is only legal while the
+      // buffer is idle, which is exactly here — calling it right after an
+      // append (as this used to) hit the `updating` guard every time, so
+      // the trim never ran on a live stream and the buffer grew until the
+      // browser raised QuotaExceededError and the feed froze.
+      //
+      // A removal raises its own `updateend`, which re-enters this handler
+      // and does the flush then; returning here keeps the two operations
+      // from racing for the buffer.
+      if (this.trimBehindPlayhead()) return;
       this.flushQueue();
       this.seekToLiveEdgeIfDrifted();
     });
@@ -399,21 +424,28 @@ export class MsePlayer {
   /**
    * Trim everything more than {@link RETAINED_BEHIND_S} behind the playhead.
    *
+   * Returns true when a removal was started, in which case the buffer is
+   * busy and the caller must wait for the next `updateend`.
+   *
    * The old rule only trimmed once `currentTime > 10`, which never fires on
    * a stream that never advances — precisely the wedged case where the
    * buffer most needs reclaiming.
    */
-  private trimBehindPlayhead(): void {
+  private trimBehindPlayhead(): boolean {
     const buffer = this.sourceBuffer;
     const video = this.videoElement;
-    if (!buffer || !video || buffer.updating) return;
+    if (!buffer || !video || buffer.updating) return false;
     const cutoff = video.currentTime - RETAINED_BEHIND_S;
-    if (cutoff <= 0) return;
+    if (cutoff <= 0) return false;
     try {
       if (buffer.buffered.length > 0 && buffer.buffered.start(0) < cutoff) {
         buffer.remove(0, cutoff);
+        return true;
       }
-    } catch { /* ignore */ }
+    } catch {
+      // A remove can still be refused mid-teardown; the next updateend retries.
+    }
+    return false;
   }
 
   /**

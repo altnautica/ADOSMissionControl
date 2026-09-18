@@ -5,22 +5,24 @@
 
 import type { PositionData, BatteryData, GpsData } from './telemetry';
 import type { CameraUsbRecovery } from '@/lib/agent/types';
+import type { UnifiedFlightMode } from '@/lib/protocol/types/enums';
 
 // ── Drone State ──────────────────────────────────────────────
 
 export type DroneStatus = "online" | "in_mission" | "idle" | "returning" | "maintenance" | "offline";
 export type ConnectionState = "disconnected" | "connecting" | "connected" | "armed" | "in_flight";
-export type FlightMode =
-  | "STABILIZE" | "ALT_HOLD" | "LOITER" | "GUIDED" | "AUTO" | "RTL" | "LAND" | "MANUAL" | "ACRO"
-  // ArduPlane modes
-  | "FBWA" | "FBWB" | "CRUISE" | "TRAINING" | "CIRCLE" | "AUTOTUNE"
-  | "QSTABILIZE" | "QHOVER" | "QLOITER" | "QLAND" | "QRTL" | "QAUTOTUNE" | "QACRO"
-  | "AVOID_ADSB" | "THERMAL"
-  // ArduCopter modes
-  | "POSHOLD" | "BRAKE" | "SMART_RTL" | "DRIFT" | "SPORT" | "FLIP" | "THROW"
-  | "FLOWHOLD" | "FOLLOW" | "ZIGZAG" | "SYSTEMID" | "HELI_AUTOROTATE" | "AUTO_RTL"
-  // ArduPlane extras
-  | "TAKEOFF" | "LOITER_TO_QLAND";
+/**
+ * The mode a vehicle reports.
+ *
+ * This is the SAME union the protocol adapters emit (`UnifiedFlightMode`), not
+ * a hand-maintained subset of it. It used to be a subset missing OFFBOARD,
+ * MISSION, HOLD, STEERING, GUIDED_NOGPS, AUTOLAND and a dozen more, and the
+ * heartbeat bridge fell back to the LAST KNOWN mode for anything outside it —
+ * so a PX4 vehicle switched to OFFBOARD kept rendering its previous mode name
+ * across the cockpit safety band, the HUD and the mode selector. `"UNKNOWN"` is
+ * the explicit unrecognised-mode member; nothing may substitute a neighbour.
+ */
+export type FlightMode = UnifiedFlightMode;
 export type ArmState = "disarmed" | "armed";
 
 export interface DroneInfo {

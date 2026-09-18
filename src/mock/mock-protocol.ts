@@ -22,6 +22,7 @@ import { ArduCopterHandler, ArduPlaneHandler, ArduRoverHandler, ArduSubHandler }
 import { PX4Handler } from "@/lib/protocol/firmware/px4";
 import { betaflightHandler } from "@/lib/protocol/firmware/betaflight";
 import { inavHandler } from "@/lib/protocol/firmware/inav";
+import { ParamAbsentError } from "@/lib/protocol/mavlink-adapter-params";
 import { MOCK_PARAMS, HELI_MOCK_PARAMS, PX4_MOCK_PARAMS, BETAFLIGHT_MOCK_PARAMS, QUADPLANE_MOCK_PARAMS, TAILSITTER_MOCK_PARAMS, TILTROTOR_MOCK_PARAMS, ROVER_MOCK_PARAMS, BOAT_MOCK_PARAMS, type MockParam } from "./mock-params";
 import { createCallbackArrays, bindOnMethods } from "./mock-protocol-callbacks";
 import type { ManualControlSample, PositionTargetSample, AttitudeTargetSample } from "./mock-control-samples";
@@ -269,7 +270,13 @@ export class MockProtocol implements DroneProtocol {
   }
   async getParameter(name: string): Promise<ParameterValue> {
     const p = this.params.get(name);
-    if (!p) return { name, value: 0, type: 9, index: -1, count: this.params.size };
+    // Hardware rejects an absent parameter with ParamAbsentError and
+    // `usePanelParams` branches on `err.code === "param_absent"` to render
+    // "not present on this board". Returning `value: 0` here made every one of
+    // the 87 panels show a hard 0 in demo for any parameter missing from
+    // `mock-params.ts`, indistinguishable from a real FC reading, and left the
+    // whole absent-parameter UI branch unreachable in demo mode.
+    if (!p) throw new ParamAbsentError(name);
     return { name: p.name, value: p.value, type: p.type, index: Array.from(this.params.keys()).indexOf(name), count: this.params.size };
   }
   async setParameter(name: string, value: number, type = 9): Promise<CommandResult> {

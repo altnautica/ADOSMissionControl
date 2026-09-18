@@ -407,6 +407,19 @@ export const clientManagerSlice: AgentConnectionSliceCreator<
 
       const client = get().client;
       if (!client) return;
+      const pollNodeDeviceId = get().nodeDeviceId;
+
+      /**
+       * True when the connection this poll was started for is still the live
+       * one.
+       *
+       * The awaits below can settle AFTER `disconnect()` or after the operator
+       * switched nodes. Applying then resurrected `connected: true` on a
+       * deliberately closed connection and filed the OLD agent's payload under
+       * the NEW node's id.
+       */
+      const stillOurs = () =>
+        get().client === client && get().nodeDeviceId === pollNodeDeviceId;
 
       // Drop overlapping invocations rather than stacking pending sockets.
       if (inFlight) return;
@@ -431,16 +444,19 @@ export const clientManagerSlice: AgentConnectionSliceCreator<
           try {
             full = await client.getFullStatus();
           } catch {
-            get().noteFetchFailure();
+            if (stillOurs()) get().noteFetchFailure();
             return;
           }
+          // The await settled; the connection may have been torn down or
+          // re-pointed at another node while it was in flight.
+          if (!stillOurs()) return;
           if (full) {
             const rttEnd =
               typeof performance !== "undefined" ? performance.now() : Date.now();
             get().setControlRttMs(Math.max(0, Math.round(rttEnd - rttStart)));
             useFullEndpoint = true;
             // Map consolidated response to the same stores as the 4-endpoint path.
-            applyFullStatus(full, get().agentUrl, get().nodeDeviceId);
+            applyFullStatus(full, get().agentUrl, pollNodeDeviceId);
             get().noteFetchSuccess();
             return;
           }
@@ -466,12 +482,14 @@ export const clientManagerSlice: AgentConnectionSliceCreator<
           useAgentSystemStore.getState().fetchServices(),
           useAgentSystemStore.getState().fetchResources(),
         ]);
+        if (!stillOurs()) return;
 
         // Video status (may not exist on all agents). Under relay the
         // consolidated response already carries `full.video`, so this extra
         // round trip would only buy airtime contention.
         if (!get().relay && typeof client.getVideoStatus === "function") {
           client.getVideoStatus().then((video) => {
+            if (!stillOurs()) return;
             if (video) {
               const deps = video.dependencies
                 ? Object.fromEntries(

@@ -48,6 +48,9 @@ export function parseKML(text: string): KmlParseResult {
   const polygons: [number, number][][] = [];
   const paths: [number, number][][] = [];
   const points: [number, number][] = [];
+  /** Vertices harvested from LineStrings, used ONLY when the document carries
+   *  no Point placemarks (a foreign track rather than a mission). */
+  const lineStringWaypoints: Waypoint[] = [];
 
   // Extract document name
   const docElements = findElements(doc, "Document");
@@ -86,27 +89,29 @@ export function parseKML(text: string): KmlParseResult {
       }
     }
 
-    // LineString → path
+    // LineString → path overlay.
+    //
+    // Its vertices are NOT pushed as waypoints here. Our own export writes one
+    // "Flight Path" LineString AND one Point Placemark per waypoint, so doing
+    // both doubled every waypoint on a round trip. A LineString-only document
+    // (a foreign track with no point placemarks) is handled after the loop.
     const lineStrings = findElements(pm, "LineString");
     for (const ls of lineStrings) {
       const coords = getCoordinatesText(ls);
       if (coords) {
         const parsed = parseCoordinateString(coords);
         if (parsed.length > 0) {
-          const path: [number, number][] = parsed.map((p) => [p[0], p[1]]);
-          paths.push(path);
-
-          // Also add each point as a waypoint
-          for (const p of parsed) {
-            waypoints.push({
+          paths.push(parsed.map((p) => [p[0], p[1]] as [number, number]));
+          lineStringWaypoints.push(
+            ...parsed.map((p) => ({
               id: generateId(),
               lat: p[0],
               lon: p[1],
               alt: p[2] ?? 0,
-              command: "WAYPOINT",
+              command: "WAYPOINT" as const,
               frame,
-            });
-          }
+            })),
+          );
         }
       }
     }
@@ -139,6 +144,11 @@ export function parseKML(text: string): KmlParseResult {
       }
     }
   }
+
+  // A document with Point placemarks IS the waypoint list; its LineStrings are
+  // the drawn path through those same points. Only a document with no points
+  // at all (a foreign GPS track) contributes waypoints from its line vertices.
+  if (waypoints.length === 0) waypoints.push(...lineStringWaypoints);
 
   return { waypoints, polygons, paths, points, name: docName, style };
 }

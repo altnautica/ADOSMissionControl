@@ -32,7 +32,10 @@ import {
   parseQGCPlan,
   exportWaypointsFormat,
   exportQGCPlan,
+  type FlatExportOptions,
 } from "./mission-io-formats";
+import { usePlannerStore } from "@/stores/planner-store";
+import { useTelemetryStore } from "@/stores/telemetry-store";
 
 // Re-export format functions so existing imports keep working
 export {
@@ -400,16 +403,44 @@ export async function importBoundaryFile(file: File): Promise<[number, number][]
   throw new Error("Unsupported boundary file. Use KML, KMZ, ZIP, or SHP.");
 }
 
-// ── KML/KMZ/CSV Export Wrappers ─────────────────────────────
+// ── Export options ───────────────────────────────────────────
 
-/** Export waypoints as a .kml file. */
-export function exportMissionKML(waypoints: Waypoint[], name: string): void {
-  exportKML(waypoints, name);
+/**
+ * The altitude frame and home datum every mission export must carry.
+ *
+ * File export used to be called with no options at all, so
+ * `exportWaypointsFormat` / `exportQGCPlan` fell back to
+ * `DEFAULT_ALTITUDE_FRAME = "relative"` while `mission-store.uploadMission`
+ * used `usePlannerStore.defaultFrame`. With the operator's default set to
+ * `terrain`, the GCS uploaded `MAV_FRAME_GLOBAL_TERRAIN_ALT` (10) while the
+ * exported `.plan` / `.waypoints` claimed `MAV_FRAME_GLOBAL_RELATIVE_ALT` (3).
+ * Loading that file into another GCS — or re-importing it here, where
+ * `collapseFromItems` stamps `relative` explicitly — flies terrain-following
+ * altitudes as above-home. Over rising terrain that is controlled flight into
+ * terrain.
+ *
+ * `home` is included only when a vehicle has actually reported one. Absent, the
+ * flat-file writers fall back to the first waypoint as a PLANNED home at 0 m,
+ * which is the format's documented placeholder rather than a surveyed datum.
+ */
+export function currentExportOptions(): FlatExportOptions {
+  const home = useTelemetryStore.getState().homePosition.latest();
+  return {
+    defaultFrame: usePlannerStore.getState().defaultFrame,
+    home: home ? { lat: home.lat, lon: home.lon, alt: home.alt } : undefined,
+  };
 }
 
-/** Export waypoints as a .kmz file. */
+// ── KML/KMZ/CSV Export Wrappers ─────────────────────────────
+
+/** Export waypoints as a .kml file, carrying the operator's altitude frame. */
+export function exportMissionKML(waypoints: Waypoint[], name: string): void {
+  exportKML(waypoints, name, { defaultFrame: currentExportOptions().defaultFrame });
+}
+
+/** Export waypoints as a .kmz file, carrying the operator's altitude frame. */
 export async function exportMissionKMZ(waypoints: Waypoint[], name: string): Promise<void> {
-  await exportKMZ(waypoints, name);
+  await exportKMZ(waypoints, name, { defaultFrame: currentExportOptions().defaultFrame });
 }
 
 /** Export waypoints as a .csv file. */

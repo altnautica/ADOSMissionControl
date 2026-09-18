@@ -71,7 +71,6 @@ const _loggedErrorKeys = new Set<string>();
 function logOnce(message: string): void {
   if (_loggedErrorKeys.has(message)) return;
   _loggedErrorKeys.add(message);
-  // eslint-disable-next-line no-console
   console.warn(
     `[useConvexSkipQuery] resolved to undefined after server error: ${message}`,
   );

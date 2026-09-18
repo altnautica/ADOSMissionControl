@@ -11,6 +11,7 @@ import { FirmwareApPeriphSection } from "./FirmwareApPeriphSection";
 import { flashApPeriph } from "./flashApPeriph";
 import { ApPeriphManifest } from "@/lib/protocol/firmware/ap-periph-manifest";
 import { useDroneManager } from "@/stores/drone-manager";
+import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useToast } from "@/components/ui/toast";
 import { FirmwareStackSelector, PreFlashChecklist } from "./FirmwareCommonSections";
 import { isAdosStack, isPeripheralStack, isFcStack } from "./firmware-constants";
@@ -24,6 +25,7 @@ export function FirmwarePanel() {
   const t = useTranslations("flashTool.ados");
   const { toast } = useToast();
   const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const { isHardBlocked, hardBlockMessage } = useArmedLock();
   const apPeriphManifestRef = useRef(new ApPeriphManifest());
   const flashDisposerRef = useRef<null | (() => Promise<void>)>(null);
 
@@ -42,6 +44,14 @@ export function FirmwarePanel() {
       const protocol = getSelectedProtocol();
       if (!protocol) {
         toast("Connect a drone before flashing", "warning");
+        return;
+      }
+      // Ground truth, not self-attestation. The only disarm guard was an
+      // operator checkbox ("Drone disarmed"); `flashApPeriph` never read
+      // `armState`, and this panel deliberately opts out of `useArmedLock`.
+      // Flashing a CAN peripheral in flight takes out whatever it drives.
+      if (isHardBlocked) {
+        toast(hardBlockMessage, "error");
         return;
       }
       if (flashDisposerRef.current) {
@@ -63,7 +73,7 @@ export function FirmwarePanel() {
         toast(`Flash failed: ${msg}`, "error");
       }
     },
-    [getSelectedProtocol, toast],
+    [getSelectedProtocol, toast, isHardBlocked, hardBlockMessage],
   );
 
   return (

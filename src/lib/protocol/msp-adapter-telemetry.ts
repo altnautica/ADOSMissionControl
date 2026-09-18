@@ -198,17 +198,29 @@ export function dispatchMspTelemetry(
     }
 
     case INAV_MSP.MSP2_INAV_STATUS: {
-      // MSP2_INAV_STATUS layout (bytes):
-      //   U16 cycleTime (0), U16 i2cErrors (2), U16 sensors (4), U32 modeFlags (6),
-      //   U8 currentProfile (10), U16 cpuLoad (11), U32 armingFlags (13),
-      //   U8 navState (17), U8 navAction (18)
-      if (payload.length < 19) break
-      const armingFlags = u32(payload, 13)
-      const navState = u8(payload, 17)
-      const navAction = u8(payload, 18)
-      const store = useTelemetryStore.getState()
-      store.setNavStatus(navState, navAction)
-      store.setArmingFlags(armingFlags)
+      // MSP2_INAV_STATUS layout, from iNav `fc_msp.c`
+      // `mspFcProcessOutCommand` (bytes):
+      //   U16 cycleTime (0), U16 i2cErrors (2), U16 sensorStatus (4),
+      //   U16 averageSystemLoadPercent (6), U8 batteryProfile<<4|configProfile (8),
+      //   U32 armingFlags (9), boxModeFlags (13..)
+      //
+      // This used to read armingFlags at 13 — which is the BOX BITMASK — and
+      // then invent navState at 17 and navAction at 18, neither of which is in
+      // this message at all. `PreArmPanel` therefore decoded active mode boxes
+      // as arming blockers (an active box at bit 7 rendered "Failsafe system",
+      // bit 8 "Not level") and the nav-state readout was fabricated.
+      if (payload.length < 13) break
+      useTelemetryStore.getState().setArmingFlags(u32(payload, 9))
+      break
+    }
+
+    case INAV_MSP.MSP_NAV_STATUS: {
+      // MSPv1 MSP_NAV_STATUS (121), from iNav `fc_msp.c`:
+      //   U8 mode (0), U8 state (1), U8 activeWpAction (2),
+      //   U8 activeWpNumber (3), U8 error (4), U16 headingHoldTarget (5)
+      // This is the message that actually carries nav state.
+      if (payload.length < 3) break
+      useTelemetryStore.getState().setNavStatus(u8(payload, 1), u8(payload, 2))
       break
     }
 

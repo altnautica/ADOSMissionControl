@@ -7,7 +7,13 @@ import type {
   PicReleaseResult,
   PicState,
 } from "./types";
-import { gsRequest, GroundStationApiError, type RequestContext } from "./request";
+import {
+  gsRequest,
+  GroundStationApiError,
+  GS_FETCH_TIMEOUT_MS,
+  type RequestContext,
+} from "./request";
+import { timedFetch } from "@/lib/agent/agent-client/timeout";
 import { subscribeWebSocket } from "./ws";
 
 export function getPicState(ctx: RequestContext): Promise<PicState> {
@@ -29,11 +35,18 @@ export function claimPic(
   });
 }
 
-export function releasePic(ctx: RequestContext, clientId: string): Promise<PicReleaseResult> {
-  return gsRequest<PicReleaseResult>(ctx, "/api/v1/ground-station/pic/release", {
-    method: "POST",
-    body: JSON.stringify({ client_id: clientId }),
-  });
+export function releasePic(
+  ctx: RequestContext,
+  clientId: string,
+): Promise<PicReleaseResult> {
+  return gsRequest<PicReleaseResult>(
+    ctx,
+    "/api/v1/ground-station/pic/release",
+    {
+      method: "POST",
+      body: JSON.stringify({ client_id: clientId }),
+    },
+  );
 }
 
 /**
@@ -49,13 +62,24 @@ export async function heartbeatPic(
   ctx: RequestContext,
   clientId: string,
 ): Promise<{ ok: true } | { ok: false; orphaned: true }> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
   if (ctx.apiKey) headers["X-ADOS-Key"] = ctx.apiKey;
-  const res = await fetch(`${ctx.baseUrl}/api/v1/ground-station/pic/heartbeat`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({ client_id: clientId }),
-  });
+  // Bypasses `gsRequest` (it needs the 410 branch), so it carries its own
+  // deadline. Unbounded, a stalled heartbeat stacked up: `pollPicHeartbeat`
+  // fires it from a 10 s interval, so six stalls exhausted Chromium's
+  // 6-socket HTTP/1.1 pool for the origin in a minute and every other
+  // ground-station request queued behind them.
+  const res = await timedFetch(
+    `${ctx.baseUrl}/api/v1/ground-station/pic/heartbeat`,
+    {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ client_id: clientId }),
+    },
+    GS_FETCH_TIMEOUT_MS,
+  );
   if (res.status === 410) return { ok: false, orphaned: true };
   if (!res.ok) {
     const text = await res.text().catch(() => "Unknown error");
@@ -70,10 +94,14 @@ export function createPicConfirmToken(
   ctx: RequestContext,
   clientId: string,
 ): Promise<PicConfirmTokenResult> {
-  return gsRequest<PicConfirmTokenResult>(ctx, "/api/v1/ground-station/pic/confirm-token", {
-    method: "POST",
-    body: JSON.stringify({ client_id: clientId }),
-  });
+  return gsRequest<PicConfirmTokenResult>(
+    ctx,
+    "/api/v1/ground-station/pic/confirm-token",
+    {
+      method: "POST",
+      body: JSON.stringify({ client_id: clientId }),
+    },
+  );
 }
 
 /**

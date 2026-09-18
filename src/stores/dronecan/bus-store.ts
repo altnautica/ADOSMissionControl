@@ -62,13 +62,42 @@ const ZERO_COUNTERS: BusCounters = {
 };
 
 /**
+ * Frame tallies and byte counters, accumulated OUT of store state.
+ *
+ * `pushFrame` used to `set()` these on every frame, which notifies every
+ * subscriber synchronously and defeats the coalescing bumper on the next
+ * line: a saturated bus at several thousand frames/sec produced that many
+ * React notification passes per second, plus one more per animation frame
+ * from the bump itself. Accumulating here and publishing inside `bump`
+ * holds the whole store to one notification per frame.
+ */
+const tally = {
+  counters: { ...ZERO_COUNTERS },
+  lastTallyAt: Date.now(),
+  framesSinceTally: 0,
+  errorsSinceTally: 0,
+};
+
+/** Zero the out-of-store tally. Must accompany every state reset below. */
+function resetTally(): void {
+  tally.counters = { ...ZERO_COUNTERS };
+  tally.lastTallyAt = Date.now();
+  tally.framesSinceTally = 0;
+  tally.errorsSinceTally = 0;
+}
+
+/**
  * Coalesced `_version` bumper. A saturated DroneCAN bus pushes several
  * thousand frames/sec; one `set()` per frame was one React commit per frame.
- * The counters below still mutate per frame — only the notification is
- * coalesced.
  */
 const bumper = createVersionBumper(() =>
-  useDroneCanBusStore.setState((s) => ({ _version: s._version + 1 })),
+  useDroneCanBusStore.setState((s) => ({
+    _version: s._version + 1,
+    counters: tally.counters,
+    _lastTallyAt: tally.lastTallyAt,
+    _framesSinceTally: tally.framesSinceTally,
+    _errorsSinceTally: tally.errorsSinceTally,
+  })),
 );
 
 /** Test/debug affordance: true while a coalesced bump is pending. */
@@ -89,40 +118,37 @@ export const useDroneCanBusStore = create<BusStoreState>((set, get) => ({
 
     state.frames.push(frame);
 
-    const counters = { ...state.counters };
+    // A fresh object per publish, not per frame: consumers select
+    // `counters` by reference, so the bump must hand them a new one.
+    const counters = { ...tally.counters };
     const payloadLen = frame.payload.byteLength;
     if (frame.dir === "in") counters.bytesIn += payloadLen;
     else counters.bytesOut += payloadLen;
 
     const now = Date.now();
-    const elapsed = now - state._lastTallyAt;
-    let framesSinceTally = state._framesSinceTally + 1;
-    let errorsSinceTally = state._errorsSinceTally + (frame.error ? 1 : 0);
-    let lastTally = state._lastTallyAt;
+    const elapsed = now - tally.lastTallyAt;
+    tally.framesSinceTally += 1;
+    if (frame.error) tally.errorsSinceTally += 1;
 
     if (elapsed >= 1000) {
-      counters.fps = Math.round((framesSinceTally * 1000) / elapsed);
-      counters.errorsPs = Math.round((errorsSinceTally * 1000) / elapsed);
-      lastTally = now;
-      framesSinceTally = 0;
-      errorsSinceTally = 0;
+      counters.fps = Math.round((tally.framesSinceTally * 1000) / elapsed);
+      counters.errorsPs = Math.round((tally.errorsSinceTally * 1000) / elapsed);
+      tally.lastTallyAt = now;
+      tally.framesSinceTally = 0;
+      tally.errorsSinceTally = 0;
     }
 
-    set({
-      counters,
-      _lastTallyAt: lastTally,
-      _framesSinceTally: framesSinceTally,
-      _errorsSinceTally: errorsSinceTally,
-    });
+    tally.counters = counters;
     bumper.scheduleVersionBump();
   },
 
   clear: () => {
     bumper.cancelVersionBump();
     get().frames.clear();
+    resetTally();
     set({
-      counters: { ...ZERO_COUNTERS },
-      _lastTallyAt: Date.now(),
+      counters: tally.counters,
+      _lastTallyAt: tally.lastTallyAt,
       _framesSinceTally: 0,
       _errorsSinceTally: 0,
       _version: get()._version + 1,
@@ -136,9 +162,14 @@ export const useDroneCanBusStore = create<BusStoreState>((set, get) => ({
 
   resume: () => {
     if (!get().paused) return;
+    // The rate window restarts from now, so the accumulated byte totals
+    // survive but the per-second tallies do not.
+    tally.lastTallyAt = Date.now();
+    tally.framesSinceTally = 0;
+    tally.errorsSinceTally = 0;
     set({
       paused: false,
-      _lastTallyAt: Date.now(),
+      _lastTallyAt: tally.lastTallyAt,
       _framesSinceTally: 0,
       _errorsSinceTally: 0,
       _version: get()._version + 1,

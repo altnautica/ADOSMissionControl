@@ -101,6 +101,15 @@ const GATE_RECHECK_MS = 20;
 /** Rate below which a declared cadence is treated as absent. */
 const MIN_HZ = 1;
 
+/**
+ * Age at which the last gamepad sample stops counting as live.
+ *
+ * ~3 display frames at 60 Hz, well under ArduPilot's 3.0 s
+ * `RC_OVERRIDE_TIME`, so the aircraft sees a real override dropout rather
+ * than a frozen stick position the moment the reader stops.
+ */
+const STALE_AXES_MS = 50;
+
 let pollAnimFrame: number | null = null;
 let manualControlTimer: ReturnType<typeof setTimeout> | null = null;
 let activeGamepadIndex: number | null = null;
@@ -123,6 +132,16 @@ export function setTxMode(mode: TxMode): void {
 export function startGamepadPolling(): void {
   if (pollAnimFrame !== null) return; // Already running
 
+  /**
+   * One gamepad read. Wrapped by `pollSafely` below, which ALWAYS reschedules.
+   *
+   * A throw in here used to kill the loop permanently — and because
+   * `activeController` stayed `"gamepad"`, the manual-control gate kept
+   * passing and the transmit chain kept re-sending the last stick snapshot to
+   * an armed aircraft. The known trigger was a corrupt persisted calibration
+   * (`calibration.center[0]` on a non-array), which `input-store` now rejects
+   * at read time; this is the belt-and-braces half.
+   */
   function poll() {
     const gamepads = navigator.getGamepads();
     let gp: Gamepad | null = null;
@@ -150,7 +169,6 @@ export function startGamepadPolling(): void {
         inputStore.setButtons(new Array(16).fill(false));
       }
       activeGamepadIndex = null;
-      pollAnimFrame = requestAnimationFrame(poll);
       return;
     }
 
@@ -186,11 +204,34 @@ export function startGamepadPolling(): void {
 
     inputStore.setAxes([roll, pitch, throttle, yaw]);
     inputStore.setButtons(buttonsToArray(gp.buttons));
-
-    pollAnimFrame = requestAnimationFrame(poll);
   }
 
-  pollAnimFrame = requestAnimationFrame(poll);
+  function pollSafely() {
+    try {
+      poll();
+    } catch (err) {
+      // Never let a read failure stop the loop: a dead reader with a live
+      // transmit chain is a frozen stick position on an armed aircraft.
+      console.error("[gamepad] poll failed", err);
+    }
+    pollAnimFrame = requestAnimationFrame(pollSafely);
+  }
+
+  pollAnimFrame = requestAnimationFrame(pollSafely);
+}
+
+/**
+ * Stop transmitting while the document is hidden.
+ *
+ * `requestAnimationFrame` stops in a hidden tab but `setTimeout` does not, so
+ * without this the transmit chain outlives the reader. The sample-age gate in
+ * {@link manualControlTick} already refuses the stale frame; this stops the
+ * chain outright so nothing is even attempted.
+ */
+function onVisibilityChange(): void {
+  if (typeof document !== "undefined" && document.hidden) {
+    stopManualControlStream();
+  }
 }
 
 /**
@@ -213,7 +254,7 @@ export function manualControlPeriodMs(hz: number): number | null {
 export function manualControlTick(): number {
   const protocol = useDroneManager.getState().getSelectedProtocol();
   const input = useInputStore.getState();
-  const { axes, buttons, activeController, manualControlEnabled } = input;
+  const { axes, axesAt, buttons, activeController, manualControlEnabled } = input;
   const { armState, flightMode } = useDroneStore.getState();
 
   // Republish the link's own refusal whether or not the gate would let a frame
@@ -232,6 +273,19 @@ export function manualControlTick(): number {
     flightMode,
   });
   if (!allowed || !protocol) return GATE_RECHECK_MS;
+
+  // SAMPLE LIVENESS. The sticks come from a `requestAnimationFrame` loop and
+  // this tick is an independent `setTimeout` chain, so the two can diverge:
+  // backgrounding the window pauses RAF entirely while Chrome keeps firing
+  // hidden-tab timers at ~1 Hz — still inside ArduPilot's 3.0 s
+  // `RC_OVERRIDE_TIME`, so the last stick snapshot was re-sent to an armed
+  // aircraft indefinitely and the vehicle never saw a dropout. A gamepad
+  // unplugged in that window was never noticed either. The gate's own doc
+  // claims every condition it depends on is checked every frame; this is the
+  // one that was missing.
+  if (axesAt === null || Date.now() - axesAt > STALE_AXES_MS) {
+    return GATE_RECHECK_MS;
+  }
 
   const period = manualControlPeriodMs(protocol.getCapabilities().manualControlHz);
   if (period === null) return GATE_RECHECK_MS;
@@ -267,6 +321,13 @@ export function manualControlTick(): number {
 export function startManualControlStream(): void {
   if (manualControlTimer) return;
 
+  // Hidden-tab guard: RAF (the stick reader) stops, `setTimeout` (this
+  // chain) does not.
+  if (typeof document !== "undefined") {
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    if (document.hidden) return;
+  }
+
   const run = () => {
     const wait = manualControlTick();
     // A tick that stopped the stream must not schedule another pass.
@@ -279,6 +340,9 @@ export function startManualControlStream(): void {
 
 /** Stop transmitting sticks. Leaves gamepad reading running. */
 export function stopManualControlStream(): void {
+  if (typeof document !== "undefined") {
+    document.removeEventListener("visibilitychange", onVisibilityChange);
+  }
   if (manualControlTimer === null) return;
   clearTimeout(manualControlTimer);
   manualControlTimer = null;

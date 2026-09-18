@@ -102,8 +102,15 @@ export function pollPicHeartbeat(
   get: Getter,
 ): () => void {
   let stopped = false;
+  // One heartbeat in flight at a time. The interval is 10 s and the request
+  // now carries a 15 s deadline, so without this a slow uplink overlaps
+  // ticks and the outstanding requests accumulate — which is how six
+  // stalled heartbeats used to exhaust Chromium's 6-socket HTTP/1.1 pool
+  // for the origin and queue every other ground-station call behind them.
+  let inFlight = false;
   const tick = async () => {
-    if (stopped) return;
+    if (stopped || inFlight) return;
+    inFlight = true;
     try {
       const res = await api.heartbeatPic(clientId);
       if (!res.ok && res.orphaned) {
@@ -120,6 +127,8 @@ export function pollPicHeartbeat(
     } catch {
       // Network glitches are expected during uplink failover. Swallow
       // and let the next tick try again.
+    } finally {
+      inFlight = false;
     }
   };
   void tick();

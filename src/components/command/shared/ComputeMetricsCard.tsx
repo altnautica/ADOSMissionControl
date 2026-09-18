@@ -4,6 +4,7 @@ import { Cpu, Eye, Camera, HardDrive, Activity, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
+import { NO_DATA_GLYPH } from "@/lib/hud-draw";
 import type { AgentProfile } from "@/stores/agent-capabilities-store";
 import { useComputeStore } from "@/stores/compute-store";
 import type { ComputeGpuInfo } from "@/stores/compute-store";
@@ -201,7 +202,7 @@ export function ComputeMetricsCard({ className, profile }: ComputeMetricsCardPro
           <div className="flex items-center gap-2 px-2 py-1.5 rounded bg-white/[0.02]">
             <span className="w-1.5 h-1.5 rounded-full bg-text-tertiary/60 flex-shrink-0" />
             <span className="text-[10px] font-mono text-text-tertiary">
-              {t("npuNotAvailable", { tier })}
+              {t("npuNotAvailable", { tier: tier ?? NO_DATA_GLYPH })}
             </span>
           </div>
           <p className="text-[10px] text-text-tertiary px-2">
@@ -258,7 +259,7 @@ export function ComputeMetricsCard({ className, profile }: ComputeMetricsCardPro
           <span className="text-xs font-medium text-text-secondary">{t("compute")}</span>
         </div>
         <span className="text-[10px] font-mono text-text-tertiary">
-          {t("tier", { tier })}
+          {t("tier", { tier: tier ?? NO_DATA_GLYPH })}
         </span>
       </div>
 

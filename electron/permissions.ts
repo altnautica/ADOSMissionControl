@@ -4,10 +4,17 @@ const ALLOWED_PERMISSIONS = new Set([
   "clipboard-read",
   "clipboard-sanitized-write",
   "fullscreen",
-  "media",
-  "notifications",
   "serial",
   "usb",
+  // Operator position. `geolocation` was ABSENT, so `setPermissionCheckHandler`
+  // reported `denied` and `setPermissionRequestHandler` denied
+  // unconditionally — no OS prompt was ever shown — and Follow Me, which
+  // streams operator GPS to the aircraft via `guidedGoto()` at 4 Hz, was dead
+  // on the desktop build ONLY. The browser build works because
+  // `next.config.ts` sets `geolocation=(self)`. It is still origin-gated to
+  // the app's own loopback window, and the OS keeps its own prompt in front
+  // of the actual hardware.
+  "geolocation",
   // Local Network Access. Chromium gates a page's access to loopback and
   // private (RFC1918 / .local) endpoints behind a permission, and that gate was
   // extended to cover WebSocket and WebTransport, not just fetch/XHR. Reaching

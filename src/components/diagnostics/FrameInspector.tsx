@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useDiagnosticsStore } from "@/stores/diagnostics-store";
+import { RAW_HEX_RETAIN, useDiagnosticsStore } from "@/stores/diagnostics-store";
 import { Binary } from "lucide-react";
 
 /** Show last 50 raw MAVLink frames as hex dump with timestamp + msg ID + name */
@@ -13,9 +13,14 @@ export function FrameInspector() {
   const version = useDiagnosticsStore((s) => s._version);
 
   const frames = useMemo(() => {
+    // Only the newest `RAW_HEX_RETAIN` entries can carry `rawHex` at all
+    // (the store strips it from older rows), so reading them is the whole
+    // reachable set. `toArray()` allocated all 2000 entries on every
+    // version bump — i.e. on every MAVLink frame, at link rate — to keep
+    // at most 50.
     return useDiagnosticsStore
       .getState()
-      .messageLog.toArray()
+      .messageLog.last(RAW_HEX_RETAIN)
       .filter((m) => m.rawHex)
       .slice(-50)
       .reverse();

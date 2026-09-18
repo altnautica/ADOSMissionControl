@@ -20,9 +20,33 @@ function makeFrame(overrides: Partial<DecodedFrame> = {}): DecodedFrame {
   };
 }
 
+/**
+ * Drain the coalesced publish.
+ *
+ * `pushFrame` mutates the ring and the tallies immediately but publishes
+ * to the store on one animation frame, so a saturated bus produces one
+ * React notification per frame instead of several thousand per second.
+ * Every assertion on published state has to cross that boundary.
+ */
+function flushFrame() {
+  vi.advanceTimersToNextFrame();
+}
+
 describe("useDroneCanBusStore", () => {
   beforeEach(() => {
-    vi.useFakeTimers();
+    // `requestAnimationFrame` must be faked too: the store publishes its
+    // counters on one animation frame rather than on every pushed frame,
+    // so without it a real frame lands between tests and the assertions
+    // become order-dependent.
+    vi.useFakeTimers({
+      toFake: [
+        "Date",
+        "setTimeout",
+        "clearTimeout",
+        "requestAnimationFrame",
+        "cancelAnimationFrame",
+      ],
+    });
     vi.setSystemTime(new Date(2026, 0, 1, 12, 0, 0));
     useDroneCanBusStore.setState({
       frames: new RingBuffer<DecodedFrame>(4096),
@@ -33,6 +57,8 @@ describe("useDroneCanBusStore", () => {
       _framesSinceTally: 0,
       _errorsSinceTally: 0,
     });
+    // Also zeroes the out-of-store tally the coalesced publish reads from.
+    useDroneCanBusStore.getState().clear();
   });
 
   afterEach(() => {
@@ -73,6 +99,7 @@ describe("useDroneCanBusStore", () => {
     const { pushFrame } = useDroneCanBusStore.getState();
     pushFrame(makeFrame({ dir: "in", payload: new Uint8Array(8) }));
     pushFrame(makeFrame({ dir: "out", payload: new Uint8Array(4) }));
+    flushFrame();
     const counters = useDroneCanBusStore.getState().counters;
     expect(counters.bytesIn).toBe(8);
     expect(counters.bytesOut).toBe(4);
@@ -81,9 +108,11 @@ describe("useDroneCanBusStore", () => {
   it("fps tallies on a 1s rolling window", () => {
     const { pushFrame } = useDroneCanBusStore.getState();
     for (let i = 0; i < 30; i++) pushFrame(makeFrame());
+    flushFrame();
     expect(useDroneCanBusStore.getState().counters.fps).toBe(0);
     vi.advanceTimersByTime(1_001);
     pushFrame(makeFrame());
+    flushFrame();
     expect(useDroneCanBusStore.getState().counters.fps).toBeGreaterThan(0);
   });
 

@@ -10,10 +10,17 @@
  *
  * The overlay is resolution-independent: each batch declares the frame
  * width/height its boxes are expressed in, and the overlay maps those
- * pixels onto whatever size the video element is currently rendered at
- * (accounting for `object-contain` letterboxing). Boxes are positioned
- * as percentages of the overlay rect so they stay aligned across video
- * resize without a re-measure.
+ * pixels onto the rectangle the video is ACTUALLY rendered into.
+ *
+ * That last part is the whole problem this used to get wrong. The video
+ * is `object-contain`, so a 16:9 stream in a 4:3 pane paints into a
+ * letterboxed sub-rectangle with dead bars above and below — but the
+ * boxes were positioned as percentages of the OVERLAY, which spans the
+ * whole pane. Every box was then stretched across the bars and offset
+ * from the object it was drawn around, by up to the full bar height. On
+ * a targeting surface that is a box pointing at the wrong thing. The
+ * cockpit overlays already resolve this with `computeRenderedRect`;
+ * this one now shares it.
  *
  * Stale batches age out after `staleAfterMs` so a stopped feed does not
  * pin the last frame's boxes on screen forever.
@@ -21,7 +28,8 @@
  * @license GPL-3.0-only
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { computeRenderedRect } from "@/components/cockpit/VideoOverlayHost";
 import {
   useVisionDetectionsStore,
   type VisionDetection,
@@ -92,61 +100,101 @@ export function DetectionOverlay({
     return () => clearInterval(id);
   }, [batch]);
 
-  if (!batch) return null;
-  if (now - batch.receivedAt > staleAfterMs) return null;
-  if (batch.frameWidth <= 0 || batch.frameHeight <= 0) return null;
-  if (batch.detections.length === 0) return null;
+  // The rectangle the video actually paints into, inside this pane.
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState<{ w: number; h: number } | null>(null);
+  useEffect(() => {
+    const wrapper = wrapperRef.current;
+    if (!wrapper) return;
+    const measure = () =>
+      setSize({ w: wrapper.clientWidth, h: wrapper.clientHeight });
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(wrapper);
+    return () => ro.disconnect();
+  }, []);
 
+  const rect = useMemo(() => {
+    if (!size || !batch || batch.frameWidth <= 0 || batch.frameHeight <= 0) {
+      return null;
+    }
+    return computeRenderedRect(
+      size.w,
+      size.h,
+      batch.frameWidth,
+      batch.frameHeight,
+    );
+  }, [size, batch]);
+
+  const hidden =
+    !batch ||
+    now - batch.receivedAt > staleAfterMs ||
+    batch.frameWidth <= 0 ||
+    batch.frameHeight <= 0 ||
+    batch.detections.length === 0;
+
+  // The wrapper always renders: it is what `ResizeObserver` measures, and
+  // returning null while there are no boxes would drop the measurement and
+  // make the first batch after a quiet period paint before the geometry is
+  // known — i.e. in the wrong place for one frame.
   return (
     <div
+      ref={wrapperRef}
       className={`pointer-events-none absolute inset-0 z-10 ${className ?? ""}`}
       aria-hidden
     >
-      {batch.detections.map((d, i) => {
-        // A box-less percept (a mask/pose/depth-only reading) has no box to
-        // paint here; skip it (mask/keypoint painting is a later surface).
-        if (!d.bbox) return null;
-        // Express the box as percentages of the source frame so it scales
-        // with the rendered video rect. Clamp to [0,100] so a box that
-        // overruns the frame edge does not paint outside the pane.
-        const left = (d.bbox.x / batch.frameWidth) * 100;
-        const top = (d.bbox.y / batch.frameHeight) * 100;
-        const width = (d.bbox.width / batch.frameWidth) * 100;
-        const height = (d.bbox.height / batch.frameHeight) * 100;
-        const clampedLeft = Math.max(0, Math.min(100, left));
-        const clampedTop = Math.max(0, Math.min(100, top));
-        const pct = Math.round(d.confidence * 100);
-        const label =
-          d.trackId != null
-            ? `${d.classLabel} #${d.trackId} ${pct}%`
-            : `${d.classLabel} ${pct}%`;
-        const clickable = onSelectBox != null;
-        return (
-          <div
-            key={`${batch.frameId}-${i}`}
-            className={`absolute border ${boxColorClass(d)} ${
-              clickable
-                ? "pointer-events-auto cursor-pointer hover:border-2"
-                : ""
-            }`}
-            style={{
-              left: `${clampedLeft}%`,
-              top: `${clampedTop}%`,
-              width: `${Math.max(0, Math.min(100 - clampedLeft, width))}%`,
-              height: `${Math.max(0, Math.min(100 - clampedTop, height))}%`,
-            }}
-            onClick={
-              clickable ? () => onSelectBox(d, batch.cameraId) : undefined
-            }
-            role={clickable ? "button" : undefined}
-            title={clickable ? "Click to follow this target" : undefined}
-          >
-            <span className="absolute left-0 top-0 -translate-y-full whitespace-nowrap bg-bg-primary/80 px-1 font-mono text-[10px] leading-tight">
-              {label}
-            </span>
-          </div>
-        );
-      })}
+      {hidden || !rect
+        ? null
+        : batch.detections.map((d, i) => {
+            // A box-less percept (a mask/pose/depth-only reading) has no box
+            // to paint here; skip it (mask/keypoint painting is a later
+            // surface).
+            if (!d.bbox) return null;
+            // Source-frame pixels → fractions of the frame, clamped so a box
+            // overrunning the frame edge does not paint outside the video,
+            // then scaled and offset onto the rendered (letterboxed) rect.
+            const fx = Math.max(0, Math.min(1, d.bbox.x / batch.frameWidth));
+            const fy = Math.max(0, Math.min(1, d.bbox.y / batch.frameHeight));
+            const fw = Math.max(
+              0,
+              Math.min(1 - fx, d.bbox.width / batch.frameWidth),
+            );
+            const fh = Math.max(
+              0,
+              Math.min(1 - fy, d.bbox.height / batch.frameHeight),
+            );
+            const pct = Math.round(d.confidence * 100);
+            const label =
+              d.trackId != null
+                ? `${d.classLabel} #${d.trackId} ${pct}%`
+                : `${d.classLabel} ${pct}%`;
+            const clickable = onSelectBox != null;
+            return (
+              <div
+                key={`${batch.frameId}-${i}`}
+                className={`absolute border ${boxColorClass(d)} ${
+                  clickable
+                    ? "pointer-events-auto cursor-pointer hover:border-2"
+                    : ""
+                }`}
+                style={{
+                  left: `${rect.left + fx * rect.width}px`,
+                  top: `${rect.top + fy * rect.height}px`,
+                  width: `${fw * rect.width}px`,
+                  height: `${fh * rect.height}px`,
+                }}
+                onClick={
+                  clickable ? () => onSelectBox(d, batch.cameraId) : undefined
+                }
+                role={clickable ? "button" : undefined}
+                title={clickable ? "Click to follow this target" : undefined}
+              >
+                <span className="absolute left-0 top-0 -translate-y-full whitespace-nowrap bg-bg-primary/80 px-1 font-mono text-[10px] leading-tight">
+                  {label}
+                </span>
+              </div>
+            );
+          })}
     </div>
   );
 }

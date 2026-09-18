@@ -442,7 +442,7 @@ export function normalizeCapabilities(raw: unknown): AgentCapabilities {
   }
 
   return {
-    tier: Number(data.tier ?? 0),
+    tier: data.tier === undefined || data.tier === null ? undefined : Number(data.tier),
     cameras,
     videoStreams,
     compute,

@@ -285,12 +285,11 @@ export type EstimatorStatusCallback = (data: {
   flags: number;
 }) => void;
 
+/** CAMERA_TRIGGER carries only a shutter timestamp and sequence number — the
+ *  message has no position field. */
 export type CameraTriggerCallback = (data: {
   timestamp: number;
   seq: number;
-  lat: number;
-  lon: number;
-  alt: number;
 }) => void;
 
 export type LinkStateCallback = () => void;

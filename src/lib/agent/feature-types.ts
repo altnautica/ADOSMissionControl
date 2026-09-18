@@ -449,7 +449,10 @@ export interface ManagementLink {
 }
 
 export interface AgentCapabilities {
-  tier: number;
+  /** Board tier, absent when no board sidecar reported one. A boardless node
+   *  (compute/workstation, or an unmatched board) has NO tier; 0 is not a
+   *  tier and reads as a real, lowest-capability board. */
+  tier?: number;
   cameras: CameraCapability[];
   videoStreams: VideoStreamLeg[];
   compute: ComputeCapability;

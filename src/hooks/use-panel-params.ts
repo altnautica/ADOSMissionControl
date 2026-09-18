@@ -7,6 +7,7 @@ import { useDiagnosticsStore } from "@/stores/diagnostics-store";
 import { confirmArmedParamWrite, writeParamToFc } from "@/lib/protocol/param-write";
 import { cachePanelToIDB, getCachedPanelFromIDB } from "@/lib/param-cache-idb";
 import type { PanelParamOptions, PanelParamState, PanelParamActions, UndoEntry } from "./use-panel-params-types";
+import type { FlashCommitOutcome } from "./use-flash-commit-toast";
 import { MAX_UNDO_STACK, RETRY_DELAYS, DEFAULT_BATCH_SIZE, EMPTY_ARRAY } from "./use-panel-params-types";
 
 export type { PanelParamOptions, PanelParamState, PanelParamActions, PanelParamEvent } from "./use-panel-params-types";
@@ -165,11 +166,49 @@ export function usePanelParams(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Auto-load on mount AND whenever the requested parameter set changes.
+  //
+  // `paramNames` used to be absent from this dep array while `loadParams`
+  // itself depends on it, so switching the Copter/Plane/Rover tab or opening
+  // the Filters group swapped the param set with NO reload: every
+  // newly-requested gain rendered as a live slider at 0, and one drag marked it
+  // dirty so Save overwrote the tuned value on the vehicle. Same failure in
+  // `StreamRatesPanel` on channel switch, where 0 disables a telemetry group.
+  //
+  // The dep is the set's CONTENT, not the array identity: a caller that builds
+  // `paramNames` inline would otherwise reload on every render and hammer the
+  // flight controller with PARAM_REQUEST_READ.
+  const paramSetKey = paramNames.join("\u0000");
   useEffect(() => {
     abortedRef.current = false;
     if (autoLoad) loadParamsRef.current();
     return () => { abortedRef.current = true; };
-  }, [autoLoad]);
+  }, [autoLoad, paramSetKey]);
+
+  // Belt and braces for per-drone isolation.
+  //
+  // `NodeDetailPanel` keys its surfaces on the node id, so a drone switch
+  // normally remounts this hook. This reset covers every OTHER mount site —
+  // a panel hosted outside that panel, a surface that memoises across the
+  // key — because the consequence is not cosmetic: `saveToRam` resolves
+  // `getProtocol()` live, so a carried-over dirty edit writes drone A's
+  // numbers into drone B.
+  const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
+  const seenDroneRef = useRef(selectedDroneId);
+  useEffect(() => {
+    if (seenDroneRef.current === selectedDroneId) return;
+    seenDroneRef.current = selectedDroneId;
+    setParams(new Map());
+    originalValues.current = new Map();
+    setDirtyParams(new Set());
+    setHasRamWrites(false);
+    setHasLoaded(false);
+    setError(null);
+    undoStack.current = [];
+    setUndoCount(0);
+    setIdbCacheTimestamp(null);
+    if (autoLoad) loadParamsRef.current();
+  }, [selectedDroneId, autoLoad]);
 
   const setLocalValue = useCallback((name: string, value: number) => {
     setParams((prev) => {
@@ -241,38 +280,39 @@ export function usePanelParams(
     return allOk;
   }, [dirtyParams, params, saveToRam, panelId, onEvent]);
 
-  const commitToFlash = useCallback(async (): Promise<boolean> => {
+  const commitToFlash = useCallback(async (): Promise<FlashCommitOutcome> => {
     const protocol = getProtocol();
     if (!protocol || !protocol.isConnected) {
       onEvent?.({ type: "error", message: "Cannot write to flash: not connected" });
-      return false;
+      return { sent: false, acknowledged: false };
     }
     try {
       onEvent?.({ type: "flash", message: "Sending flash commit..." });
       const result = await protocol.commitParamsToFlash();
       if (result.success) {
-        commitFlashStore(true);
-        setHasRamWrites(false);
-        useDiagnosticsStore.getState().logEvent("flash_commit", "Flash commit");
         // The command is deliberately fire-and-forget, so a `success` here
         // means "reached the wire", not "the vehicle stored it". Saying
         // "written to flash" for an unacknowledged write trains an operator to
-        // trust a claim nothing verified; report what actually happened.
+        // trust a claim nothing verified; the distinction is carried out to the
+        // caller rather than collapsed into a boolean here.
+        const acknowledged = result.acknowledged !== false;
+        commitFlashStore(true);
+        setHasRamWrites(false);
+        useDiagnosticsStore.getState().logEvent("flash_commit", "Flash commit");
         onEvent?.({
           type: "flash",
-          message:
-            result.acknowledged === false
-              ? "Flash commit sent (unacknowledged)"
-              : "Written to flash",
+          message: acknowledged
+            ? "Written to flash"
+            : "Flash commit sent (unacknowledged)",
         });
-        return true;
+        return { sent: true, acknowledged };
       }
       onEvent?.({ type: "error", message: "Failed to send flash commit" });
-      return false;
+      return { sent: false, acknowledged: false };
     } catch (err) {
       console.error(`[${panelId}] commitParamsToFlash error:`, err);
       onEvent?.({ type: "error", message: "Error sending flash commit" });
-      return false;
+      return { sent: false, acknowledged: false };
     }
   }, [getProtocol, commitFlashStore, panelId, onEvent]);
 
@@ -307,11 +347,18 @@ export function usePanelParams(
   const unregisterActions = useFcPanelActionsStore((s) => s.unregister);
 
   useEffect(() => {
-    const wrappedSave = async () => { await saveAllToRam(); };
+    const wrappedSave = async () => {
+      // Snapshot the count before the write: `saveAllToRam` resolves `true`
+      // for an empty dirty set, so the shortcut layer needs the count to tell
+      // "saved" from "there was nothing to save".
+      const attempted = dirtyParams.size;
+      const ok = await saveAllToRam();
+      return { attempted, ok };
+    };
     const wrappedRefresh = async () => { await loadParams(); };
     registerActions(wrappedSave, wrappedRefresh);
     return () => unregisterActions();
-  }, [registerActions, unregisterActions, saveAllToRam, loadParams]);
+  }, [registerActions, unregisterActions, saveAllToRam, loadParams, dirtyParams]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {

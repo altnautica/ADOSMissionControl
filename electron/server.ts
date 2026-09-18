@@ -217,7 +217,11 @@ function spawnDevChild(port: number, options: StartOptions): ChildProcess {
   // killable node process that stopServer's SIGTERM tears down cleanly.
   const nextBin = require.resolve("next/dist/bin/next");
   console.log(`[server] starting next dev on port ${port}`);
-  return fork(nextBin, ["dev", "--turbo", "--port", String(port)], {
+  // `--hostname` is passed EXPLICITLY. The installed Next dev CLI takes the
+  // host only from the flag and ignores `HOSTNAME` entirely, so setting the
+  // env var above bound `next dev` to 0.0.0.0 — every interface — and
+  // `npm run desktop:dev` published the operator's dev GCS to the LAN.
+  return fork(nextBin, ["dev", "--turbo", "--hostname", "127.0.0.1", "--port", String(port)], {
     env,
     stdio: "pipe",
     cwd: repoRoot,

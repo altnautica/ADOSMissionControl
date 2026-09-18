@@ -32,6 +32,28 @@ export interface RequestOptions<T> extends Omit<RequestInit, "body"> {
   timeoutMs?: number;
 }
 
+/**
+ * A non-2xx answer FROM the agent, as distinct from never reaching it.
+ *
+ * The message is unchanged (`Agent API <status>: <body>`) because several
+ * callers regex it, but `status` lets a caller tell "this agent does not
+ * have this endpoint" (404/501 — durable) from "the request never landed"
+ * (abort, DNS, refused connection — transient). Caching those two the same
+ * way is how a single bring-up glitch pinned an agent's capability set to
+ * empty for five minutes.
+ */
+export class AgentHttpError extends Error {
+  readonly status: number;
+  readonly body: string;
+
+  constructor(status: number, body: string) {
+    super(`Agent API ${status}: ${body}`);
+    this.name = "AgentHttpError";
+    this.status = status;
+    this.body = body;
+  }
+}
+
 export async function agentRequest<T>(
   ctx: RequestContext,
   path: string,
@@ -61,7 +83,7 @@ export async function agentRequest<T>(
   });
   if (!res.ok) {
     const text = await res.text().catch(() => "Unknown error");
-    throw new Error(`Agent API ${res.status}: ${text}`);
+    throw new AgentHttpError(res.status, text);
   }
   const json = (await res.json()) as unknown;
   if (schema) {

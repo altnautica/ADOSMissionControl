@@ -82,6 +82,13 @@ const nextConfig: NextConfig = {
           // GCS needs for paired drone agents.
           "connect-src 'self' http://127.0.0.1:* ws://127.0.0.1:* http://localhost:* ws://localhost:* http: ws: https: wss:",
           "worker-src 'self' blob:",
+          // The MSE relay lane sets `<video>.src` to a `blob:` URL from
+          // `URL.createObjectURL(mediaSource)`, and with no `media-src` the
+          // browser falls back to `default-src 'self'` and blocks it — a
+          // SILENT, lane-specific black screen, because the WHEP lane uses
+          // `srcObject` (a MediaStream, which CSP does not govern) and keeps
+          // working.
+          "media-src 'self' blob: data:",
           "frame-src 'self' blob:",
           "object-src 'none'",
           "base-uri 'self'",

@@ -34,7 +34,9 @@ export type EventType =
   | "flash_commit"
   | "mission_upload"
   | "mission_download"
-  | "reconnect_attempt";
+  | "reconnect_attempt"
+  | "link_lost"
+  | "link_restored";
 
 export type ErrorCategory =
   | "timeout"

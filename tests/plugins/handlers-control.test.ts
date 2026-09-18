@@ -25,9 +25,20 @@ vi.mock("@/stores/drone-manager", () => ({
   useDroneManager: { getState: () => droneManagerState },
 }));
 
+/**
+ * Arm state is PER DRONE, read from the node registry for the plugin's own
+ * bound device. The handlers used to read the single-slot `drone-store`, which
+ * holds the operator's SELECTED drone — so a plugin bound to drone B checked
+ * drone A's arm state and then uploaded to drone A as well.
+ */
 let armState: "armed" | "disarmed";
-vi.mock("@/stores/drone-store", () => ({
-  useDroneStore: { getState: () => ({ armState }) },
+vi.mock("@/stores/node-registry", () => ({
+  useNodeRegistryStore: {
+    getState: () => ({
+      getEntry: (id: string) =>
+        droneManagerState.drones.has(id) ? { fc: { armState } } : undefined,
+    }),
+  },
 }));
 
 const missionStore = {
@@ -278,8 +289,46 @@ describe("command.send gates", () => {
 });
 
 describe("mission.write gates", () => {
+  it("refuses to write when the plugin is not bound to a connected drone", async () => {
+    // No drone installed. `uploadMission()` with no target falls back to the
+    // operator's SELECTED drone, so refusing here is what stops a plugin bound
+    // to an absent device from uploading to whatever is on screen.
+    droneManagerState = { drones: new Map() };
+    const { handlers } = buildPluginHandlers("p", "d1", DEPS);
+    const { ctx } = makeCtx({ capability: "mission.write" });
+    const out = await handlers["mission.write"](
+      { payload: { waypoints: [WP("w1"), WP("w2")] } },
+      ctx,
+    );
+    expect(out).toEqual({
+      ok: false,
+      error: "plugin is not bound to a connected drone",
+    });
+    expect(missionStore.uploadMission).not.toHaveBeenCalled();
+  });
+
+  it("uploads to the plugin's OWN drone, never the selected one", async () => {
+    const protocol = { sendCommand: vi.fn(async () => okResult()) };
+    const otherProtocol = { sendCommand: vi.fn(async () => okResult()) };
+    droneManagerState = {
+      drones: new Map([
+        ["d1", { protocol }],
+        ["d2", { protocol: otherProtocol }],
+      ]),
+    };
+    const wps = [WP("w1"), WP("w2")];
+    const { handlers } = buildPluginHandlers("p", "d1", DEPS);
+    const { ctx } = makeCtx({ capability: "mission.write" });
+    const out = await handlers["mission.write"]({ payload: { waypoints: wps } }, ctx);
+    expect(out).toEqual({ ok: true });
+    // The target is passed EXPLICITLY, so the store cannot substitute the
+    // operator's selection.
+    expect(missionStore.uploadMission).toHaveBeenCalledWith(protocol);
+  });
+
   it("refuses to write while the vehicle is armed", async () => {
     armState = "armed";
+    withProtocol();
     const { handlers } = buildPluginHandlers("p", "d1", DEPS);
     const { ctx } = makeCtx({ capability: "mission.write" });
     const out = await handlers["mission.write"](
@@ -298,6 +347,7 @@ describe("mission.write gates", () => {
       errors: [{ code: "EMPTY_MISSION" }],
       warnings: [],
     });
+    withProtocol();
     const { handlers } = buildPluginHandlers("p", "d1", DEPS);
     const { ctx } = makeCtx({ capability: "mission.write" });
     const out = await handlers["mission.write"](
@@ -348,6 +398,7 @@ describe("mission.write gates", () => {
 
   it("rejects a valid mission when the operator declines", async () => {
     confirmAnswer = false;
+    withProtocol();
     const { handlers } = buildPluginHandlers("p", "d1", DEPS);
     const { ctx } = makeCtx({ capability: "mission.write" });
     const out = await handlers["mission.write"](
@@ -362,6 +413,7 @@ describe("mission.write gates", () => {
 
   it("writes + uploads a confirmed valid mission", async () => {
     const wps = [WP("w1"), WP("w2")];
+    withProtocol();
     const { handlers } = buildPluginHandlers("p", "d1", DEPS);
     const { ctx } = makeCtx({ capability: "mission.write" });
     const out = await handlers["mission.write"](

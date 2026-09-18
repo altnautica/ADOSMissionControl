@@ -16,30 +16,43 @@ import { INAV_BOX_TO_MODE } from '../firmware/inav'
 // ── Permanent Box ID to Unified Mode ────────────────────────
 
 /**
- * Maps Betaflight permanent box IDs to unified flight modes.
- * Only flight-mode boxes are included; feature toggles (AIRMODE,
- * ANTI_GRAVITY, BEEPER, etc.) are omitted.
+ * Maps Betaflight PERMANENT box IDs to unified flight modes.
+ *
+ * Permanent ids come from `betaflight/src/main/fc/rc_modes.h` (`boxId_e`) as
+ * published by `box.c`; `MSP_BOXIDS` carries these, not array indices. Only
+ * flight-mode boxes are included; feature toggles (AIRMODE, ANTI_GRAVITY,
+ * BEEPER, etc.) are omitted.
+ *
+ * Two entries were on the wrong ids, and both failed in the dangerous
+ * direction. GPS RESCUE is 46 and ACRO TRAINER is 47; the table had them at 36
+ * and 19, so a quad actually flying GPS Rescue matched nothing and fell back to
+ * ACRO — a stick-authority mode, so the gamepad override was permitted during
+ * an autonomous rescue — while an active PREARM switch (36) rendered as RTL.
+ * Id 2 is HORIZON (a self-levelling attitude mode, NOT altitude hold); the real
+ * ALTHOLD box is 3.
  */
 export const BOX_ID_TO_MODE: ReadonlyMap<number, UnifiedFlightMode> = new Map<number, UnifiedFlightMode>([
   // 0 = ARM (handled separately, not a flight mode)
-  [1, 'STABILIZE'],     // ANGLE
-  [2, 'ALT_HOLD'],      // HORIZON
-  [5, 'MANUAL'],         // HEADFREE
-  [19, 'ACRO'],          // ACRO_TRAINER
+  [1, 'STABILIZE'],      // ANGLE
+  [2, 'STABILIZE'],      // HORIZON — self-levelling, not ALT_HOLD
+  [3, 'ALT_HOLD'],       // ALTHOLD
+  [6, 'MANUAL'],         // HEADFREE
   [35, 'UNKNOWN'],       // TURTLE (flip-over-after-crash recovery)
-  [36, 'RTL'],           // GPS_RESCUE
+  [46, 'RTL'],           // GPS_RESCUE
+  [47, 'ACRO'],          // ACRO_TRAINER
   [49, 'UNKNOWN'],       // LAUNCH_CONTROL
 ])
 
 /** Box IDs that are features, not flight modes. Listed for reference. */
 export const FEATURE_BOX_IDS = new Set<number>([
   0,   // ARM (special, not a flight mode)
-  3,   // ANTI_GRAVITY
-  6,   // HEADADJ
+  5,   // MAG
+  19,  // OSD_DISABLE
   26,  // BEEPER
   27,  // AIRMODE
   28,  // 3D
   33,  // FAILSAFE
+  36,  // PREARM
 ])
 
 // ── Mode priority (higher index = higher priority) ──────────

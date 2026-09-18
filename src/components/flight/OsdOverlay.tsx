@@ -22,6 +22,16 @@ import {
 export function OsdOverlay() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number>(0);
+  /**
+   * Parent size, measured by a `ResizeObserver` rather than read inside
+   * the draw loop.
+   *
+   * `getBoundingClientRect()` forces a synchronous layout flush, and this
+   * loop runs at 60 Hz on the piloting surface — so the OSD was making the
+   * browser re-lay-out the page once per frame, for a value that only
+   * changes when the pane resizes.
+   */
+  const sizeRef = useRef({ width: 0, height: 0 });
 
   const draw = () => {
     const canvas = canvasRef.current;
@@ -30,10 +40,11 @@ export function OsdOverlay() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Match canvas to parent size
-    const parent = canvas.parentElement;
-    if (!parent) return;
-    const rect = parent.getBoundingClientRect();
+    const rect = sizeRef.current;
+    if (rect.width <= 0 || rect.height <= 0) {
+      rafRef.current = requestAnimationFrame(draw);
+      return;
+    }
     const dpr = window.devicePixelRatio || 1;
 
     if (
@@ -78,10 +89,23 @@ export function OsdOverlay() {
   };
 
   useEffect(() => {
+    const parent = canvasRef.current?.parentElement;
+    if (!parent) return;
+    const measure = () => {
+      const rect = parent.getBoundingClientRect();
+      sizeRef.current = { width: rect.width, height: rect.height };
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(parent);
     rafRef.current = requestAnimationFrame(draw);
     return () => {
+      ro.disconnect();
       cancelAnimationFrame(rafRef.current);
     };
+    // `draw` is redefined every render but the loop is started once and
+    // reads everything through refs and store getters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

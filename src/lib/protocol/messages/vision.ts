@@ -157,7 +157,18 @@ export interface OdometryData {
   resetCounter: number;
   /** MAV_ESTIMATOR_TYPE enum. */
   estimatorType: number;
-  /** Quality 0..100 — v2 extension, undefined if payload too short. */
+  /**
+   * Odometry quality, as MAVLink defines it for ODOMETRY:
+   *   `-1` = odometry has FAILED, `0` = unknown / unset, `1..100` = quality.
+   *
+   * It is a SIGNED byte. Reading it unsigned turned the `-1` failure sentinel
+   * into 255, i.e. an off-scale "better than perfect" reading for an estimator
+   * that had just reported it was not working.
+   *
+   * `undefined` means the field carried the unknown value (0), so a consumer
+   * falls back to deriving quality from the covariance instead of treating an
+   * unset field as a measured zero.
+   */
   quality?: number;
 }
 
@@ -184,12 +195,18 @@ export interface OdometryData {
  * | 229    | uint8       | childFrameId       |
  * | 230    | uint8       | resetCounter (ext) |
  * | 231    | uint8       | estimatorType (ext)|
- * | 232    | uint8       | quality (ext)      |
+ * | 232    | int8        | quality (ext)      |
  */
 export function decodeOdometry(view: DataView): OdometryData {
   const poseCovariance = readCovariance(view, 60);
   const velocityCovariance = readCovariance(view, 144);
-  const hasQualityExt = view.byteLength >= 233;
+  // The parser zero-restores a truncated payload up to PAYLOAD_LENGTHS[331],
+  // which is 233 — so a `byteLength >= 233` test can never be false and the
+  // "extension absent" branch was dead, along with the covariance fallback
+  // behind it. MAVLink encodes "unknown / unset quality" as 0, which is the
+  // same value a zero-restored absent extension yields, so 0 IS the honest
+  // absent signal and the only one available.
+  const rawQuality = view.getInt8(232);
   return {
     timeUsec: view.getBigUint64(0, true),
     x: view.getFloat32(8, true),
@@ -213,7 +230,7 @@ export function decodeOdometry(view: DataView): OdometryData {
     childFrameId: view.getUint8(229),
     resetCounter: view.getUint8(230),
     estimatorType: view.getUint8(231),
-    quality: hasQualityExt ? view.getUint8(232) : undefined,
+    quality: rawQuality === 0 ? undefined : rawQuality,
   };
 }
 

@@ -20,12 +20,10 @@ export interface INavStatus {
   cycleTime: number;
   i2cErrors: number;
   sensors: number;
-  modeFlags: number;
-  currentProfile: number;
-  cpuLoad: number;
+  averageLoadPercent: number;
+  /** Low nibble = config profile, high nibble = battery profile. */
+  profiles: number;
   armingFlags: number;
-  navState: number;
-  navAction: number;
 }
 
 export interface INavMisc2 {

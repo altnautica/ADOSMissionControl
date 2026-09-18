@@ -789,9 +789,20 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
             <div role="tabpanel"> via DroneDetailTabBody so the aria
             association resolves to the plugin's iframe wrapper. Built-in
             surfaces share the panel div below. */}
+        {/* The surface key carries BOTH the tab and the node id.
+
+            `NodeDetailPanel` is not remounted when the operator switches the
+            selected node — only its props change — so keying on `visibleTab`
+            alone left every surface's component state alive across a node
+            switch. With Configure open, switching drone A → B showed A's
+            parameters under B's name, and `usePanelParams` resolves the
+            protocol live at save time, so a carried-over dirty edit wrote A's
+            numbers into B. `AgentTab` already worked around this locally with
+            its own `key={ctx.droneId}`; keying here fixes every surface at
+            once, which is where the invariant belongs. */}
         {isPluginTabId(visibleTab) ? (
           <SurfaceErrorBoundary
-            key={visibleTab}
+            key={`${droneId}:${visibleTab}`}
             message={t("surfaceError")}
             retryLabel={t("surfaceErrorRetry")}
           >
@@ -820,7 +831,7 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
             className="flex-1 min-h-0 overflow-y-auto flex flex-col"
           >
             <SurfaceErrorBoundary
-              key={visibleTab}
+              key={`${droneId}:${visibleTab}`}
               message={t("surfaceError")}
               retryLabel={t("surfaceErrorRetry")}
             >

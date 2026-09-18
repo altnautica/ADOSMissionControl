@@ -8,10 +8,17 @@
 
 import type { AgentVersionInfo } from "../types";
 import { AgentVersionInfoSchema } from "../schemas";
-import { agentRequest, type RequestContext } from "./transport";
+import { agentRequest, AgentHttpError, type RequestContext } from "./transport";
 import type { z } from "zod";
 
 const CAPABILITY_TTL_MS = 5 * 60 * 1000;
+
+/**
+ * How long a *durable* negative is cached. A 404/501 means this agent build
+ * has no `/api/version`, which will not change until it is upgraded — but
+ * five minutes of not re-asking is plenty, and re-asking is one cheap GET.
+ */
+const ABSENT_TTL_MS = 60 * 1000;
 
 interface CachedVersion {
   info: AgentVersionInfo | null;
@@ -41,14 +48,29 @@ export async function fetchVersionInfo(
       schema: AgentVersionInfoSchema as z.ZodType<AgentVersionInfo>,
     });
   } catch (err) {
-    // Older agent (pre-0.8.6) has no /api/version. Treat as
-    // "no capabilities advertised" so callers fall back to the
-    // legacy code path. Other transport errors are also treated as
-    // "no info"; the caller sees null and degrades.
     if (process.env.NODE_ENV !== "production") {
       console.debug("[agent-client] getVersion failed:", err);
     }
-    info = null;
+    // A 404/501 is the pre-0.8.6 agent that genuinely has no `/api/version`;
+    // that answer is durable enough to cache briefly. ANY OTHER failure —
+    // the 6 s deadline firing during bring-up, a refused connection while
+    // the agent restarts, a schema mismatch — is transient, and caching it
+    // used to pin the node's capability set to empty for five minutes:
+    // every `agentSupports()` call returned false, so the GCS silently took
+    // legacy code paths on a fully capable agent long after it recovered.
+    // Leave the cache untouched so the next caller retries.
+    const durable =
+      err instanceof AgentHttpError &&
+      (err.status === 404 || err.status === 501);
+    if (!durable) {
+      versionCache.delete(key);
+      return null;
+    }
+    versionCache.set(key, {
+      info: null,
+      expiresAt: Date.now() + ABSENT_TTL_MS,
+    });
+    return null;
   }
   versionCache.set(key, {
     info,

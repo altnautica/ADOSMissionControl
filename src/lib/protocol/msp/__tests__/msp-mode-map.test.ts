@@ -34,17 +34,21 @@ function givesStickAuthority(mode: string): boolean {
 describe("resolveActiveMode - iNav box table", () => {
   // Box list as an iNav flight controller reports it: index in the array is
   // the bit position in the mode-flag word, the value is the permanent box id.
-  const inavBoxIds = [0, 1, 2, 10, 11, 12, 28, 45, 46, 47];
+  // These are iNav PERMANENT box ids (fc_msp_box.c), which is what MSP_BOXIDS
+  // carries. 10 is NAV RTH and 3 is NAV ALTHOLD — the table used to have those
+  // two the other way round, so an aircraft flying an autonomous return home
+  // decoded as ALT_HOLD, a stick-authority mode.
+  const inavBoxIds = [0, 1, 2, 3, 10, 11, 12, 28, 36, 45, 46, 47, 53];
 
   it.each([
-    [45, "RTL"],
+    [10, "RTL"],
     [11, "POSHOLD"],
     [2, "STABILIZE"],
-    [10, "ALT_HOLD"],
-    [12, "LOITER"],
-    [28, "CRUISE"],
-    [46, "MISSION"],
-    [47, "TAKEOFF"],
+    [3, "ALT_HOLD"],
+    [12, "MANUAL"],
+    [53, "CRUISE"],
+    [28, "MISSION"],
+    [36, "TAKEOFF"],
   ])("decodes iNav box %i as %s", (boxId, expected) => {
     const index = inavBoxIds.indexOf(boxId);
     const { mode } = resolveActiveMode(flagsFor(index), inavBoxIds, "inav");
@@ -52,14 +56,14 @@ describe("resolveActiveMode - iNav box table", () => {
   });
 
   it("does not let an autonomous iNav mode pass the stick-authority gate", () => {
-    const rtlIndex = inavBoxIds.indexOf(45);
+    const rtlIndex = inavBoxIds.indexOf(10);
     const { mode } = resolveActiveMode(flagsFor(rtlIndex), inavBoxIds, "inav");
     expect(givesStickAuthority(mode)).toBe(false);
   });
 
   it("reports armed from box id 0 alongside the mode", () => {
     const armIndex = inavBoxIds.indexOf(0);
-    const rtlIndex = inavBoxIds.indexOf(45);
+    const rtlIndex = inavBoxIds.indexOf(10);
     const { mode, armed } = resolveActiveMode(
       flagsFor(armIndex, rtlIndex),
       inavBoxIds,
@@ -71,7 +75,7 @@ describe("resolveActiveMode - iNav box table", () => {
 
   it("prefers the autonomous mode when a stabilizing box is active with it", () => {
     const angleIndex = inavBoxIds.indexOf(1);
-    const rtlIndex = inavBoxIds.indexOf(45);
+    const rtlIndex = inavBoxIds.indexOf(10);
     const { mode } = resolveActiveMode(
       flagsFor(angleIndex, rtlIndex),
       inavBoxIds,
@@ -86,6 +90,18 @@ describe("resolveActiveMode - iNav box table", () => {
     expect(givesStickAuthority(mode)).toBe(false);
   });
 
+  it.each([[45], [46], [47]])(
+    "yields UNKNOWN, never a flight mode, for iNav box %i",
+    (boxId) => {
+      // 45 NAV COURSE HOLD, 46 MC BRAKING and 47 USER1 are deliberately
+      // unmapped: the table once claimed them as RTL / MISSION / TAKEOFF, so
+      // "Return to home" engaged course-hold and flew AWAY from home.
+      const { mode } = resolveActiveMode(flagsFor(0), [boxId], "inav");
+      expect(mode).toBe("UNKNOWN");
+      expect(givesStickAuthority(mode)).toBe(false);
+    },
+  );
+
   it("yields UNKNOWN for an active box the table does not cover", () => {
     const unmapped = [200];
     const { mode } = resolveActiveMode(flagsFor(0), unmapped, "inav");
@@ -94,13 +110,16 @@ describe("resolveActiveMode - iNav box table", () => {
 });
 
 describe("resolveActiveMode - Betaflight box table", () => {
-  // Betaflight reports its own ids: ARM, ANGLE, HORIZON, GPS_RESCUE.
-  const bfBoxIds = [0, 1, 2, 36];
+  // Betaflight PERMANENT ids (rc_modes.h boxId_e): ARM 0, ANGLE 1, HORIZON 2,
+  // ALTHOLD 3, PREARM 36, GPS_RESCUE 46, ACRO_TRAINER 47.
+  const bfBoxIds = [0, 1, 2, 3, 36, 46, 47];
 
   it.each([
     [1, "STABILIZE"],
-    [2, "ALT_HOLD"],
-    [36, "RTL"],
+    [2, "STABILIZE"],
+    [3, "ALT_HOLD"],
+    [46, "RTL"],
+    [47, "ACRO"],
   ])("decodes Betaflight box %i as %s", (boxId, expected) => {
     const index = bfBoxIds.indexOf(boxId);
     const { mode } = resolveActiveMode(flagsFor(index), bfBoxIds, "betaflight");
@@ -112,10 +131,21 @@ describe("resolveActiveMode - Betaflight box table", () => {
     expect(mode).toBe("ACRO");
   });
 
-  it("does not decode Betaflight box 45 as RTL", () => {
-    // 45 is iNav's NAV RTH; on Betaflight it is not a flight-mode box.
-    const { mode } = resolveActiveMode(flagsFor(0), [45], "betaflight");
+  it("does not decode the PREARM box as RTL", () => {
+    // 36 is PREARM on Betaflight, not a flight mode. The table used to map it
+    // to RTL, so an armed-and-ready quad rendered as returning home.
+    const { mode } = resolveActiveMode(flagsFor(0), [36], "betaflight");
     expect(mode).not.toBe("RTL");
+  });
+
+  it("never falls back to a stick-authority mode while GPS Rescue is active", () => {
+    // GPS Rescue is 46. Against the old table it matched nothing and fell back
+    // to ACRO, which IS in the stick-authority set — so a gamepad override was
+    // permitted during an autonomous rescue.
+    const index = bfBoxIds.indexOf(46);
+    const { mode } = resolveActiveMode(flagsFor(index), bfBoxIds, "betaflight");
+    expect(mode).toBe("RTL");
+    expect(givesStickAuthority(mode)).toBe(false);
   });
 });
 

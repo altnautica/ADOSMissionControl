@@ -19,13 +19,20 @@ export interface ArmingFlagEntry {
 /**
  * Bit-position to entry map for iNav arming flags.
  * Bit 0 is the least-significant bit of the 32-bit word.
+ *
+ * iNav's `armingFlag_e` (`src/main/fc/runtime_config.h`) STARTS at
+ * `ARMED = (1 << 2)`: bits 0 and 1 are undefined and iNav never sets them.
+ * This table used to declare `0: OK_TO_ARM` and `1: PREVENT_ARMING`, and
+ * `okToArm` keyed off bit 0 — so it was permanently false and `PreArmPanel`
+ * rendered a red BLOCKED badge with "0 blockers preventing arming" on a
+ * perfectly airworthy aircraft. Demo mode masked it because the iNav mock
+ * synthesised `0x00000001` to match the imagined layout.
  */
 export const INAV_ARMING_FLAGS: Record<number, ArmingFlagEntry> = {
-  0:  { name: "OK_TO_ARM",                              label: "OK to arm",                     isBlocker: false },
-  1:  { name: "PREVENT_ARMING",                         label: "Arming prevented",               isBlocker: true  },
   2:  { name: "ARMED",                                  label: "Armed",                          isBlocker: false },
   3:  { name: "WAS_EVER_ARMED",                         label: "Was ever armed",                 isBlocker: false },
-  4:  { name: "SIMULATOR_MODE",                         label: "Simulator mode",                 isBlocker: false },
+  4:  { name: "SIMULATOR_MODE_HITL",                    label: "Simulator mode (HITL)",          isBlocker: false },
+  5:  { name: "SIMULATOR_MODE_SITL",                    label: "Simulator mode (SITL)",          isBlocker: false },
   7:  { name: "ARMING_DISABLED_FAILSAFE_SYSTEM",        label: "Failsafe system",               isBlocker: true  },
   8:  { name: "ARMING_DISABLED_NOT_LEVEL",              label: "Not level",                      isBlocker: true  },
   9:  { name: "ARMING_DISABLED_SENSORS_CALIBRATING",    label: "Sensors calibrating",            isBlocker: true  },
@@ -59,9 +66,13 @@ export interface DecodeArmingFlagsResult {
  * Decode a 32-bit iNav arming flags bitmask into structured output.
  *
  * Returns:
- *  - okToArm: true when bit 0 is set and no blocker bits are active.
+ *  - okToArm: true when NO blocker bit is active. iNav has no positive
+ *    "ok to arm" bit — the word carries only the reasons arming is disabled,
+ *    so the absence of every blocker IS the ready state. Requiring a bit-0
+ *    flag iNav never sets pinned this to false forever.
  *  - blockers: human-readable labels for each set blocker bit.
- *  - notes: human-readable labels for set informational bits (armed, was-ever-armed, simulator).
+ *  - notes: human-readable labels for set informational bits (armed,
+ *    was-ever-armed, simulator).
  */
 export function decodeArmingFlags(bitmask: number): DecodeArmingFlagsResult {
   const blockers: string[] = [];
@@ -71,15 +82,9 @@ export function decodeArmingFlags(bitmask: number): DecodeArmingFlagsResult {
     if ((bitmask & (1 << bit)) === 0) continue;
     const entry = INAV_ARMING_FLAGS[bit];
     if (!entry) continue;
-    if (entry.isBlocker) {
-      blockers.push(entry.label);
-    } else if (bit !== 0) {
-      // Bit 0 is OK_TO_ARM, handled separately.
-      notes.push(entry.label);
-    }
+    if (entry.isBlocker) blockers.push(entry.label);
+    else notes.push(entry.label);
   }
 
-  const okToArm = (bitmask & 0x1) !== 0 && blockers.length === 0;
-
-  return { okToArm, blockers, notes };
+  return { okToArm: blockers.length === 0, blockers, notes };
 }

@@ -32,6 +32,7 @@
 import { v } from "convex/values";
 import {
   action,
+  internalAction,
   internalMutation,
   internalQuery,
   mutation,
@@ -76,12 +77,18 @@ export const generateUploadUrl = action({
  * mutation (5 minutes by default); this action only returns the
  * URL plus a hint at the resolved expiry.
  *
- * No auth check is performed here because the action is invoked
- * from within `cmdPluginInstallJobs.createJob` after the caller's
- * ownership of both the archive and the target drone has been
- * verified. Callers outside that flow must do their own auth.
+ * INTERNAL. It performs no auth check of its own, so it must never be
+ * callable from a client: it was exported as a public `action` that took an
+ * `archiveId` and returned `ctx.storage.getUrl(...)` for it with no
+ * `getAuthUserId` and no ownership comparison, so any unauthenticated caller
+ * could mint a signed download URL for ANY uploaded plugin archive.
+ *
+ * The doc comment claimed `cmdPluginInstallJobs.createJob` authorised the
+ * caller, but `createJob` calls `ctx.storage.getUrl` inline and never invokes
+ * this — so nothing upstream was gating it. A caller outside an
+ * already-authorised internal flow must do its own auth.
  */
-export const getSignedDownloadUrl = action({
+export const getSignedDownloadUrl = internalAction({
   args: { archiveId: v.id("plugin_archives") },
   handler: async (
     ctx,

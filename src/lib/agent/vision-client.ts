@@ -20,6 +20,14 @@
  * @license GPL-3.0-only
  */
 
+import { timedFetch } from "@/lib/agent/agent-client/timeout";
+
+/** A detector model is tens to hundreds of MB and may cross a radio link,
+ *  so the 6 s read default would abort every legitimate upload. It still
+ *  needs a bound: unbounded it holds one of the browser's six per-origin
+ *  sockets for as long as the peer stays half-open. */
+const MODEL_UPLOAD_TIMEOUT_MS = 600_000;
+
 /** One registry model the agent advertises (available to download). */
 export interface VisionRegistryModel {
   id: string;
@@ -327,7 +335,8 @@ function coerceCustom(raw: unknown): VisionCustomModel[] {
 }
 
 function coerceCache(raw: unknown): VisionCacheUsage {
-  const e = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const e =
+    raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
   return {
     usedBytes: num(e.used_bytes),
     maxBytes: num(e.max_bytes),
@@ -389,8 +398,7 @@ export class VisionAgentClient implements VisionClient {
     this.baseUrl = baseUrl.replace(/\/+$/, "");
     this.apiKey = apiKey;
     this.useProxy =
-      typeof window !== "undefined" &&
-      window.location.protocol === "https:";
+      typeof window !== "undefined" && window.location.protocol === "https:";
   }
 
   private headers(): Record<string, string> {
@@ -409,12 +417,10 @@ export class VisionAgentClient implements VisionClient {
     init: RequestInit,
   ): Promise<Response> {
     if (!this.useProxy) {
-      return fetch(`${this.baseUrl}${directPath}`, init);
+      return timedFetch(`${this.baseUrl}${directPath}`, init);
     }
-    const modelId = directPath.match(
-      /\/api\/vision\/models\/([^/]+)\//,
-    )?.[1];
-    return fetch("/api/lan-pair/vision-models", {
+    const modelId = directPath.match(/\/api\/vision\/models\/([^/]+)\//)?.[1];
+    return timedFetch("/api/lan-pair/vision-models", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -454,7 +460,7 @@ export class VisionAgentClient implements VisionClient {
    */
   async setActiveDetector(modelId: string): Promise<VisionSetDetectorResult> {
     const body = await this.json(
-      await fetch(`${this.baseUrl}/api/vision/detector`, {
+      await timedFetch(`${this.baseUrl}/api/vision/detector`, {
         method: "PUT",
         headers: { ...this.headers(), "Content-Type": "application/json" },
         body: JSON.stringify({ model_id: modelId }),
@@ -497,11 +503,15 @@ export class VisionAgentClient implements VisionClient {
       }),
     );
     const body = await this.json(
-      await fetch(`${this.baseUrl}/api/vision/models/upload`, {
-        method: "POST",
-        headers: this.headers(),
-        body: form,
-      }),
+      await timedFetch(
+        `${this.baseUrl}/api/vision/models/upload`,
+        {
+          method: "POST",
+          headers: this.headers(),
+          body: form,
+        },
+        MODEL_UPLOAD_TIMEOUT_MS,
+      ),
     );
     const e = body as Record<string, unknown>;
     const status = e.status === "ok" ? "ok" : "error";
@@ -570,7 +580,7 @@ export class VisionAgentClient implements VisionClient {
     if (opts?.classLabel) body.class_label = opts.classLabel;
     if (typeof opts?.confidence === "number") body.confidence = opts.confidence;
     const data = await this.json(
-      await fetch(`${this.baseUrl}/api/vision/designate`, {
+      await timedFetch(`${this.baseUrl}/api/vision/designate`, {
         method: "POST",
         headers: { ...this.headers(), "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -592,7 +602,7 @@ export class VisionAgentClient implements VisionClient {
    * back to the stream view. An older agent 404s here → an empty status.
    */
   async getEngineStatus(): Promise<EngineStatus> {
-    const res = await fetch(`${this.baseUrl}/api/vision/status`, {
+    const res = await timedFetch(`${this.baseUrl}/api/vision/status`, {
       headers: this.headers(),
     });
     if (res.status === 404) return { ...EMPTY_ENGINE_STATUS };

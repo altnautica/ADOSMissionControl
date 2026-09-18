@@ -7,7 +7,7 @@ import type { Transport, CommandResult, UnifiedFlightMode, FirmwareHandler } fro
 import type { CommandQueue } from './command-queue'
 import {
   encodeManualControl, encodeSetPositionTargetGlobalInt, encodeSetAttitudeTarget,
-  encodeSerialControl, encodeCommandInt, encodeSetGpsGlobalOrigin,
+  encodeSerialControl, encodeSetGpsGlobalOrigin,
 } from './mavlink-encoder'
 
 /**
@@ -95,8 +95,19 @@ export function cmdReturnToLaunch(ctx: CommandContext): Promise<CommandResult> {
   return ctx.sendCommandLong(20, [0, 0, 0, 0, 0, 0, 0])
 }
 
-export function cmdLand(ctx: CommandContext): Promise<CommandResult> {
-  return ctx.sendCommandLong(21, [0, 0, 0, 0, 0, 0, 0])
+/**
+ * MAV_CMD_NAV_LAND (21).
+ *
+ * `at` is the landing point. Without it the aircraft lands wherever it is,
+ * which is why the map's "Land Here" used to reposition and then fire a
+ * target-less land 500 ms later: at 5 m/s the vehicle had travelled ~2.5 m and
+ * landed essentially where it started, under a menu item promising otherwise.
+ * The position rides in param5/6 (lat/lon) of the command, so the FC lands at
+ * the commanded point rather than in place.
+ */
+export function cmdLand(ctx: CommandContext, at?: { lat: number; lon: number }): Promise<CommandResult> {
+  if (!at) return ctx.sendCommandLong(21, [0, 0, 0, 0, 0, 0, 0])
+  return ctx.sendCommandInt(21, [0, 0, 0, 0], Math.round(at.lat * 1e7), Math.round(at.lon * 1e7), 0, 3)
 }
 
 export function cmdTakeoff(ctx: CommandContext, altitude: number): Promise<CommandResult> {
@@ -420,19 +431,25 @@ export function cmdSendAttitudeTarget(ctx: CommandContext, roll: number, pitch: 
   ))
 }
 
-/** MAV_CMD_DO_SET_ROI_LOCATION (195) — point gimbal at GPS coordinate. Uses COMMAND_INT. */
-export function cmdSetRoiLocation(ctx: CommandContext, lat: number, lon: number, alt: number): CommandResult {
+/**
+ * MAV_CMD_DO_SET_ROI_LOCATION (195) — point gimbal at a GPS coordinate.
+ *
+ * Ack-tracked COMMAND_INT: it previously wrote the frame to the transport and
+ * returned `success: true` for the WRITE, so a rejected or unsupported ROI read
+ * as accepted on the gimbal surface.
+ */
+export function cmdSetRoiLocation(ctx: CommandContext, lat: number, lon: number, alt: number): Promise<CommandResult> {
   if (!ctx.transport?.isConnected) {
-    return { success: false, resultCode: -1, message: 'Not connected' }
+    return Promise.resolve({ success: false, resultCode: -1, message: 'Not connected' })
   }
-  const frame = encodeCommandInt(
-    ctx.targetSysId, ctx.targetCompId, 0, 195, 0, 0,
-    0, 0, 0, 0,
-    Math.round(lat * 1e7), Math.round(lon * 1e7), alt,
-    ctx.sysId, ctx.compId,
+  return ctx.sendCommandInt(
+    195,
+    [0, 0, 0, 0],
+    Math.round(lat * 1e7),
+    Math.round(lon * 1e7),
+    alt,
+    0, // MAV_FRAME_GLOBAL
   )
-  ctx.transport.send(frame)
-  return { success: true, resultCode: 0, message: 'ROI location set' }
 }
 
 /** MAV_CMD_DO_SET_ROI_NONE (197) — clear gimbal ROI targeting. */
@@ -440,20 +457,25 @@ export function cmdSetRoiNone(ctx: CommandContext): Promise<CommandResult> {
   return ctx.sendCommandLong(197, [0, 0, 0, 0, 0, 0, 0])
 }
 
-/** MAV_CMD_DO_ORBIT (34) — orbit at GPS coordinate. Uses COMMAND_INT. */
-export function cmdOrbit(ctx: CommandContext, radius: number, velocity: number, yawBehavior: number, lat: number, lon: number, alt: number): CommandResult {
+/**
+ * MAV_CMD_DO_ORBIT (34) — orbit a GPS coordinate.
+ *
+ * Ack-tracked COMMAND_INT, for the same reason as the ROI command above: an
+ * orbit the vehicle refused used to report "Orbit command sent".
+ */
+export function cmdOrbit(ctx: CommandContext, radius: number, velocity: number, yawBehavior: number, lat: number, lon: number, alt: number): Promise<CommandResult> {
   if (!ctx.transport?.isConnected) {
-    return { success: false, resultCode: -1, message: 'Not connected' }
+    return Promise.resolve({ success: false, resultCode: -1, message: 'Not connected' })
   }
   // yawBehavior: 0=HOLD, 1=UNCONTROLLED, 2=FRONT_TO_CENTER, 3=RC_CONTROLLED
-  const frame = encodeCommandInt(
-    ctx.targetSysId, ctx.targetCompId, 6, 34, 0, 0,
-    radius, velocity, yawBehavior, 0,
-    Math.round(lat * 1e7), Math.round(lon * 1e7), alt,
-    ctx.sysId, ctx.compId,
+  return ctx.sendCommandInt(
+    34,
+    [radius, velocity, yawBehavior, 0],
+    Math.round(lat * 1e7),
+    Math.round(lon * 1e7),
+    alt,
+    6, // MAV_FRAME_GLOBAL_RELATIVE_ALT_INT
   )
-  ctx.transport.send(frame)
-  return { success: true, resultCode: 0, message: 'Orbit command sent' }
 }
 
 /**

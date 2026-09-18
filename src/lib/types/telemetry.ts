@@ -258,12 +258,16 @@ export interface EstimatorStatusData {
 
 // ── Camera Trigger ───────────────────────────────────────
 
+/**
+ * A shutter event from MAVLink CAMERA_TRIGGER (112).
+ *
+ * The message carries a timestamp and a sequence number and nothing else. It
+ * used to declare lat/lon/alt, which the decoder read from past the end of the
+ * 12-byte payload and the handler recorded as 0°N 0°E in the flight record.
+ */
 export interface CameraTriggerData {
   timestamp: number;
   seq: number;
-  lat: number;
-  lon: number;
-  alt: number;
 }
 
 // ── Nav Controller ────────────────────────────────────────

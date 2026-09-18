@@ -14,6 +14,8 @@
  * @license GPL-3.0-only
  */
 
+import { timedFetch } from "@/lib/agent/agent-client/timeout";
+
 export interface AgentRequestContext {
   baseUrl: string;
   apiKey: string | null;
@@ -62,9 +64,11 @@ export function isRouteUnexposed(err: unknown): boolean {
 /** Pull the agent's own error code + message out of an error body. Handles
  * the `{detail: {error: {code, message}}}` envelope, a plain-string
  * `detail`, and a flat `{error}`. */
-function parseErrorBody(
-  body: unknown,
-): { code: string | null; message: string | null; needsForce: boolean } {
+function parseErrorBody(body: unknown): {
+  code: string | null;
+  message: string | null;
+  needsForce: boolean;
+} {
   let code: string | null = null;
   let message: string | null = null;
   let needsForce = false;
@@ -97,7 +101,7 @@ async function request<T>(
     ...(init?.headers as Record<string, string>),
   };
   if (ctx.apiKey) headers["X-ADOS-Key"] = ctx.apiKey;
-  const res = await fetch(`${ctx.baseUrl}${path}`, { ...init, headers });
+  const res = await timedFetch(`${ctx.baseUrl}${path}`, { ...init, headers });
   const text = await res.text().catch(() => "");
   let json: unknown = null;
   try {
@@ -174,8 +178,10 @@ export async function getWifiStatus(
     ctx,
     "/api/v1/network/client/status",
   );
-  const str = (k: string) => (typeof raw[k] === "string" ? (raw[k] as string) : null);
-  const num = (k: string) => (typeof raw[k] === "number" ? (raw[k] as number) : null);
+  const str = (k: string) =>
+    typeof raw[k] === "string" ? (raw[k] as string) : null;
+  const num = (k: string) =>
+    typeof raw[k] === "number" ? (raw[k] as number) : null;
   return {
     connected: raw.connected === true,
     ssid: str("ssid"),

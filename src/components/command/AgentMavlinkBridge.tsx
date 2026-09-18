@@ -275,12 +275,31 @@ export function AgentMavlinkBridge() {
           protocols?: string | string[],
         ): Promise<InstanceType<typeof WebSocketTransport>> => {
           const wsTransport = new WebSocketTransport();
-          await Promise.race([
-            wsTransport.connect(url, protocols),
-            new Promise<never>((_, reject) =>
-              setTimeout(() => reject(new Error("timeout")), WS_TIMEOUT_MS),
-            ),
-          ]);
+          const timeout = Promise.withResolvers<never>();
+          const timer = setTimeout(
+            () => timeout.reject(new Error("timeout")),
+            WS_TIMEOUT_MS,
+          );
+          try {
+            await Promise.race([
+              wsTransport.connect(url, protocols),
+              timeout.promise,
+            ]);
+          } catch (err) {
+            // The race only ABANDONS the connect; the socket underneath is
+            // still dialing and, on a slow-but-reachable agent, still
+            // completes. Every cascade attempt then left a live WebSocket
+            // with no owner — one per tier, per reconnect, for the life of
+            // the page. Disconnect before rethrowing.
+            try {
+              await wsTransport.disconnect();
+            } catch {
+              /* already dead */
+            }
+            throw err;
+          } finally {
+            clearTimeout(timer);
+          }
           return wsTransport;
         };
 

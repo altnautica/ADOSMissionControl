@@ -112,7 +112,9 @@ export interface VideoLatencyBreakdown {
   framesDecoded: number;
   framesDropped: number;
   // Agent air side (from GET /api/video/latency)
-  airLatencyMs: number | null;    // SEI EWMA, camera -> drone LCD
+  /** SEI EWMA, drone-side stamp-to-readback: encoder output → RTSP
+   *  readback. Excludes capture, encode, radio, ground and browser. */
+  airLatencyMs: number | null;
   airSamples: number | null;
   airSource: string | null;       // "sei" | "unavailable" | "read_failed" | ...
   // True end-to-end (Phase B, from browser SEI parser + presentationTime)

@@ -199,8 +199,11 @@ describe('geofence-store', () => {
   });
 
   // ------- Upload / Download with no protocol -------
-  it('uploadFence with no protocol returns without error', async () => {
-    await expect(useGeofenceStore.getState().uploadFence()).resolves.toBeUndefined();
+  it('uploadFence with no protocol reports the missing flight controller', async () => {
+    await expect(useGeofenceStore.getState().uploadFence()).resolves.toEqual({
+      success: false,
+      message: 'No flight controller connected',
+    });
   });
 
   // ------- Upload writes the breach action -------
@@ -252,8 +255,11 @@ describe('geofence-store', () => {
     expect(useGeofenceStore.getState().uploadState).toBe('error');
   });
 
-  it('downloadFence with no protocol returns without error', async () => {
-    await expect(useGeofenceStore.getState().downloadFence()).resolves.toBeUndefined();
+  it('downloadFence with no protocol reports the missing flight controller', async () => {
+    await expect(useGeofenceStore.getState().downloadFence()).resolves.toEqual({
+      success: false,
+      message: 'No flight controller connected',
+    });
   });
 
   // ------- Multiple zones -------

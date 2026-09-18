@@ -29,7 +29,7 @@ import type { BridgeHandler, BridgeHandlerContext } from "@/lib/plugins/bridge";
 import type { DroneProtocol } from "@/lib/protocol/types";
 import type { Waypoint } from "@/lib/types";
 import { useDroneManager } from "@/stores/drone-manager";
-import { useDroneStore } from "@/stores/drone-store";
+import { useNodeRegistryStore } from "@/stores/node-registry";
 import { useMissionStore } from "@/stores/mission-store";
 import { validateMission } from "@/lib/validation/mission-validator";
 import { requestPluginConfirm } from "@/lib/plugins/confirm";
@@ -256,7 +256,14 @@ export function buildControlHandlers(
       return { ok: false, error: `invalid args for '${command}'` };
     }
 
-    const armed = useDroneStore.getState().armState === "armed";
+    // Per-drone arm state, from this plugin's own node registry entry.
+    // `useDroneStore` holds the OPERATOR'S selection, so a plugin bound to a
+    // different aircraft escalated (or failed to escalate) the confirmation
+    // dialog against the wrong vehicle's arm state.
+    const armed =
+      (deviceId
+        ? useNodeRegistryStore.getState().getEntry(deviceId)?.fc.armState
+        : undefined) === "armed";
     const ok = await requestPluginConfirm({
       pluginId,
       title: "Plugin command",
@@ -289,7 +296,21 @@ export function buildControlHandlers(
     }
     const waypoints = wpsRaw as Waypoint[];
 
-    if (useDroneStore.getState().armState === "armed") {
+    // The armed guard and the upload target are BOTH resolved for the
+    // plugin's own drone. `useDroneStore` is a single slot scoped to the
+    // operator's selection, and `uploadMission()` with no target falls back to
+    // that same selection — so a plugin bound to drone B uploaded to whichever
+    // drone the operator was watching, having checked the wrong arm state to
+    // get there. `command.send` already refuses the selection fallback via
+    // `resolveStrictProtocol`; this is the same rule.
+    const protocol = resolveStrictProtocol(deviceId);
+    if (!protocol) {
+      return { ok: false, error: "plugin is not bound to a connected drone" };
+    }
+    const fcState = deviceId
+      ? useNodeRegistryStore.getState().getEntry(deviceId)?.fc
+      : undefined;
+    if (fcState?.armState === "armed") {
       return { ok: false, error: "cannot write mission while armed" };
     }
 
@@ -306,10 +327,10 @@ export function buildControlHandlers(
     });
     if (!ok) return { ok: false, error: "operator denied" };
 
-    // setWaypoints snapshots undo history internally; upload targets the
-    // selected drone via the protocol.
+    // setWaypoints snapshots undo history internally; the upload is pinned to
+    // this plugin's own drone.
     useMissionStore.getState().setWaypoints(waypoints);
-    const uploaded = await useMissionStore.getState().uploadMission();
+    const uploaded = await useMissionStore.getState().uploadMission(protocol);
     return { ok: uploaded };
   };
 

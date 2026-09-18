@@ -1,3 +1,5 @@
+import { RC_PROTOCOLS } from "@/lib/rc-options";
+
 export const RC_CHANNEL_COUNT = 16;
 
 export const CHANNEL_OPTIONS = Array.from({ length: RC_CHANNEL_COUNT }, (_, i) => ({
@@ -5,21 +7,20 @@ export const CHANNEL_OPTIONS = Array.from({ length: RC_CHANNEL_COUNT }, (_, i) =
   label: `Channel ${i + 1}`,
 }));
 
-export const RC_PROTOCOLS_OPTIONS = [
-  { value: "1", label: "1 — PPM" },
-  { value: "2", label: "2 — IBUS" },
-  { value: "4", label: "4 — SBUS" },
-  { value: "8", label: "8 — SBUS_NI" },
-  { value: "16", label: "16 — DSM" },
-  { value: "32", label: "32 — SUMD" },
-  { value: "64", label: "64 — SRXL" },
-  { value: "128", label: "128 — SRXL2" },
-  { value: "256", label: "256 — CRSF" },
-  { value: "512", label: "512 — ST24" },
-  { value: "1024", label: "1024 — FPort" },
-  { value: "2048", label: "2048 — FPort2" },
-  { value: "4096", label: "4096 — GHST" },
-];
+/**
+ * `RC_PROTOCOLS` bit index → label, derived from the repo's canonical table in
+ * `@/lib/rc-options` rather than hand-maintained here.
+ *
+ * This used to be a `Select` whose option VALUES were one bit position short of
+ * the parameter's real encoding — it offered `256 — CRSF` when CRSF is bit 9
+ * (512), so picking "CRSF" wrote SRXL2 and the flight controller stopped
+ * decoding the receiver entirely on the next reboot. It also rendered the
+ * common value `1` (ArduPilot's "All") as "PPM", and a Select can only ever
+ * express ONE bit of a parameter the label itself calls a bitmask.
+ */
+export const RC_PROTOCOLS_BITMASK: Map<number, string> = new Map(
+  RC_PROTOCOLS.map(({ bit, label }) => [bit, label]),
+);
 
 export const RSSI_TYPE_OPTIONS = [
   { value: "0", label: "0 — Disabled" },

@@ -94,12 +94,22 @@ export function FramePanel() {
     return uniqueTypes[0]?.value ?? 0;
   }, [uniqueTypes, frameType]);
 
-  useEffect(() => {
-    if (uniqueTypes.length > 0) {
-      const isValid = uniqueTypes.some((ut) => ut.duplicateTypes.includes(frameType));
-      if (!isValid) setLocalValue(typeParam, uniqueTypes[0].value);
-    }
-  }, [frameClass, frameType, uniqueTypes, setLocalValue, typeParam]);
+  /**
+   * True when the vehicle's own `FRAME_TYPE` is not in the bundled layout
+   * table for its class.
+   *
+   * This used to trigger `setLocalValue(typeParam, uniqueTypes[0].value)` on
+   * load — substituting the first known type and marking the parameter dirty,
+   * so the panel showed "Unsaved changes" on a vehicle nobody had touched and
+   * Save rewrote its frame. `getUniqueTypesForClass` only knows the types
+   * present in `LAYOUTS` (for class 1 that is 0-6, 12-14, 16-18) while
+   * `FRAME_TYPE_NAMES` itself lists 15 ("I"), so a Quad/I was silently
+   * converted to Quad/Plus — a different motor order and rotation.
+   *
+   * The value is now reported, never rewritten: the operator decides.
+   */
+  const frameTypeUnknown =
+    uniqueTypes.length > 0 && !uniqueTypes.some((ut) => ut.duplicateTypes.includes(frameType));
 
   const layout = useMemo(() => getMotorLayout(frameClass, frameType), [frameClass, frameType]);
   const className = FRAME_CLASS_NAMES[frameClass] ?? "Unknown";
@@ -155,8 +165,28 @@ export function FramePanel() {
               <FrameCard icon={<Box size={14} />} title="Frame Selection" description="Select airframe class and configuration type">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <Select label={classParam} options={FRAME_CLASS_OPTIONS} value={String(frameClass)} onChange={(v) => handleLocalChange(classParam, Number(v))} disabled={isHardBlocked} searchable />
-                  <Select label={typeParam} options={frameTypeOptions} value={String(effectiveFrameType)} onChange={(v) => handleLocalChange(typeParam, Number(v))} disabled={isHardBlocked} />
+                  <Select
+                    label={typeParam}
+                    // An unrecognised type shows the vehicle's OWN value as an
+                    // extra option rather than resolving to a neighbouring one.
+                    options={frameTypeUnknown
+                      ? [...frameTypeOptions, { value: String(frameType), label: `${frameType} — Unrecognised (on this vehicle)` }]
+                      : frameTypeOptions}
+                    value={String(frameTypeUnknown ? frameType : effectiveFrameType)}
+                    onChange={(v) => handleLocalChange(typeParam, Number(v))}
+                    disabled={isHardBlocked}
+                  />
                 </div>
+                {frameTypeUnknown && (
+                  <div className="flex items-start gap-2 mt-3 px-2.5 py-2 border border-status-warning/30 bg-status-warning/5">
+                    <Info size={12} className="text-status-warning shrink-0 mt-0.5" />
+                    <p className="text-[10px] text-text-secondary leading-relaxed">
+                      This vehicle reports {typeParam} = {frameType}, which this build has no motor
+                      layout for. The value is shown as-is and is NOT being changed; pick a listed
+                      type only if you intend to reconfigure the airframe.
+                    </p>
+                  </div>
+                )}
                 {typeDescription && <p className="text-[10px] text-text-tertiary mt-2">{typeDescription}</p>}
                 {classNote && (
                   <div className="flex items-start gap-2 mt-3 px-2.5 py-2 border border-accent-primary/20 bg-accent-primary/5">

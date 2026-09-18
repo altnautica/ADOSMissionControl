@@ -13,6 +13,17 @@
  * @license GPL-3.0-only
  */
 
+import { timedFetch } from "@/lib/agent/agent-client/timeout";
+
+/**
+ * Deadline for the three plugin calls that move an archive: two multipart
+ * uploads of a `.adosplug` over what may be a radio link, and one where the
+ * AGENT does the download. The default 6 s read deadline would abort a
+ * legitimate install of a few MB; these still need a bound, because
+ * unbounded they hold a socket from Chromium's 6-per-origin pool forever.
+ */
+const PLUGIN_TRANSFER_TIMEOUT_MS = 120_000;
+
 export interface PluginAgentInstallSummary {
   ok: true;
   plugin_id: string;
@@ -154,14 +165,16 @@ export class PluginAgentClient {
   }
 
   async list(): Promise<{ installs: PluginAgentManifestDetail["install"][] }> {
-    const res = await fetch(`${this.baseUrl}/api/plugins`, {
+    const res = await timedFetch(`${this.baseUrl}/api/plugins`, {
       headers: this.authHeader(),
     });
-    return this.parse<{ installs: PluginAgentManifestDetail["install"][] }>(res);
+    return this.parse<{ installs: PluginAgentManifestDetail["install"][] }>(
+      res,
+    );
   }
 
   async get(pluginId: string): Promise<PluginAgentManifestDetail> {
-    const res = await fetch(
+    const res = await timedFetch(
       `${this.baseUrl}/api/plugins/${encodeURIComponent(pluginId)}`,
       { headers: this.authHeader() },
     );
@@ -181,7 +194,7 @@ export class PluginAgentClient {
       .split("/")
       .map((seg) => encodeURIComponent(seg))
       .join("/");
-    const res = await fetch(
+    const res = await timedFetch(
       `${this.baseUrl}/api/plugins/${encodeURIComponent(pluginId)}/gcs/${encoded}`,
       { headers: this.authHeader() },
     );
@@ -209,7 +222,7 @@ export class PluginAgentClient {
   async getState(pluginId: string): Promise<PluginStateResponse | null> {
     let res: Response;
     try {
-      res = await fetch(
+      res = await timedFetch(
         `${this.baseUrl}/api/plugins/${encodeURIComponent(pluginId)}/state`,
         { headers: this.authHeader() },
       );
@@ -238,7 +251,7 @@ export class PluginAgentClient {
   async getRawState(pluginId: string): Promise<Record<string, unknown> | null> {
     let res: Response;
     try {
-      res = await fetch(
+      res = await timedFetch(
         `${this.baseUrl}/api/plugins/${encodeURIComponent(pluginId)}/state`,
         { headers: this.authHeader() },
       );
@@ -265,22 +278,30 @@ export class PluginAgentClient {
   async parseArchive(file: File): Promise<PluginAgentParseSummary> {
     const form = new FormData();
     form.append("file", file);
-    const res = await fetch(`${this.baseUrl}/api/plugins/parse`, {
-      method: "POST",
-      headers: this.authHeader(),
-      body: form,
-    });
+    const res = await timedFetch(
+      `${this.baseUrl}/api/plugins/parse`,
+      {
+        method: "POST",
+        headers: this.authHeader(),
+        body: form,
+      },
+      PLUGIN_TRANSFER_TIMEOUT_MS,
+    );
     return this.parse<PluginAgentParseSummary>(res);
   }
 
   async install(file: File): Promise<PluginAgentInstallSummary> {
     const form = new FormData();
     form.append("file", file);
-    const res = await fetch(`${this.baseUrl}/api/plugins/install`, {
-      method: "POST",
-      headers: this.authHeader(),
-      body: form,
-    });
+    const res = await timedFetch(
+      `${this.baseUrl}/api/plugins/install`,
+      {
+        method: "POST",
+        headers: this.authHeader(),
+        body: form,
+      },
+      PLUGIN_TRANSFER_TIMEOUT_MS,
+    );
     return this.parse<PluginAgentInstallSummary>(res);
   }
 
@@ -294,14 +315,18 @@ export class PluginAgentClient {
     url: string,
     expectedSha256 = "",
   ): Promise<PluginAgentParseSummary> {
-    const res = await fetch(`${this.baseUrl}/api/plugins/parse_from_url`, {
-      method: "POST",
-      headers: { ...this.authHeader(), "Content-Type": "application/json" },
-      body: JSON.stringify({
-        url,
-        ...(expectedSha256 ? { expected_sha256: expectedSha256 } : {}),
-      }),
-    });
+    const res = await timedFetch(
+      `${this.baseUrl}/api/plugins/parse_from_url`,
+      {
+        method: "POST",
+        headers: { ...this.authHeader(), "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url,
+          ...(expectedSha256 ? { expected_sha256: expectedSha256 } : {}),
+        }),
+      },
+      PLUGIN_TRANSFER_TIMEOUT_MS,
+    );
     return this.parse<PluginAgentParseSummary>(res);
   }
 
@@ -322,7 +347,7 @@ export class PluginAgentClient {
     value: unknown,
     scope?: "drone" | "global",
   ): Promise<{ set: boolean; scope: string | null }> {
-    const res = await fetch(
+    const res = await timedFetch(
       `${this.baseUrl}/api/plugins/${encodeURIComponent(pluginId)}/config`,
       {
         method: "PUT",
@@ -334,7 +359,7 @@ export class PluginAgentClient {
   }
 
   async grant(pluginId: string, permissionId: string): Promise<void> {
-    const res = await fetch(
+    const res = await timedFetch(
       `${this.baseUrl}/api/plugins/${encodeURIComponent(pluginId)}/grant`,
       {
         method: "POST",
@@ -356,7 +381,7 @@ export class PluginAgentClient {
     pluginId: string,
     permissionId: string,
   ): Promise<{ granted: string[] }> {
-    const res = await fetch(
+    const res = await timedFetch(
       `${this.baseUrl}/api/plugins/${encodeURIComponent(pluginId)}/perms/${encodeURIComponent(
         permissionId,
       )}`,
@@ -372,7 +397,7 @@ export class PluginAgentClient {
   }
 
   async enable(pluginId: string): Promise<void> {
-    const res = await fetch(
+    const res = await timedFetch(
       `${this.baseUrl}/api/plugins/${encodeURIComponent(pluginId)}/enable`,
       { method: "POST", headers: this.authHeader() },
     );
@@ -380,7 +405,7 @@ export class PluginAgentClient {
   }
 
   async disable(pluginId: string): Promise<void> {
-    const res = await fetch(
+    const res = await timedFetch(
       `${this.baseUrl}/api/plugins/${encodeURIComponent(pluginId)}/disable`,
       { method: "POST", headers: this.authHeader() },
     );
@@ -389,7 +414,7 @@ export class PluginAgentClient {
 
   async remove(pluginId: string, opts?: { keepData?: boolean }): Promise<void> {
     const qs = opts?.keepData ? "?keep_data=1" : "";
-    const res = await fetch(
+    const res = await timedFetch(
       `${this.baseUrl}/api/plugins/${encodeURIComponent(pluginId)}${qs}`,
       { method: "DELETE", headers: this.authHeader() },
     );
