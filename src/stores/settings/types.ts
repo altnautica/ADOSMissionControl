@@ -30,6 +30,18 @@ import type {
 export interface SettingsStoreState {
   // display + general preferences
   mapTileSource: MapTileSource;
+  /**
+   * Operator-supplied basemap tile URL template, used when `mapTileSource` is
+   * `"custom"`. Stored raw — the `{z}`/`{x}`/`{y}` (and optional `{s}`/`{r}`)
+   * placeholders are what Leaflet and the offline downloader consume, so the
+   * string is never round-tripped through `URL`. Empty = not configured, which
+   * renders as `dark` rather than an empty layer.
+   */
+  customTileUrl: string;
+  /** Highest zoom the custom tile server serves. */
+  customTileMaxZoom: number;
+  /** Attribution HTML for the custom source. Empty = none. */
+  customTileAttribution: string;
   units: UnitSystem;
   /** Map coordinate display format for the cursor readout (dd/dms/utm/mgrs). */
   coordFormat: CoordFormat;
@@ -136,6 +148,9 @@ export interface SettingsStoreState {
 
   // display actions
   setMapTileSource: (source: MapTileSource) => void;
+  setCustomTileUrl: (url: string) => void;
+  setCustomTileMaxZoom: (zoom: number) => void;
+  setCustomTileAttribution: (attribution: string) => void;
   setUnits: (units: UnitSystem) => void;
   setCoordFormat: (format: CoordFormat) => void;
   dismissBanner: () => void;

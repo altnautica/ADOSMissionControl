@@ -62,6 +62,13 @@ describe("settings store slices", () => {
       useSettingsStore.getState().toggleFavorite("RTL_ALT");
       expect(useSettingsStore.getState().favoriteParams).toEqual([]);
     });
+
+    it("custom tile setters trim the URL and clamp the max zoom", () => {
+      useSettingsStore.getState().setCustomTileUrl("  http://tiles.lan/{z}/{x}/{y}.png  ");
+      useSettingsStore.getState().setCustomTileMaxZoom(99);
+      expect(useSettingsStore.getState().customTileUrl).toBe("http://tiles.lan/{z}/{x}/{y}.png");
+      expect(useSettingsStore.getState().customTileMaxZoom).toBe(24);
+    });
   });
 
   describe("network slice", () => {

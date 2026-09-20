@@ -64,7 +64,13 @@ const nextConfig: NextConfig = {
           "default-src 'self'",
           "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:",
           "style-src 'self' 'unsafe-inline'",
-          "img-src 'self' data: blob: https:",
+          // Basemap tiles load as <img>, so a self-hosted tile server on this
+          // laptop or on the LAN is governed by img-src, not connect-src.
+          // CSP3 source expressions have no CIDR notation, so an RFC1918 tile
+          // server needs the bare `http:` scheme source — the same trade
+          // already accepted for connect-src below. Loopback stays explicit so
+          // the strictest origins are named first.
+          "img-src 'self' data: blob: http://127.0.0.1:* http://localhost:* http: https:",
           "font-src 'self' data:",
           // connect-src must include LAN agents reachable over plain
           // HTTP. The browser blocks fetches that aren't in this list

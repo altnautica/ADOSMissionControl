@@ -49,7 +49,7 @@ export const useSettingsStore = create<SettingsStoreState>()(
     {
       name: "altcmd:settings",
       storage: createJSONStorage(indexedDBStorage.storage),
-      version: 47,
+      version: 48,
       migrate: migrateSettings,
       onRehydrateStorage: () => (state) => {
         if (!state) return;

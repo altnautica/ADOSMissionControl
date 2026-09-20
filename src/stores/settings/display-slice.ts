@@ -11,10 +11,14 @@ import {
   DEFAULT_PARAM_COLUMNS,
   cloneDefaultTelemetryDeckPages,
 } from "../settings-store/constants";
+import { clampTileZoom } from "@/lib/tile-math";
 import type { SettingsSliceFactory, SettingsStoreState } from "./types";
 
 export const displayDefaults: Partial<SettingsStoreState> = {
   mapTileSource: "satellite",
+  customTileUrl: "",
+  customTileMaxZoom: 19,
+  customTileAttribution: "",
   units: "metric",
   coordFormat: "dd",
   bannerDismissed: false,
@@ -93,6 +97,9 @@ export const createDisplayActions: SettingsSliceFactory<
   Pick<
     SettingsStoreState,
     | "setMapTileSource"
+    | "setCustomTileUrl"
+    | "setCustomTileMaxZoom"
+    | "setCustomTileAttribution"
     | "setUnits"
     | "setCoordFormat"
     | "dismissBanner"
@@ -156,6 +163,10 @@ export const createDisplayActions: SettingsSliceFactory<
   >
 > = (set, get) => ({
   setMapTileSource: (mapTileSource) => set({ mapTileSource }),
+  setCustomTileUrl: (customTileUrl) => set({ customTileUrl: customTileUrl.trim() }),
+  setCustomTileMaxZoom: (customTileMaxZoom) =>
+    set({ customTileMaxZoom: clampTileZoom(customTileMaxZoom) }),
+  setCustomTileAttribution: (customTileAttribution) => set({ customTileAttribution }),
   setUnits: (units) => set({ units }),
   setCoordFormat: (coordFormat) => set({ coordFormat }),
   dismissBanner: () => set({ bannerDismissed: true, bannerDismissedAt: Date.now() }),

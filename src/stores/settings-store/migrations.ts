@@ -289,5 +289,14 @@ export function migrateSettings(
     // guessing is what made the overlay wrong in the first place.
     state.noFlyRegion = null;
   }
+  if (version < 48) {
+    // v48: operator-supplied basemap ("custom" tile URL template). Empty means
+    // not configured, and `resolveBasemap` shows dark until the operator enters
+    // a usable template — the migration must NOT invent a URL, and must not
+    // move anyone off their existing basemap.
+    state.customTileUrl = "";
+    state.customTileMaxZoom = 19;
+    state.customTileAttribution = "";
+  }
   return state as unknown as SettingsStoreState;
 }

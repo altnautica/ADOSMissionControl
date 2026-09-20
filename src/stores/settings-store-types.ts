@@ -12,7 +12,8 @@ import type { Jurisdiction } from "@/lib/jurisdiction";
 
 export type { Jurisdiction };
 
-export type MapTileSource = "osm" | "satellite" | "terrain" | "dark";
+/** `"custom"` = operator-supplied tile URL template (`customTileUrl`). */
+export type MapTileSource = "osm" | "satellite" | "terrain" | "dark" | "custom";
 export type UnitSystem = "metric" | "imperial";
 
 /**
