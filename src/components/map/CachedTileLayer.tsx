@@ -13,6 +13,7 @@ import { useMap } from "react-leaflet";
 import L from "leaflet";
 import { getCachedTile, cacheTile } from "@/lib/tile-cache";
 import { resolveTileUrl, subdomainsForUrl, isRetinaDisplay } from "@/lib/tile-math";
+import { useTileHealthStore } from "@/stores/tile-health-store";
 
 const CACHE_TIMEOUT_MS = 2000;
 
@@ -20,6 +21,12 @@ interface CachedTileLayerProps {
   url: string;
   attribution?: string;
   maxZoom?: number;
+  /**
+   * Request tiles with `crossOrigin="anonymous"`. Default true (every CDN
+   * provider sends CORS, and the cache write needs a readable response).
+   * False for an operator-supplied server that sends no CORS header.
+   */
+  crossOrigin?: boolean;
 }
 
 /** Race a promise against a timeout. Resolves to null on timeout. */
@@ -59,10 +66,12 @@ function fetchAndCache(tile: HTMLImageElement, tileUrl: string, done: (err?: Err
 /** Subclass TileLayer to intercept tile loading with IndexedDB cache. */
 class CachingTileLayer extends L.TileLayer {
   private readonly templateUrl: string;
+  private readonly useCrossOrigin: boolean;
 
-  constructor(urlTemplate: string, options?: L.TileLayerOptions) {
+  constructor(urlTemplate: string, useCrossOrigin: boolean, options?: L.TileLayerOptions) {
     super(urlTemplate, options);
     this.templateUrl = urlTemplate;
+    this.useCrossOrigin = useCrossOrigin;
   }
 
   /**
@@ -86,7 +95,9 @@ class CachingTileLayer extends L.TileLayer {
   createTile(coords: L.Coords, done: L.DoneCallback): HTMLElement {
     const tile = document.createElement("img") as HTMLImageElement;
     tile.alt = "";
-    tile.crossOrigin = "anonymous";
+    // Opt-out: a self-hosted tile server usually sends no CORS header, and an
+    // `anonymous` <img> then fails to load at all — a fully blank map.
+    if (this.useCrossOrigin) tile.crossOrigin = "anonymous";
     tile.setAttribute("role", "presentation");
 
     const tileUrl = this.getTileUrl(coords);
@@ -118,12 +129,17 @@ class CachingTileLayer extends L.TileLayer {
   }
 }
 
-export function CachedTileLayer({ url, attribution, maxZoom = 20 }: CachedTileLayerProps) {
+export function CachedTileLayer({
+  url,
+  attribution,
+  maxZoom = 20,
+  crossOrigin = true,
+}: CachedTileLayerProps) {
   const map = useMap();
   const layerRef = useRef<L.TileLayer | null>(null);
 
   useEffect(() => {
-    const layer = new CachingTileLayer(url, {
+    const layer = new CachingTileLayer(url, crossOrigin, {
       attribution: attribution ?? "",
       maxZoom,
     });
@@ -131,13 +147,22 @@ export function CachedTileLayer({ url, attribution, maxZoom = 20 }: CachedTileLa
     layer.addTo(map);
     layerRef.current = layer;
 
+    // A self-hosted tile URL that 404s or is blocked paints nothing, which is
+    // indistinguishable from empty imagery without these counters.
+    useTileHealthStore.getState().observe(url);
+    layer.on("tileload", () => useTileHealthStore.getState().recordLoad());
+    layer.on("tileerror", (e) => {
+      const tile = (e as L.TileEvent).tile as HTMLImageElement | undefined;
+      useTileHealthStore.getState().recordError(tile?.src ?? null);
+    });
+
     return () => {
       if (layerRef.current) {
         map.removeLayer(layerRef.current);
         layerRef.current = null;
       }
     };
-  }, [map, url, attribution, maxZoom]);
+  }, [map, url, attribution, maxZoom, crossOrigin]);
 
   return null;
 }

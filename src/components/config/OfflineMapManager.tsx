@@ -13,6 +13,7 @@ import { useSettingsStore } from "@/stores/settings-store";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Trash2, WifiOff, HardDrive } from "lucide-react";
+import { CustomTileSourceEditor } from "@/components/map/CustomTileSourceEditor";
 
 export function OfflineMapManager() {
   const [stats, setStats] = useState({ tileCount: 0, totalBytes: 0 });
@@ -68,6 +69,13 @@ export function OfflineMapManager() {
           </span>
         </div>
       )}
+
+      {/* Operator-supplied basemap. This is the only map-settings surface in
+          /config, and it is where an operator sets up offline use — the map
+          popover alone is unreachable on /plan before a plan exists. */}
+      <Card title="Custom Map Source" padding={true}>
+        <CustomTileSourceEditor />
+      </Card>
 
       <Card title="Offline Map Cache" padding={true}>
         <div className="flex flex-col gap-3">

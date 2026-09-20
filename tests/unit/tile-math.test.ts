@@ -13,6 +13,10 @@ import {
   generateTileUrls,
   lonToTileX,
   latToTileY,
+  clampTileZoom,
+  customTileProvider,
+  resolveBasemap,
+  validateTileUrlTemplate,
   type TileProvider,
   type LatLngBounds,
 } from "@/lib/tile-math";
@@ -101,5 +105,69 @@ describe("isRetinaDisplay", () => {
   it("false when devicePixelRatio <= 1", () => {
     Object.defineProperty(window, "devicePixelRatio", { value: 1, configurable: true });
     expect(isRetinaDisplay()).toBe(false);
+  });
+});
+
+describe("custom tile URL templates", () => {
+  // The URL from the feature request: two `?` segments, which is exactly what
+  // a `new URL(...)` round-trip would mangle.
+  const selfHosted =
+    "https://localhost/tileserver/tileserver.php?/index.json?/world_countries/{z}/{x}/{y}.png";
+
+  it("accepts a self-hosted template with query segments", () => {
+    expect(validateTileUrlTemplate(selfHosted)).toBeNull();
+    expect(validateTileUrlTemplate("  http://tiles.lan:8080/{z}/{x}/{y}.png  ")).toBeNull();
+  });
+
+  it("rejects an unusable template with a reason the UI can show", () => {
+    expect(validateTileUrlTemplate("")).toBe("Enter a tile URL template.");
+    expect(validateTileUrlTemplate("ftp://h/{z}/{x}/{y}.png")).toBe(
+      "Tile URL must start with http:// or https://.",
+    );
+    expect(validateTileUrlTemplate("https://h/{z}/{x}.png")).toBe("Tile URL must contain {y}.");
+    // `resolveTileUrl` replaces each token once, so a repeat would ship a
+    // literal `{y}` in the request URL.
+    expect(validateTileUrlTemplate("https://h/{z}/{x}/{y}/{y}.png")).toBe(
+      "Tile URL must contain {y} only once.",
+    );
+    expect(validateTileUrlTemplate("https://h/{z}/{x}/{-y}.png")).toBe(
+      "TMS templates ({-y}) are not supported. Use {y}.",
+    );
+  });
+
+  it("custom provider write key == read key for a {s} template", () => {
+    const p = customTileProvider({
+      url: "https://{s}.tiles.example.org/{z}/{x}/{y}.png",
+      maxZoom: 15,
+      attribution: "",
+    });
+    expect(resolveTileUrl(p.url, p.subdomains, 5, 9, 14, true)).toBe(readerUrl(p, 5, 9, 14, true));
+    expect(p.maxZoom).toBe(15);
+  });
+
+  it("resolveBasemap falls back to dark for an unusable custom template", () => {
+    expect(resolveBasemap("custom", { url: "", maxZoom: 19, attribution: "" })).toBe(
+      TILE_PROVIDERS.dark,
+    );
+    expect(
+      resolveBasemap("custom", { url: "https://h/{z}/{x}.png", maxZoom: 19, attribution: "" }),
+    ).toBe(TILE_PROVIDERS.dark);
+  });
+
+  it("resolveBasemap uses the operator's template and max zoom when usable", () => {
+    const resolved = resolveBasemap("custom", {
+      url: selfHosted,
+      maxZoom: 15,
+      attribution: "Local tiles",
+    });
+    expect(resolved.url).toBe(selfHosted);
+    expect(resolved.maxZoom).toBe(15);
+    expect(resolved.attribution).toBe("Local tiles");
+  });
+
+  it("clampTileZoom keeps an entered zoom inside Leaflet's usable range", () => {
+    expect(clampTileZoom(0)).toBe(1);
+    expect(clampTileZoom(99)).toBe(24);
+    expect(clampTileZoom(Number.NaN)).toBe(19);
   });
 });

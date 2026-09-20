@@ -245,4 +245,19 @@ describe("migrateSettings", () => {
     expect(loadouts.default.layout.pipPosition).toEqual({ x: 12, y: 34 });
     expect(loadouts.lean.layout.pipPosition).toBeUndefined();
   });
+
+  it("v48 seeds an unconfigured custom basemap without inventing a URL", () => {
+    const result = migrateSettings({}, 47) as unknown as Record<string, unknown>;
+    expect(result.customTileUrl).toBe("");
+    expect(result.customTileMaxZoom).toBe(19);
+    expect(result.customTileAttribution).toBe("");
+  });
+
+  it("v48 leaves an operator-entered custom URL alone", () => {
+    const result = migrateSettings(
+      { customTileUrl: "http://tiles.lan/{z}/{x}/{y}.png" },
+      48,
+    ) as unknown as Record<string, unknown>;
+    expect(result.customTileUrl).toBe("http://tiles.lan/{z}/{x}/{y}.png");
+  });
 });

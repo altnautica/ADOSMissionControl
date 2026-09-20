@@ -15,30 +15,38 @@ import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import {
   totalTileCount, estimateDownloadSize, formatBytes,
-  TILE_PROVIDERS, type LatLngBounds,
+  BASEMAP_ORDER, basemapName, resolveBasemap, validateTileUrlTemplate,
+  type LatLngBounds,
 } from "@/lib/tile-math";
 import { MAX_CACHE_SIZE } from "@/lib/tile-cache";
 import { useTileDownloadStore } from "@/stores/tile-download-store";
-import { useSettingsStore } from "@/stores/settings-store";
+import { useSettingsStore, type MapTileSource } from "@/stores/settings-store";
 
 interface DownloadAreaPanelProps {
   bounds: LatLngBounds;
   currentZoom: number;
-  currentProvider: string;
+  currentProvider: MapTileSource;
   onClose: () => void;
 }
 
-const PROVIDER_OPTIONS = [
-  { value: "dark", label: "CARTO Dark" },
-  { value: "osm", label: "OpenStreetMap" },
-  { value: "satellite", label: "Esri Satellite" },
-  { value: "terrain", label: "OpenTopoMap" },
-];
-
 export function DownloadAreaPanel({ bounds, currentZoom, currentProvider, onClose }: DownloadAreaPanelProps) {
-  const [provider, setProvider] = useState(currentProvider);
-  const providerConfig = TILE_PROVIDERS[provider] ?? TILE_PROVIDERS.dark;
+  const customTileUrl = useSettingsStore((s) => s.customTileUrl);
+  const customTileMaxZoom = useSettingsStore((s) => s.customTileMaxZoom);
+  const customTileAttribution = useSettingsStore((s) => s.customTileAttribution);
+  const custom = useMemo(
+    () => ({ url: customTileUrl, maxZoom: customTileMaxZoom, attribution: customTileAttribution }),
+    [customTileUrl, customTileMaxZoom, customTileAttribution],
+  );
+  const customUsable = validateTileUrlTemplate(customTileUrl) === null;
+  // Downloading CDN tiles for a custom source would cache them under the CDN's
+  // URLs — a 100% miss for the on-screen custom layer, and internet traffic for
+  // an operator who chose a self-hosted server precisely to avoid it.
+  const [provider, setProvider] = useState<MapTileSource>(
+    currentProvider === "custom" && !customUsable ? "dark" : currentProvider,
+  );
+  const providerConfig = resolveBasemap(provider, custom);
   const maxZoomForProvider = providerConfig.maxZoom;
+  const customSelectedButUnusable = provider === "custom" && !customUsable;
 
   // Sensible default: current zoom to +4, capped at provider max
   const defaultMinZoom = Math.max(1, Math.round(currentZoom));
@@ -112,12 +120,15 @@ export function DownloadAreaPanel({ bounds, currentZoom, currentProvider, onClos
           <Select
             value={provider}
             onChange={(v) => {
-              setProvider(v);
-              const newMax = TILE_PROVIDERS[v]?.maxZoom ?? 18;
+              const next = v as MapTileSource;
+              setProvider(next);
+              const newMax = resolveBasemap(next, custom).maxZoom;
               if (zoomMax > newMax) setZoomMax(newMax);
               if (zoomMin > newMax) setZoomMin(Math.max(1, newMax - 4));
             }}
-            options={PROVIDER_OPTIONS}
+            options={BASEMAP_ORDER
+              .filter((s) => s !== "custom" || customUsable)
+              .map((s) => ({ value: s, label: basemapName(s) }))}
             disabled={isDownloading}
           />
         </div>
@@ -219,6 +230,16 @@ export function DownloadAreaPanel({ bounds, currentZoom, currentProvider, onClos
             <span className="text-[9px] text-status-error">{error}</span>
           </div>
         )}
+
+        {/* Belt-and-braces: the select filters this option out, but a stale
+            `currentProvider` can still seed it. */}
+        {customSelectedButUnusable && !isDownloading && (
+          <div className="px-2 py-1.5 bg-status-error/10 border border-status-error/30 rounded">
+            <span className="text-[9px] text-status-error">
+              Set a usable custom tile URL before downloading.
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Actions */}
@@ -233,6 +254,7 @@ export function DownloadAreaPanel({ bounds, currentZoom, currentProvider, onClos
               Close
             </Button>
             <Button variant="primary" size="sm" onClick={handleDownload} className="flex-1"
+              disabled={customSelectedButUnusable}
               icon={<CloudDownload size={12} />}>
               Download
             </Button>

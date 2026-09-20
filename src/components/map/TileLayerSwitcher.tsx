@@ -1,18 +1,28 @@
 /**
  * @module TileLayerSwitcher
  * @description Replaces the static TileLayer with a switchable tile source.
- * Renders the active tile layer and a small control button to cycle between
- * CARTO Dark, OpenStreetMap, and Esri Satellite imagery. Persists selection
- * to settings-store. Supports offline tile caching via IndexedDB and
- * no-fly zone overlay toggle.
+ * Renders the active tile layer and a small control button to pick between the
+ * built-in basemaps and an operator-supplied ("custom") tile server. The
+ * catalog itself lives in `@/lib/tile-math` so the picker, the minimap selector
+ * and the offline downloader cannot drift. Persists selection to
+ * settings-store. Supports offline tile caching via IndexedDB and a no-fly
+ * zone overlay toggle.
  * @license GPL-3.0-only
  */
 
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useMap } from "react-leaflet";
 import { useSettingsStore, type MapTileSource } from "@/stores/settings-store";
+import {
+  BASEMAP_ORDER,
+  basemapLabel,
+  resolveBasemap,
+  validateTileUrlTemplate,
+} from "@/lib/tile-math";
+import { useTileHealthStore } from "@/stores/tile-health-store";
+import { CustomTileSourceEditor } from "./CustomTileSourceEditor";
 import L from "leaflet";
 import { CachedTileLayer } from "./CachedTileLayer";
 import { NoFlyZoneOverlay } from "./NoFlyZoneOverlay";
@@ -21,44 +31,6 @@ import { NO_FLY_ZONES_BY_REGION } from "@/lib/no-fly-zones";
 import { COMMON_REGIONS, normalizeRegionCode } from "@/lib/operating-region";
 import { Select } from "@/components/ui/select";
 import { BasemapSwitcher } from "./BasemapSwitcher";
-
-interface TileConfig {
-  url: string;
-  attribution: string;
-  maxZoom: number;
-}
-
-const TILE_CONFIGS: Record<MapTileSource, TileConfig> = {
-  dark: {
-    url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
-    maxZoom: 20,
-  },
-  osm: {
-    url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    maxZoom: 19,
-  },
-  satellite: {
-    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-    attribution: '&copy; <a href="https://www.esri.com/">Esri</a>',
-    maxZoom: 18,
-  },
-  terrain: {
-    url: "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
-    attribution: '&copy; <a href="https://opentopomap.org">OpenTopoMap</a>',
-    maxZoom: 17,
-  },
-};
-
-const TILE_LABELS: Record<MapTileSource, string> = {
-  dark: "DARK",
-  osm: "OSM",
-  satellite: "SAT",
-  terrain: "TOPO",
-};
-
-const TILE_ORDER: MapTileSource[] = ["dark", "osm", "satellite", "terrain"];
 
 /** TileLayer that uses setUrl() on source change instead of unmounting/remounting.
  *  Preserves loaded tiles during transition for smoother switching. */
@@ -73,6 +45,11 @@ function ManagedTileLayer({ url, attribution, maxZoom }: { url: string; attribut
     try {
       layer.addTo(map);
       layerRef.current = layer;
+      layer.on("tileload", () => useTileHealthStore.getState().recordLoad());
+      layer.on("tileerror", (e) => {
+        const tile = (e as L.TileEvent).tile as HTMLImageElement | undefined;
+        useTileHealthStore.getState().recordError(tile?.src ?? null);
+      });
     } catch (err) {
       console.warn("[TileLayerSwitcher] skipped stale map layer attach", err);
       return;
@@ -90,8 +67,10 @@ function ManagedTileLayer({ url, attribution, maxZoom }: { url: string; attribut
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map]);
 
-  // Update URL without remounting
+  // Update URL without remounting. This effect — not the mount effect — is the
+  // one that sees a template change, so the health counters reset here.
   useEffect(() => {
+    useTileHealthStore.getState().observe(url);
     if (layerRef.current && layerRef.current.getTileUrl !== undefined) {
       layerRef.current.setUrl(url);
     }
@@ -115,11 +94,20 @@ export function TileLayerSwitcher({ showControls = true }: TileLayerSwitcherProp
   const [nfzState, setNfzState] = useState<NoFlyDataState>("no-region");
   const [showPicker, setShowPicker] = useState(false);
 
-  const config = TILE_CONFIGS[source] ?? TILE_CONFIGS.dark;
+  const customTileUrl = useSettingsStore((s) => s.customTileUrl);
+  const customTileMaxZoom = useSettingsStore((s) => s.customTileMaxZoom);
+  const customTileAttribution = useSettingsStore((s) => s.customTileAttribution);
+  const custom = useMemo(
+    () => ({ url: customTileUrl, maxZoom: customTileMaxZoom, attribution: customTileAttribution }),
+    [customTileUrl, customTileMaxZoom, customTileAttribution],
+  );
+  const config = resolveBasemap(source, custom);
 
   const handleSelect = useCallback((s: MapTileSource) => {
     setSource(s);
-    setShowPicker(false);
+    // Custom keeps the popover open: the editor below is where the operator
+    // types the URL, and closing on select would hide it immediately.
+    if (s !== "custom") setShowPicker(false);
   }, [setSource]);
 
   return (
@@ -129,6 +117,7 @@ export function TileLayerSwitcher({ showControls = true }: TileLayerSwitcherProp
           url={config.url}
           attribution={config.attribution}
           maxZoom={config.maxZoom}
+          crossOrigin={source !== "custom"}
         />
       ) : (
         <ManagedTileLayer
@@ -156,17 +145,29 @@ export function TileLayerSwitcher({ showControls = true }: TileLayerSwitcherProp
               className="bg-bg-primary/90 backdrop-blur-md border border-border-strong rounded px-2 py-1 text-[10px] font-mono text-text-secondary hover:text-text-primary transition-colors shadow-lg"
               title="Switch map tiles"
             >
-              {TILE_LABELS[source] ?? "MAP"}
+              {basemapLabel(source)}
             </button>
             {showPicker && (
-              <div className="mt-1 flex flex-col gap-1 bg-bg-primary/90 backdrop-blur-md border border-border-strong rounded p-1 shadow-lg">
+              <div className="mt-1 flex w-64 flex-col gap-1 bg-bg-primary/90 backdrop-blur-md border border-border-strong rounded p-1 shadow-lg">
                 {/* Shared segmented basemap switcher (matches the simulate view). */}
                 <BasemapSwitcher
                   stretch
                   value={source}
                   onChange={(v) => handleSelect(v as MapTileSource)}
-                  options={TILE_ORDER.map((s) => ({ value: s, label: TILE_LABELS[s] }))}
+                  options={BASEMAP_ORDER.map((s) => ({ value: s, label: basemapLabel(s) }))}
                 />
+                {/* Operator-supplied tile server. Editing it here keeps the
+                    whole flow on the map; /config/data mounts the same editor. */}
+                {source === "custom" && (
+                  <>
+                    <CustomTileSourceEditor className="px-1 pb-1" />
+                    {validateTileUrlTemplate(customTileUrl) !== null && (
+                      <span className="px-1 text-[9px] font-mono text-status-warning">
+                        Custom map URL not usable. Showing DARK until it is fixed.
+                      </span>
+                    )}
+                  </>
+                )}
                 {/* NFZ toggle */}
                 <button
                   onClick={() => setShowNfz(!showNfz)}
