@@ -5049,7 +5049,8 @@
         "loading": "Reading extension",
         "review": "Review extension",
         "installing": "Installing",
-        "error": "Install failed"
+        "error": "Install failed",
+        "done": "Install finished"
       },
       "loading": "Reading manifest...",
       "installingVia": "Installing on {drone} via {transport}...",
@@ -5057,6 +5058,13 @@
       "transport": {
         "lan": "LAN direct",
         "cloud": "cloud relay"
+      },
+      "done": {
+        "enabled": "Installed and enabled on {drone}.",
+        "installed": "Installed on {drone}, but not enabled yet. Enable it from the drone's Plugins tab.",
+        "queued": "Queued for {drone} through the cloud. The drone installs it when it next checks in, and it stays disabled until you enable it.",
+        "gcsOnly": "Added to Mission Control.",
+        "close": "Close"
       }
     }
   },
@@ -6894,7 +6902,9 @@
       "resourcesCount": "{count} resources",
       "promptsCount": "{count} prompts",
       "agentModeOnly": "agent-mode only",
-      "inputSchema": "Input schema"
+      "inputSchema": "Input schema",
+      "loading": "Reading the plugins installed on your nodes...",
+      "unavailable": "Plugin tool discovery is unavailable: none of your LAN-paired nodes answered. Connect to a node on this network to see its plugins."
     },
     "connect": {
       "cliLabel": "Add with the Claude Code CLI",

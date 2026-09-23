@@ -165,5 +165,6 @@ export async function installCloudRelay(
     pluginId: inputs.manifest.pluginId,
     pluginName: inputs.manifest.name,
     deviceId: inputs.deviceId,
+    enabledOnAgent: false,
   };
 }

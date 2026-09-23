@@ -44,7 +44,7 @@ import { usePluginContributions } from "@/hooks/use-plugin-contributions";
 import { useDronePluginContributions } from "@/hooks/use-drone-plugin-contributions";
 import { X, RotateCcw, Trash2, MonitorPlay, PlugZap } from "lucide-react";
 import { useFleetNodes } from "@/hooks/use-fleet-nodes";
-import { selectNode } from "@/lib/agent/node-click-handler";
+import { useNodeConnect } from "./use-node-connect";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { isFcReachable } from "@/lib/agent/mavlink-link";
 import { useNodeFeaturesStore } from "@/stores/node-features-store";
@@ -69,9 +69,6 @@ interface NodeDetailPanelProps {
   droneId: string;
   onClose: () => void;
 }
-
-/** Attempts a node's agent gets before the panel stops dialling and asks. */
-const CONNECT_RETRY_LIMIT = 3;
 
 /**
  * Commits the one side effect of the Agent deep-link redirect. It is a
@@ -278,119 +275,10 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
   const showLockedTabs = !showAgentTabs;
 
   // Focus the selected drone's agent so the (singleton) agent stores reflect
-  // it. Selection is the single driver of the agent connection: switching
-  // drones tears down the prior agent and connects the new one; deselecting
-  // (panel unmount) releases it. Demo keeps its single mock agent untouched.
-  //
-  // The key is the reachable identity (`focusDeviceId`, resolved above), not
-  // `agentDeviceId` alone: a relayed drone has no `agentDeviceId`, so keying on
-  // it would fire the disconnect branch on every render and tear the relay
-  // session down as fast as `selectNode` opened it.
-  const lastAgentDeviceId = useRef<string | null>(null);
-  // A relay connect crosses a lossy radio, so a single failure is expected
-  // rather than terminal. `lastAgentDeviceId` is what makes the effect
-  // idempotent, so a failed connect must clear it or the panel stays frozen on
-  // a node it never reached; `connectRetryTick` then re-runs the effect.
-  const connectRetriesRef = useRef(0);
-  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [connectRetryTick, setConnectRetryTick] = useState(0);
-  // The budget is spent and the node is unreachable. Surfaced as a header chip
-  // with a manual retry: without it the effect's idempotence guard stays
-  // pinned to a device it never reached and the panel never dials again for
-  // the rest of the session, with nothing on screen saying so.
-  const [connectExhausted, setConnectExhausted] = useState(false);
-  useEffect(() => {
-    if (isDemoMode()) return;
-    if (!focusDeviceId) {
-      if (lastAgentDeviceId.current) {
-        useAgentConnectionStore.getState().disconnect();
-        lastAgentDeviceId.current = null;
-      }
-      connectRetriesRef.current = 0;
-      return;
-    }
-    if (lastAgentDeviceId.current === focusDeviceId) return;
-    const entry = fleetNodes.find((n) => n.deviceId === focusDeviceId);
-    if (!entry) return;
-    // A different node than the one the budget was spent on: it gets its own
-    // three attempts. Inheriting an exhausted counter meant the second of two
-    // flaky nodes never connected at all, which reads as "that node is dead".
-    if (lastAgentDeviceId.current !== null) {
-      connectRetriesRef.current = 0;
-      if (retryTimerRef.current) {
-        clearTimeout(retryTimerRef.current);
-        retryTimerRef.current = null;
-      }
-    }
-    // The device this run is dialling. Every post-await mutation is guarded on
-    // it: node A's `selectNode` can resolve after node B's effect has already
-    // claimed the refs, and an unguarded stale closure either clears B's guard
-    // (redialling a healthy connection) or reads B's live client as proof that
-    // A succeeded.
-    const forDevice = focusDeviceId;
-    lastAgentDeviceId.current = forDevice;
-    void (async () => {
-      await selectNode(entry, { onFocusAgent: () => {} });
-      // The generation guard, and the only one needed: this effect re-runs on
-      // every `fleetNodes` identity change, so an AbortController-style
-      // cancelled flag here would abort a healthy in-flight connect's own
-      // bookkeeping. A mismatch means a later run claimed the refs.
-      if (lastAgentDeviceId.current !== forDevice) return;
-      if (useAgentConnectionStore.getState().client !== null) {
-        connectRetriesRef.current = 0;
-        setConnectExhausted(false);
-        return;
-      }
-      // The connect failed. Clear the guard FIRST so the effect stays
-      // re-armable whatever happens next — leaving it pinned at the cap is
-      // what wedged the panel on an unreachable node.
-      lastAgentDeviceId.current = null;
-      if (connectRetriesRef.current >= CONNECT_RETRY_LIMIT) {
-        setConnectExhausted(true);
-        return;
-      }
-      connectRetriesRef.current += 1;
-      clearTimeout(retryTimerRef.current ?? undefined);
-      retryTimerRef.current = setTimeout(
-        () => setConnectRetryTick((n) => n + 1),
-        2000 * connectRetriesRef.current,
-      );
-    })();
-  }, [focusDeviceId, fleetNodes, connectRetryTick]);
-  // A retry armed for node A must not fire against node B: it would bump the
-  // tick and re-enter the connect effect on a torn-down path.
-  useEffect(
-    () => () => {
-      if (retryTimerRef.current) {
-        clearTimeout(retryTimerRef.current);
-        retryTimerRef.current = null;
-      }
-    },
-    [focusDeviceId],
-  );
-  // A fresh node starts with a clean verdict.
-  useEffect(() => {
-    setConnectExhausted(false);
-  }, [focusDeviceId]);
-  useEffect(
-    () => () => {
-      if (retryTimerRef.current) {
-        clearTimeout(retryTimerRef.current);
-        retryTimerRef.current = null;
-      }
-      if (!isDemoMode()) {
-        useAgentConnectionStore.getState().disconnect();
-        lastAgentDeviceId.current = null;
-      }
-    },
-    [],
-  );
-  const retryConnectNow = () => {
-    connectRetriesRef.current = 0;
-    lastAgentDeviceId.current = null;
-    setConnectExhausted(false);
-    setConnectRetryTick((n) => n + 1);
-  };
+  // it. The key is the reachable identity (`focusDeviceId`, resolved above),
+  // not `agentDeviceId` alone: a relayed drone has no `agentDeviceId`.
+  const focusEntry = fleetNodes.find((n) => n.deviceId === focusDeviceId) ?? null;
+  const { connectFailing, retryNow } = useNodeConnect(focusDeviceId, focusEntry);
 
   const metadata = useDroneMetadataStore((s) => s.profiles[droneId]);
   const managedDrones = useDroneManager((s) => s.drones);
@@ -632,16 +520,15 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
             {drone.profile === "drone" && (
               <DroneStatusBadge status={drone.status} />
             )}
-            {connectExhausted && (
-              // Visible from every tab: the panel stopped dialling this
-              // node's agent and will not resume on its own. Silence here is
-              // what made an unreachable node read as a dead one.
+            {connectFailing && (
+              // Visible from every tab: the last connect did not reach this
+              // node's agent. It is retried on its own; the button retries now.
               <span className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded border border-status-error/40 bg-status-error/10 px-1.5 py-0.5 text-[10px] font-medium text-status-error">
                 <PlugZap size={11} aria-hidden="true" />
                 {tRoot("nodeConsole.hero.offline")}
                 <button
                   type="button"
-                  onClick={retryConnectNow}
+                  onClick={retryNow}
                   className="underline underline-offset-2 hover:text-status-error/80 cursor-pointer"
                 >
                   {t("retryConnect")}

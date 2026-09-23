@@ -2,26 +2,28 @@
  * @module LanDirectTransport
  * @description Local-first install path. Posts the archive multipart to
  * the paired agent's `POST /api/plugins/install` endpoint over the LAN
- * with the `X-ADOS-Key` pairing key. Returns a job id the progress
- * toast can subscribe to over `ws://<agent>/api/plugins/jobs/<jobId>`.
+ * with the `X-ADOS-Key` pairing key. The job id and the operator-approved
+ * permissions ride the query string, which is where the agent reads them.
+ * The agent streams progress for the job over
+ * `ws://<agent>/api/plugins/jobs/<jobId>` while the request is open.
  *
- * Failover triggers (callers decide whether to fall through to
- * cloud-relay):
+ * The route answers only once the install is over, so the request waits past
+ * the agent's own bounds. When it succeeds the plugin is enabled on the agent
+ * and the grants the agent reports are compared with the ones requested.
+ *
+ * Failover (callers decide whether to fall through to cloud-relay):
  *   - `TypeError` from `fetch` (network unreachable, mixed-content,
  *     DNS failure)
- *   - `AbortError` when the 60s total ceiling fires
- *   - HTTP 5xx after the 10s connect window
- *
- * The dialog wraps the call in a try/catch and asks `shouldFailover()`
- * before kicking the cloud path, so the failover policy stays here in
- * one place.
+ *   - HTTP 5xx
+ * A timeout never fails over: the install may still be running on the
+ * drone, so its outcome is unknown rather than failed.
  *
  * @license GPL-3.0-only
  */
 
+import { PluginAgentClient } from "@/lib/agent/plugin-client";
 import {
-  LAN_CONNECT_TIMEOUT_MS,
-  LAN_TOTAL_TIMEOUT_MS,
+  LAN_FILE_INSTALL_TIMEOUT_MS,
   type InstallKickoffResult,
   type TransportContext,
 } from "./types";
@@ -71,59 +73,60 @@ export async function installLanDirect(
 
   const form = new FormData();
   form.append("file", inputs.file);
-  form.append(
-    "requested_permissions",
-    JSON.stringify([...inputs.grantedPermissions]),
-  );
-  form.append("job_id", inputs.jobId);
+  const query = new URLSearchParams({ job_id: inputs.jobId });
+  if (inputs.grantedPermissions.length > 0) {
+    // The agent splits this on commas.
+    query.set("requested_permissions", inputs.grantedPermissions.join(","));
+  }
 
-  const controller = new AbortController();
-  const totalTimer = setTimeout(
-    () => controller.abort(new DOMException("total-timeout", "AbortError")),
-    LAN_TOTAL_TIMEOUT_MS,
-  );
-  const connectTimer = setTimeout(
-    () => controller.abort(new DOMException("connect-timeout", "AbortError")),
-    LAN_CONNECT_TIMEOUT_MS,
-  );
-
-  let response: Response;
-  try {
-    response = await fetch(`${inputs.agentUrl}/api/plugins/install`, {
+  const response = await sendLanInstall(
+    `${inputs.agentUrl}/api/plugins/install?${query.toString()}`,
+    {
       method: "POST",
       headers: { "X-ADOS-Key": inputs.pairingKey },
       body: form,
-      signal: controller.signal,
-    });
-    // First byte received. Cancel the connect timer; total still active.
-    clearTimeout(connectTimer);
+    },
+    LAN_FILE_INSTALL_TIMEOUT_MS,
+  );
+  return finishLanInstall(response, {
+    agentUrl: inputs.agentUrl,
+    pairingKey: inputs.pairingKey,
+    jobId: inputs.jobId,
+    pluginId: inputs.manifest.pluginId,
+    pluginName: inputs.manifest.name,
+    deviceId: inputs.deviceId,
+    requested: inputs.grantedPermissions,
+  });
+}
+
+/** POST one install request and map wire failures to `LanDirectError`. A
+ * non-2xx answer is thrown with the agent's own message. */
+export async function sendLanInstall(
+  url: string,
+  init: RequestInit,
+  timeoutMs: number,
+): Promise<Response> {
+  let response: Response;
+  try {
+    response = await fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
   } catch (err) {
-    clearTimeout(connectTimer);
-    clearTimeout(totalTimer);
-    if (err instanceof DOMException && err.name === "AbortError") {
+    if (err instanceof DOMException && (err.name === "TimeoutError" || err.name === "AbortError")) {
       throw new LanDirectError(
         "timeout",
-        "LAN upload timed out.",
+        `The drone did not answer within ${Math.round(timeoutMs / 60_000)} minutes. The install may still be running on it; check the drone's plugin list before retrying.`,
       );
     }
     // `TypeError: Failed to fetch` is the browser's catch-all for
     // network unreachable, DNS failure, mixed-content block, and
     // connection refused. All of these are cloud-eligible.
     if (err instanceof TypeError) {
-      throw new LanDirectError(
-        "network",
-        `LAN upload failed: ${err.message}`,
-      );
+      throw new LanDirectError("network", `LAN install failed: ${err.message}`);
     }
     throw new LanDirectError(
       "network",
       err instanceof Error ? err.message : String(err),
     );
-  } finally {
-    clearTimeout(connectTimer);
   }
-  clearTimeout(totalTimer);
-
   if (!response.ok) {
     const text = await response.text().catch(() => "");
     const cause: LanDirectFailureCause =
@@ -134,24 +137,66 @@ export async function installLanDirect(
       response.status,
     );
   }
+  return response;
+}
 
-  // The agent's success envelope is the existing install response.
-  // We don't read the body for anything other than confirmation; the
-  // progress toast subscribes over WebSocket with the job id we minted.
+/** Read the agent's install answer, enable the plugin, and report what the
+ * operator needs to know. The install itself already succeeded, so nothing
+ * here throws: a grant shortfall or a failed enable becomes a notice. */
+export async function finishLanInstall(
+  response: Response,
+  ctx: {
+    agentUrl: string;
+    pairingKey: string;
+    jobId: string;
+    pluginId: string;
+    pluginName: string;
+    deviceId: string;
+    requested: ReadonlyArray<string>;
+  },
+): Promise<InstallKickoffResult> {
+  const body = (await response.json().catch(() => null)) as {
+    plugin_id?: unknown;
+    granted?: unknown;
+  } | null;
+  const pluginId = typeof body?.plugin_id === "string" ? body.plugin_id : ctx.pluginId;
+  const granted = Array.isArray(body?.granted)
+    ? body.granted.filter((g): g is string => typeof g === "string")
+    : [];
+  const notices: string[] = [];
+  const notGranted = ctx.requested.filter((p) => !granted.includes(p));
+  if (notGranted.length > 0) {
+    notices.push(`The drone did not grant: ${notGranted.join(", ")}.`);
+  }
+
+  let enabledOnAgent = false;
+  try {
+    await new PluginAgentClient(ctx.agentUrl, ctx.pairingKey).enable(pluginId);
+    enabledOnAgent = true;
+  } catch (err) {
+    notices.push(
+      `Installed, but the drone did not enable it (${err instanceof Error ? err.message : String(err)}). Enable it from the drone's Plugins tab.`,
+    );
+  }
+
   return {
     transport: "lan",
-    jobId: inputs.jobId,
-    pluginId: inputs.manifest.pluginId,
-    pluginName: inputs.manifest.name,
-    deviceId: inputs.deviceId,
+    jobId: ctx.jobId,
+    pluginId,
+    pluginName: ctx.pluginName,
+    deviceId: ctx.deviceId,
+    enabledOnAgent,
+    ...(notices.length > 0 ? { notice: notices.join(" ") } : {}),
   };
 }
 
-/** Policy: which `LanDirectError` causes should fall over to cloud? All
- * except hard 4xx (which usually means a bad archive or rejected
- * permission set — cloud won't fix that). */
+/** Policy: which `LanDirectError` causes should fall over to cloud? A
+ * network failure or a 5xx. Not a hard 4xx (a bad archive or a rejected
+ * permission set; cloud won't fix that), and never a timeout: the install
+ * may still be running on the drone, and a second install through the
+ * cloud would race it. */
 export function shouldFailover(err: LanDirectError): boolean {
-  return err.cause !== "server-4xx" && err.cause !== "auth-missing";
+  return err.cause === "network" || err.cause === "server-5xx";
 }
 
 /**

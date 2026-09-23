@@ -3,7 +3,11 @@
  *
  * `telemetry.subscribe` wires the protocol callback for a known topic on
  * the target drone and forwards every frame to the iframe as a host event
- * on `telemetry.<topic>`. `telemetry.unsubscribe` tears down one topic; the
+ * on `telemetry.<topic>`. Any other topic on a drone-bound plugin is one of
+ * the plugin's own agent-extended channels (`telemetry.extend` on the agent
+ * half): the agent writes it to the plugin's state as `telemetry.<channel>`,
+ * the state egress republishes it under the plugin's agent-state origin, and
+ * the subscription forwards exactly that plugin's channel on that drone. `telemetry.unsubscribe` tears down one topic; the
  * builder's `dispose()` tears down all of them. The bridge has already
  * gated the per-topic `telemetry.subscribe.<topic>` capability before the
  * handler runs, so these never re-check capabilities.
@@ -16,6 +20,7 @@ import type { DroneProtocol } from "@/lib/protocol/types";
 import type { BatteryData } from "@/lib/types";
 import { useDroneManager } from "@/stores/drone-manager";
 import type { BridgeHandler, BridgeHandlerContext } from "@/lib/plugins/bridge";
+import { agentStateOrigin, subscribePluginEvent } from "@/lib/plugins/event-bus";
 import type { PluginTarget } from "./target";
 
 /**
@@ -66,8 +71,8 @@ type TopicSubscriber = (
  * feeds it. This table is the contract the SDK's `TELEMETRY_TOPICS` lists.
  * Both the dotted `mavlink.*` form and the plain channel name are accepted.
  * `battery` carries the normalized {@link PluginBatterySample};
- * `mavlink.battery` carries the adapter's raw frame. Unknown topics are
- * rejected by the handler.
+ * `mavlink.battery` carries the adapter's raw frame. Any other topic is an
+ * agent-extended channel of the plugin itself (see the module header).
  */
 const TOPIC_SUBSCRIBERS: Record<string, TopicSubscriber> = {
   "mavlink.attitude": (p, emit) => p.onAttitude(emit),
@@ -123,7 +128,10 @@ function readTopic(args: unknown): string {
  * plugin, plus a `dispose()` that drops every subscription. Subscriptions are
  * tracked per topic so a re-subscribe replaces the prior one (idempotent).
  */
-export function buildTelemetryHandlers(target: PluginTarget | null): {
+export function buildTelemetryHandlers(
+  pluginId: string,
+  target: PluginTarget | null,
+): {
   handlers: Record<string, BridgeHandler>;
   dispose: () => void;
 } {
@@ -132,7 +140,23 @@ export function buildTelemetryHandlers(target: PluginTarget | null): {
   const subscribe: BridgeHandler = (args, ctx: BridgeHandlerContext) => {
     const topic = readTopic(args);
     const sub = TOPIC_SUBSCRIBERS[topic];
-    if (!sub) throw new Error(`unknown telemetry topic: ${topic}`);
+    const capability = ctx.capability ?? "";
+
+    if (!sub) {
+      // The plugin's own agent-extended channel. Only a drone-bound plugin has
+      // an agent half on a drone to extend telemetry from.
+      if (!target) throw new Error(`unknown telemetry topic: ${topic}`);
+      subs.get(topic)?.();
+      const origin = agentStateOrigin(pluginId, target.deviceId);
+      const method = `telemetry.${topic}`;
+      subs.set(
+        topic,
+        subscribePluginEvent(method, pluginId, (payload, _t, from) => {
+          if (from === origin) ctx.postEvent(method, capability, payload);
+        }),
+      );
+      return { ok: true };
+    }
 
     const protocol = resolveProtocol(target);
     if (!protocol) {
@@ -142,7 +166,6 @@ export function buildTelemetryHandlers(target: PluginTarget | null): {
     // Replace any prior subscription to the same topic.
     subs.get(topic)?.();
 
-    const capability = ctx.capability ?? "";
     const unsub = sub(protocol, (data) =>
       ctx.postEvent(`telemetry.${topic}`, capability, data),
     );

@@ -18,6 +18,8 @@ import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { usePairingStore } from "@/stores/pairing-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useFleetNodes } from "@/hooks/use-fleet-nodes";
+import { useFleetSync } from "@/hooks/use-fleet-sync";
+import { useConvexAvailable } from "@/app/ConvexClientProvider";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import { communityApi } from "@/lib/community-api";
 import { isDemoMode } from "@/lib/utils";
@@ -41,6 +43,11 @@ const MqttBridge = dynamic(
 );
 
 export function AgentBridges() {
+  // The cloud fleet mirror: every surface that reads the pairing store (fleet
+  // nodes, the status and MQTT bridges below, pairing, config access) reads
+  // what this writes.
+  useFleetSync();
+  const convexAvailable = useConvexAvailable();
   const cloudMode = useAgentConnectionStore((s) => s.cloudMode);
   const pairedDrones = usePairingStore((s) => s.pairedDrones);
   const demoMode = useSettingsStore((s) => s.demoMode);
@@ -67,8 +74,10 @@ export function AgentBridges() {
         pairedDrones={pairedDrones}
         mqttBrokerUrl={clientConfig?.mqttBrokerUrl}
       />
-      {cloudMode && <CloudStatusBridge />}
-      {cloudMode && <CloudCommandResultBridge />}
+      {/* The cloud bridges read the signed-in Convex session, which exists
+          only when the cloud backend is configured. */}
+      {cloudMode && convexAvailable && <CloudStatusBridge />}
+      {cloudMode && convexAvailable && <CloudCommandResultBridge />}
       {cloudMode && (
         <MqttBridge mqttBrokerUrl={clientConfig?.mqttBrokerUrl} />
       )}

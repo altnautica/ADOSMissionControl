@@ -28,6 +28,28 @@ import {
   resolveRelayReach,
 } from "@/lib/nodes/relay-reach";
 
+/**
+ * What selecting a node achieved.
+ *  - `connected`: the node's agent answered.
+ *  - `cloud`: the cloud relay subscription is open; whether the node is live is
+ *    the cloud status bridge's call, not the connect's.
+ *  - `failed`: a connect was attempted and did not reach the agent; worth
+ *    retrying.
+ *  - `blocked`: nothing can reach the agent from here until something changes
+ *    (missing LAN credentials, an unpaired relaying ground station, an HTTPS
+ *    page, a box that is no longer our agent). The reason is in
+ *    `connectionError` / `stalePairing`.
+ */
+export type NodeConnectOutcome = "connected" | "cloud" | "failed" | "blocked";
+
+/** Judge a LAN or relay connect that has settled. */
+function settledOutcome(): NodeConnectOutcome {
+  const s = useAgentConnectionStore.getState();
+  if (s.connected) return "connected";
+  if (s.stalePairing) return "blocked";
+  return "failed";
+}
+
 interface SelectNodeOpts {
   /** Switch the page into single-agent view. */
   onFocusAgent: () => void;
@@ -44,10 +66,10 @@ interface SelectNodeOpts {
  * connects via the cloud relay on HTTPS or the direct LAN REST path on
  * HTTP. This is the one place local-node connection logic lives.
  */
-export function connectLocalNode(
+export async function connectLocalNode(
   deviceId: string,
   opts: SelectNodeOpts,
-): void {
+): Promise<NodeConnectOutcome> {
   const conn = useAgentConnectionStore.getState();
   // The canonical selection id is `node:<deviceId>` (see node-id + the registry
   // projection) — the same id a cloud observation of this node would carry.
@@ -64,7 +86,7 @@ export function connectLocalNode(
     // an https origin. The cloud relay is the only reachable path (and only
     // when the agent beacons there).
     conn.connectCloud(deviceId);
-    return;
+    return "cloud";
   }
 
   const local = useLocalNodesStore
@@ -78,21 +100,21 @@ export function connectLocalNode(
         "Missing LAN credentials for this node. Re-pair it from the Add-a-Node card.",
     });
     opts.onError?.("missing_lan_credentials");
-    return;
+    return "blocked";
   }
   // Pass the deviceId so nodeDeviceId is set synchronously: the FC's MAVLink
   // session then reconciles to this node's local-<deviceId> card instead of
   // racing to a standalone agent-<timestamp> row.
-  void conn.connect(local.hostname, local.apiKey, deviceId);
+  await conn.connect(local.hostname, local.apiKey, deviceId);
+  return settledOutcome();
 }
 
 export async function selectNode(
   node: FleetNodeEntry,
   opts: SelectNodeOpts,
-): Promise<void> {
+): Promise<NodeConnectOutcome> {
   if (node.isLocal) {
-    connectLocalNode(node.deviceId, opts);
-    return;
+    return connectLocalNode(node.deviceId, opts);
   }
   const conn = useAgentConnectionStore.getState();
   usePairingStore.getState().selectPairedDrone(node._id);
@@ -133,7 +155,7 @@ export async function selectNode(
           "This page is served over HTTPS, which blocks a plain-HTTP request to the ground station relaying this node. Open Mission Control over HTTP on the LAN to reach this drone's agent.",
       });
       opts.onError?.("relay_blocked_by_https");
-      return;
+      return "blocked";
     }
     if (reach) {
       await conn.connect(
@@ -142,21 +164,23 @@ export async function selectNode(
         node.deviceId,
         { relay: true },
       );
-      return;
+      return settledOutcome();
     }
     const message =
       "This node is reached through another node's radio relay, and that ground station is not paired on this browser. Pair the ground station from the Add-a-Node card to reach this drone's agent.";
     useAgentConnectionStore.setState({ connectionError: message });
     opts.onError?.("relay_only");
-    return;
+    return "blocked";
   }
 
   // Cloud-paired entry → relay.
   try {
     conn.connectCloud(node.deviceId);
+    return "cloud";
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     useAgentConnectionStore.setState({ connectionError: msg });
     opts.onError?.(msg);
+    return "failed";
   }
 }

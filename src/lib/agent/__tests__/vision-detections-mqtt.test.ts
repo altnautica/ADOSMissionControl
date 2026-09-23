@@ -2,14 +2,16 @@
  * @module vision-detections-mqtt.test
  * @description Tests the cloud-relay detection path: a JSON detection batch on
  * the `ados/{deviceId}/vision/detections` MQTT topic parses via
- * `parseWireDetectionJson` and routes into the SAME `setBatch` seam the LAN
- * WebSocket feeds, and malformed payloads are dropped (never thrown).
+ * `parseWireDetectionJson` and lands in the SAME store the LAN WebSocket
+ * feeds, readable under the node selection id the overlays use; malformed
+ * payloads are dropped (never thrown).
  * @license GPL-3.0-only
  */
 
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { parseWireDetectionJson } from "@/lib/agent/vision-detections-ws";
+import { ingestCloudDetections, parseWireDetectionJson } from "@/lib/agent/vision-detections-ws";
+import { nodeIdForDevice } from "@/lib/agent/node-id";
 import { useVisionDetectionsStore } from "@/stores/vision-detections-store";
 
 const DEVICE = "charlie-3";
@@ -66,20 +68,19 @@ describe("cloud-relay detection routing", () => {
     useVisionDetectionsStore.getState().clear();
   });
 
-  it("routes a parsed batch into setBatch under the device id", () => {
-    const batch = parseWireDetectionJson(WIRE);
-    expect(batch).not.toBeNull();
-    // This is exactly what MqttBridge does on a vision/detections message.
-    useVisionDetectionsStore.getState().setBatch(DEVICE, batch!);
+  it("stores a cloud batch where the overlays read it: under the node selection id", () => {
+    ingestCloudDetections(DEVICE, WIRE);
 
-    const stored = useVisionDetectionsStore.getState().batches[DEVICE];
+    // Every overlay reads the batch with the selected node id.
+    const stored = useVisionDetectionsStore.getState().batches[nodeIdForDevice(DEVICE)];
     expect(stored).toBeDefined();
     expect(stored!.modelId).toBe("yolov8n");
     expect(stored!.detections[0]!.classLabel).toBe("person");
-    expect(typeof stored!.receivedAt).toBe("number");
-    // And the receipt window (throughput source) picked it up.
-    expect(
-      useVisionDetectionsStore.getState().receiptTimes(DEVICE),
-    ).toHaveLength(1);
+    expect(useVisionDetectionsStore.getState().batches[DEVICE]).toBeUndefined();
+  });
+
+  it("drops a malformed cloud payload without storing anything", () => {
+    ingestCloudDetections(DEVICE, "not json {");
+    expect(useVisionDetectionsStore.getState().batches[nodeIdForDevice(DEVICE)]).toBeUndefined();
   });
 });

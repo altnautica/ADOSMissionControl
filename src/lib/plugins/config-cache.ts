@@ -6,8 +6,10 @@
  * the merged map to the iframe as a `config.changed` event, so a setting
  * changed anywhere round-trips to the plugin's own UI.
  *
- * Only accepted writes are recorded: a key the GCS never wrote is absent, and
- * the plugin keeps its own default for it.
+ * The map is seeded from the agent's own read-back when a plugin's iframe
+ * mounts, so settings written in an earlier session reach the plugin too.
+ * Only values the agent holds or accepted appear: a key absent from both keeps
+ * the plugin's own default.
  *
  * @module plugins/config-cache
  * @license GPL-3.0-only
@@ -25,6 +27,9 @@ export function pluginConfigKey(droneId: string, pluginId: string): string {
 interface PluginConfigCacheState {
   values: Record<string, Record<string, unknown>>;
   record: (droneId: string, pluginId: string, key: string, value: unknown) => void;
+  /** Replace the map with the agent's read-back, which already holds every
+   * write it accepted. */
+  seed: (droneId: string, pluginId: string, values: Record<string, unknown>) => void;
 }
 
 export const usePluginConfigCache = create<PluginConfigCacheState>()((set) => ({
@@ -34,4 +39,6 @@ export const usePluginConfigCache = create<PluginConfigCacheState>()((set) => ({
       const k = pluginConfigKey(droneId, pluginId);
       return { values: { ...s.values, [k]: { ...s.values[k], [key]: value } } };
     }),
+  seed: (droneId, pluginId, values) =>
+    set((s) => ({ values: { ...s.values, [pluginConfigKey(droneId, pluginId)]: values } })),
 }));

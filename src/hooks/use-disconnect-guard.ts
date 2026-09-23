@@ -21,17 +21,19 @@ export function useDisconnectGuard() {
     }
   }, []);
 
-  const commitAndDisconnect = useCallback(() => {
+  const commitAndDisconnect = useCallback(async () => {
     if (!pendingDroneId) return;
-    const drone = useDroneManager.getState().drones.get(pendingDroneId);
-    if (drone) {
-      // Fire-and-forget flash commit
-      drone.protocol.commitParamsToFlash().catch(() => {});
-    }
-    useParamSafetyStore.getState().commitFlash(true);
-    useDroneManager.getState().disconnectDrone(pendingDroneId);
+    const droneId = pendingDroneId;
     setPendingDroneId(null);
     setGuardOpen(false);
+    const drone = useDroneManager.getState().drones.get(droneId);
+    if (drone) {
+      // The commit rides the link, so the link stays up until the flight
+      // controller has answered it (or refused).
+      await drone.protocol.commitParamsToFlash().catch(() => {});
+    }
+    useParamSafetyStore.getState().commitFlash(true);
+    useDroneManager.getState().disconnectDrone(droneId);
   }, [pendingDroneId]);
 
   const discardAndDisconnect = useCallback(() => {

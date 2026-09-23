@@ -35,6 +35,7 @@ import { useSigningActions } from "@/components/fc/security/signing/use-signing-
 import { ExportKeyModal } from "@/components/fc/security/ExportKeyModal";
 import { getRecord, getSigner, importAndStore } from "@/lib/protocol/signing-keystore";
 import { AgentHttpError } from "@/lib/agent/agent-client/transport";
+import { enrollSigningKey } from "@/lib/agent/agent-client/extras";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useSigningStore } from "@/stores/signing-store";
 import type { AgentClient } from "@/lib/agent/client";
@@ -42,7 +43,7 @@ import type { AgentClient } from "@/lib/agent/client";
 const DRONE = "drone-1";
 const initialConnection = useAgentConnectionStore.getState();
 
-function stubClient(enroll: () => Promise<unknown>) {
+function stubClient(enroll: (...args: unknown[]) => Promise<unknown>) {
   const client = {
     getSigningCapability: vi.fn(async () => ({
       supported: true,
@@ -102,6 +103,27 @@ describe("enrollment that may have reached the FC", () => {
     expect(settled?.enrollmentState).toBe("enrolled");
   });
 
+  it("keeps the key when the agent reports the repeat frame failed after the first went out", async () => {
+    const oldKeyId = await seedKey();
+    // The agent's real answer to a failed second SETUP_SIGNING send.
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(
+      JSON.stringify({ detail: "enrollment may have partially applied", partially_applied: true, key_id: "abcd1234" }),
+      { status: 500 },
+    )));
+    const ctx = { baseUrl: "http://192.168.1.50:8080", apiKey: "k" };
+    stubClient((...args: unknown[]) => enrollSigningKey(ctx, args[0] as string, args[1] as number));
+    const { result } = renderHook(() => useSigningActions(DRONE));
+
+    await act(async () => {
+      await result.current.handleEnable();
+    });
+
+    const rec = await getRecord(DRONE);
+    expect(rec?.enrollmentState).toBe("unconfirmed");
+    expect(rec?.previous?.keyId).toBe(oldKeyId);
+    expect(result.current.error).toMatch(/first key frame reached the flight controller/);
+  });
+
   it("discards the new key when the agent answered without sending", async () => {
     const oldKeyId = await seedKey();
     stubClient(async () => {
@@ -142,7 +164,7 @@ describe("disable", () => {
 describe("export", () => {
   it("keeps the enrolled key and offers the copy again when the clipboard refuses", async () => {
     const client = stubClient(async () => ({ success: true, key_id: "abcd1234", enrolled_at: "2026-01-01T00:00:00Z" }));
-    const writeText = vi.fn(async () => {
+    const writeText = vi.fn<(text: string) => Promise<void>>(async () => {
       throw new DOMException("Document is not focused", "NotAllowedError");
     });
     Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });

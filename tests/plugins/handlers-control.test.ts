@@ -71,6 +71,8 @@ vi.mock("@/lib/plugins/notifier", () => ({ pluginNotify: vi.fn() }));
 import { buildPluginHandlers } from "@/lib/plugins/handlers";
 import { HARD_BLOCKED_COMMAND_IDS } from "@/lib/plugins/handlers/control";
 import {
+  PLUGIN_CONFIRM_TIMEOUT_MS,
+  requestPluginConfirm,
   setPluginConfirmHandler,
   type PluginConfirmRequest,
 } from "@/lib/plugins/confirm";
@@ -274,6 +276,32 @@ describe("command.send gates", () => {
     const { ctx } = makeCtx({ capability: "command.send" });
     const out = await handlers["command.send"]({ command: "rtl" }, ctx);
     expect(out).toEqual({ ok: false, error: "command.send not supported" });
+  });
+
+  it("does not send when the vehicle armed while the operator was deciding", async () => {
+    const { sendCommand } = withProtocol();
+    confirmSpy.mockImplementation(async () => {
+      armState = "armed";
+      return true;
+    });
+    const { handlers } = buildPluginHandlers("p", "node:d1", DEPS);
+    const { ctx } = makeCtx({ capability: "command.send" });
+    const out = await handlers["command.send"]({ command: "rtl" }, ctx);
+    expect(out).toMatchObject({ ok: false });
+    expect(String((out as { error?: unknown }).error)).toMatch(/changed while awaiting approval/);
+    expect(sendCommand).not.toHaveBeenCalled();
+  });
+
+  it("denies a confirmation nobody answers within the window", async () => {
+    vi.useFakeTimers();
+    try {
+      setPluginConfirmHandler(() => new Promise<boolean>(() => {}));
+      const pending = requestPluginConfirm({ pluginId: "p", targetName: "Drone 1", title: "t", body: "b" });
+      await vi.advanceTimersByTimeAsync(PLUGIN_CONFIRM_TIMEOUT_MS);
+      await expect(pending).resolves.toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("rate-limits confirmed command sends", async () => {

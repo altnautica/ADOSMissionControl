@@ -169,19 +169,34 @@ describe("installLanDirect", () => {
     });
   });
 
-  it("posts multipart with the pairing key header and returns the job id", async () => {
-    let capturedUrl: string | undefined;
-    let capturedHeaders: Headers | undefined;
-    let capturedMethod: string | undefined;
-    globalThis.fetch = (async (
-      input: RequestInfo | URL,
-      init?: RequestInit,
-    ) => {
-      capturedUrl = String(input);
-      capturedHeaders = new Headers(init?.headers);
-      capturedMethod = init?.method;
-      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+  // The agent's multipart route (plugins.py install_plugin) reads job_id and
+  // a comma-separated requested_permissions from the query string, answers
+  // {ok, plugin_id, granted, ...} once the install is over, and leaves the
+  // plugin "installed" until POST /api/plugins/{id}/enable.
+  function agentStub(opts: { granted: string[]; enableStatus?: number }) {
+    const calls: { url: string; init?: RequestInit }[] = [];
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      calls.push({ url, init });
+      if (url.includes("/api/plugins/install")) {
+        return new Response(
+          JSON.stringify({ ok: true, plugin_id: "com.example.hello", granted: opts.granted, job_id: "job-xyz" }),
+          { status: 200 },
+        );
+      }
+      return new Response(JSON.stringify({ ok: true }), { status: opts.enableStatus ?? 200 });
     }) as typeof fetch;
+    return calls;
+  }
+
+  it("sends the job id and permissions where the agent reads them, then enables the plugin", async () => {
+    const calls = agentStub({ granted: ["telemetry.subscribe"] });
+    const deadlines: number[] = [];
+    const realTimeout = AbortSignal.timeout.bind(AbortSignal);
+    const spy = vi.spyOn(AbortSignal, "timeout").mockImplementation((ms: number) => {
+      deadlines.push(ms);
+      return realTimeout(ms);
+    });
 
     const result = await installLanDirect({
       ...ctx(),
@@ -190,11 +205,51 @@ describe("installLanDirect", () => {
       jobId: "job-xyz",
     });
 
-    expect(capturedUrl).toBe("http://drone.local:8080/api/plugins/install");
-    expect(capturedMethod).toBe("POST");
-    expect(capturedHeaders?.get("X-ADOS-Key")).toBe("k1");
-    expect(result.transport).toBe("lan");
-    expect(result.jobId).toBe("job-xyz");
+    const install = new URL(calls[0]!.url);
+    expect(install.pathname).toBe("/api/plugins/install");
+    expect(install.searchParams.get("job_id")).toBe("job-xyz");
+    expect(install.searchParams.get("requested_permissions")).toBe("telemetry.subscribe");
+    expect(new Headers(calls[0]!.init?.headers).get("X-ADOS-Key")).toBe("k1");
+    expect(calls[1]!.url).toBe("http://drone.local:8080/api/plugins/com.example.hello/enable");
+    expect(calls[1]!.init?.method).toBe("POST");
+    expect(result).toMatchObject({ transport: "lan", jobId: "job-xyz", enabledOnAgent: true });
+    expect(result.notice).toBeUndefined();
+    // The route answers only after the agent's 300 s wheel install.
+    expect(deadlines[0]).toBeGreaterThan(300_000);
+    spy.mockRestore();
+  });
+
+  it("reports permissions the drone did not grant and an enable it refused", async () => {
+    agentStub({ granted: [], enableStatus: 500 });
+
+    const result = await installLanDirect({
+      ...ctx(),
+      agentUrl: "http://drone.local:8080",
+      pairingKey: "k1",
+      jobId: "job-xyz",
+    });
+
+    expect(result.enabledOnAgent).toBe(false);
+    expect(result.notice).toMatch(/did not grant: telemetry\.subscribe/);
+    expect(result.notice).toMatch(/did not enable it/);
+  });
+
+  it("reads a timeout as an unknown outcome and never fails over", async () => {
+    globalThis.fetch = (async () => {
+      throw new DOMException("The operation timed out.", "TimeoutError");
+    }) as typeof fetch;
+
+    const err = await installLanDirect({
+      ...ctx(),
+      agentUrl: "http://drone.local:8080",
+      pairingKey: "k1",
+      jobId: "x",
+    }).catch((e: unknown) => e);
+
+    expect(err).toBeInstanceOf(LanDirectError);
+    expect((err as LanDirectError).cause).toBe("timeout");
+    expect((err as LanDirectError).message).toMatch(/may still be running/);
+    expect(shouldFailover(err as LanDirectError)).toBe(false);
   });
 
   it("rejects without a pairing key", async () => {

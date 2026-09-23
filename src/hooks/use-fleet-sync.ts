@@ -1,13 +1,14 @@
 /**
- * @module command/use-fleet-sync
+ * @module hooks/use-fleet-sync
  * @description Mirrors the Convex per-user fleet (`cmdDronesApi.listMyDrones`)
  * into the local pairing Zustand store. Dedupes by `deviceId` (keeps
  * the newest `pairedAt`) and sanitises the `profile` / `role` fields
  * against an allow-list so a malformed Convex row can't crash the UI.
+ * Mounted once, from `AgentBridges`; signing out clears the mirrored fleet.
  * @license GPL-3.0-only
  */
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { cmdDronesApi } from "@/lib/community-api-drones";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import { usePairingStore, type PairedDrone } from "@/stores/pairing-store";
@@ -31,6 +32,17 @@ export function useFleetSync() {
   const myDrones = useConvexSkipQuery(cmdDronesApi.listMyDrones, {
     enabled: isAuthenticated,
   });
+
+  // Signing out drops the previous account's fleet. Only a real sign-out
+  // clears it: a session that was never signed in (demo, local-only) leaves
+  // whatever else put there alone.
+  const wasAuthenticated = useRef(isAuthenticated);
+  useEffect(() => {
+    if (wasAuthenticated.current && !isAuthenticated) {
+      usePairingStore.getState().setPairedDrones([]);
+    }
+    wasAuthenticated.current = isAuthenticated;
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (!myDrones || !Array.isArray(myDrones)) return;

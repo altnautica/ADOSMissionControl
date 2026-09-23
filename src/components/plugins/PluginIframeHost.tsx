@@ -23,6 +23,8 @@ import {
   pluginConfigKey,
   usePluginConfigCache,
 } from "@/lib/plugins/config-cache";
+import { PluginAgentClient } from "@/lib/agent/plugin-client";
+import { resolveLocalAgentForDrone } from "@/lib/agent/resolve-agent";
 
 /** Maximum time the host will wait for a pause/resume ACK before proceeding. */
 export const LIFECYCLE_ACK_TIMEOUT_MS = 300;
@@ -319,11 +321,33 @@ export const PluginIframeHost = forwardRef<
     };
   }, [token]);
 
-  // Deliver the plugin's per-drone config values the GCS has written (from
-  // the plugin itself, the native parameter panel or the Skill Bar) as a
-  // `config.changed` event, on load and after every accepted write, so the
-  // plugin's UI reflects a setting changed anywhere. The SDK's
-  // `ctx.config.onChange` listens for this event.
+  // Seed the plugin's config from the agent's own read-back on mount, so a
+  // setting written in an earlier session (or from another GCS) reaches the
+  // plugin's UI. A drone with no LAN agent leaves the plugin on its defaults
+  // until a write here records a value.
+  useEffect(() => {
+    if (!agentId || isDemoMode()) return;
+    const agent = resolveLocalAgentForDrone(agentId);
+    if (!agent) return;
+    let cancelled = false;
+    new PluginAgentClient(agent.agentUrl, agent.apiKey)
+      .getConfig(pluginId)
+      .then((values) => {
+        if (!cancelled) usePluginConfigCache.getState().seed(agentId, pluginId, values);
+      })
+      .catch(() => {
+        // Unreadable (plugin host down, older agent): keep what is known.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [agentId, pluginId]);
+
+  // Deliver the plugin's per-drone config (the agent's read-back plus every
+  // value written since, from the plugin itself, the native parameter panel or
+  // the Skill Bar) as a `config.changed` event, on load and after every
+  // accepted write, so the plugin's UI reflects a setting changed anywhere.
+  // The SDK's `ctx.config.onChange` listens for this event.
   const knownConfig = usePluginConfigCache((s) =>
     agentId ? s.values[pluginConfigKey(agentId, pluginId)] : undefined,
   );

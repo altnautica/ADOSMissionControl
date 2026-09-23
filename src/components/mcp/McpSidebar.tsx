@@ -38,7 +38,7 @@ export function McpSidebar({ credentialCount }: { credentialCount: number }) {
   const navigate = useMcpTabStore((s) => s.navigate);
   const pluginFilter = useMcpTabStore((s) => s.pluginFilter);
   const setPluginFilter = useMcpTabStore((s) => s.setPluginFilter);
-  const plugins = useMcpPluginTools();
+  const { plugins } = useMcpPluginTools();
   const filtered = filterPlugins(plugins, pluginFilter);
   const exposedCount = countExposedPlugins(plugins);
   const activePluginId = view.kind === "plugin" ? view.pluginId : null;

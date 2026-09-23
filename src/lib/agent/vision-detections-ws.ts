@@ -23,6 +23,7 @@
 import { subscribeWebSocket } from "@/lib/api/ground-station/ws";
 import { CONTRACT_VERSIONS } from "@/lib/plugins/contracts.generated";
 import { useVisionDetectionsStore } from "@/stores/vision-detections-store";
+import { nodeIdForDevice } from "@/lib/agent/node-id";
 import type {
   DetectionKeypoint,
   LockState,
@@ -193,6 +194,17 @@ export function mapWireBatch(
     frameHeight,
     detections,
   };
+}
+
+/**
+ * Store a detection batch that arrived over the cloud relay
+ * (`ados/{deviceId}/vision/detections`) for `deviceId`. It lands in the same
+ * store the LAN WebSocket feeds, under the node id every overlay, box smoother
+ * and perception surface reads with. A malformed payload is dropped.
+ */
+export function ingestCloudDetections(deviceId: string, raw: string): void {
+  const batch = parseWireDetectionJson(raw);
+  if (batch) useVisionDetectionsStore.getState().setBatch(nodeIdForDevice(deviceId), batch);
 }
 
 /**

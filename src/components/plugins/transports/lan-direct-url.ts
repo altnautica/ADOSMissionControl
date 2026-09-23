@@ -12,23 +12,16 @@
  * Convex session. A drone paired on the LAN can install any registry
  * plugin without the operator being signed in to the cloud.
  *
- * Failover discipline mirrors {@link installLanDirect} so the dialog
- * can branch on the same `LanDirectError.cause` field for both
- * transports.
+ * The route answers once the download and the install are both over, so
+ * the request waits past both of the agent's bounds, and a successful
+ * install is enabled and grant-checked exactly like {@link installLanDirect}.
+ * Failure causes are the same `LanDirectError.cause` values.
  *
  * @license GPL-3.0-only
  */
 
-import {
-  LanDirectError,
-  buildAgentErrorMessage,
-  type LanDirectFailureCause,
-} from "./lan-direct";
-import {
-  LAN_CONNECT_TIMEOUT_MS,
-  LAN_TOTAL_TIMEOUT_MS,
-  type InstallKickoffResult,
-} from "./types";
+import { LanDirectError, finishLanInstall, sendLanInstall } from "./lan-direct";
+import { LAN_URL_INSTALL_TIMEOUT_MS, type InstallKickoffResult } from "./types";
 
 export interface LanDirectFromUrlInputs {
   /** Resolved LAN base URL for the target agent (no trailing slash). */
@@ -85,72 +78,25 @@ export async function installLanDirectFromUrl(
     from_catalog: inputs.fromCatalog === true,
   });
 
-  const controller = new AbortController();
-  const totalTimer = setTimeout(
-    () => controller.abort(new DOMException("total-timeout", "AbortError")),
-    LAN_TOTAL_TIMEOUT_MS,
-  );
-  const connectTimer = setTimeout(
-    () => controller.abort(new DOMException("connect-timeout", "AbortError")),
-    LAN_CONNECT_TIMEOUT_MS,
-  );
-
-  let response: Response;
-  try {
-    response = await fetch(`${inputs.agentUrl}/api/plugins/install_from_url`, {
+  const response = await sendLanInstall(
+    `${inputs.agentUrl}/api/plugins/install_from_url`,
+    {
       method: "POST",
       headers: {
         "X-ADOS-Key": inputs.pairingKey,
         "Content-Type": "application/json",
       },
       body,
-      signal: controller.signal,
-    });
-    // First byte received. Cancel the connect timer; total still active.
-    clearTimeout(connectTimer);
-  } catch (err) {
-    clearTimeout(connectTimer);
-    clearTimeout(totalTimer);
-    if (err instanceof DOMException && err.name === "AbortError") {
-      throw new LanDirectError(
-        "timeout",
-        "LAN install-from-URL timed out.",
-      );
-    }
-    // `TypeError: Failed to fetch` is the browser's catch-all for
-    // network unreachable, DNS failure, mixed-content block, and
-    // connection refused. All of these are cloud-eligible.
-    if (err instanceof TypeError) {
-      throw new LanDirectError(
-        "network",
-        `LAN install-from-URL failed: ${err.message}`,
-      );
-    }
-    throw new LanDirectError(
-      "network",
-      err instanceof Error ? err.message : String(err),
-    );
-  } finally {
-    clearTimeout(connectTimer);
-  }
-  clearTimeout(totalTimer);
-
-  if (!response.ok) {
-    const text = await response.text().catch(() => "");
-    const cause: LanDirectFailureCause =
-      response.status >= 500 ? "server-5xx" : "server-4xx";
-    throw new LanDirectError(
-      cause,
-      buildAgentErrorMessage(response.status, text),
-      response.status,
-    );
-  }
-
-  return {
-    transport: "lan",
+    },
+    LAN_URL_INSTALL_TIMEOUT_MS,
+  );
+  return finishLanInstall(response, {
+    agentUrl: inputs.agentUrl,
+    pairingKey: inputs.pairingKey,
     jobId: inputs.jobId,
     pluginId: inputs.pluginId,
     pluginName: inputs.pluginName,
     deviceId: inputs.deviceId,
-  };
+    requested: inputs.grantedPermissions,
+  });
 }

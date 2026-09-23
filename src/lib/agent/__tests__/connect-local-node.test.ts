@@ -59,6 +59,27 @@ beforeEach(() => {
 });
 
 describe("connectLocalNode", () => {
+  it("reports the settled LAN connect, not the moment it started", async () => {
+    seed({});
+    useAgentConnectionStore.setState({ connected: false, stalePairing: null });
+    // setState copies whatever `connect` is current onto the new state, so the
+    // real one is put back explicitly at the end.
+    const realConnect = useAgentConnectionStore.getState().connect;
+    const settled = Promise.withResolvers<void>();
+    vi.spyOn(useAgentConnectionStore.getState(), "connect").mockImplementation(async () => {
+      await settled.promise;
+      useAgentConnectionStore.setState({ connected: true });
+    });
+    vi.spyOn(useAgentConnectionStore.getState(), "disconnect").mockImplementation(() => {});
+
+    const pending = connectLocalNode(DEV, { onFocusAgent: () => {} });
+    settled.resolve();
+    await expect(pending).resolves.toBe("connected");
+
+    vi.restoreAllMocks();
+    useAgentConnectionStore.setState({ connect: realConnect, connected: false });
+  });
+
   it("connects with hostname + apiKey from the store, not empty args (http)", () => {
     seed({});
     const connect = vi

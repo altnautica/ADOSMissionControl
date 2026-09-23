@@ -77,7 +77,7 @@ export function buildPluginHandlers(
   deps: PluginHandlerDeps,
 ): { handlers: Record<string, BridgeHandler>; dispose: () => void } {
   const target = resolvePluginTarget(droneId);
-  const telemetry = buildTelemetryHandlers(target);
+  const telemetry = buildTelemetryHandlers(pluginId, target);
   // Detections are keyed by the fleet selection id.
   const perception = buildPerceptionHandlers(target?.nodeId ?? null);
   const events = buildEventHandlers(pluginId);

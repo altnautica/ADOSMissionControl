@@ -24,12 +24,7 @@ import {
   LanDirectError,
 } from "../transports/lan-direct";
 import { installLanDirectFromUrl } from "../transports/lan-direct-url";
-import {
-  installRelayFromUrl,
-  pollRelayInstallProgress,
-} from "../transports/relay-url";
 import { resolveRelayTarget } from "../transports/resolve-lan-url";
-import { useInstallProgressStore } from "../install-progress-store";
 import {
   installCloudRelay,
   type CreateJobMutation,
@@ -46,6 +41,7 @@ import {
 } from "../transports/build-install-contributions";
 import { useAuthStore } from "@/stores/auth-store";
 import { useLocalPluginInstallsStore } from "@/stores/local-plugin-installs-store";
+import { usePairingStore } from "@/stores/pairing-store";
 import type {
   InstallKickoffResult,
   InstallTransport,
@@ -56,7 +52,25 @@ import type {
   InstallTargetDrone,
 } from "./types";
 
-type Stage = "pick" | "loading" | "review" | "installing" | "error";
+type Stage = "pick" | "loading" | "review" | "installing" | "done" | "error";
+
+/** The job the dialog can follow while (and after) the install runs. */
+export interface ActiveInstallJob {
+  jobId: string;
+  transport: InstallTransport;
+  /** LAN only: where the agent streams the job's progress. */
+  agentLanUrl?: string;
+  pairingKey?: string;
+}
+
+/** Why a drone reached only through its ground station's radio relay gets
+ * no install: the agent refuses plugin installs from relayed requests. */
+export const RELAY_INSTALL_REFUSED =
+  "This drone is reached only through its ground station's radio relay, and it refuses plugin installs over the relay: a relayed request carries no credential for the drone itself, so accepting one would let anything in radio range install code. Connect to the drone on the LAN, or pair it with your cloud account, to install.";
+
+function isCloudPaired(deviceId: string): boolean {
+  return usePairingStore.getState().pairedDrones.some((d) => d.deviceId === deviceId);
+}
 
 export interface UseInstallHandlerArgs {
   manifest: InstallManifestSummary | null;
@@ -84,10 +98,12 @@ export interface UseInstallHandlerArgs {
   }) => Promise<unknown>;
   manifestHash: string;
   onKickedOff?: (result: InstallKickoffResult) => void;
-  /** Close path used on a successful kickoff. The orchestrator passes
-   * a variant that bypasses the in-flight close guard so the dialog
-   * actually closes once the install has been handed off. */
-  onClose: () => void;
+  /** Called before a request that has a job to follow, so the dialog can
+   * show its progress while the request is open. */
+  onJobStarted: (job: ActiveInstallJob) => void;
+  /** Called with the outcome once the install is over (LAN) or queued
+   * (cloud). The dialog shows it, including any notice. */
+  onDone: (result: InstallKickoffResult) => void;
   setStage: (stage: Stage) => void;
   setError: (error: string | null) => void;
   /** Flipped to `true` for the lifetime of the install kickoff so the
@@ -132,7 +148,8 @@ export function useInstallHandler(args: UseInstallHandlerArgs) {
     setInstallStatus,
     manifestHash,
     onKickedOff,
-    onClose,
+    onJobStarted,
+    onDone,
     setStage,
     setError,
     installInflightRef,
@@ -180,12 +197,10 @@ export function useInstallHandler(args: UseInstallHandlerArgs) {
                 deviceId: demoDeviceId,
                 deviceName: demoDeviceName,
               };
-        const result = await mockPluginInstall(transport, ctx);
-        onKickedOff?.({ ...result, jobId });
-        // Clear the in-flight flag before delegating to onClose so the
-        // orchestrator's close guard lets the modal actually close.
+        const result = { ...(await mockPluginInstall(transport, ctx)), jobId };
+        onKickedOff?.(result);
         installInflightRef.current = false;
-        onClose();
+        onDone(result);
         return;
       }
 
@@ -203,89 +218,31 @@ export function useInstallHandler(args: UseInstallHandlerArgs) {
             "This plugin installs software on a drone. Open it from a drone's Plugins tab to choose where it runs.",
           );
         }
+        const relayOnly = () => resolveRelayTarget(targetDevice.deviceId) !== null;
+        const cloudReachable = convexAvailable && isCloudPaired(targetDevice.deviceId);
         if (source.kind === "registry") {
-          // The agent fetches the archive itself, so registry installs
-          // never touch the file-upload transports. Resolution order:
-          // a LAN-paired drone installs directly; a relay-only drone
-          // (no LAN reach of its own) installs through its ground
-          // station's relay proxy — the only lane that fits the archive
-          // pointer through the radio link's per-request size cap.
-          if (lanTarget) {
-            result = await installLanDirectFromUrl({
-              agentUrl: lanTarget.url,
-              pairingKey: lanTarget.apiKey,
-              url: source.url,
-              expectedSha256: source.expectedSha256,
-              grantedPermissions: grantedArr,
-              jobId,
-              pluginId: manifest.pluginId,
-              pluginName: manifest.name,
-              deviceId: targetDevice.deviceId,
-              fromCatalog: true,
-            });
-          } else {
-            const relayTarget = resolveRelayTarget(targetDevice.deviceId);
-            if (!relayTarget) {
-              throw new Error(
-                "Registry installs require a paired drone on the LAN, or a ground station relaying it over its radio link. Pair the drone, or pair its ground station, and retry.",
-              );
-            }
-            // No LAN job-ticket WebSocket exists over the relay yet, so a
-            // fixed-interval poll stands in for live progress while the
-            // kickoff request is in flight. Stopped in both branches
-            // below so a fast agent reply never races a stale tick.
-            const stopRelayPoll = pollRelayInstallProgress({
-              relayBaseUrl: relayTarget.url,
-              apiKey: relayTarget.apiKey,
-              jobId,
-              pluginName: manifest.name,
-              pluginVersion: manifest.version,
-              deviceId: targetDevice.deviceId,
-            });
-            try {
-              result = await installRelayFromUrl({
-                relayBaseUrl: relayTarget.url,
-                apiKey: relayTarget.apiKey,
-                url: source.url,
-                sha256: source.expectedSha256,
-                jobId,
-                pluginId: manifest.pluginId,
-                pluginName: manifest.name,
-                deviceId: targetDevice.deviceId,
-              });
-              useInstallProgressStore.getState().upsert({
-                jobId,
-                stage: "completed",
-                transport: "relay",
-                updatedAt: Date.now(),
-                pluginName: manifest.name,
-                pluginVersion: manifest.version,
-                deviceId: targetDevice.deviceId,
-              });
-            } catch (err) {
-              // Never fall through to cloud-relay here: a relay install
-              // that fails must surface that failure so the operator
-              // sees it, not silently retry over a transport that is
-              // unavailable in local-only mode anyway.
-              useInstallProgressStore.getState().upsert({
-                jobId,
-                stage: "failed",
-                transport: "relay",
-                updatedAt: Date.now(),
-                error: {
-                  code:
-                    err instanceof LanDirectError ? err.cause : "unknown",
-                  message: err instanceof Error ? err.message : String(err),
-                },
-                pluginName: manifest.name,
-                pluginVersion: manifest.version,
-                deviceId: targetDevice.deviceId,
-              });
-              throw err;
-            } finally {
-              stopRelayPoll();
-            }
+          // The agent fetches the archive itself, so a registry install
+          // needs the drone's own LAN reach.
+          if (!lanTarget) {
+            throw new Error(
+              relayOnly()
+                ? RELAY_INSTALL_REFUSED
+                : "Registry installs need the drone paired on this network. Pair it on the LAN and retry.",
+            );
           }
+          onJobStarted({ jobId, transport: "lan", agentLanUrl: lanTarget.url, pairingKey: lanTarget.apiKey });
+          result = await installLanDirectFromUrl({
+            agentUrl: lanTarget.url,
+            pairingKey: lanTarget.apiKey,
+            url: source.url,
+            expectedSha256: source.expectedSha256,
+            grantedPermissions: grantedArr,
+            jobId,
+            pluginId: manifest.pluginId,
+            pluginName: manifest.name,
+            deviceId: targetDevice.deviceId,
+            fromCatalog: true,
+          });
         } else {
           const ctx = {
             file: source.file,
@@ -294,7 +251,16 @@ export function useInstallHandler(args: UseInstallHandlerArgs) {
             deviceId: targetDevice.deviceId,
             deviceName: targetDevice.name,
           };
-          if (transport === "lan" && lanTarget) {
+          const viaCloud = () =>
+            installCloudRelay({
+              ...ctx,
+              generateUploadUrl,
+              verifyArchive,
+              createJob,
+              manifestHash,
+            });
+          if (lanTarget) {
+            onJobStarted({ jobId, transport: "lan", agentLanUrl: lanTarget.url, pairingKey: lanTarget.apiKey });
             try {
               result = await installLanDirect({
                 ...ctx,
@@ -303,38 +269,22 @@ export function useInstallHandler(args: UseInstallHandlerArgs) {
                 jobId,
               });
             } catch (err) {
-              if (err instanceof LanDirectError && shouldFailover(err)) {
-                if (!convexAvailable) {
-                  throw new Error(
-                    `${err.message}. Cloud relay unavailable, please retry on the LAN.`,
-                  );
-                }
-                result = await installCloudRelay({
-                  ...ctx,
-                  generateUploadUrl,
-                  verifyArchive,
-                  createJob,
-                  manifestHash,
-                });
-                result.notice =
-                  "LAN upload failed, falling back to cloud relay";
-              } else {
+              // Only a failure that proves nothing installed may fall over,
+              // and only to a cloud path that can reach this drone.
+              if (!(err instanceof LanDirectError && shouldFailover(err) && cloudReachable)) {
                 throw err;
               }
+              result = await viaCloud();
+              result.notice = `The LAN install failed (${err.message}); the install was queued through the cloud instead.`;
             }
+          } else if (cloudReachable) {
+            result = await viaCloud();
           } else {
-            if (!convexAvailable) {
-              throw new Error(
-                "Cloud relay requires the Convex backend. Connect to the agent on the LAN to install a plugin.",
-              );
-            }
-            result = await installCloudRelay({
-              ...ctx,
-              generateUploadUrl,
-              verifyArchive,
-              createJob,
-              manifestHash,
-            });
+            throw new Error(
+              relayOnly()
+                ? RELAY_INSTALL_REFUSED
+                : "This drone is not reachable for an install. Pair it on this network, or pair it with your cloud account.",
+            );
           }
         }
       } else {
@@ -346,6 +296,7 @@ export function useInstallHandler(args: UseInstallHandlerArgs) {
           pluginId: manifest.pluginId,
           pluginName: manifest.name,
           deviceId: targetDevice?.deviceId ?? "",
+          enabledOnAgent: false,
         };
       }
 
@@ -413,6 +364,7 @@ export function useInstallHandler(args: UseInstallHandlerArgs) {
             deviceId: targetDevice?.deviceId ?? null,
             source: source.kind === "registry" ? "registry" : "local_file",
             sourceUri: source.kind === "registry" ? source.url : undefined,
+            agentEnabled: result.enabledOnAgent,
             callables: {
               generateUploadUrl,
               recordInstall,
@@ -428,10 +380,8 @@ export function useInstallHandler(args: UseInstallHandlerArgs) {
       }
 
       onKickedOff?.(result);
-      // Clear the in-flight flag before delegating to onClose so the
-      // orchestrator's close guard lets the modal actually close.
       installInflightRef.current = false;
-      onClose();
+      onDone(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       setStage("error");
@@ -457,7 +407,8 @@ export function useInstallHandler(args: UseInstallHandlerArgs) {
     setInstallStatus,
     manifestHash,
     onKickedOff,
-    onClose,
+    onJobStarted,
+    onDone,
     setStage,
     setError,
     installInflightRef,

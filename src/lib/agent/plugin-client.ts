@@ -85,6 +85,10 @@ export interface PluginAgentManifestDetail {
     license: string;
     halves: Array<"agent" | "gcs">;
     permissions: Array<{ id: string; required: boolean }>;
+    /** MCP tools / resources / prompts declared across both halves, each
+     * with a `half` marker. Exposed to MCP clients only while the plugin
+     * holds `mcp.expose` (see `granted_capabilities`). */
+    mcp?: { tools?: unknown[]; resources?: unknown[]; prompts?: unknown[] };
     /** The GCS half's iframe entrypoint + slot contributions, or null for
      * an agent-only plugin. Lets a LAN GCS build the contribution set and
      * locate the bundle to fetch from this agent. Older agents omit it. */
@@ -328,6 +332,23 @@ export class PluginAgentClient {
       PLUGIN_TRANSFER_TIMEOUT_MS,
     );
     return this.parse<PluginAgentParseSummary>(res);
+  }
+
+  /**
+   * Read a plugin's config as the plugin itself sees it on this drone (the
+   * agent's native `GET /api/plugins/{id}/config`: global keys with the
+   * drone's own keys over them).
+   */
+  async getConfig(pluginId: string): Promise<Record<string, unknown>> {
+    const res = await timedFetch(
+      `${this.baseUrl}/api/plugins/${encodeURIComponent(pluginId)}/config`,
+      { method: "GET", headers: this.authHeader() },
+    );
+    const body = await this.parse<{ values?: unknown }>(res);
+    const values = body.values;
+    return values && typeof values === "object" && !Array.isArray(values)
+      ? (values as Record<string, unknown>)
+      : {};
   }
 
   /**

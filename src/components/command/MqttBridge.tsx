@@ -16,7 +16,7 @@ import { usePairingStore } from "@/stores/pairing-store";
 import { useLocalNodesStore } from "@/stores/local-nodes-store";
 import { resolveLanAgentUrl } from "@/stores/agent-connection/cloud-state";
 import { useVisionDetectionsStore } from "@/stores/vision-detections-store";
-import { parseWireDetectionJson } from "@/lib/agent/vision-detections-ws";
+import { ingestCloudDetections } from "@/lib/agent/vision-detections-ws";
 import { nodeIdForDevice } from "@/lib/agent/node-id";
 import {
   usePluginUpdateStore,
@@ -228,12 +228,7 @@ export function MqttBridge({
           // SAME store `setBatch` the LAN bridge feeds, under the node id the
           // overlay, box smoothing and perception-health surfaces read with.
           if (topic.endsWith("/vision/detections")) {
-            const batch = parseWireDetectionJson(payload.toString());
-            if (batch) {
-              useVisionDetectionsStore
-                .getState()
-                .setBatch(nodeIdForDevice(cloudDeviceId as string), batch);
-            }
+            ingestCloudDetections(cloudDeviceId as string, payload.toString());
             return;
           }
 

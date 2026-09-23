@@ -60,7 +60,8 @@ import type {
 import { ErrorStage, PickStage, TransportChrome } from "./install-dialog/stages";
 import { ReviewStage } from "./install-dialog/sections/ReviewStage";
 import { checkCompatibility } from "./install-dialog/check-compatibility";
-import { useInstallHandler } from "./install-dialog/use-install-handler";
+import { useInstallHandler, type ActiveInstallJob } from "./install-dialog/use-install-handler";
+import { PluginInstallProgress } from "./PluginInstallProgress";
 import type { RecordInstallArgs } from "./transports/finalize-gcs-install";
 import type {
   InstallManifestSummary,
@@ -84,12 +85,13 @@ interface PluginInstallDialogProps {
   /** Source discriminator that drives transport selection. Required
    * alongside `initialManifest`. */
   initialSource?: InstallSource;
-  /** Fired after the install is kicked off so the parent can mount a
-   * progress toast. */
+  /** Optional: fired with the install outcome. The dialog itself shows
+   * the outcome, notices and progress; this is only for a parent that
+   * wants to react as well. */
   onKickedOff?: (result: InstallKickoffResult) => void;
 }
 
-type Stage = "pick" | "loading" | "review" | "installing" | "error";
+type Stage = "pick" | "loading" | "review" | "installing" | "done" | "error";
 
 const verifyArchiveRef = makeFunctionReference<
   "action",
@@ -162,6 +164,8 @@ export function PluginInstallDialog({
     return new Set();
   });
   const [dragActive, setDragActive] = useState(false);
+  const [activeJob, setActiveJob] = useState<ActiveInstallJob | null>(null);
+  const [doneResult, setDoneResult] = useState<InstallKickoffResult | null>(null);
 
   const lanTarget = useMemo(
     () =>
@@ -182,6 +186,8 @@ export function PluginInstallDialog({
     setManifestHash("");
     setGranted(new Set());
     setDragActive(false);
+    setActiveJob(null);
+    setDoneResult(null);
   }, []);
 
   // True from the moment the install kickoff fires until the agent
@@ -339,7 +345,11 @@ export function PluginInstallDialog({
     setInstallStatus,
     manifestHash,
     onKickedOff,
-    onClose: handleClose,
+    onJobStarted: setActiveJob,
+    onDone: (result) => {
+      setDoneResult(result);
+      setStage("done");
+    },
     setStage,
     setError,
     installInflightRef,
@@ -354,7 +364,9 @@ export function PluginInstallDialog({
           ? t("title.review")
           : stage === "installing"
             ? t("title.installing")
-            : t("title.error");
+            : stage === "done"
+              ? t("title.done")
+              : t("title.error");
 
   return (
     <Modal
@@ -423,6 +435,59 @@ export function PluginInstallDialog({
           <p className="mt-2 text-xs text-text-tertiary">
             {t("closingDisabled")}
           </p>
+          {activeJob?.transport === "lan" && (
+            <div className="mt-4 text-left">
+              <PluginInstallProgress
+                jobId={activeJob.jobId}
+                transport="lan"
+                agentLanUrl={activeJob.agentLanUrl}
+                pairingKey={activeJob.pairingKey}
+                pluginName={manifest?.name}
+                pluginVersion={manifest?.version}
+                deviceLabel={targetName}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {stage === "done" && doneResult && (
+        <div className="space-y-3 px-4 py-4">
+          <p className="text-sm text-text-primary">
+            {!manifest?.halves.includes("agent")
+              ? t("done.gcsOnly")
+              : doneResult.transport === "cloud"
+                ? t("done.queued", { drone: targetName })
+                : doneResult.enabledOnAgent
+                  ? t("done.enabled", { drone: targetName })
+                  : t("done.installed", { drone: targetName })}
+          </p>
+          {doneResult.notice && (
+            <div
+              role="alert"
+              className="border border-status-warning/40 bg-status-warning/5 px-3 py-2 text-xs text-text-secondary"
+            >
+              {doneResult.notice}
+            </div>
+          )}
+          {doneResult.transport === "cloud" && manifest?.halves.includes("agent") && (
+            <PluginInstallProgress
+              jobId={doneResult.jobId}
+              transport="cloud"
+              pluginName={doneResult.pluginName}
+              pluginVersion={manifest.version}
+              deviceLabel={targetName}
+            />
+          )}
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={handleClose}
+              className="border border-border-default px-3 py-1.5 text-sm hover:bg-bg-tertiary"
+            >
+              {t("done.close")}
+            </button>
+          </div>
         </div>
       )}
 

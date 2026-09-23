@@ -45,6 +45,7 @@ vi.mock("@/stores/drone-manager", () => ({
 
 import { buildPluginHandlers } from "@/lib/plugins/handlers";
 import { pluginNotify } from "@/lib/plugins/notifier";
+import { agentStateOrigin, publishPluginEvent } from "@/lib/plugins/event-bus";
 import {
   startMirrorRecording,
   stopRecordingFor,
@@ -203,18 +204,31 @@ describe("buildPluginHandlers", () => {
     expect(unsub).toHaveBeenCalledTimes(1);
   });
 
-  it("telemetry.subscribe rejects an unknown topic", async () => {
+  it("telemetry.subscribe rejects an unknown topic for a plugin with no drone", async () => {
     droneManagerState = {
       drones: new Map(),
       getSelectedProtocol: () => ({}),
     };
-    const { handlers } = buildPluginHandlers("p", "node:d1", DEPS);
+    const { handlers } = buildPluginHandlers("p", null, DEPS);
     const { ctx } = makeCtx("telemetry.subscribe.bogus");
     // The handler throws synchronously; the bridge's `await handler()` turns
     // that into a handler_error response.
     expect(() => handlers["telemetry.subscribe"]({ topic: "bogus" }, ctx)).toThrow(
       /unknown telemetry topic/,
     );
+  });
+
+  it("serves the plugin's own agent-extended channel from its drone only", async () => {
+    const { handlers } = buildPluginHandlers("com.example.pod", "node:d1", DEPS);
+    const { ctx, postEvent } = makeCtx("telemetry.subscribe.siyi");
+    expect(await handlers["telemetry.subscribe"]({ topic: "siyi" }, ctx)).toEqual({ ok: true });
+
+    publishPluginEvent("telemetry.siyi", { zoom: 2 }, agentStateOrigin("com.example.pod", "d1"));
+    publishPluginEvent("telemetry.siyi", { zoom: 9 }, agentStateOrigin("com.example.other", "d1"));
+    publishPluginEvent("telemetry.siyi", { zoom: 7 }, agentStateOrigin("com.example.pod", "d2"));
+
+    expect(postEvent).toHaveBeenCalledTimes(1);
+    expect(postEvent).toHaveBeenCalledWith("telemetry.siyi", "telemetry.subscribe.siyi", { zoom: 2 });
   });
 
   it("dispose tears down an active telemetry subscription", async () => {

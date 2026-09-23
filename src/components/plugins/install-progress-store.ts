@@ -15,6 +15,7 @@
  */
 
 import { create } from "zustand";
+import type { InstallTransport } from "./transports/types";
 
 /** The six-stage state machine plus the two terminal stages. */
 export type InstallStage =
@@ -28,10 +29,6 @@ export type InstallStage =
   | "completed"
   | "failed";
 
-/** Transport that produced the most recent update for a job. `relay` is
- * the ground-station-proxied path for a drone with no LAN or cloud
- * identity of its own — see `transports/relay-url.ts`. */
-export type InstallTransport = "lan" | "cloud" | "relay";
 
 export interface InstallJobError {
   code: string;

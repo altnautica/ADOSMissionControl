@@ -125,6 +125,10 @@ export interface FinalizeGcsInstallInputs {
   source: InstallSourceKind;
   /** Origin URI recorded on the install row (the registry URL). */
   sourceUri?: string;
+  /** Whether the drone's agent confirmed the plugin is enabled. A plugin
+   * with an agent half is recorded as enabled only then; otherwise the row
+   * stays "installed" and the operator enables it from the drone. */
+  agentEnabled: boolean;
   callables: GcsInstallCallables;
   /** Injected for tests; defaults to the browser `fetch`. */
   fetchImpl?: typeof fetch;
@@ -352,14 +356,18 @@ export async function finalizeGcsInstall(
   }
 
   // 7. Enable so the contribution producer mounts the GCS half. The
-  // producer filters to enabled/running installs.
-  try {
-    await callables.setStatus({ installId, status: "enabled" });
-  } catch (err) {
-    throw new FinalizeGcsInstallError(
-      "enable",
-      err instanceof Error ? err.message : String(err),
-    );
+  // producer filters to enabled/running installs. A plugin with an agent
+  // half is marked enabled only once the agent itself enabled it; the row
+  // otherwise stays "installed", which is what the drone reports.
+  if (inputs.agentEnabled || !manifest.halves.includes("agent")) {
+    try {
+      await callables.setStatus({ installId, status: "enabled" });
+    } catch (err) {
+      throw new FinalizeGcsInstallError(
+        "enable",
+        err instanceof Error ? err.message : String(err),
+      );
+    }
   }
 
   return installId;

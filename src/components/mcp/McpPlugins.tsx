@@ -2,7 +2,8 @@
  * @module components/mcp/McpPlugins
  * @description The Plugins landing: the installed plugins that participate in
  * MCP, as cards (trust, exposure, tool/resource/prompt counts) that open the
- * per-plugin page. Honest empty state when no plugin exposes MCP tools.
+ * per-plugin page. Distinguishes "no plugin exposes MCP tools" from "no node
+ * could be read".
  * @license GPL-3.0-only
  */
 
@@ -15,7 +16,7 @@ import { useMcpPluginTools } from "@/lib/plugins/mcp-plugin-tools";
 
 export function McpPlugins() {
   const t = useTranslations("mcp");
-  const plugins = useMcpPluginTools();
+  const { plugins, status } = useMcpPluginTools();
   const navigate = useMcpTabStore((s) => s.navigate);
 
   return (
@@ -30,7 +31,13 @@ export function McpPlugins() {
 
       {plugins.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border-default bg-bg-secondary p-6 text-center">
-          <p className="text-sm text-text-secondary">{t("plugins.empty")}</p>
+          <p className="text-sm text-text-secondary">
+            {status === "loading"
+              ? t("plugins.loading")
+              : status === "unavailable"
+                ? t("plugins.unavailable")
+                : t("plugins.empty")}
+          </p>
         </div>
       ) : (
         <div className="flex flex-col gap-2">

@@ -9,11 +9,10 @@
 
 import type { InstallManifestSummary } from "../install-dialog/types";
 
-/** Which wire path will carry the archive bytes. `relay` is a drone
- * reached only through a ground station's WFB radio relay — the archive
- * bytes never cross the relay itself (see `relay-url.ts`); the agent
- * fetches them from the URL directly. */
-export type InstallTransport = "lan" | "cloud" | "relay";
+/** Which path carries the install. A drone reached only through a ground
+ * station's radio relay has neither: the drone refuses plugin installs over
+ * the relay, because a relayed request carries no per-drone credential. */
+export type InstallTransport = "lan" | "cloud";
 
 /** Result of a successful install kickoff. The dialog hands this back to
  * the caller so the progress toast can subscribe by job id and the
@@ -32,19 +31,23 @@ export interface InstallKickoffResult {
   pluginName: string;
   /** Device the install was queued against. */
   deviceId: string;
-  /** Optional one-line notice surfaced by the failover path. */
+  /** True once the drone's agent confirmed the plugin is enabled. The LAN
+   * path enables it right after the install; the cloud path only queues
+   * the install, so it is never enabled here. */
+  enabledOnAgent: boolean;
+  /** Anything the operator must know about an install that did happen:
+   * a cloud failover, permissions the drone did not grant, an enable that
+   * failed, a GCS half that could not be prepared. */
   notice?: string;
 }
 
-/** Per-transport timeouts. Connect = how long we wait for the first byte
- * of response. Total = end-to-end ceiling for the upload + handshake.
- *
- * The 10s connect / 60s total ceiling matches the spec's auto-failover
- * trigger: a slow LAN path that hasn't started responding within 10s
- * gets demoted, and a full upload that hasn't completed within 60s
- * gives up and tries cloud. */
-export const LAN_CONNECT_TIMEOUT_MS = 10_000;
-export const LAN_TOTAL_TIMEOUT_MS = 60_000;
+/** The LAN install routes answer only when the install is over: the agent
+ * installs vendored wheels (bounded at 300 s) before it replies, and the
+ * install-from-URL route first downloads the archive (also bounded at
+ * 300 s). The browser waits past those bounds so the agent's own verdict
+ * arrives; aborting sooner would not stop the install on the drone. */
+export const LAN_FILE_INSTALL_TIMEOUT_MS = 360_000;
+export const LAN_URL_INSTALL_TIMEOUT_MS = 660_000;
 
 /** Common input shape for both transports. */
 export interface TransportContext {

@@ -103,6 +103,7 @@ describe("finalizeGcsInstall", () => {
       grantedPermissions: ["command.send"],
       deviceId: "drone-9",
       source: "local_file",
+      agentEnabled: true,
       callables,
       fetchImpl: fetchImpl as unknown as typeof fetch,
     });
@@ -139,6 +140,7 @@ describe("finalizeGcsInstall", () => {
       deviceId: "drone-9",
       source: "registry",
       sourceUri: "https://github.com/.../x.signed.adosplug",
+      agentEnabled: true,
       callables,
       fetchImpl: fetchImpl as unknown as typeof fetch,
     });
@@ -153,7 +155,7 @@ describe("finalizeGcsInstall", () => {
     expect(recArgs.source).toBe("registry");
   });
 
-  it("agent-only plugin: records the install without a bundle, no upload", async () => {
+  it("agent-only plugin: records the install without a bundle, and leaves it installed until the drone enables it", async () => {
     const { callables, fetchImpl } = makeHarness();
     const manifest = gcsManifest();
     const agentOnly = { ...manifest, halves: ["agent"] as const, contributesSlots: [] };
@@ -165,16 +167,16 @@ describe("finalizeGcsInstall", () => {
       grantedPermissions: ["vision.detection.subscribe"],
       deviceId: "drone-9",
       source: "local_file",
+      agentEnabled: false,
       callables,
       fetchImpl: fetchImpl as unknown as typeof fetch,
     });
     expect(callables.generateUploadUrl).not.toHaveBeenCalled();
     const recArgs = callables.recordInstall.mock.calls[0][0] as Record<string, unknown>;
     expect(recArgs.bundleStorageId).toBeUndefined();
-    expect(callables.setStatus).toHaveBeenCalledWith({
-      installId: "install-1",
-      status: "enabled",
-    });
+    // The drone never confirmed the plugin enabled, so the row stays
+    // "installed" rather than claiming a running plugin.
+    expect(callables.setStatus).not.toHaveBeenCalled();
   });
 
   it("throws a stage-tagged error when the GCS bundle is missing", async () => {
@@ -188,6 +190,7 @@ describe("finalizeGcsInstall", () => {
         grantedPermissions: [],
         deviceId: null,
         source: "local_file",
+        agentEnabled: true,
         callables,
         fetchImpl: fetchImpl as unknown as typeof fetch,
       }),
@@ -208,6 +211,7 @@ describe("finalizeGcsInstall", () => {
         grantedPermissions: ["command.send"],
         deviceId: "drone-9",
         source: "local_file",
+        agentEnabled: true,
         callables,
         fetchImpl: fetchImpl as unknown as typeof fetch,
       }),
@@ -229,6 +233,7 @@ describe("finalizeGcsInstall", () => {
       grantedPermissions: [],
       deviceId: "drone-9",
       source: "local_file",
+      agentEnabled: true,
       callables,
       fetchImpl: fetchImpl as unknown as typeof fetch,
     });

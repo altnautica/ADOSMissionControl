@@ -28,8 +28,8 @@ import {
   useInstallProgressStore,
   type InstallJobError,
   type InstallStage,
-  type InstallTransport,
 } from "./install-progress-store";
+import type { InstallTransport } from "./transports/types";
 
 // Hand-rolled reference: the Convex deployment ships this query in a
 // parallel wave, before `api.d.ts` regenerates with the new path.

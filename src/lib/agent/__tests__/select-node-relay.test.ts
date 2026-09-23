@@ -151,13 +151,16 @@ describe("selectNode — a relayed node reaches its agent through its ground sta
     );
     const onError = vi.fn();
 
-    await selectNode(node({ convexId: "row1" }), {
+    const outcome = await selectNode(node({ convexId: "row1" }), {
       onFocusAgent: () => {},
       onError,
     });
 
     expect(connectCloud).toHaveBeenCalledWith(DEV);
     expect(onError).not.toHaveBeenCalled();
+    // A cloud selection has no LAN client by design; the open subscription is
+    // the connection.
+    expect(outcome).toBe("cloud");
 
     vi.restoreAllMocks();
   });

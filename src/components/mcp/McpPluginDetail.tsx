@@ -17,11 +17,15 @@ import { useMcpPluginTools } from "@/lib/plugins/mcp-plugin-tools";
 
 export function McpPluginDetail({ pluginId }: { pluginId: string }) {
   const t = useTranslations("mcp");
-  const plugins = useMcpPluginTools();
+  const { plugins, status } = useMcpPluginTools();
   const plugin = plugins.find((p) => p.pluginId === pluginId) ?? null;
 
   if (!plugin) {
-    return <p className="text-sm text-text-tertiary">{t("plugins.notFound")}</p>;
+    return (
+      <p className="text-sm text-text-tertiary">
+        {status === "loading" ? t("plugins.loading") : t("plugins.notFound")}
+      </p>
+    );
   }
 
   return (

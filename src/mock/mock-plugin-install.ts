@@ -35,6 +35,7 @@ export async function mockPluginInstall(
     pluginId: ctx.manifest.pluginId,
     pluginName: ctx.manifest.name,
     deviceId: ctx.deviceId,
+    enabledOnAgent: transport === "lan",
     notice:
       transport === "cloud" ? "Demo mode: simulated cloud relay." : undefined,
   };
