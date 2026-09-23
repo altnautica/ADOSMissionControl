@@ -11,7 +11,7 @@
 
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -23,6 +23,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useTileHealthStore } from "@/stores/tile-health-store";
+import { useHasMounted } from "@/hooks/use-has-mounted";
 
 export function CustomTileSourceEditor({ className }: { className?: string }) {
   const source = useSettingsStore((s) => s.mapTileSource);
@@ -48,16 +49,26 @@ export function CustomTileSourceEditor({ className }: { className?: string }) {
   // for an operator who already had one configured. Re-syncing on a stored
   // change is safe: the only other writer is this component's own Apply, which
   // sets the store to what the drafts already hold.
-  useEffect(() => {
+  const [synced, setSynced] = useState({
+    url: storedUrl,
+    maxZoom: storedMaxZoom,
+    attribution: storedAttribution,
+  });
+  if (
+    synced.url !== storedUrl ||
+    synced.maxZoom !== storedMaxZoom ||
+    synced.attribution !== storedAttribution
+  ) {
+    setSynced({ url: storedUrl, maxZoom: storedMaxZoom, attribution: storedAttribution });
     setDraftUrl(storedUrl);
     setDraftMaxZoom(String(storedMaxZoom));
     setDraftAttribution(storedAttribution);
-  }, [storedUrl, storedMaxZoom, storedAttribution]);
+  }
 
-  // Read the page protocol after mount: the editor is server-rendered on
+  // Read the page protocol only after mount: the editor is server-rendered on
   // /config/data, and reading window during render is a hydration mismatch.
-  const [pageIsHttps, setPageIsHttps] = useState(false);
-  useEffect(() => setPageIsHttps(window.location.protocol === "https:"), []);
+  const mounted = useHasMounted();
+  const pageIsHttps = mounted && window.location.protocol === "https:";
 
   const urlError = validateTileUrlTemplate(draftUrl);
   const trimmed = draftUrl.trim();
