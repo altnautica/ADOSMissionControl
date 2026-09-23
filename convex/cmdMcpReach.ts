@@ -28,11 +28,7 @@ import {
   requiredScopeForCommand,
   type RelayCommandName,
 } from "./commandVocabulary";
-
-async function sha256Hex(input: string): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
-  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
-}
+import { RateLimited, sha256Hex } from "./lib/rateLimit";
 
 interface Authorized {
   userId: string;
@@ -77,18 +73,23 @@ class CredentialRejected extends Error {
  * lastUsedAt. Per-command scope enforcement is done by `assertCommandScope`, and
  * the node allowlist by `assertNodeAllowed`, so a read only needs a live credential.
  *
- * Every call charges a rate-limit attempt BEFORE the lookup and clears it after
- * a live credential resolves. This whole surface is a set of public actions
+ * Every call charges the credential's own bucket BEFORE the lookup and clears it
+ * after a live credential resolves; a credential that does not verify also
+ * charges the shared bucket. This whole surface is a set of public actions
  * taking a bearer string, so without a lockout it is a free, unlimited oracle
  * for guessing one.
  */
 async function authorize(ctx: ActionCtx, credential: string): Promise<Authorized> {
-  await ctx.runMutation(internal.cmdMcpReachDb.consumeCredentialAttempt, {
+  const verdict = await ctx.runMutation(internal.cmdMcpReachDb.consumeCredentialAttempt, {
     credential,
   });
+  // The attempt is recorded by the committed mutation above; refusing here,
+  // in the action, cannot roll it back.
+  if (!verdict.ok) throw new RateLimited(verdict.retryAfterMs);
   const tokenHash = await sha256Hex(credential);
   const row = await ctx.runQuery(internal.cmdMcpReachDb.lookupByHash, { tokenHash });
   if (!row || row.revokedAt || (row.expiresAt !== undefined && row.expiresAt < Date.now())) {
+    await ctx.runMutation(internal.cmdMcpReachDb.recordCredentialFailure, {});
     throw new CredentialRejected("invalid or revoked credential");
   }
   await ctx.runMutation(internal.cmdMcpReachDb.touchLastUsed, { id: row._id });

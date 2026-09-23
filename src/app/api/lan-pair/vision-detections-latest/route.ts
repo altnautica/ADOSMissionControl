@@ -2,7 +2,7 @@
  * @module LanPairVisionDetectionsLatestRoute
  * @description Server-side proxy for `GET /api/vision/detections/latest` —
  * the poll target for a WFB-relayed drone's live-detection feed. Sibling to
- * the config / vision-detector proxy routes (Rule 39 local-first): lets an
+ * the config / vision-detector proxy routes (local-first): lets an
  * HTTPS Mission Control read a plain-HTTP LAN or ground-station host without
  * tripping the browser's mixed-content guard, and resolves `*.local`
  * server-side.

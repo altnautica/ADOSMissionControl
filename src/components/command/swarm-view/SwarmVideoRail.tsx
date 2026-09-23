@@ -41,23 +41,25 @@ import {
   type SwarmSlotRow,
 } from "./swarm-rows";
 import { useSwarmSlotRows } from "./use-swarm-slot-rows";
-import { useFleetHero } from "./use-fleet-hero";
+import type { FleetHero } from "./use-fleet-hero";
 
 export interface SwarmVideoRailProps {
   rows: readonly SwarmBeaconRow[];
   nodesBySlot: ReadonlyMap<number, FleetNodeEntry>;
   onOpenAgent: (deviceId: string) => void;
+  /** The one hero request state `SwarmView` shares with the table. */
+  hero: FleetHero;
 }
 
 export function SwarmVideoRail({
   rows,
   nodesBySlot,
   onOpenAgent,
+  hero,
 }: SwarmVideoRailProps) {
   const t = useTranslations("swarmView.video");
   const tHero = useTranslations("swarmView.hero");
   const connectedDeviceId = useAgentConnectionStore((s) => s.nodeDeviceId);
-  const hero = useFleetHero();
 
   const slotRows = useSwarmSlotRows(rows, nodesBySlot);
   const heroRow = useMemo(

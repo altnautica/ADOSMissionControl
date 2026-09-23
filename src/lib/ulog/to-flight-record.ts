@@ -220,7 +220,7 @@ function buildRecordFromFrames(
   const avgSpeed = speedCount > 0 ? totalSpeed / speedCount : 0;
   const batteryUsed = battStart !== undefined && battEnd !== undefined
     ? Math.max(0, Math.round(((battStart - battEnd) / battStart) * 100))
-    : 0;
+    : undefined;
 
   // Cap path
   const cappedPath = path.length > 1000

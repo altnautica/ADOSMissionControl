@@ -21,7 +21,7 @@ import { jitter } from "./utils";
  * its live indicators in `npm run demo`: a US-domain link locked on its home
  * channel (so it reads "pinned"), TX active with a ground decode, an
  * injection-capable adapter, and a healthy link-diagnosis verdict backed by a
- * flowing received-frame count (the honest received-side proof, Rule 44). The
+ * flowing received-frame count (the honest received-side proof, no fabricated reading). The
  * normalizer fills any field omitted here. */
 const MOCK_RADIO: Partial<RadioState> = {
   state: "connected",
@@ -280,7 +280,7 @@ export function getMockCapabilities(
       state: "port_cycling",
       case: "present_wedged",
       attempts: 1,
-      maxAttempts: 3,
+      cooldownSeconds: 60,
       cameraPresent: false,
       expected: true,
       pppsCapable: true,
@@ -445,7 +445,7 @@ export function getMockGroundStationCapabilities(): AgentCapabilities & {
       npu_available: false,
       npu_runtime: null,
       npu_tops: 0,
-      npu_utilization_pct: 0,
+      npu_utilization_pct: null,
       gpu_available: false,
     },
     vision: {

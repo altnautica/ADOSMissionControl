@@ -8,7 +8,6 @@
 import { api } from "../../convex/_generated/api";
 
 export const cmdFlightLogsApi = {
-  list: api.cmdFlightLogs.list,
   listPaginated: api.cmdFlightLogs.listPaginated,
   getCount: api.cmdFlightLogs.getCount,
   get: api.cmdFlightLogs.get,

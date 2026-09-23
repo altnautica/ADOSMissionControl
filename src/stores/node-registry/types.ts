@@ -99,8 +99,8 @@ export interface NodePresence {
    * For a `"relayed"` node, the `node:<deviceId>` id of the ground node the
    * drone is linked through (its WFB reach hop). Undefined on a directly-reached
    * node. Set by the relayed presence patch; cleared when the relayed source is
-   * dropped (so a node that is no longer relayed stops advertising a stale hop,
-   * Rule 44). A later direct source does not clear it, so a directly-paired node
+   * dropped (so a node that is no longer relayed stops advertising a stale hop).
+   * A later direct source does not clear it, so a directly-paired node
    * that is ALSO relay-visible keeps the hop as secondary provenance while the
    * `sources` precedence shows the direct reach as primary.
    */

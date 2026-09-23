@@ -2,10 +2,12 @@
 
 import { useTranslations } from "next-intl";
 import { useState, useCallback, useEffect, useRef } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { useDroneManager } from "@/stores/drone-manager";
 import { Button } from "@/components/ui/button";
 import { Trash2, Terminal, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { RingBuffer } from "@/lib/ring-buffer";
 import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
 
 interface LogEntry {
@@ -44,77 +46,84 @@ function formatTs(ts: number): string {
 
 let nextId = 0;
 
+/** Rows kept in the console; older rows are dropped so a long session or a `dump` cannot grow without bound. */
+const MAX_ENTRIES = 5000;
+const ROW_ESTIMATE_PX = 20;
+
+const IDLE_HINTS: Record<string, string> = {
+  betaflight:
+    "Betaflight CLI. The first command enters CLI mode and pauses telemetry. `save` writes EEPROM and `exit` leaves CLI mode; neither reboots the flight controller.",
+  inav:
+    "iNav CLI. The first command enters CLI mode and pauses telemetry. `save` writes EEPROM and `exit` leaves CLI mode; iNav reboots the flight controller for both.",
+};
+
 export function CliPanel() {
   const t = useTranslations("telemetryStrip");
   const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
   const { firmwareType } = useFirmwareCapabilities();
-  const isBetaflight = firmwareType === 'betaflight';
   const connected = !!getSelectedProtocol();
 
-  const [entries, setEntries] = useState<LogEntry[]>([]);
+  // Rows live in a ring mutated in place; `version` re-renders at most once a frame.
+  const [ring] = useState(() => new RingBuffer<LogEntry>(MAX_ENTRIES));
+  const [version, setVersion] = useState(0);
+  const frameRef = useRef<number | null>(null);
   const [command, setCommand] = useState("");
   const [history, setHistory] = useState<string[]>([]);
   const [historyIdx, setHistoryIdx] = useState(-1);
 
   const scrollRef = useRef<HTMLDivElement>(null);
-  const unsubRef = useRef<(() => void) | null>(null);
 
-  const serialUnsubRef = useRef<(() => void) | null>(null);
+  const append = useCallback(
+    (severity: number, text: string) => {
+      ring.push({ id: nextId++, timestamp: Date.now(), severity, text });
+      if (frameRef.current !== null) return;
+      frameRef.current = requestAnimationFrame(() => {
+        frameRef.current = null;
+        setVersion((v) => v + 1);
+      });
+    },
+    [ring],
+  );
+
+  useEffect(() => () => cancelAnimationFrame(frameRef.current ?? 0), []);
 
   // Subscribe to STATUSTEXT messages
   useEffect(() => {
     const protocol = getSelectedProtocol();
     if (!protocol) return;
+    return protocol.onStatusText(({ severity, text }) => append(severity, text));
+  }, [getSelectedProtocol, append]);
 
-    unsubRef.current?.();
-    unsubRef.current = protocol.onStatusText(({ severity, text }) => {
-      setEntries((prev) => [
-        ...prev,
-        { id: nextId++, timestamp: Date.now(), severity, text },
-      ]);
-    });
-
-    return () => {
-      unsubRef.current?.();
-      unsubRef.current = null;
-    };
-  }, [getSelectedProtocol]);
-
-  // Subscribe to SERIAL_CONTROL responses
+  // Subscribe to CLI / SERIAL_CONTROL responses
   useEffect(() => {
     const protocol = getSelectedProtocol();
     if (!protocol) return;
-
-    serialUnsubRef.current?.();
-    serialUnsubRef.current = protocol.onSerialData(({ data }) => {
-      const text = new TextDecoder().decode(data).replace(/\0/g, "");
-      if (text.length === 0) return;
-      setEntries((prev) => [
-        ...prev,
-        { id: nextId++, timestamp: Date.now(), severity: 6, text },
-      ]);
+    return protocol.onSerialData(({ data }) => {
+      const text = new TextDecoder().decode(data).replace(/[\0\r]/g, "");
+      if (text.length > 0) append(6, text);
     });
+  }, [getSelectedProtocol, append]);
 
-    return () => {
-      serialUnsubRef.current?.();
-      serialUnsubRef.current = null;
-    };
-  }, [getSelectedProtocol]);
+  const count = ring.length;
+  const virt = useVirtualizer({
+    count,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => ROW_ESTIMATE_PX,
+    overscan: 20,
+  });
 
-  // Auto-scroll to bottom
+  // Keep the newest row in view.
   useEffect(() => {
-    const el = scrollRef.current;
-    if (el) {
-      el.scrollTop = el.scrollHeight;
-    }
-  }, [entries]);
+    if (count > 0) virt.scrollToIndex(count - 1, { align: "end" });
+  }, [version, count, virt]);
 
   const clearLog = useCallback(() => {
-    setEntries([]);
-  }, []);
+    ring.clear();
+    setVersion((v) => v + 1);
+  }, [ring]);
 
   const exportLog = useCallback(() => {
-    const lines = entries.map((e) => {
+    const lines = ring.toArray().map((e) => {
       const time = formatTs(e.timestamp);
       const sev = SEVERITY_LABELS[e.severity] ?? "???";
       return `[${time}] [${sev}] ${e.text}`;
@@ -126,7 +135,7 @@ export function CliPanel() {
     a.download = `fc-console-${Date.now()}.txt`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [entries]);
+  }, [ring]);
 
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
@@ -139,20 +148,14 @@ export function CliPanel() {
       setHistoryIdx(-1);
 
       // Local echo
-      setEntries((prev) => [
-        ...prev,
-        { id: nextId++, timestamp: Date.now(), severity: 6, text: `> ${trimmed}` },
-      ]);
+      append(6, `> ${trimmed}`);
 
-      // Send via SERIAL_CONTROL passthrough
-      const protocol = getSelectedProtocol();
-      if (protocol) {
-        protocol.sendSerialData(trimmed);
-      }
+      // The protocol turns the line into the firmware's CLI or shell form.
+      getSelectedProtocol()?.sendSerialData(trimmed);
 
       setCommand("");
     },
-    [command, getSelectedProtocol],
+    [command, getSelectedProtocol, append],
   );
 
   const handleKeyDown = useCallback(
@@ -195,7 +198,7 @@ export function CliPanel() {
           </span>
         </div>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="sm" icon={<Download size={12} />} onClick={exportLog} disabled={entries.length === 0}>
+          <Button variant="ghost" size="sm" icon={<Download size={12} />} onClick={exportLog} disabled={count === 0}>
             Export
           </Button>
           <Button variant="ghost" size="sm" icon={<Trash2 size={12} />} onClick={clearLog}>
@@ -207,37 +210,48 @@ export function CliPanel() {
       {/* Terminal display */}
       <div
         ref={scrollRef}
-        className="flex-1 bg-[#0a0a0f] border border-border-default overflow-y-auto p-3 font-mono text-xs"
+        className="flex-1 bg-bg-primary border border-border-default overflow-y-auto p-3 font-mono text-xs"
       >
-        {entries.length === 0 && (
+        {count === 0 && (
           <div className="text-text-tertiary">
             <p>ADOS Mission Control — FC Console</p>
             <p className="mt-1">
               {connected
-                ? isBetaflight
-                  ? "Betaflight CLI active. Type `help` for available commands. Type `exit` to leave CLI mode."
-                  : "Listening for STATUSTEXT messages from flight controller..."
+                ? ((firmwareType && IDLE_HINTS[firmwareType]) || "Listening for STATUSTEXT messages from flight controller...")
                 : "Connect a drone to receive FC messages."}
             </p>
           </div>
         )}
-        {entries.map((entry) => (
-          <div key={entry.id} className={cn("flex gap-2 leading-5", entry.severity <= 3 && "bg-status-error/5")}>
-            <span className="text-text-tertiary shrink-0">{formatTs(entry.timestamp)}</span>
-            <span
-              className={cn("shrink-0 w-14 text-right", severityColor(entry.severity))}
-            >
-              [{SEVERITY_LABELS[entry.severity] ?? "???"}]
-            </span>
-            <span className={severityColor(entry.severity)}>{entry.text}</span>
-          </div>
-        ))}
+        <div className="relative w-full" style={{ height: virt.getTotalSize() }}>
+          {virt.getVirtualItems().map((row) => {
+            const entry = ring.get(row.index);
+            if (!entry) return null;
+            return (
+              <div
+                key={entry.id}
+                data-index={row.index}
+                ref={virt.measureElement}
+                className={cn(
+                  "absolute left-0 top-0 w-full flex gap-2 leading-5",
+                  entry.severity <= 3 && "bg-status-error/5",
+                )}
+                style={{ transform: `translateY(${row.start}px)` }}
+              >
+                <span className="text-text-tertiary shrink-0">{formatTs(entry.timestamp)}</span>
+                <span className={cn("shrink-0 w-14 text-right", severityColor(entry.severity))}>
+                  [{SEVERITY_LABELS[entry.severity] ?? "???"}]
+                </span>
+                <span className={cn("whitespace-pre-wrap break-all", severityColor(entry.severity))}>{entry.text}</span>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* Command input */}
       <form onSubmit={handleSubmit} className="mt-2 flex gap-2">
-        <div className="flex-1 flex items-center bg-[#0a0a0f] border border-border-default px-2">
-          <span className="text-[#DFF140] font-mono text-xs mr-1">&gt;</span>
+        <div className="flex-1 flex items-center bg-bg-primary border border-border-default px-2">
+          <span className="text-accent-primary font-mono text-xs mr-1">&gt;</span>
           <input
             type="text"
             value={command}
@@ -248,7 +262,7 @@ export function CliPanel() {
             onKeyDown={handleKeyDown}
             placeholder={connected ? "Type a command..." : "Connect a drone first"}
             disabled={!connected}
-            className="flex-1 bg-transparent h-8 text-[#DFF140] font-mono text-xs placeholder:text-text-tertiary focus:outline-none"
+            className="flex-1 bg-transparent h-8 text-accent-primary font-mono text-xs placeholder:text-text-tertiary focus:outline-none"
           />
         </div>
         <Button variant="secondary" size="md" type="submit" disabled={!connected}>

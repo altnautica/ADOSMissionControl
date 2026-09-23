@@ -1,22 +1,19 @@
 /**
  * @license GPL-3.0-only
  *
- * The two producers that feed the install pop-up must both refuse to turn a
- * manifest's own `signer_id` into trust.
+ * The install pop-up must refuse to turn a manifest's own `signer_id` into
+ * trust.
  *
- * `toInstallSummary` (file drop, registry preview) and `agentSummaryToManifest`
- * (agent-mediated parse from a URL) each receive a `signer_id` that came out of
- * the archive the operator supplied. Neither may carry it onto the summary or
- * badge it unless the archive's signature actually verified — which only the
- * first of the two ever does, and only when the GCS holds the bytes.
+ * `toInstallSummary` (file drop, registry preview) receives a `signer_id` that
+ * came out of the archive the operator supplied. It may not carry it onto the
+ * summary or badge it unless the archive's signature actually verified, which
+ * needs the GCS to hold the bytes.
  */
 
 import { describe, it, expect } from "vitest";
 
-import { toInstallSummary } from "@/components/plugins/transports/manifest-parse";
-import { agentSummaryToManifest } from "@/components/plugins/transports/agent-summary-to-manifest";
-import type { ParsedManifest } from "@/components/plugins/transports/manifest-parse";
-import type { PluginAgentParseSummary } from "@/lib/agent/plugin-client";
+import { toInstallSummary } from "@/components/plugins/transports/manifest-summary";
+import type { ParsedManifest } from "@/components/plugins/transports/manifest-types";
 
 /** A manifest that declares the first-party signer id inside the archive. */
 const parsed = {
@@ -74,32 +71,5 @@ describe("toInstallSummary · the manifest's signer claim is not trust", () => {
       const summary = toInstallSummary(parsed, "hash", { signatureState });
       expect(summary.signatureState).toBe(signatureState);
     }
-  });
-});
-
-describe("agentSummaryToManifest · the agent's parse carries no trust", () => {
-  const agent = {
-    ok: true,
-    plugin_id: "com.example.cam",
-    version: "1.0.0",
-    name: "Example Cam",
-    description: "",
-    author: "",
-    license: "GPL-3.0-or-later",
-    risk: "medium",
-    signer_id: "altnautica-2026-A",
-    // The agent's `signed` field reports only that a SIGNATURE entry exists.
-    signed: true,
-    halves: ["gcs"],
-    permissions: [],
-  } as unknown as PluginAgentParseSummary;
-
-  it("reports unverified and badges no signature even when the agent says signed", () => {
-    const summary = agentSummaryToManifest(agent);
-    expect(summary.signatureState).toBe("unverified");
-    expect(summary.signerId).toBeUndefined();
-    expect(summary.trustSignals).not.toContain("signed");
-    expect(summary.trustSignals).not.toContain("first-party");
-    expect(summary.trustSignals).toEqual(["open-source"]);
   });
 });

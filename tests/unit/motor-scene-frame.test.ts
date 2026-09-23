@@ -89,3 +89,11 @@ describe("attitude to scene orientation", () => {
     expect(v.z).toBeCloseTo(0);
   });
 });
+
+describe("getMotorLayout lookup", () => {
+  it("returns no layout for a frame type the table does not have, never the Plus layout", () => {
+    // Quad FRAME_TYPE 15 (I) has no bundled layout.
+    expect(getMotorLayout(1, 15)).toBeNull();
+    expect(getMotorLayout(1, 1)?.typeName).toBe("X");
+  });
+});

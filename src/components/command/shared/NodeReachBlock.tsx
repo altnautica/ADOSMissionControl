@@ -30,11 +30,13 @@
 
 import { useTranslations } from "next-intl";
 import { ArrowRight, Wifi, WifiOff } from "lucide-react";
-import { useLocalNodesStore } from "@/stores/local-nodes-store";
+import { useLocalNodesStore, useReachOkLiveStore } from "@/stores/local-nodes-store";
 import { getFreshness, useClockTick } from "@/lib/agent/freshness";
 import {
   alternateReach,
+  bucketSuggestsOtherAddress,
   reachDisplayHost,
+  REACH_ERROR_BUCKETS,
   type ReachErrorBucket,
 } from "@/lib/nodes/local-reach";
 
@@ -52,6 +54,8 @@ export function NodeReachBlock({ deviceId }: NodeReachBlockProps) {
     deviceId ? (s.nodes.find((n) => n.deviceId === deviceId) ?? null) : null,
   );
   const setNodeHostname = useLocalNodesStore((s) => s.setNodeHostname);
+  // The persisted stamp is coalesced; the live one moves on every success.
+  const liveOkAt = useReachOkLiveStore((s) => (deviceId ? s.at[deviceId] : undefined));
 
   // Not a LAN-paired node, or nothing has been tried yet: say nothing.
   if (!node || !deviceId) return null;
@@ -59,7 +63,11 @@ export function NodeReachBlock({ deviceId }: NodeReachBlockProps) {
   if (!lastReachOk && !lastReachError) return null;
 
   const failing = lastReachError !== undefined;
-  const alternate = failing ? alternateReach(node) : null;
+  const bucket = lastReachError ? asBucket(lastReachError.error) : null;
+  // A node that answered is reachable at the stored address, so offering a
+  // different one would steer the operator into rewriting a working reach.
+  const alternate =
+    bucket !== null && bucketSuggestsOtherAddress(bucket) ? alternateReach(node) : null;
 
   return (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
@@ -73,7 +81,7 @@ export function NodeReachBlock({ deviceId }: NodeReachBlockProps) {
         <span className="text-text-secondary">
           {t("reachedAt", {
             host: reachDisplayHost(lastReachOk.host),
-            ago: getFreshness(lastReachOk.at).label,
+            ago: getFreshness(Math.max(lastReachOk.at, liveOkAt ?? 0)).label,
           })}
         </span>
       )}
@@ -82,7 +90,7 @@ export function NodeReachBlock({ deviceId }: NodeReachBlockProps) {
         <span className="text-text-secondary">
           {t("lastTried", {
             host: reachDisplayHost(lastReachError.host),
-            reason: t(`reason.${asBucket(lastReachError.error)}`),
+            reason: t(`reason.${bucket ?? "unknown"}`),
             ago: getFreshness(lastReachError.at).label,
           })}
         </span>
@@ -117,10 +125,5 @@ export function NodeReachBlock({ deviceId }: NodeReachBlockProps) {
  * trusted into the translation key — an unrecognised value reads "unknown"
  * rather than rendering a raw key at the operator. */
 function asBucket(value: string): ReachErrorBucket {
-  return value === "no-answer" ||
-    value === "refused" ||
-    value === "fault" ||
-    value === "unknown"
-    ? value
-    : "unknown";
+  return REACH_ERROR_BUCKETS.find((b) => b === value) ?? "unknown";
 }

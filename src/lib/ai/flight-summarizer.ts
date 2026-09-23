@@ -25,18 +25,30 @@ export function summarizeFlight(record: FlightRecord): string {
     year: "numeric",
   });
   const durationMin = Math.round(record.duration / 60);
-  const distKm = (record.distance / 1000).toFixed(1);
   const place = record.takeoffPlaceName ? ` from ${record.takeoffPlaceName}` : "";
 
+  // No recording means no measured distance and no analysis: say so, rather
+  // than report "0.0 km" and a clean bill of health nothing produced.
+  if (record.hasTelemetry === false || record.distance === undefined) {
+    parts.push(
+      `${drone} flew a ${durationMin}-minute ${record.status} flight on ${dateStr}${place}.`,
+      "No telemetry recorded; flight not analysed.",
+    );
+    return parts.join(" ");
+  }
+
+  const distKm = (record.distance / 1000).toFixed(1);
   parts.push(
     `${drone} flew a ${durationMin}-minute ${record.status} flight on ${dateStr}${place}, covering ${distKm} km.`,
   );
 
   // Key stats
   const statParts: string[] = [];
-  if (record.maxAlt > 0) statParts.push(`${record.maxAlt.toFixed(0)} m max altitude`);
-  if (record.maxSpeed > 0) statParts.push(`${record.maxSpeed.toFixed(1)} m/s top speed`);
-  if (record.batteryUsed > 0) statParts.push(`${record.batteryUsed.toFixed(0)}% battery used`);
+  if (record.maxAlt !== undefined && record.maxAlt > 0) statParts.push(`${record.maxAlt.toFixed(0)} m max altitude`);
+  if (record.maxSpeed !== undefined && record.maxSpeed > 0) statParts.push(`${record.maxSpeed.toFixed(1)} m/s top speed`);
+  if (record.batteryUsed !== undefined && record.batteryUsed > 0) {
+    statParts.push(`${record.batteryUsed.toFixed(0)}% battery used`);
+  }
   if (statParts.length > 0) {
     parts.push(`Reached ${statParts.join(", ")}.`);
   }
@@ -94,10 +106,10 @@ export function suggestTags(record: FlightRecord): string[] {
   else if (record.duration < 120) tags.push("short-flight");
 
   // Distance
-  if (record.distance > 10000) tags.push("long-range");
+  if (record.distance !== undefined && record.distance > 10000) tags.push("long-range");
 
   // Altitude
-  if (record.maxAlt > 100) tags.push("high-altitude");
+  if (record.maxAlt !== undefined && record.maxAlt > 100) tags.push("high-altitude");
 
   // Anomalies
   const hasErrors = (record.flags?.some((f) => f.severity === "error")) ?? false;

@@ -40,12 +40,14 @@ export class DisplayPortScreen {
     this.grid = this.blank();
   }
 
-  private writeString(row: number, col: number, text: string): void {
+  /** Font page 0 holds the ASCII range; any other page's codes are custom
+   * glyphs that would otherwise read as unrelated letters. */
+  private writeString(row: number, col: number, text: string, fontPage: number): void {
     if (row < 0 || row >= this.rows) return;
     for (let i = 0; i < text.length; i++) {
       const c = col + i;
       if (c < 0 || c >= this.cols) continue;
-      this.grid[row][c] = sanitize(text[i]);
+      this.grid[row][c] = fontPage === 0 ? sanitize(text[i]) : "·";
     }
   }
 
@@ -56,7 +58,11 @@ export class DisplayPortScreen {
         this.clear();
         return false;
       case "writeString":
-        this.writeString(op.row, op.col, op.text);
+        this.writeString(op.row, op.col, op.text, op.fontPage);
+        return false;
+      // The FC stopped painting: nothing it drew is on screen any more.
+      case "release":
+        this.clear();
         return false;
       case "options": {
         const r = DP_RESOLUTIONS[op.resolution];
@@ -65,7 +71,7 @@ export class DisplayPortScreen {
       }
       case "draw":
         return true;
-      // heartbeat / release / sys / unknown do not mutate the character grid
+      // heartbeat / sys / unknown do not mutate the character grid
       default:
         return false;
     }

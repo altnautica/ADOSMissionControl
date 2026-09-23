@@ -4,7 +4,7 @@
  * world frame. Reconstructions come out of the COLMAP / OpenCV pipeline, whose
  * world frame is Y-DOWN, Z-FORWARD — the SfM keeps COLMAP's world basis, and
  * only the *camera* basis is flipped to OpenGL upstream, so the world points
- * stay Y-down. three.js and the mkkellogg splat viewer render Y-UP, Z-BACK, so a
+ * stay Y-down. three.js and the splat viewer library render Y-UP, Z-BACK, so a
  * raw reconstruction loads upside-down. The convention transform is a 180°
  * rotation about X — negate Y and Z, `diag(1, -1, -1)` — the same transform the
  * compute node already applies to camera extrinsics. Applied once here and shared
@@ -15,8 +15,8 @@
 import type { BufferGeometry } from "three";
 
 /**
- * The mkkellogg `addSplatScene` scene-orientation quaternion `[x, y, z, w]` for a
- * 180° rotation about X (axis (1,0,0), angle π → `[1, 0, 0, 0]`). mkkellogg reads
+ * The splat library's `addSplatScene` scene-orientation quaternion `[x, y, z, w]` for a
+ * 180° rotation about X (axis (1,0,0), angle π → `[1, 0, 0, 0]`). The library reads
  * `options.rotation || options.orientation` and applies it to the whole splat
  * scene (positions + covariance), so this lifts a Brush `.ply` from the COLMAP
  * Y-down frame into the viewer's Y-up frame.

@@ -54,6 +54,7 @@ import {
 } from "@/components/plugins/install-dialog/use-install-handler";
 import { useLocalNodesStore } from "@/stores/local-nodes-store";
 import { usePairingStore } from "@/stores/pairing-store";
+import { useAuthStore } from "@/stores/auth-store";
 import type { InstallManifestSummary } from "@/components/plugins/install-dialog/types";
 
 const DRONE = { _id: "row-1", deviceId: "drone-1", name: "Drone 1" };
@@ -132,6 +133,7 @@ describe("install routing", () => {
       generateUploadUrl: vi.fn(async () => "https://storage.example.com/u") as never,
       verifyArchive: vi.fn(async () => "archive-1") as never,
       createJob: createJob as never,
+      storeBundle: vi.fn(async () => "bundle-1"),
       recordInstall: vi.fn(async () => "install-1"),
       grantPermission: vi.fn(async () => undefined),
       setInstallStatus: vi.fn(async () => undefined),
@@ -146,6 +148,21 @@ describe("install routing", () => {
     const { result } = renderHook(() => useInstallHandler(args));
     return { install: result.current, setError, createJob, args };
   }
+
+  it("refuses a signed-out file install of a Mission Control plugin it could not keep", async () => {
+    useAuthStore.setState({ isAuthenticated: false });
+    const onDone = vi.fn();
+    const { install, setError } = run({
+      manifest: { ...manifest(), halves: ["gcs"] },
+      targetDevice: null,
+      onDone,
+    });
+    await act(async () => {
+      await install();
+    });
+    expect(setError).toHaveBeenCalledWith(expect.stringMatching(/need a cloud sign-in/));
+    expect(onDone).not.toHaveBeenCalled();
+  });
 
   it("refuses a drone reached only over its ground station's relay", async () => {
     relay.target = { url: "http://192.168.1.60:8080/api/v1/ground-station/relay-proxy/drone-1", apiKey: "k", relay: true };

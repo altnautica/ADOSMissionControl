@@ -14,6 +14,28 @@ import {
 import { clampTileZoom } from "@/lib/tile-math";
 import type { SettingsSliceFactory, SettingsStoreState } from "./types";
 
+/** Accepted guidance-line length in metres. */
+export const GUIDANCE_LENGTH_RANGE = { min: 20, max: 300 } as const;
+/** Accepted guidance-line width in pixels. */
+export const GUIDANCE_WIDTH_RANGE = { min: 0.5, max: 5 } as const;
+
+/**
+ * A guidance length or width clamped into its range, or undefined for a
+ * non-finite value so the setter keeps the previous one. A negative length
+ * would project the line backwards, and 0 would hide it while it reads enabled.
+ */
+export function clampGuidanceValue(
+  value: number,
+  range: { readonly min: number; readonly max: number },
+): number | undefined {
+  return Number.isFinite(value) ? Math.min(range.max, Math.max(range.min, value)) : undefined;
+}
+
+/** True for a `#rrggbb` colour, the only form the guidance colour pickers take. */
+export function isGuidanceColor(value: string): boolean {
+  return /^#[0-9a-f]{6}$/i.test(value);
+}
+
 export const displayDefaults: Partial<SettingsStoreState> = {
   mapTileSource: "satellite",
   customTileUrl: "",
@@ -229,18 +251,42 @@ export const createDisplayActions: SettingsSliceFactory<
     set((s) => ({
       paramFilterPresets: s.paramFilterPresets.filter((p) => p.id !== id),
     })),
-  setGuidanceHdgLength: (v) => set({ guidanceHdgLength: v }),
-  setGuidanceHdgWidth: (v) => set({ guidanceHdgWidth: v }),
+  setGuidanceHdgLength: (v) => {
+    const n = clampGuidanceValue(v, GUIDANCE_LENGTH_RANGE);
+    if (n !== undefined) set({ guidanceHdgLength: n });
+  },
+  setGuidanceHdgWidth: (v) => {
+    const n = clampGuidanceValue(v, GUIDANCE_WIDTH_RANGE);
+    if (n !== undefined) set({ guidanceHdgWidth: n });
+  },
   setGuidanceHdgLineType: (v) => set({ guidanceHdgLineType: v }),
-  setGuidanceHdgColor: (v) => set({ guidanceHdgColor: v }),
-  setGuidanceTrackWpLength: (v) => set({ guidanceTrackWpLength: v }),
-  setGuidanceTrackWpWidth: (v) => set({ guidanceTrackWpWidth: v }),
+  setGuidanceHdgColor: (v) => {
+    if (isGuidanceColor(v)) set({ guidanceHdgColor: v });
+  },
+  setGuidanceTrackWpLength: (v) => {
+    const n = clampGuidanceValue(v, GUIDANCE_LENGTH_RANGE);
+    if (n !== undefined) set({ guidanceTrackWpLength: n });
+  },
+  setGuidanceTrackWpWidth: (v) => {
+    const n = clampGuidanceValue(v, GUIDANCE_WIDTH_RANGE);
+    if (n !== undefined) set({ guidanceTrackWpWidth: n });
+  },
   setGuidanceTrackWpLineType: (v) => set({ guidanceTrackWpLineType: v }),
-  setGuidanceTrackWpColor: (v) => set({ guidanceTrackWpColor: v }),
-  setGuidanceTgtHdgLength: (v) => set({ guidanceTgtHdgLength: v }),
-  setGuidanceTgtHdgWidth: (v) => set({ guidanceTgtHdgWidth: v }),
+  setGuidanceTrackWpColor: (v) => {
+    if (isGuidanceColor(v)) set({ guidanceTrackWpColor: v });
+  },
+  setGuidanceTgtHdgLength: (v) => {
+    const n = clampGuidanceValue(v, GUIDANCE_LENGTH_RANGE);
+    if (n !== undefined) set({ guidanceTgtHdgLength: n });
+  },
+  setGuidanceTgtHdgWidth: (v) => {
+    const n = clampGuidanceValue(v, GUIDANCE_WIDTH_RANGE);
+    if (n !== undefined) set({ guidanceTgtHdgWidth: n });
+  },
   setGuidanceTgtHdgLineType: (v) => set({ guidanceTgtHdgLineType: v }),
-  setGuidanceTgtHdgColor: (v) => set({ guidanceTgtHdgColor: v }),
+  setGuidanceTgtHdgColor: (v) => {
+    if (isGuidanceColor(v)) set({ guidanceTgtHdgColor: v });
+  },
   setGuidanceHdgEnabled: (v) => set({ guidanceHdgEnabled: v }),
   setGuidanceTrackWpEnabled: (v) => set({ guidanceTrackWpEnabled: v }),
   setGuidanceTgtHdgEnabled: (v) => set({ guidanceTgtHdgEnabled: v }),

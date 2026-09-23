@@ -51,8 +51,8 @@ function seed(over: Partial<LocalNode> = {}) {
     nodes: [
       {
         deviceId: DEVICE,
-        name: "Skynode",
-        hostname: "http://skynode.local:8080",
+        name: "Example drone",
+        hostname: "http://drone.local:8080",
         apiKey: "k",
         profile: "drone",
         ipv4: "192.168.1.50",
@@ -91,16 +91,26 @@ describe("NodeReachBlock", () => {
     expect(screen.queryByText(/http:\/\//)).toBeNull();
   });
 
+  it("counts from the latest answer, not the coalesced stored stamp", () => {
+    // Stored 19 s ago; the node has just answered again at the same address,
+    // a success the store does not re-persist inside its coalescing window.
+    seed({ lastReachOk: { host: "http://192.168.1.50:8080", at: Date.now() - 19_000 } });
+    useLocalNodesStore.getState().recordReachOk(DEVICE, "http://192.168.1.50:8080");
+    expect(useLocalNodesStore.getState().nodes[0].lastReachOk?.at).toBeLessThan(Date.now() - 18_000);
+    renderBlock();
+    expect(screen.getByText(/Reached at 192\.168\.1\.50/).textContent).not.toMatch(/1[89]s/);
+  });
+
   it("flags a stored reach that failed, and says only what is provable", () => {
     seed({
       lastReachError: {
-        host: "http://skynode.local:8080",
+        host: "http://drone.local:8080",
         error: "no-answer",
         at: NOW - 12_000,
       },
     });
     renderBlock();
-    const line = screen.getByText(/Last tried skynode\.local/);
+    const line = screen.getByText(/Last tried drone\.local/);
     expect(line.textContent).toMatch(/nothing answered/);
     // Never a fabricated diagnosis: through the server-side proxy a DNS
     // failure and a dead board are the same 502.
@@ -110,7 +120,7 @@ describe("NodeReachBlock", () => {
   it("distinguishes answered-and-refused from unreachable", () => {
     seed({
       lastReachError: {
-        host: "http://skynode.local:8080",
+        host: "http://drone.local:8080",
         error: "refused",
         at: NOW,
       },
@@ -124,7 +134,7 @@ describe("NodeReachBlock", () => {
     seed({
       lastReachOk: { host: "http://192.168.1.50:8080", at: NOW - 60_000 },
       lastReachError: {
-        host: "http://skynode.local:8080",
+        host: "http://drone.local:8080",
         error: "no-answer",
         at: NOW,
       },
@@ -136,7 +146,7 @@ describe("NodeReachBlock", () => {
   it("switches the node onto the offered address in one click", () => {
     seed({
       lastReachError: {
-        host: "http://skynode.local:8080",
+        host: "http://drone.local:8080",
         error: "no-answer",
         at: NOW,
       },
@@ -165,10 +175,38 @@ describe("NodeReachBlock", () => {
     expect(screen.queryByText(/^Use /)).toBeNull();
   });
 
+  it("says a still-starting node answered and offers no address switch", () => {
+    seed({
+      lastReachError: {
+        host: "http://drone.local:8080",
+        error: reachErrorBucket(new PairClientError("pairAgentNotReadyError", "x")),
+        at: NOW,
+      },
+    });
+    renderBlock();
+    expect(screen.getByText(/answered but was not ready/)).toBeTruthy();
+    expect(screen.queryByText(/nothing answered/)).toBeNull();
+    // The name works; steering the operator onto the IPv4 would rewrite it.
+    expect(screen.queryByText(/^Use /)).toBeNull();
+  });
+
+  it("does not claim the node answered when the proxy refused the host", () => {
+    seed({
+      lastReachError: {
+        host: "http://drone.local:8080",
+        error: reachErrorBucket(new PairClientError("hostNotPrivateError", "x")),
+        at: NOW,
+      },
+    });
+    renderBlock();
+    expect(screen.queryByText(/answered/)).toBeNull();
+    expect(screen.getByText(/not tried/)).toBeTruthy();
+  });
+
   it("renders an unrecognised persisted bucket as unknown, never a raw key", () => {
     seed({
       lastReachError: {
-        host: "http://skynode.local:8080",
+        host: "http://drone.local:8080",
         error: "not-a-bucket",
         at: NOW,
       },
@@ -182,7 +220,7 @@ describe("reach provenance recording", () => {
   it("clears a recorded failure the moment a reach succeeds", () => {
     seed({
       lastReachError: {
-        host: "http://skynode.local:8080",
+        host: "http://drone.local:8080",
         error: "no-answer",
         at: NOW - 30_000,
       },
@@ -196,7 +234,7 @@ describe("reach provenance recording", () => {
   });
 
   it("writes a reach CHANGE through immediately rather than coalescing it", () => {
-    seed({ lastReachOk: { host: "http://skynode.local:8080", at: NOW } });
+    seed({ lastReachOk: { host: "http://drone.local:8080", at: NOW } });
     useLocalNodesStore
       .getState()
       .recordReachOk(DEVICE, "http://192.168.1.50:8080");
@@ -217,6 +255,9 @@ describe("reach provenance recording", () => {
     );
     expect(reachErrorBucket(new PairClientError("pairAgentFaultError", "x"))).toBe(
       "fault",
+    );
+    expect(reachErrorBucket(new PairClientError("pairTimedOutError", "x"))).toBe(
+      "not-ready",
     );
     // An unmapped failure is reported as unknown rather than guessed at.
     expect(reachErrorBucket(new Error("boom"))).toBe("unknown");

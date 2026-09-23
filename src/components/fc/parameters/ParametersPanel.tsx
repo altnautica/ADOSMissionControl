@@ -14,7 +14,7 @@
  */
 
 import { useTranslations } from "next-intl";
-import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -29,36 +29,25 @@ import { useToast } from "@/components/ui/toast";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useUiStore } from "@/stores/ui-store";
-import { loadParamMetadata, type ParamMetadata } from "@/lib/protocol/param-metadata";
 import { resolveParamDocContext, type ParamDocContext } from "@/lib/protocol/param-docs";
 import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { useMqttControlAuthority } from "@/hooks/use-mqtt-control-authority";
 import { useControlAuthorityNotice } from "@/hooks/use-node-control-authority";
 import { PanelHeader } from "../shared/PanelHeader";
-import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
+import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { confirmArmedParamWrite, describeParamBatch, writeParamBatch } from "@/lib/protocol/param-write";
 import { cn } from "@/lib/utils";
 import { ListTree, RefreshCw, SlidersHorizontal } from "lucide-react";
-import type { ParameterValue, DroneProtocol } from "@/lib/protocol/types";
+import type { ParameterValue } from "@/lib/protocol/types";
 import { exportParamFile } from "./param-file-io";
+import { useParameterList } from "./use-parameter-list";
 
 /**
  * Panel id every write from this surface is attributed to, in the armed-confirm
  * dialog and the pending-write records. The FC panels use their own ids.
  */
 const PANEL_ID = "parameters";
-
-/** Module-level cache — survives unmount/remount, avoids full re-download on navigation. */
-let cachedParamList: ParameterValue[] | null = null;
-let cacheTimestamp = 0;
-const PARAM_LIST_CACHE_TTL = 300_000;
-
-/** Invalidate the param cache (call on FC disconnect/reconnect). */
-export function invalidateParamCache(): void {
-  cachedParamList = null;
-  cacheTimestamp = 0;
-}
 
 const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
 
@@ -81,20 +70,19 @@ function useDebouncedValue<T>(value: T, delay: number): T {
 export function ParametersPanel() {
   const t = useTranslations("parameters");
   const { toast } = useToast();
-  const [parameters, setParameters] = useState<ParameterValue[]>([]);
   const [modified, setModified] = useState<Map<string, number>>(new Map());
+  const resetModified = useCallback(() => setModified(new Map()), []);
+  const {
+    parameters, metadata, loading, progress, error, setError, downloadParams, applyWritten,
+  } = useParameterList(resetModified);
   const [filter, setFilter] = useState("");
   const debouncedFilter = useDebouncedValue(filter, 150);
   const [category, setCategory] = useState<string | null>(null);
   const [showModifiedOnly, setShowModifiedOnly] = useState(false);
   const [showNonDefault, setShowNonDefault] = useState(false);
   const [showFavorites, setShowFavorites] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [progress, setProgress] = useState({ current: 0, total: 0 });
   const [writeProgress, setWriteProgress] = useState({ current: 0, total: 0 });
-  const [error, setError] = useState<string | null>(null);
-  const [metadata, setMetadata] = useState<Map<string, ParamMetadata>>(new Map());
   const [showWriteConfirm, setShowWriteConfirm] = useState(false);
   const [showRebootPrompt, setShowRebootPrompt] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
@@ -130,7 +118,6 @@ export function ParametersPanel() {
   // broker that discards it and nothing fails. The panel says so before the
   // operator stages forty edits.
   const authority = useControlAuthorityNotice(useMqttControlAuthority());
-  const prevProtocolRef = useRef<DroneProtocol | null>(null);
 
   const docContext = useMemo((): ParamDocContext | null => {
     if (!vehicleInfo) return null;
@@ -140,67 +127,6 @@ export function ParametersPanel() {
       vehicleInfo.vehicleClass,
     );
   }, [vehicleInfo, selectedDroneId]);
-
-  // Throttled progress ref — update UI at most every 100ms during download
-  const lastProgressUpdate = useRef(0);
-
-  const downloadParams = useCallback(async () => {
-    const protocol = useDroneManager.getState().getSelectedProtocol();
-    if (!protocol) { setError(t("noDroneConnected")); return; }
-    setLoading(true); setError(null); setProgress({ current: 0, total: 0 });
-    setModified(new Map());
-    // Keyed by param index, not a raw per-frame counter: a lossy link makes
-    // the GCS re-request missing indices and the FC itself may retransmit,
-    // so the same index can legitimately arrive more than once during one
-    // download. A plain push-per-callback counter double-counts every
-    // retransmission and can run past the real total (seen live: "1452/1111,
-    // 131%"). Overwriting by index mirrors the adapter's own dedup so the
-    // displayed count can never exceed reality.
-    const receivedByIndex = new Map<number, ParameterValue>();
-    // A stray or malformed frame (no request-correlation id exists in
-    // PARAM_VALUE to rule one out) can report an index outside its own
-    // count — e.g. a real one seen live, `index=65535,count=1`. A real
-    // indexed parameter always satisfies 0 <= index < count; anything else
-    // is display noise, not progress, and must not blip the total downward
-    // mid-download.
-    const unsub = protocol.onParameter((param) => {
-      if (param.index < 0 || param.index >= param.count) return;
-      receivedByIndex.set(param.index, param);
-      const now = Date.now();
-      if (now - lastProgressUpdate.current >= 100 || receivedByIndex.size === param.count) {
-        lastProgressUpdate.current = now;
-        setProgress({ current: receivedByIndex.size, total: param.count || receivedByIndex.size });
-      }
-    });
-    try {
-      const params = await protocol.getAllParameters();
-      params.sort((a, b) => collator.compare(a.name, b.name));
-      cachedParamList = params; cacheTimestamp = Date.now(); setParameters(params);
-    } catch (err) { setError(err instanceof Error ? err.message : t("downloadFailed")); }
-    finally { unsub(); setLoading(false); }
-  }, []);
-
-  useEffect(() => {
-    const protocolChanged =
-      selectedProtocol !== null &&
-      prevProtocolRef.current !== null &&
-      selectedProtocol !== prevProtocolRef.current;
-    if (selectedProtocol !== null) prevProtocolRef.current = selectedProtocol;
-    if (protocolChanged) invalidateParamCache();
-
-    if (cachedParamList && Date.now() - cacheTimestamp < PARAM_LIST_CACHE_TTL) { setParameters(cachedParamList); }
-    else { downloadParams(); }
-    const drone = useDroneManager.getState().getSelectedDrone();
-    if (drone?.vehicleInfo) {
-      loadParamMetadata({
-        firmwareType: drone.vehicleInfo.firmwareType,
-        vehicleClass: drone.vehicleInfo.vehicleClass,
-        firmwareVersion: drone.vehicleInfo.firmwareVersionString,
-        protocol: drone.protocol,
-      }).then(setMetadata);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedProtocol]);
 
   useEffect(() => {
     if (pendingParamSearch) {
@@ -288,13 +214,12 @@ export function ParametersPanel() {
 
     // Commit what landed, whether or not the rest did.
     if (written.size > 0) {
-      setParameters((prev) => {
-        const updated = prev.map((p) => {
-          const nv = modified.get(p.name);
-          return written.has(p.name) && nv !== undefined ? { ...p, value: nv } : p;
-        });
-        cachedParamList = updated; cacheTimestamp = Date.now(); return updated;
-      });
+      const landed = new Map<string, number>();
+      for (const name of written) {
+        const nv = modified.get(name);
+        if (nv !== undefined) landed.set(name, nv);
+      }
+      applyWritten(landed);
       setModified((prev) => {
         const next = new Map(prev);
         for (const name of written) next.delete(name);
@@ -311,7 +236,7 @@ export function ParametersPanel() {
     // Only the parameters that landed can require a reboot.
     if (outcome.rebootRequired) setShowRebootPrompt(true);
     setSaving(false); setWriteProgress({ current: 0, total: 0 });
-  }, [modified, paramsByName, metadata, toast]);
+  }, [modified, paramsByName, metadata, toast, applyWritten, setError]);
 
   const writeChanges = useMemo(() => Array.from(modified.entries()).map(([name, newValue]) => ({
     name, oldValue: paramsByName.get(name)?.value ?? 0, newValue,
@@ -348,13 +273,15 @@ export function ParametersPanel() {
       else { setError(`Reset failed: ${result.message}`); }
     } catch (err) { setError(err instanceof Error ? err.message : "Reset command failed"); }
     finally { setSaving(false); }
-  }, [downloadParams]);
+  }, [downloadParams, setError]);
 
+  // The compare view diffs a file against what the vehicle holds, so staged
+  // (unwritten) grid edits stay out of its "FC Value" column.
   const fcParamMap = useMemo(() => {
     const map = new Map<string, number>();
-    for (const p of parameters) map.set(p.name, modified.has(p.name) ? modified.get(p.name)! : p.value);
+    for (const p of parameters) map.set(p.name, p.value);
     return map;
-  }, [parameters, modified]);
+  }, [parameters]);
 
   // Re-read the vehicle whenever any compare write landed; close the compare
   // view only when all of it did, so the failures stay in front of the operator.
@@ -378,7 +305,7 @@ export function ParametersPanel() {
   }, [parameters, modified]);
 
   return (
-    <ArmedLockOverlay className="h-full overflow-hidden">
+    <ArmedWarningBanner className="h-full overflow-hidden">
       <div className="flex-shrink-0 border-b border-border-default bg-bg-secondary px-4 py-3">
         <PanelHeader
           title={t("title")}
@@ -479,6 +406,6 @@ export function ParametersPanel() {
         onConfirm={handleReboot}
         title={t("rebootTitle")} message={t("rebootMessage")}
         confirmLabel={t("rebootConfirmLabel")} variant="primary" />
-    </ArmedLockOverlay>
+    </ArmedWarningBanner>
   );
 }

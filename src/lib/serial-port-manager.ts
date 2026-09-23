@@ -14,6 +14,26 @@ export interface PortInfo {
   productId?: number;
 }
 
+/**
+ * The permitted port a saved serial link should reopen: the single port whose
+ * USB VID/PID match the saved ones, or the only permitted port when the saved
+ * link carries no USB identity. Null when nothing matches or more than one
+ * port does, so the caller asks the operator instead of opening whichever
+ * port happens to be first (a telemetry radio instead of the flight
+ * controller, say).
+ */
+export function matchKnownPort(
+  ports: readonly PortInfo[],
+  vendorId: number | undefined,
+  productId: number | undefined,
+): PortInfo | null {
+  const candidates =
+    vendorId === undefined || productId === undefined
+      ? ports
+      : ports.filter((p) => p.vendorId === vendorId && p.productId === productId);
+  return candidates.length === 1 ? candidates[0] : null;
+}
+
 /** Options for {@link SerialPortManagerImpl.waitForBootloaderPort}. */
 export interface WaitForBootloaderOptions {
   /** Ports already permitted BEFORE the reboot, used to detect a fresh device. */

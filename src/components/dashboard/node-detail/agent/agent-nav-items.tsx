@@ -78,7 +78,7 @@ export const AGENT_NAV_ITEMS: AgentNavItem[] = [
     // tab. Gated on a PROVEN radio: `unknown` (no reading from this node yet)
     // is not `present`, so the page is never offered on a guess.
     when: (ctx) => isDrone(ctx) && ctx.radioPresent === "present",
-    render: (ctx) => <DroneRadioPanel droneId={ctx.droneId} />,
+    render: (ctx) => <DroneRadioPanel droneId={ctx.droneId} nodeDeviceId={surfaceNodeDeviceId(ctx)} />,
   },
   {
     id: "vision",

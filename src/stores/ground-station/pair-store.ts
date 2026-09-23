@@ -27,10 +27,16 @@ export interface PairSlice {
   ap: ApStatus | null;
   pair: PairSliceShape;
   ui: UiConfig | null;
+  /** The agent origin `ui` belongs to (and the latest load targets). A
+   * response for any other origin is dropped, so a late read from the
+   * previously shown node never lands on the current one. */
+  uiFor: string | null;
 
   loadNetwork: (api: GroundStationApi) => Promise<void>;
   applyAp: (api: GroundStationApi, update: ApUpdate) => Promise<ApStatus | null>;
-  loadUi: (api: GroundStationApi) => Promise<void>;
+  /** Resolves with this node's config, or null on failure or when a newer
+   * load for another node superseded it. */
+  loadUi: (api: GroundStationApi) => Promise<UiConfig | null>;
   applyOled: (
     api: GroundStationApi,
     update: OledUpdate,
@@ -56,6 +62,7 @@ export const createPairSlice: GroundStationSliceCreator<PairSlice> = (
   ap: null,
   pair: INITIAL_PAIR,
   ui: null,
+  uiFor: null,
 
   loadNetwork: async (api) => {
     try {
@@ -99,19 +106,25 @@ export const createPairSlice: GroundStationSliceCreator<PairSlice> = (
   },
 
   loadUi: async (api) => {
+    const target = api.baseUrl;
+    // Switching node drops the previous node's config immediately.
+    if (get().uiFor !== target) set({ ui: null, uiFor: target });
     try {
       const ui = await api.getUi();
+      if (get().uiFor !== target) return null;
       set({ ui, lastError: null });
+      return ui;
     } catch (err) {
       const { message } = errorMessage(err);
-      set({ lastError: message });
+      if (get().uiFor === target) set({ lastError: message });
+      return null;
     }
   },
 
   applyOled: async (api, update) => {
     try {
       const ui = await api.setOled(update);
-      set({ ui, lastError: null });
+      if (get().uiFor === api.baseUrl) set({ ui, lastError: null });
       return ui;
     } catch (err) {
       const { message } = errorMessage(err);
@@ -123,7 +136,7 @@ export const createPairSlice: GroundStationSliceCreator<PairSlice> = (
   applyScreens: async (api, update) => {
     try {
       const ui = await api.setScreens(update);
-      set({ ui, lastError: null });
+      if (get().uiFor === api.baseUrl) set({ ui, lastError: null });
       return ui;
     } catch (err) {
       const { message } = errorMessage(err);

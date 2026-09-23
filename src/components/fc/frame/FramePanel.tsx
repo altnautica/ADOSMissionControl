@@ -7,7 +7,7 @@ import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
 import { useDroneManager } from "@/stores/drone-manager";
-import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
+import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { PanelHeader } from "../shared/PanelHeader";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
@@ -146,7 +146,7 @@ export function FramePanel() {
   }, [commitToFlash, showFlashResult]);
 
   return (
-    <ArmedLockOverlay>
+    <ArmedWarningBanner>
       <div className="flex-1 overflow-hidden flex">
         <div className="flex-1 overflow-y-auto p-6">
           <div className="max-w-2xl space-y-6">
@@ -205,7 +205,7 @@ export function FramePanel() {
                   <MotorDiagram3D layout={layout} />
                 ) : (
                   <div className="py-8 text-center space-y-2">
-                    <p className="text-xs text-text-secondary">{frameClass === 0 ? "Select a frame class to see the motor layout." : `No motor layout diagram for ${className}.`}</p>
+                    <p className="text-xs text-text-secondary">{frameClass === 0 ? "Select a frame class to see the motor layout." : frameTypeUnknown ? `No motor layout for ${className} frame type ${frameType}.` : `No motor layout diagram for ${className}.`}</p>
                     {classDescription && frameClass !== 0 && <p className="text-[10px] text-text-tertiary">{classDescription}. {classParam} will still be sent to the flight controller.</p>}
                   </div>
                 )}
@@ -232,6 +232,6 @@ export function FramePanel() {
 
         <FrameConfigLog logEntries={logEntries} onClear={() => setLogEntries([])} />
       </div>
-    </ArmedLockOverlay>
+    </ArmedWarningBanner>
   );
 }

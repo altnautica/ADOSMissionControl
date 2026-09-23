@@ -13,10 +13,13 @@ import type { AgentCapabilities } from "@/lib/agent/feature-types";
 import type { inferCapabilities } from "@/lib/agent/infer-capabilities";
 
 export interface HeartbeatExtras {
-  videoRestartAttempts: number;
+  /** Undefined when the heartbeat does not carry a valid count, so the store
+   * keeps what it had rather than reading the absence as zero restarts. */
+  videoRestartAttempts: number | undefined;
   pairingCodeExpiresAt: number | null;
-  mavlinkWsUrlPrev: string | null;
-  wfbFailoverState: "local" | "cloud_relay" | "failed";
+  /** Undefined when the heartbeat does not carry a known state; an absent key
+   * is unknown, never the healthy "local". */
+  wfbFailoverState: (typeof FAILOVER_STATES)[number] | undefined;
   manualConnectionUrls:
     | {
         mavlinkTcp: string | null;
@@ -129,7 +132,7 @@ export function buildHeartbeatExtras(
     Number.isFinite(videoRestart) &&
     videoRestart >= 0
       ? Math.floor(videoRestart)
-      : 0;
+      : undefined;
   const pairingCodeExpiresAtRaw = cloudStatus.pairingCodeExpiresAt;
   const pairingCodeExpiresAt =
     typeof pairingCodeExpiresAtRaw === "number" &&
@@ -137,17 +140,8 @@ export function buildHeartbeatExtras(
     pairingCodeExpiresAtRaw > 0
       ? pairingCodeExpiresAtRaw
       : null;
-  const mavlinkWsUrlPrevRaw = cloudStatus.mavlinkWsUrlPrev;
-  const mavlinkWsUrlPrev =
-    typeof mavlinkWsUrlPrevRaw === "string" && mavlinkWsUrlPrevRaw.length > 0
-      ? mavlinkWsUrlPrevRaw
-      : null;
-  const wfbFailoverRaw = cloudStatus.wfbFailoverState as string | undefined;
-  const wfbFailoverState: "local" | "cloud_relay" | "failed" = (
-    FAILOVER_STATES as readonly string[]
-  ).includes(wfbFailoverRaw ?? "")
-    ? (wfbFailoverRaw as "local" | "cloud_relay" | "failed")
-    : "local";
+  const wfbFailoverRaw = cloudStatus.wfbFailoverState;
+  const wfbFailoverState = FAILOVER_STATES.find((s) => s === wfbFailoverRaw);
 
   const rawManual = cloudStatus.manualConnectionUrls;
   const manualConnectionUrls =
@@ -307,7 +301,6 @@ export function buildHeartbeatExtras(
   return {
     videoRestartAttempts,
     pairingCodeExpiresAt,
-    mavlinkWsUrlPrev,
     wfbFailoverState,
     manualConnectionUrls,
     cloudRelayUrl: pickStringOrNull(cloudStatus.cloudRelayUrl),
@@ -362,7 +355,7 @@ export function buildHeartbeatExtras(
     // there is no target. So when the tier IS present but the target is absent,
     // the drone is NOT offloading — treat the target as CLEARED (null), never
     // keep-prior, or PerceptionTierCard would keep naming the workstation the
-    // drone already stopped offloading to (Rule 44 — a stale reading is a bug).
+    // drone already stopped offloading to (a stale reading is a bug).
     // Only when the tier itself is absent (a sparse tick with no perception
     // fields at all) does an absent target keep prior (undefined). The
     // capability-store normalizer clamps the tier to the known union; a null

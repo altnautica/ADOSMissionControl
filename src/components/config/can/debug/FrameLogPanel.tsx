@@ -140,7 +140,9 @@ export function FrameLogPanel() {
   const clear = useDroneCanBusStore((s) => s.clear);
 
   const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS);
-  const [expanded, setExpanded] = useState<number | null>(null);
+  // Keyed by the frame object itself: `visible` is rebuilt newest-first on
+  // every bump, so a row index would point at a different frame each time.
+  const [expanded, setExpanded] = useState<DecodedFrame | null>(null);
   const parentRef = useRef<HTMLDivElement | null>(null);
 
   const visible = useMemo(() => {
@@ -301,7 +303,7 @@ export function FrameLogPanel() {
           <div style={{ height: virt.getTotalSize(), position: "relative" }}>
             {virt.getVirtualItems().map((vi) => {
               const fr = visible[vi.index];
-              const isOpen = expanded === vi.index;
+              const isOpen = expanded === fr;
               const tRel = firstFrameT ? fr.t - firstFrameT : 0;
               return (
                 <div
@@ -316,7 +318,7 @@ export function FrameLogPanel() {
                   data-frame-row="true"
                 >
                   <button
-                    onClick={() => setExpanded(isOpen ? null : vi.index)}
+                    onClick={() => setExpanded(isOpen ? null : fr)}
                     className={cn(
                       "grid grid-cols-[60px_24px_90px_140px_50px_1fr] gap-x-2 px-2 py-1 text-[11px] font-mono w-full text-left hover:bg-bg-tertiary border-b border-border-default",
                       fr.error && "text-status-error",

@@ -2,12 +2,11 @@
 
 /**
  * @module fly/cockpit/Tapes
- * @description Speed & altitude tapes — the reference artifact's `.tape.l` /
- * `.tape.r` (a tall `.rail` of neighbour `.tick`s around a filled `.now` value
+ * @description Speed & altitude tapes, styled by `.tape.l` / `.tape.r` (a tall `.rail` of neighbour `.tick`s around a filled `.now` value
  * box). The rail ALWAYS renders its full tick ladder (3 above + 3 below) so it
  * keeps its tall instrument shape even with no telemetry — the `.now` box shows
  * the live reading, the ticks show value ± step, and both fall back to blank/"—"
- * honestly when there is no fresh value (Rule 44).
+ * honestly when there is no fresh value (no fabricated reading).
  * @license GPL-3.0-only
  */
 

@@ -19,12 +19,14 @@
  * `/api/plugins/install` endpoints with the same metadata fields already
  * inlined; the GCS also keeps a mirror at `./agent-capabilities.ts` for the
  * cloud-relay preview path where the dialog parses the manifest before the
- * agent ever sees the archive. `getMergedCapabilityMeta()` consults the agent
- * mirror first and falls back to the GCS-side catalog, then to an "unknown"
- * placeholder for ids neither catalog declares.
+ * agent ever sees the archive. `getMergedCapabilityMeta()` consults the
+ * catalog of the half that declared the permission first (the agent mirror for
+ * untagged rows) and falls back to the other catalog only when the id is absent
+ * there, then to an "unknown" placeholder for ids neither catalog declares.
  */
 
 import { AGENT_CAPABILITY_CATALOG } from "./agent-capabilities";
+import type { PluginHalf } from "./types";
 import {
   GCS_CAPABILITIES,
   GCS_CAPABILITY_CATALOG as CAPABILITY_CATALOG,
@@ -96,17 +98,6 @@ export function isKnownCapability(id: string): boolean {
   return id in CAPABILITY_CATALOG;
 }
 
-/**
- * Merged lookup for the install dialog.
- *
- * Both halves of a plugin manifest declare permissions and both halves
- * render in the same review surface. Agent-side ids resolve through
- * the mirror at `agent-capabilities.ts`; GCS-side ids resolve through
- * the local catalog above. Unknown ids — typically third-party caps
- * the GCS bundle has not been re-shipped to recognise — fall back to
- * a placeholder that flags the id as unknown so the UI can render a
- * muted row with the raw id as the label.
- */
 /** Base ids of the capabilities the dispatch layer scopes with a topic
  * suffix (`telemetry.subscribe` -> `telemetry.subscribe.<topic>`). A driver
  * plugin grants the topic-scoped form, so the catalog resolver maps it back
@@ -124,21 +115,48 @@ function perStreamBaseCapability(id: string): string | null {
   return null;
 }
 
-export function getMergedCapabilityMeta(id: string): CapabilityMeta {
-  const agent = AGENT_CAPABILITY_CATALOG[id];
-  if (agent !== undefined) {
-    return agent;
+type CatalogOrder = ReadonlyArray<Readonly<Record<string, CapabilityMeta>>>;
+
+function lookupCatalogs(
+  catalogs: CatalogOrder,
+  id: string,
+): CapabilityMeta | undefined {
+  for (const catalog of catalogs) {
+    if (Object.hasOwn(catalog, id)) return catalog[id];
   }
-  const gcs = CAPABILITY_CATALOG[id];
-  if (gcs !== undefined) {
-    return gcs;
+  return undefined;
+}
+
+/**
+ * Merged lookup for the install dialog.
+ *
+ * Both halves of a plugin manifest declare permissions and both halves
+ * render in the same review surface. Several ids (`mission.read`,
+ * `event.publish`, ...) exist in both catalogs with different meanings, so the
+ * catalog of the declaring half wins: GCS-half rows resolve through the local
+ * catalog above, agent-half and untagged rows through the mirror at
+ * `agent-capabilities.ts`. The other catalog is consulted only when the id is
+ * absent from the preferred one. Unknown ids fall back to a placeholder that
+ * flags the id as unknown so the UI can render a muted row with the raw id.
+ */
+export function getMergedCapabilityMeta(
+  id: string,
+  half: PluginHalf | undefined,
+): CapabilityMeta {
+  const catalogs: CatalogOrder =
+    half === "gcs"
+      ? [CAPABILITY_CATALOG, AGENT_CAPABILITY_CATALOG]
+      : [AGENT_CAPABILITY_CATALOG, CAPABILITY_CATALOG];
+  const direct = lookupCatalogs(catalogs, id);
+  if (direct !== undefined) {
+    return direct;
   }
   // A topic-scoped per-stream grant (e.g. `telemetry.subscribe.navigation`)
   // resolves to its base entry so a plugin that narrows its grant to one
   // stream still renders a real label/description instead of "unknown".
   const base = perStreamBaseCapability(id);
   if (base !== null) {
-    const baseMeta = AGENT_CAPABILITY_CATALOG[base] ?? CAPABILITY_CATALOG[base];
+    const baseMeta = lookupCatalogs(catalogs, base);
     if (baseMeta !== undefined) {
       const topic = id.slice(base.length + 1);
       return {

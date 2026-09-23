@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useSensorHealthStore } from "@/stores/sensor-health-store";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { SensorHealthGrid } from "@/components/indicators/SensorHealthGrid";
@@ -9,9 +9,11 @@ import { EkfStatusBars } from "@/components/indicators/EkfStatusBars";
 import { VibrationGauges } from "@/components/indicators/VibrationGauges";
 import { GpsSkyView } from "@/components/indicators/GpsSkyView";
 import { PreArmChecks } from "@/components/indicators/PreArmChecks";
-import { Button } from "@/components/ui/button";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useTelemetryStore } from "@/stores/telemetry-store";
+import { useClockStore } from "@/stores/clock-store";
+import { getFreshness, useClockTick } from "@/lib/agent/freshness";
+import { isFresh } from "@/lib/telemetry/freshness";
 import {
   useVisionChannel,
   usePrearmBufferStore,
@@ -21,7 +23,6 @@ import { decodeArmingFlags } from "@/lib/protocol/msp/inav-arming-flags";
 import { decodeBetaflightArmingFlags } from "@/lib/protocol/msp/betaflight-arming-flags";
 import {
   Activity,
-  RefreshCw,
   ShieldCheck,
   ChevronDown,
   ChevronRight,
@@ -53,6 +54,14 @@ export function PreArmPanel() {
         ? "inav"
         : null;
   const armingFlags = useTelemetryStore((s) => s.armingFlags);
+  const armingFlagsAt = useTelemetryStore((s) => s.armingFlagsUpdatedAt);
+  // The word is a scalar that keeps its last value when MSP status stops, so
+  // the verdict is shown only while it is current; re-evaluated on the shared
+  // 1 Hz clock so a dropped link turns the badge stale instead of holding
+  // "OK TO ARM".
+  useClockTick();
+  const now = useClockStore((s) => s.now);
+  const flagsLive = armingFlagsAt > 0 && isFresh(armingFlagsAt, now);
   const decodedFlags =
     armingFlags !== null && armingFirmware !== null
       ? (armingFirmware === "betaflight"
@@ -79,15 +88,6 @@ export function PreArmPanel() {
 
   const [showAllSensors, setShowAllSensors] = useState(false);
   const [showArmingBlockers, setShowArmingBlockers] = useState(true);
-  const [lastRefresh, setLastRefresh] = useState(Date.now());
-
-  // Auto-refresh sensor data every 2 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setLastRefresh(Date.now());
-    }, 2000);
-    return () => clearInterval(interval);
-  }, []);
 
   // Request SYS_STATUS at higher rate on mount for faster health data
   useEffect(() => {
@@ -106,10 +106,6 @@ export function PreArmPanel() {
     };
   }, [protocol]);
 
-  const handleRefreshAll = useCallback(() => {
-    setLastRefresh(Date.now());
-  }, []);
-
   return (
     <div className="flex-1 overflow-y-auto p-6">
       <div className="max-w-2xl space-y-6">
@@ -121,9 +117,6 @@ export function PreArmPanel() {
               Sensor status, EKF, vibration, GPS, and pre-arm checks
             </p>
           </div>
-          <Button variant="secondary" size="sm" icon={<RefreshCw size={12} />} onClick={handleRefreshAll}>
-            Refresh
-          </Button>
         </div>
 
         {/* Sensor Status */}
@@ -183,23 +176,27 @@ export function PreArmPanel() {
                   {armingFirmware === "betaflight" ? "Betaflight" : "iNav"} Arming Flags
                 </h2>
                 <p className="text-[10px] text-text-tertiary">
-                  {decodedFlags.okToArm
-                    ? "Ready to arm"
-                    : `${decodedFlags.blockers.length} blocker${decodedFlags.blockers.length !== 1 ? "s" : ""} preventing arming`}
+                  {!flagsLive
+                    ? `No current arming status from the FC (last received ${getFreshness(armingFlagsAt).label})`
+                    : decodedFlags.okToArm
+                      ? "Ready to arm"
+                      : `${decodedFlags.blockers.length} blocker${decodedFlags.blockers.length !== 1 ? "s" : ""} preventing arming`}
                 </p>
               </div>
               <span className={cn(
                 "text-[10px] font-mono px-1.5 py-0.5 shrink-0",
-                decodedFlags.okToArm
-                  ? "bg-status-success/10 text-status-success"
-                  : "bg-status-error/10 text-status-error"
+                !flagsLive
+                  ? "bg-bg-tertiary text-text-tertiary"
+                  : decodedFlags.okToArm
+                    ? "bg-status-success/10 text-status-success"
+                    : "bg-status-error/10 text-status-error"
               )}>
-                {decodedFlags.okToArm ? "OK TO ARM" : "BLOCKED"}
+                {!flagsLive ? "STALE" : decodedFlags.okToArm ? "OK TO ARM" : "BLOCKED"}
               </span>
               {showArmingBlockers ? <ChevronDown size={12} className="text-text-tertiary shrink-0" /> : <ChevronRight size={12} className="text-text-tertiary shrink-0" />}
             </button>
 
-            {showArmingBlockers && (
+            {showArmingBlockers && flagsLive && (
               <div className="mt-3 space-y-2">
                 {decodedFlags.blockers.length > 0 && (
                   <div>

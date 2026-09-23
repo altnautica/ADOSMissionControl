@@ -13,8 +13,8 @@
  * quietly, so the panel degrades to the stream-only view rather than erroring.
  * In demo mode the canned client answers with a small model set.
  *
- * `useVisionEngineStatus()` returns the full status; `useVisionEngineModels()`
- * is the thin models-only view kept for the existing pipeline panel.
+ * `useVisionEngineStatus()` returns the full status; its `known` flag is false
+ * whenever there is no read-back, so callers never show an empty list as zero.
  *
  * @license GPL-3.0-only
  */
@@ -24,7 +24,6 @@ import { useEffect, useMemo, useState } from "react";
 import { resolveVisionClient } from "@/lib/vision/resolve-vision-client";
 import {
   EMPTY_ENGINE_STATUS,
-  type EngineModel,
   type EngineStatus,
 } from "@/lib/agent/vision-client";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
@@ -78,11 +77,4 @@ export function useVisionEngineStatus(): EngineStatus {
   // With no engine read-back (older agent / cloud-only) the last-good status is
   // never cleared by the effect, so gate it here rather than with a setState.
   return canRead ? status : EMPTY_ENGINE_STATUS;
-}
-
-/**
- * The engine's registered models only — the thin view the pipelines panel reads.
- */
-export function useVisionEngineModels(): EngineModel[] {
-  return useVisionEngineStatus().models;
 }

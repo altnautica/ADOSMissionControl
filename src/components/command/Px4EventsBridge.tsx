@@ -14,6 +14,7 @@ import { useEffect } from "react";
 import { useDroneManager } from "@/stores/drone-manager";
 import { usePx4EventsStore } from "@/stores/px4-events-store";
 import { isDemoMode } from "@/lib/utils";
+import { fetchPx4LiveEventMetadata } from "@/lib/protocol/param-metadata/px4-event-metadata";
 
 export function Px4EventsBridge() {
   const selectedId = useDroneManager((s) => s.selectedDroneId);
@@ -28,16 +29,17 @@ export function Px4EventsBridge() {
     if (!drone || firmwareType !== "px4") return;
     const protocol = drone.protocol;
 
+    // A metadata fetch that lands after a drone switch belongs to the old
+    // drone and is dropped.
     let cancelled = false;
-    if (isDemoMode()) {
-      // Demo mode has no FC-served metadata — seed a small bundled map so the
-      // synthetic mock events render with decoded text.
-      import("@/mock/px4-demo-events").then((m) => {
-        if (!cancelled) usePx4EventsStore.getState().setMetadata(m.DEMO_PX4_EVENT_METADATA);
-      });
-    } else {
-      void usePx4EventsStore.getState().loadMetadata(protocol);
-    }
+    const metadataLoad = isDemoMode()
+      ? // Demo mode has no FC-served metadata — seed a small bundled map so
+        // the synthetic mock events render with decoded text.
+        import("@/mock/px4-demo-events").then((m) => m.DEMO_PX4_EVENT_METADATA)
+      : fetchPx4LiveEventMetadata(protocol);
+    void metadataLoad.then((metadata) => {
+      if (!cancelled) usePx4EventsStore.getState().setMetadata(metadata);
+    });
 
     const unsub = protocol.onEvent((ev) =>
       usePx4EventsStore.getState().pushRaw({

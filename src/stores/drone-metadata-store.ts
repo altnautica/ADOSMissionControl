@@ -53,16 +53,21 @@ interface DroneMetadataStoreState {
   hasProfile: (id: string) => boolean;
 }
 
+/**
+ * A new profile. Identity and vehicle fields the operator has not entered stay
+ * empty so every surface shows "—" rather than a plausible-looking serial,
+ * compute module or weight class nobody measured.
+ */
 function makeDefaults(id: string, partial: Partial<Omit<DroneMetadata, "droneId">>): DroneMetadata {
   const now = Date.now();
   return {
     droneId: id,
     displayName: partial.displayName ?? id,
-    serial: partial.serial ?? `ALT-${id.toUpperCase()}`,
+    serial: partial.serial ?? "",
     registration: partial.registration ?? "",
     notes: partial.notes ?? "",
-    computeModule: partial.computeModule ?? "RPi CM4",
-    weightClass: partial.weightClass ?? "Micro",
+    computeModule: partial.computeModule ?? "",
+    weightClass: partial.weightClass ?? "",
     enrolledAt: partial.enrolledAt ?? now,
     totalFlights: partial.totalFlights ?? 0,
     totalHours: partial.totalHours ?? 0,
@@ -106,7 +111,7 @@ export const useDroneMetadataStore = create<DroneMetadataStoreState>()(
     {
       name: "altcmd:drone-metadata",
       storage: createJSONStorage(indexedDBStorage.storage),
-      version: 3,
+      version: 4,
       migrate: (persisted, version) => {
         const state = persisted as Record<string, unknown>;
         if (version < 2) {
@@ -129,6 +134,22 @@ export const useDroneMetadataStore = create<DroneMetadataStoreState>()(
             for (const id of Object.keys(profiles)) {
               if ("suiteType" in profiles[id]) {
                 delete profiles[id].suiteType;
+              }
+            }
+          }
+        }
+        if (version < 4) {
+          // v4: direct-connect sessions (`fc:<random>`, a fresh id on every
+          // connect) no longer get a profile, so drop the orphans earlier
+          // versions persisted on each connect. Also clear the serial every
+          // profile was given as `ALT-<ID>`: it was never a vehicle fact.
+          const profiles = state.profiles as Record<string, Record<string, unknown>> | undefined;
+          if (profiles) {
+            for (const id of Object.keys(profiles)) {
+              if (id.startsWith("fc:")) {
+                delete profiles[id];
+              } else if (profiles[id].serial === `ALT-${id.toUpperCase()}`) {
+                profiles[id].serial = "";
               }
             }
           }

@@ -8,7 +8,7 @@
  * @license GPL-3.0-only
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
   ScanLine,
@@ -20,7 +20,7 @@ import {
   Clock,
   HardDrive,
 } from "lucide-react";
-import { formatDuration } from "@/lib/utils";
+import { formatDurationSeconds } from "@/lib/i18n/format";
 import {
   deriveMavlinkLink,
   fcLinkRemediation,
@@ -28,8 +28,12 @@ import {
   mspFcLabel,
 } from "@/lib/agent/mavlink-link";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
-import { useAgentPeripheralsStore } from "@/stores/agent-peripherals-store";
+import {
+  useAgentPeripheralsStore,
+  type PeripheralScanOutcome,
+} from "@/stores/agent-peripherals-store";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
+import { useFreshness } from "@/lib/agent/freshness";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip } from "@/components/ui/tooltip";
 import { BoardPinoutView } from "../shared/BoardPinoutView";
@@ -87,6 +91,9 @@ const INSTALL_STATUS_LABEL: Record<InstallStatus, string> = {
   failed: "Install failed",
   unknown: "Install unknown",
 };
+/** A scan handed to the cloud relay reports back through the command bridge;
+ * past this with no result the spinner stops and the panel says so. */
+const CLOUD_SCAN_TIMEOUT_MS = 20_000;
 
 export function HardwareStatusPanel() {
   const t = useTranslations("agent");
@@ -96,21 +103,49 @@ export function HardwareStatusPanel() {
   const scanPeripherals = useAgentPeripheralsStore((s) => s.scanPeripherals);
   const status = useAgentSystemStore((s) => s.status);
   const resources = useAgentSystemStore((s) => s.resources);
-  const cpuHistory = useAgentSystemStore((s) => s.cpuHistory);
+  // The snapshot below stays readable while the node is stale, but every
+  // live-looking reading is marked last-known and dimmed.
+  const freshness = useFreshness();
+  const stale = freshness.state === "stale" || freshness.state === "offline";
 
   const [hwScanning, setHwScanning] = useState(false);
+  const [scanFailed, setScanFailed] = useState(false);
   const [activeCategory, setActiveCategory] = useState("all");
+  const cloudScanTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    if (connected && peripherals.length === 0) {
-      setHwScanning(true);
-      scanPeripherals();
+  // Every scan ends: a LAN scan when its read resolves, a cloud-dispatched scan
+  // when its result lands (peripherals appear) or the timeout passes.
+  const runScan = async () => {
+    setHwScanning(true);
+    setScanFailed(false);
+    const outcome: PeripheralScanOutcome = await scanPeripherals();
+    if (outcome === "dispatched") {
+      clearTimeout(cloudScanTimer.current ?? undefined);
+      cloudScanTimer.current = setTimeout(() => {
+        cloudScanTimer.current = null;
+        setHwScanning(false);
+        setScanFailed(true);
+      }, CLOUD_SCAN_TIMEOUT_MS);
+      return;
     }
-  }, [connected, peripherals.length, scanPeripherals]);
+    setHwScanning(false);
+    setScanFailed(outcome === "failed");
+  };
+  const runScanRef = useRef(runScan);
+  runScanRef.current = runScan;
 
   useEffect(() => {
-    if (peripherals.length > 0) setHwScanning(false);
+    if (connected && peripherals.length === 0) void runScanRef.current();
+  }, [connected, peripherals.length]);
+
+  useEffect(() => {
+    if (peripherals.length === 0) return;
+    clearTimeout(cloudScanTimer.current ?? undefined);
+    cloudScanTimer.current = null;
+    setHwScanning(false);
   }, [peripherals.length]);
+
+  useEffect(() => () => clearTimeout(cloudScanTimer.current ?? undefined), []);
 
   // Category chips (All / Compute / Video / ...) derived from the live device
   // set so the operator can filter a flat browse of everything the agent found.
@@ -155,9 +190,10 @@ export function HardwareStatusPanel() {
   // firmware — reachable + drivable over the MSP proxy, never amber "no MAVLink".
   const fcMspLabel = mspFcLabel(link.state, status?.fc_firmware, status?.fc_variant);
   const remediation = fcSilent ? fcLinkRemediation(status) : null;
-  // Board pinout + calibration need a real live link, not just an open port.
-  const fcLive = fcConnected;
-  const uptimeSeconds = status?.uptime_seconds || cpuHistory.length * 5;
+  // Board pinout + calibration need a real live link, not just an open port,
+  // and not a frozen snapshot of one.
+  const fcLive = fcConnected && !stale;
+  const uptimeSeconds = status?.uptime_seconds;
 
   // Declared-vs-probed SoC drift. Only flag when both are present and the
   // probed (kernel) value disagrees with what the board profile declared.
@@ -166,12 +202,6 @@ export function HardwareStatusPanel() {
   const socDrift = Boolean(
     socDeclared && socProbed && socDeclared !== socProbed,
   );
-
-  async function handleHwScan() {
-    setHwScanning(true);
-    await scanPeripherals();
-    setTimeout(() => setHwScanning(false), 15000);
-  }
 
   return (
     <CollapsibleSection
@@ -182,7 +212,7 @@ export function HardwareStatusPanel() {
     >
       <div className="flex items-center justify-end">
         <button
-          onClick={handleHwScan}
+          onClick={() => void runScan()}
           disabled={hwScanning}
           className="flex items-center gap-1.5 px-2.5 py-1 text-xs border border-border-default rounded hover:border-accent-primary hover:text-accent-primary text-text-secondary transition-colors disabled:opacity-50"
         >
@@ -291,15 +321,17 @@ export function HardwareStatusPanel() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2 mb-3">
-            <StatBox label={tStrip("cpu")} value={cpuPct} unit="%" warn={cpuPct != null && cpuPct > 80} />
-            <StatBox label={tStrip("mem")} value={memPct} unit="%" warn={memPct != null && memPct > 85} />
-            <StatBox label={tStrip("disk")} value={diskPct} unit="%" warn={diskPct != null && diskPct > 90} />
-            {temp != null && <StatBox label={tStrip("temp")} value={temp} unit="°" warn={temp > 70} />}
+            <StatBox label={tStrip("cpu")} value={cpuPct} unit="%" thresholds={{ warn: 80, crit: 95 }} stale={stale} />
+            <StatBox label={tStrip("mem")} value={memPct} unit="%" thresholds={{ warn: 85, crit: 95 }} stale={stale} />
+            <StatBox label={tStrip("disk")} value={diskPct} unit="%" thresholds={{ warn: 90, crit: 97 }} stale={stale} />
+            {temp != null && <StatBox label={tStrip("temp")} value={temp} unit="°" thresholds={{ warn: 70, crit: 80 }} stale={stale} />}
           </div>
 
           <div className="flex items-center gap-4 text-xs border-t border-border-default pt-2">
             <div className="flex items-center gap-1.5">
-              {fcConnected || fcMsp ? (
+              {stale ? (
+                <Clock size={12} className="text-text-tertiary" />
+              ) : fcConnected || fcMsp ? (
                 <Wifi size={12} className="text-status-success" />
               ) : fcSilent ? (
                 <AlertTriangle size={12} className="text-status-warning" />
@@ -308,11 +340,13 @@ export function HardwareStatusPanel() {
               )}
               <span
                 className={
-                  fcConnected || fcMsp
-                    ? "text-status-success"
-                    : fcSilent
-                      ? "text-status-warning"
-                      : "text-status-error"
+                  stale
+                    ? "text-text-tertiary"
+                    : fcConnected || fcMsp
+                      ? "text-status-success"
+                      : fcSilent
+                        ? "text-status-warning"
+                        : "text-status-error"
                 }
               >
                 {fcConnected
@@ -322,11 +356,12 @@ export function HardwareStatusPanel() {
                     : fcSilent
                       ? t("fcLink.portOpenNoMavlink")
                       : t("fcDisconnected")}
+                {stale ? ` · ${t("fcLink.lastKnown", { age: freshness.label })}` : ""}
               </span>
             </div>
             {/* Heartbeat age — the real liveness proof, shown whenever the
                 agent ships the gated truth so a silent port reads honestly. */}
-            {link.hasGatedTruth && !fcMsp && (
+            {link.hasGatedTruth && !fcMsp && !stale && (
               <span
                 className={
                   link.mavlinkAlive
@@ -342,7 +377,7 @@ export function HardwareStatusPanel() {
             )}
             <div className="flex items-center gap-1.5 text-text-tertiary">
               <Clock size={12} />
-              <span>Uptime {formatDuration(uptimeSeconds)}</span>
+              <span>Uptime {formatDurationSeconds(uptimeSeconds)}</span>
             </div>
           </div>
 
@@ -387,8 +422,16 @@ export function HardwareStatusPanel() {
 
       {!hwScanning && peripherals.length === 0 && (
         <div className="text-center py-8">
-          <p className="text-sm text-text-tertiary">No peripherals detected</p>
-          <p className="text-xs text-text-tertiary mt-1">Click Scan Now to discover connected hardware</p>
+          {scanFailed ? (
+            <p className="text-sm text-status-warning">
+              The hardware scan did not complete. Scan again to retry.
+            </p>
+          ) : (
+            <>
+              <p className="text-sm text-text-tertiary">No peripherals detected</p>
+              <p className="text-xs text-text-tertiary mt-1">Click Scan Now to discover connected hardware</p>
+            </>
+          )}
         </div>
       )}
     </CollapsibleSection>

@@ -23,7 +23,7 @@ import {
   type MarkFrame,
 } from "@/lib/cockpit/marks";
 import { useCockpitMarksStore } from "@/stores/cockpit-marks-store";
-import { useVisionDetectionsStore } from "@/stores/vision-detections-store";
+import { useDisplayedDetectionBatch } from "@/hooks/use-detection-batch";
 
 const ACCENT = "#63b3ff"; // electric-blue instrument ink
 
@@ -34,7 +34,8 @@ const BRACKET_MAX = 22;
 
 export function CockpitMarkLayer({ droneId }: { droneId: string }) {
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const batch = useVisionDetectionsStore((s) => s.batches[droneId]);
+  // Frame geometry of the camera the video shows (streams alternate cameras).
+  const batch = useDisplayedDetectionBatch(droneId);
   const bySource = useCockpitMarksStore((s) => s.bySource);
 
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);

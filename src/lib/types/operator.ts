@@ -51,9 +51,8 @@ export interface OperatorProfile {
   insuranceCoverageAmount?: string;
 
   // Defaults / preferences
+  /** A `JurisdictionCode`; readers validate it with `resolveJurisdiction`. */
   defaultJurisdiction?: string;
-  defaultTimeZone?: string;
-  units?: "metric" | "imperial";
   /** Base64-encoded PNG of the pilot signature. */
   signatureImageBase64?: string;
 }
@@ -119,8 +118,11 @@ export interface BatteryPack {
 
   // Auto-tracked usage stats. Updated by recordCycle().
   cycleCount?: number;
-  /** Estimated state-of-health 0..100 (cycle-degradation model). */
-  healthPercent?: number;
+  /**
+   * Operator-entered state of health 0..100. When absent the health is
+   * projected from `cycleCount` (see `batteryHealthPercent`).
+   */
+  healthOverridePercent?: number;
   /** ISO timestamp of last full charge (manual entry; charger integration TBD). */
   lastChargedAt?: string;
 
@@ -166,10 +168,12 @@ export interface EquipmentItem {
   totalFlightHours?: number;
   totalFlights?: number;
 
-  /** Trigger an "inspection due" badge once `totalFlightHours` exceeds this. */
-  inspectionDueHours?: number;
+  /** Inspect every this many flight hours (see `lib/equipment-inspection`). */
+  inspectionIntervalHours?: number;
   /** ISO date of last maintenance / inspection. */
   lastInspectedAt?: string;
+  /** `totalFlightHours` at the last inspection; the interval counts from here. */
+  hoursAtLastInspection?: number;
 
   /** ISO date this item was retired from service. Hides from active picker. */
   retiredAt?: string;

@@ -5,7 +5,7 @@
  * @description The decoded PX4 events feed (Logs → Events sub-view). Reads
  * `px4-events-store`, which the Px4EventsBridge fills from the FC's structured
  * events (MAVLink EVENT msg 410) with metadata-resolved text. Newest first,
- * severity-dotted, searchable. Empty until the FC emits an event (Rule 44 — no
+ * severity-dotted, searchable. Empty until the FC emits an event (no
  * fabricated rows).
  * @license GPL-3.0-only
  */

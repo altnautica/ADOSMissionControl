@@ -31,12 +31,41 @@ import { PairClientError } from "@/lib/agent/local-pair/errors";
  * genuinely provides — did anything answer at all? — plus a one-click way to
  * try the other address.
  *
- *  - `no-answer` — nothing answered at that address.
- *  - `refused`   — the node answered and declined (4xx). It is up.
- *  - `fault`     — the node answered with an internal fault (5xx). It is up.
- *  - `unknown`   — the attempt failed in a way this code cannot classify.
+ *  - `no-answer`      — nothing answered at that address.
+ *  - `refused`        — the node answered and declined (4xx). It is up.
+ *  - `not-ready`      — the node answered but is still starting (503) or did
+ *                       not finish in time (408/504). It is up.
+ *  - `fault`          — the node answered with an internal fault (5xx). It is up.
+ *  - `proxy-refused`  — Mission Control's own proxy declined to contact the
+ *                       address (not on the local network). The node was never
+ *                       asked, so nothing is known about it.
+ *  - `unknown`        — the attempt failed in a way this code cannot classify.
  */
-export type ReachErrorBucket = "no-answer" | "refused" | "fault" | "unknown";
+export type ReachErrorBucket =
+  | "no-answer"
+  | "refused"
+  | "not-ready"
+  | "fault"
+  | "proxy-refused"
+  | "unknown";
+
+export const REACH_ERROR_BUCKETS: readonly ReachErrorBucket[] = [
+  "no-answer",
+  "refused",
+  "not-ready",
+  "fault",
+  "proxy-refused",
+  "unknown",
+];
+
+/**
+ * Whether switching to another address is a plausible recovery. Only when the
+ * stored address produced no answer (or the proxy would not try it) could a
+ * different address help; a node that answered is reachable where it is.
+ */
+export function bucketSuggestsOtherAddress(bucket: ReachErrorBucket): boolean {
+  return bucket === "no-answer" || bucket === "proxy-refused" || bucket === "unknown";
+}
 
 /** Which bucket each pair-flow failure code lands in. A code absent from this
  * table classifies as `unknown` rather than being guessed at. */
@@ -45,12 +74,12 @@ const BUCKET_BY_PAIR_CODE: Record<string, ReachErrorBucket> = {
   pairPinRequiredError: "refused",
   pairRouteMissingError: "refused",
   pairRefusedError: "refused",
-  hostNotPrivateError: "refused",
+  hostNotPrivateError: "proxy-refused",
   pairAgentFaultError: "fault",
   pairUnreachableError: "no-answer",
   pairHostedRemotelyError: "no-answer",
-  pairTimedOutError: "no-answer",
-  pairAgentNotReadyError: "no-answer",
+  pairTimedOutError: "not-ready",
+  pairAgentNotReadyError: "not-ready",
 };
 
 /** Classify a thrown probe failure into the coarsest bucket that is true. */
@@ -67,7 +96,7 @@ export function reachErrorBucket(error: unknown): ReachErrorBucket {
 /**
  * The address inside a stored reach, as the operator would recognise it: no
  * scheme, and no port unless it is one they had to choose. `hostname` on a
- * `LocalNode` is a full base URL (`http://skynode.local:8080`), which is not
+ * `LocalNode` is a full base URL (`http://testnode.local:8080`), which is not
  * what belongs in a sentence.
  */
 export function reachDisplayHost(reach: string): string {

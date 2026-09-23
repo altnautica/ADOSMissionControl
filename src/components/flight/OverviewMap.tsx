@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { useTelemetryLatest } from "@/hooks/use-telemetry-latest";
+import { useFreshTelemetry, useTelemetryLatest } from "@/hooks/use-telemetry-latest";
+import { useLiveFlightMode } from "@/hooks/use-live-flight-mode";
+import { knownRemainingPct } from "@/lib/battery-bands";
 import { useDroneStore } from "@/stores/drone-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useMissionStore } from "@/stores/mission-store";
@@ -83,16 +85,32 @@ const STATUS_COLORS: Record<string, string> = {
   offline: "#666666",
 };
 
-/** SVG arrow icon for the drone marker, rotated by heading. */
-function createDroneIcon(heading: number, color = "#00ff41", size = 24): L.DivIcon {
-  return L.divIcon({
-    className: "",
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
-    html: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" style="transform:rotate(${heading}deg)">
+/** Heading step the marker icons are cached at; finer turns are not visible. */
+const ICON_HEADING_STEP_DEG = 5;
+const droneIconCache = new Map<string, L.DivIcon>();
+
+/**
+ * SVG arrow icon for a drone marker, rotated by heading. Cached per heading
+ * step, colour and size: a new icon object makes react-leaflet rebuild the
+ * marker's DOM, which at telemetry rate across a fleet is the whole cost.
+ */
+function droneIcon(heading: number, color = "#00ff41", size = 24): L.DivIcon {
+  const step = Math.round(heading / ICON_HEADING_STEP_DEG) * ICON_HEADING_STEP_DEG;
+  const bucket = ((step % 360) + 360) % 360;
+  const key = `${bucket}|${color}|${size}`;
+  let icon = droneIconCache.get(key);
+  if (!icon) {
+    icon = L.divIcon({
+      className: "",
+      iconSize: [size, size],
+      iconAnchor: [size / 2, size / 2],
+      html: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" style="transform:rotate(${bucket}deg)">
       <polygon points="12,2 20,20 12,16 4,20" fill="${color}" fill-opacity="0.9" stroke="${color}" stroke-width="1"/>
     </svg>`,
-  });
+    });
+    droneIconCache.set(key, icon);
+  }
+  return icon;
 }
 
 
@@ -127,14 +145,24 @@ function MapResizer() {
   return null;
 }
 
-/** Auto-follows the drone position on the map. */
+/** Distance in screen pixels the drone must move before the map re-centres. */
+const FOLLOW_THRESHOLD_PX = 2;
+
+/**
+ * Auto-follows the drone position on the map. Re-centres only when the drone
+ * has moved visibly and without animation: a pan restarted at telemetry rate
+ * never finishes and keeps the map in motion.
+ */
 function MapFollower({ position, follow }: { position: [number, number] | null; follow: boolean }) {
   const map = useMap();
 
   useEffect(() => {
-    if (follow && position) {
-      map.setView(position, map.getZoom(), { animate: true, duration: 0.3 });
-    }
+    if (!follow || !position) return;
+    const moved = map
+      .latLngToContainerPoint(position)
+      .distanceTo(map.latLngToContainerPoint(map.getCenter()));
+    if (moved < FOLLOW_THRESHOLD_PX) return;
+    map.setView(position, map.getZoom(), { animate: false });
   }, [map, position, follow]);
 
   return null;
@@ -189,7 +217,7 @@ export function OverviewMap({ compact = false }: { compact?: boolean } = {}) {
   const mapReadyRef = useRef(false);
 
   // Mission pause/resume state
-  const flightMode = useDroneStore((s) => s.flightMode);
+  const flightMode = useLiveFlightMode();
   const previousMode = useDroneStore((s) => s.previousMode);
   const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
   const missionState = useMissionStore((s) => s.activeMission?.state);
@@ -197,10 +225,14 @@ export function OverviewMap({ compact = false }: { compact?: boolean } = {}) {
   const isPausedFromAuto = flightMode === "LOITER" && previousMode === "AUTO";
   const showMissionControls = isAutoMode || isPausedFromAuto || missionState === "running" || missionState === "paused";
 
-  // Subscribe to position updates
-  const pos = useTelemetryLatest("position");
-  const gps = useTelemetryLatest("gps");
-  const nav = useTelemetryLatest("navController");
+  // Position, GPS and navigation output only while fresh: the rings keep the
+  // last sample after the link dies, and a frozen fix must not read as live.
+  const pos = useFreshTelemetry("position");
+  const gps = useFreshTelemetry("gps");
+  const nav = useFreshTelemetry("navController");
+  // Something was received but none of it is current: the link went quiet.
+  const lastPos = useTelemetryLatest("position");
+  const positionStale = pos === undefined && lastPos !== undefined;
   // HOME_POSITION is latched state (sent rarely, changes only on arm or
   // set-home), so it is read without an age gate; the ring is cleared on
   // selection change and disconnect.
@@ -231,11 +263,17 @@ export function OverviewMap({ compact = false }: { compact?: boolean } = {}) {
   const fleetDrones = useFleetStore((s) => s.drones);
   const profiles = useDroneMetadataStore((s) => s.profiles);
 
-  const dronePos: [number, number] | null =
-    pos && pos.lat !== 0 && pos.lon !== 0 ? [pos.lat, pos.lon] : null;
+  const lat = pos && pos.lat !== 0 && pos.lon !== 0 ? pos.lat : null;
+  const lon = lat !== null && pos ? pos.lon : null;
+  // One tuple per actual move, so the follower and the marker see a stable
+  // reference while the drone holds still.
+  const dronePos = useMemo<[number, number] | null>(
+    () => (lat !== null && lon !== null ? [lat, lon] : null),
+    [lat, lon],
+  );
 
   const heading = pos?.heading ?? 0;
-  const droneIcon = useMemo(() => createDroneIcon(heading, "#00ff41", 24), [heading]);
+  const selectedIcon = droneIcon(heading, "#00ff41", 24);
 
   // The FC's own home, the point RTL returns to. Hidden until one arrives: the
   // oldest trail point is not home, it walks along the track once the trail
@@ -249,10 +287,18 @@ export function OverviewMap({ compact = false }: { compact?: boolean } = {}) {
     setMeasureActive(false);
   }, []);
 
-  // GPS status display
-  const fixType = gps?.fixType ?? 0;
-  const satellites = gps?.satellites ?? 0;
-  const fixLabel = GPS_FIX_LABELS[fixType] ?? `FIX ${fixType}`;
+  // GPS status display: unknown until a fresh GPS report says otherwise.
+  const fixType = gps?.fixType;
+  const satellites = gps?.satellites;
+  const fixLabel = fixType === undefined ? "--" : (GPS_FIX_LABELS[fixType] ?? `FIX ${fixType}`);
+  const fixColor =
+    fixType === undefined
+      ? "text-text-tertiary"
+      : fixType >= 3
+        ? "text-status-success"
+        : fixType >= 2
+          ? "text-status-warning"
+          : "text-status-error";
 
   // Guidance vector endpoints
   const hdgLine = useMemo(() => {
@@ -283,17 +329,17 @@ export function OverviewMap({ compact = false }: { compact?: boolean } = {}) {
     <div className="relative w-full h-full border border-border-default overflow-hidden bg-[#0a0a0a] isolate">
       {!compact && (
         <>
-          <span className={`absolute top-2 left-2 z-[1000] text-[10px] font-mono bg-bg-primary/80 backdrop-blur-md rounded px-1.5 py-0.5 border border-border-strong shadow-lg ${fixType >= 3 ? "text-status-success" : fixType >= 2 ? "text-status-warning" : "text-status-error"}`}>
-            {fixLabel} | {satellites} SAT
+          <span className={`absolute top-2 left-2 z-[1000] text-[10px] font-mono bg-bg-primary/80 backdrop-blur-md rounded px-1.5 py-0.5 border border-border-strong shadow-lg ${fixColor}`}>
+            {fixLabel} | {satellites ?? "--"} SAT
           </span>
 
           <GuidanceSettingsMenu />
 
-          {/* No GPS overlay */}
+          {/* No live position overlay */}
           {!hasGps && (
             <div className="absolute inset-0 z-[1000] flex items-center justify-center pointer-events-none">
               <span className="text-sm font-mono font-semibold text-text-secondary bg-bg-primary/90 backdrop-blur-md px-3 py-1.5 border border-border-strong rounded shadow-lg">
-                NO GPS FIX
+                {positionStale ? "POSITION STALE" : "NO GPS FIX"}
               </span>
             </div>
           )}
@@ -305,7 +351,6 @@ export function OverviewMap({ compact = false }: { compact?: boolean } = {}) {
         zoom={17}
         className="w-full h-full"
         zoomControl={false}
-        attributionControl={false}
         dragging={!compact}
         scrollWheelZoom={!compact}
         doubleClickZoom={!compact}
@@ -357,15 +402,15 @@ export function OverviewMap({ compact = false }: { compact?: boolean } = {}) {
 
         {/* Selected drone marker (primary, larger) */}
         {dronePos && (
-          <Marker position={dronePos} icon={droneIcon} />
+          <Marker position={dronePos} icon={selectedIcon} />
         )}
 
         {/* Other fleet drone markers (smaller, status-colored) */}
         {otherDrones.map((drone) => {
           if (!drone.position) return null;
           const dColor = STATUS_COLORS[drone.status] ?? "#a0a0a0";
-          const dHeading = drone.position.heading ?? 0;
-          const icon = createDroneIcon(dHeading, dColor, 18);
+          const icon = droneIcon(drone.position.heading ?? 0, dColor, 18);
+          const remaining = knownRemainingPct(drone.battery?.remaining);
           const displayName = profiles[drone.id]?.displayName ?? drone.name;
           return (
             <Marker
@@ -386,7 +431,7 @@ export function OverviewMap({ compact = false }: { compact?: boolean } = {}) {
                   <strong>{displayName}</strong>
                   <br />
                   {drone.status}
-                  {drone.battery?.remaining !== undefined && ` | ${Math.round(drone.battery.remaining)}%`}
+                  {remaining !== null && ` | ${Math.round(remaining)}%`}
                 </div>
               </Popup>
             </Marker>

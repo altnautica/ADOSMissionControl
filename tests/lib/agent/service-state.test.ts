@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  normalizeServiceInfo,
   normalizeServiceStatus,
   countRunning,
   isServiceUp,
@@ -74,6 +75,28 @@ describe("normalizeServiceStatus", () => {
 
   it("accepts camelCase subState from the cloud payload", () => {
     expect(normalizeServiceStatus({ subState: "running" })).toBe("running");
+  });
+});
+
+describe("full-status service rows", () => {
+  // Rows as `/api/status/full` emits them (routes/status_full.rs): the
+  // ActiveState in `state`, the sub-state in `sub_state`, no uptime.
+  it("maps ActiveState and sub-state, with a crash loop as an error", () => {
+    expect(normalizeServiceStatus({ state: "active", sub_state: "running" })).toBe("running");
+    expect(normalizeServiceStatus({ state: "inactive", sub_state: "dead" })).toBe("stopped");
+    expect(normalizeServiceStatus({ state: "activating", sub_state: "auto-restart" })).toBe("error");
+  });
+
+  it("keeps an unreported uptime unknown", () => {
+    const svc = normalizeServiceInfo({
+      name: "ados-video",
+      state: "active",
+      sub_state: "running",
+      task_done: false,
+      memory_mb: 42,
+    });
+    expect(svc.status).toBe("running");
+    expect(svc.uptime_seconds).toBeNull();
   });
 });
 

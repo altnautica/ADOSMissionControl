@@ -107,9 +107,9 @@ export const getMyProfile = query({
 
     // If profile has no email, try to get it from auth user record
     if (!profile.email) {
-      const user = await ctx.db.get(userId as any);
-      if (user && typeof user === "object" && "email" in user && user.email) {
-        return { ...profile, email: user.email as string };
+      const user = await ctx.db.get(userId);
+      if (user?.email) {
+        return { ...profile, email: user.email };
       }
     }
     return profile;
@@ -127,9 +127,6 @@ export const updateMyProfile = mutation({
     showEmail: v.optional(v.boolean()),
     showLinkedin: v.optional(v.boolean()),
     showPhone: v.optional(v.boolean()),
-    investorType: v.optional(v.string()),
-    investorTypeOther: v.optional(v.string()),
-    ticketSize: v.optional(v.string()),
     notifyUpdates: v.optional(v.boolean()),
     notifyMilestones: v.optional(v.boolean()),
   },
@@ -150,9 +147,6 @@ export const updateMyProfile = mutation({
     if (args.showEmail !== undefined) updates.showEmail = args.showEmail;
     if (args.showLinkedin !== undefined) updates.showLinkedin = args.showLinkedin;
     if (args.showPhone !== undefined) updates.showPhone = args.showPhone;
-    if (args.investorType !== undefined) updates.investorType = args.investorType;
-    if (args.investorTypeOther !== undefined) updates.investorTypeOther = args.investorTypeOther;
-    if (args.ticketSize !== undefined) updates.ticketSize = args.ticketSize;
     if (args.notifyUpdates !== undefined)
       updates.notifyUpdates = args.notifyUpdates;
     if (args.notifyMilestones !== undefined)
@@ -180,7 +174,7 @@ export const listAll = query({
 export const updateRole = mutation({
   args: {
     profileId: v.id("profiles"),
-    role: v.union(v.literal("pending"), v.literal("investor"), v.literal("admin"), v.literal("rejected"), v.literal("alpha_tester")),
+    role: v.union(v.literal("pending"), v.literal("admin"), v.literal("rejected"), v.literal("alpha_tester")),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -202,9 +196,6 @@ export const ensureProfile = mutation({
   args: {
     fullName: v.optional(v.string()),
     company: v.optional(v.string()),
-    investorType: v.optional(v.string()),
-    investorTypeOther: v.optional(v.string()),
-    ticketSize: v.optional(v.string()),
     linkedin: v.optional(v.string()),
     phone: v.optional(v.string()),
   },
@@ -225,18 +216,15 @@ export const ensureProfile = mutation({
       // Backfill email from auth user table if profile is missing it
       const updates: Record<string, unknown> = {};
       if (!existing.email) {
-        const user = await ctx.db.get(userId as any);
-        if (user && typeof user === "object" && "email" in user && (user as any).email) {
-          updates.email = (user as any).email;
+        const user = await ctx.db.get(userId);
+        if (user?.email) {
+          updates.email = user.email;
         }
       }
 
       // Upsert: merge non-empty args into empty fields (fill-if-missing)
       if (args.fullName && !existing.fullName) updates.fullName = args.fullName;
       if (args.company && !existing.company) updates.company = args.company;
-      if (args.investorType && !existing.investorType) updates.investorType = args.investorType;
-      if (args.investorTypeOther && !existing.investorTypeOther) updates.investorTypeOther = args.investorTypeOther;
-      if (args.ticketSize && !existing.ticketSize) updates.ticketSize = args.ticketSize;
       if (args.linkedin && !existing.linkedin) updates.linkedin = args.linkedin;
       if (args.phone && !existing.phone) updates.phone = args.phone;
 
@@ -249,9 +237,9 @@ export const ensureProfile = mutation({
     // Get email from auth user table if identity doesn't have it
     let authEmail = identity.email;
     if (!authEmail) {
-      const user = await ctx.db.get(userId as any);
-      if (user && typeof user === "object" && "email" in user) {
-        authEmail = (user as any).email;
+      const user = await ctx.db.get(userId);
+      if (user?.email) {
+        authEmail = user.email;
       }
     }
 
@@ -260,7 +248,7 @@ export const ensureProfile = mutation({
     // On a fresh or freshly-purged backend an arbitrary signup must NOT
     // inherit admin just by being first. Everyone else starts as "pending"
     // and a real admin promotes them via updateRole.
-    let role: "pending" | "investor" | "admin" = "pending";
+    let role: "pending" | "admin" = "pending";
     const anyProfile = await ctx.db.query("profiles").first();
     if (!anyProfile && firstProfileMintsAdmin(authEmail)) {
       role = "admin";
@@ -272,9 +260,6 @@ export const ensureProfile = mutation({
       fullName: args.fullName || (identity.name ?? undefined),
       email: authEmail ?? undefined,
       company: args.company,
-      investorType: args.investorType,
-      investorTypeOther: args.investorTypeOther,
-      ticketSize: args.ticketSize,
       linkedin: args.linkedin,
       phone: args.phone,
       showName: false,
@@ -322,14 +307,8 @@ async function deduplicateProfilesImpl(ctx: MutationCtx) {
           updates.company = dup.company;
         if (dup.linkedin && !canonical.linkedin && !updates.linkedin)
           updates.linkedin = dup.linkedin;
-        if (dup.investorType && !canonical.investorType && !updates.investorType)
-          updates.investorType = dup.investorType;
-        if (dup.investorTypeOther && !canonical.investorTypeOther && !updates.investorTypeOther)
-          updates.investorTypeOther = dup.investorTypeOther;
-        if (dup.ticketSize && !canonical.ticketSize && !updates.ticketSize)
-          updates.ticketSize = dup.ticketSize;
-        // Prefer highest role: admin > investor > pending > rejected
-        const roleRank: Record<string, number> = { admin: 3, investor: 2, alpha_tester: 2, pilot: 1, pending: 1, rejected: 0 };
+        // Prefer highest role: admin > tester > pending > rejected
+        const roleRank: Record<string, number> = { admin: 3, alpha_tester: 2, pilot: 1, pending: 1, rejected: 0 };
         const currentRole = (updates.role as string) ?? canonical.role;
         if ((roleRank[dup.role] ?? 0) > (roleRank[currentRole] ?? 0)) {
           updates.role = dup.role;

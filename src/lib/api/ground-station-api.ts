@@ -6,7 +6,6 @@
  */
 // Exempt from 300 LOC soft rule: barrel re-export aggregator over per-domain HTTP modules
 import { isDemoMode } from "@/lib/utils";
-import type { WfbConfig } from "@/stores/ground-station-store";
 import type {
   ApUpdate, DisplayUpdate, EthernetConfigUpdate, GroundStationRole,
   MeshConfigUpdate, MeshEvent, MeshGatewayPreferenceUpdate, ModemUpdate,
@@ -26,16 +25,19 @@ import * as fleet from "./ground-station/fleet";
 
 export { GroundStationApiError };
 export type { AtlasRelayStatus } from "./ground-station/atlas";
-export type { FleetHeroOutcome, FleetHeroResult } from "./ground-station/fleet";
+export type { FleetHeroSlot, FleetHeroResult } from "./ground-station/fleet";
 
 export class GroundStationApi {
   private ctx: RequestContext;
   constructor(baseUrl: string, apiKey?: string | null) {
     this.ctx = { baseUrl: baseUrl.replace(/\/+$/, ""), apiKey: apiKey ?? null };
   }
+  /** The agent origin this client targets; tags store loads with their node. */
+  get baseUrl(): string {
+    return this.ctx.baseUrl;
+  }
   getStatus = () => getStatus(this.ctx);
   getWfb = () => wfb.getWfb(this.ctx);
-  setWfb = (partial: Partial<WfbConfig>) => wfb.setWfb(this.ctx, partial);
   setTxPower = (dbm: number) => wfb.setTxPower(this.ctx, dbm);
   setFec = (fecK: number, fecN: number) => wfb.setFec(this.ctx, fecK, fecN);
   setMcs = (mcs: number) => wfb.setMcs(this.ctx, mcs);
@@ -75,8 +77,6 @@ export class GroundStationApi {
   setPrimaryGamepad = (deviceId: string) => p.setPrimaryGamepad(this.ctx, deviceId);
   listPeripherals = () => p.listPeripherals(this.ctx);
   getPeripheral = (id: string) => p.getPeripheral(this.ctx, id);
-  configurePeripheral = (id: string, config: Record<string, unknown>) => p.configurePeripheral(this.ctx, id, config);
-  invokePeripheralAction = (id: string, actionId: string, body?: Record<string, unknown>) => p.invokePeripheralAction(this.ctx, id, actionId, body);
   getPicState = () => pic.getPicState(this.ctx);
   claimPic = (clientId: string, confirmToken?: string, force?: boolean) => pic.claimPic(this.ctx, clientId, confirmToken, force);
   releasePic = (clientId: string) => pic.releasePic(this.ctx, clientId);
@@ -97,7 +97,7 @@ export class GroundStationApi {
   getPairingPending = () => mesh.getPairingPending(this.ctx);
   approvePairing = (device_id: string) => mesh.approvePairing(this.ctx, device_id);
   revokeRelay = (device_id: string) => mesh.revokeRelay(this.ctx, device_id);
-  requestJoin = (req: PairJoinRequest = {}) => mesh.requestJoin(this.ctx, req);
+  requestJoin = (req: PairJoinRequest) => mesh.requestJoin(this.ctx, req);
   subscribeMeshEvents = (onEvent: (e: MeshEvent) => void, onState?: (state: "connected" | "reconnecting" | "closed") => void) => mesh.subscribeMeshEvents(this.ctx, onEvent, onState);
   getAtlasRelayStatus = () => atlas.getAtlasRelayStatus(this.ctx);
   setFleetHero = (deviceId: string) => fleet.setFleetHero(this.ctx, deviceId);

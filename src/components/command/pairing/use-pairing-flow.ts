@@ -10,6 +10,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePairingStore, type DiscoveredAgent } from "@/stores/pairing-store";
+import type { Id } from "../../../../convex/_generated/dataModel";
 
 export type PairingState = "setup" | "waiting" | "success" | "error" | "expired";
 
@@ -17,14 +18,17 @@ export interface PairedInfo {
   deviceId: string;
   name: string;
   apiKey: string;
-  mdnsHost: string;
+  /** The network address the agent reported (mDNS name, else LAN IP), or
+   *  null when it reported neither. Never synthesised. */
+  host: string | null;
 }
 
 export type ClaimCodeMutation = ((args: { code: string }) => Promise<
   | { error: "invalid_pairing_code" | "pairing_code_expired" | "code_already_claimed" | "device_owned_by_other" }
+  | { error: "rate_limited"; retryAfterMs: number }
   | {
       error?: null;
-      deviceId?: string;
+      deviceId: string;
       name?: string;
       apiKey?: string;
       mdnsHost?: string;
@@ -32,11 +36,24 @@ export type ClaimCodeMutation = ((args: { code: string }) => Promise<
     }
 >) | null;
 
+export type PairingRequestId = Id<"cmd_pairingRequests">;
+
 export type PreGenerateMutation = ((args: Record<string, never>) => Promise<{
+  requestId: PairingRequestId;
   code: string;
 }>) | null;
 
-const INSTALL_URL =
+/**
+ * Subscribes to one pre-generated pairing request and calls `onClaimed` with
+ * the device id once an agent registers against that exact code. Returns the
+ * unsubscribe function.
+ */
+export type ClaimWatch = (
+  requestId: PairingRequestId,
+  onClaimed: (deviceId: string) => void,
+) => () => void;
+
+export const INSTALL_URL =
   "https://raw.githubusercontent.com/altnautica/ADOSDroneAgent/main/scripts/install.sh";
 const CODE_TTL_MS = 15 * 60 * 1000;
 
@@ -50,6 +67,9 @@ interface FlowOptions {
   claimCode: ClaimCodeMutation;
   preGenerate: PreGenerateMutation;
   onPaired?: (deviceId: string, apiKey: string, url: string) => void;
+  /** Watches the generated code's own pairing request. Null without a
+   *  signed-in cloud backend, in which case no generated code can pair. */
+  watchClaim: ClaimWatch | null;
   /** Called by `generateCode` so the parent can reset its own UI flags. */
   onCodeReset?: () => void;
   /** Pre-filled code from a deep-link entry. Skips the auto-generate path
@@ -69,12 +89,18 @@ export function usePairingFlow({
   claimCode,
   preGenerate,
   onPaired,
+  watchClaim,
   onCodeReset,
   initialCode,
   autoGenerate = true,
 }: FlowOptions) {
   const [state, setState] = useState<PairingState>("setup");
   const [preGenCode, setPreGenCode] = useState<string | null>(null);
+  // The pairing request behind `preGenCode` and the device that registered
+  // against it. Success is tied to this request, never to "some drone
+  // appeared in the fleet".
+  const [requestId, setRequestId] = useState<PairingRequestId | null>(null);
+  const [claimedDeviceId, setClaimedDeviceId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [secondsLeft, setSecondsLeft] = useState(CODE_TTL_MS / 1000);
   const [pairedInfo, setPairedInfo] = useState<PairedInfo | null>(null);
@@ -85,7 +111,7 @@ export function usePairingFlow({
 
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const codeGeneratedAt = useRef<number>(0);
-  const initialDroneIdsRef = useRef<Set<string>>(new Set());
+  const generatingRef = useRef(false);
   // Deferred `onPaired` handles, tracked so cleanup can clear them and a
   // claim that resolves after the dialog closes never fires onPaired for a
   // dismissed node. Two distinct sources schedule one: the deep-link claim
@@ -127,36 +153,37 @@ export function usePairingFlow({
     }, 1000);
   }, [stopCountdown]);
 
+  // No mutation means no backend that could ever know a code: either this
+  // build has no cloud backend, or auth is still settling. Produce nothing;
+  // the open effect regenerates once the mutation arrives.
   const generateCode = useCallback(async () => {
+    if (!preGenerate) return;
+    // One code per request: a second call while a mint is in flight would
+    // insert another pairing request and swap the displayed code.
+    if (generatingRef.current) return;
+    generatingRef.current = true;
     setState("setup");
     setPreGenCode(null);
+    setRequestId(null);
+    setClaimedDeviceId(null);
     setErrorMessage("");
     setPairedInfo(null);
     onCodeReset?.();
 
-    const fallback = () =>
-      Array.from(
-        { length: 6 },
-        () =>
-          "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random() * 32)]
-      ).join("");
-
-    let generated: string;
-    if (preGenerate) {
-      try {
-        const result = await preGenerate({});
-        generated = result.code;
-      } catch (err) {
-        const raw = err instanceof Error ? err.message : "Could not generate a pairing code";
-        setErrorMessage(raw);
-        setState("error");
-        return;
-      }
-    } else {
-      generated = fallback();
+    let generated: { requestId: PairingRequestId; code: string };
+    try {
+      generated = await preGenerate({});
+    } catch (err) {
+      const raw = err instanceof Error ? err.message : "Could not generate a pairing code";
+      setErrorMessage(raw);
+      setState("error");
+      return;
+    } finally {
+      generatingRef.current = false;
     }
 
-    setPreGenCode(generated);
+    setPreGenCode(generated.code);
+    setRequestId(generated.requestId);
     setState("waiting");
     startCountdown();
   }, [preGenerate, startCountdown, onCodeReset]);
@@ -179,9 +206,6 @@ export function usePairingFlow({
       return;
     }
     if (requiresSignIn) return;
-    initialDroneIdsRef.current = new Set(
-      pairedDrones.map((drone) => drone._id)
-    );
     if (initialCode && initialCode.length === 6) {
       // The claim needs a settled, signed-in session: until auth resolves
       // there is no claim mutation, and claiming then fails for nothing.
@@ -210,49 +234,40 @@ export function usePairingFlow({
     }
     return () => stopCountdown();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, requiresSignIn, initialCode, autoGenerate, claimCode, claimAttempt]);
+  }, [open, requiresSignIn, initialCode, autoGenerate, claimCode, preGenerate, claimAttempt]);
 
-  // Watch for new drones appearing (zero-touch flow)
+  // Watch the generated code's own pairing request (zero-touch flow).
   useEffect(() => {
-    if (state !== "waiting") return;
-    const candidates = pairedDrones.filter(
-      (drone) => !initialDroneIdsRef.current.has(drone._id)
-    );
-    if (candidates.length === 0) return;
+    if (state !== "waiting" || !requestId || !watchClaim) return;
+    return watchClaim(requestId, setClaimedDeviceId);
+  }, [state, requestId, watchClaim]);
 
-    const newDrone = candidates.sort(
-      (a, b) => (b.pairedAt || 0) - (a.pairedAt || 0)
-    )[0];
+  // The claimed device lands in the fleet mirror a moment after the claim;
+  // its row carries the name, key and address the success card needs.
+  useEffect(() => {
+    if (state !== "waiting" || !claimedDeviceId) return;
+    const newDrone = pairedDrones.find((d) => d.deviceId === claimedDeviceId);
+    if (!newDrone) return;
 
-    if (newDrone) {
-      initialDroneIdsRef.current.add(newDrone._id);
-      setPairedInfo({
-        deviceId: newDrone.deviceId,
-        name: newDrone.name,
-        apiKey: newDrone.apiKey,
-        mdnsHost: newDrone.mdnsHost || `${newDrone.deviceId}.local`,
-      });
-      setState("success");
-      setPairingInProgress(false);
-      stopCountdown();
+    const host = newDrone.mdnsHost || newDrone.lastIp || null;
+    setPairedInfo({
+      deviceId: newDrone.deviceId,
+      name: newDrone.name,
+      apiKey: newDrone.apiKey,
+      host,
+    });
+    setState("success");
+    setPairingInProgress(false);
+    stopCountdown();
 
-      if (deferredWatchPairedRef.current) {
-        clearTimeout(deferredWatchPairedRef.current);
-      }
-      deferredWatchPairedRef.current = setTimeout(() => {
-        deferredWatchPairedRef.current = null;
-        const host = newDrone.mdnsHost || newDrone.lastIp;
-        if (host) {
-          onPaired?.(
-            newDrone.deviceId,
-            newDrone.apiKey,
-            `http://${host}:8080`
-          );
-        }
-      }, 1500);
-    }
+    clearTimeout(deferredWatchPairedRef.current ?? undefined);
+    deferredWatchPairedRef.current = setTimeout(() => {
+      deferredWatchPairedRef.current = null;
+      onPaired?.(newDrone.deviceId, newDrone.apiKey, host ? `http://${host}:8080` : "");
+    }, 1500);
   }, [
     pairedDrones,
+    claimedDeviceId,
     state,
     onPaired,
     setPairingInProgress,
@@ -325,6 +340,8 @@ export function usePairingFlow({
         const local = result.error === "invalid_pairing_code";
         const msg = local
           ? "That code isn't registered with the cloud relay. If this drone is on your network, pair it by hostname instead."
+          : result.error === "rate_limited"
+            ? `Too many pair-code attempts. Try again in ${Math.ceil(result.retryAfterMs / 1000)} s.`
           : result.error === "pairing_code_expired"
             ? "Pairing code expired. Ask the agent to generate a new one."
             : "This code was already used by another account.";
@@ -336,28 +353,23 @@ export function usePairingFlow({
         return;
       }
 
+      const host = result.mdnsHost || result.localIp || null;
       const info: PairedInfo = {
-        deviceId: result.deviceId || `ados-${agent.pairingCode.toLowerCase()}`,
+        deviceId: result.deviceId,
         name: result.name || "ADOS Agent",
         apiKey: result.apiKey || "",
-        mdnsHost:
-          result.mdnsHost || `ados-${agent.pairingCode.toLowerCase()}.local`,
+        host,
       };
       setPairedInfo(info);
       setState("success");
       setPairingInProgress(false);
       stopCountdown();
 
-      if (deferredClaimPairedRef.current) {
-        clearTimeout(deferredClaimPairedRef.current);
-      }
+      clearTimeout(deferredClaimPairedRef.current ?? undefined);
       deferredClaimPairedRef.current = setTimeout(() => {
         deferredClaimPairedRef.current = null;
         if (signal?.aborted) return;
-        const host = info.mdnsHost || result.localIp;
-        if (host) {
-          onPaired?.(info.deviceId, info.apiKey, `http://${host}:8080`);
-        }
+        onPaired?.(info.deviceId, info.apiKey, host ? `http://${host}:8080` : "");
       }, 1500);
     } catch (err) {
       // Reaching here means a genuinely unexpected throw (Convex unreachable,

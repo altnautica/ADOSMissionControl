@@ -5,52 +5,43 @@
  * @license GPL-3.0-only
  */
 
-import { get, set, del, keys } from "idb-keyval";
+import { get, set } from "idb-keyval";
 
 const IDB_PREFIX = "param-cache:";
 
 export interface CachedPanelData {
+  droneId: string;
   panelId: string;
   params: Record<string, number>;
   timestamp: number;
 }
 
-function key(panelId: string): string {
-  return IDB_PREFIX + panelId;
+/** One entry per drone and panel: a panel's cached values belong to the
+ * vehicle they were read from and are never offered for another. */
+function key(droneId: string, panelId: string): string {
+  return `${IDB_PREFIX}${droneId}:${panelId}`;
 }
 
-/** Save panel params to IndexedDB. */
+/** Save one drone's panel params to IndexedDB. */
 export async function cachePanelToIDB(
+  droneId: string,
   panelId: string,
   params: Map<string, number>,
 ): Promise<void> {
   const data: CachedPanelData = {
+    droneId,
     panelId,
     params: Object.fromEntries(params),
     timestamp: Date.now(),
   };
-  await set(key(panelId), data);
+  await set(key(droneId, panelId), data);
 }
 
-/** Load cached panel params from IndexedDB. Returns null if not cached. */
+/** Load one drone's cached panel params from IndexedDB, or null. */
 export async function getCachedPanelFromIDB(
+  droneId: string,
   panelId: string,
 ): Promise<CachedPanelData | null> {
-  const data = await get<CachedPanelData>(key(panelId));
+  const data = await get<CachedPanelData>(key(droneId, panelId));
   return data ?? null;
-}
-
-/** Remove a cached panel from IndexedDB. */
-export async function removeCachedPanelFromIDB(
-  panelId: string,
-): Promise<void> {
-  await del(key(panelId));
-}
-
-/** List all cached panel IDs. */
-export async function listCachedPanelIds(): Promise<string[]> {
-  const allKeys = await keys();
-  return (allKeys as string[])
-    .filter((k) => k.startsWith(IDB_PREFIX))
-    .map((k) => k.slice(IDB_PREFIX.length));
 }

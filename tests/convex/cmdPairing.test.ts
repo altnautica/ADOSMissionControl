@@ -357,3 +357,115 @@ describe("cleanExpiredSecurityState", () => {
     ]);
   });
 });
+
+describe("registerAgent pending-request binding", () => {
+  const base = {
+    clientKey: "ip-digest-aaaa",
+    deviceId: "dev-9",
+    pairingCode: "ABC234",
+    apiKey: "agent-key",
+  };
+
+  it("refuses a different key and code on a live pending request", async () => {
+    const ctx = makeCtx();
+    await invoke(pairing.registerAgent, ctx, base);
+    const result = await invoke(pairing.registerAgent, ctx, {
+      ...base,
+      clientKey: "ip-digest-bbbb",
+      pairingCode: "XYZ789",
+      apiKey: "attacker-key",
+    });
+    expect(result).toEqual({ error: "device_registration_conflict" });
+    expect(ctx.db.rows("cmd_pairingRequests")[0]).toMatchObject({
+      pairingCode: "ABC234",
+      apiKey: "agent-key",
+    });
+  });
+
+  it("lets a new key take over once the pending window lapsed", async () => {
+    const ctx = makeCtx();
+    ctx.db.seed("cmd_pairingRequests", [
+      { deviceId: "dev-9", pairingCode: "ABC234", apiKey: "old-key", expiresAt: NOW - 1 },
+    ]);
+    expect(await invoke(pairing.registerAgent, ctx, base)).toEqual({ registered: true });
+    expect(ctx.db.rows("cmd_pairingRequests")[0].apiKey).toBe("agent-key");
+  });
+
+  it("bounds first-contact tries of one code across many source addresses", async () => {
+    const ctx = makeCtx();
+    for (let i = 0; i < 10; i++) {
+      await invoke(pairing.registerAgent, ctx, {
+        ...base,
+        clientKey: `ip-${i}`,
+        deviceId: `probe-${i}`,
+        pairingCode: "QRS234",
+      });
+    }
+    expect(
+      await invoke(pairing.registerAgent, ctx, {
+        ...base,
+        clientKey: "ip-fresh",
+        deviceId: "probe-fresh",
+        pairingCode: "QRS234",
+      }),
+    ).toMatchObject({ error: "rate_limited" });
+  });
+});
+
+describe("anonymous global buckets", () => {
+  it("never refuses a session mint, however many came before", async () => {
+    const ctx = makeCtx();
+    for (let i = 0; i < 40; i++) await session(ctx);
+    expect(ctx.db.rows("cmd_browserSessions")).toHaveLength(40);
+  });
+
+  it("charges the global claim bucket only for failed codes, and a success does not reset it", async () => {
+    const ctx = makeCtx();
+    const { secret } = await session(ctx);
+    request(ctx);
+    const global = () => ctx.db.rows("cmd_authAttempts").find((r) => r.key === "claim:global");
+
+    await invoke(pairing.claimPairingCodeAnon, ctx, { code: "ZZZ234", browserSessionSecret: secret });
+    expect(global()?.attempts).toBe(1);
+
+    const ok = await invoke(pairing.claimPairingCodeAnon, ctx, {
+      code: "ABC234",
+      browserSessionSecret: secret,
+    });
+    expect(ok).toMatchObject({ error: null });
+    expect(global()?.attempts).toBe(1);
+  });
+});
+
+describe("cleanExpiredRequests", () => {
+  it("drains expired unclaimed rows behind any number of claimed ones", async () => {
+    const ctx = makeCtx();
+    const old = NOW - 60 * 60 * 1000;
+    ctx.db.seed(
+      "cmd_pairingRequests",
+      Array.from({ length: 300 }, (_, i) => ({
+        pairingCode: `C${i}`,
+        expiresAt: old - 1000 + i,
+        claimedBy: "owner",
+      })),
+    );
+    ctx.db.seed("cmd_pairingRequests", [{ pairingCode: "UNCLM1", expiresAt: old + 5000 }]);
+
+    const result = await invoke(pairing.cleanExpiredRequests, ctx, {});
+    expect(result).toEqual({ deleted: 1 });
+    const left = ctx.db.rows("cmd_pairingRequests");
+    expect(left).toHaveLength(300);
+    expect(left.every((r) => r.claimedBy === "owner")).toBe(true);
+  });
+
+  it("reschedules itself while a full batch was deleted", async () => {
+    const ctx = makeCtx();
+    ctx.db.seed(
+      "cmd_pairingRequests",
+      Array.from({ length: 300 }, (_, i) => ({ pairingCode: `U${i}`, expiresAt: NOW - 1000 - i })),
+    );
+    await invoke(pairing.cleanExpiredRequests, ctx, {});
+    expect(ctx.db.rows("cmd_pairingRequests")).toHaveLength(44);
+    expect(ctx.scheduled).toHaveLength(1);
+  });
+});

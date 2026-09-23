@@ -3,7 +3,7 @@
  * @description The reach map renders honestly: a proven, live relay stream
  * animates a flow toward the sink, an unverified one is drawn dashed and still,
  * and NOTHING animates when the operator prefers reduced motion. The relay
- * verification the derivation carried must survive to the drawn edge (Rule 44).
+ * verification the derivation carried must survive to the drawn edge (no fabricated reading).
  *
  * @license GPL-3.0-only
  */

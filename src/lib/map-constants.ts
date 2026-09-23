@@ -38,6 +38,15 @@ export const MAP_COLORS = {
   rally: "#f97316",
   /** Point of interest (plan annotation) — violet, distinct from waypoint/rally/fence. */
   poi: "#a855f7",
+  /** Spline waypoints and the spline path — cyan, distinct from the straight path. */
+  spline: "#00e5ff",
+  /** DO_JUMP arcs — amber. */
+  jump: "#f59e0b",
+  /** Camera coverage footprints — light cyan. */
+  coverage: "#22d3ee",
+  /** Terrain profile ground fill and outline — earth brown. */
+  terrainFill: "#8B6914",
+  terrainStroke: "#6B5010",
 } as const;
 
 /** Convert a hex color (e.g. "#3a82ff") to an rgba string with the given alpha. */

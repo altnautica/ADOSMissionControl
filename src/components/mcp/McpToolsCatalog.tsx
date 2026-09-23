@@ -3,7 +3,7 @@
  * @description The MCP Tools catalog: the built-in tools an AI client can call
  * through the connector, with search, group-by (namespace / safety class /
  * scope), and an optional credential can-call indicator. Honest by construction
- * (Rule 44) — it renders a committed snapshot exported from the connector
+ * (no fabricated reading) — it renders a committed snapshot exported from the connector
  * (src/data/mcp/tools-catalog.json), NOT a live fetch, and the can-call marks are
  * a client-side capability check via mcp-scope-model, never a live call.
  * @license GPL-3.0-only
@@ -16,7 +16,9 @@ import { useTranslations } from "next-intl";
 import { Wrench, Search, Check, X } from "lucide-react";
 import catalog from "@/data/mcp/tools-catalog.json";
 import { Select } from "@/components/ui/select";
-import { safetyClassBadge } from "./mcp-shared";
+import { useClockStore } from "@/stores/clock-store";
+import { useClockTick } from "@/lib/agent/freshness";
+import { credentialStatus, safetyClassBadge } from "./mcp-shared";
 import { canCredentialCallTool } from "./mcp-scope-model";
 import type { McpTokenRow } from "./McpConsole";
 
@@ -38,8 +40,11 @@ export function McpToolsCatalog({ credentials = [] }: { credentials?: McpTokenRo
   const [search, setSearch] = useState("");
   const [groupBy, setGroupBy] = useState<GroupBy>("namespace");
   const [credId, setCredId] = useState("");
+  useClockTick();
+  const now = useClockStore((s) => s.now);
 
-  const cred = credentials.find((c) => c.tokenId === credId) ?? null;
+  const cred =
+    credentials.find((c) => c.tokenId === credId && credentialStatus(c, now) === "active") ?? null;
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -67,7 +72,8 @@ export function McpToolsCatalog({ credentials = [] }: { credentials?: McpTokenRo
       ? canCredentialCallTool(
           { scopes: cred.scopes, allowedNodes: cred.allowedNodes },
           { name: x.name, scope: x.scope, safetyClass: x.safetyClass, agentModeOnly: x.agentModeOnly, affectsFlight: x.affectsFlight },
-          { flightEnforced: false, fleetMode: false },
+          // A minted credential only connects through the fleet relay.
+          { flightEnforced: false, fleetMode: true },
         )
       : null;
 
@@ -79,7 +85,7 @@ export function McpToolsCatalog({ credentials = [] }: { credentials?: McpTokenRo
   const credOptions = [
     { value: "", label: t("tools.noCredential") },
     ...credentials
-      .filter((c) => c.revokedAt == null)
+      .filter((c) => credentialStatus(c, now) === "active")
       .map((c) => ({ value: c.tokenId, label: c.label })),
   ];
 

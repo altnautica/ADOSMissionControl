@@ -157,7 +157,7 @@ export function OsdElementGrid({
         <button
           onClick={onSave}
           disabled={!selectedDroneId || saving}
-          className="flex items-center justify-center gap-2 w-full px-3 py-2 text-xs font-semibold bg-accent-primary text-white disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+          className="flex items-center justify-center gap-2 w-full px-3 py-2 text-xs font-semibold bg-accent-primary text-accent-foreground disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
         >
           <Save size={12} />
           {saving ? "Saving..." : "Save to FC"}

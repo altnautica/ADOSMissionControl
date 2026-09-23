@@ -2,23 +2,25 @@
  * Tests for the node Settings "Network" page: the ground-station uplink
  * matrix renders the agent's OWN reports (active uplink, per-leg state,
  * priority ladder), the ladder write round-trips through the priority route
- * with the persisted order read back, and non-ground-station profiles get
- * the honest no-matrix note instead of an empty matrix. The AP name, channel
- * and passphrase go through the ground station's live AP route, never the
- * config document, and the page acts only on the node it is rendered for.
+ * with the persisted order read back, a failed poll is reported over the last
+ * snapshot instead of leaving it on screen as live, and non-ground-station
+ * profiles get the honest note with no matrix and no hotspot controls (no AP
+ * service runs there). The AP name, channel and passphrase go through the
+ * ground station's live AP route, never the config document, and the page
+ * acts only on the node it is rendered for.
  *
  * @license GPL-3.0-only
  */
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { renderWithIntl } from "../helpers/intl-wrapper";
 
+import { NetworkUplinkSection } from "@/components/command/settings/NetworkUplinkSection";
 import {
-  NetworkUplinkSection,
   moveEntry,
   uplinkLegLabelKey,
-} from "@/components/command/settings/NetworkUplinkSection";
+} from "@/components/command/settings/UplinkMatrix";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 
 const initialConnectionState = useAgentConnectionStore.getState();
@@ -212,10 +214,42 @@ describe("NetworkUplinkSection on a ground station", () => {
     ).toBeTruthy();
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it("reports a failed poll over the last snapshot instead of leaving it live", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      useAgentConnectionStore.setState({
+        agentUrl: "http://gs.local:8080",
+        apiKey: "KEY",
+        nodeDeviceId: "node-1",
+      });
+      const { fetchMock } = stubAgentFetch();
+      renderSection("ground-station");
+      await waitFor(() => expect(screen.getByText("Active")).toBeTruthy());
+      expect(screen.queryByText("Could not read the node's network status.")).toBeNull();
+
+      // The station drops off the network after one good poll.
+      fetchMock.mockImplementation(async () => {
+        throw new TypeError("Failed to fetch");
+      });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5_000);
+      });
+
+      await waitFor(() =>
+        expect(
+          screen.getByText("Could not read the node's network status."),
+        ).toBeTruthy(),
+      );
+      expect(screen.getByText(/Showing the last successful read/)).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 describe("NetworkUplinkSection on other profiles", () => {
-  it("renders the honest no-matrix note and never fetches", () => {
+  it("renders the honest note with no matrix and no hotspot controls, and never fetches", () => {
     useAgentConnectionStore.setState({
       agentUrl: "http://drone.local:8080",
       apiKey: "KEY",
@@ -227,10 +261,10 @@ describe("NetworkUplinkSection on other profiles", () => {
     renderSection("drone");
 
     expect(
-      screen.getByText(/uplink matrix on ground station nodes only/),
+      screen.getByText(/uplink matrix and the Wi-Fi hotspot run on ground station nodes only/),
     ).toBeTruthy();
-    // The config-backed hotspot switch still renders for every profile.
-    expect(screen.getByText("Wi-Fi hotspot")).toBeTruthy();
+    // No AP service runs on a drone, so no hotspot switch is offered.
+    expect(screen.queryByText("Wi-Fi hotspot")).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
@@ -313,15 +347,6 @@ describe("NetworkUplinkSection hotspot AP settings", () => {
     expect((apply as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(apply);
     expect(puts.some((p) => p.url.endsWith("/network/ap"))).toBe(false);
-  });
-
-  it("offers only the on/off switch on a node with no AP route", () => {
-    connect();
-    stubAgentFetch();
-    renderHotspot("drone");
-    expect(screen.getByText("Wi-Fi hotspot")).toBeTruthy();
-    expect(document.getElementById("hotspot-ap-ssid")).toBeNull();
-    expect(screen.queryByDisplayValue("ADOS-bench")).toBeNull();
   });
 
   it("never writes the AP of a different node that is still attached", () => {

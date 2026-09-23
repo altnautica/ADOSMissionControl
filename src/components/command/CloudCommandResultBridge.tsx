@@ -15,32 +15,57 @@ import { useAgentPeripheralsStore } from "@/stores/agent-peripherals-store";
 import { useFleetNetworkStore } from "@/stores/fleet-network-store";
 import { cmdDroneCommandsApi } from "@/lib/community-api-drones";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
+import { normalizeServiceInfo } from "@/lib/agent/service-state";
+import { toLogLevel } from "@/lib/agent/agent-client/logging-wire";
+import type { LogEntry } from "@/lib/agent/types";
 
-/** Map of command names to [store, field] for routing results */
-type StoreTarget = "system" | "peripherals" | "fleet";
-const COMMAND_RESULT_MAP: Record<string, { store: StoreTarget; field: string }> = {
-  get_peripherals: { store: "peripherals", field: "peripherals" },
-  scan_peripherals: { store: "peripherals", field: "peripherals" },
-  get_peers: { store: "fleet", field: "peers" },
-  get_enrollment: { store: "fleet", field: "enrollment" },
-  get_logs: { store: "system", field: "logs" },
-  get_services: { store: "system", field: "services" },
-};
+const asRecord = (v: unknown): Record<string, unknown> | null =>
+  v !== null && typeof v === "object" && !Array.isArray(v)
+    ? (v as Record<string, unknown>)
+    : null;
 
-function setStoreField(store: StoreTarget, field: string, data: unknown) {
-  const arrayFields = ["peripherals", "peers", "logs", "services"];
-  if (arrayFields.includes(field) && !Array.isArray(data)) return;
-
-  switch (store) {
-    case "system":
-      useAgentSystemStore.setState({ [field]: data } as Record<string, unknown>);
-      break;
-    case "peripherals":
-      useAgentPeripheralsStore.setState({ [field]: data } as Record<string, unknown>);
-      break;
-    case "fleet":
-      useFleetNetworkStore.setState({ [field]: data } as Record<string, unknown>);
-      break;
+/**
+ * Route one completed command's `data` into its store. The agent completes a
+ * relayed read with the body of the route it ran on the loopback: `/api/logs`
+ * answers `{ entries: [{ seq, timestamp, level, logger, message }], … }`
+ * (newest first, upper-case level) and `/api/services` answers
+ * `{ services: [...], systemd_available, process }`.
+ */
+export function routeCommandResult(command: string, data: unknown): void {
+  switch (command) {
+    case "get_peripherals":
+    case "scan_peripherals":
+      if (Array.isArray(data)) useAgentPeripheralsStore.setState({ peripherals: data });
+      return;
+    case "get_peers":
+      if (Array.isArray(data)) useFleetNetworkStore.setState({ peers: data });
+      return;
+    case "get_logs": {
+      const entries = asRecord(data)?.entries;
+      if (!Array.isArray(entries)) return;
+      // The viewer expects chronological order.
+      const logs: LogEntry[] = [...entries].reverse().map((raw) => {
+        const e = asRecord(raw) ?? {};
+        return {
+          timestamp: typeof e.timestamp === "string" ? e.timestamp : "",
+          level: toLogLevel(e.level),
+          service: typeof e.logger === "string" ? e.logger : "",
+          message: typeof e.message === "string" ? e.message : "",
+        };
+      });
+      useAgentSystemStore.setState({ logs, lastUpdatedAt: Date.now(), stale: false });
+      return;
+    }
+    case "get_services": {
+      const services = asRecord(data)?.services;
+      if (!Array.isArray(services)) return;
+      // Services go through the shared normaliser like every other producer,
+      // so an unreported metric stays null rather than landing raw.
+      useAgentSystemStore.setState({
+        services: services.map((s) => normalizeServiceInfo(asRecord(s) ?? {})),
+      });
+      return;
+    }
   }
 }
 
@@ -57,20 +82,16 @@ export function CloudCommandResultBridge() {
     if (!recentCommands) return;
 
     for (const cmd of recentCommands) {
-      // Skip already processed or still pending commands
-      if (cmd.status === "pending") continue;
+      // Only terminal rows carry a result; a pending or leased ("delivering")
+      // row is revisited once it completes.
+      if (cmd.status !== "completed" && cmd.status !== "failed") continue;
       const cmdId = cmd._id as string;
       if (processedRef.current.has(cmdId)) continue;
       processedRef.current.add(cmdId);
 
       // Route data results to the store
-      const data = (cmd as any).data;
-      if (data !== undefined && data !== null) {
-        const target = COMMAND_RESULT_MAP[cmd.command];
-        if (target) {
-          setStoreField(target.store, target.field, data);
-        }
-      }
+      const data: unknown = "data" in cmd ? cmd.data : undefined;
+      if (data !== undefined && data !== null) routeCommandResult(cmd.command, data);
 
       // Keep the processed set bounded
       if (processedRef.current.size > 50) {

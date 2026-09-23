@@ -47,18 +47,18 @@ export interface ExpectedClaims {
   agentId: string;
 }
 
-/** Resolver callback that returns the imported HMAC key for a given
- * issuer family. The bridge owns secret fetching and caching; this
- * module only verifies. */
+/** Resolver callback that returns the imported HMAC keys for a given
+ * issuer family, current key first. A family whose secret rotates returns
+ * the retained previous key after the current one, so a token minted just
+ * before a rotation keeps verifying until it expires. The bridge owns
+ * secret fetching and caching; this module only verifies. */
 export type SecretResolver = (
   kind: IssuerKind,
   issuerSubject: string,
-) => Promise<CryptoKey>;
+) => Promise<readonly CryptoKey[]>;
 
-/** Standalone error class to avoid a circular import with
- * `capability-token.ts`. `TokenError` (in that file) is kept as the
- * legacy alias; consumers that want a single supertype can `instanceof`
- * check both. */
+/** Raised for any structural, issuer, expiry, scope or signature defect in a
+ * capability token. */
 export class TokenInvalid extends Error {}
 
 /** Parse a base64-JSON token without verifying its signature. The bridge
@@ -139,13 +139,17 @@ export async function verifyToken(
   const { claims, blob, signature } = parseTokenClaims(token);
   const { kind, subject } = classifyIssuer(claims.iss);
 
-  const key = await resolver(kind, subject);
-  const ok = await crypto.subtle.verify(
-    "HMAC",
-    key,
-    signature as BufferSource,
-    blob as BufferSource,
-  );
+  const keys = await resolver(kind, subject);
+  let ok = false;
+  for (const key of keys) {
+    ok = await crypto.subtle.verify(
+      "HMAC",
+      key,
+      signature as BufferSource,
+      blob as BufferSource,
+    );
+    if (ok) break;
+  }
   if (!ok) {
     throw new TokenInvalid(`${kind} signature mismatch`);
   }

@@ -67,3 +67,40 @@ describe('extractStepResponses overshoot and undershoot', () => {
     expect(over.overshootPercent).toBeGreaterThan(10);
   });
 });
+
+describe('extractStepResponses detection', () => {
+  it('anchors a step at the last sample before the desired rate moves', () => {
+    const [event] = extractStepResponses(desiredStep(100), actualResponse(firstOrder(100)), 'roll');
+    expect(event.startTimeUs).toBe(Math.round(((STEP_AT_S * RATE_HZ - 1) / RATE_HZ) * 1e6));
+  });
+
+  it('detects an acceleration-limited stick step and targets the end of the ramp', () => {
+    // 1100 deg/s^2 ramp from 0 to 200 deg/s: under 3 deg/s per 400 Hz sample.
+    const accel = 1100;
+    const rampEnd = STEP_AT_S + 200 / accel;
+    const count = Math.round(DURATION_S * RATE_HZ);
+    const desired: TimeSample[] = Array.from({ length: count }, (_, i) => {
+      const t = i / RATE_HZ;
+      const value = t < STEP_AT_S ? 0 : t < rampEnd ? accel * (t - STEP_AT_S) : 200;
+      return { timeUs: Math.round(t * 1e6), value };
+    });
+    const actual = desired.map((s) => ({ ...s }));
+    const events = extractStepResponses(desired, actual, 'roll');
+
+    expect(events).toHaveLength(1);
+    expect(events[0].startTimeUs).toBeLessThanOrEqual(Math.round(STEP_AT_S * 1e6));
+    expect(events[0].startTimeUs).toBeGreaterThan(Math.round((STEP_AT_S - 0.01) * 1e6));
+    expect(events[0].overshootPercent).toBe(0);
+    expect(events[0].undershootPercent).toBe(0);
+  });
+
+  it('detects steps in a 10 Hz RATE log', () => {
+    const hz = 10;
+    const series = (target: number): TimeSample[] =>
+      Array.from({ length: 30 }, (_, i) => ({
+        timeUs: Math.round((i / hz) * 1e6),
+        value: i >= 10 ? target : 0,
+      }));
+    expect(extractStepResponses(series(100), series(100), 'pitch')).toHaveLength(1);
+  });
+});

@@ -167,6 +167,22 @@ export class MqttMavlinkTransport implements Transport {
               }
             },
           );
+          // Prove the write grant with a QoS-1 publish: on MQTT 5 the broker
+          // answers it with a PUBACK whose reason code reflects its ACL, and
+          // mqtt.js hands a refusal (NOT_AUTHORIZED) to the callback as an
+          // error. The payload is empty, which the agent's relay discards, so
+          // the probe never reaches the FC. Frames themselves stay QoS 0.
+          const username = cred?.username;
+          if (this._canPublish && username) {
+            this.client.publish(
+              `ados/${deviceId}/${this.lane}/rx`,
+              Buffer.alloc(0),
+              { qos: 1 },
+              (err: Error | null | undefined) => {
+                if (!err) notifyBrokerWriteAccepted(username);
+              },
+            );
+          }
           if (!resolved) {
             resolved = true;
             clearTimeout(timer);
@@ -242,15 +258,9 @@ export class MqttMavlinkTransport implements Transport {
       Buffer.from(data),
       { qos: 0 },
       (err: Error | null | undefined) => {
-        if (err) {
-          this.emit("error", err);
-          return;
-        }
-        // The broker took the frame. That is the only proof a write grant is
-        // live that this browser can ever obtain — QoS 0 acknowledges nothing —
-        // so report it, and the grant owner stops hedging what it tells the
-        // operator. Reported once per credential; a no-op after that.
-        notifyBrokerWriteAccepted();
+        // A local publish failure only: at QoS 0 the callback fires without a
+        // broker round trip, so success here proves nothing about the ACL.
+        if (err) this.emit("error", err);
       },
     );
   }

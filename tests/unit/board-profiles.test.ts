@@ -4,6 +4,7 @@ import {
   detectBoardProfile,
   UNKNOWN_BOARD,
   getBoardProfileByName,
+  getOutputProtocol,
 } from '@/lib/board-profiles';
 
 describe('BOARD_PROFILES', () => {
@@ -74,5 +75,19 @@ describe('getBoardProfileByName', () => {
   it('returns UNKNOWN_BOARD for an unknown name', () => {
     const profile = getBoardProfileByName('NonexistentBoard');
     expect(profile).toBe(UNKNOWN_BOARD);
+  });
+});
+
+describe('getOutputProtocol', () => {
+  const MOTOR1 = 33;
+  it.each<[number, 'DShot' | 'PWM']>([
+    [0, 'PWM'],
+    [3, 'PWM'],
+    [4, 'DShot'],
+    [7, 'DShot'],
+    [8, 'PWM'],
+    [9, 'PWM'],
+  ])('MOT_PWM_TYPE %i drives motor outputs as %s', (motPwmType, expected) => {
+    expect(getOutputProtocol(MOTOR1, motPwmType)).toBe(expected);
   });
 });

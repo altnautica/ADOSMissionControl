@@ -17,7 +17,7 @@
 
 import { get, set, del } from "idb-keyval";
 import type { Waypoint } from "@/lib/types";
-import type { GeofenceSnapshot } from "@/stores/geofence-store";
+import type { GeofenceSnapshot, FenceZone } from "@/stores/geofence-store";
 import type { RallyPoint } from "@/stores/rally-store";
 import type { PointOfInterest } from "@/stores/plan-poi-store";
 import { parseKML } from "@/lib/formats/kml-parser";
@@ -38,19 +38,7 @@ import {
 import { usePlannerStore } from "@/stores/planner-store";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 
-// Re-export format functions so existing imports keep working
-export {
-  cmdMap,
-  reverseCmd,
-  exportWaypointsFormat,
-  parseWaypointsFile,
-  exportQGCPlan,
-  parseQGCPlan,
-} from "./mission-io-formats";
-
 const AUTOSAVE_KEY = "altcmd_autosave";
-const RECENT_KEY = "altcmd_recent_missions";
-const MAX_RECENT = 10;
 
 export interface MissionMetadata {
   name: string;
@@ -77,7 +65,7 @@ export interface MissionFile {
 }
 
 /** Current native-file schema version written on every export. */
-const MISSION_FILE_VERSION = 3 as const;
+export const MISSION_FILE_VERSION = 3 as const;
 
 /**
  * Migrate a parsed native mission file forward to the current schema version.
@@ -113,16 +101,16 @@ export interface ImportedMission {
   waypoints: Waypoint[];
   metadata?: MissionMetadata;
   geofence?: GeofenceSnapshot;
+  /**
+   * Fence geometry from a format that carries no fence settings (`.plan`);
+   * the importer merges it into the current fence with `withImportedFenceZones`.
+   */
+  fenceZones?: FenceZone[];
   rally?: RallyPoint[];
+  /** Plan points of interest (native `.altmission` only). */
+  pois?: PointOfInterest[];
   /** Items the parser could not keep (named), for the importer to show. */
   warnings?: string[];
-}
-
-interface RecentMission {
-  name: string;
-  date: number;
-  wpCount: number;
-  key: string;
 }
 
 // ── One-time localStorage → IndexedDB migration ────────────
@@ -142,27 +130,6 @@ async function migrateFromLocalStorage(): Promise<void> {
       localStorage.removeItem(AUTOSAVE_KEY);
     }
 
-    const recent = localStorage.getItem(RECENT_KEY);
-    if (recent) {
-      await set(RECENT_KEY, JSON.parse(recent));
-      localStorage.removeItem(RECENT_KEY);
-    }
-
-    const keysToMigrate: string[] = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith("altcmd_mission_")) {
-        keysToMigrate.push(key);
-      }
-    }
-    for (const key of keysToMigrate) {
-      const val = localStorage.getItem(key);
-      if (val) {
-        await set(key, JSON.parse(val));
-        localStorage.removeItem(key);
-      }
-    }
-
     await set("altcmd:migrated", true);
   } catch {
     // Migration failed — not critical
@@ -176,17 +143,18 @@ if (typeof window !== "undefined") {
 // ── File download/upload ────────────────────────────────────
 
 /** Save mission as downloadable .altmission JSON file. */
-export async function downloadMissionFile(
+export function downloadMissionFile(
   waypoints: Waypoint[],
   metadata: MissionMetadata,
   extras?: MissionExtras,
-): Promise<void> {
+): void {
   const file: MissionFile = {
     version: MISSION_FILE_VERSION,
     metadata: { ...metadata, updatedAt: Date.now() },
     waypoints,
     ...(extras?.geofence ? { geofence: extras.geofence } : {}),
     ...(extras?.rally && extras.rally.length > 0 ? { rally: extras.rally } : {}),
+    ...(extras?.pois && extras.pois.length > 0 ? { pois: extras.pois } : {}),
   };
   const blob = new Blob([JSON.stringify(file, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
@@ -195,7 +163,6 @@ export async function downloadMissionFile(
   a.download = `${metadata.name || "mission"}.altmission`;
   a.click();
   URL.revokeObjectURL(url);
-  await addToRecent(metadata.name, waypoints.length);
 }
 
 /** Load mission from a File object. */
@@ -291,44 +258,6 @@ export async function clearAutoSave(): Promise<void> {
   }
 }
 
-// ── Named mission storage ───────────────────────────────────
-
-/** Save to IndexedDB with a named key + add to recents. */
-export async function saveMissionToStorage(waypoints: Waypoint[], metadata: MissionMetadata): Promise<void> {
-  const key = `altcmd_mission_${Date.now()}`;
-  const file: MissionFile = {
-    version: MISSION_FILE_VERSION,
-    metadata: { ...metadata, updatedAt: Date.now() },
-    waypoints,
-  };
-  try {
-    await set(key, file);
-    await addToRecent(metadata.name, waypoints.length, key);
-  } catch {
-    // silent
-  }
-}
-
-/** Get recent missions list. */
-export async function getRecentMissions(): Promise<RecentMission[]> {
-  try {
-    const recent = await get<RecentMission[]>(RECENT_KEY);
-    return recent ?? [];
-  } catch {
-    return [];
-  }
-}
-
-/** Load a mission from IndexedDB by key. */
-export async function loadMissionFromStorage(key: string): Promise<MissionFile | null> {
-  try {
-    const data = await get<MissionFile>(key);
-    return data ? migrateMissionFile(data) : null;
-  } catch {
-    return null;
-  }
-}
-
 // ── Format detection ─────────────────────────────────────────
 
 /** Detect mission file format by extension and parse appropriately. */
@@ -373,6 +302,7 @@ export async function importMissionFile(file: File): Promise<ImportedMission> {
     metadata: migrated.metadata,
     geofence: migrated.geofence,
     rally: migrated.rally,
+    pois: migrated.pois,
   };
 }
 
@@ -383,8 +313,9 @@ export async function importMissionFile(file: File): Promise<ImportedMission> {
  * `.zip` bundle or a bare `.shp`). Returns the polygon rings as `[lat, lon]`
  * pairs — distinct from mission waypoints — so the caller can drop them into the
  * drawing store as survey boundaries. Returns an empty array when the file
- * carries no polygon (never a fabricated shape); throws only on an unsupported
- * extension.
+ * carries no polygon (never a fabricated shape). Throws on an unsupported
+ * extension, and `ShapefileNotGeographicError` when a shapefile's coordinates
+ * are projected rather than latitude/longitude.
  *
  * @param file Uploaded KML/KMZ/ZIP/SHP file.
  * @returns Boundary rings, `[lat, lon][]` each; empty when none found.
@@ -455,17 +386,4 @@ export async function exportMissionKMZ(waypoints: Waypoint[], name: string): Pro
 /** Export waypoints as a .csv file. */
 export function exportMissionCSV(waypoints: Waypoint[], name: string): void {
   downloadCSV(waypoints, name);
-}
-
-// ── Recent missions ──────────────────────────────────────────
-
-async function addToRecent(name: string, wpCount: number, key?: string): Promise<void> {
-  try {
-    const recent = await getRecentMissions();
-    recent.unshift({ name, date: Date.now(), wpCount, key: key || "" });
-    if (recent.length > MAX_RECENT) recent.length = MAX_RECENT;
-    await set(RECENT_KEY, recent);
-  } catch {
-    // silent
-  }
 }

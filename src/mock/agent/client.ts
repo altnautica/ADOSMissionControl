@@ -13,7 +13,6 @@ import type {
   CommandResult,
   HardwareCheckStatus,
   LogEntry,
-  MeshNetEnrollment,
   NetworkPeer,
   PairingInfo,
   PeripheralInfo,
@@ -35,7 +34,7 @@ import type {
 import { delay, jitter, startTime } from "./utils";
 import { getMockConfig, setMockConfigValue } from "./config";
 import { MOCK_PERIPHERALS } from "./peripherals";
-import { MOCK_ENROLLMENT, MOCK_PEERS } from "./fleet";
+import { MOCK_PEERS } from "./fleet";
 import { getMockCapabilities } from "./capabilities";
 import { getMockCameraRoster } from "./cameras";
 import { MOCK_LOGS } from "./logs";
@@ -74,7 +73,7 @@ for (let i = 0; i < 60; i++) {
 // MockAgentClient returns the SAME data the singleton agent-system store is
 // seeded with — one source of truth, no race between the poll and the seed
 // (otherwise a workstation/GS momentarily shows the drone's "CM4 · FC connected"
-// default, a false reading per Rule 44).
+// default, a false reading).
 
 let overrideStatus: AgentStatus | null = null;
 let overrideServices: ServiceInfo[] | null = null;
@@ -293,11 +292,6 @@ export class MockAgentClient {
 
   // ── Fleet ───────────────────────────────────────────────
 
-  async getEnrollment(): Promise<MeshNetEnrollment> {
-    await delay(60);
-    return { ...MOCK_ENROLLMENT };
-  }
-
   async getPeers(): Promise<NetworkPeer[]> {
     await delay(80);
     // The fixtures always carry these three, so the jitter falls back to the
@@ -324,6 +318,7 @@ export class MockAgentClient {
       version: "0.1.0",
       board: "Raspberry Pi CM4",
       paired: true,
+      pairing_code: null,
       owner_id: "demo-user",
       paired_at: startTime,
       mdns_host: "ados-alpha-1.local",
@@ -338,11 +333,6 @@ export class MockAgentClient {
       name: "ADOS Agent (Alpha-01)",
       mdns_host: "ados-alpha-1.local",
     };
-  }
-
-  async unpairAgent(): Promise<CommandResult> {
-    await delay(150);
-    return { success: true, message: "Agent unpaired" };
   }
 
   // ── Capabilities ────────────────────────────────────────

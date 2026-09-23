@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { cn } from "@/lib/utils";
 import { Satellite } from "lucide-react";
@@ -28,7 +29,8 @@ function GpsRow({ label, data }: { label: string; data: GpsData }) {
   // translated in every locale.
   const tUnits = useTranslations("canConfig.testUtilities.gpsFix");
   const fix = FIX_TYPES[data.fixType] ?? FIX_TYPES[0];
-  const hdopColor = data.hdop < 1.5 ? "text-status-success"
+  const hdopColor = data.hdop === undefined ? "text-text-tertiary"
+    : data.hdop < 1.5 ? "text-status-success"
     : data.hdop < 3.0 ? "text-status-warning"
     : "text-status-error";
 
@@ -40,10 +42,10 @@ function GpsRow({ label, data }: { label: string; data: GpsData }) {
         {t(fix.key)}
       </span>
       <span className="text-[10px] font-mono text-text-secondary">
-        {data.satellites} {tUnits("sats")}
+        {data.satellites ?? "—"} {tUnits("sats")}
       </span>
       <span className={cn("text-[10px] font-mono", hdopColor)}>
-        {tUnits("hdop")} {data.hdop.toFixed(1)}
+        {tUnits("hdop")} {data.hdop === undefined ? "—" : data.hdop.toFixed(1)}
       </span>
     </div>
   );
@@ -51,20 +53,31 @@ function GpsRow({ label, data }: { label: string; data: GpsData }) {
 
 /**
  * GPS status display: fix type, satellite count, HDOP.
- * Shows GPS2 alongside GPS1 when available.
+ * Shows GPS2 alongside GPS1 when available. Only fresh samples are shown: a
+ * receiver that stopped reporting (link loss) reads as no data, never as its
+ * last fix.
  */
 export function GpsSkyView({ className }: { className?: string }) {
   const t = useTranslations("indicators.gpsFix");
-  const gps = useTelemetryStore((s) => s.gps);
-  const gps2 = useTelemetryStore((s) => s.gps2);
-  const latest = gps.latest();
-  const latest2 = gps2.latest();
+  const tInd = useTranslations("indicators");
+  const latest = useFreshTelemetry("gps");
+  const latest2 = useFreshTelemetry("gps2");
 
   if (!latest) {
+    const heard = useTelemetryStore.getState().gps.latest() !== undefined;
     return (
-      <div className={cn("flex items-center gap-1 text-text-tertiary", className)}>
+      <div
+        className={cn(
+          "flex items-center gap-1",
+          heard ? "text-status-error" : "text-text-tertiary",
+          className,
+        )}
+        data-telemetry-stale={heard || undefined}
+      >
         <Satellite size={12} />
-        <span className="text-[10px] font-mono">{t("noGps")}</span>
+        <span className="text-[10px] font-mono">
+          {heard ? `GPS · ${tInd("telemetryNone")}` : t("noGps")}
+        </span>
       </div>
     );
   }

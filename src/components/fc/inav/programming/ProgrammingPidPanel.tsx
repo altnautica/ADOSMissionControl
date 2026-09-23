@@ -10,6 +10,9 @@
 
 import { useCallback, useEffect } from "react";
 import { useDroneManager } from "@/stores/drone-manager";
+import { useClockStore } from "@/stores/clock-store";
+import { useClockTick } from "@/lib/agent/freshness";
+import { isFresh } from "@/lib/telemetry/freshness";
 import { useProgrammingStore, PROGRAMMING_PID_MAX } from "@/stores/programming-store";
 import { PanelHeader } from "../../shared/PanelHeader";
 import { Button } from "@/components/ui/button";
@@ -33,6 +36,7 @@ export function ProgrammingPidPanel() {
 
   const pids = useProgrammingStore((s) => s.pids);
   const pidStatus = useProgrammingStore((s) => s.pidStatus);
+  const pidStatusAt = useProgrammingStore((s) => s.pidStatusAt);
   const loading = useProgrammingStore((s) => s.loading);
   const error = useProgrammingStore((s) => s.error);
   const pidsDirty = useProgrammingStore((s) => s.pidsDirty);
@@ -85,7 +89,12 @@ export function ProgrammingPidPanel() {
     }
   }, [getSelectedProtocol, uploadPids, toast]);
 
-  const statusFor = (idx: number) => pidStatus.find((s) => s.id === idx);
+  // An output is live only while the last status read is recent; a failed or
+  // stopped poll leaves the old outputs, which must not read as current.
+  useClockTick();
+  const now = useClockStore((s) => s.now);
+  const statusLive = pidStatusAt !== null && isFresh(pidStatusAt, now);
+  const statusFor = (idx: number) => (statusLive ? pidStatus.find((s) => s.id === idx) : undefined);
 
   const setGain = (idx: number, key: "P" | "I" | "D" | "FF", val: number) => {
     setPid(idx, { gains: { ...pids[idx].gains, [key]: val } });
@@ -121,7 +130,9 @@ export function ProgrammingPidPanel() {
 
         {isArmed && (
           <p className="text-[10px] font-mono text-status-warning">
-            Armed: edits disabled. Live output visible below.
+            {statusLive
+              ? "Armed: edits disabled. Live output visible below."
+              : "Armed: edits disabled. Live output is not being received."}
           </p>
         )}
 
@@ -141,7 +152,7 @@ export function ProgrammingPidPanel() {
                   key={idx}
                   className={cn(
                     "border border-border-default rounded p-3 space-y-2",
-                    pid.enabled ? "bg-surface-primary" : "bg-bg-secondary opacity-60",
+                    pid.enabled ? "bg-bg-primary" : "bg-bg-secondary opacity-60",
                   )}
                 >
                   {/* Header row */}

@@ -18,8 +18,24 @@
 
 import type { FirmwareType } from './types'
 
-/** MAV_PARAM_TYPE_REAL32: the type every param has on the wire when unknown on a cast-encoding vehicle. */
-export const MAV_PARAM_TYPE_REAL32 = 9
+/** MAVLink MAV_PARAM_TYPE (common.xml). */
+export const MAV_PARAM_TYPE = {
+  UINT8: 1,
+  INT8: 2,
+  UINT16: 3,
+  INT16: 4,
+  UINT32: 5,
+  INT32: 6,
+  UINT64: 7,
+  INT64: 8,
+  REAL32: 9,
+  REAL64: 10,
+} as const
+
+/** MAV_PARAM_TYPE value → its name without the prefix, for display. */
+export const MAV_PARAM_TYPE_LABELS: Record<number, string> = Object.fromEntries(
+  Object.entries(MAV_PARAM_TYPE).map(([name, value]) => [value, name]),
+)
 
 /**
  * True when the firmware packs integer parameters bytewise into the float

@@ -1,7 +1,7 @@
 /**
  * @module community-types
  * @description TypeScript types for the community board feature.
- * Mirrors the Convex schema defined in website/convex/schema.ts.
+ * Mirrors the Convex schema in convex/schema.ts.
  * @license GPL-3.0-only
  */
 

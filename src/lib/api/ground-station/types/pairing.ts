@@ -1,8 +1,8 @@
 /**
  * @module api/ground-station/types/pairing
  * @description Pairing-related types: legacy pair/unpair results, the v0.16
- * local-bind protocol session machine, the cloud-relay path responses, and
- * the mesh pairing window + approve/revoke + join shapes.
+ * local-bind protocol session machine, and the mesh pairing window +
+ * approve/revoke + join shapes.
  *
  * @license GPL-3.0-only
  */
@@ -19,9 +19,9 @@ export interface UnpairResult {
   previous_drone_id: string | null;
 }
 
-// New shapes for the v0.16 pairing surface (local-radio bind protocol
-// + cloud-relay path). These match the agent's REST responses verbatim
-// (snake_case where the agent emits snake_case).
+// Shapes for the v0.16 pairing surface (local-radio bind protocol). These
+// match the agent's REST responses verbatim (snake_case where the agent
+// emits snake_case).
 
 export type LocalBindState =
   | "idle"
@@ -110,6 +110,8 @@ export interface PairingWindow {
   opened_at_ms: number;
   closes_at_ms: number;
   duration_s: number;
+  /** Six-digit join code for this window. The relay's join must present it. */
+  code: string;
 }
 
 export interface PairingPendingRequest {
@@ -124,6 +126,8 @@ export interface PairingSnapshot {
   closes_at_ms?: number;
   pending?: PairingPendingRequest[];
   approvals?: Record<string, number>;
+  /** The open window's six-digit join code. */
+  code?: string;
 }
 
 export interface PairingApproveResult {
@@ -139,6 +143,8 @@ export interface PairingRevokeResult {
 }
 
 export interface PairJoinRequest {
+  /** The six-digit code the receiver shows while its window is open. */
+  code: string;
   receiver_host?: string | null;
   receiver_port?: number | null;
 }

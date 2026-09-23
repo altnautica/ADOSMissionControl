@@ -42,7 +42,7 @@ export function PairingPrompt(props: SetupProps | SignInProps) {
         </div>
         <button
           onClick={props.onSignIn}
-          className="px-4 py-1.5 text-xs font-medium bg-accent-primary text-white rounded hover:bg-accent-primary/90 transition-colors"
+          className="px-4 py-1.5 text-xs font-medium bg-accent-primary text-bg-primary rounded hover:bg-accent-primary/90 transition-colors"
         >
           Sign in
         </button>

@@ -14,9 +14,8 @@ import { wsVerifyClient, type WsGuardOptions } from './ws-guard.js';
 
 // UDP is connectionless, so "reconnect" maps to rebinding the socket after an
 // error using the same backoff discipline the TCP relay uses.
-const INITIAL_REBIND_MS = 500;
-const MAX_REBIND_MS = 30_000;
-const BACKOFF_FACTOR = 2;
+/** Fixed retry interval: the bind is retried every 2 s, forever. */
+const REBIND_MS = 2000;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -54,7 +53,6 @@ export class UdpWsBridge extends EventEmitter<UdpBridgeEvents> implements Bridge
   private socket: dgram.Socket | null = null;
   /** Lives as long as the bridge: a socket rebind never re-opens learning. */
   private readonly peers: UdpPeerTracker;
-  private rebindMs = INITIAL_REBIND_MS;
   private rebindTimer: ReturnType<typeof setTimeout> | null = null;
   private closed = false;
 
@@ -155,7 +153,6 @@ export class UdpWsBridge extends EventEmitter<UdpBridgeEvents> implements Bridge
     });
 
     socket.on('listening', () => {
-      this.rebindMs = INITIAL_REBIND_MS; // reset backoff on success
       this.emit('connected', { host: this.config.host, port: this.config.port });
     });
 
@@ -182,10 +179,9 @@ export class UdpWsBridge extends EventEmitter<UdpBridgeEvents> implements Bridge
     this.rebindTimer = setTimeout(() => {
       this.rebindTimer = null;
       this.bind();
-    }, this.rebindMs);
+    }, REBIND_MS);
 
     // Exponential backoff with cap.
-    this.rebindMs = Math.min(this.rebindMs * BACKOFF_FACTOR, MAX_REBIND_MS);
   }
 
   private teardownSocket(): void {

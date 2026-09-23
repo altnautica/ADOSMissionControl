@@ -111,6 +111,24 @@ export function altitudeDatumFor(frame: AltitudeFrame | undefined): AltitudeDatu
   }
 }
 
+/**
+ * A waypoint altitude label suffixed with the datum it is measured from:
+ * "AGL" only for a terrain-frame altitude, "MSL" for an absolute one and
+ * "above home" for a relative one. A home-relative altitude labelled AGL reads
+ * as terrain clearance the vehicle may not have.
+ */
+export function formatAltitudeWithDatum(alt: number, frame: AltitudeFrame | undefined): string {
+  const metres = Math.round(alt);
+  switch (altitudeDatumFor(frame)) {
+    case "absolute":
+      return `${metres}m MSL`;
+    case "waypointGround":
+      return `${metres}m AGL`;
+    case "home":
+      return `${metres}m above home`;
+  }
+}
+
 /** The minimum a waypoint must carry for its altitude to be interpreted. */
 export interface FrameAwareWaypoint {
   alt: number;

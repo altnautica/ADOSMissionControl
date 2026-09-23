@@ -27,7 +27,7 @@ function entry(over: Partial<NodeEntry> = {}): NodeEntry {
     nodeId: "node:dev",
     presence: {
       deviceId: "dev",
-      name: "Skynode",
+      name: "Testnode",
       profile: "drone",
       sources: ["local"],
       lastHeartbeat: NOW,

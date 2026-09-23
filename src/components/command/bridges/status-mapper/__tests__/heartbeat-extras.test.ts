@@ -1,12 +1,12 @@
 /**
  * @license GPL-3.0-only
  *
- * A3 regression for buildHeartbeatExtras — the perception offload-target field.
+ * Regression test for buildHeartbeatExtras — the perception offload-target field.
  * The tier + offload target travel together on the wire, but the Rust beacon
  * OMITS the target (skip_serializing_if) when there is none. So when the tier IS
  * present but the target is absent, the drone stopped offloading and the target
  * must map to null (cleared), NOT undefined (keep-prior) — otherwise a card
- * keeps naming a stale workstation (Rule 44). An absent target with an ALSO
+ * keeps naming a stale workstation (no fabricated reading). An absent target with an ALSO
  * absent tier is a sparse tick and keeps prior (undefined).
  */
 

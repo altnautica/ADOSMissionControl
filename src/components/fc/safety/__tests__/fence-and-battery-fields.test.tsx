@@ -73,8 +73,8 @@ const fenceStore = {
 vi.mock("@/stores/geofence-store", () => ({
   useGeofenceStore: (selector: (s: unknown) => unknown) => selector(fenceStore),
 }));
-vi.mock("@/components/indicators/ArmedLockOverlay", () => ({
-  ArmedLockOverlay: ({ children }: { children: ReactNode }) => <>{children}</>,
+vi.mock("@/components/indicators/ArmedWarningBanner", () => ({
+  ArmedWarningBanner: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
 vi.mock("../../shared/PanelHeader", () => ({ PanelHeader: () => null }));
 vi.mock("../../parameters/ParamStar", () => ({

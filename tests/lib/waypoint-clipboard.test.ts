@@ -52,6 +52,26 @@ describe("waypoint clipboard", () => {
     expect(getClipboard()[0].lat).toBe(12.9);
   });
 
+  it("gives each paste its own actions array with fresh action ids", () => {
+    const source: Waypoint = {
+      ...wp("a", 12.9, 77.6),
+      actions: [{ id: "act1", command: "DO_SET_CAM_TRIGG", param1: 20 }],
+    };
+    setClipboard([source]);
+    const first = getClipboard()[0];
+    const second = getClipboard()[0];
+
+    expect(first.actions).not.toBe(source.actions);
+    expect(first.actions).not.toBe(second.actions);
+    const ids = [source, first, second].map((w) => w.actions![0].id);
+    expect(new Set(ids).size).toBe(3);
+    expect(first.actions![0]).toMatchObject({ command: "DO_SET_CAM_TRIGG", param1: 20 });
+
+    first.actions![0].param1 = 99;
+    expect(source.actions![0].param1).toBe(20);
+    expect(second.actions![0].param1).toBe(20);
+  });
+
   it("clears back to empty", () => {
     setClipboard([wp("a", 1, 2)]);
     clearClipboard();

@@ -2,7 +2,7 @@
  * PostMessage bridge between the host React tree and a sandboxed
  * plugin iframe. This is the trust boundary.
  *
- * Validation pipeline (see spec 07-gcs-extensions section 5.2):
+ * Validation pipeline:
  *   1. Origin check  - source must equal the iframe contentWindow.
  *   2. Schema check  - envelope shape, version, types.
  *   3. Method check  - method must be in the known method registry.
@@ -28,10 +28,26 @@ export type BridgeHandler = (
   ctx: BridgeHandlerContext,
 ) => Promise<unknown> | unknown;
 
+/**
+ * One bridge, which is one mounted iframe. A plugin's handler set is shared by
+ * every panel the plugin mounts, so a handler that holds per-iframe state
+ * (subscriptions, marks) keys it on the mount and releases it when the mount
+ * disposes.
+ */
+export interface BridgeMount {
+  /** Unique per bridge instance. */
+  readonly id: string;
+  /** Run `cleanup` when this bridge disposes (its iframe unmounted). */
+  onDispose(cleanup: () => void): void;
+}
+
 export interface BridgeHandlerContext {
   pluginId: string;
   capability: string | null;
+  /** Push a host event to the iframe this call came from. */
   postEvent: (method: string, capability: string, args: unknown) => void;
+  /** The bridge (iframe) this call came through. */
+  mount: BridgeMount;
   /** Claims from the verified token, present when the bridge runs with
    * a token validator. `null` when the bridge is in legacy mode. */
   claims: TokenClaims | null;
@@ -71,7 +87,9 @@ export interface BridgeTokenValidatorOptions {
    * Called when the validator wants the iframe to re-mint and re-send.
    * The bridge does NOT auto-retry; it returns a `capability_denied`
    * with `reason: "token_expired"` and the iframe (via the SDK) is
-   * responsible for refreshing its token cache.
+   * responsible for refreshing its token cache. Fired once per expired
+   * token value, not once per envelope carrying it, so a plugin polling
+   * with a stale token starts one refresh, not one per call.
    */
   onTokenExpired?: () => void;
 }
@@ -135,6 +153,23 @@ export function createPluginBridge(opts: BridgeOptions): {
       ? grantedCapabilities()
       : grantedCapabilities;
 
+  // The last token reported expired: envelopes that keep carrying it do not
+  // fire `onTokenExpired` again.
+  let lastExpiredToken: string | null = null;
+  const tokenExpired = (token: string) => {
+    if (token === lastExpiredToken) return;
+    lastExpiredToken = token;
+    tokenValidator?.onTokenExpired?.();
+  };
+
+  const cleanups: Array<() => void> = [];
+  const mount: BridgeMount = {
+    id: cryptoRandomId(),
+    onDispose: (cleanup) => {
+      cleanups.push(cleanup);
+    },
+  };
+
   const post: PostFn = (env) => {
     iframe.contentWindow?.postMessage(env, "*");
   };
@@ -169,7 +204,7 @@ export function createPluginBridge(opts: BridgeOptions): {
     });
   };
 
-  const handleEnvelope = async (
+  const dispatchEnvelope = async (
     env: PluginRpcEnvelope,
     source: WindowProxy | null,
   ): Promise<void> => {
@@ -206,7 +241,7 @@ export function createPluginBridge(opts: BridgeOptions): {
 
     let claims: TokenClaims | null = null;
     if (tokenValidator) {
-      const tokenResult = await validateToken(env, pluginId, tokenValidator);
+      const tokenResult = await validateToken(env, pluginId, tokenValidator, tokenExpired);
       if (tokenResult.kind === "error") {
         onSecurityEvent?.({
           code: "capability_denied",
@@ -272,7 +307,9 @@ export function createPluginBridge(opts: BridgeOptions): {
       }
     }
 
-    const handler = handlers[env.method];
+    // Own-property lookup only: an inherited name such as `constructor` must
+    // never resolve to an Object.prototype member.
+    const handler = Object.hasOwn(handlers, env.method) ? handlers[env.method] : undefined;
     if (!handler) {
       onSecurityEvent?.({
         code: "handler_unset",
@@ -293,6 +330,7 @@ export function createPluginBridge(opts: BridgeOptions): {
         pluginId,
         capability: required,
         postEvent: pushEvent,
+        mount,
         claims,
       });
       respond(env.id, env.method, env.capability, { result });
@@ -308,13 +346,42 @@ export function createPluginBridge(opts: BridgeOptions): {
     }
   };
 
+  // Any throw in the pipeline (a malformed `args`, a resolver bug) is answered
+  // with schema_invalid so the plugin's call settles instead of timing out.
+  const handleEnvelope = async (
+    env: PluginRpcEnvelope,
+    source: WindowProxy | null,
+  ): Promise<void> => {
+    try {
+      await dispatchEnvelope(env, source);
+    } catch (err) {
+      // Throws only happen past the schema check, but never answer an
+      // envelope that could not be addressed.
+      if (!validateEnvelope(env)) return;
+      const message = `rejected ${env.method}: ${errorMessage(err)}`;
+      onSecurityEvent?.({ code: "schema_invalid", message, method: env.method });
+      respond(env.id, env.method, env.capability, {
+        error: { code: "schema_invalid", message },
+      });
+    }
+  };
+
   const onMessage = (ev: MessageEvent): void => {
     void handleEnvelope(ev.data as PluginRpcEnvelope, ev.source as WindowProxy);
   };
 
   window.addEventListener("message", onMessage);
   return {
-    dispose: () => window.removeEventListener("message", onMessage),
+    dispose: () => {
+      window.removeEventListener("message", onMessage);
+      for (const cleanup of cleanups.splice(0)) {
+        try {
+          cleanup();
+        } catch {
+          // One failing teardown must not keep the others from running.
+        }
+      }
+    },
     pushEvent,
     handleEnvelope,
   };
@@ -356,8 +423,7 @@ type ValidateTokenResult =
     };
 
 /**
- * Run the 5-check token validation pipeline (see spec
- * 04-permission-model.md Section 11):
+ * Run the token validation pipeline:
  *
  *   1. Token present.
  *   2. `expiresAt > now`.
@@ -366,14 +432,15 @@ type ValidateTokenResult =
  *      `verifyToken` itself).
  *   5. Signature verifies against the right issuer secret.
  *
- * Check 4 of the spec ("grantedCapabilities ⊇ required capability") is
- * enforced after this helper returns, because it depends on the resolved
- * capability for the method.
+ * The capability-membership check ("grantedCapabilities contains the
+ * required capability") runs after this helper returns, because it depends
+ * on the resolved capability for the method.
  */
 async function validateToken(
   env: PluginRpcEnvelope,
   expectedPluginId: string,
   v: BridgeTokenValidatorOptions,
+  tokenExpired: (token: string) => void,
 ): Promise<ValidateTokenResult> {
   const now = v.now ?? Date.now;
   if (!env.token) {
@@ -393,7 +460,7 @@ async function validateToken(
     // injected clock so unit tests can fast-forward without poking
     // crypto. This is also where we fire `onTokenExpired` for the SDK.
     if (claims.expiresAt <= now()) {
-      v.onTokenExpired?.();
+      tokenExpired(env.token);
       return {
         kind: "error",
         reason: "token_expired",
@@ -407,7 +474,7 @@ async function validateToken(
       // Map TokenInvalid sub-messages to the wire reason. `verifyToken`
       // throws with stable prefixes we pattern-match on.
       if (msg === "token expired") {
-        v.onTokenExpired?.();
+        tokenExpired(env.token);
         return { kind: "error", reason: "token_expired", message: msg };
       }
       if (msg.startsWith("pluginId claim")) {

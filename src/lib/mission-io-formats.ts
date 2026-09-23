@@ -17,7 +17,7 @@
 
 import type { Waypoint, WaypointCommand, AltitudeFrame } from "@/lib/types";
 import type { MissionItem } from "@/lib/protocol/types/mission";
-import type { GeofenceSnapshot } from "@/stores/geofence-store";
+import type { GeofenceSnapshot, FenceZone } from "@/stores/geofence-store";
 import type { RallyPoint } from "@/stores/rally-store";
 import {
   geofenceToQGC,
@@ -241,7 +241,8 @@ export interface PlanExtras {
 
 /** Result of parsing a `.plan` file: waypoints plus any fence / rally it carried. */
 export interface ParsedPlan extends ParsedWaypoints {
-  geofence?: GeofenceSnapshot;
+  /** Fence geometry only; the importer merges it into the current fence settings. */
+  fenceZones?: FenceZone[];
   rally?: RallyPoint[];
 }
 
@@ -317,11 +318,45 @@ interface QGCMissionItem {
   // Present when the item itself is a TransectStyleComplexItem (transect fields inline).
   Items?: QGCMissionItem[];
   VisualTransectPoints?: Array<[number, number]>;
+  CameraCalc?: QGCCameraCalc;
+}
+
+/**
+ * Altitude and frame for waypoints rebuilt from a transect's visual points.
+ * Throws when the file does not say how high to fly: a grid placed at 0 m
+ * above home is a mission into the ground, not a default.
+ */
+function transectAltitude(calc: QGCCameraCalc | undefined, label: string): { z: number; frame: AltitudeFrame } {
+  const z = calc?.DistanceToSurface;
+  if (typeof z !== "number" || !Number.isFinite(z) || z <= 0) {
+    throw new Error(`Cannot expand complex mission item "${label}" — no survey altitude (CameraCalc.DistanceToSurface) in the file`);
+  }
+  const mode = calc?.DistanceMode ?? (calc?.DistanceToSurfaceRelative === false ? 2 : 1);
+  switch (mode) {
+    case 1: return { z, frame: "relative" };
+    case 2: return { z, frame: "absolute" };
+    case 4: return { z, frame: "terrain" };
+    default:
+      // 3 = heights computed per point from terrain data the file does not carry.
+      throw new Error(`Cannot expand complex mission item "${label}" — its altitude mode (${mode}) needs the embedded transect items`);
+  }
 }
 
 interface QGCTransectStyle {
   Items?: QGCMissionItem[];
   VisualTransectPoints?: Array<[number, number]>;
+  CameraCalc?: QGCCameraCalc;
+}
+
+/**
+ * The survey's flight height. `DistanceMode` is QGC's AltitudeFrame
+ * (1 relative, 2 absolute/AMSL, 3 calculated above terrain, 4 terrain frame);
+ * files written before it carry `DistanceToSurfaceRelative` instead.
+ */
+interface QGCCameraCalc {
+  DistanceToSurface?: number;
+  DistanceMode?: number;
+  DistanceToSurfaceRelative?: boolean;
 }
 
 interface QGCPlanFile {
@@ -388,18 +423,19 @@ function expandPlanItem(item: QGCMissionItem, out: MissionItem[]): void {
 
     const visual = transect?.VisualTransectPoints ?? item.VisualTransectPoints;
     if (Array.isArray(visual) && visual.length > 0) {
+      const { z, frame } = transectAltitude(transect?.CameraCalc ?? item.CameraCalc, item.complexItemType ?? item.type ?? "ComplexItem");
       for (const pt of visual) {
         if (Array.isArray(pt) && pt.length >= 2 && Number.isFinite(pt[0]) && Number.isFinite(pt[1])) {
           const seq = out.length + 1;
           out.push({
             seq,
             current: seq === 1 ? 1 : 0,
-            frame: frameToMav(DEFAULT_FRAME),
+            frame: frameToMav(frame),
             command: cmdMap.WAYPOINT,
             param1: 0, param2: 0, param3: 0, param4: 0,
             x: Math.round(pt[0] * 1e7),
             y: Math.round(pt[1] * 1e7),
-            z: 0,
+            z,
             autocontinue: 1,
           });
         }
@@ -437,7 +473,7 @@ export function parseQGCPlan(text: string): ParsedPlan {
   return {
     waypoints,
     warnings,
-    geofence: parseQGCGeoFence(data.geoFence),
+    fenceZones: parseQGCGeoFence(data.geoFence),
     rally: parseQGCRally(data.rallyPoints),
   };
 }

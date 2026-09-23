@@ -8,10 +8,6 @@
 // Query params:
 //   ?layer=minimal    render lightweight inline HUD for low-power SBCs
 //                     (Pi 4B, Rock 5C Lite under thermal throttle)
-//
-// Specs:
-//   product/specs/08-hdmi-kiosk-mode.md
-//   product/specs/09-joystick-input.md
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";

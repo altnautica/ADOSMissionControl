@@ -1,10 +1,8 @@
 import { describe, it, expect } from "vitest";
 
-import { DEMO_REGISTRY_ENTRIES } from "@/lib/plugins/first-party-registry";
-import {
-  parseManifestYaml,
-  toInstallSummary,
-} from "@/components/plugins/transports/manifest-parse";
+import { DEMO_REGISTRY_ENTRIES } from "@/mock/first-party-registry";
+import { parseManifestYaml } from "@/components/plugins/transports/manifest-parse";
+import { toInstallSummary } from "@/components/plugins/transports/manifest-summary";
 import { deriveTrustSignals } from "@/lib/plugins/trust-signals";
 
 describe("first-party registry demo fixture", () => {

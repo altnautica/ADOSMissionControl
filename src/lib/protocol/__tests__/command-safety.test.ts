@@ -3,16 +3,18 @@
  * @description Pins the gates on the four command paths that could act on a
  * vehicle they were not meant for, or act at all without being asked:
  *
- * - ArduPilot's vendor calibration range (424xx / 42006) was sent
- *   unconditionally. PX4 and the MSP firmwares answer UNSUPPORTED at best;
- *   the refusal now names the connected firmware instead of the operator
- *   watching a silent no-op.
+ * - ArduPilot's vendor calibration range (424xx) was sent unconditionally.
+ *   PX4 and the MSP firmwares answer UNSUPPORTED at best; the refusal now
+ *   names the connected firmware instead of the operator watching a silent
+ *   no-op. FIXED_MAG_CAL_YAW (42006) is common.xml and both autopilots
+ *   implement it, so it is not gated; it needs the vehicle's real yaw.
  * - CompassMot rode PREFLIGHT_CALIBRATION param6, an ArduPilot-only slot, and
  *   had a second entry point that bypassed even the type switch.
  * - `killSwitch` is DO_FLIGHTTERMINATION: irreversible in flight. The protocol
  *   layer refuses unless the caller states the operator confirmed it.
  * - `guidedGoto` was a raw transport write that reported success for reaching
- *   the socket, and squeezed lat/lon through COMMAND_LONG float32 params.
+ *   the socket, squeezed lat/lon through COMMAND_LONG float32 params, and
+ *   sent yaw 0 (north) where the spec asks for NaN ("keep current yaw").
  *
  * @license GPL-3.0-only
  */
@@ -39,7 +41,7 @@ const MAV_CMD = {
   ARDUPILOT_ACCEPT_MAG_CAL: 42425,
   ARDUPILOT_CANCEL_MAG_CAL: 42426,
   ARDUPILOT_START_MAG_CAL: 42424,
-  ARDUPILOT_FIXED_MAG_CAL: 42006,
+  FIXED_MAG_CAL_YAW: 42006,
   ARDUPILOT_ACCEL_CAL_POS: 42429,
 } as const;
 
@@ -89,7 +91,6 @@ describe("ArduPilot vendor calibration gating", () => {
   const vendorCalls: Array<[string, (ctx: CommandContext) => Promise<CommandResult>]> = [
     ["accept compass cal", (ctx) => cmdAcceptCompassCal(ctx)],
     ["cancel compass cal", (ctx) => cmdCancelCompassCal(ctx)],
-    ["fixed mag cal", (ctx) => cmdStartGnssMagCal(ctx)],
     ["compassmot", (ctx) => cmdStartCalibration(ctx, "compassmot")],
   ];
 
@@ -131,7 +132,7 @@ describe("ArduPilot vendor calibration gating", () => {
   it("every ardupilot vehicle class passes the gate, not just copter", async () => {
     for (const fw of ["ardupilot-copter", "ardupilot-plane", "ardupilot-rover", "ardupilot-sub"] as const) {
       const { ctx, longs } = ctxWith(fw);
-      const result = await cmdStartGnssMagCal(ctx);
+      const result = await cmdAcceptCompassCal(ctx);
       expect(result.success, fw).toBe(true);
       expect(longs, fw).toHaveLength(1);
     }
@@ -153,6 +154,26 @@ describe("ArduPilot vendor calibration gating", () => {
     const ap = ctxWith("ardupilot-copter");
     await cmdStartCalibration(ap.ctx, "compass");
     expect(ap.longs[0].command).toBe(MAV_CMD.ARDUPILOT_START_MAG_CAL);
+  });
+});
+
+describe("fixed-yaw compass calibration", () => {
+  it("reaches the wire on PX4 and ArduPilot with the operator's yaw in param1", async () => {
+    for (const fw of ["px4", "ardupilot-copter", "ardupilot-plane"] as const) {
+      const { ctx, longs } = ctxWith(fw);
+      const result = await cmdStartGnssMagCal(ctx, 137);
+      expect(result.success, fw).toBe(true);
+      expect(longs, fw).toEqual([{ command: MAV_CMD.FIXED_MAG_CAL_YAW, params: [137, 0, 0, 0, 0, 0, 0] }]);
+    }
+  });
+
+  it("refuses without a usable yaw instead of calibrating as if the nose faced north", async () => {
+    for (const yaw of [Number.NaN, -1, 360]) {
+      const { ctx, longs } = ctxWith("px4");
+      const result = await cmdStartGnssMagCal(ctx, yaw);
+      expect(result.success).toBe(false);
+      expect(longs).toHaveLength(0);
+    }
   });
 });
 
@@ -213,6 +234,13 @@ describe("guidedGoto is ack-tracked and keeps 1e7 precision", () => {
     // MAV_DO_REPOSITION_FLAGS_CHANGE_MODE is bit 0 of param2.
     expect(ints[0].params[1]).toBe(1);
     expect(ints[1].params[1]).toBe(0);
+  });
+
+  it("leaves loiter radius and yaw to the vehicle (NaN), never commanding north", async () => {
+    const { ctx, ints } = ctxWith("px4");
+    await cmdGuidedGoto(ctx, 1, 2, 30);
+    expect(Number.isNaN(ints[0].params[2])).toBe(true);
+    expect(Number.isNaN(ints[0].params[3])).toBe(true);
   });
 
   it("refuses cleanly when the transport is down", async () => {

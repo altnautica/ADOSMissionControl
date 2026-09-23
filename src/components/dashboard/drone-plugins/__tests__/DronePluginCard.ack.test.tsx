@@ -53,6 +53,9 @@ vi.mock("lucide-react", () => {
 vi.mock("next/link", () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
 
 // ── Controllable command-row + mutation/toast recorders ────
 
@@ -111,7 +114,7 @@ function makeInstall(
     version: "1.0.0",
     name: "Example Alpha",
     source: "local_file",
-    signerId: "altnautica-2026-A",
+    signerId: "example-2026-A",
     status: "disabled",
     halves: ["agent", "gcs"],
     ...overrides,
@@ -214,5 +217,26 @@ describe("DronePluginCard cloud command ACK", () => {
       ),
     );
     expect(setStatus).not.toHaveBeenCalled();
+  });
+
+  it("reports success for an agent-reported row without touching the cloud record", async () => {
+    const install = makeInstall({ installId: "agent:com.example.alpha", status: "disabled" });
+    const { getByText, queryByText, rerender } = renderCard(install);
+    // No cloud install record, so no cloud configure page either.
+    expect(queryByText("Configure")).toBeNull();
+
+    fireEvent.click(getByText("Enable"));
+    await waitFor(() => expect(enqueueCommand).toHaveBeenCalledTimes(1));
+
+    commandRow = { _id: "cmd-1", status: "completed", result: { success: true, message: "ok" } };
+    rerender(
+      <NextIntlClientProvider locale="en" messages={messages}>
+        <DronePluginCard install={install} />
+      </NextIntlClientProvider>,
+    );
+
+    await waitFor(() => expect(toast).toHaveBeenCalledWith("Example Alpha enabled", "success"));
+    expect(setStatus).not.toHaveBeenCalled();
+    expect(toast).not.toHaveBeenCalledWith(expect.stringContaining("failed"), "error");
   });
 });

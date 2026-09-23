@@ -18,6 +18,7 @@ import {
   COMMON_REGIONS,
   OTHER_REGION_VALUE,
   UNRESTRICTED_VALUE,
+  normalizeRegionCode,
 } from "@/lib/operating-region";
 import { PRIMARY_CTA_CLASS } from "../constants";
 import { StepDots } from "../parts/StepDots";
@@ -69,6 +70,10 @@ export function RegionStep({
   ];
 
   const isUnrestricted = selection === UNRESTRICTED_VALUE;
+  // An "Other" entry that is not a two-letter code must never fall through
+  // to the unrestricted default; hold the step until it is valid.
+  const otherInvalid =
+    selection === OTHER_REGION_VALUE && normalizeRegionCode(otherCode) === null;
 
   return (
     <>
@@ -104,6 +109,11 @@ export function RegionStep({
                 onChange={(e) => setOtherCode(e.target.value)}
                 className="h-9 w-full rounded border border-border-default bg-bg-tertiary px-2 font-mono text-sm uppercase text-text-primary focus:border-accent-primary focus:outline-none"
               />
+              {otherInvalid ? (
+                <p role="alert" className="mt-1 text-[11px] text-status-error">
+                  {t("otherInvalid")}
+                </p>
+              ) : null}
             </div>
           ) : null}
 
@@ -122,7 +132,8 @@ export function RegionStep({
         <button
           type="button"
           onClick={next}
-          className={`${PRIMARY_CTA_CLASS} mt-8 block w-fit mx-auto`}
+          disabled={otherInvalid}
+          className={`${PRIMARY_CTA_CLASS} mt-8 block w-fit mx-auto ${otherInvalid ? "opacity-50 cursor-not-allowed pointer-events-none" : ""}`}
         >
           {tCommon("continue")} →
         </button>

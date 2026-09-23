@@ -10,17 +10,25 @@
  * own, a row click opens a slide-over with the node's recent NodeStatus
  * history.
  *
- * The auto-refresh toggle enables/disables the live store read.
+ * Mounting the browser holds the node store's stale-entry sweep, so nodes
+ * that leave the bus drop out; until then a node not heard from recently
+ * is greyed with its last-seen age. Turning auto-refresh off freezes the
+ * current rows instead of clearing them.
  *
  * @license GPL-3.0-only
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { EyeOff, X } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Toggle } from "@/components/ui/toggle";
-import { useDroneCanNodeStore, type NodeEntry } from "@/stores/dronecan/node-store";
+import {
+  NODE_ONLINE_WINDOW_MS,
+  useDroneCanNodeStore,
+  type NodeEntry,
+} from "@/stores/dronecan/node-store";
+import { useClockTick } from "@/lib/agent/freshness";
 
 function formatUptime(sec: number | undefined): string {
   if (!sec || sec <= 0) return "—";
@@ -130,26 +138,33 @@ export function NodeBrowserSection({ onSelectNode }: NodeBrowserSectionProps = {
   const version = useDroneCanNodeStore((s) => s._version);
   const nodesMap = useDroneCanNodeStore((s) => s.nodes);
 
-  const [autoRefresh, setAutoRefresh] = useState(true);
+  // Re-render every second so the last-seen ages and online greying move
+  // even when no node-store mutation happens.
+  useClockTick();
+
+  // Hold the store's stale sweep while the browser is mounted.
+  useEffect(() => {
+    const store = useDroneCanNodeStore.getState();
+    store._acquire();
+    return () => store._release();
+  }, []);
+
+  // `null` = live; otherwise the rows captured when auto-refresh went off.
+  const [frozenRows, setFrozenRows] = useState<NodeEntry[] | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<number | null>(null);
 
-  // Snapshot the node list. The version counter forces a re-render on
-  // mutation, but the rendered rows hold whatever was in the map at
-  // subscription time.
-  const rows = useMemo(() => {
-    if (!autoRefresh) return [] as NodeEntry[];
+  const liveRows = useMemo(() => {
     const all = Array.from(nodesMap.values());
     all.sort((a, b) => a.nodeId - b.nodeId);
     return all;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nodesMap, version, autoRefresh]);
+  }, [nodesMap, version]);
+  const rows = frozenRows ?? liveRows;
+  const autoRefresh = frozenRows === null;
+  const setAutoRefresh = (on: boolean) => setFrozenRows(on ? null : liveRows);
 
   const selectedNode = selectedNodeId !== null ? (nodesMap.get(selectedNodeId) ?? null) : null;
-  // GCS audit Step 8: removed the three deferred roadmap stubs that shipped
-  // no real behaviour — the hardcoded id-conflict count (conflictCount = 0),
-  // the no-op DroneCAN rescan button, and the unconsumed anonymous-discovery
-  // toggle. Clean cutover: no dead UI left behind. Wiring any of
-  // these to the store/protocol is a separate feature task, not done here.
+  const now = Date.now();
 
   return (
     <div className="space-y-4">
@@ -180,6 +195,7 @@ export function NodeBrowserSection({ onSelectNode }: NodeBrowserSectionProps = {
                   <th className="text-left py-1.5 pr-3 font-medium">{tCol("state")}</th>
                   <th className="text-left py-1.5 pr-3 font-medium">{tCol("uptime")}</th>
                   <th className="text-left py-1.5 pr-3 font-medium">{tCol("health")}</th>
+                  <th className="text-left py-1.5 pr-3 font-medium">{tCol("lastSeen")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -194,10 +210,13 @@ export function NodeBrowserSection({ onSelectNode }: NodeBrowserSectionProps = {
                     entry.nodeInfo?.software_version?.minor,
                   );
                   const status = entry.lastStatus;
+                  const ageMs = Math.max(0, now - entry.lastSeen);
+                  const online = ageMs < NODE_ONLINE_WINDOW_MS;
                   return (
                     <tr
                       key={entry.nodeId}
-                      className="border-b border-border-default last:border-b-0 hover:bg-bg-primary/40 cursor-pointer"
+                      data-online={online}
+                      className={`border-b border-border-default last:border-b-0 hover:bg-bg-primary/40 cursor-pointer ${online ? "" : "opacity-50"}`}
                       onClick={() => {
                         if (onSelectNode) onSelectNode(entry.nodeId);
                         else setSelectedNodeId(entry.nodeId);
@@ -210,9 +229,12 @@ export function NodeBrowserSection({ onSelectNode }: NodeBrowserSectionProps = {
                       <td className="py-1.5 pr-3 font-mono text-text-secondary">{modeLabel(status?.mode)}</td>
                       <td className="py-1.5 pr-3 font-mono text-text-secondary">{formatUptime(status?.uptime_sec)}</td>
                       <td className="py-1.5 pr-3">
-                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono ${healthPillClass(status?.health)}`}>
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono ${healthPillClass(online ? status?.health : undefined)}`}>
                           {status?.health ?? "—"}
                         </span>
+                      </td>
+                      <td className="py-1.5 pr-3 font-mono text-text-secondary">
+                        {online ? t("online") : t("secondsAgo", { seconds: Math.round(ageMs / 1000) })}
                       </td>
                     </tr>
                   );

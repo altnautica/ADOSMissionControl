@@ -1,7 +1,8 @@
 /**
  * @module plugins/iframe-csp
  * @description The ONE Content-Security-Policy every plugin iframe document
- * carries, and the helper that guarantees it is present.
+ * carries, the script that removes the network paths CSP does not govern, and
+ * the helper that guarantees both are present.
  *
  * ## Why the page CSP is not enough
  *
@@ -28,6 +29,18 @@
  * the correct origin set for a plugin frame is empty, for every plugin,
  * including one that declares every capability in the catalog.
  *
+ * ## WebRTC
+ *
+ * `connect-src` does not govern `RTCPeerConnection`: ICE gathering against a
+ * STUN/TURN server of the plugin's choosing (or a data channel) is network
+ * egress CSP cannot stop in current Chromium, which does not implement the
+ * `webrtc` directive. The policy still carries `webrtc 'block'` for engines
+ * that do. {@link PLUGIN_FRAME_GUARD_SCRIPT} closes the gap in the frame
+ * itself: it runs before the plugin bundle, deletes every `RTC*` interface
+ * from the frame's global, and refuses nested browsing contexts, since a
+ * same-origin child frame would hand the plugin a fresh global with the
+ * interfaces restored.
+ *
  * `script-src` deliberately omits `'unsafe-eval'`: plugin bundles are
  * single-file ESM with no `eval` / `new Function` / dynamic `import()`, and the
  * app-level `'unsafe-eval'` has no business reaching plugin code.
@@ -39,15 +52,15 @@
  * The policy applied to a plugin iframe document.
  *
  *   * `default-src 'none'`   — deny by default; each directive below opts in.
- *   * `script-src 'unsafe-inline'` — the shell inlines the bundle as one
- *     `<script type="module">`; there is no origin to allow since the document
- *     is null-origin.
+ *   * `script-src 'unsafe-inline'` — the shell inlines the guard and the bundle;
+ *     there is no origin to allow since the document is null-origin.
  *   * `style-src 'unsafe-inline'`  — the shell's inline reset plus whatever the
  *     plugin injects; no stylesheet is ever fetched.
  *   * `img-src data: blob:`        — plugin-rendered images arrive as data or
  *     blob URLs through the bridge, never from a network origin.
- *   * `connect-src 'none'`         — see the module note. This is the directive
- *     the whole file exists for.
+ *   * `connect-src 'none'`         — see the module note.
+ *   * `webrtc 'block'`             — see the module note; enforced by the guard
+ *     script where the engine ignores the directive.
  *   * `form-action 'none'`, `base-uri 'none'` — a plugin cannot navigate data
  *     out through a form submit or retarget relative URLs.
  */
@@ -57,6 +70,7 @@ export const PLUGIN_FRAME_CSP = [
   "style-src 'unsafe-inline'",
   "img-src data: blob:",
   "connect-src 'none'",
+  "webrtc 'block'",
   "form-action 'none'",
   "base-uri 'none'",
 ].join("; ");
@@ -65,35 +79,92 @@ export const PLUGIN_FRAME_CSP = [
 export const PLUGIN_FRAME_CSP_META = `<meta http-equiv="Content-Security-Policy" content="${PLUGIN_FRAME_CSP}">`;
 
 /**
- * Return `html` with the plugin frame policy present as the first element of
- * `<head>`, adding it when absent and leaving an already-policed document
- * unchanged.
+ * Classic script run in the plugin frame before the bundle. It deletes every
+ * `RTC*` / `webkitRTC*` interface from the frame's global, and after every DOM
+ * API that can connect an element (and on a mutation-observer backstop) it
+ * removes any nested frame; if a nested browsing context survives that, it
+ * tears the document down and throws, so a plugin never reaches a child
+ * global with WebRTC restored.
+ */
+export const PLUGIN_FRAME_GUARD_SCRIPT = `(() => {
+"use strict";
+const w = window;
+for (const n of Object.getOwnPropertyNames(w)) {
+  if (/^(webkit)?RTC/.test(n)) { try { delete w[n]; } catch (e) {} }
+}
+const FRAMES = "iframe,frame,object,embed,fencedframe,portal";
+const roots = [document];
+const observer = new MutationObserver(() => purge());
+const purge = () => {
+  if (!(w.length > 0)) return;
+  for (const r of roots) for (const f of r.querySelectorAll(FRAMES)) f.remove();
+  if (w.length > 0) {
+    document.documentElement.remove();
+    throw new Error("nested frames are not permitted in a plugin frame");
+  }
+};
+const attach = Element.prototype.attachShadow;
+Element.prototype.attachShadow = function (init) {
+  const root = attach.call(this, init);
+  roots.push(root);
+  observer.observe(root, { childList: true, subtree: true });
+  return root;
+};
+const wrap = (proto, name) => {
+  const d = Object.getOwnPropertyDescriptor(proto, name);
+  if (!d) return;
+  if (typeof d.value === "function") {
+    const f = d.value;
+    d.value = function (...a) { const r = f.apply(this, a); purge(); return r; };
+  } else if (d.set) {
+    const s = d.set;
+    d.set = function (v) { s.call(this, v); purge(); };
+  } else return;
+  Object.defineProperty(proto, name, d);
+};
+const SINKS = [
+  [Node.prototype, ["appendChild", "insertBefore", "replaceChild"]],
+  [Element.prototype, ["append", "prepend", "before", "after", "replaceWith", "replaceChildren", "moveBefore", "insertAdjacentElement", "insertAdjacentHTML", "setHTMLUnsafe", "innerHTML", "outerHTML"]],
+  [CharacterData.prototype, ["before", "after", "replaceWith"]],
+  [DocumentFragment.prototype, ["append", "prepend", "replaceChildren", "moveBefore"]],
+  [ShadowRoot.prototype, ["innerHTML", "setHTMLUnsafe"]],
+  [Document.prototype, ["append", "prepend", "replaceChildren", "moveBefore", "write", "writeln", "execCommand", "body"]],
+  [Range.prototype, ["insertNode", "surroundContents"]],
+];
+for (const [proto, names] of SINKS) for (const n of names) wrap(proto, n);
+observer.observe(document, { childList: true, subtree: true });
+})();`;
+
+/** Everything the frame's `<head>` must start with: the policy, then the guard. */
+export const PLUGIN_FRAME_HEAD = `${PLUGIN_FRAME_CSP_META}<script>${PLUGIN_FRAME_GUARD_SCRIPT}</script>`;
+
+/**
+ * Return `html` with {@link PLUGIN_FRAME_HEAD} as the first content of
+ * `<head>`.
  *
  * Needed as a separate step from the shell builder because one of the three
  * bundle paths does not build its shell here: the cloud path uploads the shell
  * to Convex storage at install time and later re-fetches that stored document,
- * which for an install recorded before this policy existed carries no meta tag.
- * Normalising at blob-mint time closes that gap without a storage migration.
+ * which for an install recorded before the policy or guard existed carries
+ * neither. Normalising at blob-mint time closes that gap without a storage
+ * migration.
  *
- * A document with no `<head>` gets the meta injected after `<html …>`, or at
- * the very front as a last resort — a policy that lands late still applies to
- * everything parsed after it, and the alternative is shipping no policy.
+ * The head is injected unconditionally, never skipped because the document
+ * already mentions a policy: the plugin bundle inlined in the shell can
+ * contain that text anywhere, and policies intersect, so a duplicate can only
+ * tighten. A document with no `<head>` gets one after `<html …>`, or at the
+ * very front as a last resort.
  */
 export function ensurePluginFrameCsp(html: string): string {
-  if (/http-equiv=["']?Content-Security-Policy/i.test(html)) return html;
-  const headOpen = html.match(/<head[^>]*>/i);
+  const headOpen = html.match(/<head(\s[^>]*)?>/i);
   if (headOpen?.index !== undefined) {
     const at = headOpen.index + headOpen[0].length;
-    return html.slice(0, at) + PLUGIN_FRAME_CSP_META + html.slice(at);
+    return html.slice(0, at) + PLUGIN_FRAME_HEAD + html.slice(at);
   }
-  const htmlOpen = html.match(/<html[^>]*>/i);
+  const htmlOpen = html.match(/<html(\s[^>]*)?>/i);
   if (htmlOpen?.index !== undefined) {
     const at = htmlOpen.index + htmlOpen[0].length;
-    return (
-      html.slice(0, at) +
-      `<head>${PLUGIN_FRAME_CSP_META}</head>` +
-      html.slice(at)
-    );
+    return html.slice(0, at) + `<head>${PLUGIN_FRAME_HEAD}</head>` + html.slice(at);
   }
-  return PLUGIN_FRAME_CSP_META + html;
+  return PLUGIN_FRAME_HEAD + html;
 }

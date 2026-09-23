@@ -9,6 +9,7 @@
  * @license GPL-3.0-only
  */
 
+import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useFleetStore } from "@/stores/fleet-store";
 import { useUiStore } from "@/stores/ui-store";
@@ -21,23 +22,34 @@ export const MCP_NAVIGATE_EVENT = "ados:navigate";
 /**
  * Resolve an activity row's `node` (a deviceId in fleet-mode, an id or `local`
  * in agent-mode) to a selectable fleet-row id — mirrors the Dashboard's
- * `handleOpenAgent` mapping. Returns null when no fleet row matches (the tool
- * ran against a node not present in this GCS's fleet).
+ * `handleOpenAgent` mapping. `local` names the agent this GCS is connected to.
+ * Returns null when no fleet row matches (fleet-wide `*`, `local` with no
+ * connected agent, or a node not present in this GCS's fleet).
  */
 export function resolveFleetRowId(node: string): string | null {
+  const target = node === "local" ? useAgentConnectionStore.getState().nodeDeviceId : node;
+  if (!target) return null;
   const fleet = useFleetStore.getState().drones;
   // A direct-FC id (fc:<random>) or an already-canonical node id is a row id.
-  if (fleet.some((d) => d.id === node)) return node;
-  const nid = nodeIdForDevice(node);
+  if (fleet.some((d) => d.id === target)) return target;
+  const nid = nodeIdForDevice(target);
   if (fleet.some((d) => d.id === nid)) return nid;
-  const match = fleet.find((d) => d.cloudDeviceId === node);
+  const match = fleet.find((d) => d.cloudDeviceId === target);
   return match ? match.id : null;
+}
+
+/** True when {@link navigateToRow} would navigate: a whole-page route surface,
+ *  or a tab surface whose node resolves to a fleet row. */
+export function canNavigateToRow(row: McpActivityRow): boolean {
+  const surface = row.surface;
+  if (!surface) return false;
+  return surface.kind === "route" || resolveFleetRowId(row.node) !== null;
 }
 
 /** A short display name for a target node — the fleet drone's name when it
  *  resolves, else a trimmed node string (`local` for the agent-mode default). */
 export function nodeDisplayName(node: string): string {
-  if (!node || node === "local") return "local";
+  if (!node) return "local";
   const rowId = resolveFleetRowId(node);
   if (rowId) {
     const d = useFleetStore.getState().drones.find((x) => x.id === rowId);

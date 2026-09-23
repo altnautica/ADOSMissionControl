@@ -23,12 +23,12 @@ describe("DiagnosticsSection", () => {
     useDroneCanNodeStore.setState({ nodes: new Map(), _version: 0 } as never);
   });
 
-  it("renders the four top-row gauges", () => {
+  it("renders the top-row gauges, with unmeasured bus-off as a dash", () => {
     renderWithIntl(<DiagnosticsSection client={null} />);
-    expect(screen.getByTestId("diagnostics-bus-load")).toBeDefined();
+    expect(screen.queryByTestId("diagnostics-bus-load")).toBeNull();
     expect(screen.getByTestId("diagnostics-fps").textContent).toContain("42");
     expect(screen.getByTestId("diagnostics-errors-ps").textContent).toContain("1");
-    expect(screen.getByTestId("diagnostics-bus-off")).toBeDefined();
+    expect(screen.getByTestId("diagnostics-bus-off").textContent).toContain("—");
   });
 
   it("renders the per-node table with seeded nodes", () => {

@@ -34,8 +34,8 @@ function coerceSlaves(raw: unknown): ComputeSlave[] {
       accelerators: Array.isArray(row.accelerators)
         ? row.accelerators.filter((a): a is string => typeof a === "string")
         : [],
-      workersIdle: asNumber(row.workersIdle) ?? 0,
-      queueDepth: asNumber(row.queueDepth) ?? 0,
+      workersIdle: asNumber(row.workersIdle),
+      queueDepth: asNumber(row.queueDepth),
     });
   }
   return out;

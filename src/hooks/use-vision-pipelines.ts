@@ -21,13 +21,10 @@
 import { useEffect, useMemo, useState } from "react";
 
 import {
+  DETECTION_STALE_MS,
   streamKey,
   useVisionDetectionsStore,
 } from "@/stores/vision-detections-store";
-
-/** A drone's pipeline goes stale (treated as not running) after this long with
- * no new batch on its stream. */
-export const PIPELINE_STALE_MS = 2500;
 
 /** One vision pipeline running on the drone (a model × camera stream). */
 export interface VisionPipeline {
@@ -39,7 +36,7 @@ export interface VisionPipeline {
   detectionCount: number;
   /** How many of those are a confidently-locked track. */
   lockedCount: number;
-  /** Whether a batch arrived recently (within `PIPELINE_STALE_MS`). */
+  /** Whether a batch arrived recently (within `DETECTION_STALE_MS`). */
   active: boolean;
   /** Age of the latest batch in ms. */
   ageMs: number;
@@ -56,11 +53,15 @@ export function useVisionPipelines(droneId: string): VisionPipeline[] {
   const streamsMap = useVisionDetectionsStore((s) => s.streams[droneId]);
   const [now, setNow] = useState(() => Date.now());
 
+  // Keyed on whether any stream exists, not on the streams map that is rebuilt
+  // on every batch: at 10-15 Hz that would clear the interval before it fired
+  // and freeze `now`, keeping a stopped stream "running" forever.
+  const hasStreams = !!streamsMap;
   useEffect(() => {
-    if (!streamsMap) return;
+    if (!hasStreams) return;
     const id = setInterval(() => setNow(Date.now()), 500);
     return () => clearInterval(id);
-  }, [streamsMap]);
+  }, [hasStreams]);
 
   return useMemo(() => {
     if (!streamsMap) return [];
@@ -73,7 +74,7 @@ export function useVisionPipelines(droneId: string): VisionPipeline[] {
           cameraId: b.cameraId,
           detectionCount: b.detections.length,
           lockedCount: b.detections.filter((d) => d.lockState === "locked").length,
-          active: ageMs <= PIPELINE_STALE_MS,
+          active: ageMs <= DETECTION_STALE_MS,
           ageMs,
           frameId: b.frameId,
         };

@@ -3,9 +3,10 @@
  * @description Zustand store for the live DroneCAN bus monitor.
  *
  * Holds a ring buffer of decoded frames (cap 4096), rolling 1Hz counters
- * (fps, errors per second, byte totals), and a pause flag. Counters are
- * computed over a sliding 1-second window of the most recently pushed
- * frames so the display matches what the user sees in the buffer.
+ * (fps, errors per second, byte totals), the time of the last frame, and a
+ * pause flag. Rates are computed over 1-second windows. A 1Hz tick keeps
+ * closing windows while traffic is stopped, so the rates fall to 0 instead
+ * of freezing at the last busy value; it stops itself once they reach 0.
  *
  * @license GPL-3.0-only
  */
@@ -43,6 +44,8 @@ interface BusStoreState {
   frames: RingBuffer<DecodedFrame>;
   counters: BusCounters;
   paused: boolean;
+  /** Epoch ms of the most recent frame; null when none since the last clear. */
+  lastFrameAt: number | null;
   _version: number;
   _lastTallyAt: number;
   _framesSinceTally: number;
@@ -76,11 +79,54 @@ const tally = {
   lastTallyAt: Date.now(),
   framesSinceTally: 0,
   errorsSinceTally: 0,
+  lastFrameAt: null as number | null,
 };
+
+const TALLY_WINDOW_MS = 1000;
+let ticker: ReturnType<typeof setInterval> | null = null;
+
+function stopTicker(): void {
+  if (ticker !== null) {
+    clearInterval(ticker);
+    ticker = null;
+  }
+}
+
+/**
+ * Close the current rate window if it is at least a second old. Called per
+ * frame and by the idle tick, so a bus that goes silent reports 0 fps within
+ * about a second rather than its last busy rate.
+ */
+function closeTallyWindow(now: number): boolean {
+  const elapsed = now - tally.lastTallyAt;
+  if (elapsed < TALLY_WINDOW_MS) return false;
+  tally.counters = {
+    ...tally.counters,
+    fps: Math.round((tally.framesSinceTally * 1000) / elapsed),
+    errorsPs: Math.round((tally.errorsSinceTally * 1000) / elapsed),
+  };
+  tally.lastTallyAt = now;
+  tally.framesSinceTally = 0;
+  tally.errorsSinceTally = 0;
+  return true;
+}
+
+function idleTick(): void {
+  if (closeTallyWindow(Date.now())) bumper.scheduleVersionBump();
+  if (tally.counters.fps === 0 && tally.counters.errorsPs === 0 && tally.framesSinceTally === 0) {
+    stopTicker();
+  }
+}
+
+function ensureTicker(): void {
+  if (ticker === null) ticker = setInterval(idleTick, TALLY_WINDOW_MS);
+}
 
 /** Zero the out-of-store tally. Must accompany every state reset below. */
 function resetTally(): void {
+  stopTicker();
   tally.counters = { ...ZERO_COUNTERS };
+  tally.lastFrameAt = null;
   tally.lastTallyAt = Date.now();
   tally.framesSinceTally = 0;
   tally.errorsSinceTally = 0;
@@ -94,6 +140,7 @@ const bumper = createVersionBumper(() =>
   useDroneCanBusStore.setState((s) => ({
     _version: s._version + 1,
     counters: tally.counters,
+    lastFrameAt: tally.lastFrameAt,
     _lastTallyAt: tally.lastTallyAt,
     _framesSinceTally: tally.framesSinceTally,
     _errorsSinceTally: tally.errorsSinceTally,
@@ -107,6 +154,7 @@ export const useDroneCanBusStore = create<BusStoreState>((set, get) => ({
   frames: new RingBuffer<DecodedFrame>(FRAME_CAP),
   counters: { ...ZERO_COUNTERS },
   paused: false,
+  lastFrameAt: null,
   _version: 0,
   _lastTallyAt: Date.now(),
   _framesSinceTally: 0,
@@ -126,19 +174,12 @@ export const useDroneCanBusStore = create<BusStoreState>((set, get) => ({
     else counters.bytesOut += payloadLen;
 
     const now = Date.now();
-    const elapsed = now - tally.lastTallyAt;
     tally.framesSinceTally += 1;
     if (frame.error) tally.errorsSinceTally += 1;
-
-    if (elapsed >= 1000) {
-      counters.fps = Math.round((tally.framesSinceTally * 1000) / elapsed);
-      counters.errorsPs = Math.round((tally.errorsSinceTally * 1000) / elapsed);
-      tally.lastTallyAt = now;
-      tally.framesSinceTally = 0;
-      tally.errorsSinceTally = 0;
-    }
-
+    tally.lastFrameAt = now;
     tally.counters = counters;
+    closeTallyWindow(now);
+    ensureTicker();
     bumper.scheduleVersionBump();
   },
 
@@ -148,6 +189,7 @@ export const useDroneCanBusStore = create<BusStoreState>((set, get) => ({
     resetTally();
     set({
       counters: tally.counters,
+      lastFrameAt: null,
       _lastTallyAt: tally.lastTallyAt,
       _framesSinceTally: 0,
       _errorsSinceTally: 0,

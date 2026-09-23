@@ -85,7 +85,7 @@ export function CarriedDronesTab({
             return (
               <li
                 key={peer.deviceId}
-                className="rounded-sm border border-border-default bg-surface-secondary p-3"
+                className="rounded-sm border border-border-default bg-bg-secondary p-3"
               >
                 <div className="flex items-center gap-2">
                   <Plane size={14} className="text-text-tertiary shrink-0" />

@@ -120,7 +120,7 @@ export function RoleChangeCard({ variant = "switch" }: RoleChangeCardProps) {
 
   return (
     <div
-      className="rounded-sm border border-border-default bg-surface-secondary p-4"
+      className="rounded-sm border border-border-default bg-bg-secondary p-4"
       role="region"
       aria-label="Change deployment role"
     >
@@ -150,7 +150,7 @@ export function RoleChangeCard({ variant = "switch" }: RoleChangeCardProps) {
           type="button"
           onClick={onApply}
           disabled={disabled || selected === role.info?.current}
-          className="rounded-sm bg-accent-primary text-surface-primary text-xs font-medium px-3 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="rounded-sm bg-accent-primary text-bg-primary text-xs font-medium px-3 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
           aria-busy={role.switching}
         >
           {role.switching ? "Switching..." : "Apply"}

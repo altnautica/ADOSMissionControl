@@ -1,11 +1,14 @@
 /**
  * @module BlackBoxStore
  * @description Zustand store backing the ADOS Black Box view. Reads the
- * durable on-device store through `client.logging`: the session list, a
- * keyset-paged filtered log table, time-aligned telemetry aggregates, and
- * the daemon health/sync badge. All reads degrade gracefully — an older
- * agent (or cloud mode) leaves the store empty and the view shows its
- * empty state rather than throwing.
+ * durable on-device store through the attached node's `client.logging`: the
+ * session list, a keyset-paged filtered log table, time-aligned telemetry
+ * aggregates, and the daemon health/sync badge. The view attaches the client
+ * of the node it renders; attaching another client resets the store, and a
+ * response that lands after its client was replaced is discarded, so one
+ * node's review data never appears under another. All reads degrade
+ * gracefully — an older agent (or cloud mode) leaves the store empty and the
+ * view shows its empty state rather than throwing.
  * @license GPL-3.0-only
  */
 
@@ -18,10 +21,11 @@ import type {
   SessionRow,
   StatsResponse,
 } from "@/lib/agent/agent-client/logging";
-import { useAgentConnectionStore } from "./agent-connection-store";
+import type { AgentClient } from "@/lib/agent/client";
 
-/** Lifecycle of an explicit, operator-triggered cloud push. */
-export type PushState = "idle" | "pushing" | "done" | "error";
+/** Lifecycle of an explicit, operator-triggered cloud push. `pending` means
+ * the agent accepted the request but the cloud export has not confirmed. */
+export type PushState = "idle" | "pushing" | "pending" | "done" | "error";
 
 /** Filters applied to the log table. `level` is a minimum level. */
 export interface BlackBoxFilters {
@@ -46,6 +50,8 @@ const MAX_ROWS = LOG_PAGE_SIZE * 50;
 const HISTORY_METRICS = ["system.cpu_percent", "system.memory_percent"] as const;
 
 interface BlackBoxState {
+  /** The client of the node whose store this state describes, or null. */
+  client: AgentClient | null;
   sessions: SessionRow[];
   selectedSessionId: string | null;
   rows: LoggingRow[];
@@ -88,12 +94,16 @@ interface BlackBoxActions {
    * account. Operator-only — never called from a filter / selection / refresh
    * path. Returns the ack on success, null on failure (with `pushError` set). */
   pushWindow: () => Promise<PushResult | null>;
+  /** Point the store at a node's client. A different client resets every
+   * field and loads the new node's store; the same client is a no-op. */
+  attach: (client: AgentClient | null) => void;
   clear: () => void;
 }
 
 export type BlackBoxStore = BlackBoxState & BlackBoxActions;
 
 const initialState: BlackBoxState = {
+  client: null,
   sessions: [],
   selectedSessionId: null,
   rows: [],
@@ -130,11 +140,12 @@ export const useBlackBoxStore = create<BlackBoxStore>((set, get) => ({
   },
 
   async fetchSessions() {
-    const { client } = useAgentConnectionStore.getState();
+    const { client } = get();
     if (!client?.logging) return;
     set({ loadingSessions: true });
     try {
       const envelope = await client.logging.sessions({ limit: 50 });
+      if (get().client !== client) return;
       set({
         sessions: envelope.data,
         available: true,
@@ -142,14 +153,13 @@ export const useBlackBoxStore = create<BlackBoxStore>((set, get) => ({
         lastUpdatedAt: Date.now(),
       });
     } catch {
-      set({ loadingSessions: false });
+      if (get().client === client) set({ loadingSessions: false });
     }
   },
 
   async fetchRows() {
-    const { client } = useAgentConnectionStore.getState();
+    const { client, selectedSessionId, filters } = get();
     if (!client?.logging) return;
-    const { selectedSessionId, filters } = get();
     set({ loadingRows: true });
     try {
       const envelope = await client.logging.query({
@@ -159,6 +169,7 @@ export const useBlackBoxStore = create<BlackBoxStore>((set, get) => ({
         source: filters.source ? [filters.source] : undefined,
         limit: LOG_PAGE_SIZE,
       });
+      if (get().client !== client) return;
       set({
         rows: envelope.data,
         nextCursor: envelope.page.next_cursor,
@@ -168,14 +179,13 @@ export const useBlackBoxStore = create<BlackBoxStore>((set, get) => ({
         lastUpdatedAt: Date.now(),
       });
     } catch {
-      set({ loadingRows: false });
+      if (get().client === client) set({ loadingRows: false });
     }
   },
 
   async fetchMore() {
-    const { client } = useAgentConnectionStore.getState();
+    const { client, selectedSessionId, filters, nextCursor, loadingMore } = get();
     if (!client?.logging) return;
-    const { selectedSessionId, filters, nextCursor, loadingMore } = get();
     if (!nextCursor || loadingMore) return;
     set({ loadingMore: true });
     try {
@@ -187,6 +197,7 @@ export const useBlackBoxStore = create<BlackBoxStore>((set, get) => ({
         limit: LOG_PAGE_SIZE,
         cursor: nextCursor,
       });
+      if (get().client !== client) return;
       set((s) => {
         const merged = [...s.rows, ...envelope.data];
         return {
@@ -202,14 +213,13 @@ export const useBlackBoxStore = create<BlackBoxStore>((set, get) => ({
         };
       });
     } catch {
-      set({ loadingMore: false });
+      if (get().client === client) set({ loadingMore: false });
     }
   },
 
   async fetchHistory() {
-    const { client } = useAgentConnectionStore.getState();
+    const { client, selectedSessionId } = get();
     if (!client?.logging) return;
-    const { selectedSessionId } = get();
     try {
       const envelope = await client.logging.aggregate({
         metric: [...HISTORY_METRICS],
@@ -218,6 +228,7 @@ export const useBlackBoxStore = create<BlackBoxStore>((set, get) => ({
         bucket: "auto",
         agg: "avg",
       });
+      if (get().client !== client) return;
       const cpu = envelope.data.filter((p) => p.metric === "system.cpu_percent");
       const mem = envelope.data.filter(
         (p) => p.metric === "system.memory_percent",
@@ -229,13 +240,14 @@ export const useBlackBoxStore = create<BlackBoxStore>((set, get) => ({
   },
 
   async fetchHealth() {
-    const { client } = useAgentConnectionStore.getState();
+    const { client } = get();
     if (!client?.logging) return;
     try {
       const [health, stats] = await Promise.all([
         client.logging.healthz(),
         client.logging.stats().catch(() => null),
       ]);
+      if (get().client !== client) return;
       set({ health, stats });
     } catch {
       /* badge stays unknown */
@@ -252,9 +264,8 @@ export const useBlackBoxStore = create<BlackBoxStore>((set, get) => ({
   },
 
   async exportWindow() {
-    const { client } = useAgentConnectionStore.getState();
+    const { client, selectedSessionId, filters } = get();
     if (!client?.logging) return null;
-    const { selectedSessionId, filters } = get();
     set({ exporting: true });
     try {
       const { stream, format } = await client.logging.export({
@@ -268,37 +279,46 @@ export const useBlackBoxStore = create<BlackBoxStore>((set, get) => ({
       const stamp = new Date().toISOString().replace(/[:.]/g, "-");
       const label = selectedSessionId ? `-${selectedSessionId}` : "";
       const ext = format === "jsonl.zst" ? "jsonl.zst" : "jsonl";
-      set({ exporting: false });
+      if (get().client === client) set({ exporting: false });
       return { filename: `ados-blackbox${label}-${stamp}.${ext}`, blob };
     } catch {
-      set({ exporting: false });
+      if (get().client === client) set({ exporting: false });
       return null;
     }
   },
 
   async pushWindow() {
-    const { client } = useAgentConnectionStore.getState();
+    const { client, selectedSessionId } = get();
     if (!client?.logging) {
       set({ pushState: "error", pushError: "push_unavailable" });
       return null;
     }
-    const { selectedSessionId, filters } = get();
     set({ pushState: "pushing", pushError: null });
     try {
+      // The push route scopes by session only; the table's level, text and
+      // source filters have no push equivalent.
       const result = await client.logging.pushWindow({
         session: selectedSessionId ?? undefined,
-        level: filters.level,
-        text: filters.text,
-        source: filters.source ? [filters.source] : undefined,
-        format: "jsonl.zst",
       });
-      set({ pushState: "done", lastPushResult: result, pushError: null });
+      if (get().client === client) {
+        set({
+          pushState: result.pending ? "pending" : "done",
+          lastPushResult: result,
+          pushError: null,
+        });
+      }
       return result;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      set({ pushState: "error", pushError: message });
+      if (get().client === client) set({ pushState: "error", pushError: message });
       return null;
     }
+  },
+
+  attach(client) {
+    if (get().client === client) return;
+    set({ ...initialState, client });
+    if (client) void get().refresh();
   },
 
   clear() {

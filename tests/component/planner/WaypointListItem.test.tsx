@@ -39,7 +39,7 @@ function renderRow(waypoint: Waypoint) {
   return renderWithIntl(
     <WaypointListItem
       waypoint={waypoint} index={1} expanded={false} selected={false}
-      onToggleExpand={noop} onSelect={noop} onUpdate={noop} onRemove={noop}
+      onExpand={noop} onSelect={noop} onUpdate={noop} onRemove={noop}
       onDragStart={noop} onDragOver={noop} onDragEnd={noop} onDrop={noop} dragOver={false}
     />,
   );

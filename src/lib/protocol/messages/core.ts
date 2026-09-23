@@ -288,25 +288,35 @@ export function decodeTimesync(dv: DataView): TimesyncMsg {
 export interface StatustextMsg {
   severity: number;
   text: string;
+  /** Sequence id shared by every chunk of one long message; 0 = the message is this one chunk. */
+  id: number;
+  /** This chunk's index within the sequence, from 0. */
+  chunkSeq: number;
+  /** The text ended with a NUL inside the 50-byte field, so this is the last chunk. */
+  terminated: boolean;
 }
 
 /**
  * Decode STATUSTEXT (msg ID 253).
  *
- * | Offset | Type     | Field    |
- * |--------|----------|----------|
- * | 0      | uint8    | severity |
- * | 1      | char[50] | text     |
+ * | Offset | Type     | Field     |
+ * |--------|----------|-----------|
+ * | 0      | uint8    | severity  |
+ * | 1      | char[50] | text      |
+ * | 51     | uint16   | id        | (extension)
+ * | 53     | uint8    | chunk_seq | (extension)
  */
 export function decodeStatustext(dv: DataView): StatustextMsg {
   const bytes = new Uint8Array(dv.buffer, dv.byteOffset + 1, 50);
-  let end = bytes.indexOf(0);
-  if (end === -1) end = 50;
-  const text = TEXT_DECODER.decode(bytes.subarray(0, end));
+  const nul = bytes.indexOf(0);
+  const text = TEXT_DECODER.decode(bytes.subarray(0, nul === -1 ? 50 : nul));
 
   return {
     severity: dv.getUint8(0),
     text,
+    id: dv.byteLength >= 53 ? dv.getUint16(51, true) : 0,
+    chunkSeq: dv.byteLength >= 54 ? dv.getUint8(53) : 0,
+    terminated: nul !== -1,
   };
 }
 

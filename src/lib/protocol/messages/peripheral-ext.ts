@@ -6,7 +6,7 @@
  * @module protocol/messages/peripheral-ext
  */
 
-// ── GIMBAL_DEVICE_ATTITUDE_STATUS (ID 284) ──────────────────
+// ── GIMBAL_DEVICE_ATTITUDE_STATUS (ID 285) ──────────────────
 
 export interface GimbalDeviceAttitudeStatusMsg {
   timeBootMs: number;
@@ -21,7 +21,7 @@ export interface GimbalDeviceAttitudeStatusMsg {
 }
 
 /**
- * Decode GIMBAL_DEVICE_ATTITUDE_STATUS (msg ID 284).
+ * Decode GIMBAL_DEVICE_ATTITUDE_STATUS (msg ID 285).
  *
  * Wire order (uint32/float32 → uint16 → uint8):
  * | Offset | Type       | Field            |
@@ -217,7 +217,7 @@ export function decodeWindCov(dv: DataView): WindCovMsg {
   };
 }
 
-// ── AIS_VESSEL (ID 246) ──────────────────────────────────────
+// ── AIS_VESSEL (ID 301) ──────────────────────────────────────
 
 export interface AisVesselMsg {
   MMSI: number;
@@ -240,7 +240,7 @@ export interface AisVesselMsg {
 }
 
 /**
- * Decode AIS_VESSEL (msg ID 246).
+ * Decode AIS_VESSEL (msg ID 301).
  *
  * Wire order (uint32/int32 → uint16 → int8/uint8 → char):
  * | Offset | Type    | Field              |
@@ -299,7 +299,7 @@ export function decodeAisVessel(dv: DataView): AisVesselMsg {
   };
 }
 
-// ── GIMBAL_MANAGER_INFORMATION (ID 285) ──────────────────────
+// ── GIMBAL_MANAGER_INFORMATION (ID 280) ──────────────────────
 
 export interface GimbalManagerInformationMsg {
   timeBootMs: number;
@@ -314,7 +314,7 @@ export interface GimbalManagerInformationMsg {
 }
 
 /**
- * Decode GIMBAL_MANAGER_INFORMATION (msg ID 285).
+ * Decode GIMBAL_MANAGER_INFORMATION (msg ID 280).
  *
  * Wire order (uint32 → float32 → uint8):
  * | Offset | Type    | Field          |
@@ -343,7 +343,7 @@ export function decodeGimbalManagerInformation(dv: DataView): GimbalManagerInfor
   };
 }
 
-// ── GIMBAL_MANAGER_STATUS (ID 286) ───────────────────────────
+// ── GIMBAL_MANAGER_STATUS (ID 281) ───────────────────────────
 
 export interface GimbalManagerStatusMsg {
   timeBootMs: number;
@@ -356,7 +356,7 @@ export interface GimbalManagerStatusMsg {
 }
 
 /**
- * Decode GIMBAL_MANAGER_STATUS (msg ID 286).
+ * Decode GIMBAL_MANAGER_STATUS (msg ID 281).
  *
  * Wire order (uint32 → uint8):
  * | Offset | Type   | Field                  |

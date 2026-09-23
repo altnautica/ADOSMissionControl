@@ -41,7 +41,7 @@ export function ViewerLoading({
 
   return (
     <div
-      className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-surface-primary/40"
+      className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-bg-primary/40"
       role="status"
       aria-label={label ?? "Loading viewer"}
       aria-live="polite"

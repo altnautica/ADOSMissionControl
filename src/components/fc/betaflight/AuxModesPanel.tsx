@@ -5,14 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { useDroneManager } from "@/stores/drone-manager";
-import { useTelemetryStore } from "@/stores/telemetry-store";
+import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { usePanelScroll } from "@/hooks/use-panel-scroll";
-import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
+import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import type { MspModeBox, MspModeRange } from "@/lib/protocol/types";
 import { PanelHeader } from "../shared/PanelHeader";
 import { ToggleRight, Save, Plus, Trash2, Radio } from "lucide-react";
-import { AuxRangeSlider, AuxCard, stepToPwm, pwmToStep } from "./AuxRangeSlider";
+import { PwmRangeSlider, stepToPwm, pwmToStep } from "./PwmRangeSlider";
 
 // ── Constants ─────────────────────────────────────────────────
 
@@ -25,6 +25,23 @@ const MAX_RANGES = 20;
 
 /** A slot is in use when it has a PWM window or follows another mode. */
 const isConfigured = (r: MspModeRange) => r.rangeStart < r.rangeEnd || (r.linkedTo ?? 0) > 0;
+
+function AuxCard({ icon, title, description, children }: {
+  icon: React.ReactNode; title: string; description: string; children: React.ReactNode;
+}) {
+  return (
+    <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
+      <div className="flex items-center gap-2 mb-1">
+        <span className="text-accent-primary">{icon}</span>
+        <div>
+          <h2 className="text-sm font-medium text-text-primary">{title}</h2>
+          <p className="text-[10px] text-text-tertiary">{description}</p>
+        </div>
+      </div>
+      {children}
+    </div>
+  );
+}
 
 // ── Component ─────────────────────────────────────────────────
 
@@ -54,8 +71,8 @@ export function AuxModesPanel() {
 
   useUnsavedGuard(isDirty);
 
-  const rcBuffer = useTelemetryStore((s) => s.rc);
-  const latestRc = rcBuffer.latest();
+  // Re-renders on every RC frame and blanks once the stream goes stale.
+  const latestRc = useFreshTelemetry("rc");
 
   const readFromFc = useCallback(async () => {
     const protocol = getSelectedProtocol();
@@ -140,7 +157,7 @@ export function AuxModesPanel() {
   const selectedAddMode = addModeOptions.some((o) => o.value === addModeId) ? addModeId : addModeOptions[0]?.value ?? "";
 
   return (
-    <ArmedLockOverlay>
+    <ArmedWarningBanner>
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-6">
         <div className="max-w-3xl space-y-6">
           <PanelHeader title="Auxiliary Modes" subtitle="Configure mode activation via AUX channel PWM ranges"
@@ -195,9 +212,9 @@ export function AuxModesPanel() {
                                   <span>{range.rangeStart} µs</span>
                                   <span>{range.rangeEnd} µs</span>
                                 </div>
-                                <AuxRangeSlider start={pwmToStep(range.rangeStart)} end={pwmToStep(range.rangeEnd)}
+                                <PwmRangeSlider start={pwmToStep(range.rangeStart)} end={pwmToStep(range.rangeEnd)}
                                   onChange={(start, end) => updateRange(index, { rangeStart: stepToPwm(start), rangeEnd: stepToPwm(end) })}
-                                  activePwm={latestRc ? latestRc.channels[range.auxChannel + 4] ?? 0 : 0} />
+                                  activePwm={latestRc?.channels[range.auxChannel + 4]} />
                               </div>
                               <Button variant="ghost" size="sm" icon={<Trash2 size={12} />} onClick={() => removeRange(index)} />
                             </div>
@@ -239,6 +256,6 @@ export function AuxModesPanel() {
           </div>
         </div>
       </div>
-    </ArmedLockOverlay>
+    </ArmedWarningBanner>
   );
 }

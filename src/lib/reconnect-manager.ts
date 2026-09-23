@@ -11,13 +11,13 @@
  * @license GPL-3.0-only
  */
 
-import type { ConnectionMeta } from "@/stores/drone-manager";
+import type { ConnectionMeta } from "@/lib/connection-meta";
 import { WebSerialTransport } from "@/lib/protocol/transport/webserial";
 import { WebSocketTransport } from "@/lib/protocol/transport/websocket";
 import { NetMavlinkTransport } from "@/lib/protocol/transport/net-mavlink";
 import { createFcAdapter } from "@/lib/protocol/select-fc-adapter";
 import type { DroneProtocol, VehicleInfo } from "@/lib/protocol/types";
-import { serialPortManager } from "@/lib/serial-port-manager";
+import { matchKnownPort, serialPortManager } from "@/lib/serial-port-manager";
 import { useDiagnosticsStore } from "@/stores/diagnostics-store";
 
 export type ReconnectState = "waiting" | "attempting" | "connected";
@@ -196,19 +196,11 @@ export class ReconnectManager {
 
   private async dialSerial(meta: ConnectionMeta): Promise<ReconnectedLink> {
     const ports = await serialPortManager.getKnownPorts();
-    if (ports.length === 0) throw new Error("No serial ports");
-
-    // Match by VID/PID when known.
-    let matchedPort = ports[0].port;
-    if (meta.portVendorId !== undefined && meta.portProductId !== undefined) {
-      const match = ports.find(
-        (p) => p.vendorId === meta.portVendorId && p.productId === meta.portProductId,
-      );
-      if (match) matchedPort = match.port;
-    }
+    const match = matchKnownPort(ports, meta.portVendorId, meta.portProductId);
+    if (!match) throw new Error("The original serial port is not uniquely present");
 
     const transport = new WebSerialTransport();
-    await transport.connectToPort(matchedPort, meta.baudRate || 115200);
+    await transport.connectToPort(match.port, meta.baudRate || 115200);
     return handshake(transport, meta);
   }
 
@@ -248,11 +240,30 @@ async function handshake(
   meta: ConnectionMeta,
 ): Promise<ReconnectedLink> {
   const adapter = await createFcAdapter(meta.firmwareType);
+  let vehicleInfo: VehicleInfo;
   try {
-    const vehicleInfo = await adapter.connect(transport);
-    return { transport, adapter, vehicleInfo, meta };
+    vehicleInfo = await adapter.connect(transport);
   } catch (err) {
     await transport.disconnect().catch(() => {});
     throw err;
   }
+  // The re-dialled link may carry a different aircraft (another granted port,
+  // a reused address). Re-attaching it under the original drone id would send
+  // that drone's commands to it, so a mismatch fails the attempt and the cycle
+  // keeps looking for the original vehicle.
+  const expected = meta.vehicle;
+  const sameVehicle =
+    !expected ||
+    (expected.systemId === vehicleInfo.systemId &&
+      expected.firmwareType === vehicleInfo.firmwareType &&
+      expected.vehicleType === vehicleInfo.vehicleType &&
+      (expected.boardId === undefined ||
+        vehicleInfo.boardId === undefined ||
+        expected.boardId === vehicleInfo.boardId));
+  if (!sameVehicle) {
+    await adapter.disconnect().catch(() => {});
+    await transport.disconnect().catch(() => {});
+    throw new Error("The re-dialled link answered as a different vehicle");
+  }
+  return { transport, adapter, vehicleInfo, meta };
 }

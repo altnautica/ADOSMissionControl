@@ -54,7 +54,7 @@ const mockClient = {
 
 vi.mock("@/stores/agent-connection-store", () => ({
   useAgentConnectionStore: (sel: (s: unknown) => unknown) =>
-    sel({ agentUrl: "http://skynode.local:8080", apiKey: null, client: mockClient }),
+    sel({ agentUrl: "http://testnode.local:8080", apiKey: null, client: mockClient }),
 }));
 
 const toastFn = vi.fn();

@@ -16,7 +16,7 @@
  * mesh it is rather than a flat list.
  *
  * Verification travels with every edge, and the presentation must honour it
- * (Rule 44 / Rule 37): a relay stream is only ever a proven, flowing link when
+ * (no fabricated reading, no unproven link): a relay stream is only ever a proven, flowing link when
  * the far side heard a frame from it; otherwise the edge is unverified / stale /
  * down and must never render as a confident, solid, flowing path.
  *
@@ -110,7 +110,7 @@ export interface MeshGraph {
  * The vertex a relay hop terminates at. The ground node when it is a drawn
  * vertex; otherwise a synthetic off-view parent that terminates the funnel
  * where the relay actually reaches — never the GCS sink, which would render the
- * WFB bearer as a peer link to the GCS that does not exist (Rule 44). A known
+ * WFB bearer as a peer link to the GCS that does not exist (no fabricated reading). A known
  * off-view parent keeps its own id so several drones relayed through it funnel
  * to the one terminal; an unknown parent gets a per-node id so two unknown
  * relays are never merged into one false shared parent.

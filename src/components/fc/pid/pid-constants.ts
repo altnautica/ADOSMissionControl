@@ -20,7 +20,7 @@ export const PLANE_AXES: AxisConfig[] = [
       { param: "RLL_RATE_P", label: "P", min: 0, max: 5, step: 0.001 },
       { param: "RLL_RATE_I", label: "I", min: 0, max: 5, step: 0.001 },
       { param: "RLL_RATE_D", label: "D", min: 0, max: 5, step: 0.001 },
-      { param: "RLL_RATE_IMAX", label: "IMAX", min: 0, max: 4500, step: 1 },
+      { param: "RLL_RATE_IMAX", label: "IMAX", min: 0, max: 1, step: 0.01 },
       { param: "RLL_RATE_FF", label: "FF", min: 0, max: 5, step: 0.001 },
     ],
   },
@@ -30,7 +30,7 @@ export const PLANE_AXES: AxisConfig[] = [
       { param: "PTCH_RATE_P", label: "P", min: 0, max: 5, step: 0.001 },
       { param: "PTCH_RATE_I", label: "I", min: 0, max: 5, step: 0.001 },
       { param: "PTCH_RATE_D", label: "D", min: 0, max: 5, step: 0.001 },
-      { param: "PTCH_RATE_IMAX", label: "IMAX", min: 0, max: 4500, step: 1 },
+      { param: "PTCH_RATE_IMAX", label: "IMAX", min: 0, max: 1, step: 0.01 },
       { param: "PTCH_RATE_FF", label: "FF", min: 0, max: 5, step: 0.001 },
     ],
   },
@@ -120,11 +120,17 @@ export const ROVER_NAV_PARAMS: PidParam[] = [
   { param: "ATC_TURN_MAX_G", label: "Max Turn Accel (g)", min: 0.1, max: 5, step: 0.1 },
 ];
 
-// ── Shared acro rate params ──────────────────────────────────
+// ── Acro rate params (Copter and Plane name and scale them differently) ──
 
-export const ACRO_PARAMS: PidParam[] = [
-  { param: "ACRO_RP_RATE", label: "ACRO Roll/Pitch Rate", min: 0, max: 720, step: 1 },
-  { param: "ACRO_Y_RATE", label: "ACRO Yaw Rate", min: 0, max: 720, step: 1 },
+export const COPTER_ACRO_PARAMS: PidParam[] = [
+  { param: "ACRO_RP_RATE", label: "ACRO Roll/Pitch Rate", min: 1, max: 1080, step: 1 },
+  { param: "ACRO_Y_RATE", label: "ACRO Yaw Rate", min: 1, max: 360, step: 1 },
+];
+
+export const PLANE_ACRO_PARAMS: PidParam[] = [
+  { param: "ACRO_ROLL_RATE", label: "ACRO Roll Rate", min: 10, max: 500, step: 1 },
+  { param: "ACRO_PITCH_RATE", label: "ACRO Pitch Rate", min: 10, max: 500, step: 1 },
+  { param: "ACRO_YAW_RATE", label: "ACRO Yaw Rate", min: 0, max: 500, step: 1 },
 ];
 
 // ── Filter params (INS_*) ────────────────────────────────────
@@ -174,65 +180,6 @@ export const COPTER_PRESETS: PidPreset[] = [
       ATC_RAT_RLL_P: 0.25, ATC_RAT_RLL_I: 0.25, ATC_RAT_RLL_D: 0.008,
       ATC_RAT_PIT_P: 0.25, ATC_RAT_PIT_I: 0.25, ATC_RAT_PIT_D: 0.008,
       ATC_RAT_YAW_P: 0.3, ATC_RAT_YAW_I: 0.03, ATC_RAT_YAW_D: 0.0,
-    },
-  },
-];
-
-export type VehicleType = "copter" | "plane" | "rover";
-
-// ── Betaflight PID axes (4 gains per axis: P/I/D/FF) ────
-
-export const BF_PID_AXES: AxisConfig[] = [
-  {
-    axis: "Roll",
-    params: [
-      { param: "BF_PID_ROLL_P", label: "P", min: 0, max: 200, step: 1 },
-      { param: "BF_PID_ROLL_I", label: "I", min: 0, max: 200, step: 1 },
-      { param: "BF_PID_ROLL_D", label: "D", min: 0, max: 200, step: 1 },
-      { param: "BF_PID_ROLL_F", label: "FF", min: 0, max: 2000, step: 1 },
-    ],
-  },
-  {
-    axis: "Pitch",
-    params: [
-      { param: "BF_PID_PITCH_P", label: "P", min: 0, max: 200, step: 1 },
-      { param: "BF_PID_PITCH_I", label: "I", min: 0, max: 200, step: 1 },
-      { param: "BF_PID_PITCH_D", label: "D", min: 0, max: 200, step: 1 },
-      { param: "BF_PID_PITCH_F", label: "FF", min: 0, max: 2000, step: 1 },
-    ],
-  },
-  {
-    axis: "Yaw",
-    params: [
-      { param: "BF_PID_YAW_P", label: "P", min: 0, max: 200, step: 1 },
-      { param: "BF_PID_YAW_I", label: "I", min: 0, max: 200, step: 1 },
-      { param: "BF_PID_YAW_D", label: "D", min: 0, max: 200, step: 1 },
-      { param: "BF_PID_YAW_F", label: "FF", min: 0, max: 2000, step: 1 },
-    ],
-  },
-];
-
-// ── Betaflight filter params ──────────────────────────────
-
-export const BF_FILTER_PARAMS: PidParam[] = [
-  { param: "BF_GYRO_LPF_HZ", label: "Gyro LPF", min: 0, max: 1000, step: 1 },
-  { param: "BF_DTERM_LPF_HZ", label: "D-term LPF", min: 0, max: 1000, step: 1 },
-  { param: "BF_GYRO_NOTCH_HZ", label: "Gyro Notch", min: 0, max: 1000, step: 1 },
-  { param: "BF_GYRO_NOTCH_CUTOFF", label: "Gyro Notch Cutoff", min: 0, max: 1000, step: 1 },
-  { param: "BF_DTERM_NOTCH_HZ", label: "D-term Notch", min: 0, max: 1000, step: 1 },
-  { param: "BF_DTERM_NOTCH_CUTOFF", label: "D-term Notch Cutoff", min: 0, max: 1000, step: 1 },
-];
-
-// ── Betaflight PID presets ────────────────────────────────
-
-export const BF_PID_PRESETS: PidPreset[] = [
-  {
-    name: "Betaflight Default",
-    description: "Stock Betaflight 4.x defaults",
-    values: {
-      BF_PID_ROLL_P: 45, BF_PID_ROLL_I: 80, BF_PID_ROLL_D: 40, BF_PID_ROLL_F: 120,
-      BF_PID_PITCH_P: 47, BF_PID_PITCH_I: 84, BF_PID_PITCH_D: 46, BF_PID_PITCH_F: 125,
-      BF_PID_YAW_P: 45, BF_PID_YAW_I: 80, BF_PID_YAW_D: 0, BF_PID_YAW_F: 120,
     },
   },
 ];

@@ -9,7 +9,7 @@
 
 import type { Transport, ParameterValue, CommandResult, FirmwareHandler, ParameterCallback } from './types'
 import { encodeParamRequestList, encodeParamRequestRead, encodeParamSet } from './mavlink-encoder'
-import { MAV_PARAM_TYPE_REAL32, usesBytewiseParamValues } from './param-value-codec'
+import { MAV_PARAM_TYPE, usesBytewiseParamValues } from './param-value-codec'
 
 /**
  * A cached parameter read. Stores the full MAV_PARAM shape so a cache-served
@@ -211,8 +211,12 @@ export async function getParameter(ctx: ParamContext, name: string): Promise<Par
   }
 
   const firmwareName = ctx.firmwareHandler?.mapParameterName(name) ?? name
+  // PARAM_VALUE frames are cached and reported under the canonical name (the
+  // frame handler reverse-maps the vehicle's own name), so the cache lookup
+  // and the reply match use it, exactly as setParameter does.
+  const canonicalName = ctx.firmwareHandler?.reverseMapParameterName(firmwareName) ?? firmwareName
 
-  const cached = ctx.paramCache.get(name)
+  const cached = ctx.paramCache.get(canonicalName)
   if (cached && (Date.now() - cached.timestamp) < ctx.PARAM_CACHE_TTL_MS) {
     return { name, value: cached.value, type: cached.type, index: cached.index, count: cached.count }
   }
@@ -222,7 +226,7 @@ export async function getParameter(ctx: ParamContext, name: string): Promise<Par
   // never answer PARAM_REQUEST_READ, so reject immediately instead of waiting
   // out the 5s timeout (× the caller's retries). Before the list completes
   // (downloadedParamNames === null) fall through to a normal live read.
-  if (ctx.downloadedParamNames && !ctx.downloadedParamNames.has(name) && !ctx.downloadedParamNames.has(firmwareName)) {
+  if (ctx.downloadedParamNames && !ctx.downloadedParamNames.has(canonicalName) && !ctx.downloadedParamNames.has(firmwareName)) {
     return Promise.reject(new ParamAbsentError(name))
   }
 
@@ -233,10 +237,10 @@ export async function getParameter(ctx: ParamContext, name: string): Promise<Par
     }, 5000)
 
     const unsub = ctx.onParameter((param) => {
-      if (param.name === firmwareName) {
+      if (param.name === canonicalName) {
         clearTimeout(timer)
         unsub()
-        ctx.paramCache.set(name, { value: param.value, timestamp: Date.now(), type: param.type, index: param.index, count: param.count })
+        ctx.paramCache.set(canonicalName, { value: param.value, timestamp: Date.now(), type: param.type, index: param.index, count: param.count })
         resolve({ ...param, name })
       }
     })
@@ -283,7 +287,7 @@ export async function setParameter(ctx: ParamContext, name: string, value: numbe
       message: `Parameter ${name} has not been read from the vehicle, so its type is unknown; refresh parameters and retry`,
     }
   }
-  const type = cached?.type ?? MAV_PARAM_TYPE_REAL32
+  const type = cached?.type ?? MAV_PARAM_TYPE.REAL32
   // Expire the cached value so no read serves the pre-write value, but keep
   // the entry: its type is what a retry or a later write encodes with.
   if (cached) ctx.paramCache.set(canonicalName, { ...cached, timestamp: 0 })

@@ -12,8 +12,8 @@ import { useCallback } from "react";
 import type { Map as LeafletMap } from "leaflet";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useGuidedStore } from "@/stores/guided-store";
-import { handleFlyHere, handleLoiterHere } from "./actions/navigation";
-import { landAtPoint } from "@/lib/skills/guided-target";
+import { handleFlyHere } from "./actions/navigation";
+import { landAtPoint, loiterAtPoint } from "@/lib/skills/guided-target";
 import { handlePointCamera, handleClearRoi, handleTriggerCamera } from "./actions/camera";
 import { handleSetEkfOrigin } from "./actions/home";
 import { handleSetHeading } from "./actions/markers";
@@ -86,7 +86,14 @@ export function useMenuActions({
           return false;
         }
         case "loiter-here": {
-          void handleLoiterHere({ protocol, menuPos, relativeAlt, report });
+          void loiterAtPoint({
+            protocol,
+            droneId: selectedDroneId,
+            lat: menuPos.lat,
+            lon: menuPos.lon,
+            alt: relativeAlt ?? 10,
+            report,
+          });
           return true;
         }
         case "land-here": {
@@ -101,7 +108,7 @@ export function useMenuActions({
           return true;
         }
         case "point-camera": {
-          void handlePointCamera({ protocol, menuPos, relativeAlt, report });
+          void handlePointCamera({ protocol, menuPos, report });
           return true;
         }
         case "clear-roi": {
@@ -129,22 +136,25 @@ export function useMenuActions({
           return false;
         }
         case "set-heading": {
-          if (latestPos) {
-            handleSetHeading({
-              protocol,
-              menuPos,
-              fromLat: latestPos.lat,
-              fromLon: latestPos.lon,
-            });
+          if (!latestPos) {
+            report("Set heading failed: no vehicle position", "error");
+            return true;
           }
+          void handleSetHeading({
+            protocol,
+            menuPos,
+            fromLat: latestPos.lat,
+            fromLon: latestPos.lon,
+            report,
+          });
           return true;
         }
         case "copy-coords": {
-          handleCopyCoords(menuPos);
+          void handleCopyCoords(menuPos, report);
           return true;
         }
         case "measure-from-drone": {
-          handleMeasureFromDrone({ distLabel, bearingDeg: bearingToDrone });
+          void handleMeasureFromDrone({ distLabel, bearingDeg: bearingToDrone, report });
           return true;
         }
       }

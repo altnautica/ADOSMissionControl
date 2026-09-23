@@ -76,7 +76,7 @@ export function ChannelHistoryChart({ hopping, currentChannel }: Props) {
   const history = hopping?.history ?? [];
   if (history.length === 0) {
     return (
-      <section className="rounded border border-border-default bg-surface-primary p-3">
+      <section className="rounded border border-border-default bg-bg-primary p-3">
         <div className="mb-2 flex items-center justify-between">
           <span className="text-[10px] font-mono uppercase tracking-widest text-text-primary">
             {t("title")}
@@ -121,7 +121,7 @@ export function ChannelHistoryChart({ hopping, currentChannel }: Props) {
   const lastTime = new Date(lastEntry.at * 1000).toLocaleTimeString();
 
   return (
-    <section className="rounded border border-border-default bg-surface-primary p-3">
+    <section className="rounded border border-border-default bg-bg-primary p-3">
       <div className="mb-2 flex items-center justify-between">
         <span className="text-[10px] font-mono uppercase tracking-widest text-text-primary">
           {t("title")}

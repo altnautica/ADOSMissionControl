@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useMemo, useRef, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -44,23 +44,45 @@ const borderColors: Record<ToastStatus, string> = {
   info: "border-l-accent-primary",
 };
 
+/** Most toasts on screen at once; a burst drops the oldest. */
+const MAX_TOASTS = 5;
+
+/** Remove one toast, keeping the same array (no re-render) when it is already gone. */
+function withoutToast(prev: Toast[], id: string): Toast[] {
+  return prev.some((t) => t.id === id) ? prev.filter((t) => t.id !== id) : prev;
+}
+
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
 
   const toast = useCallback((message: string, status: ToastStatus = "info") => {
     const id = randomId();
-    setToasts((prev) => [...prev, { id, message, status }]);
+    setToasts((prev) => [...prev, { id, message, status }].slice(-MAX_TOASTS));
     const lifetime = toastLifetimeMs(status, useSettingsStore.getState().alertPopupDuration);
     if (lifetime !== null) {
-      setTimeout(() => {
-        setToasts((prev) => prev.filter((t) => t.id !== id));
-      }, lifetime);
+      timers.current.set(
+        id,
+        setTimeout(() => {
+          timers.current.delete(id);
+          setToasts((prev) => withoutToast(prev, id));
+        }, lifetime),
+      );
     }
   }, []);
 
   const dismiss = useCallback((id: string) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
+    const timer = timers.current.get(id);
+    if (timer !== undefined) {
+      clearTimeout(timer);
+      timers.current.delete(id);
+    }
+    setToasts((prev) => withoutToast(prev, id));
   }, []);
+
+  // One value object for the provider's lifetime: `toast` is stable, so no
+  // toast add or removal re-renders the many useToast() consumers.
+  const contextValue = useMemo(() => ({ toast }), [toast]);
 
   // The three dismiss labels were hardcoded English accessible names, so on a
   // non-English locale the only control on an error toast announced in the
@@ -79,7 +101,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const assertiveToasts = toasts.filter((t) => isAssertive(t.status));
 
   return (
-    <ToastContext.Provider value={{ toast }}>
+    <ToastContext.Provider value={contextValue}>
       {children}
       <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2">
         <div role="status" aria-live="polite" aria-atomic="false" className="flex flex-col gap-2">

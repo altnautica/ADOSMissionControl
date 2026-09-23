@@ -49,8 +49,15 @@ export default function FlightHistoryPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const lastClickedRef = useRef<string | null>(null);
 
-  // Detail panel selection
-  const [selectedRecord, setSelectedRecord] = useState<FlightRecord | null>(null);
+  // Detail panel selection: keep only the id and read the live record, so
+  // every edit (sign, media, notes, analysis) is seen by the open panel.
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selectedRecord = useHistoryStore((s) =>
+    selectedId ? (s.records.find((r) => r.id === selectedId) ?? null) : null,
+  );
+  const handleSelectRecord = useCallback((rec: FlightRecord | null) => {
+    setSelectedId(rec?.id ?? null);
+  }, []);
 
   const replay = useReplay(selectedRecord);
 
@@ -67,13 +74,15 @@ export default function FlightHistoryPage() {
         searchInput?.focus();
       }
       if (e.key === "Escape") {
-        if (selectedRecord) setSelectedRecord(null);
+        if (selectedRecord) setSelectedId(null);
         else if (selectedIds.size > 0) setSelectedIds(new Set());
       }
       if (e.key === "t" && !e.metaKey && !e.ctrlKey) {
         filter.setShowTrash((v) => !v);
       }
-      if (e.key === "Delete" || e.key === "Backspace") {
+      // Trash view: Restore / Delete permanently live in the bulk bar, behind
+      // a confirmation. The key only moves live flights to the trash.
+      if ((e.key === "Delete" || e.key === "Backspace") && !filter.showTrash) {
         if (selectedIds.size > 0 && !e.metaKey) {
           const store = useHistoryStore.getState();
           for (const id of selectedIds) store.removeRecord(id);
@@ -159,7 +168,7 @@ export default function FlightHistoryPage() {
             <LogTable
               records={filter.filteredRecords}
               selectedRecord={selectedRecord}
-              onSelectRecord={setSelectedRecord}
+              onSelectRecord={handleSelectRecord}
               selectedIds={selectedIds}
               onToggleSelect={handleToggleSelect}
               onSelectAllPage={handleSelectAllPage}
@@ -176,7 +185,7 @@ export default function FlightHistoryPage() {
             {selectedRecord && (
               <LogDetail
                 record={selectedRecord}
-                onClose={() => setSelectedRecord(null)}
+                onClose={() => setSelectedId(null)}
                 onReplay={replay.handleReplay}
                 listCollapsed={layout.listCollapsed}
                 onToggleListCollapsed={layout.toggleListCollapsed}
@@ -190,6 +199,8 @@ export default function FlightHistoryPage() {
         records={filter.filteredRecords}
         selectedIds={selectedIds}
         onClearSelection={() => setSelectedIds(new Set())}
+        onSelect={setSelectedIds}
+        trashMode={filter.showTrash}
       />
     </div>
   );

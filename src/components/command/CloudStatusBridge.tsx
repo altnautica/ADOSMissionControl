@@ -39,7 +39,6 @@ import {
 } from "@/stores/agent-capabilities-store";
 import { inferCapabilities } from "@/lib/agent/infer-capabilities";
 import type {
-  MeshNetEnrollment,
   NetworkPeer,
   PeripheralInfo,
 } from "@/lib/agent/types";
@@ -135,6 +134,9 @@ export function CloudStatusBridge() {
         if (state.connected) patch.connected = false;
         if (state.mavlinkUrl) patch.mavlinkUrl = null;
         useAgentConnectionStore.setState(patch);
+        // A silent agent is not streaming as far as anyone can prove.
+        const video = useVideoStore.getState();
+        if (video.agentVideoState !== "unknown") video.setAgentVideoStatus("unknown", null);
       }
     };
 
@@ -231,10 +233,6 @@ export function CloudStatusBridge() {
     if (Array.isArray(peers)) {
       useFleetNetworkStore.setState({ peers: peers as NetworkPeer[] });
     }
-    const enrollment = cloudRecord.enrollment;
-    if (enrollment && typeof enrollment === "object") {
-      useFleetNetworkStore.setState({ enrollment: enrollment as MeshNetEnrollment });
-    }
     // Webapp-side plugin installs reported by the agent. Convex's
     // cmdPlugins:listForDevice stays authoritative; the inventory
     // store fills in installs the operator made directly from the
@@ -247,8 +245,10 @@ export function CloudStatusBridge() {
       );
     }
 
-    // Ground-station fan-out. Only writes when the corresponding heartbeat
-    // field is present — LAN polls keep their authority on every other field.
+    // Ground-station, compute and atlas fan-out. Only writes when the
+    // corresponding heartbeat field is present — LAN polls keep their
+    // authority on every other field — and only from a fresh row: a stale
+    // row's values would otherwise land as current readings.
     const gsState = useGroundStationStore.getState();
     const gsPatch = buildGroundStationPatch(cloudRecord, {
       linkHealth: gsState.linkHealth,
@@ -257,7 +257,7 @@ export function CloudStatusBridge() {
       uplink: gsState.uplink,
       peripherals: gsState.peripherals,
     }, (cloudRecord.updatedAt as number) ?? 0);
-    if (gsPatch) {
+    if (isDataFresh && gsPatch) {
       useGroundStationStore.setState(gsPatch);
     }
 
@@ -270,7 +270,7 @@ export function CloudStatusBridge() {
       { cluster: computeState.cluster },
       (cloudRecord.updatedAt as number) ?? 0,
     );
-    if (computePatch) {
+    if (isDataFresh && computePatch) {
       useComputeStore.getState().setCluster(computePatch.cluster);
     }
 
@@ -301,7 +301,7 @@ export function CloudStatusBridge() {
       { live: atlasState.live },
       (cloudRecord.updatedAt as number) ?? 0,
     );
-    if (atlasPatch) {
+    if (isDataFresh && atlasPatch) {
       useAtlasStore.getState().setLive(atlasPatch.live);
     }
 
@@ -350,16 +350,20 @@ export function CloudStatusBridge() {
     // Per-leg video streams for the cockpit stream switcher.
     const videoStreams = resolveVideoStreams(cloudRecord);
     // No reported video state means no advertised stream: nothing is dialed
-    // until the heartbeat says what the node serves.
-    if (videoState) {
+    // until the heartbeat says what the node serves. A stale row proves no
+    // stream at all, so its last state is not re-asserted.
+    if (!isDataFresh) {
+      useVideoStore.getState().setAgentVideoStatus("unknown", null);
+    } else if (videoState) {
       useVideoStore.getState().setAgentVideoStatus(videoState, whepUrl);
     }
 
     // MAVLink WebSocket URL from agent heartbeat. The cascade dials this raw
     // proxy URL for any profile and attaches a ticket when a pairing key is
-    // held, so there is no separate authenticated endpoint to resolve.
+    // held, so there is no separate authenticated endpoint to resolve. Only a
+    // fresh row republishes it; the offline branch above cleared it.
     const { url: mavlinkUrl } = resolveMavlinkUrl(cloudRecord, lanHost);
-    if (mavlinkUrl) {
+    if (isDataFresh && mavlinkUrl) {
       useAgentConnectionStore.getState().setMavlinkUrl(mavlinkUrl);
     }
 
@@ -390,7 +394,6 @@ export function CloudStatusBridge() {
           ...inferred,
           videoRestartAttempts: extras.videoRestartAttempts,
           pairingCodeExpiresAt: extras.pairingCodeExpiresAt,
-          mavlinkWsUrlPrev: extras.mavlinkWsUrlPrev,
           wfbFailoverState: extras.wfbFailoverState,
           manualConnectionUrls: extras.manualConnectionUrls,
           cloudRelayUrl: extras.cloudRelayUrl,
@@ -566,7 +569,6 @@ export function CloudStatusBridge() {
         visionSummary: reInferred?.visionSummary ?? capState.visionSummary,
         videoRestartAttempts: extras.videoRestartAttempts,
         pairingCodeExpiresAt: extras.pairingCodeExpiresAt,
-        mavlinkWsUrlPrev: extras.mavlinkWsUrlPrev,
         wfbFailoverState: extras.wfbFailoverState,
         manualConnectionUrls: extras.manualConnectionUrls,
         cloudRelayUrl: extras.cloudRelayUrl,

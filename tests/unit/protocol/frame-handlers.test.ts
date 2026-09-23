@@ -3,6 +3,7 @@ import { routeFrame, checkLinkState } from '@/lib/protocol/mavlink-adapter-frame
 import type { FrameHandlerState } from '@/lib/protocol/mavlink-adapter-frame-handlers';
 import type { MAVLinkFrame } from '@/lib/protocol/mavlink-parser';
 import { createCallbackStore } from '@/lib/protocol/mavlink-adapter-callbacks';
+import { StatusTextAssembler } from '@/lib/protocol/handlers/info-handlers';
 import type { FirmwareHandler, UnifiedFlightMode } from '@/lib/protocol/types';
 
 // ── Helpers ──
@@ -69,6 +70,7 @@ function makeState(overrides?: Partial<FrameHandlerState>): FrameHandlerState {
     lastVehicleHeartbeat: Date.now(),
     linkIsLost: false,
     HEARTBEAT_TIMEOUT_MS: 5000,
+    statusText: new StatusTextAssembler(),
     ...overrides,
   };
 }
@@ -281,8 +283,8 @@ describe('routeFrame — legacy MISSION_REQUEST (ID 40)', () => {
   function makeMissionRequestPayload(seq: number): DataView {
     const dv = makeDataView(4);
     dv.setUint16(0, seq, true);
-    dv.setUint8(2, 1); // targetSystem
-    dv.setUint8(3, 1); // targetComponent
+    dv.setUint8(2, 255); // targetSystem: the GCS (state sysId)
+    dv.setUint8(3, 190); // targetComponent: the GCS (state compId)
     return dv;
   }
 
@@ -493,6 +495,91 @@ describe('routeFrame — telemetry handlers', () => {
     expect(cb).toHaveBeenCalledOnce();
   });
 
+  it('GlobalPosition (33) reports hdg UINT16_MAX as no heading', () => {
+    const s = makeState();
+    const cb = vi.fn();
+    s.cbs.positionCallbacks.push(cb);
+    const dv = makeDataView(28);
+    dv.setUint16(26, 0xffff, true);
+    routeFrame(s, makeFrame(33, dv), dv);
+    expect(cb.mock.calls[0][0].heading).toBeUndefined();
+  });
+
+  it('GpsRaw (24) reports 255 satellites and eph UINT16_MAX as unknown', () => {
+    const s = makeState();
+    const cb = vi.fn();
+    s.cbs.gpsCallbacks.push(cb);
+    // time_usec u64, lat, lon, alt i32, eph u16 @20, epv @22, vel @24, cog @26, fix u8 @28, sats u8 @29
+    const dv = makeDataView(30);
+    dv.setUint16(20, 0xffff, true);
+    dv.setUint8(29, 255);
+    routeFrame(s, makeFrame(24, dv), dv);
+    expect(cb.mock.calls[0][0].satellites).toBeUndefined();
+    expect(cb.mock.calls[0][0].hdop).toBeUndefined();
+
+    dv.setUint16(20, 120, true);
+    dv.setUint8(29, 14);
+    routeFrame(s, makeFrame(24, dv), dv);
+    expect(cb.mock.calls[1][0]).toMatchObject({ satellites: 14, hdop: 1.2 });
+  });
+
+  it('SCALED_IMU / IMU2 / IMU3 (26/116/129) tag each sample with its instance', () => {
+    const s = makeState();
+    const cb = vi.fn();
+    s.cbs.scaledImuCallbacks.push(cb);
+    const dv = makeDataView(22);
+    for (const id of [26, 116, 129]) routeFrame(s, makeFrame(id, dv), dv);
+    expect(cb.mock.calls.map((c) => c[0].imu)).toEqual([0, 1, 2]);
+  });
+
+  function statusText(text: string, id: number, chunkSeq: number, severity = 4): DataView {
+    const dv = makeDataView(54);
+    dv.setUint8(0, severity);
+    new Uint8Array(dv.buffer, 1, 50).set(new TextEncoder().encode(text).subarray(0, 50));
+    dv.setUint16(51, id, true);
+    dv.setUint8(53, chunkSeq);
+    return dv;
+  }
+
+  it('STATUSTEXT (253) joins a chunked message into one line', () => {
+    const s = makeState();
+    const cb = vi.fn();
+    s.cbs.statusTextCallbacks.push(cb);
+    const full = 'PreArm: Battery 1 below minimum arming voltage of 14.8 V, currently 14.1 V';
+    expect(full.length).toBeGreaterThan(50);
+    for (const [i, part] of [full.slice(0, 50), full.slice(50)].entries()) {
+      const dv = statusText(part, 7, i);
+      routeFrame(s, makeFrame(253, dv), dv);
+    }
+    expect(cb).toHaveBeenCalledOnce();
+    expect(cb).toHaveBeenCalledWith({ severity: 4, text: full });
+  });
+
+  it('STATUSTEXT (253) emits a single-chunk message (id 0) at once', () => {
+    const s = makeState();
+    const cb = vi.fn();
+    s.cbs.statusTextCallbacks.push(cb);
+    const dv = statusText('EKF3 IMU0 is using GPS', 0, 0, 6);
+    routeFrame(s, makeFrame(253, dv), dv);
+    expect(cb).toHaveBeenCalledWith({ severity: 6, text: 'EKF3 IMU0 is using GPS' });
+  });
+
+  it('STATUSTEXT (253) emits a sequence whose last chunk never arrives after the timeout', () => {
+    vi.useFakeTimers();
+    try {
+      const s = makeState();
+      const cb = vi.fn();
+      s.cbs.statusTextCallbacks.push(cb);
+      const dv = statusText('y'.repeat(50), 9, 0);
+      routeFrame(s, makeFrame(253, dv), dv);
+      expect(cb).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(1000);
+      expect(cb).toHaveBeenCalledWith({ severity: 4, text: 'y'.repeat(50) });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('Battery (147) fires batteryCallbacks', () => {
     const s = makeState();
     const cb = vi.fn();
@@ -568,5 +655,90 @@ describe('routeFrame — no crash on unhandled message ID', () => {
     const s = makeState();
     const dv = makeDataView(4);
     expect(() => routeFrame(s, makeFrame(9999, dv), dv)).not.toThrow();
+  });
+});
+
+describe('routeFrame — one vehicle per adapter', () => {
+  it('drops telemetry from another system id on a shared link', () => {
+    const s = makeState({ targetSysId: 1 });
+    const attitude = vi.fn();
+    const battery = vi.fn();
+    s.cbs.attitudeCallbacks.push(attitude);
+    s.cbs.batteryCallbacks.push(battery);
+    const att = makeDataView(28);
+    const bat = makeDataView(54);
+    routeFrame(s, { ...makeFrame(30, att), systemId: 2 }, att);
+    routeFrame(s, { ...makeFrame(147, bat), systemId: 2 }, bat);
+    expect(attitude).not.toHaveBeenCalled();
+    expect(battery).not.toHaveBeenCalled();
+
+    routeFrame(s, makeFrame(30, att), att);
+    expect(attitude).toHaveBeenCalledOnce();
+  });
+
+  it('keeps RADIO_STATUS from the telemetry radio, which has its own sysid', () => {
+    const s = makeState({ targetSysId: 1 });
+    const radio = vi.fn();
+    s.cbs.radioCallbacks.push(radio);
+    const payload = makeDataView(9);
+    routeFrame(s, { ...makeFrame(109, payload), systemId: 51 }, payload);
+    expect(radio).toHaveBeenCalledOnce();
+  });
+});
+
+describe('routeFrame — ADSB_VEHICLE (ID 246)', () => {
+  function adsbPayload(flags: number): DataView {
+    const dv = makeDataView(38);
+    dv.setUint32(0, 0xabc123, true); // ICAO_address
+    dv.setInt32(4, 129716000, true); // lat degE7
+    dv.setInt32(8, 775946000, true); // lon degE7
+    dv.setInt32(12, 1524000, true); // altitude mm
+    dv.setUint16(16, 27000, true); // heading cdeg
+    dv.setUint16(18, 6200, true); // hor_velocity cm/s
+    dv.setUint16(22, flags, true);
+    dv.setUint8(26, 1); // geometric altitude
+    'TEST123'.split('').forEach((c, i) => dv.setUint8(27 + i, c.charCodeAt(0)));
+    dv.setUint8(36, 14); // emitter type
+    dv.setUint8(37, 2); // tslc
+    return dv;
+  }
+
+  it('delivers a contact in degrees, metres and m/s', () => {
+    const s = makeState();
+    const cb = vi.fn();
+    s.cbs.adsbVehicleCallbacks.push(cb);
+    const dv = adsbPayload(1 | 2 | 4 | 8 | 16);
+    routeFrame(s, makeFrame(246, dv), dv);
+    expect(cb).toHaveBeenCalledWith(expect.objectContaining({
+      icao: 0xabc123, lat: 12.9716, lon: 77.5946, altitudeM: 1524, altitudeGeometric: true,
+      headingDeg: 270, groundSpeedMs: 62, callsign: 'TEST123', emitterType: 14, tslc: 2,
+    }));
+  });
+
+  it('leaves fields the receiver marks invalid unset and drops a contact with no valid position', () => {
+    const s = makeState();
+    const cb = vi.fn();
+    s.cbs.adsbVehicleCallbacks.push(cb);
+    const noAlt = adsbPayload(1);
+    routeFrame(s, makeFrame(246, noAlt), noAlt);
+    expect(cb.mock.calls[0][0]).toMatchObject({ altitudeM: undefined, headingDeg: undefined, callsign: undefined });
+
+    const noPos = adsbPayload(2 | 4);
+    routeFrame(s, makeFrame(246, noPos), noPos);
+    expect(cb).toHaveBeenCalledOnce();
+  });
+});
+
+describe('routeFrame — GLOBAL_POSITION_INT (ID 33)', () => {
+  it('reports no airspeed, which this message does not carry (VFR_HUD owns it)', () => {
+    const s = makeState();
+    const cb = vi.fn();
+    s.cbs.positionCallbacks.push(cb);
+    const dv = makeDataView(28);
+    dv.setInt16(20, 300, true); // vx 3 m/s
+    routeFrame(s, makeFrame(33, dv), dv);
+    const pos = cb.mock.calls[0][0];
+    expect(pos.groundSpeed).toBe(3);
+    expect(pos.airSpeed).toBeUndefined();
   });
 });

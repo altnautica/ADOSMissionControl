@@ -107,8 +107,10 @@ export const FC_NAV_ITEMS: FcNavItem[] = [
   { id: "calibrate", label: "Calibration", icon: <Move3d size={14} />, section: "Sensors" },
   { id: "sensors", label: "Sensors", icon: <Gauge size={14} />, section: "Sensors" },
   { id: "px4-thermal", label: "Thermal Cal", icon: <Thermometer size={14} />, requiredCapability: "supportsPx4Tuning", section: "Sensors" },
-  { id: "power", label: "Power", icon: <Battery size={14} />, requiredCapability: "supportsPowerConfig", section: "Sensors" },
-  { id: "gps-config", label: "GPS", icon: <MapPin size={14} />, requiredCapability: "supportsGpsConfig", section: "Sensors" },
+  // iNav has neither the ArduPilot BATT_* params nor Betaflight's GPS Rescue
+  // (MSP_GPS_RESCUE); its battery lives under "Battery Profiles".
+  { id: "power", label: "Power", icon: <Battery size={14} />, requiredCapability: "supportsPowerConfig", excludeFirmware: ["inav"], section: "Sensors" },
+  { id: "gps-config", label: "GPS", icon: <MapPin size={14} />, requiredCapability: "supportsGpsConfig", excludeFirmware: ["inav"], section: "Sensors" },
   { id: "ekf3", label: "EKF3", icon: <Compass size={14} />, requiredCapability: "supportsEkfConfig", section: "Sensors" },
   { id: "ap-nongps", label: "Non-GPS Nav", icon: <Navigation size={14} />, requiredCapability: "supportsEkfConfig", section: "Sensors" },
   { id: "gimbal", label: "Gimbal", icon: <Move3d size={14} />, requiredCapability: "supportsGimbal", section: "Sensors" },

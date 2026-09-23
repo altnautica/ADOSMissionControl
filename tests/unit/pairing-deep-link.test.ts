@@ -42,6 +42,7 @@ describe("deep-link pairing", () => {
       requiresSignIn: false,
       claimCode: null,
       preGenerate: null,
+      watchClaim: null,
       initialCode: "ABC123",
       autoGenerate: false,
     };

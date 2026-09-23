@@ -1,22 +1,8 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import type { BuildPreset } from "@/lib/presets/types";
 import { X } from "lucide-react";
-
-const TYPE_LABELS: Record<string, string> = {
-  frame: "Frame",
-  compute: "Compute",
-  fc: "Flight Controller",
-  esc: "ESC",
-  motor: "Motor",
-  sensor: "Sensor",
-  camera: "Camera",
-  radio: "Radio",
-  gps: "GPS",
-  battery: "Battery",
-  rangefinder: "Rangefinder",
-  companion: "Companion",
-};
 
 export function BuildPresetDetail({
   preset,
@@ -25,6 +11,8 @@ export function BuildPresetDetail({
   preset: BuildPreset;
   onClose: () => void;
 }) {
+  const t = useTranslations("connect.buildPreset");
+  const yesNo = (v: boolean) => (v ? t("yes") : t("no"));
   return (
     <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
       {/* Header */}
@@ -40,6 +28,7 @@ export function BuildPresetDetail({
         <button
           onClick={onClose}
           className="p-1 text-text-tertiary hover:text-text-primary cursor-pointer"
+          aria-label={t("close")}
         >
           <X size={14} />
         </button>
@@ -47,20 +36,23 @@ export function BuildPresetDetail({
 
       {/* Specs summary */}
       <div className="grid grid-cols-4 gap-2 text-[10px]">
-        <SpecItem label="Props" value={preset.specs.propSize} />
-        <SpecItem label="Motors" value={`${preset.specs.motorSize} ${preset.specs.motorKv}KV`} />
-        <SpecItem label="Battery" value={`${preset.specs.cells}S ${preset.specs.batteryMah}mAh`} />
-        <SpecItem label="AUW" value={`${preset.specs.auwGrams}g`} />
-        <SpecItem label="Flight Time" value={`${preset.specs.flightTimeMin} min`} />
-        <SpecItem label="GPS" value={preset.specs.hasGps ? "Yes" : "No"} />
-        <SpecItem label="Compass" value={preset.specs.hasCompass ? "Yes" : "No"} />
-        <SpecItem label="Rangefinder" value={preset.specs.hasRangefinder ? "Yes" : "No"} />
+        <SpecItem label={t("spec.props")} value={preset.specs.propSize} />
+        <SpecItem label={t("spec.motors")} value={`${preset.specs.motorSize} ${preset.specs.motorKv}KV`} />
+        <SpecItem label={t("spec.battery")} value={`${preset.specs.cells}S ${preset.specs.batteryMah}mAh`} />
+        <SpecItem label={t("spec.auw")} value={`${preset.specs.auwGrams}g`} />
+        <SpecItem
+          label={t("spec.flightTime")}
+          value={t("spec.minutes", { count: preset.specs.flightTimeMin })}
+        />
+        <SpecItem label={t("spec.gps")} value={yesNo(preset.specs.hasGps)} />
+        <SpecItem label={t("spec.compass")} value={yesNo(preset.specs.hasCompass)} />
+        <SpecItem label={t("spec.rangefinder")} value={yesNo(preset.specs.hasRangefinder)} />
       </div>
 
       {/* Component list */}
       <div>
         <h5 className="text-[10px] font-mono text-text-tertiary uppercase tracking-wider mb-1.5">
-          Components
+          {t("components")}
         </h5>
         <div className="space-y-0.5">
           {preset.components.map((comp, i) => (
@@ -70,7 +62,7 @@ export function BuildPresetDetail({
             >
               <div className="flex items-center gap-2">
                 <span className="text-text-tertiary font-mono w-16 shrink-0">
-                  {TYPE_LABELS[comp.type] ?? comp.type}
+                  {t(`componentType.${comp.type}`)}
                 </span>
                 <span className="text-text-secondary">
                   {comp.count > 1 ? `${comp.count}× ` : ""}

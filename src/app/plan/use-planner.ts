@@ -20,6 +20,7 @@ export function usePlanner() {
     activeTool: state.activeTool,
     defaultAlt: state.defaultAlt,
     defaultSpeed: state.defaultSpeed,
+    defaultAcceptRadius: state.defaultAcceptRadius,
     selectedDroneId: state.selectedDroneId,
     missionName: state.missionName,
     contextMenu: state.contextMenu,
@@ -55,7 +56,6 @@ export function usePlanner() {
     setSelectedWaypoint: state.setSelectedWaypoint,
     setExpandedWaypoint: state.setExpandedWaypoint,
     setShowDownloadConfirm: state.setShowDownloadConfirm,
-    clearMission: state.clearMission,
     downloadMission: state.downloadMission,
     toast: state.toast,
   });

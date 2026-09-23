@@ -13,7 +13,7 @@
 
 import type { CommandResult } from "../types/core";
 import type { CliSetting, CliSettingChange, CliSettingsCapability } from "../types/protocol";
-import { BfCliSession } from "./bf-cli";
+import type { MspCliSession } from "./cli-session";
 
 const DUMP_TIMEOUT_MS = 12000;
 const SAVE_TIMEOUT_MS = 6000;
@@ -47,14 +47,14 @@ function isSetError(resp: string): boolean {
 }
 
 export class BfCliSettings implements CliSettingsCapability {
-  constructor(private readonly session: BfCliSession) {}
+  constructor(private readonly session: MspCliSession) {}
 
   async enumerate(): Promise<CliSetting[]> {
     await this.session.enter();
     try {
       return parseDumpSettings(await this.session.run("dump", DUMP_TIMEOUT_MS));
     } finally {
-      await this.session.exit(false);
+      await this.session.exit();
     }
   }
 
@@ -63,7 +63,7 @@ export class BfCliSettings implements CliSettingsCapability {
     try {
       return parseGetValue(await this.session.run(`get ${name}`), name);
     } finally {
-      await this.session.exit(false);
+      await this.session.exit();
     }
   }
 
@@ -80,12 +80,12 @@ export class BfCliSettings implements CliSettingsCapability {
       if (failed.length) return { success: false, resultCode: -1, message: `Rejected: ${failed.join(", ")}` };
       return { success: true, resultCode: 0, message: opts?.persist ? "Saved to flash" : "Applied to RAM" };
     } finally {
-      await this.session.exit(false);
+      await this.session.exit();
     }
   }
 }
 
 /** Wrap a CLI session as the firmware-agnostic `DroneProtocol.cliSettings` capability. */
-export function makeCliSettingsCapability(session: BfCliSession): CliSettingsCapability {
+export function makeCliSettingsCapability(session: MspCliSession): CliSettingsCapability {
   return new BfCliSettings(session);
 }

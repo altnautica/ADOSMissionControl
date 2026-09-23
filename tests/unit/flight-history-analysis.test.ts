@@ -67,7 +67,7 @@ describe("dataflash flight slicing", () => {
       ],
       ATT: Array.from({ length: 61 }, (_, i) => ({ TimeUS: i * S, Roll: 0, Pitch: 0, Yaw: 0 })),
     });
-    const flights = dataflashToFlightRecords(log, { referenceEpochMs: 0 });
+    const flights = dataflashToFlightRecords(log);
     expect(flights).toHaveLength(2);
     expect(flights[1].record.duration).toBe(50);
     expect(flights[1].record.status).toBe("aborted");

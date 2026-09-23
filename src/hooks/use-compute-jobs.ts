@@ -4,7 +4,7 @@
  * @module use-compute-jobs
  * @description Local-first source for a compute node's reconstruction / offload
  * jobs. A LAN-paired compute node is not necessarily beaconing to Convex
- * (Rule 39), and the job API lives on the engine's own `:8092` listener (not the
+ * (local-first), and the job API lives on the engine's own `:8092` listener (not the
  * cloud heartbeat), so the Forge workbench polls the node directly. Mirrors
  * `use-compute-local-state`'s gating: inert unless local-first, the Atlas flag
  * is on, a node is selected, a LAN key is held, and the node is not the active
@@ -19,6 +19,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ComputeAgentClient,
   type ComputeJob,
+  type ComputeOutput,
 } from "@/lib/agent/compute-client";
 import { isDemoMode } from "@/lib/utils";
 import { deviceIdFromNodeId } from "@/lib/agent/node-id";
@@ -29,13 +30,21 @@ import { useLocalNodesStore } from "@/stores/local-nodes-store";
  * 2 s cadence is plenty (the engine state machine ticks far slower). */
 export const COMPUTE_JOBS_POLL_INTERVAL_MS = 2000;
 
-/** LAN target for the demo compute client. Never actually reached — its reads
- * degrade to empty — but the consumers need a non-null client to render the job
- * list, counts, and viewer. */
+/** LAN target for the demo compute client. Never dialled for outputs (the
+ * demo jobs carry no artifacts); the consumers need a non-null client to render
+ * the job list, counts, and viewer. */
 const DEMO_COMPUTE_HOST = "http://demo-workstation.local";
 const DEMO_COMPUTE_KEY = "demo";
 
-/** A stable, honest mock job list for demo mode (Rule 44 — a realistic mix of
+/** Demo compute client: a demo job has no artifacts, so the output read answers
+ * "reachable, none" instead of a failed dial to a host that does not exist. */
+class DemoComputeAgentClient extends ComputeAgentClient {
+  override async getOutputs(): Promise<ComputeOutput[] | null> {
+    return [];
+  }
+}
+
+/** A stable, honest mock job list for demo mode (a realistic mix of
  * running / queued / completed / failed, not fabricated all-success). Anchored
  * once at module load so its reference is stable (a fresh array each render
  * would churn the group-by / viewer memos). */
@@ -147,7 +156,7 @@ export function useComputeJobs(
   const apiKey = node?.apiKey ?? "";
   const demo = isDemoMode();
   // A locally-paired node (present in local-nodes-store with host + apiKey) is
-  // reached over the LAN regardless of cloud auth (local-first, Rule 39). The
+  // reached over the LAN regardless of cloud auth (local-first). The
   // `cloudDeviceId !== nodeId` guard is what keeps us off the one node the cloud
   // bridge drives — being signed in is NOT a reason to stop polling a workstation
   // that runs its own compute on the same box.
@@ -170,7 +179,7 @@ export function useComputeJobs(
   const client = useMemo(
     () =>
       demoActive
-        ? new ComputeAgentClient(DEMO_COMPUTE_HOST, DEMO_COMPUTE_KEY)
+        ? new DemoComputeAgentClient(DEMO_COMPUTE_HOST, DEMO_COMPUTE_KEY)
         : active
           ? new ComputeAgentClient(host, apiKey)
           : null,

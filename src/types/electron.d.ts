@@ -28,6 +28,26 @@ interface ElectronNetAPI {
   onClose: (cb: (msg: ElectronNetCloseMessage) => void) => () => void;
 }
 
+/** Update status the main process pushes; mirrors `UpdateStatus` in electron/updater.ts. */
+export type ElectronUpdateStatus =
+  | { state: "idle" }
+  /** `installable` is false where only a manual download from `releasesUrl` works. */
+  | { state: "available"; version: string; installable: boolean; releasesUrl: string }
+  | { state: "downloading"; version: string }
+  | { state: "downloaded"; version: string }
+  | { state: "error"; message: string };
+
+interface ElectronUpdatesAPI {
+  /** The latest status, including a result that arrived before this page mounted. */
+  status: () => Promise<ElectronUpdateStatus>;
+  /** Subscribe to status changes. Returns an unsubscribe. */
+  onStatus: (cb: (status: ElectronUpdateStatus) => void) => () => void;
+  /** Download the available version. Rejects where this build cannot install. */
+  download: () => Promise<void>;
+  /** Quit and install the downloaded version. */
+  install: () => Promise<void>;
+}
+
 interface ElectronAPI {
   isElectron: true;
   platform: "darwin" | "win32" | "linux";
@@ -35,9 +55,7 @@ interface ElectronAPI {
   minimize: () => Promise<void>;
   maximize: () => Promise<void>;
   close: () => Promise<void>;
-  onUpdateAvailable: (cb: (info: { version: string }) => void) => void;
-  onUpdateDownloaded: (cb: (info: { version: string }) => void) => void;
-  installUpdate: () => Promise<void>;
+  updates: ElectronUpdatesAPI;
   /** Native UDP/TCP MAVLink sockets — desktop builds only (absent in browsers). */
   net?: ElectronNetAPI;
 }

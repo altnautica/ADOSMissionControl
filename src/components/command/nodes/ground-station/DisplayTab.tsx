@@ -50,14 +50,14 @@ export function DisplayTab({ nodeDeviceId }: DisplayTabProps) {
       <div className="flex flex-col gap-4">
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <div className="lg:col-span-2">
-            <LocalDisplayCard nodeDeviceId={nodeDeviceId} />
+            <LocalDisplayCard nodeDeviceId={nodeDeviceId} relayReach={null} />
           </div>
           <div>
             <LcdPagePreview />
           </div>
         </div>
 
-        <HdmiKioskCard nodeDeviceId={nodeDeviceId} />
+        <HdmiKioskCard nodeDeviceId={nodeDeviceId} relayReach={null} />
 
         <LcdRemoteControl />
 

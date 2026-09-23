@@ -9,8 +9,8 @@ import { Plug, Plus, Usb } from "lucide-react";
 import { WebSerialTransport } from "@/lib/protocol/transport/webserial";
 import { connectWithDetection } from "@/lib/protocol/connect-with-detection";
 import { useDroneManager } from "@/stores/drone-manager";
-import { useDroneMetadataStore } from "@/stores/drone-metadata-store";
 import { resolveNodeId } from "@/lib/agent/node-id";
+import { saveRecentConnection } from "@/lib/recent-connections";
 import { serialPortManager, type PortInfo } from "@/lib/serial-port-manager";
 import { useToast } from "@/components/ui/toast";
 
@@ -27,12 +27,16 @@ export function SerialPanel({
   baudRate,
   onBaudRateChange,
   targetDroneId,
+  connectDisabled = false,
 }: {
-  onConnected?: (name: string, type: "serial", baudRate: number) => void;
+  /** Called after a successful connect or link attach so the host can close. */
+  onConnected?: () => void;
   baudRate?: number;
   onBaudRateChange?: (baudRate: number) => void;
   /** When set, connects this transport as an additional link to the existing drone (multi-link mode). */
   targetDroneId?: string | null;
+  /** Blocks the connect action (link mode with no target drone chosen yet). */
+  connectDisabled?: boolean;
 }) {
   const t = useTranslations("connect");
   const [mounted, setMounted] = useState(false);
@@ -40,7 +44,10 @@ export function SerialPanel({
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [knownPorts, setKnownPorts] = useState<PortInfo[]>([]);
-  const [selectedPortIndex, setSelectedPortIndex] = useState<string>("-1");
+  // The selected port is tracked as the SerialPort object, never a list
+  // position: a hot-plug refresh reorders the list, and a position would
+  // slide the selection onto whatever device took that row.
+  const [selectedPort, setSelectedPort] = useState<SerialPort | null>(null);
   const [hotPlugEvent, setHotPlugEvent] = useState<string | null>(null);
   const addDrone = useDroneManager((s) => s.addDrone);
   const attachLinkToDrone = useDroneManager((s) => s.attachLinkToDrone);
@@ -59,10 +66,13 @@ export function SerialPanel({
   const refreshPorts = useCallback(async () => {
     const ports = await serialPortManager.getKnownPorts();
     setKnownPorts(ports);
-    if (ports.length > 0 && selectedPortIndex === "-1") {
-      setSelectedPortIndex("0");
-    }
-  }, [selectedPortIndex]);
+    // A selected port that vanished leaves nothing selected. With nothing
+    // selected, a lone port is the only candidate; several need a choice.
+    setSelectedPort((prev) => {
+      if (prev) return ports.some((p) => p.port === prev) ? prev : null;
+      return ports.length === 1 ? ports[0].port : null;
+    });
+  }, []);
 
   useEffect(() => {
     setMounted(true);
@@ -74,14 +84,14 @@ export function SerialPanel({
   useEffect(() => {
     if (!mounted) return;
     const unsubConnect = serialPortManager.onConnect((info) => {
-      setHotPlugEvent(`connected: ${info.label}`);
-      toast(`USB device connected — ${info.label}`, "info");
+      setHotPlugEvent(t("serial.hotPlugConnected", { label: info.label }));
+      toast(t("serial.toastConnected", { label: info.label }), "info");
       refreshPorts();
       setTimeout(() => setHotPlugEvent(null), 3000);
     });
     const unsubDisconnect = serialPortManager.onDisconnect((info) => {
-      setHotPlugEvent(`disconnected: ${info.label}`);
-      toast(`USB device disconnected — ${info.label}`, "warning");
+      setHotPlugEvent(t("serial.hotPlugDisconnected", { label: info.label }));
+      toast(t("serial.toastDisconnected", { label: info.label }), "warning");
       refreshPorts();
       setTimeout(() => setHotPlugEvent(null), 3000);
     });
@@ -89,15 +99,18 @@ export function SerialPanel({
       unsubConnect();
       unsubDisconnect();
     };
-  }, [mounted, toast, refreshPorts]);
+  }, [mounted, toast, refreshPorts, t]);
+
+  const selectedInfo = knownPorts.find((p) => p.port === selectedPort);
 
   async function handleRequestPort() {
     setError(null);
     try {
-      await serialPortManager.requestNewPort();
-      const ports = await serialPortManager.getKnownPorts();
-      setKnownPorts(ports);
-      setSelectedPortIndex(String(ports.length - 1));
+      const picked = await serialPortManager.requestNewPort();
+      setKnownPorts(await serialPortManager.getKnownPorts());
+      // The chooser can hand back a port that was already permitted, so
+      // select the port it returned, wherever it sits in the list.
+      setSelectedPort(picked.port);
     } catch (err) {
       if (err instanceof Error && err.name !== "NotFoundError") {
         setError(err.message);
@@ -106,6 +119,8 @@ export function SerialPanel({
   }
 
   async function handleConnect() {
+    if (!selectedInfo) return;
+    const portInfo = selectedInfo;
     setError(null);
     setConnecting(true);
 
@@ -118,15 +133,8 @@ export function SerialPanel({
     try {
       transport = new WebSerialTransport();
       const baud = parseInt(selectedBaudRate, 10);
-      const portIdx = parseInt(selectedPortIndex);
 
-      if (portIdx >= 0 && portIdx < knownPorts.length) {
-        // Connect to the selected known port (no browser picker)
-        await transport.connectToPort(knownPorts[portIdx].port, baud);
-      } else {
-        // Fallback: open browser picker
-        await transport.connect(baud);
-      }
+      await transport.connectToPort(portInfo.port, baud);
 
       // Multi-link mode: attach as secondary link to existing drone
       if (targetDroneId) {
@@ -136,7 +144,7 @@ export function SerialPanel({
           return;
         }
         owned = false;
-        onConnected?.("link", "serial", baud);
+        onConnected?.();
         return;
       }
 
@@ -148,25 +156,28 @@ export function SerialPanel({
       const droneId = resolveNodeId();
       const droneName = `${vehicleInfo.firmwareVersionString} (${vehicleInfo.vehicleClass})`;
 
-      const portInfo = portIdx >= 0 && portIdx < knownPorts.length ? knownPorts[portIdx] : undefined;
       owned = false;
       addDrone(droneId, droneName, adapter, transport, vehicleInfo, {
         type: "serial",
         baudRate: baud,
-        portVendorId: portInfo?.vendorId,
-        portProductId: portInfo?.productId,
+        portVendorId: portInfo.vendorId,
+        portProductId: portInfo.productId,
         firmwareType,
       });
 
-      useDroneMetadataStore.getState().ensureProfile(droneId, {
-        displayName: droneName,
-        serial: `ALT-${droneId.toUpperCase()}`,
-        enrolledAt: Date.now(),
+      void saveRecentConnection({
+        type: "serial",
+        baudRate: baud,
+        portVendorId: portInfo.vendorId,
+        portProductId: portInfo.productId,
+        firmwareType,
+        name: droneName,
+        date: Date.now(),
       });
 
-      onConnected?.(droneName, "serial", baud);
+      onConnected?.();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Connection failed");
+      setError(err instanceof Error ? err.message : t("connectionFailed"));
     } finally {
       // Anything the drone manager did not take ownership of is ours to
       // close — including the common case where `connectWithDetection`
@@ -194,10 +205,7 @@ export function SerialPanel({
     );
   }
 
-  const portOptions =
-    knownPorts.length > 0
-      ? knownPorts.map((p, i) => ({ value: String(i), label: p.label }))
-      : [{ value: "-1", label: t("noPortsHint") }];
+  const portOptions = knownPorts.map((p, i) => ({ value: String(i), label: p.label }));
 
   return (
     <div className="space-y-4">
@@ -208,8 +216,9 @@ export function SerialPanel({
             <Select
               label={t("port")}
               options={portOptions}
-              value={selectedPortIndex}
-              onChange={setSelectedPortIndex}
+              value={selectedInfo ? String(knownPorts.indexOf(selectedInfo)) : ""}
+              onChange={(v) => setSelectedPort(knownPorts[Number(v)]?.port ?? null)}
+              placeholder={knownPorts.length > 0 ? t("serial.selectPort") : t("noPortsHint")}
             />
           </div>
           <div className="flex-1">
@@ -223,12 +232,12 @@ export function SerialPanel({
         </div>
 
         {/* Port info */}
-        {knownPorts.length > 0 && parseInt(selectedPortIndex) >= 0 && (
+        {selectedInfo && (
           <div className="flex items-center gap-2">
             <Usb size={12} className="text-text-tertiary" />
             <span className="text-[10px] text-text-tertiary font-mono">
-              {knownPorts[parseInt(selectedPortIndex)]?.vendorId !== undefined
-                ? `VID: ${knownPorts[parseInt(selectedPortIndex)].vendorId?.toString(16).toUpperCase().padStart(4, "0")} · PID: ${knownPorts[parseInt(selectedPortIndex)].productId?.toString(16).toUpperCase().padStart(4, "0")}`
+              {selectedInfo.vendorId !== undefined
+                ? `VID: ${selectedInfo.vendorId.toString(16).toUpperCase().padStart(4, "0")} · PID: ${selectedInfo.productId?.toString(16).toUpperCase().padStart(4, "0")}`
                 : t("noUsbInfo")}
             </span>
           </div>
@@ -241,7 +250,7 @@ export function SerialPanel({
           onClick={handleConnect}
           loading={connecting}
           icon={<Plug size={14} />}
-          disabled={knownPorts.length === 0}
+          disabled={!selectedInfo || connectDisabled}
         >
           {connecting ? t("connecting") : t("connect")}
         </Button>
@@ -259,7 +268,7 @@ export function SerialPanel({
         <div className="flex items-center gap-2">
           <div className="w-1.5 h-1.5 rounded-full bg-accent-primary animate-pulse" />
           <span className="text-[10px] text-accent-primary">
-            Device {hotPlugEvent}
+            {hotPlugEvent}
           </span>
         </div>
       )}

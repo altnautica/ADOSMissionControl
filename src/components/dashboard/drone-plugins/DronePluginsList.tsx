@@ -278,6 +278,8 @@ export function DronePluginsList({
   );
 }
 
+const RING_CLASSES = ["ring-2", "ring-accent-primary/60", "rounded-lg"];
+
 /** Renders the card list and reveals the plugin a deep-link (e.g. a
  * plugin-owned camera's "Managed by" link) asked to surface, scrolling it into
  * view and briefly highlighting it. */
@@ -291,6 +293,17 @@ function PluginCardList({
   const listRef = useRef<HTMLUListElement>(null);
   const pendingPluginId = useUiStore((s) => s.pendingPluginId);
   const setPendingPluginId = useUiStore((s) => s.setPendingPluginId);
+  // The ring's removal outlives the effect run that adds it: clearing
+  // `pendingPluginId` re-runs the effect straight away, and a cleanup there
+  // cancelled the removal and left the ring on for good. Cleared on unmount.
+  const ring = useRef<{ el: HTMLElement; timer: ReturnType<typeof setTimeout> } | null>(null);
+
+  useEffect(
+    () => () => {
+      if (ring.current) clearTimeout(ring.current.timer);
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!pendingPluginId) return;
@@ -299,12 +312,19 @@ function PluginCardList({
     ) as HTMLElement | undefined;
     if (!el) return;
     el.scrollIntoView({ behavior: "smooth", block: "center" });
-    el.classList.add("ring-2", "ring-accent-primary/60", "rounded-lg");
+    if (ring.current) {
+      clearTimeout(ring.current.timer);
+      ring.current.el.classList.remove(...RING_CLASSES);
+    }
+    el.classList.add(...RING_CLASSES);
     setPendingPluginId(null);
-    const timer = setTimeout(() => {
-      el.classList.remove("ring-2", "ring-accent-primary/60", "rounded-lg");
-    }, 2000);
-    return () => clearTimeout(timer);
+    ring.current = {
+      el,
+      timer: setTimeout(() => {
+        el.classList.remove(...RING_CLASSES);
+        ring.current = null;
+      }, 2000),
+    };
   }, [pendingPluginId, cards, setPendingPluginId]);
 
   return (

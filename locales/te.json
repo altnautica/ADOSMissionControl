@@ -32,12 +32,14 @@
     "role": {
       "relay": "రిలే",
       "receiver": "రిసీవర్",
-      "direct": "ప్రత్యక్ష"
+      "direct": "ప్రత్యక్ష",
+      "unknown": "Role unknown"
     },
     "badge": {
       "compute": "Compute",
       "fc": "FC",
-      "lan": "LAN"
+      "lan": "LAN",
+      "companion": "FC + SBC"
     },
     "actions": {
       "menu": "చర్యలు",
@@ -96,23 +98,7 @@
     },
     "signals": {
       "link": "లింక్",
-      "battery": "బ్యాటరీ",
-      "gps": "GPS",
-      "arm": "ఆర్మింగ్",
-      "prearm": "ప్రీ-ఆర్మ్",
-      "rc": "RC",
-      "rx": "స్వీకరణ",
-      "uplink": "అప్‌లింక్",
-      "mesh": "మెష్",
-      "mqtt": "క్లౌడ్ రిలే",
-      "gpu": "GPU",
-      "jobs": "జాబ్‌లు",
-      "cluster": "క్లస్టర్",
-      "thermal": "థర్మల్",
-      "cpu": "CPU",
-      "temp": "ఉష్ణోగ్రత",
-      "services": "సేవలు",
-      "alerts": "హెచ్చరికలు"
+      "fc": "Flight controller"
     },
     "signalState": {
       "good": "ఆరోగ్యం",
@@ -339,7 +325,8 @@
       "otherFieldLabel": "ISO country code",
       "otherFieldPlaceholder": "e.g. FR",
       "unrestrictedNote": "Operator responsible for local RF compliance.",
-      "perDroneNote": "This is the default applied when a drone is paired. Each drone can be set individually on its System tab."
+      "perDroneNote": "This is the default applied when a drone is paired. Each drone can be set individually on its System tab.",
+      "otherInvalid": "Enter a valid two-letter ISO country code."
     },
     "dialogLabel": "మిషన్ కంట్రోల్ సెటప్"
   },
@@ -364,7 +351,8 @@
       "saveAndSwitch": "Save & Switch",
       "discardAndSwitch": "Discard & Switch"
     },
-    "confirmTypePhrase": "నిర్ధారించడానికి <phrase></phrase> టైప్ చేయండి"
+    "confirmTypePhrase": "నిర్ధారించడానికి <phrase></phrase> టైప్ చేయండి",
+    "delete": "Delete"
   },
   "status": {
     "connected": "కనెక్ట్ అయింది",
@@ -405,7 +393,8 @@
       "noAccountFound": "No account found with this email.",
       "tooManyAttempts": "Too many failed attempts. Try again later.",
       "accountExists": "An account with this email already exists.",
-      "generic": "Something went wrong. Please try again."
+      "generic": "Something went wrong. Please try again.",
+      "passwordTooShort": "Use a password of at least {min} characters."
     }
   },
   "settings": {
@@ -524,7 +513,6 @@
     "flashTool": "Flash Tool",
     "settings": "సెట్టింగ్‌లు",
     "exitImmersive": "ఇమ్మర్సివ్ మోడ్ నుండి బయటకు (Esc)",
-    "lastSynced": "చివరి సింక్: {time}",
     "account": "ఖాతా"
   },
   "configNav": {
@@ -547,10 +535,8 @@
     "units": "యూనిట్‌లు",
     "metric": "మెట్రిక్ (m, km/h, °C)",
     "imperial": "ఇంపీరియల్ (ft, mph, °F)",
-    "timezone": "టైమ్‌జోన్",
     "autoConnect": "స్టార్ట్‌అప్‌లో ఆటో-కనెక్ట్",
     "autoReconnect": "డిస్‌కనెక్ట్ అయినప్పుడు ఆటో-రీకనెక్ట్",
-    "telemetryRate": "టెలిమెట్రీ రేటు",
     "demoMode": "డెమో మోడ్",
     "demoDescription": "కనెక్ట్ చేయబడిన ఫ్లైట్ కంట్రోలర్ లేకుండా ఇంటర్‌ఫేస్‌ను అన్వేషించడానికి డ్రోన్ టెలిమెట్రీని సిమ్యులేట్ చేస్తుంది.",
     "locationTitle": "స్థానం",
@@ -566,13 +552,6 @@
     "setupWizard": "సెటప్ విజార్డ్ మళ్ళీ అమలు చేయండి",
     "setupWizardDesc": "ప్రారంభ కాన్ఫిగరేషన్ విజార్డ్‌ను మళ్ళీ అమలు చేయండి",
     "rerun": "మళ్ళీ అమలు",
-    "timezoneIst": "IST (UTC+5:30)",
-    "timezoneUtc": "UTC (UTC+0:00)",
-    "timezonePst": "PST (UTC-8:00)",
-    "telemetryRate1Hz": "1 Hz",
-    "telemetryRate5Hz": "5 Hz",
-    "telemetryRate10Hz": "10 Hz",
-    "telemetryRate20Hz": "20 Hz",
     "latAbbr": "LAT",
     "lonAbbr": "LON",
     "accAbbr": "ACC",
@@ -607,7 +586,8 @@
     "changelogTitle": "మార్పుల జాబితా నోటిఫికేషన్‌లు",
     "showChangelog": "మార్పుల జాబితా నోటిఫికేషన్‌లు చూపించు",
     "resetSeen": "చూసిన ఎంట్రీలను రీసెట్ చేయండి",
-    "changelogDescription": "మీరు యాప్ తెరిచినప్పుడు కొత్త విడుదలలు మరియు అప్‌డేట్‌ల గురించి తెలుసుకోండి"
+    "changelogDescription": "మీరు యాప్ తెరిచినప్పుడు కొత్త విడుదలలు మరియు అప్‌డేట్‌ల గురించి తెలుసుకోండి",
+    "criticalBelowWarning": "Critical threshold must be below the warning threshold"
   },
   "theme": {
     "title": "థీమ్",
@@ -647,30 +627,12 @@
   },
   "video": {
     "title": "వీడియో సెట్టింగ్‌లు",
-    "lowLatency": "లో-లేటెన్సీ మోడ్",
-    "targetBitrate": "టార్గెట్ బిట్‌రేట్",
-    "recordingCodec": "రికార్డింగ్ కోడెక్",
     "currentResolution": "ప్రస్తుత రిజల్యూషన్",
-    "osdElements": "OSD ఎలిమెంట్‌లు",
-    "crosshair": "క్రాస్‌హెయిర్",
-    "speedTape": "వేగం టేప్",
-    "altitudeTape": "ఎత్తు టేప్",
-    "heading": "హెడ్డింగ్",
-    "battery": "బ్యాటరీ",
-    "gps": "GPS",
-    "armedStatus": "ఆర్మ్‌డ్ స్థితి",
-    "signal": "సిగ్నల్",
-    "timer": "టైమర్",
-    "bitrate2Mbps": "2 Mbps",
-    "bitrate4Mbps": "4 Mbps",
-    "bitrate8Mbps": "8 Mbps",
-    "bitrate12Mbps": "12 Mbps",
-    "codecH264": "H.264",
-    "codecH265": "H.265",
     "restartBanner": {
       "title": "Video pipeline restarting",
       "message": "Video has restarted {count} times. Check the agent."
-    }
+    },
+    "encoderSettingsOnNode": "Bitrate, codec and resolution are set per node, in that node's Video settings."
   },
   "inputDevices": {
     "title": "ఇన్‌పుట్ పరికరాలు",
@@ -689,7 +651,10 @@
     "expoCurve": "ఎక్స్‌పో కర్వ్",
     "testMode": "టెస్ట్ మోడ్",
     "testModeUnavailable": "డెమోలో గేమ్‌ప్యాడ్ టెస్ట్ మోడ్ అందుబాటులో లేదు",
-    "manualControlLinkBlocked": "స్టిక్ ఇన్‌పుట్‌లు ఈ విమానానికి చేరడం లేదు: {reason}. ఏమీ ప్రసారం కావడం లేదు."
+    "manualControlLinkBlocked": "స్టిక్ ఇన్‌పుట్‌లు ఈ విమానానికి చేరడం లేదు: {reason}. ఏమీ ప్రసారం కావడం లేదు.",
+    "stickMode": "Stick mode",
+    "stickMode2": "Mode 2 (throttle on the left stick)",
+    "stickMode1": "Mode 1 (throttle on the right stick)"
   },
   "data": {
     "title": "డేటా నిర్వహణ",
@@ -710,7 +675,8 @@
     "contact": "సంప్రదించండి",
     "unavailableTitle": "కమ్యూనిటీ డేటా (మార్పుల జాబితా, రోడ్‌మ్యాప్, సంప్రదించండి) హోస్ట్ చేయబడిన వెర్షన్‌లో లభ్యం",
     "unavailableSetup": "స్థానిక బిల్డ్‌లలో డిఫాల్ట్‌గా డిసేబుల్ చేయబడింది. మీ స్వంత అంతర్గత కమ్యూనిటీ బోర్డ్ నడపడానికి, Convex బ్యాక్‌ఎండ్ సెటప్ చేసి కాన్ఫిగర్ చేయండి",
-    "unavailableOptional": "పూర్తిగా ఐచ్ఛికం. GCS దీని లేకుండా పనిచేస్తుంది."
+    "unavailableOptional": "పూర్తిగా ఐచ్ఛికం. GCS దీని లేకుండా పనిచేస్తుంది.",
+    "sectionError": "This page failed to load. Switch tabs or reload to try again."
   },
   "contact": {
     "title": "సంప్రదించండి",
@@ -731,7 +697,8 @@
     "sendAnother": "మరొక సందేశం పంపండి",
     "errorRequired": "పేరు, ఇమెయిల్ మరియు సందేశం అవసరం.",
     "errorAuth": "సందేశం పంపడానికి దయచేసి సైన్ ఇన్ చేయండి.",
-    "errorGeneral": "సందేశం పంపడం విఫలమైంది. దయచేసి మళ్ళీ ప్రయత్నించండి."
+    "errorGeneral": "సందేశం పంపడం విఫలమైంది. దయచేసి మళ్ళీ ప్రయత్నించండి.",
+    "errorRateLimited": "Too many messages from this address. Try again in {seconds} s."
   },
   "dashboard": {
     "viewGrid": "గ్రిడ్",
@@ -804,12 +771,15 @@
       "error": "ఎమర్జెన్సీ",
       "warning": "హెచ్చరిక",
       "armed": "ఆర్మ్ అయింది",
-      "ofTotal": "{total} స్లాట్‌లలో"
+      "ofTotal": "{total} స్లాట్‌లలో",
+      "showAll": "Show all"
     },
     "conditions": {
       "hardSeparation": "{count} hard-separationలో",
       "lowBattery": "{count} బ్యాటరీ తక్కువ",
-      "weakLink": "{count} బలహీన లింక్"
+      "weakLink": "{count} బలహీన లింక్",
+      "slotConflict": "Slot conflict: {count} beacons from a second sender on one slot",
+      "replayed": "{count} replayed beacons rejected"
     },
     "formation": {
       "line": "లైన్",
@@ -891,7 +861,8 @@
         "error": "ఎమర్జెన్సీ",
         "warning": "హెచ్చరిక",
         "armed": "ఆర్మ్ అయింది",
-        "nominal": "సాధారణం"
+        "nominal": "సాధారణం",
+        "unknown": "Unknown: ground station not answering"
       }
     },
     "hero": {
@@ -919,6 +890,10 @@
       "showingConnected": "ఈ సెషన్ కనెక్ట్ అయిన డ్రోన్ చూపబడుతోంది, హీరో కాదు.",
       "pickHeroHint": "ఒక డ్రోన్‌కు పూర్తి-రేటు వీడియో బడ్జెట్ ఇవ్వడానికి హీరోను ఎంచుకోండి.",
       "open": "తెరవండి"
+    },
+    "gsSilent": {
+      "title": "Ground station not answering",
+      "body": "No reply for {seconds}s. Silent slots are shown as unknown, not lost: the gap is on the link to the ground station, not necessarily the aircraft."
     }
   },
   "emptyState": {
@@ -953,7 +928,49 @@
     "activeBadge": "సక్రియం",
     "buildPreset": {
       "details": "వివరాలు",
-      "noGps": "GPS లేదు"
+      "noGps": "GPS లేదు",
+      "title": "SITL Build Preset",
+      "clearSelection": "Clear selection",
+      "all": "All",
+      "hint": "A preset only names the SITL vehicle in the fleet. It writes no parameters: the simulator keeps its own frame, battery and sensor settings.",
+      "category": {
+        "fpv": "FPV",
+        "longRange": "Long Range",
+        "heavyLift": "Heavy Lift",
+        "cine": "Cine",
+        "racing": "Racing",
+        "micro": "Micro",
+        "reference": "ADOS"
+      },
+      "yes": "Yes",
+      "no": "No",
+      "close": "Close details",
+      "components": "Components",
+      "spec": {
+        "props": "Props",
+        "motors": "Motors",
+        "battery": "Battery",
+        "auw": "AUW",
+        "flightTime": "Flight Time",
+        "minutes": "{count} min",
+        "gps": "GPS",
+        "compass": "Compass",
+        "rangefinder": "Rangefinder"
+      },
+      "componentType": {
+        "frame": "Frame",
+        "compute": "Compute",
+        "fc": "Flight Controller",
+        "esc": "ESC",
+        "motor": "Motor",
+        "sensor": "Sensor",
+        "camera": "Camera",
+        "radio": "Radio",
+        "gps": "GPS",
+        "battery": "Battery",
+        "rangefinder": "Rangefinder",
+        "companion": "Companion"
+      }
     },
     "fcStackTitle": "Flight Controller",
     "fcStackDesc": "USB, WebSocket, UDP, TCP లేదా Bluetooth ద్వారా నేరుగా MAVLink",
@@ -1019,7 +1036,48 @@
     "targetDroneLabel": "లక్ష్య డ్రోన్ (sysid సరిపోలాలి)",
     "selectDrone": "ఒక డ్రోన్‌ను ఎంచుకోండి",
     "targetDroneHint": "కొత్త ట్రాన్స్‌పోర్ట్ ఎంచుకున్న డ్రోన్ లాంటి అదే sysid ను చేరుకోవాలి, లేకపోతే అది తిరస్కరించబడుతుంది.",
-    "presetNamePrompt": "ప్రీసెట్ పేరు:"
+    "presetNamePrompt": "ప్రీసెట్ పేరు:",
+    "bridgeFromSource": "The bridge is not published to npm. Run this from a clone of the Mission Control repository (github.com/altnautica/ADOSMissionControl); it needs Node.js 20 or newer.",
+    "presetSaveFailed": "Could not save the preset",
+    "targetDroneRequired": "Choose the drone this link belongs to before connecting.",
+    "ws": {
+      "urlLabel": "WebSocket URL",
+      "discoveredRigs": "Discovered rigs",
+      "urlRequired": "URL is required",
+      "urlScheme": "URL must start with ws:// or wss://",
+      "sitlTokenHint": "The SITL bridge prints a URL with a token when it starts (for example {example}). Paste that whole URL above to connect.",
+      "rawEndpointHint": "For a raw UDP or TCP MAVLink endpoint, use the UDP or TCP method instead."
+    },
+    "ble": {
+      "notSupported": "Bluetooth not supported",
+      "notSupportedHint": "Web Bluetooth requires a Chromium-based browser (Chrome, Edge, Opera) running in a secure context (HTTPS or localhost). Firefox and Safari do not support Web Bluetooth.",
+      "unnamedDevice": "BLE device",
+      "connectionFailed": "Bluetooth connection failed",
+      "selectionCancelled": "Device selection cancelled",
+      "intro": "Connect to a flight controller exposing the Nordic UART Service (NUS).",
+      "compatibility": "Works with Betaflight, iNav and most BLE-enabled flight controllers.",
+      "scanning": "Scanning...",
+      "scanAndConnect": "Scan & Connect"
+    },
+    "ownedByAgent": "This link belongs to a companion-computer agent. Open it from the fleet list instead.",
+    "recent": {
+      "noUrl": "This entry has no URL.",
+      "serialPortAmbiguous": "The serial port this link used is not uniquely present. Pick the port in the Serial tab.",
+      "incompleteEndpoint": "This entry has no complete endpoint.",
+      "reconnectFailed": "Reconnect failed",
+      "justNow": "just now",
+      "minutesAgo": "{count}m ago",
+      "hoursAgo": "{count}h ago",
+      "daysAgo": "{count}d ago",
+      "empty": "No recent connections yet."
+    },
+    "serial": {
+      "selectPort": "Select a port",
+      "hotPlugConnected": "Device connected: {label}",
+      "hotPlugDisconnected": "Device disconnected: {label}",
+      "toastConnected": "USB device connected: {label}",
+      "toastDisconnected": "USB device disconnected: {label}"
+    }
   },
   "droneDetail": {
     "overview": "అవలోకనం",
@@ -1291,7 +1349,10 @@
       "viaHop": "This node's onboard computer is reached through {hop}, which is not answering right now. Its video, services and logs are unavailable until it does.",
       "repair": "మళ్లీ జత చేయి",
       "openAgent": "Open the Agent page"
-    }
+    },
+    "forgetCloudUnavailable": "The cloud is unreachable, so the node was not removed: its cloud pairing would bring it back. Try again when the cloud is reachable.",
+    "forgetCloudFailed": "The node was not removed: its cloud pairing could not be deleted ({error}).",
+    "nodeRemoved": "Node \"{name}\" removed"
   },
   "vision": {
     "title": "Vision Engine",
@@ -1405,7 +1466,11 @@
       "none": "ఈ లక్ష్యానికి చర్యలు లేవు",
       "pluginBadge": "ప్లగిన్"
     },
-    "offloadPinHint": "The node starts offloading to the pinned workstation on its own when it has no accelerator and its camera is up. Auto uses any workstation serving on the LAN."
+    "offloadPinHint": "The node starts offloading to the pinned workstation on its own when it has no accelerator and its camera is up. Auto uses any workstation serving on the LAN.",
+    "cameraStreamUnknown": "unknown",
+    "acceleratorNotReported": "Accelerator not reported yet — waiting for the node to report its compute.",
+    "acceleratorPresentNoTops": "Local accelerator present (no TOPS figure reported) — this node can run a detector on-edge.",
+    "engineStatusUnavailable": "Engine status unavailable — the node has not reported which models it runs."
   },
   "nodeSettings": {
     "subtitle": "Configure this node's onboard computer. Changes write straight to the agent over the LAN.",
@@ -1439,9 +1504,6 @@
       "codecLabel": "Codec",
       "resolutionLabel": "Resolution",
       "notReported": "not reported",
-      "codecPrefLabel": "Wire codec preference",
-      "codecPrefHint": "Auto picks H.264 for browser compatibility; H.265 needs the receive side to also speak it. Applies at the next pipeline start.",
-      "codecPrefAuto": "Auto",
       "bitrateLabel": "Encode bitrate (kbps)",
       "bitrateHint": "Base encoder bitrate. The adaptive ladder steps around it as the link changes. Applies at the next pipeline start.",
       "orientationTitle": "Image orientation",
@@ -1453,7 +1515,8 @@
       "hflipLabel": "Horizontal flip",
       "hflipHint": "Mirror the image left–right (helps a downward camera mounted upside-down).",
       "vflipLabel": "Vertical flip",
-      "vflipHint": "Mirror the image top–bottom."
+      "vflipHint": "Mirror the image top–bottom.",
+      "perLegManagedHint": "This node streams several cameras, so each stream takes its orientation and bitrate from its own settings on the Cameras tab. The single-camera orientation and bitrate are not used."
     },
     "profile": {
       "title": "Profile",
@@ -1461,7 +1524,9 @@
       "hint": "Set during setup. Switching profiles reconfigures the agent's services.",
       "optionDrone": "Drone",
       "optionGroundStation": "Ground station",
-      "optionWorkstation": "Workstation"
+      "optionWorkstation": "Workstation",
+      "optionAuto": "Auto (resolved at boot)",
+      "optionCompute": "Compute node"
     },
     "network": {
       "title": "Network",
@@ -1495,7 +1560,7 @@
       "shareHint": "Route internet traffic for devices connected to this node's access point out over the active uplink.",
       "sharePersistedNotApplied": "Saved, but not applied to a live uplink: {reason}",
       "loadFailed": "Could not read the node's network status.",
-      "uplinkUnsupportedProfile": "This node's agent exposes the uplink matrix on ground station nodes only.",
+      "uplinkUnsupportedProfile": "The uplink matrix and the Wi-Fi hotspot run on ground station nodes only.",
       "hotspotSsidLabel": "Hotspot SSID",
       "hotspotChannelLabel": "Hotspot channel",
       "hotspotPasswordLabel": "Hotspot password",
@@ -1611,8 +1676,6 @@
       "slotValue": "Slot {slot}",
       "enabledLabel": "Enable swarm participation",
       "enabledHint": "Master switch for the node's swarm services.",
-      "roleLabel": "Role",
-      "roleHint": "The node's configured swarm role. Default auto.",
       "formationTitle": "Formation",
       "formationLabel": "Default formation",
       "formationHint": "The formation preset the node starts with.",
@@ -1645,13 +1708,6 @@
       "separationConfirmTitle": "Change the separation envelope?",
       "separationConfirmMessage": "Separation is the collision-avoidance layer, not a preference. A larger value makes the fleet spread; a smaller one lets aircraft close on each other before anything intervenes. Apply this change?",
       "separationConfirmAction": "Change it",
-      "tasksTitle": "Task allocation",
-      "tasksEnabledLabel": "Take part in task allocation",
-      "tasksEnabledHint": "Bid for survey cells and waypoints alongside the rest of the fleet.",
-      "taskIdLabel": "Assigned task",
-      "taskIdHint": "Reported by the node. Assignments are made by the fleet, not set here.",
-      "bundlePositionLabel": "Bundle position",
-      "bundlePositionHint": "Where the assigned task sits in this node's own task bundle.",
       "precedenceTitle": "Mode precedence",
       "precedenceHint": "Highest authority first. A drone whose separation layer has taken over is in hard separation whatever mode was commanded.",
       "precedenceHardSeparation": "Hard separation — a neighbour inside the hard floor",
@@ -1736,7 +1792,7 @@
       "capLabel": "Data cap (GB)",
       "capHint": "Monthly data budget. The node warns, throttles, then blocks as usage approaches the cap. 0 disables the cap.",
       "capInvalid": "Enter a number of gigabytes (0 or more).",
-      "configOnlyNote": "This node's agent does not expose live modem status on this profile — these settings write to the node's configuration."
+      "usageNotReported": "not reported yet"
     },
     "macPin": {
       "title": "MAC pinning",
@@ -1810,7 +1866,6 @@
       "cameraStateRecovering": "Recovering",
       "cameraStateNeedsReseat": "Needs physical reseat",
       "cameraStateHeldBack": "Held back (shared hub)",
-      "cameraStateExhausted": "Exhausted",
       "eventsTitle": "Recent self-heal activity",
       "eventsCount": "{count, plural, one {# event} other {# events}}",
       "eventsEmpty": "No recent self-heal events.",
@@ -1857,7 +1912,10 @@
         "success": "OK",
         "warning": "Warning",
         "error": "Error"
-      }
+      },
+      "cameraStateRetrying": "Waiting to retry",
+      "cameraAttemptNote": "attempt {attempts}",
+      "cameraCooldownNote": "retries every {seconds} s"
     },
     "mavlinkRouting": {
       "title": "MAVLink",
@@ -1881,7 +1939,7 @@
       "systemIdLabel": "System ID",
       "systemIdHint": "The MAVLink system ID this node's router speaks with (1-255).",
       "componentIdLabel": "Component ID",
-      "componentIdHint": "The MAVLink component ID this node's router speaks with (1-255).",
+      "componentIdHint": "The MAVLink component ID this node's router speaks with (2-255). 1 is the autopilot's own ID and 0 is broadcast, so neither is accepted.",
       "ratesTitle": "Cloud relay forwarding",
       "telemetryRateLabel": "Telemetry rate (Hz)",
       "telemetryRateHint": "How many telemetry updates per second the agent forwards to the cloud relay. Applies only when a cloud or self-hosted relay is configured; it does not change the flight controller's own stream rates.",
@@ -1985,7 +2043,13 @@
       "txPowerHint": "Managed live from the Link tab's power slider.",
       "mcsCapLabel": "Adaptive ceiling (MCS)",
       "mcsCapHint": "The highest rung the ladder may climb to. Defaults to 3; anything above it is bench-only until the driver sweep says the rung holds at range. A ceiling of 1 pins the ladder to the floor.",
-      "rungCapped": "{rung}, capped {cap}"
+      "rungCapped": "{rung}, capped {cap}",
+      "fleetSlotUnassigned": "Not assigned",
+      "fleetIdConfirmTitle": "Change the fleet ID?",
+      "fleetIdConfirmMessage": "A node hears only nodes with the same fleet ID. After its next radio start this node cannot hear any peer on a different fleet ID, including its ground station, so every node in the fleet must be changed to match.",
+      "fleetIdConfirmAction": "Change fleet ID",
+      "mcsPresetValue": "MCS {mcs} (set by the {preset} preset)",
+      "mcsPresetHint": "The link preset sets the rung at every radio start and replaces a stored value. Switch the preset to Conservative to set the rung by hand."
     },
     "display": {
       "title": "Display",
@@ -1999,7 +2063,9 @@
     },
     "pageUnavailableHere": "{page} is not available on this node. Showing the first page this node offers.",
     "segmentLive": "లైవ్",
-    "segmentSetup": "సెటప్"
+    "segmentSetup": "సెటప్",
+    "notReported": "not reported",
+    "staleSnapshot": "Showing the last successful read, from {age}."
   },
   "dronePlugins": {
     "titleForDrone": "Extensions on {drone}",
@@ -2019,7 +2085,6 @@
     "disable": "Disable",
     "configure": "Configure",
     "uninstall": "Uninstall",
-    "viewLogs": "View logs",
     "viewPermissions": "View permissions",
     "uninstallConfirmTitle": "Uninstall this extension?",
     "uninstallConfirmMessage": "Remove {name} from this drone? Extension data on this drone will be cleared.",
@@ -2036,8 +2101,6 @@
     "agentNotConnected": "Agent not connected. Connect this drone before installing an extension.",
     "demoInstallDisabled": "Extension install is disabled in demo mode.",
     "demoActionDisabled": "Action disabled in demo mode.",
-    "logsPending": "Extension logs view will land in the next release.",
-    "permissionsLinkPending": "Permissions detail page will land in the next release.",
     "status": {
       "running": "Running",
       "enabled": "Enabled",
@@ -2051,7 +2114,8 @@
     "rssiAirNote": "Drone does not receive its own RF; ground station reports the RSSI value.",
     "rssiUnverifiedNote": "Transmitting, but no reception is confirmed yet, so no RSSI is available on either side of the link.",
     "txPowerScopeHint": "Adjusts air-side TX power on this drone.",
-    "noAgent": "No agent connection. TX power changes are unavailable until the drone reconnects."
+    "noAgent": "No agent connection. TX power changes are unavailable until the drone reconnects.",
+    "staleReading": "Last radio report {age}. The values below are the last the drone reported and may no longer describe the link."
   },
   "command": {
     "overview": "అవలోకనం",
@@ -2075,7 +2139,9 @@
       "pair": "Pair",
       "pairing": "Pairing",
       "tabsLabel": "జత చేసే విధానం",
-      "lanRelayNudge": "మీ LAN వెలుపలి నుండి ఈ నోడ్‌ను చేరుకోవాలంటే సైన్ ఇన్ చేసి క్లౌడ్ రిలేను ప్రారంభించండి. పైన ఉన్న LAN జత చేయడం ఖాతా లేకుండానే పనిచేస్తుంది."
+      "lanRelayNudge": "మీ LAN వెలుపలి నుండి ఈ నోడ్‌ను చేరుకోవాలంటే సైన్ ఇన్ చేసి క్లౌడ్ రిలేను ప్రారంభించండి. పైన ఉన్న LAN జత చేయడం ఖాతా లేకుండానే పనిచేస్తుంది.",
+      "cloudRequired": "Pairing with a generated code needs the cloud backend, and this build has none. Pair the drone on this network instead.",
+      "pairOnNetwork": "Pair on this network"
     },
     "unpair": "జత తొలగించు",
     "disconnect": "డిస్‌కనెక్ట్",
@@ -2107,8 +2173,6 @@
     "generatingCode": "పేరింగ్ కోడ్ జనరేట్ అవుతోంది...",
     "expiresIn": "గడువు",
     "firstTime": "First time? Run this on your node",
-    "firstTimeColon": "First time? Run this on your node:",
-    "alreadyInstalled": "ఇప్పటికే ఇన్‌స్టాల్ చేయబడిందా? అమలు చేయండి:",
     "waitingForNode": "Waiting for your node to connect...",
     "discoveredOnNetwork": "నెట్‌వర్క్‌లో కనుగొనబడింది",
     "discoveredOnYourNetwork": "మీ నెట్‌వర్క్‌లో కనుగొనబడింది",
@@ -2118,7 +2182,6 @@
     "tryAgain": "మళ్ళీ ప్రయత్నించండి",
     "pairOnThisNetwork": "Pair on this network",
     "codeExpired": "కోడ్ గడువు ముగిసింది",
-    "codeExpiredShort": "కోడ్ గడువు ముగిసింది.",
     "codeExpiredMessage": "పేరింగ్ కోడ్ 15 నిమిషాల తర్వాత సమయం ముగిసింది.",
     "generateNewCode": "కొత్త కోడ్ జనరేట్ చేయండి",
     "copyCode": "కోడ్ కాపీ చేయండి",
@@ -2145,7 +2208,7 @@
       "subtitle": "ఏదైనా ADOS నోడ్‌ను (డ్రోన్, గ్రౌండ్ స్టేషన్ లేదా భవిష్యత్తు కంప్యూట్ నోడ్) మీ LAN ద్వారా నేరుగా జతచేయండి.",
       "addNodeTitle": "Add a drone or ground station",
       "addNodeSubtitle": "No account required. Works fully offline.",
-      "addNodePlaceholder": "skynode.local  or  9TW85C",
+      "addNodePlaceholder": "my-drone.local  or  9TW85C",
       "addNodeHint": "Same Wi-Fi as the agent? Paste the hostname or IP. New agent showing a 6-character code in `ados status`? Type that.",
       "codeTryHostnameTip": "Tip: if the agent is on your network, enter its hostname or IP instead (for example my-drone.local).",
       "pairButton": "Pair",
@@ -2154,7 +2217,7 @@
       "badCodeError": "Pair code must be six characters (letters and digits).",
       "pairOnLan": "మీ LAN లో ఒక నోడ్‌ను జత చేయండి",
       "noAccountRequired": "ఖాతా అవసరం లేదు. పూర్తిగా ఆఫ్‌లైన్‌లో పనిచేస్తుంది.",
-      "hostnamePlaceholder": "skynode.local  లేదా  http://192.168.1.42:8080",
+      "hostnamePlaceholder": "my-drone.local  లేదా  http://192.168.1.42:8080",
       "probeButton": "ప్రోబ్ చేయండి",
       "probingButton": "ప్రోబ్ చేస్తోంది",
       "installAgent": "కొత్త ఏజెంట్‌ను ఇన్‌స్టాల్ చేయండి",
@@ -2205,7 +2268,10 @@
       "pairAgentNotReadyError": "{host} answered but its pairing service is still starting. Wait a few seconds, then press Pair again.",
       "pairAgentFaultError": "{host} could not save the pairing: {detail}. Check its disk space and service health with `ados status` on the node, then press Pair again.",
       "pairRefusedError": "{host} answered and refused the pairing request. Run `ados status` on the node to check its pairing state, then press Pair again.",
-      "unpairFailedError": "Couldn't release {host} from this browser. Run `ados unpair` on the node to release it, then remove it here."
+      "unpairFailedError": "Couldn't release {host} from this browser. Run `ados unpair` on the node to release it, then remove it here.",
+      "codeRateLimitedError": "Too many pair-code attempts from this browser. Try again in {seconds} s.",
+      "connectFailedUnknown": "the node did not answer",
+      "pairedWaitingRelay": "Paired. Waiting for the node to report over the cloud relay."
     },
     "nodes": {
       "label": "Nodes",
@@ -2245,7 +2311,7 @@
         "title": "హార్డ్‌వేర్ నియంత్రణలు Command ట్యాబ్‌లోకి ఏకీకృతం అవుతున్నాయి.",
         "body": "Command ట్యాబ్ ఇప్పుడు లోకల్-ఫస్ట్ Add-a-Node ప్రవాహాన్ని హోస్ట్ చేస్తుంది మరియు ప్రతి నోడ్ రకాన్ని (డ్రోన్ ఏజెంట్, గ్రౌండ్ స్టేషన్, రిలే, రిసీవర్, భవిష్యత్ కంప్యూట్) ఒకే సైడ్‌బార్ క్రింద హోస్ట్ చేస్తుంది. పరివర్తన సమయంలో లోతైన ఉప-వీక్షణల కోసం Hardware అందుబాటులో ఉంటుంది.",
         "computeComingSoon": "కంప్యూట్ నోడ్ త్వరలో వస్తుంది",
-        "computeBody": "కంప్యూట్ ప్రొఫైల్ అనేది వర్క్‌స్టేషన్-క్లాస్ నోడ్, ఇది సర్వే డేటాసెట్‌లను ఉపయోగిస్తుంది మరియు ఆర్థోమొజైక్‌లు, NeRF పునర్నిర్మాణాలు మరియు గాసియన్ స్ప్లాట్‌లను ఉత్పత్తి చేస్తుంది. పూర్తి డిజైన్ కోసం product/specs/compute-agent/ చూడండి."
+        "computeBody": "కంప్యూట్ ప్రొఫైల్ అనేది వర్క్‌స్టేషన్-క్లాస్ నోడ్, ఇది సర్వే డేటాసెట్‌లను ఉపయోగిస్తుంది మరియు ఆర్థోమొజైక్‌లు, NeRF పునర్నిర్మాణాలు మరియు గాసియన్ స్ప్లాట్‌లను ఉత్పత్తి చేస్తుంది."
       },
       "demoMode": {
         "title": "గ్రౌండ్ స్టేషన్ నియంత్రణలకు డెమో డేటా అందుబాటులో లేదు",
@@ -2273,9 +2339,12 @@
         "no-answer": "nothing answered",
         "refused": "answered and refused",
         "fault": "answered with an internal fault",
-        "unknown": "the attempt failed"
+        "unknown": "the attempt failed",
+        "not-ready": "answered but was not ready",
+        "proxy-refused": "not tried: Mission Control only reaches addresses on your own network"
       }
-    }
+    },
+    "alreadyInstalledRepair": "Already installed? The same command re-pairs it with this code without reinstalling."
   },
   "agent": {
     "status": "ఏజెంట్ స్థితి",
@@ -2358,19 +2427,29 @@
         "sourceUnreachable": "The MAVLink source configured for this drone is not reachable. Check the source endpoint (host, port, or serial device) in the agent configuration.",
         "mspDetected": "Flight controller detected but it is speaking MSP, not MAVLink. Set its USB/serial port to MAVLink output (in the configurator).",
         "noHeartbeat": "Flight controller detected on {port} but no MAVLink heartbeat. Check the FC's serial protocol is set to MAVLink (ArduPilot: SERIAL0_PROTOCOL=2 on the USB port), the FC is fully booted, and the baud matches."
-      }
+      },
+      "lastKnown": "last known, {age}"
     },
     "chip": "Chip",
     "cores": "Cores",
     "gpu": "GPU",
     "gpuHistory": "GPU History (5m)",
-    "groundStationFallbackTitle": "గ్రౌండ్ స్టేషన్"
+    "groundStationFallbackTitle": "గ్రౌండ్ స్టేషన్",
+    "logsSnapshotAge": "Snapshot · updated {age}",
+    "sparklinePaused": "Paused",
+    "restartConfirmTitle": "Restart {name}?",
+    "restartConfirmMessage": "{name} stops and starts again. What it provides is unavailable until it is back.",
+    "restartAllConfirmTitle": "Restart all agent services?",
+    "restartAllConfirmMessage": "Every agent service stops and starts again. The GCS loses this node until the agent is back.",
+    "restartArmedWarning": "The vehicle is armed. This restart interrupts its flight link, video or control until the service is back.",
+    "restartConfirmLabel": "Restart",
+    "restartQueued": "Restart of {name} sent over the cloud relay. Watch its status here for the result.",
+    "restartAllServices": "Restart all services"
   },
   "fleetNetwork": {
     "title": "ఫ్లీట్ నెట్‌వర్క్",
     "mqttBroker": "MQTT బ్రోకర్",
     "brokerStatus": "బ్రోకర్ స్థితి",
-    "meshRadio": "మెష్ రేడియో",
     "meshStatus": "మెష్ స్థితి",
     "connectedPeers": "కనెక్ట్ అయిన పీర్‌లు",
     "noPeers": "పీర్‌లు గుర్తించబడలేదు",
@@ -2383,20 +2462,14 @@
     "connected": "కనెక్ట్ అయింది",
     "disconnected": "డిస్‌కనెక్ట్ అయింది",
     "broker": "బ్రోకర్",
-    "lora": "LoRa",
-    "notInstalled": "ఇన్‌స్టాల్ చేయబడలేదు",
-    "wifiDirect": "WiFi Direct",
-    "disabled": "డిసేబుల్ చేయబడింది",
     "adosPeers": "ADOS పీర్‌లు",
-    "lastScan": "చివరి స్కాన్: {time}",
-    "scan": "స్కాన్",
-    "noPeersDiscovered": "పీర్‌లు కనుగొనబడలేదు",
     "peerName": "పేరు",
     "signal": "సిగ్నల్",
     "distance": "దూరం",
     "battery": "బ్యాటరీ",
     "tier": "టైర్",
-    "link": "లింక్"
+    "link": "లింక్",
+    "testConnection": "Test connection"
   },
   "moduleStore": {
     "title": "మాడ్యూల్ స్టోర్",
@@ -2495,7 +2568,8 @@
     "loiter": "లోయిటర్",
     "land": "ల్యాండ్",
     "rtl": {
-      "assumedReturnAltitude": "RTL భూభాగ తనిఖీలు {alt} మీ తిరిగివచ్చే ఎత్తును ఊహిస్తాయి (కాన్ఫిగర్ చేసిన విలువ అందుబాటులో లేదు)."
+      "assumedReturnAltitude": "RTL భూభాగ తనిఖీలు {alt} మీ తిరిగివచ్చే ఎత్తును ఊహిస్తాయి (కాన్ఫిగర్ చేసిన విలువ అందుబాటులో లేదు).",
+      "landStartNeedsAutoland": "The FC has RTL_AUTOLAND = 0, so it will refuse to arm with a DO_LAND_START in the mission. Set RTL_AUTOLAND to 1 or 2 to land through it on RTL, or 3 to use it for go-around only."
     },
     "none": "ఏదీ లేదు",
     "waypoints": "Waypoint లు",
@@ -2553,7 +2627,8 @@
         "empty": "దాన్ని దాటవేయడానికి సరిహద్దు లోపల గీసిన పాలిగాన్‌ను టిక్ చేయండి."
       },
       "coverage": {
-        "showOverlay": "కవరేజీని చూపు"
+        "showOverlay": "కవరేజీని చూపు",
+        "truncated": "Showing the first {shown} of {total} image footprints."
       }
     },
     "orbit": "కక్ష్య",
@@ -2675,7 +2750,7 @@
     "fence": "ఫెన్స్",
     "disable": "డిసేబుల్",
     "enable": "ఎనేబుల్",
-    "maxDescent": "గరిష్ట దిగే రేటు",
+    "maxDescent": "గరిష్ట అవరోహణ",
     "distance": "దూరం",
     "functionNum": "ఫంక్షన్ సంఖ్య",
     "switch": "స్విచ్",
@@ -2803,7 +2878,9 @@
       "chipAltitude": "ఎత్తు {value} మీ",
       "chipOverlap": "ఓవర్‌ల్యాప్ {value}%",
       "chipSpeed": "వేగం {value} m/s",
-      "chipRadius": "వ్యాసార్ధం {value} మీ"
+      "chipRadius": "వ్యాసార్ధం {value} మీ",
+      "tooLarge": "This area is too large to survey in one mission (about {items} items, {km} km). Zoom in and try again.",
+      "mappedEstimate": "About {lines} lines, {items} items, {km} km."
     },
     "weather": {
       "title": "వాతావరణం",
@@ -2823,14 +2900,17 @@
       "reasonWindNogo": "గాలి చాలా ఎక్కువ",
       "reasonGustCaution": "ఈదురుగాలులు పెరిగాయి",
       "reasonGustNogo": "ఈదురుగాలులు చాలా ఎక్కువ",
-      "reasonNoData": "గాలి డేటా లేదు"
+      "reasonNoData": "గాలి డేటా లేదు",
+      "stale": "Stale",
+      "observed": "Observed {time}, {minutes} min ago"
     },
     "import": {
       "boundary": {
         "menuLabel": "సరిహద్దును దిగుమతి చేయి (KML/SHP)",
         "success": "{count, plural, one {# సరిహద్దు లోడ్ అయింది} other {# సరిహద్దులు లోడ్ అయ్యాయి}}",
         "error": "ఆ సరిహద్దు ఫైల్‌ను చదవలేకపోయాం.",
-        "noPolygon": "ఫైల్‌లో పాలిగాన్ కనబడలేదు."
+        "noPolygon": "ఫైల్‌లో పాలిగాన్ కనబడలేదు.",
+        "needsPrj": "This shapefile is not in latitude/longitude. Import the zipped bundle that includes its .prj file."
       }
     },
     "export": {
@@ -2926,7 +3006,15 @@
         "DO_SET_HOME": "Set Home"
       }
     },
-    "approachHeadingRequired": "Set the final-approach heading (0-360°) to generate the landing."
+    "approachHeadingRequired": "Set the final-approach heading (0-360°) to generate the landing.",
+    "batteryStale": "stale",
+    "avg": "avg",
+    "speedType": "Speed type",
+    "speedTypeAirspeed": "Airspeed",
+    "speedTypeGround": "Ground speed",
+    "fcDefault": "FC default",
+    "noCenterHint": "Pan the map to the survey area first, then add the rectangle.",
+    "orbitTargetHeight": "Target height"
   },
   "geofence": {
     "autoFence": "ఆటో-ఫెన్స్",
@@ -2961,7 +3049,8 @@
     "fenceUploaded": "ఫెన్స్ విజయవంతంగా అప్‌లోడ్ చేయబడింది",
     "uploadFailed": "ఫెన్స్ అప్‌లోడ్ విఫలమైంది",
     "olderFenceOnAircraft": "Aircraft holds an older fence",
-    "maxAltitudeRequired": "Enter a max altitude above 0 m"
+    "maxAltitudeRequired": "Enter a max altitude above 0 m",
+    "clearFenceConfirm": "Delete the fence geometry? Undo restores it."
   },
   "rally": {
     "title": "ర్యాలీ పాయింట్‌లు",
@@ -2978,7 +3067,8 @@
     "rallyUploadFailed": "ర్యాలీ పాయింట్ అప్‌లోడ్ విఫలమైంది",
     "olderRallyOnAircraft": "Aircraft holds older rally points",
     "replaceLocalConfirm": "Replace the {count} planned rally points with the ones on the aircraft?",
-    "downloadFailed": "Rally download failed"
+    "downloadFailed": "Rally download failed",
+    "clearAllConfirm": "Delete all {count} rally points? Undo restores them."
   },
   "terrain": {
     "terrainConflict": "{count} క్లియరెన్స్ కంటే తక్కువ",
@@ -3237,7 +3327,6 @@
     "unfavorite": "ఇష్టమైన వాటి నుండి తీసివేయి",
     "delete": "తొలగించు",
     "clear": "క్లియర్",
-    "deleteConfirm": "{count} విమాన రికార్డు(లు) తొలగించాలా? దీన్ని రద్దు చేయలేరు.",
     "statsFlights": "విమానాలు",
     "statsHours": "గంటలు",
     "statsDistance": "దూరం",
@@ -3392,7 +3481,15 @@
       "avgDistance": "సగటు దూరం",
       "avgMaxAlt": "సగటు గరిష్ఠ ఎత్తు",
       "byDrone": "డ్రోన్ వారీగా"
-    }
+    },
+    "restore": "Restore",
+    "deletePermanently": "Delete permanently",
+    "deletePermanentlyConfirm": "Permanently delete {count} flight record(s)? This cannot be undone.",
+    "moveToTrashConfirm": "Move {count} flight record(s) to the trash?",
+    "logBrowserNoFlights": "Downloaded {bytes}, but no flight was found in the log: it holds no arm-to-disarm flight, or its format is not one this browser reads.",
+    "logBrowserDuplicates": "{count} flight(s) from this log were already in history and were left as they are.",
+    "syncNotYet": "Not synced yet",
+    "syncPending": "{count} to sync"
   },
   "library": {
     "title": "ఫ్లైట్ ప్లాన్‌లు",
@@ -3437,7 +3534,22 @@
     "noFolder": "No folder",
     "planMoved": "Plan moved",
     "folderRenamed": "Folder renamed",
-    "folderDeleted": "Folder deleted"
+    "folderDeleted": "Folder deleted",
+    "planName": "Plan name",
+    "createFirstPlan": "Create First Plan",
+    "importFromFile": "Import from file",
+    "fromDrone": "From Drone",
+    "loadingFromDrone": "Loading...",
+    "connectDroneFirst": "Connect a drone first",
+    "loadFromDrone": "Load mission from drone",
+    "planCount": "{count, plural, one {# plan} other {# plans}}",
+    "importShort": "Import",
+    "importPlanFile": "Import plan file",
+    "sortLabelName": "Name",
+    "sortLabelDate": "Date",
+    "sortLabelWaypoints": "WPs",
+    "sortAscending": "Ascending",
+    "sortDescending": "Descending"
   },
   "fcShared": {
     "readFromFc": "FC నుండి చదవండి",
@@ -3496,7 +3608,7 @@
     "sensorCalibrationDesc": "యాక్సిలరోమీటర్, జైరోస్కోప్, కంపాస్, లెవెల్ మరియు వాయు వేగం కోసం దశల వారీ క్యాలిబ్రేషన్ విజార్డ్‌లు",
     "connectToCalibrate": "క్యాలిబ్రేషన్‌లు నడపడానికి డ్రోన్ కనెక్ట్ చేయండి",
     "bfAccelTitle": "యాక్సిలరోమీటర్ క్యాలిబ్రేషన్",
-    "bfAccelDesc": "క్వాడ్‌ను చదునైన ఉపరితలంపై ఉంచి నిశ్చలంగా ఉంచండి. Betaflight క్యాలిబ్రేషన్ సుమారు 5 సెకన్లు పడుతుంది.",
+    "bfAccelDesc": "Place the quad on a flat surface and keep it still. Betaflight averages a short run of samples and saves the result.",
     "calibrating": "క్యాలిబ్రేట్ అవుతోంది",
     "bfAccelStepDesc": "క్వాడ్‌ను చదునైన ఉపరితలంపై పూర్తిగా నిశ్చలంగా ఉంచండి",
     "bfAccelInProgress": "క్యాలిబ్రేట్ అవుతోంది... క్వాడ్‌ను నిశ్చలంగా ఉంచండి",
@@ -3517,7 +3629,32 @@
     "compassOffsetsSaved": "కంపాస్ ఆఫ్‌సెట్‌లు సేవ్ చేయబడ్డాయి",
     "compassOrientationChanged": "కంపాస్ దిశ మారింది",
     "compassOrientationChangedDesc": "క్యాలిబ్రేషన్ గతంలో కాన్ఫిగర్ చేసిన దాని కంటే భిన్నమైన కంపాస్ దిశను గుర్తించింది. రీబూట్ తర్వాత పారామీటర్‌లలో మౌంటింగ్ దిశను ధృవీకరించండి.",
-    "accelCalibrationSaved": "యాక్సిలరోమీటర్ క్యాలిబ్రేషన్ సేవ్ చేయబడింది"
+    "accelCalibrationSaved": "యాక్సిలరోమీటర్ క్యాలిబ్రేషన్ సేవ్ చేయబడింది",
+    "bfAccelDone": "Betaflight sampled the accelerometer and saved the trims. If the quad moved during calibration, run it again.",
+    "inavAccelTitle": "Accelerometer Calibration (six orientations)",
+    "inavAccelDesc": "iNav calibrates the accelerometer from six orientations. Start with the vehicle level (top up), then capture upside down and each of the four sides in any order. Hold each orientation still, within about 30 degrees, and press Capture.",
+    "inavAccelCapture": "Capture this orientation",
+    "inavAccelProgress": "{count} of 6 orientations captured",
+    "inavAccelCalibrated": "The accelerometer is calibrated. Capturing level (top up) starts a new calibration.",
+    "inavAccelCaptured": "Orientation captured.",
+    "inavAccelNotCaptured": "No new orientation was captured. Hold the vehicle still in an orientation that is not captured yet; to recalibrate a calibrated board, start from level (top up).",
+    "inavAccelComplete": "All six orientations captured. iNav computed the calibration and saved it.",
+    "inavAccelRejected": "iNav rejected the six-orientation fit and cleared the samples. Start again from level (top up).",
+    "inavPosTop": "Level (top up)",
+    "inavPosBottom": "Upside down",
+    "inavPosSides": "Sides: {count} of 4",
+    "inavCompassTitle": "Compass Calibration",
+    "inavCompassDesc": "Starts iNav's compass calibration. Rotate the vehicle through every orientation until the countdown ends; iNav stores the new offsets when its calibration time (mag_calibration_time) runs out.",
+    "inavCompassStart": "Start compass calibration",
+    "inavCompassRunning": "Rotate the vehicle through every orientation: {seconds} s left",
+    "inavCompassTimeUnknown": "Could not read mag_calibration_time; timing the default {seconds} s.",
+    "inavCompassUpdated": "Compass offsets changed from {before} to {after}; iNav saved them.",
+    "inavCompassUnchanged": "Compass offsets did not change {after}. Run it again, rotating through every orientation.",
+    "inavLevelTitle": "Level",
+    "inavLevelNote": "iNav has no level calibration. If the horizon is tilted after accelerometer calibration, correct it with board alignment (align_board_roll and align_board_pitch).",
+    "inavGyroNote": "iNav calibrates the gyro at every boot; keep the vehicle still while it powers up.",
+    "inavReadFailed": "Could not read calibration data: {message}",
+    "mspCommandRefused": "The flight controller did not take the command: {message}"
   },
   "parameters": {
     "title": "పారామీటర్‌లు",
@@ -3566,7 +3703,8 @@
     "customValue": "{value} (custom)",
     "enterCustomValue": "Custom value",
     "apply": "Apply",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "bitmaskRawInvalid": "Enter a whole decimal number or 0x hex value that fits in 32 bits."
   },
   "preArm": {
     "title": "ఆర్మ్ ముందు తనిఖీలు",
@@ -3611,7 +3749,10 @@
     "rcChannelsOutside": "{count} RC ఛానెల్‌లు ట్రిమ్ డెడ్‌జోన్ బయట ఉన్నాయి",
     "trimSetTo": "ట్రిమ్ {value} కు సెట్ చేయబడింది — మళ్ళీ తనిఖీ చేస్తోంది...",
     "noFailuresReported": "No failures reported. This flight controller sent no pre-arm verdict, so a pass is not confirmed.",
-    "fcReportsFailures": "The flight controller reports pre-arm failures"
+    "fcReportsFailures": "The flight controller reports pre-arm failures",
+    "rcReadingStale": "No current RC reading. Turn the transmitter on and try again.",
+    "trimWriteFailed": "RC{channel}_TRIM not written: {reason}",
+    "trimsPartlyFixed": "{ok} of {total} trims written"
   },
   "indicators": {
     "connectionQuality": "కనెక్షన్ నాణ్యత",
@@ -3645,7 +3786,6 @@
     "no": "కాదు",
     "signal": "సిగ్నల్",
     "rssi": "RSSI",
-    "latency": "లేటెన్సీ",
     "telemetryNone": "డేటా లేదు",
     "telemetryChannels": {
       "attitude": "అటిట్యూడ్",
@@ -3668,7 +3808,9 @@
       "dgps": "DGPS",
       "rtkFloat": "RTK తేలిక",
       "rtk": "RTK స్థిరం"
-    }
+    },
+    "txBufferFree": "TX buffer free",
+    "ekfFlags": "EKF flags"
   },
   "flightInfo": {
     "vehicleInfo": "వాహన సమాచారం",
@@ -3721,7 +3863,8 @@
     "installFailed": "Failed",
     "installUnknown": "Unknown",
     "installVersion": "Build",
-    "failedSteps": "Failed steps"
+    "failedSteps": "Failed steps",
+    "agentLastSeen": "Agent last seen {ago}"
   },
   "flightModes": {
     "stabilize": "స్టెబిలైజ్",
@@ -3833,17 +3976,6 @@
     "environment": "వాతావరణం",
     "mission": "మిషన్",
     "auto": "ఆటో"
-  },
-  "recording": {
-    "rec": "REC",
-    "recording": "రికార్డింగ్",
-    "stopped": "ఆపివేయబడింది",
-    "startRecording": "టెలిమెట్రీ రికార్డింగ్ ప్రారంభించండి",
-    "stopRecording": "రికార్డింగ్ ఆపండి",
-    "stop": "ఆపు",
-    "replay": "రీప్లే",
-    "exportCsv": "చివరి రికార్డింగ్‌ను CSV గా ఎగుమతి చేయండి",
-    "exportTlog": "చివరి రికార్డింగ్‌ను .tlog గా ఎగుమతి చేయండి"
   },
   "fleet": {
     "title": "ఫ్లీట్",
@@ -4057,7 +4189,9 @@
       "outputBitrate": "Output bitrate",
       "emptyDirect": "This node is in direct mode. Set the role to relay or receiver to use distributed reception.",
       "emptyUnset": "Set the ground-station role from the device OLED to begin.",
-      "staleSnapshot": "Snapshot is stale — the receiver stopped reporting; values shown may be old"
+      "staleSnapshot": "Snapshot is stale — the receiver stopped reporting; values shown may be old",
+      "pairingCodeLabel": "Relay join code",
+      "pairingCodeHint": "Enter this code on the relay to join the mesh."
     },
     "mesh": {
       "title": "Mesh",
@@ -4745,7 +4879,8 @@
     },
     "physicalUiPage": {
       "description": "గ్రౌండ్ స్టేషన్ బాక్స్‌పై ఉన్న OLED స్క్రీన్ మరియు నాలుగు ముందు బటన్‌ల ప్రత్యక్ష ప్రివ్యూ. Bluetooth పరికరాలను కూడా ఇక్కడే జత చేయండి."
-    }
+    },
+    "demoReadOnly": "Demo mode is read-only: this change is not sent to the sample fleet."
   },
   "toast": {
     "mesh": {
@@ -4863,9 +4998,12 @@
         "autoUpdateHint": "Edit via the ados plugin auto-update CLI on the drone.",
         "pinnedVersionLabel": "Pin to version",
         "pinnedVersionAuto": "Auto (latest)",
-        "lastChecked": "Last checked {time}",
-        "lastCheckedNever": "Never checked",
-        "close": "Close"
+        "close": "Close",
+        "unknown": "Unknown",
+        "on": "On",
+        "off": "Off",
+        "pinned": "Pinned",
+        "lastCheckedLabel": "Last registry check"
       }
     }
   },
@@ -5447,10 +5585,6 @@
       }
     }
   },
-  "pairing": {
-    "codeExpiresIn": "Code expires in {time}",
-    "codeExpired": "Code expired"
-  },
   "groundStationOverview": {
     "mesh": {
       "title": "Mesh",
@@ -5519,7 +5653,8 @@
       "title": "Downlink video",
       "live": "Live",
       "connecting": "Connecting",
-      "noSignal": "No downlink"
+      "noSignal": "No downlink",
+      "ready": "Ready"
     },
     "carriedDrones": {
       "title": "Carried drones",
@@ -5662,7 +5797,6 @@
       },
       "busHealthGauges": {
         "title": "బస్ ఆరోగ్యం",
-        "busLoad": "బస్ లోడ్",
         "framesPerSec": "ఫ్రేమ్‌లు/సె",
         "errorsPerSec": "లోపాలు/సె",
         "busOffEvents": "Bus-off ఈవెంట్‌లు",
@@ -5688,9 +5822,9 @@
       "bitrate": "బిట్‌రేట్",
       "nodes": "Nodes",
       "fps": "fps",
-      "busLoad": "బస్ లోడ్",
       "slcanActive": "క్రియాశీలం",
-      "slcanInactive": "నిష్క్రియం"
+      "slcanInactive": "నిష్క్రియం",
+      "slcanRoute": "route: CAN{port}"
     },
     "busSetup": {
       "title": "బస్ సెటప్",
@@ -5705,8 +5839,7 @@
       "dirty": "సేవ్ చేయని మార్పులు",
       "rebootRequired": "రీబూట్ అవసరం",
       "rebootFc": "FC రీబూట్",
-      "rebootSent": "రీబూట్ ఆదేశం పంపబడింది, FC మళ్లీ కనెక్ట్ అవుతోంది",
-      "rebootFailed": "రీబూట్ ఆదేశం విఫలమైంది, మళ్లీ ప్రయత్నించండి లేదా పవర్ సైకిల్ చేయండి",
+      "rebootFailed": "FC did not accept the reboot",
       "notConnected": "CAN పారామితులను చదవడానికి లేదా రాయడానికి డ్రోన్‌ను కనెక్ట్ చేయండి.",
       "loading": "ఫ్లైట్ కంట్రోలర్ నుండి పారామితులు లోడ్ అవుతున్నాయి...",
       "param": {
@@ -5772,13 +5905,15 @@
         },
         "CAN_SLCAN_TIMOUT": {
           "label": "SLCAN టైమ్‌అవుట్",
-          "description": "SLCAN సెషన్ స్వయంగా మూసివేయడానికి ముందు సెకన్లు. 0 = స్వయంచాలక మూసివేత లేదు."
+          "description": "Seconds of SLCAN inactivity before the FC reverts the port to MAVLink (0 to 127). 0 = never."
         },
-        "CAN_SLCAN_OVRIDE": {
-          "label": "SLCAN ఓవర్‌రైడ్",
-          "description": "క్రియాశీలంగా ఉన్నప్పుడు, FC ఉపయోగిస్తున్నప్పటికీ SLCAN బస్‌ను నియంత్రణలోకి తీసుకుంటుంది."
+        "CAN_SLCAN_SDELAY": {
+          "label": "SLCAN start delay",
+          "description": "Seconds to wait after boot before SLCAN starts on the selected serial port."
         }
-      }
+      },
+      "rebootAccepted": "FC accepted the reboot, reconnecting",
+      "slcanNeedsUsb": "SLCAN needs a direct USB (WebSerial) connection to the FC."
     },
     "nodeBrowser": {
       "title": "గుర్తించబడిన DroneCAN nodes",
@@ -5797,8 +5932,11 @@
         "swVersion": "SW",
         "state": "మోడ్",
         "uptime": "అప్‌టైమ్",
-        "health": "ఆరోగ్యం"
-      }
+        "health": "ఆరోగ్యం",
+        "lastSeen": "Last seen"
+      },
+      "online": "online",
+      "secondsAgo": "{seconds}s ago"
     },
     "busMonitor": {
       "title": "బస్ మానిటర్",
@@ -5837,7 +5975,6 @@
     },
     "diagnostics": {
       "title": "బస్ నిర్ధారణ",
-      "busLoad": "బస్ లోడ్",
       "framesPerSec": "ఫ్రేమ్‌లు/సె",
       "errorsPerSec": "లోపాలు/సె",
       "busOffEvents": "Bus-off ఈవెంట్‌లు",
@@ -5874,8 +6011,9 @@
       "conflictScan": {
         "title": "Node ID వైరుధ్య స్కానర్",
         "button": "స్కాన్",
-        "noConflicts": "ఫలితం: వైరుధ్యం లేదు",
-        "conflictDetected": "ఫలితం: విభిన్న UID లతో ID {first} ని క్లెయిమ్ చేస్తున్న {count} node"
+        "noConflicts": "No conflicts on {count} responding node(s)",
+        "conflictDetected": "{count} node ID(s) claimed by more than one node: {ids}",
+        "noResponse": "No response from node ID(s) {ids}; not checked"
       },
       "escSweep": {
         "title": "ESC RawCommand స్వీప్",
@@ -5890,7 +6028,8 @@
         "safetyTitle": "ప్రాప్‌లు తీసివేయబడ్డాయి, మోటార్‌లు బెంచ్‌లో మాత్రమే",
         "safetyMessage": "ESC RawCommand మోటార్ ఔట్‌పుట్‌ను నేరుగా నడుపుతుంది. కొనసాగడానికి ముందు ప్రాప్‌లు తీసివేయబడ్డాయని మరియు మోటార్‌లు బెంచ్‌కు బిగించబడ్డాయని నిర్ధారించండి.",
         "safetyConfirm": "స్వీప్ నడుపు",
-        "pendingMessage": "క్లయింట్ కనెక్ట్ కాలేదు."
+        "pendingMessage": "క్లయింట్ కనెక్ట్ కాలేదు.",
+        "armedRefused": "Disarm the vehicle before running an ESC sweep."
       },
       "gpsFix": {
         "title": "GPS ఫిక్స్ స్నాప్‌షాట్",
@@ -5901,8 +6040,9 @@
         "timeOnly": "సమయం మాత్రమే",
         "noFix": "ఫిక్స్ లేదు",
         "sats": "శాట్‌లు",
-        "hdop": "HDOP",
-        "latLonAlt": "అక్షాంశ/రేఖాంశ/ఎత్తు"
+        "latLonAlt": "అక్షాంశ/రేఖాంశ/ఎత్తు",
+        "pdop": "PDOP",
+        "hdop": "HDOP"
       },
       "compass": {
         "title": "కంపాస్ ముడి స్ట్రీమ్",
@@ -5926,14 +6066,6 @@
     }
   },
   "linkUp": {
-    "no-connection": {
-      "title": "ఏ డ్రోన్‌లూ కనెక్ట్ కాలేదు",
-      "body": "నేరుగా ఎగరవేయడానికి ఫ్లైట్ కంట్రోలర్‌ను USB లేదా మీ నెట్‌వర్క్‌కు కనెక్ట్ చేయండి, లేదా వీడియో, స్క్రిప్ట్‌లు, దూర-శ్రేణి లింక్‌లను జోడించడానికి ఒక కంపానియన్ కంప్యూటర్‌ను జత చేయండి."
-    },
-    "locked": {
-      "title": "{surface} అన్‌లాక్ చేయడానికి ఒక కంపానియన్ కంప్యూటర్‌ను జోడించండి",
-      "body": "ఈ డ్రోన్ ఫ్లైట్ కంట్రోలర్ ద్వారా మాత్రమే కనెక్ట్ అయింది. HD వీడియో స్ట్రీమ్ చేయడానికి, స్క్రిప్ట్‌లు రన్ చేయడానికి, ప్లగిన్‌లు జోడించడానికి, 4G ద్వారా డ్రోన్‌ను చేరుకోవడానికి ఒక కంపానియన్ కంప్యూటర్‌ను, ADOS ఏజెంట్ నడుపుతున్న Raspberry Pi వంటి చిన్న బోర్డును, జత చేయండి."
-    },
     "no-fc-direct": {
       "title": "ఫ్లైట్ కంట్రోలర్ కనెక్ట్ కాలేదు",
       "body": "ఈ డ్రోన్ నుండి లైవ్ డేటా చదవడానికి ఫ్లైట్ కంట్రోలర్‌ను కనెక్ట్ చేయండి. అది మాట్లాడటం మొదలుపెట్టగానే పారామీటర్ ట్రీ, క్యాలిబ్రేషన్, కాన్ఫిగరేషన్ లోడ్ అవుతాయి. మీరు కనెక్ట్ చేసే వరకు ఏదీ రాయబడదు."
@@ -5942,17 +6074,9 @@
       "title": "ఏజెంట్ ఏ ఫ్లైట్ కంట్రోలర్‌ను గుర్తించలేదు",
       "body": "కంపానియన్ కంప్యూటర్ ఆన్‌లైన్‌లో ఉంది కానీ దాని సీరియల్ పోర్ట్‌లపై ఏ ఆటోపైలట్‌నూ చూడలేదు. ఫ్లైట్ కంట్రోలర్‌కు పవర్ ఉందని, బోర్డుకు వైరింగ్ చేయబడిందని తనిఖీ చేయండి."
     },
-    "fc-unverified": {
-      "title": "ఫ్లైట్ కంట్రోలర్ లింక్ ధృవీకరించబడలేదు",
-      "body": "ఏజెంట్ {baud} వద్ద {port} ను నివేదిస్తోంది కానీ ఆటోపైలట్ నుండి ఇంకా ఏదీ వినలేదు. అది బూట్ అవుతూ ఉండవచ్చు లేదా వేరే బాడ్ రేటుకు సెట్ చేయబడి ఉండవచ్చు."
-    },
     "agent-offline": {
       "title": "ఏజెంట్ ఆఫ్‌లైన్, హార్ట్‌బీట్ లేదు",
       "body": "చివరి అప్‌డేట్ {ago}. చూపబడిన రీడింగ్‌లు ఏజెంట్ చివరిగా నివేదించినవి. పవర్ లేదా నెట్‌వర్క్ డౌన్ అయి ఉండవచ్చు."
-    },
-    "agent-stale": {
-      "title": "ఏజెంట్ ఫీడ్ పాజ్ చేయబడింది",
-      "body": "{ago} నుండి తాజా హార్ట్‌బీట్ లేదు. చూపబడిన విలువలు ఏజెంట్ చివరిగా నివేదించినవి, తదుపరి అప్‌డేట్‌తో తిరిగి మొదలవుతాయి."
     },
     "no-camera": {
       "title": "ఏ కెమెరా గుర్తించబడలేదు",
@@ -5964,18 +6088,6 @@
       "recovering": {
         "title": "Recovering camera…"
       }
-    },
-    "no-npu": {
-      "title": "ఏ AI యాక్సిలరేటర్ కనుగొనబడలేదు",
-      "body": "ఆన్-డివైస్ గుర్తింపుకు NPU-తరగతి కంప్యూట్ మాడ్యూల్ అవసరం. ఈ బోర్డు ఏదీ లేదని నివేదిస్తుంది, కాబట్టి విజన్ ఇంజిన్ ఆఫ్‌లో ఉంటుంది."
-    },
-    "no-radio": {
-      "title": "దూర-శ్రేణి రేడియో లేదు",
-      "body": "ఈ ఏజెంట్‌కు మద్దతు ఉన్న WFB-ng అడాప్టర్ లేదు. విస్తరించిన శ్రేణి డేటాలింక్‌లు, లైవ్ సిగ్నల్ స్టాట్‌లను అన్‌లాక్ చేయడానికి ఒకదాన్ని జోడించండి."
-    },
-    "no-peripherals": {
-      "title": "ఏ పెరిఫెరల్స్ కనుగొనబడలేదు",
-      "body": "స్కాన్ USB, CSI, I2C లను తనిఖీ చేసింది, ఏదీ జతచేయబడి లేదని తేలింది. ఒక సెన్సార్, కెమెరా లేదా మోడెమ్‌ను కనెక్ట్ చేసి మళ్ళీ స్కాన్ చేయండి."
     },
     "no-flights": {
       "title": "ఇంకా ఏ ఫ్లైట్‌లూ రికార్డ్ కాలేదు",
@@ -5989,19 +6101,9 @@
       "connectFc": "ఫ్లైట్ కంట్రోలర్‌ను కనెక్ట్ చేయండి",
       "pairNode": "ఒక కంపానియన్ కంప్యూటర్‌ను జత చేయండి",
       "reconnect": "మళ్ళీ కనెక్ట్",
-      "retry": "మళ్ళీ ప్రయత్నించండి",
-      "rescan": "పెరిఫెరల్స్‌ను మళ్ళీ స్కాన్ చేయండి",
       "pairDifferent": "వేరే నోడ్‌ను జత చేయండి",
       "rePair": "Re-pair node",
       "removeNode": "Remove node"
-    },
-    "surface": {
-      "video": "HD వీడియో",
-      "vision": "విజన్",
-      "plugins": "ప్లగిన్‌లు",
-      "system": "సిస్టమ్ మానిటర్",
-      "radio": "దూర-శ్రేణి రేడియో",
-      "cellular": "4G టెలిమెట్రీ"
     },
     "stalePaused": {
       "chip": "డేటా పాజ్ చేయబడింది",
@@ -6057,7 +6159,9 @@
     "pushedWindows": "Exported windows",
     "pushedCloudBadge": "Cloud",
     "pushedDownload": "Download",
-    "pushedDownloadFailed": "Could not get a download link"
+    "pushedDownloadFailed": "Could not get a download link",
+    "pushPending": "Push requested. The cloud export has not confirmed yet.",
+    "connecting": "Connecting to this node..."
   },
   "operatingRegion": {
     "title": "Operating region",
@@ -6082,7 +6186,9 @@
     "applyFailed": "Could not update the operating region.",
     "applyHintUnrestricted": "The radio transmits on the configured channel without a pinned region. The agent re-reads this on its next restart.",
     "applyHintRegion": "Pinning a region enables the strict regulatory gate and the region’s legal power limit. The agent re-reads this on its next restart.",
-    "readOnlyNoAgent": "No connection path to this node — connect or pair it to change its operating region."
+    "readOnlyNoAgent": "No connection path to this node — connect or pair it to change its operating region.",
+    "postureUnknown": "Posture unknown",
+    "liveUnknown": "Not reported by this node yet."
   },
   "cockpit": {
     "noDrone": "No drone",
@@ -6111,8 +6217,7 @@
       "gpsNoFix": "NO FIX",
       "gpsRtk": "RTK / {sats}",
       "dist": "DIST",
-      "thr": "THR",
-      "eta": "ETA"
+      "thr": "THR"
     },
     "rec": "REC",
     "recStop": "Stop",
@@ -6301,6 +6406,10 @@
       "aimPrompt": "Aim to select a skill",
       "releaseToFire": "Release to fire",
       "highlighted": "{label} selected"
+    },
+    "flyHere": {
+      "label": "Fly Here",
+      "effect": "Flies to the chosen map point at the set altitude"
     }
   },
   "skillBindings": {
@@ -6389,7 +6498,10 @@
     "zoneBottomLeft": "Bottom left",
     "zoneBottomCenter": "Bottom center",
     "zoneBottomRight": "Bottom right",
-    "zoneFull": "Full"
+    "zoneFull": "Full",
+    "reservedButton": "Button {button} is reserved by the cockpit.",
+    "resetConfirmTitle": "Reset bindings?",
+    "resetConfirmMessage": "Replace every slot in \"{name}\" with the factory bindings. Its layout is kept."
   },
   "atlas": {
     "viewerError": "Could not load the {what} world model.",
@@ -6547,7 +6659,9 @@
       "profileLawnmower": "Lawnmower",
       "profileFreeform": "Freeform",
       "profileInspection": "Inspection",
-      "reconstructorUnreachable": "Compute node unreachable. Reconstruction paused."
+      "reconstructorUnreachable": "Compute node unreachable. Reconstruction paused.",
+      "reqReadinessUnknown": "Not yet reported by the drone",
+      "startBlockedReadinessUnknown": "Waiting for the drone to report its capture readiness"
     },
     "reconstructQuality": {
       "label": "Detail level",
@@ -6606,7 +6720,15 @@
     "forgeRetry": "Run again",
     "forgeRetryQueued": "Job re-queued.",
     "forgeRetryFailed": "The compute node refused the re-run.",
-    "forgeCancelFailed": "The compute node did not cancel that job."
+    "forgeCancelFailed": "The compute node did not cancel that job.",
+    "streamUnknown": "Stream state not reported",
+    "utilizationNotReported": "Utilization not reported",
+    "forgeOutputsLoading": "Loading outputs…",
+    "forgeOutputsFailed": "Could not read this job's outputs from the compute node.",
+    "forgeOutputsRetry": "Retry",
+    "relayUnreachable": "Cannot reach the ground station to read its Atlas relay.",
+    "relayChecking": "Checking the Atlas relay…",
+    "forgeNoViewableArtifact": "This job's outputs include no artifact these viewers can show."
   },
   "workstation": {
     "rail": {
@@ -6705,7 +6827,8 @@
     "label": "లేబుల్",
     "note": "గమనిక",
     "remove": "ఆసక్తికర ప్రదేశాన్ని తీసివేయండి",
-    "clear": "అన్ని ఆసక్తికర ప్రదేశాలను తొలగించండి"
+    "clear": "అన్ని ఆసక్తికర ప్రదేశాలను తొలగించండి",
+    "clearAllConfirm": "Delete all {count} points of interest? Undo restores them."
   },
   "cockpitQuickSettings": {
     "close": "Close",
@@ -6827,7 +6950,9 @@
         "denied": "Denied",
         "operator_absent": "No operator"
       },
-      "selfReported": "Recorded by your connector, not an independent log. The full record is on the machine running it."
+      "selfReported": "Recorded by your connector, not an independent log. The full record is on the machine running it.",
+      "loading": "Loading activity…",
+      "unavailable": "Activity log unavailable."
     },
     "tools": {
       "title": "Tools",
@@ -6883,13 +7008,14 @@
         "agent_mode_only": "agent-mode (LAN) only",
         "node_not_allowed": "node not in allow-list"
       },
-      "capabilityNote": "A capability check, not a live call. Reach is shown for a LAN (agent-mode) connection with flight enforcement off; a fleet-mode connection additionally hides agent-only tools.",
       "revokedNote": "This credential is revoked; it can no longer call any tool.",
       "allowedNodes": "Allowed nodes",
       "allNodes": "All nodes",
       "expires": "Expires",
       "never": "Never",
-      "lastUsedLabel": "Last used"
+      "lastUsedLabel": "Last used",
+      "expiredNote": "This credential has expired; it can no longer call any tool.",
+      "capabilityNote": "A capability check, not a live call. A machine credential connects through the fleet relay, so agent-only tools are not reachable with it; reach is shown with flight enforcement off."
     },
     "plugins": {
       "title": "Plugins",
@@ -6955,7 +7081,8 @@
         "savePath": "Save it to {path}, then restrict it (chmod 600) — it holds your drones' pairing keys.",
         "allBody": "Run this one command. Every drone's address and key rides inside it — there is no file to save:",
         "fileAlt": "Prefer a file? (very large fleets / a saved setup)",
-        "fileBody": "Download the fleet file, save it to the path below, then use this command instead:"
+        "fileBody": "Download the fleet file, save it to the path below, then use this command instead:",
+        "jsonSecretNote": "This .mcp.json reads {name} from your environment, so the file holds no secret and is safe to commit. Set it in your shell with the line below, and keep that value out of shared source: it holds drone pairing keys."
       },
       "verify": {
         "title": "Check the connection",
@@ -7389,5 +7516,19 @@
       "device": "పరికరం",
       "compute": "కంప్యూట్"
     }
+  },
+  "changelog": {
+    "reactionFailed": "Could not save your reaction. Sign in again and retry."
+  },
+  "desktopUpdate": {
+    "available": "Version {version} is available.",
+    "manualOnly": "This build cannot install updates itself.",
+    "download": "Download",
+    "openReleases": "Open releases",
+    "downloading": "Downloading version {version}…",
+    "ready": "Version {version} is downloaded. Restart to install it.",
+    "install": "Restart and install",
+    "failed": "Update failed: {message}",
+    "dismiss": "Dismiss"
   }
 }

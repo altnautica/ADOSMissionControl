@@ -17,6 +17,8 @@
 
 import dynamic from "next/dynamic";
 import { useAutoReconnect } from "@/hooks/use-auto-reconnect";
+import { useSettingsStore } from "@/stores/settings-store";
+import { DemoResidueSweep } from "./DemoResidueSweep";
 import { AgentMavlinkBridge } from "@/components/command/AgentMavlinkBridge";
 import { AgentBridges } from "@/components/command/AgentBridges";
 import { CloudDroneBridge } from "@/components/dashboard/CloudDroneBridge";
@@ -30,8 +32,9 @@ import { FleetProjectionBridge } from "@/components/dashboard/FleetProjectionBri
  * protocol, the iNav mock and a 1427-line parameter table. A static import
  * here put every byte of it in the shared chunk of every production page,
  * for a feature gated behind a persisted settings boolean that is off by
- * default. `next/dynamic` with `ssr: false` moves it to its own chunk,
- * fetched only when demo mode is actually on.
+ * default. `next/dynamic` with `ssr: false` moves it to its own chunk, and it
+ * is rendered only when demo mode is on, so the chunk is fetched only then.
+ * The residue sweep that must run when demo is OFF carries no mock imports.
  */
 const DemoProvider = dynamic(
   () => import("./DemoProvider").then((m) => m.DemoProvider),
@@ -40,9 +43,12 @@ const DemoProvider = dynamic(
 
 export function ShellBridges() {
   useAutoReconnect();
+  const demoMode = useSettingsStore((s) => s.demoMode);
+  const settingsHydrated = useSettingsStore((s) => s._hasHydrated);
   return (
     <>
-      <DemoProvider />
+      <DemoResidueSweep />
+      {settingsHydrated && demoMode ? <DemoProvider /> : null}
       {/* Owns the FC link and persists across selection changes. */}
       <AgentMavlinkBridge />
       <AgentBridges />

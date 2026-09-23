@@ -42,6 +42,7 @@ vi.mock("cesium", () => {
 });
 
 import type { TerrainProvider, Cartesian3 } from "cesium";
+import { sampleTerrainMostDetailed } from "cesium";
 import type { Waypoint } from "@/lib/types";
 import { resolveAGLToAbsolute } from "@/lib/terrain-utils";
 import { mslToEllipsoidal, loadGeoidGrid } from "@/lib/terrain/geoid";
@@ -55,6 +56,9 @@ const MISSION: Waypoint[] = [
   { id: "ridge", lat: 12.0009, lon: 77.0, alt: 50 },
 ];
 
+/** Home at the launch point, on the 100 m ground. */
+const LAUNCH = { lat: 12.0, lon: 77.0 };
+
 beforeAll(async () => {
   vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false }) as Response));
   await loadGeoidGrid();
@@ -66,25 +70,48 @@ afterAll(() => {
 
 describe("resolveAGLToAbsolute default frame", () => {
   it("follows the terrain for a frameless waypoint when the planner default is terrain", async () => {
-    const result = await resolveAGLToAbsolute(MISSION, provider, "terrain");
+    const result = await resolveAGLToAbsolute(MISSION, provider, "terrain", LAUNCH);
     expect(result.waypointIndices).toEqual([0, 1]);
     // 50 m above the 300 m ground below it, not 50 m above the 100 m launch point.
     expect(heightOf(result.positions[1])).toBeCloseTo(350, 6);
   });
 
   it("places a frameless waypoint at its MSL height when the planner default is absolute", async () => {
-    const result = await resolveAGLToAbsolute(MISSION, provider, "absolute");
+    const result = await resolveAGLToAbsolute(MISSION, provider, "absolute", LAUNCH);
     expect(heightOf(result.positions[1])).toBeCloseTo(mslToEllipsoidal(50, 12.0009, 77.0), 6);
   });
 
   it("measures a frameless waypoint from home when the planner default is relative", async () => {
-    const result = await resolveAGLToAbsolute(MISSION, provider, "relative");
+    const result = await resolveAGLToAbsolute(MISSION, provider, "relative", LAUNCH);
     expect(heightOf(result.positions[1])).toBeCloseTo(150, 6);
   });
 
   it("keeps a waypoint's own frame over the planner default", async () => {
     const own: Waypoint[] = [MISSION[0], { ...MISSION[1], frame: "relative" }];
-    const result = await resolveAGLToAbsolute(own, provider, "terrain");
+    const result = await resolveAGLToAbsolute(own, provider, "terrain", LAUNCH);
     expect(heightOf(result.positions[1])).toBeCloseTo(150, 6);
+  });
+
+  it("measures relative altitude from home, not from the first waypoint's ground", async () => {
+    // The mission starts over the 300 m ridge; home is on the 100 m ground.
+    const fromRidge: Waypoint[] = [
+      { id: "r1", lat: 12.0009, lon: 77.0, alt: 50 },
+      { id: "r2", lat: 12.001, lon: 77.0, alt: 50 },
+    ];
+    const result = await resolveAGLToAbsolute(fromRidge, provider, "relative", LAUNCH);
+    expect(result.homeTerrainHeight).toBe(100);
+    expect(heightOf(result.positions[0])).toBeCloseTo(150, 6);
+  });
+
+  it("fails the resolve when home has no terrain sample instead of using 0", async () => {
+    vi.mocked(sampleTerrainMostDetailed).mockImplementationOnce(async (_p, cartos) =>
+      cartos.map((c, i) => {
+        c.height = i === cartos.length - 1 ? Number.NaN : 100;
+        return c;
+      }),
+    );
+    await expect(resolveAGLToAbsolute(MISSION, provider, "relative", LAUNCH)).rejects.toThrow(
+      /no height/,
+    );
   });
 });

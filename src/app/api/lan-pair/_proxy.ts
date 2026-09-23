@@ -133,10 +133,14 @@ export async function readJsonEnvelope(
   return { payload: parsed as Record<string, unknown> };
 }
 
-/** Gate and parse a multipart envelope (the model upload): same origin and
- * `multipart/form-data`. */
+/** Gate and parse a multipart envelope (the model upload): same origin,
+ * `multipart/form-data`, and a declared `Content-Length` no larger than
+ * `maxBytes`. The length is required so the body is bounded before it is
+ * buffered: the HTTP parser never delivers more bytes than it declares, and a
+ * chunked body (no length) is refused outright. */
 export async function readFormEnvelope(
   req: Request,
+  maxBytes: number,
 ): Promise<{ form: FormData } | Refusal> {
   const cross = checkSameOrigin(req);
   if (cross) return cross;
@@ -145,6 +149,17 @@ export async function readFormEnvelope(
       415,
       "unsupported_media_type",
       "Content-Type must be multipart/form-data",
+    );
+  }
+  const declared = req.headers.get("content-length");
+  if (declared === null || !/^\d+$/.test(declared.trim())) {
+    return refuse(411, "length_required", "Content-Length is required");
+  }
+  if (Number(declared) > maxBytes) {
+    return refuse(
+      413,
+      "body_too_large",
+      `The upload exceeds the ${Math.floor(maxBytes / (1024 * 1024))} MiB limit`,
     );
   }
   try {

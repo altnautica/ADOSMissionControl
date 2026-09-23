@@ -28,6 +28,14 @@ export interface Waypoint {
    */
   frame?: AltitudeFrame;
   /**
+   * The vehicle takes this item's position at run time, not from lat/lon: an
+   * RTL, TAKEOFF, LAND or LOITER downloaded with 0,0 ("current position"). lat/lon then hold a stand-in (the previous waypoint, else home,
+   * else the next positioned waypoint) so the map, simulation and validator
+   * never treat 0°N 0°E as a real point; the item goes back on the wire as 0,0.
+   * Moving the waypoint gives it a real position and clears the flag.
+   */
+  inheritsPosition?: boolean;
+  /**
    * Ordered actions performed at (or on the way from) this navigation waypoint.
    * Actions are non-navigation MAVLink commands (set-speed, yaw, camera trigger,
    * jump, etc.) that the flight controller executes in-place; on the wire they

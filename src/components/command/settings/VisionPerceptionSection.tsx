@@ -23,8 +23,10 @@ import { Layers, Cpu } from "lucide-react";
 
 import type { NodeProfile } from "@/components/dashboard/node-detail/surface-types";
 import type { SelectOption } from "@/components/ui/select";
-import { useAgentConnectionStore } from "@/stores/agent-connection-store";
-import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
+import {
+  selectDeviceCapabilities,
+  useAgentCapabilitiesStore,
+} from "@/stores/agent-capabilities-store";
 import { useLocalNodesStore } from "@/stores/local-nodes-store";
 import { useComputeStore } from "@/stores/compute-store";
 import { useComputeLocalState } from "@/hooks/use-compute-local-state";
@@ -32,10 +34,15 @@ import { resolveVisionClient } from "@/lib/vision/resolve-vision-client";
 import { nodeToOffloadAddr } from "@/lib/vision/offload-target";
 import { ModelPicker } from "@/components/vision/ModelPicker";
 import { ConfigSelectField } from "./ConfigFields";
-import { CARD } from "./Section";
+import { CARD, InfoNote, ReadRow } from "./Section";
+import { useNodeDirectAgent } from "./use-node-direct-agent";
 
 interface SectionProps {
   droneId: string;
+  /** The node this page is rendered for. The vision client, the model list
+   * and the live offload target resolve from THIS node, never the focused
+   * connection. */
+  nodeDeviceId: string | null;
   profile: NodeProfile;
   config: Record<string, unknown> | null;
   readOnly: boolean;
@@ -57,37 +64,29 @@ function useEnableOptions(): SelectOption[] {
   );
 }
 
-/** A labelled read-only value row (used for the drone's active target and the
- * workstation GPU facts). */
-function ReadRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-baseline justify-between gap-3">
-      <span className="text-[11px] text-text-tertiary">{label}</span>
-      <span className="shrink-0 font-mono text-xs text-text-primary">{value}</span>
-    </div>
-  );
-}
-
-function InfoNote({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="rounded border border-border-default/60 bg-bg-tertiary/40 px-3 py-2 text-[11px] text-text-tertiary">
-      {children}
-    </div>
+/** This node's LAN vision client, or null when no connection attached to it
+ * serves the model routes (listing / download / upload are not proxied). */
+function useNodeVisionClient(nodeDeviceId: string | null) {
+  const agent = useNodeDirectAgent(nodeDeviceId);
+  return useMemo(
+    () => (agent ? resolveVisionClient(agent.agentUrl, agent.apiKey) : null),
+    [agent],
   );
 }
 
 /** Drone detector subsection: the engine-wide model this node runs, through
- * the shared model picker. The picker needs the LAN vision client (model
- * listing / download / upload are not proxied); without one this states the
- * requirement instead of rendering a dead picker. */
-function DroneDetector({ droneId }: { droneId: string }) {
+ * the shared model picker. The picker acts on the attached connection, so it
+ * renders only when that connection belongs to THIS node; otherwise this
+ * states the requirement instead of rendering another node's models. */
+function DroneDetector({
+  droneId,
+  nodeDeviceId,
+}: {
+  droneId: string;
+  nodeDeviceId: string | null;
+}) {
   const t = useTranslations("nodeSettings");
-  const agentUrl = useAgentConnectionStore((s) => s.agentUrl);
-  const apiKey = useAgentConnectionStore((s) => s.apiKey);
-  const client = useMemo(
-    () => resolveVisionClient(agentUrl, apiKey),
-    [agentUrl, apiKey],
-  );
+  const client = useNodeVisionClient(nodeDeviceId);
 
   return (
     <div className="space-y-2">
@@ -109,6 +108,7 @@ function DroneDetector({ droneId }: { droneId: string }) {
 /** Drone half: where this node offloads perception, and which workstation it
  * pins (empty = auto-discover any serving workstation on the LAN). */
 function DroneOffloadClient({
+  nodeDeviceId,
   config,
   readOnly,
   setValue,
@@ -117,7 +117,7 @@ function DroneOffloadClient({
   const enableOptions = useEnableOptions();
   const nodes = useLocalNodesStore((s) => s.nodes);
   const activeTarget = useAgentCapabilitiesStore(
-    (s) => s.perceptionOffloadTarget,
+    (s) => selectDeviceCapabilities(s, nodeDeviceId)?.perceptionOffloadTarget,
   );
 
   const workstations = useMemo(
@@ -189,11 +189,15 @@ function DroneOffloadClient({
 
 /** Workstation half: whether this node serves offloaded perception, which
  * detector it runs, and its live GPU facts (read-only, real values only). */
-function WorkstationServing({ droneId, config, readOnly, setValue }: HalfProps) {
+function WorkstationServing({
+  droneId,
+  nodeDeviceId,
+  config,
+  readOnly,
+  setValue,
+}: HalfProps) {
   const t = useTranslations("nodeSettings");
   const enableOptions = useEnableOptions();
-  const agentUrl = useAgentConnectionStore((s) => s.agentUrl);
-  const apiKey = useAgentConnectionStore((s) => s.apiKey);
 
   // Poll this workstation's compute status so the GPU rows below reflect the
   // live node (the same producer the Overview uses). No-op off local-first.
@@ -202,11 +206,9 @@ function WorkstationServing({ droneId, config, readOnly, setValue }: HalfProps) 
 
   // Detector options — the workstation's own vision registry (installed +
   // custom + downloadable), deduped by id. Empty on an agent that does not
-  // serve the model endpoint; the picker then shows only the default option.
-  const client = useMemo(
-    () => resolveVisionClient(agentUrl, apiKey),
-    [agentUrl, apiKey],
-  );
+  // serve the model endpoint; a stored model the list lacks still renders as
+  // its raw id (the select adds it) rather than as "Default".
+  const client = useNodeVisionClient(nodeDeviceId);
   const [modelOptions, setModelOptions] = useState<SelectOption[]>([]);
   useEffect(() => {
     // No client ⇒ nothing to fetch; the empty case is derived below (no
@@ -317,6 +319,7 @@ function WorkstationServing({ droneId, config, readOnly, setValue }: HalfProps) 
  * → nothing. */
 export function VisionPerceptionSection({
   droneId,
+  nodeDeviceId,
   profile,
   config,
   readOnly,
@@ -340,7 +343,7 @@ export function VisionPerceptionSection({
       </p>
       {profile === "drone" ? (
         <div className="space-y-4">
-          <DroneDetector droneId={droneId} />
+          <DroneDetector droneId={droneId} nodeDeviceId={nodeDeviceId} />
           <div className="space-y-4 border-t border-border-default pt-3">
             <div>
               <div className="text-xs text-text-secondary">
@@ -351,6 +354,7 @@ export function VisionPerceptionSection({
               </p>
             </div>
             <DroneOffloadClient
+              nodeDeviceId={nodeDeviceId}
               config={config}
               readOnly={readOnly}
               setValue={setValue}
@@ -360,6 +364,7 @@ export function VisionPerceptionSection({
       ) : (
         <WorkstationServing
           droneId={droneId}
+          nodeDeviceId={nodeDeviceId}
           config={config}
           readOnly={readOnly}
           setValue={setValue}

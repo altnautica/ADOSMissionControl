@@ -48,7 +48,7 @@ import type {
 } from "@/lib/types/mission";
 import { cmdMap, reverseCmd } from "@/lib/mission-io-formats";
 import { frameToMav, mavToFrame, MAV_FRAME_GLOBAL } from "@/lib/mission/altitude-frame";
-import { isNavCommand, POSITION_BEARING_ACTIONS } from "./command-classes";
+import { isNavCommand, LOCATION_MAV_CMDS, POSITION_BEARING_ACTIONS } from "./command-classes";
 
 // `cmdMap.DO_JUMP` (177) is read inside functions rather than captured at module
 // load, so this module never touches an imported binding at load time — that
@@ -238,7 +238,7 @@ function homeItem(home: HomeSlot): MissionItem {
 }
 
 /** A DO_CHANGE_SPEED item setting the ground speed, throttle unchanged. */
-function speedItem(speed: number, seq: number, frame: number): MissionItem {
+export function speedItem(speed: number, seq: number, frame: number): MissionItem {
   return {
     seq,
     frame,
@@ -282,10 +282,25 @@ function navItem(
     param2: wp.param1 ?? 0,
     param3: wp.param2 ?? 0,
     param4: wp.param3 ?? 0,
-    x: Math.round(wp.lat * 1e7),
-    y: Math.round(wp.lon * 1e7),
+    x: wp.inheritsPosition ? 0 : Math.round(wp.lat * 1e7),
+    y: wp.inheritsPosition ? 0 : Math.round(wp.lon * 1e7),
     z: wp.alt,
   };
+}
+
+/**
+ * Nav commands whose 0,0 location means "the vehicle's position when it gets
+ * here" (ArduPilot and PX4 read a zero location that way). RTL ignores its
+ * location entirely, and ArduPilot stores and returns it as 0,0; an RTL that
+ * does carry coordinates (a file this planner wrote) keeps them so the file
+ * round-trips byte for byte.
+ */
+const ZERO_MEANS_HERE: ReadonlySet<WaypointCommand> = new Set([
+  "RTL", "TAKEOFF", "LAND", "LOITER", "LOITER_TIME", "LOITER_TURNS", "VTOL_TAKEOFF", "VTOL_LAND",
+]);
+
+function inheritsPosition(command: WaypointCommand, item: MissionItem): boolean {
+  return ZERO_MEANS_HERE.has(command) && item.x === 0 && item.y === 0;
 }
 
 /** Encode one attached action item (correct MAVLink parameter slots). */
@@ -366,6 +381,7 @@ function actionItem(
 export function collapseFromItems(
   items: readonly MissionItem[],
   onDropped?: (item: MissionItem) => void,
+  home?: { lat: number; lon: number },
 ): Waypoint[] {
   const waypoints: Waypoint[] = [];
   /** NAV items in wire order, for jump-target resolution. */
@@ -398,10 +414,14 @@ export function collapseFromItems(
       const speed = pendingSpeed ?? carriedSpeed;
       pendingSpeed = undefined;
       carriedSpeed = speed;
+      const inherits = inheritsPosition(command, item);
+      // A stand-in position for an item the vehicle flies "from here".
+      const standIn = inherits ? (current ?? home) : undefined;
       const wp: Waypoint = {
         id: freshId(),
-        lat: item.x / 1e7,
-        lon: item.y / 1e7,
+        lat: standIn ? standIn.lat : item.x / 1e7,
+        lon: standIn ? standIn.lon : item.y / 1e7,
+        ...(inherits ? { inheritsPosition: true } : {}),
         alt: item.z,
         speed,
         command,
@@ -471,6 +491,15 @@ export function collapseFromItems(
     if (isJump) pendingJumps.push({ act: action, targetSeq: item.param1 });
   }
 
+  // A leading position-inheriting item with no previous waypoint and no home
+  // takes the next real position (a TAKEOFF climbs where the mission starts).
+  const firstPositioned = waypoints.find((w) => !w.inheritsPosition);
+  for (const wp of waypoints) {
+    if (!wp.inheritsPosition || wp.lat !== 0 || wp.lon !== 0 || !firstPositioned) continue;
+    wp.lat = firstPositioned.lat;
+    wp.lon = firstPositioned.lon;
+  }
+
   // Second pass: resolve DO_JUMP target seq → owning NAV waypoint id.
   for (const { act, targetSeq } of pendingJumps) {
     const owner = ownerNavId(navSeqToId, targetSeq);
@@ -489,12 +518,13 @@ export function missionCommandName(command: number): string {
 /**
  * True when an item's x/y carry a latitude/longitude (degrees × 1e7 on the
  * wire, plain degrees in a text file). A modelled non-positional action carries
- * MAVLink param5/param6 there instead, unscaled. An unmodelled command keeps
- * the location scaling so a file round trip reproduces it.
+ * MAVLink param5/param6 there instead, unscaled. An unmodelled command is
+ * scaled only when MAVLink defines its param5/param6 as a location.
  */
 export function itemCarriesLocation(command: number): boolean {
   const known: WaypointCommand | undefined = reverseCmd[command];
-  if (known === undefined || isNavCommand(known)) return true;
+  if (known === undefined) return LOCATION_MAV_CMDS.has(command);
+  if (isNavCommand(known)) return true;
   return POSITION_BEARING_ACTIONS.has(known as ActionCommand);
 }
 

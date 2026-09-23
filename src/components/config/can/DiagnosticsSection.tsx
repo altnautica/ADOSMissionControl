@@ -3,8 +3,10 @@
 /**
  * @module DiagnosticsSection
  * @description Bus + per-node DroneCAN diagnostics. The top row shows the
- * live bus load, frames-per-second, errors-per-second, and a bus-off event
- * counter. Below, the per-node table lazy-loads `GetTransportStats` from
+ * frames-per-second and errors-per-second seen on the CAN link, and the
+ * bus-off count as "—" because no transport reports bus-off events yet.
+ * Bus load is not shown: it cannot be derived from decoded-frame counts
+ * without the bus bitrate and every frame on the wire. Below, the per-node table lazy-loads `GetTransportStats` from
  * each known node when its row is expanded. Stats responses are cached for
  * five seconds so the user can poke at the panel without hammering the bus.
  *
@@ -46,21 +48,6 @@ export function DiagnosticsSection({ client = null }: DiagnosticsSectionProps) {
   const nodesMap = useDroneCanNodeStore((s) => s.nodes);
   const nodeVersion = useDroneCanNodeStore((s) => s._version);
 
-  // Bus-off events are surfaced via the frame stream's `error` flag in the
-  // current implementation; the store does not track a separate counter so
-  // we approximate by counting errors over the trailing window. Once the
-  // transport surface adds a hardware bus-off event we plumb it through
-  // here without re-shaping the UI.
-  const busOffEvents = 0;
-  const busLoadPct = useMemo(() => {
-    // Bus load at 1 Mbit/s with ~130 bits per max-DLC frame ≈ 7700 frames/s
-    // is "100% load". Treat the visible fps fraction as a rough indicator;
-    // a future PR can replace this with the real `transport.busLoad()`
-    // reading from the agent-side bridge.
-    const fps = counters.fps;
-    const pct = Math.min(100, Math.round((fps / 7700) * 100));
-    return pct;
-  }, [counters.fps]);
 
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [stats, setStats] = useState<Map<number, NodeStatsEntry>>(new Map());
@@ -149,11 +136,10 @@ export function DiagnosticsSection({ client = null }: DiagnosticsSectionProps) {
   return (
     <div className="space-y-4">
       <Card title={t("title")}>
-        <div className="grid grid-cols-4 gap-3">
-          <Gauge label={t("busLoad")} value={`${busLoadPct}%`} testId="diagnostics-bus-load" />
+        <div className="grid grid-cols-3 gap-3">
           <Gauge label={t("framesPerSec")} value={String(counters.fps)} testId="diagnostics-fps" />
           <Gauge label={t("errorsPerSec")} value={String(counters.errorsPs)} testId="diagnostics-errors-ps" />
-          <Gauge label={t("busOffEvents")} value={String(busOffEvents)} testId="diagnostics-bus-off" />
+          <Gauge label={t("busOffEvents")} value="—" testId="diagnostics-bus-off" />
         </div>
       </Card>
 

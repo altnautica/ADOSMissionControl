@@ -21,6 +21,12 @@ export interface CalTrio {
 
 /** A single decode-side sample read from the RECEIVER's radio snapshot. */
 export interface CalMeasurement {
+  /**
+   * Epoch ms the receiver produced this snapshot, or null when the source
+   * carries no stamp. A sample only scores a cell when it is newer than the
+   * moment that cell's trio finished applying.
+   */
+  sampledAtMs: number | null;
   lossPercent: number | null;
   fecFailed: number | null;
   validRxPacketsPerS: number | null;
@@ -42,8 +48,15 @@ export interface CalCellResult {
 export interface CalConfig {
   grid: CalTrio[];
   settleMs: number;
-  measureMs: number;
+  /** Distinct receiver snapshots, each newer than the sweep, scored per cell. */
   samples: number;
+  /** How often the receiver snapshot is re-read while waiting for new samples. */
+  pollMs: number;
+  /**
+   * How long after the settle window a cell may wait for `samples` fresh
+   * snapshots. A cell that times out scores link_lost.
+   */
+  sampleTimeoutMs: number;
   lossThresholdPct: number;
 }
 
@@ -54,6 +67,8 @@ export interface CalCallbacks {
   measure: () => Promise<CalMeasurement>;
   /** Injectable sleep (tests pass an instant resolver). */
   sleep: (ms: number) => Promise<void>;
+  /** Injectable epoch-ms clock, on the same timebase as `sampledAtMs`. */
+  now: () => number;
   /** Cooperative abort flag, polled between every async step. */
   signal?: { aborted: boolean };
   /** Per-cell progress callback. */
@@ -61,7 +76,9 @@ export interface CalCallbacks {
 }
 
 // The default sweep grid: the three preset MCS values crossed with the FEC
-// ladder, most-protected first. 3 x 4 = 12 cells (~6 s each → ~75 s).
+// ladder, most-protected first. 3 x 4 = 12 cells. The receiver snapshot is a
+// heartbeat that lands every ~5 s, so two fresh samples take up to ~10 s after
+// the settle window (~2.5 min for the whole grid).
 export const DEFAULT_GRID: CalTrio[] = (() => {
   const mcs = [1, 3, 5];
   const fec: Array<[number, number]> = [
@@ -80,8 +97,9 @@ export const DEFAULT_GRID: CalTrio[] = (() => {
 export const DEFAULT_CAL_CONFIG: CalConfig = {
   grid: DEFAULT_GRID,
   settleMs: 2500,
-  measureMs: 4000,
-  samples: 4,
+  samples: 2,
+  pollMs: 1000,
+  sampleTimeoutMs: 15000,
   lossThresholdPct: 2,
 };
 
@@ -91,6 +109,15 @@ class AbortError extends Error {
     this.name = "AbortError";
   }
 }
+
+const NO_MEASUREMENT: CalMeasurement = {
+  sampledAtMs: null,
+  lossPercent: null,
+  fecFailed: null,
+  validRxPacketsPerS: null,
+  bitrateKbps: null,
+  rssiDbm: null,
+};
 
 /** Mean of the finite numbers in `xs`, or null when none are finite. */
 function meanOf(xs: Array<number | null>): number | null {
@@ -106,7 +133,11 @@ export function averageSamples(samples: CalMeasurement[]): CalMeasurement {
   const fecFailedVals = samples
     .map((s) => s.fecFailed)
     .filter((x): x is number => typeof x === "number" && Number.isFinite(x));
+  const stamps = samples
+    .map((s) => s.sampledAtMs)
+    .filter((x): x is number => typeof x === "number");
   return {
+    sampledAtMs: stamps.length ? Math.max(...stamps) : null,
     lossPercent: meanOf(samples.map((s) => s.lossPercent)),
     fecFailed: fecFailedVals.length ? fecFailedVals.reduce((a, b) => a + b, 0) : null,
     validRxPacketsPerS: meanOf(samples.map((s) => s.validRxPacketsPerS)),
@@ -115,12 +146,16 @@ export function averageSamples(samples: CalMeasurement[]): CalMeasurement {
   };
 }
 
-/** Classify one cell's averaged measurement against the safety constraints. */
+/** Classify one cell's averaged measurement against the safety constraints.
+ *  A null measurement (no fresh sample arrived in time) is link_lost. */
 export function evaluateCell(
   trio: CalTrio,
-  avg: CalMeasurement,
+  avg: CalMeasurement | null,
   lossThresholdPct: number,
 ): CalCellResult {
+  if (avg == null) {
+    return { trio, avg: NO_MEASUREMENT, goodputKbps: null, verdict: "link_lost" };
+  }
   let verdict: CalVerdict;
   if (avg.validRxPacketsPerS == null || avg.validRxPacketsPerS <= 0) {
     verdict = "link_lost";
@@ -183,9 +218,41 @@ export interface CalibrationOutcome {
 }
 
 /**
- * Run the full sweep. For each grid cell: apply the trio, wait `settleMs`, then
- * collect `samples` readings spaced across `measureMs`, average them, classify,
- * and report progress. Returns all cell results plus the recommended pick.
+ * Measure the link after a trio change that finished at `appliedAtMs`: wait
+ * `settleMs`, then poll the receiver until `samples` distinct snapshots stamped
+ * after `appliedAtMs` have arrived, and average them. A snapshot taken before
+ * the change describes the previous trio, so it never counts, and the same
+ * snapshot read twice counts once. Returns null when the samples do not arrive
+ * within `sampleTimeoutMs` (the caller scores that as link_lost).
+ */
+export async function measureAfter(
+  cfg: CalConfig,
+  cb: Pick<CalCallbacks, "measure" | "sleep" | "now" | "signal">,
+  appliedAtMs: number,
+): Promise<CalMeasurement | null> {
+  await cb.sleep(cfg.settleMs);
+  throwIfAborted(cb.signal);
+  const deadline = cb.now() + cfg.sampleTimeoutMs;
+  const seen = new Set<number>();
+  const samples: CalMeasurement[] = [];
+  for (;;) {
+    throwIfAborted(cb.signal);
+    const sample = await cb.measure();
+    const at = sample.sampledAtMs;
+    if (at != null && at > appliedAtMs && !seen.has(at)) {
+      seen.add(at);
+      samples.push(sample);
+      if (samples.length >= cfg.samples) return averageSamples(samples);
+    }
+    if (cb.now() >= deadline) return null;
+    await cb.sleep(cfg.pollMs);
+  }
+}
+
+/**
+ * Run the full sweep. For each grid cell: apply the trio, measure it with
+ * `measureAfter`, classify, and report progress. Returns all cell results plus
+ * the recommended pick.
  *
  * The caller is responsible for restoring the last-good trio on abort/error
  * (this engine only sweeps forward); it re-throws an AbortError when the signal
@@ -197,22 +264,13 @@ export async function runCalibration(
 ): Promise<CalibrationOutcome> {
   const results: CalCellResult[] = [];
   const total = cfg.grid.length;
-  const sampleGap = cfg.samples > 0 ? Math.floor(cfg.measureMs / cfg.samples) : cfg.measureMs;
 
   for (let i = 0; i < cfg.grid.length; i++) {
     const trio = cfg.grid[i];
     throwIfAborted(cb.signal);
     await cb.sweep(trio);
-    await cb.sleep(cfg.settleMs);
-    throwIfAborted(cb.signal);
-
-    const samples: CalMeasurement[] = [];
-    for (let s = 0; s < cfg.samples; s++) {
-      throwIfAborted(cb.signal);
-      samples.push(await cb.measure());
-      if (s < cfg.samples - 1) await cb.sleep(sampleGap);
-    }
-    const cell = evaluateCell(trio, averageSamples(samples), cfg.lossThresholdPct);
+    const avg = await measureAfter(cfg, cb, cb.now());
+    const cell = evaluateCell(trio, avg, cfg.lossThresholdPct);
     results.push(cell);
     cb.onCell?.(i + 1, total, cell);
   }

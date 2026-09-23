@@ -11,8 +11,11 @@ import { screen, fireEvent } from "@testing-library/react";
 import { renderWithIntl } from "../../../../helpers/intl-wrapper";
 import { useDroneManager } from "@/stores/drone-manager";
 
+const { armLock } = vi.hoisted(() => ({
+  armLock: { isArmed: false, isHardBlocked: false, lockMessage: "", hardBlockMessage: "" },
+}));
 vi.mock("@/hooks/use-armed-lock", () => ({
-  useArmedLock: () => ({ isArmed: false, lockMessage: "" }),
+  useArmedLock: () => armLock,
 }));
 
 vi.mock("@/hooks/use-unsaved-guard", () => ({
@@ -32,6 +35,7 @@ import { BusSetupSection } from "@/components/config/can/BusSetupSection";
 
 describe("BusSetupSection", () => {
   beforeEach(() => {
+    Object.assign(armLock, { isArmed: false, isHardBlocked: false, lockMessage: "", hardBlockMessage: "" });
     useDroneManager.setState({
       drones: new Map(),
       selectedDroneId: null,
@@ -58,6 +62,34 @@ describe("BusSetupSection", () => {
     renderWithIntl(<BusSetupSection />);
     expect(screen.getByRole("button", { name: /Save to FC/i })).toBeDefined();
     expect(screen.getByRole("button", { name: /Reload from FC/i })).toBeDefined();
+  });
+
+  function bindUsbDrone() {
+    const mockAdapter = {
+      isConnected: true,
+      getParameter: vi.fn().mockResolvedValue({ value: 0, type: 9, index: 0, count: 0 }),
+      setParameter: vi.fn().mockResolvedValue(undefined),
+    };
+    const mockDrone = { id: "test", name: "Test", protocol: mockAdapter, transport: { type: "webserial" } };
+    useDroneManager.setState({
+      drones: new Map([["test", mockDrone]]),
+      selectedDroneId: "test",
+      getSelectedProtocol: () => mockAdapter,
+      getSelectedDrone: () => mockDrone,
+    } as never);
+  }
+
+  it("blocks SLCAN entry while the vehicle is armed", () => {
+    bindUsbDrone();
+    Object.assign(armLock, {
+      isArmed: true,
+      isHardBlocked: true,
+      hardBlockMessage: "Disarm to use.",
+    });
+    renderWithIntl(<BusSetupSection />);
+    const enterBtn = screen.getByRole("button", { name: /Enter SLCAN mode/i }) as HTMLButtonElement;
+    expect(enterBtn.disabled).toBe(true);
+    expect(screen.getByText("Disarm to use.")).toBeDefined();
   });
 
   it("opens the SLCAN confirm dialog when the entry button is clicked", async () => {

@@ -111,7 +111,9 @@ export const DRONE_SURFACES: SurfaceSpec[] = [
     // flight history is the GCS's own.
     id: "logs",
     labelKey: "dronePanel.logs",
-    render: (ctx) => <LogsTab droneId={ctx.droneId} showFlights />,
+    render: (ctx) => (
+      <LogsTab droneId={ctx.droneId} nodeDeviceId={surfaceNodeDeviceId(ctx)} showFlights />
+    ),
   },
   AGENT_SURFACE,
 ];

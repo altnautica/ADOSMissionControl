@@ -75,3 +75,54 @@ export function boxDistance(a: SmoothBox, b: SmoothBox): number {
     Math.abs(a.height - b.height),
   );
 }
+
+/** One animation step over every tracked box. */
+export interface BoxStep {
+  /** The displayed boxes after this step; the input map itself when nothing moved. */
+  next: Map<string, SmoothBox>;
+  /** Every displayed box sits exactly on its target and no extra box remains. */
+  settled: boolean;
+}
+
+/**
+ * Ease every displayed box toward its target by `alpha`, snap a box within
+ * `epsPx` of its target onto it, add newly tracked boxes at their target and
+ * drop boxes whose track is gone. `displayed` is not mutated. `settled` tells the caller the animation loop
+ * can stop until the targets change.
+ */
+export function advanceBoxes(
+  displayed: Map<string, SmoothBox>,
+  targets: ReadonlyMap<string, SmoothBox>,
+  alpha: number,
+  epsPx: number,
+): BoxStep {
+  const next = new Map(displayed);
+  let changed = false;
+  let settled = true;
+  for (const [key, target] of targets) {
+    const cur = next.get(key);
+    if (!cur) {
+      next.set(key, { ...target });
+      changed = true;
+      continue;
+    }
+    const eased = easeBox(cur, target, alpha);
+    if (boxDistance(eased, target) <= epsPx) {
+      if (boxDistance(cur, target) > 0) {
+        next.set(key, { ...target });
+        changed = true;
+      }
+    } else {
+      next.set(key, eased);
+      changed = true;
+      settled = false;
+    }
+  }
+  for (const key of next.keys()) {
+    if (!targets.has(key)) {
+      next.delete(key);
+      changed = true;
+    }
+  }
+  return { next: changed ? next : displayed, settled };
+}

@@ -180,3 +180,36 @@ describe("device-key routes reject an unauthenticated caller", () => {
     });
   }
 });
+
+// ── registration rate-limit key ──────────────────────────────────────
+
+describe("POST /pairing/register client bucket", () => {
+  const handler = () => routeHandler("/pairing/register", "POST");
+  const body = { deviceId: "d1", pairingCode: "ABC234", apiKey: "k" };
+
+  async function clientKey(headers: HeadersInit): Promise<string> {
+    const { ctx, calls } = ctxReturning({ registered: true });
+    await handler()(ctx, postJson("https://x.invalid/pairing/register", body, headers));
+    return (calls[0].args as { clientKey: string }).clientKey;
+  }
+
+  it("ignores a client-chosen first forwarded hop", async () => {
+    const a = await clientKey({ "x-forwarded-for": "198.51.100.1, 192.0.2.7" });
+    const b = await clientKey({ "x-forwarded-for": "198.51.100.2, 192.0.2.7" });
+    expect(a).toBe(b);
+  });
+
+  it("keys on the edge-set client address when present", async () => {
+    const a = await clientKey({
+      "cf-connecting-ip": "192.0.2.7",
+      "x-forwarded-for": "198.51.100.1, 203.0.113.5",
+    });
+    const b = await clientKey({
+      "cf-connecting-ip": "192.0.2.7",
+      "x-forwarded-for": "198.51.100.2, 203.0.113.6",
+    });
+    const c = await clientKey({ "cf-connecting-ip": "192.0.2.8" });
+    expect(a).toBe(b);
+    expect(a).not.toBe(c);
+  });
+});

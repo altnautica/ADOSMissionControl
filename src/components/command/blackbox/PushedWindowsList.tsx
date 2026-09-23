@@ -19,7 +19,7 @@ import type { LogdWindow } from "@/lib/community-api-logd";
 interface PushedWindowsListProps {
   windows: LogdWindow[];
   /** Resolve a signed download URL for one window, or null when unavailable. */
-  onDownload?: (id: string) => Promise<string | null>;
+  onDownload?: (id: LogdWindow["_id"]) => Promise<string | null>;
 }
 
 function fmtBytes(bytes: number): string {
@@ -41,7 +41,7 @@ export function PushedWindowsList({
   const t = useTranslations("blackbox");
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  async function handleDownload(id: string) {
+  async function handleDownload(id: LogdWindow["_id"]) {
     if (!onDownload) return;
     setBusyId(id);
     try {

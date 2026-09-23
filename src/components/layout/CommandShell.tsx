@@ -12,6 +12,7 @@ import { CommandPalette } from "@/components/shared/command-palette";
 import { FailsafeAlertBanner } from "@/components/flight/FailsafeAlertBanner";
 import { PluginCrashBanner } from "@/components/plugins/PluginCrashBanner";
 import { SlcanModeBanner } from "@/components/shared/SlcanModeBanner";
+import { DesktopUpdateBanner } from "./DesktopUpdateBanner";
 import { useFleetStore } from "@/stores/fleet-store";
 import { useAuthStore } from "@/stores/auth-store";
 import { releaseGrant } from "@/stores/mqtt-control-grant-store";
@@ -21,8 +22,8 @@ import { useUiStore } from "@/stores/ui-store";
 import { SignInModal } from "@/components/auth/SignInModal";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { ConnectDialog } from "@/components/connect/ConnectDialog";
-import { WelcomeModal, DisclaimerGate } from "@/components/onboarding/WelcomeModal";
-import { formatSyncTime } from "@/lib/sync";
+import { WelcomeModal } from "@/components/onboarding/WelcomeModal";
+import { DisclaimerGate } from "@/components/onboarding/DisclaimerGate";
 import { useGcsLocation } from "@/hooks/use-gcs-location";
 import { usePlatform } from "@/hooks/use-platform";
 import { useDisconnectGuard } from "@/hooks/use-disconnect-guard";
@@ -44,6 +45,7 @@ import { SwarmBeaconBridge } from "@/components/command/SwarmBeaconBridge";
 import { registerBuiltins, initSkillSubscriptions } from "@/lib/skills";
 import { SkillConfirmHost } from "@/components/cockpit/SkillConfirmHost";
 import { ChecklistAutoRunner } from "@/components/flight/ChecklistAutoRunner";
+import { useSkillInput } from "@/hooks/use-skill-input";
 // Single operator-confirm host for safety-critical plugin RPCs
 // (command.send / mission.write). Mounted shell-wide so any plugin iframe can
 // raise a confirm; when absent, requestPluginConfirm denies (safe default).
@@ -66,7 +68,6 @@ import { McpAutoNavBridge } from "@/components/mcp/watch/McpAutoNavBridge";
 function ConvexUserMenu() {
   const { signOut } = useAuthActions();
   const user = useAuthStore((s) => s.user);
-  const lastSyncedAt = useAuthStore((s) => s.lastSyncedAt);
   const t = useTranslations("shell");
   const tAuth = useTranslations("auth");
   const [menuOpen, setMenuOpen] = useState(false);
@@ -86,11 +87,6 @@ function ConvexUserMenu() {
           <div className="px-3 py-2 border-b border-border-default">
             <p className="text-xs text-text-primary font-medium truncate">{user?.name || user?.email}</p>
             <p className="text-[10px] text-text-tertiary truncate">{user?.email}</p>
-            {lastSyncedAt && (
-              <p className="text-[10px] text-text-tertiary mt-1">
-                {t("lastSynced", { time: formatSyncTime(lastSyncedAt) })}
-              </p>
-            )}
           </div>
           <button
             onClick={() => {
@@ -141,6 +137,10 @@ function CommandShellInner({ children }: { children: React.ReactNode }) {
     registerBuiltins();
     initSkillSubscriptions();
   }, []);
+
+  // The one keyboard + gamepad skill dispatcher. Live only while a flying
+  // surface (Cockpit, Flight actions) is mounted and nothing owns input.
+  useSkillInput();
 
   const t = useTranslations("shell");
   const { isElectron, isWindows, isLinux } = usePlatform();
@@ -387,6 +387,7 @@ function CommandShellInner({ children }: { children: React.ReactNode }) {
         <div className="flex-1 flex flex-col overflow-hidden min-w-0">
           <FailsafeAlertBanner />
           <SlcanModeBanner />
+          {!immersiveMode && <DesktopUpdateBanner />}
           {!immersiveMode && <PluginCrashBanner />}
           {children}
         </div>

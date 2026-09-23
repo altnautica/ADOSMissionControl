@@ -22,6 +22,7 @@ import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { useRadioNetworkHealthStore } from "@/stores/radio-network-health-store";
+import { useNodeDirectAgent } from "@/components/command/settings/use-node-direct-agent";
 import type { RadioEventSeverity } from "@/lib/agent/radio-network-events";
 import {
   linkDiagTone,
@@ -33,7 +34,16 @@ import {
   adapterInjectionLabel,
   adapterUsbLabel,
 } from "@/components/hardware/radio/adapter-health";
-import { resolveRfLink } from "./rf-link-reading";
+import {
+  DIAG_LABEL,
+  channelReading,
+  managementReading,
+  reachbackReading,
+  regionReading,
+  rehomeReading,
+  rfLinkReading,
+  stackReading,
+} from "./radio-health-reading";
 import { formatLogTime } from "../shared/LogViewer";
 
 const SEVERITY_DOT: Record<RadioEventSeverity, string> = {
@@ -46,34 +56,6 @@ const SEVERITY_TEXT: Record<RadioEventSeverity, string> = {
   success: "text-status-success",
   warning: "text-status-warning",
   error: "text-status-error",
-};
-
-const STACK_LABEL: Record<string, string> = {
-  ok: "OK",
-  no_injection: "No injection",
-  unpaired: "Unpaired",
-  no_bind_artifacts: "No bind artifacts",
-  stack_incomplete: "Stack incomplete",
-};
-
-// Operator-facing phrase for each WFB link-diagnosis verdict.
-const DIAG_LABEL: Record<string, string> = {
-  healthy: "Healthy",
-  searching: "Searching",
-  deaf: "Deaf (no RF seen)",
-  mis_keyed: "Mis-keyed",
-  jammed: "Jammed",
-};
-
-// Operator-facing phrase for each management-link repair rung the guardian
-// reports. Keeps the on-screen copy plain; the agent ships the bland keys.
-const MGMT_RUNG_PHRASE: Record<string, string> = {
-  reassert_reg: "re-asserting regulatory domain",
-  renew_dhcp: "renewing DHCP",
-  reconnect_wifi: "reconnecting Wi-Fi",
-  bounce_iface: "bouncing interface",
-  restart_backend: "restarting network service",
-  exhausted: "software repair exhausted, hardware-level recovery may be needed",
 };
 
 /** One live indicator pill: a label, a value, and a status color. */
@@ -103,7 +85,7 @@ function Indicator({
   );
 }
 
-export function RadioNetworkHealthPanel() {
+export function RadioNetworkHealthPanel({ nodeDeviceId }: { nodeDeviceId: string | null }) {
   const t = useTranslations("hardware.radio");
   const radio = useAgentCapabilitiesStore((s) => s.radio);
   const radioStackState = useAgentCapabilitiesStore((s) => s.radioStackState);
@@ -118,21 +100,27 @@ export function RadioNetworkHealthPanel() {
     (s) => s.usbRehomeAttempts,
   );
 
-  const recentEvents = useRadioNetworkHealthStore((s) => s.recentEvents);
+  // The activity feed is read through this node's own connection, never the
+  // focused one (which lags the render on a node switch), and shown only when
+  // the store holds this node's feed.
+  const client = useNodeDirectAgent(nodeDeviceId)?.client ?? null;
+  const mine = useRadioNetworkHealthStore((s) => s.deviceId === nodeDeviceId);
+  const storeEvents = useRadioNetworkHealthStore((s) => s.recentEvents);
+  const recentEvents = mine ? storeEvents : [];
   const wifiReassocRecent = useRadioNetworkHealthStore(
     (s) => s.wifiReassocRecent,
   );
-  const available = useRadioNetworkHealthStore((s) => s.available);
+  const available = useRadioNetworkHealthStore((s) => s.available) && mine;
   const loading = useRadioNetworkHealthStore((s) => s.loading);
-  const refresh = useRadioNetworkHealthStore((s) => s.refresh);
+  const loadEvents = useRadioNetworkHealthStore((s) => s.loadEvents);
   const clear = useRadioNetworkHealthStore((s) => s.clear);
 
-  // Load on mount; clear on unmount so a freshly-focused drone never shows
-  // the previous one's activity feed.
+  // Load when this node's connection attaches (and again if it changes);
+  // clear on unmount so a freshly-focused node never shows another's feed.
   useEffect(() => {
-    void refresh();
+    void loadEvents(nodeDeviceId, client);
     return () => clear();
-  }, [refresh, clear]);
+  }, [nodeDeviceId, client, loadEvents, clear]);
 
   // Omit the whole panel when the agent advertises no radio surface at all
   // (a compute node, or a drone with no air-side adapter). Nothing useful
@@ -144,122 +132,30 @@ export function RadioNetworkHealthPanel() {
     mgmtLinkMode !== undefined;
   if (!hasRadioSurface) return null;
 
-  // USB-rehome: the agent is unbind/rebind-recovering a WFB adapter stuck on a
-  // slow USB port. "idle" shows no pill; the other states warrant attention.
-  const rehomeValue =
-    usbRehomeState === "rehoming"
-      ? `Rehoming${
-          typeof usbRehomeAttempts === "number" && usbRehomeAttempts > 0
-            ? ` (attempt ${usbRehomeAttempts})`
-            : ""
-        }`
-      : usbRehomeState === "exhausted"
-        ? "Rehome exhausted"
-        : usbRehomeState === "guard_blocked"
-          ? "Rehome held back"
-          : null;
-  const rehomeTone: "warning" | "error" =
-    usbRehomeState === "exhausted" ? "error" : "warning";
-  const rehomeNote =
-    usbRehomeState === "exhausted"
-      ? "The adapter is on a slow USB port and a rehome could not recover it. Move it to a high-speed (480 Mbps) USB port."
-      : usbRehomeState === "guard_blocked"
-        ? "A rehome was held back because it could disturb the management link."
-        : null;
-
-  // ── Live indicators ──────────────────────────────────────────────────
-
-  // Operating region + whether the link is pinned to its home channel.
-  // The agent ships UNRESTRICTED out of the box (no region pinned); pinning
-  // a region restores the strict regulatory gate. Prefer the explicit
-  // posture fields, falling back to the legacy regDomain so an older agent
-  // (regDomain only) still renders the right state.
-  const regDomain = radio?.regDomain ?? null;
-  const pinnedRegion = radio?.pinnedRegion ?? regDomain;
-  const regUnrestricted =
-    radio?.regPosture === "unrestricted" ||
-    (radio?.regPosture == null && !pinnedRegion);
-  const homeChannel = radio?.homeChannel ?? null;
-  const channel = radio?.channel ?? null;
-  const pinned =
-    homeChannel != null && channel != null && homeChannel === channel;
-  const regValue = regUnrestricted
-    ? "Unrestricted"
-    : pinned
-      ? `${pinnedRegion} (pinned)`
-      : (pinnedRegion ?? "Unrestricted");
-
-  // Channel + lock state.
-  const freq = radio?.freqMhz ?? null;
-  const acquire = radio?.acquireState ?? null;
-  const channelLocked = radio?.channelLocked ?? null;
-  const channelLabel =
-    channel != null
-      ? `Ch ${channel}${freq != null ? ` (${freq} MHz)` : ""}`
-      : "n/a";
-  const locked = channelLocked === true || acquire === "locked";
-  const searching = acquire === "searching";
-  const channelValue = `${channelLabel} / ${
-    locked ? "Lock OK" : searching ? "Searching" : "No lock"
-  }`;
-  const channelTone: "success" | "warning" | "muted" = locked
-    ? "success"
-    : searching
-      ? "warning"
-      : "muted";
-
-  // RF link: transmitting with no reception proven. The radio's own verdict
-  // is authoritative when it reports one; the older inference (transmitting
-  // while the channel acquirer has not locked) runs only when it does not.
-  // The event feed stays the episode history that reinforces the inference.
+  const region = regionReading(radio);
+  const channel = channelReading(radio);
+  const rfLink = rfLinkReading(radio, recentEvents);
   const txActive = radio?.txActive === true;
-  const lastRfEvent = recentEvents.find((e) => e.kind === "radio.rf_unverified");
-  const rfLink = resolveRfLink({
-    reported: radio?.rfUnverified,
-    txActive,
-    acquireState: acquire,
-    channelLocked,
-    eventUnverified:
-      lastRfEvent != null && lastRfEvent.severity === "error",
-  });
-  const rfUnverified = rfLink.unverified;
-  const rfInferred = rfLink.source === "inferred";
-  // Name the basis on the pill so an inference is never read as a measurement.
-  const rfLinkValue = rfUnverified
-    ? rfInferred
-      ? "Unverified (inferred)"
-      : "Unverified"
-    : txActive
-      ? rfInferred
-        ? "TX + reception (inferred)"
-        : "TX + reception"
-      : "Idle";
-  const rfLinkTitle = rfInferred
-    ? "This node reports no transmit-proof verdict. Inferred from the transmit flag, the channel lock, and recent link events."
-    : "The radio's own verdict: it pairs the transmit counter with a confirmed return signal.";
+  const stack = stackReading(radioStackState);
+  const mgmt = managementReading(managementLink);
+  const reachback = reachbackReading(mgmtLinkMode, mgmtFailoverIface);
+  const rehome = rehomeReading(usbRehomeState, usbRehomeAttempts);
 
   // PHY muted: the adapter is at the muted txpower floor, injecting frames
   // yet radiating nothing. The agent advances tx_bytes so the link reads
   // alive while no RF leaves the antenna. Surface it as its own loud pill.
   const phyMuted = radio?.phyMuted === true;
 
-  // WFB link diagnosis: the received-side verdict on why the link is (or
-  // is not) carrying payload, plus the raw frames-seen / decrypt-error
-  // counters. All null on older agents that don't report them — each
-  // pill only renders when a real value arrives (no fabricated verdict or
-  // zero counter).
+  // WFB link diagnosis plus the raw frames-seen / decrypt-error counters. All
+  // null on agents that don't report them; each pill renders only when a real
+  // value arrives (no fabricated verdict or zero counter).
   const linkDiag = radio?.linkDiag ?? null;
   const packetsAll = radio?.packetsAll ?? null;
   const decryptErrors = radio?.decryptErrors ?? null;
 
-  // Onboard-WiFi self-heal recency is derived in the store (it reads the
-  // freshness clock there, keeping this render body pure).
-
   // Adapter health. Both readings come from the node's own report, so an
   // absent one reads as unknown rather than green: a chipset name says a
-  // device was identified, never that it can inject, and nodes have reported
-  // a hardcoded injection-ok before, so inferring health from either would
-  // paint a dead radio as working.
+  // device was identified, never that it can inject.
   const injection = resolveAdapterInjection({
     injectionOk: radio?.adapterInjectionOk,
     chipset: radio?.adapterChipset,
@@ -279,58 +175,6 @@ export function RadioNetworkHealthPanel() {
     speedMbps: radio?.adapterUsbSpeedMbps,
   });
 
-  const stackValue =
-    radioStackState != null
-      ? (STACK_LABEL[radioStackState] ?? radioStackState)
-      : "n/a";
-  const stackTone: "success" | "warning" =
-    radioStackState === "ok" ? "success" : "warning";
-
-  // Management link: the operator's path to the box. "degraded" means the link
-  // is up but passes no traffic (gateway unreachable) — rendered distinctly
-  // from healthy so a silent dead path never reads as green. Repair progress
-  // shows the rung the guardian is on.
-  const mgmtState = managementLink?.state;
-  const mgmtValue =
-    mgmtState === "healthy"
-      ? "Healthy"
-      : mgmtState === "degraded"
-        ? "Degraded (no data path)"
-        : mgmtState === "down"
-          ? "Down"
-          : null;
-  const mgmtTone: "success" | "warning" | "error" =
-    mgmtState === "healthy"
-      ? "success"
-      : mgmtState === "degraded"
-        ? "warning"
-        : "error";
-  const mgmtRepairNote =
-    managementLink?.repairing && managementLink.lastRung
-      ? `Management link ${mgmtState}: ${
-          MGMT_RUNG_PHRASE[managementLink.lastRung] ?? "repairing"
-        }${managementLink.iface ? ` (${managementLink.iface})` : ""}.`
-      : null;
-
-  // Reach-back: when the wired primary is down the box falls back to a
-  // status-only WiFi heartbeat. Surface it as a degraded posture (video + full
-  // telemetry do not flow over it), distinct from a healthy link. "primary" is
-  // the normal state and shows no pill.
-  const reachbackValue =
-    mgmtLinkMode === "wifi_heartbeat"
-      ? `WiFi heartbeat${mgmtFailoverIface ? ` (${mgmtFailoverIface})` : ""}`
-      : mgmtLinkMode === "none"
-        ? "No reach-back"
-        : null;
-  const reachbackTone: "warning" | "error" =
-    mgmtLinkMode === "none" ? "error" : "warning";
-  const reachbackNote =
-    mgmtLinkMode === "wifi_heartbeat"
-      ? "Wired link down. Reachable over the onboard WiFi heartbeat only; video and full telemetry are unavailable until the wired link returns."
-      : mgmtLinkMode === "none"
-        ? "Wired link down and no WiFi reach-back. The box may be unreachable until the wired link returns."
-        : null;
-
   return (
     <section className="rounded border border-border-default bg-bg-secondary p-5">
       <div className="mb-3 flex items-center gap-2">
@@ -340,7 +184,7 @@ export function RadioNetworkHealthPanel() {
         </h2>
         <div className="flex-1" />
         <button
-          onClick={() => void refresh()}
+          onClick={() => void loadEvents(nodeDeviceId, client)}
           className="flex items-center gap-1 text-[10px] text-text-secondary hover:text-text-primary cursor-pointer"
         >
           <RefreshCw size={11} className={loading ? "animate-spin" : undefined} />
@@ -352,20 +196,20 @@ export function RadioNetworkHealthPanel() {
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         <Indicator
           label="Operating region"
-          value={regValue}
-          tone={regUnrestricted ? "warning" : "success"}
+          value={region.value}
+          tone={region.unrestricted ? "warning" : "success"}
         />
-        <Indicator label="Channel / lock" value={channelValue} tone={channelTone} />
+        <Indicator label="Channel / lock" value={channel.value} tone={channel.tone} />
         <Indicator
           label="Onboard WiFi"
-          value={wifiReassocRecent ? "Re-associating" : "Stable"}
-          tone={wifiReassocRecent ? "warning" : "success"}
+          value={!available ? "—" : wifiReassocRecent ? "Re-associating" : "Stable"}
+          tone={!available ? "muted" : wifiReassocRecent ? "warning" : "success"}
         />
         <Indicator
           label="RF link"
-          value={rfLinkValue}
-          tone={rfUnverified ? "error" : txActive ? "success" : "muted"}
-          title={rfLinkTitle}
+          value={rfLink.value}
+          tone={rfLink.tone}
+          title={rfLink.title}
         />
         {linkDiag != null ? (
           <Indicator
@@ -408,51 +252,47 @@ export function RadioNetworkHealthPanel() {
             usb.state === "degraded" ? t("adapterUsbDegradedHint") : undefined
           }
         />
-        <Indicator label="Radio stack" value={stackValue} tone={stackTone} />
-        {mgmtValue ? (
+        <Indicator label="Radio stack" value={stack.value} tone={stack.tone} />
+        {mgmt.value ? (
           <Indicator
             label="Management link"
-            value={mgmtValue}
-            tone={mgmtTone}
+            value={mgmt.value}
+            tone={mgmt.tone}
           />
         ) : null}
-        {reachbackValue ? (
+        {reachback.value ? (
           <Indicator
             label="Reach-back"
-            value={reachbackValue}
-            tone={reachbackTone}
+            value={reachback.value}
+            tone={reachback.tone}
           />
         ) : null}
-        {rehomeValue ? (
-          <Indicator label="USB rehome" value={rehomeValue} tone={rehomeTone} />
+        {rehome.value ? (
+          <Indicator label="USB rehome" value={rehome.value} tone={rehome.tone} />
         ) : null}
       </div>
 
-      {mgmtRepairNote ? (
-        <p className="mt-2 text-xs text-status-warning">{mgmtRepairNote}</p>
+      {mgmt.note ? (
+        <p className="mt-2 text-xs text-status-warning">{mgmt.note}</p>
       ) : null}
-      {reachbackNote ? (
+      {reachback.note ? (
         <p
           className={cn(
             "mt-2 text-xs",
-            mgmtLinkMode === "none"
-              ? "text-status-error"
-              : "text-status-warning",
+            reachback.tone === "error" ? "text-status-error" : "text-status-warning",
           )}
         >
-          {reachbackNote}
+          {reachback.note}
         </p>
       ) : null}
-      {rehomeNote ? (
+      {rehome.note ? (
         <p
           className={cn(
             "mt-2 text-xs",
-            usbRehomeState === "exhausted"
-              ? "text-status-error"
-              : "text-status-warning",
+            rehome.tone === "error" ? "text-status-error" : "text-status-warning",
           )}
         >
-          {rehomeNote}
+          {rehome.note}
         </p>
       ) : null}
 

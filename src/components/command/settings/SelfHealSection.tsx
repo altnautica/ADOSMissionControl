@@ -31,8 +31,10 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
-import { useAgentConnectionStore } from "@/stores/agent-connection-store";
+import {
+  selectDeviceCapabilities,
+  useAgentCapabilitiesStore,
+} from "@/stores/agent-capabilities-store";
 import type { EventsRow } from "@/lib/agent/agent-client/logging";
 import {
   SELF_HEAL_EVENT_KINDS,
@@ -43,7 +45,8 @@ import {
 import type { RadioEventSeverity } from "@/lib/agent/radio-network-events";
 import { formatLogTime } from "../shared/LogViewer";
 import { ConfigToggleField } from "./ConfigFields";
-import { Section } from "./Section";
+import { Section, StatusRow } from "./Section";
+import { useNodeDirectAgent } from "./use-node-direct-agent";
 
 /** How many activity rows to keep + render. */
 const MAX_ACTIVITY = 15;
@@ -68,47 +71,29 @@ const SEVERITY_ICON: Record<RadioEventSeverity, LucideIcon> = {
 };
 
 interface SectionProps {
+  /** The node this page is rendered for. Live readings come from its own
+   * capability slice and the activity feed from its own connection, never
+   * from the focused node's. */
+  nodeDeviceId: string | null;
   config: Record<string, unknown> | null;
   readOnly: boolean;
   setValue: (key: string, value: string) => Promise<void>;
 }
 
-function StatusRow({
-  label,
-  value,
-  valueClass,
-  hint,
-}: {
-  label: string;
-  value: string;
-  valueClass?: string;
-  hint?: string;
-}) {
-  return (
-    <div>
-      <div className="flex items-baseline justify-between gap-3">
-        <span className="text-xs text-text-secondary">{label}</span>
-        <span
-          className={cn(
-            "shrink-0 font-mono text-xs",
-            valueClass ?? "text-text-primary",
-          )}
-        >
-          {value}
-        </span>
-      </div>
-      {hint ? (
-        <p className="mt-0.5 text-[11px] text-text-tertiary">{hint}</p>
-      ) : null}
-    </div>
-  );
-}
-
-export function SelfHealSection({ config, readOnly, setValue }: SectionProps) {
+export function SelfHealSection({
+  nodeDeviceId,
+  config,
+  readOnly,
+  setValue,
+}: SectionProps) {
   const t = useTranslations("nodeSettings.selfHeal");
-  const managementLink = useAgentCapabilitiesStore((s) => s.managementLink);
-  const cameraRecovery = useAgentCapabilitiesStore((s) => s.cameraUsbRecovery);
-  const client = useAgentConnectionStore((s) => s.client);
+  const managementLink = useAgentCapabilitiesStore(
+    (s) => selectDeviceCapabilities(s, nodeDeviceId)?.managementLink,
+  );
+  const cameraRecovery = useAgentCapabilitiesStore(
+    (s) => selectDeviceCapabilities(s, nodeDeviceId)?.cameraUsbRecovery,
+  );
+  const client = useNodeDirectAgent(nodeDeviceId)?.client ?? null;
 
   const [events, setEvents] = useState<SelfHealActivity[]>([]);
   /** True once the durable store answered at least once this session. */
@@ -170,17 +155,24 @@ export function SelfHealSection({ config, readOnly, setValue }: SectionProps) {
       : null;
 
   // ── Camera-recovery live state ────────────────────────────────────────────
+  // The supervisor never gives up: it retries on a fixed cooldown with no
+  // attempt budget, so the row shows the attempt count and the cooldown, not
+  // an "N of M". "monitoring" means an expected camera is missing.
   const cameraValue = (() => {
     if (!cameraRecovery) return { text: t("notReported"), cls: "text-text-tertiary" };
     const attemptNote =
       cameraRecovery.attempts > 0
-        ? ` (${cameraRecovery.attempts}/${cameraRecovery.maxAttempts})`
+        ? ` · ${t("cameraAttemptNote", { attempts: cameraRecovery.attempts })}`
+        : "";
+    const cooldownNote =
+      cameraRecovery.cooldownSeconds > 0
+        ? ` · ${t("cameraCooldownNote", { seconds: cameraRecovery.cooldownSeconds })}`
         : "";
     switch (cameraRecovery.state) {
       case "idle":
         return { text: t("cameraStateIdle"), cls: "text-text-secondary" };
       case "monitoring":
-        return { text: t("cameraStateMonitoring"), cls: "text-status-success" };
+        return { text: t("cameraStateMonitoring"), cls: "text-status-warning" };
       case "rebinding":
       case "port_cycling":
       case "hub_resetting":
@@ -188,15 +180,15 @@ export function SelfHealSection({ config, readOnly, setValue }: SectionProps) {
           text: `${t("cameraStateRecovering")}${attemptNote}`,
           cls: "text-status-warning",
         };
+      case "retrying":
+        return {
+          text: `${t("cameraStateRetrying")}${attemptNote}${cooldownNote}`,
+          cls: "text-status-warning",
+        };
       case "needs_hub_reset":
         return { text: t("cameraStateNeedsReseat"), cls: "text-status-warning" };
       case "guard_blocked":
         return { text: t("cameraStateHeldBack"), cls: "text-status-warning" };
-      case "exhausted":
-        return {
-          text: `${t("cameraStateExhausted")}${attemptNote}`,
-          cls: "text-status-error",
-        };
       default:
         // Forward-versioned state: render the agent's own token raw.
         return { text: cameraRecovery.state, cls: "text-status-warning" };

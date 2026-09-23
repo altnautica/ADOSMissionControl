@@ -221,18 +221,20 @@ export function AddNodeForm({ onPaired }: AddNodeFormProps) {
     return (
       <ProbeResultCard
         probe={probe}
-        onPaired={(deviceId) => {
-          // Plain-words confirmation that outlives this page: the pair
-          // succeeded (ProbeResultCard only calls onPaired once the node
-          // is claimed and connected), and the app navigates straight to
-          // the node, so a global toast is the honest place to say so.
+        onPaired={(deviceId, reach) => {
+          // Plain-words confirmation that outlives this page. "Live" only
+          // when the agent answered; a relay-bound pair says it is waiting.
           // A drone is named a drone; any other profile is named by name.
-          toast(
-            probe.profile === "drone"
-              ? t("pairSuccess")
-              : t("pairSuccessNode", { name: probe.name }),
-            "success",
-          );
+          if (reach === "connected") {
+            toast(
+              probe.profile === "drone"
+                ? t("pairSuccess")
+                : t("pairSuccessNode", { name: probe.name }),
+              "success",
+            );
+          } else {
+            toast(t("pairedWaitingRelay"), "info");
+          }
           setProbe(null);
           setInput("");
           onPaired?.(deviceId);

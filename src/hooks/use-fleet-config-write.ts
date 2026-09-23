@@ -92,6 +92,10 @@ export function resolveFleetConfigAccess(
       deviceId,
     ),
     deviceId,
+    // A fleet write reaches each member over its own client or LAN pairing;
+    // `resolveFleetConfigTargets` counts only those lanes, so the relay lane
+    // is not offered here either.
+    null,
     transport.records,
   );
 }

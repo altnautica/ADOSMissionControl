@@ -127,7 +127,7 @@ function resolvePositions(
       const { lat, lon } = offsetLatLon(
         leaderPos.lat,
         leaderPos.lon,
-        leaderPos.heading,
+        leaderPos.heading ?? 0,
         rightM,
         backM,
       );
@@ -170,7 +170,7 @@ function resolvePositions(
  * positive DESCENDING on the wire, while `climbRate` is positive climbing —
  * negate once, here. */
 function nedVelocity(pos: PositionData): { vx: number; vy: number; vz: number } {
-  const headingRad = (pos.heading * Math.PI) / 180;
+  const headingRad = ((pos.heading ?? 0) * Math.PI) / 180;
   return {
     vx: pos.groundSpeed * Math.cos(headingRad),
     vy: pos.groundSpeed * Math.sin(headingRad),
@@ -201,17 +201,19 @@ function buildNeighborRow(
   const rssiDbm = WEAK_RSSI_BY_SLOT[slot] ?? -45 - ((slot * 7) % 26);
   const { vx, vy, vz } = nedVelocity(position);
 
+  // A beacon without a GPS fix publishes no position, as the agent does.
+  const fix = (value: number): number | null => (gpsOk ? value : null);
   return {
     slot,
     device_id: deviceId,
     seq_ms: (slot * 1000 + nowMs) % 65536,
-    lat: position.lat,
-    lon: position.lon,
-    alt_m: position.alt,
-    vx_ms: vx,
-    vy_ms: vy,
-    vz_ms: vz,
-    heading_deg: position.heading,
+    lat: fix(position.lat),
+    lon: fix(position.lon),
+    alt_m: fix(position.alt),
+    vx_ms: fix(vx),
+    vy_ms: fix(vy),
+    vz_ms: fix(vz),
+    heading_deg: fix(position.heading ?? 0),
     armed,
     guided,
     emergency,
@@ -258,6 +260,7 @@ export function demoSwarmNeighborsPayload(nowMs: number): Record<string, unknown
   return {
     fleet_id: 1,
     slot: 0,
+    slot_conflict: false,
     neighbors,
     counters: {
       beacons_tx: 0,
@@ -265,8 +268,11 @@ export function demoSwarmNeighborsPayload(nowMs: number): Record<string, unknown
       beacons_bad_magic: 0,
       beacons_bad_tag: 0,
       beacons_stale_dropped: cumulativeStaleDropped,
+      beacons_replayed: 0,
+      beacons_slot_conflict: 0,
       neighbors_now: BEACON_SLOTS.length,
     },
     slots: FLEET_SLOTS.map((s) => ({ slot: s.slot, device_id: s.deviceId })),
+    radio: { open: true, iface: "wlan1" },
   };
 }

@@ -49,18 +49,20 @@ describe("computeCaptureGate", () => {
     expect(gate.startBlockedKey).toBeNull();
   });
 
-  it("no readiness / no node -> all unmet, blocked on cameras first", () => {
+  it("no readiness yet -> cameras and service unknown, not asserted absent", () => {
     const gate = computeCaptureGate({
       readiness: null,
       computePaired: false,
       computeReachable: false,
       demo: false,
     });
-    expect(req(gate, "cameras").tone).toBe("unmet");
+    expect(req(gate, "cameras").tone).toBe("unknown");
+    expect(req(gate, "cameras").detailKey).toBe("capture.reqReadinessUnknown");
     expect(req(gate, "compute").tone).toBe("unmet");
-    expect(req(gate, "service").tone).toBe("unmet");
+    expect(req(gate, "service").tone).toBe("unknown");
+    expect(req(gate, "service").detailKey).toBe("capture.reqReadinessUnknown");
     expect(gate.canStart).toBe(false);
-    expect(gate.startBlockedKey).toBe("capture.startBlockedCameras");
+    expect(gate.startBlockedKey).toBe("capture.startBlockedReadinessUnknown");
   });
 
   it("compute paired but unreachable -> warning tone, still can start", () => {

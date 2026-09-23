@@ -15,7 +15,7 @@
 import { useEffect } from "react";
 
 import { PluginAgentClient } from "@/lib/agent/plugin-client";
-import { resolveLocalAgentForDrone } from "@/lib/agent/resolve-agent";
+import { resolveLanAgent } from "@/lib/agent/resolve-agent";
 import { deviceIdFromNodeId } from "@/lib/agent/node-id";
 import { isDemoMode } from "@/lib/utils";
 import { useDroneTargetActions } from "@/hooks/use-drone-target-actions";
@@ -25,7 +25,7 @@ import {
   type PluginConfigWrite,
 } from "@/lib/skills/target-actions";
 
-/** Flip a plugin's per-drone config over the LAN agent (Rule 39). Demo no-ops. */
+/** Flip a plugin's per-drone config over the LAN agent (local-first). Demo no-ops. */
 const writeConfig: PluginConfigWrite = async (
   pluginId,
   deviceId,
@@ -33,7 +33,7 @@ const writeConfig: PluginConfigWrite = async (
   value,
 ) => {
   if (isDemoMode()) return;
-  const agent = resolveLocalAgentForDrone(deviceId);
+  const agent = resolveLanAgent(deviceId);
   if (!agent) throw new Error(`no local agent seam for ${deviceId}`);
   await new PluginAgentClient(agent.agentUrl, agent.apiKey).setConfig(
     pluginId,

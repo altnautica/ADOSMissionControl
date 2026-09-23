@@ -8,27 +8,8 @@
  * @module components/command/system/shared
  */
 
-import { useState, useEffect } from "react";
-import {
-  ScanLine,
-  Loader2,
-  Cpu,
-  Camera,
-  Radio,
-  Gauge,
-  Wifi,
-  WifiOff,
-  Clock,
-  Check,
-  Usb,
-  Circle,
-  Compass,
-  Activity,
-  RotateCw,
-  ExternalLink,
-  ChevronDown,
-  ChevronRight,
-} from "lucide-react";
+import { useState } from "react";
+import { Loader2, Cpu, ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import type { PeripheralInfo } from "@/lib/agent/types";
@@ -74,72 +55,15 @@ export function NpuBadge() {
   );
 }
 
-// ── Scan progress animation ──
+// ── Scan progress ──
 
-export const SCAN_STEPS = [
-  { label: "USB devices", icon: Usb },
-  { label: "Flight controllers", icon: Gauge },
-  { label: "Cameras", icon: Camera },
-  { label: "Radio links", icon: Radio },
-  { label: "Modems & network", icon: Wifi },
-] as const;
-
+/** In-flight hardware scan. The agent reports no per-stage progress, so this
+ * shows a plain spinner rather than ticking stages it cannot observe. */
 export function ScanProgress() {
-  const [completedStep, setCompletedStep] = useState(0);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCompletedStep((prev) => {
-        if (prev >= SCAN_STEPS.length) {
-          clearInterval(interval);
-          return prev;
-        }
-        return prev + 1;
-      });
-    }, 1500);
-    return () => clearInterval(interval);
-  }, []);
-
   return (
-    <div className="flex flex-col items-center justify-center py-12 gap-1">
-      <p className="text-sm font-medium text-text-secondary mb-4">Scanning hardware...</p>
-      <div className="flex flex-col gap-2.5 w-56">
-        {SCAN_STEPS.map((step, i) => {
-          const done = i < completedStep;
-          const active = i === completedStep;
-          const StepIcon = step.icon;
-
-          return (
-            <div
-              key={step.label}
-              className={cn(
-                "flex items-center gap-3 text-sm transition-all duration-300",
-                done && "text-status-success",
-                active && "text-accent-primary",
-                !done && !active && "text-text-tertiary opacity-40"
-              )}
-            >
-              <div className="w-5 h-5 flex items-center justify-center shrink-0">
-                {done ? (
-                  <Check size={16} style={{ animation: "scan-check 0.3s ease-out" }} />
-                ) : active ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : (
-                  <Circle size={14} />
-                )}
-              </div>
-              <StepIcon size={14} className="shrink-0" />
-              <span className={cn(active && "animate-pulse")}>{step.label}</span>
-            </div>
-          );
-        })}
-      </div>
-      <style dangerouslySetInnerHTML={{ __html: `
-        @keyframes scan-check {
-          from { transform: scale(0); opacity: 0; }
-          to { transform: scale(1); opacity: 1; }
-        }
-      ` }} />
+    <div className="flex items-center justify-center gap-2 py-12 text-sm text-text-secondary">
+      <Loader2 size={16} className="animate-spin text-accent-primary" />
+      Scanning hardware...
     </div>
   );
 }
@@ -148,16 +72,47 @@ export function ScanProgress() {
 
 /** A single stat tile. A `value` of `undefined` means the node reported no
  * figure, which renders as "--" with no threshold colouring — there is no
- * measurement to compare against a threshold (Rule 44). */
-export function StatBox({ label, value, unit, warn }: { label: string; value: number | undefined; unit: string; warn?: boolean }) {
+ * measurement to compare against a threshold. A `stale` reading is the last
+ * known value, dimmed and never threshold-coloured as if live. Above
+ * `thresholds.warn` the tile is amber, above `thresholds.crit` red; `crit` is
+ * never treated as lower than `warn`, so severity only rises with the value. */
+export function StatBox({
+  label,
+  value,
+  unit,
+  thresholds,
+  stale = false,
+}: {
+  label: string;
+  value: number | undefined;
+  unit: string;
+  thresholds?: { warn: number; crit: number };
+  stale?: boolean;
+}) {
+  const level =
+    value == null || stale || !thresholds
+      ? "normal"
+      : value > Math.max(thresholds.crit, thresholds.warn)
+        ? "crit"
+        : value > thresholds.warn
+          ? "warn"
+          : "normal";
   return (
     <div className={cn(
       "flex flex-col items-center justify-center px-3 py-1.5 rounded bg-bg-primary/60 min-w-[60px]",
-      warn && "ring-1 ring-status-warning/30"
+      level === "warn" && "ring-1 ring-status-warning/30",
+      level === "crit" && "ring-1 ring-status-error/30",
+      stale && "opacity-60",
     )}>
       <span className={cn(
         "text-sm font-mono font-semibold",
-        value == null ? "text-text-tertiary" : warn ? "text-status-warning" : value > 80 ? "text-status-error" : "text-text-primary"
+        value == null || stale
+          ? "text-text-tertiary"
+          : level === "crit"
+            ? "text-status-error"
+            : level === "warn"
+              ? "text-status-warning"
+              : "text-text-primary"
       )}>
         {value != null ? `${value.toFixed(0)}${unit}` : "--"}
       </span>
@@ -168,8 +123,8 @@ export function StatBox({ label, value, unit, warn }: { label: string; value: nu
 
 /** Fallback badge for a device whose `category` is not one of the known keys —
  * guarantees `cat` is always defined so an unknown/missing category renders a
- * neutral badge instead of crashing the whole Health tab (Rule 44: degrade, do
- * not fabricate; here, degrade instead of throw). */
+ * neutral badge instead of crashing the whole Health tab: degrade rather than
+ * fabricate or throw. */
 const DEFAULT_CATEGORY = {
   color: "border-[var(--node-swatch-slate)] bg-[var(--node-swatch-slate)]/10 text-[var(--node-swatch-slate)]",
   label: "device",

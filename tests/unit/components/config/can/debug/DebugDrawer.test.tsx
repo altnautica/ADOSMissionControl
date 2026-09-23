@@ -8,7 +8,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { fireEvent, screen } from "@testing-library/react";
 import { renderWithIntl } from "../../../../../helpers/intl-wrapper";
 import { DebugDrawer } from "@/components/config/can/debug/DebugDrawer";
-import { useDroneCanFlashStore } from "@/stores/dronecan";
+import { useDroneCanBusStore, useDroneCanFlashStore } from "@/stores/dronecan";
 
 vi.mock("@tanstack/react-virtual", () => ({
   useVirtualizer: () => ({
@@ -71,5 +71,22 @@ describe("DebugDrawer", () => {
     );
     fireEvent.click(screen.getByTestId("debug-drawer-toggle-close"));
     expect(onChange).toHaveBeenCalledWith(false);
+  });
+
+  it("shows LIVE only while CAN frames are arriving", () => {
+    useDroneCanBusStore.getState().clear();
+    const { unmount } = renderWithIntl(<DebugDrawer mode="config" open={true} />);
+    // A cleared bus has bumped its version counter but carries no traffic.
+    expect(screen.queryByTestId("debug-drawer-live")).toBeNull();
+    unmount();
+
+    useDroneCanBusStore.setState({ lastFrameAt: Date.now() - 500 });
+    const recent = renderWithIntl(<DebugDrawer mode="config" open={true} />);
+    expect(screen.getByTestId("debug-drawer-live")).toBeDefined();
+    recent.unmount();
+
+    useDroneCanBusStore.setState({ lastFrameAt: Date.now() - 10_000 });
+    renderWithIntl(<DebugDrawer mode="config" open={true} />);
+    expect(screen.queryByTestId("debug-drawer-live")).toBeNull();
   });
 });

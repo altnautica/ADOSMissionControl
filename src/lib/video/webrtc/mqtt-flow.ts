@@ -153,7 +153,7 @@ async function negotiateViaMqtt(
         console.warn("[webrtc-client] P2P MQTT terminal state:", state);
         s.setVideoDegraded(null);
         s.setStreaming(false);
-        s.updateStats(0, 0);
+        s.updateStats(null, null);
         stopStatsPolling();
         reportHealth("p2p-mqtt", {
           state: "failed",

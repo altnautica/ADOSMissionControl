@@ -10,8 +10,7 @@
  *     the logs.
  *
  * Also pins the standing invariant that no `research_`-prefixed table or
- * function reaches the OSS tree. That currently holds and must keep holding:
- * the investor/research surface is private and lives only in `website/convex`.
+ * function exists in this tree.
  *
  * @license GPL-3.0-only
  */
@@ -22,7 +21,10 @@ import { getFunctionName } from "convex/server";
 
 import * as reach from "../../convex/cmdMcpReach";
 import * as reachDb from "../../convex/cmdMcpReachDb";
-import { CREDENTIAL_POLICY } from "../../convex/lib/rateLimit";
+import {
+  CREDENTIAL_GLOBAL_POLICY,
+  CREDENTIAL_POLICY,
+} from "../../convex/lib/rateLimit";
 import { invoke, makeCtx, type FakeCtx } from "./fakeConvexCtx";
 
 const CONVEX_DIR = path.join(process.cwd(), "convex");
@@ -44,6 +46,8 @@ function actionCtx(options: { lookupThrows?: boolean } = {}): FakeCtx {
         return await invoke(reachDb.consumeCredentialAttempt, ctx, args);
       case "cmdMcpReachDb:clearCredentialAttempts":
         return await invoke(reachDb.clearCredentialAttempts, ctx, args);
+      case "cmdMcpReachDb:recordCredentialFailure":
+        return await invoke(reachDb.recordCredentialFailure, ctx, args);
       case "cmdMcpReachDb:lookupByHash":
         if (options.lookupThrows) {
           throw new Error("Server Error: index by_tokenHash does not exist");
@@ -145,6 +149,46 @@ describe("verifyCredential", () => {
     expect(ctx.db.rows("cmd_authAttempts")).toHaveLength(0);
   });
 
+  it("charges the shared bucket only for failures and never resets it on a success", async () => {
+    const ctx = actionCtx();
+    ctx.db.seed("cmd_mcpTokens", [
+      {
+        userId: "user_alice",
+        tokenId: "tok_1",
+        tokenHash: await digest("live-credential"),
+        scopes: ["read"],
+        allowedNodes: [],
+        createdAt: Date.now(),
+      },
+    ]);
+    const shared = () =>
+      ctx.db.rows("cmd_authAttempts").find((r) => r.key === "mcp:cred:global");
+
+    await invoke(reach.verifyCredential, ctx, { credential: "live-credential" });
+    expect(shared()).toBeUndefined();
+
+    await invoke(reach.verifyCredential, ctx, { credential: "wrong-1" });
+    await invoke(reach.verifyCredential, ctx, { credential: "wrong-2" });
+    await invoke(reach.verifyCredential, ctx, { credential: "live-credential" });
+    expect(shared()?.attempts).toBe(2);
+  });
+
+  it("refuses every credential once failures across many guesses fill the shared bucket", async () => {
+    const ctx = actionCtx();
+    ctx.db.seed("cmd_authAttempts", [
+      {
+        key: "mcp:cred:global",
+        attempts: CREDENTIAL_GLOBAL_POLICY.maxAttempts,
+        firstAttemptAt: Date.now(),
+        lastAttemptAt: Date.now(),
+        lockedUntil: 0,
+      },
+    ]);
+    await expect(
+      invoke(reach.verifyCredential, ctx, { credential: "fresh-guess" }),
+    ).rejects.toThrow(/rate_limited/);
+  });
+
   it("refuses a revoked credential and counts the attempt", async () => {
     const ctx = actionCtx();
     ctx.db.seed("cmd_mcpTokens", [
@@ -187,9 +231,7 @@ describe("OSS tree invariants", () => {
         offenders.push(path.relative(CONVEX_DIR, file));
       }
     }
-    // The investor/research surface is private and lives only in
-    // website/convex. This is a public repository; a `research_` table or
-    // function reaching it publishes the shape of that surface.
+    // No table or function in this tree carries the `research_` prefix.
     expect(offenders).toEqual([]);
   });
 

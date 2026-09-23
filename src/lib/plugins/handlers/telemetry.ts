@@ -21,6 +21,7 @@ import type { BatteryData } from "@/lib/types";
 import { useDroneManager } from "@/stores/drone-manager";
 import type { BridgeHandler, BridgeHandlerContext } from "@/lib/plugins/bridge";
 import { agentStateOrigin, subscribePluginEvent } from "@/lib/plugins/event-bus";
+import { perMount } from "./per-mount";
 import type { PluginTarget } from "./target";
 
 /**
@@ -99,10 +100,6 @@ const TOPIC_SUBSCRIBERS: Record<string, TopicSubscriber> = {
   event: (p, emit) => p.onEvent(emit),
 };
 
-/** The set of known topics, for callers that want to advertise them. */
-export const KNOWN_TELEMETRY_TOPICS: readonly string[] =
-  Object.keys(TOPIC_SUBSCRIBERS);
-
 /**
  * Resolve the protocol for the plugin's drone. A plugin bound to a drone reads
  * only that drone (never the operator's selection, which would feed it another
@@ -124,9 +121,48 @@ function readTopic(args: unknown): string {
 }
 
 /**
+ * Host event announcing that the drone's flight-controller link went away
+ * (`connected: false`) or a (new) link is feeding the plugin's subscriptions
+ * again (`connected: true`), so a plugin can decay what it displays.
+ */
+export const TELEMETRY_LINK_EVENT = "telemetry.link";
+
+/** One wanted topic on one mount. */
+interface TopicSub {
+  /** Attach to a protocol, returning the detach; null for a bus-fed channel. */
+  attach: ((protocol: DroneProtocol) => () => void) | null;
+  /** Detach from whatever currently feeds this topic, if anything does. */
+  detach: (() => void) | null;
+}
+
+/** One iframe's telemetry subscriptions. */
+interface MountTelemetry {
+  topics: Map<string, TopicSub>;
+  postEvent: BridgeHandlerContext["postEvent"] | null;
+}
+
+function detachAll(state: MountTelemetry): void {
+  for (const sub of state.topics.values()) {
+    try {
+      sub.detach?.();
+    } catch {
+      // Best-effort teardown; a throwing unsubscribe must not wedge the rest.
+    }
+  }
+  state.topics.clear();
+}
+
+/**
  * Build the `telemetry.subscribe` / `telemetry.unsubscribe` handlers for one
- * plugin, plus a `dispose()` that drops every subscription. Subscriptions are
- * tracked per topic so a re-subscribe replaces the prior one (idempotent).
+ * plugin, plus a `dispose()` that drops every subscription.
+ *
+ * Subscriptions are held per mount (iframe), so two panels of one plugin can
+ * subscribe to the same topic; a re-subscribe on one mount replaces only that
+ * mount's prior subscription. Each wanted topic is re-attached whenever the
+ * drone manager's protocol for the target changes (a reconnect replaces the
+ * adapter), and a subscribe made before the link exists attaches when it
+ * appears. Every change is announced to the mount as
+ * {@link TELEMETRY_LINK_EVENT}.
  */
 export function buildTelemetryHandlers(
   pluginId: string,
@@ -135,62 +171,88 @@ export function buildTelemetryHandlers(
   handlers: Record<string, BridgeHandler>;
   dispose: () => void;
 } {
-  const subs = new Map<string, () => void>();
+  const mounts = perMount<MountTelemetry>(
+    () => ({ topics: new Map(), postEvent: null }),
+    detachAll,
+  );
+  // The protocol currently feeding protocol-backed topics, and the drone
+  // manager watch that keeps it current. Started on the first such subscribe.
+  let bound: DroneProtocol | null = null;
+  let stopWatch: (() => void) | null = null;
+
+  const rebind = () => {
+    const next = resolveProtocol(target);
+    if (next === bound) return;
+    bound = next;
+    for (const state of mounts.values()) {
+      let fed = false;
+      for (const sub of state.topics.values()) {
+        if (!sub.attach) continue;
+        fed = true;
+        sub.detach?.();
+        sub.detach = next ? sub.attach(next) : null;
+      }
+      if (fed) state.postEvent?.(TELEMETRY_LINK_EVENT, "", { connected: next !== null });
+    }
+  };
 
   const subscribe: BridgeHandler = (args, ctx: BridgeHandlerContext) => {
     const topic = readTopic(args);
     const sub = TOPIC_SUBSCRIBERS[topic];
     const capability = ctx.capability ?? "";
+    const method = `telemetry.${topic}`;
 
-    if (!sub) {
-      // The plugin's own agent-extended channel. Only a drone-bound plugin has
-      // an agent half on a drone to extend telemetry from.
-      if (!target) throw new Error(`unknown telemetry topic: ${topic}`);
-      subs.get(topic)?.();
+    if (!sub && !target) {
+      // An agent-extended channel needs a drone-bound plugin: only it has an
+      // agent half on a drone to extend telemetry from.
+      throw new Error(`unknown telemetry topic: ${topic}`);
+    }
+
+    const state = mounts.get(ctx.mount);
+    state.postEvent = ctx.postEvent;
+    // Replace this mount's prior subscription to the same topic.
+    state.topics.get(topic)?.detach?.();
+
+    if (!sub && target) {
+      // The plugin's own agent-extended channel, republished on the bus by the
+      // state egress under the plugin's agent-state origin for this drone.
       const origin = agentStateOrigin(pluginId, target.deviceId);
-      const method = `telemetry.${topic}`;
-      subs.set(
-        topic,
-        subscribePluginEvent(method, pluginId, (payload, _t, from) => {
+      state.topics.set(topic, {
+        attach: null,
+        detach: subscribePluginEvent(method, pluginId, (payload, _t, from) => {
           if (from === origin) ctx.postEvent(method, capability, payload);
         }),
-      );
+      });
       return { ok: true };
     }
 
-    const protocol = resolveProtocol(target);
-    if (!protocol) {
-      throw new Error("no connected drone for telemetry subscription");
+    if (!stopWatch) {
+      bound = resolveProtocol(target);
+      stopWatch = useDroneManager.subscribe(rebind);
     }
-
-    // Replace any prior subscription to the same topic.
-    subs.get(topic)?.();
-
-    const unsub = sub(protocol, (data) =>
-      ctx.postEvent(`telemetry.${topic}`, capability, data),
-    );
-    subs.set(topic, unsub);
-    return { ok: true };
+    const attach = (protocol: DroneProtocol) =>
+      sub(protocol, (data) => ctx.postEvent(method, capability, data));
+    state.topics.set(topic, { attach, detach: bound ? attach(bound) : null });
+    // `linked: false` means the subscription is held and attaches when the
+    // drone's link comes up.
+    return { ok: true, linked: bound !== null };
   };
 
-  const unsubscribe: BridgeHandler = (args) => {
+  const unsubscribe: BridgeHandler = (args, ctx: BridgeHandlerContext) => {
     const topic = readTopic(args);
-    const unsub = subs.get(topic);
-    if (!unsub) return { ok: false };
-    unsub();
-    subs.delete(topic);
+    const topics = mounts.peek(ctx.mount)?.topics;
+    const sub = topics?.get(topic);
+    if (!topics || !sub) return { ok: false };
+    sub.detach?.();
+    topics.delete(topic);
     return { ok: true };
   };
 
   const dispose = () => {
-    for (const unsub of subs.values()) {
-      try {
-        unsub();
-      } catch {
-        // Best-effort teardown; a throwing unsubscribe must not wedge the rest.
-      }
-    }
-    subs.clear();
+    mounts.disposeAll();
+    stopWatch?.();
+    stopWatch = null;
+    bound = null;
   };
 
   return {

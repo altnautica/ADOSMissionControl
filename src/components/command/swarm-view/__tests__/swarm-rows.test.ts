@@ -25,9 +25,13 @@ import {
   matchesSeverityFilter,
   sortSwarmRowsUnhealthyFirst,
   swarmConditionCounts,
+  swarmBeaconPosition,
   swarmHeadingDeg,
+  swarmRowDeviceId,
+  swarmRowName,
   swarmRowSeverity,
   swarmSeverityCounts,
+  swarmSourceSilent,
   type SwarmSlotRow,
 } from "../swarm-rows";
 
@@ -67,6 +71,7 @@ function row(slot: number, over: Partial<SwarmBeaconRow> | null): SwarmSlotRow {
     slot,
     beacon: b,
     node: null,
+    registeredDeviceId: null,
     summary: null,
     severity: swarmRowSeverity(b),
   };
@@ -190,6 +195,7 @@ describe("buildSwarmSlotRows", () => {
       [{ slot: 9, deviceId: "ados-9" }],
       new Map([[9, node]]),
       NO_SUMMARIES,
+      false,
     );
     const bySlot = new Map(rows.map((r) => [r.slot, r]));
     // Slot 9 is registered and silent; slot 3 is beaconing and unregistered.
@@ -206,13 +212,14 @@ describe("buildSwarmSlotRows", () => {
       [],
       new Map([[4, node]]),
       new Map([["fc-77", summary]]),
+      false,
     );
     expect(rows[0].summary).toBe(summary);
   });
 
   it("returns nothing when neither source has a slot", () => {
     expect(
-      buildSwarmSlotRows([], NO_REGISTERED, NO_NODES, NO_SUMMARIES),
+      buildSwarmSlotRows([], NO_REGISTERED, NO_NODES, NO_SUMMARIES, false),
     ).toEqual([]);
   });
 
@@ -222,14 +229,18 @@ describe("buildSwarmSlotRows", () => {
       [{ slot: 14, deviceId: "whiskey-23" }],
       NO_NODES,
       NO_SUMMARIES,
+      false,
     );
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
       slot: 14,
       beacon: null,
       node: null,
+      registeredDeviceId: "whiskey-23",
       severity: "noBeacon",
     });
+    expect(swarmRowName(rows[0], "Slot 14")).toBe("whiskey-23");
+    expect(swarmRowDeviceId(rows[0])).toBe("whiskey-23");
   });
 
   it("falls back to the registry's device id for the summary lookup when no beacon or node names one", () => {
@@ -241,8 +252,32 @@ describe("buildSwarmSlotRows", () => {
       [{ slot: 14, deviceId: "whiskey-23" }],
       NO_NODES,
       new Map([["whiskey-23", summary]]),
+      false,
     );
     expect(rows[0].summary).toBe(summary);
+  });
+
+  it("does not report silent slots as lost while the ground station itself is not answering", () => {
+    const rows = buildSwarmSlotRows(
+      [],
+      [
+        { slot: 1, deviceId: "ados-1" },
+        { slot: 2, deviceId: "ados-2" },
+      ],
+      NO_NODES,
+      NO_SUMMARIES,
+      swarmSourceSilent(1_000, 1_000 + SWARM_BEACON_STALE_MS),
+    );
+    expect(rows.map((r) => r.severity)).toEqual(["unknown", "unknown"]);
+    expect(swarmSeverityCounts(rows).noBeacon).toBe(0);
+  });
+});
+
+describe("swarmSourceSilent", () => {
+  it("is silent only once the last answer reaches the stale horizon", () => {
+    expect(swarmSourceSilent(null, 99_999)).toBe(false);
+    expect(swarmSourceSilent(1_000, 1_000 + SWARM_BEACON_STALE_MS - 1)).toBe(false);
+    expect(swarmSourceSilent(1_000, 1_000 + SWARM_BEACON_STALE_MS)).toBe(true);
   });
 });
 
@@ -263,6 +298,18 @@ describe("swarmHeadingDeg", () => {
   it("normalises a wrapped or negative reported heading into 0..360", () => {
     expect(swarmHeadingDeg(beacon(1, { headingDeg: -90 }))).toBe(270);
     expect(swarmHeadingDeg(beacon(1, { headingDeg: 450 }))).toBe(90);
+  });
+});
+
+describe("swarmBeaconPosition", () => {
+  it("places a fixed beacon and never places a no-fix one at 0,0", () => {
+    expect(swarmBeaconPosition(beacon(1, { lat: 12.97, lon: 77.59 }))).toEqual([
+      12.97, 77.59,
+    ]);
+    expect(
+      swarmBeaconPosition(beacon(1, { gpsOk: false, lat: null, lon: null })),
+    ).toBeNull();
+    expect(swarmBeaconPosition(null)).toBeNull();
   });
 });
 

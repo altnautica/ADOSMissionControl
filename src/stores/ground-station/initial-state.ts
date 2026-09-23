@@ -5,12 +5,11 @@
  * @module stores/ground-station/initial-state
  */
 
+import type { GroundStationLinkHealth, GroundStationStatus } from "@/lib/api/ground-station-api";
 import type {
   BluetoothSlice,
   DistributedRxSlice,
   GamepadsSlice,
-  GroundStationLinkHealth,
-  GroundStationStatus,
   MeshSlice,
   PairSlice,
   PeripheralsSlice,
@@ -60,6 +59,7 @@ export const INITIAL_BLUETOOTH: BluetoothSlice = {
   scanning: false,
   scan_results: [],
   paired: [],
+  pairedFor: null,
   pairing_mac: null,
   error: null,
 };
@@ -106,6 +106,7 @@ export const INITIAL_DISTRIBUTED_RX: DistributedRxSlice = {
   relayStatus: null,
   pairingWindowOpen: false,
   pairingWindowExpiresAt: null,
+  pairingCode: null,
   pendingRequests: [],
   loading: false,
   error: null,
@@ -140,10 +141,12 @@ export const INITIAL_STORE_SLICE = {
   lastError: null,
   lastFetchedAt: null,
   statusFetchedAt: null,
+  linkHealthAt: null,
   network: null,
   ap: null,
   pair: INITIAL_PAIR,
   ui: null,
+  uiFor: null,
   pic: INITIAL_PIC,
   gamepads: INITIAL_GAMEPADS,
   bluetooth: INITIAL_BLUETOOTH,
@@ -152,6 +155,7 @@ export const INITIAL_STORE_SLICE = {
   modem: null,
   uplink: INITIAL_UPLINK,
   ethernetConfig: null,
+  uplinkFor: null,
   peripherals: INITIAL_PERIPHERALS,
   role: INITIAL_ROLE,
   distributedRx: INITIAL_DISTRIBUTED_RX,

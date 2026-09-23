@@ -97,30 +97,30 @@ function SystemBreakdown({
   const swapTotal = resources.swap_total_mb;
   const swapUsed = resources.swap_used_mb;
   const swapPercent =
-    resources.swap_percent > 0
+    resources.swap_percent != null && resources.swap_percent > 0
       ? resources.swap_percent
-      : swapTotal > 0
+      : swapTotal != null && swapUsed != null && swapTotal > 0
         ? (swapUsed / swapTotal) * 100
-        : 0;
+        : undefined;
 
   return (
     <div className="space-y-4">
       <MemBar
         label="Memory"
         percent={usedPercent}
-        detail={`${mb(used)} USED / ${available.toFixed(0)} AVAIL / ${mb(total)} TOTAL MB`}
+        detail={`${mb(used)} USED / ${mb(available)} AVAIL / ${mb(total)} TOTAL MB`}
         stale={stale}
       />
-      {cache > 0 && (
+      {cache != null && cache > 0 && (
         <p className="text-[10px] text-text-tertiary font-mono">
           Cache + buffers: {cache.toFixed(0)} MB
         </p>
       )}
-      {swapTotal > 0 && (
+      {swapTotal != null && swapTotal > 0 && (
         <MemBar
           label="Swap"
           percent={swapPercent}
-          detail={`${swapUsed.toFixed(0)} / ${swapTotal.toFixed(0)} MB`}
+          detail={`${mb(swapUsed)} / ${swapTotal.toFixed(0)} MB`}
           stale={stale}
         />
       )}
@@ -147,12 +147,15 @@ function PerServiceBreakdown({
 }) {
   const rows = useMemo<ServiceMemRow[]>(() => {
     return services
-      .filter((s) => s.status === "running" && (s.memory_mb ?? 0) > 0)
+      .flatMap((s) =>
+        s.status === "running" && s.memory_mb != null && s.memory_mb > 0
+          ? [{ name: s.name, memoryMb: s.memory_mb }]
+          : [],
+      )
       .map((s) => ({
-        name: s.name,
-        memoryMb: s.memory_mb,
+        ...s,
         percent:
-          totalMb != null && totalMb > 0 ? (s.memory_mb / totalMb) * 100 : undefined,
+          totalMb != null && totalMb > 0 ? (s.memoryMb / totalMb) * 100 : undefined,
       }))
       .sort((a, b) => b.memoryMb - a.memoryMb);
   }, [services, totalMb]);

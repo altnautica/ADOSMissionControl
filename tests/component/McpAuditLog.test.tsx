@@ -1,6 +1,6 @@
 /**
- * Smoke tests for McpAuditLog: the honest empty state (no fabricated rows,
- * Rule 44) and that real events render. The audit query is mocked so the
+ * Smoke tests for McpAuditLog: the honest empty state (no fabricated rows)
+ * and that real events render. The audit query is mocked so the
  * component's rendering + filtering can be exercised without a Convex backend.
  *
  * @license GPL-3.0-only
@@ -10,10 +10,12 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen } from "@testing-library/react";
 import { renderWithIntl } from "../helpers/intl-wrapper";
 
-const { auditRows } = vi.hoisted(() => ({ auditRows: { current: [] as unknown[] } }));
+const { audit } = vi.hoisted(() => ({
+  audit: { rows: [] as unknown[] | undefined, state: "ready" as string },
+}));
 
 vi.mock("@/hooks/use-convex-skip-query", () => ({
-  useConvexSkipQuery: () => auditRows.current,
+  useConvexSkipQueryState: () => ({ data: audit.rows, state: audit.state }),
 }));
 vi.mock("@/lib/community-api", () => ({
   communityApi: { mcpTokens: { recentAudit: {} } },
@@ -38,18 +40,33 @@ const CREDS: McpTokenRow[] = [
 
 describe("McpAuditLog", () => {
   beforeEach(() => {
-    auditRows.current = [];
+    audit.rows = [];
+    audit.state = "ready";
   });
 
   it("shows the honest empty state when there is no activity", () => {
     renderWithIntl(<McpAuditLog credentials={CREDS} />);
     expect(screen.getByText(/No MCP activity recorded yet/i)).toBeTruthy();
-    // the self-reported caveat is always present (Rule 44)
+    // the self-reported caveat is always present (no fabricated reading)
     expect(screen.getByText(/not an independent log/i)).toBeTruthy();
   });
 
+  it("does not claim 'no activity' while the query is loading or failed", () => {
+    audit.rows = undefined;
+    audit.state = "loading";
+    const { unmount } = renderWithIntl(<McpAuditLog credentials={CREDS} />);
+    expect(screen.queryByText(/No MCP activity/i)).toBeNull();
+    expect(screen.getByText(/Loading activity/i)).toBeTruthy();
+    unmount();
+
+    audit.state = "error";
+    renderWithIntl(<McpAuditLog credentials={CREDS} />);
+    expect(screen.queryByText(/No MCP activity/i)).toBeNull();
+    expect(screen.getByText(/Activity log unavailable/i)).toBeTruthy();
+  });
+
   it("renders real events with their tool and result", () => {
-    auditRows.current = [
+    audit.rows = [
       {
         _id: "e1",
         tokenId: "mct_a",

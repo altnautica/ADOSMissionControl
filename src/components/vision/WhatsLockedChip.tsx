@@ -2,38 +2,32 @@
 
 /**
  * @module vision/WhatsLockedChip
- * @description The "what's locked" chip — a faithful port of the reference
- * artifact's `.lockchip` (icon tile · who/state · range). The single, shared,
- * honest readout of the operator-designated target: class + track id, its LIVE
- * lock state (read from the detection stream by track id, not a stale copy),
- * and confidence. Shown only while a target is selected on this drone. Styling
- * is the artifact's (`.ados-cockpit .lockchip`).
+ * @description The "what's locked" chip (icon tile · who/state · confidence).
+ * The single, shared, honest readout of the target the vision engine
+ * acknowledged as designated: class + track id, its LIVE lock state and
+ * confidence read from the designated camera's detection stream by track id,
+ * and a release control. Shown only while a target is designated on this
+ * drone. Styling is `.ados-cockpit .lockchip`.
  *
- * Honest "why did the lock go away" (Rule 44): when the designated target's
- * lock drops, the operator needs to know WHETHER the tracker lost the target
- * (the feed is live, the object left the frame / could not be re-associated) or
- * the PERCEPTION FEED itself went stale / the offload link dropped (we simply
- * can't see anymore). Those are very different situations, so the chip reads the
- * same {@link DETECTION_STALE_MS} freshness the box overlay uses: a live feed
- * shows the tracker's own lock state, a stale feed shows "Feed stale" /
- * "Offload link lost" and stops trusting the last (now stale) detection.
+ * Honest "why did the lock go away": a fresh feed without the designated track
+ * reads "Not in view"; a stale feed reads "Feed stale" / "Offload link lost".
+ * Confidence comes only from the live detection, never from the click-time
+ * copy, so a target out of view shows "—".
  *
  * @license GPL-3.0-only
  */
 
 import { useEffect, useState } from "react";
-import { Crosshair } from "lucide-react";
+import { Crosshair, X } from "lucide-react";
 
+import { useCameraDetectionBatch } from "@/hooks/use-detection-batch";
 import { perceptionFeedState, staleReason } from "@/lib/vision/perception-health";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
-import {
-  useVisionDetectionsStore,
-  type LockState,
-} from "@/stores/vision-detections-store";
+import type { LockState } from "@/stores/vision-detections-store";
 import { useSelectedTargetStore } from "@/stores/selected-target-store";
 
 /** Human label for a live lock state. */
-function lockLabel(state: LockState | null): string {
+function lockLabel(state: LockState | null | undefined): string {
   switch (state) {
     case "locked":
       return "Locked";
@@ -42,22 +36,23 @@ function lockLabel(state: LockState | null): string {
     case "lost":
       return "Lost";
     default:
-      return "Selected";
+      return "Tracking";
   }
 }
 
 export function WhatsLockedChip({ droneId }: { droneId: string }) {
-  const selected = useSelectedTargetStore((s) => s.selected);
-  const batch = useVisionDetectionsStore((s) => s.batches[droneId]);
+  const designated = useSelectedTargetStore((s) => s.designated);
+  const release = useSelectedTargetStore((s) => s.release);
+  const here = designated && designated.droneId === droneId ? designated : null;
+  const batch = useCameraDetectionBatch(droneId, here?.cameraId ?? null);
   const tier = useAgentCapabilitiesStore((s) => s.perceptionTier);
 
   const [now, setNow] = useState(() => Date.now());
 
-  // Age the feed on its own so the chip flips a lock to "feed stale" when the
-  // stream stops, not only when a fresh batch happens to arrive. Runs only
-  // while a feed has started; hooks stay above the early return (Rules of Hooks).
-  // Key on whether a feed EXISTS, not the batch object (replaced every frame,
-  // ~10-15 Hz), so the 500 ms interval is created once per feed lifecycle.
+  // Age the feed on its own so the chip flips to "feed stale" when the stream
+  // stops, not only when a fresh batch happens to arrive. Keyed on whether a
+  // feed EXISTS, not the batch object (replaced every frame), so the interval
+  // is created once per feed lifecycle. Hooks stay above the early return.
   const hasFeed = !!batch;
   useEffect(() => {
     if (!hasFeed) return;
@@ -65,23 +60,26 @@ export function WhatsLockedChip({ droneId }: { droneId: string }) {
     return () => clearInterval(id);
   }, [hasFeed]);
 
-  const here = selected && selected.droneId === droneId ? selected : null;
   if (!here) return null;
 
   const feed = perceptionFeedState(batch, now);
   const stale = feed === "stale";
 
-  // Only trust a detection while the feed is fresh — a stale batch's last box is
-  // not "live", so it must not masquerade as a current lock state / confidence.
+  // Only a detection in a fresh batch of the designated camera is live.
   const live =
     feed === "fresh" && here.trackId != null && batch
       ? batch.detections.find((d) => d.trackId === here.trackId)
       : undefined;
+  const notInView = feed === "fresh" && !live;
 
-  // A stale feed overrides the tracker's (now stale) lock label with the honest
-  // reason we lost sight — the offload link dropped, or the local feed went quiet.
-  const label = stale ? staleReason(tier) : lockLabel(live?.lockState ?? null);
-  const confidence = live?.confidence ?? here.confidence;
+  let label: string;
+  if (stale) label = staleReason(tier);
+  else if (here.trackId == null) label = "Untracked";
+  else if (live) label = lockLabel(live.lockState);
+  else label = feed === "fresh" ? "Not in view" : "Waiting for feed";
+
+  const warnColor = stale && tier === "offload" ? "var(--crit)" : "var(--warn)";
+  const warn = stale || notInView;
   const who =
     here.trackId != null
       ? `${here.classLabel} · trk ${here.trackId}`
@@ -90,13 +88,12 @@ export function WhatsLockedChip({ droneId }: { droneId: string }) {
   return (
     <div
       className="lockchip"
+      data-target-interactive
       style={{
         left: "50%",
         top: 48,
         transform: "translateX(-50%)",
-        ...(stale
-          ? { borderColor: tier === "offload" ? "var(--crit)" : "var(--warn)" }
-          : {}),
+        ...(warn ? { borderColor: warnColor } : {}),
       }}
       data-cockpit-widget="whats-locked"
       data-feed-state={feed}
@@ -106,13 +103,22 @@ export function WhatsLockedChip({ droneId }: { droneId: string }) {
       </div>
       <div className="who">
         <b>{who}</b>
-        <span style={stale ? { color: tier === "offload" ? "var(--crit)" : "var(--warn)" } : undefined}>
-          {label}
-        </span>
+        <span style={warn ? { color: warnColor } : undefined}>{label}</span>
       </div>
       <div className="rng">
-        {Math.round(confidence * 100)}%<small>conf</small>
+        {live ? `${Math.round(live.confidence * 100)}%` : "—"}
+        <small>conf</small>
       </div>
+      <button
+        type="button"
+        onClick={release}
+        aria-label="Release target"
+        title="Release target"
+        className="text-white/60 hover:text-white"
+        style={{ pointerEvents: "auto" }}
+      >
+        <X size={12} aria-hidden="true" />
+      </button>
     </div>
   );
 }

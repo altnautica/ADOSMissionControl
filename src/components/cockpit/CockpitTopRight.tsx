@@ -2,12 +2,12 @@
 
 /**
  * @module fly/cockpit/CockpitTopRight
- * @description The top-right cockpit cluster — a faithful port of the reference
- * artifact's `.zone.tr`: the density segmented control (Min / Std / Full), the
- * live video stats (resolution · fps · frame age), and a camera pill.
+ * @description The top-right cockpit cluster: the density segmented control
+ * (Min / Std / Full), the live video stats (resolution · fps · frame age),
+ * and a camera pill.
  *
  * The camera pill names the node's primary (streaming) camera from the agent
- * capability probe — never a fabricated "main" label (Rule 44). When the node
+ * capability probe, never a fabricated "main" label. When the node
  * advertises no camera roster the pill is omitted rather than inventing one;
  * when it advertises more than one, a `+N` hint points at the roster PiP. On a
  * multi-stream node the top-left stream switcher already names the active
@@ -67,7 +67,7 @@ export function CockpitTopRight({ density, onDensity, droneId }: Props) {
   const active =
     streamCount > 1
       ? null
-      : (cameras.find((c) => c.streaming) ?? cameras[0] ?? null);
+      : (cameras.find((c) => c.streaming === true) ?? cameras[0] ?? null);
   const extra = cameras.length > 1 ? cameras.length - 1 : 0;
 
   return (
@@ -92,7 +92,7 @@ export function CockpitTopRight({ density, onDensity, droneId }: Props) {
               <b>{resolution || "—"}</b>
             </span>
             <span className="s">
-              <b>{Math.round(fps) || 0}</b>fps
+              <b>{fps === null ? "—" : Math.round(fps)}</b>fps
             </span>
             {/* Frame age: how far behind the live world the picture is. The
                 suffix names the estimator, and `—` is shown when neither can
@@ -114,7 +114,7 @@ export function CockpitTopRight({ density, onDensity, droneId }: Props) {
             {/* The network roll-up, explicitly labelled. It is RTT plus
                 decoder buffer wait, which is not an end-to-end quantity. */}
             <span className="s" title="Network round-trip plus decoder jitter-buffer wait. Not an end-to-end latency.">
-              <b>{Math.round(latencyMs) || 0}</b>ms net
+              <b>{latencyMs === null ? "—" : Math.round(latencyMs)}</b>ms net
             </span>
             {degradedReason && (
               <span className="s" data-video-degraded={degradedReason}>
@@ -133,7 +133,7 @@ export function CockpitTopRight({ density, onDensity, droneId }: Props) {
 
       {active && (
         <div
-          className={`camsel panel d-std${active.streaming ? "" : " idle"}`}
+          className={`camsel panel d-std${active.streaming === false ? " idle" : ""}`}
           data-camera-streaming={active.streaming}
         >
           <i className="dot" />

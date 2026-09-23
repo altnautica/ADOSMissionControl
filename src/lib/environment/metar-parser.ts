@@ -10,7 +10,9 @@
  *   - `lat` / `lon` — station position
  *   - `obsTime` — UNIX seconds of observation
  *   - `temp` / `dewp` — degrees C
- *   - `wdir` / `wspd` / `wgst` — direction (deg), speed (kt), gust (kt)
+ *   - `wdir` / `wspd` / `wgst` — direction (deg, or "VRB" for variable),
+ *     speed (kt), gust (kt). A variable direction becomes an undefined
+ *     `windDirDeg` beside a reported speed.
  *   - `visib` — visibility in statute miles; may be string "6+"
  *   - `altim` — altimeter in hPa
  *   - `rawOb` — raw METAR string
@@ -33,7 +35,7 @@ export interface AwcMetarRow {
   reportTime?: string;
   temp?: number | null;
   dewp?: number | null;
-  wdir?: number | null;
+  wdir?: number | "VRB" | null;
   wspd?: number | null;
   wgst?: number | null;
   visib?: number | string | null;
@@ -43,7 +45,7 @@ export interface AwcMetarRow {
   mostRecent?: number;
 }
 
-function numOrUndef(v: number | null | undefined): number | undefined {
+function numOrUndef(v: number | string | null | undefined): number | undefined {
   return typeof v === "number" && Number.isFinite(v) ? v : undefined;
 }
 

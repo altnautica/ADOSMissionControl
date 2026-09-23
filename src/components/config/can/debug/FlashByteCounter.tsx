@@ -106,7 +106,7 @@ export function FlashByteCounter() {
         <Row label={t("throughput")} value={fmtThroughput(throughput)} />
         <Row label={t("retries")} value={retries.toString()} cls={retries > 0 ? "text-status-warning" : undefined} />
         <Row label={t("timeouts")} value={timeouts.toString()} cls={timeouts > 0 ? "text-status-warning" : undefined} />
-        <Row label={t("crcMismatches")} value="0" />
+        <Row label={t("crcMismatches")} value="—" />
       </div>
     </div>
   );

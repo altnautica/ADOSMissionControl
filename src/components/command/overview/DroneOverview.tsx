@@ -76,6 +76,7 @@ export function DroneOverview({ ctx }: { ctx: SurfaceContext }) {
         profile={profile}
         title={ctx.displayName}
         reachedViaName={reachedViaName}
+        fcConnected={ctx.isConnected}
       />
 
       {/* How this browser last reached the node, and the address it used.

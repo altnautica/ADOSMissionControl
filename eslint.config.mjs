@@ -12,7 +12,6 @@ const eslintConfig = [
       // time. They are not our source and trip rules-of-hooks on their own
       // minified identifiers, so linting them is noise.
       "public/cesium/**",
-      "public/monaco-vs/**",
     ],
   },
   {

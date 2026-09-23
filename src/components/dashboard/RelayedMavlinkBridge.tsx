@@ -89,7 +89,7 @@ const WS_TIMEOUT_MS = 5000;
 const TICKET_MINT_TIMEOUT_MS = 5000;
 
 /** True only when the node's WFB link is verified up. A missing or unproven
- * radio block is NOT up (Rule 44) — mirrors `RelayedDroneBridge`'s gate so
+ * radio block is NOT up (no fabricated reading) — mirrors `RelayedDroneBridge`'s gate so
  * both bridges agree on when a relay is real. */
 function radioUpFor(status: CommandCloudStatus | undefined): boolean {
   const radio = status?.radio ? normalizeRadio(status.radio) : null;
@@ -119,6 +119,11 @@ export function RelayedMavlinkBridge() {
   // (so a retry tick never opens a second concurrent dial for the same drone).
   const connectedIds = useRef<Set<string>>(new Set());
   const connectingIds = useRef<Set<string>>(new Set());
+  // The latest reconcile's relay-eligible set, and whether the bridge has
+  // unmounted: a dial re-checks both after its awaits, since eligibility can
+  // change (a direct pairing lands, the ground link drops) while it waits.
+  const wantedIds = useRef<Set<string>>(new Set());
+  const disposed = useRef(false);
 
   useEffect(() => {
     async function connectOne(
@@ -155,13 +160,23 @@ export function RelayedMavlinkBridge() {
           "@/lib/protocol/transport/websocket"
         );
         const wsTransport = new WebSocketTransport();
-        await Promise.race([
-          wsTransport.connect(wsUrl, [WS_TICKET_PROTOCOL, ticket]),
-          new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error("timeout")), WS_TIMEOUT_MS),
-          ),
-        ]);
+        // Owned from the moment the dial starts: when the timeout wins the
+        // race, the catch below closes the still-CONNECTING socket instead of
+        // leaving it to open later with no owner.
         transport = wsTransport;
+        const dialTimeout = Promise.withResolvers<never>();
+        const dialTimer = setTimeout(
+          () => dialTimeout.reject(new Error("timeout")),
+          WS_TIMEOUT_MS,
+        );
+        try {
+          await Promise.race([
+            wsTransport.connect(wsUrl, [WS_TICKET_PROTOCOL, ticket]),
+            dialTimeout.promise,
+          ]);
+        } finally {
+          clearTimeout(dialTimer);
+        }
 
         // The relayed drone's FC variant, once the aux-lane status funnel has
         // reported one (RelayedDroneBridge writes it onto this same row);
@@ -175,7 +190,23 @@ export function RelayedMavlinkBridge() {
         );
         const adapter = await createFcAdapter(fcVariant);
         const vehicleInfo = await adapter.connect(transport);
+
+        // Re-check after the awaits: addDrone replaces any session already
+        // under this id, so a direct session that came up meanwhile (or a
+        // drone that stopped being relay-eligible, or an unmount) must win.
         handedOff = true;
+        const directlyPaired =
+          usePairingStore.getState().pairedDrones.some((d) => d.deviceId === droneDeviceId) ||
+          useLocalNodesStore.getState().nodes.some((n) => n.deviceId === droneDeviceId);
+        if (
+          disposed.current ||
+          !wantedIds.current.has(nodeId) ||
+          directlyPaired ||
+          useDroneManager.getState().drones.has(nodeId)
+        ) {
+          void adapter.disconnect().catch(() => {});
+          return;
+        }
 
         const name = `Agent ${droneDeviceId.slice(0, 8)}`;
         useDroneManager
@@ -187,7 +218,9 @@ export function RelayedMavlinkBridge() {
             transport,
             vehicleInfo,
             { type: "websocket", url: wsUrl },
-            { ownsFleetRow: false },
+            // A background session never takes or moves the operator's
+            // selection.
+            { ownsFleetRow: false, autoSelect: false },
           );
         connectedIds.current.add(nodeId);
       } catch (err) {
@@ -259,6 +292,7 @@ export function RelayedMavlinkBridge() {
           connectingIds.current.delete(e.nodeId);
         });
       }
+      wantedIds.current = wanted;
 
       // Tear down sessions for drones no longer relay-eligible: the ground
       // link dropped, the peer is no longer reported, or the drone was just
@@ -304,7 +338,9 @@ export function RelayedMavlinkBridge() {
   // for the component's whole lifetime and still reflects live membership).
   useEffect(() => {
     const owned = connectedIds.current;
+    disposed.current = false;
     return () => {
+      disposed.current = true;
       for (const nodeId of owned) {
         useDroneManager.getState().removeDrone(nodeId);
       }

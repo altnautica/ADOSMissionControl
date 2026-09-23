@@ -6,7 +6,7 @@ import { useParamLabel } from "@/hooks/use-param-label";
 import { useParamMetadataMap } from "@/hooks/use-param-metadata";
 import { useToast } from "@/components/ui/toast";
 import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
-import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
+import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { PanelHeader } from "../shared/PanelHeader";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -115,7 +115,7 @@ export function CameraPanel() {
   }, []);
 
   return (
-    <ArmedLockOverlay>
+    <ArmedWarningBanner>
       <div className="flex-1 overflow-y-auto p-6">
         <div className="max-w-2xl space-y-6">
           <PanelHeader
@@ -319,7 +319,7 @@ export function CameraPanel() {
           </div>
         </div>
       </div>
-    </ArmedLockOverlay>
+    </ArmedWarningBanner>
   );
 }
 

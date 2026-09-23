@@ -38,12 +38,15 @@ import {
  * One slot's worst current condition. Disjoint by construction: a drone that
  * has declared an emergency AND lost GPS is one `error`, never two alarms.
  *
- * The precedence below is the store's own (`selectSwarmSeverityCounts`), not a
- * second opinion. Trustworthiness comes first: a beacon past the stale horizon
- * makes every bit under it unreliable, so `offline` outranks the emergency flag
- * rather than the other way round — an emergency bit that is four seconds old
- * is a claim about the past. The summary chips and this row order must never
- * disagree, so there is exactly one rule and both read it.
+ * Trustworthiness comes first: a beacon past the stale horizon makes every bit
+ * under it unreliable, so `offline` outranks the emergency flag rather than the
+ * other way round — an emergency bit that is four seconds old is a claim about
+ * the past. The summary chips and this row order must never disagree, so there
+ * is exactly one rule and both read it.
+ *
+ * `unknown` is the one state that says nothing about the drone: the slot is
+ * registered and silent, but the ground station reporting the fleet has itself
+ * stopped answering, so the silence is the GCS link's, not the aircraft's.
  */
 export type SwarmSeverity =
   | "noBeacon" // an expected slot with no row at all — the settled loss
@@ -51,13 +54,15 @@ export type SwarmSeverity =
   | "error" // emergency bit set
   | "warning" // flying without a usable GPS fix
   | "armed" // armed and otherwise nominal — hot, not wrong
+  | "unknown" // silent slot while the ground station is not answering
   | "nominal"; // disarmed and healthy: the quiet majority
 
 /**
  * The five the summary strip offers as filters. `nominal` is deliberately not
- * one — no operator task begins "show me the healthy ones".
+ * one — no operator task begins "show me the healthy ones" — and neither is
+ * `unknown`, which the ground-station banner states once for the whole board.
  */
-export type SwarmSeverityId = Exclude<SwarmSeverity, "nominal">;
+export type SwarmSeverityId = Exclude<SwarmSeverity, "nominal" | "unknown">;
 
 /** Worst first. Row order, chip order and tiebreaks all read this one array. */
 export const SWARM_SEVERITY_ORDER: readonly SwarmSeverity[] = [
@@ -66,6 +71,7 @@ export const SWARM_SEVERITY_ORDER: readonly SwarmSeverity[] = [
   "error",
   "warning",
   "armed",
+  "unknown",
   "nominal",
 ];
 
@@ -97,6 +103,7 @@ export const SWARM_SEVERITY_LEVEL: Record<SwarmSeverity, StatusLevel> = {
   error: "critical",
   warning: "warning",
   armed: "good",
+  unknown: "idle",
   nominal: "good",
 };
 
@@ -115,6 +122,7 @@ export const SWARM_SEVERITY_SHAPE: Record<SwarmSeverity, "dot" | "ring"> = {
   error: "dot",
   warning: "dot",
   armed: "dot",
+  unknown: "ring",
   nominal: "ring",
 };
 
@@ -130,14 +138,17 @@ export interface SwarmSlotRow {
   readonly beacon: SwarmBeaconRow | null;
   /** Null when a beacon arrives from a slot no registered node claims. */
   readonly node: FleetNodeEntry | null;
+  /** The device the fleet registry issued this slot to, when it names one.
+   * Survives silence: a registered slot keeps its identity with no beacon and
+   * no paired node. */
+  readonly registeredDeviceId: string | null;
   readonly summary: CommandAgentSummary | null;
   readonly severity: SwarmSeverity;
 }
 
 /**
- * One slot's worst condition, in the store's precedence. Kept byte-for-byte
- * identical to `selectSwarmSeverityCounts` so a chip's number is exactly the
- * set of rows that chip filters to.
+ * One slot's worst condition from its own beacon. `swarmSeverityCounts` counts
+ * exactly these values, so a chip's number is the set of rows it filters to.
  */
 export function swarmRowSeverity(beacon: SwarmBeaconRow | null): SwarmSeverity {
   if (!beacon) return "noBeacon";
@@ -146,6 +157,16 @@ export function swarmRowSeverity(beacon: SwarmBeaconRow | null): SwarmSeverity {
   if (!beacon.gpsOk) return "warning";
   if (beacon.armed) return "armed";
   return "nominal";
+}
+
+/**
+ * True when the ground station feeding the board has stopped answering: its
+ * last answered poll is at or past the beacon stale horizon. Null (never
+ * answered, or the board was cleared) is not silence — there is no fleet on
+ * the board to misattribute.
+ */
+export function swarmSourceSilent(lastAnswerMs: number | null, nowMs: number): boolean {
+  return lastAnswerMs !== null && nowMs - lastAnswerMs >= SWARM_BEACON_STALE_MS;
 }
 
 /** How much a slot's last beacon is worth, in the board's shared vocabulary. */
@@ -161,19 +182,33 @@ export function swarmBeaconFreshness(
  *
  * The beacon carries no heading — every reference implementation derives it
  * from the velocity vector, and so does this. `atan2(vy, vx)` over NED gives
- * the track angle directly. Below the speed floor that angle is noise, so a
- * hovering drone shows the heading the agent last resolved rather than an arrow
- * that spins on the spot.
+ * the track angle directly. Below the speed floor (or with no velocity, as on a
+ * beacon without a fix) that angle is noise, so the arrow shows the heading the
+ * agent last resolved rather than one that spins on the spot.
  */
 export function swarmHeadingDeg(beacon: SwarmBeaconRow): number {
-  const speed = Math.hypot(beacon.vxMs, beacon.vyMs);
-  if (speed < SWARM_HEADING_MIN_SPEED_MS) return normalizeDeg(beacon.headingDeg);
-  return normalizeDeg((Math.atan2(beacon.vyMs, beacon.vxMs) * 180) / Math.PI);
+  const { vxMs, vyMs } = beacon;
+  if (vxMs === null || vyMs === null || Math.hypot(vxMs, vyMs) < SWARM_HEADING_MIN_SPEED_MS) {
+    return normalizeDeg(beacon.headingDeg ?? 0);
+  }
+  return normalizeDeg((Math.atan2(vyMs, vxMs) * 180) / Math.PI);
 }
 
 function normalizeDeg(deg: number): number {
   if (!Number.isFinite(deg)) return 0;
   return ((deg % 360) + 360) % 360;
+}
+
+/**
+ * Where a slot's beacon places it on a map, or null when it carries no
+ * position. A beacon without a GPS fix is published with a null position, and
+ * substituting 0 would plot it at 0°N 0°E and drag the fleet bounds with it.
+ */
+export function swarmBeaconPosition(
+  beacon: SwarmBeaconRow | null,
+): [number, number] | null {
+  if (!beacon || beacon.lat === null || beacon.lon === null) return null;
+  return [beacon.lat, beacon.lon];
 }
 
 /**
@@ -190,12 +225,17 @@ function normalizeDeg(deg: number): number {
  * `nodesBySlot.keys()` for the slot set would lose a registered-but-silent
  * slot the GCS has never paired with, which must still render with
  * `node: null` and `beacon: null`.
+ *
+ * `sourceSilent` (see `swarmSourceSilent`) turns a silent registered slot
+ * from `noBeacon` into `unknown`: while the ground station is not answering,
+ * no slot's silence can be pinned on the aircraft.
  */
 export function buildSwarmSlotRows(
   beacons: readonly SwarmBeaconRow[],
   registeredSlots: readonly SwarmFleetSlot[],
   nodesBySlot: ReadonlyMap<number, FleetNodeEntry>,
   summariesByDeviceId: ReadonlyMap<string, CommandAgentSummary>,
+  sourceSilent: boolean,
 ): SwarmSlotRow[] {
   const beaconBySlot = new Map(beacons.map((beacon) => [beacon.slot, beacon]));
   const registeredBySlot = new Map(
@@ -215,8 +255,9 @@ export function buildSwarmSlotRows(
       slot,
       beacon,
       node,
+      registeredDeviceId: registered?.deviceId ?? null,
       summary: deviceId ? (summariesByDeviceId.get(deviceId) ?? null) : null,
-      severity: swarmRowSeverity(beacon),
+      severity: beacon === null && sourceSilent ? "unknown" : swarmRowSeverity(beacon),
     });
   }
   return rows;
@@ -243,7 +284,8 @@ export function sortSwarmRowsUnhealthyFirst(
 
 export type SwarmSeverityCounts = Record<SwarmSeverityId, number>;
 
-/** One count per filter chip. `nominal` rows are counted by nobody, on purpose. */
+/** One count per filter chip. `nominal` and `unknown` rows are counted by
+ * nobody, on purpose. */
 export function swarmSeverityCounts(
   rows: readonly SwarmSlotRow[],
 ): SwarmSeverityCounts {
@@ -255,7 +297,7 @@ export function swarmSeverityCounts(
     armed: 0,
   };
   for (const row of rows) {
-    if (row.severity !== "nominal") counts[row.severity] += 1;
+    if (row.severity !== "nominal" && row.severity !== "unknown") counts[row.severity] += 1;
   }
   return counts;
 }
@@ -310,12 +352,13 @@ export function swarmConditionCounts(
   return counts;
 }
 
-/** The label a row answers to: its node name, else its device id, else its slot. */
+/** The label a row answers to: its node name, else its device id (beacon, then
+ * registry), else its slot. */
 export function swarmRowName(row: SwarmSlotRow, slotLabel: string): string {
-  return row.node?.name ?? row.beacon?.deviceId ?? slotLabel;
+  return row.node?.name ?? row.beacon?.deviceId ?? row.registeredDeviceId ?? slotLabel;
 }
 
 /** The device the row's commands and its hero request address, when known. */
 export function swarmRowDeviceId(row: SwarmSlotRow): string | null {
-  return row.node?.deviceId ?? row.beacon?.deviceId ?? null;
+  return row.node?.deviceId ?? row.beacon?.deviceId ?? row.registeredDeviceId ?? null;
 }

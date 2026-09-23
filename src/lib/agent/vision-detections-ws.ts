@@ -43,7 +43,7 @@ const DEFAULT_FRAME_HEIGHT = 480;
  * every batch (`ados_protocol::framebus::VISION_DETECTION_VERSION`) and rejects
  * a version it does not speak; the GCS mirrors that contract. A batch whose `v`
  * is present but does NOT equal this is DROPPED rather than mis-mapped onto a
- * shape a newer version may have reshaped under us (Rule 44 — never present
+ * shape a newer version may have reshaped under us (never present
  * garbage as data). A batch with no `v` (an agent predating the field, or a
  * transport that omits it) maps normally, preserving back-compat. Sourced from
  * the generated contract registry so it never drifts from the agent's stamp. */

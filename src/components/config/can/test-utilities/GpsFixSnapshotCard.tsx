@@ -140,16 +140,26 @@ function FixDisplay({ fix }: { fix: GnssFix2 }) {
           : status === STATUS_NO_FIX
             ? t("noFix")
             : t("noFix");
+  const hasPosition = status === STATUS_3D_FIX || status === STATUS_2D_FIX;
   const lat = Number(fix.latitudeDeg1e8) / ONE_E8;
   const lon = Number(fix.longitudeDeg1e8) / ONE_E8;
   const altMsl = fix.heightMslMm / 1000;
-  const hdop = fix.pdop > 0 ? fix.pdop / Math.SQRT2 : 0;
+  // Fix2 reports PDOP; it is shown as measured, "—" when the receiver sent 0.
+  const pdop = fix.pdop > 0 ? fix.pdop.toFixed(2) : "—";
+  const tone =
+    status === STATUS_3D_FIX
+      ? "text-status-success"
+      : status === STATUS_2D_FIX
+        ? "text-status-warning"
+        : "text-status-error";
   return (
-    <span className="text-status-success" data-testid="gps-fix-result">
+    <span className={tone} data-testid="gps-fix-result">
       {statusLabel}
       <span className="text-text-tertiary ml-2">
-        {t("sats")}: {fix.satsUsed} · {t("hdop")}: {hdop.toFixed(2)} ·{" "}
-        {lat.toFixed(7)}, {lon.toFixed(7)} · {altMsl.toFixed(2)} m
+        {t("sats")}: {fix.satsUsed} · {t("pdop")}: {pdop} ·{" "}
+        {hasPosition
+          ? `${lat.toFixed(7)}, ${lon.toFixed(7)} · ${altMsl.toFixed(2)} m`
+          : "—"}
       </span>
     </span>
   );

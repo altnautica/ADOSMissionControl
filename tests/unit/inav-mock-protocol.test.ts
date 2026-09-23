@@ -279,11 +279,12 @@ describe("telemetry tick", () => {
     await proto.disconnect();
   });
 
-  it("battery callback fires and remaining decreases over time", async () => {
+  it("battery drains over time in flight", async () => {
     const proto = makeCopter();
     const connectP = proto.connect(fakeTransport());
     await vi.advanceTimersByTimeAsync(300);
     await connectP;
+    await proto.arm();
 
     const levels: number[] = [];
     proto.onBattery((d) => levels.push(d.remaining));
@@ -312,6 +313,33 @@ describe("telemetry tick", () => {
     await proto.disconnect();
     vi.advanceTimersByTime(500);
     expect(received.length).toBe(countBefore);
+  });
+
+  it("starts disarmed on the ground and follows arm/disarm", async () => {
+    const proto = makeCopter();
+    const connectP = proto.connect(fakeTransport());
+    await vi.advanceTimersByTimeAsync(300);
+    await connectP;
+
+    const armed: boolean[] = [];
+    proto.onHeartbeat((hb) => armed.push(hb.armed));
+    const alts: number[] = [];
+    proto.onPosition((p) => alts.push(p.relativeAlt));
+
+    vi.advanceTimersByTime(150);
+    expect(armed.at(-1)).toBe(false);
+    expect(alts.at(-1)).toBe(0);
+    expect((await proto.setMotorTestOutputs([20, 0, 0, 0], 2)).success).toBe(true);
+
+    await proto.arm();
+    vi.advanceTimersByTime(150);
+    expect(armed.at(-1)).toBe(true);
+    expect((await proto.setMotorTestOutputs([20, 0, 0, 0], 2)).success).toBe(false);
+
+    await proto.disarm();
+    vi.advanceTimersByTime(150);
+    expect(armed.at(-1)).toBe(false);
+    await proto.disconnect();
   });
 });
 

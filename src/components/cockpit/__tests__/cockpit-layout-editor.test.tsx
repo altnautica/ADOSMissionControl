@@ -26,7 +26,11 @@ vi.mock("idb-keyval", () => {
 
 import messages from "../../../../locales/en.json";
 import { CockpitLayoutEditor } from "@/components/cockpit/CockpitLayoutEditor";
-import { useCockpitWidgetRegistry } from "@/lib/cockpit/widget-registry";
+import {
+  isCockpitWidgetVisible,
+  useCockpitWidgetRegistry,
+} from "@/lib/cockpit/widget-registry";
+import { BUILTIN_WIDGETS } from "@/components/cockpit/CockpitZones";
 import { useSettingsStore } from "@/stores/settings-store";
 import {
   cloneDefaultLoadout,
@@ -116,5 +120,24 @@ describe("CockpitLayoutEditor", () => {
         "test.chip"
       ]?.zone,
     ).toBe("bottom-right");
+  });
+
+  it("hides a built-in widget bound to a chrome flag through that flag", () => {
+    for (const widget of BUILTIN_WIDGETS) {
+      useCockpitWidgetRegistry.getState().register(widget);
+    }
+    const radar = BUILTIN_WIDGETS.find((w) => w.layoutKey === "proximityRadar");
+    expect(radar).toBeDefined();
+    render(wrap(<CockpitLayoutEditor />));
+    fireEvent.click(screen.getByRole("switch", { name: `Hide ${radar!.title}` }));
+    const layout =
+      useSettingsStore.getState().loadouts[DEFAULT_LOADOUT_ID].layout;
+    expect(layout.proximityRadar).toBe(false);
+    expect(
+      isCockpitWidgetVisible(radar!, { ...layout, density: "full" }),
+    ).toBe(false);
+    expect(
+      screen.getByRole("switch", { name: `Show ${radar!.title}` }),
+    ).toBeTruthy();
   });
 });

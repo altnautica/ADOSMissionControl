@@ -23,14 +23,18 @@ export function NodeBrandHeader({
   profile,
   title,
   reachedViaName,
+  fcConnected,
 }: {
   profile: EffProfile;
   title: string;
   /** Display name of the ground node this drone is reached through over WFB,
    * when it is enrolled transitively. Surfaces the "via <node>" sub-badge. */
   reachedViaName?: string | null;
+  /** Whether the GCS holds a managed FC session for this node; the status of
+   * a bare flight controller (no agent) comes from it. */
+  fcConnected?: boolean;
 }) {
-  const b = useNodeBrand({ profile, title, reachedViaName });
+  const b = useNodeBrand({ profile, title, reachedViaName, fcConnected });
   return (
     <div
       className="relative flex items-center gap-3 overflow-hidden rounded-xl border border-border-default bg-bg-secondary p-4"

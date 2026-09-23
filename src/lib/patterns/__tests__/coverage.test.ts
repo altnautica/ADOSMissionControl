@@ -14,6 +14,7 @@ import {
 } from "../coverage";
 import { computeFootprint as gsdFootprint } from "../gsd-calculator";
 import type { CameraProfile } from "../gsd-calculator";
+import type { CaptureRouteRow } from "../coverage-footprints";
 
 // Test camera chosen so the footprint math is exact and readable:
 //   gsd_w = (sensorWidth * alt) / (focal * imageWidth) = (10*alt)/(10*1000) = alt/1000
@@ -108,13 +109,39 @@ describe("estimateLineSpacingM", () => {
   });
 });
 
+/**
+ * A generator-shaped survey route: each line is its two transect endpoints,
+ * with the camera armed at the start and disarmed at the end when `trigger` > 0.
+ */
+function buildRoute(
+  lines: number,
+  lineSpacing: number,
+  lineLength: number,
+  trigger: number,
+  alt = 100,
+): CaptureRouteRow[] {
+  const rows: CaptureRouteRow[] = [];
+  for (let j = 0; j < lines; j++) {
+    const y = j * lineSpacing;
+    const [x0, x1] = j % 2 === 0 ? [0, lineLength] : [lineLength, 0];
+    rows.push({ ...fromLocalXY(x0, y), alt, command: "WAYPOINT" });
+    if (trigger > 0) rows.push({ ...fromLocalXY(x0, y), alt, command: "DO_SET_CAM_TRIGG", param1: trigger });
+    rows.push({ ...fromLocalXY(x1, y), alt, command: "WAYPOINT" });
+    if (trigger > 0) rows.push({ ...fromLocalXY(x1, y), alt, command: "DO_SET_CAM_TRIGG", param1: 0 });
+  }
+  return rows;
+}
+
 describe("computeCoverageStats", () => {
-  const route = buildSurvey(4, 30, 200, 20); // 4 lines, 30 m spacing, 200 m, 20 m step
+  // 4 lines, 30 m apart, 210 m long, camera every 20 m.
+  const route = buildRoute(4, 30, 210, 20);
   const alt = 100; // footprint 100 x 80 m
   const stats = computeCoverageStats(route, CAM, alt);
 
-  it("counts one image per route waypoint", () => {
-    expect(stats.imageCount).toBe(route.length);
+  it("counts the images the trigger distance takes, not the route rows", () => {
+    // One capture at each arming point, then every 20 m (0..200 m): 11 per line.
+    expect(stats.imageCount).toBe(44);
+    expect(stats.captureSpacingM).toBe(20);
   });
 
   it("reports the footprint dimensions", () => {
@@ -122,9 +149,8 @@ describe("computeCoverageStats", () => {
     expect(stats.footprintHeightM).toBeCloseTo(80, 6);
   });
 
-  it("estimates spacings from the route geometry", () => {
+  it("takes line spacing from the navigation points only", () => {
     expect(stats.lineSpacingM).toBeCloseTo(30, 1);
-    expect(stats.alongTrackSpacingM).toBeCloseTo(20, 1);
   });
 
   it("derives side overlap from line spacing vs footprint width", () => {
@@ -132,14 +158,22 @@ describe("computeCoverageStats", () => {
     expect(stats.overlapSidePct).toBeCloseTo(70, 1);
   });
 
-  it("derives front overlap from capture spacing vs footprint height", () => {
-    // 1 - 20/80 = 75 %
+  it("derives front overlap from the trigger distance vs footprint height", () => {
+    // 1 - 20/80 = 75 %, though the route has only two points per transect.
     expect(stats.overlapFrontPct).toBeCloseTo(75, 1);
   });
 
   it("computes swept ground coverage as along-track distance x footprint width", () => {
-    // 4 lines x 200 m along-track = 800 m swept; x 100 m width = 80,000 m^2.
-    expect(stats.groundCoverageM2).toBeCloseTo(800 * 100, -2);
+    // 4 lines x 210 m along-track = 840 m swept; x 100 m width = 84,000 m^2.
+    expect(stats.groundCoverageM2).toBeCloseTo(840 * 100, -2);
+  });
+
+  it("reports no images and no front overlap when the camera is never armed", () => {
+    const noTrigger = computeCoverageStats(buildRoute(4, 30, 200, 0), CAM, alt);
+    expect(noTrigger.imageCount).toBe(0);
+    expect(noTrigger.captureSpacingM).toBeNull();
+    expect(noTrigger.overlapFrontPct).toBeNull();
+    expect(noTrigger.overlapSidePct).toBeCloseTo(70, 1);
   });
 
   it("returns zeroed stats for an empty route", () => {
@@ -147,24 +181,15 @@ describe("computeCoverageStats", () => {
     expect(empty.imageCount).toBe(0);
     expect(empty.groundCoverageM2).toBe(0);
     expect(empty.overlapSidePct).toBe(0);
-    expect(empty.overlapFrontPct).toBe(0);
+    expect(empty.overlapFrontPct).toBeNull();
     expect(empty.lineSpacingM).toBe(0);
-  });
-
-  it("ignores waypoints with non-finite coordinates in the image count", () => {
-    const withBad: SurveyPoint[] = [
-      ...route,
-      { lat: Number.NaN, lon: 77.6 },
-      { lat: 12.95, lon: Number.POSITIVE_INFINITY },
-    ];
-    expect(computeCoverageStats(withBad, CAM, alt).imageCount).toBe(route.length);
   });
 
   it("reports 0 overlaps at zero altitude (no footprint)", () => {
     const s0 = computeCoverageStats(route, CAM, 0);
     expect(s0.footprintWidthM).toBe(0);
     expect(s0.overlapSidePct).toBe(0);
-    expect(s0.overlapFrontPct).toBe(0);
+    expect(s0.overlapFrontPct).toBeNull();
   });
 });
 
@@ -173,8 +198,7 @@ describe("detectCoverageGaps", () => {
 
   it("flags no gap when spacing meets the target overlap", () => {
     // spacing 30 m; at 60 % overlap max spacing = 100*(1-0.6) = 40 m.
-    const route = buildSurvey(4, 30, 200, 20);
-    const res = detectCoverageGaps(route, CAM, alt, 0.6);
+    const res = detectCoverageGaps(buildRoute(4, 30, 200, 20), CAM, alt, 0.6);
     expect(res.hasGap).toBe(false);
     expect(res.maxSpacingForOverlapM).toBeCloseTo(40, 6);
     expect(res.deficitM).toBe(0);
@@ -183,23 +207,21 @@ describe("detectCoverageGaps", () => {
 
   it("flags a gap when line spacing is too wide for the target overlap", () => {
     // spacing 60 m; at 60 % overlap max spacing = 40 m -> gap of ~20 m.
-    const route = buildSurvey(4, 60, 200, 15);
-    const res = detectCoverageGaps(route, CAM, alt, 0.6);
+    const res = detectCoverageGaps(buildRoute(4, 60, 200, 15), CAM, alt, 0.6);
     expect(res.hasGap).toBe(true);
     expect(res.deficitM).toBeCloseTo(20, 0);
   });
 
   it("flags a gap when the same route demands a higher overlap", () => {
     // spacing 30 m; at 80 % overlap max spacing = 20 m -> gap.
-    const route = buildSurvey(4, 30, 200, 20);
-    const res = detectCoverageGaps(route, CAM, alt, 0.8);
+    const res = detectCoverageGaps(buildRoute(4, 30, 200, 20), CAM, alt, 0.8);
     expect(res.hasGap).toBe(true);
     expect(res.maxSpacingForOverlapM).toBeCloseTo(20, 6);
     expect(res.deficitM).toBeCloseTo(10, 0);
   });
 
   it("defaults to a 60 % target overlap", () => {
-    const route = buildSurvey(4, 30, 200, 20);
+    const route = buildRoute(4, 30, 200, 20);
     const withDefault = detectCoverageGaps(route, CAM, alt);
     const explicit = detectCoverageGaps(route, CAM, alt, 0.6);
     expect(withDefault.maxSpacingForOverlapM).toBeCloseTo(
@@ -209,9 +231,7 @@ describe("detectCoverageGaps", () => {
   });
 
   it("never flags a gap for a single-line route", () => {
-    const singleLine: SurveyPoint[] = [];
-    for (let k = 0; k <= 10; k++) singleLine.push(fromLocalXY(k * 20, 0));
-    const res = detectCoverageGaps(singleLine, CAM, alt, 0.6);
+    const res = detectCoverageGaps(buildRoute(1, 30, 200, 20), CAM, alt, 0.6);
     expect(res.hasGap).toBe(false);
     expect(res.lineSpacingM).toBe(0);
   });

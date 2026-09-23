@@ -12,6 +12,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import type { TrackingAxisResult } from "@/lib/analysis/types";
+import { AXIS_COLORS, CHART_GRID, CHART_TICK, CHART_TOOLTIP_LABEL_STYLE, CHART_TOOLTIP_STYLE, tint } from "../chart-theme";
 
 interface PidTrackingChartProps {
   data: TrackingAxisResult;
@@ -29,7 +30,7 @@ function downsample<T>(arr: T[], maxPoints: number): T[] {
   return result;
 }
 
-export function PidTrackingChart({ data, color = "#3A82FF" }: PidTrackingChartProps) {
+export function PidTrackingChart({ data, color = AXIS_COLORS.roll }: PidTrackingChartProps) {
   const chartData = useMemo(() => {
     const maxLen = Math.max(data.desired.length, data.actual.length);
     const points: { timeMs: number; desired: number; actual: number }[] = [];
@@ -50,15 +51,7 @@ export function PidTrackingChart({ data, color = "#3A82FF" }: PidTrackingChartPr
     return downsample(points, 2000);
   }, [data]);
 
-  const lighterColor = useMemo(() => {
-    if (color.startsWith("#") && color.length === 7) {
-      const r = Math.min(255, parseInt(color.slice(1, 3), 16) + 60);
-      const g = Math.min(255, parseInt(color.slice(3, 5), 16) + 60);
-      const b = Math.min(255, parseInt(color.slice(5, 7), 16) + 60);
-      return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
-    }
-    return "#9ca3af";
-  }, [color]);
+  const lighterColor = useMemo(() => tint(color), [color]);
 
   if (chartData.length === 0) {
     return (
@@ -72,25 +65,20 @@ export function PidTrackingChart({ data, color = "#3A82FF" }: PidTrackingChartPr
     <div className="relative h-[200px]">
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={chartData} margin={{ top: 8, right: 8, bottom: 4, left: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+          <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} />
           <XAxis
             dataKey="timeMs"
             type="number"
-            tick={{ fill: "#6b7280", fontSize: 10 }}
-            label={{ value: "ms", position: "insideBottomRight", offset: -4, fill: "#6b7280", fontSize: 10 }}
+            tick={{ fill: CHART_TICK, fontSize: 10 }}
+            label={{ value: "ms", position: "insideBottomRight", offset: -4, fill: CHART_TICK, fontSize: 10 }}
           />
           <YAxis
-            tick={{ fill: "#6b7280", fontSize: 10 }}
-            label={{ value: "deg/s", angle: -90, position: "insideLeft", fill: "#6b7280", fontSize: 10 }}
+            tick={{ fill: CHART_TICK, fontSize: 10 }}
+            label={{ value: "deg/s", angle: -90, position: "insideLeft", fill: CHART_TICK, fontSize: 10 }}
           />
           <Tooltip
-            contentStyle={{
-              backgroundColor: "#111827",
-              border: "1px solid #1f2937",
-              borderRadius: 0,
-              fontSize: 11,
-            }}
-            labelStyle={{ color: "#9ca3af" }}
+            contentStyle={CHART_TOOLTIP_STYLE}
+            labelStyle={CHART_TOOLTIP_LABEL_STYLE}
             formatter={(value: number, name: string) => [
               `${value.toFixed(1)} deg/s`,
               name === "desired" ? "Desired" : "Actual",

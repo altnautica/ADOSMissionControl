@@ -68,7 +68,7 @@ export function SkillRadial({ enabled }: SkillRadialProps) {
     >
       {/* Center hint: the highlighted skill name, or a "release to fire" prompt. */}
       <div className="flex flex-col items-center gap-1 text-center">
-        <span className="panel rounded-lg px-3 py-1 text-sm font-semibold text-[#eaf1fc]">
+        <span className="panel rounded-lg px-3 py-1 text-sm font-semibold text-text-primary">
           {highlightedLabel || t("skills.radial.aimPrompt")}
         </span>
         <span className="text-[11px] uppercase tracking-wide text-text-tertiary">
@@ -101,22 +101,22 @@ export function SkillRadial({ enabled }: SkillRadialProps) {
               className={cn(
                 "panel relative flex h-16 w-16 items-center justify-center rounded-xl transition-all",
                 isActive &&
-                  "border-[#37d99a] bg-[rgba(55,217,154,0.12)] shadow-[0_0_14px_rgba(55,217,154,0.28)]",
+                  "border-status-success bg-status-success/10 shadow-[0_0_14px_var(--good)]",
                 isDisabled && "opacity-40",
                 isHighlighted &&
-                  "border-[#63b3ff] ring-2 ring-[#63b3ff] shadow-[0_0_16px_rgba(99,179,255,0.5)] motion-safe:animate-pulse",
+                  "border-accent-primary ring-2 ring-accent-primary shadow-[0_0_16px_var(--hud)] motion-safe:animate-pulse",
               )}
             >
               <Icon
                 size={22}
                 className={cn(
-                  isActive ? "text-[#37d99a]" : "text-[#eaf1fc]",
+                  isActive ? "text-status-success" : "text-text-primary",
                   isDisabled && "text-text-tertiary",
                 )}
               />
               {/* Active latched dot (non-colour cue). */}
               {isActive ? (
-                <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-[#37d99a]" />
+                <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-status-success" />
               ) : null}
               {/* Disabled lock glyph (non-colour cue). */}
               {isDisabled ? (

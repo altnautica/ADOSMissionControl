@@ -20,11 +20,21 @@ import { readField, refLabel, formatFieldValue } from "./field-reader";
 
 const CORE_HEADERS = ["record.id", "record.droneName"];
 
+/** A plain decimal number, which a spreadsheet reads as a value, never a formula. */
+const PLAIN_NUMBER = /^-?\d+(\.\d+)?(e[+-]?\d+)?$/i;
+
+/**
+ * Escape one cell. A cell a spreadsheet would evaluate as a formula (leading
+ * `=`, `+`, `-`, `@`, tab or carriage return) gets a leading `'` so it stays
+ * text; plain numbers are left alone. Cells holding a delimiter, quote or line
+ * break are quoted.
+ */
 function csvEscape(value: string): string {
-  if (value.includes(",") || value.includes('"') || value.includes("\n")) {
-    return `"${value.replace(/"/g, '""')}"`;
+  const cell = /^[=+\-@\t\r]/.test(value) && !PLAIN_NUMBER.test(value) ? `'${value}` : value;
+  if (/[",\n\r]/.test(cell)) {
+    return `"${cell.replace(/"/g, '""')}"`;
   }
-  return value;
+  return cell;
 }
 
 export function exportComplianceCsv(

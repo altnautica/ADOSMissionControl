@@ -37,13 +37,12 @@ interface NodeInstallGroup {
 /**
  * Settings -> Extensions: a READ-ONLY fleet-wide overview. Extensions
  * install per node, from that node's own Agent -> Extensions tab
- * (`DronePluginsTab.tsx` / `command/PluginsTab.tsx`) — this page answers
- * "what is installed where" across the fleet and hosts the registry
- * browser + the permission-management detail page
- * (`/config/plugins/[id]`), but it never kicks off an install itself
- * (plan step 9). A registry card's primary action instead opens a node
- * picker that routes the operator to the right node
- * (`RegistryPluginCard.tsx`, `surface="settings"`).
+ * (`command/PluginsTab.tsx`) — this page answers "what is installed where"
+ * across the fleet and hosts the registry browser + the
+ * permission-management detail page (`/config/plugins/[id]`), but it never
+ * kicks off an install itself. A registry card's primary action instead
+ * opens a node picker that routes the operator to the right node
+ * (`RegistryNodePicker.tsx`, `surface="settings"`).
  */
 export default function PluginsIndexPage() {
   const t = useTranslations("plugins");
@@ -54,7 +53,7 @@ export default function PluginsIndexPage() {
   const localInstalls = useLocalPluginInstallsStore((s) => s.installs);
   const fleetNodes = useFleetNodes();
 
-  // Node display name for a device id, so the table reads "Skynode A7S",
+  // Node display name for a device id, so the table reads "Hangar Quad A7S",
   // not a bare wire id.
   const nodeNameByDeviceId = useMemo(() => {
     const m = new Map<string, string>();

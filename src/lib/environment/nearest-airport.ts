@@ -82,9 +82,12 @@ async function loadCandidates(): Promise<AirportSummary[]> {
         municipality: a.municipality,
       }));
     _candidates = candidates;
-    _loadingPromise = null;
     return candidates;
-  })();
+  })().finally(() => {
+    // Cleared on failure too, so a chunk that failed to load (offline, or
+    // just after a redeploy) is retried on the next call rather than cached.
+    _loadingPromise = null;
+  });
 
   return _loadingPromise;
 }

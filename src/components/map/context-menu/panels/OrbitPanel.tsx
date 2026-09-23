@@ -1,18 +1,33 @@
 /**
  * @module map/context-menu/panels/OrbitPanel
  * @description Orbit configuration sub-panel inside the right-click menu.
- * Operator picks radius and direction, then confirms.
+ * Operator picks radius and direction, then confirms. The radius is typed as
+ * a free draft and clamped only on blur or confirm, so a partial entry ("2"
+ * on the way to "20") is never clamped into a different radius.
  * @license GPL-3.0-only
  */
 
 "use client";
+
+import { useState } from "react";
+
+export const ORBIT_RADIUS_MIN_M = 5;
+export const ORBIT_RADIUS_MAX_M = 500;
+
+/** The orbit radius a draft entry commits to; `fallback` when it is not a number. */
+export function commitOrbitRadius(draft: string, fallback: number): number {
+  const value = Number(draft);
+  if (draft.trim() === "" || !Number.isFinite(value)) return fallback;
+  return Math.max(ORBIT_RADIUS_MIN_M, Math.min(ORBIT_RADIUS_MAX_M, value));
+}
 
 interface OrbitPanelProps {
   radius: number;
   setRadius: (r: number) => void;
   clockwise: boolean;
   setClockwise: (cw: boolean) => void;
-  onConfirm: () => void;
+  /** Called with the committed, clamped radius. */
+  onConfirm: (radius: number) => void;
   onCancel: () => void;
 }
 
@@ -24,6 +39,15 @@ export function OrbitPanel({
   onConfirm,
   onCancel,
 }: OrbitPanelProps) {
+  const [draft, setDraft] = useState(String(radius));
+
+  const commit = (): number => {
+    const next = commitOrbitRadius(draft, radius);
+    setDraft(String(next));
+    setRadius(next);
+    return next;
+  };
+
   return (
     <div className="px-3 py-2 border-b border-border-default">
       <div className="text-[10px] font-mono text-text-secondary mb-1.5">Orbit Configuration</div>
@@ -31,10 +55,15 @@ export function OrbitPanel({
         <label className="text-[9px] text-text-tertiary w-12">Radius</label>
         <input
           type="number"
-          value={radius}
-          onChange={(e) => setRadius(Math.max(5, Math.min(500, Number(e.target.value))))}
-          min={5}
-          max={500}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") onConfirm(commit());
+          }}
+          aria-label="Orbit radius"
+          min={ORBIT_RADIUS_MIN_M}
+          max={ORBIT_RADIUS_MAX_M}
           step={5}
           className="flex-1 px-1.5 py-0.5 text-[10px] font-mono bg-bg-tertiary border border-border-default rounded text-text-primary focus:border-accent-primary focus:outline-none"
         />
@@ -67,7 +96,7 @@ export function OrbitPanel({
       </div>
       <div className="flex gap-1">
         <button
-          onClick={onConfirm}
+          onClick={() => onConfirm(commit())}
           className="flex-1 px-2 py-1 text-[10px] font-mono font-semibold bg-accent-primary/20 border border-accent-primary/40 text-accent-primary rounded hover:bg-accent-primary/30 cursor-pointer"
         >
           Start Orbit

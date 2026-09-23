@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Gamepad2, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTelemetryStore } from "@/stores/telemetry-store";
+import { useTelemetryFreshness } from "@/hooks/use-telemetry-freshness";
 
 interface RcInputCardProps {
   className?: string;
@@ -14,20 +15,30 @@ const DEFAULT_VISIBLE = 4;
 const PWM_MIN = 1000;
 const PWM_MAX = 2000;
 const PWM_RANGE = PWM_MAX - PWM_MIN;
+/** RC_CHANNELS.rssi is 0..254 in receiver-defined units; 255 means unknown. */
+const RC_RSSI_UNKNOWN = 255;
+const RC_RSSI_MAX = 254;
 
 export function RcInputCard({ className }: RcInputCardProps) {
   useTelemetryStore((s) => s._version);
   const rc = useTelemetryStore((s) => s.rc);
-  const latest = rc.latest();
+  // The ring buffer keeps its last sample when the link dies, so the bars are
+  // shown only while the RC channel is fresh or recently stale, never frozen.
+  const rcLevel = useTelemetryFreshness().getFreshness("rc");
+  const stale = rcLevel === "stale";
+  const latest = rcLevel === "fresh" || stale ? rc.latest() : undefined;
   const [expanded, setExpanded] = useState(false);
 
   const channels = latest?.channels ?? [];
   const visibleCount = expanded ? CHANNEL_COUNT : DEFAULT_VISIBLE;
+  const rssi =
+    latest && latest.rssi !== RC_RSSI_UNKNOWN ? `${latest.rssi}/${RC_RSSI_MAX}` : "--";
 
   return (
     <div
       className={cn(
-        "border border-border-default rounded-lg p-3",
+        "border border-border-default rounded-lg p-3 transition-opacity",
+        stale && "opacity-60",
         className
       )}
     >
@@ -37,6 +48,9 @@ export function RcInputCard({ className }: RcInputCardProps) {
         <span className="text-xs font-medium text-text-secondary">
           RC Input
         </span>
+        {stale && (
+          <span className="ml-auto text-[10px] text-status-warning">Stale</span>
+        )}
       </div>
 
       {/* Channel bars */}
@@ -90,14 +104,12 @@ export function RcInputCard({ className }: RcInputCardProps) {
       {/* RSSI */}
       <div className="mt-1.5 pt-1.5 border-t border-border-default flex justify-between">
         <span className="text-[10px] text-text-tertiary">RSSI</span>
-        <span className="text-[10px] font-mono text-text-primary">
-          {latest ? `${latest.rssi}` : "--"}
-        </span>
+        <span className="text-[10px] font-mono text-text-primary">{rssi}</span>
       </div>
 
       {!latest && (
         <div className="text-[10px] text-text-tertiary text-center mt-1">
-          Waiting for data...
+          {rcLevel === "lost" ? "RC signal lost" : "Waiting for data..."}
         </div>
       )}
     </div>

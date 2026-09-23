@@ -1,19 +1,39 @@
 /**
  * @module MultiSeriesChart
  * @description Reusable inline SVG multi-series time-series chart.
- * Supports threshold lines, fixed Y ranges, and center lines.
- * Extracted from QuickGraphs.tsx.
+ * Supports threshold lines, fixed Y ranges, center lines, and gaps: a point
+ * whose value is null breaks the line instead of being drawn.
  * @license GPL-3.0-only
  */
 
-import type { ChartPoint } from "./TimeSeriesChart";
-
 // ── Types ────────────────────────────────────────────────────
 
+/** One sample; `v: null` marks a sample with no value (a gap). */
+export interface SeriesPoint {
+  t: number;
+  v: number | null;
+}
+
 export interface MultiSeries {
-  data: ChartPoint[];
+  data: SeriesPoint[];
   color: string;
   label: string;
+}
+
+/** The runs of consecutive valued points, one polyline each. */
+function segmentsOf(data: SeriesPoint[]): { t: number; v: number }[][] {
+  const segments: { t: number; v: number }[][] = [];
+  let current: { t: number; v: number }[] = [];
+  for (const d of data) {
+    if (d.v === null) {
+      if (current.length > 0) segments.push(current);
+      current = [];
+    } else {
+      current.push({ t: d.t, v: d.v });
+    }
+  }
+  if (current.length > 0) segments.push(current);
+  return segments;
 }
 
 export interface ThresholdLine {
@@ -45,7 +65,8 @@ export function MultiSeriesChart({
 }) {
   // Find global time range across all series
   const allPoints = series.flatMap((s) => s.data);
-  if (allPoints.length < 2) {
+  const valued = allPoints.flatMap((d) => (d.v === null ? [] : [d.v]));
+  if (allPoints.length < 2 || valued.length === 0) {
     return (
       <div
         className="flex items-center justify-center bg-bg-tertiary/30 rounded"
@@ -67,7 +88,7 @@ export function MultiSeriesChart({
   const tRange = tMax - tMin || 1;
 
   // Global Y range (include thresholds in range calculation)
-  const allValues = allPoints.map((d) => d.v);
+  const allValues = valued;
   if (thresholds) {
     for (const th of thresholds) allValues.push(th.value);
   }
@@ -131,21 +152,19 @@ export function MultiSeriesChart({
           </g>
         ))}
         {/* Data series */}
-        {series.map((s) => {
-          if (s.data.length < 2) return null;
-          const pts = s.data
-            .map((d) => `${toX(d.t)},${toY(d.v)}`)
-            .join(" ");
-          return (
-            <polyline
-              key={s.label}
-              points={pts}
-              fill="none"
-              stroke={s.color}
-              strokeWidth="1.5"
-            />
-          );
-        })}
+        {series.flatMap((s) =>
+          segmentsOf(s.data).map((segment, i) =>
+            segment.length < 2 ? null : (
+              <polyline
+                key={`${s.label}-${i}`}
+                points={segment.map((d) => `${toX(d.t)},${toY(d.v)}`).join(" ")}
+                fill="none"
+                stroke={s.color}
+                strokeWidth="1.5"
+              />
+            ),
+          ),
+        )}
         {/* Y axis labels */}
         <text x={3} y={12} fill="var(--text-tertiary)" fontSize="8" fontFamily="monospace">
           {maxV.toFixed(0)}{unit}
@@ -157,10 +176,10 @@ export function MultiSeriesChart({
       <div className="flex items-center justify-between mt-1 text-[9px] font-mono text-text-tertiary">
         <div className="flex items-center gap-3">
           {series.map((s) => {
-            const latest = s.data[s.data.length - 1];
+            const latest = s.data[s.data.length - 1]?.v;
             return (
               <span key={s.label} style={{ color: s.color }}>
-                {s.label}: {latest?.v.toFixed(1) ?? "--"}{unit}
+                {s.label}: {latest != null ? latest.toFixed(1) : "--"}{unit}
               </span>
             );
           })}

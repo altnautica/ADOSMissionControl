@@ -7,7 +7,7 @@
  * as sentences — "Drone-D over WFB to GS-A, then to GCS". It is the text
  * equivalent of the map, so it walks the very edges the map draws rather than
  * re-deriving reach a second, divergent way: a stream and its edge can never
- * disagree about a node's link (Rule 44).
+ * disagree about a node's link (no fabricated reading).
  *
  * A funnel starts at a node whose OWN path home is a relay — the same
  * primary-relay edge the map counts as a relay stream — and follows that node's
@@ -18,8 +18,8 @@
  * Honesty travels with each hop: a stream is "flowing" only when every hop is
  * verified — a received-side frame heard on each leg. A stream with any
  * unverified, stale, or down hop is carried through as exactly that, its overall
- * state the least-trustworthy hop, never dressed up as a live path (Rule 44 /
- * Rule 37). A directly-reached node draws no relay stream: it has no funnel.
+ * state the least-trustworthy hop, never dressed up as a live path (no fabricated reading,
+ * no unproven link). A directly-reached node draws no relay stream: it has no funnel.
  *
  * @module nodes/relay-streams
  * @license GPL-3.0-only
@@ -43,7 +43,7 @@ export interface RelayHop {
   toId: string;
   toName: string;
   /** The kind of the terminating vertex, so the text names an off-view relay
-   * parent honestly rather than as a GCS peer link (Rule 44). */
+   * parent honestly rather than as a GCS peer link (no fabricated reading). */
   toKind: MeshVertexKind;
   bearer: NodeBearerKind;
   verification: BearerVerification;

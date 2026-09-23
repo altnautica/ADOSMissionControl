@@ -7,7 +7,7 @@
  */
 "use client";
 
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { memo, useState, useCallback, useEffect, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { GripVertical, X, ChevronDown, ChevronRight, Zap } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -54,22 +54,28 @@ interface WaypointListItemProps {
   expanded: boolean;
   selected: boolean;
   multiSelected?: boolean;
-  onToggleExpand: () => void;
-  onSelect: (e: React.MouseEvent) => void;
-  onUpdate: (update: Partial<Waypoint>) => void;
-  onRemove: () => void;
-  onDragStart: (e: React.DragEvent) => void;
-  onDragOver: (e: React.DragEvent) => void;
+  /** Handlers take the row's id / index so the list can pass stable references. */
+  onExpand: (id: string | null) => void;
+  onSelect: (id: string, e: React.MouseEvent) => void;
+  onUpdate: (id: string, update: Partial<Waypoint>) => void;
+  onRemove: (id: string) => void;
+  onDragStart: (index: number, e: React.DragEvent) => void;
+  onDragOver: (index: number, e: React.DragEvent) => void;
   onDragEnd: () => void;
-  onDrop: (e: React.DragEvent) => void;
+  onDrop: (index: number, e: React.DragEvent) => void;
   dragOver: boolean;
 }
 
-export function WaypointListItem({
+export const WaypointListItem = memo(function WaypointListItem({
   waypoint, index, expanded, selected, multiSelected = false,
-  onToggleExpand, onSelect, onUpdate, onRemove,
+  onExpand, onSelect, onUpdate: onUpdateById, onRemove,
   onDragStart, onDragOver, onDragEnd, onDrop, dragOver,
 }: WaypointListItemProps) {
+  const wpId = waypoint.id;
+  const onUpdate = useCallback(
+    (update: Partial<Waypoint>) => onUpdateById(wpId, update),
+    [onUpdateById, wpId],
+  );
   const t = useTranslations("planner");
   const cmd = waypoint.command ?? "WAYPOINT";
   // Hide nav commands the connected firmware would reject (e.g. PX4 rejects the
@@ -131,21 +137,22 @@ export function WaypointListItem({
   );
 
   return (
-    <div draggable onDragStart={onDragStart} onDragOver={onDragOver} onDragEnd={onDragEnd} onDrop={onDrop}
+    <div draggable onDragStart={(e) => onDragStart(index, e)} onDragOver={(e) => onDragOver(index, e)}
+      onDragEnd={onDragEnd} onDrop={(e) => onDrop(index, e)}
       className={cn(
         "border-b border-border-default transition-colors",
         selected && "bg-accent-primary/5", multiSelected && "bg-accent-secondary/5",
         dragOver && "border-t-2 border-t-accent-primary"
       )}>
       {/* Compact row */}
-      <div className="flex items-center gap-1.5 px-2 py-1.5 cursor-pointer hover:bg-bg-tertiary" onClick={onSelect}>
+      <div className="flex items-center gap-1.5 px-2 py-1.5 cursor-pointer hover:bg-bg-tertiary" onClick={(e) => onSelect(wpId, e)}>
         <GripVertical size={12} className="text-text-tertiary shrink-0 cursor-grab" />
         {multiSelected && (
           <div className="w-3 h-3 border border-accent-primary bg-accent-primary/30 shrink-0 flex items-center justify-center">
             <div className="w-1.5 h-1.5 bg-accent-primary" />
           </div>
         )}
-        <div className="w-5 h-5 flex items-center justify-center bg-accent-primary text-[10px] font-mono font-semibold text-white shrink-0">{index + 1}</div>
+        <div className="w-5 h-5 flex items-center justify-center bg-accent-primary text-[10px] font-mono font-semibold text-bg-primary shrink-0">{index + 1}</div>
         <div className="w-5 h-5 flex items-center justify-center bg-bg-tertiary text-[10px] font-mono font-semibold text-text-secondary shrink-0 border border-border-default">{rowLetter}</div>
         <div className="flex-1 min-w-0 flex items-center gap-2">
           <span className="text-[11px] font-mono text-text-primary truncate">{rowLabel}</span>
@@ -168,10 +175,10 @@ export function WaypointListItem({
             </span>
           )}
         </div>
-        <button onClick={(e) => { e.stopPropagation(); onToggleExpand(); }} className="text-text-tertiary hover:text-text-primary shrink-0 cursor-pointer">
+        <button onClick={(e) => { e.stopPropagation(); onExpand(expanded ? null : wpId); }} className="text-text-tertiary hover:text-text-primary shrink-0 cursor-pointer">
           {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
         </button>
-        <button onClick={(e) => { e.stopPropagation(); onRemove(); }} className="text-text-tertiary hover:text-status-error transition-colors shrink-0 cursor-pointer">
+        <button onClick={(e) => { e.stopPropagation(); onRemove(wpId); }} className="text-text-tertiary hover:text-status-error transition-colors shrink-0 cursor-pointer">
           <X size={12} />
         </button>
       </div>
@@ -224,4 +231,4 @@ export function WaypointListItem({
       )}
     </div>
   );
-}
+});

@@ -4,6 +4,33 @@ import type { InputController } from "@/lib/types";
 import { safeLocalRead } from "@/lib/storage/safe-parse";
 
 const CAL_STORAGE_KEY = "ados-gamepad-cal";
+const TX_MODE_STORAGE_KEY = "ados-gamepad-tx-mode";
+
+/** Which physical stick carries which axis. Mode 2 (throttle left) is the default. */
+export type TxMode = 1 | 2;
+
+/** Read the persisted stick mode, falling back to Mode 2 for anything else. */
+const loadTxMode = (): TxMode => (safeLocalRead<unknown>(TX_MODE_STORAGE_KEY, 2) === 1 ? 1 : 2);
+
+/** One poll pass of the gamepad, published as a single store update. */
+export interface GamepadFrame {
+  axes: [number, number, number, number];
+  rawAxes: [number, number, number, number];
+  rightStick: [number, number];
+  buttons: boolean[];
+  /**
+   * The device itself reported within the liveness window. False when the
+   * pad's own timestamp froze with a stick deflected, so the frame is shown
+   * but `axesAt` is not refreshed and the transmit gate refuses it.
+   */
+  live: boolean;
+}
+
+function sameButtons(a: readonly boolean[], b: readonly boolean[]): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+}
 
 export interface GamepadCalibration {
   center: [number, number, number, number]; // roll, pitch, throttle, yaw center values
@@ -63,6 +90,8 @@ interface InputStoreState {
    */
   rightStick: [number, number];
   buttons: boolean[];
+  /** The operator's stick mode, persisted across sessions. */
+  txMode: TxMode;
   deadzone: number;
   expo: number;
   calibration: GamepadCalibration | null;
@@ -95,9 +124,15 @@ interface InputStoreState {
 
   setController: (controller: InputController) => void;
   setAxes: (axes: [number, number, number, number]) => void;
-  setRawAxes: (axes: [number, number, number, number]) => void;
   setRightStick: (stick: [number, number]) => void;
   setButtons: (buttons: boolean[]) => void;
+  /**
+   * Publish one gamepad read in one update. The buttons array is kept by
+   * reference when no button changed, so a `s => s.buttons` subscriber only
+   * re-renders on a press or release.
+   */
+  publishGamepadFrame: (frame: GamepadFrame) => void;
+  setTxMode: (mode: TxMode) => void;
   setDeadzone: (deadzone: number) => void;
   setExpo: (expo: number) => void;
   setCalibration: (cal: GamepadCalibration) => void;
@@ -115,6 +150,7 @@ export const useInputStore = create<InputStoreState>((set) => ({
   rawAxes: [0, 0, 0, 0],
   rightStick: [0, 0],
   buttons: new Array(16).fill(false),
+  txMode: loadTxMode(),
   deadzone: 0.05,
   expo: 0.3,
   calibration: loadCalibration(),
@@ -125,9 +161,20 @@ export const useInputStore = create<InputStoreState>((set) => ({
 
   setController: (activeController) => set({ activeController }),
   setAxes: (axes) => set({ axes, axesAt: Date.now() }),
-  setRawAxes: (rawAxes) => set({ rawAxes }),
   setRightStick: (rightStick) => set({ rightStick }),
   setButtons: (buttons) => set({ buttons }),
+  publishGamepadFrame: (frame) =>
+    set((s) => ({
+      axes: frame.axes,
+      rawAxes: frame.rawAxes,
+      rightStick: frame.rightStick,
+      buttons: sameButtons(s.buttons, frame.buttons) ? s.buttons : frame.buttons,
+      axesAt: frame.live ? Date.now() : s.axesAt,
+    })),
+  setTxMode: (txMode) => {
+    localStorage.setItem(TX_MODE_STORAGE_KEY, JSON.stringify(txMode));
+    set({ txMode });
+  },
   setDeadzone: (deadzone) => set({ deadzone }),
   setExpo: (expo) => set({ expo }),
   setCalibration: (calibration) => {

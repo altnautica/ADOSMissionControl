@@ -20,16 +20,16 @@ import { InstallAgentStrip } from "./disconnected/InstallAgentStrip";
 import { RemoteAccessStrip } from "./disconnected/RemoteAccessStrip";
 import { FeatureGrid } from "./disconnected/FeatureGrid";
 import { RequirementsFooter } from "./disconnected/RequirementsFooter";
+import { useDroneManager } from "@/stores/drone-manager";
+import { nodeIdForDevice } from "@/lib/agent/node-id";
 
 interface AgentDisconnectedPageProps {
-  onOpenPairing?: () => void;
   /** Connect + focus the freshly-paired node. The local-nodes-store already
    * holds its credentials, so only the deviceId is forwarded. */
   onPaired?: (deviceId: string) => void;
 }
 
 export function AgentDisconnectedPage({
-  onOpenPairing,
   onPaired,
 }: AgentDisconnectedPageProps) {
   const t = useTranslations("disconnectedPage");
@@ -37,11 +37,12 @@ export function AgentDisconnectedPage({
   const [signInOpen, setSignInOpen] = useState(false);
 
   function handlePaired(deviceId: string) {
-    // The local-nodes-store has the new entry (host + apiKey). Hand the
-    // deviceId to the parent so it connects + focuses the node; fall back to
-    // opening the pairing surface if no connect handler is wired.
+    // ProbeResultCard already tore down the previous session and connected
+    // the new node. A host that wires no handler (an inline overview or gate
+    // fallback) still moves the selection to the node just paired, so the
+    // page never shows the new node's data under the old node's name.
     if (onPaired) onPaired(deviceId);
-    else onOpenPairing?.();
+    else useDroneManager.getState().selectDrone(nodeIdForDevice(deviceId));
   }
 
   return (

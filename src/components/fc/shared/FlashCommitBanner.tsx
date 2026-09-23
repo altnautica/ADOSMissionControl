@@ -6,6 +6,7 @@ import { useDroneManager } from "@/stores/drone-manager";
 import { HardDrive, ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
 import { cn } from "@/lib/utils";
 
 export function FlashCommitBanner() {
@@ -13,23 +14,28 @@ export function FlashCommitBanner() {
   const pendingWrites = useParamSafetyStore((s) => s.pendingWrites);
   const hasCritical = useParamSafetyStore((s) => s.hasCriticalPending());
   const commitFlash = useParamSafetyStore((s) => s.commitFlash);
+  const { showFlashResult } = useFlashCommitToast();
   const [expanded, setExpanded] = useState(false);
   const [committing, setCommitting] = useState(false);
 
   const count = pendingWrites.size;
   if (count === 0) return null;
 
+  // The command is fire-and-forget: `success` means it reached the wire and
+  // `acknowledged` says whether the vehicle confirmed the store.
   async function handleCommitAll() {
     const protocol = useDroneManager.getState().getSelectedProtocol();
-    if (!protocol) return;
+    if (!protocol) {
+      showFlashResult({ sent: false, acknowledged: false });
+      return;
+    }
     setCommitting(true);
     try {
       const result = await protocol.commitParamsToFlash();
-      if (result.success) {
-        commitFlash();
-      }
+      if (result.success) commitFlash();
+      showFlashResult({ sent: result.success, acknowledged: result.success && result.acknowledged !== false });
     } catch {
-      // toast handled at panel level
+      showFlashResult({ sent: false, acknowledged: false });
     } finally {
       setCommitting(false);
     }

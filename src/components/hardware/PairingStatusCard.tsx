@@ -118,7 +118,7 @@ export function PairingStatusCard() {
 
   if (!distRx.pairingWindowOpen) {
     return (
-      <div className="p-4 bg-surface-primary border border-border-default/40 flex items-center justify-between">
+      <div className="p-4 bg-bg-primary border border-border-default/40 flex items-center justify-between">
         <div>
           <div className="text-sm font-medium text-text-primary">{t("pairingTitle")}</div>
           <div className="text-xs text-text-tertiary">{t("pairingIdle")}</div>
@@ -137,7 +137,7 @@ export function PairingStatusCard() {
   }
 
   return (
-    <div className="p-4 bg-surface-primary border border-accent-primary/40 flex flex-col gap-3">
+    <div className="p-4 bg-bg-primary border border-accent-primary/40 flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <div>
           <div className="text-sm font-medium text-accent-primary">
@@ -156,6 +156,18 @@ export function PairingStatusCard() {
         >
           {closePending ? t("closingPairing") : t("closePairing")}
         </button>
+      </div>
+      <div className="flex flex-col gap-1">
+        <div className="text-xs text-text-tertiary uppercase tracking-wider">
+          {t("pairingCodeLabel")}
+        </div>
+        <div
+          className="font-mono text-2xl tracking-[0.3em] text-text-primary"
+          data-testid="pairing-join-code"
+        >
+          {distRx.pairingCode ?? "—"}
+        </div>
+        <div className="text-[10px] text-text-tertiary">{t("pairingCodeHint")}</div>
       </div>
       {distRx.pendingRequests.length > 0 ? (
         <div className="flex flex-col gap-1">

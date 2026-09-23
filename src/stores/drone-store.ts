@@ -51,19 +51,30 @@ interface DroneStoreState {
   setFirmwareInfo: (version: string, frame: string) => void;
   setSystemStatus: (status: number) => void;
   setFirmwareType: (type: FirmwareType | null) => void;
+  /**
+   * Return every field to "nothing measured": arm state and mode unknown, no
+   * heartbeat, no arm clock, no firmware. Used when the selected vehicle
+   * changes or the fleet is torn down, so no surface shows a DISARMED or a
+   * mode for a vehicle that has not been heard from.
+   */
+  resetForSelection: () => void;
 }
 
-export const useDroneStore = create<DroneStoreState>((set) => ({
+const UNMEASURED = {
   connectionState: "disconnected",
-  flightMode: "STABILIZE",
-  previousMode: "STABILIZE",
-  armState: "disarmed",
+  flightMode: "UNKNOWN",
+  previousMode: "UNKNOWN",
+  armState: "unknown",
   armedAt: null,
   lastHeartbeat: 0,
   firmwareVersion: "",
   frameType: "",
   systemStatus: 0,
   firmwareType: null,
+} satisfies Partial<DroneStoreState>;
+
+export const useDroneStore = create<DroneStoreState>((set) => ({
+  ...UNMEASURED,
 
   setConnectionState: (connectionState) => set({ connectionState }),
   setFlightMode: (flightMode) => set((s) => ({ previousMode: s.flightMode, flightMode })),
@@ -84,4 +95,5 @@ export const useDroneStore = create<DroneStoreState>((set) => ({
   setFirmwareInfo: (firmwareVersion, frameType) => set({ firmwareVersion, frameType }),
   setSystemStatus: (systemStatus) => set({ systemStatus }),
   setFirmwareType: (firmwareType) => set({ firmwareType }),
+  resetForSelection: () => set(UNMEASURED),
 }));

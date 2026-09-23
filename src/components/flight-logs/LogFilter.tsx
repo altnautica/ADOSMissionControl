@@ -8,6 +8,15 @@ import type { FlightRecord } from "@/lib/types";
 
 const DAY_MS = 86_400_000;
 
+const SORT_KEYS: readonly SortKey[] = ["date", "drone", "duration", "distance", "maxAlt", "battery"];
+
+/** Local midnight of a `YYYY-MM-DD` date input, `dayOffset` days later. */
+function localDayStart(ymd: string, dayOffset = 0): number | undefined {
+  const [y, m, d] = ymd.split("-").map(Number);
+  if (!y || !m || !d) return undefined;
+  return new Date(y, m - 1, d + dayOffset).getTime();
+}
+
 function presetToRange(preset: DatePreset): { fromMs?: number; toMs?: number } {
   if (preset === "all") return {};
   const now = Date.now();
@@ -34,6 +43,7 @@ export interface LogFilterState {
   droneFilter: string;
   favoritesOnly: boolean;
   showTrash: boolean;
+  /** The sort dropdown's value, `<sortKey>-<sortDir>`. */
   sort: string;
   sortKey: SortKey;
   sortDir: SortDir;
@@ -47,7 +57,8 @@ export interface UseLogFilterResult extends LogFilterState {
   setDroneFilter: (v: string) => void;
   setFavoritesOnly: (v: boolean) => void;
   setShowTrash: React.Dispatch<React.SetStateAction<boolean>>;
-  setSort: (v: string) => void;
+  /** Apply a sort dropdown value (`<sortKey>-<sortDir>`). */
+  handleSortSelect: (v: string) => void;
   handleSetDateFrom: (v: string) => void;
   handleSetDateTo: (v: string) => void;
   handleSetDatePreset: (p: DatePreset) => void;
@@ -65,9 +76,9 @@ export function useLogFilter(allRecords: FlightRecord[]): UseLogFilterResult {
   const [droneFilter, setDroneFilter] = useState("all");
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [showTrash, setShowTrash] = useState(false);
-  const [sort, setSort] = useState("date-desc");
   const [sortKey, setSortKey] = useState<SortKey>("date");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const sort = `${sortKey}-${sortDir}`;
 
   const handleSetDateFrom = useCallback((v: string) => {
     setDateFrom(v);
@@ -93,23 +104,30 @@ export function useLogFilter(allRecords: FlightRecord[]): UseLogFilterResult {
     setStatus("all");
     setDroneFilter("all");
     setFavoritesOnly(false);
-    setSort("date-desc");
     setSortKey("date");
     setSortDir("desc");
   }, []);
 
-  const handleSortChange = useCallback((key: SortKey) => {
-    setSortKey((prev) => {
-      if (prev !== key) {
+  // Column headers: a new column sorts descending, the active one flips.
+  const handleSortChange = useCallback(
+    (key: SortKey) => {
+      if (key === sortKey) {
+        setSortDir(sortDir === "desc" ? "asc" : "desc");
+      } else {
+        setSortKey(key);
         setSortDir("desc");
-        return key;
       }
-      setSortDir((d) => {
-        if (d === "desc") return "asc";
-        return "desc";
-      });
-      return key;
-    });
+    },
+    [sortKey, sortDir],
+  );
+
+  const handleSortSelect = useCallback((v: string) => {
+    const dash = v.lastIndexOf("-");
+    const key = SORT_KEYS.find((k) => k === v.slice(0, dash));
+    const dir = v.slice(dash + 1);
+    if (!key || (dir !== "asc" && dir !== "desc")) return;
+    setSortKey(key);
+    setSortDir(dir);
   }, []);
 
   const droneNames = useMemo(() => {
@@ -144,27 +162,26 @@ export function useLogFilter(allRecords: FlightRecord[]): UseLogFilterResult {
 
     if (datePreset !== "all") {
       const { fromMs, toMs } = presetToRange(datePreset);
-      if (fromMs !== undefined) records = records.filter((r) => (r.startTime ?? r.date) >= fromMs);
-      if (toMs !== undefined) records = records.filter((r) => (r.startTime ?? r.date) <= toMs);
+      if (fromMs !== undefined) records = records.filter((r) => r.startTime >= fromMs);
+      if (toMs !== undefined) records = records.filter((r) => r.startTime <= toMs);
     } else {
-      if (dateFrom) {
-        const from = new Date(dateFrom).getTime();
-        records = records.filter((r) => (r.startTime ?? r.date) >= from);
-      }
-      if (dateTo) {
-        const tov = new Date(dateTo).getTime() + DAY_MS;
-        records = records.filter((r) => (r.startTime ?? r.date) <= tov);
-      }
+      // Date inputs are local calendar days: from local midnight of the
+      // first day up to (not including) local midnight after the last.
+      const from = dateFrom ? localDayStart(dateFrom) : undefined;
+      const until = dateTo ? localDayStart(dateTo, 1) : undefined;
+      if (from !== undefined) records = records.filter((r) => r.startTime >= from);
+      if (until !== undefined) records = records.filter((r) => r.startTime < until);
     }
 
     if (status !== "all") records = records.filter((r) => r.status === status);
     if (droneFilter !== "all") records = records.filter((r) => r.droneId === droneFilter);
     if (favoritesOnly) records = records.filter((r) => r.favorite === true);
 
-    const dirSign = sortDir === "desc" ? -1 : 1;
+    // Comparators are written descending (b before a); ascending negates.
+    const dirSign = sortDir === "desc" ? 1 : -1;
     switch (sortKey) {
       case "date":
-        records.sort((a, b) => dirSign * ((b.startTime ?? b.date) - (a.startTime ?? a.date)));
+        records.sort((a, b) => dirSign * (b.startTime - a.startTime));
         break;
       case "drone":
         records.sort((a, b) => dirSign * b.droneName.localeCompare(a.droneName));
@@ -173,13 +190,13 @@ export function useLogFilter(allRecords: FlightRecord[]): UseLogFilterResult {
         records.sort((a, b) => dirSign * (b.duration - a.duration));
         break;
       case "distance":
-        records.sort((a, b) => dirSign * (b.distance - a.distance));
+        records.sort((a, b) => dirSign * ((b.distance ?? -1) - (a.distance ?? -1)));
         break;
       case "maxAlt":
-        records.sort((a, b) => dirSign * (b.maxAlt - a.maxAlt));
+        records.sort((a, b) => dirSign * ((b.maxAlt ?? -1) - (a.maxAlt ?? -1)));
         break;
       case "battery":
-        records.sort((a, b) => dirSign * (b.batteryUsed - a.batteryUsed));
+        records.sort((a, b) => dirSign * ((b.batteryUsed ?? -1) - (a.batteryUsed ?? -1)));
         break;
     }
 
@@ -205,7 +222,7 @@ export function useLogFilter(allRecords: FlightRecord[]): UseLogFilterResult {
     setDroneFilter,
     setFavoritesOnly,
     setShowTrash,
-    setSort,
+    handleSortSelect,
     handleSetDateFrom,
     handleSetDateTo,
     handleSetDatePreset,
@@ -239,7 +256,7 @@ export function LogFilter({ filter, allRecords, filteredRecords }: LogFilterProp
       onDatePresetChange={filter.handleSetDatePreset}
       onStatusChange={filter.setStatus}
       onDroneFilterChange={filter.setDroneFilter}
-      onSortChange={filter.setSort}
+      onSortChange={filter.handleSortSelect}
       onFavoritesOnlyChange={filter.setFavoritesOnly}
       showTrash={filter.showTrash}
       onShowTrashChange={filter.setShowTrash}

@@ -40,7 +40,7 @@ import type {
   INavWaypoint, INavSafehome, MotorMixerRule, INavServoMixerRule,
   INavEzTune, INavOsdAlarms, INavOsdPreferences, INavOsdLayoutsHeader,
   INavActiveProfiles, INavBatteryConfig, INavMixer, INavServoConfig, INavMcBraking, INavGvarStatus,
-  INavTimerOutputModeEntry, INavOutputMappingExt2Entry, INavTempSensorConfigEntry,
+  INavTimerOutputModeEntry, INavOutputMappingExt2Entry, INavTempSensorConfigEntry, INavCalibrationData,
   INavCustomOsdElement, INavCustomOsdElementsInfo,
 } from "@/lib/protocol/msp/msp-decoders-inav";
 import type { SettingValue, SettingInfo } from "@/lib/protocol/msp/settings";
@@ -302,16 +302,16 @@ const TEMP_SENSOR_SLOT_COUNT = 8;
 const TEMP_SENSOR_SEED: readonly INavTempSensorConfigEntry[] = [
   {
     type: 2, address: [0x28, 0x1a, 0x4c, 0x0b, 0x00, 0x00, 0x80, 0x3f],
-    alarmMin: -100, alarmMax: 900, label: "ESC",
+    alarmMin: -100, alarmMax: 900, osdSymbol: 0, label: "ESC",
   },
   {
     type: 1, address: [0x48, 0, 0, 0, 0, 0, 0, 0],
-    alarmMin: -100, alarmMax: 800, label: "VREG",
+    alarmMin: -100, alarmMax: 800, osdSymbol: 0, label: "VREG",
   },
 ];
 
 const TEMP_SENSOR_EMPTY: Readonly<INavTempSensorConfigEntry> = {
-  type: 0, address: [0, 0, 0, 0, 0, 0, 0, 0], alarmMin: 0, alarmMax: 0, label: "",
+  type: 0, address: [0, 0, 0, 0, 0, 0, 0, 0], alarmMin: 0, alarmMax: 0, osdSymbol: 0, label: "",
 };
 
 /** Serial function bits (serialPortFunction_e) used by the seed. */
@@ -534,6 +534,9 @@ export class INavMockProtocol implements DroneProtocol {
   private roll = 0;
   private pitch = 0;
   private sats = 12;
+  /** The demo aircraft starts disarmed on the ground, like a freshly powered FC. */
+  private armed = false;
+  private mode: UnifiedFlightMode = "STABILIZE";
   private readonly baseLat: number;
   private readonly baseLon: number;
 
@@ -822,6 +825,9 @@ export class INavMockProtocol implements DroneProtocol {
       return { ...seed, address: [...seed.address] };
     });
   private serialPorts: MspSerialPort[] = SERIAL_PORT_SEED.map((p) => ({ ...p }));
+  /** Accelerometer six-point flags: the demo board starts calibrated. */
+  private accPositionFlags = 0x3f;
+  private magZero: [number, number, number] = [-42, 118, -63];
   /** Null until the first read, then true: iNav 7 answers the 32-bit MSP2 config. */
   private serialUsesV2: boolean | null = null;
   private ledStrip: number[] = seedLedStrip();
@@ -856,7 +862,11 @@ export class INavMockProtocol implements DroneProtocol {
   }
 
   async getActiveProfiles(): Promise<INavActiveProfiles> {
-    return { controlProfile: this.activeControlProfile, batteryProfile: this.activeBatteryProfile };
+    return {
+      controlProfile: this.activeControlProfile,
+      batteryProfile: this.activeBatteryProfile,
+      mixerProfile: this.activeMixerProfile,
+    };
   }
 
   async selectControlProfile(idx: number): Promise<CommandResult> {
@@ -936,6 +946,15 @@ export class INavMockProtocol implements DroneProtocol {
 
   async getTempSensorConfigs(): Promise<INavTempSensorConfigEntry[]> {
     return this.tempSensorConfigs.map((s) => ({ ...s, address: [...s.address] }));
+  }
+
+  /** Configured sensors read about 28 °C with a little drift; empty slots have no reading. */
+  async getTemperatures(): Promise<(number | null)[]> {
+    return this.tempSensorConfigs.map((s, i) => (s.type === 0 ? null : 280 + i * 15 + Math.round(Math.random() * 6)));
+  }
+
+  async getCalibrationData(): Promise<INavCalibrationData> {
+    return { accPositionFlags: this.accPositionFlags, magZero: [...this.magZero] };
   }
 
   // MC braking ─────────────────────────────────────────────────
@@ -1082,9 +1101,21 @@ export class INavMockProtocol implements DroneProtocol {
 
   // ── Commands ────────────────────────────────────────────────
 
-  async arm(): Promise<CommandResult>   { this._emit("statusText", 6, "Arming motors"); return ok("Armed"); }
-  async disarm(): Promise<CommandResult> { this._emit("statusText", 6, "Disarming motors"); return ok("Disarmed"); }
-  async setFlightMode(m: UnifiedFlightMode): Promise<CommandResult> { this._emit("statusText", 6, `Mode change to ${m}`); return ok(`Mode: ${m}`); }
+  async arm(): Promise<CommandResult> {
+    this.armed = true;
+    this._emit("statusText", 6, "Arming motors");
+    return ok("Armed");
+  }
+  async disarm(): Promise<CommandResult> {
+    this.armed = false;
+    this._emit("statusText", 6, "Disarming motors");
+    return ok("Disarmed");
+  }
+  async setFlightMode(m: UnifiedFlightMode): Promise<CommandResult> {
+    this.mode = m;
+    this._emit("statusText", 6, `Mode change to ${m}`);
+    return ok(`Mode: ${m}`);
+  }
   // The navigation commands mirror the real adapter: iNav drives them by moving
   // an AUX switch into its mode range, and the demo aircraft has NAV RTH, NAV
   // LAUNCH, NAV WP and NAV POSHOLD assigned. Land is the exception and refuses
@@ -1172,12 +1203,32 @@ export class INavMockProtocol implements DroneProtocol {
 
   // ── Calibration ─────────────────────────────────────────────
 
-  async startCalibration(): Promise<CommandResult> { return ok("Calibration started"); }
+  /**
+   * iNav captures one accelerometer orientation per MSP_ACC_CALIBRATION; the
+   * demo captures the next missing one (restarting at top-up once complete).
+   * MSP_MAG_CALIBRATION stores new offsets.
+   */
+  async startCalibration(type: string): Promise<CommandResult> {
+    if (type === "level") return { success: false, resultCode: -1, message: "iNav has no level calibration; correct the horizon with board alignment" };
+    if (type === "accel") {
+      if (this.accPositionFlags === 0x3f) this.accPositionFlags = 0x01;
+      else {
+        const next = [0, 1, 2, 3, 4, 5].find((bit) => (this.accPositionFlags & (1 << bit)) === 0);
+        if (next !== undefined) this.accPositionFlags |= 1 << next;
+      }
+      return ok("Accelerometer calibration started");
+    }
+    if (type === "compass") {
+      this.magZero = [this.magZero[0] + 12, this.magZero[1] - 7, this.magZero[2] + 4];
+      return ok("Magnetometer calibration started");
+    }
+    return { success: false, resultCode: -1, message: `Calibration type '${type}' not supported by MSP` };
+  }
   confirmAccelCalPos(): void {}
   async acceptCompassCal(): Promise<CommandResult>  { return ok("Compass cal accepted"); }
   async cancelCompassCal(): Promise<CommandResult>  { return ok("Compass cal cancelled"); }
   async cancelCalibration(): Promise<CommandResult> { return ok("Calibration cancelled"); }
-  async startGnssMagCal(): Promise<CommandResult>   { return ok("GNSS mag cal started"); }
+  async startGnssMagCal(yawDeg: number): Promise<CommandResult> { return ok(`Compass calibrated for yaw ${yawDeg}°`); }
 
   // ── Log Download ────────────────────────────────────────────
 
@@ -1192,13 +1243,15 @@ export class INavMockProtocol implements DroneProtocol {
   // ── Motor Test / Reboot ─────────────────────────────────────
 
   async motorTest(motor: number, throttle: number, duration: number): Promise<CommandResult> {
+    if (this.armed) return { success: false, resultCode: -1, message: "Motor test refused: vehicle is armed" };
     this._emit("statusText", 6, `Motor ${motor} test: ${throttle}% for ${duration}s`);
     return ok(`Motor ${motor} tested`);
   }
-  /** The demo aircraft is always armed and flying, so only the stop is accepted, as on a real FC. */
+  /** Accepted while disarmed; while armed only the stop goes through, as on a real FC. */
   async setMotorTestOutputs(throttlesPct: readonly number[], _durationSeconds: number): Promise<CommandResult> {
     if (throttlesPct.every((v) => v <= 0)) return ok("Motors idled");
-    return { success: false, resultCode: -1, message: "Motor test refused: vehicle is armed" };
+    if (this.armed) return { success: false, resultCode: -1, message: "Motor test refused: vehicle is armed" };
+    return ok("Motor outputs set");
   }
   async rebootToBootloader(): Promise<CommandResult> { return ok("Reboot to bootloader (mock)"); }
   async reboot(): Promise<CommandResult> { this._emit("statusText", 5, "Rebooting..."); return ok("Reboot (mock)"); }
@@ -1235,40 +1288,47 @@ export class INavMockProtocol implements DroneProtocol {
     const tick = setInterval(() => {
       const ts = now();
 
-      // Slow drift around base position
-      this.lat = this.baseLat + Math.sin(ts / 30000) * 0.001;
-      this.lon = this.baseLon + Math.cos(ts / 30000) * 0.001;
+      const flying = this.armed;
 
-      // Attitude drift
-      this.roll  = Math.sin(ts / 4000) * 12;
-      this.pitch = Math.cos(ts / 5000) * 8;
-      this.yaw   = ((this.yaw + 0.5) % 360);
+      // Slow drift around base position while flying; parked at base on the ground.
+      this.lat = flying ? this.baseLat + Math.sin(ts / 30000) * 0.001 : this.baseLat;
+      this.lon = flying ? this.baseLon + Math.cos(ts / 30000) * 0.001 : this.baseLon;
 
-      // Battery drain ~0.1%/sec at 10 Hz
-      this.battery = Math.max(5, this.battery - 0.01);
+      // Attitude drift; on the ground only a sensor-noise wobble.
+      this.roll  = Math.sin(ts / 4000) * (flying ? 12 : 0.3);
+      this.pitch = Math.cos(ts / 5000) * (flying ? 8 : 0.3);
+      if (flying) this.yaw = (this.yaw + 0.5) % 360;
+
+      // Battery drains ~0.1%/sec at 10 Hz in flight only.
+      if (flying) this.battery = Math.max(5, this.battery - 0.01);
 
       // GPS satellite count jitter
       this.sats = 11 + (Math.floor(ts / 5000) % 4);
 
       for (const cb of this.cbs.attitudeCbs) {
-        cb({ roll: this.roll, pitch: this.pitch, yaw: this.yaw, rollSpeed: 0, pitchSpeed: 0, yawSpeed: 0.5, timestamp: ts });
+        cb({ roll: this.roll, pitch: this.pitch, yaw: this.yaw, rollSpeed: 0, pitchSpeed: 0, yawSpeed: flying ? 0.5 : 0, timestamp: ts });
       }
       for (const cb of this.cbs.positionCbs) {
-        cb({
-          lat: this.lat, lon: this.lon,
-          alt: 45 + Math.sin(ts / 8000) * 5,
-          relativeAlt: 45,
-          heading: this.yaw, groundSpeed: 5 + Math.sin(ts / 3000) * 2,
-          airSpeed: 6, climbRate: Math.cos(ts / 4000) * 0.5,
-          timestamp: ts,
-        });
+        cb(flying
+          ? {
+              lat: this.lat, lon: this.lon,
+              alt: 45 + Math.sin(ts / 8000) * 5,
+              relativeAlt: 45,
+              heading: this.yaw, groundSpeed: 5 + Math.sin(ts / 3000) * 2,
+              airSpeed: 6, climbRate: Math.cos(ts / 4000) * 0.5,
+              timestamp: ts,
+            }
+          : {
+              lat: this.lat, lon: this.lon, alt: 0, relativeAlt: 0,
+              heading: this.yaw, groundSpeed: 0, climbRate: 0, timestamp: ts,
+            });
       }
       for (const cb of this.cbs.batteryCbs) {
         const cellV = (16.8 * (this.battery / 100)) / 4;
         cb({
           id: 0,
           voltage: 16.8 * (this.battery / 100),
-          current: 8 + Math.random() * 3,
+          current: flying ? 8 + Math.random() * 3 : 0.4,
           remaining: this.battery,
           consumed: (100 - this.battery) * 14.7,
           temperature: 31 + Math.random() * 5,
@@ -1285,27 +1345,30 @@ export class INavMockProtocol implements DroneProtocol {
         });
       }
       for (const cb of this.cbs.heartbeatCbs) {
-        cb({ armed: true, mode: "POSHOLD", systemStatus: 4, vehicleInfo: this._vehicleInfo });
+        cb({ armed: this.armed, mode: this.mode, systemStatus: this.armed ? 4 : 3, vehicleInfo: this._vehicleInfo });
       }
 
       // iNav-specific telemetry fields land in the shared telemetry store so
       // NavStatePill, TrafficPill, and the PreArmPanel arming breakdown render
       // against demo drones just like they would against a real FC.
       const store = useTelemetryStore.getState();
-      // Cycle every 15 s through idle, a waypoint leg and RTH en route, using
-      // the MSP_NAV_STATUS mode/state/action values the firmware sends.
+      // In flight, cycle every 15 s through idle, a waypoint leg and RTH en
+      // route, using the MSP_NAV_STATUS mode/state/action values the firmware
+      // sends. On the ground navigation is idle.
       const modeCycle = [0, 3, 2]; // MW_GPS_MODE NONE, NAV, RTH
       const stateCycle = [0, 5, 2]; // MW_NAV_STATE NONE, WP_ENROUTE, RTH_ENROUTE
       const actionCycle = [0, 1, 0]; // NAV_WP_ACTION none, WAYPOINT, none
-      const cycleIdx = Math.floor(ts / 15000) % stateCycle.length;
+      const cycleIdx = flying ? Math.floor(ts / 15000) % stateCycle.length : 0;
       store.setNavStatus(modeCycle[cycleIdx], stateCycle[cycleIdx], actionCycle[cycleIdx]);
       // Arming flags: iNav's word carries ONLY the reasons arming is disabled,
       // and its enum starts at ARMED = 1<<2 — bits 0 and 1 are undefined and
       // the firmware never sets them. So "ready to arm" is the empty word, not
       // a bit-0 flag; the mock used to synthesise 0x00000001 to match an
       // imagined layout, which masked the real `okToArm` defect in demo.
-      // Every ~30 s raise NOT_LEVEL (bit 8) so PreArmPanel shows a blocker.
-      const flagCycle = Math.floor(ts / 30000) % 2 === 0 ? 0x00000000 : 0x00000100;
+      // While disarmed, every ~30 s raise NOT_LEVEL (bit 8) so PreArmPanel
+      // shows a blocker; while armed the word carries ARMED | WAS_EVER_ARMED.
+      const flagCycle = this.armed ? 0x0000000c
+        : Math.floor(ts / 30000) % 2 === 0 ? 0x00000000 : 0x00000100;
       store.setArmingFlags(flagCycle);
       // One simulated ADS-B aircraft orbiting 2 km east of the copter so the
       // TrafficPill renders a live entry with distance, altitude, and TTL.

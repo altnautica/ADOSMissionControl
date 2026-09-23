@@ -16,7 +16,7 @@
  * claim at all — the browser has not tried to reach it, so whether a command
  * would land is not yet a fact, and "receive only" on a node we never dialled
  * would be a fabricated reading exactly as much as a healthy dot would be
- * (Rule 44). What the surface must never do is show a node as fully commandable
+ * (no fabricated reading). What the surface must never do is show a node as fully commandable
  * when the transport it is actually carried on has already reported that it
  * cannot publish, and that is the case this closes.
  *

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { LayoutGrid, LayoutDashboard, Network, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -17,6 +18,27 @@ import { NodesView } from "@/components/command/nodes-view/NodesView";
 import { SwarmView } from "@/components/command/swarm-view/SwarmView";
 import { NodeDetailPanel } from "@/components/dashboard/node-detail/NodeDetailPanel";
 import { EmptyFleetState } from "@/components/dashboard/EmptyFleetState";
+
+/**
+ * Consumes a Settings "Install on a node…" hand-off (`/?preselect=<pluginId>`):
+ * opens the selected node's Agent → Extensions page with that plugin revealed
+ * in its catalog, then drops the parameter so a reload does not repeat it.
+ * Its own component under a Suspense boundary because reading search params
+ * opts the subtree out of static rendering.
+ */
+function PreselectHandoff() {
+  const preselect = useSearchParams()?.get("preselect") ?? null;
+  const router = useRouter();
+  useEffect(() => {
+    if (!preselect) return;
+    const ui = useUiStore.getState();
+    ui.setPendingDetailTab("agent");
+    ui.setPendingAgentPanel("plugins");
+    ui.setPendingRegistryPluginId(preselect);
+    router.replace("/");
+  }, [preselect, router]);
+  return null;
+}
 
 export default function DashboardPage() {
   const t = useTranslations("dashboard");
@@ -75,6 +97,9 @@ export default function DashboardPage() {
 
   return (
     <div className="flex-1 flex h-full overflow-hidden">
+      <Suspense fallback={null}>
+        <PreselectHandoff />
+      </Suspense>
       {!immersiveMode && (
         <DroneListPanel collapsed={panelCollapsed} onToggleCollapse={() => setPanelCollapsed((p) => !p)} />
       )}

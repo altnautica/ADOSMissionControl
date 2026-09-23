@@ -65,6 +65,7 @@ export const communityApi = {
     recentEvents: api.cmdPlugins.recentEvents,
     recentCrashes: api.cmdPlugins.recentCrashes,
     recordInstall: api.cmdPlugins.recordInstall,
+    storeBundle: api.cmdPlugins.storeBundle,
     grantPermission: api.cmdPlugins.grantPermission,
     revokePermission: api.cmdPlugins.revokePermission,
     setStatus: api.cmdPlugins.setStatus,
@@ -73,14 +74,8 @@ export const communityApi = {
   },
   pluginArchives: {
     generateUploadUrl: api.cmdPluginArchives.generateUploadUrl,
-    // `verifyArchive` ships in the Node-runtime module
-    // `cmdPluginArchivesVerify`. The dialog resolves the action via
-    // `makeFunctionReference` so this barrel does not need a typed
-    // import that the generated api surface has not picked up yet.
-    recordArchive: api.cmdPluginArchives.recordArchive,
-    // `getSignedDownloadUrl` is deliberately absent: it is an internalAction
-    // with no auth of its own, and exposing it let any caller mint a signed
-    // download URL for any archive.
+    // Ships in the Node-runtime module `cmdPluginArchivesVerify`.
+    verifyArchive: api.cmdPluginArchivesVerify.verifyArchive,
     getArchive: api.cmdPluginArchives.getArchive,
     listMine: api.cmdPluginArchives.listMine,
   },

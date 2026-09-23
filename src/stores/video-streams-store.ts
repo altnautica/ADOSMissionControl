@@ -182,11 +182,14 @@ export const useVideoStreamsStore = create<VideoStreamsState>((set, get) => ({
       };
     }),
 
+  // A known-dead leg (`live === false`) is never made the main view, whichever
+  // input asked: a tab click, a digit hotkey, backtick or the D-pad.
   selectStream: (droneId, idOrIndex) =>
     set((state) => {
       const streams = state.streamsByDrone[droneId] ?? [];
       const id = resolveId(streams, idOrIndex);
       if (id == null || id === state.activeStreamIdByDrone[droneId]) return state;
+      if (streams.find((s) => s.id === id)?.live === false) return state;
       return withActive(state, droneId, streams, id);
     }),
 
@@ -200,9 +203,14 @@ export const useVideoStreamsStore = create<VideoStreamsState>((set, get) => ({
         streams.findIndex((s) => s.id === activeId),
       );
       const len = streams.length;
-      const next = streams[((cur + dir) % len + len) % len];
-      if (!next || next.id === activeId) return state;
-      return withActive(state, droneId, streams, next.id);
+      // Step past dead legs; a full lap with no live candidate is a no-op.
+      for (let step = 1; step < len; step++) {
+        const next = streams[((cur + dir * step) % len + len) % len];
+        if (!next || next.live === false) continue;
+        if (next.id === activeId) return state;
+        return withActive(state, droneId, streams, next.id);
+      }
+      return state;
     }),
 
   setPip: (droneId, id) =>

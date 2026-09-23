@@ -43,6 +43,8 @@ export function OrbitConfig() {
         <Input label={t("speedMs")} type="number" unit="m/s" value={String(orbitConfig.speed ?? 5)}
           onChange={(e) => updateOrbitConfig({ speed: parseFloat(e.target.value) || 5 })} />
       </div>
+      <Input label={t("orbitTargetHeight")} type="number" unit="m" value={String(orbitConfig.targetHeight ?? 0)}
+        onChange={(e) => updateOrbitConfig({ targetHeight: parseFloat(e.target.value) || 0 })} />
     </>
   );
 }

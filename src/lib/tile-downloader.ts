@@ -11,6 +11,8 @@
 import { getCachedTile, cacheTile } from "./tile-cache";
 
 const DEFAULT_CONCURRENCY = 6;
+/** Per-tile deadline covering the request and the body read. */
+const TILE_FETCH_TIMEOUT_MS = 15_000;
 
 export interface DownloadProgress {
   completed: number;
@@ -29,10 +31,13 @@ export interface DownloadResult {
 
 /**
  * Download tiles with concurrency control and progress reporting.
- * Skips tiles already in cache. Abortable via AbortSignal.
+ * Skips tiles already in cache. Abortable via AbortSignal. URLs are pulled
+ * from the iterable one at a time, so a large area is never materialised as
+ * an array; `total` is the count the iterable yields, for progress.
  */
 export async function downloadTiles(
-  urls: string[],
+  urls: Iterable<string>,
+  total: number,
   onProgress: (progress: DownloadProgress) => void,
   options?: {
     concurrency?: number;
@@ -42,24 +47,26 @@ export async function downloadTiles(
   const concurrency = options?.concurrency ?? DEFAULT_CONCURRENCY;
   const signal = options?.signal;
 
-  const total = urls.length;
   let completed = 0;
   let failed = 0;
   let skipped = 0;
   let bytes = 0;
 
-  // Queue of remaining URLs
-  let urlIndex = 0;
+  // Shared queue of remaining URLs; next() is synchronous, so workers never
+  // take the same URL.
+  const queue = urls[Symbol.iterator]();
 
   const report = () => {
     onProgress({ completed, total, bytes, skipped, failed });
   };
 
   async function fetchOne(): Promise<void> {
-    while (urlIndex < total) {
+    for (;;) {
       if (signal?.aborted) return;
 
-      const url = urls[urlIndex++];
+      const next = queue.next();
+      if (next.done) return;
+      const url = next.value;
 
       try {
         // Check if already cached
@@ -71,8 +78,12 @@ export async function downloadTiles(
           continue;
         }
 
-        // Fetch tile
-        const response = await fetch(url, { signal });
+        // Fetch tile. A stalled server connection counts as a failed tile
+        // after the timeout instead of holding this worker forever.
+        const timeout = AbortSignal.timeout(TILE_FETCH_TIMEOUT_MS);
+        const response = await fetch(url, {
+          signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
+        });
         if (!response.ok) {
           failed++;
           completed++;
@@ -96,7 +107,7 @@ export async function downloadTiles(
   }
 
   // Launch concurrent workers
-  const workers = Array.from({ length: Math.min(concurrency, total) }, () => fetchOne());
+  const workers = Array.from({ length: Math.max(1, Math.min(concurrency, total)) }, () => fetchOne());
   await Promise.all(workers);
 
   return { completed: completed - failed - skipped, failed, skipped, totalBytes: bytes };

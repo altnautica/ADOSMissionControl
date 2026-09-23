@@ -9,11 +9,12 @@
  */
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { AlertTriangle, XCircle, Info } from "lucide-react";
 import type { Waypoint } from "@/lib/types";
 import type { FirmwareType } from "@/lib/protocol/types/enums";
+import type { DroneProtocol } from "@/lib/protocol/types";
 import { useGeofenceStore } from "@/stores/geofence-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { checkAirportProximity } from "@/lib/airspace/airspace-check";
@@ -28,6 +29,7 @@ import {
 } from "@/lib/validation/fc-item-count";
 import { checkRtlTerrainClearance } from "@/lib/terrain/rtl-advisory";
 import { DEFAULT_MIN_TERRAIN_CLEARANCE } from "@/lib/terrain/terrain-clearance";
+import { getElevation } from "@/lib/terrain/terrain-provider";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 
 interface MissionAdvisoriesProps {
@@ -78,8 +80,44 @@ export function MissionAdvisories({
     ?.firmwareType;
 
   // The latest telemetry home sample (a RingBuffer whose reference is stable, so
-  // the check re-runs when the waypoints change rather than on every home push).
+  // it is re-read when the panel renders rather than on every home push).
   const homePosition = useTelemetryStore((s) => s.homePosition);
+  const homeSample = homePosition.toArray().at(-1);
+  const homeLat = homeSample?.lat;
+  const homeLon = homeSample?.lon;
+
+  // Terrain under the telemetry home, sampled for that exact point. The RTL
+  // datum is home's own ground, so the telemetry home is used only once it has
+  // a sample of its own; WP1's terrain belongs to WP1.
+  const [homeTerrain, setHomeTerrain] = useState<{ lat: number; lon: number; elevation: number } | null>(null);
+  useEffect(() => {
+    if (homeLat === undefined || homeLon === undefined) return;
+    const controller = new AbortController();
+    void getElevation(homeLat, homeLon, controller.signal).then((elevation) => {
+      if (!controller.signal.aborted && elevation !== null) {
+        setHomeTerrain({ lat: homeLat, lon: homeLon, elevation });
+      }
+    });
+    return () => controller.abort();
+  }, [homeLat, homeLon]);
+
+  // ArduPlane refuses to arm when the mission holds a DO_LAND_START while
+  // RTL_AUTOLAND is 0, so the connected plane's value is read whenever the
+  // plan has one. The reading is kept with the link it came from.
+  const landStartIndex = waypoints.findIndex((w) => w.command === "DO_LAND_START");
+  const [rtlAutoland, setRtlAutoland] = useState<{ protocol: DroneProtocol; value: number } | null>(null);
+  const needsAutoland = landStartIndex >= 0 && firmware === "ardupilot-plane";
+  useEffect(() => {
+    if (!needsAutoland) return;
+    const protocol = getProtocol();
+    if (!protocol) return;
+    let live = true;
+    protocol.getParameter("RTL_AUTOLAND").then(
+      (param) => { if (live) setRtlAutoland({ protocol, value: param.value }); },
+      () => {},
+    );
+    return () => { live = false; };
+  }, [needsAutoland, getProtocol]);
 
   // Pure module checks only — the translation function is intentionally kept
   // out of the memo so its render-to-render identity never re-runs the checks.
@@ -94,26 +132,26 @@ export function MissionAdvisories({
       }
     }
 
-    // RTL / failsafe return-leg terrain clearance. Home coordinates prefer the
-    // latest telemetry home sample and fall back to the first waypoint. Home
-    // terrain elevation is only known from the first waypoint's terrain
-    // enrichment; without it the pure module returns [] and no RTL rows render.
+    // RTL / failsafe return-leg terrain clearance. Home is the telemetry home
+    // with the terrain sampled beneath it; without that sample both the
+    // coordinates and the elevation come from the first waypoint, never a mix.
+    // With no terrain at all the pure module returns [] and no RTL rows render.
     const first = waypoints[0];
-    const homeGroundElevation = first?.groundElevation;
-    const homeSample = homePosition.toArray().at(-1);
-    const homeLat = homeSample?.lat ?? first?.lat;
-    const homeLon = homeSample?.lon ?? first?.lon;
-    const rtl =
-      homeGroundElevation !== undefined &&
-      homeLat !== undefined &&
-      homeLon !== undefined
-        ? checkRtlTerrainClearance(
-            waypoints,
-            { lat: homeLat, lon: homeLon, groundElevation: homeGroundElevation },
-            DEFAULT_RTL_RETURN_ALT_M,
-            DEFAULT_MIN_TERRAIN_CLEARANCE,
-          )
-        : [];
+    const telemetryHome = homeTerrain && homeTerrain.lat === homeLat && homeTerrain.lon === homeLon
+      ? { lat: homeTerrain.lat, lon: homeTerrain.lon, groundElevation: homeTerrain.elevation }
+      : null;
+    const home = telemetryHome
+      ?? (first && first.groundElevation !== undefined
+        ? { lat: first.lat, lon: first.lon, groundElevation: first.groundElevation }
+        : null);
+    const rtl = home
+      ? checkRtlTerrainClearance(
+          waypoints,
+          home,
+          DEFAULT_RTL_RETURN_ALT_M,
+          DEFAULT_MIN_TERRAIN_CLEARANCE,
+        )
+      : [];
 
     return {
       airport: checkAirportProximity(waypoints, {}),
@@ -129,7 +167,9 @@ export function MissionAdvisories({
     circleCenter,
     circleRadius,
     firmware,
-    homePosition,
+    homeLat,
+    homeLon,
+    homeTerrain,
   ]);
 
   const rows: AdvisoryRowData[] = [];
@@ -181,6 +221,15 @@ export function MissionAdvisories({
     level: itemCount.level === "warn" ? "warn" : "info",
     message: itemCountMessage,
   });
+
+  if (needsAutoland && rtlAutoland?.protocol === getProtocol() && rtlAutoland.value === 0) {
+    rows.push({
+      key: "rtl-autoland",
+      level: "warn",
+      message: t("rtl.landStartNeedsAutoland"),
+      waypointIndex: landStartIndex,
+    });
+  }
 
   // RTL / failsafe return-leg terrain advisories. These use an assumed return
   // altitude (no configured RTL altitude is available synchronously here), so a

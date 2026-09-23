@@ -25,8 +25,15 @@ import { reachErrorBucket } from "@/lib/nodes/local-reach";
 import { isDemoMode } from "@/lib/utils";
 
 // Lighter cadence than the single-agent System tab (3s) — overview
-// tiles are quick-glance and only need refresh every few seconds.
+// tiles are quick-glance and only need refresh every few seconds. The next
+// tick is armed only after the previous one settles, so a slow agent never
+// stacks overlapping probes.
 const POLL_INTERVAL_MS = 5000;
+
+/** One live poll loop; identity marks which loop owns a device id. */
+interface Poller {
+  timer?: ReturnType<typeof setTimeout>;
+}
 
 interface CommandFleetLocalBridgeProps {
   enabled: boolean;
@@ -36,29 +43,22 @@ export function CommandFleetLocalBridge({
   enabled,
 }: CommandFleetLocalBridgeProps) {
   const nodes = useLocalNodesStore((s) => s.nodes);
-  // Per-deviceId polling timer registry. Refs (not state) because
-  // mutating these should never trigger a render.
-  const intervalsRef = useRef<Map<string, ReturnType<typeof setInterval>>>(
-    new Map(),
-  );
-  // Per-deviceId "still active" gate to drop in-flight responses that
-  // land after we've cleaned up the node (StrictMode double-mount,
-  // node removal during a pending fetch, etc.).
-  const aliveRef = useRef<Set<string>>(new Set());
+  // Per-deviceId poll loop registry. Refs (not state) because mutating it
+  // should never trigger a render. A tick whose poller is no longer the
+  // registered one (node removed, StrictMode double-mount, node re-added
+  // while a fetch was pending) drops its result and does not re-arm.
+  const pollersRef = useRef<Map<string, Poller>>(new Map());
 
   useEffect(() => {
-    const intervals = intervalsRef.current;
-    const alive = aliveRef.current;
+    const pollers = pollersRef.current;
 
     function stop(deviceId: string) {
-      const handle = intervals.get(deviceId);
-      if (handle) clearInterval(handle);
-      intervals.delete(deviceId);
-      alive.delete(deviceId);
+      clearTimeout(pollers.get(deviceId)?.timer);
+      pollers.delete(deviceId);
     }
 
     function stopAll() {
-      const ids = Array.from(intervals.keys());
+      const ids = Array.from(pollers.keys());
       for (const id of ids) stop(id);
       if (ids.length > 0) {
         useCommandFleetStore.getState().removeCloudStatuses(ids);
@@ -82,7 +82,7 @@ export function CommandFleetLocalBridge({
 
     // Stop polling for nodes that disappeared from the local store.
     const droppedIds: string[] = [];
-    for (const deviceId of intervals.keys()) {
+    for (const deviceId of pollers.keys()) {
       if (!currentIds.has(deviceId)) {
         droppedIds.push(deviceId);
       }
@@ -92,18 +92,20 @@ export function CommandFleetLocalBridge({
       useCommandFleetStore.getState().removeCloudStatuses(droppedIds);
     }
 
-    // Start polling for nodes we don't already have a timer for.
+    // Start polling for nodes we don't already have a loop for.
     for (const node of nodes) {
-      if (intervals.has(node.deviceId)) continue;
-      alive.add(node.deviceId);
+      if (pollers.has(node.deviceId)) continue;
 
       const deviceId = node.deviceId;
+      const poller: Poller = {};
+      pollers.set(deviceId, poller);
+      const alive = () => pollers.get(deviceId) === poller;
 
       async function tick() {
-        if (!alive.has(deviceId)) return;
-        // Read the node's fields fresh from the store every tick. The timer
+        if (!alive()) return;
+        // Read the node's fields fresh from the store every tick. The loop
         // is created once and never recreated on rename / IP change (the
-        // reconciliation effect skips deviceIds that already have a timer),
+        // reconciliation effect skips deviceIds that already have a loop),
         // so capturing hostname / apiKey / name at creation time would poll
         // a stale identity forever. Looking them up live keeps the poll in
         // step with the operator's edits.
@@ -123,7 +125,7 @@ export function CommandFleetLocalBridge({
         if (!isDemoMode()) {
           try {
             const info = await probeAgent(live.hostname);
-            if (!alive.has(deviceId)) return;
+            if (!alive()) return;
             probeReachable = true;
             // Provenance: this is the one place the GCS learns which of a
             // node's up-to-three candidate reaches actually answers. Record
@@ -138,12 +140,9 @@ export function CommandFleetLocalBridge({
               // connect path has already flagged `stalePairing`, so the detail
               // panel shows a truthful re-pair / remove prompt the operator can
               // act on, rather than the card vanishing from under them. Other
-              // (background) stale ghosts still self-heal silently.
-              // The selection id is the canonical `node:<deviceId>` (see
-              // node-id + use-fleet-nodes). The old code compared against a
-              // `local:<deviceId>` colon literal that never matched the hyphen
-              // form, so the focused node was being deleted from under the
-              // operator — this is the headline fix.
+              // (background) stale ghosts still self-heal silently. The
+              // selection id is the canonical `node:<deviceId>` (see node-id +
+              // use-fleet-nodes).
               const focused =
                 usePairingStore.getState().selectedPairedId ===
                 nodeIdForDevice(deviceId);
@@ -153,7 +152,7 @@ export function CommandFleetLocalBridge({
               return;
             }
           } catch (e) {
-            if (!alive.has(deviceId)) return;
+            if (!alive()) return;
             // Unreachable / probe failed — transient for presence purposes, so
             // the node is never removed. But "which address failed, and how"
             // is exactly the fact that was being thrown away here: without it
@@ -187,7 +186,7 @@ export function CommandFleetLocalBridge({
         try {
           const client = new AgentClient(live.hostname, live.apiKey);
           const resp = await client.getFullStatus();
-          if (!alive.has(deviceId)) return;
+          if (!alive()) return;
           if (!resp) return; // older agent that lacks /api/status/full
           const row = mapFullStatusToCloudStatus(resp, {
             deviceId,
@@ -205,20 +204,21 @@ export function CommandFleetLocalBridge({
         }
       }
 
-      void tick();
-      intervals.set(deviceId, setInterval(tick, POLL_INTERVAL_MS));
+      async function loop() {
+        await tick();
+        if (alive()) poller.timer = setTimeout(loop, POLL_INTERVAL_MS);
+      }
+      void loop();
     }
   }, [nodes, enabled]);
 
-  // Unmount teardown — clears any timers the reconciliation effect
-  // above did not explicitly stop.
+  // Unmount teardown — clears any loops the reconciliation effect above
+  // did not explicitly stop.
   useEffect(() => {
+    const pollers = pollersRef.current;
     return () => {
-      const intervals = intervalsRef.current;
-      const alive = aliveRef.current;
-      for (const handle of intervals.values()) clearInterval(handle);
-      intervals.clear();
-      alive.clear();
+      for (const poller of pollers.values()) clearTimeout(poller.timer);
+      pollers.clear();
     };
   }, []);
 

@@ -5,7 +5,7 @@
  * identity snapshots the ground station has cached from the drones it relays
  * over the WFB auxiliary lane.
  *
- * Local-first (Rule 39): on an HTTPS origin the call routes through Mission
+ * Local-first: on an HTTPS origin the call routes through Mission
  * Control's own `/api/lan-pair/relayed-status` server proxy to dodge the
  * browser's mixed-content guard; on HTTP / Electron the direct fetch is kept.
  *
@@ -32,7 +32,7 @@ export interface RelayedPeerStatus {
   statusFresh: boolean;
   statusAgeS?: number;
   /** Present only while `statusFresh` — an aged-out status is dropped by the
-   * route itself, never served stale (Rule 44). */
+   * route itself, never served stale (no fabricated reading). */
   status?: {
     /** The honest connected-or-reachable verdict on agents that publish it:
      * true for a live MAVLink heartbeat, and also true for a healthy MSP

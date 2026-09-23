@@ -84,10 +84,13 @@ export function EditableSkillSlot({
         focused ? "border-accent-primary" : "border-border-default",
       )}
       onDragOver={(e) => {
-        // Only react to our own drag type.
+        // Only react to our own drag type. The drop effect must be one the
+        // source allows: the drawer offers "copy", a slot offers "move", and a
+        // mismatch resolves to no operation, so the drop never fires.
         if (e.dataTransfer.types.includes(SKILL_DRAG_TYPE)) {
           e.preventDefault();
-          e.dataTransfer.dropEffect = "move";
+          e.dataTransfer.dropEffect =
+            e.dataTransfer.effectAllowed === "copy" ? "copy" : "move";
         }
       }}
       onDrop={(e) => {

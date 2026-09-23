@@ -16,7 +16,7 @@ import type { PluginParameter } from "@/lib/plugins/parameters/schema";
 import type { ParsedToolContribution } from "@/lib/plugins/contributions/parse";
 import type { PluginSignatureState } from "@/lib/plugins/archive-signature";
 
-import type { TrustSignal } from "../TrustBadge";
+import type { TrustSignal } from "@/lib/plugins/trust-signals";
 
 /** Manifest summary the dialog needs to render the pre-install screen. */
 export interface InstallManifestSummary {

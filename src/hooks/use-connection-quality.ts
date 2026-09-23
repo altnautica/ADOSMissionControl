@@ -3,16 +3,17 @@ import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
 
 type SignalQuality = "excellent" | "good" | "fair" | "poor" | "lost" | "unknown";
 
+/**
+ * Radio link quality from RADIO_STATUS. RADIO_STATUS carries no timing or loss
+ * measurement, so this reports only what it carries: signal levels and the
+ * free share of the radio's TX buffer.
+ */
 interface ConnectionQualityResult {
-  /** Estimated latency in ms */
-  latencyMs: number;
-  /** Packet loss percentage (0-100) */
-  packetLoss: number;
   /** RSSI value (0-255) */
   rssi: number;
   /** Remote RSSI */
   remoteRssi: number;
-  /** TX buffer usage % */
+  /** Remaining free TX buffer, % (RADIO_STATUS.txbuf) */
   txBuf: number;
   /** Noise floor */
   noise: number;
@@ -42,8 +43,6 @@ function deriveQuality(strength: number, hasData: boolean): SignalQuality {
 }
 
 const NO_READING = {
-  latencyMs: 0,
-  packetLoss: 0,
   rssi: 0,
   remoteRssi: 0,
   txBuf: 0,
@@ -67,23 +66,14 @@ export function useConnectionQuality(): ConnectionQualityResult {
   const noise = latest.noise;
   const remoteRssi = latest.remrssi;
   const txBuf = latest.txbuf;
-  const rxerrors = latest.rxerrors;
 
   // Signal strength: SNR-based percentage
   const snr = rssi - noise;
   const signalStrength = clamp((snr / 60) * 100, 0, 100);
 
-  // Rough packet loss from rxerrors (normalized, capped)
-  const packetLoss = clamp(rxerrors / 10, 0, 100);
-
-  // Estimate latency from txbuf usage (higher buffer = more latency)
-  const latencyMs = Math.round(clamp((100 - txBuf) * 2, 0, 500));
-
   const quality = deriveQuality(signalStrength, true);
 
   return {
-    latencyMs,
-    packetLoss,
     rssi,
     remoteRssi,
     txBuf,

@@ -21,7 +21,7 @@ export const DEFAULT_COMPUTE: ComputeCapability = {
   npu_available: false,
   npu_runtime: null,
   npu_tops: 0,
-  npu_utilization_pct: 0,
+  npu_utilization_pct: null,
   gpu_available: false,
 };
 
@@ -43,6 +43,6 @@ export const DEFAULT_VISION: VisionState = {
 export const DEFAULT_MODELS: ModelCacheInfo = {
   installed: [],
   cache_used_mb: 0,
-  cache_max_mb: 500,
+  cache_max_mb: null,
   registry_url: "",
 };

@@ -34,15 +34,43 @@ export function AppletCatalog({ onAdded }: { onAdded?: () => void }) {
     if (!protocol?.uploadFileViaFtp) return;
     setBusyId(entry.id);
     try {
+      // SCR_USER* only exist once the Lua VM is enabled and the FC rebooted;
+      // before that a write to them is silently ignored. Check first so the
+      // script is never reported added with tunables the FC never took. A
+      // read that fails counts as not enabled.
+      if (entry.params?.length) {
+        const scrEnable = await protocol.getParameter("SCR_ENABLE").catch(() => null);
+        if (!scrEnable || scrEnable.value < 1) {
+          toast(
+            `Enable scripting (SCR_ENABLE = 1) and reboot the FC before adding ${entry.name}.`,
+            "error",
+          );
+          return;
+        }
+      }
       const bytes = new TextEncoder().encode(entry.body);
       await protocol.uploadFileViaFtp(`${SCRIPTS_DIR}/${entry.filename}`, bytes);
       // One-shot applet provisioning of its SCR_USER* tunables (not a param
       // grid, so it writes through the protocol directly).
       if (entry.params?.length) {
         for (const prm of entry.params) {
-          await protocol.setParameter(prm.name, prm.value);
+          const result = await protocol.setParameter(prm.name, prm.value);
+          if (!result.success) {
+            toast(
+              `Could not set ${prm.name} for ${entry.name}: ${result.message || "the FC did not confirm the write"}`,
+              "error",
+            );
+            return;
+          }
         }
-        void protocol.commitParamsToFlash();
+        const commit = await protocol.commitParamsToFlash();
+        if (!commit.success) {
+          toast(
+            `Could not save ${entry.name}'s parameters to flash: ${commit.message || "the FC refused"}`,
+            "error",
+          );
+          return;
+        }
       }
       setAddedIds((prev) => new Set(prev).add(entry.id));
       toast(`Added ${entry.name} — reboot the FC to run it.`, "success");

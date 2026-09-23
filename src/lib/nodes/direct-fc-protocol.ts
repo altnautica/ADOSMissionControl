@@ -7,7 +7,7 @@
  * tracked in the drone manager keyed by its own id — the same string a direct-FC
  * fleet node carries as its device id. It has no agent behind it and so no agent
  * command lane, but it does have a live `DroneProtocol` the cockpit already
- * drives. This reads that protocol imperatively at call time (the Rule-39
+ * drives. This reads that protocol imperatively at call time (the
  * local-first pattern the LAN agent lookup uses), so a fleet-operations surface
  * can command a plugged-in FC through its own link rather than refusing it.
  *

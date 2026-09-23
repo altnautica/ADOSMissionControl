@@ -30,7 +30,7 @@ import { RingBuffer } from "@/lib/ring-buffer";
 
 /** Capacity of a drone's rolling receipt-timestamp window. Sized for a few
  * seconds of headroom even at a fast (~30 Hz) inference cadence, so the
- * throughput (batches/sec) readout never grows unbounded (Rule 3). */
+ * throughput (batches/sec) readout never grows unbounded (bounded memory). */
 const RATE_WINDOW_CAP = 128;
 
 /**
@@ -70,7 +70,7 @@ function withStream(
  * age the overlay drops boxes and the perception health surfaces flip a live
  * feed to "stale / offload link lost" (distinct from "no targets"). Shared by
  * the cockpit overlay, the perception-health chip, and the what's-locked chip
- * so all three read the exact same freshness window (Rule 44 — one honest
+ * so all three read the exact same freshness window (one honest
  * source of truth for feed liveness).
  */
 export const DETECTION_STALE_MS = 2000;
@@ -178,7 +178,7 @@ interface VisionDetectionsState {
   streams: Record<string, Record<string, VisionDetectionBatch>>;
   /** Per-drone rolling ring buffer of batch receipt timestamps (epoch ms),
    * feeding the live throughput (batches/sec) readout. Ring-buffered so it
-   * never grows unbounded (Rule 3). Not part of the reactive render path — read
+   * never grows unbounded (bounded memory). Not part of the reactive render path — read
    * on a tick via {@link receiptTimes}. */
   rateWindows: Record<string, RingBuffer<number>>;
   /** Replace the latest batch for a drone (and its stream). `receivedAt` is

@@ -12,6 +12,7 @@ import { useValidationOptions } from "@/hooks/use-validation-options";
 import { validateMission } from "@/lib/validation/mission-validator";
 import { MissionEditor } from "@/components/planner/MissionEditor";
 import { WaypointList } from "@/components/planner/WaypointList";
+import { acceptRadiusDefault } from "@/components/planner/waypoint-constants";
 import { GeofenceEditor } from "@/components/planner/GeofenceEditor";
 import { DefaultsSection } from "@/components/planner/DefaultsSection";
 import { RallyPointEditor } from "@/components/planner/RallyPointEditor";
@@ -33,9 +34,11 @@ import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { useToast } from "@/components/ui/toast";
 import { useDrawingStore } from "@/stores/drawing-store";
 import { importBoundaryFile } from "@/lib/mission-io";
+import { ShapefileNotGeographicError } from "@/lib/formats/shp-import";
 import { exportFlightBrief } from "@/lib/pdf/export-flight-brief";
 import { polygonArea } from "@/lib/drawing/geo-utils";
 import { buildMissionFile, makeShareLink, buildShareUrl } from "@/lib/plan-share";
+import { capturePlanExtras } from "@/lib/plan-workspace";
 import { PanelBand } from "@/components/ui/panel-group";
 import { usePlannerStore } from "@/stores/planner-store";
 import { useGeofenceStore } from "@/stores/geofence-store";
@@ -71,21 +74,8 @@ export function PlannerRightPanel({
   const tValidation = useTranslations("validation");
   const selectedWaypointIds = usePlannerStore((s) => s.selectedWaypointIds);
   const clearMultiSelection = usePlannerStore((s) => s.clearMultiSelection);
-  const mapCenter = usePlannerStore((s) => s.mapCenter);
   const geofenceEnabled = useGeofenceStore((s) => s.enabled);
   const poiCount = usePlanPoiStore((s) => s.points.length);
-
-  // Lat/lon for the sun-times card: prefer the first waypoint, else the map
-  // center once it has been positioned away from the null island (0,0). Null
-  // when neither is available, so the card renders nothing rather than 0,0.
-  const sunCoords = useMemo<{ lat: number; lon: number } | null>(() => {
-    const first = p.waypoints[0];
-    if (first) return { lat: first.lat, lon: first.lon };
-    if (mapCenter && (mapCenter[0] !== 0 || mapCenter[1] !== 0)) {
-      return { lat: mapCenter[0], lon: mapCenter[1] };
-    }
-    return null;
-  }, [p.waypoints, mapCenter]);
 
   // Block upload while the mission has hard errors (out-of-fence, below terrain,
   // bad jump target, etc.) so an invalid mission can't be pushed to the FC.
@@ -112,6 +102,7 @@ export function PlannerRightPanel({
       speed: before.speed,
       frame: before.frame,
       command: "WAYPOINT",
+      ...acceptRadiusDefault("WAYPOINT", usePlannerStore.getState().defaultAcceptRadius),
     };
     useMissionStore.getState().insertWaypoint(newWp, index);
   }, []);
@@ -127,8 +118,9 @@ export function PlannerRightPanel({
       name: p.missionName || t("untitledMission"),
       droneName,
       defaultSpeed: p.defaultSpeed,
+      defaultFrame: p.defaultFrame,
     });
-  }, [p.waypoints, p.missionName, droneName, p.defaultSpeed, t]);
+  }, [p.waypoints, p.missionName, droneName, p.defaultSpeed, p.defaultFrame, t]);
 
   // Boundary import (KML/KMZ/shapefile): push each real parsed ring into the
   // drawing store as a survey boundary. A file with no polygon warns, never fakes.
@@ -142,6 +134,7 @@ export function PlannerRightPanel({
     const file = buildMissionFile(
       p.waypoints,
       { name: p.missionName || t("untitledMission"), createdAt: now, updatedAt: now },
+      capturePlanExtras(),
     );
     const link = makeShareLink(file);
     if (link.tooLarge || !link.encoded) {
@@ -171,7 +164,11 @@ export function PlannerRightPanel({
         add({ id: randomId(), vertices, area: polygonArea(vertices) });
       }
       toast(t("import.boundary.success", { count: rings.length }), "success");
-    } catch {
+    } catch (err) {
+      if (err instanceof ShapefileNotGeographicError) {
+        toast(t("import.boundary.needsPrj"), "warning");
+        return;
+      }
       toast(t("import.boundary.error"), "error");
     }
   }, [t, toast]);
@@ -242,16 +239,7 @@ export function PlannerRightPanel({
             <ValidationPanel waypoints={p.waypoints}
               onSelectWaypoint={(id) => { p.setSelectedWaypoint(id); p.setExpandedWaypoint(id); }} />
           </CollapsibleSection>
-          {sunCoords && (
-            <CollapsibleSection title={t("sunTimes")}>
-              <SunTimesCard lat={sunCoords.lat} lon={sunCoords.lon} />
-            </CollapsibleSection>
-          )}
-          {sunCoords && (
-            <CollapsibleSection title={t("weather.title")}>
-              <WeatherCard lat={sunCoords.lat} lon={sunCoords.lon} />
-            </CollapsibleSection>
-          )}
+          <SiteConditions first={p.waypoints[0]} />
           <CollapsibleSection title={t("energy.title")}>
             <EnergyCard waypoints={p.waypoints} cruiseSpeedMps={p.defaultSpeed} />
           </CollapsibleSection>
@@ -275,5 +263,32 @@ export function PlannerRightPanel({
         onExportBrief={handleExportBrief} onImportBoundary={handleImportBoundary} onCopyShareLink={handleCopyShareLink}
         onSaveAs={p.handleSaveAs} onReverseWaypoints={p.handleReverseWaypoints} onDiscard={p.handleClearAll} />
     </div>
+  );
+}
+
+/**
+ * Sun-times and weather cards for the plan site: the first waypoint, else the
+ * map centre once it has moved off the null island (0,0). Renders nothing when
+ * neither is available. It owns the map-centre subscription so panning the map
+ * re-renders these two cards, not the whole panel.
+ */
+function SiteConditions({ first }: { first: Waypoint | undefined }) {
+  const t = useTranslations("planner");
+  const mapCenter = usePlannerStore((s) => s.mapCenter);
+  const coords = first
+    ? { lat: first.lat, lon: first.lon }
+    : mapCenter && (mapCenter[0] !== 0 || mapCenter[1] !== 0)
+      ? { lat: mapCenter[0], lon: mapCenter[1] }
+      : null;
+  if (!coords) return null;
+  return (
+    <>
+      <CollapsibleSection title={t("sunTimes")}>
+        <SunTimesCard lat={coords.lat} lon={coords.lon} />
+      </CollapsibleSection>
+      <CollapsibleSection title={t("weather.title")}>
+        <WeatherCard lat={coords.lat} lon={coords.lon} />
+      </CollapsibleSection>
+    </>
   );
 }

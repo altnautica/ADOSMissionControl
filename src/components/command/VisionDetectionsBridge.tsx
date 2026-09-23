@@ -49,7 +49,7 @@ import { deviceIdFromNodeId } from "@/lib/agent/node-id";
 import {
   resolveLanAgentUrl,
   resolvePairedApiKey,
-} from "@/stores/agent-connection/cloud-state";
+} from "@/lib/agent/resolve-agent";
 import {
   connectVisionDetections,
   mapWireBatch,
@@ -217,6 +217,13 @@ export function VisionDetectionsBridge() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDroneId, nodes, droneReachedVia, droneCloudDeviceId]);
 
+  // The relay reach is rebuilt on every local-nodes write, so the poller keys
+  // on its primitive fields: an unchanged reach must not close the poller,
+  // clear the overlay and restart its backoff.
+  const relayBaseUrl = target.relay?.baseUrl ?? null;
+  const relayApiKey = target.relay?.apiKey ?? null;
+  const relayPeerDeviceId = target.relay?.peerDeviceId ?? null;
+
   useEffect(() => {
     if (!target.droneId) return;
     if (target.agentUrl) {
@@ -227,14 +234,21 @@ export function VisionDetectionsBridge() {
       });
       return () => conn.close();
     }
-    if (target.relay) {
+    if (relayBaseUrl !== null && relayApiKey !== null && relayPeerDeviceId !== null) {
       const conn = connectRelayVisionDetections({
         droneId: target.droneId,
-        reach: target.relay,
+        reach: { baseUrl: relayBaseUrl, apiKey: relayApiKey, peerDeviceId: relayPeerDeviceId },
       });
       return () => conn.close();
     }
-  }, [target.droneId, target.agentUrl, target.apiKey, target.relay]);
+  }, [
+    target.droneId,
+    target.agentUrl,
+    target.apiKey,
+    relayBaseUrl,
+    relayApiKey,
+    relayPeerDeviceId,
+  ]);
 
   return null;
 }

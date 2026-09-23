@@ -10,14 +10,7 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-
-export type TrustSignal =
-  | "signed"
-  | "verified-publisher"
-  | "first-party"
-  | "open-source"
-  | "vendor-binary"
-  | "unsigned";
+import type { TrustSignal } from "@/lib/plugins/trust-signals";
 
 interface TrustBadgeProps {
   signal: TrustSignal;
@@ -31,7 +24,7 @@ const TRUST_PRESET: Record<
   signed: {
     label: "Signed",
     icon: CheckCircle2,
-    classes: "border-text-secondary/30 bg-surface-secondary text-text-primary",
+    classes: "border-text-secondary/30 bg-bg-secondary text-text-primary",
     tooltip: "Archive carries an Ed25519 signature that verified at install.",
   },
   "verified-publisher": {
@@ -69,7 +62,7 @@ const TRUST_PRESET: Record<
     icon: ShieldOff,
     classes: "border-status-error/40 bg-status-error/10 text-status-error",
     tooltip:
-      "No signature. Only allowed in developer mode. Not safe for production fleets.",
+      "No signature: nothing proves who built this archive or that it is unchanged. It still installs and runs with the permissions you grant.",
   },
 };
 

@@ -1,10 +1,10 @@
 import { create } from "zustand";
 import type {
   DroneProtocol,
-  FirmwareType,
   Transport,
   VehicleInfo,
 } from "@/lib/protocol/types";
+import type { ConnectionMeta } from "@/lib/connection-meta";
 import { useTelemetryStore } from "./telemetry-store";
 import { useDroneStore } from "./drone-store";
 import { useSettingsStore } from "./settings-store";
@@ -29,32 +29,8 @@ import {
 import { bridgeTelemetry } from "./drone-manager-bridge";
 import { bindSigning } from "@/lib/protocol/signing-binding";
 import { useNodeRegistryStore } from "./node-registry";
-import { invalidateParamCache } from "@/components/fc/parameters/ParametersPanel";
+import { invalidateParamList } from "./param-list-cache";
 import { bindInavConfigStores, forgetInavConfigStores } from "./inav-config-binding";
-
-export interface ConnectionMeta {
-  type: "serial" | "websocket" | "mqtt-mavlink" | "udp-proxy" | "tcp";
-  baudRate?: number;
-  url?: string;
-  portVendorId?: number;
-  portProductId?: number;
-  presetId?: string;
-  // UDP/TCP direct-link fields (type "udp-proxy" | "tcp")
-  proto?: "udp" | "tcp";
-  host?: string;
-  port?: number;
-  /** UDP only: "listen" (bind + learn peer) or "target" (send to a fixed host). */
-  mode?: "listen" | "target";
-  /** Browser-path bridge WebSocket URL; absent for the native desktop path. */
-  bridgeUrl?: string;
-  /**
-   * FC protocol family detected on this transport at connect time
-   * ("betaflight" | "inav" drive the MSP adapter; ArduPilot / PX4 /
-   * unknown drive MAVLink). Persisted so a reconnect re-selects the same
-   * adapter instead of always assuming MAVLink.
-   */
-  firmwareType?: FirmwareType;
-}
 
 export interface ManagedDrone {
   id: string;
@@ -94,7 +70,11 @@ interface DroneManagerState {
     transport: Transport,
     vehicleInfo: VehicleInfo,
     connectionMeta?: ConnectionMeta,
-    options?: { ownsFleetRow?: boolean },
+    /** `ownsFleetRow`: the session creates its own registry row (a direct
+     * FC). `autoSelect` (default true): select the drone when it is the only
+     * managed session; a background bridge passes false so a session it opens
+     * never moves the operator's selection. */
+    options?: { ownsFleetRow?: boolean; autoSelect?: boolean },
   ) => void;
   removeDrone: (id: string) => void;
   /** Intentional disconnect — marks drone as intentional, then removes. */
@@ -172,6 +152,18 @@ export const useDroneManager = create<DroneManagerState>((set, get) => ({
     // Outbound frames carry the drone's signature whenever a key is stored.
     unsubscribers.push(bindSigning(id, protocol));
 
+    // Stamp the vehicle the link answered as, so a reconnect can tell the same
+    // aircraft from another one that happens to answer on the re-dialled link.
+    const meta: ConnectionMeta | undefined = connectionMeta && {
+      ...connectionMeta,
+      vehicle: {
+        systemId: vehicleInfo.systemId,
+        firmwareType: vehicleInfo.firmwareType,
+        vehicleType: vehicleInfo.vehicleType,
+        boardId: vehicleInfo.boardId,
+      },
+    };
+
     const drone: ManagedDrone = {
       id,
       name,
@@ -180,7 +172,7 @@ export const useDroneManager = create<DroneManagerState>((set, get) => ({
       vehicleInfo,
       unsubscribers,
       connectedAt: Date.now(),
-      connectionMeta,
+      connectionMeta: meta,
       ownsFleetRow,
       _disconnectReason: null,
     };
@@ -192,7 +184,7 @@ export const useDroneManager = create<DroneManagerState>((set, get) => ({
       // Mark as unexpected and trigger listeners
       current._disconnectReason = "unexpected";
       for (const listener of unexpectedDisconnectListeners) {
-        listener(id, name, connectionMeta);
+        listener(id, name, meta);
       }
       // Clean up the drone from the store
       get().removeDrone(id);
@@ -216,8 +208,9 @@ export const useDroneManager = create<DroneManagerState>((set, get) => ({
     // Background bulk param download — seeds paramCache for instant panel reads
     protocol.getAllParameters().catch(() => {});
 
-    // Auto-select if this is the first drone
-    if (get().drones.size === 1) {
+    // Auto-select if this is the first drone, unless a background session
+    // opted out: the selection is the operator's, not the bridge's.
+    if ((options?.autoSelect ?? true) && get().drones.size === 1) {
       get().selectDrone(id);
     }
 
@@ -272,22 +265,31 @@ export const useDroneManager = create<DroneManagerState>((set, get) => ({
     }
     usePanelCacheStore.getState().clearForDrone(id);
 
+    // The selection is a UI id (the node the operator has open), not a session
+    // id. While the node is still in the fleet (a presence-anchored row that
+    // outlives its FC session) the selection stays, so a background teardown
+    // never closes the operator's open panel. A node that left the fleet with
+    // its session (a direct FC) is deselected.
+    const stillFleetNode = useNodeRegistryStore.getState().getEntry(id) !== undefined;
     set((state) => {
       const newMap = new Map(state.drones);
       newMap.delete(id);
       const selectedId =
-        state.selectedDroneId === id ? null : state.selectedDroneId;
+        state.selectedDroneId === id && !stillFleetNode ? null : state.selectedDroneId;
       return { drones: newMap, selectedDroneId: selectedId };
     });
 
-    // If we just deselected, reset the downstream single-slot flight state.
-    if (get().selectedDroneId === null) {
+    // If the selected node has no session any more, reset the downstream
+    // single-slot flight state.
+    const selected = get().selectedDroneId;
+    if (selected === null || selected === id) {
       useDroneStore.getState().setConnectionState("disconnected");
-      // The heartbeat age is a claim about the selected link; with nothing
-      // selected there is no link to call stale.
+      // The heartbeat age is a claim about the selected link; with no session
+      // on the selected node there is no link to call stale.
       useDroneStore.setState({ lastHeartbeat: 0 });
-      invalidateParamCache();
     }
+    // Its downloaded parameter list described the link that just went away.
+    invalidateParamList(id);
     // The removed drone's prearm STATUSTEXT buffer is keyed by droneId and only
     // otherwise drains on arm, so a drone that connects and leaves without
     // arming would pin its lines for the session.
@@ -404,27 +406,21 @@ export const useDroneManager = create<DroneManagerState>((set, get) => ({
       // not read as the new drone's readiness.
       useSensorHealthStore.getState().clear();
       useChecklistStore.getState().resetSession();
-      const droneStore = useDroneStore.getState();
-      droneStore.setConnectionState("disconnected");
-      // The previous drone's heartbeat must not age into a LINK STALE (or back
-      // a live mode/arm reading) for the drone just selected.
-      useDroneStore.setState({ lastHeartbeat: 0 });
-      droneStore.setFlightMode("STABILIZE");
-      droneStore.setArmState("disarmed");
-      droneStore.setSystemStatus(0);
+      // Nothing has been measured for the drone just selected: its arm state
+      // and mode read unknown and the previous drone's heartbeat must not age
+      // into a LINK STALE (or back a live mode/arm reading) for it.
+      useDroneStore.getState().resetForSelection();
       // FENCE_STATUS is a latched single slot: the FC stops sending it once a
       // breach clears, so nothing else ever lowers the alarm. Without this,
-      // a breach raised on the previous drone kept `FenceBreachIndicator` and
-      // `CornerAlerts` lit over the newly selected aircraft.
+      // a breach raised on the previous drone kept the breach alerts
+      // (`CornerAlerts`) lit over the newly selected aircraft.
       useGeofenceStore.getState().clearBreachState();
       // Mission progress is the previous drone's MISSION_CURRENT; the new
       // selection's arrives with its own next frame.
       useMissionStore.setState({ currentWaypoint: null, progress: 0 });
-      droneStore.setFirmwareType(null);
       if (previousId) {
         usePanelCacheStore.getState().clearForDrone(previousId);
       }
-      invalidateParamCache();
       // Reset the GLOBAL single-value stores that otherwise bleed the previous
       // drone's data onto the newly selected one before its first frame: the
       // video pipeline (stream URL + agent video status + poll/latency scratch),
@@ -471,9 +467,9 @@ export const useDroneManager = create<DroneManagerState>((set, get) => ({
       useUploadReceiptsStore.getState().clearForDrone(drone.id);
       forgetInavConfigStores(drone.id);
     });
+    invalidateParamList();
     set({ drones: new Map(), selectedDroneId: null });
-    useDroneStore.getState().setConnectionState("disconnected");
-    useDroneStore.setState({ lastHeartbeat: 0 });
+    useDroneStore.getState().resetForSelection();
     useTelemetryStore.getState().clear();
     // Same single-slot global state as the telemetry rings; clearing one
     // without the other leaves a track on the map with no vehicle behind it.

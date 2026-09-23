@@ -45,63 +45,79 @@ function circlePolygon(lat: number, lon: number, radiusM: number, points = 32): 
 const AIRPORT_RADIUS = 5000;
 
 /**
+ * One region's bundled dataset and what it covers. `coverage` is shown next
+ * to the drawn layer: a region can be partly covered, and an operator outside
+ * the covered set must not read the absence of a polygon as clear airspace.
+ */
+export interface RegionNoFlyData {
+  /** Plain statement of what the zones include and what they leave out. */
+  coverage: string;
+  zones: NoFlyZone[];
+}
+
+/**
  * No-fly zones by ISO 3166-1 alpha-2 region code.
  *
  * A region absent from this table has no dataset, which is not the same as
  * having no restrictions. Adding a region means adding real surveyed data,
- * not a placeholder.
+ * not a placeholder, and stating its coverage.
  */
-export const NO_FLY_ZONES_BY_REGION: Record<string, NoFlyZone[]> = {
-  IN: [
-    {
-      name: "DEL - Indira Gandhi Intl",
-      type: "airport",
-      center: [28.5562, 77.1000],
-      polygon: circlePolygon(28.5562, 77.1000, AIRPORT_RADIUS),
-    },
-    {
-      name: "BLR - Kempegowda Intl",
-      type: "airport",
-      center: [13.1979, 77.7063],
-      polygon: circlePolygon(13.1979, 77.7063, AIRPORT_RADIUS),
-    },
-    {
-      name: "BOM - Chhatrapati Shivaji Intl",
-      type: "airport",
-      center: [19.0896, 72.8656],
-      polygon: circlePolygon(19.0896, 72.8656, AIRPORT_RADIUS),
-    },
-    {
-      name: "MAA - Chennai Intl",
-      type: "airport",
-      center: [12.9941, 80.1709],
-      polygon: circlePolygon(12.9941, 80.1709, AIRPORT_RADIUS),
-    },
-    {
-      name: "HYD - Rajiv Gandhi Intl",
-      type: "airport",
-      center: [17.2403, 78.4294],
-      polygon: circlePolygon(17.2403, 78.4294, AIRPORT_RADIUS),
-    },
-    {
-      name: "CCU - Netaji Subhas Chandra Bose Intl",
-      type: "airport",
-      center: [22.6547, 88.4467],
-      polygon: circlePolygon(22.6547, 88.4467, AIRPORT_RADIUS),
-    },
-  ],
+export const NO_FLY_ZONES_BY_REGION: Record<string, RegionNoFlyData> = {
+  IN: {
+    coverage:
+      "Six major international airports only (DEL, BLR, BOM, MAA, HYD, CCU) as 5 km circles. Other airports, military airfields and controlled airspace are not included",
+    zones: [
+      {
+        name: "DEL - Indira Gandhi Intl",
+        type: "airport",
+        center: [28.5562, 77.1000],
+        polygon: circlePolygon(28.5562, 77.1000, AIRPORT_RADIUS),
+      },
+      {
+        name: "BLR - Kempegowda Intl",
+        type: "airport",
+        center: [13.1979, 77.7063],
+        polygon: circlePolygon(13.1979, 77.7063, AIRPORT_RADIUS),
+      },
+      {
+        name: "BOM - Chhatrapati Shivaji Intl",
+        type: "airport",
+        center: [19.0896, 72.8656],
+        polygon: circlePolygon(19.0896, 72.8656, AIRPORT_RADIUS),
+      },
+      {
+        name: "MAA - Chennai Intl",
+        type: "airport",
+        center: [12.9941, 80.1709],
+        polygon: circlePolygon(12.9941, 80.1709, AIRPORT_RADIUS),
+      },
+      {
+        name: "HYD - Rajiv Gandhi Intl",
+        type: "airport",
+        center: [17.2403, 78.4294],
+        polygon: circlePolygon(17.2403, 78.4294, AIRPORT_RADIUS),
+      },
+      {
+        name: "CCU - Netaji Subhas Chandra Bose Intl",
+        type: "airport",
+        center: [22.6547, 88.4467],
+        polygon: circlePolygon(22.6547, 88.4467, AIRPORT_RADIUS),
+      },
+    ],
+  },
 };
 
 /**
- * The zones for `region`, or `null` when this build carries no data for it.
+ * The dataset for `region`, or `null` when this build carries no data for it.
  *
- * `null` and `[]` mean different things and callers must not conflate them:
- * `[]` would be "surveyed, nothing restricted", which no region in this
- * table claims. An unset or malformed region code is also `null`.
+ * `null` and an empty zone list mean different things and callers must not
+ * conflate them: no zones would be "surveyed, nothing restricted", which no
+ * region in this table claims. An unset or malformed region code is also
+ * `null`.
  */
 export function noFlyZonesForRegion(
   region: string | null | undefined,
-): NoFlyZone[] | null {
+): RegionNoFlyData | null {
   if (!region) return null;
   return NO_FLY_ZONES_BY_REGION[region.trim().toUpperCase()] ?? null;
 }

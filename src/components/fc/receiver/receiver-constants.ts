@@ -22,20 +22,52 @@ export const RC_PROTOCOLS_BITMASK: Map<number, string> = new Map(
   RC_PROTOCOLS.map(({ bit, label }) => [bit, label]),
 );
 
+/** ArduPilot RSSI_TYPE values (AP_RSSI RssiType). */
 export const RSSI_TYPE_OPTIONS = [
   { value: "0", label: "0 — Disabled" },
   { value: "1", label: "1 — Analog Pin" },
   { value: "2", label: "2 — RC Channel PWM" },
-  { value: "3", label: "3 — Receiver Protocol" },
-  { value: "4", label: "4 — Telemetry Radio RSSI" },
-  { value: "5", label: "5 — CRSF/ELRS" },
+  { value: "3", label: "3 — Receiver Protocol (CRSF/ELRS, SBUS, ...)" },
+  { value: "4", label: "4 — PWM Input Pin" },
+  { value: "5", label: "5 — Telemetry Radio RSSI" },
 ];
 
-export const RECEIVER_PARAMS: string[] = [
-  "RCMAP_ROLL", "RCMAP_PITCH", "RCMAP_THROTTLE", "RCMAP_YAW",
-  "RC_PROTOCOLS", "RSSI_TYPE",
-  ...Array.from({ length: RC_CHANNEL_COUNT }, (_, i) => {
-    const n = i + 1;
-    return [`RC${n}_MIN`, `RC${n}_MAX`, `RC${n}_TRIM`, `RC${n}_REVERSED`, `RC${n}_DZ`];
-  }).flat(),
-];
+/**
+ * Per-channel reversal. ArduPilot stores RCn_REVERSED as 0 normal / 1
+ * reversed; PX4 stores RCn_REV as 1 normal / -1 reversed.
+ */
+export interface ChannelReversal {
+  param: (ch: number) => string;
+  isReversed: (value: number | undefined) => boolean;
+  encode: (reversed: boolean) => number;
+}
+
+export const RC_REVERSAL: Record<"ardupilot" | "px4", ChannelReversal> = {
+  ardupilot: {
+    param: (ch) => `RC${ch}_REVERSED`,
+    isReversed: (v) => (v ?? 0) !== 0,
+    encode: (r) => (r ? 1 : 0),
+  },
+  px4: {
+    param: (ch) => `RC${ch}_REV`,
+    isReversed: (v) => v === -1,
+    encode: (r) => (r ? -1 : 1),
+  },
+};
+
+/**
+ * Params the receiver panel reads. PX4 has no RC_PROTOCOLS, RSSI_TYPE or
+ * per-channel deadzone, and names reversal RCn_REV.
+ */
+export function receiverParams(isPx4: boolean): string[] {
+  const reversal = RC_REVERSAL[isPx4 ? "px4" : "ardupilot"];
+  return [
+    "RCMAP_ROLL", "RCMAP_PITCH", "RCMAP_THROTTLE", "RCMAP_YAW",
+    ...(isPx4 ? [] : ["RC_PROTOCOLS", "RSSI_TYPE"]),
+    ...Array.from({ length: RC_CHANNEL_COUNT }, (_, i) => {
+      const n = i + 1;
+      const perChannel = [`RC${n}_MIN`, `RC${n}_MAX`, `RC${n}_TRIM`, reversal.param(n)];
+      return isPx4 ? perChannel : [...perChannel, `RC${n}_DZ`];
+    }).flat(),
+  ];
+}

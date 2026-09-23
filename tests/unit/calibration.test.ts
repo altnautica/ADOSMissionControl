@@ -20,6 +20,7 @@ import {
 } from "@/lib/api/ground-station/calibration";
 
 const m = (over: Partial<CalMeasurement> = {}): CalMeasurement => ({
+  sampledAtMs: null,
   lossPercent: 0,
   fecFailed: 0,
   validRxPacketsPerS: 800,
@@ -114,8 +115,36 @@ describe("pickBest", () => {
   });
 });
 
+/**
+ * A receiver that publishes one snapshot every `periodMs` on a fake clock.
+ * Each snapshot describes the trio that was on air when it was written, so a
+ * snapshot from before a sweep describes the previous trio.
+ */
+function heartbeatReceiver(
+  byMcs: Map<number, CalMeasurement>,
+  periodMs = 5000,
+  startMcs = 1,
+) {
+  let now = 1_000_000;
+  const onAir: Array<{ at: number; mcs: number }> = [{ at: 0, mcs: startMcs }];
+  const mcsAt = (t: number) => onAir.filter((c) => c.at <= t).at(-1)!.mcs;
+  return {
+    now: () => now,
+    sleep: async (ms: number) => {
+      now += ms;
+    },
+    sweep: async (trio: CalTrio) => {
+      onAir.push({ at: now, mcs: trio.mcs });
+    },
+    measure: async (): Promise<CalMeasurement> => {
+      const stamp = Math.floor(now / periodMs) * periodMs;
+      return { ...byMcs.get(mcsAt(stamp))!, sampledAtMs: stamp };
+    },
+  };
+}
+
 describe("runCalibration", () => {
-  const instantSleep = () => Promise.resolve();
+  const cfg = (grid: CalTrio[]) => ({ ...DEFAULT_CAL_CONFIG, grid });
 
   it("sweeps every cell in order and recommends the best", async () => {
     const swept: CalTrio[] = [];
@@ -124,63 +153,78 @@ describe("runCalibration", () => {
       { mcs: 3, fecK: 8, fecN: 12 },
     ];
     // Cell 0 decodes at 2 Mbps clean; cell 1 at 4 Mbps clean → cell 1 wins.
-    const byTrio = new Map<number, CalMeasurement>([
-      [1, m({ bitrateKbps: 2000 })],
-      [3, m({ bitrateKbps: 4000 })],
-    ]);
-    let current = 1;
-    const out = await runCalibration(
-      { ...DEFAULT_CAL_CONFIG, grid, samples: 2 },
-      {
-        sweep: async (t) => {
-          swept.push(t);
-          current = t.mcs;
-        },
-        measure: async () => byTrio.get(current)!,
-        sleep: instantSleep,
-      },
+    const rx = heartbeatReceiver(
+      new Map([
+        [1, m({ bitrateKbps: 2000 })],
+        [3, m({ bitrateKbps: 4000 })],
+      ]),
     );
+    const out = await runCalibration(cfg(grid), {
+      ...rx,
+      sweep: async (t) => {
+        swept.push(t);
+        await rx.sweep(t);
+      },
+    });
     expect(swept).toEqual(grid);
     expect(out.results).toHaveLength(2);
     expect(out.best?.trio.mcs).toBe(3);
     expect(out.marginal).toBe(false);
   });
 
+  it("scores a cell only from snapshots written after its trio was applied", async () => {
+    // MCS 3 is clean; MCS 5 drops the link. The snapshot on hand when MCS 5 is
+    // applied still describes MCS 3 and must not score the MCS 5 cell.
+    const rx = heartbeatReceiver(
+      new Map([
+        [3, m({ bitrateKbps: 4000 })],
+        [5, m({ validRxPacketsPerS: 0, bitrateKbps: null })],
+      ]),
+      5000,
+      3,
+    );
+    const out = await runCalibration(cfg([{ mcs: 5, fecK: 8, fecN: 10 }]), rx);
+    expect(out.results[0].verdict).toBe("link_lost");
+    expect(out.best).toBeNull();
+  });
+
+  it("scores link_lost when no fresh snapshot arrives before the timeout", async () => {
+    let now = 0;
+    const out = await runCalibration(cfg([{ mcs: 1, fecK: 8, fecN: 12 }]), {
+      sweep: async () => {},
+      // The receiver's last snapshot predates the sweep and never refreshes.
+      measure: async () => m({ sampledAtMs: -1 }),
+      sleep: async (ms) => {
+        now += ms;
+      },
+      now: () => now,
+    });
+    expect(out.results[0].verdict).toBe("link_lost");
+  });
+
   it("reports progress per cell", async () => {
     const onCell = vi.fn();
-    await runCalibration(
-      {
-        grid: [{ mcs: 1, fecK: 8, fecN: 12 }],
-        settleMs: 0,
-        measureMs: 0,
-        samples: 1,
-        lossThresholdPct: 2,
-      },
-      { sweep: async () => {}, measure: async () => m(), sleep: instantSleep, onCell },
-    );
+    const rx = heartbeatReceiver(new Map([[1, m()]]));
+    await runCalibration(cfg([{ mcs: 1, fecK: 8, fecN: 12 }]), { ...rx, onCell });
     expect(onCell).toHaveBeenCalledTimes(1);
     expect(onCell).toHaveBeenCalledWith(1, 1, expect.objectContaining({ verdict: "ok" }));
   });
 
   it("aborts mid-sweep when the signal trips", async () => {
     const signal = { aborted: false };
+    const rx = heartbeatReceiver(new Map([[1, m()], [3, m()], [5, m()]]));
     const sweep = vi.fn(async (t: CalTrio) => {
+      await rx.sweep(t);
       if (t.mcs === 3) signal.aborted = true; // trip after the 2nd cell starts
     });
     await expect(
       runCalibration(
-        {
-          grid: [
-            { mcs: 1, fecK: 8, fecN: 12 },
-            { mcs: 3, fecK: 8, fecN: 12 },
-            { mcs: 5, fecK: 8, fecN: 10 },
-          ],
-          settleMs: 0,
-          measureMs: 0,
-          samples: 1,
-          lossThresholdPct: 2,
-        },
-        { sweep, measure: async () => m(), sleep: instantSleep, signal },
+        cfg([
+          { mcs: 1, fecK: 8, fecN: 12 },
+          { mcs: 3, fecK: 8, fecN: 12 },
+          { mcs: 5, fecK: 8, fecN: 10 },
+        ]),
+        { ...rx, sweep, signal },
       ),
     ).rejects.toBeInstanceOf(AbortError);
     // The 3rd cell never starts.

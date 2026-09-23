@@ -103,3 +103,13 @@ describe("mapCloudStatus — resource readings", () => {
     expect(status.health.temperature).toBeNull();
   });
 });
+
+describe("mapCloudStatus — uptime", () => {
+  it("forwards a reported uptime", () => {
+    expect(mapCloudStatus({ ...base, uptimeSeconds: 86_400 }).uptime_seconds).toBe(86_400);
+  });
+
+  it("leaves uptime undefined when the heartbeat omits it", () => {
+    expect(mapCloudStatus({ ...base }).uptime_seconds).toBeUndefined();
+  });
+});

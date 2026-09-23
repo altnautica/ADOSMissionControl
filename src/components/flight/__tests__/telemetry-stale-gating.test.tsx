@@ -10,13 +10,11 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, cleanup } from "@testing-library/react";
-import { NextIntlClientProvider } from "next-intl";
+import { render, cleanup, act } from "@testing-library/react";
 
-import { FlightDataCard } from "@/components/command/shared/FlightDataCard";
-import messages from "../../../../locales/en.json";
 import { TelemetryReadout } from "@/components/flight/TelemetryReadout";
 import { useTelemetryStore } from "@/stores/telemetry-store";
+import { useDroneStore } from "@/stores/drone-store";
 
 // The telemetry deck pulls in unrelated store wiring; stub it so these tests
 // focus on the readout gating.
@@ -24,21 +22,10 @@ vi.mock("@/components/flight/telemetry-deck/TelemetryDeck", () => ({
   useTelemetryDeck: () => ({ controls: null, panel: null }),
 }));
 
-function seedAttitude(ageMs: number) {
-  // clear() swaps in fresh ring buffers, so re-read state before pushing or
-  // the push lands in the orphaned (pre-clear) buffer the component never sees.
-  useTelemetryStore.getState().clear();
-  const s = useTelemetryStore.getState();
-  s.attitude.push({
-    timestamp: Date.now() - ageMs,
-    roll: 12.3,
-    pitch: -4.5,
-    yaw: 90,
-    rollSpeed: 0,
-    pitchSpeed: 0,
-    yawSpeed: 0,
-  });
-}
+const toastSpy = vi.hoisted(() => vi.fn());
+vi.mock("@/components/ui/toast", () => ({
+  useToast: () => ({ toast: toastSpy }),
+}));
 
 function seedFlight(ageMs: number) {
   useTelemetryStore.getState().clear();
@@ -82,32 +69,8 @@ function seedGps(ageMs: number, satellites: number) {
 beforeEach(() => {
   cleanup();
   useTelemetryStore.getState().clear();
-});
-
-/** FlightDataCard translates its FC-link labels, so it needs the intl context. */
-function renderFlightDataCard() {
-  return render(
-    <NextIntlClientProvider locale="en" messages={messages}>
-      <FlightDataCard />
-    </NextIntlClientProvider>,
-  );
-}
-
-describe("FlightDataCard attitude freshness gating", () => {
-  it("shows live attitude when the channel is fresh", () => {
-    seedAttitude(0);
-    const { container } = renderFlightDataCard();
-    expect(container.textContent).toContain("12.3");
-    expect(container.textContent).not.toContain("link silent");
-  });
-
-  it("blanks stale attitude to the placeholder and flags the link silent", () => {
-    seedAttitude(10_000); // older than the freshness window
-    const { container } = renderFlightDataCard();
-    expect(container.textContent).not.toContain("12.3");
-    expect(container.textContent).toContain("--.-");
-    expect(container.textContent).toContain("link silent");
-  });
+  toastSpy.mockClear();
+  useDroneStore.setState({ flightMode: "STABILIZE", lastHeartbeat: 0 });
 });
 
 describe("TelemetryReadout flight + battery freshness gating", () => {
@@ -194,5 +157,29 @@ describe("TelemetryReadout satellite count", () => {
     const { container } = render(<TelemetryReadout />);
     expect(container.textContent).not.toContain("14");
     expect(container.textContent).toContain("--");
+  });
+});
+
+describe("TelemetryReadout flight mode", () => {
+  it("shows no mode until a live heartbeat backs one", () => {
+    // Between a drone switch and its first heartbeat the store holds a
+    // placeholder mode; after link loss it holds the last one.
+    useDroneStore.setState({ flightMode: "AUTO", lastHeartbeat: 0 });
+    const { container } = render(<TelemetryReadout />);
+    expect(container.textContent).not.toContain("AUTO");
+  });
+
+  it("does not announce the first heartbeat after a switch as a mode change", () => {
+    const { container } = render(<TelemetryReadout />);
+    act(() => useDroneStore.setState({ flightMode: "LOITER", lastHeartbeat: Date.now() }));
+    expect(container.textContent).toContain("LOITER");
+    expect(toastSpy).not.toHaveBeenCalled();
+  });
+
+  it("announces a change between two heartbeat-backed modes", () => {
+    useDroneStore.setState({ flightMode: "LOITER", lastHeartbeat: Date.now() });
+    render(<TelemetryReadout />);
+    act(() => useDroneStore.setState({ flightMode: "RTL", lastHeartbeat: Date.now() }));
+    expect(toastSpy).toHaveBeenCalledWith("Mode changed: LOITER -> RTL", "info");
   });
 });

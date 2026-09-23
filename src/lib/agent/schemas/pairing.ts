@@ -7,8 +7,13 @@
 
 import { z } from "zod";
 
-import { NumberLike } from "./primitives";
+import { NullableNumber } from "./primitives";
 
+/**
+ * `GET /api/pairing/info`. The agent emits every field even when it has no
+ * value: `pairing_code` is null while paired, `owner_id` and `paired_at` are
+ * null while unpaired.
+ */
 export const PairingInfoSchema = z
   .object({
     device_id: z.string(),
@@ -16,9 +21,9 @@ export const PairingInfoSchema = z
     version: z.string(),
     board: z.string(),
     paired: z.boolean(),
-    pairing_code: z.string().optional(),
-    owner_id: z.string().optional(),
-    paired_at: NumberLike.optional(),
+    pairing_code: z.string().nullish(),
+    owner_id: z.string().nullish(),
+    paired_at: NullableNumber.optional(),
     mdns_host: z.string(),
   })
   .passthrough();

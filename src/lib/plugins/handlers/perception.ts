@@ -25,6 +25,7 @@
 
 import type { BridgeHandler, BridgeHandlerContext } from "@/lib/plugins/bridge";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
+import { perMount } from "./per-mount";
 import {
   useVisionDetectionsStore,
   type VisionDetectionBatch,
@@ -99,19 +100,22 @@ function serializeBatch(
 
 /**
  * Build the read-only `perception.*` handlers for one plugin bound to a device,
- * plus a `dispose()` that drops the detection subscription. A single
- * subscription is tracked so a re-subscribe replaces the prior one (idempotent).
+ * plus a `dispose()` that drops every detection subscription. Each mount
+ * (iframe) holds its own subscription, so a re-subscribe replaces only that
+ * mount's prior one (idempotent) and two panels of one plugin never steal each
+ * other's stream.
  */
 export function buildPerceptionHandlers(deviceId: string | null): {
   handlers: Record<string, BridgeHandler>;
   dispose: () => void;
 } {
-  let unsub: (() => void) | null = null;
-
-  const teardown = () => {
-    unsub?.();
-    unsub = null;
-  };
+  const mounts = perMount<{ unsub: (() => void) | null }>(
+    () => ({ unsub: null }),
+    (state) => {
+      state.unsub?.();
+      state.unsub = null;
+    },
+  );
 
   const read: BridgeHandler = () => {
     const s = useAgentCapabilitiesStore.getState();
@@ -127,12 +131,13 @@ export function buildPerceptionHandlers(deviceId: string | null): {
     if (!deviceId) {
       throw new Error("no scoped drone for perception subscription");
     }
-    // Replace any prior subscription to make a re-subscribe idempotent.
-    teardown();
+    // Replace this mount's prior subscription to make a re-subscribe idempotent.
+    const state = mounts.get(ctx.mount);
+    state.unsub?.();
     const capability = ctx.capability ?? "";
     let last = useVisionDetectionsStore.getState().batches[deviceId];
-    unsub = useVisionDetectionsStore.subscribe((state) => {
-      const batch = state.batches[deviceId];
+    state.unsub = useVisionDetectionsStore.subscribe((vs) => {
+      const batch = vs.batches[deviceId];
       // `setBatch` replaces the batch object each frame, so a new reference is a
       // new batch. Emit only fresh batches for this plugin's drone.
       if (batch && batch !== last) {
@@ -147,9 +152,11 @@ export function buildPerceptionHandlers(deviceId: string | null): {
     return { ok: true };
   };
 
-  const unsubscribe: BridgeHandler = () => {
-    if (!unsub) return { ok: false };
-    teardown();
+  const unsubscribe: BridgeHandler = (_args, ctx: BridgeHandlerContext) => {
+    const state = mounts.peek(ctx.mount);
+    if (!state?.unsub) return { ok: false };
+    state.unsub();
+    state.unsub = null;
     return { ok: true };
   };
 
@@ -176,6 +183,6 @@ export function buildPerceptionHandlers(deviceId: string | null): {
       "perception.unsubscribe": unsubscribe,
       "perception.health": health,
     },
-    dispose: teardown,
+    dispose: () => mounts.disposeAll(),
   };
 }

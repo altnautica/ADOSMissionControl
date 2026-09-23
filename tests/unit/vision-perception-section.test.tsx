@@ -78,6 +78,7 @@ function renderSection(
   const utils = renderWithIntl(
     <VisionPerceptionSection
       droneId="node:dev-1"
+      nodeDeviceId="dev-1"
       profile={profile}
       config={config}
       readOnly={false}
@@ -126,10 +127,19 @@ describe("VisionPerceptionSection honesty", () => {
   });
 
   it("shows the agent-reported active offload target verbatim", () => {
+    useAgentCapabilitiesStore.setState({ focusedDeviceId: "dev-1" });
     useAgentCapabilitiesStore
       .getState()
       .setCapabilities({ perceptionOffloadTarget: "bench-ws:8092" });
     renderSection("drone");
     expect(screen.getByText("bench-ws:8092")).toBeTruthy();
+  });
+
+  it("shows a pinned workstation this browser does not know by its address, not as Auto", () => {
+    renderSection("drone", {
+      ...CONFIG,
+      perception: { offload: { enabled: "auto", compute_node_addr: "192.168.1.60:8092" } },
+    });
+    expect(screen.getByText("192.168.1.60:8092")).toBeTruthy();
   });
 });

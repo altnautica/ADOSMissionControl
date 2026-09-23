@@ -264,9 +264,11 @@ export const useMissionStore = create<MissionStoreState>()(
 
   updateWaypoint: (id, update) => {
     recordHistory();
+    // Moving a position-inheriting item gives it a real position.
+    const moved = ("lat" in update || "lon" in update) && !("inheritsPosition" in update);
     set((s) => ({
       waypoints: s.waypoints.map((w) =>
-        w.id === id ? { ...w, ...update } : w
+        w.id === id ? { ...w, ...update, ...(moved ? { inheritsPosition: undefined } : {}) } : w
       ),
     }));
   },
@@ -414,13 +416,30 @@ export const useMissionStore = create<MissionStoreState>()(
       // targets keep their absolute seq, which collapse resolves directly.
       const isArduPilot = protocol.getVehicleInfo()?.firmwareType.startsWith("ardupilot-") ?? false;
       const items = isArduPilot ? downloaded.filter((it) => it.seq !== 0) : downloaded;
+      // The home slot anchors items the vehicle flies "from here" (RTL, 0,0
+      // TAKEOFF/LAND/LOITER) when no waypoint precedes them.
+      const homeItem = isArduPilot ? downloaded.find((it) => it.seq === 0) : undefined;
+      const home = homeItem && (homeItem.x !== 0 || homeItem.y !== 0)
+        ? { lat: homeItem.x / 1e7, lon: homeItem.y / 1e7 }
+        : undefined;
       // Re-nest the flat FC item list back into NAV waypoints with attached
       // actions, resolving each DO_JUMP's target seq to its owning waypoint id.
       const downloadWarnings: string[] = [];
       const waypoints: Waypoint[] = collapseFromItems(items, (dropped) => {
         downloadWarnings.push(droppedItemWarning(dropped));
-      });
+      }, home);
       set({ waypoints, downloadState: "downloaded", downloadWarnings });
+      // The planner now shows what the FC holds, unless an item could not be
+      // kept (then the two differ and nothing vouches for the plan).
+      const droneId = droneIdOf(protocol);
+      if (droneId && downloadWarnings.length === 0) {
+        useUploadReceiptsStore.getState().record("mission", {
+          droneId,
+          contentHash: missionContentHash(waypoints),
+          at: Date.now(),
+          homeSlot: isArduPilot,
+        });
+      }
       return waypoints;
     } catch {
       set({ downloadState: "error" });

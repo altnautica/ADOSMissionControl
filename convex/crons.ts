@@ -68,4 +68,12 @@ crons.interval(
   internal.cmdMcpTokens.pruneOldAuditEvents
 );
 
+// Every browser session mints a broker grant per hour; expired rows are swept
+// once past their review window.
+crons.interval(
+  "prune-expired-mqtt-control-grants",
+  { hours: 6 },
+  internal.cmdMqttControlGrants.pruneExpiredGrants
+);
+
 export default crons;

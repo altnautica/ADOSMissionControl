@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useArmedLock } from "@/hooks/use-armed-lock";
+import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import type { HsvColor, BfLedModeColor } from "@/lib/protocol/msp/decoders/config/led";
 import {
   type BfLed, unpackLed, packLed, toggleFlag, hsvToHex,
@@ -124,6 +125,7 @@ export function BfLedStripPanel() {
     (JSON.stringify(leds) !== baseline ||
       JSON.stringify(colors) !== colorsBaseline ||
       JSON.stringify(modeColors) !== modeColorsBaseline);
+  useUnsavedGuard(dirty);
   const disabled = loading || isArmed;
 
   return (

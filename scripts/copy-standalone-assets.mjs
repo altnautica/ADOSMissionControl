@@ -95,6 +95,10 @@ function normalizeStandaloneLayout() {
 
 normalizeStandaloneLayout();
 
+// `public/screenshots` holds the README's images. The app never serves them,
+// so they stay out of every installer and container image.
+const README_ONLY = join(root, "public", "screenshots");
+
 const copies = [
   { src: join(root, ".next", "static"), dst: join(standalone, ".next", "static") },
   { src: join(root, "public"), dst: join(standalone, "public") },
@@ -106,6 +110,6 @@ for (const { src, dst } of copies) {
     continue;
   }
   rmSync(dst, { recursive: true, force: true });
-  cpSync(src, dst, { recursive: true });
+  cpSync(src, dst, { recursive: true, filter: (path) => path !== README_ONLY });
   console.log(`[standalone] copied ${src} -> ${dst}`);
 }

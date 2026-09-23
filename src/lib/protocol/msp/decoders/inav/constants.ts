@@ -21,17 +21,7 @@ export const INAV_MSP = {
   MSP2_INAV_SET_SAFEHOME: 0x2039,
   MSP2_INAV_MISC2: 0x203a,
 
-  // Legacy nav config entry. This ID (0x2100) collides with MSP2_INAV_CUSTOM_OSD_ELEMENTS.
-  // The shape decoded here does not match the Custom OSD Elements response format.
-  // Retained as a legacy alias so existing callers are not broken; treat with caution.
-  // See decodeMspINavNavConfigLegacy below.
-  MSP2_INAV_NAV_CONFIG_LEGACY: 0x2100,
-  /**
-   * MSPv1 `MSP_NAV_STATUS`, command 121. It was declared here as `0x2101`,
-   * which is an MSP2 id (and the one that collides with
-   * MSP2_INAV_CUSTOM_OSD_ELEMENTS) — nothing polled it, so nav state was
-   * being invented from the wrong offsets of MSP2_INAV_STATUS instead.
-   */
+  /** MSPv1 `MSP_NAV_STATUS`, command 121 (an MSPv1 id, not an MSP2 one). */
   MSP_NAV_STATUS: 121,
   MSP_WP: 118,
   MSP_SET_WP: 209,
@@ -48,7 +38,6 @@ export const INAV_MSP = {
   MSP_WP_MISSION_LOAD: 18,
   MSP_WP_MISSION_SAVE: 19,
   MSP_WP_GETINFO: 20,
-  MSP_SET_HOME_POSITION: 0xd9,
 
   // MSP2 common settings system
   MSP2_COMMON_SETTING: 0x1003,
@@ -135,7 +124,7 @@ export const INAV_MSP = {
   // MSP2 ADS-B
   MSP2_ADSB_VEHICLE_LIST: 0x2090,
 
-  // MSP2 iNav custom OSD elements (note: 0x2100 is also MSP2_INAV_NAV_CONFIG_LEGACY above, 0x2101 is also MSP_NAV_STATUS above)
+  // MSP2 iNav custom OSD elements
   MSP2_INAV_CUSTOM_OSD_ELEMENTS: 0x2100,
   MSP2_INAV_CUSTOM_OSD_ELEMENT: 0x2101,
   MSP2_INAV_SET_CUSTOM_OSD_ELEMENTS: 0x2102,

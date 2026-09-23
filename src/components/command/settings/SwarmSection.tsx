@@ -4,10 +4,12 @@
  * @module command/settings/SwarmSection
  * @description The node Settings "Swarm" page: this drone's multi-drone
  * coordination configuration — its fleet identity, the formation it defaults
- * to, the flocking weights, the collision-avoidance envelope, and its task
- * allocation participation. Every writable field binds to the shared config
- * writer, so a change is validated by the agent and read back from the
- * persisted config.
+ * to, the flocking weights and the collision-avoidance envelope. Every
+ * writable field binds to the shared config writer, so a change is validated
+ * by the agent and read back from the persisted config. The swarm role and
+ * task-allocation keys are not offered: the onboard runtime reads neither and
+ * nothing on the node runs the task auction, so a switch there would report
+ * "Applied" for a setting with no effect.
  *
  * Three deliberate shapes:
  *   - The flocking gains are stored as integer PERCENTAGES of the float
@@ -20,10 +22,9 @@
  *     supervisory-control loss; the ladder is a fact about the runtime, not a
  *     preference, so it is never offered as a control.
  *
- * Capability-gated: renders only when the node's own config surface
- * advertises the swarm block — an agent that predates it (or a node with no
- * config path) shows no page. Demo mode renders the page so the surface stays
- * exercisable offline.
+ * Capability-gated by the page registry: offered while the node's config is
+ * unknown or advertises the swarm block (demo mode always). A loaded document
+ * without the block renders nothing here.
  * @license GPL-3.0-only
  */
 
@@ -39,13 +40,12 @@ import {
   ConfigIntField,
   ConfigReadonlyRow,
   ConfigSelectField,
-  ConfigTextField,
   ConfigToggleField,
   type WriteConfirm,
 } from "./ConfigFields";
 import { SwarmFlockingFields } from "./SwarmFlockingFields";
-import { configAdvertises } from "./use-node-config";
-import { Section } from "./Section";
+import { configMayAdvertise } from "./use-node-config";
+import { InfoNote, Section } from "./Section";
 
 interface SectionProps {
   config: Record<string, unknown> | null;
@@ -67,7 +67,7 @@ const PRECEDENCE_LEVELS = [
 export function SwarmSection({ config, readOnly, setValue }: SectionProps) {
   const t = useTranslations("nodeSettings.swarm");
 
-  if (!configAdvertises(config, "swarm") && !isDemoMode()) return null;
+  if (!configMayAdvertise(config, "swarm") && !isDemoMode()) return null;
 
   const formationOptions = SWARM_FORMATIONS.map((value) => ({
     value,
@@ -86,9 +86,7 @@ export function SwarmSection({ config, readOnly, setValue }: SectionProps) {
           only commands the flight controller while Enabled is on and the
           aircraft reports GUIDED. Say so, so a successful write is not read
           as active swarm participation. */}
-      <div className="rounded border border-border-default/60 bg-bg-tertiary/40 px-3 py-2 text-[11px] text-text-tertiary">
-        {t("runtimeNotice")}
-      </div>
+      <InfoNote>{t("runtimeNotice")}</InfoNote>
 
       {/* Identity — who this drone is in the fleet. The slot is issued by the
           ground station's registry at pair time and is never hand-edited: two
@@ -111,15 +109,6 @@ export function SwarmSection({ config, readOnly, setValue }: SectionProps) {
           configKey={SWARM_CONFIG_KEYS.enabled}
           label={t("enabledLabel")}
           hint={t("enabledHint")}
-          config={config}
-          readOnly={readOnly}
-          setValue={setValue}
-        />
-        <ConfigTextField
-          configKey={SWARM_CONFIG_KEYS.role}
-          label={t("roleLabel")}
-          hint={t("roleHint")}
-          placeholder="auto"
           config={config}
           readOnly={readOnly}
           setValue={setValue}
@@ -184,36 +173,6 @@ export function SwarmSection({ config, readOnly, setValue }: SectionProps) {
           setValue={setValue}
           confirm={separationConfirm}
         />
-      </div>
-
-      {/* Task allocation — the participation switch is the operator's; the
-          assignment is the runtime's and is reported, never typed. Bid
-          vectors and bundle internals stay out of the UI entirely: the
-          operator wants the assignment, not the algorithm. */}
-      <div className="space-y-4 border-t border-border-default pt-3">
-        <div className="text-xs text-text-secondary">{t("tasksTitle")}</div>
-        <ConfigToggleField
-          configKey={SWARM_CONFIG_KEYS.tasksEnabled}
-          label={t("tasksEnabledLabel")}
-          hint={t("tasksEnabledHint")}
-          config={config}
-          readOnly={readOnly}
-          setValue={setValue}
-        />
-        <div className="space-y-2">
-          <ConfigReadonlyRow
-            configKey={SWARM_CONFIG_KEYS.tasksAssignedTaskId}
-            label={t("taskIdLabel")}
-            hint={t("taskIdHint")}
-            config={config}
-          />
-          <ConfigReadonlyRow
-            configKey={SWARM_CONFIG_KEYS.tasksBundlePosition}
-            label={t("bundlePositionLabel")}
-            hint={t("bundlePositionHint")}
-            config={config}
-          />
-        </div>
       </div>
 
       {/* Mode precedence — a fact about the arbiter, not a setting. */}

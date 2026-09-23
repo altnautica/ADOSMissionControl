@@ -46,4 +46,11 @@ describe("icon-registry vocabulary corrections", () => {
     expect(hasNamedIcon("not-a-real-icon")).toBe(false);
     expect(hasNamedIcon("circle-stop")).toBe(true);
   });
+
+  it("never resolves an inherited Object member from a manifest name", () => {
+    for (const name of ["constructor", "Constructor", "con-structor", "toString", "__proto__"]) {
+      expect(resolveNamedIcon(name)).toBe(FALLBACK_ICON);
+      expect(hasNamedIcon(name)).toBe(false);
+    }
+  });
 });

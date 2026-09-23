@@ -15,6 +15,10 @@ export const MAV_RESULT = {
   FAILED: 4,
   IN_PROGRESS: 5,
   CANCELLED: 6,
+  COMMAND_LONG_ONLY: 7,
+  COMMAND_INT_ONLY: 8,
+  COMMAND_UNSUPPORTED_MAV_FRAME: 9,
+  NOT_IN_CONTROL: 10,
 } as const;
 
 const RESULT_MESSAGES: Record<number, string> = {
@@ -25,7 +29,43 @@ const RESULT_MESSAGES: Record<number, string> = {
   [MAV_RESULT.FAILED]: "Command failed",
   [MAV_RESULT.IN_PROGRESS]: "Command in progress",
   [MAV_RESULT.CANCELLED]: "Command cancelled",
+  [MAV_RESULT.COMMAND_LONG_ONLY]: "Command must be sent as COMMAND_LONG",
+  [MAV_RESULT.COMMAND_INT_ONLY]: "Command must be sent as COMMAND_INT",
+  [MAV_RESULT.COMMAND_UNSUPPORTED_MAV_FRAME]: "Command frame unsupported",
+  [MAV_RESULT.NOT_IN_CONTROL]: "Another controller has control of the vehicle",
 };
+
+const MAV_FRAME_GLOBAL = 0;
+const MAV_FRAME_GLOBAL_RELATIVE_ALT = 3;
+
+/**
+ * Commands whose COMMAND_LONG param5/param6 carry latitude/longitude in
+ * degrees, with the frame the autopilot assumes for them. Converting such a
+ * command to COMMAND_INT scales x/y by 1e7; every other command carries
+ * param5/param6 into x/y unscaled. This mirrors the conversion ArduPilot
+ * applies to an incoming COMMAND_LONG.
+ */
+const LONG_LOCATION_COMMAND_FRAME: Readonly<Record<number, number>> = {
+  179: MAV_FRAME_GLOBAL, // DO_SET_HOME
+  195: MAV_FRAME_GLOBAL_RELATIVE_ALT, // DO_SET_ROI_LOCATION
+  201: MAV_FRAME_GLOBAL_RELATIVE_ALT, // DO_SET_ROI
+  192: MAV_FRAME_GLOBAL_RELATIVE_ALT, // DO_REPOSITION
+  611: MAV_FRAME_GLOBAL, // DO_SET_GLOBAL_ORIGIN
+  43003: MAV_FRAME_GLOBAL, // EXTERNAL_POSITION_ESTIMATE
+};
+
+/** Re-encode a COMMAND_LONG's inputs as the equivalent COMMAND_INT frame. */
+function encodeLongAsCommandInt(a: PendingCommand["encodeArgs"]): Uint8Array {
+  const locationFrame: number | undefined = LONG_LOCATION_COMMAND_FRAME[a.command];
+  const scale = locationFrame === undefined ? 1 : 1e7;
+  const x = Number.isNaN(a.params[4]) ? 0 : Math.trunc(a.params[4] * scale);
+  const y = Number.isNaN(a.params[5]) ? 0 : Math.trunc(a.params[5] * scale);
+  return encodeCommandInt(
+    a.targetSys, a.targetComp, locationFrame ?? MAV_FRAME_GLOBAL_RELATIVE_ALT, a.command, 0, 0,
+    a.params[0], a.params[1], a.params[2], a.params[3],
+    x, y, a.params[6], a.sysId, a.compId,
+  );
+}
 
 interface PendingCommand {
   command: number;
@@ -349,6 +389,35 @@ export class CommandQueue {
           });
         }
       }, 1000);
+      return;
+    }
+
+    // COMMAND_INT_ONLY: a flash-constrained ArduPilot build without
+    // COMMAND_LONG handling acks every COMMAND_LONG this way. Re-send the same
+    // command once as COMMAND_INT; its ack resolves this entry.
+    if (result === MAV_RESULT.COMMAND_INT_ONLY && !entry.isCommandInt) {
+      clearTimeout(entry.timer);
+      entry.isCommandInt = true;
+      entry.frame = encodeLongAsCommandInt(entry.encodeArgs);
+      entry.timer = setTimeout(() => {
+        this.pending.delete(ticket);
+        entry.resolve({
+          success: false,
+          resultCode: -1,
+          message: `Command ${command} timed out after COMMAND_INT resend`,
+        });
+      }, entry.timeoutMs);
+      try {
+        entry.sendFn(entry.frame);
+      } catch (err) {
+        clearTimeout(entry.timer);
+        this.pending.delete(ticket);
+        entry.resolve({
+          success: false,
+          resultCode: -1,
+          message: `Send failed: ${err instanceof Error ? err.message : String(err)}`,
+        });
+      }
       return;
     }
 

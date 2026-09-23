@@ -1,5 +1,5 @@
 /**
- * Tests for the plugin cloud.read / cloud.write policy gate.
+ * Tests for the plugin cloud.read policy gate.
  *
  * @license GPL-3.0-only
  */
@@ -7,12 +7,10 @@ import { describe, it, expect, afterEach } from "vitest";
 
 import {
   isAllowedCloudRead,
-  isAllowedCloudWrite,
   validateCloudArgs,
   checkCloudRateLimit,
   resetCloudRateLimits,
   ALLOWED_CLOUD_READS,
-  ALLOWED_CLOUD_WRITES,
   MAX_CLOUD_ARGS_BYTES,
   MAX_CLOUD_STRING_LEN,
   CLOUD_RATE_LIMIT_MAX,
@@ -40,14 +38,6 @@ describe("cloud read allowlist", () => {
       expect(name.startsWith("cmd")).toBe(false);
       expect(name.startsWith("profiles:")).toBe(false);
     }
-  });
-});
-
-describe("cloud write allowlist", () => {
-  it("is empty by default — no plugin write is allowed", () => {
-    expect(ALLOWED_CLOUD_WRITES.size).toBe(0);
-    expect(isAllowedCloudWrite("comments:create")).toBe(false);
-    expect(isAllowedCloudWrite("communityItems:upvote")).toBe(false);
   });
 });
 

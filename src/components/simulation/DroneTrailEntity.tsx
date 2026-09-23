@@ -1,7 +1,8 @@
 /**
  * @module DroneTrailEntity
  * @description Renders a fading lime trail behind the drone during simulation playback.
- * Uses a CallbackProperty to accumulate positions from the sampled position property.
+ * A 500 ms sampler appends positions to one array that the polyline's
+ * CallbackProperty returns as-is, so a rendered frame never copies the trail.
  * @license GPL-3.0-only
  */
 
@@ -20,29 +21,32 @@ import {
 
 interface DroneTrailEntityProps {
   viewer: CesiumViewer | null;
+  /** Id of the viewer track this trail follows; scopes the Cesium entity id. */
+  trackId: string;
   positionProperty: SampledPositionProperty | null;
 }
 
-const TRAIL_ENTITY_ID = "sim-drone-trail";
 const TRAIL_COLOR = Color.fromCssColorString("#dff140").withAlpha(0.5);
 const UPDATE_INTERVAL = 500; // ms between position samples
 const MAX_TRAIL_POSITIONS = 7200; // 60 min at 500ms intervals
+const NO_POSITIONS: Cartesian3[] = [];
 
-export function DroneTrailEntity({ viewer, positionProperty }: DroneTrailEntityProps) {
+export function DroneTrailEntity({ viewer, trackId, positionProperty }: DroneTrailEntityProps) {
   const positionsRef = useRef<Cartesian3[]>([]);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (!viewer || viewer.isDestroyed() || !positionProperty) return;
+    const entityId = `sim-drone-trail-${trackId}`;
 
     positionsRef.current = [];
 
     const positionsCallback = new CallbackProperty(() => {
-      return positionsRef.current.length >= 2 ? positionsRef.current.slice() : [];
+      return positionsRef.current.length >= 2 ? positionsRef.current : NO_POSITIONS;
     }, false);
 
     const entity: Entity = viewer.entities.add({
-      id: TRAIL_ENTITY_ID,
+      id: entityId,
       polyline: {
         positions: positionsCallback,
         width: 2,
@@ -81,10 +85,10 @@ export function DroneTrailEntity({ viewer, positionProperty }: DroneTrailEntityP
 
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
-      if (!viewer.isDestroyed()) viewer.entities.removeById(TRAIL_ENTITY_ID);
+      if (!viewer.isDestroyed()) viewer.entities.removeById(entityId);
       positionsRef.current = [];
     };
-  }, [viewer, positionProperty]);
+  }, [viewer, trackId, positionProperty]);
 
   return null;
 }

@@ -1,6 +1,7 @@
 /**
  * Navigation and safety MAVLink v2 message decoders (extended): FencePoint,
- * FenceFetchPoint, FenceStatus, Wind, Vibration, HomePosition, EkfStatusReport.
+ * FenceFetchPoint, FenceStatus, Wind, Vibration, HomePosition, EkfStatusReport,
+ * AdsbVehicle.
  *
  * @module protocol/messages/nav-safety-ext
  */
@@ -210,7 +211,7 @@ export function decodeHomePosition(dv: DataView): HomePositionMsg {
   };
 }
 
-// ── EKF_STATUS_REPORT (ID 335) ─────────────────────────────
+// ── EKF_STATUS_REPORT (ID 193) ─────────────────────────────
 
 export interface EkfStatusReportMsg {
   velocityVariance: number;
@@ -222,7 +223,7 @@ export interface EkfStatusReportMsg {
 }
 
 /**
- * Decode EKF_STATUS_REPORT (msg ID 335).
+ * Decode EKF_STATUS_REPORT (msg ID 193).
  *
  * | Offset | Type    | Field                |
  * |--------|---------|----------------------|
@@ -241,5 +242,74 @@ export function decodeEkfStatusReport(dv: DataView): EkfStatusReportMsg {
     compassVariance: dv.getFloat32(12, true),
     terrainAltVariance: dv.getFloat32(16, true),
     flags: dv.getUint16(20, true),
+  };
+}
+
+// ── ADSB_VEHICLE (ID 246) ───────────────────────────────────
+
+export interface AdsbVehicleMsg {
+  icaoAddress: number;
+  /** degE7 */
+  lat: number;
+  /** degE7 */
+  lon: number;
+  /** mm; the datum is `altitudeType` (0 = pressure QNH, 1 = geometric/GNSS). */
+  altitude: number;
+  /** cdeg */
+  heading: number;
+  /** cm/s */
+  horVelocity: number;
+  /** cm/s, positive up */
+  verVelocity: number;
+  /** ADSB_FLAGS bitmask: which of the fields above are valid. */
+  flags: number;
+  squawk: number;
+  altitudeType: number;
+  callsign: string;
+  emitterType: number;
+  /** Seconds since the receiver last heard this aircraft. */
+  tslc: number;
+}
+
+/**
+ * Decode ADSB_VEHICLE (msg ID 246).
+ *
+ * | Offset | Type     | Field        |
+ * |--------|----------|--------------|
+ * | 0      | uint32   | icaoAddress  |
+ * | 4      | int32    | lat (degE7)  |
+ * | 8      | int32    | lon (degE7)  |
+ * | 12     | int32    | altitude (mm)|
+ * | 16     | uint16   | heading (cdeg)|
+ * | 18     | uint16   | horVelocity  |
+ * | 20     | int16    | verVelocity  |
+ * | 22     | uint16   | flags        |
+ * | 24     | uint16   | squawk       |
+ * | 26     | uint8    | altitudeType |
+ * | 27     | char[9]  | callsign     |
+ * | 36     | uint8    | emitterType  |
+ * | 37     | uint8    | tslc         |
+ */
+export function decodeAdsbVehicle(dv: DataView): AdsbVehicleMsg {
+  let callsign = "";
+  for (let i = 0; i < 9; i++) {
+    const c = dv.getUint8(27 + i);
+    if (c === 0) break;
+    callsign += String.fromCharCode(c);
+  }
+  return {
+    icaoAddress: dv.getUint32(0, true),
+    lat: dv.getInt32(4, true),
+    lon: dv.getInt32(8, true),
+    altitude: dv.getInt32(12, true),
+    heading: dv.getUint16(16, true),
+    horVelocity: dv.getUint16(18, true),
+    verVelocity: dv.getInt16(20, true),
+    flags: dv.getUint16(22, true),
+    squawk: dv.getUint16(24, true),
+    altitudeType: dv.getUint8(26),
+    callsign: callsign.trim(),
+    emitterType: dv.getUint8(36),
+    tslc: dv.getUint8(37),
   };
 }

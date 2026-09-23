@@ -175,7 +175,7 @@ class DemoVisionClient implements VisionClient {
     // The demo engine runs the streaming detector (`demo-yolov8n`, which the
     // mock detection feed publishes on) plus one loaded-but-idle re-id model,
     // so the hub shows both an active pipeline and a "loaded · idle" row.
-    // Demo mode is mock by design (Rule 4), so it carries fps/latency + NPU
+    // Demo mode is mock by design (demo mode works offline), so it carries fps/latency + NPU
     // utilization to exercise the telemetry UI without a real agent.
     const models: EngineModel[] = [
       {
@@ -197,7 +197,7 @@ class DemoVisionClient implements VisionClient {
         isInferenceCapable: true,
       },
     ];
-    return { models, npuUtilizationPct: 41.5, modelCount: models.length };
+    return { known: true, models, npuUtilizationPct: 41.5, modelCount: models.length };
   }
 }
 

@@ -23,7 +23,6 @@ import {
 } from "@/lib/protocol/transport/net-mavlink";
 import { connectWithDetection } from "@/lib/protocol/connect-with-detection";
 import { useDroneManager } from "@/stores/drone-manager";
-import { useDroneMetadataStore } from "@/stores/drone-metadata-store";
 import { saveRecentConnection } from "@/lib/recent-connections";
 import { isElectron } from "@/lib/utils";
 import { resolveNodeId } from "@/lib/agent/node-id";
@@ -73,16 +72,19 @@ export function NetEndpointPanel({
   onBridgeUrlChange,
   onConnected,
   targetDroneId,
+  connectDisabled = false,
 }: {
   proto: NetProto;
   value: NetEndpointValue;
   bridgeUrl: string;
   onChange: (next: NetEndpointValue) => void;
   onBridgeUrlChange: (url: string) => void;
-  /** Called after a successful connect so the host can close the dialog. */
-  onConnected?: (name: string) => void;
+  /** Called after a successful connect or link attach so the host can close. */
+  onConnected?: () => void;
   /** When set, attach this transport as an additional link to the drone. */
   targetDroneId?: string | null;
+  /** Blocks the connect action (link mode with no target drone chosen yet). */
+  connectDisabled?: boolean;
 }) {
   const t = useTranslations("connect");
   const [connecting, setConnecting] = useState(false);
@@ -93,7 +95,9 @@ export function NetEndpointPanel({
   const attachLinkToDrone = useDroneManager((s) => s.attachLinkToDrone);
 
   const native = isElectron();
-  const command = `npx @altnautica/mavlink-bridge --in ${buildInSpec(proto, value)} --ws ${wsPortOf(bridgeUrl)}${allowOriginArg()}`;
+  // The bridge is not on the npm registry, so it runs from a checkout of this
+  // repository: build once, then start it with the endpoint below.
+  const command = `cd tools/mavlink-bridge && npm ci && npm run build && node dist/cli.js --in ${buildInSpec(proto, value)} --ws ${wsPortOf(bridgeUrl)}${allowOriginArg()}`;
 
   const presets =
     proto === "udp"
@@ -182,7 +186,7 @@ export function NetEndpointPanel({
           return;
         }
         handedOff = true;
-        onConnected?.("link");
+        onConnected?.();
         setConnecting(false);
         return;
       }
@@ -203,12 +207,6 @@ export function NetEndpointPanel({
         firmwareType,
       });
 
-      useDroneMetadataStore.getState().ensureProfile(droneId, {
-        displayName: droneName,
-        serial: `ALT-${droneId.toUpperCase()}`,
-        enrolledAt: Date.now(),
-      });
-
       void saveRecentConnection({
         type: proto === "udp" ? "udp-proxy" : "tcp",
         proto,
@@ -222,7 +220,7 @@ export function NetEndpointPanel({
       });
 
       handedOff = true;
-      onConnected?.(droneName);
+      onConnected?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : t("connectionFailed"));
       // The socket opened but the connect failed (e.g. heartbeat timeout); tear
@@ -305,6 +303,7 @@ export function NetEndpointPanel({
             <Terminal size={12} className="shrink-0" />
             <span>{t("bridgeNeeded")}</span>
           </div>
+          <p className="text-[10px] text-text-tertiary">{t("bridgeFromSource")}</p>
           <div className="flex items-center gap-1.5">
             <code className="flex-1 min-w-0 truncate text-[10px] font-mono text-text-primary bg-bg-primary px-2 py-1 border border-border-default">
               {command}
@@ -352,7 +351,12 @@ export function NetEndpointPanel({
         </div>
       )}
 
-      <Button onClick={handleConnect} loading={connecting} icon={<Plug size={14} />}>
+      <Button
+        onClick={handleConnect}
+        loading={connecting}
+        disabled={connectDisabled}
+        icon={<Plug size={14} />}
+      >
         {connecting ? t("connecting") : t("connect")}
       </Button>
 

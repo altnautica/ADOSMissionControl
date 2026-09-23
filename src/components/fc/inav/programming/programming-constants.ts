@@ -89,3 +89,9 @@ export const LOGIC_OPERAND_TYPE_OPTIONS = Object.entries(LOGIC_OPERAND_TYPES).ma
   value: k,
   label: v,
 }));
+
+/** Activator choices: -1 runs the condition unconditionally; 0..63 gate it on that logic condition. */
+export const LOGIC_ACTIVATOR_OPTIONS = [
+  { value: "-1", label: "Always" },
+  ...Array.from({ length: 64 }, (_, i) => ({ value: String(i), label: `While LC ${i}` })),
+];

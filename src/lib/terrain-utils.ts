@@ -28,6 +28,23 @@ export interface ResolvedPath {
   waypointIndices: number[];
   /** Terrain height (meters above ellipsoid) at each original waypoint. */
   terrainHeights: number[];
+  /** Terrain height (meters above ellipsoid) at home, the relative-frame datum. */
+  homeTerrainHeight: number;
+}
+
+/** Where relative-frame altitudes are measured from. */
+export interface HomePoint {
+  lat: number;
+  lon: number;
+}
+
+/** A sampled terrain height, or a thrown error when the sample has none. */
+function sampledHeight(carto: Cartographic | undefined): number {
+  const h = carto?.height;
+  if (typeof h !== "number" || !Number.isFinite(h)) {
+    throw new Error("terrain sample returned no height");
+  }
+  return h;
 }
 
 /**
@@ -40,26 +57,29 @@ export interface ResolvedPath {
  *    `mslToEllipsoidal(alt)` and terrain is NOT added — the same height
  *    regardless of the ground below.
  *  - `relative` is height above HOME, so it is placed at
- *    `homeTerrainHeight + alt`. It does NOT follow terrain. Drawing it as
- *    `terrainHeight + alt` (the previous behaviour) hid every terrain conflict
- *    in the 3D view: the path was painted riding over each hill it would
- *    actually fly into.
+ *    `homeTerrainHeight + alt`, with the terrain sampled at `home` (the
+ *    vehicle's home when it has reported one, else the launch point the
+ *    upload uses). It does NOT follow terrain. Drawing it as
+ *    `terrainHeight + alt` hid every terrain conflict in the 3D view: the
+ *    path was painted riding over each hill it would actually fly into.
  *  - `terrain` is height above the ground below the point, so it is
  *    `terrainHeight + alt` — the only frame that follows the contour.
  *
  * A waypoint without its own frame is in the mission default frame, the same
  * one the upload encodes it in. A segment's sub-samples inherit the frame of
- * its start waypoint. The geoid grid is warmed here so the MSL conversion is
- * correct on the first resolve (absent grid -> honest MSL-as-ellipsoidal
- * passthrough).
+ * its start waypoint. A terrain sample with no height makes the whole resolve
+ * fail rather than placing that point at the ellipsoid. The geoid grid is
+ * warmed here so the MSL conversion is correct on the first resolve (absent
+ * grid -> honest MSL-as-ellipsoidal passthrough).
  */
 export async function resolveAGLToAbsolute(
   waypoints: Waypoint[],
   terrainProvider: TerrainProvider,
   defaultFrame: AltitudeFrame,
+  home: HomePoint,
 ): Promise<ResolvedPath> {
   if (waypoints.length === 0) {
-    return { positions: [], waypointIndices: [], terrainHeights: [] };
+    return { positions: [], waypointIndices: [], terrainHeights: [], homeTerrainHeight: 0 };
   }
 
   // Warm the bundled geoid grid so absolute-frame MSL->ellipsoidal is correct on
@@ -107,17 +127,20 @@ export async function resolveAGLToAbsolute(
     }
   }
 
-  // Sample terrain heights at all points
-  const sampled = await sampleTerrainMostDetailed(terrainProvider, cartographics);
+  // Sample terrain at every point, plus home as the last sample.
+  const sampled = await sampleTerrainMostDetailed(terrainProvider, [
+    ...cartographics,
+    Cartographic.fromDegrees(home.lon, home.lat),
+  ]);
 
-  // The launch point's terrain height is the datum every relative-frame
-  // altitude is measured from. Everything here is in ellipsoidal height, so no
-  // geoid conversion is needed for the two offset frames.
-  const homeTerrainHeight = sampled[waypointIndices[0]]?.height || 0;
+  // Home's terrain height is the datum every relative-frame altitude is
+  // measured from. Everything here is in ellipsoidal height, so no geoid
+  // conversion is needed for the two offset frames.
+  const homeTerrainHeight = sampledHeight(sampled[cartographics.length]);
 
-  const positions = sampled.map((carto, i) => {
+  const positions = cartographics.map((_, i) => {
+    const carto = sampled[i];
     const { lat, lon } = lonLatDeg[i];
-    const terrainHeight = carto.height || 0;
     let absoluteAlt: number;
     switch (altitudeDatumFor(frames[i])) {
       case "absolute":
@@ -127,14 +150,14 @@ export async function resolveAGLToAbsolute(
         absoluteAlt = homeTerrainHeight + altValues[i];
         break;
       case "waypointGround":
-        absoluteAlt = terrainHeight + altValues[i];
+        absoluteAlt = sampledHeight(carto) + altValues[i];
         break;
     }
     return Cartesian3.fromRadians(carto.longitude, carto.latitude, absoluteAlt);
   });
 
   // Extract terrain heights at original waypoint positions only
-  const terrainHeights = waypointIndices.map((idx) => sampled[idx].height || 0);
+  const terrainHeights = waypointIndices.map((idx) => sampledHeight(sampled[idx]));
 
-  return { positions, waypointIndices, terrainHeights };
+  return { positions, waypointIndices, terrainHeights, homeTerrainHeight };
 }

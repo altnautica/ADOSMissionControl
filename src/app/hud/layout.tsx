@@ -5,10 +5,8 @@
 // LocaleProvider, ToastProvider) still wrap this subtree via
 // src/app/layout.tsx. CommandShell short-circuits for /hud/* paths: children
 // here get the providers and the headless connection bridges (ShellBridges),
-// but none of the GCS UI.
-//
-// See product/specs/08-hdmi-kiosk-mode.md for the kiosk scope, and
-// product/specs/09-joystick-input.md for gamepad integration.
+// but none of the GCS UI. The page drives a kiosk display attached to the
+// node and reads a gamepad for input.
 
 export default function HudLayout({ children }: { children: React.ReactNode }) {
   return (

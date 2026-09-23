@@ -8,8 +8,7 @@
  * @license GPL-3.0-only
  */
 
-import type { ParamSafetyRange } from "@/lib/analysis/types";
-import type { VehicleType } from "@/components/fc/pid/pid-constants";
+import type { ParamSafetyRange, TuningVehicleType } from "@/lib/analysis/types";
 
 // ---------------------------------------------------------------------------
 // Safety range definitions
@@ -62,7 +61,7 @@ const PLANE_RANGES: Record<string, ParamSafetyRange> = {
 };
 
 /** Vehicle-specific ranges. Rover has none, so rover suggestions are never applied. */
-const VEHICLE_RANGES: Record<VehicleType, Record<string, ParamSafetyRange>> = {
+const VEHICLE_RANGES: Record<TuningVehicleType, Record<string, ParamSafetyRange>> = {
   copter: COPTER_RANGES,
   plane: PLANE_RANGES,
   rover: {},
@@ -94,7 +93,7 @@ const EPSILON = 1e-9;
  */
 export function getSafetyRange(
   param: string,
-  vehicleType: VehicleType,
+  vehicleType: TuningVehicleType,
 ): ParamSafetyRange | null {
   if (Object.hasOwn(FILTER_RANGES, param)) return FILTER_RANGES[param];
   const vehicleRanges = VEHICLE_RANGES[vehicleType];
@@ -127,7 +126,7 @@ export function validateSuggestion(
   param: string,
   currentValue: number | undefined,
   suggestedValue: number,
-  vehicleType: VehicleType,
+  vehicleType: TuningVehicleType,
 ): SuggestionCheck {
   const range = getSafetyRange(param, vehicleType);
   if (!range) {

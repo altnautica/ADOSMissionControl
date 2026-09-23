@@ -6,7 +6,7 @@
  * reconstruction / offload jobs with a portal Select group-by (Flat / By dataset
  * / By status). Absorbs the former Datasets sub-view — "By dataset" is the same
  * per-dataset grouping. Reuses ForgeJobs for row rendering (state badges,
- * progress, cancel). Local-first job source (Rule 39); a calm state when Atlas
+ * progress, cancel). Local-first job source; a calm state when Atlas
  * is off or the compute node is unreachable, never an error.
  * @license GPL-3.0-only
  */
@@ -178,9 +178,13 @@ export function JobsPanel({ nodeId }: { nodeId?: string }) {
           onChange={(v) => setGroupBy(v as GroupBy)}
           className="w-40"
         />
-        <div className="ml-auto">
-          <SubmitJobButton client={client} datasetIds={datasetIds} jobs={jobs} />
-        </div>
+        {/* The dataset list is derived from the job list, so it is unknown
+            until the first poll lands and while the node is unreachable. */}
+        {!loading && !unreachable && (
+          <div className="ml-auto">
+            <SubmitJobButton client={client} datasetIds={datasetIds} jobs={jobs} />
+          </div>
+        )}
       </div>
       <div className="flex-1 overflow-y-auto">{table()}</div>
     </div>

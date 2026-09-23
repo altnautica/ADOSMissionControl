@@ -80,6 +80,18 @@ describe("demo-fleet firmware variants", () => {
     expect((await boat.getParameter("SAIL_ENABLE")).value).toBe(1);
   });
 
+  it("PX4 resolves canonical names to its own params, as the real adapter does", async () => {
+    // Panels read canonical names; PX4's FENCE_ENABLE is GF_ACTION. Without
+    // the mapping the demo Geofence card read an absent param and showed 0.
+    const px4 = new MockProtocol("px4");
+    const read = await px4.getParameter("FENCE_ENABLE");
+    expect(read.value).toBe(1);
+    expect(read.name).toBe("FENCE_ENABLE");
+
+    await px4.setParameter("FENCE_ENABLE", 3);
+    expect((await px4.getParameter("GF_ACTION")).value).toBe(3);
+  });
+
   it("the iNav mock round-trips name-based MSP settings (demo Configurator)", async () => {
     const proto = new INavMockProtocol({ vehicleClass: "plane" });
     expect(proto.getVehicleInfo().firmwareType).toBe("inav");

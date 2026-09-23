@@ -22,7 +22,10 @@ import { deviceIdFromNodeId } from "@/lib/agent/node-id";
 import { resolveLocalAgentForDrone } from "@/lib/agent/resolve-agent";
 import { VisionAgentClient } from "@/lib/agent/vision-client";
 import { isDemoMode } from "@/lib/utils";
-import type { SelectedTarget } from "@/stores/selected-target-store";
+import {
+  useSelectedTargetStore,
+  type SelectedTarget,
+} from "@/stores/selected-target-store";
 
 export type TargetActionStatus = "success" | "warning" | "error" | "info";
 
@@ -85,14 +88,19 @@ export function resolveTargetActions(target: SelectedTarget): TargetAction[] {
  * DESIGNATE a target: lock the vision engine's tracker onto the clicked box so
  * any consumer (a Follow-Me plugin, a gimbal, …) follows what is locked. Shared
  * by the built-in action AND plugin target actions that follow a designated
- * subject. Notifies only on failure; returns whether the lock took. Demo mode
- * acknowledges without a network call.
+ * subject. Notifies only on failure; returns whether the lock took. On the
+ * engine's acknowledgement the target becomes the cockpit's designated target,
+ * carrying the track id the engine locked. Demo mode acknowledges without a
+ * network call.
  */
 export async function designateTarget(
   target: SelectedTarget,
   notify: (message: string, status?: TargetActionStatus) => void,
 ): Promise<boolean> {
-  if (isDemoMode()) return true;
+  if (isDemoMode()) {
+    useSelectedTargetStore.getState().setDesignated(target);
+    return true;
+  }
   const deviceId = deviceIdFromNodeId(target.droneId) ?? target.droneId;
   const agent = resolveLocalAgentForDrone(deviceId);
   if (!agent) {
@@ -105,8 +113,15 @@ export async function designateTarget(
       classLabel: target.classLabel || undefined,
       confidence: target.confidence || undefined,
     });
-    if (!result.designated) notify("Designate rejected", "warning");
-    return result.designated;
+    if (!result.designated) {
+      notify("Designate rejected", "warning");
+      return false;
+    }
+    useSelectedTargetStore.getState().setDesignated({
+      ...target,
+      trackId: result.trackId ?? target.trackId,
+    });
+    return true;
   } catch (e) {
     notify(e instanceof Error ? e.message : "Designate failed", "error");
     return false;

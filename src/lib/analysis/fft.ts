@@ -156,8 +156,13 @@ export function computeFFT(
   }
 
   const n = Math.min(SEGMENT_LENGTH, nextPow2(samples.length));
+  // The window spans the real samples only; a shorter log is zero-padded
+  // after windowing, so its last sample tapers to zero instead of ending in a
+  // rectangular step that leaks across the spectrum.
   const windowLen = Math.min(n, samples.length);
   const window = hanningWindow(windowLen);
+  let windowSum = 0;
+  for (let i = 0; i < windowLen; i++) windowSum += window[i];
   const hop = n >> 1;
   const halfN = n >> 1;
 
@@ -169,8 +174,13 @@ export function computeFFT(
   for (let start = 0; start + windowLen <= samples.length; start += hop) {
     re.fill(0);
     im.fill(0);
+    // A gyro bias is not vibration: remove the segment mean so DC and its
+    // window sidelobes do not reach the analysed bands.
+    let mean = 0;
+    for (let i = 0; i < windowLen; i++) mean += samples[start + i].value;
+    mean /= windowLen;
     for (let i = 0; i < windowLen; i++) {
-      re[i] = samples[start + i].value * window[i];
+      re[i] = (samples[start + i].value - mean) * window[i];
     }
     fftInPlace(re, im);
     for (let i = 0; i < halfN; i++) {
@@ -180,11 +190,12 @@ export function computeFFT(
     if (windowLen < n) break; // single zero-padded segment
   }
 
-  // Averaged magnitude in dB (same scale as 20*log10(|X| / n) for one segment)
+  // Averaged magnitude in dB, normalised by the window sum so a sinusoid of
+  // amplitude A reads 20*log10(A/2) whatever the segment length or padding.
   const freqResolution = sampleRate / n;
   const spectrum: FFTBin[] = new Array(halfN);
   const magnitudes = new Float64Array(halfN);
-  const scale = segments * n * n;
+  const scale = segments * windowSum * windowSum;
 
   for (let i = 0; i < halfN; i++) {
     const p = power[i] / scale;

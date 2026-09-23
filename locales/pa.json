@@ -32,12 +32,14 @@
     "role": {
       "relay": "ਰੀਲੇਅ",
       "receiver": "ਰਿਸੀਵਰ",
-      "direct": "ਸਿੱਧਾ"
+      "direct": "ਸਿੱਧਾ",
+      "unknown": "Role unknown"
     },
     "badge": {
       "compute": "Compute",
       "fc": "FC",
-      "lan": "LAN"
+      "lan": "LAN",
+      "companion": "FC + SBC"
     },
     "actions": {
       "menu": "ਕਾਰਵਾਈਆਂ",
@@ -96,23 +98,7 @@
     },
     "signals": {
       "link": "ਲਿੰਕ",
-      "battery": "ਬੈਟਰੀ",
-      "gps": "GPS",
-      "arm": "ਆਰਮਿੰਗ",
-      "prearm": "ਪ੍ਰੀ-ਆਰਮ",
-      "rc": "RC",
-      "rx": "ਪ੍ਰਾਪਤੀ",
-      "uplink": "ਅੱਪਲਿੰਕ",
-      "mesh": "ਮੈਸ਼",
-      "mqtt": "ਕਲਾਉਡ ਰੀਲੇਅ",
-      "gpu": "GPU",
-      "jobs": "ਜੌਬਸ",
-      "cluster": "ਕਲੱਸਟਰ",
-      "thermal": "ਥਰਮਲ",
-      "cpu": "CPU",
-      "temp": "ਤਾਪਮਾਨ",
-      "services": "ਸੇਵਾਵਾਂ",
-      "alerts": "ਚਿਤਾਵਨੀਆਂ"
+      "fc": "Flight controller"
     },
     "signalState": {
       "good": "ਠੀਕ",
@@ -339,7 +325,8 @@
       "otherFieldLabel": "ISO country code",
       "otherFieldPlaceholder": "e.g. FR",
       "unrestrictedNote": "Operator responsible for local RF compliance.",
-      "perDroneNote": "This is the default applied when a drone is paired. Each drone can be set individually on its System tab."
+      "perDroneNote": "This is the default applied when a drone is paired. Each drone can be set individually on its System tab.",
+      "otherInvalid": "Enter a valid two-letter ISO country code."
     },
     "dialogLabel": "ਮਿਸ਼ਨ ਕੰਟਰੋਲ ਸੈਟਅੱਪ"
   },
@@ -364,7 +351,8 @@
       "saveAndSwitch": "Save & Switch",
       "discardAndSwitch": "Discard & Switch"
     },
-    "confirmTypePhrase": "ਪੁਸ਼ਟੀ ਲਈ <phrase></phrase> ਟਾਈਪ ਕਰੋ"
+    "confirmTypePhrase": "ਪੁਸ਼ਟੀ ਲਈ <phrase></phrase> ਟਾਈਪ ਕਰੋ",
+    "delete": "Delete"
   },
   "status": {
     "connected": "ਜੁੜਿਆ",
@@ -405,7 +393,8 @@
       "noAccountFound": "No account found with this email.",
       "tooManyAttempts": "Too many failed attempts. Try again later.",
       "accountExists": "An account with this email already exists.",
-      "generic": "Something went wrong. Please try again."
+      "generic": "Something went wrong. Please try again.",
+      "passwordTooShort": "Use a password of at least {min} characters."
     }
   },
   "settings": {
@@ -524,7 +513,6 @@
     "flashTool": "ਫਲੈਸ਼ ਟੂਲ",
     "settings": "ਸੈਟਿੰਗਾਂ",
     "exitImmersive": "ਇਮਰਸਿਵ ਮੋਡ ਤੋਂ ਬਾਹਰ ਨਿਕਲੋ (Esc)",
-    "lastSynced": "Last synced: {time}",
     "account": "ਖਾਤਾ"
   },
   "configNav": {
@@ -547,10 +535,8 @@
     "units": "ਇਕਾਈਆਂ",
     "metric": "ਮੈਟ੍ਰਿਕ (m, km/h, °C)",
     "imperial": "ਇੰਪੀਰੀਅਲ (ft, mph, °F)",
-    "timezone": "ਸਮਾਂ ਖੇਤਰ",
     "autoConnect": "Auto-connect on startup",
     "autoReconnect": "Auto-reconnect on disconnect",
-    "telemetryRate": "Telemetry rate",
     "demoMode": "ਡੈਮੋ ਮੋਡ",
     "demoDescription": "Simulates drone telemetry for exploring the interface without a connected flight controller.",
     "locationTitle": "ਸਥਾਨ",
@@ -566,13 +552,6 @@
     "setupWizard": "Re-run Setup Wizard",
     "setupWizardDesc": "Re-run the initial configuration wizard",
     "rerun": "ਮੁੜ ਚਲਾਓ",
-    "timezoneIst": "IST (UTC+5:30)",
-    "timezoneUtc": "UTC (UTC+0:00)",
-    "timezonePst": "PST (UTC-8:00)",
-    "telemetryRate1Hz": "1 Hz",
-    "telemetryRate5Hz": "5 Hz",
-    "telemetryRate10Hz": "10 Hz",
-    "telemetryRate20Hz": "20 Hz",
     "latAbbr": "LAT",
     "lonAbbr": "LON",
     "accAbbr": "ACC",
@@ -607,7 +586,8 @@
     "changelogTitle": "ਚੇਂਜਲਾਗ ਸੂਚਨਾਵਾਂ",
     "showChangelog": "Show changelog notifications",
     "resetSeen": "Reset seen entries",
-    "changelogDescription": "Get notified about new releases and updates when you open the app"
+    "changelogDescription": "Get notified about new releases and updates when you open the app",
+    "criticalBelowWarning": "Critical threshold must be below the warning threshold"
   },
   "theme": {
     "title": "ਥੀਮ",
@@ -647,30 +627,12 @@
   },
   "video": {
     "title": "ਵੀਡੀਓ ਸੈਟਿੰਗਾਂ",
-    "lowLatency": "Low-latency mode",
-    "targetBitrate": "Target bitrate",
-    "recordingCodec": "Recording codec",
     "currentResolution": "Current resolution",
-    "osdElements": "OSD Elements",
-    "crosshair": "Crosshair",
-    "speedTape": "Speed tape",
-    "altitudeTape": "Altitude tape",
-    "heading": "Heading",
-    "battery": "ਬੈਟਰੀ",
-    "gps": "GPS",
-    "armedStatus": "ਸਰਗਰਮ ਸਥਿਤੀ",
-    "signal": "Signal",
-    "timer": "Timer",
-    "bitrate2Mbps": "2 Mbps",
-    "bitrate4Mbps": "4 Mbps",
-    "bitrate8Mbps": "8 Mbps",
-    "bitrate12Mbps": "12 Mbps",
-    "codecH264": "H.264",
-    "codecH265": "H.265",
     "restartBanner": {
       "title": "Video pipeline restarting",
       "message": "Video has restarted {count} times. Check the agent."
-    }
+    },
+    "encoderSettingsOnNode": "Bitrate, codec and resolution are set per node, in that node's Video settings."
   },
   "inputDevices": {
     "title": "ਇਨਪੁੱਟ ਡਿਵਾਈਸ",
@@ -689,7 +651,10 @@
     "expoCurve": "Expo Curve",
     "testMode": "Test Mode",
     "testModeUnavailable": "Gamepad test mode not available in demo",
-    "manualControlLinkBlocked": "ਸਟਿੱਕ ਇਨਪੁੱਟ ਇਸ ਜਹਾਜ਼ ਤੱਕ ਨਹੀਂ ਪਹੁੰਚ ਰਹੇ: {reason}। ਕੁਝ ਵੀ ਪ੍ਰਸਾਰਿਤ ਨਹੀਂ ਹੋ ਰਿਹਾ।"
+    "manualControlLinkBlocked": "ਸਟਿੱਕ ਇਨਪੁੱਟ ਇਸ ਜਹਾਜ਼ ਤੱਕ ਨਹੀਂ ਪਹੁੰਚ ਰਹੇ: {reason}। ਕੁਝ ਵੀ ਪ੍ਰਸਾਰਿਤ ਨਹੀਂ ਹੋ ਰਿਹਾ।",
+    "stickMode": "Stick mode",
+    "stickMode2": "Mode 2 (throttle on the left stick)",
+    "stickMode1": "Mode 1 (throttle on the right stick)"
   },
   "data": {
     "title": "Data Management",
@@ -710,7 +675,8 @@
     "contact": "Contact",
     "unavailableTitle": "Community data (changelog, roadmap, contact) is live on the hosted version at",
     "unavailableSetup": "Disabled by default in local builds. To run your own internal community board, set up a Convex backend and configure",
-    "unavailableOptional": "Completely optional. The GCS works without it."
+    "unavailableOptional": "Completely optional. The GCS works without it.",
+    "sectionError": "This page failed to load. Switch tabs or reload to try again."
   },
   "contact": {
     "title": "Contact",
@@ -731,7 +697,8 @@
     "sendAnother": "Send another message",
     "errorRequired": "Name, email, and message are required.",
     "errorAuth": "Please sign in to send a message.",
-    "errorGeneral": "Failed to send message. Please try again."
+    "errorGeneral": "Failed to send message. Please try again.",
+    "errorRateLimited": "Too many messages from this address. Try again in {seconds} s."
   },
   "dashboard": {
     "viewGrid": "ਗ੍ਰਿਡ",
@@ -804,12 +771,15 @@
       "error": "ਐਮਰਜੈਂਸੀ",
       "warning": "ਚੇਤਾਵਨੀ",
       "armed": "ਆਰਮਡ",
-      "ofTotal": "{total} ਸਲਾਟਾਂ ਵਿੱਚੋਂ"
+      "ofTotal": "{total} ਸਲਾਟਾਂ ਵਿੱਚੋਂ",
+      "showAll": "Show all"
     },
     "conditions": {
       "hardSeparation": "{count} hard-separation ਵਿੱਚ",
       "lowBattery": "{count} ਘੱਟ ਬੈਟਰੀ",
-      "weakLink": "{count} ਕਮਜ਼ੋਰ ਲਿੰਕ"
+      "weakLink": "{count} ਕਮਜ਼ੋਰ ਲਿੰਕ",
+      "slotConflict": "Slot conflict: {count} beacons from a second sender on one slot",
+      "replayed": "{count} replayed beacons rejected"
     },
     "formation": {
       "line": "ਲਾਈਨ",
@@ -891,7 +861,8 @@
         "error": "ਐਮਰਜੈਂਸੀ",
         "warning": "ਚੇਤਾਵਨੀ",
         "armed": "ਆਰਮਡ",
-        "nominal": "ਸਧਾਰਨ"
+        "nominal": "ਸਧਾਰਨ",
+        "unknown": "Unknown: ground station not answering"
       }
     },
     "hero": {
@@ -919,6 +890,10 @@
       "showingConnected": "ਇਹ ਸੈਸ਼ਨ ਜਿਸ ਡਰੋਨ ਨਾਲ ਜੁੜਿਆ ਹੈ ਉਹ ਦਿਖਾਇਆ ਜਾ ਰਿਹਾ ਹੈ, ਹੀਰੋ ਨਹੀਂ।",
       "pickHeroHint": "ਇੱਕ ਡਰੋਨ ਨੂੰ ਪੂਰੀ-ਦਰ ਵੀਡੀਓ ਬਜਟ ਦੇਣ ਲਈ ਹੀਰੋ ਚੁਣੋ।",
       "open": "ਖੋਲ੍ਹੋ"
+    },
+    "gsSilent": {
+      "title": "Ground station not answering",
+      "body": "No reply for {seconds}s. Silent slots are shown as unknown, not lost: the gap is on the link to the ground station, not necessarily the aircraft."
     }
   },
   "emptyState": {
@@ -953,7 +928,49 @@
     "activeBadge": "ਸਰਗਰਮ",
     "buildPreset": {
       "details": "ਵੇਰਵੇ",
-      "noGps": "GPS ਨਹੀਂ"
+      "noGps": "GPS ਨਹੀਂ",
+      "title": "SITL Build Preset",
+      "clearSelection": "Clear selection",
+      "all": "All",
+      "hint": "A preset only names the SITL vehicle in the fleet. It writes no parameters: the simulator keeps its own frame, battery and sensor settings.",
+      "category": {
+        "fpv": "FPV",
+        "longRange": "Long Range",
+        "heavyLift": "Heavy Lift",
+        "cine": "Cine",
+        "racing": "Racing",
+        "micro": "Micro",
+        "reference": "ADOS"
+      },
+      "yes": "Yes",
+      "no": "No",
+      "close": "Close details",
+      "components": "Components",
+      "spec": {
+        "props": "Props",
+        "motors": "Motors",
+        "battery": "Battery",
+        "auw": "AUW",
+        "flightTime": "Flight Time",
+        "minutes": "{count} min",
+        "gps": "GPS",
+        "compass": "Compass",
+        "rangefinder": "Rangefinder"
+      },
+      "componentType": {
+        "frame": "Frame",
+        "compute": "Compute",
+        "fc": "Flight Controller",
+        "esc": "ESC",
+        "motor": "Motor",
+        "sensor": "Sensor",
+        "camera": "Camera",
+        "radio": "Radio",
+        "gps": "GPS",
+        "battery": "Battery",
+        "rangefinder": "Rangefinder",
+        "companion": "Companion"
+      }
     },
     "fcStackTitle": "Flight Controller",
     "fcStackDesc": "USB, WebSocket, UDP, TCP ਜਾਂ Bluetooth ਉੱਤੇ ਸਿੱਧਾ MAVLink",
@@ -1019,7 +1036,48 @@
     "targetDroneLabel": "ਟੀਚਾ ਡਰੋਨ (sysid ਮੇਲ ਲੋੜੀਂਦਾ)",
     "selectDrone": "ਡਰੋਨ ਚੁਣੋ",
     "targetDroneHint": "ਨਵੇਂ ਟ੍ਰਾਂਸਪੋਰਟ ਨੂੰ ਚੁਣੇ ਗਏ ਡਰੋਨ ਵਾਂਗ ਹੀ sysid ਤੱਕ ਪਹੁੰਚਣਾ ਚਾਹੀਦਾ ਹੈ, ਨਹੀਂ ਤਾਂ ਇਸਨੂੰ ਰੱਦ ਕਰ ਦਿੱਤਾ ਜਾਵੇਗਾ।",
-    "presetNamePrompt": "ਪ੍ਰੀਸੈੱਟ ਨਾਮ:"
+    "presetNamePrompt": "ਪ੍ਰੀਸੈੱਟ ਨਾਮ:",
+    "bridgeFromSource": "The bridge is not published to npm. Run this from a clone of the Mission Control repository (github.com/altnautica/ADOSMissionControl); it needs Node.js 20 or newer.",
+    "presetSaveFailed": "Could not save the preset",
+    "targetDroneRequired": "Choose the drone this link belongs to before connecting.",
+    "ws": {
+      "urlLabel": "WebSocket URL",
+      "discoveredRigs": "Discovered rigs",
+      "urlRequired": "URL is required",
+      "urlScheme": "URL must start with ws:// or wss://",
+      "sitlTokenHint": "The SITL bridge prints a URL with a token when it starts (for example {example}). Paste that whole URL above to connect.",
+      "rawEndpointHint": "For a raw UDP or TCP MAVLink endpoint, use the UDP or TCP method instead."
+    },
+    "ble": {
+      "notSupported": "Bluetooth not supported",
+      "notSupportedHint": "Web Bluetooth requires a Chromium-based browser (Chrome, Edge, Opera) running in a secure context (HTTPS or localhost). Firefox and Safari do not support Web Bluetooth.",
+      "unnamedDevice": "BLE device",
+      "connectionFailed": "Bluetooth connection failed",
+      "selectionCancelled": "Device selection cancelled",
+      "intro": "Connect to a flight controller exposing the Nordic UART Service (NUS).",
+      "compatibility": "Works with Betaflight, iNav and most BLE-enabled flight controllers.",
+      "scanning": "Scanning...",
+      "scanAndConnect": "Scan & Connect"
+    },
+    "ownedByAgent": "This link belongs to a companion-computer agent. Open it from the fleet list instead.",
+    "recent": {
+      "noUrl": "This entry has no URL.",
+      "serialPortAmbiguous": "The serial port this link used is not uniquely present. Pick the port in the Serial tab.",
+      "incompleteEndpoint": "This entry has no complete endpoint.",
+      "reconnectFailed": "Reconnect failed",
+      "justNow": "just now",
+      "minutesAgo": "{count}m ago",
+      "hoursAgo": "{count}h ago",
+      "daysAgo": "{count}d ago",
+      "empty": "No recent connections yet."
+    },
+    "serial": {
+      "selectPort": "Select a port",
+      "hotPlugConnected": "Device connected: {label}",
+      "hotPlugDisconnected": "Device disconnected: {label}",
+      "toastConnected": "USB device connected: {label}",
+      "toastDisconnected": "USB device disconnected: {label}"
+    }
   },
   "droneDetail": {
     "overview": "Overview",
@@ -1291,7 +1349,10 @@
       "viaHop": "This node's onboard computer is reached through {hop}, which is not answering right now. Its video, services and logs are unavailable until it does.",
       "repair": "ਮੁੜ ਜੋੜੋ",
       "openAgent": "Open the Agent page"
-    }
+    },
+    "forgetCloudUnavailable": "The cloud is unreachable, so the node was not removed: its cloud pairing would bring it back. Try again when the cloud is reachable.",
+    "forgetCloudFailed": "The node was not removed: its cloud pairing could not be deleted ({error}).",
+    "nodeRemoved": "Node \"{name}\" removed"
   },
   "vision": {
     "title": "Vision Engine",
@@ -1405,7 +1466,11 @@
       "none": "ਇਸ ਨਿਸ਼ਾਨੇ ਲਈ ਕੋਈ ਕਾਰਵਾਈ ਨਹੀਂ",
       "pluginBadge": "ਪਲੱਗਇਨ"
     },
-    "offloadPinHint": "The node starts offloading to the pinned workstation on its own when it has no accelerator and its camera is up. Auto uses any workstation serving on the LAN."
+    "offloadPinHint": "The node starts offloading to the pinned workstation on its own when it has no accelerator and its camera is up. Auto uses any workstation serving on the LAN.",
+    "cameraStreamUnknown": "unknown",
+    "acceleratorNotReported": "Accelerator not reported yet — waiting for the node to report its compute.",
+    "acceleratorPresentNoTops": "Local accelerator present (no TOPS figure reported) — this node can run a detector on-edge.",
+    "engineStatusUnavailable": "Engine status unavailable — the node has not reported which models it runs."
   },
   "nodeSettings": {
     "subtitle": "Configure this node's onboard computer. Changes write straight to the agent over the LAN.",
@@ -1439,9 +1504,6 @@
       "codecLabel": "Codec",
       "resolutionLabel": "Resolution",
       "notReported": "not reported",
-      "codecPrefLabel": "Wire codec preference",
-      "codecPrefHint": "Auto picks H.264 for browser compatibility; H.265 needs the receive side to also speak it. Applies at the next pipeline start.",
-      "codecPrefAuto": "Auto",
       "bitrateLabel": "Encode bitrate (kbps)",
       "bitrateHint": "Base encoder bitrate. The adaptive ladder steps around it as the link changes. Applies at the next pipeline start.",
       "orientationTitle": "Image orientation",
@@ -1453,7 +1515,8 @@
       "hflipLabel": "Horizontal flip",
       "hflipHint": "Mirror the image left–right (helps a downward camera mounted upside-down).",
       "vflipLabel": "Vertical flip",
-      "vflipHint": "Mirror the image top–bottom."
+      "vflipHint": "Mirror the image top–bottom.",
+      "perLegManagedHint": "This node streams several cameras, so each stream takes its orientation and bitrate from its own settings on the Cameras tab. The single-camera orientation and bitrate are not used."
     },
     "profile": {
       "title": "Profile",
@@ -1461,7 +1524,9 @@
       "hint": "Set during setup. Switching profiles reconfigures the agent's services.",
       "optionDrone": "Drone",
       "optionGroundStation": "Ground station",
-      "optionWorkstation": "Workstation"
+      "optionWorkstation": "Workstation",
+      "optionAuto": "Auto (resolved at boot)",
+      "optionCompute": "Compute node"
     },
     "network": {
       "title": "Network",
@@ -1495,7 +1560,7 @@
       "shareHint": "Route internet traffic for devices connected to this node's access point out over the active uplink.",
       "sharePersistedNotApplied": "Saved, but not applied to a live uplink: {reason}",
       "loadFailed": "Could not read the node's network status.",
-      "uplinkUnsupportedProfile": "This node's agent exposes the uplink matrix on ground station nodes only.",
+      "uplinkUnsupportedProfile": "The uplink matrix and the Wi-Fi hotspot run on ground station nodes only.",
       "hotspotSsidLabel": "Hotspot SSID",
       "hotspotChannelLabel": "Hotspot channel",
       "hotspotPasswordLabel": "Hotspot password",
@@ -1611,8 +1676,6 @@
       "slotValue": "Slot {slot}",
       "enabledLabel": "Enable swarm participation",
       "enabledHint": "Master switch for the node's swarm services.",
-      "roleLabel": "Role",
-      "roleHint": "The node's configured swarm role. Default auto.",
       "formationTitle": "Formation",
       "formationLabel": "Default formation",
       "formationHint": "The formation preset the node starts with.",
@@ -1645,13 +1708,6 @@
       "separationConfirmTitle": "Change the separation envelope?",
       "separationConfirmMessage": "Separation is the collision-avoidance layer, not a preference. A larger value makes the fleet spread; a smaller one lets aircraft close on each other before anything intervenes. Apply this change?",
       "separationConfirmAction": "Change it",
-      "tasksTitle": "Task allocation",
-      "tasksEnabledLabel": "Take part in task allocation",
-      "tasksEnabledHint": "Bid for survey cells and waypoints alongside the rest of the fleet.",
-      "taskIdLabel": "Assigned task",
-      "taskIdHint": "Reported by the node. Assignments are made by the fleet, not set here.",
-      "bundlePositionLabel": "Bundle position",
-      "bundlePositionHint": "Where the assigned task sits in this node's own task bundle.",
       "precedenceTitle": "Mode precedence",
       "precedenceHint": "Highest authority first. A drone whose separation layer has taken over is in hard separation whatever mode was commanded.",
       "precedenceHardSeparation": "Hard separation — a neighbour inside the hard floor",
@@ -1736,7 +1792,7 @@
       "capLabel": "Data cap (GB)",
       "capHint": "Monthly data budget. The node warns, throttles, then blocks as usage approaches the cap. 0 disables the cap.",
       "capInvalid": "Enter a number of gigabytes (0 or more).",
-      "configOnlyNote": "This node's agent does not expose live modem status on this profile — these settings write to the node's configuration."
+      "usageNotReported": "not reported yet"
     },
     "macPin": {
       "title": "MAC pinning",
@@ -1810,7 +1866,6 @@
       "cameraStateRecovering": "Recovering",
       "cameraStateNeedsReseat": "Needs physical reseat",
       "cameraStateHeldBack": "Held back (shared hub)",
-      "cameraStateExhausted": "Exhausted",
       "eventsTitle": "Recent self-heal activity",
       "eventsCount": "{count, plural, one {# event} other {# events}}",
       "eventsEmpty": "No recent self-heal events.",
@@ -1857,7 +1912,10 @@
         "success": "OK",
         "warning": "Warning",
         "error": "Error"
-      }
+      },
+      "cameraStateRetrying": "Waiting to retry",
+      "cameraAttemptNote": "attempt {attempts}",
+      "cameraCooldownNote": "retries every {seconds} s"
     },
     "mavlinkRouting": {
       "title": "MAVLink",
@@ -1881,7 +1939,7 @@
       "systemIdLabel": "System ID",
       "systemIdHint": "The MAVLink system ID this node's router speaks with (1-255).",
       "componentIdLabel": "Component ID",
-      "componentIdHint": "The MAVLink component ID this node's router speaks with (1-255).",
+      "componentIdHint": "The MAVLink component ID this node's router speaks with (2-255). 1 is the autopilot's own ID and 0 is broadcast, so neither is accepted.",
       "ratesTitle": "Cloud relay forwarding",
       "telemetryRateLabel": "Telemetry rate (Hz)",
       "telemetryRateHint": "How many telemetry updates per second the agent forwards to the cloud relay. Applies only when a cloud or self-hosted relay is configured; it does not change the flight controller's own stream rates.",
@@ -1985,7 +2043,13 @@
       "txPowerHint": "Managed live from the Link tab's power slider.",
       "mcsCapLabel": "Adaptive ceiling (MCS)",
       "mcsCapHint": "The highest rung the ladder may climb to. Defaults to 3; anything above it is bench-only until the driver sweep says the rung holds at range. A ceiling of 1 pins the ladder to the floor.",
-      "rungCapped": "{rung}, capped {cap}"
+      "rungCapped": "{rung}, capped {cap}",
+      "fleetSlotUnassigned": "Not assigned",
+      "fleetIdConfirmTitle": "Change the fleet ID?",
+      "fleetIdConfirmMessage": "A node hears only nodes with the same fleet ID. After its next radio start this node cannot hear any peer on a different fleet ID, including its ground station, so every node in the fleet must be changed to match.",
+      "fleetIdConfirmAction": "Change fleet ID",
+      "mcsPresetValue": "MCS {mcs} (set by the {preset} preset)",
+      "mcsPresetHint": "The link preset sets the rung at every radio start and replaces a stored value. Switch the preset to Conservative to set the rung by hand."
     },
     "display": {
       "title": "Display",
@@ -1999,7 +2063,9 @@
     },
     "pageUnavailableHere": "{page} is not available on this node. Showing the first page this node offers.",
     "segmentLive": "ਲਾਈਵ",
-    "segmentSetup": "ਸੈੱਟਅੱਪ"
+    "segmentSetup": "ਸੈੱਟਅੱਪ",
+    "notReported": "not reported",
+    "staleSnapshot": "Showing the last successful read, from {age}."
   },
   "dronePlugins": {
     "titleForDrone": "Extensions on {drone}",
@@ -2019,7 +2085,6 @@
     "disable": "Disable",
     "configure": "Configure",
     "uninstall": "Uninstall",
-    "viewLogs": "View logs",
     "viewPermissions": "View permissions",
     "uninstallConfirmTitle": "Uninstall this extension?",
     "uninstallConfirmMessage": "Remove {name} from this drone? Extension data on this drone will be cleared.",
@@ -2036,8 +2101,6 @@
     "agentNotConnected": "Agent not connected. Connect this drone before installing an extension.",
     "demoInstallDisabled": "Extension install is disabled in demo mode.",
     "demoActionDisabled": "Action disabled in demo mode.",
-    "logsPending": "Extension logs view will land in the next release.",
-    "permissionsLinkPending": "Permissions detail page will land in the next release.",
     "status": {
       "running": "Running",
       "enabled": "Enabled",
@@ -2051,7 +2114,8 @@
     "rssiAirNote": "Drone does not receive its own RF; ground station reports the RSSI value.",
     "rssiUnverifiedNote": "Transmitting, but no reception is confirmed yet, so no RSSI is available on either side of the link.",
     "txPowerScopeHint": "Adjusts air-side TX power on this drone.",
-    "noAgent": "No agent connection. TX power changes are unavailable until the drone reconnects."
+    "noAgent": "No agent connection. TX power changes are unavailable until the drone reconnects.",
+    "staleReading": "Last radio report {age}. The values below are the last the drone reported and may no longer describe the link."
   },
   "command": {
     "overview": "Overview",
@@ -2075,7 +2139,9 @@
       "pair": "Pair",
       "pairing": "Pairing",
       "tabsLabel": "ਜੋੜਨ ਦਾ ਤਰੀਕਾ",
-      "lanRelayNudge": "ਆਪਣੇ LAN ਤੋਂ ਬਾਹਰੋਂ ਇਸ ਨੋਡ ਤੱਕ ਪਹੁੰਚਣ ਲਈ ਸਾਈਨ ਇਨ ਕਰਕੇ ਕਲਾਊਡ ਰੀਲੇਅ ਚਾਲੂ ਕਰੋ। ਉੱਪਰ ਦਿੱਤੀ LAN ਜੋੜੀ ਬਿਨਾਂ ਖਾਤੇ ਦੇ ਕੰਮ ਕਰਦੀ ਹੈ।"
+      "lanRelayNudge": "ਆਪਣੇ LAN ਤੋਂ ਬਾਹਰੋਂ ਇਸ ਨੋਡ ਤੱਕ ਪਹੁੰਚਣ ਲਈ ਸਾਈਨ ਇਨ ਕਰਕੇ ਕਲਾਊਡ ਰੀਲੇਅ ਚਾਲੂ ਕਰੋ। ਉੱਪਰ ਦਿੱਤੀ LAN ਜੋੜੀ ਬਿਨਾਂ ਖਾਤੇ ਦੇ ਕੰਮ ਕਰਦੀ ਹੈ।",
+      "cloudRequired": "Pairing with a generated code needs the cloud backend, and this build has none. Pair the drone on this network instead.",
+      "pairOnNetwork": "Pair on this network"
     },
     "unpair": "Unpair",
     "disconnect": "Disconnect",
@@ -2107,8 +2173,6 @@
     "generatingCode": "Generating pairing code...",
     "expiresIn": "Expires in",
     "firstTime": "First time? Run this on your node",
-    "firstTimeColon": "First time? Run this on your node:",
-    "alreadyInstalled": "Already installed? Run:",
     "waitingForNode": "Waiting for your node to connect...",
     "discoveredOnNetwork": "Discovered on network",
     "discoveredOnYourNetwork": "Discovered on your network",
@@ -2118,7 +2182,6 @@
     "tryAgain": "Try Again",
     "pairOnThisNetwork": "Pair on this network",
     "codeExpired": "Code Expired",
-    "codeExpiredShort": "Code expired.",
     "codeExpiredMessage": "The pairing code timed out after 15 minutes.",
     "generateNewCode": "Generate New Code",
     "copyCode": "Copy code",
@@ -2145,7 +2208,7 @@
       "subtitle": "ਕੋਈ ਵੀ ADOS ਨੋਡ (ਡਰੋਨ, ਗਰਾਊਂਡ ਸਟੇਸ਼ਨ ਜਾਂ ਭਵਿੱਖ ਦਾ ਕੰਪਿਊਟ ਨੋਡ) ਆਪਣੇ LAN ਰਾਹੀਂ ਸਿੱਧੇ ਜੋੜੋ।",
       "addNodeTitle": "Add a drone or ground station",
       "addNodeSubtitle": "No account required. Works fully offline.",
-      "addNodePlaceholder": "skynode.local  or  9TW85C",
+      "addNodePlaceholder": "my-drone.local  or  9TW85C",
       "addNodeHint": "Same Wi-Fi as the agent? Paste the hostname or IP. New agent showing a 6-character code in `ados status`? Type that.",
       "codeTryHostnameTip": "Tip: if the agent is on your network, enter its hostname or IP instead (for example my-drone.local).",
       "pairButton": "Pair",
@@ -2154,7 +2217,7 @@
       "badCodeError": "Pair code must be six characters (letters and digits).",
       "pairOnLan": "ਆਪਣੇ LAN 'ਤੇ ਇੱਕ ਨੋਡ ਜੋੜੋ",
       "noAccountRequired": "ਕੋਈ ਖਾਤਾ ਲੋੜੀਂਦਾ ਨਹੀਂ। ਪੂਰੀ ਤਰ੍ਹਾਂ ਆਫਲਾਈਨ ਕੰਮ ਕਰਦਾ ਹੈ।",
-      "hostnamePlaceholder": "skynode.local  ਜਾਂ  http://192.168.1.42:8080",
+      "hostnamePlaceholder": "my-drone.local  ਜਾਂ  http://192.168.1.42:8080",
       "probeButton": "ਪ੍ਰੋਬ ਕਰੋ",
       "probingButton": "ਪ੍ਰੋਬ ਕਰ ਰਿਹਾ ਹੈ",
       "installAgent": "ਨਵਾਂ ਏਜੰਟ ਇੰਸਟਾਲ ਕਰੋ",
@@ -2205,7 +2268,10 @@
       "pairAgentNotReadyError": "{host} answered but its pairing service is still starting. Wait a few seconds, then press Pair again.",
       "pairAgentFaultError": "{host} could not save the pairing: {detail}. Check its disk space and service health with `ados status` on the node, then press Pair again.",
       "pairRefusedError": "{host} answered and refused the pairing request. Run `ados status` on the node to check its pairing state, then press Pair again.",
-      "unpairFailedError": "Couldn't release {host} from this browser. Run `ados unpair` on the node to release it, then remove it here."
+      "unpairFailedError": "Couldn't release {host} from this browser. Run `ados unpair` on the node to release it, then remove it here.",
+      "codeRateLimitedError": "Too many pair-code attempts from this browser. Try again in {seconds} s.",
+      "connectFailedUnknown": "the node did not answer",
+      "pairedWaitingRelay": "Paired. Waiting for the node to report over the cloud relay."
     },
     "nodes": {
       "label": "Nodes",
@@ -2245,7 +2311,7 @@
         "title": "ਹਾਰਡਵੇਅਰ ਨਿਯੰਤਰਣ Command ਟੈਬ ਵਿੱਚ ਇਕੱਠੇ ਕੀਤੇ ਜਾ ਰਹੇ ਹਨ।",
         "body": "Command ਟੈਬ ਹੁਣ ਲੋਕਲ-ਫਸਟ Add-a-Node ਪ੍ਰਵਾਹ ਨੂੰ ਹੋਸਟ ਕਰਦਾ ਹੈ ਅਤੇ ਹਰ ਨੋਡ ਕਿਸਮ (ਡ੍ਰੋਨ ਏਜੰਟ, ਗ੍ਰਾਊਂਡ ਸਟੇਸ਼ਨ, ਰਿਲੇਅ, ਰਿਸੀਵਰ, ਭਵਿੱਖ ਦਾ ਕੰਪਿਊਟ) ਨੂੰ ਇੱਕੋ ਸਾਈਡਬਾਰ ਹੇਠ ਹੋਸਟ ਕਰੇਗਾ। ਤਬਦੀਲੀ ਦੌਰਾਨ ਡੂੰਘੇ ਉਪ-ਦ੍ਰਿਸ਼ਾਂ ਲਈ Hardware ਉਪਲਬਧ ਰਹੇਗਾ।",
         "computeComingSoon": "ਕੰਪਿਊਟ ਨੋਡ ਜਲਦੀ ਆ ਰਿਹਾ ਹੈ",
-        "computeBody": "ਕੰਪਿਊਟ ਪ੍ਰੋਫਾਈਲ ਇੱਕ ਵਰਕਸਟੇਸ਼ਨ-ਸ਼੍ਰੇਣੀ ਦਾ ਨੋਡ ਹੈ ਜੋ ਸਰਵੇ ਡੇਟਾਸੈੱਟ ਵਰਤਦਾ ਹੈ ਅਤੇ ਆਰਥੋਮੋਜ਼ੇਕ, NeRF ਪੁਨਰ ਨਿਰਮਾਣ ਅਤੇ ਗੌਸੀਅਨ ਸਪਲੈਟ ਤਿਆਰ ਕਰਦਾ ਹੈ। ਪੂਰੇ ਡਿਜ਼ਾਈਨ ਲਈ product/specs/compute-agent/ ਵੇਖੋ।"
+        "computeBody": "ਕੰਪਿਊਟ ਪ੍ਰੋਫਾਈਲ ਇੱਕ ਵਰਕਸਟੇਸ਼ਨ-ਸ਼੍ਰੇਣੀ ਦਾ ਨੋਡ ਹੈ ਜੋ ਸਰਵੇ ਡੇਟਾਸੈੱਟ ਵਰਤਦਾ ਹੈ ਅਤੇ ਆਰਥੋਮੋਜ਼ੇਕ, NeRF ਪੁਨਰ ਨਿਰਮਾਣ ਅਤੇ ਗੌਸੀਅਨ ਸਪਲੈਟ ਤਿਆਰ ਕਰਦਾ ਹੈ।"
       },
       "demoMode": {
         "title": "ਗਰਾਊਂਡ ਸਟੇਸ਼ਨ ਕੰਟਰੋਲਾਂ ਲਈ ਡੈਮੋ ਡਾਟਾ ਉਪਲਬਧ ਨਹੀਂ ਹੈ",
@@ -2273,9 +2339,12 @@
         "no-answer": "nothing answered",
         "refused": "answered and refused",
         "fault": "answered with an internal fault",
-        "unknown": "the attempt failed"
+        "unknown": "the attempt failed",
+        "not-ready": "answered but was not ready",
+        "proxy-refused": "not tried: Mission Control only reaches addresses on your own network"
       }
-    }
+    },
+    "alreadyInstalledRepair": "Already installed? The same command re-pairs it with this code without reinstalling."
   },
   "agent": {
     "status": "ਸਥਿਤੀ",
@@ -2358,19 +2427,29 @@
         "sourceUnreachable": "The MAVLink source configured for this drone is not reachable. Check the source endpoint (host, port, or serial device) in the agent configuration.",
         "mspDetected": "Flight controller detected but it is speaking MSP, not MAVLink. Set its USB/serial port to MAVLink output (in the configurator).",
         "noHeartbeat": "Flight controller detected on {port} but no MAVLink heartbeat. Check the FC's serial protocol is set to MAVLink (ArduPilot: SERIAL0_PROTOCOL=2 on the USB port), the FC is fully booted, and the baud matches."
-      }
+      },
+      "lastKnown": "last known, {age}"
     },
     "chip": "Chip",
     "cores": "Cores",
     "gpu": "GPU",
     "gpuHistory": "GPU History (5m)",
-    "groundStationFallbackTitle": "ਗਰਾਊਂਡ ਸਟੇਸ਼ਨ"
+    "groundStationFallbackTitle": "ਗਰਾਊਂਡ ਸਟੇਸ਼ਨ",
+    "logsSnapshotAge": "Snapshot · updated {age}",
+    "sparklinePaused": "Paused",
+    "restartConfirmTitle": "Restart {name}?",
+    "restartConfirmMessage": "{name} stops and starts again. What it provides is unavailable until it is back.",
+    "restartAllConfirmTitle": "Restart all agent services?",
+    "restartAllConfirmMessage": "Every agent service stops and starts again. The GCS loses this node until the agent is back.",
+    "restartArmedWarning": "The vehicle is armed. This restart interrupts its flight link, video or control until the service is back.",
+    "restartConfirmLabel": "Restart",
+    "restartQueued": "Restart of {name} sent over the cloud relay. Watch its status here for the result.",
+    "restartAllServices": "Restart all services"
   },
   "fleetNetwork": {
     "title": "Fleet Network",
     "mqttBroker": "MQTT Broker",
     "brokerStatus": "Broker ਸਥਿਤੀ",
-    "meshRadio": "Mesh Radio",
     "meshStatus": "Mesh ਸਥਿਤੀ",
     "connectedPeers": "ਜੁੜਿਆ Peers",
     "noPeers": "No peers detected",
@@ -2383,20 +2462,14 @@
     "connected": "ਜੁੜਿਆ",
     "disconnected": "ਵਿਛੜਿਆ",
     "broker": "Broker",
-    "lora": "LoRa",
-    "notInstalled": "Not installed",
-    "wifiDirect": "WiFi Direct",
-    "disabled": "Disabled",
     "adosPeers": "ADOS Peers",
-    "lastScan": "Last scan: {time}",
-    "scan": "Scan",
-    "noPeersDiscovered": "No peers discovered",
     "peerName": "ਨਾਮ",
     "signal": "Signal",
     "distance": "ਦੂਰੀ",
     "battery": "ਬੈਟਰੀ",
     "tier": "Tier",
-    "link": "Link"
+    "link": "Link",
+    "testConnection": "Test connection"
   },
   "moduleStore": {
     "title": "Module Store",
@@ -2495,7 +2568,8 @@
     "loiter": "Loiter",
     "land": "Land",
     "rtl": {
-      "assumedReturnAltitude": "RTL ਭੂਮੀ ਜਾਂਚਾਂ {alt} ਮੀ ਵਾਪਸੀ ਉਚਾਈ ਮੰਨ ਕੇ ਚੱਲਦੀਆਂ ਹਨ (ਕੋਈ ਕੌਂਫਿਗਰ ਕੀਤਾ ਮੁੱਲ ਉਪਲਬਧ ਨਹੀਂ)।"
+      "assumedReturnAltitude": "RTL ਭੂਮੀ ਜਾਂਚਾਂ {alt} ਮੀ ਵਾਪਸੀ ਉਚਾਈ ਮੰਨ ਕੇ ਚੱਲਦੀਆਂ ਹਨ (ਕੋਈ ਕੌਂਫਿਗਰ ਕੀਤਾ ਮੁੱਲ ਉਪਲਬਧ ਨਹੀਂ)।",
+      "landStartNeedsAutoland": "The FC has RTL_AUTOLAND = 0, so it will refuse to arm with a DO_LAND_START in the mission. Set RTL_AUTOLAND to 1 or 2 to land through it on RTL, or 3 to use it for go-around only."
     },
     "none": "None",
     "waypoints": "Waypoints",
@@ -2553,7 +2627,8 @@
         "empty": "ਇਸ ਨੂੰ ਛੱਡਣ ਲਈ ਹੱਦ ਦੇ ਅੰਦਰ ਖਿੱਚੇ ਬਹੁਭੁਜ ਨੂੰ ਟਿੱਕ ਕਰੋ।"
       },
       "coverage": {
-        "showOverlay": "ਕਵਰੇਜ ਦਿਖਾਓ"
+        "showOverlay": "ਕਵਰੇਜ ਦਿਖਾਓ",
+        "truncated": "Showing the first {shown} of {total} image footprints."
       }
     },
     "orbit": "Orbit",
@@ -2803,7 +2878,9 @@
       "chipAltitude": "ਉਚਾਈ {value} ਮੀ",
       "chipOverlap": "ਓਵਰਲੈਪ {value}%",
       "chipSpeed": "ਗਤੀ {value} m/s",
-      "chipRadius": "ਘੇਰਾ {value} ਮੀ"
+      "chipRadius": "ਘੇਰਾ {value} ਮੀ",
+      "tooLarge": "This area is too large to survey in one mission (about {items} items, {km} km). Zoom in and try again.",
+      "mappedEstimate": "About {lines} lines, {items} items, {km} km."
     },
     "weather": {
       "title": "ਮੌਸਮ",
@@ -2823,14 +2900,17 @@
       "reasonWindNogo": "ਹਵਾ ਬਹੁਤ ਤੇਜ਼",
       "reasonGustCaution": "ਝੋਕੇ ਵਧੇ ਹੋਏ",
       "reasonGustNogo": "ਝੋਕੇ ਬਹੁਤ ਤੇਜ਼",
-      "reasonNoData": "ਹਵਾ ਦਾ ਕੋਈ ਡਾਟਾ ਨਹੀਂ"
+      "reasonNoData": "ਹਵਾ ਦਾ ਕੋਈ ਡਾਟਾ ਨਹੀਂ",
+      "stale": "Stale",
+      "observed": "Observed {time}, {minutes} min ago"
     },
     "import": {
       "boundary": {
         "menuLabel": "ਹੱਦ ਆਯਾਤ ਕਰੋ (KML/SHP)",
         "success": "{count, plural, one {# ਹੱਦ ਲੋਡ ਹੋਈ} other {# ਹੱਦਾਂ ਲੋਡ ਹੋਈਆਂ}}",
         "error": "ਉਹ ਹੱਦ ਫਾਈਲ ਪੜ੍ਹੀ ਨਹੀਂ ਜਾ ਸਕੀ।",
-        "noPolygon": "ਫਾਈਲ ਵਿੱਚ ਕੋਈ ਬਹੁਭੁਜ ਨਹੀਂ ਮਿਲਿਆ।"
+        "noPolygon": "ਫਾਈਲ ਵਿੱਚ ਕੋਈ ਬਹੁਭੁਜ ਨਹੀਂ ਮਿਲਿਆ।",
+        "needsPrj": "This shapefile is not in latitude/longitude. Import the zipped bundle that includes its .prj file."
       }
     },
     "export": {
@@ -2926,7 +3006,15 @@
         "DO_SET_HOME": "Set Home"
       }
     },
-    "approachHeadingRequired": "Set the final-approach heading (0-360°) to generate the landing."
+    "approachHeadingRequired": "Set the final-approach heading (0-360°) to generate the landing.",
+    "batteryStale": "stale",
+    "avg": "avg",
+    "speedType": "Speed type",
+    "speedTypeAirspeed": "Airspeed",
+    "speedTypeGround": "Ground speed",
+    "fcDefault": "FC default",
+    "noCenterHint": "Pan the map to the survey area first, then add the rectangle.",
+    "orbitTargetHeight": "Target height"
   },
   "geofence": {
     "autoFence": "ਆਟੋ-ਵਾੜ",
@@ -2961,7 +3049,8 @@
     "fenceUploaded": "Fence uploaded successfully",
     "uploadFailed": "Fence upload failed",
     "olderFenceOnAircraft": "Aircraft holds an older fence",
-    "maxAltitudeRequired": "Enter a max altitude above 0 m"
+    "maxAltitudeRequired": "Enter a max altitude above 0 m",
+    "clearFenceConfirm": "Delete the fence geometry? Undo restores it."
   },
   "rally": {
     "title": "Rally Points",
@@ -2978,7 +3067,8 @@
     "rallyUploadFailed": "Rally point upload failed",
     "olderRallyOnAircraft": "Aircraft holds older rally points",
     "replaceLocalConfirm": "Replace the {count} planned rally points with the ones on the aircraft?",
-    "downloadFailed": "Rally download failed"
+    "downloadFailed": "Rally download failed",
+    "clearAllConfirm": "Delete all {count} rally points? Undo restores them."
   },
   "terrain": {
     "terrainConflict": "{count} ਕਲੀਅਰੈਂਸ ਤੋਂ ਹੇਠਾਂ",
@@ -3237,7 +3327,6 @@
     "unfavorite": "ਮਨਪਸੰਦ ਤੋਂ ਹਟਾਓ",
     "delete": "ਮਿਟਾਓ",
     "clear": "ਸਾਫ਼ ਕਰੋ",
-    "deleteConfirm": "{count} ਉਡਾਣ ਰਿਕਾਰਡ ਮਿਟਾਉਣੇ ਹਨ? ਇਹ ਵਾਪਸ ਨਹੀਂ ਕੀਤਾ ਜਾ ਸਕਦਾ।",
     "statsFlights": "ਉਡਾਣਾਂ",
     "statsHours": "ਘੰਟੇ",
     "statsDistance": "ਦੂਰੀ",
@@ -3392,7 +3481,15 @@
       "avgDistance": "ਔਸਤ ਦੂਰੀ",
       "avgMaxAlt": "ਔਸਤ ਵੱਧ ਉਚਾਈ",
       "byDrone": "Drone ਅਨੁਸਾਰ"
-    }
+    },
+    "restore": "Restore",
+    "deletePermanently": "Delete permanently",
+    "deletePermanentlyConfirm": "Permanently delete {count} flight record(s)? This cannot be undone.",
+    "moveToTrashConfirm": "Move {count} flight record(s) to the trash?",
+    "logBrowserNoFlights": "Downloaded {bytes}, but no flight was found in the log: it holds no arm-to-disarm flight, or its format is not one this browser reads.",
+    "logBrowserDuplicates": "{count} flight(s) from this log were already in history and were left as they are.",
+    "syncNotYet": "Not synced yet",
+    "syncPending": "{count} to sync"
   },
   "library": {
     "title": "FLIGHT PLANS",
@@ -3437,7 +3534,22 @@
     "noFolder": "No folder",
     "planMoved": "Plan moved",
     "folderRenamed": "Folder renamed",
-    "folderDeleted": "Folder deleted"
+    "folderDeleted": "Folder deleted",
+    "planName": "Plan name",
+    "createFirstPlan": "Create First Plan",
+    "importFromFile": "Import from file",
+    "fromDrone": "From Drone",
+    "loadingFromDrone": "Loading...",
+    "connectDroneFirst": "Connect a drone first",
+    "loadFromDrone": "Load mission from drone",
+    "planCount": "{count, plural, one {# plan} other {# plans}}",
+    "importShort": "Import",
+    "importPlanFile": "Import plan file",
+    "sortLabelName": "Name",
+    "sortLabelDate": "Date",
+    "sortLabelWaypoints": "WPs",
+    "sortAscending": "Ascending",
+    "sortDescending": "Descending"
   },
   "fcShared": {
     "readFromFc": "FC ਤੋਂ ਪੜ੍ਹੋ",
@@ -3496,7 +3608,7 @@
     "sensorCalibrationDesc": "Step-by-step calibration wizards for accelerometer, gyroscope, compass, level, and airspeed",
     "connectToCalibrate": "Connect a drone to run calibrations",
     "bfAccelTitle": "Accelerometer Calibration",
-    "bfAccelDesc": "Place the quad on a flat surface and keep it still. Betaflight calibration takes about 5 seconds.",
+    "bfAccelDesc": "Place the quad on a flat surface and keep it still. Betaflight averages a short run of samples and saves the result.",
     "calibrating": "Calibrating",
     "bfAccelStepDesc": "Keep the quad perfectly still on a flat surface",
     "bfAccelInProgress": "Calibrating... keep the quad still",
@@ -3517,7 +3629,32 @@
     "compassOffsetsSaved": "Compass offsets saved",
     "compassOrientationChanged": "Compass Orientation Changed",
     "compassOrientationChangedDesc": "The calibration detected a different compass orientation than previously configured. Verify mounting orientation in parameters after reboot.",
-    "accelCalibrationSaved": "Accelerometer calibration saved"
+    "accelCalibrationSaved": "Accelerometer calibration saved",
+    "bfAccelDone": "Betaflight sampled the accelerometer and saved the trims. If the quad moved during calibration, run it again.",
+    "inavAccelTitle": "Accelerometer Calibration (six orientations)",
+    "inavAccelDesc": "iNav calibrates the accelerometer from six orientations. Start with the vehicle level (top up), then capture upside down and each of the four sides in any order. Hold each orientation still, within about 30 degrees, and press Capture.",
+    "inavAccelCapture": "Capture this orientation",
+    "inavAccelProgress": "{count} of 6 orientations captured",
+    "inavAccelCalibrated": "The accelerometer is calibrated. Capturing level (top up) starts a new calibration.",
+    "inavAccelCaptured": "Orientation captured.",
+    "inavAccelNotCaptured": "No new orientation was captured. Hold the vehicle still in an orientation that is not captured yet; to recalibrate a calibrated board, start from level (top up).",
+    "inavAccelComplete": "All six orientations captured. iNav computed the calibration and saved it.",
+    "inavAccelRejected": "iNav rejected the six-orientation fit and cleared the samples. Start again from level (top up).",
+    "inavPosTop": "Level (top up)",
+    "inavPosBottom": "Upside down",
+    "inavPosSides": "Sides: {count} of 4",
+    "inavCompassTitle": "Compass Calibration",
+    "inavCompassDesc": "Starts iNav's compass calibration. Rotate the vehicle through every orientation until the countdown ends; iNav stores the new offsets when its calibration time (mag_calibration_time) runs out.",
+    "inavCompassStart": "Start compass calibration",
+    "inavCompassRunning": "Rotate the vehicle through every orientation: {seconds} s left",
+    "inavCompassTimeUnknown": "Could not read mag_calibration_time; timing the default {seconds} s.",
+    "inavCompassUpdated": "Compass offsets changed from {before} to {after}; iNav saved them.",
+    "inavCompassUnchanged": "Compass offsets did not change {after}. Run it again, rotating through every orientation.",
+    "inavLevelTitle": "Level",
+    "inavLevelNote": "iNav has no level calibration. If the horizon is tilted after accelerometer calibration, correct it with board alignment (align_board_roll and align_board_pitch).",
+    "inavGyroNote": "iNav calibrates the gyro at every boot; keep the vehicle still while it powers up.",
+    "inavReadFailed": "Could not read calibration data: {message}",
+    "mspCommandRefused": "The flight controller did not take the command: {message}"
   },
   "parameters": {
     "title": "Parameters",
@@ -3566,7 +3703,8 @@
     "customValue": "{value} (custom)",
     "enterCustomValue": "Custom value",
     "apply": "Apply",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "bitmaskRawInvalid": "Enter a whole decimal number or 0x hex value that fits in 32 bits."
   },
   "preArm": {
     "title": "Pre-Arm Checks",
@@ -3611,7 +3749,10 @@
     "rcChannelsOutside": "{count} RC channels outside trim deadzone",
     "trimSetTo": "Trim set to {value} — re-checking...",
     "noFailuresReported": "No failures reported. This flight controller sent no pre-arm verdict, so a pass is not confirmed.",
-    "fcReportsFailures": "The flight controller reports pre-arm failures"
+    "fcReportsFailures": "The flight controller reports pre-arm failures",
+    "rcReadingStale": "No current RC reading. Turn the transmitter on and try again.",
+    "trimWriteFailed": "RC{channel}_TRIM not written: {reason}",
+    "trimsPartlyFixed": "{ok} of {total} trims written"
   },
   "indicators": {
     "connectionQuality": "Connection Quality",
@@ -3645,7 +3786,6 @@
     "no": "No",
     "signal": "Signal",
     "rssi": "RSSI",
-    "latency": "Latency",
     "telemetryNone": "ਕੋਈ ਡਾਟਾ ਨਹੀਂ",
     "telemetryChannels": {
       "attitude": "ਐਟੀਟਿਊਡ",
@@ -3668,7 +3808,9 @@
       "dgps": "DGPS",
       "rtkFloat": "RTK ਫਲੋਟ",
       "rtk": "RTK ਪੱਕਾ"
-    }
+    },
+    "txBufferFree": "TX buffer free",
+    "ekfFlags": "EKF flags"
   },
   "flightInfo": {
     "vehicleInfo": "Vehicle Info",
@@ -3721,7 +3863,8 @@
     "installFailed": "Failed",
     "installUnknown": "Unknown",
     "installVersion": "Build",
-    "failedSteps": "Failed steps"
+    "failedSteps": "Failed steps",
+    "agentLastSeen": "Agent last seen {ago}"
   },
   "flightModes": {
     "stabilize": "Stabilize",
@@ -3833,17 +3976,6 @@
     "environment": "Environment",
     "mission": "ਮਿਸ਼ਨ",
     "auto": "AUTO"
-  },
-  "recording": {
-    "rec": "REC",
-    "recording": "ਰਿਕਾਰਡਿੰਗ",
-    "stopped": "Stopped",
-    "startRecording": "Start telemetry recording",
-    "stopRecording": "Stop recording",
-    "stop": "STOP",
-    "replay": "Replay",
-    "exportCsv": "Export last recording as CSV",
-    "exportTlog": "Export last recording as .tlog"
   },
   "fleet": {
     "title": "Fleet",
@@ -4057,7 +4189,9 @@
       "outputBitrate": "Output bitrate",
       "emptyDirect": "This node is in direct mode. Set the role to relay or receiver to use distributed reception.",
       "emptyUnset": "Set the ground-station role from the device OLED to begin.",
-      "staleSnapshot": "Snapshot is stale — the receiver stopped reporting; values shown may be old"
+      "staleSnapshot": "Snapshot is stale — the receiver stopped reporting; values shown may be old",
+      "pairingCodeLabel": "Relay join code",
+      "pairingCodeHint": "Enter this code on the relay to join the mesh."
     },
     "mesh": {
       "title": "Mesh",
@@ -4745,7 +4879,8 @@
     },
     "physicalUiPage": {
       "description": "ਗ੍ਰਾਊਂਡ ਸਟੇਸ਼ਨ ਬਾਕਸ ਉੱਤੇ OLED ਸਕ੍ਰੀਨ ਅਤੇ ਚਾਰ ਅਗਲੇ ਬਟਨਾਂ ਦੀ ਲਾਈਵ ਝਲਕ। Bluetooth ਡਿਵਾਈਸ ਵੀ ਇੱਥੇ ਜੋੜੋ।"
-    }
+    },
+    "demoReadOnly": "Demo mode is read-only: this change is not sent to the sample fleet."
   },
   "toast": {
     "mesh": {
@@ -4863,9 +4998,12 @@
         "autoUpdateHint": "Edit via the ados plugin auto-update CLI on the drone.",
         "pinnedVersionLabel": "Pin to version",
         "pinnedVersionAuto": "Auto (latest)",
-        "lastChecked": "Last checked {time}",
-        "lastCheckedNever": "Never checked",
-        "close": "Close"
+        "close": "Close",
+        "unknown": "Unknown",
+        "on": "On",
+        "off": "Off",
+        "pinned": "Pinned",
+        "lastCheckedLabel": "Last registry check"
       }
     }
   },
@@ -5447,10 +5585,6 @@
       }
     }
   },
-  "pairing": {
-    "codeExpiresIn": "Code expires in {time}",
-    "codeExpired": "Code expired"
-  },
   "groundStationOverview": {
     "mesh": {
       "title": "Mesh",
@@ -5519,7 +5653,8 @@
       "title": "Downlink video",
       "live": "Live",
       "connecting": "Connecting",
-      "noSignal": "No downlink"
+      "noSignal": "No downlink",
+      "ready": "Ready"
     },
     "carriedDrones": {
       "title": "Carried drones",
@@ -5662,7 +5797,6 @@
       },
       "busHealthGauges": {
         "title": "ਬੱਸ ਸਿਹਤ",
-        "busLoad": "ਬੱਸ ਲੋਡ",
         "framesPerSec": "ਫਰੇਮ/ਸ",
         "errorsPerSec": "ਗਲਤੀ/ਸ",
         "busOffEvents": "Bus-off ਘਟਨਾਵਾਂ",
@@ -5688,9 +5822,9 @@
       "bitrate": "ਬਿਟਰੇਟ",
       "nodes": "Nodes",
       "fps": "fps",
-      "busLoad": "ਬੱਸ ਲੋਡ",
       "slcanActive": "ਸਰਗਰਮ",
-      "slcanInactive": "ਨਿਸ਼ਕਿਰਿਆ"
+      "slcanInactive": "ਨਿਸ਼ਕਿਰਿਆ",
+      "slcanRoute": "route: CAN{port}"
     },
     "busSetup": {
       "title": "ਬੱਸ ਸੈਟਅੱਪ",
@@ -5705,8 +5839,7 @@
       "dirty": "ਅਣਸੁਰੱਖਿਅਤ ਤਬਦੀਲੀਆਂ",
       "rebootRequired": "ਰੀਬੂਟ ਜ਼ਰੂਰੀ",
       "rebootFc": "FC ਰੀਬੂਟ",
-      "rebootSent": "ਰੀਬੂਟ ਕਮਾਂਡ ਭੇਜੀ, FC ਮੁੜ ਜੁੜ ਰਿਹਾ ਹੈ",
-      "rebootFailed": "ਰੀਬੂਟ ਕਮਾਂਡ ਅਸਫਲ, ਮੁੜ ਕੋਸ਼ਿਸ਼ ਕਰੋ ਜਾਂ ਪਾਵਰ ਸਾਈਕਲ",
+      "rebootFailed": "FC did not accept the reboot",
       "notConnected": "CAN ਪੈਰਾਮੀਟਰ ਪੜ੍ਹਨ ਜਾਂ ਲਿਖਣ ਲਈ ਡਰੋਨ ਜੋੜੋ.",
       "loading": "ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਤੋਂ ਪੈਰਾਮੀਟਰ ਲੋਡ ਹੋ ਰਹੇ ਹਨ...",
       "param": {
@@ -5772,13 +5905,15 @@
         },
         "CAN_SLCAN_TIMOUT": {
           "label": "SLCAN ਟਾਈਮਆਊਟ",
-          "description": "SLCAN ਸੈਸ਼ਨ ਆਪਣੇ ਆਪ ਬੰਦ ਹੋਣ ਤੋਂ ਪਹਿਲਾਂ ਸਕਿੰਟ. 0 = ਆਟੋ-ਬੰਦ ਨਹੀਂ."
+          "description": "Seconds of SLCAN inactivity before the FC reverts the port to MAVLink (0 to 127). 0 = never."
         },
-        "CAN_SLCAN_OVRIDE": {
-          "label": "SLCAN ਓਵਰਰਾਈਡ",
-          "description": "ਚਾਲੂ ਹੋਣ ਉੱਤੇ, FC ਵਰਤੋਂ ਕਰ ਰਿਹਾ ਹੋਵੇ ਤਾਂ ਵੀ SLCAN ਬੱਸ ਉੱਤੇ ਕਬਜ਼ਾ ਕਰ ਲੈਂਦਾ ਹੈ."
+        "CAN_SLCAN_SDELAY": {
+          "label": "SLCAN start delay",
+          "description": "Seconds to wait after boot before SLCAN starts on the selected serial port."
         }
-      }
+      },
+      "rebootAccepted": "FC accepted the reboot, reconnecting",
+      "slcanNeedsUsb": "SLCAN needs a direct USB (WebSerial) connection to the FC."
     },
     "nodeBrowser": {
       "title": "ਖੋਜੇ ਗਏ DroneCAN nodes",
@@ -5797,8 +5932,11 @@
         "swVersion": "SW",
         "state": "ਮੋਡ",
         "uptime": "ਚੱਲਣ ਦਾ ਸਮਾਂ",
-        "health": "ਸਿਹਤ"
-      }
+        "health": "ਸਿਹਤ",
+        "lastSeen": "Last seen"
+      },
+      "online": "online",
+      "secondsAgo": "{seconds}s ago"
     },
     "busMonitor": {
       "title": "ਬੱਸ ਮਾਨੀਟਰ",
@@ -5837,7 +5975,6 @@
     },
     "diagnostics": {
       "title": "ਬੱਸ ਨਿਦਾਨ",
-      "busLoad": "ਬੱਸ ਲੋਡ",
       "framesPerSec": "ਫਰੇਮ/ਸ",
       "errorsPerSec": "ਗਲਤੀ/ਸ",
       "busOffEvents": "Bus-off ਘਟਨਾਵਾਂ",
@@ -5874,8 +6011,9 @@
       "conflictScan": {
         "title": "Node ID ਟਕਰਾਅ ਸਕੈਨਰ",
         "button": "ਸਕੈਨ",
-        "noConflicts": "ਨਤੀਜਾ: ਕੋਈ ਟਕਰਾਅ ਨਹੀਂ",
-        "conflictDetected": "ਨਤੀਜਾ: ਵੱਖ-ਵੱਖ UID ਨਾਲ ID {first} ਦਾ ਦਾਅਵਾ ਕਰਨ ਵਾਲੇ {count} node"
+        "noConflicts": "No conflicts on {count} responding node(s)",
+        "conflictDetected": "{count} node ID(s) claimed by more than one node: {ids}",
+        "noResponse": "No response from node ID(s) {ids}; not checked"
       },
       "escSweep": {
         "title": "ESC RawCommand ਸਵੀਪ",
@@ -5890,7 +6028,8 @@
         "safetyTitle": "ਪ੍ਰੋਪ ਉਤਾਰੇ, ਮੋਟਰਾਂ ਸਿਰਫ ਬੈਂਚ ਉੱਤੇ",
         "safetyMessage": "ESC RawCommand ਮੋਟਰ ਆਉਟਪੁੱਟ ਨੂੰ ਸਿੱਧਾ ਚਲਾਉਂਦਾ ਹੈ. ਅੱਗੇ ਵਧਣ ਤੋਂ ਪਹਿਲਾਂ ਪੁਸ਼ਟੀ ਕਰੋ ਕਿ ਪ੍ਰੋਪ ਉਤਾਰੇ ਗਏ ਹਨ ਅਤੇ ਮੋਟਰਾਂ ਬੈਂਚ ਉੱਤੇ ਪੱਕੀਆਂ ਹਨ.",
         "safetyConfirm": "ਸਵੀਪ ਚਲਾਓ",
-        "pendingMessage": "ਕਲਾਇੰਟ ਨਹੀਂ ਜੁੜਿਆ."
+        "pendingMessage": "ਕਲਾਇੰਟ ਨਹੀਂ ਜੁੜਿਆ.",
+        "armedRefused": "Disarm the vehicle before running an ESC sweep."
       },
       "gpsFix": {
         "title": "GPS ਫਿਕਸ ਸਨੈਪਸ਼ਾਟ",
@@ -5901,8 +6040,9 @@
         "timeOnly": "ਸਿਰਫ਼ ਸਮਾਂ",
         "noFix": "ਫਿਕਸ ਨਹੀਂ",
         "sats": "ਉਪਗ੍ਰਹਿ",
-        "hdop": "HDOP",
-        "latLonAlt": "ਅਕਸ਼ਾਂਸ਼/ਦੇਸ਼ਾਂਤਰ/ਉਚਾਈ"
+        "latLonAlt": "ਅਕਸ਼ਾਂਸ਼/ਦੇਸ਼ਾਂਤਰ/ਉਚਾਈ",
+        "pdop": "PDOP",
+        "hdop": "HDOP"
       },
       "compass": {
         "title": "ਕੰਪਾਸ ਕੱਚਾ ਸਟਰੀਮ",
@@ -5926,14 +6066,6 @@
     }
   },
   "linkUp": {
-    "no-connection": {
-      "title": "ਕੋਈ ਡਰੋਨ ਕਨੈਕਟ ਨਹੀਂ",
-      "body": "ਸਿੱਧਾ ਉਡਾਉਣ ਲਈ ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਨੂੰ USB ਜਾਂ ਆਪਣੇ ਨੈੱਟਵਰਕ ਨਾਲ ਜੋੜੋ, ਜਾਂ ਵੀਡੀਓ, ਸਕ੍ਰਿਪਟਾਂ ਅਤੇ ਲੰਬੀ ਰੇਂਜ ਲਿੰਕ ਜੋੜਨ ਲਈ ਇੱਕ ਕੰਪੈਨੀਅਨ ਕੰਪਿਊਟਰ ਪੇਅਰ ਕਰੋ।"
-    },
-    "locked": {
-      "title": "{surface} ਅਨਲੌਕ ਕਰਨ ਲਈ ਇੱਕ ਕੰਪੈਨੀਅਨ ਕੰਪਿਊਟਰ ਜੋੜੋ",
-      "body": "ਇਹ ਡਰੋਨ ਸਿਰਫ਼ ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਨਾਲ ਜੁੜਿਆ ਹੈ। HD ਵੀਡੀਓ ਸਟ੍ਰੀਮ ਕਰਨ, ਸਕ੍ਰਿਪਟਾਂ ਚਲਾਉਣ, ਪਲੱਗਇਨ ਜੋੜਨ ਅਤੇ 4G ਉੱਤੇ ਡਰੋਨ ਤੱਕ ਪਹੁੰਚਣ ਲਈ ਇੱਕ ਕੰਪੈਨੀਅਨ ਕੰਪਿਊਟਰ ਪੇਅਰ ਕਰੋ, ਇੱਕ ਛੋਟਾ ਬੋਰਡ ਜਿਵੇਂ ਕਿ ADOS ਏਜੰਟ ਚਲਾਉਂਦਾ Raspberry Pi।"
-    },
     "no-fc-direct": {
       "title": "ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਕਨੈਕਟ ਨਹੀਂ",
       "body": "ਇਸ ਡਰੋਨ ਤੋਂ ਲਾਈਵ ਡਾਟਾ ਪੜ੍ਹਨ ਲਈ ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਕਨੈਕਟ ਕਰੋ। ਇੱਕ ਵਾਰ ਇਹ ਗੱਲ ਕਰਨ ਲੱਗੇ, ਪੈਰਾਮੀਟਰ ਟ੍ਰੀ, ਕੈਲੀਬ੍ਰੇਸ਼ਨ ਅਤੇ ਕੌਨਫਿਗਰੇਸ਼ਨ ਲੋਡ ਹੋ ਜਾਂਦੇ ਹਨ। ਜਦੋਂ ਤੱਕ ਤੁਸੀਂ ਕਨੈਕਟ ਨਹੀਂ ਕਰਦੇ, ਕੁਝ ਵੀ ਲਿਖਿਆ ਨਹੀਂ ਜਾਂਦਾ।"
@@ -5942,17 +6074,9 @@
       "title": "ਏਜੰਟ ਨੂੰ ਕੋਈ ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਨਹੀਂ ਮਿਲਿਆ",
       "body": "ਕੰਪੈਨੀਅਨ ਕੰਪਿਊਟਰ ਆਨਲਾਈਨ ਹੈ ਪਰ ਇਸ ਦੀਆਂ ਸੀਰੀਅਲ ਪੋਰਟਾਂ ਉੱਤੇ ਕੋਈ ਆਟੋਪਾਇਲਟ ਨਹੀਂ ਦਿਸਦਾ। ਜਾਂਚੋ ਕਿ ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਨੂੰ ਪਾਵਰ ਮਿਲ ਰਹੀ ਹੈ ਅਤੇ ਇਹ ਬੋਰਡ ਨਾਲ ਵਾਇਰ ਕੀਤਾ ਹੋਇਆ ਹੈ।"
     },
-    "fc-unverified": {
-      "title": "ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਲਿੰਕ ਪੁਸ਼ਟ ਨਹੀਂ ਹੋਇਆ",
-      "body": "ਏਜੰਟ {baud} ਉੱਤੇ {port} ਦੀ ਰਿਪੋਰਟ ਕਰਦਾ ਹੈ ਪਰ ਅਜੇ ਤੱਕ ਆਟੋਪਾਇਲਟ ਤੋਂ ਕੁਝ ਨਹੀਂ ਸੁਣਿਆ। ਹੋ ਸਕਦਾ ਹੈ ਇਹ ਬੂਟ ਹੋ ਰਿਹਾ ਹੋਵੇ ਜਾਂ ਕਿਸੇ ਵੱਖਰੀ ਬੌਡ ਰੇਟ ਉੱਤੇ ਸੈੱਟ ਹੋਵੇ।"
-    },
     "agent-offline": {
       "title": "ਏਜੰਟ ਆਫਲਾਈਨ, ਕੋਈ ਹਾਰਟਬੀਟ ਨਹੀਂ",
       "body": "ਆਖਰੀ ਅੱਪਡੇਟ {ago}। ਦਿਖਾਈਆਂ ਗਈਆਂ ਰੀਡਿੰਗਾਂ ਉਹ ਹਨ ਜੋ ਏਜੰਟ ਨੇ ਆਖਰੀ ਵਾਰ ਰਿਪੋਰਟ ਕੀਤੀਆਂ ਸਨ। ਪਾਵਰ ਜਾਂ ਨੈੱਟਵਰਕ ਬੰਦ ਹੋ ਸਕਦਾ ਹੈ।"
-    },
-    "agent-stale": {
-      "title": "ਏਜੰਟ ਫੀਡ ਰੁਕਿਆ",
-      "body": "{ago} ਤੋਂ ਕੋਈ ਨਵਾਂ ਹਾਰਟਬੀਟ ਨਹੀਂ। ਦਿਖਾਈਆਂ ਗਈਆਂ ਵੈਲਿਊਜ਼ ਉਹ ਹਨ ਜੋ ਏਜੰਟ ਨੇ ਆਖਰੀ ਵਾਰ ਰਿਪੋਰਟ ਕੀਤੀਆਂ ਸਨ ਅਤੇ ਅਗਲੇ ਅੱਪਡੇਟ ਉੱਤੇ ਮੁੜ ਚਾਲੂ ਹੋ ਜਾਣਗੀਆਂ।"
     },
     "no-camera": {
       "title": "ਕੋਈ ਕੈਮਰਾ ਨਹੀਂ ਮਿਲਿਆ",
@@ -5964,18 +6088,6 @@
       "recovering": {
         "title": "Recovering camera…"
       }
-    },
-    "no-npu": {
-      "title": "ਕੋਈ AI ਐਕਸਲਰੇਟਰ ਨਹੀਂ ਮਿਲਿਆ",
-      "body": "ਆਨ-ਡਿਵਾਈਸ ਡਿਟੈਕਸ਼ਨ ਲਈ ਇੱਕ NPU-ਸ਼੍ਰੇਣੀ ਦੇ ਕੰਪਿਊਟ ਮੋਡਿਊਲ ਦੀ ਲੋੜ ਹੈ। ਇਹ ਬੋਰਡ ਕੋਈ ਨਹੀਂ ਦੱਸਦਾ, ਇਸ ਲਈ ਵਿਜ਼ਨ ਇੰਜਣ ਬੰਦ ਰਹਿੰਦਾ ਹੈ।"
-    },
-    "no-radio": {
-      "title": "ਕੋਈ ਲੰਬੀ ਰੇਂਜ ਰੇਡੀਓ ਨਹੀਂ",
-      "body": "ਇਸ ਏਜੰਟ ਕੋਲ ਕੋਈ ਸਮਰਥਿਤ WFB-ng ਅਡੈਪਟਰ ਨਹੀਂ ਹੈ। ਵਧੀ ਹੋਈ ਰੇਂਜ ਵਾਲੇ ਡਾਟਾਲਿੰਕ ਅਤੇ ਲਾਈਵ ਸਿਗਨਲ ਸਟੈਟਸ ਅਨਲੌਕ ਕਰਨ ਲਈ ਇੱਕ ਜੋੜੋ।"
-    },
-    "no-peripherals": {
-      "title": "ਕੋਈ ਪੈਰੀਫੈਰਲ ਨਹੀਂ ਮਿਲਿਆ",
-      "body": "ਸਕੈਨ ਨੇ USB, CSI ਅਤੇ I2C ਜਾਂਚੇ ਅਤੇ ਕੁਝ ਵੀ ਜੁੜਿਆ ਨਹੀਂ ਮਿਲਿਆ। ਇੱਕ ਸੈਂਸਰ, ਕੈਮਰਾ ਜਾਂ ਮੋਡਮ ਕਨੈਕਟ ਕਰੋ ਅਤੇ ਦੁਬਾਰਾ ਸਕੈਨ ਕਰੋ।"
     },
     "no-flights": {
       "title": "ਅਜੇ ਕੋਈ ਉਡਾਨ ਰਿਕਾਰਡ ਨਹੀਂ ਹੋਈ",
@@ -5989,19 +6101,9 @@
       "connectFc": "ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਕਨੈਕਟ ਕਰੋ",
       "pairNode": "ਇੱਕ ਕੰਪੈਨੀਅਨ ਕੰਪਿਊਟਰ ਪੇਅਰ ਕਰੋ",
       "reconnect": "ਮੁੜ ਕਨੈਕਟ ਕਰੋ",
-      "retry": "ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ",
-      "rescan": "ਪੈਰੀਫੈਰਲ ਮੁੜ-ਸਕੈਨ ਕਰੋ",
       "pairDifferent": "ਇੱਕ ਵੱਖਰਾ ਨੋਡ ਪੇਅਰ ਕਰੋ",
       "rePair": "Re-pair node",
       "removeNode": "Remove node"
-    },
-    "surface": {
-      "video": "HD ਵੀਡੀਓ",
-      "vision": "ਵਿਜ਼ਨ",
-      "plugins": "ਪਲੱਗਇਨ",
-      "system": "ਸਿਸਟਮ ਮੋਨੀਟਰ",
-      "radio": "ਲੰਬੀ ਰੇਂਜ ਰੇਡੀਓ",
-      "cellular": "4G ਟੈਲੀਮੈਟਰੀ"
     },
     "stalePaused": {
       "chip": "ਡਾਟਾ ਰੁਕਿਆ",
@@ -6057,7 +6159,9 @@
     "pushedWindows": "Exported windows",
     "pushedCloudBadge": "Cloud",
     "pushedDownload": "Download",
-    "pushedDownloadFailed": "Could not get a download link"
+    "pushedDownloadFailed": "Could not get a download link",
+    "pushPending": "Push requested. The cloud export has not confirmed yet.",
+    "connecting": "Connecting to this node..."
   },
   "operatingRegion": {
     "title": "Operating region",
@@ -6082,7 +6186,9 @@
     "applyFailed": "Could not update the operating region.",
     "applyHintUnrestricted": "The radio transmits on the configured channel without a pinned region. The agent re-reads this on its next restart.",
     "applyHintRegion": "Pinning a region enables the strict regulatory gate and the region’s legal power limit. The agent re-reads this on its next restart.",
-    "readOnlyNoAgent": "No connection path to this node — connect or pair it to change its operating region."
+    "readOnlyNoAgent": "No connection path to this node — connect or pair it to change its operating region.",
+    "postureUnknown": "Posture unknown",
+    "liveUnknown": "Not reported by this node yet."
   },
   "cockpit": {
     "noDrone": "No drone",
@@ -6111,8 +6217,7 @@
       "gpsNoFix": "NO FIX",
       "gpsRtk": "RTK / {sats}",
       "dist": "DIST",
-      "thr": "THR",
-      "eta": "ETA"
+      "thr": "THR"
     },
     "rec": "REC",
     "recStop": "Stop",
@@ -6301,6 +6406,10 @@
       "aimPrompt": "Aim to select a skill",
       "releaseToFire": "Release to fire",
       "highlighted": "{label} selected"
+    },
+    "flyHere": {
+      "label": "Fly Here",
+      "effect": "Flies to the chosen map point at the set altitude"
     }
   },
   "skillBindings": {
@@ -6389,7 +6498,10 @@
     "zoneBottomLeft": "Bottom left",
     "zoneBottomCenter": "Bottom center",
     "zoneBottomRight": "Bottom right",
-    "zoneFull": "Full"
+    "zoneFull": "Full",
+    "reservedButton": "Button {button} is reserved by the cockpit.",
+    "resetConfirmTitle": "Reset bindings?",
+    "resetConfirmMessage": "Replace every slot in \"{name}\" with the factory bindings. Its layout is kept."
   },
   "atlas": {
     "viewerError": "Could not load the {what} world model.",
@@ -6547,7 +6659,9 @@
       "profileLawnmower": "Lawnmower",
       "profileFreeform": "Freeform",
       "profileInspection": "Inspection",
-      "reconstructorUnreachable": "Compute node unreachable. Reconstruction paused."
+      "reconstructorUnreachable": "Compute node unreachable. Reconstruction paused.",
+      "reqReadinessUnknown": "Not yet reported by the drone",
+      "startBlockedReadinessUnknown": "Waiting for the drone to report its capture readiness"
     },
     "reconstructQuality": {
       "label": "Detail level",
@@ -6606,7 +6720,15 @@
     "forgeRetry": "Run again",
     "forgeRetryQueued": "Job re-queued.",
     "forgeRetryFailed": "The compute node refused the re-run.",
-    "forgeCancelFailed": "The compute node did not cancel that job."
+    "forgeCancelFailed": "The compute node did not cancel that job.",
+    "streamUnknown": "Stream state not reported",
+    "utilizationNotReported": "Utilization not reported",
+    "forgeOutputsLoading": "Loading outputs…",
+    "forgeOutputsFailed": "Could not read this job's outputs from the compute node.",
+    "forgeOutputsRetry": "Retry",
+    "relayUnreachable": "Cannot reach the ground station to read its Atlas relay.",
+    "relayChecking": "Checking the Atlas relay…",
+    "forgeNoViewableArtifact": "This job's outputs include no artifact these viewers can show."
   },
   "workstation": {
     "rail": {
@@ -6705,7 +6827,8 @@
     "label": "ਲੇਬਲ",
     "note": "ਨੋਟ",
     "remove": "ਦਿਲਚਸਪੀ ਵਾਲਾ ਸਥਾਨ ਹਟਾਓ",
-    "clear": "ਸਾਰੇ ਦਿਲਚਸਪੀ ਵਾਲੇ ਸਥਾਨ ਸਾਫ਼ ਕਰੋ"
+    "clear": "ਸਾਰੇ ਦਿਲਚਸਪੀ ਵਾਲੇ ਸਥਾਨ ਸਾਫ਼ ਕਰੋ",
+    "clearAllConfirm": "Delete all {count} points of interest? Undo restores them."
   },
   "cockpitQuickSettings": {
     "close": "Close",
@@ -6827,7 +6950,9 @@
         "denied": "Denied",
         "operator_absent": "No operator"
       },
-      "selfReported": "Recorded by your connector, not an independent log. The full record is on the machine running it."
+      "selfReported": "Recorded by your connector, not an independent log. The full record is on the machine running it.",
+      "loading": "Loading activity…",
+      "unavailable": "Activity log unavailable."
     },
     "tools": {
       "title": "Tools",
@@ -6883,13 +7008,14 @@
         "agent_mode_only": "agent-mode (LAN) only",
         "node_not_allowed": "node not in allow-list"
       },
-      "capabilityNote": "A capability check, not a live call. Reach is shown for a LAN (agent-mode) connection with flight enforcement off; a fleet-mode connection additionally hides agent-only tools.",
       "revokedNote": "This credential is revoked; it can no longer call any tool.",
       "allowedNodes": "Allowed nodes",
       "allNodes": "All nodes",
       "expires": "Expires",
       "never": "Never",
-      "lastUsedLabel": "Last used"
+      "lastUsedLabel": "Last used",
+      "expiredNote": "This credential has expired; it can no longer call any tool.",
+      "capabilityNote": "A capability check, not a live call. A machine credential connects through the fleet relay, so agent-only tools are not reachable with it; reach is shown with flight enforcement off."
     },
     "plugins": {
       "title": "Plugins",
@@ -6955,7 +7081,8 @@
         "savePath": "Save it to {path}, then restrict it (chmod 600) — it holds your drones' pairing keys.",
         "allBody": "Run this one command. Every drone's address and key rides inside it — there is no file to save:",
         "fileAlt": "Prefer a file? (very large fleets / a saved setup)",
-        "fileBody": "Download the fleet file, save it to the path below, then use this command instead:"
+        "fileBody": "Download the fleet file, save it to the path below, then use this command instead:",
+        "jsonSecretNote": "This .mcp.json reads {name} from your environment, so the file holds no secret and is safe to commit. Set it in your shell with the line below, and keep that value out of shared source: it holds drone pairing keys."
       },
       "verify": {
         "title": "Check the connection",
@@ -7389,5 +7516,19 @@
       "device": "ਡਿਵਾਈਸ",
       "compute": "ਕੰਪਿਊਟ"
     }
+  },
+  "changelog": {
+    "reactionFailed": "Could not save your reaction. Sign in again and retry."
+  },
+  "desktopUpdate": {
+    "available": "Version {version} is available.",
+    "manualOnly": "This build cannot install updates itself.",
+    "download": "Download",
+    "openReleases": "Open releases",
+    "downloading": "Downloading version {version}…",
+    "ready": "Version {version} is downloaded. Restart to install it.",
+    "install": "Restart and install",
+    "failed": "Update failed: {message}",
+    "dismiss": "Dismiss"
   }
 }

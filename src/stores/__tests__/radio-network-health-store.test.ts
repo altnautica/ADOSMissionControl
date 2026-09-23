@@ -16,7 +16,17 @@ import {
 } from "@/lib/agent/radio-network-events";
 import type { EventsRow } from "@/lib/agent/agent-client/logging";
 import { useRadioNetworkHealthStore } from "../radio-network-health-store";
-import { useAgentConnectionStore } from "../agent-connection-store";
+import type { AgentClient } from "@/lib/agent/client";
+
+const envelope = (data: EventsRow[]) => ({
+  data,
+  page: { next_cursor: null, count: data.length },
+  meta: { source: "logd", v: 1, ts: "now", db_lag_ms: 0 },
+});
+
+function loggingClient(query: ReturnType<typeof vi.fn>): AgentClient {
+  return { logging: { query } } as unknown as AgentClient;
+}
 
 function row(
   kind: string,
@@ -165,28 +175,21 @@ describe("mapRadioNetworkEvents", () => {
 describe("useRadioNetworkHealthStore.loadEvents", () => {
   beforeEach(() => {
     useRadioNetworkHealthStore.getState().clear();
-    useAgentConnectionStore.setState({ client: null });
   });
 
   it("queries the durable store with the radio/network event kinds", async () => {
-    const queryMock = vi.fn().mockResolvedValue({
-      data: [
+    const queryMock = vi.fn().mockResolvedValue(
+      envelope([
         row(
           "radio.reg_reasserted",
           { from_country: "BO", to_country: "US", channel_permitted: true },
           1_000,
         ),
         row("radio.bind_failed", { reason: "no_peer" }, 2_000),
-      ],
-      page: { next_cursor: null, count: 2 },
-      meta: { source: "logd", v: 1, ts: "now", db_lag_ms: 0 },
-    });
-    // The store reaches the logging client through the connection store.
-    useAgentConnectionStore.setState({
-      client: { logging: { query: queryMock } } as never,
-    });
+      ]),
+    );
 
-    await useRadioNetworkHealthStore.getState().loadEvents();
+    await useRadioNetworkHealthStore.getState().loadEvents("drone-a", loggingClient(queryMock));
 
     expect(queryMock).toHaveBeenCalledTimes(1);
     const params = queryMock.mock.calls[0][0];
@@ -194,6 +197,7 @@ describe("useRadioNetworkHealthStore.loadEvents", () => {
     expect(params.event_kind).toEqual([...RADIO_NETWORK_EVENT_KINDS]);
 
     const state = useRadioNetworkHealthStore.getState();
+    expect(state.deviceId).toBe("drone-a");
     expect(state.available).toBe(true);
     expect(state.loading).toBe(false);
     expect(state.recentEvents).toHaveLength(2);
@@ -203,8 +207,9 @@ describe("useRadioNetworkHealthStore.loadEvents", () => {
   });
 
   it("degrades gracefully when there is no logging surface (older agent)", async () => {
-    useAgentConnectionStore.setState({ client: { logging: undefined } as never });
-    await useRadioNetworkHealthStore.getState().loadEvents();
+    await useRadioNetworkHealthStore
+      .getState()
+      .loadEvents("drone-a", { logging: undefined } as unknown as AgentClient);
     const state = useRadioNetworkHealthStore.getState();
     expect(state.available).toBe(false);
     expect(state.recentEvents).toHaveLength(0);
@@ -215,12 +220,9 @@ describe("useRadioNetworkHealthStore.loadEvents", () => {
     const queryMock = vi
       .fn()
       .mockRejectedValue(new Error("logd unavailable: no tier answered"));
-    useAgentConnectionStore.setState({
-      client: { logging: { query: queryMock } } as never,
-    });
 
     await expect(
-      useRadioNetworkHealthStore.getState().loadEvents(),
+      useRadioNetworkHealthStore.getState().loadEvents("drone-a", loggingClient(queryMock)),
     ).resolves.toBeUndefined();
 
     const state = useRadioNetworkHealthStore.getState();
@@ -229,19 +231,25 @@ describe("useRadioNetworkHealthStore.loadEvents", () => {
     expect(state.error).toContain("logd unavailable");
   });
 
+  it("drops the previous node's late feed after a switch", async () => {
+    const pendingA = Promise.withResolvers<ReturnType<typeof envelope>>();
+    const queryA = vi.fn(() => pendingA.promise);
+    const queryB = vi.fn().mockResolvedValue(envelope([]));
+    const store = useRadioNetworkHealthStore.getState();
+
+    const loadA = store.loadEvents("drone-a", loggingClient(queryA));
+    await store.loadEvents("drone-b", loggingClient(queryB));
+    pendingA.resolve(envelope([row("radio.bind_failed", { reason: "no_peer" }, 2_000)]));
+    await loadA;
+
+    const state = useRadioNetworkHealthStore.getState();
+    expect(state.deviceId).toBe("drone-b");
+    expect(state.recentEvents).toHaveLength(0);
+  });
+
   it("clear() resets the feed and availability", async () => {
-    useAgentConnectionStore.setState({
-      client: {
-        logging: {
-          query: vi.fn().mockResolvedValue({
-            data: [row("radio.bind", {})],
-            page: { next_cursor: null, count: 1 },
-            meta: { source: "logd", v: 1, ts: "now", db_lag_ms: 0 },
-          }),
-        },
-      } as never,
-    });
-    await useRadioNetworkHealthStore.getState().loadEvents();
+    const queryMock = vi.fn().mockResolvedValue(envelope([row("radio.bind", {})]));
+    await useRadioNetworkHealthStore.getState().loadEvents("drone-a", loggingClient(queryMock));
     expect(useRadioNetworkHealthStore.getState().recentEvents).toHaveLength(1);
 
     useRadioNetworkHealthStore.getState().clear();

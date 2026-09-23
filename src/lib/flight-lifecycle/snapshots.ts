@@ -11,16 +11,24 @@
 
 import { useChecklistStore } from "@/stores/checklist-store";
 import { usePrearmBufferStore } from "@/stores/prearm-buffer-store";
-import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useGeofenceStore } from "@/stores/geofence-store";
 import type {
   GeofenceSnapshot,
   GeofenceSnapshotZone,
   PreflightSnapshot,
   PreflightChecklistItem,
+  SysStatusData,
 } from "../types";
 
-export function capturePreflightSnapshot(droneId: string): PreflightSnapshot | undefined {
+/**
+ * @param latestSys this drone's latest SYS_STATUS. The shared telemetry
+ *   ring holds only the selected drone, so the caller passes the arming
+ *   drone's own sample.
+ */
+export function capturePreflightSnapshot(
+  droneId: string,
+  latestSys: SysStatusData | undefined,
+): PreflightSnapshot | undefined {
   const checklist = useChecklistStore.getState();
   // The checklist session belongs to one drone. Another drone's session says
   // nothing about this one, so the record carries no checklist at all.
@@ -39,11 +47,6 @@ export function capturePreflightSnapshot(droneId: string): PreflightSnapshot | u
 
   // Drain the prearm STATUSTEXT buffer the bridge has been filling.
   const prearmFailures = usePrearmBufferStore.getState().drain(droneId);
-
-  // SYS_STATUS bitmasks at arm time — these come from the latest sysStatus
-  // ring buffer entry. ArduPilot stores sensor health/present/enabled bitmasks
-  // here per the MAVLink SYS_STATUS message.
-  const latestSys = useTelemetryStore.getState().sysStatus.latest();
 
   // If there's nothing to capture, return undefined to keep the FlightRecord clean.
   const hasAnything =

@@ -46,6 +46,11 @@ export const useDisplayPortStore = create<DisplayPortState>((set, get) => ({
     unsub = protocol.onDisplayPort((op) => {
       const drew = screen.applyOp(op);
       if (op.kind === "options") resolutionIdx = op.resolution;
+      // A released display shows nothing and is no longer a live frame.
+      if (op.kind === "release") {
+        set({ lines: screen.toLines(), lastFrameAt: null });
+        return;
+      }
       // Commit a full frame on DRAW_SCREEN (or an OPTIONS resize).
       if (drew || op.kind === "options") {
         set({

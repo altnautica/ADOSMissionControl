@@ -2,18 +2,22 @@
  * @module GuidedConfirmDialog
  * @description Confirmation dialog for "Fly Here" guided mode commands.
  * Shows target coordinates, distance, ETA, and altitude picker.
- * Requires hold-to-confirm (1.5 seconds) for safety.
+ * Requires hold-to-confirm (1.5 seconds) for safety, then dispatches the
+ * `fly-here` skill so the command passes the same arm gate, debounce and
+ * refusal reporting as every other flight command.
  * @license GPL-3.0-only
  */
 "use client";
 
-import { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useGuidedStore } from "@/stores/guided-store";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useDroneManager } from "@/stores/drone-manager";
+import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
 import { haversineDistance } from "@/lib/telemetry-utils";
-import { superviseGuidedTarget } from "@/lib/skills/guided-target";
-import { useToast } from "@/components/ui/toast";
+import { freshOnly } from "@/lib/telemetry/freshness";
+import { activate, buildSkillContext } from "@/lib/skills";
+import { FLY_HERE_ALTITUDE_M, parseFlyHereAltitude } from "@/lib/skills/builtins/fly-here";
 import { X, Navigation } from "lucide-react";
 
 const HOLD_DURATION_MS = 1500;
@@ -26,80 +30,63 @@ export function GuidedConfirmDialog() {
   // for another one after the selection changes.
   const confirmPending = storedPending?.droneId === selectedDroneId ? storedPending : null;
   const dismissConfirm = useGuidedStore((s) => s.dismissConfirm);
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
-  const { toast } = useToast();
 
-  // Get current drone position for distance/ETA calc
-  const posBuffer = useTelemetryStore((s) => s.position);
-  const latestPos = posBuffer.latest();
+  // Current drone position for distance/ETA, only while it is fresh: a frozen
+  // position would measure the target from where the aircraft used to be.
+  const latestPos = useFreshTelemetry("position");
 
-  const [altitude, setAltitude] = useState(DEFAULT_ALT_M);
-  const [userEditedAlt, setUserEditedAlt] = useState(false);
+  // Kept as typed so a cleared box reads as "no altitude", never as 0 m.
+  const [altitudeText, setAltitudeText] = useState(String(DEFAULT_ALT_M));
   const [holdProgress, setHoldProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const holdTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const holdStartRef = useRef(0);
 
+  const altitude = parseFlyHereAltitude(altitudeText);
+
   // Initialize altitude from current drone altitude ONLY on first open (not on telemetry updates)
   useEffect(() => {
     if (confirmPending) {
-      const pos = useTelemetryStore.getState().position.latest();
+      const pos = freshOnly(useTelemetryStore.getState().position.latest(), Date.now());
       const initAlt = pos ? Math.round(pos.relativeAlt) : DEFAULT_ALT_M;
-      setAltitude(Math.max(initAlt, 2)); // minimum 2m
-      setUserEditedAlt(false);
+      setAltitudeText(
+        String(Math.min(Math.max(initAlt, FLY_HERE_ALTITUDE_M.min), FLY_HERE_ALTITUDE_M.max)),
+      );
       setHoldProgress(0);
       setError(null);
     }
   }, [confirmPending]);
 
-  const hasGps = latestPos != null && latestPos.lat !== 0;
-
-  const distance = useMemo(() => {
-    if (!confirmPending || !latestPos) return 0;
-    return haversineDistance(latestPos.lat, latestPos.lon, confirmPending.lat, confirmPending.lon);
-  }, [confirmPending, latestPos]);
-
-  const eta = useMemo(() => {
-    if (!latestPos || latestPos.groundSpeed < 0.5) return 0;
-    return distance / latestPos.groundSpeed;
-  }, [distance, latestPos]);
+  const hasGps = latestPos !== undefined && latestPos.lat !== 0;
+  const distance =
+    confirmPending && hasGps
+      ? haversineDistance(latestPos.lat, latestPos.lon, confirmPending.lat, confirmPending.lon)
+      : null;
+  const eta =
+    distance !== null && latestPos && latestPos.groundSpeed >= 0.5
+      ? distance / latestPos.groundSpeed
+      : null;
 
   const handleConfirm = useCallback(async () => {
     if (!confirmPending) return;
-
-    const protocol = getSelectedProtocol();
-    if (!protocol?.isConnected) {
-      setError("Not connected");
+    if (altitude === null) {
+      setHoldProgress(0);
+      setError(`Altitude must be ${FLY_HERE_ALTITUDE_M.min}-${FLY_HERE_ALTITUDE_M.max} m`);
       return;
     }
-
-    try {
-      const result = await protocol.guidedGoto(confirmPending.lat, confirmPending.lon, altitude);
-      if (!result.success) {
-        setError(result.message || "Command failed");
-        return;
-      }
-
-      // The overlay shows the target until the vehicle arrives or leaves the
-      // reposition mode; the supervisor owns both.
-      superviseGuidedTarget(
-        {
-          droneId: confirmPending.droneId,
-          lat: confirmPending.lat,
-          lon: confirmPending.lon,
-          alt: altitude,
-          timestamp: Date.now(),
-          purpose: "goto",
-        },
-        protocol,
-        toast,
-      );
-    } catch {
-      setError("Failed to send command");
-    }
-  }, [confirmPending, altitude, getSelectedProtocol, toast]);
+    // The dispatcher surfaces any refusal (no link, not armed, the vehicle's
+    // own rejection). An accepted reposition sets the guided target, which
+    // closes this dialog; otherwise it stays open for another attempt.
+    await activate("fly-here", buildSkillContext(confirmPending.droneId), {
+      lat: confirmPending.lat,
+      lon: confirmPending.lon,
+      altitudeM: altitude,
+    });
+    setHoldProgress(0);
+  }, [confirmPending, altitude]);
 
   const startHold = useCallback(() => {
+    if (altitude === null) return;
     setError(null);
     holdStartRef.current = Date.now();
     holdTimerRef.current = setInterval(() => {
@@ -111,7 +98,7 @@ export function GuidedConfirmDialog() {
         handleConfirm();
       }
     }, 30);
-  }, [handleConfirm]);
+  }, [handleConfirm, altitude]);
 
   const cancelHold = useCallback(() => {
     if (holdTimerRef.current) clearInterval(holdTimerRef.current);
@@ -169,7 +156,7 @@ export function GuidedConfirmDialog() {
         </div>
 
         {/* Distance & ETA */}
-        {hasGps && (
+        {distance !== null && (
           <div className="flex gap-4">
             <div>
               <span className="text-[9px] text-text-tertiary uppercase">Distance</span>
@@ -177,7 +164,7 @@ export function GuidedConfirmDialog() {
                 {distance < 1000 ? `${Math.round(distance)} m` : `${(distance / 1000).toFixed(2)} km`}
               </p>
             </div>
-            {eta > 0 && (
+            {eta !== null && (
               <div>
                 <span className="text-[9px] text-text-tertiary uppercase">ETA</span>
                 <p className="text-xs font-mono text-text-primary">
@@ -190,27 +177,32 @@ export function GuidedConfirmDialog() {
 
         {/* Altitude picker */}
         <div>
-          <label className="text-[9px] text-text-tertiary uppercase">Altitude (m rel)</label>
+          <label className="text-[9px] text-text-tertiary uppercase" htmlFor="fly-here-altitude">
+            Altitude (m rel)
+          </label>
           <input
+            id="fly-here-altitude"
             type="number"
-            value={altitude}
-            onChange={(e) => {
-              setAltitude(Number(e.target.value));
-              setUserEditedAlt(true);
-            }}
-            min={1}
-            max={500}
+            value={altitudeText}
+            onChange={(e) => setAltitudeText(e.target.value)}
+            min={FLY_HERE_ALTITUDE_M.min}
+            max={FLY_HERE_ALTITUDE_M.max}
             step={1}
             className="w-full mt-0.5 px-2 py-1 text-xs font-mono bg-bg-tertiary border border-border-default rounded text-text-primary focus:border-accent-primary focus:outline-none"
           />
+          {altitude === null && (
+            <p className="mt-0.5 text-[10px] text-status-error">
+              Enter an altitude of {FLY_HERE_ALTITUDE_M.min}-{FLY_HERE_ALTITUDE_M.max} m
+            </p>
+          )}
         </div>
 
         {/* Distance warning */}
-        {distance > 500 && (
+        {distance !== null && distance > 500 && (
           <div className="px-2 py-1 bg-status-warning/10 border border-status-warning/30 rounded">
             <span className="text-[10px] text-status-warning">
               Target is {(distance / 1000).toFixed(1)} km away
-              {eta > 120 && ` (ETA ${Math.round(eta / 60)} min)`}
+              {eta !== null && eta > 120 && ` (ETA ${Math.round(eta / 60)} min)`}
             </span>
           </div>
         )}
@@ -231,7 +223,8 @@ export function GuidedConfirmDialog() {
           onMouseLeave={cancelHold}
           onTouchStart={startHold}
           onTouchEnd={cancelHold}
-          className="relative w-full h-8 rounded bg-accent-primary/20 border border-accent-primary/40 overflow-hidden cursor-pointer select-none"
+          disabled={altitude === null}
+          className="relative w-full h-8 rounded bg-accent-primary/20 border border-accent-primary/40 overflow-hidden cursor-pointer select-none disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {/* Progress fill */}
           <div

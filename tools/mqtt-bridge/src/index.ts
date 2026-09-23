@@ -11,15 +11,18 @@ if (!CONVEX_URL) {
 }
 
 const DEBOUNCE_MS = 3000;
+/** Last forward time per `deviceId + topic`, so a busy telemetry topic never
+ * starves the same device's status topic. */
 const lastSent = new Map<string, number>();
 
-function shouldSend(deviceId: string): boolean {
+function shouldSend(deviceId: string, topic: string): boolean {
+  const key = `${deviceId}\u0000${topic}`;
   const now = Date.now();
-  const last = lastSent.get(deviceId) ?? 0;
+  const last = lastSent.get(key) ?? 0;
   if (now - last < DEBOUNCE_MS) return false;
-  lastSent.set(deviceId, now);
+  lastSent.set(key, now);
   // Evict oldest entry if map grows too large (prevent unbounded memory)
-  if (lastSent.size > 1000) {
+  if (lastSent.size > 2000) {
     const oldest = lastSent.entries().next().value;
     if (oldest) lastSent.delete(oldest[0]);
   }
@@ -36,7 +39,8 @@ async function forwardToConvex(
     const res = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ deviceId, topic, ...payload }),
+      // The topic names the device; a payload field never overrides it.
+      body: JSON.stringify({ ...payload, deviceId, topic }),
       signal: AbortSignal.timeout(5000),
     });
     if (!res.ok) {
@@ -77,7 +81,7 @@ function start(): void {
     if (parts.length < 3) return;
 
     const deviceId = parts[1];
-    if (!shouldSend(deviceId)) return;
+    if (!shouldSend(deviceId, topic)) return;
 
     let payload: Record<string, unknown>;
     try {

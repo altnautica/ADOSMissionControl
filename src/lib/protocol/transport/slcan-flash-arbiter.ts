@@ -6,7 +6,7 @@
  * the chip family (see `lib/board-profiles/family.ts`):
  *
  *   - F4 (or unknown): the FC's CAN driver only routes to the SLCAN
- *     pipe on boot. We set the four `CAN_SLCAN_*` params, fire the storage
+ *     pipe on boot. We set the `CAN_SLCAN_*` params, fire the storage
  *     commit, reboot the FC, drop the MAVLink transport, and poll
  *     `navigator.serial.getPorts()` for the same port to re-enumerate
  *     before opening it with the SLCAN codec.
@@ -45,6 +45,9 @@ export interface EnterSlcanOpts {
   bitrate: number;
   timeoutSec: number;
 }
+
+/** CAN_SLCAN_TIMOUT is stored as an INT8 on ArduPilot (range 0..127 s). */
+export const SLCAN_TIMEOUT_MAX_S = 127;
 
 export interface SlcanSession {
   slcanTransport: SlcanTransport;
@@ -131,6 +134,11 @@ export async function enterSlcanMode(
   opts: EnterSlcanOpts,
 ): Promise<SlcanSession> {
   const { protocol, droneId, bus, bitrate, timeoutSec } = opts;
+  if (!Number.isInteger(timeoutSec) || timeoutSec < 0 || timeoutSec > SLCAN_TIMEOUT_MAX_S) {
+    throw new Error(
+      `SLCAN timeout must be an integer 0..${SLCAN_TIMEOUT_MAX_S} s (CAN_SLCAN_TIMOUT is an INT8)`,
+    );
+  }
 
   const transport = (protocol as unknown as { transport?: Transport }).transport;
   const savedPort = transport ? getSerialPort(transport) : null;
@@ -141,17 +149,25 @@ export async function enterSlcanMode(
   const store = useSlcanModeStore.getState();
   store.beginEntering({ droneId, bus, bitrate, timeoutSec });
 
-  // 1. Program the four SLCAN params.
-  try {
-    await protocol.setParameter("CAN_SLCAN_CPORT", bus);
-    await protocol.setParameter("CAN_SLCAN_SERNUM", 0);
-    await protocol.setParameter("CAN_SLCAN_TIMOUT", timeoutSec);
-    await protocol.setParameter("CAN_SLCAN_OVRIDE", 1);
-  } catch (err) {
-    return rollback(
-      protocol,
-      `Failed to program SLCAN params: ${err instanceof Error ? err.message : String(err)}`,
-    );
+  // 1. Program the SLCAN params. A refused write (success:false) aborts
+  //    the entry exactly like a thrown one: continuing would leave the FC
+  //    routing somewhere other than what the session assumes.
+  const writes: ReadonlyArray<readonly [string, number]> = [
+    ["CAN_SLCAN_CPORT", bus],
+    ["CAN_SLCAN_SERNUM", 0],
+    ["CAN_SLCAN_TIMOUT", timeoutSec],
+  ];
+  for (const [name, value] of writes) {
+    let failure: string | null = null;
+    try {
+      const result = await protocol.setParameter(name, value);
+      if (!result.success) failure = result.message || "rejected by the FC";
+    } catch (err) {
+      failure = err instanceof Error ? err.message : String(err);
+    }
+    if (failure !== null) {
+      return rollback(protocol, `Failed to set ${name}=${value}: ${failure}`);
+    }
   }
 
   // 2. Fire-and-forget flash commit (ArduPilot does not reliably ACK).

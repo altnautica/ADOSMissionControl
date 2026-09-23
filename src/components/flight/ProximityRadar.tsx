@@ -81,8 +81,11 @@ export function ProximityRadar() {
   if (!view) return null;
 
   const { reference, sectors, closestCm } = view;
+  // The label uses the same bands as the sectors: beyond the caution range the
+  // nearest return is not a hazard and reads as clear.
+  const nearest = closestCm !== null && closestCm <= CAUTION_CM ? closestCm : null;
   const labelColor =
-    closestCm === null ? "var(--good)" : closestCm < DANGER_CM ? "var(--crit)" : "var(--warn)";
+    nearest === null ? "var(--good)" : nearest < DANGER_CM ? "var(--crit)" : "var(--warn)";
 
   // No positioning wrapper: the cockpit zone container places this. It used to
   // carry `zone br d-std`, anchoring it to the same bottom-right coordinates
@@ -108,7 +111,7 @@ export function ProximityRadar() {
         </text>
       </svg>
       <div className="rlabel lbl" style={{ color: labelColor }}>
-        {closestCm === null ? "clear" : `nearest ${(closestCm / 100).toFixed(1)} m`}
+        {nearest === null ? "clear" : `nearest ${(nearest / 100).toFixed(1)} m`}
       </div>
     </div>
   );

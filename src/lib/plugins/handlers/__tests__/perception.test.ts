@@ -22,6 +22,7 @@ import {
   type VisionDetectionBatch,
 } from "@/stores/vision-detections-store";
 import type { PluginRpcEnvelope } from "@/lib/plugins/types";
+import { testMount } from "./test-mount";
 
 const DEVICE = "d1";
 
@@ -45,6 +46,8 @@ const BATCH: Omit<VisionDetectionBatch, "receivedAt"> = {
   ],
 };
 
+const MOUNT = testMount();
+
 function makeCtx(
   capability: string,
   postEvent = vi.fn(),
@@ -53,6 +56,7 @@ function makeCtx(
     pluginId: "com.altnautica.demo",
     capability,
     postEvent,
+    mount: MOUNT,
     claims: null,
   };
 }
@@ -113,7 +117,7 @@ describe("perception.health", () => {
     expect(res.feed).toBe("fresh");
     expect(res.session).toBe("live");
     expect(typeof res.ageMs).toBe("number");
-    // A single batch is too sparse to call a rate honestly (Rule 44).
+    // A single batch is too sparse to call a rate honestly (no fabricated reading).
     expect(res.batchesPerSecond).toBeNull();
     expect(res.boundNode).toBeNull();
   });

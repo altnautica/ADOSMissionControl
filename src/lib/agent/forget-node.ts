@@ -15,12 +15,17 @@
  *      gated the durable removal on a `local-nodes-store` entry the cloud drone
  *      doesn't have), so the row came back instantly.
  *
- * `forgetNode` clears EVERY source in the right order so the registry row GCs
- * immediately and nothing re-adds it:
+ * `forgetNode` removes the cloud row FIRST and only then clears every local
+ * source, in the right order so the registry row GCs immediately and nothing
+ * re-adds it. A cloud row that cannot be removed (mutation failed, or Convex
+ * unreachable) aborts the forget with the node left exactly as it was: a
+ * locally-forgotten node whose cloud row survives re-feeds from
+ * `listMyDrones` and reappears, still paired, so reporting it removed would
+ * be false. The local steps:
+ *   - drop the pairing-store row;
  *   - disconnect the live agent connection if it is this node (cancels polling);
  *   - intentionally remove any managed FC under this node id (so the
  *     unexpected-disconnect → auto-reconnect path does NOT fire);
- *   - delete the Convex cloud row (mutation) + drop the pairing-store row;
  *   - release the agent's LAN pairing + forget the local credential;
  *   - drop both registry presence sources + the command-fleet status row so the
  *     projection re-run finds nothing.
@@ -58,20 +63,47 @@ export interface ForgetNodeOptions {
   unpairMutation?: UnpairDroneMutation;
 }
 
+/** The outcome of a forget. `cloudUnavailable`: the node is cloud-paired and
+ * Convex is not reachable; `cloudFailed`: the unpair mutation was rejected. In
+ * both cases nothing was forgotten. */
+export type ForgetNodeResult =
+  | { ok: true }
+  | { ok: false; reason: "cloudUnavailable" }
+  | { ok: false; reason: "cloudFailed"; message: string };
+
 /**
  * Forget the node identified by the canonical `node:<deviceId>` id across every
- * store + the agent + Convex. Idempotent and best-effort: a missing source is a
- * no-op, an unreachable agent still forgets locally, a failed Convex mutation
- * still drops local presence. Returns once the synchronous store mutations have
- * run (the agent unpair + Convex mutation are fire-and-forget).
+ * store + the agent + Convex. Idempotent: a missing source is a no-op, and an
+ * unreachable agent still forgets locally. Resolves once the cloud row is gone
+ * and the local stores are cleared, or with the reason the cloud row could not
+ * be removed (in which case nothing was cleared).
  */
-export function forgetNode(
+export async function forgetNode(
   nodeId: string,
   options: ForgetNodeOptions = {},
-): void {
+): Promise<ForgetNodeResult> {
   const deviceId = deviceIdFromNodeId(nodeId);
 
-  // 1. Disconnect the live agent connection if it is focused on this node, so
+  // 1. Cloud: delete the Convex row first, so the reactive `listMyDrones`
+  // query stops returning it (otherwise CloudDroneBridge + useFleetSync re-add
+  // it instantly), then drop the pairing-store row (keyed on the Convex doc
+  // id). A failure leaves every source untouched.
+  const convexId = options.convexId ?? null;
+  if (convexId) {
+    if (!options.unpairMutation) return { ok: false, reason: "cloudUnavailable" };
+    try {
+      await options.unpairMutation({ droneId: convexId as never });
+    } catch (err) {
+      return {
+        ok: false,
+        reason: "cloudFailed",
+        message: err instanceof Error ? err.message : String(err),
+      };
+    }
+    usePairingStore.getState().removePairedDrone(convexId);
+  }
+
+  // 2. Disconnect the live agent connection if it is focused on this node, so
   // the poll loop stops and the agent stores reset. `nodeDeviceId` is the
   // device id the active connection was opened under (local or cloud).
   const conn = useAgentConnectionStore.getState();
@@ -79,7 +111,7 @@ export function forgetNode(
     conn.disconnect();
   }
 
-  // 2. Intentionally remove any managed FC under this node id. `disconnectDrone`
+  // 3. Intentionally remove any managed FC under this node id. `disconnectDrone`
   // marks the teardown intentional, so the unexpected-disconnect listener that
   // drives auto-reconnect does NOT fire — this is how we "cancel reconnect"
   // without reaching the per-hook ReconnectManager. The FC id IS the node id
@@ -91,22 +123,6 @@ export function forgetNode(
 
   // Forget any per-node display metadata (name override, etc.).
   useDroneMetadataStore.getState().deleteProfile(nodeId);
-
-  // 3. Cloud: delete the Convex row so the reactive `listMyDrones` query stops
-  // returning it (otherwise CloudDroneBridge + useFleetSync re-add it instantly)
-  // and drop the pairing-store row. The pairing-store keys on the Convex doc id.
-  const convexId = options.convexId ?? null;
-  if (convexId) {
-    usePairingStore.getState().removePairedDrone(convexId);
-    if (options.unpairMutation) {
-      void options
-        .unpairMutation({ droneId: convexId as never })
-        .catch(() => {
-          // Network / auth failure — the local presence drop below still
-          // removes the card from view; a later query refresh reconciles.
-        });
-    }
-  }
 
   // 4. LAN: release the agent's pairing (so it returns to advertising a fresh
   // code) and forget the local credential. Best-effort — an offline agent must
@@ -126,7 +142,7 @@ export function forgetNode(
   // 5. Registry: drop BOTH presence sources + the command-fleet status row NOW,
   // so the FleetProjectionBridge re-run finds nothing and the card does not
   // flash back. dropPresence GCs the registry entry once it has no presence
-  // source and no attached FC (already detached in step 2).
+  // source and no attached FC (already detached in step 3).
   const registry = useNodeRegistryStore.getState();
   registry.dropPresence(nodeId, "local");
   registry.dropPresence(nodeId, "cloud");
@@ -135,4 +151,5 @@ export function forgetNode(
     fleet.removeCloudStatuses([deviceId]);
     fleet.clearTelemetry([deviceId]);
   }
+  return { ok: true };
 }

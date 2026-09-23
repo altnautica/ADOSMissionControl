@@ -84,6 +84,7 @@ export function PerceptionTierCard({
   const npuTops = useAgentCapabilitiesStore((s) => s.npuTops);
   const hasAccelerator = useAgentCapabilitiesStore((s) => s.hasAccelerator);
   const compute = useAgentCapabilitiesStore((s) => s.compute);
+  const capsLoaded = useAgentCapabilitiesStore((s) => s.loaded);
   const nodes = useLocalNodesStore((s) => s.nodes);
 
   // The pinned workstation is the persisted config link, not local state, so it
@@ -102,10 +103,19 @@ export function PerceptionTierCard({
   const effectiveAddr = pendingAddr ?? storedAddr;
 
   const tier: Tier = perceptionTier ?? "unknown";
-  // Fall back to the compute block when the top-level mirrors are absent.
-  const acceleratorPresent =
-    hasAccelerator ?? (compute.npu_available || compute.gpu_available);
+  // Fall back to the compute block when the top-level mirrors are absent. Until
+  // the first capabilities payload lands the compute block is the empty
+  // default, which is not a report of "no accelerator".
+  const acceleratorPresent: boolean | null =
+    hasAccelerator ??
+    (capsLoaded ? compute.npu_available || compute.gpu_available : null);
   const tops = npuTops ?? compute.npu_tops;
+  let acceleratorLine: string;
+  if (acceleratorPresent === null) acceleratorLine = t("acceleratorNotReported");
+  else if (!acceleratorPresent) acceleratorLine = t("acceleratorNone");
+  // A GPU-only node reports no NPU TOPS; never render that as "0.0 TOPS".
+  else if (tops > 0) acceleratorLine = t("acceleratorPresent", { tops: tops.toFixed(1) });
+  else acceleratorLine = t("acceleratorPresentNoTops");
 
   const workstations = useMemo(
     () => nodes.filter((n) => n.profile === "workstation"),
@@ -157,9 +167,7 @@ export function PerceptionTierCard({
       <div className="mb-4 flex items-center gap-2 rounded border border-border-default/60 bg-bg-tertiary/40 px-3 py-2">
         <Cpu size={12} className="flex-none text-text-tertiary" aria-hidden="true" />
         <span className="text-[11px] text-text-secondary">
-          {acceleratorPresent
-            ? t("acceleratorPresent", { tops: tops.toFixed(1) })
-            : t("acceleratorNone")}
+          {acceleratorLine}
         </span>
       </div>
 

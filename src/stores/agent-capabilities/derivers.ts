@@ -122,15 +122,6 @@ export function derivePairingCodeExpiresAt(
   return undefined;
 }
 
-export function deriveMavlinkWsUrlPrev(
-  caps: unknown,
-): string | null | undefined {
-  const raw = (caps as { mavlinkWsUrlPrev?: unknown }).mavlinkWsUrlPrev;
-  if (typeof raw === "string" && raw.length > 0) return raw;
-  if (raw === null) return null;
-  return undefined;
-}
-
 /**
  * Manual-connection URL block. Forward-permissive: undefined keeps the
  * prior value, a partial block is accepted as-is so the GCS can render

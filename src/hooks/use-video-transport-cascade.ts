@@ -159,7 +159,7 @@ export function useVideoTransportCascade(opts: CascadeOpts): CascadeResult {
       };
     }
 
-    // Part I P0-2 + P0-3: per-run cancellation token. Each effect invocation
+    // Per-run cancellation token. Each effect invocation
     // gets its OWN local `cancelled` flag (closed-over by runCascade) plus
     // its own AbortController. The cleanup function flips THIS run's token,
     // not a shared ref, so a previous run can never reset the new run's

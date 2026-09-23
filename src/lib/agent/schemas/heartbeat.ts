@@ -110,20 +110,26 @@ export const AgentVersionInfoSchema = z
 
 // ── System resources ────────────────────────────────────
 
+/**
+ * `/api/system`. Every numeric reading is `OptionalNumberLike`: the agent's
+ * degraded body sends an explicit `null` for each reading it could not take,
+ * and `NumberLike.optional()` only short-circuits `undefined`, so a null would
+ * reach the coercion and come out as a measured-looking 0.
+ */
 export const SystemResourcesRawSchema = z
   .object({
-    cpu_percent: NumberLike.optional(),
-    memory_percent: NumberLike.optional(),
-    memory_used_mb: NumberLike.optional(),
-    memory_total_mb: NumberLike.optional(),
-    memory_available_mb: NumberLike.optional(),
-    memory_cache_mb: NumberLike.optional(),
-    swap_total_mb: NumberLike.optional(),
-    swap_used_mb: NumberLike.optional(),
-    swap_percent: NumberLike.optional(),
-    disk_percent: NumberLike.optional(),
-    disk_used_gb: NumberLike.optional(),
-    disk_total_gb: NumberLike.optional(),
+    cpu_percent: OptionalNumberLike,
+    memory_percent: OptionalNumberLike,
+    memory_used_mb: OptionalNumberLike,
+    memory_total_mb: OptionalNumberLike,
+    memory_available_mb: OptionalNumberLike,
+    memory_cache_mb: OptionalNumberLike,
+    swap_total_mb: OptionalNumberLike,
+    swap_used_mb: OptionalNumberLike,
+    swap_percent: OptionalNumberLike,
+    disk_percent: OptionalNumberLike,
+    disk_used_gb: OptionalNumberLike,
+    disk_total_gb: OptionalNumberLike,
     temperature: NullableNumber.optional(),
     temperatures: z.record(z.string(), z.number()).optional(),
   })
@@ -161,13 +167,12 @@ export const ServiceSummarySchema = z
     state: z.string().optional(),
     status: z.string().optional(),
     pid: z.union([z.number(), z.null()]).optional(),
-    cpu_percent: NumberLike.optional(),
-    cpuPercent: NumberLike.optional(),
-    memory_mb: NumberLike.optional(),
-    memoryMb: NumberLike.optional(),
-    uptime_seconds: NumberLike.optional(),
-    uptimeSeconds: NumberLike.optional(),
-    last_transition: NumberLike.optional(),
+    cpu_percent: OptionalNumberLike,
+    cpuPercent: OptionalNumberLike,
+    memory_mb: OptionalNumberLike,
+    memoryMb: OptionalNumberLike,
+    uptime_seconds: OptionalNumberLike,
+    uptimeSeconds: OptionalNumberLike,
     task_done: z.boolean().optional(),
     category: z.enum(["core", "hardware", "suite", "ondemand"]).optional(),
   })
@@ -233,7 +238,7 @@ const FullStatusServiceSchema = z
     name: z.string(),
     state: z.string(),
     task_done: z.boolean().optional(),
-    uptimeSeconds: NumberLike.optional(),
+    uptimeSeconds: OptionalNumberLike,
   })
   .passthrough();
 

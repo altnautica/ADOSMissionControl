@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { cn } from "@/lib/utils";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -45,14 +46,16 @@ function buildSparklinePoints(samples: VibrationData[], key: keyof Pick<Vibratio
 
 /**
  * XYZ vibration gauges with warning/critical threshold lines
- * and a 30-minute sparkline history.
+ * and a 30-minute sparkline history. Only a fresh sample is drawn: vibration
+ * that stopped arriving reads as no data, never as its last level.
  */
 export function VibrationGauges({ className }: { className?: string }) {
   const vibration = useTelemetryStore((s) => s.vibration);
-  const _v = useTelemetryStore((s) => s._version);
-  const latest = vibration.latest();
+  // Keyed on the newest VIBRATION sample, which arrives at 1-2 Hz, not on the
+  // store-wide version that bumps for every telemetry channel.
+  const newestAt = useTelemetryStore((s) => s.vibration.latest()?.timestamp ?? 0);
+  const latest = useFreshTelemetry("vibration");
 
-  // Memoize sparkline data based on version counter
   const sparklines = useMemo(() => {
     const samples = vibration.toArray();
     if (samples.length < 2) return null;
@@ -61,13 +64,18 @@ export function VibrationGauges({ className }: { className?: string }) {
       y: buildSparklinePoints(samples, "vibrationY"),
       z: buildSparklinePoints(samples, "vibrationZ"),
     };
+    // newestAt is the change signal for the mutable ring buffer.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [_v]);
+  }, [vibration, newestAt]);
 
   if (!latest) {
+    const heard = vibration.latest() !== undefined;
     return (
-      <div className={cn("text-[10px] text-text-tertiary", className)}>
-        No vibration data
+      <div
+        className={cn("text-[10px]", heard ? "text-status-error" : "text-text-tertiary", className)}
+        data-telemetry-stale={heard || undefined}
+      >
+        {heard ? "Vibration · no current data" : "No vibration data"}
       </div>
     );
   }

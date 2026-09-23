@@ -142,6 +142,29 @@ describe("cloud command sink onQueued", () => {
   });
 });
 
+describe("agent-lane mode names", () => {
+  it("sends the agent's PX4 name for a GCS mode and refuses one it has no name for", async () => {
+    const enqueue = vi.fn(async (_row: { args: unknown }) => ({
+      commandId: "cmd-7",
+    }));
+    const reach = resolveNodeCommandReach(CLOUD_NODE, {
+      enqueueCloudCommand: enqueue,
+      agentFirmware: "px4",
+    });
+
+    await reach.sink!.setFlightMode("ALT_HOLD");
+    await reach.sink!.setFlightMode("POSHOLD");
+    expect(enqueue.mock.calls.map(([row]) => row.args)).toEqual([
+      { cmd: "mode", args: ["ALTCTL"] },
+      { cmd: "mode", args: ["POSCTL"] },
+    ]);
+
+    const orbit = await reach.sink!.setFlightMode("ORBIT");
+    expect(orbit.success).toBe(false);
+    expect(enqueue).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe("kill / pause / resume are carried, not refused", () => {
   it.each([
     ["killSwitch", "killSwitch"],

@@ -14,6 +14,9 @@ export const MSP = {
   MSP_BOARD_INFO: 4,
   MSP_BUILD_INFO: 5,
 
+  // Calibration state (iNav: accel six-point flags, accel/mag zero and gain)
+  MSP_CALIBRATION_DATA: 14,
+
   // Name (deprecated in MSP 1.45, replaced by MSP2_GET_TEXT/SET_TEXT)
   MSP_NAME: 10,
   MSP_SET_NAME: 11,
@@ -218,16 +221,16 @@ export const MSP2_TEXT_TYPE = {
 
 // ── Feature Flag Bitmask ───────────────────────────────────
 
+/** Betaflight features_e bit positions (config/feature.h); bit 1 is unused. */
 export const FEATURE_FLAG = {
   RX_PPM: 0,
-  VBAT: 1,
   INFLIGHT_ACC_CAL: 2,
   RX_SERIAL: 3,
   MOTOR_STOP: 4,
   SERVO_TILT: 5,
   SOFTSERIAL: 6,
   GPS: 7,
-  SONAR: 9,
+  RANGEFINDER: 9,
   TELEMETRY: 10,
   '3D': 12,
   RX_PARALLEL_PWM: 13,
@@ -242,6 +245,7 @@ export const FEATURE_FLAG = {
   RX_SPI: 25,
   ESC_SENSOR: 27,
   ANTI_GRAVITY: 28,
+  /** Removed in 4.3 (MSP API 1.44). */
   DYNAMIC_FILTER: 29,
 } as const;
 

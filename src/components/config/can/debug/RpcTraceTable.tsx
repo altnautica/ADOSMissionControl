@@ -93,7 +93,8 @@ export function RpcTraceTable() {
   const version = useDroneCanRpcTraceStore((s) => s._version);
 
   const [filters, setFilters] = useState<LocalFilters>(INITIAL_FILTERS);
-  const [expanded, setExpanded] = useState<number | null>(null);
+  // Keyed by the event object itself: row indices shift as events arrive.
+  const [expanded, setExpanded] = useState<RpcEvent | null>(null);
   const parentRef = useRef<HTMLDivElement | null>(null);
 
   const visible = useMemo(() => {
@@ -112,8 +113,8 @@ export function RpcTraceTable() {
     overscan: 12,
   });
 
-  const onClickRow = useCallback((idx: number) => {
-    setExpanded((prev) => (prev === idx ? null : idx));
+  const onClickRow = useCallback((ev: RpcEvent) => {
+    setExpanded((prev) => (prev === ev ? null : ev));
   }, []);
 
   return (
@@ -179,7 +180,7 @@ export function RpcTraceTable() {
           <div style={{ height: virt.getTotalSize(), position: "relative" }}>
             {virt.getVirtualItems().map((vi) => {
               const ev = visible[vi.index];
-              const isOpen = expanded === vi.index;
+              const isOpen = expanded === ev;
               const tRel = firstT ? ev.t - firstT : 0;
               return (
                 <div
@@ -194,7 +195,7 @@ export function RpcTraceTable() {
                   data-rpc-row="true"
                 >
                   <button
-                    onClick={() => onClickRow(vi.index)}
+                    onClick={() => onClickRow(ev)}
                     className={cn(
                       "grid grid-cols-[60px_24px_140px_70px_60px_60px] gap-x-2 px-2 py-0.5 text-[11px] font-mono w-full text-left hover:bg-bg-tertiary border-b border-border-default",
                       !ev.ok && "text-status-error",

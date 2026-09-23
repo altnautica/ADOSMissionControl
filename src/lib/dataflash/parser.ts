@@ -22,12 +22,12 @@ const FMT_MSG_TYPE = 0x80;
 /** Header (HEAD1 + HEAD2 + type byte) length in bytes. */
 const HEADER_LEN = 3;
 
-/** FMT message payload length, fixed by the spec at 86 bytes (89 with header). */
-const FMT_PAYLOAD_LEN = 86;
+/** FMT message length including the 3-byte frame header: an 86-byte payload. */
+const FMT_MSG_LEN = 89;
 
 export interface FormatDef {
   type: number;
-  /** Total payload length declared by the FMT message (excludes the 3-byte frame header). */
+  /** Message length declared by the FMT record, including the 3-byte frame header. */
   length: number;
   /** Message name (e.g. `"GPS"`, `"ATT"`, `"FMT"`). */
   name: string;
@@ -35,6 +35,12 @@ export interface FormatDef {
   format: string;
   /** Field labels in declaration order, length matches `format.length`. */
   labels: string[];
+  /**
+   * False when the format string holds a character this reader cannot decode,
+   * or its fields overrun the declared length. Such frames are stepped over by
+   * their declared length and never decoded.
+   */
+  decodable: boolean;
 }
 
 /** A decoded record. Field names match the FMT label list. */
@@ -53,14 +59,25 @@ export interface DataflashLog {
   resyncSkipped: number;
 }
 
+export interface ParseDataflashOptions {
+  /**
+   * Decode and keep only these message names. Other frames are stepped over
+   * by their declared length without being decoded. FMT rows are always
+   * decoded (they describe the rest of the file) and PARM rows always feed
+   * `params`; either is kept in `messages` only when named here.
+   */
+  only?: ReadonlySet<string>;
+}
+
 /**
  * Parse a complete ArduPilot DataFlash binary log.
  *
  * The function tolerates the typical "head bytes lost" gap (drops up to a few
- * bytes when re-syncing) but does not silently swallow malformed FMT records —
- * unknown format characters in an FMT row throw immediately.
+ * bytes when re-syncing). A message type whose FMT this reader cannot decode
+ * is skipped frame by frame; the rest of the log still parses.
  */
-export function parseDataflashLog(buffer: Uint8Array): DataflashLog {
+export function parseDataflashLog(buffer: Uint8Array, options: ParseDataflashOptions = {}): DataflashLog {
+  const { only } = options;
   const view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
   const formats = new Map<number, FormatDef>();
   const params = new Map<string, number>();
@@ -75,10 +92,11 @@ export function parseDataflashLog(buffer: Uint8Array): DataflashLog {
   // We pre-register it so the loop below can decode it uniformly.
   const FMT_FORMAT_DEF: FormatDef = {
     type: FMT_MSG_TYPE,
-    length: FMT_PAYLOAD_LEN,
+    length: FMT_MSG_LEN,
     name: "FMT",
     format: "BBnNZ",
     labels: ["Type", "Length", "Name", "Format", "Columns"],
+    decodable: true,
   };
   formats.set(FMT_MSG_TYPE, FMT_FORMAT_DEF);
 
@@ -106,6 +124,12 @@ export function parseDataflashLog(buffer: Uint8Array): DataflashLog {
     }
 
     const payloadOfs = ofs + HEADER_LEN;
+    const keep = def.decodable && (!only || only.has(def.name));
+    const alwaysDecoded = def.decodable && (msgType === FMT_MSG_TYPE || def.name === "PARM");
+    if (!keep && !alwaysDecoded) {
+      ofs += def.length;
+      continue;
+    }
     const record = decodePayload(view, payloadOfs, def);
 
     if (msgType === FMT_MSG_TYPE) {
@@ -116,16 +140,13 @@ export function parseDataflashLog(buffer: Uint8Array): DataflashLog {
         name: String(record.Name),
         format: String(record.Format),
         labels: String(record.Columns).split(",").filter(Boolean),
+        decodable: false,
       };
-      // Sanity-check the format string before registering.
-      try {
-        formatStringWidth(fmt.format);
-      } catch (err) {
-        throw new Error(
-          `[dataflash] FMT '${fmt.name}' (type=${fmt.type}) declares unknown format chars: ${(err as Error).message}`,
-        );
-      }
-      formats.set(fmt.type, fmt);
+      const width = formatStringWidth(fmt.format);
+      fmt.decodable = width !== undefined && width <= fmt.length - HEADER_LEN;
+      // The bootstrap FMT def stays authoritative, and a length shorter than
+      // the frame header could never be stepped over.
+      if (fmt.type !== FMT_MSG_TYPE && fmt.length >= HEADER_LEN) formats.set(fmt.type, fmt);
     } else if (def.name === "PARM") {
       // PARM messages: { Name, Value [, Default] }. Capture latest value per name.
       const name = String(record.Name);
@@ -133,14 +154,15 @@ export function parseDataflashLog(buffer: Uint8Array): DataflashLog {
       if (name) params.set(name, value);
     }
 
-    // Stash by name. We always include FMT rows too — useful for debugging.
-    let bucket = messages.get(def.name);
-    if (!bucket) {
-      bucket = [];
-      messages.set(def.name, bucket);
+    // Stash by name. Without a filter FMT rows are kept too — useful for debugging.
+    if (keep) {
+      let bucket = messages.get(def.name);
+      if (!bucket) {
+        bucket = [];
+        messages.set(def.name, bucket);
+      }
+      bucket.push(record);
     }
-    bucket.push(record);
-
     ofs += def.length;
   }
 

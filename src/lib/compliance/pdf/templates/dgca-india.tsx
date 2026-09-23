@@ -97,18 +97,18 @@ export function DgcaIndiaTemplate({ record, operator, aircraft, generatedAt }: D
               <Row label="Start (UTC)" value={fmtDateTime(record.startTime ?? record.date)} />
               <Row label="End (UTC)" value={fmtDateTime(record.endTime)} />
               <Row label="Duration" value={fmtDuration(record.duration)} />
-              <Row label="Distance" value={`${(record.distance / 1000).toFixed(2)} km`} />
+              <Row label="Distance" value={record.distance !== undefined ? `${(record.distance / 1000).toFixed(2)} km` : "—"} />
             </View>
             <View style={styles.col}>
               <Row label="Takeoff coords" value={fmtCoord(record.takeoffLat, record.takeoffLon)} />
               <Row label="Landing coords" value={fmtCoord(record.landingLat, record.landingLon)} />
-              <Row label="Max altitude (above home)" value={`${record.maxAlt} m`} />
-              <Row label="Max speed" value={`${record.maxSpeed} m/s`} />
-              <Row label="Battery used" value={`${record.batteryUsed}%`} />
+              <Row label="Max altitude (above home)" value={record.maxAlt !== undefined ? `${record.maxAlt} m` : "—"} />
+              <Row label="Max speed" value={record.maxSpeed !== undefined ? `${record.maxSpeed} m/s` : "—"} />
+              <Row label="Battery used" value={record.batteryUsed !== undefined ? `${record.batteryUsed}%` : "—"} />
               <Row label="Status" value={record.status} />
             </View>
           </View>
-          {record.maxAlt > 120 && (
+          {record.maxAlt !== undefined && record.maxAlt > 120 && (
             <View style={styles.warningBox}>
               <Text>
                 ⚠ Max altitude above the launch point exceeded 120 m. DGCA Drone Rules 2021 limit

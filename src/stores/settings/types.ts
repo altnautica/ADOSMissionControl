@@ -25,6 +25,7 @@ import type {
   CockpitLayout,
   CockpitWidgetPlacement,
   Loadout,
+  SuggestedBinding,
 } from "./keybindings-slice";
 
 export interface SettingsStoreState {
@@ -264,7 +265,14 @@ export interface SettingsStoreState {
   createLoadout: (name: string, fromId?: string) => string;
   deleteLoadout: (id: string) => void;
   renameLoadout: (id: string, name: string) => void;
-  resetLoadoutToDefaults: () => void;
+  /** Reset one loadout's slots to the factory bindings (keeps id, name, layout). */
+  resetLoadoutToDefaults: (loadoutId: string) => void;
+  /** Offer a plugin skill's suggested binding to a loadout, once per skill. */
+  seedSuggestedBinding: (
+    loadoutId: string,
+    skillId: string,
+    binding: SuggestedBinding,
+  ) => void;
   setLoadoutLayout: (
     loadoutId: string,
     partial: Partial<CockpitLayout>,

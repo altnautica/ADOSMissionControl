@@ -1,7 +1,7 @@
 /**
  * @license GPL-3.0-only
  *
- * The reconstruction-honesty badge (Rule 44): a `mock` reconstruction wears an
+ * The reconstruction-honesty badge (no fabricated reading): a `mock` reconstruction wears an
  * unmissable warning chip, a real backend wears a calm chip naming it, and an
  * unknown/absent backend shows nothing. Also covers `backendOf` (the cloud
  * metadata reader) and the `isMockBackend` predicate.

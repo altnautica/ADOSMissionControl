@@ -151,9 +151,6 @@ export interface AgentCapabilitiesState {
   /** Agent-authoritative pairing-code expiry (epoch seconds). Null
    * when the agent has no pending code or hasn't reported one. */
   pairingCodeExpiresAt: number | null;
-  /** Previous MAVLink WebSocket URL the agent advertised, if it
-   * rotated its binding. Null when no rotation is in flight. */
-  mavlinkWsUrlPrev: string | null;
   /** Current pairing/uplink failover state. "local" is the steady
    * state on the wireless radio link. "cloud_relay" means the
    * agent's local pairing supervisor failed over to the cloud

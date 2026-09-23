@@ -1,11 +1,15 @@
 /**
  * @module formats/csv-handler
  * @description CSV import/export for mission waypoints.
- * Columns: seq,lat,lon,alt,command,frame,speed,holdTime,param1,param2,param3,param4
+ * Columns: seq,lat,lon,alt,command,frame,speed,holdTime,param1..param7,rawCommand
  *
- * `param4` is only populated on a flattened ACTION row (a navigation waypoint's
- * fourth wire slot is `param3`), and exists so an action's fourth parameter
- * survives the round trip instead of being dropped.
+ * `param4`..`param7` are only populated on a flattened ACTION row (a navigation
+ * waypoint's fourth wire slot is `param3`), so an action's later parameters,
+ * such as DO_DIGICAM's shoot flag in `param5`, survive the round trip.
+ *
+ * A command this GCS does not model is written as a `RAW` row: `rawCommand` is
+ * its MAV_CMD id, `param1`..`param4` its first four parameters, `param5`..`param7`
+ * its wire x/y/z exactly as received and `frame` its numeric MAV_FRAME.
  * @license GPL-3.0-only
  */
 
@@ -18,7 +22,7 @@ import {
 } from "@/lib/mission/flat-rows";
 
 const CSV_HEADER =
-  "seq,lat,lon,alt,command,frame,speed,holdTime,param1,param2,param3,param4";
+  "seq,lat,lon,alt,command,frame,speed,holdTime,param1,param2,param3,param4,param5,param6,param7,rawCommand";
 
 /**
  * Every command in the WaypointCommand union, derived from the command map so
@@ -36,20 +40,30 @@ export function exportCSV(waypoints: Waypoint[]): string {
   const flat = flattenForSerialization(waypoints);
   for (let i = 0; i < flat.length; i++) {
     const wp = flat[i];
-    const row = [
-      i + 1,
-      wp.lat,
-      wp.lon,
-      wp.alt,
-      wp.command ?? "WAYPOINT",
-      wp.frame ?? "",
-      wp.speed ?? "",
-      wp.holdTime ?? "",
-      wp.param1 ?? "",
-      wp.param2 ?? "",
-      wp.param3 ?? "",
-      wp.param4 ?? "",
-    ];
+    const raw = wp.raw;
+    const row = raw
+      ? [
+          i + 1, wp.lat, wp.lon, wp.alt, "RAW", raw.frame, "", "",
+          raw.param1, raw.param2, raw.param3, raw.param4, raw.x, raw.y, raw.z, raw.rawCommand,
+        ]
+      : [
+          i + 1,
+          wp.lat,
+          wp.lon,
+          wp.alt,
+          wp.command ?? "WAYPOINT",
+          wp.frame ?? "",
+          wp.speed ?? "",
+          wp.holdTime ?? "",
+          wp.param1 ?? "",
+          wp.param2 ?? "",
+          wp.param3 ?? "",
+          wp.param4 ?? "",
+          wp.param5 ?? "",
+          wp.param6 ?? "",
+          wp.param7 ?? "",
+          "",
+        ];
     lines.push(row.join(","));
   }
 
@@ -101,6 +115,11 @@ export function parseCSV(text: string): Waypoint[] {
   const p2Idx = colIndex["param2"] ?? colIndex["p2"] ?? -1;
   const p3Idx = colIndex["param3"] ?? colIndex["p3"] ?? -1;
   const p4Idx = colIndex["param4"] ?? colIndex["p4"] ?? -1;
+  const p5Idx = colIndex["param5"] ?? colIndex["p5"] ?? -1;
+  const p6Idx = colIndex["param6"] ?? colIndex["p6"] ?? -1;
+  const p7Idx = colIndex["param7"] ?? colIndex["p7"] ?? -1;
+  const rawCmdIdx = colIndex["rawcommand"] ?? -1;
+  const num = (idx: number, cols: string[]): number => (idx >= 0 ? parseFloat(cols[idx] ?? "") : NaN);
 
   const rows: FlatWaypointRow[] = [];
 
@@ -116,6 +135,30 @@ export function parseCSV(text: string): Waypoint[] {
 
     const alt = altIdx >= 0 ? parseFloat(cols[altIdx] ?? "0") : 0;
     const cmdStr = cmdIdx >= 0 ? (cols[cmdIdx] ?? "").trim().toUpperCase() : "WAYPOINT";
+
+    if (cmdStr === "RAW") {
+      // A passthrough row without its command id cannot be re-emitted.
+      const rawCommand = num(rawCmdIdx, cols);
+      if (!Number.isInteger(rawCommand)) continue;
+      const wire = (idx: number) => {
+        const v = num(idx, cols);
+        return Number.isFinite(v) ? v : 0;
+      };
+      rows.push({
+        id: Math.random().toString(36).substring(2, 10),
+        lat,
+        lon,
+        alt: isNaN(alt) ? 0 : alt,
+        raw: {
+          rawCommand,
+          param1: wire(p1Idx), param2: wire(p2Idx), param3: wire(p3Idx), param4: wire(p4Idx),
+          x: wire(p5Idx), y: wire(p6Idx), z: wire(p7Idx),
+          frame: wire(frameIdx),
+        },
+      });
+      continue;
+    }
+
     const command: WaypointCommand = VALID_COMMANDS.has(cmdStr)
       ? (cmdStr as WaypointCommand)
       : "WAYPOINT";
@@ -132,6 +175,9 @@ export function parseCSV(text: string): Waypoint[] {
     const param2 = p2Idx >= 0 ? parseFloat(cols[p2Idx] ?? "") : NaN;
     const param3 = p3Idx >= 0 ? parseFloat(cols[p3Idx] ?? "") : NaN;
     const param4 = p4Idx >= 0 ? parseFloat(cols[p4Idx] ?? "") : NaN;
+    const param5 = num(p5Idx, cols);
+    const param6 = num(p6Idx, cols);
+    const param7 = num(p7Idx, cols);
 
     rows.push({
       id: Math.random().toString(36).substring(2, 10),
@@ -146,6 +192,9 @@ export function parseCSV(text: string): Waypoint[] {
       param2: isNaN(param2) ? undefined : param2,
       param3: isNaN(param3) ? undefined : param3,
       param4: isNaN(param4) ? undefined : param4,
+      param5: isNaN(param5) ? undefined : param5,
+      param6: isNaN(param6) ? undefined : param6,
+      param7: isNaN(param7) ? undefined : param7,
     });
   }
 

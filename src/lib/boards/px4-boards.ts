@@ -8,7 +8,7 @@
  */
 
 import type { PX4Board } from "@/lib/protocol/firmware/types";
-import type { SelectOptionGroup } from "@/components/ui/select-types";
+import type { SelectOptionGroup } from "@/lib/types";
 
 export interface PX4BoardMeta {
   displayName: string

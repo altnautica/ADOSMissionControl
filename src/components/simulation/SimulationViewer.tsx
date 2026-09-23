@@ -21,6 +21,7 @@ import { buildSampledProperties } from "@/lib/build-sampled-properties";
 import { makeKinematicViewerTrack, type ViewerTrack } from "@/lib/simulation/viewer-track";
 import { resolveAGLToAbsolute, type ResolvedPath } from "@/lib/terrain-utils";
 import { useSimulationStore } from "@/stores/simulation-store";
+import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useSimClock } from "@/hooks/use-sim-clock";
 import { useSimCamera } from "@/hooks/use-sim-camera";
@@ -97,6 +98,13 @@ export function SimulationViewer({ waypoints, defaultSpeed, defaultFrame }: Simu
   const showPathLabels = useSettingsStore((s) => s.showPathLabels);
   const showCameraTriggers = useSettingsStore((s) => s.showCameraTriggers);
 
+  // Relative-frame altitudes are measured from home: the vehicle's reported
+  // HOME_POSITION when there is one, else the launch point the upload uses.
+  const vehicleHomeLat = useTelemetryStore((s) => s.homePosition.latest()?.lat);
+  const vehicleHomeLon = useTelemetryStore((s) => s.homePosition.latest()?.lon);
+  const homeLat = vehicleHomeLat ?? waypoints[0]?.lat;
+  const homeLon = vehicleHomeLon ?? waypoints[0]?.lon;
+
   const missionSignature = useMemo(
     () => createSimulationMissionSignature(waypoints, defaultSpeed, defaultFrame),
     [waypoints, defaultSpeed, defaultFrame]
@@ -137,7 +145,8 @@ export function SimulationViewer({ waypoints, defaultSpeed, defaultFrame }: Simu
     const terrainProvider = viewer.scene.globe.terrainProvider;
     const signature = missionSignature;
 
-    resolveAGLToAbsolute(waypoints, terrainProvider, defaultFrame)
+    if (homeLat === undefined || homeLon === undefined) return;
+    resolveAGLToAbsolute(waypoints, terrainProvider, defaultFrame, { lat: homeLat, lon: homeLon })
       .then((result) => {
         if (!cancelled) {
           setTerrainResult({ signature, path: result, failed: false });
@@ -151,7 +160,7 @@ export function SimulationViewer({ waypoints, defaultSpeed, defaultFrame }: Simu
       });
 
     return () => { cancelled = true; };
-  }, [viewer, missionSignature, waypoints, defaultFrame, terrainReady, terrainVersion]);
+  }, [viewer, missionSignature, waypoints, defaultFrame, terrainReady, terrainVersion, homeLat, homeLon]);
 
   // Extract waypoint-only resolved positions for WaypointEntities + camera
   const waypointPositions = useMemo(() => {
@@ -167,7 +176,8 @@ export function SimulationViewer({ waypoints, defaultSpeed, defaultFrame }: Simu
       flightPlan,
       waypointPositions,
       resolvedPath?.positions,
-      resolvedPath?.waypointIndices
+      resolvedPath?.waypointIndices,
+      resolvedPath?.homeTerrainHeight,
     ),
     [waypoints, flightPlan, waypointPositions, resolvedPath]
   );
@@ -224,6 +234,7 @@ export function SimulationViewer({ waypoints, defaultSpeed, defaultFrame }: Simu
         resolvedPositions={resolvedPath?.positions ?? null}
         waypointIndices={resolvedPath?.waypointIndices}
         terrainHeights={resolvedPath?.terrainHeights}
+        homeTerrainHeight={resolvedPath?.homeTerrainHeight}
         showLabels={showPathLabels}
         isResolving={terrainResolving}
       />
@@ -233,6 +244,7 @@ export function SimulationViewer({ waypoints, defaultSpeed, defaultFrame }: Simu
         <DroneEntity
           key={track.id}
           viewer={viewer}
+          trackId={track.id}
           positionProperty={track.sampled?.sampledPosition ?? null}
           headingProperty={track.sampled?.sampledHeading ?? null}
           useAbsoluteAlt={track.useAbsoluteAlt}
@@ -243,13 +255,18 @@ export function SimulationViewer({ waypoints, defaultSpeed, defaultFrame }: Simu
         <DroneTrailEntity
           key={track.id}
           viewer={viewer}
+          trackId={track.id}
           positionProperty={track.sampled?.sampledPosition ?? null}
         />
       ))}
       <GcsEntity viewer={viewer} />
       <CameraTriggerEntities viewer={viewer} waypoints={waypoints} visible={showCameraTriggers} />
-      <GeofenceEntities viewer={viewer} />
-      <RallyPointEntities viewer={viewer} />
+      <GeofenceEntities viewer={viewer} homeHeight={resolvedPath?.homeTerrainHeight} />
+      <RallyPointEntities
+        viewer={viewer}
+        homeHeight={resolvedPath?.homeTerrainHeight}
+        terrainVersion={terrainVersion}
+      />
       <PatternBoundaryEntities viewer={viewer} />
 
       <MissionWarningBanner waypoints={waypoints} />
@@ -271,8 +288,8 @@ export function SimulationViewer({ waypoints, defaultSpeed, defaultFrame }: Simu
       {/* Error state */}
       {viewerError && (
         <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-          <div className="bg-bg-primary/80 backdrop-blur-md rounded-lg px-6 py-4 border border-red-500/30 text-center max-w-sm">
-            <p className="text-sm text-red-400">
+          <div className="bg-bg-primary/80 backdrop-blur-md rounded-lg px-6 py-4 border border-status-error/30 text-center max-w-sm">
+            <p className="text-sm text-status-error">
               {t("viewFailed", { message: viewerError })}
             </p>
           </div>

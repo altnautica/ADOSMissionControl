@@ -7,69 +7,13 @@
  */
 
 import { useAgentSystemStore } from "../agent-system-store";
-import { useLocalNodesStore } from "../local-nodes-store";
-import { usePairingStore } from "../pairing-store";
+import { resolveLanAgentUrl, resolvePairedApiKey } from "@/lib/agent/resolve-agent";
 import type {
   CloudStateSlice,
   AgentConnectionSliceCreator,
 } from "./types";
 import { MAX_CPU_HISTORY } from "./types";
 import { appendHistorySample } from "@/lib/agent/history";
-
-/** Build a LAN URL from any cached pairing record (browser-local
- * ``local-nodes-store`` or Convex-mediated ``pairing-store``). Returns
- * null when no usable host is available; callers fall back to the
- * Convex heartbeat metadata.
- *
- * On HTTPS origins the browser blocks plain-HTTP fetches to a private
- * LAN host (mixed content). Returning null here lets the cloud-relay
- * cascade take over cleanly instead of surfacing a "Failed to fetch"
- * error from a doomed direct call. The LAN-direct optimisation is only
- * meaningful when the GCS page is served from an HTTP origin (e.g.
- * the local dev server, an Electron shell, or a self-hoster running
- * the GCS on the same LAN as the drone). */
-export function resolveLanAgentUrl(deviceId: string): string | null {
-  if (
-    typeof window !== "undefined" &&
-    window.location.protocol === "https:"
-  ) {
-    return null;
-  }
-  // local-nodes-store wins because it's the truth source for LAN-only
-  // pairings (no Convex round-trip required) and stores ipv4 alongside
-  // mdnsHost so non-mDNS browsers still resolve.
-  const localNode = useLocalNodesStore
-    .getState()
-    .nodes.find((n) => n.deviceId === deviceId);
-  if (localNode) {
-    // hostname is already normalised to include scheme + port.
-    if (localNode.hostname) return localNode.hostname;
-    const host = localNode.mdnsHost || localNode.ipv4;
-    if (host) return `http://${host}:8080`;
-  }
-  const pairedDrone = usePairingStore
-    .getState()
-    .pairedDrones.find((d) => d.deviceId === deviceId);
-  if (pairedDrone) {
-    const host = pairedDrone.mdnsHost || pairedDrone.lastIp;
-    if (host) return `http://${host}:8080`;
-  }
-  return null;
-}
-
-/** Look up the paired API key for direct LAN HTTP calls. Prefers the
- * browser-local pairing record (LAN-only path) over the Convex-mediated
- * one. */
-export function resolvePairedApiKey(deviceId: string): string | null {
-  const localNode = useLocalNodesStore
-    .getState()
-    .nodes.find((n) => n.deviceId === deviceId);
-  if (localNode?.apiKey) return localNode.apiKey;
-  const pairedDrone = usePairingStore
-    .getState()
-    .pairedDrones.find((d) => d.deviceId === deviceId);
-  return pairedDrone?.apiKey ?? null;
-}
 
 export const cloudStateSlice: AgentConnectionSliceCreator<CloudStateSlice> = (
   set,

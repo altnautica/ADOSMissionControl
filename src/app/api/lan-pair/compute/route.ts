@@ -2,7 +2,7 @@
  * @module LanPairComputeRoute
  * @description Server-side proxy for a compute node's job API
  * (`/api/compute/*` on the engine's own `:8092` listener). Sibling to the
- * pairing / vision-detector proxy routes (Rule 39 local-first): lets an HTTPS
+ * pairing / vision-detector proxy routes (local-first): lets an HTTPS
  * Mission Control reach a plain-HTTP LAN compute node without tripping the
  * browser's mixed-content guard, and resolves `*.local` server-side.
  *

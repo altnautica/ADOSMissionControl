@@ -25,7 +25,8 @@ export interface NodeEntry {
 }
 
 const STATUS_HISTORY_CAP = 60;
-const ONLINE_WINDOW_MS = 3_000;
+/** A node heard from within this window counts as online. */
+export const NODE_ONLINE_WINDOW_MS = 3_000;
 const STALE_WINDOW_MS = 10_000;
 const SWEEP_INTERVAL_MS = 1_000;
 
@@ -113,7 +114,7 @@ export const useDroneCanNodeStore = create<NodeStoreState>((set, get) => ({
   },
 
   getOnlineCount: () => {
-    const cutoff = Date.now() - ONLINE_WINDOW_MS;
+    const cutoff = Date.now() - NODE_ONLINE_WINDOW_MS;
     let count = 0;
     for (const entry of get().nodes.values()) {
       if (entry.lastSeen >= cutoff) count++;
@@ -128,7 +129,7 @@ export const useDroneCanNodeStore = create<NodeStoreState>((set, get) => ({
   isOnline: (nodeId) => {
     const entry = get().nodes.get(nodeId);
     if (!entry) return false;
-    return entry.lastSeen >= Date.now() - ONLINE_WINDOW_MS;
+    return entry.lastSeen >= Date.now() - NODE_ONLINE_WINDOW_MS;
   },
 
   _acquire: () => {

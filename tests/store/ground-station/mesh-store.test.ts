@@ -32,6 +32,7 @@ describe("ground-station mesh slice", () => {
       relayStatus: null,
       pairingWindowOpen: false,
       pairingWindowExpiresAt: null,
+      pairingCode: null,
       pendingRequests: [],
       loading: false,
       error: null,

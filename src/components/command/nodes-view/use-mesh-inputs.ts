@@ -11,7 +11,7 @@
  * second way — which would let the map and the table drift — this hook resolves
  * them once, through the very same helpers the Reach column uses, and hands the
  * result to both the graph and the relay list. One source, so a node's edge and
- * its row can never disagree about its link (Rule 44).
+ * its row can never disagree about its link (no fabricated reading).
  *
  * @license GPL-3.0-only
  */
@@ -58,7 +58,7 @@ export function useMeshInputs(
         });
         // The received-side signal the ground node heard this drone at rides its
         // funneled status row; a directly-paired drone carries none, so its
-        // alternate WFB chip stays unverified by construction (Rule 44).
+        // alternate WFB chip stays unverified by construction (no fabricated reading).
         const wfbRssiDbm = cloudStatuses[node.deviceId]?.peerRssiDbm ?? null;
 
         const { primary, secondary } = deriveNodeBearers({

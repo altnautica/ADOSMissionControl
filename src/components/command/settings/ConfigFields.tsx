@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { readConfigPath } from "./use-node-config";
+import { ApplyTextField } from "./ApplyTextField";
 
 interface BaseProps {
   configKey: string;
@@ -33,8 +34,11 @@ interface BaseProps {
 }
 
 /** A Select bound to a string config key; writes on change. `placeholder`
- * overrides the default "not set" shown when the stored value matches no option
- * (e.g. an unset tri-state whose effective default is "auto"). */
+ * overrides the default "not set" shown when nothing is stored (e.g. an unset
+ * tri-state whose effective default is "auto"). A stored value the option list
+ * does not carry (a workstation pinned elsewhere, a model the list omits) is
+ * added as an option showing its raw value, so it never reads as the
+ * placeholder's default. */
 export function ConfigSelectField({
   configKey,
   label,
@@ -53,6 +57,10 @@ export function ConfigSelectField({
   const raw = readConfigPath(config, configKey);
   const current = typeof raw === "string" ? raw : raw != null ? String(raw) : "";
   const value = pending ?? current;
+  const shownOptions =
+    current !== "" && !options.some((o) => o.value === current)
+      ? [...options, { value: current, label: current }]
+      : options;
 
   const onChange = async (next: string) => {
     if (readOnly || saving || next === value) return;
@@ -77,7 +85,7 @@ export function ConfigSelectField({
     <div className="flex flex-col gap-1.5">
       <Select
         label={label}
-        options={options}
+        options={shownOptions}
         value={value}
         onChange={(v) => void onChange(v)}
         disabled={readOnly || saving}
@@ -127,8 +135,12 @@ export function ConfigToggleField({
   const [confirmNext, setConfirmNext] = useState<boolean | null>(null);
 
   const raw = readConfigPath(config, configKey);
-  const current = raw === true;
-  const checked = pending ?? current;
+  // An unloaded document or a missing key is unknown, not OFF: several of
+  // these switches default to ON on the agent, so drawing them OFF (and
+  // writable) would misstate the node and invite a write from a false start.
+  const known = typeof raw === "boolean";
+  const checked = pending ?? raw === true;
+  const disabled = readOnly || saving || !known;
 
   const applyChange = async (next: boolean) => {
     setPending(next);
@@ -149,7 +161,7 @@ export function ConfigToggleField({
   };
 
   const onChange = async (next: boolean) => {
-    if (readOnly || saving) return;
+    if (disabled) return;
     if (confirm && confirm.when(next)) {
       setConfirmNext(next);
       return;
@@ -163,8 +175,11 @@ export function ConfigToggleField({
         label={label}
         checked={checked}
         onChange={(v) => void onChange(v)}
-        disabled={readOnly || saving}
+        disabled={disabled}
       />
+      {known ? null : (
+        <p className="text-[11px] text-text-tertiary">{t("notReported")}</p>
+      )}
       {hint ? <p className="text-[11px] text-text-tertiary">{hint}</p> : null}
       {confirm ? (
         <ConfirmDialog
@@ -198,55 +213,26 @@ export function ConfigTextField({
 }: BaseProps & { placeholder?: string }) {
   const t = useTranslations("nodeSettings");
   const { toast } = useToast();
-  const inputId = useId();
   const raw = readConfigPath(config, configKey);
   const current = typeof raw === "string" ? raw : raw != null ? String(raw) : "";
-  const [draft, setDraft] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-
-  const value = draft ?? current;
-  const dirty = draft !== null && draft !== current;
-
-  const onApply = async () => {
-    if (readOnly || saving || !dirty) return;
-    setSaving(true);
-    try {
-      await setValue(configKey, value.trim());
-      toast(t("applied"), "success");
-      setDraft(null);
-    } catch (err) {
-      toast(err instanceof Error ? err.message : t("applyFailed"), "error");
-    } finally {
-      setSaving(false);
-    }
-  };
 
   return (
-    <div className="flex flex-col gap-1.5">
-      <label htmlFor={inputId} className="text-xs text-text-secondary">
-        {label}
-      </label>
-      <div className="flex items-end gap-2">
-        <input
-          id={inputId}
-          type="text"
-          value={value}
-          placeholder={placeholder}
-          onChange={(e) => setDraft(e.target.value)}
-          disabled={readOnly || saving}
-          className="h-9 flex-1 rounded border border-border-default bg-bg-tertiary px-2 font-mono text-sm text-text-primary focus:border-accent-primary focus:outline-none disabled:opacity-50"
-        />
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => void onApply()}
-          disabled={readOnly || saving || !dirty}
-        >
-          {saving ? t("saving") : t("apply")}
-        </Button>
-      </div>
-      {hint ? <p className="text-[11px] text-text-tertiary">{hint}</p> : null}
-    </div>
+    <ApplyTextField
+      label={label}
+      hint={hint}
+      placeholder={placeholder}
+      current={current}
+      disabled={readOnly}
+      onApply={async (value) => {
+        try {
+          await setValue(configKey, value);
+          toast(t("applied"), "success");
+        } catch (err) {
+          toast(err instanceof Error ? err.message : t("applyFailed"), "error");
+          throw err;
+        }
+      }}
+    />
   );
 }
 
@@ -438,19 +424,23 @@ export function ConfigIntField({
 }
 
 /** A labeled read-only value the operator manages in a transactional setup flow
- * (profile switch, cloud posture). Shows the real current value or "not set". */
+ * (profile switch, cloud posture). Shows the real current value or "not set".
+ * `warn` marks a value that needs attention (e.g. a drone with no fleet slot)
+ * in the warning tone. */
 export function ConfigReadonlyRow({
   configKey,
   label,
   hint,
   config,
   format,
+  warn,
 }: {
   configKey: string;
   label: string;
   hint?: string;
   config: Record<string, unknown> | null;
   format?: (raw: unknown) => string | null;
+  warn?: (raw: unknown) => boolean;
 }) {
   const t = useTranslations("nodeSettings");
   const raw = readConfigPath(config, configKey);
@@ -470,7 +460,11 @@ export function ConfigReadonlyRow({
           <p className="mt-0.5 text-[11px] text-text-tertiary">{hint}</p>
         ) : null}
       </div>
-      <div className="shrink-0 font-mono text-sm text-text-primary">
+      <div
+        className={`shrink-0 font-mono text-sm ${
+          warn?.(raw) ? "text-status-warning" : "text-text-primary"
+        }`}
+      >
         {shown ?? <span className="text-text-tertiary">{t("notSet")}</span>}
       </div>
     </div>

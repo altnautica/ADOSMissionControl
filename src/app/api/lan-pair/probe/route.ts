@@ -24,10 +24,9 @@ import {
   readJsonEnvelope,
   relayReply,
 } from "../_proxy";
+import { LAN_PAIR_UPSTREAM_TIMEOUT_MS } from "@/lib/agent/local-pair/transport";
 
 export const runtime = "nodejs";
-
-const UPSTREAM_TIMEOUT_MS = 8000;
 
 export async function POST(req: NextRequest) {
   const env = await readJsonEnvelope(req);
@@ -42,7 +41,7 @@ export async function POST(req: NextRequest) {
     target: host.target,
     path: "/api/pairing/info",
     method: "GET",
-    timeoutMs: UPSTREAM_TIMEOUT_MS,
+    timeoutMs: LAN_PAIR_UPSTREAM_TIMEOUT_MS,
   });
   if ("reject" in reply) return reply.reject;
 

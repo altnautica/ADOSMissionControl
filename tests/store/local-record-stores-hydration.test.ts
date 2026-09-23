@@ -159,8 +159,8 @@ describe("aircraft registry store", () => {
 describe("operator profile store", () => {
   it("keeps stored pilot fields when a patch is persisted before the load", async () => {
     const stored: OperatorProfile = {
-      units: "imperial",
       pilotFirstName: "Sam",
+      pilotLastName: "Rivera",
       pilotLicenseNumber: "LIC-42",
     };
     idb.store.set(OPERATOR_KEY, stored);
@@ -171,7 +171,7 @@ describe("operator profile store", () => {
     const written = idb.store.get(OPERATOR_KEY) as OperatorProfile;
     expect(written.pilotFirstName).toBe("Sam");
     expect(written.pilotLicenseNumber).toBe("LIC-42");
-    expect(written.units).toBe("imperial");
+    expect(written.pilotLastName).toBe("Rivera");
     expect(written.operatorName).toBe("Example Aerial");
   });
 });

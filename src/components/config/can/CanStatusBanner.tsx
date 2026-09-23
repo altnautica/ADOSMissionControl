@@ -5,9 +5,10 @@
  * @description Compact horizontal status strip for the CAN Config page.
  *
  * Shows the currently selected drone, CAN1 / CAN2 bitrates (best-effort
- * from the cached drone params), SLCAN passthrough state derived from
- * `CAN_SLCAN_CPORT`, the count of online DroneCAN nodes from the node
- * store, and the live bus fps from the bus store.
+ * from the cached drone params), the live SLCAN session state from the
+ * SLCAN mode store (with `CAN_SLCAN_CPORT` shown only as the configured
+ * route), the count of online DroneCAN nodes re-evaluated every second,
+ * and the bus fps from the bus store.
  *
  * Everything is read-only here. The banner is purely an at-a-glance
  * surface — knobs live in their respective sections.
@@ -19,6 +20,8 @@ import { useTranslations } from "next-intl";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useDroneCanNodeStore } from "@/stores/dronecan/node-store";
 import { useDroneCanBusStore } from "@/stores/dronecan/bus-store";
+import { useSlcanModeStore } from "@/stores/slcan-mode-store";
+import { useClockTick } from "@/lib/agent/freshness";
 
 function formatBitrate(value: number | undefined): string {
   if (!value || value <= 0) return "—";
@@ -36,18 +39,21 @@ export function CanStatusBanner({ params }: CanStatusBannerProps) {
   const t = useTranslations("canConfig.banner");
 
   const selectedDrone = useDroneManager((s) => s.getSelectedDrone());
+  // Online is time-based (last heard within a window), so the count must be
+  // re-evaluated against the clock, not only when the node map changes.
+  // The selector below re-runs on every render, including each clock tick.
+  useClockTick();
   const onlineNodes = useDroneCanNodeStore((s) => {
-    // Subscribe to the version counter so the readout updates on every
-    // node-store mutation rather than only on a fresh render.
     void s._version;
     return s.getOnlineCount();
   });
   const fps = useDroneCanBusStore((s) => s.counters.fps);
+  const slcanState = useSlcanModeStore((s) => s.state);
 
   const can1Bitrate = params.get("CAN_P1_BITRATE");
   const can2Bitrate = params.get("CAN_P2_BITRATE");
   const slcanCport = params.get("CAN_SLCAN_CPORT") ?? 0;
-  const slcanActive = slcanCport > 0;
+  const slcanActive = slcanState === "SLCAN_ACTIVE";
 
   return (
     <div className="flex flex-wrap items-center gap-4 px-4 py-2 border border-border-default bg-bg-secondary text-[11px]">
@@ -72,6 +78,9 @@ export function CanStatusBanner({ params }: CanStatusBannerProps) {
         <span className={slcanActive ? "text-status-warning font-medium" : "text-text-secondary"}>
           {slcanActive ? t("slcanActive") : t("slcanInactive")}
         </span>
+        {slcanCport > 0 && (
+          <span className="text-text-tertiary">{t("slcanRoute", { port: slcanCport })}</span>
+        )}
       </div>
 
       <div className="flex items-center gap-2">

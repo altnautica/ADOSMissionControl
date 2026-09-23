@@ -28,9 +28,11 @@ import { createVersionBumper } from "../coalesced-version";
 import {
   dropPresenceSource,
   emptyEntry,
+  emptyPresence,
   mergeConnection,
   mergeFcTelemetryInPlace,
   mergePresence,
+  presenceEqual,
   shouldRemoveEntry,
 } from "./reconcile";
 import type {
@@ -148,13 +150,21 @@ export const useNodeRegistryStore = create<NodeRegistryStore>((set, get) => ({
   lastUpdate: 0,
 
   upsertPresence: (nodeId, presence, source) =>
-    set((state) => ({
-      nodes: applyToEntry(state.nodes, nodeId, (entry) => ({
-        ...entry,
-        presence: mergePresence(entry.presence, presence, source),
-      })),
-      lastUpdate: Date.now(),
-    })),
+    set((state) => {
+      const existing = state.nodes[nodeId];
+      const merged = mergePresence(existing?.presence ?? emptyPresence(), presence, source);
+      // An observation that changes nothing (same identity, same sources, no
+      // newer heartbeat) leaves the store untouched: no rev bump, no new
+      // `nodes` map, no fleet re-projection.
+      if (existing && presenceEqual(existing.presence, merged)) return state;
+      return {
+        nodes: applyToEntry(state.nodes, nodeId, (entry) => ({
+          ...entry,
+          presence: merged,
+        })),
+        lastUpdate: Date.now(),
+      };
+    }),
 
   dropPresence: (nodeId, source) =>
     set((state) => {

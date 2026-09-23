@@ -41,37 +41,25 @@ export interface INavSafehome {
   lon: number;
 }
 
-/**
- * Legacy nav config shape decoded from the 0x2100 ID.
- * This ID now collides with Custom OSD Elements in newer iNav builds.
- * Retained for backward compatibility; check INAV_MSP note above.
- */
-export interface INavNavConfig {
-  maxNavAltitude: number;
-  maxNavSpeed: number;
-  maxClimbRate: number;
-  maxManualClimbRate: number;
-  maxManualSpeed: number;
-  landSlowdownMinAlt: number;
-  landSlowdownMaxAlt: number;
-  navEmergencyLandingSpeed: number;
-  navMinRthDistance: number;
-  navOverclimbAngle: number;
-  useMidThrottleForAlthold: boolean;
-  navExtraArming: number;
-}
-
 export interface INavAnalog {
   flags: number;
-  /** Battery voltage in volts (divided from raw mV). */
+  /** batteryState_e: 0 OK, 1 warning, 2 critical, 3 not present. */
+  batteryState: number;
+  cellCount: number;
+  /** Pack voltage in volts. */
   voltage: number;
-  mAhDrawn: number;
-  rssiPct: number;
   /** Current draw in amps. */
   amperage: number;
-  powerMw: number;
+  /** Power draw in watts. */
+  powerW: number;
+  mAhDrawn: number;
   mWhDrawn: number;
-  batteryPercent: number;
+  /** Remaining capacity in the battery profile's unit (mAh or mWh). */
+  remainingCapacity: number;
+  /** The FC's state-of-charge estimate in percent; null when no battery is present. */
+  batteryPercent: number | null;
+  /** Raw RSSI, 0-1023. */
+  rssi: number;
 }
 
 export interface INavMisc {
@@ -99,6 +87,8 @@ export interface INavActiveProfiles {
   controlProfile: number;
   /** Battery profile, 0-based (high nibble). */
   batteryProfile: number;
+  /** Mixer profile, 0-based; null when the firmware does not report one. */
+  mixerProfile: number | null;
 }
 
 /**
@@ -230,7 +220,21 @@ export interface INavTempSensorConfigEntry {
   address: number[];
   alarmMin: number;
   alarmMax: number;
+  /** OSD symbol index shown beside the reading. */
+  osdSymbol: number;
   label: string;
+}
+
+/** MSP_CALIBRATION_DATA (iNav): accel six-point progress and compass offsets. */
+export interface INavCalibrationData {
+  /**
+   * One bit per captured accelerometer orientation; 0x3F when all six are
+   * captured or the accelerometer is already calibrated. Bit 0 is top up
+   * (level) and bit 1 upside down.
+   */
+  accPositionFlags: number;
+  /** Compass offsets (magZero X/Y/Z, raw units). */
+  magZero: [number, number, number];
 }
 
 export interface INavServoMixerRule {
@@ -250,11 +254,6 @@ export interface INavLogicCondition {
   operandBType: number;
   operandBValue: number;
   flags: number;
-}
-
-export interface INavLogicConditionsStatus {
-  id: number;
-  value: number;
 }
 
 export interface INavGvarStatus {

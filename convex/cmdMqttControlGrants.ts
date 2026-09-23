@@ -25,11 +25,14 @@
  * `mosquittoPasswd`), matching the bar `cmdMcpTokens` sets. The plaintext is
  * returned exactly once, at mint.
  *
- * INERT: nothing consumes these rows yet. The broker learns about a principal
- * when the host-side password/ACL generator reads it, and that generator is not
- * wired to this table. Until it is, a minted grant is a row and nothing more —
- * which is why the client treats a grant it has not exercised as unproven
- * rather than as authority.
+ * The broker learns a principal when the host-side password/ACL generator
+ * reads it through `cmdPairing.listMqttAuthEntries`, which emits every live,
+ * unrevoked grant. That runs on its own cadence, so the client treats a grant
+ * it has not exercised as unproven rather than as authority.
+ *
+ * Grants are per browser session, not per operator: a tab renews by naming the
+ * grant it replaces, so two tabs (or a laptop and a tablet) each keep their
+ * own. A small ceiling on live grants bounds the broker's principal list.
  *
  * @license GPL-3.0-only
  */
@@ -48,6 +51,15 @@ import { buildPasswdEntry } from "./mosquittoPasswd";
  * a revoked or stolen grant keeps working.
  */
 export const GRANT_TTL_MS = 60 * 60 * 1000;
+
+/** Live grants one operator may hold at once (one per open browser session). */
+const MAX_LIVE_GRANTS_PER_USER = 4;
+
+/** Expired rows are kept this long for review, then swept. */
+const GRANT_RETENTION_MS = 24 * 60 * 60 * 1000;
+
+/** Rows deleted per sweep call; a full batch reschedules the sweep. */
+const GRANT_PRUNE_BATCH = 256;
 
 /** URL-safe base64, no padding. */
 function b64url(bytes: Uint8Array): string {
@@ -72,8 +84,10 @@ export interface GrantMintResult {
  * internal mutation so the secret never leaves this handler.
  */
 export const mint = action({
-  args: {},
-  handler: async (ctx): Promise<GrantMintResult> => {
+  // The principal this browser session held before, if any. Renewal replaces
+  // it; nothing else of the operator's is touched.
+  args: { replaces: v.optional(v.string()) },
+  handler: async (ctx, { replaces }): Promise<GrantMintResult> => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
 
@@ -100,6 +114,7 @@ export const mint = action({
       passwdEntry,
       deviceIds,
       expiresAt,
+      replaces,
     });
 
     return { principal, secret, deviceIds, expiresAt };
@@ -126,40 +141,54 @@ export const insert = internalMutation({
     passwdEntry: v.string(),
     deviceIds: v.array(v.string()),
     expiresAt: v.number(),
+    replaces: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
-    // One live grant per operator: a tab that mints on every load would
-    // otherwise grow the broker's principal list without bound, and every
-    // superseded principal would stay valid until its own expiry.
-    const existing = await ctx.db
-      .query("cmd_mqttControlGrants")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
-      .collect();
+  handler: async (ctx, { replaces, ...grant }) => {
     const now = Date.now();
-    for (const row of existing) {
-      if (!row.revokedAt) await ctx.db.patch(row._id, { revokedAt: now });
+    const rows = await ctx.db
+      .query("cmd_mqttControlGrants")
+      .withIndex("by_user", (q) => q.eq("userId", grant.userId))
+      .collect();
+    // The grant this session replaces dies now rather than at its expiry.
+    // Another session's grant is left alone.
+    const live = rows
+      .filter((row) => !row.revokedAt && row.expiresAt > now)
+      .sort((a, b) => a.createdAt - b.createdAt);
+    const survivors = [];
+    for (const row of live) {
+      if (row.principal === replaces) {
+        await ctx.db.patch(row._id, { revokedAt: now });
+      } else {
+        survivors.push(row);
+      }
     }
-    await ctx.db.insert("cmd_mqttControlGrants", { ...args, createdAt: now });
+    // Bound the broker's principal list: past the ceiling the oldest go.
+    const excess = survivors.length - (MAX_LIVE_GRANTS_PER_USER - 1);
+    for (const row of survivors.slice(0, Math.max(0, excess))) {
+      await ctx.db.patch(row._id, { revokedAt: now });
+    }
+    await ctx.db.insert("cmd_mqttControlGrants", { ...grant, createdAt: now });
   },
 });
 
 /**
- * The caller's current grant metadata — never the verifier, never the secret.
- * The browser holds the secret from its own mint response; this is only so a
- * surface can say what is held and until when.
+ * The metadata of one of the caller's grants, by principal — never the
+ * verifier, never the secret. The browser holds the secret from its own mint
+ * response; this tells it whether that grant is still live (not revoked, not
+ * expired) and whether the broker has accepted a write under it. Null when the
+ * grant is gone.
  */
 export const myCurrent = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { principal: v.string() },
+  handler: async (ctx, { principal }) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) return null;
-    const rows = await ctx.db
+    const row = await ctx.db
       .query("cmd_mqttControlGrants")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .order("desc")
-      .take(1);
-    const row = rows[0];
-    if (!row || row.revokedAt) return null;
+      .withIndex("by_principal", (q) => q.eq("principal", principal))
+      .first();
+    if (!row || row.userId !== userId || row.revokedAt) return null;
+    if (row.expiresAt <= Date.now()) return null;
     return {
       principal: row.principal,
       deviceIds: row.deviceIds,
@@ -170,8 +199,9 @@ export const myCurrent = query({
   },
 });
 
-/** Revoke the caller's live grant. Instant here; the broker follows on its
- * next password/ACL regeneration, and the grant's expiry bounds the gap. */
+/** Revoke every live grant the caller holds (sign-out). Instant here; the
+ * broker follows on its next password/ACL regeneration, and each grant's expiry
+ * bounds the gap. */
 export const revoke = mutation({
   args: {},
   handler: async (ctx) => {
@@ -212,5 +242,28 @@ export const confirmWrite = mutation({
     if (!row || row.userId !== userId) throw new Error("Not found");
     await ctx.db.patch(row._id, { lastConfirmedAt: Date.now() });
     return { ok: true };
+  },
+});
+
+/**
+ * Cron job: delete grant rows expired past the review window. Without it every
+ * mint (one per session per hour) stays forever. Ranges `by_expiresAt` so the
+ * cost tracks what is deleted, and reschedules while a full batch went.
+ */
+export const pruneExpiredGrants = internalMutation({
+  args: {},
+  handler: async (ctx): Promise<{ deleted: number }> => {
+    const cutoff = Date.now() - GRANT_RETENTION_MS;
+    const stale = await ctx.db
+      .query("cmd_mqttControlGrants")
+      .withIndex("by_expiresAt", (q) => q.lt("expiresAt", cutoff))
+      .take(GRANT_PRUNE_BATCH);
+    for (const row of stale) {
+      await ctx.db.delete(row._id);
+    }
+    if (stale.length === GRANT_PRUNE_BATCH) {
+      await ctx.scheduler.runAfter(0, internal.cmdMqttControlGrants.pruneExpiredGrants, {});
+    }
+    return { deleted: stale.length };
   },
 });

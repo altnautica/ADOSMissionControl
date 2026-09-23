@@ -44,7 +44,7 @@ describe("Betaflight settings catalog", () => {
     expect(labels("failsafe_procedure")).toContain("GPS-RESCUE");
   });
 
-  it("never ships an empty-label enum (Rule 44: omit, don't guess)", () => {
+  it("never ships an empty-label enum (omit, don't guess)", () => {
     for (const p of snap!.params) {
       if (p.values) {
         expect(p.values.length, `${p.name} has an empty values table`).toBeGreaterThan(0);

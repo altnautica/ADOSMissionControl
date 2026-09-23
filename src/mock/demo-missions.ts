@@ -26,8 +26,8 @@ import { generateCorridor } from "@/lib/patterns/corridor-generator";
 import { generateStructureScan } from "@/lib/patterns/structure-scan-generator";
 import { generateExpandingSquare, generateSectorSearch, generateParallelTrack } from "@/lib/patterns/sar-generators";
 import { generateVtolLanding } from "@/lib/patterns/vtol-landing-generator";
+import { DEMO_MISSION_FOLDER_ID } from "@/lib/demo/demo-ids";
 
-export const DEMO_MISSION_FOLDER_ID = "demo-missions-folder";
 /** Fixed timestamp so seeded plans are byte-stable across sessions. */
 const DEMO_TS = 1_717_200_000_000;
 
@@ -226,6 +226,3 @@ export const DEMO_PLANS: SavedPlan[] = [grandCanyon, liberty, matterhorn, keuken
 /** Stable ids used to seed + tear down without touching the user's real plans. */
 export const DEMO_PLAN_IDS: string[] = DEMO_PLANS.map((p) => p.id);
 
-export function isDemoPlanId(id: string | null | undefined): boolean {
-  return typeof id === "string" && id.startsWith("demo-");
-}

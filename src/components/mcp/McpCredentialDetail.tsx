@@ -2,10 +2,11 @@
  * @module components/mcp/McpCredentialDetail
  * @description The credential detail drawer: a per-token policy view with a
  * "what this token can do" reach preview. The preview is a CLIENT-SIDE
- * CAPABILITY CHECK (Rule 44) — it resolves the token's scopes against the
- * committed tools catalog via mcp-scope-model, it is never a live call. Reach is
- * shown for a LAN (agent-mode) connection with flight enforcement off; a
- * fleet-mode connection additionally hides agent-only tools.
+ * CAPABILITY CHECK (no fabricated reading) — it resolves the token's scopes against the
+ * committed tools catalog via mcp-scope-model, it is never a live call. A minted
+ * credential only connects through the fleet relay (`--target fleet`), so reach
+ * is evaluated in fleet mode (agent-only tools are unreachable) with flight
+ * enforcement off. A revoked or expired credential can call nothing.
  * @license GPL-3.0-only
  */
 
@@ -19,7 +20,9 @@ import { Modal } from "@/components/ui/modal";
 import { formatDate } from "@/lib/utils";
 import { timeAgo } from "@/lib/plan-library";
 import { useMcpTabStore } from "@/stores/mcp-tab-store";
-import { SAFETY_CLASSES, safetyClassBadge } from "./mcp-shared";
+import { useClockStore } from "@/stores/clock-store";
+import { useClockTick } from "@/lib/agent/freshness";
+import { SAFETY_CLASSES, credentialStatus, safetyClassBadge } from "./mcp-shared";
 import {
   summarizeCredentialReach,
   type BlockReason,
@@ -54,6 +57,8 @@ export function McpCredentialDetail({ rows }: { rows: McpTokenRow[] }) {
   const t = useTranslations("mcp");
   const selectedId = useMcpTabStore((s) => s.selectedCredentialId);
   const selectCredential = useMcpTabStore((s) => s.selectCredential);
+  useClockTick();
+  const now = useClockStore((s) => s.now);
 
   const row = rows.find((r) => r.tokenId === selectedId) ?? null;
 
@@ -62,13 +67,14 @@ export function McpCredentialDetail({ rows }: { rows: McpTokenRow[] }) {
       row
         ? summarizeCredentialReach({ scopes: row.scopes, allowedNodes: row.allowedNodes }, CATALOG_TOOLS, {
             flightEnforced: false,
-            fleetMode: false,
+            fleetMode: true,
           })
         : null,
     [row],
   );
 
-  const revoked = row?.revokedAt != null;
+  const status = row ? credentialStatus(row, now) : null;
+  const usable = status === "active";
 
   return (
     <Modal
@@ -107,13 +113,22 @@ export function McpCredentialDetail({ rows }: { rows: McpTokenRow[] }) {
             <h3 className="font-mono text-xs uppercase tracking-wide text-text-tertiary">
               {t("credentialDetail.reachTitle")}
             </h3>
-            {revoked ? (
+            {status === "revoked" ? (
               <p className="text-xs text-status-warning">{t("credentialDetail.revokedNote")}</p>
+            ) : status === "expired" ? (
+              <p className="text-xs text-status-warning">{t("credentialDetail.expiredNote")}</p>
             ) : null}
             <div className="flex flex-col gap-1 rounded-lg border border-border-default bg-bg-secondary p-3">
               <p className="flex items-center gap-1.5 text-sm text-text-primary">
-                <Check size={14} className="text-status-success" />
-                {t("credentialDetail.callable", { callable: reach.callable, total: reach.total })}
+                {usable ? (
+                  <Check size={14} className="text-status-success" />
+                ) : (
+                  <X size={14} className="text-status-error" />
+                )}
+                {t("credentialDetail.callable", {
+                  callable: usable ? reach.callable : 0,
+                  total: reach.total,
+                })}
               </p>
               {BLOCK_REASONS.filter((r) => reach.byReason[r] > 0).map((r) => (
                 <p key={r} className="flex items-center gap-1.5 text-xs text-text-tertiary">

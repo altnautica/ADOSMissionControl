@@ -11,38 +11,18 @@ import { useCallback, useState } from "react";
 import { Upload, Check, AlertCircle, X, FileType } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { useHistoryStore } from "@/stores/history-store";
-import { setRecordingFromFrames } from "@/lib/telemetry-recorder";
-
-type DetectedFormat = "bin" | "ulg" | "tlog" | "json" | "unknown";
+import { detectFlightLogFormat, importFlightLog, type FlightLogFormat } from "@/lib/flight-log-import";
 
 interface ParsedFile {
   file: File;
-  format: DetectedFormat;
+  format: FlightLogFormat;
   status: "pending" | "importing" | "done" | "error";
   flightCount?: number;
+  duplicates?: number;
   error?: string;
 }
 
-function detectFormat(header: Uint8Array, filename: string): DetectedFormat {
-  // ArduPilot dataflash: starts with 0xA3 0x95
-  if (header[0] === 0xa3 && header[1] === 0x95) return "bin";
-  // PX4 ULog: starts with "ULog" (0x55 0x4C 0x6F 0x67)
-  if (header[0] === 0x55 && header[1] === 0x4c && header[2] === 0x6f && header[3] === 0x67) return "ulg";
-  // JSON: starts with { or [
-  if (header[0] === 0x7b || header[0] === 0x5b) return "json";
-  // tlog: starts with 8-byte timestamp then MAVLink STX (0xFE or 0xFD)
-  if (header.length >= 9 && (header[8] === 0xfe || header[8] === 0xfd)) return "tlog";
-  // Fallback by extension
-  const ext = filename.split(".").pop()?.toLowerCase();
-  if (ext === "bin") return "bin";
-  if (ext === "ulg" || ext === "ulog") return "ulg";
-  if (ext === "tlog") return "tlog";
-  if (ext === "json") return "json";
-  return "unknown";
-}
-
-const FORMAT_LABELS: Record<DetectedFormat, string> = {
+const FORMAT_LABELS: Record<FlightLogFormat, string> = {
   bin: "ArduPilot (.bin)",
   ulg: "PX4 ULog (.ulg)",
   tlog: "MAVLink (.tlog)",
@@ -50,7 +30,7 @@ const FORMAT_LABELS: Record<DetectedFormat, string> = {
   unknown: "Unknown",
 };
 
-const FORMAT_COLORS: Record<DetectedFormat, string> = {
+const FORMAT_COLORS: Record<FlightLogFormat, string> = {
   bin: "text-accent-primary",
   ulg: "text-status-success",
   tlog: "text-status-warning",
@@ -63,7 +43,13 @@ interface ImportLogModalProps {
   onClose: () => void;
 }
 
+/** Mounts the dialog body only while open, so every opening starts fresh. */
 export function ImportLogModal({ open, onClose }: ImportLogModalProps) {
+  if (!open) return null;
+  return <ImportLogDialog onClose={onClose} />;
+}
+
+function ImportLogDialog({ onClose }: { onClose: () => void }) {
   const [files, setFiles] = useState<ParsedFile[]>([]);
   const [done, setDone] = useState(false);
 
@@ -73,7 +59,7 @@ export function ImportLogModal({ open, onClose }: ImportLogModalProps) {
 
     for (const file of arr) {
       const header = new Uint8Array(await file.slice(0, 16).arrayBuffer());
-      const format = detectFormat(header, file.name);
+      const format = detectFlightLogFormat(header, file.name);
       parsed.push({ file, format, status: "pending" });
     }
 
@@ -81,73 +67,31 @@ export function ImportLogModal({ open, onClose }: ImportLogModalProps) {
   }, []);
 
   const handleImport = useCallback(async () => {
-    const store = useHistoryStore.getState();
     let totalFlights = 0;
+    // Only files not yet attempted: earlier imports stay as they are.
+    const queue = files.flatMap((pf, i) => (pf.status === "pending" ? [i] : []));
+    const setStatus = (i: number, patch: Partial<ParsedFile>) =>
+      setFiles((prev) => prev.map((f, j) => (j === i ? { ...f, ...patch } : f)));
 
-    setFiles((prev) => prev.map((f) => ({ ...f, status: "importing" as const })));
-
-    for (let i = 0; i < files.length; i++) {
+    for (const i of queue) {
       const pf = files[i];
       if (pf.format === "unknown") {
-        setFiles((prev) => prev.map((f, j) => j === i ? { ...f, status: "error", error: "Unknown format" } : f));
+        setStatus(i, { status: "error", error: "Unknown format" });
         continue;
       }
-
+      setStatus(i, { status: "importing" });
       try {
-        const buffer = await pf.file.arrayBuffer();
-        let flightCount = 0;
-
-        if (pf.format === "bin") {
-          const { importDataflashLog } = await import("@/lib/dataflash/import");
-          const summary = await importDataflashLog(new Uint8Array(buffer));
-          flightCount = summary.flightsImported;
-        } else if (pf.format === "ulg") {
-          const { parseUlog } = await import("@/lib/ulog/parser");
-          const { ulogToFlightRecords } = await import("@/lib/ulog/to-flight-record");
-          const log = parseUlog(buffer);
-          const flights = ulogToFlightRecords(log, pf.file.name);
-          for (const { record, frames } of flights) {
-            await setRecordingFromFrames(record.recordingId!, record.droneName, frames, {
-              droneId: record.droneId,
-            });
-            store.addRecord(record);
-          }
-          flightCount = flights.length;
-        } else if (pf.format === "tlog") {
-          const { parseTlog, tlogToFlightRecord } = await import("@/lib/tlog/parser");
-          const packets = parseTlog(buffer);
-          const result = tlogToFlightRecord(packets, pf.file.name);
-          if (result) {
-            await setRecordingFromFrames(result.record.recordingId!, result.record.droneName, result.frames, {
-              droneId: result.record.droneId,
-            });
-            store.addRecord(result.record);
-            flightCount = 1;
-          }
-        } else if (pf.format === "json") {
-          const text = new TextDecoder().decode(buffer);
-          const data = JSON.parse(text);
-          const records = Array.isArray(data) ? data : [data];
-          for (const rec of records) {
-            if (rec.id && rec.droneName) {
-              store.addRecord({ ...rec, source: "imported", updatedAt: Date.now() });
-              flightCount++;
-            }
-          }
-        }
-
-        totalFlights += flightCount;
-        setFiles((prev) => prev.map((f, j) => j === i ? { ...f, status: "done", flightCount } : f));
+        const bytes = new Uint8Array(await pf.file.arrayBuffer());
+        const result = await importFlightLog(bytes, { filename: pf.file.name });
+        totalFlights += result.flightsImported;
+        setStatus(i, { status: "done", flightCount: result.flightsImported, duplicates: result.duplicates });
       } catch (err) {
-        setFiles((prev) => prev.map((f, j) => j === i ? { ...f, status: "error", error: (err as Error).message } : f));
+        setStatus(i, { status: "error", error: (err as Error).message });
       }
     }
 
-    await store.persistToIDB();
     if (totalFlights > 0) setDone(true);
   }, [files]);
-
-  if (!open) return null;
 
   const importableCount = files.filter((f) => f.format !== "unknown" && f.status === "pending").length;
 
@@ -201,6 +145,7 @@ export function ImportLogModal({ open, onClose }: ImportLogModalProps) {
                         {pf.status === "done" && (
                           <span className="text-status-success shrink-0">
                             <Check size={10} className="inline" /> {pf.flightCount} flight{pf.flightCount !== 1 ? "s" : ""}
+                            {pf.duplicates ? ` · ${pf.duplicates} already in history` : ""}
                           </span>
                         )}
                         {pf.status === "error" && (

@@ -145,12 +145,6 @@ export const createJob = mutation({
       updatedAt: Date.now(),
     });
 
-    // Bump archive refCount so a later cleanup pass can tell the
-    // blob is still in use.
-    await ctx.db.patch(args.archiveId, {
-      refCount: archive.refCount + 1,
-    });
-
     return jobId;
   },
 });
@@ -213,30 +207,56 @@ export async function settleInstallJobFromAck(
 }
 
 /**
- * Operator cancels a job that has not yet reached `installing`.
- * Cancellation past `installing` is a no-op on the cloud side —
- * the agent has already started writing files and the operator
- * should `remove` the resulting install instead.
+ * Cancel an install job for its owner. A job whose `plugin.install` command
+ * is still queued is cancelled together with that command, which is failed
+ * so the agent's next poll never receives it. Once the agent has taken the
+ * command (or the job reached `installing`) the cancel is refused: the agent
+ * may already be writing files and the operator should remove the resulting
+ * install instead. A terminal job is left as is.
  */
+export async function cancelInstallJob(
+  ctx: Pick<MutationCtx, "db">,
+  userId: string,
+  jobId: Id<"plugin_install_jobs">,
+): Promise<void> {
+  const job = await ctx.db.get(jobId);
+  if (!job || job.userId !== userId) {
+    throw new Error("Job not found");
+  }
+  if (job.stage === "completed" || job.stage === "failed" || job.stage === "cancelled") return;
+  if (job.stage === "installing") {
+    throw new Error(
+      "Job is already installing; remove the plugin from the drone instead",
+    );
+  }
+  const now = Date.now();
+  if (job.cmdId) {
+    const command = await ctx.db.get(job.cmdId);
+    if (command && (command.status === "delivering" || command.deliveredAt !== undefined)) {
+      throw new Error(
+        "The drone already received the install; remove the plugin from the drone instead",
+      );
+    }
+    if (command && command.status === "pending") {
+      await ctx.db.patch(command._id, {
+        status: "failed",
+        result: { success: false, message: "cancelled by operator" },
+        completedAt: now,
+      });
+    }
+  }
+  await ctx.db.patch(jobId, {
+    stage: "cancelled",
+    updatedAt: now,
+  });
+}
+
 export const cancelJob = mutation({
   args: { jobId: v.id("plugin_install_jobs") },
   handler: async (ctx, { jobId }) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
-    const job = await ctx.db.get(jobId);
-    if (!job || job.userId !== userId) {
-      throw new Error("Job not found");
-    }
-    if (job.stage === "completed" || job.stage === "cancelled") return;
-    if (job.stage === "installing") {
-      throw new Error(
-        "Job is already installing; remove the plugin from the drone instead",
-      );
-    }
-    await ctx.db.patch(jobId, {
-      stage: "cancelled",
-      updatedAt: Date.now(),
-    });
+    await cancelInstallJob(ctx, userId, jobId);
   },
 });
 

@@ -7,7 +7,7 @@
  * the detection feed is actually live. A freshness dot reads green while batches
  * flow, amber when a live feed has gone stale, grey when perception is idle.
  *
- * The honesty this exists for (Rule 44): the box overlay correctly CLEARS its
+ * The honesty this exists for (no fabricated reading): the box overlay correctly CLEARS its
  * boxes the moment a feed stops, which is indistinguishable from "no targets in
  * view". This chip surfaces the difference — when a feed WAS flowing and then
  * aged out (`stale`), it escalates to "Perception feed stale" / "Offload link

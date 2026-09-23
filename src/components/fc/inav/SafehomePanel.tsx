@@ -16,7 +16,7 @@ import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { PanelHeader } from "../shared/PanelHeader";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
-import { Home, Upload, Download } from "lucide-react";
+import { Home, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // ── Component ─────────────────────────────────────────────────
@@ -118,7 +118,7 @@ export function SafehomePanel() {
                 className={cn(
                   "border border-border-default rounded cursor-pointer transition-colors",
                   sh.enabled
-                    ? "bg-surface-primary"
+                    ? "bg-bg-primary"
                     : "bg-bg-secondary opacity-60",
                   activeIndex === idx && "border-accent-primary",
                 )}
@@ -189,18 +189,6 @@ export function SafehomePanel() {
                           className="bg-bg-tertiary border border-border-default rounded px-2 py-1 text-xs font-mono text-text-primary focus:outline-none focus:border-accent-primary"
                         />
                       </label>
-                    </div>
-                    <div className="flex gap-2 pt-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        icon={<Download size={10} />}
-                        disabled={true}
-                        title="Map picker coming in a future update"
-                        className="opacity-50 cursor-not-allowed"
-                      >
-                        Pick on map
-                      </Button>
                     </div>
                   </div>
                 )}

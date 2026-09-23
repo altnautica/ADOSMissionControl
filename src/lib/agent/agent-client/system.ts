@@ -7,7 +7,7 @@
  */
 
 import type { z } from "zod";
-import { normalizeServiceStatus } from "../service-state";
+import { normalizeServiceInfo } from "../service-state";
 import type {
   AgentStatus,
   CommandResult,
@@ -75,11 +75,11 @@ export function normaliseSystemResources(
     memory_percent: optionalNumber(res.memory_percent),
     memory_used_mb: optionalNumber(res.memory_used_mb),
     memory_total_mb: optionalNumber(res.memory_total_mb),
-    memory_available_mb: Number(res.memory_available_mb ?? 0),
-    memory_cache_mb: Number(res.memory_cache_mb ?? 0),
-    swap_total_mb: Number(res.swap_total_mb ?? 0),
-    swap_used_mb: Number(res.swap_used_mb ?? 0),
-    swap_percent: Number(res.swap_percent ?? 0),
+    memory_available_mb: optionalNumber(res.memory_available_mb),
+    memory_cache_mb: optionalNumber(res.memory_cache_mb),
+    swap_total_mb: optionalNumber(res.swap_total_mb),
+    swap_used_mb: optionalNumber(res.swap_used_mb),
+    swap_percent: optionalNumber(res.swap_percent),
     disk_percent: optionalNumber(res.disk_percent),
     disk_used_gb: optionalNumber(res.disk_used_gb),
     disk_total_gb: optionalNumber(res.disk_total_gb),
@@ -105,10 +105,9 @@ export function getTelemetry(ctx: RequestContext): Promise<TelemetrySnapshot> {
   });
 }
 
-export async function getServices(
-  ctx: RequestContext,
-  agentUptimeHint?: number,
-): Promise<ServiceInfo[]> {
+/** Per-service rows. A metric the agent does not send (the native front sends
+ * no CPU, uptime or transition stamp) stays null so the table shows "—". */
+export async function getServices(ctx: RequestContext): Promise<ServiceInfo[]> {
   const svcRes = await agentRequest<
     Array<Record<string, unknown>> | { services: Array<Record<string, unknown>> }
   >(ctx, "/api/services", {
@@ -118,37 +117,7 @@ export async function getServices(
     allowSchemaFallback: true,
   });
   const list = Array.isArray(svcRes) ? svcRes : (svcRes.services ?? []);
-
-  // Compute per-service uptime from monotonic last_transition timestamps.
-  // Use agent uptime hint (from store) to estimate current monotonic time.
-  const agentUptime = agentUptimeHint ?? 0;
-  const transitions = list
-    .map((s) => (typeof s.last_transition === "number" ? s.last_transition : 0))
-    .filter((t) => t > 0);
-  const earliestStart = transitions.length > 0 ? Math.min(...transitions) : 0;
-  const monotonicNow = earliestStart > 0 ? earliestStart + agentUptime : 0;
-
-  return list.map((s) => {
-    const lastTransition = typeof s.last_transition === "number" ? s.last_transition : 0;
-    const uptimeSeconds = monotonicNow > 0 && lastTransition > 0
-      ? Math.max(0, monotonicNow - lastTransition)
-      : (typeof s.uptime_seconds === "number" ? s.uptime_seconds : 0);
-
-    return {
-      name: String(s.name ?? "unknown"),
-      status: normalizeServiceStatus(s),
-      pid: typeof s.pid === "number" ? s.pid : null,
-      cpu_percent:
-        typeof s.cpu_percent === "number"
-          ? s.cpu_percent
-          : (typeof s.cpuPercent === "number" ? s.cpuPercent : 0),
-      memory_mb:
-        typeof s.memory_mb === "number"
-          ? s.memory_mb
-          : (typeof s.memoryMb === "number" ? s.memoryMb : 0),
-      uptime_seconds: uptimeSeconds,
-    };
-  });
+  return list.map((s) => normalizeServiceInfo(s));
 }
 
 export async function getSystemResources(
@@ -481,9 +450,9 @@ export async function getFullStatus(
 
 /**
  * Enumerate the serial devices the agent's MAVLink router can bind as the
- * FC link (`GET /api/mavlink/ports`). Returns `[]` on agents that predate the
- * endpoint (or any transient failure) so the picker degrades to "no ports
- * detected" rather than throwing.
+ * FC link (`GET /api/mavlink/ports`). Returns `[]` only on agents that predate
+ * the endpoint (404). Any other failure (timeout, auth, relay 504) throws so
+ * the picker can say it could not list ports instead of claiming none exist.
  */
 export async function getMavlinkPorts(
   ctx: RequestContext,
@@ -498,8 +467,9 @@ export async function getMavlinkPorts(
       },
     );
     return Array.isArray(res.ports) ? res.ports : [];
-  } catch {
-    return [];
+  } catch (err) {
+    if (err instanceof Error && /Agent API 404/.test(err.message)) return [];
+    throw err;
   }
 }
 

@@ -2,6 +2,8 @@
  * @module PlanContextMenu
  * @description Right-click context menu for plans: Rename, Duplicate, Move, Export, Delete.
  * Uses current planner waypoints (not stale stored data) when exporting the active plan.
+ * Delete asks for confirmation first; deleting the active plan empties the whole
+ * workspace (waypoints, fence, rally points, POIs).
  * @license GPL-3.0-only
  */
 "use client";
@@ -14,7 +16,10 @@ import { usePlanLibraryStore } from "@/stores/plan-library-store";
 import { useMissionStore } from "@/stores/mission-store";
 import { useSimulationStore } from "@/stores/simulation-store";
 import { useToast } from "@/components/ui/toast";
-import { exportWaypointsFormat, exportQGCPlan, currentExportOptions } from "@/lib/mission-io";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { currentExportOptions } from "@/lib/mission-io";
+import { exportWaypointsFormat, exportQGCPlan } from "@/lib/mission-io-formats";
+import { capturePlanExtras, clearPlanWorkspace } from "@/lib/plan-workspace";
 
 interface PlanContextMenuProps {
   planId: string;
@@ -35,19 +40,22 @@ export function PlanContextMenu({ planId, x, y, onClose, onPlanRenamed }: PlanCo
   const updatePlanName = usePlanLibraryStore((s) => s.updatePlanName);
   const movePlan = usePlanLibraryStore((s) => s.movePlan);
   const activePlanId = usePlanLibraryStore((s) => s.activePlanId);
-  const clearMission = useMissionStore((s) => s.clearMission);
   const currentWaypoints = useMissionStore((s) => s.waypoints);
   const { toast } = useToast();
 
   const [renaming, setRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState("");
   const [moving, setMoving] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const renameRef = useRef<HTMLInputElement>(null);
 
   const plan = plans.find((p) => p.id === planId);
   const isActivePlan = planId === activePlanId;
 
   useEffect(() => {
+    // While the delete confirmation is up, a click in it is not an outside
+    // click: the dialog owns dismissal until it answers.
+    if (confirmingDelete) return;
     const handler = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) {
         onClose();
@@ -55,7 +63,7 @@ export function PlanContextMenu({ planId, x, y, onClose, onPlanRenamed }: PlanCo
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, [onClose]);
+  }, [onClose, confirmingDelete]);
 
   useEffect(() => {
     if (renaming && renameRef.current) {
@@ -71,14 +79,14 @@ export function PlanContextMenu({ planId, x, y, onClose, onPlanRenamed }: PlanCo
   }, [duplicatePlan, planId, toast, onClose, t]);
 
   const handleDelete = useCallback(() => {
+    deletePlan(planId);
     if (isActivePlan) {
-      clearMission();
+      clearPlanWorkspace();
       useSimulationStore.getState().reset();
     }
-    deletePlan(planId);
     toast(t("planDeleted"), "info");
     onClose();
-  }, [deletePlan, planId, isActivePlan, clearMission, toast, onClose, t]);
+  }, [deletePlan, planId, isActivePlan, toast, onClose, t]);
 
   // Use current planner waypoints for active plan, stored waypoints for others
   const getExportWaypoints = useCallback(() => {
@@ -95,11 +103,15 @@ export function PlanContextMenu({ planId, x, y, onClose, onPlanRenamed }: PlanCo
 
   const handleExportPlan = useCallback(() => {
     if (!plan) return;
-    // Export the plan's own saved fence/rally (not the live editor's).
-    exportQGCPlan(getExportWaypoints(), plan.name, undefined, { geofence: plan.geofence, rally: plan.rally }, currentExportOptions());
+    // The active plan exports what the editor holds (route AND fence/rally),
+    // any other plan its saved copy, so a file never mixes the two.
+    const extras = isActivePlan
+      ? capturePlanExtras()
+      : { geofence: plan.geofence, rally: plan.rally };
+    exportQGCPlan(getExportWaypoints(), plan.name, undefined, extras, currentExportOptions());
     toast(t("exportedPlan"), "success");
     onClose();
-  }, [plan, getExportWaypoints, toast, onClose, t]);
+  }, [plan, isActivePlan, getExportWaypoints, toast, onClose, t]);
 
   const handleMove = useCallback((folderId: string | null) => {
     movePlan(planId, folderId);
@@ -138,8 +150,22 @@ export function PlanContextMenu({ planId, x, y, onClose, onPlanRenamed }: PlanCo
     { id: "export-wp", label: t("exportWaypoints"), icon: <FileDown size={12} />, action: handleExportWaypoints },
     { id: "export-plan", label: t("exportPlanFile"), icon: <FileDown size={12} />, action: handleExportPlan },
     { id: "div2", divider: true },
-    { id: "delete", label: t("delete"), icon: <Trash2 size={12} />, action: handleDelete, danger: true },
+    { id: "delete", label: t("delete"), icon: <Trash2 size={12} />, action: () => setConfirmingDelete(true), danger: true },
   ];
+
+  if (confirmingDelete) {
+    return (
+      <ConfirmDialog
+        open
+        title={plan.name}
+        message={t("deleteConfirm")}
+        confirmLabel={t("delete")}
+        variant="danger"
+        onConfirm={handleDelete}
+        onCancel={onClose}
+      />
+    );
+  }
 
   return (
     <div

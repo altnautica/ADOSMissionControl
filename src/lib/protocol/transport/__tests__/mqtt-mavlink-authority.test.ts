@@ -5,7 +5,8 @@
  * the shared read-only credential opens a healthy socket that streams telemetry
  * and silently discards every frame sent back. At QoS 0 nothing is
  * acknowledged, so neither the transport nor the caller can observe the
- * discard — the transport has to know its own authority rather than discover it.
+ * discard — the transport has to know its own authority rather than discover
+ * it, and proves a write grant only through a QoS-1 probe's PUBACK.
  *
  * @license GPL-3.0-only
  */
@@ -22,6 +23,9 @@ function fakeClient() {
   const handlers: Record<string, ((...a: unknown[]) => void)[]> = {};
   return {
     published: [] as string[],
+    probes: [] as { topic: string; bytes: number }[],
+    /** The PUBACK outcome the broker gives a QoS-1 publish (null = success). */
+    pubackError: null as Error | null,
     on(event: string, cb: (...a: unknown[]) => void) {
       (handlers[event] ??= []).push(cb);
       // Report a successful connection as soon as the caller subscribes to it,
@@ -31,8 +35,19 @@ function fakeClient() {
     subscribe(_t: string, _o: unknown, cb?: (e: Error | null) => void) {
       cb?.(null);
     },
-    publish(topic: string, _p: unknown, _o: unknown, cb?: (e?: Error) => void) {
+    publish(
+      topic: string,
+      payload: Uint8Array,
+      opts: { qos: number },
+      cb?: (e?: Error | null) => void,
+    ) {
+      if (opts.qos === 1) {
+        this.probes.push({ topic, bytes: payload.length });
+        queueMicrotask(() => cb?.(this.pubackError));
+        return;
+      }
       this.published.push(topic);
+      // mqtt.js fires a QoS-0 callback locally, with no broker round trip.
       cb?.(undefined);
     },
     end() {},
@@ -102,24 +117,39 @@ describe("MqttMavlinkTransport publish authority", () => {
     expect(t.canCommand).toBe(false);
   });
 
-  it("reports the broker's acceptance of a publish, once per credential", async () => {
-    // Holding a grant and having proven it are different facts, and only the
-    // publishing client can observe the second one: at QoS 0 there is no round
-    // trip for the grant owner to wait on, so the broker taking the frame is the
-    // only evidence that exists.
+  it("proves the write grant only from a QoS-1 PUBACK, not from QoS-0 frames", async () => {
     setMqttBrokerCredential({ username: "gcs-op-x", password: "secret" });
     const accepted: string[] = [];
     const off = onBrokerWriteAccepted((username) => accepted.push(username));
+    client.pubackError = new Error("Publish error: Not authorized");
     const t = await connected({
       username: "gcs-op-x",
       password: "secret",
       canPublish: true,
     });
+    await Promise.resolve();
 
+    // An empty probe (dropped by the agent's relay) on the command lane.
+    expect(client.probes).toEqual([
+      { topic: "ados/device-alpha/mavlink/rx", bytes: 0 },
+    ]);
+    // The broker refused it; frames whose QoS-0 callback fires locally prove
+    // nothing either.
     t.send(new Uint8Array([1]));
     t.send(new Uint8Array([2]));
-    // Two frames, one report. This runs on every outbound FC frame, and a report
-    // per frame would be a Convex mutation per frame.
+    expect(accepted).toEqual([]);
+
+    off();
+    setMqttBrokerCredential(null);
+  });
+
+  it("reports the grant once the broker acknowledges the probe", async () => {
+    setMqttBrokerCredential({ username: "gcs-op-x", password: "secret" });
+    const accepted: string[] = [];
+    const off = onBrokerWriteAccepted((username) => accepted.push(username));
+    await connected({ username: "gcs-op-x", password: "secret", canPublish: true });
+    await Promise.resolve();
+
     expect(accepted).toEqual(["gcs-op-x"]);
 
     off();

@@ -3,9 +3,8 @@
  * @description The MCP tab's grouped left rail. Top-level destinations (Overview,
  * Connect, Audit) plus two management segments — Access control (Credentials,
  * Scopes & roles) and Catalog (Built-in tools) — with a pinned "Add to Claude
- * Code" affordance. The Plugins segment mounts here once the plugin-tools data
- * layer lands. Reflects the founder's ask: RBAC, built-in tools, and plugin tools
- * as first-class segments.
+ * Code" affordance. Access control, built-in tools and plugin tools are
+ * first-class segments.
  * @license GPL-3.0-only
  */
 

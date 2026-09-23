@@ -9,14 +9,16 @@
 import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from "vitest";
 import { NextRequest } from "next/server";
 
+let sessionCookie: string | null = "session-token";
 vi.mock("next/headers", () => ({
   headers: async () => new Headers({ Host: "localhost:4000" }),
-  cookies: async () => ({ get: () => ({ value: "session-token" }) }),
+  cookies: async () => ({ get: () => (sessionCookie ? { value: sessionCookie } : undefined) }),
 }));
 
-vi.mock("convex/nextjs", () => ({
+const { fetchMutation } = vi.hoisted(() => ({
   fetchMutation: vi.fn(async () => ({ allowed: true, remaining: 4, weeklyLimit: 5 })),
 }));
+vi.mock("convex/nextjs", () => ({ fetchMutation }));
 
 import { POST } from "@/app/api/pid-analysis/route";
 
@@ -54,6 +56,9 @@ describe("POST /api/pid-analysis", () => {
 
   beforeEach(() => {
     vi.stubEnv("GROQ_API_KEY", "test-key");
+    vi.stubEnv("NEXT_PUBLIC_CONVEX_URL", "https://example.com");
+    sessionCookie = "session-token";
+    fetchMutation.mockClear();
     fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
   });
@@ -106,5 +111,24 @@ describe("POST /api/pid-analysis", () => {
     const res = await POST(postJson({ ...request, vehicleType: "boat" }));
     expect(res.status).toBe(400);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("asks for sign-in when accounts are enabled and there is no session", async () => {
+    sessionCookie = null;
+    const res = await POST(postJson(request));
+    expect(res.status).toBe(401);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("serves a self-hosted install without Convex with no sign-in or quota", async () => {
+    vi.stubEnv("NEXT_PUBLIC_CONVEX_URL", "");
+    sessionCookie = null;
+    fetchMock.mockResolvedValueOnce(modelReply({ recommendations: [], summary: "ok" }));
+    const res = await POST(postJson(request));
+    expect(res.status).toBe(200);
+    expect(fetchMutation).not.toHaveBeenCalled();
+    const body = await res.json();
+    expect(body.summary).toBe("ok");
+    expect(body.remaining).toBeUndefined();
   });
 });

@@ -6,7 +6,7 @@
  */
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   play, pause, resume, seek, setSpeed,
   getPlaybackState, onPlaybackChange,
@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { Select } from "@/components/ui/select";
 import type { FlightEvent } from "@/lib/types";
+import { formatErrorMessage } from "@/lib/utils";
 
 const SPEED_OPTIONS = [
   { value: "0.25", label: "0.25x" },
@@ -48,8 +49,17 @@ interface ReplayPlaybackBarProps {
 
 export function ReplayPlaybackBar({ events = [] }: ReplayPlaybackBarProps = {}) {
   const [status, setStatus] = useState<PlaybackStatus>(getPlaybackState());
-  const scrubRef = useRef(false);
-  void scrubRef;
+  // Play, resume and seek refuse (throw) while a vehicle is connected or no
+  // recording is loaded; the refusal is shown in the bar.
+  const [error, setError] = useState<string | null>(null);
+  const run = useCallback((action: () => void) => {
+    try {
+      action();
+      setError(null);
+    } catch (err) {
+      setError(formatErrorMessage(err));
+    }
+  }, []);
 
   useEffect(() => {
     const unsub = onPlaybackChange(setStatus);
@@ -66,24 +76,26 @@ export function ReplayPlaybackBar({ events = [] }: ReplayPlaybackBarProps = {}) 
   }, [status.state]);
 
   const handlePlayPause = useCallback(() => {
-    if (status.state === "playing") {
-      pause();
-    } else if (status.state === "paused") {
-      resume();
-    } else {
-      play();
-    }
-  }, [status.state]);
+    if (status.state === "playing") run(pause);
+    else if (status.state === "paused") run(resume);
+    else run(play);
+  }, [status.state, run]);
 
-  const handleSkipStart = useCallback(() => seek(0), []);
-  const handleSkipEnd = useCallback(() => seek(status.totalDurationMs), [status.totalDurationMs]);
-  const handleStepBack = useCallback(() => seek(Math.max(0, status.currentTimeMs - STEP_MS)), [status.currentTimeMs]);
-  const handleStepForward = useCallback(() => seek(Math.min(status.totalDurationMs, status.currentTimeMs + STEP_MS)), [status.currentTimeMs, status.totalDurationMs]);
+  const handleSkipStart = useCallback(() => run(() => seek(0)), [run]);
+  const handleSkipEnd = useCallback(() => run(() => seek(status.totalDurationMs)), [status.totalDurationMs, run]);
+  const handleStepBack = useCallback(
+    () => run(() => seek(Math.max(0, status.currentTimeMs - STEP_MS))),
+    [status.currentTimeMs, run],
+  );
+  const handleStepForward = useCallback(
+    () => run(() => seek(Math.min(status.totalDurationMs, status.currentTimeMs + STEP_MS))),
+    [status.currentTimeMs, status.totalDurationMs, run],
+  );
 
   const handleScrub = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const pct = Number(e.target.value) / 1000;
-    seek(pct * status.totalDurationMs);
-  }, [status.totalDurationMs]);
+    run(() => seek(pct * status.totalDurationMs));
+  }, [status.totalDurationMs, run]);
 
   const handleSpeedChange = useCallback((value: string) => {
     setSpeed(Number(value) as PlaybackSpeed);
@@ -135,7 +147,7 @@ export function ReplayPlaybackBar({ events = [] }: ReplayPlaybackBarProps = {}) 
                   className="absolute top-0 w-[3px] h-2 -translate-x-1/2 cursor-pointer pointer-events-auto rounded-sm"
                   style={{ left: `${pct}%`, backgroundColor: eventColor[e.severity] }}
                   title={`${e.label} @ ${formatTime(e.t)}`}
-                  onClick={() => seek(e.t)}
+                  onClick={() => run(() => seek(e.t))}
                 />
               );
             })}
@@ -155,6 +167,12 @@ export function ReplayPlaybackBar({ events = [] }: ReplayPlaybackBarProps = {}) 
       <span className="text-[11px] font-mono text-text-secondary shrink-0 w-24 text-center">
         {formatTime(status.currentTimeMs)} / {formatTime(status.totalDurationMs)}
       </span>
+
+      {error && (
+        <span role="alert" className="text-[11px] text-status-error max-w-[16rem] truncate" title={error}>
+          {error}
+        </span>
+      )}
 
       {/* Speed selector */}
       <Select

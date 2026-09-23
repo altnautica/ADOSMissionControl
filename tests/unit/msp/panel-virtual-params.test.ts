@@ -11,24 +11,19 @@ import { describe, expect, it } from 'vitest'
 import { mspGetParameter, type MspParamContext } from '@/lib/protocol/msp-adapter-params'
 import type { MspSerialQueue } from '@/lib/protocol/msp/msp-serial-queue'
 import { BF_CONFIG_PARAM_NAMES } from '@/components/fc/betaflight/bf-config-constants'
-import { BF_RATE_PARAM_NAMES } from '@/components/fc/betaflight/bf-rate-constants'
+import { BF_RATE_OPTIONAL_PARAM_NAMES, BF_RATE_PARAM_NAMES } from '@/components/fc/betaflight/bf-rate-constants'
 import { BF_MOTORS_PARAM_NAMES } from '@/components/fc/motors/bf-motors-constants'
 import { BF_POWER_PARAMS } from '@/components/fc/power/bf-power-constants'
-import { BF_PID_AXES, BF_FILTER_PARAMS } from '@/components/fc/pid/pid-constants'
 import { GPS_PARAM_NAMES } from '@/components/fc/sensors/gps-constants'
-import { BF_FAILSAFE_PARAMS } from '@/components/fc/safety/failsafe-constants'
 import { BLACKBOX_PARAM_NAMES } from '@/components/fc/comms/blackbox-constants'
 import { VTX_PARAM_NAMES } from '@/components/fc/misc/vtx-constants'
 
 const PANEL_PARAMS: Record<string, readonly string[]> = {
   config: BF_CONFIG_PARAM_NAMES,
-  rates: BF_RATE_PARAM_NAMES,
+  rates: [...BF_RATE_PARAM_NAMES, ...BF_RATE_OPTIONAL_PARAM_NAMES],
   motors: BF_MOTORS_PARAM_NAMES,
   power: BF_POWER_PARAMS,
-  pid: BF_PID_AXES.flatMap((a) => a.params.map((p) => p.param)),
-  filters: BF_FILTER_PARAMS.map((p) => p.param),
   gps: GPS_PARAM_NAMES,
-  failsafe: BF_FAILSAFE_PARAMS,
   blackbox: BLACKBOX_PARAM_NAMES,
   vtx: VTX_PARAM_NAMES,
 }

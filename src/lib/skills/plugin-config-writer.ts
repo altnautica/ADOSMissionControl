@@ -7,7 +7,7 @@
  * inputs) flip the plugin's per-drone config; the plugin reads that config
  * each tick from the LIVE store in the running `ados-plugin-host`. This module
  * is the writer the host store (`plugin-skill-host-store`) calls: it resolves
- * the LAN-paired agent for the drone (Rule 39 local-first, from
+ * the LAN-paired agent for the drone (local-first, from
  * `local-nodes-store`) and writes through the agent's native
  * `PUT /api/plugins/{id}/config` (→ the daemon's control socket → the live
  * store). No Convex round-trip; the cloud mirror is a separate, later path.
@@ -22,7 +22,7 @@
  */
 
 import { PluginAgentClient } from "@/lib/agent/plugin-client";
-import { resolveLocalAgentForDrone } from "@/lib/agent/resolve-agent";
+import { resolveLanAgent } from "@/lib/agent/resolve-agent";
 import { usePluginConfigCache } from "@/lib/plugins/config-cache";
 
 import {
@@ -37,7 +37,7 @@ const localConfigWriter: PluginConfigWriter = async ({
   configKey,
   value,
 }) => {
-  const agent = resolveLocalAgentForDrone(droneId);
+  const agent = resolveLanAgent(droneId);
   if (!agent) {
     throw new Error(`no local agent seam for ${droneId}`);
   }
@@ -71,7 +71,7 @@ export async function writePluginConfigValue(input: {
   key: string;
   value: unknown;
 }): Promise<boolean> {
-  const agent = resolveLocalAgentForDrone(input.droneId);
+  const agent = resolveLanAgent(input.droneId);
   if (!agent) return false;
   const client = new PluginAgentClient(agent.agentUrl, agent.apiKey);
   await client.setConfig(input.pluginId, input.key, input.value, "drone");

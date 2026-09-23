@@ -27,13 +27,17 @@ export function ContactForm() {
     setError("");
 
     try {
-      await submit({
+      const result = await submit({
         name: name.trim(),
         email: email.trim(),
         subject: subject.trim() || undefined,
         message: message.trim(),
         source: "command-community",
       });
+      if (result.error === "rate_limited") {
+        setError(t("errorRateLimited", { seconds: Math.ceil(result.retryAfterMs / 1000) }));
+        return;
+      }
       setSuccess(true);
       setName("");
       setEmail("");

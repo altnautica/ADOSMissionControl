@@ -85,7 +85,7 @@ export function OsdScreenPreview({
       {/* Video preview area (16:9) */}
       <div
         ref={gridRef}
-        className="relative bg-black border border-border-default select-none"
+        className="relative bg-bg-primary border border-border-default select-none"
         style={{ width: "720px", height: "405px" }}
         onMouseMove={handleGridMouseMove}
         onMouseUp={handleGridMouseUp}
@@ -118,7 +118,7 @@ export function OsdScreenPreview({
           <div
             key={el.id}
             className={`absolute font-mono text-[11px] px-1 cursor-move select-none ${
-              dragElement === el.id ? "text-accent-primary bg-accent-primary/20 z-10" : "text-white/90 hover:text-accent-primary hover:bg-accent-primary/10"
+              dragElement === el.id ? "text-accent-primary bg-accent-primary/20 z-10" : "text-text-primary hover:text-accent-primary hover:bg-accent-primary/10"
             }`}
             style={{
               left: `${(el.col / GRID_COLS) * 100}%`,
@@ -139,7 +139,7 @@ export function OsdScreenPreview({
         {/* "NO SIGNAL" if not connected */}
         {!selectedDroneId && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-white/20 font-mono text-sm tracking-widest">OSD PREVIEW</span>
+            <span className="text-text-tertiary font-mono text-sm tracking-widest">OSD PREVIEW</span>
           </div>
         )}
       </div>

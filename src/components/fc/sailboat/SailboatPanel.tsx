@@ -12,7 +12,7 @@ const SECTIONS: ParamSection[] = [
       { param: "SAIL_ANGLE_MAX", label: "Max Sail Angle (deg)", kind: "number", min: 0, max: 90, step: 1 },
       { param: "SAIL_ANGLE_IDEAL", label: "Ideal Angle of Attack (deg)", kind: "number", min: 0, max: 90, step: 1 },
       { param: "SAIL_HEEL_MAX", label: "Max Heel (deg)", kind: "number", min: 0, max: 90, step: 1 },
-      { param: "SAIL_NO_GO", label: "No-Go Angle (deg)", kind: "number", min: 0, max: 90, step: 1 },
+      { param: "SAIL_NO_GO_ANGLE", label: "No-Go Angle (deg)", kind: "number", min: 0, max: 90, step: 1 },
       { param: "SAIL_WNDSPD_MIN", label: "Min Wind Speed (m/s)", kind: "number", min: 0, max: 5, step: 0.1 },
       { param: "SAIL_XTRACK_MAX", label: "Max Cross-Track (m)", kind: "number", min: 0, max: 50, step: 1 },
       { param: "SAIL_LOIT_RADIUS", label: "Loiter Radius (m)", kind: "number", min: 0, max: 50, step: 1 },

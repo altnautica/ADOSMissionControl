@@ -19,6 +19,7 @@ import {
   afterEach,
 } from "vitest";
 import { renderHook, waitFor, act, cleanup } from "@testing-library/react";
+import { useSettingsStore } from "@/stores/settings-store";
 
 // --- Mocks ----------------------------------------------------------
 
@@ -83,10 +84,9 @@ const ROWS = [
 // --------------------------------------------------------------------
 
 describe("usePluginContributions", () => {
-  const originalDemo = process.env.NEXT_PUBLIC_DEMO_MODE;
 
   beforeEach(() => {
-    process.env.NEXT_PUBLIC_DEMO_MODE = "false";
+    useSettingsStore.setState({ demoMode: false });
     authState.value = true;
     useConvexSkipQueryMock.mockReset();
     loadPluginBundleMock.mockReset();
@@ -105,7 +105,7 @@ describe("usePluginContributions", () => {
 
   afterEach(() => {
     cleanup();
-    process.env.NEXT_PUBLIC_DEMO_MODE = originalDemo;
+    useSettingsStore.setState({ demoMode: false });
   });
 
   it("returns [] before the query resolves (skip / loading)", () => {
@@ -128,7 +128,7 @@ describe("usePluginContributions", () => {
   });
 
   it("returns [] in demo mode without fabricating bundles", () => {
-    process.env.NEXT_PUBLIC_DEMO_MODE = "true";
+    useSettingsStore.setState({ demoMode: true });
     useConvexSkipQueryMock.mockReturnValue(ROWS);
     const { result } = renderHook(() => usePluginContributions("drone-1"));
     expect(result.current).toEqual([]);
@@ -215,5 +215,45 @@ describe("usePluginContributions", () => {
     await waitFor(() => expect(result.current.length).toBe(1));
     expect(result.current[0].slot).toBe("video.overlay");
     expect(result.current[0].panelId).toBe("overlay-main");
+  });
+
+  it("loads nothing for a slot the install does not contribute to", async () => {
+    useConvexSkipQueryMock.mockReturnValue(ROWS);
+    const { result } = renderHook(() =>
+      usePluginContributions("drone-1", "map.overlay"),
+    );
+    await act(async () => {});
+    expect(result.current).toEqual([]);
+    expect(loadPluginBundleMock).not.toHaveBeenCalled();
+    expect(buildPluginHandlersMock).not.toHaveBeenCalled();
+  });
+
+  it("shares one bundle and one handler surface across slot hosts", async () => {
+    useConvexSkipQueryMock.mockReturnValue(ROWS);
+    const revoke = vi.fn();
+    const dispose = vi.fn();
+    loadPluginBundleMock.mockResolvedValue({ blobUrl: "blob:shared", revoke });
+    buildPluginHandlersMock.mockReturnValue({ handlers: {}, dispose });
+
+    const overlay = renderHook(() =>
+      usePluginContributions("drone-1", "video.overlay"),
+    );
+    const tab = renderHook(() =>
+      usePluginContributions("drone-1", "node.detail.tab"),
+    );
+    await waitFor(() => expect(overlay.result.current.length).toBe(1));
+    await waitFor(() => expect(tab.result.current.length).toBe(1));
+    expect(loadPluginBundleMock).toHaveBeenCalledTimes(1);
+    expect(buildPluginHandlersMock).toHaveBeenCalledTimes(1);
+    expect(tab.result.current[0].bundleUrl).toBe("blob:shared");
+
+    // The remaining host still holds the blob and the surface.
+    overlay.unmount();
+    expect(revoke).not.toHaveBeenCalled();
+    expect(dispose).not.toHaveBeenCalled();
+
+    tab.unmount();
+    expect(revoke).toHaveBeenCalledTimes(1);
+    expect(dispose).toHaveBeenCalledTimes(1);
   });
 });

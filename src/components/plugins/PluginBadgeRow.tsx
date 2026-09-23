@@ -21,7 +21,7 @@ import { Package, Puzzle } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import type { PluginHalf } from "@/lib/plugins/types";
-import type { TrustSignal } from "./TrustBadge";
+import type { TrustSignal } from "@/lib/plugins/trust-signals";
 
 import { TrustBadge } from "./TrustBadge";
 

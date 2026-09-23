@@ -131,7 +131,7 @@ export function ServosPanel() {
                 key={idx}
                 onClick={() => setActiveIndex(activeIndex === idx ? null : idx)}
                 className={cn(
-                  "border border-border-default rounded cursor-pointer transition-colors bg-surface-primary",
+                  "border border-border-default rounded cursor-pointer transition-colors bg-bg-primary",
                   activeIndex === idx && "border-accent-primary",
                 )}
               >

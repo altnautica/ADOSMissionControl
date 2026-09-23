@@ -5,14 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { useDroneManager } from "@/stores/drone-manager";
-import { useTelemetryStore } from "@/stores/telemetry-store";
+import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { PanelHeader } from "../shared/PanelHeader";
-import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
+import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { SlidersHorizontal, Save, RotateCcw, Radio, Plus, Trash2 } from "lucide-react";
 import { usePanelScroll } from "@/hooks/use-panel-scroll";
 import type { MspAdjustmentRange } from "@/lib/protocol/types";
-import { AdjustmentRangeSlider, stepToPwm, pwmToStep } from "./AdjustmentRangeSlider";
+import { PwmRangeSlider, stepToPwm, pwmToStep } from "./PwmRangeSlider";
 import { ADJUSTMENT_FUNCTIONS, AUX_CHANNELS, adjustmentFunctionLabel } from "./adjustment-constants";
 
 /** Betaflight MAX_ADJUSTMENT_RANGE_COUNT. */
@@ -37,8 +37,7 @@ export function AdjustmentsPanel() {
   const hasDirty = useMemo(() => JSON.stringify(ranges) !== JSON.stringify(original), [ranges, original]);
   useUnsavedGuard(hasDirty);
 
-  const rcBuffer = useTelemetryStore((s) => s.rc);
-  const latestRc = rcBuffer.latest();
+  const latestRc = useFreshTelemetry("rc");
 
   const read = useCallback(async () => {
     const protocol = getSelectedProtocol();
@@ -104,7 +103,7 @@ export function AdjustmentsPanel() {
   }, [latestRc]);
 
   return (
-    <ArmedLockOverlay>
+    <ArmedWarningBanner>
     <div ref={scrollRef} className="flex-1 overflow-y-auto p-6">
       <div className="max-w-3xl space-y-6">
         <PanelHeader
@@ -193,7 +192,7 @@ export function AdjustmentsPanel() {
                     <span className="text-text-tertiary">Activation Range</span>
                     <span>{r.rangeEnd} µs</span>
                   </div>
-                  <AdjustmentRangeSlider
+                  <PwmRangeSlider
                     start={pwmToStep(clampPwm(r.rangeStart))}
                     end={pwmToStep(clampPwm(r.rangeEnd))}
                     activePwm={getAuxPwm(r.auxChannelIndex)}
@@ -222,6 +221,6 @@ export function AdjustmentsPanel() {
         </div>
       </div>
     </div>
-    </ArmedLockOverlay>
+    </ArmedWarningBanner>
   );
 }

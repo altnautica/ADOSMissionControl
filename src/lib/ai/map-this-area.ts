@@ -36,13 +36,31 @@ export interface QuickSurveyOptions {
   camera?: CameraProfile;
 }
 
+/** Approximate size of the survey the suggested config would generate. */
+export interface QuickSurveyEstimate {
+  /** Survey lines across the box. */
+  transects: number;
+  /** Mission items: two waypoints per line, plus a trigger on/off pair with a camera. */
+  items: number;
+  /** Flown length of the lines, overshoots and cross-over legs, metres. */
+  pathLengthM: number;
+}
+
 /** A quick survey ready to hand to the pattern store. */
 export interface QuickSurveyResult {
   /** Four bbox corners as [lat, lon], clockwise from the top-left. */
   polygon: [number, number][];
   /** Suggested survey configuration covering the bbox. */
   config: SurveyConfig;
+  /** Size of the survey before it is generated, so an oversized box can be refused. */
+  estimate: QuickSurveyEstimate;
 }
+
+/**
+ * Longest route a quick survey may suggest, metres. Well past any single
+ * battery at survey speed; a larger box is a zoomed-out viewport, not a job.
+ */
+export const QUICK_SURVEY_MAX_PATH_M = 50_000;
 
 // ── Tunable defaults (documented, no magic numbers elsewhere) ──
 
@@ -157,5 +175,14 @@ export function quickSurveyFromBounds(
     speed: DEFAULT_SURVEY_SPEED_MS,
   };
 
-  return { polygon, config };
+  const longSideM = Math.max(widthM, heightM);
+  const shortSideM = Math.min(widthM, heightM);
+  const transects = Math.floor(shortSideM / lineSpacing) + 1;
+  const estimate: QuickSurveyEstimate = {
+    transects,
+    items: transects * (cameraTriggerDistance > 0 ? 4 : 2),
+    pathLengthM: transects * (longSideM + 2 * DEFAULT_TURN_AROUND_M) + (transects - 1) * lineSpacing,
+  };
+
+  return { polygon, config, estimate };
 }

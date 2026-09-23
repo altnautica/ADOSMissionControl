@@ -5,7 +5,7 @@
  *
  *   L0  video            VideoCanvas (object-contain stream)
  *   L1  plugin overlay   the video.overlay slot
- *   L2  instrument HUD   OsdOverlay canvas (horizon / tapes / crosshair)
+ *   L2  instrument HUD   registered cockpit widgets (attitude, tapes) via CockpitZones
  *   L3  cockpit chrome   CockpitTopBar (+ Immersive toggle + unified REC),
  *                        minimap PiP, ProximityRadar, TelemetryStrip, Skill Bar
  *
@@ -56,7 +56,8 @@ import { zoneContainerClass } from "@/lib/cockpit/zones";
 
 import { registerBuiltinTargetActions } from "@/lib/skills/target-actions";
 import { useTargetActionHotkeys } from "@/hooks/use-target-action-hotkeys";
-import { useSkillInput } from "@/hooks/use-skill-input";
+import { useFlightInputSurface } from "@/hooks/use-skill-input";
+import { useCockpitInput } from "@/hooks/use-cockpit-input";
 import { useFlightRecording } from "@/hooks/use-flight-recording";
 import { useVideoStreams } from "@/hooks/use-video-streams";
 import {
@@ -65,10 +66,9 @@ import {
   startManualControlStream,
 } from "@/lib/input/gamepad-poller";
 import { useUiStore } from "@/stores/ui-store";
-import { useInputStore } from "@/stores/input-store";
 import { useSkillConfirmStore } from "@/stores/skill-confirm-store";
+import { useSkillInputStore } from "@/stores/skill-input-store";
 import { useCockpitStore } from "@/stores/cockpit-store";
-import { useVideoStreamsStore } from "@/stores/video-streams-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import {
   DEFAULT_LOADOUT_ID,
@@ -99,12 +99,6 @@ const OverviewMap = dynamic(
   },
 );
 
-/** Reserved gamepad button (Start on a standard mapping): leaves immersive. */
-const COCKPIT_EXIT_GAMEPAD_BUTTON = 9;
-
-/** Gamepad chord that opens the quick-settings drawer: L1 + R1 (buttons 4 + 5). */
-const QUICK_SETTINGS_GAMEPAD_CHORD = [4, 5] as const;
-
 function formatDuration(ms: number): string {
   const s = Math.floor(ms / 1000);
   return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
@@ -133,8 +127,13 @@ export function CockpitView({ droneId }: CockpitViewProps) {
   // The skill / game layer (Skill Bar + editor + radial) is opt-in; default off.
   const cockpitEnabled = useCockpitStore((s) => s.enabled);
 
-  const [editing, setEditing] = useState(false);
-  const [paletteOpen, setPaletteOpen] = useState(false);
+  // The editor and palette flags live in the skill-input store so the
+  // shell-level dispatcher and every cockpit input handler see them.
+  const editing = useSkillInputStore((s) => s.editorOpen);
+  const setEditing = useSkillInputStore((s) => s.setEditorOpen);
+  const paletteOpen = useSkillInputStore((s) => s.paletteOpen);
+  const setPaletteOpen = useSkillInputStore((s) => s.setPaletteOpen);
+
   // The minimap basemap selector is collapsed behind a layers icon so it does
   // not cover the (enlarged) minimap; the icon reveals DARK / OSM / SAT / TOPO.
   const [basemapOpen, setBasemapOpen] = useState(false);
@@ -209,12 +208,21 @@ export function CockpitView({ droneId }: CockpitViewProps) {
   // drone), so the cockpit no longer dials it here — that path was gated on
   // useAgentConnectionStore.agentUrl, which is null for a LAN pairing.
 
-  // The global keyboard + gamepad skill dispatcher. Dormant while a confirm
-  // modal, the binding editor, the quick-settings drawer, or the command
-  // palette owns input.
-  useSkillInput({
-    enabled: !confirmPending && !editing && !quickOpen && !paletteOpen,
-  });
+  // The shell mounts the keyboard + gamepad skill dispatcher; registering this
+  // surface wakes it. It stays dormant while a confirm modal, the binding
+  // editor, the quick-settings drawer, the radial or the palette owns input.
+  useFlightInputSurface();
+
+  // The editor and palette are this surface's: close them when it unmounts so
+  // a stale flag never pauses the dispatcher on another surface.
+  useEffect(
+    () => () => {
+      const input = useSkillInputStore.getState();
+      input.setEditorOpen(false);
+      input.setPaletteOpen(false);
+    },
+    [],
+  );
 
   // Target-action hotkeys: fire an action on the selected detection by its key
   // (preempts a Skill Bar binding only while a target is selected).
@@ -231,250 +239,13 @@ export function CockpitView({ droneId }: CockpitViewProps) {
   // the command palette.
   useEffect(() => {
     if (!cockpitEnabled && editing) setEditing(false);
-  }, [cockpitEnabled, editing]);
+  }, [cockpitEnabled, editing, setEditing]);
   useEffect(() => {
     if (!cockpitEnabled && quickOpen) closeQuick();
   }, [cockpitEnabled, quickOpen, closeQuick]);
 
-  // Command palette open chord: Ctrl/Cmd+K toggles a searchable list of every
-  // command available on this drone (the same skills the bar reads). Handled at
-  // the cockpit level so it never collides with a bound slot.
-  //
-  // NOT gated on `cockpitEnabled`. The palette lists the same skills the bar
-  // would, so it is the discovery surface for the feature an operator would be
-  // opting into — gating it meant the one affordance that could explain the
-  // skill layer was unavailable until the skill layer was already on, while
-  // the ungated keys (stream digits, PiP) still responded. Half a working
-  // keyboard with no indication which half is worse than either extreme.
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() !== "k" || !(e.ctrlKey || e.metaKey) || e.altKey) {
-        return;
-      }
-      if (useSkillConfirmStore.getState().pending !== null) return;
-      if (editing) return;
-      e.preventDefault();
-      setPaletteOpen((o) => !o);
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [editing]);
-
-  // Escape closes the palette. Registered capture-phase so it runs BEFORE the
-  // shell's bubble-phase immersive-exit handler and stops it — pressing Escape
-  // in the palette closes only the palette, it never also drops immersive mode.
-  useEffect(() => {
-    if (!paletteOpen) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      setPaletteOpen(false);
-    };
-    window.addEventListener("keydown", handler, true);
-    return () => window.removeEventListener("keydown", handler, true);
-  }, [paletteOpen]);
-
-  // Escape closes the binding editor when it is open; otherwise it falls through
-  // to CommandShell's handler (which exits immersive mode). The quick-settings
-  // drawer owns its own Escape while open.
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      if (!editing) return;
-      if (useSkillConfirmStore.getState().pending !== null) return;
-      if (useFlyQuickSettingsStore.getState().isOpen) return;
-      e.preventDefault();
-      // stopImmediatePropagation (not stopPropagation) — CommandShell's
-      // immersive-exit Escape listener is on the SAME window target, so only
-      // this blocks it. This effect registers before CommandShell's, so ours
-      // runs first and can suppress it.
-      e.stopImmediatePropagation();
-      setEditing(false);
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [editing]);
-
-  // Quick-settings keybinding: shift+, — like Escape it is handled at the
-  // cockpit level so it never collides with a bound slot. Only while the skill
-  // layer is on and nothing modal owns input.
-  useEffect(() => {
-    if (!cockpitEnabled) return;
-    const handler = (e: KeyboardEvent) => {
-      const target = e.target;
-      if (
-        target instanceof HTMLInputElement ||
-        target instanceof HTMLTextAreaElement ||
-        target instanceof HTMLSelectElement ||
-        (target instanceof HTMLElement && target.isContentEditable)
-      ) {
-        return;
-      }
-      if (e.key !== "," || !e.shiftKey || e.ctrlKey || e.altKey || e.metaKey) {
-        return;
-      }
-      if (useSkillConfirmStore.getState().pending !== null) return;
-      if (editing) return;
-      e.preventDefault();
-      toggleQuick();
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [cockpitEnabled, editing, toggleQuick]);
-
-  // Gamepad open chord: L1 + R1 held together opens quick-settings.
-  useEffect(() => {
-    if (!cockpitEnabled) return;
-    const chordDown = (b: boolean[]) =>
-      (b[QUICK_SETTINGS_GAMEPAD_CHORD[0]] ?? false) &&
-      (b[QUICK_SETTINGS_GAMEPAD_CHORD[1]] ?? false);
-    let prev = chordDown(useInputStore.getState().buttons);
-    const unsubscribe = useInputStore.subscribe((state) => {
-      const now = chordDown(state.buttons);
-      if (now && !prev) {
-        if (useSkillConfirmStore.getState().pending === null) {
-          toggleQuick();
-        }
-      }
-      prev = now;
-    });
-    return () => unsubscribe();
-  }, [cockpitEnabled, toggleQuick]);
-
-  // Stream switcher hotkeys: bare digits 1..N select the Nth video stream and
-  // backtick cycles — but only on a multi-stream node (otherwise the key passes
-  // straight through). Handled at the cockpit level like the other reserved
-  // keys; digits are reserved from skill binding (chord.ts) so they never
-  // collide with a bound slot, and this works whether or not the skill layer is
-  // on (the switcher is a video feature).
-  useEffect(() => {
-    if (!droneId) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) return;
-      const target = e.target;
-      if (
-        target instanceof HTMLInputElement ||
-        target instanceof HTMLTextAreaElement ||
-        target instanceof HTMLSelectElement ||
-        (target instanceof HTMLElement && target.isContentEditable)
-      ) {
-        return;
-      }
-      if (useSkillConfirmStore.getState().pending !== null) return;
-      if (editing || paletteOpen) return;
-      if (useFlyQuickSettingsStore.getState().isOpen) return;
-      const vs = useVideoStreamsStore.getState();
-      const streams = vs.streamsByDrone[droneId] ?? [];
-      if (streams.length <= 1) return; // pass through on a single-stream node
-      // Ignore a switch request while a single-encoder restart is in flight so
-      // rapid presses do not stack overlapping switches (a debounce).
-      if (vs.switchingByDrone[droneId]) return;
-      const digit = /^(?:Digit|Numpad)([1-9])$/.exec(e.code);
-      if (digit) {
-        const index = Number(digit[1]);
-        if (index > streams.length) return; // no such stream → pass through
-        e.preventDefault();
-        useVideoStreamsStore.getState().selectStream(droneId, index);
-        return;
-      }
-      if (e.code === "Backquote") {
-        e.preventDefault();
-        useVideoStreamsStore.getState().cycleStream(droneId, 1);
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [droneId, editing, paletteOpen]);
-
-  // P toggles the picture-in-picture inset (a second stream over the main
-  // view). Only on a PiP-capable node — two or more concurrent live streams, or
-  // any multi-stream node in demo mode (synthetic feeds). Gated so P still
-  // reaches a bound skill on a single-stream node.
-  useEffect(() => {
-    if (!droneId) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.code !== "KeyP" || e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) {
-        return;
-      }
-      const target = e.target;
-      if (
-        target instanceof HTMLInputElement ||
-        target instanceof HTMLTextAreaElement ||
-        target instanceof HTMLSelectElement ||
-        (target instanceof HTMLElement && target.isContentEditable)
-      ) {
-        return;
-      }
-      if (useSkillConfirmStore.getState().pending !== null) return;
-      if (editing || paletteOpen) return;
-      if (useFlyQuickSettingsStore.getState().isOpen) return;
-      const st = useVideoStreamsStore.getState();
-      const streams = st.streamsByDrone[droneId] ?? [];
-      const concurrent = streams.filter((s) => s.kind === "concurrent");
-      const pipCapable =
-        streams.length >= 2 && (isDemoMode() || concurrent.length >= 2);
-      if (!pipCapable) return; // let P reach a bound skill on a single-stream node
-      e.preventDefault();
-      if (st.pipStreamIdByDrone[droneId]) {
-        st.setPip(droneId, null);
-        return;
-      }
-      // Open PiP on the first stream that isn't the main active one.
-      const activeId = st.activeStreamIdByDrone[droneId] ?? streams[0]?.id;
-      const candidates = isDemoMode() ? streams : concurrent;
-      const next = candidates.find((s) => s.id !== activeId);
-      if (next) st.setPip(droneId, next.id);
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [droneId, editing, paletteOpen]);
-
-  // Gamepad D-pad left/right cycles the video stream on a multi-stream node.
-  useEffect(() => {
-    if (!droneId) return;
-    const DPAD_LEFT = 14;
-    const DPAD_RIGHT = 15;
-    let prevL = useInputStore.getState().buttons[DPAD_LEFT] ?? false;
-    let prevR = useInputStore.getState().buttons[DPAD_RIGHT] ?? false;
-    const unsubscribe = useInputStore.subscribe((state) => {
-      const nowL = state.buttons[DPAD_LEFT] ?? false;
-      const nowR = state.buttons[DPAD_RIGHT] ?? false;
-      const vs = useVideoStreamsStore.getState();
-      const streams = vs.streamsByDrone[droneId] ?? [];
-      if (
-        streams.length > 1 &&
-        !vs.switchingByDrone[droneId] &&
-        useSkillConfirmStore.getState().pending === null
-      ) {
-        if (nowR && !prevR) {
-          useVideoStreamsStore.getState().cycleStream(droneId, 1);
-        } else if (nowL && !prevL) {
-          useVideoStreamsStore.getState().cycleStream(droneId, -1);
-        }
-      }
-      prevL = nowL;
-      prevR = nowR;
-    });
-    return () => unsubscribe();
-  }, [droneId]);
-
-  // Reserved gamepad exit chord (Start): leaves immersive mode so a stick-only
-  // operator always has a way back to the embedded tab.
-  useEffect(() => {
-    let prev =
-      useInputStore.getState().buttons[COCKPIT_EXIT_GAMEPAD_BUTTON] ?? false;
-    const unsubscribe = useInputStore.subscribe((state) => {
-      const now = state.buttons[COCKPIT_EXIT_GAMEPAD_BUTTON] ?? false;
-      if (now && !prev) {
-        if (useSkillConfirmStore.getState().pending === null) {
-          useUiStore.getState().exitImmersiveMode();
-        }
-      }
-      prev = now;
-    });
-    return () => unsubscribe();
-  }, []);
+  // Palette, Escape, quick-settings, stream, PiP, D-pad and Start controls.
+  useCockpitInput({ droneId, cockpitEnabled });
 
   const topBarControls = (
     <>

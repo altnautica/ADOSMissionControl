@@ -105,24 +105,26 @@ export const TYPE_KEYWORDS: Record<string, string[]> = {
   compassmot: ["compassmot", "interference", "compensation"],
 };
 
-/** Human-readable compass calibration failure messages with actionable fixes */
+/**
+ * Human-readable compass calibration failure messages with actionable fixes,
+ * keyed by MAG_CAL_STATUS (5 FAILED, 6 FAILED_ORIENTATION, 7 FAILED_RADIUS,
+ * 8 FAILED_OFFSETS, 9 FAILED_DIAG_SCALING, 10 FAILED_RESIDUALS_HIGH).
+ */
 export const MAG_CAL_FAIL_MESSAGES: Record<number, { message: string; fixes: string[] }> = {
   5: {
-    message: "Calibration failed — strong magnetic interference detected",
+    message: "Calibration failed — the fit did not converge",
     fixes: [
-      "Move at least 10m away from metal objects, vehicles, buildings, and power lines",
-      "Remove phone, tools, and metal accessories from nearby",
-      "If using USB power, try battery power (USB cables create EMI)",
+      "Rotate through every orientation so the samples cover the whole sphere",
+      "Move away from metal objects, vehicles, buildings and power lines",
+      "If the fit is close but rejected, COMPASS_CAL_FIT sets the accepted fitness",
     ],
   },
   6: {
-    message: "Calibration failed — insufficient rotation coverage",
+    message: "Calibration failed — detected orientation does not match COMPASS_ORIENT",
     fixes: [
-      "Rotate SLOWLY (2-3 sec per orientation) — fast rotation drops samples",
-      "Cover all 6 faces: front, back, left, right, nose-up, nose-down",
-      "Add 4 diagonal corners for full sphere coverage",
-      "Total calibration should take 2-3 minutes of continuous rotation",
-      "Try setting COMPASS_AUTO_ROT=3 if orientation detection is failing",
+      "Check how the compass is mounted and set COMPASS_ORIENT to match",
+      "Set COMPASS_AUTO_ROT to 2 so an external compass orientation is corrected automatically",
+      "Confirm the flight controller's own orientation (AHRS_ORIENTATION) is right before calibrating",
     ],
   },
   7: {
@@ -133,7 +135,35 @@ export const MAG_CAL_FAIL_MESSAGES: Record<number, { message: string; fixes: str
       "Check compass wiring — loose I2C connection can cause erratic readings",
     ],
   },
+  8: {
+    message: "Calibration failed — offsets larger than COMPASS_OFFS_MAX",
+    fixes: [
+      "Move the compass away from magnetised or ferrous parts",
+      "Raise COMPASS_OFFS_MAX only if the large offset is expected for this installation",
+    ],
+  },
+  9: {
+    message: "Calibration failed — scale factors out of range",
+    fixes: [
+      "Move the compass away from power wiring and motors",
+      "Repeat the calibration with slower, fuller rotations",
+    ],
+  },
+  10: {
+    message: "Calibration failed — fit residuals above COMPASS_CAL_FIT",
+    fixes: [
+      "Repeat away from interference, rotating through every orientation",
+      "Raise COMPASS_CAL_FIT only if a looser fit is acceptable for this vehicle",
+    ],
+  },
 };
+
+export const COMPASS_PARAM_NAMES = [
+  "COMPASS_USE", "COMPASS_ORIENT", "COMPASS_AUTO_ROT", "COMPASS_OFFS_MAX", "COMPASS_LEARN", "COMPASS_EXTERNAL",
+] as const;
+
+/** Compass setup values: `undefined` until read, `null` when the FC did not return the parameter. */
+export type CompassParams = Record<(typeof COMPASS_PARAM_NAMES)[number], number | null | undefined>;
 
 /** Keywords to capture for the calibration log */
 export const LOG_KEYWORDS = [

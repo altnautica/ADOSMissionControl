@@ -8,10 +8,12 @@
  * and the readiness poll) AND enables the native capture service on the drone
  * over the LAN. Toggling OFF disables the service and hides the tabs.
  *
- * The switch label is the HONEST agent-derived state (Rule 44): a not-yet-paired
- * node shows "Pair on LAN" and the switch is disabled (Rule 47 — never offer a
- * control that cannot reach the node); a reachable node shows Off / Enabling /
- * Enabled / Running from the drone's own readiness.
+ * The switch label is the agent-derived state: a not-yet-paired node shows
+ * "Pair on LAN" and the switch is disabled (never offer a control that cannot
+ * reach the node). A reachable node is polled whether or not this browser has
+ * the feature on, so the label is the drone's own readiness — Running even
+ * when another GCS started the capture, Offline once the node stops
+ * answering, "—" before its first answer.
  *
  * @license GPL-3.0-only
  */
@@ -20,6 +22,7 @@ import { useState } from "react";
 
 import { deviceIdFromNodeId } from "@/lib/agent/node-id";
 import { useAtlasControl } from "@/hooks/use-atlas-control";
+import { isActiveCaptureState } from "@/lib/agent/atlas-control-client";
 import { useNodeFeaturesStore } from "@/stores/node-features-store";
 import { Toggle } from "@/components/ui/toggle";
 
@@ -38,20 +41,25 @@ export function WorldModelFeatureRow({ droneId }: { droneId: string }) {
 
   const available = control.demo || control.reachable;
   const r = control.readiness;
+  const reason = control.configError ? `: ${control.configError}` : "";
 
   const status = writeFailed === "on"
-    ? "Could not enable"
+    ? `Could not enable${reason}`
     : writeFailed === "off"
-      ? "Still capturing — could not disable"
+      ? `Still capturing — could not disable${reason}`
       : !available
-    ? "Pair on LAN"
-    : !enabled
-      ? "Off"
-      : r?.serviceRunning || r?.capturing
-        ? "Running"
-        : r?.enabled
-          ? "Enabled"
-          : "Enabling…";
+        ? "Pair on LAN"
+        : control.offline
+          ? "Offline"
+          : !r
+            ? "—"
+            : r.serviceRunning || r.capturing || isActiveCaptureState(r.state)
+              ? "Running"
+              : r.enabled
+                ? "Enabled"
+                : enabled
+                  ? "Enabling…"
+                  : "Off";
 
   const onToggle = async (on: boolean) => {
     if (busy) return;

@@ -17,6 +17,8 @@ import { encodeMspSetSerialConfig, encodeMspSetSerialConfig2, encodeMspSendDshot
 import { decodeMspOsdConfig, type MspOsdConfig, type MspOsdGeneralConfig } from '../msp/decoders/config/osd'
 import { decodeMspLedStripConfig, decodeMspLedColors, decodeMspLedStripModeColors, type HsvColor, type BfLedModeColor } from '../msp/decoders/config/led'
 import { encodeMspSetOsdConfig, encodeMspOsdCharWrite, encodeMspSetLedStripConfigEntry, encodeMspSetLedColors, encodeMspSetLedStripModeColor, encodeMspSetOsdGeneralConfig } from '../msp/encoders/osd-led'
+import { decodeMspVtxConfig } from '../msp/decoders/config/vtx'
+import { decodeMspVtxTablePowerLevel, type MspVtxTablePowerLevel } from '../msp/msp-decoders-ext'
 
 const OK: CommandResult = { success: true, resultCode: 0, message: 'OK' }
 
@@ -156,4 +158,22 @@ export async function bfGetRxMap(queue: MspSerialQueue | null): Promise<number[]
 export async function bfSetRxMap(queue: MspSerialQueue | null, map: number[]): Promise<CommandResult> {
   await requireQueue(queue).send(MSP.MSP_SET_RX_MAP, encodeMspSetRxMap(map))
   return OK
+}
+
+// ── VTX table power levels (MSP_VTXTABLE_POWERLEVEL) ──
+
+/**
+ * The VTX table's power levels: `BF_VTX_POWER` is a 1-based index into this
+ * table, and each entry carries the label the VTX table assigns it. Empty when
+ * the FC has no VTX table.
+ */
+export async function bfGetVtxPowerLevels(queue: MspSerialQueue | null): Promise<MspVtxTablePowerLevel[]> {
+  const config = decodeMspVtxConfig(await read(queue, MSP.MSP_VTX_CONFIG))
+  if (!config.vtxTableAvailable) return []
+  const levels: MspVtxTablePowerLevel[] = []
+  for (let level = 1; level <= config.vtxTablePowerLevels; level++) {
+    const p = (await requireQueue(queue).send(MSP.MSP_VTXTABLE_POWERLEVEL, Uint8Array.of(level))).payload
+    levels.push(decodeMspVtxTablePowerLevel(new DataView(p.buffer, p.byteOffset, p.byteLength)))
+  }
+  return levels
 }

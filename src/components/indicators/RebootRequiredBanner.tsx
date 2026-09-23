@@ -3,15 +3,25 @@
 import { useTranslations } from "next-intl";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useDroneStore } from "@/stores/drone-store";
+import { useParamSafetyStore } from "@/stores/param-safety-store";
 import { cn } from "@/lib/utils";
 import { RotateCcw, X } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 
+/** A heartbeat gap longer than this, followed by a resumed heartbeat, is a reboot. */
+const REBOOT_GAP_MS = 2000;
+/** How long the banner stays up after the reboot is seen, before fading. */
+const CLEAR_DELAY_MS = 3000;
+const FADE_MS = 400;
+
 /**
  * Amber banner shown when parameter changes require a FC reboot.
  * Tracks params with rebootRequired metadata flag.
- * Auto-dismisses 3s after a reboot is detected (heartbeat resumes after gap).
+ *
+ * When the heartbeat resumes after a gap (the FC rebooted), the banner fades
+ * out and the pending reboot params are cleared. Dismissing hides only the
+ * current set: a later change that also needs a reboot shows the banner again.
  */
 export function RebootRequiredBanner({
   rebootParams,
@@ -22,39 +32,43 @@ export function RebootRequiredBanner({
   className?: string;
 }) {
   const t = useTranslations("fcShared");
-  const [dismissed, setDismissed] = useState(false);
+  const paramsKey = rebootParams.join(",");
+  const [dismissedKey, setDismissedKey] = useState<string | null>(null);
   const [fadingOut, setFadingOut] = useState(false);
   const protocol = useDroneManager.getState().getSelectedProtocol();
   const lastHeartbeat = useDroneStore((s) => s.lastHeartbeat);
   const prevHeartbeatRef = useRef(lastHeartbeat);
-  const rebootDetectedRef = useRef(false);
+  const clearTimerRef = useRef<number | null>(null);
 
-  // Detect reboot: heartbeat gap > 2s then resume
+  // Detect reboot: heartbeat gap then resume. The previous heartbeat is
+  // tracked on every beat, so a gap is only ever measured between two
+  // consecutive heartbeats.
   useEffect(() => {
-    if (dismissed || rebootParams.length === 0) return;
-
     const prev = prevHeartbeatRef.current;
     prevHeartbeatRef.current = lastHeartbeat;
-
+    if (rebootParams.length === 0 || clearTimerRef.current !== null) return;
     if (prev === 0 || lastHeartbeat === 0) return;
+    if (lastHeartbeat - prev <= REBOOT_GAP_MS) return;
 
-    const gap = lastHeartbeat - prev;
+    // The timer lives in a ref so the next heartbeat does not cancel it.
+    clearTimerRef.current = window.setTimeout(() => {
+      setFadingOut(true);
+      clearTimerRef.current = window.setTimeout(() => {
+        clearTimerRef.current = null;
+        setFadingOut(false);
+        useParamSafetyStore.getState().clearRebootParams();
+      }, FADE_MS);
+    }, CLEAR_DELAY_MS);
+  }, [lastHeartbeat, rebootParams.length]);
 
-    // If there was a gap > 2s and heartbeat resumed, it's a reboot
-    if (gap > 2000 && !rebootDetectedRef.current) {
-      rebootDetectedRef.current = true;
-      // Wait 3s then fade out
-      const timer = setTimeout(() => {
-        setFadingOut(true);
-        // After fade animation, dismiss
-        const fadeTimer = setTimeout(() => setDismissed(true), 400);
-        return () => clearTimeout(fadeTimer);
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [lastHeartbeat, dismissed, rebootParams.length]);
+  useEffect(
+    () => () => {
+      window.clearTimeout(clearTimerRef.current ?? undefined);
+    },
+    [],
+  );
 
-  if (dismissed || rebootParams.length === 0) return null;
+  if (rebootParams.length === 0 || dismissedKey === paramsKey) return null;
 
   async function handleReboot() {
     if (!protocol) return;
@@ -77,7 +91,11 @@ export function RebootRequiredBanner({
         <Button size="sm" variant="ghost" onClick={handleReboot}>
           {t("rebootNow")}
         </Button>
-        <button onClick={() => setDismissed(true)} className="text-text-tertiary hover:text-text-primary">
+        <button
+          onClick={() => setDismissedKey(paramsKey)}
+          aria-label="Dismiss"
+          className="text-text-tertiary hover:text-text-primary"
+        >
           <X size={12} />
         </button>
       </div>

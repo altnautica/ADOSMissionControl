@@ -228,23 +228,53 @@ export function extractLogData(
 }
 
 /**
- * Extract motor PWM time series from RCOU messages.
- * Detects motor count by checking which C1-C8 channels have data.
+ * Motor number for an ArduPilot SERVOn_FUNCTION value (SRV_Channel k_motor1..
+ * k_motor32), or null when the output drives something else.
+ */
+function motorNumberOf(fn: number): number | null {
+  if (fn >= 33 && fn <= 40) return fn - 32;
+  if (fn >= 82 && fn <= 85) return fn - 73;
+  if (fn >= 160 && fn <= 179) return fn - 147;
+  return null;
+}
+
+/** RCOU carries outputs C1..C14, RCO2 carries C15..C18. */
+const LOGGED_OUTPUTS = 18;
+
+/**
+ * Extract motor PWM time series, in motor order. The outputs are the ones the
+ * log's SERVOn_FUNCTION parameters assign to motors, so gimbal, camera and
+ * servo channels are never analysed as motors. A log without those
+ * parameters falls back to C1..C8. Outputs with no logged samples are left
+ * out rather than padded in as empty motors.
  */
 function extractMotors(log: DataFlashLog): MotorTimeSeries {
-  const channels: TimeSample[][] = [];
-  let motorCount = 0;
-
-  for (let i = 1; i <= 8; i++) {
-    const ch = getTimeSeries(log, "RCOU", `C${i}`);
-    channels.push(ch);
-    if (ch.length > 0) motorCount = i;
+  const functionByOutput = new Map<number, number>();
+  for (const msg of getMessages(log, "PARM")) {
+    const name = msg.fields["Name"];
+    const value = msg.fields["Value"];
+    if (typeof name !== "string" || typeof value !== "number") continue;
+    const match = /^SERVO(\d+)_FUNCTION$/.exec(name);
+    if (match) functionByOutput.set(Number(match[1]), value);
   }
 
-  return {
-    motors: channels.slice(0, Math.max(motorCount, 4)),
-    motorCount: Math.max(motorCount, 4),
-  };
+  let outputs: number[];
+  if (functionByOutput.size > 0) {
+    outputs = [...functionByOutput.entries()]
+      .flatMap(([output, fn]) => {
+        const motor = motorNumberOf(fn);
+        return motor !== null && output <= LOGGED_OUTPUTS ? [{ output, motor }] : [];
+      })
+      .sort((a, b) => a.motor - b.motor)
+      .map((m) => m.output);
+  } else {
+    outputs = [1, 2, 3, 4, 5, 6, 7, 8];
+  }
+
+  const motors = outputs
+    .map((o) => getTimeSeries(log, o <= 14 ? "RCOU" : "RCO2", `C${o}`))
+    .filter((s) => s.length > 0);
+  return { motors, motorCount: motors.length };
 }
 
 /**
@@ -274,9 +304,10 @@ function extractParams(log: DataFlashLog): Record<string, number> {
 /**
  * Total clip count: the last value of every clip counter, summed. Current
  * logs carry one cumulative `Clip` per IMU instance (instance field `IMU`);
- * older logs carry `Clip0`..`Clip2` on a single row.
+ * older logs carry `Clip0`..`Clip2` on a single row. Null when the log has
+ * no clip counter at all, which is not the same as zero clipping.
  */
-function extractClipCount(log: DataFlashLog): number {
+function extractClipCount(log: DataFlashLog): number | null {
   const last = new Map<string, number>();
   for (const msg of getMessages(log, "VIBE")) {
     const inst = msg.fields["IMU"];
@@ -285,6 +316,7 @@ function extractClipCount(log: DataFlashLog): number {
       if (typeof value === "number") last.set(`${key}:${inst ?? 0}`, value);
     }
   }
+  if (last.size === 0) return null;
   let total = 0;
   for (const value of last.values()) total += value;
   return total;

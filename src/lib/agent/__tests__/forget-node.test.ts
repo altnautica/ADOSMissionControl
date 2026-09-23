@@ -137,12 +137,12 @@ beforeEach(() => {
 });
 
 describe("forgetNode", () => {
-  it("forgets a LOCAL-paired node so the projection no longer derives it", () => {
+  it("forgets a LOCAL-paired node so the projection no longer derives it", async () => {
     seedLocalNode();
     const nodeId = nodeIdForDevice(LOCAL_DEV);
     expect(projectedIds()).toContain(nodeId);
 
-    forgetNode(nodeId);
+    expect(await forgetNode(nodeId)).toEqual({ ok: true });
 
     // LAN credential gone, agent told to unpair, registry presence dropped.
     expect(useLocalNodesStore.getState().nodes).toHaveLength(0);
@@ -155,16 +155,17 @@ describe("forgetNode", () => {
     expect(projectedIds()).toHaveLength(0);
   });
 
-  it("forgets a CLOUD-paired node, deleting the Convex row so it cannot re-feed", () => {
+  it("forgets a CLOUD-paired node, deleting the Convex row so it cannot re-feed", async () => {
     seedCloudNode();
     const nodeId = nodeIdForDevice(CLOUD_DEV);
     expect(projectedIds()).toContain(nodeId);
 
     const unpairMutation = vi.fn().mockResolvedValue(undefined);
-    forgetNode(nodeId, {
+    const result = await forgetNode(nodeId, {
       convexId: CLOUD_CONVEX_ID,
       unpairMutation,
     });
+    expect(result).toEqual({ ok: true });
 
     // The Convex delete is dispatched with the cloud doc id — this is the bit
     // the old panel path missed for cloud-only drones, which let listMyDrones
@@ -187,8 +188,33 @@ describe("forgetNode", () => {
     expect(projectedIds()).not.toContain(nodeId);
   });
 
-  it("does not throw when the node is unknown (idempotent)", () => {
-    expect(() => forgetNode(nodeIdForDevice("ghost-9999"))).not.toThrow();
+  it("does not throw when the node is unknown (idempotent)", async () => {
+    await expect(forgetNode(nodeIdForDevice("ghost-9999"))).resolves.toEqual({ ok: true });
     expect(projectedIds()).toHaveLength(0);
+  });
+
+  it("keeps a cloud-paired node whole when the cloud unpair fails", async () => {
+    seedCloudNode();
+    const nodeId = nodeIdForDevice(CLOUD_DEV);
+
+    const result = await forgetNode(nodeId, {
+      convexId: CLOUD_CONVEX_ID,
+      unpairMutation: vi.fn().mockRejectedValue(new Error("offline")),
+    });
+
+    expect(result).toEqual({ ok: false, reason: "cloudFailed", message: "offline" });
+    // Nothing was forgotten: the row the cloud would re-feed stays visible.
+    expect(usePairingStore.getState().pairedDrones).toHaveLength(1);
+    expect(projectedIds()).toContain(nodeId);
+  });
+
+  it("keeps a cloud-paired node whole when the cloud is unreachable", async () => {
+    seedCloudNode();
+    const nodeId = nodeIdForDevice(CLOUD_DEV);
+
+    const result = await forgetNode(nodeId, { convexId: CLOUD_CONVEX_ID, unpairMutation: null });
+
+    expect(result).toEqual({ ok: false, reason: "cloudUnavailable" });
+    expect(projectedIds()).toContain(nodeId);
   });
 });

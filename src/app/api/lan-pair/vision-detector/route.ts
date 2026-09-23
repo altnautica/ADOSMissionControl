@@ -2,7 +2,7 @@
  * @module LanPairVisionDetectorRoute
  * @description Server-side proxy for the LAN agent's
  * `PUT /api/vision/detector` endpoint. Sibling to the pairing proxy
- * routes (Rule 39 local-first): lets an HTTPS Mission Control set a
+ * routes (local-first): lets an HTTPS Mission Control set a
  * drone's active detector over the operator's LAN without tripping the
  * browser's mixed-content guard, since the cross-protocol hop happens
  * server-side.
@@ -22,10 +22,9 @@ import {
   proxyToAgent,
   readJsonEnvelope,
 } from "../_proxy";
+import { AGENT_SERVICE_RESTART_TIMEOUT_MS } from "@/lib/agent/agent-client/timeout";
 
 export const runtime = "nodejs";
-
-const UPSTREAM_TIMEOUT_MS = 12000;
 
 export async function POST(req: NextRequest) {
   const env = await readJsonEnvelope(req);
@@ -45,6 +44,7 @@ export async function POST(req: NextRequest) {
     method: "PUT",
     apiKey: String(env.payload.apiKey ?? "").trim(),
     json: { model_id: modelId },
-    timeoutMs: UPSTREAM_TIMEOUT_MS,
+    // The agent restarts the vision engine before it answers.
+    timeoutMs: AGENT_SERVICE_RESTART_TIMEOUT_MS,
   });
 }

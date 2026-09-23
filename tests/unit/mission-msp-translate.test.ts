@@ -15,6 +15,7 @@ import {
 } from "@/lib/mission/inav-translator";
 import { INAV_WP_ACTION, INAV_WP_FLAG_LAST } from "@/lib/protocol/msp/msp-decoders-inav";
 import type { MissionItem } from "@/lib/protocol/types";
+import { collapseFromItems } from "@/lib/mission/mission-expand";
 
 // ── Helpers ──────────────────────────────────────────────────
 
@@ -247,7 +248,40 @@ describe("translateFromInavWaypoints", () => {
 
   it("does not read a WAYPOINT leg speed (p1) back as a hold time", () => {
     const wp = { number: 1, action: INAV_WP_ACTION.WAYPOINT, lat: 0, lon: 0, altitude: 0, p1: 125, p2: 0, p3: 0, flag: 0 };
-    expect(translateFromInavWaypoints([wp])[0].param1).toBe(0);
+    const nav = translateFromInavWaypoints([wp]).find((it) => it.command === 16);
+    expect(nav?.param1).toBe(0);
+  });
+
+  it("reads leg speeds back as DO_CHANGE_SPEED items the planner folds into waypoint speeds", () => {
+    const base = { lat: 12.97, lon: 77.59, altitude: 5000, p2: 0, p3: 0, flag: 0 };
+    const wps = [
+      { ...base, number: 1, action: INAV_WP_ACTION.WAYPOINT, p1: 300 },
+      { ...base, number: 2, action: INAV_WP_ACTION.WAYPOINT, p1: 300 },
+      { ...base, number: 3, action: INAV_WP_ACTION.POSHOLD_TIME, p1: 10, p2: 650 },
+      { ...base, number: 4, action: INAV_WP_ACTION.WAYPOINT, p1: 30 }, // under 50: default
+      { ...base, number: 5, action: INAV_WP_ACTION.JUMP, p1: 3, p2: 1, flag: INAV_WP_FLAG_LAST },
+    ];
+    const items = translateFromInavWaypoints(wps);
+    expect(items.map((it) => it.command)).toEqual([178, 16, 16, 178, 19, 16, 177]);
+    expect(items.map((it) => it.seq)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    expect(items[0].param2).toBe(3);
+    expect(items[3].param2).toBe(6.5);
+    // The jump to waypoint 3 lands on its speed item, so the repeat flies at 6.5 m/s.
+    expect(items[6].param1).toBe(3);
+
+    const speeds = collapseFromItems(items).filter((w) => w.command !== undefined).map((w) => w.speed);
+    expect(speeds).toEqual([3, 3, 6.5, 6.5]);
+  });
+
+  it("round-trips leg speeds through an upload and a download", () => {
+    const items = [
+      missionItem({ seq: 0, command: 178, param1: 1, param2: 4, param3: -1, x: 0, y: 0, z: 0 }),
+      missionItem({ seq: 1 }),
+      missionItem({ seq: 2, command: 178, param1: 1, param2: 7, param3: -1, x: 0, y: 0, z: 0 }),
+      missionItem({ seq: 3, command: 21 }),
+    ];
+    const restored = translateFromInavWaypoints(translateToInavWaypoints(items));
+    expect(restored.map((it) => [it.command, it.param2])).toEqual([[178, 4], [16, 0], [178, 7], [21, 0]]);
   });
 
   it("round-trips a multi-waypoint mission", () => {

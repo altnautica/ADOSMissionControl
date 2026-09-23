@@ -14,6 +14,7 @@
 
 import type { CockpitZone } from "@/lib/cockpit/zones";
 import { DEFAULT_DENSITY, type CockpitDensity } from "@/lib/cockpit/density";
+import { isReservedChord, isReservedGamepadButton } from "@/lib/skills/chord";
 
 import type { SettingsSliceFactory, SettingsStoreState } from "./types";
 
@@ -71,7 +72,20 @@ export interface Loadout {
   slots: HotbarSlot[];
   /** Which cockpit chrome cards this loadout shows. */
   layout: CockpitLayout;
+  /** Plugin skills whose suggested default binding was already offered to this
+   *  loadout. Seeding happens once per skill, so a slot the operator cleared
+   *  stays cleared. */
+  seededSkillIds: string[];
 }
+
+/** A plugin manifest's suggested key chord and/or gamepad button. */
+export interface SuggestedBinding {
+  key?: string | null;
+  gamepadButton?: number | null;
+}
+
+/** Highest standard-mapping gamepad button index a slot can bind. */
+const MAX_GAMEPAD_BUTTON = 15;
 
 export const DEFAULT_LOADOUT_ID = "default";
 
@@ -130,9 +144,14 @@ export function cloneDefaultLoadout(): Loadout {
   return {
     id: DEFAULT_LOADOUT.id,
     name: DEFAULT_LOADOUT.name,
-    slots: DEFAULT_LOADOUT.slots.map((slot) => ({ ...slot })),
+    slots: cloneDefaultSlots(),
     layout: cloneDefaultCockpitLayout(),
+    seededSkillIds: [],
   };
+}
+
+function cloneDefaultSlots(): HotbarSlot[] {
+  return DEFAULT_LOADOUT.slots.map((slot) => ({ ...slot }));
 }
 
 export const keybindingsDefaults: Partial<SettingsStoreState> = {
@@ -158,6 +177,7 @@ export const createKeybindingsActions: SettingsSliceFactory<
     | "deleteLoadout"
     | "renameLoadout"
     | "resetLoadoutToDefaults"
+    | "seedSuggestedBinding"
     | "setLoadoutLayout"
     | "setLoadoutWidget"
   >
@@ -248,6 +268,7 @@ export const createKeybindingsActions: SettingsSliceFactory<
         layout: base.layout
           ? { ...base.layout }
           : cloneDefaultCockpitLayout(),
+        seededSkillIds: [...base.seededSkillIds],
       };
       return {
         loadouts: { ...state.loadouts, [id]: loadout },
@@ -282,14 +303,74 @@ export const createKeybindingsActions: SettingsSliceFactory<
       };
     }),
 
-  resetLoadoutToDefaults: () =>
-    set((state) => ({
-      loadouts: {
-        ...state.loadouts,
-        [DEFAULT_LOADOUT_ID]: cloneDefaultLoadout(),
-      },
-      activeLoadoutId: DEFAULT_LOADOUT_ID,
-    })),
+  // Resets the given loadout's slots to the factory bindings, keeping its id,
+  // name and cockpit layout. The plugin seeding record is cleared so installed
+  // plugins offer their suggested bindings to the fresh slots again.
+  resetLoadoutToDefaults: (loadoutId) =>
+    set((state) => {
+      const loadout = state.loadouts[loadoutId];
+      if (!loadout) return {};
+      return {
+        loadouts: {
+          ...state.loadouts,
+          [loadoutId]: { ...loadout, slots: cloneDefaultSlots(), seededSkillIds: [] },
+        },
+      };
+    }),
+
+  seedSuggestedBinding: (loadoutId, skillId, binding) =>
+    set((state) => {
+      const loadout = state.loadouts[loadoutId];
+      if (!loadout || loadout.seededSkillIds.includes(skillId)) return {};
+      const markSeeded = (slots: HotbarSlot[]) => ({
+        loadouts: {
+          ...state.loadouts,
+          [loadoutId]: {
+            ...loadout,
+            slots,
+            seededSkillIds: [...loadout.seededSkillIds, skillId],
+          },
+        },
+      });
+      // Already placed by the operator: record it and leave it where it is.
+      if (loadout.slots.some((slot) => slot.skillId === skillId)) {
+        return markSeeded(loadout.slots);
+      }
+      const empty = loadout.slots.find((slot) => slot.skillId === null);
+      // No free slot yet: offer again once one frees up.
+      if (!empty) return {};
+      // A suggestion never takes a chord or button the cockpit owns or another
+      // slot already holds; the skill is still slotted, just unbound.
+      const key =
+        typeof binding.key === "string" &&
+        binding.key !== "" &&
+        !isReservedChord(binding.key) &&
+        !loadout.slots.some((slot) => slot.key === binding.key)
+          ? binding.key
+          : null;
+      const button = binding.gamepadButton;
+      const gamepadButton =
+        typeof button === "number" &&
+        Number.isInteger(button) &&
+        button >= 0 &&
+        button <= MAX_GAMEPAD_BUTTON &&
+        !isReservedGamepadButton(button) &&
+        !loadout.slots.some((slot) => slot.gamepadButton === button)
+          ? button
+          : null;
+      return markSeeded(
+        loadout.slots.map((slot) =>
+          slot.index === empty.index
+            ? {
+                ...slot,
+                skillId,
+                key: key ?? slot.key,
+                gamepadButton: gamepadButton ?? slot.gamepadButton,
+              }
+            : slot,
+        ),
+      );
+    }),
 
   setLoadoutLayout: (loadoutId, partial) =>
     set((state) => {

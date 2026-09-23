@@ -31,7 +31,7 @@ vi.mock("@/lib/telemetry-recorder", () => ({
 }));
 
 vi.mock("@/lib/plugins/notifier", () => ({
-  pluginNotify: vi.fn(),
+  pluginNotify: vi.fn(() => true),
 }));
 
 let droneManagerState: {
@@ -39,11 +39,26 @@ let droneManagerState: {
   getSelectedProtocol: () => unknown;
 };
 
+const droneManagerListeners = new Set<() => void>();
+
+/** Replace the drone manager state and notify subscribers, like a store set. */
+function setDroneManager(next: typeof droneManagerState): void {
+  droneManagerState = next;
+  for (const listener of droneManagerListeners) listener();
+}
+
 vi.mock("@/stores/drone-manager", () => ({
-  useDroneManager: { getState: () => droneManagerState },
+  useDroneManager: {
+    getState: () => droneManagerState,
+    subscribe: (listener: () => void) => {
+      droneManagerListeners.add(listener);
+      return () => droneManagerListeners.delete(listener);
+    },
+  },
 }));
 
 import { buildPluginHandlers } from "@/lib/plugins/handlers";
+import { testMount } from "@/lib/plugins/handlers/__tests__/test-mount";
 import { pluginNotify } from "@/lib/plugins/notifier";
 import { agentStateOrigin, publishPluginEvent } from "@/lib/plugins/event-bus";
 import {
@@ -53,13 +68,15 @@ import {
   isRecordingFor,
 } from "@/lib/telemetry-recorder";
 
+let mount = testMount();
+
 function makeCtx(capability: string | null = null): {
   ctx: BridgeHandlerContext;
   postEvent: ReturnType<typeof vi.fn>;
 } {
   const postEvent = vi.fn();
   return {
-    ctx: { pluginId: "com.example.plug", capability, postEvent, claims: null },
+    ctx: { pluginId: "com.example.plug", capability, postEvent, mount, claims: null },
     postEvent,
   };
 }
@@ -68,6 +85,8 @@ const DEPS = { translate: vi.fn((key: string) => `t:${key}`) };
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mount = testMount();
+  droneManagerListeners.clear();
   vi.mocked(isRecordingFor).mockReturnValue(false);
   droneManagerState = { drones: new Map(), getSelectedProtocol: () => null };
 });
@@ -91,7 +110,7 @@ describe("buildPluginHandlers", () => {
     const { handlers } = buildPluginHandlers("p", "node:d1", DEPS);
     const { ctx } = makeCtx();
     expect(await handlers.notify({ message: "hi" }, ctx)).toEqual({ ok: true });
-    expect(pluginNotify).toHaveBeenCalledWith("hi", "info");
+    expect(pluginNotify).toHaveBeenCalledWith("p", "hi", "info");
   });
 
   it("notification.publish maps severity onto a toast status", async () => {
@@ -101,7 +120,7 @@ describe("buildPluginHandlers", () => {
       { channelId: "alerts", severity: "critical", title: "Boom" },
       ctx,
     );
-    expect(pluginNotify).toHaveBeenCalledWith("Boom", "error");
+    expect(pluginNotify).toHaveBeenCalledWith("p", "Boom", "error");
   });
 
   it("mission.read returns a copy that cannot mutate store state", async () => {
@@ -183,7 +202,7 @@ describe("buildPluginHandlers", () => {
       { topic: "mavlink.attitude" },
       ctx,
     );
-    expect(ack).toEqual({ ok: true });
+    expect(ack).toEqual({ ok: true, linked: true });
     expect(protocol.onAttitude).toHaveBeenCalledTimes(1);
     expect(captured).toBeTypeOf("function");
 
@@ -231,6 +250,72 @@ describe("buildPluginHandlers", () => {
     expect(postEvent).toHaveBeenCalledWith("telemetry.siyi", "telemetry.subscribe.siyi", { zoom: 2 });
   });
 
+  it("re-attaches telemetry to the new adapter after a reconnect and announces the link", async () => {
+    const emitters: Array<(d: unknown) => void> = [];
+    const makeProtocol = () => ({
+      onBattery: vi.fn((cb: (d: unknown) => void) => {
+        emitters.push(cb);
+        return vi.fn();
+      }),
+    });
+    const first = makeProtocol();
+    setDroneManager({ drones: new Map([["node:d1", { protocol: first }]]), getSelectedProtocol: () => null });
+    const { handlers, dispose } = buildPluginHandlers("p", "node:d1", DEPS);
+    const { ctx, postEvent } = makeCtx("telemetry.subscribe.mavlink.battery");
+    await handlers["telemetry.subscribe"]({ topic: "mavlink.battery" }, ctx);
+
+    // The link drops: the plugin is told, so it can decay its display.
+    setDroneManager({ drones: new Map(), getSelectedProtocol: () => null });
+    expect(postEvent).toHaveBeenLastCalledWith("telemetry.link", "", { connected: false });
+
+    // The reconnect adds a new adapter: the subscription follows it.
+    const second = makeProtocol();
+    setDroneManager({ drones: new Map([["node:d1", { protocol: second }]]), getSelectedProtocol: () => null });
+    expect(second.onBattery).toHaveBeenCalledTimes(1);
+    expect(postEvent).toHaveBeenLastCalledWith("telemetry.link", "", { connected: true });
+    emitters[1]({ voltage: 12 });
+    expect(postEvent).toHaveBeenLastCalledWith(
+      "telemetry.mavlink.battery",
+      "telemetry.subscribe.mavlink.battery",
+      { voltage: 12 },
+    );
+    dispose();
+  });
+
+  it("holds a subscribe made before the link exists and attaches when it appears", async () => {
+    setDroneManager({ drones: new Map(), getSelectedProtocol: () => null });
+    const { handlers, dispose } = buildPluginHandlers("p", "node:d1", DEPS);
+    const { ctx } = makeCtx("telemetry.subscribe.mavlink.attitude");
+    const ack = await handlers["telemetry.subscribe"]({ topic: "mavlink.attitude" }, ctx);
+    expect(ack).toEqual({ ok: true, linked: false });
+
+    const protocol = { onAttitude: vi.fn(() => vi.fn()) };
+    setDroneManager({ drones: new Map([["node:d1", { protocol }]]), getSelectedProtocol: () => null });
+    expect(protocol.onAttitude).toHaveBeenCalledTimes(1);
+    dispose();
+  });
+
+  it("keeps one subscription per iframe when two panels subscribe to the same topic", async () => {
+    const unsubs = [vi.fn(), vi.fn()];
+    let n = 0;
+    const protocol = { onBattery: vi.fn(() => unsubs[n++]) };
+    setDroneManager({ drones: new Map([["node:d1", { protocol }]]), getSelectedProtocol: () => null });
+    const { handlers, dispose } = buildPluginHandlers("p", "node:d1", DEPS);
+    const panelA = { ...makeCtx("telemetry.subscribe.battery").ctx, mount: testMount() };
+    const panelB = { ...makeCtx("telemetry.subscribe.battery").ctx, mount: testMount() };
+    await handlers["telemetry.subscribe"]({ topic: "battery" }, panelA);
+    await handlers["telemetry.subscribe"]({ topic: "battery" }, panelB);
+    // Panel B's subscribe did not tear down panel A's.
+    expect(unsubs[0]).not.toHaveBeenCalled();
+
+    // Unmounting panel A releases only its own subscription.
+    panelA.mount.dispose();
+    expect(unsubs[0]).toHaveBeenCalledTimes(1);
+    expect(unsubs[1]).not.toHaveBeenCalled();
+    dispose();
+    expect(unsubs[1]).toHaveBeenCalledTimes(1);
+  });
+
   it("dispose tears down an active telemetry subscription", async () => {
     const unsub = vi.fn();
     const protocol = { onBattery: vi.fn(() => unsub) };
@@ -255,6 +340,6 @@ describe("buildPluginHandlers", () => {
     expect(handlers["events.unsubscribe"]).toBeTypeOf("function");
     expect(handlers["events.publish"]).toBeTypeOf("function");
     expect(handlers["cloud.read"]).toBeTypeOf("function");
-    expect(handlers["cloud.write"]).toBeTypeOf("function");
+    expect(handlers["cloud.write"]).toBeUndefined();
   });
 });

@@ -3,10 +3,11 @@
 /**
  * @module DroneRadioPanel
  * @description Air-side radio view for a single drone. Reads the radio
- * snapshot from the per-drone capability store (populated by the cloud
- * heartbeat) and renders link state, topology, channel, FEC stats, and
- * the TX power slider. The slider commits TX power against the drone's
- * own agent because air-side TX is what's being adjusted.
+ * snapshot from THIS node's slice of the capability store (never the
+ * focused-agent slice, which can belong to another node) and renders link
+ * state, topology, channel, FEC stats, and the TX power slider. The slider
+ * commits TX power against this node's own agent transport (direct or through
+ * its ground station's relay), because air-side TX is what's being adjusted.
  * @license GPL-3.0-only
  */
 
@@ -17,8 +18,12 @@ import {
   ShieldCheck,
   ShieldAlert,
 } from "lucide-react";
-import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
-import { useAgentConnectionStore } from "@/stores/agent-connection-store";
+import {
+  useAgentCapabilitiesStore,
+  selectDeviceCapabilities,
+} from "@/stores/agent-capabilities-store";
+import { useNodeDirectAgent } from "@/components/command/settings/use-node-direct-agent";
+import { getFreshness, useClockTick } from "@/lib/agent/freshness";
 import { groundStationApiFromAgent } from "@/lib/api/ground-station-api";
 import { TxPowerSlider } from "@/components/hardware/TxPowerSlider";
 import { WifiPowersaveCard } from "@/components/hardware/network/WifiPowersaveCard";
@@ -59,6 +64,8 @@ const DEFAULT_INITIAL_TX_DBM = 5;
 
 interface DroneRadioPanelProps {
   droneId: string;
+  /** The node's agent device id (direct, or its relayed peer id). */
+  nodeDeviceId: string | null;
 }
 
 function rssiClass(dbm: number | null): string {
@@ -78,21 +85,27 @@ function topologyClass(topology: RadioTopology): string {
   return "border-border-default text-text-secondary";
 }
 
-export function DroneRadioPanel({ droneId }: DroneRadioPanelProps) {
+export function DroneRadioPanel({ droneId, nodeDeviceId }: DroneRadioPanelProps) {
   const t = useTranslations("hardware.radio");
   const tDrone = useTranslations("droneRadio");
 
-  const radio = useAgentCapabilitiesStore((s) => s.radio);
-  const wfbFailoverState = useAgentCapabilitiesStore(
-    (s) => s.wfbFailoverState,
+  const radio = useAgentCapabilitiesStore(
+    (s) => selectDeviceCapabilities(s, nodeDeviceId)?.radio ?? null,
   );
-  // The agent URL the panel will hit for TX power apply. In the
-  // current architecture this is whichever agent the GCS is connected
-  // to; cloud mode reuses the same connection store. A future per-drone
-  // URL field on the capability store would let multi-drone control
-  // surfaces target each agent independently. See report for the gap.
-  const agentUrl = useAgentConnectionStore((s) => s.agentUrl);
-  const apiKey = useAgentConnectionStore((s) => s.apiKey);
+  const wfbFailoverState = useAgentCapabilitiesStore(
+    (s) => selectDeviceCapabilities(s, nodeDeviceId)?.wfbFailoverState ?? "local",
+  );
+  const receivedAt = useAgentCapabilitiesStore(
+    (s) => selectDeviceCapabilities(s, nodeDeviceId)?.receivedAt ?? null,
+  );
+  // Re-render on the shared clock so the reading ages visibly.
+  useClockTick();
+  const freshness = getFreshness(receivedAt);
+  // TX power is applied through this node's own transport; null when the GCS
+  // holds no connection to it, never another node's.
+  const agent = useNodeDirectAgent(nodeDeviceId);
+  const agentUrl = agent?.agentUrl ?? null;
+  const apiKey = agent?.apiKey ?? null;
 
   if (!radio) {
     return (
@@ -150,7 +163,7 @@ export function DroneRadioPanel({ droneId }: DroneRadioPanelProps) {
   const decryptErrors = radio.decryptErrors;
 
   // The drone does not typically receive its own RF, so a null RSSI here is
-  // expected — but WHICH explanation is truthful depends on the link (Rule 44).
+  // expected — but WHICH explanation is truthful depends on the link (no fabricated reading).
   // On a link that is carrying frames (connected / degraded) the value lives on
   // the ground side, so the note points there. On an unverified link
   // (rf_unverified) nothing has confirmed reception, so pointing the operator at
@@ -183,6 +196,19 @@ export function DroneRadioPanel({ droneId }: DroneRadioPanelProps) {
 
   return (
     <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-4 py-4">
+      {freshness.state === "stale" || freshness.state === "offline" ? (
+        <div
+          role="status"
+          className={`flex items-center gap-2 rounded border px-3 py-2 text-xs ${
+            freshness.state === "offline"
+              ? "border-status-error/30 bg-status-error/10 text-status-error"
+              : "border-status-warning/30 bg-status-warning/10 text-status-warning"
+          }`}
+        >
+          <AlertTriangle size={12} aria-hidden="true" />
+          {tDrone("staleReading", { age: freshness.label })}
+        </div>
+      ) : null}
       <section className="rounded border border-border-default bg-bg-secondary p-5">
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <span
@@ -273,8 +299,8 @@ export function DroneRadioPanel({ droneId }: DroneRadioPanelProps) {
               value={`${fecK} / ${fecN} (${fecK > 0 ? Math.round(((fecN - fecK) / fecK) * 100) : 0}%)`}
             />
           ) : null}
-          <StatRow label={t("fecRecovered")} value={String(fecRecovered)} />
-          <StatRow label={t("fecLost")} value={String(fecLost)} />
+          <StatRow label={t("fecRecovered")} value={fecRecovered == null ? "—" : String(fecRecovered)} />
+          <StatRow label={t("fecLost")} value={fecLost == null ? "—" : String(fecLost)} />
           {packetsAll != null ? (
             <StatRow
               label={t("packetsAll")}

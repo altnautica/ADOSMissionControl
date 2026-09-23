@@ -2,7 +2,8 @@
  * Component tests for the Command-tab Probe-result confirmation card.
  * Covers the happy pair path, the AgentAlreadyPairedError mapping,
  * the PairClientError code → translated key mapping, and the
- * addNode-before-connect ordering.
+ * addNode-before-connect ordering. The connect itself goes through the one
+ * canonical local-node path, whose outcome decides success.
  *
  * @license GPL-3.0-only
  */
@@ -17,14 +18,16 @@ import { fireEvent, waitFor } from "@testing-library/react";
 
 const {
   pairLocallyMock,
-  connectMock,
+  connectLocalNodeMock,
   addNodeMock,
   wipePairMock,
   removeNodeMock,
   reconcileHostMock,
+  connState,
 } = vi.hoisted(() => ({
   pairLocallyMock: vi.fn(),
-  connectMock: vi.fn(),
+  connectLocalNodeMock: vi.fn(),
+  connState: { connectionError: null as string | null },
   addNodeMock: vi.fn(),
   wipePairMock: vi.fn(),
   removeNodeMock: vi.fn(),
@@ -45,19 +48,20 @@ vi.mock("@/lib/agent/local-pair-client", async () => {
   };
 });
 
+vi.mock("@/lib/agent/node-click-handler", () => ({
+  connectLocalNode: connectLocalNodeMock,
+}));
+
 vi.mock("@/stores/agent-connection-store", () => ({
   useAgentConnectionStore: Object.assign(
     (sel: (s: unknown) => unknown) =>
       sel({
-        connect: connectMock,
         agentUrl: null,
         apiKey: null,
         connected: false,
       }),
     {
-      getState: () => ({
-        connect: connectMock,
-      }),
+      getState: () => connState,
     },
   ),
 }));
@@ -92,7 +96,7 @@ import {
 function probe(overrides: Partial<ProbeResult> = {}): ProbeResult {
   return {
     deviceId: "abc123",
-    name: "skynode",
+    name: "testnode",
     version: "0.25.0",
     board: "Raspberry Pi 4B",
     paired: false,
@@ -100,15 +104,16 @@ function probe(overrides: Partial<ProbeResult> = {}): ProbeResult {
     mdnsHost: "ados-abc123.local",
     profile: "drone",
     role: null,
-    hostname: "http://skynode.local:8080",
+    hostname: "http://testnode.local:8080",
     ...overrides,
   };
 }
 
 beforeEach(() => {
   pairLocallyMock.mockReset();
-  connectMock.mockReset();
+  connectLocalNodeMock.mockReset();
   addNodeMock.mockReset();
+  connState.connectionError = null;
 });
 
 describe("ProbeResultCard", () => {
@@ -120,7 +125,7 @@ describe("ProbeResultCard", () => {
         onCancel={vi.fn()}
       />,
     );
-    expect(getByText("skynode")).toBeTruthy();
+    expect(getByText("testnode")).toBeTruthy();
     expect(getByText("abc123")).toBeTruthy();
     expect(getByText("Raspberry Pi 4B")).toBeTruthy();
   });
@@ -129,11 +134,11 @@ describe("ProbeResultCard", () => {
     pairLocallyMock.mockResolvedValueOnce({
       apiKey: "ados_k",
       deviceId: "abc123",
-      name: "skynode",
+      name: "testnode",
       mdnsHost: "ados-abc123.local",
-      hostname: "http://skynode.local:8080",
+      hostname: "http://testnode.local:8080",
     });
-    connectMock.mockResolvedValueOnce(undefined);
+    connectLocalNodeMock.mockResolvedValueOnce("connected");
     const onPaired = vi.fn();
     const { getByText } = renderWithIntl(
       <ProbeResultCard
@@ -144,21 +149,25 @@ describe("ProbeResultCard", () => {
     );
     fireEvent.click(getByText(/Pair locally/));
     await waitFor(() => {
-      expect(onPaired).toHaveBeenCalledWith("abc123");
+      expect(onPaired).toHaveBeenCalledWith("abc123", "connected");
     });
     expect(addNodeMock).toHaveBeenCalledTimes(1);
     expect(addNodeMock.mock.calls[0][0].apiKey).toBe("ados_k");
+    expect(connectLocalNodeMock).toHaveBeenCalledWith("abc123", expect.anything());
   });
 
   it("addNode runs BEFORE connect — node persists even when connect fails", async () => {
     pairLocallyMock.mockResolvedValueOnce({
       apiKey: "ados_k",
       deviceId: "abc123",
-      name: "skynode",
+      name: "testnode",
       mdnsHost: "ados-abc123.local",
-      hostname: "http://skynode.local:8080",
+      hostname: "http://testnode.local:8080",
     });
-    connectMock.mockRejectedValueOnce(new Error("ECONNREFUSED"));
+    connectLocalNodeMock.mockImplementationOnce(async () => {
+      connState.connectionError = "ECONNREFUSED";
+      return "failed";
+    });
     const onPaired = vi.fn();
     const { getByText, findByRole } = renderWithIntl(
       <ProbeResultCard
@@ -170,8 +179,12 @@ describe("ProbeResultCard", () => {
     fireEvent.click(getByText(/Pair locally/));
     const alert = await findByRole("alert");
     expect(alert.textContent).toMatch(/could not establish a live connection/);
+    expect(alert.textContent).toMatch(/ECONNREFUSED/);
     expect(onPaired).not.toHaveBeenCalled();
     expect(addNodeMock).toHaveBeenCalledTimes(1);
+    expect(addNodeMock.mock.invocationCallOrder[0]).toBeLessThan(
+      connectLocalNodeMock.mock.invocationCallOrder[0],
+    );
   });
 
   it("maps AgentAlreadyPairedError to the locale-aware message", async () => {
@@ -194,8 +207,8 @@ describe("ProbeResultCard", () => {
     // The raw status never appears — it goes to the console instead.
     pairLocallyMock.mockRejectedValueOnce(
       new PairClientError("pairAgentFaultError", "raw", {
-        host: "skynode.local",
-        settingsUrl: "http://skynode.local:8080/settings",
+        host: "testnode.local",
+        settingsUrl: "http://testnode.local:8080/settings",
         detail: "No space left on device",
       }),
     );

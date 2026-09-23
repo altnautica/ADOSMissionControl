@@ -23,7 +23,7 @@ import { useParamPanelActions } from "@/hooks/use-param-panel-actions";
 import { usePanelScroll } from "@/hooks/use-panel-scroll";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { PanelHeader } from "../shared/PanelHeader";
-import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
+import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import type { ParamMetadata } from "@/lib/protocol/param-metadata";
 
 const SWASH_PARAMS = [
@@ -120,7 +120,7 @@ export function ArduPilotHeliPanel() {
   };
 
   return (
-    <ArmedLockOverlay>
+    <ArmedWarningBanner>
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-6">
         <div className="max-w-2xl space-y-6">
           <PanelHeader
@@ -215,6 +215,6 @@ export function ArduPilotHeliPanel() {
           </div>
         </div>
       </div>
-    </ArmedLockOverlay>
+    </ArmedWarningBanner>
   );
 }

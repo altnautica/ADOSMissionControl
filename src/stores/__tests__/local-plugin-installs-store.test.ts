@@ -39,6 +39,7 @@ describe("local-plugin-installs-store", () => {
           kind: "archive",
           archiveUrl: "https://example/x.adosplug",
           entrypoint: "gcs/plugin.bundle.js",
+          pin: { sha256: "ab".repeat(32), signerId: null },
         },
       }),
     );

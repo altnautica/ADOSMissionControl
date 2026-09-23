@@ -13,12 +13,11 @@ import {
   Legend,
 } from "recharts";
 import type { MotorAnalysis } from "@/lib/analysis/types";
+import { CHART_ERROR, CHART_GRID, CHART_TICK, CHART_TOOLTIP_LABEL_STYLE, CHART_TOOLTIP_STYLE, MOTOR_COLORS } from "../chart-theme";
 
 interface PidMotorChartProps {
   data: MotorAnalysis;
 }
-
-const MOTOR_COLORS = ["#3A82FF", "#22c55e", "#f59e0b", "#ef4444", "#a855f7", "#06b6d4", "#ec4899", "#84cc16"];
 
 /** Downsample data to a max number of points by taking every Nth. */
 function downsample<T>(arr: T[], maxPoints: number): T[] {
@@ -72,26 +71,21 @@ export function PidMotorChart({ data }: PidMotorChartProps) {
     <div className="h-[200px]">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={chartData} margin={{ top: 8, right: 8, bottom: 4, left: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+          <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} />
           <XAxis
             dataKey="timeMs"
             type="number"
-            tick={{ fill: "#6b7280", fontSize: 10 }}
-            label={{ value: "ms", position: "insideBottomRight", offset: -4, fill: "#6b7280", fontSize: 10 }}
+            tick={{ fill: CHART_TICK, fontSize: 10 }}
+            label={{ value: "ms", position: "insideBottomRight", offset: -4, fill: CHART_TICK, fontSize: 10 }}
           />
           <YAxis
             domain={[1000, 2000]}
-            tick={{ fill: "#6b7280", fontSize: 10 }}
-            label={{ value: "PWM (us)", angle: -90, position: "insideLeft", fill: "#6b7280", fontSize: 10 }}
+            tick={{ fill: CHART_TICK, fontSize: 10 }}
+            label={{ value: "PWM (us)", angle: -90, position: "insideLeft", fill: CHART_TICK, fontSize: 10 }}
           />
           <Tooltip
-            contentStyle={{
-              backgroundColor: "#111827",
-              border: "1px solid #1f2937",
-              borderRadius: 0,
-              fontSize: 11,
-            }}
-            labelStyle={{ color: "#9ca3af" }}
+            contentStyle={CHART_TOOLTIP_STYLE}
+            labelStyle={CHART_TOOLTIP_LABEL_STYLE}
             labelFormatter={(label: number) => `${label} ms`}
           />
           <Legend
@@ -102,9 +96,9 @@ export function PidMotorChart({ data }: PidMotorChartProps) {
           <ReferenceArea
             y1={1900}
             y2={2000}
-            fill="#ef4444"
+            fill={CHART_ERROR}
             fillOpacity={0.1}
-            label={{ value: "Saturation", fill: "#ef4444", fontSize: 9, position: "insideTopRight" }}
+            label={{ value: "Saturation", fill: CHART_ERROR, fontSize: 9, position: "insideTopRight" }}
           />
           {Array.from({ length: motorCount }, (_, i) => (
             <Line

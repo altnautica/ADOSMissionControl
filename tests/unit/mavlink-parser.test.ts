@@ -250,3 +250,63 @@ describe('MAVLinkParser', () => {
     expect(frames.length).toBe(1);
   });
 });
+
+/** Build a MAVLink v1 frame: 6-byte header, one-byte msgid, no flags. */
+function buildV1Frame(msgId: number, payload: Uint8Array, systemId = 1, componentId = 1, sequence = 0): Uint8Array {
+  const buf = new Uint8Array(6 + payload.length + 2);
+  buf[0] = 0xfe;
+  buf[1] = payload.length;
+  buf[2] = sequence;
+  buf[3] = systemId;
+  buf[4] = componentId;
+  buf[5] = msgId;
+  buf.set(payload, 6);
+  const crc = crc16Accumulate(CRC_EXTRA.get(msgId)!, crc16(buf, 1, 5 + payload.length));
+  buf[6 + payload.length] = crc & 0xff;
+  buf[7 + payload.length] = crc >> 8;
+  return buf;
+}
+
+describe('MAVLinkParser — MAVLink v1 frames', () => {
+  it('emits a v1 HEARTBEAT, so a MAVLink1 port still connects', () => {
+    const parser = new MAVLinkParser();
+    const frames: { msgId: number; systemId: number; componentId: number; sequence: number; type: number }[] = [];
+    parser.onFrame((f) => frames.push({ msgId: f.msgId, systemId: f.systemId, componentId: f.componentId, sequence: f.sequence, type: f.payload.getUint8(4) }));
+    const payload = new Uint8Array(9);
+    payload[4] = 2; // MAV_TYPE_QUADROTOR
+    payload[5] = 3; // MAV_AUTOPILOT_ARDUPILOTMEGA
+    parser.feed(buildV1Frame(0, payload, 7, 1, 42));
+    expect(frames).toEqual([{ msgId: 0, systemId: 7, componentId: 1, sequence: 42, type: 2 }]);
+  });
+
+  it('zero-restores a v1 payload to the full length, extensions reading as absent', () => {
+    const parser = new MAVLinkParser();
+    let len = 0;
+    parser.onFrame((f) => { len = f.payload.byteLength; });
+    parser.feed(buildV1Frame(1, new Uint8Array(31))); // SYS_STATUS base only
+    expect(len).toBe(PAYLOAD_LENGTHS.get(1));
+  });
+
+  it('parses v1 and v2 frames interleaved on one stream, across split feeds', () => {
+    const parser = new MAVLinkParser();
+    const ids: number[] = [];
+    parser.onFrame((f) => ids.push(f.msgId));
+    const v1 = buildV1Frame(30, new Uint8Array(28));
+    const v2 = buildFrame(0, new Uint8Array(9));
+    const stream = new Uint8Array([0x00, ...v1, ...v2, ...v1]);
+    parser.feed(stream.subarray(0, 10));
+    parser.feed(stream.subarray(10));
+    expect(ids).toEqual([30, 0, 30]);
+  });
+
+  it('rejects a v1 frame whose CRC does not match', () => {
+    const parser = new MAVLinkParser();
+    let count = 0;
+    parser.onFrame(() => { count++; });
+    const bad = buildV1Frame(0, new Uint8Array(9));
+    bad[bad.length - 1] ^= 0xff;
+    parser.feed(bad);
+    expect(count).toBe(0);
+    expect(parser.crcFailureCount).toBe(1);
+  });
+});

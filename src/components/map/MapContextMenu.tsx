@@ -112,14 +112,28 @@ export function MapContextMenu() {
       setRallyOpen(false);
     };
 
+    // Keep the menu anchored to its map point while the map moves under it
+    // (follow mode pans on every telemetry update), and close it only on the
+    // operator's own pan or zoom.
+    const reproject = () =>
+      setMenuPos((pos) => {
+        if (!pos) return pos;
+        const pt = map.latLngToContainerPoint([pos.lat, pos.lon]);
+        return pt.x === pos.x && pt.y === pos.y ? pos : { ...pos, x: pt.x, y: pt.y };
+      });
+
     map.on("contextmenu", onContextMenu);
     map.on("click", closeMenu);
-    map.on("movestart", closeMenu);
+    map.on("dragstart", closeMenu);
+    map.on("zoomstart", closeMenu);
+    map.on("move", reproject);
 
     return () => {
       map.off("contextmenu", onContextMenu);
       map.off("click", closeMenu);
-      map.off("movestart", closeMenu);
+      map.off("dragstart", closeMenu);
+      map.off("zoomstart", closeMenu);
+      map.off("move", reproject);
     };
   }, [map, closeMenu]);
 
@@ -186,18 +200,18 @@ export function MapContextMenu() {
 
   // ── Sub-panel confirm handlers ──────────────────────────
 
-  const handleOrbitConfirm = useCallback(() => {
+  const handleOrbitConfirm = useCallback((radius: number) => {
     if (!menuPos) return;
     void handleOrbitConfirmed({
       protocol: getProtocol(),
       menuPos,
-      radius: orbitRadius,
+      radius,
       clockwise: orbitCw,
       relativeAlt: latestPos?.relativeAlt,
       report,
     });
     closeMenu();
-  }, [menuPos, getProtocol, orbitRadius, orbitCw, latestPos, closeMenu, report]);
+  }, [menuPos, getProtocol, orbitCw, latestPos, closeMenu, report]);
 
   const handleHomeConfirm = useCallback(() => {
     if (!menuPos) return;

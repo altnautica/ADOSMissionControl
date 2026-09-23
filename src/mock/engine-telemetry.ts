@@ -106,6 +106,7 @@ export function emitSelectedDroneTelemetry(ctx: TelemetryTickContext): number {
       remnoise: 32 + Math.floor(Math.random() * 10),
       rxerrors: 0,
       fixed: 0,
+      sourceSystemId: 51,
     });
   }
 
@@ -183,6 +184,7 @@ export function emitSelectedDroneTelemetry(ctx: TelemetryTickContext): number {
   if (ctx.tickCount % 3 === 0) {
     ctx.protocol.emitScaledImu({
       timestamp: now,
+      imu: 0,
       xacc: Math.round((ctx.roll * 0.1 + (Math.random() - 0.5) * 2) * 100),
       yacc: Math.round((ctx.pitch * 0.1 + (Math.random() - 0.5) * 2) * 100),
       zacc: Math.round((-980 + (Math.random() - 0.5) * 5) * 1),

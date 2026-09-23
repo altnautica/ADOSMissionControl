@@ -24,13 +24,22 @@
 
 import { useMemo } from "react";
 import { useTranslations } from "next-intl";
-import { BatteryLow, ShieldAlert, SignalLow } from "lucide-react";
+import {
+  AlertTriangle,
+  BatteryLow,
+  Repeat,
+  ShieldAlert,
+  SignalLow,
+} from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { useBatteryThresholds } from "@/lib/battery-bands";
 import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
 import { StatusDot } from "@/components/ui/status-dot";
-import type { SwarmBeaconRow } from "@/stores/swarm-beacon-store";
+import {
+  useSwarmBeaconStore,
+  type SwarmBeaconRow,
+} from "@/stores/swarm-beacon-store";
 import {
   SWARM_SEVERITY_IDS,
   SWARM_SEVERITY_LEVEL,
@@ -66,6 +75,17 @@ export function SwarmSeverityStrip({
     () => swarmConditionCounts(slotRows, thresholds),
     [slotRows, thresholds],
   );
+  // Bus-level conditions. The counters are cumulative since the bus started,
+  // so a nonzero count is a standing fact about this fleet's air, not a
+  // per-drone alarm.
+  const slotConflictFlag = useSwarmBeaconStore((s) => s.slotConflict);
+  const slotConflictBeacons = useSwarmBeaconStore(
+    (s) => s.counters?.beaconsSlotConflict ?? 0,
+  );
+  const replayedBeacons = useSwarmBeaconStore(
+    (s) => s.counters?.beaconsReplayed ?? 0,
+  );
+  const slotConflict = slotConflictFlag === true || slotConflictBeacons > 0;
 
   return (
     <div className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-2">
@@ -90,7 +110,33 @@ export function SwarmSeverityStrip({
         {t("severity.ofTotal", { total: slotRows.length })}
       </span>
 
+      {/* The way back to the whole fleet is always one click, even when the
+          condition behind the active chip has cleared and its count is 0. */}
+      {active !== null && (
+        <button
+          type="button"
+          onClick={() => onToggle(active)}
+          className="rounded border border-border-default px-2 py-1 text-[11px] font-medium text-text-secondary transition-colors hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary"
+        >
+          {t("severity.showAll")}
+        </button>
+      )}
+
       <div className="ml-auto flex flex-wrap items-center gap-1.5">
+        {slotConflict && (
+          <ConditionChip
+            icon={<AlertTriangle size={11} />}
+            tone="text-status-error"
+            label={t("conditions.slotConflict", { count: slotConflictBeacons })}
+          />
+        )}
+        {replayedBeacons > 0 && (
+          <ConditionChip
+            icon={<Repeat size={11} />}
+            tone="text-status-warning"
+            label={t("conditions.replayed", { count: replayedBeacons })}
+          />
+        )}
         {conditions.hardSeparation > 0 && (
           <ConditionChip
             icon={<ShieldAlert size={11} />}
@@ -123,6 +169,8 @@ export function SwarmSeverityStrip({
  * One count, one dot, one filter. A chip with nothing behind it stays rendered
  * but dimmed and inert: the zero is information, and a strip whose chips move
  * around as conditions come and go is a strip nobody builds muscle memory for.
+ * The active chip is never inert — its condition clearing must not trap the
+ * board behind a filter nothing can release.
  */
 function SeverityChip({
   id,
@@ -144,14 +192,14 @@ function SeverityChip({
     <button
       type="button"
       onClick={onToggle}
-      disabled={empty}
+      disabled={empty && !active}
       aria-pressed={active}
       className={cn(
         "flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary",
         active
           ? "border-accent-primary bg-accent-primary/10"
           : "border-border-default bg-bg-secondary",
-        empty
+        empty && !active
           ? "cursor-default opacity-45"
           : "hover:border-accent-primary/60 hover:bg-bg-tertiary",
         className,

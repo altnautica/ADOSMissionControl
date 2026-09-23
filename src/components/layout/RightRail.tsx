@@ -139,13 +139,22 @@ export function RightRail() {
   const hasNewMcp = open !== "mcp" && mcpCount > mcpSeen;
   const hasNewLogs = open !== "logs" && !!selectedDroneId && logCount > logSeen;
 
+  // Every way a panel stops being shown (its rail button, its own close
+  // button, switching to the other panel) snapshots what was seen, so the badge
+  // stays quiet until new activity arrives.
+  const markSeen = () => {
+    if (open === "mcp") setMcpSeen(mcpCount);
+    else if (open === "logs") setLogSeen(logCount);
+  };
+  const close = () => {
+    markSeen();
+    setOpen(null);
+  };
   const toggle = (p: "mcp" | "logs") => {
     if (open === p) {
-      // Closing — snapshot what was seen so it stays quiet until new activity.
-      if (p === "mcp") setMcpSeen(mcpCount);
-      else setLogSeen(logCount);
-      setOpen(null);
+      close();
     } else {
+      markSeen();
       setOpen(p);
     }
   };
@@ -156,7 +165,7 @@ export function RightRail() {
         <PanelFrame
           title={tMcp("watch.title")}
           closeLabel={tMcp("watch.collapse")}
-          onClose={() => setOpen(null)}
+          onClose={close}
         >
           <McpActivityPanel />
         </PanelFrame>
@@ -165,7 +174,7 @@ export function RightRail() {
         <PanelFrame
           title={tDash("flightLogs")}
           closeLabel={tDash("collapseLogs")}
-          onClose={() => setOpen(null)}
+          onClose={close}
         >
           <DroneLogsPanel droneId={selectedDroneId} />
         </PanelFrame>

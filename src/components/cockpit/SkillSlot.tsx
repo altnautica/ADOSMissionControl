@@ -117,7 +117,7 @@ export function SkillSlot({
         return t("skills.state.active");
       case "cooldown": {
         // Surface the remaining seconds so the cooldown is self-describing, not
-        // colour/shape-only (Rule 44: the text and the ring tell the same truth).
+        // colour/shape-only (the text and the ring tell the same truth).
         // The slot knows the total window from the skill, the fraction from the
         // dispatcher's real clock, so remaining = total * progress.
         const totalMs = skill?.cooldownMs ?? 0;

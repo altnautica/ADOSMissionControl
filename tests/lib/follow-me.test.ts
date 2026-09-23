@@ -82,7 +82,7 @@ describe("follow-me session", () => {
     fcTelemetry("LOITER");
     // An already-running watch: the test drives the fix itself.
     useGcsLocationStore.setState({ permission: "granted", position: null, watchId: 1 });
-    expect(await startFollowMe(DRONE)).toBe(true);
+    expect(await startFollowMe(DRONE)).toEqual({ ok: true });
   });
 
   afterEach(() => {
@@ -97,6 +97,31 @@ describe("follow-me session", () => {
     expect(s.isActive).toBe(true);
     expect(s.droneId).toBe(DRONE);
     expect(s.droneName).toBe("Alpha");
+  });
+
+  it("reports accuracy as unknown until the first GCS fix", async () => {
+    expect(useFollowMeStore.getState().gcsAccuracy).toBeNull();
+    await tick("LOITER");
+    expect(useFollowMeStore.getState().gcsAccuracy).toBe(5);
+  });
+
+  it("refuses a second start with its reason", async () => {
+    expect(await startFollowMe(DRONE)).toEqual({
+      ok: false,
+      reason: "a follow-me session is already running",
+    });
+  });
+
+  it("names a refused location permission instead of failing silently", async () => {
+    stopFollowMe();
+    useGcsLocationStore.setState({
+      permission: "denied",
+      requestPermission: async () => "denied",
+    });
+    const result = await startFollowMe(DRONE);
+    expect(result.ok).toBe(false);
+    expect(result.ok ? "" : result.reason).toMatch(/location permission/);
+    expect(useFollowMeStore.getState().isActive).toBe(false);
   });
 
   it("asks for the mode change on the first reposition only", async () => {

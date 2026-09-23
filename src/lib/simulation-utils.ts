@@ -7,10 +7,26 @@
 
 import type { AltitudeFrame, Waypoint } from "@/lib/types";
 import { haversineDistance, bearing, normalizeHeading } from "@/lib/telemetry-utils";
+import { isActionCommand } from "@/lib/mission/command-classes";
+
+/** A resolved point the simulated vehicle flies to. */
+export interface SimPoint {
+  lat: number;
+  lon: number;
+  alt: number;
+}
 
 export interface FlightSegment {
+  /** Planner index of the item this leg starts at. */
   fromIndex: number;
+  /** Planner index of the item this leg flies to. */
   toIndex: number;
+  /** Where the leg starts and ends. An RTL leg ends at home, not at the RTL
+   * item's own (placeholder) coordinates. */
+  from: SimPoint;
+  to: SimPoint;
+  /** Seconds held at `from` before the leg is flown. */
+  holdTime: number;
   distance: number;
   speed: number;
   duration: number;
@@ -59,10 +75,10 @@ export function createSimulationMissionSignature(
   });
 }
 
-/** Compute 3D distance between two waypoints (haversine + altitude delta). */
-function distance3D(wp1: Waypoint, wp2: Waypoint): number {
-  const hDist = haversineDistance(wp1.lat, wp1.lon, wp2.lat, wp2.lon);
-  const dAlt = wp2.alt - wp1.alt;
+/** Compute 3D distance between two points (haversine + altitude delta). */
+function distance3D(a: SimPoint, b: SimPoint): number {
+  const hDist = haversineDistance(a.lat, a.lon, b.lat, b.lon);
+  const dAlt = b.alt - a.alt;
   return Math.sqrt(hDist * hDist + dAlt * dAlt);
 }
 
@@ -73,45 +89,104 @@ function distance3D(wp1: Waypoint, wp2: Waypoint): number {
  */
 const HOLDING_COMMANDS: Record<string, true> = { WAYPOINT: true, SPLINE_WAYPOINT: true, LOITER_TIME: true };
 
-/** Compute flight plan from waypoints. */
-export function computeFlightPlan(waypoints: Waypoint[], defaultSpeed: number): FlightPlan {
-  if (waypoints.length < 2) {
+/** Altitude RTL climbs to before returning: the ArduPilot RTL_ALT default (15 m). */
+export const SIM_RTL_ALT_M = 15;
+
+function holdAt(wp: Waypoint): number {
+  return HOLDING_COMMANDS[wp.command ?? "WAYPOINT"] ? wp.holdTime ?? 0 : 0;
+}
+
+/**
+ * The points a nav item is flown through from `prev`. RTL climbs to the RTL
+ * altitude, returns to `home` at that altitude and descends there; its own
+ * coordinates are a placeholder (the planner puts the last waypoint's, a
+ * downloaded mission 0/0). Any other nav item at 0/0 carries no position and
+ * acts where the vehicle already is.
+ */
+function legPoints(wp: Waypoint, prev: SimPoint, home: SimPoint, rtlAlt: number): SimPoint[] {
+  if (wp.command === "RTL") {
+    const cruise = Math.max(prev.alt, rtlAlt);
+    const points: SimPoint[] = [];
+    if (cruise > prev.alt) points.push({ lat: prev.lat, lon: prev.lon, alt: cruise });
+    points.push({ lat: home.lat, lon: home.lon, alt: cruise });
+    points.push({ lat: home.lat, lon: home.lon, alt: home.alt });
+    return points;
+  }
+  if (wp.lat === 0 && wp.lon === 0) return [{ lat: prev.lat, lon: prev.lon, alt: wp.alt }];
+  return [{ lat: wp.lat, lon: wp.lon, alt: wp.alt }];
+}
+
+export interface FlightPlanOptions {
+  /** Where RTL returns to. Defaults to the first flown item's position at 0 m,
+   * the same launch point the mission upload falls back to. */
+  home?: { lat: number; lon: number };
+  /** Altitude RTL climbs to before returning. */
+  rtlAltM?: number;
+}
+
+/**
+ * Compute the flight plan from the mission items. Action items carry no leg
+ * of their own (they act at the preceding nav item), so they are skipped; RTL
+ * is flown back to home.
+ */
+export function computeFlightPlan(
+  waypoints: Waypoint[],
+  defaultSpeed: number,
+  options: FlightPlanOptions = {},
+): FlightPlan {
+  const flown: number[] = [];
+  for (let i = 0; i < waypoints.length; i++) {
+    if (!isActionCommand(waypoints[i].command)) flown.push(i);
+  }
+  if (flown.length < 2) {
     return { segments: [], totalDuration: 0, totalDistance: 0 };
   }
+
+  const first = waypoints[flown[0]];
+  const homeLatLon = options.home ?? { lat: first.lat, lon: first.lon };
+  const home: SimPoint = { ...homeLatLon, alt: 0 };
+  const rtlAlt = options.rtlAltM ?? SIM_RTL_ALT_M;
 
   const segments: FlightSegment[] = [];
   let cumDuration = 0;
   let totalDistance = 0;
+  let prev: SimPoint = { lat: first.lat, lon: first.lon, alt: first.alt };
 
-  for (let i = 0; i < waypoints.length - 1; i++) {
-    const from = waypoints[i];
-    const to = waypoints[i + 1];
-    const dist = distance3D(from, to);
+  for (let k = 1; k < flown.length; k++) {
+    const fromIndex = flown[k - 1];
+    const toIndex = flown[k];
+    const to = waypoints[toIndex];
     // The uploaded speed of a leg: the destination's own speed, else the
     // mission default (see the speed note in mission/mission-expand).
     const speed = to.speed ?? defaultSpeed;
-    const holdTime = HOLDING_COMMANDS[from.command ?? "WAYPOINT"] ? from.holdTime ?? 0 : 0;
-    const duration = holdTime + (speed > 0 ? dist / speed : 0);
-    const hdg = bearing(from.lat, from.lon, to.lat, to.lon);
-
-    cumDuration += duration;
-    totalDistance += dist;
-
-    segments.push({
-      fromIndex: i,
-      toIndex: i + 1,
-      distance: dist,
-      speed,
-      duration,
-      cumulativeDuration: cumDuration,
-      heading: hdg,
-    });
+    let hold = holdAt(waypoints[fromIndex]);
+    for (const point of legPoints(to, prev, home, rtlAlt)) {
+      const dist = distance3D(prev, point);
+      const duration = hold + (speed > 0 ? dist / speed : 0);
+      cumDuration += duration;
+      totalDistance += dist;
+      segments.push({
+        fromIndex,
+        toIndex,
+        from: prev,
+        to: point,
+        holdTime: hold,
+        distance: dist,
+        speed,
+        duration,
+        cumulativeDuration: cumDuration,
+        heading:
+          point.lat === prev.lat && point.lon === prev.lon
+            ? (segments[segments.length - 1]?.heading ?? 0)
+            : bearing(prev.lat, prev.lon, point.lat, point.lon),
+      });
+      prev = point;
+      hold = 0;
+    }
   }
 
-  // Add the final waypoint's hold, when its command holds at all
-  const lastWp = waypoints[waypoints.length - 1];
-  const finalHold = HOLDING_COMMANDS[lastWp.command ?? "WAYPOINT"] ? lastWp.holdTime ?? 0 : 0;
-  const totalDuration = cumDuration + finalHold;
+  // Add the final item's hold, when its command holds at all
+  const totalDuration = cumDuration + holdAt(waypoints[flown[flown.length - 1]]);
 
   return { segments, totalDuration, totalDistance };
 }
@@ -127,32 +202,32 @@ export function interpolatePosition(
   }
 
   if (segments.length === 0 || elapsedTime <= 0) {
-    const wp = waypoints[0];
+    const start = segments[0]?.from ?? waypoints[0];
     return {
-      lat: wp.lat,
-      lon: wp.lon,
-      alt: wp.alt,
+      lat: start.lat,
+      lon: start.lon,
+      alt: start.alt,
       heading: segments.length > 0 ? segments[0].heading : 0,
       speed: 0,
-      currentWaypointIndex: 0,
+      currentWaypointIndex: segments[0]?.fromIndex ?? 0,
       progress: 0,
     };
   }
 
-  const segmentsDuration = segments[segments.length - 1].cumulativeDuration;
-  const finalHold = waypoints[waypoints.length - 1].holdTime ?? 0;
+  const last = segments[segments.length - 1];
+  const segmentsDuration = last.cumulativeDuration;
+  const finalHold = holdAt(waypoints[last.toIndex]);
   const totalDuration = segmentsDuration + finalHold;
 
   if (elapsedTime >= segmentsDuration) {
-    // Past all segments — holding at final waypoint or done
-    const wp = waypoints[waypoints.length - 1];
+    // Past all segments — holding at the final point or done
     return {
-      lat: wp.lat,
-      lon: wp.lon,
-      alt: wp.alt,
-      heading: segments[segments.length - 1].heading,
+      lat: last.to.lat,
+      lon: last.to.lon,
+      alt: last.to.alt,
+      heading: last.heading,
       speed: 0,
-      currentWaypointIndex: waypoints.length - 1,
+      currentWaypointIndex: last.toIndex,
       progress: totalDuration > 0 ? Math.min(elapsedTime / totalDuration, 1) : 1,
     };
   }
@@ -168,11 +243,10 @@ export function interpolatePosition(
 
   const seg = segments[segIdx];
   const segStart = segIdx > 0 ? segments[segIdx - 1].cumulativeDuration : 0;
-  const from = waypoints[seg.fromIndex];
-  const holdTime = from.holdTime ?? 0;
+  const { from, to, holdTime } = seg;
   const timeInSeg = elapsedTime - segStart;
 
-  // Still holding at the from waypoint
+  // Still holding at the from point
   if (timeInSeg <= holdTime) {
     return {
       lat: from.lat,
@@ -185,20 +259,15 @@ export function interpolatePosition(
     };
   }
 
-  // Traveling between waypoints
+  // Traveling between points
   const travelTime = timeInSeg - holdTime;
   const travelDuration = seg.duration - holdTime;
   const t = travelDuration > 0 ? Math.min(travelTime / travelDuration, 1) : 1;
 
-  const to = waypoints[seg.toIndex];
-  const lat = from.lat + (to.lat - from.lat) * t;
-  const lon = from.lon + (to.lon - from.lon) * t;
-  const alt = from.alt + (to.alt - from.alt) * t;
-
   return {
-    lat,
-    lon,
-    alt,
+    lat: from.lat + (to.lat - from.lat) * t,
+    lon: from.lon + (to.lon - from.lon) * t,
+    alt: from.alt + (to.alt - from.alt) * t,
     heading: seg.heading,
     speed: seg.speed,
     currentWaypointIndex: t > 0.5 ? seg.toIndex : seg.fromIndex,

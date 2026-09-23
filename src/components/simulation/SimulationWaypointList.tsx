@@ -134,7 +134,7 @@ export function SimulationWaypointList({
                 {isCurrent && (
                   <span className="text-[9px] font-mono text-accent-primary">&bull;</span>
                 )}
-                {wp.holdTime && wp.holdTime > 0 && (
+                {(wp.holdTime ?? 0) > 0 && (
                   <span className="text-[9px] font-mono text-status-warning px-1 py-0.5 bg-status-warning/10 rounded">
                     {wp.holdTime}s
                   </span>

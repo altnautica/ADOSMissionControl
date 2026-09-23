@@ -312,7 +312,9 @@ function ConsoleAgentFeedTile({
 
   // The video session is always subscribed (hook order is stable); it stays
   // idle for the no-video profiles because `enabled` is false.
-  const videoEnabled = hasVideoArea && agent.video.active && !!agent.video.whepUrl;
+  // Only a feed the fleet view resolved as live holds a session: a queued,
+  // stale or offline tile must not keep dialing and pin a feed slot.
+  const videoEnabled = hasVideoArea && agent.video.state === "live" && !!agent.video.whepUrl;
   const session = useAgentVideoSession({
     whepUrl: agent.video.whepUrl,
     enabled: videoEnabled,

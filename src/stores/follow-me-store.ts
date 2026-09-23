@@ -18,14 +18,15 @@ interface FollowMeState {
   droneId: string | null;
   /** Display name of that drone, or null when idle. */
   droneName: string | null;
-  gcsAccuracy: number;  // meters
+  /** Reported accuracy of the GCS fix in metres, or null before the first fix. */
+  gcsAccuracy: number | null;
   lastUpdateMs: number;
 
   activate: (droneId: string, droneName: string) => void;
   deactivate: () => void;
   pause: () => void;
   resume: () => void;
-  updateAccuracy: (accuracy: number) => void;
+  updateAccuracy: (accuracy: number | null) => void;
   updateTimestamp: () => void;
 }
 
@@ -34,13 +35,13 @@ export const useFollowMeStore = create<FollowMeState>((set) => ({
   isPaused: false,
   droneId: null,
   droneName: null,
-  gcsAccuracy: 0,
+  gcsAccuracy: null,
   lastUpdateMs: 0,
 
   activate: (droneId, droneName) =>
     set({ isActive: true, isPaused: false, droneId, droneName }),
   deactivate: () =>
-    set({ isActive: false, isPaused: false, droneId: null, droneName: null, gcsAccuracy: 0 }),
+    set({ isActive: false, isPaused: false, droneId: null, droneName: null, gcsAccuracy: null }),
   pause: () => set({ isPaused: true }),
   resume: () => set({ isPaused: false }),
   updateAccuracy: (accuracy) => set({ gcsAccuracy: accuracy }),

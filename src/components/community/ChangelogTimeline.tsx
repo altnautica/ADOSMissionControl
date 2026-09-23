@@ -9,6 +9,8 @@ import { useConvexAvailable } from "@/app/ConvexClientProvider";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 import { SilentErrorBoundary } from "@/components/ui/SilentErrorBoundary";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/components/ui/toast";
 import { ChangelogEntry } from "./ChangelogEntry";
 import { ChangelogEditor } from "./ChangelogEditor";
 import type { ChangelogEntry as ChangelogEntryType } from "@/lib/community-types";
@@ -16,6 +18,10 @@ import type { ChangelogEntry as ChangelogEntryType } from "@/lib/community-types
 const PAGE_SIZE = 30;
 const LOAD_MORE_OFFSET_PX = 600;
 const ROW_ESTIMATE_PX = 140;
+/** The comment-count query accepts at most this many targets per call. */
+const MAX_COUNT_TARGETS = 64;
+
+type CommentCountRow = { targetType: string; targetId: string; count: number };
 
 /**
  * Public entry. Wraps the inner component in a Convex-availability gate
@@ -48,6 +54,8 @@ function ChangelogTimelineInner() {
   const removeChangelog = useMutation(communityApi.changelog.remove);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<ChangelogEntryType | undefined>();
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const {
     results: entries,
@@ -61,28 +69,6 @@ function ChangelogTimelineInner() {
 
   const totalCount = useConvexSkipQuery(communityApi.changelog.listCount);
 
-  // Batch comment counts scoped to currently loaded entries only.
-  const commentTargets = useMemo(
-    () =>
-      entries.map((e: ChangelogEntryType) => ({
-        targetType: "changelog" as const,
-        targetId: e._id,
-      })),
-    [entries],
-  );
-  const commentCountsRaw = useConvexSkipQuery(communityApi.comments.countBatch, {
-    args: { targets: commentTargets },
-    enabled: commentTargets.length > 0,
-  }) as Array<{ targetType: string; targetId: string; count: number }> | undefined;
-
-  const commentCountMap = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const r of commentCountsRaw ?? []) {
-      m.set(`${r.targetType}:${r.targetId}`, r.count);
-    }
-    return m;
-  }, [commentCountsRaw]);
-
   const parentRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
@@ -92,6 +78,43 @@ function ChangelogTimelineInner() {
     estimateSize: () => ROW_ESTIMATE_PX,
     overscan: 6,
   });
+
+  // Comment counts for the rendered window only: the loaded list grows past
+  // the query's target limit, the visible window never does. Counts already
+  // seen are kept, so scrolling back does not blank a badge while the next
+  // window's answer is in flight.
+  const virtualItems = rowVirtualizer.getVirtualItems();
+  const visibleIdsKey = virtualItems
+    .flatMap((row) => {
+      const id = entries[row.index]?._id;
+      return id ? [String(id)] : [];
+    })
+    .slice(0, MAX_COUNT_TARGETS)
+    .join(",");
+  const commentTargets = useMemo(
+    () =>
+      visibleIdsKey === ""
+        ? []
+        : visibleIdsKey.split(",").map((targetId) => ({
+            targetType: "changelog" as const,
+            targetId,
+          })),
+    [visibleIdsKey],
+  );
+  const commentCountsRaw = useConvexSkipQuery(communityApi.comments.countBatch, {
+    args: { targets: commentTargets },
+    enabled: commentTargets.length > 0,
+  }) as CommentCountRow[] | undefined;
+  const [knownCounts, setKnownCounts] = useState<ReadonlyMap<string, number>>(new Map());
+  const [mergedRaw, setMergedRaw] = useState<CommentCountRow[] | undefined>(undefined);
+  if (commentCountsRaw !== mergedRaw) {
+    setMergedRaw(commentCountsRaw);
+    if (commentCountsRaw) {
+      const next = new Map(knownCounts);
+      for (const r of commentCountsRaw) next.set(`${r.targetType}:${r.targetId}`, r.count);
+      setKnownCounts(next);
+    }
+  }
 
   useEffect(() => {
     if (!sentinelRef.current || status !== "CanLoadMore") return;
@@ -112,15 +135,27 @@ function ChangelogTimelineInner() {
   };
 
   const handleDelete = (id: string) => {
-    removeChangelog({ id: id as never });
+    setPendingDelete(id);
+  };
+
+  const confirmDelete = async () => {
+    const id = pendingDelete;
+    setPendingDelete(null);
+    if (!id) return;
+    try {
+      await removeChangelog({ id: id as never });
+    } catch (err) {
+      toast(
+        `Could not delete the entry: ${err instanceof Error ? err.message : String(err)}`,
+        "error",
+      );
+    }
   };
 
   const handleCloseEditor = () => {
     setEditorOpen(false);
     setEditingEntry(undefined);
   };
-
-  const virtualItems = rowVirtualizer.getVirtualItems();
 
   return (
     <div className="flex flex-col h-full max-w-2xl mx-auto w-full">
@@ -190,7 +225,7 @@ function ChangelogTimelineInner() {
                   >
                     <ChangelogEntry
                       entry={entry}
-                      commentCount={commentCountMap.get(`changelog:${entry._id}`) ?? 0}
+                      commentCount={knownCounts.get(`changelog:${entry._id}`) ?? 0}
                       onEdit={handleEdit}
                       onDelete={handleDelete}
                     />
@@ -219,6 +254,16 @@ function ChangelogTimelineInner() {
       {editorOpen && (
         <ChangelogEditor entry={editingEntry} onClose={handleCloseEditor} />
       )}
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="Delete changelog entry"
+        message="This removes the entry for everyone. It cannot be undone."
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={() => void confirmDelete()}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   );
 }

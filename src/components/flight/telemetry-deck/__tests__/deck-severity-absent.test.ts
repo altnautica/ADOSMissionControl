@@ -10,7 +10,13 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { getSeverity, estimateFlightMinutes, gpsFixKey } from "../deck-utils";
+import {
+  getSeverity,
+  estimateFlightMinutes,
+  gpsFixKey,
+  trackSeverity,
+  SEVERITY_TOAST_DWELL_MS,
+} from "../deck-utils";
 
 describe("getSeverity with an absent reading", () => {
   it("returns normal for an absent satellite count", () => {
@@ -53,10 +59,11 @@ describe("getSeverity with an absent reading", () => {
     // Fix type 0 is "No Fix", below the critical threshold, so a drone that
     // has sent no GPS message used to raise a critical fix alarm.
     expect(getSeverity("gpsFix", undefined)).toBe("normal");
-    expect(getSeverity("gpsFix", 0)).toBe("critical");
-    // 3 sits on the warning boundary because the comparison is inclusive; 4
-    // (DGPS) is the first fix type that reads clean.
-    expect(getSeverity("gpsFix", 3)).toBe("warning");
+    // A 2D fix warns, anything below it is critical, and a 3D fix is healthy
+    // (the same verdict the readout and the checklist give).
+    expect(getSeverity("gpsFix", 1)).toBe("critical");
+    expect(getSeverity("gpsFix", 2)).toBe("warning");
+    expect(getSeverity("gpsFix", 3)).toBe("normal");
     expect(getSeverity("gpsFix", 4)).toBe("normal");
   });
 
@@ -114,5 +121,26 @@ describe("gpsFixKey", () => {
   it("keeps reading the STATIC/PPP tail as a 3D fix, as it did before", () => {
     expect(gpsFixKey(7)).toBe("fix3d");
     expect(gpsFixKey(8)).toBe("fix3d");
+  });
+});
+
+describe("trackSeverity", () => {
+  it("does not announce a severity that flickers inside the dwell window", () => {
+    let step = trackSeverity(undefined, "normal", 0);
+    step = trackSeverity(step.track, "warning", 100);
+    expect(step.announce).toBeNull();
+    step = trackSeverity(step.track, "normal", 400);
+    step = trackSeverity(step.track, "warning", 700);
+    step = trackSeverity(step.track, "warning", 700 + SEVERITY_TOAST_DWELL_MS - 1);
+    expect(step.announce).toBeNull();
+  });
+
+  it("announces a severity once it holds for the dwell window, then stays quiet", () => {
+    let step = trackSeverity(undefined, "normal", 0);
+    step = trackSeverity(step.track, "critical", 100);
+    step = trackSeverity(step.track, "critical", 100 + SEVERITY_TOAST_DWELL_MS);
+    expect(step.announce).toBe("critical");
+    step = trackSeverity(step.track, "critical", 100 + 2 * SEVERITY_TOAST_DWELL_MS);
+    expect(step.announce).toBeNull();
   });
 });

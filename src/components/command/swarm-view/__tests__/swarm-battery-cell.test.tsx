@@ -26,6 +26,7 @@ function slotRow(
     // No beacon: the slot went silent on the swarm bus.
     beacon: null,
     node: null,
+    registeredDeviceId: null,
     severity: "noBeacon",
     summary: {
       liveness: "live",

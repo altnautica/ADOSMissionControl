@@ -7,7 +7,7 @@
  * this subscribes to the selected drone's status stream and keeps a taller ring
  * than the Overview tile. A "scripts only" toggle applies a heuristic filter
  * (scripting runtime + common script markers) — off by default, since prearm
- * and mode messages are useful context while testing a script (Rule 44: the
+ * and mode messages are useful context while testing a script (the
  * filter is labeled heuristic, not claimed exact).
  * @license GPL-3.0-only
  */

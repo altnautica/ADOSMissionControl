@@ -28,7 +28,8 @@ const SERVO_FUNCTION_SELECT_GROUPS: SelectOptionGroup[] = SERVO_FUNCTION_GROUPS.
 }));
 
 interface ServoMappingTableProps {
-  outputs: OutputRow[];
+  /** One entry per output, null where the output's parameters were not read. */
+  outputs: (OutputRow | null)[];
   gpioOutputs: Set<number>;
   conflictDisabledOutputs: Set<number>;
   boardProfile: BoardProfile;
@@ -61,10 +62,20 @@ export function ServoMappingTable({
           </thead>
           <tbody>
             {outputs.map((row, i) => {
-              const hasDuplicateFn = row.function > 0 && outputs.some(
-                (other, j) => j !== i && other.function === row.function
-              );
               const n = i + 1;
+              if (row === null) {
+                return (
+                  <tr key={i} className="border-b border-border-default last:border-0">
+                    <td className="px-3 py-1.5 font-mono text-text-secondary">{n}</td>
+                    <td colSpan={6} className="px-3 py-1.5 text-[10px] text-text-tertiary">
+                      — not read from the FC
+                    </td>
+                  </tr>
+                );
+              }
+              const hasDuplicateFn = row.function > 0 && outputs.some(
+                (other, j) => j !== i && other !== null && other.function === row.function
+              );
               const isGpio = gpioOutputs.has(n);
               const isTimerConflict = conflictDisabledOutputs.has(n);
               const timerGroup = boardProfile.timerGroups.length > 0

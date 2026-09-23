@@ -20,8 +20,6 @@ interface State {
 }
 
 interface Actions {
-  /** Replace the entire profile (used by IDB load + form save). */
-  setProfile: (profile: OperatorProfile) => void;
   /** Patch a subset of fields and persist. */
   updateProfile: (patch: Partial<OperatorProfile>) => void;
   /**
@@ -34,9 +32,7 @@ interface Actions {
 }
 
 export const useOperatorProfileStore = create<State & Actions>((set, get) => ({
-  profile: { units: "metric" },
-
-  setProfile: (profile) => set({ profile }),
+  profile: {},
 
   updateProfile: (patch) => {
     set((s) => ({ profile: { ...s.profile, ...patch } }));

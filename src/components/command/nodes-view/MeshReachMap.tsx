@@ -10,7 +10,7 @@
  * animates a flow toward the sink ONLY when it is a proven, live link — a
  * received-side frame was heard — and never when the operator prefers reduced
  * motion. An unverified, stale, or down link is drawn dashed and dimmed, never
- * as a confident, solid, flowing path (Rule 44 / Rule 37), so the redundancy the
+ * as a confident, solid, flowing path (no fabricated reading, no unproven link), so the redundancy the
  * map shows is redundancy the rows can actually prove.
  *
  * The graph is supplementary: every fact it draws is also in the table beside
@@ -78,7 +78,7 @@ export function MeshReachMap({ graph }: { graph: MeshGraph }) {
   const positions = useMemo(() => layoutMeshGraph(graph, SIZE), [graph]);
 
   // The bearers actually present, in a stable order — the legend advertises only
-  // what the graph draws, never a bearer with no edge (Rule 44).
+  // what the graph draws, never a bearer with no edge (no fabricated reading).
   const bearers = useMemo(() => {
     const seen = new Set<NodeBearerKind>();
     for (const edge of graph.edges) seen.add(edge.bearer);
@@ -88,7 +88,7 @@ export function MeshReachMap({ graph }: { graph: MeshGraph }) {
   }, [graph.edges]);
 
   // Off-view relay parents are terminals, not fleet nodes, so the summary count
-  // stays honest (Rule 44).
+  // stays honest (no fabricated reading).
   const nodeCount = graph.vertices.filter((v) => v.kind === "node").length;
   const relayCount = graph.edges.filter(
     (e) => e.style === "relay" && e.primary,
@@ -202,7 +202,7 @@ function VertexDot({
   const isOffView = vertex.kind === "offview";
   const r = isGcs ? 9 : isOffView ? 5 : 6;
   // An off-view parent is drawn dashed and dim: it names where a relay reaches
-  // without pretending to be a present, live fleet node (Rule 44).
+  // without pretending to be a present, live fleet node (no fabricated reading).
   const offViewLabel = vertex.name
     ? t("offViewNode", { name: vertex.name })
     : t("offViewRelay");

@@ -5,8 +5,11 @@
  * @description Per-profile ordered badge candidates for a sidebar node row,
  * ranked by decreasing operator urgency (safety/liveness -> role -> workload ->
  * identity). The top N survive on the row; the rest collapse to a `+N` chip.
- * When the node is offline/stale, every sub-metric badge is replaced by a single
- * liveness badge (Rule 44 — a stale node never shows a fresh-looking `0`).
+ * An offline node shows a single liveness badge and nothing else. A stale node
+ * leads with a Stale badge followed only by identity badges (firmware, role,
+ * tier, hardware composition in a neutral tone); no badge asserts a live link
+ * the GCS has not heard recently (a stale node never shows a fresh-looking `0`
+ * or a green FC).
  *
  * The sidebar only carries the verified fields on the merged node entry
  * (liveness, role, tier, fc-linked); live per-node telemetry (arm/RSSI/CPU/jobs)
@@ -14,6 +17,7 @@
  * @license GPL-3.0-only
  */
 
+import { Cpu } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
@@ -31,6 +35,8 @@ interface NodeBadge {
   variant: BadgeVariant;
   /** When set, a redundant StatusDot renders before the label (liveness). */
   dot?: StatusLevel;
+  /** Companion marker: the drone carries an onboard computer. */
+  companion?: boolean;
 }
 
 /** The firmware · airframe flavor label for a drone / FC row (e.g. "ArduPilot ·
@@ -62,8 +68,10 @@ export interface NodeBadgeLabels {
   relay: string;
   receiver: string;
   direct: string;
+  roleUnknown: string;
   compute: string;
   fc: string;
+  companion: string;
 }
 
 /** Resolve the badge labels from a `nodeConsole` translator. */
@@ -74,14 +82,17 @@ export function nodeBadgeLabels(t: (key: string) => string): NodeBadgeLabels {
     relay: t("role.relay"),
     receiver: t("role.receiver"),
     direct: t("role.direct"),
+    roleUnknown: t("role.unknown"),
     compute: t("badge.compute"),
     fc: t("badge.fc"),
+    companion: t("badge.companion"),
   };
 }
 
 /**
  * The ordered candidate badge list for a node, honest to the fields the sidebar
- * actually has. Offline/stale short-circuits to a single liveness badge.
+ * actually has. Offline short-circuits to a single liveness badge; stale drops
+ * every live-link badge.
  */
 export function nodeBadges(
   node: FleetNodeEntry,
@@ -102,24 +113,25 @@ export function nodeBadges(
 
   switch (effProfile) {
     case "ground-station": {
-      // role -> identity
-      if (node.role && node.role !== "direct") {
-        badges.push({
-          key: "role",
-          label: node.role === "relay" ? labels.relay : labels.receiver,
-          variant: "info",
-        });
-      } else {
-        badges.push({ key: "role", label: labels.direct, variant: "neutral" });
-      }
+      // role -> identity. Only a reported, known role earns a role label; an
+      // unset or not-yet-reported role reads as unknown, never as "Direct".
+      badges.push(
+        node.role === "relay"
+          ? { key: "role", label: labels.relay, variant: "info" }
+          : node.role === "receiver"
+            ? { key: "role", label: labels.receiver, variant: "info" }
+            : node.role === "direct"
+              ? { key: "role", label: labels.direct, variant: "neutral" }
+              : { key: "role", label: labels.roleUnknown, variant: "neutral" },
+      );
       if (node.tier != null) {
         badges.push({ key: "tier", label: `T${node.tier}`, variant: "neutral" });
       }
       break;
     }
     case "workstation": {
-      // A workstation carries no flight metrics by construction — identity only
-      // until live cluster state is wired per-node (P8/P9).
+      // A workstation carries no flight metrics by construction, and the
+      // sidebar has no per-node cluster state, so it shows identity only.
       badges.push({ key: "type", label: labels.compute, variant: "info" });
       if (node.tier != null) {
         badges.push({ key: "tier", label: `T${node.tier}`, variant: "neutral" });
@@ -139,18 +151,25 @@ export function nodeBadges(
     default: {
       const flavor = flavorLabel(node);
       if (flavor) badges.push({ key: "flavor", label: flavor, variant: "info" });
-      // FC-only drones show a plain "FC" badge (for a connected MAVLink FC or a
-      // reachable MSP FC, which never sets fcConnected). A companion drone's FC
-      // is folded into the combined "FC + SBC" badge (with a hover summary)
-      // rendered in NodeRow, so skip the standalone FC when the drone has an SBC.
-      if (
-        !node.board &&
-        isFcReachable({
-          fcConnected: node.fcConnected,
-          fcVariant: node.fcVariant,
-          transportOpen: node.transportOpen,
-        })
-      ) {
+      const fcReachable = isFcReachable({
+        fcConnected: node.fcConnected,
+        fcVariant: node.fcVariant,
+        transportOpen: node.transportOpen,
+      });
+      if (node.board) {
+        // A companion drone's FC folds into the combined "FC + SBC" badge. Its
+        // tone follows the FC link: neutral while the node is stale (the FC
+        // state is unverifiable), warning when the FC is not reachable.
+        badges.push({
+          key: "companion",
+          label: labels.companion,
+          variant: live === "stale" ? "neutral" : fcReachable ? "success" : "warning",
+          companion: true,
+        });
+      } else if (fcReachable && live !== "stale") {
+        // FC-only drones show a plain "FC" badge (for a connected MAVLink FC or
+        // a reachable MSP FC, which never sets fcConnected). The link state is
+        // last-known on a stale node, so it is not shown there.
         badges.push({ key: "fc", label: labels.fc, variant: "success" });
       }
       break;
@@ -179,7 +198,7 @@ export function NodeBadgeSet({
   // A relayed-only node (reached solely through a ground node over WFB) leads
   // with a "Relayed" badge so it reads distinctly from a directly-paired node.
   // Suppressed when offline/stale so a dead node never shows a fresh sub-metric
-  // (Rule 44 — the liveness badge stands alone there).
+  // (the liveness badge stands alone there).
   const badges =
     node.isRelayed && droneLiveness(node) === "live"
       ? [
@@ -204,6 +223,7 @@ export function NodeBadgeSet({
           className="gap-1 rounded normal-case tracking-normal"
         >
           {b.dot && <StatusDot status={b.dot} size="xs" label={b.label} />}
+          {b.companion && <Cpu size={9} aria-hidden />}
           {b.label}
         </Badge>
       ))}

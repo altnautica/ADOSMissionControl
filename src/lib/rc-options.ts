@@ -1,24 +1,12 @@
 /**
- * Complete ArduPilot RC option database.
- *
- * Covers RCx_OPTION aux function assignments (100+ values),
- * RC_PROTOCOLS bitmask definitions, RC_OPTIONS bitmask definitions,
- * bitmask helpers, and stick mode detection.
+ * ArduPilot RC tables: RC_PROTOCOLS and RC_OPTIONS bitmask definitions,
+ * bitmask helpers, and stick mode detection. RCx_OPTION labels come from the
+ * FC parameter metadata, not from a table here.
  *
  * @license GPL-3.0-only
  */
 
 // ── Types ─────────────────────────────────────────────────────
-
-export interface RcOption {
-  value: number;
-  label: string;
-}
-
-export interface RcOptionGroup {
-  label: string;
-  options: RcOption[];
-}
 
 export interface ChannelConfig {
   min: number;
@@ -34,163 +22,6 @@ export interface MappingState {
   pitch: string;
   throttle: string;
   yaw: string;
-}
-
-// ── RCx_OPTION Grouped Database ───────────────────────────────
-
-export const RC_OPTION_GROUPS: RcOptionGroup[] = [
-  {
-    label: "General",
-    options: [
-      { value: 0, label: "Do Nothing" },
-    ],
-  },
-  {
-    label: "Flight Modes",
-    options: [
-      { value: 2, label: "Flip" },
-      { value: 3, label: "Simple Mode" },
-      { value: 4, label: "RTL" },
-      { value: 5, label: "Save Trim" },
-      { value: 14, label: "Acro Trainer" },
-      { value: 16, label: "Auto" },
-      { value: 17, label: "AutoTune" },
-      { value: 18, label: "Land" },
-      { value: 42, label: "SmartRTL" },
-      { value: 52, label: "Acro" },
-      { value: 55, label: "Guided" },
-      { value: 56, label: "Loiter" },
-      { value: 68, label: "Stabilize" },
-      { value: 69, label: "PosHold" },
-      { value: 70, label: "AltHold" },
-      { value: 72, label: "Circle" },
-      { value: 73, label: "Drift" },
-      { value: 84, label: "Air Mode" },
-      { value: 99, label: "AUTO RTL" },
-    ],
-  },
-  {
-    label: "Arming",
-    options: [
-      { value: 81, label: "Disarm" },
-      { value: 153, label: "Arm/Disarm (4.2+)" },
-      { value: 154, label: "Arm/Disarm + AirMode" },
-    ],
-  },
-  {
-    label: "Safety",
-    options: [
-      { value: 11, label: "Fence Enable" },
-      { value: 21, label: "Parachute Enable" },
-      { value: 22, label: "Parachute Release" },
-      { value: 23, label: "Parachute 3-pos" },
-      { value: 31, label: "Motor E-Stop" },
-      { value: 32, label: "Motor Interlock" },
-      { value: 33, label: "Brake" },
-      { value: 76, label: "Standby" },
-    ],
-  },
-  {
-    label: "Camera / Gimbal",
-    options: [
-      { value: 9, label: "Camera Trigger" },
-      { value: 24, label: "Auto Mission Reset" },
-      { value: 78, label: "RunCam Control" },
-      { value: 79, label: "RunCam OSD Control" },
-      { value: 102, label: "Camera Mode Toggle" },
-      { value: 166, label: "Camera Record Video" },
-      { value: 167, label: "Camera Zoom" },
-      { value: 168, label: "Camera Manual Focus" },
-      { value: 169, label: "Camera Auto Focus" },
-    ],
-  },
-  {
-    label: "Payload",
-    options: [
-      { value: 15, label: "Sprayer Enable" },
-      { value: 19, label: "Gripper Release" },
-      { value: 29, label: "Landing Gear" },
-      { value: 88, label: "Winch Enable" },
-      { value: 89, label: "Winch Control" },
-    ],
-  },
-  {
-    label: "Sensors",
-    options: [
-      { value: 10, label: "RangeFinder Enable" },
-      { value: 38, label: "ADSB Avoidance" },
-      { value: 39, label: "Precision Loiter" },
-      { value: 62, label: "Compass Learn" },
-      { value: 65, label: "GPS Disable" },
-      { value: 80, label: "VisOdom Align" },
-      { value: 90, label: "EKF Pos Source" },
-    ],
-  },
-  {
-    label: "Relay",
-    options: [
-      { value: 28, label: "Relay 1 On/Off" },
-      { value: 34, label: "Relay 2 On/Off" },
-      { value: 35, label: "Relay 3 On/Off" },
-      { value: 36, label: "Relay 4 On/Off" },
-      { value: 66, label: "Relay 5 On/Off" },
-      { value: 67, label: "Relay 6 On/Off" },
-    ],
-  },
-  {
-    label: "Navigation",
-    options: [
-      { value: 7, label: "Save Waypoint" },
-      { value: 25, label: "Auto Mission Restart" },
-      { value: 40, label: "Proximity Avoidance" },
-      { value: 43, label: "InvertedFlight" },
-      { value: 46, label: "RC Override Enable" },
-      { value: 58, label: "Clear Waypoints" },
-      { value: 60, label: "ZigZag Mode Auto" },
-      { value: 61, label: "ZigZag Toggle AB" },
-    ],
-  },
-  {
-    label: "Logging / Tuning",
-    options: [
-      { value: 6, label: "SuperSimple Mode" },
-      { value: 26, label: "AttCon Feedforward" },
-      { value: 27, label: "AttCon Accel Limits" },
-      { value: 37, label: "Motor Mix" },
-      { value: 57, label: "Tuning" },
-      { value: 71, label: "Surface Tracking UD" },
-    ],
-  },
-  {
-    label: "User / Scripting",
-    options: [
-      { value: 47, label: "User Function 1" },
-      { value: 48, label: "User Function 2" },
-      { value: 49, label: "User Function 3" },
-      { value: 300, label: "Scripting 1" },
-      { value: 301, label: "Scripting 2" },
-      { value: 302, label: "Scripting 3" },
-      { value: 303, label: "Scripting 4" },
-      { value: 304, label: "Scripting 5" },
-      { value: 305, label: "Scripting 6" },
-      { value: 306, label: "Scripting 7" },
-      { value: 307, label: "Scripting 8" },
-    ],
-  },
-];
-
-// ── Flat Lookup Map ───────────────────────────────────────────
-
-/** Fast value → label lookup for inline display. */
-export const RC_OPTION_MAP: Map<number, string> = new Map(
-  RC_OPTION_GROUPS.flatMap((g) =>
-    g.options.map((o) => [o.value, o.label] as [number, string]),
-  ),
-);
-
-/** Get display label for an RCx_OPTION value, with fallback. */
-export function getRcOptionLabel(value: number): string {
-  return RC_OPTION_MAP.get(value) ?? `Unknown (${value})`;
 }
 
 // ── RC_PROTOCOLS Bitmask ──────────────────────────────────────

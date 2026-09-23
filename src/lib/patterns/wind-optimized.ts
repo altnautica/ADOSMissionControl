@@ -28,6 +28,8 @@
  * end turns, so we keep the imaging passes crab-free and push the crosswind-sensitive
  * crabbing into the end turns. {@link optimalLineBearing} returns that orientation and
  * {@link windPenalty} scores any orientation by the crosswind it forces onto the legs.
+ * Both work in compass line bearings; {@link gridAngleLineBearing} converts to and
+ * from the survey generator's grid angle.
  *
  * @license GPL-3.0-only
  */
@@ -39,8 +41,8 @@ const DEG_TO_RAD = Math.PI / 180;
  *
  * A survey line is an axis: the drone flies back and forth along it, so a leg at
  * bearing B and a leg at B+180 are the same line. Normalizing to [0, 180) gives one
- * canonical value per orientation and matches the survey grid-angle convention
- * (0 = north-south lines, 90 = east-west lines).
+ * canonical value per orientation (0 = north-south lines, 90 = east-west lines, as
+ * compass bearings).
  *
  * @param deg Any bearing in degrees (may be negative or exceed 360).
  * @returns Equivalent line axis in [0, 180).
@@ -73,19 +75,35 @@ export function axisAngularDifference(aDeg: number, bDeg: number): number {
 }
 
 /**
+ * Convert between the survey generator's grid angle and a compass line bearing.
+ *
+ * The generator rotates the area by the grid angle and lays transects along the
+ * east axis, so grid angle 0 flies east-west lines (bearing 90) and 90 flies
+ * north-south lines (bearing 0): line bearing = 90 - grid angle. The map is its own
+ * inverse, so the same call turns a line bearing back into a grid angle.
+ *
+ * @param angleDeg A grid angle, or a line bearing, in degrees.
+ * @returns The other convention's value, folded into [0, 180).
+ */
+export function gridAngleLineBearing(angleDeg: number): number {
+  return normalizeLineAxis(90 - angleDeg);
+}
+
+/**
  * The survey line orientation that flies the long legs into and along the wind.
  *
  * The optimal line axis is simply the wind axis: fly the legs parallel to the wind so
  * each imaging pass is a pure headwind or tailwind and stays crab-free (see the module
- * docstring for the parallel-vs-perpendicular tradeoff). The returned value is in
- * [0, 180) and can be assigned directly to a survey grid angle.
+ * docstring for the parallel-vs-perpendicular tradeoff). The returned value is a
+ * compass line bearing in [0, 180); pass it through {@link gridAngleLineBearing} to
+ * get the survey grid angle.
  *
  * Wind bearing convention does not matter here: a survey line is an axis, so a wind
  * "from" 30 degrees and a wind "to" 30 degrees (i.e. from 210) yield the same 30-degree
  * line orientation.
  *
  * @param windBearingDeg Wind bearing in degrees (from- or to-direction; either works).
- * @returns Optimal survey grid angle in [0, 180) degrees.
+ * @returns Optimal survey line bearing in [0, 180) degrees.
  */
 export function optimalLineBearing(windBearingDeg: number): number {
   return normalizeLineAxis(windBearingDeg);

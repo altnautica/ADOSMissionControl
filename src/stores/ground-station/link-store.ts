@@ -11,11 +11,7 @@
 
 import type { GroundStationSliceCreator } from "./state";
 import { INITIAL_LINK_HEALTH, INITIAL_STATUS } from "./initial-state";
-import type {
-  GroundStationLinkHealth,
-  GroundStationStatus,
-  WfbConfig,
-} from "./types";
+import type { GroundStationLinkHealth, GroundStationStatus, WfbConfig } from "@/lib/api/ground-station-api";
 
 /**
  * How old the LAN status snapshot may be and still count as a live reading.
@@ -34,6 +30,11 @@ export interface LinkSlice {
   lastFetchedAt: number | null;
   /** When `status` was last refreshed; see `GroundStationState`. */
   statusFetchedAt: number | null;
+  /** When `linkHealth` was last refreshed, by either producer: a LAN status
+   * read that carried link health, or a cloud heartbeat that carried the radio
+   * block (stamped with the record's own time). A WFB-config read does not
+   * touch it. */
+  linkHealthAt: number | null;
 
   loadStatus: (
     status: GroundStationStatus,
@@ -64,6 +65,7 @@ export const createLinkSlice: GroundStationSliceCreator<LinkSlice> = (
   lastError: null,
   lastFetchedAt: null,
   statusFetchedAt: null,
+  linkHealthAt: null,
 
   loadStatus: (status, linkHealth) => {
     const current = get().linkHealth;
@@ -73,6 +75,7 @@ export const createLinkSlice: GroundStationSliceCreator<LinkSlice> = (
       linkHealth: linkHealth ? { ...current, ...linkHealth } : current,
       lastFetchedAt: now,
       statusFetchedAt: now,
+      ...(linkHealth ? { linkHealthAt: now } : {}),
       lastError: null,
     });
   },
@@ -81,6 +84,7 @@ export const createLinkSlice: GroundStationSliceCreator<LinkSlice> = (
     set({
       linkHealth: INITIAL_LINK_HEALTH,
       lastFetchedAt: null,
+      linkHealthAt: null,
       lastError: message,
     }),
 
@@ -107,6 +111,7 @@ export const createLinkSlice: GroundStationSliceCreator<LinkSlice> = (
       lastError: null,
       lastFetchedAt: null,
       statusFetchedAt: null,
+      linkHealthAt: null,
     }),
 });
 

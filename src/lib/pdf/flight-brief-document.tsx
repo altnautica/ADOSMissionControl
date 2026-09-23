@@ -3,7 +3,7 @@
  * @description `@react-pdf/renderer` document for a one-page mission flight
  * brief. Renders the plan summary (name, drone, waypoint count, total distance,
  * estimated duration, altitude range) and a waypoint table (seq / lat / lon /
- * alt / command). Props are plain, pre-computed data — this component performs
+ * alt / altitude frame / command). Props are plain, pre-computed data — this component performs
  * no store access, no I/O, and no mission math. It is a print document, so the
  * neutral dark-on-light palette below is intentional and the app's design-token
  * rule does not apply here.
@@ -11,6 +11,7 @@
  */
 
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+import type { AltitudeFrame } from "@/lib/types";
 
 /** One waypoint row in the brief table (plain, display-ready numbers). */
 export interface BriefWaypointRow {
@@ -18,8 +19,17 @@ export interface BriefWaypointRow {
   lat: number;
   lon: number;
   alt: number;
+  /** The frame `alt` is measured in; rows of one mission can differ. */
+  frame: AltitudeFrame;
   command: string;
 }
+
+/** What each altitude frame measures from, as printed in the brief. */
+export const FRAME_LABEL: Record<AltitudeFrame, string> = {
+  relative: "Rel. home",
+  absolute: "MSL",
+  terrain: "Above terrain",
+};
 
 /** Pre-computed plan statistics shown in the brief header block. */
 export interface BriefStats {
@@ -27,10 +37,15 @@ export interface BriefStats {
   distanceM: number;
   /** Estimated flight duration in seconds. */
   durationS: number;
-  /** Lowest waypoint altitude (m). */
+  /** Lowest waypoint altitude (m), within `altFrame`. */
   altMin: number;
-  /** Highest waypoint altitude (m). */
+  /** Highest waypoint altitude (m), within `altFrame`. */
   altMax: number;
+  /** The one frame every altitude is in, or "mixed" when the rows differ (a
+   * range across frames compares unlike numbers, so none is printed). */
+  altFrame: AltitudeFrame | "mixed" | null;
+  /** DO_JUMP repeats are not in the duration or distance estimate. */
+  excludesJumpRepeats: boolean;
 }
 
 export interface FlightBriefDocumentProps {
@@ -143,11 +158,12 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     color: COLORS.muted,
   },
-  colSeq: { width: "10%" },
-  colLat: { width: "24%" },
-  colLon: { width: "24%" },
-  colAlt: { width: "16%", textAlign: "right" },
-  colCmd: { width: "26%" },
+  colSeq: { width: "8%" },
+  colLat: { width: "20%" },
+  colLon: { width: "20%" },
+  colAlt: { width: "12%", textAlign: "right" },
+  colFrame: { width: "16%", paddingLeft: 8 },
+  colCmd: { width: "24%" },
   empty: {
     padding: 12,
     fontSize: 9,
@@ -208,11 +224,15 @@ export function FlightBriefDocument({
   stats,
 }: FlightBriefDocumentProps) {
   const altRange =
-    waypoints.length === 0
+    waypoints.length === 0 || stats.altFrame === null
       ? "—"
-      : stats.altMin === stats.altMax
-        ? fmtAlt(stats.altMin)
-        : `${fmtAlt(stats.altMin)} – ${fmtAlt(stats.altMax)}`;
+      : stats.altFrame === "mixed"
+        ? "Mixed frames, see table"
+        : `${
+            stats.altMin === stats.altMax
+              ? fmtAlt(stats.altMin)
+              : `${fmtAlt(stats.altMin)} – ${fmtAlt(stats.altMax)}`
+          } ${FRAME_LABEL[stats.altFrame]}`;
 
   return (
     <Document title={`Flight Brief — ${name}`}>
@@ -238,7 +258,10 @@ export function FlightBriefDocument({
           </View>
           <View style={styles.metaCell}>
             <Text style={styles.metaLabel}>Est. duration</Text>
-            <Text style={styles.metaValue}>{fmtDuration(stats.durationS)}</Text>
+            <Text style={styles.metaValue}>
+              {fmtDuration(stats.durationS)}
+              {stats.excludesJumpRepeats ? " (excl. DO_JUMP repeats)" : ""}
+            </Text>
           </View>
           <View style={styles.metaCell}>
             <Text style={styles.metaLabel}>Altitude range</Text>
@@ -258,6 +281,7 @@ export function FlightBriefDocument({
               <Text style={[styles.cell, styles.cellHead, styles.colLat]}>Latitude</Text>
               <Text style={[styles.cell, styles.cellHead, styles.colLon]}>Longitude</Text>
               <Text style={[styles.cell, styles.cellHead, styles.colAlt]}>Alt</Text>
+              <Text style={[styles.cell, styles.cellHead, styles.colFrame]}>Frame</Text>
               <Text style={[styles.cell, styles.cellHead, styles.colCmd]}>Command</Text>
             </View>
             {waypoints.map((wp, i) => {
@@ -273,6 +297,7 @@ export function FlightBriefDocument({
                   <Text style={[styles.cell, styles.colLat]}>{fmtCoord(wp.lat)}</Text>
                   <Text style={[styles.cell, styles.colLon]}>{fmtCoord(wp.lon)}</Text>
                   <Text style={[styles.cell, styles.colAlt]}>{fmtAlt(wp.alt)}</Text>
+                  <Text style={[styles.cell, styles.colFrame]}>{FRAME_LABEL[wp.frame]}</Text>
                   <Text style={[styles.cell, styles.colCmd]}>{wp.command}</Text>
                 </View>
               );
@@ -281,7 +306,7 @@ export function FlightBriefDocument({
         )}
 
         <View style={styles.footer} fixed>
-          <Text>Altitudes are meters AGL. Distances are 3D path length.</Text>
+          <Text>Altitudes are meters in the frame shown on each row. Distances are 3D path length.</Text>
           <Text
             render={({ pageNumber, totalPages }) => `Page ${pageNumber} / ${totalPages}`}
           />

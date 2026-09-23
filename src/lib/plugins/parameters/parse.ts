@@ -121,6 +121,24 @@ function readUi(raw: unknown): ParameterUi | undefined {
       ui.visible_if = { key, equals: eq };
     }
   }
+  if (Array.isArray(raw.bits)) {
+    // Bitmask labels: `{ bit: non-negative integer, label: string }`, first
+    // entry wins for a repeated bit.
+    const bits: { bit: number; label: string }[] = [];
+    const seenBits = new Set<number>();
+    for (const entry of raw.bits) {
+      if (!isObject(entry)) continue;
+      const bit = num(entry.bit);
+      const bitLabel = str(entry.label);
+      if (bit === undefined || !Number.isInteger(bit) || bit < 0 || bitLabel === undefined) {
+        continue;
+      }
+      if (seenBits.has(bit)) continue;
+      seenBits.add(bit);
+      bits.push({ bit, label: bitLabel });
+    }
+    if (bits.length > 0) ui.bits = bits;
+  }
   return Object.keys(ui).length > 0 ? ui : undefined;
 }
 

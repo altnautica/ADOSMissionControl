@@ -35,7 +35,7 @@ declare module "@mkkellogg/gaussian-splats-3d" {
      * not end in a recognized extension — e.g. a same-origin proxy URL whose
      * query string (`?path=…&key=…`) defeats the loader's `endsWith` sniffing. */
     format?: number;
-    /** Scene orientation quaternion `[x, y, z, w]`. mkkellogg applies
+    /** Scene orientation quaternion `[x, y, z, w]`. The library applies
      * `rotation || orientation` to the whole scene (positions + covariance); we
      * use it to correct the COLMAP Y-down world frame to the viewer's Y-up. */
     orientation?: readonly [number, number, number, number];

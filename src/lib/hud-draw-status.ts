@@ -7,14 +7,16 @@
 import {
   HUD_INK, ARMED_RED, DISARMED_GREEN, SHADOW, FONT,
   NO_DATA_INK, NO_DATA_GLYPH,
-  batColor, formatTimerFromMs, setHudStyle, clearShadow,
+  BATTERY_BAND_INK, formatTimerFromMs, setHudStyle, clearShadow,
 } from "./hud-draw";
+import type { BatteryBand } from "./battery-bands";
 
 export function drawBatteryHud(
   ctx: CanvasRenderingContext2D,
   cx: number,
   y: number,
-  pct: number | null
+  pct: number | null,
+  band: BatteryBand | undefined,
 ) {
   const barW = 200;
   const barH = 10;
@@ -25,9 +27,9 @@ export function drawBatteryHud(
 
   // A stale / absent battery reading draws an empty bar + "\u2014" rather than a
   // fabricated 0% that reads as a real (critical) level.
-  if (pct !== null) {
+  if (pct !== null && band !== undefined) {
     const fillW = (pct / 100) * barW;
-    ctx.fillStyle = batColor(pct);
+    ctx.fillStyle = BATTERY_BAND_INK[band];
     ctx.fillRect(left, y, fillW, barH);
   }
 
@@ -117,14 +119,23 @@ export function drawSignalBars(
   }
 }
 
+/**
+ * Flight time since arming. `armedAt` is null when the vehicle is not known to
+ * be armed (disarmed, or no fresh heartbeat), which draws the no-data glyph
+ * rather than a 00:00 that reads as a real reading.
+ */
 export function drawFlightTimer(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
-  startedAt: number | undefined
+  armedAt: number | null,
 ) {
-  const elapsed = startedAt ? Date.now() - startedAt : 0;
-  setHudStyle(ctx, HUD_INK, 11, "right", "bottom");
-  ctx.fillText(formatTimerFromMs(elapsed), x, y);
+  if (armedAt === null) {
+    setHudStyle(ctx, NO_DATA_INK, 11, "right", "bottom");
+    ctx.fillText(NO_DATA_GLYPH, x, y);
+  } else {
+    setHudStyle(ctx, HUD_INK, 11, "right", "bottom");
+    ctx.fillText(formatTimerFromMs(Math.max(0, Date.now() - armedAt)), x, y);
+  }
   clearShadow(ctx);
 }

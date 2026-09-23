@@ -114,7 +114,8 @@ describe("resolveAgentNav", () => {
     expect(sections.map((s) => s.items.map((i) => i.id))).toEqual([
       ["system", "profile"],
       ["radio"],
-      ["network", "wifi", "cellular", "mac-pin", "discovery", "mavlink"],
+      // No cellular page: only a ground station runs a modem manager.
+      ["network", "wifi", "mac-pin", "discovery", "mavlink"],
       ["swarm"],
       ["cameras", "vision", "world-model", "live-world"],
       ["cloud"],

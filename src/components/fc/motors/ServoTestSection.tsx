@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Toggle } from "@/components/ui/toggle";
 import { AlertTriangle } from "lucide-react";
 import type { DroneProtocol } from "@/lib/protocol/types";
 import type { OutputRow } from "../misc/ServoMappingTable";
+import { ServoCommandCoalescer } from "./servo-command-coalescer";
 
 const OUTPUT_COUNT = 16;
 
@@ -14,7 +15,8 @@ interface ServoTestSectionProps {
   /** Hard-block flag — servo test is unsafe in flight. */
   isHardBlocked: boolean;
   hardBlockMessage: string;
-  outputs: OutputRow[];
+  /** One entry per output, null where the output's parameters were not read. */
+  outputs: (OutputRow | null)[];
   gpioOutputs: Set<number>;
 }
 
@@ -27,6 +29,28 @@ export function ServoTestSection({ protocol, isHardBlocked, hardBlockMessage, ou
   useEffect(() => {
     if (isHardBlocked) setServoTestEnabled(false);
   }, [isHardBlocked]);
+
+  const senderRef = useRef<ServoCommandCoalescer | null>(null);
+  useEffect(() => {
+    if (!protocol) return;
+    const sender = new ServoCommandCoalescer((output, pwm) => protocol.setServo(output, pwm));
+    senderRef.current = sender;
+    return () => {
+      sender.dispose();
+      if (senderRef.current === sender) senderRef.current = null;
+    };
+  }, [protocol]);
+
+  // Output numbers are the FC's own (1-based). GPIO outputs and outputs whose
+  // configuration was not read are not offered: driving one could toggle a
+  // relay or camera pin.
+  const testable = useMemo(
+    () =>
+      outputs.flatMap((row, i) =>
+        row !== null && !gpioOutputs.has(i + 1) ? [i + 1] : [],
+      ),
+    [outputs, gpioOutputs],
+  );
 
   return (
     <Card title="Servo Test">
@@ -49,28 +73,27 @@ export function ServoTestSection({ protocol, isHardBlocked, hardBlockMessage, ou
 
         {servoTestEnabled && (
           <div className="space-y-2">
-            {outputs.filter((_, i) => !gpioOutputs.has(i + 1)).map((_, i) => (
-              <div key={i} className="flex items-center gap-3">
-                <span className="text-[10px] font-mono text-text-secondary w-5 text-right">{i + 1}</span>
+            {testable.map((n) => (
+              <div key={n} className="flex items-center gap-3">
+                <span className="text-[10px] font-mono text-text-secondary w-5 text-right">{n}</span>
                 <input
                   type="range"
                   min={1000}
                   max={2000}
-                  value={servoTestValues[i]}
+                  aria-label={`Servo ${n} PWM`}
+                  value={servoTestValues[n - 1]}
                   onChange={(e) => {
                     const val = Number(e.target.value);
                     setServoTestValues((prev) => {
                       const next = [...prev];
-                      next[i] = val;
+                      next[n - 1] = val;
                       return next;
                     });
-                    if (protocol) {
-                      protocol.setServo(i + 1, val);
-                    }
+                    senderRef.current?.request(n, val);
                   }}
                   className="flex-1 accent-accent-primary"
                 />
-                <span className="text-[10px] font-mono text-text-primary tabular-nums w-10 text-right">{servoTestValues[i]}</span>
+                <span className="text-[10px] font-mono text-text-primary tabular-nums w-10 text-right">{servoTestValues[n - 1]}</span>
                 <span className="text-[10px] font-mono text-text-tertiary">µs</span>
               </div>
             ))}

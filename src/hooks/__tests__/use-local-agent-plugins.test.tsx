@@ -10,6 +10,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterAll } from "vitest";
+import { useSettingsStore } from "@/stores/settings-store";
 import { renderHook, waitFor } from "@testing-library/react";
 
 const { authState, nodesRef, installsRef, getImpl } = vi.hoisted(() => ({
@@ -111,10 +112,9 @@ const FOLLOW_ME_DETAIL = {
 };
 
 describe("useLocalAgentPlugins", () => {
-  const originalEnv = process.env.NEXT_PUBLIC_DEMO_MODE;
 
   beforeEach(() => {
-    process.env.NEXT_PUBLIC_DEMO_MODE = "false";
+    useSettingsStore.setState({ demoMode: false });
     authState.value = false;
     nodesRef.value = [
       {
@@ -130,7 +130,7 @@ describe("useLocalAgentPlugins", () => {
   });
 
   afterAll(() => {
-    process.env.NEXT_PUBLIC_DEMO_MODE = originalEnv;
+    useSettingsStore.setState({ demoMode: false });
   });
 
   it("is inert (null) when signed in — the cloud path owns the surface", () => {
@@ -140,7 +140,7 @@ describe("useLocalAgentPlugins", () => {
   });
 
   it("is inert (null) in demo mode", () => {
-    process.env.NEXT_PUBLIC_DEMO_MODE = "true";
+    useSettingsStore.setState({ demoMode: true });
     const { result } = renderHook(() => useLocalAgentPlugins("drone-1"));
     expect(result.current).toBeNull();
   });
@@ -233,7 +233,7 @@ describe("useLocalAgentPlugins", () => {
     });
 
     it("is inert (null) in demo mode", () => {
-      process.env.NEXT_PUBLIC_DEMO_MODE = "true";
+      useSettingsStore.setState({ demoMode: true });
       const { result } = renderHook(() => useLocalAgentPlugins(null));
       expect(result.current).toBeNull();
     });
@@ -264,6 +264,7 @@ describe("useLocalAgentPlugins", () => {
             kind: "archive",
             archiveUrl: "https://github.com/x/y/releases/download/v1/p.adosplug",
             entrypoint: "gcs/plugin.bundle.js",
+            pin: { sha256: "ab".repeat(32), signerId: "example-2026-A" },
           },
         },
       ];
@@ -282,6 +283,7 @@ describe("useLocalAgentPlugins", () => {
         kind: "archive",
         archiveUrl: "https://github.com/x/y/releases/download/v1/p.adosplug",
         entrypoint: "gcs/plugin.bundle.js",
+        pin: { sha256: "ab".repeat(32), signerId: "example-2026-A" },
       });
     });
 

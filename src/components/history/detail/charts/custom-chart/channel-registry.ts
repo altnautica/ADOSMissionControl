@@ -35,7 +35,6 @@ export const CHANNEL_REGISTRY: ChannelDef[] = [
       { key: "relativeAlt", label: "Rel Alt", unit: "m", extract: (d) => num(d.relativeAlt) },
       { key: "alt", label: "Altitude MSL", unit: "m", extract: (d) => num(d.alt) },
       { key: "groundSpeed", label: "Ground Speed", unit: "m/s", extract: (d) => num(d.groundSpeed) },
-      { key: "airSpeed", label: "Air Speed", unit: "m/s", extract: (d) => num(d.airSpeed) },
       { key: "climbRate", label: "Climb Rate", unit: "m/s", extract: (d) => num(d.climbRate) },
       { key: "heading", label: "Heading", unit: "°", extract: (d) => num(d.heading) },
     ],

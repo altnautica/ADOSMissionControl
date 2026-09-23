@@ -10,6 +10,9 @@ import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import type { FleetDrone } from "@/lib/types";
+import { isFresh } from "@/lib/telemetry/freshness";
+import { useClockTick } from "@/lib/agent/freshness";
+import { useClockStore } from "@/stores/clock-store";
 
 interface MissionEditorProps {
   drones: FleetDrone[];
@@ -27,6 +30,9 @@ export function MissionEditor({
   onDroneChange,
 }: MissionEditorProps) {
   const t = useTranslations("planner");
+  // Re-render on the shared 1 Hz clock so a battery reading ages into "stale".
+  useClockTick();
+  const now = useClockStore((s) => s.now);
   const availableDrones = drones.filter(
     (d) => d.status === "idle" || d.status === "online"
   );
@@ -35,7 +41,7 @@ export function MissionEditor({
     { value: "", label: t("selectDrone") },
     ...availableDrones.map((d) => ({
       value: d.id,
-      label: `${d.name} (${Math.round(d.battery?.remaining ?? 0)}%)`,
+      label: `${d.name} (${batteryLabel(d, now, t("batteryStale"))})`,
     })),
   ];
 
@@ -55,4 +61,16 @@ export function MissionEditor({
       />
     </div>
   );
+}
+
+/**
+ * Battery figure for a drone row: "—" when there is no FC battery reading
+ * (no FC linked, nothing received yet, or the FC reports the level unknown),
+ * and the percentage marked stale once the reading stops updating.
+ */
+function batteryLabel(d: FleetDrone, now: number, staleLabel: string): string {
+  const battery = d.fcAttached === false ? undefined : d.battery;
+  if (!battery || !Number.isFinite(battery.remaining) || battery.remaining < 0) return "—";
+  const pct = `${Math.round(battery.remaining)}%`;
+  return isFresh(battery.timestamp, now) ? pct : `${pct}, ${staleLabel}`;
 }

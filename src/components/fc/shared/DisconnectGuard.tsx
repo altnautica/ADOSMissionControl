@@ -2,6 +2,7 @@
 
 import { useMemo, useRef } from "react";
 import { useParamSafetyStore } from "@/stores/param-safety-store";
+import { isCriticalParam } from "@/lib/protocol/critical-params";
 import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
@@ -36,7 +37,6 @@ export function DisconnectGuard({
 }: DisconnectGuardProps) {
   const pendingWrites = useParamSafetyStore((s) => s.pendingWrites);
   const hasCritical = useParamSafetyStore((s) => s.hasCriticalPending());
-  const isCriticalParam = useParamSafetyStore((s) => s.isCriticalParam);
   const pendingCount = pendingWrites.size;
 
   const entries = useMemo(

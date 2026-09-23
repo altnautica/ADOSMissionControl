@@ -5,6 +5,9 @@ import {
   mapScale,
   parseCockpitMarks,
   MAX_MARKS_PER_SOURCE,
+  MAX_LABEL_CHARS,
+  MAX_POINTS_PER_POLYLINE,
+  MAX_POINTS_PER_SOURCE,
   type MarkFrame,
 } from "@/lib/cockpit/marks";
 import { useCockpitMarksStore } from "@/stores/cockpit-marks-store";
@@ -129,5 +132,28 @@ describe("parseCockpitMarks (untrusted plugin input)", () => {
       y: i,
     }));
     expect(parseCockpitMarks(many)).toHaveLength(MAX_MARKS_PER_SOURCE);
+  });
+
+  it("bounds polyline points per mark and per source, and label text", () => {
+    const pts = (n: number) => Array.from({ length: n }, (_, i) => [i, i]);
+    const parsed = parseCockpitMarks([
+      { kind: "polyline", id: "huge", points: pts(MAX_POINTS_PER_POLYLINE * 10) },
+      ...Array.from({ length: 8 }, (_, i) => ({
+        kind: "polyline",
+        id: `l${i}`,
+        points: pts(MAX_POINTS_PER_POLYLINE),
+      })),
+      { kind: "label", id: "t", x: 0, y: 0, text: "x".repeat(10_000) },
+    ]);
+    let total = 0;
+    for (const m of parsed) {
+      if (m.kind === "polyline") {
+        expect(m.points.length).toBeLessThanOrEqual(MAX_POINTS_PER_POLYLINE);
+        total += m.points.length;
+      }
+    }
+    expect(total).toBe(MAX_POINTS_PER_SOURCE);
+    const label = parsed.find((m) => m.kind === "label");
+    expect(label?.kind === "label" && label.text.length).toBe(MAX_LABEL_CHARS);
   });
 });

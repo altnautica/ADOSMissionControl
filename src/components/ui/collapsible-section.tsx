@@ -41,28 +41,28 @@ export function CollapsibleSection({
 
   return (
     <div className={cn("border-b border-border-default", className)}>
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={() => toggle?.()}
-        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle?.(); } }}
-        aria-expanded={open}
-        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-bg-tertiary transition-colors cursor-pointer focus-ring-inset"
-      >
-        {open ? (
-          <ChevronDown size={12} className="text-text-tertiary shrink-0" />
-        ) : (
-          <ChevronRight size={12} className="text-text-tertiary shrink-0" />
-        )}
-        <span className="text-xs font-semibold uppercase tracking-wider text-text-secondary flex-1 text-left">
-          {title}
-        </span>
-        {count !== undefined && (
-          <span className="text-[10px] font-mono text-text-tertiary">({count})</span>
-        )}
-        {trailing && (
-          <div onClick={(e) => e.stopPropagation()}>{trailing}</div>
-        )}
+      {/* The toggle is a real <button>; the trailing actions sit beside it,
+          not inside it, so their own Enter/Space never toggle the section. */}
+      <div className="flex items-center gap-2 pr-3 hover:bg-bg-tertiary transition-colors">
+        <button
+          type="button"
+          onClick={() => toggle?.()}
+          aria-expanded={open}
+          className="flex-1 min-w-0 flex items-center gap-2 pl-3 py-2 cursor-pointer focus-ring-inset"
+        >
+          {open ? (
+            <ChevronDown size={12} className="text-text-tertiary shrink-0" />
+          ) : (
+            <ChevronRight size={12} className="text-text-tertiary shrink-0" />
+          )}
+          <span className="text-xs font-semibold uppercase tracking-wider text-text-secondary flex-1 text-left">
+            {title}
+          </span>
+          {count !== undefined && (
+            <span className="text-[10px] font-mono text-text-tertiary">({count})</span>
+          )}
+        </button>
+        {trailing && <div className="shrink-0">{trailing}</div>}
       </div>
       <div
         className={cn(

@@ -4,7 +4,7 @@
  * @module use-local-agent-plugins
  * @description The local-first source of truth for a drone's installed
  * plugin contributions. When the operator is NOT signed in to the cloud
- * (Rule 39 local-first), the Convex contribution queries are skipped and
+ * (local-first), the Convex contribution queries are skipped and
  * this hook stands in: it resolves the LAN-paired agent for `deviceId`
  * (host + apiKey from `local-nodes-store`), reads which plugins the
  * operator installed locally (`local-plugin-installs-store` is the index),
@@ -38,6 +38,7 @@ import {
   type LocalPluginInstall,
 } from "@/stores/local-plugin-installs-store";
 import { PluginAgentClient } from "@/lib/agent/plugin-client";
+import type { ArchivePin } from "@/lib/plugins/archive-pin";
 import { parseParameterContributions } from "@/lib/plugins/parameters/parse";
 import { parseTabContributions } from "@/lib/plugins/contributions/parse";
 import type { PluginParameter } from "@/lib/plugins/parameters/schema";
@@ -93,7 +94,7 @@ export interface LocalAgentTargetActionRow {
  * with no drone involved. */
 export type LocalAgentBundleSource =
   | { kind: "agent"; agentUrl: string; apiKey: string; entrypoint: string }
-  | { kind: "archive"; archiveUrl: string; entrypoint: string };
+  | { kind: "archive"; archiveUrl: string; entrypoint: string; pin: ArchivePin };
 
 /** Authoritative per-plugin detail for one locally-installed plugin. */
 export interface LocalAgentPluginDetail {
@@ -223,6 +224,7 @@ function fleetRecordToDetail(
       kind: "archive",
       archiveUrl: install.bundle.archiveUrl,
       entrypoint: install.bundle.entrypoint,
+      pin: install.bundle.pin,
     };
     entrypoint = install.bundle.entrypoint;
   }
@@ -261,7 +263,7 @@ function fleetRecordToDetail(
  *   - `deviceId === null` → fleet / GCS-only: read the fleet installs straight
  *     from `local-plugin-installs-store` (their detail was captured at install
  *     time; their bundle comes from the published archive), so a GCS-level
- *     plugin installed local-first (Rule 39) mounts into the fleet slots with
+ *     plugin installed local-first mounts into the fleet slots with
  *     no cloud and no drone.
  */
 export function useLocalAgentPlugins(

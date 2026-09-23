@@ -102,7 +102,7 @@ describe("bridge token validation", () => {
   let iframe: FakeIframe;
   let cw: { postMessage: ReturnType<typeof vi.fn> };
   let onSecurityEvent: (event: BridgeError & { method?: string }) => void;
-  const secretResolver = async () => importHmacKey(SECRET);
+  const secretResolver = async () => [await importHmacKey(SECRET)];
 
   beforeEach(() => {
     ({ iframe, cw } = makeIframe());
@@ -160,19 +160,28 @@ describe("bridge token validation", () => {
       baseClaims({ expiresAt: Date.now() - 1000 }),
       SECRET,
     );
-    await bridge.handleEnvelope(
-      envelope({
-        id: "r1",
-        method: "command.send",
-        capability: "command.send",
-        token,
-      }),
-      iframe.contentWindow,
-    );
-    const last = cw.postMessage.mock.calls[0][0] as PluginRpcEnvelope;
+    // A plugin polling with the same stale token denies every call but asks
+    // for one refresh; a different expired token asks again.
+    for (const id of ["r1", "r2", "r3"]) {
+      await bridge.handleEnvelope(
+        envelope({ id, method: "command.send", capability: "command.send", token }),
+        iframe.contentWindow,
+      );
+    }
+    const last = cw.postMessage.mock.calls[2][0] as PluginRpcEnvelope;
     expect(last.error?.code).toBe("capability_denied");
     expect(last.error?.message).toMatch(/token_expired/);
     expect(onTokenExpired).toHaveBeenCalledTimes(1);
+
+    const other = await mintTokenFor(
+      baseClaims({ expiresAt: Date.now() - 500 }),
+      SECRET,
+    );
+    await bridge.handleEnvelope(
+      envelope({ id: "r4", method: "command.send", capability: "command.send", token: other }),
+      iframe.contentWindow,
+    );
+    expect(onTokenExpired).toHaveBeenCalledTimes(2);
     bridge.dispose();
   });
 

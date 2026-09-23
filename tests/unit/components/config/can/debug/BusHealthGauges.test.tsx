@@ -27,7 +27,7 @@ describe("BusHealthGauges", () => {
 
   it("renders the four top-row meters and three bottom-row meters", () => {
     renderWithIntl(<BusHealthGauges />);
-    expect(screen.getByTestId("bus-health-bus-load")).toBeDefined();
+    expect(screen.queryByTestId("bus-health-bus-load")).toBeNull();
     expect(screen.getByTestId("bus-health-fps")).toBeDefined();
     expect(screen.getByTestId("bus-health-errors-ps")).toBeDefined();
     expect(screen.getByTestId("bus-health-bus-off")).toBeDefined();

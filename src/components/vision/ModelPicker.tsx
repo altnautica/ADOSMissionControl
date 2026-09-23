@@ -11,8 +11,7 @@
  * It merges the agent's registry + installed + custom models into one list
  * (deduped, board-tagged via the pure `filterModelsForBoard`), shows which one
  * the engine has active, and lets the operator:
- *   - Download a not-yet-installed registry model (the poll loop lifted from the
- *     old VisionModelRegistry).
+ *   - Download a not-yet-installed registry model, polling its progress.
  *   - Set any installed model as the engine's active detector. Because the
  *     detector is engine-wide (every vision consumer shares it), the picker
  *     says so.
@@ -20,7 +19,7 @@
  *
  * Setting the active detector is engine-wide, so the write routes through the
  * `engine.detector` LAN seam (`setEngineDetector`) keyed by the drone. The
- * picker takes a `droneId` so the right agent is reached (Rule 39 local-first).
+ * picker takes a `droneId` so the right agent is reached (local-first).
  *
  * @license GPL-3.0-only
  */
@@ -42,6 +41,7 @@ import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
+import { useArmedLock } from "@/hooks/use-armed-lock";
 import { Badge } from "@/components/ui/badge";
 import { cn, isDemoMode } from "@/lib/utils";
 import {
@@ -73,7 +73,7 @@ interface DownloadState {
 type PickerMode = "full" | "compact";
 
 interface ModelPickerProps {
-  /** Drone whose engine detector this picker manages (Rule 39 LAN routing). */
+  /** Drone whose engine detector this picker manages (LAN routing). */
   droneId: string;
   /** Render mode. `full` is the Vision tab surface; `compact` is the inline
    * parameter widget. Defaults to `full`. */
@@ -111,6 +111,7 @@ export function ModelPicker({
 }: ModelPickerProps) {
   const t = useTranslations("vision");
   const { toast } = useToast();
+  const { isHardBlocked, hardBlockMessage } = useArmedLock();
   // Reads (the model LIST) resolve against the single ACTIVE agent connection,
   // while writes (set-active / upload) resolve the LAN agent by `droneId` (see
   // `vision-detector-writer`). These coincide because selection drives the
@@ -249,11 +250,21 @@ export function ModelPicker({
 
   const setActive = useCallback(
     async (modelId: string) => {
+      // An engine-wide detector swap restarts the vision service: every
+      // vision consumer (Follow-Me, obstacle, plugins) loses detections for
+      // the restart. Refused while armed.
+      if (isHardBlocked) {
+        toast(hardBlockMessage, "warning");
+        return;
+      }
       setSettingActive(modelId);
       try {
         if (isDemoMode()) {
           // Demo path: the mock client mutates its own active state.
-          if (client) await client.setActiveDetector(modelId);
+          if (client) {
+            const res = await client.setActiveDetector(modelId);
+            if (res.status !== "ok") throw new Error(res.message || t("setActiveFailed"));
+          }
         } else {
           const ok = await setEngineDetector({ droneId, modelId });
           if (!ok) {
@@ -273,7 +284,7 @@ export function ModelPicker({
         setSettingActive(null);
       }
     },
-    [client, droneId, onActiveChange, refresh, t, toast],
+    [client, droneId, hardBlockMessage, isHardBlocked, onActiveChange, refresh, t, toast],
   );
 
   const handleUpload = useCallback(
@@ -397,7 +408,8 @@ export function ModelPicker({
                   size="sm"
                   onClick={() => setActive(model.id)}
                   loading={isSettingActive}
-                  disabled={settingActive !== null}
+                  disabled={settingActive !== null || isHardBlocked}
+                  title={isHardBlocked ? hardBlockMessage : undefined}
                 >
                   {t("setActive")}
                 </Button>
@@ -415,6 +427,8 @@ export function ModelPicker({
       size="sm"
       icon={<Upload size={13} />}
       onClick={() => setUploadOpen(true)}
+      disabled={isHardBlocked}
+      title={isHardBlocked ? hardBlockMessage : undefined}
     >
       {t("upload")}
     </Button>

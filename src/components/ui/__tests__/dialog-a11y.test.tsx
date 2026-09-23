@@ -17,6 +17,7 @@ import { renderWithIntl } from "../../../../tests/helpers/intl-wrapper";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { ArmedWriteConfirmDialog } from "@/components/indicators/ArmedWriteConfirmDialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useArmedConfirmStore } from "@/stores/armed-confirm-store";
 
 const TITLE = "Pending write";
@@ -164,6 +165,62 @@ describe("dialog accessibility affordances", () => {
 
     const close = screen.getByRole("button", { name: /close/i });
     expect(close).toHaveAccessibleName();
+  });
+
+  it("keeps focus on a typed-phrase input and restores focus to the trigger on close", () => {
+    function TypedConfirm() {
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          <button type="button" onClick={() => setOpen(true)}>
+            arm
+          </button>
+          <ConfirmDialog
+            open={open}
+            onConfirm={() => setOpen(false)}
+            onCancel={() => setOpen(false)}
+            title="Arm vehicle"
+            message="Type the phrase to arm."
+            variant="danger"
+            typedPhrase="ARM"
+          />
+        </>
+      );
+    }
+    renderWithIntl(<TypedConfirm />);
+    const trigger = screen.getByRole("button", { name: "arm" });
+    trigger.focus();
+    fireEvent.click(trigger);
+
+    // The autofocused phrase input keeps focus; the title-bar X must not take it.
+    const phrase = screen.getByRole("textbox");
+    expect(document.activeElement).toBe(phrase);
+
+    keydown("Escape");
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it("does not pull focus back when the initial-focus target changes while open", () => {
+    function SwitchingTarget() {
+      const firstRef = useRef<HTMLButtonElement>(null);
+      const [pinned, setPinned] = useState(true);
+      return (
+        <Modal open onClose={vi.fn()} title={TITLE} initialFocusRef={pinned ? firstRef : undefined}>
+          <button type="button" ref={firstRef}>
+            pinned
+          </button>
+          <button type="button" onClick={() => setPinned(false)}>
+            other
+          </button>
+        </Modal>
+      );
+    }
+    renderWithIntl(<SwitchingTarget />);
+    const other = screen.getByRole("button", { name: "other" });
+    other.focus();
+    fireEvent.click(other);
+    expect(document.activeElement).toBe(other);
   });
 });
 

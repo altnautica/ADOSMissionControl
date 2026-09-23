@@ -13,7 +13,7 @@
 
 import { ARDUPILOT_BOARDS, findArduPilotBoard } from './boards/ardupilot-boards'
 import type { ArduPilotBoardEntry } from './boards/ardupilot-boards'
-import type { SelectOptionGroup } from '@/components/ui/select-types'
+import type { SelectOptionGroup } from "@/lib/types"
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -38,7 +38,7 @@ export interface BoardProfile {
 /** Motor function IDs: Motor1-Motor8 (33-40), Motor9-Motor12 (82-85) */
 export const MOTOR_FUNCTION_IDS = new Set([33, 34, 35, 36, 37, 38, 39, 40, 82, 83, 84, 85])
 
-/** MOT_PWM_TYPE values — 0 = Normal PWM, 4+ = DShot variants */
+/** MOT_PWM_TYPE values: 0-3 analog PWM variants, 4-7 DShot, 8-9 PWM range/angle */
 export const MOT_PWM_TYPE = {
   NORMAL: 0,
   ONESHOT: 1,
@@ -48,11 +48,13 @@ export const MOT_PWM_TYPE = {
   DSHOT300: 5,
   DSHOT600: 6,
   DSHOT1200: 7,
+  PWM_RANGE: 8,
+  PWM_ANGLE: 9,
 } as const
 
 /** Returns true if the MOT_PWM_TYPE value indicates DShot protocol */
 export function isDShotType(motPwmType: number): boolean {
-  return motPwmType >= MOT_PWM_TYPE.DSHOT150
+  return motPwmType >= MOT_PWM_TYPE.DSHOT150 && motPwmType <= MOT_PWM_TYPE.DSHOT1200
 }
 
 // ── Convert registry entries to board profiles ──────────────

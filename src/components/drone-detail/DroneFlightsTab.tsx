@@ -54,7 +54,7 @@ export function DroneFlightsTab({ droneId }: DroneFlightsTabProps) {
       width: "14%",
       render: (row) => (
         <span className="font-mono text-text-primary tabular-nums">
-          {(row.distance / 1000).toFixed(1)} km
+          {row.distance !== undefined ? `${(row.distance / 1000).toFixed(1)} km` : "—"}
         </span>
       ),
     },
@@ -65,7 +65,7 @@ export function DroneFlightsTab({ droneId }: DroneFlightsTabProps) {
       width: "12%",
       render: (row) => (
         <span className="font-mono text-text-primary tabular-nums">
-          {row.maxAlt}m
+          {row.maxAlt !== undefined ? `${row.maxAlt}m` : "—"}
         </span>
       ),
     },
@@ -87,7 +87,7 @@ export function DroneFlightsTab({ droneId }: DroneFlightsTabProps) {
       width: "14%",
       render: (row) => (
         <span className="font-mono text-text-primary tabular-nums">
-          {row.batteryUsed}%
+          {row.batteryUsed !== undefined ? `${row.batteryUsed}%` : "—"}
         </span>
       ),
     },

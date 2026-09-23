@@ -86,7 +86,17 @@ export function MiniVideoView() {
       setCloudError(null);
       setCloudStreaming(true);
     };
+    // The player resets the element (`src = ''`) on every relay reconnect and
+    // stall recovery, which fires `emptied`; a starved buffer fires `waiting`.
+    // Either way no frame is arriving, so the tile goes back to CONNECTING
+    // until `playing` fires again instead of sitting black as "streaming".
+    const onNoFrames = () => {
+      if (cancelled) return;
+      setCloudStreaming(false);
+    };
     el.addEventListener("playing", onPlaying);
+    el.addEventListener("emptied", onNoFrames);
+    el.addEventListener("waiting", onNoFrames);
 
     async function startPlayer() {
       // Deliberately lazy, and kept lazy: the MSE player is only reachable
@@ -128,6 +138,8 @@ export function MiniVideoView() {
     return () => {
       cancelled = true;
       el.removeEventListener("playing", onPlaying);
+      el.removeEventListener("emptied", onNoFrames);
+      el.removeEventListener("waiting", onNoFrames);
       playerRef.current?.stop();
       playerRef.current = null;
       setCloudStreaming(false);

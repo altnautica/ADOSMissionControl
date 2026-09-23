@@ -12,11 +12,9 @@ import L from "leaflet";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useTrailStore, type TrailPoint } from "@/stores/trail-store";
 import { DEFAULT_CENTER } from "@/lib/map-constants";
+import { TILE_PROVIDERS } from "@/lib/tile-math";
 import { Crosshair } from "lucide-react";
 import "leaflet/dist/leaflet.css";
-
-const DARK_TILES = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
-const DARK_ATTR = '&copy; <a href="https://carto.com/">CARTO</a>';
 
 // ── Drone Icon ───────────────────────────────────────────
 
@@ -97,9 +95,8 @@ export function ReplayMap() {
         zoom={16}
         className="h-full w-full"
         zoomControl={false}
-        attributionControl={false}
       >
-        <TileLayer url={DARK_TILES} attribution={DARK_ATTR} />
+        <TileLayer url={TILE_PROVIDERS.dark.url} attribution={TILE_PROVIDERS.dark.attribution} />
         <MapFollower position={dronePos} enabled={autoFollow} />
         <MapDragDetector onDrag={handleMapDrag} />
 

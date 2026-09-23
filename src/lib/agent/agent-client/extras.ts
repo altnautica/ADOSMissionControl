@@ -11,8 +11,6 @@
 import type { z } from "zod";
 import type {
   ClaimResponse,
-  CommandResult,
-  MeshNetEnrollment,
   NetworkPeer,
   PairingInfo,
   PeripheralInfo,
@@ -20,8 +18,6 @@ import type {
 } from "../types";
 import {
   ClaimResponseSchema,
-  CommandResultSchema,
-  MeshNetEnrollmentSchema,
   NetworkPeerListSchema,
   PairingInfoSchema,
   PeripheralListSchema,
@@ -55,13 +51,6 @@ export function scanPeripherals(ctx: RequestContext): Promise<PeripheralInfo[]> 
 }
 
 // ── Fleet ─────────────────────────────────────────────────────
-
-export function getEnrollment(ctx: RequestContext): Promise<MeshNetEnrollment> {
-  return agentRequest<MeshNetEnrollment>(ctx, "/api/fleet/enrollment", {
-    schema: MeshNetEnrollmentSchema as z.ZodType<MeshNetEnrollment>,
-    allowSchemaFallback: true,
-  });
-}
 
 export function getPeers(ctx: RequestContext): Promise<NetworkPeer[]> {
   return agentRequest<NetworkPeer[]>(ctx, "/api/fleet/peers", {
@@ -200,18 +189,15 @@ export function stopRecording(
 
 /** List recording files written to disk. The drone-profile video
  * pipeline does not currently expose a list endpoint, so this hits
- * the ground-station listing route. */
-export async function listRecordings(
+ * the ground-station listing route. A failure throws so the caller can
+ * say the list could not be read instead of showing an empty, idle list. */
+export function listRecordings(
   ctx: RequestContext,
 ): Promise<RecordingListResponse> {
-  try {
-    return await agentRequest<RecordingListResponse>(
-      ctx,
-      "/api/v1/ground-station/recording/list",
-    );
-  } catch {
-    return { recording: false, current_filename: null, items: [] };
-  }
+  return agentRequest<RecordingListResponse>(
+    ctx,
+    "/api/v1/ground-station/recording/list",
+  );
 }
 
 // ── Pairing ───────────────────────────────────────────────────
@@ -230,13 +216,6 @@ export function claimLocally(
     method: "POST",
     body: JSON.stringify({ user_id: userId }),
     schema: ClaimResponseSchema as z.ZodType<ClaimResponse>,
-  });
-}
-
-export function unpairAgent(ctx: RequestContext): Promise<CommandResult> {
-  return agentRequest<CommandResult>(ctx, "/api/pairing/unpair", {
-    method: "POST",
-    schema: CommandResultSchema as z.ZodType<CommandResult>,
   });
 }
 

@@ -53,7 +53,8 @@ export function AiSuggestionsGate({ onRequestAi, connected }: AiSuggestionsGateP
   const remaining = usageData?.remaining ?? aiRemainingUses;
   const weeklyLimit = usageData?.weeklyLimit ?? aiWeeklyLimit;
 
-  // No Convex — allow unrestricted (self-hosted without cloud)
+  // No Convex: a self-hosted install has no accounts or weekly quota, and the
+  // analysis route serves it with the install's own model key.
   if (!convexAvailable) {
     return (
       <Button

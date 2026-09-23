@@ -16,9 +16,15 @@ import {
 import { normalizeHeading } from "@/lib/telemetry-utils";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
-import type { DeckSeverity, DeckSeverityContext } from "./deck-types";
+import type { DeckSeverityContext } from "./deck-types";
 import { DECK_PAGE_TABS, DECK_PRESETS, METRIC_LABELS_BY_ID } from "./deck-constants";
-import { getSeverity, estimateFlightMinutes, gpsFixKey } from "./deck-utils";
+import {
+  getSeverity,
+  estimateFlightMinutes,
+  gpsFixKey,
+  trackSeverity,
+  type SeverityTrack,
+} from "./deck-utils";
 import { DeckCell } from "./DeckCell";
 import { DeckCustomizer } from "./DeckCustomizer";
 import { DetachedDeckPortal } from "./DetachedDeckPortal";
@@ -71,7 +77,7 @@ export function useTelemetryDeck(): TelemetryDeckSlots {
   const [customizeOpen, setCustomizeOpen] = useState(false);
   const [draggingMetricId, setDraggingMetricId] = useState<TelemetryDeckMetricId | null>(null);
   const [dragOverMetricId, setDragOverMetricId] = useState<TelemetryDeckMetricId | null>(null);
-  const thresholdRef = useRef<Partial<Record<TelemetryDeckMetricId, DeckSeverity>>>({});
+  const thresholdRef = useRef<Partial<Record<TelemetryDeckMetricId, SeverityTrack>>>({});
   const { toast } = useToast();
   const tFix = useTranslations("indicators.gpsFix");
 
@@ -204,16 +210,19 @@ export function useTelemetryDeck(): TelemetryDeckSlots {
     [activePageMetrics, deckMetricValues],
   );
 
-  // Toast on severity transitions
+  // Toast on severity transitions that hold for the dwell window, so a value
+  // flickering across a band edge (fix type, attitude, climb) is not a toast
+  // storm.
   useEffect(() => {
+    const now = Date.now();
     for (const metricId of activeDeckMetricIds) {
       const current = getSeverity(metricId, metricRawValues[metricId], severityContext);
-      const previous = thresholdRef.current[metricId];
-      if (previous !== undefined && previous !== current && current !== "normal") {
-        const status = current === "critical" ? "error" : "warning";
-        toast(`${METRIC_LABELS_BY_ID[metricId]} ${current}: ${deckMetricValues[metricId]}`, status);
+      const { track, announce } = trackSeverity(thresholdRef.current[metricId], current, now);
+      thresholdRef.current[metricId] = track;
+      if (announce) {
+        const status = announce === "critical" ? "error" : "warning";
+        toast(`${METRIC_LABELS_BY_ID[metricId]} ${announce}: ${deckMetricValues[metricId]}`, status);
       }
-      thresholdRef.current[metricId] = current;
     }
   }, [activeDeckMetricIds, deckMetricValues, metricRawValues, severityContext, toast]);
 

@@ -1,11 +1,11 @@
 /**
  * @module hud-draw
- * @description Shared canvas drawing functions for the HUD overlay and
- * Overview artificial horizon. Extracted from OsdOverlay.tsx so both the
- * transparent OSD (fly page) and the sky/ground HUD (overview tab) can
- * share the same instrument renderers.
+ * @description Canvas drawing functions for the sky/ground artificial
+ * horizon HUD: attitude, tapes, compass and status readouts.
  * @license GPL-3.0-only
  */
+
+import type { BatteryBand } from "./battery-bands";
 
 // ── Colors ──────────────────────────────────────────────────────
 export const HUD_INK = "#63b3ff"; // ADOS electric-blue instrument ink
@@ -34,11 +34,13 @@ export const NO_DATA_GLYPH = "\u2014";
 
 // ── Utility ─────────────────────────────────────────────────────
 
-export function batColor(pct: number): string {
-  if (pct > 50) return BAT_GREEN;
-  if (pct > 25) return BAT_AMBER;
-  return BAT_RED;
-}
+/** Battery bar ink per severity band; the band comes from the operator's
+ * configured thresholds (`battery-bands`), never from constants here. */
+export const BATTERY_BAND_INK: Record<BatteryBand, string> = {
+  good: BAT_GREEN,
+  warning: BAT_AMBER,
+  critical: BAT_RED,
+};
 
 export function formatTimerFromMs(ms: number): string {
   const totalSec = Math.floor(ms / 1000);

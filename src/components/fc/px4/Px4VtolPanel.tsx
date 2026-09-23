@@ -14,7 +14,7 @@ import { useParamMetadataMap } from "@/hooks/use-param-metadata";
 import { usePanelScroll } from "@/hooks/use-panel-scroll";
 import { cn } from "@/lib/utils";
 import { PanelHeader } from "../shared/PanelHeader";
-import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
+import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { EnumSelect } from "../parameters/EnumSelect";
 import { ParamFieldLabel } from "../parameters/ParamFieldLabel";
 
@@ -116,7 +116,7 @@ export function Px4VtolPanel() {
   );
 
   return (
-    <ArmedLockOverlay>
+    <ArmedWarningBanner>
     <div ref={scrollRef} className="flex-1 overflow-y-auto p-6">
       <div className="max-w-2xl space-y-6">
         <PanelHeader title="VTOL Transition" subtitle="PX4 VTOL type, transition timing, quad-chute, and airframe-specific tilt/thrust"
@@ -141,6 +141,6 @@ export function Px4VtolPanel() {
         </div>
       </div>
     </div>
-    </ArmedLockOverlay>
+    </ArmedWarningBanner>
   );
 }

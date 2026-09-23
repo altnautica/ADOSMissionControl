@@ -3,7 +3,7 @@
 /**
  * @module use-atlas-local-state
  * @description Local-first source for a drone's Atlas world-model state. When
- * the operator is NOT signed in to the cloud (Rule 39 local-first), a
+ * the operator is NOT signed in to the cloud (local-first), a
  * LAN-paired drone is not beaconing to Convex, so the cloud heartbeat path
  * (`CloudStatusBridge` -> `buildAtlasPatch`) never sees it. This hook stands in:
  * it resolves the LAN-paired agent for `droneId` (host + apiKey from
@@ -67,7 +67,7 @@ export function useAtlasLocalState(droneId: string | null | undefined): void {
     Boolean(apiKey) &&
     // Never double-write: if this drone is the active cloud-relay device
     // (e.g. anon cloud relay while signed out), CloudStatusBridge owns the
-    // atlas store for it. Strictly disjoint sources (Rule 39 local-first
+    // atlas store for it. Strictly disjoint sources (local-first
     // otherwise).
     cloudDeviceId !== deviceId;
 

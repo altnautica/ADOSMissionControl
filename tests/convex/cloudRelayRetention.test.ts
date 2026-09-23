@@ -181,6 +181,28 @@ describe("the append-only event tables are swept", () => {
     expect(ctx.db.rows("cmd_mcpAuditEvents").map((r) => r.result)).toEqual(["recent"]);
   });
 
+  it("keeps draining while a sweep deleted a full batch", async () => {
+    const ctx = makeCtx();
+    const now = Date.now();
+    ctx.db.seed(
+      "cmd_mcpAuditEvents",
+      Array.from({ length: 300 }, (_, i) => ({
+        userId: "u", tokenId: "t", tool: "flight.arm", node: "dev-1", decision: "allowed",
+        result: `r${i}`, plane: "cloud_relay", latencyMs: 1, tsUs: i, contentHash: `h${i}`,
+        createdAt: now - 40 * DAY_MS,
+      })),
+    );
+    await invoke(mcpTokens.pruneOldAuditEvents, ctx);
+    expect(ctx.scheduled).toHaveLength(1);
+
+    const small = makeCtx();
+    small.db.seed("cmd_pluginEvents", [
+      { userId: "u", pluginInstallId: "i", pluginId: "p", type: "started", severity: "info", message: "old", createdAt: now - 31 * DAY_MS },
+    ]);
+    await invoke(plugins.pruneOldEvents, small);
+    expect(small.scheduled).toHaveLength(0);
+  });
+
   it("wires both sweeps into the cron schedule as internal functions", async () => {
     const crons = await read("convex/crons.ts");
     expect(crons).toContain("internal.cmdPlugins.pruneOldEvents");

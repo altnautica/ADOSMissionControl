@@ -53,18 +53,19 @@ function offdiagColor(v: number): string {
   return "text-status-error";
 }
 
-// ── Rotation hint from angular rate vector ──────────────
+// ── Rotation hint from the body angular rate (x roll, y pitch, z yaw) ──
 
 function getRotationHint(direction: { x: number; y: number; z: number }): string | null {
   const { x, y, z } = direction;
   const mag = Math.sqrt(x * x + y * y + z * z);
   if (mag < 0.3) return null;
   const ax = Math.abs(x), ay = Math.abs(y), az = Math.abs(z);
-  if (az >= ax && az >= ay) return z > 0 ? "Tilt nose UP" : "Tilt nose DOWN";
-  if (ay >= ax && ay >= az) return y > 0 ? "Roll RIGHT" : "Roll LEFT";
-  return x > 0 ? "Yaw RIGHT" : "Yaw LEFT";
+  if (az >= ax && az >= ay) return z > 0 ? "Yaw RIGHT" : "Yaw LEFT";
+  if (ay >= ax && ay >= az) return y > 0 ? "Tilt nose UP" : "Tilt nose DOWN";
+  return x > 0 ? "Roll RIGHT" : "Roll LEFT";
 }
 
+// MAG_CAL_STATUS values.
 function calStatusText(status: number): string {
   switch (status) {
     case 0: return "Not started";
@@ -72,9 +73,12 @@ function calStatusText(status: number): string {
     case 2: return "Collecting samples...";
     case 3: return "Refining fit...";
     case 4: return "Calibration successful";
-    case 5: return "Failed — magnetic interference";
-    case 6: return "Failed — insufficient rotation";
-    case 7: return "Failed — field out of range";
+    case 5: return "Failed — fit did not converge";
+    case 6: return "Failed — orientation mismatch";
+    case 7: return "Failed — field radius out of range";
+    case 8: return "Failed — offsets too large";
+    case 9: return "Failed — scaling out of range";
+    case 10: return "Failed — fit residuals too high";
     default: return `Status ${status}`;
   }
 }

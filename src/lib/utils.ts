@@ -2,6 +2,8 @@
  * Utility functions for Altnautica Command GCS.
  */
 
+import { useSettingsStore } from "@/stores/settings-store";
+
 /** Merge class names — simple conditional join (no clsx dependency). */
 export function cn(...classes: (string | false | null | undefined)[]): string {
   return classes.filter(Boolean).join(" ");
@@ -52,14 +54,20 @@ export function formatErrorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
-/** Check if demo mode is active (env var or URL param). */
+/**
+ * Whether demo mode is active. The persisted settings toggle is the single
+ * source of truth once the settings store has hydrated; the build-time env
+ * var and the `?demo=true` URL only seed it (the env var is the first-install
+ * default, the URL flips the toggle on at hydration). Before hydration, and on
+ * the server, the seed is the answer.
+ */
 export function isDemoMode(): boolean {
-  if (typeof window === "undefined") {
-    return process.env.NEXT_PUBLIC_DEMO_MODE === "true";
-  }
-  if (process.env.NEXT_PUBLIC_DEMO_MODE === "true") return true;
-  const params = new URLSearchParams(window.location.search);
-  return params.get("demo") === "true";
+  const envSeed = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+  if (typeof window === "undefined") return envSeed;
+  const settings = useSettingsStore.getState();
+  if (settings._hasHydrated) return settings.demoMode;
+  if (envSeed) return true;
+  return new URLSearchParams(window.location.search).get("demo") === "true";
 }
 
 /** Generate a random ID. */

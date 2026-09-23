@@ -18,7 +18,7 @@ import type {
   AiRecommendation,
 } from "@/lib/analysis/types";
 import { validateSuggestion } from "@/lib/analysis/pid-safety";
-import type { VehicleType } from "@/components/fc/pid/pid-constants";
+import type { TuningVehicleType } from "@/lib/analysis/types";
 
 const GROQ_API = "https://api.groq.com/openai/v1/chat/completions";
 const GROQ_MODEL = "openai/gpt-oss-20b";
@@ -112,9 +112,9 @@ function parseGroqResponse(text: string): AiAnalysisResponse {
 function isValidAnalysisRequest(v: unknown): v is AiAnalysisRequest {
   if (!v || typeof v !== "object") return false;
   const obj = v as Record<string, unknown>;
-  const vehicleTypes: VehicleType[] = ["copter", "plane", "rover"];
+  const vehicleTypes: TuningVehicleType[] = ["copter", "plane", "rover"];
   return (
-    vehicleTypes.includes(obj.vehicleType as VehicleType) &&
+    vehicleTypes.includes(obj.vehicleType as TuningVehicleType) &&
     !!obj.currentParams &&
     typeof obj.currentParams === "object" &&
     !Array.isArray(obj.currentParams) &&
@@ -184,8 +184,12 @@ export async function POST(request: NextRequest) {
   }
 
   // ── Auth gate ────────────────────────────────────────────────
-  const token = await getAuthToken();
-  if (!token) {
+  // Accounts and the weekly quota live in Convex. A self-hosted install
+  // without a Convex deployment has neither, so there the operator's own
+  // model key is used without them.
+  const accountsEnabled = Boolean(process.env.NEXT_PUBLIC_CONVEX_URL);
+  const token = accountsEnabled ? await getAuthToken() : null;
+  if (accountsEnabled && !token) {
     return NextResponse.json(
       {
         recommendations: [],
@@ -196,39 +200,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // ── Usage limit gate ─────────────────────────────────────────
-  let usageResult: { allowed: boolean; remaining: number; weeklyLimit: number; error?: string };
-  try {
-    usageResult = await fetchMutation(
-      checkAndRecordRef,
-      { feature: "pid_analysis" },
-      { token },
-    );
-  } catch (err) {
-    console.error("AI usage check failed:", err);
-    return NextResponse.json(
-      {
-        recommendations: [],
-        summary: "",
-        error: "Usage check failed. Please try again.",
-      } satisfies AiAnalysisResponse,
-      { status: 500 },
-    );
-  }
-
-  if (!usageResult.allowed) {
-    return NextResponse.json(
-      {
-        recommendations: [],
-        summary: "",
-        error: usageResult.error ?? "weekly_limit_reached",
-        remaining: 0,
-        weeklyLimit: usageResult.weeklyLimit,
-      } satisfies AiAnalysisResponse,
-      { status: 429 },
-    );
-  }
-
+  // ── Body validation (before usage is recorded) ───────────────
   let body: AiAnalysisRequest;
   try {
     const parsedBody: unknown = await request.json();
@@ -239,6 +211,43 @@ export async function POST(request: NextRequest) {
       { recommendations: [], summary: "", error: "Invalid request body" },
       { status: 400 },
     );
+  }
+
+  // ── Usage limit gate ─────────────────────────────────────────
+  let usage: { remaining: number; weeklyLimit: number } | null = null;
+  if (token) {
+    let usageResult: { allowed: boolean; remaining: number; weeklyLimit: number; error?: string };
+    try {
+      usageResult = await fetchMutation(
+        checkAndRecordRef,
+        { feature: "pid_analysis" },
+        { token },
+      );
+    } catch (err) {
+      console.error("AI usage check failed:", err);
+      return NextResponse.json(
+        {
+          recommendations: [],
+          summary: "",
+          error: "Usage check failed. Please try again.",
+        } satisfies AiAnalysisResponse,
+        { status: 500 },
+      );
+    }
+
+    if (!usageResult.allowed) {
+      return NextResponse.json(
+        {
+          recommendations: [],
+          summary: "",
+          error: usageResult.error ?? "weekly_limit_reached",
+          remaining: 0,
+          weeklyLimit: usageResult.weeklyLimit,
+        } satisfies AiAnalysisResponse,
+        { status: 429 },
+      );
+    }
+    usage = { remaining: usageResult.remaining, weeklyLimit: usageResult.weeklyLimit };
   }
 
   try {
@@ -283,11 +292,7 @@ export async function POST(request: NextRequest) {
 
     const parsed = parseGroqResponse(content);
     const result = { ...parsed, recommendations: enforceSafetyRanges(parsed.recommendations, body) };
-    return NextResponse.json({
-      ...result,
-      remaining: usageResult.remaining,
-      weeklyLimit: usageResult.weeklyLimit,
-    });
+    return NextResponse.json({ ...result, ...usage });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     const response: AiAnalysisResponse = {

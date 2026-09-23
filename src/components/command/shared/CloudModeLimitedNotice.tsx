@@ -8,7 +8,7 @@
  * display, OLED, mesh, and distributed RX are not reachable — the
  * heartbeat carries read-only summaries but mutations route through
  * the LAN-only REST surface. This notice surfaces that constraint and
- * points the operator at the setup URL on the same LAN.
+ * points the operator at the node's own settings page on the same LAN.
  * @license GPL-3.0-only
  */
 
@@ -37,8 +37,10 @@ export function CloudModeLimitedNotice({ feature }: CloudModeLimitedNoticeProps)
       ? s.nodes.find((n) => n.deviceId === cloudDeviceId) ?? null
       : null,
   );
-  const lanHost = localNode?.mdnsHost || localNode?.ipv4 || null;
-  const openTarget = lanHost ? `http://${lanHost}:8080/setup.html` : null;
+  // The stored hostname is the base URL the pairing proved (scheme, host and
+  // port), so the link follows a custom port or address rather than assuming
+  // :8080. The agent serves its settings at /settings in its web shell.
+  const openTarget = localNode ? `${localNode.hostname.replace(/\/+$/, "")}/settings` : null;
 
   return (
     <div className="mx-4 mt-4 flex items-start gap-3 rounded-lg border border-status-warning/30 bg-status-warning/5 p-3 text-xs text-text-secondary">

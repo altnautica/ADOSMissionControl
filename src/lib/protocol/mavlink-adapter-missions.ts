@@ -57,9 +57,100 @@ export interface MissionUploadState extends TransferDeadline {
  * 15 s was also a hard cap on usable mission size over a 57k6 link.
  */
 interface TransferDeadline {
-  /** Re-arm the inactivity deadline. Called on each received item. */
+  /** Re-arm the inactivity deadline and the retransmit countdown. Called on each unit of progress. */
   restartTimer: () => void;
   timer: ReturnType<typeof setTimeout>
+}
+
+/**
+ * Silence after which the GCS re-sends its outstanding request. The MAVLink
+ * mission protocol puts retransmission on the GCS during a download (and on
+ * MISSION_COUNT until the vehicle starts requesting items), so without it one
+ * lost frame on a lossy radio stalled the walk until the idle deadline failed
+ * the whole transfer.
+ */
+const TRANSFER_RETRY_MS = 1500
+
+/**
+ * Inactivity window for a mission/rally/fence transfer.
+ *
+ * Re-armed on every unit of progress, so the budget bounds a link that makes
+ * no progress at all rather than the total transfer: a 300-item mission over a
+ * 57k6 radio is a long transfer, not a failed one. Inside it the outstanding
+ * request is re-sent every TRANSFER_RETRY_MS of silence.
+ */
+const TRANSFER_IDLE_TIMEOUT_MS = 15000
+
+/**
+ * Build the deadline for one transfer. `resend` re-issues whatever request the
+ * transfer is waiting on; it runs after every TRANSFER_RETRY_MS without
+ * progress for as long as `isActive()` holds (the transfer's slot on the
+ * context still points at this state), and stops once it does not.
+ */
+function createDeadline(onIdle: () => void, resend: () => void, isActive: () => boolean): TransferDeadline {
+  let retry: ReturnType<typeof setInterval> | undefined
+  const armRetry = () => {
+    clearInterval(retry)
+    retry = setInterval(() => {
+      if (!isActive()) { clearInterval(retry); return }
+      resend()
+    }, TRANSFER_RETRY_MS)
+  }
+  const expire = () => { clearInterval(retry); onIdle() }
+  const deadline: TransferDeadline = {
+    timer: setTimeout(expire, TRANSFER_IDLE_TIMEOUT_MS),
+    restartTimer: () => {
+      clearTimeout(deadline.timer)
+      deadline.timer = setTimeout(expire, TRANSFER_IDLE_TIMEOUT_MS)
+      armRetry()
+    },
+  }
+  armRetry()
+  return deadline
+}
+
+/**
+ * The lowest sequence number in `[0, total)` that has not arrived, or `null`
+ * when the walk is complete. Re-requesting the lowest gap (not `received + 1`)
+ * keeps the walk self-healing when a request or an item is lost.
+ */
+export function firstMissingSeq(items: ReadonlyMap<number, unknown>, total: number): number | null {
+  for (let seq = 0; seq < total; seq++) {
+    if (!items.has(seq)) return seq
+  }
+  return null
+}
+
+/**
+ * What a stalled download re-sends: the list request while the count has not
+ * arrived, otherwise a request for the lowest missing item.
+ */
+function resendDownloadRequest(
+  ctx: MissionContext,
+  state: { items: ReadonlyMap<number, unknown>; total: number },
+  missionType: number,
+): void {
+  if (state.total === 0) {
+    ctx.transport?.send(encodeMissionRequestList(ctx.targetSysId, ctx.targetCompId, ctx.sysId, ctx.compId, missionType))
+    return
+  }
+  const next = firstMissingSeq(state.items, state.total)
+  if (next !== null) {
+    ctx.transport?.send(encodeMissionRequestInt(ctx.targetSysId, ctx.targetCompId, next, ctx.sysId, ctx.compId, missionType))
+  }
+}
+
+/**
+ * Deadline for an upload: MISSION_COUNT is re-sent until the vehicle asks for
+ * its first item. From then on the vehicle drives the walk and retries its own
+ * requests, so re-sending the count would restart the transfer.
+ */
+function createUploadDeadline(onIdle: () => void, sendCount: () => void, isActive: () => boolean): TransferDeadline {
+  let requested = false
+  const deadline = createDeadline(onIdle, () => { if (!requested) sendCount() }, isActive)
+  const restart = deadline.restartTimer
+  deadline.restartTimer = () => { requested = true; restart() }
+  return deadline
 }
 
 export interface MissionDownloadState extends TransferDeadline {
@@ -69,10 +160,9 @@ export interface MissionDownloadState extends TransferDeadline {
   reject: (err: Error) => void
 }
 
-export interface RallyUploadState {
+export interface RallyUploadState extends TransferDeadline {
   items: Array<{ lat: number; lon: number; alt: number }>
   resolve: (result: CommandResult) => void
-  timer: ReturnType<typeof setTimeout>
 }
 
 export interface RallyDownloadState extends TransferDeadline {
@@ -82,10 +172,9 @@ export interface RallyDownloadState extends TransferDeadline {
   reject: (err: Error) => void
 }
 
-export interface FenceUploadState {
+export interface FenceUploadState extends TransferDeadline {
   items: FenceMissionItem[]
   resolve: (result: CommandResult) => void
-  timer: ReturnType<typeof setTimeout>
 }
 
 export interface FenceDownloadState extends TransferDeadline {
@@ -215,32 +304,19 @@ export async function uploadMission(ctx: MissionContext, items: MissionItem[]): 
   // driving — a long mission over a slow radio simply cannot finish inside it,
   // and the GCS then reported a timeout for an upload still in progress.
   const onIdle = () => {
+    if (ctx.missionUpload !== state) return
     ctx.missionUpload = null
     resolve({ success: false, resultCode: -1, message: 'Mission upload stalled: flight controller stopped requesting items' })
   }
-  const state: MissionUploadState = {
-    items,
-    resolve,
-    reject,
-    timer: setTimeout(onIdle, TRANSFER_IDLE_TIMEOUT_MS),
-    restartTimer: () => {
-      clearTimeout(state.timer)
-      state.timer = setTimeout(onIdle, TRANSFER_IDLE_TIMEOUT_MS)
-    },
-  }
+  const sendCount = () => ctx.transport?.send(encodeMissionCount(ctx.targetSysId, ctx.targetCompId, items.length, ctx.sysId, ctx.compId))
+  const state: MissionUploadState = Object.assign(
+    createUploadDeadline(onIdle, sendCount, () => ctx.missionUpload === state),
+    { items, resolve, reject },
+  )
   ctx.missionUpload = state
-  ctx.transport.send(encodeMissionCount(ctx.targetSysId, ctx.targetCompId, items.length, ctx.sysId, ctx.compId))
+  sendCount()
   return promise
 }
-
-/**
- * Inactivity window for a mission/rally/fence item walk.
- *
- * Re-armed on EVERY received item, so the budget bounds a silent link rather
- * than the total transfer — a 300-item mission over a 57k6 radio is a long
- * transfer, not a failed one.
- */
-const TRANSFER_IDLE_TIMEOUT_MS = 15000
 
 export async function downloadMission(ctx: MissionContext): Promise<MissionItem[]> {
   if (!ctx.transport?.isConnected) throw new Error('Not connected')
@@ -259,17 +335,10 @@ export async function downloadMission(ctx: MissionContext): Promise<MissionItem[
     ))
   }
 
-  const state: MissionDownloadState = {
-    items: new Map(),
-    total: 0,
-    resolve,
-    reject,
-    timer: setTimeout(onIdle, TRANSFER_IDLE_TIMEOUT_MS),
-    restartTimer: () => {
-      clearTimeout(state.timer)
-      state.timer = setTimeout(onIdle, TRANSFER_IDLE_TIMEOUT_MS)
-    },
-  }
+  const state: MissionDownloadState = Object.assign(
+    createDeadline(onIdle, () => resendDownloadRequest(ctx, state, 0), () => ctx.missionDownload === state),
+    { items: new Map<number, MissionItem>(), total: 0, resolve, reject },
+  )
   ctx.missionDownload = state
   ctx.transport.send(encodeMissionRequestList(ctx.targetSysId, ctx.targetCompId, ctx.sysId, ctx.compId))
   return promise
@@ -457,18 +526,23 @@ export async function uploadFenceMission(ctx: MissionContext, elements: FenceEle
   const items = encodeFenceMissionItems(elements)
   if (items.length === 0) return { success: true, resultCode: 0, message: 'No fence items to upload' }
 
-  return new Promise<CommandResult>((resolve) => {
-    const timer = setTimeout(() => {
-      ctx.fenceUpload = null
-      resolve({ success: false, resultCode: -1, message: 'Fence upload timed out' })
-    }, 15000)
-
-    ctx.fenceUpload = { items, resolve, timer }
-    ctx.transport!.send(encodeMissionCount(
-      ctx.targetSysId, ctx.targetCompId, items.length,
-      ctx.sysId, ctx.compId, MAV_MISSION_TYPE_FENCE,
-    ))
-  })
+  const { promise, resolve } = Promise.withResolvers<CommandResult>()
+  const onIdle = () => {
+    if (ctx.fenceUpload !== state) return
+    ctx.fenceUpload = null
+    resolve({ success: false, resultCode: -1, message: 'Fence upload stalled: flight controller stopped requesting items' })
+  }
+  const sendCount = () => ctx.transport?.send(encodeMissionCount(
+    ctx.targetSysId, ctx.targetCompId, items.length,
+    ctx.sysId, ctx.compId, MAV_MISSION_TYPE_FENCE,
+  ))
+  const state: FenceUploadState = Object.assign(
+    createUploadDeadline(onIdle, sendCount, () => ctx.fenceUpload === state),
+    { items, resolve },
+  )
+  ctx.fenceUpload = state
+  sendCount()
+  return promise
 }
 
 /**
@@ -493,17 +567,10 @@ export async function downloadFenceMission(ctx: MissionContext): Promise<FenceEl
     ))
   }
 
-  const state: FenceDownloadState = {
-    items: new Map(),
-    total: 0,
-    resolve,
-    reject,
-    timer: setTimeout(onIdle, TRANSFER_IDLE_TIMEOUT_MS),
-    restartTimer: () => {
-      clearTimeout(state.timer)
-      state.timer = setTimeout(onIdle, TRANSFER_IDLE_TIMEOUT_MS)
-    },
-  }
+  const state: FenceDownloadState = Object.assign(
+    createDeadline(onIdle, () => resendDownloadRequest(ctx, state, MAV_MISSION_TYPE_FENCE), () => ctx.fenceDownload === state),
+    { items: new Map<number, FenceMissionItem>(), total: 0, resolve, reject },
+  )
   ctx.fenceDownload = state
   ctx.transport.send(encodeMissionRequestList(
     ctx.targetSysId, ctx.targetCompId,
@@ -516,18 +583,23 @@ export async function uploadRallyPoints(ctx: MissionContext, points: Array<{ lat
   if (!ctx.transport?.isConnected) return { success: false, resultCode: -1, message: 'Not connected' }
   if (points.length === 0) return { success: true, resultCode: 0, message: 'No rally points to upload' }
 
-  return new Promise<CommandResult>((resolve) => {
-    const timer = setTimeout(() => {
-      ctx.rallyUpload = null
-      resolve({ success: false, resultCode: -1, message: 'Rally point upload timed out' })
-    }, 15000)
-
-    ctx.rallyUpload = { items: points, resolve, timer }
-    ctx.transport!.send(encodeMissionCount(
-      ctx.targetSysId, ctx.targetCompId, points.length,
-      ctx.sysId, ctx.compId, 2,
-    ))
-  })
+  const { promise, resolve } = Promise.withResolvers<CommandResult>()
+  const onIdle = () => {
+    if (ctx.rallyUpload !== state) return
+    ctx.rallyUpload = null
+    resolve({ success: false, resultCode: -1, message: 'Rally point upload stalled: flight controller stopped requesting items' })
+  }
+  const sendCount = () => ctx.transport?.send(encodeMissionCount(
+    ctx.targetSysId, ctx.targetCompId, points.length,
+    ctx.sysId, ctx.compId, 2,
+  ))
+  const state: RallyUploadState = Object.assign(
+    createUploadDeadline(onIdle, sendCount, () => ctx.rallyUpload === state),
+    { items: points, resolve },
+  )
+  ctx.rallyUpload = state
+  sendCount()
+  return promise
 }
 
 export async function downloadRallyPoints(ctx: MissionContext): Promise<Array<{ lat: number; lon: number; alt: number }>> {
@@ -548,17 +620,10 @@ export async function downloadRallyPoints(ctx: MissionContext): Promise<Array<{ 
     ))
   }
 
-  const state: RallyDownloadState = {
-    items: new Map(),
-    total: 0,
-    resolve,
-    reject,
-    timer: setTimeout(onIdle, TRANSFER_IDLE_TIMEOUT_MS),
-    restartTimer: () => {
-      clearTimeout(state.timer)
-      state.timer = setTimeout(onIdle, TRANSFER_IDLE_TIMEOUT_MS)
-    },
-  }
+  const state: RallyDownloadState = Object.assign(
+    createDeadline(onIdle, () => resendDownloadRequest(ctx, state, 2), () => ctx.rallyDownload === state),
+    { items: new Map<number, { lat: number; lon: number; alt: number }>(), total: 0, resolve, reject },
+  )
   ctx.rallyDownload = state
   ctx.transport.send(encodeMissionRequestList(
     ctx.targetSysId, ctx.targetCompId,

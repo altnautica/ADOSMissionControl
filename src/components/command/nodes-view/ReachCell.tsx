@@ -16,7 +16,7 @@
  * A WFB bearer is coloured by whether its link is actually proven: verified only
  * when the far side heard a frame from it (a received-side signal), otherwise
  * unverified / stale / down — never a confident green from a link this row
- * cannot prove (Rule 44 / Rule 37).
+ * cannot prove (no fabricated reading, no unproven link).
  *
  * @license GPL-3.0-only
  */
@@ -195,7 +195,7 @@ export function ReachCell({
           className={cn(
             "font-mono text-[10px] tabular-nums text-text-tertiary",
             // A stale reading is dimmed so the number never reads as a live
-            // measurement (Rule 44), the same treatment the rest of the row's
+            // measurement (no fabricated reading), the same treatment the rest of the row's
             // stale cells get.
             staleClass(primary.verification === "stale" ? "stale" : "fresh"),
           )}

@@ -62,7 +62,7 @@ describe("mapFullStatusToCloudStatus camera surface", () => {
           state: "port_cycling",
           case: "present_wedged",
           attempts: 1,
-          maxAttempts: 3,
+          cooldownSeconds: 5,
           cameraPresent: false,
           expected: true,
           pppsCapable: true,

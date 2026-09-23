@@ -36,21 +36,21 @@ export const BAND_LETTER_TO_INDEX: Record<string, number> = {
   R: 5,
 };
 
-export const VTX_TYPE_OPTIONS = [
-  { value: "0", label: "0 — Unsupported" },
-  { value: "1", label: "1 — RTC6705" },
-  { value: "2", label: "2 — SmartAudio" },
-  { value: "3", label: "3 — Tramp" },
-  { value: "4", label: "4 — Unknown" },
-  { value: "5", label: "5 — Table" },
-];
+/**
+ * Betaflight vtxDevType_e (drivers/vtx_common.h). The FC detects the device
+ * type; it is shown, never written.
+ */
+export const VTX_TYPE_LABELS: Record<number, string> = {
+  0: "Unsupported",
+  1: "RTC6705",
+  3: "SmartAudio",
+  4: "Tramp",
+  5: "MSP",
+  255: "No device detected",
+};
 
-export const POWER_OPTIONS = [
-  { value: "0", label: "0 — 25 mW" },
-  { value: "1", label: "1 — 200 mW" },
-  { value: "2", label: "2 — 500 mW" },
-  { value: "3", label: "3 — 800 mW" },
-];
+/** Betaflight VTXDEV_UNKNOWN: no VTX device answered. */
+export const VTX_TYPE_NONE = 255;
 
 export const PIT_MODE_OPTIONS = [
   { value: "0", label: "0 — Off" },

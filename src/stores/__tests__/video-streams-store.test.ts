@@ -81,6 +81,21 @@ describe("video-streams-store", () => {
     expect(useVideoStreamsStore.getState().activeStream(DRONE)?.id).toBe("c"); // wrapped back
   });
 
+  it("never selects or cycles onto a known-dead leg", () => {
+    const s = useVideoStreamsStore.getState();
+    s.setStreams(DRONE, [
+      concurrent("eo", 1, "eo"),
+      { ...concurrent("ir", 2, "ir"), live: false },
+      concurrent("zoom", 3),
+    ]);
+    s.selectStream(DRONE, 2);
+    expect(useVideoStreamsStore.getState().activeStream(DRONE)?.id).toBe("eo");
+    s.cycleStream(DRONE, 1);
+    expect(useVideoStreamsStore.getState().activeStream(DRONE)?.id).toBe("zoom");
+    s.cycleStream(DRONE, -1);
+    expect(useVideoStreamsStore.getState().activeStream(DRONE)?.id).toBe("eo");
+  });
+
   it("does not cycle a single-stream node", () => {
     const s = useVideoStreamsStore.getState();
     s.setStreams(DRONE, [concurrent("eo", 1)]);
@@ -116,7 +131,7 @@ describe("video-streams-store", () => {
     expect(useVideoStreamsStore.getState().pipStream(DRONE)).toBeNull();
   });
 
-  it("[D9] moves the PiP off a leg that becomes the main view (never duplicates)", () => {
+  it("moves the PiP off a leg that becomes the main view (never duplicates)", () => {
     const s = useVideoStreamsStore.getState();
     s.setStreams(DRONE, [concurrent("eo", 1), concurrent("wide", 2), concurrent("ir", 3)]);
     s.setPip(DRONE, "ir");
@@ -128,7 +143,7 @@ describe("video-streams-store", () => {
     expect(st.pipStream(DRONE)?.id).toBe("eo");
   });
 
-  it("[D9] cycling onto the PiP leg also moves the PiP off it", () => {
+  it("cycling onto the PiP leg also moves the PiP off it", () => {
     const s = useVideoStreamsStore.getState();
     s.setStreams(DRONE, [concurrent("eo", 1), concurrent("ir", 2)]);
     s.setPip(DRONE, "ir");
@@ -139,7 +154,7 @@ describe("video-streams-store", () => {
     expect(st.pipStream(DRONE)?.id).toBe("eo");
   });
 
-  it("[D9] hides the PiP when the only other leg is not a PiP candidate", () => {
+  it("hides the PiP when the only other leg is not a PiP candidate", () => {
     const s = useVideoStreamsStore.getState();
     s.setStreams(DRONE, [
       { id: "dev0", index: 1, label: "dev0", kind: "switchable", devicePath: "/dev/video0" },

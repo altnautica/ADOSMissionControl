@@ -7,36 +7,44 @@
  * @license GPL-3.0-only
  */
 
-import { normaliseHost, safeJson, shouldUseProxy } from "./transport";
+import { combineSignals, normaliseHost, safeJson, shouldUseProxy } from "./transport";
 import { pairFailureFromResponse } from "./failure-copy";
 
-/** POST ``/api/pairing/unpair`` with the stored API key in the header. */
+/** POST ``/api/pairing/unpair`` with the stored API key in the header.
+ * Bounded by the pair-flow deadline; a request nothing answered maps onto
+ * the unreachable copy. An operator-triggered abort is re-thrown untouched. */
 export async function unpairLocal(
   hostname: string,
   apiKey: string,
   signal?: AbortSignal,
 ): Promise<void> {
   const host = normaliseHost(hostname);
-  const resp = shouldUseProxy()
-    ? await fetch(`/api/lan-pair/unpair`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({ host, apiKey }),
-        signal,
-      })
-    : await fetch(`${host}/api/pairing/unpair`, {
-        method: "POST",
-        headers: {
-          // The agent's auth middleware reads X-ADOS-Key; every other
-          // agent surface uses the same header name.
-          "X-ADOS-Key": apiKey,
-          Accept: "application/json",
-        },
-        signal,
-      });
+  let resp: Response;
+  try {
+    resp = shouldUseProxy()
+      ? await fetch(`/api/lan-pair/unpair`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({ host, apiKey }),
+          signal: combineSignals(signal),
+        })
+      : await fetch(`${host}/api/pairing/unpair`, {
+          method: "POST",
+          headers: {
+            // The agent's auth middleware reads X-ADOS-Key; every other
+            // agent surface uses the same header name.
+            "X-ADOS-Key": apiKey,
+            Accept: "application/json",
+          },
+          signal: combineSignals(signal),
+        });
+  } catch (e) {
+    if (signal?.aborted) throw e;
+    throw pairFailureFromResponse("unpair", host, { status: 0 }, null);
+  }
   // 409 means the agent is already unpaired — the desired end state, so it
   // is a success. 401 means the stored key no longer matches the agent's
   // current credential (key drift after a re-pair on the device, or a

@@ -1,9 +1,9 @@
 /**
  * Tests for the node Settings "Cellular" page: presence rendered from the
  * node's own modem-status snapshot (with the agent's reasons), the modem
- * view's sentinel connectivity legs excluded rather than shown as facts, a
- * write whose rendered result is the agent's own read-back response, and the
- * config-backed fallback on profiles without a live modem surface.
+ * view's sentinel connectivity legs and unreported usage excluded rather than
+ * shown as facts, a write whose rendered result is the agent's own read-back
+ * response, and nothing at all on a profile with no modem manager.
  *
  * @license GPL-3.0-only
  */
@@ -58,9 +58,13 @@ const MODEM_VIEW = {
   state: "disconnected",
 };
 
-function stubGsFetch(overrides?: { present?: boolean; reason?: string }) {
+function stubGsFetch(overrides?: {
+  present?: boolean | null;
+  reason?: string;
+  view?: Partial<Record<keyof typeof MODEM_VIEW, unknown>>;
+}) {
   const puts: Array<{ url: string; body: unknown }> = [];
-  let view = { ...MODEM_VIEW };
+  let view = { ...MODEM_VIEW, ...overrides?.view };
   const fetchMock = vi.fn(async (url: unknown, init?: RequestInit) => {
     const u = String(url);
     if (u.endsWith("/api/v1/ground-station/network/modem")) {
@@ -84,7 +88,7 @@ function stubGsFetch(overrides?: { present?: boolean; reason?: string }) {
     if (u.endsWith("/api/v1/ground-station/modem-status")) {
       return new Response(
         JSON.stringify({
-          present: overrides?.present ?? false,
+          present: overrides?.present === undefined ? false : overrides.present,
           reason: overrides?.reason ?? "no_modem",
         }),
         { status: 200 },
@@ -97,17 +101,9 @@ function stubGsFetch(overrides?: { present?: boolean; reason?: string }) {
 }
 
 function renderSection(profile: "drone" | "ground-station") {
-  const setValue = vi.fn(async () => {});
-  renderWithIntl(
-    <CellularSection
-      nodeDeviceId="node-1"
-      profile={profile}
-      config={{ network: { cellular: { enabled: false, apn: "" } } }}
-      readOnly={false}
-      setValue={setValue}
-    />,
+  return renderWithIntl(
+    <CellularSection nodeDeviceId="node-1" profile={profile} readOnly={false} />,
   );
-  return { setValue };
 }
 
 describe("CellularSection on a ground station", () => {
@@ -153,6 +149,35 @@ describe("CellularSection on a ground station", () => {
         screen.getByText("ModemManager is not installed on this node"),
       ).toBeTruthy(),
     );
+  });
+
+  it("renders an unprobed modem as not reported, never as no modem", async () => {
+    useAgentConnectionStore.setState({
+      agentUrl: "http://gs.local:8080",
+      apiKey: "KEY",
+      nodeDeviceId: "node-1",
+    });
+    stubGsFetch({ present: null, reason: "not_probed" });
+
+    renderSection("ground-station");
+
+    await waitFor(() => expect(screen.getByText("not reported")).toBeTruthy());
+    expect(screen.queryByText("No modem detected")).toBeNull();
+    expect(screen.queryByText("not_probed")).toBeNull();
+  });
+
+  it("renders usage the tracker has not reported as not reported, never 0 MB", async () => {
+    useAgentConnectionStore.setState({
+      agentUrl: "http://gs.local:8080",
+      apiKey: "KEY",
+      nodeDeviceId: "node-1",
+    });
+    stubGsFetch({ view: { data_used_mb: null, percent: null } });
+
+    renderSection("ground-station");
+
+    await waitFor(() => expect(screen.getByText("not reported yet")).toBeTruthy());
+    expect(screen.queryByText(/0 MB of 2048 MB/)).toBeNull();
   });
 
   it("writes the APN and renders the agent's read-back response", async () => {
@@ -229,7 +254,7 @@ describe("CellularSection on a ground station", () => {
 });
 
 describe("CellularSection on other profiles", () => {
-  it("offers the config-backed keys with the honest no-live-status note", async () => {
+  it("renders nothing and never fetches where no modem manager runs", () => {
     useAgentConnectionStore.setState({
       agentUrl: "http://drone.local:8080",
       apiKey: "KEY",
@@ -238,18 +263,10 @@ describe("CellularSection on other profiles", () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
-    const { setValue } = renderSection("drone");
+    const { container } = renderSection("drone");
 
-    expect(
-      screen.getByText(/does not expose live modem status on this profile/),
-    ).toBeTruthy();
-    // The modem surface is never fetched on this profile.
+    expect(container.textContent).toBe("");
+    expect(screen.queryByText("Cellular uplink")).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
-
-    // The enable toggle writes the config key through the shared setValue.
-    fireEvent.click(screen.getByText("Cellular uplink"));
-    await waitFor(() =>
-      expect(setValue).toHaveBeenCalledWith("network.cellular.enabled", "true"),
-    );
   });
 });

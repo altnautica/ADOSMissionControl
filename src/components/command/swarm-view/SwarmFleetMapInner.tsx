@@ -25,8 +25,10 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
 import { DEFAULT_CENTER } from "@/lib/map-constants";
+import { TILE_PROVIDERS } from "@/lib/tile-math";
 import {
   SWARM_SEVERITY_ORDER,
+  swarmBeaconPosition,
   swarmHeadingDeg,
   type SwarmSeverity,
   type SwarmSlotRow,
@@ -48,6 +50,7 @@ const SEVERITY_VAR: Record<SwarmSeverity, string> = {
   offline: "var(--alt-text-tertiary)",
   warning: "var(--alt-status-warning)",
   armed: "var(--alt-status-success)",
+  unknown: "var(--alt-text-tertiary)",
   nominal: "var(--alt-accent-primary)",
 };
 
@@ -110,16 +113,18 @@ export default function SwarmFleetMapInner({
   onSelectSlots,
   selectMode,
 }: SwarmFleetMapInnerProps) {
+  // Only rows whose beacon carries a position: a no-fix beacon has none, and
+  // plotting it anywhere (or fitting the bounds over it) would be invented.
   const positioned = useMemo(
-    () => rows.filter((row) => row.beacon !== null),
+    () => rows.filter((row) => swarmBeaconPosition(row.beacon) !== null),
     [rows],
   );
   const positions = useMemo(
     () =>
-      positioned.map<[number, number]>((row) => [
-        row.beacon?.lat ?? 0,
-        row.beacon?.lon ?? 0,
-      ]),
+      positioned.flatMap((row) => {
+        const position = swarmBeaconPosition(row.beacon);
+        return position ? [position] : [];
+      }),
     [positioned],
   );
 
@@ -129,19 +134,19 @@ export default function SwarmFleetMapInner({
       zoom={17}
       style={{ width: "100%", height: "100%" }}
       zoomControl={false}
-      attributionControl={false}
     >
-      <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
+      <TileLayer url={TILE_PROVIDERS.dark.url} attribution={TILE_PROVIDERS.dark.attribution} />
       <MapResizer />
       <FitFleetOnce positions={positions} />
 
       {positioned.map((row) => {
         const beacon = row.beacon;
-        if (!beacon) return null;
+        const position = swarmBeaconPosition(beacon);
+        if (!beacon || !position) return null;
         return (
           <Marker
             key={row.slot}
-            position={[beacon.lat, beacon.lon]}
+            position={position}
             // Worst severity draws on top: an emergency must never be hidden
             // under a nominal drone that happens to be a metre north of it.
             zIndexOffset={
@@ -199,9 +204,9 @@ function MarqueeLayer({
   const pointsNow = useCallback(
     (): MarqueePoint[] =>
       rowsRef.current.flatMap((row) => {
-        const beacon = row.beacon;
-        if (!beacon) return [];
-        const point = map.latLngToContainerPoint([beacon.lat, beacon.lon]);
+        const position = swarmBeaconPosition(row.beacon);
+        if (!position) return [];
+        const point = map.latLngToContainerPoint(position);
         return [{ slot: row.slot, x: point.x, y: point.y }];
       }),
     [map],

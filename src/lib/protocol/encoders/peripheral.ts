@@ -153,10 +153,10 @@ export function encodeFenceFetchPoint(
   sysId = 255,
   compId = 190,
 ): Uint8Array {
-  const payload = new Uint8Array(6);
+  // FENCE_FETCH_POINT is exactly target_system, target_component, idx.
+  const payload = new Uint8Array(3);
   payload[0] = targetSys;
   payload[1] = targetComp;
   payload[2] = idx;
-  // Bytes 3-5 stay zero-padded to match PAYLOAD_LENGTHS
   return buildFrame(161, payload, sysId, compId);
 }

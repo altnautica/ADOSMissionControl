@@ -12,8 +12,8 @@ import type {
   AiRecommendation,
   AiAnalysisResponse,
   AiAnalysisRequest,
+  TuningVehicleType,
 } from "@/lib/analysis/types";
-import type { VehicleType } from "@/components/fc/pid/pid-constants";
 
 export interface AiRequestResult {
   recommendations: AiRecommendation[];
@@ -31,7 +31,7 @@ export interface AiRequestResult {
  */
 export async function requestAiPidAnalysis(
   analysisResult: PidAnalysisResult,
-  vehicleType: VehicleType,
+  vehicleType: TuningVehicleType,
   currentParams: Record<string, number>,
 ): Promise<AiRequestResult> {
   // Build condensed metrics for the AI request

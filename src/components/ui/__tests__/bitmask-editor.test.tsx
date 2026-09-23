@@ -81,4 +81,27 @@ describe("BitmaskEditor", () => {
     expect(onApply).not.toHaveBeenCalled();
     expect(onClose).toHaveBeenCalled();
   });
+
+  it("accepts a typed 0x hex value and commits it on Apply", () => {
+    const { onApply } = renderEditor(5);
+    const raw = screen.getByLabelText("rawValue") as HTMLInputElement;
+    // Type it the way an operator does: the "0x" prefix is not a number yet.
+    for (const text of ["0", "0x", "0x1", "0x1F"]) fireEvent.change(raw, { target: { value: text } });
+    expect(raw.value).toBe("0x1F");
+    fireEvent.click(screen.getByText("apply"));
+    expect(onApply).toHaveBeenCalledWith(0x1f);
+  });
+
+  it("lets the field be cleared and refuses to apply a partial number", () => {
+    const { onApply } = renderEditor(5);
+    const raw = screen.getByLabelText("rawValue") as HTMLInputElement;
+    fireEvent.change(raw, { target: { value: "" } });
+    expect(raw.value).toBe("");
+    fireEvent.change(raw, { target: { value: "12abc" } });
+    fireEvent.blur(raw);
+    expect(screen.getByRole("alert").textContent).toBe("bitmaskRawInvalid");
+    fireEvent.keyDown(raw, { key: "Enter" });
+    fireEvent.click(screen.getByText("apply"));
+    expect(onApply).not.toHaveBeenCalled();
+  });
 });

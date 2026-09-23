@@ -3,10 +3,12 @@
 import { useState } from "react";
 import { useMutation } from "convex/react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
 import { communityApi } from "@/lib/community-api";
 import { sanitizeChangelogHtml } from "@/lib/community-html";
-import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
+import { useConvexSkipQueryState } from "@/hooks/use-convex-skip-query";
+import { useToast } from "@/components/ui/toast";
 import { formatDate } from "@/lib/utils";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 import { useSettingsStore } from "@/stores/settings-store";
@@ -19,7 +21,7 @@ interface ChangelogDetailProps {
 }
 
 export function ChangelogDetail({ id }: ChangelogDetailProps) {
-  const entry = useConvexSkipQuery(communityApi.changelog.getById, {
+  const { data: entry, state } = useConvexSkipQueryState(communityApi.changelog.getById, {
     args: { id: id as never },
     enabled: !!id,
   });
@@ -27,8 +29,27 @@ export function ChangelogDetail({ id }: ChangelogDetailProps) {
   const isAdmin = useIsAdmin();
   const locale = useSettingsStore((s) => s.locale);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const router = useRouter();
+  const { toast } = useToast();
 
-  if (entry === undefined) {
+  if (state === "skipped") {
+    return (
+      <div className="flex flex-col items-center justify-center h-32 gap-2">
+        <p className="text-sm text-text-tertiary">
+          Changelog details need the community backend, which is not available here.
+        </p>
+        <Link
+          href="/community/changelog"
+          className="text-sm text-accent-primary hover:underline"
+        >
+          Back to changelog
+        </Link>
+      </div>
+    );
+  }
+
+  if (state === "loading") {
     return (
       <div className="flex items-center justify-center h-32 text-sm text-text-tertiary">
         Loading...
@@ -36,10 +57,14 @@ export function ChangelogDetail({ id }: ChangelogDetailProps) {
     );
   }
 
-  if (entry === null) {
+  // A malformed id fails argument validation server-side, so a failed query
+  // most often means the id names no entry.
+  if (state === "error" || entry === null || entry === undefined) {
     return (
       <div className="flex flex-col items-center justify-center h-32 gap-2">
-        <p className="text-sm text-text-tertiary">Entry not found</p>
+        <p className="text-sm text-text-tertiary">
+          {state === "error" ? "Entry not found or could not be loaded" : "Entry not found"}
+        </p>
         <Link
           href="/community/changelog"
           className="text-sm text-accent-primary hover:underline"
@@ -54,10 +79,19 @@ export function ChangelogDetail({ id }: ChangelogDetailProps) {
   const displayTitle = typedEntry.translations?.[locale]?.title ?? typedEntry.title;
   const displayBody = typedEntry.translations?.[locale]?.description ?? typedEntry.body;
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!confirm("Delete this changelog entry?")) return;
-    removeChangelog({ id: typedEntry._id as never });
-    window.location.href = "/community/changelog";
+    setDeleting(true);
+    try {
+      await removeChangelog({ id: typedEntry._id as never });
+      router.push("/community/changelog");
+    } catch (err) {
+      setDeleting(false);
+      toast(
+        `Could not delete the entry: ${err instanceof Error ? err.message : String(err)}`,
+        "error",
+      );
+    }
   };
 
   return (
@@ -148,7 +182,8 @@ export function ChangelogDetail({ id }: ChangelogDetailProps) {
               Edit
             </button>
             <button
-              onClick={handleDelete}
+              onClick={() => void handleDelete()}
+              disabled={deleting}
               className="flex items-center gap-1 text-xs text-text-tertiary hover:text-status-error transition-colors"
             >
               <Trash2 size={12} />

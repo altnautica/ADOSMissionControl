@@ -120,7 +120,7 @@ export async function findHostByCodeOnLan(
       // it over ``info.mdns_host`` (which the agent advertises but is
       // often only resolvable via the bonjour-service's own cache —
       // the OS resolver may not have it). The OS-level hostname like
-      // ``skynode.local`` is what bonjour returned as ``host`` and
+      // ``testnode.local`` is what bonjour returned as ``host`` and
       // what avahi-daemon on the SBC actually publishes.
       const host = target;
       const codeVal = info.pairing_code ?? "";

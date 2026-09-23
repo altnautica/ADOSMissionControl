@@ -97,6 +97,19 @@ function describe(capability: UpdateCapability): string {
 }
 
 /**
+ * What the renderer is told about updates, pushed on `update:status` and
+ * readable at any time through `update:status` (invoke), so a page that
+ * mounts after the startup check still learns its result.
+ */
+export type UpdateStatus =
+  | { state: "idle" }
+  /** `installable` is false where only a manual download from `releasesUrl` works. */
+  | { state: "available"; version: string; installable: boolean; releasesUrl: string }
+  | { state: "downloading"; version: string }
+  | { state: "downloaded"; version: string }
+  | { state: "error"; message: string };
+
+/**
  * Wire up update checking. Returns the capability that was resolved so a
  * caller can report it too.
  *
@@ -129,16 +142,18 @@ export function setupAutoUpdater(
   // wired to a real sink.
   autoUpdater.logger = console;
 
+  let status: UpdateStatus = { state: "idle" };
+  const publish = (next: UpdateStatus): void => {
+    status = next;
+    if (!win.isDestroyed()) win.webContents.send("update:status", next);
+  };
+
   // Without a listener the library's own error dispatch hits Node's unhandled
   // 'error' behaviour and is then swallowed by the library's internal catch, so
   // this listener is what makes a failed download or install observable at all.
   autoUpdater.on("error", (err: Error) => {
     console.error("[updater] update failed:", err?.stack || err?.message || err);
-    if (!win.isDestroyed()) {
-      win.webContents.send("update-error", {
-        message: err?.message || String(err),
-      });
-    }
+    publish({ state: "error", message: err?.message || String(err) });
   });
 
   autoUpdater.on("update-available", (info) => {
@@ -149,16 +164,36 @@ export function setupAutoUpdater(
         `[updater] version ${info.version} is available but this build cannot install it: ${describe(capability)}`,
       );
     }
-    if (!win.isDestroyed()) {
-      win.webContents.send("update-available", { version: info.version });
-    }
+    publish({
+      state: "available",
+      version: info.version,
+      installable: capability.mode === "auto",
+      releasesUrl: RELEASES_URL,
+    });
   });
 
   autoUpdater.on("update-downloaded", (info) => {
     console.info(`[updater] version ${info.version} downloaded and ready`);
-    if (!win.isDestroyed()) {
-      win.webContents.send("update-downloaded", { version: info.version });
+    publish({ state: "downloaded", version: info.version });
+  });
+
+  ipcMain.handle("update:status", (): UpdateStatus => status);
+
+  // `autoDownload` is off, so this operator request is the only thing that
+  // ever fetches a release. A build that cannot install refuses up front
+  // rather than downloading something it can never apply.
+  ipcMain.handle("update:download", async () => {
+    if (capability.mode !== "auto") {
+      const message = `Cannot download an update: ${describe(capability)}`;
+      console.error(`[updater] ${message}`);
+      throw new Error(message);
     }
+    if (status.state !== "available") {
+      throw new Error("Cannot download an update: no newer version has been found");
+    }
+    publish({ state: "downloading", version: status.version });
+    // A failure is published by the `error` listener and rejects the invoke.
+    await autoUpdater.downloadUpdate();
   });
 
   // Refuse loudly rather than calling into an install that cannot run. The
@@ -170,6 +205,9 @@ export function setupAutoUpdater(
       const message = `Cannot install an update: ${describe(capability)}`;
       console.error(`[updater] ${message}`);
       throw new Error(message);
+    }
+    if (status.state !== "downloaded") {
+      throw new Error("Cannot install an update: nothing has been downloaded");
     }
     autoUpdater.quitAndInstall();
   });

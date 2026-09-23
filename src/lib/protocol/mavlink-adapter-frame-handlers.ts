@@ -8,7 +8,7 @@ import type { MAVLinkFrame } from './mavlink-parser'
 import type { CallbackStore } from './mavlink-adapter-callbacks'
 import type { ParamDownloadState, ParamCacheEntry } from './mavlink-adapter-params'
 import type { MissionUploadState, MissionDownloadState, RallyUploadState, RallyDownloadState, FenceUploadState, FenceDownloadState } from './mavlink-adapter-missions'
-import { decodeFenceMissionItems } from './mavlink-adapter-missions'
+import { decodeFenceMissionItems, firstMissingSeq } from './mavlink-adapter-missions'
 import type { LogListState, LogDataState } from './mavlink-adapter-logs'
 import {
   decodeCommandAck, decodeParamValue,
@@ -33,14 +33,14 @@ import {
   handleWind, handleTerrainReport, handleHomePosition,
   handleDistanceSensor, handleFenceStatus, handleNavControllerOutput,
   handleFencePoint, handleMissionCurrent, handleMissionItemReached,
-  handleWindCov, handleMissionItemLegacy,
+  handleWindCov, handleMissionItemLegacy, handleAdsbVehicle,
 } from './handlers/nav-safety-handlers'
 import {
   handleMagCalProgress, handleMagCalReport, handleIncomingCommandLong,
 } from './handlers/calibration-handlers'
 import {
-  handleExtendedSysState, handleSystemTime,
-  handleStatusText, handleEvent, handleSerialControl,
+  handleExtendedSysState, handleSystemTime, type StatusTextAssembler,
+  handleEvent, handleSerialControl,
   handleAutopilotVersion as handleAutopilotVersionMsg,
 } from './handlers/info-handlers'
 import {
@@ -90,6 +90,8 @@ export interface FrameHandlerState {
   lastVehicleHeartbeat: number
   linkIsLost: boolean
   HEARTBEAT_TIMEOUT_MS: number
+  /** Joins chunked STATUSTEXT sequences; per adapter so partial sequences never mix. */
+  statusText: StatusTextAssembler
   /**
    * URI from the last COMPONENT_METADATA (msg 397), PX4 only. Null until
    * received. Optional so lightweight test fixtures need not construct it
@@ -99,29 +101,58 @@ export interface FrameHandlerState {
 }
 
 /**
- * Stateful messages that drive this adapter's mission/param/command/heartbeat
- * state machines. A frame of one of these ids that originates from a different
- * vehicle (co-channel on a multiplexed transport) must not resolve this drone's
- * promises or mask its link loss, so it is dropped before reaching the handler.
- * Telemetry messages stay permissive (they are display-only).
+ * Messages accepted from any source system. RADIO_STATUS comes from the
+ * telemetry radio, which has its own sysid (a SiK radio sends as 51), so it
+ * describes this link rather than a vehicle.
+ *
+ * Everything else describes, or drives a state machine for, ONE vehicle. On a
+ * multiplexed transport (a ground-station agent relaying two drones, or a SiK
+ * mesh) frames from another sysid would otherwise interleave that aircraft's
+ * position, attitude and battery into this drone's slice, resolve this
+ * drone's promises, or mask its link loss, so they are dropped here.
  */
-const STATEFUL_MSG_IDS = new Set([0, 22, 40, 44, 47, 51, 73, 77, 110, 118, 120, 148, 397])
+const ANY_SOURCE_MSG_IDS = new Set([109])
 
 /**
- * True when a stateful frame should be processed for the target vehicle.
- * Accepts a broadcast (systemId 0) or a source whose sysid matches
- * targetSysId. targetSysId defaults to 1 until the connect-time heartbeat
- * lock fires on its own dedicated parser listener (not through this router),
- * so stateful subscribers are not yet attached during that pre-lock window.
+ * Mission-protocol frames carry target_system/target_component: the GCS the
+ * vehicle is talking to. On a shared link another GCS's transfer must not
+ * drive this adapter's upload or download.
+ */
+const MISSION_TARGETED_MSG_IDS = new Set([40, 44, 47, 51, 73])
+
+/**
+ * True when a frame should be processed for the target vehicle. Accepts a
+ * broadcast (systemId 0) or a source whose sysid matches targetSysId.
+ * targetSysId defaults to 1 until the connect-time heartbeat lock fires on
+ * its own dedicated parser listener (not through this router).
  */
 function isFromTargetVehicle(s: FrameHandlerState, frame: MAVLinkFrame): boolean {
   if (frame.systemId === 0) return true
   return frame.systemId === s.targetSysId
 }
 
+/**
+ * Whether a mission-protocol frame is addressed to this GCS. 0 means "any",
+ * the same rule the COMMAND_ACK path applies. Every one of these messages
+ * carries target_system at byte 0 or 2 and target_component right after.
+ */
+function isMissionFrameForUs(s: FrameHandlerState, frame: MAVLinkFrame): boolean {
+  let target: { targetSystem: number; targetComponent: number }
+  switch (frame.msgId) {
+    case 47: target = decodeMissionAck(frame.payload); break
+    case 44: target = decodeMissionCount(frame.payload); break
+    case 73: target = decodeMissionItemIntMsg(frame.payload); break
+    default: target = decodeMissionRequestInt(frame.payload) // 40 and 51 share the layout
+  }
+  if (target.targetSystem !== 0 && target.targetSystem !== s.sysId) return false
+  if (target.targetComponent !== 0 && target.targetComponent !== s.compId) return false
+  return true
+}
+
 export function routeFrame(s: FrameHandlerState, frame: MAVLinkFrame, p: DataView): void {
   const c = s.cbs
-  if (STATEFUL_MSG_IDS.has(frame.msgId) && !isFromTargetVehicle(s, frame)) return
+  if (!ANY_SOURCE_MSG_IDS.has(frame.msgId) && !isFromTargetVehicle(s, frame)) return
+  if (MISSION_TARGETED_MSG_IDS.has(frame.msgId) && !isMissionFrameForUs(s, frame)) return
   switch (frame.msgId) {
     case 0:   handleHeartbeat(s, frame); break
     case 22:  handleParamValueFrame(s, frame); break
@@ -138,10 +169,10 @@ export function routeFrame(s: FrameHandlerState, frame: MAVLinkFrame, p: DataVie
     case 397: handleComponentMetadataFrame(s, frame); break
     case 1:   handleSysStatus(p, c.sysStatusCallbacks); break
     case 24:  handleGpsRaw(p, c.gpsCallbacks); break
-    case 26:  handleScaledImu(p, c.scaledImuCallbacks); break
+    case 26:  handleScaledImu(p, c.scaledImuCallbacks, 0); break
     case 27:  handleRawImu(p, c.rawImuCallbacks); break
-    case 116: handleScaledImu(p, c.scaledImuCallbacks); break // SCALED_IMU2
-    case 129: handleScaledImu(p, c.scaledImuCallbacks); break // SCALED_IMU3
+    case 116: handleScaledImu(p, c.scaledImuCallbacks, 1); break // SCALED_IMU2
+    case 129: handleScaledImu(p, c.scaledImuCallbacks, 2); break // SCALED_IMU3
     case 29:  handleScaledPressure(p, c.scaledPressureCallbacks); break
     case 30:  handleAttitude(p, c.attitudeCallbacks); break
     case 32:  handleLocalPosition(p, c.localPositionCallbacks); break
@@ -150,7 +181,7 @@ export function routeFrame(s: FrameHandlerState, frame: MAVLinkFrame, p: DataVie
     case 65:  handleRcChannels(p, c.rcCallbacks); break
     case 70:  handleRcChannelsOverride(p, c.rcChannelsOverrideCallbacks); break
     case 74:  handleVfrHud(p, c.vfrCallbacks); break
-    case 109: handleRadioStatus(p, c.radioCallbacks); break
+    case 109: handleRadioStatus(p, c.radioCallbacks, frame.systemId); break
     case 125: handlePowerStatus(p, c.powerStatusCallbacks); break
     case 141: handleAltitude(p, c.altitudeCallbacks); break
     case 147: handleBattery(p, c.batteryCallbacks); break
@@ -175,7 +206,7 @@ export function routeFrame(s: FrameHandlerState, frame: MAVLinkFrame, p: DataVie
     case 2:   handleSystemTime(p, c.systemTimeCallbacks); break
     case 126: handleSerialControl(p, c.serialDataCallbacks); break
     case 245: handleExtendedSysState(p, c.extendedSysStateCallbacks); break
-    case 253: handleStatusText(p, c.statusTextCallbacks); break
+    case 253: s.statusText.push(frame, p, c.statusTextCallbacks); break
     case 410: handleEvent(p, c.eventCallbacks); break
     case 112: handleCameraTrigger(p, c.cameraTriggerCallbacks); break
     case 251: handleNamedValueFloat(p, c.debugCallbacks); break
@@ -187,6 +218,7 @@ export function routeFrame(s: FrameHandlerState, frame: MAVLinkFrame, p: DataVie
     case 280: handleGimbalManagerInfo(p, c.gimbalManagerInfoCallbacks); break
     case 281: handleGimbalManagerStatus(p, c.gimbalManagerStatusCallbacks); break
     case 330: handleObstacleDistance(p, c.obstacleDistanceCallbacks); break
+    case 246: handleAdsbVehicle(p, c.adsbVehicleCallbacks); break
     case 386: handleCanFrame(p, c.canFrameCallbacks); break
     case 387: handleCanFdFrame(p, c.canFdFrameCallbacks); break
     case 100: handleOpticalFlow(p, c.opticalFlowCallbacks); break
@@ -280,7 +312,7 @@ function handleMissionAckFrame(s: FrameHandlerState, frame: MAVLinkFrame): void 
     s.fenceUpload = null
     return
   }
-  if (s.missionUpload) {
+  if (ack.missionType === 0 && s.missionUpload) {
     clearTimeout(s.missionUpload.timer)
     s.missionUpload.resolve({
       success: ack.type === 0, resultCode: ack.type,
@@ -293,6 +325,7 @@ function handleMissionAckFrame(s: FrameHandlerState, frame: MAVLinkFrame): void 
 function handleMissionRequestFrame(s: FrameHandlerState, frame: MAVLinkFrame): void {
   const req = decodeMissionRequestInt(frame.payload)
   if (req.missionType === 2 && s.rallyUpload && req.seq < s.rallyUpload.items.length) {
+    s.rallyUpload.restartTimer()
     const pt = s.rallyUpload.items[req.seq]
     s.transport?.send(encodeMissionItemInt(
       s.targetSysId, s.targetCompId, req.seq, 6, 5100, 0, 0,
@@ -302,6 +335,7 @@ function handleMissionRequestFrame(s: FrameHandlerState, frame: MAVLinkFrame): v
     return
   }
   if (req.missionType === 1 && s.fenceUpload && req.seq < s.fenceUpload.items.length) {
+    s.fenceUpload.restartTimer()
     const fi = s.fenceUpload.items[req.seq]
     s.transport?.send(encodeMissionItemInt(
       s.targetSysId, s.targetCompId, fi.seq, fi.frame, fi.command, 0, 1,
@@ -310,7 +344,7 @@ function handleMissionRequestFrame(s: FrameHandlerState, frame: MAVLinkFrame): v
     ))
     return
   }
-  if (s.missionUpload && req.seq < s.missionUpload.items.length) {
+  if (req.missionType === 0 && s.missionUpload && req.seq < s.missionUpload.items.length) {
     // The FC asking for the next item is progress: re-arm the inactivity
     // budget so a long mission over a slow radio is not abandoned mid-walk.
     s.missionUpload.restartTimer()
@@ -328,42 +362,32 @@ function handleMissionCountResponse(s: FrameHandlerState, frame: MAVLinkFrame): 
   const data = decodeMissionCount(frame.payload)
   if (data.missionType === 2 && s.rallyDownload) {
     s.rallyDownload.total = data.count
+    s.rallyDownload.restartTimer()
     if (data.count === 0) { clearTimeout(s.rallyDownload.timer); s.rallyDownload.resolve([]); s.rallyDownload = null; return }
     s.transport?.send(encodeMissionRequestInt(s.targetSysId, s.targetCompId, 0, s.sysId, s.compId, 2))
     return
   }
   if (data.missionType === 1 && s.fenceDownload) {
     s.fenceDownload.total = data.count
+    s.fenceDownload.restartTimer()
     if (data.count === 0) { clearTimeout(s.fenceDownload.timer); s.fenceDownload.resolve([]); s.fenceDownload = null; return }
     s.transport?.send(encodeMissionRequestInt(s.targetSysId, s.targetCompId, 0, s.sysId, s.compId, 1))
     return
   }
-  if (!s.missionDownload) return
+  if (data.missionType !== 0 || !s.missionDownload) return
   s.missionDownload.total = data.count
+  s.missionDownload.restartTimer()
   if (data.count === 0) { clearTimeout(s.missionDownload.timer); s.missionDownload.resolve([]); s.missionDownload = null; return }
   s.transport?.send(encodeMissionRequestInt(s.targetSysId, s.targetCompId, 0, s.sysId, s.compId))
-}
-
-/**
- * The lowest sequence number in `[0, total)` that has not arrived, or `null`
- * when the walk is complete.
- *
- * The walk used to blindly request `receivedSeq + 1`, so a dropped
- * MISSION_REQUEST_INT left a permanent hole: the FC never re-sent the missing
- * item and the transfer stalled until the deadline handed back a short list.
- * Re-requesting the lowest gap makes the walk self-healing.
- */
-function firstMissingSeq(items: ReadonlyMap<number, unknown>, total: number): number | null {
-  for (let seq = 0; seq < total; seq++) {
-    if (!items.has(seq)) return seq
-  }
-  return null
 }
 
 function handleMissionItemIntResponse(s: FrameHandlerState, frame: MAVLinkFrame): void {
   const data = decodeMissionItemIntMsg(frame.payload)
 
+  // An item outside the announced count is not part of this transfer (a
+  // stale frame, or another GCS's exchange); storing it would pad the result.
   if (data.missionType === 2 && s.rallyDownload) {
+    if (data.seq >= s.rallyDownload.total) return
     s.rallyDownload.items.set(data.seq, { lat: data.x / 1e7, lon: data.y / 1e7, alt: data.z })
     s.rallyDownload.restartTimer()
     const next = firstMissingSeq(s.rallyDownload.items, s.rallyDownload.total)
@@ -378,6 +402,7 @@ function handleMissionItemIntResponse(s: FrameHandlerState, frame: MAVLinkFrame)
     return
   }
   if (data.missionType === 1 && s.fenceDownload) {
+    if (data.seq >= s.fenceDownload.total) return
     s.fenceDownload.items.set(data.seq, {
       seq: data.seq, frame: data.frame, command: data.command,
       param1: data.param1, param2: data.param2, x: data.x, y: data.y, z: data.z,
@@ -394,7 +419,7 @@ function handleMissionItemIntResponse(s: FrameHandlerState, frame: MAVLinkFrame)
     }
     return
   }
-  if (!s.missionDownload) return
+  if (data.missionType !== 0 || !s.missionDownload || data.seq >= s.missionDownload.total) return
   const item: MissionItem = {
     seq: data.seq, frame: data.frame, command: data.command,
     current: data.current, autocontinue: data.autocontinue,
@@ -495,4 +520,8 @@ export const MSG_NAMES: Record<number, string> = {
   286: 'AUTOPILOT_STATE_FOR_GIMBAL_DEVICE', 301: 'AIS_VESSEL', 330: 'OBSTACLE_DISTANCE', 335: 'ISBD_LINK_STATUS',
   100: 'OPTICAL_FLOW', 102: 'VISION_POSITION_ESTIMATE', 106: 'OPTICAL_FLOW_RAD', 331: 'ODOMETRY', 11011: 'VISION_POSITION_DELTA',
   386: 'CAN_FRAME', 387: 'CANFD_FRAME', 388: 'CAN_FILTER_MODIFY', 397: 'COMPONENT_METADATA', 410: 'EVENT',
+  4: 'PING', 11: 'SET_MODE', 20: 'PARAM_REQUEST_READ', 21: 'PARAM_REQUEST_LIST', 23: 'PARAM_SET', 31: 'ATTITUDE_QUATERNION',
+  69: 'MANUAL_CONTROL', 87: 'POSITION_TARGET_GLOBAL_INT', 116: 'SCALED_IMU2', 129: 'SCALED_IMU3', 133: 'TERRAIN_REQUEST',
+  134: 'TERRAIN_DATA', 135: 'TERRAIN_CHECK', 137: 'SCALED_PRESSURE2', 150: 'SENSOR_OFFSETS', 152: 'MEMINFO', 163: 'AHRS',
+  164: 'SIMSTATE', 165: 'HWSTATUS', 173: 'RANGEFINDER', 174: 'AIRSPEED_AUTOCAL', 178: 'AHRS2',
 }

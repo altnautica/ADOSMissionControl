@@ -14,9 +14,7 @@
  * never render without a body behind it. The body's `<PluginSlot>`
  * mounts the matching `node.detail.tab` contribution by deviceId.
  *
- * Sort order matches the slot 13 contract in
- * `product/specs/ados-plugin-system/08-ui-extension-points.md` Section
- * 3.13: by manifest `order` (default 60), ties broken by `pluginId`
+ * Sort order: by manifest `order` (default 60), ties broken by `pluginId`
  * lexicographically.
  *
  * In demo mode the hook returns a mock contribution set from
@@ -164,7 +162,7 @@ export function useDronePluginContributions(
     enabled: isAuthenticated && Boolean(agentId),
   });
 
-  // Local-first source (Rule 39): when signed out, the agent's own
+  // Local-first source: when signed out, the agent's own
   // /plugins detail is the source of truth, exactly as Convex is in cloud
   // mode. Returns null in cloud/demo mode, so the cloud branch wins there.
   const localDetail = useLocalAgentPlugins(agentId ?? null);
@@ -206,9 +204,8 @@ export function useDronePluginContributions(
     if (isAuthenticated ? !installs : !localDetail) return [];
 
     // Project each row's `gcsContributes` entries that target the per-drone
-    // tab slot. One row can contribute at most one tab, but iterating the
-    // array keeps the projection slot-driven (same source the tab bodies
-    // read) rather than re-deriving denormalised tab fields.
+    // tab slot. One install can contribute several tabs; each is its own
+    // entry, told apart by `panelId`.
     const list: DronePluginContribution[] = [];
     for (const row of rows) {
       for (const entry of row.gcsContributes) {

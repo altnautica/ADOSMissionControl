@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 // --- Mocks ----------------------------------------------------------
 
@@ -62,7 +62,6 @@ const OrigWebSocket = globalThis.WebSocket;
 const OrigFetch = globalThis.fetch;
 
 import { PluginInstallProgress } from "@/components/plugins/PluginInstallProgress";
-import { useInstallProgressStore } from "@/components/plugins/install-progress-store";
 
 /** Stub the ticket-mint REST call so the WebSocket subscription has a
  * synchronous-feeling fast path. Returns a Promise that resolves on
@@ -99,7 +98,6 @@ beforeEach(() => {
   FakeWebSocket.instances = [];
   (globalThis as unknown as { WebSocket: typeof FakeWebSocket }).WebSocket =
     FakeWebSocket;
-  useInstallProgressStore.getState().clear();
 });
 
 afterEach(() => {
@@ -117,7 +115,7 @@ describe("PluginInstallProgress", () => {
       <PluginInstallProgress
         jobId="job-1"
         transport="lan"
-        agentLanUrl="http://skynode.local:8080"
+        agentLanUrl="http://testnode.local:8080"
         pairingKey="secret-key"
         pluginName="Thermal Cam"
         pluginVersion="1.0.0"
@@ -127,7 +125,7 @@ describe("PluginInstallProgress", () => {
     await waitFor(() => expect(FakeWebSocket.instances).toHaveLength(1));
     const ws = FakeWebSocket.instances[0]!;
     // URL never carries the pairing key.
-    expect(ws.url).toBe("ws://skynode.local:8080/api/plugins/jobs/job-1");
+    expect(ws.url).toBe("ws://testnode.local:8080/api/plugins/jobs/job-1");
     expect(ws.url.includes("api_key")).toBe(false);
     expect(ws.url.includes("secret-key")).toBe(false);
     // The ticket rides the subprotocol array.
@@ -136,7 +134,7 @@ describe("PluginInstallProgress", () => {
     // X-ADOS-Key.
     expect(fetchMock).toHaveBeenCalled();
     const [mintUrl, init] = fetchMock.mock.calls[0]!;
-    expect(String(mintUrl)).toBe("http://skynode.local:8080/api/_ws/ticket");
+    expect(String(mintUrl)).toBe("http://testnode.local:8080/api/_ws/ticket");
     expect(JSON.parse(String((init as RequestInit).body))).toEqual({
       scope: "plugins.install_job",
     });
@@ -154,55 +152,75 @@ describe("PluginInstallProgress", () => {
     expect(screen.getByText(/Installing/)).toBeInTheDocument();
   });
 
-  it("fires onComplete with installId when the LAN socket reports completed", async () => {
+  it("shows Done when the agent reports completed", async () => {
     stubTicketMint("t-2");
-    const onComplete = vi.fn();
     render(
       <PluginInstallProgress
         jobId="job-2"
         transport="lan"
-        agentLanUrl="http://skynode.local:8080"
+        agentLanUrl="http://testnode.local:8080"
         pairingKey="k"
-        onComplete={onComplete}
       />,
     );
     await waitFor(() => expect(FakeWebSocket.instances).toHaveLength(1));
     const ws = FakeWebSocket.instances[0]!;
 
     act(() => {
-      ws.emit("completed", { installId: "inst-xyz" });
+      ws.emit("completed", { pluginId: "com.example.thermal" });
     });
 
-    expect(onComplete).toHaveBeenCalledWith({ installId: "inst-xyz" });
     expect(screen.getByText("Done")).toBeInTheDocument();
   });
 
-  it("fires onFailed and shows the error code on a failed stage", async () => {
+  it("shows the agent's refusal detail on a failed frame", async () => {
     stubTicketMint("t-3");
-    const onFailed = vi.fn();
     render(
       <PluginInstallProgress
         jobId="job-3"
         transport="lan"
-        agentLanUrl="http://skynode.local:8080"
+        agentLanUrl="http://testnode.local:8080"
         pairingKey="k"
-        onFailed={onFailed}
       />,
     );
     await waitFor(() => expect(FakeWebSocket.instances).toHaveLength(1));
     const ws = FakeWebSocket.instances[0]!;
 
     act(() => {
-      ws.emit("failed", {
-        error: { code: "sig_mismatch", message: "bad signature" },
-      });
+      ws.emit("failed", { detail: "archive sha256 did not match pin" });
     });
 
-    expect(onFailed).toHaveBeenCalledWith({
-      code: "sig_mismatch",
-      message: "bad signature",
-    });
-    expect(screen.getByText(/sig_mismatch/)).toBeInTheDocument();
+    expect(screen.getByText(/Failed: install_failed/)).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Details"));
+    expect(screen.getByText("archive sha256 did not match pin")).toBeInTheDocument();
+  });
+
+  it("treats an idle-cancelled stream as failed and does not reconnect", async () => {
+    stubTicketMint("t-4");
+    render(
+      <PluginInstallProgress
+        jobId="job-4"
+        transport="lan"
+        agentLanUrl="http://testnode.local:8080"
+        pairingKey="k"
+      />,
+    );
+    await waitFor(() => expect(FakeWebSocket.instances).toHaveLength(1));
+    const ws = FakeWebSocket.instances[0]!;
+
+    vi.useFakeTimers();
+    try {
+      act(() => {
+        ws.emit("cancelled", { jobId: "job-4", reason: "idle_timeout" });
+        ws.emitClose();
+      });
+      expect(screen.getByText(/Failed: idle_timeout/)).toBeInTheDocument();
+      act(() => {
+        vi.advanceTimersByTime(10_000);
+      });
+      expect(FakeWebSocket.instances).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("fails with auth_missing when the pairing key is absent", () => {
@@ -210,7 +228,7 @@ describe("PluginInstallProgress", () => {
       <PluginInstallProgress
         jobId="job-noauth"
         transport="lan"
-        agentLanUrl="http://skynode.local:8080"
+        agentLanUrl="http://testnode.local:8080"
       />,
     );
     // No fetch attempt, no WebSocket constructed.
@@ -241,15 +259,13 @@ describe("PluginInstallProgress", () => {
   it("skips the cloud query in demo mode and walks the simulated sequence", () => {
     vi.useFakeTimers();
     isDemoModeMock.mockReturnValue(true);
-    const onComplete = vi.fn();
     try {
       render(
         <PluginInstallProgress
           jobId="demo-1"
           transport="lan"
-          agentLanUrl="http://skynode.local:8080"
+          agentLanUrl="http://testnode.local:8080"
           pairingKey="k"
-          onComplete={onComplete}
         />,
       );
       // No WebSocket in demo mode.
@@ -257,8 +273,7 @@ describe("PluginInstallProgress", () => {
       act(() => {
         vi.advanceTimersByTime(600 * 4);
       });
-      expect(onComplete).toHaveBeenCalled();
-      expect(onComplete.mock.calls[0]?.[0].installId).toMatch(/^demo-/);
+      expect(screen.getByText("Done")).toBeInTheDocument();
     } finally {
       vi.useRealTimers();
     }
@@ -270,7 +285,7 @@ describe("PluginInstallProgress", () => {
       <PluginInstallProgress
         jobId="job-6"
         transport="lan"
-        agentLanUrl="http://skynode.local:8080"
+        agentLanUrl="http://testnode.local:8080"
         pairingKey="k"
       />,
     );
@@ -294,27 +309,5 @@ describe("PluginInstallProgress", () => {
     expect(ws.closed).toBe(true);
     expect(screen.getByText("Cloud")).toBeInTheDocument();
     expect(useQueryMock).toHaveBeenCalled();
-  });
-
-  it("writes every transition into the shared install-progress store", async () => {
-    stubTicketMint("t-7");
-    render(
-      <PluginInstallProgress
-        jobId="job-7"
-        transport="lan"
-        agentLanUrl="http://skynode.local:8080"
-        pairingKey="k"
-        pluginName="X"
-      />,
-    );
-    await waitFor(() => expect(FakeWebSocket.instances).toHaveLength(1));
-    const ws = FakeWebSocket.instances[0]!;
-    act(() => {
-      ws.emit("enabling");
-    });
-    const snap = useInstallProgressStore.getState().jobs["job-7"];
-    expect(snap?.stage).toBe("enabling");
-    expect(snap?.transport).toBe("lan");
-    expect(snap?.pluginName).toBe("X");
   });
 });

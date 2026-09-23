@@ -15,19 +15,33 @@ import { Mountain, Battery, TrendingUp, Activity, Radio } from "lucide-react";
 import { TimeSeriesChart } from "@/components/shared/TimeSeriesChart";
 import { MultiSeriesChart } from "@/components/shared/MultiSeriesChart";
 import type { PositionData, BatteryData, VibrationData, RcData } from "@/lib/types";
+import type { RingBuffer } from "@/lib/ring-buffer";
+
+type TelemetryState = ReturnType<typeof useTelemetryStore.getState>;
+
+/**
+ * A value that changes only when the selected ring gains a sample. Charts
+ * key their series on it, so a sample on one channel rebuilds that chart
+ * alone instead of every chart on every telemetry push.
+ */
+function useRingStamp(select: (s: TelemetryState) => RingBuffer<{ timestamp: number }>): string {
+  return useTelemetryStore((s) => {
+    const ring = select(s);
+    return `${ring.length}:${ring.latest()?.timestamp ?? 0}`;
+  });
+}
 
 // ── Altitude chart ──────────────────────────────────────────────
 
 function AltitudeChart() {
   const positionRing = useTelemetryStore((s) => s.position);
-  const version = useTelemetryStore((s) => s._version);
+  const stamp = useRingStamp((s) => s.position);
 
   const data = useMemo(() => {
-    // version forces re-compute
-    void version;
+    void stamp; // the ring mutates in place; the stamp is the trigger
     const arr = positionRing.toArray() as PositionData[];
     return arr.map((p) => ({ t: p.timestamp, v: p.relativeAlt }));
-  }, [positionRing, version]);
+  }, [positionRing, stamp]);
 
   return (
     <div className="border border-border-default bg-bg-secondary p-3">
@@ -46,16 +60,16 @@ function AltitudeChart() {
 
 function BatteryChart() {
   const batteryRing = useTelemetryStore((s) => s.battery);
-  const version = useTelemetryStore((s) => s._version);
+  const stamp = useRingStamp((s) => s.battery);
 
   const { voltageData, currentData } = useMemo(() => {
-    void version;
+    void stamp; // the ring mutates in place; the stamp is the trigger
     const arr = batteryRing.toArray() as BatteryData[];
     return {
       voltageData: arr.map((b) => ({ t: b.timestamp, v: b.voltage })),
       currentData: arr.flatMap((b) => (b.current !== undefined ? [{ t: b.timestamp, v: b.current }] : [])),
     };
-  }, [batteryRing, version]);
+  }, [batteryRing, stamp]);
 
   return (
     <div className="border border-border-default bg-bg-secondary p-3">
@@ -83,13 +97,13 @@ function BatteryChart() {
 
 function ClimbRateChart() {
   const positionRing = useTelemetryStore((s) => s.position);
-  const version = useTelemetryStore((s) => s._version);
+  const stamp = useRingStamp((s) => s.position);
 
   const data = useMemo(() => {
-    void version;
+    void stamp; // the ring mutates in place; the stamp is the trigger
     const arr = positionRing.toArray() as PositionData[];
     return arr.map((p) => ({ t: p.timestamp, v: p.climbRate }));
-  }, [positionRing, version]);
+  }, [positionRing, stamp]);
 
   return (
     <div className="border border-border-default bg-bg-secondary p-3">
@@ -108,17 +122,17 @@ function ClimbRateChart() {
 
 function VibrationChart() {
   const vibrationRing = useTelemetryStore((s) => s.vibration);
-  const version = useTelemetryStore((s) => s._version);
+  const stamp = useRingStamp((s) => s.vibration);
 
   const { xData, yData, zData } = useMemo(() => {
-    void version;
+    void stamp; // the ring mutates in place; the stamp is the trigger
     const arr = vibrationRing.toArray() as VibrationData[];
     return {
       xData: arr.map((v) => ({ t: v.timestamp, v: v.vibrationX })),
       yData: arr.map((v) => ({ t: v.timestamp, v: v.vibrationY })),
       zData: arr.map((v) => ({ t: v.timestamp, v: v.vibrationZ })),
     };
-  }, [vibrationRing, version]);
+  }, [vibrationRing, stamp]);
 
   return (
     <div className="border border-border-default bg-bg-secondary p-3">
@@ -149,18 +163,21 @@ function VibrationChart() {
 
 function RcInputChart() {
   const rcRing = useTelemetryStore((s) => s.rc);
-  const version = useTelemetryStore((s) => s._version);
+  const stamp = useRingStamp((s) => s.rc);
 
   const { ch1, ch2, ch3, ch4 } = useMemo(() => {
-    void version;
+    void stamp; // the ring mutates in place; the stamp is the trigger
     const arr = rcRing.toArray() as RcData[];
+    // A channel the receiver did not report is a gap, not a centred stick.
     return {
-      ch1: arr.map((r) => ({ t: r.timestamp, v: r.channels[0] ?? 1500 })),
-      ch2: arr.map((r) => ({ t: r.timestamp, v: r.channels[1] ?? 1500 })),
-      ch3: arr.map((r) => ({ t: r.timestamp, v: r.channels[2] ?? 1500 })),
-      ch4: arr.map((r) => ({ t: r.timestamp, v: r.channels[3] ?? 1500 })),
+      ch1: arr.map((r) => ({ t: r.timestamp, v: r.channels[0] ?? null })),
+      ch2: arr.map((r) => ({ t: r.timestamp, v: r.channels[1] ?? null })),
+      ch3: arr.map((r) => ({ t: r.timestamp, v: r.channels[2] ?? null })),
+      ch4: arr.map((r) => ({ t: r.timestamp, v: r.channels[3] ?? null })),
     };
-  }, [rcRing, version]);
+  }, [rcRing, stamp]);
+  const latest = rcRing.latest();
+  const noInput = latest !== undefined && latest.channels.length === 0;
 
   return (
     <div className="border border-border-default bg-bg-secondary p-3">
@@ -170,6 +187,11 @@ function RcInputChart() {
           RC Inputs
         </span>
       </div>
+      {noInput ? (
+        <div className="flex items-center justify-center bg-bg-tertiary/30 rounded" style={{ height: 120 }}>
+          <span className="text-[10px] text-text-tertiary">No RC input</span>
+        </div>
+      ) : (
       <MultiSeriesChart
         series={[
           { data: ch1, color: "#ef4444", label: "Roll" },
@@ -182,6 +204,7 @@ function RcInputChart() {
         fixedYMax={2000}
         centerLine={1500}
       />
+      )}
     </div>
   );
 }

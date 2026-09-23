@@ -64,6 +64,9 @@ vi.mock("@/components/ui/toast", () => ({
 vi.mock("next/link", () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
 
 import { DronePluginCard, type DronePluginCardData } from "../DronePluginCard";
 
@@ -77,7 +80,7 @@ function makeInstall(
     version: "1.0.0",
     name: "Example Alpha",
     source: "local_file",
-    signerId: "altnautica-2026-A",
+    signerId: "example-2026-A",
     status: "running",
     halves: ["agent", "gcs"],
     ...overrides,
@@ -121,7 +124,7 @@ describe("DronePluginCard", () => {
     // First-party badge — the archive signature is verified at install time and
     // badged by the install pop-up instead.
     const { queryByTitle } = renderCard(
-      makeInstall({ signerId: "altnautica-2026-A" }),
+      makeInstall({ signerId: "example-2026-A" }),
     );
     expect(queryByTitle(/first-party/i)).toBeNull();
     expect(queryByTitle(/Ed25519 signature/i)).toBeNull();

@@ -16,10 +16,11 @@ import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useArmedLock } from "@/hooks/use-armed-lock";
-import { useTelemetryStore } from "@/stores/telemetry-store";
+import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
+import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
 import { RcChannelBar } from "../receiver/RcChannelBar";
 import type { BfRxConfig } from "@/lib/protocol/types";
-import { BF_SERIALRX_PROVIDERS, RX_MAP_CHANNELS } from "./bf-rx-constants";
+import { BF_SERIALRX_PROVIDERS, RX_MAP_CHANNELS, isRxMapPermutation } from "./bf-rx-constants";
 
 const PROVIDER_OPTIONS = BF_SERIALRX_PROVIDERS.map((label, i) => ({ value: String(i), label }));
 const ONOFF_OPTIONS = [{ value: "0", label: "OFF" }, { value: "1", label: "ON" }];
@@ -55,8 +56,7 @@ export function BfReceiverPanel() {
   const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
   const connected = !!getSelectedProtocol();
   const { isArmed, lockMessage } = useArmedLock();
-  const rcBuffer = useTelemetryStore((s) => s.rc);
-  const channels = rcBuffer.latest()?.channels ?? [];
+  const channels = useFreshTelemetry("rc")?.channels ?? [];
 
   const [cfg, setCfg] = useState<BfRxConfig | null>(null);
   const [rxMap, setRxMap] = useState<number[]>([]);
@@ -93,7 +93,7 @@ export function BfReceiverPanel() {
 
   const write = useCallback(async () => {
     const p = getSelectedProtocol();
-    if (!p?.setRxConfig || !p.setRxMap || !cfg) return;
+    if (!p?.setRxConfig || !p.setRxMap || !cfg || !isRxMapPermutation(rxMap)) return;
     setLoading(true);
     setError(null);
     try {
@@ -113,7 +113,9 @@ export function BfReceiverPanel() {
 
   const updateCfg = (patch: Partial<BfRxConfig>) => setCfg((prev) => (prev ? { ...prev, ...patch } : prev));
   const dirty = hasLoaded && cfg !== null && snapshot(cfg, rxMap) !== baseline;
+  useUnsavedGuard(dirty);
   const disabled = loading || isArmed;
+  const rxMapValid = isRxMapPermutation(rxMap);
   const narrowPulseWindow = cfg !== null && (cfg.rxMinUsec > DEFAULT_RX_MIN_USEC || cfg.rxMaxUsec < DEFAULT_RX_MAX_USEC);
 
   return (
@@ -132,7 +134,7 @@ export function BfReceiverPanel() {
         {hasLoaded && (
           <Button
             variant="primary" size="sm" icon={<Upload size={12} />} loading={loading}
-            disabled={!connected || !dirty || disabled}
+            disabled={!connected || !dirty || disabled || !rxMapValid}
             title={isArmed ? lockMessage : undefined}
             onClick={write}
           >
@@ -145,7 +147,7 @@ export function BfReceiverPanel() {
       <div className="space-y-1">
         <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Live channels</h3>
         {channels.length === 0 ? (
-          <p className="text-[11px] text-text-tertiary">No RC data — arm the transmitter and connect.</p>
+          <p className="text-[11px] text-text-tertiary">No live RC data. Check the transmitter and the link.</p>
         ) : (
           channels.slice(0, 18).map((v, i) => (
             <RcChannelBar key={i} index={i} value={v} min={1000} max={2000} trim={cfg?.midrc ?? 1500} dz={0} />
@@ -209,13 +211,21 @@ export function BfReceiverPanel() {
                   <label key={i} className="flex flex-col gap-1">
                     <span className="text-[10px] text-text-tertiary font-mono">{RX_MAP_CHANNELS[i] ?? `Ch ${i}`}</span>
                     <input
-                      type="number" min={0} max={rxMap.length - 1} value={ch} disabled={disabled}
-                      onChange={(e) => setRxMap((prev) => prev.map((x, idx) => (idx === i ? (parseInt(e.target.value) || 0) : x)))}
+                      type="number" min={0} max={rxMap.length - 1} value={ch < 0 ? "" : ch} disabled={disabled}
+                      onChange={(e) => {
+                        const v = parseInt(e.target.value, 10);
+                        setRxMap((prev) => prev.map((x, idx) => (idx === i ? (Number.isNaN(v) ? -1 : v) : x)));
+                      }}
                       className="bg-bg-tertiary border border-border-default px-2 py-1 text-xs font-mono text-text-primary focus:outline-none focus:border-accent-primary disabled:opacity-50"
                     />
                   </label>
                 ))}
               </div>
+              {!rxMapValid && (
+                <p className="text-[11px] text-status-warning max-w-2xl">
+                  Each input channel 0–{rxMap.length - 1} must be assigned exactly once before the map can be written.
+                </p>
+              )}
             </div>
           )}
         </>

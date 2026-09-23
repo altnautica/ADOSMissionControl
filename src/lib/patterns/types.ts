@@ -10,7 +10,7 @@
 export interface SurveyConfig {
   /** Polygon vertices as [lat, lon] pairs. */
   polygon: [number, number][];
-  /** Grid rotation angle in degrees (0 = north-south lines, 90 = east-west). */
+  /** Grid rotation angle in degrees (0 = east-west lines, 90 = north-south). */
   gridAngle: number;
   /** Distance between parallel transects in meters. */
   lineSpacing: number;
@@ -53,6 +53,11 @@ export interface OrbitConfig {
   altitude: number;
   /** Cruise speed in m/s. */
   speed: number;
+  /**
+   * Height of the point of interest the camera aims at, in the mission's
+   * altitude frame (0 = the frame's ground datum). Defaults to 0.
+   */
+  targetHeight?: number;
 }
 
 // ── Corridor (path scan) ─────────────────────────────────────
@@ -118,22 +123,6 @@ export interface VtolLandingConfig {
   /** Cruise approach speed in m/s. */
   speed: number;
 }
-
-// ── Discriminated union config ───────────────────────────────
-
-import type { ExpandingSquareConfig, SectorSearchConfig, ParallelTrackConfig } from "./sar-generators";
-import type { StructureScanConfig } from "./structure-scan-generator";
-
-export type PatternConfig =
-  | { type: "survey"; config: SurveyConfig }
-  | { type: "orbit"; config: OrbitConfig }
-  | { type: "corridor"; config: CorridorConfig }
-  | { type: "expandingSquare"; config: ExpandingSquareConfig }
-  | { type: "sectorSearch"; config: SectorSearchConfig }
-  | { type: "parallelTrack"; config: ParallelTrackConfig }
-  | { type: "structureScan"; config: StructureScanConfig }
-  | { type: "fixedWingLanding"; config: FixedWingLandingConfig }
-  | { type: "vtolLanding"; config: VtolLandingConfig };
 
 // ── Result types ─────────────────────────────────────────────
 

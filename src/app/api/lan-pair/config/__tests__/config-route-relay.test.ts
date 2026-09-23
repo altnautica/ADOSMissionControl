@@ -24,7 +24,7 @@ import {
 import type { RelayReach } from "@/lib/nodes/relay-reach";
 
 const GS_HOST = "http://192.168.1.50:8080";
-const PEER = "77735cd38937";
+const PEER = "0a1b2c3d4e5f";
 
 /** Captured upstream calls, so a test can assert a URL was never built. */
 let calls: { url: string; init: RequestInit }[] = [];
@@ -175,14 +175,14 @@ describe("relay peer segment validation", () => {
 
   it("accepts the device-id shapes the fleet actually mints", async () => {
     upstreamAnswers(200, "{}");
-    for (const id of ["77735cd38937", "drone-a", "gs_1", "node.7", "A1"]) {
+    for (const id of ["0a1b2c3d4e5f", "drone-a", "gs_1", "node.7", "A1"]) {
       await POST(
         envelope({ host: GS_HOST, method: "GET", peerDeviceId: id }),
       );
     }
     expect(calls).toHaveLength(5);
     expect(calls.map((c) => c.url)).toEqual(
-      ["77735cd38937", "drone-a", "gs_1", "node.7", "A1"].map(
+      ["0a1b2c3d4e5f", "drone-a", "gs_1", "node.7", "A1"].map(
         (id) =>
           `${GS_HOST}/api/v1/ground-station/relay-proxy/${id}/api/config`,
       ),

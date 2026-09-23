@@ -1,7 +1,10 @@
 /**
  * @module RallyPointEntities
  * @description Renders rally (safe return) points in the 3D simulation view.
- * Shows orange triangle markers with labels (R1, R2, R3...) and altitude pillars.
+ * Shows orange markers with labels (R1, R2, R3...) and altitude pillars. A
+ * rally altitude is measured from home, so the marker sits at home terrain
+ * height plus the altitude; until that datum is known the marker is clamped to
+ * the ground and no pillar is drawn.
  * @license GPL-3.0-only
  */
 
@@ -24,12 +27,16 @@ import { useRallyStore } from "@/stores/rally-store";
 
 interface RallyPointEntitiesProps {
   viewer: CesiumViewer | null;
+  /** Terrain height at home (metres above the ellipsoid); undefined until resolved. */
+  homeHeight: number | undefined;
+  /** Bumps when the terrain provider changes, so ground samples are retaken. */
+  terrainVersion: number;
 }
 
 const RALLY_COLOR = "#F97316"; // orange
 const RALLY_ENTITY_PREFIX = "sim-rally-";
 
-export function RallyPointEntities({ viewer }: RallyPointEntitiesProps) {
+export function RallyPointEntities({ viewer, homeHeight, terrainVersion }: RallyPointEntitiesProps) {
   const points = useRallyStore((s) => s.points);
 
   useEffect(() => {
@@ -40,17 +47,20 @@ export function RallyPointEntities({ viewer }: RallyPointEntitiesProps) {
 
     for (let i = 0; i < points.length; i++) {
       const rp = points[i];
+      const topHeight = homeHeight !== undefined ? homeHeight + rp.alt : undefined;
+      const heightReference =
+        topHeight !== undefined ? HeightReference.NONE : HeightReference.CLAMP_TO_GROUND;
 
       // Rally point marker
       const marker = viewer.entities.add({
         id: `${RALLY_ENTITY_PREFIX}${rp.id}`,
-        position: Cartesian3.fromDegrees(rp.lon, rp.lat, rp.alt),
+        position: Cartesian3.fromDegrees(rp.lon, rp.lat, topHeight ?? 0),
         point: {
           pixelSize: 10,
           color,
           outlineColor: Color.WHITE,
           outlineWidth: 1,
-          heightReference: HeightReference.RELATIVE_TO_GROUND,
+          heightReference,
           disableDepthTestDistance: Number.POSITIVE_INFINITY,
         },
         label: {
@@ -63,7 +73,7 @@ export function RallyPointEntities({ viewer }: RallyPointEntitiesProps) {
           verticalOrigin: VerticalOrigin.BOTTOM,
           horizontalOrigin: HorizontalOrigin.CENTER,
           pixelOffset: new Cartesian2(0, -16),
-          heightReference: HeightReference.RELATIVE_TO_GROUND,
+          heightReference,
           disableDepthTestDistance: Number.POSITIVE_INFINITY,
           showBackground: true,
           backgroundColor: color.withAlpha(0.8),
@@ -72,11 +82,12 @@ export function RallyPointEntities({ viewer }: RallyPointEntitiesProps) {
       });
       entities.push(marker);
 
-      // Altitude pillar from ground to rally point (terrain-aware)
-      const carto = Cartographic.fromDegrees(rp.lon, rp.lat);
-      const terrainHeight = viewer.scene.globe.getHeight(carto) ?? 0;
-      const groundPos = Cartesian3.fromDegrees(rp.lon, rp.lat, terrainHeight);
-      const topPos = Cartesian3.fromDegrees(rp.lon, rp.lat, terrainHeight + rp.alt);
+      // Altitude pillar from the ground below the rally point to its altitude.
+      if (topHeight === undefined) continue;
+      const groundHeight = viewer.scene.globe.getHeight(Cartographic.fromDegrees(rp.lon, rp.lat));
+      if (groundHeight === undefined) continue;
+      const groundPos = Cartesian3.fromDegrees(rp.lon, rp.lat, groundHeight);
+      const topPos = Cartesian3.fromDegrees(rp.lon, rp.lat, topHeight);
 
       const pillar = viewer.entities.add({
         polyline: {
@@ -101,7 +112,7 @@ export function RallyPointEntities({ viewer }: RallyPointEntitiesProps) {
       }
       if (!viewer.isDestroyed()) viewer.scene.requestRender();
     };
-  }, [viewer, points]);
+  }, [viewer, points, homeHeight, terrainVersion]);
 
   return null;
 }

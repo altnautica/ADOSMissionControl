@@ -89,6 +89,14 @@ export async function probeByCode(
   //    the browser console clean.
   if (claimAnon) {
     const lookup = await claimAnon({ code: cleaned });
+    if (lookup.error === "rate_limited") {
+      const seconds = Math.ceil(lookup.retryAfterMs / 1000);
+      throw new PairClientError(
+        "codeRateLimitedError",
+        `Too many pair-code attempts from this browser. Try again in ${seconds} s.`,
+        { seconds },
+      );
+    }
     if (lookup.error === "device_owned_by_other") {
       throw new AgentAlreadyPairedError(
         "This drone is already paired to another owner. Unpair it on the device, or sign in to claim it.",

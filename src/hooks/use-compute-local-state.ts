@@ -3,7 +3,7 @@
 /**
  * @module use-compute-local-state
  * @description Local-first source for a compute node's cluster status. A
- * LAN-paired compute node is not necessarily beaconing to Convex (Rule 39), and
+ * LAN-paired compute node is not necessarily beaconing to Convex (local-first), and
  * even when it is, a direct poll is fresher. This hook polls the node's
  * `GET /api/compute/status` (the ados-control front serving the heartbeat
  * sidecar) and feeds the same `useComputeStore` the cloud heartbeat path feeds,
@@ -60,7 +60,7 @@ export function useComputeLocalState(nodeId: string | null | undefined): void {
     Boolean(apiKey) &&
     // Strictly disjoint from the cloud bridge for this node — the only node we
     // must NOT local-poll is the one the cloud bridge drives. Cloud sign-in does
-    // not disable LAN access to a locally-paired node (local-first, Rule 39).
+    // not disable LAN access to a locally-paired node (local-first).
     cloudDeviceId !== deviceId;
 
   const apiKeyRef = useRef(apiKey);

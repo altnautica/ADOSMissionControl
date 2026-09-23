@@ -49,8 +49,8 @@ export function MissionWarningBanner({ waypoints }: { waypoints: Waypoint[] }) {
       <div
         className={`flex items-center gap-2 px-4 py-2 rounded-lg border backdrop-blur-md text-xs font-mono ${
           hasErrors
-            ? "bg-red-500/15 border-red-500/30 text-red-400"
-            : "bg-yellow-500/15 border-yellow-500/30 text-yellow-400"
+            ? "bg-status-error/15 border-status-error/30 text-status-error"
+            : "bg-status-warning/15 border-status-warning/30 text-status-warning"
         }`}
       >
         <AlertTriangle size={14} className="shrink-0" />

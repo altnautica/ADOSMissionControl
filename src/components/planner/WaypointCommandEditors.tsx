@@ -9,6 +9,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { SPEED_TYPE_AIRSPEED, SPEED_TYPE_GROUND } from "./waypoint-constants";
 
 /** The subset of parameter fields the command editors read directly. Both a
  * navigation `Waypoint` and an attached `MissionAction` satisfy this shape, so
@@ -69,6 +70,12 @@ export function CommandSpecificEditors({
         <Input label={t("holdTime")} type="number" unit="s" placeholder="0"
           value={localHoldTime} onChange={(e) => setLocalHoldTime(e.target.value)}
           onBlur={() => commitField("holdTime", localHoldTime)} />
+      )}
+      {/* Pass-through waypoints: model param1 is the acceptance radius (wire param2). */}
+      {(cmd === "WAYPOINT" || cmd === "SPLINE_WAYPOINT") && (
+        <Input label={t("acceptRadius")} type="number" unit="m" placeholder={t("fcDefault")}
+          value={localParam1} onChange={(e) => setLocalParam1(e.target.value)}
+          onBlur={() => commitField("param1", localParam1)} />
       )}
       {cmd === "LOITER_TURNS" && (
         // MAVLink LOITER_TURNS: param1 turns, param3 radius. The nav one-slot
@@ -162,8 +169,16 @@ export function CommandSpecificEditors({
           onChange={(e) => setLocalParam1(e.target.value)} onBlur={() => commitField("param1", localParam1)} />
       )}
       {cmd === "DO_SET_SPEED" && (
-        <Input label={t("speed")} type="number" unit="m/s" placeholder="5" value={localParam2}
-          onChange={(e) => setLocalParam2(e.target.value)} onBlur={() => commitField("param2", localParam2)} />
+        <div className="grid grid-cols-2 gap-2">
+          <Select label={t("speedType")}
+            options={[
+              { value: String(SPEED_TYPE_AIRSPEED), label: t("speedTypeAirspeed") },
+              { value: String(SPEED_TYPE_GROUND), label: t("speedTypeGround") },
+            ]}
+            value={String(params.param1 ?? SPEED_TYPE_AIRSPEED)} onChange={(v) => onUpdate({ param1: Number(v) })} />
+          <Input label={t("speed")} type="number" unit="m/s" placeholder="5" value={localParam2}
+            onChange={(e) => setLocalParam2(e.target.value)} onBlur={() => commitField("param2", localParam2)} />
+        </div>
       )}
       {cmd === "DO_LAND_START" && (
         <p className="text-[9px] text-text-tertiary italic">

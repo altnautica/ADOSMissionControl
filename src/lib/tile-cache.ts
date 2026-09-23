@@ -97,9 +97,47 @@ export async function getCachedTile(url: string): Promise<Blob | null> {
   }
 }
 
+/**
+ * Running total of cached bytes. Summed once per session with a cursor over
+ * the store, then kept current by every write, delete and clear, so a tile
+ * write never has to scan the whole cache to decide on eviction.
+ */
+let totalBytesPromise: Promise<number> | null = null;
+
+function sumStoredBytes(db: IDBDatabase): Promise<number> {
+  return new Promise((resolve) => {
+    let sum = 0;
+    const req = db
+      .transaction(STORE_NAME, "readonly")
+      .objectStore(STORE_NAME)
+      .openCursor();
+    req.onsuccess = () => {
+      const cursor = req.result;
+      if (!cursor) {
+        resolve(sum);
+        return;
+      }
+      sum += (cursor.value as TileEntry).size;
+      cursor.continue();
+    };
+    req.onerror = () => resolve(sum);
+  });
+}
+
+async function adjustTotalBytes(db: IDBDatabase, delta: number): Promise<number> {
+  totalBytesPromise = (totalBytesPromise ?? sumStoredBytes(db)).then(
+    (total) => Math.max(0, total + delta),
+  );
+  return totalBytesPromise;
+}
+
 export async function cacheTile(url: string, blob: Blob): Promise<void> {
   try {
     const db = await openDB();
+    // Start the one-time baseline sum before this write's transaction is
+    // created: IndexedDB orders overlapping transactions by creation, so the
+    // sum never already includes the tile it is about to be adjusted for.
+    void adjustTotalBytes(db, 0);
     const entry: TileEntry = {
       url,
       blob,
@@ -107,16 +145,23 @@ export async function cacheTile(url: string, blob: Blob): Promise<void> {
       lastAccess: Date.now(),
     };
 
-    await new Promise<void>((resolve, reject) => {
+    // Read the replaced entry's size in the same transaction as the put, so
+    // the running total counts a re-cached tile once.
+    const replacedBytes = await new Promise<number>((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, "readwrite");
       const store = tx.objectStore(STORE_NAME);
-      store.put(entry);
-      tx.oncomplete = () => resolve();
+      let replaced = 0;
+      const getReq = store.get(url);
+      getReq.onsuccess = () => {
+        replaced = (getReq.result as TileEntry | undefined)?.size ?? 0;
+        store.put(entry);
+      };
+      tx.oncomplete = () => resolve(replaced);
       tx.onerror = () => reject(tx.error);
     });
 
-    // Evict old tiles if cache exceeds max size (fire and forget)
-    evictIfNeeded().catch(() => {});
+    const total = await adjustTotalBytes(db, entry.size - replacedBytes);
+    if (total > MAX_CACHE_BYTES) scheduleEviction();
   } catch {
     // Silently fail — caching is best-effort
   }
@@ -126,17 +171,15 @@ export async function cacheTile(url: string, blob: Blob): Promise<void> {
 export async function getCacheStats(): Promise<{ tileCount: number; totalBytes: number }> {
   try {
     const db = await openDB();
-    return new Promise((resolve) => {
-      const tx = db.transaction(STORE_NAME, "readonly");
-      const store = tx.objectStore(STORE_NAME);
-      const req = store.getAll();
-      req.onsuccess = () => {
-        const entries = req.result as TileEntry[];
-        const totalBytes = entries.reduce((sum, e) => sum + e.size, 0);
-        resolve({ tileCount: entries.length, totalBytes });
-      };
-      req.onerror = () => resolve({ tileCount: 0, totalBytes: 0 });
+    const tileCount = await new Promise<number>((resolve) => {
+      const req = db
+        .transaction(STORE_NAME, "readonly")
+        .objectStore(STORE_NAME)
+        .count();
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => resolve(0);
     });
+    return { tileCount, totalBytes: await adjustTotalBytes(db, 0) };
   } catch {
     return { tileCount: 0, totalBytes: 0 };
   }
@@ -153,6 +196,7 @@ export async function clearAllTiles(): Promise<void> {
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
     });
+    totalBytesPromise = Promise.resolve(0);
   } catch {
     // Silently fail
   }
@@ -161,30 +205,45 @@ export async function clearAllTiles(): Promise<void> {
 /** Maximum cache size constant (exported for UI display). */
 export const MAX_CACHE_SIZE = MAX_CACHE_BYTES;
 
+/** Eviction runs at most once per interval, never two at a time. */
+const EVICTION_INTERVAL_MS = 10_000;
+let evictionTimer: ReturnType<typeof setTimeout> | null = null;
+let lastEvictionAt = 0;
+
+function scheduleEviction(): void {
+  if (evictionTimer) return;
+  const wait = Math.max(0, lastEvictionAt + EVICTION_INTERVAL_MS - Date.now());
+  evictionTimer = setTimeout(() => {
+    evictIfNeeded()
+      .catch(() => {})
+      .finally(() => {
+        lastEvictionAt = Date.now();
+        evictionTimer = null;
+      });
+  }, wait);
+}
+
+/** Delete least-recently-used tiles, oldest first through the lastAccess
+ * index, until the cache is back down to 80% of its limit. */
 async function evictIfNeeded(): Promise<void> {
   const db = await openDB();
+  const total = await adjustTotalBytes(db, 0);
+  if (total <= MAX_CACHE_BYTES) return;
 
-  // Calculate total size
-  const entries = await new Promise<TileEntry[]>((resolve) => {
-    const tx = db.transaction(STORE_NAME, "readonly");
-    const store = tx.objectStore(STORE_NAME);
-    const req = store.getAll();
-    req.onsuccess = () => resolve(req.result as TileEntry[]);
-    req.onerror = () => resolve([]);
+  const target = MAX_CACHE_BYTES * 0.8;
+  const freed = await new Promise<number>((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const req = tx.objectStore(STORE_NAME).index("lastAccess").openCursor();
+    let removed = 0;
+    req.onsuccess = () => {
+      const cursor = req.result;
+      if (!cursor || total - removed <= target) return;
+      removed += (cursor.value as TileEntry).size;
+      cursor.delete();
+      cursor.continue();
+    };
+    tx.oncomplete = () => resolve(removed);
+    tx.onerror = () => reject(tx.error);
   });
-
-  let totalSize = entries.reduce((sum, e) => sum + e.size, 0);
-  if (totalSize <= MAX_CACHE_BYTES) return;
-
-  // Sort by last access ascending (oldest first) for LRU eviction
-  entries.sort((a, b) => a.lastAccess - b.lastAccess);
-
-  const tx = db.transaction(STORE_NAME, "readwrite");
-  const store = tx.objectStore(STORE_NAME);
-
-  for (const entry of entries) {
-    if (totalSize <= MAX_CACHE_BYTES * 0.8) break; // Evict down to 80%
-    store.delete(entry.url);
-    totalSize -= entry.size;
-  }
+  await adjustTotalBytes(db, -freed);
 }

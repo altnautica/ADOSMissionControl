@@ -16,6 +16,7 @@ import { PanelHeader } from "../shared/PanelHeader";
 import { Button } from "@/components/ui/button";
 import { Braces, Upload } from "lucide-react";
 import type { INavMcBraking } from "@/lib/protocol/msp/msp-decoders-inav";
+import { MC_BRAKING_RANGES, clampMcBraking } from "./mc-braking-ranges";
 
 // platformType 0 = MULTIROTOR. MC braking applies only to multirotors.
 const PLATFORM_MULTIROTOR = 0;
@@ -81,9 +82,17 @@ export function McBrakingPanel() {
   const handleWrite = useCallback(async () => {
     const protocol = getSelectedProtocol();
     if (!protocol?.setMcBraking) { setError("MC braking write not supported"); return; }
+    // Values outside the firmware range would wrap on the wire (bank angle 300
+    // arrives as 44), so they are brought into range and shown before writing.
+    const { value, adjusted } = clampMcBraking(braking);
+    if (adjusted.length > 0) {
+      setBraking(value);
+      setError(`Adjusted to the flight controller's range: ${adjusted.join(", ")}. Review and write again.`);
+      return;
+    }
     setLoading(true); setError(null);
     try {
-      const result = await protocol.setMcBraking(braking);
+      const result = await protocol.setMcBraking(value);
       if (!result.success) { setError(result.message); return; }
       setDirty(false);
     } catch (err) {
@@ -155,6 +164,8 @@ export function McBrakingPanel() {
                 </span>
                 <input
                   type="number"
+                  min={MC_BRAKING_RANGES[key].min}
+                  max={MC_BRAKING_RANGES[key].max}
                   value={braking[key]}
                   onChange={(e) => update(key, parseInt(e.target.value) || 0)}
                   className="bg-bg-tertiary border border-border-default rounded px-2 py-1 text-xs font-mono text-text-primary focus:outline-none focus:border-accent-primary"

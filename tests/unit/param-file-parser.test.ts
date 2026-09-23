@@ -3,7 +3,6 @@ import {
   parseParamFile,
   compareParams,
   serializeParamFile,
-  buildModifiedFromFile,
 } from '@/lib/formats/param-file-parser';
 
 describe('parseParamFile', () => {
@@ -104,6 +103,14 @@ describe('compareParams', () => {
     expect(diffs[1].status).toBe('added');
     expect(diffs[2].status).toBe('unchanged');
   });
+
+  it('treats a decimal file value equal to the FC float32 value as unchanged', () => {
+    // PARAM_VALUE carries float32; 0.0036 widens to 0.003599999938160181.
+    const fcValue = Math.fround(0.0036);
+    const fcParams = new Map([['ATC_RAT_PIT_D', fcValue]]);
+    const diffs = compareParams([{ name: 'ATC_RAT_PIT_D', value: 0.0036 }], fcParams);
+    expect(diffs[0].status).toBe('unchanged');
+  });
 });
 
 describe('export then re-parse (round trip)', () => {
@@ -157,21 +164,5 @@ describe('QGC and serialize / buildModified', () => {
     const parsed = parseParamFile(text);
     expect(parsed[0].name).toBe('ARMING_CHECK');
     expect(parsed[0].value).toBe(1);
-  });
-
-  it('buildModifiedFromFile sets and clears modifications', () => {
-    const fc = new Map([['ARMING_CHECK', 1], ['FLTMODE1', 0]]);
-    const r1 = buildModifiedFromFile([{ name: 'ARMING_CHECK', value: 2 }], fc);
-    expect(r1.modified.get('ARMING_CHECK')).toBe(2);
-    expect(r1.applied).toBe(1);
-    const r2 = buildModifiedFromFile([{ name: 'ARMING_CHECK', value: 1 }], fc, r1.modified);
-    expect(r2.modified.has('ARMING_CHECK')).toBe(false);
-  });
-
-  it('buildModifiedFromFile counts unknown names', () => {
-    const fc = new Map([['ARMING_CHECK', 1]]);
-    const r = buildModifiedFromFile([{ name: 'NOT_ON_FC', value: 9 }], fc);
-    expect(r.unknown).toBe(1);
-    expect(r.applied).toBe(0);
   });
 });

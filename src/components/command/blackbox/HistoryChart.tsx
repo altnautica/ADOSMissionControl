@@ -32,10 +32,10 @@ export function HistoryChart({
   unit = "%",
   gradientId,
 }: HistoryChartProps) {
-  const data = points.map((p) => ({
-    t: fmtTime(p.ts_us),
-    value: Number.isFinite(p.value) ? p.value : 0,
-  }));
+  // A bucket with no finite aggregate is a gap, not a zero reading.
+  const data = points
+    .filter((p) => Number.isFinite(p.value))
+    .map((p) => ({ t: fmtTime(p.ts_us), value: p.value }));
   const latest = data.length > 0 ? data[data.length - 1].value : null;
 
   return (
@@ -63,14 +63,14 @@ export function HistoryChart({
               </defs>
               <XAxis
                 dataKey="t"
-                tick={{ fontSize: 9, fill: "#6B7280" }}
+                tick={{ fontSize: 9, fill: "var(--alt-text-tertiary)" }}
                 interval="preserveStartEnd"
                 minTickGap={40}
                 axisLine={false}
                 tickLine={false}
               />
               <YAxis
-                tick={{ fontSize: 9, fill: "#6B7280" }}
+                tick={{ fontSize: 9, fill: "var(--alt-text-tertiary)" }}
                 width={32}
                 axisLine={false}
                 tickLine={false}
@@ -78,12 +78,12 @@ export function HistoryChart({
               />
               <Tooltip
                 contentStyle={{
-                  background: "#11151c",
-                  border: "1px solid #2a2f3a",
+                  background: "var(--alt-bg-secondary)",
+                  border: "1px solid var(--alt-border-strong)",
                   borderRadius: 6,
                   fontSize: 11,
                 }}
-                labelStyle={{ color: "#9CA3AF" }}
+                labelStyle={{ color: "var(--alt-text-secondary)" }}
               />
               <Area
                 type="monotone"

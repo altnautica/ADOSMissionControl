@@ -6,7 +6,7 @@
  * Subscribes to the selected drone's `DroneProtocol.onStatusText` stream and
  * keeps a small ring of the most recent lines with their MAVLink severity, so
  * prearm failures / mode changes / FC messages are visible on the Overview
- * without opening the Logs tab. Empty until the FC sends a line (Rule 44 — no
+ * without opening the Logs tab. Empty until the FC sends a line (no
  * fabricated entries).
  * @license GPL-3.0-only
  */

@@ -8,10 +8,10 @@
 
 "use client";
 
-import { useCallback, useEffect, memo } from "react";
+import { useCallback, useEffect, useMemo, memo } from "react";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useProgrammingStore, LOGIC_CONDITION_MAX } from "@/stores/programming-store";
-import type { INavLogicCondition, INavLogicConditionsStatus } from "@/lib/protocol/msp/msp-decoders-inav";
+import type { INavLogicCondition } from "@/lib/protocol/msp/msp-decoders-inav";
 import { PanelHeader } from "../../shared/PanelHeader";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -20,14 +20,18 @@ import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { GitBranch, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { LOGIC_OPERATION_OPTIONS, LOGIC_OPERAND_TYPE_OPTIONS } from "./programming-constants";
+import { useClockStore } from "@/stores/clock-store";
+import { useClockTick } from "@/lib/agent/freshness";
+import { isFresh } from "@/lib/telemetry/freshness";
+import { LOGIC_ACTIVATOR_OPTIONS, LOGIC_OPERATION_OPTIONS, LOGIC_OPERAND_TYPE_OPTIONS } from "./programming-constants";
 
 // ── LogicConditionRow ─────────────────────────────────────────
 
 interface RowProps {
   idx: number;
   cond: INavLogicCondition;
-  status?: INavLogicConditionsStatus;
+  /** Live value read from the FC; undefined when there is no fresh reading. */
+  status?: number;
   setCondition: (idx: number, partial: Partial<INavLogicCondition>) => void;
   isArmed: boolean;
 }
@@ -36,6 +40,16 @@ const LogicConditionRow = memo(function LogicConditionRow({ idx, cond, status, s
   const handleEnable = useCallback(() => {
     setCondition(idx, { enabled: !cond.enabled });
   }, [idx, cond.enabled, setCondition]);
+
+  const handleActivator = useCallback((v: string) => {
+    setCondition(idx, { activatorId: parseInt(v) });
+  }, [idx, setCondition]);
+
+  // A condition gated on itself never evaluates, so its own slot is not offered.
+  const activatorOptions = useMemo(
+    () => LOGIC_ACTIVATOR_OPTIONS.filter((o) => o.value !== String(idx)),
+    [idx],
+  );
 
   const handleOperation = useCallback((v: string) => {
     setCondition(idx, { operation: parseInt(v) });
@@ -61,7 +75,7 @@ const LogicConditionRow = memo(function LogicConditionRow({ idx, cond, status, s
     <div
       className={cn(
         "border border-border-default rounded px-3 py-2 flex items-center gap-3",
-        cond.enabled ? "bg-surface-primary" : "bg-bg-secondary opacity-60",
+        cond.enabled ? "bg-bg-primary" : "bg-bg-secondary opacity-60",
       )}
     >
       <span className="text-[10px] font-mono text-text-tertiary w-5 shrink-0">{idx}</span>
@@ -82,6 +96,17 @@ const LogicConditionRow = memo(function LogicConditionRow({ idx, cond, status, s
           )}
         />
       </button>
+
+      <div className="w-28 shrink-0">
+        <Select
+          label=""
+          options={activatorOptions}
+          value={String(cond.activatorId)}
+          onChange={handleActivator}
+          disabled={isArmed}
+          searchable
+        />
+      </div>
 
       <div className="w-32 shrink-0">
         <Select
@@ -139,11 +164,11 @@ const LogicConditionRow = memo(function LogicConditionRow({ idx, cond, status, s
           <div
             className={cn(
               "w-2 h-2 rounded-full",
-              status.value !== 0 ? "bg-status-success" : "bg-bg-tertiary",
+              status !== 0 ? "bg-status-success" : "bg-bg-tertiary",
             )}
-            title={`Value: ${status.value}`}
+            title={`Value: ${status}`}
           />
-          <span className="text-[9px] font-mono text-text-tertiary">{status.value}</span>
+          <span className="text-[9px] font-mono text-text-tertiary">{status}</span>
         </div>
       )}
     </div>
@@ -159,6 +184,7 @@ export function LogicConditionsPanel() {
 
   const conditions = useProgrammingStore((s) => s.conditions);
   const conditionsStatus = useProgrammingStore((s) => s.conditionsStatus);
+  const conditionsStatusAt = useProgrammingStore((s) => s.conditionsStatusAt);
   const loading = useProgrammingStore((s) => s.loading);
   const error = useProgrammingStore((s) => s.error);
   const conditionsDirty = useProgrammingStore((s) => s.conditionsDirty);
@@ -214,7 +240,11 @@ export function LogicConditionsPanel() {
     }
   }, [getSelectedProtocol, uploadConditions, toast]);
 
-  const statusFor = (idx: number) => conditionsStatus.find((s) => s.id === idx);
+  // Live values are shown only while the last status read is recent.
+  useClockTick();
+  const now = useClockStore((s) => s.now);
+  const statusLive = conditionsStatusAt !== null && isFresh(conditionsStatusAt, now);
+  const statusFor = (idx: number) => (statusLive ? conditionsStatus[idx] : undefined);
 
   return (
     <div className="flex-1 overflow-y-auto p-6">

@@ -119,9 +119,8 @@ export function encodeCanFdFrame(
 /**
  * Encode a CAN_FILTER_MODIFY (msg 388).
  *
- * Defers to a thin stub — the GCS does not currently drive hardware
- * filter slots, but the helper is here so future Phase-2 telemetry-rate
- * tuning can attach without a second round of plumbing.
+ * The GCS does not currently drive hardware filter slots; this encoder
+ * exists so a caller can narrow the forwarded CAN id set when needed.
  *
  * Wire layout (37 bytes, little-endian):
  *   uint16 ids[16]            [0..31]

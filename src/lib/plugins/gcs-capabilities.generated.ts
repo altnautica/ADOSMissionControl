@@ -18,13 +18,11 @@ export const GCS_CAPABILITIES = [
   "mission.read",
   "mission.write",
   "cloud.read",
-  "cloud.write",
   "perception.read",
   "perception.subscribe",
   "mcp.expose",
   "event.publish",
   "event.subscribe",
-  "agent.request",
 ] as const;
 
 export const GCS_CAPABILITY_CATALOG: Record<string, CapabilityMeta> = {
@@ -68,7 +66,7 @@ export const GCS_CAPABILITY_CATALOG: Record<string, CapabilityMeta> = {
     description: "Lets the plugin push notifications into the GCS notification center so it can surface alerts and status changes to the operator.",
     category: "ui_slot",
     risk: "low",
-    risk_reason: "Toasts only; the operator can mute or dismiss any channel.",
+    risk_reason: "Toasts only; each is labelled with the plugin id and rate-limited per plugin.",
   },
   "ui.slot.settings-section": {
     label: "Add a section to the Settings page",
@@ -107,10 +105,10 @@ export const GCS_CAPABILITY_CATALOG: Record<string, CapabilityMeta> = {
   },
   "command.send": {
     label: "Send commands to drones from the GCS",
-    description: "Lets the plugin send commands to a paired drone through the GCS bridge (arm, takeoff, mode change). The operator approves each install but in-flight commands fire without further prompts.",
+    description: "Lets the plugin ask the GCS to send takeoff, land or return-to-launch to the drone it is bound to, or retarget that drone's follow tracker. The operator confirms every one of these in a prompt that names the drone. Arming, mode changes and every other command are refused. The same grant lets the plugin write its own per-drone configuration without a prompt.",
     category: "flight_control",
     risk: "medium",
-    risk_reason: "Commands take effect immediately during a flight.",
+    risk_reason: "Each confirmed command takes effect immediately during a flight.",
   },
   "recording.write": {
     label: "Save recordings to the GCS library",
@@ -139,13 +137,6 @@ export const GCS_CAPABILITY_CATALOG: Record<string, CapabilityMeta> = {
     category: "data_network",
     risk: "low",
     risk_reason: "Read-only on the cloud rows the user is authorised for.",
-  },
-  "cloud.write": {
-    label: "Write fleet data to the cloud",
-    description: "Lets the plugin write fleet data to the cloud backend. Used by plugins that synchronise mission outputs or sensor catalogues across operators.",
-    category: "data_network",
-    risk: "medium",
-    risk_reason: "Cloud writes can affect other operators on the same fleet.",
   },
   "perception.read": {
     label: "Read perception state in the GCS",
@@ -181,12 +172,5 @@ export const GCS_CAPABILITY_CATALOG: Record<string, CapabilityMeta> = {
     category: "data_network",
     risk: "low",
     risk_reason: "Read-only on an in-tab message bus.",
-  },
-  "agent.request": {
-    label: "Call the plugin's own agent half",
-    description: "Lets the plugin's GCS panel invoke a request handler its OWN agent half registered on this node, and read the reply. The host resolves the target from the install row, so a panel can only ever reach the agent half of the same plugin on the node the operator has open; it cannot address another plugin, another node, or any core agent service. The agent half must also hold mcp.expose for the host to route the call.",
-    category: "data_network",
-    risk: "medium",
-    risk_reason: "Reaches the plugin's own on-vehicle process; the effect is bounded by what that agent half's own capabilities already permit.",
   },
 };

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
@@ -22,7 +22,12 @@ type Tab = "overview" | "permissions" | "events";
 export default function PluginDetailPage() {
   const params = useParams<{ id: string }>();
   const installId = params?.id as Id<"cmd_pluginInstalls"> | undefined;
-  const [tab, setTab] = useState<Tab>("overview");
+  // `?tab=permissions` opens a tab directly (the plugin card's "View
+  // permissions" links here).
+  const requestedTab = useSearchParams()?.get("tab");
+  const [tab, setTab] = useState<Tab>(
+    requestedTab === "permissions" || requestedTab === "events" ? requestedTab : "overview",
+  );
   const [pendingRevoke, setPendingRevoke] = useState<{
     permissionId: string;
   } | null>(null);

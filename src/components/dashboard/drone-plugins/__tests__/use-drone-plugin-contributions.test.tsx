@@ -8,6 +8,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterAll } from "vitest";
+import { useSettingsStore } from "@/stores/settings-store";
 import { renderHook } from "@testing-library/react";
 
 // Mutable mock state so the non-demo (Convex) path is exercisable:
@@ -19,9 +20,8 @@ const { authState, installsRef } = vi.hoisted(() => ({
   installsRef: { value: undefined as unknown },
 }));
 
-// Demo mode toggled per-test via the URL search params helper.
-// `isDemoMode` reads `process.env.NEXT_PUBLIC_DEMO_MODE` or the
-// `?demo=true` URL param; we patch the env var per-test.
+// Demo mode is toggled per-test through the settings store, which is what
+// `isDemoMode` reads once the store has hydrated.
 vi.mock("@/stores/auth-store", () => ({
   useAuthStore: (sel: (s: { isAuthenticated: boolean }) => unknown) =>
     sel({ isAuthenticated: authState.value }),
@@ -36,16 +36,15 @@ vi.mock("@/hooks/use-convex-skip-query", () => ({
 import { useDronePluginContributions } from "@/hooks/use-drone-plugin-contributions";
 
 describe("useDronePluginContributions", () => {
-  const originalEnv = process.env.NEXT_PUBLIC_DEMO_MODE;
 
   beforeEach(() => {
-    process.env.NEXT_PUBLIC_DEMO_MODE = "true";
+    useSettingsStore.setState({ demoMode: true });
     authState.value = false;
     installsRef.value = undefined;
   });
 
   afterAll(() => {
-    process.env.NEXT_PUBLIC_DEMO_MODE = originalEnv;
+    useSettingsStore.setState({ demoMode: false });
   });
 
   it("returns an empty array when agentId is undefined", () => {
@@ -107,7 +106,7 @@ describe("useDronePluginContributions", () => {
   });
 
   it("projects only node.detail.tab gcsContributes entries from listForDeviceWithDetail", () => {
-    process.env.NEXT_PUBLIC_DEMO_MODE = "false";
+    useSettingsStore.setState({ demoMode: false });
     authState.value = true;
     installsRef.value = [
       {
@@ -160,7 +159,7 @@ describe("useDronePluginContributions", () => {
   });
 
   it("surfaces gcsParameters from listForDeviceWithDetail on the tab", () => {
-    process.env.NEXT_PUBLIC_DEMO_MODE = "false";
+    useSettingsStore.setState({ demoMode: false });
     authState.value = true;
     installsRef.value = [
       {
@@ -195,7 +194,7 @@ describe("useDronePluginContributions", () => {
   });
 
   it("profile-narrows a node.detail.tab to the node's profile", () => {
-    process.env.NEXT_PUBLIC_DEMO_MODE = "false";
+    useSettingsStore.setState({ demoMode: false });
     authState.value = true;
     installsRef.value = [
       {

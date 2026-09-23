@@ -45,10 +45,6 @@ import {
   normalizeRegionCode,
 } from "@/lib/operating-region";
 
-// Re-export DisclaimerGate so existing import sites
-// (`@/components/onboarding/WelcomeModal`) keep working.
-export { DisclaimerGate } from "./DisclaimerGate";
-
 export function WelcomeModal() {
   const onboarded = useSettingsStore((s) => s.onboarded);
   const hasHydrated = useSettingsStore((s) => s._hasHydrated);
@@ -60,12 +56,14 @@ export function WelcomeModal() {
   const setAudioEnabledStored = useSettingsStore((s) => s.setAudioEnabled);
   const setLocationEnabledStored = useSettingsStore((s) => s.setLocationEnabled);
   const setThemeMode = useSettingsStore((s) => s.setThemeMode);
+  const setLocaleStored = useSettingsStore((s) => s.setLocale);
   const themeMode = useSettingsStore((s) => s.themeMode);
   const setAccentColor = useSettingsStore((s) => s.setAccentColor);
   const accentColor = useSettingsStore((s) => s.accentColor);
   const pushThemeToAgents = useSettingsStore((s) => s.pushThemeToAgents);
   const pairedDrones = usePairingStore((s) => s.pairedDrones);
   const requestPermission = useGcsLocationStore((s) => s.requestPermission);
+  const checkPermission = useGcsLocationStore((s) => s.checkPermission);
   const isSupported = useGcsLocationStore((s) => s.isSupported);
   const t = useTranslations("welcome.themeSync");
   const tWelcome = useTranslations("welcome");
@@ -102,18 +100,31 @@ export function WelcomeModal() {
     return [themeMode, ...values.filter((value) => value !== themeMode)];
   });
 
-  // Auto-request location permission on mount
+  // While the wizard is showing, read the current location permission
+  // (no browser prompt, no position fix) to preset the Preferences toggle.
+  // Onboarded operators never reach this probe; the prompt only appears when
+  // the operator turns location on in the Preferences step.
+  const showWizard = hasHydrated && !onboarded;
+
+  // The language step opens with the browser's language highlighted, so that
+  // language is applied as the wizard first shows; otherwise the highlighted
+  // tile and the UI language disagree until the operator clicks a tile.
   useEffect(() => {
-    if (!isSupported) return;
+    if (showWizard) setLocaleStored(selectedLocale);
+    // Apply once per wizard showing; tile clicks set the locale themselves.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showWizard]);
+  useEffect(() => {
+    if (!showWizard || !isSupported) return;
     let cancelled = false;
-    requestPermission().then((perm) => {
+    checkPermission().then((perm) => {
       if (cancelled) return;
       setLocationChecking(false);
       setLocationPermission(perm);
       setLocalLocationEnabled(perm === "granted");
     });
     return () => { cancelled = true; };
-  }, [isSupported, requestPermission]);
+  }, [showWizard, isSupported, checkPermission]);
 
   const skipDownloadStep = isElectron();
   const totalSteps = computeTotalSteps(skipDownloadStep);
@@ -147,14 +158,21 @@ export function WelcomeModal() {
   };
 
   const handleGetStarted = () => {
+    // Resolve the chosen default operating region. Only the Unrestricted
+    // option persists as null; an invalid free-text code sends the operator
+    // back to the region step instead of silently saving unrestricted.
+    const otherCode =
+      regionSelection === OTHER_REGION_VALUE ? normalizeRegionCode(regionOtherCode) : null;
+    if (regionSelection === OTHER_REGION_VALUE && otherCode === null) {
+      back(4);
+      return;
+    }
     if (jurisdiction) setJurisdictionStored(jurisdiction);
-    // Resolve the chosen default operating region. Unrestricted (the
-    // default) and an invalid free-text code both persist as null.
     const region =
       regionSelection === UNRESTRICTED_VALUE
         ? null
         : regionSelection === OTHER_REGION_VALUE
-          ? normalizeRegionCode(regionOtherCode)
+          ? otherCode
           : regionSelection;
     setOperatorRegionStored(region);
     setUnitsStored(units);

@@ -40,15 +40,35 @@ function signed(value: number, hemi?: "N" | "S" | "E" | "W"): number {
 export function parseLatLon(input: string): LatLon | null {
   if (!input) return null;
   const parts = input.trim().split(/\s*,\s*|\s+/).filter(Boolean);
-  // Rejoin when hemispheres are attached ("12.97N" is one token, fine; but
-  // "N 12.97" splits into two — recombine adjacent hemisphere+number).
+  // A standalone hemisphere letter ("12.97 S 77.59", "N 12.97 E 77.59") is
+  // re-attached to one neighbouring number. It binds to the preceding bare
+  // number when that number has no other claim on it (suffix form), to the
+  // following one when nothing precedes it (prefix form). Between two bare
+  // numbers the letter's axis settles it in lat-first order: N/S is the first
+  // number's suffix, E/W the second number's prefix.
+  const isBare = (t: string | undefined) =>
+    t !== undefined && /^[+-]?\d+(?:\.\d+)?°?$/.test(t);
+  const isHemi = (t: string | undefined) =>
+    t !== undefined && /^[NSEW]$/i.test(t);
   const tokens: string[] = [];
   for (let i = 0; i < parts.length; i++) {
-    if (/^[NSEW]$/i.test(parts[i]) && i + 1 < parts.length && /\d/.test(parts[i + 1])) {
-      tokens.push(`${parts[i]}${parts[i + 1]}`);
+    const part = parts[i];
+    if (!isHemi(part)) {
+      tokens.push(part);
+      continue;
+    }
+    const prevBare = isBare(tokens[tokens.length - 1]);
+    const next = parts[i + 1];
+    const nextFree = isBare(next) && !isHemi(parts[i + 2]);
+    const bindBack =
+      prevBare && (!nextFree || /^[NS]$/i.test(part));
+    if (bindBack) {
+      tokens[tokens.length - 1] += part;
+    } else if (isBare(next)) {
+      tokens.push(`${part}${next}`);
       i++;
     } else {
-      tokens.push(parts[i]);
+      return null;
     }
   }
   if (tokens.length !== 2) return null;

@@ -13,6 +13,7 @@ import type { CanTransport } from "@/lib/protocol/transport/can-transport";
 import { MavlinkCanForwardTransport } from "@/lib/protocol/transport/mavlink-can-forward-transport";
 import { DroneCanClient } from "./client";
 import type { AnyTransferEvent } from "./client-types";
+import { encodeMessageId, encodeServiceId } from "./frame-codec";
 import { useDroneCanNodeStore } from "@/stores/dronecan/node-store";
 import { useDroneCanBusStore } from "@/stores/dronecan/bus-store";
 import { useDroneCanRpcTraceStore } from "@/stores/dronecan/rpc-trace-store";
@@ -29,7 +30,18 @@ export function publishTransfer(evt: AnyTransferEvent): void {
   useDroneCanBusStore.getState().pushFrame({
     t: evt.ts,
     dir: "in",
-    canId: 0,
+    // Every frame of a transfer carries the same 29-bit id, rebuilt here from
+    // the transfer's fields.
+    canId:
+      evt.kind === "message"
+        ? encodeMessageId(evt.priority, evt.dataTypeId, evt.srcNodeId)
+        : encodeServiceId(
+            evt.priority,
+            evt.kind === "request",
+            evt.dataTypeId,
+            evt.dstNodeId ?? 0,
+            evt.srcNodeId,
+          ),
     decoded: {
       kind: evt.kind === "message" ? "message" : "service",
       dataTypeId: evt.dataTypeId,

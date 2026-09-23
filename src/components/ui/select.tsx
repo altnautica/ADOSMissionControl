@@ -5,7 +5,8 @@ import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import { ChevronDown, Check, Search } from "lucide-react";
 import { isGrouped, flattenOptions } from "./select-types";
-import type { SelectOption, SelectOptionGroup, SelectProps } from "./select-types";
+import type { SelectProps } from "./select-types";
+import type { SelectOption, SelectOptionGroup } from "@/lib/types";
 
 export type { SelectOption, SelectOptionGroup, SelectProps };
 
@@ -106,7 +107,15 @@ export function Select({
         if (focusedIndex >= 0 && focusedIndex < filteredFlat.length) selectOpt(filteredFlat[focusedIndex]);
         break;
       }
-      case "Escape": { e.preventDefault(); close(); break; }
+      case "Escape": {
+        // Only an open list consumes Escape; stopping it keeps a dialog
+        // underneath from closing too.
+        if (!isOpen) return;
+        e.preventDefault();
+        e.stopPropagation();
+        close();
+        break;
+      }
       case "Home": {
         if (!isOpen) return; e.preventDefault();
         let idx = 0; while (idx < filteredFlat.length && filteredFlat[idx]?.disabled) idx++;
@@ -185,9 +194,11 @@ export function Select({
             <div className="sticky top-0 bg-bg-secondary border-b border-border-default p-1.5 z-10">
               <div className="relative">
                 <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-tertiary" />
+                {/* No onKeyDown here: the key bubbles to the listbox handler
+                    once, so arrows move one option and Enter selects once. */}
                 <input ref={searchRef} type="text" value={search}
                   onChange={(e) => { setSearch(e.target.value); setFocusedIndex(0); }}
-                  onKeyDown={handleKeyDown} placeholder={searchPlaceholder}
+                  placeholder={searchPlaceholder}
                   className="w-full h-7 pl-7 pr-2 bg-bg-tertiary border border-border-default text-xs text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent-primary focus-ring" />
               </div>
             </div>

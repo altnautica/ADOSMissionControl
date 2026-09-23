@@ -14,14 +14,22 @@
  * "hero" is the beacon's own bit, so a demotion that failed shows as two heroes
  * on the table instead of as a lie this hook told on the agent's behalf.
  *
+ * The request goes to the ground station the board is polled from — a
+ * LAN-paired node with the `ground-station` profile, the same set
+ * `SwarmBeaconBridge` reads — never to whichever node happens to be focused.
+ * `SwarmView` calls this once and hands the result to every band, so the
+ * table and the video rail share one pending state.
+ *
  * @license GPL-3.0-only
  */
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 
-import { useAgentConnectionStore } from "@/stores/agent-connection-store";
+import { useLocalNodesStore } from "@/stores/local-nodes-store";
+import { resolveLanAgentUrl } from "@/lib/agent/resolve-agent";
 import { groundStationApiFromAgent } from "@/lib/api/ground-station-api";
+import { fleetHeroFailureReason } from "@/lib/api/ground-station/fleet";
 import { isDemoMode } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
 
@@ -36,12 +44,22 @@ export interface FleetHero {
 export function useFleetHero(): FleetHero {
   const t = useTranslations("swarmView.hero");
   const { toast } = useToast();
-  const agentUrl = useAgentConnectionStore((s) => s.agentUrl);
-  const apiKey = useAgentConnectionStore((s) => s.apiKey);
+  // The first LAN-paired ground station, as a stable store reference.
+  const groundStation = useLocalNodesStore((s) =>
+    s.nodes.find((n) => n.profile === "ground-station"),
+  );
   const [pendingDeviceId, setPendingDeviceId] = useState<string | null>(null);
   const demo = isDemoMode();
 
-  const api = groundStationApiFromAgent(agentUrl, apiKey);
+  // Null on an HTTPS origin (the browser blocks a plain-HTTP LAN call) or when
+  // the ground station has no reachable host: the control disables itself.
+  const api = useMemo(() => {
+    if (!groundStation) return null;
+    return groundStationApiFromAgent(
+      resolveLanAgentUrl(groundStation.deviceId),
+      groundStation.apiKey ?? null,
+    );
+  }, [groundStation]);
 
   const makeHero = useCallback(
     (deviceId: string) => {
@@ -57,22 +75,17 @@ export function useFleetHero(): FleetHero {
           .finally(() => setPendingDeviceId(null));
         return;
       }
-      const client = groundStationApiFromAgent(agentUrl, apiKey);
-      if (!client) return;
+      if (!api) return;
       setPendingDeviceId(deviceId);
-      void client
+      void api
         .setFleetHero(deviceId)
         .catch((err: unknown) => {
-          toast(
-            t("failed", {
-              reason: err instanceof Error ? err.message : String(err),
-            }),
-            "error",
-          );
+          // A 502 is the hero's own promotion failing: its row names why.
+          toast(t("failed", { reason: fleetHeroFailureReason(err) }), "error");
         })
         .finally(() => setPendingDeviceId(null));
     },
-    [agentUrl, apiKey, toast, t, demo],
+    [api, toast, t, demo],
   );
 
   return {

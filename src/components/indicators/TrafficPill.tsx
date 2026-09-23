@@ -1,16 +1,21 @@
 /**
  * @module TrafficPill
- * @description Compact pill showing ADS-B traffic count from iNav.
+ * @description Compact pill showing the ADS-B traffic count the flight
+ * controller reports (iNav MSP traffic list or MAVLink ADSB_VEHICLE).
  * Opens a popover with per-vehicle details on click.
  * Fires a warning toast when a vehicle is within 500 m.
+ * Distances use only a fresh own position; a traffic list that stopped
+ * arriving is hidden, and a contact whose TTL has run out is dropped.
  * @license GPL-3.0-only
  */
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useTelemetryStore } from "@/stores/telemetry-store";
-import { useDroneManager } from "@/stores/drone-manager";
-import { useTelemetryFreshness } from "@/hooks/use-telemetry-freshness";
+import { useClockStore } from "@/stores/clock-store";
+import { useClockTick } from "@/lib/agent/freshness";
+import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
+import { isFresh } from "@/lib/telemetry/freshness";
 import { useToast } from "@/components/ui/toast";
 import type { INavAdsbVehicle } from "@/lib/protocol/msp/msp-decoders-inav";
 
@@ -34,6 +39,28 @@ function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number)
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+// ── Live traffic ─────────────────────────────────────────────
+
+/**
+ * The contacts still live at `now`: none when the list itself is stale, and
+ * each contact's TTL counted down from when the list arrived, dropping the
+ * ones that have expired.
+ */
+export function liveTraffic(
+  vehicles: readonly INavAdsbVehicle[],
+  listAt: number,
+  now: number,
+): INavAdsbVehicle[] {
+  if (listAt === 0 || !isFresh(listAt, now)) return [];
+  const elapsedSec = Math.max(0, (now - listAt) / 1000);
+  const live: INavAdsbVehicle[] = [];
+  for (const v of vehicles) {
+    const ttlSec = Math.floor(v.ttlSec - elapsedSec);
+    if (ttlSec > 0) live.push({ ...v, ttlSec });
+  }
+  return live;
+}
+
 // ── Vehicle row ──────────────────────────────────────────────
 
 function VehicleRow({ vehicle, ownLat, ownLon }: { vehicle: INavAdsbVehicle; ownLat: number | null; ownLon: number | null }) {
@@ -42,7 +69,7 @@ function VehicleRow({ vehicle, ownLat, ownLon }: { vehicle: INavAdsbVehicle; own
       ? haversineMeters(ownLat, ownLon, vehicle.lat, vehicle.lon)
       : null;
   const distLabel = distM !== null ? `${(distM / 1000).toFixed(2)} km` : "--";
-  const altLabel = `${vehicle.alt} cm`;
+  const altLabel = Number.isFinite(vehicle.alt) ? `${vehicle.alt} cm` : "--";
 
   return (
     <div className="flex items-start justify-between gap-3 py-1 border-b border-border-default last:border-0">
@@ -59,13 +86,12 @@ function VehicleRow({ vehicle, ownLat, ownLon }: { vehicle: INavAdsbVehicle; own
 // ── Component ────────────────────────────────────────────────
 
 export function TrafficPill() {
-  const getProtocol = useDroneManager((s) => s.getSelectedProtocol);
-  const protocol = getProtocol();
-  const firmwareType = protocol?.getVehicleInfo()?.firmwareType;
-
-  const vehicles = useTelemetryStore((s) => s.adsbVehicles);
+  const allVehicles = useTelemetryStore((s) => s.adsbVehicles);
+  const listAt = useTelemetryStore((s) => s.adsbUpdatedAt);
+  useClockTick();
+  const now = useClockStore((s) => s.now);
+  const vehicles = useMemo(() => liveTraffic(allVehicles, listAt, now), [allVehicles, listAt, now]);
   const { toast } = useToast();
-  const { getFreshness } = useTelemetryFreshness();
 
   const [open, setOpen] = useState(false);
   const pillRef = useRef<HTMLButtonElement>(null);
@@ -74,15 +100,13 @@ export function TrafficPill() {
   const alertedRef = useRef<Map<number, number>>(new Map());
 
   // Get own drone position for distance calculations
-  const positionFresh = getFreshness("position") !== "none";
-  const latestPosition = useTelemetryStore((s) => s.position.latest() ?? null);
-
-  const ownLat = positionFresh && latestPosition ? latestPosition.lat : null;
-  const ownLon = positionFresh && latestPosition ? latestPosition.lon : null;
+  const ownPosition = useFreshTelemetry("position");
+  const ownLat = ownPosition ? ownPosition.lat : null;
+  const ownLon = ownPosition ? ownPosition.lon : null;
 
   // Proximity alert check
   useEffect(() => {
-    if (firmwareType !== "inav" || ownLat === null || ownLon === null) return;
+    if (ownLat === null || ownLon === null) return;
 
     const now = Date.now();
 
@@ -97,7 +121,7 @@ export function TrafficPill() {
         }
       }
     }
-  }, [vehicles, ownLat, ownLon, firmwareType, toast]);
+  }, [vehicles, ownLat, ownLon, toast]);
 
   // Close popover on outside click
   useEffect(() => {
@@ -111,7 +135,7 @@ export function TrafficPill() {
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [open]);
 
-  if (firmwareType !== "inav" || vehicles.length === 0) return null;
+  if (vehicles.length === 0) return null;
 
   return (
     <div className="relative" data-traffic-pill="">

@@ -1,12 +1,14 @@
 "use client";
 
 /**
- * Vibration Spectrogram — STFT heatmap of accel X/Y/Z.
+ * Vibration level spectrum — STFT heatmap of the per-axis vibration level.
  *
- * Uses a basic DFT implementation (no external FFT lib needed for the
- * sample rates we have — the vibration channel runs at ≤20 Hz today and
- * scales up to 200 Hz with high-rate IMU). Renders a canvas heatmap:
- * time on X, frequency on Y, magnitude as color intensity.
+ * The input is the VIBRATION message's per-axis level: a summary of the
+ * accelerometer's high-frequency energy, logged at a few Hz. Its spectrum
+ * shows how that level rose and fell over the flight (fractions of a Hz up
+ * to a few Hz). It is not an accelerometer spectrum: prop and motor
+ * vibration at tens to hundreds of Hz cannot appear, and the panel says so.
+ * Renders a canvas heatmap: time on X, frequency on Y, magnitude as color.
  *
  * @license GPL-3.0-only
  */
@@ -221,7 +223,7 @@ export function VibrationSpectrogramPanel({ frames }: VibrationSpectrogramPanelP
 
   if (samples.length < 32) {
     return (
-      <Card title="Vibration Spectrogram" padding={true}>
+      <Card title="Vibration level spectrum" padding={true}>
         <p className="text-[10px] text-text-tertiary">
           Not enough vibration samples ({samples.length}). Need ≥32 for spectrogram.
         </p>
@@ -230,7 +232,11 @@ export function VibrationSpectrogramPanel({ frames }: VibrationSpectrogramPanelP
   }
 
   return (
-    <Card title="Vibration Spectrogram" padding={true}>
+    <Card title="Vibration level spectrum" padding={true}>
+      <p className="text-[10px] text-text-tertiary mb-2">
+        How the logged vibration level varied over time, not the accelerometer spectrum: prop and motor
+        frequencies are far above this {sampleRate} Hz level log.
+      </p>
       <div className="flex items-center gap-2 mb-2">
         {AXES.map((a) => (
           <button

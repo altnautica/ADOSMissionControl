@@ -118,11 +118,15 @@ export function mspSendManualControl(ctx: MspCommandContext, roll: number, pitch
  * Per-link motor-test stop timers.
  *
  * MSP has no server-side motor-test timeout: `MSP_SET_MOTOR` is a level, not
- * a pulse, and the FC holds whatever was last written for as long as it stays
- * disarmed. Every non-idle frame therefore carries a duration, and the idle
- * frame is scheduled here, keyed by the link's own queue so two adapters
- * cannot cancel each other's test. A caller that wants a longer test re-sends
- * its frame before the duration runs out.
+ * a pulse. Betaflight and iNav copy it into `motor_disarmed[]`, which the
+ * mixer outputs whenever the craft is disarmed and which only a mixer re-init
+ * (reboot) resets; neither link loss nor RC failsafe clears it. Every
+ * non-idle frame therefore carries a duration, and the idle frame is
+ * scheduled here, keyed by the link's own queue so two adapters cannot cancel
+ * each other's test. A caller that wants a longer test re-sends its frame
+ * before the duration runs out. If the link drops mid-test the stop cannot be
+ * sent, so the output persists until {@link mspIdleMotorOutputs} runs on the
+ * next connect or the FC reboots: keep holds short.
  */
 const motorTestStops = new WeakMap<MspSerialQueue, ReturnType<typeof setTimeout>>()
 
@@ -212,6 +216,16 @@ export async function mspMotorTest(
 export function mspCancelMotorTest(queue: MspSerialQueue): void {
   if (!motorTestStops.has(queue)) return
   clearMotorTestStop(queue)
+  mspIdleMotorOutputs(queue)
+}
+
+/**
+ * Idle every motor output unconditionally. Sent on connect so a test value a
+ * previous session left behind (its link dropped before the stop went out)
+ * stops spinning the motor. Harmless when nothing was left: the idle value is
+ * the firmware's own disarmed default.
+ */
+export function mspIdleMotorOutputs(queue: MspSerialQueue): void {
   queue.sendNoReply(MSP.MSP_SET_MOTOR, motorFrame([]))
 }
 
@@ -255,6 +269,11 @@ export async function mspStartCalibration(
   type: 'accel' | 'gyro' | 'compass' | 'level' | 'airspeed' | 'baro' | 'rc' | 'esc' | 'compassmot',
 ): Promise<CommandResult> {
   if (!ctx.queue) return NOT_CONNECTED
+  // iNav's MSP_ACC_CALIBRATION captures one of six accelerometer orientations;
+  // it has no level-trim calibration (a tilted horizon is board alignment).
+  if (type === 'level' && ctx.firmwareType === 'inav') {
+    return { success: false, resultCode: -1, message: 'iNav has no level calibration; correct the horizon with board alignment' }
+  }
   switch (type) {
     case 'accel':
     case 'level': {

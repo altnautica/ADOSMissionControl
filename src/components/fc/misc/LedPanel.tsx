@@ -1,16 +1,17 @@
 "use client";
 
-import { useMemo, useCallback } from "react";
+import { useCallback } from "react";
 import { useFcPanelState } from "@/hooks/use-fc-panel-state";
 import { useParamPanelActions } from "@/hooks/use-param-panel-actions";
 import { useParamLabel } from "@/hooks/use-param-label";
 import { useParamMetadataMap } from "@/hooks/use-param-metadata";
-import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
+import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { PanelHeader } from "../shared/PanelHeader";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Lightbulb, Save, HardDrive, Palette } from "lucide-react";
 import { ParamFieldLabel } from "../parameters/ParamFieldLabel";
+import { EnumSelect } from "../parameters/EnumSelect";
 import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
 
 const LED_PARAMS = [
@@ -33,19 +34,6 @@ const LED_TYPE_BITS = [
 
 const BRIGHTNESS_OPTIONS = ["Off", "Low", "Medium", "High"];
 
-function overrideToHex(value: number): string {
-  if (value === 0) return "#000000";
-  const r = (value >> 16) & 0xff;
-  const g = (value >> 8) & 0xff;
-  const b = value & 0xff;
-  return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
-}
-
-function hexToOverride(hex: string): number {
-  const clean = hex.replace("#", "");
-  return parseInt(clean, 16) || 0;
-}
-
 export function LedPanel() {
   const panelState = useFcPanelState({ paramNames: LED_PARAMS, panelId: "led" });
   const {
@@ -65,9 +53,8 @@ export function LedPanel() {
   const ledTypes = params.get("NTF_LED_TYPES") ?? 0;
   const ledLen = params.get("NTF_LED_LEN") ?? 1;
   const brightness = params.get("NTF_LED_BRIGHT") ?? 3;
-  const override = params.get("NTF_LED_OVERRIDE") ?? 0;
-
-  const overrideHex = useMemo(() => overrideToHex(override), [override]);
+  const override = params.get("NTF_LED_OVERRIDE");
+  const overrideMeta = metadata.get("NTF_LED_OVERRIDE");
 
   const toggleBit = useCallback((bit: number) => {
     const current = params.get("NTF_LED_TYPES") ?? 0;
@@ -77,12 +64,12 @@ export function LedPanel() {
   }, [params, setLocalValue]);
 
   return (
-    <ArmedLockOverlay>
+    <ArmedWarningBanner>
       <div className="flex-1 overflow-y-auto p-6">
         <div className="max-w-2xl space-y-6">
           <PanelHeader
             title="LED Configuration"
-            subtitle="Notification LED types, brightness, and override color"
+            subtitle="Notification LED types, brightness, and colour source"
             icon={<Lightbulb size={16} />}
             loading={loading}
             loadProgress={loadProgress}
@@ -168,38 +155,27 @@ export function LedPanel() {
                 </div>
               </Card>
 
-              {/* Override Color */}
-              <Card icon={<Palette size={14} />} title="Override Color" description="Set a static override color (0 = disabled)">
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-10 h-10 rounded border border-border-default shrink-0"
-                    style={{ backgroundColor: override === 0 ? "transparent" : overrideHex }}
-                  />
-                  <input
-                    type="color"
-                    value={overrideHex}
-                    onChange={(e) => setLocalValue("NTF_LED_OVERRIDE", hexToOverride(e.target.value))}
-                    className="w-10 h-10 cursor-pointer bg-transparent border-0 p-0"
-                  />
-                  <div className="flex-1">
-                    <input
-                      type="text"
-                      value={override === 0 ? "" : overrideHex.toUpperCase()}
-                      placeholder="Disabled (0)"
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (val === "" || val === "0") {
-                          setLocalValue("NTF_LED_OVERRIDE", 0);
-                        } else {
-                          setLocalValue("NTF_LED_OVERRIDE", hexToOverride(val));
-                        }
-                      }}
-                      className="w-full px-2 py-1 text-xs font-mono bg-bg-tertiary border border-border-default rounded"
+              {/* Colour source: NTF_LED_OVERRIDE selects where the LED
+                  colours come from (an enum), it is not a colour value. */}
+              {override !== undefined && (
+                <Card icon={<Palette size={14} />} title="Colour Source" description="Where the notification LED takes its colours from">
+                  <label className="text-xs text-text-secondary block mb-1">{lbl("NTF_LED_OVERRIDE — Colour Source")}</label>
+                  {overrideMeta?.values && overrideMeta.values.size > 0 ? (
+                    <EnumSelect
+                      values={overrideMeta.values}
+                      value={override}
+                      onChange={(v) => setLocalValue("NTF_LED_OVERRIDE", v)}
                     />
-                    <span className="text-[9px] text-text-tertiary">Hex RGB (set to 0 to disable)</span>
-                  </div>
-                </div>
-              </Card>
+                  ) : (
+                    <Input
+                      type="number"
+                      step="1"
+                      value={String(override)}
+                      onChange={(e) => setLocalValue("NTF_LED_OVERRIDE", Math.trunc(Number(e.target.value) || 0))}
+                    />
+                  )}
+                </Card>
+              )}
 
               {/* LED Preview */}
               <Card icon={<Lightbulb size={14} />} title="Pattern Preview" description="Visual representation of LED strip">
@@ -209,13 +185,9 @@ export function LedPanel() {
                       key={i}
                       className="w-4 h-4 rounded-full border border-border-default transition-colors"
                       style={{
-                        backgroundColor: override !== 0 ? overrideHex : brightness === 0 ? "#1a1a1a" : "#3A82FF",
+                        backgroundColor: brightness === 0 ? "#1a1a1a" : "#3A82FF",
                         opacity: brightness === 0 ? 0.2 : brightness === 1 ? 0.4 : brightness === 2 ? 0.7 : 1,
-                        boxShadow: brightness > 0 && override !== 0
-                          ? `0 0 ${brightness * 3}px ${overrideHex}`
-                          : brightness > 0
-                            ? `0 0 ${brightness * 3}px #3A82FF`
-                            : "none",
+                        boxShadow: brightness > 0 ? `0 0 ${brightness * 3}px #3A82FF` : "none",
                       }}
                     />
                   ))}
@@ -258,7 +230,7 @@ export function LedPanel() {
           </div>
         </div>
       </div>
-    </ArmedLockOverlay>
+    </ArmedWarningBanner>
   );
 }
 

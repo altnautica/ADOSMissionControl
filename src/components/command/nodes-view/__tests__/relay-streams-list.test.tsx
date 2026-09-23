@@ -3,7 +3,7 @@
  * @description The relay-streams list is the map's text equivalent: it names a
  * multi-hop funnel end to end for a screen reader, marks a stale funnel as stale
  * rather than live, and — like the map — never animates under a reduced-motion
- * preference. The state the derivation carried must survive to the row (Rule 44).
+ * preference. The state the derivation carried must survive to the row (no fabricated reading).
  *
  * @license GPL-3.0-only
  */

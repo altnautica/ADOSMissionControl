@@ -8,7 +8,7 @@
  * @license GPL-3.0-only
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { BluetoothPairModal } from "@/components/hardware/BluetoothPairModal";
 import { CloudModeLimitedNotice } from "@/components/command/shared/CloudModeLimitedNotice";
@@ -20,7 +20,8 @@ import { Button } from "@/components/ui/button";
 import { Toggle } from "@/components/ui/toggle";
 import { useToast } from "@/components/ui/toast";
 import { groundStationApiFromAgent } from "@/lib/api/ground-station-api";
-import { useAgentConnectionStore } from "@/stores/agent-connection-store";
+import { isDemoMode } from "@/lib/utils";
+import { useNodeDirectAgent } from "@/components/command/settings/use-node-direct-agent";
 import { useGroundStationStore } from "@/stores/ground-station-store";
 
 const SLIDER_DEBOUNCE_MS = 300;
@@ -35,14 +36,26 @@ export interface PhysicalUiTabProps {
 }
 
 export function PhysicalUiTab({ nodeDeviceId }: PhysicalUiTabProps) {
-  const agentUrl = useAgentConnectionStore((s) => s.agentUrl);
-  const apiKey = useAgentConnectionStore((s) => s.apiKey);
+  // The transport is this node's own connection, never the ambient one: the
+  // focused connection lags the render on a node switch, so reading it would
+  // load (and later write) the previously shown node.
+  const direct = useNodeDirectAgent(nodeDeviceId);
+  const agentUrl = direct?.agentUrl ?? null;
+  const apiKey = direct?.apiKey ?? null;
+  const client = useMemo(
+    () => groundStationApiFromAgent(agentUrl, apiKey),
+    [agentUrl, apiKey],
+  );
 
-  const ui = useGroundStationStore((s) => s.ui);
+  const storeUi = useGroundStationStore((s) => s.ui);
+  const uiFor = useGroundStationStore((s) => s.uiFor);
+  const ui = client && uiFor === client.baseUrl ? storeUi : null;
   const lastError = useGroundStationStore((s) => s.lastError);
   const loadUi = useGroundStationStore((s) => s.loadUi);
   const applyOled = useGroundStationStore((s) => s.applyOled);
-  const bluetooth = useGroundStationStore((s) => s.bluetooth);
+  const storeBluetooth = useGroundStationStore((s) => s.bluetooth);
+  const pairedDevices =
+    client && storeBluetooth.pairedFor === client.baseUrl ? storeBluetooth.paired : [];
   const loadPairedBluetooth = useGroundStationStore((s) => s.loadPairedBluetooth);
   const forgetBluetooth = useGroundStationStore((s) => s.forgetBluetooth);
 
@@ -54,45 +67,52 @@ export function PhysicalUiTab({ nodeDeviceId }: PhysicalUiTabProps) {
   const [brightness, setBrightness] = useState<number>(128);
   const [autoDim, setAutoDim] = useState<boolean>(true);
   const [cycleSeconds, setCycleSeconds] = useState<number>(10);
-  const [initialised, setInitialised] = useState(false);
 
-  const agentUrlRef = useRef(agentUrl);
-  const apiKeyRef = useRef(apiKey);
-  agentUrlRef.current = agentUrl;
-  apiKeyRef.current = apiKey;
+  const clientRef = useRef(client);
+  clientRef.current = client;
 
   const brightnessTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Load this node's UI config and seed the OLED controls from THIS load's
+  // result (never from whatever the shared store held for another node).
   useEffect(() => {
-    const client = groundStationApiFromAgent(agentUrl, apiKey);
     if (!client) return;
-    loadUi(client);
-    loadPairedBluetooth(client);
-  }, [agentUrl, apiKey, loadUi, loadPairedBluetooth]);
+    let cancelled = false;
+    void loadUi(client).then((loaded) => {
+      if (cancelled || !loaded) return;
+      setBrightness(loaded.oled.brightness);
+      setAutoDim(loaded.oled.auto_dim_enabled);
+      setCycleSeconds(loaded.oled.screen_cycle_seconds);
+    });
+    void loadPairedBluetooth(client);
+    return () => {
+      cancelled = true;
+    };
+  }, [client, loadUi, loadPairedBluetooth]);
 
-  const handleForgetBt = async (mac: string, name: string) => {
-    const client = groundStationApiFromAgent(agentUrlRef.current, apiKeyRef.current);
-    if (!client) return;
-    const ok = await forgetBluetooth(client, mac);
-    if (ok) toast("Forgot " + name, "info");
+  // The client for a write. Demo mode has a truthy agent URL but no REST
+  // endpoint, so a write there says it is inert instead of doing nothing.
+  const writeClient = () => {
+    const current = clientRef.current;
+    if (!current && isDemoMode()) toast(t("demoReadOnly"), "info");
+    return current;
   };
 
-  useEffect(() => {
-    if (!ui || initialised) return;
-    setBrightness(ui.oled.brightness);
-    setAutoDim(ui.oled.auto_dim_enabled);
-    setCycleSeconds(ui.oled.screen_cycle_seconds);
-    setInitialised(true);
-  }, [ui, initialised]);
+  const handleForgetBt = async (mac: string, name: string) => {
+    const current = writeClient();
+    if (!current) return;
+    const ok = await forgetBluetooth(current, mac);
+    if (ok) toast("Forgot " + name, "info");
+  };
 
   const sendOled = async (update: {
     brightness?: number;
     auto_dim_enabled?: boolean;
     screen_cycle_seconds?: number;
   }) => {
-    const client = groundStationApiFromAgent(agentUrlRef.current, apiKeyRef.current);
-    if (!client) return;
-    await applyOled(client, update);
+    const current = writeClient();
+    if (!current) return;
+    await applyOled(current, update);
   };
 
   const handleBrightness = (v: number) => {
@@ -114,7 +134,7 @@ export function PhysicalUiTab({ nodeDeviceId }: PhysicalUiTabProps) {
     sendOled({ screen_cycle_seconds: clamped });
   };
 
-  const hasAgent = Boolean(agentUrl);
+  const hasAgent = direct !== null;
   const buttonEntries = ui?.buttons ?? {};
   const buttonIds = DEFAULT_BUTTONS;
   const screenOrder = ui?.screens.order ?? DEFAULT_SCREEN_ORDER;
@@ -144,7 +164,7 @@ export function PhysicalUiTab({ nodeDeviceId }: PhysicalUiTabProps) {
           Rock 5C with Waveshare 3.5") render here. */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <LocalDisplayCard nodeDeviceId={nodeDeviceId} />
+          <LocalDisplayCard nodeDeviceId={nodeDeviceId} relayReach={null} />
         </div>
         <div>
           <LcdPagePreview />
@@ -283,13 +303,13 @@ export function PhysicalUiTab({ nodeDeviceId }: PhysicalUiTabProps) {
             {t("bluetooth.pairNewDevice")}
           </Button>
         </div>
-        {bluetooth.paired.length === 0 ? (
+        {pairedDevices.length === 0 ? (
           <div className="py-4 text-center text-sm text-text-secondary">
             No paired Bluetooth devices.
           </div>
         ) : (
           <ul className="flex flex-col gap-1">
-            {bluetooth.paired.map((dev) => (
+            {pairedDevices.map((dev) => (
               <li
                 key={dev.mac}
                 className="flex items-center justify-between rounded border border-border-default px-3 py-2"

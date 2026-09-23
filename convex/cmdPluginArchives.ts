@@ -32,14 +32,11 @@
 import { v } from "convex/values";
 import {
   action,
-  internalAction,
   internalMutation,
   internalQuery,
-  mutation,
   query,
 } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 
 // ──────────────────────────────────────────────────────────────
@@ -70,77 +67,9 @@ export const generateUploadUrl = action({
   },
 });
 
-/**
- * Mint a short-lived signed download URL for the archive blob. The
- * URL is embedded in a `cmd_droneCommands` row by `createJob` and
- * the agent fetches it once. TTL is enforced by the install-jobs
- * mutation (5 minutes by default); this action only returns the
- * URL plus a hint at the resolved expiry.
- *
- * INTERNAL. It performs no auth check of its own, so it must never be
- * callable from a client: it was exported as a public `action` that took an
- * `archiveId` and returned `ctx.storage.getUrl(...)` for it with no
- * `getAuthUserId` and no ownership comparison, so any unauthenticated caller
- * could mint a signed download URL for ANY uploaded plugin archive.
- *
- * The doc comment claimed `cmdPluginInstallJobs.createJob` authorised the
- * caller, but `createJob` calls `ctx.storage.getUrl` inline and never invokes
- * this — so nothing upstream was gating it. A caller outside an
- * already-authorised internal flow must do its own auth.
- */
-export const getSignedDownloadUrl = internalAction({
-  args: { archiveId: v.id("plugin_archives") },
-  handler: async (
-    ctx,
-    { archiveId },
-  ): Promise<{ url: string; expiresAt: number }> => {
-    const archive = await ctx.runQuery(
-      internal.cmdPluginArchives.getArchiveInternal,
-      { id: archiveId },
-    );
-    if (!archive) throw new Error("Archive not found");
-    const url = await ctx.storage.getUrl(archive.storageId);
-    if (!url) throw new Error("Archive blob missing in storage");
-    // Convex storage URLs are valid for ~1h. We do not control that
-    // window directly; the install-jobs mutation bounds the surface
-    // by writing a 5-minute deadline into the command row.
-    const expiresAt = Date.now() + 5 * 60 * 1000;
-    return { url, expiresAt };
-  },
-});
-
 // ──────────────────────────────────────────────────────────────
 // Mutations
 // ──────────────────────────────────────────────────────────────
-
-/**
- * Legacy public mutation retained for OSS callers that still target
- * the pre-verify shape. Now refuses every call: integrity is enforced
- * by `verifyArchive` (action, defined in `cmdPluginArchivesVerify.ts`).
- * Returning a hard error here makes the behavior visible in client
- * logs instead of silently writing forged rows.
- */
-export const recordArchive = mutation({
-  args: {
-    storageId: v.id("_storage"),
-    fileName: v.string(),
-    sizeBytes: v.number(),
-    sha256: v.string(),
-    pluginId: v.string(),
-    version: v.string(),
-    manifestHash: v.string(),
-    declaredPermissions: v.array(declaredPermissionValidator),
-    signerId: v.optional(v.string()),
-    signatureB64: v.optional(v.string()),
-  },
-  handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
-    throw new Error(
-      "recordArchive is deprecated. Use verifyArchive instead so the server can validate the upload's SHA-256 and manifest hash.",
-    );
-  },
-});
 
 /**
  * Internal insert. Called only by `verifyArchive` after every
@@ -163,14 +92,13 @@ export const _insertArchive = internalMutation({
   },
   handler: async (ctx, args): Promise<Id<"plugin_archives">> => {
     // Dedupe: if the same user already uploaded this exact blob
-    // (same sha256), reuse the existing row and bump refCount.
+    // (same sha256), reuse the existing row.
     const existing = await ctx.db
       .query("plugin_archives")
       .withIndex("by_sha256", (q) => q.eq("sha256", args.sha256))
       .filter((q) => q.eq(q.field("userId"), args.userId))
       .first();
     if (existing) {
-      await ctx.db.patch(existing._id, { refCount: existing.refCount + 1 });
       // Drop the redundant blob we just verified to keep storage tidy.
       await ctx.storage.delete(args.storageId);
       return existing._id;
@@ -189,7 +117,6 @@ export const _insertArchive = internalMutation({
       signerId: args.signerId,
       signatureB64: args.signatureB64,
       uploadedAt: Date.now(),
-      refCount: 0,
     });
   },
 });

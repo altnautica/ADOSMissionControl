@@ -21,7 +21,7 @@ import type {
   NavControllerCallback, ScaledImuCallback, ScaledPressureCallback,
   EstimatorStatusCallback, CameraTriggerCallback, LinkStateCallback,
   LocalPositionCallback, DebugCallback, GimbalAttitudeCallback,
-  ObstacleDistanceCallback, CameraImageCapturedCallback,
+  ObstacleDistanceCallback, AdsbVehicleCallback, CameraImageCapturedCallback,
   ExtendedSysStateCallback, FencePointCallback, SystemTimeCallback,
   RawImuCallback, RcChannelsRawCallback, RcChannelsOverrideCallback,
   MissionItemCallback, AltitudeCallback, WindCovCallback,
@@ -32,12 +32,13 @@ import type {
 } from './callbacks';
 import type { MissionItem, LogEntry, LogDownloadProgressCallback, FtpDownloadProgressCallback, FenceElement } from './mission';
 import type { FirmwareHandler } from './firmware';
+import type { MAVLinkFrame } from '../mavlink-parser';
 // iNav-specific types : optional so MAVLink adapter needs no changes
 import type {
   INavSafehome, INavGeozone, INavGeozoneVertex,
   INavActiveProfiles, INavBatteryConfig, INavMixer, INavServoConfig,
   INavMcBraking, INavRateDynamics, INavTimerOutputModeEntry, INavOutputMappingExt2Entry,
-  INavTempSensorConfigEntry, INavLogicCondition, INavLogicConditionsStatus,
+  INavTempSensorConfigEntry, INavCalibrationData, INavLogicCondition,
   INavGvarStatus, INavProgrammingPid, INavProgrammingPidStatus,
   INavEzTune, INavFwApproach, INavOsdAlarms, INavOsdPreferences, INavOsdLayoutsHeader,
   INavCustomOsdElement, INavCustomOsdElementsInfo,
@@ -55,6 +56,7 @@ import type { BfRxConfig } from '../msp/decoders/config/rx';
 import type { HsvColor, BfLedModeColor } from '../msp/decoders/config/led';
 import type { DisplayPortOp } from '../msp/decoders/config/displayport';
 import type { MspModeBox, MspModeRange, MspAdjustmentRange } from '../msp/msp-decoders-status';
+import type { MspVtxTablePowerLevel } from '../msp/msp-decoders-ext';
 
 // Re-export the settings value/metadata shapes so consumers can import them
 // from the protocol contract barrel rather than reaching into the MSP layer.
@@ -238,7 +240,7 @@ export interface DroneProtocol {
   getBatteryConfig?(): Promise<INavBatteryConfig>;
   setBatteryConfig?(cfg: INavBatteryConfig): Promise<CommandResult>;
   selectBatteryProfile?(idx: number): Promise<CommandResult>;
-  /** The control and battery profiles the FC is flying (MSP2_INAV_STATUS byte 8). */
+  /** The control, battery and mixer profiles the FC is flying (MSP2_INAV_STATUS). */
   getActiveProfiles?(): Promise<INavActiveProfiles>;
   /** Switch the control profile (MSP_SELECT_SETTING); the FC refuses while armed. */
   selectControlProfile?(idx: number): Promise<CommandResult>;
@@ -251,6 +253,10 @@ export interface DroneProtocol {
   /** Write every servo's config (index = array position), then save to EEPROM. */
   setServoConfigs?(cfgs: INavServoConfig[]): Promise<CommandResult>;
   getTempSensorConfigs?(): Promise<INavTempSensorConfigEntry[]>;
+  /** Live temperature per sensor slot in tenths of a degree C; null = no valid reading (iNav). */
+  getTemperatures?(): Promise<(number | null)[]>;
+  /** Accelerometer six-point progress and compass offsets (iNav MSP_CALIBRATION_DATA). */
+  getCalibrationData?(): Promise<INavCalibrationData>;
   getMcBraking?(): Promise<INavMcBraking>;
   setMcBraking?(b: INavMcBraking): Promise<CommandResult>;
   getRateDynamics?(): Promise<INavRateDynamics>;
@@ -280,6 +286,13 @@ export interface DroneProtocol {
    */
   cliSettings?: CliSettingsCapability;
 
+  /**
+   * Subscribe to every inbound MAVLink frame after the link's parser has
+   * reassembled it across chunks, checked its CRC and stripped any signature.
+   * Defined only on MAVLink links; undefined on MSP.
+   */
+  onMavlinkFrame?(callback: (frame: MAVLinkFrame) => void): () => void;
+
   // ── Betaflight binary config (MSP) ────────────────────────
   /** Read the per-UART serial-port configuration (Betaflight). */
   getSerialConfig?(): Promise<MspSerialPort[]>;
@@ -297,6 +310,12 @@ export interface DroneProtocol {
   writeOsdLayout?(items: Array<{ index: number; position: number }>, general?: MspOsdGeneralConfig): Promise<CommandResult>;
   /** Upload a MAX7456 character font, one glyph per MSP_OSD_CHAR_WRITE (Betaflight). */
   uploadOsdFont?(glyphs: Uint8Array[], onProgress?: (done: number, total: number) => void): Promise<CommandResult>;
+  /** Read the onboard blackbox flash summary: total and used bytes, ready state (Betaflight). */
+  getDataflashSummary?(): Promise<{ totalSize: number; usedSize: number; ready: boolean }>;
+  /** Download the logged part of the onboard blackbox flash; empty when nothing is logged (Betaflight). */
+  downloadBlackbox?(onProgress?: (p: { percentComplete: number }) => void): Promise<Uint8Array>;
+  /** Erase the onboard blackbox flash, resolving once the FC reports it empty (Betaflight). */
+  eraseDataflash?(): Promise<void>;
   /** Read the per-LED packed strip config (Betaflight). */
   getLedStripConfig?(): Promise<number[]>;
   /** Write the per-LED packed strip config, one MSP write per LED (Betaflight). */
@@ -319,12 +338,15 @@ export interface DroneProtocol {
   getRxMap?(): Promise<number[]>;
   /** Write the RC channel map (Betaflight). */
   setRxMap?(map: number[]): Promise<CommandResult>;
+  /** Read the VTX table power levels; `BF_VTX_POWER` indexes them from 1. Empty without a VTX table (Betaflight). */
+  getVtxPowerLevels?(): Promise<MspVtxTablePowerLevel[]>;
 
   // ── iNav Programming Framework ────────────────────────────
   downloadLogicConditions?(): Promise<INavLogicCondition[]>;
   /** Write every logic condition (index = array position), then save to EEPROM. */
   uploadLogicConditions?(rules: INavLogicCondition[]): Promise<CommandResult>;
-  downloadLogicConditionsStatus?(): Promise<INavLogicConditionsStatus[]>;
+  /** Live value of every logic condition, by slot. */
+  downloadLogicConditionsStatus?(): Promise<number[]>;
   downloadGvarStatus?(): Promise<INavGvarStatus>;
   /** Set one global variable's live runtime value (iNav). */
   setGvar?(index: number, value: number): Promise<CommandResult>;
@@ -486,8 +508,12 @@ export interface DroneProtocol {
   cancelCompassCal?(compassMask?: number): Promise<CommandResult>;
   /** Send PREFLIGHT_CALIBRATION with all zeros to cancel any active non-compass calibration. */
   cancelCalibration?(): Promise<CommandResult>;
-  /** PX4 only: Send MAV_CMD_FIXED_MAG_CAL_YAW (42006) to calibrate compass using GPS heading. */
-  startGnssMagCal?(): Promise<CommandResult>;
+  /**
+   * MAV_CMD_FIXED_MAG_CAL_YAW (42006): calibrate the compass from the world
+   * magnetic model and the vehicle's KNOWN earth-frame yaw in degrees (0-359),
+   * which the operator supplies. ArduPilot and PX4 both implement it.
+   */
+  startGnssMagCal?(yawDeg: number): Promise<CommandResult>;
   /** Send a generic MAV_CMD command. Use for commands without a dedicated method. */
   sendCommand?(commandId: number, params: number[]): Promise<CommandResult>;
 
@@ -548,6 +574,8 @@ export interface DroneProtocol {
   onDebug?(callback: DebugCallback): () => void;
   onGimbalAttitude?(callback: GimbalAttitudeCallback): () => void;
   onObstacleDistance?(callback: ObstacleDistanceCallback): () => void;
+  /** ADS-B traffic contacts (ADSB_VEHICLE), one call per received contact. */
+  onAdsbVehicle?(callback: AdsbVehicleCallback): () => void;
   onCameraImageCaptured?(callback: CameraImageCapturedCallback): () => void;
   onExtendedSysState?(callback: ExtendedSysStateCallback): () => void;
   onFencePoint?(callback: FencePointCallback): () => void;

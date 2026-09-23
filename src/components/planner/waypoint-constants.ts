@@ -4,7 +4,8 @@
  * @license GPL-3.0-only
  */
 
-import type { ActionCommand, CommandMissionAction, NavCommand } from "@/lib/types";
+import type { ActionCommand, CommandMissionAction, NavCommand, WaypointCommand } from "@/lib/types";
+import type { VehicleClass } from "@/lib/protocol/types";
 
 /**
  * The commands a navigation waypoint's own command Select offers. Only navigation
@@ -47,18 +48,37 @@ export const ACTION_COMMAND_GROUPS: { groupKey: string; commands: ActionCommand[
 export const INAV_ACTION_COMMANDS: readonly ActionCommand[] = ["ROI", "DO_JUMP", "CONDITION_YAW"];
 
 /**
+ * The planner's default acceptance radius for a newly created waypoint. It
+ * applies to pass-through waypoints only (model param1, sent as NAV_WAYPOINT /
+ * NAV_SPLINE_WAYPOINT param2); 0 leaves the choice to the FC (WP_RADIUS).
+ */
+export function acceptRadiusDefault(command: WaypointCommand, radius: number): { param1?: number } {
+  return (command === "WAYPOINT" || command === "SPLINE_WAYPOINT") && radius > 0 ? { param1: radius } : {};
+}
+
+/** MAV_CMD_DO_CHANGE_SPEED param1 (speed type). */
+export const SPEED_TYPE_AIRSPEED = 0;
+export const SPEED_TYPE_GROUND = 1;
+
+/**
  * Sensible default parameters applied when a fresh action of the given command is
  * added, so a newly-inserted action is immediately valid rather than all-zero.
  * A positioned action (ROI, DO_SET_HOME) starts at the ground point below the
  * waypoint it rides; a location of 0,0 would upload as "clear ROI" / the
- * null island.
+ * null island. A speed change targets airspeed on a fixed-wing vehicle (where
+ * a ground-speed change sets the minimum ground speed instead) and ground speed
+ * otherwise.
  */
 export function defaultActionParams(
   command: ActionCommand,
   parent: { lat: number; lon: number },
+  vehicleClass?: VehicleClass | null,
 ): Partial<CommandMissionAction> {
   switch (command) {
-    case "DO_SET_SPEED": return { param1: 1, param2: 5 }; // ground speed type, 5 m/s
+    case "DO_SET_SPEED": {
+      const fixedWing = vehicleClass === "plane" || vehicleClass === "vtol";
+      return { param1: fixedWing ? SPEED_TYPE_AIRSPEED : SPEED_TYPE_GROUND, param2: 5 }; // 5 m/s
+    }
     case "DO_SET_CAM_TRIGG": return { param1: 10 }; // trigger every 10 m
     case "DELAY": return { param1: 3 }; // 3 s
     case "CONDITION_YAW": return { param1: 0, param2: 0, param3: 1 }; // heading 0, abs, CW

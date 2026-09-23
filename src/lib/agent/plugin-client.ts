@@ -358,7 +358,7 @@ export class PluginAgentClient {
    * (a bool for a skill toggle, a number for a follow distance). `scope`
    * defaults to per-drone on the agent. Returns the agent's `{set, scope}`.
    *
-   * This is the Rule-39 local-first config-write path: it reaches the agent
+   * This is the local-first config-write path: it reaches the agent
    * directly with the stored pairing key, no Convex round-trip. The cloud
    * mirror (cmd_droneCommands) is a separate, later path.
    */

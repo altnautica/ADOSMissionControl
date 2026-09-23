@@ -4,21 +4,22 @@
  * live link/adapter indicators come from the heartbeat-backed
  * `agent-capabilities` store (read in the component); this store owns the
  * durable event history, read from `client.logging` for the radio/network
- * event kinds. Reads degrade gracefully: an older agent (no durable
- * store) or cloud mode (LAN store not reachable) leaves the feed empty and
- * `available=false` rather than throwing, so the panel falls back to the
- * live heartbeat indicators only.
+ * event kinds. The feed is keyed to the device it was read for: a load for
+ * another device replaces it, and a late response for a device no longer shown
+ * is dropped. Reads degrade gracefully: an older agent (no durable store) or
+ * no direct connection leaves the feed empty and `available=false` rather
+ * than throwing, so the panel falls back to the live heartbeat indicators.
  * @license GPL-3.0-only
  */
 
 import { create } from "zustand";
 import type { EventsRow } from "@/lib/agent/agent-client/logging";
+import type { AgentClient } from "@/lib/agent/client";
 import {
   RADIO_NETWORK_EVENT_KINDS,
   mapRadioNetworkEvents,
   type RadioNetworkActivity,
 } from "@/lib/agent/radio-network-events";
-import { useAgentConnectionStore } from "./agent-connection-store";
 
 /** How many activity rows to keep + render. */
 const MAX_ACTIVITY = 15;
@@ -33,13 +34,15 @@ const LOOKBACK = "-24h";
 const WIFI_RECENT_WINDOW_MS = 5 * 60_000;
 
 interface RadioNetworkHealthState {
+  /** The device the feed below belongs to (and the latest load targets). */
+  deviceId: string | null;
   /** Recent radio/network events, newest first, capped at MAX_ACTIVITY. */
   recentEvents: RadioNetworkActivity[];
   /** True when the most recent onboard-WiFi self-heal fired inside the
    * recent window at load time. Derived in the store (not in render) so the
    * freshness clock read stays out of the component's pure body. */
   wifiReassocRecent: boolean;
-  /** True once the durable store answered at least once this session. */
+  /** True once the durable store answered for `deviceId`. */
   available: boolean;
   loading: boolean;
   /** Set when the last load threw for a reason other than "store absent". */
@@ -48,13 +51,12 @@ interface RadioNetworkHealthState {
 }
 
 interface RadioNetworkHealthActions {
-  /** Query the durable store for the radio/network event kinds and refresh
-   * the feed. Swallows unreachable-store errors (older agent / cloud mode)
-   * so the panel still renders the live heartbeat indicators. */
-  loadEvents: () => Promise<void>;
-  /** Alias used by the panel's mount + manual refresh. */
-  refresh: () => Promise<void>;
-  /** Reset on agent disconnect / panel unmount. */
+  /** Query `client`'s durable store for the radio/network event kinds on
+   * behalf of `deviceId`. Swallows unreachable-store errors (older agent / no
+   * direct connection) so the panel still renders the live heartbeat
+   * indicators. */
+  loadEvents: (deviceId: string | null, client: AgentClient | null) => Promise<void>;
+  /** Reset on panel unmount. */
   clear: () => void;
 }
 
@@ -62,6 +64,7 @@ export type RadioNetworkHealthStore = RadioNetworkHealthState &
   RadioNetworkHealthActions;
 
 const initialState: RadioNetworkHealthState = {
+  deviceId: null,
   recentEvents: [],
   wifiReassocRecent: false,
   available: false,
@@ -74,21 +77,12 @@ export const useRadioNetworkHealthStore = create<RadioNetworkHealthStore>(
   (set, get) => ({
     ...initialState,
 
-    async loadEvents() {
-      // Resolve the logging client defensively: any failure to read the
-      // connection store (or a store with no logging surface) leaves the
-      // feed empty and unavailable so the panel shows live state only.
-      let client: ReturnType<
-        typeof useAgentConnectionStore.getState
-      >["client"] = null;
-      try {
-        client = useAgentConnectionStore.getState().client;
-      } catch {
-        set({ available: false, loading: false });
-        return;
-      }
-      // No logging surface at all (older agent build): leave the feed empty
-      // and stay unavailable so the panel shows live state only.
+    async loadEvents(deviceId, client) {
+      // A load for another device drops the previous device's feed at once.
+      if (get().deviceId !== deviceId) set({ ...initialState, deviceId });
+      // No logging surface at all (older agent build, or no direct connection
+      // to this node): leave the feed empty and unavailable so the panel shows
+      // live state only.
       if (!client?.logging) {
         set({ available: false, loading: false });
         return;
@@ -101,6 +95,7 @@ export const useRadioNetworkHealthStore = create<RadioNetworkHealthStore>(
           from: LOOKBACK,
           limit: QUERY_LIMIT,
         });
+        if (get().deviceId !== deviceId) return;
         const recentEvents = mapRadioNetworkEvents(envelope.data, MAX_ACTIVITY);
         // Freshness clock read happens here (the store), not in the
         // component's pure render body.
@@ -119,19 +114,16 @@ export const useRadioNetworkHealthStore = create<RadioNetworkHealthStore>(
           lastFetch: now,
         });
       } catch (err) {
-        // The durable store is unreachable (cloud mode, network error, or a
-        // pre-logd agent). Degrade to "no events" without crashing; the
-        // panel keeps showing the live heartbeat indicators.
+        if (get().deviceId !== deviceId) return;
+        // The durable store is unreachable (network error or a pre-logd
+        // agent). Degrade to "no events" without crashing; the panel keeps
+        // showing the live heartbeat indicators.
         set({
           available: false,
           loading: false,
           error: err instanceof Error ? err.message : null,
         });
       }
-    },
-
-    async refresh() {
-      await get().loadEvents();
     },
 
     clear() {

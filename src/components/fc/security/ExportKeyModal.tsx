@@ -16,7 +16,8 @@
  *   - Clipboard-only, never rendered on screen. Screen recordings,
  *     webcams, shoulder-surfing, screen-sharing, and accessibility tools
  *     cannot OCR the key.
- *   - Clipboard auto-cleared after 60 seconds.
+ *   - Clipboard auto-cleared after 60 seconds. A refused clear is reported
+ *     so the operator clears it by hand; the modal never claims it cleared.
  *   - Typed-phrase "EXPORT" confirm so a casual click cannot rotate a key.
  *   - Every export is a rotation, so every export is logged on the agent
  *     side (enroll-fc already logs the new key_id).
@@ -27,7 +28,7 @@
  * @license GPL-3.0-only
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { X, AlertTriangle, Check, Clipboard, Loader2 } from "lucide-react";
 
 import { useConvex } from "convex/react";
@@ -36,10 +37,6 @@ import type { AgentClient } from "@/lib/agent/client";
 import { useSigningStore } from "@/stores/signing-store";
 import { useAuthStore } from "@/stores/auth-store";
 import { emitSigningEvent } from "@/lib/api/signing-events";
-import {
-  getCloudKeyForDrone,
-  uploadKey,
-} from "@/lib/api/signing-cloud-sync";
 import { enrollNewKey } from "./signing/enroll-key";
 
 interface Props {
@@ -55,7 +52,9 @@ type ExportState =
   | "rotating"     // generating + enrolling + storing new key
   | "copied"       // new key in clipboard, 60s countdown running
   | "copy_failed"  // new key stored, clipboard write refused; retry offered
+  | "clearing"     // clipboard wipe in flight
   | "cleared"      // clipboard wiped, modal about to close
+  | "clear_failed" // clipboard refused the wipe; operator must clear it
   | "error";
 
 const CLIPBOARD_HOLD_MS = 60_000;
@@ -83,30 +82,39 @@ export function ExportKeyModal({ client, droneId, linkId, open, onClose }: Props
     setErrorMsg("");
     setSecondsLeft(CLIPBOARD_HOLD_MS / 1000);
     return () => {
-      if (countdownRef.current) clearInterval(countdownRef.current);
+      clearInterval(countdownRef.current ?? undefined);
       pendingHexRef.current = null;
     };
   }, [open]);
 
-  // Auto-close after the clipboard hold expires.
+  // Count down while the key sits in the clipboard.
   useEffect(() => {
     if (state !== "copied") return;
     countdownRef.current = setInterval(() => {
-      setSecondsLeft((prev) => {
-        if (prev <= 1) {
-          // Last tick: wipe clipboard and close.
-          clearClipboard();
-          setState("cleared");
-          setTimeout(onClose, 600);
-          return 0;
-        }
-        return prev - 1;
-      });
+      setSecondsLeft((prev) => Math.max(0, prev - 1));
     }, 1000);
-    return () => {
-      if (countdownRef.current) clearInterval(countdownRef.current);
-    };
-  }, [state, onClose]);
+    return () => clearInterval(countdownRef.current ?? undefined);
+  }, [state]);
+
+  // Wipe the clipboard and close only once the wipe is confirmed. Chrome
+  // rejects writeText while the document is unfocused, which is exactly when
+  // the operator is pasting the key elsewhere.
+  const clearClipboard = useCallback(async (closeDelayMs: number) => {
+    clearInterval(countdownRef.current ?? undefined);
+    setState("clearing");
+    try {
+      await navigator.clipboard.writeText("");
+      setState("cleared");
+      setTimeout(onClose, closeDelayMs);
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : String(err));
+      setState("clear_failed");
+    }
+  }, [onClose]);
+
+  useEffect(() => {
+    if (state === "copied" && secondsLeft === 0) void clearClipboard(600);
+  }, [state, secondsLeft, clearClipboard]);
 
   async function copyPendingKey() {
     const keyHex = pendingHexRef.current;
@@ -140,26 +148,6 @@ export function ExportKeyModal({ client, droneId, linkId, open, onClose }: Props
       enrollmentState: outcome.kind === "enrolled" ? "enrolled" : "unconfirmed",
       previousKeyId: outcome.kind === "unconfirmed" ? outcome.previousKeyId : null,
     });
-    // If this drone was opt-in for cloud sync, upload the new key now so the
-    // cloud copy matches the FC. An unconfirmed key is not uploaded: other
-    // browsers must not replace a key the FC may still hold.
-    if (outcome.kind === "enrolled" && isAuthenticated && convexClient) {
-      try {
-        const existingRow = await getCloudKeyForDrone(convexClient, droneId);
-        if (existingRow !== null) {
-          await uploadKey(convexClient, {
-            droneId,
-            keyHex: outcome.keyHex,
-            keyId: outcome.keyId,
-            linkIdOwner: linkId,
-            enrolledAt: outcome.enrolledAt,
-          });
-        }
-      } catch {
-        // Non-fatal. The local rotation already succeeded; cloud row
-        // is stale until the next rotation retries.
-      }
-    }
     void emitSigningEvent(convexClient, isAuthenticated, {
       droneId,
       eventType: "export",
@@ -266,11 +254,7 @@ export function ExportKeyModal({ client, droneId, linkId, open, onClose }: Props
               </span>
               <button
                 type="button"
-                onClick={() => {
-                  clearClipboard();
-                  setState("cleared");
-                  setTimeout(onClose, 400);
-                }}
+                onClick={() => void clearClipboard(400)}
                 className="px-3 py-1.5 text-sm border border-border-default hover:bg-bg-tertiary"
               >
                 Clear now
@@ -311,10 +295,48 @@ export function ExportKeyModal({ client, droneId, linkId, open, onClose }: Props
           </div>
         )}
 
+        {state === "clearing" && (
+          <div className="flex items-center gap-2 text-sm text-text-secondary py-4">
+            <Clipboard size={16} aria-hidden="true" />
+            <span>Clearing clipboard...</span>
+          </div>
+        )}
+
         {state === "cleared" && (
           <div className="flex items-center gap-2 text-sm text-text-secondary py-4">
             <Check size={16} className="text-status-success" aria-hidden="true" />
             <span>Clipboard cleared.</span>
+          </div>
+        )}
+
+        {state === "clear_failed" && (
+          <div className="space-y-3">
+            <div
+              role="alert"
+              className="flex items-start gap-2 text-sm text-status-warning border border-status-warning/40 bg-status-warning/5 p-3"
+            >
+              <AlertTriangle size={14} className="mt-0.5" aria-hidden="true" />
+              <span>
+                The clipboard could not be cleared ({errorMsg || "write refused"}). The signing key is
+                still in it: copy something else now, and clear any clipboard history.
+              </span>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button
+                type="button"
+                onClick={() => void clearClipboard(400)}
+                className="px-3 py-1.5 text-sm text-text-tertiary hover:text-text-secondary"
+              >
+                Try again
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-3 py-1.5 text-sm border border-border-default hover:bg-bg-tertiary"
+              >
+                I cleared it
+              </button>
+            </div>
           </div>
         )}
 
@@ -341,12 +363,4 @@ export function ExportKeyModal({ client, droneId, linkId, open, onClose }: Props
       </div>
     </div>
   );
-}
-
-function clearClipboard(): void {
-  try {
-    void navigator.clipboard.writeText("");
-  } catch {
-    // clipboard write can be blocked on some browsers; best-effort
-  }
 }

@@ -42,6 +42,10 @@ import {
 import { resolveLocalAgentForDrone } from "@/lib/agent/resolve-agent";
 import { resolveDirectFcProtocol } from "@/lib/nodes/direct-fc-protocol";
 import { relayProxyBaseUrl, resolveRelayReach } from "@/lib/nodes/relay-reach";
+import {
+  agentModeName,
+  type AgentModeFirmware,
+} from "@/lib/agent/agent-mode-names";
 import { nodeIdForDevice } from "@/lib/agent/node-id";
 
 /** The node fields a sink needs. A fleet node entry satisfies this. */
@@ -175,6 +179,13 @@ export interface NodeCommandSinkOptions {
    * caller has already resolved it.
    */
   originIsHttps?: boolean;
+  /**
+   * The firmware the agent identified on the node's vehicle. An agent lane's
+   * mode command sends that firmware's name for a mode, and refuses a mode the
+   * agent's table has no equivalent for. Without it the mode name is sent as
+   * is and the agent decides.
+   */
+  agentFirmware?: AgentModeFirmware | null;
 }
 
 /**
@@ -293,6 +304,7 @@ async function dispatchOverCloud(
 function makeSink(
   transport: NodeCommandTransport,
   reportsVehicleAck: boolean,
+  agentFirmware: AgentModeFirmware | null | undefined,
   dispatch: (cmd: AgentCommandName, args: unknown[]) => Promise<CommandResult>,
 ): NodeCommandSink {
   const run = (
@@ -310,7 +322,14 @@ function makeSink(
     supports: (method) => AGENT_COMMAND_FOR[method] !== null,
     arm: () => run("arm"),
     disarm: () => run("disarm"),
-    setFlightMode: (mode: UnifiedFlightMode) => run("setFlightMode", [mode]),
+    setFlightMode: (mode: UnifiedFlightMode) => {
+      const name = agentFirmware ? agentModeName(agentFirmware, mode) : mode;
+      return name === null
+        ? Promise.resolve(
+            failed(`${mode} has no equivalent in the agent's mode table for this vehicle`),
+          )
+        : run("setFlightMode", [name]);
+    },
     returnToLaunch: () => run("returnToLaunch"),
     land: () => run("land"),
     takeoff: (altitude: number) => run("takeoff", [altitude]),
@@ -409,7 +428,7 @@ export function resolveNodeCommandReach(
         return { sink: null, blockedReason: "lan-blocked-by-https" };
       }
       return {
-        sink: makeSink("relay-proxy", true, (cmd, args) =>
+        sink: makeSink("relay-proxy", true, options.agentFirmware, (cmd, args) =>
           dispatchOverLan(
             {
               agentUrl: relayProxyBaseUrl(relay),
@@ -433,7 +452,7 @@ export function resolveNodeCommandReach(
 
   if (lanAgent && !originIsHttps) {
     return {
-      sink: makeSink("lan", true, (cmd, args) =>
+      sink: makeSink("lan", true, options.agentFirmware, (cmd, args) =>
         dispatchOverLan(lanAgent, cmd, args),
       ),
     };
@@ -442,7 +461,7 @@ export function resolveNodeCommandReach(
   const enqueue = options.enqueueCloudCommand;
   if (enqueue && node.convexId) {
     return {
-      sink: makeSink("cloud", false, (cmd, args) =>
+      sink: makeSink("cloud", false, options.agentFirmware, (cmd, args) =>
         dispatchOverCloud(enqueue, node.deviceId, cmd, args, options.onQueued),
       ),
     };

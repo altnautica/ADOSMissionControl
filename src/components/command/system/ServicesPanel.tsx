@@ -14,7 +14,8 @@ import { CollapsibleSection } from "./shared";
 
 export function ServicesPanel() {
   const services = useAgentSystemStore((s) => s.services);
-  const resources = useAgentSystemStore((s) => s.resources);
+  const processCpuPercent = useAgentSystemStore((s) => s.processCpuPercent);
+  const processMemoryMb = useAgentSystemStore((s) => s.processMemoryMb);
   const restartService = useAgentSystemStore((s) => s.restartService);
 
   return (
@@ -28,8 +29,8 @@ export function ServicesPanel() {
         <ServiceTable
           services={services}
           onRestart={restartService}
-          processCpu={resources?.cpu_percent}
-          processMemoryMb={resources?.memory_used_mb}
+          processCpu={processCpuPercent}
+          processMemoryMb={processMemoryMb}
         />
       ) : (
         <p className="text-xs text-text-tertiary py-4 text-center">

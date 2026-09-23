@@ -14,7 +14,7 @@ import { Toggle } from "@/components/ui/toggle";
 import { usePatternStore } from "@/stores/pattern-store";
 import { useDrawingStore } from "@/stores/drawing-store";
 import { CAMERA_PROFILES, computeGSD, computeLineSpacing, computeTriggerDistance } from "@/lib/patterns/gsd-calculator";
-import { optimalLineBearing, windPenalty } from "@/lib/patterns/wind-optimized";
+import { gridAngleLineBearing, optimalLineBearing, windPenalty } from "@/lib/patterns/wind-optimized";
 import { Grid3X3, Camera, ChevronDown, SquareDashed, Wind } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useToast } from "@/components/ui/toast";
@@ -26,6 +26,7 @@ import {
 } from "./pattern-editor-constants";
 import { GsdSpeedControls } from "./GsdSpeedControls";
 import { CoverageStats } from "./CoverageStats";
+import { useCoverageCaptures } from "@/hooks/use-coverage-captures";
 
 export function SurveyConfig() {
   const t = useTranslations("planner");
@@ -39,6 +40,7 @@ export function SurveyConfig() {
   const toggleExclusionPolygonId = usePatternStore((s) => s.toggleExclusionPolygonId);
   const showCoverageOverlay = usePatternStore((s) => s.showCoverageOverlay);
   const setShowCoverageOverlay = usePatternStore((s) => s.setShowCoverageOverlay);
+  const coverage = useCoverageCaptures();
 
   const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -170,14 +172,15 @@ export function SurveyConfig() {
   const hasWindSpeed = Number.isFinite(windSpeedNum) && windSpeedNum > 0;
   // Crosswind the CURRENT grid angle forces onto the imaging legs. Optimal is 0
   // by definition, so this doubles as the benefit of clicking "Align to wind".
+  // The wind helpers take compass line bearings, not grid angles.
   const crosswindPenalty = hasWindBearing && hasWindSpeed
-    ? windPenalty(surveyConfig.gridAngle ?? 0, windBearingNum, windSpeedNum)
+    ? windPenalty(gridAngleLineBearing(surveyConfig.gridAngle ?? 0), windBearingNum, windSpeedNum)
     : null;
 
   const handleAlignToWind = useCallback(() => {
     const wb = parseFloat(windBearing);
     if (!Number.isFinite(wb)) return;
-    updateSurveyConfig({ gridAngle: Math.round(optimalLineBearing(wb) * 10) / 10 });
+    updateSurveyConfig({ gridAngle: Math.round(gridAngleLineBearing(optimalLineBearing(wb)) * 10) / 10 });
   }, [windBearing, updateSurveyConfig]);
 
   return (
@@ -394,6 +397,11 @@ export function SurveyConfig() {
       {selectedCamera && (
         <Toggle label={t("survey.coverage.showOverlay")} checked={showCoverageOverlay}
           onChange={setShowCoverageOverlay} />
+      )}
+      {selectedCamera && showCoverageOverlay && coverage.total > coverage.points.length && (
+        <p className="text-[10px] text-status-warning">
+          {t("survey.coverage.truncated", { shown: coverage.points.length, total: coverage.total })}
+        </p>
       )}
     </>
   );

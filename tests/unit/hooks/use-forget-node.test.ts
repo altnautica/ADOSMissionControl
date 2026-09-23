@@ -11,14 +11,21 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
 
-const { mutationFn, forgetNodeMock, convexState } = vi.hoisted(() => ({
+const { mutationFn, forgetNodeMock, toastFn, convexState } = vi.hoisted(() => ({
   mutationFn: vi.fn(),
-  forgetNodeMock: vi.fn(),
+  forgetNodeMock: vi.fn(async (): Promise<{ ok: boolean; reason?: string; message?: string }> => ({ ok: true })),
+  toastFn: vi.fn(),
   convexState: { available: true },
 }));
 
 vi.mock("convex/react", () => ({
   useMutation: () => mutationFn,
+}));
+vi.mock("next-intl", () => ({
+  useTranslations: () => (k: string) => k,
+}));
+vi.mock("@/components/ui/toast", () => ({
+  useToast: () => ({ toast: toastFn }),
 }));
 vi.mock("@/app/ConvexClientProvider", () => ({
   useConvexAvailable: () => convexState.available,
@@ -37,10 +44,10 @@ beforeEach(() => {
 });
 
 describe("useForgetNode", () => {
-  it("threads the Convex unpair mutation when Convex is available", () => {
+  it("threads the Convex unpair mutation when Convex is available", async () => {
     const { result } = renderHook(() => useForgetNode());
 
-    result.current("node:alpha", { convexId: "doc-1" });
+    await result.current("node:alpha", { convexId: "doc-1" });
 
     expect(forgetNodeMock).toHaveBeenCalledWith("node:alpha", {
       convexId: "doc-1",
@@ -48,11 +55,11 @@ describe("useForgetNode", () => {
     });
   });
 
-  it("passes no mutation when Convex is unavailable", () => {
+  it("passes no mutation when Convex is unavailable", async () => {
     convexState.available = false;
     const { result } = renderHook(() => useForgetNode());
 
-    result.current("node:alpha", { convexId: "doc-1" });
+    await result.current("node:alpha", { convexId: "doc-1" });
 
     expect(forgetNodeMock).toHaveBeenCalledWith("node:alpha", {
       convexId: "doc-1",
@@ -60,14 +67,24 @@ describe("useForgetNode", () => {
     });
   });
 
-  it("defaults a missing convexId to null for a purely local node", () => {
+  it("defaults a missing convexId to null for a purely local node", async () => {
     const { result } = renderHook(() => useForgetNode());
 
-    result.current("node:alpha");
+    await result.current("node:alpha");
 
     expect(forgetNodeMock).toHaveBeenCalledWith("node:alpha", {
       convexId: null,
       unpairMutation: mutationFn,
     });
+  });
+
+  it("reports a node the cloud would not release as an error, not a removal", async () => {
+    forgetNodeMock.mockResolvedValueOnce({ ok: false, reason: "cloudFailed", message: "denied" });
+    const { result } = renderHook(() => useForgetNode());
+
+    const outcome = await result.current("node:alpha", { convexId: "doc-1" });
+
+    expect(outcome.ok).toBe(false);
+    expect(toastFn).toHaveBeenCalledWith("forgetCloudFailed", "error");
   });
 });

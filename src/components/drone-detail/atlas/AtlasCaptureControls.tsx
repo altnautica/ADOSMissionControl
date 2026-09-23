@@ -6,7 +6,7 @@
  * Stop & Reconstruct), plus an optional "Reconstruct now" action. Wired to the
  * `useAtlasControl` result; the visible buttons follow the readiness state so
  * the operator only sees valid transitions. Failures are surfaced honestly
- * (Rule 44): a `503` toasts "capture service unavailable", other failures toast
+ * (no fabricated reading): a `503` toasts "capture service unavailable", other failures toast
  * a generic message — never a silent no-op.
  *
  * Shared by the World Model setup surface and the Live World tab so both drive
@@ -61,7 +61,7 @@ export function AtlasCaptureControls({
   const readiness = control.readiness;
   // Derive "active session" from BOTH the standalone bool and the lifecycle
   // state so Pause/Resume/Stop stay visible through a paused session even when
-  // an agent reports capturing:false while state:"paused" (Rule 44).
+  // an agent reports capturing:false while state:"paused" (no fabricated reading).
   const capturing = readiness
     ? readiness.capturing === true || isActiveCaptureState(readiness.state)
     : false;

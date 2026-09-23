@@ -19,9 +19,9 @@ const RECOVERY_STATES = [
   "rebinding",
   "port_cycling",
   "hub_resetting",
+  "retrying",
   "needs_hub_reset",
   "guard_blocked",
-  "exhausted",
 ] as const;
 
 function numberOrZero(value: unknown): number {
@@ -54,7 +54,7 @@ export function normalizeCameraUsbRecovery(
     state: stateRaw as CameraUsbRecovery["state"],
     case: typeof r.case === "string" && r.case.length > 0 ? r.case : null,
     attempts: numberOrZero(r.attempts),
-    maxAttempts: numberOrZero(r.maxAttempts),
+    cooldownSeconds: numberOrZero(r.cooldownSeconds),
     cameraPresent: booleanOr(r.cameraPresent, false),
     expected: booleanOr(r.expected, false),
     pppsCapable: booleanOr(r.pppsCapable, false),
@@ -66,12 +66,13 @@ export function normalizeCameraUsbRecovery(
   };
 }
 
-/** Recovery states where an active self-heal step is in flight. */
+/** Recovery states where a self-heal episode is in progress: a missing camera
+ * under watch, a step in flight, or the cooldown between two attempts. */
 export const CAMERA_RECOVERY_ACTIVE_STATES = new Set<CameraUsbRecovery["state"]>(
-  ["monitoring", "rebinding", "port_cycling", "hub_resetting"],
+  ["monitoring", "rebinding", "port_cycling", "hub_resetting", "retrying"],
 );
 
 /** Recovery states that need operator attention (reseat / unblock). */
 export const CAMERA_RECOVERY_ATTENTION_STATES = new Set<
   CameraUsbRecovery["state"]
->(["needs_hub_reset", "guard_blocked", "exhausted"]);
+>(["needs_hub_reset", "guard_blocked"]);

@@ -1,6 +1,6 @@
 /**
  * iNav sensor decoders: air speed, temperature sensor config, raw
- * temperatures, and the ADS-B vehicle list.
+ * temperatures, calibration data, and the ADS-B vehicle list.
  *
  * @module protocol/msp/decoders/inav/sensors
  */
@@ -9,6 +9,7 @@ import { readU8, readU16, readU32, readS16, readS32, readCString } from "./helpe
 import type {
   INavAirSpeed,
   INavTempSensorConfigEntry,
+  INavCalibrationData,
   INavAdsbVehicle,
 } from "./types";
 
@@ -30,15 +31,16 @@ export function decodeMspINavAirSpeed(dv: DataView): INavAirSpeed {
 /**
  * MSP2_INAV_TEMP_SENSOR_CONFIG (0x201c)
  *
- * Repeated for each sensor:
+ * Repeated for each sensor (18 bytes):
  *   U8   type
  *   U8[8] address
  *   S16  alarmMin (tenths of degree C)
  *   S16  alarmMax (tenths of degree C)
+ *   U8   osdSymbol
  *   char[4] label (null-padded, not null-terminated)
  */
 export function decodeMspINavTempSensorConfig(dv: DataView): INavTempSensorConfigEntry[] {
-  const ENTRY_SIZE = 16; // 1 + 8 + 2 + 2 + 4 (but label may be 4 chars fixed)
+  const ENTRY_SIZE = 18;
   const result: INavTempSensorConfigEntry[] = [];
   let offset = 0;
   while (offset + ENTRY_SIZE <= dv.byteLength) {
@@ -47,13 +49,14 @@ export function decodeMspINavTempSensorConfig(dv: DataView): INavTempSensorConfi
     for (let i = 0; i < 8; i++) address.push(readU8(dv, offset + 1 + i));
     const alarmMin = readS16(dv, offset + 9);
     const alarmMax = readS16(dv, offset + 11);
+    const osdSymbol = readU8(dv, offset + 13);
     // 4-byte null-padded label
     let label = '';
     for (let i = 0; i < 4; i++) {
-      const ch = readU8(dv, offset + 13 + i);
+      const ch = readU8(dv, offset + 14 + i);
       if (ch !== 0) label += String.fromCharCode(ch);
     }
-    result.push({ type, address, alarmMin, alarmMax, label });
+    result.push({ type, address, alarmMin, alarmMax, osdSymbol, label });
     offset += ENTRY_SIZE;
   }
   return result;
@@ -61,17 +64,38 @@ export function decodeMspINavTempSensorConfig(dv: DataView): INavTempSensorConfi
 
 // ── iNav TEMPERATURES decoder ────────────────────────────────
 
+/** Value iNav sends for a temperature sensor with no valid reading. */
+const INAV_TEMPERATURE_INVALID = -1000;
+
 /**
  * MSP2_INAV_TEMPERATURES (0x201e)
  *
- * S16[8] temperatures (tenths of degree C; 0x8000 = sensor not present)
+ * S16[8] temperatures in tenths of a degree C. iNav writes -1000 for a sensor
+ * with no valid reading; that, and a slot missing from a short payload,
+ * decode as null.
  */
-export function decodeMspINavTemperatures(dv: DataView): number[] {
-  const result: number[] = [];
+export function decodeMspINavTemperatures(dv: DataView): (number | null)[] {
+  const result: (number | null)[] = [];
   for (let i = 0; i < 8; i++) {
-    result.push(dv.byteLength >= (i + 1) * 2 ? readS16(dv, i * 2) : 0x8000);
+    const raw = dv.byteLength >= (i + 1) * 2 ? readS16(dv, i * 2) : INAV_TEMPERATURE_INVALID;
+    result.push(raw === INAV_TEMPERATURE_INVALID ? null : raw);
   }
   return result;
+}
+
+// ── MSP_CALIBRATION_DATA decoder (iNav) ─────────────────────
+
+/**
+ * MSP_CALIBRATION_DATA (14), iNav layout
+ *
+ * U8 accel orientation flags, S16[3] accZero, S16[3] accGain, S16[3] magZero,
+ * U16 opflow scale, S16[3] magGain.
+ */
+export function decodeMspINavCalibrationData(dv: DataView): INavCalibrationData {
+  return {
+    accPositionFlags: readU8(dv, 0),
+    magZero: [readS16(dv, 13), readS16(dv, 15), readS16(dv, 17)],
+  };
 }
 
 // ── MSP2 ADSB VEHICLE LIST decoder ───────────────────────────

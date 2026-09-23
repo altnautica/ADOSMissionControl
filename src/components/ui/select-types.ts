@@ -4,17 +4,7 @@
  * @license GPL-3.0-only
  */
 
-export interface SelectOption {
-  value: string;
-  label: string;
-  description?: string;
-  disabled?: boolean;
-}
-
-export interface SelectOptionGroup {
-  label: string;
-  options: SelectOption[];
-}
+import type { SelectOption, SelectOptionGroup } from "@/lib/types";
 
 export interface SelectProps {
   label?: React.ReactNode;

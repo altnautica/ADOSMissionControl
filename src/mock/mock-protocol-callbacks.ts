@@ -46,6 +46,7 @@ import type {
   DebugCallback,
   GimbalAttitudeCallback,
   ObstacleDistanceCallback,
+  AdsbVehicleCallback,
   CameraImageCapturedCallback,
   ExtendedSysStateCallback,
   FencePointCallback,
@@ -114,6 +115,7 @@ export interface MockCallbackArrays {
   debugCbs: DebugCallback[];
   gimbalAttitudeCbs: GimbalAttitudeCallback[];
   obstacleDistanceCbs: ObstacleDistanceCallback[];
+  adsbVehicleCbs: AdsbVehicleCallback[];
   cameraImageCapturedCbs: CameraImageCapturedCallback[];
   extendedSysStateCbs: ExtendedSysStateCallback[];
   fencePointCbs: FencePointCallback[];
@@ -147,7 +149,7 @@ export function createCallbackArrays(): MockCallbackArrays {
     navControllerCbs: [], scaledImuCbs: [], scaledPressureCbs: [],
     estimatorStatusCbs: [], cameraTriggerCbs: [], linkLostCbs: [],
     linkRestoredCbs: [], localPositionCbs: [], debugCbs: [],
-    gimbalAttitudeCbs: [], obstacleDistanceCbs: [], cameraImageCapturedCbs: [],
+    gimbalAttitudeCbs: [], obstacleDistanceCbs: [], adsbVehicleCbs: [], cameraImageCapturedCbs: [],
     extendedSysStateCbs: [], fencePointCbs: [], systemTimeCbs: [],
     rawImuCbs: [], rcChannelsRawCbs: [], rcChannelsOverrideCbs: [],
     missionItemCbs: [], altitudeCbs: [], windCovCbs: [],
@@ -199,6 +201,7 @@ export function bindOnMethods(cbs: MockCallbackArrays) {
     onDebug: (cb: DebugCallback) => sub(cbs.debugCbs, cb),
     onGimbalAttitude: (cb: GimbalAttitudeCallback) => sub(cbs.gimbalAttitudeCbs, cb),
     onObstacleDistance: (cb: ObstacleDistanceCallback) => sub(cbs.obstacleDistanceCbs, cb),
+    onAdsbVehicle: (cb: AdsbVehicleCallback) => sub(cbs.adsbVehicleCbs, cb),
     onCameraImageCaptured: (cb: CameraImageCapturedCallback) => sub(cbs.cameraImageCapturedCbs, cb),
     onExtendedSysState: (cb: ExtendedSysStateCallback) => sub(cbs.extendedSysStateCbs, cb),
     onFencePoint: (cb: FencePointCallback) => sub(cbs.fencePointCbs, cb),

@@ -1,4 +1,4 @@
-// WebSocket subscription helper with exponential-backoff reconnect, used by event streams.
+// WebSocket subscription helper with a fixed-cadence reconnect, used by event streams.
 //
 // The pairing key is exchanged for a one-shot ticket carried as a WS
 // subprotocol value; that exchange lives in ``./ws-ticket`` and is
@@ -14,6 +14,15 @@ import {
 
 export type { WsAuthScope } from "./ws-ticket";
 
+/** Fixed retry cadence. Constant rather than growing, and never reset by an
+ *  open that the agent immediately closes, so a refusing or flapping handler
+ *  costs one ticket mint and one handshake every few seconds, not a storm. */
+const RECONNECT_MS = 3000;
+
+/** Policy-violation close: the agent's handler refuses this node's profile
+ *  (`E_PROFILE_MISMATCH`). Retrying cannot change the answer. */
+const CLOSE_POLICY_VIOLATION = 1008;
+
 export interface SubscribeOptions<E> {
   ctx: RequestContext;
   path: string;
@@ -21,6 +30,8 @@ export interface SubscribeOptions<E> {
    *  The agent's WS handler validates the same scope on consume. */
   scope: WsAuthScope;
   onEvent: (event: E) => void;
+  /** `closed` is also reported when the agent refuses the stream for this
+   *  node's profile (close 1008); the subscription stops retrying then. */
   onState?: (state: "connected" | "reconnecting" | "closed") => void;
 }
 
@@ -36,9 +47,7 @@ export function subscribeWebSocket<E>(opts: SubscribeOptions<E>): () => void {
 
   let closed = false;
   let ws: WebSocket | null = null;
-  let retryDelay = 500;
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-  let hasConnectedOnce = false;
   let lastReportedState: "connected" | "reconnecting" | "closed" | null = null;
   let mintAbort: AbortController | null = null;
 
@@ -75,8 +84,6 @@ export function subscribeWebSocket<E>(opts: SubscribeOptions<E>): () => void {
       return;
     }
     ws.onopen = () => {
-      retryDelay = 500;
-      hasConnectedOnce = true;
       reportState("connected");
     };
     ws.onmessage = (ev) => {
@@ -90,11 +97,15 @@ export function subscribeWebSocket<E>(opts: SubscribeOptions<E>): () => void {
     ws.onerror = () => {
       // onclose handles reconnection
     };
-    ws.onclose = () => {
+    ws.onclose = (ev: CloseEvent) => {
       ws = null;
-      if (!closed) {
-        reportState("reconnecting");
+      if (closed) return;
+      if (ev.code === CLOSE_POLICY_VIOLATION) {
+        closed = true;
+        reportState("closed");
+        return;
       }
+      reportState("reconnecting");
       scheduleReconnect();
     };
   };
@@ -108,9 +119,8 @@ export function subscribeWebSocket<E>(opts: SubscribeOptions<E>): () => void {
     reconnectTimer = setTimeout(() => {
       reconnectTimer = null;
       if (closed) return;
-      retryDelay = Math.min(retryDelay * 2, 10000);
       void connect();
-    }, retryDelay);
+    }, RECONNECT_MS);
   };
 
   void connect();
@@ -138,6 +148,5 @@ export function subscribeWebSocket<E>(opts: SubscribeOptions<E>): () => void {
       ws = null;
     }
     reportState("closed");
-    void hasConnectedOnce;
   };
 }

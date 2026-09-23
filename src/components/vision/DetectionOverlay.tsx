@@ -31,6 +31,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { computeRenderedRect } from "@/components/cockpit/VideoOverlayHost";
 import {
+  DETECTION_STALE_MS,
   useVisionDetectionsStore,
   type VisionDetection,
 } from "@/stores/vision-detections-store";
@@ -58,8 +59,6 @@ interface DetectionOverlayProps {
   onSelectBox?: (detection: VisionDetection, cameraId: string) => void;
 }
 
-const DEFAULT_STALE_MS = 2000;
-
 /**
  * Border + text color for a box. A box the tracker has locked is coloured by its
  * lock state (green locked / amber uncertain / red lost) so the follow target
@@ -81,7 +80,7 @@ function boxColorClass(d: VisionDetection): string {
 export function DetectionOverlay({
   droneId,
   streamKey,
-  staleAfterMs = DEFAULT_STALE_MS,
+  staleAfterMs = DETECTION_STALE_MS,
   className,
   onSelectBox,
 }: DetectionOverlayProps) {
@@ -94,11 +93,14 @@ export function DetectionOverlay({
   // Reading the wall clock from state (not Date.now() in render) keeps
   // the render pure.
   const [now, setNow] = useState(() => Date.now());
+  // Keyed on whether a feed exists, not on the batch object that is replaced
+  // every frame, so the interval lives for the feed's lifetime.
+  const hasFeed = !!batch;
   useEffect(() => {
-    if (!batch) return;
+    if (!hasFeed) return;
     const id = setInterval(() => setNow(Date.now()), 500);
     return () => clearInterval(id);
-  }, [batch]);
+  }, [hasFeed]);
 
   // The rectangle the video actually paints into, inside this pane.
   const wrapperRef = useRef<HTMLDivElement>(null);

@@ -5,7 +5,8 @@
  *
  * Reads from {@link useHistoryStore} sync state. Authentication and Convex
  * availability come from the standard hooks. Click the badge to force a
- * re-sync (no-op when local-only).
+ * re-sync (no-op when local-only). Demo mode never syncs, so it reads as
+ * local-only and offers no sync action.
  *
  * @license GPL-3.0-only
  */
@@ -15,6 +16,7 @@ import { Cloud, CloudOff, RefreshCcw } from "lucide-react";
 import { useConvexAvailable } from "@/app/ConvexClientProvider";
 import { useAuthStore } from "@/stores/auth-store";
 import { useHistoryStore } from "@/stores/history-store";
+import { useSettingsStore } from "@/stores/settings-store";
 
 function fmtTime(ms: number): string {
   const d = new Date(ms);
@@ -28,10 +30,12 @@ export function CloudSyncBadge() {
   const syncStatus = useHistoryStore((s) => s.syncStatus);
   const lastSyncAt = useHistoryStore((s) => s.lastSyncAt);
   const lastSyncError = useHistoryStore((s) => s.lastSyncError);
+  const pendingCount = useHistoryStore((s) => s.pendingSyncIds.size);
   const records = useHistoryStore((s) => s.records);
   const markDirty = useHistoryStore((s) => s.markDirty);
+  const demoMode = useSettingsStore((s) => s.demoMode);
 
-  const enabled = convexAvailable && isAuthenticated;
+  const enabled = convexAvailable && isAuthenticated && !demoMode;
 
   if (!enabled) {
     return (
@@ -70,16 +74,31 @@ export function CloudSyncBadge() {
     );
   }
 
+  // Idle: say what is actually true. Records still waiting to go up are not
+  // "synced", and nothing has synced until a push has succeeded once.
+  const tone =
+    pendingCount > 0
+      ? "text-status-warning hover:text-status-warning/80"
+      : lastSyncAt
+        ? "text-status-success hover:text-status-success/80"
+        : "text-text-tertiary hover:text-text-secondary";
+  const label =
+    pendingCount > 0
+      ? t("syncPending", { count: pendingCount })
+      : lastSyncAt
+        ? t("syncSynced", { time: fmtTime(lastSyncAt) })
+        : t("syncNotYet");
+
   return (
     <button
       onClick={() => {
         for (const r of records) markDirty(r.id);
       }}
-      className="inline-flex items-center gap-1 text-[10px] font-mono text-status-success hover:text-status-success/80"
+      className={`inline-flex items-center gap-1 text-[10px] font-mono ${tone}`}
       title={t("syncManual")}
     >
       <Cloud size={11} />
-      {lastSyncAt ? t("syncSynced", { time: fmtTime(lastSyncAt) }) : "Synced"}
+      {label}
     </button>
   );
 }

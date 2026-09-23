@@ -12,7 +12,8 @@
 
 import { describe, it, expect } from "vitest";
 
-import { parseManifestYaml, toInstallSummary } from "../manifest-parse";
+import { parseManifestYaml } from "../manifest-parse";
+import { toInstallSummary } from "../manifest-summary";
 
 const MANIFEST = `
 id: com.example.follow

@@ -36,7 +36,7 @@ export function GroundStationUplinkCard() {
   const unknown = <span className="text-text-tertiary">{t("status.unknown")}</span>;
 
   return (
-    <div className="rounded-lg border border-border-default bg-surface-secondary p-3 space-y-2">
+    <div className="rounded-lg border border-border-default bg-bg-secondary p-3 space-y-2">
       <h3 className="text-xs uppercase tracking-wide text-text-tertiary flex items-center gap-2">
         {t("title")}
         <GsFreshnessBadge freshness={freshness} />

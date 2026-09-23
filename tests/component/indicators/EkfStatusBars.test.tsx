@@ -79,11 +79,16 @@ describe('EkfStatusBars', () => {
       estimatorStatus: estimatorBuffer,
     });
 
-    renderWithIntl(<EkfStatusBars />);
+    const { container } = renderWithIntl(<EkfStatusBars />);
 
-    // Estimator flags section should render flag abbreviations
-    expect(screen.getByText('ATT')).toBeDefined();
-    expect(screen.getByText('VH')).toBeDefined();
-    expect(screen.getByText('VV')).toBeDefined();
+    // The EKF_STATUS_REPORT word (0) and the ESTIMATOR_STATUS word (0x000F)
+    // each render their own row of flags.
+    const flag = (label: string) =>
+      container.querySelector(`[data-flag="${label}"]`)?.getAttribute("data-flag-set");
+    expect(flag("ESTIMATOR_ATTITUDE")).toBe("true");
+    expect(flag("ESTIMATOR_VELOCITY_HORIZ")).toBe("true");
+    expect(flag("ESTIMATOR_VELOCITY_VERT")).toBe("true");
+    expect(flag("ESTIMATOR_POS_HORIZ_ABS")).toBe("false");
+    expect(flag("EKF_ATTITUDE")).toBe("false");
   });
 });

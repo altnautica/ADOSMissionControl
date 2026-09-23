@@ -10,7 +10,7 @@
  *
  *   - Session state (opening / live / stalled / closed) from feed freshness +
  *     the tier, so a feed that WAS flowing and stopped reads "stalled" rather
- *     than silently as "no targets" (Rule 44).
+ *     than silently as "no targets" (no fabricated reading).
  *   - Bound node — the offload workstation when the tier is offload.
  *   - Return-stream freshness — ms since the last batch, with a green/amber dot.
  *   - Throughput — batches/sec over a rolling window, shown ONLY while the
@@ -46,33 +46,42 @@ export function PerceptionSessionCard({ droneId }: { droneId: string }) {
   const tier = useAgentCapabilitiesStore((s) => s.perceptionTier);
   const target = useAgentCapabilitiesStore((s) => s.perceptionOffloadTarget);
 
-  const [now, setNow] = useState(() => Date.now());
+  const [clock, setClock] = useState<{ now: number; rate: number | null }>(() => ({
+    now: Date.now(),
+    rate: null,
+  }));
+  const now = clock.now;
 
   // Tick only while a feed has started, so the readout ages fresh → stale and
   // the throughput updates on its own even with no new batch. Idle costs
   // nothing (opening/closed are static states). Key the effect on whether a
   // feed EXISTS, not the batch object: the batch ref is replaced every frame
   // (~10-15 Hz), so keying on it would tear down + recreate the 500 ms interval
-  // each frame instead of once per feed lifecycle.
+  // each frame instead of once per feed lifecycle. The throughput is computed
+  // here on the tick, not in render, so the receipt-time copy happens twice a
+  // second rather than on every batch.
   const hasFeed = !!batch;
   useEffect(() => {
     if (!hasFeed) return;
-    const id = setInterval(() => setNow(Date.now()), 500);
+    const id = setInterval(() => {
+      const at = Date.now();
+      setClock({
+        now: at,
+        rate: batchesPerSecond(
+          useVisionDetectionsStore.getState().receiptTimes(droneId),
+          at,
+          THROUGHPUT_WINDOW_MS,
+        ),
+      });
+    }, 500);
     return () => clearInterval(id);
-  }, [hasFeed]);
+  }, [hasFeed, droneId]);
 
   const feed = perceptionFeedState(batch, now);
   const session = perceptionSessionState(feed, tier);
 
   // Throughput only matters (and is only truthful) while the feed is live.
-  const rate =
-    feed === "fresh"
-      ? batchesPerSecond(
-          useVisionDetectionsStore.getState().receiptTimes(droneId),
-          now,
-          THROUGHPUT_WINDOW_MS,
-        )
-      : null;
+  const rate = feed === "fresh" ? clock.rate : null;
 
   const boundNode =
     tier === "offload"

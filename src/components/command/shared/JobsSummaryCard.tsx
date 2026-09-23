@@ -5,7 +5,7 @@
  * @description Compact live glance of a compute node's reconstruction / offload
  * jobs for the workstation Overview: running / queued / failed counts, the top
  * in-flight jobs with progress, and a deep-link to the full Jobs tab. Reads the
- * same local-first job source the Jobs tab uses (Rule 39); honest calm states
+ * same local-first job source the Jobs tab uses; honest calm states
  * when the node is unreachable or Atlas is off — never a fabricated count.
  * @license GPL-3.0-only
  */

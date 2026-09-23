@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils";
 import { AlertTriangle, AlertCircle, Info } from "lucide-react";
 import type { PidAnalysisResult } from "@/lib/analysis/types";
+import { CHART_ERROR, CHART_GRID, CHART_SUCCESS, CHART_WARNING } from "../chart-theme";
 
 interface PidAnalysisSummaryProps {
   result: PidAnalysisResult;
@@ -16,9 +17,9 @@ function scoreColor(score: number | null): string {
 }
 
 function scoreStrokeColor(score: number): string {
-  if (score >= 80) return "#22c55e";
-  if (score >= 50) return "#f59e0b";
-  return "#ef4444";
+  if (score >= 80) return CHART_SUCCESS;
+  if (score >= 50) return CHART_WARNING;
+  return CHART_ERROR;
 }
 
 function noiseLabel(noiseFloorDb: number | null): { label: string; color: string } {
@@ -42,7 +43,7 @@ function ScoreRing({ score, size = 72, strokeWidth = 5 }: { score: number; size?
         cy={size / 2}
         r={radius}
         fill="none"
-        stroke="#1f2937"
+        stroke={CHART_GRID}
         strokeWidth={strokeWidth}
       />
       <circle

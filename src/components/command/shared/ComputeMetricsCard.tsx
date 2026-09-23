@@ -7,6 +7,7 @@ import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { NO_DATA_GLYPH } from "@/lib/hud-draw";
 import type { AgentProfile } from "@/stores/agent-capabilities-store";
 import { useComputeStore } from "@/stores/compute-store";
+import { getFreshness, useClockTick } from "@/lib/agent/freshness";
 import type { ComputeGpuInfo } from "@/stores/compute-store";
 import { ResourceBar } from "./SystemResourceGauges";
 
@@ -95,6 +96,12 @@ function WorkstationGpuCard({
 }) {
   const t = useTranslations("atlas");
   const util = gpu?.utilizationPct ?? null;
+  // Age the GPU reading on its own poll stamp, on the same thresholds and
+  // 1 Hz clock the sparklines use, so a silent compute poll dims the bar.
+  const gpuUpdatedAt = useComputeStore((s) => s.gpuUpdatedAt);
+  useClockTick();
+  const gpuFreshness = getFreshness(gpuUpdatedAt);
+  const gpuStale = gpuFreshness.state === "stale" || gpuFreshness.state === "offline";
   return (
     <div className={cn("border border-border-default rounded-lg p-4 space-y-3", className)}>
       <div className="flex items-center justify-between">
@@ -134,8 +141,8 @@ function WorkstationGpuCard({
               label={t("gpu")}
               percent={util}
               detail={t("utilization", { pct: util.toFixed(1) })}
-              stale={false}
-              staleLabel=""
+              stale={gpuStale}
+              staleLabel={gpuFreshness.label}
             />
           ) : (
             <div className="flex items-center gap-1.5 text-[10px] text-text-tertiary">
@@ -226,7 +233,7 @@ export function ComputeMetricsCard({ className, profile }: ComputeMetricsCardPro
                       "w-1.5 h-1.5 rounded-full flex-shrink-0",
                       cam.streaming ? "bg-status-success/80" : "bg-text-tertiary/60"
                     )}
-                    title={cam.streaming ? t("streaming") : t("idle")}
+                    title={cam.streaming === null ? t("streamUnknown") : cam.streaming ? t("streaming") : t("idle")}
                   />
                 </div>
               ))}
@@ -246,9 +253,10 @@ export function ComputeMetricsCard({ className, profile }: ComputeMetricsCardPro
   const vsLabel = vsKey ? t(vsKey) : vision.engine_state;
 
   const cachePercent =
-    models.cache_max_mb > 0
+    models.cache_max_mb != null && models.cache_max_mb > 0
       ? (models.cache_used_mb / models.cache_max_mb) * 100
-      : 0;
+      : null;
+  const npuUtil = compute.npu_utilization_pct;
 
   return (
     <div className={cn("border border-border-default rounded-lg p-4 space-y-3", className)}>
@@ -271,17 +279,20 @@ export function ComputeMetricsCard({ className, profile }: ComputeMetricsCardPro
             {compute.npu_tops.toFixed(1)} TOPS ({runtimeLabel})
           </span>
         </div>
-        <div className="h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
-          <div
-            className={cn(
-              "h-full rounded-full transition-all",
-              npuBarColor(compute.npu_utilization_pct)
-            )}
-            style={{ width: `${Math.min(compute.npu_utilization_pct, 100)}%` }}
-          />
-        </div>
+        {/* NPU load: the bar only renders for a reported figure; an absent
+            reading shows "—" rather than an empty 0% bar. */}
+        {npuUtil != null && (
+          <div className="h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
+            <div
+              className={cn("h-full rounded-full transition-all", npuBarColor(npuUtil))}
+              style={{ width: `${Math.min(npuUtil, 100)}%` }}
+            />
+          </div>
+        )}
         <p className="text-[10px] text-text-tertiary">
-          {t("utilization", { pct: compute.npu_utilization_pct.toFixed(1) })}
+          {npuUtil != null
+            ? t("utilization", { pct: npuUtil.toFixed(1) })
+            : t("utilizationNotReported")}
         </p>
       </div>
 
@@ -341,22 +352,25 @@ export function ComputeMetricsCard({ className, profile }: ComputeMetricsCardPro
               <span className="text-[10px] text-text-secondary">{t("models")}</span>
             </div>
             <span className="text-[10px] font-mono text-text-tertiary">
-              {models.cache_used_mb.toFixed(0)} / {models.cache_max_mb.toFixed(0)} MB
+              {models.cache_used_mb.toFixed(0)} /{" "}
+              {models.cache_max_mb != null ? models.cache_max_mb.toFixed(0) : NO_DATA_GLYPH} MB
             </span>
           </div>
-          <div className="h-1 bg-bg-tertiary rounded-full overflow-hidden">
-            <div
-              className={cn(
-                "h-full rounded-full transition-all",
-                cachePercent >= 90
-                  ? "bg-status-error"
-                  : cachePercent >= 70
-                    ? "bg-status-warning"
-                    : "bg-accent-primary"
-              )}
-              style={{ width: `${Math.min(cachePercent, 100)}%` }}
-            />
-          </div>
+          {cachePercent != null && (
+            <div className="h-1 bg-bg-tertiary rounded-full overflow-hidden">
+              <div
+                className={cn(
+                  "h-full rounded-full transition-all",
+                  cachePercent >= 90
+                    ? "bg-status-error"
+                    : cachePercent >= 70
+                      ? "bg-status-warning"
+                      : "bg-accent-primary"
+                )}
+                style={{ width: `${Math.min(cachePercent, 100)}%` }}
+              />
+            </div>
+          )}
           <div className="space-y-0.5">
             {models.installed.map((m) => (
               <div
@@ -399,7 +413,7 @@ export function ComputeMetricsCard({ className, profile }: ComputeMetricsCardPro
                   "w-1.5 h-1.5 rounded-full flex-shrink-0",
                   cam.streaming ? "bg-status-success/80" : "bg-text-tertiary/60"
                 )}
-                title={cam.streaming ? t("streaming") : t("idle")}
+                title={cam.streaming === null ? t("streamUnknown") : cam.streaming ? t("streaming") : t("idle")}
               />
             </div>
           ))}

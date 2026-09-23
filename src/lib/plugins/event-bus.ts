@@ -165,6 +165,8 @@ export function isReservedEventTopic(topic: string): boolean {
   return RESERVED_TOPIC_PREFIXES.some((p) => topic.startsWith(p));
 }
 
+const AGENT_STATE_ORIGIN_PREFIX = "agent-state:";
+
 /**
  * Origin id for a plugin's own agent-published state, republished on the bus
  * from the drone's agent. The iframe host forwards events with this origin to
@@ -172,7 +174,16 @@ export function isReservedEventTopic(topic: string): boolean {
  * bare device id; both name the same drone.
  */
 export function agentStateOrigin(pluginId: string, droneId: string): string {
-  return `agent-state:${deviceIdFromNodeId(droneId) ?? droneId}:${pluginId}`;
+  return `${AGENT_STATE_ORIGIN_PREFIX}${deviceIdFromNodeId(droneId) ?? droneId}:${pluginId}`;
+}
+
+/**
+ * Whether an event came from a plugin's agent-published state. Such events
+ * belong to that one plugin's iframe and are never handed to another plugin's
+ * `events.subscribe`, whatever pattern it subscribed with.
+ */
+export function isAgentStateOrigin(origin: string): boolean {
+  return origin.startsWith(AGENT_STATE_ORIGIN_PREFIX);
 }
 
 /** Aggregate bus stats. For diagnostics and tests. */

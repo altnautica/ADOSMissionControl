@@ -5,12 +5,12 @@
  * @description Toast-style stepper that tracks a plugin install job
  * through the six-stage state machine. Subscribes to the agent's
  * WebSocket on the LAN path or to a Convex reactive query on the cloud
- * path. Auto-reconnects once on a mid-flight LAN drop. Simulates the
- * full sequence in demo mode.
+ * path. Re-opens a dropped LAN stream at a fixed interval until the job
+ * ends. Simulates the full sequence in demo mode.
  * @license GPL-3.0-only
  */
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Check, X, Loader2, AlertCircle, Minus } from "lucide-react";
 import { useQuery } from "convex/react";
 import { makeFunctionReference } from "convex/server";
@@ -24,11 +24,11 @@ import {
   LAN_SKIPPED_STAGES,
   humanStage,
   isTerminalStage,
+  parseAgentJobFrame,
   stageIndex,
-  useInstallProgressStore,
   type InstallJobError,
   type InstallStage,
-} from "./install-progress-store";
+} from "./install-stages";
 import type { InstallTransport } from "./transports/types";
 
 // Hand-rolled reference: the Convex deployment ships this query in a
@@ -37,7 +37,6 @@ interface JobDoc {
   jobId: string;
   stage: InstallStage;
   updatedAt: number;
-  installId?: string;
   error?: InstallJobError;
 }
 /** Fixed delay before re-opening a dropped LAN progress stream. */
@@ -57,15 +56,11 @@ export interface PluginInstallProgressProps {
   pluginName?: string;
   pluginVersion?: string;
   deviceLabel?: string;
-  onComplete?: (result: { installId: string }) => void;
-  onFailed?: (error: InstallJobError) => void;
-  onRetry?: () => void;
 }
 
 interface ProgressState {
   stage: InstallStage;
   error?: InstallJobError;
-  installId?: string;
   connectionWarning?: string;
 }
 
@@ -80,60 +75,12 @@ export function PluginInstallProgress(props: PluginInstallProgressProps) {
     pluginName,
     pluginVersion,
     deviceLabel,
-    onComplete,
-    onFailed,
-    onRetry,
   } = props;
 
   const [state, setState] = useState<ProgressState>(() => ({
     stage: transport === "lan" ? "verifying" : "uploading",
   }));
   const [dismissed, setDismissed] = useState(false);
-
-  const onCompleteRef = useRef(onComplete);
-  const onFailedRef = useRef(onFailed);
-  onCompleteRef.current = onComplete;
-  onFailedRef.current = onFailed;
-
-  const upsert = useInstallProgressStore((s) => s.upsert);
-
-  useEffect(() => {
-    upsert({
-      jobId,
-      stage: state.stage,
-      transport,
-      updatedAt: Date.now(),
-      installId: state.installId,
-      error: state.error,
-      pluginName,
-      pluginVersion,
-      deviceId: deviceLabel,
-    });
-  }, [
-    jobId,
-    transport,
-    state.stage,
-    state.installId,
-    state.error,
-    upsert,
-    pluginName,
-    pluginVersion,
-    deviceLabel,
-  ]);
-
-  // Terminal-stage callbacks (fire once per terminal transition).
-  const lastTerminalRef = useRef<string | null>(null);
-  useEffect(() => {
-    const key = `${jobId}:${state.stage}`;
-    if (lastTerminalRef.current === key) return;
-    if (state.stage === "completed" && state.installId) {
-      lastTerminalRef.current = key;
-      onCompleteRef.current?.({ installId: state.installId });
-    } else if (state.stage === "failed" && state.error) {
-      lastTerminalRef.current = key;
-      onFailedRef.current?.(state.error);
-    }
-  }, [jobId, state.stage, state.installId, state.error]);
 
   // --- Demo mode ----------------------------------------------------
   useEffect(() => {
@@ -151,10 +98,7 @@ export function PluginInstallProgress(props: PluginInstallProgressProps) {
         return;
       }
       const next = seq[i];
-      setState({
-        stage: next,
-        installId: next === "completed" ? `demo-${jobId}` : undefined,
-      });
+      setState({ stage: next });
     }, DEMO_TICK_MS);
     return () => window.clearInterval(id);
   }, [jobId, transport]);
@@ -234,14 +178,11 @@ export function PluginInstallProgress(props: PluginInstallProgressProps) {
         : new WebSocket(wsUrlStr);
       ws.onmessage = (ev) => {
         try {
-          const frame = JSON.parse(String(ev.data)) as Partial<JobDoc> & {
-            stage?: InstallStage;
-          };
-          if (!frame.stage) return;
+          const update = parseAgentJobFrame(JSON.parse(String(ev.data)));
+          if (!update) return;
           setState((s) => ({
-            stage: frame.stage as InstallStage,
-            installId: frame.installId ?? s.installId,
-            error: frame.error ?? s.error,
+            stage: update.stage,
+            error: update.error ?? s.error,
             connectionWarning: undefined,
           }));
         } catch {
@@ -282,7 +223,6 @@ export function PluginInstallProgress(props: PluginInstallProgressProps) {
     if (!cloudJob) return;
     setState((s) => ({
       stage: cloudJob.stage,
-      installId: cloudJob.installId ?? s.installId,
       error: cloudJob.error ?? s.error,
     }));
   }, [cloudJob]);
@@ -370,7 +310,7 @@ export function PluginInstallProgress(props: PluginInstallProgressProps) {
         <p className="mt-1 text-xs text-status-warning">{state.connectionWarning}</p>
       ) : null}
       {state.stage === "failed" && state.error ? (
-        <Details error={state.error} onRetry={onRetry} />
+        <Details error={state.error} />
       ) : null}
     </div>
   );
@@ -392,13 +332,7 @@ function StageDot({ state }: { state: DotState }): ReactNode {
   return <span aria-hidden className="block h-2 w-2 rounded-full bg-text-tertiary/40" />;
 }
 
-function Details({
-  error,
-  onRetry,
-}: {
-  error: InstallJobError;
-  onRetry?: () => void;
-}) {
+function Details({ error }: { error: InstallJobError }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="mt-2 border-t border-border-default pt-2">
@@ -413,15 +347,6 @@ function Details({
         <pre className="mt-1 whitespace-pre-wrap break-words text-[11px] text-status-error">
           {error.message}
         </pre>
-      ) : null}
-      {onRetry ? (
-        <button
-          type="button"
-          onClick={onRetry}
-          className="mt-1 block text-xs text-accent-primary hover:underline"
-        >
-          Retry
-        </button>
       ) : null}
     </div>
   );

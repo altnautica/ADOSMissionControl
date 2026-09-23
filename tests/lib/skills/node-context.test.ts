@@ -376,6 +376,22 @@ describe("available modes", () => {
     });
   });
 
+  it("offers PX4 presets the agent has a name for, and none it lacks", () => {
+    publishTelemetry(DEVICE_ID, { armed: false, mode: "LOITER" });
+    const px4: SkillTargetNode = {
+      _id: NODE._id,
+      deviceId: DEVICE_ID,
+      fcFirmware: "px4",
+    };
+
+    const ctx = buildSkillContextForNode(px4, { originIsHttps: false });
+
+    expect(ctx.availableModes).toEqual(
+      expect.arrayContaining(["ALT_HOLD", "POSHOLD", "STABILIZE", "LOITER"]),
+    );
+    expect(ctx.availableModes).not.toContain("ORBIT");
+  });
+
   it("prefers the node's own live FC connection's mode table", () => {
     publishTelemetry(DEVICE_ID, { armed: false, mode: "FBWA" });
     // An agent-attached FC registers in the drone manager under the node's
@@ -384,6 +400,7 @@ describe("available modes", () => {
       protocol: {
         isConnected: true,
         getFirmwareHandler: () => ({
+          firmwareType: "ardupilot-plane",
           getAvailableModes: () => ["FBWA", "CRUISE"],
         }),
       },

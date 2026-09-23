@@ -19,7 +19,7 @@ import {
   type McpChannelState,
 } from "@/lib/mcp/activity";
 
-/** Bounded so a long session never grows without bound (CLAUDE.md rule 3). */
+/** Bounded so a long session never grows without bound. */
 const MAX_ROWS = 500;
 
 let seq = 0;

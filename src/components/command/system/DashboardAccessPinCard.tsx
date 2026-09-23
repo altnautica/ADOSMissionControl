@@ -5,20 +5,20 @@
  * @description Per-node control for the DASHBOARD-ACCESS PIN. A paired node's own
  * web dashboard (`http://<node>:8080`) is unlocked from another device on the
  * network by a 4-digit PIN. Mission Control — which holds the node's API key —
- * shows whether a PIN is set and can set or reset it. A reset signs out every
- * browser currently unlocked on that node's dashboard (the session tokens are
- * keyed with a salt the reset rotates).
+ * shows whether a PIN is set and can set or clear it. Clearing removes the PIN
+ * and signs out every browser currently unlocked on that node's dashboard (the
+ * session tokens are keyed with a salt the clear rotates); the dashboard is
+ * then open until a new PIN is set.
  *
  * Local-first: the control reaches the node over the LAN via the `/api/lan-pair`
- * proxy with the stored key. It renders only for a locally-paired node (a cloud
- * relay session has no LAN key path), matching the pattern of the sibling
- * regulatory-region panel.
+ * proxy with the node's stored key. It renders only for a locally-paired node,
+ * resolved from the node the page is rendered for (never the focused
+ * connection, which lags the render on a node switch).
  * @license GPL-3.0-only
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ExternalLink, KeyRound, Lock } from "lucide-react";
-import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useLocalNodesStore } from "@/stores/local-nodes-store";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
@@ -31,48 +31,59 @@ import {
 
 const PIN_LENGTH = 4;
 
-export function DashboardAccessPinCard() {
-  const cloudMode = useAgentConnectionStore((s) => s.cloudMode);
-  const activeUrl = useAgentConnectionStore((s) => s.agentUrl);
-  const nodes = useLocalNodesStore((s) => s.nodes);
+export function DashboardAccessPinCard({ nodeDeviceId }: { nodeDeviceId: string | null }) {
+  const node = useLocalNodesStore((s) =>
+    nodeDeviceId ? (s.nodes.find((n) => n.deviceId === nodeDeviceId) ?? null) : null,
+  );
   const { toast } = useToast();
+  const host = node?.hostname ?? null;
+  const apiKey = node?.apiKey ?? null;
 
-  // The focused agent as a locally-paired node (LAN host + stored key). Absent
-  // in cloud mode or for a node paired only through the relay.
-  const activeNode = nodes.find((n) => n.hostname === activeUrl) ?? null;
-  const available = !cloudMode && !!activeNode;
-
-  const [status, setStatus] = useState<DashboardPinStatus | null>(null);
+  // The status read is tagged with the host it was issued for, so a late
+  // response for a previously shown node never lands on this one. `failed`
+  // keeps an unreadable status distinct from "no PIN".
+  const [read, setRead] = useState<{
+    host: string;
+    status: DashboardPinStatus | null;
+    failed: boolean;
+  } | null>(null);
   const [loading, setLoading] = useState(false);
   const [pin, setPin] = useState("");
   const [busy, setBusy] = useState(false);
   const [confirmingReset, setConfirmingReset] = useState(false);
+  const latestHost = useRef<string | null>(null);
+  latestHost.current = host;
 
   const refresh = useCallback(async () => {
-    if (!activeNode) return;
+    if (!host || !apiKey) return;
     setLoading(true);
+    let next: { status: DashboardPinStatus | null; failed: boolean };
     try {
-      setStatus(await getDashboardPinStatus(activeNode.hostname, activeNode.apiKey));
+      next = { status: await getDashboardPinStatus(host, apiKey), failed: false };
     } catch {
-      setStatus(null);
-    } finally {
-      setLoading(false);
+      next = { status: null, failed: true };
     }
-  }, [activeNode]);
+    if (latestHost.current !== host) return;
+    setRead({ host, ...next });
+    setLoading(false);
+  }, [host, apiKey]);
 
   useEffect(() => {
-    if (available) void refresh();
-  }, [available, refresh]);
+    void refresh();
+  }, [refresh]);
 
-  // Cloud mode / no local key path: the PIN is managed on the device. Hide the
-  // card rather than show a control that cannot reach the node.
-  if (!available || !activeNode) return null;
+  // No local key path for this node: the PIN is managed on the device. Hide
+  // the card rather than show a control that cannot reach the node.
+  if (!node) return null;
+  const current = read && read.host === host ? read : null;
+  const status = current?.status ?? null;
+  const failed = current?.failed === true;
 
   const onSet = async () => {
     if (pin.length !== PIN_LENGTH || busy) return;
     setBusy(true);
     try {
-      await setDashboardPin(activeNode.hostname, activeNode.apiKey, pin);
+      await setDashboardPin(node.hostname, node.apiKey, pin);
       toast("Dashboard PIN set", "success");
       setPin("");
       await refresh();
@@ -87,18 +98,18 @@ export function DashboardAccessPinCard() {
     if (busy) return;
     setBusy(true);
     try {
-      await clearDashboardPin(activeNode.hostname, activeNode.apiKey);
-      toast("Dashboard PIN reset", "success");
+      await clearDashboardPin(node.hostname, node.apiKey);
+      toast("Dashboard PIN cleared", "success");
       setConfirmingReset(false);
       await refresh();
     } catch (err) {
-      toast(err instanceof Error ? err.message : "Failed to reset PIN", "error");
+      toast(err instanceof Error ? err.message : "Failed to clear PIN", "error");
     } finally {
       setBusy(false);
     }
   };
 
-  const reachUrl = activeNode.hostname; // already http://<host>:8080
+  const reachUrl = node.hostname; // already http://<host>:8080
 
   return (
     <section className="rounded border border-border-default bg-bg-secondary p-5">
@@ -106,8 +117,12 @@ export function DashboardAccessPinCard() {
         <KeyRound size={16} className="text-accent-primary" />
         <h2 className="text-lg font-medium text-text-primary">Dashboard access</h2>
         <div className="flex-1" />
-        {loading ? (
+        {loading && !current ? (
           <span className="text-xs text-text-tertiary">checking…</span>
+        ) : failed ? (
+          <span className="inline-flex items-center gap-1.5 rounded border border-border-default bg-bg-tertiary/40 px-2.5 py-1 text-xs font-medium text-text-secondary">
+            Unknown
+          </span>
         ) : status?.locked ? (
           <span className="inline-flex items-center gap-1.5 rounded border border-status-warning/40 bg-status-warning/10 px-2.5 py-1 text-xs font-medium text-status-warning">
             <Lock size={12} /> Locked
@@ -116,17 +131,27 @@ export function DashboardAccessPinCard() {
           <span className="inline-flex items-center gap-1.5 rounded border border-status-success/40 bg-status-success/10 px-2.5 py-1 text-xs font-medium text-status-success">
             PIN set
           </span>
-        ) : (
+        ) : status ? (
           <span className="inline-flex items-center gap-1.5 rounded border border-border-default bg-bg-tertiary/40 px-2.5 py-1 text-xs font-medium text-text-secondary">
             No PIN
           </span>
-        )}
+        ) : null}
       </div>
 
       <p className="mb-4 text-sm text-text-secondary">
-        Visitors to this node&apos;s web dashboard enter a 4-digit PIN to unlock it. Reset issues a
-        new one and signs out anyone currently connected.
+        Visitors to this node&apos;s web dashboard enter a 4-digit PIN to unlock it. Clearing the
+        PIN signs out anyone currently connected and leaves the dashboard open until a new PIN is
+        set.
       </p>
+
+      {failed && (
+        <div className="mb-4 flex flex-wrap items-center gap-2 text-sm text-text-secondary">
+          <span>Could not read the PIN status from this node.</span>
+          <Button variant="ghost" size="sm" onClick={() => void refresh()} disabled={loading}>
+            Retry
+          </Button>
+        </div>
+      )}
 
       {/* Reach URL */}
       <div className="mb-4 rounded border border-border-default/60 bg-bg-tertiary/40 px-3 py-2">
@@ -172,10 +197,11 @@ export function DashboardAccessPinCard() {
         confirmingReset ? (
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm text-text-secondary">
-              Reset the PIN? Connected browsers will be signed out.
+              Clear the PIN? Connected browsers will be signed out and the dashboard stays open
+              until a new PIN is set.
             </span>
             <Button variant="danger" size="sm" onClick={() => void onReset()} disabled={busy}>
-              {busy ? "Resetting…" : "Confirm reset"}
+              {busy ? "Clearing…" : "Confirm clear"}
             </Button>
             <Button
               variant="ghost"
@@ -188,7 +214,7 @@ export function DashboardAccessPinCard() {
           </div>
         ) : (
           <Button variant="danger" size="sm" onClick={() => setConfirmingReset(true)}>
-            Reset PIN
+            Clear PIN
           </Button>
         )
       ) : null}

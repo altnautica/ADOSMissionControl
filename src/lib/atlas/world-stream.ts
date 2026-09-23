@@ -29,11 +29,10 @@ export const WORLD_WS_ROUTE = "/ws/atlas/:device_id";
  * the job API — not the `:8080` ados-control front. */
 export const WORLD_STREAM_PORT = "8092";
 
-/** First reconnect delay, doubling to {@link WORLD_STREAM_MAX_RETRY_MS}. */
-const WORLD_STREAM_RETRY_MS = 500;
-/** Reconnect ceiling. A compute node that is simply not up yet is the common
- * case, so the poll settles to a calm cadence rather than hammering. */
-export const WORLD_STREAM_MAX_RETRY_MS = 10_000;
+/** Reconnect delay. Fixed, never growing and never reset by an open the node
+ * immediately closes: a compute node that is not up yet is the common case,
+ * and a constant cadence both notices it coming up and never hammers it. */
+export const WORLD_STREAM_RETRY_MS = 3000;
 
 /** The concrete WS path for a device. */
 export function worldWsPath(deviceId: string): string {
@@ -100,7 +99,6 @@ export function subscribeWorldStream(opts: WorldStreamOptions): () => void {
 
   let closed = false;
   let socket: WorldStreamSocket | null = null;
-  let retryMs = WORLD_STREAM_RETRY_MS;
   let attempts = 0;
   let timer: ReturnType<typeof setTimeout> | null = null;
 
@@ -109,9 +107,8 @@ export function subscribeWorldStream(opts: WorldStreamOptions): () => void {
     timer = setTimeout(() => {
       timer = null;
       if (closed) return;
-      retryMs = Math.min(retryMs * 2, WORLD_STREAM_MAX_RETRY_MS);
       connect();
-    }, retryMs);
+    }, WORLD_STREAM_RETRY_MS);
   };
 
   function connect(): void {
@@ -128,7 +125,6 @@ export function subscribeWorldStream(opts: WorldStreamOptions): () => void {
     socket = ws;
     ws.binaryType = "arraybuffer";
     ws.onopen = () => {
-      retryMs = WORLD_STREAM_RETRY_MS;
       opts.onState("connected");
     };
     ws.onmessage = (ev) => {

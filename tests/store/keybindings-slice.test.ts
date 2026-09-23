@@ -134,13 +134,76 @@ describe("keybindings slice", () => {
     expect(useSettingsStore.getState().loadouts[id]?.name).toBe("New");
   });
 
-  it("resetLoadoutToDefaults restores the factory default slots", () => {
-    useSettingsStore.getState().setSlotKey(DEFAULT_LOADOUT_ID, 0, "ctrl+z");
-    useSettingsStore.getState().resetLoadoutToDefaults();
-    const slot0 = useSettingsStore
-      .getState()
-      .loadouts[DEFAULT_LOADOUT_ID].slots.find((s) => s.index === 0);
-    expect(slot0?.key).toBe("shift+a");
-    expect(useSettingsStore.getState().activeLoadoutId).toBe(DEFAULT_LOADOUT_ID);
+  it("resetLoadoutToDefaults resets only the named loadout and keeps it active", () => {
+    const s = useSettingsStore.getState();
+    const custom = s.createLoadout("Survey");
+    s.setActiveLoadout(custom);
+    s.renameLoadout(custom, "Survey A");
+    s.setLoadoutLayout(custom, { minimap: false });
+    s.setSlotKey(custom, 0, "ctrl+z");
+    s.setSlotKey(DEFAULT_LOADOUT_ID, 1, "ctrl+y");
+
+    useSettingsStore.getState().resetLoadoutToDefaults(custom);
+
+    const after = useSettingsStore.getState();
+    const reset = after.loadouts[custom];
+    expect(reset.slots.find((slot) => slot.index === 0)?.key).toBe("shift+a");
+    expect(reset.name).toBe("Survey A");
+    expect(reset.layout.minimap).toBe(false);
+    expect(after.activeLoadoutId).toBe(custom);
+    // The Default preset the editor was not showing is untouched.
+    expect(
+      after.loadouts[DEFAULT_LOADOUT_ID].slots.find((slot) => slot.index === 1)?.key,
+    ).toBe("ctrl+y");
+  });
+
+  describe("seedSuggestedBinding", () => {
+    const seed = (key: string | null, gamepadButton: number | null) =>
+      useSettingsStore
+        .getState()
+        .seedSuggestedBinding(DEFAULT_LOADOUT_ID, "plug:scan", { key, gamepadButton });
+    const slotOf = () =>
+      useSettingsStore
+        .getState()
+        .loadouts[DEFAULT_LOADOUT_ID].slots.find((slot) => slot.skillId === "plug:scan");
+    const emptyFirst = () => {
+      // Free slot 9 (kill) so the plugin skill has somewhere to land.
+      useSettingsStore.getState().bindSkillToSlot(DEFAULT_LOADOUT_ID, 9, null);
+    };
+
+    it("never takes a key or button another slot holds", () => {
+      emptyFirst();
+      seed("shift+a", 0);
+      const arm = useSettingsStore
+        .getState()
+        .loadouts[DEFAULT_LOADOUT_ID].slots.find((slot) => slot.skillId === "arm");
+      expect(arm?.key).toBe("shift+a");
+      expect(arm?.gamepadButton).toBe(0);
+      expect(slotOf()?.key).toBeNull();
+      expect(slotOf()?.gamepadButton).toBeNull();
+    });
+
+    it("never takes a reserved chord or cockpit-owned button", () => {
+      emptyFirst();
+      seed("1", 8);
+      expect(slotOf()?.key).toBeNull();
+      expect(slotOf()?.gamepadButton).toBeNull();
+    });
+
+    it("binds an unreserved, unbound suggestion", () => {
+      emptyFirst();
+      seed("g", 6);
+      expect(slotOf()?.key).toBe("g");
+      expect(slotOf()?.gamepadButton).toBe(6);
+    });
+
+    it("does not re-seed a skill the operator cleared", () => {
+      emptyFirst();
+      seed("g", 6);
+      const index = slotOf()!.index;
+      useSettingsStore.getState().bindSkillToSlot(DEFAULT_LOADOUT_ID, index, null);
+      seed("g", 6);
+      expect(slotOf()).toBeUndefined();
+    });
   });
 });

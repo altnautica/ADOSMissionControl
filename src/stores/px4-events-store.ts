@@ -7,14 +7,12 @@
  * list of decoded events for the selected drone, populated by the Px4 events
  * bridge. Events persist across node-detail tab switches (the feed component
  * mounts/unmounts, the store does not). Empty until the FC emits an event
- * (Rule 44 — no fabricated rows).
+ * (no fabricated rows).
  * @license GPL-3.0-only
  */
 
 import { create } from "zustand";
-import type { DroneProtocol } from "@/lib/protocol/types/protocol";
 import {
-  fetchPx4LiveEventMetadata,
   renderEventMessage,
   type EventMeta,
 } from "@/lib/protocol/param-metadata/px4-event-metadata";
@@ -52,10 +50,8 @@ interface Px4EventsState {
   metadata: Map<number, EventMeta>;
   metadataLoaded: boolean;
   events: DecodedEvent[];
-  /** Set the metadata directly (used by demo mode). */
+  /** Set the metadata for the selected drone (FC-served, or bundled in demo). */
   setMetadata: (metadata: Map<number, EventMeta>) => void;
-  /** Fetch the FC-served events metadata for a connected PX4 drone (best-effort). */
-  loadMetadata: (protocol: DroneProtocol) => Promise<void>;
   /** Resolve + render a raw event and append it (bounded). */
   pushRaw: (raw: RawEvent) => void;
   clear: () => void;
@@ -69,11 +65,6 @@ export const usePx4EventsStore = create<Px4EventsState>((set, get) => ({
   events: [],
 
   setMetadata: (metadata) => set({ metadata, metadataLoaded: true }),
-
-  loadMetadata: async (protocol) => {
-    const metadata = await fetchPx4LiveEventMetadata(protocol);
-    set({ metadata, metadataLoaded: true });
-  },
 
   pushRaw: (raw) => {
     const meta = get().metadata.get(raw.id);

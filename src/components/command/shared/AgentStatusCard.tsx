@@ -10,7 +10,7 @@ import {
   Radio,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatDuration } from "@/lib/utils";
+import { formatDurationSeconds } from "@/lib/i18n/format";
 import type { AgentStatus } from "@/lib/agent/types";
 import type { AgentCapabilities } from "@/lib/agent/feature-types";
 import type { AgentProfile } from "@/stores/agent-capabilities-store";
@@ -54,7 +54,6 @@ export function AgentStatusCard({ status, profile }: AgentStatusCardProps) {
   // due to cross-store Zustand update batching issues
   const resources = useAgentSystemStore((s) => s.resources);
   const services = useAgentSystemStore((s) => s.services);
-  const cpuHistory = useAgentSystemStore((s) => s.cpuHistory);
   const gpu = useComputeStore((s) => s.gpu);
   const radioStackState = useAgentCapabilitiesStore((s) => s.radioStackState);
   // Control-plane RTT to the agent (LAN-direct poll). Null in cloud-relay mode
@@ -62,6 +61,7 @@ export function AgentStatusCard({ status, profile }: AgentStatusCardProps) {
   const controlRttMs = useAgentConnectionStore((s) => s.controlRttMs);
   const freshness = useFreshness();
   const isStale = freshness.state !== "live" && freshness.state !== "unknown";
+  const isLive = freshness.state === "live";
   // Undefined when neither source carried the reading. Rendering 0% for a node
   // that reported nothing is the same class of false claim as a fabricated
   // temperature, so these read "--" instead. Same treatment `temp` already had.
@@ -87,8 +87,8 @@ export function AgentStatusCard({ status, profile }: AgentStatusCardProps) {
   // no heartbeat, etc.) so the operator knows what to fix rather than just
   // seeing "no MAVLink".
   const remediation = fcSilent ? fcLinkRemediation(status) : null;
-  // Uptime: estimate from cpuHistory length (each entry ~5s) if status.uptime_seconds is 0
-  const uptimeSeconds = status.uptime_seconds || (cpuHistory.length * 5);
+  // Absent when the agent did not report it; rendered as "—".
+  const uptimeSeconds = status.uptime_seconds;
   // Surface a radio-stack diagnostic only when the agent reports a
   // degraded install (no injection-capable adapter, missing bind
   // artifacts, incomplete stack). "ok" / "unpaired" / undefined stay
@@ -138,7 +138,7 @@ export function AgentStatusCard({ status, profile }: AgentStatusCardProps) {
           <InfoRow
             icon={Clock}
             label={t("uptime")}
-            value={formatDuration(uptimeSeconds)}
+            value={formatDurationSeconds(uptimeSeconds)}
           />
           <InfoRow label={t("arch")} value={status.board?.arch ?? t("unknown")} />
           <InfoRow label={t("gpu")} value={gpu?.name ?? "—"} />
@@ -156,7 +156,7 @@ export function AgentStatusCard({ status, profile }: AgentStatusCardProps) {
           <InfoRow
             icon={Clock}
             label={t("uptime")}
-            value={formatDuration(uptimeSeconds)}
+            value={formatDurationSeconds(uptimeSeconds)}
           />
           <InfoRow label={t("arch")} value={status.board?.arch ?? t("unknown")} />
           <InfoRow label={t("version")} value={`v${status.version}`} />
@@ -173,8 +173,10 @@ export function AgentStatusCard({ status, profile }: AgentStatusCardProps) {
           <span>{temp.toFixed(0)}°C</span>
         )}
         {/* Control-plane RTT to the agent — the "diagnose output ping"
-            surface. Colored by latency band so a slow link is obvious. */}
-        {controlRttMs != null && (
+            surface. Colored by latency band so a slow link is obvious. Shown
+            only while the feed is live: a stale or offline agent has no
+            current round trip. */}
+        {isLive && controlRttMs != null && (
           <span
             className={cn(
               "ml-auto font-mono",
@@ -197,11 +199,7 @@ export function AgentStatusCard({ status, profile }: AgentStatusCardProps) {
           {fcConnected || fcMsp ? (
             <Wifi
               size={12}
-              className={
-                isStale && fcConnected
-                  ? "text-status-warning"
-                  : "text-status-success"
-              }
+              className={isStale ? "text-status-warning" : "text-status-success"}
             />
           ) : fcSilent ? (
             <AlertTriangle size={12} className="text-status-warning" />
@@ -212,7 +210,7 @@ export function AgentStatusCard({ status, profile }: AgentStatusCardProps) {
             className={cn(
               "text-xs",
               fcConnected || fcMsp
-                ? isStale && fcConnected
+                ? isStale
                   ? "text-status-warning"
                   : "text-status-success"
                 : fcSilent
@@ -227,7 +225,7 @@ export function AgentStatusCard({ status, profile }: AgentStatusCardProps) {
                 : fcSilent
                   ? t("fcLink.portOpenNoMavlink")
                   : t("fcDisconnected")}
-            {isStale && fcConnected && (
+            {isStale && (fcConnected || fcMsp) && (
               <span className="text-text-tertiary"> (unverified)</span>
             )}
           </span>
@@ -237,7 +235,7 @@ export function AgentStatusCard({ status, profile }: AgentStatusCardProps) {
             live link reads "MAVLink 1.2s ago" instead of a bare badge. An MSP FC
             never emits a MAVLink heartbeat, so the age line is suppressed for it
             (its telemetry rides the MSP poll, not MAVLink). */}
-        {link.hasGatedTruth && !fcMsp && (
+        {isLive && link.hasGatedTruth && !fcMsp && (
           <span
             className={cn(
               "text-xs",

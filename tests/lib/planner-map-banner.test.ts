@@ -10,22 +10,14 @@
 import { describe, it, expect, vi } from "vitest";
 import type { PlannerMode } from "@/lib/planner-mode";
 
-// PlannerMap statically pulls leaflet + react-leaflet (for the live map). The
-// helper under test is pure and touches neither, so stub both module graphs so
-// the import resolves in the headless test environment.
+// The helpers module builds leaflet icons; the descriptor under test is pure,
+// so stub leaflet so the import resolves in the headless test environment.
 vi.mock("leaflet", async () => {
   const mock = await import("../__mocks__/leaflet");
   return { default: mock.default };
 });
-vi.mock("react-leaflet", () => ({
-  MapContainer: () => null,
-  Marker: () => null,
-  Polyline: () => null,
-  useMap: () => ({}),
-  useMapEvents: () => ({}),
-}));
 
-import { mapBannerDescriptor } from "@/components/planner/PlannerMap";
+import { mapBannerDescriptor } from "@/components/planner/planner-map-helpers";
 
 describe("mapBannerDescriptor", () => {
   it("gives select mode a subdued always-on add-waypoint hint", () => {

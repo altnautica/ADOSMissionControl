@@ -20,6 +20,8 @@ import { useMemo } from "react";
 
 import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
 import { useCommandAgentFleet } from "@/hooks/use-command-agent-fleet";
+import { useClockTick } from "@/lib/agent/freshness";
+import { useClockStore } from "@/stores/clock-store";
 import {
   useSwarmBeaconStore,
   selectSwarmFleetSlots,
@@ -28,6 +30,7 @@ import {
 import {
   buildSwarmSlotRows,
   sortSwarmRowsUnhealthyFirst,
+  swarmSourceSilent,
   type SwarmSlotRow,
 } from "./swarm-rows";
 
@@ -44,6 +47,9 @@ export function useSwarmSlotRows(
   // already the registry's resolvable nodes joined by device id, so no
   // second node source is needed here.
   const registeredSlots = useSwarmBeaconStore(selectSwarmFleetSlots);
+  const lastAnswerMs = useSwarmBeaconStore((s) => s.lastUpdatedMs);
+  useClockTick();
+  const sourceSilent = useClockStore((s) => swarmSourceSilent(lastAnswerMs, s.now));
   const nodes = useMemo(() => [...nodesBySlot.values()], [nodesBySlot]);
 
   // Carries its own 1 Hz tick, so liveness and every age label below re-derive
@@ -65,8 +71,9 @@ export function useSwarmSlotRows(
           registeredSlots,
           nodesBySlot,
           summariesByDeviceId,
+          sourceSilent,
         ),
       ),
-    [beacons, registeredSlots, nodesBySlot, summariesByDeviceId],
+    [beacons, registeredSlots, nodesBySlot, summariesByDeviceId, sourceSilent],
   );
 }

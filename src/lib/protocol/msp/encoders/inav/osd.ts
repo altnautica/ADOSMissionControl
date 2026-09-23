@@ -14,14 +14,18 @@ import type {
 /**
  * Encode MSP2_INAV_OSD_SET_ALARMS (0x2015) payload.
  *
- * 28 bytes matching decodeMspINavOsdAlarms layout:
+ * The firmware accepts exactly 24 bytes (it rejects any other size):
  * U8 rssi, U16 flyMinutes, U16 maxAltitude, U16 distance,
- * U16 maxNegAltitude, U16 gforce, S16 gforceAxisMin, S16 gforceAxisMax,
- * U8 current, S16 imuTempMin, S16 imuTempMax,
- * S16 baroTempMin, S16 baroTempMax, S16 adsbDistanceWarning, S16 adsbDistanceAlert
+ * U16 maxNegAltitude, U16 gforce (g x1000), S16 gforceAxisMin (g x1000),
+ * S16 gforceAxisMax (g x1000), U8 current, S16 imuTempMin, S16 imuTempMax,
+ * S16 baroTempMin, S16 baroTempMax (decidegrees C).
+ * The read reply appends two ADS-B distances; the set frame has no slot for
+ * them, so they are not written here.
  */
+export const INAV_OSD_SET_ALARMS_SIZE = 24;
+
 export function encodeMspINavSetOsdAlarms(a: INavOsdAlarms): Uint8Array {
-  const buf = new ArrayBuffer(28);
+  const buf = new ArrayBuffer(INAV_OSD_SET_ALARMS_SIZE);
   const dv = new DataView(buf);
   dv.setUint8(0, a.rssi);
   dv.setUint16(1, a.flyMinutes, true);
@@ -36,8 +40,6 @@ export function encodeMspINavSetOsdAlarms(a: INavOsdAlarms): Uint8Array {
   dv.setInt16(18, a.imuTempMax, true);
   dv.setInt16(20, a.baroTempMin, true);
   dv.setInt16(22, a.baroTempMax, true);
-  dv.setInt16(24, a.adsbDistanceWarning, true);
-  dv.setInt16(26, a.adsbDistanceAlert, true);
   return new Uint8Array(buf);
 }
 

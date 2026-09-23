@@ -260,3 +260,29 @@ describe("pushStatus persistence", () => {
     expect(row.linkedPeers).toEqual([]);
   });
 });
+
+describe("pushStatus fleet-card columns on cmd_drones", () => {
+  it("clears a pill whose source left the latest payload", async () => {
+    const ctx = makeCtx();
+    ctx.db.seed("cmd_drones", [{ deviceId: "drone-a", userId: "u1", name: "a", apiKey: "k" }]);
+    const base = { deviceId: "drone-a", version: "0.18.4", uptimeSeconds: 60 };
+    await invoke(cmdDroneStatus.pushStatus, ctx, {
+      ...base,
+      peripherals: [{ category: "display", type: "spi-lcd" }],
+      manualConnectionUrls: { mavlinkWs: "ws://192.168.1.50:8765" },
+      cameraState: "streaming",
+      cloudPosture: "local_only",
+    });
+    expect(ctx.db.rows("cmd_drones")[0]).toMatchObject({
+      attachedDisplayType: "spi-lcd",
+      manualMavlinkWsUrl: "ws://192.168.1.50:8765",
+    });
+
+    await invoke(cmdDroneStatus.pushStatus, ctx, { ...base, peripherals: [] });
+    const drone = ctx.db.rows("cmd_drones")[0];
+    expect(drone.attachedDisplayType).toBeUndefined();
+    expect(drone.manualMavlinkWsUrl).toBeUndefined();
+    expect(drone.cameraState).toBeUndefined();
+    expect(drone.cloudPosture).toBeUndefined();
+  });
+});

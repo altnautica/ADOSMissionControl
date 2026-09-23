@@ -26,7 +26,7 @@ import { downloadGpx } from "@/lib/formats/gpx-exporter";
 import { exportFlightsAsIcs } from "@/lib/export/ics";
 import { exportFlights, downloadBlob } from "@/lib/compliance/exporter";
 import { validateForJurisdiction, type ValidationIssue } from "@/lib/compliance/validator";
-import { listJurisdictions, JURISDICTIONS, type JurisdictionCode } from "@/lib/compliance/jurisdictions";
+import { listJurisdictions, JURISDICTIONS, resolveJurisdiction, type JurisdictionCode } from "@/lib/compliance/jurisdictions";
 import { useOperatorProfileStore } from "@/stores/operator-profile-store";
 import { useAircraftRegistryStore } from "@/stores/aircraft-registry-store";
 import type { FlightRecord } from "@/lib/types";
@@ -49,9 +49,10 @@ export function ExportTab({ record, matchedRecording }: ExportTabProps) {
   const aircraftIndex = useAircraftRegistryStore((s) => s.aircraft);
   const aircraft = aircraftIndex[record.droneId];
 
-  // Jurisdiction picker state — defaults to operator's saved default, or DGCA.
+  // Jurisdiction picker state — defaults to the operator's saved default when
+  // it names a known regulator, otherwise the generic logbook.
   const [jurisdiction, setJurisdiction] = useState<JurisdictionCode>(
-    (operator.defaultJurisdiction as JurisdictionCode) || "IN_DGCA",
+    () => resolveJurisdiction(operator.defaultJurisdiction, "GENERIC"),
   );
 
   const jurisdictionOptions = useMemo(
@@ -108,7 +109,13 @@ export function ExportTab({ record, matchedRecording }: ExportTabProps) {
     if (!record.path || record.path.length === 0) return;
     downloadGpx(`${fileBase}.gpx`, {
       name: record.customName || `${record.droneName} flight`,
-      description: `Duration ${record.duration}s · ${(record.distance / 1000).toFixed(2)} km · max alt ${record.maxAlt} m`,
+      description: [
+        `Duration ${record.duration}s`,
+        record.distance !== undefined ? `${(record.distance / 1000).toFixed(2)} km` : undefined,
+        record.maxAlt !== undefined ? `max alt ${record.maxAlt} m` : undefined,
+      ]
+        .filter(Boolean)
+        .join(" · "),
       points: record.path.map(([lat, lon]) => ({ lat, lon })),
     });
   };

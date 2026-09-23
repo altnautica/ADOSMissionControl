@@ -3,7 +3,7 @@
 /**
  * @module atlas/viewers/SplatViewer
  * @description Plays a photoreal gaussian splat (`.ply` / `.splat` / `.ksplat`)
- * with the mkkellogg gaussian-splats-3d viewer — a purpose-built splat renderer
+ * with the gaussian-splats-3d viewer — a purpose-built splat renderer
  * with a GPU-accelerated worker depth-sort, spherical-harmonics colour, and
  * native device-pixel-ratio.
  *
@@ -16,7 +16,7 @@
  *  2. **Correct the world frame.** Reconstructions are in the COLMAP Y-down
  *     frame; the viewer is Y-up, so a raw scene loads upside-down. We pass an
  *     `orientation` quaternion (180° about X) — see `coordinate-frame`.
- *  3. **Frame the camera.** mkkellogg does not auto-frame; a reconstruction lives
+ *  3. **Frame the camera.** The library does not auto-frame; a reconstruction lives
  *     in its own world coordinates, so we sample the loaded splat centres for a
  *     bounding box and point the camera at it (else it can render off-screen).
  *
@@ -25,7 +25,7 @@
  * WebGL context, sort worker, and GPU buffers. It is async, so the effect
  * serializes construct-after-dispose across runs — otherwise React StrictMode's
  * mount→unmount→mount races two viewers on the same host (the jitter). A failed
- * load surfaces an error overlay and tears its viewer down (Rule 44).
+ * load surfaces an error overlay and tears its viewer down (no fabricated reading).
  * @license GPL-3.0-only
  */
 
@@ -36,7 +36,7 @@ import { ViewerLoading } from "./ViewerLoading";
 import { splatArtifactExt } from "./splat-format";
 import { COLMAP_TO_YUP_QUAT } from "./coordinate-frame";
 
-/** Frame the camera on the loaded splats. mkkellogg's default camera is a fixed
+/** Frame the camera on the loaded splats. The library's default camera is a fixed
  * [0,10,15] → [0,0,0]; an arbitrary reconstruction is elsewhere in world space,
  * so we sample splat centres for a bounding box and look at its centre from
  * ~1.6× the scene radius. */
@@ -65,7 +65,7 @@ function frameCameraToSplats(
   // smear; `radius / tan(fov/2)` frames the whole sphere.
   const fov = ((viewer.camera.fov ?? 50) * Math.PI) / 180;
   const dist = (radius / Math.tan(fov / 2)) * 1.25;
-  // Fit the clip planes to the scene (mkkellogg's fixed far=1000 would clip a
+  // Fit the clip planes to the scene (the library's fixed far=1000 would clip a
   // large drone-scale reconstruction).
   viewer.camera.near = Math.max(dist / 1000, 0.01);
   viewer.camera.far = dist * 20;
@@ -97,7 +97,7 @@ export default function SplatViewer({ url }: { url: string }) {
     let disposed = false;
     let viewer: Viewer | null = null;
 
-    // mkkellogg's dispose() is async. Under StrictMode the effect runs
+    // The library's dispose() is async. Under StrictMode the effect runs
     // mount→unmount→mount, and a naive teardown would race the remount's
     // construct on the same host. Chain each run after the previous dispose so
     // only one viewer ever touches the host at a time.
@@ -156,7 +156,10 @@ export default function SplatViewer({ url }: { url: string }) {
         v.start();
         setReady(true);
       } catch {
-        if (!disposed) setFailed(true);
+        // After cleanup the rejection is the abort that dispose() caused, and
+        // cleanup already owns the teardown.
+        if (disposed) return;
+        setFailed(true);
         // Tear down a partially-constructed viewer so a failed load never leaves
         // a half-alive viewer (canvas / sort worker) behind.
         try {
@@ -171,15 +174,17 @@ export default function SplatViewer({ url }: { url: string }) {
 
     return () => {
       disposed = true;
-      // Dispose only after this run settles; the next effect's construct is
-      // chained on this, so it waits for the teardown to finish.
-      lifecycle.current = run.then(async () => {
-        try {
-          await viewer?.dispose();
-        } catch {
-          /* already gone */
-        }
-      });
+      // dispose() is the only thing that aborts the library's in-flight download,
+      // so call it now rather than after the load finishes; a newer url or an
+      // unmount must not wait for (or compete with) the old download. The next
+      // effect's construct is chained on both settling.
+      let disposing: Promise<void> | undefined;
+      try {
+        disposing = viewer?.dispose();
+      } catch {
+        /* already gone */
+      }
+      lifecycle.current = Promise.allSettled([run, disposing]).then(() => undefined);
     };
   }, [url]);
 
@@ -187,7 +192,7 @@ export default function SplatViewer({ url }: { url: string }) {
     <div className="relative w-full h-full min-h-[320px]">
       {/* `absolute inset-0` gives the host a concrete pixel box floored by the
           wrapper's min-height. A percentage height (`h-full`) collapses to 0 in
-          a flex/min-h ancestor chain, and mkkellogg reads `offsetHeight`
+          a flex/min-h ancestor chain, and the library reads `offsetHeight`
           verbatim as the canvas height — a 0-height canvas renders black. */}
       <div ref={hostRef} className="absolute inset-0" />
       {!ready && !failed && (

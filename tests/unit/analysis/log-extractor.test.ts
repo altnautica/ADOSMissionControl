@@ -84,4 +84,9 @@ describe('extractVibration', () => {
     ];
     expect(extractVibration(makeLog({ VIBE: rows }))?.clipCount).toBe(7);
   });
+
+  it('reports no clip count, not zero, when the log carries no clip counter', () => {
+    const rows = [row('VIBE', 0, { IMU: 0, VibeX: 1, VibeY: 1, VibeZ: 1 })];
+    expect(extractVibration(makeLog({ VIBE: rows }))?.clipCount).toBeNull();
+  });
 });

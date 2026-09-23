@@ -1,9 +1,9 @@
 /**
  * @module logging-service.test
- * @description Unit tests for the durable-store reader's three-tier
- * transport resolution (LAN-direct → proxy → legacy), envelope
- * normalisation, legacy shape mapping, keyset pagination, hard-error
- * non-cascade, and streamed export.
+ * @description Unit tests for the durable-store reader's two-tier
+ * transport resolution (proxy → legacy), envelope normalisation, legacy
+ * shape mapping, keyset pagination, hard-error non-cascade, and streamed
+ * export.
  * @license GPL-3.0-only
  */
 
@@ -57,35 +57,35 @@ describe("LoggingService transport resolution", () => {
     vi.restoreAllMocks();
   });
 
-  it("serves from the LAN-direct tier and reports source=logd", async () => {
+  it("serves from the proxy bridge on the agent REST port", async () => {
     fetchMock.mockResolvedValueOnce(jsonResponse(envelope([LOGD_ROW])));
     const svc = new LoggingService(CTX);
     const res = await svc.query();
     expect(res.meta.source).toBe("logd");
     expect(res.data).toHaveLength(1);
     expect(res.meta.db_lag_ms).toBe(7);
-    // Direct tier means :8090/v1.
+    expect(fetchMock).toHaveBeenCalledTimes(1);
     const url = fetchMock.mock.calls[0][0] as string;
-    expect(url).toContain(":8090/v1/query");
+    expect(url).toContain(":8080/api/v2/observability/v1/query");
     // Auth header carried.
     const init = fetchMock.mock.calls[0][1] as RequestInit;
     expect((init.headers as Record<string, string>)["X-ADOS-Key"]).toBe("test-key");
   });
 
-  it("falls back to the proxy tier on a 404 from direct", async () => {
+  it("never dials the store's own query port, which a browser cannot read", async () => {
     fetchMock
-      .mockResolvedValueOnce(jsonResponse({ error: "not found" }, 404))
-      .mockResolvedValueOnce(jsonResponse(envelope([LOGD_ROW], null, "proxy")));
+      .mockResolvedValueOnce(jsonResponse({}, 503))
+      .mockResolvedValueOnce(jsonResponse([]));
     const svc = new LoggingService(CTX);
-    const res = await svc.query();
-    expect(res.meta.source).toBe("proxy");
-    const proxyUrl = fetchMock.mock.calls[1][0] as string;
-    expect(proxyUrl).toContain(":8080/api/v2/observability/v1/query");
+    await svc.query();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    for (const [url] of fetchMock.mock.calls as [string][]) {
+      expect(url).not.toContain(":8090");
+    }
   });
 
   it("falls back to the legacy tier and normalises the flat array", async () => {
     fetchMock
-      .mockResolvedValueOnce(jsonResponse({ error: "x" }, 404)) // direct
       .mockResolvedValueOnce(jsonResponse({ error: "x" }, 502)) // proxy
       .mockResolvedValueOnce(
         jsonResponse([
@@ -101,11 +101,11 @@ describe("LoggingService transport resolution", () => {
     expect(row.message).toBe("slow");
     expect(row.source).toBe("api"); // logger → source
     expect(typeof row.ts_us).toBe("number");
-    const legacyUrl = fetchMock.mock.calls[2][0] as string;
+    const legacyUrl = fetchMock.mock.calls[1][0] as string;
     expect(legacyUrl).toContain(":8080/api/logs");
   });
 
-  it("throws (does not cascade) on a hard 401 from the direct tier", async () => {
+  it("throws (does not cascade) on a hard 401 from the proxy tier", async () => {
     fetchMock.mockResolvedValueOnce(jsonResponse({ error: "unauth" }, 401));
     const svc = new LoggingService(CTX);
     await expect(svc.query()).rejects.toThrow(/401/);
@@ -116,7 +116,6 @@ describe("LoggingService transport resolution", () => {
   it("throws when every tier is unavailable", async () => {
     fetchMock
       .mockResolvedValueOnce(jsonResponse({}, 503))
-      .mockResolvedValueOnce(jsonResponse({}, 503))
       .mockResolvedValueOnce(jsonResponse({}, 503));
     const svc = new LoggingService(CTX);
     await expect(svc.query()).rejects.toThrow(/logd unavailable/);
@@ -125,25 +124,25 @@ describe("LoggingService transport resolution", () => {
   it("cascades on a network error (rejected fetch)", async () => {
     fetchMock
       .mockRejectedValueOnce(new TypeError("Failed to fetch"))
-      .mockResolvedValueOnce(jsonResponse(envelope([LOGD_ROW], null, "proxy")));
+      .mockResolvedValueOnce(jsonResponse([]));
     const svc = new LoggingService(CTX);
     const res = await svc.query();
-    expect(res.meta.source).toBe("proxy");
+    expect(res.meta.source).toBe("legacy");
   });
 
-  it("re-probes the direct tier first even after settling on proxy", async () => {
-    // First call settles on proxy.
+  it("retries the proxy first even after a call settled on legacy", async () => {
+    // The legacy route answers any path, so once it has answered it must not
+    // be tried ahead of the proxy, or a recovered proxy is never used again.
     fetchMock
-      .mockResolvedValueOnce(jsonResponse({}, 404))
-      .mockResolvedValueOnce(jsonResponse(envelope([LOGD_ROW], null, "proxy")));
+      .mockResolvedValueOnce(jsonResponse({}, 503))
+      .mockResolvedValueOnce(jsonResponse([]));
     const svc = new LoggingService(CTX);
-    await svc.query();
-    // Second call: direct is back up.
-    fetchMock.mockResolvedValueOnce(jsonResponse(envelope([LOGD_ROW])));
+    expect((await svc.query()).meta.source).toBe("legacy");
+    fetchMock.mockResolvedValueOnce(jsonResponse(envelope([LOGD_ROW], null, "proxy")));
     const res = await svc.query();
-    expect(res.meta.source).toBe("logd");
+    expect(res.meta.source).toBe("proxy");
     const lastUrl = fetchMock.mock.calls[fetchMock.mock.calls.length - 1][0] as string;
-    expect(lastUrl).toContain(":8090/v1/query");
+    expect(lastUrl).toContain("/api/v2/observability/v1/query");
   });
 });
 
@@ -151,7 +150,7 @@ describe("LoggingService over a ground station's relay-proxy", () => {
   /** The relay client's baseUrl IS the relay-proxy prefix, not an origin. */
   const RELAY_CTX: RequestContext = {
     baseUrl:
-      "http://192.168.1.50:8080/api/v1/ground-station/relay-proxy/77735cd38937",
+      "http://192.168.1.50:8080/api/v1/ground-station/relay-proxy/0a1b2c3d4e5f",
     apiKey: "gs-key",
     relay: true,
   };
@@ -170,8 +169,8 @@ describe("LoggingService over a ground station's relay-proxy", () => {
 
   it("keeps the relay-proxy prefix instead of swapping to a port", async () => {
     // Port-swapping here would discard the prefix and dial the GROUND
-    // STATION's own :8090, returning the ground station's logs labelled as
-    // the drone's — a shipped surface reporting known-false data.
+    // STATION's own REST port, returning the ground station's logs labelled
+    // as the drone's — a shipped surface reporting known-false data.
     fetchMock.mockResolvedValueOnce(jsonResponse([]));
     const svc = new LoggingService(RELAY_CTX);
     await svc.query({ limit: 5 });
@@ -179,15 +178,15 @@ describe("LoggingService over a ground station's relay-proxy", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const url = fetchMock.mock.calls[0][0] as string;
     expect(url).toContain(
-      "/api/v1/ground-station/relay-proxy/77735cd38937/api/logs",
+      "/api/v1/ground-station/relay-proxy/0a1b2c3d4e5f/api/logs",
     );
     expect(url).toContain("limit=5");
-    expect(url).not.toContain(":8090");
+    expect(url).not.toContain("observability");
   });
 
   it("probes exactly one tier — the radio carries only :8080/api", async () => {
-    // The direct and proxy tiers each cost a full relay round trip before
-    // failing, so they are never tried.
+    // The proxy tier would cost a full relay round trip before failing, so
+    // it is never tried.
     fetchMock.mockResolvedValueOnce(jsonResponse([]));
     const svc = new LoggingService(RELAY_CTX);
     const res = await svc.query();
@@ -204,12 +203,12 @@ describe("LoggingService over a ground station's relay-proxy", () => {
   });
 
   it("pushes through the relay prefix, never a rebuilt origin", async () => {
-    fetchMock.mockResolvedValueOnce(jsonResponse({ pushed: 0 }));
+    fetchMock.mockResolvedValueOnce(jsonResponse({ pending: true, pushed: false }, 202));
     const svc = new LoggingService(RELAY_CTX);
     await svc.pushWindow({});
     const url = fetchMock.mock.calls[0][0] as string;
     expect(url).toBe(
-      "http://192.168.1.50:8080/api/v1/ground-station/relay-proxy/77735cd38937/api/logs/push",
+      "http://192.168.1.50:8080/api/v1/ground-station/relay-proxy/0a1b2c3d4e5f/api/logs/push",
     );
   });
 });
@@ -264,7 +263,6 @@ describe("LoggingService pagination + aggregate + export", () => {
 
   it("returns an empty aggregate on a legacy agent rather than throwing", async () => {
     fetchMock
-      .mockResolvedValueOnce(jsonResponse({}, 404)) // direct
       .mockResolvedValueOnce(jsonResponse({}, 404)) // proxy
       .mockResolvedValueOnce(jsonResponse([])); // legacy
     const svc = new LoggingService(CTX);
@@ -284,20 +282,73 @@ describe("LoggingService pagination + aggregate + export", () => {
     const text = await new Response(stream).text();
     expect(text).toBe(body);
     const url = fetchMock.mock.calls[0][0] as string;
-    expect(url).toContain(":8090/v1/export");
+    expect(url).toContain(":8080/api/v2/observability/v1/export");
     expect(url).toContain("format=jsonl");
   });
 
-  it("throws export unavailable when no streaming tier answers", async () => {
-    fetchMock
-      .mockResolvedValueOnce(jsonResponse({}, 404)) // direct
-      .mockResolvedValueOnce(jsonResponse({}, 503)); // proxy
+  it("throws export unavailable when the proxy does not answer", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({}, 503));
     const svc = new LoggingService(CTX);
     await expect(svc.export()).rejects.toThrow(/export unavailable/);
+    // Legacy has no export endpoint, so it is never asked.
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("surfaces an auth refusal instead of reporting the export unavailable", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({}, 401));
+    const svc = new LoggingService(CTX);
+    await expect(svc.export()).rejects.toThrow(/export refused: 401/);
+  });
+
+  describe("export inactivity deadline", () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    /** A body whose chunks the test releases by hand. */
+    function heldBody() {
+      let push: (chunk: string) => void = () => undefined;
+      const stream = new ReadableStream<Uint8Array>({
+        start(c) {
+          push = (chunk) => c.enqueue(new TextEncoder().encode(chunk));
+        },
+      });
+      return { stream, push: (chunk: string) => push(chunk) };
+    }
+
+    it("keeps a download alive while chunks keep arriving", async () => {
+      const body = heldBody();
+      fetchMock.mockResolvedValueOnce(new Response(body.stream, { status: 200 }));
+      const { stream } = await new LoggingService(CTX).export();
+      const signal = (fetchMock.mock.calls[0][1] as RequestInit).signal!;
+      const reader = stream.getReader();
+      // Four chunks, each 50 s apart: 200 s in total, well past the 60 s
+      // idle bound, but never 60 s without data.
+      for (let i = 0; i < 4; i += 1) {
+        const read = reader.read();
+        await vi.advanceTimersByTimeAsync(50_000);
+        body.push(`row${i}\n`);
+        expect((await read).done).toBe(false);
+      }
+      expect(signal.aborted).toBe(false);
+    });
+
+    it("aborts a download that stops sending", async () => {
+      const body = heldBody();
+      fetchMock.mockResolvedValueOnce(new Response(body.stream, { status: 200 }));
+      const { stream } = await new LoggingService(CTX).export();
+      const signal = (fetchMock.mock.calls[0][1] as RequestInit).signal!;
+      void stream.getReader().read().catch(() => undefined);
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(signal.aborted).toBe(true);
+    });
   });
 });
 
-describe("LoggingService stats + healthz", () => {
+describe("LoggingService healthz", () => {
   let fetchMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
@@ -310,25 +361,8 @@ describe("LoggingService stats + healthz", () => {
     vi.restoreAllMocks();
   });
 
-  it("coerces a partial stats body with safe defaults", async () => {
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse({ data: { db_size_bytes: 1024, rows: { logs: 100 } } }),
-    );
-    const svc = new LoggingService(CTX);
-    const stats = await svc.stats();
-    expect(stats.db.size_bytes).toBe(1024);
-    expect(stats.db.wal_size_bytes).toBe(0);
-    expect(stats.db.row_counts.logs).toBe(100);
-    expect(stats.db.integrity).toBe(false);
-    expect(stats.db.schema_version).toBeNull();
-    expect(stats.ingest.accepted).toBe(0);
-    expect(stats.sync.unsynced_rows).toEqual({});
-    expect(stats.source).toBe("logd");
-  });
-
   it("returns ok=false from healthz when no tier answers instead of throwing", async () => {
     fetchMock
-      .mockResolvedValueOnce(jsonResponse({}, 503))
       .mockResolvedValueOnce(jsonResponse({}, 503))
       .mockResolvedValueOnce(jsonResponse({}, 503));
     const svc = new LoggingService(CTX);

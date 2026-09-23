@@ -4,7 +4,7 @@ import { COLMAP_TO_YUP_QUAT, orientCloudToYUp } from "../coordinate-frame";
 
 // The COLMAP/OpenCV world frame is Y-down, Z-forward; the viewer is Y-up,
 // Z-back. The convention transform is a 180° rotation about X = diag(1,-1,-1):
-// X is preserved, Y and Z are negated. Both the splat scene (via the mkkellogg
+// X is preserved, Y and Z are negated. Both the splat scene (via the splat library
 // orientation quaternion) and the point clouds (via geom.rotateX(π)) must apply
 // exactly this, so the two views agree.
 

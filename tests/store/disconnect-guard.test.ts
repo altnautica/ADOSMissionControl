@@ -25,6 +25,7 @@ vi.mock("@/stores/drone-store", () => ({
       setArmState: vi.fn(),
       setSystemStatus: vi.fn(),
       setFirmwareType: vi.fn(),
+      resetForSelection: vi.fn(),
     }),
     setState: vi.fn(),
   },
@@ -39,12 +40,9 @@ vi.mock("@/stores/diagnostics-store", () => ({
   useDiagnosticsStore: { getState: () => ({ logConnection: vi.fn() }), setState: vi.fn() },
 }));
 vi.mock("@/lib/telemetry-recorder", () => ({
-  startRecording: vi.fn(),
-  getRecordingState: vi.fn(() => ({ state: "idle" })),
   isRecordingFor: vi.fn(() => false),
   stopRecordingFor: vi.fn(() => Promise.resolve()),
 }));
-vi.mock("@/components/fc/parameters/ParametersPanel", () => ({ invalidateParamCache: vi.fn() }));
 
 import { onUnexpectedDisconnect, useDroneManager } from "@/stores/drone-manager";
 import { useParamSafetyStore } from "@/stores/param-safety-store";

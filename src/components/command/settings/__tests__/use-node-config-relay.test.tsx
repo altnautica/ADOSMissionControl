@@ -38,7 +38,7 @@ import { useLocalNodesStore } from "@/stores/local-nodes-store";
 import { usePairingStore } from "@/stores/pairing-store";
 import type { RelayReach } from "@/lib/nodes/relay-reach";
 
-const DRONE = "77735cd38937";
+const DRONE = "0a1b2c3d4e5f";
 
 const REACH: RelayReach = {
   baseUrl: "http://192.168.1.50:8080",
@@ -144,7 +144,7 @@ describe("useNodeConfig with a relay reach", () => {
       nodes: [
         {
           deviceId: DRONE,
-          name: "skynode",
+          name: "testnode",
           hostname: "http://192.168.1.77:8080",
           apiKey: "own-key",
           profile: "drone",
@@ -159,5 +159,82 @@ describe("useNodeConfig with a relay reach", () => {
     expect(result.current.accessMode).toBe("proxy");
     expect(calls[0]).not.toHaveProperty("peerDeviceId");
     expect(calls[0]).toMatchObject({ host: "http://192.168.1.77:8080" });
+  });
+});
+
+describe("useNodeConfig across node switches and store churn", () => {
+  const DRONE_B = "0f1e2d3c4b5a";
+  const REACH_B: RelayReach = { ...REACH, peerDeviceId: DRONE_B };
+
+  /** A fetch whose relay GETs stay open until the test answers them, per
+   * target node, so reads can be resolved out of order. */
+  function deferredFetch() {
+    const pending = new Map<string, (body: object) => void>();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((_url: string, init: RequestInit) => {
+        const req = JSON.parse(String(init.body)) as { peerDeviceId: string };
+        calls.push(req);
+        const { promise, resolve } = Promise.withResolvers<Response>();
+        pending.set(req.peerDeviceId, (body) =>
+          resolve(new Response(JSON.stringify(body), { status: 200 })),
+        );
+        return promise;
+      }),
+    );
+    return (peer: string, body: object) => pending.get(peer)!(body);
+  }
+
+  it("keeps the newest node's document when the previous node answers last", async () => {
+    const answer = deferredFetch();
+    const { result, rerender } = renderHook(
+      ({ id, reach }: { id: string; reach: RelayReach }) =>
+        useNodeConfig(id, reach),
+      { initialProps: { id: DRONE, reach: REACH } },
+    );
+    await waitFor(() => expect(calls).toHaveLength(1));
+
+    rerender({ id: DRONE_B, reach: REACH_B });
+    await waitFor(() => expect(calls).toHaveLength(2));
+
+    await act(async () => answer(DRONE_B, { node: "b" }));
+    await act(async () => answer(DRONE, { node: "a" }));
+
+    expect(result.current.config).toEqual({ node: "b" });
+  });
+
+  it("does not re-read the config when the pairing arrays are replaced", async () => {
+    const { result } = renderHook(() => useNodeConfig(DRONE, REACH));
+    await waitFor(() => expect(result.current.config).not.toBeNull());
+    const afterLoad = calls.length;
+
+    // A presence stamp or a cloud-sync update replaces the arrays without
+    // changing which transport reaches this node.
+    act(() => {
+      usePairingStore.setState({ pairedDrones: [] });
+      useLocalNodesStore.setState({ nodes: [] });
+    });
+    const settled = Promise.withResolvers<void>();
+    setTimeout(settled.resolve, 20);
+    await settled.promise;
+
+    expect(calls.length).toBe(afterLoad);
+  });
+
+  it("keeps the last good document when a later read fails, and reports the error", async () => {
+    const { result } = renderHook(() => useNodeConfig(DRONE, REACH));
+    await waitFor(() => expect(result.current.config).not.toBeNull());
+    const loaded = result.current.config;
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.reject(new TypeError("Failed to fetch"))),
+    );
+    await act(async () => {
+      await result.current.refresh();
+    });
+
+    expect(result.current.error).not.toBeNull();
+    expect(result.current.config).toEqual(loaded);
   });
 });

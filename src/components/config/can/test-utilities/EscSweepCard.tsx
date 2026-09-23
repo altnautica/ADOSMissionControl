@@ -9,7 +9,9 @@
  * with zero so the bench fixture stays still.
  *
  * Execution is gated behind a red-variant confirm dialog because the
- * broadcast drives motor output directly.
+ * broadcast drives motor output directly, and is refused while the vehicle
+ * is armed: the broadcast would compete with the FC's own ESC commands. A
+ * sweep in flight aborts (and sends zeros) the moment the vehicle arms.
  *
  * @license GPL-3.0-only
  */
@@ -21,6 +23,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
+import { useArmedLock } from "@/hooks/use-armed-lock";
+import { useDroneStore } from "@/stores/drone-store";
 
 /** Outbound rate while a sweep is in flight. */
 const SEND_INTERVAL_MS = 20; // 50 Hz
@@ -61,17 +65,28 @@ export function EscSweepCard({ client }: EscSweepCardProps = {}) {
   const stopRef = useRef(false);
   const runIdRef = useRef(0);
 
+  const { isHardBlocked, hardBlockMessage } = useArmedLock();
+
   const stop = useCallback(() => {
     stopRef.current = true;
   }, []);
 
   useEffect(() => stop, [stop]);
 
+  // Arming mid-sweep aborts it; the loop's exit path sends the zero command.
+  useEffect(() => {
+    if (isHardBlocked) stop();
+  }, [isHardBlocked, stop]);
+
   const runSweep = useCallback(async () => {
     setConfirmOpen(false);
     setError(null);
     if (!client) {
       setError(t("pendingMessage"));
+      return;
+    }
+    if (useDroneStore.getState().armState === "armed") {
+      setError(hardBlockMessage || t("armedRefused"));
       return;
     }
     const ch = Math.max(0, Math.min(CHANNEL_COUNT - 1, Number(channel) | 0));
@@ -92,12 +107,14 @@ export function EscSweepCard({ client }: EscSweepCardProps = {}) {
         pwm += direction * stepValue
       ) {
         if (stopRef.current || runIdRef.current !== myRun) break;
+        if (useDroneStore.getState().armState === "armed") break;
         setCurrentPwm(pwm);
         const cmd = new Array(CHANNEL_COUNT).fill(0);
         cmd[ch] = pwmToCmd(pwm);
         const dwellEnd = Date.now() + dwellMs;
         while (Date.now() < dwellEnd) {
           if (stopRef.current || runIdRef.current !== myRun) break;
+          if (useDroneStore.getState().armState === "armed") break;
           try {
             await client.sendEscRawCommand(cmd);
           } catch (err) {
@@ -105,7 +122,9 @@ export function EscSweepCard({ client }: EscSweepCardProps = {}) {
             stopRef.current = true;
             break;
           }
-          await new Promise((r) => setTimeout(r, SEND_INTERVAL_MS));
+          const { promise, resolve } = Promise.withResolvers<void>();
+          setTimeout(resolve, SEND_INTERVAL_MS);
+          await promise;
         }
       }
       // Always send a zero command at the end to release the motor.
@@ -120,7 +139,7 @@ export function EscSweepCard({ client }: EscSweepCardProps = {}) {
       setRunning(false);
       setCurrentPwm(null);
     }
-  }, [client, channel, pwmFrom, pwmTo, step, dwell, t]);
+  }, [client, channel, pwmFrom, pwmTo, step, dwell, t, hardBlockMessage]);
 
   return (
     <>
@@ -191,7 +210,8 @@ export function EscSweepCard({ client }: EscSweepCardProps = {}) {
               size="sm"
               icon={<Zap size={12} />}
               onClick={() => setConfirmOpen(true)}
-              disabled={!client}
+              disabled={!client || isHardBlocked}
+              title={isHardBlocked ? hardBlockMessage : undefined}
               data-testid="esc-sweep-trigger"
             >
               {t("button")}
@@ -203,6 +223,11 @@ export function EscSweepCard({ client }: EscSweepCardProps = {}) {
               data-testid="esc-sweep-current"
             >
               {t("currentPwm", { pwm: currentPwm })}
+            </span>
+          )}
+          {isHardBlocked && !running && (
+            <span className="text-[11px] text-status-warning" data-testid="esc-sweep-armed">
+              {hardBlockMessage}
             </span>
           )}
           {error && (

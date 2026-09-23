@@ -17,7 +17,7 @@
  *
  * Deliberately NOT persisted. A beacon is live state with a 3 s shelf life;
  * rehydrating one from localStorage would render a drone's last known position
- * as if it were current, which is the exact failure Rule 44 exists to prevent.
+ * as if it were current, which is exactly the fabricated-reading failure this prevents.
  *
  * @license GPL-3.0-only
  */
@@ -48,15 +48,18 @@ export interface SwarmBeaconRow {
   deviceId: string | null;
   /** Sender uptime milliseconds (16-bit, wraps) — the beacon's own epoch. */
   seqMs: number;
-  lat: number;
-  lon: number;
-  altM: number;
-  vxMs: number;
-  vyMs: number;
-  vzMs: number;
+  /** Position, altitude and velocity are null when the beacon carries no GPS
+   * fix: the agent publishes the placeholder fix as null so no surface plots
+   * the drone at 0°N 0°E. */
+  lat: number | null;
+  lon: number | null;
+  altM: number | null;
+  vxMs: number | null;
+  vyMs: number | null;
+  vzMs: number | null;
   /** Course over ground in degrees, derived agent-side as `atan2(vy, vx)`.
-   * Heading is not transmitted in the 20-byte beacon. */
-  headingDeg: number;
+   * Heading is not transmitted in the 20-byte beacon. Null with no fix. */
+  headingDeg: number | null;
   armed: boolean;
   guided: boolean;
   emergency: boolean;
@@ -88,6 +91,12 @@ export interface SwarmBeaconCounters {
   beaconsBadMagic: number;
   beaconsBadTag: number;
   beaconsStaleDropped: number;
+  /** Authentic beacons that arrived a second time: something on the channel
+   * is re-injecting captured frames. */
+  beaconsReplayed: number;
+  /** Authentic beacons from a second live sender on an occupied slot: the
+   * fleet is misprovisioned and separation cannot tell the pair apart. */
+  beaconsSlotConflict: number;
   neighborsNow: number;
 }
 
@@ -98,6 +107,13 @@ export interface SwarmBeaconState {
   fleetId: number | null;
   counters: SwarmBeaconCounters | null;
   lastUpdatedMs: number | null;
+  /** Whether any reporting ground station's swarm radio is open. False means
+   * the bus is up but deaf, which an empty table alone cannot distinguish from
+   * empty sky; null when no reply carried the radio state. */
+  radioListening: boolean | null;
+  /** Whether a peer is beaconing a reporting node's own slot; null when no
+   * reply carried the flag. */
+  slotConflict: boolean | null;
   /** The ground station's registered-slot table, keyed by slot: every slot
    * the fleet has issued, whether or not it is currently beaconing. */
   registeredBySlot: Record<number, SwarmFleetSlot>;
@@ -113,6 +129,8 @@ export interface SwarmBeaconState {
     fleetId: number,
     counters: SwarmBeaconCounters,
     registered: readonly SwarmFleetSlot[],
+    radioListening: boolean | null,
+    slotConflict: boolean | null,
   ) => void;
   /** Evict rows at or past the stale horizon. Never touches
    * `registeredBySlot` — a registered slot is a registry fact with no shelf
@@ -133,9 +151,11 @@ export const useSwarmBeaconStore = create<SwarmBeaconState>((set) => ({
   fleetId: null,
   counters: null,
   lastUpdatedMs: null,
+  radioListening: null,
+  slotConflict: null,
   registeredBySlot: {},
 
-  upsertBeacons(rows, fleetId, counters, registered) {
+  upsertBeacons(rows, fleetId, counters, registered, radioListening, slotConflict) {
     set((state) => ({
       bySlot:
         rows.length === 0
@@ -147,6 +167,8 @@ export const useSwarmBeaconStore = create<SwarmBeaconState>((set) => ({
       fleetId,
       counters,
       lastUpdatedMs: rows.length > 0 ? rows[0].receivedAtMs : Date.now(),
+      radioListening,
+      slotConflict,
       registeredBySlot: Object.fromEntries(
         registered.map((slot) => [slot.slot, slot]),
       ),
@@ -174,6 +196,8 @@ export const useSwarmBeaconStore = create<SwarmBeaconState>((set) => ({
       fleetId: null,
       counters: null,
       lastUpdatedMs: null,
+      radioListening: null,
+      slotConflict: null,
       registeredBySlot: {},
     });
   },

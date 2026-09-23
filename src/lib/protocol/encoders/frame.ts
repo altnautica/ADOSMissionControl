@@ -20,7 +20,7 @@ import { CRC_EXTRA, crc16, crc16Accumulate } from "../mavlink-parser";
  * links still splits one counter across both, so each vehicle sees holes.
  * Fixing that needs a counter per DESTINATION, which means either threading a
  * seq through every encoder signature or rewriting byte 4 and recomputing the
- * CRC at send time. Tracked in tasks/inbox.md rather than done here.
+ * CRC at send time.
  */
 const sequences = new Map<number, number>();
 

@@ -16,7 +16,8 @@ export interface FlightStats {
   avgSpeed: number;
   batteryStartV?: number;
   batteryEndV?: number;
-  batteryUsed: number;
+  /** Percent of the pack used; undefined when no remaining-% was reported. */
+  batteryUsed?: number;
   path: [number, number][];
   landingLat?: number;
   landingLon?: number;
@@ -59,7 +60,8 @@ export function computeFlightStats(frames: TelemetryFrame[]): FlightStats {
   for (const frame of frames) {
     if (frame.channel === "position" || frame.channel === "globalPosition") {
       const d = frame.data as PositionFrameData;
-      if (typeof d.lat === "number" && typeof d.lon === "number") {
+      // 0,0 is the autopilot's "no position estimate yet", not a fix.
+      if (typeof d.lat === "number" && typeof d.lon === "number" && !(d.lat === 0 && d.lon === 0)) {
         if (prevLat !== undefined && prevLon !== undefined) {
           distance += haversineMeters(prevLat, prevLon, d.lat, d.lon);
         }
@@ -102,12 +104,10 @@ export function computeFlightStats(frames: TelemetryFrame[]): FlightStats {
     }
   }
 
-  let batteryUsed = 0;
-  if (batteryStartPct !== undefined && batteryEndPct !== undefined) {
-    batteryUsed = Math.max(0, Math.round(batteryStartPct - batteryEndPct));
-  } else if (batteryEndPct !== undefined) {
-    batteryUsed = Math.max(0, Math.round(100 - batteryEndPct));
-  }
+  const batteryUsed =
+    batteryStartPct !== undefined && batteryEndPct !== undefined
+      ? Math.max(0, Math.round(batteryStartPct - batteryEndPct))
+      : undefined;
 
   return {
     distance: Math.round(distance),

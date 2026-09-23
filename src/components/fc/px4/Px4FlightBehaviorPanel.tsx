@@ -14,7 +14,7 @@ import { useParamMetadataMap } from "@/hooks/use-param-metadata";
 import { usePanelScroll } from "@/hooks/use-panel-scroll";
 import { cn } from "@/lib/utils";
 import { PanelHeader } from "../shared/PanelHeader";
-import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
+import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { ParamFieldLabel } from "../parameters/ParamFieldLabel";
 
 interface Field { param: string; label: string; min: number; max: number; step: number }
@@ -107,7 +107,7 @@ export function Px4FlightBehaviorPanel() {
   );
 
   return (
-    <ArmedLockOverlay>
+    <ArmedWarningBanner>
     <div ref={scrollRef} className="flex-1 overflow-y-auto p-6">
       <div className="max-w-2xl space-y-6">
         <PanelHeader title="Flight Behavior" subtitle="PX4 multicopter speed, acceleration, and position control (MPC)"
@@ -135,6 +135,6 @@ export function Px4FlightBehaviorPanel() {
         </div>
       </div>
     </div>
-    </ArmedLockOverlay>
+    </ArmedWarningBanner>
   );
 }

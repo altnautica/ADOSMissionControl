@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { CockpitCameraRoster } from "@/components/vision/CockpitCameraRoster";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import type { CameraCapability } from "@/lib/agent/feature-types";
+import { normalizeCapabilities } from "@/stores/agent-capabilities/normalizer";
 
 function setCameras(cameras: CameraCapability[]) {
   useAgentCapabilitiesStore.setState({ cameras });
@@ -68,5 +69,20 @@ describe("CockpitCameraRoster", () => {
     render(<CockpitCameraRoster />);
     expect(screen.getByText("USB · 1920x1080")).toBeTruthy();
     expect(screen.getByText("CSI · 1280x720")).toBeTruthy();
+  });
+  it("reads Unknown, not Live, for a detected camera with no reported streaming flag", () => {
+    const caps = normalizeCapabilities({
+      tier: 4,
+      cameras: [
+        { name: "USB Camera", type: "usb", resolution: "1920x1080", streaming: true },
+        { name: "CSI Downward", type: "csi" },
+      ],
+    });
+    setCameras(caps.cameras);
+    render(<CockpitCameraRoster />);
+    const rows = roster()!.querySelectorAll(".crow");
+    expect(rows[1].className).not.toContain("live");
+    expect(rows[1].textContent).toContain("Unknown");
+    expect(rows[1].textContent).not.toContain("unknown ·");
   });
 });

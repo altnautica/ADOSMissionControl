@@ -117,11 +117,12 @@ export function usePluginTokenValidator(
   const transport: "cloud" | "lan" = cloudMode ? "cloud" : "lan";
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
-  // Operator HMAC verification key, scoped to this (install, device). The
-  // query soft-fails to `undefined` when the operator is signed out and
-  // returns `null` for an install they do not own; in either case the
-  // cloud-issuer resolver below raises and the bridge maps the failure to
-  // `signature_invalid` / `token_invalid` for the offending RPC.
+  // Operator HMAC verification key, scoped to this (install, device). Only a
+  // signed-in operator can read it, and only for a cloud install row: a
+  // local-first install carries a synthetic `<device>::<plugin>` id the
+  // query would reject. Otherwise the query stays off, and the cloud-issuer
+  // resolver below raises so the bridge denies a cloud-issued token.
+  const cloudInstallId = isAuthenticated && !pluginInstallId.includes("::");
   const hmac = useConvexSkipQuery(
     convexApi.operatorHmacSecrets.getMyVerificationKey,
     {
@@ -129,6 +130,7 @@ export function usePluginTokenValidator(
         pluginInstallId: pluginInstallId as Id<"cmd_pluginInstalls">,
         deviceId,
       },
+      enabled: cloudInstallId,
     },
   );
 
@@ -165,14 +167,23 @@ export function usePluginTokenValidator(
   hmacRef.current = hmac;
   pairingKeyRef.current = pairingKey;
 
-  // Per-validator key caches. Importing a CryptoKey is async and the
+  // Per-validator key cache. Importing a CryptoKey is async and the
   // result is stable for the lifetime of the secret; cache by the
   // secret material to avoid re-importing on every RPC.
-  const cloudKeyCache = useRef<Map<string, Promise<CryptoKey>>>(new Map());
-  const agentKeyCache = useRef<Map<string, Promise<CryptoKey>>>(new Map());
+  const keyCache = useRef<Map<string, Promise<CryptoKey>>>(new Map());
+  const cachedKey = useCallback(
+    (material: string, load: () => Promise<CryptoKey>): Promise<CryptoKey> => {
+      const cached = keyCache.current.get(material);
+      if (cached) return cached;
+      const loaded = load();
+      keyCache.current.set(material, loaded);
+      return loaded;
+    },
+    [],
+  );
 
   const secretResolver = useCallback(
-    async (kind: IssuerKind, _subject: string): Promise<CryptoKey> => {
+    async (kind: IssuerKind, _subject: string): Promise<CryptoKey[]> => {
       if (kind === "local") {
         // Local dev tokens carry no agent-id binding; production
         // bridges that see `iss: local` should reject. The agent half
@@ -190,22 +201,17 @@ export function usePluginTokenValidator(
             "operator HMAC secret is not loaded; cannot verify cloud-issued token",
           );
         }
-        const cached = cloudKeyCache.current.get(current.secretBase64);
-        if (cached) return cached;
-        const minted = importHmacKeyFromBase64(current.secretBase64);
-        cloudKeyCache.current.set(current.secretBase64, minted);
-        // Pre-cache the previous secret so rotation-overlap tokens
-        // verify without an extra resolver round-trip.
-        if (
-          current.previousSecretBase64 &&
-          !cloudKeyCache.current.has(current.previousSecretBase64)
-        ) {
-          cloudKeyCache.current.set(
-            current.previousSecretBase64,
-            importHmacKeyFromBase64(current.previousSecretBase64),
-          );
+        // Current key first, then the retained previous key, so a token
+        // minted just before a rotation verifies until it expires.
+        const secrets = [current.secretBase64];
+        if (current.previousSecretBase64) {
+          secrets.push(current.previousSecretBase64);
         }
-        return minted;
+        return Promise.all(
+          secrets.map((s) =>
+            cachedKey(`cloud:${s}`, () => importHmacKeyFromBase64(s)),
+          ),
+        );
       }
       // kind === "agent"
       const pairing = pairingKeyRef.current;
@@ -214,13 +220,13 @@ export function usePluginTokenValidator(
           "pairing key unavailable; cannot derive per-pairing HMAC secret",
         );
       }
-      const cached = agentKeyCache.current.get(pairing);
-      if (cached) return cached;
-      const derived = deriveAgentTokenSecret(pairing);
-      agentKeyCache.current.set(pairing, derived);
-      return derived;
+      return [
+        await cachedKey(`agent:${pairing}`, () =>
+          deriveAgentTokenSecret(pairing),
+        ),
+      ];
     },
-    [],
+    [cachedKey],
   );
 
   const onTokenExpired = useCallback(() => {

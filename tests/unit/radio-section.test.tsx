@@ -39,7 +39,10 @@ function withWfb(patch: Record<string, unknown>) {
   return { video: { wfb: { ...BASE_CONFIG.video.wfb, ...patch } } };
 }
 
-/** Seed the live radio readback the modulation rows render. */
+const NODE = "node-1";
+
+/** Seed the live radio readback the modulation rows render, filed under this
+ * page's node the way a status report files it. */
 function setRadio(
   radio: {
     mcsIndex: number | null;
@@ -47,8 +50,10 @@ function setRadio(
     mcsLadderCap?: number | null;
   } | null,
 ) {
+  const { focusedDeviceId: _f, byDevice: _b, ...slice } =
+    useAgentCapabilitiesStore.getState();
   useAgentCapabilitiesStore.setState({
-    radio: radio as never,
+    byDevice: { [NODE]: { ...slice, radio: radio as never } },
   });
 }
 
@@ -65,6 +70,7 @@ function renderSection(
   const setValue = vi.fn(async () => {});
   const utils = renderWithIntl(
     <RadioSection
+      nodeDeviceId={NODE}
       profile={profile}
       config={config}
       readOnly={false}
@@ -85,15 +91,24 @@ describe("RadioSection profile gate", () => {
     expect(screen.getByText(/does not expose a WFB radio block/)).toBeTruthy();
     expect(screen.queryByText("Fleet ID")).toBeNull();
   });
+
+  it("does not claim the block is missing while the config has not loaded", () => {
+    renderSection("drone", null);
+    expect(screen.queryByText(/does not expose a WFB radio block/)).toBeNull();
+    expect(screen.queryByText("Fleet ID")).toBeNull();
+  });
 });
 
 describe("RadioSection fleet addressing", () => {
-  it("writes the fleet id through the shared config writer", async () => {
+  it("holds a fleet id write behind a confirm, then writes it", async () => {
     const { setValue } = renderSection("drone");
     fireEvent.change(screen.getByLabelText("Fleet ID"), {
       target: { value: "7" },
     });
     fireEvent.click(screen.getAllByText("Apply")[0]);
+    expect(setValue).not.toHaveBeenCalled();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Change fleet ID" }));
     await waitFor(() =>
       expect(setValue).toHaveBeenCalledWith("video.wfb.fleet_id", "7"),
     );
@@ -108,6 +123,12 @@ describe("RadioSection fleet addressing", () => {
   it("names slot 0 as the ground station rather than showing a bare 0", () => {
     renderSection("ground-station", withWfb({ fleet_slot: 0 }));
     expect(screen.getByText("Ground station (slot 0)")).toBeTruthy();
+  });
+
+  it("warns that slot 0 on a drone means no slot was assigned", () => {
+    renderSection("drone", withWfb({ fleet_slot: 0 }));
+    expect(screen.getByText("Not assigned")).toBeTruthy();
+    expect(screen.queryByText("Ground station (slot 0)")).toBeNull();
   });
 });
 
@@ -208,5 +229,35 @@ describe("RadioSection modulation", () => {
     setRadio({ mcsIndex: 2, snrDb: null });
     renderSection("drone");
     expect(screen.getByText("MCS 2")).toBeTruthy();
+  });
+
+  it("shows the preset's rung instead of a manual field the preset would overwrite", () => {
+    renderSection(
+      "drone",
+      withWfb({ wfb_link_preset: "balanced", adaptive_bitrate_enabled: false }),
+    );
+    expect(screen.queryByLabelText("MCS index")).toBeNull();
+    expect(screen.getByText("MCS 3 (set by the Balanced preset)")).toBeTruthy();
+  });
+
+  it("draws neither rung control while adaptive bitrate is unknown", () => {
+    const wfb: Record<string, unknown> = { ...BASE_CONFIG.video.wfb };
+    delete wfb.adaptive_bitrate_enabled;
+    renderSection("drone", { video: { wfb } });
+    expect(screen.queryByLabelText("MCS index")).toBeNull();
+    expect(screen.queryByLabelText("Adaptive ceiling (MCS)")).toBeNull();
+    // The switch itself reads unknown, not OFF.
+    expect(screen.getByText("not reported")).toBeTruthy();
+  });
+
+  it("reads the live rung from this node, not the focused one", () => {
+    // The flat slice belongs to the focused node; this page's node has no
+    // reading yet.
+    useAgentCapabilitiesStore.setState({
+      radio: { mcsIndex: 4, snrDb: 30 } as never,
+    });
+    renderSection("drone", withWfb({ adaptive_bitrate_enabled: true }));
+    expect(screen.queryByText("auto (MCS 4 at 30 dB)")).toBeNull();
+    expect(screen.getByText("no reading")).toBeTruthy();
   });
 });

@@ -16,12 +16,12 @@ import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { PanelHeader } from "../shared/PanelHeader";
 import { ParamEnumSelect, useParamEnums } from "../shared/ParamEnumSelect";
 import { ParamFieldLabel } from "../parameters/ParamFieldLabel";
-import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
+import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { ShieldAlert, Battery, Radio, Gauge, Save, HardDrive, MapPin, SlidersHorizontal, Mountain } from "lucide-react";
 import { StarredParam } from "../parameters/ParamStar";
 import { FenceEnableToggle, FenceTypeBits } from "./geofence-components";
 import {
-  BF_FAILSAFE_PARAMS, BF_FS_PROCEDURE_OPTIONS, FS_OPTION_BITS, COPTER_FS_PARAMS, PLANE_FS_PARAMS,
+  FS_OPTION_BITS, COPTER_FS_PARAMS, PLANE_FS_PARAMS,
   PLANE_FS_OPTIONAL_PARAMS, AP_SHARED_FS_PARAMS, PX4_FS_PARAMS, RC_CHANNEL_COUNT,
 } from "./failsafe-constants";
 
@@ -64,16 +64,14 @@ export function FailsafePanel() {
 
   const { firmwareType } = useFirmwareCapabilities();
   const isPx4 = firmwareType === 'px4';
-  const isBetaflight = firmwareType === 'betaflight';
-  const isArduPilot = !isPx4 && !isBetaflight;
+  const isArduPilot = !isPx4;
   const isApPlane = isArduPilot && isPlane;
   const isApCopter = isArduPilot && !isPlane;
 
   const paramNames = useMemo(
-    () => isBetaflight ? [...BF_FAILSAFE_PARAMS]
-      : isPx4 ? PX4_FS_PARAMS
+    () => isPx4 ? PX4_FS_PARAMS
       : [...AP_SHARED_FS_PARAMS, ...(isPlane ? PLANE_FS_PARAMS : COPTER_FS_PARAMS)],
-    [isPlane, isPx4, isBetaflight],
+    [isPlane, isPx4],
   );
   const optionalParams = isApPlane ? PLANE_FS_OPTIONAL_PARAMS : EMPTY;
 
@@ -109,26 +107,12 @@ export function FailsafePanel() {
   }
 
   return (
-    <ArmedLockOverlay>
+    <ArmedWarningBanner>
     <div ref={scrollRef} className="flex-1 overflow-y-auto p-6">
       <div className="max-w-2xl space-y-6">
         <PanelHeader title="Failsafe Configuration" subtitle="Configure failsafe actions for loss of control, battery, and GCS link"
           loading={loading} loadProgress={loadProgress} hasLoaded={hasLoaded} onRead={refresh}
           connected={connected} error={error} missingOptional={missingOptional} />
-
-        {isBetaflight && (<>
-          <Card icon={<ShieldAlert size={14} />} title="Stage 1 — Guard" description="Delay before failsafe activates after signal loss">
-            <Input label="Guard Delay (x 0.1s)" type="number" step="1" min="0" max="200" value={p("BF_FS_DELAY", "10")} onChange={(e) => set("BF_FS_DELAY", e.target.value)} />
-            <p className="text-[10px] text-text-tertiary">Value of 10 = 1.0 second. During this period, the FC holds last known stick positions.</p>
-            <Input label="Throttle Value (Stage 1)" type="number" step="10" min="1000" max="2000" unit="us" value={p("BF_FS_THROTTLE", "1000")} onChange={(e) => set("BF_FS_THROTTLE", e.target.value)} />
-            <p className="text-[10px] text-text-tertiary">Throttle PWM applied during Stage 1 guard period.</p>
-          </Card>
-          <Card icon={<ShieldAlert size={14} />} title="Stage 2 — Action" description="What happens after guard delay expires">
-            <Select label="Failsafe Procedure" options={BF_FS_PROCEDURE_OPTIONS} value={p("BF_FS_PROCEDURE", "0")} onChange={(v) => set("BF_FS_PROCEDURE", v)} />
-            <Input label="Off Delay (x 0.1s)" type="number" step="1" min="0" max="200" value={p("BF_FS_OFF_DELAY", "10")} onChange={(e) => set("BF_FS_OFF_DELAY", e.target.value)} />
-            <p className="text-[10px] text-text-tertiary">For Land procedure: motors off after this delay. Value of 10 = 1.0 second.</p>
-          </Card>
-        </>)}
 
         {isApCopter && <Card icon={<Gauge size={14} />} title="Radio Failsafe" description="Triggered when the RC throttle channel drops below the threshold or the receiver is lost">
           {enumField("FS_THR_ENABLE", "Radio Failsafe Action")}
@@ -139,6 +123,7 @@ export function FailsafePanel() {
         {isApPlane && <Card icon={<ShieldAlert size={14} />} title="Short Failsafe" description="Triggered on brief signal loss">
           {enumField("FS_SHORT_ACTN", "Action")}
           {params.has("FS_SHORT_TIMEOUT") && <StarredParam param="FS_SHORT_TIMEOUT"><Input label={lbl("FS_SHORT_TIMEOUT — Timeout (s)")} type="number" step="0.1" min="0" unit="s" value={p("FS_SHORT_TIMEOUT", "1.5")} onChange={(e) => set("FS_SHORT_TIMEOUT", e.target.value)} /></StarredParam>}
+          {params.has("RC_FS_TIMEOUT") && <StarredParam param="RC_FS_TIMEOUT"><Input label={lbl("RC_FS_TIMEOUT — RC Failsafe Timeout (s)")} type="number" step="0.1" min="0.1" max="10" unit="s" value={p("RC_FS_TIMEOUT")} onChange={(e) => setLocalValue("RC_FS_TIMEOUT", Number(e.target.value))} /></StarredParam>}
         </Card>}
 
         {isApPlane && <Card icon={<ShieldAlert size={14} />} title="Long Failsafe" description="Triggered on extended signal loss">
@@ -256,6 +241,6 @@ export function FailsafePanel() {
         </div>
       </div>
     </div>
-    </ArmedLockOverlay>
+    </ArmedWarningBanner>
   );
 }

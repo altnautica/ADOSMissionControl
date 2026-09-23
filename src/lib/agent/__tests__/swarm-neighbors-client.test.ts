@@ -17,6 +17,7 @@ import { mergeSnapshots } from "@/components/command/SwarmBeaconBridge";
 const WIRE = {
   fleet_id: 1,
   slot: 0,
+  slot_conflict: false,
   neighbors: [
     {
       slot: 3,
@@ -45,6 +46,8 @@ const WIRE = {
     beacons_bad_magic: 2,
     beacons_bad_tag: 0,
     beacons_stale_dropped: 1,
+    beacons_replayed: 4,
+    beacons_slot_conflict: 6,
     neighbors_now: 3,
   },
   slots: [
@@ -102,6 +105,49 @@ describe("parseSwarmNeighbors", () => {
     expect(snap?.rows[0].rssiDbm).toBeNull();
   });
 
+  it("keeps a no-fix beacon's null position null instead of plotting it at 0,0", () => {
+    const snap = parseSwarmNeighbors(
+      {
+        ...WIRE,
+        neighbors: [
+          {
+            ...WIRE.neighbors[0],
+            gps_ok: false,
+            lat: null,
+            lon: null,
+            alt_m: null,
+            vx_ms: null,
+            vy_ms: null,
+            vz_ms: null,
+            heading_deg: null,
+          },
+        ],
+      },
+      0,
+    );
+    const row = snap?.rows[0];
+    expect(row?.gpsOk).toBe(false);
+    expect([row?.lat, row?.lon, row?.altM, row?.headingDeg]).toEqual([
+      null,
+      null,
+      null,
+      null,
+    ]);
+    expect([row?.vxMs, row?.vyMs, row?.vzMs]).toEqual([null, null, null]);
+  });
+
+  it("maps the radio block, and null when the reply carries none", () => {
+    expect(
+      parseSwarmNeighbors({ ...WIRE, radio: { open: false, iface: null } }, 0)
+        ?.radio,
+    ).toEqual({ open: false, iface: null });
+    expect(
+      parseSwarmNeighbors({ ...WIRE, radio: { open: true, iface: "wlan1" } }, 0)
+        ?.radio,
+    ).toEqual({ open: true, iface: "wlan1" });
+    expect(parseSwarmNeighbors(WIRE, 0)?.radio).toBeNull();
+  });
+
   it("keeps heading_deg verbatim rather than re-deriving it from velocity", () => {
     // The agent derives heading as atan2(vy, vx); atan2(-0.4, 1.2) is ~342 deg
     // only by coincidence here, so pin an angle the velocities do NOT imply.
@@ -119,8 +165,20 @@ describe("parseSwarmNeighbors", () => {
       beaconsBadMagic: 2,
       beaconsBadTag: 0,
       beaconsStaleDropped: 1,
+      beaconsReplayed: 4,
+      beaconsSlotConflict: 6,
       neighborsNow: 3,
     });
+  });
+
+  it("maps slot_conflict, and null when no running bus has looked", () => {
+    expect(parseSwarmNeighbors(WIRE, 0)?.slotConflict).toBe(false);
+    expect(
+      parseSwarmNeighbors({ ...WIRE, slot_conflict: true }, 0)?.slotConflict,
+    ).toBe(true);
+    expect(
+      parseSwarmNeighbors({ ...WIRE, slot_conflict: null }, 0)?.slotConflict,
+    ).toBeNull();
   });
 
   it("falls back to hold for an unrecognised mode_precedence", () => {
@@ -180,6 +238,7 @@ describe("parseSwarmNeighbors", () => {
     expect(snap?.slot).toBeNull();
     expect(snap?.rows).toEqual([]);
     expect(snap?.counters.neighborsNow).toBe(0);
+    expect(snap?.slotConflict).toBeNull();
   });
 
   it("never defaults a missing slot to 0, which would claim ground-station identity", () => {
@@ -256,5 +315,29 @@ describe("mergeSnapshots", () => {
 
   it("returns null when nobody answered", () => {
     expect(mergeSnapshots([])).toBeNull();
+  });
+
+  it("reports the fleet as listening when any ground station's radio is open", () => {
+    const deaf = parseSwarmNeighbors(
+      { ...WIRE, radio: { open: false, iface: null } },
+      0,
+    );
+    const open = parseSwarmNeighbors(
+      { ...WIRE, radio: { open: true, iface: "wlan1" } },
+      0,
+    );
+    const silent = parseSwarmNeighbors(WIRE, 0);
+    expect(mergeSnapshots([deaf!])?.radioListening).toBe(false);
+    expect(mergeSnapshots([deaf!, open!])?.radioListening).toBe(true);
+    expect(mergeSnapshots([silent!])?.radioListening).toBeNull();
+  });
+
+  it("raises the fleet slot conflict when any reply reports one", () => {
+    const clear = parseSwarmNeighbors(WIRE, 0);
+    const clash = parseSwarmNeighbors({ ...WIRE, slot_conflict: true }, 0);
+    const unknown = parseSwarmNeighbors({ ...WIRE, slot_conflict: null }, 0);
+    expect(mergeSnapshots([clear!, clash!])?.slotConflict).toBe(true);
+    expect(mergeSnapshots([clear!, unknown!])?.slotConflict).toBe(false);
+    expect(mergeSnapshots([unknown!])?.slotConflict).toBeNull();
   });
 });

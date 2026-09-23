@@ -3,7 +3,7 @@
  *
  * Tests for the pure transitive-enrollment planner: turning a ground node's
  * reported WFB peers into relayed-drone enrollment intents, gating the funneled
- * feed on the ground link (Rule 44), and deduping against a direct pair so a
+ * feed on the ground link (no fabricated reading), and deduping against a direct pair so a
  * later direct pair upgrades the row in place rather than double-registering.
  */
 
@@ -105,7 +105,7 @@ describe("planRelayedEnrollment", () => {
     expect(e.funneledStatus?.videoWhepUrl).toBe("http://192.168.1.50:8080/whep");
   });
 
-  it("shows NO funneled video when the ground link is not verified up (Rule 44)", () => {
+  it("shows NO funneled video when the ground link is not verified up (no fabricated reading)", () => {
     const [e] = planRelayedEnrollment({
       groundNodes: [
         ground({
@@ -362,7 +362,7 @@ describe("planRelayedEnrollment relayed-status funnel", () => {
 
   it("leaves every relayed-status field absent before the first poll lands", () => {
     // No relayedStatusByPeer at all — must read absent, never a fabricated
-    // false/zero (Rule 44). This is the state every drone starts in.
+    // false/zero (no fabricated reading). This is the state every drone starts in.
     const [e] = planRelayedEnrollment({
       groundNodes: [ground({ status: gsStatus({ peerDeviceId: "drone-a" }) })],
       directlyPairedDeviceIds: new Set(),

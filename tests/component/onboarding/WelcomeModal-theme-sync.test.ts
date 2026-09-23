@@ -40,7 +40,7 @@ describe("pushThemeToAllAgents", () => {
 
   it("pushes the theme to every reachable agent", async () => {
     const drones: PairedDrone[] = [
-      drone({ deviceId: "a", mdnsHost: "skynode" }),
+      drone({ deviceId: "a", mdnsHost: "testnode" }),
       drone({ deviceId: "b", lastIp: "192.168.1.42" }),
     ];
 
@@ -56,14 +56,14 @@ describe("pushThemeToAllAgents", () => {
   });
 
   it("normalises bare mDNS hostnames by appending .local", async () => {
-    const drones: PairedDrone[] = [drone({ mdnsHost: "skynode" })];
+    const drones: PairedDrone[] = [drone({ mdnsHost: "testnode" })];
 
     await pushThemeToAllAgents(drones, "dark", {
       clientFactory: factory as never,
     });
 
     const [baseUrl] = factory.mock.calls[0];
-    expect(baseUrl).toBe("http://skynode.local:8080");
+    expect(baseUrl).toBe("http://testnode.local:8080");
   });
 
   it("skips drones that lack both mdnsHost and lastIp", async () => {

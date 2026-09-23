@@ -121,7 +121,7 @@ export const FRAME_CLASS_NOTES: Record<number, string> = {
   5: "Most FRAME_TYPE values for Y6 use the same layout. Only Y6B (10) and Y6F (11) differ.",
 };
 
-// ── Layout Data (75 layouts from APMotorLayout.json) ──────────
+// ── Layout Data (75 layouts) ──────────
 
 const LAYOUTS: FrameLayout[] = [
   // ── QUAD (Class 1) ────────────────────────────────
@@ -888,14 +888,12 @@ for (const layout of LAYOUTS) {
 }
 
 /**
- * Get motor layout for a frame class and type.
- * Falls back to type 0 (Plus) if specific type not found,
- * or null if frame class is entirely unknown.
+ * Get the motor layout for exactly this frame class and type, or null when the
+ * table has none. There is no fallback: another type's motor positions and
+ * spin directions drawn as this vehicle's would be a confident wrong diagram.
  */
 export function getMotorLayout(frameClass: number, frameType: number): FrameLayout | null {
-  return layoutMap.get(`${frameClass}:${frameType}`)
-    ?? layoutMap.get(`${frameClass}:0`)
-    ?? null;
+  return layoutMap.get(`${frameClass}:${frameType}`) ?? null;
 }
 
 /** Get all available layouts. */

@@ -13,6 +13,7 @@ import {
   INAV_MSP,
   decodeMspINavBatteryConfig,
   decodeMspINavStatus,
+  decodeMspINavStatusMixerProfile,
   type INavActiveProfiles,
   type INavBatteryConfig,
 } from '../../msp/msp-decoders-inav'
@@ -23,15 +24,20 @@ import {
 import { NOT_CONNECTED, dv } from './helpers'
 
 /**
- * Read the active control and battery profiles. MSP2_INAV_STATUS byte 8
+ * Read the active control, battery and mixer profiles. MSP2_INAV_STATUS byte 8
  * carries the battery profile in the high nibble and the control profile in
- * the low nibble.
+ * the low nibble; the mixer profile is the byte after the box-mode bitmask.
  */
 export async function inavGetActiveProfiles(queue: MspSerialQueue | null): Promise<INavActiveProfiles> {
   if (!queue) throw new Error('Not connected')
   const frame = await queue.send(INAV_MSP.MSP2_INAV_STATUS)
-  const { profiles } = decodeMspINavStatus(dv(frame.payload))
-  return { controlProfile: profiles & 0x0f, batteryProfile: profiles >> 4 }
+  const status = dv(frame.payload)
+  const { profiles } = decodeMspINavStatus(status)
+  return {
+    controlProfile: profiles & 0x0f,
+    batteryProfile: profiles >> 4,
+    mixerProfile: decodeMspINavStatusMixerProfile(status),
+  }
 }
 
 /**

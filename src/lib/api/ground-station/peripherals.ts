@@ -97,34 +97,3 @@ export function getPeripheral(ctx: RequestContext, id: string): Promise<Peripher
     `/api/v1/peripherals/${encodeURIComponent(id)}`,
   );
 }
-
-export function configurePeripheral(
-  ctx: RequestContext,
-  id: string,
-  config: Record<string, unknown>,
-): Promise<{ saved: boolean }> {
-  return gsRequest<{ saved: boolean }>(
-    ctx,
-    `/api/v1/peripherals/${encodeURIComponent(id)}/config`,
-    {
-      method: "POST",
-      body: JSON.stringify(config),
-    },
-  );
-}
-
-export function invokePeripheralAction(
-  ctx: RequestContext,
-  id: string,
-  actionId: string,
-  body?: Record<string, unknown>,
-): Promise<{ queued: boolean; result?: unknown }> {
-  return gsRequest<{ queued: boolean; result?: unknown }>(
-    ctx,
-    `/api/v1/peripherals/${encodeURIComponent(id)}/action`,
-    {
-      method: "POST",
-      body: JSON.stringify({ action_id: actionId, body: body ?? {} }),
-    },
-  );
-}

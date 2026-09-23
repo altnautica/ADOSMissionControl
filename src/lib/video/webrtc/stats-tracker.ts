@@ -134,7 +134,7 @@ function handleFrozenStream(): void {
   stopStatsPolling();
   store.setVideoDegraded("no-progress");
   store.setStreaming(false);
-  store.updateStats(0, 0);
+  store.updateStats(null, null);
   store.signalVideoStall();
 }
 
@@ -181,10 +181,10 @@ export function startStatsPolling(): void {
     type CodecStatsLite = { id: string; type: string; mimeType?: string };
     const codecReports = new Map<string, CodecStatsLite>();
 
-    let computedFps = 0;
+    let computedFps: number | null = null;
     let inboundFound = false;
     let jitterMs = 0;
-    let rttMs = 0;
+    let rttMs: number | null = null;
     let framesDecoded = 0;
     let framesDropped = 0;
     let codecName = "";
@@ -231,7 +231,7 @@ export function startStatsPolling(): void {
 
         if (reportedFps !== undefined && reportedFps > 0) {
           computedFps = Math.round(reportedFps);
-        } else if (lastStatsTime > 0 && decoded > lastFramesDecoded) {
+        } else if (lastStatsTime > 0 && decoded >= lastFramesDecoded) {
           const elapsedSec = (now - lastStatsTime) / 1000;
           if (elapsedSec > 0) {
             computedFps = Math.round((decoded - lastFramesDecoded) / elapsedSec);
@@ -275,9 +275,10 @@ export function startStatsPolling(): void {
         (report as RTCIceCandidatePairStats).state === "succeeded" &&
         (report as RTCIceCandidatePairStats).nominated
       ) {
-        // Network round-trip (L4). Browser to mediamtx.
-        const rttSec = (report as RTCIceCandidatePairStats).currentRoundTripTime ?? 0;
-        rttMs = Math.round(rttSec * 1000);
+        // Network round-trip (L4). Browser to mediamtx. A pair that has not
+        // measured a round trip yet reports no figure rather than 0 ms.
+        const rttSec = (report as RTCIceCandidatePairStats).currentRoundTripTime;
+        if (rttSec !== undefined) rttMs = Math.round(rttSec * 1000);
       }
     });
 
@@ -291,15 +292,14 @@ export function startStatsPolling(): void {
     }
 
     if (inboundFound) {
-      // Roll-up latency = network RTT + decoder jitter buffer wait.
-      // Keep updateStats(fps, latencyMs) for the existing badge readers
-      // that only want a single number. The richer breakdown below
-      // gives the popover what it needs to attribute time correctly.
-      const totalLatencyMs = rttMs + jitterMs;
+      // Roll-up latency = network RTT + decoder jitter buffer wait, unknown
+      // until the RTT is measured. The richer breakdown below gives the
+      // popover what it needs to attribute time correctly.
+      const totalLatencyMs = rttMs === null ? null : rttMs + jitterMs;
       store.updateStats(computedFps, totalLatencyMs);
 
       store.setReceiveLatency({
-        rttMs,
+        rttMs: rttMs ?? undefined,
         jitterBufferMs: jitterMs,
         rtpJitterMs: inboundJitterRtpMs,
         framesDecoded,
@@ -338,7 +338,7 @@ export function startStatsPolling(): void {
         lastStatsTime: Date.now(),
         lastJitterDelay: ps.lastJitterDelay,
         lastJitterEmitted: ps.lastJitterEmitted,
-        lastFrameTime: computedFps > 0 ? Date.now() : ps.lastFrameTime,
+        lastFrameTime: computedFps !== null && computedFps > 0 ? Date.now() : ps.lastFrameTime,
         lastProgressTime: progressed ? Date.now() : ps.lastProgressTime,
       });
 

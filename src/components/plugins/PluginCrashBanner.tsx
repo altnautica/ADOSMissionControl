@@ -21,6 +21,7 @@ import { useTranslations } from "next-intl";
 import { AlertTriangle, X } from "lucide-react";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import { communityApi } from "@/lib/community-api";
+import { useAuthStore } from "@/stores/auth-store";
 
 const WINDOW_MS = 5 * 60 * 1000;
 const REFRESH_MS = 30 * 1000;
@@ -28,20 +29,25 @@ const REFRESH_MS = 30 * 1000;
 export function PluginCrashBanner() {
   const t = useTranslations("plugins");
   const router = useRouter();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const [sinceMs, setSinceMs] = useState(WINDOW_MS);
   const [dismissedKey, setDismissedKey] = useState<string | null>(null);
 
   // Roll the window forward periodically so the query re-runs and
-  // crashes that drop out of the 5-minute window stop reporting.
+  // crashes that drop out of the 5-minute window stop reporting. Crash
+  // events live in the operator's cloud account, so a signed-out session
+  // neither subscribes nor rolls the window.
   useEffect(() => {
+    if (!isAuthenticated) return;
     const id = setInterval(() => {
       setSinceMs(WINDOW_MS + ((Date.now() % REFRESH_MS) | 0));
     }, REFRESH_MS);
     return () => clearInterval(id);
-  }, []);
+  }, [isAuthenticated]);
 
   const crashes = useConvexSkipQuery(communityApi.plugins.recentCrashes, {
     args: { sinceMs },
+    enabled: isAuthenticated,
   });
 
   if (!crashes || crashes.length === 0) return null;

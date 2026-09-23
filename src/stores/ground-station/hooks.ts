@@ -11,7 +11,6 @@ import type { LinkSlice } from "./link-store";
 import type { PairSlice } from "./pair-store";
 import type { UplinkSlice } from "./uplink-store";
 import type { MeshSlice } from "./mesh-store";
-import type { PeripheralsSlice } from "./peripherals-store";
 
 export const useLinkSlice = <T,>(selector: (slice: LinkSlice) => T): T =>
   useGroundStationStore((s) =>
@@ -23,6 +22,7 @@ export const useLinkSlice = <T,>(selector: (slice: LinkSlice) => T): T =>
       lastError: s.lastError,
       lastFetchedAt: s.lastFetchedAt,
       statusFetchedAt: s.statusFetchedAt,
+      linkHealthAt: s.linkHealthAt,
       loadStatus: s.loadStatus,
       loadWfb: s.loadWfb,
       setWfbConfig: s.setWfbConfig,
@@ -40,6 +40,7 @@ export const usePairSlice = <T,>(selector: (slice: PairSlice) => T): T =>
       ap: s.ap,
       pair: s.pair,
       ui: s.ui,
+      uiFor: s.uiFor,
       loadNetwork: s.loadNetwork,
       applyAp: s.applyAp,
       loadUi: s.loadUi,
@@ -58,6 +59,7 @@ export const useUplinkSlice = <T,>(selector: (slice: UplinkSlice) => T): T =>
       modem: s.modem,
       uplink: s.uplink,
       ethernetConfig: s.ethernetConfig,
+      uplinkFor: s.uplinkFor,
       scanWifiNetworks: s.scanWifiNetworks,
       joinWifi: s.joinWifi,
       leaveWifi: s.leaveWifi,
@@ -89,35 +91,5 @@ export const useMeshSlice = <T,>(selector: (slice: MeshSlice) => T): T =>
       revokeRelay: s.revokeRelay,
       loadPairingPending: s.loadPairingPending,
       subscribeMeshWs: s.subscribeMeshWs,
-    }),
-  );
-
-export const usePeripheralsSlice = <T,>(
-  selector: (slice: PeripheralsSlice) => T,
-): T =>
-  useGroundStationStore((s) =>
-    selector({
-      pic: s.pic,
-      gamepads: s.gamepads,
-      bluetooth: s.bluetooth,
-      display: s.display,
-      peripherals: s.peripherals,
-      loadPic: s.loadPic,
-      claimPic: s.claimPic,
-      releasePic: s.releasePic,
-      pollPicHeartbeat: s.pollPicHeartbeat,
-      subscribePicWs: s.subscribePicWs,
-      loadGamepads: s.loadGamepads,
-      applyPrimaryGamepad: s.applyPrimaryGamepad,
-      scanBluetooth: s.scanBluetooth,
-      pairBluetooth: s.pairBluetooth,
-      forgetBluetooth: s.forgetBluetooth,
-      loadPairedBluetooth: s.loadPairedBluetooth,
-      loadDisplay: s.loadDisplay,
-      applyDisplay: s.applyDisplay,
-      loadPeripherals: s.loadPeripherals,
-      loadPeripheralDetail: s.loadPeripheralDetail,
-      configurePeripheral: s.configurePeripheral,
-      invokePeripheralAction: s.invokePeripheralAction,
     }),
   );

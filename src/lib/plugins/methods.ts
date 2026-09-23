@@ -3,7 +3,9 @@
  *
  * Every method a plugin can call resolves to exactly one capability
  * the bridge gates on. A method missing from this map is rejected.
- * `null` capability means "always allowed" (theme, notify, i18n.t).
+ * `null` capability means "always allowed" (ping, i18n.t, unsubscribes).
+ * Lookups use own properties only, so an inherited `Object.prototype`
+ * name is never a known method.
  */
 
 import type { PluginCapability } from "./types";
@@ -38,8 +40,7 @@ interface MethodRule {
 
 export const PLUGIN_METHOD_RULES: Record<string, MethodRule> = {
   ping: { capability: null },
-  "theme.useTheme": { capability: null },
-  notify: { capability: null },
+  notify: { capability: "ui.slot.notification-channel" },
   "notification.publish": { capability: "ui.slot.notification-channel" },
   "i18n.t": { capability: null },
 
@@ -47,8 +48,8 @@ export const PLUGIN_METHOD_RULES: Record<string, MethodRule> = {
     capability: "telemetry.subscribe",
     requireTopic: true,
     resolve: (args) => {
-      const a = args as { topic?: unknown };
-      return typeof a.topic === "string"
+      const a = args as { topic?: unknown } | null | undefined;
+      return typeof a?.topic === "string"
         ? `telemetry.subscribe.${a.topic}`
         : null;
     },
@@ -84,7 +85,6 @@ export const PLUGIN_METHOD_RULES: Record<string, MethodRule> = {
   "events.unsubscribe": { capability: null, requireTopic: true },
 
   "cloud.read": { capability: "cloud.read" },
-  "cloud.write": { capability: "cloud.write" },
 
   // Composited cockpit draw-layer. A plugin that can mount a video overlay
   // posts vector MARKS (boxes/reticles/points/polylines/labels) that the host
@@ -115,11 +115,11 @@ export function resolveRequiredCapability(
   method: string,
   args: unknown,
 ): string | null | undefined {
+  if (!Object.hasOwn(PLUGIN_METHOD_RULES, method)) return undefined;
   const rule = PLUGIN_METHOD_RULES[method];
-  if (!rule) return undefined;
   if (rule.requireTopic) {
-    const a = args as { topic?: unknown };
-    if (typeof a.topic !== "string") return undefined;
+    const a = args as { topic?: unknown } | null | undefined;
+    if (typeof a?.topic !== "string") return undefined;
   }
   if (!rule.capability) return null;
   if (rule.resolve) return rule.resolve(args);
@@ -127,5 +127,5 @@ export function resolveRequiredCapability(
 }
 
 export function isKnownMethod(method: string): boolean {
-  return method in PLUGIN_METHOD_RULES;
+  return Object.hasOwn(PLUGIN_METHOD_RULES, method);
 }

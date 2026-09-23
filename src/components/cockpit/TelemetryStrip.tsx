@@ -1,6 +1,6 @@
 /**
- * The cockpit telemetry strip — a faithful port of the reference artifact's
- * `.zone.bl .telem` (a 2-col grid of Dist / Home / V·S / Hdg / Thr / ETA). Full
+ * The cockpit telemetry strip, styled by `.ados-cockpit .zone.bl .telem`: a
+ * 2-col grid of Dist / Home / V·S / Hdg / Thr / ETA. Full
  * density only. Read-only, pointer-events-none, null-honest ("—").
  *
  * @module fly/TelemetryStrip
@@ -98,7 +98,6 @@ export function TelemetryStrip() {
           {throttle === null ? "--" : fmt(throttle, 0)}
           <small>%</small>
         </Row>
-        <Row label={t("strip.eta")}>--:--</Row>
     </div>
   );
 }

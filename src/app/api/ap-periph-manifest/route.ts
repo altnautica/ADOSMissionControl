@@ -8,6 +8,11 @@
  * the body to the caller. Paths are validated against a strict
  * allow-list of segment characters to prevent traversal.
  *
+ * The body is always served as inert bytes (`text/plain` for listings,
+ * `application/octet-stream` for files) with `nosniff` and a sandbox CSP.
+ * The client parses the listing itself, so third-party HTML never renders
+ * as a document on this origin.
+ *
  * @license GPL-3.0-only
  */
 
@@ -43,12 +48,14 @@ export async function GET(request: NextRequest) {
     }
 
     const body = await readArrayBufferWithLimit(res, MAX_BYTES);
-    const contentType = res.headers.get("content-type") ?? "text/html; charset=utf-8";
+    const isListing = path === "" || path.endsWith("/");
     const etag = res.headers.get("etag");
     const lastModified = res.headers.get("last-modified");
 
     const headers: Record<string, string> = {
-      "Content-Type": contentType,
+      "Content-Type": isListing ? "text/plain; charset=utf-8" : "application/octet-stream",
+      "X-Content-Type-Options": "nosniff",
+      "Content-Security-Policy": "sandbox",
       "Cache-Control": "public, max-age=900, stale-while-revalidate=3600",
     };
     if (etag) headers["ETag"] = etag;

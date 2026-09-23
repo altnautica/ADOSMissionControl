@@ -18,6 +18,8 @@ const MIRRORED = [
   "convex/lib/atlasJobsIngest.ts",
   "convex/lib/changelogHtml.ts",
   "convex/lib/credentials.ts",
+  "convex/lib/passwordPolicy.ts",
+  "convex/lib/capabilityTokenSigner.ts",
 ];
 
 describe("production mirrors of the agent-route helpers", () => {

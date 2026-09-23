@@ -50,14 +50,18 @@ export function VisionSummaryCard({ droneId }: VisionSummaryCardProps) {
   // Ticking clock so "last frame Xs ago" advances on its own. Reading
   // the wall clock from state (not Date.now() in render) keeps render
   // pure.
+  // Keyed on whether a feed exists, not on the batch object that is replaced
+  // every frame, so the interval lives for the feed's lifetime.
   const [now, setNow] = useState(() => Date.now());
+  const hasFeed = !!batch;
   useEffect(() => {
-    if (!batch) return;
+    if (!hasFeed) return;
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
-  }, [batch]);
+  }, [hasFeed]);
 
-  const lastFrameAgeMs = batch ? now - batch.receivedAt : null;
+  // The clock ticks once a second, so a batch can be newer than `now`.
+  const lastFrameAgeMs = batch ? Math.max(0, now - batch.receivedAt) : null;
   const lastFrameLabel =
     lastFrameAgeMs == null
       ? EMPTY

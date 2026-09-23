@@ -19,9 +19,9 @@ export interface PositionData {
   lon: number;
   alt: number;        // meters MSL (GLOBAL_POSITION_INT.alt)
   relativeAlt: number; // meters above home (GLOBAL_POSITION_INT.relative_alt)
-  heading: number;    // degrees 0-360
+  heading?: number;   // degrees 0-360; absent when the source reports no heading
   groundSpeed: number; // m/s
-  airSpeed: number;    // m/s
+  airSpeed?: number;   // m/s; absent when the source carries no airspeed (VFR_HUD owns it on MAVLink)
   climbRate: number;   // m/s
 }
 
@@ -29,7 +29,7 @@ export interface BatteryData {
   timestamp: number;
   voltage: number;     // volts
   current?: number;    // amps; absent when not measured
-  remaining: number;   // percentage 0-100
+  remaining: number;   // percentage 0-100; -1 = the monitor does not estimate it
   consumed?: number;   // mAh; absent when not measured
   temperature?: number; // celsius (from BATTERY_STATUS temperature field)
   cellVoltages?: number[]; // per-cell voltages in volts (from BATTERY_STATUS voltages[10])
@@ -39,8 +39,8 @@ export interface BatteryData {
 export interface GpsData {
   timestamp: number;
   fixType: number;     // 0=none, 2=2D, 3=3D
-  satellites: number;
-  hdop: number;
+  satellites?: number; // absent when the receiver reports the count as unknown
+  hdop?: number;       // absent when the receiver reports no dilution of precision
   lat: number;
   lon: number;
   alt: number;         // meters MSL
@@ -71,8 +71,8 @@ export interface SysStatusData {
   sensorsPresent: number;     // raw bitmask
   sensorsEnabled: number;
   sensorsHealthy: number;
-  voltageMv: number;
-  currentCa: number;
+  voltageMv?: number;  // absent when the source does not measure it
+  currentCa?: number;  // absent when the source does not measure it
   batteryRemaining: number;
   dropRateComm: number;
   errorsComm: number;
@@ -88,6 +88,11 @@ export interface RadioData {
   remnoise: number;
   rxerrors: number;
   fixed: number;
+  /**
+   * MAVLink system id of the radio that sent the report. The rssi scale is
+   * device-defined, so this is what says which scale applies (SiK sends 51).
+   */
+  sourceSystemId: number;
 }
 
 // ── EKF Status ──────────────────────────────────────────────

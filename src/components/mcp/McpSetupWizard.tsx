@@ -1,6 +1,6 @@
 /**
  * @module components/mcp/McpSetupWizard
- * @description The LOCAL-FIRST guided "connect your MCP server" flow (Rule 39):
+ * @description The LOCAL-FIRST guided "connect your MCP server" flow:
  * prerequisites → get and build the server → pick the drones already paired on
  * your LAN → add them to your client → a live local verify. One drone emits a
  * `--target agent` recipe with that drone's host + pairing key; several drones
@@ -8,7 +8,7 @@
  * `--target local-fleet` recipe. No Mission Control sign-in, no cloud — the
  * drones' own pairing keys (already in local-nodes-store) authorize the
  * connection. The cloud "manage from anywhere" path is a separate opt-in
- * affordance. The verify is honest (Rule 44): it probes each drone's
+ * affordance. The verify is honest (no fabricated reading): it probes each drone's
  * `/api/pairing/info` directly over the LAN, and shows the `--verify` command as
  * the deterministic check.
  * @license GPL-3.0-only
@@ -28,6 +28,7 @@ import {
   cloneAndBuildRecipe,
   localConnectRecipe,
   localMcpJsonSnippet,
+  envExportLine,
   localVerifyRecipe,
   localFleetConnectRecipe,
   localFleetVerifyRecipe,
@@ -336,8 +337,10 @@ export function McpSetupWizard() {
                 <CopyBlock text={localFleetEnvRecipe(fleetB64, { discover: autoAdopt })} />
                 <details className="text-xs text-text-tertiary">
                   <summary className="cursor-pointer select-none">{t("wizard.add.jsonAlt")}</summary>
-                  <div className="mt-2">
-                    <CopyBlock text={localFleetEnvJsonSnippet(fleetB64, { discover: autoAdopt })} />
+                  <div className="mt-2 flex flex-col gap-2">
+                    <CopyBlock text={localFleetEnvJsonSnippet({ discover: autoAdopt })} />
+                    <p>{t("wizard.add.jsonSecretNote", { name: "ADOS_MCP_FLEET" })}</p>
+                    <CopyBlock text={envExportLine("ADOS_MCP_FLEET", fleetB64)} />
                   </div>
                 </details>
                 {/* Alternative for very large fleets / a persisted setup: a file. */}
@@ -361,8 +364,10 @@ export function McpSetupWizard() {
                 <CopyBlock text={localConnectRecipe(one?.hostname ?? "", one?.apiKey ?? "")} />
                 <details className="text-xs text-text-tertiary">
                   <summary className="cursor-pointer select-none">{t("wizard.add.jsonAlt")}</summary>
-                  <div className="mt-2">
-                    <CopyBlock text={localMcpJsonSnippet(one?.hostname ?? "", one?.apiKey ?? "")} />
+                  <div className="mt-2 flex flex-col gap-2">
+                    <CopyBlock text={localMcpJsonSnippet(one?.hostname ?? "")} />
+                    <p>{t("wizard.add.jsonSecretNote", { name: "ADOS_MCP_AGENT_KEY" })}</p>
+                    <CopyBlock text={envExportLine("ADOS_MCP_AGENT_KEY", one?.apiKey ?? "")} />
                   </div>
                 </details>
                 <p className="text-xs text-text-tertiary">{t("wizard.add.keyNote")}</p>

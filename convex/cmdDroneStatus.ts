@@ -156,7 +156,6 @@ export const pushStatusArgs = {
     videoRestartAttempts: v.optional(v.number()),
     mavlinkWsPort: v.optional(v.number()),
     mavlinkWsUrl: v.optional(v.string()),
-    mavlinkWsUrlPrev: v.optional(v.string()),
     manualConnectionUrls: v.optional(
       v.object({
         mavlinkTcp: v.optional(v.union(v.string(), v.null())),
@@ -268,8 +267,8 @@ export const pushStatusArgs = {
         v.object({
           nodeId: v.string(),
           accelerators: v.array(v.string()),
-          workersIdle: v.number(),
-          queueDepth: v.number(),
+          workersIdle: v.union(v.number(), v.null()),
+          queueDepth: v.union(v.number(), v.null()),
         }),
       ),
     ),
@@ -594,38 +593,29 @@ export const pushStatus = internalMutation({
       .withIndex("by_deviceId", (q) => q.eq("deviceId", args.deviceId))
       .first();
     if (drone) {
+      // Every denormalized fleet-card column is written present-with-undefined
+      // each tick, derived from THIS payload, exactly as the status row above
+      // is: a pill whose source vanished (LCD unplugged, LAN URL withdrawn,
+      // camera gone) clears instead of rendering the last value forever.
+      const fleetCard: Partial<Doc<"cmd_drones">> = {
+        runtimeMode: args.runtimeMode,
+        attachedDisplayType,
+        profileSource: args.profileSource,
+        profile: args.profile,
+        role: args.role,
+        manualMavlinkWsUrl,
+        peerDeviceId: args.peerDeviceId,
+        peerRssiDbm: args.peerRssiDbm,
+        cameraState: args.cameraState,
+        fcLinkHint: args.fcLinkHint,
+        cloudPosture: args.cloudPosture,
+      };
       await ctx.db.patch(drone._id, {
         lastSeen: now,
         fcConnected: args.fcConnected,
         lastIp: args.lastIp,
         mdnsHost: args.mdnsHost,
-        ...(args.runtimeMode !== undefined ? { runtimeMode: args.runtimeMode } : {}),
-        ...(attachedDisplayType !== undefined
-          ? { attachedDisplayType }
-          : {}),
-        ...(args.profileSource !== undefined
-          ? { profileSource: args.profileSource }
-          : {}),
-        ...(args.profile !== undefined ? { profile: args.profile } : {}),
-        ...(args.role !== undefined ? { role: args.role } : {}),
-        ...(manualMavlinkWsUrl !== undefined ? { manualMavlinkWsUrl } : {}),
-        ...(args.peerDeviceId !== undefined
-          ? { peerDeviceId: args.peerDeviceId }
-          : {}),
-        ...(args.peerRssiDbm !== undefined
-          ? { peerRssiDbm: args.peerRssiDbm }
-          : {}),
-        ...(args.cameraState !== undefined
-          ? { cameraState: args.cameraState }
-          : {}),
-        ...(args.fcLinkHint !== undefined
-          ? { fcLinkHint: args.fcLinkHint }
-          : {}),
-        ...(args.cloudPosture !== undefined
-          ? { cloudPosture: args.cloudPosture }
-          : {}),
-        // (cameraState + fcLinkHint + cloudPosture denormalized above for the
-        // fleet card)
+        ...fleetCard,
       });
     }
 

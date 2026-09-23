@@ -146,7 +146,7 @@ export function NodeActionsMenu({
           variant="danger"
           onConfirm={() => {
             setConfirmingUnpair(false);
-            forget(node._id, { convexId: node.convexId ?? null });
+            void forget(node._id, { convexId: node.convexId ?? null });
           }}
           onCancel={() => setConfirmingUnpair(false)}
         />

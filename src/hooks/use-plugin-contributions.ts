@@ -17,15 +17,16 @@
  * Lifecycle the hook owns:
  *   - Bundle blobs: the Convex query hands back a short-lived SIGNED URL
  *     per install; a blob URL is null-origin and is what the sandboxed
- *     iframe needs, so we `loadPluginBundle()` each signed URL into a
- *     blob in an effect, cache it by `(installId, version)`, and revoke
- *     it when the install set changes or the hook unmounts. A
- *     contribution is omitted until its blob is ready, so no iframe ever
- *     mounts against an empty src.
- *   - Handlers: `buildPluginHandlers()` is built once per `(pluginId,
- *     deviceId)`, cached, and `dispose()`d when the plugin leaves the set
- *     or the hook unmounts (it tears down any telemetry subscriptions the
+ *     iframe needs. Blobs live in the shared `plugin-contribution-cache`,
+ *     loaded once per `(installId, version)` however many slot hosts ask,
+ *     and revoked when the last host lets go. A contribution is omitted
+ *     until its blob is ready, so no iframe ever mounts against an empty src.
+ *   - Handlers: `buildPluginHandlers()` runs once per `(pluginId, deviceId)`
+ *     in the same shared cache and is `dispose()`d when the last host holding
+ *     it drops the plugin (it tears down any telemetry subscriptions the
  *     plugin opened).
+ *   - Only installs contributing to the requested `slot` are loaded, so a
+ *     host for one slot never downloads another slot's bundle.
  *
  * The Convex query reference is hand-rolled via `makeFunctionReference`
  * so this file compiles before `api.d.ts` regenerates with the new
@@ -41,15 +42,20 @@ import { makeFunctionReference } from "convex/server";
 import { useConvex } from "convex/react";
 import { useTranslations } from "next-intl";
 
-import JSZip from "jszip";
-
 import { isDemoMode } from "@/lib/utils";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import { useAuthStore } from "@/stores/auth-store";
 import { useLocalAgentPlugins } from "@/hooks/use-local-agent-plugins";
-import { loadPluginBundle } from "@/lib/plugins/bundle-loader";
-import { PluginAgentClient } from "@/lib/agent/plugin-client";
-import { buildIframeHtml } from "@/components/plugins/transports/finalize-gcs-install";
+import {
+  acquireBundle,
+  acquireHandlers,
+  bundleKey,
+  handlerKey,
+  peekBundle,
+  releaseBundle,
+  releaseHandlers,
+  type BundleSource,
+} from "@/hooks/plugin-contribution-cache";
 import { buildPluginHandlers } from "@/lib/plugins/handlers";
 import type { BridgeHandler } from "@/lib/plugins/bridge";
 import type { PluginSlotContribution } from "@/components/plugins/PluginHostProvider";
@@ -64,21 +70,6 @@ const DEFAULT_ORDER = 60;
 
 /** A renderable contribution carrying the slot it mounts into. */
 type SlottedContribution = PluginSlotContribution & { slot: PluginSlotName };
-
-/** Where this install's GCS iframe bundle comes from. Cloud installs hand
- * back a short-lived signed Convex URL; local-first drone installs are served
- * by the LAN agent that unpacked the archive; local-first fleet / GCS-only
- * installs come from the published archive via the same-origin proxy. */
-type BundleSource =
-  | { kind: "url"; url: string }
-  | {
-      kind: "agent";
-      agentUrl: string;
-      apiKey: string;
-      pluginId: string;
-      entrypoint: string;
-    }
-  | { kind: "archive"; archiveUrl: string; entrypoint: string };
 
 /** Source-agnostic install row the blob + handler + builder pipeline reads,
  * unifying the Convex query rows and the local agent-detail rows. */
@@ -122,58 +113,6 @@ function slotOffersOnProfile(
 }
 
 /**
- * Load + wrap a plugin's GCS bundle served by its LAN agent into a
- * null-origin blob URL — the local-first analogue of `loadPluginBundle`
- * for a signed Convex URL. The agent serves the raw ESM module; the
- * sandboxed iframe needs an HTML document, so we wrap it with
- * `buildIframeHtml` (the same shell the cloud upload path uses) before
- * minting the blob.
- */
-async function loadAgentBundle(
-  src: Extract<BundleSource, { kind: "agent" }>,
-): Promise<{ blobUrl: string; revoke: () => void }> {
-  const client = new PluginAgentClient(src.agentUrl, src.apiKey);
-  const bundleJs = await client.getGcsBundle(src.pluginId, src.entrypoint);
-  const html = buildIframeHtml(bundleJs);
-  const blob = new Blob([html], { type: "text/html" });
-  const blobUrl = URL.createObjectURL(blob);
-  return { blobUrl, revoke: () => URL.revokeObjectURL(blobUrl) };
-}
-
-/**
- * Load + wrap a fleet / GCS-only plugin's GCS bundle from its published
- * archive into a null-origin blob URL — the local-first analogue of
- * `loadAgentBundle` for a plugin with no drone. The archive is fetched
- * through the same-origin `/api/registry-archive` proxy (the release CDN does
- * not promise cross-origin reads), the built ESM module is extracted with
- * JSZip, and it is wrapped in the same null-origin HTML shell the cloud upload
- * path uses before minting the blob. Mirrors `finalizeGcsInstall`'s extract +
- * wrap, the difference being we mint a blob here instead of uploading to Convex.
- */
-async function loadArchiveBundle(
-  src: Extract<BundleSource, { kind: "archive" }>,
-): Promise<{ blobUrl: string; revoke: () => void }> {
-  const res = await fetch(
-    `/api/registry-archive?url=${encodeURIComponent(src.archiveUrl)}`,
-  );
-  if (!res.ok) {
-    throw new Error(`archive fetch failed: HTTP ${res.status}`);
-  }
-  const archive = await res.blob();
-  const zip = await JSZip.loadAsync(archive);
-  const rel = src.entrypoint.replace(/^\.\//, "");
-  const entry = zip.file(rel) ?? zip.file(`./${rel}`);
-  if (!entry) {
-    throw new Error(`archive is missing ${rel}`);
-  }
-  const bundleJs = await entry.async("string");
-  const html = buildIframeHtml(bundleJs);
-  const blob = new Blob([html], { type: "text/html" });
-  const blobUrl = URL.createObjectURL(blob);
-  return { blobUrl, revoke: () => URL.revokeObjectURL(blobUrl) };
-}
-
-/**
  * One install row returned by `cmdPlugins:listForDeviceWithDetail`. The
  * Convex `installId` is an `Id<"cmd_pluginInstalls">` that serializes to a
  * string on the wire; declaring it `string` here is exact enough for the
@@ -214,18 +153,21 @@ function isKnownSlot(slot: string): slot is PluginSlotName {
   return KNOWN_SLOTS.has(slot);
 }
 
-/** A bundle blob held for one install, keyed by install id. */
-interface BlobEntry {
-  version: string;
-  blobUrl: string;
-  revoke: () => void;
-}
+type ContributeEntry = NormalizedRow["gcsContributes"][number];
 
-/** A handler surface held for one plugin, keyed by plugin id. */
-interface HandlerEntry {
-  deviceId: string | null;
-  handlers: Record<string, BridgeHandler>;
-  dispose: () => void;
+/** Whether a manifest entry mounts in `slot` (any slot when unset) on a node of
+ * `nodeProfile`: a known slot, with a `node.detail.tab` profile-narrowed to the
+ * node, matching the header/body filter so an off-profile tab never mounts. */
+function entryMounts(
+  entry: ContributeEntry,
+  slot: PluginSlotName | undefined,
+  nodeProfile: PairedNodeProfile | undefined,
+): entry is ContributeEntry & { slot: PluginSlotName } {
+  return (
+    (!slot || entry.slot === slot) &&
+    isKnownSlot(entry.slot) &&
+    slotOffersOnProfile(entry.slot, entry.profile, nodeProfile)
+  );
 }
 
 /**
@@ -252,7 +194,7 @@ export function usePluginContributions(
     enabled: isAuthenticated,
   });
 
-  // Local-first source (Rule 39): when signed out, the agent that
+  // Local-first source: when signed out, the agent that
   // unpacked the archive both reports the install detail AND serves the
   // GCS bundle, so the iframe mounts with no cloud. Null in cloud/demo.
   const localDetail = useLocalAgentPlugins(deviceId);
@@ -295,6 +237,7 @@ export function usePluginContributions(
             kind: "archive",
             archiveUrl: r.bundle.archiveUrl,
             entrypoint: r.bundle.entrypoint,
+            pin: r.bundle.pin,
           };
         }
         return {
@@ -336,157 +279,130 @@ export function usePluginContributions(
     [convex],
   );
 
-  // ── Bundle blob lifecycle ───────────────────────────────────────────
-  const blobCacheRef = useRef<Map<string, BlobEntry>>(new Map());
+  // Only installs with an entry that mounts in this host's slot (and on this
+  // node's profile) are loaded; a host for one slot never pulls another
+  // slot's bundle or builds its handlers.
+  const slotRows = useMemo(
+    () =>
+      rows?.filter((r) =>
+        r.gcsContributes.some((e) => entryMounts(e, slot, nodeProfile)),
+      ) ?? null,
+    [rows, slot, nodeProfile],
+  );
+
+  // ── Bundle blob lifecycle (shared, ref-counted) ─────────────────────
+  // Keys this host holds in the shared cache, mapped to their install id.
+  const heldBundlesRef = useRef<Map<string, string>>(new Map());
   const [blobs, setBlobs] = useState<ReadonlyMap<string, string>>(
     () => new Map(),
   );
 
   // Installs that ship a loadable GCS bundle, the only ones that can mount.
-  const loadTargets = useMemo(() => {
-    if (!rows) return [] as Array<{
-      installId: string;
-      version: string;
-      bundle: BundleSource;
-    }>;
-    return rows
-      .filter((r): r is NormalizedRow & { bundle: BundleSource } =>
-        Boolean(r.bundle),
-      )
-      .map((r) => ({
-        installId: r.installId,
-        version: r.version,
-        bundle: r.bundle,
-      }));
-  }, [rows]);
+  const loadTargets = useMemo(
+    () =>
+      (slotRows ?? []).flatMap((r) =>
+        r.bundle ? [{ key: bundleKey(r.installId, r.version), installId: r.installId, bundle: r.bundle }] : [],
+      ),
+    [slotRows],
+  );
 
   useEffect(() => {
-    let cancelled = false;
-    const cache = blobCacheRef.current;
-    const wanted = new Map(loadTargets.map((t) => [t.installId, t]));
+    const held = heldBundlesRef.current;
+    const wanted = new Map(loadTargets.map((t) => [t.key, t]));
 
-    // Revoke entries no longer wanted, or wanted at a different version.
-    for (const [installId, entry] of Array.from(cache.entries())) {
-      const want = wanted.get(installId);
-      if (!want || want.version !== entry.version) {
-        entry.revoke();
-        cache.delete(installId);
+    // Let go of bundles no longer wanted (or wanted at another version).
+    for (const key of Array.from(held.keys())) {
+      if (!wanted.has(key)) {
+        releaseBundle(key);
+        held.delete(key);
       }
     }
 
+    // Publish what is loaded now (covers the release-only case), then again
+    // as each load settles, so one slow bundle never holds back the plugins
+    // whose bundles already arrived.
     const publish = () => {
       const next = new Map<string, string>();
-      for (const [installId, entry] of cache.entries()) {
-        next.set(installId, entry.blobUrl);
+      for (const [key, installId] of held) {
+        const url = peekBundle(key);
+        if (url) next.set(installId, url);
       }
       setBlobs(next);
     };
-
-    const toLoad = loadTargets.filter((t) => !cache.has(t.installId));
-    if (toLoad.length === 0) {
-      // Covers the revoke-only case (an install left the set).
-      publish();
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    void Promise.all(
-      toLoad.map(async (target) => {
-        try {
-          const { blobUrl, revoke } =
-            target.bundle.kind === "agent"
-              ? await loadAgentBundle(target.bundle)
-              : target.bundle.kind === "archive"
-                ? await loadArchiveBundle(target.bundle)
-                : await loadPluginBundle(target.bundle.url);
-          // Drop the load if the hook moved on (unmount or set change).
-          if (cancelled || !wanted.has(target.installId)) {
-            revoke();
-            return;
-          }
-          cache.set(target.installId, {
-            version: target.version,
-            blobUrl,
-            revoke,
-          });
-        } catch (err) {
+    publish();
+    for (const target of loadTargets) {
+      if (held.has(target.key)) continue;
+      held.set(target.key, target.installId);
+      acquireBundle(target.key, target.bundle).then(
+        () => {
+          if (held.has(target.key)) publish();
+        },
+        (err: unknown) => {
+          // A released key was dropped on purpose; a failed load leaves the
+          // key unheld so the next install-set change retries it.
+          if (!held.delete(target.key)) return;
           console.warn("plugin_bundle_load_failed", {
             installId: target.installId,
             error: err instanceof Error ? err.message : String(err),
           });
-        }
-      }),
-    ).then(() => {
-      if (cancelled) return;
-      publish();
-    });
-
-    return () => {
-      cancelled = true;
-    };
+        },
+      );
+    }
   }, [loadTargets]);
 
-  // ── Handler lifecycle ───────────────────────────────────────────────
-  const handlerCacheRef = useRef<Map<string, HandlerEntry>>(new Map());
+  // ── Handler lifecycle (shared, ref-counted) ─────────────────────────
+  // Surfaces this host holds in the shared cache, by cache key.
+  const heldHandlersRef = useRef<Map<string, Record<string, BridgeHandler>>>(new Map());
   const [handlers, setHandlers] = useState<
     ReadonlyMap<string, Record<string, BridgeHandler>>
   >(() => new Map());
 
-  const activePluginIds = useMemo(() => {
-    if (!rows) return [] as string[];
-    return Array.from(new Set(rows.map((r) => r.pluginId)));
-  }, [rows]);
   const activePluginIdsKey = useMemo(
-    () => [...activePluginIds].sort().join("|"),
-    [activePluginIds],
+    () =>
+      Array.from(new Set((slotRows ?? []).map((r) => r.pluginId)))
+        .sort()
+        .join("|"),
+    [slotRows],
   );
 
   useEffect(() => {
-    const cache = handlerCacheRef.current;
-    const wanted = new Set(activePluginIds);
+    const held = heldHandlersRef.current;
+    const pluginIds = activePluginIdsKey ? activePluginIdsKey.split("|") : [];
+    const wanted = new Map(pluginIds.map((id) => [handlerKey(id, deviceId), id]));
 
-    // Dispose handlers for plugins that left the set or moved drone.
-    for (const [pluginId, entry] of Array.from(cache.entries())) {
-      if (!wanted.has(pluginId) || entry.deviceId !== deviceId) {
-        entry.dispose();
-        cache.delete(pluginId);
+    // Let go of plugins that left the set or belong to another drone.
+    for (const key of Array.from(held.keys())) {
+      if (!wanted.has(key)) {
+        releaseHandlers(key);
+        held.delete(key);
       }
     }
 
-    // Build handlers for newly-present plugins. The factory has no
-    // immediate side effects (telemetry subscriptions open only when the
-    // iframe calls telemetry.subscribe), so this is safe in an effect.
-    for (const pluginId of activePluginIds) {
-      if (cache.has(pluginId)) continue;
-      const built = buildPluginHandlers(pluginId, deviceId, {
-        translate,
-        cloudQuery,
-      });
-      cache.set(pluginId, {
-        deviceId,
-        handlers: built.handlers,
-        dispose: built.dispose,
-      });
-    }
-
+    // The factory has no immediate side effects (telemetry subscriptions open
+    // only when the iframe calls telemetry.subscribe), so this is safe here.
     const next = new Map<string, Record<string, BridgeHandler>>();
-    for (const [pluginId, entry] of cache.entries()) {
-      next.set(pluginId, entry.handlers);
+    for (const [key, pluginId] of wanted) {
+      let surface = held.get(key);
+      if (!surface) {
+        surface = acquireHandlers(key, () =>
+          buildPluginHandlers(pluginId, deviceId, { translate, cloudQuery }),
+        );
+        held.set(key, surface);
+      }
+      next.set(pluginId, surface);
     }
     setHandlers(next);
-    // activePluginIdsKey captures membership; deviceId rebuilds on switch.
-  }, [activePluginIdsKey, deviceId, translate, cloudQuery, activePluginIds]);
+  }, [activePluginIdsKey, deviceId, translate, cloudQuery]);
 
-  // ── Teardown: revoke every blob + dispose every handler on unmount ───
+  // ── Teardown: drop every reference this host holds on unmount ───────
   useEffect(() => {
-    const blobCache = blobCacheRef.current;
-    const handlerCache = handlerCacheRef.current;
+    const heldBundles = heldBundlesRef.current;
+    const heldHandlers = heldHandlersRef.current;
     return () => {
-      for (const entry of blobCache.values()) entry.revoke();
-      blobCache.clear();
-      for (const entry of handlerCache.values()) entry.dispose();
-      handlerCache.clear();
+      for (const key of heldBundles.keys()) releaseBundle(key);
+      heldBundles.clear();
+      for (const key of heldHandlers.keys()) releaseHandlers(key);
+      heldHandlers.clear();
     };
   }, []);
 
@@ -494,24 +410,18 @@ export function usePluginContributions(
   return useMemo(() => {
     // demo mode does not mount real plugin iframes
     if (isDemoMode()) return EMPTY;
-    if (!rows) return EMPTY;
+    if (!slotRows) return EMPTY;
 
     const built: Array<{ contribution: SlottedContribution; order: number }> =
       [];
-    for (const row of rows) {
+    for (const row of slotRows) {
       const blobUrl = blobs.get(row.installId);
       if (!blobUrl) continue; // omit until the bundle blob is ready
       const pluginHandlers = handlers.get(row.pluginId);
       if (!pluginHandlers) continue; // omit until handlers are built
       const grantedCapabilities = new Set(row.grantedCaps);
       for (const entry of row.gcsContributes) {
-        if (slot && entry.slot !== slot) continue;
-        if (!isKnownSlot(entry.slot)) continue;
-        // Profile-narrow a node.detail.tab iframe to the node it mounts on,
-        // matching the header/body filter so an off-profile tab never mounts.
-        if (!slotOffersOnProfile(entry.slot, entry.profile, nodeProfile)) {
-          continue;
-        }
+        if (!entryMounts(entry, slot, nodeProfile)) continue;
         built.push({
           order: typeof entry.order === "number" ? entry.order : DEFAULT_ORDER,
           contribution: {
@@ -534,5 +444,5 @@ export function usePluginContributions(
       return a.contribution.pluginId.localeCompare(b.contribution.pluginId);
     });
     return built.map((b) => b.contribution);
-  }, [rows, blobs, handlers, slot, nodeProfile]);
+  }, [slotRows, blobs, handlers, slot, nodeProfile]);
 }

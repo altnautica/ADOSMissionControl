@@ -20,6 +20,8 @@ import {
 
 interface DroneEntityProps {
   viewer: CesiumViewer | null;
+  /** Id of the viewer track this drone renders; scopes the Cesium entity id. */
+  trackId: string;
   positionProperty: SampledPositionProperty | null;
   headingProperty: SampledProperty | null;
   /** When true, positions are absolute (terrain-resolved). Use HeightReference.NONE. */
@@ -28,18 +30,17 @@ interface DroneEntityProps {
   visible?: boolean;
 }
 
-const DRONE_ENTITY_ID = "sim-drone";
-
 const ARROW_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24">
   <polygon points="12,2 20,20 12,16 4,20" fill="#dff140" stroke="#fff" stroke-width="1" opacity="0.95"/>
 </svg>`;
 const ARROW_DATA_URL = `data:image/svg+xml;base64,${typeof window !== "undefined" ? btoa(ARROW_SVG) : ""}`;
 
-export function DroneEntity({ viewer, positionProperty, headingProperty, useAbsoluteAlt = false, visible = true }: DroneEntityProps) {
+export function DroneEntity({ viewer, trackId, positionProperty, headingProperty, useAbsoluteAlt = false, visible = true }: DroneEntityProps) {
   const droneRef = useRef<Entity | null>(null);
 
   useEffect(() => {
     if (!viewer || viewer.isDestroyed() || !positionProperty) return;
+    const entityId = `sim-drone-${trackId}`;
 
     // Create rotation property that compensates for camera heading
     // Without alignedAxis, billboard up = screen up, so rotation = camera.heading + sampledHeading
@@ -50,7 +51,7 @@ export function DroneEntity({ viewer, positionProperty, headingProperty, useAbso
     }, false);
 
     const drone = viewer.entities.add({
-      id: DRONE_ENTITY_ID,
+      id: entityId,
       position: positionProperty, // CesiumJS evaluates at clock.currentTime every frame
       billboard: {
         image: ARROW_DATA_URL,
@@ -71,11 +72,11 @@ export function DroneEntity({ viewer, positionProperty, headingProperty, useAbso
     viewer.scene.requestRender();
 
     return () => {
-      if (viewer && !viewer.isDestroyed()) viewer.entities.removeById(DRONE_ENTITY_ID);
+      if (viewer && !viewer.isDestroyed()) viewer.entities.removeById(entityId);
       droneRef.current = null;
       if (!viewer.isDestroyed()) viewer.scene.requestRender();
     };
-  }, [viewer, positionProperty, headingProperty, useAbsoluteAlt, visible]);
+  }, [viewer, trackId, positionProperty, headingProperty, useAbsoluteAlt, visible]);
 
   return null;
 }

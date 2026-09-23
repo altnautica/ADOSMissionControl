@@ -4,7 +4,7 @@
  *
  *  - **Status** (`GET /api/compute/status` on the ados-control front, `:8080`):
  *    the cluster-status sidecar (the same camelCase `compute*` fields the cloud
- *    heartbeat carries), read by the compute-cluster card local-first (Rule 39).
+ *    heartbeat carries), read by the compute-cluster card local-first.
  *  - **Jobs** (`/api/compute/{jobs,datasets,...}` on the ados-compute engine's
  *    own listener, `:8092`): submit / list / read reconstruction + offload jobs
  *    and their outputs. NOT proxied through `:8080`, so the job base is derived
@@ -115,7 +115,7 @@ export interface ComputeOutput {
    * backend is `"brush"` / `"msplat"` / `"nerfstudio"` / `"colmap"`. `null` when
    * a pre-field agent advertises none. Drives the reconstruction-honesty badge
    * so an operator never mistakes a mock splat for a real reconstruction
-   * (Rule 44). */
+   * (no fabricated reading). */
   backend: string | null;
   /** The raw backend result metadata (`gaussian_count`, `backend`, …) served on
    * the output, or null when absent — kept so a surface can read further detail
@@ -201,8 +201,7 @@ function coerceOutput(raw: unknown): ComputeOutput | null {
       : null;
   // The honest backend rides `meta.backend`. Fall back to the `mock://` uri
   // scheme so a pre-field agent (no `meta.backend`) that still emits a
-  // placeholder artifact is caught by the honesty badge (Rule 44,
-  // defense-in-depth).
+  // placeholder artifact is caught by the honesty badge (defense-in-depth).
   const metaBackend =
     typeof meta?.backend === "string" && meta.backend.length > 0
       ? meta.backend
@@ -223,7 +222,7 @@ function coerceOutput(raw: unknown): ComputeOutput | null {
  * Whether a compute output is a placeholder (mock) reconstruction rather than a
  * real world model — true when the honest backend is `"mock"` OR the artifact
  * uri uses the `mock://` scheme (the pre-field-agent fallback). An operator must
- * never mistake a placeholder splat for a real reconstruction (Rule 44).
+ * never mistake a placeholder splat for a real reconstruction (no fabricated reading).
  */
 export function isPlaceholderArtifact(o: ComputeOutput): boolean {
   return o.backend === "mock" || o.uri.startsWith("mock://");

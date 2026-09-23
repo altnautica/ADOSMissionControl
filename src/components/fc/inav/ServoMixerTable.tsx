@@ -8,7 +8,7 @@
 
 "use client";
 
-import { useMixerStore, SERVO_MIXER_MAX } from "@/stores/mixer-store";
+import { useMixerStore } from "@/stores/mixer-store";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Plus, Trash2 } from "lucide-react";
@@ -47,6 +47,7 @@ interface ServoMixerTableProps {
 
 export function ServoMixerTable({ isArmed, lockMessage }: ServoMixerTableProps) {
   const servoRules = useMixerStore((s) => s.servoRules);
+  const servoSlots = useMixerStore((s) => s.servoSlots);
   const setServoRule = useMixerStore((s) => s.setServoRule);
   const removeServoRule = useMixerStore((s) => s.removeServoRule);
   const addServoRule = useMixerStore((s) => s.addServoRule);
@@ -54,7 +55,7 @@ export function ServoMixerTable({ isArmed, lockMessage }: ServoMixerTableProps) 
   return (
     <div className="space-y-3">
       <p className="text-[10px] font-mono text-text-tertiary uppercase tracking-wide">
-        Servo mixer ({servoRules.length}/{SERVO_MIXER_MAX})
+        Servo mixer ({servoRules.length}/{servoSlots ?? "—"})
       </p>
       {servoRules.length > 0 && (
         <div className="overflow-x-auto">
@@ -174,7 +175,7 @@ export function ServoMixerTable({ isArmed, lockMessage }: ServoMixerTableProps) 
           </table>
         </div>
       )}
-      {servoRules.length < SERVO_MIXER_MAX && (
+      {servoSlots !== null && servoRules.length < servoSlots && (
         <Button
           variant="secondary"
           size="sm"

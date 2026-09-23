@@ -14,7 +14,7 @@ import {
   SHARE_MAX_ENCODED_LEN,
 } from "@/lib/plan-share";
 import type { Waypoint } from "@/lib/types";
-import type { MissionMetadata } from "@/lib/mission-io";
+import { MISSION_FILE_VERSION, type MissionMetadata } from "@/lib/mission-io";
 
 const META: MissionMetadata = { name: "Test Mission", createdAt: 1000, updatedAt: 2000 };
 const WPS: Waypoint[] = [
@@ -30,7 +30,37 @@ describe("plan-share round-trip", () => {
     expect(decoded!.waypoints).toHaveLength(2);
     expect(decoded!.waypoints[0].lat).toBeCloseTo(12.5);
     expect(decoded!.metadata.name).toBe("Test Mission");
-    expect(decoded!.version).toBe(1);
+    expect(decoded!.version).toBe(MISSION_FILE_VERSION);
+  });
+
+  it("keeps nested waypoint actions intact across the round trip", () => {
+    const withActions: Waypoint[] = [
+      {
+        id: "a",
+        lat: 12.5,
+        lon: 77.5,
+        alt: 50,
+        command: "WAYPOINT",
+        actions: [
+          { id: "act1", command: "DO_SET_CAM_TRIGG", param1: 25 },
+          { id: "act2", command: "DO_SET_SPEED", param2: 6 },
+        ],
+      },
+      WPS[1],
+    ];
+    const decoded = decodePlan(encodePlan(buildMissionFile(withActions, META)));
+    expect(decoded!.waypoints).toHaveLength(2);
+    expect(decoded!.waypoints[0].actions?.map((a) => a.command)).toEqual([
+      "DO_SET_CAM_TRIGG",
+      "DO_SET_SPEED",
+    ]);
+  });
+
+  it("stamps the current schema so current-layout slots are not migrated again", () => {
+    const place: Waypoint[] = [{ id: "p", lat: 12.5, lon: 77.5, alt: 20, command: "NAV_PAYLOAD_PLACE", param1: 5 }];
+    const decoded = decodePlan(encodePlan(buildMissionFile(place, META)));
+    expect(decoded!.waypoints[0].param1).toBe(5);
+    expect(decoded!.waypoints[0].holdTime).toBeUndefined();
   });
 
   it("carries geofence + rally extras when present", () => {
@@ -41,6 +71,13 @@ describe("plan-share round-trip", () => {
     const decoded = decodePlan(encodePlan(file));
     expect(decoded!.geofence).toBeDefined();
     expect(decoded!.rally).toHaveLength(1);
+  });
+
+  it("carries plan points of interest", () => {
+    const file = buildMissionFile(WPS, META, {
+      pois: [{ id: "p1", lat: 12.5, lon: 77.5, label: "Mast" }],
+    } as never);
+    expect(decodePlan(encodePlan(file))!.pois).toHaveLength(1);
   });
 
   it("reads a plan from a URL hash string", () => {
@@ -65,6 +102,22 @@ describe("plan-share defensive decode", () => {
     // Encode arbitrary (non-mission) JSON and confirm it does not decode to a plan.
     const badFile = { version: 2, waypoints: "nope" } as never;
     expect(decodePlan(encodePlan(badFile))).toBeNull();
+  });
+
+  it("rejects a plan whose waypoints have a non-numeric position or an unknown command", () => {
+    const bad = (wp: unknown) =>
+      decodePlan(encodePlan({ version: 3, metadata: META, waypoints: [WPS[0], wp] } as never));
+    expect(bad({ id: "x", lat: "12.5", lon: 77.5, alt: 50 })).toBeNull();
+    expect(bad({ id: "x", lat: null, lon: 77.5, alt: 50 })).toBeNull();
+    expect(bad({ id: "x", lat: 12.5, lon: 77.5, alt: 50, command: "SELF_DESTRUCT" })).toBeNull();
+    expect(
+      bad({ id: "x", lat: 12.5, lon: 77.5, alt: 50, actions: [{ id: "a", command: "NOPE" }] }),
+    ).toBeNull();
+    expect(bad({ id: "x", lat: 12.5, lon: 77.5, alt: 50 })).not.toBeNull();
+  });
+
+  it("rejects an unknown file version", () => {
+    expect(decodePlan(encodePlan({ version: 9, metadata: META, waypoints: WPS } as never))).toBeNull();
   });
 
   it("reports oversized plans via makeShareLink instead of a bad link", () => {

@@ -46,7 +46,7 @@ describe("useVideoStreams", () => {
   });
   afterEach(cleanup);
 
-  it("[D1] points the override at a non-default concurrent leg, then clears it when the stream list empties", () => {
+  it("points the override at a non-default concurrent leg, then clears it when the stream list empties", () => {
     switchCameraSpy();
     act(() => {
       useAgentCapabilitiesStore.setState({
@@ -72,7 +72,7 @@ describe("useVideoStreams", () => {
     expect(useVideoStore.getState().whepUrlOverride).toBeNull();
   });
 
-  it("[D3] drives the override from the first/default leg's own URL, not the poller default", () => {
+  it("drives the override from the first/default leg's own URL, not the poller default", () => {
     switchCameraSpy();
     act(() => {
       useAgentCapabilitiesStore.setState({
@@ -106,7 +106,7 @@ describe("useVideoStreams", () => {
     );
   });
 
-  it("[R4] does not re-point the video at a known-dead concurrent leg", () => {
+  it("does not re-point the video at a known-dead concurrent leg", () => {
     switchCameraSpy();
     act(() => {
       useAgentCapabilitiesStore.setState({
@@ -138,7 +138,7 @@ describe("useVideoStreams", () => {
     );
   });
 
-  it("[D1] does not fire switchCamera for a carried-over concurrent id on a concurrent→switchable transition", () => {
+  it("does not fire switchCamera for a carried-over concurrent id on a concurrent→switchable transition", () => {
     const spy = switchCameraSpy();
     act(() => {
       useAgentCapabilitiesStore.setState({

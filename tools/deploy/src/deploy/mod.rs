@@ -89,7 +89,7 @@ fn execute(
 
 /// Print the completion card on the primary buffer: status, verified reach
 /// links, and next steps. Health is re-probed so the URLs shown are proven
-/// reachable, not assumed (Rule 44).
+/// reachable, not assumed.
 fn print_completion(
     theme: &Theme,
     cfg: &DeployConfig,

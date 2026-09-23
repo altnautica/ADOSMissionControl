@@ -10,14 +10,15 @@
  * flight controller's home altitude became sea level. Every altitude the
  * aircraft reports or holds relative to home is then 900 m out. The terrain
  * provider already answers for an arbitrary clicked point, so the elevation is
- * looked up; when it cannot be resolved the command is REFUSED rather than
- * sent with a fabricated zero.
+ * looked up (bounded by a timeout, so a stalled lookup never moves home a
+ * minute later); when it cannot be resolved in time the command is REFUSED
+ * rather than sent with a fabricated zero.
  *
  * @license GPL-3.0-only
  */
 
 import type { DroneProtocol } from "@/lib/protocol/types";
-import { getElevation } from "@/lib/terrain/terrain-provider";
+import { resolvePointElevation } from "./elevation";
 import type { MenuPosition, MenuReport } from "../types";
 
 interface HomeArgs {
@@ -35,10 +36,10 @@ export async function handleSetHomeConfirmed({
     report("No drone connected", "error");
     return;
   }
-  const elevation = await getElevation(menuPos.lat, menuPos.lon);
+  const elevation = await resolvePointElevation(menuPos, report);
   if (elevation === null) {
     report(
-      "Home not set: no terrain elevation for that point, and home altitude is AMSL",
+      "Home not set: terrain elevation for that point is unavailable or timed out, and home altitude is AMSL",
       "error",
     );
     return;
@@ -61,10 +62,10 @@ export async function handleSetEkfOrigin({
     report("This firmware does not support setting the EKF origin", "error");
     return;
   }
-  const elevation = await getElevation(menuPos.lat, menuPos.lon);
+  const elevation = await resolvePointElevation(menuPos, report);
   if (elevation === null) {
     report(
-      "EKF origin not set: no terrain elevation for that point, and the origin altitude is AMSL",
+      "EKF origin not set: terrain elevation for that point is unavailable or timed out, and the origin altitude is AMSL",
       "error",
     );
     return;

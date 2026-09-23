@@ -212,18 +212,17 @@ function ScatterPlot({
 
     // Downsample for rendering
     const MAX_PTS = 10_000;
-    let xs = xVals;
-    let ys = yVals;
-    if (xs.length > MAX_PTS) {
-      const step = Math.ceil(xs.length / MAX_PTS);
-      xs = xs.filter((_, i) => i % step === 0);
-      ys = yVals.filter((_, i) => i % step === 0);
-    }
+    const step = xVals.length > MAX_PTS ? Math.ceil(xVals.length / MAX_PTS) : 1;
+    // Aligned (mode 1) data needs ascending X: sort the pairs by X. Lines are
+    // off, so the plot is the point cloud of (x, y) pairs.
+    const order: number[] = [];
+    for (let i = 0; i < xVals.length; i += step) order.push(i);
+    order.sort((a, b) => xVals[a] - xVals[b]);
+    const data: uPlot.AlignedData = [order.map((i) => xVals[i]), order.map((i) => yVals[i])];
 
     const opts: uPlot.Options = {
       width,
       height: 200,
-      mode: 2, // scatter
       cursor: { drag: { x: true, y: true, setScale: true } },
       scales: {
         x: { time: false },
@@ -268,11 +267,7 @@ function ScatterPlot({
       chartRef.current = null;
     }
 
-    chartRef.current = new uPlot(
-      opts,
-      [xs, ys] as unknown as uPlot.AlignedData,
-      el,
-    );
+    chartRef.current = new uPlot(opts, data, el);
 
     return () => {
       chartRef.current?.destroy();

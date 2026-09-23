@@ -94,14 +94,14 @@ export const ARDUBOAT_VEHICLE_INFO: VehicleInfo = {
 
 export const BETAFLIGHT_VEHICLE_INFO: VehicleInfo = {
   firmwareType: "betaflight", vehicleClass: "copter",
-  firmwareVersionString: "Betaflight 4.5.0", systemId: 1, componentId: 1,
-  autopilotType: 0, vehicleType: 2,
+  firmwareVersionString: "Betaflight 4.5.0 (MSP API 1.46)", systemId: 1, componentId: 1,
+  autopilotType: 0, vehicleType: 2, mspApiVersion: { major: 1, minor: 46 },
 };
 
 export const INAV_FW_VEHICLE_INFO: VehicleInfo = {
   firmwareType: "inav", vehicleClass: "plane",
   firmwareVersionString: "INAV 7.1.2 (MSP API 2.5)", systemId: 1, componentId: 1,
-  autopilotType: 0, vehicleType: 1,
+  autopilotType: 0, vehicleType: 1, mspApiVersion: { major: 2, minor: 5 },
 };
 
 /**

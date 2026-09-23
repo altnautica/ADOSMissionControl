@@ -50,13 +50,14 @@ const RECORD_VALIDATOR = {
   droneId: v.string(),
   droneName: v.string(),
   startTime: v.number(),
+  startTimeUnknown: v.optional(v.boolean()),
   endTime: v.number(),
   duration: v.number(),
-  distance: v.number(),
-  maxAlt: v.number(),
-  maxSpeed: v.number(),
+  distance: v.optional(v.number()),
+  maxAlt: v.optional(v.number()),
+  maxSpeed: v.optional(v.number()),
   avgSpeed: v.optional(v.number()),
-  batteryUsed: v.number(),
+  batteryUsed: v.optional(v.number()),
   batteryStartV: v.optional(v.number()),
   batteryEndV: v.optional(v.number()),
   waypointCount: v.number(),
@@ -255,7 +256,7 @@ const RECORD_VALIDATOR = {
       speedMs: v.number(),
       fromDirDeg: v.number(),
       sampleCount: v.number(),
-      method: v.union(v.literal("vfr_diff"), v.literal("attitude_track")),
+      method: v.union(v.literal("vfr_diff"), v.literal("fc_estimate")),
     }),
   ),
   media: v.optional(
@@ -324,7 +325,7 @@ const VOLATILE_KEYS = new Set([
   "tags",
   "favorite",
   "customName",
-  // The signature itself can flip between sealed/unsealed.
+  // The signature fields: `sealTransition` governs how they may change.
   "pilotSignedAt",
   "pilotSignatureHash",
   // Soft-delete is a metadata operation that should not break the seal.
@@ -333,6 +334,83 @@ const VOLATILE_KEYS = new Set([
   // Linked media is evidence attached after the flight, not flight data.
   "media",
 ]);
+
+/** Rebuild a value with every object's keys in sorted order, at any depth. */
+function sortKeysDeep(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sortKeysDeep);
+  if (value === null || typeof value !== "object") return value;
+  const src = value as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  for (const key of Object.keys(src).sort()) out[key] = sortKeysDeep(src[key]);
+  return out;
+}
+
+/** SHA-256 over a record's sealed (non-volatile) record fields, server side. */
+async function sealedContentDigest(row: Record<string, unknown>): Promise<string> {
+  const sealed: Record<string, unknown> = {};
+  for (const key of Object.keys(RECORD_VALIDATOR)) {
+    if (VOLATILE_KEYS.has(key) || key === "clientId") continue;
+    sealed[key] = row[key];
+  }
+  const bytes = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(JSON.stringify(sortKeysDeep(sealed))),
+  );
+  return [...new Uint8Array(bytes)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * Seal transitions for an upsert over an existing row. Returns the server-side
+ * bookkeeping to write alongside the record, or throws.
+ *
+ *  - A sealed row accepts only volatile-field changes, and its signature can
+ *    only be cleared (unsealed), never swapped for another.
+ *  - Unsealing records the released signature and a server digest of the
+ *    content it covered.
+ *  - Re-applying that released signature is refused unless the content is
+ *    still the content it covered, so unseal -> edit -> restore-old-hash
+ *    cannot produce a record that reads sealed over altered data.
+ */
+async function sealTransition(
+  existing: Record<string, unknown>,
+  record: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  const wasSealed = typeof existing.pilotSignatureHash === "string" && existing.pilotSignatureHash !== "";
+  const nextHash = typeof record.pilotSignatureHash === "string" ? record.pilotSignatureHash : "";
+
+  if (wasSealed) {
+    for (const key of Object.keys(record)) {
+      if (VOLATILE_KEYS.has(key) || key === "clientId") continue;
+      // Compare via JSON to handle nested objects deterministically.
+      if (JSON.stringify(record[key]) !== JSON.stringify(existing[key])) {
+        throw new Error(`Cannot mutate '${key}' on a sealed record. Unseal first.`);
+      }
+    }
+    if (nextHash === "") {
+      console.log(`flight log ${String(existing.clientId)} unsealed`);
+      // A patch leaves absent fields alone, so the unseal must clear the
+      // signature explicitly.
+      return {
+        pilotSignatureHash: undefined,
+        pilotSignedAt: undefined,
+        unsealedHash: existing.pilotSignatureHash,
+        unsealedContentDigest: await sealedContentDigest(existing),
+        unsealedAt: Date.now(),
+      };
+    }
+    if (nextHash !== existing.pilotSignatureHash) {
+      throw new Error("A sealed record's signature cannot be replaced. Unseal first.");
+    }
+    return {};
+  }
+
+  if (nextHash !== "" && nextHash === existing.unsealedHash) {
+    if ((await sealedContentDigest(record)) !== existing.unsealedContentDigest) {
+      throw new Error("A released signature cannot seal content that changed since it was released.");
+    }
+  }
+  return {};
+}
 
 async function requireUser(ctx: QueryCtx): Promise<string> {
   const userId = await getAuthUserId(ctx);
@@ -467,45 +545,12 @@ async function scanAggregateFallback(
 
 // ── Queries ──────────────────────────────────────────────────
 
-// Hard upper bound on the rows the deprecated `list` query returns. The
-// scroll surfaces + cloud-sync bridge use `listPaginated`; this legacy query
-// must not unbounded-`.collect()` a growing table. A caller that needs the
-// full history walks `listPaginated` (or the `since` incremental cutoff).
-const LEGACY_LIST_LIMIT = 1000;
-
 /**
- * @deprecated Returns at most {@link LEGACY_LIST_LIMIT} of the most recent
- * flight logs. Use {@link listPaginated} for scroll surfaces and the
- * cloud-sync bridge. Kept for legacy callers and incremental sync via the
- * optional `since` cutoff.
- */
-export const list = query({
-  args: { since: v.optional(v.number()) },
-  handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) return [];
-    // Bounded + newest-first so the legacy query stays cheap on a large
-    // history (was an unbounded `.collect()`).
-    const rows = await ctx.db
-      .query("cmd_flightLogs")
-      .withIndex("by_user_startTime", (qb) => qb.eq("userId", userId))
-      .order("desc")
-      .take(LEGACY_LIST_LIMIT);
-    if (args.since !== undefined) {
-      const cutoff = args.since;
-      return rows.filter((r) => r.updatedAt > cutoff);
-    }
-    return rows;
-  },
-});
-
-/**
- * Paginated variant of {@link list}. Returns rows newest-first by
- * `startTime` so the History tab and cloud-sync bridge can walk pages
- * instead of fetching every row up front.
+ * The signed-in user's flight logs, newest-first by `startTime`, one page at
+ * a time, for the History tab and cloud-sync bridge.
  *
  * Optional `since` cutoff filters to rows whose `updatedAt` is strictly
- * greater than the cutoff, matching the legacy `list` semantics. The
+ * greater than the cutoff. The
  * filter runs after pagination on the page array, so callers using
  * `since` should expect short or empty pages until the cursor reaches
  * older rows. For incremental sync the recommended pattern is to walk
@@ -628,25 +673,13 @@ export const upsert = mutation({
         return { status: "stale" as const, id: existing._id };
       }
 
-      // Tamper protection: a sealed row only accepts volatile-field patches.
-      // If anything outside VOLATILE_KEYS differs, refuse the upsert.
-      if (existing.pilotSignatureHash) {
-        for (const key of Object.keys(record) as (keyof typeof record)[]) {
-          if (VOLATILE_KEYS.has(key as string)) continue;
-          if (key === "clientId") continue;
-          // Compare via JSON to handle nested objects deterministically.
-          if (
-            JSON.stringify((record as Record<string, unknown>)[key]) !==
-            JSON.stringify((existing as unknown as Record<string, unknown>)[key])
-          ) {
-            throw new Error(
-              `Cannot mutate '${String(key)}' on a sealed record. Unseal first.`,
-            );
-          }
-        }
-      }
+      // Tamper protection and seal bookkeeping (see `sealTransition`).
+      const sealState = await sealTransition(
+        existing as unknown as Record<string, unknown>,
+        record as Record<string, unknown>,
+      );
 
-      await ctx.db.patch(existing._id, record);
+      await ctx.db.patch(existing._id, { ...record, ...sealState });
       // Apply the difference between the old and new revision to the
       // per-user aggregate so stats/getCount stay correct without a scan.
       const oldContribution = contributionOf(existing);

@@ -24,6 +24,7 @@ import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useDroneStore } from "@/stores/drone-store";
 import { isTimestampFresh } from "@/hooks/use-telemetry-freshness";
 import { mpsToKph } from "@/lib/telemetry-utils";
+import { knownRemainingPct } from "@/lib/battery-bands";
 import type {
   AttitudeData,
   BatteryData,
@@ -41,8 +42,17 @@ import type { ArmState, FlightMode } from "@/lib/types";
  */
 export const HEARTBEAT_FRESH_MS = 3000;
 
-/** Full-scale reading of the MAVLink RADIO_STATUS rssi field (device units). */
-const RSSI_FULL_SCALE = 255;
+/**
+ * Full-scale reading of a SiK radio's RADIO_STATUS rssi (device units, 0..254;
+ * 255 is the field's "unknown" value).
+ */
+const SIK_RSSI_FULL_SCALE = 254;
+
+/** RADIO_STATUS rssi value meaning "invalid / unknown". */
+const RSSI_UNKNOWN = 255;
+
+/** System id a SiK telemetry radio sends RADIO_STATUS as. */
+const SIK_RADIO_SYSTEM_ID = 51;
 
 /** Bars the signal meter can show. */
 export const SIGNAL_BAR_COUNT = 4;
@@ -154,9 +164,11 @@ export function deriveHudInstruments(samples: HudSamples): HudInstruments {
 }
 
 /**
- * Bars from a RADIO_STATUS rssi reading. The field is in device-dependent
- * units with 0..255 full scale, so this is a coarse mapping of a real
- * measurement — never a substitute for one. A fresh 0 rssi keeps 0 bars.
+ * Bars from a RADIO_STATUS rssi reading. The field's units are defined by the
+ * radio that sends it, so only a SiK radio's scale is mapped; any other source
+ * (a video link that packs signed dBm into the byte, for one) reads as no
+ * data rather than a guess. 255 is the field's "unknown" value. A fresh 0 rssi
+ * from a SiK radio keeps 0 bars.
  */
 export function signalBarsFromRssi(
   radio: RadioData | undefined,
@@ -165,7 +177,10 @@ export function signalBarsFromRssi(
   if (typeof radio?.rssi !== "number" || !Number.isFinite(radio.rssi)) {
     return null;
   }
-  const scaled = (radio.rssi / RSSI_FULL_SCALE) * SIGNAL_BAR_COUNT;
+  if (radio.rssi === RSSI_UNKNOWN || radio.sourceSystemId !== SIK_RADIO_SYSTEM_ID) {
+    return null;
+  }
+  const scaled = (radio.rssi / SIK_RSSI_FULL_SCALE) * SIGNAL_BAR_COUNT;
   return Math.max(0, Math.min(SIGNAL_BAR_COUNT, Math.round(scaled)));
 }
 
@@ -188,10 +203,7 @@ export function deriveHudStatus(
   );
 
   return {
-    batteryPct:
-      batFresh && typeof bat?.remaining === "number" && bat.remaining >= 0
-        ? bat.remaining
-        : null,
+    batteryPct: batFresh ? knownRemainingPct(bat?.remaining) : null,
     satellites:
       gpsFresh && typeof gps?.satellites === "number" ? gps.satellites : null,
     armed:

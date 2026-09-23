@@ -3,29 +3,41 @@
 import { useToast } from "@/components/ui/toast";
 import { useDroneManager } from "@/stores/drone-manager";
 import { cn } from "@/lib/utils";
+import type { CompassParams } from "./calibration-types";
 
 interface CompassPreflightChecksProps {
-  compassParams: {
-    COMPASS_USE: number | null;
-    COMPASS_ORIENT: number | null;
-    COMPASS_AUTO_ROT: number | null;
-    COMPASS_OFFS_MAX: number | null;
-    COMPASS_LEARN: number | null;
-    COMPASS_EXTERNAL: number | null;
-  };
-  setCompassParams: React.Dispatch<React.SetStateAction<{
-    COMPASS_USE: number | null;
-    COMPASS_ORIENT: number | null;
-    COMPASS_AUTO_ROT: number | null;
-    COMPASS_OFFS_MAX: number | null;
-    COMPASS_LEARN: number | null;
-    COMPASS_EXTERNAL: number | null;
-  }>>;
+  compassParams: CompassParams;
+  setCompassParams: React.Dispatch<React.SetStateAction<CompassParams>>;
+}
+
+/** ArduPilot COMPASS_EXTERNAL values. */
+const EXTERNAL_LABELS: Record<number, string> = { 0: "Internal", 1: "External", 2: "Forced external" };
+
+const LEARN_LABELS: Record<number, string> = { 0: "Off", 1: "Internal", 2: "EKF", 3: "InFlight" };
+
+function Pending({ value }: { value: number | null | undefined }) {
+  return <span className="text-text-tertiary">{value === undefined ? "Loading..." : "Unavailable"}</span>;
 }
 
 export function CompassPreflightChecks({ compassParams, setCompassParams }: CompassPreflightChecksProps) {
   const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
   const { toast } = useToast();
+
+  // Only a write the FC confirmed updates the check; a refused or timed-out
+  // write leaves the old value on screen.
+  async function writeParam(name: "COMPASS_AUTO_ROT" | "COMPASS_OFFS_MAX", value: number) {
+    const protocol = getSelectedProtocol();
+    if (!protocol) return;
+    const result = await protocol.setParameter(name, value).catch(() => null);
+    if (!result?.success) {
+      toast(`${name} was not changed: ${result?.message ?? "no reply from the flight controller"}`, "error");
+      return;
+    }
+    setCompassParams((p) => ({ ...p, [name]: value }));
+    toast(`${name} set to ${value}`, "success");
+  }
+
+  const { COMPASS_USE, COMPASS_ORIENT, COMPASS_AUTO_ROT, COMPASS_OFFS_MAX, COMPASS_LEARN, COMPASS_EXTERNAL } = compassParams;
 
   return (
     <div className="border border-border-default bg-bg-secondary p-4">
@@ -34,9 +46,9 @@ export function CompassPreflightChecks({ compassParams, setCompassParams }: Comp
         {/* COMPASS_USE */}
         <div className="flex items-center justify-between text-[10px]">
           <span className="text-text-secondary font-mono">COMPASS_USE</span>
-          {compassParams.COMPASS_USE === null ? (
-            <span className="text-text-tertiary">Loading...</span>
-          ) : compassParams.COMPASS_USE === 1 ? (
+          {typeof COMPASS_USE !== "number" ? (
+            <Pending value={COMPASS_USE} />
+          ) : COMPASS_USE === 1 ? (
             <span className="text-status-success font-mono">Enabled</span>
           ) : (
             <span className="text-status-error font-mono">Disabled — enable COMPASS_USE first</span>
@@ -45,33 +57,27 @@ export function CompassPreflightChecks({ compassParams, setCompassParams }: Comp
         {/* COMPASS_ORIENT */}
         <div className="flex items-center justify-between text-[10px]">
           <span className="text-text-secondary font-mono">COMPASS_ORIENT</span>
-          {compassParams.COMPASS_ORIENT === null ? (
-            <span className="text-text-tertiary">Loading...</span>
+          {typeof COMPASS_ORIENT !== "number" ? (
+            <Pending value={COMPASS_ORIENT} />
           ) : (
             <span className="text-text-primary font-mono">
-              {compassParams.COMPASS_ORIENT} {compassParams.COMPASS_ORIENT === 0 ? "(None)" : compassParams.COMPASS_ORIENT === 6 ? "(Yaw270)" : ""}
+              {COMPASS_ORIENT} {COMPASS_ORIENT === 0 ? "(None)" : COMPASS_ORIENT === 6 ? "(Yaw270)" : ""}
             </span>
           )}
         </div>
         {/* COMPASS_AUTO_ROT */}
         <div className="flex items-center justify-between text-[10px]">
           <span className="text-text-secondary font-mono">COMPASS_AUTO_ROT</span>
-          {compassParams.COMPASS_AUTO_ROT === null ? (
-            <span className="text-text-tertiary">Loading...</span>
-          ) : compassParams.COMPASS_AUTO_ROT === 3 ? (
+          {typeof COMPASS_AUTO_ROT !== "number" ? (
+            <Pending value={COMPASS_AUTO_ROT} />
+          ) : COMPASS_AUTO_ROT === 3 ? (
             <span className="text-status-success font-mono">3 (Lenient)</span>
           ) : (
             <span className="flex items-center gap-2">
-              <span className="text-status-warning font-mono">{compassParams.COMPASS_AUTO_ROT} — recommend 3 for lenient orientation detection</span>
+              <span className="text-status-warning font-mono">{COMPASS_AUTO_ROT} — recommend 3 for lenient orientation detection</span>
               <button
                 className="text-[9px] text-accent-primary hover:underline"
-                onClick={async () => {
-                  const protocol = getSelectedProtocol();
-                  if (!protocol) return;
-                  await protocol.setParameter("COMPASS_AUTO_ROT", 3);
-                  setCompassParams((p) => ({ ...p, COMPASS_AUTO_ROT: 3 }));
-                  toast("COMPASS_AUTO_ROT set to 3", "success");
-                }}
+                onClick={() => writeParam("COMPASS_AUTO_ROT", 3)}
               >
                 Fix
               </button>
@@ -79,46 +85,52 @@ export function CompassPreflightChecks({ compassParams, setCompassParams }: Comp
           )}
         </div>
         {/* COMPASS_OFFS_MAX */}
-        {compassParams.COMPASS_OFFS_MAX !== null && (
+        {COMPASS_OFFS_MAX !== undefined && (
           <div className="flex items-center justify-between text-[10px]">
             <span className="text-text-secondary font-mono">COMPASS_OFFS_MAX</span>
-            <span className="flex items-center gap-2">
-              <span className={cn("font-mono", compassParams.COMPASS_OFFS_MAX < 850 ? "text-status-warning" : "text-text-primary")}>
-                {compassParams.COMPASS_OFFS_MAX} {compassParams.COMPASS_OFFS_MAX < 850 ? "— low limit" : ""}
+            {COMPASS_OFFS_MAX === null ? (
+              <Pending value={COMPASS_OFFS_MAX} />
+            ) : (
+              <span className="flex items-center gap-2">
+                <span className={cn("font-mono", COMPASS_OFFS_MAX < 850 ? "text-status-warning" : "text-text-primary")}>
+                  {COMPASS_OFFS_MAX} {COMPASS_OFFS_MAX < 850 ? "— low limit" : ""}
+                </span>
+                {COMPASS_OFFS_MAX < 2000 && (
+                  <button
+                    className="text-[9px] text-accent-primary hover:underline"
+                    onClick={() => writeParam("COMPASS_OFFS_MAX", 2000)}
+                  >
+                    Increase to 2000
+                  </button>
+                )}
               </span>
-              {compassParams.COMPASS_OFFS_MAX < 2000 && (
-                <button
-                  className="text-[9px] text-accent-primary hover:underline"
-                  onClick={async () => {
-                    const protocol = getSelectedProtocol();
-                    if (!protocol) return;
-                    await protocol.setParameter("COMPASS_OFFS_MAX", 2000);
-                    setCompassParams((p) => ({ ...p, COMPASS_OFFS_MAX: 2000 }));
-                    toast("COMPASS_OFFS_MAX set to 2000", "success");
-                  }}
-                >
-                  Increase to 2000
-                </button>
-              )}
-            </span>
+            )}
           </div>
         )}
         {/* COMPASS_LEARN */}
-        {compassParams.COMPASS_LEARN !== null && (
+        {COMPASS_LEARN !== undefined && (
           <div className="flex items-center justify-between text-[10px]">
             <span className="text-text-secondary font-mono">COMPASS_LEARN</span>
-            <span className="text-text-primary font-mono">
-              {compassParams.COMPASS_LEARN} ({compassParams.COMPASS_LEARN === 0 ? "Off" : compassParams.COMPASS_LEARN === 1 ? "Internal" : compassParams.COMPASS_LEARN === 2 ? "EKF" : compassParams.COMPASS_LEARN === 3 ? "InFlight" : "Unknown"})
-            </span>
+            {COMPASS_LEARN === null ? (
+              <Pending value={COMPASS_LEARN} />
+            ) : (
+              <span className="text-text-primary font-mono">
+                {COMPASS_LEARN} ({LEARN_LABELS[COMPASS_LEARN] ?? "Unknown"})
+              </span>
+            )}
           </div>
         )}
         {/* COMPASS_EXTERNAL */}
-        {compassParams.COMPASS_EXTERNAL !== null && (
+        {COMPASS_EXTERNAL !== undefined && (
           <div className="flex items-center justify-between text-[10px]">
             <span className="text-text-secondary font-mono">COMPASS_EXTERNAL</span>
-            <span className="text-text-primary font-mono">
-              {compassParams.COMPASS_EXTERNAL === 1 ? "External" : "Internal"}
-            </span>
+            {COMPASS_EXTERNAL === null ? (
+              <Pending value={COMPASS_EXTERNAL} />
+            ) : (
+              <span className="text-text-primary font-mono">
+                {EXTERNAL_LABELS[COMPASS_EXTERNAL] ?? `Unknown (${COMPASS_EXTERNAL})`}
+              </span>
+            )}
           </div>
         )}
       </div>

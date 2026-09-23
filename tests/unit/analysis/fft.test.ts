@@ -75,26 +75,29 @@ describe('computeFFT', () => {
     expect(topPeak.frequency).toBeLessThanOrEqual(110);
   });
 
-  it('DC offset appears as bin 0 (frequency 0)', () => {
-    // DC signal with windowing will still have energy near 0 Hz
+  it('removes a constant bias instead of reporting it as spectral energy', () => {
     const samples = makeDC(5, 256);
     const result = computeFFT(samples, 1000, 'roll');
-    // bin 0 should have non-trivial magnitude
-    expect(result.spectrum.length).toBeGreaterThan(0);
-    expect(result.spectrum[0].frequency).toBe(0);
-    // The magnitude at DC should be among the highest
-    const dcMag = result.spectrum[0].magnitude;
-    const otherMags = result.spectrum.slice(1).map((b) => b.magnitude);
-    const maxOther = Math.max(...otherMags);
-    expect(dcMag).toBeGreaterThanOrEqual(maxOther);
+    expect(result.peaks).toHaveLength(0);
+    expect(Math.max(...result.spectrum.map((b) => b.magnitude))).toBe(-120);
   });
 
-  it('handles non-power-of-2 input (zero-padded internally)', () => {
-    // 300 samples, not a power of 2
-    const samples = makeSineWave(50, 500, 300);
-    const result = computeFFT(samples, 500, 'roll');
-    // Should not throw, spectrum should have bins
-    expect(result.spectrum.length).toBeGreaterThan(0);
+  it('gives a biased gyro the same spectrum as an unbiased one', () => {
+    const clean = makeSineWave(150, 1000, 300);
+    const biased = clean.map((s) => ({ ...s, value: s.value + 500 }));
+    const a = computeFFT(clean, 1000, 'roll');
+    const b = computeFFT(biased, 1000, 'roll');
+    expect(b.peaks.map((p) => p.frequency)).toEqual(a.peaks.map((p) => p.frequency));
+    expect(b.noiseFloorDb).toBeCloseTo(a.noiseFloorDb ?? NaN, 3);
+  });
+
+  it('reads the same peak level for a short zero-padded log and a full segment', () => {
+    // 300 samples are windowed then padded to 512; 1024 fill one segment.
+    const short = computeFFT(makeSineWave(125, 1000, 300, 2), 1000, 'roll');
+    const full = computeFFT(makeSineWave(125, 1000, 1024, 2), 1000, 'roll');
+    // Amplitude 2 reads 20*log10(2/2) = 0 dB at the peak.
+    expect(full.peaks[0].magnitudeDb).toBeCloseTo(0, 0);
+    expect(Math.abs(short.peaks[0].magnitudeDb - full.peaks[0].magnitudeDb)).toBeLessThan(1.5);
   });
 
   it('classifies frequency zone: propwash (20-100 Hz)', () => {

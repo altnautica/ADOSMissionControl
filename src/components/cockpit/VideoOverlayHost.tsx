@@ -35,6 +35,7 @@ import {
 import { usePluginContributions } from "@/hooks/use-plugin-contributions";
 import { deviceIdFromNodeId } from "@/lib/agent/node-id";
 import {
+  DETECTION_STALE_MS,
   useVisionDetectionsStore,
   type VisionDetectionBatch,
 } from "@/stores/vision-detections-store";
@@ -54,9 +55,6 @@ import { useClockStore } from "@/stores/clock-store";
 
 /** Timestamp accessor for the nearest-sample lookup. */
 const sampleTs = (s: Timestamped): number => s.timestamp;
-
-/** Mirror DetectionOverlay's default staleness window. */
-const DEFAULT_STALE_MS = 2000;
 
 interface VideoOverlayHostProps2 {
   /** Active drone/device id whose batch + plugins this overlay serves. */
@@ -132,7 +130,7 @@ export function computeRenderedRect(
 
 export function VideoOverlayHost({
   droneId,
-  staleAfterMs = DEFAULT_STALE_MS,
+  staleAfterMs = DETECTION_STALE_MS,
   contributions,
   className,
 }: VideoOverlayHostProps2) {
@@ -290,13 +288,14 @@ export function VideoOverlayHost({
     // and shipped the two as one payload: a plugin drawing a horizon or a
     // lead reticle was compositing a now-reading over a 180-240 ms old
     // picture with no way to detect it, let alone correct it. The lookup now
-    // reaches back by the measured frame age, and the payload states whether
-    // it managed to.
+    // reaches back by the measured frame age from the batch's own arrival
+    // instant, and the payload states whether it managed to. `now` is the 1 Hz
+    // clock, so it only drives the staleness gates: sampling at it would hand
+    // every batch within a second the same attitude.
     const frameAgeMs = frameAge?.ms ?? null;
+    const sampleAt = (batch?.receivedAt ?? now) - (frameAgeMs ?? 0);
     const att = freshOnly(
-      useTelemetryStore
-        .getState()
-        .attitude.nearest(now - (frameAgeMs ?? 0), sampleTs),
+      useTelemetryStore.getState().attitude.nearest(sampleAt, sampleTs),
       now,
     );
 

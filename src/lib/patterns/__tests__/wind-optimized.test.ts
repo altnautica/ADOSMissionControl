@@ -8,9 +8,12 @@ import { describe, it, expect } from "vitest";
 import {
   normalizeLineAxis,
   axisAngularDifference,
+  gridAngleLineBearing,
   optimalLineBearing,
   windPenalty,
 } from "../wind-optimized";
+import { generateSurvey } from "../survey-generator";
+import { bearing } from "@/lib/telemetry-utils";
 
 describe("normalizeLineAxis", () => {
   it("keeps values already in [0, 180)", () => {
@@ -70,10 +73,10 @@ describe("axisAngularDifference", () => {
 });
 
 describe("optimalLineBearing", () => {
-  it("aligns the grid angle with the wind axis", () => {
-    // Wind from north -> north-south lines (grid angle 0).
+  it("aligns the line bearing with the wind axis", () => {
+    // Wind from north -> north-south lines.
     expect(optimalLineBearing(0)).toBe(0);
-    // Wind from east -> east-west lines (grid angle 90).
+    // Wind from east -> east-west lines.
     expect(optimalLineBearing(90)).toBe(90);
     expect(optimalLineBearing(45)).toBe(45);
   });
@@ -96,6 +99,31 @@ describe("optimalLineBearing", () => {
       const best = optimalLineBearing(w);
       expect(windPenalty(best, w, 8)).toBeCloseTo(0, 10);
     }
+  });
+});
+
+describe("gridAngleLineBearing", () => {
+  /** Compass bearing of the first transect the generator flies at this grid angle. */
+  function flownLegBearing(gridAngle: number): number {
+    const rows = generateSurvey({
+      polygon: [[12.97, 77.59], [12.97, 77.6], [12.98, 77.6], [12.98, 77.59]],
+      gridAngle, lineSpacing: 200, turnAroundDistance: 0, entryLocation: "topLeft",
+      flyAlternateTransects: false, cameraTriggerDistance: 0, altitude: 50, speed: 5,
+    }).waypoints.filter((w) => w.command === "WAYPOINT");
+    return bearing(rows[0].lat, rows[0].lon, rows[1].lat, rows[1].lon);
+  }
+
+  it("aligning to the wind makes the generated survey fly its legs along the wind", () => {
+    for (const wind of [0, 30, 90, 120]) {
+      const gridAngle = gridAngleLineBearing(optimalLineBearing(wind));
+      expect(axisAngularDifference(flownLegBearing(gridAngle), wind)).toBeLessThan(1);
+      expect(windPenalty(gridAngleLineBearing(gridAngle), wind, 8)).toBeCloseTo(0, 6);
+    }
+  });
+
+  it("reads a grid angle of 0 as east-west legs", () => {
+    expect(gridAngleLineBearing(0)).toBe(90);
+    expect(axisAngularDifference(flownLegBearing(0), 90)).toBeLessThan(1);
   });
 });
 

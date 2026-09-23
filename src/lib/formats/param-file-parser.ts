@@ -19,20 +19,12 @@ export interface ParamDiff {
   status: "changed" | "added" | "unchanged";
 }
 
-export type ParamFileFormat = "mp" | "qgc" | "unknown";
-
 export interface SerializeParamOptions {
   format: "mp" | "qgc";
   systemId?: number;
   componentId?: number;
   /** Fallback MAV_PARAM_TYPE for QGC export when not provided per-param. Default 9 (REAL32). */
   defaultType?: number;
-}
-
-export interface BuildModifiedResult {
-  modified: Map<string, number>;
-  applied: number;
-  unknown: number;
 }
 
 const PARAM_NAME_RE = /^[A-Za-z][A-Za-z0-9_]*$/;
@@ -58,36 +50,6 @@ function stripInlineComment(line: string): string {
     if (idx !== -1) out = out.slice(0, idx);
   }
   return out.trim();
-}
-
-/** Heuristic format detection for operator feedback / future UI. */
-export function detectParamFileFormat(text: string): ParamFileFormat {
-  const lines = normalizeText(text).split("\n");
-  let qgcHits = 0;
-  let mpHits = 0;
-  for (const raw of lines) {
-    if (isCommentOrHeader(raw)) {
-      if (raw.trim().toLowerCase().startsWith("qgc")) return "qgc";
-      continue;
-    }
-    const line = stripInlineComment(raw);
-    if (!line) continue;
-    const parts = line.split(/[\s,]+/).filter(Boolean);
-    if (parts.length >= 5) {
-      const a = parseInt(parts[0], 10);
-      const b = parseInt(parts[1], 10);
-      if (!isNaN(a) && !isNaN(b) && PARAM_NAME_RE.test(parts[2])) {
-        qgcHits++;
-        continue;
-      }
-    }
-    if (parts.length >= 2 && PARAM_NAME_RE.test(parts[0])) {
-      mpHits++;
-    }
-  }
-  if (qgcHits > 0 && qgcHits >= mpHits) return "qgc";
-  if (mpHits > 0) return "mp";
-  return "unknown";
 }
 
 /**
@@ -157,6 +119,15 @@ export function serializeParamFile(
 }
 
 /**
+ * FC parameter values arrive as float32 (PARAM_VALUE) widened to a double,
+ * while file values are parsed from decimal text. Compare both at float32
+ * precision so a value saved from the same FC reads as unchanged.
+ */
+function sameParamValue(a: number, b: number): boolean {
+  return Math.fround(a) === Math.fround(b);
+}
+
+/**
  * Compare file params against current FC params.
  * Returns a diff array sorted by status (changed first, then added, then unchanged).
  */
@@ -170,7 +141,7 @@ export function compareParams(
     const fcValue = fcParams.get(fp.name);
     if (fcValue === undefined) {
       diffs.push({ name: fp.name, fileValue: fp.value, fcValue: null, status: "added" });
-    } else if (fcValue !== fp.value) {
+    } else if (!sameParamValue(fcValue, fp.value)) {
       diffs.push({ name: fp.name, fileValue: fp.value, fcValue, status: "changed" });
     } else {
       diffs.push({ name: fp.name, fileValue: fp.value, fcValue, status: "unchanged" });
@@ -185,31 +156,4 @@ export function compareParams(
   });
 
   return diffs;
-}
-
-/**
- * Apply a parsed file onto the FC parameter list as a pending modified map.
- * Only names present on the FC are applied; unknown names are counted separately.
- */
-export function buildModifiedFromFile(
-  parsed: ParsedParam[],
-  fcParams: Map<string, number>,
-  existingModified: Map<string, number> = new Map(),
-): BuildModifiedResult {
-  const modified = new Map(existingModified);
-  let applied = 0;
-  let unknown = 0;
-
-  for (const p of parsed) {
-    const fcValue = fcParams.get(p.name);
-    if (fcValue === undefined) {
-      unknown++;
-      continue;
-    }
-    applied++;
-    if (fcValue !== p.value) modified.set(p.name, p.value);
-    else modified.delete(p.name);
-  }
-
-  return { modified, applied, unknown };
 }

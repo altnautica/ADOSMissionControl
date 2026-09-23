@@ -264,7 +264,7 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
             computed over the largest available value so an unhealthy
             air leg can't be masked by a healthy link leg. */}
         {hasVideo && (() => {
-          const link = latencyMs;
+          const link = latencyMs ?? 0;
           const air =
             airLatencyMs != null && airLatencyMs > 0
               ? Math.round(airLatencyMs)
@@ -286,7 +286,7 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
                     : "text-status-error";
           return (
             <div className="absolute bottom-0 left-0 right-0 flex flex-wrap items-center gap-x-3 gap-y-0.5 px-2 py-1 bg-black/60 backdrop-blur-sm text-[10px] font-mono text-text-secondary">
-              <span>{fps > 0 ? `${fps} FPS` : "-- FPS"}</span>
+              <span>{fps !== null && fps > 0 ? `${fps} FPS` : "-- FPS"}</span>
               <VideoLatencyBreakdown
                 className={cn(
                   "inline-flex items-center gap-1.5 rounded px-1 -mx-1",
@@ -324,7 +324,7 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
 
         {/* No signal placeholder — z-10 so transport switcher (z-20) stays on top */}
         {showNoSignal && (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-[#0a0a0f]">
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-bg-primary">
             <CameraOff className="w-8 h-8 text-text-tertiary" />
             <span className="text-xs text-text-tertiary font-mono tracking-widest">
               NO SIGNAL
@@ -337,7 +337,7 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
             link. Suppressed when the live air-side overlay is showing so the
             two never stack. */}
         {noCamera && !hasVideo && !showAirSideCamera && (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-1.5 bg-[#0a0a0f] p-4 text-center">
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-1.5 bg-bg-primary p-4 text-center">
             <CameraOff className="w-8 h-8 text-text-tertiary" />
             <span className="text-xs font-medium text-text-secondary">
               {tLink("no-camera.title")}
@@ -354,7 +354,7 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
             operator can fix by reseating the USB camera, and it self-clears
             when the agent recovers the camera. */}
         {showAirSideCamera && (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-1.5 bg-[#0a0a0f] p-4 text-center">
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-1.5 bg-bg-primary p-4 text-center">
             {airCameraRecovering ? (
               <>
                 <Loader2 className="w-7 h-7 text-accent-primary animate-spin" />
@@ -378,7 +378,7 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
 
         {/* Connecting state — z-10 so transport switcher (z-20) stays on top */}
         {showConnecting && !hasVideo && (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-[#0a0a0f]">
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-bg-primary">
             <Loader2 className="w-6 h-6 text-accent-primary animate-spin" />
             <span className="text-xs text-text-tertiary font-mono tracking-widest">
               CONNECTING...
@@ -389,7 +389,7 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
         {/* Error state with retry — z-10 so the transport switcher
             (z-20) stays clickable on top of this overlay. */}
         {error && !hasVideo && (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-[#0a0a0f]">
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-bg-primary">
             <CameraOff className="w-8 h-8 text-status-error" />
             <span className="text-xs text-status-error font-mono">
               {error}

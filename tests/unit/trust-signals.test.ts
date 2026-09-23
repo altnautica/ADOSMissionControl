@@ -26,12 +26,35 @@ describe("deriveTrustSignals · license", () => {
   });
 
   it("does not add open-source for a proprietary or absent license", () => {
-    expect(
-      deriveTrustSignals({ signatureState: "unsigned", license: "Proprietary" }),
-    ).not.toContain("open-source");
-    expect(
-      deriveTrustSignals({ signatureState: "unsigned", license: undefined }),
-    ).not.toContain("open-source");
+    for (const license of [
+      "Proprietary",
+      "UNLICENSED",
+      "Proprietary - Limited Use",
+      "LicenseRef-Vendor-EULA",
+      "Simple Sample License",
+      "Discretionary",
+      "MIT AND LicenseRef-Vendor",
+      "MIT OR",
+      undefined,
+    ]) {
+      expect(
+        deriveTrustSignals({ signatureState: "unsigned", license }),
+      ).not.toContain("open-source");
+    }
+  });
+
+  it("reads SPDX expressions by operator", () => {
+    for (const license of [
+      "MIT OR Apache-2.0",
+      "(MIT AND BSD-3-Clause)",
+      "GPL-2.0-or-later WITH Classpath-exception-2.0",
+      "LicenseRef-Vendor OR MIT",
+      "GPL-2.0+",
+    ]) {
+      expect(
+        deriveTrustSignals({ signatureState: "unsigned", license }),
+      ).toContain("open-source");
+    }
   });
 });
 

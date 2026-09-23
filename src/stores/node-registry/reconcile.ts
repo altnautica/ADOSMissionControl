@@ -156,6 +156,28 @@ export function mergePresence(
 }
 
 /**
+ * Whether two presence sub-states carry the same facts. Lets the store skip an
+ * upsert that changes nothing: every bridge re-publishes its whole node list on
+ * each input change, and an unconditional write bumped every row's `rev` and
+ * re-projected (and re-rendered) the whole fleet.
+ */
+export function presenceEqual(a: NodePresence, b: NodePresence): boolean {
+  return (
+    a.deviceId === b.deviceId &&
+    a.name === b.name &&
+    a.profile === b.profile &&
+    a.role === b.role &&
+    a.cloudPosture === b.cloudPosture &&
+    a.cloudDeviceId === b.cloudDeviceId &&
+    a.agentIdentityKnown === b.agentIdentityKnown &&
+    a.reachedVia === b.reachedVia &&
+    a.lastHeartbeat === b.lastHeartbeat &&
+    a.sources.length === b.sources.length &&
+    a.sources.every((s, i) => s === b.sources[i])
+  );
+}
+
+/**
  * Drop a single presence source from a presence sub-state, leaving the rest of
  * the identity intact. When the last source is removed the sub-state retains
  * its identity fields (so a re-appearance reuses them) but reports an empty
@@ -167,7 +189,7 @@ export function dropPresenceSource(
 ): NodePresence {
   // Dropping the relay source clears the hop so a node that is no longer
   // relayed cannot keep advertising a stale "linked via WFB through X"
-  // (Rule 44 — a reach surface never claims an unverified path).
+  // (a reach surface never claims an unverified path).
   const reachedVia = source === "relayed" ? undefined : current.reachedVia;
   return {
     ...current,

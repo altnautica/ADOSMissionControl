@@ -32,7 +32,7 @@ describe("drone-manager selectDrone → video-streams reset", () => {
     useDroneManager.setState({ selectedDroneId: null });
   });
 
-  it("[D2] clears the leaving drone's active stream + PiP on a drone switch", () => {
+  it("clears the leaving drone's active stream + PiP on a drone switch", () => {
     const s = useVideoStreamsStore.getState();
     s.setStreams("A", [concurrent("main", 1), concurrent("ir", 2)]);
     s.selectStream("A", "ir");
@@ -50,7 +50,7 @@ describe("drone-manager selectDrone → video-streams reset", () => {
     expect(useVideoStreamsStore.getState().pipStream("A")).toBeNull();
   });
 
-  it("[D2] does nothing when re-selecting the same drone", () => {
+  it("does nothing when re-selecting the same drone", () => {
     const s = useVideoStreamsStore.getState();
     s.setStreams("A", [concurrent("main", 1), concurrent("ir", 2)]);
     s.selectStream("A", "ir");

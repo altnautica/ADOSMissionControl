@@ -25,8 +25,10 @@ export const DSDL_SIGNATURES = {
 } as const;
 
 /**
- * Data type IDs for the eight standard DroneCAN messages the GCS speaks.
- * Message broadcasts use a 16-bit type ID; services use an 8-bit type ID.
+ * DroneCAN data type IDs the GCS speaks or labels, from the DSDL definitions
+ * (`uavcan/protocol`, `uavcan/equipment/*`). Message broadcasts use a 16-bit
+ * type ID; services use an 8-bit type ID, so a message and a service may share
+ * a number.
  */
 export const DATA_TYPE_IDS = {
   /** Message broadcast `uavcan.protocol.NodeStatus` (16-bit). */
@@ -47,10 +49,34 @@ export const DATA_TYPE_IDS = {
   GetTransportStats: 4,
   /** Message broadcast `uavcan.equipment.esc.RawCommand` (16-bit). */
   EscRawCommand: 1030,
+  /** Message broadcast `uavcan.equipment.esc.RPMCommand` (16-bit). */
+  EscRPMCommand: 1031,
+  /** Message broadcast `uavcan.equipment.esc.Status` (16-bit). */
+  EscStatus: 1034,
+  /** Message broadcast `uavcan.equipment.gnss.Auxiliary` (16-bit). */
+  GnssAuxiliary: 1061,
+  /** Message broadcast `uavcan.equipment.gnss.RTCMStream` (16-bit). */
+  GnssRtcmStream: 1062,
   /** Message broadcast `uavcan.equipment.gnss.Fix2` (16-bit). */
   GnssFix2: 1063,
+  /** Message broadcast `uavcan.equipment.air_data.RawAirData` (16-bit). */
+  RawAirData: 1027,
+  /** Message broadcast `uavcan.equipment.air_data.StaticPressure` (16-bit). */
+  StaticPressure: 1028,
+  /** Message broadcast `uavcan.equipment.air_data.StaticTemperature` (16-bit). */
+  StaticTemperature: 1029,
+  /** Message broadcast `uavcan.equipment.power.PrimaryPowerSupplyStatus` (16-bit). */
+  PrimaryPowerSupplyStatus: 1090,
+  /** Message broadcast `uavcan.equipment.power.BatteryInfo` (16-bit). */
+  BatteryInfo: 1092,
   /** Message broadcast `uavcan.equipment.ahrs.MagneticFieldStrength2` (16-bit). */
   MagneticFieldStrength2: 1002,
+  /** Message broadcast `uavcan.equipment.range_sensor.Measurement` (16-bit). */
+  RangeSensorMeasurement: 1050,
+  /** Message broadcast `uavcan.equipment.actuator.ArrayCommand` (16-bit). */
+  ActuatorArrayCommand: 1010,
+  /** Message broadcast `uavcan.equipment.actuator.Status` (16-bit). */
+  ActuatorStatus: 1011,
 } as const;
 
 export type DsdlSignatureName = keyof typeof DSDL_SIGNATURES;

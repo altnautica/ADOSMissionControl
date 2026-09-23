@@ -18,9 +18,11 @@ import { relayCommandValidator } from "./commandVocabulary";
 import {
   CREDENTIAL_GLOBAL_POLICY,
   CREDENTIAL_POLICY,
+  chargeAttempt,
+  checkBucket,
   clearAttempts,
-  consumeAttempt,
   sha256Hex,
+  type RateVerdict,
 } from "./lib/rateLimit";
 
 export const lookupByHash = internalQuery({
@@ -40,35 +42,48 @@ export const touchLastUsed = internalMutation({
   },
 });
 
+/** Shared bucket every failed credential verification charges. */
+const GLOBAL_CREDENTIAL_BUCKET = "mcp:cred:global";
+
 /**
  * Charge one credential-verification attempt against the presenting party,
- * refusing once the bucket locks.
+ * refusing once either bucket locks.
  *
  * Two buckets, because neither alone is sufficient. The per-credential bucket
- * stops one stolen-but-revoked token from being hammered; the global bucket is
- * the only bound available against a walk across many distinct guesses, since
- * a Convex action sees no source address. Both are consumed BEFORE the lookup,
- * so a rejected credential is always counted.
+ * stops one stolen-but-revoked token from being hammered and is consumed
+ * BEFORE the lookup, so a rejected credential is always counted. The global
+ * bucket is the only bound against a walk across many distinct guesses, since
+ * a Convex action sees no source address; it is only checked here and is
+ * charged by `recordCredentialFailure`, so live traffic never writes it.
  *
  * The digest, not the credential, is the bucket key: a rate-limit table is not
  * a place to accumulate presented secrets.
  */
 export const consumeCredentialAttempt = internalMutation({
   args: { credential: v.string() },
-  handler: async (ctx, { credential }) => {
+  handler: async (ctx, { credential }): Promise<RateVerdict> => {
     const digest = await sha256Hex(credential);
-    await consumeAttempt(ctx, `mcp:cred:${digest}`, CREDENTIAL_POLICY);
-    await consumeAttempt(ctx, "mcp:cred:global", CREDENTIAL_GLOBAL_POLICY);
+    const global = await checkBucket(ctx, GLOBAL_CREDENTIAL_BUCKET, CREDENTIAL_GLOBAL_POLICY);
+    if (!global.ok) return global;
+    return await chargeAttempt(ctx, `mcp:cred:${digest}`, CREDENTIAL_POLICY);
   },
 });
 
-/** Clear both buckets once a credential verified, so a live token never ladders. */
+/** Charge the shared bucket for a credential that did not verify. */
+export const recordCredentialFailure = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    await chargeAttempt(ctx, GLOBAL_CREDENTIAL_BUCKET, CREDENTIAL_GLOBAL_POLICY);
+  },
+});
+
+/** Clear the credential's own bucket once it verified, so a live token never
+ * ladders. The shared bucket is never reset by one caller's success. */
 export const clearCredentialAttempts = internalMutation({
   args: { credential: v.string() },
   handler: async (ctx, { credential }) => {
     const digest = await sha256Hex(credential);
     await clearAttempts(ctx, `mcp:cred:${digest}`);
-    await clearAttempts(ctx, "mcp:cred:global");
   },
 });
 

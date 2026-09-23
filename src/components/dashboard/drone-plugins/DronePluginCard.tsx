@@ -3,25 +3,27 @@
 /**
  * @module DronePluginCard
  * @description Single plugin row inside the per-drone Plugins list.
- * Renders the plugin name + version + trust badges + status
- * pill, an Enable/Disable toggle, a Configure link, and a three-dot
- * overflow menu. Enable/Disable enqueues `plugin.enable` or
- * `plugin.disable` against the drone's agent via the existing
- * `cmd_droneCommands` queue. The card stays transport-agnostic; the
- * agent picks the right transport per the management-actions matrix
- * in `product/specs/ados-plugin-system/18-ux-plugin-management.md`
- * Section 6.
+ * Renders the plugin name + version + status pill, an Enable/Disable
+ * toggle, a Configure link, and a three-dot overflow menu. Enable/Disable
+ * enqueues `plugin.enable` or `plugin.disable` against the drone's agent via
+ * the `cmd_droneCommands` queue; the agent picks the transport.
+ *
+ * A row reported by the node itself but with no cloud install record
+ * (`installId` of `agent:<pluginId>` from the heartbeat inventory, or
+ * `lan:<pluginId>` from the node's own install list) has no Convex row to
+ * update: its state follows the node's next report, and it offers no cloud
+ * configure or permissions page.
  *
  * @license GPL-3.0-only
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   MoreHorizontal,
   Settings,
   Trash2,
-  FileText,
   ShieldCheck,
   Power,
   RotateCw,
@@ -41,6 +43,7 @@ import type {
   PluginModelStatusEntry,
   PluginServiceStatusEntry,
 } from "@/stores/agent-plugin-inventory-store";
+import { usePluginUpdateStore } from "@/stores/plugin-update-store";
 import { api } from "../../../../convex/_generated/api";
 
 import {
@@ -78,10 +81,20 @@ interface DronePluginCardProps {
 export function DronePluginCard({ install, className }: DronePluginCardProps) {
   const t = useTranslations("dronePlugins");
   const { toast } = useToast();
+  const router = useRouter();
 
   const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
   const [updateSettingsOpen, setUpdateSettingsOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  // A row the node reported, with no cloud install record.
+  const agentOnly =
+    install.installId.startsWith("agent:") || install.installId.startsWith("lan:");
+  // The pending update event (if any) is the only pin evidence the GCS has.
+  const pendingUpdate = usePluginUpdateStore((s) =>
+    s.pendingUpdates.find(
+      (e) => e.deviceId === install.deviceId && e.pluginId === install.pluginId,
+    ),
+  );
 
   // The lifecycle command currently awaiting an agent ACK. We keep the
   // operator action pending (spinner held, local status NOT flipped)
@@ -144,19 +157,25 @@ export function DronePluginCard({ install, className }: DronePluginCardProps) {
       return;
     }
 
-    // status === "completed": commit the local install-state change.
+    // status === "completed": commit the local install-state change. An
+    // agent-only row has no cloud record: the agent's ACK is the outcome, and
+    // its next heartbeat inventory carries the new state.
     const apply = async () => {
       try {
         if (kind === "uninstall") {
-          await removeInstall({
-            installId: install.installId as Id<"cmd_pluginInstalls">,
-          });
+          if (!agentOnly) {
+            await removeInstall({
+              installId: install.installId as Id<"cmd_pluginInstalls">,
+            });
+          }
           toast(t("uninstallConfirmed", { name: install.name }), "success");
         } else {
-          await setStatus({
-            installId: install.installId as Id<"cmd_pluginInstalls">,
-            status: nextStatus,
-          });
+          if (!agentOnly) {
+            await setStatus({
+              installId: install.installId as Id<"cmd_pluginInstalls">,
+              status: nextStatus,
+            });
+          }
           toast(
             kind === "enable"
               ? t("enableConfirmed", { name: install.name })
@@ -185,6 +204,7 @@ export function DronePluginCard({ install, className }: DronePluginCardProps) {
     };
     void apply();
   }, [
+    agentOnly,
     commandRow,
     pendingCommand,
     install,
@@ -272,12 +292,8 @@ export function DronePluginCard({ install, className }: DronePluginCardProps) {
 
   const handleOverflow = useCallback(
     async (id: string) => {
-      if (id === "logs") {
-        toast(t("logsPending"), "info");
-        return;
-      }
       if (id === "permissions") {
-        toast(t("permissionsLinkPending"), "info");
+        router.push(`/config/plugins/${install.installId}?tab=permissions`);
         return;
       }
       if (id === "uninstall") {
@@ -285,7 +301,7 @@ export function DronePluginCard({ install, className }: DronePluginCardProps) {
         return;
       }
     },
-    [t, toast],
+    [install.installId, router],
   );
 
   const handleRemove = useCallback(async () => {
@@ -421,15 +437,17 @@ export function DronePluginCard({ install, className }: DronePluginCardProps) {
         >
           {isEnabled ? t("disable") : t("enable")}
         </Button>
-        <Link href={`/config/plugins/${install.installId}`} passHref>
-          <Button
-            variant="ghost"
-            size="sm"
-            icon={<Settings className="h-3.5 w-3.5" />}
-          >
-            {t("configure")}
-          </Button>
-        </Link>
+        {agentOnly ? null : (
+          <Link href={`/config/plugins/${install.installId}`} passHref>
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={<Settings className="h-3.5 w-3.5" />}
+            >
+              {t("configure")}
+            </Button>
+          </Link>
+        )}
         <DropdownMenu
           align="right"
           trigger={
@@ -440,17 +458,16 @@ export function DronePluginCard({ install, className }: DronePluginCardProps) {
             />
           }
           items={[
-            {
-              id: "logs",
-              label: t("viewLogs"),
-              icon: <FileText className="h-3.5 w-3.5" />,
-            },
-            {
-              id: "permissions",
-              label: t("viewPermissions"),
-              icon: <ShieldCheck className="h-3.5 w-3.5" />,
-            },
-            { id: "divider", label: "", divider: true },
+            ...(agentOnly
+              ? []
+              : [
+                  {
+                    id: "permissions",
+                    label: t("viewPermissions"),
+                    icon: <ShieldCheck className="h-3.5 w-3.5" />,
+                  },
+                  { id: "divider", label: "", divider: true },
+                ]),
             {
               id: "uninstall",
               label: t("uninstall"),
@@ -478,8 +495,11 @@ export function DronePluginCard({ install, className }: DronePluginCardProps) {
           pluginId={install.pluginId}
           pluginName={install.name}
           currentVersion={install.version}
-          autoUpdate={true}
-          pinnedVersion={null}
+          // The agent does not report its auto-update switch or last sweep
+          // time to the GCS, so both are unknown; a pin is known only when
+          // the pending update event says the pin held it back.
+          autoUpdate={null}
+          pinned={pendingUpdate?.reason === "pinned" ? true : null}
           lastUpdateCheckAt={null}
           onClose={() => setUpdateSettingsOpen(false)}
         />

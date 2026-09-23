@@ -71,7 +71,7 @@ const baseManifest: InstallManifestSummary = {
       risk: "critical",
     },
     {
-      id: "cloud.write",
+      id: "network.outbound",
       required: false,
       label: "Publish data to the cloud relay",
       description: "Push messages to the cloud bridge.",
@@ -140,7 +140,7 @@ describe("PermissionsSection", () => {
         />,
       ),
     );
-    // cloud.write is the only optional row.
+    // network.outbound is the only optional row.
     const switches = screen.getAllByRole("switch");
     expect(switches.length).toBe(1);
     // The optional row is not part of the Required count.
@@ -160,7 +160,7 @@ describe("PermissionsSection", () => {
     );
     const switches = screen.getAllByRole("switch");
     fireEvent.click(switches[0]);
-    expect(onToggle).toHaveBeenCalledWith("cloud.write", false);
+    expect(onToggle).toHaveBeenCalledWith("network.outbound", false);
   });
 
   it("surfaces the permission description as the help-icon tooltip", () => {

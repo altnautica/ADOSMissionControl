@@ -20,6 +20,20 @@ export interface PanelState {
   chat: boolean;
 }
 
+/** One choice in a picker. Board catalogs and enum tables build these. */
+export interface SelectOption {
+  value: string;
+  label: string;
+  description?: string;
+  disabled?: boolean;
+}
+
+/** A labelled group of picker choices. */
+export interface SelectOptionGroup {
+  label: string;
+  options: SelectOption[];
+}
+
 // ── Flight History ───────────────────────────────────────────
 
 export type FlightEventSeverity = "info" | "warning" | "error";
@@ -60,20 +74,25 @@ export interface FlightRecord {
   date: number;
   /** Flight start (arm) wall-clock time in ms epoch. */
   startTime: number;
+  /**
+   * True when the source log carried no clock time: `date`/`startTime`/`endTime`
+   * are the import time, and the flight's real date is unknown.
+   */
+  startTimeUnknown?: boolean;
   /** Flight end (disarm) wall-clock time in ms epoch. Equals startTime while in_progress. */
   endTime: number;
   /** Duration in seconds. 0 while in_progress. */
   duration: number;
-  /** Total ground distance in meters (haversine sum). */
-  distance: number;
-  /** Max altitude AGL in meters. */
-  maxAlt: number;
-  /** Max ground speed in m/s. */
-  maxSpeed: number;
+  /** Total ground distance in meters (haversine sum); undefined when the flight has no recorded telemetry. */
+  distance?: number;
+  /** Max altitude AGL in meters; undefined when the flight has no recorded telemetry. */
+  maxAlt?: number;
+  /** Max ground speed in m/s; undefined when the flight has no recorded telemetry. */
+  maxSpeed?: number;
   /** Average ground speed in m/s. */
   avgSpeed?: number;
-  /** Battery used percentage. */
-  batteryUsed: number;
+  /** Battery used percentage; undefined when the flight reported no usable battery data. */
+  batteryUsed?: number;
   /** Battery voltage at arm. */
   batteryStartV?: number;
   /** Battery voltage at disarm. */
@@ -311,7 +330,10 @@ export interface WeatherSnapshot {
   stationDistanceKm?: number;
   tempC?: number;
   dewPointC?: number;
-  /** Wind direction in compass degrees (0–360, 0 = calm). */
+  /**
+   * Wind direction in compass degrees (0–360). Undefined when the report
+   * gives a variable (VRB) direction or none at all.
+   */
   windDirDeg?: number;
   windKts?: number;
   gustKts?: number;
@@ -427,9 +449,10 @@ export interface LoadoutSnapshot {
 }
 
 /**
- * Estimated wind vector derived from FC telemetry. The `vfr_diff` method
- * compares groundspeed to airspeed from VFR_HUD; the `attitude_track`
- * method (future) infers wind from attitude-vs-track during hover.
+ * Estimated wind vector for a flight. `fc_estimate` averages the
+ * autopilot's own wind estimate; `vfr_diff` subtracts the air velocity
+ * (VFR_HUD airspeed along the heading, only with an airspeed sensor) from
+ * the ground-track velocity.
  */
 export interface WindEstimate {
   /** Estimated wind speed in m/s. */
@@ -439,7 +462,7 @@ export interface WindEstimate {
   /** Number of valid telemetry frames used in the estimate. */
   sampleCount: number;
   /** Estimation method. */
-  method: "vfr_diff" | "attitude_track";
+  method: "vfr_diff" | "fc_estimate";
 }
 
 // ── Analytics ────────────────────────────────────────────────

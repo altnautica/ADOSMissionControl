@@ -10,7 +10,7 @@
  *     perception read/subscribe/health (read-only derived detection data),
  *     cockpit marks (post vector marks into the composited draw-layer).
  *   - events: events.subscribe / unsubscribe / publish (in-memory bus).
- *   - cloud: cloud.read (allowlisted public queries) / cloud.write (refused).
+ *   - cloud: cloud.read (allowlisted public queries).
  *   - safety-critical: command.send (including vision.designate) +
  *     mission.write, each gated by operator confirmation, a strict per-drone
  *     target, and a re-check of the vehicle state after the operator answers
@@ -120,10 +120,10 @@ export function buildPluginHandlers(
       };
     },
 
-    notify: (args) => {
-      pluginNotify(readString(args, "message") ?? "", "info");
-      return { ok: true };
-    },
+    notify: (args) =>
+      pluginNotify(pluginId, readString(args, "message") ?? "", "info")
+        ? { ok: true }
+        : { ok: false, error: "rate_limited" },
 
     "notification.publish": (args) => {
       const message =
@@ -131,8 +131,9 @@ export function buildPluginHandlers(
         readString(args, "message") ??
         readString(args, "body") ??
         "";
-      pluginNotify(message, toNotifyStatus(asRecord(args).severity));
-      return { ok: true };
+      return pluginNotify(pluginId, message, toNotifyStatus(asRecord(args).severity))
+        ? { ok: true }
+        : { ok: false, error: "rate_limited" };
     },
 
     "recording.start": () => {

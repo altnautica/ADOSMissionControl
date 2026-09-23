@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useDroneStore } from "@/stores/drone-store";
 import { Button } from "@/components/ui/button";
 
@@ -13,30 +13,32 @@ export function CalibrationRebootBanner({
 }) {
   const [dismissed, setDismissed] = useState(false);
   const [fadingOut, setFadingOut] = useState(false);
-  const lastHeartbeat = useDroneStore((s) => s.lastHeartbeat);
-  const prevHeartbeatRef = useRef(lastHeartbeat);
-  const rebootDetectedRef = useRef(false);
+  const [rebootDetected, setRebootDetected] = useState(false);
 
-  // Detect reboot: heartbeat gap > 2s then resume
+  // Detect reboot: a heartbeat gap > 2 s, seen when heartbeats resume.
+  useEffect(
+    () =>
+      useDroneStore.subscribe((state, prev) => {
+        if (prev.lastHeartbeat === 0 || state.lastHeartbeat === 0) return;
+        if (state.lastHeartbeat - prev.lastHeartbeat > 2000) setRebootDetected(true);
+      }),
+    [],
+  );
+
+  // Dismiss after the reboot. This effect depends only on the detection, so
+  // the heartbeats that keep arriving afterwards cannot cancel its timers.
   useEffect(() => {
-    if (dismissed) return;
-
-    const prev = prevHeartbeatRef.current;
-    prevHeartbeatRef.current = lastHeartbeat;
-
-    if (prev === 0 || lastHeartbeat === 0) return;
-
-    const gap = lastHeartbeat - prev;
-    if (gap > 2000 && !rebootDetectedRef.current) {
-      rebootDetectedRef.current = true;
-      const timer = setTimeout(() => {
-        setFadingOut(true);
-        const fadeTimer = setTimeout(() => setDismissed(true), 400);
-        return () => clearTimeout(fadeTimer);
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [lastHeartbeat, dismissed]);
+    if (!rebootDetected) return;
+    let fadeTimer: ReturnType<typeof setTimeout> | undefined;
+    const timer = setTimeout(() => {
+      setFadingOut(true);
+      fadeTimer = setTimeout(() => setDismissed(true), 400);
+    }, 3000);
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(fadeTimer);
+    };
+  }, [rebootDetected]);
 
   if (dismissed) return null;
 

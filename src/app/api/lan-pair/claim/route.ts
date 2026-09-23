@@ -18,10 +18,9 @@ import {
   proxyToAgent,
   readJsonEnvelope,
 } from "../_proxy";
+import { LAN_PAIR_UPSTREAM_TIMEOUT_MS } from "@/lib/agent/local-pair/transport";
 
 export const runtime = "nodejs";
-
-const UPSTREAM_TIMEOUT_MS = 8000;
 
 export async function POST(req: NextRequest) {
   const env = await readJsonEnvelope(req);
@@ -40,6 +39,6 @@ export async function POST(req: NextRequest) {
     path: "/api/pairing/claim",
     method: "POST",
     json: { user_id: userId },
-    timeoutMs: UPSTREAM_TIMEOUT_MS,
+    timeoutMs: LAN_PAIR_UPSTREAM_TIMEOUT_MS,
   });
 }

@@ -33,10 +33,11 @@ vi.mock("@/hooks/use-drone-plugin-contributions", () => ({
 // The iframe slot pulls in Convex; stub it to a marker that lists exactly the
 // contributions the body hands it (the ones that would mount as iframes).
 vi.mock("@/components/plugins/PluginSlot", () => ({
-  PluginSlot: (props: { contributions?: Array<{ pluginId: string }> }) => (
+  PluginSlot: (props: { contributions?: Array<{ pluginId: string; panelId: string }> }) => (
     <div
       data-testid="plugin-slot"
       data-mounted={(props.contributions ?? []).map((c) => c.pluginId).join(",")}
+      data-panels={(props.contributions ?? []).map((c) => c.panelId).join(",")}
     />
   ),
 }));
@@ -58,7 +59,7 @@ vi.mock("@/components/plugins/parameters/PluginParametersPanel", () => ({
   ),
 }));
 
-import { DroneDetailTabBody, pluginTabId } from "../DroneDetailTabHost";
+import { DroneDetailTabBody, pluginTabId, pluginTabIds } from "../DroneDetailTabHost";
 
 function contribution(
   over: Partial<DronePluginContribution> = {},
@@ -90,7 +91,7 @@ describe("DroneDetailTabBody", () => {
     render(
       <DroneDetailTabBody
         agentId="drone-1"
-        activeTabId={pluginTabId(c.installId)}
+        activeTabId={pluginTabId(c)}
       />,
     );
     const panel = screen.getByTestId("params-panel");
@@ -107,7 +108,7 @@ describe("DroneDetailTabBody", () => {
     render(
       <DroneDetailTabBody
         agentId="drone-1"
-        activeTabId={pluginTabId(c.installId)}
+        activeTabId={pluginTabId(c)}
       />,
     );
     // Panel present; the slot is still rendered (it self-empties when the
@@ -121,7 +122,7 @@ describe("DroneDetailTabBody", () => {
     render(
       <DroneDetailTabBody
         agentId="drone-1"
-        activeTabId={pluginTabId(c.installId)}
+        activeTabId={pluginTabId(c)}
       />,
     );
     expect(screen.queryByTestId("params-panel")).toBeNull();
@@ -138,10 +139,27 @@ describe("DroneDetailTabBody", () => {
       { pluginId: "com.example.thermal", panelId: "view", pluginInstallId: "install-thermal" },
     ];
     render(
-      <DroneDetailTabBody agentId="drone-1" activeTabId={pluginTabId(thermal.installId)} />,
+      <DroneDetailTabBody agentId="drone-1" activeTabId={pluginTabId(thermal)} />,
     );
     expect(screen.getByTestId("plugin-slot").getAttribute("data-mounted")).toBe(
       "com.example.thermal",
+    );
+  });
+
+  it("gives each tab of a multi-tab install its own id and mounts the selected one", () => {
+    const status = contribution({ panelId: "status", title: "Status" });
+    const calibration = contribution({ panelId: "calibration", title: "Calibration" });
+    contributionsRef.value = [status, calibration];
+    slotRef.value = [
+      { pluginId: "com.example.plugin", panelId: "status", pluginInstallId: "install-1" },
+      { pluginId: "com.example.plugin", panelId: "calibration", pluginInstallId: "install-1" },
+    ];
+    expect(new Set(pluginTabIds([status, calibration])).size).toBe(2);
+    render(
+      <DroneDetailTabBody agentId="drone-1" activeTabId={pluginTabId(calibration)} />,
+    );
+    expect(screen.getByTestId("plugin-slot").getAttribute("data-panels")).toBe(
+      "calibration",
     );
   });
 

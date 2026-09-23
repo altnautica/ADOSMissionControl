@@ -25,6 +25,12 @@ const HEADER_SIZE = 10;
 /** CRC size in bytes. */
 const CRC_SIZE = 2;
 
+/** MAVLink v1 start-of-frame marker. */
+const MAVLINK_V1_STX = 0xfe;
+
+/** v1 header: STX(1) + len(1) + seq(1) + sysid(1) + compid(1) + msgid(1) = 6 */
+const V1_HEADER_SIZE = 6;
+
 // ── CRC-16/MCRF4XX ─────────────────────────────────────────
 
 /**
@@ -55,7 +61,7 @@ export function crc16Accumulate(byte: number, crc: number): number {
 
 // ── Frame Type ──────────────────────────────────────────────
 
-/** A parsed MAVLink v2 frame. */
+/** A parsed MAVLink frame (v1 or v2). */
 export interface MAVLinkFrame {
   /** MAVLink message ID (0–16777215). */
   msgId: number;
@@ -95,12 +101,14 @@ export type SignedFrameObserver = (ctx: {
 // ── Parser ──────────────────────────────────────────────────
 
 /**
- * Streaming MAVLink v2 parser.
+ * Streaming MAVLink parser (v2, and v1 for links that still carry it).
  *
  * Feed raw bytes via `feed()`. The parser accumulates them in an
- * internal buffer, scans for 0xFD markers, validates each candidate
- * frame (length, CRC), restores zero-trimmed payloads, and emits
- * `MAVLinkFrame` objects to registered callbacks.
+ * internal buffer, scans for 0xFD (v2) and 0xFE (v1) markers, validates
+ * each candidate frame (length, CRC), restores zero-trimmed payloads, and
+ * emits `MAVLinkFrame` objects to registered callbacks. A vehicle whose
+ * port is set to MAVLink1 sends only v1 frames; dropping them left the
+ * connect failing with "no heartbeat" and no hint why.
  *
  * @example
  * ```ts
@@ -193,6 +201,12 @@ export class MAVLinkParser {
     let readPos = 0;
 
     while (readPos < this.writePos) {
+      if (this.buffer[readPos] === MAVLINK_V1_STX) {
+        const consumed = this.parseV1At(readPos);
+        if (consumed === null) break; // incomplete: wait for more bytes
+        readPos += consumed;
+        continue;
+      }
       // Scan for STX
       if (this.buffer[readPos] !== MAVLINK_STX) {
         readPos++;
@@ -255,34 +269,7 @@ export class MAVLinkParser {
         continue;
       }
 
-      // Extract payload (restore zero-trimmed trailing bytes)
-      const expectedLen = PAYLOAD_LENGTHS.get(msgId) ?? payloadLen;
-      const restored = new Uint8Array(expectedLen);
-      const copyLen = Math.min(payloadLen, expectedLen);
-      restored.set(
-        this.buffer.subarray(readPos + HEADER_SIZE, readPos + HEADER_SIZE + copyLen),
-      );
-      // Remaining bytes stay zero (Uint8Array is zero-initialized)
-
-      const frame: MAVLinkFrame = {
-        msgId,
-        systemId: sysId,
-        componentId: compId,
-        sequence: seq,
-        payload: new DataView(restored.buffer, restored.byteOffset, restored.byteLength),
-        timestamp: Date.now(),
-      };
-
-      // Emit. A throwing callback must not unwind through parseFrames and
-      // skip the remaining buffered frames or the buffer compaction below;
-      // isolate each subscriber the same way signed observers are isolated.
-      for (const cb of this.callbacks) {
-        try {
-          cb(frame);
-        } catch (err) {
-          console.warn('[MAVLink] frame callback threw, continuing parse', err);
-        }
-      }
+      this.emit(msgId, sysId, compId, seq, readPos + HEADER_SIZE, payloadLen);
 
       // Signed-frame observers: fire after frame emission. Copy the
       // signed region and signature tail into fresh buffers so observers
@@ -312,6 +299,61 @@ export class MAVLinkParser {
         this.buffer.copyWithin(0, readPos, this.writePos);
       }
       this.writePos -= readPos;
+    }
+  }
+
+  /**
+   * Try a v1 frame at `pos`: STX, len, seq, sysid, compid, msgid (one byte),
+   * payload, CRC over bytes 1..5+len plus CRC_EXTRA. Returns the bytes to
+   * advance (the frame length, or 1 to resync past a false marker), or null
+   * when the frame is not complete yet.
+   */
+  private parseV1At(pos: number): number | null {
+    if (this.writePos - pos < V1_HEADER_SIZE) return null;
+    const payloadLen = this.buffer[pos + 1];
+    const frameLen = V1_HEADER_SIZE + payloadLen + CRC_SIZE;
+    if (this.writePos - pos < frameLen) return null;
+    const msgId = this.buffer[pos + 5];
+    const crcExtra = CRC_EXTRA.get(msgId);
+    // Unknown id or a CRC mismatch: the 0xFE may be a payload byte. Resync by
+    // one byte, exactly as the v2 path does.
+    if (crcExtra === undefined) return 1;
+    const crc = crc16Accumulate(crcExtra, crc16(this.buffer, pos + 1, V1_HEADER_SIZE - 1 + payloadLen));
+    const wireCrc = this.buffer[pos + V1_HEADER_SIZE + payloadLen] | (this.buffer[pos + V1_HEADER_SIZE + payloadLen + 1] << 8);
+    if (crc !== wireCrc) {
+      this.crcFailures++;
+      return 1;
+    }
+    this.emit(msgId, this.buffer[pos + 3], this.buffer[pos + 4], this.buffer[pos + 2], pos + V1_HEADER_SIZE, payloadLen);
+    return frameLen;
+  }
+
+  /**
+   * Emit one validated frame whose payload starts at `payloadStart`. The
+   * payload is zero-restored to the message's full length (a v2 sender trims
+   * trailing zeros; a v1 frame never carries extensions).
+   */
+  private emit(msgId: number, systemId: number, componentId: number, sequence: number, payloadStart: number, payloadLen: number): void {
+    const expectedLen = PAYLOAD_LENGTHS.get(msgId) ?? payloadLen;
+    const restored = new Uint8Array(expectedLen);
+    restored.set(this.buffer.subarray(payloadStart, payloadStart + Math.min(payloadLen, expectedLen)));
+    const frame: MAVLinkFrame = {
+      msgId,
+      systemId,
+      componentId,
+      sequence,
+      payload: new DataView(restored.buffer, restored.byteOffset, restored.byteLength),
+      timestamp: Date.now(),
+    };
+    // A throwing callback must not unwind through parseFrames and skip the
+    // remaining buffered frames or the buffer compaction; isolate each
+    // subscriber the same way signed observers are isolated.
+    for (const cb of this.callbacks) {
+      try {
+        cb(frame);
+      } catch (err) {
+        console.warn('[MAVLink] frame callback threw, continuing parse', err);
+      }
     }
   }
 }

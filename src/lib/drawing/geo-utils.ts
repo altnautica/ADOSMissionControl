@@ -188,74 +188,6 @@ export function polygonBounds(vertices: [number, number][]): {
 }
 
 /**
- * Clip a line segment to a convex polygon using Sutherland-Hodgman.
- * Returns the clipped segment endpoints, or null if fully outside.
- *
- * WARNING: This algorithm only produces correct results for convex polygons.
- * Concave polygons will silently yield incorrect clipping results.
- * Use {@link isConvex} to validate the polygon before calling this function.
- */
-export function clipLineToPolygon(
-  lineStart: [number, number],
-  lineEnd: [number, number],
-  polygon: [number, number][]
-): [number, number][] | null {
-  if (polygon.length >= 3 && !isConvex(polygon)) {
-    console.warn("[geo-utils] clipLineToPolygon called with concave polygon — results may be incorrect");
-  }
-  let output: [number, number][] = [lineStart, lineEnd];
-
-  for (let i = 0; i < polygon.length; i++) {
-    if (output.length === 0) return null;
-    const edgeStart = polygon[i];
-    const edgeEnd = polygon[(i + 1) % polygon.length];
-    const input = output;
-    output = [];
-
-    for (let j = 0; j < input.length; j++) {
-      const current = input[j];
-      const prev = input[(j + input.length - 1) % input.length];
-      const currInside = isLeft(edgeStart, edgeEnd, current);
-      const prevInside = isLeft(edgeStart, edgeEnd, prev);
-
-      if (currInside) {
-        if (!prevInside) {
-          const inter = lineIntersect(prev, current, edgeStart, edgeEnd);
-          if (inter) output.push(inter);
-        }
-        output.push(current);
-      } else if (prevInside) {
-        const inter = lineIntersect(prev, current, edgeStart, edgeEnd);
-        if (inter) output.push(inter);
-      }
-    }
-  }
-
-  return output.length >= 2 ? output : null;
-}
-
-function isLeft(
-  a: [number, number],
-  b: [number, number],
-  p: [number, number]
-): boolean {
-  return (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]) >= 0;
-}
-
-function lineIntersect(
-  p1: [number, number],
-  p2: [number, number],
-  p3: [number, number],
-  p4: [number, number]
-): [number, number] | null {
-  const d = (p1[0] - p2[0]) * (p3[1] - p4[1]) - (p1[1] - p2[1]) * (p3[0] - p4[0]);
-  if (Math.abs(d) < 1e-12) return null;
-  const t =
-    ((p1[0] - p3[0]) * (p3[1] - p4[1]) - (p1[1] - p3[1]) * (p3[0] - p4[0])) / d;
-  return [p1[0] + t * (p2[0] - p1[0]), p1[1] + t * (p2[1] - p1[1])];
-}
-
-/**
  * Check if a polygon is convex. Vertices are [lat, lon].
  */
 export function isConvex(vertices: [number, number][]): boolean {
@@ -321,22 +253,6 @@ export function isSelfIntersecting(vertices: [number, number][]): boolean {
     }
   }
   return false;
-}
-
-/**
- * Format distance for display. Uses meters for <1000m, km otherwise.
- */
-export function formatDistance(meters: number): string {
-  if (meters >= 1000) return `${(meters / 1000).toFixed(2)} km`;
-  return `${Math.round(meters)} m`;
-}
-
-/**
- * Format area for display. Uses m² for <10000, km² otherwise.
- */
-export function formatArea(sqMeters: number): string {
-  if (sqMeters >= 10000) return `${(sqMeters / 1e6).toFixed(4)} km²`;
-  return `${Math.round(sqMeters)} m²`;
 }
 
 /**

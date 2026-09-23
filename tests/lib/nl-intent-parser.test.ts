@@ -157,6 +157,20 @@ describe("parseMissionIntent", () => {
     it("does not invent a place when no preposition is present", () => {
       expect(parseMissionIntent("survey this area at 60m")?.place).toBeUndefined();
     });
+
+    it('never takes the number after "radius of" as the place', () => {
+      expect(parseMissionIntent("orbit radius of 80m around the tower")).toEqual({
+        pattern: "orbit",
+        radiusM: 80,
+        place: "the tower",
+      });
+    });
+
+    it('skips "altitude of <number>" and finds the real place', () => {
+      const intent = parseMissionIntent("orbit at altitude of 120 metres around the mast");
+      expect(intent?.place).toBe("the mast");
+      expect(intent?.altitudeM).toBe(120);
+    });
   });
 
   it("combines every field from one rich command", () => {

@@ -29,7 +29,7 @@ import {
   type SwarmSeverityId,
 } from "./swarm-rows";
 import { useSwarmSlotRows } from "./use-swarm-slot-rows";
-import { useFleetHero } from "./use-fleet-hero";
+import type { FleetHero } from "./use-fleet-hero";
 import { SwarmBoardRow } from "./SwarmBoardRow";
 
 const HEAD_CELL =
@@ -60,6 +60,8 @@ export interface SwarmBoardTableProps {
   laneOptions: NodeCommandSinkOptions;
   /** The severity chip currently narrowing the board, or null for everything. */
   activeFilter: SwarmSeverityId | null;
+  /** The one hero request state `SwarmView` shares with the video rail. */
+  hero: FleetHero;
 }
 
 export function SwarmBoardTable({
@@ -71,9 +73,9 @@ export function SwarmBoardTable({
   onOpenAgent,
   laneOptions,
   activeFilter,
+  hero,
 }: SwarmBoardTableProps) {
   const t = useTranslations("swarmView.table");
-  const hero = useFleetHero();
 
   const slotRows = useSwarmSlotRows(rows, nodesBySlot);
   const visible = useMemo(

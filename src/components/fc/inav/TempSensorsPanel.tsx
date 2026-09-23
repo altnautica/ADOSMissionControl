@@ -8,11 +8,17 @@
 
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useDroneManager } from "@/stores/drone-manager";
+import { useClockStore } from "@/stores/clock-store";
+import { useClockTick } from "@/lib/agent/freshness";
+import { isFresh } from "@/lib/telemetry/freshness";
 import { PanelHeader } from "../shared/PanelHeader";
 import { Thermometer } from "lucide-react";
 import type { INavTempSensorConfigEntry } from "@/lib/protocol/msp/msp-decoders-inav";
+
+/** Live readings poll period (MSP2_INAV_TEMPERATURES). */
+const READINGS_POLL_MS = 1000;
 
 // ── Constants ─────────────────────────────────────────────────
 
@@ -40,6 +46,39 @@ export function TempSensorsPanel() {
   const [hasLoaded, setHasLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sensors, setSensors] = useState<INavTempSensorConfigEntry[]>([]);
+  /** Latest live readings (tenths of a degree C, null = no valid reading) and when they were read. */
+  const [readings, setReadings] = useState<{ values: (number | null)[]; at: number } | null>(null);
+
+  // Poll live readings once the configuration is loaded. A failed read keeps
+  // the old stamp, so the freshness gate below blanks the values.
+  useEffect(() => {
+    const protocol = getSelectedProtocol();
+    const getTemperatures = protocol?.getTemperatures?.bind(protocol);
+    if (!hasLoaded || !getTemperatures) return;
+    let inFlight = false;
+    const poll = async () => {
+      if (inFlight) return;
+      inFlight = true;
+      try {
+        const values = await getTemperatures();
+        setReadings({ values, at: Date.now() });
+      } catch { /* stale readings age out */ } finally {
+        inFlight = false;
+      }
+    };
+    void poll();
+    const timer = setInterval(poll, READINGS_POLL_MS);
+    return () => clearInterval(timer);
+  }, [hasLoaded, getSelectedProtocol]);
+
+  useClockTick();
+  const now = useClockStore((s) => s.now);
+  const live = readings !== null && isFresh(readings.at, now);
+  const liveReading = (idx: number): string => {
+    if (!live) return "—";
+    const v = readings.values[idx];
+    return v === null || v === undefined ? "no valid reading" : `${(v / 10).toFixed(1)}°C`;
+  };
 
   const handleRead = useCallback(async () => {
     const protocol = getSelectedProtocol();
@@ -83,7 +122,7 @@ export function TempSensorsPanel() {
               sensor.type === 0 ? null : (
                 <div
                   key={idx}
-                  className="border border-border-default rounded p-3 space-y-1 bg-surface-primary"
+                  className="border border-border-default rounded p-3 space-y-1 bg-bg-primary"
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-mono text-text-primary">
@@ -98,6 +137,9 @@ export function TempSensorsPanel() {
                   </p>
                   <p className="text-[10px] font-mono text-text-tertiary">
                     Alarm: {(sensor.alarmMin / 10).toFixed(1)}°C : {(sensor.alarmMax / 10).toFixed(1)}°C
+                  </p>
+                  <p className="text-[10px] font-mono text-text-secondary">
+                    Reading: {liveReading(idx)}
                   </p>
                   {sensor.label && (
                     <p className="text-[10px] font-mono text-text-tertiary">

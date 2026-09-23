@@ -11,6 +11,7 @@
 import { useCallback, useState } from "react";
 import { MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 import { useFollowMeStore } from "@/stores/follow-me-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { startFollowMe, stopFollowMe } from "@/lib/follow-me";
@@ -22,6 +23,7 @@ export function FollowMeButton() {
   const gcsAccuracy = useFollowMeStore((s) => s.gcsAccuracy);
   const droneName = useFollowMeStore((s) => s.droneName);
   const selectedId = useDroneManager((s) => s.selectedDroneId);
+  const { toast } = useToast();
   const [starting, setStarting] = useState(false);
 
   const handleToggle = useCallback(async () => {
@@ -29,20 +31,24 @@ export function FollowMeButton() {
       stopFollowMe();
       return;
     }
-    if (!selectedId) return;
+    if (!selectedId) {
+      toast("Follow-me not started: no drone is selected", "warning");
+      return;
+    }
 
     setStarting(true);
     try {
-      await startFollowMe(selectedId);
-    } catch {
-      // Geolocation error
+      const result = await startFollowMe(selectedId);
+      if (!result.ok) toast(`Follow-me not started: ${result.reason}`, "warning");
     } finally {
       setStarting(false);
     }
-  }, [isActive, selectedId]);
+  }, [isActive, selectedId, toast]);
 
-  // Accuracy color
-  const accColor = gcsAccuracy < 15
+  // Accuracy colour; neutral until the first GCS fix reports one.
+  const accColor = gcsAccuracy === null
+    ? "bg-text-tertiary"
+    : gcsAccuracy < 15
     ? "bg-status-success"
     : gcsAccuracy < 50
     ? "bg-status-warning"
@@ -74,7 +80,7 @@ export function FollowMeButton() {
       {isActive && (
         <div className="flex items-center gap-1 px-1.5 py-1 bg-bg-tertiary rounded text-[9px] font-mono text-text-secondary">
           <div className={cn("w-1.5 h-1.5 rounded-full", accColor)} />
-          {Math.round(gcsAccuracy)}m
+          {gcsAccuracy === null ? "—" : `${Math.round(gcsAccuracy)}m`}
         </div>
       )}
     </div>

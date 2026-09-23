@@ -29,7 +29,18 @@ export function GuidedTargetOverlay() {
   const distance = latestPos
     ? haversineDistance(latestPos.lat, latestPos.lon, target.lat, target.lon)
     : null;
-  const landing = target.purpose === "land";
+  const title =
+    target.purpose === "land"
+      ? "Repositioning to land point"
+      : target.purpose === "loiter"
+        ? "Repositioning to loiter point"
+        : "Flying to target";
+  const cancelLabel =
+    target.purpose === "land"
+      ? "Cancel land here and hold position"
+      : target.purpose === "loiter"
+        ? "Cancel loiter here and hold position"
+        : "Cancel guided target and hold position";
 
   const cancel = () => {
     const { droneId } = target;
@@ -45,7 +56,7 @@ export function GuidedTargetOverlay() {
         <Navigation size={12} className="text-accent-primary shrink-0" />
         <div className="flex flex-col">
           <span className="text-[10px] text-accent-primary font-semibold">
-            {landing ? "Repositioning to land point" : "Flying to target"}
+            {title}
           </span>
           <span className="text-[10px] text-text-secondary font-mono">
             {distance === null
@@ -56,8 +67,8 @@ export function GuidedTargetOverlay() {
         <button
           onClick={cancel}
           className="ml-2 p-1 text-text-tertiary hover:text-status-error transition-colors cursor-pointer"
-          title={landing ? "Cancel land here and hold position" : "Cancel guided target and hold position"}
-          aria-label={landing ? "Cancel land here and hold position" : "Cancel guided target and hold position"}
+          title={cancelLabel}
+          aria-label={cancelLabel}
         >
           <X size={12} />
         </button>

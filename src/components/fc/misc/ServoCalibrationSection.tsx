@@ -235,7 +235,7 @@ export function ServoCalibrationSection() {
   // PWM 2000 spins a motor — and this control had no armed gate and no
   // props-removed acknowledgement at all, unlike every sibling actuation
   // control (MotorTestSection, ServoTestSection, BfMotorTest, Px4ActuatorTest,
-  // BfDshotCommands). Its host's `ArmedLockOverlay` is deliberately
+  // BfDshotCommands). Its host's `ArmedWarningBanner` is deliberately
   // non-blocking, so nothing upstream stopped it either: the button stayed
   // clickable while the aircraft was armed and airborne.
   const { isHardBlocked, hardBlockMessage } = useArmedLock();
@@ -244,7 +244,9 @@ export function ServoCalibrationSection() {
     if (isHardBlocked) setTestEnabled(false);
   }, [isHardBlocked]);
 
-  const handleTest = useCallback((servo: number, pwm: number) => {
+  // ArduPilot refuses DO_SET_SERVO on a function-assigned output and MSP
+  // boards have no equivalent, so the toast reports the FC's answer.
+  const handleTest = useCallback(async (servo: number, pwm: number) => {
     if (isHardBlocked) {
       toast(hardBlockMessage, "error");
       return;
@@ -255,8 +257,13 @@ export function ServoCalibrationSection() {
     }
     const protocol = getSelectedProtocol();
     if (!protocol) return;
-    protocol.setServo(servo, pwm);
-    toast(`Servo ${servo} set to ${pwm}`, "info");
+    try {
+      const result = await protocol.setServo(servo, pwm);
+      if (result.success) toast(`Servo ${servo} set to ${pwm}`, "info");
+      else toast(`Servo ${servo} not set: ${result.message || "refused by the flight controller"}`, "error");
+    } catch (err) {
+      toast(`Servo ${servo} not set: ${err instanceof Error ? err.message : String(err)}`, "error");
+    }
   }, [getSelectedProtocol, toast, isHardBlocked, hardBlockMessage, testEnabled]);
 
   async function handleSave() {

@@ -5,7 +5,7 @@
  * shared logic behind the cockpit perception-health chip and the what's-locked
  * chip's "why did the lock go away" reason.
  *
- * The distinction these encode (Rule 44): a feed that WAS flowing and has now
+ * The distinction these encode (no fabricated reading): a feed that WAS flowing and has now
  * aged past {@link DETECTION_STALE_MS} is STALE / lost — the operator cannot
  * know what the drone sees — which is a different thing from a fresh feed that
  * simply has no detections in view. A dead offload link and a silent local
@@ -87,7 +87,7 @@ export const THROUGHPUT_WINDOW_MS = 3000;
  */
 export type PerceptionSessionState = "opening" | "live" | "stalled" | "closed";
 
-/** Fold a feed state + resolved tier into a session state (Rule 44 — `stalled`
+/** Fold a feed state + resolved tier into a session state (`stalled`
  * only when a feed had actually started; `opening` vs `closed` on an idle feed
  * turns on whether a real tier is running). */
 export function perceptionSessionState(
@@ -106,7 +106,7 @@ export function perceptionSessionState(
  * Live detection throughput (batches per second) over a rolling window,
  * computed from the receipt timestamps of a drone's recent batches. Returns
  * `null` when fewer than two samples fall in the window — too sparse to call a
- * rate honestly (Rule 44: never fabricate a rate from one sample). The value is
+ * rate honestly (never fabricate a rate from one sample). The value is
  * the observed arrival frequency (samples over their own span), so it is
  * accurate during warm-up and falls as samples age out of the window.
  */
@@ -137,7 +137,7 @@ export function batchesPerSecond(
  * `local` (on the node's own accelerator), `offload` (streamed to a
  * workstation, whose address rides in `detail`), or `auto` (a hybrid node that
  * splits pipelines across both). Returns `null` when the tier is unknown / none
- * so a target badge is never fabricated (Rule 44).
+ * so a target badge is never fabricated (no fabricated reading).
  */
 export interface ExecutionTarget {
   kind: "local" | "offload" | "auto";

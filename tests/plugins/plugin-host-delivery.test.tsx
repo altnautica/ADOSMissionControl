@@ -11,10 +11,10 @@
  */
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, waitFor } from "@testing-library/react";
+import { act, cleanup, render, waitFor } from "@testing-library/react";
 
 vi.mock("@/lib/agent/resolve-agent", () => ({
-  resolveLocalAgentForDrone: (droneId: string) =>
+  resolveLanAgent: (droneId: string) =>
     droneId === "drone-1" ? { agentUrl: "http://192.168.1.50:8080", apiKey: "k1" } : null,
 }));
 
@@ -100,6 +100,71 @@ describe("plugin agent state", () => {
       expect(state.map((m) => m.args)).toEqual([{ zoom: 3 }]);
     } finally {
       if (original) Object.defineProperty(proto, "contentWindow", original);
+    }
+  });
+});
+
+describe("plugin theme", () => {
+  it("delivers the host's theme tokens as theme.changed and re-sends on a theme switch", async () => {
+    // happy-dom holds each MutationObserver's listener through a WeakRef, so a
+    // garbage collection mid-test silently detaches it and the re-send never
+    // fires. A browser keeps it alive. The observer is replaced with one that
+    // delivers root mutations on demand, so the test exercises the host's
+    // re-read and re-send rather than the collector's timing.
+    const rootObservers: Array<{ callback: MutationCallback; live: boolean }> = [];
+    class ManualMutationObserver {
+      #entry: { callback: MutationCallback; live: boolean };
+      constructor(callback: MutationCallback) {
+        this.#entry = { callback, live: false };
+      }
+      observe(target: Node) {
+        if (target !== document.documentElement) return;
+        this.#entry.live = true;
+        rootObservers.push(this.#entry);
+      }
+      disconnect() {
+        this.#entry.live = false;
+      }
+      takeRecords(): MutationRecord[] {
+        return [];
+      }
+    }
+    vi.stubGlobal("MutationObserver", ManualMutationObserver);
+
+    const root = document.documentElement;
+    root.style.setProperty("--alt-bg-primary", "#0a0a0a");
+    const posted: Array<{ method?: string; args?: Record<string, string> }> = [];
+    const fakeWindow = {
+      postMessage: (data: { method?: string; args?: Record<string, string> }) => posted.push(data),
+    } as unknown as Window;
+    const proto = HTMLIFrameElement.prototype;
+    const original = Object.getOwnPropertyDescriptor(proto, "contentWindow");
+    Object.defineProperty(proto, "contentWindow", { configurable: true, get: () => fakeWindow });
+    try {
+      render(
+        <PluginIframeHost
+          pluginId="com.example.theme"
+          slot="drone.detail.tab"
+          bundleUrl="blob:theme"
+          grantedCapabilities={new Set()}
+          handlers={{}}
+        />,
+      );
+      const themes = () => posted.filter((m) => m.method === "theme.changed");
+      await waitFor(() =>
+        expect(themes().at(-1)?.args?.["--bg-primary"]).toBe("#0a0a0a"),
+      );
+
+      root.style.setProperty("--alt-bg-primary", "#fdf6e3");
+      const live = rootObservers.filter((o) => o.live);
+      expect(live).toHaveLength(1);
+      act(() => live[0].callback([], {} as MutationObserver));
+      await waitFor(() =>
+        expect(themes().at(-1)?.args?.["--bg-primary"]).toBe("#fdf6e3"),
+      );
+    } finally {
+      if (original) Object.defineProperty(proto, "contentWindow", original);
+      root.style.removeProperty("--alt-bg-primary");
     }
   });
 });

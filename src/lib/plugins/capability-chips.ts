@@ -1,27 +1,24 @@
 /**
  * @module CapabilityChips
  * @description Derives human-readable hardware-capability chips
- *   (Camera / NPU / GPS / IMU / Thermal / LIDAR) from the raw agent
- *   permission strings a plugin manifest declares. Used by the plugin
- *   install dialog and the per-drone plugin-backed catalog view so
- *   operators can see at a glance what hardware a plugin needs.
+ *   (Camera / NPU / IMU / Thermal / LIDAR) from what a plugin manifest
+ *   explicitly declares: hardware-binding permissions, sensor
+ *   registrations, inference permissions, the `hardware_requirements`
+ *   block and the declared telemetry fields. Used by the plugin install
+ *   dialog so operators can see at a glance what hardware a plugin needs.
+ *   A chip is shown only on an explicit declaration, never inferred from a
+ *   generic permission such as raw USB access or telemetry reads.
  *
  * @license GPL-3.0-only
  */
 
 /**
  * Stable chip identifiers. Render order in the UI follows array order:
- * Camera, NPU, GPS, IMU, Thermal, LIDAR. Extending this list is a
- * cross-stack change — the agent-side capability catalog must declare
+ * Camera, NPU, IMU, Thermal, LIDAR. Extending this list is a
+ * cross-stack change: the agent-side capability catalog must declare
  * the matching permission first.
  */
-export type CapabilityChipId =
-  | "camera"
-  | "npu"
-  | "gps"
-  | "imu"
-  | "thermal"
-  | "lidar";
+export type CapabilityChipId = "camera" | "npu" | "imu" | "thermal" | "lidar";
 
 export interface CapabilityChip {
   id: CapabilityChipId;
@@ -31,7 +28,6 @@ export interface CapabilityChip {
 const ALL_CHIPS: Readonly<Record<CapabilityChipId, CapabilityChip>> = {
   camera: { id: "camera", label: "Camera" },
   npu: { id: "npu", label: "NPU" },
-  gps: { id: "gps", label: "GPS" },
   imu: { id: "imu", label: "IMU" },
   thermal: { id: "thermal", label: "Thermal" },
   lidar: { id: "lidar", label: "LIDAR" },
@@ -42,41 +38,43 @@ const ALL_CHIPS: Readonly<Record<CapabilityChipId, CapabilityChip>> = {
 const RENDER_ORDER: readonly CapabilityChipId[] = [
   "camera",
   "npu",
-  "gps",
   "imu",
   "thermal",
   "lidar",
 ];
 
-/**
- * Optional context the chip resolver can use to suppress chips that
- * make no sense on the target drone. None today is a hard requirement —
- * an installer that doesn't know about FC connection state still gets a
- * complete chip list, the operator just sees a chip for a sensor the
- * drone advertises whether or not the FC is talking back.
- */
+/** Manifest declarations beyond the permission list that name hardware. */
 export interface ChipDerivationContext {
-  /** True when the agent reports an FC handshake. When false, GPS and
-   * IMU chips drop unless a plugin explicitly declares the dedicated
-   * sensor.imu.register permission (which means it owns the IMU
-   * directly, not via MAVLink). */
-  fcConnected?: boolean;
-  /** Plugin's declared vendor-binary attribution entries. Used to
-   * detect NPU vendor SDKs (rknn, tensorrt, snpe). The structure
-   * matches the agent manifest's `vendor_attribution` list — each
-   * entry's `name` field is matched case-insensitively against the
-   * NPU vendor list. Plugins that spawn rknn_toolkit, tensorrt, etc.
-   * trigger the NPU chip even without `mavlink.component.vio`. */
-  vendorAttribution?: ReadonlyArray<{
-    name?: string;
-    license?: string;
-    source_url?: string;
-  }>;
+  /** Declared vendor-binary attribution entries. An entry whose `name`
+   * names a known NPU runtime (rknn, tensorrt, snpe, openvino) marks a
+   * plugin that spawns an NPU inference helper. */
+  vendorAttribution?: ReadonlyArray<{ name?: string }>;
+  /** The manifest's `hardware_requirements` block. A non-empty `cameras`
+   * entry is an explicit camera requirement. */
+  hardwareRequirements?: { cameras?: string };
+  /** The manifest's `telemetry_fields`. A `thermal` field means the plugin
+   * publishes a thermal-sensor stream, so it needs a thermal camera. */
+  telemetryFields?: ReadonlyArray<string>;
 }
+
+/** Permissions that bind or register a camera. */
+const CAMERA_PERMISSIONS: readonly string[] = [
+  "hardware.camera.csi",
+  "hardware.usb.uvc",
+  "sensor.camera.register",
+  "mavlink.component.camera",
+  "vision.frame.read",
+];
+
+/** Permissions that load a model onto, or stream through, the NPU. */
+const NPU_PERMISSIONS: readonly string[] = [
+  "vision.model.register",
+  "compute.stream.open",
+];
 
 /** Lower-cased substrings that, when present in a vendor-attribution
  * name, mean the plugin is bundling an NPU runtime. Keep this list
- * tight — false positives surface a misleading NPU chip on plugins
+ * tight: false positives surface a misleading NPU chip on plugins
  * that ship a non-NPU vendor binary. */
 const NPU_VENDOR_HINTS: readonly string[] = [
   "rknn",
@@ -91,8 +89,8 @@ const NPU_VENDOR_HINTS: readonly string[] = [
  * each entry is the canonical capability id (e.g. "hardware.usb.uvc").
  *
  * Returns chips in `RENDER_ORDER`. Unknown permission strings are
- * ignored — the install dialog still lists them in the raw permission
- * table; chip derivation is best-effort hardware-summary surface area.
+ * ignored: the install dialog still lists them in the raw permission
+ * table.
  */
 export function permissionsToChips(
   permissions: readonly string[],
@@ -101,73 +99,38 @@ export function permissionsToChips(
   const declared = new Set(permissions);
   const found = new Set<CapabilityChipId>();
 
-  // Camera: any of the camera-binding capabilities.
   if (
-    declared.has("hardware.camera.csi") ||
-    declared.has("hardware.usb.uvc") ||
-    declared.has("sensor.camera.register") ||
-    declared.has("mavlink.component.camera")
+    CAMERA_PERMISSIONS.some((p) => declared.has(p)) ||
+    (context.hardwareRequirements?.cameras ?? "").trim() !== ""
   ) {
     found.add("camera");
   }
 
-  // NPU: explicit estimator paths, or a vendor-attribution entry that
-  // names a known NPU runtime. `process.spawn` alone is not enough —
-  // a plugin can spawn a non-inference helper too. The vendor hint
-  // is the load-bearing signal.
-  if (declared.has("mavlink.component.vio")) {
-    found.add("npu");
-  } else if (
-    declared.has("process.spawn") &&
-    context.vendorAttribution?.some((entry) =>
-      isNpuVendor(entry.name ?? ""),
-    )
-  ) {
-    found.add("npu");
-  }
-
-  // GPS: MAVLink position telemetry is the standard surface. Requires
-  // an FC handshake; without FC there is no GPS over MAVLink.
+  // `process.spawn` alone is not enough: a plugin can spawn a
+  // non-inference helper. The NPU vendor attribution is the load-bearing
+  // signal on that path.
   if (
-    (context.fcConnected ?? true) &&
-    declared.has("telemetry.read")
+    NPU_PERMISSIONS.some((p) => declared.has(p)) ||
+    (declared.has("process.spawn") &&
+      context.vendorAttribution?.some((entry) => {
+        const lower = (entry.name ?? "").toLowerCase();
+        return NPU_VENDOR_HINTS.some((hint) => lower.includes(hint));
+      }))
   ) {
-    found.add("gps");
+    found.add("npu");
   }
 
-  // IMU: a plugin registering its own IMU driver always gets the chip
-  // (the driver owns the IMU directly). Otherwise an FC handshake
-  // implies an IMU through MAVLink.
   if (declared.has("sensor.imu.register")) {
     found.add("imu");
-  } else if (
-    (context.fcConnected ?? true) &&
-    declared.has("telemetry.read")
-  ) {
-    found.add("imu");
   }
 
-  // Thermal: a plugin claiming raw USB access is most likely binding
-  // a thermal-camera UVC device (FLIR Lepton, PureThermal, etc.).
-  // hardware.usb.uvc on its own falls into Camera above — this branch
-  // catches the wider hardware.usb permission which is what thermal
-  // shims declare when they need vendor-tool ioctls beyond UVC.
-  if (
-    declared.has("hardware.usb") &&
-    !declared.has("hardware.usb.uvc")
-  ) {
+  if (context.telemetryFields?.includes("thermal")) {
     found.add("thermal");
   }
 
-  // LIDAR: dedicated registration permission.
   if (declared.has("sensor.lidar.register")) {
     found.add("lidar");
   }
 
   return RENDER_ORDER.filter((id) => found.has(id)).map((id) => ALL_CHIPS[id]);
-}
-
-function isNpuVendor(name: string): boolean {
-  const lower = name.toLowerCase();
-  return NPU_VENDOR_HINTS.some((hint) => lower.includes(hint));
 }

@@ -4,12 +4,12 @@
  * plugin's exposed tools / resources / prompts, its trust (first-party signer vs
  * untrusted), and whether it holds the mcp.expose capability.
  *
- * Source: every LAN-paired node's own plugin list and plugin detail
+ * The view is read from every LAN-paired node's own plugin list and detail
  * (`GET /api/plugins`, `GET /api/plugins/{id}`: granted capabilities plus the
  * manifest's MCP contributions), the same read the MCP server uses to register
  * plugin tools. When no node answers, the view reports discovery as
- * unavailable rather than claiming no plugin exposes tools. Demo mode loads the
- * demo set.
+ * unavailable rather than claiming no plugin exposes tools. In demo mode the
+ * demo provider seeds the store and nothing is read from the network.
  * @license GPL-3.0-only
  */
 
@@ -128,13 +128,10 @@ export const useMcpPluginStore = create<McpPluginState>()((set, get) => ({
   plugins: [],
   status: "idle",
   load: async () => {
-    if (get().status === "loading") return;
+    // Demo data is seeded by the demo provider; never read the demo fleet's
+    // synthetic LAN nodes over the network.
+    if (isDemoMode() || get().status === "loading") return;
     set({ status: "loading" });
-    if (isDemoMode()) {
-      const { getDemoMcpPlugins } = await import("@/mock/mock-mcp-plugins");
-      set({ plugins: getDemoMcpPlugins(), status: "ready" });
-      return;
-    }
     const nodes = useLocalNodesStore
       .getState()
       .nodes.filter((n) => n.hostname && n.apiKey);

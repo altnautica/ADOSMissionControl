@@ -19,6 +19,10 @@ import type { StatusLevel } from "@/components/ui/status-dot";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
 import { useComputeStore } from "@/stores/compute-store";
+import { useDroneStore } from "@/stores/drone-store";
+import { useClockStore } from "@/stores/clock-store";
+import { useClockTick } from "@/lib/agent/freshness";
+import { isFresh } from "@/lib/telemetry/freshness";
 
 export type { EffProfile };
 
@@ -57,14 +61,22 @@ export function useNodeBrand(args: {
   /** When set, the display name of the ground node this drone is reached
    * through over WFB. Surfaces a "linked via WFB through <node>" sub-badge. */
   reachedViaName?: string | null;
+  /** Whether the GCS holds a managed FC session for this node
+   * (`SurfaceContext.isConnected`). A bare flight controller has no agent,
+   * so its status comes from this session, never the agent connection. */
+  fcConnected?: boolean;
 }): NodeBrandDescriptor {
-  const { profile, title, reachedViaName } = args;
+  const { profile, title, reachedViaName, fcConnected = false } = args;
   const t = useTranslations("nodeConsole");
   const connected = useAgentConnectionStore((s) => s.connected);
   const stale = useAgentSystemStore((s) => s.stale);
   const cluster = useComputeStore((s) => s.cluster);
   const gpu = useComputeStore((s) => s.gpu);
-
+  // The open node's FC heartbeat (the panel selects the node it shows), aged
+  // on the shared clock so a silent link reads as reconnecting.
+  const fcHeartbeatAt = useDroneStore((s) => s.lastHeartbeat);
+  useClockTick();
+  const now = useClockStore((s) => s.now);
   let statusLine: string;
   let statusLevel: StatusLevel;
   let subBadge: string | undefined;
@@ -87,10 +99,19 @@ export function useNodeBrand(args: {
       statusLevel = "idle";
     }
     if (gpu?.metal) subBadge = gpu.metal;
+  } else if (profile === "flight-controller") {
+    if (fcConnected && isFresh(fcHeartbeatAt, now)) {
+      statusLine = t("hero.online");
+      statusLevel = "good";
+    } else if (fcConnected) {
+      statusLine = t("hero.reconnecting");
+      statusLevel = "serious";
+    } else {
+      statusLine = t("hero.offline");
+      statusLevel = "offline";
+    }
   } else {
-    // drone / flight-controller / ground-station: a connectivity line for now;
-    // P4 enriches the drone/FC line (arm/mode/GPS/heartbeat) and P6 the GS line
-    // (RX/uplink/mesh).
+    // drone / ground-station: the node's agent connection.
     if (connected) {
       statusLine = t("hero.online");
       statusLevel = "good";
@@ -101,11 +122,11 @@ export function useNodeBrand(args: {
       statusLine = t("hero.offline");
       statusLevel = "offline";
     }
-    // A WFB-linked drone reached transitively through a ground node names its
-    // reach hop as the sub-badge.
-    if (reachedViaName) {
-      subBadge = t("provenance.linkedViaWfbShort", { node: reachedViaName });
-    }
+  }
+  // A WFB-linked node reached transitively through a ground node names its
+  // reach hop as the sub-badge.
+  if (profile !== "workstation" && reachedViaName) {
+    subBadge = t("provenance.linkedViaWfbShort", { node: reachedViaName });
   }
 
   return {

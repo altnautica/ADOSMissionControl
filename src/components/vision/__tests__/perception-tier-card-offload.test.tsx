@@ -44,6 +44,7 @@ import { renderWithIntl } from "../../../../tests/helpers/intl-wrapper";
 import { PerceptionTierCard } from "@/components/vision/PerceptionTierCard";
 import { ComputeAgentClient } from "@/lib/agent/compute-client";
 import { useLocalNodesStore, type LocalNode } from "@/stores/local-nodes-store";
+import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 
 const WORKSTATION = {
   deviceId: "ws-1",
@@ -84,5 +85,33 @@ describe("PerceptionTierCard offload controls", () => {
     renderWithIntl(<PerceptionTierCard droneId="drone-1" nodeDeviceId="node-1" />);
     const trigger = screen.getByText("Bench workstation").closest("button");
     expect(trigger?.disabled).toBe(true);
+  });
+});
+
+describe("PerceptionTierCard accelerator line", () => {
+  afterEach(cleanup);
+
+  it("does not claim 'no accelerator' before the node reports its compute", () => {
+    useAgentCapabilitiesStore.setState({
+      loaded: false,
+      hasAccelerator: undefined,
+      npuTops: undefined,
+      compute: { npu_available: false, npu_runtime: null, npu_tops: 0, npu_utilization_pct: 0, gpu_available: false },
+    });
+    renderWithIntl(<PerceptionTierCard droneId="drone-1" nodeDeviceId="node-1" />);
+    expect(screen.queryByText(/No local accelerator/)).toBeNull();
+    expect(screen.getByText(/Accelerator not reported yet/)).toBeTruthy();
+  });
+
+  it("words a GPU-only node without a 0.0 TOPS figure", () => {
+    useAgentCapabilitiesStore.setState({
+      loaded: true,
+      hasAccelerator: true,
+      npuTops: 0,
+      compute: { npu_available: false, npu_runtime: null, npu_tops: 0, npu_utilization_pct: 0, gpu_available: true },
+    });
+    renderWithIntl(<PerceptionTierCard droneId="drone-1" nodeDeviceId="node-1" />);
+    expect(screen.queryByText(/0\.0 TOPS/)).toBeNull();
+    expect(screen.getByText(/Local accelerator present/)).toBeTruthy();
   });
 });

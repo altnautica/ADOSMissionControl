@@ -8,7 +8,7 @@
  * shared with the canvas HUDs' rAF loop, so a DOM instrument and the canvas
  * beside it cannot disagree about whether a reading is known. A stale/absent
  * sample yields `null`, so an instrument shows "—" rather than a fabricated 0
- * (Rule 44).
+ * (no fabricated reading).
  *
  * Re-renders are driven by TWO signals, and both are load-bearing:
  * the store's `_version` (new telemetry arrived) and the shared 1 Hz clock tick

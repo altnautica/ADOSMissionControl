@@ -2,18 +2,18 @@
 
 /**
  * @module CommandFleetMqttBridge
- * @description Subscribes to telemetry topics for all paired Command agents.
+ * @description Subscribes to telemetry topics for all paired Command agents on
+ * the deployment's configured broker, once the operator's broker credential
+ * has been minted. With no configured broker or no credential it dials
+ * nothing.
  * @license GPL-3.0-only
  */
 
 import { useEffect, useMemo, useRef } from "react";
 import type { PairedDrone } from "@/stores/pairing-store";
 import { useCommandFleetStore, type CommandTelemetrySnapshot } from "@/stores/command-fleet-store";
-import { OFFICIAL_MQTT_WS_URL } from "@/lib/config/endpoints";
 import { getMqttBrokerCredential } from "@/lib/mqtt-broker-credential";
 import { useMqttControlGrantStore } from "@/stores/mqtt-control-grant-store";
-
-const MQTT_WS_URL_DEFAULT = OFFICIAL_MQTT_WS_URL;
 
 type MqttClient = {
   on: (event: string, cb: (...args: unknown[]) => void) => void;
@@ -40,6 +40,13 @@ export function CommandFleetMqttBridge({
 
   useEffect(() => {
     if (deviceIds.length === 0) return;
+    // Only the broker the deployment configured, and only as the operator:
+    // an anonymous dial to a broker that requires auth is refused on every
+    // reconnect. The credential epoch in the deps re-runs this once it lands.
+    const cred = getMqttBrokerCredential();
+    if (!mqttBrokerUrl || !cred) return;
+    const brokerUrl = mqttBrokerUrl;
+    const { username, password } = cred;
     let cancelled = false;
 
     async function connectMqtt() {
@@ -57,14 +64,11 @@ export function CommandFleetMqttBridge({
           protocolVersion: 5,
           clean: true,
           reconnectPeriod: 5000,
+          username,
+          password,
         };
-        const cred = getMqttBrokerCredential();
-        if (cred) {
-          connectOptions.username = cred.username;
-          connectOptions.password = cred.password;
-        }
         const client = (connectFn as typeof mqttModule.connect)(
-          mqttBrokerUrl || MQTT_WS_URL_DEFAULT,
+          brokerUrl,
           connectOptions,
         ) as unknown as MqttClient & {
           on: (event: "message", cb: (topic: string, payload: { toString: () => string }) => void) => void;
@@ -81,6 +85,24 @@ export function CommandFleetMqttBridge({
             });
           }
         });
+
+        // mqtt.js emits 'error' on a refused CONNACK and on connack/keepalive
+        // timeouts. Client extends EventEmitter, so an 'error' with no
+        // listener is rethrown as an uncaught exception. The client keeps its
+        // own reconnect timer, so this reports and lets it retry.
+        client.on("error", (...args: unknown[]) => {
+          const err = args[0];
+          console.warn(
+            "[CommandFleetMqttBridge] client error:",
+            err instanceof Error ? err.message : String(err),
+          );
+        });
+        // The link is down: the last readings describe nothing live.
+        const dropTelemetry = () => {
+          if (!cancelled) useCommandFleetStore.getState().clearTelemetry(deviceIds);
+        };
+        client.on("offline", dropTelemetry);
+        client.on("close", dropTelemetry);
 
         client.on("message", (topic, payload) => {
           if (cancelled) return;

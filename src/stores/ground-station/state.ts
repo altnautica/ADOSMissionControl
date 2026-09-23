@@ -14,7 +14,10 @@ import type {
   EthernetConfig,
   EthernetConfigUpdate,
   GroundStationApi,
+  GroundStationLinkHealth,
   GroundStationRole,
+  GroundStationStatus,
+  WfbConfig,
   MeshGatewayPreferenceUpdate,
   ModemView,
   ModemUpdate,
@@ -30,15 +33,12 @@ import type {
   BluetoothSlice,
   DistributedRxSlice,
   GamepadsSlice,
-  GroundStationLinkHealth,
-  GroundStationStatus,
   MeshSlice,
   PairSlice,
   PeripheralsSlice,
   PicSlice,
   RoleSlice,
   UplinkSlice,
-  WfbConfig,
   WifiScanCache,
 } from "./types";
 
@@ -54,12 +54,17 @@ export interface GroundStationState {
    * heartbeat). Separate from `lastFetchedAt`, which is the LAN link-health
    * stamp the radio source picker keys on. */
   statusFetchedAt: number | null;
+  /** Epoch ms `linkHealth` was last refreshed, by a LAN status read or a
+   * cloud heartbeat's radio block. The link card ages the reading on this. */
+  linkHealthAt: number | null;
 
   // pair / network slice
   network: NetworkStatus | null;
   ap: ApStatus | null;
   pair: PairSlice;
   ui: UiConfig | null;
+  /** Agent origin `ui` belongs to (see pair-store). */
+  uiFor: string | null;
 
   // peripherals slice (PIC, gamepads, bluetooth, display, peripheral manager)
   pic: PicSlice;
@@ -73,6 +78,8 @@ export interface GroundStationState {
   modem: ModemView | null;
   uplink: UplinkSlice;
   ethernetConfig: EthernetConfig | null;
+  /** Agent origin the load-once uplink slices belong to (see uplink-store). */
+  uplinkFor: string | null;
 
   // mesh slice (role, distributed rx, batman-adv mesh, gateways)
   role: RoleSlice;
@@ -95,7 +102,7 @@ export interface GroundStationState {
   // pair / network actions
   loadNetwork: (api: GroundStationApi) => Promise<void>;
   applyAp: (api: GroundStationApi, update: ApUpdate) => Promise<ApStatus | null>;
-  loadUi: (api: GroundStationApi) => Promise<void>;
+  loadUi: (api: GroundStationApi) => Promise<UiConfig | null>;
   applyOled: (api: GroundStationApi, update: OledUpdate) => Promise<UiConfig | null>;
   applyScreens: (
     api: GroundStationApi,
@@ -138,17 +145,6 @@ export interface GroundStationState {
     api: GroundStationApi,
     id: string,
   ) => Promise<PeripheralDetail | null>;
-  configurePeripheral: (
-    api: GroundStationApi,
-    id: string,
-    config: Record<string, unknown>,
-  ) => Promise<boolean>;
-  invokePeripheralAction: (
-    api: GroundStationApi,
-    id: string,
-    actionId: string,
-    body?: Record<string, unknown>,
-  ) => Promise<{ queued: boolean; result?: unknown } | null>;
 
   // uplink actions
   scanWifiNetworks: (

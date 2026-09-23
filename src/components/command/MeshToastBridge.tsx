@@ -13,6 +13,7 @@ import { useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { useToast } from "@/components/ui/toast";
 import { useGroundStationStore } from "@/stores/ground-station-store";
+import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 
 const RECENT_DEDUP_MS = 1500;
 const DEDUP_MAX_KEYS = 100;
@@ -22,6 +23,7 @@ export function MeshToastBridge() {
   const { toast } = useToast();
   const meshHealth = useGroundStationStore((s) => s.mesh.health);
   const selectedGateway = useGroundStationStore((s) => s.mesh.selectedGateway);
+  const focusedNode = useAgentConnectionStore((s) => s.nodeDeviceId);
 
   const partitionedRef = useRef<boolean>(false);
   const gatewayRef = useRef<string | null>(null);
@@ -51,9 +53,22 @@ export function MeshToastBridge() {
     toast(message, status);
   };
 
+  // A node switch is not a transition: re-baseline the refs to whatever the
+  // newly focused ground station reports, so its first reading is never
+  // compared against the previous node's. Declared before the transition
+  // effects so it runs first in the same commit.
+  useEffect(() => {
+    partitionedRef.current = meshHealth?.partition ?? false;
+    gatewayRef.current = selectedGateway;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusedNode]);
+
   // Partition status transitions.
   useEffect(() => {
-    if (!meshHealth) return;
+    if (!meshHealth) {
+      partitionedRef.current = false;
+      return;
+    }
     if (meshHealth.partition && !partitionedRef.current) {
       fire("partitioned", t("partitioned"), "error");
     }

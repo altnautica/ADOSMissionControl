@@ -341,17 +341,13 @@ describe('encodeFencePoint (ID 160)', () => {
 });
 
 describe('encodeFenceFetchPoint (ID 161)', () => {
-  it('encodes idx and pads to the canonical payload length', () => {
+  it('encodes the three-byte message: target system/component and idx', () => {
     const frame = encodeFenceFetchPoint(1, 1, 4, 255, 190);
-    assertFrameEnvelope(frame, 161, 6, 255, 190);
+    assertFrameEnvelope(frame, 161, 3, 255, 190);
     const dv = payloadView(frame);
     expect(dv.getUint8(0)).toBe(1); // targetSys
     expect(dv.getUint8(1)).toBe(1); // targetComp
     expect(dv.getUint8(2)).toBe(4); // idx
-    // Bytes 3..5 stay zero-padded.
-    expect(dv.getUint8(3)).toBe(0);
-    expect(dv.getUint8(4)).toBe(0);
-    expect(dv.getUint8(5)).toBe(0);
     expect(roundTrip(frame)).not.toBeNull();
   });
 });

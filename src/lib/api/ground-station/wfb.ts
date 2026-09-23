@@ -1,6 +1,5 @@
 // WFB-ng radio config plus distributed receive (relay and receiver) status.
 
-import type { WfbConfig } from "@/stores/ground-station-store";
 import type {
   AutoPairToggleResponse,
   LocalBindSession,
@@ -9,6 +8,7 @@ import type {
   SetTxPowerResult,
   UnpairResult,
   VideoConfigResponse,
+  WfbConfig,
   WfbReceiverCombined,
   WfbReceiverRelay,
   WfbReceiverRelays,
@@ -21,13 +21,6 @@ export type LinkPreset = "conservative" | "balanced" | "aggressive";
 
 export function getWfb(ctx: RequestContext): Promise<WfbConfig> {
   return gsRequest<WfbConfig>(ctx, "/api/v1/ground-station/wfb");
-}
-
-export function setWfb(ctx: RequestContext, partial: Partial<WfbConfig>): Promise<WfbConfig> {
-  return gsRequest<WfbConfig>(ctx, "/api/v1/ground-station/wfb", {
-    method: "PUT",
-    body: JSON.stringify(partial),
-  });
 }
 
 /** Set the requested TX power in dBm. The agent clamps to the active
@@ -187,13 +180,6 @@ export function openLocalBind(
     { method: "POST", body: JSON.stringify(options) },
     LOCAL_BIND_TIMEOUT_MS,
   );
-}
-
-/** Snapshot of the most recent bind session, or `{}` if none has run. */
-export function getLocalBindStatus(
-  ctx: RequestContext,
-): Promise<LocalBindSession | Record<string, never>> {
-  return gsRequest(ctx, "/api/wfb/pair/local-bind");
 }
 
 /** Pair-state snapshot: paired flag, peer device-id, fingerprint, role,

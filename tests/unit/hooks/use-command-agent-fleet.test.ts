@@ -175,6 +175,38 @@ describe("useCommandAgentFleet — ground-station video guard", () => {
   });
 });
 
+describe("useCommandAgentFleet — telemetry of a silent node", () => {
+  const telemetry = { armed: true, mode: "AUTO", battery: { remaining: 55 } };
+
+  it("reports no flight state for a node that has gone offline", () => {
+    const heardAt = NOW - 5 * 60_000;
+    const node = makePaired({ deviceId: "d-off", lastSeen: heardAt });
+    seed([makeStatus({ deviceId: "d-off", updatedAt: heardAt, telemetry })]);
+
+    const { result } = renderHook(() =>
+      useCommandAgentFleet([node], new Set(), new Set()),
+    );
+    const agent = result.current[0];
+    expect(agent.liveness).toBe("offline");
+    expect(agent.telemetry.armed).toBeNull();
+    expect(agent.telemetry.mode).toBeNull();
+    expect(agent.telemetry.batteryRemaining).toBeNull();
+  });
+
+  it("reports the flight state of a node that is being heard from", () => {
+    const node = makePaired({ deviceId: "d-live" });
+    seed([makeStatus({ deviceId: "d-live", telemetry })]);
+
+    const { result } = renderHook(() =>
+      useCommandAgentFleet([node], new Set(), new Set()),
+    );
+    const agent = result.current[0];
+    expect(agent.liveness).toBe("live");
+    expect(agent.telemetry.armed).toBe(true);
+    expect(agent.telemetry.batteryRemaining).toBe(55);
+  });
+});
+
 const FUNNELED_URL = "http://192.168.1.50:8889/main/whep";
 
 /** A relayed drone's funneled feed row points at the ground node's WHEP with no

@@ -13,6 +13,7 @@ import dynamic from "next/dynamic";
 import { X } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import type { FlightRecord } from "@/lib/types";
+import { formatDuration } from "@/lib/utils";
 
 const OverlayMapInner = dynamic(() => import("./OverlayMapInner"), {
   ssr: false,
@@ -89,14 +90,17 @@ function Legend({ records }: { records: FlightRecord[] }) {
 
 // ── Stats table ──────────────────────────────────────────────
 
+/** Shown for a value the flight did not measure. */
+const NO_VALUE = "—";
+
 function OverlayStatsTable({ records }: { records: FlightRecord[] }) {
   const metrics = useMemo(() => [
-    { label: "Duration", unit: "", fmt: (r: FlightRecord) => `${Math.floor(r.duration / 60)}m${(r.duration % 60).toString().padStart(2, "0")}s` },
-    { label: "Distance", unit: "km", fmt: (r: FlightRecord) => (r.distance / 1000).toFixed(2) },
-    { label: "Max alt", unit: "m", fmt: (r: FlightRecord) => r.maxAlt.toFixed(0) },
-    { label: "Max speed", unit: "m/s", fmt: (r: FlightRecord) => r.maxSpeed.toFixed(1) },
-    { label: "Avg speed", unit: "m/s", fmt: (r: FlightRecord) => (r.avgSpeed ?? 0).toFixed(1) },
-    { label: "Battery", unit: "%", fmt: (r: FlightRecord) => r.batteryUsed.toFixed(0) },
+    { label: "Duration", unit: "", fmt: (r: FlightRecord) => formatDuration(Math.round(r.duration)) },
+    { label: "Distance", unit: "km", fmt: (r: FlightRecord) => (r.distance !== undefined ? (r.distance / 1000).toFixed(2) : NO_VALUE) },
+    { label: "Max alt", unit: "m", fmt: (r: FlightRecord) => (r.maxAlt !== undefined ? r.maxAlt.toFixed(0) : NO_VALUE) },
+    { label: "Max speed", unit: "m/s", fmt: (r: FlightRecord) => (r.maxSpeed !== undefined ? r.maxSpeed.toFixed(1) : NO_VALUE) },
+    { label: "Avg speed", unit: "m/s", fmt: (r: FlightRecord) => (r.avgSpeed !== undefined ? r.avgSpeed.toFixed(1) : NO_VALUE) },
+    { label: "Battery", unit: "%", fmt: (r: FlightRecord) => (r.batteryUsed !== undefined ? r.batteryUsed.toFixed(0) : NO_VALUE) },
   ], []);
 
   return (
@@ -119,7 +123,7 @@ function OverlayStatsTable({ records }: { records: FlightRecord[] }) {
                 <td className="py-1.5 px-2 text-text-secondary">{m.label}</td>
                 {records.map((r) => (
                   <td key={r.id} className="py-1.5 px-2 text-right text-text-primary font-mono tabular-nums">
-                    {m.fmt(r)} {m.unit}
+                    {m.fmt(r) === NO_VALUE ? NO_VALUE : `${m.fmt(r)} ${m.unit}`}
                   </td>
                 ))}
               </tr>

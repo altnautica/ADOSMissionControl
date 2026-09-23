@@ -13,13 +13,14 @@ import {
   ReferenceDot,
 } from "recharts";
 import type { FFTAxisResult } from "@/lib/analysis/types";
+import { AXIS_COLORS, CHART_ERROR, CHART_GRID, CHART_LABEL, CHART_TICK, CHART_TOOLTIP_LABEL_STYLE, CHART_TOOLTIP_STYLE, CHART_WARNING } from "../chart-theme";
 
 interface PidFFTChartProps {
   data: FFTAxisResult;
   color?: string;
 }
 
-export function PidFFTChart({ data, color = "#3A82FF" }: PidFFTChartProps) {
+export function PidFFTChart({ data, color = AXIS_COLORS.roll }: PidFFTChartProps) {
   const chartData = useMemo(
     () =>
       data.spectrum
@@ -53,42 +54,37 @@ export function PidFFTChart({ data, color = "#3A82FF" }: PidFFTChartProps) {
     <div className="h-[200px]">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={chartData} margin={{ top: 8, right: 8, bottom: 4, left: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+          <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} />
           <XAxis
             dataKey="frequency"
             type="number"
             domain={[0, 500]}
-            tick={{ fill: "#6b7280", fontSize: 10 }}
-            label={{ value: "Hz", position: "insideBottomRight", offset: -4, fill: "#6b7280", fontSize: 10 }}
+            tick={{ fill: CHART_TICK, fontSize: 10 }}
+            label={{ value: "Hz", position: "insideBottomRight", offset: -4, fill: CHART_TICK, fontSize: 10 }}
           />
           <YAxis
-            tick={{ fill: "#6b7280", fontSize: 10 }}
-            label={{ value: "dB", angle: -90, position: "insideLeft", fill: "#6b7280", fontSize: 10 }}
+            tick={{ fill: CHART_TICK, fontSize: 10 }}
+            label={{ value: "dB", angle: -90, position: "insideLeft", fill: CHART_TICK, fontSize: 10 }}
           />
           <Tooltip
-            contentStyle={{
-              backgroundColor: "#111827",
-              border: "1px solid #1f2937",
-              borderRadius: 0,
-              fontSize: 11,
-            }}
-            labelStyle={{ color: "#9ca3af" }}
+            contentStyle={CHART_TOOLTIP_STYLE}
+            labelStyle={CHART_TOOLTIP_LABEL_STYLE}
             formatter={(value: number) => [`${value.toFixed(2)} dB`, "Magnitude"]}
             labelFormatter={(label: number) => `${label} Hz`}
           />
           <ReferenceArea
             x1={20}
             x2={100}
-            fill="#f59e0b"
+            fill={CHART_WARNING}
             fillOpacity={0.1}
-            label={{ value: "Propwash", fill: "#f59e0b", fontSize: 9, position: "insideTopLeft" }}
+            label={{ value: "Propwash", fill: CHART_WARNING, fontSize: 9, position: "insideTopLeft" }}
           />
           <ReferenceArea
             x1={200}
             x2={400}
-            fill="#ef4444"
+            fill={CHART_ERROR}
             fillOpacity={0.1}
-            label={{ value: "Motor Noise", fill: "#ef4444", fontSize: 9, position: "insideTopLeft" }}
+            label={{ value: "Motor Noise", fill: CHART_ERROR, fontSize: 9, position: "insideTopLeft" }}
           />
           <Line
             type="monotone"
@@ -104,12 +100,12 @@ export function PidFFTChart({ data, color = "#3A82FF" }: PidFFTChartProps) {
               x={peak.frequency}
               y={peak.magnitudeDb}
               r={3}
-              fill={peak.zone === "propwash" ? "#f59e0b" : peak.zone === "motor" ? "#ef4444" : color}
+              fill={peak.zone === "propwash" ? CHART_WARNING : peak.zone === "motor" ? CHART_ERROR : color}
               stroke="none"
               label={{
                 value: `${peak.frequency}Hz`,
                 position: "top",
-                fill: "#9ca3af",
+                fill: CHART_LABEL,
                 fontSize: 9,
               }}
             />

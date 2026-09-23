@@ -18,7 +18,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { settleInstallJobFromAck } from "../../convex/cmdPluginInstallJobs";
+import { cancelInstallJob, settleInstallJobFromAck } from "../../convex/cmdPluginInstallJobs";
 
 const MUTATION_PATH = path.join(process.cwd(), "convex/cmdPluginInstallJobs.ts");
 const SCHEMA_PATH = path.join(process.cwd(), "convex/schema.ts");
@@ -161,27 +161,60 @@ describe("settleInstallJobFromAck (agent-facing)", () => {
   });
 });
 
-describe("cancelJob mutation contract", () => {
-  it("is a no-op on already-terminal stages (completed, cancelled)", async () => {
-    const text = await readFile(MUTATION_PATH, "utf8");
-    expect(text).toContain(
-      'if (job.stage === "completed" || job.stage === "cancelled") return',
+describe("cancelInstallJob", () => {
+  type Row = Record<string, unknown> & { _id: string };
+  function fakeDb(rows: Row[]) {
+    const byId = new Map(rows.map((r) => [r._id, { ...r }]));
+    const db = {
+      get: async (id: string) => byId.get(id) ?? null,
+      patch: async (id: string, patch: Record<string, unknown>) => {
+        const row = byId.get(id);
+        if (!row) throw new Error("missing row");
+        Object.assign(row, patch);
+      },
+    };
+    return { ctx: { db } as never, row: (id: string) => byId.get(id) };
+  }
+  const JOB = "plugin_install_jobs:1";
+  const CMD = "cmd_droneCommands:1";
+  const job = (stage: string): Row => ({ _id: JOB, userId: "u1", stage, cmdId: CMD });
+  const cmd = (overrides: Record<string, unknown> = {}): Row => ({
+    _id: CMD,
+    command: "plugin.install",
+    status: "pending",
+    ...overrides,
+  });
+
+  it("fails the still-queued install command so the agent never receives it", async () => {
+    const { ctx, row } = fakeDb([job("commanded"), cmd()]);
+    await cancelInstallJob(ctx, "u1", JOB as never);
+    expect(row(JOB)?.stage).toBe("cancelled");
+    expect(row(CMD)).toMatchObject({
+      status: "failed",
+      result: { success: false, message: "cancelled by operator" },
+    });
+  });
+
+  it("refuses once the agent has taken the command", async () => {
+    const { ctx, row } = fakeDb([job("commanded"), cmd({ status: "delivering", deliveredAt: 1 })]);
+    await expect(cancelInstallJob(ctx, "u1", JOB as never)).rejects.toThrow(/already received/);
+    expect(row(JOB)?.stage).toBe("commanded");
+    expect(row(CMD)?.status).toBe("delivering");
+  });
+
+  it("refuses a job already installing and leaves terminal jobs alone", async () => {
+    const installing = fakeDb([job("installing"), cmd()]);
+    await expect(cancelInstallJob(installing.ctx, "u1", JOB as never)).rejects.toThrow(
+      /remove the plugin/,
     );
+    const done = fakeDb([job("completed"), cmd({ status: "completed" })]);
+    await cancelInstallJob(done.ctx, "u1", JOB as never);
+    expect(done.row(JOB)?.stage).toBe("completed");
   });
 
-  it("refuses to cancel a job already in the installing stage", async () => {
-    const text = await readFile(MUTATION_PATH, "utf8");
-    expect(text).toContain('if (job.stage === "installing")');
-    expect(text).toContain("remove the plugin from the drone instead");
-  });
-
-  it("requires ownership on the job", async () => {
-    const text = await readFile(MUTATION_PATH, "utf8");
-    const cancelIdx = text.indexOf("export const cancelJob");
-    const block = text.slice(cancelIdx, cancelIdx + 500);
-    expect(block).toContain("getAuthUserId(ctx)");
-    expect(block).toContain('throw new Error("Not authenticated")');
-    expect(block).toContain('throw new Error("Job not found")');
+  it("hides another user's job", async () => {
+    const { ctx } = fakeDb([job("commanded"), cmd()]);
+    await expect(cancelInstallJob(ctx, "u2", JOB as never)).rejects.toThrow("Job not found");
   });
 });
 

@@ -175,6 +175,28 @@ describe("unmodelled commands pass through untouched", () => {
     expect(waypoints).toHaveLength(1);
     expect(dropped.map((it) => it.command)).toEqual([181]);
   });
+
+  it("a .waypoints file keeps an unmodelled command's non-location param5/6 unscaled", () => {
+    // QGC WPL 110: seq current frame cmd p1 p2 p3 p4 p5(x) p6(y) p7(z) autocontinue.
+    const file = [
+      "QGC WPL 110",
+      "0\t1\t0\t16\t0\t0\t0\t0\t12.9716\t77.5946\t912\t1",
+      "1\t0\t3\t16\t0\t0\t0\t0\t12.97\t77.59\t50\t1",
+      // Gimbal pitch/yaw: p5 is a flags word, p7 the gimbal id.
+      "2\t0\t2\t1000\t-30\t0\t0\t0\t12\t0\t1\t1",
+      // Unmodelled DO_SET_ROI_LOCATION: p5/p6 are a location.
+      "3\t0\t3\t195\t0\t0\t0\t0\t12.98\t77.6\t0\t1",
+      "4\t0\t3\t16\t0\t0\t0\t0\t12.99\t77.61\t50\t1",
+    ].join("\n");
+    const { waypoints } = parseWaypointsFile(file);
+    const raws = waypoints.flatMap((w) => w.actions ?? []).filter((a) => a.command === "RAW");
+    expect(raws.find((a) => a.rawCommand === 1000)).toMatchObject({ x: 12, y: 0, z: 1 });
+    expect(raws.find((a) => a.rawCommand === 195)).toMatchObject({ x: 129800000, y: 776000000 });
+
+    // The upload sends the flags word as 12, not 12 × 1e7.
+    const gimbal = expandToItems(waypoints, OPTS).find((it) => it.command === 1000);
+    expect(gimbal).toMatchObject({ x: 12, y: 0, z: 1 });
+  });
 });
 
 describe("per-command parameter slots", () => {

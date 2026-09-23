@@ -119,4 +119,41 @@ describe("fetchArrayBufferWithProgress", () => {
     expect(new Uint8Array(buf)).toEqual(Uint8Array.from([7, 7]));
     expect(seen).toEqual([{ receivedBytes: 2, totalBytes: 2, percent: 100 }]);
   });
+
+  it("aborts with 'download stalled' when the body stops delivering chunks", async () => {
+    vi.useFakeTimers();
+    try {
+      let reads = 0;
+      let requestSignal: AbortSignal | undefined;
+      const res = {
+        ok: true,
+        status: 200,
+        headers: { get: () => null },
+        body: {
+          getReader: () => ({
+            // One chunk, then the connection goes quiet forever.
+            read: () =>
+              reads++ === 0
+                ? Promise.resolve({ done: false as const, value: Uint8Array.from([1]) })
+                : Promise.withResolvers<never>().promise,
+          }),
+        },
+      } as unknown as Response;
+      vi.stubGlobal(
+        "fetch",
+        vi.fn((_url: string, init?: RequestInit) => {
+          requestSignal = init?.signal ?? undefined;
+          return Promise.resolve(res);
+        }),
+      );
+
+      const pending = fetchArrayBufferWithProgress("http://x/a.ply", { stallTimeoutMs: 1_000 });
+      const outcome = expect(pending).rejects.toThrow("download stalled");
+      await vi.advanceTimersByTimeAsync(1_500);
+      await outcome;
+      expect(requestSignal?.aborted).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

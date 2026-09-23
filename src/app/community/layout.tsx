@@ -40,7 +40,21 @@ function CommunityLayoutInner({ children }: { children: React.ReactNode }) {
             })}
         </nav>
       </div>
-      <div className="flex-1 overflow-y-auto">{children}</div>
+      <div className="flex-1 overflow-y-auto">
+        {/* Scoped to the page, not the nav, and reset on navigation: a failed
+            tab shows a message and the other tabs stay reachable. */}
+        <SilentErrorBoundary
+          label="CommunityLayout"
+          resetKey={pathname}
+          fallback={
+            <p role="alert" className="p-8 text-center text-xs text-text-secondary">
+              {t("sectionError")}
+            </p>
+          }
+        >
+          {children}
+        </SilentErrorBoundary>
+      </div>
     </div>
   );
 }
@@ -79,9 +93,5 @@ export default function CommunityLayout({
     );
   }
 
-  return (
-    <SilentErrorBoundary label="CommunityLayout">
-      <CommunityLayoutInner>{children}</CommunityLayoutInner>
-    </SilentErrorBoundary>
-  );
+  return <CommunityLayoutInner>{children}</CommunityLayoutInner>;
 }

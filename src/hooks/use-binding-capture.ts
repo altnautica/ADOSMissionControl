@@ -16,7 +16,11 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { captureChord, isReservedChord } from "@/lib/skills/chord";
+import {
+  captureChord,
+  isReservedChord,
+  isReservedGamepadButton,
+} from "@/lib/skills/chord";
 import { useInputStore } from "@/stores/input-store";
 
 export interface KeyCaptureResult {
@@ -93,19 +97,25 @@ export interface ButtonCaptureResult {
 interface ButtonCaptureOptions {
   /** Called with the 0..15 button index for the first off->on edge. */
   onCapture: (button: number) => void;
+  /** Called when the pressed button is owned by the cockpit (refused). */
+  onReserved?: (button: number) => void;
 }
 
 /**
  * Capture the next gamepad button press. Seeds from the current button state on
  * arm so a held button does not register, then resolves on the first off->on
- * edge in input-store buttons[].
+ * edge in input-store buttons[]. A cockpit-owned button ends the capture
+ * through onReserved instead of binding.
  */
 export function useButtonCapture({
   onCapture,
+  onReserved,
 }: ButtonCaptureOptions): ButtonCaptureResult {
   const [capturing, setCapturing] = useState(false);
   const onCaptureRef = useRef(onCapture);
+  const onReservedRef = useRef(onReserved);
   onCaptureRef.current = onCapture;
+  onReservedRef.current = onReserved;
 
   useEffect(() => {
     if (!capturing) return;
@@ -118,6 +128,10 @@ export function useButtonCapture({
         const isDown = buttons[i] ?? false;
         if (isDown && !wasDown) {
           setCapturing(false);
+          if (isReservedGamepadButton(i)) {
+            onReservedRef.current?.(i);
+            return;
+          }
           onCaptureRef.current(i);
           return;
         }

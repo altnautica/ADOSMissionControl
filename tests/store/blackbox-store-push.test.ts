@@ -1,23 +1,35 @@
 /**
  * @module blackbox-store-push.test
  * @description Verifies the explicit cloud-push state machine on the Black Box
- * store: the push transitions, the reset on clear(), and the explicit-only
- * invariant — no filter / selection / refresh path may trigger a push.
+ * store: the push transitions, the reset on clear(), the explicit-only
+ * invariant — no filter / selection / refresh path may trigger a push — and
+ * that a read answered after its node's client was replaced is discarded.
  * @license GPL-3.0-only
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useBlackBoxStore } from "@/stores/blackbox-store";
-import { useAgentConnectionStore } from "@/stores/agent-connection-store";
-import type { PushResult } from "@/lib/agent/agent-client/logging";
+import type { LoggingRow, PushResult } from "@/lib/agent/agent-client/logging";
+import type { AgentClient } from "@/lib/agent/client";
 
 const okResult: PushResult = {
+  pending: false,
   window_id: "win_99",
   sha256: "deadbeef",
   bytes: 2048,
   rows: 50,
   deduped: false,
   synced: true,
+};
+
+const pendingResult: PushResult = {
+  pending: true,
+  window_id: null,
+  sha256: null,
+  bytes: 0,
+  rows: 0,
+  deduped: false,
+  synced: false,
 };
 
 /** Install a minimal fake agent client whose `logging` exposes the methods
@@ -44,10 +56,8 @@ function installFakeClient(pushImpl: () => Promise<PushResult>) {
     })),
     stats: vi.fn(async () => null),
   };
-  useAgentConnectionStore.setState({
-    client: { logging } as unknown as never,
-  });
-  return { pushWindow };
+  useBlackBoxStore.getState().attach({ logging } as unknown as AgentClient);
+  return { pushWindow, logging };
 }
 
 describe("blackbox-store push", () => {
@@ -56,7 +66,7 @@ describe("blackbox-store push", () => {
   });
 
   afterEach(() => {
-    useAgentConnectionStore.setState({ client: null });
+    useBlackBoxStore.getState().clear();
     vi.restoreAllMocks();
   });
 
@@ -75,10 +85,16 @@ describe("blackbox-store push", () => {
     expect(s.pushState).toBe("done");
     expect(s.lastPushResult).toEqual(okResult);
     expect(s.pushError).toBeNull();
-    // The store forwards the current selection + a zst format.
-    expect(pushWindow).toHaveBeenCalledWith(
-      expect.objectContaining({ format: "jsonl.zst" }),
-    );
+    // The store forwards the selected session, the only scope the push has.
+    expect(pushWindow).toHaveBeenCalledWith({ session: undefined });
+  });
+
+  it("records a pending push as pending, not done", async () => {
+    installFakeClient(async () => pendingResult);
+    await useBlackBoxStore.getState().pushWindow();
+    const s = useBlackBoxStore.getState();
+    expect(s.pushState).toBe("pending");
+    expect(s.lastPushResult).toEqual(pendingResult);
   });
 
   it("transitions to error and records the message on failure", async () => {
@@ -93,7 +109,7 @@ describe("blackbox-store push", () => {
   });
 
   it("errors when no logging client is attached", async () => {
-    useAgentConnectionStore.setState({ client: null });
+    useBlackBoxStore.getState().attach(null);
     const result = await useBlackBoxStore.getState().pushWindow();
     expect(result).toBeNull();
     expect(useBlackBoxStore.getState().pushState).toBe("error");
@@ -116,5 +132,22 @@ describe("blackbox-store push", () => {
     useBlackBoxStore.getState().setSelectedSession("3");
     await useBlackBoxStore.getState().refresh();
     expect(pushWindow).not.toHaveBeenCalled();
+  });
+
+  it("discards a read that lands after the node's client was replaced", async () => {
+    const { logging } = installFakeClient(async () => okResult);
+    const { promise, resolve } = Promise.withResolvers<unknown>();
+    logging.query.mockImplementationOnce(() => promise as never);
+    const pending = useBlackBoxStore.getState().fetchRows();
+
+    installFakeClient(async () => okResult);
+    await Promise.resolve();
+    resolve({
+      data: [{ id: 1, message: "node A row" } as unknown as LoggingRow],
+      page: { next_cursor: null, count: 1 },
+      meta: { source: "logd", v: 1, ts: "", db_lag_ms: 0 },
+    });
+    await pending;
+    expect(useBlackBoxStore.getState().rows).toEqual([]);
   });
 });

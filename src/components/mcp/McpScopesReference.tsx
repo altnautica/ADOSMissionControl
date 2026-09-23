@@ -15,11 +15,10 @@ import {
   ELEVATED_SCOPES,
   SAFETY_CLASSES,
   SCOPE_PRESETS,
+  SCOPE_PRESET_ORDER,
   safetyClassBadge,
   type SafetyClass,
 } from "./mcp-shared";
-
-const ROLES = ["read", "operate", "full"] as const;
 
 export function McpScopesReference() {
   const t = useTranslations("mcp");
@@ -69,7 +68,8 @@ export function McpScopesReference() {
           {t("scopes.rolesTitle")}
         </h3>
         <div className="flex flex-col gap-1.5">
-          {ROLES.map((role) => (
+          {/* Only the presets the Generate dialog can mint are described. */}
+          {SCOPE_PRESET_ORDER.map((role) => (
             <div
               key={role}
               className="flex flex-col gap-1.5 rounded-lg border border-border-default bg-bg-secondary p-3"

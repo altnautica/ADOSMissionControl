@@ -61,9 +61,9 @@ export function getMqttBrokerCredential(): MqttBrokerCredential | null {
  * Returns an unsubscribe function.
  *
  * This exists because holding a credential and having proven it are different
- * facts, and only the publishing client can observe the second one. The grant
- * owner cannot: at QoS 0 nothing is acknowledged, so there is no round trip for
- * it to wait on.
+ * facts, and only the publishing client can observe the second one: the relay
+ * transport proves it with a QoS-1 probe whose PUBACK reason code the broker
+ * sets from its ACL.
  */
 export function onBrokerWriteAccepted(
   listener: (username: string) => void,
@@ -75,15 +75,15 @@ export function onBrokerWriteAccepted(
 }
 
 /**
- * Report that the broker accepted a publish under the current credential.
- *
- * Called from the publish path, so it is on the hot path for every outbound FC
- * frame: after the first report for a credential this is one string compare and
- * no allocation.
+ * Report that the broker acknowledged a publish under `username`: a QoS-1
+ * PUBACK carrying a success reason code, the only answer that proves the
+ * broker's ACL let the write through (a QoS-0 publish callback fires locally
+ * with no broker round trip, and a refused QoS-0 frame is dropped silently).
+ * A proof for a credential that is no longer current is ignored; each
+ * credential is reported once.
  */
-export function notifyBrokerWriteAccepted(): void {
-  const username = current?.username;
-  if (!username || writeAcceptedFor === username) return;
+export function notifyBrokerWriteAccepted(username: string): void {
+  if (username !== current?.username || writeAcceptedFor === username) return;
   writeAcceptedFor = username;
   for (const listener of writeAcceptedListeners) listener(username);
 }

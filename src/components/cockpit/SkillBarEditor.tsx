@@ -22,6 +22,7 @@ import { useTranslations } from "next-intl";
 import { RotateCcw, Gamepad2 } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useSkillRegistry, type Skill } from "@/lib/skills";
@@ -142,6 +143,10 @@ export function SkillBarEditor({ onClose }: SkillBarEditorProps) {
       );
       announce(t("announceButtonBound", { button, label: skillLabel }));
     },
+    onReserved: (button) => {
+      setCapturing(null);
+      toast(t("reservedButton", { button }), "warning");
+    },
   });
 
   const startCaptureKey = (index: number) => {
@@ -220,8 +225,11 @@ export function SkillBarEditor({ onClose }: SkillBarEditorProps) {
     announce(t("controllerDefaultsApplied", { count: applied }));
   };
 
+  const [confirmReset, setConfirmReset] = useState(false);
   const handleReset = () => {
-    resetLoadoutToDefaults();
+    setConfirmReset(false);
+    if (!loadout) return;
+    resetLoadoutToDefaults(loadout.id);
     toast(t("resetDone"), "success");
     announce(t("resetDone"));
   };
@@ -328,11 +336,21 @@ export function SkillBarEditor({ onClose }: SkillBarEditorProps) {
           variant="ghost"
           size="sm"
           icon={<RotateCcw size={12} />}
-          onClick={handleReset}
+          onClick={() => setConfirmReset(true)}
         >
           {t("resetToDefaults")}
         </Button>
       </div>
+
+      <ConfirmDialog
+        open={confirmReset}
+        title={t("resetConfirmTitle")}
+        message={t("resetConfirmMessage", { name: loadout?.name ?? "" })}
+        confirmLabel={t("resetToDefaults")}
+        variant="danger"
+        onConfirm={handleReset}
+        onCancel={() => setConfirmReset(false)}
+      />
 
       {/* Cockpit layout: which chrome cards the active loadout shows. */}
       <CockpitLayoutEditor />

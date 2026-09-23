@@ -4,8 +4,9 @@
  * Battery registry editor — table of battery packs + per-row edit form.
  *
  * Mirrors the {@link AircraftRegistryEditor} shape so the Settings page
- * stays visually consistent. Cycle count + health % auto-update from the
- * recordCycle() hook.
+ * stays visually consistent. Cycle count auto-updates from the recordCycle()
+ * hook and health is projected from it unless the operator enters an
+ * override.
  *
  * @license GPL-3.0-only
  */
@@ -17,6 +18,7 @@ import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Plus, Trash2, Archive } from "lucide-react";
 import { useBatteryRegistryStore } from "@/stores/battery-registry-store";
+import { batteryHealthPercent } from "@/lib/battery-pack-health";
 import type { BatteryPack, BatteryChemistry } from "@/lib/types/operator";
 
 const CHEMISTRY_OPTIONS: { value: BatteryChemistry; label: string }[] = [
@@ -57,7 +59,6 @@ export function BatteryRegistryEditor() {
       cells: 6,
       capacityMah: 1300,
       cycleCount: 0,
-      healthPercent: 100,
     };
     upsert(fresh);
     setSelectedId(id);
@@ -141,7 +142,7 @@ export function BatteryRegistryEditor() {
                       {p.cycleCount ?? 0}
                     </td>
                     <td className="px-2 py-1.5 text-right text-text-primary font-mono tabular-nums">
-                      {p.healthPercent !== undefined ? `${p.healthPercent.toFixed(1)}%` : "—"}
+                      {`${batteryHealthPercent(p).toFixed(1)}%`}
                     </td>
                     <td className="px-2 py-1.5 text-right">
                       <div className="flex items-center justify-end gap-1">
@@ -249,12 +250,17 @@ export function BatteryRegistryEditor() {
                 }
               />
               <Input
-                label="Health %"
+                label="Health % override"
                 type="number"
-                value={selected.healthPercent?.toString() ?? ""}
+                min={0}
+                max={100}
+                placeholder={`${batteryHealthPercent({ ...selected, healthOverridePercent: undefined }).toFixed(1)} (projected)`}
+                value={selected.healthOverridePercent?.toString() ?? ""}
                 onChange={(e) =>
                   update(selected.id, {
-                    healthPercent: e.target.value ? Number(e.target.value) : undefined,
+                    healthOverridePercent: e.target.value
+                      ? Math.max(0, Math.min(100, Number(e.target.value)))
+                      : undefined,
                   })
                 }
               />

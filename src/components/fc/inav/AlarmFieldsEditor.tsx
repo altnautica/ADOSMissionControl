@@ -10,28 +10,35 @@
 
 import type { INavOsdAlarms } from "@/lib/protocol/msp/msp-decoders-inav";
 
+/**
+ * Bounds are the firmware setting ranges (osd_*_alarm in the iNav settings
+ * table), in the units the MSP alarms frame carries. G-force travels as
+ * g x1000; temperatures as decidegrees C.
+ */
 const ALARM_FIELDS: Array<{
   key: keyof INavOsdAlarms;
   label: string;
   unit: string;
-  min?: number;
-  max?: number;
+  min: number;
+  max: number;
+  /** Read back from the FC but not writable through the alarms frame. */
+  readOnly?: boolean;
 }> = [
   { key: "rssi", label: "RSSI threshold", unit: "%", min: 0, max: 100 },
-  { key: "flyMinutes", label: "Fly time", unit: "min", min: 0, max: 9999 },
-  { key: "maxAltitude", label: "Max altitude", unit: "m", min: 0, max: 99999 },
-  { key: "distance", label: "Distance", unit: "m", min: 0, max: 99999 },
-  { key: "maxNegAltitude", label: "Max negative altitude", unit: "m", min: 0, max: 99999 },
-  { key: "gforce", label: "G-force", unit: "g x100", min: 0, max: 9999 },
-  { key: "gforceAxisMin", label: "G-force axis min", unit: "g x100" },
-  { key: "gforceAxisMax", label: "G-force axis max", unit: "g x100" },
+  { key: "flyMinutes", label: "Fly time", unit: "min", min: 0, max: 600 },
+  { key: "maxAltitude", label: "Max altitude", unit: "m", min: 0, max: 10000 },
+  { key: "distance", label: "Distance", unit: "m", min: 0, max: 50000 },
+  { key: "maxNegAltitude", label: "Max negative altitude", unit: "m", min: 0, max: 10000 },
+  { key: "gforce", label: "G-force", unit: "g x1000", min: 0, max: 20000 },
+  { key: "gforceAxisMin", label: "G-force axis min", unit: "g x1000", min: -20000, max: 20000 },
+  { key: "gforceAxisMax", label: "G-force axis max", unit: "g x1000", min: -20000, max: 20000 },
   { key: "current", label: "Current", unit: "A", min: 0, max: 255 },
-  { key: "imuTempMin", label: "IMU temp min", unit: "deci-C" },
-  { key: "imuTempMax", label: "IMU temp max", unit: "deci-C" },
-  { key: "baroTempMin", label: "Baro temp min", unit: "deci-C" },
-  { key: "baroTempMax", label: "Baro temp max", unit: "deci-C" },
-  { key: "adsbDistanceWarning", label: "ADS-B distance warning", unit: "m" },
-  { key: "adsbDistanceAlert", label: "ADS-B distance alert", unit: "m" },
+  { key: "imuTempMin", label: "IMU temp min", unit: "deci-C", min: -550, max: 1250 },
+  { key: "imuTempMax", label: "IMU temp max", unit: "deci-C", min: -550, max: 1250 },
+  { key: "baroTempMin", label: "Baro temp min", unit: "deci-C", min: -550, max: 1250 },
+  { key: "baroTempMax", label: "Baro temp max", unit: "deci-C", min: -550, max: 1250 },
+  { key: "adsbDistanceWarning", label: "ADS-B distance warning", unit: "m", min: 0, max: 65535, readOnly: true },
+  { key: "adsbDistanceAlert", label: "ADS-B distance alert", unit: "m", min: 0, max: 65535, readOnly: true },
 ];
 
 interface AlarmFieldsEditorProps {
@@ -55,8 +62,13 @@ export function AlarmFieldsEditor({ alarms, onUpdate }: AlarmFieldsEditorProps) 
             min={f.min}
             max={f.max}
             value={alarms[f.key] as number}
-            onChange={(e) => onUpdate(f.key, parseInt(e.target.value, 10) || 0)}
-            className="w-28 bg-bg-tertiary border border-border-default rounded px-2 py-1 text-[11px] font-mono text-text-primary text-right"
+            disabled={f.readOnly}
+            title={f.readOnly ? "Read-only: the OSD alarms write frame has no field for this value" : undefined}
+            onChange={(e) => {
+              const n = parseInt(e.target.value, 10);
+              onUpdate(f.key, Number.isFinite(n) ? Math.max(f.min, Math.min(f.max, n)) : 0);
+            }}
+            className="w-28 bg-bg-tertiary border border-border-default rounded px-2 py-1 text-[11px] font-mono text-text-primary text-right disabled:opacity-50"
           />
         </div>
       ))}

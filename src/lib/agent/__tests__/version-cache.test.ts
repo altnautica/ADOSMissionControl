@@ -89,4 +89,34 @@ describe("fetchVersionInfo caching", () => {
     await fetchVersionInfo(c, { force: true });
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
+
+  it("shares one in-flight request between concurrent callers", async () => {
+    const c = ctx();
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(VERSION_BODY));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const answers = await Promise.all([
+      fetchVersionInfo(c),
+      fetchVersionInfo(c),
+      fetchVersionInfo(c),
+    ]);
+    expect(answers.every((a) => agentSupports(a, "atlas"))).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries after a shared request failed transiently", async () => {
+    const c = ctx();
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new DOMException("aborted", "TimeoutError"))
+      .mockResolvedValueOnce(jsonResponse(VERSION_BODY));
+    vi.stubGlobal("fetch", fetchMock);
+
+    expect(await Promise.all([fetchVersionInfo(c), fetchVersionInfo(c)])).toEqual([
+      null,
+      null,
+    ]);
+    expect(agentSupports(await fetchVersionInfo(c), "atlas")).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
 });

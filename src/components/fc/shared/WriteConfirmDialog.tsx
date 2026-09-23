@@ -6,12 +6,7 @@ import { Button } from "@/components/ui/button";
 import { AlertTriangle, Check, X, ShieldAlert } from "lucide-react";
 import type { ParamMetadata } from "@/lib/protocol/param-metadata";
 import { decodeBitmaskFlags, summarizeBitmask } from "@/lib/protocol/param-display";
-
-const CRITICAL_PREFIXES = ["FS_", "BATT_FS_", "BATT_", "ATC_RAT_", "FENCE_", "MOT_", "BRD_SAFETY", "BRD_", "ARMING_"];
-
-function isCriticalParam(name: string): boolean {
-  return CRITICAL_PREFIXES.some((prefix) => name.startsWith(prefix));
-}
+import { isCriticalParam } from "@/lib/protocol/critical-params";
 
 function isValueOutOfRange(value: number, meta: ParamMetadata | undefined): boolean {
   if (!meta?.range) return false;

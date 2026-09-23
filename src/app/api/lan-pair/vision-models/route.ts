@@ -3,7 +3,7 @@
  * @description Server-side proxy for the LAN agent's vision model-registry
  * READ endpoints. Sibling to the write proxies (`vision-detector`,
  * `vision-upload`) so the read half of the model picker is HTTPS-LAN-safe
- * too (Rule 39 local-first): an HTTPS Mission Control can list / download /
+ * too (local-first): an HTTPS Mission Control can list / download /
  * poll a drone's vision models over the operator's LAN without the browser's
  * mixed-content guard blocking the plain-HTTP fetch, because the cross-protocol
  * hop happens server-side.

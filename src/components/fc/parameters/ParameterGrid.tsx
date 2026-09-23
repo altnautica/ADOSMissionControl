@@ -8,7 +8,8 @@ import { cn } from "@/lib/utils";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useParamSafetyStore } from "@/stores/param-safety-store";
 import { ParamTooltip } from "./ParamTooltip";
-import { PARAM_TYPE_LABELS, isReadOnly, getDangerousWarning, isValueOutOfRange, buildSearchHaystack } from "./parameter-grid-utils";
+import { isReadOnly, getDangerousWarning, isValueOutOfRange, buildSearchHaystack, filterBySearch } from "./parameter-grid-utils";
+import { MAV_PARAM_TYPE_LABELS } from "@/lib/protocol/param-value-codec";
 import { EnumSelect } from "./EnumSelect";
 import { BitmaskEditor } from "@/components/ui/bitmask-editor";
 import { getParamDocUrlFromContext, type ParamDocContext } from "@/lib/protocol/param-docs";
@@ -75,10 +76,7 @@ export function ParameterGrid({ parameters, modified, onModify, filter, showModi
     if (showModifiedOnly) {
       result = result.filter((p) => modified.has(p.name));
     }
-    if (filter) {
-      const lower = filter.toLowerCase();
-      result = result.filter((p) => (searchHaystack.get(p.name) ?? p.name.toLowerCase()).includes(lower));
-    }
+    if (filter) result = filterBySearch(result, searchHaystack, filter);
     return result;
   }, [parameters, filter, showModifiedOnly, modified, searchHaystack]);
 
@@ -251,7 +249,7 @@ export function ParameterGrid({ parameters, modified, onModify, filter, showModi
                   )}
                   {vis.range && <div className="px-3 text-text-tertiary font-mono whitespace-nowrap">{meta?.range ? `${meta.range.min} .. ${meta.range.max}` : "—"}</div>}
                   {vis.units && <div className="px-3 text-text-tertiary">{meta?.units || "—"}</div>}
-                  {vis.type && <div className="px-3 text-text-tertiary font-mono">{PARAM_TYPE_LABELS[param.type] ?? `T${param.type}`}</div>}
+                  {vis.type && <div className="px-3 text-text-tertiary font-mono">{MAV_PARAM_TYPE_LABELS[param.type] ?? `T${param.type}`}</div>}
                 </div>
               );
             })

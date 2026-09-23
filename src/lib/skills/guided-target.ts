@@ -1,16 +1,19 @@
 /**
  * @module skills/guided-target
  * @description Owns the lifecycle of the active guided target: Fly Here and the
- * Land Here sequence.
+ * Land Here and Loiter Here sequences.
  *
  * A reposition (MAV_CMD_DO_REPOSITION) is acked when the autopilot accepts it,
  * not when the vehicle arrives, and ArduCopter handles MAV_CMD_NAV_LAND by
  * switching to LAND at its current position. So "land at this point" is a
  * sequence the GCS has to run itself: reposition, watch the selected drone's
  * position once a second, and send the land only once the vehicle is holding
- * over the point. The same supervisor clears a Fly Here target when the
- * vehicle arrives or leaves the reposition mode, so the overlay never keeps
- * reporting a flight that is no longer happening.
+ * over the point. Loiter Here is the same shape: a mode switch to LOITER sent
+ * before the reposition is undone by it (DO_REPOSITION moves ArduPilot into
+ * GUIDED), so the reposition runs first and LOITER is engaged on arrival. The
+ * same supervisor clears a Fly Here target when the vehicle arrives or leaves
+ * the reposition mode, so the overlay never keeps reporting a flight that is
+ * no longer happening.
  *
  * @license GPL-3.0-only
  */
@@ -52,8 +55,8 @@ interface Session {
   /** The mode DO_REPOSITION puts this firmware in. */
   repositionMode: UnifiedFlightMode;
   seenRepositionMode: boolean;
-  /** The land command is in flight; no further checks run. */
-  landing: boolean;
+  /** The final command (land / loiter) is in flight; no further checks run. */
+  finishing: boolean;
 }
 
 let session: Session | null = null;
@@ -75,11 +78,13 @@ function abandon(s: Session, reason: string): void {
   cancelGuidedTarget();
   if (s.target.purpose === "land") {
     s.report(`Land here cancelled: ${reason}`, "warning");
+  } else if (s.target.purpose === "loiter") {
+    s.report(`Loiter here cancelled: ${reason}`, "warning");
   }
 }
 
 async function descend(s: Session): Promise<void> {
-  s.landing = true;
+  s.finishing = true;
   let success = false;
   let message = "";
   try {
@@ -98,9 +103,28 @@ async function descend(s: Session): Promise<void> {
   );
 }
 
+async function engageLoiter(s: Session): Promise<void> {
+  s.finishing = true;
+  let success = false;
+  let message = "";
+  try {
+    const result = await s.protocol.setFlightMode("LOITER");
+    success = result.success;
+    message = result.message;
+  } catch (err) {
+    message = err instanceof Error ? err.message : String(err);
+  }
+  if (session !== s) return;
+  cancelGuidedTarget();
+  s.report(
+    success ? "Loitering at the selected point" : `Loiter failed: ${message}`,
+    success ? "success" : "error",
+  );
+}
+
 function tick(): void {
   const s = session;
-  if (!s || s.landing) return;
+  if (!s || s.finishing) return;
   const now = Date.now();
   const { target } = s;
 
@@ -132,7 +156,12 @@ function tick(): void {
     if (distance < GOTO_ARRIVAL_RADIUS_M) cancelGuidedTarget();
     return;
   }
-  if (distance <= LAND_ARRIVAL_RADIUS_M && pos.groundSpeed < LAND_ARRIVAL_MAX_SPEED_MS) {
+  const holding = pos.groundSpeed < LAND_ARRIVAL_MAX_SPEED_MS;
+  if (target.purpose === "loiter") {
+    if (distance < GOTO_ARRIVAL_RADIUS_M && holding) void engageLoiter(s);
+    return;
+  }
+  if (distance <= LAND_ARRIVAL_RADIUS_M && holding) {
     void descend(s);
   }
 }
@@ -153,13 +182,13 @@ export function superviseGuidedTarget(
     report,
     repositionMode: protocol.getVehicleInfo()?.firmwareType === "px4" ? "LOITER" : "GUIDED",
     seenRepositionMode: false,
-    landing: false,
+    finishing: false,
   };
   useGuidedStore.getState().setTarget(target);
   timer = setInterval(tick, GUIDED_POLL_MS);
 }
 
-interface LandAtPointArgs {
+interface PointSequenceArgs {
   protocol: DroneProtocol | null;
   droneId: string | null;
   lat: number;
@@ -183,7 +212,7 @@ export async function landAtPoint({
   lon,
   alt,
   report,
-}: LandAtPointArgs): Promise<void> {
+}: PointSequenceArgs): Promise<void> {
   if (!protocol || !droneId) {
     report("No drone connected", "error");
     return;
@@ -199,4 +228,34 @@ export async function landAtPoint({
     report,
   );
   report("Repositioning to land point", "info");
+}
+
+/**
+ * Loiter Here: reposition to the point, then switch to LOITER once the vehicle
+ * holds within the Fly Here arrival radius. Ends without the mode switch under
+ * the same conditions as a Fly Here target.
+ */
+export async function loiterAtPoint({
+  protocol,
+  droneId,
+  lat,
+  lon,
+  alt,
+  report,
+}: PointSequenceArgs): Promise<void> {
+  if (!protocol || !droneId) {
+    report("No drone connected", "error");
+    return;
+  }
+  const goto = await protocol.guidedGoto(lat, lon, alt);
+  if (!goto.success) {
+    report(`Loiter here failed — reposition rejected: ${goto.message}`, "error");
+    return;
+  }
+  superviseGuidedTarget(
+    { droneId, lat, lon, alt, timestamp: Date.now(), purpose: "loiter" },
+    protocol,
+    report,
+  );
+  report("Repositioning to loiter point", "info");
 }

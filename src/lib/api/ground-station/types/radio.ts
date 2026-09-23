@@ -76,9 +76,11 @@ export interface RadioState {
   topology: RadioTopology;
   rssiDbm: number | null;
   bitrateKbps: number | null;
-  fecRecovered: number;
-  fecLost: number;
-  packetsLost: number;
+  /** Cumulative FEC counters. Null when the agent did not report them (it
+   * sends null before its receiver has produced a reading): unknown, not 0. */
+  fecRecovered: number | null;
+  fecLost: number | null;
+  packetsLost: number | null;
   // Fixed rendezvous channel both sides boot on before any hop. The
   // drone and ground station meet here first; only after the link is up
   // does the hop supervisor move them. Null on older agents.
@@ -143,7 +145,7 @@ export interface RadioState {
   // valid-packet watchdog has fired — a climbing value means the receive
   // link is thrashing. `rxZombieKills` counts restarts the receive
   // liveness watchdog fired because wfb_rx was alive yet had stopped
-  // decoding (rule 37) — a process-silent stall distinct from a decode
+  // decoding — a process-silent stall distinct from a decode
   // thrash. `validRxPacketsPerS` is the per-second valid WFB decode rate
   // on the ground. Null on the transmit side and on older agents that
   // don't report these fields.

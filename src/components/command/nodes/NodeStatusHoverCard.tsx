@@ -13,7 +13,7 @@
  * It never fabricates flight data on a non-drone node, and it reads only the
  * per-node cloud status (never the ground-station / compute singleton stores,
  * which reflect only the *selected* node) so a hovered row can't show another
- * node's data (Rule 44).
+ * node's data (no fabricated reading).
  * @license GPL-3.0-only
  */
 
@@ -37,6 +37,11 @@ import {
   useReachedViaName,
 } from "@/lib/nodes/reach-provenance";
 import { countRunning } from "@/lib/agent/service-state";
+import {
+  selectDeviceCapabilities,
+  useAgentCapabilitiesStore,
+} from "@/stores/agent-capabilities-store";
+import { useNodeFeaturesStore } from "@/stores/node-features-store";
 
 type EffProfile = "drone" | "ground-station" | "workstation";
 
@@ -150,7 +155,7 @@ export function NodeStatusHoverCard({ node }: { node: FleetNodeEntry }) {
         ? "Compute node"
         : "Drone";
 
-  // Offline: an honest single line, never a fabricated fresh reading (Rule 44).
+  // Offline: an honest single line, never a fabricated fresh reading (no fabricated reading).
   if (live === "offline") {
     return (
       <div className="w-56 space-y-1">
@@ -208,7 +213,7 @@ export function NodeStatusHoverCard({ node }: { node: FleetNodeEntry }) {
 
 /** The WFB reach hop for a transitively-enrolled drone: which ground node it is
  * linked through, and the WFB `-p1` RSSI the ground node heard it at. Honest:
- * an unknown hop / RSSI reads as such, never a confident value (Rule 44). */
+ * an unknown hop / RSSI reads as such, never a confident value (no fabricated reading). */
 function RelayReachSection({
   node,
   status,
@@ -267,6 +272,18 @@ function DroneBody({
   const showHeartbeat = hbGated && link.level !== "warning" && !link.label.includes("(MSP)");
 
   const hasCompanion = !!node.board;
+  // Capability chips come from what this node has described about itself and
+  // what the operator enabled on it; a node never heard from shows none.
+  const caps = useAgentCapabilitiesStore((s) => selectDeviceCapabilities(s, node.deviceId));
+  const worldModelOn = useNodeFeaturesStore((s) =>
+    (s.enabled[node.deviceId] ?? []).includes("world-model"),
+  );
+  const chips = [
+    caps && caps.cameras.length > 0 ? "Video" : null,
+    caps?.visionAvailable === true ? "Vision" : null,
+    worldModelOn ? "World Model" : null,
+    caps && (caps.compute.npu_available || caps.compute.gpu_available) ? "Compute" : null,
+  ].filter((c): c is string => c !== null);
 
   return (
     <>
@@ -301,15 +318,23 @@ function DroneBody({
             mem={status?.memoryPercent}
             temp={status?.temperature}
           />
-          <p className="text-[10px] text-text-tertiary">
-            {running}/{total} services running · video {status?.videoState ?? "—"}
-          </p>
-          <div className="flex flex-wrap gap-1">
-            <Chip>Video</Chip>
-            <Chip>Vision</Chip>
-            <Chip>World Model</Chip>
-            <Chip>Compute</Chip>
-          </div>
+          {(total > 0 || status?.videoState) && (
+            <p className="text-[10px] text-text-tertiary">
+              {[
+                total > 0 ? `${running}/${total} services running` : null,
+                status?.videoState ? `video ${status.videoState}` : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+          )}
+          {chips.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {chips.map((chip) => (
+                <Chip key={chip}>{chip}</Chip>
+              ))}
+            </div>
+          )}
         </section>
       ) : (
         <p className="border-t border-border-default pt-2 text-[10px] text-text-tertiary">
@@ -335,11 +360,9 @@ function GroundStationBody({
 }) {
   const t = useTranslations("nodeConsole");
   const roleLabel =
-    node.role === "relay"
-      ? "Relay"
-      : node.role === "receiver"
-        ? "Receiver"
-        : "Direct";
+    node.role === "relay" || node.role === "receiver" || node.role === "direct"
+      ? t(`role.${node.role}`)
+      : t("role.unknown");
   const peer = status?.peerDeviceId;
   const peerRssi = status?.peerRssiDbm;
   const peerName = useNodeDisplayName(peer ?? null);

@@ -21,9 +21,60 @@ import { deviceIdFromNodeId } from "@/lib/agent/node-id";
 import {
   laneForTransport,
   resolveMqttControlAuthority,
+  type ControlGrant,
   type ControlLane,
   type MqttControlAuthority,
 } from "@/lib/nodes/mqtt-control-authority";
+
+interface SelectedDroneAuthorityInput {
+  transportType: string | null;
+  transportCanCommand: boolean;
+  selectedDroneId: string | null;
+  heldGrant: ControlGrant | null;
+  minting: boolean;
+  now: number;
+}
+
+/**
+ * Two facts, and both are needed. The store knows which devices the grant
+ * covers, when it lapses, and whether a write under it has ever been accepted;
+ * the transport knows whether the session it actually dialled is carrying that
+ * grant. A grant minted a moment ago that the relay has not reconnected with
+ * yet still cannot publish, so claiming otherwise would recreate exactly the
+ * silent-failure this module exists to prevent.
+ */
+function authorityFor(input: SelectedDroneAuthorityInput): MqttControlAuthority {
+  // `null` means no managed transport for the selection, which is the `none`
+  // lane: no command path has been established, so no authority can be claimed.
+  const lane: ControlLane = laneForTransport(input.transportType);
+  const grant = lane === "cloud-relay" && input.transportCanCommand ? input.heldGrant : null;
+  return resolveMqttControlAuthority({
+    lane,
+    // The grant's scope is agent device ids; a selection id is `node:<deviceId>`.
+    deviceId: deviceIdFromNodeId(input.selectedDroneId) ?? "",
+    grant,
+    minting: input.minting,
+    now: input.now,
+  });
+}
+
+/**
+ * Authority for the currently selected drone, read once from the stores. For
+ * non-React callers such as the stick stream, which re-checks it every pass.
+ */
+export function selectedDroneMqttAuthority(now: number): MqttControlAuthority {
+  const { selectedDroneId, drones } = useDroneManager.getState();
+  const transport = selectedDroneId ? drones.get(selectedDroneId)?.transport : undefined;
+  const { grant, minting } = useMqttControlGrantStore.getState();
+  return authorityFor({
+    transportType: transport?.type ?? null,
+    transportCanCommand: transport?.canCommand ?? false,
+    selectedDroneId: selectedDroneId ?? null,
+    heldGrant: grant,
+    minting,
+    now,
+  });
+}
 
 /**
  * Authority for the currently selected drone.
@@ -54,25 +105,14 @@ export function useMqttControlAuthority(): MqttControlAuthority {
   useClockTick();
   const now = useClockStore((s) => s.now);
 
-  // `null` means no managed transport for the selection, which is the `none`
-  // lane: no command path has been established, so no authority can be claimed.
-  const lane: ControlLane = laneForTransport(transportType);
-
-  // Two facts, and both are needed. The store knows which devices the grant
-  // covers, when it lapses, and whether a write under it has ever been accepted;
-  // the transport knows whether the session it actually dialled is carrying that
-  // grant. A grant minted a moment ago that the relay has not reconnected with
-  // yet still cannot publish, so claiming otherwise would recreate exactly the
-  // silent-failure this module exists to prevent.
   const heldGrant = useMqttControlGrantStore((s) => s.grant);
   const minting = useMqttControlGrantStore((s) => s.minting);
-  const grant = lane === "cloud-relay" && transportCanCommand ? heldGrant : null;
 
-  return resolveMqttControlAuthority({
-    lane,
-    // The grant's scope is agent device ids; a selection id is `node:<deviceId>`.
-    deviceId: deviceIdFromNodeId(selectedDroneId) ?? "",
-    grant,
+  return authorityFor({
+    transportType,
+    transportCanCommand,
+    selectedDroneId,
+    heldGrant,
     minting,
     now,
   });

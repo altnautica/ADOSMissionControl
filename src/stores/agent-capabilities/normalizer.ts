@@ -69,18 +69,25 @@ export function normalizeCapabilities(raw: unknown): AgentCapabilities {
     npu_available: rawCompute.npu_available ?? npuTops > 0,
     npu_runtime: rawCompute.npu_runtime ?? null,
     npu_tops: npuTops,
-    npu_utilization_pct: Number(rawCompute.npu_utilization_pct ?? 0),
+    // No agent producer reports NPU load today; absent stays null so the card
+    // renders "—" instead of a measured-looking 0%.
+    npu_utilization_pct:
+      typeof rawCompute.npu_utilization_pct === "number" &&
+      Number.isFinite(rawCompute.npu_utilization_pct)
+        ? rawCompute.npu_utilization_pct
+        : null,
     gpu_available: Boolean(rawCompute.gpu_available ?? false),
   };
 
-  // Normalize cameras: default streaming to true, type to "usb"
+  // Normalize cameras: type defaults to "usb"; an absent streaming flag stays
+  // unknown (detection is not publication).
   const cameras: CameraCapability[] = (data.cameras ?? []).map((c) => ({
     name: c.name ?? "Unknown Camera",
     type: (c.type as CameraCapability["type"]) ?? "usb",
     device: c.device,
     resolution: c.resolution ?? "unknown",
     fps: c.fps,
-    streaming: c.streaming ?? true, // Agent-detected cameras are streaming
+    streaming: c.streaming ?? null,
   }));
 
   // Per-leg video streams: pass through the host-resolved legs the producer
@@ -123,14 +130,14 @@ export function normalizeCapabilities(raw: unknown): AgentCapabilities {
   const rawModels = data.models;
   let installed: InstalledModel[] = [];
   let cacheUsedMb = 0;
-  let cacheMaxMb = 500;
+  let cacheMaxMb: number | null = null;
   let registryUrl = "";
   if (Array.isArray(rawModels)) {
     installed = rawModels as InstalledModel[];
   } else if (rawModels) {
     installed = (rawModels.installed ?? []) as InstalledModel[];
     cacheUsedMb = rawModels.cache_used_mb ?? 0;
-    cacheMaxMb = rawModels.cache_max_mb ?? 500;
+    cacheMaxMb = rawModels.cache_max_mb ?? null;
     registryUrl = rawModels.registry_url ?? "";
   }
   const models: ModelCacheInfo = {

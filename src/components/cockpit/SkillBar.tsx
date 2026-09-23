@@ -77,7 +77,7 @@ export function SkillBar() {
   // Build the projected slot views: bound skill (if available on this drone) +
   // its live state. A slot bound to a skill not available on the selected drone
   // renders empty (the operator's loadout is per-operator; availability is
-  // per-drone, 05 §5).
+  // per-drone).
   const slotViews = useMemo(() => {
     const slots: HotbarSlot[] = loadout?.slots ?? [];
     const stateMap = selectedId ? registryStates.get(selectedId) : undefined;
@@ -246,6 +246,14 @@ function SkillBarToolbar({
           gamepadButton={slot.gamepadButton}
           danger={skill ? DANGER_SKILL_IDS.has(skill.id) : false}
           onActivate={() => fireSlot(skill?.id ?? null)}
+          onOpenSettings={
+            skill?.source === "plugin" && skill.pluginId
+              ? () => {
+                  const pluginId = skill.pluginId;
+                  if (pluginId) useFlyQuickSettingsStore.getState().openFocused(pluginId);
+                }
+              : undefined
+          }
           tabIndex={pos === effectiveRoving ? 0 : -1}
           onKeyDown={onSlotKeyDown(pos)}
         />

@@ -242,7 +242,7 @@ export function VideoLinkPanel() {
 
   return (
     <>
-    <section className="rounded border border-border-default bg-surface-primary">
+    <section className="rounded border border-border-default bg-bg-primary">
       <header className="flex items-center justify-between border-b border-border-default px-3 py-2">
         <div className="flex items-center gap-2">
           <div className="text-xs font-mono uppercase tracking-widest text-text-primary">

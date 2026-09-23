@@ -62,6 +62,9 @@ export function canonicalChord(e: KeyboardEvent): string | null {
  *     owned by the picture-in-picture toggle — both are window keydowns in the
  *     cockpit, so a skill bound to either would double-fire (cycle/toggle AND
  *     the skill). Reserving them makes the collision impossible by construction.
+ *   - Shift+comma, the cockpit quick-settings drawer. The cockpit matches it by
+ *     physical key; the chord a held Shift produces from that key follows the
+ *     layout ("shift+<" on US/UK, "shift+;" on German), so both are reserved.
  */
 const RESERVED_CHORDS: ReadonlySet<string> = new Set([
   "escape",
@@ -84,7 +87,37 @@ const RESERVED_CHORDS: ReadonlySet<string> = new Set([
   "9",
   "`",
   "p",
+  "shift+<",
+  "shift+;",
 ]);
+
+/**
+ * Standard-mapping gamepad buttons the cockpit owns. A skill bound to one would
+ * fire alongside the cockpit's own action, so binding capture refuses them.
+ */
+export const COCKPIT_GAMEPAD_BUTTON = {
+  /** L1 + R1 held together toggles the quick-settings drawer. */
+  quickSettingsLeft: 4,
+  quickSettingsRight: 5,
+  /** Select / Back: held to open the skill radial. */
+  radial: 8,
+  /** Start: leaves immersive mode. */
+  exit: 9,
+  /** D-pad: aims the radial; left/right cycle the video stream. */
+  dpadUp: 12,
+  dpadDown: 13,
+  dpadLeft: 14,
+  dpadRight: 15,
+} as const;
+
+const RESERVED_GAMEPAD_BUTTONS: ReadonlySet<number> = new Set(
+  Object.values(COCKPIT_GAMEPAD_BUTTON),
+);
+
+/** True when a gamepad button is owned by the cockpit and must not be bound. */
+export function isReservedGamepadButton(button: number): boolean {
+  return RESERVED_GAMEPAD_BUTTONS.has(button);
+}
 
 /** True when a chord is globally reserved and must not be bound to a slot. */
 export function isReservedChord(chord: string): boolean {

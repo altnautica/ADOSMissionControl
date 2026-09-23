@@ -17,6 +17,7 @@ import { PanelHeader } from "../shared/PanelHeader";
 import { Button } from "@/components/ui/button";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useArmedLock } from "@/hooks/use-armed-lock";
+import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { loadBfSettingsMetadata } from "@/lib/protocol/param-metadata/bf-settings";
 import type { ParamMetadata } from "@/lib/protocol/param-metadata";
 import type { CliSetting } from "@/lib/protocol/types";
@@ -93,6 +94,7 @@ export function BfSettingsPanel() {
 
   const revert = useCallback(() => setModified(new Map()), []);
   const dirty = modified.size > 0;
+  useUnsavedGuard(dirty);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden p-6">

@@ -6,6 +6,7 @@ import { useTelemetryLatest } from "@/hooks/use-telemetry-latest";
 import { useClockTick } from "@/lib/agent/freshness";
 import { useDroneStore } from "@/stores/drone-store";
 import { useDroneManager } from "@/stores/drone-manager";
+import { knownRemainingPct } from "@/lib/battery-bands";
 
 type FailsafeType = "LOW_BATTERY" | "GPS_LOST" | "RC_LOST" | "EKF_FAIL" | "MOTOR_FAIL" | "PREARM_FAIL" | "EMERGENCY";
 
@@ -96,10 +97,11 @@ export function FailsafeAlertBanner() {
   const hasRealBattery = battVoltage >= 1.0;
 
   // Check battery — only when a real battery is connected
-  const battRemaining = battery?.remaining ?? sysStatus?.batteryRemaining ?? -1;
-  if (hasRealBattery && battRemaining >= 0 && battRemaining < 15) {
+  const battRemaining =
+    knownRemainingPct(battery?.remaining) ?? knownRemainingPct(sysStatus?.batteryRemaining);
+  if (hasRealBattery && battRemaining !== null && battRemaining < 15) {
     conditions.push({ type: "LOW_BATTERY", label: `Battery Critical: ${battRemaining}%`, icon: FAILSAFE_ICONS.LOW_BATTERY, severity: 2 });
-  } else if (hasRealBattery && battRemaining >= 0 && battRemaining < 25) {
+  } else if (hasRealBattery && battRemaining !== null && battRemaining < 25) {
     conditions.push({ type: "LOW_BATTERY", label: `Battery Low: ${battRemaining}%`, icon: FAILSAFE_ICONS.LOW_BATTERY, severity: 1 });
   }
 

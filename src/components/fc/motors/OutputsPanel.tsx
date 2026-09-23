@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
 import { useDroneManager } from "@/stores/drone-manager";
-import { useTelemetryStore } from "@/stores/telemetry-store";
+import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
 import { SERVO_FUNCTION_GROUPS } from "@/lib/servo-functions";
 import {
   detectBoardProfile, detectTimerGroupConflicts,
@@ -35,7 +35,7 @@ const OUTPUT_PARAMS: string[] = [
 
 const OPTIONAL_OUTPUT_PARAMS = ['MOT_PWM_TYPE'];
 
-function validateOutputs(rows: OutputRow[]): { pwmWarnings: PwmWarning[]; conflicts: string[] } {
+function validateOutputs(rows: (OutputRow | null)[]): { pwmWarnings: PwmWarning[]; conflicts: string[] } {
   const pwmWarnings: PwmWarning[] = [];
   const conflicts: string[] = [];
   const fnAssignments = new Map<number, number[]>();
@@ -43,7 +43,7 @@ function validateOutputs(rows: OutputRow[]): { pwmWarnings: PwmWarning[]; confli
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
     const n = i + 1;
-    if (row.function === -1) continue;
+    if (row === null || row.function === -1) continue;
     if (row.min < PWM_ABS_MIN || row.min > PWM_ABS_MAX) pwmWarnings.push({ output: n, message: `Min (${row.min}) outside ${PWM_ABS_MIN}-${PWM_ABS_MAX}` });
     if (row.max < PWM_ABS_MIN || row.max > PWM_ABS_MAX) pwmWarnings.push({ output: n, message: `Max (${row.max}) outside ${PWM_ABS_MIN}-${PWM_ABS_MAX}` });
     if (row.min >= row.max) pwmWarnings.push({ output: n, message: `Min (${row.min}) >= Max (${row.max})` });
@@ -82,24 +82,29 @@ export function OutputsPanel() {
   const gpioOutputs = useMemo(() => {
     const set = new Set<number>();
     for (let i = 0; i < OUTPUT_COUNT; i++) {
-      if ((params.get(`SERVO${i + 1}_FUNCTION`) ?? 0) === -1) set.add(i + 1);
+      if (params.get(`SERVO${i + 1}_FUNCTION`) === -1) set.add(i + 1);
     }
     return set;
   }, [params]);
 
-  const servoBuffer = useTelemetryStore((s) => s.servoOutput);
-  const latestServo = servoBuffer.latest();
+  // Only a sample from the last few seconds is a "current" output.
+  const latestServo = useFreshTelemetry("servoOutput");
   const liveServos = latestServo?.servos ?? [];
 
-  const getOutput = useCallback((i: number): OutputRow => ({
-    function: params.get(`SERVO${i + 1}_FUNCTION`) ?? 0,
-    min: params.get(`SERVO${i + 1}_MIN`) ?? 1000,
-    max: params.get(`SERVO${i + 1}_MAX`) ?? 2000,
-    trim: params.get(`SERVO${i + 1}_TRIM`) ?? 1500,
-    reversed: (params.get(`SERVO${i + 1}_REVERSED`) ?? 0) !== 0,
+  // An output whose parameters were not all read is shown as unknown, never
+  // with invented limits the operator could save on top of the real ones.
+  const outputs = useMemo(() => Array.from({ length: OUTPUT_COUNT }, (_, i): OutputRow | null => {
+    const n = i + 1;
+    const fn = params.get(`SERVO${n}_FUNCTION`);
+    const min = params.get(`SERVO${n}_MIN`);
+    const max = params.get(`SERVO${n}_MAX`);
+    const trim = params.get(`SERVO${n}_TRIM`);
+    const reversed = params.get(`SERVO${n}_REVERSED`);
+    if (fn === undefined || min === undefined || max === undefined || trim === undefined || reversed === undefined) {
+      return null;
+    }
+    return { function: fn, min, max, trim, reversed: reversed !== 0 };
   }), [params]);
-
-  const outputs = useMemo(() => Array.from({ length: OUTPUT_COUNT }, (_, i) => getOutput(i)), [getOutput]);
   const { pwmWarnings, conflicts } = useMemo(() => validateOutputs(outputs), [outputs]);
 
   const motPwmType = params.get('MOT_PWM_TYPE') ?? 0;
@@ -118,7 +123,10 @@ export function OutputsPanel() {
 
   const functionMap = useMemo(() => {
     const map = new Map<number, number>();
-    for (let i = 0; i < OUTPUT_COUNT; i++) map.set(i + 1, params.get(`SERVO${i + 1}_FUNCTION`) ?? 0);
+    for (let i = 0; i < OUTPUT_COUNT; i++) {
+      const fn = params.get(`SERVO${i + 1}_FUNCTION`);
+      if (fn !== undefined) map.set(i + 1, fn);
+    }
     return map;
   }, [params]);
 
@@ -165,7 +173,9 @@ export function OutputsPanel() {
         </PanelHeader>
 
         <OutputTimerGroupConfig hasLoaded={hasLoaded} boardProfile={boardProfile} functionMap={functionMap} motPwmType={motPwmType} timerConflicts={timerConflicts} conflicts={conflicts} pwmWarnings={pwmWarnings} gpioOutputs={gpioOutputs} onBoardOverride={setManualBoardOverride} />
-        <ServoMappingTable outputs={outputs} gpioOutputs={gpioOutputs} conflictDisabledOutputs={conflictDisabledOutputs} boardProfile={boardProfile} liveServos={liveServos} setLocalValue={setLocalValue} />
+        {hasLoaded && (
+          <ServoMappingTable outputs={outputs} gpioOutputs={gpioOutputs} conflictDisabledOutputs={conflictDisabledOutputs} boardProfile={boardProfile} liveServos={liveServos} setLocalValue={setLocalValue} />
+        )}
 
         <MotorTestSection protocol={protocol} isHardBlocked={isHardBlocked} hardBlockMessage={hardBlockMessage} />
         <ServoTestSection protocol={protocol} isHardBlocked={isHardBlocked} hardBlockMessage={hardBlockMessage} outputs={outputs} gpioOutputs={gpioOutputs} />

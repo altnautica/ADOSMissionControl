@@ -15,6 +15,7 @@ import {
 } from "@/lib/mission-io-formats";
 import type { Waypoint } from "@/lib/types";
 import type { GeofenceSnapshot } from "@/stores/geofence-store";
+import { withImportedFenceZones } from "@/lib/mission/qgc-plan-extras";
 import type { RallyPoint } from "@/stores/rally-store";
 
 /**
@@ -252,8 +253,8 @@ describe(".plan geofence + rally round-trip", () => {
     expect(parsed.waypoints).toHaveLength(2);
 
     // Geofence zones: one inclusion polygon, one exclusion circle.
-    expect(parsed.geofence).toBeDefined();
-    const zones = parsed.geofence!.zones;
+    expect(parsed.fenceZones).toBeDefined();
+    const zones = parsed.fenceZones!;
     expect(zones).toHaveLength(2);
 
     const poly = zones.find((z) => z.type === "polygon");
@@ -285,7 +286,7 @@ describe(".plan geofence + rally round-trip", () => {
     };
     const parsed = parseQGCPlan(JSON.stringify(plan));
     expect(parsed.waypoints).toHaveLength(1);
-    expect(parsed.geofence).toBeUndefined();
+    expect(parsed.fenceZones).toBeUndefined();
     expect(parsed.rally).toBeUndefined();
   });
 });
@@ -328,6 +329,60 @@ describe(".plan complex-item (survey grid) expansion", () => {
       },
     };
     expect(() => parseQGCPlan(JSON.stringify(plan))).toThrow(/complex mission item/i);
+  });
+
+  function visualOnlySurvey(cameraCalc?: Record<string, unknown>) {
+    return {
+      fileType: "Plan",
+      mission: {
+        items: [{
+          type: "ComplexItem",
+          complexItemType: "survey",
+          TransectStyleComplexItem: {
+            VisualTransectPoints: [[12.91, 77.51], [12.92, 77.52]],
+            ...(cameraCalc ? { CameraCalc: cameraCalc } : {}),
+          },
+        }],
+      },
+    };
+  }
+
+  it("flies a survey rebuilt from visual points at the file's survey height and frame", () => {
+    const rel = parseQGCPlan(JSON.stringify(visualOnlySurvey({ DistanceToSurface: 55, DistanceMode: 1 }))).waypoints;
+    expect(rel.map((w) => [w.alt, w.frame])).toEqual([[55, "relative"], [55, "relative"]]);
+
+    const amsl = parseQGCPlan(JSON.stringify(visualOnlySurvey({ DistanceToSurface: 900, DistanceMode: 2 }))).waypoints;
+    expect(amsl[0]).toMatchObject({ alt: 900, frame: "absolute" });
+
+    // Files written before DistanceMode carry the relative flag instead.
+    const legacy = parseQGCPlan(JSON.stringify(visualOnlySurvey({ DistanceToSurface: 40, DistanceToSurfaceRelative: false }))).waypoints;
+    expect(legacy[0]).toMatchObject({ alt: 40, frame: "absolute" });
+  });
+
+  it("refuses visual points with no survey height instead of placing the grid at 0 m", () => {
+    expect(() => parseQGCPlan(JSON.stringify(visualOnlySurvey()))).toThrow(/survey altitude/);
+    // Heights computed per point from terrain the file does not carry.
+    expect(() => parseQGCPlan(JSON.stringify(visualOnlySurvey({ DistanceToSurface: 50, DistanceMode: 3 })))).toThrow(/altitude mode/);
+  });
+});
+
+describe(".plan fence import keeps the operator's fence settings", () => {
+  it("carries geometry only and merges into the current settings", () => {
+    const plan = {
+      fileType: "Plan",
+      mission: { items: [{ type: "SimpleItem", command: 16, params: [0, 0, 0, 0, 12.9, 77.5, 50] }] },
+      geoFence: { circles: [{ inclusion: false, circle: { center: [12.9, 77.5], radius: 40 } }], polygons: [] },
+    };
+    const parsed = parseQGCPlan(JSON.stringify(plan));
+    expect(parsed).not.toHaveProperty("geofence");
+    const current: GeofenceSnapshot = {
+      enabled: false, fenceType: "polygon", maxAltitude: 60, minAltitude: 5, breachAction: "LAND",
+      circleCenter: null, circleRadius: 150, polygonPoints: [], zones: [],
+    };
+    const merged = withImportedFenceZones(current, parsed.fenceZones!);
+    expect(merged).toMatchObject({ enabled: false, maxAltitude: 60, minAltitude: 5, breachAction: "LAND" });
+    expect(merged.zones).toHaveLength(1);
+    expect(merged.zones[0]).toMatchObject({ role: "exclusion", type: "circle", circleRadius: 40 });
   });
 });
 

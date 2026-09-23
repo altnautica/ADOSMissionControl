@@ -4,33 +4,52 @@
  * @module protocol/msp/decoders/inav/battery
  */
 
-import { readU8, readU16, readU32 } from "./helpers";
+import { readU8, readU16, readS16, readS32, readU32 } from "./helpers";
 import type { INavAnalog, INavBatteryConfig } from "./types";
 
 // ── iNav ANALOG decoder ──────────────────────────────────────
 
+/** Byte length of MSP2_INAV_ANALOG. */
+const INAV_ANALOG_SIZE = 24;
+
+/** batteryState_e value the FC reports when no pack is connected. */
+const INAV_BATTERY_NOT_PRESENT = 3;
+
 /**
- * MSP2_INAV_ANALOG (0x2002)
+ * MSP2_INAV_ANALOG (0x2002), 24 bytes, as the FC's `fc_msp.c` writes it:
  *
- * U8  flags
- * U16 voltage (mV, divide by 1000 for volts)
- * U32 mAhDrawn
- * U16 rssiPct (0-100)
- * U32 amperage (mA, divide by 1000 for amps)
- * U32 powerMw
- * U32 mWhDrawn
- * U8  batteryPercent (0-100)
+ * U8  flags               @0   bit0 full-when-plugged, bit1 capacity thresholds,
+ *                              bits2-3 batteryState_e, bits4-7 cell count
+ * U16 voltage             @1   (0.01 V)
+ * I16 amperage            @3   (0.01 A)
+ * I32 power               @5   (0.01 W)
+ * I32 mAhDrawn            @9
+ * I32 mWhDrawn            @13
+ * U32 remainingCapacity   @17  (mAh or mWh, per the battery profile unit)
+ * U8  batteryPercent      @21  (the FC's own state-of-charge estimate)
+ * U16 rssi                @22  (0-1023)
+ *
+ * The FC writes 0 % when no battery is present; that is not a reading, so
+ * `batteryPercent` is null in that state.
  */
 export function decodeMspINavAnalog(dv: DataView): INavAnalog {
+  if (dv.byteLength < INAV_ANALOG_SIZE) {
+    throw new RangeError(`Analog reply is ${dv.byteLength} bytes, expected ${INAV_ANALOG_SIZE}`);
+  }
+  const flags = readU8(dv, 0);
+  const batteryState = (flags >> 2) & 0x03;
   return {
-    flags: readU8(dv, 0),
-    voltage: (dv.byteLength > 2 ? readU16(dv, 1) : 0) / 1000,
-    mAhDrawn: dv.byteLength > 6 ? readU32(dv, 3) : 0,
-    rssiPct: dv.byteLength > 8 ? readU16(dv, 7) : 0,
-    amperage: (dv.byteLength > 12 ? readU32(dv, 9) : 0) / 1000,
-    powerMw: dv.byteLength > 16 ? readU32(dv, 13) : 0,
-    mWhDrawn: dv.byteLength > 20 ? readU32(dv, 17) : 0,
-    batteryPercent: dv.byteLength > 21 ? readU8(dv, 21) : 0,
+    flags,
+    batteryState,
+    cellCount: flags >> 4,
+    voltage: readU16(dv, 1) / 100,
+    amperage: readS16(dv, 3) / 100,
+    powerW: readS32(dv, 5) / 100,
+    mAhDrawn: readS32(dv, 9),
+    mWhDrawn: readS32(dv, 13),
+    remainingCapacity: readU32(dv, 17),
+    batteryPercent: batteryState === INAV_BATTERY_NOT_PRESENT ? null : readU8(dv, 21),
+    rssi: readU16(dv, 22),
   };
 }
 

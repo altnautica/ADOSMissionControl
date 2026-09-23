@@ -2,10 +2,11 @@
 
 /**
  * @module DisclaimerGate
- * @description Standalone disclaimer block for users who completed
- * onboarding before the disclaimer step existed. Renders the same six-section
- * body as the in-flow step and blocks the app until the checkbox + accept
- * button persist the current disclaimer version.
+ * @description Standalone disclaimer block for onboarded users who have not
+ * accepted the current disclaimer version (they onboarded before the
+ * disclaimer step existed, or the text changed since). Renders the same
+ * six-section body as the in-flow step and blocks the app until the
+ * checkbox + accept button persist the current disclaimer version.
  * @license GPL-3.0-only
  */
 
@@ -19,11 +20,13 @@ export function DisclaimerGate() {
   const onboarded = useSettingsStore((s) => s.onboarded);
   const hasHydrated = useSettingsStore((s) => s._hasHydrated);
   const disclaimerAccepted = useSettingsStore((s) => s.disclaimerAccepted);
+  const disclaimerVersion = useSettingsStore((s) => s.disclaimerVersion);
   const setDisclaimerAccepted = useSettingsStore((s) => s.setDisclaimerAccepted);
   const t = useTranslations("welcome");
   const [checked, setChecked] = useState(false);
 
-  if (!hasHydrated || !onboarded || disclaimerAccepted) return null;
+  const acceptedCurrent = disclaimerAccepted && disclaimerVersion >= DISCLAIMER_VERSION;
+  if (!hasHydrated || !onboarded || acceptedCurrent) return null;
 
   return (
     <div

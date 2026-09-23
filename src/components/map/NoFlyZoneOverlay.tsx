@@ -49,7 +49,7 @@ export function NoFlyZoneOverlay({
   region,
   onDataState,
 }: NoFlyZoneOverlayProps) {
-  const zones = noFlyZonesForRegion(region);
+  const zones = noFlyZonesForRegion(region)?.zones ?? null;
   const state: NoFlyDataState = !region
     ? "no-region"
     : zones === null

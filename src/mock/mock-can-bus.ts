@@ -92,13 +92,13 @@ function packU16LE(buf: Uint8Array, offset: number, value: number): void {
 
 // ── Frame builders for each node type ──────────────────────────────
 
-/** ESC node: emits ESC Status + ESC RPM for 4 motors at 50 Hz. */
+/** ESC node: emits esc.Status for 4 motors at 50 Hz. */
 function buildEscFrames(t: number, node: CanNode): MockCanFrame[] {
   const frames: MockCanFrame[] = [];
   const baseRpm = 8000 + Math.sin(t / 500) * 800;
 
   for (let motor = 0; motor < 4; motor++) {
-    // ESC Status (data type 1030)
+    // esc.Status (data type 1034): fabricated display bytes, not a DSDL payload.
     const status = new Uint8Array(8);
     const rpm = Math.round(baseRpm + motor * 40);
     const voltage = 15.8 + Math.random() * 0.3;
@@ -110,7 +110,7 @@ function buildEscFrames(t: number, node: CanNode): MockCanFrame[] {
     status[6] = Math.round(temp);
     status[7] = motor;
     frames.push({
-      id: buildMessageFrameId(node.nodeId, 1030),
+      id: buildMessageFrameId(node.nodeId, DATA_TYPE_IDS.EscStatus),
       bus: 0,
       len: 8,
       data: status,
@@ -178,8 +178,8 @@ function buildAirspeedFrames(t: number, node: CanNode): MockCanFrame[] {
   packFloat32LE(pressureBuf, 0, pressure);
   packFloat32LE(pressureBuf, 4, 25); // temp
   return [
-    { id: buildMessageFrameId(node.nodeId, 1027), bus: 0, len: 8, data: airspeedBuf },
-    { id: buildMessageFrameId(node.nodeId, 1028), bus: 0, len: 8, data: pressureBuf },
+    { id: buildMessageFrameId(node.nodeId, DATA_TYPE_IDS.RawAirData), bus: 0, len: 8, data: airspeedBuf },
+    { id: buildMessageFrameId(node.nodeId, DATA_TYPE_IDS.StaticPressure), bus: 0, len: 8, data: pressureBuf },
   ];
 }
 
@@ -192,7 +192,7 @@ function buildPowerFrames(t: number, node: CanNode): MockCanFrame[] {
   packFloat32LE(buf, 4, current);
   return [
     {
-      id: buildMessageFrameId(node.nodeId, 1092),
+      id: buildMessageFrameId(node.nodeId, DATA_TYPE_IDS.BatteryInfo),
       bus: 0,
       len: 8,
       data: buf,

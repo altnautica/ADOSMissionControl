@@ -24,7 +24,7 @@ export function ReceiverCard() {
 
   if (!status) {
     return (
-      <div className="p-4 bg-surface-primary border border-border-default/40">
+      <div className="p-4 bg-bg-primary border border-border-default/40">
         <div className="text-sm text-text-tertiary italic">{t("noRelayStatus")}</div>
       </div>
     );
@@ -32,7 +32,7 @@ export function ReceiverCard() {
 
   const fmt = (v: number | null) => (v === null ? "--" : v.toLocaleString());
   return (
-    <div className="p-4 bg-surface-primary border border-border-default/40 flex flex-col gap-2">
+    <div className="p-4 bg-bg-primary border border-border-default/40 flex flex-col gap-2">
       <div className="flex items-center justify-between">
         <div className="text-sm font-medium text-text-primary">{t("forwardingTo")}</div>
         <div

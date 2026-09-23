@@ -5,7 +5,6 @@ import {
   decodeMspINavStatus,
   decodeMspINavMisc2,
   decodeMspINavSafehome,
-  decodeMspINavNavConfigLegacy,
   decodeMspINavMisc,
   decodeMspINavBatteryConfig,
   decodeMspINavRateProfile,
@@ -16,6 +15,7 @@ import {
   decodeMspINavGeozoneVertex,
   decodeMspINavAnalog,
   decodeMspINavTemperatures,
+  decodeMspINavCalibrationData,
   decodeMspINavEzTune,
   decodeMspINavLogicConditions,
   decodeMspINavProgrammingPid,
@@ -80,10 +80,6 @@ describe('INAV_MSP command catalog', () => {
 
   it('includes MSP2_INAV_GEOZONE at 0x2210', () => {
     expect(INAV_MSP.MSP2_INAV_GEOZONE).toBe(0x2210)
-  })
-
-  it('legacy nav config ID documented at 0x2100', () => {
-    expect(INAV_MSP.MSP2_INAV_NAV_CONFIG_LEGACY).toBe(0x2100)
   })
 })
 
@@ -231,21 +227,6 @@ describe('decodeMspINavSafehome', () => {
   it('treats enabled=0 as false', () => {
     const bytes: number[] = [0, 0, ...s32ToLE(0), ...s32ToLE(0)]
     expect(decodeMspINavSafehome(dv(bytes)).enabled).toBe(false)
-  })
-})
-
-// ── decodeMspINavNavConfigLegacy ──────────────────────────────
-
-describe('decodeMspINavNavConfigLegacy', () => {
-  it('decodes without throwing and returns expected fields', () => {
-    // maxNavAltitude is U32 at offset 0, maxNavSpeed is U16 at offset 4
-    const bytes = new Array(26).fill(0)
-    const dv2 = new DataView(new Uint8Array(bytes).buffer)
-    dv2.setUint32(0, 5000, true) // maxNavAltitude (U32)
-    dv2.setUint16(4, 3000, true) // maxNavSpeed (U16)
-    const result = decodeMspINavNavConfigLegacy(new DataView(dv2.buffer))
-    expect(result.maxNavAltitude).toBe(5000)
-    expect(result.maxNavSpeed).toBe(3000)
   })
 })
 
@@ -405,11 +386,46 @@ describe('inavHandler capabilities', () => {
 // Scalar decoders throw RangeError when the payload is shorter than the
 // minimum required size (DataView enforces bounds at the byte level).
 
-describe('decodeMspINavAnalog - short payload', () => {
-  it('throws RangeError on empty payload (requires at least 7 bytes)', () => {
-    expect(() =>
-      decodeMspINavAnalog(new DataView(new Uint8Array(0).buffer))
-    ).toThrow(RangeError)
+describe('decodeMspINavAnalog', () => {
+  // 4S pack, state OK, full when plugged: 15.90 V, 12.25 A, 194.78 W,
+  // 640 mAh, 9800 mWh, 860 remaining, FC-reported 57 %, rssi 800.
+  const fixture = [
+    0x41, ...le16(1590), ...le16(1225), ...le32(19478), ...le32(640),
+    ...le32(9800), ...le32(860), 57, ...le16(800),
+  ]
+
+  it('decodes every field at the firmware offsets', () => {
+    expect(decodeMspINavAnalog(dv(fixture))).toEqual({
+      flags: 0x41,
+      batteryState: 0,
+      cellCount: 4,
+      voltage: 15.9,
+      amperage: 12.25,
+      powerW: 194.78,
+      mAhDrawn: 640,
+      mWhDrawn: 9800,
+      remainingCapacity: 860,
+      batteryPercent: 57,
+      rssi: 800,
+    })
+  })
+
+  it('reads amperage as signed', () => {
+    const bytes = [...fixture]
+    bytes.splice(3, 2, ...le16(-150 & 0xffff))
+    expect(decodeMspINavAnalog(dv(bytes)).amperage).toBe(-1.5)
+  })
+
+  it('has no percentage when the FC reports no battery present', () => {
+    const bytes = [...fixture]
+    bytes[0] = 0x0c // batteryState 3 (not present), 0 cells
+    bytes[21] = 0
+    expect(decodeMspINavAnalog(dv(bytes)).batteryPercent).toBeNull()
+  })
+
+  it('throws RangeError on a payload shorter than 24 bytes', () => {
+    expect(() => decodeMspINavAnalog(dv(fixture.slice(0, 23)))).toThrow(RangeError)
+    expect(() => decodeMspINavAnalog(dv([]))).toThrow(RangeError)
   })
 })
 
@@ -472,12 +488,33 @@ describe('decodeMspINavGeozoneVertex - short payload', () => {
   })
 })
 
-describe('decodeMspINavTemperatures - short payload', () => {
-  it('returns 8 sentinel values on empty payload', () => {
+describe('decodeMspINavTemperatures', () => {
+  it('decodes -1000 (no valid reading) as null and keeps real readings', () => {
+    const bytes = new Uint8Array(16)
+    const view = new DataView(bytes.buffer)
+    for (let i = 0; i < 8; i++) view.setInt16(i * 2, -1000, true)
+    view.setInt16(0, 285, true)
+    view.setInt16(2, -52, true)
+    const result = decodeMspINavTemperatures(view)
+    expect(result).toEqual([285, -52, null, null, null, null, null, null])
+  })
+
+  it('returns null for every slot missing from a short payload', () => {
     const result = decodeMspINavTemperatures(new DataView(new Uint8Array(0).buffer))
-    expect(result).toHaveLength(8)
-    expect(result[0]).toBe(0x8000)
-    expect(result[7]).toBe(0x8000)
+    expect(result).toEqual([null, null, null, null, null, null, null, null])
+  })
+})
+
+describe('decodeMspINavCalibrationData', () => {
+  it('reads the accel orientation flags at 0 and magZero at 13/15/17', () => {
+    const bytes = new Uint8Array(27)
+    const view = new DataView(bytes.buffer)
+    view.setUint8(0, 0b000101)
+    view.setInt16(1, 999, true) // accZero X, not reported
+    view.setInt16(13, -42, true)
+    view.setInt16(15, 118, true)
+    view.setInt16(17, -63, true)
+    expect(decodeMspINavCalibrationData(view)).toEqual({ accPositionFlags: 0b000101, magZero: [-42, 118, -63] })
   })
 })
 

@@ -4,7 +4,7 @@
  *
  * A relayed drone is carried over the radio, not "unreachable"; its link reads
  * verified only when the ground node heard a frame, and unverified / down
- * otherwise — never a confident green (Rule 44 / Rule 37). A node reached more
+ * otherwise — never a confident green (no fabricated reading, no unproven link). A node reached more
  * than one way shows the direct primary plus a muted WFB provenance chip.
  *
  * @license GPL-3.0-only
@@ -123,7 +123,7 @@ describe("ReachCell — WFB bearer", () => {
     );
   });
 
-  it("reads unverified with no RSSI when no frame was heard (Rule 44)", () => {
+  it("reads unverified with no RSSI when no frame was heard (no fabricated reading)", () => {
     nameGroundNode();
 
     const { container } = renderWithIntl(

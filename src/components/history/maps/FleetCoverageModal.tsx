@@ -25,7 +25,8 @@ interface FleetCoverageModalProps {
   open: boolean;
   records: FlightRecord[];
   onClose: () => void;
-  onPolygonFilter?: (matchingIds: Set<string>) => void;
+  /** Receives the flights inside a drawn search area (empty when it is cleared). */
+  onPolygonFilter: (matchingIds: Set<string>) => void;
 }
 
 export function FleetCoverageModal({
@@ -52,7 +53,7 @@ export function FleetCoverageModal({
 
   const handlePolygonFilter = (ids: Set<string>) => {
     setMatchCount(ids.size > 0 ? ids.size : null);
-    onPolygonFilter?.(ids);
+    onPolygonFilter(ids);
   };
 
   return (
@@ -68,7 +69,7 @@ export function FleetCoverageModal({
           </span>
           {matchCount !== null && (
             <span className="text-[10px] font-mono text-status-success">
-              {matchCount} matching polygon
+              {matchCount} inside the area, selected in the list
             </span>
           )}
         </div>

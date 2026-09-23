@@ -1,5 +1,6 @@
 import { internalQuery, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
+import { adjustPublishedCount, recountPublished } from "./communityChangelog";
 
 export const getSyncState = internalQuery({
   args: { repo: v.string() },
@@ -79,7 +80,7 @@ export const insertCommitEntry = internalMutation({
     const author = await ctx.db.get(args.authorId);
     const authorName = author?.fullName ?? "Unknown";
 
-    return await ctx.db.insert("community_changelog", {
+    const id = await ctx.db.insert("community_changelog", {
       version,
       title: args.title,
       body: args.body,
@@ -95,6 +96,8 @@ export const insertCommitEntry = internalMutation({
       commitDate: args.commitDate,
       ...(args.repo ? { repo: args.repo } : {}),
     });
+    await adjustPublishedCount(ctx, 1);
+    return id;
   },
 });
 
@@ -169,6 +172,7 @@ export const clearAutoEntries = internalMutation({
       }
     }
 
+    await recountPublished(ctx);
     return { deleted };
   },
 });

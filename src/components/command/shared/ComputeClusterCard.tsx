@@ -21,7 +21,7 @@ interface ComputeClusterCardProps {
 }
 
 // Heartbeat-scaled staleness budget: the compute heartbeat is ~1 Hz, not a fast
-// telemetry stream. Mirrors DroneLiveWorldTab's Rule-44 staleness gate so a dead
+// telemetry stream. Mirrors DroneLiveWorldTab's staleness gate so a dead
 // node's last cluster snapshot is never shown as live (an operator must not
 // dispatch jobs to a node whose heartbeat has gone quiet).
 const STALE_MS = 15000;
@@ -95,7 +95,7 @@ export function ComputeClusterCard({ className }: ComputeClusterCardProps) {
         ? t("slave")
         : cluster.role;
 
-  // Rule 44: a dead node's heartbeat goes quiet (the local poll 404s, the store
+  // A dead node's heartbeat goes quiet (the local poll 404s, the store
   // keeps the last snapshot). Past the budget, badge it stale + dim the stats
   // rather than show a frozen snapshot as live.
   const age = cluster.updatedAt === null ? null : now - cluster.updatedAt;
@@ -163,7 +163,7 @@ export function ComputeClusterCard({ className }: ComputeClusterCardProps) {
         </span>
       </div>
 
-      {/* Live perception-offload sessions this node is serving (Rule 44: a
+      {/* Live perception-offload sessions this node is serving (a
           stale heartbeat's count is dimmed, never presented as live). */}
       {cluster.activeSessions !== null && (
         <div
@@ -217,7 +217,7 @@ export function ComputeClusterCard({ className }: ComputeClusterCardProps) {
                 {s.nodeId}
               </span>
               <span className="text-[10px] font-mono text-text-tertiary ml-auto flex-shrink-0 tabular-nums">
-                {s.workersIdle} idle · {s.queueDepth} q
+                {num(s.workersIdle)} idle · {num(s.queueDepth)} q
               </span>
             </div>
           ))}

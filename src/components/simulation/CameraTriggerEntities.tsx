@@ -1,9 +1,7 @@
 /**
  * @module CameraTriggerEntities
- * @description Renders camera trigger markers in the 3D simulation view.
- * Scans waypoints for DO_SET_CAM_TRIGG and DO_DIGICAM commands and renders
- * yellow billboard markers at trigger positions. When camera trigger distance
- * is set, interpolates trigger points along path segments.
+ * @description Renders camera trigger markers in the 3D simulation view from
+ * the DO_SET_CAM_TRIGG and DO_DIGICAM actions attached to the waypoints.
  * @license GPL-3.0-only
  */
 
@@ -22,7 +20,7 @@ import {
   type Entity,
 } from "cesium";
 import type { Waypoint } from "@/lib/types";
-import { haversineDistance } from "@/lib/telemetry-utils";
+import { computeTriggerPoints } from "@/lib/simulation/mission-action-state";
 
 interface CameraTriggerEntitiesProps {
   viewer: CesiumViewer | null;
@@ -30,64 +28,8 @@ interface CameraTriggerEntitiesProps {
   visible: boolean;
 }
 
-interface TriggerPoint {
-  lat: number;
-  lon: number;
-  alt: number;
-}
-
 const CAM_ENTITY_PREFIX = "sim-cam-";
 const TRIGGER_COLOR = "#EAB308"; // yellow
-
-/**
- * Compute camera trigger points from waypoints.
- * Handles both explicit DO_DIGICAM commands and distance-based triggers
- * set by DO_SET_CAM_TRIGG (param1 = trigger distance in meters).
- */
-function computeTriggerPoints(waypoints: Waypoint[]): TriggerPoint[] {
-  const points: TriggerPoint[] = [];
-  let camTriggerDistance = 0;
-
-  for (let i = 0; i < waypoints.length; i++) {
-    const wp = waypoints[i];
-
-    if (wp.command === "DO_SET_CAM_TRIGG") {
-      // param1 holds the trigger distance in meters
-      camTriggerDistance = wp.param1 ?? 0;
-      continue;
-    }
-
-    if (wp.command === "DO_DIGICAM") {
-      // Explicit camera trigger at this position
-      points.push({ lat: wp.lat, lon: wp.lon, alt: wp.alt });
-      continue;
-    }
-
-    // If camera trigger distance is active and we have a previous nav waypoint,
-    // interpolate trigger points along the segment
-    if (camTriggerDistance > 0 && i > 0) {
-      const prev = waypoints[i - 1];
-      // Skip non-nav commands for interpolation source
-      if (prev.command === "DO_SET_CAM_TRIGG" || prev.command === "DO_DIGICAM") continue;
-
-      const segDist = haversineDistance(prev.lat, prev.lon, wp.lat, wp.lon);
-      if (segDist <= 0) continue;
-
-      const triggerCount = Math.floor(segDist / camTriggerDistance);
-      for (let t = 1; t <= triggerCount; t++) {
-        const ratio = (t * camTriggerDistance) / segDist;
-        if (ratio > 1) break;
-        points.push({
-          lat: prev.lat + (wp.lat - prev.lat) * ratio,
-          lon: prev.lon + (wp.lon - prev.lon) * ratio,
-          alt: prev.alt + (wp.alt - prev.alt) * ratio,
-        });
-      }
-    }
-  }
-
-  return points;
-}
 
 export function CameraTriggerEntities({ viewer, waypoints, visible }: CameraTriggerEntitiesProps) {
   const triggerPoints = useMemo(() => computeTriggerPoints(waypoints), [waypoints]);

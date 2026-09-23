@@ -17,6 +17,8 @@ import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import {
   runCalibration,
+  measureAfter,
+  evaluateCell,
   DEFAULT_CAL_CONFIG,
   AbortError,
   type CalCellResult,
@@ -96,6 +98,7 @@ export function CalibrateLinkWizard({
         sweep,
         measure: async () => measure(),
         sleep,
+        now: Date.now,
         signal: abortRef.current,
         onCell: (done, total, cell) => {
           setProgress({ done, total });
@@ -126,17 +129,22 @@ export function CalibrateLinkWizard({
     runningRef.current = false;
   };
 
-  // Apply the recommended trio, then re-validate one window. If the link does
-  // not survive, revert to last-good so the operator is never stranded.
+  // Apply the recommended trio, then re-validate it from receiver samples taken
+  // after the apply landed. If the link does not survive, revert to last-good
+  // so the operator is never stranded.
   const applyBest = async () => {
     if (!best) return;
     setNote(null);
     runningRef.current = true;
     try {
       await sweep(best.trio);
-      await sleep(DEFAULT_CAL_CONFIG.settleMs);
-      const check = measure();
-      if (check.validRxPacketsPerS == null || check.validRxPacketsPerS <= 0) {
+      const check = await measureAfter(
+        DEFAULT_CAL_CONFIG,
+        { measure: async () => measure(), sleep, now: Date.now },
+        Date.now(),
+      );
+      const verdict = evaluateCell(best.trio, check, DEFAULT_CAL_CONFIG.lossThresholdPct).verdict;
+      if (verdict === "link_lost") {
         await restore();
         setNote(t("noneWorked"));
       } else {

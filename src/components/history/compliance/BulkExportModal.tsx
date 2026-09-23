@@ -17,7 +17,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { listJurisdictions, type JurisdictionCode } from "@/lib/compliance/jurisdictions";
+import { listJurisdictions, resolveJurisdiction, type JurisdictionCode } from "@/lib/compliance/jurisdictions";
 import { exportFlights, downloadBlob } from "@/lib/compliance/exporter";
 import { validateForJurisdiction } from "@/lib/compliance/validator";
 import { useOperatorProfileStore } from "@/stores/operator-profile-store";
@@ -43,7 +43,7 @@ export function BulkExportModal({ open, records, onClose }: BulkExportModalProps
   const aircraftIndex = useAircraftRegistryStore((s) => s.aircraft);
 
   const [jurisdiction, setJurisdiction] = useState<JurisdictionCode>(
-    (operator.defaultJurisdiction as JurisdictionCode) || "GENERIC",
+    () => resolveJurisdiction(operator.defaultJurisdiction, "GENERIC"),
   );
   const [format, setFormat] = useState<Format>("pdf");
   const [busy, setBusy] = useState(false);

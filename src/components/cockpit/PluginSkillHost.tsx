@@ -12,11 +12,11 @@
  * skill that vanishes from the same drone's resolved list (uninstalled or its
  * grant revoked) is clean-stopped on that drone.
  *
- * Default-binding seeding is "first empty slot wins": the suggested key /
- * gamepad button drops into the lowest-index unbound slot of the active
- * loadout, and the binding store's last-write-wins clears a colliding key /
- * button from any other slot. Seeding happens once per skill per loadout (a
- * skill already bound somewhere is left where the operator put it).
+ * Default-binding seeding is "first empty slot, once": the skill drops into the
+ * lowest-index empty slot of the active loadout, taking the suggested key /
+ * gamepad button only when the cockpit does not reserve it and no other slot
+ * holds it. Each loadout records the skills it was offered, so a slot the
+ * operator later clears stays cleared (see `seedSuggestedBinding`).
  *
  * @module fly/PluginSkillHost
  * @license GPL-3.0-only
@@ -82,7 +82,14 @@ export function PluginSkillHost() {
         const skill = buildPluginSkill(contribution);
         registry.register(skill);
         next.add(skill.id);
-        seedDefaultBinding(skill.id, contribution.defaultBinding);
+        if (contribution.defaultBinding) {
+          const settings = useSettingsStore.getState();
+          settings.seedSuggestedBinding(
+            settings.activeLoadoutId,
+            skill.id,
+            contribution.defaultBinding,
+          );
+        }
       }
     }
 
@@ -104,37 +111,4 @@ export function PluginSkillHost() {
   );
 
   return null;
-}
-
-/**
- * Drop a skill's suggested default binding into the first empty hotbar slot of
- * the active loadout. No-op when the skill is already bound to a slot, when
- * there is no suggested binding, or when every slot is taken.
- */
-function seedDefaultBinding(
-  skillId: string,
-  binding: { key?: string | null; gamepadButton?: number | null } | undefined,
-): void {
-  if (!binding) return;
-  const key = binding.key ?? null;
-  const gamepadButton =
-    typeof binding.gamepadButton === "number" ? binding.gamepadButton : null;
-  if (key === null && gamepadButton === null) return;
-
-  const state = useSettingsStore.getState();
-  const loadoutId = state.activeLoadoutId;
-  const loadout = state.loadouts[loadoutId];
-  if (!loadout) return;
-
-  // Already bound somewhere: respect the operator's placement.
-  if (loadout.slots.some((slot) => slot.skillId === skillId)) return;
-
-  const empty = loadout.slots.find((slot) => slot.skillId === null);
-  if (!empty) return;
-
-  state.bindSkillToSlot(loadoutId, empty.index, skillId);
-  if (key !== null) state.setSlotKey(loadoutId, empty.index, key);
-  if (gamepadButton !== null) {
-    state.setSlotGamepadButton(loadoutId, empty.index, gamepadButton);
-  }
 }

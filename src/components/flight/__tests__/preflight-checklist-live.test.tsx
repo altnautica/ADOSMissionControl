@@ -22,6 +22,10 @@ import type { BatteryData } from "@/lib/types/telemetry";
 import { useChecklistStore } from "@/stores/checklist-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useTelemetryStore } from "@/stores/telemetry-store";
+import { useMissionStore } from "@/stores/mission-store";
+import { useGeofenceStore } from "@/stores/geofence-store";
+import { useUploadReceiptsStore } from "@/stores/upload-receipts-store";
+import { missionContentHash } from "@/lib/mission-upload";
 
 const NOW = 1_700_000_000_000;
 
@@ -32,8 +36,8 @@ function inputs(battery: BatteryData | undefined, knownCellCount: number | null 
     gps: undefined,
     ekf: undefined,
     sensors: { lastUpdate: 0, healthyCount: 0, presentCount: 0, prearm: undefined },
-    waypointCount: 0,
-    geofenceEnabled: false,
+    missionOnVehicle: null,
+    fenceOnVehicle: null,
     formatGpsFix: String,
   };
 }
@@ -142,5 +146,36 @@ describe("checklist readiness is live and per drone", () => {
     expect(after.items.every((i) => i.status === "pending")).toBe(true);
     expect(after.isReadyToArm("drone-a")).toBe(false);
     expect(after.isReadyToArm("drone-b")).toBe(false);
+  });
+
+  it("passes the plan and fence items only on what the vehicle acknowledged", () => {
+    useDroneManager.setState({ selectedDroneId: "drone-a" });
+    useUploadReceiptsStore.setState({ receipts: {} });
+    const waypoints = [
+      { id: "w1", lat: 12.9, lon: 77.6, alt: 30 },
+      { id: "w2", lat: 12.91, lon: 77.61, alt: 30 },
+    ];
+    // Planned and drawn locally, never uploaded.
+    useMissionStore.setState({ waypoints });
+    useGeofenceStore.setState({ enabled: true });
+    renderWithIntl(<ChecklistAutoRunner />);
+    expect(item("flight-plan")).toMatchObject({ status: "pending", displayValue: "Not on vehicle" });
+    expect(item("geofence-set")).toMatchObject({ status: "pending", displayValue: "Not on vehicle" });
+
+    // The vehicle acknowledged exactly this plan.
+    act(() => {
+      useUploadReceiptsStore.getState().record("mission", {
+        droneId: "drone-a",
+        contentHash: missionContentHash(waypoints),
+        at: NOW,
+      });
+    });
+    expect(item("flight-plan")).toMatchObject({ status: "pass", displayValue: "2 wpts" });
+
+    // An edit after the upload is not on the vehicle.
+    act(() => {
+      useMissionStore.setState({ waypoints: [waypoints[0]] });
+    });
+    expect(item("flight-plan")?.status).toBe("pending");
   });
 });

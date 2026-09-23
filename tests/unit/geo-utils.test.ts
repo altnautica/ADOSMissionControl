@@ -9,9 +9,6 @@ import {
   polygonBounds,
   isConvex,
   isSelfIntersecting,
-  formatDistance,
-  formatArea,
-  clipLineToPolygon,
 } from '@/lib/drawing/geo-utils';
 import { BANGALORE, CHENNAI, BANGALORE_POLYGON } from '../helpers/geo-fixtures';
 
@@ -158,55 +155,5 @@ describe('isSelfIntersecting()', () => {
       [1, 0],
     ];
     expect(isSelfIntersecting(square)).toBe(false);
-  });
-});
-
-describe('formatDistance()', () => {
-  it('uses m for <1000', () => {
-    expect(formatDistance(500)).toBe('500 m');
-    expect(formatDistance(999)).toBe('999 m');
-  });
-
-  it('uses km for >=1000', () => {
-    expect(formatDistance(1000)).toBe('1.00 km');
-    expect(formatDistance(2500)).toBe('2.50 km');
-  });
-});
-
-describe('formatArea()', () => {
-  it('uses m\u00B2 for <10000', () => {
-    expect(formatArea(500)).toBe('500 m\u00B2');
-    expect(formatArea(9999)).toBe('9999 m\u00B2');
-  });
-
-  it('uses km\u00B2 for >=10000', () => {
-    expect(formatArea(10000)).toBe('0.0100 km\u00B2');
-    expect(formatArea(1_000_000)).toBe('1.0000 km\u00B2');
-  });
-});
-
-describe('clipLineToPolygon()', () => {
-  it('clips correctly for convex polygon', () => {
-    // CW-wound square (isLeft expects this winding for "inside" = left of edges)
-    const square: [number, number][] = [
-      [0, 0], [10, 0], [10, 10], [0, 10],
-    ];
-    // Line going through the polygon
-    const result = clipLineToPolygon(
-      [5, -5],  // start outside
-      [5, 15],  // end outside
-      square,
-    );
-    expect(result).not.toBeNull();
-    expect(result!.length).toBeGreaterThanOrEqual(2);
-  });
-
-  it('returns null for line fully outside', () => {
-    const result = clipLineToPolygon(
-      [13.0, 77.58],
-      [13.0, 77.61],
-      BANGALORE_POLYGON,
-    );
-    expect(result).toBeNull();
   });
 });

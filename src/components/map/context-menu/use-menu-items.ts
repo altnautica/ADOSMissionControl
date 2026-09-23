@@ -22,7 +22,13 @@ export interface MenuContext {
   flightMode: string;
   /** The selected FC accepts a rally-point upload. */
   canRally: boolean;
+  /** The selected FC handles MAV_CMD_DO_ORBIT (PX4; ArduCopter has no handler). */
+  canOrbit: boolean;
 }
+
+/** Modes in which the autopilot applies MAV_CMD_CONDITION_YAW (ArduCopter's
+ * auto-yaw runs in Guided and Auto, not in Loiter or Guided_NoGPS). */
+const YAW_COMMAND_MODES: ReadonlySet<string> = new Set(["GUIDED", "AUTO"]);
 
 export function useMenuContext(): MenuContext {
   const connectionState = useDroneStore((s) => s.connectionState);
@@ -30,6 +36,10 @@ export function useMenuContext(): MenuContext {
   const armState = useDroneStore((s) => s.armState);
   const frameType = useDroneStore((s) => s.frameType);
   const canRally = useDroneManager((s) => !!s.getSelectedProtocol()?.uploadRallyPoints);
+  const canOrbit = useDroneManager((s) => {
+    const protocol = s.getSelectedProtocol();
+    return !!protocol?.orbit && protocol.getVehicleInfo()?.firmwareType === "px4";
+  });
 
   const isConnected =
     connectionState === "connected" ||
@@ -39,7 +49,7 @@ export function useMenuContext(): MenuContext {
   const canNavigate = isConnected && isArmed && GUIDED_MODES.has(flightMode);
   const isCopter = frameType === "copter" || frameType === "heli";
 
-  return { isConnected, isArmed, canNavigate, isCopter, flightMode, canRally };
+  return { isConnected, isArmed, canNavigate, isCopter, flightMode, canRally, canOrbit };
 }
 
 export function useMenuItems(ctx: MenuContext): MenuItemDef[] {
@@ -47,7 +57,7 @@ export function useMenuItems(ctx: MenuContext): MenuItemDef[] {
   const latestPos = posBuffer.latest();
   const hasDronePos = !!(latestPos && latestPos.lat !== 0);
 
-  const { canNavigate, isConnected, isArmed, isCopter, flightMode, canRally } = ctx;
+  const { canNavigate, isConnected, isArmed, isCopter, flightMode, canRally, canOrbit } = ctx;
 
   return useMemo<MenuItemDef[]>(() => {
     const items: MenuItemDef[] = [];
@@ -57,7 +67,7 @@ export function useMenuItems(ctx: MenuContext): MenuItemDef[] {
       items.push({ id: "fly-here", label: "Fly Here", icon: "flyHere", group: 0, shortcut: "G" });
       items.push({ id: "fly-here-alt", label: "Fly Here at Alt...", icon: "flyHereAlt", group: 0 });
     }
-    if (canNavigate && isCopter) {
+    if (canNavigate && isCopter && canOrbit) {
       items.push({ id: "orbit-here", label: "Orbit Here...", icon: "orbit", group: 0, shortcut: "O" });
     }
     if (canNavigate) {
@@ -83,7 +93,7 @@ export function useMenuItems(ctx: MenuContext): MenuItemDef[] {
       items.push({ id: "add-rally", label: "Add Rally Point", icon: "rally", group: 3 });
     }
     items.push({ id: "add-poi", label: "Add POI Marker", icon: "poi", group: 3 });
-    if (isConnected && isArmed && GUIDED_MODES.has(flightMode)) {
+    if (isConnected && isArmed && YAW_COMMAND_MODES.has(flightMode)) {
       items.push({ id: "set-heading", label: "Set Heading Toward", icon: "heading", group: 3 });
     }
 
@@ -94,5 +104,5 @@ export function useMenuItems(ctx: MenuContext): MenuItemDef[] {
     }
 
     return items;
-  }, [canNavigate, isConnected, isArmed, isCopter, flightMode, canRally, hasDronePos]);
+  }, [canNavigate, isConnected, isArmed, isCopter, flightMode, canRally, canOrbit, hasDronePos]);
 }

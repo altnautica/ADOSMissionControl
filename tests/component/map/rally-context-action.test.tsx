@@ -109,6 +109,7 @@ describe("rally menu item", () => {
     isCopter: true,
     flightMode: "LOITER",
     canRally: false,
+    canOrbit: false,
   };
 
   it("is hidden when the FC cannot take a rally upload", () => {
@@ -119,5 +120,28 @@ describe("rally menu item", () => {
   it("is offered when it can", () => {
     const { result } = renderHook(() => useMenuItems({ ...ctx, canRally: true }));
     expect(result.current.some((i) => i.id === "add-rally")).toBe(true);
+  });
+});
+
+describe("flight menu items", () => {
+  const armed: MenuContext = {
+    isConnected: true,
+    isArmed: true,
+    canNavigate: true,
+    isCopter: true,
+    flightMode: "GUIDED",
+    canRally: false,
+    canOrbit: false,
+  };
+  const ids = (ctx: MenuContext) => renderHook(() => useMenuItems(ctx)).result.current.map((i) => i.id);
+
+  it("offers Orbit Here only where the FC handles DO_ORBIT", () => {
+    expect(ids(armed)).not.toContain("orbit-here");
+    expect(ids({ ...armed, canOrbit: true })).toContain("orbit-here");
+  });
+
+  it("offers Set Heading Toward only in modes that apply CONDITION_YAW", () => {
+    expect(ids(armed)).toContain("set-heading");
+    expect(ids({ ...armed, flightMode: "LOITER" })).not.toContain("set-heading");
   });
 });

@@ -33,10 +33,9 @@ export const list = query({
       .first();
 
     // Community target types: any authenticated user with a profile can view
-    // Other target types: investor or admin only
+    // Other target types: admin only
     if (!profile) return [];
-    if (!COMMUNITY_TARGET_TYPES.has(args.targetType) &&
-        profile.role !== "investor" && profile.role !== "admin") {
+    if (!COMMUNITY_TARGET_TYPES.has(args.targetType) && profile.role !== "admin") {
       return [];
     }
 
@@ -81,11 +80,10 @@ export const create = mutation({
       .first();
 
     // Community target types: any authenticated user with a profile
-    // Other target types: investor or admin only
+    // Other target types: admin only
     if (!profile) throw new Error("Profile required");
-    if (!COMMUNITY_TARGET_TYPES.has(args.targetType) &&
-        profile.role !== "investor" && profile.role !== "admin") {
-      throw new Error("Investor or admin access required");
+    if (!COMMUNITY_TARGET_TYPES.has(args.targetType) && profile.role !== "admin") {
+      throw new Error("Admin access required");
     }
 
     const body = args.body.trim();

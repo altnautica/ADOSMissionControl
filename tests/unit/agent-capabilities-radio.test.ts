@@ -88,6 +88,16 @@ describe("agent-capabilities-store radio", () => {
     expect(radio?.topology).toBe("host_vbus");
   });
 
+  it("keeps FEC counters the agent did not report unknown, not zero", () => {
+    useAgentCapabilitiesStore.getState().setCapabilities({
+      radio: { state: "connected", topology: "host_vbus", fecRecovered: null, fecLost: null },
+    });
+    const radio = useAgentCapabilitiesStore.getState().radio;
+    expect(radio?.fecRecovered).toBeNull();
+    expect(radio?.fecLost).toBeNull();
+    expect(radio?.packetsLost).toBeNull();
+  });
+
   it("returns null when radio is undefined in the payload", () => {
     useAgentCapabilitiesStore.getState().setCapabilities({});
     expect(useAgentCapabilitiesStore.getState().radio).toBeNull();

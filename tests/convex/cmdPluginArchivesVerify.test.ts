@@ -25,7 +25,11 @@ import { readFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import path from "node:path";
 import JSZip from "jszip";
+import { deflateRawSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
+
+import * as verify from "../../convex/cmdPluginArchivesVerify";
+import { invoke } from "./fakeConvexCtx";
 
 const VERIFIER_PATH = path.join(
   process.cwd(),
@@ -125,10 +129,6 @@ describe("verifyArchive source contract", () => {
     expect(text).toContain("return null;");
   });
 
-  it("bounds DEFLATE output via maxOutputLength to prevent zip-bomb", async () => {
-    const text = await readFile(VERIFIER_PATH, "utf8");
-    expect(text).toContain("maxOutputLength: maxOutput");
-  });
 });
 
 // ──────────────────────────────────────────────────────────────────
@@ -384,5 +384,88 @@ describe("verifier behavior on real archives", () => {
     });
     const out = extractZipEntryMirror(archive, "definitely-missing.txt");
     expect(out).toBeNull();
+  });
+});
+
+describe("verifyArchive manifest inflate bound", () => {
+  /** A one-entry zip whose central header declares `declaredSize`. */
+  function zipWith(name: string, data: Buffer, declaredSize: number): Buffer {
+    const compressed = deflateRawSync(data);
+    const nameBytes = Buffer.from(name, "utf-8");
+    const local = Buffer.alloc(30);
+    local.writeUInt32LE(0x04034b50, 0);
+    local.writeUInt16LE(8, 8);
+    local.writeUInt32LE(compressed.byteLength, 18);
+    local.writeUInt32LE(declaredSize, 22);
+    local.writeUInt16LE(nameBytes.byteLength, 26);
+    const central = Buffer.alloc(46);
+    central.writeUInt32LE(0x02014b50, 0);
+    central.writeUInt16LE(8, 10);
+    central.writeUInt32LE(compressed.byteLength, 20);
+    central.writeUInt32LE(declaredSize, 24);
+    central.writeUInt16LE(nameBytes.byteLength, 28);
+    central.writeUInt32LE(0, 42);
+    const centralOffset = local.byteLength + nameBytes.byteLength + compressed.byteLength;
+    const centralSize = central.byteLength + nameBytes.byteLength;
+    const eocd = Buffer.alloc(22);
+    eocd.writeUInt32LE(0x06054b50, 0);
+    eocd.writeUInt16LE(1, 8);
+    eocd.writeUInt16LE(1, 10);
+    eocd.writeUInt32LE(centralSize, 12);
+    eocd.writeUInt32LE(centralOffset, 16);
+    return Buffer.concat([local, nameBytes, compressed, central, nameBytes, eocd]);
+  }
+
+  function actionCtx(archive: Buffer) {
+    return {
+      auth: { getUserIdentity: async () => ({ subject: "user-1|session-1" }) },
+      runQuery: async () => null,
+      runMutation: async () => "archive-row-id",
+      storage: {
+        getMetadata: async () => ({ size: archive.byteLength, sha256: sha256(archive) }),
+        get: async () => new Blob([new Uint8Array(archive)]),
+      },
+    };
+  }
+
+  function sha256(bytes: Buffer): string {
+    return createHash("sha256").update(bytes).digest("hex");
+  }
+
+  function args(archive: Buffer, manifest: Buffer) {
+    return {
+      storageId: "storage-1",
+      fileName: "p.adosplug",
+      sizeBytes: archive.byteLength,
+      sha256: sha256(archive),
+      pluginId: "p",
+      version: "1.0.0",
+      manifestHash: sha256(manifest),
+      declaredPermissions: [],
+    };
+  }
+
+  it("refuses a manifest whose declared size exceeds the fixed ceiling, without inflating it", async () => {
+    const bomb = Buffer.alloc(8 * 1024 * 1024);
+    const archive = zipWith("manifest.yaml", bomb, 0xffffffff);
+    await expect(
+      invoke(verify.verifyArchive, actionCtx(archive), args(archive, bomb)),
+    ).rejects.toThrow(/manifest missing/);
+  });
+
+  it("stops inflating at the ceiling even when the declared size is small", async () => {
+    const bomb = Buffer.alloc(8 * 1024 * 1024);
+    const archive = zipWith("manifest.yaml", bomb, 100);
+    await expect(
+      invoke(verify.verifyArchive, actionCtx(archive), args(archive, bomb)),
+    ).rejects.toThrow(/manifest missing/);
+  });
+
+  it("accepts an ordinary manifest", async () => {
+    const manifest = Buffer.from("id: p\nversion: 1.0.0\n");
+    const archive = zipWith("manifest.yaml", manifest, manifest.byteLength);
+    await expect(
+      invoke(verify.verifyArchive, actionCtx(archive), args(archive, manifest)),
+    ).resolves.toBe("archive-row-id");
   });
 });

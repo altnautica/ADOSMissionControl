@@ -36,16 +36,9 @@ export function OverlayPanel({ onClose }: OverlayPanelProps) {
       setParseError(null);
 
       try {
-        let result;
-        let kmlText: string;
-
-        if (file.name.endsWith(".kmz")) {
-          result = await parseKMZ(file);
-          kmlText = ""; // Don't persist raw KML for KMZ (avoid large localStorage)
-        } else {
-          kmlText = await file.text();
-          result = parseKML(kmlText);
-        }
+        const result = file.name.endsWith(".kmz")
+          ? await parseKMZ(file)
+          : parseKML(await file.text());
 
         if (result.polygons.length === 0 && result.paths.length === 0 && result.points.length === 0) {
           setParseError("No geometry found in file.");
@@ -65,7 +58,6 @@ export function OverlayPanel({ onClose }: OverlayPanelProps) {
             fillColor: result.style.fillColor,
             lineWidth: result.style.lineWidth,
           },
-          rawKml: kmlText,
         };
 
         addOverlay(overlay);
@@ -164,6 +156,15 @@ function OverlayItem({
 }) {
   const featureCount =
     overlay.polygons.length + overlay.paths.length + overlay.points.length;
+  // The slider moves a local draft; the store (and its persisted copy) is
+  // written once when the drag or key press ends.
+  const [draft, setDraft] = useState<number | null>(null);
+  const percent = draft ?? Math.round(overlay.opacity * 100);
+  const commit = () => {
+    if (draft === null) return;
+    onOpacityChange(draft / 100);
+    setDraft(null);
+  };
 
   return (
     <div className="px-3 py-2 border-b border-border-default last:border-b-0">
@@ -207,12 +208,15 @@ function OverlayItem({
           type="range"
           min={0}
           max={100}
-          value={Math.round(overlay.opacity * 100)}
-          onChange={(e) => onOpacityChange(Number(e.target.value) / 100)}
+          value={percent}
+          onChange={(e) => setDraft(Number(e.target.value))}
+          onPointerUp={commit}
+          onKeyUp={commit}
+          onBlur={commit}
           className="flex-1 h-1 accent-accent-primary"
         />
         <span className="text-[9px] text-text-tertiary font-mono w-6 text-right">
-          {Math.round(overlay.opacity * 100)}%
+          {percent}%
         </span>
       </div>
     </div>

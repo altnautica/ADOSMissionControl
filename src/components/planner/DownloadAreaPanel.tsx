@@ -19,8 +19,21 @@ import {
   type LatLngBounds,
 } from "@/lib/tile-math";
 import { MAX_CACHE_SIZE } from "@/lib/tile-cache";
-import { useTileDownloadStore } from "@/stores/tile-download-store";
+import { useTileDownloadStore, MAX_DOWNLOAD_TILES } from "@/stores/tile-download-store";
+import { cn } from "@/lib/utils";
 import { useSettingsStore, type MapTileSource } from "@/stores/settings-store";
+
+/** A result is a success only when nothing failed; all-failed is an error. */
+function resultTone(r: { completed: number; skipped: number; failed: number }): "success" | "warning" | "error" {
+  if (r.failed === 0) return "success";
+  return r.completed + r.skipped > 0 ? "warning" : "error";
+}
+
+const RESULT_TONE = {
+  success: { box: "bg-status-success/10 border-status-success/30", text: "text-status-success" },
+  warning: { box: "bg-status-warning/10 border-status-warning/30", text: "text-status-warning" },
+  error: { box: "bg-status-error/10 border-status-error/30", text: "text-status-error" },
+} as const;
 
 interface DownloadAreaPanelProps {
   bounds: LatLngBounds;
@@ -73,7 +86,8 @@ export function DownloadAreaPanel({ bounds, currentZoom, currentProvider, onClos
     [bounds, zoomMin, zoomMax, providerConfig.avgTileKB],
   );
 
-  const isLarge = tileCount > 50000;
+  const tooMany = tileCount > MAX_DOWNLOAD_TILES;
+  const isLarge = !tooMany && tileCount > 50000;
   const wouldExceedCache = estSize > MAX_CACHE_SIZE;
 
   const handleDownload = useCallback(async () => {
@@ -183,7 +197,16 @@ export function DownloadAreaPanel({ bounds, currentZoom, currentProvider, onClos
             </span>
           </div>
         )}
-        {wouldExceedCache && !isDownloading && (
+        {tooMany && !isDownloading && (
+          <div className="flex items-start gap-1.5 px-2 py-1.5 bg-status-error/10 border border-status-error/30 rounded">
+            <AlertTriangle size={12} className="text-status-error shrink-0 mt-0.5" />
+            <span className="text-[9px] text-status-error">
+              Too many tiles ({tileCount.toLocaleString()}). The limit is {MAX_DOWNLOAD_TILES.toLocaleString()}:
+              zoom the map in or lower the maximum zoom.
+            </span>
+          </div>
+        )}
+        {wouldExceedCache && !tooMany && !isDownloading && (
           <div className="flex items-start gap-1.5 px-2 py-1.5 bg-status-warning/10 border border-status-warning/30 rounded">
             <AlertTriangle size={12} className="text-status-warning shrink-0 mt-0.5" />
             <span className="text-[9px] text-status-warning">
@@ -215,8 +238,8 @@ export function DownloadAreaPanel({ bounds, currentZoom, currentProvider, onClos
 
         {/* Result */}
         {result && !isDownloading && (
-          <div className="px-2 py-1.5 bg-status-success/10 border border-status-success/30 rounded">
-            <span className="text-[9px] text-status-success">
+          <div className={cn("px-2 py-1.5 border rounded", RESULT_TONE[resultTone(result)].box)}>
+            <span className={cn("text-[9px]", RESULT_TONE[resultTone(result)].text)}>
               Downloaded {result.completed.toLocaleString()} tiles ({formatBytes(result.totalBytes)})
               {result.skipped > 0 && `, ${result.skipped} already cached`}
               {result.failed > 0 && `, ${result.failed} failed`}
@@ -254,7 +277,7 @@ export function DownloadAreaPanel({ bounds, currentZoom, currentProvider, onClos
               Close
             </Button>
             <Button variant="primary" size="sm" onClick={handleDownload} className="flex-1"
-              disabled={customSelectedButUnusable}
+              disabled={customSelectedButUnusable || tooMany}
               icon={<CloudDownload size={12} />}>
               Download
             </Button>

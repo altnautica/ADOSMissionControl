@@ -2,7 +2,8 @@
  * @module FlightPlanLibrary
  * @description Left panel for browsing, organizing, and managing saved flight plans.
  * Shared between Plan and Simulate tabs with context-appropriate behavior.
- * Owns the unsaved-changes dirty check when switching plans.
+ * Owns the unsaved-changes check before switching plans, starting a new plan
+ * or importing one.
  * @license GPL-3.0-only
  */
 "use client";
@@ -11,11 +12,17 @@ import { useMemo, useCallback, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { usePlanLibraryStore } from "@/stores/plan-library-store";
-import { useMissionStore } from "@/stores/mission-store";
 import { useToast } from "@/components/ui/toast";
 import { filterPlans, sortPlans } from "@/lib/plan-library";
-import { applyPlanToWorkspace, saveActivePlanFromWorkspace, workspaceHasUnsavedChanges } from "@/lib/plan-workspace";
+import {
+  applyPlanToWorkspace,
+  clearPlanWorkspace,
+  saveActivePlanFromWorkspace,
+  workspaceHasUnsavedChanges,
+} from "@/lib/plan-workspace";
 import { importMissionFile } from "@/lib/mission-io";
+import { withImportedFenceZones } from "@/lib/mission/qgc-plan-extras";
+import { useGeofenceStore } from "@/stores/geofence-store";
 import { PlanLibraryHeader } from "./PlanLibraryHeader";
 import { PlanSearchBar } from "./PlanSearchBar";
 import { PlanTree } from "./PlanTree";
@@ -40,6 +47,9 @@ interface FlightPlanLibraryProps {
   hasDrone?: boolean;
 }
 
+/** The workspace-replacing action waiting on the unsaved-changes answer. */
+type PendingAction = { kind: "switch"; planId: string } | { kind: "new" } | { kind: "import" };
+
 export function FlightPlanLibrary({ context, onPlanLoaded, onSave, onPlanRenamed, onDownloadFromDrone, isDownloading, hasDrone }: FlightPlanLibraryProps) {
   const t = useTranslations("library");
   const plans = usePlanLibraryStore((s) => s.plans);
@@ -55,25 +65,24 @@ export function FlightPlanLibrary({ context, onPlanLoaded, onSave, onPlanRenamed
   const createPlan = usePlanLibraryStore((s) => s.createPlan);
   const toggleLibrary = usePlanLibraryStore((s) => s.toggleLibrary);
 
-  const clearMission = useMissionStore((s) => s.clearMission);
   const { toast } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // Unsaved changes dialog state
-  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
-  const [pendingPlanId, setPendingPlanId] = useState<string | null>(null);
+  // The action held back while the unsaved-changes dialog asks.
+  const [pending, setPending] = useState<PendingAction | null>(null);
 
   const filteredPlans = useMemo(
     () => sortPlans(filterPlans(plans, searchQuery), sortBy, sortDirection),
     [plans, searchQuery, sortBy, sortDirection]
   );
 
-  const handleNewPlan = useCallback(() => {
+  /** Start a new plan with an empty workspace — no dirty check. */
+  const startNewPlan = useCallback(() => {
     createPlan();
-    clearMission();
+    clearPlanWorkspace();
     onPlanLoaded?.({ name: t("untitledPlan") });
     toast(t("newPlanCreated"), "info");
-  }, [createPlan, clearMission, onPlanLoaded, toast]);
+  }, [createPlan, onPlanLoaded, toast, t]);
 
   /** Load a plan into the planner — no dirty check, used after save/discard. */
   const loadPlan = useCallback(
@@ -90,53 +99,60 @@ export function FlightPlanLibrary({ context, onPlanLoaded, onSave, onPlanRenamed
     [plans, onPlanLoaded]
   );
 
+  /** Run a pending action now (after save/discard, or when nothing is unsaved). */
+  const runAction = useCallback(
+    (action: PendingAction) => {
+      if (action.kind === "switch") loadPlan(action.planId);
+      else if (action.kind === "new") startNewPlan();
+      else fileRef.current?.click();
+    },
+    [loadPlan, startNewPlan],
+  );
+
+  /** Run an action that replaces the workspace, asking first when it holds
+   *  unsaved edits to the active plan or a never-saved workspace. */
+  const guardAction = useCallback(
+    (action: PendingAction) => {
+      if (workspaceHasUnsavedChanges()) {
+        setPending(action);
+        return;
+      }
+      runAction(action);
+    },
+    [runAction],
+  );
+
   /** Select a plan — checks for unsaved changes first. */
   const handleSelectPlan = useCallback(
     (planId: string) => {
       // Clicking the already-active plan is a no-op
       if (planId === activePlanId) return;
-
-      // Unsaved edits to the active plan, or a never-saved workspace: ask.
-      if (workspaceHasUnsavedChanges()) {
-        setPendingPlanId(planId);
-        setShowUnsavedDialog(true);
-        return;
-      }
-
-      loadPlan(planId);
+      guardAction({ kind: "switch", planId });
     },
-    [activePlanId, loadPlan]
+    [activePlanId, guardAction]
   );
 
-  /** Save current plan, then switch to pending. The save goes straight from
-   *  the workspace, so it works on every surface (Simulate has no page-level
-   *  save handler) and completes before the switch overwrites the workspace. */
+  const handleNewPlan = useCallback(() => guardAction({ kind: "new" }), [guardAction]);
+  const handleImport = useCallback(() => guardAction({ kind: "import" }), [guardAction]);
+
+  /** Save the current plan, then run the pending action. The save goes straight
+   *  from the workspace, so it works on every surface (Simulate has no
+   *  page-level save handler) and completes before the action replaces it. */
   const handleSaveAndSwitch = useCallback(() => {
     saveActivePlanFromWorkspace();
-    if (pendingPlanId) {
-      loadPlan(pendingPlanId);
-    }
-    setShowUnsavedDialog(false);
-    setPendingPlanId(null);
-  }, [pendingPlanId, loadPlan]);
+    if (pending) runAction(pending);
+    setPending(null);
+  }, [pending, runAction]);
 
-  /** Discard current changes and switch to pending. */
+  /** Discard current changes and run the pending action. */
   const handleDiscardAndSwitch = useCallback(() => {
-    if (pendingPlanId) {
-      loadPlan(pendingPlanId);
-    }
-    setShowUnsavedDialog(false);
-    setPendingPlanId(null);
-  }, [pendingPlanId, loadPlan]);
+    if (pending) runAction(pending);
+    setPending(null);
+  }, [pending, runAction]);
 
-  /** Cancel the switch — stay on current plan. */
+  /** Cancel — stay on the current plan. */
   const handleCancelSwitch = useCallback(() => {
-    setShowUnsavedDialog(false);
-    setPendingPlanId(null);
-  }, []);
-
-  const handleImport = useCallback(async () => {
-    fileRef.current?.click();
+    setPending(null);
   }, []);
 
   const handleFileChange = useCallback(
@@ -154,9 +170,13 @@ export function FlightPlanLibrary({ context, onPlanLoaded, onSave, onPlanRenamed
           e.target.value = "";
           return;
         }
+        const geofence = result.geofence
+          ?? (result.fenceZones
+            ? withImportedFenceZones(useGeofenceStore.getState().snapshot(), result.fenceZones)
+            : undefined);
         const planId = createPlan(name, result.waypoints, {
           droneId: result.metadata?.droneId,
-        }, { geofence: result.geofence, rally: result.rally });
+        }, { geofence, rally: result.rally, pois: result.pois });
         const plan = usePlanLibraryStore.getState().plans.find((p) => p.id === planId);
         if (plan) applyPlanToWorkspace(plan);
         onPlanLoaded?.({ name, droneId: result.metadata?.droneId });
@@ -224,7 +244,7 @@ export function FlightPlanLibrary({ context, onPlanLoaded, onSave, onPlanRenamed
       </div>
 
       <UnsavedChangesDialog
-        open={showUnsavedDialog}
+        open={pending !== null}
         onSaveAndSwitch={handleSaveAndSwitch}
         onDiscardAndSwitch={handleDiscardAndSwitch}
         onCancel={handleCancelSwitch}

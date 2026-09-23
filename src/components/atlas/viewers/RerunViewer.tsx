@@ -66,11 +66,18 @@ export default function RerunViewer({ url }: { url: string }) {
       try {
         const { WebViewer } = await import("@rerun-io/web-viewer");
         if (cancelled || !hostRef.current) return;
-        host.replaceChildren();
+        // Rerun sets its parent to `position: relative` and sizes its canvas to
+        // 640x360 unless told otherwise. Give it an inner box that fills the
+        // absolute host, so the override cannot collapse the sized box, and
+        // ask for a canvas that fills that box.
+        const parent = document.createElement("div");
+        parent.style.width = "100%";
+        parent.style.height = "100%";
+        host.replaceChildren(parent);
         const v = new WebViewer();
         viewer = v;
         // Start empty; the recording is pushed as bytes below.
-        await v.start(null, host, null);
+        await v.start(null, parent, { width: "100%", height: "100%" });
         if (cancelled) return;
 
         // Fetch the recording through our proxy (key rides the query string),

@@ -10,9 +10,9 @@
  * gates connection, pairing, or status logic — removing this store must not
  * change what a node reports, only how it looks. Health/status tokens stay
  * reserved: a node the operator paints red still shows a green `good` ring and a
- * red `critical` badge correctly (Rule 44 — identity can never mask a fault).
+ * red `critical` badge correctly (identity can never mask a fault).
  *
- * Local-first, per-browser v1 (Rule 39): stored in localStorage only; a cloud
+ * Local-first, per-browser v1: stored in localStorage only; a cloud
  * mirror is secondary / opt-in / deferred. The same plaintext, per-origin
  * threat-model caveat as `local-nodes-store` applies.
  *
@@ -22,7 +22,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { NodeSwatch } from "@/lib/nodes/node-profile";
-import type { FeatureDot } from "@/lib/nodes/node-feature-dots";
+import { asSignalKey, type FeatureDot } from "@/lib/nodes/node-feature-dots";
 
 /** The operator's presentation overlay for one node (keyed by `deviceId`). */
 export interface NodePersonalization {
@@ -136,7 +136,7 @@ export const useNodePersonalizationStore = create<NodePersonalizationState>()(
     }),
     {
       name: "altcmd:node-personalization",
-      version: 1,
+      version: 2,
       storage: createJSONStorage(() =>
         typeof window !== "undefined"
           ? window.localStorage
@@ -146,9 +146,19 @@ export const useNodePersonalizationStore = create<NodePersonalizationState>()(
               removeItem: () => {},
             },
       ),
-      // Identity passthrough at v1. Bump `version` and add a branch here the
-      // moment the persisted shape changes (per the persisted-store discipline).
-      migrate: (persisted) => persisted as NodePersonalizationState,
+      // v2 narrowed the pinnable signals to the ones a node can verify; dots
+      // pinned to a retired signal are dropped rather than rendered.
+      migrate: (persisted, version) => {
+        const state = persisted as Pick<NodePersonalizationState, "byNode">;
+        if (version >= 2 || !state?.byNode) return state as NodePersonalizationState;
+        let byNode = state.byNode;
+        for (const [deviceId, overlay] of Object.entries(state.byNode)) {
+          if (!overlay.dots) continue;
+          const dots = overlay.dots.filter((d) => asSignalKey(d.signal) !== null);
+          byNode = patchNode(byNode, deviceId, { dots });
+        }
+        return { ...state, byNode } as NodePersonalizationState;
+      },
     },
   ),
 );

@@ -2,7 +2,7 @@
  * @license GPL-3.0-only
  *
  * Coercion of a compute node's job outputs, focused on the reconstruction
- * honesty field (Rule 44): the concrete backend is lifted from `meta.backend`,
+ * honesty field (no fabricated reading): the concrete backend is lifted from `meta.backend`,
  * with a `mock://` uri-scheme fallback so a pre-field agent that emits a
  * placeholder is still flagged. Drives the World Model honesty badge.
  */

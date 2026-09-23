@@ -12,6 +12,7 @@ import { usePatternStore } from "@/stores/pattern-store";
 import { usePlannerStore } from "@/stores/planner-store";
 import { useGeofenceStore } from "@/stores/geofence-store";
 import { randomId } from "@/lib/utils";
+import { acceptRadiusDefault } from "@/components/planner/waypoint-constants";
 import { clearAutoSave } from "@/lib/mission-io";
 import { DEFAULT_CENTER } from "@/lib/map-constants";
 import { useDrawingStore } from "@/stores/drawing-store";
@@ -34,6 +35,7 @@ interface ActionsDeps {
   activeTool: string;
   defaultAlt: number;
   defaultSpeed: number;
+  defaultAcceptRadius: number;
   selectedDroneId: string;
   missionName: string;
   contextMenu: ContextMenuState | null;
@@ -114,7 +116,7 @@ function attachRoiAction(
 
 export function usePlannerActions(deps: ActionsDeps) {
   const {
-    waypoints, activePlanId, isDirty, activeTool, defaultAlt, defaultSpeed,
+    waypoints, activePlanId, isDirty, activeTool, defaultAlt, defaultSpeed, defaultAcceptRadius,
     selectedDroneId, missionName, contextMenu,
     addWaypoint, removeWaypoint, insertWaypoint, clearMission, setWaypoints,
     downloadMission, uploadMission,
@@ -178,11 +180,12 @@ export function usePlannerActions(deps: ActionsDeps) {
       const wp: Waypoint = {
         id: randomId(), lat: clampLat(lat), lon: clampLon(lon),
         alt: command === "LAND" ? 0 : clampAlt(defaultAlt), speed: defaultSpeed, command,
+        ...acceptRadiusDefault(command, defaultAcceptRadius),
       };
       addWaypoint(wp);
       fetchGroundElevation(wp.id, wp.lat, wp.lon);
     },
-    [activePlanId, activeTool, addWaypoint, addRallyPoint, defaultAlt, defaultSpeed, toast, waypoints]
+    [activePlanId, activeTool, addWaypoint, addRallyPoint, defaultAlt, defaultSpeed, defaultAcceptRadius, toast, waypoints]
   );
 
   const handleMapRightClick = useCallback(
@@ -233,6 +236,7 @@ export function usePlannerActions(deps: ActionsDeps) {
       const makeWp = (cmd: Waypoint["command"]): Waypoint => ({
         id: randomId(), lat: clampLat(lat ?? 0), lon: clampLon(lon ?? 0),
         alt: cmd === "LAND" ? 0 : clampAlt(defaultAlt), command: cmd,
+        ...acceptRadiusDefault(cmd ?? "WAYPOINT", defaultAcceptRadius),
       });
       switch (actionId) {
         case "add-wp": { const w = makeWp("WAYPOINT"); addWaypoint(w); fetchGroundElevation(w.id, w.lat, w.lon); break; }
@@ -267,6 +271,7 @@ export function usePlannerActions(deps: ActionsDeps) {
           const newWp: Waypoint = {
             id: randomId(), lat: clampLat(ref.lat + 0.0005), lon: clampLon(ref.lon + 0.0005),
             alt: clampAlt(defaultAlt), command: "WAYPOINT",
+            ...acceptRadiusDefault("WAYPOINT", defaultAcceptRadius),
           };
           insertWaypoint(newWp, actionId === "insert-before" ? idx : idx + 1);
           fetchGroundElevation(newWp.id, newWp.lat, newWp.lon);
@@ -276,7 +281,7 @@ export function usePlannerActions(deps: ActionsDeps) {
       }
       setContextMenu(null);
     },
-    [contextMenu, activePlanId, addWaypoint, addRallyPoint, insertWaypoint, removeWaypoint, defaultAlt, waypoints, setSelectedWaypoint, setExpandedWaypoint, toast, setContextMenu]
+    [contextMenu, activePlanId, addWaypoint, addRallyPoint, insertWaypoint, removeWaypoint, defaultAlt, defaultAcceptRadius, waypoints, setSelectedWaypoint, setExpandedWaypoint, toast, setContextMenu]
   );
 
   const handleWaypointClick = useCallback((id: string, additive?: boolean, range?: boolean) => {
@@ -461,10 +466,11 @@ export function usePlannerActions(deps: ActionsDeps) {
     const wp: Waypoint = {
       id: randomId(), lat: clampLat(lastWp ? lastWp.lat + 0.001 : DEFAULT_CENTER[0]),
       lon: clampLon(lastWp ? lastWp.lon + 0.001 : DEFAULT_CENTER[1]), alt: clampAlt(defaultAlt), command: "WAYPOINT",
+      ...acceptRadiusDefault("WAYPOINT", defaultAcceptRadius),
     };
     addWaypoint(wp);
     fetchGroundElevation(wp.id, wp.lat, wp.lon);
-  }, [activePlanId, waypoints, addWaypoint, defaultAlt, toast]);
+  }, [activePlanId, waypoints, addWaypoint, defaultAlt, defaultAcceptRadius, toast]);
 
   return {
     handleMapClick, handleMapRightClick, handleWaypointRightClick,

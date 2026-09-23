@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import type { MagneticFieldStrength2 } from "@/lib/dronecan/dsdl/magnetic-field-strength-2";
+import { RingBuffer } from "@/lib/ring-buffer";
 
 interface MagSample {
   ts: number;
@@ -51,7 +52,11 @@ export function CompassStreamCard({ client }: CompassStreamCardProps = {}) {
 
   const [nodeIdRaw, setNodeIdRaw] = useState("");
   const [durationRaw, setDurationRaw] = useState("10");
-  const [samples, setSamples] = useState<MagSample[]>([]);
+  // Samples live in a ring (latest MAX_SAMPLES); `sampleCount` drives renders
+  // so a stream does not copy the whole array on every sample.
+  const [ring] = useState(() => new RingBuffer<MagSample>(MAX_SAMPLES));
+  const [, setSampleCount] = useState(0);
+  const samples = ring.toArray();
   const [capturing, setCapturing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const unsubRef = useRef<(() => void) | null>(null);
@@ -84,16 +89,15 @@ export function CompassStreamCard({ client }: CompassStreamCardProps = {}) {
     if (!client || parsedNodeId == null || durationMs <= 0) return;
     cleanup();
     setError(null);
-    setSamples([]);
+    ring.clear();
+    setSampleCount(0);
     setCapturing(true);
     try {
       const startedAt = Date.now();
       unsubRef.current = client.subscribeMag2(parsedNodeId, (mag) => {
-        setSamples((prev) => {
-          if (prev.length >= MAX_SAMPLES) return prev;
-          const [x, y, z] = mag.magneticFieldGa;
-          return [...prev, { ts: Date.now() - startedAt, x, y, z }];
-        });
+        const [x, y, z] = mag.magneticFieldGa;
+        ring.push({ ts: Date.now() - startedAt, x, y, z });
+        setSampleCount((n) => n + 1);
       });
       timerRef.current = setTimeout(() => {
         cleanup();
@@ -103,7 +107,7 @@ export function CompassStreamCard({ client }: CompassStreamCardProps = {}) {
       setError(err instanceof Error ? err.message : String(err));
       setCapturing(false);
     }
-  }, [client, parsedNodeId, durationMs, cleanup]);
+  }, [client, parsedNodeId, durationMs, cleanup, ring]);
 
   const exportCsv = useCallback(() => {
     if (samples.length === 0) return;
@@ -192,7 +196,7 @@ function CompassPlot({ samples }: { samples: MagSample[] }) {
       <svg
         width={PLOT_WIDTH}
         height={PLOT_HEIGHT}
-        className="bg-surface-secondary rounded"
+        className="bg-bg-secondary rounded"
       />
     );
   }
@@ -220,11 +224,11 @@ function CompassPlot({ samples }: { samples: MagSample[] }) {
     <svg
       width={PLOT_WIDTH}
       height={PLOT_HEIGHT}
-      className="bg-surface-secondary rounded"
+      className="bg-bg-secondary rounded"
     >
-      <polyline points={pointsX} fill="none" stroke="#ef4444" strokeWidth={1} />
-      <polyline points={pointsY} fill="none" stroke="#22c55e" strokeWidth={1} />
-      <polyline points={pointsZ} fill="none" stroke="#3b82f6" strokeWidth={1} />
+      <polyline points={pointsX} fill="none" stroke="var(--color-status-error)" strokeWidth={1} />
+      <polyline points={pointsY} fill="none" stroke="var(--color-status-success)" strokeWidth={1} />
+      <polyline points={pointsZ} fill="none" stroke="var(--color-accent-primary)" strokeWidth={1} />
     </svg>
   );
 }

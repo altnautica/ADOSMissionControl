@@ -22,12 +22,18 @@
 import { useTranslations } from "next-intl";
 import { Fingerprint } from "lucide-react";
 
-import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
+import {
+  selectDeviceCapabilities,
+  useAgentCapabilitiesStore,
+} from "@/stores/agent-capabilities-store";
 import type { MacStabilityAdapter } from "@/lib/agent/feature-types";
 import { ConfigToggleField } from "./ConfigFields";
 import { Section } from "./Section";
 
 interface SectionProps {
+  /** The node this page is rendered for; its adapter verdicts come from its
+   * own capability slice, never the focused node's. */
+  nodeDeviceId: string | null;
   config: Record<string, unknown> | null;
   readOnly: boolean;
   setValue: (key: string, value: string) => Promise<void>;
@@ -143,11 +149,18 @@ function AdapterCard({ adapter }: { adapter: MacStabilityAdapter }) {
   );
 }
 
-export function MacPinSection({ config, readOnly, setValue }: SectionProps) {
+export function MacPinSection({
+  nodeDeviceId,
+  config,
+  readOnly,
+  setValue,
+}: SectionProps) {
   const t = useTranslations("nodeSettings.macPin");
   // The per-adapter verdicts ride the node's status feed (LAN full-status or
   // the cloud heartbeat), so the list works over either transport.
-  const macStability = useAgentCapabilitiesStore((s) => s.macStability);
+  const macStability = useAgentCapabilitiesStore(
+    (s) => selectDeviceCapabilities(s, nodeDeviceId)?.macStability,
+  );
 
   const adapters = macStability?.adapters;
 

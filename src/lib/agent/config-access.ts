@@ -167,18 +167,36 @@ export function directClientForNode<T>(
  *     this lane its entire settings surface resolves `none`.
  *  4. `none` — read-only, and the surface says why.
  *
- * `relayReach` is an optional trailing parameter so every existing call site
- * (which has no per-node fleet data to resolve a reach from) keeps its exact
- * shape and behaviour.
+ * `relayReach` is required: a caller with no relay for this node passes
+ * `null` explicitly, so a relayed node can never lose its only lane because
+ * a call site forgot the argument.
  */
 export function resolveConfigAccess(
   client: AgentConfigClient | null | undefined,
   deviceId: string | null,
+  relayReach: RelayReach | null,
   records?: PairingRecords,
-  relayReach?: RelayReach | null,
 ): ConfigAccess {
   if (client) return { mode: "direct", client };
-  const target = resolveConfigProxyTarget(deviceId, records);
+  return configAccessFrom(
+    null,
+    resolveConfigProxyTarget(deviceId, records),
+    relayReach,
+  );
+}
+
+/**
+ * The precedence above, applied to an already-resolved proxy target. A
+ * subscribed surface resolves the target itself so it can key its memo on the
+ * target's host and key (strings) rather than on the pairing arrays, which are
+ * replaced on every presence stamp and cloud-sync update.
+ */
+export function configAccessFrom(
+  client: AgentConfigClient | null | undefined,
+  target: ConfigProxyTarget | null,
+  relayReach: RelayReach | null,
+): ConfigAccess {
+  if (client) return { mode: "direct", client };
   if (target) return { mode: "proxy", target };
   if (relayReach) return { mode: "relay", reach: relayReach };
   return { mode: "none", reason: "no-path" };

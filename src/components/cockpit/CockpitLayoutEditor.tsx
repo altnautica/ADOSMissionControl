@@ -216,7 +216,13 @@ export function CockpitLayoutEditor() {
             {arrangeable.map((w) => {
               const name = w.title ?? w.id;
               const zone = effectiveWidgetZone(w, layout);
-              const hidden = layout.widgets?.[w.id]?.hidden ?? false;
+              // A widget bound to a chrome flag shows by that flag alone
+              // (isCockpitWidgetVisible reads it before any per-widget
+              // override), so its switch writes the flag.
+              const layoutKey = w.layoutKey;
+              const hidden = layoutKey
+                ? !layout[layoutKey]
+                : (layout.widgets?.[w.id]?.hidden ?? false);
               return (
                 <div key={w.id} className="flex items-end gap-1.5">
                   <div className="min-w-0 flex-1">
@@ -234,7 +240,9 @@ export function CockpitLayoutEditor() {
                   <SwitchButton
                     on={!hidden}
                     onClick={() =>
-                      setLoadoutWidget(loadout.id, w.id, { hidden: !hidden })
+                      layoutKey
+                        ? setLoadoutLayout(loadout.id, { [layoutKey]: hidden })
+                        : setLoadoutWidget(loadout.id, w.id, { hidden: !hidden })
                     }
                     ariaLabel={
                       hidden

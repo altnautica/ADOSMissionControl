@@ -21,7 +21,6 @@ import {
   useLayoutEffect,
   useRef,
   useState,
-  type ReactNode,
 } from "react";
 import { useTranslations } from "next-intl";
 import { useUiStore } from "@/stores/ui-store";
@@ -43,18 +42,21 @@ import {
   Type,
   Unplug,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
-import {
-  NODE_SWATCHES,
-  swatchVar,
-  type NodeSwatch,
-} from "@/lib/nodes/node-profile";
+import { NODE_SWATCHES, type NodeSwatch } from "@/lib/nodes/node-profile";
 import { useNodePersonalizationStore } from "@/stores/node-personalization-store";
 import { useToast } from "@/components/ui/toast";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { effProfileForNode } from "./NodeRow";
 import { NodeDotEditor } from "./NodeDotEditor";
+import {
+  Divider,
+  InputRow,
+  MenuItem,
+  SwatchChip,
+  firstMenuItem,
+  useRovingMenu,
+} from "./NodeMenuParts";
 import { isFcReachable } from "@/lib/agent/mavlink-link";
 
 interface NodeContextMenuProps {
@@ -84,7 +86,6 @@ export function NodeContextMenu({
   onForget,
 }: NodeContextMenuProps) {
   const t = useTranslations("nodeConsole");
-  const tCommon = useTranslations("common");
   const { toast } = useToast();
   const deviceId = node.deviceId;
   const effProfile = effProfileForNode(node);
@@ -167,10 +168,7 @@ export function NodeContextMenu({
       inputRef.current?.select();
       return;
     }
-    const first = panelRef.current?.querySelector<HTMLElement>(
-      '[data-menuitem="true"]',
-    );
-    first?.focus();
+    firstMenuItem(panelRef.current)?.focus();
   }, [showFloating, inputMode, colorOpen]);
 
   // Click-outside dismissal, only while the floating panel is visible (a modal
@@ -187,55 +185,7 @@ export function NodeContextMenu({
   }, [showFloating, closeMenu]);
 
   // Roving arrow navigation over the visible menu items.
-  const moveFocus = useCallback((delta: 1 | -1) => {
-    const items = Array.from(
-      panelRef.current?.querySelectorAll<HTMLElement>(
-        '[data-menuitem="true"]',
-      ) ?? [],
-    );
-    if (items.length === 0) return;
-    const current = items.findIndex((el) => el === document.activeElement);
-    let next = current + delta;
-    if (next < 0) next = items.length - 1;
-    if (next >= items.length) next = 0;
-    items[next]?.focus();
-  }, []);
-
-  const onMenuKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      switch (e.key) {
-        case "ArrowDown":
-          e.preventDefault();
-          moveFocus(1);
-          break;
-        case "ArrowUp":
-          e.preventDefault();
-          moveFocus(-1);
-          break;
-        case "Home": {
-          e.preventDefault();
-          const items = panelRef.current?.querySelectorAll<HTMLElement>(
-            '[data-menuitem="true"]',
-          );
-          items?.[0]?.focus();
-          break;
-        }
-        case "End": {
-          e.preventDefault();
-          const items = panelRef.current?.querySelectorAll<HTMLElement>(
-            '[data-menuitem="true"]',
-          );
-          items?.[items.length - 1]?.focus();
-          break;
-        }
-        case "Escape":
-          e.preventDefault();
-          closeMenu();
-          break;
-      }
-    },
-    [moveFocus, closeMenu],
-  );
+  const onMenuKeyDown = useRovingMenu(panelRef, closeMenu);
 
   function openInput(mode: Exclude<InputMode, null>, seed: string) {
     setColorOpen(false);
@@ -312,48 +262,15 @@ export function NodeContextMenu({
           className="fixed z-[2000] rounded border border-border-default bg-bg-secondary py-1 shadow-lg"
         >
           {inputMode ? (
-            <div className="px-2 py-1.5">
-              <label
-                htmlFor="node-personalize-input"
-                className="mb-1 block text-[10px] font-medium uppercase tracking-wider text-text-tertiary"
-              >
-                {inputTitles[inputMode]}
-              </label>
-              <input
-                id="node-personalize-input"
-                ref={inputRef}
-                value={inputValue}
-                maxLength={inputMax[inputMode]}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    submitInput();
-                  }
-                  if (e.key === "Escape") {
-                    e.preventDefault();
-                    setInputMode(null);
-                  }
-                }}
-                className="w-full rounded border border-accent-primary bg-bg-primary px-2 py-1 text-xs text-text-primary outline-none"
-              />
-              <div className="mt-1.5 flex justify-end gap-1.5">
-                <button
-                  data-menuitem="true"
-                  onClick={() => setInputMode(null)}
-                  className="rounded px-2 py-1 text-[11px] text-text-tertiary hover:bg-bg-tertiary hover:text-text-primary"
-                >
-                  {tCommon("cancel")}
-                </button>
-                <button
-                  data-menuitem="true"
-                  onClick={submitInput}
-                  className="rounded bg-accent-primary/15 px-2 py-1 text-[11px] font-medium text-accent-primary hover:bg-accent-primary/25"
-                >
-                  {tCommon("save")}
-                </button>
-              </div>
-            </div>
+            <InputRow
+              title={inputTitles[inputMode]}
+              value={inputValue}
+              maxLength={inputMax[inputMode]}
+              inputRef={inputRef}
+              onChange={setInputValue}
+              onSubmit={submitInput}
+              onCancel={() => setInputMode(null)}
+            />
           ) : (
             <>
               {/* Recognition */}
@@ -539,85 +456,4 @@ export function NodeContextMenu({
       />
     </>
   );
-}
-
-function MenuItem({
-  icon,
-  label,
-  onClick,
-  danger,
-  expanded,
-}: {
-  icon: ReactNode;
-  label: string;
-  onClick: () => void;
-  danger?: boolean;
-  expanded?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      role="menuitem"
-      data-menuitem="true"
-      tabIndex={-1}
-      aria-expanded={expanded}
-      onClick={onClick}
-      className={cn(
-        "flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors outline-none",
-        "focus-visible:bg-bg-tertiary focus:bg-bg-tertiary",
-        danger
-          ? "text-status-error hover:bg-status-error/10 focus:bg-status-error/10"
-          : "text-text-secondary hover:bg-bg-tertiary hover:text-text-primary",
-      )}
-    >
-      <span className="shrink-0">{icon}</span>
-      <span className="truncate">{label}</span>
-    </button>
-  );
-}
-
-function SwatchChip({
-  swatch,
-  active,
-  label,
-  onClick,
-}: {
-  swatch?: NodeSwatch;
-  active: boolean;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      data-menuitem="true"
-      tabIndex={-1}
-      aria-label={label}
-      aria-pressed={active}
-      title={label}
-      onClick={onClick}
-      className={cn(
-        "flex h-5 w-5 items-center justify-center rounded-full border transition-transform outline-none",
-        "hover:scale-110 focus-visible:ring-2 focus-visible:ring-accent-primary",
-        active ? "border-text-primary" : "border-border-default",
-      )}
-      style={
-        swatch
-          ? { backgroundColor: `var(${swatchVar(swatch)})` }
-          : undefined
-      }
-    >
-      {/* Default chip: a diagonal "no colour" cue, never colour-only. */}
-      {!swatch && (
-        <span
-          aria-hidden
-          className="block h-3 w-3 rounded-full border border-text-tertiary bg-bg-tertiary"
-        />
-      )}
-    </button>
-  );
-}
-
-function Divider() {
-  return <div className="my-1 border-t border-border-default" aria-hidden />;
 }

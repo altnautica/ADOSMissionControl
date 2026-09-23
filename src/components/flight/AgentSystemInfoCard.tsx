@@ -12,6 +12,10 @@
  * not report these fields renders nothing, so the card only appears
  * once the agent advertises at least one of them.
  *
+ * The values are the agent's last report. While the agent is not answering
+ * the card dims, every badge drops to neutral (a green "OK" is a claim about
+ * now) and the header says when the agent was last heard.
+ *
  * @license GPL-3.0-only
  */
 
@@ -21,6 +25,8 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
+import { useFreshness } from "@/lib/agent/freshness";
+import { cn } from "@/lib/utils";
 import type { InstallStatus, WfbModuleSource } from "@/lib/agent/types";
 
 type BadgeVariant = "success" | "warning" | "error" | "info" | "neutral";
@@ -42,6 +48,8 @@ export function AgentSystemInfoCard() {
   const t = useTranslations("flightInfo");
   const status = useAgentSystemStore((s) => s.status);
   const [stepsOpen, setStepsOpen] = useState(false);
+  const freshness = useFreshness();
+  const live = freshness.state === "live";
 
   const kernelRelease = status?.kernel_release;
   const wfbModuleSource = status?.wfb_module_source;
@@ -76,10 +84,17 @@ export function AgentSystemInfoCard() {
   const hasSteps = failedSteps.length > 0;
 
   return (
-    <div className="border-t border-border-default px-3 py-2.5">
-      <h4 className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary mb-2">
-        {t("systemHealth")}
-      </h4>
+    <div className={cn("border-t border-border-default px-3 py-2.5", !live && "opacity-60")}>
+      <div className="flex items-baseline justify-between gap-2 mb-2">
+        <h4 className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">
+          {t("systemHealth")}
+        </h4>
+        {!live && (
+          <span role="status" className="text-[10px] text-status-warning">
+            {t("agentLastSeen", { ago: freshness.label })}
+          </span>
+        )}
+      </div>
 
       <div className="space-y-2">
         {kernelRelease && (
@@ -98,7 +113,7 @@ export function AgentSystemInfoCard() {
                 <span className="text-[10px] text-text-tertiary">
                   {t("radioModule")}
                 </span>
-                <Badge variant={WFB_VARIANT[wfbModuleSource]}>
+                <Badge variant={live ? WFB_VARIANT[wfbModuleSource] : "neutral"}>
                   {wfbLabels[wfbModuleSource]}
                 </Badge>
               </div>
@@ -126,12 +141,12 @@ export function AgentSystemInfoCard() {
                       </div>
                     }
                   >
-                    <Badge variant={INSTALL_VARIANT[installStatus]}>
+                    <Badge variant={live ? INSTALL_VARIANT[installStatus] : "neutral"}>
                       {installLabels[installStatus]}
                     </Badge>
                   </Tooltip>
                 ) : (
-                  <Badge variant={INSTALL_VARIANT[installStatus]}>
+                  <Badge variant={live ? INSTALL_VARIANT[installStatus] : "neutral"}>
                     {installLabels[installStatus]}
                   </Badge>
                 )}

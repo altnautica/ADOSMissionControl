@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Select } from "@/components/ui/select";
 import type { SelectOption } from "@/components/ui/select";
 import type { FlightMode } from "@/lib/types";
+import { useDroneManager } from "@/stores/drone-manager";
 
 interface FlightModeSelectorProps {
   value: FlightMode;
@@ -12,46 +13,73 @@ interface FlightModeSelectorProps {
   className?: string;
 }
 
-const MODE_ENTRIES: { value: string; labelKey: string; descKey: string }[] = [
-  { value: "STABILIZE", labelKey: "stabilize", descKey: "stabilizeDesc" },
-  { value: "ALT_HOLD", labelKey: "altHold", descKey: "altHoldDesc" },
-  { value: "LOITER", labelKey: "loiter", descKey: "loiterDesc" },
-  { value: "GUIDED", labelKey: "guided", descKey: "guidedDesc" },
-  { value: "AUTO", labelKey: "auto", descKey: "autoDesc" },
-  { value: "RTL", labelKey: "rtl", descKey: "rtlDesc" },
-  { value: "LAND", labelKey: "land", descKey: "landDesc" },
-  { value: "MANUAL", labelKey: "manual", descKey: "manualDesc" },
-  { value: "ACRO", labelKey: "acro", descKey: "acroDesc" },
-  { value: "FBWA", labelKey: "fbwa", descKey: "fbwaDesc" },
-  { value: "FBWB", labelKey: "fbwb", descKey: "fbwbDesc" },
-  { value: "CRUISE", labelKey: "cruise", descKey: "cruiseDesc" },
-  { value: "AUTOTUNE", labelKey: "autoTune", descKey: "autoTuneDesc" },
-  { value: "CIRCLE", labelKey: "circle", descKey: "circleDesc" },
-  { value: "TRAINING", labelKey: "training", descKey: "trainingDesc" },
-  { value: "QSTABILIZE", labelKey: "qstabilize", descKey: "qstabilizeDesc" },
-  { value: "QHOVER", labelKey: "qhover", descKey: "qhoverDesc" },
-  { value: "QLOITER", labelKey: "qloiter", descKey: "qloiterDesc" },
-  { value: "QLAND", labelKey: "qland", descKey: "qlandDesc" },
-  { value: "QRTL", labelKey: "qrtl", descKey: "qrtlDesc" },
-  { value: "POSHOLD", labelKey: "posHold", descKey: "posHoldDesc" },
-  { value: "BRAKE", labelKey: "brake", descKey: "brakeDesc" },
-  { value: "SMART_RTL", labelKey: "smartRtl", descKey: "smartRtlDesc" },
-  { value: "DRIFT", labelKey: "drift", descKey: "driftDesc" },
-  { value: "SPORT", labelKey: "sport", descKey: "sportDesc" },
-  { value: "FLIP", labelKey: "flip", descKey: "flipDesc" },
-  { value: "THROW", labelKey: "throw", descKey: "throwDesc" },
-];
+/** Translation keys for the modes that carry a label and description. */
+const MODE_KEYS: Partial<Record<FlightMode, { labelKey: string; descKey: string }>> = {
+  STABILIZE: { labelKey: "stabilize", descKey: "stabilizeDesc" },
+  ALT_HOLD: { labelKey: "altHold", descKey: "altHoldDesc" },
+  LOITER: { labelKey: "loiter", descKey: "loiterDesc" },
+  GUIDED: { labelKey: "guided", descKey: "guidedDesc" },
+  AUTO: { labelKey: "auto", descKey: "autoDesc" },
+  RTL: { labelKey: "rtl", descKey: "rtlDesc" },
+  LAND: { labelKey: "land", descKey: "landDesc" },
+  MANUAL: { labelKey: "manual", descKey: "manualDesc" },
+  ACRO: { labelKey: "acro", descKey: "acroDesc" },
+  FBWA: { labelKey: "fbwa", descKey: "fbwaDesc" },
+  FBWB: { labelKey: "fbwb", descKey: "fbwbDesc" },
+  CRUISE: { labelKey: "cruise", descKey: "cruiseDesc" },
+  AUTOTUNE: { labelKey: "autoTune", descKey: "autoTuneDesc" },
+  CIRCLE: { labelKey: "circle", descKey: "circleDesc" },
+  TRAINING: { labelKey: "training", descKey: "trainingDesc" },
+  QSTABILIZE: { labelKey: "qstabilize", descKey: "qstabilizeDesc" },
+  QHOVER: { labelKey: "qhover", descKey: "qhoverDesc" },
+  QLOITER: { labelKey: "qloiter", descKey: "qloiterDesc" },
+  QLAND: { labelKey: "qland", descKey: "qlandDesc" },
+  QRTL: { labelKey: "qrtl", descKey: "qrtlDesc" },
+  POSHOLD: { labelKey: "posHold", descKey: "posHoldDesc" },
+  BRAKE: { labelKey: "brake", descKey: "brakeDesc" },
+  SMART_RTL: { labelKey: "smartRtl", descKey: "smartRtlDesc" },
+  DRIFT: { labelKey: "drift", descKey: "driftDesc" },
+  SPORT: { labelKey: "sport", descKey: "sportDesc" },
+  FLIP: { labelKey: "flip", descKey: "flipDesc" },
+  THROW: { labelKey: "throw", descKey: "throwDesc" },
+};
+
+/** Offered when no firmware handler is known (no live link). */
+const FALLBACK_MODES = Object.keys(MODE_KEYS) as FlightMode[];
+
+/**
+ * The modes the selector offers: the firmware handler's own mode table (the
+ * same source the set-mode skill checks against), else the fallback list. The
+ * current mode is always present so the live mode stays visible; when the
+ * firmware table lacks it, it is listed but disabled.
+ */
+export function flightModeChoices(
+  available: readonly FlightMode[] | null,
+  current: FlightMode,
+): { mode: FlightMode; disabled: boolean }[] {
+  const modes = available ?? FALLBACK_MODES;
+  const choices = modes.map((mode) => ({ mode, disabled: false }));
+  if (!modes.includes(current)) choices.unshift({ mode: current, disabled: true });
+  return choices;
+}
 
 export function FlightModeSelector({ value, onChange, className }: FlightModeSelectorProps) {
   const t = useTranslations("flightModes");
+  const protocol = useDroneManager((s) => s.getSelectedDrone()?.protocol ?? null);
+  const handler = protocol?.isConnected ? protocol.getFirmwareHandler() : null;
 
   const options: SelectOption[] = useMemo(
-    () => MODE_ENTRIES.map((m) => ({
-      value: m.value,
-      label: t(m.labelKey),
-      description: t(m.descKey),
-    })),
-    [t],
+    () =>
+      flightModeChoices(handler?.getAvailableModes() ?? null, value).map(({ mode, disabled }) => {
+        const keys = MODE_KEYS[mode];
+        return {
+          value: mode,
+          label: keys ? t(keys.labelKey) : mode,
+          description: keys ? t(keys.descKey) : undefined,
+          disabled,
+        };
+      }),
+    [handler, value, t],
   );
 
   return (

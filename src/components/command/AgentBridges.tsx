@@ -75,10 +75,12 @@ export function AgentBridges() {
         mqttBrokerUrl={clientConfig?.mqttBrokerUrl}
       />
       {/* The cloud bridges read the signed-in Convex session, which exists
-          only when the cloud backend is configured. */}
+          only when the cloud backend is configured. The cloud MQTT stream
+          needs that backend too: its broker URL comes from the backend's
+          client config, and a build without one has no broker to dial. */}
       {cloudMode && convexAvailable && <CloudStatusBridge />}
       {cloudMode && convexAvailable && <CloudCommandResultBridge />}
-      {cloudMode && (
+      {cloudMode && convexAvailable && (
         <MqttBridge mqttBrokerUrl={clientConfig?.mqttBrokerUrl} />
       )}
     </>

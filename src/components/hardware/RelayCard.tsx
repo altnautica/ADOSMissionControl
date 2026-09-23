@@ -44,7 +44,7 @@ export function RelayCard({ relay }: RelayCardProps) {
   };
 
   return (
-    <div className="flex items-center justify-between p-3 bg-surface-primary border border-border-default/40">
+    <div className="flex items-center justify-between p-3 bg-bg-primary border border-border-default/40">
       <div className="flex flex-col">
         <span className="font-mono text-sm text-text-primary">{relay.mac}</span>
         <span className="text-xs text-text-tertiary">

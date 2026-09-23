@@ -181,13 +181,13 @@ describe("useNodeRegistryStore.upsertPresence", () => {
     const id = resolveNodeId("dev-local");
     store().upsertPresence(
       id,
-      { deviceId: "dev-local", name: "Skynode", profile: "drone", lastHeartbeat: 10 },
+      { deviceId: "dev-local", name: "Testnode", profile: "drone", lastHeartbeat: 10 },
       "local",
     );
     const entry = store().getEntry(id);
     expect(entry).toBeDefined();
     expect(entry?.presence.sources).toEqual(["local"]);
-    expect(entry?.presence.name).toBe("Skynode");
+    expect(entry?.presence.name).toBe("Testnode");
     expect(entry?.fc.managedId).toBeNull();
   });
 
@@ -238,6 +238,21 @@ describe("useNodeRegistryStore.upsertPresence", () => {
     expect(entry?.presence.cloudPosture).toBe("self_hosted");
     // Freshest heartbeat kept.
     expect(entry?.presence.lastHeartbeat).toBe(5);
+  });
+
+  it("leaves the store untouched when an upsert changes nothing", () => {
+    const id = resolveNodeId("dev-same");
+    const patch = { deviceId: "dev-same", name: "n", profile: "drone" as const, lastHeartbeat: 10 };
+    store().upsertPresence(id, patch, "local");
+    const before = useNodeRegistryStore.getState().nodes;
+    const revBefore = before[id].rev;
+    store().upsertPresence(id, patch, "local");
+    // An older heartbeat is not news either.
+    store().upsertPresence(id, { ...patch, lastHeartbeat: 5 }, "local");
+    expect(useNodeRegistryStore.getState().nodes).toBe(before);
+
+    store().upsertPresence(id, { ...patch, lastHeartbeat: 11 }, "local");
+    expect(store().getEntry(id)?.rev).toBe(revBefore + 1);
   });
 });
 
@@ -384,7 +399,7 @@ describe("useNodeRegistryStore garbage collection", () => {
     const entry = store().getEntry(id);
     expect(entry).toBeDefined();
     expect(entry?.presence.sources).toEqual(["local"]);
-    // The stale hop is gone once the relay link drops (Rule 44).
+    // The stale hop is gone once the relay link drops (no fabricated reading).
     expect(entry?.presence.reachedVia).toBeUndefined();
   });
 });

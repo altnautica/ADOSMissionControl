@@ -1,7 +1,7 @@
 /**
  * @module CapabilityChips
  * @description Renders the hardware-capability chips a plugin needs
- * (Camera / NPU / GPS / IMU / Thermal / LIDAR) as compact icon chips. The
+ * (Camera / NPU / IMU / Thermal / LIDAR) as compact icon chips. The
  * chip set is derived once by {@link permissionsToChips}; the glyph for each
  * chip resolves through the shared named-icon registry so the same concept
  * reads with the same glyph everywhere. Renders nothing when a plugin needs
@@ -14,15 +14,14 @@
 
 import { cn } from "@/lib/utils";
 import { resolveNamedIcon } from "@/lib/icons/icon-registry";
-import { permissionsToChips } from "@/lib/plugins/capability-chips";
+import {
+  permissionsToChips,
+  type ChipDerivationContext,
+} from "@/lib/plugins/capability-chips";
 
-export interface CapabilityChipsProps {
+export interface CapabilityChipsProps extends ChipDerivationContext {
   /** The plugin's declared permissions (only the `id` is read). */
   permissions: ReadonlyArray<{ id: string }>;
-  /** Vendor-attribution rows, used to detect a bundled NPU runtime. */
-  vendorAttribution?: ReadonlyArray<{ name?: string }>;
-  /** Whether the target drone reports an FC handshake (gates GPS/IMU). */
-  fcConnected?: boolean;
   /** When set, renders an uppercase section label above the chips. The whole
    * section (label included) is suppressed when there are no chips. */
   title?: string;
@@ -32,13 +31,14 @@ export interface CapabilityChipsProps {
 export function CapabilityChips({
   permissions,
   vendorAttribution,
-  fcConnected,
+  hardwareRequirements,
+  telemetryFields,
   title,
   className,
 }: CapabilityChipsProps) {
   const chips = permissionsToChips(
     permissions.map((p) => p.id),
-    { vendorAttribution, fcConnected },
+    { vendorAttribution, hardwareRequirements, telemetryFields },
   );
   if (chips.length === 0) return null;
   const row = (

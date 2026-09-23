@@ -5,19 +5,22 @@
  * @description Command-tab home for the ground-station uplink
  * configuration. Composes per-uplink sections (WiFi AP + client,
  * Ethernet, 4G modem) and the uplink priority + share-uplink
- * panel. Polls /network at 2 Hz. The Overview tab owns the uplink
+ * panel. Polls /network every 2 s. The Overview tab owns the uplink
  * WS subscription. Renders the networking surface for a ground-station node.
+ * In demo mode there is no REST endpoint, so every write says it is inert.
  * @license GPL-3.0-only
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { PageIntro } from "@/components/hardware/PageIntro";
 import { CloudModeLimitedNotice } from "@/components/command/shared/CloudModeLimitedNotice";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
+import { isDemoMode } from "@/lib/utils";
 import { groundStationApiFromAgent } from "@/lib/api/ground-station-api";
 import { useGroundStationPoll } from "./use-gs-poll";
-import { useAgentConnectionStore } from "@/stores/agent-connection-store";
+import { useNodeDirectAgent } from "@/components/command/settings/use-node-direct-agent";
 import { useGroundStationStore } from "@/stores/ground-station-store";
 import { WifiSection } from "@/components/hardware/network/WifiSection";
 import { EthernetSection } from "@/components/hardware/network/EthernetSection";
@@ -27,17 +30,29 @@ import { AdapterStabilityCard } from "@/components/hardware/network/AdapterStabi
 import { WifiPowersaveCard } from "@/components/hardware/network/WifiPowersaveCard";
 import { NetworkPageModals } from "@/components/hardware/network/NetworkPageModals";
 
-const POLL_INTERVAL_MS = 500;
+const POLL_INTERVAL_MS = 2000;
 
-export function NetworkTab() {
-  const agentUrl = useAgentConnectionStore((s) => s.agentUrl);
-  const apiKey = useAgentConnectionStore((s) => s.apiKey);
+export interface NetworkTabProps {
+  /** The node this tab is rendered for; its reads and writes go to this node's
+   * own connection, never the (lagging) focused one. */
+  nodeDeviceId: string | null;
+}
+
+export function NetworkTab({ nodeDeviceId }: NetworkTabProps) {
+  const direct = useNodeDirectAgent(nodeDeviceId);
+  const agentUrl = direct?.agentUrl ?? null;
+  const apiKey = direct?.apiKey ?? null;
+  // The load-once slices are shown only when they were read from this node.
+  const target = groundStationApiFromAgent(agentUrl, apiKey)?.baseUrl ?? null;
+  const uplinkOwned = useGroundStationStore((s) => target !== null && s.uplinkFor === target);
 
   const ap = useGroundStationStore((s) => s.ap);
   const network = useGroundStationStore((s) => s.network);
-  const modem = useGroundStationStore((s) => s.modem);
+  const storeModem = useGroundStationStore((s) => s.modem);
+  const modem = uplinkOwned ? storeModem : null;
   const uplink = useGroundStationStore((s) => s.uplink);
-  const ethernetConfig = useGroundStationStore((s) => s.ethernetConfig);
+  const storeEthernetConfig = useGroundStationStore((s) => s.ethernetConfig);
+  const ethernetConfig = uplinkOwned ? storeEthernetConfig : null;
   const loadEthernetConfig = useGroundStationStore((s) => s.loadEthernetConfig);
   const lastError = useGroundStationStore((s) => s.lastError);
   const loadNetwork = useGroundStationStore((s) => s.loadNetwork);
@@ -50,6 +65,15 @@ export function NetworkTab() {
   const toggleShareUplink = useGroundStationStore((s) => s.toggleShareUplink);
 
   const { toast } = useToast();
+  const t = useTranslations("hardware");
+
+  // The client for a write. Demo mode has a truthy agent URL but no REST
+  // endpoint, so a write there says it is inert instead of doing nothing.
+  const writeClient = () => {
+    const client = groundStationApiFromAgent(agentUrl, apiKey);
+    if (!client && isDemoMode()) toast(t("demoReadOnly"), "info");
+    return client;
+  };
 
   // AP form state
   const [ssid, setSsid] = useState("");
@@ -74,11 +98,7 @@ export function NetworkTab() {
   const [modemEnabledDraft, setModemEnabledDraft] = useState(true);
   const [savingModem, setSavingModem] = useState(false);
 
-
-  // One in-flight request at a time, backing off when the agent stops
-  // answering. A fixed 500 ms interval queued overlapping requests onto an
-  // already-slow agent, which is the load that made it slow, and hammered an
-  // unreachable one at full cadence for as long as the tab was open.
+  // One in-flight request at a time at a fixed cadence (see use-gs-poll).
   useGroundStationPoll(agentUrl, apiKey, POLL_INTERVAL_MS, loadNetwork);
 
   // Load modem and priority once on mount (they change infrequently).
@@ -109,7 +129,7 @@ export function NetworkTab() {
   }, [modemOpen, modem]);
 
   const handleSave = async () => {
-    const client = groundStationApiFromAgent(agentUrl, apiKey);
+    const client = writeClient();
     if (!client || !ap) return;
     setSaving(true);
     const update: { enabled?: boolean; ssid?: string; passphrase?: string; channel?: number } = {};
@@ -124,14 +144,14 @@ export function NetworkTab() {
 
   const handleConfirmLeaveWifi = async () => {
     setLeaveWifiConfirmOpen(false);
-    const client = groundStationApiFromAgent(agentUrl, apiKey);
+    const client = writeClient();
     if (!client) return;
     const ok = await leaveWifi(client);
     if (ok) toast("Disconnected from WiFi network.", "info");
   };
 
   const handleApplyModem = async () => {
-    const client = groundStationApiFromAgent(agentUrl, apiKey);
+    const client = writeClient();
     if (!client) return;
     setSavingModem(true);
     const res = await applyModem(client, {
@@ -149,7 +169,7 @@ export function NetworkTab() {
   };
 
   const handlePriorityChange = async (next: string[]) => {
-    const client = groundStationApiFromAgent(agentUrl, apiKey);
+    const client = writeClient();
     if (!client) return;
     const res = await applyPriority(client, next);
     if (res == null) {
@@ -158,7 +178,7 @@ export function NetworkTab() {
   };
 
   const applyShareUplink = async (next: boolean) => {
-    const client = groundStationApiFromAgent(agentUrl, apiKey);
+    const client = writeClient();
     if (!client) return;
     const res = await toggleShareUplink(client, next);
     if (res == null) toast("Failed to update share setting.", "error");
@@ -177,7 +197,7 @@ export function NetworkTab() {
     void applyShareUplink(true);
   };
 
-  const hasAgent = Boolean(agentUrl);
+  const hasAgent = direct !== null;
   const clients = network?.ap.connected_clients ?? null;
   const wifiClient = network?.wifi_client;
   const ethernet = network?.ethernet;

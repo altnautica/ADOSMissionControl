@@ -15,9 +15,20 @@ import { Button } from "@/components/ui/button";
 import { Trash2, WifiOff, HardDrive } from "lucide-react";
 import { CustomTileSourceEditor } from "@/components/map/CustomTileSourceEditor";
 
+/** IndexedDB can hang (blocked upgrade, private mode); stop waiting after this. */
+const CACHE_STATS_TIMEOUT_MS = 5_000;
+
+function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
+  const { promise, resolve, reject } = Promise.withResolvers<T>();
+  const timer = setTimeout(() => reject(new Error("Tile cache did not respond")), ms);
+  work.then(resolve, reject).finally(() => clearTimeout(timer));
+  return promise;
+}
+
 export function OfflineMapManager() {
   const [stats, setStats] = useState({ tileCount: 0, totalBytes: 0 });
   const [loading, setLoading] = useState(true);
+  const [cacheError, setCacheError] = useState<string | null>(null);
   const [clearing, setClearing] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
 
@@ -26,9 +37,14 @@ export function OfflineMapManager() {
 
   // Load cache stats
   const refreshStats = useCallback(async () => {
-    const s = await getCacheStats();
-    setStats(s);
-    setLoading(false);
+    try {
+      setStats(await withTimeout(getCacheStats(), CACHE_STATS_TIMEOUT_MS));
+      setCacheError(null);
+    } catch (err) {
+      setCacheError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -51,9 +67,14 @@ export function OfflineMapManager() {
   const handleClear = useCallback(async () => {
     if (!confirm("Clear all cached map tiles? This cannot be undone.")) return;
     setClearing(true);
-    await clearAllTiles();
-    await refreshStats();
-    setClearing(false);
+    try {
+      await clearAllTiles();
+    } catch (err) {
+      setCacheError(err instanceof Error ? err.message : String(err));
+    } finally {
+      await refreshStats();
+      setClearing(false);
+    }
   }, [refreshStats]);
 
   const usagePct = MAX_CACHE_SIZE > 0 ? (stats.totalBytes / MAX_CACHE_SIZE) * 100 : 0;
@@ -82,7 +103,7 @@ export function OfflineMapManager() {
           {/* Usage bar */}
           <div>
             <div className="flex justify-between text-[10px] font-mono text-text-secondary mb-1">
-              <span>{loading ? "..." : formatBytes(stats.totalBytes)}</span>
+              <span>{loading ? "..." : cacheError ? "—" : formatBytes(stats.totalBytes)}</span>
               <span>{formatBytes(MAX_CACHE_SIZE)}</span>
             </div>
             <div className="w-full h-2 bg-bg-tertiary rounded overflow-hidden">
@@ -97,9 +118,12 @@ export function OfflineMapManager() {
           <div className="flex items-center gap-4 text-[10px] font-mono text-text-secondary">
             <div className="flex items-center gap-1">
               <HardDrive size={10} />
-              <span>{loading ? "..." : stats.tileCount.toLocaleString()} tiles cached</span>
+              <span>{loading ? "..." : cacheError ? "—" : stats.tileCount.toLocaleString()} tiles cached</span>
             </div>
           </div>
+          {cacheError && (
+            <p className="text-[10px] text-status-error">Tile cache unavailable: {cacheError}</p>
+          )}
 
           {/* Caching toggle */}
           <div className="flex items-center justify-between">

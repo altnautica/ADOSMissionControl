@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, type InputHTMLAttributes } from "react";
 import { useTranslations } from "next-intl";
 import { useShallow } from "zustand/react/shallow";
 import { useSettingsStore, type GuidanceLineType } from "@/stores/settings-store";
+import { GUIDANCE_LENGTH_RANGE, GUIDANCE_WIDTH_RANGE } from "@/stores/settings/display-slice";
 import { Select } from "@/components/ui/select";
 import { ChevronDown, RotateCcw } from "lucide-react";
 
@@ -176,6 +177,43 @@ export function GuidanceSettingsMenu({
   );
 }
 
+const FIELD_CLASS =
+  "w-full px-2 py-1 text-[10px] font-mono bg-bg-primary border border-border-default rounded text-text-primary focus:outline-none focus:border-accent-primary";
+
+/**
+ * A text field that edits a local draft and hands it to `onCommit` on blur or
+ * Enter (Escape discards it). The store setters validate and clamp, so a
+ * half-typed or cleared value never reaches the map, and after a commit the
+ * field shows whatever the store kept.
+ */
+function DraftInput({
+  value,
+  onCommit,
+  ...inputProps
+}: { value: string | number; onCommit: (draft: string) => void } & Omit<
+  InputHTMLAttributes<HTMLInputElement>,
+  "value" | "onChange" | "onBlur" | "onKeyDown"
+>) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const commit = () => {
+    if (draft === null) return;
+    if (draft.trim() !== "") onCommit(draft.trim());
+    setDraft(null);
+  };
+  return (
+    <input
+      {...inputProps}
+      value={draft ?? String(value)}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") commit();
+        else if (e.key === "Escape") setDraft(null);
+      }}
+    />
+  );
+}
+
 function LineSettings({ config }: { config: LineConfig }) {
   const t = useTranslations("guidance");
 
@@ -207,15 +245,13 @@ function LineSettings({ config }: { config: LineConfig }) {
         <div className="grid grid-cols-2 gap-2">
           <div>
             <label className="text-[8px] text-text-secondary font-mono uppercase block mb-1">{t("length")}</label>
-            <input type="number" min="20" max="300" step="10" value={config.length}
-              onChange={(e) => config.setLength(Number(e.target.value))}
-              className="w-full px-2 py-1 text-[10px] font-mono bg-bg-primary border border-border-default rounded text-text-primary focus:outline-none focus:border-accent-primary" />
+            <DraftInput type="number" min={GUIDANCE_LENGTH_RANGE.min} max={GUIDANCE_LENGTH_RANGE.max} step="10"
+              value={config.length} onCommit={(v) => config.setLength(Number(v))} className={FIELD_CLASS} />
           </div>
           <div>
             <label className="text-[8px] text-text-secondary font-mono uppercase block mb-1">{t("width")}</label>
-            <input type="number" min="0.5" max="5" step="0.5" value={config.width}
-              onChange={(e) => config.setWidth(Number(e.target.value))}
-              className="w-full px-2 py-1 text-[10px] font-mono bg-bg-primary border border-border-default rounded text-text-primary focus:outline-none focus:border-accent-primary" />
+            <DraftInput type="number" min={GUIDANCE_WIDTH_RANGE.min} max={GUIDANCE_WIDTH_RANGE.max} step="0.5"
+              value={config.width} onCommit={(v) => config.setWidth(Number(v))} className={FIELD_CLASS} />
           </div>
           <div className="col-span-2">
             <label className="text-[8px] text-text-secondary font-mono uppercase block mb-1">{t("lineType")}</label>
@@ -235,8 +271,8 @@ function LineSettings({ config }: { config: LineConfig }) {
             <div className="flex gap-2">
               <input type="color" value={config.color} onChange={(e) => config.setColor(e.target.value)}
                 className="w-10 h-8 rounded cursor-pointer border border-border-default" />
-              <input type="text" value={config.color} onChange={(e) => config.setColor(e.target.value)}
-                className="flex-1 px-2 py-1 text-[10px] font-mono bg-bg-primary border border-border-default rounded text-text-primary focus:outline-none focus:border-accent-primary"
+              <DraftInput type="text" value={config.color} onCommit={config.setColor}
+                className={`flex-1 ${FIELD_CLASS}`}
                 placeholder="#000000" />
             </div>
           </div>

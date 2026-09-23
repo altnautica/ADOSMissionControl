@@ -4,7 +4,7 @@
  * the fleet's decoded swarm-bus beacon table, one entry per slot the node has
  * heard from.
  *
- * Local-first (Rule 39): on an HTTPS origin the call routes through Mission
+ * Local-first: on an HTTPS origin the call routes through Mission
  * Control's own `/api/lan-pair/swarm-neighbors` server proxy to dodge the
  * browser's mixed-content guard; on HTTP / Electron the direct fetch is kept.
  * Same split `relayed-status-client` uses, for the same reason.
@@ -52,6 +52,21 @@ export interface SwarmNeighborsSnapshot {
    * agent that predates the key, which is a version-skew fact, not an
    * empty registry — the caller cannot tell the two apart from this alone. */
   slots: SwarmFleetSlot[];
+  /** The reporting bus's radio: open on `iface`, or not open. Null when the
+   * reply carries no radio state (the degraded body of a bus that is not
+   * running). */
+  radio: SwarmRadioState | null;
+  /** True while a peer beacons the reporting node's own slot, false when
+   * none does, null when no running bus has looked. A ground station never
+   * holds a slot, so its reply is never true; two peers sharing another slot
+   * show only in `counters.beaconsSlotConflict`. */
+  slotConflict: boolean | null;
+}
+
+/** Whether a ground station's swarm bus can hear. */
+export interface SwarmRadioState {
+  open: boolean;
+  iface: string | null;
 }
 
 const MODE_PRECEDENCE: readonly SwarmModePrecedence[] = [
@@ -68,11 +83,26 @@ const ZERO_COUNTERS: SwarmBeaconCounters = {
   beaconsBadMagic: 0,
   beaconsBadTag: 0,
   beaconsStaleDropped: 0,
+  beaconsReplayed: 0,
+  beaconsSlotConflict: 0,
   neighborsNow: 0,
 };
 
 function num(raw: unknown, fallback: number): number {
   return typeof raw === "number" && Number.isFinite(raw) ? raw : fallback;
+}
+
+/** A finite number, or null. Wire nulls stay null: a beacon with no GPS fix
+ * carries no position, and a 0 would plot it at 0°N 0°E. */
+function numOrNull(raw: unknown): number | null {
+  return typeof raw === "number" && Number.isFinite(raw) ? raw : null;
+}
+
+function parseRadio(raw: unknown): SwarmRadioState | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  if (typeof r.open !== "boolean") return null;
+  return { open: r.open, iface: typeof r.iface === "string" ? r.iface : null };
 }
 
 /**
@@ -99,13 +129,13 @@ function parseNeighbor(
     slot: n.slot,
     deviceId: typeof n.device_id === "string" ? n.device_id : null,
     seqMs: num(n.seq_ms, 0),
-    lat: num(n.lat, 0),
-    lon: num(n.lon, 0),
-    altM: num(n.alt_m, 0),
-    vxMs: num(n.vx_ms, 0),
-    vyMs: num(n.vy_ms, 0),
-    vzMs: num(n.vz_ms, 0),
-    headingDeg: num(n.heading_deg, 0),
+    lat: numOrNull(n.lat),
+    lon: numOrNull(n.lon),
+    altM: numOrNull(n.alt_m),
+    vxMs: numOrNull(n.vx_ms),
+    vyMs: numOrNull(n.vy_ms),
+    vzMs: numOrNull(n.vz_ms),
+    headingDeg: numOrNull(n.heading_deg),
     armed: n.armed === true,
     guided: n.guided === true,
     emergency: n.emergency === true,
@@ -190,6 +220,9 @@ export function parseSwarmNeighbors(
     slot: typeof doc.slot === "number" ? doc.slot : null,
     rows,
     slots,
+    radio: parseRadio(doc.radio),
+    slotConflict:
+      typeof doc.slot_conflict === "boolean" ? doc.slot_conflict : null,
     counters: {
       beaconsTx: num(c.beacons_tx, ZERO_COUNTERS.beaconsTx),
       beaconsRx: num(c.beacons_rx, ZERO_COUNTERS.beaconsRx),
@@ -198,6 +231,11 @@ export function parseSwarmNeighbors(
       beaconsStaleDropped: num(
         c.beacons_stale_dropped,
         ZERO_COUNTERS.beaconsStaleDropped,
+      ),
+      beaconsReplayed: num(c.beacons_replayed, ZERO_COUNTERS.beaconsReplayed),
+      beaconsSlotConflict: num(
+        c.beacons_slot_conflict,
+        ZERO_COUNTERS.beaconsSlotConflict,
       ),
       neighborsNow: num(c.neighbors_now, ZERO_COUNTERS.neighborsNow),
     },

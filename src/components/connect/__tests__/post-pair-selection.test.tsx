@@ -89,7 +89,7 @@ beforeEach(() => {
     nodes: [
       {
         deviceId: DEVICE_ID,
-        name: "Skynode",
+        name: "Testnode",
         hostname: "http://192.168.1.50:8080",
         apiKey: "k",
         profile: "drone",
@@ -132,7 +132,7 @@ describe("post-pair selection", () => {
       vi.advanceTimersByTime(200);
     });
 
-    expect(screen.getByTestId("open-node").textContent).toBe("Skynode");
+    expect(screen.getByTestId("open-node").textContent).toBe("Testnode");
   });
 
   it("selects an id that resolves to a real fleet row", () => {

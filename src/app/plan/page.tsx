@@ -25,6 +25,7 @@ import { useDroneManager } from "@/stores/drone-manager";
 import { usePlannerStore } from "@/stores/planner-store";
 import { useMissionStore } from "@/stores/mission-store";
 import { readPlanFromHash } from "@/lib/plan-share";
+import { restoreSharedPlanExtras } from "@/lib/plan-workspace";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
 import { registerCommandProvider } from "@/lib/command-palette-registry";
@@ -86,6 +87,7 @@ export default function MissionPlannerPage() {
       if (ms.waypoints.length === 0) {
         ms.setWaypoints(shared.waypoints);
         p.setMissionName(shared.metadata.name);
+        restoreSharedPlanExtras(shared);
       }
     }
     window.history.replaceState(null, "", window.location.pathname + window.location.search);

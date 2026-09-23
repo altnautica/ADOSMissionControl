@@ -1,3 +1,5 @@
+import type { ServiceInfo } from "./types";
+
 /**
  * Service-state vocabulary translation.
  *
@@ -76,6 +78,10 @@ export function normalizeServiceStatus(raw: RawServiceState): ServiceStatus {
         ? raw.subState
         : undefined;
 
+  // A unit systemd keeps restarting is crash-looping, whatever its
+  // ActiveState says between attempts.
+  if (subState === "auto-restart") return "error";
+
   if (activeState) {
     switch (activeState) {
       case "active":
@@ -123,4 +129,52 @@ export function isServiceUp(status: string): boolean {
  */
 export function countRunning(services: readonly { status: string }[]): number {
   return services.reduce((n, s) => (isServiceUp(s.status) ? n + 1 : n), 0);
+}
+
+type ServiceCategory = NonNullable<ServiceInfo["category"]>;
+
+const SERVICE_CATEGORIES: Record<ServiceCategory, true> = {
+  core: true,
+  hardware: true,
+  suite: true,
+  ondemand: true,
+};
+
+function isServiceCategory(value: unknown): value is ServiceCategory {
+  return typeof value === "string" && Object.hasOwn(SERVICE_CATEGORIES, value);
+}
+
+function firstFinite(...values: unknown[]): number | null {
+  for (const v of values) {
+    if (typeof v === "number" && Number.isFinite(v)) return v;
+  }
+  return null;
+}
+
+/**
+ * Map one raw service record (LAN poll, LAN full status, cloud heartbeat or
+ * MQTT, snake_case or camelCase) into the canonical `ServiceInfo`.
+ *
+ * A metric the producer did not carry stays `null` so the table renders "—"
+ * rather than a measured-looking 0. `uptimeSeconds` lets the caller supply an
+ * uptime it derived itself (the LAN poll computes it from monotonic
+ * transition stamps); when omitted the record's own field is used.
+ */
+export function normalizeServiceInfo(
+  raw: Record<string, unknown>,
+  uptimeSeconds?: number | null,
+): ServiceInfo {
+  const category = isServiceCategory(raw.category) ? raw.category : undefined;
+  return {
+    name: typeof raw.name === "string" && raw.name ? raw.name : "unknown",
+    status: normalizeServiceStatus(raw),
+    pid: typeof raw.pid === "number" ? raw.pid : null,
+    cpu_percent: firstFinite(raw.cpu_percent, raw.cpuPercent),
+    memory_mb: firstFinite(raw.memory_mb, raw.memoryMb),
+    uptime_seconds:
+      uptimeSeconds !== undefined
+        ? uptimeSeconds
+        : firstFinite(raw.uptime_seconds, raw.uptimeSeconds),
+    category,
+  };
 }

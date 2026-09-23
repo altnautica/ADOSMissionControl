@@ -10,7 +10,7 @@
  * engine stamps its artifact URLs with a drifting mDNS `.local` host the browser
  * cannot resolve (and mixed-content on an HTTPS GCS); routing through this
  * same-origin proxy resolves the paired host to IPv4 server-side and hands the
- * viewers a plain, reachable URL (Rule 39 local-first).
+ * viewers a plain, reachable URL (local-first).
  *
  * GET `?host=<pairedHost>&path=artifacts/<relpath>`.
  *

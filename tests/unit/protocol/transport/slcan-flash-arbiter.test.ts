@@ -100,7 +100,7 @@ interface FakeProtocolOpts {
 }
 
 function makeFakeProtocol(opts: FakeProtocolOpts) {
-  const setParam = vi.fn(async () => ({ success: true, resultCode: 0, message: "ok" }));
+  const setParam = vi.fn(async (_name: string, _value?: number) => ({ success: true, resultCode: 0, message: "ok" }));
   const reboot = vi.fn(async () => ({ success: true, resultCode: 0, message: "ok" }));
   const enableCanForward = vi.fn(async (_bus: number) => ({
     success: opts.enableCanForwardResultOk ?? true,
@@ -174,7 +174,7 @@ describe("enterSlcanMode — happy paths", () => {
       droneId: "drone-1",
       bus: 1,
       bitrate: 1_000_000,
-      timeoutSec: 300,
+      timeoutSec: 120,
     });
     // Drive the internal delays.
     await vi.advanceTimersByTimeAsync(2_000);
@@ -183,8 +183,8 @@ describe("enterSlcanMode — happy paths", () => {
     expect(session.slcanTransport).toBeTruthy();
     expect(setParam).toHaveBeenCalledWith("CAN_SLCAN_CPORT", 1);
     expect(setParam).toHaveBeenCalledWith("CAN_SLCAN_SERNUM", 0);
-    expect(setParam).toHaveBeenCalledWith("CAN_SLCAN_TIMOUT", 300);
-    expect(setParam).toHaveBeenCalledWith("CAN_SLCAN_OVRIDE", 1);
+    expect(setParam).toHaveBeenCalledWith("CAN_SLCAN_TIMOUT", 120);
+    expect(setParam).not.toHaveBeenCalledWith("CAN_SLCAN_OVRIDE", expect.anything());
     expect(reboot).toHaveBeenCalled();
     expect(useSlcanModeStore.getState().state).toBe("SLCAN_ACTIVE");
   });
@@ -198,7 +198,7 @@ describe("enterSlcanMode — happy paths", () => {
       droneId: "d",
       bus: 1,
       bitrate: 1_000_000,
-      timeoutSec: 300,
+      timeoutSec: 120,
     });
     await vi.advanceTimersByTimeAsync(500);
     await promise;
@@ -237,7 +237,7 @@ describe("enterSlcanMode — failure paths", () => {
       droneId: "d",
       bus: 1,
       bitrate: 1_000_000,
-      timeoutSec: 300,
+      timeoutSec: 120,
     });
     // Attach a rejection handler before advancing timers so the
     // rollback rejection never goes unhandled.
@@ -259,7 +259,7 @@ describe("enterSlcanMode — failure paths", () => {
       droneId: "d",
       bus: 1,
       bitrate: 1_000_000,
-      timeoutSec: 300,
+      timeoutSec: 120,
     });
     const rejection = expect(promise).rejects.toThrow(/enableCanForward rejected/);
     await vi.advanceTimersByTimeAsync(500);
@@ -279,8 +279,32 @@ describe("enterSlcanMode — failure paths", () => {
         droneId: "d",
         bus: 1,
         bitrate: 1_000_000,
-        timeoutSec: 300,
+        timeoutSec: 120,
       }),
     ).rejects.toThrow(/SLCAN requires direct USB/);
+  });
+
+  it("a param write the FC refuses aborts the entry before any reboot", async () => {
+    const { protocol, setParam, reboot, enableCanForward } = makeFakeProtocol({ boardId: 1082 });
+    setParam.mockImplementation(async (name: string) =>
+      name === "CAN_SLCAN_TIMOUT"
+        ? { success: false, resultCode: 1, message: "value out of range" }
+        : { success: true, resultCode: 0, message: "ok" },
+    );
+    await expect(
+      enterSlcanMode({ protocol, droneId: "d", bus: 1, bitrate: 1_000_000, timeoutSec: 120 }),
+    ).rejects.toThrow(/CAN_SLCAN_TIMOUT/);
+    expect(reboot).not.toHaveBeenCalled();
+    expect(enableCanForward).not.toHaveBeenCalled();
+    expect(setParam).toHaveBeenCalledWith("CAN_SLCAN_CPORT", 0);
+    expect(useSlcanModeStore.getState().state).toBe("ERROR");
+  });
+
+  it("refuses a timeout CAN_SLCAN_TIMOUT cannot hold", async () => {
+    const { protocol, setParam } = makeFakeProtocol({ boardId: 1082 });
+    await expect(
+      enterSlcanMode({ protocol, droneId: "d", bus: 1, bitrate: 1_000_000, timeoutSec: 300 }),
+    ).rejects.toThrow(/0\.\.127/);
+    expect(setParam).not.toHaveBeenCalled();
   });
 });

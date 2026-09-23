@@ -13,6 +13,8 @@ import type { Waypoint } from "@/lib/types";
 import type { FlightPlan } from "@/lib/simulation-utils";
 import { altitudeRange, linearScale } from "@/lib/altitude-profile";
 import { useThrottledElapsed } from "@/hooks/use-throttled-elapsed";
+import { usePlannerStore } from "@/stores/planner-store";
+import { formatAltitudeWithDatum } from "@/lib/mission/altitude-frame";
 
 interface AltitudeProfileProps {
   waypoints: Waypoint[];
@@ -26,6 +28,9 @@ const PAD_BOTTOM = 14;
 
 export function AltitudeProfile({ waypoints, flightPlan }: AltitudeProfileProps) {
   const elapsed = useThrottledElapsed();
+  // The frame the upload gives a frameless waypoint, so the tooltip names the
+  // datum each altitude is measured from.
+  const defaultFrame = usePlannerStore((s) => s.defaultFrame);
 
   // Cumulative distances at each waypoint, from the computed flight segments.
   const cumulativeDistances = useMemo(() => {
@@ -125,7 +130,7 @@ export function AltitudeProfile({ waypoints, flightPlan }: AltitudeProfileProps)
           r={2.5}
           fill="#3a82ff"
         >
-          <title>WP {i + 1}: {Math.round(wp.alt)}m AGL</title>
+          <title>WP {i + 1}: {formatAltitudeWithDatum(wp.alt, wp.frame ?? defaultFrame)}</title>
         </circle>
       ))}
 

@@ -19,9 +19,6 @@
 /** Full WebSocket URL of the managed MQTT broker (telemetry + WebRTC signaling). */
 export const OFFICIAL_MQTT_WS_URL = "wss://mqtt.altnautica.com/mqtt";
 
-/** Host (no scheme) of the managed MQTT broker, for config-form defaults. */
-export const OFFICIAL_MQTT_HOST = "mqtt.altnautica.com";
-
 /** Base WebSocket URL of the managed video relay (fMP4 over WS). */
 export const OFFICIAL_VIDEO_RELAY_URL = "wss://video.altnautica.com";
 

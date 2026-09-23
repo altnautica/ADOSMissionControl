@@ -99,13 +99,13 @@ afterEach(() => {
 
 describe("resolveConfigAccess", () => {
   it("resolves direct when a client is attached", () => {
-    const access = resolveConfigAccess(stubClient, "dev-1");
+    const access = resolveConfigAccess(stubClient, "dev-1", null);
     expect(access).toEqual({ mode: "direct", client: stubClient });
   });
 
   it("resolves the proxy path from a browser-local pairing record", () => {
     useLocalNodesStore.setState({ nodes: [localNode({ deviceId: "dev-1" })] });
-    const access = resolveConfigAccess(null, "dev-1");
+    const access = resolveConfigAccess(null, "dev-1", null);
     expect(access).toEqual({
       mode: "proxy",
       target: { host: "http://dev.local:8080", apiKey: "LOCAL-KEY" },
@@ -118,7 +118,7 @@ describe("resolveConfigAccess", () => {
         pairedDrone({ deviceId: "dev-2", mdnsHost: "bench-node.local" }),
       ],
     });
-    const access = resolveConfigAccess(null, "dev-2");
+    const access = resolveConfigAccess(null, "dev-2", null);
     expect(access).toEqual({
       mode: "proxy",
       target: { host: "bench-node.local", apiKey: "CLOUD-KEY" },
@@ -126,7 +126,7 @@ describe("resolveConfigAccess", () => {
   });
 
   it("resolves none with the no-path reason when nothing reaches the node", () => {
-    const access = resolveConfigAccess(null, "dev-unknown");
+    const access = resolveConfigAccess(null, "dev-unknown", null);
     expect(access).toEqual({ mode: "none", reason: "no-path" });
   });
 
@@ -134,12 +134,12 @@ describe("resolveConfigAccess", () => {
     usePairingStore.setState({
       pairedDrones: [pairedDrone({ deviceId: "dev-3" })],
     });
-    expect(resolveConfigAccess(null, "dev-3").mode).toBe("none");
+    expect(resolveConfigAccess(null, "dev-3", null).mode).toBe("none");
   });
 
   it("resolves none when the focused node has no device id", () => {
     useLocalNodesStore.setState({ nodes: [localNode({ deviceId: "dev-1" })] });
-    expect(resolveConfigAccess(null, null).mode).toBe("none");
+    expect(resolveConfigAccess(null, null, null).mode).toBe("none");
   });
 });
 

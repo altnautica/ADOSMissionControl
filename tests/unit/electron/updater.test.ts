@@ -21,6 +21,7 @@ const { ipcHandlers, autoUpdater } = vi.hoisted(() => ({
     on: vi.fn(),
     checkForUpdates: vi.fn(),
     quitAndInstall: vi.fn(),
+    downloadUpdate: vi.fn(),
   },
 }));
 
@@ -79,6 +80,8 @@ beforeEach(() => {
   autoUpdater.logger = undefined;
   autoUpdater.on.mockReset();
   autoUpdater.quitAndInstall.mockReset();
+  autoUpdater.downloadUpdate.mockReset();
+  autoUpdater.downloadUpdate.mockResolvedValue([]);
   autoUpdater.checkForUpdates.mockReset();
   autoUpdater.checkForUpdates.mockResolvedValue({
     updateInfo: { version: "9.9.9" },
@@ -185,10 +188,62 @@ describe("setupAutoUpdater", () => {
     expect(errorSpy).toHaveBeenCalled();
   });
 
-  it("still installs where an install works", () => {
+  it("still installs where an install works, once a version is downloaded", () => {
     setupAutoUpdater(fakeWindow(), PACKAGED_APPIMAGE);
+    emit("update-downloaded", { version: "1.2.3" });
     ipcHandlers.get("update:install")!();
     expect(autoUpdater.quitAndInstall).toHaveBeenCalledTimes(1);
+  });
+
+  it("refuses an install before anything was downloaded", () => {
+    setupAutoUpdater(fakeWindow(), PACKAGED_APPIMAGE);
+    expect(() => ipcHandlers.get("update:install")!()).toThrow(/nothing has been downloaded/);
+    expect(autoUpdater.quitAndInstall).not.toHaveBeenCalled();
+  });
+
+  it("downloads an available version only when the operator asks", async () => {
+    const win = fakeWindow();
+    setupAutoUpdater(win, PACKAGED_APPIMAGE);
+    emit("update-available", { version: "1.2.3" });
+    expect(autoUpdater.downloadUpdate).not.toHaveBeenCalled();
+
+    await ipcHandlers.get("update:download")!();
+    expect(autoUpdater.downloadUpdate).toHaveBeenCalledTimes(1);
+    expect(ipcHandlers.get("update:status")!()).toEqual({
+      state: "downloading",
+      version: "1.2.3",
+    });
+  });
+
+  it("refuses a download on a build that cannot install", async () => {
+    setupAutoUpdater(fakeWindow(), PACKAGED_MAC);
+    emit("update-available", { version: "1.2.3" });
+    await expect(
+      Promise.resolve().then(() => ipcHandlers.get("update:download")!()),
+    ).rejects.toThrow(/not code-signed or notarized/);
+    expect(autoUpdater.downloadUpdate).not.toHaveBeenCalled();
+  });
+
+  it("pushes every status change to the window and keeps the latest for late readers", () => {
+    const win = fakeWindow();
+    setupAutoUpdater(win, PACKAGED_MAC);
+    expect(ipcHandlers.get("update:status")!()).toEqual({ state: "idle" });
+
+    emit("update-available", { version: "1.2.3" });
+    const available = {
+      state: "available",
+      version: "1.2.3",
+      installable: false,
+      releasesUrl: RELEASES_URL,
+    };
+    expect(win.webContents.send).toHaveBeenLastCalledWith("update:status", available);
+    expect(ipcHandlers.get("update:status")!()).toEqual(available);
+
+    emit("error", new Error("feed unreachable"));
+    expect(ipcHandlers.get("update:status")!()).toEqual({
+      state: "error",
+      message: "feed unreachable",
+    });
   });
 
   it("names the manual download route when a version it cannot install appears", () => {

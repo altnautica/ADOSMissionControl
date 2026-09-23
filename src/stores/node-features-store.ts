@@ -12,7 +12,7 @@
  * enabled), so a lean fleet does no Atlas work until asked.
  *
  * The agent remains the source of truth for whether the native service is
- * actually running (read from its readiness inside the feature surface, Rule 44);
+ * actually running (read from its readiness inside the feature surface, no fabricated reading);
  * this store is the operator's per-node intent that reveals the feature and
  * bootstraps the poll. Persisted, SSR/test-safe, mirrors `local-nodes-store` /
  * `local-plugin-installs-store`.

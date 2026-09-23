@@ -11,9 +11,8 @@ import { wsVerifyClient, type WsGuardOptions } from './ws-guard.js';
 // Constants
 // ---------------------------------------------------------------------------
 
-const INITIAL_RECONNECT_MS = 500;
-const MAX_RECONNECT_MS = 30_000;
-const BACKOFF_FACTOR = 2;
+/** Fixed retry interval: the link is retried every 2 s, forever. */
+const RECONNECT_MS = 2000;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -36,7 +35,6 @@ export class TcpWsBridge extends EventEmitter<BridgeEvents> implements Bridge {
   private readonly config: TcpWsBridgeConfig;
   private wss: WebSocketServer | null = null;
   private socket: net.Socket | null = null;
-  private reconnectMs = INITIAL_RECONNECT_MS;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private closed = false;
 
@@ -121,7 +119,6 @@ export class TcpWsBridge extends EventEmitter<BridgeEvents> implements Bridge {
     this.socket = socket;
 
     socket.connect(port, host, () => {
-      this.reconnectMs = INITIAL_RECONNECT_MS; // reset backoff on success
       this.emit('connected', { host, port });
     });
 
@@ -149,10 +146,9 @@ export class TcpWsBridge extends EventEmitter<BridgeEvents> implements Bridge {
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
       this.connect();
-    }, this.reconnectMs);
+    }, RECONNECT_MS);
 
     // Exponential backoff with cap.
-    this.reconnectMs = Math.min(this.reconnectMs * BACKOFF_FACTOR, MAX_RECONNECT_MS);
   }
 
   private broadcastToWs(data: Buffer): void {

@@ -2,17 +2,10 @@
  * @module useRegistryCompatibility
  * @description Compares a registry plugin version's compatibility
  * envelope (agent version range, supported board list) against the
- * currently-selected drone's reported capabilities. The dialog uses
- * the result to gate the per-card Install button: a non-compatible
- * card surfaces a one-liner reason instead of letting the operator
- * push an archive the agent will refuse.
- *
- * The agent version lives on `useAgentSystemStore().status.version`
- * (populated by the cloud status bridge from the heartbeat). The
- * board id is read from the agent status payload's board record;
- * `useAgentCapabilitiesStore` mirrors compute features but does not
- * carry a board-id field, so the system store is the authoritative
- * surface for both signals.
+ * install target's own reported version and board (see
+ * `useInstallTargetHost`). The card uses the result to gate its Install
+ * button: a non-compatible card surfaces a one-liner reason instead of
+ * letting the operator push an archive the agent will refuse.
  *
  * `semver` is not a project dependency so the version comparator
  * here is a hand-rolled numeric major/minor/patch check. The
@@ -24,8 +17,7 @@
 
 "use client";
 
-import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
-import { useAgentSystemStore } from "@/stores/agent-system-store";
+import { useInstallTargetHost } from "./use-install-target-host";
 
 export interface RegistryPluginVersion {
   agent_min_version: string;
@@ -88,21 +80,22 @@ export function useRegistryCompatibility(
      * fleet-wide overview with no single node context — "Select a node
      * to install on." instead. */
     surface?: "node" | "settings";
+    /** Device id of the node the install would land on. */
+    deviceId?: string | null;
   },
 ): CompatResult {
-  const capabilitiesLoaded = useAgentCapabilitiesStore((s) => s.loaded);
-  const agentVersion = useAgentSystemStore((s) => s.status?.version);
-  const boardModel = useAgentSystemStore((s) => s.status?.board.model);
-  const boardName = useAgentSystemStore((s) => s.status?.board.name);
-  // SoC is the third identifier a plugin author can target. A
+  const host = useInstallTargetHost(options?.deviceId);
+  const agentVersion = host?.agentVersion;
+  const boardName = host?.boardName;
+  // SoC is the second identifier a plugin author can target. A
   // manifest that declares `supported_boards: ["rk3582"]` should
   // match every board running that chip, regardless of the
-  // marketing-name or compute-module-name slug.
-  const boardSoc = useAgentSystemStore((s) => s.status?.board.soc);
+  // marketing-name slug.
+  const boardSoc = host?.boardSoc;
 
-  // No connected drone yet. The card stays interactable from a
-  // browsing perspective, but the Install button is gated.
-  if (!capabilitiesLoaded || !agentVersion) {
+  // The target has not reported its version yet. The card stays
+  // interactable from a browsing perspective, but Install is gated.
+  if (!agentVersion) {
     return {
       compatible: false,
       reason: "no_agent",
@@ -144,17 +137,15 @@ export function useRegistryCompatibility(
   }
 
   // (2) Board gate. `supported_boards` is optional; when omitted the
-  // plugin claims universal board support. When set, we check
-  // `board.model`, `board.name`, and `board.soc` because registry
-  // entries declare any of the three (model `"rock-5c-lite"`, name
-  // `"Radxa ROCK 5C Lite"`, SoC `"rk3582"`). Matching on SoC also
-  // means a SoC-portable plugin works on every board sharing that
-  // chip without listing each board model explicitly.
+  // plugin claims universal board support. When set, we check the board
+  // name and SoC the target reports (name `"Radxa ROCK 5C Lite"`, SoC
+  // `"rk3582"`). Matching on SoC also means a SoC-portable plugin works
+  // on every board sharing that chip without listing each board.
   if (version.supported_boards && version.supported_boards.length > 0) {
     const supported = new Set(
       version.supported_boards.map((b) => b.toLowerCase()),
     );
-    const candidates = [boardModel, boardName, boardSoc]
+    const candidates = [boardName, boardSoc]
       .filter((s): s is string => !!s)
       .map((s) => s.toLowerCase());
     const matched = candidates.some((c) => supported.has(c));
@@ -162,7 +153,7 @@ export function useRegistryCompatibility(
       return {
         compatible: false,
         reason: "board",
-        detail: boardModel ?? boardName ?? "unknown board",
+        detail: boardName ?? boardSoc ?? "unknown board",
       };
     }
   }

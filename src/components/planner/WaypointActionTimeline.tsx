@@ -13,13 +13,10 @@ import { useTranslations } from "next-intl";
 import { Select, type SelectOptionGroup } from "@/components/ui/select";
 import type { ActionCommand, CommandMissionAction, MissionAction, Waypoint } from "@/lib/types";
 import { useMissionStore } from "@/stores/mission-store";
+import { randomId } from "@/lib/utils";
+import { useDroneManager } from "@/stores/drone-manager";
 import { ACTION_COMMAND_GROUPS, defaultActionParams } from "./waypoint-constants";
 import { ActionRow, type NavTarget } from "./ActionRow";
-
-/** Generate a fresh short action id, matching the mission model's id shape. */
-function freshId(): string {
-  return Math.random().toString(36).substring(2, 10);
-}
 
 interface WaypointActionTimelineProps {
   waypoint: Waypoint;
@@ -51,7 +48,10 @@ export function WaypointActionTimeline({ waypoint, onUpdate, allowedCommands }: 
   })).filter((g) => g.options.length > 0);
 
   const addAction = (command: ActionCommand) => {
-    const action: CommandMissionAction = { id: freshId(), command, ...defaultActionParams(command, waypoint) };
+    const vehicleClass = useDroneManager.getState().getSelectedProtocol()?.getVehicleInfo()?.vehicleClass;
+    const action: CommandMissionAction = {
+      id: randomId(), command, ...defaultActionParams(command, waypoint, vehicleClass),
+    };
     onUpdate({ actions: [...actions, action] });
     setExpandedId(action.id);
   };

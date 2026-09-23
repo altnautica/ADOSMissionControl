@@ -4,10 +4,11 @@
  * @module command/BlackBoxTab
  * @description The ADOS Black Box view: a durable, post-flight log +
  * telemetry review surface for a paired companion-computer agent. Reads
- * the on-device store through `client.logging` — a session picker, a
- * keyset-paged filtered log table, time-aligned telemetry charts, a
- * health/sync badge, and a streamed export. Degrades gracefully on older
- * agents (no durable store) and in cloud mode (LAN store not reachable).
+ * the rendered node's on-device store through its `client.logging` — a
+ * session picker, a keyset-paged filtered log table, time-aligned telemetry
+ * charts, a health/sync badge, and a streamed export. Degrades gracefully on
+ * older agents (no durable store) and in cloud mode (LAN store not
+ * reachable).
  * @license GPL-3.0-only
  */
 
@@ -31,10 +32,16 @@ import { Select } from "@/components/ui/select";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useBlackBoxStore } from "@/stores/blackbox-store";
+import { usePairingStore } from "@/stores/pairing-store";
+import { useNodeDirectAgent } from "./settings/use-node-direct-agent";
 import { formatLogTime } from "./shared/LogViewer";
 import { HistoryChart } from "./blackbox/HistoryChart";
 import { PushedWindowsList } from "./blackbox/PushedWindowsList";
-import { getLogdWindowsRef, getLogdWindowRef } from "@/lib/community-api-logd";
+import {
+  getLogdWindowsRef,
+  getLogdWindowRef,
+  type LogdWindow,
+} from "@/lib/community-api-logd";
 import type { LogLevel } from "@/lib/agent/agent-client/logging";
 
 const levelColors: Record<LogLevel, string> = {
@@ -59,13 +66,22 @@ function fmtBytes(bytes: number): string {
   return `${mb.toFixed(1)} MB`;
 }
 
-export function BlackBoxTab() {
+export function BlackBoxTab({ nodeDeviceId }: { nodeDeviceId: string | null }) {
   const t = useTranslations("blackbox");
   const tAgent = useTranslations("agent");
   const gate = useSurfaceGate("agent-online");
   const { toast } = useToast();
   const cloudMode = useAgentConnectionStore((s) => s.cloudMode);
-  const deviceId = useAgentConnectionStore((s) => s.cloudDeviceId);
+  // The rendered node's own connection; null until focus reaches it.
+  const direct = useNodeDirectAgent(nodeDeviceId);
+  const client = direct?.client ?? null;
+  // The node's cloud identity is its cloud pairing row, whichever transport
+  // the session currently uses.
+  const cloudPaired = usePairingStore((s) =>
+    nodeDeviceId ? s.pairedDrones.some((d) => d.deviceId === nodeDeviceId) : false,
+  );
+  const deviceId = cloudPaired ? nodeDeviceId : null;
+  const attachedClient = useBlackBoxStore((s) => s.client);
 
   const sessions = useBlackBoxStore((s) => s.sessions);
   const selectedSessionId = useBlackBoxStore((s) => s.selectedSessionId);
@@ -88,6 +104,7 @@ export function BlackBoxTab() {
   const refresh = useBlackBoxStore((s) => s.refresh);
   const exportWindow = useBlackBoxStore((s) => s.exportWindow);
   const pushWindow = useBlackBoxStore((s) => s.pushWindow);
+  const attach = useBlackBoxStore((s) => s.attach);
   const clear = useBlackBoxStore((s) => s.clear);
 
   // Cloud-read of windows the operator has already exported. Owner-gated
@@ -99,12 +116,12 @@ export function BlackBoxTab() {
   });
   const getWindowUrl = useAction(getLogdWindowRef);
 
-  // Load on mount; clear on unmount so a freshly-focused agent never shows
-  // the previous one's review data.
+  // Load the rendered node's store whenever its client changes; clear on
+  // unmount so a freshly-focused agent never shows the previous one's data.
   useEffect(() => {
-    void refresh();
-    return () => clear();
-  }, [refresh, clear]);
+    attach(client);
+  }, [client, attach]);
+  useEffect(() => () => clear(), [clear]);
 
   const sessionOptions = useMemo(() => {
     const all = { value: "", label: t("allSessions") };
@@ -159,12 +176,18 @@ export function BlackBoxTab() {
       return;
     }
     toast(
-      result.deduped ? t("pushAlreadyStored") : t("pushStarted"),
-      "success",
+      result.pending
+        ? t("pushPending")
+        : result.deduped
+          ? t("pushAlreadyStored")
+          : t("pushStarted"),
+      result.pending ? "info" : "success",
     );
   }
 
-  async function handleDownloadPushed(id: string): Promise<string | null> {
+  async function handleDownloadPushed(
+    id: LogdWindow["_id"],
+  ): Promise<string | null> {
     try {
       const res = await getWindowUrl({ id });
       return res?.url ?? null;
@@ -181,17 +204,20 @@ export function BlackBoxTab() {
   // must be cloud-paired) and a reachable LAN store. A LAN-only / local-mode
   // drone with no cloud id is the correct default, not an error — the button
   // stays visible but disabled with a "pair to push" tooltip.
-  const canPush = !!deviceId && !cloudMode && available;
+  const canPush = !!deviceId && !!client && available;
   const pushTooltip = !deviceId
     ? t("pushNeedsPairing")
-    : cloudMode
+    : !client
       ? t("pushNeedsLocal")
       : t("push");
   const windows = pushedWindows ?? [];
 
+  // Not yet attached to this node: a connecting state, never the previous
+  // node's data or a verdict about this one's store.
+  const connecting = !direct || attachedClient !== client;
   // Cloud mode + no LAN reader, or an older agent without a durable store:
   // show a clear empty state instead of an inert blank surface.
-  const showUnavailable = !available && !loadingRows;
+  const showUnavailable = !connecting && !available && !loadingRows;
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -289,11 +315,15 @@ export function BlackBoxTab() {
 
       {/* Body: charts + log table */}
       <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
-        {showUnavailable ? (
+        {connecting ? (
+          <p className="text-xs text-text-tertiary text-center py-16">
+            {t("connecting")}
+          </p>
+        ) : showUnavailable ? (
           <div className="flex flex-col items-center justify-center py-16 gap-2 text-center">
             <Database size={28} className="text-text-tertiary" />
             <span className="text-sm text-text-secondary">
-              {cloudMode ? t("cloudUnavailable") : t("unavailable")}
+              {!client || cloudMode ? t("cloudUnavailable") : t("unavailable")}
             </span>
             <span className="text-xs text-text-tertiary max-w-md">
               {t("unavailableHint")}
@@ -305,13 +335,13 @@ export function BlackBoxTab() {
               <HistoryChart
                 title={t("cpuHistory")}
                 points={cpuHistory}
-                color="#3A82FF"
+                color="var(--alt-accent-primary)"
                 gradientId="bbCpu"
               />
               <HistoryChart
                 title={t("memoryHistory")}
                 points={memoryHistory}
-                color="#22C55E"
+                color="var(--alt-status-success)"
                 gradientId="bbMem"
               />
             </div>
@@ -371,16 +401,16 @@ export function BlackBoxTab() {
                 )}
               </div>
             </div>
-
-            {/* Windows already exported to the paired cloud account. Only
-                shown when this drone has a cloud id and has windows. */}
-            {deviceId && windows.length > 0 && (
-              <PushedWindowsList
-                windows={windows}
-                onDownload={handleDownloadPushed}
-              />
-            )}
           </>
+        )}
+
+        {/* Windows already exported to the paired cloud account: a cloud
+            read, listed whether or not the LAN store is reachable. */}
+        {deviceId && windows.length > 0 && (
+          <PushedWindowsList
+            windows={windows}
+            onDownload={handleDownloadPushed}
+          />
         )}
       </div>
     </div>

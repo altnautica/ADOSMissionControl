@@ -322,3 +322,48 @@ function wireAction(seq: number, command: number, p1: number, p2: number): Missi
     x: 0, y: 0, z: 0,
   };
 }
+
+describe("position-inheriting nav items (RTL, 0,0 TAKEOFF/LAND/LOITER)", () => {
+  function nav(seq: number, command: number, lat: number, lon: number, alt = 30): MissionItem {
+    return {
+      seq, frame: frameToMav("relative"), command, current: 0, autocontinue: 1,
+      param1: 0, param2: 0, param3: 0, param4: 0,
+      x: Math.round(lat * 1e7), y: Math.round(lon * 1e7), z: alt,
+    };
+  }
+
+  it("places an RTL and a 0,0 LAND at the previous waypoint, never at 0°N 0°E", () => {
+    const wps = collapseFromItems([
+      nav(1, cmdMap.WAYPOINT, 12.97, 77.59),
+      nav(2, cmdMap.LAND, 0, 0, 0),
+      nav(3, cmdMap.RTL, 0, 0, 0),
+    ]);
+    expect(wps.map((w) => [w.lat, w.lon, w.inheritsPosition])).toEqual([
+      [12.97, 77.59, undefined],
+      [12.97, 77.59, true],
+      [12.97, 77.59, true],
+    ]);
+  });
+
+  it("anchors a leading 0,0 TAKEOFF at home, or at the first real waypoint without one", () => {
+    const items = [nav(1, cmdMap.TAKEOFF, 0, 0), nav(2, cmdMap.WAYPOINT, 12.97, 77.59)];
+    expect(collapseFromItems(items, undefined, { lat: 12.9, lon: 77.5 })[0]).toMatchObject({ lat: 12.9, lon: 77.5, inheritsPosition: true });
+    expect(collapseFromItems(items)[0]).toMatchObject({ lat: 12.97, lon: 77.59, inheritsPosition: true });
+  });
+
+  it("keeps a LAND with a real location as a positioned waypoint", () => {
+    const [, land] = collapseFromItems([nav(1, cmdMap.WAYPOINT, 12.97, 77.59), nav(2, cmdMap.LAND, 12.98, 77.6, 0)]);
+    expect(land).toMatchObject({ lat: 12.98, lon: 77.6 });
+    expect(land.inheritsPosition).toBeUndefined();
+  });
+
+  it("re-emits 0,0 on the wire, so the vehicle still flies from its current position", () => {
+    const items = [nav(1, cmdMap.TAKEOFF, 0, 0), nav(2, cmdMap.WAYPOINT, 12.97, 77.59), nav(3, cmdMap.RTL, 0, 0, 0)];
+    const out = expandToItems(collapseFromItems(items), OPTS);
+    expect(out.map((it) => [it.command, it.x, it.y])).toEqual([
+      [cmdMap.TAKEOFF, 0, 0],
+      [cmdMap.WAYPOINT, 129700000, 775900000],
+      [cmdMap.RTL, 0, 0],
+    ]);
+  });
+});

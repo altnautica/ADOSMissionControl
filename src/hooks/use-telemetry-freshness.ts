@@ -62,7 +62,7 @@ export const TELEMETRY_FRESH_MS = FRESH_MS;
 /**
  * Whether a telemetry sample timestamp is fresh enough to render as live.
  * Pure (no hook) so a canvas HUD draw loop can gate each readout without a
- * React subscription — a blank "—" beats a frozen last value (Rule 44).
+ * React subscription — a blank "—" beats a frozen last value (no fabricated reading).
  */
 export function isTimestampFresh(
   timestamp: number | undefined | null,

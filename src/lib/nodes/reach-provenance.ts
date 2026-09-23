@@ -8,7 +8,7 @@
  * drone a ground node is relaying. The name matches what the node's own row
  * shows: a personalization label if the operator set one, else the paired /
  * LAN name. Returns null when the node is not (or no longer) known, so a
- * surface renders an honest fallback rather than a stale name (Rule 44).
+ * surface renders an honest fallback rather than a stale name (no fabricated reading).
  *
  * @license GPL-3.0-only
  */

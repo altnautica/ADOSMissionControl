@@ -16,6 +16,7 @@
 import type { BatteryData, EkfData, GpsData } from "@/lib/types/telemetry";
 import { freshOnly, isFresh } from "@/lib/telemetry/freshness";
 import { plausibleCellVoltages, resolveCellCount } from "@/lib/telemetry/battery-cells";
+import { knownRemainingPct } from "@/lib/battery-bands";
 
 /**
  * Lowest resting voltage per cell accepted before flight. It sits above the
@@ -66,21 +67,32 @@ export interface AutoCheckInputs {
   gps: GpsData | undefined;
   ekf: EkfData | undefined;
   sensors: SensorHealthSnapshot;
-  waypointCount: number;
-  geofenceEnabled: boolean;
+  /**
+   * Waypoints in the plan the selected drone acknowledged (its upload receipt
+   * matches the planner's current plan), or null when the vehicle is not known
+   * to hold this plan.
+   */
+  missionOnVehicle: number | null;
+  /**
+   * Enable flag of the fence the selected drone acknowledged (receipt matches
+   * the current fence, whose upload writes the enable parameter), or null when
+   * the vehicle is not known to hold this fence.
+   */
+  fenceOnVehicle: boolean | null;
   /** Localised label for a MAVLink GPS_FIX_TYPE. */
   formatGpsFix: (fixType: number) => string;
 }
 
 const UNKNOWN: AutoCheckVerdict = { status: "pending", displayValue: NOT_MEASURED };
+/** A plan or fence the vehicle has not acknowledged proves nothing about it. */
+const NOT_ON_VEHICLE: AutoCheckVerdict = { status: "pending", displayValue: "Not on vehicle" };
 
 function batteryLevel(b: BatteryData | undefined): AutoCheckVerdict {
-  // BATTERY_STATUS and MSP report -1 when the remaining capacity is not
-  // estimated; that is an unknown, not an empty pack.
-  if (!b || !Number.isFinite(b.remaining) || b.remaining < 0) return UNKNOWN;
+  const remaining = knownRemainingPct(b?.remaining);
+  if (remaining === null) return UNKNOWN;
   return {
-    status: b.remaining > PREFLIGHT_MIN_REMAINING_PCT ? "pass" : "fail",
-    displayValue: `${Math.round(b.remaining)}%`,
+    status: remaining > PREFLIGHT_MIN_REMAINING_PCT ? "pass" : "fail",
+    displayValue: `${Math.round(remaining)}%`,
   };
 }
 
@@ -123,7 +135,7 @@ export function evaluateAutoChecks(inputs: AutoCheckInputs, now: number): AutoCh
         displayValue: inputs.formatGpsFix(gps.fixType),
       }
     : UNKNOWN;
-  const gpsSats: AutoCheckVerdict = gps
+  const gpsSats: AutoCheckVerdict = gps && gps.satellites !== undefined
     ? {
         status: gps.satellites >= PREFLIGHT_MIN_SATELLITES ? "pass" : "fail",
         displayValue: `${gps.satellites} sats`,
@@ -165,11 +177,16 @@ export function evaluateAutoChecks(inputs: AutoCheckInputs, now: number): AutoCh
     "sensors-healthy": sensorsHealthy,
     "prearm-pass": prearmPass,
     "flight-plan":
-      inputs.waypointCount > 0
-        ? { status: "pass", displayValue: `${inputs.waypointCount} wpts` }
-        : { status: "fail", displayValue: "None" },
-    "geofence-set": inputs.geofenceEnabled
-      ? { status: "pass", displayValue: "Enabled" }
-      : { status: "fail", displayValue: "Disabled" },
+      inputs.missionOnVehicle === null
+        ? NOT_ON_VEHICLE
+        : inputs.missionOnVehicle > 0
+          ? { status: "pass", displayValue: `${inputs.missionOnVehicle} wpts` }
+          : { status: "fail", displayValue: "None" },
+    "geofence-set":
+      inputs.fenceOnVehicle === null
+        ? NOT_ON_VEHICLE
+        : inputs.fenceOnVehicle
+          ? { status: "pass", displayValue: "Enabled" }
+          : { status: "fail", displayValue: "Disabled" },
   };
 }

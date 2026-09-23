@@ -10,15 +10,15 @@ import type {
   WizardStep,
   AnalysisMode,
   WorkerOutMessage,
+  TuningVehicleType,
 } from "@/lib/analysis/types";
-import type { VehicleType } from "@/components/fc/pid/pid-constants";
 import { validateSuggestion } from "@/lib/analysis/pid-safety";
 import { requestAiPidAnalysis } from "./pid-analysis-ai";
-import { formatErrorMessage } from "@/lib/utils";
+import { formatErrorMessage, isDemoMode } from "@/lib/utils";
 
 /** Where validated suggestions are written, and what they are checked against. */
 export interface SuggestionTarget {
-  vehicleType: VehicleType;
+  vehicleType: TuningVehicleType;
   /** Values confirmed on the flight controller (loaded or saved, no pending local edit). */
   fcParams: ReadonlyMap<string, number>;
   setLocalValue: (name: string, value: number) => void;
@@ -54,6 +54,9 @@ function applySuggestions(recs: AiRecommendation[], target: SuggestionTarget): A
 }
 
 interface PidAnalysisState {
+  /** Drone the analysis, suggestions and comparison belong to. */
+  droneId: string | null;
+
   // Analysis state
   analysisResult: PidAnalysisResult | null;
   aiRecommendations: AiRecommendation[];
@@ -80,10 +83,17 @@ interface PidAnalysisState {
 
 interface PidAnalysisActions {
   // Core actions
+  /**
+   * Bind the store to a drone. A different drone clears every analysis,
+   * suggestion and comparison result, so nothing derived from one vehicle's
+   * log is shown or applied against another.
+   */
+  bindDrone: (droneId: string | null) => void;
   startAnalysis: (file: File) => void;
+  /** Demo mode only: loads the bundled sample analysis. */
   loadMockAnalysis: () => void;
   requestAiAnalysis: (
-    vehicleType: VehicleType,
+    vehicleType: TuningVehicleType,
     currentParams: Record<string, number>,
   ) => Promise<void>;
 
@@ -106,6 +116,7 @@ interface PidAnalysisActions {
 }
 
 const initialState: PidAnalysisState = {
+  droneId: null,
   analysisResult: null,
   aiRecommendations: [],
   aiSummary: "",
@@ -128,6 +139,17 @@ export const usePidAnalysisStore = create<PidAnalysisState & PidAnalysisActions>
     ...initialState,
 
     // ── Core actions ──────────────────────────────────────────────────────
+
+    bindDrone: (droneId: string | null) => {
+      if (get().droneId === droneId) return;
+      if (activeWorker) {
+        activeWorker.terminate();
+        activeWorker = null;
+      }
+      // Usage counters are per account, not per drone.
+      const { aiRemainingUses, aiWeeklyLimit, analysisMode } = get();
+      set({ ...initialState, droneId, aiRemainingUses, aiWeeklyLimit, analysisMode });
+    },
 
     startAnalysis: (file: File) => {
       // Terminate any running worker
@@ -159,11 +181,12 @@ export const usePidAnalysisStore = create<PidAnalysisState & PidAnalysisActions>
             set({ analyzeProgress: { stage: msg.stage, percent: msg.percent } });
             break;
           case "result":
+            // Stay on the analysis step so the operator sees the charts
+            // before moving on to the recommendations.
             set({
               analysisResult: msg.data,
               analyzing: false,
               analyzeProgress: null,
-              wizardStep: "recommendations",
             });
             activeWorker = null;
             worker.terminate();
@@ -196,6 +219,7 @@ export const usePidAnalysisStore = create<PidAnalysisState & PidAnalysisActions>
     },
 
     loadMockAnalysis: () => {
+      if (!isDemoMode()) return;
       set({
         analyzing: true,
         analyzeProgress: { stage: "Loading mock data", percent: 50 },
@@ -213,7 +237,6 @@ export const usePidAnalysisStore = create<PidAnalysisState & PidAnalysisActions>
             aiSummary: MOCK_AI_SUMMARY,
             analyzing: false,
             analyzeProgress: null,
-            wizardStep: "recommendations",
           });
         },
       ).catch((err) => {
@@ -226,16 +249,19 @@ export const usePidAnalysisStore = create<PidAnalysisState & PidAnalysisActions>
     },
 
     requestAiAnalysis: async (
-      vehicleType: VehicleType,
+      vehicleType: TuningVehicleType,
       currentParams: Record<string, number>,
     ) => {
-      const { analysisResult } = get();
+      const { analysisResult, droneId } = get();
       if (!analysisResult) return;
 
       set({ aiLoading: true, error: null });
 
       try {
         const result = await requestAiPidAnalysis(analysisResult, vehicleType, currentParams);
+        // The operator switched drones while the request was in flight: the
+        // answer describes the previous vehicle's log.
+        if (get().droneId !== droneId) return;
 
         if (result.needsAuth) {
           set({ aiLoading: false });
@@ -260,6 +286,7 @@ export const usePidAnalysisStore = create<PidAnalysisState & PidAnalysisActions>
           aiWeeklyLimit: result.weeklyLimit,
         });
       } catch (err) {
+        if (get().droneId !== droneId) return;
         const message = err instanceof Error ? err.message : "AI request failed";
         set({ error: message, aiLoading: false });
       }

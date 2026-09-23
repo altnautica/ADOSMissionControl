@@ -41,7 +41,7 @@ export function FleetTelemetryCard() {
   // GPS health, from FCs that are still talking
   const withGps = connected.filter((d) => d.gps && hasLiveFcReading(d));
   const gps3d = withGps.filter((d) => d.gps!.fixType >= 3).length;
-  const lowSats = withGps.filter((d) => d.gps!.satellites < 6 && d.gps!.fixType > 0).length;
+  const lowSats = withGps.filter((d) => d.gps!.satellites !== undefined && d.gps!.satellites < 6 && d.gps!.fixType > 0).length;
 
   const droneRows = connected.map((d) => {
     const remaining =

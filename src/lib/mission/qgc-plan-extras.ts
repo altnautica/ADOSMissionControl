@@ -103,8 +103,12 @@ function nextImportRallyId(): string {
   return `rally-import-${++importRallyCounter}`;
 }
 
-/** Parse the .plan geoFence block into a GeofenceSnapshot (inclusion / exclusion zones). */
-export function parseQGCGeoFence(geoFence: QGCGeoFence | undefined): GeofenceSnapshot | undefined {
+/**
+ * Parse the .plan geoFence block into inclusion / exclusion zones. A `.plan`
+ * carries fence GEOMETRY only: no enable state, altitude ceiling or floor, or
+ * breach action, so none is invented here (see `withImportedFenceZones`).
+ */
+export function parseQGCGeoFence(geoFence: QGCGeoFence | undefined): FenceZone[] | undefined {
   if (!geoFence) return undefined;
 
   const zones: FenceZone[] = [];
@@ -147,16 +151,19 @@ export function parseQGCGeoFence(geoFence: QGCGeoFence | undefined): GeofenceSna
     }
   }
 
-  if (zones.length === 0) return undefined;
+  return zones.length === 0 ? undefined : zones;
+}
 
+/**
+ * The operator's current fence with its geometry replaced by imported zones.
+ * Enable state, ceiling, floor and breach action stay the operator's: a file
+ * that does not carry them must not reset a 60 m ceiling to some default.
+ */
+export function withImportedFenceZones(current: GeofenceSnapshot, zones: FenceZone[]): GeofenceSnapshot {
   return {
-    enabled: true,
+    ...current,
     fenceType: zones[0].type,
-    maxAltitude: 120,
-    minAltitude: 0,
-    breachAction: "RTL",
     circleCenter: null,
-    circleRadius: 200,
     polygonPoints: [],
     zones,
   };

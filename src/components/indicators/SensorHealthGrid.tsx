@@ -3,6 +3,9 @@
 import { useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { useSensorHealthStore } from "@/stores/sensor-health-store";
+import { useClockTick } from "@/lib/agent/freshness";
+import { useClockStore } from "@/stores/clock-store";
+import { isFresh } from "@/lib/telemetry/freshness";
 import { cn } from "@/lib/utils";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
@@ -19,7 +22,8 @@ const STATUS_CONFIG = {
 /**
  * 32-sensor status grid decoded from MAV_SYS_STATUS_SENSOR bitmask.
  * Shows only present sensors by default, expandable to show all.
- * Clicking a sensor row expands detailed telemetry info.
+ * Clicking a sensor row expands detailed telemetry info. A SYS_STATUS that
+ * stopped arriving renders as no data, never as the last sensor verdicts.
  */
 export function SensorHealthGrid({
   showAll = false,
@@ -36,6 +40,9 @@ export function SensorHealthGrid({
   const totalPresent = useSensorHealthStore((s) => s.getTotalPresentCount());
   const lastUpdate = useSensorHealthStore((s) => s.lastUpdate);
   const [expandedBits, setExpandedBits] = useState<Set<number>>(new Set());
+  // Re-render as time passes so a report that stops arriving decays.
+  useClockTick();
+  const now = useClockStore((s) => s.now);
 
   const toggleExpand = useCallback((bit: number) => {
     setExpandedBits((prev) => {
@@ -47,6 +54,14 @@ export function SensorHealthGrid({
   }, []);
 
   const displayed = showAll ? sensors : sensors.filter((s) => s.present);
+
+  if (lastUpdate > 0 && !isFresh(lastUpdate, now)) {
+    return (
+      <div className={cn("text-xs text-status-error", className)} data-telemetry-stale>
+        Sensors · {t("telemetryNone")}
+      </div>
+    );
+  }
 
   if (displayed.length === 0) {
     return (
@@ -122,7 +137,7 @@ export function SensorHealthGrid({
                 </div>
                 <div className="flex justify-between">
                   <span className="text-text-tertiary">{t("bit")}</span>
-                  <span>{sensor.bit} (0x{(1 << sensor.bit).toString(16).toUpperCase()})</span>
+                  <span>{sensor.bit} (0x{(2 ** sensor.bit).toString(16).toUpperCase()})</span>
                 </div>
                 {lastUpdate > 0 && (
                   <div className="flex justify-between">

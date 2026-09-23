@@ -111,7 +111,7 @@ describe("resolveAGLToAbsolute — frame-aware placement", () => {
     ];
     const provider = {} as unknown as TerrainProvider;
 
-    const result = await resolveAGLToAbsolute(waypoints, provider, "relative");
+    const result = await resolveAGLToAbsolute(waypoints, provider, "relative", waypoints[0]);
     expect(result.waypointIndices).toEqual([0, 1]);
 
     const absHeight = heightOf(result.positions[result.waypointIndices[0]]);
@@ -132,7 +132,7 @@ describe("resolveAGLToAbsolute — frame-aware placement", () => {
     const waypoints: Waypoint[] = [{ id: "a", lat, lon, alt: 100, frame: "absolute" }];
     const provider = {} as unknown as TerrainProvider;
 
-    const result = await resolveAGLToAbsolute(waypoints, provider, "relative");
+    const result = await resolveAGLToAbsolute(waypoints, provider, "relative", waypoints[0]);
     const h = heightOf(result.positions[0]);
     // Shifted up by the (positive) undulation, not left at raw 100 and not at
     // terrain+100.

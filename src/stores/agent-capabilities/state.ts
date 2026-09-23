@@ -23,7 +23,6 @@ import {
   deriveCloudRelayUrl,
   deriveCloudflareUrl,
   deriveManualConnectionUrls,
-  deriveMavlinkWsUrlPrev,
   derivePairingCodeExpiresAt,
   deriveProfile,
   deriveProfileSource,
@@ -70,7 +69,6 @@ const INITIAL_STATE: AgentCapabilitiesState = {
   usbRehomeLastResult: undefined,
   videoRestartAttempts: 0,
   pairingCodeExpiresAt: null,
-  mavlinkWsUrlPrev: null,
   wfbFailoverState: "local",
   manualConnectionUrls: null,
   cloudRelayUrl: null,
@@ -185,7 +183,6 @@ export const useAgentCapabilitiesStore = create<AgentCapabilitiesStore>(
       // when an /api/capabilities call lands without them.
       const videoRestartAttempts = deriveVideoRestartAttempts(caps);
       const pairingCodeExpiresAt = derivePairingCodeExpiresAt(caps);
-      const mavlinkWsUrlPrev = deriveMavlinkWsUrlPrev(caps);
       const manualConnectionUrls = deriveManualConnectionUrls(caps);
       const cloudRelayUrl = deriveCloudRelayUrl(caps);
       const cloudflareUrl = deriveCloudflareUrl(caps);
@@ -235,7 +232,7 @@ export const useAgentCapabilitiesStore = create<AgentCapabilitiesStore>(
         // Replace every tick, matching radio: a heartbeat that omits the crsf
         // block (the lane is down / its sidecar is stale — the block is never
         // sent as all-null) resolves to null so the lane reads absent rather
-        // than pinning a stale reading (Rule 44). The LAN poll merges the
+        // than pinning a stale reading (no fabricated reading). The LAN poll merges the
         // dedicated ground-station route's block separately.
         crsf,
         // Forward-permissive: a sparse payload that omits the
@@ -311,10 +308,6 @@ export const useAgentCapabilitiesStore = create<AgentCapabilitiesStore>(
           pairingCodeExpiresAt === undefined
             ? state.pairingCodeExpiresAt
             : pairingCodeExpiresAt,
-        mavlinkWsUrlPrev:
-          mavlinkWsUrlPrev === undefined
-            ? state.mavlinkWsUrlPrev
-            : mavlinkWsUrlPrev,
         wfbFailoverState:
           wfbFailoverState === undefined
             ? state.wfbFailoverState

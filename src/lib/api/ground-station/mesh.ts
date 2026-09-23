@@ -136,10 +136,13 @@ export function revokeRelay(
   );
 }
 
-/** Relay-side: send a join request to a receiver. Blocks until invite is persisted. */
+/**
+ * Relay-side: send a join request to a receiver, with the join code the
+ * receiver shows. Blocks until the invite is persisted.
+ */
 export function requestJoin(
   ctx: RequestContext,
-  req: PairJoinRequest = {},
+  req: PairJoinRequest,
 ): Promise<PairJoinResult> {
   return gsRequest<PairJoinResult>(ctx, "/api/v1/ground-station/pair/join", {
     method: "POST",

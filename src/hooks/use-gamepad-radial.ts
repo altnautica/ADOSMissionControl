@@ -22,6 +22,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useInputStore } from "@/stores/input-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useSettingsStore } from "@/stores/settings-store";
+import { useSkillInputStore } from "@/stores/skill-input-store";
+import { COCKPIT_GAMEPAD_BUTTON } from "@/lib/skills/chord";
 import {
   useSkillRegistry,
   buildSkillContext,
@@ -30,21 +32,26 @@ import {
 } from "@/lib/skills";
 
 /**
- * Reserved gamepad button that opens the radial while held. Index 8 (Select /
- * Back on a standard mapping) is chosen because index 9 (Start) is already the
- * cockpit exit chord and indices 0-3 are common skill bindings.
+ * Reserved gamepad button that opens the radial while held (Select / Back on a
+ * standard mapping). Start is the cockpit exit and 0-3 are common bindings.
  */
-export const RADIAL_GAMEPAD_BUTTON = 8;
+export const RADIAL_GAMEPAD_BUTTON = COCKPIT_GAMEPAD_BUTTON.radial;
 
 /**
  * Standard-mapping d-pad button indices (up/down/left/right). Pressing one
  * steps the highlight to the nearest wedge in that screen direction, so the
  * radial is fully usable on a controller with no analog stick.
  */
-const DPAD_UP = 12;
-const DPAD_DOWN = 13;
-const DPAD_LEFT = 14;
-const DPAD_RIGHT = 15;
+const DPAD_UP = COCKPIT_GAMEPAD_BUTTON.dpadUp;
+const DPAD_DOWN = COCKPIT_GAMEPAD_BUTTON.dpadDown;
+const DPAD_LEFT = COCKPIT_GAMEPAD_BUTTON.dpadLeft;
+const DPAD_RIGHT = COCKPIT_GAMEPAD_BUTTON.dpadRight;
+
+/** Open the radial and tell every other D-pad / stick consumer it owns them. */
+function setRadialOwnership(open: boolean): void {
+  useInputStore.getState().setSticksCaptured(open);
+  useSkillInputStore.getState().setRadialOpen(open);
+}
 
 /** Below this magnitude the right stick is treated as centered (no aim). */
 const STICK_AIM_DEADZONE = 0.4;
@@ -145,7 +152,7 @@ export function useGamepadRadial(enabled: boolean): GamepadRadialModel {
       setOpen(false);
       setHighlightedIndex(-1);
     }
-    if (!enabled) useInputStore.getState().setSticksCaptured(false);
+    if (!enabled) setRadialOwnership(false);
   }, [enabled]);
 
   useEffect(() => {
@@ -177,7 +184,7 @@ export function useGamepadRadial(enabled: boolean): GamepadRadialModel {
         if (list.length > 0) {
           setOpen(true);
           setHighlightedIndex(-1);
-          useInputStore.getState().setSticksCaptured(true);
+          setRadialOwnership(true);
         }
       } else if (releasing) {
         // Release: fire the highlighted wedge through the shared dispatcher.
@@ -191,7 +198,7 @@ export function useGamepadRadial(enabled: boolean): GamepadRadialModel {
         }
         setOpen(false);
         setHighlightedIndex(-1);
-        useInputStore.getState().setSticksCaptured(false);
+        setRadialOwnership(false);
         for (const b of [DPAD_UP, DPAD_DOWN, DPAD_LEFT, DPAD_RIGHT]) {
           prevDpad[b] = state.buttons[b] ?? false;
         }
@@ -248,7 +255,7 @@ export function useGamepadRadial(enabled: boolean): GamepadRadialModel {
 
     return () => {
       unsubscribe();
-      useInputStore.getState().setSticksCaptured(false);
+      setRadialOwnership(false);
     };
   }, [enabled]);
 

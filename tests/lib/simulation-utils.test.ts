@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { Waypoint } from "@/lib/types";
-import { computeFlightPlan, createSimulationMissionSignature } from "@/lib/simulation-utils";
+import {
+  computeFlightPlan,
+  createSimulationMissionSignature,
+  interpolatePosition,
+} from "@/lib/simulation-utils";
+import { haversineDistance } from "@/lib/telemetry-utils";
 
 const baseWaypoints: Waypoint[] = [
   { id: "wp-1", lat: 12.9716, lon: 77.5946, alt: 30, command: "TAKEOFF" },
@@ -59,5 +64,39 @@ describe("computeFlightPlan hold time", () => {
       { id: "b", lat: 0.001, lon: 0, alt: 20, command: "LOITER", holdTime: 30 },
     ];
     expect(computeFlightPlan(endsInLoiter, 10).totalDuration).toBeCloseTo(flying, 6);
+  });
+});
+
+describe("computeFlightPlan RTL and action items", () => {
+  // Launch, then a waypoint about 2 km north, then RTL placed (as the planner
+  // does) at the last waypoint's position at 0 m.
+  const launch = { lat: 12.9716, lon: 77.5946 };
+  const far = { lat: 12.9896, lon: 77.5946 };
+  const mission: Waypoint[] = [
+    { id: "t", ...launch, alt: 30, command: "TAKEOFF" },
+    { id: "w", ...far, alt: 30 },
+    { id: "r", ...far, alt: 0, command: "RTL" },
+  ];
+
+  it("flies RTL back to home instead of descending in place", () => {
+    const plan = computeFlightPlan(mission, 10);
+    const leg = haversineDistance(launch.lat, launch.lon, far.lat, far.lon);
+    // Out and back, plus the descent at home: never just the outbound leg.
+    expect(plan.totalDistance).toBeGreaterThan(2 * leg);
+    const end = interpolatePosition(plan.segments, mission, plan.totalDuration);
+    expect(end.lat).toBeCloseTo(launch.lat, 6);
+    expect(end.lon).toBeCloseTo(launch.lon, 6);
+    expect(end.alt).toBe(0);
+  });
+
+  it("never flies to a positionless action item", () => {
+    const withAction: Waypoint[] = [
+      mission[0],
+      { id: "a", lat: 0, lon: 0, alt: 0, command: "DO_SET_SPEED", param1: 5 },
+      mission[1],
+    ];
+    const plan = computeFlightPlan(withAction, 10);
+    const leg = haversineDistance(launch.lat, launch.lon, far.lat, far.lon);
+    expect(plan.totalDistance).toBeCloseTo(leg, 0);
   });
 });

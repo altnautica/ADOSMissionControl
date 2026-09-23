@@ -53,12 +53,6 @@ interface CesiumSceneProps {
   buildingsEnabled?: boolean;
   /** Terrain exaggeration factor. Defaults to 1 (no exaggeration). */
   terrainExaggeration?: number;
-  /**
-   * Reports the 3D-tileset memory footprint in bytes each time a tileset
-   * loads, so the surface can show what the scene is actually holding instead
-   * of leaving a 1 GiB default cache invisible.
-   */
-  onTilesetMemory?: (bytes: number) => void;
 }
 
 /**
@@ -136,7 +130,6 @@ export default function CesiumScene({
   quality = "balanced",
   buildingsEnabled = false,
   terrainExaggeration = 1,
-  onTilesetMemory,
 }: CesiumSceneProps) {
   // SimulationViewer already resolves Convex token → env-var fallback before passing in.
   const effectiveToken = cesiumToken;
@@ -147,13 +140,11 @@ export default function CesiumScene({
   // Stable refs for callbacks so mount effect doesn't re-run
   const onReadyRef = useRef(onReady);
   const onErrorRef = useRef(onError);
-  const onTilesetMemoryRef = useRef(onTilesetMemory);
 
   useEffect(() => {
     onReadyRef.current = onReady;
     onErrorRef.current = onError;
-    onTilesetMemoryRef.current = onTilesetMemory;
-  }, [onReady, onError, onTilesetMemory]);
+  }, [onReady, onError]);
 
   // Effect 1: Mount-only — create viewer with basic config
   useEffect(() => {
@@ -246,10 +237,6 @@ export default function CesiumScene({
       camCtrl.inertiaSpin = 0.7;
       camCtrl.inertiaTranslate = 0.7;
       camCtrl.inertiaZoom = 0.7;
-
-      // Hide Cesium credits
-      const creditContainer = viewer.cesiumWidget.creditContainer as HTMLElement;
-      if (creditContainer) creditContainer.style.display = "none";
 
       viewerRef.current = viewer;
       onReadyRef.current?.(viewer);
@@ -374,7 +361,6 @@ export default function CesiumScene({
         viewer.scene.primitives.add(tileset);
         localTileset = tileset;
         tilesetRef.current = tileset;
-        onTilesetMemoryRef.current?.(tileset.totalMemoryUsageInBytes);
         viewer.scene.requestRender();
       }).catch(() => {
         // Silently ignore — buildings are a non-critical enhancement

@@ -41,7 +41,6 @@ export type SwarmCommandMode = (typeof SWARM_COMMAND_MODES)[number];
 /** Every `swarm.*` dot-path the GCS reads or writes, named once. */
 export const SWARM_CONFIG_KEYS = {
   enabled: "swarm.enabled",
-  role: "swarm.role",
   mode: "swarm.mode",
   formation: "swarm.default_formation",
   spacing: "swarm.default_spacing",
@@ -52,9 +51,6 @@ export const SWARM_CONFIG_KEYS = {
   flockNeighbors: "swarm.flock.neighbors",
   separationRadiusM: "swarm.separation.radius_m",
   separationHardM: "swarm.separation.hard_m",
-  tasksEnabled: "swarm.tasks.enabled",
-  tasksAssignedTaskId: "swarm.tasks.assigned_task_id",
-  tasksBundlePosition: "swarm.tasks.bundle_position",
 } as const;
 
 /** Gain bounds, in stored percent. 200% (gain 2.0) is the ceiling any of the

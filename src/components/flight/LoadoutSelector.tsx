@@ -135,12 +135,19 @@ export function LoadoutSelector() {
     return ids.map((id) => batteries[id]?.label ?? "?").join(", ");
   };
 
+  // Every slot the editor can fill, so a loadout holding only an ESC set or a
+  // camera never reads as "no loadout" beside an active clear button.
   const selectedSummary = current
     ? [
         batteryLabels(current.batteryIds),
         itemLabel(current.propSetId),
         itemLabel(current.motorSetId),
+        itemLabel(current.escSetId),
+        itemLabel(current.cameraId),
+        itemLabel(current.gimbalId),
         itemLabel(current.payloadId),
+        itemLabel(current.frameId),
+        itemLabel(current.rcTxId),
       ].filter((value) => value !== t("loadoutEmpty")).join(" / ") || t("loadoutNone")
     : t("loadoutNone");
 
@@ -208,6 +215,7 @@ interface LoadoutEditorProps {
 
 function LoadoutEditor({ current, activeBatteries, byType, onSave, onClose }: LoadoutEditorProps) {
   const t = useTranslations("history");
+  const tCommon = useTranslations("common");
   const [draft, setDraft] = useState<LoadoutSnapshot>(current);
 
   // Esc closes.
@@ -301,7 +309,7 @@ function LoadoutEditor({ current, activeBatteries, byType, onSave, onClose }: Lo
 
           <div className="flex items-center justify-end gap-2 pt-2">
             <Button variant="ghost" size="sm" onClick={onClose}>
-              {t("clear")}
+              {tCommon("cancel")}
             </Button>
             <Button variant="primary" size="sm" onClick={() => onSave(draft)}>
               {t("loadoutSave")}

@@ -24,12 +24,15 @@ type LogsView = "flights" | "recorder" | "events";
 
 interface LogsTabProps {
   droneId: string;
+  /** The device id of the node's agent; the Recorder reads that node's store.
+   * Null for a node with no agent identity. */
+  nodeDeviceId: string | null;
   /** Show the Flights sub-view. Only a drone profile flies; ground-station and
    * compute nodes pass false and render the Recorder view alone. */
   showFlights?: boolean;
 }
 
-export function LogsTab({ droneId, showFlights = false }: LogsTabProps) {
+export function LogsTab({ droneId, nodeDeviceId, showFlights = false }: LogsTabProps) {
   const t = useTranslations("dronePanel.logsViews");
   const [view, setView] = useState<LogsView>(
     showFlights ? "flights" : "recorder",
@@ -43,7 +46,7 @@ export function LogsTab({ droneId, showFlights = false }: LogsTabProps) {
   // No Flights sub-view to switch to: render the Recorder body directly with
   // no switcher chrome (ground-station / compute nodes).
   if (!showFlights) {
-    return <BlackBoxTab />;
+    return <BlackBoxTab nodeDeviceId={nodeDeviceId} />;
   }
 
   const views: LogsView[] = isPx4
@@ -80,7 +83,7 @@ export function LogsTab({ droneId, showFlights = false }: LogsTabProps) {
         ) : view === "events" ? (
           <Px4EventsFeed />
         ) : (
-          <BlackBoxTab />
+          <BlackBoxTab nodeDeviceId={nodeDeviceId} />
         )}
       </div>
     </div>

@@ -20,13 +20,13 @@ import { JobsPanel } from "@/components/command/nodes/atlas/JobsPanel";
 import { ForgeOutputs } from "@/components/command/nodes/atlas/ForgeOutputs";
 import { LogsTab } from "@/components/drone-detail/LogsTab";
 import { useComputeJobs } from "@/hooks/use-compute-jobs";
-import type { SurfaceSpec } from "../surface-types";
+import { surfaceNodeDeviceId, type SurfaceSpec } from "../surface-types";
 import { SegmentedPane } from "../SegmentedPane";
 import { STATUS_GROUP, COMPUTE_GROUP } from "../surface-groups";
 import { AGENT_SURFACE } from "../agent/agent-surface";
 
 /** The Viewer half: the reconstruction viewer over the node's finished jobs.
- * Calm state when the compute node is unreachable (Rule 39). */
+ * Calm state when the compute node is unreachable (local-first). */
 function WorkstationViewer({ nodeId }: { nodeId?: string }) {
   const t = useTranslations("atlas");
   const { jobs, client } = useComputeJobs(nodeId);
@@ -83,7 +83,9 @@ export const WORKSTATION_SURFACES: SurfaceSpec[] = [
   {
     id: "logs",
     labelKey: "dronePanel.logs",
-    render: (ctx) => <LogsTab droneId={ctx.droneId} showFlights={false} />,
+    render: (ctx) => (
+      <LogsTab droneId={ctx.droneId} nodeDeviceId={surfaceNodeDeviceId(ctx)} showFlights={false} />
+    ),
   },
   AGENT_SURFACE,
 ];

@@ -1,10 +1,8 @@
 /**
  * Round-trip test for the cloud-issuer wire format.
  *
- * Re-implements the Convex action's signer logic byte-for-byte
- * (`canonicalClaimsBytes` + `urlsafeB64NoPad` + HMAC-SHA256 over the
- * blob) using the shared helper at `src/lib/plugins/canonical-token.ts`,
- * then feeds the resulting token straight into `verifyToken` from the
+ * Signs with the Convex action's own signer (`convex/lib/capabilityTokenSigner`)
+ * and feeds the resulting token straight into `verifyToken` from the
  * bridge verifier. A successful verify proves the cloud issuer and the
  * bridge speak the exact same wire format. If this test breaks, the
  * iframe RPC pipeline will reject every cloud-minted token at
@@ -17,17 +15,18 @@ import { describe, it, expect } from "vitest";
 
 import {
   canonicalClaimsBytes,
-  signCanonicalToken,
+  signTokenCanonical,
   urlsafeB64NoPad,
-} from "@/lib/plugins/canonical-token";
+  type TokenClaims,
+} from "../../convex/lib/capabilityTokenSigner";
 import {
   importHmacKey,
   parseTokenClaims,
   verifyToken,
-  type TokenClaims,
 } from "@/lib/plugins/capability-token-claims";
 
 const SECRET = new Uint8Array(32).fill(0x9c);
+const SECRET_B64 = btoa(String.fromCharCode(...SECRET));
 
 function makeClaims(over: Partial<TokenClaims> = {}): TokenClaims {
   return {
@@ -44,13 +43,12 @@ function makeClaims(over: Partial<TokenClaims> = {}): TokenClaims {
 describe("cloud mint wire format round-trip", () => {
   it("produces a token the bridge verifier accepts end-to-end", async () => {
     const claims = makeClaims();
-    const key = await importHmacKey(SECRET);
-    const token = await signCanonicalToken(claims, key);
+    const token = await signTokenCanonical(claims, SECRET_B64);
 
     const verified = await verifyToken(
       token,
       { pluginId: claims.pluginId, agentId: claims.agentId },
-      async () => importHmacKey(SECRET),
+      async () => [await importHmacKey(SECRET)],
     );
 
     expect(verified.pluginId).toBe(claims.pluginId);
@@ -61,8 +59,7 @@ describe("cloud mint wire format round-trip", () => {
 
   it("emits the `<blob>.<sig>` wire shape with URL-safe alphabet and no padding", async () => {
     const claims = makeClaims();
-    const key = await importHmacKey(SECRET);
-    const token = await signCanonicalToken(claims, key);
+    const token = await signTokenCanonical(claims, SECRET_B64);
 
     // Exactly one separator; neither half empty; no `=` padding;
     // characters are restricted to the URL-safe alphabet.
@@ -78,8 +75,7 @@ describe("cloud mint wire format round-trip", () => {
 
   it("signs over the exact bytes the verifier reads back, not a re-serialised JSON", async () => {
     const claims = makeClaims();
-    const key = await importHmacKey(SECRET);
-    const token = await signCanonicalToken(claims, key);
+    const token = await signTokenCanonical(claims, SECRET_B64);
 
     // The verifier's `parseTokenClaims` decodes the blob exactly as
     // received. Compare those bytes with the bytes we signed; equality
@@ -89,6 +85,16 @@ describe("cloud mint wire format round-trip", () => {
     const bytesAsSigned = canonicalClaimsBytes(claims);
 
     expect(Array.from(bytesAsParsed)).toEqual(Array.from(bytesAsSigned));
+  });
+
+  it("serialises claims with sorted keys and no whitespace, as the agent does", () => {
+    const claims = makeClaims({ expiresAt: 1700000000000 });
+    // Python: json.dumps(claims, sort_keys=True, separators=(",", ":"))
+    expect(new TextDecoder().decode(canonicalClaimsBytes(claims))).toBe(
+      '{"agentId":"drone-id-42","expiresAt":1700000000000,' +
+        '"grantedCapabilities":["command.send","telemetry.subscribe.mavlink.attitude"],' +
+        '"iss":"cloud:user-7","operatorId":"user-7","pluginId":"com.example.basic"}',
+    );
   });
 
   it("urlsafeB64NoPad is consistent with the verifier's tolerant decoder", async () => {
@@ -102,8 +108,7 @@ describe("cloud mint wire format round-trip", () => {
     // Mint a token, decode it via the verifier, and confirm we got back
     // the same claims bytes.
     const claims = makeClaims();
-    const key = await importHmacKey(SECRET);
-    const token = await signCanonicalToken(claims, key);
+    const token = await signTokenCanonical(claims, SECRET_B64);
     const { claims: roundTripped } = parseTokenClaims(token);
     expect(roundTripped.pluginId).toBe(claims.pluginId);
     expect(roundTripped.agentId).toBe(claims.agentId);

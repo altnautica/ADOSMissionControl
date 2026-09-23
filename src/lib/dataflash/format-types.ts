@@ -13,6 +13,7 @@
  * | `i`  | 4     | int32                                             |
  * | `I`  | 4     | uint32                                            |
  * | `f`  | 4     | float32                                           |
+ * | `g`  | 2     | float16 (IEEE 754 half precision)                 |
  * | `d`  | 8     | float64                                           |
  * | `n`  | 4     | char[4] (zero-terminated string)                  |
  * | `N`  | 16    | char[16] (zero-terminated string)                 |
@@ -55,6 +56,17 @@ function readZeroTerminatedString(view: DataView, ofs: number, length: number): 
   return decoder.decode(bytes.subarray(0, end));
 }
 
+/** Decode an IEEE 754 half-precision value (1 sign, 5 exponent, 10 fraction bits). */
+function readFloat16(view: DataView, ofs: number): number {
+  const bits = view.getUint16(ofs, true);
+  const sign = bits & 0x8000 ? -1 : 1;
+  const exponent = (bits >> 10) & 0x1f;
+  const fraction = bits & 0x3ff;
+  if (exponent === 0) return sign * fraction * 2 ** -24;
+  if (exponent === 0x1f) return fraction ? Number.NaN : sign * Infinity;
+  return sign * (1 + fraction / 1024) * 2 ** (exponent - 15);
+}
+
 export const FORMAT_CHARS: Record<string, FormatChar> = {
   b: { width: 1, read: (v, o) => v.getInt8(o) },
   B: { width: 1, read: (v, o) => v.getUint8(o) },
@@ -64,6 +76,7 @@ export const FORMAT_CHARS: Record<string, FormatChar> = {
   I: { width: 4, read: (v, o) => v.getUint32(o, true) },
   f: { width: 4, read: (v, o) => v.getFloat32(o, true) },
   d: { width: 8, read: (v, o) => v.getFloat64(o, true) },
+  g: { width: 2, read: readFloat16 },
   n: { width: 4, read: (v, o) => readZeroTerminatedString(v, o, 4) },
   N: { width: 16, read: (v, o) => readZeroTerminatedString(v, o, 16) },
   Z: { width: 64, read: (v, o) => readZeroTerminatedString(v, o, 64) },
@@ -100,12 +113,15 @@ export const FORMAT_CHARS: Record<string, FormatChar> = {
   },
 };
 
-/** Sum of widths of all fields in a format string. Used to validate FMT vs declared length. */
-export function formatStringWidth(format: string): number {
+/**
+ * Sum of widths of all fields in a format string, or `undefined` when it holds
+ * a character this reader has no decoder for.
+ */
+export function formatStringWidth(format: string): number | undefined {
   let total = 0;
   for (const ch of format) {
     const def = FORMAT_CHARS[ch];
-    if (!def) throw new Error(`Unknown DataFlash format character: '${ch}'`);
+    if (!def) return undefined;
     total += def.width;
   }
   return total;

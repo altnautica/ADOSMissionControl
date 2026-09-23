@@ -73,6 +73,7 @@ function buildActions(activeTool = "polygon") {
       activeTool,
       defaultAlt: 50,
       defaultSpeed: 5,
+      defaultAcceptRadius: 0,
       selectedDroneId: "",
       missionName: "",
       contextMenu: null,

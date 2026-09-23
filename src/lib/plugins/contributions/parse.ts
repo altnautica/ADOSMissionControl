@@ -129,17 +129,6 @@ export function parseTabContributions(
   return out.length > 0 ? out : undefined;
 }
 
-/** The safety classes a plugin MCP tool may declare (the agent spells the flight
- * class `flight_action`). An unknown value is carried through verbatim so the UI
- * can render it as an unknown-but-present class rather than dropping the tool. */
-export const TOOL_SAFETY_CLASSES: ReadonlySet<string> = new Set([
-  "read",
-  "safe_write",
-  "admin",
-  "flight_action",
-  "destructive",
-]);
-
 /**
  * One `contributes.tools[]` entry: an MCP tool the plugin exposes to an AI
  * client. `name` is the stable id within the plugin (namespaced

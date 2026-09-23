@@ -85,7 +85,8 @@ export interface ModemView {
 /** The cellular detail snapshot (`GET .../modem-status`): whether a modem is
  * present at all, with the agent's reason when it is not. */
 export interface ModemDetailStatus {
-  present: boolean;
+  /** `null` when the agent did not probe for a modem (`reason: "not_probed"`). */
+  present: boolean | null;
   reason?: string | null;
   [key: string]: unknown;
 }

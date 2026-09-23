@@ -17,14 +17,14 @@ export function MeshHealthCard() {
 
   if (!health) {
     return (
-      <div className="p-4 bg-surface-primary border border-border-default/40">
+      <div className="p-4 bg-bg-primary border border-border-default/40">
         <div className="text-sm text-text-tertiary italic">{t("notUp")}</div>
       </div>
     );
   }
 
   return (
-    <div className="p-4 bg-surface-primary border border-border-default/40 flex flex-col gap-2">
+    <div className="p-4 bg-bg-primary border border-border-default/40 flex flex-col gap-2">
       <div className="flex items-center justify-between">
         <div className="text-sm font-medium text-text-primary">{t("title")}</div>
         <div

@@ -64,7 +64,7 @@ describe("buildComputePatch — full mapping", () => {
           { nodeId: "node-b", accelerators: ["cuda:0"], workersIdle: 4, queueDepth: 0 },
           { accelerators: ["mps"], workersIdle: 1, queueDepth: 0 }, // no nodeId -> dropped
           "not-an-object", // dropped
-          { nodeId: "node-c" }, // missing numerics -> defaulted to 0, accelerators []
+          { nodeId: "node-c" }, // missing counters -> null (not reported), accelerators []
         ],
       },
       current,
@@ -72,7 +72,7 @@ describe("buildComputePatch — full mapping", () => {
     );
     expect(patch!.cluster.slaves).toEqual([
       { nodeId: "node-b", accelerators: ["cuda:0"], workersIdle: 4, queueDepth: 0 },
-      { nodeId: "node-c", accelerators: [], workersIdle: 0, queueDepth: 0 },
+      { nodeId: "node-c", accelerators: [], workersIdle: null, queueDepth: null },
     ]);
   });
 });

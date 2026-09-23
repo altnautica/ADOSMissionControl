@@ -8,7 +8,7 @@ import {
   scaleMissionFromPoint,
   mirrorMission,
 } from '@/lib/transforms/mission-transforms';
-import type { Waypoint } from '@/lib/types/mission';
+import type { CommandMissionAction, Waypoint } from '@/lib/types/mission';
 
 function wp(lat: number, lon: number, extra?: Partial<Waypoint>): Waypoint {
   return {
@@ -207,6 +207,13 @@ describe('rotateMissionAroundPoint', () => {
     }
   });
 
+  it('turns clockwise on a north-up map: a point due north lands due east at +90', () => {
+    const north = [wp(0.001, 0, { id: 'n' })];
+    const [r] = rotateMissionAroundPoint(north, 90, 0, 0);
+    expect(r.lat).toBeCloseTo(0, 8);
+    expect(r.lon).toBeCloseTo(0.001, 8);
+  });
+
   it('leaves positions unchanged for 0 degree rotation about any point', () => {
     const rotated = rotateMissionAroundPoint(sampleWaypoints, 0, 0, 0);
     for (let i = 0; i < sampleWaypoints.length; i++) {
@@ -233,5 +240,34 @@ describe('scaleMissionFromPoint', () => {
       expect(scaled[i].lat).toBeCloseTo(sampleWaypoints[i].lat, 8);
       expect(scaled[i].lon).toBeCloseTo(sampleWaypoints[i].lon, 8);
     }
+  });
+});
+
+describe('positioned actions', () => {
+  const withRoi: Waypoint[] = [
+    wp(12.970, 77.590, { id: 'a', command: 'TAKEOFF' }),
+    wp(12.975, 77.595, {
+      id: 'b',
+      actions: [
+        { id: 'roi', command: 'ROI', lat: 12.976, lon: 77.596, alt: 0 },
+        { id: 'delay', command: 'DELAY', param1: 3 },
+      ],
+    }),
+  ];
+
+  it('moves an ROI target with the mission', () => {
+    const moved = moveMission(withRoi, 0.01, 0.02);
+    const roi = moved[1].actions![0] as CommandMissionAction;
+    expect(roi.lat).toBeCloseTo(12.986, 8);
+    expect(roi.lon).toBeCloseTo(77.616, 8);
+    expect(moved[1].actions![1]).toEqual(withRoi[1].actions![1]);
+  });
+
+  it('rotates an ROI target about the same pivot as the waypoints', () => {
+    const [, b] = rotateMissionAroundPoint(withRoi, 90, 12.975, 77.595);
+    const roi = b.actions![0] as CommandMissionAction;
+    // 0.001 deg north-east of the pivot turns to south-east.
+    expect(roi.lat).toBeLessThan(12.975);
+    expect(roi.lon).toBeGreaterThan(77.595);
   });
 });

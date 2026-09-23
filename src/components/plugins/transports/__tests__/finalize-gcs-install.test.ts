@@ -9,6 +9,7 @@ import {
   buildIframeHtml,
   type FinalizeGcsInstallInputs,
 } from "../finalize-gcs-install";
+import { computeSha256 } from "../manifest-parse";
 
 const BUNDLE_JS = 'console.log("follow-me boot");export const x=1;';
 
@@ -54,16 +55,19 @@ function gcsManifest(): FinalizeGcsInstallInputs["manifest"] {
 }
 
 /** Record-keeping stub callables + a fetch stub that resolves the
- * archive proxy and the storage upload. */
+ * archive proxy. */
 function makeHarness(opts: { archiveForUrl?: Blob } = {}) {
   const calls = {
     recordInstall: [] as unknown[],
     grant: [] as unknown[],
     status: [] as unknown[],
-    uploadBodies: [] as string[],
+    bundles: [] as string[],
   };
   const callables = {
-    generateUploadUrl: vi.fn(async () => "https://storage.test/upload-1"),
+    storeBundle: vi.fn(async ({ html }: { html: string }) => {
+      calls.bundles.push(html);
+      return "stor-1";
+    }),
     recordInstall: vi.fn(async (args: unknown) => {
       calls.recordInstall.push(args);
       return "install-1";
@@ -75,17 +79,11 @@ function makeHarness(opts: { archiveForUrl?: Blob } = {}) {
       calls.status.push(args);
     }),
   };
-  const fetchImpl = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+  const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
     const url = String(input);
     if (url.startsWith("/api/registry-archive")) {
       const bytes = new Uint8Array(await (opts.archiveForUrl as Blob).arrayBuffer());
       return new Response(bytes, { status: 200 });
-    }
-    if (url === "https://storage.test/upload-1") {
-      calls.uploadBodies.push(String((init?.body as Blob) ? "blob" : ""));
-      return new Response(JSON.stringify({ storageId: "stor-1" }), {
-        status: 200,
-      });
     }
     throw new Error(`unexpected fetch ${url}`);
   });
@@ -93,8 +91,8 @@ function makeHarness(opts: { archiveForUrl?: Blob } = {}) {
 }
 
 describe("finalizeGcsInstall", () => {
-  it("file install: extracts the bundle, uploads it, records the install enabled", async () => {
-    const { callables, fetchImpl } = makeHarness();
+  it("file install: extracts the bundle, stores it, records the install enabled", async () => {
+    const { calls, callables, fetchImpl } = makeHarness();
     const archive = await makeArchive(true);
     const installId = await finalizeGcsInstall({
       archive,
@@ -109,7 +107,8 @@ describe("finalizeGcsInstall", () => {
     });
 
     expect(installId).toBe("install-1");
-    expect(callables.generateUploadUrl).toHaveBeenCalledOnce();
+    expect(callables.storeBundle).toHaveBeenCalledOnce();
+    expect(calls.bundles[0]).toContain("<html");
     const recArgs = callables.recordInstall.mock.calls[0][0] as Record<string, unknown>;
     expect(recArgs.bundleStorageId).toBe("stor-1");
     expect(recArgs.droneId).toBe("drone-9");
@@ -155,6 +154,32 @@ describe("finalizeGcsInstall", () => {
     expect(recArgs.source).toBe("registry");
   });
 
+  it("registry install: refuses fetched bytes that do not match the published hash", async () => {
+    const archive = await makeArchive(true);
+    const { callables, fetchImpl } = makeHarness({ archiveForUrl: archive });
+    const args = {
+      archiveUrl: "https://example.com/x.signed.adosplug",
+      manifest: gcsManifest(),
+      manifestHash: "hash-abc",
+      grantedPermissions: [],
+      deviceId: "drone-9",
+      source: "registry" as const,
+      agentEnabled: true,
+      callables,
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    };
+    await expect(
+      finalizeGcsInstall({ ...args, expectedSha256: "00".repeat(32) }),
+    ).rejects.toMatchObject({ stage: "fetch-archive" });
+    expect(callables.storeBundle).not.toHaveBeenCalled();
+
+    await finalizeGcsInstall({
+      ...args,
+      expectedSha256: (await computeSha256(archive)).toUpperCase(),
+    });
+    expect(callables.storeBundle).toHaveBeenCalledTimes(1);
+  });
+
   it("agent-only plugin: records the install without a bundle, and leaves it installed until the drone enables it", async () => {
     const { callables, fetchImpl } = makeHarness();
     const manifest = gcsManifest();
@@ -171,7 +196,7 @@ describe("finalizeGcsInstall", () => {
       callables,
       fetchImpl: fetchImpl as unknown as typeof fetch,
     });
-    expect(callables.generateUploadUrl).not.toHaveBeenCalled();
+    expect(callables.storeBundle).not.toHaveBeenCalled();
     const recArgs = callables.recordInstall.mock.calls[0][0] as Record<string, unknown>;
     expect(recArgs.bundleStorageId).toBeUndefined();
     // The drone never confirmed the plugin enabled, so the row stays
@@ -216,7 +241,7 @@ describe("finalizeGcsInstall", () => {
         fetchImpl: fetchImpl as unknown as typeof fetch,
       }),
     ).rejects.toMatchObject({ stage: "verify-signature" });
-    expect(callables.generateUploadUrl).not.toHaveBeenCalled();
+    expect(callables.storeBundle).not.toHaveBeenCalled();
     expect(callables.recordInstall).not.toHaveBeenCalled();
     expect(callables.setStatus).not.toHaveBeenCalled();
   });

@@ -2,21 +2,39 @@
  * @module patterns/coverage-footprints
  * @description Builds the ground footprint polygon of each survey image so the
  * planner can draw a coverage overlay — the actual rectangles the camera captures
- * along the route, revealing overlap and gaps. Pure geometry: for each route point
- * it places a `width x height` metre rectangle (from the camera + altitude via
- * {@link computeFootprint}) centred on the point and rotated to the local flight
- * heading (the bearing along the leg). No store access, no side effects.
+ * along the route, revealing overlap and gaps. Pure geometry: the route's
+ * camera-trigger actions give the capture points, and each gets a `width x
+ * height` metre rectangle (from the camera + its altitude via
+ * {@link computeFootprint}) rotated to its leg heading. No store access, no side
+ * effects.
  * @license GPL-3.0-only
  */
 
 import { offsetPoint, bearing } from "@/lib/drawing/geo-utils";
+import { haversineDistance } from "@/lib/telemetry-utils";
+import { isActionCommand } from "@/lib/mission/command-classes";
+import type { WaypointCommand } from "@/lib/types";
 import { computeFootprint, type CameraProfile } from "@/lib/patterns/gsd-calculator";
 
-/** Minimal point accepted by the footprint builder. */
-export interface FootprintPoint {
+/** A route row as the pattern generators emit it: a nav point or an attached action. */
+export interface CaptureRouteRow {
   lat: number;
   lon: number;
+  alt: number;
+  command: string;
+  param1?: number;
 }
+
+/** Where the camera fires: position, altitude and the heading of the leg it fires on. */
+export interface CapturePoint {
+  lat: number;
+  lon: number;
+  alt: number;
+  headingDeg: number;
+}
+
+/** Default safety cap on drawn footprints, so a huge route cannot lock the map. */
+export const MAX_FOOTPRINTS = 2000;
 
 /**
  * Ground footprint of one image as four `[lat, lon]` corners (clockwise from the
@@ -46,41 +64,77 @@ export function buildFootprintPolygon(
 }
 
 /**
- * Build a footprint polygon for every route point. Each point's heading is the
- * bearing to the next point (the last point reuses the bearing from its
- * predecessor), so footprints align with the flown legs. Returns an empty array
- * when there is nothing to draw (no points, no altitude, or a zero-size footprint).
+ * The capture points a route produces. A `DO_SET_CAM_TRIGG` with a positive
+ * distance arms the camera at the nav point it rides; from there a capture
+ * lands every `distance` metres along each following leg (the distance carries
+ * across turns) until a zero-distance trigger disarms it. Each capture takes
+ * the altitude interpolated along its leg and the leg's heading.
  *
- * @param points   ordered route points (the survey capture waypoints)
- * @param camera   camera profile driving the footprint size
- * @param altitude flight altitude AGL in metres
- * @param maxCount safety cap on how many footprints to build (default 2000) so a
- *                 huge route cannot lock the map; the caller should surface when
- *                 the route exceeds it rather than silently drawing a subset.
+ * Only the first `maxCount` points are returned; `total` is the full count so
+ * the caller can say when the overlay is truncated.
+ */
+export function sampleCapturePoints(
+  route: readonly CaptureRouteRow[],
+  maxCount = MAX_FOOTPRINTS,
+): { points: CapturePoint[]; total: number } {
+  const points: CapturePoint[] = [];
+  let total = 0;
+  let spacing = 0;
+  // Distance flown since the last capture while the camera is armed.
+  let sinceLast = 0;
+  let prev: CaptureRouteRow | null = null;
+
+  for (const row of route) {
+    if (row.command === "DO_SET_CAM_TRIGG") {
+      const next = row.param1 ?? 0;
+      if (next > 0 && spacing <= 0) sinceLast = next; // first capture at the arming point
+      spacing = next > 0 ? next : 0;
+      continue;
+    }
+    if (isActionCommand((row.command || "WAYPOINT") as WaypointCommand)) continue;
+    if (prev && spacing > 0) {
+      const legM = haversineDistance(prev.lat, prev.lon, row.lat, row.lon);
+      const headingDeg = bearing(prev.lat, prev.lon, row.lat, row.lon);
+      let d = spacing - sinceLast; // distance along this leg to the next capture
+      while (d <= legM && points.length < maxCount) {
+        const f = legM > 0 ? d / legM : 0;
+        points.push({
+          lat: prev.lat + (row.lat - prev.lat) * f,
+          lon: prev.lon + (row.lon - prev.lon) * f,
+          alt: prev.alt + (row.alt - prev.alt) * f,
+          headingDeg,
+        });
+        total++;
+        d += spacing;
+      }
+      // Past the cap, count the rest of the leg's captures without building them.
+      if (d <= legM) {
+        const rest = Math.floor((legM - d) / spacing) + 1;
+        total += rest;
+        d += rest * spacing;
+      }
+      sinceLast = legM - (d - spacing);
+    }
+    prev = row;
+  }
+  return { points, total };
+}
+
+/**
+ * Build the ground footprint of every capture point, each sized for its own
+ * altitude and aligned with its leg. Points at or below zero altitude draw
+ * nothing (never a fabricated footprint).
  */
 export function buildFootprintPolygons(
-  points: readonly FootprintPoint[],
+  points: readonly CapturePoint[],
   camera: CameraProfile,
-  altitude: number,
-  maxCount = 2000,
 ): [number, number][][] {
-  if (points.length === 0 || !Number.isFinite(altitude) || altitude <= 0) return [];
-  const { width, height } = computeFootprint(altitude, camera);
-  if (!(width > 0) || !(height > 0)) return [];
-
-  const n = Math.min(points.length, maxCount);
   const polys: [number, number][][] = [];
-  for (let i = 0; i < n; i++) {
-    const p = points[i];
-    let headingDeg: number;
-    const next = points[i + 1];
-    if (next) {
-      headingDeg = bearing(p.lat, p.lon, next.lat, next.lon);
-    } else {
-      const prev = points[i - 1];
-      headingDeg = prev ? bearing(prev.lat, prev.lon, p.lat, p.lon) : 0;
-    }
-    polys.push(buildFootprintPolygon(p.lat, p.lon, headingDeg, width, height));
+  for (const p of points) {
+    if (!Number.isFinite(p.alt) || p.alt <= 0) continue;
+    const { width, height } = computeFootprint(p.alt, camera);
+    if (!(width > 0) || !(height > 0)) continue;
+    polys.push(buildFootprintPolygon(p.lat, p.lon, p.headingDeg, width, height));
   }
   return polys;
 }

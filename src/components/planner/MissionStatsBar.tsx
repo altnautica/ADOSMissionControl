@@ -1,7 +1,8 @@
 /**
  * @module MissionStatsBar
  * @description Compact stats overlay at the bottom-left of the map showing
- * waypoint count, total distance, estimated time, max altitude, and average speed.
+ * waypoint count, total distance, estimated time, max altitude, and the mean
+ * speed over the planned route (distance / planned duration).
  * Uses 3D distance (haversine + altitude) to match simulation calculations.
  * @license GPL-3.0-only
  */
@@ -30,11 +31,13 @@ export function MissionStatsBar({ waypoints, defaultSpeed, bottomOffset }: Missi
     for (const wp of waypoints) {
       if (wp.alt > maxAlt) maxAlt = wp.alt;
     }
-    const avgSpeed = defaultSpeed || 5;
     // Use the flight plan's own duration, which already accounts for per-leg
     // speed overrides and hold/loiter times, rather than distance ÷ one speed —
     // so the ETA matches the simulation's playback length.
     const estTime = plan.totalDuration;
+    // Mean speed over the planned route (per-leg speeds and holds included);
+    // null when the plan has no duration to divide by.
+    const avgSpeed = estTime > 0 ? plan.totalDistance / estTime : null;
     return {
       wpCount: waypoints.length,
       totalDistance: plan.totalDistance,
@@ -59,8 +62,12 @@ export function MissionStatsBar({ waypoints, defaultSpeed, bottomOffset }: Missi
         <Stat label={`~${stats.estTimeMin}m`} />
         <Sep />
         <Stat label={`${formatAltitude(stats.maxAlt, units)} ${t("max")}`} />
-        <Sep />
-        <Stat label={formatSpeed(stats.avgSpeed, units)} />
+        {stats.avgSpeed !== null && (
+          <>
+            <Sep />
+            <Stat label={`${formatSpeed(stats.avgSpeed, units)} ${t("avg")}`} />
+          </>
+        )}
       </div>
     </div>
   );

@@ -1,18 +1,23 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plug } from "lucide-react";
 import { WebSocketTransport } from "@/lib/protocol/transport/websocket";
 import { connectWithDetection } from "@/lib/protocol/connect-with-detection";
 import { useDroneManager } from "@/stores/drone-manager";
-import { useDroneMetadataStore } from "@/stores/drone-metadata-store";
-import { resolveNodeId } from "@/lib/agent/node-id";
+import { useLocalNodesStore } from "@/stores/local-nodes-store";
+import { nodeIdForDevice, resolveNodeId } from "@/lib/agent/node-id";
+import { pairedAgentDeviceIdForUrl } from "@/lib/agent/paired-agent-match";
+import { getFreshness, useClockTick } from "@/lib/agent/freshness";
+import { saveRecentConnection } from "@/lib/recent-connections";
 import { getPreset } from "@/lib/presets/presets";
 import { BuildPresetPicker } from "./BuildPresetPicker";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import { cmdDroneStatusApi } from "@/lib/community-api-drones";
+import { useAuthStore } from "@/stores/auth-store";
 
 /**
  * WebSocket ports the SITL tool serves drones #1-#5 on (each drone's SITL TCP
@@ -31,6 +36,23 @@ type DiscoveredRig = {
   name: string;
   mavlinkWs: string;
 };
+
+/**
+ * The paired agent that already owns the flight controller behind a URL, or
+ * null when the URL is free to dial directly. An agent's FC belongs to its
+ * agent card: a second, direct session to it would put two command-capable
+ * rows on one aircraft.
+ */
+function owningAgent(url: string, rigDeviceId: string | null): string | null {
+  const byHost = pairedAgentDeviceIdForUrl(url);
+  if (byHost) return byHost;
+  if (!rigDeviceId) return null;
+  const lanPaired = useLocalNodesStore
+    .getState()
+    .nodes.some((n) => n.deviceId === rigDeviceId);
+  const attached = useDroneManager.getState().drones.has(nodeIdForDevice(rigDeviceId));
+  return lanPaired || attached ? rigDeviceId : null;
+}
 
 /**
  * Classify a URL that points at a local SITL bridge port. The bridge refuses
@@ -54,54 +76,66 @@ export function WebSocketPanel({
   url,
   onUrlChange,
   targetDroneId,
+  connectDisabled = false,
 }: {
-  onConnected?: (name: string, type: "websocket", url: string) => void;
+  /** Called after a successful connect or link attach so the host can close. */
+  onConnected?: () => void;
   url?: string;
   onUrlChange?: (url: string) => void;
   /** When set, connects this transport as an additional link to the existing drone (multi-link mode). */
   targetDroneId?: string | null;
+  /** Blocks the connect action (link mode with no target drone chosen yet). */
+  connectDisabled?: boolean;
 }) {
+  const t = useTranslations("connect");
   const [localUrl, setLocalUrl] = useState("ws://localhost:14550");
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
+  /** The discovered rig whose URL the operator picked, until they edit it. */
+  const [rigDeviceId, setRigDeviceId] = useState<string | null>(null);
   const addDrone = useDroneManager((s) => s.addDrone);
   const attachLinkToDrone = useDroneManager((s) => s.attachLinkToDrone);
 
-  // Discovered rigs — the cloud heartbeat from every paired agent
-  // carries a LAN-routable MAVLink WebSocket URL. Surface those as
-  // one-click chips so the operator can switch from cloud relay to
-  // direct LAN without copy-pasting addresses. Query is gated by the
-  // skip guard so it returns undefined when Convex auth is unavailable.
+  // Discovered rigs: the cloud heartbeat from every paired agent carries a
+  // LAN-routable MAVLink WebSocket URL. Only agents heard from recently are
+  // offered; a stale row's address may no longer be this agent at all. The
+  // query is auth-scoped, so it runs only for a signed-in operator.
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const cloudRows = useConvexSkipQuery(cmdDroneStatusApi.listMyCloudStatuses, {
-    enabled: true,
+    enabled: isAuthenticated,
   });
-  const discoveredRigs: DiscoveredRig[] = useMemo(() => {
-    if (!Array.isArray(cloudRows)) return [];
-    const rigs: DiscoveredRig[] = [];
+  // Re-evaluate the freshness filter on the shared 1 Hz clock.
+  useClockTick();
+  const discoveredRigs: DiscoveredRig[] = [];
+  if (Array.isArray(cloudRows)) {
     for (const row of cloudRows as Array<{
-      drone?: { deviceId?: string; name?: string };
+      drone?: { deviceId?: string; name?: string; lastSeen?: number };
       status?: {
         manualConnectionUrls?: { mavlinkWs?: string | null };
       } | null;
     }>) {
       const ws = row?.status?.manualConnectionUrls?.mavlinkWs;
       const deviceId = row?.drone?.deviceId;
-      if (typeof ws === "string" && ws && typeof deviceId === "string") {
-        rigs.push({
+      const live = getFreshness(row?.drone?.lastSeen ?? null).state === "live";
+      if (live && typeof ws === "string" && ws && typeof deviceId === "string") {
+        discoveredRigs.push({
           deviceId,
           name: row?.drone?.name || deviceId,
           mavlinkWs: ws,
         });
       }
     }
-    return rigs;
-  }, [cloudRows]);
+  }
 
   const effectiveUrl = url ?? localUrl;
 
-  const handleUrlChange = (next: string) => {
+  const handleUrlChange = (next: string, rig: string | null = null) => {
     setLocalUrl(next);
+    setRigDeviceId(rig);
+    // A build preset only names a SITL vehicle; it must never follow the
+    // operator onto a real vehicle's URL.
+    if (!sitlTarget(next)) setSelectedPresetId(null);
     onUrlChange?.(next);
   };
 
@@ -113,11 +147,15 @@ export function WebSocketPanel({
     const trimmed = effectiveUrl.trim();
 
     if (!trimmed) {
-      setError("URL is required");
+      setError(t("ws.urlRequired"));
       return;
     }
     if (!trimmed.startsWith("ws://") && !trimmed.startsWith("wss://")) {
-      setError("URL must start with ws:// or wss://");
+      setError(t("ws.urlScheme"));
+      return;
+    }
+    if (owningAgent(trimmed, rigDeviceId)) {
+      setError(t("ownedByAgent"));
       return;
     }
 
@@ -132,14 +170,11 @@ export function WebSocketPanel({
       if (targetDroneId) {
         const result = await attachLinkToDrone(targetDroneId, transport);
         if (!result.ok) {
-          try { await transport.disconnect(); } catch { /* ignore */ }
           setError(result.error);
-          setConnecting(false);
           return;
         }
         handedOff = true;
-        onConnected?.("link", "websocket", trimmed);
-        setConnecting(false);
+        onConnected?.();
         return;
       }
 
@@ -147,9 +182,10 @@ export function WebSocketPanel({
         await connectWithDetection(transport);
       const droneId = resolveNodeId();
 
-      // Use preset name if available, otherwise firmware info
-      // Append system ID for unique naming in multi-drone setups
-      const preset = selectedPresetId ? getPreset(selectedPresetId) : null;
+      // A build preset names a SITL vehicle; the firmware string names
+      // anything else. Append system ID for unique naming in multi-drone setups.
+      const preset =
+        selectedPresetId && sitlTarget(trimmed) ? getPreset(selectedPresetId) : null;
       const sysIdSuffix = vehicleInfo.systemId > 0 ? ` #${vehicleInfo.systemId}` : '';
       const droneName = preset
         ? `${preset.name}${sysIdSuffix}`
@@ -158,21 +194,24 @@ export function WebSocketPanel({
       addDrone(droneId, droneName, adapter, transport, vehicleInfo, {
         type: "websocket",
         url: trimmed,
-        presetId: selectedPresetId ?? undefined,
         firmwareType,
       });
+      handedOff = true;
 
-      useDroneMetadataStore.getState().ensureProfile(droneId, {
-        displayName: droneName,
-        serial: `ALT-${droneId.toUpperCase()}`,
-        enrolledAt: Date.now(),
+      void saveRecentConnection({
+        type: "websocket",
+        url: trimmed,
+        firmwareType,
+        name: droneName,
+        date: Date.now(),
       });
 
-      handedOff = true;
-      onConnected?.(droneName, "websocket", trimmed);
+      onConnected?.();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Connection failed");
-      // Tear down the opened socket on a failed connect so it doesn't leak.
+      setError(err instanceof Error ? err.message : t("connectionFailed"));
+    } finally {
+      // Tear down a socket the drone manager did not take, so a failed
+      // connect or a refused link attach never leaks it.
       if (transport && !handedOff) {
         try {
           await transport.disconnect();
@@ -180,7 +219,6 @@ export function WebSocketPanel({
           /* ignore */
         }
       }
-    } finally {
       setConnecting(false);
     }
   }
@@ -188,7 +226,7 @@ export function WebSocketPanel({
   return (
     <div className="space-y-4">
       <Input
-        label="WebSocket URL"
+        label={t("ws.urlLabel")}
         value={effectiveUrl}
         onChange={(e) => {
           handleUrlChange(e.target.value);
@@ -200,13 +238,13 @@ export function WebSocketPanel({
       {discoveredRigs.length > 0 && (
         <div>
           <div className="text-[10px] uppercase tracking-wide text-text-tertiary mb-1.5">
-            Discovered rigs
+            {t("ws.discoveredRigs")}
           </div>
           <div className="flex flex-wrap gap-1.5">
             {discoveredRigs.map((rig) => (
               <button
                 key={rig.deviceId}
-                onClick={() => handleUrlChange(rig.mavlinkWs)}
+                onClick={() => handleUrlChange(rig.mavlinkWs, rig.deviceId)}
                 className={`px-2 py-1 text-[10px] font-mono border transition-colors cursor-pointer ${
                   effectiveUrl === rig.mavlinkWs
                     ? "border-accent-primary text-accent-primary bg-accent-primary/10"
@@ -248,22 +286,21 @@ export function WebSocketPanel({
 
       {needsSitlToken && (
         <p className="text-[10px] text-status-warning">
-          The SITL bridge prints a URL with a token when it starts (for example
-          ws://[::1]:5760/?token=…). Paste that whole URL above to connect.
+          {t("ws.sitlTokenHint", { example: "ws://[::1]:5760/?token=…" })}
         </p>
       )}
 
       <Button
         onClick={handleConnect}
         loading={connecting}
-        disabled={needsSitlToken}
+        disabled={needsSitlToken || connectDisabled}
         icon={<Plug size={14} />}
       >
-        {connecting ? "Connecting..." : "Connect"}
+        {connecting ? t("connecting") : t("connect")}
       </Button>
 
       <p className="text-[10px] text-text-tertiary">
-        For a raw UDP or TCP MAVLink endpoint, use the UDP or TCP method instead.
+        {t("ws.rawEndpointHint")}
       </p>
 
       {error && <p className="text-xs text-status-error">{error}</p>}

@@ -209,9 +209,9 @@ export function GenericLogbookTemplate({
                     {fmtDuration(r.duration)}
                   </Text>
                   <Text style={[tableStyles.td, tableStyles.colDistance]}>
-                    {(r.distance / 1000).toFixed(2)} km
+                    {r.distance !== undefined ? `${(r.distance / 1000).toFixed(2)} km` : "—"}
                   </Text>
-                  <Text style={[tableStyles.td, tableStyles.colAlt]}>{r.maxAlt} m</Text>
+                  <Text style={[tableStyles.td, tableStyles.colAlt]}>{r.maxAlt !== undefined ? `${r.maxAlt} m` : "—"}</Text>
                   <Text style={[tableStyles.td, tableStyles.colTakeoff]}>
                     {r.takeoffLat !== undefined && r.takeoffLon !== undefined
                       ? `${r.takeoffLat.toFixed(3)},${r.takeoffLon.toFixed(3)}`

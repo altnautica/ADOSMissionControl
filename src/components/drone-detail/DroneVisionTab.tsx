@@ -13,7 +13,7 @@
  * The right column is a self-contained preview of the detection overlay over
  * the drone's video pane so boxes can be confirmed without leaving the panel.
  *
- * Every readout is honest (Rule 44): a metric with no real source is hidden
+ * Every readout is honest (no fabricated reading): a metric with no real source is hidden
  * (the NPU bar, per-model throughput, feed age) rather than shown as a
  * fabricated zero — that discipline lives in the composed cards themselves.
  *
@@ -30,7 +30,7 @@ import { VisionPipelinesPanel } from "@/components/vision/VisionPipelinesPanel";
 import { VisionInputsPanel } from "@/components/vision/VisionInputsPanel";
 import { PerceptionTierCard } from "@/components/vision/PerceptionTierCard";
 import { PerceptionSessionCard } from "@/components/vision/PerceptionSessionCard";
-import { VisionModelRegistry } from "@/components/vision/VisionModelRegistry";
+import { ModelPicker } from "@/components/vision/ModelPicker";
 import { DetectionOverlay } from "@/components/vision/DetectionOverlay";
 import { VideoCanvas } from "@/components/flight/VideoCanvas";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
@@ -162,7 +162,7 @@ export function DroneVisionTab({
           </Section>
 
           <Section title={t("sectionModels")}>
-            <VisionModelRegistry droneId={droneId} />
+            <ModelPicker droneId={droneId} mode="full" />
           </Section>
         </div>
 

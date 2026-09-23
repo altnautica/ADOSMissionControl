@@ -28,6 +28,7 @@ import { createFirmwareHandler } from './firmware/ardupilot'
 import { useDiagnosticsStore } from '@/stores/diagnostics-store'
 import { createCallbackStore, bindCallbackMethods } from './mavlink-adapter-callbacks'
 import { routeFrame, checkLinkState, requestDataStreams, MSG_NAMES, type FrameHandlerState } from './mavlink-adapter-frame-handlers'
+import { StatusTextAssembler } from './handlers/info-handlers'
 import * as cmds from './mavlink-adapter-commands'
 import * as prm from './mavlink-adapter-params'
 import * as msn from './mavlink-adapter-missions'
@@ -44,7 +45,7 @@ interface LinkState {
   /** `transport` as seen by senders: signs each v2 frame while a signer is set. */
   outbound: SigningTransport
   label: string
-  connectionMeta?: import('@/stores/drone-manager').ConnectionMeta
+  connectionMeta?: import('@/lib/connection-meta').ConnectionMeta
   connectedAt: number
   /** Last time bytes were received on this link (ms) — used for "primary" selection */
   lastByteAt: number
@@ -182,7 +183,7 @@ export class MAVLinkAdapter implements DroneProtocol {
     rallyUpload: null, rallyDownload: null, fenceUpload: null, fenceDownload: null,
     logListDownload: null, logDataDownload: null, ftpCtx: this._ftpCtx,
     lastVehicleHeartbeat: 0, linkIsLost: false, HEARTBEAT_TIMEOUT_MS: TELEMETRY_STALE_MS,
-    componentMetadataUri: null,
+    componentMetadataUri: null, statusText: new StatusTextAssembler(),
   }
   private get fhs(): FrameHandlerState {
     const s = this._fhs
@@ -210,7 +211,7 @@ export class MAVLinkAdapter implements DroneProtocol {
   }
 
   /** Attach a transport as a link. Returns the link state. */
-  private attachLink(transport: Transport, label: string, meta?: import('@/stores/drone-manager').ConnectionMeta): LinkState {
+  private attachLink(transport: Transport, label: string, meta?: import('@/lib/connection-meta').ConnectionMeta): LinkState {
     const id = nextLinkId()
     const link: LinkState = {
       id,
@@ -439,7 +440,7 @@ export class MAVLinkAdapter implements DroneProtocol {
     if (this.heartbeatInterval) { clearInterval(this.heartbeatInterval); this.heartbeatInterval = null }
     if (this.streamRequestInterval) { clearInterval(this.streamRequestInterval); this.streamRequestInterval = null }
     if (this.linkLostCheckInterval) { clearInterval(this.linkLostCheckInterval); this.linkLostCheckInterval = null }
-    this.commandQueue.clear(); this.paramCache.clear(); this.downloadedParamNames = null; this.parser.reset()
+    this.commandQueue.clear(); this._fhs.statusText.clear(); this.paramCache.clear(); this.downloadedParamNames = null; this.parser.reset()
     this.frameUnsub?.(); this.frameUnsub = null
     this.componentMetadataUri = null
     if (this.logListDownload) { clearTimeout(this.logListDownload.timer); this.logListDownload.resolve(Array.from(this.logListDownload.entries.values())); this.logListDownload = null }
@@ -452,6 +453,9 @@ export class MAVLinkAdapter implements DroneProtocol {
       this.detachLink(link)
     }
   }
+
+  /** Every frame the link parser accepts (reassembled, CRC-checked, signature stripped). */
+  onMavlinkFrame(callback: (frame: MAVLinkFrame) => void): () => void { return this.parser.onFrame(callback) }
 
   /** Set to true when the MAVLink Inspector / diagnostics panel is open. */
   diagnosticsEnabled = false
@@ -503,7 +507,7 @@ export class MAVLinkAdapter implements DroneProtocol {
   async acceptCompassCal(mask = 0) { return cmds.cmdAcceptCompassCal(this.cc, mask) }
   async cancelCompassCal(mask = 0) { return cmds.cmdCancelCompassCal(this.cc, mask) }
   async cancelCalibration() { return cmds.cmdCancelCalibration(this.cc) }
-  async startGnssMagCal() { return cmds.cmdStartGnssMagCal(this.cc) }
+  async startGnssMagCal(yawDeg: number) { return cmds.cmdStartGnssMagCal(this.cc, yawDeg) }
   async sendCommand(id: number, p: number[]) { return cmds.cmdSendCommand(this.cc, id, p) }
   async motorTest(m: number, t: number, d: number) { return cmds.cmdMotorTest(this.cc, m, t, d) }
   async rebootToBootloader() { return cmds.cmdRebootToBootloader(this.cc) }
@@ -678,6 +682,7 @@ export class MAVLinkAdapter implements DroneProtocol {
   onLinkRestored = this.cbm.onLinkRestored; onLocalPosition = this.cbm.onLocalPosition
   onDebug = this.cbm.onDebug; onGimbalAttitude = this.cbm.onGimbalAttitude
   onObstacleDistance = this.cbm.onObstacleDistance; onCameraImageCaptured = this.cbm.onCameraImageCaptured
+  onAdsbVehicle = this.cbm.onAdsbVehicle
   onExtendedSysState = this.cbm.onExtendedSysState; onFencePoint = this.cbm.onFencePoint
   onSystemTime = this.cbm.onSystemTime; onRawImu = this.cbm.onRawImu
   onRcChannelsRaw = this.cbm.onRcChannelsRaw; onRcChannelsOverride = this.cbm.onRcChannelsOverride

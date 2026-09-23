@@ -26,7 +26,10 @@ import { useTranslations } from "next-intl";
 import { RadioTower } from "lucide-react";
 
 import type { NodeProfile } from "@/components/dashboard/node-detail/surface-types";
-import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
+import {
+  selectDeviceCapabilities,
+  useAgentCapabilitiesStore,
+} from "@/stores/agent-capabilities-store";
 import {
   ConfigIntField,
   ConfigReadonlyRow,
@@ -34,9 +37,12 @@ import {
   ConfigToggleField,
 } from "./ConfigFields";
 import { configAdvertises, readConfigPath } from "./use-node-config";
-import { Section } from "./Section";
+import { InfoNote, Section } from "./Section";
 
 interface SectionProps {
+  /** The node this page is rendered for; the live rung comes from its own
+   * capability slice, never the focused node's. */
+  nodeDeviceId: string | null;
   profile: NodeProfile;
   config: Record<string, unknown> | null;
   readOnly: boolean;
@@ -46,6 +52,14 @@ interface SectionProps {
 /** The top rung the adaptive ladder is built to reach. A cap AT the ceiling
  * constrains nothing, so the readout drops the "capped N" clause there. */
 const LADDER_CEILING_MCS = 5;
+
+/** The MCS index each non-conservative link preset forces at radio start,
+ * overwriting `mcs_index` (the agent's `link_preset_trio`). Conservative keeps
+ * the stored value, and an unknown preset name is a no-op on the agent. */
+const PRESET_FORCED_MCS: Record<string, number> = {
+  balanced: 3,
+  aggressive: 5,
+};
 
 /** A labeled live reading that is NOT a config key — the running modulation
  * rung and the SNR it was chosen against. Mirrors `ConfigReadonlyRow`'s
@@ -76,6 +90,7 @@ function LiveRow({
 }
 
 export function RadioSection({
+  nodeDeviceId,
   profile,
   config,
   readOnly,
@@ -86,18 +101,27 @@ export function RadioSection({
   // manual change lands here first, so the operator always sees what the
   // transmitter is actually doing (the same active-vs-commanded rule the
   // Swarm table's mode column follows).
-  const radio = useAgentCapabilitiesStore((s) => s.radio);
+  const radio = useAgentCapabilitiesStore(
+    (s) => selectDeviceCapabilities(s, nodeDeviceId)?.radio ?? null,
+  );
 
   // A workstation carries no WFB radio.
   if (profile !== "drone" && profile !== "ground-station") return null;
 
-  const hasWfb = configAdvertises(config, "video.wfb");
-  if (!hasWfb) {
+  // No document yet (loading, failed, or no path): whether the node has a
+  // radio block is unknown, and the config banner above the page says why.
+  if (config === null) {
     return (
       <Section title={t("title")} icon={RadioTower} blurb={t("blurb")}>
-        <div className="rounded border border-border-default/60 bg-bg-tertiary/40 px-3 py-2 text-[11px] text-text-tertiary">
-          {t("notAdvertised")}
-        </div>
+        {null}
+      </Section>
+    );
+  }
+
+  if (!configAdvertises(config, "video.wfb")) {
+    return (
+      <Section title={t("title")} icon={RadioTower} blurb={t("blurb")}>
+        <InfoNote>{t("notAdvertised")}</InfoNote>
       </Section>
     );
   }
@@ -114,7 +138,21 @@ export function RadioSection({
   ];
 
   const adaptive = readConfigPath(config, "video.wfb.adaptive_bitrate_enabled");
+  // The rung controls depend on who owns the rung. Until the document says
+  // whether the ladder runs, neither branch is drawn: the manual field on a
+  // node running the ladder would be a writer the controller overrides.
+  const adaptiveKnown = typeof adaptive === "boolean";
   const adaptiveOn = adaptive === true;
+  // A balanced / aggressive preset overwrites `mcs_index` at every radio
+  // start, so a stored manual rung would be silently replaced.
+  const preset = readConfigPath(config, "video.wfb.wfb_link_preset");
+  const presetMcs =
+    typeof preset === "string" && Object.hasOwn(PRESET_FORCED_MCS, preset)
+      ? PRESET_FORCED_MCS[preset]
+      : null;
+  const presetName =
+    preset === "balanced" ? t("presetBalanced") : t("presetAggressive");
+  const isDrone = profile === "drone";
   // Measured off-air, not a config echo: this is the peer's real transmit
   // rung. Null before a frame decodes — and 0 is a real rung, so an absent
   // reading must never render as MCS 0.
@@ -149,7 +187,15 @@ export function RadioSection({
           config={config}
           readOnly={readOnly}
           setValue={setValue}
+          confirm={{
+            title: t("fleetIdConfirmTitle"),
+            message: t("fleetIdConfirmMessage"),
+            confirmLabel: t("fleetIdConfirmAction"),
+          }}
         />
+        {/* Slot 0 is the ground station's own slot. On a drone it means the
+            ground station never issued one, and the radio refuses to start
+            a drone without a slot. */}
         <ConfigReadonlyRow
           configKey="video.wfb.fleet_slot"
           label={t("fleetSlotLabel")}
@@ -158,10 +204,13 @@ export function RadioSection({
           format={(raw) =>
             typeof raw !== "number" || !Number.isFinite(raw)
               ? null
-              : raw === 0
-                ? t("fleetSlotGround")
-                : t("fleetSlotDrone", { slot: raw })
+              : raw !== 0
+                ? t("fleetSlotDrone", { slot: raw })
+                : isDrone
+                  ? t("fleetSlotUnassigned")
+                  : t("fleetSlotGround")
           }
+          warn={(raw) => isDrone && raw === 0}
         />
       </div>
 
@@ -210,7 +259,7 @@ export function RadioSection({
         <div className="text-xs text-text-secondary">
           {t("modulationTitle")}
         </div>
-        {adaptiveOn ? (
+        {!adaptiveKnown ? null : adaptiveOn ? (
           <>
             <LiveRow
               label={t("mcsAutoLabel")}
@@ -235,16 +284,24 @@ export function RadioSection({
           </>
         ) : (
           <>
-            <ConfigIntField
-              configKey="video.wfb.mcs_index"
-              label={t("mcsLabel")}
-              hint={t("mcsHint")}
-              min={0}
-              max={7}
-              config={config}
-              readOnly={readOnly}
-              setValue={setValue}
-            />
+            {presetMcs !== null ? (
+              <LiveRow
+                label={t("mcsLabel")}
+                hint={t("mcsPresetHint")}
+                value={t("mcsPresetValue", { mcs: presetMcs, preset: presetName })}
+              />
+            ) : (
+              <ConfigIntField
+                configKey="video.wfb.mcs_index"
+                label={t("mcsLabel")}
+                hint={t("mcsHint")}
+                min={0}
+                max={7}
+                config={config}
+                readOnly={readOnly}
+                setValue={setValue}
+              />
+            )}
             <LiveRow
               label={t("mcsLiveLabel")}
               hint={t("mcsLiveHint")}

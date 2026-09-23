@@ -1,7 +1,6 @@
-import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import {
   useSlcanModeStore,
-  getCountdownLabel,
   type SlcanModeSnapshot,
 } from "@/stores/slcan-mode-store";
 
@@ -13,10 +12,7 @@ function snapshot(): SlcanModeSnapshot {
     bus: s.bus,
     bitrate: s.bitrate,
     timeoutSec: s.timeoutSec,
-    enteredAt: s.enteredAt,
-    autoRevertAt: s.autoRevertAt,
     errorMessage: s.errorMessage,
-    tickMs: s.tickMs,
     exitFn: s.exitFn,
   };
 }
@@ -38,27 +34,24 @@ describe("useSlcanModeStore — transitions", () => {
       droneId: "drone-1",
       bus: 1,
       bitrate: 1_000_000,
-      timeoutSec: 300,
+      timeoutSec: 120,
     });
     const s = snapshot();
     expect(s.state).toBe("ENTERING_SLCAN");
     expect(s.droneId).toBe("drone-1");
     expect(s.bus).toBe(1);
     expect(s.bitrate).toBe(1_000_000);
-    expect(s.timeoutSec).toBe(300);
+    expect(s.timeoutSec).toBe(120);
   });
 
-  it("markActive transitions ENTERING_SLCAN → SLCAN_ACTIVE and sets deadlines", () => {
-    const fixed = 1_700_000_000_000;
-    vi.spyOn(Date, "now").mockReturnValue(fixed);
+  it("markActive transitions ENTERING_SLCAN → SLCAN_ACTIVE and keeps the idle timeout", () => {
     useSlcanModeStore.getState().beginEntering({
       droneId: "d", bus: 1, bitrate: 1_000_000, timeoutSec: 60,
     });
     useSlcanModeStore.getState().markActive();
     const s = snapshot();
     expect(s.state).toBe("SLCAN_ACTIVE");
-    expect(s.enteredAt).toBe(fixed);
-    expect(s.autoRevertAt).toBe(fixed + 60_000);
+    expect(s.timeoutSec).toBe(60);
   });
 
   it("beginExiting only transitions from SLCAN_ACTIVE", () => {
@@ -174,42 +167,5 @@ describe("useSlcanModeStore — exitFn registry", () => {
     useSlcanModeStore.getState().setExitFn(fn);
     useSlcanModeStore.getState().reset();
     expect(snapshot().exitFn).toBeNull();
-  });
-});
-
-describe("getCountdownLabel", () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("returns null when not active", () => {
-    useSlcanModeStore.getState().reset();
-    expect(getCountdownLabel(snapshot())).toBeNull();
-  });
-
-  it("formats mm:ss countdown from deadline minus tickMs", () => {
-    const base = 1_700_000_000_000;
-    vi.spyOn(Date, "now").mockReturnValue(base);
-    useSlcanModeStore.getState().reset();
-    useSlcanModeStore.getState().beginEntering({
-      droneId: "d", bus: 1, bitrate: 1_000_000, timeoutSec: 125,
-    });
-    useSlcanModeStore.getState().markActive();
-    // Simulate the 1Hz ticker advancing 5 seconds.
-    useSlcanModeStore.setState({ tickMs: base + 5_000 });
-    // 125s - 5s = 120s = 02:00
-    expect(getCountdownLabel(snapshot())).toBe("02:00");
-  });
-
-  it("clamps to 00:00 once deadline elapses", () => {
-    const base = 1_700_000_000_000;
-    vi.spyOn(Date, "now").mockReturnValue(base);
-    useSlcanModeStore.getState().reset();
-    useSlcanModeStore.getState().beginEntering({
-      droneId: "d", bus: 1, bitrate: 1_000_000, timeoutSec: 1,
-    });
-    useSlcanModeStore.getState().markActive();
-    useSlcanModeStore.setState({ tickMs: base + 60_000 });
-    expect(getCountdownLabel(snapshot())).toBe("00:00");
   });
 });

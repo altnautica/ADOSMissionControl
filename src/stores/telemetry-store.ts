@@ -103,7 +103,11 @@ interface TelemetryStoreState {
   navAction: number | null;
   navStatusUpdated: number;
   armingFlags: number | null;
+  /** When `armingFlags` was last received; 0 before any MSP status. */
+  armingFlagsUpdatedAt: number;
   adsbVehicles: INavAdsbVehicle[];
+  /** When `adsbVehicles` was last replaced; 0 before any traffic list. */
+  adsbUpdatedAt: number;
 
   setNavStatus: (mode: number, state: number, action: number) => void;
   setArmingFlags: (flags: number) => void;
@@ -218,12 +222,14 @@ export const useTelemetryStore = create<TelemetryStoreState>((set, get) => ({
   navAction: null,
   navStatusUpdated: 0,
   armingFlags: null,
+  armingFlagsUpdatedAt: 0,
   adsbVehicles: [],
+  adsbUpdatedAt: 0,
 
   setNavStatus: (mode, state, action) =>
     set({ navMode: mode, navState: state, navAction: action, navStatusUpdated: Date.now() }),
-  setArmingFlags: (flags) => set({ armingFlags: flags }),
-  setAdsbVehicles: (vehicles) => set({ adsbVehicles: vehicles.slice(0, 32) }),
+  setArmingFlags: (flags) => set({ armingFlags: flags, armingFlagsUpdatedAt: Date.now() }),
+  setAdsbVehicles: (vehicles) => set({ adsbVehicles: vehicles.slice(0, 32), adsbUpdatedAt: Date.now() }),
 
   pushBatch: (batch) => {
     const s = get();
@@ -294,7 +300,9 @@ export const useTelemetryStore = create<TelemetryStoreState>((set, get) => ({
       navAction: null,
       navStatusUpdated: 0,
       armingFlags: null,
+      armingFlagsUpdatedAt: 0,
       adsbVehicles: [],
+      adsbUpdatedAt: 0,
     });
   },
 }));

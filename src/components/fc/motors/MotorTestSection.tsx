@@ -35,8 +35,14 @@ export function MotorTestSection({ protocol, isHardBlocked, hardBlockMessage }: 
     if (!protocol || !motorTestEnabled) return;
     setMotorTesting(true);
     try {
-      await protocol.motorTest(Number(testMotor), testThrottle, testDuration);
-      toast(`Motor ${testMotor} test complete`, "info");
+      // The FC can refuse (armed, wrong mode, safety switch) or never answer;
+      // both resolve with success=false rather than throwing.
+      const result = await protocol.motorTest(Number(testMotor), testThrottle, testDuration);
+      if (result.success) {
+        toast(`Motor ${testMotor} test started`, "info");
+      } else {
+        toast(`Motor ${testMotor} test did not run: ${result.message || "the FC gave no reason"}`, "error");
+      }
     } catch {
       toast("Motor test failed", "error");
     } finally {

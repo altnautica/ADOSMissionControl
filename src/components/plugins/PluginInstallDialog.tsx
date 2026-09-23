@@ -34,19 +34,14 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAction, useMutation } from "convex/react";
-import { makeFunctionReference } from "convex/server";
 import { useTranslations } from "next-intl";
 
 import { Modal } from "@/components/ui/modal";
 import { useConvexAvailable } from "@/app/ConvexClientProvider";
 import { communityApi } from "@/lib/community-api";
-import { useAgentSystemStore } from "@/stores/agent-system-store";
 
-import {
-  inspectArchive,
-  parseManifestYaml,
-  toInstallSummary,
-} from "./transports/manifest-parse";
+import { inspectArchive, parseManifestYaml } from "./transports/manifest-parse";
+import { toInstallSummary } from "./transports/manifest-summary";
 import { resolveLanTarget } from "./transports/resolve-lan-url";
 import type {
   CreateJobMutation,
@@ -60,6 +55,7 @@ import type {
 import { ErrorStage, PickStage, TransportChrome } from "./install-dialog/stages";
 import { ReviewStage } from "./install-dialog/sections/ReviewStage";
 import { checkCompatibility } from "./install-dialog/check-compatibility";
+import { useInstallTargetHost } from "./install-dialog/use-install-target-host";
 import { useInstallHandler, type ActiveInstallJob } from "./install-dialog/use-install-handler";
 import { PluginInstallProgress } from "./PluginInstallProgress";
 import type { RecordInstallArgs } from "./transports/finalize-gcs-install";
@@ -93,12 +89,6 @@ interface PluginInstallDialogProps {
 
 type Stage = "pick" | "loading" | "review" | "installing" | "done" | "error";
 
-const verifyArchiveRef = makeFunctionReference<
-  "action",
-  Parameters<VerifyArchiveAction>[0],
-  Awaited<ReturnType<VerifyArchiveAction>>
->("cmdPluginArchivesVerify:verifyArchive");
-
 export function PluginInstallDialog({
   open,
   onClose,
@@ -114,13 +104,15 @@ export function PluginInstallDialog({
     communityApi.pluginArchives.generateUploadUrl,
   ) as unknown as GenerateUploadUrlAction;
   const verifyArchive = useAction(
-    verifyArchiveRef,
+    communityApi.pluginArchives.verifyArchive,
   ) as unknown as VerifyArchiveAction;
   const createJob = useMutation(
     communityApi.pluginInstallJobs.createJob,
   ) as unknown as CreateJobMutation;
-  // GCS-side install finalizers: record the install row, grant the
-  // approved permissions, and enable the plugin so its GCS half mounts.
+  // GCS-side install finalizers: store the iframe bundle, record the install
+  // row, grant the approved permissions, and enable the plugin so its GCS
+  // half mounts.
+  const storeBundle = useAction(communityApi.plugins.storeBundle);
   const recordInstall = useMutation(
     communityApi.plugins.recordInstall,
   ) as unknown as (args: RecordInstallArgs) => Promise<string>;
@@ -137,11 +129,12 @@ export function PluginInstallDialog({
     status: string;
   }) => Promise<unknown>;
 
-  // Host board info — drives the compatibility check.
-  const boardModel = useAgentSystemStore((s) => s.status?.board.model);
-  const boardName = useAgentSystemStore((s) => s.status?.board.name);
-  const boardSoc = useAgentSystemStore((s) => s.status?.board.soc);
-  const ramTotalMb = useAgentSystemStore((s) => s.status?.board.ram_mb);
+  // The install target's own board facts drive the compatibility check,
+  // never the node the connection store happens to be attached to.
+  const targetHost = useInstallTargetHost(targetDevice?.deviceId);
+  const boardName = targetHost?.boardName;
+  const boardSoc = targetHost?.boardSoc;
+  const ramTotalMb = targetHost?.ramTotalMb;
 
   const seedFromInitial = initialManifest !== undefined && initialSource !== undefined;
   const [stage, setStage] = useState<Stage>(seedFromInitial ? "review" : "pick");
@@ -209,11 +202,12 @@ export function PluginInstallDialog({
     onClose();
   }, [reset, onClose]);
 
-  useEffect(() => {
-    if (!open) {
-      reset();
-      return;
-    }
+  // Open on the caller's seeded plugin (a registry card) in review; with no
+  // seed, the file picker. "Try again" after a failure returns here too, so
+  // a failed registry install retries the same plugin instead of dropping
+  // to the file picker.
+  const restart = useCallback(() => {
+    reset();
     if (initialManifest && initialSource) {
       setStage("review");
       setManifest(initialManifest);
@@ -227,7 +221,12 @@ export function PluginInstallDialog({
         ),
       );
     }
-  }, [open, reset, initialManifest, initialSource, initialManifestHash]);
+  }, [reset, initialManifest, initialSource, initialManifestHash]);
+
+  useEffect(() => {
+    if (open) restart();
+    else reset();
+  }, [open, reset, restart]);
 
   const parseFile = useCallback(async (file: File) => {
     setError(null);
@@ -310,15 +309,10 @@ export function PluginInstallDialog({
         cpuOk: true,
       };
     }
-    return checkCompatibility(manifest, {
-      boardModel,
-      boardName,
-      boardSoc,
-      ramTotalMb,
-    });
-  }, [manifest, boardModel, boardName, boardSoc, ramTotalMb]);
+    return checkCompatibility(manifest, { boardName, boardSoc, ramTotalMb });
+  }, [manifest, boardName, boardSoc, ramTotalMb]);
 
-  const boardLabel = boardModel ?? boardName ?? boardSoc ?? "unknown";
+  const boardLabel = boardName ?? boardSoc ?? "unknown";
 
   // The agent half (when the manifest has one) lands on a drone; the GCS
   // half lands on this Mission Control. The review surface shows both
@@ -340,6 +334,7 @@ export function PluginInstallDialog({
     generateUploadUrl,
     verifyArchive,
     createJob,
+    storeBundle,
     recordInstall,
     grantPermission,
     setInstallStatus,
@@ -495,7 +490,7 @@ export function PluginInstallDialog({
         <ErrorStage
           error={error}
           onClose={handleClose}
-          onRetry={() => reset()}
+          onRetry={restart}
         />
       )}
     </Modal>

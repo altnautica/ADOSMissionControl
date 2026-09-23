@@ -333,18 +333,22 @@ const WINDOW_PRUNE_BATCH = 128;
  */
 export const pruneOldWindows = internalMutation({
   args: {},
-  handler: async (ctx) => {
+  handler: async (ctx): Promise<{ deleted: number }> => {
     const cutoff = Date.now() - WINDOW_RETENTION_MS;
     const stale = await ctx.db
       .query("logd_windows")
       .withIndex("by_pushedAt", (q) => q.lt("pushedAt", cutoff))
       .take(WINDOW_PRUNE_BATCH);
-    let deleted = 0;
+    // The blob goes before the row: a failure part-way leaves a row pointing
+    // at a missing blob (visible) rather than a blob nothing references.
     for (const row of stale) {
       await ctx.storage.delete(row.storageId);
       await ctx.db.delete(row._id);
-      deleted += 1;
     }
-    return { deleted };
+    // A full batch means more may be past retention: keep draining now.
+    if (stale.length === WINDOW_PRUNE_BATCH) {
+      await ctx.scheduler.runAfter(0, internal.cmdLogdWindows.pruneOldWindows, {});
+    }
+    return { deleted: stale.length };
   },
 });

@@ -94,11 +94,11 @@ describe("first-run screen (zero nodes)", () => {
       discoveredAgents: [
         {
           deviceId: "dev-1",
-          name: "Skynode",
+          name: "Testnode",
           board: "Raspberry Pi 5",
           version: "1.0.0",
           pairingCode: "9TW85C",
-          mdnsHost: "skynode.local",
+          mdnsHost: "testnode.local",
           localIp: "192.168.1.50",
         },
       ],
@@ -109,9 +109,9 @@ describe("first-run screen (zero nodes)", () => {
     expect(
       screen.queryByText(/No ADOS agents found on this network yet/),
     ).toBeNull();
-    expect(screen.getByText("Skynode")).toBeTruthy();
+    expect(screen.getByText("Testnode")).toBeTruthy();
 
-    fireEvent.click(screen.getByText("Skynode"));
+    fireEvent.click(screen.getByText("Testnode"));
     const dialog = usePairDialogStore.getState();
     expect(dialog.open).toBe(true);
     expect(dialog.initialTab).toBe("add");

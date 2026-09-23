@@ -58,6 +58,7 @@ export {
   swarmRowName,
   swarmRowSeverity,
   swarmSeverityCounts,
+  swarmSourceSilent,
 } from "./swarm-rows";
 export type {
   SwarmConditionCounts,

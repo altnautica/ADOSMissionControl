@@ -3,12 +3,12 @@
 /**
  * @module vision/CockpitTargetOverlay
  * @description The HOST-owned detection / target overlay for the cockpit. It
- * draws the live detection boxes over the letterbox-corrected video rect
- * (reading the shared vision-detections store), lets the operator CLICK a box to
- * select it, highlights the selection, and anchors the target-action popup to
- * it. Unlike a plugin's own `video.overlay` iframe, this is owned by the host,
- * so a single overlay can aggregate actions from every plugin for the clicked
- * target (the popup) and one selection is shared across the app.
+ * draws the live detection boxes of the camera the video shows over the
+ * letterbox-corrected video rect, lets the operator CLICK a box to open its
+ * target-action popup, and draws lock brackets on the designated target. Unlike
+ * a plugin's own `video.overlay` iframe, this is owned by the host, so a single
+ * overlay can aggregate actions from every plugin for the clicked target (the
+ * popup) and one designation is shared across the app.
  *
  * Boxes are the only interactive elements (`pointer-events-auto`); the wrapper
  * is `pointer-events-none` so the rest of the video pane stays interactive.
@@ -16,24 +16,27 @@
  * @license GPL-3.0-only
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { computeRenderedRect } from "@/components/cockpit/VideoOverlayHost";
+import { useDisplayedDetectionBatch } from "@/hooks/use-detection-batch";
 import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
 import type { RenderedRect } from "@/lib/plugins/video-overlay-props";
 import {
-  boxDistance,
-  easeBox,
+  advanceBoxes,
   smoothingAlpha,
   type SmoothBox,
 } from "@/lib/vision/box-smoothing";
 import {
   DETECTION_STALE_MS,
-  useVisionDetectionsStore,
   type DetectionBox,
   type VisionDetection,
 } from "@/stores/vision-detections-store";
-import { useSelectedTargetStore } from "@/stores/selected-target-store";
+import {
+  isSameTrack,
+  useSelectedTargetStore,
+  type SelectedTarget,
+} from "@/stores/selected-target-store";
 import { TargetActionPopup } from "./TargetActionPopup";
 
 const STALE_MS = DETECTION_STALE_MS;
@@ -47,8 +50,8 @@ const SMOOTH_TIME_CONSTANT_MS = 120;
 const CONVERGE_EPS_PX = 0.5;
 
 /**
- * Artifact box class from selection + tracker lock-state + confidence:
- *  - designated (selected) target → `det lock` (green + corner brackets + pulse);
+ * Box class from selection + tracker lock-state + confidence:
+ *  - designated target → `det lock` (green + corner brackets + pulse);
  *  - a lost track or a low-confidence candidate → `det dim` (dashed, faint);
  *  - everything else → `det` (solid electric-blue).
  */
@@ -63,29 +66,31 @@ function boxClass(d: VisionDetection, sel: boolean): string {
  * box-less percept (a mask/pose/depth-only reading) has no box to render here. */
 type BoxedDetection = VisionDetection & { bbox: DetectionBox };
 
-/** Whether a detection is the currently-selected target. */
-function isSelected(
+/** Whether a detection from `cameraId` is the designated target: (camera,
+ * track) for a tracked target, the exact box on the same camera otherwise. */
+function isDesignated(
   d: BoxedDetection,
-  selected: { trackId: number | null; bbox: DetectionBox } | null,
+  cameraId: string,
+  designated: SelectedTarget | null,
 ): boolean {
-  if (!selected) return false;
-  if (selected.trackId != null && d.trackId != null)
-    return d.trackId === selected.trackId;
-  if (selected.trackId == null && d.trackId == null)
-    return (
-      d.bbox.x === selected.bbox.x &&
-      d.bbox.y === selected.bbox.y &&
-      d.bbox.width === selected.bbox.width
-    );
-  return false;
+  if (!designated || designated.cameraId !== cameraId) return false;
+  if (designated.trackId != null) return isSameTrack(designated, cameraId, d.trackId);
+  return (
+    d.trackId == null &&
+    d.bbox.x === designated.bbox.x &&
+    d.bbox.y === designated.bbox.y &&
+    d.bbox.width === designated.bbox.width
+  );
 }
 
 export function CockpitTargetOverlay({ droneId }: { droneId: string }) {
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const batch = useVisionDetectionsStore((s) => s.batches[droneId]);
-  const selected = useSelectedTargetStore((s) => s.selected);
-  const select = useSelectedTargetStore((s) => s.select);
-  const clear = useSelectedTargetStore((s) => s.clear);
+  const batch = useDisplayedDetectionBatch(droneId);
+  const popupTarget = useSelectedTargetStore((s) => s.popupTarget);
+  const designated = useSelectedTargetStore((s) => s.designated);
+  const openPopup = useSelectedTargetStore((s) => s.openPopup);
+  const closePopup = useSelectedTargetStore((s) => s.closePopup);
+  const reset = useSelectedTargetStore((s) => s.reset);
   const reducedMotion = usePrefersReducedMotion();
 
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
@@ -95,12 +100,48 @@ export function CockpitTargetOverlay({ droneId }: { droneId: string }) {
   // `targetsRef` holds the latest detected box per track id; `displayed` (state,
   // so render stays pure) the on-screen box easing toward it. A rAF loop eases
   // every displayed box toward its target and publishes a new snapshot until each
-  // has converged. Smoothing is keyed on `track_id` (a stable identity);
+  // has converged, then stops; the next batch restarts it. Smoothing is keyed on `track_id` (a stable identity);
   // untracked detections render raw (no identity to interpolate). Reduced motion
   // snaps to raw (loop idle).
-  const targetsRef = useRef<Map<number, SmoothBox>>(new Map());
-  const [displayed, setDisplayed] = useState<Map<number, SmoothBox>>(
+  const targetsRef = useRef<Map<string, SmoothBox>>(new Map());
+  const [displayed, setDisplayed] = useState<Map<string, SmoothBox>>(
     () => new Map(),
+  );
+  const displayedRef = useRef<Map<string, SmoothBox>>(displayed);
+  /** The pending animation frame; 0 while the loop is idle. */
+  const rafRef = useRef(0);
+
+  // Run the easing loop until every box has settled on its target, then stop.
+  // Each step eases with frame-rate-independent critically-damped smoothing,
+  // prunes boxes whose track left the batch and publishes a snapshot only when
+  // something moved.
+  const startLoop = useCallback(() => {
+    if (rafRef.current !== 0) return;
+    let lastTs: number | null = null;
+    const step = (t: number) => {
+      const alpha = smoothingAlpha(t - (lastTs ?? t), SMOOTH_TIME_CONSTANT_MS);
+      lastTs = t;
+      const { next, settled } = advanceBoxes(
+        displayedRef.current,
+        targetsRef.current,
+        alpha,
+        CONVERGE_EPS_PX,
+      );
+      if (next !== displayedRef.current) {
+        displayedRef.current = next;
+        setDisplayed(next);
+      }
+      rafRef.current = settled ? 0 : requestAnimationFrame(step);
+    };
+    rafRef.current = requestAnimationFrame(step);
+  }, []);
+
+  useEffect(
+    () => () => {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = 0;
+    },
+    [],
   );
 
   // Staleness clock — drop boxes once the feed stops even with no new batch.
@@ -138,24 +179,28 @@ export function CockpitTargetOverlay({ droneId }: { droneId: string }) {
       ? computeRenderedRect(size.w, size.h, batch.frameWidth, batch.frameHeight)
       : null;
 
-  // Clear the selection on drone switch / unmount so B never shows A's popup.
+  // Drop both the popup and the designation on drone switch / unmount so B
+  // never shows A's popup or lock.
   useEffect(() => {
-    return () => clear();
-  }, [droneId, clear]);
+    return () => reset();
+  }, [droneId, reset]);
 
-  // Escape + outside-click dismiss the popup.
+  const popupHere =
+    popupTarget && popupTarget.droneId === droneId ? popupTarget : null;
+
+  // Escape + outside-click dismiss the popup (the designation stays).
   useEffect(() => {
-    if (!selected) return;
+    if (!popupHere) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.stopImmediatePropagation();
-        clear();
+        closePopup();
       }
     };
     const onDown = (e: MouseEvent) => {
       const t = e.target as HTMLElement | null;
       if (t && t.closest("[data-target-interactive]")) return;
-      clear();
+      closePopup();
     };
     window.addEventListener("keydown", onKey, true);
     window.addEventListener("mousedown", onDown, true);
@@ -163,7 +208,7 @@ export function CockpitTargetOverlay({ droneId }: { droneId: string }) {
       window.removeEventListener("keydown", onKey, true);
       window.removeEventListener("mousedown", onDown, true);
     };
-  }, [selected, clear]);
+  }, [popupHere, closePopup]);
 
   const fresh =
     batch &&
@@ -176,6 +221,14 @@ export function CockpitTargetOverlay({ droneId }: { droneId: string }) {
     ? batch.detections.filter((d): d is BoxedDetection => d.bbox != null)
     : [];
 
+  // The popup's actions act on the pixels it was opened on. Once that camera's
+  // feed is no longer the fresh, displayed one, close it: the same gate that
+  // hides the boxes.
+  const popupLive = !!popupHere && !!fresh && popupHere.cameraId === batch?.cameraId;
+  useEffect(() => {
+    if (popupHere && !popupLive) closePopup();
+  }, [popupHere, popupLive, closePopup]);
+
   // Sync the per-track smoothing targets to the current fresh batch: each
   // tracked detection's box becomes the ease target; a track that leaves the
   // fresh set is dropped (respecting the STALE_MS gate — no invented boxes for
@@ -183,83 +236,37 @@ export function CockpitTargetOverlay({ droneId }: { droneId: string }) {
   useEffect(() => {
     const targets = targetsRef.current;
     if (reducedMotion || !fresh || !batch) {
-      // Empty the targets; the rAF loop prunes the displayed boxes to match
-      // within a frame. While reduced motion is on the render ignores the
-      // displayed map (it draws raw boxes), so no synchronous clear is needed.
+      // Empty the targets; one loop pass prunes the displayed boxes to match.
+      // While reduced motion is on the render ignores the displayed map (it
+      // draws raw boxes), so no pass is needed.
       targets.clear();
+      if (!reducedMotion) startLoop();
       return;
     }
-    const seen = new Set<number>();
+    const seen = new Set<string>();
     for (const d of batch.detections) {
       if (d.trackId == null || !d.bbox) continue;
-      targets.set(d.trackId, {
+      const key = `${batch.cameraId}:${d.trackId}`;
+      targets.set(key, {
         x: d.bbox.x,
         y: d.bbox.y,
         width: d.bbox.width,
         height: d.bbox.height,
       });
-      seen.add(d.trackId);
+      seen.add(key);
     }
-    for (const trackId of targets.keys()) {
-      if (!seen.has(trackId)) targets.delete(trackId);
+    for (const key of targets.keys()) {
+      if (!seen.has(key)) targets.delete(key);
     }
-  }, [batch, fresh, reducedMotion]);
-
-  // Animation loop: each frame ease every displayed box toward its target with
-  // frame-rate-independent critically-damped smoothing, prune boxes whose track
-  // left the batch, and publish the new snapshot. The functional updater returns
-  // the SAME map when nothing moved, so React bails out and the loop idles once
-  // converged. Skipped entirely under reduced motion. Cleaned up on unmount.
-  useEffect(() => {
-    if (reducedMotion) return;
-    let raf = 0;
-    let lastTs: number | null = null;
-    const step = (t: number) => {
-      const alpha = smoothingAlpha(t - (lastTs ?? t), SMOOTH_TIME_CONSTANT_MS);
-      lastTs = t;
-      setDisplayed((prev) => {
-        const targets = targetsRef.current;
-        const next = new Map(prev);
-        let changed = false;
-        for (const [trackId, target] of targets) {
-          const cur = next.get(trackId);
-          if (!cur) {
-            // A newly-tracked box appears instantly at its detected position.
-            next.set(trackId, { ...target });
-            changed = true;
-            continue;
-          }
-          const eased = easeBox(cur, target, alpha);
-          if (boxDistance(eased, target) <= CONVERGE_EPS_PX) {
-            if (boxDistance(cur, target) > 0) {
-              next.set(trackId, { ...target });
-              changed = true;
-            }
-          } else {
-            next.set(trackId, eased);
-            changed = true;
-          }
-        }
-        for (const trackId of next.keys()) {
-          if (!targets.has(trackId)) {
-            next.delete(trackId);
-            changed = true;
-          }
-        }
-        return changed ? next : prev;
-      });
-      raf = requestAnimationFrame(step);
-    };
-    raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
-  }, [reducedMotion]);
+    startLoop();
+  }, [batch, fresh, reducedMotion, startLoop]);
 
   /** The box to POSITION a detection at: the smoothed box for a tracked
    * detection, else the raw box (untracked, or reduced motion). Selection and
    * labels always use the detection's own raw box; only placement is smoothed. */
   const displayBoxOf = (d: BoxedDetection): DetectionBox => {
-    if (reducedMotion || d.trackId == null) return d.bbox;
-    return displayed.get(d.trackId) ?? d.bbox;
+    if (reducedMotion || d.trackId == null || !batch) return d.bbox;
+    return displayed.get(`${batch.cameraId}:${d.trackId}`) ?? d.bbox;
   };
 
   const place = (bbox: DetectionBox) => {
@@ -274,7 +281,8 @@ export function CockpitTargetOverlay({ droneId }: { droneId: string }) {
     };
   };
 
-  const selectedHere = selected && selected.droneId === droneId ? selected : null;
+  const designatedHere =
+    designated && designated.droneId === droneId ? designated : null;
 
   // Keyed by track so a box keeps its DOM node across detection batches
   // (10-15 Hz). A per-frame key replaced the node between mousedown and
@@ -301,7 +309,7 @@ export function CockpitTargetOverlay({ droneId }: { droneId: string }) {
         detections.map((d, i) => {
           const p = place(displayBoxOf(d));
           if (!p) return null;
-          const sel = isSelected(d, selectedHere);
+          const sel = isDesignated(d, batch.cameraId, designatedHere);
           const cls = boxClass(d, sel);
           const label = `${d.classLabel} ${Math.round(d.confidence * 100)}%`;
           return (
@@ -310,7 +318,7 @@ export function CockpitTargetOverlay({ droneId }: { droneId: string }) {
               type="button"
               data-target-interactive
               onClick={() =>
-                select({
+                openPopup({
                   droneId,
                   cameraId: batch.cameraId,
                   trackId: d.trackId ?? null,
@@ -346,18 +354,19 @@ export function CockpitTargetOverlay({ droneId }: { droneId: string }) {
           );
         })}
 
-      {/* The action popup, anchored just under the selected box. */}
-      {selectedHere &&
+      {/* The action popup, anchored just under the clicked box. */}
+      {popupHere &&
+        popupLive &&
         rect &&
         (() => {
-          const p = place(selectedHere.bbox);
+          const p = place(popupHere.bbox);
           if (!p) return null;
           return (
             <div
               className="absolute z-[7]"
               style={{ left: `${p.left}px`, top: `${p.top + p.height + 4}px` }}
             >
-              <TargetActionPopup target={selectedHere} onClose={clear} />
+              <TargetActionPopup target={popupHere} onClose={closePopup} />
             </div>
           );
         })()}

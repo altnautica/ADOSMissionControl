@@ -36,9 +36,6 @@ export function GeneralSection() {
 
   const [locationRequesting, setLocationRequesting] = useState(false);
 
-  const [timezone, setTimezone] = useState("IST");
-  const [telemetryRate, setTelemetryRate] = useState("10");
-
   const handleJurisdictionChange = (value: string) => {
     if (value === "") {
       setJurisdiction(null);
@@ -76,17 +73,6 @@ export function GeneralSection() {
             ]}
           />
 
-          <Select
-            label={t("timezone")}
-            value={timezone}
-            onChange={setTimezone}
-            options={[
-              { value: "IST", label: t("timezoneIst") },
-              { value: "UTC", label: t("timezoneUtc") },
-              { value: "PST", label: t("timezonePst") },
-            ]}
-          />
-
           <Toggle
             label={t("autoConnect")}
             checked={autoConnectOnLoad}
@@ -97,18 +83,6 @@ export function GeneralSection() {
             label={t("autoReconnect")}
             checked={autoReconnect}
             onChange={setAutoReconnect}
-          />
-
-          <Select
-            label={t("telemetryRate")}
-            value={telemetryRate}
-            onChange={setTelemetryRate}
-            options={[
-              { value: "1", label: t("telemetryRate1Hz") },
-              { value: "5", label: t("telemetryRate5Hz") },
-              { value: "10", label: t("telemetryRate10Hz") },
-              { value: "20", label: t("telemetryRate20Hz") },
-            ]}
           />
         </div>
       </Card>

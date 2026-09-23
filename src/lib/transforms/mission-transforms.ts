@@ -1,7 +1,9 @@
 /**
  * @module mission-transforms
  * @description Pure functions for transforming entire missions: move, rotate, scale.
- * All functions return new waypoint arrays — no mutation.
+ * All functions return new waypoint arrays — no mutation. A transform moves each
+ * waypoint and every positioned action it carries (ROI target, new home), so a
+ * relocated mission keeps its camera targets on the same ground features.
  * @license GPL-3.0-only
  */
 
@@ -25,6 +27,27 @@ function centroid(waypoints: Waypoint[]): [number, number] {
   return [sumLat / waypoints.length, sumLon / waypoints.length];
 }
 
+type PointMap = (lat: number, lon: number) => [number, number];
+
+/**
+ * Apply a point transform to every waypoint and to each attached action that
+ * carries its own location.
+ */
+function mapPositions(waypoints: Waypoint[], f: PointMap): Waypoint[] {
+  return waypoints.map((wp) => {
+    const [lat, lon] = f(wp.lat, wp.lon);
+    const next: Waypoint = { ...wp, lat, lon };
+    if (wp.actions?.some((a) => a.command !== "RAW" && a.lat !== undefined && a.lon !== undefined)) {
+      next.actions = wp.actions.map((a) => {
+        if (a.command === "RAW" || a.lat === undefined || a.lon === undefined) return a;
+        const [aLat, aLon] = f(a.lat, a.lon);
+        return { ...a, lat: aLat, lon: aLon };
+      });
+    }
+    return next;
+  });
+}
+
 /**
  * Move an entire mission by a lat/lon delta.
  * @param waypoints - Source waypoints
@@ -37,11 +60,7 @@ export function moveMission(
   deltaLat: number,
   deltaLon: number,
 ): Waypoint[] {
-  return waypoints.map((wp) => ({
-    ...wp,
-    lat: wp.lat + deltaLat,
-    lon: wp.lon + deltaLon,
-  }));
+  return mapPositions(waypoints, (lat, lon) => [lat + deltaLat, lon + deltaLon]);
 }
 
 /**
@@ -77,10 +96,7 @@ export function rotateMission(
 ): Waypoint[] {
   if (waypoints.length === 0) return [];
   const [cLat, cLon] = centroid(waypoints);
-  return waypoints.map((wp) => {
-    const [newLat, newLon] = rotatePoint(wp.lat, wp.lon, cLat, cLon, angleDeg);
-    return { ...wp, lat: newLat, lon: newLon };
-  });
+  return mapPositions(waypoints, (lat, lon) => rotatePoint(lat, lon, cLat, cLon, angleDeg));
 }
 
 /**
@@ -97,10 +113,7 @@ export function rotateMissionAroundPoint(
   centerLat: number,
   centerLon: number,
 ): Waypoint[] {
-  return waypoints.map((wp) => {
-    const [newLat, newLon] = rotatePoint(wp.lat, wp.lon, centerLat, centerLon, angleDeg);
-    return { ...wp, lat: newLat, lon: newLon };
-  });
+  return mapPositions(waypoints, (lat, lon) => rotatePoint(lat, lon, centerLat, centerLon, angleDeg));
 }
 
 /**
@@ -115,15 +128,7 @@ export function scaleMission(
 ): Waypoint[] {
   if (waypoints.length === 0 || factor === 1) return [...waypoints];
   const [cLat, cLon] = centroid(waypoints);
-  return waypoints.map((wp) => {
-    const dLat = (wp.lat - cLat) * factor;
-    const dLon = (wp.lon - cLon) * factor;
-    return {
-      ...wp,
-      lat: cLat + dLat,
-      lon: cLon + dLon,
-    };
-  });
+  return scaleMissionFromPoint(waypoints, factor, cLat, cLon);
 }
 
 /**
@@ -136,15 +141,10 @@ export function scaleMissionFromPoint(
   centerLon: number,
 ): Waypoint[] {
   if (waypoints.length === 0 || factor === 1) return [...waypoints];
-  return waypoints.map((wp) => {
-    const dLat = (wp.lat - centerLat) * factor;
-    const dLon = (wp.lon - centerLon) * factor;
-    return {
-      ...wp,
-      lat: centerLat + dLat,
-      lon: centerLon + dLon,
-    };
-  });
+  return mapPositions(waypoints, (lat, lon) => [
+    centerLat + (lat - centerLat) * factor,
+    centerLon + (lon - centerLon) * factor,
+  ]);
 }
 
 /**
@@ -158,18 +158,18 @@ export function mirrorMission(
 ): Waypoint[] {
   if (waypoints.length === 0) return [];
   const [cLat, cLon] = centroid(waypoints);
-  return waypoints.map((wp) => ({
-    ...wp,
-    lat: axis === "lon" ? 2 * cLat - wp.lat : wp.lat,
-    lon: axis === "lat" ? 2 * cLon - wp.lon : wp.lon,
-  }));
+  return mapPositions(waypoints, (lat, lon) => [
+    axis === "lon" ? 2 * cLat - lat : lat,
+    axis === "lat" ? 2 * cLon - lon : lon,
+  ]);
 }
 
 // ── Internal helpers ──────────────────────────────────────────
 
 /**
- * Rotate a point around a center by angleDeg.
- * Uses equirectangular approximation (good enough for mission-scale distances).
+ * Rotate a point clockwise (as seen on a north-up map) around a center by
+ * angleDeg. Uses an equirectangular approximation (good enough for
+ * mission-scale distances), with x east and y north.
  */
 function rotatePoint(
   lat: number,
@@ -185,8 +185,8 @@ function rotatePoint(
   const lonScale = Math.cos(centerLat * DEG_TO_RAD);
   const dx = (lon - centerLon) * lonScale;
   const dy = lat - centerLat;
-  const rx = dx * cosA - dy * sinA;
-  const ry = dx * sinA + dy * cosA;
+  const rx = dx * cosA + dy * sinA;
+  const ry = -dx * sinA + dy * cosA;
   return [
     centerLat + ry,
     centerLon + rx / lonScale,

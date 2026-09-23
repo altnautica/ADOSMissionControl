@@ -16,10 +16,10 @@ import type {
   HardwareCheckStatus,
   LogEntry,
   MavlinkPort,
-  MeshNetEnrollment,
   NetworkPeer,
   PairingInfo,
   PeripheralInfo,
+  ServiceInfo,
   SetupActionResult,
   SetupStatus,
   SystemResources,
@@ -47,11 +47,9 @@ export class AgentClient {
   private ctx: RequestContext;
 
   /**
-   * Durable log / telemetry / event / hardware store reader. Resolves the
-   * on-device query surface over the LAN (`:8090/v1`), falling back to the
-   * FastAPI proxy bridge and then the legacy `/api/logs` path so older
-   * agents keep working. Constructed once per client so the resolved tier
-   * is remembered across calls.
+   * Durable log / telemetry / event / hardware store reader. Reads the
+   * store through the agent's proxy bridge, falling back to the legacy
+   * `/api/logs` path so older agents keep working.
    */
   readonly logging: LoggingService;
 
@@ -100,8 +98,8 @@ export class AgentClient {
     return system.getTelemetry(this.ctx);
   }
 
-  getServices(agentUptimeHint?: number): ReturnType<typeof system.getServices> {
-    return system.getServices(this.ctx, agentUptimeHint);
+  getServices(): Promise<ServiceInfo[]> {
+    return system.getServices(this.ctx);
   }
 
   getSystemResources(): Promise<SystemResources> {
@@ -223,10 +221,6 @@ export class AgentClient {
 
   // ── Fleet ──────────────────────────────────────────────────────
 
-  getEnrollment(): Promise<MeshNetEnrollment> {
-    return extras.getEnrollment(this.ctx);
-  }
-
   getPeers(): Promise<NetworkPeer[]> {
     return extras.getPeers(this.ctx);
   }
@@ -310,10 +304,6 @@ export class AgentClient {
 
   claimLocally(userId: string): Promise<ClaimResponse> {
     return extras.claimLocally(this.ctx, userId);
-  }
-
-  unpairAgent(): Promise<CommandResult> {
-    return extras.unpairAgent(this.ctx);
   }
 
   // ── MAVLink signing ────────────────────────────────────────────

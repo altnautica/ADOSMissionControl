@@ -11,12 +11,17 @@
  * must visually disappear, because a dashboard full of green is as hard to
  * read as one full of red.
  *
- * The shell owns four things and nothing else:
+ * The shell owns five things and nothing else:
  *   1. the beacon rows, read once from `swarm-beacon-store`;
  *   2. the slot -> node join, so no band re-derives it and no two bands can
  *      disagree about which aircraft sits in which slot;
  *   3. the slot selection every fleet-wide action reads;
- *   4. the severity chip currently narrowing the board.
+ *   4. the severity chip currently narrowing the board;
+ *   5. the one hero request state the table and the video rail share.
+ *
+ * When the ground station feeding the board stops answering, a banner says so
+ * once for the whole fleet, and silent slots read `unknown` rather than
+ * `noBeacon` — a GCS-side link fault must not look like every aircraft lost.
  *
  * Every band derives everything else itself from those inputs. Prop contract
  * is identical to `CommandFleetOverview` and `NodesView`, so the switcher in
@@ -27,10 +32,13 @@
 
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import { AlertTriangle } from "lucide-react";
 
 import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
 import { useSkillToastBridge } from "@/hooks/use-skill-toast-bridge";
 import { useNodeCommandLane } from "@/components/command/nodes-view/use-node-command-lane";
+import { useClockTick } from "@/lib/agent/freshness";
+import { useClockStore } from "@/stores/clock-store";
 import {
   useSwarmBeaconStore,
   selectSwarmRows,
@@ -42,6 +50,8 @@ import {
   SwarmBoardTable,
   SwarmFleetMap,
   SwarmVideoRail,
+  swarmSourceSilent,
+  useFleetHero,
   type SwarmSeverityId,
 } from ".";
 
@@ -68,6 +78,11 @@ export function SwarmView({
   const fleetSlots = useSwarmBeaconStore(selectSwarmFleetSlots);
   const [selected, setSelected] = useState<ReadonlySet<number>>(new Set());
   const [activeFilter, setActiveFilter] = useState<SwarmSeverityId | null>(null);
+  const hero = useFleetHero();
+  const lastAnswerMs = useSwarmBeaconStore((s) => s.lastUpdatedMs);
+  useClockTick();
+  const now = useClockStore((s) => s.now);
+  const sourceSilent = swarmSourceSilent(lastAnswerMs, now);
 
   // Slot -> node. The registry is the slot table (who the fleet has ISSUED a
   // slot to); beacons fill in who is currently HEARD. A slot present in one
@@ -145,6 +160,25 @@ export function SwarmView({
       <SwarmHeader title={t("title")} subtitle={t("subtitle")} />
 
       <div className="flex flex-col gap-3">
+        {sourceSilent && lastAnswerMs !== null && (
+          <div
+            role="alert"
+            className="flex items-start gap-2 rounded-lg border border-status-warning/40 bg-status-warning/10 px-3 py-2"
+          >
+            <AlertTriangle size={14} className="mt-0.5 shrink-0 text-status-warning" />
+            <div className="flex flex-col gap-0.5">
+              <span className="text-xs font-semibold text-text-primary">
+                {t("gsSilent.title")}
+              </span>
+              <span className="text-[11px] text-text-secondary">
+                {t("gsSilent.body", {
+                  seconds: Math.round((now - lastAnswerMs) / 1000),
+                })}
+              </span>
+            </div>
+          </div>
+        )}
+
         <SwarmSeverityStrip
           rows={rows}
           nodesBySlot={nodesBySlot}
@@ -173,6 +207,7 @@ export function SwarmView({
               onOpenAgent={onOpenAgent}
               laneOptions={laneOptions}
               activeFilter={activeFilter}
+              hero={hero}
             />
           </div>
 
@@ -188,6 +223,7 @@ export function SwarmView({
           rows={rows}
           nodesBySlot={nodesBySlot}
           onOpenAgent={onOpenAgent}
+          hero={hero}
         />
       </div>
     </div>

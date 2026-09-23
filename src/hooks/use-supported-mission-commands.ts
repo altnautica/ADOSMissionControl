@@ -9,6 +9,7 @@
  */
 "use client";
 
+import { useMemo } from "react";
 import { useDroneManager } from "@/stores/drone-manager";
 
 /**
@@ -16,8 +17,11 @@ import { useDroneManager } from "@/stores/drone-manager";
  * firmware, or null when the firmware declares no restriction (show all).
  */
 export function useSupportedMissionCommands(): Set<number> | null {
-  const getSelectedDrone = useDroneManager((s) => s.getSelectedDrone);
-  const handler = getSelectedDrone()?.protocol?.getFirmwareHandler() ?? null;
-  const list = handler?.getSupportedMissionCommands?.();
-  return list ? new Set(list) : null;
+  // The handler is a stable per-connection object: subscribing to it re-renders
+  // on a drone or firmware change, and the memo hands every render the same Set.
+  const handler = useDroneManager((s) => s.getSelectedDrone()?.protocol?.getFirmwareHandler() ?? null);
+  return useMemo(() => {
+    const list = handler?.getSupportedMissionCommands?.();
+    return list ? new Set(list) : null;
+  }, [handler]);
 }

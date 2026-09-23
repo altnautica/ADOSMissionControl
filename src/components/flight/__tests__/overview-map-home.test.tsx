@@ -32,7 +32,11 @@ vi.hoisted(() => {
 // Lazy map overlays are out of scope; the markers are what is asserted.
 vi.mock("next/dynamic", () => ({ default: () => () => null }));
 vi.mock("react-leaflet", () => {
-  const map: object = new Proxy({}, { get: () => () => map });
+  // Every map method chains back to the map; a pixel distance is a number.
+  const map: object = new Proxy(
+    {},
+    { get: (_t, key) => (key === "distanceTo" ? () => 100 : () => map) },
+  );
   return {
     MapContainer: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
     Marker: ({ position }: { position: [number, number] }) => (

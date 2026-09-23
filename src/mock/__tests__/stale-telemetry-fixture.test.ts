@@ -47,10 +47,11 @@ describe("demo stale-telemetry fixture", () => {
 
   it("holds the last sample so age alone flips the freshness gate", () => {
     // The engine feeds each drone's mock protocol, and `bridgeTelemetry`
-    // mirrors that into the store only for a drone connected through the
-    // drone manager. This asserts the property the fixture exists to give the
-    // gated surfaces, against the store the way the bridge writes it: a frozen
-    // link keeps its history, and the clock is what makes it stale.
+    // mirrors that into the store for the selected drone. Starting the engine
+    // (re)opens the demo sessions, which resets the selected drone's rings, so
+    // the sample lands after start the way a live bridge write does. A frozen
+    // link then keeps its history while the clock is what makes it stale.
+    mockEngine.start(50);
     const sample = {
       timestamp: Date.now(),
       voltage: 16.4,
@@ -59,16 +60,14 @@ describe("demo stale-telemetry fixture", () => {
       consumed: 900,
     };
     useTelemetryStore.getState().pushBattery(sample);
-
-    mockEngine.start(50);
     mockEngine.freezeTelemetry();
+
+    vi.advanceTimersByTime(TELEMETRY_STALE_MS + 1);
 
     const held = useTelemetryStore.getState().battery.latest();
     expect(held?.timestamp).toBe(sample.timestamp);
-
-    const frozenAt = sample.timestamp;
-    expect(freshOnly(held, frozenAt)).toBeDefined();
-    expect(freshOnly(held, frozenAt + TELEMETRY_STALE_MS + 1)).toBeUndefined();
+    expect(freshOnly(held, sample.timestamp)).toBeDefined();
+    expect(freshOnly(held, Date.now())).toBeUndefined();
   });
 
   it("does not double-schedule when resumed twice", () => {

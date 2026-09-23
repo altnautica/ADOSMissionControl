@@ -23,7 +23,7 @@ import type {
  * U8  motorDirectionInverted (bool)
  * U8  0 (formerly yaw_jump_prevention_limit)
  * U8  motorstopOnLow (bool)
- * U8  platformType (0=MULTIROTOR, 1=AIRPLANE, 2=TRICOPTER, 3=ROVER, 4=BOAT, 5=HELICOPTER)
+ * U8  platformType (0=MULTIROTOR, 1=AIRPLANE, 2=HELICOPTER, 3=TRICOPTER, 4=ROVER, 5=BOAT)
  * U8  hasFlaps (bool)
  * U16 appliedMixerPreset
  * U8  MAX_SUPPORTED_MOTORS

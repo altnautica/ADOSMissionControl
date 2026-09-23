@@ -9,7 +9,7 @@ import { useParamPanelActions } from "@/hooks/use-param-panel-actions";
 import { usePanelScroll } from "@/hooks/use-panel-scroll";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { PanelHeader } from "../shared/PanelHeader";
-import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
+import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { MapPin, Navigation, ShieldAlert, Save, HardDrive, Info } from "lucide-react";
 import { gpsParamNames, GPS_PROVIDER_OPTIONS, SBAS_MODE_OPTIONS, SANITY_CHECK_OPTIONS } from "./gps-constants";
 
@@ -33,7 +33,7 @@ export function GpsPanel() {
   const set = (name: string, v: string) => setLocalValue(name, Number(v) || 0);
 
   return (
-    <ArmedLockOverlay>
+    <ArmedWarningBanner>
     <div ref={scrollRef} className="flex-1 overflow-y-auto p-6">
       <div className="max-w-2xl space-y-6">
         <PanelHeader
@@ -245,6 +245,6 @@ export function GpsPanel() {
         </div>
       </div>
     </div>
-    </ArmedLockOverlay>
+    </ArmedWarningBanner>
   );
 }

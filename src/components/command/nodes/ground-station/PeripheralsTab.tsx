@@ -112,7 +112,7 @@ export function PeripheralsTab() {
     <div className="flex flex-col">
       <PageIntro
         title="Peripherals"
-        description="Plugin-managed peripherals declared by the agent: cameras, sensors, custom hardware. Per-plugin configuration support arrives one plugin at a time."
+        description="Plugin-managed peripherals declared by the agent: cameras, sensors, custom hardware."
         trailing={
           onCloudOnly ? null : (
             <Button
@@ -248,11 +248,6 @@ function PeripheralRow({ summary, isOpen, detail, onToggle }: RowProps) {
                   {detail.actions.length === 0
                     ? "none"
                     : detail.actions.map((a) => a.display_name).join(", ")}
-                </div>
-                <div className="pt-2">
-                  <Button variant="secondary" disabled>
-                    Configure (Track B)
-                  </Button>
                 </div>
               </div>
             ) : (

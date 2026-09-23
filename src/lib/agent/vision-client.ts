@@ -177,7 +177,7 @@ export interface EngineModel {
   outputClasses: string[];
   /** Rolling inference frame rate for this model. Undefined when the agent
    * does not report per-model timing — the hub renders it ONLY when real
-   * (Rule 44), never a fabricated 0. */
+   * (no fabricated reading), never a fabricated 0. */
   fps?: number;
   /** Mean inference latency in ms. Undefined when the agent does not report
    * per-model timing. */
@@ -193,10 +193,13 @@ export interface EngineModel {
  * The engine's `/api/vision/status` read-back: the registered models plus
  * node-level perception telemetry. `npuUtilizationPct` is null when the node
  * reports no real sampler value — the hub HIDES the bar rather than show a
- * fabricated 0 (Rule 44). `modelCount` is the engine's own count, falling back
- * to `models.length` when the agent does not report it.
+ * fabricated 0 (no fabricated reading). `modelCount` is the engine's own count, falling back
+ * to `models.length` when the agent does not report it. `known` is false when
+ * there is no read-back at all (older agent, unreachable engine, no LAN
+ * client), so an empty model list there is "not known", never "zero".
  */
 export interface EngineStatus {
+  known: boolean;
   models: EngineModel[];
   npuUtilizationPct: number | null;
   modelCount: number;
@@ -204,6 +207,7 @@ export interface EngineStatus {
 
 /** The empty engine status (older agent / unreachable / no read-back). */
 export const EMPTY_ENGINE_STATUS: EngineStatus = {
+  known: false,
   models: [],
   npuUtilizationPct: null,
   modelCount: 0,
@@ -255,8 +259,8 @@ function num(v: unknown): number {
   return typeof v === "number" && Number.isFinite(v) ? v : 0;
 }
 
-/** A finite number, or undefined — so an absent metric stays absent (Rule 44:
- * the hub renders a value only when the agent forwards a real one). */
+/** A finite number, or undefined — so an absent metric stays absent:
+ * the hub renders a value only when the agent forwards a real one. */
 function numOpt(v: unknown): number | undefined {
   return typeof v === "number" && Number.isFinite(v) ? v : undefined;
 }
@@ -610,9 +614,10 @@ export class VisionAgentClient implements VisionClient {
     const e = body as Record<string, unknown>;
     const models = coerceEngineModels(e.models);
     return {
+      known: true,
       models,
       // Null when the node reports no real value — the hub hides the bar
-      // rather than showing a fabricated 0 (Rule 44).
+      // rather than showing a fabricated 0 (no fabricated reading).
       npuUtilizationPct: numOpt(e.npu_utilization_pct) ?? null,
       // Prefer the engine's own count; fall back to the length of the models
       // it actually returned (a real derived figure, never fabricated).

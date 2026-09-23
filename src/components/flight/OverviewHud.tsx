@@ -2,8 +2,10 @@
 
 import { useRef, useEffect, useCallback, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { useMissionStore } from "@/stores/mission-store";
+import { useDroneStore } from "@/stores/drone-store";
 import { readHudFrame } from "@/lib/hud-readings";
+import { batteryBand } from "@/lib/battery-bands";
+import { useSettingsStore } from "@/stores/settings-store";
 import {
   drawSkyGround,
   drawPitchLadder,
@@ -18,12 +20,15 @@ import {
   drawSignalBars,
   drawFlightTimer,
 } from "@/lib/hud-draw";
+import { useToast } from "@/components/ui/toast";
+import { popupRefusedMessage } from "@/components/flight/telemetry-deck/deck-utils";
 
 /**
  * Artificial horizon HUD with sky/ground gradient background.
  * Used on the Overview tab — full glass cockpit experience.
  */
 export function OverviewHud() {
+  const { toast } = useToast();
   // The canvas moves between documents when the HUD detaches (React mounts a
   // new one inside the popup), so it is held in state and every effect that
   // measures or draws re-binds to whichever canvas is mounted now.
@@ -53,7 +58,10 @@ export function OverviewHud() {
       "overview-hud-detached",
       "width=980,height=640,resizable=yes,scrollbars=no"
     );
-    if (!popup) return;
+    if (!popup) {
+      toast(popupRefusedMessage("HUD"), "warning");
+      return;
+    }
 
     popup.document.title = "HUD";
     popup.document.body.innerHTML = "";
@@ -82,7 +90,7 @@ export function OverviewHud() {
     setPopupContainer(container);
     setIsDetached(true);
     popup.focus();
-  }, []);
+  }, [toast]);
 
   const handleToggleDetach = useCallback(() => {
     if (isDetached) {
@@ -139,9 +147,10 @@ export function OverviewHud() {
       // Every reading is freshness-gated in one place and every one of them is
       // nullable, so an absent sample draws an explicit unknown rather than a
       // fabricated value: no level horizon and no four-bar signal meter on a
-      // vehicle nobody is hearing from (Rule 44).
+      // vehicle nobody is hearing from. The flight timer counts from the arm
+      // transition only while a fresh heartbeat says the vehicle is armed.
       const hud = readHudFrame();
-      const startedAt = useMissionStore.getState().activeMission?.startedAt;
+      const armedAt = hud.armed === true ? useDroneStore.getState().armedAt : null;
 
       // Sky/ground gradient FIRST (background)
       drawSkyGround(ctx, w, h, hud.pitch, hud.roll);
@@ -153,11 +162,21 @@ export function OverviewHud() {
       drawSpeedTape(ctx, cx - w * 0.25, cy, hud.speedKph, h);
       drawAltTape(ctx, cx + w * 0.25, cy, hud.alt, h);
       drawHeadingCompass(ctx, cx, 30, hud.heading, w);
-      drawBatteryHud(ctx, cx, h - 45, hud.batteryPct);
+      const { batteryWarningPct, batteryCriticalPct } = useSettingsStore.getState();
+      drawBatteryHud(
+        ctx,
+        cx,
+        h - 45,
+        hud.batteryPct,
+        batteryBand(hud.batteryPct, {
+          warningPct: batteryWarningPct,
+          criticalPct: batteryCriticalPct,
+        }),
+      );
       drawGpsAndMode(ctx, 16, h - 20, hud.satellites, hud.mode);
       drawArmedStatus(ctx, cx, cy + 34, hud.armed);
       drawSignalBars(ctx, w - 80, h - 20, hud.signalBars);
-      drawFlightTimer(ctx, w - 16, h - 20, startedAt);
+      drawFlightTimer(ctx, w - 16, h - 20, armedAt);
     };
     raf = view.requestAnimationFrame(draw);
 

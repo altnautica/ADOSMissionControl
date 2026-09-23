@@ -49,7 +49,7 @@ export function GroundStationMeshCard() {
   const unknown = <span className="text-text-tertiary">{t("unknown")}</span>;
 
   return (
-    <div className="rounded-lg border border-border-default bg-surface-secondary p-3 space-y-2">
+    <div className="rounded-lg border border-border-default bg-bg-secondary p-3 space-y-2">
       <div className="flex items-baseline justify-between">
         <h3 className="text-xs uppercase tracking-wide text-text-tertiary flex items-center gap-2">
           {t("title")}
@@ -69,7 +69,9 @@ export function GroundStationMeshCard() {
           <span className="text-sm">{unknown}</span>
         )}
       </div>
-      {!roleKnown ? null : roleInfo.mesh_capable ? (
+      {!roleKnown ? null : roleInfo.mesh_capable === null ? (
+        <p className={cn("text-xs", dim)}>{unknown}</p>
+      ) : roleInfo.mesh_capable ? (
         <dl className={cn("grid grid-cols-2 gap-x-3 gap-y-1 text-xs", dim)}>
           <dt className="text-text-tertiary">{t("status")}</dt>
           <dd

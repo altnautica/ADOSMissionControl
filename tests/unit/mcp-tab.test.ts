@@ -92,7 +92,7 @@ describe("mcp scope presets", () => {
 
   it("the flight preset is defined but held out of the picker until the flight plane lands", () => {
     // `full` grants flight/destructive; the picker must not offer it while the
-    // server has no flight tools to honor it (Rule 44). It stays defined for later.
+    // server has no flight tools to honor it (no fabricated reading). It stays defined for later.
     expect(SCOPE_PRESET_ORDER).toEqual(["read", "operate"]);
     expect(SCOPE_PRESETS.full).toBeDefined();
     expect((SCOPE_PRESET_ORDER as readonly string[]).includes("full")).toBe(false);
@@ -127,14 +127,16 @@ describe("local (LAN-direct) recipes", () => {
     expect(recipe).not.toContain("ADOS_MCP_TOKEN");
   });
 
-  it("localMcpJsonSnippet is agent-mode with the pairing key in env", () => {
-    const snippet = localMcpJsonSnippet(host, key);
+  it("localMcpJsonSnippet is agent-mode and reads the key from the environment", () => {
+    const snippet = localMcpJsonSnippet(host);
     const parsed = JSON.parse(snippet);
     const server = parsed.mcpServers.ados;
     expect(server.args).toContain("agent");
     expect(server.args).toContain(host);
     expect(server.args).not.toContain("fleet");
-    expect(server.env.ADOS_MCP_AGENT_KEY).toBe(key);
+    // A committed .mcp.json must never carry the pairing key itself.
+    expect(server.env.ADOS_MCP_AGENT_KEY).toBe("${ADOS_MCP_AGENT_KEY}");
+    expect(snippet).not.toContain(key);
   });
 
   it("localVerifyRecipe checks the drone directly, no cloud", () => {

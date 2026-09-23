@@ -109,7 +109,8 @@ export interface PingResponse {
 
 export interface AgentStatus {
   version: string;
-  uptime_seconds: number;
+  /** Agent process uptime. Absent when the producer did not carry it. */
+  uptime_seconds?: number;
   board: BoardInfo;
   health: HealthInfo;
   /** Gated FC truth: `transport_open && mavlink_alive`. Older agents set this
@@ -163,9 +164,10 @@ export interface ServiceInfo {
   name: string;
   status: "running" | "stopped" | "error" | "degraded" | "starting" | "circuit_open";
   pid: number | null;
-  cpu_percent: number;
-  memory_mb: number;
-  uptime_seconds: number;
+  /** Per-service metrics are null when the agent did not report them. */
+  cpu_percent: number | null;
+  memory_mb: number | null;
+  uptime_seconds: number | null;
   category?: "core" | "hardware" | "suite" | "ondemand";
 }
 
@@ -196,17 +198,18 @@ export interface SystemResources {
   memory_used_mb?: number;
   memory_total_mb?: number;
   /** RAM available for new allocations without swapping (MemAvailable),
-   * not just free. Defaults to 0 on agents that predate the field. */
-  memory_available_mb: number;
-  /** RAM held by the page cache + reclaimable buffers. Defaults to 0
-   * on agents that predate the field. */
-  memory_cache_mb: number;
-  /** Total swap space configured. 0 when no swap is present. */
-  swap_total_mb: number;
+   * not just free. Absent when the node did not report it. */
+  memory_available_mb?: number;
+  /** RAM held by the page cache + reclaimable buffers. Absent when not
+   * reported. */
+  memory_cache_mb?: number;
+  /** Total swap space configured. 0 when no swap is present; absent when not
+   * reported. */
+  swap_total_mb?: number;
   /** Swap currently in use. */
-  swap_used_mb: number;
+  swap_used_mb?: number;
   /** Swap utilisation as a percentage of swap_total_mb. */
-  swap_percent: number;
+  swap_percent?: number;
   disk_percent?: number;
   disk_used_gb?: number;
   disk_total_gb?: number;
@@ -268,14 +271,6 @@ export interface PeripheralInfo {
    * they understand (e.g. controller / has_touch / resolution /
    * rotation for displays) and ignore the rest. */
   extra?: Record<string, unknown>;
-}
-
-export interface MeshNetEnrollment {
-  enrolled: boolean;
-  droneId?: string;
-  fleetName?: string;
-  tier?: number;
-  enrolledSince?: string;
 }
 
 export interface NetworkPeer {
@@ -440,15 +435,16 @@ export interface SetupStatus {
 /**
  * Air-side USB camera recovery state, mirroring the agent's
  * camera-recovery supervisor. `state` walks the recovery ladder:
- * "idle" (nothing to do) → "monitoring" (a missing camera is being
- * watched) → "rebinding" / "port_cycling" / "hub_resetting" (an active
- * self-heal step is in flight) → "needs_hub_reset" (a powered-hub reset
- * is required but cannot be done in software) / "guard_blocked" (held
- * back to protect another subsystem) / "exhausted" (gave up after the
- * attempt budget). `case` is the agent's free-form diagnosis of why the
- * camera is missing (e.g. "present_wedged", "absent", "port_cycle",
- * "hub_reset") or null when unknown. All fields are reported together;
- * the whole block is absent on agents that predate the surface. */
+ * "idle" (nothing to do) → "monitoring" (an expected camera is missing and
+ * being watched) → "rebinding" / "port_cycling" / "hub_resetting" (an active
+ * self-heal step is in flight) → "retrying" (waiting out the cooldown before
+ * the next attempt) → "needs_hub_reset" (a powered-hub reset is required but
+ * cannot be done in software) / "guard_blocked" (held back to protect another
+ * subsystem). The supervisor never gives up: it keeps retrying on the
+ * cooldown, so there is no attempt budget. `case` is the agent's free-form
+ * diagnosis of why the camera is missing (e.g. "present_wedged", "absent",
+ * "port_cycle", "hub_reset") or null when unknown. All fields are reported
+ * together; the whole block is absent on agents that predate the surface. */
 export interface CameraUsbRecovery {
   state:
     | "idle"
@@ -456,15 +452,15 @@ export interface CameraUsbRecovery {
     | "rebinding"
     | "port_cycling"
     | "hub_resetting"
+    | "retrying"
     | "needs_hub_reset"
-    | "guard_blocked"
-    | "exhausted";
+    | "guard_blocked";
   /** Agent's diagnosis of the missing-camera case, or null when unknown. */
   case: string | null;
   /** Recovery attempts in the current episode. */
   attempts: number;
-  /** Attempt budget before the agent gives up (transitions to exhausted). */
-  maxAttempts: number;
+  /** Seconds the supervisor waits between attempts; 0 when not reported. */
+  cooldownSeconds: number;
   /** True when a camera is currently enumerated on the bus. */
   cameraPresent: boolean;
   /** True when the agent expects a camera to be present (one was assigned). */
@@ -511,7 +507,9 @@ export interface FullStatusResponse {
    * `"inav"` | `"unknown"`), distinguishing the two MAVLink stacks. Absent on
    * older agents. */
   fc_firmware?: string;
-  services: Array<{ name: string; state: string; task_done: boolean; uptimeSeconds: number }>;
+  /** One row per ados-* unit: systemd ActiveState in `state`, the unit's
+   * sub-state in `sub_state`. No uptime: the agent does not measure one here. */
+  services: Array<{ name: string; state: string; sub_state?: string; task_done: boolean; memory_mb?: number }>;
   resources: { cpu_percent: number; memory_percent: number; disk_percent: number; temperature: number | null };
   video: {
     state: string;
@@ -612,25 +610,6 @@ export interface FullStatusResponse {
    * mac-pins state. Absent on a node that has pinned nothing. Already camelCase
    * at the source — never remap it. */
   macStability?: Record<string, unknown> | null;
-  /** MAVLink access descriptor (ground-station profile). Carries the
-   * ticket-gated authenticated WebSocket endpoint as an absolute URL
-   * and/or a path relative to the agent's :8080 front. Absent on agents
-   * that predate the gated endpoint. The LAN-direct path resolves this
-   * into the dialable URL the MAVLink bridge prefers. */
-  mavlink?: MavlinkAccess;
-}
-
-/**
- * MAVLink access descriptor advertised on `/api/status` and
- * `/api/status/full` (ground-station profile). `authenticated_websocket_url`
- * is an absolute ws/wss URL; `authenticated_websocket_path` is a path
- * relative to the agent's :8080 front (resolved against the LAN host when
- * the absolute URL is absent). Both null on agents that predate the gated
- * endpoint or on a non-ground-station profile.
- */
-export interface MavlinkAccess {
-  authenticated_websocket_url?: string | null;
-  authenticated_websocket_path?: string | null;
 }
 
 // ── Pairing ─────────────────────────────────────────────
@@ -641,9 +620,12 @@ export interface PairingInfo {
   version: string;
   board: string;
   paired: boolean;
-  pairing_code?: string;
-  owner_id?: string;
-  paired_at?: number;
+  /** Null while paired. */
+  pairing_code?: string | null;
+  /** Null while unpaired. */
+  owner_id?: string | null;
+  /** Unix seconds; null while unpaired. */
+  paired_at?: number | null;
   mdns_host: string;
 }
 

@@ -33,10 +33,10 @@ describe("resolveVideoUrls", () => {
     const out = resolveVideoUrls(
       {
         videoState: "running",
-        videoWhepUrl: "http://skynode.local:8889/main/whep",
+        videoWhepUrl: "http://testnode.local:8889/main/whep",
         lastIp: "192.168.1.50",
       },
-      "skynode.local",
+      "testnode.local",
     );
     expect(out.state).toBe("running");
     expect(out.whepUrl).toBe("http://192.168.1.50:8889/main/whep");
@@ -58,7 +58,7 @@ describe("resolveVideoUrls", () => {
     // hint nor a LAN host becomes a URL.
     const out = resolveVideoUrls(
       { videoState: "running", lastIp: "192.168.1.51", videoWhepPort: 9001 },
-      "skynode.local",
+      "testnode.local",
     );
     expect(out.whepUrl).toBeNull();
   });
@@ -70,11 +70,11 @@ describe("resolveVideoUrls", () => {
         videoWhepUrl: "http://10.0.0.7:8889/main/whep",
         lastIp: "10.0.0.7",
       },
-      "skynode.local",
+      "testnode.local",
     );
     expect(out.state).toBe("stopped");
     expect(out.whepUrl).toBeNull();
-    expect(out.lanHost).toBe("skynode.local");
+    expect(out.lanHost).toBe("testnode.local");
   });
 
   it("ignores a zero / missing WHEP port and a null LAN host", () => {
@@ -90,10 +90,10 @@ describe("resolveMavlinkUrl", () => {
   it("prefers the heartbeat-published WS URL, IPv4-resolved", () => {
     const out = resolveMavlinkUrl(
       {
-        mavlinkWsUrl: "ws://skynode.local:8765/",
+        mavlinkWsUrl: "ws://testnode.local:8765/",
         lastIp: "192.168.1.50",
       },
-      "skynode.local",
+      "testnode.local",
     );
     expect(out.url).toBe("ws://192.168.1.50:8765/");
   });
@@ -101,14 +101,14 @@ describe("resolveMavlinkUrl", () => {
   it("builds ws:// from lastIp + port when no URL is published", () => {
     const out = resolveMavlinkUrl(
       { lastIp: "192.168.1.52", mavlinkWsPort: 8770 },
-      "skynode.local",
+      "testnode.local",
     );
     expect(out.url).toBe("ws://192.168.1.52:8770/");
   });
 
   it("falls back to the LAN host on the stable :8765 default", () => {
-    const out = resolveMavlinkUrl({}, "skynode.local");
-    expect(out.url).toBe("ws://skynode.local:8765/");
+    const out = resolveMavlinkUrl({}, "testnode.local");
+    expect(out.url).toBe("ws://testnode.local:8765/");
   });
 
   it("returns null when no URL, port hint, or LAN host is available", () => {
@@ -119,9 +119,9 @@ describe("resolveMavlinkUrl", () => {
   it("ignores a zero MAVLink port and falls through to the LAN host", () => {
     const out = resolveMavlinkUrl(
       { lastIp: "192.168.1.52", mavlinkWsPort: 0 },
-      "skynode.local",
+      "testnode.local",
     );
-    expect(out.url).toBe("ws://skynode.local:8765/");
+    expect(out.url).toBe("ws://testnode.local:8765/");
   });
 });
 
@@ -160,7 +160,7 @@ describe("buildSystemUpdate", () => {
     for (const v of Object.values(update.resources)) {
       if (typeof v === "number") expect(Number.isNaN(v)).toBe(false);
     }
-    expect(update.resources.swap_percent).toBe(0);
+    expect(update.resources.swap_percent).toBeUndefined();
     expect(update.resources.temperature).toBeNull();
     // No history / services / logs blocks when the row omits them.
     expect(update.cpuHistory).toBeUndefined();
@@ -188,7 +188,7 @@ describe("buildSystemUpdate", () => {
     const cloudStatus = {
       ...base,
       services: [
-        { name: "ados-supervisor", status: "running", pid: 100, cpuPercent: 1.2, memoryMb: 30, uptimeSeconds: 500 },
+        { name: "ados-supervisor", status: "running", pid: 100, cpuPercent: 1.2, memoryMb: 30, uptimeSeconds: 500, category: "core" },
         { name: "ados-mystery", status: "bogus", pid: 101 },
         { name: "ados-nopid", status: "stopped" },
       ],
@@ -203,7 +203,13 @@ describe("buildSystemUpdate", () => {
     // service is down because we did not recognise its state would fabricate a
     // negative. The pid is preserved verbatim.
     expect(update.services?.[1].status).toBe("degraded");
-    expect(update.services?.[1].cpu_percent).toBe(0);
+    // Metrics the agent did not report stay null, never a measured-looking 0.
+    expect(update.services?.[1].cpu_percent).toBeNull();
+    expect(update.services?.[1].memory_mb).toBeNull();
+    expect(update.services?.[1].uptime_seconds).toBeNull();
+    expect(update.services?.[0].cpu_percent).toBe(1.2);
+    expect(update.services?.[0].uptime_seconds).toBe(500);
+    expect(update.services?.[0].category).toBe("core");
     expect(update.services?.[1].pid).toBe(101);
     // A service with no pid falls back to null.
     expect(update.services?.[2].pid).toBeNull();
@@ -285,7 +291,10 @@ describe("buildGroundStationPatch", () => {
     const status = patch?.status as Record<string, unknown>;
     expect(status.paired_drone).toBe("ados-drone1");
     expect(status.profile).toBe("ground_station");
-    expect(status.uplink_active).toBe("local");
+    // The WFB failover label names the video path, not an uplink interface.
+    expect(status.uplink_active).toBeNull();
+    // The link card ages the radio reading on the record's own time.
+    expect(patch?.linkHealthAt).toBe(NOW);
   });
 
   it("maps the role and uplink blocks, accepting the snake_case profile alias", () => {
@@ -300,9 +309,13 @@ describe("buildGroundStationPatch", () => {
     );
     const role = (patch?.role as Record<string, unknown>).info as Record<string, unknown>;
     expect(role.current).toBe("relay");
-    expect(role.configured).toBe("relay");
-    expect(role.supported).toEqual(["direct", "relay", "receiver"]);
-    expect((patch?.uplink as Record<string, unknown>).active).toBe("cloud_relay");
+    // The heartbeat carries only the current role: nothing measured the
+    // configured role, the supported set or mesh capability.
+    expect(role.configured).toBeNull();
+    expect(role.supported).toBeNull();
+    expect(role.mesh_capable).toBeNull();
+    // A WFB failover label alone is not an uplink report.
+    expect(patch?.uplink).toBeUndefined();
   });
 
   it("maps the cloud-relay forwarding state from a relaying ground station", () => {
@@ -338,11 +351,11 @@ describe("buildGroundStationPatch", () => {
 describe("buildHeartbeatExtras", () => {
   it("returns safe defaults for an older agent that omits the extras", () => {
     const extras = buildHeartbeatExtras({ ...base });
-    expect(extras.videoRestartAttempts).toBe(0);
+    // An absent key is unknown, not the healthy steady state: the store keeps
+    // what it had instead of reading the absence as "local" / zero restarts.
+    expect(extras.videoRestartAttempts).toBeUndefined();
     expect(extras.pairingCodeExpiresAt).toBeNull();
-    expect(extras.mavlinkWsUrlPrev).toBeNull();
-    // Unknown / absent failover state clamps to the local default.
-    expect(extras.wfbFailoverState).toBe("local");
+    expect(extras.wfbFailoverState).toBeUndefined();
     expect(extras.manualConnectionUrls).toBeNull();
     expect(extras.cloudRelayUrl).toBeNull();
     expect(extras.macStability).toBeUndefined();
@@ -389,7 +402,7 @@ describe("buildHeartbeatExtras", () => {
       videoRestartAttempts: -2,
     });
     expect(extras.cameraState).toBeNull();
-    // A negative restart count is rejected back to 0.
-    expect(extras.videoRestartAttempts).toBe(0);
+    // A negative restart count is not a reading.
+    expect(extras.videoRestartAttempts).toBeUndefined();
   });
 });

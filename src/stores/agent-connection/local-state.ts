@@ -59,7 +59,9 @@ export const localStateSlice: AgentConnectionSliceCreator<LocalStateSlice> = (
 
   noteFetchFailure() {
     const next = get().consecutiveFailures + 1;
-    set({ consecutiveFailures: next });
+    // A failed poll measured no round trip, so the last RTT is no longer a
+    // current reading.
+    set({ consecutiveFailures: next, controlRttMs: null });
     // After 3 consecutive failures (~9s at 3s poll), mark data stale but keep
     // last-known values visible. After 6 (~18s), flip the header to offline.
     if (next >= 3) {

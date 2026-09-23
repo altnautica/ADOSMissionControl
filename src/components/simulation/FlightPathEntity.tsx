@@ -33,7 +33,8 @@ import { haversineDistance } from "@/lib/telemetry-utils";
 import { useSettingsStore } from "@/stores/settings-store";
 import { roundCorners, type LatLonAlt } from "@/lib/simulation/spline-path";
 import { mslToEllipsoidal } from "@/lib/terrain/geoid";
-import { altitudeDatumFor } from "@/lib/mission/altitude-frame";
+import { altitudeDatumFor, formatAltitudeWithDatum } from "@/lib/mission/altitude-frame";
+import { hasDepictedActions, legActionStates } from "@/lib/simulation/mission-action-state";
 
 /**
  * Corner-rounding defaults for the display-only smoothed path.
@@ -54,6 +55,8 @@ interface FlightPathEntityProps {
   waypointIndices?: number[];
   /** Terrain height at each original waypoint (meters above ellipsoid). */
   terrainHeights?: number[];
+  /** Terrain height at home, the relative-frame datum (meters above ellipsoid). */
+  homeTerrainHeight?: number;
   /** Show distance and altitude labels at waypoints. Default: true. */
   showLabels?: boolean;
   /** True while terrain provider is loading or resolution is in progress. */
@@ -109,11 +112,12 @@ function waypointAbsoluteAlt(
   resolvedPositions: Cartesian3[] | null,
   waypointIndices: number[] | undefined,
   terrainHeights: number[] | undefined,
+  homeTerrainHeight: number | undefined,
 ): number {
   const wp = waypoints[i];
   const datum = altitudeDatumFor(wp.frame ?? defaultFrame);
   if (datum === "absolute") return mslToEllipsoidal(wp.alt, wp.lat, wp.lon);
-  const terrain = datum === "home" ? terrainHeights?.[0] : terrainHeights?.[i];
+  const terrain = datum === "home" ? homeTerrainHeight : terrainHeights?.[i];
   if (terrain !== undefined) return terrain + wp.alt;
   const idx = waypointIndices?.[i];
   if (idx !== undefined && resolvedPositions?.[idx]) {
@@ -124,17 +128,15 @@ function waypointAbsoluteAlt(
 }
 
 /**
- * Check if any waypoints have special commands that warrant color coding.
+ * Check if the mission has anything that warrants colour coding: TAKEOFF,
+ * LAND and RTL legs, or a camera-trigger / ROI action.
  */
 function hasSpecialCommands(waypoints: Waypoint[]): boolean {
-  return waypoints.some(
-    (wp) =>
-      wp.command === "DO_SET_CAM_TRIGG" ||
-      wp.command === "DO_DIGICAM" ||
-      wp.command === "ROI" ||
-      wp.command === "TAKEOFF" ||
-      wp.command === "LAND" ||
-      wp.command === "RTL"
+  return (
+    hasDepictedActions(waypoints) ||
+    waypoints.some(
+      (wp) => wp.command === "TAKEOFF" || wp.command === "LAND" || wp.command === "RTL",
+    )
   );
 }
 
@@ -145,6 +147,7 @@ export function FlightPathEntity({
   resolvedPositions,
   waypointIndices,
   terrainHeights,
+  homeTerrainHeight,
   showLabels = true,
   isResolving = false,
 }: FlightPathEntityProps) {
@@ -178,6 +181,7 @@ export function FlightPathEntity({
             resolvedPositions,
             waypointIndices,
             terrainHeights,
+            homeTerrainHeight,
           ),
         }));
         const smoothed = roundCorners(
@@ -218,23 +222,12 @@ export function FlightPathEntity({
       } else {
         // ── Color-coded elevated 3D flight path ────────────────────
         if (useColorCoding && waypointIndices && waypointIndices.length === waypoints.length) {
-          let camTriggerActive = false;
-          let roiActive = false;
+          const legStates = legActionStates(waypoints);
 
           for (let i = 0; i < waypoints.length - 1; i++) {
             const wp = waypoints[i];
             const cmd = wp.command ?? "WAYPOINT";
-
-            // Track state changes
-            if (cmd === "DO_SET_CAM_TRIGG") {
-              camTriggerActive = (wp.param1 ?? 0) > 0;
-            }
-            if (cmd === "ROI") {
-              roiActive = true;
-            }
-            if (cmd === "DO_SET_ROI_NONE") {
-              roiActive = false;
-            }
+            const { camTriggerActive, roiActive } = legStates[i];
 
             const startIdx = waypointIndices[i];
             const endIdx = waypointIndices[i + 1];
@@ -321,7 +314,7 @@ export function FlightPathEntity({
             const distText = i === 0
               ? "START"
               : formatDistance(cumulativeDistance);
-            const altText = `${Math.round(wp.alt)}m AGL`;
+            const altText = formatAltitudeWithDatum(wp.alt, wp.frame ?? defaultFrame);
 
             const label = viewer.entities.add({
               position: topPos,
@@ -390,7 +383,7 @@ export function FlightPathEntity({
       }
       if (!viewer.isDestroyed()) viewer.scene.requestRender();
     };
-  }, [viewer, waypoints, defaultFrame, resolvedPositions, waypointIndices, terrainHeights, showLabels, isResolving, roundedTurnsPreview]);
+  }, [viewer, waypoints, defaultFrame, resolvedPositions, waypointIndices, terrainHeights, homeTerrainHeight, showLabels, isResolving, roundedTurnsPreview]);
 
   return null;
 }

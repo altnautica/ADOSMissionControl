@@ -2,30 +2,32 @@
  * @module atlas-control-client
  * @description LAN client for a drone agent's Atlas capture-control surface on
  * the ados-control front (`:8080`, the same port as `/api/plugins/*` and
- * `/api/vision/*`). Drives the founder-locked contract:
+ * `/api/vision/*`):
  *
  *  - `GET  /api/atlas/readiness`        — capture readiness snapshot
  *  - `PUT  /api/atlas/config`           — patch { enabled?, capture_profile? }
  *  - `POST /api/atlas/capture/{start,stop,pause,resume}` — capture lifecycle
  *
- * Local-first (Rule 39), mirroring `compute-client.ts` / `vision-client.ts`: on
- * an HTTPS origin (a hosted GCS) every call routes through Mission Control's own
+ * Local-first, mirroring `compute-client.ts` / `vision-client.ts`: on an HTTPS
+ * origin (a hosted GCS) every call routes through Mission Control's own
  * `/api/lan-pair/atlas` server proxy to dodge the browser's mixed-content guard
  * and resolve `*.local` server-side; on an HTTP origin / Electron the direct
  * fetch is kept. Unlike `compute-client`, Atlas lives on the `:8080` control
  * front, so the base URL is used verbatim (no engine-port swap).
  *
  * Every reply is coerced defensively: a transport failure or a non-JSON body
- * returns `null` (reads) or a typed non-ok result (capture actions) so a poll
- * loop or a button handler degrades instead of throwing. A `503` on a capture
- * action means the capture service is down; it is surfaced distinctly so the UI
- * can say so honestly (Rule 44) rather than a generic failure.
- *
+ * returns `null` (reads) or a typed non-ok result (writes and capture actions)
+ * so a poll loop or a button handler degrades instead of throwing. A `503` on a
+ * capture action means the capture service is down; it is surfaced distinctly
+ * so the UI can say so rather than show a generic failure.
  * @license GPL-3.0-only
  */
 
 import { DEFAULT_RECONSTRUCTION_STEPS } from "@/lib/atlas/reconstruction-quality";
-import { timedFetch } from "@/lib/agent/agent-client/timeout";
+import {
+  AGENT_SERVICE_RESTART_CLIENT_TIMEOUT_MS,
+  timedFetch,
+} from "@/lib/agent/agent-client/timeout";
 
 /** Pose-estimation source the capture rig runs. Left open so a richer agent can
  * advertise another source without breaking the type. */
@@ -49,7 +51,7 @@ export type AtlasCaptureState =
  * actively ingesting, paused, or finalizing. Derived from `state` so a surface
  * never depends on how an agent populates the standalone `capturing` bool during
  * a paused session — an agent that reports `capturing:false` while `state:"paused"`
- * must still read as an active session (Rule 44 consistency).
+ * must still read as an active session (consistent reading).
  */
 export function isActiveCaptureState(state: string): boolean {
   return state === "capturing" || state === "paused" || state === "finalizing";
@@ -99,12 +101,12 @@ export interface AtlasConfigPatch {
   reconstructSteps?: number;
 }
 
-/** The `PUT /api/atlas/config` reply, coerced to camelCase. */
-export interface AtlasConfigResult {
-  status: string;
-  enabled: boolean;
-  restart: Record<string, unknown>;
-}
+/** The `PUT /api/atlas/config` outcome. The agent answers `502` with a
+ * top-level `status:"error"` when the config landed but the service restart
+ * failed, so the change is not live; that is a failure here too. */
+export type AtlasConfigResult =
+  | { ok: true; enabled: boolean; restart: Record<string, unknown> }
+  | { ok: false; message: string };
 
 function bool(v: unknown): boolean {
   return v === true;
@@ -207,32 +209,41 @@ export class AtlasControlClient {
     path: string,
     method: Method,
     body?: unknown,
+    timeoutMs?: number,
   ): Promise<AtlasResponse | null> {
     let res: Response;
     try {
       if (this.useProxy) {
-        res = await timedFetch("/api/lan-pair/atlas", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            host: this.baseUrl,
-            apiKey: this.apiKey,
-            path,
-            method,
-            body: body ?? null,
-          }),
-        });
+        res = await timedFetch(
+          "/api/lan-pair/atlas",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              host: this.baseUrl,
+              apiKey: this.apiKey,
+              path,
+              method,
+              body: body ?? null,
+            }),
+          },
+          timeoutMs,
+        );
       } else {
         const hasBody = body !== undefined && body !== null;
-        res = await timedFetch(`${this.baseUrl}/api/atlas/${path}`, {
-          method,
-          headers: {
-            Accept: "application/json",
-            ...this.authHeader(),
-            ...(hasBody ? { "Content-Type": "application/json" } : {}),
+        res = await timedFetch(
+          `${this.baseUrl}/api/atlas/${path}`,
+          {
+            method,
+            headers: {
+              Accept: "application/json",
+              ...this.authHeader(),
+              ...(hasBody ? { "Content-Type": "application/json" } : {}),
+            },
+            body: hasBody ? JSON.stringify(body) : undefined,
           },
-          body: hasBody ? JSON.stringify(body) : undefined,
-        });
+          timeoutMs,
+        );
       }
     } catch {
       return null;
@@ -261,25 +272,29 @@ export class AtlasControlClient {
   }
 
   /**
-   * Patch the Atlas config (enable/disable, capture profile, camera set). The
-   * camelCase patch maps to the wire's snake_case (`capture_profile`). Returns
-   * the agent's `{ status, enabled, restart }`, or `null` on failure.
+   * Patch the Atlas config (enable/disable, capture profile, reconstruction
+   * steps). The camelCase patch maps to the wire's snake_case. The agent
+   * restarts the capture service to apply it, so the deadline covers that
+   * restart. Anything but a 2xx `status:"ok"` reply is a failure carrying the
+   * agent's reason — a failed restart's message first.
    */
-  async setConfig(patch: AtlasConfigPatch): Promise<AtlasConfigResult | null> {
+  async setConfig(patch: AtlasConfigPatch): Promise<AtlasConfigResult> {
     const wire: Record<string, unknown> = {};
     if (patch.enabled !== undefined) wire.enabled = patch.enabled;
     if (patch.captureProfile !== undefined)
       wire.capture_profile = patch.captureProfile;
     if (patch.reconstructSteps !== undefined)
       wire.reconstruct_steps = patch.reconstructSteps;
-    const res = await this.request("config", "PUT", wire);
-    if (!res || res.status < 200 || res.status >= 300) return null;
+    const res = await this.request("config", "PUT", wire, AGENT_SERVICE_RESTART_CLIENT_TIMEOUT_MS);
+    if (!res) return { ok: false, message: "The drone did not answer the config write." };
     const e = obj(res.json);
-    return {
-      status: str(e.status) || "ok",
-      enabled: bool(e.enabled),
-      restart: obj(e.restart),
-    };
+    const restart = obj(e.restart);
+    if (res.status >= 200 && res.status < 300 && str(e.status) === "ok") {
+      return { ok: true, enabled: bool(e.enabled), restart };
+    }
+    const message =
+      str(restart.message) || str(e.message) || str(e.error) || `HTTP ${res.status}`;
+    return { ok: false, message };
   }
 
   /** Drive one capture lifecycle action. A `503` reports the capture service is

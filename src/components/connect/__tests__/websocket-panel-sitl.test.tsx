@@ -9,16 +9,30 @@
  */
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { render, screen, cleanup, fireEvent } from "@testing-library/react";
+import { render as rtlRender, screen, cleanup, fireEvent } from "@testing-library/react";
+import { NextIntlClientProvider } from "next-intl";
+import type { ReactElement } from "react";
 
 vi.mock("@/hooks/use-convex-skip-query", () => ({
   useConvexSkipQuery: () => undefined,
+}));
+vi.mock("@/lib/recent-connections", () => ({
+  saveRecentConnection: vi.fn(),
 }));
 vi.mock("@/components/connect/BuildPresetPicker", () => ({
   BuildPresetPicker: () => null,
 }));
 
+import messages from "../../../../locales/en.json";
 import { WebSocketPanel } from "../WebSocketPanel";
+
+function render(ui: ReactElement) {
+  return rtlRender(
+    <NextIntlClientProvider locale="en" messages={messages}>
+      {ui}
+    </NextIntlClientProvider>,
+  );
+}
 
 afterEach(cleanup);
 

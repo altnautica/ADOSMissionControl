@@ -11,7 +11,7 @@ describe("clampToBounds (PiP inset placement)", () => {
     });
   });
 
-  it("[R3] re-clamps a position stranded by a shrunk container", () => {
+  it("re-clamps a position stranded by a shrunk container", () => {
     // A position valid in a 1200x800 container (max x=1040, y=680)...
     const wide = clampToBounds(1000, 650, 1200, 800, 160, 120);
     expect(wide).toEqual({ x: 1000, y: 650 });

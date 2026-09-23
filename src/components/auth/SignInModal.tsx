@@ -13,8 +13,17 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { useConvexAvailable } from "@/app/ConvexClientProvider";
+import { MIN_PASSWORD_LENGTH, PASSWORD_TOO_SHORT } from "../../../convex/lib/passwordPolicy";
 
-function sanitizeAuthError(msg: string, t: (key: string) => string): string {
+function sanitizeAuthError(
+  msg: string,
+  t: (key: string, values?: Record<string, number>) => string,
+): string {
+  // Checked before the generic "password" match: a sign-up refused for length
+  // is not a wrong password, and saying so hides the rule the user must meet.
+  if (msg.includes(PASSWORD_TOO_SHORT)) {
+    return t("errors.passwordTooShort", { min: MIN_PASSWORD_LENGTH });
+  }
   if (msg.includes("InvalidSecret") || msg.includes("password")) return t("errors.incorrectPassword");
   if (msg.includes("InvalidAccountId") || msg.includes("Could not find")) return t("errors.noAccountFound");
   if (msg.includes("TooManyFailedAttempts")) return t("errors.tooManyAttempts");
@@ -176,7 +185,7 @@ function ConvexSignInForm({
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            minLength={6}
+            minLength={mode === "signUp" ? MIN_PASSWORD_LENGTH : undefined}
             className="w-full bg-bg-primary border border-border-default px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent-primary"
             placeholder={t("passwordPlaceholder")}
           />

@@ -14,7 +14,7 @@ import { useParamMetadataMap } from "@/hooks/use-param-metadata";
 import { usePanelScroll } from "@/hooks/use-panel-scroll";
 import { cn } from "@/lib/utils";
 import { PanelHeader } from "../shared/PanelHeader";
-import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
+import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { EnumSelect } from "../parameters/EnumSelect";
 import { ParamFieldLabel } from "../parameters/ParamFieldLabel";
 
@@ -105,13 +105,16 @@ export function Ekf3Panel() {
   function handleRevert() { revertAll(); toast("Reverted to FC values", "info"); }
 
   const renderField = (f: Field) => {
-    const value = params.get(f.param) ?? 0;
+    const value = params.get(f.param);
     const isDirty = dirtyParams.has(f.param);
     const meta = paramMeta.get(f.param);
     return (
       <div key={f.param} className="grid grid-cols-[200px_1fr] items-center gap-3">
         <ParamFieldLabel label={f.label} param={pn(f.param)} meta={meta} />
-        {f.kind === "enum" && meta?.values && meta.values.size > 0 ? (
+        {value === undefined ? (
+          // Never an editable 0 for a parameter that was not read.
+          <span className="text-xs font-mono text-text-tertiary">{hasLoaded ? "not present" : "—"}</span>
+        ) : f.kind === "enum" && meta?.values && meta.values.size > 0 ? (
           <EnumSelect values={meta.values} value={value} onChange={(v) => setLocalValue(f.param, v)} />
         ) : (
           <input type="number" min={f.min} max={f.max} step={f.step} value={value}
@@ -134,7 +137,7 @@ export function Ekf3Panel() {
   );
 
   return (
-    <ArmedLockOverlay>
+    <ArmedWarningBanner>
     <div ref={scrollRef} className="flex-1 overflow-y-auto p-6">
       <div className="max-w-2xl space-y-6">
         <PanelHeader title="EKF3 Estimator" subtitle="Extended Kalman Filter source sets, IMU selection, and measurement noise"
@@ -169,6 +172,6 @@ export function Ekf3Panel() {
         </div>
       </div>
     </div>
-    </ArmedLockOverlay>
+    </ArmedWarningBanner>
   );
 }

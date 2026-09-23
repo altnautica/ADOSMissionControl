@@ -3,7 +3,7 @@
  * @description The "what can this credential do" resolver. Given a credential's
  * scopes + node allow-list and a tool descriptor, it answers whether the
  * credential could call the tool — a CLIENT-SIDE CAPABILITY CHECK, never a live
- * call (Rule 44). It mirrors the connector's gate (scope-group membership, the
+ * call (no fabricated reading). It mirrors the connector's gate (scope-group membership, the
  * flight-enforce hide, the agent-mode-only hide, the node allow-list) so the
  * credential-detail preview matches what the server would actually admit.
  * @license GPL-3.0-only

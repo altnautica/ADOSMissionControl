@@ -43,7 +43,7 @@ describe("lan-pair unpair proxy", () => {
   });
 
   it("forwards the api key as X-ADOS-Key (not X-API-Key)", async () => {
-    const res = await POST(postJson({ host: "skynode.local", apiKey: "k-123" }));
+    const res = await POST(postJson({ host: "testnode.local", apiKey: "k-123" }));
     expect(res.status).toBe(200);
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const init = fetchMock.mock.calls[0][1] as RequestInit;
@@ -58,12 +58,12 @@ describe("lan-pair unpair proxy", () => {
         status: 401,
       }),
     );
-    const res = await POST(postJson({ host: "skynode.local", apiKey: "k-123" }));
+    const res = await POST(postJson({ host: "testnode.local", apiKey: "k-123" }));
     expect(res.status).toBe(401);
   });
 
   it("rejects a request with no api key before reaching the agent", async () => {
-    const res = await POST(postJson({ host: "skynode.local" }));
+    const res = await POST(postJson({ host: "testnode.local" }));
     expect(res.status).toBe(400);
     expect(fetchMock).not.toHaveBeenCalled();
   });

@@ -10,7 +10,7 @@ import { useDroneManager } from "@/stores/drone-manager";
 import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
 import { useToast } from "@/components/ui/toast";
 import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
-import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
+import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { PanelHeader } from "../shared/PanelHeader";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { Input } from "@/components/ui/input";
@@ -97,7 +97,7 @@ export function SensorsPanel() {
   }
 
   return (
-    <ArmedLockOverlay>
+    <ArmedWarningBanner>
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-6">
         <div className="max-w-2xl space-y-4">
           <PanelHeader
@@ -271,6 +271,6 @@ export function SensorsPanel() {
           </div>
         </div>
       </div>
-    </ArmedLockOverlay>
+    </ArmedWarningBanner>
   );
 }

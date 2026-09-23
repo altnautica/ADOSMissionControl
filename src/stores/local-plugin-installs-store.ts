@@ -2,7 +2,7 @@
  * @module LocalPluginInstallsStore
  * @description Browser-local record of plugin installs the operator made
  * over the LAN without a cloud (Convex) session. Mirrors
- * `local-nodes-store`: the GCS works fully local-first (Rule 39), so a
+ * `local-nodes-store`: the GCS works fully local-first, so a
  * plugin installed on a LAN-paired drone (or a GCS-only plugin added to
  * Mission Control) is remembered here and its GCS half mounts from a
  * local source — never requiring sign-in.
@@ -18,7 +18,8 @@
  *     the agent (resolved via `local-nodes-store` by `deviceId`).
  *   - `archive`: a GCS-only plugin with no drone; the bundle is fetched
  *     from the published archive URL (via the same-origin archive proxy)
- *     and extracted client-side.
+ *     and extracted client-side, but only when the bytes still match the
+ *     hash and signer pinned at install.
  *
  * THREAT MODEL: same as `local-nodes-store` — localStorage is plaintext;
  * an XSS on the GCS origin can read these records. They carry no
@@ -31,7 +32,7 @@
 
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-
+import type { ArchivePin } from "@/lib/plugins/archive-pin";
 import type { PluginParameter } from "@/lib/plugins/parameters/schema";
 import type { PairedNodeProfile } from "@/lib/plugins/types";
 
@@ -49,7 +50,7 @@ export interface LocalGcsContribution {
 /** Where the GCS iframe bundle is fetched from for this install. */
 export type LocalPluginBundleSource =
   | { kind: "agent"; deviceId: string; entrypoint: string }
-  | { kind: "archive"; archiveUrl: string; sha256?: string; entrypoint: string };
+  | { kind: "archive"; archiveUrl: string; entrypoint: string; pin: ArchivePin };
 
 export interface LocalPluginInstall {
   pluginId: string;
@@ -152,13 +153,16 @@ export const useLocalPluginInstallsStore = create<LocalPluginInstallsState>()(
       // (some test DOM shims), so resolveStorage feature-detects it and
       // falls back to a no-op store instead of throwing.
       storage: createJSONStorage(resolveStorage),
-      version: 2,
-      // v1 → v2 added optional `gcsParameters` (declarative parameter
-      // contributions) on the install record and optional `profile` on a slot
-      // contribution. Both are additive-optional, so a v1 record stays valid
-      // as-is — the new fields read as undefined until the plugin is
-      // reinstalled with a parameter-bearing or profile-narrowed manifest.
-      migrate: (persisted) => persisted as LocalPluginInstallsState,
+      version: 3,
+      // v1 → v2 added optional `gcsParameters` and a slot `profile`, both
+      // additive. v2 → v3 pins archive installs to their verified bytes; a v2
+      // archive record was never verified, so it is dropped and the plugin
+      // must be reinstalled rather than mounted unchecked.
+      migrate: (persisted, version) => {
+        const state = persisted as LocalPluginInstallsState;
+        if (version >= 3 || !Array.isArray(state?.installs)) return state;
+        return { ...state, installs: state.installs.filter((i) => i.bundle.kind !== "archive") };
+      },
     },
   ),
 );

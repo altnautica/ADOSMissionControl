@@ -99,9 +99,10 @@ export function normalizeRadio(raw: unknown): RadioState | null {
     topology,
     rssiDbm: num(r.rssiDbm),
     bitrateKbps: num(r.bitrateKbps),
-    fecRecovered: numOrZero(r.fecRecovered),
-    fecLost: numOrZero(r.fecLost),
-    packetsLost: numOrZero(r.packetsLost),
+    // Counters the agent sends as null until a reading exists stay unknown.
+    fecRecovered: num(r.fecRecovered),
+    fecLost: num(r.fecLost),
+    packetsLost: num(r.packetsLost),
     // Channel rendezvous + hop surface. Both sides start on the fixed
     // home channel and only hop once the link is up. Optional on the
     // wire; null when absent so the UI can skip a missing row.

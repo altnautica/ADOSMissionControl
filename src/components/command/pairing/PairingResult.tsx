@@ -2,20 +2,16 @@
 
 /**
  * @module PairingResult
- * @description Terminal states. Success cards out the device id and host,
- * error shows the message + retry, expired shows the timeout warning + retry.
+ * @description Terminal states. Success shows the device name and the network
+ * address the agent reported (nothing when it reported none), error shows the
+ * message + retry, expired shows the timeout warning + retry.
  * @license GPL-3.0-only
  */
 
 import { Check, AlertCircle, RotateCcw } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-interface PairedInfo {
-  deviceId: string;
-  name: string;
-  apiKey: string;
-  mdnsHost: string;
-}
+import type { PairedInfo } from "./use-pairing-flow";
 
 interface SuccessProps {
   variant: "success";
@@ -49,7 +45,9 @@ export function PairingResult(props: SuccessProps | ErrorProps | ExpiredProps) {
         <div className="text-center space-y-1">
           <p className="text-sm font-medium text-text-primary">{t("paired")}</p>
           <p className="text-xs text-text-secondary">{props.info.name}</p>
-          <p className="text-[10px] text-text-tertiary font-mono">{props.info.mdnsHost}</p>
+          {props.info.host && (
+            <p className="text-[10px] text-text-tertiary font-mono">{props.info.host}</p>
+          )}
         </div>
         <p className="text-[11px] text-text-tertiary">{t("connectingAutomatically")}</p>
         <p className="text-[11px] text-text-tertiary text-center mt-2 max-w-xs">
@@ -73,7 +71,7 @@ export function PairingResult(props: SuccessProps | ErrorProps | ExpiredProps) {
           {props.canPairLocally && props.onPairLocally && (
             <button
               onClick={props.onPairLocally}
-              className="px-4 py-1.5 text-xs font-medium bg-accent-primary text-white rounded hover:bg-accent-primary/90 transition-colors"
+              className="px-4 py-1.5 text-xs font-medium bg-accent-primary text-bg-primary rounded hover:bg-accent-primary/90 transition-colors"
             >
               {t("pairOnThisNetwork")}
             </button>
@@ -100,7 +98,7 @@ export function PairingResult(props: SuccessProps | ErrorProps | ExpiredProps) {
       </div>
       <button
         onClick={props.onRetry}
-        className="px-4 py-1.5 text-xs font-medium bg-accent-primary text-white rounded hover:bg-accent-primary/90 transition-colors"
+        className="px-4 py-1.5 text-xs font-medium bg-accent-primary text-bg-primary rounded hover:bg-accent-primary/90 transition-colors"
       >
         {t("generateNewCode")}
       </button>

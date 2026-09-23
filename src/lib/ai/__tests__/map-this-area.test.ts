@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { quickSurveyFromBounds, type MapBounds } from "../map-this-area";
+import { quickSurveyFromBounds, QUICK_SURVEY_MAX_PATH_M, type MapBounds } from "../map-this-area";
 import { CAMERA_PROFILES, computeGSD } from "../../patterns/gsd-calculator";
 
 // A small box near Bangalore (~ a few hundred meters on a side).
@@ -91,5 +91,22 @@ describe("quickSurveyFromBounds", () => {
   it("floors spacing at the minimum for tiny altitudes", () => {
     const { config } = quickSurveyFromBounds(BOX, { altitudeM: 0.5, overlapPct: 90 });
     expect(config.lineSpacing).toBeGreaterThanOrEqual(1);
+  });
+
+  it("estimates a small box as a small survey", () => {
+    const { estimate } = quickSurveyFromBounds(BOX, { altitudeM: 50, overlapPct: 70 });
+    // ~430 m tall box at 15 m spacing.
+    expect(estimate.transects).toBeGreaterThan(20);
+    expect(estimate.transects).toBeLessThan(40);
+    expect(estimate.items).toBe(estimate.transects * 2);
+    expect(estimate.pathLengthM).toBeLessThan(QUICK_SURVEY_MAX_PATH_M);
+  });
+
+  it("estimates a zoomed-out viewport far beyond a flyable mission", () => {
+    // Roughly the planner's opening view: ~20 x 15 km.
+    const wide: MapBounds = { north: 13.04, south: 12.9, east: 77.69, west: 77.5 };
+    const { estimate } = quickSurveyFromBounds(wide, { altitudeM: 50, overlapPct: 70 });
+    expect(estimate.items).toBeGreaterThan(1000);
+    expect(estimate.pathLengthM).toBeGreaterThan(QUICK_SURVEY_MAX_PATH_M);
   });
 });

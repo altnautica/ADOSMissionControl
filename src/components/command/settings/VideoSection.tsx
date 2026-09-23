@@ -13,9 +13,12 @@
  *
  * Writer discipline: stream sources and legs are managed on the Cameras
  * tab, so they render read-only here and this page never runs a second
- * writer for the same keys. The writable fields (wire codec preference,
- * encode bitrate) bind to the shared config writer, so every change is
- * validated by the agent and read back from the persisted config.
+ * writer for the same keys. The single camera block's orientation and
+ * bitrate are writable only on a single-stream node: once `video.cameras`
+ * lists legs, the pipeline encodes each leg from its own settings and never
+ * reads the camera block, so those writers are replaced by a pointer to the
+ * per-leg controls. There is no wire-codec control: the encoder sends H.264
+ * only and nothing on the node reads a codec preference.
  * @license GPL-3.0-only
  */
 
@@ -141,12 +144,7 @@ export function VideoSection({
   if (profile !== "drone") return null;
 
   const legs = parseCameraLegs(config);
-
-  const codecPrefOptions = [
-    { value: "auto", label: t("codecPrefAuto") },
-    { value: "h264", label: "H.264" },
-    { value: "h265", label: "H.265" },
-  ];
+  const multiLeg = legs !== null && legs.length > 0;
 
   return (
     <Section title={t("title")} icon={Video} blurb={t("blurb")}>
@@ -161,7 +159,7 @@ export function VideoSection({
             {t("camerasManagedHint")}
           </p>
         </div>
-        {legs !== null && legs.length > 0 ? (
+        {multiLeg ? (
           <ul className="space-y-1.5">
             {legs.map((leg, idx) => (
               <li
@@ -228,71 +226,70 @@ export function VideoSection({
           </div>
         )}
 
-        {/* Image orientation — writable, applies to the live encoder. */}
-        <div className="space-y-4 border-t border-border-default pt-3">
-          <div>
-            <div className="text-xs text-text-secondary">
-              {t("orientationTitle")}
+        {multiLeg ? (
+          <p className="border-t border-border-default pt-3 text-[11px] text-text-tertiary">
+            {t("perLegManagedHint")}
+          </p>
+        ) : (
+          <>
+            {/* Image orientation — writable, applies to the live encoder. */}
+            <div className="space-y-4 border-t border-border-default pt-3">
+              <div>
+                <div className="text-xs text-text-secondary">
+                  {t("orientationTitle")}
+                </div>
+                <p className="mt-0.5 text-[11px] text-text-tertiary">
+                  {t("orientationHint")}
+                </p>
+              </div>
+              <ConfigSelectField
+                configKey="video.camera.rotation"
+                label={t("rotationLabel")}
+                hint={t("rotationHint")}
+                options={[
+                  { value: "0", label: t("rotation0") },
+                  { value: "90", label: "90°" },
+                  { value: "180", label: "180°" },
+                  { value: "270", label: "270°" },
+                ]}
+                placeholder={t("rotationDefault")}
+                config={config}
+                readOnly={readOnly}
+                setValue={setValue}
+              />
+              <ConfigToggleField
+                configKey="video.camera.hflip"
+                label={t("hflipLabel")}
+                hint={t("hflipHint")}
+                config={config}
+                readOnly={readOnly}
+                setValue={setValue}
+              />
+              <ConfigToggleField
+                configKey="video.camera.vflip"
+                label={t("vflipLabel")}
+                hint={t("vflipHint")}
+                config={config}
+                readOnly={readOnly}
+                setValue={setValue}
+              />
             </div>
-            <p className="mt-0.5 text-[11px] text-text-tertiary">
-              {t("orientationHint")}
-            </p>
-          </div>
-          <ConfigSelectField
-            configKey="video.camera.rotation"
-            label={t("rotationLabel")}
-            hint={t("rotationHint")}
-            options={[
-              { value: "0", label: t("rotation0") },
-              { value: "90", label: "90°" },
-              { value: "180", label: "180°" },
-              { value: "270", label: "270°" },
-            ]}
-            placeholder={t("rotationDefault")}
-            config={config}
-            readOnly={readOnly}
-            setValue={setValue}
-          />
-          <ConfigToggleField
-            configKey="video.camera.hflip"
-            label={t("hflipLabel")}
-            hint={t("hflipHint")}
-            config={config}
-            readOnly={readOnly}
-            setValue={setValue}
-          />
-          <ConfigToggleField
-            configKey="video.camera.vflip"
-            label={t("vflipLabel")}
-            hint={t("vflipHint")}
-            config={config}
-            readOnly={readOnly}
-            setValue={setValue}
-          />
-        </div>
 
-        {/* Encode preferences — writable, no other writer owns them. */}
-        <div className="space-y-4 border-t border-border-default pt-3">
-          <ConfigSelectField
-            configKey="video.camera.codec_preference"
-            label={t("codecPrefLabel")}
-            hint={t("codecPrefHint")}
-            options={codecPrefOptions}
-            config={config}
-            readOnly={readOnly}
-            setValue={setValue}
-          />
-          <ConfigIntField
-            configKey="video.camera.bitrate_kbps"
-            label={t("bitrateLabel")}
-            hint={t("bitrateHint")}
-            min={250}
-            max={20000}
-            config={config}
-            readOnly={readOnly}
-            setValue={setValue}
-          />
-        </div>
+            {/* Encode bitrate — writable, no other writer owns it. */}
+            <div className="space-y-4 border-t border-border-default pt-3">
+              <ConfigIntField
+                configKey="video.camera.bitrate_kbps"
+                label={t("bitrateLabel")}
+                hint={t("bitrateHint")}
+                min={250}
+                max={20000}
+                config={config}
+                readOnly={readOnly}
+                setValue={setValue}
+              />
+            </div>
+          </>
+        )}
       </div>
     </Section>
   );

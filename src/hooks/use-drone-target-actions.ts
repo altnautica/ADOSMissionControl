@@ -60,7 +60,7 @@ export function useDroneTargetActions(
     enabled: isAuthenticated && Boolean(agentId),
   });
 
-  // Local-first source (Rule 39): the agent's /plugins detail carries the
+  // Local-first source: the agent's /plugins detail carries the
   // denormalized target actions, so a signed-out operator's cockpit still
   // surfaces a plugin's target actions over the LAN with no cloud.
   const localDetail = useLocalAgentPlugins(agentId ?? null);

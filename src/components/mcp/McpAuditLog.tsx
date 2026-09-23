@@ -3,7 +3,7 @@
  * @description The MCP audit log: one row per tool call an AI client made through
  * the connector, newest first, with decision / node / credential / result. Reads
  * the cloud mirror the MCP server pushes; filters client-side. Honest empty state,
- * never fabricated rows (Rule 44). The mirror is self-reported by the operator's
+ * never fabricated rows (no fabricated reading). The mirror is self-reported by the operator's
  * connector, so a caveat notes it is not an independent record.
  * @license GPL-3.0-only
  */
@@ -14,7 +14,7 @@ import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { ScrollText } from "lucide-react";
 import { communityApi } from "@/lib/community-api";
-import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
+import { useConvexSkipQueryState } from "@/hooks/use-convex-skip-query";
 import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { formatDate } from "@/lib/utils";
@@ -47,10 +47,14 @@ const DECISION_CLASS: Record<AuditDecision, string> = {
 
 export function McpAuditLog({ credentials }: { credentials: McpTokenRow[] }) {
   const t = useTranslations("mcp");
-  const live = useConvexSkipQuery(communityApi.mcpTokens.recentAudit, {
+  const audit = useConvexSkipQueryState(communityApi.mcpTokens.recentAudit, {
     enabled: true,
     args: { limit: 200 },
-  }) as McpAuditRow[] | undefined;
+  });
+  const live = audit.data as McpAuditRow[] | undefined;
+  // Only an answered query may be read as "no activity". A query still loading,
+  // skipped (no deployment) or failed on the server has no rows to show.
+  const answered = audit.state === "ready" && live !== undefined;
 
   const rows = useMemo<McpAuditRow[]>(() => live ?? [], [live]);
 
@@ -120,7 +124,13 @@ export function McpAuditLog({ credentials }: { credentials: McpTokenRow[] }) {
         <div className="flex flex-col items-center gap-2 rounded-lg border border-border-default bg-bg-secondary py-12 text-center">
           <ScrollText size={22} className="text-text-tertiary" />
           <p className="text-sm text-text-secondary">
-            {rows.length === 0 ? t("audit.empty") : t("audit.noMatch")}
+            {!answered
+              ? audit.state === "loading"
+                ? t("audit.loading")
+                : t("audit.unavailable")
+              : rows.length === 0
+                ? t("audit.empty")
+                : t("audit.noMatch")}
           </p>
         </div>
       ) : (

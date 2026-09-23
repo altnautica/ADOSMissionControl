@@ -34,7 +34,11 @@ export interface TestUtilitiesSectionProps {
   client?:
     | Pick<
         DroneCanClient,
-        "getNodeInfo" | "sendEscRawCommand" | "subscribeFix2" | "subscribeMag2"
+        | "getNodeInfo"
+        | "onNodeStatus"
+        | "sendEscRawCommand"
+        | "subscribeFix2"
+        | "subscribeMag2"
       >
     | null;
   transport?: Pick<CanTransport, "send"> | null;

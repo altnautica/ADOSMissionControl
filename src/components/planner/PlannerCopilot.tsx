@@ -16,7 +16,8 @@ import { useTranslations } from "next-intl";
 import { Sparkles, SquareDashed } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { parseMissionIntent, type MissionIntent, type MissionPattern } from "@/lib/nl-intent-parser";
-import { quickSurveyFromBounds } from "@/lib/ai/map-this-area";
+import { quickSurveyFromBounds, QUICK_SURVEY_MAX_PATH_M, type QuickSurveyEstimate } from "@/lib/ai/map-this-area";
+import { DEFAULT_FC_ITEM_LIMIT } from "@/lib/validation/fc-item-count";
 import {
   CAMERA_PROFILES,
   computeLineSpacing,
@@ -121,21 +122,25 @@ function findCamera(name: string | undefined): CameraProfile | undefined {
   return name ? CAMERA_PROFILES.find((c) => c.name === name) : undefined;
 }
 
+/** Side / front overlap the survey controls show when none is stored, percent. */
+const DEFAULT_SIDELAP_PCT = 60;
+const DEFAULT_FRONTLAP_PCT = 70;
+
 /**
- * Apply an overlap percentage to the survey config. Sets the overlap UI fields
- * and, when a camera is selected, recomputes line spacing + trigger distance
- * exactly as the manual overlap controls do. With no camera we set only the
- * overlap fields (no fabricated spacing).
+ * Set the survey overlap and, when a camera is selected, recompute line
+ * spacing (from sidelap) and trigger distance (from frontlap) at the current
+ * altitude, exactly as the manual survey controls do. With no camera only the
+ * overlap fields are set (no fabricated spacing).
  */
-function applyOverlapToSurvey(overlapPct: number): void {
+function applySurveyOverlap(sidelapPct: number, frontlapPct: number): void {
   const store = usePatternStore.getState();
   const cfg = store.surveyConfig as SurveyConfigExt;
   const camera = findCamera(cfg._cameraName);
-  const update: SurveyConfigExt = { _sidelap: overlapPct, _frontlap: overlapPct };
+  const update: SurveyConfigExt = { _sidelap: sidelapPct, _frontlap: frontlapPct };
   if (camera) {
     const alt = cfg.altitude ?? DEFAULT_MAP_ALTITUDE_M;
-    update.lineSpacing = Math.round(computeLineSpacing(alt, camera, overlapPct / 100) * 10) / 10;
-    update.cameraTriggerDistance = Math.round(computeTriggerDistance(alt, camera, overlapPct / 100) * 10) / 10;
+    update.lineSpacing = Math.round(computeLineSpacing(alt, camera, sidelapPct / 100) * 10) / 10;
+    update.cameraTriggerDistance = Math.round(computeTriggerDistance(alt, camera, frontlapPct / 100) * 10) / 10;
   }
   store.updateSurveyConfig(update as Partial<SurveyConfig>);
 }
@@ -146,7 +151,7 @@ function applyOverlapToSurvey(overlapPct: number): void {
  * the type genuinely changes — tuning the active pattern's numbers never wipes
  * the operator's geometry.
  */
-function applyPlan(plan: CopilotPlan): AppliedSummary {
+export function applyCopilotPlan(plan: CopilotPlan): AppliedSummary {
   const store = usePatternStore.getState();
   const applied: AppliedSummary = {};
 
@@ -181,8 +186,15 @@ function applyPlan(plan: CopilotPlan): AppliedSummary {
   }
 
   if (plan.overlapPct !== undefined) {
-    applyOverlapToSurvey(plan.overlapPct);
+    applySurveyOverlap(plan.overlapPct, plan.overlapPct);
     applied.overlapPct = plan.overlapPct;
+  } else if (numeric.altitude !== undefined) {
+    // The camera footprint scales with altitude: keep the stored overlap true
+    // at the new height rather than leaving spacing tuned for the old one.
+    const cfg = usePatternStore.getState().surveyConfig as SurveyConfigExt;
+    if (findCamera(cfg._cameraName)) {
+      applySurveyOverlap(cfg._sidelap ?? DEFAULT_SIDELAP_PCT, cfg._frontlap ?? DEFAULT_FRONTLAP_PCT);
+    }
   }
 
   return applied;
@@ -192,7 +204,8 @@ function applyPlan(plan: CopilotPlan): AppliedSummary {
 type Feedback =
   | { kind: "idle" }
   | { kind: "applied"; intent: MissionIntent; plan: CopilotPlan; applied: AppliedSummary }
-  | { kind: "mapped"; approx: boolean; altitudeM: number; overlapPct: number }
+  | { kind: "mapped"; approx: boolean; altitudeM: number; overlapPct: number; estimate: QuickSurveyEstimate }
+  | { kind: "tooLarge"; estimate: QuickSurveyEstimate }
   | { kind: "notUnderstood" }
   | { kind: "noMapArea" };
 
@@ -224,7 +237,7 @@ export function PlannerCopilot() {
       }
       setLastIntent(intent);
       const plan = planCopilotActions(intent);
-      const applied = applyPlan(plan);
+      const applied = applyCopilotPlan(plan);
       setFeedback({ kind: "applied", intent, plan, applied });
     },
     [text],
@@ -257,7 +270,13 @@ export function PlannerCopilot() {
     const overlapPct = lastIntent?.overlapPct ?? surveyCfg._sidelap ?? DEFAULT_MAP_OVERLAP_PCT;
     const camera = findCamera(surveyCfg._cameraName);
 
-    const { polygon, config } = quickSurveyFromBounds(bounds, { altitudeM, overlapPct, camera });
+    const { polygon, config, estimate } = quickSurveyFromBounds(bounds, { altitudeM, overlapPct, camera });
+    // A zoomed-out viewport would generate a mission no FC can hold and no
+    // battery can fly; refuse it before touching the plan.
+    if (estimate.items > DEFAULT_FC_ITEM_LIMIT || estimate.pathLengthM > QUICK_SURVEY_MAX_PATH_M) {
+      setFeedback({ kind: "tooLarge", estimate });
+      return;
+    }
 
     // Fresh slate: setPatternType clears drawn shapes, then add our rectangle
     // (mirrors SurveyConfigSection's Quick Rect via the drawing store).
@@ -272,7 +291,7 @@ export function PlannerCopilot() {
     store.generate();
 
     setLastIntent(null);
-    setFeedback({ kind: "mapped", approx, altitudeM, overlapPct });
+    setFeedback({ kind: "mapped", approx, altitudeM, overlapPct, estimate });
   }, [lastIntent]);
 
   return (
@@ -320,9 +339,25 @@ export function PlannerCopilot() {
         <p className="text-[10px] text-status-warning">{t("copilot.noMapArea")}</p>
       )}
 
+      {feedback.kind === "tooLarge" && (
+        <p className="text-[10px] text-status-warning">
+          {t("copilot.tooLarge", {
+            items: feedback.estimate.items,
+            km: (feedback.estimate.pathLengthM / 1000).toFixed(1),
+          })}
+        </p>
+      )}
+
       {feedback.kind === "mapped" && (
         <div className="flex flex-col gap-1">
           <p className="text-[10px] text-status-success">{t("copilot.mappedSummary")}</p>
+          <p className="text-[10px] text-text-tertiary">
+            {t("copilot.mappedEstimate", {
+              lines: feedback.estimate.transects,
+              items: feedback.estimate.items,
+              km: (feedback.estimate.pathLengthM / 1000).toFixed(1),
+            })}
+          </p>
           <div className="flex flex-wrap gap-1">
             <Chip label={t("copilot.chipAltitude", { value: feedback.altitudeM })} />
             <Chip label={t("copilot.chipOverlap", { value: feedback.overlapPct })} />

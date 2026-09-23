@@ -217,12 +217,29 @@ describe("claimPairingCodeAnon", () => {
     }
 
     // The next one is refused before the lookup happens.
-    await expect(
-      invoke(pairing.claimPairingCodeAnon, ctx, {
+    expect(
+      await invoke(pairing.claimPairingCodeAnon, ctx, {
         code: codes[CLAIM_POLICY.maxAttempts],
         browserSessionSecret: secret,
       }),
-    ).rejects.toThrow(/rate_limited/);
+    ).toMatchObject({ error: "rate_limited" });
+  });
+
+  it("keeps the lockout it recorded when it refuses", async () => {
+    // A mutation that throws is rolled back, so a limiter that throws after
+    // writing its lockout never keeps one. The refusal must commit.
+    const ctx = makeCtx();
+    const secret = await anonSession(ctx);
+    const bucket = `claim:session:${await sha256Hex(secret)}`;
+    for (let i = 0; i <= CLAIM_POLICY.maxAttempts; i++) {
+      await invoke(pairing.claimPairingCodeAnon, ctx, {
+        code: "AAAA22",
+        browserSessionSecret: secret,
+      }).catch(() => undefined);
+    }
+    const row = ctx.db.rows("cmd_authAttempts").find((r) => r.key === bucket);
+    expect(row?.lockedUntil).toBeGreaterThan(Date.now());
+    expect(row?.attempts).toBe(CLAIM_POLICY.maxAttempts + 1);
   });
 
   it("clears the bucket after a genuine claim so an operator never ladders", async () => {
@@ -375,13 +392,13 @@ describe("registerAgent (internal, agent-facing)", () => {
         pairingCode: "ZZZZ99",
       });
     }
-    await expect(
-      invoke(pairing.registerAgent, ctx, {
+    expect(
+      await invoke(pairing.registerAgent, ctx, {
         ...base,
         deviceId: "probe-overflow",
         pairingCode: "ZZZZ99",
       }),
-    ).rejects.toThrow(/rate_limited/);
+    ).toMatchObject({ error: "rate_limited" });
   });
 
   it("still auto-matches a legitimate pre-generated code", async () => {
@@ -533,7 +550,7 @@ describe("contactSubmissions.submit", () => {
     for (let i = 0; i < 3; i++) {
       await invoke(contact.submit, ctx, body);
     }
-    await expect(invoke(contact.submit, ctx, body)).rejects.toThrow(/rate_limited/);
+    expect(await invoke(contact.submit, ctx, body)).toMatchObject({ error: "rate_limited" });
     expect(ctx.db.rows("contactSubmissions")).toHaveLength(3);
     expect(ctx.scheduled).toHaveLength(3);
   });

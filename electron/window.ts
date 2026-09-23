@@ -116,7 +116,12 @@ export function applyNavigationPolicy(
   port: number,
 ): void {
   contents.setWindowOpenHandler(({ url }) => {
-    if (isLocalAppUrl(url, port)) {
+    // `window.open("", name)` (the detached HUD and telemetry deck) opens an
+    // about:blank popup that the opener renders into through a portal. It
+    // loads nothing remote, gets this same policy through
+    // `web-contents-created`, and the socket IPC answers only the main
+    // window's own frame, so it gains no privilege by being allowed.
+    if (url === "about:blank" || isLocalAppUrl(url, port)) {
       return { action: "allow" };
     }
     openExternalUrl(url);

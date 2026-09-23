@@ -1,8 +1,12 @@
 "use client";
 
+import type { ScaledImuCallback } from "@/lib/protocol/types/callbacks";
+import { CHART_GRID, CHART_TICK } from "../chart-theme";
+
 export type SourceTab = "gyro" | "accel" | "mag" | "vibration" | "ekf";
 export type TimeWindow = 5 | 15 | 30 | 60;
 
+/** One IMU reading in display units: deg/s, m/s², milligauss. */
 export interface ImuSample {
   timestamp: number;
   xgyro: number;
@@ -16,6 +20,30 @@ export interface ImuSample {
   zmag: number;
 }
 
+const STANDARD_GRAVITY = 9.80665;
+const MRAD_TO_DEG = 180 / Math.PI / 1000;
+const MG_TO_MS2 = STANDARD_GRAVITY / 1000;
+export const RAD_TO_DEG = 180 / Math.PI;
+
+/**
+ * Convert a SCALED_IMU/2/3 reading (acceleration in mG, angular rate in
+ * mrad/s, field in mgauss) to display units.
+ */
+export function imuSampleFromScaled(d: Parameters<ScaledImuCallback>[0]): ImuSample {
+  return {
+    timestamp: d.timestamp,
+    xgyro: d.xgyro * MRAD_TO_DEG,
+    ygyro: d.ygyro * MRAD_TO_DEG,
+    zgyro: d.zgyro * MRAD_TO_DEG,
+    xacc: d.xacc * MG_TO_MS2,
+    yacc: d.yacc * MG_TO_MS2,
+    zacc: d.zacc * MG_TO_MS2,
+    xmag: d.xmag,
+    ymag: d.ymag,
+    zmag: d.zmag,
+  };
+}
+
 export const TIME_WINDOWS: TimeWindow[] = [5, 15, 30, 60];
 export const TIME_WINDOW_OPTIONS = TIME_WINDOWS.map((w) => ({ value: String(w), label: `${w}s` }));
 export const MAX_SAMPLES = 1200;
@@ -27,12 +55,6 @@ export const SOURCE_TABS: { key: SourceTab; label: string }[] = [
   { key: "vibration", label: "Vibration" },
   { key: "ekf", label: "EKF" },
 ];
-
-export const AXIS_COLORS = {
-  x: "#3A82FF",
-  y: "#22c55e",
-  z: "#f59e0b",
-};
 
 export function WaveformChart({
   data,
@@ -80,11 +102,11 @@ export function WaveformChart({
       <span className="text-[10px] font-mono text-text-tertiary w-4">{label}</span>
       <svg viewBox={`0 0 ${width} ${height}`} className="flex-1 bg-bg-tertiary/30 rounded" style={{ height }} preserveAspectRatio="none">
         {minV <= 0 && maxV >= 0 && (
-          <line x1="0" y1={height - pad - ((0 - minV) / range) * (height - pad * 2)} x2={width} y2={height - pad - ((0 - minV) / range) * (height - pad * 2)} stroke="var(--border-default)" strokeWidth="0.5" strokeDasharray="4,4" />
+          <line x1="0" y1={height - pad - ((0 - minV) / range) * (height - pad * 2)} x2={width} y2={height - pad - ((0 - minV) / range) * (height - pad * 2)} stroke={CHART_GRID} strokeWidth="0.5" strokeDasharray="4,4" />
         )}
         <polyline points={points} fill="none" stroke={color} strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
-        <text x={2} y={10} fill="var(--text-tertiary)" fontSize="8" fontFamily="monospace">{maxV.toFixed(1)}</text>
-        <text x={2} y={height - 2} fill="var(--text-tertiary)" fontSize="8" fontFamily="monospace">{minV.toFixed(1)}</text>
+        <text x={2} y={10} fill={CHART_TICK} fontSize="8" fontFamily="monospace">{maxV.toFixed(1)}</text>
+        <text x={2} y={height - 2} fill={CHART_TICK} fontSize="8" fontFamily="monospace">{minV.toFixed(1)}</text>
       </svg>
       <span className="text-[9px] font-mono text-text-tertiary w-16 text-right tabular-nums">{latest.toFixed(1)} {unit}</span>
     </div>

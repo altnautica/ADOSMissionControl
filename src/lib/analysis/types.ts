@@ -7,7 +7,8 @@
  * @license GPL-3.0-only
  */
 
-import type { VehicleType } from "@/components/fc/pid/pid-constants";
+/** Vehicle family a PID tuning session and its safety ranges apply to. */
+export type TuningVehicleType = "copter" | "plane" | "rover";
 
 // ---------------------------------------------------------------------------
 // Time series
@@ -176,7 +177,8 @@ export interface VibrationSummary {
   maxX: number;
   maxY: number;
   maxZ: number;
-  clipCount: number;
+  /** Clipping events summed over every accelerometer; null when the log has no clip counter. */
+  clipCount: number | null;
   /** Overall vibe level: "good" (<15), "marginal" (15-30), "bad" (>30). */
   level: "good" | "marginal" | "bad";
 }
@@ -250,7 +252,7 @@ export interface AiRecommendation {
 
 /** Request payload sent to the AI analysis endpoint. */
 export interface AiAnalysisRequest {
-  vehicleType: VehicleType;
+  vehicleType: TuningVehicleType;
   currentParams: Record<string, number>;
   analysisMetrics: {
     tuneScore: number | null;

@@ -109,6 +109,28 @@ describe("applied patterns validate and sequence their actions after their waypo
     expect(legs[legs.length - 1]).toBe(false);
   });
 
+  it("structure scan: each layer commands the gimbal pitch with DO_MOUNT_CONTROL, not a waypoint param", () => {
+    const rows = generateStructureScan({
+      structurePolygon: [
+        [CENTER[0], CENTER[1]], [CENTER[0], CENTER[1] + 0.0002],
+        [CENTER[0] + 0.0002, CENTER[1] + 0.0002], [CENTER[0] + 0.0002, CENTER[1]],
+      ],
+      bottomAlt: 15, topAlt: 45, layerSpacing: 15, scanDistance: 30, gimbalPitch: -20,
+      pointsPerLayer: 8, cameraTriggerDistance: 0, speed: 3, direction: "bottom-up",
+    }).waypoints;
+    expect(blockingCodes(rows)).toEqual([]);
+
+    const items = uploaded(rows);
+    const mounts = items.filter((it) => it.command === cmdMap.DO_MOUNT_CONTROL);
+    expect(mounts).toHaveLength(3); // 15, 30, 45 m layers
+    for (const m of mounts) expect(m.param1).toBe(-20);
+    // The first layer's gimbal command follows its ROI, so the ROI cannot override it.
+    const firstMount = items.indexOf(mounts[0]);
+    expect(items.findIndex((it) => it.command === cmdMap.ROI)).toBeLessThan(firstMount);
+    // No orbit waypoint carries the pitch in its pass-radius slot.
+    for (const wp of items.filter((it) => it.command === cmdMap.WAYPOINT)) expect(wp.param3).toBe(0);
+  });
+
   it("camera survey: the camera runs along every transect and never across a turnaround", () => {
     const rows = generateSurvey({
       polygon: [[12.970, 77.590], [12.970, 77.594], [12.974, 77.594], [12.974, 77.590]],

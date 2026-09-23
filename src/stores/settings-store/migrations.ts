@@ -298,5 +298,24 @@ export function migrateSettings(
     state.customTileMaxZoom = 19;
     state.customTileAttribution = "";
   }
+  if (version < 49) {
+    // v49: per-loadout record of plugin skills whose suggested binding was
+    // already offered (`seededSkillIds`). A plugin skill already sitting in a
+    // slot counts as seeded, so an operator's later unbind sticks; a plugin
+    // skill the operator removed before this version cannot be recovered and
+    // is offered once more. Plugin skill ids are `<pluginId>:<localId>`;
+    // built-in ids never carry a colon.
+    const loadouts = state.loadouts as
+      | Record<string, Partial<Loadout>>
+      | undefined;
+    if (loadouts) {
+      for (const loadout of Object.values(loadouts)) {
+        if (!loadout || Array.isArray(loadout.seededSkillIds)) continue;
+        loadout.seededSkillIds = (loadout.slots ?? [])
+          .map((slot) => slot.skillId)
+          .filter((id): id is string => id !== null && id !== undefined && id.includes(":"));
+      }
+    }
+  }
   return state as unknown as SettingsStoreState;
 }

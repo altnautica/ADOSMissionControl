@@ -14,7 +14,7 @@
  *
  * The "Enter SLCAN mode" button at the foot of the SLCAN card hands off
  * to the SLCAN flash arbiter (`enterSlcanMode`). The arbiter writes the
- * four `CAN_SLCAN_*` params, decides between reboot-and-poll (F4) or
+ * `CAN_SLCAN_*` routing params, decides between reboot-and-poll (F4) or
  * MAV_CMD_CAN_FORWARD hot-switch (F7/H7/G4), opens the SLCAN session, and
  * returns an `exitFn` for the page to invoke when the operator clicks
  * "Resume MAVLink" (driven from the top-of-shell banner).
@@ -32,8 +32,10 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useFcPanelState } from "@/hooks/use-fc-panel-state";
 import { useParamPanelActions } from "@/hooks/use-param-panel-actions";
-import { enterSlcanMode } from "@/lib/protocol/transport/slcan-flash-arbiter";
+import { enterSlcanMode, SLCAN_TIMEOUT_MAX_S } from "@/lib/protocol/transport/slcan-flash-arbiter";
+import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneStore } from "@/stores/drone-store";
 import { useSlcanModeStore } from "@/stores/slcan-mode-store";
 
 const BUS_SETUP_PARAMS = [
@@ -53,11 +55,11 @@ const BUS_SETUP_PARAMS = [
   "CAN_SLCAN_CPORT",
   "CAN_SLCAN_SERNUM",
   "CAN_SLCAN_TIMOUT",
-  "CAN_SLCAN_OVRIDE",
+  "CAN_SLCAN_SDELAY",
 ] as const;
 
 // Every parameter is treated as optional — non-CAN-capable firmware
-// builds may not expose all 17 names and we don't want a missing
+// builds may not expose every name and we don't want a missing
 // FDBITRATE to throw the whole panel into an error state.
 const OPTIONAL_BUS_SETUP_PARAMS = [...BUS_SETUP_PARAMS] as string[];
 
@@ -163,7 +165,10 @@ export function BusSetupSection() {
 
   const [slcanConfirmOpen, setSlcanConfirmOpen] = useState(false);
   const [rebootPending, setRebootPending] = useState(false);
-  const [rebootStatus, setRebootStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [rebootStatus, setRebootStatus] = useState<"idle" | "sending" | "accepted" | "error">("idle");
+  const [rebootError, setRebootError] = useState<string | null>(null);
+  const [slcanNeedsUsb, setSlcanNeedsUsb] = useState(false);
+  const { isHardBlocked, hardBlockMessage } = useArmedLock();
 
   const get = (name: string, fallback = "0") => String(params.get(name) ?? fallback);
   const setNum = (name: string, v: string) => setLocalValue(name, Number(v) || 0);
@@ -186,23 +191,27 @@ export function BusSetupSection() {
     const protocol = getProtocol();
     const drone = useDroneManager.getState().getSelectedDrone();
     if (!protocol || !drone) return;
+    // Entering SLCAN drops the MAVLink link to the FC; never do that to an
+    // armed vehicle. Re-read the arm state here in case it changed while
+    // the confirm dialog was open.
+    if (useDroneStore.getState().armState === "armed") return;
     if (drone.transport?.type !== "webserial") {
-      setRebootStatus("error");
+      setSlcanNeedsUsb(true);
       return;
     }
+    setSlcanNeedsUsb(false);
     // Mirror the desired params locally for UI continuity. The arbiter
-    // writes the same four params on the FC before flipping the mode.
+    // writes the same params on the FC before flipping the mode.
     setLocalValue("CAN_SLCAN_CPORT", 1);
     setLocalValue("CAN_SLCAN_SERNUM", 0);
-    setLocalValue("CAN_SLCAN_TIMOUT", 300);
-    setLocalValue("CAN_SLCAN_OVRIDE", 1);
+    setLocalValue("CAN_SLCAN_TIMOUT", SLCAN_TIMEOUT_MAX_S);
     try {
       await enterSlcanMode({
         protocol,
         droneId: drone.id,
         bus: 1,
         bitrate: 1_000_000,
-        timeoutSec: 300,
+        timeoutSec: SLCAN_TIMEOUT_MAX_S,
       });
       setRebootPending(false);
     } catch {
@@ -213,14 +222,24 @@ export function BusSetupSection() {
 
   const rebootFc = async () => {
     const protocol = getProtocol();
-    if (!protocol) return;
+    if (!protocol?.sendCommand) return;
+    if (useDroneStore.getState().armState === "armed") return;
     setRebootStatus("sending");
+    setRebootError(null);
     try {
-      await protocol.reboot();
-      setRebootStatus("sent");
-      setRebootPending(false);
-    } catch {
+      // MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN (246), param1 = 1 (reboot autopilot),
+      // sent with an ACK wait so an FC refusal (e.g. armed) is reported.
+      const result = await protocol.sendCommand(246, [1, 0, 0, 0, 0, 0, 0]);
+      if (result.success) {
+        setRebootStatus("accepted");
+        setRebootPending(false);
+      } else {
+        setRebootStatus("error");
+        setRebootError(result.message);
+      }
+    } catch (err) {
       setRebootStatus("error");
+      setRebootError(err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -383,18 +402,11 @@ export function BusSetupSection() {
             </ParamCell>
 
             <ParamCell label={labelFor("CAN_SLCAN_TIMOUT")} description={descFor("CAN_SLCAN_TIMOUT")} missing={isMissing("CAN_SLCAN_TIMOUT")}>
-              <Input type="number" step={1} min={0} max={127} unit="s" value={get("CAN_SLCAN_TIMOUT")} onChange={(e) => setNum("CAN_SLCAN_TIMOUT", e.target.value)} />
+              <Input type="number" step={1} min={0} max={SLCAN_TIMEOUT_MAX_S} unit="s" value={get("CAN_SLCAN_TIMOUT")} onChange={(e) => setNum("CAN_SLCAN_TIMOUT", e.target.value)} />
             </ParamCell>
 
-            <ParamCell label={labelFor("CAN_SLCAN_OVRIDE")} description={descFor("CAN_SLCAN_OVRIDE")} missing={isMissing("CAN_SLCAN_OVRIDE")}>
-              <Select
-                options={[
-                  { value: "0", label: "0 — Off" },
-                  { value: "1", label: "1 — Override on" },
-                ]}
-                value={get("CAN_SLCAN_OVRIDE")}
-                onChange={(v) => setNum("CAN_SLCAN_OVRIDE", v)}
-              />
+            <ParamCell label={labelFor("CAN_SLCAN_SDELAY")} description={descFor("CAN_SLCAN_SDELAY")} missing={isMissing("CAN_SLCAN_SDELAY")}>
+              <Input type="number" step={1} min={0} max={127} unit="s" value={get("CAN_SLCAN_SDELAY", "1")} onChange={(e) => setNum("CAN_SLCAN_SDELAY", e.target.value)} />
             </ParamCell>
           </div>
 
@@ -406,12 +418,20 @@ export function BusSetupSection() {
               onClick={() => setSlcanConfirmOpen(true)}
               disabled={
                 !connected ||
+                isHardBlocked ||
                 slcanState !== "IDLE" ||
                 selectedDrone?.transport?.type !== "webserial"
               }
+              title={isHardBlocked ? hardBlockMessage : undefined}
             >
               {t("enterSlcan")}
             </Button>
+            {isHardBlocked && (
+              <p className="text-[10px] text-status-warning mt-1">{hardBlockMessage}</p>
+            )}
+            {slcanNeedsUsb && (
+              <p className="text-[10px] text-status-error mt-1">{t("slcanNeedsUsb")}</p>
+            )}
           </div>
         </div>
       </Card>
@@ -445,18 +465,22 @@ export function BusSetupSection() {
               size="sm"
               icon={<Power size={12} />}
               onClick={rebootFc}
-              disabled={!connected || rebootStatus === "sending"}
+              disabled={!connected || isHardBlocked || rebootStatus === "sending"}
+              title={isHardBlocked ? hardBlockMessage : undefined}
               loading={rebootStatus === "sending"}
             >
               {t("rebootFc")}
             </Button>
           </>
         )}
-        {rebootStatus === "sent" && (
-          <span className="text-[10px] text-status-success">{t("rebootSent")}</span>
+        {rebootStatus === "accepted" && (
+          <span className="text-[10px] text-status-success">{t("rebootAccepted")}</span>
         )}
         {rebootStatus === "error" && (
-          <span className="text-[10px] text-status-error">{t("rebootFailed")}</span>
+          <span className="text-[10px] text-status-error">
+            {t("rebootFailed")}
+            {rebootError ? ` (${rebootError})` : ""}
+          </span>
         )}
       </div>
 

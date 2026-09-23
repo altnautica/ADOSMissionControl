@@ -7,7 +7,13 @@
 
 import { create } from "zustand";
 import { downloadTiles, type DownloadProgress, type DownloadResult } from "@/lib/tile-downloader";
-import { generateTileUrls, type LatLngBounds, type TileProvider } from "@/lib/tile-math";
+import { generateTileUrls, totalTileCount, type LatLngBounds, type TileProvider } from "@/lib/tile-math";
+
+/**
+ * Most tiles one download may fetch. Above this the area is a zoomed-out view
+ * with a deep zoom range, not a flying area; the panel disables the download.
+ */
+export const MAX_DOWNLOAD_TILES = 250_000;
 
 interface TileDownloadState {
   isDownloading: boolean;
@@ -36,23 +42,24 @@ export const useTileDownloadStore = create<TileDownloadState>((set, get) => ({
   startDownload: async (bounds, zMin, zMax, provider) => {
     if (get().isDownloading) return;
 
-    // Collect all URLs into array (generator → array for total count)
-    const urls: string[] = [];
-    for (const url of generateTileUrls(bounds, zMin, zMax, provider)) {
-      urls.push(url);
+    const total = totalTileCount(bounds, zMin, zMax);
+    if (total > MAX_DOWNLOAD_TILES) {
+      set({ result: null, error: `Too many tiles (${total.toLocaleString()}); the limit is ${MAX_DOWNLOAD_TILES.toLocaleString()}` });
+      return;
     }
 
     abortController = new AbortController();
     set({
       isDownloading: true,
-      progress: { completed: 0, total: urls.length, bytes: 0, skipped: 0, failed: 0 },
+      progress: { completed: 0, total, bytes: 0, skipped: 0, failed: 0 },
       result: null,
       error: null,
     });
 
     try {
       const result = await downloadTiles(
-        urls,
+        generateTileUrls(bounds, zMin, zMax, provider),
+        total,
         (progress) => set({ progress }),
         { signal: abortController.signal },
       );

@@ -29,11 +29,7 @@ import {
 } from "@/lib/protocol/signing-keystore";
 import { AgentHttpError } from "@/lib/agent/agent-client/transport";
 import { allocateLocalLinkId } from "@/lib/protocol/link-id-allocator";
-import {
-  isCloudSigningKeySyncEnabled,
-  removeCloudKey,
-  uploadKey,
-} from "@/lib/api/signing-cloud-sync";
+import { removeCloudKey } from "@/lib/api/signing-cloud-sync";
 import { emitSigningEvent } from "@/lib/api/signing-events";
 import { setCloudSyncIntent } from "@/lib/protocol/signing-prefs";
 import { useCloudRowSync } from "./use-cloud-row-sync";
@@ -144,41 +140,27 @@ export function useSigningActions(droneId: string): SigningActions {
     setCloudSyncError(null);
     const newIntent = !cloudSyncIntent;
     try {
-      if (newIntent && !isCloudSigningKeySyncEnabled()) {
+      // Keys are not uploaded until encrypted storage exists; the toggle only
+      // turns sync off and removes a cloud copy that already exists.
+      if (newIntent) {
         setCloudSyncError("Cloud signing-key sync is disabled until encrypted storage is available.");
         return;
       }
 
       // Persist intent first so UI reflects the user's choice
       // immediately, regardless of what happens on the cloud side.
-      await setCloudSyncIntent(droneId, newIntent);
-      setCloudSyncIntentState(newIntent);
+      await setCloudSyncIntent(droneId, false);
+      setCloudSyncIntentState(false);
 
-      if (!newIntent) {
-        // Opt out: remove the cloud row if present. Local key stays so
-        // this browser keeps signing. Other devices that already pulled
-        // the key keep working until next rotation on any device.
-        if (convexClient && cloudRowPresent) {
-          await removeCloudKey(convexClient, droneId);
-          setCloudRowPresent(false);
-        }
-        void emitSigningEvent(convexClient, isAuthenticated, {
-          droneId,
-          eventType: "cloud_sync_off",
-          keyIdOld: state?.keyId ?? undefined,
-        });
-        return;
+      // Opt out: remove the cloud row if present. Local key stays so this
+      // browser keeps signing.
+      if (convexClient && cloudRowPresent) {
+        await removeCloudKey(convexClient, droneId);
+        setCloudRowPresent(false);
       }
-
-      // Opt in: we flip the toggle and emit the event immediately. The
-      // actual key upload happens on the next enroll or rotate, since
-      // that is the only moment raw key bytes are legible in JS memory.
-      // If there is no browser key yet, the upload happens on the first
-      // enrollment. If there is one, the panel nudges the user to
-      // rotate to push it.
       void emitSigningEvent(convexClient, isAuthenticated, {
         droneId,
-        eventType: "cloud_sync_on",
+        eventType: "cloud_sync_off",
         keyIdOld: state?.keyId ?? undefined,
       });
     } catch (e) {
@@ -243,24 +225,6 @@ export function useSigningActions(droneId: string): SigningActions {
         return;
       }
 
-      // Cloud sync upload uses the hex the enrollment just produced, so the
-      // cloud copy is exactly the key that went to the FC.
-      if (cloudSyncIntent && convexClient && isAuthenticated) {
-        try {
-          await uploadKey(convexClient, {
-            droneId,
-            keyHex: outcome.keyHex,
-            keyId: outcome.keyId,
-            linkIdOwner: linkId,
-            enrolledAt: outcome.enrolledAt,
-          });
-          setCloudRowPresent(true);
-        } catch (e) {
-          setCloudSyncError(
-            `Cloud sync upload failed: ${e instanceof Error ? e.message : String(e)}`,
-          );
-        }
-      }
       setBrowserKey(droneId, {
         keyId: outcome.keyId,
         enrolledAt: outcome.enrolledAt,
@@ -276,7 +240,7 @@ export function useSigningActions(droneId: string): SigningActions {
     } finally {
       setBusy(false);
     }
-  }, [client, droneId, setBrowserKey, cloudSyncIntent, convexClient, isAuthenticated, state?.keyId, setCloudRowPresent]);
+  }, [client, droneId, setBrowserKey, convexClient, isAuthenticated, state?.keyId]);
 
   const handleDisable = useCallback(async () => {
     if (!client || !droneId) return;

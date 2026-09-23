@@ -10,7 +10,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 import {
   subscribeWorldStream,
-  WORLD_STREAM_MAX_RETRY_MS,
+  WORLD_STREAM_RETRY_MS,
   WORLD_STREAM_PORT,
   WORLD_WS_ROUTE,
   worldStreamUrl,
@@ -114,7 +114,7 @@ describe("subscribeWorldStream", () => {
     stop();
   });
 
-  it("reconnects after a close, backing off to the ceiling", () => {
+  it("reconnects after a close at a fixed cadence that never grows", () => {
     const sockets: FakeSocket[] = [];
     const states: WorldStreamState[] = [];
     const stop = subscribeWorldStream({
@@ -132,23 +132,23 @@ describe("subscribeWorldStream", () => {
     expect(states).toEqual(["connecting", "reconnecting"]);
     expect(sockets).toHaveLength(1);
 
-    vi.advanceTimersByTime(1_000);
+    vi.advanceTimersByTime(WORLD_STREAM_RETRY_MS - 1);
+    expect(sockets).toHaveLength(1);
+    vi.advanceTimersByTime(1);
     expect(sockets).toHaveLength(2);
 
-    // Keep failing; the delay must settle at the ceiling rather than grow.
+    // Keep failing; every retry lands after the same delay.
     for (let i = 0; i < 10; i++) {
-      sockets[sockets.length - 1].onclose?.();
-      vi.advanceTimersByTime(WORLD_STREAM_MAX_RETRY_MS);
+      const before = sockets.length;
+      sockets[before - 1].onclose?.();
+      vi.advanceTimersByTime(WORLD_STREAM_RETRY_MS);
+      expect(sockets.length).toBe(before + 1);
     }
-    const settled = sockets.length;
-    sockets[settled - 1].onclose?.();
-    vi.advanceTimersByTime(WORLD_STREAM_MAX_RETRY_MS);
-    expect(sockets.length).toBe(settled + 1);
 
     stop();
   });
 
-  it("resets the backoff once a connection opens", () => {
+  it("does not shorten the delay when a socket opens and is closed at once", () => {
     const sockets: FakeSocket[] = [];
     const stop = subscribeWorldStream({
       url: "ws://node:8092/ws/atlas/d",
@@ -161,11 +161,14 @@ describe("subscribeWorldStream", () => {
       },
     });
     sockets[0].onclose?.();
-    vi.advanceTimersByTime(1_000);
+    vi.advanceTimersByTime(WORLD_STREAM_RETRY_MS);
+    // A handler that accepts and closes immediately must not turn the
+    // reconnect into a tight loop.
     sockets[1].onopen?.();
     sockets[1].onclose?.();
-    // Back to the first delay, not the doubled one.
-    vi.advanceTimersByTime(WORLD_STREAM_MAX_RETRY_MS);
+    vi.advanceTimersByTime(WORLD_STREAM_RETRY_MS - 1);
+    expect(sockets).toHaveLength(2);
+    vi.advanceTimersByTime(1);
     expect(sockets).toHaveLength(3);
     stop();
   });
@@ -184,7 +187,7 @@ describe("subscribeWorldStream", () => {
     });
     sockets[0].onclose?.();
     stop();
-    vi.advanceTimersByTime(WORLD_STREAM_MAX_RETRY_MS * 5);
+    vi.advanceTimersByTime(WORLD_STREAM_RETRY_MS * 5);
     expect(sockets).toHaveLength(1);
   });
 
@@ -200,9 +203,7 @@ describe("subscribeWorldStream", () => {
       },
     });
     expect(calls).toBe(1);
-    // The first retry lands on the base delay; advancing further would fire
-    // several doublings and stop measuring the first one.
-    vi.advanceTimersByTime(500);
+    vi.advanceTimersByTime(WORLD_STREAM_RETRY_MS);
     expect(calls).toBe(2);
     stop();
   });

@@ -3,15 +3,39 @@
 import { useCallback, useRef, useState } from "react";
 import { Upload, FileText, Clock, HardDrive } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, isDemoMode } from "@/lib/utils";
 import type { LogMetadata } from "@/lib/analysis/types";
 
 interface PidLogUploaderProps {
   onFileSelect: (file: File) => void;
+  /** Loads the bundled sample analysis. Offered in demo mode only. */
   onLoadSample: () => void;
   analyzing: boolean;
   progress: { stage: string; percent: number } | null;
   metadata: LogMetadata | null;
+}
+
+/** Spinner, stage name and percentage while a log is being analysed. */
+export function AnalysisProgress({ progress }: { progress: { stage: string; percent: number } }) {
+  return (
+    <div className="border border-border-default bg-bg-secondary p-6">
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-8 h-8 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" />
+        <span className="text-xs font-medium text-text-primary">{progress.stage}</span>
+        <div className="w-full max-w-xs">
+          <div className="h-1.5 bg-bg-tertiary w-full">
+            <div
+              className="h-full bg-accent-primary transition-all duration-300"
+              style={{ width: `${Math.min(100, Math.max(0, progress.percent))}%` }}
+            />
+          </div>
+          <span className="text-[10px] font-mono text-text-tertiary mt-1 block text-center">
+            {Math.round(progress.percent)}%
+          </span>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function formatBytes(bytes: number): string {
@@ -68,25 +92,7 @@ export function PidLogUploader({
 
   // Progress state
   if (analyzing && progress) {
-    return (
-      <div className="border border-border-default bg-bg-secondary p-6">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" />
-          <span className="text-xs font-medium text-text-primary">{progress.stage}</span>
-          <div className="w-full max-w-xs">
-            <div className="h-1.5 bg-bg-tertiary w-full">
-              <div
-                className="h-full bg-accent-primary transition-all duration-300"
-                style={{ width: `${Math.min(100, Math.max(0, progress.percent))}%` }}
-              />
-            </div>
-            <span className="text-[10px] font-mono text-text-tertiary mt-1 block text-center">
-              {Math.round(progress.percent)}%
-            </span>
-          </div>
-        </div>
-      </div>
-    );
+    return <AnalysisProgress progress={progress} />;
   }
 
   // Metadata summary after analysis
@@ -171,12 +177,14 @@ export function PidLogUploader({
           >
             Browse Files
           </Button>
-          <button
-            onClick={onLoadSample}
-            className="text-[10px] text-accent-primary hover:underline cursor-pointer"
-          >
-            Load Sample Log
-          </button>
+          {isDemoMode() && (
+            <button
+              onClick={onLoadSample}
+              className="text-[10px] text-accent-primary hover:underline cursor-pointer"
+            >
+              Load Sample Log
+            </button>
+          )}
         </div>
       </div>
       <input

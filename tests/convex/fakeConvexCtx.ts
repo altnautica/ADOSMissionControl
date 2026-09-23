@@ -116,6 +116,13 @@ class FakeQuery {
   }
 }
 
+/** A copy of the fake db's state, restored when a mutation throws. */
+interface DbSnapshot {
+  tables: Map<string, FakeRow[]>;
+  owner: Map<string, string>;
+  seq: number;
+}
+
 export class FakeDb {
   private tables = new Map<string, FakeRow[]>();
   private owner = new Map<string, string>();
@@ -170,6 +177,21 @@ export class FakeDb {
 
   async get(id: string): Promise<FakeRow | null> {
     return this.findById(id);
+  }
+
+  /** Deep copy of every table, for transaction rollback. */
+  snapshot(): DbSnapshot {
+    return {
+      tables: new Map([...this.tables].map(([t, rows]) => [t, rows.map((r) => structuredClone(r))])),
+      owner: new Map(this.owner),
+      seq: this.seq,
+    };
+  }
+
+  restore(state: DbSnapshot): void {
+    this.tables = state.tables;
+    this.owner = state.owner;
+    this.seq = state.seq;
   }
 
   private findById(id: string): FakeRow | null {
@@ -245,6 +267,11 @@ export function makeCtx(options: FakeCtxOptions = {}): FakeCtx {
  * too. Reached through a narrowing guard rather than a cast so a future Convex
  * release that renames it fails here with a clear message instead of silently
  * making every test in this file vacuous.
+ *
+ * A mutation that throws is rolled back, as Convex does: every write it made
+ * is discarded. Without this a handler that records something and then throws
+ * would pass here while production keeps nothing. Actions are not
+ * transactional and keep their effects.
  */
 export async function invoke(
   fn: unknown,
@@ -258,7 +285,18 @@ export async function invoke(
   if (typeof handler !== "function") {
     throw new Error("registered Convex function's _handler is not callable");
   }
-  return await handler(ctx, args);
+  const transactional = !("isAction" in fn && fn.isAction === true);
+  const db =
+    transactional && ctx && typeof ctx === "object" && "db" in ctx && ctx.db instanceof FakeDb
+      ? ctx.db
+      : null;
+  const before = db?.snapshot();
+  try {
+    return await handler(ctx, args);
+  } catch (err) {
+    if (db && before) db.restore(before);
+    throw err;
+  }
 }
 
 /**

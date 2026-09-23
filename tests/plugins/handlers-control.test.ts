@@ -4,8 +4,8 @@
  * Every test here asserts a GATE REJECTS: a hard-blocked command never reaches
  * the protocol, an unconfirmed command/mission never fires, a cross-drone token
  * is refused, an armed vehicle refuses a mission write, an invalid mission is
- * refused before confirm, off-allowlist + over-rate cloud reads are denied, and
- * cloud writes are always denied. The bus delivery path is exercised too.
+ * refused before confirm, and off-allowlist + over-rate cloud reads are
+ * denied. The bus delivery path is exercised too.
  *
  * @license GPL-3.0-only
  */
@@ -66,9 +66,10 @@ vi.mock("@/lib/telemetry-recorder", () => ({
   markRecording: vi.fn(() => true),
 }));
 
-vi.mock("@/lib/plugins/notifier", () => ({ pluginNotify: vi.fn() }));
+vi.mock("@/lib/plugins/notifier", () => ({ pluginNotify: vi.fn(() => true) }));
 
 import { buildPluginHandlers } from "@/lib/plugins/handlers";
+import { testMount } from "@/lib/plugins/handlers/__tests__/test-mount";
 import { HARD_BLOCKED_COMMAND_IDS } from "@/lib/plugins/handlers/control";
 import {
   PLUGIN_CONFIRM_TIMEOUT_MS,
@@ -93,6 +94,7 @@ const DEPS = { translate: vi.fn((k: string) => `t:${k}`) };
 
 let confirmAnswer = true;
 let confirmSpy: ReturnType<typeof vi.fn>;
+let mount = testMount();
 
 function makeCtx(opts?: {
   capability?: string | null;
@@ -108,6 +110,7 @@ function makeCtx(opts?: {
       pluginId: "com.example.plug",
       capability: opts?.capability ?? null,
       postEvent,
+      mount,
       claims,
     },
     postEvent,
@@ -130,6 +133,7 @@ function WP(id: string, over: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mount = testMount();
   resetPluginEventBus();
   resetCloudRateLimits();
   resetCommandRateLimits();
@@ -252,6 +256,16 @@ describe("command.send gates", () => {
     expect(arg.body).toMatch(/ARMED/);
   });
 
+  it("names the bound drone in the prompt", async () => {
+    withProtocol();
+    const { handlers } = buildPluginHandlers("p", "node:d1", DEPS);
+    const { ctx } = makeCtx({ capability: "command.send" });
+    await handlers["command.send"]({ command: "land" }, ctx);
+    const arg = confirmSpy.mock.calls[0][0];
+    expect(arg.targetId).toBe("d1");
+    expect(arg.body).toContain(`to ${arg.targetName}`);
+  });
+
   it("rejects a token whose agentId targets a different drone", async () => {
     const { sendCommand } = withProtocol();
     const { handlers } = buildPluginHandlers("p", "node:d1", DEPS);
@@ -296,15 +310,21 @@ describe("command.send gates", () => {
     vi.useFakeTimers();
     try {
       setPluginConfirmHandler(() => new Promise<boolean>(() => {}));
-      const pending = requestPluginConfirm({ pluginId: "p", targetName: "Drone 1", title: "t", body: "b" });
+      const pending = requestPluginConfirm({
+        pluginId: "p",
+        targetName: "Drone 1",
+        targetId: "d1",
+        title: "t",
+        body: "b",
+      });
       await vi.advanceTimersByTimeAsync(PLUGIN_CONFIRM_TIMEOUT_MS);
-      await expect(pending).resolves.toBe(false);
+      await expect(pending).resolves.toBe("denied");
     } finally {
       vi.useRealTimers();
     }
   });
 
-  it("rate-limits confirmed command sends", async () => {
+  it("refuses a rate-limited plugin before prompting the operator", async () => {
     const { sendCommand } = withProtocol();
     const { handlers } = buildPluginHandlers("p", "node:d1", DEPS);
     const { ctx } = makeCtx({ capability: "command.send" });
@@ -315,6 +335,8 @@ describe("command.send gates", () => {
     const tripped = await handlers["command.send"]({ command: "rtl" }, ctx);
     expect(tripped).toEqual({ ok: false, error: "command rate limit exceeded" });
     expect(sendCommand).toHaveBeenCalledTimes(COMMAND_RATE_LIMIT_MAX);
+    // The operator never saw a prompt for the call that was going to be dropped.
+    expect(confirmSpy).toHaveBeenCalledTimes(COMMAND_RATE_LIMIT_MAX);
   });
 });
 
@@ -475,17 +497,17 @@ describe("events pub/sub", () => {
     const { handlers } = buildPluginHandlers("p", "node:d1", DEPS);
     const { ctx, postEvent } = makeCtx({ capability: "event.subscribe" });
     const subAck = await handlers["events.subscribe"](
-      { topic: "plugin.demo.evt" },
+      { topic: "plugin.p.evt" },
       ctx,
     );
     expect(subAck).toEqual({ ok: true });
     const pubAck = await handlers["events.publish"](
-      { topic: "plugin.demo.evt", payload: { n: 7 } },
+      { topic: "plugin.p.evt", payload: { n: 7 } },
       ctx,
     );
     expect(pubAck).toEqual({ ok: true });
     expect(postEvent).toHaveBeenCalledWith(
-      "plugin.demo.evt",
+      "plugin.p.evt",
       "event.subscribe",
       { n: 7 },
     );
@@ -523,7 +545,7 @@ describe("events pub/sub", () => {
   });
 });
 
-describe("cloud.read / cloud.write gates", () => {
+describe("cloud.read gates", () => {
   it("rejects an off-allowlist cloud.read without touching the client", async () => {
     const cloudQuery = vi.fn(async () => ({}));
     const { handlers } = buildPluginHandlers("p", "node:d1", { ...DEPS, cloudQuery });
@@ -582,20 +604,5 @@ describe("cloud.read / cloud.write gates", () => {
       ctx,
     );
     expect(tripped).toEqual({ ok: false, error: "rate limit exceeded" });
-  });
-
-  it("always refuses cloud.write, even on-allowlist-shaped calls", async () => {
-    const cloudQuery = vi.fn(async () => ({}));
-    const { handlers } = buildPluginHandlers("p", "node:d1", { ...DEPS, cloudQuery });
-    const { ctx } = makeCtx({ capability: "cloud.write" });
-    const out = await handlers["cloud.write"](
-      { fn: "comments:create", args: {} },
-      ctx,
-    );
-    expect(out).toEqual({
-      ok: false,
-      error: "cloud writes are not permitted for plugins",
-    });
-    expect(cloudQuery).not.toHaveBeenCalled();
   });
 });

@@ -32,7 +32,7 @@ vi.mock("@/lib/storage", () => ({
 import { useMissionStore } from "@/stores/mission-store";
 import { useRallyStore } from "@/stores/rally-store";
 import { usePlanLibraryStore } from "@/stores/plan-library-store";
-import { applyPlanToWorkspace, saveActivePlanFromWorkspace } from "@/lib/plan-workspace";
+import { applyPlanToWorkspace, capturePlanExtras, clearPlanWorkspace, saveActivePlanFromWorkspace } from "@/lib/plan-workspace";
 import { canUndo, clearHistory, undoHistory } from "@/lib/planner-history";
 import type { Waypoint } from "@/lib/types";
 
@@ -76,5 +76,18 @@ describe("plan-workspace", () => {
     expect(saved.waypoints.map((w) => w.id)).toEqual(["a1", "a2"]);
     expect(saved.rally).toEqual([{ id: "r1", lat: 1, lon: 2, alt: 40 }]);
     expect(usePlanLibraryStore.getState().isDirty).toBe(false);
+  });
+
+  it("clearing the workspace for a new plan drops the previous plan's rally points and waypoints", () => {
+    const a = planWith("A", [wp("a1", 12.9)]);
+    applyPlanToWorkspace(a);
+    useRallyStore.getState().addPoint({ id: "r1", lat: 1, lon: 2, alt: 40 });
+
+    usePlanLibraryStore.getState().createPlan();
+    clearPlanWorkspace();
+
+    expect(useMissionStore.getState().waypoints).toEqual([]);
+    expect(capturePlanExtras()).toEqual({ geofence: undefined, rally: undefined, pois: undefined });
+    expect(canUndo()).toBe(false);
   });
 });

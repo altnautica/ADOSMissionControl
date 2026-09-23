@@ -185,4 +185,24 @@ describe("export", () => {
     await waitFor(() => expect(screen.getByText("Copied to clipboard")).toBeTruthy());
     expect(writeText).toHaveBeenLastCalledWith(expect.stringMatching(/^[0-9a-f]{64}$/));
   });
+
+  it("does not claim the clipboard was cleared when the wipe is refused", async () => {
+    const client = stubClient(async () => ({ success: true, key_id: "abcd1234", enrolled_at: "2026-01-01T00:00:00Z" }));
+    const writeText = vi.fn<(text: string) => Promise<void>>(async (text) => {
+      if (text === "") throw new DOMException("Document is not focused", "NotAllowedError");
+    });
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+
+    render(
+      <ExportKeyModal client={client as unknown as AgentClient} droneId={DRONE} linkId={3} open onClose={() => {}} />,
+    );
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "EXPORT" } });
+    fireEvent.click(screen.getByText("Rotate and copy"));
+    await waitFor(() => expect(screen.getByText("Copied to clipboard")).toBeTruthy());
+
+    fireEvent.click(screen.getByText("Clear now"));
+    await waitFor(() => expect(screen.getByText(/could not be cleared/)).toBeTruthy());
+    expect(screen.queryByText("Clipboard cleared.")).toBeNull();
+    expect(writeText).toHaveBeenLastCalledWith("");
+  });
 });

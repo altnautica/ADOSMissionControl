@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useDroneManager } from '@/stores/drone-manager';
+import { useNodeRegistryStore } from '@/stores/node-registry';
 import type { DroneProtocol, Transport, VehicleInfo } from '@/lib/protocol/types';
 
 // Mock the bridge and dependent stores to isolate drone-manager
@@ -21,6 +22,7 @@ vi.mock('@/stores/drone-store', () => ({
       setArmState: vi.fn(),
       setSystemStatus: vi.fn(),
       setFirmwareType: vi.fn(),
+      resetForSelection: vi.fn(),
     }),
     setState: vi.fn(),
   },
@@ -48,9 +50,6 @@ vi.mock('@/lib/telemetry-recorder', () => ({
   getRecordingState: vi.fn(() => ({ state: 'idle' })),
   isRecordingFor: vi.fn(() => false),
   stopRecordingFor: vi.fn(() => Promise.resolve()),
-}));
-vi.mock('@/components/fc/parameters/ParametersPanel', () => ({
-  invalidateParamCache: vi.fn(),
 }));
 
 function makeMockProtocol(): DroneProtocol {
@@ -192,5 +191,32 @@ describe('drone-manager', () => {
     expect(drone).not.toBeNull();
     expect(drone?.id).toBe('drone-1');
     expect(drone?.name).toBe('Test');
+  });
+
+  it('a background session added with autoSelect false never takes the selection', () => {
+    useDroneManager
+      .getState()
+      .addDrone('node:relayed', 'Relayed', makeMockProtocol(), makeMockTransport(), makeMockVehicleInfo(), undefined, {
+        ownsFleetRow: false,
+        autoSelect: false,
+      });
+    expect(useDroneManager.getState().drones.has('node:relayed')).toBe(true);
+    expect(useDroneManager.getState().selectedDroneId).toBeNull();
+  });
+
+  it('removing the session of a node still in the fleet keeps the operator selection', () => {
+    const id = 'node:keep-selected';
+    useNodeRegistryStore.getState().upsertPresence(id, { deviceId: 'keep-selected', name: 'n' }, 'relayed');
+    useDroneManager
+      .getState()
+      .addDrone(id, 'Kept', makeMockProtocol(), makeMockTransport(), makeMockVehicleInfo(), undefined, {
+        ownsFleetRow: false,
+      });
+    expect(useDroneManager.getState().selectedDroneId).toBe(id);
+
+    useDroneManager.getState().removeDrone(id);
+    expect(useDroneManager.getState().drones.has(id)).toBe(false);
+    expect(useDroneManager.getState().selectedDroneId).toBe(id);
+    useNodeRegistryStore.getState().clear();
   });
 });

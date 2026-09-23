@@ -249,7 +249,7 @@ export function inferCapabilities(
     npu_available: npuInfo !== null,
     npu_runtime: npuInfo?.runtime ?? null,
     npu_tops: npuInfo?.tops ?? 0,
-    npu_utilization_pct: 0,
+    npu_utilization_pct: null,
     gpu_available: isWorkstation,
   };
 
@@ -261,7 +261,9 @@ export function inferCapabilities(
       type: "usb" as const,
       device: p.address,
       resolution: p.last_reading?.match(/\d+x\d+/)?.[0] ?? "unknown",
-      streaming: p.status === "ok",
+      // Peripheral health says the device enumerates, not that it is being
+      // encoded or published.
+      streaming: null,
     }));
 
   // Infer attached display (SPI LCD) from peripherals. The agent
@@ -451,7 +453,7 @@ export function inferCapabilities(
     models: {
       installed: [],
       cache_used_mb: 0,
-      cache_max_mb: 500,
+      cache_max_mb: null,
       registry_url: "",
     },
     display,

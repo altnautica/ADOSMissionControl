@@ -1,7 +1,6 @@
 /**
  * @module connection-presets
  * @description Connection presets — IndexedDB-backed saved connection configs.
- * On first load, migrates any existing localStorage data to IndexedDB.
  * @license GPL-3.0-only
  */
 
@@ -25,27 +24,6 @@ export interface ConnectionPreset {
 }
 
 const STORAGE_KEY = "command:connection-presets";
-
-// One-time migration
-async function migratePresetsFromLocalStorage(): Promise<void> {
-  if (typeof window === "undefined") return;
-  const migrated = await get("command:presets-migrated");
-  if (migrated) return;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      await set(STORAGE_KEY, JSON.parse(raw));
-      localStorage.removeItem(STORAGE_KEY);
-    }
-    await set("command:presets-migrated", true);
-  } catch {
-    // silent
-  }
-}
-
-if (typeof window !== "undefined") {
-  migratePresetsFromLocalStorage();
-}
 
 export async function getPresets(): Promise<ConnectionPreset[]> {
   try {

@@ -22,6 +22,19 @@ export interface BitmaskEditorProps {
 const u32 = (n: number) => n >>> 0;
 
 /**
+ * Parse the raw field: a whole decimal or `0x` hex number that fits in 32
+ * bits. Anything else (empty, partial like "12abc", out of range) is null.
+ */
+function parseRaw(raw: string): number | null {
+  const s = raw.trim();
+  let n: number;
+  if (/^0x[0-9a-f]{1,8}$/i.test(s)) n = parseInt(s.slice(2), 16);
+  else if (/^\d{1,10}$/.test(s)) n = Number(s);
+  else return null;
+  return n <= 0xffffffff ? n : null;
+}
+
+/**
  * "Set Bitmask" modal — one labeled checkbox per documented bit, with
  * Select-all / Clear-all, a search filter for many-bit params, a raw
  * decimal/hex readout, and preservation of bits set in the value but absent
@@ -40,6 +53,11 @@ export function BitmaskEditor({
   const t = useTranslations("parameters");
   const [draft, setDraft] = useState<number>(() => u32(Math.trunc(value)));
   const [search, setSearch] = useState("");
+  // Text typed into the raw field, parsed only on blur, Enter or Apply so a
+  // half-typed "0x" or an empty field is not snapped back mid-edit. Null
+  // while the field simply mirrors the draft.
+  const [rawText, setRawText] = useState<string | null>(null);
+  const rawValid = rawText === null || parseRaw(rawText) !== null;
 
   // Re-sync the draft to the incoming value on the closed→open transition
   // (storing-info-from-previous-render pattern — resets on open, never mid-edit).
@@ -49,6 +67,7 @@ export function BitmaskEditor({
     if (open) {
       setDraft(u32(Math.trunc(value)));
       setSearch("");
+      setRawText(null);
     }
   }
 
@@ -81,25 +100,32 @@ export function BitmaskEditor({
     return c;
   }, [intVal]);
 
-  const toggle = (bit: number) => { if (!readOnly) setDraft(u32(intVal ^ (1 << bit))); };
-  const selectAll = () => { if (!readOnly) setDraft(u32(intVal | knownMask)); };
-  const clearAll = () => { if (!readOnly) setDraft(u32(intVal & ~knownMask)); };
+  const toggle = (bit: number) => { if (!readOnly) { setRawText(null); setDraft(u32(intVal ^ (1 << bit))); } };
+  const selectAll = () => { if (!readOnly) { setRawText(null); setDraft(u32(intVal | knownMask)); } };
+  const clearAll = () => { if (!readOnly) { setRawText(null); setDraft(u32(intVal & ~knownMask)); } };
 
-  const onRawChange = (raw: string) => {
-    if (readOnly) return;
-    const trimmed = raw.trim();
-    const parsed = trimmed.toLowerCase().startsWith("0x")
-      ? parseInt(trimmed.slice(2), 16)
-      : parseInt(trimmed, 10);
-    if (!Number.isNaN(parsed)) setDraft(u32(parsed));
+  /** Resolve the value to commit: the typed raw text when present, else the
+   * draft. Null when the typed text is not a valid value. */
+  const resolveDraft = (): number | null => {
+    if (rawText === null) return intVal;
+    const parsed = parseRaw(rawText);
+    if (parsed === null) return null;
+    setDraft(parsed);
+    setRawText(null);
+    return parsed;
   };
 
-  const apply = () => { onApply(intVal); onClose(); };
+  const apply = () => {
+    const next = resolveDraft();
+    if (next === null) return;
+    onApply(next);
+    onClose();
+  };
 
   const footer = (
     <>
       <Button variant="ghost" size="sm" onClick={onClose}>{t("cancel")}</Button>
-      <Button variant="primary" size="sm" onClick={apply} disabled={readOnly}>{t("apply")}</Button>
+      <Button variant="primary" size="sm" onClick={apply} disabled={readOnly || !rawValid}>{t("apply")}</Button>
     </>
   );
 
@@ -163,17 +189,28 @@ export function BitmaskEditor({
           <p className="text-[11px] text-status-warning">{t("unknownBitsKept", { count: unknownBits.length })}</p>
         )}
 
-        <div className="flex items-center gap-2 border-t border-border-default pt-3">
-          <label className="text-[11px] text-text-tertiary">{t("rawValue")}</label>
-          <input
-            type="text"
-            value={String(intVal)}
-            onChange={(e) => onRawChange(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") apply(); }}
-            disabled={readOnly}
-            className="w-28 h-7 px-2 bg-bg-tertiary border border-border-default text-xs font-mono text-text-primary focus:outline-none focus:border-accent-primary focus-ring disabled:opacity-60"
-          />
-          <span className="text-[11px] text-text-tertiary font-mono">0x{intVal.toString(16).toUpperCase()}</span>
+        <div className="flex flex-col gap-1 border-t border-border-default pt-3">
+          <div className="flex items-center gap-2">
+            <label htmlFor="bitmask-raw-value" className="text-[11px] text-text-tertiary">{t("rawValue")}</label>
+            <input
+              id="bitmask-raw-value"
+              type="text"
+              value={rawText ?? String(intVal)}
+              onChange={(e) => { if (!readOnly) setRawText(e.target.value); }}
+              onBlur={() => { resolveDraft(); }}
+              onKeyDown={(e) => { if (e.key === "Enter") apply(); }}
+              disabled={readOnly}
+              aria-invalid={!rawValid}
+              className={cn(
+                "w-28 h-7 px-2 bg-bg-tertiary border text-xs font-mono text-text-primary focus:outline-none focus-ring disabled:opacity-60",
+                rawValid ? "border-border-default focus:border-accent-primary" : "border-status-error",
+              )}
+            />
+            <span className="text-[11px] text-text-tertiary font-mono">0x{intVal.toString(16).toUpperCase()}</span>
+          </div>
+          {!rawValid && (
+            <p role="alert" className="text-[11px] text-status-error">{t("bitmaskRawInvalid")}</p>
+          )}
         </div>
       </div>
     </Modal>

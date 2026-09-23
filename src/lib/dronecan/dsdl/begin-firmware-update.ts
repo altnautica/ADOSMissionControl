@@ -9,7 +9,7 @@
  *
  * Response layout:
  *   uint8       error
- *   uint8[<=128] optional_error_message  (tail-array)
+ *   uint8[<128] optional_error_message  (tail-array, at most 127 bytes)
  *
  * Error code constants:
  *   OK = 0, INVALID_MODE = 1, IN_PROGRESS = 2, UNKNOWN = 255.
@@ -60,8 +60,8 @@ export function encodeBeginFirmwareUpdateResponse(
   res: BeginFirmwareUpdateResponse,
 ): Uint8Array {
   const msgBytes = new TextEncoder().encode(res.optional_error_message);
-  if (msgBytes.length > 128) {
-    throw new Error("optional_error_message must be <= 128 bytes");
+  if (msgBytes.length > 127) {
+    throw new Error("optional_error_message must be <= 127 bytes");
   }
   const out = new Uint8Array(1 + msgBytes.length);
   out[0] = res.error & 0xff;

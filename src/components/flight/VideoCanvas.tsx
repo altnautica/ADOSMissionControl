@@ -70,6 +70,7 @@ const SOURCE_BADGE: Record<VideoSource, string | null> = {
 export function VideoCanvas({ children, className, hideRecordButton = false, droneId }: VideoCanvasProps) {
   const isStreaming = useVideoStore((s) => s.isStreaming);
   const isRecording = useVideoStore((s) => s.isRecording);
+  const recordingStartedAt = useVideoStore((s) => s.recordingStartedAt);
   const fps = useVideoStore((s) => s.fps);
   const latencyMs = useVideoStore((s) => s.latencyMs);
   const resolution = useVideoStore((s) => s.resolution);
@@ -163,20 +164,24 @@ export function VideoCanvas({ children, className, hideRecordButton = false, dro
     return () => setVideoElement(null);
   }, [videoEl]);
 
+  // The recorder lives in the webrtc singleton and survives this pane's
+  // remounts, so the elapsed time counts from the store's start stamp rather
+  // than from whenever this component mounted.
   useEffect(() => {
-    if (!isRecording) {
+    if (!isRecording || recordingStartedAt === null) {
       setRecElapsed("");
       return;
     }
-    const startTime = Date.now();
-    const timer = setInterval(() => {
-      const sec = Math.floor((Date.now() - startTime) / 1000);
+    const render = () => {
+      const sec = Math.max(0, Math.floor((Date.now() - recordingStartedAt) / 1000));
       const m = Math.floor(sec / 60);
       const s = sec % 60;
       setRecElapsed(`${m}:${String(s).padStart(2, "0")}`);
-    }, 1000);
+    };
+    render();
+    const timer = setInterval(render, 1000);
     return () => clearInterval(timer);
-  }, [isRecording]);
+  }, [isRecording, recordingStartedAt]);
 
   // The shared singleton-video brain owns the enable gate + transport cascade
   // + retry + stall recovery — identical to the Agent-tab feed, so the Fly
@@ -361,7 +366,7 @@ export function VideoCanvas({ children, className, hideRecordButton = false, dro
       {/* Video source config panel (manual override) */}
       {showConfig && (
         <div className="absolute inset-0 z-20 bg-bg-primary/95 flex items-center justify-center">
-          <div className="w-80 space-y-3 p-4 border border-border-default bg-surface-primary">
+          <div className="w-80 space-y-3 p-4 border border-border-default bg-bg-primary">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-text-primary">Video Source (WHEP)</span>
               <button onClick={() => setShowConfig(false)} className="text-text-tertiary hover:text-text-primary cursor-pointer">
@@ -458,19 +463,19 @@ export function VideoCanvas({ children, className, hideRecordButton = false, dro
           {resolution || "—"}
         </Badge>
         <Badge
-          variant={fps > 0 ? "success" : "neutral"}
+          variant={fps !== null && fps > 0 ? "success" : "neutral"}
           size="sm"
         >
-          {fps} FPS
+          {fps === null ? "—" : fps} FPS
         </Badge>
         {/* Explicitly `net`: this is RTT plus decoder buffer wait, not a
             glass-to-glass figure. An unqualified "ms" here read as
             end-to-end and understated the real delay by roughly 10x. */}
         <Badge
-          variant={latencyMs > 200 ? "warning" : latencyMs > 0 ? "success" : "neutral"}
+          variant={latencyMs === null ? "neutral" : latencyMs > 200 ? "warning" : "success"}
           size="sm"
         >
-          {latencyMs}ms net
+          {latencyMs === null ? "—" : latencyMs}ms net
         </Badge>
         <button
           onClick={() => { setConfigUrl(manualUrl); setShowConfig(!showConfig); }}

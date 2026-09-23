@@ -181,7 +181,7 @@ export function DroneLiveWorldTab({ droneId }: { droneId?: string }) {
   }, [jobs, live.sessionId]);
 
   // LOCAL-FIRST primary: the world model off the paired compute node, correlated
-  // by the active session id (Rule 39). Also gives us the compute client for the
+  // by the active session id (local-first). Also gives us the compute client for the
   // manual "Reconstruct now" submit (no second poll loop).
   const local = useDroneWorldModel({
     sessionId: live.sessionId,
@@ -227,9 +227,9 @@ export function DroneLiveWorldTab({ droneId }: { droneId?: string }) {
   const useLocal = local.status === "ready" || local.status === "building";
   const artifactUrl = useLocal ? local.artifactUrl : cloud.artifactUrl;
   const viewerHint = useLocal ? local.viewerHint : cloud.viewerHint;
-  // The honest reconstruction backend for the World Model badge (Rule 44).
+  // The honest reconstruction backend for the World Model badge (no fabricated reading).
   const backend = useLocal ? local.backend : cloud.backend;
-  // Rule 44: a paired-but-unreachable compute node must NOT look identical to an
+  // A paired-but-unreachable compute node must NOT look identical to an
   // actively-building one. Surface the stalled reconstructor distinctly, keep
   // the "no node" guidance when none is paired, and reserve the "building"
   // message for a reachable node (or the cloud fallback) genuinely in progress.
@@ -245,7 +245,7 @@ export function DroneLiveWorldTab({ droneId }: { droneId?: string }) {
       ? override.viewer
       : viewerHint ?? DEFAULT_ATLAS_VIEWER;
 
-  // Rule 44: never render a frozen heartbeat as live. When the heartbeat has
+  // Never render a frozen heartbeat as live. When the heartbeat has
   // gone quiet past the budget, badge it stale and dim the rates.
   const hasLive = live.state !== null;
   const heartbeatAge = live.updatedAt === null ? null : now - live.updatedAt;

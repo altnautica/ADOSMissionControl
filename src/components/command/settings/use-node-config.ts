@@ -37,9 +37,10 @@ import { useLocalNodesStore } from "@/stores/local-nodes-store";
 import { usePairingStore } from "@/stores/pairing-store";
 import { isDemoMode } from "@/lib/utils";
 import {
+  configAccessFrom,
   directClientForNode,
   getConfigViaAccess,
-  resolveConfigAccess,
+  resolveConfigProxyTarget,
   setConfigValueViaAccess,
   type ConfigAccess,
 } from "@/lib/agent/config-access";
@@ -83,9 +84,22 @@ export function configAdvertises(
   return v !== null && typeof v === "object" && !Array.isArray(v);
 }
 
+/** The page-offer form of `configAdvertises`. A document that has not loaded
+ * (the read is in flight, failed, or has no path) says nothing about the
+ * node's feature blocks, so the page stays offered and the config banner above
+ * it explains the gap. Only a loaded document without the block hides it. */
+export function configMayAdvertise(
+  config: Record<string, unknown> | null,
+  path: string,
+): boolean {
+  return config === null || configAdvertises(config, path);
+}
+
 export interface NodeConfig {
   /** The redacted config object from the agent, or null before it loads /
-   * when no transport reaches the node. */
+   * when no transport reaches the node. A failed background re-read keeps the
+   * last good document (and reports the failure in `error`), so one transient
+   * miss never blanks every field mid-edit. */
   config: Record<string, unknown> | null;
   loading: boolean;
   /** True only when no transport reaches the node (no direct client, no
@@ -99,6 +113,9 @@ export interface NodeConfig {
    * operator which lane it is on rather than implying a direct LAN
    * connection. */
   accessMode: ConfigAccess["mode"];
+  /** The newest read's failure, or null once a read succeeds. Independent of
+   * `config`: a failed re-read over a loaded document sets this and leaves
+   * the document in place. */
   error: string | null;
   refresh: () => Promise<void>;
   /** Write a single dot-path key. Throws with the agent's error message when
@@ -149,15 +166,24 @@ export function useNodeConfig(
     ? storeClient
     : directClientForNode(storeClient, attachedDeviceId, nodeDeviceId);
 
+  // Key the transport on the proxy target's strings, not on the pairing
+  // arrays: both stores replace their arrays on every presence stamp and every
+  // cloud-sync update, and a memo keyed on the arrays re-fetched the whole
+  // config (across the aux radio, for a relayed drone) on each one.
+  const proxyTarget = resolveConfigProxyTarget(nodeDeviceId, {
+    localNodes,
+    pairedDrones,
+  });
+  const proxyHost = proxyTarget?.host ?? null;
+  const proxyApiKey = proxyTarget?.apiKey ?? null;
   const access = useMemo(
     () =>
-      resolveConfigAccess(
+      configAccessFrom(
         client,
-        nodeDeviceId,
-        { localNodes, pairedDrones },
+        proxyHost === null ? null : { host: proxyHost, apiKey: proxyApiKey },
         reach,
       ),
-    [client, nodeDeviceId, localNodes, pairedDrones, reach],
+    [client, proxyHost, proxyApiKey, reach],
   );
   const readOnly = access.mode === "none";
 
@@ -196,23 +222,28 @@ export function useNodeConfig(
       return;
     }
     setLoading(true);
-    setError(null);
     try {
       const cfg = await getConfigViaAccess(access);
-      if (isCurrent()) setConfig(cfg);
-    } catch (err) {
       if (isCurrent()) {
-        setError(err instanceof Error ? err.message : "Failed to load config");
-        setConfig(null);
+        setConfig(cfg);
+        setError(null);
       }
+    } catch (err) {
+      // The document on screen is still this node's last good read (a node
+      // switch cleared it above), so keep it and report the failure beside
+      // it rather than blanking every field over one transient miss.
+      if (isCurrent())
+        setError(err instanceof Error ? err.message : "Failed to load config");
     } finally {
       if (isCurrent()) setLoading(false);
     }
   }, [access]);
 
+  // `nodeDeviceId` is listed so a node switch re-reads even when both nodes
+  // resolve the same transport (the demo's one shared mock client).
   useEffect(() => {
     void refresh();
-  }, [refresh]);
+  }, [refresh, nodeDeviceId]);
 
   const setValue = useCallback(
     async (key: string, value: string) => {

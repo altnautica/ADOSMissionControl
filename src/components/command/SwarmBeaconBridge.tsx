@@ -9,7 +9,7 @@
  * rate (2 Hz) and upserts the decoded beacon rows keyed by fleet slot.
  *
  * Ground stations are read from the LAN-paired store, matching
- * `RelayedDroneBridge`: this is the local-first direct path (Rule 39), and a
+ * `RelayedDroneBridge`: this is the local-first direct path, and a
  * cloud-paired ground station has no browser-reachable host to poll.
  *
  * Two behaviours that are not optional:
@@ -18,11 +18,13 @@
  *     past `SWARM_BEACON_STALE_MS` against the GCS clock, so a drone whose bus
  *     died disappears from the board within 3 s even if the ground station
  *     keeps listing it. Rendering a dead aircraft's last position as current is
- *     the failure Rule 44 exists to prevent.
- *   - A dead host is BACKED OFF, never hammered. Consecutive no-answers double
- *     the interval up to `MAX_POLL_MS`; the first real answer snaps it back to
- *     2 Hz. Without this the bridge would fire 172 800 doomed requests an hour
- *     at a powered-off ground station.
+ *     the fabricated-reading failure this exists to prevent.
+ *   - A dead host is RETRIED at a fixed pace, never hammered. After a few
+ *     unanswered rounds at the bus rate the bridge waits `RETRY_MS` between
+ *     rounds; the first real answer snaps it back to 2 Hz. Without this the
+ *     bridge would fire 172 800 doomed requests an hour at a powered-off
+ *     ground station, and with a growing backoff it would notice a rebooted
+ *     one late.
  *
  * Renders nothing — pure bridge component, mounted once in `CommandShell`
  * beside the presence bridges.
@@ -48,8 +50,14 @@ import {
 /** The swarm bus beacons at 2 Hz, so polling faster buys nothing. */
 const POLL_MS = 500;
 
-/** Backoff ceiling for a ground station that stops answering. */
-const MAX_POLL_MS = 8000;
+/** Fixed recovery retry for a ground station that stops answering, or runs
+ * no swarm bus yet. A recovery loop retries at a fixed 2-5 s, forever. */
+const RETRY_MS = 3000;
+
+/** Unanswered rounds retried at the bus rate before the fixed retry: a
+ * dropped poll or two is not an outage, and waiting `RETRY_MS` after one
+ * would let the stale sweep evict rows that are still beaconing. */
+const MISSES_BEFORE_RETRY = 4;
 
 /** One poll round folded into a single write. */
 export interface MergedSwarmPoll {
@@ -62,6 +70,12 @@ export interface MergedSwarmPoll {
    * registry) rides the same choice, for the same reason: two ground stations
    * cannot disagree about which slots the fleet has issued. */
   snapshot: SwarmNeighborsSnapshot;
+  /** True when any ground station's swarm radio is open, false when every
+   * reply says its radio is closed, null when none carried the radio state. */
+  radioListening: boolean | null;
+  /** True when any ground station reports a peer on its own slot, false when
+   * every reply that carried the flag says none, null when none carried it. */
+  slotConflict: boolean | null;
 }
 
 /**
@@ -83,9 +97,16 @@ export function mergeSnapshots(
     }
   }
   const provisioned = snapshots.find((snap) => snap.fleetId !== null);
+  const radios = snapshots.flatMap((snap) => (snap.radio ? [snap.radio] : []));
+  const conflicts = snapshots.flatMap((snap) =>
+    snap.slotConflict === null ? [] : [snap.slotConflict],
+  );
   return {
     rows: Array.from(bySlot.values()),
     snapshot: provisioned ?? snapshots[0],
+    radioListening:
+      radios.length === 0 ? null : radios.some((radio) => radio.open),
+    slotConflict: conflicts.length === 0 ? null : conflicts.some(Boolean),
   };
 }
 
@@ -94,6 +115,7 @@ export function SwarmBeaconBridge() {
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let intervalMs = POLL_MS;
+    let misses = 0;
 
     async function pollOnce() {
       // DEMO-MODE BRANCH (gated on isDemoMode, real fleets unaffected): the
@@ -119,6 +141,8 @@ export function SwarmBeaconBridge() {
               snapshot.fleetId,
               snapshot.counters,
               snapshot.slots,
+              snapshot.radio?.open ?? null,
+              snapshot.slotConflict,
             );
         }
         // Keep the real 2 Hz bus rate so the board animates at the rate an
@@ -138,7 +162,7 @@ export function SwarmBeaconBridge() {
       if (groundStations.length === 0) {
         const store = useSwarmBeaconStore.getState();
         if (store.lastUpdatedMs !== null) store.clear();
-        intervalMs = MAX_POLL_MS;
+        intervalMs = RETRY_MS;
         return;
       }
 
@@ -158,9 +182,11 @@ export function SwarmBeaconBridge() {
         // Nobody answered. Keep whatever rows are still inside the stale
         // window (a single dropped poll is not a fleet-wide outage) and let
         // the prune below retire them on schedule.
-        intervalMs = Math.min(intervalMs * 2, MAX_POLL_MS);
+        misses += 1;
+        intervalMs = misses < MISSES_BEFORE_RETRY ? POLL_MS : RETRY_MS;
         return;
       }
+      misses = 0;
 
       const { fleetId, counters, slots } = merged.snapshot;
       if (fleetId === null) {
@@ -168,26 +194,32 @@ export function SwarmBeaconBridge() {
         // there is no fleet identity to record. Writing the config default 1
         // here would make an unprovisioned node look like a healthy fleet-1
         // node that had simply heard nobody — the exact confusion the route
-        // returns null to prevent. Drop the board and back off: a node with no
-        // bus has nothing to poll for, and the ramp to MAX_POLL_MS still
-        // notices the bus coming up well inside a boot.
+        // returns null to prevent. Drop the board and retry at the fixed
+        // recovery pace, which notices the bus coming up well inside a boot.
         const store = useSwarmBeaconStore.getState();
         if (store.lastUpdatedMs !== null) store.clear();
-        intervalMs = Math.min(intervalMs * 2, MAX_POLL_MS);
+        intervalMs = RETRY_MS;
         return;
       }
 
       intervalMs = POLL_MS;
       useSwarmBeaconStore
         .getState()
-        .upsertBeacons(merged.rows, fleetId, counters, slots);
+        .upsertBeacons(
+          merged.rows,
+          fleetId,
+          counters,
+          slots,
+          merged.radioListening,
+          merged.slotConflict,
+        );
     }
 
     async function tick() {
       await pollOnce();
       if (cancelled) return;
-      // Prune on every tick, including the backed-off ones, so eviction is
-      // driven by the GCS clock rather than by a poll happening to succeed.
+      // Prune on every tick, including the retry ones, so eviction is driven
+      // by the GCS clock rather than by a poll happening to succeed.
       useSwarmBeaconStore.getState().dropStale(Date.now(), SWARM_BEACON_STALE_MS);
       timer = setTimeout(tick, intervalMs);
     }

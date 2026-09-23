@@ -60,13 +60,6 @@ export function formatCoord(lat: number, lon: number): string {
   return `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
 }
 
-/** Battery color based on percentage. */
-export function batteryColor(pct: number): string {
-  if (pct > 50) return "var(--alt-status-success)";
-  if (pct > 25) return "var(--alt-status-warning)";
-  return "var(--alt-status-error)";
-}
-
 /** Calculate distance between two GPS points in meters (Haversine). */
 export function haversineDistance(
   lat1: number,

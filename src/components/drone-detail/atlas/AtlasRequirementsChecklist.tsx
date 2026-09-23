@@ -12,7 +12,7 @@
  */
 
 import { useTranslations } from "next-intl";
-import { Check, X, AlertTriangle } from "lucide-react";
+import { Check, X, AlertTriangle, CircleHelp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type {
   AtlasRequirement,
@@ -23,12 +23,14 @@ const TONE_ICON: Record<RequirementTone, typeof Check> = {
   met: Check,
   warning: AlertTriangle,
   unmet: X,
+  unknown: CircleHelp,
 };
 
 const TONE_COLOR: Record<RequirementTone, string> = {
   met: "text-status-success",
   warning: "text-status-warning",
   unmet: "text-status-error",
+  unknown: "text-text-tertiary",
 };
 
 export function AtlasRequirementsChecklist({

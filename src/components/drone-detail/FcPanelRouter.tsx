@@ -126,7 +126,7 @@ export function FcPanelRouter({ activePanel, firmwareType }: FcPanelRouterProps)
   if (activePanel === "gps-config") {
     // ArduPilot exposes the AP_GPS driver surface (types, blending, GNSS mask,
     // yaw); PX4 exposes the GPS driver params (protocol, GNSS bitmask, u-blox
-    // setup); Betaflight/iNav use the MSP GPS + GPS-Rescue panel.
+    // setup); Betaflight uses the MSP GPS + GPS-Rescue panel (not offered on iNav).
     if (firmwareType?.startsWith("ardupilot")) return <ArduPilotGpsPanel />;
     if (firmwareType === "px4") return <Px4GpsPanel />;
     return <GpsPanel />;

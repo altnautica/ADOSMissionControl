@@ -13,10 +13,8 @@ import path from "node:path";
 
 import { describe, it, expect } from "vitest";
 
-import {
-  parseManifestYaml,
-  toInstallSummary,
-} from "@/components/plugins/transports/manifest-parse";
+import { parseManifestYaml } from "@/components/plugins/transports/manifest-parse";
+import { toInstallSummary } from "@/components/plugins/transports/manifest-summary";
 
 const REPO_ROOT = path.resolve(__dirname, "..", "..", "..");
 const VISION_NAV_MANIFEST = path.join(

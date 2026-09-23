@@ -36,7 +36,7 @@ vi.mock("lucide-react", () => {
 
 vi.mock("@/stores/agent-connection-store", () => ({
   useAgentConnectionStore: (sel: (s: unknown) => unknown) =>
-    sel({ agentUrl: null, apiKey: null, client: null }),
+    sel({ agentUrl: null, apiKey: null, client: null, nodeDeviceId: null }),
 }));
 
 vi.mock("@/lib/api/ground-station-api", () => ({
@@ -52,6 +52,17 @@ import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import type { RadioState } from "@/lib/api/ground-station/types";
 
 const initialState = useAgentCapabilitiesStore.getState();
+const NODE = "dev-1";
+
+/** Store `radio` as THIS node's reported slice (the panel never reads the
+ * focused-agent slice). */
+function setNodeRadio(radio: RadioState | null, receivedAt: number = Date.now()) {
+  const { byDevice: _b, focusedDeviceId: _f, ...snapshot } = initialState;
+  useAgentCapabilitiesStore.setState({
+    ...initialState,
+    byDevice: { [NODE]: { ...snapshot, radio, receivedAt } },
+  });
+}
 
 /** A minimally-populated air-side radio snapshot with a null RSSI (the drone
  * does not hear its own RF); override `state` to exercise the RSSI-hint copy. */
@@ -134,16 +145,14 @@ afterEach(() => {
 
 describe("DroneRadioPanel", () => {
   it("renders the empty-state notice when the radio block is null", () => {
-    renderWithIntl(<DroneRadioPanel droneId="drone-1" />);
+    renderWithIntl(<DroneRadioPanel droneId="drone-1" nodeDeviceId={NODE} />);
     expect(
       screen.getByText("Radio control not supported on this agent"),
     ).toBeDefined();
   });
 
   it("renders live stats and the air-side badge when radio is populated", () => {
-    useAgentCapabilitiesStore.setState({
-      ...initialState,
-      radio: {
+    setNodeRadio({
         state: "connected",
         iface: "wlan1",
         driver: "8812eu",
@@ -203,9 +212,8 @@ describe("DroneRadioPanel", () => {
         pairedAt: "2026-05-08T12:00:00Z",
         publicKeyFingerprint: "deadbeefcafefeed",
         autoPairEnabled: false,
-      },
     });
-    renderWithIntl(<DroneRadioPanel droneId="drone-1" />);
+    renderWithIntl(<DroneRadioPanel droneId="drone-1" nodeDeviceId={NODE} />);
     // Air-side badge from the new droneRadio i18n namespace
     expect(screen.getByText("Air side")).toBeDefined();
     // Topology badge (external 5V)
@@ -221,9 +229,7 @@ describe("DroneRadioPanel", () => {
   });
 
   it("warns when the selected adapter is not injection-capable", () => {
-    useAgentCapabilitiesStore.setState({
-      ...initialState,
-      radio: {
+    setNodeRadio({
         state: "connected",
         iface: "wlan1",
         driver: "8812eu",
@@ -283,33 +289,48 @@ describe("DroneRadioPanel", () => {
         pairedAt: null,
         publicKeyFingerprint: null,
         autoPairEnabled: false,
-      },
     });
-    renderWithIntl(<DroneRadioPanel droneId="drone-1" />);
+    renderWithIntl(<DroneRadioPanel droneId="drone-1" nodeDeviceId={NODE} />);
     expect(
       screen.getByText("WFB adapter not injection-capable"),
     ).toBeDefined();
   });
 
   it("points a connected drone's null RSSI at the ground station", () => {
-    useAgentCapabilitiesStore.setState({
-      ...initialState,
-      radio: radioWithState("connected"),
-    });
-    renderWithIntl(<DroneRadioPanel droneId="drone-1" />);
+    setNodeRadio(radioWithState("connected"));
+    renderWithIntl(<DroneRadioPanel droneId="drone-1" nodeDeviceId={NODE} />);
     expect(screen.getByText(RSSI_AIR_NOTE)).toBeDefined();
     expect(screen.queryByText(RSSI_UNVERIFIED_NOTE)).toBeNull();
   });
 
   it("does not misdirect an rf_unverified drone's null RSSI to the ground station", () => {
-    useAgentCapabilitiesStore.setState({
-      ...initialState,
-      radio: radioWithState("rf_unverified"),
-    });
-    renderWithIntl(<DroneRadioPanel droneId="drone-1" />);
+    setNodeRadio(radioWithState("rf_unverified"));
+    renderWithIntl(<DroneRadioPanel droneId="drone-1" nodeDeviceId={NODE} />);
     // The unverified-reception note is shown, and the "ground station reports
     // the RSSI value" note (which would misdirect here) is not.
     expect(screen.getByText(RSSI_UNVERIFIED_NOTE)).toBeDefined();
     expect(screen.queryByText(RSSI_AIR_NOTE)).toBeNull();
+  });
+
+  it("never shows the focused agent's radio under another node", () => {
+    // The focused slice holds some other node's radio; this node reported none.
+    useAgentCapabilitiesStore.setState({
+      ...initialState,
+      radio: radioWithState("connected"),
+    });
+    renderWithIntl(<DroneRadioPanel droneId="drone-1" nodeDeviceId={NODE} />);
+    expect(screen.getByText("Radio control not supported on this agent")).toBeDefined();
+  });
+
+  it("shows unreported FEC counters as unknown rather than 0", () => {
+    setNodeRadio({ ...radioWithState("connected"), fecRecovered: null, fecLost: null });
+    renderWithIntl(<DroneRadioPanel droneId="drone-1" nodeDeviceId={NODE} />);
+    expect(screen.getAllByText("—")).toHaveLength(2);
+  });
+
+  it("flags a radio reading that has gone stale", () => {
+    setNodeRadio(radioWithState("connected"), Date.now() - 50_000);
+    renderWithIntl(<DroneRadioPanel droneId="drone-1" nodeDeviceId={NODE} />);
+    expect(screen.getByRole("status").textContent).toContain("Last radio report");
   });
 });

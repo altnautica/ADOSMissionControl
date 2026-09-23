@@ -4,7 +4,7 @@
  * land, take-off) is refused on a node whose firmware is known to lack it — an
  * acro flight controller — even when the node is fully reachable and its live
  * flight state is being read, so the board never offers a safety-return the
- * vehicle cannot perform (Rule 44). The board reads the same tri-state the
+ * vehicle cannot perform (no fabricated reading). The board reads the same tri-state the
  * cockpit reads: "supported" and "unknown" both keep the control, only a
  * known-unsupported firmware drops it, so the board and the cockpit agree for one
  * node. Every board surface — the row action menu, the flight-mode menu, and the

@@ -3,8 +3,9 @@
  *
  * The take-off altitude field is free text: a typed value is not bound by the
  * input's min/max. These tests pin that an out-of-range altitude never reaches
- * the take-off dispatch, and that the confirm dialog names the altitude that
- * will be commanded so a mistyped value is visible before confirming.
+ * the take-off dispatch from the panel or from a key binding, that the Flight
+ * tab's keys follow the operator's loadout, and that the confirm dialog names
+ * the altitude that will be commanded.
  */
 
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
@@ -36,6 +37,12 @@ vi.mock("@/components/shared/flight-mode-selector", () => ({
 vi.mock("@/components/flight/action-dialogs", () => ({ ChecklistModal: () => null }));
 
 import { ActionsPanel } from "@/components/flight/ActionsPanel";
+import { useSkillInput } from "@/hooks/use-skill-input";
+import { useSettingsStore } from "@/stores/settings-store";
+import {
+  DEFAULT_LOADOUT_ID,
+  cloneDefaultLoadout,
+} from "@/stores/settings/keybindings-slice";
 import { SkillConfirmHost } from "@/components/cockpit/SkillConfirmHost";
 import { registerBuiltins } from "@/lib/skills";
 import { buildSkillContextFor, useSkillRegistry } from "@/lib/skills/registry";
@@ -51,8 +58,25 @@ function wrap(node: ReactNode): ReactNode {
   );
 }
 
+/** The shell-level skill dispatcher, mounted beside the panel as in the app. */
+function ShellDispatcher() {
+  useSkillInput();
+  return null;
+}
+
+function renderFlightTab() {
+  render(
+    wrap(
+      <>
+        <ShellDispatcher />
+        <ActionsPanel />
+      </>,
+    ),
+  );
+}
+
 function pressTakeoffWith(altitude: string) {
-  render(wrap(<ActionsPanel />));
+  renderFlightTab();
   fireEvent.change(screen.getByRole("spinbutton"), { target: { value: altitude } });
   fireEvent.keyDown(window, { key: "T", shiftKey: true });
 }
@@ -62,6 +86,10 @@ describe("take-off altitude gating", () => {
     toast.mockClear();
     activateSpy.mockClear();
     useDroneManager.setState({ selectedDroneId: "drone-1" });
+    useSettingsStore.setState({
+      loadouts: { [DEFAULT_LOADOUT_ID]: cloneDefaultLoadout() },
+      activeLoadoutId: DEFAULT_LOADOUT_ID,
+    });
   });
   afterEach(() => {
     cleanup();
@@ -87,6 +115,22 @@ describe("take-off altitude gating", () => {
     expect(activateSpy).toHaveBeenCalledTimes(1);
     expect(activateSpy.mock.calls[0][0]).toBe("takeoff");
     expect(activateSpy.mock.calls[0][2]).toEqual({ altitudeM: 100 });
+  });
+
+  it("fires the operator's rebound key, not the factory chord", () => {
+    useSettingsStore.getState().setSlotKey(DEFAULT_LOADOUT_ID, 1, "g");
+    renderFlightTab();
+    fireEvent.keyDown(window, { key: "T", shiftKey: true });
+    expect(activateSpy).not.toHaveBeenCalled();
+    fireEvent.keyDown(window, { key: "g" });
+    expect(activateSpy).toHaveBeenCalledTimes(1);
+    expect(activateSpy.mock.calls[0][0]).toBe("takeoff");
+  });
+
+  it("keeps the dispatcher silent when no flying surface is mounted", () => {
+    render(wrap(<ShellDispatcher />));
+    fireEvent.keyDown(window, { key: "T", shiftKey: true });
+    expect(activateSpy).not.toHaveBeenCalled();
   });
 
   it("names the requested altitude in the confirm dialog", async () => {

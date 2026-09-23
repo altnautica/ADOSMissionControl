@@ -34,7 +34,12 @@ import { formatLogTime } from "../shared/LogViewer";
 import { ConfigIntField, ConfigReadonlyRow } from "./ConfigFields";
 import { readConfigPath } from "./use-node-config";
 import { useNodeDirectAgent } from "./use-node-direct-agent";
-import { Section } from "./Section";
+import { InfoNote, ReadRow, Section } from "./Section";
+
+/** MAV_COMP_ID_AUTOPILOT1. The router shares the flight controller's system
+ * id, so speaking as component 1 would make its heartbeats indistinguishable
+ * from the autopilot's; 0 is the broadcast id. Neither is a valid router id. */
+const AUTOPILOT_COMPONENT_ID = 1;
 
 interface SectionProps {
   /** The node this page is rendered for. The signing reads go only to a
@@ -74,25 +79,6 @@ export function parseEndpoints(
       // reads disabled.
       enabled: e.enabled !== false,
     }));
-}
-
-function InfoNote({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="rounded border border-border-default/60 bg-bg-tertiary/40 px-3 py-2 text-[11px] text-text-tertiary">
-      {children}
-    </div>
-  );
-}
-
-function ReadRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-baseline justify-between gap-3">
-      <span className="text-[11px] text-text-tertiary">{label}</span>
-      <span className="shrink-0 font-mono text-xs text-text-primary">
-        {value}
-      </span>
-    </div>
-  );
 }
 
 /** The signing sub-surface load result. "unexposed" is an agent build without
@@ -254,7 +240,7 @@ export function MavlinkRoutingSection({
           configKey="mavlink.component_id"
           label={t("componentIdLabel")}
           hint={t("componentIdHint")}
-          min={1}
+          min={AUTOPILOT_COMPONENT_ID + 1}
           max={255}
           config={config}
           readOnly={readOnly}

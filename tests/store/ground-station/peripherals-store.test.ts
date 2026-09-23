@@ -37,6 +37,7 @@ describe("ground-station peripherals slice", () => {
       scanning: false,
       scan_results: [],
       paired: [],
+      pairedFor: null,
       pairing_mac: null,
       error: null,
     });
@@ -62,6 +63,7 @@ describe("ground-station peripherals slice", () => {
         scanning: true,
         scan_results: [],
         paired: [],
+        pairedFor: null,
         pairing_mac: "AA:BB:CC:DD:EE:FF",
         error: null,
       },

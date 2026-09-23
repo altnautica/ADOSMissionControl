@@ -201,17 +201,20 @@ const AUDIT_PRUNE_BATCH = 256;
  */
 export const pruneOldAuditEvents = internalMutation({
   args: {},
-  handler: async (ctx) => {
+  handler: async (ctx): Promise<{ deleted: number }> => {
     const cutoff = Date.now() - AUDIT_RETENTION_MS;
     const stale = await ctx.db
       .query("cmd_mcpAuditEvents")
       .withIndex("by_createdAt", (q) => q.lt("createdAt", cutoff))
       .take(AUDIT_PRUNE_BATCH);
-    let deleted = 0;
     for (const row of stale) {
       await ctx.db.delete(row._id);
-      deleted += 1;
     }
-    return { deleted };
+    // A full batch means more may be past retention: keep draining now rather
+    // than letting the backlog outgrow one batch per cron tick.
+    if (stale.length === AUDIT_PRUNE_BATCH) {
+      await ctx.scheduler.runAfter(0, internal.cmdMcpTokens.pruneOldAuditEvents, {});
+    }
+    return { deleted: stale.length };
   },
 });

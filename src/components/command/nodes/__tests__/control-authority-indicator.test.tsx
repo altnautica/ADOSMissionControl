@@ -98,14 +98,8 @@ function renderRow(node: FleetNodeEntry) {
       <NodeRow
         node={node}
         selected={false}
-        renaming={false}
-        renameValue=""
-        renameInputRef={{ current: null }}
         onSelect={() => {}}
         onContext={() => {}}
-        onRenameChange={() => {}}
-        onRenameSubmit={() => {}}
-        onRenameCancel={() => {}}
       />
     </NextIntlClientProvider>,
   );

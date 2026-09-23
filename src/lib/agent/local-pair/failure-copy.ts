@@ -29,6 +29,7 @@
  * @license GPL-3.0-only
  */
 
+import { isPrivateIpv4 } from "../host-validation";
 import { PairClientError } from "./errors";
 
 /** Which half of the pair flow failed. Selects the unpair-specific copy; probe
@@ -39,7 +40,7 @@ export type PairOperation = "probe" | "claim" | "unpair";
 export interface PairFailureInput {
   operation: PairOperation;
   /** The base URL the call was made against, as `normaliseHost` produced it
-   * (e.g. `http://skynode.local:8080`). */
+   * (e.g. `http://testnode.local:8080`). */
   host: string;
   /** HTTP status the agent answered with, or 0 when nothing answered at all
    * (DNS failure, connection refused, timeout, the proxy's own 502). */
@@ -60,17 +61,21 @@ export interface PairFailureInput {
 
 /**
  * True when this Mission Control's own origin cannot see the operator's LAN:
- * served over https from something that is not loopback. A desktop build, a
- * localhost dev server and a LAN-hosted deployment all read false.
+ * served over https from a public host. A desktop build, a localhost dev
+ * server and a LAN-hosted deployment (a private IPv4 address or an mDNS
+ * `.local` name) all read false.
  *
  * Exported as the one definition of "the proxy hop cannot reach a LAN agent"
  * so the probe, claim and unpair paths cannot drift on it.
  */
 export function isServedRemotely(): boolean {
   if (typeof window === "undefined") return false;
-  return (
-    window.location.protocol === "https:" &&
-    !/^(localhost|127\.|\[?::1\]?)/.test(window.location.hostname)
+  if (window.location.protocol !== "https:") return false;
+  const host = window.location.hostname.toLowerCase();
+  return !(
+    /^(localhost|127\.|\[?::1\]?)/.test(host) ||
+    isPrivateIpv4(host) ||
+    host.endsWith(".local")
   );
 }
 

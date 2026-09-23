@@ -27,6 +27,13 @@ function approxDistanceM(lat1: number, lon1: number, lat2: number, lon2: number)
 }
 
 describe('generateOrbit', () => {
+  it('aims the ROI at the target height, not the flight altitude', () => {
+    for (const [targetHeight, expected] of [[undefined, 0], [12, 12]] as const) {
+      const roi = generateOrbit(makeConfig({ altitude: 50, targetHeight })).waypoints.find((w) => w.command === 'ROI');
+      expect(roi?.alt).toBe(expected);
+    }
+  });
+
   it('generates correct number of waypoints for given turns', () => {
     const result = generateOrbit(makeConfig({ radius: 100, turns: 1 }));
     // First waypoint is ROI, rest are orbit points

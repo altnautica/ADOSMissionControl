@@ -68,4 +68,12 @@ describe("dsdl BeginFirmwareUpdate", () => {
     });
     expect(Array.from(buf)).toEqual([0x00]);
   });
+
+  it("caps the error message at 127 bytes (uint8[<128])", () => {
+    const at = { error: ERROR_INVALID_MODE, optional_error_message: "x".repeat(127) };
+    expect(encodeBeginFirmwareUpdateResponse(at)).toHaveLength(128);
+    expect(() =>
+      encodeBeginFirmwareUpdateResponse({ ...at, optional_error_message: "x".repeat(128) }),
+    ).toThrow(/127/);
+  });
 });

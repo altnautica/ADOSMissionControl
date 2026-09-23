@@ -21,7 +21,7 @@ import type {
   NavControllerCallback, ScaledImuCallback, ScaledPressureCallback,
   EstimatorStatusCallback, CameraTriggerCallback, LinkStateCallback,
   LocalPositionCallback, DebugCallback, GimbalAttitudeCallback,
-  ObstacleDistanceCallback, CameraImageCapturedCallback,
+  ObstacleDistanceCallback, AdsbVehicleCallback, CameraImageCapturedCallback,
   ExtendedSysStateCallback, FencePointCallback, SystemTimeCallback,
   RawImuCallback, RcChannelsRawCallback, RcChannelsOverrideCallback,
   MissionItemCallback, AltitudeCallback, WindCovCallback,
@@ -71,6 +71,7 @@ export interface CallbackStore {
   debugCallbacks: DebugCallback[]
   gimbalAttitudeCallbacks: GimbalAttitudeCallback[]
   obstacleDistanceCallbacks: ObstacleDistanceCallback[]
+  adsbVehicleCallbacks: AdsbVehicleCallback[]
   cameraImageCallbacks: CameraImageCapturedCallback[]
   extendedSysStateCallbacks: ExtendedSysStateCallback[]
   fencePointCallbacks: FencePointCallback[]
@@ -134,6 +135,7 @@ export function createCallbackStore(): CallbackStore {
     debugCallbacks: [],
     gimbalAttitudeCallbacks: [],
     obstacleDistanceCallbacks: [],
+    adsbVehicleCallbacks: [],
     cameraImageCallbacks: [],
     extendedSysStateCallbacks: [],
     fencePointCallbacks: [],
@@ -207,6 +209,7 @@ export function bindCallbackMethods(cbs: CallbackStore) {
     onDebug: (cb: DebugCallback) => sub(cbs.debugCallbacks, cb),
     onGimbalAttitude: (cb: GimbalAttitudeCallback) => sub(cbs.gimbalAttitudeCallbacks, cb),
     onObstacleDistance: (cb: ObstacleDistanceCallback) => sub(cbs.obstacleDistanceCallbacks, cb),
+    onAdsbVehicle: (cb: AdsbVehicleCallback) => sub(cbs.adsbVehicleCallbacks, cb),
     onCameraImageCaptured: (cb: CameraImageCapturedCallback) => sub(cbs.cameraImageCallbacks, cb),
     onExtendedSysState: (cb: ExtendedSysStateCallback) => sub(cbs.extendedSysStateCallbacks, cb),
     onFencePoint: (cb: FencePointCallback) => sub(cbs.fencePointCallbacks, cb),

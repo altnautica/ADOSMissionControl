@@ -282,7 +282,7 @@ export async function seedDemoTelemetryRecordings(
       {
         durationS: record.duration,
         path: record.path ?? [],
-        maxAltM: record.maxAlt,
+        maxAltM: record.maxAlt ?? 0,
         cruiseSpeedMs: scenario.speedMs,
         batteryStartV: record.batteryStartV ?? 25.2,
         batteryEndV: record.batteryEndV ?? 22.5,

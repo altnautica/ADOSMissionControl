@@ -3,7 +3,7 @@
 /**
  * @module atlas/ReconstructionBadge
  * @description The reconstruction-honesty badge overlaid on a World Model viewer
- * (Rule 44). A `mock` reconstruction is a deterministic placeholder produced on
+ * (no fabricated reading). A `mock` reconstruction is a deterministic placeholder produced on
  * a node with no GPU / no real backend installed — it is NEVER a real world
  * model, so it wears an unmissable warning chip. A real backend (`brush` /
  * `msplat` / `nerfstudio` / `colmap`) wears a calm neutral chip naming the
@@ -41,7 +41,7 @@ export function ReconstructionBadge({
         className={
           mock
             ? "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium text-status-warning bg-status-warning/15 ring-1 ring-status-warning/30"
-            : "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium text-text-tertiary bg-white/[0.06] ring-1 ring-white/10"
+            : "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium text-text-tertiary bg-bg-tertiary ring-1 ring-border-default"
         }
         title={
           mock

@@ -5,7 +5,9 @@
  * @description Confirmation card shown after a successful agent
  * probe. Renders the agent identity (device id, name, board,
  * profile, role) plus a Pair locally button. On pair, the local
- * nodes store is updated and the parent dismisses the flow.
+ * nodes store is updated, the node is connected through the one
+ * canonical local-node path (teardown, selection, LAN or relay), and
+ * the parent learns how far the connection got.
  * @license GPL-3.0-only
  */
 
@@ -19,14 +21,20 @@ import {
   PairClientError,
   type ProbeResult,
 } from "@/lib/agent/local-pair-client";
+import { connectLocalNode } from "@/lib/agent/node-click-handler";
 import { useLocalNodesStore } from "@/stores/local-nodes-store";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useConvexAvailable } from "@/app/ConvexClientProvider";
 import { cmdPairingApi } from "@/lib/community-api-drones";
 
+/** How far the post-pair connect got: the agent answered on the LAN, or the
+ * relay subscription is open and the node has yet to report over it. */
+export type PairedReach = "connected" | "cloud";
+
 interface ProbeResultCardProps {
   probe: ProbeResult;
-  onPaired: (deviceId: string) => void;
+  /** Fired only once the node is paired and reachable (or relay-bound). */
+  onPaired: (deviceId: string, reach: PairedReach) => void;
   onCancel: () => void;
 }
 
@@ -66,7 +74,7 @@ function BindStateBadge({
       </span>
     );
   // Paired is a completed key exchange, NOT proof RF is getting through
-  // (Rule 44): a radio-paired node may still be binding, degraded, or
+  // (no fabricated reading): a radio-paired node may still be binding, degraded, or
   // transmitting with no confirmed reception. The green "connected" pill
   // reflects the real radio link state only — it must never be inferred from
   // the pair flag.
@@ -205,30 +213,20 @@ function ProbeResultCardInner({
         pairedAt: Date.now(),
         lastSeenAt: Date.now(),
       });
-      try {
-        const onHttps =
-          typeof window !== "undefined" &&
-          window.location.protocol === "https:";
-        if (onHttps) {
-          // Mixed-content guard: HTTPS pages can't fetch http://*.local
-          // directly. Route through the cloud relay just like
-          // selectNode() does. The agent posts heartbeats to Convex
-          // independently so the GCS still gets telemetry.
-          useAgentConnectionStore.getState().connectCloud(claim.deviceId);
-        } else {
-          await useAgentConnectionStore
-            .getState()
-            .connect(probe.hostname, claim.apiKey, claim.deviceId);
-        }
-      } catch (connectErr) {
-        if (!mountedRef.current) return;
-        const msg =
-          connectErr instanceof Error ? connectErr.message : String(connectErr);
-        setError(t("pairedButConnectFailed", { error: msg }));
+      // The canonical local-node path: tear down whatever session was
+      // attached, select this node, then connect on the LAN (or subscribe to
+      // the relay on an HTTPS page). connect() reports failure through the
+      // store rather than by throwing, so the outcome is what says whether
+      // the node is live.
+      const outcome = await connectLocalNode(claim.deviceId, { onFocusAgent: () => {} });
+      if (!mountedRef.current) return;
+      if (outcome === "failed" || outcome === "blocked") {
+        const reason =
+          useAgentConnectionStore.getState().connectionError ?? t("connectFailedUnknown");
+        setError(t("pairedButConnectFailed", { error: reason }));
         return;
       }
-      if (!mountedRef.current) return;
-      onPaired(claim.deviceId);
+      onPaired(claim.deviceId, outcome);
     } catch (e) {
       if (!mountedRef.current) return;
       if (e instanceof AgentAlreadyPairedError) {

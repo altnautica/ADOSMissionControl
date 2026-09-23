@@ -108,7 +108,7 @@ export function useDroneSkillContributions(
     enabled: isAuthenticated && Boolean(agentId),
   });
 
-  // Local-first source (Rule 39): the agent's /plugins detail carries the
+  // Local-first source: the agent's /plugins detail carries the
   // live granted caps + the denormalized flight skills, so a signed-out
   // operator's cockpit Skill Bar mounts plugin skills with no cloud.
   const localDetail = useLocalAgentPlugins(agentId ?? null);

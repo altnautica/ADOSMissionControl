@@ -180,6 +180,7 @@ describe("HUD readings with a live FC", () => {
       remnoise: 20,
       rxerrors: 0,
       fixed: 0,
+      sourceSystemId: 51,
     });
 
     const hud = readHudFrame();
@@ -205,6 +206,7 @@ describe("HUD readings with a live FC", () => {
         remnoise: 0,
         rxerrors: 0,
         fixed: 0,
+        sourceSystemId: 51,
       }),
     ).toBe(0);
     // A stale sample is not a reading at all.
@@ -218,9 +220,30 @@ describe("HUD readings with a live FC", () => {
         remnoise: 0,
         rxerrors: 0,
         fixed: 0,
+        sourceSystemId: 51,
       }),
     ).toBeNull();
     expect(signalBarsFromRssi(undefined)).toBeNull();
+  });
+
+  it("reads the unknown rssi value and an unknown radio scale as no data", () => {
+    const sik = {
+      timestamp: NOW,
+      rssi: 200,
+      remrssi: 0,
+      txbuf: 0,
+      noise: 0,
+      remnoise: 0,
+      rxerrors: 0,
+      fixed: 0,
+      sourceSystemId: 51,
+    };
+    expect(signalBarsFromRssi(sik)).toBe(3);
+    // 255 is the field's "invalid / unknown" value, not full signal.
+    expect(signalBarsFromRssi({ ...sik, rssi: 255 })).toBeNull();
+    // A radio whose byte carries signed dBm (-128 with nothing received packs
+    // to 128) must not be read on the SiK scale.
+    expect(signalBarsFromRssi({ ...sik, rssi: 128, sourceSystemId: 3 })).toBeNull();
   });
 
   it("reads altitude as height above home, never MSL", () => {

@@ -53,7 +53,8 @@ vi.mock("@/stores/radio-network-health-store", () => ({
       wifiReassocRecent: false,
       available: true,
       loading: false,
-      refresh: vi.fn(async () => {}),
+      deviceId: null,
+      loadEvents: vi.fn(async () => {}),
       clear: vi.fn(),
     }),
 }));
@@ -156,7 +157,7 @@ describe("RadioNetworkHealthPanel adapter health", () => {
       adapterUsbDegraded: true,
       adapterUsbSpeedMbps: 12,
     });
-    renderWithIntl(<RadioNetworkHealthPanel />);
+    renderWithIntl(<RadioNetworkHealthPanel nodeDeviceId={null} />);
 
     expect(screen.getByText("Radio USB link")).toBeDefined();
     expect(screen.getByText("Degraded (12 Mbps)")).toBeDefined();
@@ -165,7 +166,7 @@ describe("RadioNetworkHealthPanel adapter health", () => {
 
   it("renders an unreported USB link as unreported", () => {
     setRadio({ adapterChipset: "RTL8812EU", adapterInjectionOk: true });
-    renderWithIntl(<RadioNetworkHealthPanel />);
+    renderWithIntl(<RadioNetworkHealthPanel nodeDeviceId={null} />);
 
     expect(screen.getByText("Not reported")).toBeDefined();
     expect(valueClassFor("Radio USB link")).not.toContain(
@@ -177,7 +178,7 @@ describe("RadioNetworkHealthPanel adapter health", () => {
     // The panel used to derive a green adapter from the presence of a chipset
     // name, so a node that reported no verdict looked confirmed working.
     setRadio({ adapterChipset: "RTL8812EU" });
-    renderWithIntl(<RadioNetworkHealthPanel />);
+    renderWithIntl(<RadioNetworkHealthPanel nodeDeviceId={null} />);
 
     expect(valueClassFor("Radio adapter")).not.toContain("text-status-success");
     expect(
@@ -187,7 +188,7 @@ describe("RadioNetworkHealthPanel adapter health", () => {
 
   it("colours the adapter green only on a reported injection verdict", () => {
     setRadio({ adapterChipset: "RTL8812EU", adapterInjectionOk: true });
-    renderWithIntl(<RadioNetworkHealthPanel />);
+    renderWithIntl(<RadioNetworkHealthPanel nodeDeviceId={null} />);
 
     expect(screen.getByText("RTL8812EU — injection OK")).toBeDefined();
     expect(valueClassFor("Radio adapter")).toContain("text-status-success");
@@ -195,7 +196,7 @@ describe("RadioNetworkHealthPanel adapter health", () => {
 
   it("names an adapter that cannot inject", () => {
     setRadio({ adapterChipset: "RTL8812EU", adapterInjectionOk: false });
-    renderWithIntl(<RadioNetworkHealthPanel />);
+    renderWithIntl(<RadioNetworkHealthPanel nodeDeviceId={null} />);
 
     expect(screen.getByText("RTL8812EU — cannot inject")).toBeDefined();
     expect(valueClassFor("Radio adapter")).toContain("text-status-error");

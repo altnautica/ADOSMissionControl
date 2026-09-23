@@ -11,15 +11,20 @@
  * (paired nodes + a reachability poll) rather than the agent readiness — the
  * agent does not probe the compute node, so only the GCS knows if one is paired
  * and reachable (per the locked contract). In demo mode the compute requirement
- * is treated as satisfied (a simulated node) so the flow is exercisable offline
- * (Rule 4); the camera + service requirements read the (mock) readiness as-is.
+ * is treated as satisfied (a simulated node) so the flow is exercisable offline;
+ * the camera + service requirements read the (mock) readiness as-is.
+ *
+ * Before the first readiness poll answers, or when it fails, nothing is known
+ * about the drone's cameras or capture service. Those rows then read as unknown
+ * rather than asserting "no cameras" or "capture disabled", and Start stays
+ * blocked.
  *
  * @license GPL-3.0-only
  */
 
 import type { AtlasReadiness } from "@/lib/agent/atlas-control-client";
 
-export type RequirementTone = "met" | "warning" | "unmet";
+export type RequirementTone = "met" | "warning" | "unmet" | "unknown";
 export type RequirementId = "cameras" | "compute" | "service";
 
 export interface AtlasRequirement {
@@ -68,14 +73,22 @@ export function computeCaptureGate(inputs: AtlasGateInputs): AtlasCaptureGate {
 
   const camerasConfigured = readiness?.camerasConfigured ?? 0;
   const camerasMet = camerasConfigured > 0;
-  const camerasReq: AtlasRequirement = {
-    id: "cameras",
-    met: camerasMet,
-    tone: camerasMet ? "met" : "unmet",
-    labelKey: "capture.reqCameras",
-    detailKey: camerasMet ? "capture.reqCamerasMet" : "capture.reqCamerasUnmet",
-    detailValues: camerasMet ? { count: camerasConfigured } : undefined,
-  };
+  const camerasReq: AtlasRequirement = readiness
+    ? {
+        id: "cameras",
+        met: camerasMet,
+        tone: camerasMet ? "met" : "unmet",
+        labelKey: "capture.reqCameras",
+        detailKey: camerasMet ? "capture.reqCamerasMet" : "capture.reqCamerasUnmet",
+        detailValues: camerasMet ? { count: camerasConfigured } : undefined,
+      }
+    : {
+        id: "cameras",
+        met: false,
+        tone: "unknown",
+        labelKey: "capture.reqCameras",
+        detailKey: "capture.reqReadinessUnknown",
+      };
 
   let computeReq: AtlasRequirement;
   if (demo) {
@@ -114,9 +127,11 @@ export function computeCaptureGate(inputs: AtlasGateInputs): AtlasCaptureGate {
 
   const serviceMet = Boolean(readiness?.enabled && readiness?.serviceRunning);
   let serviceDetail: string;
-  if (serviceMet) {
+  if (!readiness) {
+    serviceDetail = "capture.reqReadinessUnknown";
+  } else if (serviceMet) {
     serviceDetail = "capture.reqServiceMet";
-  } else if (!readiness?.enabled) {
+  } else if (!readiness.enabled) {
     serviceDetail = "capture.reqServiceDisabled";
   } else {
     serviceDetail = "capture.reqServiceStopped";
@@ -124,7 +139,7 @@ export function computeCaptureGate(inputs: AtlasGateInputs): AtlasCaptureGate {
   const serviceReq: AtlasRequirement = {
     id: "service",
     met: serviceMet,
-    tone: serviceMet ? "met" : "unmet",
+    tone: !readiness ? "unknown" : serviceMet ? "met" : "unmet",
     labelKey: "capture.reqService",
     detailKey: serviceDetail,
   };
@@ -136,7 +151,8 @@ export function computeCaptureGate(inputs: AtlasGateInputs): AtlasCaptureGate {
 
   let startBlockedKey: string | null = null;
   if (!canStart) {
-    if (!camerasMet) startBlockedKey = "capture.startBlockedCameras";
+    if (!readiness) startBlockedKey = "capture.startBlockedReadinessUnknown";
+    else if (!camerasMet) startBlockedKey = "capture.startBlockedCameras";
     else if (!serviceMet) startBlockedKey = "capture.startBlockedService";
     else startBlockedKey = "capture.startBlockedCompute";
   }

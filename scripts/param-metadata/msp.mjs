@@ -46,7 +46,7 @@ async function bfFeatureBits() {
       if (bits.length) return bits;
     } catch { /* try next path */ }
   }
-  return undefined; // not sourced → ship no BF feature bits (Rule 44: no guessed labels)
+  return undefined; // not sourced → ship no BF feature bits (no guessed labels)
 }
 
 const ON_OFF = [[0, "OFF"], [1, "ON"]];

@@ -66,6 +66,22 @@ describe("normaliseAndCheckHost — private-address allowlist", () => {
     }
   });
 
+  it("keeps an explicit :80 instead of defaulting it to 8080", () => {
+    for (const input of ["http://192.168.1.20:80", "192.168.1.20:80"]) {
+      const r = normaliseAndCheckHost(input);
+      if ("error" in r) throw new Error(r.message);
+      expect(r.port).toBe(80);
+      expect(r.url).toBe("http://192.168.1.20");
+    }
+    const v6 = normaliseAndCheckHost("http://[fd00::5]:80");
+    if ("error" in v6) throw new Error(v6.message);
+    expect(v6.port).toBe(80);
+    // No port at all still reaches the agent's REST port.
+    const bare = normaliseAndCheckHost("http://192.168.1.20");
+    if ("error" in bare) throw new Error(bare.message);
+    expect(bare.port).toBe(8080);
+  });
+
   it("rejects public IPv4 and public DNS names", () => {
     expect(classify("8.8.8.8")).toEqual({ rejected: "host_not_private" });
     expect(classify("172.32.0.1")).toEqual({ rejected: "host_not_private" });

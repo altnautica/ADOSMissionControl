@@ -1,241 +1,101 @@
 /**
- * Verifies the plugin registry compat hook. The SoC gate is the
- * load-bearing test here: a plugin manifest that declares
- * `supported_boards: ["rk3582"]` must compat-pass on a Radxa ROCK 5C
- * Lite whose board.model is "rock-5c-lite" and board.name is
- * "Radxa ROCK 5C Lite". Before this change the matcher only looked at
- * model + name, so SoC entries in manifests were silently dead weight.
+ * The plugin registry compat hook judges the install TARGET by its own
+ * reported version and board, never another node's. Board ids match on the
+ * SoC as well as the board name, case-insensitively.
  *
  * @license GPL-3.0-only
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import { renderHook } from "@testing-library/react";
 
 import { useRegistryCompatibility } from "@/components/plugins/install-dialog/use-registry-compatibility";
-import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
-import { useAgentSystemStore } from "@/stores/agent-system-store";
-import type { AgentStatus } from "@/lib/agent/types";
+import { useCommandFleetStore } from "@/stores/command-fleet-store";
 
-const capsInitial = useAgentCapabilitiesStore.getState();
-const sysInitial = useAgentSystemStore.getState();
+const fleetInitial = useCommandFleetStore.getState();
 
-function statusFor(board: {
-  name: string;
-  model: string;
-  soc: string;
-  version?: string;
-}): AgentStatus {
-  return {
-    version: board.version ?? "0.36.2",
-    uptime_seconds: 100,
-    board: {
-      name: board.name,
-      model: board.model,
-      tier: 4,
-      ram_mb: 16384,
-      cpu_cores: 8,
-      vendor: "Radxa",
-      soc: board.soc,
-      arch: "aarch64",
-      hw_video_codecs: [],
+function report(
+  deviceId: string,
+  board: { name: string; soc: string; version?: string },
+): void {
+  useCommandFleetStore.getState().upsertCloudStatuses([
+    {
+      deviceId,
+      version: board.version ?? "0.36.2",
+      boardName: board.name,
+      boardSoc: board.soc,
+      updatedAt: Date.now(),
     },
-    health: {
-      cpu_percent: 1,
-      memory_percent: 1,
-      disk_percent: 1,
-      temperature: 30,
-      timestamp: new Date().toISOString(),
-    },
-    fc_connected: false,
-  } as unknown as AgentStatus;
+  ]);
 }
 
-beforeEach(() => {
-  useAgentCapabilitiesStore.setState({ ...capsInitial, loaded: true }, true);
-});
-
 afterEach(() => {
-  useAgentCapabilitiesStore.setState(capsInitial, true);
-  useAgentSystemStore.setState(sysInitial, true);
+  useCommandFleetStore.setState(fleetInitial, true);
 });
 
-describe("useRegistryCompatibility — SoC matching", () => {
-  it("matches a manifest declaring a SoC against a board with that SoC", () => {
-    useAgentSystemStore.getState().setStatus(
-      statusFor({
-        name: "Radxa ROCK 5C Lite",
-        model: "rock-5c-lite",
-        soc: "RK3582",
-      }),
-    );
+function compatFor(
+  deviceId: string | null,
+  version: { agent_min_version: string; supported_boards?: string[] },
+) {
+  return renderHook(() => useRegistryCompatibility(version, { deviceId })).result
+    .current;
+}
 
-    const { result } = renderHook(() =>
-      useRegistryCompatibility({
-        agent_min_version: "0.13.0",
-        supported_boards: ["rk3582"],
-      }),
-    );
+describe("useRegistryCompatibility", () => {
+  it("judges the target's board, not another reporting node's", () => {
+    report("gs-1", { name: "Raspberry Pi 3", soc: "bcm2710a1" });
+    report("drone-7", { name: "Radxa ROCK 5C Lite", soc: "RK3582" });
 
-    expect(result.current.compatible).toBe(true);
-    expect(result.current.reason).toBeUndefined();
+    const rkOnly = { agent_min_version: "0.13.0", supported_boards: ["rk3582"] };
+    expect(compatFor("drone-7", rkOnly).compatible).toBe(true);
+    expect(compatFor("gs-1", rkOnly)).toMatchObject({
+      compatible: false,
+      reason: "board",
+      detail: "Raspberry Pi 3",
+    });
   });
 
-  it("falls back to model match when SoC is not in supported_boards", () => {
-    useAgentSystemStore.getState().setStatus(
-      statusFor({
-        name: "Radxa ROCK 5C Lite",
-        model: "rock-5c-lite",
-        soc: "RK3582",
-      }),
+  it("gates on the target having reported, not on some other node being connected", () => {
+    report("gs-1", { name: "Raspberry Pi 3", soc: "bcm2710a1" });
+    expect(compatFor("drone-7", { agent_min_version: "0.10.0" }).reason).toBe(
+      "no_agent",
     );
-
-    const { result } = renderHook(() =>
-      useRegistryCompatibility({
-        agent_min_version: "0.13.0",
-        supported_boards: ["rock-5c-lite"],
-      }),
-    );
-
-    expect(result.current.compatible).toBe(true);
+    expect(compatFor(null, { agent_min_version: "0.10.0" }).reason).toBe("no_agent");
   });
 
-  it("rejects when neither model, name, nor SoC matches", () => {
-    useAgentSystemStore.getState().setStatus(
-      statusFor({
-        name: "Radxa ROCK 5C Lite",
-        model: "rock-5c-lite",
-        soc: "RK3582",
-      }),
-    );
-
-    const { result } = renderHook(() =>
-      useRegistryCompatibility({
-        agent_min_version: "0.13.0",
-        supported_boards: ["jetson-orin-nano"],
-      }),
-    );
-
-    expect(result.current.compatible).toBe(false);
-    expect(result.current.reason).toBe("board");
+  it("gates on the target's agent version", () => {
+    report("drone-7", { name: "Radxa ROCK 5C Lite", soc: "rk3582", version: "0.12.9" });
+    expect(compatFor("drone-7", { agent_min_version: "0.13.0" })).toMatchObject({
+      compatible: false,
+      reason: "version",
+      detail: "0.13.0",
+    });
   });
 
-  it("matches case-insensitively on SoC (RK3582 manifest, rk3582 board, mixed)", () => {
-    useAgentSystemStore.getState().setStatus(
-      statusFor({
-        name: "Radxa ROCK 5C Lite",
-        model: "rock-5c-lite",
-        soc: "rk3582",
-      }),
-    );
-
-    const { result } = renderHook(() =>
-      useRegistryCompatibility({
+  it("matches the board name as well as the SoC, case-insensitively", () => {
+    report("drone-7", { name: "Radxa ROCK 5C Lite", soc: "rk3582" });
+    expect(
+      compatFor("drone-7", {
         agent_min_version: "0.13.0",
         supported_boards: ["RK3582"],
-      }),
-    );
-
-    expect(result.current.compatible).toBe(true);
+      }).compatible,
+    ).toBe(true);
+    expect(
+      compatFor("drone-7", {
+        agent_min_version: "0.13.0",
+        supported_boards: ["radxa rock 5c lite"],
+      }).compatible,
+    ).toBe(true);
+    expect(
+      compatFor("drone-7", {
+        agent_min_version: "0.13.0",
+        supported_boards: ["jetson-orin-nano"],
+      }).reason,
+    ).toBe("board");
   });
 
-  it("passes when supported_boards is omitted entirely", () => {
-    useAgentSystemStore.getState().setStatus(
-      statusFor({
-        name: "Anything",
-        model: "any-model",
-        soc: "any-soc",
-      }),
-    );
-
-    const { result } = renderHook(() =>
-      useRegistryCompatibility({ agent_min_version: "0.10.0" }),
-    );
-
-    expect(result.current.compatible).toBe(true);
-  });
-});
-
-// ── disable matrix on the card ──────────────────────────────
-//
-// These tests reason about the gating logic that lives inline in
-// RegistryPluginCard.tsx (per-node surface). The contract: "no_agent",
-// "version", AND "board" are all hard blocks — an operator must never see
-// a clickable Install next to "Not compatible with this drone's board".
-// The only surviving soft state is a still-loading version row, which
-// blocks nothing.
-describe("RegistryPluginCard disable matrix (semantic)", () => {
-  function classify(opts: {
-    installed?: boolean;
-    isLoading?: boolean;
-    latestVersionRow: object | null;
-    compat: { compatible: boolean; reason?: "no_agent" | "version" | "board" };
-  }): { disabled: boolean; warning: boolean } {
-    const compatBlock = !opts.compat.compatible;
-    const disabled = Boolean(opts.installed || opts.isLoading || compatBlock);
-    const warning = !opts.latestVersionRow && !disabled;
-    return { disabled, warning };
-  }
-
-  it("hard-blocks when the agent is disconnected", () => {
-    const out = classify({
-      latestVersionRow: null,
-      compat: { compatible: false, reason: "no_agent" },
-    });
-    expect(out.disabled).toBe(true);
-    expect(out.warning).toBe(false);
-  });
-
-  it("hard-blocks on version mismatch", () => {
-    const out = classify({
-      latestVersionRow: { version: "1.0.0" },
-      compat: { compatible: false, reason: "version" },
-    });
-    expect(out.disabled).toBe(true);
-  });
-
-  it("soft-warns + keeps clickable when latestVersionRow is missing but compat passes", () => {
-    const out = classify({
-      latestVersionRow: null,
-      compat: { compatible: true },
-    });
-    expect(out.disabled).toBe(false);
-    expect(out.warning).toBe(true);
-  });
-
-  it("hard-blocks on board mismatch (defect fix: no longer a clickable soft warning)", () => {
-    const out = classify({
-      latestVersionRow: { version: "1.0.0" },
-      compat: { compatible: false, reason: "board" },
-    });
-    expect(out.disabled).toBe(true);
-    expect(out.warning).toBe(false);
-  });
-
-  it("disables when already installed", () => {
-    const out = classify({
-      installed: true,
-      latestVersionRow: { version: "1.0.0" },
-      compat: { compatible: true },
-    });
-    expect(out.disabled).toBe(true);
-  });
-
-  it("disables during an in-flight install", () => {
-    const out = classify({
-      isLoading: true,
-      latestVersionRow: { version: "1.0.0" },
-      compat: { compatible: true },
-    });
-    expect(out.disabled).toBe(true);
-  });
-
-  it("happy path: all gates pass, no warning, no disable", () => {
-    const out = classify({
-      latestVersionRow: { version: "1.0.0" },
-      compat: { compatible: true },
-    });
-    expect(out.disabled).toBe(false);
-    expect(out.warning).toBe(false);
+  it("passes any board when supported_boards is omitted", () => {
+    report("drone-7", { name: "Anything", soc: "any-soc" });
+    expect(compatFor("drone-7", { agent_min_version: "0.10.0" }).compatible).toBe(true);
   });
 });

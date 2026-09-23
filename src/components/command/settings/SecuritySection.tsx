@@ -20,7 +20,7 @@
  * @license GPL-3.0-only
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { ShieldCheck } from "lucide-react";
 
@@ -33,7 +33,7 @@ import {
 } from "@/lib/agent/local-pair-client";
 import { ConfigTextField, ConfigToggleField } from "./ConfigFields";
 import { readConfigPath } from "./use-node-config";
-import { Section } from "./Section";
+import { Section, StatusRow } from "./Section";
 
 interface SectionProps {
   /** The node this page is rendered for. The PIN-posture read below resolves
@@ -58,34 +58,6 @@ export function apiKeyStateKey(
   return raw.length > 0 ? "set" : "notSet";
 }
 
-function StatusRow({
-  label,
-  value,
-  valueClass,
-  hint,
-}: {
-  label: string;
-  value: string;
-  valueClass?: string;
-  hint?: string;
-}) {
-  return (
-    <div>
-      <div className="flex items-baseline justify-between gap-3">
-        <span className="text-xs text-text-secondary">{label}</span>
-        <span
-          className={`shrink-0 font-mono text-xs ${valueClass ?? "text-text-primary"}`}
-        >
-          {value}
-        </span>
-      </div>
-      {hint ? (
-        <p className="mt-0.5 text-[11px] text-text-tertiary">{hint}</p>
-      ) : null}
-    </div>
-  );
-}
-
 /** One completed PIN-posture read, tagged with the host it answered for so a
  * re-resolved target renders "checking" instead of the stale posture. */
 interface PinRead {
@@ -105,30 +77,33 @@ export function SecuritySection({
   const localNodes = useLocalNodesStore((s) => s.nodes);
   const pairedDrones = usePairingStore((s) => s.pairedDrones);
 
-  const pinTarget = useMemo(
-    () =>
-      resolveConfigProxyTarget(nodeDeviceId, { localNodes, pairedDrones }),
-    [nodeDeviceId, localNodes, pairedDrones],
-  );
+  // Keyed on the target's strings: the pairing arrays are replaced on every
+  // presence stamp and cloud-sync update, and keying on them re-read the PIN
+  // posture each time.
+  const pinTarget = resolveConfigProxyTarget(nodeDeviceId, {
+    localNodes,
+    pairedDrones,
+  });
+  const pinHost = pinTarget?.host ?? null;
+  const pinApiKey = pinTarget?.apiKey ?? "";
 
   const [pinRead, setPinRead] = useState<PinRead | null>(null);
 
   useEffect(() => {
-    if (!pinTarget) return;
+    if (pinHost === null) return;
     let cancelled = false;
-    getDashboardPinStatus(pinTarget.host, pinTarget.apiKey ?? "")
+    getDashboardPinStatus(pinHost, pinApiKey)
       .then((status) => {
-        if (!cancelled)
-          setPinRead({ target: pinTarget.host, status, failed: false });
+        if (!cancelled) setPinRead({ target: pinHost, status, failed: false });
       })
       .catch(() => {
         if (!cancelled)
-          setPinRead({ target: pinTarget.host, status: null, failed: true });
+          setPinRead({ target: pinHost, status: null, failed: true });
       });
     return () => {
       cancelled = true;
     };
-  }, [pinTarget]);
+  }, [pinHost, pinApiKey]);
 
   // ── REST bind (read-only reference — changing it needs a reinstall) ──────
   const restHost = readConfigPath(config, "api.rest.host");
@@ -149,8 +124,8 @@ export function SecuritySection({
 
   // ── Dashboard PIN posture (read-only; the Health tab card owns writes) ───
   const pinValue = (() => {
-    if (!pinTarget) return null;
-    if (pinRead === null || pinRead.target !== pinTarget.host)
+    if (pinHost === null) return null;
+    if (pinRead === null || pinRead.target !== pinHost)
       return { text: t("pinChecking"), cls: "text-text-tertiary" };
     if (pinRead.failed || pinRead.status === null)
       return { text: t("pinReadFailed"), cls: "text-text-tertiary" };
@@ -213,7 +188,7 @@ export function SecuritySection({
           configKey="api.mission_control_url"
           label={t("missionControlUrlLabel")}
           hint={t("missionControlUrlHint")}
-          placeholder="https://command.altnautica.com"
+          placeholder="https://gcs.example.com"
           config={config}
           readOnly={readOnly}
           setValue={setValue}

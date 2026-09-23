@@ -7,7 +7,7 @@ import { useDroneManager } from "@/stores/drone-manager";
 import { useToast } from "@/components/ui/toast";
 import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
 import { usePanelScroll } from "@/hooks/use-panel-scroll";
-import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
+import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { PanelHeader } from "../shared/PanelHeader";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -20,7 +20,7 @@ import {
   Shield,
   Bell,
 } from "lucide-react";
-import { bfConfigParamNames, FEATURE_DEFS, BEEPER_DEFS, BfCard as Card } from "./bf-config-constants";
+import { bfConfigParamNames, featureDefsForApi, BEEPER_DEFS, BfCard as Card } from "./bf-config-constants";
 
 export function BetaflightConfigPanel() {
   const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
@@ -50,6 +50,8 @@ export function BetaflightConfigPanel() {
 
   const connected = !!getSelectedProtocol();
   const hasDirty = dirtyParams.size > 0;
+  const mspApi = getSelectedProtocol()?.getVehicleInfo()?.mspApiVersion;
+  const featureDefs = useMemo(() => featureDefsForApi(mspApi), [mspApi]);
 
   // ── Feature mask helpers ───────────────────────────────────
 
@@ -82,8 +84,8 @@ export function BetaflightConfigPanel() {
 
   // Count enabled features and beepers
   const enabledFeatureCount = useMemo(
-    () => FEATURE_DEFS.filter((f) => (featureMask & (1 << f.bit)) !== 0).length,
-    [featureMask]
+    () => featureDefs.filter((f) => (featureMask & (1 << f.bit)) !== 0).length,
+    [featureDefs, featureMask]
   );
   const enabledBeeperCount = useMemo(
     () => BEEPER_DEFS.filter((b) => (beeperMask & (1 << b.bit)) === 0).length,
@@ -109,7 +111,7 @@ export function BetaflightConfigPanel() {
   }
 
   return (
-    <ArmedLockOverlay>
+    <ArmedWarningBanner>
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-6">
         <div className="max-w-2xl space-y-6">
           <PanelHeader
@@ -127,11 +129,11 @@ export function BetaflightConfigPanel() {
           {/* Feature Toggles */}
           <Card
             icon={<ToggleRight size={14} />}
-            title={`Feature Toggles (${enabledFeatureCount}/${FEATURE_DEFS.length} enabled)`}
+            title={`Feature Toggles (${enabledFeatureCount}/${featureDefs.length} enabled)`}
             description="Enable or disable firmware features (BF_FEATURE_MASK)"
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              {FEATURE_DEFS.map((feat) => {
+              {featureDefs.map((feat) => {
                 const checked = (featureMask & (1 << feat.bit)) !== 0;
                 return (
                   <label
@@ -265,6 +267,6 @@ export function BetaflightConfigPanel() {
           </div>
         </div>
       </div>
-    </ArmedLockOverlay>
+    </ArmedWarningBanner>
   );
 }

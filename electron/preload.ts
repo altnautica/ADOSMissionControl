@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
+import type { UpdateStatus } from "./updater";
 
 contextBridge.exposeInMainWorld("electronAPI", {
   isElectron: true,
@@ -12,14 +13,18 @@ contextBridge.exposeInMainWorld("electronAPI", {
   maximize: () => ipcRenderer.invoke("window:maximize"),
   close: () => ipcRenderer.invoke("window:close"),
 
-  // Auto-update
-  onUpdateAvailable: (callback: (info: { version: string }) => void) => {
-    ipcRenderer.on("update-available", (_event, info) => callback(info));
+  // Updates: the main process keeps the latest status, so a page that mounts
+  // after the startup check reads it with `status()` and follows `onStatus`.
+  updates: {
+    status: (): Promise<UpdateStatus> => ipcRenderer.invoke("update:status"),
+    onStatus: (callback: (status: UpdateStatus) => void) => {
+      const handler = (_e: unknown, status: UpdateStatus) => callback(status);
+      ipcRenderer.on("update:status", handler);
+      return () => ipcRenderer.removeListener("update:status", handler);
+    },
+    download: () => ipcRenderer.invoke("update:download"),
+    install: () => ipcRenderer.invoke("update:install"),
   },
-  onUpdateDownloaded: (callback: (info: { version: string }) => void) => {
-    ipcRenderer.on("update-downloaded", (_event, info) => callback(info));
-  },
-  installUpdate: () => ipcRenderer.invoke("update:install"),
 
   // Native UDP/TCP MAVLink sockets (the browser sandbox can't open raw sockets).
   net: {

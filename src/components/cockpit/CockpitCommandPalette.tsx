@@ -9,7 +9,7 @@
  * the drone's skills, shows each skill's live state (a disabled skill is greyed
  * with its real reason, never hidden), and fires the chosen one through the
  * shared {@link activate} pipeline so confirm / arm-gating / idempotency are
- * identical to every other trigger path (Rule 44 — the palette asserts no state
+ * identical to every other trigger path (the palette asserts no state
  * of its own).
  *
  * @license GPL-3.0-only

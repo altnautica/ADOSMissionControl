@@ -32,6 +32,8 @@ import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { TouchCalibrationStatus } from "@/lib/agent/agent-client/setup";
+import type { RelayReach } from "@/lib/nodes/relay-reach";
+import { useStableRelayReach } from "@/hooks/use-stable-relay-reach";
 
 /** Dot-path the kiosk target URL lives at in the agent config. The write goes
  * through the standard `PUT /api/config` path (`setConfigValue`), which coerces
@@ -62,9 +64,12 @@ export interface HdmiKioskCardProps {
    * that store lags the render, so an ambient write would re-point a different
    * ground station's kiosk. */
   nodeDeviceId: string | null;
+  /** The ground station's relay-proxy reach when this node is reached only
+   * over another node's radio; null when it has none. */
+  relayReach: RelayReach | null;
 }
 
-export function HdmiKioskCard({ nodeDeviceId }: HdmiKioskCardProps) {
+export function HdmiKioskCard({ nodeDeviceId, relayReach }: HdmiKioskCardProps) {
   const displayType = useAgentCapabilitiesStore((s) => s.displayType);
   const display = useAgentCapabilitiesStore((s) => s.display);
   const loaded = useAgentCapabilitiesStore((s) => s.loaded);
@@ -84,15 +89,17 @@ export function HdmiKioskCard({ nodeDeviceId }: HdmiKioskCardProps) {
     nodeDeviceId,
   );
   // The config lane for this node: its own client, else the server-side proxy
-  // against its stored LAN pairing — so the kiosk URL stays editable from a
-  // cloud session exactly as the settings pages are.
+  // against its stored LAN pairing, else its ground station's relay-proxy —
+  // so the kiosk URL stays editable from a cloud session exactly as the
+  // settings pages are.
+  const reach = useStableRelayReach(relayReach);
   const access = useMemo(
     () =>
-      resolveConfigAccess(nodeClient, nodeDeviceId, {
+      resolveConfigAccess(nodeClient, nodeDeviceId, reach, {
         localNodes,
         pairedDrones,
       }),
-    [nodeClient, nodeDeviceId, localNodes, pairedDrones],
+    [nodeClient, nodeDeviceId, reach, localNodes, pairedDrones],
   );
 
   // Kiosk target URL editor state.

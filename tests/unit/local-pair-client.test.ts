@@ -15,18 +15,18 @@ import {
 
 describe("normaliseHost", () => {
   it("appends http:// and :8080 to a bare hostname", () => {
-    expect(normaliseHost("skynode.local")).toBe("http://skynode.local:8080");
+    expect(normaliseHost("testnode.local")).toBe("http://testnode.local:8080");
   });
 
   it("appends :8080 to an http://host without a port", () => {
-    expect(normaliseHost("http://skynode.local")).toBe(
-      "http://skynode.local:8080",
+    expect(normaliseHost("http://testnode.local")).toBe(
+      "http://testnode.local:8080",
     );
   });
 
   it("preserves an explicit non-8080 port on http", () => {
-    expect(normaliseHost("http://skynode.local:9999")).toBe(
-      "http://skynode.local:9999",
+    expect(normaliseHost("http://testnode.local:9999")).toBe(
+      "http://testnode.local:9999",
     );
   });
 
@@ -42,16 +42,16 @@ describe("normaliseHost", () => {
   });
 
   it("strips trailing slashes", () => {
-    expect(normaliseHost("http://skynode.local:8080/")).toBe(
-      "http://skynode.local:8080",
+    expect(normaliseHost("http://testnode.local:8080/")).toBe(
+      "http://testnode.local:8080",
     );
-    expect(normaliseHost("http://skynode.local:8080///")).toBe(
-      "http://skynode.local:8080",
+    expect(normaliseHost("http://testnode.local:8080///")).toBe(
+      "http://testnode.local:8080",
     );
   });
 
   it("trims surrounding whitespace", () => {
-    expect(normaliseHost("  skynode.local  ")).toBe("http://skynode.local:8080");
+    expect(normaliseHost("  testnode.local  ")).toBe("http://testnode.local:8080");
   });
 
   it("returns empty string for empty input", () => {

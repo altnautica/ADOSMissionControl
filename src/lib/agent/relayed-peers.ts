@@ -36,7 +36,7 @@ export interface RelayGroundNode {
   /** The ground node's live status (peer, video, radio, freshness), if any. */
   status: CommandCloudStatus | undefined;
   /** True only when the ground node's WFB link is VERIFIED up. Gates the
-   * funneled video honestly (Rule 44 — a down/unproven link shows no feed). */
+   * funneled video honestly (a down/unproven link shows no feed). */
   radioUp: boolean;
   /** The most recently polled `relayed/status` peers this ground node
    * reported, keyed by device id. Undefined before the first poll lands. */
@@ -118,7 +118,7 @@ export function extractLinkedPeers(
  * drone's liveness track the GROUND STATION's poll cadence: a ground node that
  * keeps a cached `peerDeviceId` after the radio drops kept re-dating the drone
  * on every one of its own heartbeats, so the drone read online forever. The
- * ground node being alive is not evidence that the drone is (Rule 44).
+ * ground node being alive is not evidence that the drone is (no fabricated reading).
  */
 function peerObservedAt(
   peer: LinkedPeer,
@@ -132,7 +132,7 @@ function peerObservedAt(
 }
 
 /** Build the funneled-feed status row for a relayed-only drone. Honest: the
- * feed is present only while the ground node's WFB link is verified up (Rule 44),
+ * feed is present only while the ground node's WFB link is verified up (no fabricated reading),
  * and it points at the ground node's own WHEP (the drone has no direct reach).
  *
  * `updatedAt` is the peer-observation time, not the ground node's report time,
@@ -148,7 +148,7 @@ function funneledStatusFor(args: {
   /** The compact node-status snapshot the drone pushed over the aux lane, via
    * the ground station's relayed/status route — undefined until the first
    * poll lands, or when the ground station reports nothing fresh for this
-   * peer (Rule 44: absent, not zeroed). */
+   * peer (absent, not zeroed). */
   relayedStatus?: RelayedPeerStatus;
 }): CommandCloudStatus {
   const {

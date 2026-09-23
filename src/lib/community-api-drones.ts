@@ -33,6 +33,7 @@ export const cmdPairingApi = {
   issueBrowserSession: api.cmdPairing.issueBrowserSession,
   preGenerateCode: api.cmdPairing.preGenerateCode,
   getMyPendingCodes: api.cmdPairing.getMyPendingCodes,
+  getPreGeneratedClaim: api.cmdPairing.getPreGeneratedClaim,
   wipePairStateForOwnedDevice: api.cmdPairing.wipePairStateForOwnedDevice,
   // `getPairingStatus` and `registerAgent` are deliberately absent: both are
   // internal, reached only through their HTTP routes, which supply the device's
@@ -74,26 +75,10 @@ export const cmdVideoRelayTokensApi = {
   mint: api.cmdVideoRelayTokens.mint,
 };
 
-export const cmdRadioPairingApi = {
-  enqueueWfbPairInit: api.cmdRadioPairing.enqueueWfbPairInit,
-  enqueueWfbPairApply: api.cmdRadioPairing.enqueueWfbPairApply,
-  enqueueWfbPairUnpair: api.cmdRadioPairing.enqueueWfbPairUnpair,
-  getCommandWithData: api.cmdRadioPairing.getCommandWithData,
-  finalizePairing: api.cmdRadioPairing.finalizePairing,
-  cancelCommand: api.cmdRadioPairing.cancelCommand,
-};
-
 export const cmdSigningKeysApi = {
-  listMine: api.cmdSigningKeys.listMine,
+  // Metadata only: no key material leaves the backend through this surface.
   getForDrone: api.cmdSigningKeys.getForDrone,
-  store: api.cmdSigningKeys.store,
   removeKey: api.cmdSigningKeys.removeKey,
-  allocateLinkId: api.cmdSigningKeys.allocateLinkId,
-  releaseLinkId: api.cmdSigningKeys.releaseLinkId,
-  // `listMine` and `getForDrone` return metadata only. `exportKey` is the one
-  // path that returns `keyHex`, and it writes an `export` audit event in the
-  // same transaction.
-  exportKey: api.cmdSigningKeys.exportKey,
 };
 
 export const cmdSigningEventsApi = {

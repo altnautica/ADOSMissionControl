@@ -95,35 +95,36 @@ export function decimateCloud(
   const invY = extY > 0 ? (res - 1) / extY : 0;
   const invZ = extZ > 0 ? (res - 1) / extZ : 0;
 
-  const seen = new Set<number>();
-  const kept: number[] = [];
+  // One bit per grid cell (res <= 512, so at most 16 MB) instead of a Set of
+  // up to res^3 boxed keys; kept indices go into a typed array that can never
+  // outgrow the occupied cells or the point count.
+  const cellCount = res * res * res;
+  const seen = new Uint8Array(Math.ceil(cellCount / 8));
+  const kept = new Uint32Array(Math.min(total, cellCount));
+  let keptCount = 0;
   for (let i = 0; i < total; i++) {
     const b = i * 3;
     const ix = Math.floor((positions[b] - minX) * invX);
     const iy = Math.floor((positions[b + 1] - minY) * invY);
     const iz = Math.floor((positions[b + 2] - minZ) * invZ);
     const key = ix + iy * res + iz * res * res;
-    if (!seen.has(key)) {
-      seen.add(key);
-      kept.push(i);
+    const byte = key >>> 3;
+    const bit = 1 << (key & 7);
+    if ((seen[byte] & bit) === 0) {
+      seen[byte] |= bit;
+      kept[keptCount++] = i;
     }
   }
 
   // ── Stride fallback: a near-uniform cloud can occupy more cells than the
   // budget; thin the kept indices deterministically so the cap always holds.
-  let indices = kept;
-  if (kept.length > budget) {
-    const stride = Math.ceil(kept.length / budget);
-    const thinned: number[] = [];
-    for (let i = 0; i < kept.length; i += stride) thinned.push(kept[i]);
-    indices = thinned;
-  }
+  const stride = keptCount > budget ? Math.ceil(keptCount / budget) : 1;
+  const keptN = Math.ceil(keptCount / stride);
 
-  const keptN = indices.length;
   const outPos = new Float32Array(keptN * 3);
   const outCol = colors ? new Float32Array(keptN * 3) : null;
   for (let k = 0; k < keptN; k++) {
-    const src = indices[k] * 3;
+    const src = kept[k * stride] * 3;
     const dst = k * 3;
     outPos[dst] = positions[src];
     outPos[dst + 1] = positions[src + 1];

@@ -182,6 +182,15 @@ interface LocalNodesState {
  */
 const PRESENCE_STAMP_MIN_MS = 20_000;
 
+/**
+ * Time of the latest successful reach per device, updated on every success
+ * and never persisted. `lastReachOk.at` is coalesced to one write per
+ * {@link PRESENCE_STAMP_MIN_MS}, so it is the first success of the window;
+ * the "reached … ago" label reads this instead and stays near 0 s on a node
+ * that answers every poll.
+ */
+export const useReachOkLiveStore = create<{ at: Record<string, number> }>(() => ({ at: {} }));
+
 export const useLocalNodesStore = create<LocalNodesState>()(
   persist(
     (set) => ({
@@ -261,11 +270,12 @@ export const useLocalNodesStore = create<LocalNodesState>()(
             ),
           };
         }),
-      recordReachOk: (deviceId, host) =>
+      recordReachOk: (deviceId, host) => {
+        const now = Date.now();
+        useReachOkLiveStore.setState((s) => ({ at: { ...s.at, [deviceId]: now } }));
         set((state) => {
           const node = state.nodes.find((n) => n.deviceId === deviceId);
           if (!node) return state;
-          const now = Date.now();
           // Coalesce on the same interval as `touchLastSeen` — this runs off
           // the same ~5s poll and rewrites the persisted array. A CHANGE of
           // reach, or a failure that needs clearing, always writes through:
@@ -282,7 +292,8 @@ export const useLocalNodesStore = create<LocalNodesState>()(
                 : n,
             ),
           };
-        }),
+        });
+      },
       recordReachError: (deviceId, host, error) =>
         set((state) => {
           const node = state.nodes.find((n) => n.deviceId === deviceId);

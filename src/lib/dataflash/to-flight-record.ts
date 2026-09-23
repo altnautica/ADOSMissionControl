@@ -19,11 +19,32 @@
 import type { DataflashLog, DataflashRecord } from "./parser";
 import type { FlightRecord } from "@/lib/types";
 import type { TelemetryFrame } from "@/lib/telemetry-recorder";
+import { haversineMeters } from "@/lib/flight-lifecycle/geo";
+import { logClockOffsetMs } from "./gps-clock";
 
 /** ArduPilot EV (event) numbers we care about for arm/disarm splitting. */
 const EV_ARMED = 10;
 const EV_DISARMED = 11;
 const EV_AUTO_ARMED = 15;
+
+/**
+ * Every message this converter reads. Parsing only these (plus PARM, for the
+ * parameter table) skips the high-rate IMU/EKF/PID rows a flight record never
+ * uses.
+ */
+export const DATAFLASH_FLIGHT_MESSAGES: ReadonlySet<string> = new Set([
+  "EV",
+  "ARM",
+  "ATT",
+  "POS",
+  "GPS",
+  "BAT",
+  "VIBE",
+  "RCIN",
+  "RCOU",
+  "MODE",
+  "PARM",
+]);
 
 interface FlightSlice {
   /** ArduPilot TimeUS at the arm event. */
@@ -34,7 +55,7 @@ interface FlightSlice {
   endedArmed: boolean;
 }
 
-interface BuiltFlight {
+export interface BuiltFlight {
   record: FlightRecord;
   frames: TelemetryFrame[];
 }
@@ -48,6 +69,15 @@ function usToOffsetMs(us: number, refUs: number): number {
 function num(r: DataflashRecord, key: string): number | undefined {
   const v = r[key];
   return typeof v === "number" ? v : undefined;
+}
+
+/**
+ * True for a row of the first sensor instance. Multi-instance messages (GPS
+ * `I`, BAT `Inst`, VIBE `IMU`) log one row per instance; a row without the
+ * instance column comes from a single-instance log.
+ */
+function isFirstInstance(r: DataflashRecord, key: string): boolean {
+  return (num(r, key) ?? 0) === 0;
 }
 
 /**
@@ -122,34 +152,41 @@ export function detectFlightSlices(log: DataflashLog): FlightSlice[] {
   return slices;
 }
 
-interface ConvertOptions {
+export interface DataflashConvertOptions {
   /** Identifier for the source drone — defaults to a parameter-derived hint. */
   droneId?: string;
   droneName?: string;
   /** Original filename for traceability (`my-flight.bin`). */
   sourceFilename?: string;
-  /** Reference epoch (ms) for the absolute startTime. Defaults to `Date.now()` minus log span. */
-  referenceEpochMs?: number;
 }
 
 /**
  * Convert a parsed dataflash log into FlightRecords + frame buckets.
+ *
+ * Flight times come from the log's GPS clock. A log without GPS time gets the
+ * import time instead and is marked `startTimeUnknown`, so nothing presents
+ * that time as when the flight happened.
  *
  * The caller is expected to persist the frames via
  * {@link setRecordingFromFrames} and then call `useHistoryStore.addRecord`
  * for each returned `record`. The `record.recordingId` already points at the
  * synthetic id we'll use.
  */
-export function dataflashToFlightRecords(log: DataflashLog, options: ConvertOptions = {}): BuiltFlight[] {
+export function dataflashToFlightRecords(log: DataflashLog, options: DataflashConvertOptions = {}): BuiltFlight[] {
   const slices = detectFlightSlices(log);
   if (slices.length === 0) return [];
 
-  // Pick a wall-clock reference. We anchor each flight at "now - (totalSpan)"
-  // so the imported list lands at the bottom of the History table by default.
   const firstStartUs = slices[0].startUs;
+  const clockOffsetMs = logClockOffsetMs(log);
+  const startTimeUnknown = clockOffsetMs === undefined;
+  // Without a GPS clock the flights are placed at "now minus the log span",
+  // keeping their spacing, and flagged as having no known date.
   const lastEndUs = slices[slices.length - 1].endUs;
   const totalSpanMs = Math.max(0, Math.round((lastEndUs - firstStartUs) / 1000));
-  const refEpoch = options.referenceEpochMs ?? Date.now() - totalSpanMs;
+  const refEpoch =
+    clockOffsetMs !== undefined
+      ? Math.round(clockOffsetMs + firstStartUs / 1000)
+      : Date.now() - totalSpanMs;
 
   // Drone identification: prefer caller-supplied, otherwise derive from PARM
   // fields if present (SYSID_THISMAV / SYSID_MYGCS aren't ideal but the best
@@ -159,9 +196,11 @@ export function dataflashToFlightRecords(log: DataflashLog, options: ConvertOpti
   const droneName =
     options.droneName ?? (options.sourceFilename ? `Imported · ${options.sourceFilename}` : "Imported drone");
 
-  return slices.map((slice, idx) =>
-    buildFlight(log, slice, idx, refEpoch, firstStartUs, droneId, droneName, options.sourceFilename),
-  );
+  return slices.map((slice, idx) => {
+    const built = buildFlight(log, slice, idx, refEpoch, firstStartUs, droneId, droneName, options.sourceFilename);
+    if (startTimeUnknown) built.record.startTimeUnknown = true;
+    return built;
+  });
 }
 
 function buildFlight(
@@ -202,7 +241,7 @@ function buildFlight(
   const ATT_ROWS = (log.messages.get("ATT") ?? []) as DataflashRecord[];
   const POS_ROWS = (log.messages.get("POS") ?? []) as DataflashRecord[];
   const GPS_ROWS = (log.messages.get("GPS") ?? []) as DataflashRecord[];
-  const BAT_ROWS = (log.messages.get("BAT") ?? log.messages.get("BAT2") ?? []) as DataflashRecord[];
+  const BAT_ROWS = (log.messages.get("BAT") ?? []) as DataflashRecord[];
   const VIBE_ROWS = (log.messages.get("VIBE") ?? []) as DataflashRecord[];
   const RCIN_ROWS = (log.messages.get("RCIN") ?? []) as DataflashRecord[];
   const RCOU_ROWS = (log.messages.get("RCOU") ?? []) as DataflashRecord[];
@@ -237,8 +276,8 @@ function buildFlight(
     if (!inSlice(us)) continue;
     const lat = num(r, "Lat");
     const lon = num(r, "Lng");
-    const alt = num(r, "Alt") ?? 0;
-    if (lat === undefined || lon === undefined) continue;
+    const alt = num(r, "Alt");
+    if (lat === undefined || lon === undefined || alt === undefined) continue;
     if (slicePosBaseAlt === undefined) slicePosBaseAlt = alt;
     const relativeAlt = num(r, "RelHomeAlt") ?? alt - slicePosBaseAlt;
 
@@ -259,7 +298,6 @@ function buildFlight(
         alt,
         relativeAlt,
         groundSpeed: 0,
-        airSpeed: 0,
         heading: 0,
         timestamp: us,
       },
@@ -271,10 +309,10 @@ function buildFlight(
     }
   }
 
-  // GPS — speed + sat count + HDOP.
+  // GPS — speed + sat count + HDOP, from the first receiver only.
   for (const r of GPS_ROWS) {
     const us = num(r, "TimeUS");
-    if (!inSlice(us)) continue;
+    if (!inSlice(us) || !isFirstInstance(r, "I")) continue;
     const sats = num(r, "NSats") ?? 0;
     const hdop = num(r, "HDop") ?? 0;
     const spd = num(r, "Spd") ?? 0;
@@ -299,10 +337,10 @@ function buildFlight(
     });
   }
 
-  // Battery — voltage / current / remaining %.
+  // Battery — voltage / current / remaining %, from the first monitor only.
   for (const r of BAT_ROWS) {
     const us = num(r, "TimeUS");
-    if (!inSlice(us)) continue;
+    if (!inSlice(us) || !isFirstInstance(r, "Inst")) continue;
     const volt = num(r, "Volt") ?? num(r, "VoltR") ?? 0;
     const curr = num(r, "Curr") ?? 0;
     const rem = num(r, "RemPct") ?? num(r, "BatRem") ?? num(r, "Pct");
@@ -322,10 +360,33 @@ function buildFlight(
     });
   }
 
-  // Vibration.
+  // Vibration. Current firmware logs one VIBE row per IMU (`IMU`, `Clip`),
+  // every IMU's row sharing the write's TimeUS; older logs carry all three
+  // clip counters (`Clip0..2`) on one row. Levels come from the first IMU and
+  // each IMU's clip count lands in its own slot; a count the log lacks stays
+  // absent rather than reading as zero clipping.
+  const clipsAt = new Map<number, Record<string, number>>();
   for (const r of VIBE_ROWS) {
     const us = num(r, "TimeUS");
-    if (!inSlice(us)) continue;
+    const imu = num(r, "IMU");
+    const clip = num(r, "Clip");
+    if (!inSlice(us) || imu === undefined || imu > 2 || clip === undefined) continue;
+    const clips = clipsAt.get(us!) ?? {};
+    clips[`clipping${imu}`] = clip;
+    clipsAt.set(us!, clips);
+  }
+  for (const r of VIBE_ROWS) {
+    const us = num(r, "TimeUS");
+    if (!inSlice(us) || !isFirstInstance(r, "IMU")) continue;
+    let clips: Record<string, number> = {};
+    if (num(r, "IMU") !== undefined) {
+      clips = clipsAt.get(us!) ?? {};
+    } else {
+      for (const i of [0, 1, 2]) {
+        const clip = num(r, `Clip${i}`);
+        if (clip !== undefined) clips[`clipping${i}`] = clip;
+      }
+    }
     frames.push({
       offsetMs: usToOffsetMs(us!, slice.startUs),
       channel: "vibration",
@@ -333,9 +394,7 @@ function buildFlight(
         vibrationX: num(r, "VibeX") ?? 0,
         vibrationY: num(r, "VibeY") ?? 0,
         vibrationZ: num(r, "VibeZ") ?? 0,
-        clipping0: num(r, "Clip0") ?? 0,
-        clipping1: num(r, "Clip1") ?? 0,
-        clipping2: num(r, "Clip2") ?? 0,
+        ...clips,
         timestamp: us,
       },
     });
@@ -400,7 +459,7 @@ function buildFlight(
 
   // Battery used %: prefer start/end voltage delta projected onto a Li chemistry
   // sag curve (not great), otherwise use the last RemPct.
-  let batteryUsed = 0;
+  let batteryUsed: number | undefined;
   if (lastBattRem !== undefined && lastBattRem >= 0) {
     batteryUsed = Math.max(0, Math.min(100, Math.round(100 - lastBattRem)));
   } else if (battStartV !== undefined && battEndV !== undefined && battStartV > battEndV) {
@@ -442,18 +501,4 @@ function buildFlight(
   };
 
   return { record, frames };
-}
-
-// ── Geo helper (duplicated from flight-lifecycle for module isolation) ──
-
-const EARTH_RADIUS_M = 6_371_000;
-
-function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const toRad = (deg: number) => (deg * Math.PI) / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
-  return 2 * EARTH_RADIUS_M * Math.asin(Math.min(1, Math.sqrt(a)));
 }

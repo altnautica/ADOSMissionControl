@@ -1,11 +1,13 @@
 "use client";
 
 /**
- * Onboard dataflash log browser modal.
+ * Onboard log browser modal.
  *
- * Lists logs on the connected ArduPilot FC, lets the user select one or
- * more, downloads them through the existing protocol layer, parses the
- * binary, splits into FlightRecords, and ingests via the history store.
+ * Lists logs on the connected FC, lets the user select one or more,
+ * downloads them through the existing protocol layer, detects the format
+ * (ArduPilot dataflash or PX4 ULog), splits into FlightRecords, and ingests
+ * via the history store. Every download reports its outcome, including a
+ * log that holds no flight.
  *
  * Real hardware only. The "no mocks" rule means demo / mock protocols
  * surface a banner and refuse to download.
@@ -22,7 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useDroneStore } from "@/stores/drone-store";
 import { isDemoMode } from "@/lib/utils";
-import { importDataflashLog, type DataflashImportSummary } from "@/lib/dataflash/import";
+import { detectFlightLogFormat, importFlightLog } from "@/lib/flight-log-import";
 import type { LogEntry } from "@/lib/protocol/types/mission";
 
 interface LogBrowserProps {
@@ -34,6 +36,15 @@ interface DownloadProgress {
   logId: number;
   received: number;
   total: number;
+}
+
+interface ImportTotals {
+  /** Logs downloaded and read. */
+  logs: number;
+  flightsImported: number;
+  duplicates: number;
+  bytes: number;
+  rcInMissing: boolean;
 }
 
 function fmtBytes(n: number): string {
@@ -59,7 +70,7 @@ export function LogBrowser({ open, onClose }: LogBrowserProps) {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [progress, setProgress] = useState<DownloadProgress | null>(null);
   const [importing, setImporting] = useState(false);
-  const [summary, setSummary] = useState<DataflashImportSummary | null>(null);
+  const [summary, setSummary] = useState<ImportTotals | null>(null);
   const [cancelled, setCancelled] = useState(false);
   // Set by Cancel so the rejected download reads as a cancel, not a failure.
   const cancelRequestedRef = useRef(false);
@@ -110,9 +121,7 @@ export function LogBrowser({ open, onClose }: LogBrowserProps) {
     setCancelled(false);
     cancelRequestedRef.current = false;
 
-    let totalImported = 0;
-    let totalBytes = 0;
-    let rcInMissing = false;
+    const totals: ImportTotals = { logs: 0, flightsImported: 0, duplicates: 0, bytes: 0, rcInMissing: false };
     try {
       for (const id of selectedIds) {
         // LOG_DATA carries no total, so the listed LOG_ENTRY size is both the
@@ -130,29 +139,24 @@ export function LogBrowser({ open, onClose }: LogBrowserProps) {
             `Log ${id} is incomplete: received ${fmtBytes(buffer.byteLength)} of ${fmtBytes(expected)}. Nothing was imported from it; download it again.`,
           );
         }
-        const result = await importDataflashLog(buffer, {
-          sourceFilename: `log-${id}.bin`,
+        const ext = detectFlightLogFormat(buffer.subarray(0, 16), "") === "ulg" ? "ulg" : "bin";
+        const result = await importFlightLog(buffer, {
+          filename: `log-${id}.${ext}`,
           droneId: selectedDrone.id,
           droneName: selectedDrone.name,
         });
-        totalImported += result.flightsImported;
-        totalBytes += result.bytesParsed;
-        if (result.rcInMissing) rcInMissing = true;
+        totals.logs += 1;
+        totals.flightsImported += result.flightsImported;
+        totals.duplicates += result.duplicates;
+        totals.bytes += buffer.byteLength;
+        if (result.rcInMissing) totals.rcInMissing = true;
       }
     } catch (err) {
       if (cancelRequestedRef.current) setCancelled(true);
       else setError((err as Error).message);
     } finally {
-      // Logs fully imported before a cancel or failure stay reported.
-      if (totalImported > 0) {
-        setSummary({
-          flightsImported: totalImported,
-          bytesParsed: totalBytes,
-          resyncSkipped: 0,
-          rcInMissing,
-          paramCount: 0,
-        });
-      }
+      // Logs fully read before a cancel or failure stay reported.
+      if (totals.logs > 0) setSummary(totals);
       setProgress(null);
       setImporting(false);
     }
@@ -299,11 +303,22 @@ export function LogBrowser({ open, onClose }: LogBrowserProps) {
               <Badge variant="success" size="sm">✓</Badge>{" "}
               {t("logBrowserSuccess", {
                 flights: summary.flightsImported,
-                bytes: fmtBytes(summary.bytesParsed),
+                bytes: fmtBytes(summary.bytes),
               })}
+              {summary.duplicates > 0 && (
+                <p className="mt-1 text-text-tertiary">{t("logBrowserDuplicates", { count: summary.duplicates })}</p>
+              )}
               {summary.rcInMissing && (
                 <p className="mt-1 text-text-tertiary">{t("logBrowserRcInMissing")}</p>
               )}
+            </div>
+          )}
+
+          {summary && summary.flightsImported === 0 && (
+            <div className="rounded border border-status-warning/40 bg-status-warning/10 px-3 py-2 text-[11px] text-text-secondary">
+              {summary.duplicates > 0
+                ? t("logBrowserDuplicates", { count: summary.duplicates })
+                : t("logBrowserNoFlights", { bytes: fmtBytes(summary.bytes) })}
             </div>
           )}
 

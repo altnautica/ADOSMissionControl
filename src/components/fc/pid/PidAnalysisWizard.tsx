@@ -4,7 +4,7 @@ import { useState, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { usePidAnalysisStore, type SuggestionTarget } from "@/stores/pid-analysis-store";
-import { PidLogUploader } from "./PidLogUploader";
+import { AnalysisProgress, PidLogUploader } from "./PidLogUploader";
 import { PidFFTChart } from "./PidFFTChart";
 import { PidStepResponseChart } from "./PidStepResponseChart";
 import { PidTrackingChart } from "./PidTrackingChart";
@@ -16,6 +16,7 @@ import { ChevronLeft, ChevronRight, AlertTriangle, Save } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AiSuggestionsGate } from "../shared/AiSuggestionsGate";
 import { STEPS, ANALYSIS_TABS, StepIndicator, type AnalysisTab } from "./pid-wizard-steps";
+import { AXIS_COLORS } from "../chart-theme";
 import type { StepResponseEvent } from "@/lib/analysis/types";
 
 interface Props {
@@ -103,6 +104,10 @@ export function PidAnalysisWizard({ target, connected }: Props) {
         />
       )}
 
+      {wizardStep === "analysis" && !analysisResult && analyzing && analyzeProgress && (
+        <AnalysisProgress progress={analyzeProgress} />
+      )}
+
       {wizardStep === "analysis" && analysisResult && (
         <div className="space-y-3">
           {/* Tab strip */}
@@ -128,9 +133,9 @@ export function PidAnalysisWizard({ target, connected }: Props) {
 
           {analysisTab === "fft" && (
             <div className="space-y-4">
-              <PidFFTChart data={analysisResult.fft.roll} color="#3A82FF" />
-              <PidFFTChart data={analysisResult.fft.pitch} color="#22c55e" />
-              <PidFFTChart data={analysisResult.fft.yaw} color="#f59e0b" />
+              <PidFFTChart data={analysisResult.fft.roll} color={AXIS_COLORS.roll} />
+              <PidFFTChart data={analysisResult.fft.pitch} color={AXIS_COLORS.pitch} />
+              <PidFFTChart data={analysisResult.fft.yaw} color={AXIS_COLORS.yaw} />
             </div>
           )}
 
@@ -160,7 +165,7 @@ export function PidAnalysisWizard({ target, connected }: Props) {
                   {stepEvents[selectedStepEvent] && (
                     <PidStepResponseChart
                       event={stepEvents[selectedStepEvent]}
-                      color={{ roll: "#3A82FF", pitch: "#22c55e", yaw: "#f59e0b" }[stepEvents[selectedStepEvent].axis]}
+                      color={AXIS_COLORS[stepEvents[selectedStepEvent].axis]}
                     />
                   )}
                 </>
@@ -170,9 +175,9 @@ export function PidAnalysisWizard({ target, connected }: Props) {
 
           {analysisTab === "tracking" && (
             <div className="space-y-4">
-              <PidTrackingChart data={analysisResult.tracking.roll} color="#3A82FF" />
-              <PidTrackingChart data={analysisResult.tracking.pitch} color="#22c55e" />
-              <PidTrackingChart data={analysisResult.tracking.yaw} color="#f59e0b" />
+              <PidTrackingChart data={analysisResult.tracking.roll} color={AXIS_COLORS.roll} />
+              <PidTrackingChart data={analysisResult.tracking.pitch} color={AXIS_COLORS.pitch} />
+              <PidTrackingChart data={analysisResult.tracking.yaw} color={AXIS_COLORS.yaw} />
             </div>
           )}
 

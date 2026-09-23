@@ -3,7 +3,7 @@
  *
  * Tests for the compute local-first poll: a LAN-paired compute node polls its
  * agent's /api/compute/status and feeds the compute store, signed in or not
- * (local-first, Rule 39); the inert guards (no LAN key, cloud-relay device, 404)
+ * (local-first); the inert guards (no LAN key, cloud-relay device, 404)
  * hold; the store clears on node switch. Atlas is a default on a workstation, so
  * the poll is not gated on a flag.
  */

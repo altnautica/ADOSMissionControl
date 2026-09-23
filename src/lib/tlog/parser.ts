@@ -191,7 +191,6 @@ export function tlogToFlightRecord(
     maxAlt,
     maxSpeed: 0,
     avgSpeed: 0,
-    batteryUsed: 0,
     waypointCount: 0,
     status: "completed",
     path: cappedPath.length >= 2 ? cappedPath : undefined,

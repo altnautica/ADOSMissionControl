@@ -64,10 +64,19 @@ export function ChangelogEditor({ entry, onClose }: ChangelogEditorProps) {
       .map((t) => t.trim())
       .filter(Boolean);
 
-    try {
-      const translationsArg = Object.keys(translations).length > 0 ? translations : undefined;
+    // A translation typed but not yet added is saved with the entry rather
+    // than silently dropped.
+    const allTranslations =
+      translationLocale && (translationTitle || translationDescription)
+        ? {
+            ...translations,
+            [translationLocale]: { title: translationTitle, description: translationDescription },
+          }
+        : translations;
 
+    try {
       if (entry) {
+        // Always sent on update: an empty map clears the stored translations.
         await updateChangelog({
           id: entry._id as never,
           version: version.trim(),
@@ -75,7 +84,7 @@ export function ChangelogEditor({ entry, onClose }: ChangelogEditorProps) {
           body: body.trim(),
           tags,
           published,
-          translations: translationsArg,
+          translations: allTranslations,
         });
       } else {
         await createChangelog({
@@ -84,7 +93,8 @@ export function ChangelogEditor({ entry, onClose }: ChangelogEditorProps) {
           body: body.trim(),
           tags,
           published,
-          translations: translationsArg,
+          translations:
+            Object.keys(allTranslations).length > 0 ? allTranslations : undefined,
         });
       }
       onClose();

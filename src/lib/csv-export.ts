@@ -31,11 +31,11 @@ export function exportFlightRecordsAsCsv(records: FlightRecord[]): void {
     formatTime(r.date),
     r.droneName,
     formatDuration(r.duration),
-    (r.distance / 1000).toFixed(2),
-    String(r.maxAlt),
-    String(r.maxSpeed),
+    r.distance !== undefined ? (r.distance / 1000).toFixed(2) : "",
+    r.maxAlt !== undefined ? String(r.maxAlt) : "",
+    r.maxSpeed !== undefined ? String(r.maxSpeed) : "",
     r.status,
-    String(r.batteryUsed),
+    r.batteryUsed !== undefined ? String(r.batteryUsed) : "",
     String(r.waypointCount),
   ]);
 

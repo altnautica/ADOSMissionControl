@@ -1,23 +1,22 @@
 import type { ParamMetadata } from "@/lib/protocol/param-metadata";
 
-/** MAV_PARAM_TYPE display names. */
-export const PARAM_TYPE_LABELS: Record<number, string> = {
-  1: "UINT8",
-  2: "INT8",
-  3: "UINT16",
-  4: "INT16",
-  5: "UINT32",
-  6: "INT32",
-  8: "UINT64",
-  9: "INT64",
-  10: "REAL32",
-  11: "REAL64",
-};
-
-/** Read-only parameter name patterns. */
+/**
+ * Names treated as read-only when the metadata does not say. ArduPilot marks
+ * its STAT_* counters ReadOnly in the parameter docs; the pattern covers a
+ * grid opened before metadata loaded.
+ */
 const READ_ONLY_PATTERNS = [/^STAT_/, /^INS_\w+_ID$/, /^GND_\w+_ID$/];
 
-export function isReadOnly(name: string, _meta: ParamMetadata | undefined): boolean {
+/**
+ * Parameters the docs mark ReadOnly that still accept a write. STAT_RESET
+ * resets the flight statistics when set to 0 (AP_Stats), so the grid must
+ * let the operator write it.
+ */
+const WRITABLE_DESPITE_READONLY: Record<string, true> = { STAT_RESET: true };
+
+export function isReadOnly(name: string, meta: ParamMetadata | undefined): boolean {
+  if (Object.hasOwn(WRITABLE_DESPITE_READONLY, name)) return false;
+  if (meta?.readOnly) return true;
   return READ_ONLY_PATTERNS.some((p) => p.test(name));
 }
 
@@ -52,23 +51,17 @@ export function isValueOutOfRange(value: number, meta: ParamMetadata | undefined
 }
 
 /**
- * Match a parameter against a lowercased search term across its name,
- * human-friendly name, description, AND its enum/bitmask option labels — so a
- * query like "double notch" finds INS_HNTCH_OPTS. `lower` must already be
- * lowercased by the caller.
+ * Filter the grid's rows by a search term, matching each param's haystack
+ * from {@link buildSearchHaystack} (or its bare name when it has no metadata),
+ * case-insensitively.
  */
-export function paramMatchesFilter(
-  name: string,
-  meta: ParamMetadata | undefined,
-  lower: string,
-): boolean {
-  if (name.toLowerCase().includes(lower)) return true;
-  if (!meta) return false;
-  if (meta.humanName?.toLowerCase().includes(lower)) return true;
-  if (meta.description?.toLowerCase().includes(lower)) return true;
-  if (meta.values) for (const label of meta.values.values()) if (label.toLowerCase().includes(lower)) return true;
-  if (meta.bitmask) for (const label of meta.bitmask.values()) if (label.toLowerCase().includes(lower)) return true;
-  return false;
+export function filterBySearch<P extends { name: string }>(
+  params: P[],
+  haystack: Map<string, string>,
+  term: string,
+): P[] {
+  const lower = term.toLowerCase();
+  return params.filter((p) => (haystack.get(p.name) ?? p.name.toLowerCase()).includes(lower));
 }
 
 /**

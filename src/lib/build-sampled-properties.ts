@@ -14,7 +14,7 @@ import {
   Math as CesiumMath,
 } from "cesium";
 import type { Waypoint } from "@/lib/types";
-import type { FlightPlan } from "@/lib/simulation-utils";
+import type { FlightPlan, SimPoint } from "@/lib/simulation-utils";
 
 export interface SampledProperties {
   sampledPosition: SampledPositionProperty;
@@ -38,14 +38,17 @@ function cumulativeDistances(positions: Cartesian3[]): number[] {
 }
 
 /**
- * Build CesiumJS sampled properties from waypoints and a computed flight plan.
+ * Build CesiumJS sampled properties from waypoints and a computed flight plan,
+ * one leg per flight-plan segment (an RTL flies several legs home; action
+ * items fly none).
  *
- * When allPositions + waypointIndices are provided (from resolveAGLToAbsolute),
- * intermediate terrain-following sub-samples are included. Travel time is
- * distributed proportionally by Cartesian3 distance along intermediates so the
- * drone follows the terrain contour instead of cutting through hills.
- *
- * When only waypointPositions is provided (legacy), one sample per waypoint.
+ * A leg end that is an item's own position uses that item's terrain-resolved
+ * position when `waypointPositions` is given. A leg end the plan resolved
+ * elsewhere (RTL's climb and home, a positionless item) is its relative
+ * altitude over `homeHeight`. When allPositions + waypointIndices are provided
+ * (from resolveAGLToAbsolute), a leg between adjacent items also gets the
+ * terrain-following sub-samples between them, with travel time distributed by
+ * distance so the drone follows the contour instead of cutting through hills.
  *
  * Returns null if there are no waypoints or segments.
  */
@@ -54,11 +57,10 @@ export function buildSampledProperties(
   flightPlan: FlightPlan,
   waypointPositions?: Cartesian3[],
   allPositions?: Cartesian3[],
-  waypointIndices?: number[]
+  waypointIndices?: number[],
+  homeHeight = 0,
 ): SampledProperties | null {
   if (waypoints.length === 0 || flightPlan.segments.length === 0) return null;
-
-  const useIntermediates = !!allPositions && !!waypointIndices;
 
   const startJulian = JulianDate.fromDate(new Date(0)); // Arbitrary epoch
   const sampledPosition = new SampledPositionProperty();
@@ -74,49 +76,53 @@ export function buildSampledProperties(
     interpolationDegree: 1,
   });
 
+  const isItemPoint = (point: SimPoint, index: number) => {
+    const wp = waypoints[index];
+    return point.lat === wp.lat && point.lon === wp.lon && point.alt === wp.alt;
+  };
+  const positionOf = (point: SimPoint, index: number): Cartesian3 =>
+    isItemPoint(point, index)
+      ? waypointPositions?.[index] ?? Cartesian3.fromDegrees(point.lon, point.lat, point.alt)
+      : Cartesian3.fromDegrees(point.lon, point.lat, point.alt + homeHeight);
+
   let t = JulianDate.clone(startJulian);
+  const { segments } = flightPlan;
 
-  for (let i = 0; i < waypoints.length; i++) {
-    const wp = waypoints[i];
-    // Waypoint position: from resolved array or computed from AGL
-    const wpPos = useIntermediates
-      ? allPositions[waypointIndices[i]]
-      : waypointPositions?.[i] ?? Cartesian3.fromDegrees(wp.lon, wp.lat, wp.alt);
+  for (let k = 0; k < segments.length; k++) {
+    const seg = segments[k];
+    const hdgRad = -CesiumMath.toRadians(seg.heading);
+    const fromPos = positionOf(seg.from, seg.fromIndex);
 
-    // Heading for this segment (or last segment for final waypoint)
-    const segIdx = Math.min(i, flightPlan.segments.length - 1);
-    const hdgRad = -CesiumMath.toRadians(flightPlan.segments[segIdx].heading);
-
-    // Arrival sample at waypoint
-    sampledPosition.addSample(JulianDate.clone(t), wpPos);
+    if (k === 0) {
+      sampledPosition.addSample(JulianDate.clone(t), fromPos);
+    }
     sampledHeading.addSample(JulianDate.clone(t), hdgRad);
 
-    if (i < waypoints.length - 1) {
-      const holdTime = wp.holdTime ?? 0;
-      if (holdTime > 0) {
-        // Duplicate position at departure = drone holds in place
-        t = JulianDate.addSeconds(t, holdTime, _scratch);
-        t = JulianDate.clone(t);
-        sampledPosition.addSample(JulianDate.clone(t), wpPos);
-        sampledHeading.addSample(JulianDate.clone(t), hdgRad);
-      }
+    if (seg.holdTime > 0) {
+      // Duplicate position at departure = drone holds in place
+      t = JulianDate.addSeconds(t, seg.holdTime, _scratch);
+      t = JulianDate.clone(t);
+      sampledPosition.addSample(JulianDate.clone(t), fromPos);
+      sampledHeading.addSample(JulianDate.clone(t), hdgRad);
+    }
 
-      // Travel to next waypoint
-      const seg = flightPlan.segments[i];
-      const travelTime = seg.duration - holdTime;
-
-      if (travelTime > 0 && useIntermediates) {
-        // Add intermediate terrain-following samples
-        const startIdx = waypointIndices[i];
-        const endIdx = waypointIndices[i + 1];
-        const segPositions = allPositions.slice(startIdx, endIdx + 1);
-
+    const travelTime = seg.duration - seg.holdTime;
+    const toPos = positionOf(seg.to, seg.toIndex);
+    if (travelTime > 0) {
+      const adjacentItems =
+        seg.toIndex === seg.fromIndex + 1 &&
+        isItemPoint(seg.from, seg.fromIndex) &&
+        isItemPoint(seg.to, seg.toIndex);
+      if (allPositions && waypointIndices && adjacentItems) {
+        const segPositions = allPositions.slice(
+          waypointIndices[seg.fromIndex],
+          waypointIndices[seg.toIndex] + 1,
+        );
         if (segPositions.length > 2) {
           // Distribute travel time proportionally by distance
           const cumDists = cumulativeDistances(segPositions);
           const totalDist = cumDists[cumDists.length - 1];
-
-          // Add samples for intermediates (skip first = current wp, skip last = next wp arrival)
+          // Skip first (the leg start) and last (the arrival sample below)
           for (let j = 1; j < segPositions.length - 1; j++) {
             const frac = totalDist > 0 ? cumDists[j] / totalDist : j / (segPositions.length - 1);
             const intermediateT = JulianDate.addSeconds(t, travelTime * frac, _scratch);
@@ -124,26 +130,24 @@ export function buildSampledProperties(
             sampledHeading.addSample(JulianDate.clone(intermediateT), hdgRad);
           }
         }
-
-        // Heading sample just before arrival to prevent blending across segments
-        const almostArrival = JulianDate.addSeconds(t, travelTime - 0.001, _scratch);
-        sampledHeading.addSample(JulianDate.clone(almostArrival), hdgRad);
-        t = JulianDate.addSeconds(t, travelTime, _scratch);
-        t = JulianDate.clone(t);
-      } else if (travelTime > 0) {
-        // No intermediates — heading sample at end of segment
-        const almostArrival = JulianDate.addSeconds(t, travelTime - 0.001, _scratch);
-        sampledHeading.addSample(JulianDate.clone(almostArrival), hdgRad);
-        t = JulianDate.addSeconds(t, travelTime, _scratch);
-        t = JulianDate.clone(t);
       }
-    } else if (wp.holdTime) {
-      // Last waypoint hold
-      t = JulianDate.addSeconds(t, wp.holdTime, _scratch);
+      // Heading sample just before arrival to prevent blending across legs
+      const almostArrival = JulianDate.addSeconds(t, travelTime - 0.001, _scratch);
+      sampledHeading.addSample(JulianDate.clone(almostArrival), hdgRad);
+      t = JulianDate.addSeconds(t, travelTime, _scratch);
       t = JulianDate.clone(t);
-      sampledPosition.addSample(JulianDate.clone(t), wpPos);
-      sampledHeading.addSample(JulianDate.clone(t), hdgRad);
     }
+    sampledPosition.addSample(JulianDate.clone(t), toPos);
+  }
+
+  // The final item's hold, as the flight plan counts it
+  const last = segments[segments.length - 1];
+  const finalHold = flightPlan.totalDuration - last.cumulativeDuration;
+  if (finalHold > 0) {
+    t = JulianDate.addSeconds(t, finalHold, _scratch);
+    t = JulianDate.clone(t);
+    sampledPosition.addSample(JulianDate.clone(t), positionOf(last.to, last.toIndex));
+    sampledHeading.addSample(JulianDate.clone(t), -CesiumMath.toRadians(last.heading));
   }
 
   return { sampledPosition, sampledHeading, startJulian };

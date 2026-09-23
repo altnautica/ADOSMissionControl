@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * The live engine-detector write seam (Rule 39 local-first).
+ * The live engine-detector write seam (local-first).
  *
  * Setting the active detector is an engine-wide config change: the agent writes
  * `vision.detector` and restarts the vision service, so EVERY vision consumer
@@ -22,13 +22,17 @@
  * @license GPL-3.0-only
  */
 
+import { AGENT_SERVICE_RESTART_CLIENT_TIMEOUT_MS, timedFetch } from "@/lib/agent/agent-client/timeout";
 import { resolveLocalAgentForDrone } from "@/lib/agent/resolve-agent";
 import type { VisionUploadMeta } from "@/lib/agent/vision-client";
 
 /** Set the engine's active detector for a drone over its LAN agent. Returns
- * true when the LAN proxy accepted the write, false when the drone has no LAN
- * seam. Throws on an actual agent/transport error so the caller can surface
- * the reason. */
+ * true when the agent wrote the detector AND restarted the vision engine onto
+ * it (both the envelope and its `restart.status` read "ok"), false when the
+ * drone has no LAN seam. Throws with the agent's reason otherwise — a failed
+ * engine restart included, whatever the HTTP status: the engine keeps running
+ * the previous model then.
+ * The deadline covers that restart. */
 export async function setEngineDetector(input: {
   droneId: string;
   modelId: string;
@@ -36,23 +40,43 @@ export async function setEngineDetector(input: {
   const agent = resolveLocalAgentForDrone(input.droneId);
   if (!agent) return false;
 
-  const res = await fetch("/api/lan-pair/vision-detector", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      host: agent.agentUrl,
-      apiKey: agent.apiKey,
-      modelId: input.modelId,
-    }),
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => `HTTP ${res.status}`);
-    throw new Error(text || `HTTP ${res.status}`);
+  const res = await timedFetch(
+    "/api/lan-pair/vision-detector",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        host: agent.agentUrl,
+        apiKey: agent.apiKey,
+        modelId: input.modelId,
+      }),
+    },
+    AGENT_SERVICE_RESTART_CLIENT_TIMEOUT_MS,
+  );
+  const text = await res.text().catch(() => "");
+  let body: Record<string, unknown> = {};
+  try {
+    const parsed: unknown = JSON.parse(text);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      body = parsed as Record<string, unknown>;
+    }
+  } catch {
+    // A non-JSON body (a proxy or transport page) is reported as text below.
   }
-  return true;
+  const restart =
+    body.restart && typeof body.restart === "object" && !Array.isArray(body.restart)
+      ? (body.restart as Record<string, unknown>)
+      : {};
+  // Success needs the agent's own restart verdict, not only a 2xx envelope:
+  // the engine keeps the old model until ados-vision restarts onto the new one.
+  if (res.ok && body.status === "ok" && restart.status === "ok") return true;
+  const reason = [restart.message, body.message, body.error].find(
+    (v): v is string => typeof v === "string" && v.length > 0,
+  );
+  throw new Error(reason ?? (text || `HTTP ${res.status}`));
 }
 
-/** Sideload a custom model to a drone over its LAN agent (Rule 39). Returns
+/** Sideload a custom model to a drone over its LAN agent. Returns
  * the assigned model id when the upload landed, or null when the drone has no
  * LAN seam. Throws on an agent/transport error. */
 export async function uploadEngineModel(input: {

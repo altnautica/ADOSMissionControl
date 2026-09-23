@@ -28,7 +28,11 @@
 import { useState } from "react";
 import { Globe } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
+import {
+  capabilityPresence,
+  selectDeviceCapabilities,
+  useAgentCapabilitiesStore,
+} from "@/stores/agent-capabilities-store";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useLocalNodesStore } from "@/stores/local-nodes-store";
 import { usePairingStore } from "@/stores/pairing-store";
@@ -39,6 +43,7 @@ import {
 } from "@/lib/agent/config-access";
 import { configWriteFailure } from "@/lib/agent/config-write";
 import type { RelayReach } from "@/lib/nodes/relay-reach";
+import { isDemoMode } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Select, type SelectOption } from "@/components/ui/select";
@@ -66,8 +71,10 @@ export function RegulatoryRegionPanel({
   nodeDeviceId,
   relayReach = null,
 }: RegulatoryRegionPanelProps) {
-  const radio = useAgentCapabilitiesStore((s) => s.radio);
-  const radioStackState = useAgentCapabilitiesStore((s) => s.radioStackState);
+  // This node's own capability slice, never the focused one: the focused slice
+  // paints the previously shown node during a switch and is cleared when its
+  // connection drops, while this node may still be writable over the proxy.
+  const caps = useAgentCapabilitiesStore((s) => selectDeviceCapabilities(s, nodeDeviceId));
   const storeClient = useAgentConnectionStore((s) => s.client);
   const attachedDeviceId = useAgentConnectionStore((s) => s.nodeDeviceId);
   const setNodeRegion = useLocalNodesStore((s) => s.setNodeRegion);
@@ -76,30 +83,66 @@ export function RegulatoryRegionPanel({
   const t = useTranslations("operatingRegion");
   const { toast } = useToast();
 
-  // Picker selection: the unrestricted sentinel, a common region code, or
-  // the "other" sentinel that reveals the free-text ISO field. Holds an
-  // operator-pending selection until the next heartbeat reflects it.
-  const [selection, setSelection] = useState<string>(UNRESTRICTED_VALUE);
-  const [otherCode, setOtherCode] = useState<string>("");
-  const [dirty, setDirty] = useState(false);
+  // An operator-pending pick: the unrestricted sentinel, a common region code,
+  // or the "other" sentinel that reveals the free-text ISO field. Null follows
+  // the node's live posture. Once applied, it is held until the heartbeat
+  // reflects it, then dropped so the picker follows the live posture again.
+  const [pending, setPending] = useState<{
+    selection: string;
+    otherCode: string;
+    applied: boolean;
+  } | null>(null);
   const [saving, setSaving] = useState(false);
 
-  // Omit the whole card when the agent advertises no radio surface at all
-  // (a compute node, or a drone with no air-side adapter).
-  const hasRadioSurface = radio !== null || radioStackState !== undefined;
-  if (!hasRadioSurface) return null;
+  // Omit the whole card only when this node is known to have no radio surface
+  // (a compute node, or a drone with no air-side adapter). A node whose
+  // capabilities were never heard renders an unknown posture instead.
+  const radioPresence = capabilityPresence(
+    caps,
+    (c) => c.radio !== null || c.radioStackState !== undefined,
+  );
+  const radio = caps?.radio ?? null;
 
   // Effective posture from the heartbeat. Prefer the explicit regPosture /
   // pinnedRegion fields; fall back to the legacy regDomain so an older
   // agent that only reports regDomain still renders the right badge (a set
-  // regDomain implies a pinned region, absence implies unrestricted).
+  // regDomain implies a pinned region, absence implies unrestricted). Null
+  // when this node has not reported a radio yet.
   const pinnedRegion =
     radio?.pinnedRegion ?? (radio?.regDomain ? radio.regDomain : null);
-  const livePosture: "unrestricted" | "region" =
-    radio?.regPosture === "region" || (radio?.regPosture == null && pinnedRegion)
-      ? "region"
-      : "unrestricted";
+  const livePosture: "unrestricted" | "region" | null =
+    radio === null
+      ? null
+      : radio.regPosture === "region" || (radio.regPosture == null && pinnedRegion)
+        ? "region"
+        : "unrestricted";
   const regVerified = radio?.regVerified ?? null;
+
+  // The picker value the live posture corresponds to.
+  const live: { selection: string; otherCode: string } | null =
+    livePosture === null
+      ? null
+      : livePosture === "unrestricted" || !pinnedRegion
+        ? { selection: UNRESTRICTED_VALUE, otherCode: "" }
+        : isCommonRegion(pinnedRegion.toUpperCase())
+          ? { selection: pinnedRegion.toUpperCase(), otherCode: "" }
+          : { selection: OTHER_REGION_VALUE, otherCode: pinnedRegion.toUpperCase() };
+
+  if (
+    pending?.applied &&
+    live &&
+    live.selection === pending.selection &&
+    (pending.selection !== OTHER_REGION_VALUE ||
+      normalizeRegionCode(pending.otherCode) === live.otherCode)
+  ) {
+    setPending(null);
+  }
+
+  if (radioPresence === "absent") return null;
+
+  const dirty = pending !== null && !pending.applied;
+  const selection = pending?.selection ?? live?.selection ?? "";
+  const otherCode = pending?.otherCode ?? live?.otherCode ?? "";
 
   // The node's own LAN record, so the chosen region is remembered across a
   // re-pair / re-flash of that same node. Keyed strictly by the rendered
@@ -113,11 +156,18 @@ export function RegulatoryRegionPanel({
   // attached one serves it, else the server-side config proxy against its
   // stored LAN pairing, else its ground station's relay-proxy, and read-only
   // only when no path reaches it at all.
+  //
+  // DEMO-MODE BRANCH (gated on isDemoMode, real fleets unaffected): the demo
+  // attaches one mock client and never sets a focused device id, so the
+  // identity gate would drop the write to the proxy lane and send it to a
+  // demo pairing record's LAN address.
   const access = resolveConfigAccess(
-    directClientForNode(storeClient, attachedDeviceId, nodeDeviceId),
+    isDemoMode()
+      ? storeClient
+      : directClientForNode(storeClient, attachedDeviceId, nodeDeviceId),
     nodeDeviceId,
-    { localNodes: nodes, pairedDrones },
     relayReach,
+    { localNodes: nodes, pairedDrones },
   );
   const readOnly = access.mode === "none";
 
@@ -157,8 +207,7 @@ export function RegulatoryRegionPanel({
     (resolvedMode === "unrestricted" || resolvedRegion !== null);
 
   const onSelectionChange = (next: string) => {
-    setSelection(next);
-    setDirty(true);
+    setPending({ selection: next, otherCode, applied: false });
   };
 
   const onApply = async () => {
@@ -199,7 +248,7 @@ export function RegulatoryRegionPanel({
         );
       }
       toast(t("applied"), "success");
-      setDirty(false);
+      setPending({ selection, otherCode, applied: true });
     } catch (err) {
       const msg = err instanceof Error ? err.message : t("applyFailed");
       toast(msg, "error");
@@ -214,7 +263,11 @@ export function RegulatoryRegionPanel({
         <Globe size={16} className="text-accent-primary" />
         <h2 className="text-lg font-medium text-text-primary">{t("title")}</h2>
         <div className="flex-1" />
-        {livePosture === "unrestricted" ? (
+        {livePosture === null ? (
+          <span className="inline-flex items-center gap-1.5 rounded border border-border-default bg-bg-tertiary/40 px-2.5 py-1 text-xs font-medium text-text-secondary">
+            {t("postureUnknown")}
+          </span>
+        ) : livePosture === "unrestricted" ? (
           <UnrestrictedRegionBadge />
         ) : (
           <span className="inline-flex items-center gap-1.5 rounded border border-status-success/40 bg-status-success/10 px-2.5 py-1 text-xs font-medium text-status-success">
@@ -229,9 +282,11 @@ export function RegulatoryRegionPanel({
           {t("livePosture")}
         </div>
         <div className="mt-0.5 text-sm text-text-primary">
-          {livePosture === "unrestricted"
-            ? t("liveUnrestricted")
-            : t("livePinned", { region: regionName(pinnedRegion ?? "") })}
+          {livePosture === null
+            ? t("liveUnknown")
+            : livePosture === "unrestricted"
+              ? t("liveUnrestricted")
+              : t("livePinned", { region: regionName(pinnedRegion ?? "") })}
           {livePosture === "region" && regVerified === false ? (
             <span className="ml-2 text-status-warning">{t("regionUnverified")}</span>
           ) : null}
@@ -261,8 +316,7 @@ export function RegulatoryRegionPanel({
               maxLength={2}
               placeholder={t("otherFieldPlaceholder")}
               onChange={(e) => {
-                setOtherCode(e.target.value);
-                setDirty(true);
+                setPending({ selection, otherCode: e.target.value, applied: false });
               }}
               disabled={readOnly}
               className="h-9 w-full rounded border border-border-default bg-bg-tertiary px-2 font-mono text-sm uppercase text-text-primary focus:border-accent-primary focus:outline-none disabled:opacity-50"

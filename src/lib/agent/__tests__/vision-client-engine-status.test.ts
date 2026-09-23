@@ -51,6 +51,7 @@ describe("VisionAgentClient.getEngineStatus", () => {
     const status = await client.getEngineStatus();
 
     expect(status).toEqual({
+      known: true,
       npuUtilizationPct: 63.5,
       modelCount: 2,
       models: [
@@ -106,6 +107,7 @@ describe("VisionAgentClient.getEngineStatus", () => {
     fetchMock.mockResolvedValueOnce(jsonResponse({ detail: "not found" }, 404));
     const client = new VisionAgentClient("http://drone.local:8080");
     await expect(client.getEngineStatus()).resolves.toEqual({
+      known: false,
       models: [],
       npuUtilizationPct: null,
       modelCount: 0,

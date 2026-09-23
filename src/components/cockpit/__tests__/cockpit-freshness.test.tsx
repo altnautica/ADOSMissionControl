@@ -25,6 +25,7 @@ import { CockpitTopBar } from "@/components/cockpit/CockpitTopBar";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useDroneStore } from "@/stores/drone-store";
 import { TELEMETRY_STALE_MS } from "@/lib/telemetry/freshness";
+import { NO_DATA_GLYPH } from "@/lib/hud-draw";
 
 function renderBand() {
   return render(
@@ -63,6 +64,7 @@ function seedTelemetry(ageMs: number) {
     remnoise: 22,
     rxerrors: 0,
     fixed: 0,
+    sourceSystemId: 51,
   });
 }
 
@@ -88,9 +90,33 @@ describe("cockpit safety band freshness", () => {
     expect(useTelemetryStore.getState().battery.latest()?.remaining).toBe(76);
     expect(screen.queryByText(/76/)).toBeNull();
 
-    // "NO FIX" rather than a stale 3D lock with 14 satellites.
+    // The no-data glyph rather than a stale 3D lock or a fabricated "NO FIX".
     expect(screen.queryByText(/3D \/ 14/)).toBeNull();
-    expect(screen.getByText(messages.cockpit.strip.gpsNoFix)).toBeTruthy();
+    expect(screen.queryByText(messages.cockpit.strip.gpsNoFix)).toBeNull();
+    const gpsValue = screen.getByTestId("cockpit-gps").querySelector(".v");
+    expect(gpsValue?.textContent).toBe(NO_DATA_GLYPH);
+  });
+
+  it("labels only fix types 5 and 6 as RTK", () => {
+    seedTelemetry(0);
+    const push = (fixType: number) =>
+      useTelemetryStore.getState().pushGps({
+        timestamp: Date.now(),
+        fixType,
+        satellites: 14,
+        hdop: 0.9,
+        lat: 12.9716,
+        lon: 77.5946,
+        alt: 920,
+      });
+    push(8);
+    const { unmount } = renderBand();
+    expect(screen.queryByText(/RTK/)).toBeNull();
+    expect(screen.getByText(/3D \/ 14/)).toBeTruthy();
+    unmount();
+    push(6);
+    renderBand();
+    expect(screen.getByText(/RTK/)).toBeTruthy();
   });
 
   it("treats a sample exactly at the threshold as stale", () => {

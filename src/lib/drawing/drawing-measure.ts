@@ -9,7 +9,9 @@
  */
 
 import L from "leaflet";
-import { haversineDistance, formatDistance } from "./geo-utils";
+import { haversineDistance } from "./geo-utils";
+import { formatDistance } from "@/lib/units/format";
+import type { UnitSystem } from "@/stores/settings-store-types";
 import { DRAW_COLORS, makeVertexIcon, makeDistanceLabel, makeTotalLabel } from "./drawing-labels";
 
 export interface MeasureCallbacks {
@@ -55,6 +57,7 @@ export function updateMeasureLine(
   state: MeasureState,
   map: L.Map,
   drawingGroup: L.FeatureGroup,
+  unitSystem: UnitSystem,
 ): void {
   if (state.measureLine) { drawingGroup.removeLayer(state.measureLine); state.measureLine = null; }
   for (const label of state.measureLabels) { drawingGroup.removeLayer(label); }
@@ -78,7 +81,7 @@ export function updateMeasureLine(
     const midLat = (prev[0] + curr[0]) / 2;
     const midLon = (prev[1] + curr[1]) / 2;
     const label = L.marker([midLat, midLon], {
-      icon: makeDistanceLabel(formatDistance(dist)), interactive: false,
+      icon: makeDistanceLabel(formatDistance(dist, unitSystem)), interactive: false,
     }).addTo(drawingGroup);
     state.measureLabels.push(label);
   }
@@ -86,7 +89,7 @@ export function updateMeasureLine(
   if (state.measurePoints.length >= 2) {
     const last = state.measurePoints[state.measurePoints.length - 1];
     state.measureTotalLabel = L.marker([last[0], last[1]], {
-      icon: makeTotalLabel(`Total: ${formatDistance(total)}`), interactive: false,
+      icon: makeTotalLabel(`Total: ${formatDistance(total, unitSystem)}`), interactive: false,
     }).addTo(drawingGroup);
     const offset = map.latLngToContainerPoint([last[0], last[1]]);
     const newLatLng = map.containerPointToLatLng([offset.x, offset.y - 20]);

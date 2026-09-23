@@ -88,35 +88,4 @@ describe("PluginHostProvider drone-switch keying", () => {
     expect(secondIframe).toBe(firstIframe);
     cleanup();
   });
-
-  it("fires prefetchToken once per installed plugin on mount", () => {
-    const prefetch = vi.fn();
-    const contributions = [
-      mkContribution("com.example.alpha"),
-      // Same pluginId, different panel: should still mint exactly one token.
-      { ...mkContribution("com.example.alpha"), panelId: "panel-2" },
-      mkContribution("com.example.beta"),
-    ];
-
-    render(
-      <PluginHostProvider
-        deviceId="drone-1"
-        contributions={contributions}
-        prefetchToken={prefetch}
-      >
-        <PluginSlot name="node.detail.tab" />
-      </PluginHostProvider>,
-    );
-
-    expect(prefetch).toHaveBeenCalledTimes(2);
-    const calledPluginIds = prefetch.mock.calls.map(
-      (c) => (c[0] as { pluginId: string }).pluginId,
-    );
-    expect(calledPluginIds.sort()).toEqual([
-      "com.example.alpha",
-      "com.example.beta",
-    ]);
-    expect(prefetch.mock.calls[0]![0]).toMatchObject({ deviceId: "drone-1" });
-    cleanup();
-  });
 });

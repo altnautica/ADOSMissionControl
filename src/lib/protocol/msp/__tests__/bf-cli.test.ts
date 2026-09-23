@@ -3,18 +3,21 @@
  * @license GPL-3.0-only
  */
 
-import { describe, it, expect } from "vitest";
-import { BfCliSession, type BfCliIo } from "../bf-cli";
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { MspCliSession, BETAFLIGHT_CLI, INAV_CLI, type CliDialect, type CliIo } from "../cli-session";
 import { BfCliSettings, parseDumpSettings, parseGetValue } from "../bf-cli-settings";
 
 /** A scripted FC that answers each CLI command with prompt-terminated text. */
-class FakeIo implements BfCliIo {
+class FakeIo implements CliIo {
   sent: string[] = [];
+  raw: string[] = [];
   active: boolean[] = [];
-  session!: BfCliSession;
+  session!: MspCliSession;
   constructor(private readonly responder: (cmd: string) => string) {}
   send(bytes: Uint8Array): void {
-    const cmd = new TextDecoder().decode(bytes).trim();
+    const text = new TextDecoder().decode(bytes);
+    this.raw.push(text);
+    const cmd = text.trim();
     this.sent.push(cmd);
     // Deliver synchronously so the prompt fast-path resolves without timers.
     this.session.feed(new TextEncoder().encode(this.responder(cmd)));
@@ -24,9 +27,12 @@ class FakeIo implements BfCliIo {
   }
 }
 
-function makeSession(responder: (cmd: string) => string): { session: BfCliSession; io: FakeIo } {
+function makeSession(
+  responder: (cmd: string) => string,
+  dialect: CliDialect = BETAFLIGHT_CLI,
+): { session: MspCliSession; io: FakeIo } {
   const io = new FakeIo(responder);
-  const session = new BfCliSession(io);
+  const session = new MspCliSession(io, dialect);
   io.session = session;
   return { session, io };
 }
@@ -60,7 +66,11 @@ describe("parseGetValue", () => {
   });
 });
 
-describe("BfCliSession", () => {
+describe("MspCliSession", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("enters, runs a command, and exits without reboot", async () => {
     const { session, io } = makeSession((cmd) => {
       if (cmd === "#") return "Entering CLI Mode\r\n# ";
@@ -71,34 +81,66 @@ describe("BfCliSession", () => {
     expect(session.isActive).toBe(true);
     const out = await session.run("dump");
     expect(out).toContain("set a = 1");
-    await session.exit(false);
+    await session.exit();
     expect(session.isActive).toBe(false);
     expect(io.sent).toEqual(["#", "dump", "exit noreboot"]);
     expect(io.active).toEqual([true, false]); // pauses then resumes MSP
   });
 
-  it("persists with `save noreboot` when exiting with persist", async () => {
-    const { session, io } = makeSession(() => "\r\n# ");
-    await session.enter();
-    await session.exit(true);
-    expect(io.sent).toContain("save noreboot");
-    expect(io.sent).not.toContain("save"); // exact command, not a bare save+reboot
-  });
-
-  it("streams inbound text in interactive mode and appends the command newline", () => {
+  it("enters the CLI on the first typed command, streams replies, and leaves on detach", () => {
     const streamed: string[] = [];
     const { session, io } = makeSession((cmd) => (cmd === "#" ? "Entering CLI\r\n# " : "output\r\n# "));
     session.attachInteractive((t) => streamed.push(t));
-    expect(io.active).toEqual([true]); // pauses MSP polling on entry
-    expect(io.sent).toEqual(["#"]);
-    expect(streamed.join("")).toContain("Entering CLI"); // banner streamed to the terminal
+    expect(io.sent).toEqual([]); // opening the terminal does not pause telemetry
+    expect(io.active).toEqual([]);
     session.sendInteractive("version");
-    expect(io.sent).toContain("version"); // command sent (newline appended by sendInteractive)
+    expect(io.active).toEqual([true]);
+    expect(io.raw).toEqual(["#\r\n", "version\r\n"]);
+    expect(streamed.join("")).toContain("Entering CLI");
     expect(streamed.join("")).toContain("output");
     session.detachInteractive();
     expect(io.sent).toContain("exit noreboot");
     expect(io.active).toEqual([true, false]); // resumes MSP polling on exit
     expect(session.isActive).toBe(false);
+  });
+
+  it("sends a typed Betaflight exit as exit noreboot and hands the link back to MSP", () => {
+    vi.useFakeTimers();
+    const streamed: string[] = [];
+    const { session, io } = makeSession((cmd) => (cmd.startsWith("exit") ? "# leaving CLI mode, no reboot\r\n" : "\r\n# "));
+    session.attachInteractive((t) => streamed.push(t));
+    session.sendInteractive("exit");
+    expect(io.sent).toEqual(["#", "exit noreboot"]);
+    expect(streamed.join("")).toContain("no reboot"); // the reply still reaches the terminal
+    expect(session.isActive).toBe(true);
+    vi.advanceTimersByTime(500);
+    expect(session.isActive).toBe(false);
+    expect(io.active).toEqual([true, false]);
+    session.sendInteractive("status"); // the next command re-enters the CLI
+    expect(io.sent.slice(2)).toEqual(["#", "status"]);
+    expect(io.active).toEqual([true, false, true]);
+  });
+
+  it("sends a typed Betaflight save as save noreboot and stays in the CLI", () => {
+    const { session, io } = makeSession(() => "\r\n# ");
+    session.attachInteractive(() => undefined);
+    session.sendInteractive("save");
+    expect(io.sent).toEqual(["#", "save noreboot"]);
+    expect(session.isActive).toBe(true);
+    expect(io.active).toEqual([true]);
+  });
+
+  it("treats an iNav save as leaving the CLI, since iNav reboots on save", () => {
+    vi.useFakeTimers();
+    const { session, io } = makeSession(() => "\r\n# ", INAV_CLI);
+    session.attachInteractive(() => undefined);
+    session.sendInteractive("get nav_rth_altitude");
+    expect(io.raw).toEqual(["#\r\n", "get nav_rth_altitude\r\n"]); // each line is terminated
+    session.sendInteractive("save");
+    expect(io.sent.at(-1)).toBe("save");
+    vi.advanceTimersByTime(500);
+    expect(session.isActive).toBe(false);
+    expect(io.active).toEqual([true, false]);
   });
 });
 
@@ -152,7 +194,7 @@ describe("BfCliSettings (cliSettings capability)", () => {
     // A response streamed in pieces, one boundary landing right after a bare `#`
     // (a `# comment` split from its text) — the prompt grace must not resolve early.
     const io = new FakeIo(() => ""); // manual streaming below
-    const session = new BfCliSession(io);
+    const session = new MspCliSession(io, BETAFLIGHT_CLI);
     io.session = session;
     const feed = (s: string) => session.feed(new TextEncoder().encode(s));
     // override send so `dump` streams asynchronously in chunks

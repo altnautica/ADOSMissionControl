@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useToast } from "@/components/ui/toast";
-import { syncPopupTheme } from "./deck-utils";
+import { popupRefusedMessage, syncPopupTheme } from "./deck-utils";
 
 interface DetachedDeckPortalProps {
   children: (opts: { detached: boolean; open: () => void; close: () => void }) => React.ReactNode;
@@ -33,7 +33,7 @@ export function DetachedDeckPortal({ children, renderDetachedContent }: Detached
       "width=760,height=460,resizable=yes,scrollbars=no",
     );
     if (!popup) {
-      toast("Popup blocked. Allow popups for this site to detach the telemetry deck.", "warning");
+      toast(popupRefusedMessage("telemetry deck"), "warning");
       return;
     }
 

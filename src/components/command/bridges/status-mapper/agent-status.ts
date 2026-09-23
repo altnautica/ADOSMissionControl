@@ -95,7 +95,8 @@ export function mapCloudStatus(cloudStatus: Record<string, unknown>): AgentStatu
   };
   return {
     version: (cloudStatus.version as string | undefined) || "?.?.?",
-    uptime_seconds: (cloudStatus.uptimeSeconds as number | undefined) || 0,
+    uptime_seconds:
+      typeof cloudStatus.uptimeSeconds === "number" ? cloudStatus.uptimeSeconds : undefined,
     board,
     health: {
       // Left undefined when the agent omits the reading. Coercing to 0 renders

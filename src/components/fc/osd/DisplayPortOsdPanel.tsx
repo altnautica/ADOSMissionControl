@@ -12,22 +12,32 @@ import { useEffect } from "react";
 import { Tv } from "lucide-react";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useDisplayPortStore } from "@/stores/displayport-store";
+import { useClockStore } from "@/stores/clock-store";
+import { useClockTick } from "@/lib/agent/freshness";
+import { isFresh } from "@/lib/telemetry/freshness";
 
 export function DisplayPortOsdPanel() {
   const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
   const lines = useDisplayPortStore((s) => s.lines);
   const resolutionLabel = useDisplayPortStore((s) => s.resolutionLabel);
   const lastFrameAt = useDisplayPortStore((s) => s.lastFrameAt);
   const attach = useDisplayPortStore((s) => s.attach);
   const detach = useDisplayPortStore((s) => s.detach);
 
+  // Re-attached on a drone switch, so the preview never keeps painting the
+  // previously selected drone's OSD.
   useEffect(() => {
     const protocol = getSelectedProtocol();
     if (protocol) attach(protocol);
     return () => detach();
-  }, [getSelectedProtocol, attach, detach]);
+  }, [getSelectedProtocol, selectedDroneId, attach, detach]);
 
-  const hasFrames = lastFrameAt !== null;
+  // Re-evaluated on the shared 1 Hz clock so a stream that stops turns stale.
+  useClockTick();
+  const now = useClockStore((s) => s.now);
+  const live = lastFrameAt !== null && isFresh(lastFrameAt, now);
+  const status = lastFrameAt === null ? "waiting" : live ? "live" : "stale";
 
   return (
     <div className="flex-1 overflow-y-auto p-6">
@@ -37,8 +47,12 @@ export function DisplayPortOsdPanel() {
           <h2 className="text-sm font-medium text-text-primary">OSD Preview</h2>
           <span className="ml-auto flex items-center gap-2 text-[10px] font-mono text-text-tertiary">
             <span>{resolutionLabel}</span>
-            <span className={hasFrames ? "text-status-success" : "text-text-tertiary"}>
-              {hasFrames ? "live" : "waiting"}
+            <span
+              className={
+                status === "live" ? "text-status-success" : status === "stale" ? "text-status-warning" : "text-text-tertiary"
+              }
+            >
+              {status}
             </span>
           </span>
         </div>

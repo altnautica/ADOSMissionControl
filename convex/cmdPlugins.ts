@@ -2,8 +2,8 @@
  * @module cmdPlugins
  * @description Plugin registry for the GCS plugin host.
  *
- * Three tables back this module: `cmd_pluginInstalls`,
- * `cmd_pluginPermissions`, `cmd_pluginEvents`. Every row is scoped to
+ * Four tables back this module: `cmd_pluginInstalls`,
+ * `cmd_pluginPermissions`, `cmd_pluginEvents`, `cmd_pluginBundles`. Every row is scoped to
  * the authenticated user. The Settings -> Plugins page reads these
  * for its list, detail, permissions, and events tabs; the install
  * dialog writes them on operator approval.
@@ -16,9 +16,10 @@
  */
 
 import { v } from "convex/values";
-import { internalMutation, mutation, query, type MutationCtx } from "./_generated/server";
+import { action, internalMutation, mutation, query, type MutationCtx } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import type { Doc, Id } from "./_generated/dataModel";
+import { internal } from "./_generated/api";
 import {
   sourceValidator,
   statusValidator,
@@ -280,6 +281,69 @@ export const recentEvents = query({
 // Mutations
 // ──────────────────────────────────────────────────────────────
 
+// Largest GCS iframe document the server stores for an install.
+const MAX_BUNDLE_BYTES = 8 * 1024 * 1024;
+
+/**
+ * Store a GCS iframe bundle for the caller and record that the caller owns it.
+ * `recordInstall` only accepts a bundle stored this way by the same user, so an
+ * install row can never point `getBundleUrl` at someone else's storage object.
+ */
+export const storeBundle = action({
+  args: { html: v.string() },
+  handler: async (ctx, { html }): Promise<Id<"_storage">> => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("unauthenticated");
+    const blob = new Blob([html], { type: "text/html" });
+    if (blob.size > MAX_BUNDLE_BYTES) {
+      throw new Error(`bundle exceeds ${MAX_BUNDLE_BYTES} bytes`);
+    }
+    const storageId = await ctx.storage.store(blob);
+    await ctx.runMutation(internal.cmdPlugins.recordBundleOwner, { userId, storageId });
+    return storageId;
+  },
+});
+
+export const recordBundleOwner = internalMutation({
+  args: { userId: v.string(), storageId: v.id("_storage") },
+  handler: async (ctx, { userId, storageId }) => {
+    await ctx.db.insert("cmd_pluginBundles", { userId, storageId, createdAt: Date.now() });
+  },
+});
+
+/**
+ * Delete an install and everything that hangs off it: permission rows, the
+ * event log, and the stored GCS bundle with its ownership row. `keepBundle`
+ * names a bundle the replacing install still references (a retried record of
+ * the same upload), which is left in place.
+ */
+export async function deleteInstallTree(
+  ctx: Pick<MutationCtx, "db" | "storage">,
+  install: Doc<"cmd_pluginInstalls">,
+  keepBundle?: Id<"_storage">,
+): Promise<void> {
+  const perms = await ctx.db
+    .query("cmd_pluginPermissions")
+    .withIndex("by_install", (q) => q.eq("pluginInstallId", install._id))
+    .collect();
+  for (const p of perms) await ctx.db.delete(p._id);
+  const events = await ctx.db
+    .query("cmd_pluginEvents")
+    .withIndex("by_install", (q) => q.eq("pluginInstallId", install._id))
+    .collect();
+  for (const e of events) await ctx.db.delete(e._id);
+  const storageId = install.bundleStorageId;
+  if (storageId && storageId !== keepBundle) {
+    const owner = await ctx.db
+      .query("cmd_pluginBundles")
+      .withIndex("by_storageId", (q) => q.eq("storageId", storageId))
+      .first();
+    if (owner) await ctx.db.delete(owner._id);
+    await ctx.storage.delete(storageId);
+  }
+  await ctx.db.delete(install._id);
+}
+
 /**
  * Record a fresh plugin install. The install dialog calls this AFTER
  * archive verification on the agent or GCS side. Permissions land as
@@ -324,6 +388,11 @@ export const recordInstall = mutation({
         }),
       ),
     ),
+    // The install dialog sends these on EVERY install (see the GCS's
+    // finalize-gcs-install). A Convex args validator rejects the whole call on
+    // an undeclared arg, so a deployment that omits them does not lose the
+    // parameter/skill/target-action contributions -- it fails the install
+    // outright.
     gcsParameters: v.optional(gcsParametersValidator),
     flightSkills: v.optional(flightSkillsValidator),
     targetActions: v.optional(targetActionsValidator),
@@ -336,22 +405,27 @@ export const recordInstall = mutation({
       throw new Error("plugin must declare at least one half");
     }
 
-    // Upsert: if the same user already installed this plugin id,
-    // replace its install row and clear its prior permission grants.
+    const bundleStorageId = args.bundleStorageId;
+    if (bundleStorageId) {
+      const owner = await ctx.db
+        .query("cmd_pluginBundles")
+        .withIndex("by_storageId", (q) => q.eq("storageId", bundleStorageId))
+        .first();
+      if (!owner || owner.userId !== userId) {
+        throw new Error("bundle was not stored for this user");
+      }
+    }
+
+    // Upsert per drone: installing on drone B leaves drone A's install and
+    // grants alone. Re-installing on the same drone replaces its row, and the
+    // old row's grants, events and bundle go with it.
     const existing = await ctx.db
       .query("cmd_pluginInstalls")
-      .withIndex("by_user_plugin", (q) =>
-        q.eq("userId", userId).eq("pluginId", args.pluginId),
+      .withIndex("by_user_drone_plugin", (q) =>
+        q.eq("userId", userId).eq("droneId", args.droneId).eq("pluginId", args.pluginId),
       )
       .first();
-    if (existing) {
-      const oldPerms = await ctx.db
-        .query("cmd_pluginPermissions")
-        .withIndex("by_install", (q) => q.eq("pluginInstallId", existing._id))
-        .collect();
-      for (const p of oldPerms) await ctx.db.delete(p._id);
-      await ctx.db.delete(existing._id);
-    }
+    if (existing) await deleteInstallTree(ctx, existing, bundleStorageId);
 
     const installedAt = Date.now();
     const installId: Id<"cmd_pluginInstalls"> = await ctx.db.insert(
@@ -533,17 +607,7 @@ export const removeInstall = mutation({
     if (!install || install.userId !== userId) {
       throw new Error("install not found");
     }
-    const perms = await ctx.db
-      .query("cmd_pluginPermissions")
-      .withIndex("by_install", (q) => q.eq("pluginInstallId", installId))
-      .collect();
-    for (const p of perms) await ctx.db.delete(p._id);
-    const events = await ctx.db
-      .query("cmd_pluginEvents")
-      .withIndex("by_install", (q) => q.eq("pluginInstallId", installId))
-      .collect();
-    for (const e of events) await ctx.db.delete(e._id);
-    await ctx.db.delete(installId);
+    await deleteInstallTree(ctx, install);
   },
 });
 
@@ -595,18 +659,21 @@ const EVENT_PRUNE_BATCH = 256;
  */
 export const pruneOldEvents = internalMutation({
   args: {},
-  handler: async (ctx) => {
+  handler: async (ctx): Promise<{ deleted: number }> => {
     const cutoff = Date.now() - EVENT_RETENTION_MS;
     const stale = await ctx.db
       .query("cmd_pluginEvents")
       .withIndex("by_createdAt", (q) => q.lt("createdAt", cutoff))
       .take(EVENT_PRUNE_BATCH);
-    let deleted = 0;
     for (const row of stale) {
       await ctx.db.delete(row._id);
-      deleted += 1;
     }
-    return { deleted };
+    // A full batch means more may be past retention: keep draining now rather
+    // than letting the backlog outgrow one batch per cron tick.
+    if (stale.length === EVENT_PRUNE_BATCH) {
+      await ctx.scheduler.runAfter(0, internal.cmdPlugins.pruneOldEvents, {});
+    }
+    return { deleted: stale.length };
   },
 });
 

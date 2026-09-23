@@ -46,9 +46,6 @@ next-env.d.ts
 /dist-electron
 /release
 
-# monaco editor static assets (copied from node_modules by predev/prebuild)
-/public/monaco-vs
-
 # cesium static assets (copied from node_modules by predev/prebuild)
 /public/cesium
 

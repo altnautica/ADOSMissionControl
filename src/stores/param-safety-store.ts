@@ -1,7 +1,6 @@
 import { create } from "zustand";
 import { RingBuffer } from "@/lib/ring-buffer";
-
-const CRITICAL_PREFIXES = ["FS_", "BATT_FS_", "FENCE_", "MOT_", "BRD_SAFETY", "ARMING_"];
+import { isCriticalParam } from "@/lib/protocol/critical-params";
 
 const DEFAULT_STALE_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -31,7 +30,6 @@ interface ParamSafetyStoreState {
   commitFlash: (success?: boolean) => void;
   getPendingCount: () => number;
   hasCriticalPending: () => boolean;
-  isCriticalParam: (paramName: string) => boolean;
   markPanelLoaded: (panel: string) => void;
   isPanelStale: (panel: string, maxAgeMs?: number) => boolean;
   trackRebootParam: (paramName: string) => void;
@@ -66,30 +64,23 @@ export const useParamSafetyStore = create<ParamSafetyStoreState>((set, get) => (
 
   commitFlash: (success = true) => {
     const s = get();
-    const count = s.pendingWrites.size;
     s.flashCommitLog.push({
       timestamp: Date.now(),
-      paramCount: count,
+      paramCount: s.pendingWrites.size,
       success,
     });
-    s.pendingWrites.clear();
-    set({ lastFlashCommit: Date.now() });
+    // A new Map, so every subscriber (the flash banner, the disconnect guard)
+    // sees the pending set empty after a commit from any panel.
+    set({ pendingWrites: new Map(), lastFlashCommit: Date.now() });
   },
 
   getPendingCount: () => get().pendingWrites.size,
 
   hasCriticalPending: () => {
-    const pending = get().pendingWrites;
-    for (const paramName of pending.keys()) {
-      if (CRITICAL_PREFIXES.some((prefix) => paramName.startsWith(prefix))) {
-        return true;
-      }
+    for (const paramName of get().pendingWrites.keys()) {
+      if (isCriticalParam(paramName)) return true;
     }
     return false;
-  },
-
-  isCriticalParam: (paramName: string) => {
-    return CRITICAL_PREFIXES.some((prefix) => paramName.startsWith(prefix));
   },
 
   markPanelLoaded: (panel) => {

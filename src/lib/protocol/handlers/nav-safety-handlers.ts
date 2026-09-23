@@ -10,14 +10,14 @@ import type {
   WindCallback, TerrainCallback, HomePositionCallback,
   DistanceSensorCallback, FenceStatusCallback, NavControllerCallback,
   FencePointCallback, MissionProgressCallback,
-  WindCovCallback, MissionItemCallback,
+  WindCovCallback, MissionItemCallback, AdsbVehicleCallback,
 } from '../types'
 import {
   decodeEkfStatusReport, decodeVibration, decodeServoOutputRaw,
   decodeWind, decodeTerrainReport, decodeHomePosition,
   decodeDistanceSensor, decodeFenceStatus, decodeNavControllerOutput,
   decodeFencePoint, decodeMissionCurrent, decodeMissionItemReached,
-  decodeWindCov, decodeMissionItem,
+  decodeWindCov, decodeMissionItem, decodeAdsbVehicle,
 } from '../mavlink-messages'
 
 export function handleEkfStatus(payload: DataView, callbacks: EkfCallback[]): void {
@@ -201,6 +201,40 @@ export function handleMissionItemLegacy(payload: DataView, callbacks: MissionIte
       x: data.x,
       y: data.y,
       z: data.z,
+    })
+  }
+}
+
+/** ADSB_FLAGS bits (common.xml). */
+const ADSB_VALID_COORDS = 1
+const ADSB_VALID_ALTITUDE = 2
+const ADSB_VALID_HEADING = 4
+const ADSB_VALID_VELOCITY = 8
+const ADSB_VALID_CALLSIGN = 16
+const ADSB_VALID_SQUAWK = 32
+/** ADSB_ALTITUDE_TYPE_GEOMETRIC: altitude is GNSS, not pressure QNH. */
+const ADSB_ALTITUDE_GEOMETRIC = 1
+
+export function handleAdsbVehicle(payload: DataView, callbacks: AdsbVehicleCallback[]): void {
+  const d = decodeAdsbVehicle(payload)
+  // A contact without a valid position cannot be placed or ranged; delivering
+  // it at 0,0 would put phantom traffic at Null Island.
+  if ((d.flags & ADSB_VALID_COORDS) === 0) return
+  const has = (bit: number) => (d.flags & bit) !== 0
+  for (const cb of callbacks) {
+    cb({
+      timestamp: Date.now(),
+      icao: d.icaoAddress,
+      lat: d.lat / 1e7,
+      lon: d.lon / 1e7,
+      altitudeM: has(ADSB_VALID_ALTITUDE) ? d.altitude / 1000 : undefined,
+      altitudeGeometric: d.altitudeType === ADSB_ALTITUDE_GEOMETRIC,
+      headingDeg: has(ADSB_VALID_HEADING) ? d.heading / 100 : undefined,
+      groundSpeedMs: has(ADSB_VALID_VELOCITY) ? d.horVelocity / 100 : undefined,
+      callsign: has(ADSB_VALID_CALLSIGN) && d.callsign !== '' ? d.callsign : undefined,
+      squawk: has(ADSB_VALID_SQUAWK) ? d.squawk : undefined,
+      emitterType: d.emitterType,
+      tslc: d.tslc,
     })
   }
 }

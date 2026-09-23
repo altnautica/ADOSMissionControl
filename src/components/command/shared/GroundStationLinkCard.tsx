@@ -16,7 +16,8 @@ import { useTranslations } from "next-intl";
 import { useGroundStationStore } from "@/stores/ground-station-store";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { useClockStore } from "@/stores/clock-store";
-import { useClockTick } from "@/lib/agent/freshness";
+import { STALE_THRESHOLD_MS, useClockTick } from "@/lib/agent/freshness";
+import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { LAN_SNAPSHOT_STALE_MS } from "@/stores/ground-station/link-store";
 import { toneTextClass } from "@/components/hardware/radio/labels";
 import {
@@ -55,16 +56,17 @@ export function GroundStationLinkCard() {
   // and the air side name the same reading the same way.
   const tRadio = useTranslations("hardware.radio");
   const health = useGroundStationStore((s) => s.linkHealth);
-  const lastFetchedAt = useGroundStationStore((s) => s.lastFetchedAt);
+  const linkHealthAt = useGroundStationStore((s) => s.linkHealthAt);
+  const cloudMode = useAgentConnectionStore((s) => s.cloudMode);
   const radio = useAgentCapabilitiesStore((s) => s.radio);
-  // The card had no freshness gate at all, so it kept painting a green RSSI
-  // from a snapshot that stopped being refreshed — including on this tab, where
-  // nothing polls the ground station at all. Ride the shared clock so the card
-  // ages out on its own rather than on an unrelated re-render.
+  // Age the reading on the link-health stamp both producers write (a LAN
+  // status read, or a cloud heartbeat's radio block), not on the shared LAN
+  // fetch stamp a WFB-config read also bumps. A cloud-reached ground station
+  // refreshes at heartbeat cadence, so it ages on the heartbeat threshold.
   useClockTick();
   const now = useClockStore((s) => s.now);
-  const live =
-    lastFetchedAt !== null && now - lastFetchedAt <= LAN_SNAPSHOT_STALE_MS;
+  const staleAfterMs = cloudMode ? STALE_THRESHOLD_MS : LAN_SNAPSHOT_STALE_MS;
+  const live = linkHealthAt !== null && now - linkHealthAt <= staleAfterMs;
   const fecTotal = live ? health.fec_rec + health.fec_lost : 0;
   const fecRatio = fecTotal > 0 ? (health.fec_lost / fecTotal) * 100 : 0;
   const rssi = live ? health.rssi_dbm : null;
@@ -83,12 +85,12 @@ export function GroundStationLinkCard() {
   });
 
   return (
-    <div className="rounded-lg border border-border-default bg-surface-secondary p-3 space-y-2">
+    <div className="rounded-lg border border-border-default bg-bg-secondary p-3 space-y-2">
       <h3 className="text-xs uppercase tracking-wide text-text-tertiary flex items-center gap-2">
         {t("title")}
         {!live && (
           <span className="rounded border border-status-warning/40 bg-status-warning/10 px-1.5 py-0.5 text-[10px] normal-case text-status-warning">
-            {lastFetchedAt === null ? t("notRead") : t("stale")}
+            {linkHealthAt === null ? t("notRead") : t("stale")}
           </span>
         )}
       </h3>

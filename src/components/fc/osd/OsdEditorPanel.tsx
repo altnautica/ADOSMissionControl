@@ -11,11 +11,11 @@
 import { useState, useCallback, useMemo } from "react";
 import { useToast } from "@/components/ui/toast";
 import { useDroneManager } from "@/stores/drone-manager";
-import { useTelemetryStore } from "@/stores/telemetry-store";
+import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
-import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
+import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { OsdElementGrid } from "./OsdElementGrid";
 import { OsdScreenPreview, FORMAT_ROWS } from "./OsdScreenPreview";
 import {
@@ -23,36 +23,32 @@ import {
   type OsdElement, type VideoFormat,
 } from "./ap-osd-elements";
 
-// Live telemetry preview values for OSD elements
+// Live telemetry preview values for OSD elements. Each channel re-renders on
+// new frames and falls back to the element's label once it goes stale.
 function useLiveTelemetryPreview(): Record<string, string> {
-  const vfr = useTelemetryStore((s) => s.vfr);
-  const battery = useTelemetryStore((s) => s.battery);
-  const gps = useTelemetryStore((s) => s.gps);
-  const position = useTelemetryStore((s) => s.position);
+  const v = useFreshTelemetry("vfr");
+  const b = useFreshTelemetry("battery");
+  const g = useFreshTelemetry("gps");
+  const p = useFreshTelemetry("position");
 
   return useMemo(() => {
-    const v = vfr.latest();
-    const b = battery.latest();
-    const g = gps.latest();
-    const p = position.latest();
     return {
       ALTITUDE: v ? `${v.alt.toFixed(0)}m` : "ALT",
       BAT_VOLT: b ? `${b.voltage.toFixed(1)}V` : "BATT",
       CURRENT: b?.current !== undefined ? `${b.current.toFixed(1)}A` : "AMP",
-      SATS: g ? `${g.satellites}` : "SAT",
+      SATS: g?.satellites !== undefined ? `${g.satellites}` : "SAT",
       GSPEED: v?.groundspeed !== undefined ? `${v.groundspeed.toFixed(1)}` : "GS",
-      COMPASS: p ? `${p.heading.toFixed(0)}°` : "CMP",
+      COMPASS: p?.heading !== undefined ? `${p.heading.toFixed(0)}°` : "CMP",
       ASPEED: v?.airspeed !== undefined ? `${v.airspeed.toFixed(1)}` : "AS",
       VSPEED: v ? `${v.climb.toFixed(1)}` : "VS",
       THROTTLE: v?.throttle !== undefined ? `${v.throttle}%` : "THR",
-      HEADING: p ? `${p.heading.toFixed(0)}°` : "HDG",
+      HEADING: p?.heading !== undefined ? `${p.heading.toFixed(0)}°` : "HDG",
       POWER: b?.current !== undefined ? `${(b.voltage * b.current).toFixed(0)}W` : "PWR",
       BATTBAR: b && b.remaining >= 0 ? `${b.remaining}%` : "BAR",
       BATUSED: b?.consumed !== undefined ? `${b.consumed.toFixed(0)}` : "mAh",
       CLK: new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit" }),
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [vfr.length, battery.length, gps.length, position.length]);
+  }, [v, b, g, p]);
 }
 
 interface ScreenEditorProps {
@@ -189,7 +185,7 @@ export function OsdEditorPanel() {
   const [clipboard, setClipboard] = useState<OsdElement[] | null>(null);
 
   return (
-    <ArmedLockOverlay>
+    <ArmedWarningBanner>
       <ScreenEditor
         key={activeScreen}
         screen={activeScreen}
@@ -199,6 +195,6 @@ export function OsdEditorPanel() {
         clipboard={clipboard}
         onCopy={setClipboard}
       />
-    </ArmedLockOverlay>
+    </ArmedWarningBanner>
   );
 }

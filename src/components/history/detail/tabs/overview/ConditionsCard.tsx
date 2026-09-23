@@ -110,6 +110,19 @@ function SunMoonSection({ sunMoon }: { sunMoon: SunMoonSnapshot }) {
   );
 }
 
+/**
+ * METAR wind as shown on the card: "—" when the report has no wind, "Calm"
+ * for 0 kt, "VRB" when the speed comes without a direction (a variable wind),
+ * else "270° @ 12 kt G20".
+ */
+export function formatWind(weather: Pick<WeatherSnapshot, "windDirDeg" | "windKts" | "gustKts">): string {
+  if (weather.windKts === undefined) return "—";
+  if (weather.windKts === 0) return "Calm";
+  const dir = weather.windDirDeg === undefined ? "VRB" : `${weather.windDirDeg}°`;
+  const gust = weather.gustKts && weather.gustKts > 0 ? ` G${weather.gustKts}` : "";
+  return `${dir} @ ${weather.windKts} kt${gust}`;
+}
+
 function WeatherSection({ weather }: { weather: WeatherSnapshot }) {
   const categoryColor: Record<string, string> = {
     VFR: "text-status-success",
@@ -121,12 +134,7 @@ function WeatherSection({ weather }: { weather: WeatherSnapshot }) {
     ? categoryColor[weather.flightCategory] ?? "text-text-primary"
     : "text-text-primary";
 
-  const windText =
-    weather.windKts === 0 || weather.windKts === undefined
-      ? "Calm"
-      : `${weather.windDirDeg ?? 0}° @ ${weather.windKts} kt${
-          weather.gustKts && weather.gustKts > 0 ? ` G${weather.gustKts}` : ""
-        }`;
+  const windText = formatWind(weather);
 
   return (
     <div className="flex flex-col gap-1.5">

@@ -1,8 +1,8 @@
 /**
  * @module node-detail/node-switch-tab-memory.test
  * @description The panel is deliberately NOT remounted per node (no `key` at
- * the call site: the plugin host's pause grace and the Agent page's sub-page
- * memory depend on the instance surviving), so "return where you left off"
+ * the call site: the Agent page's sub-page memory depends on the instance
+ * surviving), so "return where you left off"
  * lives entirely in this shell's seed / persist logic.
  *
  * It used to be dead for anyone who switched nodes, which is the normal fleet
@@ -151,6 +151,16 @@ describe("node-detail tab memory across a node switch", () => {
     // `viewer` merged into `compute`, so the alias resolves it rather than
     // dropping the operator on the first surface.
     expect(selected(container)).toBe("compute");
+  });
+
+  it("falls back from a plugin tab whose plugin is gone, without persisting the dead id", () => {
+    useUiPrefsStore.setState({ lastTabByNode: { [DRONE]: "plugin:removed-install" } });
+    const { container } = render(<NodeDetailPanel droneId={DRONE} onClose={() => {}} />);
+    // No contribution carries that id: the first surface shows instead of an
+    // empty plugin body.
+    expect(selected(container)).toBe("overview");
+    expect(container.querySelector('[role="tabpanel"]')?.textContent).toBe("body-overview");
+    expect(useUiPrefsStore.getState().lastTabByNode[DRONE]).toBe("plugin:removed-install");
   });
 
   it("persists a tab the operator actually reaches", () => {

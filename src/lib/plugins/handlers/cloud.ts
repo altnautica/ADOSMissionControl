@@ -1,17 +1,14 @@
 /**
- * Plugin `cloud.read` / `cloud.write` handlers.
+ * Plugin `cloud.read` handler.
  *
  * A plugin half can ask the GCS to run a Convex function on its behalf. The
  * policy gate lives in `../cloud-allowlist.ts` (allowlist + arg validation +
  * rate limit) and is pure; this handler owns the live Convex client (injected
  * as `cloudQuery`) and calls the gate before dispatching. The bridge has
- * already checked the `cloud.read` / `cloud.write` capability before the
- * handler runs.
+ * already checked the `cloud.read` capability before the handler runs.
  *
- * Reads are confined to a tiny public-query allowlist. Writes are refused
- * unconditionally — the write allowlist is empty by design — but the
- * forward-compat allowlist check still runs so flipping the list on is the
- * only change needed later.
+ * Reads are confined to a tiny public-query allowlist. There is no plugin
+ * cloud write: every reviewed mutation writes under the operator's identity.
  *
  * @module plugins/handlers/cloud
  * @license GPL-3.0-only
@@ -20,7 +17,6 @@
 import type { BridgeHandler } from "@/lib/plugins/bridge";
 import {
   isAllowedCloudRead,
-  isAllowedCloudWrite,
   validateCloudArgs,
   checkCloudRateLimit,
 } from "@/lib/plugins/cloud-allowlist";
@@ -33,7 +29,7 @@ export type CloudQuery = (
 ) => Promise<unknown>;
 
 /**
- * Build the `cloud.read` + `cloud.write` handlers for one plugin. When
+ * Build the `cloud.read` handler for one plugin. When
  * `cloudQuery` is absent (producer has not wired a live client) `cloud.read`
  * returns an error result rather than throwing.
  */
@@ -60,18 +56,7 @@ export function buildCloudHandlers(
     return { ok: true, result };
   };
 
-  const cloudWrite: BridgeHandler = async (args) => {
-    // Run the (empty) write allowlist for forward-compat; always denied today.
-    const fn = readString(args, "fn") ?? "";
-    void isAllowedCloudWrite(fn);
-    return {
-      ok: false,
-      error: "cloud writes are not permitted for plugins",
-    };
-  };
-
   return {
     "cloud.read": cloudRead,
-    "cloud.write": cloudWrite,
   };
 }

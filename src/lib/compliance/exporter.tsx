@@ -1,9 +1,11 @@
 /**
  * Compliance exporter dispatch.
  *
- * - PDF path: `IN_DGCA` → bespoke single-flight template; every other
+ * - CSV and JSON: every jurisdiction, columns from its field spec.
+ * - XML: only jurisdictions that list `xml` in `outputFormats`.
+ * - PDF: `IN_DGCA` → bespoke single-flight template; every other
  *   jurisdiction → shared `GenericLogbookTemplate`.
- * - CSV / JSON / XML paths still throw `ExportNotSupported` until 7c-2/7c-3.
+ * - Anything else throws `ExportNotSupported`.
  *
  * @module compliance/exporter
  * @license GPL-3.0-only

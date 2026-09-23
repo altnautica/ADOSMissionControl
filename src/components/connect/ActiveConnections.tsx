@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useDroneManager, type ManagedDrone } from "@/stores/drone-manager";
+import type { Transport } from "@/lib/protocol/types";
 import { formatDuration } from "@/lib/utils";
 import { Unplug, Plane, SquareIcon, Waves, Truck, HelpCircle } from "lucide-react";
 
@@ -15,6 +16,16 @@ const VEHICLE_ICONS: Record<string, typeof Plane> = {
   sub: Waves,
   vtol: Plane,
   unknown: HelpCircle,
+};
+
+/** Short link badge per transport. Protocol names stay untranslated. */
+const TRANSPORT_BADGE: Record<Transport["type"], string> = {
+  webserial: "USB",
+  websocket: "WS",
+  tcp: "TCP",
+  "udp-proxy": "UDP",
+  "mqtt-mavlink": "MQTT",
+  ble: "BLE",
 };
 
 function DroneRow({
@@ -41,7 +52,7 @@ function DroneRow({
 
   const info = drone.vehicleInfo;
   const VehicleIcon = VEHICLE_ICONS[info.vehicleClass] || HelpCircle;
-  const transportLabel = drone.transport.type === "webserial" ? "USB" : "WS";
+  const transportLabel = TRANSPORT_BADGE[drone.transport.type];
 
   return (
     <div

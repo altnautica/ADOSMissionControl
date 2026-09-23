@@ -10,7 +10,7 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-import { buildMarksHandlers, pluginMarkSourceId } from "../marks";
+import { buildMarksHandlers, MARKS_MIN_INTERVAL_MS, pluginMarkSourceId } from "../marks";
 import {
   createPluginBridge,
   type BridgeHandlerContext,
@@ -18,12 +18,14 @@ import {
 import { resolveRequiredCapability } from "@/lib/plugins/methods";
 import { useCockpitMarksStore } from "@/stores/cockpit-marks-store";
 import type { PluginRpcEnvelope } from "@/lib/plugins/types";
+import { testMount } from "./test-mount";
 
 const PLUGIN = "com.example.overlay";
-const SOURCE = pluginMarkSourceId(PLUGIN);
+const MOUNT = testMount();
+const SOURCE = pluginMarkSourceId(PLUGIN, MOUNT.id);
 
-function makeCtx(capability: string | null): BridgeHandlerContext {
-  return { pluginId: PLUGIN, capability, postEvent: vi.fn(), claims: null };
+function makeCtx(capability: string | null, mount = MOUNT): BridgeHandlerContext {
+  return { pluginId: PLUGIN, capability, postEvent: vi.fn(), mount, claims: null };
 }
 
 describe("cockpit marks handlers", () => {
@@ -50,19 +52,30 @@ describe("cockpit marks handlers", () => {
     expect(stored?.[0].id).toBe(`${SOURCE}::blob`);
   });
 
-  it("cockpit.marks replaces the prior post for the same plugin", () => {
-    const { handlers } = buildMarksHandlers(PLUGIN);
-    const ctx = makeCtx("ui.slot.video-overlay");
-    handlers["cockpit.marks"](
-      { marks: [{ kind: "point", id: "a", x: 0, y: 0 }] },
-      ctx,
-    );
-    handlers["cockpit.marks"](
-      { marks: [{ kind: "point", id: "b", x: 1, y: 1 }] },
-      ctx,
-    );
-    const stored = useCockpitMarksStore.getState().bySource.get(SOURCE);
-    expect(stored?.map((m) => m.id)).toEqual([`${SOURCE}::b`]);
+  it("coalesces rapid posts: the latest set lands once the minimum gap passes", () => {
+    vi.useFakeTimers();
+    try {
+      const { handlers } = buildMarksHandlers(PLUGIN);
+      const ctx = makeCtx("ui.slot.video-overlay");
+      let writes = 0;
+      const unsub = useCockpitMarksStore.subscribe(() => {
+        writes += 1;
+      });
+      for (let i = 0; i < 100; i++) {
+        handlers["cockpit.marks"]({ marks: [{ kind: "point", id: `p${i}`, x: 0, y: 0 }] }, ctx);
+      }
+      expect(useCockpitMarksStore.getState().bySource.get(SOURCE)?.map((m) => m.id)).toEqual([
+        `${SOURCE}::p0`,
+      ]);
+      vi.advanceTimersByTime(MARKS_MIN_INTERVAL_MS);
+      unsub();
+      expect(useCockpitMarksStore.getState().bySource.get(SOURCE)?.map((m) => m.id)).toEqual([
+        `${SOURCE}::p99`,
+      ]);
+      expect(writes).toBe(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("cockpit.marks.clear and dispose() drop the plugin's marks", () => {
@@ -87,11 +100,11 @@ describe("cockpit marks handlers", () => {
     const b = buildMarksHandlers("plugin.b");
     a.handlers["cockpit.marks"](
       { marks: [{ kind: "point", id: "same", x: 0, y: 0 }] },
-      { pluginId: "plugin.a", capability: "ui.slot.video-overlay", postEvent: vi.fn(), claims: null },
+      { pluginId: "plugin.a", capability: "ui.slot.video-overlay", postEvent: vi.fn(), mount: testMount(), claims: null },
     );
     b.handlers["cockpit.marks"](
       { marks: [{ kind: "point", id: "same", x: 1, y: 1 }] },
-      { pluginId: "plugin.b", capability: "ui.slot.video-overlay", postEvent: vi.fn(), claims: null },
+      { pluginId: "plugin.b", capability: "ui.slot.video-overlay", postEvent: vi.fn(), mount: testMount(), claims: null },
     );
     const all = useCockpitMarksStore.getState().all();
     const ids = all.map((m) => m.id);
@@ -149,8 +162,10 @@ describe("cockpit.marks through the bridge (capability gate)", () => {
       iframe.contentWindow,
     );
     expect(posted[0]?.error).toBeUndefined();
-    expect(useCockpitMarksStore.getState().bySource.get(SOURCE)).toHaveLength(1);
+    expect(useCockpitMarksStore.getState().all()).toHaveLength(1);
+    // Unmounting the iframe clears the marks it posted.
     bridge.dispose();
+    expect(useCockpitMarksStore.getState().all()).toHaveLength(0);
   });
 
   it("is denied when the plugin lacks the capability", async () => {

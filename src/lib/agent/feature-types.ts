@@ -16,7 +16,9 @@ export interface CameraCapability {
   device?: string;
   resolution: string;
   fps?: number;
-  streaming: boolean;
+  /** Whether the agent reports the camera as being encoded and published;
+   * `null` when the agent does not report it. */
+  streaming: boolean | null;
 }
 
 /** One addressable video LEG a node serves (a smart pod / dual-camera rig),
@@ -150,7 +152,8 @@ export interface ComputeCapability {
   npu_available: boolean;
   npu_runtime: "rknn" | "tensorrt" | "tflite" | "opencv_dnn" | null;
   npu_tops: number;
-  npu_utilization_pct: number;
+  /** Null when the agent does not report NPU load. */
+  npu_utilization_pct: number | null;
   gpu_available: boolean;
 }
 
@@ -201,7 +204,8 @@ export interface VisionSummary {
 export interface ModelCacheInfo {
   installed: InstalledModel[];
   cache_used_mb: number;
-  cache_max_mb: number;
+  /** Null when the agent does not report a cache ceiling. */
+  cache_max_mb: number | null;
   registry_url: string;
 }
 
@@ -502,11 +506,6 @@ export interface AgentCapabilities {
    * when the agent has no pending code; undefined for legacy
    * heartbeats. */
   pairingCodeExpiresAt?: number | null;
-  /** Optional. Previous MAVLink WebSocket URL the agent advertised.
-   * Populated when the agent rotates its WebSocket binding. Lets the
-   * GCS retry the prior URL once before surfacing a connection error
-   * so a brief rotation doesn't drop an in-flight session. */
-  mavlinkWsUrlPrev?: string | null;
   /** Optional. The ticket-gated authenticated MAVLink WebSocket
    * endpoint the agent serves on its front. Either an absolute
    * ws:// / wss:// URL or a path resolved against the agent front.

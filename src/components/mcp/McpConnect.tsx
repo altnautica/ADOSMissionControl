@@ -1,6 +1,6 @@
 /**
  * @module components/mcp/McpConnect
- * @description The Connect section, LOCAL-FIRST (Rule 39). It leads with the
+ * @description The Connect section, LOCAL-FIRST. It leads with the
  * LAN-direct path — the guided local wizard that points the server at a drone on
  * your network with the drone's own pairing key, no sign-in and no cloud — plus
  * the one-time clone-and-build. The cloud (`--target fleet`) recipes are a

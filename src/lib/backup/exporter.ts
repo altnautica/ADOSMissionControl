@@ -1,5 +1,5 @@
 /**
- * Full archive backup — exports all IDB stores to a ZIP file.
+ * Full archive backup — exports the operator's IndexedDB stores to a ZIP file.
  *
  * @module backup/exporter
  * @license GPL-3.0-only
@@ -8,9 +8,16 @@
 import JSZip from "jszip";
 import { get as idbGet, keys as idbKeys } from "idb-keyval";
 
-/** Known IDB keys to export (non-recording stores). */
-const STORE_KEYS = [
+/**
+ * Every IndexedDB key a backup carries, and the only keys a restore writes:
+ * flight history and its registries, plus the persisted working state (the
+ * mission, fence, rally points, planner settings and drone names). Caches and
+ * device identity are deliberately absent. The recordings index is exported
+ * only alongside the recordings it lists.
+ */
+export const BACKUP_STORE_KEYS = [
   "altcmd:flight-history",
+  "altcmd:flight-history-tombstones",
   "altcmd:settings",
   "altcmd:operator-profile",
   "altcmd:aircraft-registry",
@@ -19,7 +26,14 @@ const STORE_KEYS = [
   "altcmd:recordings-index",
   "altcmd:plan-library",
   "altcmd:loadouts",
+  "altcmd:mission-store",
+  "altcmd:geofence-store",
+  "altcmd:rally-store",
+  "altcmd:planner-store",
+  "altcmd:drone-metadata",
 ] as const;
+
+const RECORDINGS_INDEX_KEY = "altcmd:recordings-index";
 
 /**
  * Export all IDB stores to a ZIP file and trigger a download.
@@ -40,7 +54,8 @@ export async function exportBackup(includeRecordings = false): Promise<void> {
   );
 
   // Named stores
-  for (const key of STORE_KEYS) {
+  for (const key of BACKUP_STORE_KEYS) {
+    if (key === RECORDINGS_INDEX_KEY && !includeRecordings) continue;
     try {
       const data = await idbGet(key);
       if (data !== undefined) {

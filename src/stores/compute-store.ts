@@ -26,8 +26,10 @@ export interface ComputeSlave {
   nodeId: string;
   /** Accelerator ids the slave offers (e.g. "cuda:0", "mps"). */
   accelerators: string[];
-  workersIdle: number;
-  queueDepth: number;
+  /** Null when the slave did not report it. */
+  workersIdle: number | null;
+  /** Null when the slave did not report it. */
+  queueDepth: number | null;
 }
 
 /**
@@ -89,6 +91,9 @@ interface ComputeStoreState {
    * (or on a node that reports no GPU). Read by the workstation status card,
    * the GPU metrics card, and the brand header. */
   gpu: ComputeGpuInfo | null;
+  /** Wall-clock ms of the last `setGpu` call, or null before the first one.
+   * Lets the GPU card age the reading when the compute poll stops answering. */
+  gpuUpdatedAt: number | null;
   /** Replace the cluster slice (the bridge passes a fully-merged slice). */
   setCluster: (cluster: ComputeClusterStatus) => void;
   /** Replace the GPU snapshot (null clears it — node reports no GPU). */
@@ -100,7 +105,9 @@ interface ComputeStoreState {
 export const useComputeStore = create<ComputeStoreState>((set) => ({
   cluster: { ...EMPTY_COMPUTE_CLUSTER },
   gpu: null,
+  gpuUpdatedAt: null,
   setCluster: (cluster) => set({ cluster }),
-  setGpu: (gpu) => set({ gpu }),
-  clear: () => set({ cluster: { ...EMPTY_COMPUTE_CLUSTER }, gpu: null }),
+  setGpu: (gpu) => set({ gpu, gpuUpdatedAt: Date.now() }),
+  clear: () =>
+    set({ cluster: { ...EMPTY_COMPUTE_CLUSTER }, gpu: null, gpuUpdatedAt: null }),
 }));

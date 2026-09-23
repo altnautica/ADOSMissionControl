@@ -76,17 +76,6 @@ export interface PeripheralsSlice {
     api: GroundStationApi,
     id: string,
   ) => Promise<PeripheralDetail | null>;
-  configurePeripheral: (
-    api: GroundStationApi,
-    id: string,
-    config: Record<string, unknown>,
-  ) => Promise<boolean>;
-  invokePeripheralAction: (
-    api: GroundStationApi,
-    id: string,
-    actionId: string,
-    body?: Record<string, unknown>,
-  ) => Promise<{ queued: boolean; result?: unknown } | null>;
 }
 
 export const createPeripheralsSlice: GroundStationSliceCreator<PeripheralsSlice> = (
@@ -197,32 +186,6 @@ export const createPeripheralsSlice: GroundStationSliceCreator<PeripheralsSlice>
         },
       });
       return detail;
-    } catch (err) {
-      const { message } = errorMessage(err);
-      set({
-        peripherals: { ...get().peripherals, error: message },
-      });
-      return null;
-    }
-  },
-
-  configurePeripheral: async (api, id, config) => {
-    try {
-      const res = await api.configurePeripheral(id, config);
-      return Boolean(res.saved);
-    } catch (err) {
-      const { message } = errorMessage(err);
-      set({
-        peripherals: { ...get().peripherals, error: message },
-      });
-      return false;
-    }
-  },
-
-  invokePeripheralAction: async (api, id, actionId, body) => {
-    try {
-      const res = await api.invokePeripheralAction(id, actionId, body);
-      return res;
     } catch (err) {
       const { message } = errorMessage(err);
       set({

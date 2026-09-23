@@ -21,4 +21,11 @@ describe("sanitizeChangelogHtml", () => {
     expect(html).toContain('rel="noopener noreferrer"');
     expect(html).toContain('target="_blank"');
   });
+
+  it("keeps language classes and drops every other class", () => {
+    const html = sanitizeChangelogHtml(
+      '<pre class="fixed inset-0 z-50 language-ts"><code class="language-ts bg-bg-primary">x</code></pre>',
+    );
+    expect(html).toBe('<pre class="language-ts"><code class="language-ts">x</code></pre>');
+  });
 });

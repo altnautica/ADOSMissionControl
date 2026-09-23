@@ -4,63 +4,64 @@ import { useState, useCallback, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneStore } from "@/stores/drone-store";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useParamLabel } from "@/hooks/use-param-label";
 import { useParamMetadataMap } from "@/hooks/use-param-metadata";
 import { PidResponseChart } from "./PidResponseChart";
 import { ParamTooltip } from "../parameters/ParamTooltip";
-import { PidAnalysisSection } from "./PidAnalysisSection";
-import { Copy, BarChart3, Play, HardDrive } from "lucide-react";
+import { AXIS_COLORS } from "../chart-theme";
+import { Copy, BarChart3, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { VehicleType, PidPreset } from "./pid-constants";
 
 // ── Autotune Section ─────────────────────────────────────────
 
-export function AutotuneSection({
-  connected,
-  vehicleType,
-}: {
-  connected: boolean;
-  vehicleType: VehicleType;
-}) {
+/**
+ * ArduCopter AUTOTUNE. "In progress" is the vehicle's reported flight mode,
+ * not the button click: leaving AUTOTUNE on the sticks or losing the link
+ * ends it here too. Status text is collected only while a request is pending
+ * or the vehicle is in AUTOTUNE, and the subscription is released when that
+ * ends or the panel unmounts. The caller hides the section on firmware
+ * without an ArduCopter AUTOTUNE mode.
+ */
+export function AutotuneSection({ connected }: { connected: boolean }) {
   const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
-  const [autotuneActive, setAutotuneActive] = useState(false);
+  const flightMode = useDroneStore((s) => s.flightMode);
+  const autotuneActive = connected && flightMode === "AUTOTUNE";
+  const [requesting, setRequesting] = useState(false);
   const [autotuneLog, setAutotuneLog] = useState<string[]>([]);
   const [showAutotune, setShowAutotune] = useState(false);
+  const listening = requesting || autotuneActive;
+
+  useEffect(() => {
+    if (!listening) return;
+    const protocol = getSelectedProtocol();
+    if (!protocol) return;
+    return protocol.onStatusText(({ text }) => {
+      setAutotuneLog((prev) => [...prev.slice(-19), text]);
+    });
+  }, [listening, getSelectedProtocol]);
 
   const triggerAutotune = useCallback(async () => {
     const protocol = getSelectedProtocol();
     if (!protocol) return;
 
-    setAutotuneActive(true);
-    setAutotuneLog(["Starting autotune..."]);
-
-    const unsub = protocol.onStatusText(({ text }) => {
-      setAutotuneLog((prev) => [...prev.slice(-19), text]);
-    });
-
+    setRequesting(true);
+    setAutotuneLog(["Requesting AUTOTUNE mode..."]);
     try {
       const result = await protocol.setFlightMode("AUTOTUNE");
-      if (result.success) {
-        setAutotuneLog((prev) => [...prev, "Switched to AUTOTUNE mode — fly in open area"]);
-      } else {
-        setAutotuneLog((prev) => [...prev, `Failed to enter AUTOTUNE: ${result.message ?? "rejected"}`]);
-        setAutotuneActive(false);
-      }
+      setAutotuneLog((prev) => [
+        ...prev,
+        result.success
+          ? "AUTOTUNE accepted - fly in open area"
+          : `Failed to enter AUTOTUNE: ${result.message ?? "rejected"}`,
+      ]);
     } catch {
       setAutotuneLog((prev) => [...prev, "Failed to set AUTOTUNE mode"]);
-      setAutotuneActive(false);
+    } finally {
+      setRequesting(false);
     }
-
-    setTimeout(() => {
-      unsub();
-      setAutotuneActive(false);
-    }, 300_000);
-
-    return () => unsub();
   }, [getSelectedProtocol]);
-
-  if (vehicleType !== "copter") return null;
 
   return (
     <div className="border border-border-default bg-bg-secondary">
@@ -83,7 +84,7 @@ export function AutotuneSection({
               variant={autotuneActive ? "danger" : "secondary"}
               size="sm"
               icon={<Play size={12} />}
-              disabled={!connected || autotuneActive}
+              disabled={!connected || autotuneActive || requesting}
               onClick={triggerAutotune}
             >
               {autotuneActive ? "Autotune Active..." : "Start Autotune"}
@@ -142,9 +143,9 @@ export function LivePidResponseGraph({ connected }: { connected: boolean }) {
         </div>
       ) : (
         <div className="space-y-1.5">
-          <PidResponseChart data={recentAttitude.map((a) => a.roll)} label="Roll" color="#3A82FF" />
-          <PidResponseChart data={recentAttitude.map((a) => a.pitch)} label="Pitch" color="#22c55e" />
-          <PidResponseChart data={recentAttitude.map((a) => a.yaw)} label="Yaw" color="#f59e0b" />
+          <PidResponseChart data={recentAttitude.map((a) => a.roll)} label="Roll" color={AXIS_COLORS.roll} />
+          <PidResponseChart data={recentAttitude.map((a) => a.pitch)} label="Pitch" color={AXIS_COLORS.pitch} />
+          <PidResponseChart data={recentAttitude.map((a) => a.yaw)} label="Yaw" color={AXIS_COLORS.yaw} />
         </div>
       )}
     </div>

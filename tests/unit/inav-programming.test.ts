@@ -13,11 +13,11 @@ import {
   LOGIC_CONDITION_MAX,
   GVAR_MAX,
   PROGRAMMING_PID_MAX,
+  STATUS_POLL_RETRY_MS,
 } from "@/stores/programming-store";
 import type { DroneProtocol } from "@/lib/protocol/types";
 import type {
   INavLogicCondition,
-  INavLogicConditionsStatus,
   INavGvarStatus,
   INavProgrammingPid,
   INavProgrammingPidStatus,
@@ -56,7 +56,7 @@ function fakePid(override: Partial<INavProgrammingPid> = {}): INavProgrammingPid
 function makeFakeProtocol(
   conditions: INavLogicCondition[] = [],
   pids: INavProgrammingPid[] = [],
-  conditionStatuses: INavLogicConditionsStatus[] = [],
+  conditionStatuses: number[] = [],
   gvarStatus: INavGvarStatus = { values: [] },
   pidStatuses: INavProgrammingPidStatus[] = [],
 ): Partial<DroneProtocol> {
@@ -194,15 +194,49 @@ describe("useProgrammingStore", () => {
     expect(useProgrammingStore.getState().pidsDirty).toBe(false);
   });
 
-  // ── loadConditions ────────────────────────────────────────
+  // ── placeProgram ──────────────────────────────────────────
 
-  it("loadConditions replaces the slot array, pads to max, and marks dirty", () => {
-    useProgrammingStore.getState().loadConditions([fakeCondition({ operation: 2 }), fakeCondition({ enabled: false })]);
+  it("a blank slot that is enabled runs unconditionally (no activator)", () => {
+    useProgrammingStore.getState().setCondition(3, { enabled: true });
+    expect(useProgrammingStore.getState().conditions[3].activatorId).toBe(-1);
+  });
+
+  it("placeProgram refuses before the table has been read from the FC", () => {
+    const result = useProgrammingStore.getState().placeProgram([fakeCondition()]);
+    expect("error" in result).toBe(true);
+    expect(useProgrammingStore.getState().conditionsDirty).toBe(false);
+  });
+
+  it("placeProgram keeps the FC's conditions and fills only free slots", async () => {
+    const inUse = fakeCondition({ operation: 2, operandAType: 1, operandAValue: 6 });
+    const switchedOff = fakeCondition({ enabled: false, operation: 3, operandBValue: 1500 });
+    await useProgrammingStore.getState().loadFromFc(
+      makeFakeProtocol([inUse, inUse, switchedOff]) as DroneProtocol,
+    );
+    // Program LC1 reads program LC0 (operand type 4 = logic condition).
+    const program = [
+      fakeCondition({ activatorId: -1, operation: 2, operandAType: 1, operandAValue: 5 }),
+      fakeCondition({ activatorId: 0, operation: 18, operandAType: 0, operandAValue: 1, operandBType: 4, operandBValue: 0 }),
+    ];
+    const result = useProgrammingStore.getState().placeProgram(program);
+    expect(result).toMatchObject({ slots: [3, 4] });
     const { conditions, conditionsDirty } = useProgrammingStore.getState();
-    expect(conditions).toHaveLength(LOGIC_CONDITION_MAX);
-    expect(conditions[0].operation).toBe(2);
-    expect(conditions[2].enabled).toBe(false); // padded default
+    expect(conditions[0]).toEqual(inUse);
+    expect(conditions[1]).toEqual(inUse);
+    expect(conditions[2]).toEqual(switchedOff);
+    expect(conditions[3].operandAValue).toBe(5);
+    expect(conditions[4].operandBValue).toBe(3);
+    expect(conditions[4].activatorId).toBe(3);
     expect(conditionsDirty).toBe(true);
+  });
+
+  it("placeProgram changes nothing when the program does not fit", async () => {
+    const full = Array.from({ length: LOGIC_CONDITION_MAX - 1 }, () => fakeCondition());
+    await useProgrammingStore.getState().loadFromFc(makeFakeProtocol(full) as DroneProtocol);
+    const before = useProgrammingStore.getState().conditions;
+    const result = useProgrammingStore.getState().placeProgram([fakeCondition(), fakeCondition()]);
+    expect(result).toMatchObject({ error: expect.stringMatching(/needs 2 .* only 1/) });
+    expect(useProgrammingStore.getState().conditions).toBe(before);
   });
 
   // ── writeGvar ─────────────────────────────────────────────
@@ -227,32 +261,76 @@ describe("useProgrammingStore", () => {
   // ── pollStatus ────────────────────────────────────────────
 
   it("pollStatus updates conditionsStatus, gvarStatus, pidStatus", async () => {
-    const conditionStatuses: INavLogicConditionsStatus[] = [{ id: 0, value: 1 }];
+    const conditionStatuses = [1, 0, 7];
     const gvarStatus: INavGvarStatus = { values: Array.from({ length: GVAR_MAX }, (_, i) => i * 10) };
     const pidStatuses: INavProgrammingPidStatus[] = [{ id: 0, output: 42 }];
     const proto = makeFakeProtocol([], [], conditionStatuses, gvarStatus, pidStatuses);
 
-    await useProgrammingStore.getState().pollStatus(proto as DroneProtocol);
+    const outcome = await useProgrammingStore.getState().pollStatus(proto as DroneProtocol);
 
+    expect(outcome).toEqual({ conditions: "ok", gvars: "ok", pids: "ok" });
     const state = useProgrammingStore.getState();
-    expect(state.conditionsStatus[0].value).toBe(1);
+    expect(state.conditionsStatus[2]).toBe(7);
     expect(state.gvarStatus.values[2]).toBe(20);
     expect(state.pidStatus[0].output).toBe(42);
+    expect(state.gvarStatusAt).not.toBeNull();
+  });
+
+  it("a failed global-variable read is reported and keeps the old read time", async () => {
+    const good = makeFakeProtocol([], [], [], { values: [5, 6, 7, 8, 9, 10, 11, 12] });
+    await useProgrammingStore.getState().pollStatus(good as DroneProtocol);
+    const readAt = useProgrammingStore.getState().gvarStatusAt;
+
+    vi.advanceTimersByTime(10_000);
+    const failing = makeFakeProtocol();
+    vi.mocked(failing.downloadGvarStatus!).mockRejectedValue(new Error("timeout"));
+    const outcome = await useProgrammingStore.getState().pollStatus(failing as DroneProtocol);
+
+    expect(outcome.gvars).toBe("failed");
+    expect(useProgrammingStore.getState().gvarStatusAt).toBe(readAt);
+    expect(useProgrammingStore.getState().gvarStatus.values[0]).toBe(5);
   });
 
   // ── polling timer ─────────────────────────────────────────
 
-  it("startPolling calls pollStatus on interval and stopPolling clears it", async () => {
-    const proto = makeFakeProtocol([], [], [{ id: 0, value: 1 }]);
+  it("startPolling polls on a chain and stopPolling ends it", async () => {
+    const proto = makeFakeProtocol([], [], [1]);
     useProgrammingStore.getState().startPolling(proto as DroneProtocol, 500);
 
-    vi.advanceTimersByTime(1600);
-    // 3 ticks at 500ms (500, 1000, 1500)
+    await vi.advanceTimersByTimeAsync(1600);
+    // Polls at 500, 1000 and 1500 ms, each scheduled after the last settled.
     expect(proto.downloadLogicConditionsStatus).toHaveBeenCalledTimes(3);
 
     useProgrammingStore.getState().stopPolling();
-    vi.advanceTimersByTime(1000);
+    await vi.advanceTimersByTimeAsync(1000);
     expect(proto.downloadLogicConditionsStatus).toHaveBeenCalledTimes(3);
+  });
+
+  it("never queues a new poll while the previous one is still in flight", async () => {
+    const proto = makeFakeProtocol();
+    const pending = Promise.withResolvers<number[]>();
+    vi.mocked(proto.downloadLogicConditionsStatus!).mockReturnValue(pending.promise);
+    useProgrammingStore.getState().startPolling(proto as DroneProtocol, 500);
+
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(proto.downloadLogicConditionsStatus).toHaveBeenCalledTimes(1);
+
+    pending.resolve([0]);
+    await vi.advanceTimersByTimeAsync(500);
+    expect(proto.downloadLogicConditionsStatus).toHaveBeenCalledTimes(2);
+  });
+
+  it("waits the fixed retry delay after a failed poll", async () => {
+    const proto = makeFakeProtocol();
+    vi.mocked(proto.downloadGvarStatus!).mockRejectedValue(new Error("timeout"));
+    useProgrammingStore.getState().startPolling(proto as DroneProtocol, 500);
+
+    await vi.advanceTimersByTimeAsync(500);
+    expect(proto.downloadGvarStatus).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(STATUS_POLL_RETRY_MS - 1);
+    expect(proto.downloadGvarStatus).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(proto.downloadGvarStatus).toHaveBeenCalledTimes(2);
   });
 
   it("startPolling does not start a second timer if already running", () => {

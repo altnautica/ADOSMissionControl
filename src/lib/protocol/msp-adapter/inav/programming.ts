@@ -16,7 +16,6 @@ import {
   decodeMspINavProgrammingPid,
   decodeMspINavProgrammingPidStatus,
   type INavLogicCondition,
-  type INavLogicConditionsStatus,
   type INavGvarStatus,
   type INavProgrammingPid,
   type INavProgrammingPidStatus,
@@ -33,7 +32,7 @@ const LOGIC_CONDITION_COUNT = 64
 
 const EMPTY_LOGIC_CONDITION: INavLogicCondition = {
   enabled: false,
-  activatorId: 0,
+  activatorId: -1,
   operation: 0,
   operandAType: 0,
   operandAValue: 0,
@@ -80,14 +79,14 @@ export async function inavUploadLogicCondition(
   }
 }
 
-export async function inavDownloadLogicConditionsStatus(queue: MspSerialQueue | null): Promise<INavLogicConditionsStatus[]> {
-  if (!queue) return []
+export async function inavDownloadLogicConditionsStatus(queue: MspSerialQueue | null): Promise<number[]> {
+  if (!queue) throw new Error('Not connected')
   const frame = await queue.send(INAV_MSP.MSP2_INAV_LOGIC_CONDITIONS_STATUS)
   return decodeMspINavLogicConditionsStatus(dv(frame.payload))
 }
 
 export async function inavDownloadGvarStatus(queue: MspSerialQueue | null): Promise<INavGvarStatus> {
-  if (!queue) return { values: [] }
+  if (!queue) throw new Error('Not connected')
   const frame = await queue.send(INAV_MSP.MSP2_INAV_GVAR_STATUS)
   return decodeMspINavGvarStatus(dv(frame.payload))
 }

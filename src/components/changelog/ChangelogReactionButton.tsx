@@ -13,6 +13,8 @@ import { cn } from "@/lib/utils";
 import { communityApi } from "@/lib/community-api";
 import { useAuthStore } from "@/stores/auth-store";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
+import { useToast } from "@/components/ui/toast";
+import { useTranslations } from "next-intl";
 import type { Id } from "../../../convex/_generated/dataModel";
 
 interface ChangelogReactionButtonProps {
@@ -23,6 +25,8 @@ interface ChangelogReactionButtonProps {
 export function ChangelogReactionButton({ changelogId, count }: ChangelogReactionButtonProps) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const react = useMutation(communityApi.changelog.react);
+  const { toast } = useToast();
+  const t = useTranslations("changelog");
   const myReactions = useConvexSkipQuery(communityApi.changelog.myReactions, {
     enabled: isAuthenticated,
   });
@@ -31,7 +35,9 @@ export function ChangelogReactionButton({ changelogId, count }: ChangelogReactio
 
   const handleClick = () => {
     if (!isAuthenticated) return;
-    react({ changelogId: changelogId as Id<"community_changelog">, reaction: "thumbsup" });
+    void react({ changelogId: changelogId as Id<"community_changelog">, reaction: "thumbsup" }).catch(
+      () => toast(t("reactionFailed"), "error"),
+    );
   };
 
   return (

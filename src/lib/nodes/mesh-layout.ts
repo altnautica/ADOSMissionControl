@@ -59,27 +59,48 @@ export function layoutMeshGraph(
 
   // Hop-distance from the GCS, breadth-first over the reach tree.
   const depth = new Map<string, number>([[MESH_GCS_ID, 0]]);
-  const queue = [MESH_GCS_ID];
   let maxDepth = 0;
-  while (queue.length > 0) {
-    const id = queue.shift()!;
-    const d = depth.get(id)!;
-    for (const child of childrenByParent.get(id) ?? []) {
-      if (depth.has(child)) continue; // cycle guard
-      depth.set(child, d + 1);
-      maxDepth = Math.max(maxDepth, d + 1);
-      queue.push(child);
+  const descend = (root: string) => {
+    const queue = [root];
+    while (queue.length > 0) {
+      const id = queue.shift()!;
+      const d = depth.get(id)!;
+      for (const child of childrenByParent.get(id) ?? []) {
+        if (depth.has(child)) continue; // cycle guard
+        depth.set(child, d + 1);
+        maxDepth = Math.max(maxDepth, d + 1);
+        queue.push(child);
+      }
     }
-  }
-  // Any vertex the tree never reached (a relay cycle, an off-tree orphan) is
-  // still placed: attach it to the GCS on the first ring.
-  for (const vertex of graph.vertices) {
-    if (depth.has(vertex.id)) continue;
-    depth.set(vertex.id, 1);
+  };
+  const attachToGcs = (id: string) => {
+    depth.set(id, 1);
     maxDepth = Math.max(maxDepth, 1);
     const siblings = childrenByParent.get(MESH_GCS_ID) ?? [];
-    if (!siblings.includes(vertex.id)) siblings.push(vertex.id);
+    if (!siblings.includes(id)) siblings.push(id);
     childrenByParent.set(MESH_GCS_ID, siblings);
+    descend(id);
+  };
+  descend(MESH_GCS_ID);
+
+  // A vertex the tree never reached is still placed. A subtree root whose own
+  // parent is out of view attaches to the GCS on the first ring and keeps its
+  // children one ring further out; only then is a relay cycle broken, at its
+  // lowest id, so no vertex is drawn on top of its parent.
+  const hasParent = new Set<string>();
+  for (const children of childrenByParent.values()) {
+    for (const child of children) hasParent.add(child);
+  }
+  const unreached = () =>
+    graph.vertices
+      .map((v) => v.id)
+      .filter((id) => !depth.has(id))
+      .sort();
+  for (const id of unreached()) {
+    if (!depth.has(id) && !hasParent.has(id)) attachToGcs(id);
+  }
+  for (let rest = unreached(); rest.length > 0; rest = unreached()) {
+    attachToGcs(rest[0]);
   }
 
   // Leaves carry the angular budget; an internal node takes the mean of its

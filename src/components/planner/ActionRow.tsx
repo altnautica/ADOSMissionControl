@@ -8,7 +8,7 @@
  */
 "use client";
 
-import { useState, useCallback } from "react";
+import { useCallback } from "react";
 import { useTranslations } from "next-intl";
 import {
   GripVertical, X, ChevronDown, ChevronRight,
@@ -19,6 +19,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { useSyncedDraft } from "@/hooks/use-synced-draft";
 import type {
   ActionCommand, CommandMissionAction, MissionAction, RawMissionAction,
 } from "@/lib/types";
@@ -99,6 +100,33 @@ interface ActionRowProps {
   dragOver: boolean;
 }
 
+/**
+ * dataTransfer type that marks a drag as an attached-action drag. The waypoint
+ * list ignores drags carrying it, so an action dropped on another waypoint's
+ * row never reorders the waypoints.
+ */
+export const ACTION_DRAG_TYPE = "application/x-ados-mission-action";
+
+/**
+ * Drag handlers for an action row nested inside a draggable waypoint row: each
+ * event stops at the action so the waypoint list never sees it.
+ */
+function actionDragHandlers(
+  h: Pick<ActionRowProps, "onDragStart" | "onDragOver" | "onDragEnd" | "onDrop">,
+) {
+  return {
+    onDragStart: (e: React.DragEvent) => {
+      e.stopPropagation();
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData(ACTION_DRAG_TYPE, "");
+      h.onDragStart(e);
+    },
+    onDragOver: (e: React.DragEvent) => { e.stopPropagation(); h.onDragOver(e); },
+    onDragEnd: (e: React.DragEvent) => { e.stopPropagation(); h.onDragEnd(); },
+    onDrop: (e: React.DragEvent) => { e.stopPropagation(); h.onDrop(e); },
+  };
+}
+
 /** One attached action: an editable modelled command or a read-only raw item. */
 export function ActionRow(props: ActionRowProps) {
   const { action } = props;
@@ -121,10 +149,7 @@ function RawActionRow({
   return (
     <div
       draggable
-      onDragStart={onDragStart}
-      onDragOver={onDragOver}
-      onDragEnd={onDragEnd}
-      onDrop={onDrop}
+      {...actionDragHandlers({ onDragStart, onDragOver, onDragEnd, onDrop })}
       className={cn(
         "border border-border-default/60 rounded bg-bg-secondary/60",
         dragOver && "border-t-2 border-t-accent-secondary",
@@ -169,9 +194,11 @@ function CommandActionRow({
   const label = t(`actions.cmd.${action.command}`);
   const summary = summarize(action, targets);
 
-  const [p1, setP1] = useState(action.param1 !== undefined ? String(action.param1) : "");
-  const [p2, setP2] = useState(action.param2 !== undefined ? String(action.param2) : "");
-  const [p3, setP3] = useState(action.param3 !== undefined ? String(action.param3) : "");
+  // Drafts follow the action, so undo/redo never leaves a stale value in a
+  // field for the next blur to write back.
+  const [p1, setP1] = useSyncedDraft(action.param1);
+  const [p2, setP2] = useSyncedDraft(action.param2);
+  const [p3, setP3] = useSyncedDraft(action.param3);
 
   // Commit a single numeric parameter, clearing it when the field is emptied.
   const commitField = useCallback(
@@ -187,10 +214,7 @@ function CommandActionRow({
   return (
     <div
       draggable
-      onDragStart={onDragStart}
-      onDragOver={onDragOver}
-      onDragEnd={onDragEnd}
-      onDrop={onDrop}
+      {...actionDragHandlers({ onDragStart, onDragOver, onDragEnd, onDrop })}
       className={cn(
         "border border-border-default/60 rounded bg-bg-secondary/60",
         dragOver && "border-t-2 border-t-accent-secondary",
@@ -266,9 +290,9 @@ function PositionEditor({
   action, onUpdate,
 }: { action: CommandMissionAction; onUpdate: (update: Partial<CommandMissionAction>) => void }) {
   const t = useTranslations("planner");
-  const [lat, setLat] = useState(action.lat !== undefined ? String(action.lat) : "");
-  const [lon, setLon] = useState(action.lon !== undefined ? String(action.lon) : "");
-  const [alt, setAlt] = useState(action.alt !== undefined ? String(action.alt) : "");
+  const [lat, setLat] = useSyncedDraft(action.lat);
+  const [lon, setLon] = useSyncedDraft(action.lon);
+  const [alt, setAlt] = useSyncedDraft(action.alt);
   const commit = (field: "lat" | "lon" | "alt", value: string) => {
     const num = parseFloat(value);
     if (!isNaN(num)) onUpdate({ [field]: num });

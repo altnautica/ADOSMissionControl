@@ -5,23 +5,23 @@
  *
  * Renders nothing in IDLE. The mounted variants are:
  *   - ENTERING_SLCAN  -> blue, "Entering SLCAN..." + spinner
- *   - SLCAN_ACTIVE    -> amber, mm:ss countdown to auto-revert + Resume button
+ *   - SLCAN_ACTIVE    -> amber, the FC's idle-revert watchdog + Resume button
  *   - EXITING_SLCAN   -> blue, "Exiting SLCAN..." + spinner
  *   - RECONNECTING_MAVLINK -> blue, "Reconnecting MAVLink..." + spinner
  *   - ERROR           -> red, error text + Dismiss
  *
- * The store ticks `tickMs` every second while SLCAN_ACTIVE so the
- * countdown re-renders without external pushes.
+ * The FC's CAN_SLCAN_TIMOUT reverts the port only after that many seconds
+ * with no SLCAN traffic, so the banner states the idle window rather than
+ * counting down to a deadline that a busy flash never reaches.
  *
  * @module components/shared/SlcanModeBanner
  * @license GPL-3.0-only
  */
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Loader2, ShieldAlert, X } from "lucide-react";
 import {
   useSlcanModeStore,
-  getCountdownLabel,
   type SlcanModeSnapshot,
 } from "@/stores/slcan-mode-store";
 
@@ -33,16 +33,6 @@ export function SlcanModeBanner(): React.ReactElement | null {
   const snapshot = useSlcanModeStore(selectSnapshot);
   const reset = useSlcanModeStore((s) => s.reset);
   const [resuming, setResuming] = useState(false);
-
-  // 1 Hz ticker while SLCAN is live so the countdown updates. Stops in
-  // every other state to avoid wasted timers.
-  useEffect(() => {
-    if (snapshot.state !== "SLCAN_ACTIVE") return;
-    const id = setInterval(() => {
-      useSlcanModeStore.setState({ tickMs: Date.now() });
-    }, 1000);
-    return () => clearInterval(id);
-  }, [snapshot.state]);
 
   if (snapshot.state === "IDLE") return null;
 
@@ -69,7 +59,7 @@ export function SlcanModeBanner(): React.ReactElement | null {
   }
 
   if (snapshot.state === "SLCAN_ACTIVE") {
-    const countdown = getCountdownLabel(snapshot);
+    const timeoutSec = snapshot.timeoutSec;
     const exitFn = snapshot.exitFn;
     const handleResume = async () => {
       if (!exitFn || resuming) return;
@@ -91,7 +81,9 @@ export function SlcanModeBanner(): React.ReactElement | null {
       >
         <span>
           SLCAN active on CAN{snapshot.bus}
-          {countdown ? ` — auto-revert in ${countdown}` : ""}
+          {timeoutSec != null && timeoutSec > 0
+            ? ` — FC reverts to MAVLink after ${timeoutSec} s idle`
+            : ""}
         </span>
         {exitFn ? (
           <button

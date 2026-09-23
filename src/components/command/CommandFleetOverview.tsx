@@ -52,8 +52,10 @@ export function CommandFleetOverview({
   const [filter, setFilter] = useState<Filter>("all");
 
   // Shared 1Hz tick makes liveness and "last seen" labels age without
-  // waiting for a query or MQTT event.
-  useClockTick();
+  // waiting for a query or MQTT event. The feed-slot memo depends on it too:
+  // canRunVideo reads Date.now(), so a node that goes silent must release its
+  // slot as the clock passes the stale threshold.
+  const tick = useClockTick();
 
   const activeVideoIds = useMemo(() => {
     const candidates = fleetNodes
@@ -68,7 +70,9 @@ export function CommandFleetOverview({
       .slice(0, MAX_ACTIVE_FEEDS)
       .map((drone) => drone.deviceId);
     return new Set(candidates);
-  }, [cloudStatuses, fleetNodes, pausedIds, pinnedIds]);
+    // canRunVideo reads Date.now(); the clock tick is what re-derives it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cloudStatuses, fleetNodes, pausedIds, pinnedIds, tick]);
 
   const agents = useCommandAgentFleet(fleetNodes, activeVideoIds, pausedIds);
 

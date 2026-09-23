@@ -1,5 +1,5 @@
 /**
- * Continuous compliance monitor — checks 9 categories of expiry and
+ * Continuous compliance monitor — checks 8 categories of expiry and
  * threshold conditions from the operator profile, aircraft registry,
  * battery registry, and equipment registry.
  *
@@ -10,6 +10,8 @@
  */
 
 import type { OperatorProfile, AircraftRecord, BatteryPack, EquipmentItem } from "../types/operator";
+import { batteryHealthPercent } from "../battery-pack-health";
+import { hoursSinceInspection, isInspectionDue } from "../equipment-inspection";
 
 export type AlertSeverity = "info" | "warning" | "error";
 export type AlertCategory =
@@ -20,8 +22,7 @@ export type AlertCategory =
   | "battery_cycles"
   | "equipment_hours"
   | "battery_health"
-  | "maintenance_due"
-  | "pilot_currency";
+  | "maintenance_due";
 
 export interface ComplianceAlert {
   id: string;
@@ -36,6 +37,40 @@ export interface ComplianceAlert {
 const DAYS_MS = 86_400_000;
 const WARNING_DAYS = 30;
 const ERROR_DAYS = 7;
+
+/** Local midnight at the start of the calendar day holding `ms`. */
+function startOfLocalDay(ms: number): number {
+  const d = new Date(ms);
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+}
+
+/**
+ * Whole calendar days from today until an expiry date, in local time. A
+ * document is valid through its whole expiry day, so that day is 0 and the
+ * day after is -1. A date-only string (`2026-09-23`) names a local calendar
+ * day; `new Date()` would read it as UTC midnight and shift it a day early
+ * west of UTC.
+ */
+function daysUntilExpiry(expiry: string, now: number): number {
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(expiry);
+  const expiryDay = dateOnly
+    ? new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3])).getTime()
+    : startOfLocalDay(new Date(expiry).getTime());
+  // Round, not floor: a DST change makes one calendar day 23 or 25 hours.
+  return Math.round((expiryDay - startOfLocalDay(now)) / DAYS_MS);
+}
+
+/** "today", "in 1 day", "in 5 days". */
+function expiresIn(daysLeft: number): string {
+  if (daysLeft === 0) return "today";
+  return `in ${daysLeft} day${daysLeft === 1 ? "" : "s"}`;
+}
+
+/** "1 day ago", "5 days ago", for a negative `daysLeft`. */
+function expiredAgo(daysLeft: number): string {
+  const days = -daysLeft;
+  return `${days} day${days === 1 ? "" : "s"} ago`;
+}
 
 /**
  * Run all compliance checks. Returns an array of alerts sorted by severity
@@ -52,15 +87,14 @@ export function runComplianceChecks(
 
   // 1. Pilot license expiry
   if (operator.pilotLicenseExpiry) {
-    const exp = new Date(operator.pilotLicenseExpiry).getTime();
-    const daysLeft = Math.floor((exp - now) / DAYS_MS);
+    const daysLeft = daysUntilExpiry(operator.pilotLicenseExpiry, now);
     if (daysLeft < 0) {
       alerts.push({
         id: "pilot-license-expired",
         category: "pilot_license",
         severity: "error",
         title: "Pilot license expired",
-        message: `License expired ${Math.abs(daysLeft)} days ago (${operator.pilotLicenseExpiry}).`,
+        message: `License expired ${expiredAgo(daysLeft)} (${operator.pilotLicenseExpiry}).`,
         fixAction: { section: "operator" },
       });
     } else if (daysLeft <= WARNING_DAYS) {
@@ -69,7 +103,7 @@ export function runComplianceChecks(
         category: "pilot_license",
         severity: daysLeft <= ERROR_DAYS ? "error" : "warning",
         title: "Pilot license expiring soon",
-        message: `License expires in ${daysLeft} day${daysLeft === 1 ? "" : "s"} (${operator.pilotLicenseExpiry}).`,
+        message: `License expires ${expiresIn(daysLeft)} (${operator.pilotLicenseExpiry}).`,
         fixAction: { section: "operator" },
       });
     }
@@ -77,15 +111,14 @@ export function runComplianceChecks(
 
   // 2. Operator cert expiry
   if (operator.operatorCertExpiry) {
-    const exp = new Date(operator.operatorCertExpiry).getTime();
-    const daysLeft = Math.floor((exp - now) / DAYS_MS);
+    const daysLeft = daysUntilExpiry(operator.operatorCertExpiry, now);
     if (daysLeft < 0) {
       alerts.push({
         id: "operator-cert-expired",
         category: "operator_cert",
         severity: "error",
         title: "Operator certificate expired",
-        message: `Certificate expired ${Math.abs(daysLeft)} days ago.`,
+        message: `Certificate expired ${expiredAgo(daysLeft)}.`,
         fixAction: { section: "operator" },
       });
     } else if (daysLeft <= WARNING_DAYS) {
@@ -94,7 +127,7 @@ export function runComplianceChecks(
         category: "operator_cert",
         severity: daysLeft <= ERROR_DAYS ? "error" : "warning",
         title: "Operator certificate expiring",
-        message: `Expires in ${daysLeft} day${daysLeft === 1 ? "" : "s"}.`,
+        message: `Expires ${expiresIn(daysLeft)}.`,
         fixAction: { section: "operator" },
       });
     }
@@ -102,15 +135,14 @@ export function runComplianceChecks(
 
   // 3. Insurance expiry
   if (operator.insuranceExpiry) {
-    const exp = new Date(operator.insuranceExpiry).getTime();
-    const daysLeft = Math.floor((exp - now) / DAYS_MS);
+    const daysLeft = daysUntilExpiry(operator.insuranceExpiry, now);
     if (daysLeft < 0) {
       alerts.push({
         id: "insurance-expired",
         category: "insurance",
         severity: "error",
         title: "Insurance expired",
-        message: `Insurance expired ${Math.abs(daysLeft)} days ago.`,
+        message: `Insurance expired ${expiredAgo(daysLeft)}.`,
         fixAction: { section: "operator" },
       });
     } else if (daysLeft <= WARNING_DAYS) {
@@ -119,7 +151,7 @@ export function runComplianceChecks(
         category: "insurance",
         severity: daysLeft <= ERROR_DAYS ? "error" : "warning",
         title: "Insurance expiring",
-        message: `Expires in ${daysLeft} day${daysLeft === 1 ? "" : "s"}.`,
+        message: `Expires ${expiresIn(daysLeft)}.`,
         fixAction: { section: "operator" },
       });
     }
@@ -128,15 +160,14 @@ export function runComplianceChecks(
   // 4. Aircraft airworthiness expiry
   for (const ac of Object.values(aircraft)) {
     if (!ac.airworthinessExpiry) continue;
-    const exp = new Date(ac.airworthinessExpiry).getTime();
-    const daysLeft = Math.floor((exp - now) / DAYS_MS);
+    const daysLeft = daysUntilExpiry(ac.airworthinessExpiry, now);
     if (daysLeft < 0) {
       alerts.push({
         id: `airworthiness-expired-${ac.id}`,
         category: "airworthiness",
         severity: "error",
         title: `${ac.name} airworthiness expired`,
-        message: `Certificate expired ${Math.abs(daysLeft)} days ago.`,
+        message: `Certificate expired ${expiredAgo(daysLeft)}.`,
         fixAction: { section: "aircraft", id: ac.id },
       });
     } else if (daysLeft <= WARNING_DAYS) {
@@ -145,7 +176,7 @@ export function runComplianceChecks(
         category: "airworthiness",
         severity: daysLeft <= ERROR_DAYS ? "error" : "warning",
         title: `${ac.name} airworthiness expiring`,
-        message: `Expires in ${daysLeft} day${daysLeft === 1 ? "" : "s"}.`,
+        message: `Expires ${expiresIn(daysLeft)}.`,
         fixAction: { section: "aircraft", id: ac.id },
       });
     }
@@ -179,7 +210,7 @@ export function runComplianceChecks(
   // 6. Battery health (warn <80%, error <60%)
   for (const bat of Object.values(batteries)) {
     if (bat.retiredAt) continue;
-    const health = bat.healthPercent ?? 100;
+    const health = Math.round(batteryHealthPercent(bat) * 10) / 10;
     if (health < 60) {
       alerts.push({
         id: `battery-health-${bat.id}`,
@@ -203,24 +234,24 @@ export function runComplianceChecks(
 
   // 7. Equipment hours past inspection threshold
   for (const eq of Object.values(equipment)) {
-    if (eq.retiredAt || !eq.inspectionDueHours) continue;
-    const hours = eq.totalFlightHours ?? 0;
-    if (hours >= eq.inspectionDueHours) {
+    if (eq.retiredAt || !eq.inspectionIntervalHours) continue;
+    const hours = hoursSinceInspection(eq);
+    if (isInspectionDue(eq)) {
       alerts.push({
         id: `equipment-inspection-${eq.id}`,
         category: "equipment_hours",
         severity: "error",
         title: `${eq.label} — inspection overdue`,
-        message: `${hours.toFixed(1)}h flown, inspection due at ${eq.inspectionDueHours}h.`,
+        message: `${hours.toFixed(1)}h flown since last inspection, interval ${eq.inspectionIntervalHours}h.`,
         fixAction: { section: "equipment", id: eq.id },
       });
-    } else if (hours >= eq.inspectionDueHours * 0.9) {
+    } else if (hours >= eq.inspectionIntervalHours * 0.9) {
       alerts.push({
         id: `equipment-inspection-${eq.id}`,
         category: "equipment_hours",
         severity: "warning",
         title: `${eq.label} — inspection approaching`,
-        message: `${hours.toFixed(1)}h flown, due at ${eq.inspectionDueHours}h.`,
+        message: `${hours.toFixed(1)}h flown since last inspection, interval ${eq.inspectionIntervalHours}h.`,
         fixAction: { section: "equipment", id: eq.id },
       });
     }

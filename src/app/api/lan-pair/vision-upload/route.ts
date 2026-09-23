@@ -2,7 +2,7 @@
  * @module LanPairVisionUploadRoute
  * @description Server-side proxy for the LAN agent's
  * `POST /api/vision/models/upload` (multipart) endpoint. Sibling to the
- * pairing proxy routes (Rule 39 local-first): lets an HTTPS Mission
+ * pairing proxy routes (local-first): lets an HTTPS Mission
  * Control sideload a custom vision model to a drone over the operator's
  * LAN without the browser's mixed-content guard blocking the
  * cross-protocol upload.
@@ -29,8 +29,12 @@ export const runtime = "nodejs";
 // Uploads can be tens of MB over a LAN; give the round-trip room.
 const UPSTREAM_TIMEOUT_MS = 120000;
 
+/** Largest multipart body accepted. Detector models (.rknn / .onnx / .tflite /
+ * .engine) sit well under this; the ceiling bounds what the server buffers. */
+const MAX_UPLOAD_BYTES = 256 * 1024 * 1024;
+
 export async function POST(req: NextRequest) {
-  const env = await readFormEnvelope(req);
+  const env = await readFormEnvelope(req, MAX_UPLOAD_BYTES);
   if ("reject" in env) return env.reject;
   const { form } = env;
   const host = checkAgentHost(String(form.get("host") ?? "").trim());

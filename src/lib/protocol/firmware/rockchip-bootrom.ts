@@ -167,8 +167,8 @@ const CONTROL_TIMEOUT_MS = 10_000;
 
 /**
  * Default time budget for re-enumeration after the maskrom code-download.
- * Bumped from the original 8s after audit feedback that some hubs and
- * BSPs need 10+ seconds before the loader-stage device shows up. Callers
+ * Some USB hubs and BSPs need 10+ seconds before the loader-stage device
+ * shows up, so the budget is generous. Callers
  * can override via {@link RockchipPrepareOptions.reenumerateTimeoutMs}.
  */
 const REENUMERATE_TIMEOUT_MS = 18_000;

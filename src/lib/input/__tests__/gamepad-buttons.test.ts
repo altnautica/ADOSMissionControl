@@ -88,4 +88,21 @@ describe("published buttons array", () => {
     step();
     expect(useInputStore.getState().buttons).toHaveLength(16);
   });
+
+  it("keeps the published array when no button changed, and notifies once per frame", () => {
+    startGamepadPolling();
+    pressed[2] = true;
+    step();
+    const first = useInputStore.getState().buttons;
+
+    let notifications = 0;
+    const unsubscribe = useInputStore.subscribe(() => {
+      notifications += 1;
+    });
+    step();
+    unsubscribe();
+
+    expect(useInputStore.getState().buttons).toBe(first);
+    expect(notifications).toBe(1);
+  });
 });

@@ -11,11 +11,13 @@
 
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { useToast } from "@/components/ui/toast";
 import { SerialPanel } from "@/components/connect/SerialPanel";
 import { WebSocketPanel } from "@/components/connect/WebSocketPanel";
 import { BluetoothPanel } from "@/components/connect/BluetoothPanel";
@@ -30,16 +32,17 @@ import {
 } from "@/lib/connect/connection-methods";
 import { DEFAULT_BRIDGE_URL } from "@/lib/protocol/transport/net-mavlink";
 import { useDroneManager } from "@/stores/drone-manager";
-import { saveRecentConnection } from "@/lib/recent-connections";
 import { savePreset, type ConnectionPreset } from "@/lib/connection-presets";
 import { randomId } from "@/lib/utils";
 import { Usb, Zap, Save, Star, History } from "lucide-react";
 
 export function DirectMavlinkPanel({ onClose }: { onClose: () => void }) {
   const t = useTranslations("connect");
+  const tc = useTranslations("common");
   const droneCount = useDroneManager((s) => s.drones.size);
   const drones = useDroneManager((s) => s.drones);
   const router = useRouter();
+  const { toast } = useToast();
 
   // Availability is surface-dependent (desktop vs browser, Chromium vs not).
   // The connect dialog only ever renders client-side (Modal portals and returns
@@ -54,16 +57,17 @@ export function DirectMavlinkPanel({ onClose }: { onClose: () => void }) {
   const [udpValue, setUdpValue] = useState<NetEndpointValue>({ host: "0.0.0.0", port: 14550, mode: "listen" });
   const [tcpValue, setTcpValue] = useState<NetEndpointValue>({ host: "127.0.0.1", port: 5760 });
   const [bridgeUrl, setBridgeUrl] = useState(DEFAULT_BRIDGE_URL);
-  const [connectMode, setConnectMode] = useState<"new" | "link">("new");
-  const [selectedTargetDroneId, setSelectedTargetDroneId] = useState<string | null>(null);
+  const [chosenMode, setConnectMode] = useState<"new" | "link">("new");
+  const [chosenTargetId, setSelectedTargetDroneId] = useState<string | null>(null);
+  /** Name typed for a new preset; null while the naming row is closed. */
+  const [presetName, setPresetName] = useState<string | null>(null);
 
-  // Reset link target when no drones remain.
-  useEffect(() => {
-    if (drones.size === 0) {
-      setConnectMode("new");
-      setSelectedTargetDroneId(null);
-    }
-  }, [drones.size]);
+  // Link mode needs a drone to link to, and a target that has left the fleet
+  // is no target at all: both follow the live drone set, so a removed drone's
+  // id is never dialled as a link target.
+  const connectMode = drones.size === 0 ? "new" : chosenMode;
+  const selectedTargetDroneId =
+    chosenTargetId !== null && drones.has(chosenTargetId) ? chosenTargetId : null;
 
   // DFU hot-plug detection.
   useEffect(() => {
@@ -98,37 +102,12 @@ export function DirectMavlinkPanel({ onClose }: { onClose: () => void }) {
     };
   }, []);
 
-  const handleConnected = useCallback(
-    (name: string, type: "serial" | "websocket", detail: string | number) => {
-      void saveRecentConnection({
-        type,
-        name,
-        date: Date.now(),
-        ...(type === "serial"
-          ? { baudRate: detail as number }
-          : { url: detail as string }),
-      });
-      // Direct connect does not need the modal afterward; main dashboard shows
-      // the new fleet row (via node registry attach in addDrone).
-      onClose();
-    },
-    [onClose],
-  );
-
-  function handleSerialConnected(name: string, _type: "serial", baudRate: number) {
-    handleConnected(name, "serial", baudRate);
-  }
-
-  function handleWsConnected(name: string, _type: "websocket", url: string) {
-    handleConnected(name, "websocket", url);
-  }
-
   async function handleSavePreset() {
-    const presetName = prompt(t("presetNamePrompt"));
-    if (!presetName) return;
+    const name = presetName?.trim();
+    if (!name) return;
 
     let preset: ConnectionPreset;
-    const base = { id: randomId(), name: presetName, createdAt: Date.now() };
+    const base = { id: randomId(), name, createdAt: Date.now() };
     if (selected === "serial") {
       preset = { ...base, type: "serial", config: { baudRate: serialBaudRate } };
     } else if (selected === "websocket") {
@@ -148,8 +127,16 @@ export function DirectMavlinkPanel({ onClose }: { onClose: () => void }) {
     } else {
       return; // Bluetooth picker can't be saved as a preset.
     }
-    await savePreset(preset);
-    setPresetsKey((k) => k + 1);
+    try {
+      await savePreset(preset);
+      setPresetName(null);
+      setPresetsKey((k) => k + 1);
+    } catch (err) {
+      toast(
+        `${t("presetSaveFailed")}${err instanceof Error ? `: ${err.message}` : ""}`,
+        "error",
+      );
+    }
   }
 
   function handleApplyPreset(preset: ConnectionPreset) {
@@ -180,6 +167,9 @@ export function DirectMavlinkPanel({ onClose }: { onClose: () => void }) {
   }
 
   const linkTarget = connectMode === "link" ? selectedTargetDroneId : null;
+  // In link mode a missing target must not fall through to the new-drone
+  // path: that would add a second managed drone for the same aircraft.
+  const linkTargetMissing = connectMode === "link" && selectedTargetDroneId === null;
   const selectedMethod = methods.find((m) => m.id === selected);
 
   return (
@@ -247,7 +237,7 @@ export function DirectMavlinkPanel({ onClose }: { onClose: () => void }) {
                 ]}
               />
               <p className="text-[10px] text-text-tertiary mt-1">
-                {t("targetDroneHint")}
+                {linkTargetMissing ? t("targetDroneRequired") : t("targetDroneHint")}
               </p>
             </div>
           )}
@@ -274,26 +264,52 @@ export function DirectMavlinkPanel({ onClose }: { onClose: () => void }) {
             variant="ghost"
             size="sm"
             icon={<Save size={12} />}
-            onClick={handleSavePreset}
-            disabled={selected === "bluetooth"}
+            onClick={() => setPresetName("")}
+            disabled={selected === "bluetooth" || presetName !== null}
           >
             {t("savePreset")}
           </Button>
         </div>
+        {presetName !== null && (
+          <form
+            className="border-t border-border-default px-3 py-2 flex items-end gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleSavePreset();
+            }}
+          >
+            <div className="flex-1">
+              <Input
+                label={t("presetNamePrompt")}
+                value={presetName}
+                onChange={(e) => setPresetName(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <Button type="submit" size="sm" disabled={!presetName.trim()}>
+              {tc("save")}
+            </Button>
+            <Button type="button" variant="ghost" size="sm" onClick={() => setPresetName(null)}>
+              {tc("cancel")}
+            </Button>
+          </form>
+        )}
         <div className="p-4">
           {selected === "serial" ? (
             <SerialPanel
-              onConnected={handleSerialConnected}
+              onConnected={onClose}
               baudRate={serialBaudRate}
               onBaudRateChange={setSerialBaudRate}
               targetDroneId={linkTarget}
+              connectDisabled={linkTargetMissing}
             />
           ) : selected === "websocket" ? (
             <WebSocketPanel
-              onConnected={handleWsConnected}
+              onConnected={onClose}
               url={websocketUrl}
               onUrlChange={setWebsocketUrl}
               targetDroneId={linkTarget}
+              connectDisabled={linkTargetMissing}
             />
           ) : selected === "udp" ? (
             <NetEndpointPanel
@@ -302,8 +318,9 @@ export function DirectMavlinkPanel({ onClose }: { onClose: () => void }) {
               bridgeUrl={bridgeUrl}
               onChange={setUdpValue}
               onBridgeUrlChange={setBridgeUrl}
-              onConnected={() => onClose()}
+              onConnected={onClose}
               targetDroneId={linkTarget}
+              connectDisabled={linkTargetMissing}
             />
           ) : selected === "tcp" ? (
             <NetEndpointPanel
@@ -312,11 +329,16 @@ export function DirectMavlinkPanel({ onClose }: { onClose: () => void }) {
               bridgeUrl={bridgeUrl}
               onChange={setTcpValue}
               onBridgeUrlChange={setBridgeUrl}
-              onConnected={() => onClose()}
+              onConnected={onClose}
               targetDroneId={linkTarget}
+              connectDisabled={linkTargetMissing}
             />
           ) : selected === "bluetooth" ? (
-            <BluetoothPanel targetDroneId={linkTarget} />
+            <BluetoothPanel
+              onConnected={onClose}
+              targetDroneId={linkTarget}
+              connectDisabled={linkTargetMissing}
+            />
           ) : null}
         </div>
       </div>

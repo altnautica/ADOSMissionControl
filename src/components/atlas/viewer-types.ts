@@ -1,9 +1,9 @@
 /**
  * @module atlas/viewer-types
  * @description The Atlas World Model viewer registry. The operator switches
- * between viewers on the same world (a `viewer` parameter, module 03/06); we
- * ship the set and prune later (Rule 46). Rerun is the first-class default world
- * viewer + live-stream surface; the splat viewer plays photoreal gaussian splats
+ * between viewers on the same world (a `viewer` parameter). Rerun is the
+ * first-class default world viewer + live-stream surface; the splat viewer
+ * plays photoreal gaussian splats
  * (the one thing Rerun does not render natively); the cloud viewer renders a dense point
  * cloud (`.ply`) on the repo's own three.js. The LOD viewer is the cloud viewer
  * that survives very large clouds — it decimates a multi-million-point `.ply` to

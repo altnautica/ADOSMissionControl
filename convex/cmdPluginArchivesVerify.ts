@@ -34,6 +34,9 @@ import { internal } from "./_generated/api";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import type { Id } from "./_generated/dataModel";
 
+/** Largest manifest the verifier will read. Real manifests are a few KiB. */
+const MANIFEST_MAX_BYTES = 256 * 1024;
+
 // Cap on archive size we will stream + re-hash. Mirrors
 // `ARCHIVE_MAX_BYTES` in the agent's archive parser.
 const ARCHIVE_MAX_BYTES = 32 * 1024 * 1024;
@@ -217,19 +220,20 @@ function extractZipEntry(
       const dataEnd = dataStart + compressedSize;
       if (dataEnd > archive.byteLength) return null;
       const compressed = archive.subarray(dataStart, dataEnd);
+      // The declared size comes from the uploaded file, so it only ever
+      // tightens the bound: an entry declaring more than the fixed ceiling is
+      // refused before any inflate, and the inflate itself stops at the
+      // ceiling whatever the header claimed.
+      if (uncompressedSize > MANIFEST_MAX_BYTES) return null;
       if (method === 0) {
+        if (compressed.byteLength > MANIFEST_MAX_BYTES) return null;
         return Buffer.from(compressed);
       }
       if (method === 8) {
         try {
-          // Bound the maximum inflated size: 4x the uncompressed
-          // header value or 1 MiB, whichever is larger. The manifest
-          // is small in practice (<32 KiB) so this is generous.
-          const maxOutput = Math.max(uncompressedSize * 4, 1 * 1024 * 1024);
-          const inflated = inflateRawSync(compressed, {
-            maxOutputLength: maxOutput,
+          return inflateRawSync(compressed, {
+            maxOutputLength: MANIFEST_MAX_BYTES,
           });
-          return inflated;
         } catch {
           return null;
         }

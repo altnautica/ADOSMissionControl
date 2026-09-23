@@ -4,18 +4,21 @@
  * @module use-atlas-control
  * @description Capture-control hook for a drone's Atlas world-model service.
  * Resolves the LAN-paired agent for `droneId` (host + apiKey from
- * `local-nodes-store`, Rule 39 local-first), polls
- * `GET /api/atlas/readiness` into the per-drone `atlas-readiness-store`, and
- * returns the enable/disable + capture lifecycle callbacks. The readiness the
- * store holds is what the node-detail surface registry reads synchronously to
- * decide whether the "Live World" tab is shown (one tab when not capturing, two
- * while capturing).
+ * `local-nodes-store`, local-first), polls `GET /api/atlas/readiness` into the
+ * per-drone `atlas-readiness-store`, and returns the enable/disable + capture
+ * lifecycle callbacks.
+ *
+ * The poll runs whenever the node is reachable: every 1.5 s while the World
+ * Model feature is on for this node, every 10 s while it is off, so the row
+ * still reflects a capture another GCS started. Each snapshot expires three
+ * poll intervals after it was observed, so a node that stops answering reads
+ * as offline instead of keeping its last state.
  *
  * Kept disjoint from the cloud path (`cloudDeviceId !== deviceId`) so the one
  * drone `CloudStatusBridge` drives is not double-polled. In demo mode the hook
  * does not touch the network: it seeds a mock readiness (and the focused-drone
  * `atlas-store` live slice so the Live World stats render) and the actions
- * mutate that mock so the whole capture flow is exercisable offline (Rule 4).
+ * mutate that mock so the whole capture flow is exercisable offline.
  *
  * @license GPL-3.0-only
  */
@@ -25,21 +28,33 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AtlasControlClient,
   isActiveCaptureState,
+  type AtlasConfigPatch,
   type AtlasReadiness,
   type CaptureResult,
   type CaptureStatus,
 } from "@/lib/agent/atlas-control-client";
 import { deviceIdFromNodeId } from "@/lib/agent/node-id";
+import { useClockTick } from "@/lib/agent/freshness";
 import { DEFAULT_RECONSTRUCTION_STEPS } from "@/lib/atlas/reconstruction-quality";
 import { isDemoMode } from "@/lib/utils";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
+import { useClockStore } from "@/stores/clock-store";
 import { useNodeFeaturesStore } from "@/stores/node-features-store";
-import { useAtlasReadinessStore } from "@/stores/atlas-readiness-store";
+import {
+  currentReadiness,
+  useAtlasReadinessStore,
+} from "@/stores/atlas-readiness-store";
 import { useAtlasStore, EMPTY_ATLAS_LIVE } from "@/stores/atlas-store";
 import { useLocalNodesStore } from "@/stores/local-nodes-store";
 
-/** How often to poll the local agent's Atlas readiness, in ms. */
+/** Readiness poll cadence while the World Model feature is on for the node, in ms. */
 export const ATLAS_READINESS_POLL_INTERVAL_MS = 1500;
+
+/** Readiness poll cadence while the feature is off for the node, in ms. */
+export const ATLAS_READINESS_IDLE_POLL_INTERVAL_MS = 10_000;
+
+/** A snapshot stays current for this many poll intervals after it was observed. */
+const READINESS_LIFETIME_POLLS = 3;
 
 /** The mock readiness a demo drone starts from — cameras present, service off. */
 function demoBaseReadiness(): AtlasReadiness {
@@ -65,8 +80,15 @@ function demoBaseReadiness(): AtlasReadiness {
 export interface AtlasControl {
   /** The bare device id this control targets, or null when not a drone. */
   deviceId: string | null;
-  /** Last-known readiness (reactive), or null until the first poll resolves. */
+  /** Current readiness (reactive): null until the first poll resolves, and
+   * again once the last snapshot expired because the node stopped answering. */
   readiness: AtlasReadiness | null;
+  /** True when a snapshot was observed and has since expired: the node
+   * stopped answering. False before the first answer and in demo. */
+  offline: boolean;
+  /** The agent's reason for the last config write it refused (a failed
+   * service restart included), or null after a write that landed. */
+  configError: string | null;
   /** True while a lifecycle/config action is in flight (drives button spinners). */
   busy: boolean;
   /** True when a real LAN agent is reachable (not demo, paired, cloud-disjoint),
@@ -97,8 +119,8 @@ export interface AtlasControl {
 }
 
 /** Mirror a demo readiness into the focused-drone atlas-store live slice so the
- * Live World stats render offline (Rule 4). Only used in demo — real mode leaves
- * the atlas-store to `use-atlas-local-state` / `CloudStatusBridge` (Rule 39). */
+ * Live World stats render offline (demo mode works offline). Only used in demo — real mode leaves
+ * the atlas-store to `use-atlas-local-state` / `CloudStatusBridge` (local-first). */
 function syncDemoLiveSlice(r: AtlasReadiness): void {
   useAtlasStore.getState().setLive({
     ...EMPTY_ATLAS_LIVE,
@@ -110,7 +132,7 @@ function syncDemoLiveSlice(r: AtlasReadiness): void {
     vioHealth: "good",
     // On real hardware these Stream-card fields come from the forwarder handoff;
     // demo mocks a coherent set while capturing (a node, its bearer, a fresh
-    // keyframe) so the card renders fully offline (Rule 4), and clears when idle.
+    // keyframe) so the card renders fully offline (demo mode works offline), and clears when idle.
     computeNodeId: r.capturing ? "demo-compute-node" : null,
     lastKfAt: r.capturing ? Date.now() : null,
     bearer: r.capturing ? "direct-lan" : null,
@@ -133,8 +155,8 @@ function captureStatusFrom(r: AtlasReadiness, vioHealth: string): CaptureStatus 
 
 /**
  * Drive a drone's Atlas capture service. Polls readiness while mounted and
- * returns the capture-control callbacks. Inert (no network) unless local-first
- * for the drone and the Atlas flag is on; demo mode drives a mock instead.
+ * returns the capture-control callbacks. Inert (no network) unless the drone is
+ * LAN-paired and not the cloud-relay device; demo mode drives a mock instead.
  */
 export function useAtlasControl(
   droneId: string | null | undefined,
@@ -151,9 +173,9 @@ export function useAtlasControl(
 
   // The World Model is a per-node opt-in first-party feature — enabled from
   // the node Settings world-model page (or the fleet board's Features cell),
-  // not a global flag. It gates the readiness poll
-  // and the "actively doing Atlas" state so a lean fleet does no Atlas work on a
-  // drone that never opted in.
+  // not a global flag. It sets the poll cadence and gates the capture actions,
+  // so a lean fleet does only a slow readiness check on a drone that never
+  // opted in.
   const featureEnabled = useNodeFeaturesStore((s) =>
     deviceId ? (s.enabled[deviceId] ?? []).includes("world-model") : false,
   );
@@ -162,8 +184,8 @@ export function useAtlasControl(
   const apiKey = node?.apiKey ?? "";
   // Reachable = a real, LAN-paired agent we can drive. Enable/disable a feature
   // gate on THIS (so the operator can turn a not-yet-enabled feature on);
-  // `live` additionally requires the feature enabled and gates the poll + the
-  // capture actions.
+  // `live` additionally requires the feature enabled and gates the fast poll +
+  // the capture actions.
   const reachable =
     !demo &&
     Boolean(deviceId) &&
@@ -172,10 +194,21 @@ export function useAtlasControl(
     cloudDeviceId !== deviceId;
   const live = reachable && featureEnabled;
 
-  const readiness = useAtlasReadinessStore((s) =>
-    deviceId ? s.getReadiness(deviceId) : null,
+  const pollIntervalMs = live
+    ? ATLAS_READINESS_POLL_INTERVAL_MS
+    : ATLAS_READINESS_IDLE_POLL_INTERVAL_MS;
+
+  // Re-render on the shared 1 Hz clock so an expiring snapshot is noticed
+  // even when no new poll result arrives.
+  useClockTick();
+  const now = useClockStore((s) => s.now);
+  const snapshot = useAtlasReadinessStore((s) =>
+    deviceId ? s.snapshots[deviceId] : undefined,
   );
+  const readiness = currentReadiness(snapshot, now);
+  const offline = snapshot !== undefined && readiness === null;
   const setReadiness = useAtlasReadinessStore((s) => s.setReadiness);
+  const [configError, setConfigError] = useState<string | null>(null);
 
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
@@ -191,37 +224,38 @@ export function useAtlasControl(
   const seededDemo = useRef(false);
   useEffect(() => {
     if (!demo || !deviceId || seededDemo.current) return;
-    if (!useAtlasReadinessStore.getState().getReadiness(deviceId)) {
+    if (!useAtlasReadinessStore.getState().snapshots[deviceId]) {
       const base = demoBaseReadiness();
-      setReadiness(deviceId, base);
+      setReadiness(deviceId, base, null);
       syncDemoLiveSlice(base);
     }
     seededDemo.current = true;
   }, [demo, deviceId, setReadiness]);
 
-  // Real-agent readiness poll. Re-arms on drone switch (host) / activation; the
-  // key is read per-tick via the ref so a re-pair takes effect without a re-arm.
+  // Real-agent readiness poll. Re-arms on drone switch (host), reachability and
+  // cadence changes; the key is read per-tick via the ref so a re-pair takes
+  // effect without a re-arm. A failed poll writes nothing, so the last
+  // snapshot expires on its own.
   useEffect(() => {
-    if (!live || !deviceId) return;
+    if (!reachable || !deviceId) return;
     let cancelled = false;
 
     const pollOnce = async () => {
       const client = new AtlasControlClient(host, apiKeyRef.current);
       const r = await client.getReadiness();
       if (cancelled || !r) return;
-      useAtlasReadinessStore.getState().setReadiness(deviceId, r);
+      useAtlasReadinessStore
+        .getState()
+        .setReadiness(deviceId, r, Date.now() + READINESS_LIFETIME_POLLS * pollIntervalMs);
     };
 
     void pollOnce();
-    const handle = setInterval(
-      () => void pollOnce(),
-      ATLAS_READINESS_POLL_INTERVAL_MS,
-    );
+    const handle = setInterval(() => void pollOnce(), pollIntervalMs);
     return () => {
       cancelled = true;
       clearInterval(handle);
     };
-  }, [live, deviceId, host]);
+  }, [reachable, pollIntervalMs, deviceId, host]);
 
   /**
    * Run one config write at a time and report whether it LANDED.
@@ -253,10 +287,10 @@ export function useAtlasControl(
     (patch: Partial<AtlasReadiness>): AtlasReadiness => {
       const current =
         (deviceId &&
-          useAtlasReadinessStore.getState().getReadiness(deviceId)) ||
+          useAtlasReadinessStore.getState().snapshots[deviceId]?.readiness) ||
         demoBaseReadiness();
       const next = { ...current, ...patch };
-      if (deviceId) setReadiness(deviceId, next);
+      if (deviceId) setReadiness(deviceId, next, null);
       syncDemoLiveSlice(next);
       return next;
     },
@@ -267,26 +301,46 @@ export function useAtlasControl(
     if (!deviceId) return;
     const client = new AtlasControlClient(host, apiKeyRef.current);
     const r = await client.getReadiness();
-    if (r) useAtlasReadinessStore.getState().setReadiness(deviceId, r);
-  }, [deviceId, host]);
+    if (r) {
+      useAtlasReadinessStore
+        .getState()
+        .setReadiness(deviceId, r, Date.now() + READINESS_LIFETIME_POLLS * pollIntervalMs);
+    }
+  }, [deviceId, host, pollIntervalMs]);
 
   const mergeCaptureStatus = useCallback(
     (status: CaptureStatus) => {
       if (!deviceId) return;
-      const current =
-        useAtlasReadinessStore.getState().getReadiness(deviceId) ?? null;
+      const observedAt = Date.now();
+      const current = useAtlasReadinessStore.getState().getReadiness(deviceId, observedAt);
       if (!current) return;
-      useAtlasReadinessStore.getState().setReadiness(deviceId, {
-        ...current,
-        state: status.state,
-        capturing: isActiveCaptureState(status.state),
-        sessionId: status.sessionId || current.sessionId,
-        keyframes: status.keyframes,
-        cameraCount: status.cameraCount || current.cameraCount,
-        ingestRateHz: status.ingestRateHz,
-      });
+      useAtlasReadinessStore.getState().setReadiness(
+        deviceId,
+        {
+          ...current,
+          state: status.state,
+          capturing: isActiveCaptureState(status.state),
+          sessionId: status.sessionId || current.sessionId,
+          keyframes: status.keyframes,
+          cameraCount: status.cameraCount || current.cameraCount,
+          ingestRateHz: status.ingestRateHz,
+        },
+        observedAt + READINESS_LIFETIME_POLLS * pollIntervalMs,
+      );
     },
-    [deviceId],
+    [deviceId, pollIntervalMs],
+  );
+
+  /** One config write against the agent; records the agent's refusal. */
+  const writeConfig = useCallback(
+    async (patch: AtlasConfigPatch): Promise<boolean> => {
+      const client = new AtlasControlClient(host, apiKeyRef.current);
+      const res = await client.setConfig(patch);
+      setConfigError(res.ok ? null : res.message);
+      await refreshReadiness();
+      return res.ok;
+    },
+    [host, refreshReadiness],
   );
 
   const enable = useCallback(
@@ -297,12 +351,9 @@ export function useAtlasControl(
           return true;
         }
         if (!reachable) return false;
-        const client = new AtlasControlClient(host, apiKeyRef.current);
-        const res = await client.setConfig({ enabled: true });
-        await refreshReadiness();
-        return res !== null;
+        return writeConfig({ enabled: true });
       }),
-    [runAction, demo, reachable, host, demoPatch, refreshReadiness],
+    [runAction, demo, reachable, demoPatch, writeConfig],
   );
 
   const disable = useCallback(
@@ -320,12 +371,9 @@ export function useAtlasControl(
           return true;
         }
         if (!reachable) return false;
-        const client = new AtlasControlClient(host, apiKeyRef.current);
-        const res = await client.setConfig({ enabled: false });
-        await refreshReadiness();
-        return res !== null;
+        return writeConfig({ enabled: false });
       }),
-    [runAction, demo, reachable, host, demoPatch, refreshReadiness],
+    [runAction, demo, reachable, demoPatch, writeConfig],
   );
 
   const setCaptureProfile = useCallback(
@@ -336,12 +384,9 @@ export function useAtlasControl(
           return true;
         }
         if (!live) return false;
-        const client = new AtlasControlClient(host, apiKeyRef.current);
-        const res = await client.setConfig({ captureProfile: profile });
-        await refreshReadiness();
-        return res !== null;
+        return writeConfig({ captureProfile: profile });
       }),
-    [runAction, demo, live, host, demoPatch, refreshReadiness],
+    [runAction, demo, live, demoPatch, writeConfig],
   );
 
   const setReconstructSteps = useCallback(
@@ -352,12 +397,9 @@ export function useAtlasControl(
           return true;
         }
         if (!live) return false;
-        const client = new AtlasControlClient(host, apiKeyRef.current);
-        const res = await client.setConfig({ reconstructSteps: steps });
-        await refreshReadiness();
-        return res !== null;
+        return writeConfig({ reconstructSteps: steps });
       }),
-    [runAction, demo, live, host, demoPatch, refreshReadiness],
+    [runAction, demo, live, demoPatch, writeConfig],
   );
 
   const captureAction = useCallback(
@@ -411,6 +453,8 @@ export function useAtlasControl(
     () => ({
       deviceId,
       readiness,
+      offline,
+      configError,
       busy,
       reachable,
       live,
@@ -427,6 +471,8 @@ export function useAtlasControl(
     [
       deviceId,
       readiness,
+      offline,
+      configError,
       busy,
       reachable,
       live,

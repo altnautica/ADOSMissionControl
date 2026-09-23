@@ -11,6 +11,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { renderWithIntl } from "../../../../helpers/intl-wrapper";
 import { useDroneCanNodeStore } from "@/stores/dronecan/node-store";
+import { useDroneStore } from "@/stores/drone-store";
 
 import { TestUtilitiesSection } from "@/components/config/can/TestUtilitiesSection";
 
@@ -128,24 +129,32 @@ describe("TestUtilitiesSection", () => {
       getNodeInfo: vi.fn(async (id: number) =>
         buildNodeInfo(id === 14 ? 0xaa : 0xbb, `n${id}`),
       ),
+      onNodeStatus: vi.fn(() => () => {}),
     };
 
-    renderWithIntl(<TestUtilitiesSection client={client as never} transport={null} />);
-    fireEvent.click(screen.getByRole("button", { name: /^Scan$/i }));
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      renderWithIntl(<TestUtilitiesSection client={client as never} transport={null} />);
+      fireEvent.click(screen.getByRole("button", { name: /^Scan$/i }));
 
-    await waitFor(() => {
-      expect(client.getNodeInfo).toHaveBeenCalledWith(14, expect.objectContaining({ timeoutMs: 700 }));
-      expect(client.getNodeInfo).toHaveBeenCalledWith(15, expect.objectContaining({ timeoutMs: 700 }));
-    });
+      await waitFor(() => {
+        expect(client.getNodeInfo).toHaveBeenCalledWith(14, expect.objectContaining({ timeoutMs: 700 }));
+        expect(client.getNodeInfo).toHaveBeenCalledWith(15, expect.objectContaining({ timeoutMs: 700 }));
+      });
+      await vi.advanceTimersByTimeAsync(3_100);
 
-    await waitFor(() => {
-      expect(screen.getByTestId("conflict-scan-clean")).toBeDefined();
-    });
+      await waitFor(() => {
+        expect(screen.getByTestId("conflict-scan-clean")).toBeDefined();
+      });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("gates the ESC sweep button behind the safety confirm dialog", () => {
     const client = {
       getNodeInfo: vi.fn(),
+      onNodeStatus: vi.fn(() => () => {}),
       sendEscRawCommand: vi.fn().mockResolvedValue(undefined),
       subscribeFix2: vi.fn().mockReturnValue(() => {}),
       subscribeMag2: vi.fn().mockReturnValue(() => {}),
@@ -159,6 +168,25 @@ describe("TestUtilitiesSection", () => {
 
     // Confirm dialog opens with the safety title visible.
     expect(screen.getByText(/Props off, motors-on-bench only/i)).toBeDefined();
+  });
+
+  it("disables the ESC sweep trigger while the vehicle is armed", () => {
+    useDroneStore.setState({ armState: "armed", connectionState: "connected" } as never);
+    try {
+      const client = {
+        getNodeInfo: vi.fn(),
+        onNodeStatus: vi.fn(() => () => {}),
+        sendEscRawCommand: vi.fn().mockResolvedValue(undefined),
+        subscribeFix2: vi.fn().mockReturnValue(() => {}),
+        subscribeMag2: vi.fn().mockReturnValue(() => {}),
+      };
+      renderWithIntl(<TestUtilitiesSection client={client} transport={null} />);
+      const runBtn = screen.getByTestId("esc-sweep-trigger") as HTMLButtonElement;
+      expect(runBtn.disabled).toBe(true);
+      expect(screen.getByTestId("esc-sweep-armed")).toBeDefined();
+    } finally {
+      useDroneStore.setState({ armState: "disarmed", connectionState: "disconnected" } as never);
+    }
   });
 
   it("disables the ESC sweep trigger when no client is wired", () => {

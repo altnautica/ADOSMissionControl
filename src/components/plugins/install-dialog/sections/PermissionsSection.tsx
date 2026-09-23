@@ -121,7 +121,7 @@ export function PermissionsSection({ manifest, granted, onToggle }: Props) {
       <h3 className="mb-3 text-[11px] font-medium uppercase tracking-[0.14em] text-text-tertiary">
         {sectionLabel}
       </h3>
-      <div className="overflow-hidden rounded-xl bg-surface-secondary/40">
+      <div className="overflow-hidden rounded-xl bg-bg-secondary/40">
         <div className="divide-y divide-border-default/15">
           {CATEGORY_ORDER.map((cat) => {
             const list = grouped[cat];

@@ -16,9 +16,8 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Check, ChevronDown, Copy, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { INSTALL_URL } from "../pairing/use-pairing-flow";
 
-const INSTALL_URL =
-  "https://raw.githubusercontent.com/altnautica/ADOSDroneAgent/main/scripts/install.sh";
 const INSTALL_COMMAND = `curl -sSL ${INSTALL_URL} | sudo bash`;
 
 export function InstallAgentStrip() {

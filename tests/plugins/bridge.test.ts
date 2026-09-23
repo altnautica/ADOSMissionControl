@@ -335,6 +335,48 @@ describe("createPluginBridge", () => {
     expect(cw.postMessage).not.toHaveBeenCalled();
     bridge.dispose();
   });
+
+  it("answers schema_invalid when a topic method arrives with null or missing args", async () => {
+    const bridge = createPluginBridge({
+      pluginId: "com.example.basic",
+      grantedCapabilities: new Set(["event.subscribe", "telemetry.subscribe"]),
+      iframe,
+      handlers: {},
+      onSecurityEvent,
+    });
+    await bridge.handleEnvelope(
+      { ...envelope({ id: "r1", method: "events.subscribe" }), args: null },
+      iframe.contentWindow,
+    );
+    await bridge.handleEnvelope(
+      { ...envelope({ id: "r2", method: "telemetry.subscribe" }), args: undefined },
+      iframe.contentWindow,
+    );
+    const replies = cw.postMessage.mock.calls.map((c) => c[0] as PluginRpcEnvelope);
+    expect(replies.map((r) => [r.id, r.error?.code])).toEqual([
+      ["r1", "schema_invalid"],
+      ["r2", "schema_invalid"],
+    ]);
+    bridge.dispose();
+  });
+
+  it("treats Object.prototype names as unknown methods and never dispatches them", async () => {
+    const bridge = createPluginBridge({
+      pluginId: "com.example.basic",
+      grantedCapabilities: new Set(),
+      iframe,
+      handlers: {},
+      onSecurityEvent,
+    });
+    for (const [i, method] of ["constructor", "toString", "__proto__", "hasOwnProperty"].entries()) {
+      await bridge.handleEnvelope(envelope({ id: `r${i}`, method }), iframe.contentWindow);
+    }
+    const codes = cw.postMessage.mock.calls.map(
+      (c) => (c[0] as PluginRpcEnvelope).error?.code,
+    );
+    expect(codes).toEqual(["method_unknown", "method_unknown", "method_unknown", "method_unknown"]);
+    bridge.dispose();
+  });
 });
 
 describe("PLUGIN_METHOD_RULES — notification.publish + recording.mark", () => {
@@ -343,8 +385,11 @@ describe("PLUGIN_METHOD_RULES — notification.publish + recording.mark", () => 
     expect(isKnownMethod("recording.mark")).toBe(true);
   });
 
-  it("gates notification.publish on ui.slot.notification-channel", () => {
+  it("gates notification.publish and notify on ui.slot.notification-channel", () => {
     expect(resolveRequiredCapability("notification.publish", {})).toBe(
+      "ui.slot.notification-channel",
+    );
+    expect(resolveRequiredCapability("notify", {})).toBe(
       "ui.slot.notification-channel",
     );
   });
@@ -353,5 +398,12 @@ describe("PLUGIN_METHOD_RULES — notification.publish + recording.mark", () => 
     expect(resolveRequiredCapability("recording.mark", {})).toBe(
       "recording.write",
     );
+  });
+
+  it("does not resolve inherited names through the prototype chain", () => {
+    for (const name of ["constructor", "toString", "__proto__", "valueOf"]) {
+      expect(isKnownMethod(name)).toBe(false);
+      expect(resolveRequiredCapability(name, {})).toBeUndefined();
+    }
   });
 });

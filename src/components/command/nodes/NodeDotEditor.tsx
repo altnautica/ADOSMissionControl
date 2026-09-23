@@ -15,7 +15,7 @@ import { useTranslations } from "next-intl";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
-import type { SelectOption } from "@/components/ui/select-types";
+import type { SelectOption } from "@/lib/types";
 import type { EffProfile } from "@/lib/nodes/node-profile";
 import {
   allowedSignals,
@@ -49,6 +49,8 @@ export function NodeDotEditor({
   const setDots = useNodePersonalizationStore((s) => s.setDots);
   const stored = useNodePersonalizationStore((s) => s.byNode[deviceId]?.dots);
   const allowed = useMemo(() => allowedSignals(effProfile), [effProfile]);
+  // One slot per pinnable signal, up to the row's capacity.
+  const slotCount = Math.min(MAX_SLOTS, allowed.length);
 
   // Seed the slots from the stored overlay, else the profile starter set.
   const initialSlots = useMemo<string[]>(() => {
@@ -57,8 +59,8 @@ export function NodeDotEditor({
     const seeded = source
       .map((d) => d.signal)
       .filter((s) => allowed.includes(s))
-      .slice(0, MAX_SLOTS);
-    return [...seeded, ...Array(MAX_SLOTS - seeded.length).fill(NONE)];
+      .slice(0, slotCount);
+    return [...seeded, ...Array(slotCount - seeded.length).fill(NONE)];
     // Re-seed only when the dialog is (re)opened for a node, not on every keystroke.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deviceId, effProfile, open]);
@@ -119,7 +121,7 @@ export function NodeDotEditor({
     >
       <div className="flex flex-col gap-3">
         <p className="text-xs text-text-tertiary">
-          {t("dotEditor.hint", { max: MAX_SLOTS })}
+          {t("dotEditor.hint", { max: slotCount })}
         </p>
         {slots.map((value, index) => (
           <Select

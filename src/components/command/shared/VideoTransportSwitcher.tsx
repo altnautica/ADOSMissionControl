@@ -13,9 +13,8 @@
  *   - Trigger a retry from the failed state
  *   - Select "Off" to disable video entirely
  *
- * Cloud WHEP and Cloud MSE modes are deferred per Plan Part H — they're
- * not in the option list. The dropdown re-introduces them as soon as those
- * paths land.
+ * Cloud WHEP and Cloud MSE modes are not in the option list; the dropdown
+ * re-introduces them as soon as those paths land.
  *
  * The dropdown renders inside the parent video container (containerRef
  * prop) so it stays inside fullscreen.
@@ -49,13 +48,14 @@ interface Props {
   /** Whether the agent has a reachable LAN WHEP URL (enables LAN option) */
   hasLanWhep: boolean;
   /**
-   * Part I P1-10: agent video service state ("running" / "starting" /
-   * "stopped" / "unknown"). Surfaced in the dropdown footer when the
-   * service isn't running so users know it's not a transport problem.
+   * Agent video service state ("running" / "starting" / "stopped" /
+   * "error" / "unknown"). Only an explicit "stopped" or "error" report is
+   * shown as a stopped service; "unknown" means nothing has reported yet and
+   * claims nothing.
    */
   agentVideoState: string;
   /**
-   * Part I P1-9: when > 0, the parent is in a backoff window before the
+   * When > 0, the parent is in a backoff window before the
    * next auto-retry. The pill shows "Retrying in Xs" instead of flashing
    * between FAILED and CONNECTING.
    */
@@ -108,7 +108,7 @@ function pillDotColor(
   return "bg-text-tertiary";
 }
 
-// Part I P2-21: keyboard nav uses option indices in this fixed order
+// Keyboard nav uses option indices in this fixed order
 const DROPDOWN_OPTIONS: TransportMode[] = ["auto", "lan-whep", "p2p-mqtt", "off"];
 
 export function VideoTransportSwitcher(props: Props) {
@@ -158,7 +158,7 @@ export function VideoTransportSwitcher(props: Props) {
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
-  // Part I P2-21: keyboard nav. ESC closes, ArrowDown/Up moves focus,
+  // Keyboard nav. ESC closes, ArrowDown/Up moves focus,
   // Enter selects. Tab also closes (lets user tab past the widget).
   useEffect(() => {
     if (!open) return;
@@ -198,14 +198,13 @@ export function VideoTransportSwitcher(props: Props) {
     }
   }, [open, transportMode]);
 
-  // Part I P1-10: surface "agent video stopped" state cleanly. If the agent
-  // video service isn't running, the cascade is disabled — pill should
-  // reflect that instead of showing the last cascade label.
-  const agentVideoStopped =
-    agentVideoState !== "running" && agentVideoState !== "starting";
+  // Surface a stopped agent video service cleanly: the cascade cannot work, so
+  // the pill says so instead of showing the last cascade label. Only an
+  // explicit report counts; an unknown state is not evidence of a stop.
+  const agentVideoStopped = agentVideoState === "stopped" || agentVideoState === "error";
 
   // Pill label: in Auto mode show "AUTO · <current>"; pinned shows just current.
-  // Part I P2-14: AUTO·FAILED variant. Part I P1-9: retrying countdown.
+  // AUTO·FAILED variant and the retrying countdown.
   const pillLabel = (() => {
     if (agentVideoStopped) return "AGENT VIDEO STOPPED";
     if (transportMode === "off" || activeTransport === "off") return "OFF";
@@ -220,7 +219,7 @@ export function VideoTransportSwitcher(props: Props) {
   })();
 
   const showLatency =
-    cascadeState === "connected" && latencyMs > 0 && transportMode !== "off";
+    cascadeState === "connected" && latencyMs !== null && latencyMs > 0 && transportMode !== "off";
 
   return (
     <>
@@ -351,8 +350,8 @@ function DropdownPanel(props: DropdownProps) {
         focused={focusedIdx === 3}
         onClick={() => onSelect("off")}
       />
-      {/* Part I P1-10: agent video service status footer. Surfaces "agent
-          video service stopped" so users know it's not a transport issue. */}
+      {/* Agent video service status footer. Surfaces "agent video service
+          stopped" so users know it's not a transport issue. */}
       {agentVideoStopped && (
         <>
           <Divider />
@@ -391,7 +390,7 @@ interface OptionProps {
   available: boolean;
   unavailableReason?: string;
   health?: TransportHealth;
-  /** Part I P2-21: keyboard focus indicator (true = highlighted by ArrowUp/Down) */
+  /** Keyboard focus indicator (true = highlighted by ArrowUp/Down) */
   focused: boolean;
   onClick: () => void;
 }
@@ -431,8 +430,8 @@ function Option(props: OptionProps) {
     >
       <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", dotColor)} />
       <span className={cn("flex-1", active && "text-text-primary")}>{label}</span>
-      {/* Part I P1-11: label this as "Connect: Xms" so users don't confuse
-          it with the live RTT shown in the pill. */}
+      {/* Labelled "Connect: Xms" so users don't confuse it with the live RTT
+          shown in the pill. */}
       {health?.connectMs != null && health.state === "ok" && (
         <span className="text-text-tertiary text-[9px]">Connect {health.connectMs}ms</span>
       )}

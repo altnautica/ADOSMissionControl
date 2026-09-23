@@ -10,6 +10,12 @@
  * GCS is hosted (a different machine), the file simply does not exist and the
  * route emits a `waiting` frame; the client also gates on cloud-mode and does
  * not open the stream there.
+ *
+ * The feed carries every tool name and argument the MCP handled, so it is served
+ * only to a same-machine browser: the peer address must be loopback, the page
+ * must have been addressed by a loopback host name, and a browser request must
+ * come from this origin. `next dev` / `next start` listen on every interface,
+ * so without these checks any host on the network could tail the log.
  * @license GPL-3.0-only
  */
 
@@ -25,6 +31,56 @@ const POLL_MS = 500;
 const HEARTBEAT_MS = 15_000;
 const BACKLOG_BYTES = 128 * 1024;
 const BACKLOG_LINES = 100;
+/** Most bytes read in one poll; a burst larger than this drains over later polls. */
+const MAX_POLL_BYTES = 256 * 1024;
+
+const LOOPBACK_HOSTS: ReadonlySet<string> = new Set(["localhost", "127.0.0.1", "[::1]"]);
+
+/** True for a loopback peer address as Node reports it (IPv4, IPv6 or mapped). */
+function isLoopbackAddress(addr: string): boolean {
+  const a = addr.trim().toLowerCase();
+  return a === "::1" || /^(::ffff:)?127\.\d+\.\d+\.\d+$/.test(a);
+}
+
+/** Refuse anything but a same-machine browser page on this origin.
+ *
+ *  - Peer: Next fills `x-forwarded-for` from the socket's remote address; a
+ *    LAN caller reaching the server directly carries its own address there.
+ *    Every hop listed must be loopback.
+ *  - Host: the page must have been loaded from a loopback name, so a request
+ *    addressed to the machine's LAN address is refused.
+ *  - Origin: a browser marks a cross-site subresource with `Sec-Fetch-Site`,
+ *    and a cross-origin request carries `Origin`; either must name this site. */
+function refuseNonLocal(request: Request): Response | null {
+  const peers = (request.headers.get("x-forwarded-for") ?? "")
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
+  if (peers.length === 0 || !peers.every(isLoopbackAddress)) {
+    return new Response("forbidden", { status: 403 });
+  }
+  const host = (request.headers.get("host") ?? "").toLowerCase().replace(/:\d+$/, "");
+  if (!LOOPBACK_HOSTS.has(host)) {
+    return new Response("forbidden", { status: 403 });
+  }
+  const site = request.headers.get("sec-fetch-site");
+  if (site !== null && site !== "same-origin" && site !== "none") {
+    return new Response("forbidden", { status: 403 });
+  }
+  const origin = request.headers.get("origin");
+  if (origin !== null) {
+    let originHost = "";
+    try {
+      originHost = new URL(origin).host.toLowerCase();
+    } catch {
+      /* unparseable origin is refused below */
+    }
+    if (originHost !== (request.headers.get("host") ?? "").toLowerCase()) {
+      return new Response("forbidden", { status: 403 });
+    }
+  }
+  return null;
+}
 
 /** The single file to tail: prefer the richer running-lifecycle activity.ndjson
  *  when the MCP writes it, else the completed-only audit.ndjson. Tailing one
@@ -70,8 +126,9 @@ async function readTail(
   }
 }
 
-/** Read the bytes appended since `offset`; returns complete lines + new offset.
- *  A shrunk file (rotation/truncation) resets to 0. Missing file -> null. */
+/** Read the bytes appended since `offset` (at most `MAX_POLL_BYTES` per call);
+ *  returns complete lines + new offset. A shrunk file (rotation/truncation)
+ *  resets to 0. Missing file -> null. */
 async function readSince(
   path: string,
   offset: number,
@@ -87,24 +144,28 @@ async function readSince(
   if (size === offset) return { lines: [], offset, remainder };
   const fh = await open(path, "r");
   try {
-    const len = size - offset;
+    const len = Math.min(size - offset, MAX_POLL_BYTES);
     const buf = Buffer.alloc(len);
-    await fh.read(buf, 0, len, offset);
-    const text = remainder + buf.toString("utf8");
+    const { bytesRead } = await fh.read(buf, 0, len, offset);
+    const text = remainder + buf.subarray(0, bytesRead).toString("utf8");
     const parts = text.split("\n");
-    const nextRemainder = parts.pop() ?? "";
+    // A single line longer than the poll budget is dropped rather than held.
+    const pending = parts.pop() ?? "";
+    const nextRemainder = pending.length > MAX_POLL_BYTES ? "" : pending;
     const lines = parts.map((l) => l.trim()).filter(Boolean);
-    return { lines, offset: size, remainder: nextRemainder };
+    return { lines, offset: offset + bytesRead, remainder: nextRemainder };
   } finally {
     await fh.close();
   }
 }
 
 export async function GET(request: NextRequest) {
+  const refused = refuseNonLocal(request);
+  if (refused) return refused;
   const files = [await pickActivityFile()];
   const offsets = new Map<string, number>();
   const remainders = new Map<string, string>();
-  let anySeen = false;
+  let fileSeen = false;
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
@@ -135,6 +196,7 @@ export async function GET(request: NextRequest) {
       for (const path of files) {
         const tail = await readTail(path, BACKLOG_BYTES);
         if (tail) {
+          fileSeen = true;
           offsets.set(path, tail.offset);
           for (const line of tail.lines.slice(-BACKLOG_LINES)) {
             let ts = 0;
@@ -152,19 +214,21 @@ export async function GET(request: NextRequest) {
       }
       backlog.sort((a, b) => a.ts - b.ts);
       for (const { line } of backlog.slice(-BACKLOG_LINES)) send("activity", line);
-      anySeen = backlog.length > 0 || offsets.size > 0;
-      send("channel", JSON.stringify({ channel: anySeen ? "live" : "waiting" }));
+      // Live only once the activity file exists; a machine the MCP never ran
+      // on stays "waiting" until the file appears.
+      send("channel", JSON.stringify({ channel: fileSeen ? "live" : "waiting" }));
 
       const poll = setInterval(async () => {
         for (const path of files) {
           const res = await readSince(path, offsets.get(path) ?? 0, remainders.get(path) ?? "");
           if (!res) continue;
+          if (!fileSeen) {
+            fileSeen = true;
+            send("channel", JSON.stringify({ channel: "live" }));
+          }
           offsets.set(path, res.offset);
           remainders.set(path, res.remainder);
-          for (const line of res.lines) {
-            send("activity", line);
-            anySeen = true;
-          }
+          for (const line of res.lines) send("activity", line);
         }
       }, POLL_MS);
 

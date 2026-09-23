@@ -10,11 +10,11 @@ import { create } from 'zustand'
 import type { DroneProtocol } from '@/lib/protocol/types'
 import type {
   INavLogicCondition,
-  INavLogicConditionsStatus,
   INavGvarStatus,
   INavProgrammingPid,
   INavProgrammingPidStatus,
 } from '@/lib/protocol/msp/msp-decoders-inav'
+import { placeLogicProgram, type PlacementResult } from '@/lib/inav/lc-placement'
 import { formatErrorMessage } from '@/lib/utils'
 import { droneSlices, type DroneKeyed } from './drone-slices'
 
@@ -22,10 +22,24 @@ export const LOGIC_CONDITION_MAX = 64
 export const GVAR_MAX = 8
 export const PROGRAMMING_PID_MAX = 4
 
+/** Delay before the next status poll after a request failed: a fixed retry so a
+ *  slow or dropping link is not handed a new request every poll interval. */
+export const STATUS_POLL_RETRY_MS = 2000
+
+/** What one status request in a poll produced. */
+export type StatusPollResult = 'ok' | 'failed' | 'unsupported'
+
+export interface StatusPollOutcome {
+  conditions: StatusPollResult
+  gvars: StatusPollResult
+  pids: StatusPollResult
+}
+
 function defaultLogicCondition(): INavLogicCondition {
   return {
     enabled: false,
-    activatorId: 0,
+    // -1: no activator, the condition always evaluates.
+    activatorId: -1,
     operation: 0,
     operandAType: 0,
     operandAValue: 0,
@@ -56,10 +70,15 @@ function defaultProgrammingPids(): INavProgrammingPid[] {
 
 interface ProgrammingSlice {
   conditions: INavLogicCondition[]
-  conditionsStatus: INavLogicConditionsStatus[]
+  /** Live value of each logic condition, by slot. */
+  conditionsStatus: number[]
   gvarStatus: INavGvarStatus
   pids: INavProgrammingPid[]
   pidStatus: INavProgrammingPidStatus[]
+  /** When each status was last read from the FC (ms epoch); null = never. */
+  conditionsStatusAt: number | null
+  gvarStatusAt: number | null
+  pidStatusAt: number | null
 
   loading: boolean
   error: string | null
@@ -75,6 +94,9 @@ const emptySlice = (): ProgrammingSlice => ({
   gvarStatus: { values: [] },
   pids: defaultProgrammingPids(),
   pidStatus: [],
+  conditionsStatusAt: null,
+  gvarStatusAt: null,
+  pidStatusAt: null,
   loading: false,
   error: null,
   conditionsDirty: false,
@@ -83,7 +105,11 @@ const emptySlice = (): ProgrammingSlice => ({
 })
 
 const slices = droneSlices<ProgrammingSlice>(
-  ['conditions', 'conditionsStatus', 'gvarStatus', 'pids', 'pidStatus', 'loading', 'error', 'conditionsDirty', 'pidsDirty', 'loaded'],
+  [
+    'conditions', 'conditionsStatus', 'gvarStatus', 'pids', 'pidStatus',
+    'conditionsStatusAt', 'gvarStatusAt', 'pidStatusAt',
+    'loading', 'error', 'conditionsDirty', 'pidsDirty', 'loaded',
+  ],
   emptySlice,
 )
 
@@ -93,11 +119,16 @@ interface ProgrammingStoreState extends ProgrammingSlice, DroneKeyed<Programming
   /** Drop a removed drone's programming. */
   forgetDrone: (droneId: string) => void
 
-  pollingTimer: ReturnType<typeof setInterval> | null
+  pollingTimer: ReturnType<typeof setTimeout> | null
 
   setCondition: (index: number, partial: Partial<INavLogicCondition>) => void
   setPid: (index: number, partial: Partial<INavProgrammingPid>) => void
-  loadConditions: (conditions: INavLogicCondition[]) => void
+  /**
+   * Put a compiled program into the free slots of the table read from the FC,
+   * leaving every slot in use untouched. Refuses before a read, and when the
+   * table has too few free slots.
+   */
+  placeProgram: (program: INavLogicCondition[]) => PlacementResult
   clear: () => void
 
   loadFromFc: (protocol: DroneProtocol) => Promise<void>
@@ -107,9 +138,20 @@ interface ProgrammingStoreState extends ProgrammingSlice, DroneKeyed<Programming
   uploadPids: (protocol: DroneProtocol) => Promise<boolean>
   writeGvar: (protocol: DroneProtocol, index: number, value: number) => Promise<void>
 
+  /** Poll status on a chain: the next poll is scheduled once the previous one
+   *  settles, `intervalMs` after success and STATUS_POLL_RETRY_MS after a failure. */
   startPolling: (protocol: DroneProtocol, intervalMs?: number) => void
   stopPolling: () => void
-  pollStatus: (protocol: DroneProtocol) => Promise<void>
+  /** Read every status once. A call while a poll is in flight joins it. */
+  pollStatus: (protocol: DroneProtocol) => Promise<StatusPollOutcome>
+}
+
+/** The poll currently running, per protocol, so overlapping callers share it. */
+let pollInFlight: { protocol: DroneProtocol; outcome: Promise<StatusPollOutcome> } | null = null
+
+function pollResult<T>(r: PromiseSettledResult<T | undefined>): StatusPollResult {
+  if (r.status === 'rejected') return 'failed'
+  return r.value === undefined ? 'unsupported' : 'ok'
 }
 
 export const useProgrammingStore = create<ProgrammingStoreState>((set, get) => ({
@@ -144,12 +186,13 @@ export const useProgrammingStore = create<ProgrammingStoreState>((set, get) => (
     set({ pids, pidsDirty: true })
   },
 
-  loadConditions(conditions) {
-    const next = defaultLogicConditions()
-    conditions.forEach((c, i) => {
-      if (i < LOGIC_CONDITION_MAX) next[i] = c
-    })
-    set({ conditions: next, conditionsDirty: true })
+  placeProgram(program) {
+    if (!get().loaded) {
+      return { error: 'Read the logic conditions from the flight controller first, so slots in use are kept' }
+    }
+    const placed = placeLogicProgram(get().conditions, program)
+    if ('conditions' in placed) set({ conditions: placed.conditions, conditionsDirty: true })
+    return placed
   },
 
   clear() {
@@ -248,41 +291,60 @@ export const useProgrammingStore = create<ProgrammingStoreState>((set, get) => (
     }
   },
 
-  async pollStatus(protocol) {
+  pollStatus(protocol) {
+    if (pollInFlight?.protocol === protocol) return pollInFlight.outcome
     const droneId = get().droneId
-    try {
-      const results = await Promise.allSettled([
-        protocol.downloadLogicConditionsStatus?.() ?? Promise.resolve([]),
-        protocol.downloadGvarStatus?.() ?? Promise.resolve({ values: [] }),
-        protocol.downloadProgrammingPidStatus?.() ?? Promise.resolve([]),
+    const run = async (): Promise<StatusPollOutcome> => {
+      const [lc, gv, pid] = await Promise.allSettled([
+        protocol.downloadLogicConditionsStatus?.(),
+        protocol.downloadGvarStatus?.(),
+        protocol.downloadProgrammingPidStatus?.(),
       ])
-
-      const conditionsStatus =
-        results[0].status === 'fulfilled' ? (results[0].value as INavLogicConditionsStatus[]) : get().conditionsStatus
-      const gvarStatus =
-        results[1].status === 'fulfilled' ? (results[1].value as INavGvarStatus) : get().gvarStatus
-      const pidStatus =
-        results[2].status === 'fulfilled' ? (results[2].value as INavProgrammingPidStatus[]) : get().pidStatus
-
-      set((st) => slices.patchFor(st, droneId, { conditionsStatus, gvarStatus, pidStatus }))
-    } catch {
-      // status polling is best-effort
+      // A failed request keeps the last value and its read time, so the
+      // panels can tell a live value from an old one.
+      const now = Date.now()
+      const patch: Partial<ProgrammingSlice> = {}
+      if (lc.status === 'fulfilled' && lc.value !== undefined) {
+        patch.conditionsStatus = lc.value
+        patch.conditionsStatusAt = now
+      }
+      if (gv.status === 'fulfilled' && gv.value !== undefined) {
+        patch.gvarStatus = gv.value
+        patch.gvarStatusAt = now
+      }
+      if (pid.status === 'fulfilled' && pid.value !== undefined) {
+        patch.pidStatus = pid.value
+        patch.pidStatusAt = now
+      }
+      set((st) => slices.patchFor(st, droneId, patch))
+      return { conditions: pollResult(lc), gvars: pollResult(gv), pids: pollResult(pid) }
     }
+    const outcome = run().finally(() => {
+      if (pollInFlight?.outcome === outcome) pollInFlight = null
+    })
+    pollInFlight = { protocol, outcome }
+    return outcome
   },
 
   startPolling(protocol, intervalMs = 500) {
-    const existing = get().pollingTimer
-    if (existing !== null) return
-    const timer = setInterval(() => {
-      get().pollStatus(protocol)
-    }, intervalMs)
-    set({ pollingTimer: timer })
+    if (get().pollingTimer !== null) return
+    const schedule = (delay: number) => {
+      const timer = setTimeout(async () => {
+        const outcome = await get().pollStatus(protocol)
+        // Stopped, or restarted for another protocol, while the poll ran.
+        if (get().pollingTimer !== timer) return
+        const failed = outcome.conditions === 'failed' || outcome.gvars === 'failed' || outcome.pids === 'failed'
+        schedule(failed ? STATUS_POLL_RETRY_MS : intervalMs)
+      }, delay)
+      set({ pollingTimer: timer })
+    }
+    schedule(intervalMs)
   },
 
   stopPolling() {
     const timer = get().pollingTimer
     if (timer !== null) {
-      clearInterval(timer)
+      clearTimeout(timer)
       set({ pollingTimer: null })
     }
   },

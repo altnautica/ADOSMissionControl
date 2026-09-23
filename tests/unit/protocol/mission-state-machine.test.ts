@@ -9,6 +9,7 @@ import {
 } from '@/lib/protocol/mavlink-adapter-missions';
 import type { MAVLinkFrame } from '@/lib/protocol/mavlink-parser';
 import { createCallbackStore } from '@/lib/protocol/mavlink-adapter-callbacks';
+import { StatusTextAssembler } from '@/lib/protocol/handlers/info-handlers';
 import { decodeMissionItemInt, decodeMissionRequestInt } from '@/lib/protocol/mavlink-messages';
 import type { CommandResult, MissionItem, FirmwareHandler, UnifiedFlightMode } from '@/lib/protocol/types';
 
@@ -71,6 +72,7 @@ function makeState(overrides?: Partial<FrameHandlerState>): FrameHandlerState {
     lastVehicleHeartbeat: Date.now(),
     linkIsLost: false,
     HEARTBEAT_TIMEOUT_MS: 5000,
+    statusText: new StatusTextAssembler(),
     ...overrides,
   };
 }
@@ -106,6 +108,7 @@ function makeContext(t: FakeTransport): MissionContext & FrameHandlerState {
     lastVehicleHeartbeat: Date.now(),
     linkIsLost: false,
     HEARTBEAT_TIMEOUT_MS: 5000,
+    statusText: new StatusTextAssembler(),
     sendCommandLong: vi.fn(async (): Promise<CommandResult> => ({ success: true, resultCode: 0, message: 'ok' })),
     onParameter: () => () => {},
     onFencePoint: () => () => {},
@@ -132,6 +135,10 @@ function makeItem(seq: number, overrides?: Partial<MissionItem>): MissionItem {
   };
 }
 
+/** The vehicle addresses mission-protocol replies to the GCS that asked. */
+const GCS_SYSID = 255;
+const GCS_COMPID = 190;
+
 function makeFrame(msgId: number, payload: DataView, systemId = 1): MAVLinkFrame {
   return { msgId, systemId, componentId: 1, sequence: 0, payload, timestamp: Date.now() };
 }
@@ -141,8 +148,8 @@ function makeFrame(msgId: number, payload: DataView, systemId = 1): MAVLinkFrame
 function makeRequestPayload(seq: number, missionType = 0): DataView {
   const dv = new DataView(new ArrayBuffer(missionType > 0 ? 5 : 4));
   dv.setUint16(0, seq, true);
-  dv.setUint8(2, 1);
-  dv.setUint8(3, 1);
+  dv.setUint8(2, GCS_SYSID);
+  dv.setUint8(3, GCS_COMPID);
   if (missionType > 0) dv.setUint8(4, missionType);
   return dv;
 }
@@ -151,8 +158,8 @@ function makeRequestPayload(seq: number, missionType = 0): DataView {
 function makeCountPayload(count: number, missionType = 0): DataView {
   const dv = new DataView(new ArrayBuffer(missionType > 0 ? 5 : 4));
   dv.setUint16(0, count, true);
-  dv.setUint8(2, 1);
-  dv.setUint8(3, 1);
+  dv.setUint8(2, GCS_SYSID);
+  dv.setUint8(3, GCS_COMPID);
   if (missionType > 0) dv.setUint8(4, missionType);
   return dv;
 }
@@ -162,8 +169,8 @@ function makeCountPayload(count: number, missionType = 0): DataView {
 function makeMissionRequestPayload(seq: number, missionType = 0): DataView {
   const dv = new DataView(new ArrayBuffer(missionType > 0 ? 5 : 4));
   dv.setUint16(0, seq, true);
-  dv.setUint8(2, 1);
-  dv.setUint8(3, 1);
+  dv.setUint8(2, GCS_SYSID);
+  dv.setUint8(3, GCS_COMPID);
   if (missionType > 0) dv.setUint8(4, missionType);
   return dv;
 }
@@ -171,8 +178,8 @@ function makeMissionRequestPayload(seq: number, missionType = 0): DataView {
 // MISSION_ACK (47): uint8 targetSystem, uint8 targetComponent, uint8 type, [uint8 missionType].
 function makeAckPayload(type: number, missionType = 0): DataView {
   const dv = new DataView(new ArrayBuffer(missionType > 0 ? 4 : 3));
-  dv.setUint8(0, 1);
-  dv.setUint8(1, 1);
+  dv.setUint8(0, GCS_SYSID);
+  dv.setUint8(1, GCS_COMPID);
   dv.setUint8(2, type);
   if (missionType > 0) dv.setUint8(3, missionType);
   return dv;
@@ -190,8 +197,8 @@ function makeItemIntPayload(item: MissionItem, missionType = 0): DataView {
   dv.setFloat32(24, item.z, true);
   dv.setUint16(28, item.seq, true);
   dv.setUint16(30, item.command, true);
-  dv.setUint8(32, 1);
-  dv.setUint8(33, 1);
+  dv.setUint8(32, GCS_SYSID);
+  dv.setUint8(33, GCS_COMPID);
   dv.setUint8(34, item.frame);
   dv.setUint8(35, item.current);
   dv.setUint8(36, item.autocontinue);
@@ -452,5 +459,103 @@ describe('rally point download (missionType 2)', () => {
     expect(ackFrame[7]).toBe(47);
     expect(ackFrame[1]).toBe(4);
     expect(ctx.rallyDownload).toBeNull();
+  });
+});
+
+describe('mission frames addressed to another GCS', () => {
+  it('does not answer a MISSION_REQUEST_INT the vehicle sent to a different GCS', () => {
+    const t = makeTransport();
+    const ctx = makeContext(t);
+    void uploadMission(ctx, [makeItem(0), makeItem(1)]);
+    const baseline = t.sent.length;
+
+    const forOther = makeRequestPayload(0);
+    forOther.setUint8(2, 254); // another GCS's system id
+    routeFrame(ctx, makeFrame(51, forOther), forOther);
+    expect(t.sent.length).toBe(baseline);
+
+    // An ACK for the other GCS's transfer does not resolve this upload either.
+    const ack = makeAckPayload(0);
+    ack.setUint8(0, 254);
+    routeFrame(ctx, makeFrame(47, ack), ack);
+    expect(ctx.missionUpload).not.toBeNull();
+  });
+
+  it('ignores items outside the announced count', async () => {
+    const t = makeTransport();
+    const ctx = makeContext(t);
+    const promise = downloadMission(ctx);
+    routeFrame(ctx, makeFrame(44, makeCountPayload(2)), makeCountPayload(2));
+    for (const seq of [5, 0, 1]) {
+      const p = makeItemIntPayload(makeItem(seq));
+      routeFrame(ctx, makeFrame(73, p), p);
+    }
+    expect((await promise).map((i) => i.seq)).toEqual([0, 1]);
+  });
+
+  it('does not store a rally item in a waypoint download', async () => {
+    const t = makeTransport();
+    const ctx = makeContext(t);
+    const promise = downloadMission(ctx);
+    routeFrame(ctx, makeFrame(44, makeCountPayload(1)), makeCountPayload(1));
+    const rally = makeItemIntPayload(makeItem(0, { x: 1 }), 2);
+    routeFrame(ctx, makeFrame(73, rally), rally);
+    expect(ctx.missionDownload?.items.size).toBe(0);
+    const wp = makeItemIntPayload(makeItem(0));
+    routeFrame(ctx, makeFrame(73, wp), wp);
+    expect((await promise)[0].x).toBe(makeItem(0).x);
+  });
+});
+
+describe('transfer retransmission on a lossy link', () => {
+  const msgIdOf = (frame: Uint8Array) => frame[7] | (frame[8] << 8) | (frame[9] << 16);
+  const seqOf = (frame: Uint8Array) =>
+    decodeMissionRequestInt(new DataView(frame.buffer, frame.byteOffset + 10, frame[1])).seq;
+
+  it('re-sends MISSION_REQUEST_LIST until the count arrives', () => {
+    const t = makeTransport();
+    const ctx = makeContext(t);
+    void downloadMission(ctx).catch(() => {});
+    expect(t.sent.map(msgIdOf)).toEqual([43]);
+    vi.advanceTimersByTime(1600);
+    expect(t.sent.map(msgIdOf)).toEqual([43, 43]);
+  });
+
+  it('re-requests the lowest missing item after a lost frame, and completes', async () => {
+    const t = makeTransport();
+    const ctx = makeContext(t);
+    const promise = downloadMission(ctx);
+    routeFrame(ctx, makeFrame(44, makeCountPayload(3)), makeCountPayload(3));
+    const i0 = makeItemIntPayload(makeItem(0));
+    routeFrame(ctx, makeFrame(73, i0), i0);
+    // Item 1 is lost on the radio; the vehicle never re-sends on its own.
+    const before = t.sent.length;
+    vi.advanceTimersByTime(1600);
+    const retry = t.sent.slice(before);
+    expect(retry.map(msgIdOf)).toEqual([51]);
+    expect(seqOf(retry[0])).toBe(1);
+
+    for (const seq of [1, 2]) {
+      const p = makeItemIntPayload(makeItem(seq));
+      routeFrame(ctx, makeFrame(73, p), p);
+    }
+    expect((await promise).map((i) => i.seq)).toEqual([0, 1, 2]);
+    // Finished: nothing more goes out.
+    const done = t.sent.length;
+    vi.advanceTimersByTime(5000);
+    expect(t.sent.length).toBe(done);
+  });
+
+  it('re-sends MISSION_COUNT until the vehicle starts requesting, then leaves the walk to it', () => {
+    const t = makeTransport();
+    const ctx = makeContext(t);
+    void uploadMission(ctx, [makeItem(0), makeItem(1)]);
+    vi.advanceTimersByTime(1600);
+    expect(t.sent.map(msgIdOf)).toEqual([44, 44]);
+
+    routeFrame(ctx, makeFrame(51, makeRequestPayload(0)), makeRequestPayload(0));
+    const afterRequest = t.sent.length;
+    vi.advanceTimersByTime(3200);
+    expect(t.sent.slice(afterRequest).map(msgIdOf)).toEqual([]);
   });
 });

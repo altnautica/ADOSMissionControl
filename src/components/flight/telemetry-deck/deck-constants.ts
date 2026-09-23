@@ -98,7 +98,9 @@ export const DECK_THRESHOLDS: Partial<Record<TelemetryDeckMetricId, DeckThreshol
   estFlightMin: { mode: "lt", warning: 5, critical: 2.5 },
   satellites: { mode: "lt", warning: 10, critical: 6 },
   gpsHdop: { mode: "gt", warning: 2.2, critical: 4 },
-  gpsFix: { mode: "lt", warning: 3, critical: 2 },
+  // Inclusive comparison: a 2D fix warns, anything below 2D is critical and a
+  // 3D fix or better is healthy, as on the readout and the checklist.
+  gpsFix: { mode: "lt", warning: 2, critical: 1 },
   radioRssi: { mode: "lt", warning: 35, critical: 20 },
   remrssi: { mode: "lt", warning: 35, critical: 20 },
   noise: { mode: "gt", warning: 30, critical: 45 },

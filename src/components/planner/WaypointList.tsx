@@ -6,10 +6,11 @@
  */
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useLayoutEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { Plus } from "lucide-react";
 import { WaypointListItem } from "./WaypointListItem";
+import { ACTION_DRAG_TYPE } from "./ActionRow";
 import { usePlannerStore } from "@/stores/planner-store";
 import type { Waypoint } from "@/lib/types";
 
@@ -43,39 +44,50 @@ export function WaypointList({
   const toggleWaypointSelection = usePlannerStore((s) => s.toggleWaypointSelection);
   const selectRange = usePlannerStore((s) => s.selectRange);
 
-  const waypointIds = waypoints.map((wp) => wp.id);
+  // Row handlers stay identity-stable so a memoised row re-renders only when
+  // its own waypoint or flags change; they read the latest list through a ref.
+  const latest = useRef({ selectedId, waypoints, onSelect, onExpand, onReorder });
+  useLayoutEffect(() => {
+    latest.current = { selectedId, waypoints, onSelect, onExpand, onReorder };
+  });
 
-  const handleMultiSelect = useCallback((id: string, e: React.MouseEvent) => {
-    if (e.shiftKey && selectedId) {
-      selectRange(selectedId, id, waypointIds);
+  const handleSelect = useCallback((id: string, e: React.MouseEvent) => {
+    const l = latest.current;
+    if (e.shiftKey && l.selectedId) {
+      selectRange(l.selectedId, id, l.waypoints.map((wp) => wp.id));
     } else if (e.ctrlKey || e.metaKey) {
       toggleWaypointSelection(id);
     } else {
-      onSelect(id);
-      onExpand(id);
+      l.onSelect(id);
+      l.onExpand(id);
     }
-  }, [selectedId, waypointIds, selectRange, toggleWaypointSelection, onSelect, onExpand]);
+  }, [selectRange, toggleWaypointSelection]);
 
-  const handleDragStart = useCallback((index: number) => (e: React.DragEvent) => {
+  const handleExpand = useCallback((id: string | null) => latest.current.onExpand(id), []);
+
+  const handleDragStart = useCallback((index: number, e: React.DragEvent) => {
     dragIndexRef.current = index;
     e.dataTransfer.effectAllowed = "move";
   }, []);
 
-  const handleDragOver = useCallback((index: number) => (e: React.DragEvent) => {
+  const handleDragOver = useCallback((index: number, e: React.DragEvent) => {
+    // An attached action dragged across rows is not a waypoint reorder.
+    if (e.dataTransfer.types.includes(ACTION_DRAG_TYPE)) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
     setDragOverIndex(index);
   }, []);
 
-  const handleDrop = useCallback((toIndex: number) => (e: React.DragEvent) => {
+  const handleDrop = useCallback((toIndex: number, e: React.DragEvent) => {
+    if (e.dataTransfer.types.includes(ACTION_DRAG_TYPE)) return;
     e.preventDefault();
     const from = dragIndexRef.current;
     if (from !== null && from !== toIndex) {
-      onReorder(from, toIndex);
+      latest.current.onReorder(from, toIndex);
     }
     dragIndexRef.current = null;
     setDragOverIndex(null);
-  }, [onReorder]);
+  }, []);
 
   const handleDragEnd = useCallback(() => {
     dragIndexRef.current = null;
@@ -96,21 +108,22 @@ export function WaypointList({
   return (
     <div className="flex-1 overflow-y-auto">
       {waypoints.map((wp, i) => (
-        <div key={wp.id}>
+        // Off-screen rows skip layout and paint, so a long survey list stays cheap.
+        <div key={wp.id} className="[content-visibility:auto] [contain-intrinsic-size:auto_34px]">
           <WaypointListItem
             waypoint={wp}
             index={i}
             expanded={expandedId === wp.id}
             selected={selectedId === wp.id}
             multiSelected={selectedWaypointIds.includes(wp.id)}
-            onToggleExpand={() => onExpand(expandedId === wp.id ? null : wp.id)}
-            onSelect={(e) => handleMultiSelect(wp.id, e)}
-            onUpdate={(update) => onUpdate(wp.id, update)}
-            onRemove={() => onRemove(wp.id)}
-            onDragStart={handleDragStart(i)}
-            onDragOver={handleDragOver(i)}
+            onExpand={handleExpand}
+            onSelect={handleSelect}
+            onUpdate={onUpdate}
+            onRemove={onRemove}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
-            onDrop={handleDrop(i)}
+            onDrop={handleDrop}
             dragOver={dragOverIndex === i && dragIndexRef.current !== i}
           />
           {/* Insert button between waypoints */}

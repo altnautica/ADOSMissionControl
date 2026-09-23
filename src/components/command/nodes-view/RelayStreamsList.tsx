@@ -11,7 +11,7 @@
  * can read what the map draws without parsing an SVG. It is built from the very
  * graph the map draws, so the two can never disagree about a node's path.
  *
- * Honesty is drawn, not just stored (Rule 44 / Rule 37): a stream is labelled
+ * Honesty is drawn, not just stored (no fabricated reading, no unproven link): a stream is labelled
  * "Live" and its dot animates a pulse only when every hop is verified — a
  * received-side frame heard on each leg — and never under a reduced-motion
  * preference. A stream with an unverified, stale, or down hop reads as exactly
@@ -62,7 +62,7 @@ export function RelayStreamsList({ graph }: { graph: MeshGraph }) {
 
   /** The GCS sink is localised; an off-view relay parent is named as such (so a
    * funnel that stops at a filtered-out ground node never reads as a direct WFB
-   * link to the GCS, Rule 44); every other vertex uses its own name. */
+   * link to the GCS, no fabricated reading); every other vertex uses its own name. */
   const displayName = (id: string, fallback: string) =>
     id === MESH_GCS_ID ? t("sink") : fallback;
   const terminalLabel = (hop: RelayHop): string => {

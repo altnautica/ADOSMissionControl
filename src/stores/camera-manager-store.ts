@@ -9,7 +9,7 @@
  * A write to the agent is a whole-list replace + a video-pipeline restart, so
  * each mutation is applied OPTIMISTICALLY here for immediate feedback
  * (`patchCamera`), the write is issued by the tab, and the roster is then re-read
- * so the surface reflects the true persisted state (Rule 44 — the read-back is
+ * so the surface reflects the true persisted state (the read-back is
  * the source of truth, the optimistic patch is only a bridge across the restart
  * gap).
  *

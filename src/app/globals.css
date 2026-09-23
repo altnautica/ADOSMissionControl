@@ -712,13 +712,13 @@ body {
   }
 }
 
-/* ══ ADOS Cockpit — faithful port of the reference artifact (ados-cockpit.html) ══
+/* ══ ADOS Cockpit ══
    A committed dark, immersive piloting world. Every rule is scoped under the
-   .ados-cockpit root so the artifact's generic class names never touch app
-   styles; token/blur/radius/spacing values are the artifact's, verbatim.
+   .ados-cockpit root so the cockpit's generic class names never touch app
+   styles.
 
    The palette below is the DEFAULT-theme palette, written as literals because
-   it is the artifact's and the default cockpit must look exactly like it. It
+   the default cockpit has its own fixed look, independent of the app theme. It
    is not a theme opt-out: a theme with an opinion about status colour or ink
    overrides these under `html[data-theme=…] .ados-cockpit`, immediately after
    this block. That override exists because the cockpit used to hardcode the
@@ -749,7 +749,7 @@ body {
 
 /* Night-vision: the whole reason this theme exists is dark adaptation, so the
    cockpit follows it. Status colours come from the theme's own muted status
-   tokens and the HUD from its green, rather than the artifact's bright blue. */
+   tokens and the HUD from its green, rather than the default bright blue. */
 html[data-theme="nvg"] .ados-cockpit {
   --hud: var(--gcs-hud-green);
   --hud-dim: var(--alt-accent-secondary);
@@ -1024,3 +1024,20 @@ html[data-theme="gruvbox-light"] .ados-cockpit {
 .changelog-body a { color: var(--alt-accent-primary); text-decoration: underline; }
 .changelog-body p { margin: 0.375rem 0; }
 .changelog-body h3, .changelog-body h4 { font-weight: 600; color: var(--alt-text-primary); margin-top: 0.75rem; }
+
+/* Map data attribution. The tile and terrain providers' terms require it on
+   every map; keep it small and dark so it stays readable without competing
+   with the map. */
+.leaflet-container .leaflet-control-attribution {
+  background: color-mix(in srgb, var(--alt-bg-primary) 70%, transparent);
+  color: var(--alt-text-tertiary);
+  font-size: 9px;
+  line-height: 1.5;
+  padding: 0 4px;
+}
+.leaflet-container .leaflet-control-attribution a { color: var(--alt-text-secondary); }
+.cesium-viewer .cesium-widget-credits {
+  opacity: 0.6;
+  font-size: 9px;
+}
+.cesium-viewer .cesium-widget-credits:hover { opacity: 1; }

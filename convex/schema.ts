@@ -14,13 +14,12 @@ export default defineSchema({
     userId: v.string(),
     role: v.union(
       v.literal("pending"),
-      v.literal("investor"),
       v.literal("admin"),
       v.literal("rejected"),
       v.literal("pilot"),
       v.literal("alpha_tester")
     ),
-fullName: v.optional(v.string()),
+    fullName: v.optional(v.string()),
     email: v.optional(v.string()),
     phone: v.optional(v.string()),
     company: v.optional(v.string()),
@@ -29,9 +28,6 @@ fullName: v.optional(v.string()),
     showEmail: v.optional(v.boolean()),
     showLinkedin: v.optional(v.boolean()),
     showPhone: v.optional(v.boolean()),
-    investorType: v.optional(v.string()),
-    investorTypeOther: v.optional(v.string()),
-    ticketSize: v.optional(v.string()),
     notifyUpdates: v.boolean(),
     notifyMilestones: v.boolean(),
   }).index("by_userId", ["userId"]),
@@ -43,7 +39,6 @@ fullName: v.optional(v.string()),
     message: v.string(),
     source: v.optional(v.string()),
     company: v.optional(v.string()),
-    investorType: v.optional(v.string()),
     linkedin: v.optional(v.string()),
   }),
 
@@ -150,6 +145,13 @@ fullName: v.optional(v.string()),
     .index("by_changelog", ["changelogId"])
     .index("by_user_changelog", ["userId", "changelogId"]),
 
+  // Maintained counters for community_changelog, so the public count query
+  // reads one row instead of the whole table. Keyed by counter name.
+  community_changelog_counts: defineTable({
+    key: v.string(),
+    count: v.number(),
+  }).index("by_key", ["key"]),
+
   // ── Command GCS tables (cmd_ prefix) ───────────────────────
 
   cmd_missions: defineTable({
@@ -195,13 +197,14 @@ fullName: v.optional(v.string()),
     // Tombstone — see cmd_missions.suiteType comment.
     suiteType: v.optional(v.string()),
     startTime: v.number(),
+    startTimeUnknown: v.optional(v.boolean()),
     endTime: v.number(),
     duration: v.number(),
-    distance: v.number(),
-    maxAlt: v.number(),
-    maxSpeed: v.number(),
+    distance: v.optional(v.number()),
+    maxAlt: v.optional(v.number()),
+    maxSpeed: v.optional(v.number()),
     avgSpeed: v.optional(v.number()),
-    batteryUsed: v.number(),
+    batteryUsed: v.optional(v.number()),
     batteryStartV: v.optional(v.number()),
     batteryEndV: v.optional(v.number()),
     waypointCount: v.number(),
@@ -267,6 +270,12 @@ fullName: v.optional(v.string()),
     // Sign-and-lock seal: pilot signature + hash freeze the row
     pilotSignedAt: v.optional(v.number()),
     pilotSignatureHash: v.optional(v.string()),
+    /** Server-kept: the signature last released by an unseal. */
+    unsealedHash: v.optional(v.string()),
+    /** Server-kept: digest of the sealed content that signature covered. */
+    unsealedContentDigest: v.optional(v.string()),
+    /** Server-kept: when the record was last unsealed. */
+    unsealedAt: v.optional(v.number()),
     // Origin tracking for imported records.
     source: v.optional(
       v.union(v.literal("live"), v.literal("dataflash"), v.literal("imported"), v.literal("ulog"), v.literal("tlog")),
@@ -441,7 +450,7 @@ fullName: v.optional(v.string()),
         speedMs: v.number(),
         fromDirDeg: v.number(),
         sampleCount: v.number(),
-        method: v.union(v.literal("vfr_diff"), v.literal("attitude_track")),
+        method: v.union(v.literal("vfr_diff"), v.literal("fc_estimate")),
       }),
     ),
     // Media files linked to this flight (metadata only, blobs stay in IDB).
@@ -814,12 +823,6 @@ fullName: v.optional(v.string()),
     videoRestartAttempts: v.optional(v.number()),
     mavlinkWsPort: v.optional(v.number()),
     mavlinkWsUrl: v.optional(v.string()),
-    // Previous MAVLink WebSocket URL the agent advertised. Populated
-    // when the agent rotates its WebSocket binding (port change,
-    // network move). Lets the GCS retry the prior URL once before
-    // surfacing a connection error so a brief rotation doesn't drop
-    // an in-flight session.
-    mavlinkWsUrlPrev: v.optional(v.string()),
     // LAN-routable manual-connection URLs the agent advertises so
     // the operator can dial directly from a workstation on the same
     // network. All optional; each independently null when the agent
@@ -969,8 +972,8 @@ fullName: v.optional(v.string()),
         v.object({
           nodeId: v.string(),
           accelerators: v.array(v.string()),
-          workersIdle: v.number(),
-          queueDepth: v.number(),
+          workersIdle: v.union(v.number(), v.null()),
+          queueDepth: v.union(v.number(), v.null()),
         }),
       ),
     ),
@@ -1056,7 +1059,7 @@ fullName: v.optional(v.string()),
       lossPercent: v.optional(v.union(v.number(), v.null())),
       mcsIndex: v.optional(v.union(v.number(), v.null())),
       rxSilentSeconds: v.optional(v.union(v.number(), v.null())),
-      // Per-stream video-tx liveness (rule 37). Newer agents flag a
+      // Per-stream video-tx liveness. Newer agents flag a
       // wedged video transmitter (UDP ingress backlog pinned while the
       // process is alive) so a silent video stall is visible remotely.
       // Optional + nullable: older agents omit them.
@@ -1363,9 +1366,9 @@ fullName: v.optional(v.string()),
     .index("by_pairingCode", ["pairingCode"])
     .index("by_deviceId", ["deviceId"])
     .index("by_createdBy", ["createdBy"])
-    // Lets the retention sweep delete only the rows past TTL with a bounded
-    // indexed range scan instead of a full-table .filter().collect().
-    .index("by_expiresAt", ["expiresAt"]),
+    // Unclaimed rows by expiry: the expiry sweep ranges only the rows it may
+    // delete, so kept (claimed) rows never fill its batch.
+    .index("by_claimedBy_expiresAt", ["claimedBy", "expiresAt"]),
 
   // Attempt counters with escalating lockout, for every surface reachable
   // without a session: anonymous pairing claims, first-contact agent
@@ -1523,14 +1526,20 @@ fullName: v.optional(v.string()),
     enabledAt: v.optional(v.number()),
   })
     .index("by_user", ["userId"])
-    .index("by_user_plugin", ["userId", "pluginId"])
     .index("by_drone", ["droneId"])
     .index("by_installed_at", ["installedAt"])
-    // Per-drone view inside the drone detail panel filters
-    // installs by (user, droneId, pluginId). droneId stays optional
-    // through the v1.0 → v1.1 migration window; a follow-up tightens
-    // the field to required once the cutover lands.
+    // Installs are per drone: the install upsert and the per-drone view both
+    // key on (user, droneId, pluginId).
     .index("by_user_drone_plugin", ["userId", "droneId", "pluginId"]),
+
+  // GCS iframe bundles stored by the server for their uploader. An install row
+  // may only reference a bundle its own user stored here, so a storage id
+  // learned elsewhere cannot be turned into a signed download URL.
+  cmd_pluginBundles: defineTable({
+    userId: v.string(),
+    storageId: v.id("_storage"),
+    createdAt: v.number(),
+  }).index("by_storageId", ["storageId"]),
 
   // Per-permission grant. Two-stage install dialog records each
   // declared permission as a row with granted=false; operator approval
@@ -1591,8 +1600,8 @@ fullName: v.optional(v.string()),
     .index("by_createdAt", ["createdAt"]),
 
   // Uploaded .adosplug archive blobs keyed by (userId, sha256). One
-  // row per uploaded archive; reused across drones via refCount so a
-  // fleet-wide install does not re-upload the same payload. Manifest
+  // row per uploaded archive; reused across drones so a fleet-wide
+  // install does not re-upload the same payload. Manifest
   // hash, declared permissions, and signature travel with the row so
   // the install dialog and the agent both verify against the same
   // source of truth.
@@ -1612,7 +1621,9 @@ fullName: v.optional(v.string()),
     signerId: v.optional(v.string()),
     signatureB64: v.optional(v.string()),
     uploadedAt: v.number(),
-    refCount: v.number(),
+    // Never read. Rows stored before the counter was dropped still carry it;
+    // new rows do not. Remove once those rows are rewritten.
+    refCount: v.optional(v.number()),
   })
     .index("by_user", ["userId"])
     .index("by_user_plugin_version", ["userId", "pluginId", "version"])

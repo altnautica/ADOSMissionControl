@@ -78,7 +78,7 @@ interface UiStoreState {
   dashboardView: "grid" | "overview" | "nodes" | "swarm";
   /** Pending param search from Cmd+K — consumed by ParametersPanel to set initial filter. */
   pendingParamSearch: string | null;
-  /** Pending detail tab switch from Cmd+K — consumed by DroneDetailPanel. */
+  /** Pending detail tab switch (Cmd+K, a deep-link hand-off) — consumed by NodeDetailPanel. */
   pendingDetailTab: string | null;
   /** Pending Agent sub-page from a deep-link / persisted-tab remap of a
    * now-nested id (settings / vision / logs / ...) — consumed by AgentTab. */
@@ -87,6 +87,10 @@ interface UiStoreState {
    * from a plugin-owned camera's "Managed by" link) — consumed by the drone
    * plugins list, which scrolls the matching card into view. */
   pendingPluginId: string | null;
+  /** Registry plugin id a Settings "Install on a node…" hand-off asked the
+   * node's Extensions page to reveal in its catalog. Read by the Extensions
+   * page (which highlights the card) and cleared when that page unmounts. */
+  pendingRegistryPluginId: string | null;
   /** Which global right-rail panel is expanded (MCP activity / flight logs),
    * or null when the rail is collapsed. Ephemeral; survives route changes so a
    * watcher can keep the MCP panel open while the MCP drives other surfaces. */
@@ -106,6 +110,7 @@ interface UiStoreState {
   setPendingDetailTab: (tab: string | null) => void;
   setPendingAgentPanel: (panel: string | null) => void;
   setPendingPluginId: (pluginId: string | null) => void;
+  setPendingRegistryPluginId: (pluginId: string | null) => void;
   setRightRailPanel: (panel: "mcp" | "logs" | null) => void;
 }
 
@@ -120,6 +125,7 @@ export const useUiStore = create<UiStoreState>((set) => ({
   pendingDetailTab: null,
   pendingAgentPanel: null,
   pendingPluginId: null,
+  pendingRegistryPluginId: null,
   rightRailPanel: null,
 
   setActiveView: (activeView) => set({ activeView }),
@@ -174,5 +180,6 @@ export const useUiStore = create<UiStoreState>((set) => ({
   setPendingDetailTab: (pendingDetailTab) => set({ pendingDetailTab }),
   setPendingAgentPanel: (pendingAgentPanel) => set({ pendingAgentPanel }),
   setPendingPluginId: (pendingPluginId) => set({ pendingPluginId }),
+  setPendingRegistryPluginId: (pendingRegistryPluginId) => set({ pendingRegistryPluginId }),
   setRightRailPanel: (rightRailPanel) => set({ rightRailPanel }),
 }));

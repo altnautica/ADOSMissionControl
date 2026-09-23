@@ -32,7 +32,9 @@ export const SBAS_MODE_OPTIONS = [
   { value: "5", label: "5 — None" },
 ];
 
+/** Betaflight gps_rescue_sanity_checks: RESCUE_SANITY_OFF / _ON / _FS_ONLY (the default). */
 export const SANITY_CHECK_OPTIONS = [
   { value: "0", label: "0 — Off" },
   { value: "1", label: "1 — On" },
+  { value: "2", label: "2 — Failsafe only" },
 ];

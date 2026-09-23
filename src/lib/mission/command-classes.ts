@@ -73,6 +73,18 @@ export const POSITION_BEARING_ACTIONS: ReadonlySet<ActionCommand> = new Set<Acti
 ]);
 
 /**
+ * MAV_CMD ids whose param5/param6 are a latitude/longitude (the commands the
+ * MAVLink command definitions mark `hasLocation`). Used for commands this GCS
+ * does not model: any other command's param5/param6 are plain numbers.
+ */
+export const LOCATION_MAV_CMDS: ReadonlySet<number> = new Set([
+  16, 17, 18, 19, 21, 22, 23, 24, 31, 34, 35, 36, 80, 81, 82, 84, 85, 94,
+  179, 188, 189, 192, 195, 201, 252, 611, 4001, 4501,
+  5000, 5001, 5002, 5003, 5004, 5100, 30001, 43003,
+  31000, 31001, 31002, 31003, 31004, 31005, 31006, 31007, 31008, 31009,
+]);
+
+/**
  * True when `c` is a navigation command. An undefined command defaults to
  * `WAYPOINT` (the wire default), which is a nav command, so `isNavCommand()`
  * returns `true`.

@@ -1,6 +1,6 @@
 /**
  * Tests for the live engine-detector write seam (`vision-detector-writer`):
- * the Rule-39 local-first guarantee that a write returns honestly (`false` /
+ * the local-first guarantee that a write returns honestly (`false` /
  * `null`) when the drone has no LAN seam, and that a present seam routes the
  * write through Mission Control's own `/api/lan-pair/vision-*` proxy (so a
  * hosted HTTPS GCS dodges the browser mixed-content guard). `local-nodes-store`
@@ -53,7 +53,10 @@ describe("vision-detector-writer", () => {
 
     it("routes the write through the vision-detector proxy with host/key/model", async () => {
       nodes = [NODE];
-      fetchMock.mockResolvedValueOnce(jsonResponse({ status: "ok" }));
+      // The agent's detector reply (routes/vision_detector.rs restart_reply).
+      fetchMock.mockResolvedValueOnce(
+        jsonResponse({ status: "ok", model_id: "m1", restart: { status: "ok" } }),
+      );
 
       const ok = await setEngineDetector({ droneId: "d1", modelId: "m1" });
       expect(ok).toBe(true);
@@ -76,6 +79,46 @@ describe("vision-detector-writer", () => {
       await expect(
         setEngineDetector({ droneId: "d1", modelId: "m1" }),
       ).rejects.toThrow(/upstream_unreachable/);
+    });
+
+    it("throws the restart reason when the engine did not restart onto the model", async () => {
+      // The detector was written but the engine keeps running the old model.
+      nodes = [NODE];
+      fetchMock.mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            status: "error",
+            model_id: "m1",
+            restart: { status: "error", message: "Restart timed out for ados-vision" },
+          }),
+          { status: 502, headers: { "Content-Type": "application/json" } },
+        ),
+      );
+      await expect(
+        setEngineDetector({ droneId: "d1", modelId: "m1" }),
+      ).rejects.toThrow(/^Restart timed out for ados-vision$/);
+    });
+
+    it("does not accept a 2xx ok envelope whose restart failed", async () => {
+      nodes = [NODE];
+      fetchMock.mockResolvedValueOnce(
+        jsonResponse({
+          status: "ok",
+          model_id: "m1",
+          restart: { status: "error", message: "Restart timed out for ados-vision" },
+        }),
+      );
+      await expect(
+        setEngineDetector({ droneId: "d1", modelId: "m1" }),
+      ).rejects.toThrow("Restart timed out for ados-vision");
+    });
+
+    it("does not accept a 2xx reply whose status is not ok", async () => {
+      nodes = [NODE];
+      fetchMock.mockResolvedValueOnce(jsonResponse({ status: "error", message: "model not installed" }));
+      await expect(
+        setEngineDetector({ droneId: "d1", modelId: "m1" }),
+      ).rejects.toThrow("model not installed");
     });
   });
 

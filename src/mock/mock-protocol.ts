@@ -32,6 +32,7 @@ import { handleSerialCommand, startTelemetryTick, type TelemetryTickContext } fr
 import { MOCK_FENCE_POLYGON, MOCK_VEHICLE_INFO, HELI_VEHICLE_INFO, PX4_VEHICLE_INFO, PX4_VTOL_VEHICLE_INFO, ARDUPLANE_VEHICLE_INFO, ARDUPLANE_VTOL_VEHICLE_INFO, ARDUPLANE_TAILSITTER_VEHICLE_INFO, ARDUPLANE_TILTROTOR_VEHICLE_INFO, ARDUROVER_VEHICLE_INFO, ARDUBOAT_VEHICLE_INFO, ARDUSUB_VEHICLE_INFO, BETAFLIGHT_VEHICLE_INFO, INAV_FW_VEHICLE_INFO, getMockMission, getMockLogList } from "./mock-protocol-data";
 import type { DisplayPortOp } from "@/lib/protocol/msp/decoders/config/displayport";
 import { MockRanges } from "./mock-protocol-ranges";
+import { MockBfStorage } from "./mock-protocol-bf-storage";
 
 export { MOCK_FENCE_POLYGON } from "./mock-protocol-data";
 
@@ -271,8 +272,12 @@ export class MockProtocol implements DroneProtocol {
     for (let i = 0; i < all.length; i++) { const p = all[i]; for (const cb of this.cbs.parameterCbs) cb({ name: p.name, value: p.value, type: p.type, index: i, count }); }
     return all.map((p, i) => ({ name: p.name, value: p.value, type: p.type, index: i, count }));
   }
+  // The real adapter resolves a canonical name to the firmware's own (PX4
+  // FENCE_ENABLE is GF_ACTION) and reports the value under the canonical name.
+  // The mock holds each firmware's own names, so it resolves the same way.
   async getParameter(name: string): Promise<ParameterValue> {
-    const p = this.params.get(name);
+    const fwName = this.handler.mapParameterName(name);
+    const p = this.params.get(fwName);
     // Hardware rejects an absent parameter with ParamAbsentError and
     // `usePanelParams` branches on `err.code === "param_absent"` to render
     // "not present on this board". Returning `value: 0` here made every one of
@@ -280,12 +285,13 @@ export class MockProtocol implements DroneProtocol {
     // `mock-params.ts`, indistinguishable from a real FC reading, and left the
     // whole absent-parameter UI branch unreachable in demo mode.
     if (!p) throw new ParamAbsentError(name);
-    return { name: p.name, value: p.value, type: p.type, index: Array.from(this.params.keys()).indexOf(name), count: this.params.size };
+    return { name, value: p.value, type: p.type, index: Array.from(this.params.keys()).indexOf(fwName), count: this.params.size };
   }
   async setParameter(name: string, value: number): Promise<CommandResult> {
-    const existing = this.params.get(name);
-    if (existing) existing.value = value; else this.params.set(name, { name, value, type: 9 });
-    const pv: ParameterValue = { name, value, type: existing?.type ?? 9, index: Array.from(this.params.keys()).indexOf(name), count: this.params.size };
+    const fwName = this.handler.mapParameterName(name);
+    const existing = this.params.get(fwName);
+    if (existing) existing.value = value; else this.params.set(fwName, { name: fwName, value, type: 9 });
+    const pv: ParameterValue = { name, value, type: existing?.type ?? 9, index: Array.from(this.params.keys()).indexOf(fwName), count: this.params.size };
     for (const cb of this.cbs.parameterCbs) cb(pv);
     return ok(`${name} = ${value}`);
   }
@@ -320,10 +326,10 @@ export class MockProtocol implements DroneProtocol {
   async acceptCompassCal(): Promise<CommandResult> { return ok("Compass calibration accepted"); }
   async cancelCompassCal(): Promise<CommandResult> { this.clearCompassTimers(); return ok("Compass calibration cancelled"); }
   async cancelCalibration(): Promise<CommandResult> { this.clearAccelTimers(); return ok("Calibration cancelled"); }
-  async startGnssMagCal(): Promise<CommandResult> {
+  async startGnssMagCal(yawDeg: number): Promise<CommandResult> {
     this.emitStatusText(6, "[cal] calibration started: 2");
     setTimeout(() => { this.emitStatusText(6, "[cal] progress <50>"); setTimeout(() => this.emitStatusText(6, "[cal] calibration done: mag"), 1000); }, 500);
-    return ok("GNSS mag calibration started");
+    return ok(`Compass calibration for yaw ${yawDeg}° started`);
   }
   private clearAccelTimers(): void { for (const t of this.accelCalTimers) clearTimeout(t); this.accelCalTimers = []; }
   private clearCompassTimers(): void { for (const t of this.compassCalTimers) { clearTimeout(t as ReturnType<typeof setTimeout>); clearInterval(t as ReturnType<typeof setInterval>); } this.compassCalTimers = []; }
@@ -420,6 +426,13 @@ export class MockProtocol implements DroneProtocol {
   serialConfigExtended(): boolean { return true; }
   async sendDshotCommand(): Promise<CommandResult> { return ok("DShot command sent"); }
   async uploadOsdFont(glyphs: Uint8Array[], onProgress?: (done: number, total: number) => void): Promise<CommandResult> { onProgress?.(glyphs.length, glyphs.length); return ok(`Uploaded ${glyphs.length} font glyphs`); }
+  private bfStorage = new MockBfStorage();
+  getOsdConfig() { return this.bfStorage.getOsdConfig(); }
+  writeOsdLayout(...a: Parameters<MockBfStorage["writeOsdLayout"]>) { return this.bfStorage.writeOsdLayout(...a); }
+  getDataflashSummary() { return this.bfStorage.getDataflashSummary(); }
+  downloadBlackbox(...a: Parameters<MockBfStorage["downloadBlackbox"]>) { return this.bfStorage.downloadBlackbox(...a); }
+  eraseDataflash() { return this.bfStorage.eraseDataflash(); }
+  getVtxPowerLevels() { return this.bfStorage.getVtxPowerLevels(); }
 
   // ── DisplayPort OSD push (mock) ────────────────────────
   onDisplayPort(cb: (op: DisplayPortOp) => void): () => void {
@@ -485,6 +498,7 @@ export class MockProtocol implements DroneProtocol {
   onLinkRestored = this._on.onLinkRestored; onLocalPosition = this._on.onLocalPosition;
   onDebug = this._on.onDebug; onGimbalAttitude = this._on.onGimbalAttitude;
   onObstacleDistance = this._on.onObstacleDistance; onCameraImageCaptured = this._on.onCameraImageCaptured;
+  onAdsbVehicle = this._on.onAdsbVehicle;
   onExtendedSysState = this._on.onExtendedSysState; onFencePoint = this._on.onFencePoint;
   onSystemTime = this._on.onSystemTime; onRawImu = this._on.onRawImu;
   onRcChannelsRaw = this._on.onRcChannelsRaw; onRcChannelsOverride = this._on.onRcChannelsOverride;

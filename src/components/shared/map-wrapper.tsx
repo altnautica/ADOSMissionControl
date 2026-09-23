@@ -44,7 +44,6 @@ export function MapWrapper({
         zoom={zoom}
         className={className}
         zoomControl={false}
-        attributionControl={false}
         style={{ background: "#0a0a0a" }}
       >
         <TileLayerSwitcher />

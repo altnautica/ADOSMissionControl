@@ -10,8 +10,8 @@
 
 import L from "leaflet";
 import type { DrawingMode } from "./types";
-import { haversineDistance, formatDistance, polygonArea, polygonCentroid, nearestVertexWithinThreshold } from "./geo-utils";
-import { formatArea } from "@/lib/units/format";
+import { haversineDistance, polygonArea, polygonCentroid, nearestVertexWithinThreshold } from "./geo-utils";
+import { formatArea, formatDistance } from "@/lib/units/format";
 import type { UnitSystem } from "@/stores/settings-store-types";
 import { DRAW_COLORS, makeVertexIcon, makeDistanceLabel, makeAreaLabel } from "./drawing-labels";
 import { type MeasureState, createMeasureState, addMeasurePoint, updateMeasureLine, emitMeasureUpdate, clearMeasureState } from "./drawing-measure";
@@ -87,7 +87,7 @@ export class DrawingManager {
    */
   setSnapTargets(targets: [number, number][]): void { this.snapTargets = targets; }
 
-  /** Set the unit system the area readouts format in (metric / imperial). */
+  /** Set the unit system the distance and area readouts format in (metric / imperial). */
   setUnitSystem(system: UnitSystem): void { this.unitSystem = system; }
 
   /**
@@ -132,6 +132,7 @@ export class DrawingManager {
 
   startPolygonDraw(): void {
     this.cancelDraw();
+    this.clearFinishedMeasure();
     this.mode = "polygon";
     this.polygonVertices = [];
 
@@ -279,6 +280,7 @@ export class DrawingManager {
 
   startCircleDraw(): void {
     this.cancelDraw();
+    this.clearFinishedMeasure();
     this.mode = "circle";
     this.circleCenter = null;
     this.circleIsDragging = false;
@@ -305,7 +307,7 @@ export class DrawingManager {
       const midLat = (this.circleCenter[0] + e.latlng.lat) / 2;
       const midLon = (this.circleCenter[1] + e.latlng.lng) / 2;
       this.circleRadiusLabel = L.marker([midLat, midLon], {
-        icon: makeDistanceLabel(`r = ${formatDistance(radius)}`), interactive: false,
+        icon: makeDistanceLabel(`r = ${formatDistance(radius, this.unitSystem)}`), interactive: false,
       }).addTo(this.drawingGroup);
     };
     this.boundMouseUp = (e: L.LeafletMouseEvent) => {
@@ -329,15 +331,15 @@ export class DrawingManager {
 
   startMeasure(): void {
     this.cancelDraw();
+    this.clearFinishedMeasure();
     this.mode = "measure";
-    this.ms = createMeasureState();
 
     this.boundClick = (e: L.LeafletMouseEvent) => {
       if (this.mode !== "measure") return;
       const snapped = this.snapToTarget(e.latlng.lat, e.latlng.lng);
       const [lat, lon] = snapped ?? [e.latlng.lat, e.latlng.lng];
       addMeasurePoint(this.ms, lat, lon, this.drawingGroup);
-      updateMeasureLine(this.ms, this.map, this.drawingGroup);
+      updateMeasureLine(this.ms, this.map, this.drawingGroup, this.unitSystem);
       this.updateMeasureAreaLabel();
       emitMeasureUpdate(this.ms, this.callbacks);
     };
@@ -388,6 +390,16 @@ export class DrawingManager {
 
   // ── Cancel / Cleanup ──────────────────────────────────────
 
+  /**
+   * A completed measurement stays on the map until the next tool starts;
+   * cancelDraw is a no-op then (mode is already null), so its layers are
+   * removed here before the next drawing begins.
+   */
+  private clearFinishedMeasure(): void {
+    clearMeasureState(this.ms, this.drawingGroup);
+    if (this.measureAreaLabel) { this.drawingGroup.removeLayer(this.measureAreaLabel); this.measureAreaLabel = null; }
+  }
+
   cancelDraw(): void {
     if (this.mode === null) return;
     const wasCircleDragging = this.circleIsDragging;
@@ -428,9 +440,7 @@ export class DrawingManager {
     if (this.circleCenterMarker) { this.drawingGroup.removeLayer(this.circleCenterMarker); this.circleCenterMarker = null; }
     if (this.circleShape) { this.drawingGroup.removeLayer(this.circleShape); this.circleShape = null; }
     if (this.circleRadiusLabel) { this.drawingGroup.removeLayer(this.circleRadiusLabel); this.circleRadiusLabel = null; }
-    // Measure
-    clearMeasureState(this.ms, this.drawingGroup);
-    if (this.measureAreaLabel) { this.drawingGroup.removeLayer(this.measureAreaLabel); this.measureAreaLabel = null; }
+    this.clearFinishedMeasure();
   }
 
   destroy(): void {

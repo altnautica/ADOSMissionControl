@@ -10,28 +10,31 @@
  * safety gate. Bound gamepad buttons stay in the MANUAL_CONTROL bitmask —
  * the action edge is purely additive on top of the flight-control stream.
  *
- * Replaces the per-action Shift+key listener: the default loadout reproduces
- * the exact Shift+A/T/L/P/R/X chords for muscle-memory parity.
+ * Mounted once by the shell. It listens only while a flying surface has
+ * registered itself with `useFlightInputSurface`, and pauses while a confirm
+ * modal, the binding editor, the command palette, the radial or the
+ * quick-settings drawer owns input. The default loadout reproduces the
+ * Shift+A/T/L/P/R/X chords, and a rebind applies on every flying surface.
  *
  * @license GPL-3.0-only
  */
 
 import { useEffect, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { useToast } from "@/components/ui/toast";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useInputStore } from "@/stores/input-store";
 import { useDroneManager } from "@/stores/drone-manager";
+import { useSkillConfirmStore } from "@/stores/skill-confirm-store";
+import { useFlyQuickSettingsStore } from "@/stores/fly-quick-settings-store";
+import { useSkillInputStore } from "@/stores/skill-input-store";
 import { activate, buildSkillContext } from "@/lib/skills";
 import { canonicalChord } from "@/lib/skills/chord";
+import { TAKEOFF_ALTITUDE_M } from "@/lib/skills/builtins/takeoff";
 import type { SkillActivateArgs, SkillContext } from "@/lib/skills/types";
 
-interface UseSkillInputOptions {
-  /** When false the dispatcher is dormant (e.g. while a modal owns input). */
-  enabled: boolean;
-}
-
 /** True when the event originates from an editable field — never dispatch. */
-function isTextTarget(target: EventTarget | null): boolean {
+export function isTextTarget(target: EventTarget | null): boolean {
   return (
     target instanceof HTMLInputElement ||
     target instanceof HTMLTextAreaElement ||
@@ -41,33 +44,57 @@ function isTextTarget(target: EventTarget | null): boolean {
 }
 
 /**
- * Build the activation args for a Skill. Mode-preset skills bake their own
- * target, so the dispatcher passes no targetMode; takeoff altitude defaults
- * are resolved inside the built-in. Returns undefined when there is nothing
- * to add (the registry applies its own defaults).
+ * Register the calling component as a flying surface for as long as it is
+ * mounted, which lets the shell-level dispatcher act on skill bindings.
  */
-function activateArgsFor(_skillId: string): SkillActivateArgs | undefined {
-  return undefined;
+export function useFlightInputSurface(): void {
+  useEffect(() => useSkillInputStore.getState().acquireSurface(), []);
 }
 
-export function useSkillInput({ enabled }: UseSkillInputOptions): void {
+export function useSkillInput(): void {
+  const surfaceLive = useSkillInputStore(
+    (s) => s.surfaces > 0 && !s.editorOpen && !s.paletteOpen && !s.radialOpen,
+  );
+  const confirmPending = useSkillConfirmStore((s) => s.pending !== null);
+  const quickOpen = useFlyQuickSettingsStore((s) => s.isOpen);
+  const enabled = surfaceLive && !confirmPending && !quickOpen;
   const { toast } = useToast();
+  const tFlight = useTranslations("flight");
 
-  // Keep the live toast in a ref so the long-lived listeners always reach
-  // the current notifier without re-subscribing on every render.
+  // Keep the live toast + translator in refs so the long-lived listeners always
+  // reach the current ones without re-subscribing on every render.
   const toastRef = useRef(toast);
   toastRef.current = toast;
+  const tFlightRef = useRef(tFlight);
+  tFlightRef.current = tFlight;
 
   // Resolve the active loadout slots fresh at dispatch time so a rebind takes
   // effect without re-registering the listener.
   function dispatchSkill(skillId: string): void {
     const droneId = useDroneManager.getState().selectedDroneId;
     if (!droneId) return;
+    let args: SkillActivateArgs | undefined;
+    if (skillId === "takeoff") {
+      // Take-off flies to the Flight tab's altitude; an out-of-range entry
+      // there refuses it, exactly as the panel button does.
+      const altitudeM = useSkillInputStore.getState().takeoffAltitudeM;
+      if (altitudeM === null) {
+        toastRef.current(
+          tFlightRef.current("takeoffAltitudeOutOfRange", {
+            min: TAKEOFF_ALTITUDE_M.min,
+            max: TAKEOFF_ALTITUDE_M.max,
+          }),
+          "error",
+        );
+        return;
+      }
+      args = { altitudeM };
+    }
     const ctx: SkillContext = buildSkillContext(droneId);
     // Inject the live toast as the user-facing notifier.
     ctx.notify = (message: string, status?: "success" | "warning" | "error" | "info") =>
       toastRef.current(message, status);
-    void activate(skillId, ctx, activateArgsFor(skillId));
+    void activate(skillId, ctx, args);
   }
 
   // Keyboard half: one window keydown listener.

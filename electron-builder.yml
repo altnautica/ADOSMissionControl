@@ -17,13 +17,14 @@ files:
 
 afterPack: scripts/afterPack.cjs
 
+# The postbuild step (scripts/copy-standalone-assets.mjs) already places
+# public/ (minus the README screenshots) inside .next/standalone. The hidden
+# .next/static tree is listed on its own so it is copied explicitly.
 extraResources:
   - from: ".next/standalone"
     to: "standalone"
   - from: ".next/static"
     to: "standalone/.next/static"
-  - from: "public"
-    to: "standalone/public"
 
 mac:
   # There is no Developer ID certificate available to the release build, so the

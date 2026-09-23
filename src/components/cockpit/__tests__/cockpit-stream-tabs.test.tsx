@@ -69,7 +69,7 @@ describe("CockpitStreamTabs", () => {
     expect(useVideoStreamsStore.getState().activeStream(DRONE)?.id).toBe("ir");
   });
 
-  it("[D6] uses roving tabindex and moves the selection with arrow keys", () => {
+  it("uses roving tabindex and moves the selection with arrow keys", () => {
     useVideoStreamsStore.getState().setStreams(DRONE, [
       stream({ id: "eo", index: 1, role: "eo" }),
       stream({ id: "ir", index: 2, role: "ir" }),
@@ -87,7 +87,7 @@ describe("CockpitStreamTabs", () => {
     expect(useVideoStreamsStore.getState().activeStream(DRONE)?.id).toBe("eo");
   });
 
-  it("[R4] renders a dead leg (live===false) disabled and non-selectable", () => {
+  it("renders a dead leg (live===false) disabled and non-selectable", () => {
     useVideoStreamsStore.getState().setStreams(DRONE, [
       stream({ id: "eo", index: 1, role: "eo", kind: "concurrent", live: true }),
       stream({ id: "ir", index: 2, role: "ir", kind: "concurrent", live: false }),
@@ -100,7 +100,7 @@ describe("CockpitStreamTabs", () => {
     expect(useVideoStreamsStore.getState().activeStream(DRONE)?.id).toBe("eo");
   });
 
-  it("[R4] keeps an unsampled leg (live null/undefined) selectable", () => {
+  it("keeps an unsampled leg (live null/undefined) selectable", () => {
     useVideoStreamsStore.getState().setStreams(DRONE, [
       stream({ id: "eo", index: 1, kind: "concurrent" }), // undefined
       stream({ id: "ir", index: 2, kind: "concurrent", live: null }), // null
@@ -112,7 +112,7 @@ describe("CockpitStreamTabs", () => {
     expect(useVideoStreamsStore.getState().activeStream(DRONE)?.id).toBe("ir");
   });
 
-  it("[R4] arrow-nav skips a dead leg", () => {
+  it("arrow-nav skips a dead leg", () => {
     useVideoStreamsStore.getState().setStreams(DRONE, [
       stream({ id: "eo", index: 1, kind: "concurrent", live: true }),
       stream({ id: "ir", index: 2, kind: "concurrent", live: false }),
@@ -124,7 +124,7 @@ describe("CockpitStreamTabs", () => {
     expect(useVideoStreamsStore.getState().activeStream(DRONE)?.id).toBe("wide");
   });
 
-  it("[D7] ignores a tab click while an encoder restart is in flight", () => {
+  it("ignores a tab click while an encoder restart is in flight", () => {
     useVideoStreamsStore.getState().setStreams(DRONE, [
       stream({ id: "eo", index: 1, role: "eo" }),
       stream({ id: "ir", index: 2, role: "ir" }),

@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useDroneManager } from "@/stores/drone-manager";
-import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
+import { useDroneStore } from "@/stores/drone-store";
+import type { DroneProtocol } from "@/lib/protocol/types";
 import { Terminal, Send, Trash2, Copy, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
@@ -25,41 +26,52 @@ const COMMON_COMMANDS = [
 
 export function MavlinkShellPanel() {
   const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  // Subscribed so the panel re-renders when the selected drone or its link changes.
+  const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
+  const connectionState = useDroneStore((s) => s.connectionState);
   const { toast } = useToast();
-  const { firmwareType } = useFirmwareCapabilities();
-  const isPx4 = firmwareType === 'px4';
 
   const [lines, setLines] = useState<string[]>([]);
+  /**
+   * The link the shell last replied on, and the text after its last newline
+   * (a line still arriving, or the prompt). Keyed by link so switching drones
+   * drops both without a reset.
+   */
+  const [reply, setReply] = useState<{ link: DroneProtocol; pending: string } | null>(null);
   const [input, setInput] = useState("");
   const [history, setHistory] = useState<string[]>([]);
   const [historyIdx, setHistoryIdx] = useState(-1);
-  const [connected, setConnected] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const protocol = getSelectedProtocol();
+  const protocol = selectedDroneId ? getSelectedProtocol() : null;
+  const linkUp = protocol !== null && protocol.isConnected && connectionState !== "disconnected" && connectionState !== "connecting";
+  const shellReplied = reply !== null && reply.link === protocol;
+  const pending = shellReplied ? reply.pending : "";
+  const connected = linkUp && shellReplied;
 
   // Auto-scroll to bottom
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [lines]);
+  }, [lines, pending]);
 
   // Subscribe to serial/shell data from protocol
   useEffect(() => {
     if (!protocol) return;
-    setConnected(true);
 
+    // SERIAL_CONTROL splits output into 70-byte chunks with no regard for line
+    // or character boundaries, so decode as a stream and join partial lines.
+    const decoder = new TextDecoder();
+    let partial = "";
     const unsub = protocol.onSerialData((data) => {
-      // SERIAL_CONTROL responses come as { device, data: Uint8Array }
-      const text = new TextDecoder().decode(data.data);
-      if (text) {
-        setLines(prev => {
-          const newLines = [...prev, ...text.split('\n').filter(l => l.length > 0)];
-          return newLines.slice(-MAX_LINES);
-        });
-      }
+      const text = partial + decoder.decode(data.data, { stream: true });
+      const parts = text.split("\n");
+      partial = parts.pop() ?? "";
+      const complete = parts.map((l) => l.replace(/\r$/, ""));
+      setReply({ link: protocol, pending: partial.replace(/\r/g, "") });
+      if (complete.length > 0) setLines((prev) => [...prev, ...complete].slice(-MAX_LINES));
     });
 
     return () => {
@@ -132,7 +144,7 @@ export function MavlinkShellPanel() {
       <div className="flex items-center justify-between px-4 py-2 border-b border-border-default bg-bg-secondary">
         <div className="flex items-center gap-2">
           <Terminal size={16} className="text-accent-primary" />
-          <span className={`w-2 h-2 rounded-full ${connected ? 'bg-status-success' : 'bg-status-error'}`} />
+          <span className={`w-2 h-2 rounded-full ${connected ? 'bg-status-success' : linkUp ? 'bg-status-warning' : 'bg-status-error'}`} />
           <h2 className="text-sm font-medium text-text-primary">MAVLink Shell</h2>
           <span className="text-[10px] text-text-tertiary">PX4 NuttX Console</span>
         </div>
@@ -168,16 +180,21 @@ export function MavlinkShellPanel() {
         ref={scrollRef}
         className="flex-1 overflow-y-auto px-4 py-2 font-mono text-xs bg-bg-primary text-gcs-hud-green"
       >
-        {lines.length === 0 && (
+        {lines.length === 0 && !pending && (
           <div className="text-text-tertiary">
-            {connected ? "Connected. Type a command or use quick commands above." : "Waiting for connection..."}
+            {!linkUp
+              ? "Waiting for connection..."
+              : shellReplied
+                ? "Type a command or use quick commands above."
+                : "Link up. The shell has not replied yet; send a command to open it."}
           </div>
         )}
         {lines.map((line, i) => (
-          <div key={i} className={line.startsWith('nsh>') ? 'text-accent-primary' : ''}>
+          <div key={i} className={`whitespace-pre-wrap ${line.startsWith('nsh>') ? 'text-accent-primary' : ''}`}>
             {line}
           </div>
         ))}
+        {pending && <div className="whitespace-pre-wrap">{pending}</div>}
       </div>
 
       {/* Input */}

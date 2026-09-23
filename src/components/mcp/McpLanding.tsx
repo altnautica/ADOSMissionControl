@@ -1,6 +1,6 @@
 /**
  * @module components/mcp/McpLanding
- * @description The MCP tab marketing one-pager, LOCAL-FIRST (Rule 39). It leads
+ * @description The MCP tab marketing one-pager, LOCAL-FIRST. It leads
  * with the LAN-direct path — run the server on your machine, reach a drone over
  * your network, no sign-in and no cloud — via the guided local wizard, which is
  * always available (no login gate). A secondary "Manage from anywhere" section

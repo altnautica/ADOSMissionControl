@@ -55,7 +55,7 @@ function nodeEntry(over: Partial<FleetNodeEntry> = {}): FleetNodeEntry {
     _id: "node:dev",
     userId: "local",
     deviceId: "dev",
-    name: "Skynode",
+    name: "Testnode",
     apiKey: "k",
     pairedAt: 1,
     profile: "drone",

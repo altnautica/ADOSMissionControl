@@ -111,7 +111,7 @@ vi.mock("@/stores/local-nodes-store", () => ({
   useLocalNodesStore: (sel: (s: unknown) => unknown) => sel({ nodes: {} }),
 }));
 
-vi.mock("@/stores/agent-connection/cloud-state", () => ({
+vi.mock("@/lib/agent/resolve-agent", () => ({
   // No LAN path resolves, so the cloud vision-detections topic is in scope.
   resolveLanAgentUrl: () => null,
 }));
@@ -157,10 +157,10 @@ describe("MqttBridge subscriptions", () => {
     client.emit("connect");
 
     expect(client.subscribeCalls).toHaveLength(1);
+    // The agent publishes no telemetry topic, so nothing subscribes to one.
     expect(client.subscribeCalls[0].topics).toEqual({
       [`ados/${DEVICE}/status`]: { qos: 1 },
       [`ados/${DEVICE}/plugin/update_available`]: { qos: 1 },
-      [`ados/${DEVICE}/telemetry`]: { qos: 0 },
       [`ados/${DEVICE}/vision/detections`]: { qos: 0 },
     });
   });
@@ -229,7 +229,6 @@ describe("MqttBridge teardown", () => {
       [
         `ados/${DEVICE}/plugin/update_available`,
         `ados/${DEVICE}/status`,
-        `ados/${DEVICE}/telemetry`,
         `ados/${DEVICE}/vision/detections`,
       ].sort(),
     );

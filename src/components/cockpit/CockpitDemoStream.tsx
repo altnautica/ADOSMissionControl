@@ -8,7 +8,7 @@
  * inset visibly change the picture without any hardware. It is strictly
  * `isDemoMode()`-gated and clearly tagged "DEMO FEED"; it never renders for a
  * real node (whose true video comes over WHEP) and never fabricates a live feed
- * on a real surface (Rule 44).
+ * on a real surface (no fabricated reading).
  *
  * Reused for both the main view (the active stream) and the PiP inset (a
  * specific stream id).

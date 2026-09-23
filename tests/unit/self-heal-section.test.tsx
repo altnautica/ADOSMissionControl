@@ -26,10 +26,13 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+const NODE = "node-1";
+
 function renderSection() {
   const setValue = vi.fn(async () => {});
   renderWithIntl(
     <SelfHealSection
+      nodeDeviceId={NODE}
       config={{
         network: { wifi_selfheal: { enabled: true } },
         video: { usb_recovery: { enabled: true } },
@@ -41,7 +44,17 @@ function renderSection() {
   return { setValue };
 }
 
-/** A minimal logging client whose event query answers with the given rows. */
+/** File a status reading under this page's node. */
+function report(patch: Record<string, unknown>) {
+  const { focusedDeviceId: _f, byDevice: _b, ...slice } =
+    useAgentCapabilitiesStore.getState();
+  useAgentCapabilitiesStore.setState({
+    byDevice: { [NODE]: { ...slice, ...patch } },
+  });
+}
+
+/** A minimal logging client, attached for this page's node, whose event
+ * query answers with the given rows. */
 function stubLoggingClient(rows: unknown[]) {
   const query = vi.fn(async () => ({
     data: rows,
@@ -50,6 +63,8 @@ function stubLoggingClient(rows: unknown[]) {
   }));
   useAgentConnectionStore.setState({
     client: { logging: { query } } as never,
+    agentUrl: "http://192.168.1.50:8080",
+    nodeDeviceId: NODE,
   });
   return { query };
 }
@@ -84,7 +99,7 @@ describe("SelfHealSection live status", () => {
   });
 
   it("renders the guardian's reported state and repair rung", () => {
-    useAgentCapabilitiesStore.setState({
+    report({
       managementLink: {
         state: "degraded",
         iface: "eth0",
@@ -97,19 +112,63 @@ describe("SelfHealSection live status", () => {
     expect(screen.getByText(/renewing DHCP/)).toBeTruthy();
   });
 
-  it("renders the camera recovery episode with the attempt budget", () => {
+  it("never shows the focused node's guardian state under another node", () => {
     useAgentCapabilitiesStore.setState({
+      managementLink: { state: "down", iface: "eth0" },
+    });
+    renderSection();
+    expect(screen.queryByText(/^Down/)).toBeNull();
+    expect(screen.getAllByText("Not reported")).toHaveLength(2);
+  });
+
+  it("renders a recovery step with its attempt count and no invented budget", () => {
+    report({
       cameraUsbRecovery: {
         state: "rebinding",
         case: null,
         attempts: 2,
-        maxAttempts: 3,
+        cooldownSeconds: 60,
         cameraPresent: false,
         expected: true,
-      } as never,
+      },
     });
     renderSection();
-    expect(screen.getByText("Recovering (2/3)")).toBeTruthy();
+    expect(screen.getByText("Recovering · attempt 2")).toBeTruthy();
+    expect(screen.queryByText(/\/0\)/)).toBeNull();
+  });
+
+  it("renders the cooldown between attempts instead of freezing on the last step", () => {
+    report({
+      cameraUsbRecovery: {
+        state: "retrying",
+        case: "absent",
+        attempts: 3,
+        cooldownSeconds: 60,
+        cameraPresent: false,
+        expected: true,
+      },
+    });
+    renderSection();
+    expect(
+      screen.getByText("Waiting to retry · attempt 3 · retries every 60 s"),
+    ).toBeTruthy();
+  });
+
+  it("does not colour a missing expected camera as healthy", () => {
+    report({
+      cameraUsbRecovery: {
+        state: "monitoring",
+        case: "absent",
+        attempts: 0,
+        cooldownSeconds: 60,
+        cameraPresent: false,
+        expected: true,
+      },
+    });
+    renderSection();
+    expect(screen.getByText("Monitoring").className).toContain(
+      "text-status-warning",
+    );
   });
 });
 
@@ -162,6 +221,8 @@ describe("SelfHealSection event feed", () => {
           }),
         },
       } as never,
+      agentUrl: "http://192.168.1.50:8080",
+      nodeDeviceId: NODE,
     });
     renderSection();
     await waitFor(() =>

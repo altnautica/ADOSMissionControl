@@ -2,7 +2,12 @@
  * @module patterns/landing-generator
  * @description Fixed-wing landing pattern generator.
  *
- * Generates a straight-in approach: approach waypoint → DO_LAND_START → LAND.
+ * Generates a straight-in approach: DO_LAND_START → approach waypoint → LAND.
+ * The DO_LAND_START marker leads the sequence, so an RTL autoland (or a
+ * go-around) that jumps to it flies the approach waypoint before the landing.
+ * ArduPlane refuses to arm with a DO_LAND_START in the mission while
+ * RTL_AUTOLAND is 0; the planner advisories flag that.
+ *
  * ArduPlane descends linearly from the approach waypoint's altitude to the
  * touchdown point, so the glide slope flown is set by the geometry alone: the
  * approach waypoint sits `loiterAltitude / tan(glideSlopeAngle)` back from the
@@ -52,16 +57,8 @@ export function generateFixedWingLanding(config: FixedWingLandingConfig): Patter
 
   const waypoints: PatternWaypoint[] = [];
 
-  // WP1: Approach start at the approach altitude
-  waypoints.push({
-    lat: approachStart[0],
-    lon: approachStart[1],
-    alt: loiterAltitude,
-    speed,
-    command: "WAYPOINT",
-  });
-
-  // WP2: DO_LAND_START marker (same position, signals FC that landing begins)
+  // DO_LAND_START marker at the approach start. The FC picks the landing
+  // sequence whose marker is closest and continues with the item after it.
   waypoints.push({
     lat: approachStart[0],
     lon: approachStart[1],
@@ -70,7 +67,16 @@ export function generateFixedWingLanding(config: FixedWingLandingConfig): Patter
     command: "DO_LAND_START",
   });
 
-  // WP3: LAND at landing point
+  // Approach start at the approach altitude.
+  waypoints.push({
+    lat: approachStart[0],
+    lon: approachStart[1],
+    alt: loiterAltitude,
+    speed,
+    command: "WAYPOINT",
+  });
+
+  // LAND at the landing point.
   waypoints.push({
     lat: landingPoint[0],
     lon: landingPoint[1],

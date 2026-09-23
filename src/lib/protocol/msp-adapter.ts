@@ -15,6 +15,7 @@ import type {
   FirmwareHandler, ProtocolCapabilities, UnifiedFlightMode,
   MissionItem, LogEntry, LogDownloadProgressCallback, SettingsCapability,
   CliSettingsCapability,
+  SerialDataCallback,
 } from './types'
 import { MspParser } from './msp/msp-parser'
 import { MspSerialQueue } from './msp/msp-serial-queue'
@@ -31,7 +32,7 @@ import * as cmds from './msp-adapter-commands'
 import * as prm from './msp-adapter-params'
 import * as inav from './msp-adapter-inav'
 import { SettingsClient } from './msp/settings'
-import { BfCliSession } from './msp/bf-cli'
+import { MspCliSession, BETAFLIGHT_CLI, INAV_CLI } from './msp/cli-session'
 import { makeCliSettingsCapability } from './msp/bf-cli-settings'
 import * as bf from './msp-adapter/bf-config'
 import * as ranges from './msp-adapter/ranges'
@@ -41,6 +42,7 @@ import type { MspOsdConfig, MspOsdGeneralConfig } from './msp/decoders/config/os
 import type { HsvColor, BfLedModeColor } from './msp/decoders/config/led'
 import { decodeMspDisplayPort, type DisplayPortOp } from './msp/decoders/config/displayport'
 import type { MspAdjustmentRange, MspModeBox, MspModeRange } from './msp/msp-decoders-status'
+import type { MspVtxTablePowerLevel } from './msp/msp-decoders-ext'
 import { decodeMspBoardInfo } from './msp/msp-decoders-status'
 import {
   getFlashSummary,
@@ -61,6 +63,7 @@ import type {
   INavTimerOutputModeEntry,
   INavOutputMappingExt2Entry,
   INavTempSensorConfigEntry,
+  INavCalibrationData,
   MotorMixerRule,
   INavServoMixerRule,
   INavFwApproach,
@@ -99,7 +102,6 @@ export class MSPAdapter implements DroneProtocol {
   private firmwareHandler: FirmwareHandler | null = null
   private vehicleInfo: VehicleInfo | null = null
   private _connected = false
-  private inCliMode = false
   private boxIds: number[] = []
   private modeRanges: ModeRange[] = []
   /** True only when the FC's receiver provider is MSP; RC override is inert otherwise. */
@@ -109,7 +111,7 @@ export class MSPAdapter implements DroneProtocol {
   private paramNameCache: string[] = []
   private settingsClient: SettingsClient | null = null
   private settingsCapability: SettingsCapability | null = null
-  private bfCli: BfCliSession | null = null
+  private cli: MspCliSession | null = null
   private cliSettingsCapability: CliSettingsCapability | null = null
   private cbs = createCallbackStore()
   private cbm = bindCallbackMethods(this.cbs)
@@ -131,11 +133,11 @@ export class MSPAdapter implements DroneProtocol {
   // ── Connection ──────────────────────────────────────────────
   async connect(transport: Transport): Promise<VehicleInfo> {
     this.transport = transport
-    // While a Betaflight CLI session is active the FC speaks only plain-ASCII
-    // CLI (not MSP), so route inbound bytes to the CLI session instead of the
-    // MSP parser, which would drop them.
+    // While a CLI session is active the FC speaks only plain-ASCII CLI (not
+    // MSP), so route inbound bytes to the CLI session instead of the MSP
+    // parser, which would drop them.
     this.dataHandler = (data: Uint8Array) => {
-      if (this.bfCli?.isActive) this.bfCli.feed(data)
+      if (this.cli?.isActive) this.cli.feed(data)
       else this.parser.feed(data)
     }
     this.closeHandler = () => this.handleDisconnect()
@@ -195,14 +197,17 @@ export class MSPAdapter implements DroneProtocol {
     const isBetaflight = variantStr.trim() === 'BTFL'
     const isInav = variantStr.trim() === 'INAV'
     this.firmwareHandler = isInav ? inavHandler : betaflightHandler
-    if (isBetaflight) {
-      // Betaflight settings live only behind the CLI. The session pauses MSP
-      // polling while active and drives the raw-byte tap set up above.
-      this.bfCli = new BfCliSession({
+    if (isBetaflight || isInav) {
+      // A motor test cut off by a dropped link keeps spinning until the FC
+      // reboots; clear any such leftover before anything else is commanded.
+      cmds.mspIdleMotorOutputs(this.queue)
+      // The CLI session pauses MSP polling while active and drives the
+      // raw-byte tap set up above. Betaflight settings live only behind it.
+      this.cli = new MspCliSession({
         send: (bytes) => this.transport?.send(bytes),
-        setActive: (active) => { this.inCliMode = active; if (active) this.poller?.stop(); else this.poller?.start() },
-      })
-      this.cliSettingsCapability = makeCliSettingsCapability(this.bfCli)
+        setActive: (active) => { if (active) this.poller?.stop(); else this.poller?.start() },
+      }, isInav ? INAV_CLI : BETAFLIGHT_CLI)
+      if (isBetaflight) this.cliSettingsCapability = makeCliSettingsCapability(this.cli)
     }
 
     const info: VehicleInfo = {
@@ -210,6 +215,7 @@ export class MSPAdapter implements DroneProtocol {
       vehicleClass: 'copter', firmwareVersionString,
       systemId: 0, componentId: 0, autopilotType: 0, vehicleType: 0,
       gyroSampleRateHz: boardInfo.gyroSampleRateHz,
+      mspApiVersion: { major: apiVersionMajor, minor: apiVersionMinor },
     }
     this.vehicleInfo = info
 
@@ -235,7 +241,7 @@ export class MSPAdapter implements DroneProtocol {
     this.rxMspEnabled = false
     if (this.poller) { this.poller.stop(); this.poller = null }
     if (this.queue) { cmds.mspCancelMotorTest(this.queue); this.queue.destroy(); this.queue = null }
-    this.parser.reset(); this.paramCache.clear(); this.paramNameCache = []; this.inCliMode = false; this.lastArmed = false; this.settingsClient = null; this.settingsCapability = null; this.bfCli = null; this.cliSettingsCapability = null
+    this.parser.reset(); this.paramCache.clear(); this.paramNameCache = []; this.lastArmed = false; this.settingsClient = null; this.settingsCapability = null; this.cli = null; this.cliSettingsCapability = null
     if (this.transport && this.dataHandler) {
       this.transport.off('data', this.dataHandler)
       this.transport.off('close', this.closeHandler as (data: void) => void)
@@ -350,6 +356,8 @@ export class MSPAdapter implements DroneProtocol {
     })
   }
   async getTempSensorConfigs(): Promise<INavTempSensorConfigEntry[]> { return inav.inavGetTempSensorConfigs(this.queue) }
+  async getTemperatures(): Promise<(number | null)[]> { return inav.inavGetTemperatures(this.queue) }
+  async getCalibrationData(): Promise<INavCalibrationData> { return inav.inavGetCalibrationData(this.queue) }
   async getMcBraking(): Promise<INavMcBraking> { return inav.inavGetMcBraking(this.queue) }
   async setMcBraking(b: INavMcBraking): Promise<CommandResult> { return this.persist(() => inav.inavSetMcBraking(this.queue, b)) }
   async getRateDynamics(): Promise<INavRateDynamics> { return inav.inavGetRateDynamics(this.queue) }
@@ -492,6 +500,7 @@ export class MSPAdapter implements DroneProtocol {
   async setRxConfig(cfg: BfRxConfig): Promise<CommandResult> { return this.persist(() => bf.bfSetRxConfig(this.queue, cfg)) }
   async getRxMap(): Promise<number[]> { return bf.bfGetRxMap(this.queue) }
   async setRxMap(map: number[]): Promise<CommandResult> { return this.persist(() => bf.bfSetRxMap(this.queue, map)) }
+  async getVtxPowerLevels(): Promise<MspVtxTablePowerLevel[]> { return bf.bfGetVtxPowerLevels(this.queue) }
 
   // ── Parameters ──────────────────────────────────────────────
   async getAllParameters() { const c = this.prmCtx; const r = await prm.mspGetAllParameters(c); this.paramNameCache = c.paramNameCache; return r }
@@ -514,24 +523,18 @@ export class MSPAdapter implements DroneProtocol {
 
   // ── Serial Passthrough ──────────────────────────────────────
   sendSerialData(text: string): void {
-    // Betaflight's CLI is plain ASCII the MSP parser drops, so drive it through
-    // the interactive CLI session (which also appends the command newline).
-    if (this.bfCli) { this.bfCli.sendInteractive(text); return }
-    if (!this.transport) return
-    if (!this.inCliMode) { this.transport.send(new TextEncoder().encode('#\n')); this.inCliMode = true }
-    this.transport.send(new TextEncoder().encode(text))
+    // The CLI is plain ASCII the MSP parser drops, so drive it through the
+    // interactive CLI session. It enters the CLI, appends the line
+    // terminator, and turns a typed exit or save into the firmware's form.
+    this.cli?.sendInteractive(text)
   }
 
   // ── Telemetry Subscriptions ─────────────────────────────────
-  onSerialData = (cb: import('./types').SerialDataCallback): (() => void) => {
+  onSerialData = (cb: SerialDataCallback): (() => void) => {
     this.cbs.serialDataCallbacks.push(cb)
-    if (this.bfCli) {
-      // Betaflight: stream the raw CLI text (enters the CLI, pausing polling).
-      this.bfCli.attachInteractive((text) => cb({ device: 0, data: new TextEncoder().encode(text) }))
-      return () => { this.bfCli?.detachInteractive(); this.cbs.serialDataCallbacks = this.cbs.serialDataCallbacks.filter(c => c !== cb) }
-    }
-    this.parser.onCliData((text) => { cb({ device: 0, data: new TextEncoder().encode(text) }) })
-    return () => { this.cbs.serialDataCallbacks = this.cbs.serialDataCallbacks.filter(c => c !== cb) }
+    const cli = this.cli
+    cli?.attachInteractive((text) => cb({ device: 0, data: new TextEncoder().encode(text) }))
+    return () => { cli?.detachInteractive(); this.cbs.serialDataCallbacks = this.cbs.serialDataCallbacks.filter(c => c !== cb) }
   }
   onAttitude = this.cbm.onAttitude; onPosition = this.cbm.onPosition; onBattery = this.cbm.onBattery
   onGps = this.cbm.onGps; onVfr = this.cbm.onVfr; onRc = this.cbm.onRc

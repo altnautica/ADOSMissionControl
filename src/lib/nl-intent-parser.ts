@@ -62,9 +62,10 @@ const SPEED_MPS_ABBR_RE = /(\d+(?:\.\d+)?)\s*mps\b/i;
 const SPEED_WORD_RE = /\bspeed\s+(?:of\s+)?(\d+(?:\.\d+)?)/i;
 
 // "around <place>" / "of <place>" / "near <place>" / "over <place>", captured
-// up to the next known keyword, a number, punctuation, or end of string.
+// up to the next known keyword, a number, punctuation, or end of string. The
+// place must start with a non-digit so "altitude of 50m" is never a place.
 const PLACE_RE =
-  /\b(?:around|over|near|of)\s+(.+?)(?=(?:\s+(?:at|with|radius|altitude|alt|height|elevation|agl|speed|overlap|and|then|for)\b)|\s*[,;.]|\s+\d|$)/i;
+  /\b(?:around|over|near|of)\s+([^\d\s].*?)(?=(?:\s+(?:at|with|radius|altitude|alt|height|elevation|agl|speed|overlap|and|then|for)\b)|\s*[,;.]|\s+\d|$)/i;
 
 function toNum(raw: string | undefined): number | undefined {
   if (raw === undefined) return undefined;
@@ -138,15 +139,17 @@ export function parseMissionIntent(text: string): MissionIntent | null {
   const overlapPct = toNum(overlapMatch?.[1]);
   if (overlapPct !== undefined) intent.overlapPct = overlapPct;
 
-  let textForAlt = text;
-  textForAlt = maskSpan(textForAlt, radiusMatch);
-  textForAlt = maskSpan(textForAlt, speedMatch);
-  textForAlt = maskSpan(textForAlt, overlapMatch);
-  const altMatch = firstMatch(textForAlt, [ALT_ANCHORED_RE, ALT_UNIT_RE]);
+  let masked = text;
+  masked = maskSpan(masked, radiusMatch);
+  masked = maskSpan(masked, speedMatch);
+  masked = maskSpan(masked, overlapMatch);
+  const altMatch = firstMatch(masked, [ALT_ANCHORED_RE, ALT_UNIT_RE]);
   const altitudeM = toNum(altMatch?.[1]);
   if (altitudeM !== undefined) intent.altitudeM = altitudeM;
 
-  const place = detectPlace(text);
+  // The place pass reads the same masked text, so "radius of 80m" can never
+  // be taken as "of <place>".
+  const place = detectPlace(masked);
   if (place !== undefined) intent.place = place;
 
   return Object.keys(intent).length > 0 ? intent : null;

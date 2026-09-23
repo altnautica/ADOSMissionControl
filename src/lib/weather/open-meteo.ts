@@ -30,8 +30,8 @@ export interface WindLevel {
 
 /** Parsed, unit-normalised flight-weather snapshot (all speeds in m/s). */
 export interface WeatherReport {
-  /** ISO timestamp of the current observation, or `null` if not provided. */
-  time: string | null;
+  /** Observation time of the current values, epoch ms (UTC), or `null` if not provided. */
+  observedAt: number | null;
   /** Surface (10 m) sustained wind speed in m/s, or `null`. */
   windSpeedMps: number | null;
   /** Surface (10 m) wind gust in m/s, or `null`. */
@@ -64,6 +64,16 @@ function num(v: unknown): number | null {
 }
 
 /** Map a raw Open-Meteo response onto the typed report. */
+/**
+ * Open-Meteo reports local ISO times without an offset in the requested
+ * timezone; the request asks for GMT, so the time is read as UTC.
+ */
+function parseGmtTime(time: unknown): number | null {
+  if (typeof time !== "string") return null;
+  const ms = Date.parse(/[zZ]|[+-]\d{2}:?\d{2}$/.test(time) ? time : `${time}Z`);
+  return Number.isFinite(ms) ? ms : null;
+}
+
 function parseReport(data: OpenMeteoResponse): WeatherReport {
   const c: OpenMeteoCurrent = data.current ?? {};
 
@@ -81,7 +91,7 @@ function parseReport(data: OpenMeteoResponse): WeatherReport {
   }
 
   return {
-    time: typeof c.time === "string" ? c.time : null,
+    observedAt: parseGmtTime(c.time),
     windSpeedMps: num(c.wind_speed_10m),
     windGustMps: num(c.wind_gusts_10m),
     windDirectionDeg: num(c.wind_direction_10m),
@@ -122,6 +132,7 @@ export async function fetchWeather(
     current: currentVars.join(","),
     hourly: "wind_gusts_10m",
     wind_speed_unit: "ms",
+    timezone: "GMT",
     forecast_hours: String(FORECAST_LOOKAHEAD_HOURS),
   });
 

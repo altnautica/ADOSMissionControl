@@ -23,13 +23,43 @@ const { getKnownPorts } = vi.hoisted(() => ({
 
 vi.mock("@/lib/serial-port-manager", () => ({
   serialPortManager: { getKnownPorts },
+  matchKnownPort: (ports: Array<{ port: unknown }>) =>
+    ports.length === 1 ? ports[0] : null,
+}));
+
+// Below the port seam: a transport that opens, and an FC handshake that answers
+// as whichever vehicle a test puts on the link.
+const { handshakeAnswer } = vi.hoisted(() => ({
+  handshakeAnswer: {
+    vehicle: {
+      systemId: 1,
+      firmwareType: "ardupilot-copter",
+      vehicleType: 2,
+      componentId: 1,
+      autopilotType: 3,
+      vehicleClass: "copter",
+      firmwareVersionString: "4.5.0",
+    } as Record<string, unknown>,
+  },
+}));
+vi.mock("@/lib/protocol/transport/webserial", () => ({
+  WebSerialTransport: class {
+    async connectToPort() {}
+    async disconnect() {}
+  },
+}));
+vi.mock("@/lib/protocol/select-fc-adapter", () => ({
+  createFcAdapter: async () => ({
+    connect: async () => handshakeAnswer.vehicle,
+    disconnect: async () => {},
+  }),
 }));
 
 import {
   ReconnectManager,
   type ReconnectEntry,
 } from "@/lib/reconnect-manager";
-import type { ConnectionMeta } from "@/stores/drone-manager";
+import type { ConnectionMeta } from "@/lib/connection-meta";
 
 const SERIAL: ConnectionMeta = { type: "serial", baudRate: 57600 };
 
@@ -167,5 +197,27 @@ describe("ReconnectManager", () => {
 
     manager.cancelAll();
     expect(manager.isReconnecting()).toBe(false);
+  });
+
+  it("refuses a re-dialled link that answers as a different vehicle", async () => {
+    getKnownPorts.mockResolvedValue([{ port: {} }]);
+    const addDrone = vi.fn();
+    const manager = new ReconnectManager(addDrone);
+    const meta: ConnectionMeta = {
+      ...SERIAL,
+      vehicle: { systemId: 7, firmwareType: "ardupilot-copter", vehicleType: 2 },
+    };
+
+    manager.startReconnect("d1", "Drone 1", meta);
+    await vi.advanceTimersByTimeAsync(10_000);
+
+    // Sysid 1 answered, not the original sysid 7: never attached, still looking.
+    expect(addDrone).not.toHaveBeenCalled();
+    expect(manager.isReconnecting()).toBe(true);
+
+    handshakeAnswer.vehicle = { ...handshakeAnswer.vehicle, systemId: 7 };
+    await vi.advanceTimersByTimeAsync(3_000);
+    expect(addDrone).toHaveBeenCalledOnce();
+    expect(addDrone.mock.calls[0][0]).toBe("d1");
   });
 });

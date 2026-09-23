@@ -13,6 +13,7 @@
 import { create } from "zustand";
 import { get as idbGet, set as idbSet } from "idb-keyval";
 import type { EquipmentItem, EquipmentType } from "@/lib/types/operator";
+import { isInspectionDue } from "@/lib/equipment-inspection";
 import { createIdbStoreLoader } from "@/lib/idb-store-loader";
 
 const IDB_KEY = "altcmd:equipment-registry";
@@ -32,14 +33,14 @@ interface Actions {
   listActive: () => EquipmentItem[];
   /** Active items filtered to a single equipment type. */
   listByType: (type: EquipmentType) => EquipmentItem[];
-  /** True if `totalFlightHours >= inspectionDueHours`. */
+  /** True once the item has flown its inspection interval since the last inspection. */
   isInspectionDue: (id: string) => boolean;
   /**
    * Increment usage stats. Called by the loadout linkage after a flight finalizes
    * with this item in its loadout.
    */
   recordFlight: (id: string, flightSeconds: number) => void;
-  /** Mark inspected. Resets the "due" badge by updating `lastInspectedAt`. */
+  /** Mark inspected: records the date and restarts the interval from the current hours. */
   markInspected: (id: string, isoDate?: string) => void;
   /** Mark retired with the given ISO date (defaults to today). */
   retire: (id: string, isoDate?: string) => void;
@@ -96,8 +97,7 @@ export const useEquipmentRegistryStore = create<State & Actions>((set, getState)
 
   isInspectionDue: (id) => {
     const item = getState().items[id];
-    if (!item || item.inspectionDueHours === undefined) return false;
-    return (item.totalFlightHours ?? 0) >= item.inspectionDueHours;
+    return item ? isInspectionDue(item) : false;
   },
 
   recordFlight: (id, flightSeconds) => {
@@ -125,7 +125,16 @@ export const useEquipmentRegistryStore = create<State & Actions>((set, getState)
     set((s) => {
       const existing = s.items[id];
       if (!existing) return s;
-      return { items: { ...s.items, [id]: { ...existing, lastInspectedAt: date } } };
+      return {
+        items: {
+          ...s.items,
+          [id]: {
+            ...existing,
+            lastInspectedAt: date,
+            hoursAtLastInspection: existing.totalFlightHours ?? 0,
+          },
+        },
+      };
     });
     void getState().persistToIDB();
   },

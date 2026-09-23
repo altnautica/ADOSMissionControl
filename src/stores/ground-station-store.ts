@@ -26,7 +26,6 @@ export {
   usePairSlice,
   useUplinkSlice,
   useMeshSlice,
-  usePeripheralsSlice,
 } from "./ground-station/hooks";
 
 export const useGroundStationStore = create<GroundStationState>((set, get) => ({

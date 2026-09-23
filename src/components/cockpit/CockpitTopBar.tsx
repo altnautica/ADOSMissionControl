@@ -1,9 +1,8 @@
 /**
- * The cockpit SAFETY BAND — a faithful port of the reference artifact's
- * `.safety` strip: the ADOS wordmark + node·mode, then always-on safety stats
- * (ARMED pill, battery bar, GPS/RTK, link signal bars, flight time). Styling is
- * the artifact's (`.ados-cockpit .safety`); here we only feed live, freshness-
- * gated values (Rule 44). Altitude/speed live on the tapes, not here.
+ * The cockpit SAFETY BAND: the ADOS wordmark + node·mode, then always-on
+ * safety stats (ARMED pill, battery bar, GPS/RTK, link signal bars, flight
+ * time). Styling lives in `.ados-cockpit .safety`; this component only feeds
+ * live, freshness-gated values. Altitude/speed live on the tapes, not here.
  *
  * The band is ALWAYS on — safety-critical status is never hideable. The
  * operator's "top bar" chrome toggle only drops the decorative wordmark + node
@@ -28,21 +27,19 @@ import { needsOperatorAttention } from "@/lib/nodes/mqtt-control-authority";
 import { useClockTick } from "@/lib/agent/freshness";
 import { deriveHudStatus } from "@/lib/hud-readings";
 import { NO_DATA_GLYPH } from "@/lib/hud-draw";
-
-const LOW_BATTERY_PERCENT = 20;
+import { useBatteryBand, type BatteryBand } from "@/lib/battery-bands";
 
 function fmt(n: number | undefined | null, digits = 0): string {
   if (n === undefined || n === null || !Number.isFinite(n)) return "--";
   return n.toFixed(digits);
 }
 
-/** Battery bar fill color by remaining %. */
-function batColor(pct: number | undefined | null): string {
-  if (pct === undefined || pct === null || !Number.isFinite(pct)) return "var(--warn)";
-  if (pct > 50) return "var(--good)";
-  if (pct > 25) return "var(--warn)";
-  return "var(--crit)";
-}
+/** Battery bar fill per severity band (the operator's configured thresholds). */
+const BATTERY_BAND_FILL: Record<BatteryBand, string> = {
+  good: "var(--good)",
+  warning: "var(--warn)",
+  critical: "var(--crit)",
+};
 
 /**
  * mm:ss flight clock, measured from the vehicle's arm transition.
@@ -105,26 +102,36 @@ function CockpitTopBarInner({ onExit, controls, lean = false }: CockpitTopBarPro
   const displayName = useDroneMetadataStore((s) =>
     selectedDroneId ? s.profiles[selectedDroneId]?.displayName : undefined,
   );
-  const name = displayName ?? selectedDroneId ?? t("noDrone");
+  // A direct-connect session has no stored profile; its managed name is the
+  // label, never the bare session id.
+  const sessionName = useDroneManager((s) =>
+    selectedDroneId ? s.drones.get(selectedDroneId)?.name : undefined,
+  );
+  const name = displayName ?? sessionName ?? selectedDroneId ?? t("noDrone");
 
   const timer = useFlightTimer(armedAt);
 
-  const batteryLow = batteryPct !== null && batteryPct <= LOW_BATTERY_PERCENT;
+  const batteryBandLevel = useBatteryBand(batteryPct);
+  const batteryLow = batteryBandLevel === "critical";
   const batWidth = batteryPct !== null ? Math.max(0, Math.min(100, batteryPct)) : 0;
 
   // The locale already carried gpsRtk / gps3d / gps2d / gpsNoFix; this band was
   // building its own English strings beside them, so the one surface an
   // operator stares at during a flight was the one that never translated.
-  const fix = gps?.fixType ?? 0;
+  // A stale or absent GPS sample is no data, not "no fix". Only fix types 5
+  // (RTK float) and 6 (RTK fixed) are RTK; STATIC (7) and PPP (8) are 3D fixes.
+  const fix = gps?.fixType;
   const sats = fmt(gps?.satellites, 0);
   const gpsLabel =
-    fix >= 5
-      ? t("strip.gpsRtk", { sats })
-      : fix >= 3
-        ? t("strip.gps3d", { sats })
-        : fix >= 2
-          ? t("strip.gps2d", { sats })
-          : t("strip.gpsNoFix");
+    fix === undefined
+      ? NO_DATA_GLYPH
+      : fix === 5 || fix === 6
+        ? t("strip.gpsRtk", { sats })
+        : fix >= 3
+          ? t("strip.gps3d", { sats })
+          : fix >= 2
+            ? t("strip.gps2d", { sats })
+            : t("strip.gpsNoFix");
 
   // 0 bars and "no reading" are different states: `signalBars` is null when
   // nothing has reported a link, 0 when a link was measured and is dead.
@@ -191,7 +198,7 @@ function CockpitTopBarInner({ onExit, controls, lean = false }: CockpitTopBarPro
       <div className="stat">
         <span className="k">{t("band.batt")}</span>
         <span className="bar">
-          <i style={{ width: `${batWidth}%`, background: batColor(batteryPct) }} />
+          <i style={{ width: `${batWidth}%`, background: batteryBandLevel ? BATTERY_BAND_FILL[batteryBandLevel] : undefined }} />
         </span>
         <span className="v" style={batteryLow ? { color: "var(--crit)" } : undefined}>
           {fmt(batteryPct, 0)}%
@@ -199,9 +206,9 @@ function CockpitTopBarInner({ onExit, controls, lean = false }: CockpitTopBarPro
       </div>
 
       {/* GPS */}
-      <div className="stat">
+      <div className="stat" data-testid="cockpit-gps">
         <span className="k">{t("strip.gps")}</span>
-        <span className="v" style={fix >= 5 ? { color: "var(--good)" } : undefined}>
+        <span className="v" style={fix === 5 || fix === 6 ? { color: "var(--good)" } : undefined}>
           {gpsLabel}
         </span>
       </div>

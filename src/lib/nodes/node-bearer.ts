@@ -14,7 +14,7 @@
  * primary bearer and an optional secondary.
  *
  * Verification follows the same discipline as every other reading on this board
- * (Rule 44 / Rule 37): a WFB bearer counts as verified only when the far side
+ * (no fabricated reading, no unproven link): a WFB bearer counts as verified only when the far side
  * heard a frame from it (a received-side signal, surfaced as the peer RSSI). No
  * signal is "unverified", not a confident green; a node that has gone dark is
  * "down"; a last-known reading on a stale node is "stale". A LAN or cloud bearer
@@ -74,7 +74,7 @@ export interface DeriveNodeBearersInput {
 /**
  * Classify a WFB bearer's reading. Verified needs a received-side signal AND a
  * live node; no signal is unverified; a dark node is down; a signal on a stale
- * node is stale. Never a confident verdict without a heard frame (Rule 37/44).
+ * node is stale. Never a confident verdict without a heard frame (no fabricated reading, no unproven link).
  */
 function verifyWfb(
   rssiDbm: number | null,
@@ -144,7 +144,7 @@ export function deriveNodeBearers(input: DeriveNodeBearersInput): NodeBearers {
   // A directly-reached node that a ground node also relays keeps the WFB path as
   // a secondary provenance chip. Its signal lives on the ground node's own row,
   // not here, so this chip carries no RSSI and reads unverified — never a
-  // confident green from a link this row cannot independently prove (Rule 44).
+  // confident green from a link this row cannot independently prove (no fabricated reading).
   const secondary =
     hasReachedVia && liveness !== "offline"
       ? wfbChip(reachedViaName, null, liveness)

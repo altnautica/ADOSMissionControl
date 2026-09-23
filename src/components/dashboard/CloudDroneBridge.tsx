@@ -16,7 +16,7 @@ import { useEffect, useRef } from "react";
 import { useAuthStore } from "@/stores/auth-store";
 import { cmdDronesApi } from "@/lib/community-api-drones";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
-import { STALE_THRESHOLD_MS } from "@/lib/agent/freshness";
+import { STALE_THRESHOLD_MS, useClockTick } from "@/lib/agent/freshness";
 import { normalizeCameraUsbRecovery } from "@/lib/agent/camera-recovery";
 import { useCommandFleetStore } from "@/stores/command-fleet-store";
 import type {
@@ -63,6 +63,45 @@ function pickLinkedPeers(value: unknown): LinkedPeer[] | undefined {
   return peers.length > 0 ? peers : undefined;
 }
 
+/** The status-row fields this bridge writes. On a stale or unpaired node only
+ * these are stripped: the LAN bridge may co-own the same row, and its fields
+ * must survive the cloud going quiet. */
+const CLOUD_OWNED_FIELDS = [
+  "attachedDisplayType",
+  "profileSource",
+  "manualMavlinkWsUrl",
+  "navigationGpsDenied",
+  "navigationMode",
+  "peerDeviceId",
+  "peerRssiDbm",
+  "linkedPeers",
+  "transportOpen",
+  "mavlinkAlive",
+  "heartbeatAgeS",
+  "fcSource",
+  "fcLinkHint",
+  "fcFirmware",
+  "cameraState",
+  "cameraUsbRecovery",
+] as const satisfies readonly (keyof CommandCloudStatus)[];
+
+/** Withdraw this bridge's claim on one node: its cloud presence source and its
+ * cloud-owned status fields. A row left with nothing but its id and timestamp
+ * is removed; one the LAN bridge still feeds keeps the LAN fields. */
+function dropCloudNode(deviceId: string): void {
+  useNodeRegistryStore.getState().dropPresence(resolveNodeId(deviceId), "cloud");
+  const fleetStatus = useCommandFleetStore.getState();
+  const row = fleetStatus.cloudStatuses[deviceId];
+  if (!row) return;
+  const stripped: CommandCloudStatus = { ...row };
+  for (const key of CLOUD_OWNED_FIELDS) delete stripped[key];
+  const remaining = Object.keys(stripped).filter(
+    (k) => k !== "deviceId" && k !== "updatedAt",
+  );
+  if (remaining.length === 0) fleetStatus.removeCloudStatuses([deviceId]);
+  else fleetStatus.upsertCloudStatuses([stripped]);
+}
+
 export function CloudDroneBridge() {
   // deviceIds this bridge currently owns cloud presence + pills for.
   const trackedDeviceIds = useRef<Set<string>>(new Set());
@@ -71,9 +110,29 @@ export function CloudDroneBridge() {
   const myDrones = useConvexSkipQuery(cmdDronesApi.listMyDrones, {
     enabled: isAuthenticated,
   });
+  // A Convex query only re-emits on a write, so a node that stops reporting
+  // would never be re-judged. Staleness is re-checked on the shared 1 Hz clock.
+  const tick = useClockTick();
 
   useEffect(() => {
-    if (!myDrones || !Array.isArray(myDrones)) return;
+    // Signed out, query error, or query disabled: nothing vouches for any
+    // cloud node any more.
+    if (!Array.isArray(myDrones)) {
+      for (const deviceId of trackedDeviceIds.current) dropCloudNode(deviceId);
+      trackedDeviceIds.current.clear();
+      return;
+    }
+    const now = Date.now();
+    for (const drone of myDrones) {
+      if (!trackedDeviceIds.current.has(drone.deviceId)) continue;
+      if (now - (drone.lastSeen ?? 0) < STALE_THRESHOLD_MS) continue;
+      dropCloudNode(drone.deviceId);
+      trackedDeviceIds.current.delete(drone.deviceId);
+    }
+  }, [myDrones, tick]);
+
+  useEffect(() => {
+    if (!Array.isArray(myDrones)) return;
 
     const registry = useNodeRegistryStore.getState();
     const fleetStatus = useCommandFleetStore.getState();
@@ -87,16 +146,9 @@ export function CloudDroneBridge() {
       const isOnline = now - lastSeen < STALE_THRESHOLD_MS;
       const nodeId = resolveNodeId(deviceId);
 
-      if (!isOnline) {
-        // Stale cloud node: drop its cloud presence + pills. If a LAN presence
-        // or an FC still anchors the row it survives; otherwise it GCs.
-        if (trackedDeviceIds.current.has(deviceId)) {
-          registry.dropPresence(nodeId, "cloud");
-          fleetStatus.removeCloudStatuses([deviceId]);
-          trackedDeviceIds.current.delete(deviceId);
-        }
-        continue;
-      }
+      // A stale node is withdrawn by the staleness effect above (which runs
+      // first on the same emission); it is simply not re-published here.
+      if (!isOnline) continue;
 
       current.add(deviceId);
 
@@ -233,8 +285,7 @@ export function CloudDroneBridge() {
     // Drop cloud presence + pills for drones no longer in the paired list.
     for (const deviceId of Array.from(trackedDeviceIds.current)) {
       if (!current.has(deviceId)) {
-        registry.dropPresence(resolveNodeId(deviceId), "cloud");
-        fleetStatus.removeCloudStatuses([deviceId]);
+        dropCloudNode(deviceId);
         trackedDeviceIds.current.delete(deviceId);
       }
     }
@@ -243,12 +294,7 @@ export function CloudDroneBridge() {
   useEffect(() => {
     const tracked = trackedDeviceIds.current;
     return () => {
-      const registry = useNodeRegistryStore.getState();
-      const fleetStatus = useCommandFleetStore.getState();
-      for (const deviceId of tracked) {
-        registry.dropPresence(resolveNodeId(deviceId), "cloud");
-        fleetStatus.removeCloudStatuses([deviceId]);
-      }
+      for (const deviceId of tracked) dropCloudNode(deviceId);
       tracked.clear();
     };
   }, []);

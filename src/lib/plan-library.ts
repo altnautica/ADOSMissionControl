@@ -33,14 +33,19 @@ export function sortPlans(
   return direction === "desc" ? sorted.reverse() : sorted;
 }
 
-/** Calculate total distance (meters) for a waypoint array using Haversine. */
+/**
+ * Total path length (meters) over the waypoints that carry a position, using
+ * Haversine. Items with no coordinates (a downloaded RTL, a TAKEOFF saved
+ * without a position) sit at (0, 0) and are skipped, so they never add a leg
+ * to the null island.
+ */
 export function totalDistance(waypoints: Waypoint[]): number {
   let dist = 0;
-  for (let i = 1; i < waypoints.length; i++) {
-    dist += haversine(
-      waypoints[i - 1].lat, waypoints[i - 1].lon,
-      waypoints[i].lat, waypoints[i].lon
-    );
+  let prev: Waypoint | null = null;
+  for (const wp of waypoints) {
+    if (wp.lat === 0 && wp.lon === 0) continue;
+    if (prev) dist += haversine(prev.lat, prev.lon, wp.lat, wp.lon);
+    prev = wp;
   }
   return dist;
 }

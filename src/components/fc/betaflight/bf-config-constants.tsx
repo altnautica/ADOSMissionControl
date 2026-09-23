@@ -14,16 +14,22 @@ export interface FeatureDef {
   bit: number;
   label: string;
   description: string;
+  /** First MSP API version (major, minor) whose firmware no longer has the bit. */
+  removedInApi?: readonly [number, number];
 }
 
+/**
+ * Betaflight features_e (config/feature.h). VBAT (bit 1) is gone from every
+ * supported release; DYNAMIC_FILTER (bit 29) was removed in 4.3 (MSP API 1.44)
+ * and is offered only to firmware that still reads it.
+ */
 export const FEATURE_DEFS: FeatureDef[] = [
   { bit: FEATURE_FLAG.RX_PPM, label: "RX_PPM", description: "PPM receiver input" },
-  { bit: FEATURE_FLAG.VBAT, label: "VBAT", description: "Battery voltage monitoring" },
   { bit: FEATURE_FLAG.RX_SERIAL, label: "RX_SERIAL", description: "Serial receiver (SBUS, CRSF, etc.)" },
   { bit: FEATURE_FLAG.MOTOR_STOP, label: "MOTOR_STOP", description: "Stop motors when armed at zero throttle" },
   { bit: FEATURE_FLAG.SOFTSERIAL, label: "SOFTSERIAL", description: "Software serial ports" },
   { bit: FEATURE_FLAG.GPS, label: "GPS", description: "GPS support" },
-  { bit: FEATURE_FLAG.SONAR, label: "SONAR", description: "Sonar/rangefinder" },
+  { bit: FEATURE_FLAG.RANGEFINDER, label: "RANGEFINDER", description: "Rangefinder" },
   { bit: FEATURE_FLAG.TELEMETRY, label: "TELEMETRY", description: "Telemetry output (FrSky, CRSF, etc.)" },
   { bit: FEATURE_FLAG.LED_STRIP, label: "LED_STRIP", description: "Addressable LED strip" },
   { bit: FEATURE_FLAG.OSD, label: "OSD", description: "On-screen display" },
@@ -31,8 +37,21 @@ export const FEATURE_DEFS: FeatureDef[] = [
   { bit: FEATURE_FLAG.RX_SPI, label: "RX_SPI", description: "SPI receiver (built-in)" },
   { bit: FEATURE_FLAG.ESC_SENSOR, label: "ESC_SENSOR", description: "ESC telemetry sensor" },
   { bit: FEATURE_FLAG.ANTI_GRAVITY, label: "ANTI_GRAVITY", description: "Anti-gravity (I-term boost on throttle changes)" },
-  { bit: FEATURE_FLAG.DYNAMIC_FILTER, label: "DYNAMIC_FILTER", description: "Dynamic notch filter" },
+  { bit: FEATURE_FLAG.DYNAMIC_FILTER, label: "DYNAMIC_FILTER", description: "Dynamic notch filter", removedInApi: [1, 44] },
 ];
+
+/**
+ * The feature toggles the connected firmware reads. Without a known MSP API
+ * version, bits removed from any current release are left out.
+ */
+export function featureDefsForApi(api: { major: number; minor: number } | undefined): FeatureDef[] {
+  return FEATURE_DEFS.filter((f) => {
+    if (!f.removedInApi) return true;
+    if (!api) return false;
+    const [major, minor] = f.removedInApi;
+    return api.major < major || (api.major === major && api.minor < minor);
+  });
+}
 
 export interface BeeperDef {
   bit: number;

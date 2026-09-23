@@ -14,6 +14,7 @@
 
 import type { TelemetryFrame } from "@/lib/telemetry-recorder";
 import type { FlightEvent, FlightFlag, HealthSummary } from "@/lib/types";
+import { AIRBORNE_ALT_M } from "./phase-detector";
 import { THRESHOLDS } from "./thresholds";
 
 export interface AnalyzeResult {
@@ -56,19 +57,33 @@ const EKF_FAULT_BITS = [
 /** Minimum spacing between two EKF variance events. */
 const EKF_VARIANCE_EVENT_SPACING_MS = 5000;
 
+/**
+ * Over-threshold vibration samples closer together than this belong to one
+ * spike, reported once with its start, end and peak.
+ */
+const VIBRATION_SPIKE_MERGE_MS = 5000;
+
+function vibrationSpikeLabel(peak: number, durationMs: number): string {
+  const base = `Vibration spike (peak RMS ${peak.toFixed(1)} m/s²`;
+  return durationMs > 0 ? `${base}, ${(durationMs / 1000).toFixed(1)} s)` : `${base})`;
+}
+
 export function analyzeFlight(frames: TelemetryFrame[]): AnalyzeResult {
   const events: FlightEvent[] = [];
   const flags: FlightFlag[] = [];
 
   // Trackers
-  let firstPosT: number | undefined;
-  let lastPosT: number | undefined;
-  let lastBatteryRemaining: number | undefined;
+  let airborne = false;
+  let takeoffT: number | undefined;
+  let landT: number | undefined;
   let lastBatteryAlertedLow = false;
   let lastBatteryAlertedCritical = false;
+  let batteryBelowReported = false;
   let lastSatCount: number | undefined;
   let lastGpsFixOk = true;
-
+  let vibrationSpike: FlightEvent | undefined;
+  let vibrationSpikeEndT = -Infinity;
+  let vibrationSpikePeak = 0;
   // Health accumulators
   let satSum = 0;
   let satN = 0;
@@ -91,12 +106,23 @@ export function analyzeFlight(frames: TelemetryFrame[]): AnalyzeResult {
     const t = frame.offsetMs;
 
     if (frame.channel === "position" || frame.channel === "globalPosition") {
+      // Takeoff and land are the height-above-home crossings of the airborne
+      // threshold, so a bench arm/disarm that never leaves the ground
+      // records neither. A log that ends in the air has no land event.
       const d = frame.data as PositionFrame;
-      if (firstPosT === undefined) {
-        firstPosT = t;
-        events.push({ t, type: "takeoff", severity: "info", label: "Takeoff" });
+      if (typeof d.relativeAlt === "number") {
+        const nowAirborne = d.relativeAlt > AIRBORNE_ALT_M;
+        if (nowAirborne && !airborne) {
+          if (takeoffT === undefined) {
+            takeoffT = t;
+            events.push({ t, type: "takeoff", severity: "info", label: "Takeoff" });
+          }
+          landT = undefined;
+        } else if (!nowAirborne && airborne) {
+          landT = t;
+        }
+        airborne = nowAirborne;
       }
-      lastPosT = t;
     } else if (frame.channel === "battery") {
       const d = frame.data as BatteryFrame;
       // -1 is the autopilot's "remaining not measured", not an empty pack.
@@ -123,7 +149,6 @@ export function analyzeFlight(frames: TelemetryFrame[]): AnalyzeResult {
           });
           lastBatteryAlertedLow = true;
         }
-        lastBatteryRemaining = d.remaining;
       }
 
       if (typeof d.voltage === "number") {
@@ -196,27 +221,44 @@ export function analyzeFlight(frames: TelemetryFrame[]): AnalyzeResult {
       vibrationRmsN += 1;
       if (rms > maxVibrationRms) maxVibrationRms = rms;
       if (rms >= THRESHOLDS.vibrationSpikeRms) {
-        events.push({
-          t,
-          type: "vibration_spike",
-          severity: "warning",
-          label: `Vibration spike (RMS ${rms.toFixed(1)} m/s²)`,
-          data: { rms },
-        });
+        if (vibrationSpike && t - vibrationSpikeEndT <= VIBRATION_SPIKE_MERGE_MS) {
+          vibrationSpikeEndT = t;
+          if (rms > vibrationSpikePeak) vibrationSpikePeak = rms;
+          vibrationSpike.label = vibrationSpikeLabel(vibrationSpikePeak, t - vibrationSpike.t);
+          vibrationSpike.data = { rms: vibrationSpikePeak, endT: t };
+        } else {
+          vibrationSpike = {
+            t,
+            type: "vibration_spike",
+            severity: "warning",
+            label: vibrationSpikeLabel(rms, 0),
+            data: { rms, endT: t },
+          };
+          vibrationSpikeEndT = t;
+          vibrationSpikePeak = rms;
+          events.push(vibrationSpike);
+        }
       }
     } else if (frame.channel === "sysStatus") {
       const d = frame.data as SysStatusFrame;
-      if (typeof d.batteryRemaining === "number" && d.batteryRemaining >= 0 && d.batteryRemaining < THRESHOLDS.batteryCriticalPct) {
-        // Treat as a failsafe-class event once.
-        if (!events.some((e) => e.type === "failsafe_battery")) {
-          events.push({
-            t,
-            type: "failsafe_battery",
-            severity: "error",
-            label: "Battery failsafe",
-            data: { remaining: d.batteryRemaining },
-          });
-        }
+      // SYS_STATUS carries the same remaining % as BATTERY_STATUS. It is a
+      // reading, not an autopilot failsafe, and is reported once only when
+      // the battery stream has not already raised the critical event.
+      if (
+        !batteryBelowReported &&
+        !lastBatteryAlertedCritical &&
+        typeof d.batteryRemaining === "number" &&
+        d.batteryRemaining >= 0 &&
+        d.batteryRemaining < THRESHOLDS.batteryCriticalPct
+      ) {
+        events.push({
+          t,
+          type: "battery_below",
+          severity: "warning",
+          label: `Battery below ${THRESHOLDS.batteryCriticalPct}%`,
+          data: { remaining: d.batteryRemaining },
+        });
+        batteryBelowReported = true;
       }
     } else if (frame.channel === "ekf") {
       const d = frame.data as EkfFrame;
@@ -265,9 +307,8 @@ export function analyzeFlight(frames: TelemetryFrame[]): AnalyzeResult {
     }
   }
 
-  // Add final landing event from last position frame.
-  if (lastPosT !== undefined && lastPosT !== firstPosT) {
-    events.push({ t: lastPosT, type: "land", severity: "info", label: "Land" });
+  if (landT !== undefined) {
+    events.push({ t: landT, type: "land", severity: "info", label: "Land" });
   }
 
   // ── Aggregate flags ─────────────────────────────────────────
@@ -298,12 +339,10 @@ export function analyzeFlight(frames: TelemetryFrame[]): AnalyzeResult {
 
   // ── Health summary ──────────────────────────────────────────
 
-  let batteryHealthPct: number | undefined;
-  if (batteryStartPct !== undefined && batteryEndPct !== undefined) {
-    batteryHealthPct = Math.max(0, Math.min(100, batteryStartPct - batteryEndPct));
-  } else if (lastBatteryRemaining !== undefined) {
-    batteryHealthPct = Math.max(0, 100 - lastBatteryRemaining);
-  }
+  const batteryHealthPct =
+    batteryStartPct !== undefined && batteryEndPct !== undefined
+      ? Math.max(0, Math.min(100, batteryStartPct - batteryEndPct))
+      : undefined;
 
   const health: HealthSummary = {
     avgSatellites: meanSats !== undefined ? Math.round(meanSats * 10) / 10 : undefined,

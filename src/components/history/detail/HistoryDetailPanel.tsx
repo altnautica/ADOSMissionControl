@@ -25,6 +25,7 @@ import { AnalysisTab } from "./tabs/AnalysisTab";
 import { NotesTab } from "./tabs/NotesTab";
 import { ExportTab } from "./tabs/ExportTab";
 import { MediaTab } from "./tabs/MediaTab";
+import { MANUAL_EVENT_TYPE } from "./tabs/use-reanalysis";
 import { cn } from "@/lib/utils";
 
 const statusVariant: Record<string, "success" | "warning" | "error" | "neutral"> = {
@@ -92,7 +93,7 @@ export function HistoryDetailPanel({ record, onClose, onReplay, listCollapsed, o
     const store = useHistoryStore.getState();
     const auditEvent: FlightEvent = {
       t: 0,
-      type: "manual_note",
+      type: MANUAL_EVENT_TYPE,
       severity: "warning",
       label: `Record unsealed at ${new Date().toLocaleString()}`,
     };
@@ -112,15 +113,7 @@ export function HistoryDetailPanel({ record, onClose, onReplay, listCollapsed, o
     }
   };
 
-  // Match recording by recordingId first, fall back to drone+time fuzzy.
-  const matchedRecording = recordings.find((rec) => {
-    if (record.recordingId && rec.id === record.recordingId) return true;
-    if (rec.droneId && rec.droneId === record.droneId) {
-      const timeDiff = Math.abs(rec.startTime - (record.startTime ?? record.date));
-      return timeDiff < 60_000;
-    }
-    return false;
-  });
+  const matchedRecording = matchRecording(recordings, record);
 
   return (
     <div className="flex-1 min-w-0 border-l border-border-default bg-bg-secondary flex flex-col overflow-hidden">
@@ -236,4 +229,31 @@ export function HistoryDetailPanel({ record, onClose, onReplay, listCollapsed, o
       </div>
     </div>
   );
+}
+
+/** Window within which a recording's start is taken to be this flight's arm. */
+const FUZZY_MATCH_MS = 60_000;
+
+/**
+ * The recording that belongs to `record`: the exact `recordingId` when the
+ * record has one, otherwise the same drone's recording whose start is closest
+ * to the flight start, within {@link FUZZY_MATCH_MS}.
+ */
+export function matchRecording(
+  recordings: TelemetryRecording[],
+  record: FlightRecord,
+): TelemetryRecording | undefined {
+  if (record.recordingId) return recordings.find((rec) => rec.id === record.recordingId);
+  const start = record.startTime ?? record.date;
+  let best: TelemetryRecording | undefined;
+  let bestDiff = FUZZY_MATCH_MS;
+  for (const rec of recordings) {
+    if (!rec.droneId || rec.droneId !== record.droneId) continue;
+    const diff = Math.abs(rec.startTime - start);
+    if (diff < bestDiff) {
+      best = rec;
+      bestDiff = diff;
+    }
+  }
+  return best;
 }

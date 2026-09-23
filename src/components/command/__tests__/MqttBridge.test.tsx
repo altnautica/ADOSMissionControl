@@ -1,22 +1,21 @@
 /**
  * @license GPL-3.0-only
  *
- * A2 regression: the MqttBridge connect effect consumes the broker URL (resolved
- * from clientConfig) and the broker credential (the operator's own minted write
- * grant), both of which land after the first render. The URL is a prop; the
- * credential is not — it is read at connect time from the singleton every MQTT
- * client shares, because transports that no component owns read the same one.
+ * The MQTT bridges dial only the broker the deployment configured. The broker
+ * URL (resolved from clientConfig) and the broker credential (the operator's
+ * own minted write grant) both land after the first render. The URL is a prop;
+ * the credential is not — it is read at connect time from the singleton every
+ * MQTT client shares, and the grant store's credential epoch is what re-runs
+ * the connect effect when it changes.
  *
- * What must hold either way: when the credential arrives, the client tears down
- * and reconnects to the correct broker WITH it, instead of connecting once,
- * credential-less, to the default broker and never re-running. The reactive
- * trigger for that is the grant store's credential epoch, so this pins the epoch
- * and the singleton together — an epoch bump with no credential behind it would
- * reconnect anonymously, and a credential with no bump would never be dialled.
+ * What must hold: nothing dials before the configured URL arrives (never a
+ * built-in default broker), the fleet bridge never dials anonymously and
+ * listens for client errors, and a renewed credential reconnects. The agent's
+ * status document overlays only the FC-link fields it carries.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, cleanup, waitFor } from "@testing-library/react";
+import { act, render, cleanup, waitFor } from "@testing-library/react";
 
 interface FakeClient {
   on: ReturnType<typeof vi.fn>;
@@ -40,11 +39,14 @@ vi.mock("@/components/ui/toast", () => ({
   useToast: () => ({ toast: vi.fn() }),
 }));
 
-import { MqttBridge } from "../MqttBridge";
+import { MqttBridge, applyMqttStatusDoc } from "../MqttBridge";
+import { CommandFleetMqttBridge } from "../CommandFleetMqttBridge";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
+import { useAgentSystemStore } from "@/stores/agent-system-store";
 import { useMqttControlGrantStore } from "@/stores/mqtt-control-grant-store";
 import { setMqttBrokerCredential } from "@/lib/mqtt-broker-credential";
-import { OFFICIAL_MQTT_WS_URL } from "@/lib/config/endpoints";
+import type { AgentStatus } from "@/lib/agent/types";
+import type { PairedDrone } from "@/stores/pairing-store";
 
 const BROKER = "wss://broker.example/mqtt";
 
@@ -68,34 +70,25 @@ afterEach(() => {
   useMqttControlGrantStore.setState({ credentialEpoch: 0 });
 });
 
-describe("MqttBridge — credentials-arrive-late (A2)", () => {
-  it("reconnects to the correct broker with creds when they arrive after mount", async () => {
+describe("MqttBridge — broker and credentials arrive late", () => {
+  it("dials nothing until the configured broker resolves, then dials it with creds", async () => {
     const { rerender } = render(<MqttBridge mqttBrokerUrl={undefined} />);
-
-    // First connect fires before clientConfig resolves and before any grant is
-    // minted: the default broker, no username (the credential-less path).
-    await waitFor(() => expect(h.connect).toHaveBeenCalledTimes(1));
-    const [firstUrl, firstOpts] = h.connect.mock.calls[0];
-    expect(firstUrl).toBe(OFFICIAL_MQTT_WS_URL);
-    expect(firstOpts.username).toBeUndefined();
-    expect(firstOpts.password).toBeUndefined();
+    // clientConfig has not resolved: no broker is configured yet, so no dial.
+    await act(async () => {});
+    expect(h.connect).not.toHaveBeenCalled();
 
     // clientConfig resolves → the real broker arrives on props. The grant is
     // minted and injected into the singleton, and the epoch bump is what tells
-    // the effect the credential it dialled with has been replaced.
+    // the effect the credential has landed.
     setMqttBrokerCredential({ username: "gcs-op-abc", password: "pw" });
     useMqttControlGrantStore.setState({ credentialEpoch: 1 });
     rerender(<MqttBridge mqttBrokerUrl={BROKER} />);
 
-    // The effect re-runs: the stale client is torn down and a fresh one dials
-    // the configured broker WITH credentials.
-    await waitFor(() => expect(h.connect).toHaveBeenCalledTimes(2));
-    const [secondUrl, secondOpts] = h.connect.mock.calls[1];
-    expect(secondUrl).toBe(BROKER);
-    expect(secondOpts.username).toBe("gcs-op-abc");
-    expect(secondOpts.password).toBe("pw");
-    // The first (credential-less) client was ended on reconnect.
-    expect(clients[0].end).toHaveBeenCalled();
+    await waitFor(() => expect(h.connect).toHaveBeenCalledTimes(1));
+    const [url, opts] = h.connect.mock.calls[0];
+    expect(url).toBe(BROKER);
+    expect(opts.username).toBe("gcs-op-abc");
+    expect(opts.password).toBe("pw");
   });
 
   it("reconnects on an epoch bump alone, with the broker URL unchanged", async () => {
@@ -116,5 +109,85 @@ describe("MqttBridge — credentials-arrive-late (A2)", () => {
     expect(h.connect.mock.calls[1][1].username).toBe("gcs-op-second");
     expect(h.connect.mock.calls[1][1].password).toBe("pw2");
     expect(clients[0].end).toHaveBeenCalled();
+  });
+});
+
+describe("CommandFleetMqttBridge", () => {
+  const paired = [{ _id: "row_1", deviceId: "cloud-1" } as PairedDrone];
+
+  it("never dials anonymously or to an unconfigured broker", async () => {
+    const { rerender } = render(
+      <CommandFleetMqttBridge pairedDrones={paired} mqttBrokerUrl={undefined} />,
+    );
+    setMqttBrokerCredential({ username: "gcs-op-abc", password: "pw" });
+    useMqttControlGrantStore.setState({ credentialEpoch: 1 });
+    rerender(<CommandFleetMqttBridge pairedDrones={paired} mqttBrokerUrl={null} />);
+    await act(async () => {});
+    expect(h.connect).not.toHaveBeenCalled();
+
+    setMqttBrokerCredential(null);
+    useMqttControlGrantStore.setState({ credentialEpoch: 2 });
+    rerender(<CommandFleetMqttBridge pairedDrones={paired} mqttBrokerUrl={BROKER} />);
+    await act(async () => {});
+    expect(h.connect).not.toHaveBeenCalled();
+  });
+
+  it("dials the configured broker as the operator and handles client errors", async () => {
+    setMqttBrokerCredential({ username: "gcs-op-abc", password: "pw" });
+    useMqttControlGrantStore.setState({ credentialEpoch: 1 });
+    render(<CommandFleetMqttBridge pairedDrones={paired} mqttBrokerUrl={BROKER} />);
+    await waitFor(() => expect(h.connect).toHaveBeenCalledTimes(1));
+    const [url, opts] = h.connect.mock.calls[0];
+    expect(url).toBe(BROKER);
+    expect(opts.username).toBe("gcs-op-abc");
+    const events = clients[0].on.mock.calls.map((c) => c[0]);
+    expect(events).toEqual(expect.arrayContaining(["error", "offline", "close"]));
+  });
+});
+
+describe("applyMqttStatusDoc", () => {
+  const heartbeatStatus = {
+    version: "1.2.3",
+    board: { name: "Board", model: "", tier: 2, ram_mb: 2048, cpu_cores: 4, vendor: "", soc: "", arch: "", hw_video_codecs: [] },
+    health: { cpu_percent: 12, memory_percent: 30, disk_percent: 40, temperature: null, timestamp: "" },
+    fc_connected: true,
+    fc_port: "/dev/ttyACM0",
+    fc_baud: 115200,
+    transport_open: true,
+    mavlink_alive: true,
+    heartbeat_age_s: 0.4,
+    fc_variant: "betaflight",
+  } as AgentStatus;
+
+  it("overlays the FC-link fields of the agent's document and keeps the rest", () => {
+    useAgentSystemStore.setState({ status: heartbeatStatus });
+    // The agent's status document (services/mqtt gateway).
+    const applied = applyMqttStatusDoc("cloud-1", {
+      device_id: "cloud-1",
+      name: "drone",
+      tier: 2,
+      armed: false,
+      fc_connected: false,
+      mavlink_alive: false,
+      heartbeat_age_s: 6.5,
+    });
+    expect(applied).toBe(true);
+    const s = useAgentSystemStore.getState().status!;
+    expect(s.fc_connected).toBe(false);
+    expect(s.mavlink_alive).toBe(false);
+    expect(s.heartbeat_age_s).toBe(6.5);
+    expect(s.fc_variant).toBe("betaflight");
+    expect(s.transport_open).toBe(true);
+    expect(s.version).toBe("1.2.3");
+    expect(s.board.ram_mb).toBe(2048);
+  });
+
+  it("ignores another device's document and needs a heartbeat status first", () => {
+    useAgentSystemStore.setState({ status: heartbeatStatus });
+    expect(applyMqttStatusDoc("cloud-1", { device_id: "cloud-2", fc_connected: false })).toBe(false);
+    expect(useAgentSystemStore.getState().status!.fc_connected).toBe(true);
+    useAgentSystemStore.setState({ status: null });
+    expect(applyMqttStatusDoc("cloud-1", { device_id: "cloud-1", fc_connected: false })).toBe(false);
+    expect(useAgentSystemStore.getState().status).toBeNull();
   });
 });

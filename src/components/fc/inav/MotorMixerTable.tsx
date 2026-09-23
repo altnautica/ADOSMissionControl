@@ -8,7 +8,7 @@
 
 "use client";
 
-import { useMixerStore, MOTOR_MIXER_MAX } from "@/stores/mixer-store";
+import { useMixerStore } from "@/stores/mixer-store";
 import { Button } from "@/components/ui/button";
 import { Plus, Trash2 } from "lucide-react";
 import type { MotorMixerRule } from "@/lib/protocol/msp/msp-decoders-inav";
@@ -23,6 +23,7 @@ interface MotorMixerTableProps {
 
 export function MotorMixerTable({ isArmed, lockMessage }: MotorMixerTableProps) {
   const motorRules = useMixerStore((s) => s.motorRules);
+  const motorSlots = useMixerStore((s) => s.motorSlots);
   const setMotorRule = useMixerStore((s) => s.setMotorRule);
   const removeMotorRule = useMixerStore((s) => s.removeMotorRule);
   const addMotorRule = useMixerStore((s) => s.addMotorRule);
@@ -30,7 +31,7 @@ export function MotorMixerTable({ isArmed, lockMessage }: MotorMixerTableProps) 
   return (
     <div className="space-y-3">
       <p className="text-[10px] font-mono text-text-tertiary uppercase tracking-wide">
-        Motor mixer ({motorRules.length}/{MOTOR_MIXER_MAX})
+        Motor mixer ({motorRules.length}/{motorSlots ?? "—"})
       </p>
       {motorRules.length > 0 && (
         <div className="overflow-x-auto">
@@ -87,7 +88,7 @@ export function MotorMixerTable({ isArmed, lockMessage }: MotorMixerTableProps) 
           </table>
         </div>
       )}
-      {motorRules.length < MOTOR_MIXER_MAX && (
+      {motorSlots !== null && motorRules.length < motorSlots && (
         <Button
           variant="secondary"
           size="sm"

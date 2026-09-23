@@ -101,9 +101,9 @@ const emptyHealth = (): TransportHealth => ({
  */
 export type VideoDegradedReason = "ice-disconnect" | "no-progress";
 
-// Rich latency breakdown surfaced behind the bottom-strip chip. Phase A
-// fills the GCS-receive + agent-air-side fields; Phase B adds true
-// camera->monitor glass-to-glass via SEI parsing in the browser.
+// Rich latency breakdown surfaced behind the bottom-strip chip. The receive
+// and air-side fields come from getStats and the agent latency route; true
+// camera->monitor glass-to-glass comes from the browser SEI parser.
 export interface VideoLatencyBreakdown {
   // GCS receive side (from RTCPeerConnection.getStats)
   rttMs: number;                  // candidate-pair currentRoundTripTime * 1000
@@ -117,7 +117,7 @@ export interface VideoLatencyBreakdown {
   airLatencyMs: number | null;
   airSamples: number | null;
   airSource: string | null;       // "sei" | "unavailable" | "read_failed" | ...
-  // True end-to-end (Phase B, from browser SEI parser + presentationTime)
+  // True end-to-end (browser SEI parser + presentationTime)
   trueG2GMs: number | null;       // camera -> browser presented frame
   trueG2GStdDevMs: number | null; // std-dev over the last 30 samples
   // Drone <-> browser clock offset (Cristian's algorithm via /api/time)
@@ -146,8 +146,14 @@ interface VideoStoreState {
   streamUrl: string | null;
   isStreaming: boolean;
   isRecording: boolean;
-  fps: number;
-  latencyMs: number;
+  /** `Date.now()` when the current recording started; `null` when idle. The
+   *  recorder outlives any one surface, so every REC timer reads this. */
+  recordingStartedAt: number | null;
+  /** Decoded frames per second, or `null` until a stats window measured it. */
+  fps: number | null;
+  /** Network RTT plus decoder buffer wait, or `null` until the nominated
+   *  candidate pair reported a round-trip time. */
+  latencyMs: number | null;
   resolution: string;
 
   // extended WebRTC stats
@@ -157,9 +163,8 @@ interface VideoStoreState {
   jitterMs: number;         // from inbound-rtp.jitter (sec * 1000)
   transport: VideoTransport;
 
-  // Rich latency breakdown. latencyMs above remains the sum
-  // (rttMs + jitterBufferMs) for backward compatibility with code that
-  // only needs the single roll-up number.
+  // Rich latency breakdown. latencyMs above is the roll-up
+  // (rttMs + jitterBufferMs) for readers that want a single number.
   latency: VideoLatencyBreakdown;
 
   // HMR-safe polling state. Module-level globals in webrtc-client.ts
@@ -231,7 +236,7 @@ interface VideoStoreState {
   setStreamUrl: (url: string | null) => void;
   setStreaming: (isStreaming: boolean) => void;
   setRecording: (isRecording: boolean) => void;
-  updateStats: (fps: number, latencyMs: number) => void;
+  updateStats: (fps: number | null, latencyMs: number | null) => void;
   setResolution: (resolution: string) => void;
   setVideoMetrics: (m: { codec?: string; bitrateKbps?: number; packetsLost?: number; jitterMs?: number }) => void;
   setTransport: (transport: VideoTransport) => void;
@@ -277,8 +282,9 @@ export const useVideoStore = create<VideoStoreState>((set) => ({
   streamUrl: null,
   isStreaming: false,
   isRecording: false,
-  fps: 0,
-  latencyMs: 0,
+  recordingStartedAt: null,
+  fps: null,
+  latencyMs: null,
   // Empty, not "1280x720". A fabricated default is truthy, so the `|| "—"`
   // fallback every readout uses could never fire and the cockpit showed a
   // confident resolution for a stream whose metadata had not arrived — and
@@ -325,7 +331,11 @@ export const useVideoStore = create<VideoStoreState>((set) => ({
 
   setStreamUrl: (streamUrl) => set({ streamUrl }),
   setStreaming: (isStreaming) => set({ isStreaming }),
-  setRecording: (isRecording) => set({ isRecording }),
+  setRecording: (isRecording) =>
+    set((prev) => {
+      if (prev.isRecording === isRecording) return prev;
+      return { isRecording, recordingStartedAt: isRecording ? Date.now() : null };
+    }),
   updateStats: (fps, latencyMs) => set({ fps, latencyMs }),
   setResolution: (resolution) => set({ resolution }),
   setVideoMetrics: (m) =>
@@ -452,8 +462,8 @@ export const useVideoStore = create<VideoStoreState>((set) => ({
       // as long as it took the first frame to arrive — or forever, on a node
       // that never streams.
       resolution: "",
-      fps: 0,
-      latencyMs: 0,
+      fps: null,
+      latencyMs: null,
       codec: "",
       bitrateKbps: 0,
       packetsLost: 0,

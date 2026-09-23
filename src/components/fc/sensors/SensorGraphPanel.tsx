@@ -10,10 +10,11 @@ import { Activity, Pause, Play } from "lucide-react";
 import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import {
-  WaveformChart,
-  SOURCE_TABS, TIME_WINDOW_OPTIONS, MAX_SAMPLES, AXIS_COLORS,
+  WaveformChart, imuSampleFromScaled, RAD_TO_DEG,
+  SOURCE_TABS, TIME_WINDOW_OPTIONS, MAX_SAMPLES,
   type SourceTab, type TimeWindow, type ImuSample,
 } from "./waveform-chart";
+import { XYZ_COLORS } from "../chart-theme";
 
 export function SensorGraphPanel() {
   const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
@@ -25,21 +26,29 @@ export function SensorGraphPanel() {
   const [timeWindow, setTimeWindow] = useState<TimeWindow>(15);
   const [frozen, setFrozen] = useState(false);
   const [tick, setTick] = useState(0);
+  const [imu, setImu] = useState(0);
 
-  const samplesRef = useRef<ImuSample[]>([]);
+  // One series per IMU instance (SCALED_IMU, _IMU2, _IMU3): instances carry
+  // different biases, so mixing them draws a saw-tooth that reads as vibration.
+  const samplesRef = useRef<Map<number, ImuSample[]>>(new Map());
   const frozenRef = useRef(false);
   frozenRef.current = frozen;
 
   useEffect(() => {
-    samplesRef.current = [];
+    samplesRef.current = new Map();
     const protocol = getSelectedProtocol();
     if (!protocol?.onScaledImu) return;
     const unsub = protocol.onScaledImu((data) => {
       if (frozenRef.current) return;
-      samplesRef.current.push({ timestamp: data.timestamp, xgyro: data.xgyro, ygyro: data.ygyro, zgyro: data.zgyro, xacc: data.xacc, yacc: data.yacc, zacc: data.zacc, xmag: data.xmag, ymag: data.ymag, zmag: data.zmag });
-      if (samplesRef.current.length > MAX_SAMPLES) samplesRef.current.splice(0, samplesRef.current.length - MAX_SAMPLES);
+      let series = samplesRef.current.get(data.imu);
+      if (!series) {
+        series = [];
+        samplesRef.current.set(data.imu, series);
+      }
+      series.push(imuSampleFromScaled(data));
+      if (series.length > MAX_SAMPLES) series.splice(0, series.length - MAX_SAMPLES);
     });
-    return () => { unsub(); samplesRef.current = []; };
+    return () => { unsub(); samplesRef.current = new Map(); };
   }, [getSelectedProtocol, selectedDroneId]);
 
   useEffect(() => {
@@ -48,26 +57,37 @@ export function SensorGraphPanel() {
     return () => clearInterval(interval);
   }, [frozen]);
 
+  const imuInstances = useMemo(
+    () => [...samplesRef.current.keys()].sort((a, b) => a - b),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [tick],
+  );
+  const activeImu = imuInstances.includes(imu) ? imu : (imuInstances[0] ?? 0);
+
   const windowedSamples = useMemo(() => {
     const cutoff = Date.now() - timeWindow * 1000;
-    return samplesRef.current.filter((s) => s.timestamp >= cutoff);
+    return (samplesRef.current.get(activeImu) ?? []).filter((s) => s.timestamp >= cutoff);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [timeWindow, tick]);
+  }, [timeWindow, tick, activeImu]);
 
+  // ATTITUDE rates arrive in rad/s. MSP links publish no body rates (the
+  // adapter fills zeros), so there is nothing real to fall back to there.
+  const attitudeRatesReported = firmwareType !== "betaflight" && firmwareType !== "inav";
   const attitudeGyroFallback = useMemo(() => {
-    if (windowedSamples.length > 0) return null;
+    if (windowedSamples.length > 0 || !attitudeRatesReported) return null;
     const cutoff = Date.now() - timeWindow * 1000;
     return attitudeRing.toArray().filter((a) => a.timestamp >= cutoff);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [timeWindow, tick, windowedSamples.length, attitudeRing.length]);
+  }, [timeWindow, tick, windowedSamples.length, attitudeRing.length, attitudeRatesReported]);
 
   const extractAxis = useCallback(
-    (key: keyof ImuSample): number[] => windowedSamples.map((s) => s[key] as number),
+    (key: keyof ImuSample): number[] => windowedSamples.map((s) => s[key]),
     [windowedSamples],
   );
 
   const hasImuData = windowedSamples.length > 0;
   const hasAttitudeFallback = !hasImuData && (attitudeGyroFallback?.length ?? 0) > 0;
+  const imuOptions = imuInstances.map((i) => ({ value: String(i), label: `IMU ${i + 1}` }));
 
   return (
     <div className="h-full flex flex-col">
@@ -84,6 +104,9 @@ export function SensorGraphPanel() {
         <button onClick={() => setFrozen((f) => !f)} className={cn("flex items-center gap-1 px-2 py-1 text-[10px] cursor-pointer", frozen ? "text-status-warning" : "text-text-secondary hover:text-text-primary")}>
           {frozen ? <Pause size={10} /> : <Play size={10} />}{frozen ? "Frozen" : "Live"}
         </button>
+        {imuOptions.length > 1 && (
+          <Select value={String(activeImu)} onChange={(v) => setImu(Number(v))} options={imuOptions} className="text-[10px] font-mono" />
+        )}
         {hasImuData && <span className="text-[9px] font-mono text-text-tertiary tabular-nums">{windowedSamples.length} pts</span>}
       </div>
 
@@ -108,16 +131,16 @@ export function SensorGraphPanel() {
             <SectionHeader title="Gyroscope" subtitle="Angular rate (deg/s)" />
             {hasImuData ? (
               <div className="space-y-2">
-                <WaveformChart data={extractAxis("xgyro")} label="X" unit="deg/s" color={AXIS_COLORS.x} />
-                <WaveformChart data={extractAxis("ygyro")} label="Y" unit="deg/s" color={AXIS_COLORS.y} />
-                <WaveformChart data={extractAxis("zgyro")} label="Z" unit="deg/s" color={AXIS_COLORS.z} />
+                <WaveformChart data={extractAxis("xgyro")} label="X" unit="deg/s" color={XYZ_COLORS.x} />
+                <WaveformChart data={extractAxis("ygyro")} label="Y" unit="deg/s" color={XYZ_COLORS.y} />
+                <WaveformChart data={extractAxis("zgyro")} label="Z" unit="deg/s" color={XYZ_COLORS.z} />
               </div>
             ) : hasAttitudeFallback && attitudeGyroFallback ? (
               <div className="space-y-2">
                 <p className="text-[9px] text-text-tertiary italic mb-1">Using attitude rate data (SCALED_IMU not available)</p>
-                <WaveformChart data={attitudeGyroFallback.map((a) => a.rollSpeed)} label="R" unit="deg/s" color={AXIS_COLORS.x} />
-                <WaveformChart data={attitudeGyroFallback.map((a) => a.pitchSpeed)} label="P" unit="deg/s" color={AXIS_COLORS.y} />
-                <WaveformChart data={attitudeGyroFallback.map((a) => a.yawSpeed)} label="Y" unit="deg/s" color={AXIS_COLORS.z} />
+                <WaveformChart data={attitudeGyroFallback.map((a) => a.rollSpeed * RAD_TO_DEG)} label="R" unit="deg/s" color={XYZ_COLORS.x} />
+                <WaveformChart data={attitudeGyroFallback.map((a) => a.pitchSpeed * RAD_TO_DEG)} label="P" unit="deg/s" color={XYZ_COLORS.y} />
+                <WaveformChart data={attitudeGyroFallback.map((a) => a.yawSpeed * RAD_TO_DEG)} label="Y" unit="deg/s" color={XYZ_COLORS.z} />
               </div>
             ) : null}
           </div>
@@ -125,18 +148,18 @@ export function SensorGraphPanel() {
           <div className="space-y-4">
             <SectionHeader title="Accelerometer" subtitle="Linear acceleration (m/s\u00b2)" />
             <div className="space-y-2">
-              <WaveformChart data={extractAxis("xacc")} label="X" unit="m/s\u00b2" color={AXIS_COLORS.x} />
-              <WaveformChart data={extractAxis("yacc")} label="Y" unit="m/s\u00b2" color={AXIS_COLORS.y} />
-              <WaveformChart data={extractAxis("zacc")} label="Z" unit="m/s\u00b2" color={AXIS_COLORS.z} />
+              <WaveformChart data={extractAxis("xacc")} label="X" unit="m/s\u00b2" color={XYZ_COLORS.x} />
+              <WaveformChart data={extractAxis("yacc")} label="Y" unit="m/s\u00b2" color={XYZ_COLORS.y} />
+              <WaveformChart data={extractAxis("zacc")} label="Z" unit="m/s\u00b2" color={XYZ_COLORS.z} />
             </div>
           </div>
         ) : source === "mag" ? (
           <div className="space-y-4">
             <SectionHeader title="Magnetometer" subtitle="Magnetic field (mGauss)" />
             <div className="space-y-2">
-              <WaveformChart data={extractAxis("xmag")} label="X" unit="mG" color={AXIS_COLORS.x} />
-              <WaveformChart data={extractAxis("ymag")} label="Y" unit="mG" color={AXIS_COLORS.y} />
-              <WaveformChart data={extractAxis("zmag")} label="Z" unit="mG" color={AXIS_COLORS.z} />
+              <WaveformChart data={extractAxis("xmag")} label="X" unit="mG" color={XYZ_COLORS.x} />
+              <WaveformChart data={extractAxis("ymag")} label="Y" unit="mG" color={XYZ_COLORS.y} />
+              <WaveformChart data={extractAxis("zmag")} label="Z" unit="mG" color={XYZ_COLORS.z} />
             </div>
           </div>
         ) : null}

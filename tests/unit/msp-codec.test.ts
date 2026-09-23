@@ -9,8 +9,7 @@ import {
   encodeResponseV1,
   encodeResponseV2,
 } from '@/lib/protocol/msp/msp-codec';
-import { MspParser } from '@/lib/protocol/msp/msp-parser';
-import type { ParsedMspFrame } from '@/lib/protocol/msp/msp-parser';
+import { MspParser, MSP_MAX_PAYLOAD, type ParsedMspFrame } from '@/lib/protocol/msp/msp-parser';
 
 // ── CRC Tests ──────────────────────────────────────────────
 
@@ -223,6 +222,40 @@ describe('Parser handles interleaved V1/V2 frames', () => {
     expect(frames[0].command).toBe(108);
     expect(frames[1].version).toBe(2);
     expect(frames[1].command).toBe(0x3006);
+  });
+});
+
+describe('Parser resyncs on noise', () => {
+  function collect(bytes: Uint8Array): ParsedMspFrame[] {
+    const parser = new MspParser();
+    const frames: ParsedMspFrame[] = [];
+    parser.onFrame((f) => frames.push(f));
+    parser.feed(bytes);
+    return frames;
+  }
+  function concat(...parts: Uint8Array[]): Uint8Array {
+    const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+    let o = 0;
+    for (const p of parts) { out.set(p, o); o += p.length; }
+    return out;
+  }
+
+  it('drops a $X with a non-direction byte and parses the next frame', () => {
+    const noise = new TextEncoder().encode('$Xfoo ');
+    const frame = encodeResponseV2(0x3006, new Uint8Array([0x03]));
+    const frames = collect(concat(noise, frame));
+    expect(frames).toHaveLength(1);
+    expect(frames[0].command).toBe(0x3006);
+  });
+
+  it('refuses an oversize declared V2 length instead of swallowing later frames', () => {
+    // '$X>' flag 0, cmd 0x0000, length 0xFFFF
+    const bogus = new Uint8Array([0x24, 0x58, 0x3e, 0x00, 0x00, 0x00, 0xff, 0xff]);
+    const frame = encodeResponseV1(108, new Uint8Array([0x01, 0x02]));
+    const frames = collect(concat(bogus, frame));
+    expect(frames).toHaveLength(1);
+    expect(frames[0].command).toBe(108);
+    expect(MSP_MAX_PAYLOAD).toBeLessThan(0xffff);
   });
 });
 

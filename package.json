@@ -16,7 +16,7 @@
     "start": "next start --port 4000",
     "demo": "NEXT_PUBLIC_DEMO_MODE=true next dev --turbo --port 4000",
     "lint": "eslint",
-    "lint:ci": "eslint src convex electron tools tests --max-warnings 148",
+    "lint:ci": "eslint src convex electron tools tests --max-warnings 118",
     "typecheck": "npm run typecheck:app && npm run typecheck:convex && npm run typecheck:electron && npm run typecheck:tools",
     "typecheck:app": "tsc --noEmit -p tsconfig.json",
     "typecheck:convex": "tsc --noEmit -p convex/tsconfig.json",
@@ -60,7 +60,6 @@
     "convex": "^1.32.0",
     "electron-updater": "^6.8.9",
     "exifr": "^7.1.3",
-    "flexsearch": "^0.8.212",
     "geotiff": "^3.0.5",
     "idb-keyval": "^6.2.2",
     "jszip": "^3.10.1",
@@ -87,7 +86,6 @@
     "zustand": "^5.0.5"
   },
   "devDependencies": {
-    "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -103,19 +101,17 @@
     "@types/three": "^0.183.1",
     "@vitest/coverage-v8": "^4.1.5",
     "@vitest/ui": "^4.1.5",
-    "commander": "^13.1.0",
     "electron": "^44.1.1",
     "electron-builder": "^26.15.3",
     "eslint": "^9",
     "eslint-config-next": "^16.3.4",
     "happy-dom": "^20.8.3",
-    "msw": "^2.12.10",
+    "jose": "^6.2.12",
     "patch-package": "^8.0.1",
     "tailwindcss": "^4",
     "tsx": "^4.19.0",
     "typescript": "^5",
-    "vitest": "^4.1.5",
-    "vitest-websocket-mock": "^0.5.0"
+    "vitest": "^4.1.5"
   },
   "//overrides": "Floors, not pins: each entry exists because some transitive consumer still asks for a version inside a published advisory range. Raise a floor only past the patched version the advisory names; never lower one. Prefer letting the lockfile carry a transitive fix -- an override forces the version tree-wide, across majors, on every consumer.",
   "overrides": {

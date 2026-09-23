@@ -58,7 +58,8 @@ export interface MintedGrant {
   expiresAt: number;
 }
 
-/** The row `cmdMqttControlGrants.myCurrent` reports. Never carries the secret. */
+/** The row `cmdMqttControlGrants.myCurrent` reports for this session's
+ * principal. Never carries the secret. */
 export interface ServerGrant {
   principal: string;
   deviceIds: string[];
@@ -71,7 +72,8 @@ export interface ServerGrant {
  * stays framework-free and every transition is reachable from a unit test.
  */
 export interface GrantBackend {
-  mint: () => Promise<MintedGrant>;
+  /** Mint a grant for this session, replacing the principal it held before. */
+  mint: (replaces: string | null) => Promise<MintedGrant>;
   revoke: () => Promise<unknown>;
   confirmWrite: (principal: string) => Promise<unknown>;
 }
@@ -109,14 +111,6 @@ let backend: GrantBackend | null = null;
 let renewTimer: ReturnType<typeof setTimeout> | null = null;
 let inFlight: Promise<void> | null = null;
 let lastAppliedAt = 0;
-let lastServerRow: ServerGrant | null = null;
-/**
- * Whether this tab has already superseded a live grant it could not use. See
- * `ensureGrant`: the allowance is what lets a reload recover a usable
- * credential, and spending it is what stops two tabs superseding each other
- * forever.
- */
-let autoSupersedeSpent = false;
 
 function clearRenewTimer(): void {
   if (renewTimer === null) return;
@@ -176,9 +170,10 @@ function mintNow(): Promise<void> {
   if (active === null) {
     return Promise.reject(new Error("No MQTT control grant backend attached"));
   }
+  const replaces = useMqttControlGrantStore.getState().principal;
   useMqttControlGrantStore.setState({ minting: true, lastError: null });
   const run = active
-    .mint()
+    .mint(replaces)
     .then(
       (minted) => {
         applyMintedGrant(minted);
@@ -263,25 +258,7 @@ export function attachGrantBackend(next: GrantBackend | null): void {
 export async function ensureGrant(): Promise<void> {
   if (backend === null) return;
   if (holdsUsableGrant()) return;
-
-  // A live grant belonging to this operator that THIS tab cannot use: minted in
-  // another tab, or in a session before this page load, so the plaintext is
-  // gone. Minting supersedes it, because the server keeps one live grant per
-  // operator — and that is exactly right once, since it is how a reload recovers
-  // a usable credential. It must not happen every time: two tabs each watching
-  // the other's mint would supersede one another forever, one mint per round
-  // trip. After the allowance is spent the operator decides, from the surface
-  // that offers it.
-  const { principal } = useMqttControlGrantStore.getState();
-  const supersedes =
-    lastServerRow !== null &&
-    lastServerRow.expiresAt > Date.now() &&
-    lastServerRow.principal !== principal;
-  if (supersedes) {
-    if (autoSupersedeSpent) return;
-    autoSupersedeSpent = true;
-  }
-
+  // Grants are per session: minting here never touches another tab's grant.
   try {
     await mintNow();
   } catch {
@@ -303,12 +280,12 @@ export async function requestGrant(): Promise<void> {
 }
 
 /**
- * Observe the operator's server-side grant row. Two facts come from it that this
- * tab cannot know on its own: that the grant was revoked or superseded
- * elsewhere, and that the broker has demonstrably accepted a write under it.
+ * Observe the server-side row of the grant this session holds (null when it is
+ * revoked, expired or unknown). Two facts come from it that this tab cannot know
+ * on its own: that the grant was revoked elsewhere, and that the broker has
+ * demonstrably accepted a write under it.
  */
 export function syncServerGrant(row: ServerGrant | null): void {
-  lastServerRow = row;
   const { principal } = useMqttControlGrantStore.getState();
   if (principal === null) return;
   if (row !== null && row.principal === principal) {
@@ -330,10 +307,6 @@ export async function releaseGrant(): Promise<void> {
   const active = backend;
   const held = useMqttControlGrantStore.getState().principal !== null;
   dropHeldGrant();
-  // The next sign-in is a fresh start: it gets its own allowance to supersede
-  // whatever grant it finds, and knows nothing about rows observed before it.
-  lastServerRow = null;
-  autoSupersedeSpent = false;
   if (active === null || !held) return;
   try {
     await active.revoke();
@@ -366,10 +339,10 @@ export function relayWriteAuthFor(
 }
 
 /**
- * Record that the broker accepted a publish under the held credential. This is
- * the only evidence that exists: at QoS 0 nothing is acknowledged, so a grant
- * that was issued but never exercised proves nothing about whether the host's
- * password regeneration has run yet.
+ * Record that the broker acknowledged a QoS-1 publish under the held credential
+ * with a success reason code. A grant that was issued but never proven this way
+ * says nothing about whether the host's password regeneration has run yet, and
+ * a QoS-0 frame cannot prove it: its callback fires with no broker round trip.
  *
  * Subscribed at module scope rather than on attach so the proof is never missed
  * by an ordering accident between the first publish and the bridge mounting.

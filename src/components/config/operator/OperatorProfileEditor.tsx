@@ -16,11 +16,9 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useOperatorProfileStore } from "@/stores/operator-profile-store";
 import type { OperatorProfile } from "@/lib/types/operator";
+import { listJurisdictions } from "@/lib/compliance/jurisdictions";
 
-const UNIT_OPTIONS = [
-  { value: "metric", label: "Metric (m, km/h, °C)" },
-  { value: "imperial", label: "Imperial (ft, mph, °F)" },
-];
+const JURISDICTION_OPTIONS = listJurisdictions().map((j) => ({ value: j.code, label: j.displayName }));
 
 export function OperatorProfileEditor() {
   const profile = useOperatorProfileStore((s) => s.profile);
@@ -167,23 +165,15 @@ export function OperatorProfileEditor() {
 
       <Card title="Defaults" padding={true}>
         <div className="grid grid-cols-2 gap-3">
-          <Input
+          <Select
             label="Default jurisdiction"
             value={draft.defaultJurisdiction ?? ""}
-            onChange={(e) => set("defaultJurisdiction", e.target.value)}
-            placeholder="IN_DGCA / US_FAA_PART107 / EU_EASA_OPEN…"
-          />
-          <Input
-            label="Time zone"
-            value={draft.defaultTimeZone ?? ""}
-            onChange={(e) => set("defaultTimeZone", e.target.value)}
-            placeholder="Asia/Kolkata"
-          />
-          <Select
-            label="Units"
-            value={draft.units ?? "metric"}
-            onChange={(v) => set("units", v as "metric" | "imperial")}
-            options={UNIT_OPTIONS}
+            onChange={(v) => {
+              set("defaultJurisdiction", v || undefined);
+              updateProfile({ defaultJurisdiction: v || undefined });
+            }}
+            placeholder="Not set"
+            options={JURISDICTION_OPTIONS}
           />
         </div>
       </Card>

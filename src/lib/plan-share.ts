@@ -11,8 +11,15 @@
  */
 
 import { deflate, inflate } from "pako";
-import type { MissionFile, MissionMetadata, MissionExtras } from "@/lib/mission-io";
-import type { Waypoint } from "@/lib/types";
+import {
+  MISSION_FILE_VERSION,
+  migrateMissionFile,
+  type MissionFile,
+  type MissionMetadata,
+  type MissionExtras,
+} from "@/lib/mission-io";
+import { ACTION_COMMANDS, NAV_COMMANDS } from "@/lib/mission/command-classes";
+import type { ActionCommand, NavCommand, Waypoint } from "@/lib/types";
 
 /** The URL fragment key: `#plan=<encoded>`. */
 export const SHARE_HASH_KEY = "plan";
@@ -43,18 +50,19 @@ function base64UrlToBytes(s: string): Uint8Array {
 
 // ── Encode ───────────────────────────────────────────────────
 
-/** Build the `.altmission`-shaped file object for a plan. */
+/** Build the `.altmission`-shaped file object for a plan, fence, rally and POIs included. */
 export function buildMissionFile(
   waypoints: Waypoint[],
   metadata: MissionMetadata,
   extras?: MissionExtras,
 ): MissionFile {
   return {
-    version: 1,
+    version: MISSION_FILE_VERSION,
     metadata,
     waypoints,
     ...(extras?.geofence ? { geofence: extras.geofence } : {}),
     ...(extras?.rally && extras.rally.length > 0 ? { rally: extras.rally } : {}),
+    ...(extras?.pois && extras.pois.length > 0 ? { pois: extras.pois } : {}),
   };
 }
 
@@ -94,10 +102,51 @@ export function buildShareUrl(origin: string, pathname: string, encoded: string)
 
 // ── Decode ───────────────────────────────────────────────────
 
+function isFiniteNumber(v: unknown): boolean {
+  return typeof v === "number" && Number.isFinite(v);
+}
+
+/** Every optional numeric field present on `o` is a finite number. */
+function optionalNumbersFinite(o: Record<string, unknown>, keys: readonly string[]): boolean {
+  return keys.every((k) => o[k] === undefined || isFiniteNumber(o[k]));
+}
+
+const OPTIONAL_WAYPOINT_NUMBERS = ["speed", "holdTime", "param1", "param2", "param3", "groundElevation"] as const;
+const OPTIONAL_ACTION_NUMBERS = [
+  "param1", "param2", "param3", "param4", "param5", "param6", "param7", "lat", "lon", "alt",
+] as const;
+
+function isValidAction(raw: unknown): boolean {
+  if (!raw || typeof raw !== "object") return false;
+  const a = raw as Record<string, unknown>;
+  if (typeof a.id !== "string") return false;
+  if (a.command === "RAW") return isFiniteNumber(a.rawCommand);
+  return (
+    ACTION_COMMANDS.has(a.command as ActionCommand) &&
+    optionalNumbersFinite(a, OPTIONAL_ACTION_NUMBERS)
+  );
+}
+
+/** A navigation waypoint with a finite position and a known nav command. */
+function isValidWaypoint(raw: unknown): boolean {
+  if (!raw || typeof raw !== "object") return false;
+  const w = raw as Record<string, unknown>;
+  return (
+    typeof w.id === "string" &&
+    isFiniteNumber(w.lat) &&
+    isFiniteNumber(w.lon) &&
+    isFiniteNumber(w.alt) &&
+    (w.command === undefined || NAV_COMMANDS.has(w.command as NavCommand)) &&
+    optionalNumbersFinite(w, OPTIONAL_WAYPOINT_NUMBERS) &&
+    (w.actions === undefined || (Array.isArray(w.actions) && w.actions.every(isValidAction)))
+  );
+}
+
 /**
- * Decode a fragment value back into a mission file. Returns `null` for any bad
- * input (not base64url, not deflate, not JSON, or not a valid mission shape) so a
- * tampered or truncated link can never load a partial plan.
+ * Decode a fragment value back into a mission file, migrated to the current
+ * schema. Returns `null` for any bad input (not base64url, not deflate, not
+ * JSON, an unknown version, or any waypoint without a finite position and a
+ * known command) so a tampered or truncated link can never load a partial plan.
  */
 export function decodePlan(encoded: string): MissionFile | null {
   if (!encoded || encoded.length > SHARE_MAX_ENCODED_LEN * 4) return null;
@@ -106,14 +155,17 @@ export function decodePlan(encoded: string): MissionFile | null {
     const json = inflate(bytes, { to: "string" });
     const data = JSON.parse(json) as MissionFile;
     if (
-      data.version !== 1 ||
+      !data ||
+      typeof data !== "object" ||
+      ![1, 2, 3].includes(data.version) ||
       !Array.isArray(data.waypoints) ||
       !data.metadata ||
       typeof data.metadata.name !== "string"
     ) {
       return null;
     }
-    return data;
+    const migrated = migrateMissionFile(data);
+    return migrated.waypoints.every(isValidWaypoint) ? migrated : null;
   } catch {
     return null;
   }

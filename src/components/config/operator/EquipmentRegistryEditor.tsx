@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, Trash2, Archive, Wrench, AlertTriangle } from "lucide-react";
 import { useEquipmentRegistryStore } from "@/stores/equipment-registry-store";
 import type { EquipmentItem, EquipmentType } from "@/lib/types/operator";
+import { isInspectionDue } from "@/lib/equipment-inspection";
 
 const TYPE_OPTIONS: { value: EquipmentType; label: string }[] = [
   { value: "prop_set", label: "Propeller set" },
@@ -154,9 +155,7 @@ export function EquipmentRegistryEditor() {
               </thead>
               <tbody>
                 {items.map((i) => {
-                  const due =
-                    i.inspectionDueHours !== undefined &&
-                    (i.totalFlightHours ?? 0) >= i.inspectionDueHours;
+                  const due = isInspectionDue(i);
                   return (
                     <tr
                       key={i.id}
@@ -280,12 +279,13 @@ export function EquipmentRegistryEditor() {
                 onChange={(e) => update(selected.id, { installDate: e.target.value })}
               />
               <Input
-                label="Inspection due (hours)"
+                label="Inspect every (flight hours)"
                 type="number"
-                value={selected.inspectionDueHours?.toString() ?? ""}
+                min={0}
+                value={selected.inspectionIntervalHours?.toString() ?? ""}
                 onChange={(e) =>
                   update(selected.id, {
-                    inspectionDueHours: e.target.value ? Number(e.target.value) : undefined,
+                    inspectionIntervalHours: e.target.value ? Number(e.target.value) : undefined,
                   })
                 }
                 placeholder="25"

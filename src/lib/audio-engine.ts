@@ -86,12 +86,32 @@ class AudioEngine {
       this.gainNode.gain.value = this.volume;
       this.gainNode.connect(this.ctx.destination);
     }
-    if (this.ctx.state === "suspended") {
-      this.ctx.resume();
-    }
     return this.ctx;
   }
 
+  /** Schedule one pattern from the context's current time, tones 20 ms apart. */
+  private scheduleTones(ctx: AudioContext, pattern: ToneStep[]): void {
+    const gain = this.gainNode;
+    if (!gain) return;
+    let offset = ctx.currentTime;
+    const GAP = 0.02;
+    for (const step of pattern) {
+      const osc = ctx.createOscillator();
+      osc.type = step.type;
+      osc.frequency.value = step.frequency;
+      osc.connect(gain);
+      osc.start(offset);
+      osc.stop(offset + step.duration / 1000);
+      offset += step.duration / 1000 + GAP;
+    }
+  }
+
+  /**
+   * Play an alert tone. A context the autoplay policy still holds suspended
+   * would queue the tones and release them all at the first user gesture,
+   * long after the event, so the alert is skipped instead and its cooldown is
+   * not consumed; the resume attempt lets the next alert sound.
+   */
   play(sound: string): void {
     if (!this.enabled) return;
     if (typeof window === "undefined") return;
@@ -99,30 +119,21 @@ class AudioEngine {
     const pattern = SOUND_PATTERNS[sound];
     if (!pattern) return;
 
-    // Cooldown check
     const now = Date.now();
     const lastTime = this.lastPlayed.get(sound) ?? 0;
     if (now - lastTime < COOLDOWN_MS) return;
-    this.lastPlayed.set(sound, now);
 
     const ctx = this.ensureContext();
-    if (!this.gainNode) return;
-
-    let offset = ctx.currentTime;
-    const GAP = 0.02; // 20ms gap between tones
-
-    for (const step of pattern) {
-      const osc = ctx.createOscillator();
-      osc.type = step.type;
-      osc.frequency.value = step.frequency;
-      osc.connect(this.gainNode);
-      osc.start(offset);
-      osc.stop(offset + step.duration / 1000);
-      offset += step.duration / 1000 + GAP;
+    if (ctx.state !== "running") {
+      ctx.resume().catch(() => {});
+      return;
     }
+    this.lastPlayed.set(sound, now);
+    this.scheduleTones(ctx, pattern);
   }
 
-  /** Play a sound, bypassing cooldown. Used by settings preview buttons. */
+  /** Play a sound, bypassing cooldown. Used by settings preview buttons, whose
+   * click is the user gesture that lets a suspended context resume. */
   playForce(sound: string): void {
     if (!this.enabled) return;
     if (typeof window === "undefined") return;
@@ -131,20 +142,14 @@ class AudioEngine {
     if (!pattern) return;
 
     const ctx = this.ensureContext();
-    if (!this.gainNode) return;
-
-    let offset = ctx.currentTime;
-    const GAP = 0.02;
-
-    for (const step of pattern) {
-      const osc = ctx.createOscillator();
-      osc.type = step.type;
-      osc.frequency.value = step.frequency;
-      osc.connect(this.gainNode);
-      osc.start(offset);
-      osc.stop(offset + step.duration / 1000);
-      offset += step.duration / 1000 + GAP;
+    if (ctx.state === "running") {
+      this.scheduleTones(ctx, pattern);
+      return;
     }
+    ctx
+      .resume()
+      .then(() => this.scheduleTones(ctx, pattern))
+      .catch(() => {});
   }
 
   setEnabled(on: boolean): void {

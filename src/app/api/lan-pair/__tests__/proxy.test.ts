@@ -24,6 +24,7 @@ import { POST as atlasPost } from "../atlas/route";
 import { POST as computePost } from "../compute/route";
 import { POST as probePost } from "../probe/route";
 import { POST as artifactPost, GET as artifactGet } from "../artifact/route";
+import { POST as visionUploadPost } from "../vision-upload/route";
 
 const ORIGIN = "http://localhost:4000";
 
@@ -211,6 +212,56 @@ describe("response", () => {
     upstream("", { status: 302, headers: { location: "http://10.0.0.1:2375/" } });
     const res = await call(atlasPost, ATLAS);
     expect(res.status).toBe(502);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("model upload body bound", () => {
+  function uploadForm(): FormData {
+    const form = new FormData();
+    form.append("host", "192.168.1.50");
+    form.append("apiKey", "k");
+    form.append("file", new File([new Uint8Array(16)], "m.onnx"));
+    form.append("metadata", "{}");
+    return form;
+  }
+
+  async function upload(length: string | null): Promise<Response> {
+    const encoded = new Request("http://localhost:4000/x", {
+      method: "POST",
+      body: uploadForm(),
+    });
+    const body = await encoded.arrayBuffer();
+    const headers: Record<string, string> = {
+      host: "localhost:4000",
+      origin: ORIGIN,
+      "content-type": encoded.headers.get("content-type") ?? "",
+    };
+    if (length !== null) headers["content-length"] = length;
+    const req = new Request("http://localhost:4000/api/lan-pair/vision-upload", {
+      method: "POST",
+      headers,
+      body,
+    });
+    return visionUploadPost(req as never);
+  }
+
+  it("refuses a declared length over the ceiling before reading the body", async () => {
+    const res = await upload(String(4 * 1024 * 1024 * 1024));
+    expect(res.status).toBe(413);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("refuses a body with no declared length", async () => {
+    const res = await upload(null);
+    expect(res.status).toBe(411);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("forwards an upload inside the ceiling", async () => {
+    upstream('{"status":"ok"}', { status: 200 });
+    const res = await upload("1024");
+    expect(res.status).toBe(200);
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

@@ -25,6 +25,7 @@ import { useMissionStore } from "@/stores/mission-store";
 import { useGeofenceStore } from "@/stores/geofence-store";
 import { useClockTick } from "@/lib/agent/freshness";
 import { useKnownCellCount } from "@/hooks/use-known-cell-count";
+import { useFenceUploadStatus, useMissionUploadStatus } from "@/hooks/use-upload-status";
 import { evaluateAutoChecks } from "@/lib/checklist/auto-checks";
 
 /** MAVLink GPS_FIX_TYPE -> its `indicators.gpsFix.*` label key. */
@@ -58,8 +59,14 @@ export function ChecklistAutoRunner(): null {
   const presentCount = useSensorHealthStore((s) => s.getTotalPresentCount());
   const prearmPresent = useSensorHealthStore((s) => s.getSensorByName("pre_arm_check")?.present ?? false);
   const prearmHealthy = useSensorHealthStore((s) => s.getSensorByName("pre_arm_check")?.healthy ?? false);
+  // Only what the selected drone acknowledged counts: a planned mission or a
+  // drawn fence that was never uploaded (or was edited since) is not on it.
+  const missionStatus = useMissionUploadStatus();
+  const fenceStatus = useFenceUploadStatus();
   const waypointCount = useMissionStore((s) => s.waypoints.length);
   const geofenceEnabled = useGeofenceStore((s) => s.enabled);
+  const missionOnVehicle = missionStatus === "on-aircraft" ? waypointCount : null;
+  const fenceOnVehicle = fenceStatus === "on-aircraft" ? geofenceEnabled : null;
   const battery = batteryBuf.latest();
   const knownCellCount = useKnownCellCount(droneId, battery?.cellCount);
 
@@ -82,8 +89,8 @@ export function ChecklistAutoRunner(): null {
             presentCount,
             prearm: { present: prearmPresent, healthy: prearmHealthy },
           },
-          waypointCount,
-          geofenceEnabled,
+          missionOnVehicle,
+          fenceOnVehicle,
           formatGpsFix: (fixType) => tFix(GPS_FIX_KEYS[fixType] ?? "fix3d"),
         },
         Date.now(),
@@ -92,7 +99,7 @@ export function ChecklistAutoRunner(): null {
   }, [
     droneId, sessionDroneId, sessionId, applyAutoVerdicts, version, tick, battery, knownCellCount,
     gpsBuf, ekfBuf, sensorsUpdated, healthyCount, presentCount, prearmPresent,
-    prearmHealthy, waypointCount, geofenceEnabled, tFix,
+    prearmHealthy, missionOnVehicle, fenceOnVehicle, tFix,
   ]);
 
   return null;

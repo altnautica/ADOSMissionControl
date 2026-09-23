@@ -28,27 +28,39 @@ function wp(lat: number, lon: number): PatternWaypoint {
   return { lat, lon, alt: 50, speed: 5, command: "WAYPOINT" };
 }
 
-function surveyResult(): PatternResult {
+function trigger(lat: number, lon: number, distance: number): PatternWaypoint {
+  return { lat, lon, alt: 50, speed: 5, command: "DO_SET_CAM_TRIGG", param1: distance };
+}
+
+/** Two ~111 m north-south transects, the camera armed every 50 m along each. */
+function surveyResult(triggerM: number): PatternResult {
   return {
     waypoints: [
-      wp(12.9716, 77.5946),
-      wp(12.9726, 77.5946),
-      wp(12.9726, 77.5948),
-      wp(12.9716, 77.5948),
+      wp(12.9716, 77.5946), trigger(12.9716, 77.5946, triggerM),
+      wp(12.9726, 77.5946), trigger(12.9726, 77.5946, 0),
+      wp(12.9726, 77.5948), trigger(12.9726, 77.5948, triggerM),
+      wp(12.9716, 77.5948), trigger(12.9716, 77.5948, 0),
     ],
     stats: { totalDistance: 0, estimatedTime: 0, photoCount: 0, coveredArea: 0, transectCount: 0 },
   };
 }
 
 beforeEach(() => {
-  usePatternStore.setState({ activePatternType: "survey", patternResult: surveyResult() });
+  usePatternStore.setState({ activePatternType: "survey", patternResult: surveyResult(50) });
 });
 
 describe("CoverageStats", () => {
-  it("renders coverage figures for a survey route", () => {
+  it("counts the captures the trigger distance takes along the transects", () => {
     render(<CoverageStats camera={camera} altitude={50} minSideOverlap={0.6} />);
     expect(screen.getByText("coverage.title")).toBeInTheDocument();
-    expect(screen.getByText("4")).toBeInTheDocument();
+    // 0, 50 and 100 m along each 111 m transect.
+    expect(screen.getByText("6")).toBeInTheDocument();
+  });
+
+  it("shows no front overlap when the camera is never armed", () => {
+    usePatternStore.setState({ patternResult: surveyResult(0) });
+    render(<CoverageStats camera={camera} altitude={50} />);
+    expect(screen.getByText("—")).toBeInTheDocument();
   });
 
   it("renders nothing without a camera", () => {

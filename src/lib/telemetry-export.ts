@@ -8,35 +8,41 @@
  * @license GPL-3.0-only
  */
 
-import type { TelemetryFrame, TelemetryRecording } from "./telemetry-recorder";
+import type { TelemetryRecording } from "./telemetry-recorder";
 import { loadRecordingFrames } from "./telemetry-recorder";
 import { haversineDistance } from "./telemetry-utils";
+import { TELEMETRY_STALE_MS } from "@/lib/telemetry/freshness";
 import type { PositionData, AttitudeData, BatteryData, GpsData, VfrData } from "@/lib/types";
 
 // ── CSV Export ───────────────────────────────────────────────
 
+/**
+ * One CSV row. A cell is empty when its channel has no sample yet, when the
+ * channel's last sample is older than the staleness window at this row, or
+ * when the source does not report the field — never a 0 that reads as a
+ * measurement.
+ */
 interface FlattenedRow {
   timestamp_ms: number;
   lat: number;
   lon: number;
   alt_m: number;
   relative_alt_m: number;
-  heading_deg: number;
-  roll_deg: number;
-  pitch_deg: number;
-  yaw_deg: number;
+  heading_deg: number | "";
+  roll_deg: number | "";
+  pitch_deg: number | "";
+  yaw_deg: number | "";
   groundspeed_ms: number;
-  airspeed_ms: number;
+  /** VFR_HUD owns airspeed; the position sample is the fallback. */
+  airspeed_ms: number | "";
   climb_ms: number;
-  battery_v: number;
-  battery_pct: number;
-  /** Empty when the monitor does not measure it. */
+  battery_v: number | "";
+  battery_pct: number | "";
   battery_current_a: number | "";
   battery_consumed_mah: number | "";
-  gps_fix: number;
-  gps_satellites: number;
-  gps_hdop: number;
-  /** Empty when the link does not report throttle. */
+  gps_fix: number | "";
+  gps_satellites: number | "";
+  gps_hdop: number | "";
   throttle_pct: number | "";
 }
 
@@ -66,9 +72,11 @@ const CSV_COLUMNS: (keyof FlattenedRow)[] = [
 /**
  * Build a time-aligned CSV from telemetry recording frames.
  *
- * Approach: walk all frames in timestamp order, keeping the latest value
- * per channel. Emit a CSV row every time a `position` frame arrives
- * (position is the primary sample clock for flight data).
+ * Approach: walk all frames in timestamp order, keeping the latest sample
+ * per channel with its time. Emit a CSV row every time a `position` frame
+ * arrives (position is the primary sample clock for flight data). A channel
+ * whose last sample is older than `TELEMETRY_STALE_MS` at that row writes
+ * empty cells, so an outage reads as missing data, not as the last value.
  */
 export async function exportTelemetryAsCSV(
   recording: TelemetryRecording,
@@ -76,63 +84,65 @@ export async function exportTelemetryAsCSV(
   const frames = await loadRecordingFrames(recording.id);
   if (frames.length === 0) return "";
 
-  // Latest state per channel
-  let pos: PositionData | null = null;
-  let att: AttitudeData | null = null;
-  let bat: BatteryData | null = null;
-  let gps: GpsData | null = null;
-  let vfr: VfrData | null = null;
+  // Latest sample per channel, with the recording offset it arrived at.
+  let att: { data: AttitudeData; at: number } | null = null;
+  let bat: { data: BatteryData; at: number } | null = null;
+  let gpsS: { data: GpsData; at: number } | null = null;
+  let vfrS: { data: VfrData; at: number } | null = null;
 
   const rows: string[] = [CSV_COLUMNS.join(",")];
 
   for (const frame of frames) {
+    const at = frame.offsetMs;
     switch (frame.channel) {
-      case "position":
-        pos = frame.data as PositionData;
-        break;
       case "attitude":
-        att = frame.data as AttitudeData;
-        break;
+        att = { data: frame.data as AttitudeData, at };
+        continue;
       case "battery":
-        bat = frame.data as BatteryData;
-        break;
+        bat = { data: frame.data as BatteryData, at };
+        continue;
       case "gps":
-        gps = frame.data as GpsData;
-        break;
+        gpsS = { data: frame.data as GpsData, at };
+        continue;
       case "vfr":
-        vfr = frame.data as VfrData;
+        vfrS = { data: frame.data as VfrData, at };
+        continue;
+      case "position":
         break;
       default:
         continue;
     }
 
-    // Emit row on position updates (primary sample clock)
-    if (frame.channel === "position" && pos) {
-      const row: FlattenedRow = {
-        timestamp_ms: frame.offsetMs,
-        lat: pos.lat,
-        lon: pos.lon,
-        alt_m: pos.alt,
-        relative_alt_m: pos.relativeAlt,
-        heading_deg: pos.heading,
-        roll_deg: att?.roll ?? 0,
-        pitch_deg: att?.pitch ?? 0,
-        yaw_deg: att?.yaw ?? 0,
-        groundspeed_ms: pos.groundSpeed,
-        airspeed_ms: pos.airSpeed,
-        climb_ms: pos.climbRate,
-        battery_v: bat?.voltage ?? 0,
-        battery_pct: bat?.remaining ?? 0,
-        battery_current_a: bat?.current ?? "",
-        battery_consumed_mah: bat?.consumed ?? "",
-        gps_fix: gps?.fixType ?? 0,
-        gps_satellites: gps?.satellites ?? 0,
-        gps_hdop: gps?.hdop ?? 0,
-        throttle_pct: vfr?.throttle ?? "",
-      };
+    // Emit a row on each position update (primary sample clock).
+    const pos = frame.data as PositionData;
+    const a = att && at - att.at <= TELEMETRY_STALE_MS ? att.data : null;
+    const b = bat && at - bat.at <= TELEMETRY_STALE_MS ? bat.data : null;
+    const g = gpsS && at - gpsS.at <= TELEMETRY_STALE_MS ? gpsS.data : null;
+    const v = vfrS && at - vfrS.at <= TELEMETRY_STALE_MS ? vfrS.data : null;
+    const row: FlattenedRow = {
+      timestamp_ms: at,
+      lat: pos.lat,
+      lon: pos.lon,
+      alt_m: pos.alt,
+      relative_alt_m: pos.relativeAlt,
+      heading_deg: pos.heading ?? "",
+      roll_deg: a?.roll ?? "",
+      pitch_deg: a?.pitch ?? "",
+      yaw_deg: a?.yaw ?? "",
+      groundspeed_ms: pos.groundSpeed,
+      airspeed_ms: v?.airspeed ?? pos.airSpeed ?? "",
+      climb_ms: pos.climbRate,
+      battery_v: b?.voltage ?? "",
+      battery_pct: b?.remaining ?? "",
+      battery_current_a: b?.current ?? "",
+      battery_consumed_mah: b?.consumed ?? "",
+      gps_fix: g?.fixType ?? "",
+      gps_satellites: g?.satellites ?? "",
+      gps_hdop: g?.hdop ?? "",
+      throttle_pct: v?.throttle ?? "",
+    };
 
-      rows.push(CSV_COLUMNS.map((col) => String(row[col])).join(","));
-    }
+    rows.push(CSV_COLUMNS.map((col) => String(row[col])).join(","));
   }
 
   return rows.join("\n");
@@ -143,8 +153,10 @@ export async function exportTelemetryAsCSV(
 /**
  * Generate a KML string from a telemetry recording.
  *
- * Creates a flight path LineString from position data,
- * plus takeoff and landing Placemarks.
+ * Creates a flight path LineString from position data, plus takeoff and
+ * landing Placemarks. Positions carry MSL altitude (GLOBAL_POSITION_INT), so
+ * every geometry is placed with `altitudeMode` absolute and the summary names
+ * the MSL datum.
  */
 export async function exportTelemetryAsKML(
   recording: TelemetryRecording,
@@ -215,7 +227,7 @@ export async function exportTelemetryAsKML(
   lines.push("      <name>Flight Path</name>");
   lines.push("      <styleUrl>#flightPath</styleUrl>");
   lines.push("      <LineString>");
-  lines.push("        <altitudeMode>relativeToGround</altitudeMode>");
+  lines.push("        <altitudeMode>absolute</altitudeMode>");
   lines.push("        <coordinates>");
 
   // KML coordinate order: lon,lat,alt
@@ -232,7 +244,7 @@ export async function exportTelemetryAsKML(
   lines.push("      <name>Takeoff</name>");
   lines.push("      <styleUrl>#takeoff</styleUrl>");
   lines.push("      <Point>");
-  lines.push("        <altitudeMode>relativeToGround</altitudeMode>");
+  lines.push("        <altitudeMode>absolute</altitudeMode>");
   lines.push(`        <coordinates>${takeoff.lon},${takeoff.lat},${takeoff.alt}</coordinates>`);
   lines.push("      </Point>");
   lines.push("    </Placemark>");
@@ -242,7 +254,7 @@ export async function exportTelemetryAsKML(
   lines.push("      <name>Landing</name>");
   lines.push("      <styleUrl>#landing</styleUrl>");
   lines.push("      <Point>");
-  lines.push("        <altitudeMode>relativeToGround</altitudeMode>");
+  lines.push("        <altitudeMode>absolute</altitudeMode>");
   lines.push(`        <coordinates>${landing.lon},${landing.lat},${landing.alt}</coordinates>`);
   lines.push("      </Point>");
   lines.push("    </Placemark>");
@@ -253,7 +265,7 @@ export async function exportTelemetryAsKML(
   lines.push("      <description>");
   lines.push(`Duration: ${durationMin} min`);
   lines.push(`Distance: ${distanceKm} km`);
-  lines.push(`Max Altitude: ${maxAlt.toFixed(1)} m AGL`);
+  lines.push(`Max Altitude: ${maxAlt.toFixed(1)} m MSL`);
   lines.push(`Max Speed: ${maxSpeed.toFixed(1)} m/s`);
   lines.push(`Drone: ${recording.droneName ?? "Unknown"}`);
   lines.push(`Frames: ${recording.frameCount}`);

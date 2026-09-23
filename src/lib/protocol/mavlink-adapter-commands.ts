@@ -19,8 +19,8 @@ import {
 const MAV_MOUNT_MODE_MAVLINK_TARGETING = 2
 
 /**
- * Whether ArduPilot's vendor calibration commands (the 424xx and 42006 range)
- * can be sent to whatever is connected.
+ * Whether ArduPilot's vendor calibration commands (the 424xx range) can be
+ * sent to whatever is connected.
  *
  * They were sent unconditionally. On PX4 they return UNSUPPORTED and the
  * calibration UI waits on an ack that means nothing, so the operator sees a
@@ -187,9 +187,25 @@ export function cmdCancelCalibration(ctx: CommandContext): Promise<CommandResult
   return ctx.sendCommandLong(241, [0, 0, 0, 0, 0, 0, 0])
 }
 
-export function cmdStartGnssMagCal(ctx: CommandContext): Promise<CommandResult> {
-  if (!isArduPilot(ctx)) return Promise.resolve(refuseNonArduPilot(ctx, 'GNSS/mag calibration'))
-  return ctx.sendCommandLong(42006, [0, 0, 0, 0, 0, 0, 0])
+/**
+ * MAV_CMD_FIXED_MAG_CAL_YAW (42006), common.xml: calibrate the compass from
+ * the world magnetic model and a KNOWN vehicle yaw. param1 is the vehicle's
+ * earth-frame yaw in degrees; param2 0 = every compass; param3/param4 0,0 =
+ * the vehicle's current location. ArduPilot and PX4 both implement it.
+ *
+ * The yaw is required: 0 is not "unknown" but "the nose points north", and
+ * calibrating a vehicle that faces anywhere else against north corrupts its
+ * heading by exactly that error.
+ */
+export function cmdStartGnssMagCal(ctx: CommandContext, yawDeg: number): Promise<CommandResult> {
+  if (!Number.isFinite(yawDeg) || yawDeg < 0 || yawDeg >= 360) {
+    return Promise.resolve({
+      success: false,
+      resultCode: -1,
+      message: 'Known-heading compass calibration needs the vehicle yaw in degrees (0-359)',
+    })
+  }
+  return ctx.sendCommandLong(42006, [yawDeg, 0, 0, 0, 0, 0, 0])
 }
 
 export function cmdSendCommand(ctx: CommandContext, commandId: number, params: number[]): Promise<CommandResult> {
@@ -294,10 +310,13 @@ export function cmdGuidedGoto(
   // param2 bit 0 is MAV_DO_REPOSITION_FLAGS_CHANGE_MODE: set, the autopilot
   // enters its guided mode from whatever mode it is in. A streaming caller
   // clears it after the first reposition so it cannot override a mode change.
+  // param3 (plane loiter radius) and param4 (yaw) are NaN: the spec reads NaN
+  // as "keep the current behaviour", while 0 is a real yaw (north) that PX4
+  // turns the aircraft to on arrival.
   const changeMode = options?.changeMode ?? true
   return ctx.sendCommandInt(
     192,
-    [-1, changeMode ? 1 : 0, 0, 0],
+    [-1, changeMode ? 1 : 0, Number.NaN, Number.NaN],
     Math.round(lat * 1e7),
     Math.round(lon * 1e7),
     alt,
@@ -477,7 +496,9 @@ export function cmdOrbit(ctx: CommandContext, radius: number, velocity: number, 
   if (!ctx.transport?.isConnected) {
     return Promise.resolve({ success: false, resultCode: -1, message: 'Not connected' })
   }
-  // yawBehavior: 0=HOLD, 1=UNCONTROLLED, 2=FRONT_TO_CENTER, 3=RC_CONTROLLED
+  // yawBehavior (ORBIT_YAW_BEHAVIOUR): 0=HOLD_FRONT_TO_CIRCLE_CENTER,
+  // 1=HOLD_INITIAL_HEADING, 2=UNCONTROLLED, 3=HOLD_FRONT_TANGENT_TO_CIRCLE,
+  // 4=RC_CONTROLLED, 5=UNCHANGED
   return ctx.sendCommandInt(
     34,
     [radius, velocity, yawBehavior, 0],

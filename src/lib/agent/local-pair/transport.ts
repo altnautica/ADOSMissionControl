@@ -51,7 +51,13 @@ export function normaliseHost(input: string): string {
   }
 }
 
-export const FETCH_TIMEOUT_MS = 8000;
+/** The deadline each `/api/lan-pair/*` route gives its upstream agent call. */
+export const LAN_PAIR_UPSTREAM_TIMEOUT_MS = 8000;
+
+/** The browser's deadline for a pair call: the routes' upstream deadline plus
+ * a margin for the proxy hop, so on the proxy path the route answers with
+ * its own unreachable reply before the browser gives up on it. */
+export const FETCH_TIMEOUT_MS = LAN_PAIR_UPSTREAM_TIMEOUT_MS + 2000;
 
 /** True when a window exists, so the calls should be routed through the
  * Mission Control proxy rather than a direct cross-origin fetch. */

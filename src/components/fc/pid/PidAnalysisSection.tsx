@@ -14,6 +14,7 @@ import { PidMotorChart } from "./PidMotorChart";
 import { PidAiRecommendations } from "./PidAiRecommendations";
 import { PidLiveAnalysis } from "./PidLiveAnalysis";
 import { AiSuggestionsGate } from "../shared/AiSuggestionsGate";
+import { AXIS_COLORS } from "../chart-theme";
 import type { AnalysisMode } from "@/lib/analysis/types";
 
 interface PidAnalysisSectionProps {
@@ -21,8 +22,6 @@ interface PidAnalysisSectionProps {
   target: SuggestionTarget;
   connected: boolean;
 }
-
-const AXIS_COLORS = { roll: "#3A82FF", pitch: "#22c55e", yaw: "#f59e0b" };
 
 type QuickTab = "fft" | "step" | "tracking" | "motors";
 

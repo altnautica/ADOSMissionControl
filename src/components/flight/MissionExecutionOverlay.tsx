@@ -3,56 +3,40 @@
 /**
  * @module MissionExecutionOverlay
  * @description Shows mission execution telemetry: ETA to next waypoint and
- * cross-track error (XTE). Reads from telemetry-store (VFR_HUD for
- * groundspeed, NAV_CONTROLLER_OUTPUT for wp distance and xtrack error).
+ * cross-track error (XTE). Reads VFR_HUD (groundspeed) and
+ * NAV_CONTROLLER_OUTPUT (wp distance, xtrack error) only while each is fresh,
+ * and keys visibility on the heartbeat-backed flight mode, so a lost link
+ * blanks the readings instead of freezing them.
  * Only visible when a mission is active.
  * @license GPL-3.0-only
  */
 
-import { useMemo } from "react";
-import { useTelemetryStore } from "@/stores/telemetry-store";
+import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
+import { useLiveFlightMode } from "@/hooks/use-live-flight-mode";
 import { useMissionStore } from "@/stores/mission-store";
 import { useDroneStore } from "@/stores/drone-store";
 import { Navigation, Crosshair } from "lucide-react";
 
 export function MissionExecutionOverlay() {
-  const flightMode = useDroneStore((s) => s.flightMode);
+  const flightMode = useLiveFlightMode();
   const previousMode = useDroneStore((s) => s.previousMode);
   const missionState = useMissionStore((s) => s.activeMission?.state);
   const currentWaypoint = useMissionStore((s) => s.currentWaypoint);
   const waypointCount = useMissionStore((s) => s.waypoints.length);
-  const version = useTelemetryStore((s) => s._version);
-  const navRing = useTelemetryStore((s) => s.navController);
-  const vfrRing = useTelemetryStore((s) => s.vfr);
+  const nav = useFreshTelemetry("navController");
+  const vfr = useFreshTelemetry("vfr");
 
   const isAutoMode = flightMode === "AUTO";
   const isPausedFromAuto = flightMode === "LOITER" && previousMode === "AUTO";
   const showOverlay = isAutoMode || isPausedFromAuto || missionState === "running" || missionState === "paused";
 
-  const { eta, xte, wpDist } = useMemo(() => {
-    void version;
-    const nav = navRing.latest();
-    const vfr = vfrRing.latest();
-
-    if (!nav || !vfr) {
-      return { eta: null, xte: null, wpDist: null };
-    }
-
-    const groundspeed = vfr.groundspeed;
-    const dist = nav.wpDist; // meters to next waypoint
-    const xtrack = nav.xtrackError; // meters cross-track error
-
-    let etaSeconds: number | null = null;
-    if (groundspeed !== undefined && groundspeed > 0.5 && dist > 0) {
-      etaSeconds = dist / groundspeed;
-    }
-
-    return {
-      eta: etaSeconds,
-      xte: xtrack,
-      wpDist: dist,
-    };
-  }, [navRing, vfrRing, version]);
+  const wpDist = nav?.wpDist ?? null;
+  const xte = nav?.xtrackError ?? null;
+  const groundspeed = vfr?.groundspeed;
+  const eta =
+    wpDist !== null && groundspeed !== undefined && groundspeed > 0.5 && wpDist > 0
+      ? wpDist / groundspeed
+      : null;
 
   if (!showOverlay) return null;
 

@@ -16,7 +16,7 @@ export function CombinedStreamStats() {
 
   if (!combined) {
     return (
-      <div className="p-4 bg-surface-primary border border-border-default/40">
+      <div className="p-4 bg-bg-primary border border-border-default/40">
         <div className="text-sm text-text-tertiary italic">{t("combinedEmpty")}</div>
       </div>
     );
@@ -24,7 +24,7 @@ export function CombinedStreamStats() {
 
   const fmt = (v: number | null) => (v === null ? "--" : v.toLocaleString());
   return (
-    <div className="p-4 bg-surface-primary border border-border-default/40">
+    <div className="p-4 bg-bg-primary border border-border-default/40">
       <div className="flex items-center justify-between mb-2">
         <div className="text-sm font-medium text-text-primary">{t("combinedTitle")}</div>
         {combined.stale && (

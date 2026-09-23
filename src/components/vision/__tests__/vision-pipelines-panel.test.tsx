@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextIntlClientProvider } from "next-intl";
 
@@ -91,5 +91,31 @@ describe("VisionPipelinesPanel", () => {
     renderPanel(<VisionPipelinesPanel droneId={DRONE} />);
     const row = screen.getByTestId("vision-pipeline-row");
     expect(row.getAttribute("role")).toBeNull();
+  });
+  it("flips a stream that stopped publishing to stalled while another keeps going", () => {
+    vi.useFakeTimers();
+    try {
+      seed("person", "uvc-0");
+      seed("person", "uvc-1");
+      renderPanel(<VisionPipelinesPanel droneId={DRONE} />);
+      // Only uvc-0 keeps publishing, at 10 Hz, for 3 s.
+      for (let i = 0; i < 30; i++) {
+        act(() => {
+          vi.advanceTimersByTime(100);
+          seed("person", "uvc-0");
+        });
+      }
+      // Rows are sorted by stream key: person::uvc-0, then person::uvc-1.
+      const rows = screen.getAllByTestId("vision-pipeline-row");
+      expect(rows.map((r) => r.getAttribute("data-active"))).toEqual(["true", "false"]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("says the engine status is unavailable, not 'no pipelines', with no read-back", () => {
+    renderPanel(<VisionPipelinesPanel droneId={DRONE} />);
+    expect(screen.queryByText(messages.vision.noPipelines)).toBeNull();
+    expect(screen.getByText(messages.vision.engineStatusUnavailable)).toBeTruthy();
   });
 });

@@ -12,7 +12,7 @@ import { useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { Move, RotateCw, Maximize2, FlipHorizontal, Crosshair, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { NumericField } from "@/components/ui/numeric-field";
 import { Select } from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useMissionStore } from "@/stores/mission-store";
@@ -134,20 +134,18 @@ export function TransformPanel() {
           <span>{t("move")}</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <Input
-            type="number"
+          <NumericField
             value={moveBearing}
-            onChange={(e) => setMoveBearing(Number(e.target.value))}
+            onCommit={setMoveBearing}
             min={0}
             max={360}
             step={15}
             className="flex-1"
             label={t("bearing")}
           />
-          <Input
-            type="number"
+          <NumericField
             value={moveDistance}
-            onChange={(e) => setMoveDistance(Number(e.target.value))}
+            onCommit={setMoveDistance}
             min={1}
             max={100000}
             step={50}
@@ -167,10 +165,9 @@ export function TransformPanel() {
           <span>{t("rotate")}</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <Input
-            type="number"
+          <NumericField
             value={rotateAngle}
-            onChange={(e) => setRotateAngle(Number(e.target.value))}
+            onCommit={setRotateAngle}
             min={-360}
             max={360}
             step={15}
@@ -190,10 +187,9 @@ export function TransformPanel() {
           <span>{t("scale")}</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <Input
-            type="number"
+          <NumericField
             value={scaleFactor}
-            onChange={(e) => setScaleFactor(Number(e.target.value))}
+            onCommit={setScaleFactor}
             min={0.1}
             max={10}
             step={0.1}
@@ -217,7 +213,7 @@ export function TransformPanel() {
             "w-3.5 h-3.5 border flex items-center justify-center shrink-0",
             useCustomCenter ? "bg-accent-primary border-accent-primary" : "border-border-default"
           )}>
-            {useCustomCenter && <Check size={10} className="text-white" />}
+            {useCustomCenter && <Check size={10} className="text-bg-primary" />}
           </span>
           <Crosshair size={12} />
           <span>{t("customPivot")}</span>
@@ -225,18 +221,20 @@ export function TransformPanel() {
         {useCustomCenter && (
           <>
             <div className="flex items-center gap-1.5">
-              <Input
-                type="number"
+              <NumericField
                 value={centerLat}
-                onChange={(e) => setCenterLat(Number(e.target.value))}
+                onCommit={setCenterLat}
+                min={-90}
+                max={90}
                 step={0.0001}
                 className="flex-1"
                 label={t("pivotLat")}
               />
-              <Input
-                type="number"
+              <NumericField
                 value={centerLon}
-                onChange={(e) => setCenterLon(Number(e.target.value))}
+                onCommit={setCenterLon}
+                min={-180}
+                max={180}
                 step={0.0001}
                 className="flex-1"
                 label={t("pivotLon")}

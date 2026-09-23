@@ -1,24 +1,14 @@
 /**
  * @module AgentSchemas/MeshNet
- * @description zod schemas for the MeshNet enrollment surface and the
- * network-peer list the agent ships when running in mesh-aware modes.
+ * @description zod schema for the network-peer list the agent ships when
+ * running in mesh-aware modes.
  *
  * @license GPL-3.0-only
  */
 
 import { z } from "zod";
 
-import { NumberLike, OptionalNumberLike } from "./primitives";
-
-export const MeshNetEnrollmentSchema = z
-  .object({
-    enrolled: z.boolean(),
-    droneId: z.string().optional(),
-    fleetName: z.string().optional(),
-    tier: NumberLike.optional(),
-    enrolledSince: z.string().optional(),
-  })
-  .passthrough();
+import { OptionalNumberLike } from "./primitives";
 
 export const NetworkPeerSchema = z
   .object({

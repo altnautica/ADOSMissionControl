@@ -2,7 +2,7 @@
  * @module command/nodes-view/fleet-skill-targets.test
  * @description A fleet-wide command (return-all-to-launch) fans over exactly the
  * nodes that can take it right now and honestly skips the rest, so the operator
- * is never told "everything" went home when a node could not hear it (Rule 44).
+ * is never told "everything" went home when a node could not hear it (no fabricated reading).
  * The reach and context resolvers are stubbed so this proves the fan / skip
  * contract itself, not the reach derivation those helpers already cover.
  *

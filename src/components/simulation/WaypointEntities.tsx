@@ -113,10 +113,12 @@ export function WaypointEntities({ viewer, waypoints, resolvedPositions }: Waypo
     };
   }, [viewer, waypoints, resolvedPositions]);
 
-  // Effect 2 — Selection styling (in-place property updates, no entity recreation)
+  // Effect 2 — Selection styling (in-place property updates, no entity recreation).
+  // It also re-runs after Effect 1 rebuilds the entities (same deps, declared
+  // after it), so a rebuild never drops the highlight.
   useEffect(() => {
     const entityMap = entityMapRef.current;
-    if (entityMap.size === 0) return;
+    if (!viewer || viewer.isDestroyed() || entityMap.size === 0) return;
 
     const selectedColor = Color.fromCssColorString(MAP_COLORS.accentSelected);
     const defaultColor = Color.fromCssColorString(MAP_COLORS.accentPrimary);
@@ -137,7 +139,8 @@ export function WaypointEntities({ viewer, waypoints, resolvedPositions }: Waypo
         entity.label.backgroundColor = new ConstantProperty(bgColor.withAlpha(0.8));
       }
     }
-  }, [selectedWaypointId]);
+    viewer.scene.requestRender();
+  }, [viewer, waypoints, resolvedPositions, selectedWaypointId]);
 
   // Click handler for waypoint selection
   useEffect(() => {

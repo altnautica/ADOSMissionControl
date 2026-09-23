@@ -27,8 +27,8 @@ const PLATFORM_LABELS: Record<number, string> = {
   1: "Airplane",
   2: "Helicopter",
   3: "Tricopter",
-  4: "Boat",
-  5: "Rover",
+  4: "Rover",
+  5: "Boat",
 };
 
 const PROFILE_OPTIONS = [
@@ -44,7 +44,11 @@ export function MixerProfilePanel() {
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [mixer, setMixer] = useState<INavMixer | null>(null);
-  const [activeProfile, setActiveProfile] = useState(0);
+  /** The mixer profile the FC reports it is flying; null when unknown. */
+  const [activeProfile, setActiveProfile] = useState<number | null>(null);
+  /** The tables in the editor were read before a profile switch and belong to
+   *  the previous profile until they are re-read. */
+  const [tablesStale, setTablesStale] = useState(false);
 
   const mixerLoading = useMixerStore((s) => s.loading);
   const mixerError = useMixerStore((s) => s.error);
@@ -58,15 +62,16 @@ export function MixerProfilePanel() {
 
   const handleRead = useCallback(async () => {
     const protocol = getSelectedProtocol();
-    if (!protocol?.getMixerConfig) {
+    if (!protocol?.getMixerConfig || !protocol.getActiveProfiles) {
       setProfileError("Mixer config not supported");
       return;
     }
     setProfileLoading(true);
     setProfileError(null);
     try {
-      const data = await protocol.getMixerConfig();
+      const [data, profiles] = await Promise.all([protocol.getMixerConfig(), protocol.getActiveProfiles()]);
       setMixer(data);
+      setActiveProfile(profiles.mixerProfile);
       setProfileLoaded(true);
     } catch (err) {
       setProfileError(String(err));
@@ -78,30 +83,47 @@ export function MixerProfilePanel() {
   const handleSwitchProfile = useCallback(
     async (idx: number) => {
       const protocol = getSelectedProtocol();
-      if (!protocol?.selectMixerProfile || !protocol?.getMixerConfig) {
+      if (!protocol?.selectMixerProfile || !protocol.getMixerConfig || !protocol.getActiveProfiles) {
         setProfileError("Mixer profile switch not supported");
         return;
       }
       setProfileLoading(true);
       setProfileError(null);
       try {
-        await protocol.selectMixerProfile(idx);
-        const data = await protocol.getMixerConfig();
+        const result = await protocol.selectMixerProfile(idx);
+        if (!result.success) {
+          setProfileError(result.message);
+          return;
+        }
+        // The FC's current mixer tables are now the new profile's, so the
+        // editor's copy may not be written back until it has been re-read.
+        setTablesStale(true);
+        const [data, profiles] = await Promise.all([protocol.getMixerConfig(), protocol.getActiveProfiles()]);
         setMixer(data);
-        setActiveProfile(idx);
+        setActiveProfile(profiles.mixerProfile);
+        if (profiles.mixerProfile !== idx) {
+          setProfileError(
+            profiles.mixerProfile === null
+              ? "The flight controller did not report its mixer profile after the switch"
+              : `The flight controller stayed on mixer profile ${profiles.mixerProfile + 1}`,
+          );
+        }
+        await loadFromFc(protocol);
+        if (useMixerStore.getState().error === null) setTablesStale(false);
       } catch (err) {
         setProfileError(String(err));
       } finally {
         setProfileLoading(false);
       }
     },
-    [getSelectedProtocol],
+    [getSelectedProtocol, loadFromFc],
   );
 
   const handleMixerRead = useCallback(async () => {
     const protocol = getSelectedProtocol();
     if (!protocol) return;
     await loadFromFc(protocol);
+    if (useMixerStore.getState().error === null) setTablesStale(false);
   }, [getSelectedProtocol, loadFromFc]);
 
   const handleMixerWrite = useCallback(async () => {
@@ -138,7 +160,8 @@ export function MixerProfilePanel() {
               <Select
                 label=""
                 options={PROFILE_OPTIONS}
-                value={String(activeProfile)}
+                value={activeProfile === null ? "" : String(activeProfile)}
+                placeholder="Not reported by the FC"
                 disabled={isArmed}
                 onChange={(v) => handleSwitchProfile(parseInt(v))}
               />
@@ -184,8 +207,14 @@ export function MixerProfilePanel() {
               size="sm"
               icon={<Upload size={12} />}
               loading={loading}
-              disabled={!connected || loading || isArmed}
-              title={isArmed ? lockMessage : undefined}
+              disabled={!connected || loading || isArmed || tablesStale}
+              title={
+                isArmed
+                  ? lockMessage
+                  : tablesStale
+                    ? "The mixer profile changed: read the tables again before writing"
+                    : undefined
+              }
               onClick={handleMixerWrite}
             >
               Write to FC
@@ -195,6 +224,13 @@ export function MixerProfilePanel() {
 
         {error && !profileError && (
           <p className="text-[10px] font-mono text-status-error">{error}</p>
+        )}
+
+        {tablesStale && (
+          <p className="text-[10px] font-mono text-status-warning">
+            The mixer profile changed and the tables below were read from the previous profile. Read them
+            again before writing.
+          </p>
         )}
 
         {dirty && (

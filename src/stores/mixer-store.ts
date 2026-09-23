@@ -1,7 +1,8 @@
 /**
  * @module mixer-store
  * @description Zustand store for the iNav motor and servo mixer tables.
- * Manages up to 16 motor rules and 32 servo rules: read from FC, edit locally, write back.
+ * Read from FC, edit locally, write back. The editor holds at most as many
+ * rules as the FC reports slots for (MSP2_INAV_MIXER).
  * @license GPL-3.0-only
  */
 
@@ -11,11 +12,6 @@ import type { MotorMixerRule, INavServoMixerRule } from '@/lib/protocol/msp/msp-
 import { formatErrorMessage } from '@/lib/utils'
 import { droneSlices, type DroneKeyed } from './drone-slices'
 
-/** iNav's default MAX_SUPPORTED_MOTORS; the upload checks the FC's own figure. */
-export const MOTOR_MIXER_MAX = 12
-/** iNav's default MAX_SERVO_RULES (2 x MAX_SUPPORTED_SERVOS); the upload checks the FC's own figure. */
-export const SERVO_MIXER_MAX = 36
-
 interface MixerSlice {
   motorRules: MotorMixerRule[]
   servoRules: INavServoMixerRule[]
@@ -24,14 +20,19 @@ interface MixerSlice {
   dirty: boolean
   /** A read from this drone's FC has succeeded. */
   loaded: boolean
+  /** Motor rule slots the FC reports (MAX_SUPPORTED_MOTORS); null until read. */
+  motorSlots: number | null
+  /** Servo rule slots the FC reports (2 x MAX_SUPPORTED_SERVOS); null until read. */
+  servoSlots: number | null
 }
 
 const emptySlice = (): MixerSlice => ({
   motorRules: [], servoRules: [], loading: false, error: null, dirty: false, loaded: false,
+  motorSlots: null, servoSlots: null,
 })
 
 const slices = droneSlices<MixerSlice>(
-  ['motorRules', 'servoRules', 'loading', 'error', 'dirty', 'loaded'],
+  ['motorRules', 'servoRules', 'loading', 'error', 'dirty', 'loaded', 'motorSlots', 'servoSlots'],
   emptySlice,
 )
 
@@ -80,8 +81,8 @@ export const useMixerStore = create<MixerState>((set, get) => ({
   },
 
   addMotorRule(rule) {
-    const motorRules = get().motorRules
-    if (motorRules.length >= MOTOR_MIXER_MAX) return
+    const { motorRules, motorSlots } = get()
+    if (motorSlots === null || motorRules.length >= motorSlots) return
     set({ motorRules: [...motorRules, rule], dirty: true })
   },
 
@@ -98,25 +99,29 @@ export const useMixerStore = create<MixerState>((set, get) => ({
   },
 
   addServoRule(rule) {
-    const servoRules = get().servoRules
-    if (servoRules.length >= SERVO_MIXER_MAX) return
+    const { servoRules, servoSlots } = get()
+    if (servoSlots === null || servoRules.length >= servoSlots) return
     set({ servoRules: [...servoRules, rule], dirty: true })
   },
 
   async loadFromFc(protocol) {
     if (get().loading) return
-    if (!protocol.downloadMotorMixer || !protocol.downloadServoMixer) {
+    if (!protocol.downloadMotorMixer || !protocol.downloadServoMixer || !protocol.getMixerConfig) {
       set({ error: 'Mixer tables not supported by this firmware' })
       return
     }
     const droneId = get().droneId
     set({ loading: true, error: null })
     try {
-      const [motorRules, servoRules] = await Promise.all([
+      const [motorRules, servoRules, cfg] = await Promise.all([
         protocol.downloadMotorMixer(),
         protocol.downloadServoMixer(),
+        protocol.getMixerConfig(),
       ])
-      set((st) => slices.patchFor(st, droneId, { motorRules, servoRules, loading: false, dirty: false, loaded: true }))
+      set((st) => slices.patchFor(st, droneId, {
+        motorRules, servoRules, loading: false, dirty: false, loaded: true,
+        motorSlots: cfg.maxSupportedMotors, servoSlots: 2 * cfg.maxSupportedServos,
+      }))
     } catch (err) {
       set((st) => slices.patchFor(st, droneId, { loading: false, error: formatErrorMessage(err) }))
     }

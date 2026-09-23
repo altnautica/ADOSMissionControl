@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useConnectDialogStore } from "@/stores/connect-dialog-store";
@@ -49,9 +49,6 @@ export function DroneListPanel({ collapsed, onToggleCollapse }: DroneListPanelPr
     x: number;
     y: number;
   } | null>(null);
-  // NodeRow's inline-rename input is unused here (renaming is done from the node
-  // context menu's inline label editor); a shared ref satisfies the prop.
-  const renameInputRef = useRef<HTMLInputElement>(null);
 
   const ordered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -92,7 +89,7 @@ export function DroneListPanel({ collapsed, onToggleCollapse }: DroneListPanelPr
         }}
         onForget={(n) => {
           setContextMenu(null);
-          forget(n._id, { convexId: n.convexId ?? null });
+          void forget(n._id, { convexId: n.convexId ?? null });
         }}
       />
     ) : null;
@@ -102,14 +99,8 @@ export function DroneListPanel({ collapsed, onToggleCollapse }: DroneListPanelPr
       <NodeRow
         node={node}
         selected={node._id === selectedDroneId}
-        renaming={false}
-        renameValue=""
-        renameInputRef={renameInputRef}
         onSelect={(n) => selectDrone(n._id)}
         onContext={openContext}
-        onRenameChange={() => {}}
-        onRenameSubmit={() => {}}
-        onRenameCancel={() => {}}
       />
     );
   }

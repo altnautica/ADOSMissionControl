@@ -473,6 +473,19 @@ export const JURISDICTIONS: Record<JurisdictionCode, JurisdictionSpec> = {
   INSURANCE_FLOCK,
 };
 
+/**
+ * Resolve a stored jurisdiction code, falling back when it is missing or not
+ * a known code (profiles persisted from free-text entry can hold anything).
+ */
+export function resolveJurisdiction(
+  code: string | undefined,
+  fallback: JurisdictionCode,
+): JurisdictionCode {
+  return code !== undefined && Object.hasOwn(JURISDICTIONS, code)
+    ? (code as JurisdictionCode)
+    : fallback;
+}
+
 /** Convenience: list all jurisdictions in display order. */
 export function listJurisdictions(): JurisdictionSpec[] {
   return Object.values(JURISDICTIONS);

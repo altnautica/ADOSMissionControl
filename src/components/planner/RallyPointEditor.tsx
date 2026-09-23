@@ -10,7 +10,7 @@
 import { useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { MapPin, Upload, Download, Trash2, Plus } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { NumericField } from "@/components/ui/numeric-field";
 import { useRallyStore, type RallyPoint } from "@/stores/rally-store";
 import { usePlannerStore } from "@/stores/planner-store";
 import { useDroneManager } from "@/stores/drone-manager";
@@ -20,6 +20,7 @@ import { recordHistory } from "@/lib/planner-history";
 
 export function RallyPointEditor() {
   const t = useTranslations("rally");
+  const tCommon = useTranslations("common");
   // Rally placement is the single sticky "rally" tool — keep clicking to drop
   // several points. The panel button is just another way to arm the same tool.
   const activeTool = usePlannerStore((s) => s.activeTool);
@@ -39,6 +40,7 @@ export function RallyPointEditor() {
   // or a drone switch changes it immediately.
   const [transferError, setTransferError] = useState<string | null>(null);
   const [confirmReplace, setConfirmReplace] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
   const uploadStatus = useRallyUploadStatus();
   // Transfers need a selected flight controller that speaks the rally protocol.
   const canUpload = useDroneManager((s) => !!s.getSelectedProtocol()?.uploadRallyPoints);
@@ -62,6 +64,21 @@ export function RallyPointEditor() {
     if (!r.success) setTransferError(`${t("downloadFailed")}: ${r.message}`);
     setDownloading(false);
   }, [downloadRallyPoints, t]);
+
+  // Every panel edit is one undo step, recorded before the change lands.
+  const handleUpdate = useCallback((id: string, update: Partial<RallyPoint>) => {
+    recordHistory();
+    updatePoint(id, update);
+  }, [updatePoint]);
+  const handleRemove = useCallback((id: string) => {
+    recordHistory();
+    removePoint(id);
+  }, [removePoint]);
+  const handleClear = useCallback(() => {
+    setConfirmClear(false);
+    recordHistory();
+    clearPoints();
+  }, [clearPoints]);
 
   const handleDownload = useCallback(() => {
     if (points.length > 0) setConfirmReplace(true);
@@ -100,9 +117,10 @@ export function RallyPointEditor() {
           {downloading ? "..." : t("downloadRally")}
         </button>
         <button
-          onClick={() => clearPoints()}
+          onClick={() => setConfirmClear(true)}
           disabled={points.length === 0}
-          title="Clear all rally points"
+          title={t("clearRally")}
+          aria-label={t("clearRally")}
           className="flex items-center gap-1 px-2 py-1 text-[10px] font-mono bg-bg-tertiary border border-border-default text-text-secondary hover:text-status-error disabled:opacity-40 cursor-pointer transition-colors"
         >
           <Trash2 size={10} />
@@ -121,8 +139,8 @@ export function RallyPointEditor() {
               key={point.id}
               point={point}
               index={idx}
-              onUpdate={updatePoint}
-              onRemove={removePoint}
+              onUpdate={handleUpdate}
+              onRemove={handleRemove}
             />
           ))}
         </div>
@@ -155,6 +173,15 @@ export function RallyPointEditor() {
         onConfirm={() => void runDownload()}
         onCancel={() => setConfirmReplace(false)}
       />
+      <ConfirmDialog
+        open={confirmClear}
+        title={t("clearRally")}
+        message={t("clearAllConfirm", { count: points.length })}
+        variant="danger"
+        confirmLabel={tCommon("delete")}
+        onConfirm={handleClear}
+        onCancel={() => setConfirmClear(false)}
+      />
     </div>
   );
 }
@@ -169,28 +196,8 @@ interface RallyPointRowProps {
 }
 
 function RallyPointRow({ point, index, onUpdate, onRemove }: RallyPointRowProps) {
-  const [localLat, setLocalLat] = useState(point.lat.toFixed(6));
-  const [localLon, setLocalLon] = useState(point.lon.toFixed(6));
-  const [localAlt, setLocalAlt] = useState(String(point.alt));
-
-  const commitLat = useCallback(() => {
-    const v = parseFloat(localLat);
-    if (!isNaN(v) && v >= -90 && v <= 90) onUpdate(point.id, { lat: v });
-    else setLocalLat(point.lat.toFixed(6));
-  }, [localLat, point.id, point.lat, onUpdate]);
-
-  const commitLon = useCallback(() => {
-    const v = parseFloat(localLon);
-    if (!isNaN(v) && v >= -180 && v <= 180) onUpdate(point.id, { lon: v });
-    else setLocalLon(point.lon.toFixed(6));
-  }, [localLon, point.id, point.lon, onUpdate]);
-
-  const commitAlt = useCallback(() => {
-    const v = parseFloat(localAlt);
-    if (!isNaN(v) && v >= 0) onUpdate(point.id, { alt: v });
-    else setLocalAlt(String(point.alt));
-  }, [localAlt, point.id, point.alt, onUpdate]);
-
+  // Fields follow the point, so a map drag shows here at once and a later blur
+  // never writes the pre-drag coordinates back.
   return (
     <div className="flex items-start gap-1.5 p-1.5 bg-bg-tertiary/50 border border-border-default">
       {/* Index badge */}
@@ -202,30 +209,12 @@ function RallyPointRow({ point, index, onUpdate, onRemove }: RallyPointRowProps)
           R{index + 1}
         </span>
         <div className="grid grid-cols-3 gap-1 mt-1">
-          <Input
-            label="Lat"
-            type="number"
-            step="0.0001"
-            value={localLat}
-            onChange={(e) => setLocalLat(e.target.value)}
-            onBlur={commitLat}
-          />
-          <Input
-            label="Lon"
-            type="number"
-            step="0.0001"
-            value={localLon}
-            onChange={(e) => setLocalLon(e.target.value)}
-            onBlur={commitLon}
-          />
-          <Input
-            label="Alt"
-            type="number"
-            unit="m"
-            value={localAlt}
-            onChange={(e) => setLocalAlt(e.target.value)}
-            onBlur={commitAlt}
-          />
+          <NumericField label="Lat" step="0.0001" min={-90} max={90} value={point.lat}
+            onCommit={(lat) => onUpdate(point.id, { lat })} />
+          <NumericField label="Lon" step="0.0001" min={-180} max={180} value={point.lon}
+            onCommit={(lon) => onUpdate(point.id, { lon })} />
+          <NumericField label="Alt" unit="m" min={0} value={point.alt}
+            onCommit={(alt) => onUpdate(point.id, { alt })} />
         </div>
       </div>
       <button

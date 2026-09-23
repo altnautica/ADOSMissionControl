@@ -1,9 +1,10 @@
 /**
  * Top-level dataflash import orchestrator.
  *
- * Takes raw `.bin` bytes (from FC download or disk drag-drop), parses, splits
- * into FlightRecords, persists frames into the recordings IDB store, and
- * inserts each record into the history store.
+ * Takes raw `.bin` bytes (from FC download or disk drag-drop), parses and
+ * splits them into FlightRecords off the main thread, persists frames into
+ * the recordings IDB store, and inserts each new record into the history
+ * store.
  *
  * Returns a small summary the UI can show in a toast.
  *
@@ -11,27 +12,22 @@
  * @license GPL-3.0-only
  */
 
-import { parseDataflashLog, type DataflashLog } from "./parser";
-import { dataflashToFlightRecords } from "./to-flight-record";
+import { buildDataflashFlightsOffThread } from "./build";
+import type { DataflashConvertOptions } from "./to-flight-record";
 import { setRecordingFromFrames } from "@/lib/telemetry-recorder";
 import { useHistoryStore } from "@/stores/history-store";
 
 export interface DataflashImportSummary {
+  /** Flights newly added to history. */
   flightsImported: number;
+  /** Flights in the log that history already holds (same id), left untouched. */
+  duplicates: number;
   bytesParsed: number;
   resyncSkipped: number;
   /** True if the LOG_BITMASK didn't include RC stick inputs. */
   rcInMissing: boolean;
   /** Total parameters parsed from PARM rows. */
   paramCount: number;
-}
-
-export interface DataflashImportOptions {
-  /** Original filename (e.g. `00000123.BIN`). */
-  sourceFilename?: string;
-  /** Drone id to attribute the imported flights to. Defaults to a sysid hint. */
-  droneId?: string;
-  droneName?: string;
 }
 
 /**
@@ -42,24 +38,16 @@ export interface DataflashImportOptions {
  */
 export async function importDataflashLog(
   buffer: Uint8Array,
-  options: DataflashImportOptions = {},
+  options: DataflashConvertOptions = {},
 ): Promise<DataflashImportSummary> {
-  const log: DataflashLog = parseDataflashLog(buffer);
-
-  const built = dataflashToFlightRecords(log, options);
-  if (built.length === 0) {
-    return {
-      flightsImported: 0,
-      bytesParsed: log.bytesRead,
-      resyncSkipped: log.resyncSkipped,
-      rcInMissing: (log.messages.get("RCIN") ?? []).length === 0,
-      paramCount: log.params.size,
-    };
-  }
-
+  const build = await buildDataflashFlightsOffThread(buffer, options);
   const history = useHistoryStore.getState();
 
-  for (const flight of built) {
+  let flightsImported = 0;
+  for (const flight of build.flights) {
+    // A re-import of the same log yields the same ids; keep what is stored.
+    if (!history.addRecord(flight.record)) continue;
+    flightsImported++;
     if (flight.frames.length > 0) {
       await setRecordingFromFrames(
         flight.record.recordingId!,
@@ -74,15 +62,15 @@ export async function importDataflashLog(
         },
       );
     }
-    history.addRecord(flight.record);
   }
-  await history.persistToIDB();
+  if (flightsImported > 0) await history.persistToIDB();
 
   return {
-    flightsImported: built.length,
-    bytesParsed: log.bytesRead,
-    resyncSkipped: log.resyncSkipped,
-    rcInMissing: (log.messages.get("RCIN") ?? []).length === 0,
-    paramCount: log.params.size,
+    flightsImported,
+    duplicates: build.flights.length - flightsImported,
+    bytesParsed: build.bytesRead,
+    resyncSkipped: build.resyncSkipped,
+    rcInMissing: build.rcInMissing,
+    paramCount: build.paramCount,
   };
 }

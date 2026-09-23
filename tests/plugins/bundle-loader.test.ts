@@ -1,7 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
-import { loadPluginBundle } from "@/lib/plugins/bundle-loader";
-import { PLUGIN_FRAME_CSP } from "@/lib/plugins/iframe-csp";
+import {
+  loadPluginBundle,
+  PLUGIN_BUNDLE_MAX_BYTES,
+} from "@/lib/plugins/bundle-loader";
+import { PLUGIN_FRAME_CSP, PLUGIN_FRAME_HEAD } from "@/lib/plugins/iframe-csp";
 
 describe("loadPluginBundle", () => {
   const createSpy = vi.fn((blob: unknown) => {
@@ -24,12 +27,7 @@ describe("loadPluginBundle", () => {
   });
 
   function stubFetch(html: string) {
-    const fetchSpy = vi.fn(async () => ({
-      ok: true,
-      status: 200,
-      statusText: "OK",
-      text: async () => html,
-    }));
+    const fetchSpy = vi.fn(async (_url: string, _init?: RequestInit) => new Response(html));
     vi.stubGlobal("fetch", fetchSpy);
     return fetchSpy;
   }
@@ -39,7 +37,7 @@ describe("loadPluginBundle", () => {
 
     const { blobUrl, revoke } = await loadPluginBundle("https://signed/bundle");
 
-    expect(fetchSpy).toHaveBeenCalledWith("https://signed/bundle");
+    expect(fetchSpy.mock.calls[0][0]).toBe("https://signed/bundle");
     expect(blobUrl).toBe("blob:fake-123");
     expect(minted?.type).toBe("text/html");
 
@@ -57,31 +55,45 @@ describe("loadPluginBundle", () => {
     await loadPluginBundle("https://signed/legacy-shell");
 
     const html = await minted!.text();
-    expect(html).toContain('http-equiv="Content-Security-Policy"');
     expect(html).toContain("connect-src 'none'");
     expect(html).toContain(PLUGIN_FRAME_CSP);
   });
 
-  it("does not add a second policy to a shell that already declares one", async () => {
+  it("injects the policy even when the bundle text mentions a policy", async () => {
+    // A legacy shell with no policy whose inlined bundle carries the literal
+    // must still get the frame policy and guard at the start of <head>.
     stubFetch(
-      `<html><head><meta http-equiv="Content-Security-Policy" content="${PLUGIN_FRAME_CSP}"></head><body></body></html>`,
+      '<html><head></head><body><script type="module">const s = \'http-equiv="Content-Security-Policy"\';</script></body></html>',
     );
 
-    await loadPluginBundle("https://signed/current-shell");
+    await loadPluginBundle("https://signed/legacy-shell");
 
     const html = await minted!.text();
-    expect(html.match(/http-equiv="Content-Security-Policy"/g)).toHaveLength(1);
+    expect(html.startsWith(`<html><head>${PLUGIN_FRAME_HEAD}`)).toBe(true);
+  });
+
+  it("aborts the fetch when the caller's signal fires", async () => {
+    const fetchSpy = stubFetch("<html><head></head></html>");
+    const controller = new AbortController();
+
+    await loadPluginBundle("https://signed/bundle", controller.signal);
+    const signal = fetchSpy.mock.calls[0][1]?.signal;
+    expect(signal?.aborted).toBe(false);
+    controller.abort();
+    expect(signal?.aborted).toBe(true);
+  });
+
+  it("refuses a body larger than the bundle cap", async () => {
+    stubFetch("x".repeat(PLUGIN_BUNDLE_MAX_BYTES + 1));
+
+    await expect(loadPluginBundle("https://signed/huge")).rejects.toThrow(/exceeds/);
+    expect(createSpy).not.toHaveBeenCalled();
   });
 
   it("throws a clear error on a non-ok response", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () => ({
-        ok: false,
-        status: 404,
-        statusText: "Not Found",
-        text: async () => "",
-      })),
+      vi.fn(async () => new Response("", { status: 404, statusText: "Not Found" })),
     );
 
     await expect(loadPluginBundle("https://signed/missing")).rejects.toThrow(

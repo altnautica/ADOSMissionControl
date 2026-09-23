@@ -25,6 +25,7 @@ import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { directClientForNode } from "@/lib/agent/config-access";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
 import { deriveMavlinkLink, heartbeatAgeLabel } from "@/lib/agent/mavlink-link";
+import { useFreshness } from "@/lib/agent/freshness";
 import { resolveLocalAgentForDrone } from "@/lib/agent/resolve-agent";
 import { describeFcSourceReadOnly } from "./fc-source-availability";
 import type { FcSource, MavlinkPort } from "@/lib/agent/types";
@@ -66,6 +67,8 @@ export function FcSourcePicker({ nodeDeviceId }: FcSourcePickerProps) {
   const cloudMode = useAgentConnectionStore((s) => s.cloudMode);
   const cloudDeviceId = useAgentConnectionStore((s) => s.cloudDeviceId);
   const status = useAgentSystemStore((s) => s.status);
+  const statusUpdatedAt = useAgentSystemStore((s) => s.lastUpdatedAt);
+  const freshness = useFreshness();
 
   // The port enumeration and the FC-source write are both direct-only agent
   // endpoints (the server-side config proxy forwards a fixed path map that
@@ -82,9 +85,20 @@ export function FcSourcePicker({ nodeDeviceId }: FcSourcePickerProps) {
   const [serialPort, setSerialPort] = useState<string>("");
   const [baud, setBaud] = useState<string>("115200");
   const [applying, setApplying] = useState(false);
-  const [applied, setApplied] = useState(false);
+  // The choice the last successful Apply wrote, stamped with the wall-clock
+  // time the agent accepted it. "Validated" is only claimed for a live status
+  // received after that time whose source/port match this choice.
+  const [appliedChoice, setAppliedChoice] = useState<{
+    source: FcSource;
+    port: string | null;
+    at: number;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loadingPorts, setLoadingPorts] = useState(false);
+  const [portsError, setPortsError] = useState<string | null>(null);
+  // Bumped on every enumeration and on a node/client change, so a late
+  // response for an earlier node never lands in this node's form.
+  const portsGenRef = useRef(0);
 
   // Seed the picker from the agent's reported source/port/baud once known, so
   // it reflects reality rather than always defaulting to "auto". Only seeds
@@ -108,9 +122,10 @@ export function FcSourcePicker({ nodeDeviceId }: FcSourcePickerProps) {
     setSource("auto");
     setSerialPort("");
     setBaud("115200");
-    setApplied(false);
+    setAppliedChoice(null);
     setError(null);
     setPorts([]);
+    setPortsError(null);
   }, [nodeDeviceId]);
   useEffect(() => {
     if (seededRef.current || !status) return;
@@ -121,22 +136,33 @@ export function FcSourcePicker({ nodeDeviceId }: FcSourcePickerProps) {
   }, [status]);
 
   const loadPorts = useCallback(async () => {
+    const gen = ++portsGenRef.current;
     if (!client || typeof client.getMavlinkPorts !== "function") return;
     setLoadingPorts(true);
+    setPortsError(null);
     try {
       const list = await client.getMavlinkPorts();
+      if (gen !== portsGenRef.current) return;
       setPorts(list);
       // Default the serial port to the first detected device when none is set.
       setSerialPort((prev) => prev || list[0]?.path || "");
-    } catch {
-      // Best-effort enumeration; leave the list empty.
+    } catch (err) {
+      if (gen !== portsGenRef.current) return;
+      setPorts([]);
+      setPortsError(
+        `Could not list serial ports: ${err instanceof Error ? err.message : "request failed"}`,
+      );
     } finally {
-      setLoadingPorts(false);
+      if (gen === portsGenRef.current) setLoadingPorts(false);
     }
   }, [client]);
 
   useEffect(() => {
     void loadPorts();
+    // Invalidate any enumeration still in flight for the previous client.
+    return () => {
+      portsGenRef.current += 1;
+    };
   }, [loadPorts]);
 
   const apply = useCallback(async () => {
@@ -147,7 +173,7 @@ export function FcSourcePicker({ nodeDeviceId }: FcSourcePickerProps) {
       return;
     }
     setApplying(true);
-    setApplied(false);
+    setAppliedChoice(null);
     setError(null);
     try {
       // Throws when the agent rejected a value or could not write it to disk,
@@ -156,7 +182,11 @@ export function FcSourcePicker({ nodeDeviceId }: FcSourcePickerProps) {
         serialPort: source === "serial" ? serialPort || undefined : undefined,
         baudRate: source === "serial" ? Number(baud) : undefined,
       });
-      setApplied(true);
+      setAppliedChoice({
+        source,
+        port: source === "serial" ? serialPort || null : null,
+        at: Date.now(),
+      });
       // The router re-binds asynchronously; the live indicator below reads the
       // status poll, so no manual refresh is needed.
     } catch (err) {
@@ -167,6 +197,17 @@ export function FcSourcePicker({ nodeDeviceId }: FcSourcePickerProps) {
   }, [client, source, serialPort, baud]);
 
   const link = deriveMavlinkLink(status);
+  // The status must be live, and after an Apply it must be a poll received
+  // after the write that reports the applied source (and port, for serial).
+  // A pre-apply or frozen snapshot never reads as "validated".
+  const statusLive = freshness.state === "live";
+  const reflectsApply =
+    appliedChoice === null ||
+    (statusUpdatedAt !== null &&
+      statusUpdatedAt > appliedChoice.at &&
+      status?.fc_source === appliedChoice.source &&
+      (appliedChoice.port === null || status?.fc_port === appliedChoice.port));
+  const statusConfirmed = statusLive && reflectsApply;
 
   // Cloud relay has no write path to the config surface, so the picker can only
   // report here. The reason names what is true of THIS node rather than
@@ -236,7 +277,7 @@ export function FcSourcePicker({ nodeDeviceId }: FcSourcePickerProps) {
         value={source}
         onChange={(v) => {
           setSource(v as FcSource);
-          setApplied(false);
+          setAppliedChoice(null);
         }}
       />
 
@@ -248,10 +289,14 @@ export function FcSourcePicker({ nodeDeviceId }: FcSourcePickerProps) {
             value={serialPort}
             onChange={(v) => {
               setSerialPort(v);
-              setApplied(false);
+              setAppliedChoice(null);
             }}
             placeholder={
-              loadingPorts ? "Scanning…" : "No serial ports detected"
+              loadingPorts
+                ? "Scanning…"
+                : portsError
+                  ? "Could not list ports"
+                  : "No serial ports detected"
             }
           />
           <Select
@@ -260,7 +305,7 @@ export function FcSourcePicker({ nodeDeviceId }: FcSourcePickerProps) {
             value={baud}
             onChange={(v) => {
               setBaud(v);
-              setApplied(false);
+              setAppliedChoice(null);
             }}
           />
         </div>
@@ -281,7 +326,17 @@ export function FcSourcePicker({ nodeDeviceId }: FcSourcePickerProps) {
         </Button>
         {/* Live validation: drives off the gated mavlink_alive / heartbeat_age_s
             so the operator sees the link prove itself, not just an "applied". */}
-        {link.state === "msp" ? (
+        {!statusConfirmed ? (
+          appliedChoice !== null || status ? (
+            <span className="flex items-center gap-1.5 text-xs text-text-tertiary">
+              <Loader2 size={12} className="animate-spin" />
+              {appliedChoice !== null
+                ? "waiting for the agent to report the new source…"
+                : "waiting for a live status…"}{" "}
+              <span>(last status {freshness.label})</span>
+            </span>
+          ) : null
+        ) : link.state === "msp" ? (
           // An MSP FC (Betaflight/iNav) never emits a MAVLink heartbeat; it is
           // validated by being reachable + drivable over the MSP proxy, so it
           // reads active, not "waiting for MAVLink…".
@@ -302,16 +357,23 @@ export function FcSourcePicker({ nodeDeviceId }: FcSourcePickerProps) {
             <Loader2 size={12} className="animate-spin" />
             waiting for MAVLink…
           </span>
-        ) : applied ? (
-          <span className="flex items-center gap-1.5 text-xs text-text-tertiary">
-            <Loader2 size={12} className="animate-spin" />
-            applying…
-          </span>
         ) : null}
       </div>
 
       {!client && <p className="text-xs text-text-tertiary">{NO_WRITE_PATH}</p>}
       {error && <p className="text-xs text-status-error">{error}</p>}
+      {portsError && source === "serial" && (
+        <p className="flex items-center gap-2 text-xs text-status-warning">
+          {portsError}
+          <button
+            type="button"
+            onClick={() => void loadPorts()}
+            className="underline hover:text-text-primary"
+          >
+            Retry
+          </button>
+        </p>
+      )}
     </div>
   );
 }

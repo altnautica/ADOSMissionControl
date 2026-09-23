@@ -51,7 +51,7 @@ const WITH_VERDICTS = {
   ...BASE,
   managementLink: { state: "healthy", iface: "wlan0" },
   macStability: { adapters: [{ iface: "wlan1", pinned: true }] },
-  cameraUsbRecovery: { state: "monitoring", attempts: 0, maxAttempts: 3 },
+  cameraUsbRecovery: { state: "monitoring", attempts: 0, cooldownSeconds: 60 },
   usbRehomeState: "idle",
   mgmtLinkMode: "primary",
 };

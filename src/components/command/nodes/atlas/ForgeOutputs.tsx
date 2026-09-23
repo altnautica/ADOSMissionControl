@@ -9,7 +9,7 @@
  * @license GPL-3.0-only
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Boxes } from "lucide-react";
 import type {
@@ -18,7 +18,9 @@ import type {
   ComputeOutput,
 } from "@/lib/agent/compute-client";
 import { Select, type SelectOption } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import {
+  ATLAS_VIEWERS,
   pickArtifactForViewer,
   viewerForKind,
   type AtlasViewer,
@@ -45,11 +47,17 @@ export function ForgeOutputs({
   );
   const [selectedJobId, setSelectedJobId] = useState<string>("");
   // Outputs are keyed to the job they belong to so a switch never shows the
-  // previous job's artifact while the new fetch is in flight.
+  // previous job's artifact while the new fetch is in flight. `outputs: null`
+  // is a failed read (unreachable / non-2xx), distinct from a reachable job
+  // with no artifacts yet (`[]`).
   const [outputState, setOutputState] = useState<{
     jobId: string;
-    outputs: ComputeOutput[];
+    outputs: ComputeOutput[] | null;
   }>({ jobId: "", outputs: [] });
+  const [retryNonce, setRetryNonce] = useState(0);
+  // The client + job whose non-empty outputs are loaded; once set, the job poll
+  // stops refetching them.
+  const loadedRef = useRef<{ client: ComputeAgentClient; jobId: string } | null>(null);
   // A manual viewer choice, keyed to the job it was made for. When the job
   // changes the override drops and the viewer follows the artifact's kind.
   const [override, setOverride] = useState<{
@@ -61,31 +69,48 @@ export function ForgeOutputs({
   const effectiveJobId =
     finished.find((j) => j.id === selectedJobId)?.id ?? finished[0]?.id ?? "";
 
+  // Fetch on job switch, on a manual retry, and on every job-poll tick while
+  // the outputs are still empty or failed (a transient failure or an artifact
+  // that lands after the job completes both recover without a job switch).
   useEffect(() => {
     if (!client || !effectiveJobId) return;
+    const loaded = loadedRef.current;
+    if (loaded && loaded.client === client && loaded.jobId === effectiveJobId) return;
     let cancelled = false;
     void client.getOutputs(effectiveJobId).then((res) => {
-      if (!cancelled) setOutputState({ jobId: effectiveJobId, outputs: res ?? [] });
+      if (cancelled) return;
+      if (res && res.length > 0) loadedRef.current = { client, jobId: effectiveJobId };
+      setOutputState({ jobId: effectiveJobId, outputs: res });
     });
     return () => {
       cancelled = true;
     };
-  }, [client, effectiveJobId]);
+  }, [client, effectiveJobId, jobs, retryNonce]);
 
-  const outputs =
-    outputState.jobId === effectiveJobId ? outputState.outputs : [];
+  const fetched = outputState.jobId === effectiveJobId;
+  const failed = fetched && outputState.outputs === null;
+  const outputs = fetched ? (outputState.outputs ?? []) : [];
   const primary = outputs[0] ?? null;
-  // Manual override (for this job) wins; otherwise default from the primary
-  // artifact's kind.
-  const viewer =
-    override && override.jobId === effectiveJobId
-      ? override.viewer
-      : viewerForKind(primary?.kind ?? "");
   // Each viewer consumes the artifact matching ITS kind (World→`.rrd`,
-  // Splat→splat `.ply`, Cloud/LOD/Geo→point-cloud `.ply`). A job can emit both
-  // a splat and a point-cloud `.ply`, so "first non-rerun" would feed a plain
-  // point cloud to the splat renderer (→ black) or the splat to Rerun.
-  const artifact = pickArtifactForViewer(outputs, viewer) ?? primary;
+  // Splat→splat `.ply`, Cloud/LOD→point-cloud `.ply`). A job can emit both a
+  // splat and a point-cloud `.ply`, so only a viewer with a matching output is
+  // offered, and a viewer is never handed another kind's artifact (a plain
+  // point cloud in the splat renderer draws nothing).
+  const viewable = ATLAS_VIEWERS.filter(
+    (v) => pickArtifactForViewer(outputs, v.id) !== undefined,
+  );
+  const kindViewer = viewerForKind(primary?.kind ?? "");
+  const defaultViewer: AtlasViewer = viewable.some((v) => v.id === kindViewer)
+    ? kindViewer
+    : (viewable[0]?.id ?? kindViewer);
+  // A manual choice (for this job) wins when that viewer has an artifact.
+  const viewer =
+    override &&
+    override.jobId === effectiveJobId &&
+    viewable.some((v) => v.id === override.viewer)
+      ? override.viewer
+      : defaultViewer;
+  const artifact = pickArtifactForViewer(outputs, viewer);
 
   if (finished.length === 0) {
     return (
@@ -110,11 +135,14 @@ export function ForgeOutputs({
           placeholder={t("forgeSelectJob")}
           className="w-56"
         />
-        <ViewerSwitcher
-          viewer={viewer}
-          onSelect={(v) => setOverride({ jobId: effectiveJobId, viewer: v })}
-          ariaLabel={t("forgeOutputs")}
-        />
+        {viewable.length > 0 && (
+          <ViewerSwitcher
+            viewer={viewer}
+            viewers={viewable}
+            onSelect={(v) => setOverride({ jobId: effectiveJobId, viewer: v })}
+            ariaLabel={t("forgeOutputs")}
+          />
+        )}
       </div>
 
       <div className="flex-1 relative min-h-[320px]">
@@ -129,8 +157,24 @@ export function ForgeOutputs({
             <div className="text-center">
               <Boxes className="w-5 h-5 text-text-tertiary mx-auto mb-2" />
               <p className="text-[11px] text-text-tertiary max-w-xs">
-                {t("forgeNoOutputs")}
+                {!fetched
+                  ? t("forgeOutputsLoading")
+                  : failed
+                    ? t("forgeOutputsFailed")
+                    : outputs.length > 0
+                      ? t("forgeNoViewableArtifact")
+                      : t("forgeNoOutputs")}
               </p>
+              {failed && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="mt-2"
+                  onClick={() => setRetryNonce((n) => n + 1)}
+                >
+                  {t("forgeOutputsRetry")}
+                </Button>
+              )}
             </div>
           </div>
         )}

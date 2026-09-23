@@ -11,6 +11,9 @@ import {
   DP_ATTR_BLINK,
 } from "@/lib/protocol/msp/decoders/config/displayport";
 import { DisplayPortScreen } from "@/lib/osd/displayport-screen";
+import { useDisplayPortStore } from "@/stores/displayport-store";
+import type { DisplayPortOp } from "@/lib/protocol/msp/decoders/config/displayport";
+import type { DroneProtocol } from "@/lib/protocol/types";
 
 function dv(bytes: number[]): DataView {
   return new DataView(new Uint8Array(bytes).buffer);
@@ -64,5 +67,41 @@ describe("DisplayPortScreen", () => {
     const s = new DisplayPortScreen(30, 16);
     s.applyOp(decodeMspDisplayPort(dv([DISPLAYPORT_SUBCMD.WRITE_STRING, 0, 0, 0, 0xb0, 0x41]))); // glyph + 'A'
     expect(s.toLines()[0].slice(0, 2)).toBe("·A");
+  });
+
+  it("blanks the grid when the FC releases the display", () => {
+    const s = new DisplayPortScreen(30, 16);
+    s.applyOp(decodeMspDisplayPort(dv(writeStringFrame(1, 0, 0, "ARMED"))));
+    s.applyOp(decodeMspDisplayPort(dv([DISPLAYPORT_SUBCMD.RELEASE])));
+    expect(s.toLines()[1].trim()).toBe("");
+  });
+
+  it("renders codes from a non-ASCII font page as a placeholder, not letters", () => {
+    const s = new DisplayPortScreen(30, 16);
+    s.applyOp(decodeMspDisplayPort(dv(writeStringFrame(0, 0, 0x01, "AB"))));
+    expect(s.toLines()[0].slice(0, 2)).toBe("··");
+  });
+});
+
+describe("displayport store", () => {
+  it("drops the live frame when the FC releases the display", () => {
+    let emit: (op: DisplayPortOp) => void = () => {};
+    const protocol = {
+      onDisplayPort: (cb: (op: DisplayPortOp) => void) => {
+        emit = cb;
+        return () => {};
+      },
+    } as unknown as DroneProtocol;
+    useDisplayPortStore.getState().attach(protocol);
+
+    emit(decodeMspDisplayPort(dv(writeStringFrame(1, 0, 0, "ARMED"))));
+    emit(decodeMspDisplayPort(dv([DISPLAYPORT_SUBCMD.DRAW_SCREEN])));
+    expect(useDisplayPortStore.getState().lastFrameAt).not.toBeNull();
+
+    emit(decodeMspDisplayPort(dv([DISPLAYPORT_SUBCMD.RELEASE])));
+    const after = useDisplayPortStore.getState();
+    expect(after.lastFrameAt).toBeNull();
+    expect(after.lines.join("").trim()).toBe("");
+    after.detach();
   });
 });

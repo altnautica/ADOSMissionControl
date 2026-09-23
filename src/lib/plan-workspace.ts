@@ -57,6 +57,20 @@ export function applyPlanToWorkspace(plan: SavedPlan): void {
 }
 
 /**
+ * Empty the live workspace for a fresh (or deleted) plan: waypoints, geofence,
+ * rally points and POIs, plus the undo timeline. Clearing only the waypoints
+ * left the previous plan's fence and rally points in their stores, and the
+ * library autosave then wrote them into the new plan.
+ */
+export function clearPlanWorkspace(): void {
+  useMissionStore.getState().clearMission();
+  useGeofenceStore.getState().clearFence();
+  useRallyStore.getState().clearPoints();
+  usePlanPoiStore.getState().clearPoints();
+  clearHistory();
+}
+
+/**
  * Save the live workspace (waypoints plus fence, rally and POIs) into the
  * active library plan, or into a new plan when none is active. Works from any
  * surface that shows the library, not only the Plan page.
@@ -110,4 +124,20 @@ export function capturePlanExtras(): PlanExtras {
     rally: rallyPoints.length > 0 ? rallyPoints.map((p) => ({ ...p })) : undefined,
     pois: poiPoints.length > 0 ? poiPoints.map((p) => ({ ...p })) : undefined,
   };
+}
+
+/**
+ * Restore the fence, rally points and POIs a shared plan link carries. Each
+ * domain is restored only when the workspace has none of its own, so opening a
+ * link never overwrites geometry the operator already drew.
+ */
+export function restoreSharedPlanExtras(shared: PlanExtras): void {
+  const current = capturePlanExtras();
+  if (shared.geofence && !current.geofence) useGeofenceStore.getState().restore(shared.geofence);
+  if (shared.rally && shared.rally.length > 0 && !current.rally) {
+    useRallyStore.getState().restore({ points: shared.rally });
+  }
+  if (shared.pois && shared.pois.length > 0 && !current.pois) {
+    usePlanPoiStore.getState().restore({ points: shared.pois, selectedId: null });
+  }
 }

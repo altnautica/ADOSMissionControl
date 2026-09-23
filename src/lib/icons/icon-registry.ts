@@ -332,10 +332,13 @@ export const FALLBACK_ICON: LucideIcon = Sparkles;
  */
 export function resolveNamedIcon(name?: string | null): LucideIcon {
   if (!name) return FALLBACK_ICON;
-  return ICON_VOCAB[normalizeIconName(name)] ?? FALLBACK_ICON;
+  const key = normalizeIconName(name);
+  // Names come from third-party manifests; an own-key check keeps a name
+  // like "constructor" from resolving to an inherited Object member.
+  return Object.hasOwn(ICON_VOCAB, key) ? ICON_VOCAB[key] : FALLBACK_ICON;
 }
 
 /** True iff the name resolves to a real vocabulary entry (not the fallback). */
 export function hasNamedIcon(name?: string | null): boolean {
-  return !!name && normalizeIconName(name) in ICON_VOCAB;
+  return !!name && Object.hasOwn(ICON_VOCAB, normalizeIconName(name));
 }

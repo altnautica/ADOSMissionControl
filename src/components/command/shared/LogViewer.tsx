@@ -8,6 +8,8 @@ import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { hasClientPath } from "@/lib/agent/config-access";
 import type { LogEntry } from "@/lib/agent/types";
 import type { LogTail, LoggingRow } from "@/lib/agent/agent-client/logging";
+import { getFreshness, useClockTick } from "@/lib/agent/freshness";
+import { useClockStore } from "@/stores/clock-store";
 
 interface LogViewerProps {
   logs: LogEntry[];
@@ -42,27 +44,32 @@ const NOISY_PATTERNS: ReadonlyArray<readonly [string, string]> = [
 
 const MAX_LIVE_LINES = 500;
 const OLDER_PAGE_SIZE = 200;
+/** Fixed delay before re-attaching a dropped live tail; retried forever. */
+const TAIL_RETRY_MS = 3000;
+/** Cadence of the prop-feed refresh while no live tail is attached. */
+const LOG_POLL_MS = 5000;
 
-// Render a log entry's timestamp as HH:MM:SS, tolerating either an
-// ISO-8601 string or a raw epoch number. Older agents emitted the
-// timestamp as a float epoch, which would crash a naive `.slice()`.
-// Returns "" for anything unparseable so a malformed entry never throws.
+// Render a log entry's timestamp as HH:MM:SS in the browser's local time
+// zone, whichever form it arrives in: an ISO-8601 string with an offset (the
+// durable store) or a raw epoch number (older agents). Both paths go through
+// Date so an agent-offset string and an epoch for the same instant read the
+// same wall time. Returns "" for anything unparseable so a malformed entry
+// never throws.
 export function formatLogTime(ts: unknown): string {
+  let ms: number;
   if (typeof ts === "string") {
-    // ISO-8601: "2026-05-24T09:30:00+00:00" → take HH:MM:SS.
-    if (ts.includes("T") && ts.length >= 19) return ts.slice(11, 19);
     const asNum = Number(ts);
-    if (Number.isFinite(asNum)) return formatLogTime(asNum);
+    if (ts.trim() !== "" && Number.isFinite(asNum)) return formatLogTime(asNum);
+    ms = Date.parse(ts);
+  } else if (typeof ts === "number" && Number.isFinite(ts)) {
+    // Heuristic: values below 1e12 are epoch seconds, not milliseconds.
+    ms = ts < 1e12 ? ts * 1000 : ts;
+  } else {
     return "";
   }
-  if (typeof ts === "number" && Number.isFinite(ts)) {
-    // Heuristic: values below 1e12 are epoch seconds, not milliseconds.
-    const ms = ts < 1e12 ? ts * 1000 : ts;
-    const d = new Date(ms);
-    if (Number.isNaN(d.getTime())) return "";
-    return d.toTimeString().slice(0, 8);
-  }
-  return "";
+  const d = new Date(ms);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toTimeString().slice(0, 8);
 }
 
 function isNoisyEntry(entry: LogEntry): boolean {
@@ -102,6 +109,9 @@ export function LogViewer({ logs, onRefresh }: LogViewerProps) {
   // (cloud mode, older agent, no EventSource) we keep showing the prop.
   const [liveActive, setLiveActive] = useState(false);
   const [liveLogs, setLiveLogs] = useState<LogEntry[]>([]);
+  // Bumped by the retry timer after a tail drops, which re-runs the attach
+  // effect. A dropped tail is re-attached on a fixed cadence, forever.
+  const [tailAttempt, setTailAttempt] = useState(0);
   // Older rows fetched by the keyset "Load older" control, oldest at index 0.
   const [olderLogs, setOlderLogs] = useState<LogEntry[]>([]);
   const [olderCursor, setOlderCursor] = useState<string | null>(null);
@@ -114,8 +124,8 @@ export function LogViewer({ logs, onRefresh }: LogViewerProps) {
   // Attach the live tail when a direct client path exists. The log tail
   // rides the direct client only (the config proxy does not forward it),
   // so a detached client — cloud mode included — falls back to the polled
-  // prop feed. On any error or when no tail source exists, drop back by
-  // leaving liveActive false and triggering a refresh.
+  // prop feed. A dropped or refused stream refreshes the prop feed at once
+  // and re-attaches after TAIL_RETRY_MS.
   useEffect(() => {
     setLiveActive(false);
     setLiveLogs([]);
@@ -158,12 +168,14 @@ export function LogViewer({ logs, onRefresh }: LogViewerProps) {
         flushHandle = requestAnimationFrame(flush);
       }
     };
+    let retryTimer: number | undefined;
     const onError = () => {
-      // Stream refused or dropped: fall back to the polled feed and refresh
-      // once so the prop shows current data immediately.
+      // Stream refused or dropped (e.g. the agent restarted): show current
+      // data from the polled feed now, and try the tail again shortly.
       if (cancelled) return;
       setLiveActive(false);
       onRefresh(levelFilterRef.current);
+      retryTimer = window.setTimeout(() => setTailAttempt((n) => n + 1), TAIL_RETRY_MS);
     };
     let stream: LogTail;
     try {
@@ -172,7 +184,8 @@ export function LogViewer({ logs, onRefresh }: LogViewerProps) {
         { onRow, onError },
       );
     } catch {
-      // No host / relayed agent — fall back to polling.
+      // No host / relayed agent: the polling effect below keeps the prop feed
+      // current; refresh once now so it shows current data immediately.
       onRefresh(levelFilterRef.current);
       return;
     }
@@ -180,9 +193,30 @@ export function LogViewer({ logs, onRefresh }: LogViewerProps) {
     return () => {
       cancelled = true;
       if (flushHandle !== null) cancelAnimationFrame(flushHandle);
+      window.clearTimeout(retryTimer);
       stream.close();
     };
-  }, [client, levelFilter, onRefresh]);
+  }, [client, levelFilter, onRefresh, tailAttempt]);
+
+  // Without a live tail the prop feed is the only source, so refresh it on a
+  // fixed cadence while mounted. Cloud mode is excluded: its heartbeat already
+  // carries the recent log window.
+  useEffect(() => {
+    if (liveActive || cloudMode) return;
+    const id = setInterval(() => onRefresh(levelFilterRef.current), LOG_POLL_MS);
+    return () => clearInterval(id);
+  }, [liveActive, cloudMode, onRefresh]);
+
+  // Age of the polled snapshot: stamped (on the shared 1 Hz clock) whenever
+  // the prop feed changes, so a non-live viewer says how old its rows are.
+  useClockTick();
+  const clockNow = useClockStore((s) => s.now);
+  const [seenLogs, setSeenLogs] = useState(logs);
+  const [snapshotAt, setSnapshotAt] = useState<number | null>(null);
+  if (seenLogs !== logs) {
+    setSeenLogs(logs);
+    setSnapshotAt(clockNow);
+  }
 
   // Seed the "Load older" cursor from the first store/query page so the
   // operator can scroll back beyond the live window.
@@ -270,7 +304,7 @@ export function LogViewer({ logs, onRefresh }: LogViewerProps) {
     <div className="border border-border-default rounded-lg flex flex-col">
       <div className="flex items-center gap-2 px-3 py-2 border-b border-border-default">
         <h3 className="text-sm font-medium text-text-primary">{t("logs")}</h3>
-        {liveActive && (
+        {liveActive ? (
           <span
             className="flex items-center gap-1 text-[9px] text-status-success uppercase tracking-wide"
             title={t("liveTail")}
@@ -278,6 +312,12 @@ export function LogViewer({ logs, onRefresh }: LogViewerProps) {
             <Radio size={10} className="animate-pulse" />
             {t("live")}
           </span>
+        ) : (
+          snapshotAt !== null && (
+            <span className="text-[9px] text-text-tertiary">
+              {t("logsSnapshotAge", { age: getFreshness(snapshotAt).label })}
+            </span>
+          )
         )}
         <div className="flex items-center gap-1 ml-2">
           {levelFilters.map((f) => (

@@ -2,7 +2,7 @@
  * @license GPL-3.0-only
  *
  * The HUD readout freshness gate: a stale or absent sample must NOT read as
- * live (Rule 44). isTimestampFresh is the pure gate the canvas HUD loops use.
+ * live (no fabricated reading). isTimestampFresh is the pure gate the canvas HUD loops use.
  */
 
 import { describe, it, expect, vi, afterEach } from "vitest";

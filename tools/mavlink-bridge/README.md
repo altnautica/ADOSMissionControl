@@ -32,29 +32,26 @@ It relays raw binary frames in both directions and does no MAVLink parsing.
 
 ## Install / Build
 
+The bridge is not published to the npm registry; build it from this repository:
+
 ```bash
 cd tools/mavlink-bridge
-npm install
+npm ci
 npm run build
-```
-
-Or run it without a global install:
-
-```bash
-npx @altnautica/mavlink-bridge --in udp:0.0.0.0:14550 --ws 14551
+node dist/cli.js --in udp:0.0.0.0:14550 --ws 14551
 ```
 
 ## Usage
 
 ```bash
 # Listen for UDP MAVLink and serve it to the GCS on ws://127.0.0.1:14551
-mavlink-bridge --in udp:0.0.0.0:14550 --ws 14551
+node dist/cli.js --in udp:0.0.0.0:14550 --ws 14551
 
 # Bridge a TCP MAVLink server (e.g. a SITL instance on 5760)
-mavlink-bridge --in tcp:127.0.0.1:5760 --ws 14551
+node dist/cli.js --in tcp:127.0.0.1:5760 --ws 14551
 
 # Send to a fixed UDP target instead of listening
-mavlink-bridge --in udpout:127.0.0.1:14550 --ws 14551
+node dist/cli.js --in udpout:127.0.0.1:14550 --ws 14551
 ```
 
 Each run prints the exact URL to use, with a fresh random token:

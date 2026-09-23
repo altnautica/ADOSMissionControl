@@ -5,6 +5,7 @@
  */
 
 import type { DroneProtocol } from "@/lib/protocol/types";
+import type { SysStatusData } from "@/lib/types";
 import { useTelemetryStore, computeVioQuality } from "./telemetry-store";
 import { useDroneStore } from "./drone-store";
 import { useDroneManager } from "./drone-manager";
@@ -22,6 +23,7 @@ import { usePrearmBufferStore } from "@/stores/prearm-buffer-store";
 import { asFlightMode } from "@/lib/flight-mode";
 import { useMissionStore } from "./mission-store";
 import { createFleetAlertProducer } from "@/lib/fleet-alerts";
+import { createAdsbTrafficTable } from "@/lib/telemetry/adsb-traffic";
 
 /**
  * Bridge protocol telemetry callbacks into the Zustand stores
@@ -62,6 +64,9 @@ export function bridgeTelemetry(
 
   /** Fleet alerts (Dashboard counts and feed) raised from this drone's frames. */
   const alerts = createFleetAlertProducer(droneId, droneName);
+
+  /** This drone's latest SYS_STATUS, frozen into its flight record at arm. */
+  let latestSysStatus: SysStatusData | undefined;
 
   return [
     protocol.onAttitude((data) => {
@@ -128,6 +133,7 @@ export function bridgeTelemetry(
 
     protocol.onSysStatus((data) => {
       if (isSelected()) telemetry.pushSysStatus(data);
+      latestSysStatus = data;
       rec("sysStatus", data);
       alerts.batteryRemaining(data.batteryRemaining);
 
@@ -166,7 +172,11 @@ export function bridgeTelemetry(
     }),
 
     // Optional telemetry callbacks (bridged with optional chaining)
+    // The shared buffer and recording carry the primary IMU only; SCALED_IMU2/3
+    // would interleave other sensors' readings into one series. Per-instance
+    // views subscribe to the protocol directly.
     ...(protocol.onScaledImu ? [protocol.onScaledImu((data) => {
+      if (data.imu !== 0) return;
       if (isSelected()) telemetry.pushScaledImu(data);
       rec("scaledImu", data);
     })] : []),
@@ -185,7 +195,7 @@ export function bridgeTelemetry(
     ...(protocol.onFenceStatus ? [protocol.onFenceStatus((data) => {
       // Single-slot breach state, so it belongs inside the selection gate like
       // every other singleton push here. Ungated, a FENCE_STATUS from ANY
-      // connected drone raised `FenceBreachIndicator` and `CornerAlerts` for
+      // connected drone raised `CornerAlerts` for
       // whichever drone the operator was watching.
       if (isSelected()) {
         telemetry.pushFenceStatus(data);
@@ -221,6 +231,14 @@ export function bridgeTelemetry(
       if (isSelected()) telemetry.pushObstacle(data);
       rec("obstacle", data);
     })] : []),
+    ...(protocol.onAdsbVehicle ? (() => {
+      // The traffic list is a single store slot, so only the selected drone
+      // publishes into it, like the telemetry rings above.
+      const traffic = createAdsbTrafficTable((vehicles) => {
+        if (isSelected()) useTelemetryStore.getState().setAdsbVehicles(vehicles);
+      });
+      return [protocol.onAdsbVehicle((contact) => traffic.update(contact)), () => traffic.dispose()];
+    })() : []),
     ...(protocol.onCanFrame ? [protocol.onCanFrame((data) => {
       useCanMonitorStore.getState().pushFrame({
         timestamp: data.timestamp,
@@ -343,6 +361,9 @@ export function bridgeTelemetry(
       notifyArmed(droneId, droneName, data.armed, {
         lat: lastPos?.lat,
         lon: lastPos?.lon,
+        gpsFixType: prevEntry?.gps?.fixType,
+        sysStatus: latestSysStatus,
+        selected: isSelected(),
       });
 
       if (prevMode !== undefined && mode !== prevMode) {

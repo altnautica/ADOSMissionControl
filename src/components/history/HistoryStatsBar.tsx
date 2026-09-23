@@ -40,7 +40,7 @@ export function HistoryStatsBar({ records }: HistoryStatsBarProps) {
   }, [records]);
 
   return (
-    <div className="flex items-center gap-6 px-4 py-2 border-b border-border-default bg-surface-secondary/40 shrink-0 text-[11px] font-mono">
+    <div className="flex items-center gap-6 px-4 py-2 border-b border-border-default bg-bg-secondary/40 shrink-0 text-[11px] font-mono">
       <Stat label={t("statsFlights")} value={stats.count.toString()} />
       <Stat label={t("statsHours")} value={formatDecimal(stats.hours, 1, locale)} />
       <Stat label={t("statsDistance")} value={formatKilometres(stats.km, 1, locale)} />

@@ -1,23 +1,40 @@
 /**
  * @module PlanSearchBar
- * @description Search input and sort toggle for the plan library.
- * Listens for `plan-library:focus-search` custom event (dispatched by Cmd+O).
+ * @description Search input, sort-field cycle and sort-direction toggle for the
+ * plan library. Listens for `plan-library:focus-search` custom event
+ * (dispatched by Cmd+O).
  * @license GPL-3.0-only
  */
 "use client";
 
 import { useRef, useEffect } from "react";
-import { Search, ArrowUpDown } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { Search, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { usePlanLibraryStore } from "@/stores/plan-library-store";
 
-const SORT_LABELS: Record<string, string> = { date: "Date", name: "Name", waypoints: "WPs" };
+type SortField = "date" | "name" | "waypoints";
+
+const SORT_ORDER: readonly SortField[] = ["date", "name", "waypoints"];
+const SORT_LABEL_KEY = {
+  date: "sortLabelDate",
+  name: "sortLabelName",
+  waypoints: "sortLabelWaypoints",
+} as const;
+const SORT_TITLE_KEY = {
+  date: "sortByDate",
+  name: "sortByName",
+  waypoints: "sortBySize",
+} as const;
 
 export function PlanSearchBar() {
+  const t = useTranslations("library");
   const inputRef = useRef<HTMLInputElement>(null);
   const searchQuery = usePlanLibraryStore((s) => s.searchQuery);
   const setSearchQuery = usePlanLibraryStore((s) => s.setSearchQuery);
   const sortBy = usePlanLibraryStore((s) => s.sortBy);
   const setSortBy = usePlanLibraryStore((s) => s.setSortBy);
+  const sortDirection = usePlanLibraryStore((s) => s.sortDirection);
+  const toggleSortDirection = usePlanLibraryStore((s) => s.toggleSortDirection);
 
   // Listen for Cmd+O focus event
   useEffect(() => {
@@ -29,13 +46,13 @@ export function PlanSearchBar() {
     return () => document.removeEventListener("plan-library:focus-search", handler);
   }, []);
 
-  // Click cycles sort field only (direction auto-flips when wrapping back)
+  // Cycling the field resets the direction to that field's natural order
+  // (names A→Z, newest first); the arrow beside it reverses it.
   const cycleSortBy = () => {
-    const order: ("date" | "name" | "waypoints")[] = ["date", "name", "waypoints"];
-    const idx = order.indexOf(sortBy);
-    const next = order[(idx + 1) % order.length];
+    const next = SORT_ORDER[(SORT_ORDER.indexOf(sortBy) + 1) % SORT_ORDER.length];
     setSortBy(next);
   };
+  const directionLabel = sortDirection === "asc" ? t("sortAscending") : t("sortDescending");
 
   return (
     <div className="px-3 py-2 border-b border-border-default flex items-center gap-2">
@@ -45,17 +62,29 @@ export function PlanSearchBar() {
           ref={inputRef}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search plans..."
+          placeholder={t("search")}
+          aria-label={t("search")}
           className="flex-1 bg-transparent text-xs text-text-primary placeholder:text-text-tertiary outline-none"
         />
       </div>
       <button
+        type="button"
         onClick={cycleSortBy}
         className="flex items-center gap-1 p-1 text-text-tertiary hover:text-text-primary transition-colors cursor-pointer"
-        title={`Sort by ${sortBy}`}
+        title={t(SORT_TITLE_KEY[sortBy])}
+        aria-label={t(SORT_TITLE_KEY[sortBy])}
       >
         <ArrowUpDown size={12} />
-        <span className="text-[10px] font-mono">{SORT_LABELS[sortBy]}</span>
+        <span className="text-[10px] font-mono">{t(SORT_LABEL_KEY[sortBy])}</span>
+      </button>
+      <button
+        type="button"
+        onClick={toggleSortDirection}
+        className="p-1 text-text-tertiary hover:text-text-primary transition-colors cursor-pointer"
+        title={directionLabel}
+        aria-label={directionLabel}
+      >
+        {sortDirection === "asc" ? <ArrowUp size={12} /> : <ArrowDown size={12} />}
       </button>
     </div>
   );

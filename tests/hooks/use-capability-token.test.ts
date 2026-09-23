@@ -96,7 +96,7 @@ function seedPairedDrone() {
         deviceId: DEVICE_ID,
         name: "Test Drone",
         apiKey: "test-api-key",
-        mdnsHost: "skynode.local",
+        mdnsHost: "testnode.local",
         pairedAt: Date.now(),
       },
     ],
@@ -144,7 +144,7 @@ describe("useCapabilityToken", () => {
     const callUrl = fetchMock.mock.calls[0][0];
     const callInit = fetchMock.mock.calls[0][1] as RequestInit | undefined;
     expect(String(callUrl)).toBe(
-      "http://skynode.local:8080/api/plugins/capability-token",
+      "http://testnode.local:8080/api/plugins/capability-token",
     );
     const headers = callInit?.headers as Record<string, string>;
     expect(headers["X-ADOS-Key"]).toBe("test-api-key");

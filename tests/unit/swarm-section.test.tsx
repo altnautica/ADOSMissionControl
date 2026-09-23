@@ -159,18 +159,13 @@ describe("SwarmSection separation gate", () => {
   });
 });
 
-describe("SwarmSection task allocation", () => {
-  it("reports the current assignment read-only and exposes no bid internals", () => {
+describe("SwarmSection unconsumed keys", () => {
+  it("offers no role or task-allocation control, which nothing on the node reads", () => {
     renderSection();
-    // Scope to each read-only row: the precedence ladder also renders a "2".
-    const row = (label: string) =>
-      screen.getByText(label).closest(".items-baseline") as HTMLElement;
-    expect(within(row("Assigned task")).getByText("survey-cell-12")).toBeTruthy();
-    expect(within(row("Bundle position")).getByText("2")).toBeTruthy();
-    // Reported, never typed — and no bid vector, score or bundle listing.
-    expect(within(row("Assigned task")).queryByRole("textbox")).toBeNull();
-    expect(within(row("Bundle position")).queryByRole("textbox")).toBeNull();
-    expect(screen.queryByText(/bid vector|bid score/i)).toBeNull();
+    expect(screen.queryByText("Assigned task")).toBeNull();
+    expect(screen.queryByText("Take part in task allocation")).toBeNull();
+    expect(screen.queryByLabelText("Role")).toBeNull();
+    expect(screen.queryByDisplayValue("member")).toBeNull();
   });
 });
 

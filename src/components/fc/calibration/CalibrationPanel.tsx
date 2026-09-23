@@ -10,18 +10,21 @@ import { CalibrationWizard } from "./CalibrationWizard";
 import type { CompassProgressEntry, CompassResultEntry } from "./CalibrationWizard";
 import { CalibrationRebootBanner } from "./CalibrationRebootBanner";
 import { CalibrationLog } from "./CalibrationLog";
-import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
+import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { useCalibrationEngine } from "./useCalibrationEngine";
 import { CalibrationDiffTable } from "./CalibrationDiffTable";
 import { CompassPreflightChecks } from "./CompassPreflightChecks";
 import { PX4CalibrationsSection } from "./PX4CalibrationsSection";
 import { ArduPilotCalibrations } from "./ArduPilotCalibrations";
+import { MspCalibrationSection } from "./MspCalibrationSection";
 
 export function CalibrationPanel() {
   const t = useTranslations("calibration");
   const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
   const { firmwareType } = useFirmwareCapabilities();
-  const isBetaflight = firmwareType === "betaflight";
+  // MSP firmwares get their own calibration surfaces; the ArduPilot/PX4
+  // wizards below depend on MAVLink calibration feedback they never send.
+  const mspFirmware = firmwareType === "betaflight" || firmwareType === "inav" ? firmwareType : null;
   const connected = !!getSelectedProtocol();
 
   const cal = useCalibrationEngine();
@@ -39,7 +42,7 @@ export function CalibrationPanel() {
     .map(([id, r]) => ({ ...r, compassId: id }));
 
   return (
-    <ArmedLockOverlay className="overflow-y-auto">
+    <ArmedWarningBanner className="overflow-y-auto">
     <div className="flex-1 overflow-y-auto p-6">
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-6">
         {/* Left: Calibration Wizards */}
@@ -56,34 +59,11 @@ export function CalibrationPanel() {
             )}
           </div>
 
-          {/* Betaflight: simplified calibration (accel only) */}
-          {isBetaflight && (
-            <>
-              <CalibrationWizard
-                title={t("bfAccelTitle")}
-                description={t("bfAccelDesc")}
-                steps={[{ label: t("calibrating"), description: t("bfAccelStepDesc") }]}
-                currentStep={cal.accel.currentStep}
-                status={cal.accel.status}
-                progress={cal.accel.progress}
-                statusMessage={cal.accel.message || (cal.accel.status === "in_progress" ? t("bfAccelInProgress") : undefined)}
-                onStart={() => cal.startCalibration("accel", cal.setAccel, 1)}
-                onCancel={() => cal.cancelCalibration("accel", cal.setAccel)}
-              />
-              <div className="border border-border-default bg-bg-secondary p-4 space-y-2">
-                <h3 className="text-sm font-medium text-text-primary">{t("bfCalibrationTitle")}</h3>
-                <p className="text-xs text-text-tertiary">
-                  {t("bfCalibrationNote1")}
-                </p>
-                <p className="text-xs text-text-tertiary">
-                  {t("bfCalibrationNote2")}
-                </p>
-              </div>
-            </>
-          )}
+          {/* Betaflight / iNav: MSP calibration surfaces */}
+          {mspFirmware && <MspCalibrationSection firmware={mspFirmware} />}
 
           {/* Accelerometer — 6-position (ArduPilot/PX4) */}
-          {!isBetaflight && <CalibrationWizard
+          {!mspFirmware && <CalibrationWizard
             title={t("accelCalibrationTitle")}
             description={t("accelCalibrationDesc")}
             steps={ACCEL_STEPS}
@@ -98,7 +78,7 @@ export function CalibrationPanel() {
           />}
 
           {/* Gyroscope */}
-          {!isBetaflight && <CalibrationWizard
+          {!mspFirmware && <CalibrationWizard
             title={t("gyroCalibrationTitle")}
             description={t("gyroCalibrationDesc")}
             steps={GYRO_STEPS}
@@ -111,7 +91,7 @@ export function CalibrationPanel() {
           />}
 
           {/* Compass pre-calibration checks (ArduPilot only) */}
-          {!isBetaflight && connected && !cal.isPx4 && cal.compass.status === "idle" && (
+          {!mspFirmware && connected && !cal.isPx4 && cal.compass.status === "idle" && (
             <CompassPreflightChecks
               compassParams={cal.compassParams}
               setCompassParams={cal.setCompassParams}
@@ -119,7 +99,7 @@ export function CalibrationPanel() {
           )}
 
           {/* Compass */}
-          {!isBetaflight && <CalibrationWizard
+          {!mspFirmware && <CalibrationWizard
             title={t("compassCalibrationTitle")}
             description={t("compassCalibrationDesc")}
             steps={COMPASS_STEPS}
@@ -145,12 +125,12 @@ export function CalibrationPanel() {
           />}
 
           {/* Compass Reboot Required Banner */}
-          {!isBetaflight && cal.compass.needsReboot && cal.compass.status === "success" && (
+          {!mspFirmware && cal.compass.needsReboot && cal.compass.status === "success" && (
             <CalibrationRebootBanner label={t("compassOffsetsSaved")} onReboot={() => { const p = getSelectedProtocol(); if (p) p.reboot(); }} />
           )}
 
           {/* Orientation change alert */}
-          {!isBetaflight && cal.compass.status === "success" && compassResultEntries.some(
+          {!mspFirmware && cal.compass.status === "success" && compassResultEntries.some(
             (r) => r.oldOrientation !== r.newOrientation && r.newOrientation !== 0
           ) && (
             <div className="border border-status-warning/30 bg-status-warning/10 px-4 py-3">
@@ -162,12 +142,12 @@ export function CalibrationPanel() {
           )}
 
           {/* Accel Reboot Banner */}
-          {cal.accel.needsReboot && cal.accel.status === "success" && (
+          {!mspFirmware && cal.accel.needsReboot && cal.accel.status === "success" && (
             <CalibrationRebootBanner label={t("accelCalibrationSaved")} onReboot={() => { const p = getSelectedProtocol(); if (p) p.reboot(); }} />
           )}
 
           {/* Level through CompassMot: ArduPilot/PX4 only */}
-          {!isBetaflight && (
+          {!mspFirmware && (
             <ArduPilotCalibrations
               connected={connected}
               level={cal.level} airspeed={cal.airspeed} baro={cal.baro}
@@ -186,7 +166,7 @@ export function CalibrationPanel() {
               startPx4QuickLevel={cal.startPx4QuickLevel}
               startPx4GnssMagCal={cal.startPx4GnssMagCal}
               cancelCalibration={cal.cancelCalibration}
-              setPx4QuickLevel={() => {}}
+              setPx4QuickLevel={cal.setPx4QuickLevel}
             />
           )}
 
@@ -206,6 +186,6 @@ export function CalibrationPanel() {
         <CalibrationLog logEntries={cal.logEntries} onClear={() => cal.setLogEntries([])} />
       </div>
     </div>
-    </ArmedLockOverlay>
+    </ArmedWarningBanner>
   );
 }

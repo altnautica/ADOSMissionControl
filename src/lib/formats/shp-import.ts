@@ -14,6 +14,18 @@ import shp from "shpjs";
 import type { FeatureCollection, Geometry, Position } from "geojson";
 
 /**
+ * The shapefile's coordinates are not latitude/longitude (a projected CRS such
+ * as UTM). A bare .shp carries no .prj, so its coordinates cannot be
+ * reprojected; the operator must import the zipped bundle with its .prj.
+ */
+export class ShapefileNotGeographicError extends Error {
+  constructor() {
+    super("Shapefile coordinates are not latitude/longitude; import the zipped bundle with its .prj.");
+    this.name = "ShapefileNotGeographicError";
+  }
+}
+
+/**
  * Parse a shapefile buffer into polygon boundary rings.
  *
  * Accepts either a zipped shapefile bundle (`.zip`, the common distribution
@@ -21,7 +33,9 @@ import type { FeatureCollection, Geometry, Position } from "geojson";
  * by the leading magic bytes. Returns one outer ring per polygon feature as
  * `[lat, lon]` pairs (GeoJSON lon,lat swapped), with the duplicate closing
  * vertex removed. Returns an empty array when the file carries no polygon
- * geometry or cannot be read — never throws.
+ * geometry or cannot be read. Throws {@link ShapefileNotGeographicError} when a
+ * ring's coordinates fall outside latitude/longitude ranges: those are projected
+ * coordinates, and guessing their CRS would place the boundary off the planet.
  *
  * @param buffer Raw file bytes (zipped shapefile or bare .shp).
  * @returns Outer boundary rings, `[lat, lon][]` each; empty when none found.
@@ -51,6 +65,10 @@ export async function parseShapefile(buffer: ArrayBuffer): Promise<[number, numb
     return [];
   }
 
+  const geographic = rings.every((ring) =>
+    ring.every(([lat, lon]) => Math.abs(lat) <= 90 && Math.abs(lon) <= 180),
+  );
+  if (!geographic) throw new ShapefileNotGeographicError();
   return rings;
 }
 

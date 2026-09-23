@@ -56,6 +56,7 @@ function createDefaultGroups(): PollGroup[] {
         MSP.MSP_STATUS_EX,    // 150
         MSP.MSP_MOTOR,        // 104
         MSP.MSP_BATTERY_STATE, // 130
+        INAV_MSP.MSP2_INAV_ANALOG, // 0x2002 iNav battery incl. the FC's state of charge
       ],
       intervalMs: 100,
     },

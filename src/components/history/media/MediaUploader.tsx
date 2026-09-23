@@ -27,6 +27,8 @@ interface ParsedMedia {
   alt?: number;
   matchedFlightId?: string;
   matchedFlightName?: string;
+  /** Outcome of the last import attempt for this file. */
+  result?: { ok: true } | { ok: false; error: string };
 }
 
 interface MediaUploaderProps {
@@ -34,7 +36,13 @@ interface MediaUploaderProps {
   onClose: () => void;
 }
 
+/** Mounts the dialog body only while open, so every opening starts fresh. */
 export function MediaUploader({ open, onClose }: MediaUploaderProps) {
+  if (!open) return null;
+  return <MediaUploaderDialog onClose={onClose} />;
+}
+
+function MediaUploaderDialog({ onClose }: { onClose: () => void }) {
   const [parsed, setParsed] = useState<ParsedMedia[]>([]);
   const [importing, setImporting] = useState(false);
   const [done, setDone] = useState(false);
@@ -102,53 +110,59 @@ export function MediaUploader({ open, onClose }: MediaUploaderProps) {
 
   const handleImport = useCallback(async () => {
     setImporting(true);
-    const store = useHistoryStore.getState();
-
-    // Group by matched flight
-    const byFlight = new Map<string, ParsedMedia[]>();
-    for (const p of parsed) {
-      if (!p.matchedFlightId) continue;
-      const arr = byFlight.get(p.matchedFlightId) ?? [];
-      arr.push(p);
-      byFlight.set(p.matchedFlightId, arr);
-    }
-
-    for (const [flightId, mediaItems] of byFlight) {
-      const newMedia: FlightMedia[] = [];
-      for (const item of mediaItems) {
-        const id = crypto.randomUUID();
-        const blobKey = `media:${flightId}:${id}`;
-
-        // Store blob in IDB
-        const buffer = await item.file.arrayBuffer();
-        await idbSet(blobKey, new Blob([buffer], { type: item.file.type }));
-
-        newMedia.push({
-          id,
-          name: item.file.name,
-          type: item.file.type,
-          size: item.file.size,
-          capturedAt: item.capturedAt,
-          lat: item.lat,
-          lon: item.lon,
-          alt: item.alt,
-          blobKey,
-        });
+    const outcome = new Map<ParsedMedia, ParsedMedia["result"]>();
+    try {
+      // Group by matched flight
+      const byFlight = new Map<string, ParsedMedia[]>();
+      for (const p of parsed) {
+        if (!p.matchedFlightId || p.result?.ok) continue;
+        const arr = byFlight.get(p.matchedFlightId) ?? [];
+        arr.push(p);
+        byFlight.set(p.matchedFlightId, arr);
       }
 
-      const existing = store.records.find((r) => r.id === flightId)?.media ?? [];
-      store.updateRecord(flightId, { media: [...existing, ...newMedia] });
+      for (const [flightId, mediaItems] of byFlight) {
+        const newMedia: FlightMedia[] = [];
+        for (const item of mediaItems) {
+          const id = crypto.randomUUID();
+          const blobKey = `media:${flightId}:${id}`;
+          try {
+            // A File is a Blob: store it as is instead of reading a copy into memory.
+            await idbSet(blobKey, item.file);
+          } catch (err) {
+            outcome.set(item, { ok: false, error: (err as Error).message || "Could not store the file" });
+            continue;
+          }
+          outcome.set(item, { ok: true });
+          newMedia.push({
+            id,
+            name: item.file.name,
+            type: item.file.type,
+            size: item.file.size,
+            capturedAt: item.capturedAt,
+            lat: item.lat,
+            lon: item.lon,
+            alt: item.alt,
+            blobKey,
+          });
+        }
+        if (newMedia.length === 0) continue;
+        const store = useHistoryStore.getState();
+        const existing = store.records.find((r) => r.id === flightId)?.media ?? [];
+        store.updateRecord(flightId, { media: [...existing, ...newMedia] });
+      }
+      await useHistoryStore.getState().persistToIDB();
+    } finally {
+      setParsed((prev) => prev.map((p) => (outcome.has(p) ? { ...p, result: outcome.get(p) } : p)));
+      setImporting(false);
+      setDone([...outcome.values()].every((r) => r?.ok));
     }
-
-    await store.persistToIDB();
-    setImporting(false);
-    setDone(true);
   }, [parsed]);
 
   const matchedCount = parsed.filter((p) => p.matchedFlightId).length;
   const unmatchedCount = parsed.length - matchedCount;
-
-  if (!open) return null;
+  const importedCount = parsed.filter((p) => p.result?.ok).length;
+  const pendingCount = parsed.filter((p) => p.matchedFlightId && !p.result?.ok).length;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
@@ -205,7 +219,13 @@ export function MediaUploader({ open, onClose }: MediaUploaderProps) {
                         <span className="text-text-tertiary shrink-0">
                           {new Date(p.capturedAt).toLocaleString()}
                         </span>
-                        {p.matchedFlightId ? (
+                        {p.result && !p.result.ok ? (
+                          <span className="text-status-error shrink-0" title={p.result.error}>
+                            Failed: {p.result.error}
+                          </span>
+                        ) : p.result?.ok ? (
+                          <span className="text-status-success shrink-0">Imported → {p.matchedFlightName}</span>
+                        ) : p.matchedFlightId ? (
                           <span className="text-status-success shrink-0">→ {p.matchedFlightName}</span>
                         ) : (
                           <span className="text-status-warning shrink-0">No match</span>
@@ -221,9 +241,9 @@ export function MediaUploader({ open, onClose }: MediaUploaderProps) {
                       variant="primary"
                       size="sm"
                       onClick={() => void handleImport()}
-                      disabled={matchedCount === 0 || importing}
+                      disabled={pendingCount === 0 || importing}
                     >
-                      {importing ? "Importing…" : `Import ${matchedCount} files`}
+                      {importing ? "Importing…" : `Import ${pendingCount} files`}
                     </Button>
                   </div>
                 </Card>
@@ -233,7 +253,7 @@ export function MediaUploader({ open, onClose }: MediaUploaderProps) {
             <div className="text-center py-8">
               <Check size={24} className="mx-auto text-status-success mb-2" />
               <p className="text-xs text-text-primary">
-                {matchedCount} files imported successfully.
+                {importedCount} files imported successfully.
               </p>
               <Button variant="secondary" size="sm" onClick={onClose} className="mt-3">
                 Close

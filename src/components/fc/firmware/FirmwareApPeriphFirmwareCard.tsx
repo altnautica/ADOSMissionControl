@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { HardDrive, Zap, RefreshCw } from "lucide-react";
 import { Select } from "@/components/ui/select";
-import type { SelectOptionGroup } from "@/components/ui/select-types";
+import type { SelectOptionGroup } from "@/lib/types";
 import {
   groupBoardsByVendor,
   type BoardManifest,

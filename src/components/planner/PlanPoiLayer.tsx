@@ -118,6 +118,7 @@ export function PlanPoiLayer() {
                 },
                 dragend: (e) => {
                   const ll = e.target.getLatLng();
+                  recordHistory();
                   usePlanPoiStore.getState().updatePoint(p.id, { lat: ll.lat, lon: ll.lng });
                 },
               }}

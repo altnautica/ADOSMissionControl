@@ -39,15 +39,12 @@ import type {
   InstallManifestSummary,
   InstallSource,
 } from "@/components/plugins/install-dialog/types";
-import {
-  parseManifestYaml,
-  toInstallSummary,
-} from "@/components/plugins/transports/manifest-parse";
+import { parseManifestYaml } from "@/components/plugins/transports/manifest-parse";
+import { toInstallSummary } from "@/components/plugins/transports/manifest-summary";
 
-import {
-  RegistryPluginCard,
-  type RegistryPluginRow,
-} from "./RegistryPluginCard";
+import type { RegistryCategory, RegistryPluginRow } from "@/lib/plugins/registry-row";
+
+import { RegistryPluginCard } from "./RegistryPluginCard";
 // The demo catalog is a fixture set that only ever renders under demo mode.
 // Loaded on demand so its fixtures stay out of the initial bundle.
 const DemoRegistryGrid = dynamic(
@@ -55,7 +52,6 @@ const DemoRegistryGrid = dynamic(
   { ssr: false },
 );
 
-type RegistryCategory = "drivers" | "ui" | "ai" | "telemetry" | "tools";
 type CategoryFilter = "all" | RegistryCategory;
 
 const CATEGORIES: ReadonlyArray<RegistryCategory> = [
@@ -223,7 +219,7 @@ export function RegistryPluginGrid({
   useEffect(() => {
     if (!preselectPluginId || !gridRef.current) return;
     const el = gridRef.current.querySelector<HTMLElement>(
-      `[data-plugin-id="${preselectPluginId}"]`,
+      `[data-plugin-id="${CSS.escape(preselectPluginId)}"]`,
     );
     el?.scrollIntoView({ behavior: "smooth", block: "center" });
   }, [preselectPluginId, filtered]);
@@ -296,7 +292,7 @@ export function RegistryPluginGrid({
   }, []);
 
   // Demo mode: the live registry is Convex-backed and unreachable, so render a
-  // fixture catalog that opens the same install / detail pop-up (Rule 4).
+  // fixture catalog that opens the same install / detail pop-up (demo mode works offline).
   if (isDemoMode()) {
     return <DemoRegistryGrid target={target} />;
   }
@@ -335,6 +331,7 @@ export function RegistryPluginGrid({
               state={cardState[plugin.plugin_id]}
               onInstall={() => handleInstall(plugin)}
               surface={surface}
+              targetDeviceId={installTarget?.deviceId ?? null}
               highlighted={preselectPluginId === plugin.plugin_id}
             />
           ))}

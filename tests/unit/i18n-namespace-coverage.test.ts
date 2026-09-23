@@ -6,8 +6,12 @@
  * missing from ALL locales passes it — but at runtime next-intl throws
  * `MISSING_MESSAGE` and the UI renders raw keys. This test statically scans
  * `src/` for `useTranslations("literal")` calls and asserts each namespace is a
- * top-level key in `en.json`. (Static namespace literals only; dynamic keys and
- * `useTranslations()` with no argument are out of scope.)
+ * top-level key in `en.json`, then resolves every static `t("key")` literal
+ * against the namespace its translator was bound to and asserts it lands on a
+ * string in `en.json` — a typo'd or never-added key otherwise renders the raw
+ * `namespace.key` fallback in every locale while the parity test stays green.
+ * (Static literals only; dynamic keys and `useTranslations()` with no argument
+ * are out of scope.)
  * @license GPL-3.0-only
  */
 
@@ -82,6 +86,48 @@ describe("i18n namespace coverage", () => {
       throw new Error(
         `useTranslations() namespaces missing from locales/en.json:\n${missing.join("\n")}`,
       );
+    }
+  });
+});
+
+/** `const <name> = useTranslations("<ns>")` / `await getTranslations("<ns>")`. */
+const BINDING = /\b(?:const|let)\s+(\w+)\s*=\s*(?:await\s+)?(?:use|get)Translations\(\s*["'`]([^"'`$]+)["'`]\s*\)/g;
+
+/** Every static key each file passes to a translator it bound to a namespace. */
+function usedLeafKeys(): { file: string; namespaces: string[]; key: string }[] {
+  const out: { file: string; namespaces: string[]; key: string }[] = [];
+  for (const file of sourceFiles(SRC_DIR)) {
+    const text = readFileSync(file, "utf-8");
+    const bindings = new Map<string, Set<string>>();
+    for (const m of text.matchAll(BINDING)) {
+      const set = bindings.get(m[1]) ?? new Set<string>();
+      set.add(m[2]);
+      bindings.set(m[1], set);
+    }
+    for (const [name, namespaces] of bindings) {
+      const call = new RegExp(`(?<![\\w.])${name}(?:\\.(?:rich|markup|raw))?\\(\\s*(["'])([^"'\\n]+)\\1`, "g");
+      for (const m of text.matchAll(call)) {
+        out.push({ file, namespaces: [...namespaces], key: m[2] });
+      }
+    }
+  }
+  return out;
+}
+
+describe("i18n leaf key coverage", () => {
+  it("every static t(\"key\") resolves to a string in en.json", () => {
+    const en = JSON.parse(readFileSync(EN, "utf-8")) as Record<string, unknown>;
+    const used = usedLeafKeys();
+    expect(used.length).toBeGreaterThan(1000); // the scan actually found calls
+
+    const missing = used
+      .filter(({ namespaces, key }) =>
+        namespaces.every((ns) => typeof resolveNamespace(en, `${ns}.${key}`) !== "string"),
+      )
+      .map(({ file, namespaces, key }) => `  ${namespaces.join("|")}.${key} (${file.replace(SRC_DIR, "src")})`);
+
+    if (missing.length > 0) {
+      throw new Error(`t() keys missing from locales/en.json:\n${[...new Set(missing)].sort().join("\n")}`);
     }
   });
 });

@@ -178,7 +178,8 @@ vi.mock("@/stores/ui-store", () => ({
   useUiStore: (selector: (s: unknown) => unknown) => selector(uiState),
 }));
 
-import { ParametersPanel, invalidateParamCache } from "../ParametersPanel";
+import { ParametersPanel } from "../ParametersPanel";
+import { invalidateParamList } from "@/stores/param-list-cache";
 
 /** Render, wait for the initial download, then stage one edit per parameter
  * through the grid's own onModify — the same path a cell edit takes. */
@@ -199,7 +200,7 @@ async function save() {
 }
 
 beforeEach(() => {
-  invalidateParamCache();
+  invalidateParamList();
   useDroneStore.setState({ armState: "disarmed", connectionState: "connected" });
   useArmedConfirmStore.setState({ open: false, context: null, _resolve: null });
   useParamSafetyStore.getState().clear();

@@ -169,7 +169,7 @@ describe("durable-store wire contract", () => {
       sync: { unsynced_rows: { logs: 1100 } },
       oldest_ts_us: TS_US - 1_000_000,
       newest_ts_us: TS_US,
-      source: "logd",
+      source: "proxy",
     });
   });
 
@@ -183,7 +183,7 @@ describe("durable-store wire contract", () => {
       db_open: true,
       writer_alive: true,
       integrity: true,
-      source: "logd",
+      source: "proxy",
     });
   });
 });
@@ -232,7 +232,7 @@ describe("live log tail", () => {
     await ended.promise;
 
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toContain(":8090/v1/tail?");
+    expect(url).toContain(":8080/api/v2/observability/v1/tail?");
     expect(url).not.toContain("k-1");
     expect(url).not.toMatch(/[?&]key=/);
     expect((init.headers as Record<string, string>)["X-ADOS-Key"]).toBe("k-1");

@@ -2,7 +2,7 @@
  * @module components/mcp/McpOverview
  * @description The MCP tab overview: a small, verified summary of the operator's
  * connector setup — credential counts (from the live list) and the last recorded
- * activity (from the audit mirror). Only real data (Rule 44); no live
+ * activity (from the audit mirror). Only real data (no fabricated reading); no live
  * connected-client list (the server runs on the operator's own machine, and the
  * hosted tab cannot see its localhost connections).
  * @license GPL-3.0-only
@@ -13,29 +13,41 @@
 import { useTranslations } from "next-intl";
 import { KeyRound, Activity, Plus } from "lucide-react";
 import { communityApi } from "@/lib/community-api";
-import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
+import { useConvexSkipQueryState } from "@/hooks/use-convex-skip-query";
 import { Button } from "@/components/ui/button";
 import { timeAgo } from "@/lib/plan-library";
 import { useMcpTabStore } from "@/stores/mcp-tab-store";
+import { useClockStore } from "@/stores/clock-store";
+import { useClockTick } from "@/lib/agent/freshness";
+import { credentialStatus } from "./mcp-shared";
 import type { McpTokenRow } from "./McpConsole";
 import type { McpAuditRow } from "./McpAuditLog";
-
-function isActive(r: McpTokenRow): boolean {
-  return r.revokedAt == null && (r.expiresAt == null || r.expiresAt > Date.now());
-}
 
 export function McpOverview({ rows }: { rows: McpTokenRow[] }) {
   const t = useTranslations("mcp");
   const openGenerate = useMcpTabStore((s) => s.openGenerate);
   const navigate = useMcpTabStore((s) => s.navigate);
+  useClockTick();
+  const now = useClockStore((s) => s.now);
 
-  const lastAudit = useConvexSkipQuery(communityApi.mcpTokens.recentAudit, {
+  const audit = useConvexSkipQueryState(communityApi.mcpTokens.recentAudit, {
     enabled: true,
     args: { limit: 1 },
-  }) as McpAuditRow[] | undefined;
+  });
+  const lastAudit = audit.data as McpAuditRow[] | undefined;
+  const auditState = audit.state;
 
-  const active = rows.filter(isActive).length;
-  const lastActivity = lastAudit && lastAudit.length > 0 ? lastAudit[0].createdAt : null;
+  const active = rows.filter((r) => credentialStatus(r, now) === "active").length;
+  // Only an answered query can say "no activity"; loading shows a dash and a
+  // skipped or failed query says the log is unavailable.
+  const lastActivityLabel =
+    auditState === "ready" && lastAudit
+      ? lastAudit.length > 0
+        ? timeAgo(lastAudit[0].createdAt)
+        : t("overview.noActivity")
+      : auditState === "loading"
+        ? "—"
+        : t("audit.unavailable");
 
   const tiles = [
     { icon: KeyRound, label: t("overview.credentials"), value: String(rows.length) },
@@ -43,7 +55,7 @@ export function McpOverview({ rows }: { rows: McpTokenRow[] }) {
     {
       icon: Activity,
       label: t("overview.lastActivity"),
-      value: lastActivity ? timeAgo(lastActivity) : t("overview.noActivity"),
+      value: lastActivityLabel,
     },
   ];
 

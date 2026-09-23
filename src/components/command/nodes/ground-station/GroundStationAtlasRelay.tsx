@@ -3,31 +3,33 @@
 /**
  * @module GroundStationAtlasRelay
  * @description Ground-station Atlas relay indicator. Polls the node's LOCAL
- * `GET /api/v1/ground-station/wfb/atlas-relay/status` (Rule 39, never the cloud
+ * `GET /api/v1/ground-station/wfb/atlas-relay/status` (local-first, never the cloud
  * heartbeat) and, only when a relay is actually running (`up === true`), shows
  * the keyframes-seen / forwarded / keep-rate counters plus a staleness badge.
- * Pauses on `document.hidden`. Mounted behind the Atlas flag from the
- * ground-station node-detail surface.
+ * A failed read says the node is unreachable (keeping the last snapshot, badged
+ * stale), never "no relay". Polls through the shared ground-station loop (one
+ * request in flight, paused while the document is hidden). Mounted behind the
+ * Atlas flag from the ground-station node-detail surface.
  * @license GPL-3.0-only
  */
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Boxes } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
-import {
-  groundStationApiFromAgent,
-  type AtlasRelayStatus,
-} from "@/lib/api/ground-station-api";
+import { groundStationApiFromAgent } from "@/lib/api/ground-station-api";
+import { useGroundStationPoll } from "./use-gs-poll";
+import type { AtlasRelayRead, AtlasRelayStatus } from "@/lib/api/ground-station/atlas";
 
 const POLL_INTERVAL_MS = 2000;
-/** Past this, the snapshot is badged stale (the relay surfaces ~1 Hz). */
+/** Past this since the last snapshot landed here, it is badged stale. Measured
+ * on this browser's clock only (receipt age), never against the node's clock. */
 const STALE_MS = 15000;
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded bg-white/[0.02] px-2 py-1.5 text-center">
+    <div className="rounded bg-bg-tertiary px-2 py-1.5 text-center">
       <div className="text-sm font-mono text-text-primary tabular-nums">
         {value}
       </div>
@@ -42,47 +44,56 @@ export function GroundStationAtlasRelay() {
   const t = useTranslations("atlas");
   const agentUrl = useAgentConnectionStore((s) => s.agentUrl);
   const apiKey = useAgentConnectionStore((s) => s.apiKey);
-  // The snapshot is keyed to the agent it came from so a node switch never
-  // shows the previous node's relay while the new poll is in flight.
-  const [snap, setSnap] = useState<{
+  // Reads are keyed to the agent they came from so a node switch never shows
+  // the previous node's relay while the new poll is in flight. The last good
+  // snapshot is kept (with its receipt time) so a failed poll dims it rather
+  // than erasing it.
+  const [read, setRead] = useState<{
     url: string | null;
-    status: AtlasRelayStatus | null;
-    at: number;
-  }>({ url: null, status: null, at: 0 });
+    last: AtlasRelayRead["kind"] | null;
+    snapshot: AtlasRelayStatus | null;
+    receivedAt: number;
+  }>({ url: null, last: null, snapshot: null, receivedAt: 0 });
   const [now, setNow] = useState(() => Date.now());
+  const reachable = groundStationApiFromAgent(agentUrl, apiKey) !== null;
 
-  useEffect(() => {
-    const api = groundStationApiFromAgent(agentUrl, apiKey);
-    if (!api) return;
-    let cancelled = false;
-    const poll = async () => {
-      if (cancelled || document.hidden) return;
-      const next = await api.getAtlasRelayStatus();
-      if (!cancelled) {
-        setSnap({ url: agentUrl, status: next, at: Date.now() });
-        setNow(Date.now());
-      }
-    };
-    void poll();
-    const handle = setInterval(() => void poll(), POLL_INTERVAL_MS);
-    return () => {
-      cancelled = true;
-      clearInterval(handle);
-    };
-  }, [agentUrl, apiKey]);
+  useGroundStationPoll(agentUrl, apiKey, POLL_INTERVAL_MS, async (api) => {
+    const next = await api.getAtlasRelayStatus();
+    const at = Date.now();
+    setRead((prev) => {
+      const carried = prev.url === agentUrl ? prev : { snapshot: null, receivedAt: 0 };
+      return next.kind === "snapshot"
+        ? { url: agentUrl, last: next.kind, snapshot: next.status, receivedAt: at }
+        : next.kind === "absent"
+          ? { url: agentUrl, last: next.kind, snapshot: null, receivedAt: 0 }
+          : {
+              url: agentUrl,
+              last: next.kind,
+              snapshot: carried.snapshot,
+              receivedAt: carried.receivedAt,
+            };
+    });
+    setNow(at);
+  });
 
-  const status = snap.url === agentUrl ? snap.status : null;
+  const current = read.url === agentUrl ? read : null;
+  const status = current?.snapshot ?? null;
+  const unreachable = !reachable || current?.last === "unreachable";
+
+  const notice = (text: string) => (
+    <div className="p-4">
+      <div className="text-[11px] text-text-tertiary text-center py-6 border border-border-default rounded-lg">
+        {text}
+      </div>
+    </div>
+  );
 
   // Surface a card when a relay is running, or when the relay loop has gone
   // quiet (stale): a dead relay must not read as "no relay active".
   if (!status || (!status.stale && status.up !== true)) {
-    return (
-      <div className="p-4">
-        <div className="text-[11px] text-text-tertiary text-center py-6 border border-border-default rounded-lg">
-          {t("relayNoActive")}
-        </div>
-      </div>
-    );
+    if (unreachable) return notice(t("relayUnreachable"));
+    if (!current) return notice(t("relayChecking"));
+    return notice(t("relayNoActive"));
   }
 
   const seen = status.datagramsSeen;
@@ -91,11 +102,7 @@ export function GroundStationAtlasRelay() {
     seen !== null && forwarded !== null && seen > 0
       ? `${Math.round((forwarded / seen) * 100)}%`
       : "--";
-  const isStale =
-    status.stale ||
-    (status.generatedAtMs !== null &&
-      status.generatedAtMs > 0 &&
-      now - status.generatedAtMs > STALE_MS);
+  const isStale = status.stale || unreachable || now - read.receivedAt > STALE_MS;
   const fmt = (v: number | null) => (v === null ? "--" : String(v));
 
   return (
@@ -115,7 +122,9 @@ export function GroundStationAtlasRelay() {
           )}
         </div>
 
-        <p className="text-[10px] text-text-tertiary">{t("relayForwarding")}</p>
+        <p className="text-[10px] text-text-tertiary">
+          {unreachable ? t("relayUnreachable") : t("relayForwarding")}
+        </p>
 
         <div className={cn("grid grid-cols-4 gap-2", isStale && "opacity-50")}>
           <Stat label={t("relaySeen")} value={fmt(status.datagramsSeen)} />

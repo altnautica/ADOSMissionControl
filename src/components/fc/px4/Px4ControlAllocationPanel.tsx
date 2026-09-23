@@ -23,7 +23,7 @@ import { useParamMetadataMap } from "@/hooks/use-param-metadata";
 import { usePanelScroll } from "@/hooks/use-panel-scroll";
 import { cn } from "@/lib/utils";
 import { PanelHeader } from "../shared/PanelHeader";
-import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
+import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { EnumSelect } from "../parameters/EnumSelect";
 import { ParamFieldLabel } from "../parameters/ParamFieldLabel";
 import { BitmaskEditor } from "@/components/ui/bitmask-editor";
@@ -110,7 +110,7 @@ export function Px4ControlAllocationPanel() {
     ));
 
   return (
-    <ArmedLockOverlay>
+    <ArmedWarningBanner>
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-6">
         <div className="max-w-2xl space-y-6">
           <PanelHeader
@@ -172,6 +172,6 @@ export function Px4ControlAllocationPanel() {
         value={revValue}
         onApply={(v) => setLocalValue("CA_R_REV", v)}
       />
-    </ArmedLockOverlay>
+    </ArmedWarningBanner>
   );
 }

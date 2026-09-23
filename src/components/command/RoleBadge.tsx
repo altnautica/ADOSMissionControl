@@ -30,13 +30,13 @@ export function RoleBadge() {
   if (profile !== "ground_station") return null;
 
   const role = roleInfo?.current ?? "unset";
-  const meshId = meshHealth?.mesh_id ?? roleInfo?.configured ?? null;
-  const peerCount = meshHealth?.peer_count ?? 0;
 
+  // Mesh id and peer count come only from a mesh-health reading; with none,
+  // neither is known and neither is shown.
   const tooltipParts: string[] = [t(role)];
-  if (role === "relay" || role === "receiver") {
-    if (meshId) tooltipParts.push(`mesh: ${meshId}`);
-    tooltipParts.push(`peers: ${peerCount}`);
+  if ((role === "relay" || role === "receiver") && meshHealth) {
+    if (meshHealth.mesh_id) tooltipParts.push(`mesh: ${meshHealth.mesh_id}`);
+    tooltipParts.push(`peers: ${meshHealth.peer_count}`);
   }
 
   return (

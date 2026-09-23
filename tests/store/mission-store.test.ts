@@ -394,6 +394,40 @@ describe('mission-store', () => {
     expect(useMissionStore.getState().progress).toBe(0);
   });
 
+  it('a clean download vouches for the plan it loaded', async () => {
+    let onVehicle: MissionItem[] = [];
+    mockProtocol = {
+      uploadMission: async (items) => {
+        onVehicle = items;
+        return { success: true };
+      },
+      downloadMission: async () => onVehicle,
+      getVehicleInfo: () => ({ firmwareType: 'ardupilot-copter' }),
+    };
+    useMissionStore.setState({ waypoints: arduPilotPlan() });
+    await useMissionStore.getState().uploadMission();
+    // A reconnect forgets what this GCS uploaded; the download re-learns it.
+    useUploadReceiptsStore.setState({ receipts: {} });
+
+    await useMissionStore.getState().downloadMission();
+    expect(missionStatus()).toBe('on-aircraft');
+    useMissionStore.getState().applyMissionCurrent('d1', 1);
+    expect(useMissionStore.getState().currentWaypoint).toBe(0);
+  });
+
+  it('a download that dropped an item does not vouch for the plan', async () => {
+    mockProtocol = {
+      uploadMission: async () => ({ success: true }),
+      downloadMission: async () => [
+        { seq: 0, frame: 2, command: 181, current: 0, autocontinue: 1, param1: 1, param2: 1, param3: 0, param4: 0, x: 0, y: 0, z: 0 },
+        { seq: 1, frame: 3, command: 16, current: 1, autocontinue: 1, param1: 0, param2: 0, param3: 0, param4: 0, x: 129700000, y: 775900000, z: 30 },
+      ],
+      getVehicleInfo: () => ({ firmwareType: 'px4' }),
+    };
+    await useMissionStore.getState().downloadMission();
+    expect(missionStatus()).toBe('unknown');
+  });
+
   it('a failed download keeps the local plan', async () => {
     const plan = arduPilotPlan();
     useMissionStore.setState({ waypoints: plan });

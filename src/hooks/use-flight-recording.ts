@@ -11,7 +11,7 @@
  * feeds. That slot may already be running because of the connect/arm auto-record
  * settings; in that case the REC button leaves it to the auto lifecycle and only
  * drives the video. When auto-record is off, the button starts a per-drone
- * telemetry recording itself and exports it as a `.tlog` on stop. Video is
+ * telemetry recording itself and downloads it as CSV on stop. Video is
  * opportunistic — recorded when a live stream is present (auto-downloads a WebM),
  * so an FC-only drone yields a telemetry-only flight recording.
  *
@@ -31,19 +31,10 @@ import {
   startRecordingFor,
   stopRecordingFor,
   isRecordingFor,
-  exportTlog,
 } from "@/lib/telemetry-recorder";
+import { downloadTelemetryCSV } from "@/lib/telemetry-export";
 import { useVideoStore } from "@/stores/video-store";
 import { useDroneManager } from "@/stores/drone-manager";
-
-function downloadBlob(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
 
 // Drone ids whose per-drone telemetry recording was started by the REC button
 // (as opposed to the connect/arm auto-recorder). Module-level so it survives the
@@ -120,13 +111,7 @@ export function useFlightRecording(droneId: string): FlightRecording {
       try {
         const recording = await stopRecordingFor(droneId);
         if (recording && recording.frameCount > 0) {
-          const blob = await exportTlog(recording.id);
-          if (blob) {
-            downloadBlob(
-              blob,
-              `flight-${new Date().toISOString().slice(0, 19)}.tlog`,
-            );
-          }
+          await downloadTelemetryCSV(recording);
         }
       } catch {
         /* recorder already torn down (e.g. disarm) */

@@ -15,6 +15,7 @@ import type { MspSerialQueue } from './msp/msp-serial-queue'
 import type { SettingsClient } from './msp/settings'
 import { VIRTUAL_PARAMS, getParamsByReadCmd, type VirtualParamDef } from './msp/virtual-params'
 import { toWritePayload } from './msp/virtual-params/write-layouts'
+import { MAV_PARAM_TYPE } from './param-value-codec'
 
 const NOT_CONNECTED: CommandResult = {
   success: false, resultCode: -1, message: 'Not connected',
@@ -22,22 +23,26 @@ const NOT_CONNECTED: CommandResult = {
 
 /** Registry value type → MAV_PARAM_TYPE for the grid's type column. */
 const MAV_TYPE_BY_VIRTUAL_TYPE: Record<VirtualParamDef['type'], number> = {
-  uint8: 1, uint16: 3, int16: 4, uint32: 5, float: 9,
+  uint8: MAV_PARAM_TYPE.UINT8,
+  uint16: MAV_PARAM_TYPE.UINT16,
+  int16: MAV_PARAM_TYPE.INT16,
+  uint32: MAV_PARAM_TYPE.UINT32,
+  float: MAV_PARAM_TYPE.REAL32,
 }
 
 /** Registry names in a fixed order, so indices are stable across reads. */
 const VIRTUAL_PARAM_NAMES = Array.from(VIRTUAL_PARAMS.keys())
 
-/** Map an iNav setting_type_e (0..6) to a MAV_PARAM_TYPE for the grid's type column. */
-function inavTypeToMavType(t: number): number {
+/** Map an iNav setting_type_e (VAR_UINT8=0 .. VAR_FLOAT=5, VAR_STRING=6) to a
+ * MAV_PARAM_TYPE for the grid's type column. */
+export function inavTypeToMavType(t: number): number {
   switch (t) {
-    case 0: return 1   // UINT8
-    case 1: return 2   // INT8
-    case 2: return 3   // UINT16
-    case 3: return 4   // INT16
-    case 4: return 5   // UINT32
-    case 5: return 10  // FLOAT → REAL32
-    default: return 9
+    case 0: return MAV_PARAM_TYPE.UINT8
+    case 1: return MAV_PARAM_TYPE.INT8
+    case 2: return MAV_PARAM_TYPE.UINT16
+    case 3: return MAV_PARAM_TYPE.INT16
+    case 4: return MAV_PARAM_TYPE.UINT32
+    default: return MAV_PARAM_TYPE.REAL32
   }
 }
 

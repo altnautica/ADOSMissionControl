@@ -2,19 +2,18 @@
 
 /**
  * @module MqttBridge
- * @description MQTT client bridge -- connects to Mosquitto via WebSocket and
- * pumps real-time telemetry into the agent store.
+ * @description MQTT client bridge -- connects to the deployment's broker via
+ * WebSocket for the focused cloud node's status, plugin-update and (without a
+ * LAN path) vision-detection topics. It dials only the broker the deployment
+ * configured; with none there is no MQTT at all.
  * @license GPL-3.0-only
  */
 
 import { useEffect, useMemo, useRef } from "react";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
-import { useAgentPeripheralsStore } from "@/stores/agent-peripherals-store";
-import { useFleetNetworkStore } from "@/stores/fleet-network-store";
-import { usePairingStore } from "@/stores/pairing-store";
 import { useLocalNodesStore } from "@/stores/local-nodes-store";
-import { resolveLanAgentUrl } from "@/stores/agent-connection/cloud-state";
+import { resolveLanAgentUrl } from "@/lib/agent/resolve-agent";
 import { useVisionDetectionsStore } from "@/stores/vision-detections-store";
 import { ingestCloudDetections } from "@/lib/agent/vision-detections-ws";
 import { nodeIdForDevice } from "@/lib/agent/node-id";
@@ -23,12 +22,36 @@ import {
   type PluginUpdateReason,
 } from "@/stores/plugin-update-store";
 import { useToast } from "@/components/ui/toast";
-import type { AgentStatus } from "@/lib/agent/types";
-import { OFFICIAL_MQTT_WS_URL } from "@/lib/config/endpoints";
 import { getMqttBrokerCredential } from "@/lib/mqtt-broker-credential";
 import { useMqttControlGrantStore } from "@/stores/mqtt-control-grant-store";
 
-const MQTT_WS_URL_DEFAULT = OFFICIAL_MQTT_WS_URL;
+/**
+ * Fold one agent MQTT status document into the focused node's status. The
+ * agent publishes `{ device_id, name, tier, armed, fc_connected,
+ * mavlink_alive, heartbeat_age_s }` at its telemetry rate: the fast FC-link
+ * truth, and nothing else. Those fields overlay the status the cloud
+ * heartbeat built; everything the document does not carry (board, health,
+ * services, FC variant, transport state) stays as the heartbeat reported it.
+ * Before the first heartbeat there is no status to overlay, and a document
+ * for another device is ignored. Returns whether the status changed.
+ */
+export function applyMqttStatusDoc(deviceId: string, raw: unknown): boolean {
+  if (raw === null || typeof raw !== "object") return false;
+  const doc = raw as Record<string, unknown>;
+  if (doc.device_id !== deviceId) return false;
+  const current = useAgentSystemStore.getState().status;
+  if (!current) return false;
+  const next = { ...current };
+  if (typeof doc.fc_connected === "boolean") next.fc_connected = doc.fc_connected;
+  if (typeof doc.mavlink_alive === "boolean") next.mavlink_alive = doc.mavlink_alive;
+  if (doc.heartbeat_age_s === null || typeof doc.heartbeat_age_s === "number") {
+    next.heartbeat_age_s = doc.heartbeat_age_s;
+  }
+  // The status record's freshness stamp stays the heartbeat's: only the FC
+  // fields are this recent.
+  useAgentSystemStore.setState({ status: next });
+  return true;
+}
 
 export function MqttBridge({
   mqttBrokerUrl,
@@ -41,19 +64,7 @@ export function MqttBridge({
   // re-run once it lands.
   const credentialEpoch = useMqttControlGrantStore((s) => s.credentialEpoch);
   const cloudDeviceId = useAgentConnectionStore((s) => s.cloudDeviceId);
-  const setCloudStatus = useAgentConnectionStore((s) => s.setCloudStatus);
   const setMqttConnected = useAgentConnectionStore((s) => s.setMqttConnected);
-  // The fleet-wide MQTT bridge already subscribes to the telemetry topic for
-  // every paired drone and writes it into the fleet store. When the selected
-  // agent is one of those paired drones we let that bridge own the telemetry
-  // topic and skip it here, so the same telemetry isn't ingested twice into
-  // two stores. The status + plugin-update topics stay ours (the fleet bridge
-  // doesn't handle them).
-  const selectedIsPaired = usePairingStore((s) =>
-    cloudDeviceId
-      ? s.pairedDrones.some((d) => d.deviceId === cloudDeviceId)
-      : false,
-  );
   // Detections reach the store over the LAN WebSocket (`VisionDetectionsBridge`)
   // whenever a LAN path resolves. When it does NOT — a hosted/HTTPS cockpit
   // (mixed-content blocks `ws://` to a private LAN host) or a drone with no LAN
@@ -74,7 +85,9 @@ export function MqttBridge({
   const teardownRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
-    if (!cloudDeviceId) return;
+    // No configured broker, no dial: never a broker the operator did not choose.
+    if (!cloudDeviceId || !mqttBrokerUrl) return;
+    const brokerUrl = mqttBrokerUrl;
 
     let cancelled = false;
 
@@ -107,7 +120,7 @@ export function MqttBridge({
           connectOptions.password = cred.password;
         }
         const client = (connectFn as typeof mqttModule.connect)(
-          mqttBrokerUrl || MQTT_WS_URL_DEFAULT,
+          brokerUrl,
           connectOptions,
         );
 
@@ -135,17 +148,13 @@ export function MqttBridge({
         // are discrete control-plane events — a dropped status leaves the node
         // card reading the previous state until the next emission, and a
         // dropped update event is simply never seen — so they take QoS 1.
-        // Telemetry and detection batches are a continuous stream where the
-        // next sample supersedes the last within a frame, so QoS 1's
-        // acknowledgement round trip would buy latency for nothing.
+        // Detection batches are a continuous stream where the next batch
+        // supersedes the last within a frame, so QoS 1's acknowledgement round
+        // trip would buy latency for nothing.
         const subscriptions: Record<string, { qos: 0 | 1 | 2 }> = {
           [`ados/${cloudDeviceId}/status`]: { qos: 1 },
           [`ados/${cloudDeviceId}/plugin/update_available`]: { qos: 1 },
         };
-        // Skip telemetry for paired drones — the fleet-wide bridge owns it.
-        if (!selectedIsPaired) {
-          subscriptions[`ados/${cloudDeviceId}/telemetry`] = { qos: 0 };
-        }
         // Vision detections only when there is no LAN WebSocket path (LAN
         // wins; this is the hosted/HTTPS or no-LAN-pairing fallback).
         if (visionViaCloud) {
@@ -279,90 +288,11 @@ export function MqttBridge({
             return;
           }
 
-          try {
-            const data = JSON.parse(payload.toString());
-            // Map MQTT status to AgentStatus if it has expected fields
-            if (data.version || data.boardName) {
-              const mapped: AgentStatus = {
-                version: data.version || "?.?.?",
-                uptime_seconds: data.uptimeSeconds || 0,
-                board: {
-                  name: data.boardName || "Unknown",
-                  model: "",
-                  tier: data.boardTier || 0,
-                  ram_mb: 0,
-                  cpu_cores: 0,
-                  vendor: "",
-                  soc: data.boardSoc || "",
-                  arch: data.boardArch || "",
-                  hw_video_codecs: [],
-                },
-                health: {
-                  // A reading the payload omitted stays absent, so the gauges
-                  // read unknown rather than a confident 0%.
-                  cpu_percent: typeof data.cpuPercent === "number" ? data.cpuPercent : undefined,
-                  memory_percent: typeof data.memoryPercent === "number" ? data.memoryPercent : undefined,
-                  disk_percent: typeof data.diskPercent === "number" ? data.diskPercent : undefined,
-                  temperature: data.temperature ?? null,
-                  timestamp: new Date().toISOString(),
-                },
-                fc_connected: data.fcConnected || false,
-                fc_port: data.fcPort || "",
-                fc_baud: data.fcBaud || 0,
-              };
-              setCloudStatus(mapped);
-
-              // Synthesize resources from health data. This payload carries
-              // percentages only, so the byte capacities are left absent
-              // instead of reported as "0 / 0 MB", which reads as a node with
-              // no memory rather than one that did not send the figure.
-              useAgentSystemStore.setState({
-                resources: {
-                  cpu_percent: mapped.health.cpu_percent,
-                  memory_percent: mapped.health.memory_percent,
-                  memory_used_mb: undefined,
-                  memory_total_mb: undefined,
-                  memory_available_mb: 0,
-                  memory_cache_mb: 0,
-                  swap_total_mb: 0,
-                  swap_used_mb: 0,
-                  swap_percent: 0,
-                  disk_percent: mapped.health.disk_percent,
-                  disk_used_gb: undefined,
-                  disk_total_gb: undefined,
-                  temperature: mapped.health.temperature,
-                },
-              });
-
-              // Map services if present in MQTT payload
-              if (data.services && Array.isArray(data.services)) {
-                useAgentSystemStore.setState({
-                  services: data.services.map((s: Record<string, unknown>) => ({
-                    name: String(s.name || "unknown"),
-                    status: (["running", "stopped", "error"].includes(s.status as string) ? s.status : "stopped") as "running" | "stopped" | "error",
-                    pid: typeof s.pid === "number" ? s.pid : null,
-                    cpu_percent: typeof s.cpuPercent === "number" ? s.cpuPercent : 0,
-                    memory_mb: typeof s.memoryMb === "number" ? s.memoryMb : 0,
-                    uptime_seconds: typeof s.uptimeSeconds === "number" ? s.uptimeSeconds : 0,
-                  })),
-                });
-              }
-
-              // Map extended status fields to their respective stores
-              if (data.peripherals && Array.isArray(data.peripherals)) {
-                useAgentPeripheralsStore.setState({ peripherals: data.peripherals });
-              }
-              if (data.peers && Array.isArray(data.peers)) {
-                useFleetNetworkStore.setState({ peers: data.peers });
-              }
-              if (data.enrollment && typeof data.enrollment === "object") {
-                useFleetNetworkStore.setState({ enrollment: data.enrollment });
-              }
-              if (data.logs && Array.isArray(data.logs)) {
-                useAgentSystemStore.setState({ logs: data.logs });
-              }
-            }
-          } catch { /* ignore parse errors */ }
+          if (topic.endsWith("/status")) {
+            try {
+              applyMqttStatusDoc(cloudDeviceId as string, JSON.parse(payload.toString()));
+            } catch { /* ignore parse errors */ }
+          }
         });
       } catch (err) {
         console.warn("MQTT connection failed:", err);
@@ -394,18 +324,15 @@ export function MqttBridge({
     };
   }, [
     cloudDeviceId,
-    selectedIsPaired,
     visionViaCloud,
     // The broker URL is resolved from clientConfig and the credential from the
     // grant the operator mints, both of which land a tick or more after the
-    // first render. Without them in the deps the initial connect would fire
-    // credential-less (to the default broker) and never re-run, so cloud status
-    // and the cloud-relay vision-detections topic would silently never connect.
+    // first render. Without them in the deps the bridge would never dial once
+    // the URL resolved, and a credential landing later would never be used.
     // Both settle once and are then stable, so this tears down + reconnects
     // exactly once per change (no per-render thrash).
     mqttBrokerUrl,
     credentialEpoch,
-    setCloudStatus,
     setMqttConnected,
   ]);
 

@@ -1,16 +1,16 @@
 /**
- * Policy gate for the plugin `cloud.read` / `cloud.write` methods.
+ * Policy gate for the plugin `cloud.read` method.
  *
  * A plugin half can ask the GCS to run a Convex function on its behalf. That is
  * a privileged bridge into the operator's backend, so it is fenced three ways,
  * all enforced here as pure policy (the handler that owns the live Convex
  * client calls these before dispatching; this module never touches Convex):
  *
- *   1. Allowlist  — only the named functions in {@link ALLOWED_CLOUD_READS} /
- *                   {@link ALLOWED_CLOUD_WRITES} may run. Everything else is
- *                   denied by default. The lists are deliberately tiny and
+ *   1. Allowlist  — only the named functions in {@link ALLOWED_CLOUD_READS}
+ *                   may run. Everything else is denied by default. The list
+ *                   is deliberately tiny and
  *                   carry only clearly-public, non-sensitive functions: never
- *                   anything user-PII, auth, fundraising, or `cmd*` admin.
+ *                   anything user-PII, auth, or `cmd*` admin.
  *   2. Validation — args must be a small JSON-serialisable object.
  *   3. Rate limit — a per-plugin fixed window caps call volume.
  *
@@ -40,17 +40,6 @@ export const ALLOWED_CLOUD_READS: ReadonlySet<string> = new Set([
   "communityItems:list",
 ]);
 
-/**
- * Mutations a plugin may call. EMPTY by design — the safe default.
- *
- * Every reviewed community mutation (e.g. `comments:create`,
- * `communityItems:upvote`) writes under the signed-in operator's identity via
- * `getAuthUserId`, so letting a plugin drive them would let it act AS the user
- * (spam, vote manipulation). Until a genuinely side-effect-free, identity-free
- * mutation exists, no write is allowed. Add one only with explicit review.
- */
-export const ALLOWED_CLOUD_WRITES: ReadonlySet<string> = new Set<string>([]);
-
 /** Max serialised byte size of a single call's args. */
 export const MAX_CLOUD_ARGS_BYTES = 16 * 1024;
 /** Max length of any single string field inside args. */
@@ -63,10 +52,6 @@ export const CLOUD_RATE_LIMIT_WINDOW_MS = 60_000;
 
 export function isAllowedCloudRead(fn: string): boolean {
   return ALLOWED_CLOUD_READS.has(fn);
-}
-
-export function isAllowedCloudWrite(fn: string): boolean {
-  return ALLOWED_CLOUD_WRITES.has(fn);
 }
 
 type ValidateResult =

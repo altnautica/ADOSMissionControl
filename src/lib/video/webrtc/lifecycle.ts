@@ -38,7 +38,7 @@ export async function stopStream(): Promise<void> {
   const store = useVideoStore.getState();
   store.setStreaming(false);
   store.setStreamUrl(null);
-  store.updateStats(0, 0);
+  store.updateStats(null, null);
   store.setTransport("unknown");
   // A degraded verdict belongs to the session that earned it. Carried past
   // teardown it would label the next session's first frames as frozen.

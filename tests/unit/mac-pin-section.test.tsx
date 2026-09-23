@@ -22,10 +22,22 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+const NODE = "node-1";
+
+/** File a reading under this page's node, the way a status report does. */
+function reportMacStability(macStability: MacStability) {
+  const { focusedDeviceId: _f, byDevice: _b, ...slice } =
+    useAgentCapabilitiesStore.getState();
+  useAgentCapabilitiesStore.setState({
+    byDevice: { [NODE]: { ...slice, macStability } },
+  });
+}
+
 function renderSection(config: Record<string, unknown> | null = null) {
   const setValue = vi.fn(async () => {});
   renderWithIntl(
     <MacPinSection
+      nodeDeviceId={NODE}
       config={
         config ?? {
           network: { mac_pin: { enabled: true, apply_live_allowed: false } },
@@ -47,10 +59,21 @@ describe("MacPinSection adapter list", () => {
     ).toBeTruthy();
   });
 
-  it("renders 'none tracked' when the node reports an empty list", () => {
+  it("never shows the focused node's adapters under another node's page", () => {
+    // The flat slice belongs to whichever node is focused; this page's node
+    // has reported nothing.
     useAgentCapabilitiesStore.setState({
-      macStability: { adapters: [] } as MacStability,
+      macStability: { adapters: [{ name: "wlan9", state: "pinned" }] } as MacStability,
     });
+    renderSection();
+    expect(screen.queryByText("wlan9")).toBeNull();
+    expect(
+      screen.getByText("This node has not reported adapter stability."),
+    ).toBeTruthy();
+  });
+
+  it("renders 'none tracked' when the node reports an empty list", () => {
+    reportMacStability({ adapters: [] } as MacStability);
     renderSection();
     expect(
       screen.getByText("The agent reports no adapters that need MAC pinning."),
@@ -61,25 +84,23 @@ describe("MacPinSection adapter list", () => {
   });
 
   it("renders the reported adapters with state labels and MACs", () => {
-    useAgentCapabilitiesStore.setState({
-      macStability: {
-        adapters: [
-          {
-            name: "wlan0",
-            vidpid: "a69c:8d81",
-            state: "pinned",
-            source: "learned",
-            pinnedMac: "02:c6:75:83:1a:3e",
-            lastSeenMac: "02:c6:75:83:1a:3e",
-          },
-          {
-            name: "wlan1",
-            state: "candidate",
-            lastSeenMac: "de:ad:be:ef:00:01",
-          },
-        ],
-      } as MacStability,
-    });
+    reportMacStability({
+      adapters: [
+        {
+          name: "wlan0",
+          vidpid: "a69c:8d81",
+          state: "pinned",
+          source: "learned",
+          pinnedMac: "02:c6:75:83:1a:3e",
+          lastSeenMac: "02:c6:75:83:1a:3e",
+        },
+        {
+          name: "wlan1",
+          state: "candidate",
+          lastSeenMac: "de:ad:be:ef:00:01",
+        },
+      ],
+    } as MacStability);
     renderSection();
 
     expect(screen.getByText("wlan0")).toBeTruthy();
@@ -99,16 +120,9 @@ describe("MacPinSection adapter list", () => {
   });
 
   it("renders a forward-versioned state string raw instead of mislabeling it", () => {
-    useAgentCapabilitiesStore.setState({
-      macStability: {
-        adapters: [
-          {
-            name: "eth1",
-            state: "quarantined" as never,
-          },
-        ],
-      } as MacStability,
-    });
+    reportMacStability({
+      adapters: [{ name: "eth1", state: "quarantined" as never }],
+    } as MacStability);
     renderSection();
     expect(screen.getByText("quarantined")).toBeTruthy();
   });

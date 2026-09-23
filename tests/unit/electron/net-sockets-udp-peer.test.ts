@@ -289,3 +289,46 @@ describe("socket lifetime across navigation", () => {
     expect(closes).toEqual([{ id, reason: "page navigated away" }]);
   });
 });
+
+describe("net:open endpoint validation", () => {
+  beforeEach(() => {
+    ipcHandlers.clear();
+    closes.length = 0;
+    navListeners.length = 0;
+    setupNetSockets(
+      fakeWindow as unknown as Parameters<typeof setupNetSockets>[0],
+    );
+  });
+
+  afterEach(() => {
+    closeAllSockets("test teardown");
+  });
+
+  /** ipcMain turns a handler's synchronous throw into a rejected invoke. */
+  const invokeOpen = (event: unknown, spec: Record<string, unknown>): Promise<unknown> =>
+    Promise.resolve().then(() => handler("net:open")(event, spec));
+
+  it.each(["8.8.8.8", "203.0.113.9", "attacker.example", "10.attacker.example", "2001:db8::1"])(
+    "refuses the non-local endpoint %s",
+    async (host) => {
+      await expect(
+        invokeOpen(mainWindowEvent, { proto: "udp", host, port: 14550, mode: "target" }),
+      ).rejects.toThrow(/non-local endpoint/);
+    },
+  );
+
+  it.each(["100.64.0.1", "192.168.1.50", "fe90::1", "[fd00::1]"])(
+    "accepts the local endpoint %s",
+    async (host) => {
+      const id = await openSocket({ proto: "udp", host, port: 14550, mode: "target" });
+      expect(typeof id).toBe("string");
+    },
+  );
+
+  it("refuses an invoke from any frame other than the main window", async () => {
+    const popupEvent = { sender: { id: "popup" } };
+    await expect(
+      invokeOpen(popupEvent, { proto: "udp", host: "127.0.0.1", port: 14550, mode: "target" }),
+    ).rejects.toThrow(/unauthorized sender/);
+  });
+});

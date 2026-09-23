@@ -19,6 +19,9 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { formatDate } from "@/lib/utils";
 import { timeAgo } from "@/lib/plan-library";
 import { useMcpTabStore } from "@/stores/mcp-tab-store";
+import { useClockStore } from "@/stores/clock-store";
+import { useClockTick } from "@/lib/agent/freshness";
+import { credentialStatus, type McpCredentialStatus } from "./mcp-shared";
 
 export interface McpTokenRow {
   _id: string;
@@ -32,15 +35,7 @@ export interface McpTokenRow {
   lastUsedAt: number | null;
 }
 
-type Status = "active" | "revoked" | "expired";
-
-function statusOf(row: McpTokenRow): Status {
-  if (row.revokedAt != null) return "revoked";
-  if (row.expiresAt != null && row.expiresAt <= Date.now()) return "expired";
-  return "active";
-}
-
-const STATUS_CLASS: Record<Status, string> = {
+const STATUS_CLASS: Record<McpCredentialStatus, string> = {
   active: "bg-status-success/15 text-status-success",
   revoked: "bg-bg-tertiary text-text-tertiary",
   expired: "bg-status-warning/15 text-status-warning",
@@ -55,6 +50,8 @@ export function McpConsole({ rows }: { rows: McpTokenRow[] }) {
   const revoke = useMutation(communityApi.mcpTokens.revoke);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  useClockTick();
+  const now = useClockStore((s) => s.now);
 
   const pending = rows.find((r) => r.tokenId === revokeTokenId) ?? null;
 
@@ -97,7 +94,7 @@ export function McpConsole({ rows }: { rows: McpTokenRow[] }) {
 
         <div className="flex flex-col gap-2">
           {rows.map((row) => {
-            const status = statusOf(row);
+            const status = credentialStatus(row, now);
             return (
               <div
                 key={row._id}

@@ -12,9 +12,15 @@ interface AgentPeripheralsState {
   peripherals: PeripheralInfo[];
 }
 
+/** How a hardware scan ended: the list was read (`done`, possibly empty), the
+ * read failed or no client was attached (`failed`), or the scan was handed to
+ * the cloud relay and its result arrives later through the command bridge
+ * (`dispatched`). */
+export type PeripheralScanOutcome = "done" | "failed" | "dispatched";
+
 interface AgentPeripheralsActions {
   fetchPeripherals: () => Promise<void>;
-  scanPeripherals: () => Promise<void>;
+  scanPeripherals: () => Promise<PeripheralScanOutcome>;
   clear: () => void;
 }
 
@@ -40,13 +46,16 @@ export const useAgentPeripheralsStore = create<AgentPeripheralsStore>((set) => (
     const { client, cloudMode } = useAgentConnectionStore.getState();
     if (cloudMode) {
       useAgentConnectionStore.getState().sendCloudCommand("scan_peripherals");
-      return;
+      return "dispatched";
     }
-    if (!client) return;
+    if (!client) return "failed";
     try {
       const peripherals = await client.scanPeripherals();
       set({ peripherals });
-    } catch { /* silent */ }
+      return "done";
+    } catch {
+      return "failed";
+    }
   },
 
   clear() {

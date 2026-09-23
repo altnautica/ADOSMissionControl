@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useArmedLock } from "@/hooks/use-armed-lock";
+import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import type { MspSerialPort } from "@/lib/protocol/types";
 import { BF_SERIAL_FUNCTIONS, BF_SERIAL_FUNCTIONS_EXTENDED, BF_BAUD_RATES, bfPortLabel } from "./bf-ports-constants";
 
@@ -94,6 +95,7 @@ export function BfPortsPanel() {
   }, []);
 
   const dirty = hasLoaded && JSON.stringify(ports) !== baseline;
+  useUnsavedGuard(dirty);
   const disabled = loading || isArmed;
   const serialFunctions = extended
     ? [...BF_SERIAL_FUNCTIONS, ...BF_SERIAL_FUNCTIONS_EXTENDED]

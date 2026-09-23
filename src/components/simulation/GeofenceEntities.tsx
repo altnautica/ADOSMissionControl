@@ -2,7 +2,9 @@
  * @module GeofenceEntities
  * @description Renders geofence boundaries in the 3D simulation view.
  * Shows polygon fence as red translucent polygon, circle fence as red ellipse,
- * and max altitude ceiling as a dashed horizontal plane.
+ * and the max altitude ceiling as a translucent plane. The ceiling
+ * (FENCE_ALT_MAX) is measured from home, so it is drawn only once the home
+ * terrain height is known.
  * @license GPL-3.0-only
  */
 
@@ -11,7 +13,6 @@
 import { useEffect } from "react";
 import {
   Cartesian3,
-  Cartographic,
   Color,
   HeightReference,
   PolygonHierarchy,
@@ -23,9 +24,14 @@ import { useGeofenceStore } from "@/stores/geofence-store";
 
 interface GeofenceEntitiesProps {
   viewer: CesiumViewer | null;
+  /**
+   * Terrain height at home (metres above the ellipsoid), the datum the fence
+   * altitude limits are measured from. Undefined until terrain has resolved.
+   */
+  homeHeight: number | undefined;
 }
 
-export function GeofenceEntities({ viewer }: GeofenceEntitiesProps) {
+export function GeofenceEntities({ viewer, homeHeight }: GeofenceEntitiesProps) {
   const enabled = useGeofenceStore((s) => s.enabled);
   const fenceType = useGeofenceStore((s) => s.fenceType);
   const maxAltitude = useGeofenceStore((s) => s.maxAltitude);
@@ -71,10 +77,12 @@ export function GeofenceEntities({ viewer }: GeofenceEntitiesProps) {
     }
 
     if (!enabled) {
+      viewer.scene.requestRender();
       return () => {
         for (const entity of entities) {
           if (!viewer.isDestroyed()) viewer.entities.remove(entity);
         }
+        if (!viewer.isDestroyed()) viewer.scene.requestRender();
       };
     }
 
@@ -128,8 +136,8 @@ export function GeofenceEntities({ viewer }: GeofenceEntitiesProps) {
       entities.push(circleEntity);
     }
 
-    // Max altitude ceiling plane
-    if (maxAltitude > 0) {
+    // Max altitude ceiling plane, measured from home
+    if (maxAltitude > 0 && homeHeight !== undefined) {
       // Build a large rectangle at the geofence center to represent the altitude ceiling
       let centerLat = 0;
       let centerLon = 0;
@@ -143,12 +151,9 @@ export function GeofenceEntities({ viewer }: GeofenceEntitiesProps) {
       }
 
       if (centerLat !== 0 || centerLon !== 0) {
-        // Sample terrain height at fence center so AGL ceiling renders correctly
-        const carto = Cartographic.fromDegrees(centerLon, centerLat);
-        const terrainHeight = viewer.scene.globe.getHeight(carto) ?? 0;
-        const ceilingHeight = terrainHeight + maxAltitude;
+        const ceilingHeight = homeHeight + maxAltitude;
 
-        // Represent ceiling as a translucent ellipse at maxAltitude above terrain
+        // Represent ceiling as a translucent ellipse at maxAltitude above home
         const ceilingEntity = viewer.entities.add({
           position: Cartesian3.fromDegrees(centerLon, centerLat, ceilingHeight),
           ellipse: {
@@ -177,7 +182,7 @@ export function GeofenceEntities({ viewer }: GeofenceEntitiesProps) {
       }
       if (!viewer.isDestroyed()) viewer.scene.requestRender();
     };
-  }, [viewer, enabled, fenceType, maxAltitude, circleCenter, circleRadius, polygonPoints, zones]);
+  }, [viewer, enabled, fenceType, maxAltitude, circleCenter, circleRadius, polygonPoints, zones, homeHeight]);
 
   return null;
 }

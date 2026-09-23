@@ -41,7 +41,7 @@ import type { NodeProfile } from "@/components/dashboard/node-detail/surface-typ
 import type { RelayReach } from "@/lib/nodes/relay-reach";
 import { RegulatoryRegionPanel } from "@/components/command/system/RegulatoryRegionPanel";
 import { isDemoMode } from "@/lib/utils";
-import { configAdvertises } from "./use-node-config";
+import { configMayAdvertise } from "./use-node-config";
 import { ProfilePage, CloudPage, AdvancedPage } from "./CorePages";
 import { VideoSection } from "./VideoSection";
 import { RadioSection } from "./RadioSection";
@@ -153,14 +153,17 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
     id: "cellular",
     labelKey: "nodeSettings.cellular.title",
     icon: <Signal size={14} />,
-    readsConfig: true,
+    // The modem view, usage and writes ride the ground station's own modem
+    // route; the page never opens the config document.
+    readsConfig: false,
+    // Only a ground station runs a modem manager. No drone or workstation
+    // service reads a cellular setting, so the page is not offered there.
+    when: (ctx) => ctx.profile === "ground-station",
     render: (ctx) => (
       <CellularSection
         nodeDeviceId={ctx.nodeDeviceId}
         profile={ctx.profile}
-        config={ctx.config}
         readOnly={ctx.readOnly}
-        setValue={ctx.setValue}
       />
     ),
   },
@@ -171,6 +174,7 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
     readsConfig: true,
     render: (ctx) => (
       <MacPinSection
+        nodeDeviceId={ctx.nodeDeviceId}
         config={ctx.config}
         readOnly={ctx.readOnly}
         setValue={ctx.setValue}
@@ -226,6 +230,7 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
     when: isRadioProfile,
     render: (ctx) => (
       <RadioSection
+        nodeDeviceId={ctx.nodeDeviceId}
         profile={ctx.profile}
         config={ctx.config}
         readOnly={ctx.readOnly}
@@ -240,10 +245,12 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
     readsConfig: true,
     // Swarm coordination is a drone-fleet surface — it does not apply to a
     // ground station or workstation even when their stored config carries the
-    // block. Drone profile AND the node advertising the block (or demo).
+    // block. Drone profile AND the node advertising the block (or demo). A
+    // config still loading or failed is unknown, not absent: the page stays
+    // and the config banner explains the gap.
     when: (ctx) =>
       isDroneProfile(ctx) &&
-      (configAdvertises(ctx.config, "swarm") || isDemoMode()),
+      (configMayAdvertise(ctx.config, "swarm") || isDemoMode()),
     render: (ctx) => (
       <SwarmSection
         config={ctx.config}
@@ -287,6 +294,7 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
     render: (ctx) => (
       <VisionPerceptionSection
         droneId={ctx.droneId}
+        nodeDeviceId={ctx.nodeDeviceId}
         profile={ctx.profile}
         config={ctx.config}
         readOnly={ctx.readOnly}
@@ -306,7 +314,7 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
     readsConfig: true,
     when: (ctx) =>
       ctx.profile === "drone" &&
-      (configAdvertises(ctx.config, "atlas") || isDemoMode()),
+      (configMayAdvertise(ctx.config, "atlas") || isDemoMode()),
     render: (ctx) => (
       <AtlasSection
         droneId={ctx.droneId}
@@ -358,7 +366,10 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
     readsConfig: true,
     when: (ctx) => ctx.profile === "ground-station",
     render: (ctx) => (
-      <DisplaySection nodeDeviceId={ctx.nodeDeviceId} />
+      <DisplaySection
+        nodeDeviceId={ctx.nodeDeviceId}
+        relayReach={ctx.relayReach}
+      />
     ),
   },
   {
@@ -368,6 +379,7 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
     readsConfig: true,
     render: (ctx) => (
       <SelfHealSection
+        nodeDeviceId={ctx.nodeDeviceId}
         config={ctx.config}
         readOnly={ctx.readOnly}
         setValue={ctx.setValue}

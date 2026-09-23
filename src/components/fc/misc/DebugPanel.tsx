@@ -1,121 +1,58 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useReducer } from "react";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useTelemetryStore } from "@/stores/telemetry-store";
+import { useClockTick } from "@/lib/agent/freshness";
+import { isFresh } from "@/lib/telemetry/freshness";
 import { Bug, Download, Table2, BarChart3, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   MiniChart, exportCSV,
-  GRAPH_COLORS, MAX_HISTORY, MAX_GRAPH_KEYS,
-  type DebugValue, type HistoryPoint, type ViewMode,
+  GRAPH_COLORS, MAX_GRAPH_KEYS,
+  type ViewMode,
 } from "./debug-helpers";
+import { DebugChannels } from "./debug-channels";
 
 export function DebugPanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
   const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
-  const debugRing = useTelemetryStore((s) => s.debug);
-  const flowQualityRing = useTelemetryStore((s) => s.flowQuality);
-  const flowDistanceRing = useTelemetryStore((s) => s.flowDistance);
-  const vioQualityRing = useTelemetryStore((s) => s.vioQuality);
+  // Every telemetry push bumps the version, however full the rings are; the
+  // 1 Hz tick keeps the "Last Update" ages counting when messages stop.
+  const telemetryVersion = useTelemetryStore((s) => s._version);
+  useClockTick();
 
   const [view, setView] = useState<ViewMode>("table");
-  const [values, setValues] = useState<Map<string, DebugValue>>(new Map());
-  const [graphHistory, setGraphHistory] = useState<Map<string, HistoryPoint[]>>(new Map());
   const [selectedGraphKeys, setSelectedGraphKeys] = useState<string[]>([]);
+  const [channels] = useState(() => new DebugChannels());
+  const [revision, bumpRevision] = useReducer((n: number) => n + 1, 0);
 
-  const valuesRef = useRef(values);
-  valuesRef.current = values;
-  const historyRef = useRef(graphHistory);
-  historyRef.current = graphHistory;
-
+  // A newly selected drone starts from an empty table.
   useEffect(() => {
-    const protocol = getSelectedProtocol();
-    if (!protocol?.onDebug) return;
-    const unsub = protocol.onDebug((data) => {
-      const key = data.type === "debug" ? `DEBUG[${data.name}]` : data.name;
-      const now = Date.now();
-      setValues((prev) => {
-        const next = new Map(prev);
-        next.set(key, { name: key, value: data.value, type: data.type, lastUpdate: now });
-        return next;
-      });
-      setGraphHistory((prev) => {
-        const next = new Map(prev);
-        const arr = [...(next.get(key) ?? []), { t: now, v: data.value }];
-        if (arr.length > MAX_HISTORY) arr.splice(0, arr.length - MAX_HISTORY);
-        next.set(key, arr);
-        return next;
-      });
-    });
-    return unsub;
-  }, [getSelectedProtocol, selectedDroneId]);
+    channels.reset();
+    setSelectedGraphKeys([]);
+    bumpRevision();
+  }, [selectedDroneId, channels]);
 
+  // NAMED_VALUE_FLOAT / NAMED_VALUE_INT / DEBUG entries, plus the
+  // vision-navigation derived channels, folded into one set of named values.
   useEffect(() => {
-    const entries = debugRing.toArray();
-    if (entries.length === 0) return;
-    const nextValues = new Map(valuesRef.current);
-    const nextHistory = new Map(historyRef.current);
-    for (const entry of entries) {
-      const key = entry.type === "debug" ? `DEBUG[${entry.name}]` : entry.name;
-      nextValues.set(key, { name: key, value: entry.value, type: entry.type, lastUpdate: entry.timestamp });
-      const arr = nextHistory.get(key) ?? [];
-      const last = arr[arr.length - 1];
-      if (!last || entry.timestamp > last.t) {
-        arr.push({ t: entry.timestamp, v: entry.value });
-        if (arr.length > MAX_HISTORY) arr.splice(0, arr.length - MAX_HISTORY);
-        nextHistory.set(key, arr);
-      }
-    }
-    setValues(nextValues);
-    setGraphHistory(nextHistory);
-  }, [debugRing.length]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Vision-navigation derived channels. Drained from three dedicated
-  // ring buffers and folded into the same values/history maps so they
-  // appear alongside NAMED_VALUE_FLOAT / NAMED_VALUE_INT / DEBUG entries.
-  useEffect(() => {
-    const flowQ = flowQualityRing.toArray();
-    const flowD = flowDistanceRing.toArray();
-    const vioQ = vioQualityRing.toArray();
-    if (flowQ.length === 0 && flowD.length === 0 && vioQ.length === 0) return;
-
-    const nextValues = new Map(valuesRef.current);
-    const nextHistory = new Map(historyRef.current);
-
-    const drain = (
-      key: string,
-      type: DebugValue["type"],
-      samples: { ts: number; value: number | null }[],
-    ) => {
-      const arr = nextHistory.get(key) ?? [];
-      const last = arr[arr.length - 1];
-      let mostRecent: { ts: number; value: number | null } | undefined;
-      for (const s of samples) {
-        if (s.value === null || !Number.isFinite(s.value)) continue;
-        if (last && s.ts <= last.t) continue;
-        arr.push({ t: s.ts, v: s.value });
-        mostRecent = s;
-      }
-      if (arr.length > MAX_HISTORY) arr.splice(0, arr.length - MAX_HISTORY);
-      nextHistory.set(key, arr);
-      if (mostRecent && mostRecent.value !== null) {
-        nextValues.set(key, {
-          name: key,
-          value: mostRecent.value,
-          type,
-          lastUpdate: mostRecent.ts,
-        });
-      }
-    };
-
-    drain("Flow Quality", "int", flowQ);
-    drain("Flow Distance", "float", flowD);
-    drain("VIO Quality", "float", vioQ);
-
-    setValues(nextValues);
-    setGraphHistory(nextHistory);
-  }, [flowQualityRing.length, flowDistanceRing.length, vioQualityRing.length]); // eslint-disable-line react-hooks/exhaustive-deps
+    const s = useTelemetryStore.getState();
+    const debug = channels.drain("debug", s.debug.toArray(), (e) => e.timestamp, (e) => ({
+      key: e.type === "debug" ? `DEBUG[${e.name}]` : e.name,
+      type: e.type,
+      value: e.value,
+    }));
+    const flowQ = channels.drain("flowQuality", s.flowQuality.toArray(), (e) => e.ts, (e) => ({
+      key: "Flow Quality", type: "int", value: e.value,
+    }));
+    const flowD = channels.drain("flowDistance", s.flowDistance.toArray(), (e) => e.ts, (e) => ({
+      key: "Flow Distance", type: "float", value: e.value,
+    }));
+    const vioQ = channels.drain("vioQuality", s.vioQuality.toArray(), (e) => e.ts, (e) => ({
+      key: "VIO Quality", type: "float", value: e.value,
+    }));
+    if (debug || flowQ || flowD || vioQ) bumpRevision();
+  }, [telemetryVersion, selectedDroneId, channels]);
 
   const toggleGraphKey = useCallback((key: string) => {
     setSelectedGraphKeys((prev) => {
@@ -126,12 +63,18 @@ export function DebugPanel() {
   }, []);
 
   const clearAll = useCallback(() => {
-    setValues(new Map());
-    setGraphHistory(new Map());
+    channels.clear();
     setSelectedGraphKeys([]);
-  }, []);
+    bumpRevision();
+  }, [channels]);
 
-  const sortedValues = useMemo(() => Array.from(values.values()).sort((a, b) => a.name.localeCompare(b.name)), [values]);
+  const values = channels.values;
+  // `revision` is what changes when `channels` was mutated in place.
+  const sortedValues = useMemo(
+    () => Array.from(channels.values.values()).sort((a, b) => a.name.localeCompare(b.name)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [channels, revision],
+  );
   const now = Date.now();
 
   return (
@@ -145,7 +88,7 @@ export function DebugPanel() {
           <button onClick={() => setView("table")} className={cn("flex items-center gap-1 px-2 py-1 text-[10px] cursor-pointer rounded transition-colors", view === "table" ? "bg-bg-secondary text-text-primary" : "text-text-tertiary hover:text-text-secondary")}><Table2 size={10} />Table</button>
           <button onClick={() => setView("graph")} className={cn("flex items-center gap-1 px-2 py-1 text-[10px] cursor-pointer rounded transition-colors", view === "graph" ? "bg-bg-secondary text-text-primary" : "text-text-tertiary hover:text-text-secondary")}><BarChart3 size={10} />Graph</button>
         </div>
-        <button onClick={() => exportCSV(values, graphHistory)} disabled={values.size === 0} className="flex items-center gap-1 px-2 py-1 text-[10px] text-text-secondary hover:text-text-primary cursor-pointer disabled:opacity-40 disabled:cursor-default"><Download size={10} />Export CSV</button>
+        <button onClick={() => exportCSV(values, channels.allHistory())} disabled={values.size === 0} className="flex items-center gap-1 px-2 py-1 text-[10px] text-text-secondary hover:text-text-primary cursor-pointer disabled:opacity-40 disabled:cursor-default"><Download size={10} />Export CSV</button>
         <button onClick={clearAll} disabled={values.size === 0} className="flex items-center gap-1 px-2 py-1 text-[10px] text-text-secondary hover:text-text-primary cursor-pointer disabled:opacity-40 disabled:cursor-default"><Trash2 size={10} />Clear</button>
       </div>
 
@@ -166,7 +109,7 @@ export function DebugPanel() {
             </div>
             {sortedValues.map((dv) => {
               const ago = (now - dv.lastUpdate) / 1000;
-              const stale = ago > 5;
+              const stale = !isFresh(dv.lastUpdate, now);
               return (
                 <div key={dv.name} className="flex items-center gap-0 px-4 py-0.5 hover:bg-bg-tertiary/50">
                   <span className="w-[200px] shrink-0 text-accent-primary truncate">{dv.name}</span>
@@ -196,7 +139,7 @@ export function DebugPanel() {
             ) : (
               <div className="space-y-3">
                 {selectedGraphKeys.map((key, idx) => {
-                  const hist = graphHistory.get(key) ?? [];
+                  const hist = channels.historyOf(key);
                   const latest = hist[hist.length - 1];
                   return (
                     <div key={key} className="border border-border-default bg-bg-secondary p-3">

@@ -30,7 +30,7 @@ export function CategoryFilter({ categories, active, onChange }: CategoryFilterP
           className={cn(
             "px-2.5 py-1 text-xs rounded-full transition-colors",
             active === cat.id
-              ? "bg-accent-primary text-white"
+              ? "bg-accent-primary text-accent-foreground"
               : "bg-bg-tertiary text-text-secondary hover:text-text-primary"
           )}
         >

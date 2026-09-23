@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { useConvexAvailable } from "@/app/ConvexClientProvider";
@@ -39,14 +39,6 @@ interface PluginSlotProps {
   /** Class applied to each iframe child. Slot owners control sizing. */
   iframeClassName?: string;
   /**
-   * Optional security-event sink, forwarded to every iframe host the
-   * slot mounts. Caller typically writes these to the plugin events
-   * log so denial telemetry stays visible.
-   */
-  onSecurityEvent?: React.ComponentProps<
-    typeof PluginIframeHost
-  >["onSecurityEvent"];
-  /**
    * Optional one-way host event streamed into every iframe the slot
    * mounts (e.g. the video-overlay host props). Forwarded verbatim to
    * each `PluginIframeHost`.
@@ -66,7 +58,6 @@ export function PluginSlot({
   emptyState,
   className,
   iframeClassName,
-  onSecurityEvent,
   hostEvent,
 }: PluginSlotProps) {
   const t = useTranslations("plugins");
@@ -91,30 +82,35 @@ export function PluginSlot({
   const raw = contributions ?? fromContext;
   // Capability gate: a contribution can only mount when its
   // grantedCapabilities include the slot's matching ui.slot.<id>
-  // capability. Contributions that fail the check are dropped
-  // silently with a console warning, and the operator gets a
-  // one-shot toast per (plugin, slot) so the denial does not
-  // disappear into the dev console. Plugins missing the cap
-  // never had it granted at install time, so the install record
-  // is the source of truth.
+  // capability. Plugins missing the cap never had it granted at install
+  // time, so the install record is the source of truth.
   const requiredCap = slotToCapability(name);
-  const list = raw.filter((c) => {
-    if (c.grantedCapabilities.has(requiredCap)) return true;
-    if (typeof console !== "undefined") {
-      console.warn(
-        `Plugin ${c.pluginId} cannot mount in slot ${name}: missing ${requiredCap}`,
-      );
+  const { list, droppedIds } = useMemo(() => {
+    const kept: PluginSlotContribution[] = [];
+    const dropped: string[] = [];
+    for (const c of raw) {
+      if (c.grantedCapabilities.has(requiredCap)) kept.push(c);
+      else dropped.push(c.pluginId);
     }
-    const key = `${c.pluginId}::${name}`;
-    if (!droppedNotified.has(key)) {
+    return { list: kept, droppedIds: dropped.join("\n") };
+  }, [raw, requiredCap]);
+  // A dropped contribution is reported once per (plugin, slot) for the
+  // session: a console warning and an operator toast, so the denial does
+  // not disappear into the dev console. Reported after render (never
+  // during it), keyed on the dropped set so a slot that re-renders at
+  // frame rate does not repeat it.
+  useEffect(() => {
+    if (!droppedIds) return;
+    for (const pluginId of droppedIds.split("\n")) {
+      const key = `${pluginId}::${name}`;
+      if (droppedNotified.has(key)) continue;
       droppedNotified.add(key);
-      toast(
-        t("slotDroppedToast", { name: c.pluginId, slot: name }),
-        "warning",
+      console.warn(
+        `Plugin ${pluginId} cannot mount in slot ${name}: missing ${requiredCap}`,
       );
+      toast(t("slotDroppedToast", { name: pluginId, slot: name }), "warning");
     }
-    return false;
-  });
+  }, [droppedIds, name, requiredCap, t, toast]);
   if (!mounted || list.length === 0) return <>{emptyState}</>;
   return (
     <div data-plugin-slot={name} className={className}>
@@ -126,7 +122,6 @@ export function PluginSlot({
             slotName={name}
             deviceId={deviceId}
             iframeClassName={iframeClassName}
-            onSecurityEvent={onSecurityEvent}
             hostEvent={hostEvent}
           />
         ) : (
@@ -136,7 +131,6 @@ export function PluginSlot({
             slotName={name}
             deviceId={deviceId}
             iframeClassName={iframeClassName}
-            onSecurityEvent={onSecurityEvent}
             hostEvent={hostEvent}
           />
         ),
@@ -150,9 +144,6 @@ interface PluginSlotMountProps {
   slotName: PluginSlotName;
   deviceId: string | null;
   iframeClassName?: string;
-  onSecurityEvent?: React.ComponentProps<
-    typeof PluginIframeHost
-  >["onSecurityEvent"];
   hostEvent?: React.ComponentProps<typeof PluginIframeHost>["hostEvent"];
 }
 
@@ -178,7 +169,6 @@ function PluginSlotMountValidated({
   slotName,
   deviceId,
   iframeClassName,
-  onSecurityEvent,
   hostEvent,
 }: PluginSlotMountValidatedProps) {
   const installId = c.pluginInstallId ?? c.pluginId;
@@ -197,10 +187,8 @@ function PluginSlotMountValidated({
       bundleUrl={c.bundleUrl}
       grantedCapabilities={c.grantedCapabilities}
       handlers={c.handlers}
-      themeVars={c.themeVars}
       title={c.title ?? `${c.pluginId} ${c.panelId}`}
       className={c.iframeClassName ?? iframeClassName}
-      onSecurityEvent={onSecurityEvent}
       agentId={deviceId}
       tokenValidator={validator}
       token={token}
@@ -219,7 +207,6 @@ function PluginSlotMountPlain({
   slotName,
   deviceId,
   iframeClassName,
-  onSecurityEvent,
   hostEvent,
 }: PluginSlotMountProps) {
   return (
@@ -229,10 +216,8 @@ function PluginSlotMountPlain({
       bundleUrl={c.bundleUrl}
       grantedCapabilities={c.grantedCapabilities}
       handlers={c.handlers}
-      themeVars={c.themeVars}
       title={c.title ?? `${c.pluginId} ${c.panelId}`}
       className={c.iframeClassName ?? iframeClassName}
-      onSecurityEvent={onSecurityEvent}
       agentId={deviceId}
       hostEvent={hostEvent}
     />

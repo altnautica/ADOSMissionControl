@@ -43,18 +43,6 @@ export const BOX_ID_TO_MODE: ReadonlyMap<number, UnifiedFlightMode> = new Map<nu
   [49, 'UNKNOWN'],       // LAUNCH_CONTROL
 ])
 
-/** Box IDs that are features, not flight modes. Listed for reference. */
-export const FEATURE_BOX_IDS = new Set<number>([
-  0,   // ARM (special, not a flight mode)
-  5,   // MAG
-  19,  // OSD_DISABLE
-  26,  // BEEPER
-  27,  // AIRMODE
-  28,  // 3D
-  33,  // FAILSAFE
-  36,  // PREARM
-])
-
 // ── Mode priority (higher index = higher priority) ──────────
 
 const MODE_PRIORITY: UnifiedFlightMode[] = [
@@ -223,19 +211,4 @@ export function parseModeRanges(payload: Uint8Array): ModeRange[] {
  */
 export function findModeRange(ranges: ModeRange[], boxId: number): ModeRange | undefined {
   return ranges.find(r => r.boxId === boxId)
-}
-
-/**
- * Get the box name for a unified flight mode (reverse lookup).
- * Used for UI display.
- */
-export function getBoxNameForMode(mode: UnifiedFlightMode): string | undefined {
-  switch (mode) {
-    case 'STABILIZE': return 'ANGLE'
-    case 'ALT_HOLD': return 'HORIZON'
-    case 'MANUAL': return 'HEADFREE'
-    case 'ACRO': return 'ACRO_TRAINER'
-    case 'RTL': return 'GPS_RESCUE'
-    default: return undefined
-  }
 }

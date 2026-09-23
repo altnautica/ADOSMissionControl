@@ -22,31 +22,37 @@
  * @license GPL-3.0-only
  */
 
-import type { TrustSignal } from "@/components/plugins/TrustBadge";
-
 import type { PluginSignatureState } from "./archive-signature";
 import { isEnrolledFirstPartySigner } from "./signing-keys";
 
+/** One trust badge a plugin surface may show. */
+export type TrustSignal =
+  | "signed"
+  | "verified-publisher"
+  | "first-party"
+  | "open-source"
+  | "vendor-binary"
+  | "unsigned";
+
 /**
- * Open-source SPDX license id fragments. A license string containing any of
- * these (case-insensitive) is treated as publicly auditable. Kept as
- * substrings so `GPL-3.0-or-later`, `GPL-3.0-only`, `Apache-2.0`, etc. all
- * resolve without an exhaustive SPDX table.
+ * SPDX license ids that are open and publicly auditable, upper-cased. Whole
+ * identifiers only: a licence string is matched token by token, never by
+ * substring, so `UNLICENSED`, `LicenseRef-*` and prose such as "Limited Use"
+ * never read as open.
  */
-const OPEN_LICENSE_HINTS: readonly string[] = [
-  "gpl",
-  "lgpl",
-  "agpl",
-  "mit",
-  "apache",
-  "bsd",
-  "mpl",
-  "cc0",
-  "cc-by",
-  "isc",
-  "unlicense",
-  "zlib",
-];
+const OPEN_LICENSE_IDS: ReadonlySet<string> = new Set(
+  [
+    "0BSD", "AFL-3.0", "AGPL-3.0", "AGPL-3.0-only", "AGPL-3.0-or-later",
+    "Apache-2.0", "Artistic-2.0", "BlueOak-1.0.0", "BSD-2-Clause",
+    "BSD-3-Clause", "BSD-3-Clause-Clear", "BSL-1.0", "CC-BY-4.0",
+    "CC-BY-SA-4.0", "CC0-1.0", "ECL-2.0", "EPL-2.0", "EUPL-1.2", "GPL-2.0",
+    "GPL-2.0-only", "GPL-2.0-or-later", "GPL-3.0", "GPL-3.0-only",
+    "GPL-3.0-or-later", "ISC", "LGPL-2.1", "LGPL-2.1-only", "LGPL-2.1-or-later",
+    "LGPL-3.0", "LGPL-3.0-only", "LGPL-3.0-or-later", "MIT", "MIT-0",
+    "MPL-2.0", "MS-PL", "NCSA", "OSL-3.0", "PostgreSQL", "Python-2.0",
+    "Unlicense", "UPL-1.0", "Zlib",
+  ].map((id) => id.toUpperCase()),
+);
 
 /**
  * The facts the trust derivation reads. A structural subset of
@@ -108,12 +114,52 @@ export function displayTrustSignals(input: TrustSignalInput): TrustSignal[] {
 }
 
 /**
- * True for a license string that names an open, publicly auditable SPDX id.
- * Substring matching keeps `GPL-3.0-or-later`, `Apache-2.0` and friends
- * resolving without an exhaustive SPDX table.
+ * True when an SPDX license expression is open: every license a user must
+ * accept is in {@link OPEN_LICENSE_IDS}. `A OR B` is open when either side is
+ * (the user may pick it), `A AND B` only when both are; a `WITH` exception
+ * does not change the verdict. Anything that does not parse as an SPDX
+ * expression is not open.
  */
 function isOpenLicense(license?: string): boolean {
   if (!license) return false;
-  const l = license.toLowerCase();
-  return OPEN_LICENSE_HINTS.some((hint) => l.includes(hint));
+  const tokens = license.match(/\(|\)|[^\s()]+/g) ?? [];
+  let pos = 0;
+  const peek = () => tokens[pos]?.toUpperCase();
+  // Each parse step returns the verdict, or null when the text is malformed.
+  const primary = (): boolean | null => {
+    const tok = tokens[pos++];
+    if (tok === undefined) return null;
+    if (tok === "(") {
+      const inner = orExpr();
+      if (tokens[pos++] !== ")") return null;
+      return inner;
+    }
+    if (tok === ")" || ["AND", "OR", "WITH"].includes(tok.toUpperCase())) return null;
+    const verdict = OPEN_LICENSE_IDS.has(tok.replace(/\+$/, "").toUpperCase());
+    if (peek() === "WITH") {
+      pos += 1;
+      const exception = tokens[pos++];
+      if (exception === undefined || exception === "(" || exception === ")") return null;
+    }
+    return verdict;
+  };
+  const andExpr = (): boolean | null => {
+    let verdict = primary();
+    while (verdict !== null && peek() === "AND") {
+      pos += 1;
+      const next = primary();
+      verdict = next === null ? null : verdict && next;
+    }
+    return verdict;
+  };
+  const orExpr = (): boolean | null => {
+    let verdict = andExpr();
+    while (verdict !== null && peek() === "OR") {
+      pos += 1;
+      const next = andExpr();
+      verdict = next === null ? null : verdict || next;
+    }
+    return verdict;
+  };
+  return orExpr() === true && pos === tokens.length;
 }

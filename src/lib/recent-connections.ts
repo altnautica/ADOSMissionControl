@@ -8,8 +8,12 @@ import { get, set, del } from "idb-keyval";
 import type { FirmwareType } from "@/lib/protocol/types";
 
 export interface RecentConnection {
-  type: "serial" | "websocket" | "udp-proxy" | "tcp";
+  type: "serial" | "websocket" | "udp-proxy" | "tcp" | "ble";
   baudRate?: number;
+  /** USB identity of the serial port, so a reconnect reopens the same device
+   * rather than whichever permitted port is listed first. */
+  portVendorId?: number;
+  portProductId?: number;
   url?: string;
   // UDP/TCP direct-link fields
   proto?: "udp" | "tcp";
@@ -17,6 +21,8 @@ export interface RecentConnection {
   port?: number;
   mode?: "listen" | "target";
   bridgeUrl?: string;
+  /** Bluetooth only: the advertised device name, for the label. */
+  bleDeviceName?: string;
   // FC protocol family detected at connect time, so a reconnect re-selects
   // the MSP adapter for a Betaflight/iNav FC instead of assuming MAVLink.
   firmwareType?: FirmwareType;
@@ -25,27 +31,6 @@ export interface RecentConnection {
 }
 
 const RECENT_KEY = "command:recent-connections";
-
-/** One-time localStorage → IndexedDB migration */
-async function migrateRecentConnections(): Promise<void> {
-  if (typeof window === "undefined") return;
-  const migrated = await get("command:recent-migrated");
-  if (migrated) return;
-  try {
-    const raw = localStorage.getItem(RECENT_KEY);
-    if (raw) {
-      await set(RECENT_KEY, JSON.parse(raw));
-      localStorage.removeItem(RECENT_KEY);
-    }
-    await set("command:recent-migrated", true);
-  } catch {
-    // silent
-  }
-}
-
-if (typeof window !== "undefined") {
-  migrateRecentConnections();
-}
 
 export async function saveRecentConnection(conn: RecentConnection) {
   try {

@@ -37,8 +37,9 @@
 
 import JSZip from "jszip";
 
-import { PLUGIN_FRAME_CSP_META } from "@/lib/plugins/iframe-csp";
+import { PLUGIN_FRAME_HEAD } from "@/lib/plugins/iframe-csp";
 import type { InstallManifestSummary } from "../install-dialog/types";
+import { computeSha256 } from "./manifest-parse";
 import type { PluginParameter } from "@/lib/plugins/parameters/schema";
 import type { PairedNodeProfile } from "@/lib/plugins/types";
 import {
@@ -66,8 +67,10 @@ export type InstallSourceKind = "local_file" | "git_url" | "registry" | "builtin
  * hands in the result of `useAction(...)` / `useMutation(...)` directly;
  * the server validators own the authoritative shapes. */
 export interface GcsInstallCallables {
-  /** Returns a one-shot Convex `_storage` upload URL. */
-  generateUploadUrl: () => Promise<string>;
+  /** Stores the iframe document server-side for the signed-in user and
+   * returns its storage id; the install row may only reference a bundle
+   * stored this way. */
+  storeBundle: (args: { html: string }) => Promise<string>;
   /** Records the install row; returns the new install id. */
   recordInstall: (args: RecordInstallArgs) => Promise<string>;
   /** Grants one operator-approved declared permission. */
@@ -115,6 +118,9 @@ export interface FinalizeGcsInstallInputs {
   archive?: Blob;
   /** Canonical archive URL when the GCS must fetch them (registry). */
   archiveUrl?: string;
+  /** SHA-256 the registry publishes for `archiveUrl`; fetched bytes that
+   * hash to anything else are refused. */
+  expectedSha256?: string;
   manifest: InstallManifestSummary & { manifestHash?: string };
   /** Manifest hash from the dialog's parse (authoritative identity). */
   manifestHash: string;
@@ -158,12 +164,13 @@ export type FinalizeStage =
  * happens to contain that byte sequence (in a string literal) from
  * closing the inline module early.
  *
- * The document declares the shared plugin-frame policy from
- * `plugins/iframe-csp` as its first head element. The frame is a `blob:`
- * document, which inherits the app's policy — and the app has to allow bare
- * `http:`/`ws:` in `connect-src` to reach LAN agents, so inheritance alone
- * leaves a sandboxed plugin with full outbound network reach. The in-document
- * policy is what actually pins it to `connect-src 'none'`.
+ * The document starts its head with the shared plugin-frame policy and guard
+ * script from `plugins/iframe-csp`. The frame is a `blob:` document, which
+ * inherits the app's policy — and the app has to allow bare `http:`/`ws:` in
+ * `connect-src` to reach LAN agents, so inheritance alone leaves a sandboxed
+ * plugin with full outbound network reach. The in-document policy pins it to
+ * `connect-src 'none'`, and the guard removes WebRTC, which CSP does not
+ * govern.
  */
 export function buildIframeHtml(bundleJs: string): string {
   const safe = bundleJs.replace(/<\/(script)/gi, "<\\/$1");
@@ -171,7 +178,7 @@ export function buildIframeHtml(bundleJs: string): string {
     "<!doctype html>",
     '<html lang="en">',
     "<head>",
-    PLUGIN_FRAME_CSP_META,
+    PLUGIN_FRAME_HEAD,
     '<meta charset="utf-8">',
     '<meta name="color-scheme" content="dark light">',
     "<style>html,body{margin:0;padding:0;height:100%;background:transparent;overflow:hidden}</style>",
@@ -239,6 +246,13 @@ export async function finalizeGcsInstall(
         );
       }
       archive = await res.blob();
+      const expected = inputs.expectedSha256?.trim().toLowerCase();
+      if (expected && (await computeSha256(archive)) !== expected) {
+        throw new FinalizeGcsInstallError(
+          "fetch-archive",
+          "archive does not match the hash its registry entry publishes",
+        );
+      }
     } else {
       throw new FinalizeGcsInstallError(
         "fetch-archive",
@@ -287,19 +301,9 @@ export async function finalizeGcsInstall(
       );
     }
 
-    // 4. Wrap + upload the iframe document to Convex storage.
+    // 4. Wrap the bundle in its iframe document and have the server store it.
     try {
-      const uploadUrl = await callables.generateUploadUrl();
-      const html = buildIframeHtml(bundleJs);
-      const resp = await doFetch(uploadUrl, {
-        method: "POST",
-        headers: { "Content-Type": "text/html" },
-        body: new Blob([html], { type: "text/html" }),
-      });
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const body = (await resp.json()) as { storageId?: string };
-      if (!body.storageId) throw new Error("upload returned no storageId");
-      bundleStorageId = body.storageId;
+      bundleStorageId = await callables.storeBundle({ html: buildIframeHtml(bundleJs) });
     } catch (err) {
       throw new FinalizeGcsInstallError(
         "upload-bundle",

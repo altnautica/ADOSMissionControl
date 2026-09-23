@@ -9,9 +9,11 @@
 
 import { useEffect, useRef } from "react";
 import {
+  Cartesian2,
   Cartesian3,
   Color,
   ConstantPositionProperty,
+  ConstantProperty,
   HeightReference,
   type Viewer as CesiumViewer,
   type Entity,
@@ -62,7 +64,7 @@ export function GcsEntity({ viewer }: GcsEntityProps) {
         text: "GCS",
         font: "10px JetBrains Mono, monospace",
         fillColor: Color.fromCssColorString("#22c55e"),
-        pixelOffset: { x: 0, y: -20 } as any,
+        pixelOffset: new Cartesian2(0, -20),
         heightReference: HeightReference.CLAMP_TO_GROUND,
         disableDepthTestDistance: Number.POSITIVE_INFINITY,
       },
@@ -112,10 +114,12 @@ export function GcsEntity({ viewer }: GcsEntityProps) {
     if (ellipseRef.current) {
       ellipseRef.current.position = new ConstantPositionProperty(cartesian);
       if (ellipseRef.current.ellipse) {
-        (ellipseRef.current.ellipse as any).semiMajorAxis = Math.max(position.accuracy, 5);
-        (ellipseRef.current.ellipse as any).semiMinorAxis = Math.max(position.accuracy, 5);
+        const radius = Math.max(position.accuracy, 5);
+        ellipseRef.current.ellipse.semiMajorAxis = new ConstantProperty(radius);
+        ellipseRef.current.ellipse.semiMinorAxis = new ConstantProperty(radius);
       }
     }
+    viewer.scene.requestRender();
   }, [viewer, position]);
 
   return null;

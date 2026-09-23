@@ -1,8 +1,9 @@
 /**
  * @module pdf/export-flight-brief
  * @description One-click flight-brief PDF export for the current mission plan.
- * Computes honest, real plan statistics (distance + duration via
- * `computeFlightPlan`, altitude range from the waypoints themselves), renders
+ * Computes plan statistics (distance + duration via `computeFlightPlan`, which
+ * does not unroll DO_JUMP repeats, so the brief says so; the altitude range
+ * only within one altitude frame), renders
  * the `FlightBriefDocument` to a Blob, and triggers a browser download. No
  * network I/O — the brief is built entirely from in-memory plan data, so there
  * is nothing to skip in demo mode. The heavy `@react-pdf/renderer` and document
@@ -12,7 +13,7 @@
  */
 
 import { computeFlightPlan } from "@/lib/simulation-utils";
-import type { Waypoint } from "@/lib/types";
+import type { AltitudeFrame, Waypoint } from "@/lib/types";
 import type { BriefWaypointRow, BriefStats } from "./flight-brief-document";
 
 /** Default cruise speed (m/s) — mirrors the planner store default. */
@@ -27,6 +28,8 @@ export interface FlightBriefInput {
   droneName?: string;
   /** Cruise speed fallback for segments without a per-waypoint speed. */
   defaultSpeed?: number;
+  /** The planner's default altitude frame, for waypoints without their own. */
+  defaultFrame: AltitudeFrame;
 }
 
 /** Real plan statistics shown in the brief (no fabricated fields). */
@@ -36,21 +39,28 @@ export interface FlightBriefStats extends BriefStats {
 
 /**
  * Derive the brief statistics from the plan. Distance and duration reuse the
- * simulation flight-plan computation; altitude range comes straight from the
- * waypoint altitudes. An empty plan yields honest zeros.
+ * simulation flight-plan computation, which flies each item once, so a mission
+ * with a DO_JUMP is flagged rather than under-reported silently. The altitude
+ * range is given only when every waypoint shares one frame. An empty plan
+ * yields honest zeros.
  */
 export function computeBriefStats(
   waypoints: Waypoint[],
+  defaultFrame: AltitudeFrame,
   defaultSpeed: number = DEFAULT_CRUISE_SPEED_MPS,
 ): FlightBriefStats {
   const plan = computeFlightPlan(waypoints, defaultSpeed);
   const alts = waypoints.map((w) => w.alt);
+  const frames = new Set(waypoints.map((w) => w.frame ?? defaultFrame));
   return {
     waypointCount: waypoints.length,
     distanceM: plan.totalDistance,
     durationS: plan.totalDuration,
     altMin: alts.length > 0 ? Math.min(...alts) : 0,
     altMax: alts.length > 0 ? Math.max(...alts) : 0,
+    altFrame:
+      frames.size === 0 ? null : frames.size === 1 ? [...frames][0] : "mixed",
+    excludesJumpRepeats: waypoints.some((w) => w.command === "DO_JUMP"),
   };
 }
 
@@ -70,12 +80,16 @@ export function slugifyMissionName(name: string): string {
 }
 
 /** Build the display-ready waypoint rows for the document table. */
-export function buildBriefRows(waypoints: Waypoint[]): BriefWaypointRow[] {
+export function buildBriefRows(
+  waypoints: Waypoint[],
+  defaultFrame: AltitudeFrame,
+): BriefWaypointRow[] {
   return waypoints.map((wp, i) => ({
     seq: i + 1,
     lat: wp.lat,
     lon: wp.lon,
     alt: wp.alt,
+    frame: wp.frame ?? defaultFrame,
     command: wp.command ?? "WAYPOINT",
   }));
 }
@@ -99,10 +113,16 @@ function triggerDownload(blob: Blob, filename: string): void {
  * callers typically gate this on `waypoints.length > 0`.
  */
 export async function exportFlightBrief(input: FlightBriefInput): Promise<void> {
-  const { waypoints, name, droneName, defaultSpeed = DEFAULT_CRUISE_SPEED_MPS } = input;
+  const {
+    waypoints,
+    name,
+    droneName,
+    defaultSpeed = DEFAULT_CRUISE_SPEED_MPS,
+    defaultFrame,
+  } = input;
 
-  const stats = computeBriefStats(waypoints, defaultSpeed);
-  const rows = buildBriefRows(waypoints);
+  const stats = computeBriefStats(waypoints, defaultFrame, defaultSpeed);
+  const rows = buildBriefRows(waypoints, defaultFrame);
 
   const [{ pdf }, { FlightBriefDocument }] = await Promise.all([
     import("@react-pdf/renderer"),

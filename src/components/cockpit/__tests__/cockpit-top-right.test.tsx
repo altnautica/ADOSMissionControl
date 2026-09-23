@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CockpitTopRight } from "@/components/cockpit/CockpitTopRight";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { useVideoStreamsStore } from "@/stores/video-streams-store";
+import { useVideoStore } from "@/stores/video-store";
 import type { CameraCapability } from "@/lib/agent/feature-types";
 
 function setCameras(cameras: CameraCapability[]) {
@@ -82,5 +83,31 @@ describe("CockpitTopRight CAM pill", () => {
       <CockpitTopRight density="standard" onDensity={vi.fn()} droneId="node:d1" />,
     );
     expect(pill()).toBeNull();
+  });
+});
+
+describe("CockpitTopRight video stats", () => {
+  afterEach(() => {
+    cleanup();
+    useVideoStore.getState().clearForSelection();
+  });
+
+  function statsText(): string {
+    return document.querySelector(".vstats")!.textContent ?? "";
+  }
+
+  it("shows no-data glyphs while fps and latency are unmeasured", () => {
+    useVideoStore.setState({ isStreaming: true, fps: null, latencyMs: null });
+    renderTopRight();
+    expect(statsText()).toContain("—fps");
+    expect(statsText()).toContain("—ms net");
+    expect(statsText()).not.toContain("0fps");
+  });
+
+  it("shows measured figures once the stats window reports them", () => {
+    useVideoStore.setState({ isStreaming: true, fps: 29.6, latencyMs: 41 });
+    renderTopRight();
+    expect(statsText()).toContain("30fps");
+    expect(statsText()).toContain("41ms net");
   });
 });

@@ -1,6 +1,54 @@
 import type { TelemetryDeckMetricId } from "@/stores/settings-store";
+import { isElectron } from "@/lib/utils";
 import type { DeckSeverity, DeckSeverityContext } from "./deck-types";
 import { DECK_THRESHOLDS, BATTERY_CELL_WARNING_V, BATTERY_CELL_CRITICAL_V } from "./deck-constants";
+
+/** A severity must hold this long before it is announced, so a reading
+ *  flickering across a band edge does not toast on every sample. */
+export const SEVERITY_TOAST_DWELL_MS = 2000;
+
+/** Per-metric severity tracking for the transition toast. */
+export interface SeverityTrack {
+  /** The severity currently observed. */
+  severity: DeckSeverity;
+  /** When `severity` was first observed. */
+  since: number;
+  /** The last severity that settled (announced, or silently for "normal"). */
+  settled: DeckSeverity;
+}
+
+/**
+ * Advance one metric's severity track. Returns the next track and the
+ * severity to announce, if any: a warning or critical that has held for
+ * {@link SEVERITY_TOAST_DWELL_MS} and differs from the last settled one. The
+ * first observation only seeds the track.
+ */
+export function trackSeverity(
+  prev: SeverityTrack | undefined,
+  current: DeckSeverity,
+  now: number,
+): { track: SeverityTrack; announce: DeckSeverity | null } {
+  if (!prev) return { track: { severity: current, since: now, settled: current }, announce: null };
+  const track =
+    prev.severity === current ? prev : { severity: current, since: now, settled: prev.settled };
+  if (track.severity === track.settled || now - track.since < SEVERITY_TOAST_DWELL_MS) {
+    return { track, announce: null };
+  }
+  return {
+    track: { ...track, settled: track.severity },
+    announce: track.severity === "normal" ? null : track.severity,
+  };
+}
+
+/**
+ * What to tell the operator when `window.open` returned no window. The desktop
+ * app has no popup setting to change, so it gets a different message.
+ */
+export function popupRefusedMessage(surface: string): string {
+  return isElectron()
+    ? `The desktop app could not open a separate window for the ${surface}.`
+    : `Popup blocked. Allow popups for this site to detach the ${surface}.`;
+}
 
 /**
  * Evaluate severity for a metric value against its threshold config.

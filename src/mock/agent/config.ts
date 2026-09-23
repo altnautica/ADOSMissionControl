@@ -21,11 +21,17 @@ export type MockConfigProfile = "drone" | "ground-station" | "workstation";
 
 type ConfigObject = Record<string, unknown>;
 
+/** The agent stores the profile with an underscore (`ground_station`); the
+ * GCS's NodeProfile is hyphenated. The mock document carries the agent form. */
+function agentProfileValue(profile: MockConfigProfile): string {
+  return profile === "ground-station" ? "ground_station" : profile;
+}
+
 /** Build the demo config tree for a profile. Generic values only (no real
  * infrastructure hostnames) since this ships in the public repo. */
 function buildConfig(profile: MockConfigProfile): ConfigObject {
   return {
-    agent: { profile, board_override: "" },
+    agent: { profile: agentProfileValue(profile), board_override: "" },
     logging: { level: "info" },
     network: {
       hotspot: {
@@ -140,7 +146,8 @@ let mockConfig: ConfigObject = buildConfig("drone");
  * to every other block survive a node switch. */
 export function setMockConfigProfile(profile: MockConfigProfile): void {
   const agent = mockConfig.agent as ConfigObject | undefined;
-  if (agent && agent.profile !== profile) agent.profile = profile;
+  const stored = agentProfileValue(profile);
+  if (agent && agent.profile !== stored) agent.profile = stored;
 }
 
 /** A deep clone of the current demo config. A fresh reference each call so the

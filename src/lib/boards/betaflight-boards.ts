@@ -8,7 +8,7 @@
  */
 
 import type { BetaflightTarget } from "@/lib/protocol/firmware/types";
-import type { SelectOptionGroup } from "@/components/ui/select-types";
+import type { SelectOptionGroup } from "@/lib/types";
 
 export interface BetaflightBoardCatalog {
   targets: BetaflightTarget[]

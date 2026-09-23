@@ -9,7 +9,7 @@ import {
 } from "../reconstruction-quality";
 
 describe("reconstruction-quality presets", () => {
-  it("has the four founder-locked levels in coarse→fine order", () => {
+  it("has the four levels in coarse→fine order", () => {
     expect(RECONSTRUCTION_QUALITIES.map((q) => q.id)).toEqual([
       "draft",
       "standard",

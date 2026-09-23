@@ -8,7 +8,9 @@
  * 3. Reverse order if direction is counter-clockwise
  * 4. Repeat for the requested number of turns
  * 5. Point the camera at the circle center with an ROI that rides the first
- *    orbit point (an action follows the navigation point it fires at)
+ *    orbit point (an action follows the navigation point it fires at). The
+ *    ROI sits at the target's height, not the flight altitude, so the mount
+ *    tilts down at the object instead of levelling at the horizon.
  *
  * @license GPL-3.0-only
  */
@@ -17,7 +19,7 @@ import type { OrbitConfig, PatternResult, PatternWaypoint } from "./types";
 import { haversineDistance, offsetPoint } from "@/lib/drawing/geo-utils";
 
 export function generateOrbit(config: OrbitConfig): PatternResult {
-  const { center, radius, direction, turns, startAngle, altitude, speed } = config;
+  const { center, radius, direction, turns, startAngle, altitude, speed, targetHeight = 0 } = config;
 
   if (radius <= 0 || turns <= 0) {
     return { waypoints: [], stats: { totalDistance: 0, estimatedTime: 0, photoCount: 0, coveredArea: 0, transectCount: 0 } };
@@ -57,7 +59,7 @@ export function generateOrbit(config: OrbitConfig): PatternResult {
         command: "WAYPOINT",
       });
       if (waypoints.length === 1) {
-        waypoints.push({ lat: center[0], lon: center[1], alt: altitude, speed, command: "ROI" });
+        waypoints.push({ lat: center[0], lon: center[1], alt: targetHeight, speed, command: "ROI" });
       }
     }
   }

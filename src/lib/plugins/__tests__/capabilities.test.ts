@@ -6,10 +6,9 @@
  *     and every catalog entry is also declared on the canonical id
  *     list (no orphan entries).
  *  2. Helper lookups behave correctly for known and unknown ids.
- *  3. `getMergedCapabilityMeta` returns the local entry for GCS-side
- *     ids and `undefined` for ids that are not in the local catalog
- *     (agent-side ids fall into this bucket on purpose; the dialog
- *     reads server-inlined metadata for those).
+ *  3. `getMergedCapabilityMeta` resolves each id through the catalog of
+ *     the half that declared it, falls back to the other catalog, and
+ *     returns an "unknown" placeholder for ids in neither.
  */
 
 import { describe, expect, it } from "vitest";
@@ -22,6 +21,7 @@ import {
   isKnownCapability,
   isKnownGcsCapability,
 } from "../capabilities";
+import { AGENT_CAPABILITY_CATALOG } from "../agent-capabilities";
 
 describe("GCS capability catalog completeness", () => {
   it("every GCS_CAPABILITIES entry has a CAPABILITY_CATALOG entry", () => {
@@ -94,7 +94,7 @@ describe("Helper lookups", () => {
 
 describe("getMergedCapabilityMeta", () => {
   it("resolves GCS-side ids through the local catalog", () => {
-    const meta = getMergedCapabilityMeta("mission.write");
+    const meta = getMergedCapabilityMeta("mission.write", "gcs");
     expect(meta).toBeDefined();
     expect(meta.risk).toBe("high");
     expect(meta.category).toBe("flight_control");
@@ -104,15 +104,34 @@ describe("getMergedCapabilityMeta", () => {
     // Agent-side ids are now in scope thanks to the
     // `agent-capabilities.ts` mirror. They must carry a label,
     // description, and category just like GCS-side ids.
-    const meta = getMergedCapabilityMeta("mavlink.read");
+    const meta = getMergedCapabilityMeta("mavlink.read", "agent");
     expect(meta).toBeDefined();
     expect(meta.label.length).toBeGreaterThan(0);
     expect(meta.description.length).toBeGreaterThan(0);
     expect(meta.category).toBe("flight_control");
   });
 
+  it("prefers the declaring half's catalog for ids both catalogs define", () => {
+    // mission.read and event.publish mean different things on each half.
+    for (const id of ["mission.read", "event.publish"]) {
+      expect(getMergedCapabilityMeta(id, "gcs")).toEqual(CAPABILITY_CATALOG[id]);
+      expect(getMergedCapabilityMeta(id, "agent")).toEqual(
+        AGENT_CAPABILITY_CATALOG[id],
+      );
+      expect(CAPABILITY_CATALOG[id].description).not.toBe(
+        AGENT_CAPABILITY_CATALOG[id].description,
+      );
+    }
+  });
+
+  it("falls back to the other catalog when the declaring half lacks the id", () => {
+    expect(getMergedCapabilityMeta("mavlink.read", "gcs")).toEqual(
+      AGENT_CAPABILITY_CATALOG["mavlink.read"],
+    );
+  });
+
   it("returns an unknown placeholder for ids in neither catalog", () => {
-    const meta = getMergedCapabilityMeta("not.a.real.capability");
+    const meta = getMergedCapabilityMeta("not.a.real.capability", "gcs");
     expect(meta).toBeDefined();
     // The placeholder carries the raw id as its label so the UI can
     // render the row without crashing while still signalling the

@@ -26,7 +26,7 @@ import { useParamMetadataMap } from "@/hooks/use-param-metadata";
 import { usePanelScroll } from "@/hooks/use-panel-scroll";
 import { cn } from "@/lib/utils";
 import { PanelHeader } from "./PanelHeader";
-import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
+import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { EnumSelect } from "../parameters/EnumSelect";
 import { ParamFieldLabel } from "../parameters/ParamFieldLabel";
 import { BitmaskEditor } from "@/components/ui/bitmask-editor";
@@ -119,9 +119,19 @@ export function ParamFieldsPanel({
   function handleRevert() { revertAll(); toast("Reverted to FC values", "info"); }
 
   const renderField = (f: ParamField) => {
-    const value = params.get(f.param) ?? 0;
+    const value = params.get(f.param);
     const isDirty = dirtyParams.has(f.param);
     const meta = paramMeta.get(f.param);
+    if (value === undefined) {
+      // Not read yet, the read failed, or the vehicle has no such param:
+      // never present a stand-in 0 as the vehicle's value.
+      return (
+        <div key={f.param} className="grid grid-cols-[200px_1fr] items-center gap-3">
+          <ParamFieldLabel label={f.label} param={pn(f.param)} meta={meta} />
+          <span className="text-xs font-mono text-text-tertiary">{hasLoaded ? "not present" : "—"}</span>
+        </div>
+      );
+    }
     return (
       <div key={f.param} className="grid grid-cols-[200px_1fr] items-center gap-3">
         <ParamFieldLabel label={f.label} param={pn(f.param)} meta={meta} />
@@ -151,11 +161,13 @@ export function ParamFieldsPanel({
     );
   };
 
-  const gateOff = gate ? gate.off(params.get(gate.param) ?? 0) : false;
+  // Only a gate value actually read from the vehicle can say the feature is off.
+  const gateValue = gate ? params.get(gate.param) : undefined;
+  const gateOff = gate !== undefined && gateValue !== undefined && gate.off(gateValue);
   const bitmaskMeta = bitmaskEdit ? paramMeta.get(bitmaskEdit) : undefined;
 
   return (
-    <ArmedLockOverlay>
+    <ArmedWarningBanner>
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-6">
         <div className="max-w-2xl space-y-6">
           <PanelHeader
@@ -214,6 +226,6 @@ export function ParamFieldsPanel({
           onApply={(v) => { setLocalValue(bitmaskEdit, v); setBitmaskEdit(null); }}
         />
       )}
-    </ArmedLockOverlay>
+    </ArmedWarningBanner>
   );
 }

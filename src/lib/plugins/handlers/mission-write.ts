@@ -20,7 +20,8 @@
  */
 
 import type { BridgeHandler } from "@/lib/plugins/bridge";
-import { requestPluginConfirm } from "@/lib/plugins/confirm";
+import { confirmRefusal, requestPluginConfirm } from "@/lib/plugins/confirm";
+import { pluginNotify } from "@/lib/plugins/notifier";
 import { validateMission } from "@/lib/validation/mission-validator";
 import {
   buildValidationOptions,
@@ -80,33 +81,48 @@ export function buildMissionWriteHandler(
     const frames = new Set(waypoints.map((w) => w.frame ?? options.defaultFrame));
     const advisories =
       result.warnings.length > 0 ? `, ${result.warnings.length} advisory issue(s)` : "";
-    const ok = await requestPluginConfirm({
+    const name = targetDisplayName(target);
+    const answer = await requestPluginConfirm({
       pluginId,
-      targetName: targetDisplayName(target),
+      targetName: name,
+      targetId: target.deviceId,
       title: "Plugin mission write",
       body:
-        `${pluginId} wants to replace the mission with ${waypoints.length} waypoints ` +
+        `${pluginId} wants to replace the mission on ${name} with ${waypoints.length} waypoints ` +
         `(altitude frame: ${[...frames].join(", ")}${advisories})`,
       severity: "warning",
     });
-    if (!ok) return { ok: false, error: "operator denied" };
+    if (answer !== "approved") return { ok: false, error: confirmRefusal(answer) };
 
     // The operator may have answered long after the prompt: the pilot can arm
-    // and launch, or the link can drop, while the dialog is open.
+    // and launch, or the link can drop, while the dialog is open. Anything
+    // that stops an approved write is reported to the operator as well.
+    const report = (reason: string) =>
+      pluginNotify(
+        pluginId,
+        `approved mission write for ${name} was not uploaded (${reason})`,
+        "error",
+      );
     const after = readTargetVehicle(target);
     const nowBlocked = refusal(after);
-    if (nowBlocked) return { ok: false, error: nowBlocked };
+    if (nowBlocked) {
+      report(nowBlocked);
+      return { ok: false, error: nowBlocked };
+    }
     if (
       after.managedId !== before.managedId ||
       useDroneManager.getState().drones.get(target.nodeId)?.protocol !== protocol
     ) {
-      return { ok: false, error: "the drone's flight controller changed while awaiting approval" };
+      const changed = "the drone's flight controller changed while awaiting approval";
+      report(changed);
+      return { ok: false, error: changed };
     }
 
     // setWaypoints snapshots undo history internally; the upload is pinned to
     // this plugin's own drone.
     useMissionStore.getState().setWaypoints(waypoints);
     const uploaded = await useMissionStore.getState().uploadMission(protocol);
+    if (!uploaded) report("the upload failed");
     return { ok: uploaded };
   };
 }

@@ -1,6 +1,6 @@
 /**
  * Smoke test for McpToolsCatalog: it renders the committed tool catalog grouped
- * by namespace with the honest "snapshot, not a live view" note (Rule 44).
+ * by namespace with the honest "snapshot, not a live view" note (no fabricated reading).
  *
  * @license GPL-3.0-only
  */

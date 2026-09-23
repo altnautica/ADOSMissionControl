@@ -9,6 +9,7 @@
 import { useTranslations } from "next-intl";
 import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { NumericField } from "@/components/ui/numeric-field";
 import { usePatternStore } from "@/stores/pattern-store";
 import { useDrawingStore } from "@/stores/drawing-store";
 import { Building } from "lucide-react";
@@ -41,8 +42,8 @@ export function StructureScanConfig() {
         onChange={(e) => update({ layerSpacing: parseFloat(e.target.value) || 10 })} />
       <Input label={t("scanDistance")} type="number" unit="m" value={String(config.scanDistance ?? 15)}
         onChange={(e) => update({ scanDistance: parseFloat(e.target.value) || 15 })} />
-      <Input label={t("gimbalPitch")} type="number" unit="deg" value={String(config.gimbalPitch ?? -30)}
-        onChange={(e) => update({ gimbalPitch: parseFloat(e.target.value) || -30 })} />
+      <NumericField label={t("gimbalPitch")} unit="deg" min={-90} max={90} value={config.gimbalPitch ?? -30}
+        onCommit={(gimbalPitch) => update({ gimbalPitch })} />
       <Input label={t("pointsPerLayer")} type="number" value={String(config.pointsPerLayer ?? 16)}
         onChange={(e) => update({ pointsPerLayer: parseInt(e.target.value) || 16 })} />
       <Select label={t("direction")} options={SCAN_DIRECTION_OPTIONS} value={config.direction ?? "bottom-up"}

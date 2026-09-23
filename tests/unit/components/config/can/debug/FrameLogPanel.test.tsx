@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { fireEvent, screen } from "@testing-library/react";
+import { act, fireEvent, screen } from "@testing-library/react";
 import { renderWithIntl } from "../../../../../helpers/intl-wrapper";
 import { FrameLogPanel } from "@/components/config/can/debug/FrameLogPanel";
 import { useDroneCanBusStore, type DecodedFrame } from "@/stores/dronecan";
@@ -70,5 +70,30 @@ describe("FrameLogPanel", () => {
 
     fireEvent.click(screen.getByLabelText(/errors only/i));
     expect(document.querySelectorAll('[data-frame-row="true"]').length).toBe(1);
+  });
+
+  it("keeps the expanded frame open on the same frame when newer frames arrive", () => {
+    vi.useFakeTimers({ toFake: ["requestAnimationFrame", "cancelAnimationFrame"] });
+    try {
+      const store = useDroneCanBusStore.getState();
+      store.pushFrame(frame({ t: 1000, canId: 0x100, payload: new Uint8Array([0x11]) }));
+      renderWithIntl(<FrameLogPanel />);
+      const rows = () => Array.from(document.querySelectorAll('[data-frame-row="true"]'));
+      fireEvent.click(rows()[0].querySelector("button")!);
+
+      act(() => {
+        useDroneCanBusStore.getState().pushFrame(frame({ t: 1001, canId: 0x200, payload: new Uint8Array([0x22]) }));
+        vi.advanceTimersToNextFrame();
+      });
+
+      // Newest-first: the new frame is row 0 and must stay collapsed; the
+      // frame that was opened is now row 1 and stays open.
+      expect(rows()[0].textContent).toContain("0x200");
+      expect(rows()[0].querySelector(".whitespace-pre")).toBeNull();
+      expect(rows()[1].textContent).toContain("0x100");
+      expect(rows()[1].querySelector(".whitespace-pre")).not.toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

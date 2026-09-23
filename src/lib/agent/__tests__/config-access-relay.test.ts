@@ -25,7 +25,7 @@ import {
 import type { RelayReach } from "@/lib/nodes/relay-reach";
 import type { LocalNode } from "@/stores/local-nodes-store";
 
-const DRONE = "77735cd38937";
+const DRONE = "0a1b2c3d4e5f";
 
 const REACH: RelayReach = {
   baseUrl: "http://192.168.1.50:8080",
@@ -39,7 +39,7 @@ const EMPTY: PairingRecords = { localNodes: [], pairedDrones: [] };
  * relay, because it is one hop to the node instead of two with a radio. */
 const OWN_LAN_NODE: LocalNode = {
   deviceId: DRONE,
-  name: "skynode",
+  name: "testnode",
   hostname: "http://192.168.1.77:8080",
   apiKey: "own-key",
   profile: "drone",
@@ -79,20 +79,20 @@ beforeEach(() => {
 
 describe("resolveConfigAccess precedence", () => {
   it("prefers a direct client over everything, relay included", () => {
-    const access = resolveConfigAccess(client, DRONE, OWN_LAN, REACH);
+    const access = resolveConfigAccess(client, DRONE, REACH, OWN_LAN);
     expect(access.mode).toBe("direct");
   });
 
   it("never resolves a node with a direct client to the relay lane", () => {
     // The failure this guards: routing a directly-reachable drone's config
     // through its ground station's radio, adding a lossy hop for nothing.
-    const access = resolveConfigAccess(client, DRONE, EMPTY, REACH);
+    const access = resolveConfigAccess(client, DRONE, REACH, EMPTY);
     expect(access.mode).not.toBe("relay");
     expect(access.mode).toBe("direct");
   });
 
   it("prefers the node's OWN pairing record over the relay", () => {
-    const access = resolveConfigAccess(null, DRONE, OWN_LAN, REACH);
+    const access = resolveConfigAccess(null, DRONE, REACH, OWN_LAN);
     expect(access.mode).toBe("proxy");
     if (access.mode !== "proxy") throw new Error("unreachable");
     expect(access.target.host).toBe("http://192.168.1.77:8080");
@@ -100,22 +100,14 @@ describe("resolveConfigAccess precedence", () => {
   });
 
   it("falls to the relay only when there is no client and no own record", () => {
-    const access = resolveConfigAccess(null, DRONE, EMPTY, REACH);
+    const access = resolveConfigAccess(null, DRONE, REACH, EMPTY);
     expect(access.mode).toBe("relay");
     if (access.mode !== "relay") throw new Error("unreachable");
     expect(access.reach).toEqual(REACH);
   });
 
   it("still resolves none when there is no lane at all", () => {
-    expect(resolveConfigAccess(null, DRONE, EMPTY).mode).toBe("none");
-    expect(resolveConfigAccess(null, DRONE, EMPTY, null).mode).toBe("none");
-  });
-
-  it("keeps the pre-relay three-argument call shape working", () => {
-    // `AgentNavFlatten` is editing the eventual call site concurrently; the
-    // reach is a trailing optional so no existing caller changes in lockstep.
-    expect(resolveConfigAccess(null, DRONE, OWN_LAN).mode).toBe("proxy");
-    expect(resolveConfigAccess(client, DRONE, EMPTY).mode).toBe("direct");
+    expect(resolveConfigAccess(null, DRONE, null, EMPTY).mode).toBe("none");
   });
 });
 

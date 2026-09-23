@@ -4,7 +4,7 @@
  * Tests for the Atlas local-first state poll. Covers the active path (a
  * LAN-paired drone — the Live World tab only mounts this hook when the World
  * Model feature is on — polls its agent and feeds the atlas store, signed in or
- * not, local-first, Rule 39) and the inert guards (no LAN key, cloud-relay
+ * not, local-first) and the inert guards (no LAN key, cloud-relay
  * device, 404).
  */
 

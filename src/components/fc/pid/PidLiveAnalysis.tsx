@@ -1,13 +1,21 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { Activity, Waves, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTelemetryStore } from "@/stores/telemetry-store";
+import { useClockTick } from "@/lib/agent/freshness";
+import { TELEMETRY_STALE_MS, freshOnly } from "@/lib/telemetry/freshness";
+import type { AttitudeData, VibrationData } from "@/lib/types";
 
 interface PidLiveAnalysisProps {
   connected: boolean;
 }
+
+const RAD_TO_DEG = 180 / Math.PI;
+
+/** Body-rate standard deviation above which the strip flags oscillation. */
+export const OSCILLATION_THRESHOLD_DEG_S = 10;
 
 function computeRms(values: number[]): number {
   if (values.length === 0) return 0;
@@ -22,54 +30,76 @@ function computeStdDev(values: number[]): number {
   return Math.sqrt(variance);
 }
 
-function vibeLevel(x: number, y: number, z: number): { label: string; color: string } {
-  const max = Math.max(x, y, z);
-  if (max < 15) return { label: "Good", color: "text-status-success" };
-  if (max < 30) return { label: "Marginal", color: "text-status-warning" };
-  return { label: "Bad", color: "text-status-error" };
+export type VibeLevel = "good" | "marginal" | "bad" | "unknown";
+
+function vibeLevel(vibe: VibrationData | undefined): VibeLevel {
+  if (!vibe) return "unknown";
+  const max = Math.max(vibe.vibrationX, vibe.vibrationY, vibe.vibrationZ);
+  if (max < 15) return "good";
+  if (max < 30) return "marginal";
+  return "bad";
+}
+
+const VIBE_DISPLAY: Record<VibeLevel, { label: string; color: string }> = {
+  good: { label: "Good", color: "text-status-success" },
+  marginal: { label: "Marginal", color: "text-status-warning" },
+  bad: { label: "Bad", color: "text-status-error" },
+  unknown: { label: "\u2014", color: "text-text-tertiary" },
+};
+
+export interface LivePidStats {
+  /** Body-rate RMS per axis, deg/s. */
+  rollRms: number;
+  pitchRms: number;
+  yawRms: number;
+  hasOscillation: boolean;
+  vibe: VibeLevel;
+  hasData: boolean;
+}
+
+/**
+ * Stats over the attitude samples of the last `TELEMETRY_STALE_MS`.
+ * ATTITUDE body rates arrive in rad/s and are converted to deg/s here.
+ * Samples older than the window are ignored, so a lost link empties the
+ * strip instead of freezing it; a vehicle that sends no VIBRATION shows an
+ * unknown vibration level rather than "Good".
+ */
+export function computeLivePidStats(
+  attitude: readonly AttitudeData[],
+  latestVibration: VibrationData | undefined,
+  now: number,
+): LivePidStats {
+  const cutoff = now - TELEMETRY_STALE_MS;
+  const recent = attitude.filter((a) => a.timestamp >= cutoff);
+  const roll = recent.map((a) => a.rollSpeed * RAD_TO_DEG);
+  const pitch = recent.map((a) => a.pitchSpeed * RAD_TO_DEG);
+  const yaw = recent.map((a) => a.yawSpeed * RAD_TO_DEG);
+  return {
+    rollRms: computeRms(roll),
+    pitchRms: computeRms(pitch),
+    yawRms: computeRms(yaw),
+    hasOscillation:
+      computeStdDev(roll) > OSCILLATION_THRESHOLD_DEG_S ||
+      computeStdDev(pitch) > OSCILLATION_THRESHOLD_DEG_S ||
+      computeStdDev(yaw) > OSCILLATION_THRESHOLD_DEG_S,
+    vibe: vibeLevel(freshOnly(latestVibration, now)),
+    hasData: recent.length > 0,
+  };
 }
 
 export function PidLiveAnalysis({ connected }: PidLiveAnalysisProps) {
   const attitudeRing = useTelemetryStore((s) => s.attitude);
   const vibrationRing = useTelemetryStore((s) => s.vibration);
-  const [tick, setTick] = useState(0);
+  const tick = useClockTick();
 
-  // Refresh at 2Hz
-  useEffect(() => {
-    const interval = setInterval(() => setTick((t) => t + 1), 500);
-    return () => clearInterval(interval);
-  }, []);
-
-  const stats = useMemo(() => {
-    // Last 5s window at ~10Hz = ~50 samples
-    const recentAttitude = attitudeRing.last(50);
-    const latestVibe = vibrationRing.latest();
-
-    const rollRates = recentAttitude.map((a) => a.rollSpeed);
-    const pitchRates = recentAttitude.map((a) => a.pitchSpeed);
-    const yawRates = recentAttitude.map((a) => a.yawSpeed);
-
-    return {
-      rollRms: computeRms(rollRates),
-      pitchRms: computeRms(pitchRates),
-      yawRms: computeRms(yawRates),
-      rollStdDev: computeStdDev(rollRates),
-      pitchStdDev: computeStdDev(pitchRates),
-      yawStdDev: computeStdDev(yawRates),
-      vibeX: latestVibe?.vibrationX ?? 0,
-      vibeY: latestVibe?.vibrationY ?? 0,
-      vibeZ: latestVibe?.vibrationZ ?? 0,
-      hasData: recentAttitude.length > 0,
-    };
+  const stats = useMemo(
+    () => computeLivePidStats(attitudeRing.toArray(), vibrationRing.latest(), Date.now()),
+    // The ring buffers mutate in place; the shared clock re-samples them.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tick, attitudeRing.length, vibrationRing.length]);
+    [tick, attitudeRing, vibrationRing],
+  );
 
-  const vibe = vibeLevel(stats.vibeX, stats.vibeY, stats.vibeZ);
-  const OSCILLATION_THRESHOLD = 10; // deg/s stddev
-  const hasOscillation =
-    stats.rollStdDev > OSCILLATION_THRESHOLD ||
-    stats.pitchStdDev > OSCILLATION_THRESHOLD ||
-    stats.yawStdDev > OSCILLATION_THRESHOLD;
+  const vibe = VIBE_DISPLAY[stats.vibe];
 
   if (!connected || !stats.hasData) {
     return (
@@ -84,35 +114,20 @@ export function PidLiveAnalysis({ connected }: PidLiveAnalysisProps) {
 
   return (
     <div className="flex items-center gap-3 py-2 px-3 bg-bg-tertiary/30 border border-border-default overflow-x-auto">
-      {/* Roll RMS */}
-      <div className="flex items-center gap-1.5 shrink-0">
-        <span className="text-[9px] text-text-tertiary">Roll</span>
-        <span className="text-[10px] font-mono text-text-primary">
-          {stats.rollRms.toFixed(1)}
-        </span>
-      </div>
-
-      <div className="w-px h-4 bg-border-default shrink-0" />
-
-      {/* Pitch RMS */}
-      <div className="flex items-center gap-1.5 shrink-0">
-        <span className="text-[9px] text-text-tertiary">Pitch</span>
-        <span className="text-[10px] font-mono text-text-primary">
-          {stats.pitchRms.toFixed(1)}
-        </span>
-      </div>
-
-      <div className="w-px h-4 bg-border-default shrink-0" />
-
-      {/* Yaw RMS */}
-      <div className="flex items-center gap-1.5 shrink-0">
-        <span className="text-[9px] text-text-tertiary">Yaw</span>
-        <span className="text-[10px] font-mono text-text-primary">
-          {stats.yawRms.toFixed(1)}
-        </span>
-      </div>
-
-      <div className="w-px h-4 bg-border-default shrink-0" />
+      {([
+        ["Roll", stats.rollRms],
+        ["Pitch", stats.pitchRms],
+        ["Yaw", stats.yawRms],
+      ] as const).map(([label, rms]) => (
+        <div key={label} className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[9px] text-text-tertiary">{label}</span>
+            <span className="text-[10px] font-mono text-text-primary">{rms.toFixed(1)}</span>
+            <span className="text-[8px] text-text-tertiary">deg/s</span>
+          </div>
+          <div className="w-px h-4 bg-border-default" />
+        </div>
+      ))}
 
       {/* Vibration */}
       <div className="flex items-center gap-1.5 shrink-0">
@@ -120,8 +135,7 @@ export function PidLiveAnalysis({ connected }: PidLiveAnalysisProps) {
         <span className={cn("text-[10px] font-mono", vibe.color)}>{vibe.label}</span>
       </div>
 
-      {/* Oscillation indicator */}
-      {hasOscillation && (
+      {stats.hasOscillation && (
         <>
           <div className="w-px h-4 bg-border-default shrink-0" />
           <div className="flex items-center gap-1 shrink-0">

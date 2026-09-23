@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode, type RefObject } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { useTranslations } from "next-intl";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
@@ -62,6 +62,35 @@ const SIZE_CLASS: Record<NonNullable<ModalProps["size"]>, string> = {
   xl: "max-w-[1280px] w-[calc(100vw-32px)] h-[90vh] grid grid-rows-[auto_1fr_auto]",
 };
 
+/**
+ * Open modals. Only the top-most one handles Escape and the Tab trap, so
+ * Escape in a dialog stacked on another (a confirm over a form) closes just
+ * that dialog. A modal rendered inside another is above it (depth, from
+ * context, so it holds even when both open in the same commit and the inner
+ * one registers first); among equal depths the later-opened one is on top.
+ */
+interface OpenModal {
+  depth: number;
+  seq: number;
+}
+const openModals = new Set<OpenModal>();
+let openSeq = 0;
+const ModalDepthContext = createContext(0);
+
+function isTopModal(entry: OpenModal): boolean {
+  for (const other of openModals) {
+    if (other.depth > entry.depth || (other.depth === entry.depth && other.seq > entry.seq)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/** The focused element, or null during server render. */
+function activeElementOrNull(): HTMLElement | null {
+  return typeof document === "undefined" ? null : (document.activeElement as HTMLElement | null);
+}
+
 export function Modal({
   open,
   onClose,
@@ -78,15 +107,44 @@ export function Modal({
   hideTitleBar,
 }: ModalProps) {
   const t = useTranslations("common");
+  const depth = useContext(ModalDepthContext) + 1;
   const overlayRef = useRef<HTMLDivElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
+  // The element to hand focus back to on close, captured while rendering the
+  // open transition: by the time an effect runs, a child's `autoFocus` has
+  // already moved focus into the dialog.
+  const [restoreTarget, setRestoreTarget] = useState<HTMLElement | null>(() =>
+    open ? activeElementOrNull() : null,
+  );
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) setRestoreTarget(activeElementOrNull());
+  }
+  // Read through refs so a parent re-render with a new onClose does not
+  // re-register the modal and reorder the stack, and a changed focus target
+  // does not re-run the open-time focus move.
+  const onCloseRef = useRef(onClose);
+  const closeBlockedRef = useRef(closeBlocked);
+  const initialFocusRefRef = useRef(initialFocusRef);
+  const restoreTargetRef = useRef(restoreTarget);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+    closeBlockedRef.current = closeBlocked;
+    initialFocusRefRef.current = initialFocusRef;
+    restoreTargetRef.current = restoreTarget;
+  });
 
   useEffect(() => {
     if (!open) return;
+    const entry: OpenModal = { depth, seq: ++openSeq };
+    openModals.add(entry);
     const handler = (e: KeyboardEvent) => {
+      if (!isTopModal(entry)) return;
       if (e.key === "Escape") {
-        if (closeBlocked) return;
-        onClose();
+        // A control inside the dialog (an open Select) already consumed it.
+        if (e.defaultPrevented || closeBlockedRef.current) return;
+        onCloseRef.current();
         return;
       }
       // Focus trap: keep Tab within the dialog's focusable elements.
@@ -108,93 +166,101 @@ export function Modal({
       }
     };
     document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  }, [open, onClose, closeBlocked]);
+    return () => {
+      document.removeEventListener("keydown", handler);
+      openModals.delete(entry);
+    };
+  }, [open, depth]);
 
-  // Move focus into the dialog on open and restore it to the previously focused
-  // element on close, so keyboard users are not left stranded behind the modal.
+  // Move focus into the dialog once, on open, and restore it on close, so
+  // keyboard users are not left stranded behind the modal. A child that
+  // already took focus (an `autoFocus` input) keeps it.
   useEffect(() => {
     if (!open) return;
-    const previouslyFocused = document.activeElement as HTMLElement | null;
     const node = dialogRef.current;
-    const target =
-      initialFocusRef?.current ??
-      node?.querySelector<HTMLElement>(
-        'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])',
-      );
-    (target ?? node)?.focus();
-    return () => previouslyFocused?.focus?.();
-  }, [open, initialFocusRef]);
+    if (!node?.contains(document.activeElement)) {
+      const target =
+        initialFocusRefRef.current?.current ??
+        node?.querySelector<HTMLElement>(
+          'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])',
+        );
+      (target ?? node)?.focus();
+    }
+    const restore = restoreTargetRef.current;
+    return () => restore?.focus?.();
+  }, [open]);
 
   if (!open) return null;
 
   return createPortal(
-    <div
-      ref={overlayRef}
-      className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/60"
-      onClick={(e) => {
-        if (disableBackdropClose || closeBlocked) return;
-        if (e.target === overlayRef.current) onClose();
-      }}
-    >
+    <ModalDepthContext.Provider value={depth}>
       <div
-        ref={dialogRef}
-        role={role}
-        aria-modal="true"
-        aria-label={title}
-        tabIndex={-1}
-        className={cn(
-          "bg-bg-secondary border border-border-default w-full mx-4 outline-none",
-          SIZE_CLASS[size],
-          className,
-        )}
+        ref={overlayRef}
+        className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/60"
+        onClick={(e) => {
+          if (disableBackdropClose || closeBlocked) return;
+          if (e.target === overlayRef.current) onClose();
+        }}
       >
-        {!hideTitleBar && (
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border-default">
-            <h2 className="text-sm font-semibold text-text-primary">{title}</h2>
-            <button
-              type="button"
-              onClick={() => {
-                if (closeBlocked) return;
-                onClose();
-              }}
-              disabled={closeBlocked}
-              aria-disabled={closeBlocked}
-              // The X carried no accessible name, so all 20+ consumers of the
-              // shared Modal shipped an unlabelled close control that a screen
-              // reader announced only as "button".
-              aria-label={t("close")}
-              className={cn(
-                "transition-colors focus-ring",
-                closeBlocked
-                  ? "text-text-tertiary/40 cursor-not-allowed"
-                  : "text-text-tertiary hover:text-text-primary",
-              )}
-            >
-              <X size={16} aria-hidden="true" />
-            </button>
-          </div>
-        )}
         <div
+          ref={dialogRef}
+          role={role}
+          aria-modal="true"
+          aria-label={title}
+          tabIndex={-1}
           className={cn(
-            noBodyPadding ? undefined : "p-4",
-            // `xl` modals own their own scrollable layout via the
-            // child's two-column grid; the body just needs to be the
-            // overflow-hidden middle of the modal frame so the inner
-            // sticky header + footer pin against the viewport rather
-            // than the page.
-            size === "xl" && "min-h-0 overflow-hidden",
+            "bg-bg-secondary border border-border-default w-full mx-4 outline-none",
+            SIZE_CLASS[size],
+            className,
           )}
         >
-          {children}
-        </div>
-        {footer && (
-          <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-border-default">
-            {footer}
+          {!hideTitleBar && (
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border-default">
+              <h2 className="text-sm font-semibold text-text-primary">{title}</h2>
+              <button
+                type="button"
+                onClick={() => {
+                  if (closeBlocked) return;
+                  onClose();
+                }}
+                disabled={closeBlocked}
+                aria-disabled={closeBlocked}
+                // The X carried no accessible name, so all 20+ consumers of the
+                // shared Modal shipped an unlabelled close control that a screen
+                // reader announced only as "button".
+                aria-label={t("close")}
+                className={cn(
+                  "transition-colors focus-ring",
+                  closeBlocked
+                    ? "text-text-tertiary/40 cursor-not-allowed"
+                    : "text-text-tertiary hover:text-text-primary",
+                )}
+              >
+                <X size={16} aria-hidden="true" />
+              </button>
+            </div>
+          )}
+          <div
+            className={cn(
+              noBodyPadding ? undefined : "p-4",
+              // `xl` modals own their own scrollable layout via the
+              // child's two-column grid; the body just needs to be the
+              // overflow-hidden middle of the modal frame so the inner
+              // sticky header + footer pin against the viewport rather
+              // than the page.
+              size === "xl" && "min-h-0 overflow-hidden",
+            )}
+          >
+            {children}
           </div>
-        )}
+          {footer && (
+            <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-border-default">
+              {footer}
+            </div>
+          )}
+        </div>
       </div>
-    </div>,
+    </ModalDepthContext.Provider>,
     document.body
   );
 }

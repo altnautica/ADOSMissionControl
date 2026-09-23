@@ -119,8 +119,6 @@ export function generateStructureScan(config: StructureScanConfig): PatternResul
         alt,
         speed,
         command: "WAYPOINT",
-        // gimbalPitch stored in param2 for DO_MOUNT_CONTROL compatibility
-        param2: gimbalPitch,
       });
 
       if (layerIdx === 0 && i === 0) {
@@ -142,6 +140,18 @@ export function generateStructureScan(config: StructureScanConfig): PatternResul
           });
         }
       }
+      // Each layer starts by commanding the gimbal pitch (after the ROI on the
+      // first layer, so the ROI does not override it).
+      if (i === 0) {
+        waypoints.push({
+          lat: pt[0],
+          lon: pt[1],
+          alt,
+          speed,
+          command: "DO_MOUNT_CONTROL",
+          param1: gimbalPitch,
+        });
+      }
     }
   }
 
@@ -157,7 +167,7 @@ export function generateStructureScan(config: StructureScanConfig): PatternResul
     });
   }
 
-  const stats = computeStats(waypoints, speed, cameraTriggerDistance, avgRadius, altitudes.length);
+  const stats = computeStats(waypoints, speed, cameraTriggerDistance, altitudes.length);
 
   return {
     waypoints,
@@ -171,25 +181,22 @@ function computeStats(
   waypoints: PatternResult["waypoints"],
   speed: number,
   triggerDistance: number,
-  orbitRadius: number,
   layerCount: number,
 ): PatternStats {
-  // Distance flown between the orbit points; the ROI and trigger rows are
-  // actions at the centroid, not places the aircraft goes.
+  // Distance flown between the orbit points; the ROI, trigger and gimbal rows
+  // are actions, not places the aircraft goes.
   const nav = waypoints.filter((w) => w.command === "WAYPOINT");
   let totalDistance = 0;
   for (let i = 1; i < nav.length; i++) {
     totalDistance += haversineDistance(nav[i - 1].lat, nav[i - 1].lon, nav[i].lat, nav[i].lon);
   }
 
-  const circumference = 2 * Math.PI * orbitRadius;
-  const coveredArea = circumference * layerCount; // Approximate linear coverage area
-
   return {
     totalDistance,
     estimatedTime: speed > 0 ? totalDistance / speed : 0,
     photoCount: triggerDistance > 0 ? Math.ceil(totalDistance / triggerDistance) : 0,
-    coveredArea,
+    // A facade scan covers no ground area; 0 keeps the area row hidden.
+    coveredArea: 0,
     transectCount: layerCount,
   };
 }

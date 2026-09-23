@@ -76,6 +76,7 @@ vi.mock("@/components/dashboard/FleetProjectionBridge", () => ({
 }));
 
 import { CommandShell } from "@/components/layout/CommandShell";
+import { useSettingsStore } from "@/stores/settings-store";
 
 const BRIDGES = [
   "bridge-agent-mavlink",
@@ -90,10 +91,12 @@ const BRIDGES = [
 afterEach(() => {
   cleanup();
   env.autoReconnect = 0;
+  useSettingsStore.setState({ demoMode: false });
 });
 
 describe("CommandShell on the chromeless HUD route", () => {
   it("mounts every connection bridge, auto-reconnect and the demo engine once", async () => {
+    useSettingsStore.setState({ demoMode: true, _hasHydrated: true });
     render(
       <CommandShell>
         <div data-testid="hud-page" />
@@ -106,5 +109,16 @@ describe("CommandShell on the chromeless HUD route", () => {
     }
     expect(await screen.findByTestId("bridge-demo")).toBeTruthy();
     expect(env.autoReconnect).toBeGreaterThan(0);
+  });
+
+  it("does not load the demo engine when demo mode is off", () => {
+    useSettingsStore.setState({ demoMode: false, _hasHydrated: true });
+    render(
+      <CommandShell>
+        <div data-testid="hud-page" />
+      </CommandShell>,
+    );
+    expect(screen.getAllByTestId("bridge-agent")).toHaveLength(1);
+    expect(screen.queryByTestId("bridge-demo")).toBeNull();
   });
 });

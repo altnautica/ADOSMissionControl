@@ -12,6 +12,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useProgrammingStore, GVAR_MAX } from "@/stores/programming-store";
+import { useClockStore } from "@/stores/clock-store";
+import { useClockTick } from "@/lib/agent/freshness";
+import { isFresh } from "@/lib/telemetry/freshness";
 import { useArmedLock } from "@/hooks/use-armed-lock";
 import { PanelHeader } from "../../shared/PanelHeader";
 import { Button } from "@/components/ui/button";
@@ -26,6 +29,7 @@ export function GlobalVariablesPanel() {
   const { toast } = useToast();
 
   const gvarStatus = useProgrammingStore((s) => s.gvarStatus);
+  const gvarStatusAt = useProgrammingStore((s) => s.gvarStatusAt);
   const loading = useProgrammingStore((s) => s.loading);
   const error = useProgrammingStore((s) => s.error);
   const pollStatus = useProgrammingStore((s) => s.pollStatus);
@@ -35,13 +39,18 @@ export function GlobalVariablesPanel() {
 
   const { isArmed } = useArmedLock();
   const connected = !!getSelectedProtocol();
-  const hasLoaded = gvarStatus.values.length > 0;
+  const hasLoaded = gvarStatusAt !== null;
+  // A value is live only while the last read is recent; older ones are the
+  // last values read, not the FC's current state.
+  useClockTick();
+  const now = useClockStore((s) => s.now);
+  const live = gvarStatusAt !== null && isFresh(gvarStatusAt, now);
 
-  // Sparse map of operator edits; an unedited slot shows the live value.
+  // Sparse map of operator edits; an unedited slot shows the last read value.
   const [edits, setEdits] = useState<Record<number, string>>({});
 
-  const values = Array.from({ length: GVAR_MAX }, (_, i) => gvarStatus.values[i] ?? 0);
-  const fieldValue = (idx: number) => edits[idx] ?? String(values[idx]);
+  const values: (number | undefined)[] = Array.from({ length: GVAR_MAX }, (_, i) => gvarStatus.values[i]);
+  const fieldValue = (idx: number) => edits[idx] ?? (values[idx] === undefined ? "" : String(values[idx]));
 
   useEffect(() => {
     const protocol = getSelectedProtocol();
@@ -64,7 +73,11 @@ export function GlobalVariablesPanel() {
       toast("Global variable status not supported by this firmware", "error");
       return;
     }
-    await pollStatus(protocol);
+    const outcome = await pollStatus(protocol);
+    if (outcome.gvars !== "ok") {
+      toast("Could not read the global variables from the flight controller", "error");
+      return;
+    }
     setEdits({}); // fresh live values supersede any drafts
     toast("Global variable status refreshed", "success");
   }, [getSelectedProtocol, pollStatus, toast]);
@@ -76,7 +89,12 @@ export function GlobalVariablesPanel() {
         toast("Not connected to flight controller", "error");
         return;
       }
-      const value = parseInt(edits[index] ?? String(gvarStatus.values[index] ?? 0), 10) || 0;
+      const read = gvarStatus.values[index];
+      const value = parseInt(edits[index] ?? (read === undefined ? "" : String(read)), 10);
+      if (!Number.isFinite(value)) {
+        toast(`Enter a value for GVAR ${index}`, "error");
+        return;
+      }
       await writeGvar(protocol, index, value);
       const err = useProgrammingStore.getState().error;
       if (err) {
@@ -119,18 +137,18 @@ export function GlobalVariablesPanel() {
             {values.map((val, idx) => (
               <div
                 key={idx}
-                className="border border-border-default rounded px-3 py-2 bg-surface-primary flex flex-col gap-1"
+                className="border border-border-default rounded px-3 py-2 bg-bg-primary flex flex-col gap-1"
               >
                 <div className="flex items-center justify-between">
                   <span className="text-[9px] font-mono text-text-tertiary">GVAR {idx}</span>
                   <span
                     className={cn(
                       "text-[10px] font-mono",
-                      val !== 0 ? "text-status-success" : "text-text-tertiary",
+                      live && val !== undefined && val !== 0 ? "text-status-success" : "text-text-tertiary",
                     )}
-                    title="Current live value"
+                    title={live ? "Current live value" : "Last value read from the FC; not live"}
                   >
-                    {val}
+                    {val ?? "—"}
                   </span>
                 </div>
                 <div className="flex items-center gap-1">

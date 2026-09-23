@@ -14,23 +14,32 @@ vi.mock("next-intl", () => ({
 }));
 
 import { ParameterControl } from "../ParameterControl";
-import type { ParsedParameterContribution } from "@/lib/plugins/parameters/parse";
+import {
+  parseParameterContributions,
+  type ParsedParameterContribution,
+} from "@/lib/plugins/parameters/parse";
 
+/** The bitmask parameter as a manifest declares it, run through the parser. */
 function bitmaskParam(): ParsedParameterContribution {
-  return {
-    key: "flags",
-    schema: { type: "integer" },
-    binding: "plugin.config",
-    ui: {
-      label: "Flags",
-      widget: "bitmask",
-      bits: [
-        { bit: 0, label: "Alpha" },
-        { bit: 1, label: "Bravo" },
-        { bit: 2, label: "Charlie" },
-      ],
+  const parsed = parseParameterContributions([
+    {
+      key: "flags",
+      schema: { type: "integer" },
+      ui: {
+        label: "Flags",
+        widget: "bitmask",
+        bits: [
+          { bit: 0, label: "Alpha" },
+          { bit: 1, label: "Bravo" },
+          { bit: 2, label: "Charlie" },
+          { bit: 2, label: "Duplicate" },
+          { bit: -1, label: "Negative" },
+        ],
+      },
     },
-  };
+  ]);
+  if (!parsed) throw new Error("bitmask parameter did not parse");
+  return parsed[0];
 }
 
 describe("ParameterControl — bitmask widget", () => {

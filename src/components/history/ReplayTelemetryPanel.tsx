@@ -69,7 +69,7 @@ export function ReplayTelemetryPanel() {
       <Section title="Position">
         <Row label="ALT" value={formatDecimal(pos?.relativeAlt, 1, locale)} unit="m" />
         <Row label="SPD" value={formatDecimal(pos?.groundSpeed, 1, locale)} unit="m/s" />
-        <Row label="HDG" value={pos ? Math.round(pos.heading) : "—"} unit="°" />
+        <Row label="HDG" value={pos?.heading !== undefined ? Math.round(pos.heading) : "—"} unit="°" />
         <Row label="VS" value={formatDecimal(pos?.climbRate, 1, locale)} unit="m/s" />
       </Section>
 
@@ -81,7 +81,7 @@ export function ReplayTelemetryPanel() {
 
       <Section title="GPS">
         <Row label="FIX" value={fixLabel} />
-        <Row label="SAT" value={gps ? gps.satellites : "—"} />
+        <Row label="SAT" value={gps?.satellites ?? "—"} />
         <Row label="HDOP" value={formatDecimal(gps?.hdop, 1, locale)} />
       </Section>
 

@@ -179,11 +179,6 @@ export function listPresets(): BuildPreset[] {
   return PRESETS;
 }
 
-/** List presets filtered by category. */
-export function getPresetsByCategory(category: PresetCategory): BuildPreset[] {
-  return PRESETS.filter((p) => p.category === category);
-}
-
 /** All distinct categories. */
 export function listCategories(): PresetCategory[] {
   return [...new Set(PRESETS.map((p) => p.category))];

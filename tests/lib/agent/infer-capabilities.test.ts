@@ -53,7 +53,7 @@ const fullExtras: InferHeartbeatExtras = {
   lcdActivePage: "video",
   lcdTouchCalibrated: true,
   lcdRotation: 90,
-  lcdSnapshotUrl: "http://skynode.local:8080/api/v1/display/snapshot",
+  lcdSnapshotUrl: "http://testnode.local:8080/api/v1/display/snapshot",
   lcdLastTouchAt: 1_700_000_000_000,
   lcdLastGesture: "tap",
   videoLocalDecoderActive: true,
@@ -75,7 +75,7 @@ describe("inferCapabilities — heartbeat extras", () => {
     expect(caps.display?.lastTouchAt).toBe(1_700_000_000_000);
     expect(caps.display?.lastGesture).toBe("tap");
     expect(caps.display?.snapshotUrl).toBe(
-      "http://skynode.local:8080/api/v1/display/snapshot",
+      "http://testnode.local:8080/api/v1/display/snapshot",
     );
 
     expect(caps.videoLocalTap).toEqual({

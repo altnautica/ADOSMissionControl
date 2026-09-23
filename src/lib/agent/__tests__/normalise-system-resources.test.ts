@@ -1,58 +1,129 @@
 /**
  * @module normalise-system-resources.test
- * @description Unit tests for the `/api/system` → `SystemResources`
- * normalizer, covering the memory breakdown and swap fields plus the
- * older-agent default-to-zero behaviour.
+ * @description The `/api/system` → `SystemResources` mapping: the agent's
+ * real bodies through the public client method (schema included), plus the
+ * normaliser's absence and coercion rules.
  * @license GPL-3.0-only
  */
 
-import { describe, it, expect } from "vitest";
-import { normaliseSystemResources } from "../agent-client/system";
+import { afterEach, describe, it, expect, vi } from "vitest";
+import {
+  getSystemResources,
+  normaliseSystemResources,
+} from "../agent-client/system";
+
+const CTX = { baseUrl: "http://192.168.1.50:8080", apiKey: "k" };
+
+/** The body ados-control's `derive_system` serves
+ * (crates/ados-control/src/routes/system_resources.rs). */
+const AGENT_SYSTEM = {
+  cpu_percent: 12.5,
+  cpu_count: 4,
+  memory_total_mb: 3906,
+  memory_used_mb: 1406,
+  memory_available_mb: 2500,
+  memory_cache_mb: 812,
+  memory_percent: 36.0,
+  swap_total_mb: 2048,
+  swap_used_mb: 512,
+  swap_percent: 25.0,
+  disk_total_gb: 58.2,
+  disk_used_gb: 14.6,
+  disk_percent: 25.1,
+  temperatures: { cpu_thermal: 47.5, gpu_thermal: 45.0 },
+};
+
+/** The same route's `degraded()` body: the store is unreachable, every
+ * reading null, `available: false`. */
+const AGENT_SYSTEM_DEGRADED = {
+  cpu_percent: null,
+  cpu_count: null,
+  memory_total_mb: null,
+  memory_used_mb: null,
+  memory_available_mb: null,
+  memory_cache_mb: null,
+  memory_percent: null,
+  swap_total_mb: null,
+  swap_used_mb: null,
+  swap_percent: null,
+  disk_total_gb: null,
+  disk_used_gb: null,
+  disk_percent: null,
+  temperatures: {},
+  available: false,
+};
+
+function serve(body: unknown) {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      new Response(JSON.stringify(body), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    ),
+  );
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+describe("getSystemResources", () => {
+  it("maps the agent's /api/system body", async () => {
+    serve(AGENT_SYSTEM);
+    const res = await getSystemResources(CTX);
+    expect(res).toEqual({
+      cpu_percent: 12.5,
+      memory_percent: 36,
+      memory_used_mb: 1406,
+      memory_total_mb: 3906,
+      memory_available_mb: 2500,
+      memory_cache_mb: 812,
+      swap_total_mb: 2048,
+      swap_used_mb: 512,
+      swap_percent: 25,
+      disk_percent: 25.1,
+      disk_used_gb: 14.6,
+      disk_total_gb: 58.2,
+      temperature: 47.5,
+    });
+  });
+
+  it("reports the degraded body's readings as unknown, not as idle or empty", async () => {
+    serve(AGENT_SYSTEM_DEGRADED);
+    const res = await getSystemResources(CTX);
+    // MemAvailable / cache / swap unreported: absent, never a fabricated 0
+    // that would read as "no free memory".
+    expect([
+      res.memory_available_mb,
+      res.memory_cache_mb,
+      res.swap_total_mb,
+      res.swap_used_mb,
+      res.swap_percent,
+    ]).toEqual([undefined, undefined, undefined, undefined, undefined]);
+    expect([
+      res.cpu_percent,
+      res.memory_percent,
+      res.memory_used_mb,
+      res.memory_total_mb,
+      res.disk_percent,
+      res.disk_used_gb,
+      res.disk_total_gb,
+    ]).toEqual([
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+    ]);
+    expect(res.temperature).toBeNull();
+  });
+});
 
 describe("normaliseSystemResources", () => {
-  it("coerces the full memory breakdown + swap fields", () => {
-    const res = normaliseSystemResources({
-      cpu_percent: 12.5,
-      memory_percent: 30,
-      memory_used_mb: 1200,
-      memory_total_mb: 4096,
-      memory_available_mb: 2400,
-      memory_cache_mb: 820,
-      swap_total_mb: 2048,
-      swap_used_mb: 160,
-      swap_percent: 7.8,
-      disk_percent: 42,
-      disk_used_gb: 13.5,
-      disk_total_gb: 32,
-      temperature: 45,
-    });
-
-    expect(res.memory_available_mb).toBe(2400);
-    expect(res.memory_cache_mb).toBe(820);
-    expect(res.swap_total_mb).toBe(2048);
-    expect(res.swap_used_mb).toBe(160);
-    expect(res.swap_percent).toBeCloseTo(7.8);
-  });
-
-  it("defaults the new fields to 0 on agents that predate them", () => {
-    const res = normaliseSystemResources({
-      cpu_percent: 5,
-      memory_percent: 20,
-      memory_used_mb: 800,
-      memory_total_mb: 4096,
-      disk_percent: 40,
-    });
-
-    expect(res.memory_available_mb).toBe(0);
-    expect(res.memory_cache_mb).toBe(0);
-    expect(res.swap_total_mb).toBe(0);
-    expect(res.swap_used_mb).toBe(0);
-    expect(res.swap_percent).toBe(0);
-    // Pre-existing fields stay intact.
-    expect(res.memory_used_mb).toBe(800);
-    expect(res.memory_total_mb).toBe(4096);
-  });
-
   it("coerces string-valued numbers (NumberLike seam)", () => {
     const res = normaliseSystemResources({
       memory_available_mb: "1536",

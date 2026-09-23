@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import type { ManifestBoard } from "@/lib/protocol/firmware/types";
-import type { SelectOptionGroup } from "@/components/ui/select-types";
+import type { SelectOptionGroup } from "@/lib/types";
 import { HardDrive, Zap, RefreshCw } from "lucide-react";
 import { Select } from "@/components/ui/select";
 import { VEHICLE_TYPES, versionLabel } from "./firmware-constants";

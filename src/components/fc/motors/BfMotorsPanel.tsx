@@ -7,7 +7,7 @@ import { useDroneManager } from "@/stores/drone-manager";
 import { useToast } from "@/components/ui/toast";
 import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
 import { usePanelScroll } from "@/hooks/use-panel-scroll";
-import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
+import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { PanelHeader } from "../shared/PanelHeader";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -87,7 +87,7 @@ export function BfMotorsPanel() {
   }
 
   return (
-    <ArmedLockOverlay>
+    <ArmedWarningBanner>
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-6">
         <div className="max-w-2xl space-y-6">
           <PanelHeader title="Motors & ESC" subtitle="Motor configuration, ESC protocol, and motor testing"
@@ -145,6 +145,6 @@ export function BfMotorsPanel() {
           </div>
         </div>
       </div>
-    </ArmedLockOverlay>
+    </ArmedWarningBanner>
   );
 }

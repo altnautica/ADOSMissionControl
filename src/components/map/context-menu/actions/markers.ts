@@ -75,10 +75,40 @@ interface SetHeadingArgs {
   menuPos: MenuPosition;
   fromLat: number;
   fromLon: number;
+  report: MenuReport;
 }
 
-export function handleSetHeading({ protocol, menuPos, fromLat, fromLon }: SetHeadingArgs): void {
-  if (!protocol) return;
+/** Yaw rate for Set Heading Toward, deg/s. */
+const SET_HEADING_RATE_DPS = 30;
+
+/**
+ * Turn the vehicle to face the clicked point (MAV_CMD_CONDITION_YAW, absolute
+ * heading). Direction 0 lets the autopilot take the shortest turn; a fixed
+ * clockwise direction turned 350° to reach a heading 10° to the left.
+ */
+export async function handleSetHeading({
+  protocol,
+  menuPos,
+  fromLat,
+  fromLon,
+  report,
+}: SetHeadingArgs): Promise<void> {
+  if (!protocol) {
+    report("No drone connected", "error");
+    return;
+  }
   const brng = bearing(fromLat, fromLon, menuPos.lat, menuPos.lon);
-  protocol.setYaw(brng, 30, 1, false);
+  let success = false;
+  let message = "";
+  try {
+    const result = await protocol.setYaw(brng, SET_HEADING_RATE_DPS, 0, false);
+    success = result.success;
+    message = result.message;
+  } catch (err) {
+    message = err instanceof Error ? err.message : String(err);
+  }
+  report(
+    success ? `Turning to heading ${Math.round(brng)}°` : `Set heading failed: ${message}`,
+    success ? "success" : "error",
+  );
 }

@@ -88,20 +88,25 @@ interface FakeBackend {
   backend: GrantBackend;
   /** One entry per `mint()` call, in order, each settled by the test. */
   mints: PendingMint[];
+  /** The principal each `mint()` call said it replaces. */
+  replaced: Array<string | null>;
   confirmed: string[];
   revokes: () => number;
 }
 
 function fakeBackend(): FakeBackend {
   const mints: PendingMint[] = [];
+  const replaced: Array<string | null> = [];
   let revokes = 0;
   const confirmed: string[] = [];
   return {
     mints,
+    replaced,
     confirmed,
     revokes: () => revokes,
     backend: {
-      mint: () => {
+      mint: (replaces) => {
+        replaced.push(replaces);
         let resolve!: (grant: MintedGrant) => void;
         let reject!: (err: unknown) => void;
         const promise = new Promise<MintedGrant>((res, rej) => {
@@ -195,9 +200,9 @@ afterEach(async () => {
     if (!pending.settled) pending.reject(new Error("test teardown"));
   }
   await settle();
-  // `releaseGrant` is also the module's own reset: it clears the renewal timer,
-  // the last observed server row, and the one-shot supersede allowance, all of
-  // which are module-scoped and would otherwise leak into the next test.
+  // `releaseGrant` is also the module's own reset: it clears the renewal timer
+  // and the held grant, which are module-scoped and would otherwise leak into
+  // the next test.
   await releaseGrant();
   attachGrantBackend(null);
   setMqttBrokerCredential(null);
@@ -229,8 +234,8 @@ describe("mqtt control grant — obtaining one", () => {
     expect(reason()).toBe("grant-unconfirmed");
     expect(canPublishFcFrames(authority())).toBe(true);
 
-    // The broker took a frame. That is the only proof available at QoS 0.
-    notifyBrokerWriteAccepted();
+    // The broker acknowledged a QoS-1 publish under the credential.
+    notifyBrokerWriteAccepted("gcs-op-1");
     expect(reason()).toBe("grant-active");
     expect(b.confirmed).toEqual(["gcs-op-1"]);
   });
@@ -303,7 +308,7 @@ describe("mqtt control grant — renewal", () => {
     const first = ensureGrant();
     b.mints[0].resolve(minted(1));
     await first;
-    notifyBrokerWriteAccepted();
+    notifyBrokerWriteAccepted("gcs-op-1");
     expect(reason()).toBe("grant-active");
 
     await vi.advanceTimersByTimeAsync(TTL_MS - RENEW_LEAD_MS);
@@ -451,42 +456,17 @@ describe("mqtt control grant — the server's view", () => {
     expect(reason()).toBe("no-grant");
   });
 
-  it("supersedes a live grant it cannot use, and does so only once", async () => {
-    // A reload inside the grant's hour: the row is live and the plaintext that
-    // went with it is gone, so the credential this tab holds is nothing at all.
-    // Minting supersedes the row, which is how a reload recovers control.
-    syncServerGrant({
-      principal: "gcs-op-elsewhere",
-      deviceIds: [DEVICE],
-      expiresAt: Date.now() + TTL_MS,
-      lastConfirmedAt: null,
-    });
+  it("renews by replacing only its own grant", async () => {
     const first = ensureGrant();
     b.mints[0].resolve(minted(1));
     await first;
-    expect(getMqttBrokerCredential()?.username).toBe("gcs-op-1");
+    // A fresh session has nothing to replace, so no other tab's grant is named.
+    expect(b.replaced[0]).toBeNull();
 
-    // Another tab now mints over us. Left unbounded, each tab would supersede
-    // the other forever, one mint per round trip, so the second observation
-    // leaves it to the operator.
-    await vi.advanceTimersByTimeAsync(SERVER_SETTLE_MS + 1);
-    syncServerGrant({
-      principal: "gcs-op-other-tab",
-      deviceIds: [DEVICE],
-      expiresAt: Date.now() + TTL_MS,
-      lastConfirmedAt: null,
-    });
-    expect(getMqttBrokerCredential()).toBeNull();
-
-    await ensureGrant();
-    expect(b.mints).toHaveLength(1);
-    expect(reason()).toBe("no-grant");
-
-    // The operator's own click is not bounded: it is a decision, not a race.
-    const asked = requestGrant();
+    await vi.advanceTimersByTimeAsync(TTL_MS - RENEW_LEAD_MS);
     b.mints[1].resolve(minted(2));
-    await asked;
-    expect(getMqttBrokerCredential()?.username).toBe("gcs-op-2");
+    await settle();
+    expect(b.replaced[1]).toBe("gcs-op-1");
   });
 
   it("releases the grant on sign-out, locally first and then server-side", async () => {

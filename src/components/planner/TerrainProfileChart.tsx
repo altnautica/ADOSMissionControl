@@ -24,11 +24,6 @@ import { MAP_COLORS } from "@/lib/map-constants";
 import { findCollisionSegments, DEFAULT_MIN_TERRAIN_CLEARANCE } from "@/lib/terrain/terrain-clearance";
 import { waypointAbsoluteAltitude } from "@/lib/mission/altitude-frame";
 
-/** Terrain profile chart colors. */
-const TERRAIN_FILL = "#8B6914";
-const TERRAIN_STROKE = "#6B5010";
-const DANGER_COLOR = "#ef4444";
-
 /** Merged data point for the combined chart. All altitudes are MSL. */
 interface ChartDataPoint {
   distance: number;
@@ -205,7 +200,7 @@ export function TerrainProfileChart({ waypoints }: TerrainProfileChartProps) {
       {status === "ready" && data.length > 0 && (
         <div className="flex items-center gap-3 mb-0.5">
           <div className="flex items-center gap-1">
-            <div className="w-3 h-1.5 rounded-sm" style={{ background: TERRAIN_FILL, opacity: 0.5 }} />
+            <div className="w-3 h-1.5 rounded-sm" style={{ background: MAP_COLORS.terrainFill, opacity: 0.5 }} />
             <span className="text-[9px] font-mono text-text-tertiary">{t("terrain")}</span>
           </div>
           <div className="flex items-center gap-1">
@@ -214,8 +209,8 @@ export function TerrainProfileChart({ waypoints }: TerrainProfileChartProps) {
           </div>
           {collisionSegments.length > 0 && (
             <div className="flex items-center gap-1">
-              <div className="w-3 h-1.5 rounded-sm" style={{ background: DANGER_COLOR, opacity: 0.6 }} />
-              <span className="text-[9px] font-mono" style={{ color: DANGER_COLOR }}>
+              <div className="w-3 h-1.5 rounded-sm bg-status-error/60" />
+              <span className="text-[9px] font-mono text-status-error">
                 {t("terrainConflict", { count: collisionSegments.length })}
               </span>
             </div>
@@ -230,8 +225,8 @@ export function TerrainProfileChart({ waypoints }: TerrainProfileChartProps) {
             <AreaChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
               <defs>
                 <linearGradient id="terrainGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={TERRAIN_FILL} stopOpacity={0.5} />
-                  <stop offset="100%" stopColor={TERRAIN_FILL} stopOpacity={0.1} />
+                  <stop offset="0%" stopColor={MAP_COLORS.terrainFill} stopOpacity={0.5} />
+                  <stop offset="100%" stopColor={MAP_COLORS.terrainFill} stopOpacity={0.1} />
                 </linearGradient>
                 <linearGradient id="flightGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor={MAP_COLORS.accentPrimary} stopOpacity={0.2} />
@@ -274,7 +269,7 @@ export function TerrainProfileChart({ waypoints }: TerrainProfileChartProps) {
               <Area
                 type="monotone"
                 dataKey="terrainElevation"
-                stroke={TERRAIN_STROKE}
+                stroke={MAP_COLORS.terrainStroke}
                 strokeWidth={1}
                 fill="url(#terrainGrad)"
                 activeDot={false}
@@ -284,9 +279,9 @@ export function TerrainProfileChart({ waypoints }: TerrainProfileChartProps) {
               <Area
                 type="monotone"
                 dataKey="dangerTerrain"
-                stroke={DANGER_COLOR}
+                stroke={MAP_COLORS.fence}
                 strokeWidth={1.5}
-                fill={DANGER_COLOR}
+                fill={MAP_COLORS.fence}
                 fillOpacity={0.35}
                 connectNulls={false}
                 activeDot={false}

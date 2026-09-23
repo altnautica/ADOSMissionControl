@@ -8,7 +8,7 @@
  * @license GPL-3.0-only
  */
 
-import { useMemo, useEffect } from "react";
+import { useMemo, useEffect, useRef } from "react";
 import { useTrailStore } from "@/stores/trail-store";
 import { MapPin } from "lucide-react";
 import { MapContainer, Polyline, CircleMarker, useMap } from "react-leaflet";
@@ -25,48 +25,65 @@ const TileLayerSwitcher = dynamic(
 
 const FALLBACK_CENTER: [number, number] = [0, 0];
 
-/** Fit map bounds to the trail polyline. */
+/**
+ * Fit the map to the trail as it grows, until the operator pans or zooms:
+ * after that the view is theirs and new points no longer snap it back.
+ */
 function FitBounds({ positions }: { positions: [number, number][] }) {
   const map = useMap();
+  const userMoved = useRef(false);
 
   useEffect(() => {
-    if (positions.length >= 2) {
-      const bounds = L.latLngBounds(positions);
-      map.fitBounds(bounds, { padding: [20, 20], maxZoom: 18 });
-    }
+    const container = map.getContainer();
+    const mark = () => {
+      userMoved.current = true;
+    };
+    container.addEventListener("pointerdown", mark);
+    container.addEventListener("wheel", mark, { passive: true });
+    return () => {
+      container.removeEventListener("pointerdown", mark);
+      container.removeEventListener("wheel", mark);
+    };
+  }, [map]);
+
+  useEffect(() => {
+    if (userMoved.current || positions.length < 2) return;
+    map.fitBounds(L.latLngBounds(positions), { padding: [20, 20], maxZoom: 18 });
   }, [map, positions]);
 
   return null;
 }
 
 export function GpsTrackMap() {
+  const ring = useTrailStore((s) => s._ring);
   const trailVersion = useTrailStore((s) => s._version);
-  const trail = useTrailStore.getState()._ring.toArray();
 
-  const positions = useMemo<[number, number][]>(
-    () => trail.map((p) => [p.lat, p.lon]),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [trailVersion]
-  );
+  // The ring mutates in place; the version is the trigger. Everything is
+  // derived once per new point, not on every render.
+  const { positions, totalDist, maxAlt } = useMemo(() => {
+    void trailVersion;
+    const trail = ring.toArray();
+    let dist = 0;
+    let alt = 0;
+    for (let i = 0; i < trail.length; i++) {
+      const curr = trail[i];
+      if (curr.alt > alt) alt = curr.alt;
+      if (i === 0) continue;
+      const prev = trail[i - 1];
+      const dlat = (curr.lat - prev.lat) * 111320;
+      const dlon = (curr.lon - prev.lon) * 111320 * Math.cos((prev.lat * Math.PI) / 180);
+      dist += Math.sqrt(dlat * dlat + dlon * dlon);
+    }
+    return {
+      positions: trail.map((p): [number, number] => [p.lat, p.lon]),
+      totalDist: dist,
+      maxAlt: alt,
+    };
+  }, [ring, trailVersion]);
 
   const startPos = positions.length > 0 ? positions[0] : null;
   const endPos = positions.length > 1 ? positions[positions.length - 1] : null;
   const center = startPos ?? FALLBACK_CENTER;
-
-  // Stats
-  let totalDist = 0;
-  for (let i = 1; i < trail.length; i++) {
-    const prev = trail[i - 1];
-    const curr = trail[i];
-    const dlat = (curr.lat - prev.lat) * 111320;
-    const dlon =
-      (curr.lon - prev.lon) *
-      111320 *
-      Math.cos((prev.lat * Math.PI) / 180);
-    totalDist += Math.sqrt(dlat * dlat + dlon * dlon);
-  }
-
-  const maxAlt = trail.length > 0 ? Math.max(...trail.map((p) => p.alt)) : 0;
 
   return (
     <div className="border border-border-default bg-bg-secondary p-3">
@@ -76,14 +93,14 @@ export function GpsTrackMap() {
           GPS Track
         </span>
         <span className="text-[9px] font-mono text-text-tertiary ml-auto">
-          {trail.length} pts
+          {positions.length} pts
           {totalDist > 0 &&
             ` / ${totalDist > 1000 ? (totalDist / 1000).toFixed(2) + "km" : totalDist.toFixed(0) + "m"}`}
           {maxAlt > 0 && ` / max ${maxAlt.toFixed(0)}m`}
         </span>
       </div>
 
-      {trail.length < 2 ? (
+      {positions.length < 2 ? (
         <div
           className="flex items-center justify-center bg-bg-tertiary/30 rounded"
           style={{ height: 200 }}
@@ -99,7 +116,6 @@ export function GpsTrackMap() {
             zoom={15}
             className="w-full h-full"
             zoomControl={false}
-            attributionControl={false}
             style={{ background: "#0a0a0a" }}
           >
             <TileLayerSwitcher />

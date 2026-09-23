@@ -149,9 +149,9 @@ export type HostValidationResult =
  *
  * Accepts bare hostnames (`agent-node.local`, `192.168.1.50`), full
  * URLs (`http://192.168.1.50:8080`), and trailing slashes. Defaults
- * the port to 8080 when an http:// URL omits it (matches the agent's
- * default REST port). Rejects userinfo, non-http(s) schemes, and
- * public hostnames.
+ * the port to 8080 when an http:// URL names no port (matches the agent's
+ * default REST port); an explicit port, `:80` included, is kept. Rejects
+ * userinfo, non-http(s) schemes, and public hostnames.
  */
 export function normaliseAndCheckHost(input: string): HostValidationResult {
   let s = (input ?? "").trim();
@@ -172,6 +172,11 @@ export function normaliseAndCheckHost(input: string): HostValidationResult {
   if (!/^https?:\/\//i.test(s)) {
     s = `http://${s}`;
   }
+  // WHATWG URL drops a scheme-default port (`:80` on http), which would make
+  // an explicit `:80` indistinguishable from no port at all, so read it off
+  // the raw authority before parsing.
+  const authority = s.replace(/^https?:\/\//i, "").split(/[/?#]/, 1)[0];
+  const explicitPort = /:\d+$/.test(authority);
   let u: URL;
   try {
     u = new URL(s);
@@ -190,7 +195,7 @@ export function normaliseAndCheckHost(input: string): HostValidationResult {
       message: "URL must not include user:password",
     };
   }
-  if (!u.port && u.protocol === "http:") {
+  if (!explicitPort && u.protocol === "http:") {
     u.port = "8080";
   }
   // Strip path / query / fragment — the proxy will compose its own

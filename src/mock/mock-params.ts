@@ -57,17 +57,20 @@ export const MOCK_PARAMS: MockParam[] = [
   { name: "RLL_RATE_P", value: 0.08, type: 9 },
   { name: "RLL_RATE_I", value: 0.15, type: 9 },
   { name: "RLL_RATE_D", value: 0, type: 9 },
-  { name: "RLL_RATE_IMAX", value: 3000, type: 9 },
+  { name: "RLL_RATE_IMAX", value: 0.666, type: 9 },
   { name: "RLL_RATE_FF", value: 0.5, type: 9 },
   { name: "PTCH_RATE_P", value: 0.08, type: 9 },
   { name: "PTCH_RATE_I", value: 0.15, type: 9 },
   { name: "PTCH_RATE_D", value: 0, type: 9 },
-  { name: "PTCH_RATE_IMAX", value: 3000, type: 9 },
+  { name: "PTCH_RATE_IMAX", value: 0.666, type: 9 },
   { name: "PTCH_RATE_FF", value: 0.5, type: 9 },
   { name: "YAW2SRV_SLIP", value: 0, type: 9 },
   { name: "YAW2SRV_INT", value: 0, type: 9 },
   { name: "YAW2SRV_DAMP", value: 0, type: 9 },
   { name: "YAW2SRV_RLL", value: 1, type: 9 },
+  { name: "ACRO_ROLL_RATE", value: 180, type: 9 },
+  { name: "ACRO_PITCH_RATE", value: 180, type: 9 },
+  { name: "ACRO_YAW_RATE", value: 0, type: 9 },
 
   // ── EKF3 estimator (general + source sets + noise) ──
   { name: "AHRS_EKF_TYPE", value: 3, type: 9 },
@@ -166,7 +169,7 @@ export const MOCK_PARAMS: MockParam[] = [
   { name: "PSC_VELXY_D", value: 0, type: 9 },
   { name: "FS_LEAK_ENABLE", value: 1, type: 9 },
   { name: "FS_PRESS_ENABLE", value: 0, type: 9 },
-  { name: "FS_PRESS_MAX", value: 2000000, type: 9 },
+  { name: "FS_PRESS_MAX", value: 105000, type: 9 },   // internal enclosure pressure, Pa
   { name: "FS_TEMP_ENABLE", value: 0, type: 9 },
   { name: "FS_TEMP_MAX", value: 62, type: 9 },
   ...Array.from({ length: 16 }, (_, i) => ({ name: `BTN${i}_FUNCTION`, value: i === 0 ? 3 : 0, type: 9 })),
@@ -978,6 +981,7 @@ export const ARDUPLANE_MOCK_PARAMS: MockParam[] = [
   { name: "FS_SHORT_ACTN", value: 0, type: 9 },   // CIRCLE / no change
   { name: "FS_LONG_ACTN", value: 1, type: 9 },    // ReturnToLaunch
   { name: "FS_LONG_TIMEOUT", value: 5, type: 9 },
+  { name: "RC_FS_TIMEOUT", value: 1, type: 9 },
   { name: "FS_GCS_ENABL", value: 1, type: 9 },    // Heartbeat
   { name: "THR_FAILSAFE", value: 1, type: 9 },    // Enabled
   { name: "THR_FS_VALUE", value: 950, type: 9 },
@@ -1126,7 +1130,7 @@ export const BOAT_MOCK_PARAMS: MockParam[] = [
   { name: "SAIL_ANGLE_MAX", value: 90, type: 9 },
   { name: "SAIL_ANGLE_IDEAL", value: 25, type: 9 },
   { name: "SAIL_HEEL_MAX", value: 15, type: 9 },
-  { name: "SAIL_NO_GO", value: 45, type: 9 },
+  { name: "SAIL_NO_GO_ANGLE", value: 45, type: 9 },
   { name: "SAIL_WNDSPD_MIN", value: 0.5, type: 9 },
   { name: "SAIL_XTRACK_MAX", value: 10, type: 9 },
   { name: "SAIL_LOIT_RADIUS", value: 5, type: 9 },
@@ -1190,27 +1194,16 @@ export const PX4_MOCK_PARAMS: MockParam[] = [
   { name: "RC_MAP_THROTTLE", value: 3, type: 9 },
   { name: "RC_MAP_FLTMODE", value: 5, type: 9 },
 
-  // ── RC channels (same as ArduPilot) ───────────────────
-  { name: "RC1_MIN", value: 1100, type: 9 },
-  { name: "RC1_MAX", value: 1900, type: 9 },
-  { name: "RC1_TRIM", value: 1500, type: 9 },
-  { name: "RC1_REVERSED", value: 0, type: 9 },
-  { name: "RC2_MIN", value: 1100, type: 9 },
-  { name: "RC2_MAX", value: 1900, type: 9 },
-  { name: "RC2_TRIM", value: 1500, type: 9 },
-  { name: "RC2_REVERSED", value: 0, type: 9 },
-  { name: "RC3_MIN", value: 1100, type: 9 },
-  { name: "RC3_MAX", value: 1900, type: 9 },
-  { name: "RC3_TRIM", value: 1100, type: 9 },
-  { name: "RC3_REVERSED", value: 0, type: 9 },
-  { name: "RC4_MIN", value: 1100, type: 9 },
-  { name: "RC4_MAX", value: 1900, type: 9 },
-  { name: "RC4_TRIM", value: 1500, type: 9 },
-  { name: "RC4_REVERSED", value: 0, type: 9 },
-  { name: "RC1_DZ", value: 10, type: 9 },
-  { name: "RC2_DZ", value: 10, type: 9 },
-  { name: "RC3_DZ", value: 10, type: 9 },
-  { name: "RC4_DZ", value: 10, type: 9 },
+  // ── RC channels (PX4: RCn_REV is 1 normal / -1 reversed, no deadzone) ─
+  ...Array.from({ length: 16 }, (_, i): MockParam[] => {
+    const n = i + 1;
+    return [
+      { name: `RC${n}_MIN`, value: 1100, type: 9 },
+      { name: `RC${n}_MAX`, value: 1900, type: 9 },
+      { name: `RC${n}_TRIM`, value: n === 3 ? 1100 : 1500, type: 9 },
+      { name: `RC${n}_REV`, value: 1, type: 9 },
+    ];
+  }).flat(),
 
   // ── Flight modes ──────────────────────────────────────
   { name: "COM_FLTMODE1", value: 0, type: 9 },
@@ -1377,13 +1370,19 @@ export const BETAFLIGHT_MOCK_PARAMS: MockParam[] = [
   { name: "BF_PID_PITCH_F", value: 125, type: 9 },
   { name: "BF_PID_YAW_F", value: 120, type: 9 },
   // ── Rates ──────────────────────────────────────────────
-  { name: "BF_RC_RATE", value: 100, type: 9 },
+  { name: "BF_RATES_TYPE", value: 3, type: 9 },
+  { name: "BF_RC_RATE", value: 7, type: 9 },
   { name: "BF_RC_EXPO", value: 0, type: 9 },
-  { name: "BF_ROLL_RATE", value: 70, type: 9 },
-  { name: "BF_PITCH_RATE", value: 70, type: 9 },
-  { name: "BF_YAW_RATE", value: 60, type: 9 },
+  { name: "BF_ROLL_RATE", value: 67, type: 9 },
+  { name: "BF_PITCH_RATE", value: 67, type: 9 },
+  { name: "BF_RC_PITCH_RATE", value: 7, type: 9 },
+  { name: "BF_RC_PITCH_EXPO", value: 0, type: 9 },
+  { name: "BF_YAW_RATE", value: 67, type: 9 },
   { name: "BF_RC_YAW_EXPO", value: 0, type: 9 },
-  { name: "BF_RC_YAW_RATE", value: 100, type: 9 },
+  { name: "BF_RC_YAW_RATE", value: 7, type: 9 },
+  { name: "BF_ROLL_RATE_LIMIT", value: 1998, type: 9 },
+  { name: "BF_PITCH_RATE_LIMIT", value: 1998, type: 9 },
+  { name: "BF_YAW_RATE_LIMIT", value: 1998, type: 9 },
   { name: "BF_THROTTLE_MID", value: 50, type: 9 },
   { name: "BF_THROTTLE_EXPO", value: 0, type: 9 },
   // ── Motor ──────────────────────────────────────────────
@@ -1435,7 +1434,7 @@ export const BETAFLIGHT_MOCK_PARAMS: MockParam[] = [
   { name: "BF_BLACKBOX_RATE_NUM", value: 1, type: 9 },
   { name: "BF_BLACKBOX_RATE_DENOM", value: 1, type: 9 },
   // ── VTX ────────────────────────────────────────────────
-  { name: "BF_VTX_TYPE", value: 2, type: 9 },
+  { name: "BF_VTX_TYPE", value: 3, type: 9 },
   { name: "BF_VTX_BAND", value: 4, type: 9 },
   { name: "BF_VTX_CHANNEL", value: 1, type: 9 },
   { name: "BF_VTX_POWER", value: 1, type: 9 },

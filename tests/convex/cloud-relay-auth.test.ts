@@ -138,8 +138,8 @@ describe("cloud relay authorization helpers", () => {
     ).rejects.toThrow("Not found");
   });
 
-  it("blocks a non-owner from cancelling another user's command", async () => {
-    // cancelCommand is client-callable and must authenticate the caller via
+  it("blocks a non-owner from reading another user's command", async () => {
+    // Client-callable command reads authenticate the caller via
     // requireOwnedCommand (owner-bound), not the agent-facing
     // requireCommandForDevice (deviceId-only). Prove the owner-bound helper
     // rejects a signed-in user who supplies a victim's commandId.
@@ -201,20 +201,6 @@ describe("cloud relay authorization helpers", () => {
     ).rejects.toThrow("Not found");
   });
 
-  it("wires cancelCommand to the owner-checked authz path", async () => {
-    const radio = await readFile(
-      path.join(process.cwd(), "convex/cmdRadioPairing.ts"),
-      "utf8",
-    );
-    // The cancelCommand handler must authenticate + own-check the caller and
-    // must not fall back to the agent-facing deviceId-only helper. The helper
-    // is no longer imported or called here (a comment may still name it).
-    expect(radio).toContain("export const cancelCommand = mutation");
-    expect(radio).toContain("await requireOwnedCommand(ctx, commandId)");
-    expect(radio).not.toContain("import {\n  requireCommandForDevice,");
-    expect(radio).not.toContain("await requireCommandForDevice(");
-  });
-
   it("keeps agent-only relay functions out of the public Convex API", async () => {
     const [commands, status, drones] = await Promise.all([
       readFile(path.join(process.cwd(), "convex/cmdDroneCommands.ts"), "utf8"),
@@ -222,20 +208,17 @@ describe("cloud relay authorization helpers", () => {
       readFile(path.join(process.cwd(), "convex/cmdDrones.ts"), "utf8"),
     ]);
 
-    expect(commands).toContain("export const takeDeliverableCommands = internalMutation");
+    expect(commands).toContain("export const claimCommands = internalMutation");
     expect(commands).toContain("export const ackCommand = internalMutation");
     expect(status).toContain("export const pushStatus = internalMutation");
     expect(drones).toContain("export const getDroneByDeviceId = internalQuery");
   });
 
-  it("holds the production command relay to the same authz posture", async () => {
-    // The hosted deployment is a separate tree, so a lone-repo checkout has
-    // nothing to compare against and reports skipped rather than a false green.
-    const prodPath = path.resolve(
-      process.cwd(),
-      "../website/convex/cmdDroneCommands.ts",
-    );
-    if (!existsSync(prodPath)) return;
+  // The hosted deployment is a separate tree: a lone-repo checkout has nothing
+  // to compare against and reports this skipped, never a false green.
+  const prodPath = path.resolve(process.cwd(), "../website/convex/cmdDroneCommands.ts");
+
+  it.skipIf(!existsSync(prodPath))("holds the production command relay to the same authz posture", async () => {
     const prod = await readFile(prodPath, "utf8");
 
     // Every one of these shipped absent from production while present here.

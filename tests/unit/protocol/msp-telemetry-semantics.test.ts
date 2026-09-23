@@ -75,6 +75,118 @@ describe('MSP_ALTITUDE does not publish speed, heading or throttle', () => {
   });
 });
 
+describe('MSP battery samples', () => {
+  it('takes the battery from MSP_BATTERY_STATE only, not the legacy MSP_ANALOG voltage', () => {
+    const cbs = createCallbackStore();
+    const batteryCb = vi.fn();
+    const rcCb = vi.fn();
+    cbs.batteryCallbacks.push(batteryCb);
+    cbs.rcCallbacks.push(rcCb);
+
+    // MSP_BATTERY_STATE: 4S, 16.40 V (u16 centivolts at byte 9).
+    const state = new Uint8Array(11);
+    const sv = new DataView(state.buffer);
+    state[0] = 4;
+    state[3] = 164;
+    sv.setUint16(4, 120, true);
+    sv.setUint16(6, 850, true);
+    sv.setUint16(9, 1640, true);
+    dispatchMspTelemetry(MSP.MSP_BATTERY_STATE, state, cbs, vehicle('betaflight'), []);
+
+    // MSP_ANALOG from the same poll group: 16.4 V, 120 mAh, rssi 512, 8.50 A.
+    const analog = new Uint8Array(7);
+    const av = new DataView(analog.buffer);
+    analog[0] = 164;
+    av.setUint16(1, 120, true);
+    av.setUint16(3, 512, true);
+    av.setInt16(5, 850, true);
+    dispatchMspTelemetry(MSP.MSP_ANALOG, analog, cbs, vehicle('betaflight'), []);
+
+    expect(batteryCb).toHaveBeenCalledTimes(1);
+    expect(batteryCb.mock.calls[0][0]).toMatchObject({ voltage: 16.4, current: 8.5, consumed: 120 });
+    expect(rcCb).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports remaining as not reported on Betaflight: its MSP carries no state of charge', () => {
+    const cbs = createCallbackStore();
+    const batteryCb = vi.fn();
+    cbs.batteryCallbacks.push(batteryCb);
+    // 4S at 16.80 V (a full pack by voltage).
+    const state = new Uint8Array(11);
+    state[0] = 4;
+    new DataView(state.buffer).setUint16(9, 1680, true);
+    dispatchMspTelemetry(MSP.MSP_BATTERY_STATE, state, cbs, vehicle('betaflight'), []);
+    expect(batteryCb.mock.calls[0][0].remaining).toBe(-1);
+  });
+
+  it('reads amperage as signed 0.01 A', () => {
+    const cbs = createCallbackStore();
+    const batteryCb = vi.fn();
+    cbs.batteryCallbacks.push(batteryCb);
+    const state = new Uint8Array(11);
+    new DataView(state.buffer).setInt16(6, -150, true);
+    dispatchMspTelemetry(MSP.MSP_BATTERY_STATE, state, cbs, vehicle('betaflight'), []);
+    expect(batteryCb.mock.calls[0][0].current).toBe(-1.5);
+  });
+});
+
+/** MSP2_INAV_ANALOG, 24 bytes: flags, U16 cV, I16 cA, I32 cW, I32 mAh, I32 mWh, U32 remaining, U8 %, U16 rssi. */
+function inavAnalog(batteryState: number, percent: number): Uint8Array {
+  const b = new Uint8Array(24);
+  const v = new DataView(b.buffer);
+  b[0] = (4 << 4) | (batteryState << 2) | 0x01;
+  v.setUint16(1, 1590, true);
+  v.setInt16(3, 1225, true);
+  v.setInt32(5, 19478, true);
+  v.setInt32(9, 640, true);
+  v.setInt32(13, 9800, true);
+  v.setUint32(17, 860, true);
+  b[21] = percent;
+  v.setUint16(22, 800, true);
+  return b;
+}
+
+describe('iNav battery samples', () => {
+  it('takes remaining from the FC-reported percentage in MSP2_INAV_ANALOG', () => {
+    const cbs = createCallbackStore();
+    const batteryCb = vi.fn();
+    cbs.batteryCallbacks.push(batteryCb);
+    dispatchMspTelemetry(INAV_MSP.MSP2_INAV_ANALOG, inavAnalog(0, 57), cbs, vehicle('inav'), []);
+    expect(batteryCb).toHaveBeenCalledTimes(1);
+    expect(batteryCb.mock.calls[0][0]).toMatchObject({ voltage: 15.9, current: 12.25, remaining: 57, consumed: 640 });
+  });
+
+  it('reports no data when the FC says no battery is present', () => {
+    const cbs = createCallbackStore();
+    const batteryCb = vi.fn();
+    cbs.batteryCallbacks.push(batteryCb);
+    dispatchMspTelemetry(INAV_MSP.MSP2_INAV_ANALOG, inavAnalog(3, 0), cbs, vehicle('inav'), []);
+    expect(batteryCb.mock.calls[0][0].remaining).toBe(-1);
+  });
+
+  it('emits no second sample from MSP_BATTERY_STATE on iNav', () => {
+    const cbs = createCallbackStore();
+    const batteryCb = vi.fn();
+    cbs.batteryCallbacks.push(batteryCb);
+    dispatchMspTelemetry(MSP.MSP_BATTERY_STATE, new Uint8Array(11), cbs, vehicle('inav'), []);
+    expect(batteryCb).not.toHaveBeenCalled();
+  });
+});
+
+describe('MSP_STATUS_EX system status', () => {
+  it('scales whole-percent CPU load to the 0.1 % contract and omits unmeasured power', () => {
+    const cbs = createCallbackStore();
+    const cb = vi.fn();
+    cbs.sysStatusCallbacks.push(cb);
+    const payload = new Uint8Array(16);
+    new DataView(payload.buffer).setUint16(11, 30, true); // 30 %
+    dispatchMspTelemetry(MSP.MSP_STATUS_EX, payload, cbs, vehicle('betaflight'), []);
+    expect(cb.mock.calls[0][0].cpuLoad).toBe(300);
+    expect(cb.mock.calls[0][0].voltageMv).toBeUndefined();
+    expect(cb.mock.calls[0][0].currentCa).toBeUndefined();
+  });
+});
+
 describe('MSP_NAV_STATUS', () => {
   beforeEach(() => useTelemetryStore.getState().clear());
 

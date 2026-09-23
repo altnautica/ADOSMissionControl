@@ -39,8 +39,6 @@ const FORBIDDEN_DERIVED_WS_PORTS = new Set(["5760"]);
 /** What one dial needs, read at attempt time. */
 export interface AgentDialPlan {
   mavlinkUrl: string | null;
-  /** The agent's prior WebSocket URL, retried once after a binding rotation. */
-  mavlinkWsUrlPrev: string | null;
   agentUrl: string | null;
   apiKey: string | null;
   cloudDeviceId: string | null;
@@ -123,7 +121,7 @@ export async function dialAgentFc(
   isCancelled: () => boolean,
 ): Promise<AgentDialOutcome> {
   const paths = planDialPaths(plan);
-  const { mavlinkUrl, mavlinkWsUrlPrev, agentUrl, apiKey, cloudDeviceId } = plan;
+  const { mavlinkUrl, agentUrl, apiKey, cloudDeviceId } = plan;
   const none = { transport: null, pairRequired: false } as const;
 
   // Loaded lazily: the transports (MQTT especially) are heavy and most
@@ -190,14 +188,7 @@ export async function dialAgentFc(
       try {
         transport = await tryWs(mavlinkUrl);
       } catch {
-        // Retry the prior URL once (handles an agent WS-binding rotation).
-        if (mavlinkWsUrlPrev && mavlinkWsUrlPrev !== mavlinkUrl) {
-          try {
-            transport = await tryWs(mavlinkWsUrlPrev);
-          } catch {
-            /* next path */
-          }
-        }
+        /* next path */
       }
       if (!transport && keylessProbeBase !== null && onLifeline) {
         pairRequired = await agentReportsUnpaired(keylessProbeBase);

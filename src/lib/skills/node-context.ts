@@ -53,6 +53,7 @@ import type { FirmwareType, UnifiedFlightMode } from "@/lib/protocol/types";
 import type { ArmState, FlightMode } from "@/lib/types";
 import { asFlightMode } from "@/lib/flight-mode";
 import { createFirmwareHandlerByType } from "@/lib/protocol/firmware/ardupilot";
+import { agentModeName } from "@/lib/agent/agent-mode-names";
 import { nodeLiveness, telemetryValue } from "@/lib/nodes/presence";
 import { useCommandFleetStore } from "@/stores/command-fleet-store";
 import { useDroneManager } from "@/stores/drone-manager";
@@ -272,8 +273,6 @@ export function buildSkillContextForNode(
   const armState: ArmState = armed === null ? "unknown" : armed ? "armed" : "disarmed";
   const flightMode = asFlightMode(telemetry?.mode) ?? UNRECOGNISED_MODE;
 
-  const sink = armed === null ? null : resolveNodeCommandSink(node, options);
-
   // An agent-attached FC registers in the drone manager under this node's
   // canonical id, and its firmware handler is the ground truth for the mode
   // table — the same source the cockpit reads — so the board and the cockpit
@@ -284,9 +283,31 @@ export function buildSkillContextForNode(
     managed && managed.protocol.isConnected
       ? managed.protocol.getFirmwareHandler()
       : null;
-  const availableModes =
+  // A mode change on an agent lane is encoded by the agent through the table
+  // of the firmware it identified, so the sink sends that table's name for a
+  // preset and only presets with an equivalent there are offered; only a live
+  // FC link carried over the relay sets modes itself.
+  const agentFirmware =
+    liveHandler?.firmwareType ??
+    firmwareTypeForNode(node.fcFirmware, node.frameType) ??
+    (node.fcFirmware?.trim().toLowerCase() === "ardupilot" ? "ardupilot" : null);
+
+  const sink =
+    armed === null
+      ? null
+      : resolveNodeCommandSink(node, { ...options, agentFirmware });
+
+  const firmwareModes =
     liveHandler?.getAvailableModes() ??
     availableModesForNode(node.fcFirmware, node.frameType);
+  const availableModes =
+    sink?.transport === "direct-fc"
+      ? firmwareModes
+      : agentFirmware === null
+        ? []
+        : firmwareModes.filter(
+            (mode) => agentModeName(agentFirmware, mode) !== null,
+          );
 
   return {
     droneId: node._id,

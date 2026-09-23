@@ -12,8 +12,9 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { routeFrame, type FrameHandlerState } from "@/lib/protocol/mavlink-adapter-frame-handlers";
-import { setParameter, type ParamContext } from "@/lib/protocol/mavlink-adapter-params";
+import { getParameter, setParameter, type ParamContext } from "@/lib/protocol/mavlink-adapter-params";
 import { createCallbackStore } from "@/lib/protocol/mavlink-adapter-callbacks";
+import { StatusTextAssembler } from "@/lib/protocol/handlers/info-handlers";
 import { createFirmwareHandlerByType } from "@/lib/protocol/firmware/ardupilot";
 import type { MAVLinkFrame } from "@/lib/protocol/mavlink-parser";
 import type { FirmwareType, ParameterValue } from "@/lib/protocol/types";
@@ -60,6 +61,7 @@ function makeContext(firmwareType: FirmwareType): Ctx {
     lastVehicleHeartbeat: Date.now(),
     linkIsLost: false,
     HEARTBEAT_TIMEOUT_MS: 5000,
+    statusText: new StatusTextAssembler(),
   };
 }
 
@@ -160,5 +162,22 @@ describe("PARAM_SET integer encode", () => {
     void setParameter(ctx, "FLTMODE1", 3);
     // 3.0f = 0x40400000.
     expect(paramSets(ctx)).toEqual([{ value: [0x00, 0x00, 0x40, 0x40], id: "FLTMODE1", type: MAV_PARAM_TYPE_INT8 }]);
+  });
+});
+
+describe("PARAM_REQUEST_READ of a name-mapped PX4 param", () => {
+  it("resolves from the reply reported under the canonical name", async () => {
+    const ctx = makeContext("px4");
+    const read = getParameter(ctx, "FLTMODE1");
+    deliverParamValue(ctx, "COM_FLTMODE1", [0x04, 0x00, 0x00, 0x00], MAV_PARAM_TYPE_INT32);
+    await expect(read).resolves.toMatchObject({ name: "FLTMODE1", value: 4 });
+  });
+
+  it("resolves when the caller passes the vehicle's own name", async () => {
+    const ctx = makeContext("px4");
+    const read = getParameter(ctx, "COM_FLTMODE1");
+    deliverParamValue(ctx, "COM_FLTMODE1", [0x02, 0x00, 0x00, 0x00], MAV_PARAM_TYPE_INT32);
+    await expect(read).resolves.toMatchObject({ value: 2 });
+    expect(ctx.paramCache.get("FLTMODE1")).toMatchObject({ value: 2 });
   });
 });

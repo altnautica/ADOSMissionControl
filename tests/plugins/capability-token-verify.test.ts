@@ -122,7 +122,7 @@ describe("verifyToken HMAC", () => {
     const result = await verifyToken(
       token,
       { pluginId: claims.pluginId, agentId: claims.agentId },
-      async () => importHmacKey(secret),
+      async () => [await importHmacKey(secret)],
     );
     expect(result.pluginId).toBe(claims.pluginId);
     expect(result.iss).toBe(claims.iss);
@@ -135,9 +135,20 @@ describe("verifyToken HMAC", () => {
       verifyToken(
         token,
         { pluginId: claims.pluginId, agentId: claims.agentId },
-        async () => importHmacKey(wrongSecret),
+        async () => [await importHmacKey(wrongSecret)],
       ),
     ).rejects.toBeInstanceOf(TokenInvalid);
+  });
+
+  it("accepts a token signed with the previous key after a rotation", async () => {
+    const claims = makeClaims({ iss: "cloud:user-1" });
+    const token = await mintToken(claims, wrongSecret);
+    const result = await verifyToken(
+      token,
+      { pluginId: claims.pluginId, agentId: claims.agentId },
+      async () => [await importHmacKey(secret), await importHmacKey(wrongSecret)],
+    );
+    expect(result.pluginId).toBe(claims.pluginId);
   });
 
   it("rejects an expired token", async () => {
@@ -147,7 +158,7 @@ describe("verifyToken HMAC", () => {
       verifyToken(
         token,
         { pluginId: claims.pluginId, agentId: claims.agentId },
-        async () => importHmacKey(secret),
+        async () => [await importHmacKey(secret)],
       ),
     ).rejects.toThrow(/expired/i);
   });
@@ -159,7 +170,7 @@ describe("verifyToken HMAC", () => {
       verifyToken(
         token,
         { pluginId: "com.example.other", agentId: claims.agentId },
-        async () => importHmacKey(secret),
+        async () => [await importHmacKey(secret)],
       ),
     ).rejects.toThrow(/pluginId/);
   });
@@ -171,7 +182,7 @@ describe("verifyToken HMAC", () => {
       verifyToken(
         token,
         { pluginId: claims.pluginId, agentId: "wrong-drone" },
-        async () => importHmacKey(secret),
+        async () => [await importHmacKey(secret)],
       ),
     ).rejects.toThrow(/agentId/);
   });
@@ -185,7 +196,7 @@ describe("verifyToken HMAC", () => {
     const result = await verifyToken(
       token,
       { pluginId: claims.pluginId, agentId: "different-drone" },
-      async () => importHmacKey(secret),
+      async () => [await importHmacKey(secret)],
     );
     expect(result.iss).toBe("local");
   });

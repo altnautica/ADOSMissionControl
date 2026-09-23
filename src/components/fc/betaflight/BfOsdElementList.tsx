@@ -81,7 +81,7 @@ export function BfOsdElementList({
                   <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
                     <path
                       d="M1 4L3.5 6.5L9 1"
-                      stroke="white"
+                      stroke="var(--color-accent-foreground)"
                       strokeWidth="1.5"
                       strokeLinecap="round"
                       strokeLinejoin="round"

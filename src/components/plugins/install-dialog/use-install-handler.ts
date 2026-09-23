@@ -40,7 +40,11 @@ import {
   buildGcsParameters,
 } from "../transports/build-install-contributions";
 import { useAuthStore } from "@/stores/auth-store";
-import { useLocalPluginInstallsStore } from "@/stores/local-plugin-installs-store";
+import {
+  useLocalPluginInstallsStore,
+  type LocalPluginBundleSource,
+} from "@/stores/local-plugin-installs-store";
+import { fetchRegistryArchive, pinArchive } from "@/lib/plugins/archive-pin";
 import { usePairingStore } from "@/stores/pairing-store";
 import type {
   InstallKickoffResult,
@@ -85,8 +89,10 @@ export interface UseInstallHandlerArgs {
   generateUploadUrl: GenerateUploadUrlAction;
   verifyArchive: VerifyArchiveAction;
   createJob: CreateJobMutation;
-  /** Records the GCS-side install row + uploads the iframe bundle so the
-   * plugin's GCS half mounts. Returns the install id. */
+  /** Stores the plugin's GCS iframe bundle server-side; returns its id. */
+  storeBundle: (args: { html: string }) => Promise<string>;
+  /** Records the GCS-side install row so the plugin's GCS half mounts.
+   * Returns the install id. */
   recordInstall: (args: RecordInstallArgs) => Promise<string>;
   grantPermission: (args: {
     installId: string;
@@ -143,6 +149,7 @@ export function useInstallHandler(args: UseInstallHandlerArgs) {
     generateUploadUrl,
     verifyArchive,
     createJob,
+    storeBundle,
     recordInstall,
     grantPermission,
     setInstallStatus,
@@ -206,6 +213,22 @@ export function useInstallHandler(args: UseInstallHandlerArgs) {
 
       const hasAgentHalf = manifest.halves.includes("agent");
       const hasGcsHalf = manifest.halves.includes("gcs");
+
+      // The GCS half needs a place to load its bundle from on every mount:
+      // the drone's agent (a hybrid installed over the LAN), the published
+      // registry archive, or the cloud copy the signed-in finalize stores.
+      // A local file with none of those would install nothing the GCS can
+      // show, so refuse before touching the drone.
+      const localBundleSource =
+        (hasAgentHalf && targetDevice !== null && lanTarget !== null) ||
+        source.kind === "registry";
+      if (hasGcsHalf && !localBundleSource && !convexAuthenticated) {
+        throw new Error(
+          hasAgentHalf
+            ? "This plugin's Mission Control half can only be kept for a drone reached on this network, or with a cloud sign-in. Connect to the drone on the LAN, or sign in, and retry."
+            : "Mission Control plugins installed from a file need a cloud sign-in to be kept. Sign in, or install it from the registry.",
+        );
+      }
 
       let result: InstallKickoffResult;
 
@@ -300,22 +323,23 @@ export function useInstallHandler(args: UseInstallHandlerArgs) {
         };
       }
 
-      // Local-first GCS-half record (Rule 39): remember the install so the
+      // Local-first GCS-half record: remember the install so the
       // contribution producers mount the iframe with no cloud. The bundle
       // source depends on the install shape:
       //   - hybrid on a drone  → the drone's agent serves gcs/plugin.bundle.js
       //   - GCS-only from the registry → the published archive serves it
-      // A GCS-only local-file install with no drone has no offline source
-      // (no agent, no url), so it relies on the Convex finalize below.
+      // A local-file install with neither has no offline source and relies
+      // on the signed-in Convex finalize below (it was refused above when
+      // there is no sign-in). A registry archive is hashed and its signature
+      // verified here, and the record pins both so a later mount refuses
+      // replaced bytes.
       // Independent of sign-in; the Convex finalize is the optional cloud
       // mirror for fleet view / cross-device.
       if (hasGcsHalf) {
         const recordDeviceId = targetDevice?.deviceId ?? null;
         const gcsContributes = buildGcsContributes(manifest);
         const gcsParameters = buildGcsParameters(manifest);
-        let bundle: Parameters<
-          ReturnType<typeof useLocalPluginInstallsStore.getState>["record"]
-        >[0]["bundle"] | null = null;
+        let bundle: LocalPluginBundleSource | null = null;
         if (hasAgentHalf && targetDevice && lanTarget) {
           bundle = {
             kind: "agent",
@@ -323,11 +347,15 @@ export function useInstallHandler(args: UseInstallHandlerArgs) {
             entrypoint: "gcs/plugin.bundle.js",
           };
         } else if (source.kind === "registry") {
+          const pin = await pinArchive(await fetchRegistryArchive(source.url), {
+            expectedSha256: source.expectedSha256,
+            manifestSignerId: manifest.signerId,
+          });
           bundle = {
             kind: "archive",
             archiveUrl: source.url,
-            sha256: source.expectedSha256,
             entrypoint: "gcs/plugin.bundle.js",
+            pin,
           };
         }
         if (bundle) {
@@ -358,6 +386,8 @@ export function useInstallHandler(args: UseInstallHandlerArgs) {
           await finalizeGcsInstall({
             archive: source.kind === "file" ? source.file : undefined,
             archiveUrl: source.kind === "registry" ? source.url : undefined,
+            expectedSha256:
+              source.kind === "registry" ? source.expectedSha256 : undefined,
             manifest,
             manifestHash,
             grantedPermissions: grantedArr,
@@ -366,7 +396,7 @@ export function useInstallHandler(args: UseInstallHandlerArgs) {
             sourceUri: source.kind === "registry" ? source.url : undefined,
             agentEnabled: result.enabledOnAgent,
             callables: {
-              generateUploadUrl,
+              storeBundle,
               recordInstall,
               grantPermission,
               setStatus: setInstallStatus,
@@ -402,6 +432,7 @@ export function useInstallHandler(args: UseInstallHandlerArgs) {
     generateUploadUrl,
     verifyArchive,
     createJob,
+    storeBundle,
     recordInstall,
     grantPermission,
     setInstallStatus,

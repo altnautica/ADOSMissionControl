@@ -60,7 +60,7 @@ export function SystemTab({
         <ComputeClusterCard />
         <MemoryPanel />
         <ServicesPanel />
-        <DashboardAccessPinCard />
+        <DashboardAccessPinCard nodeDeviceId={nodeDeviceId} />
         {/* Fleet hardware.tab slot — a GCS-level plugin's hardware panels render
             here. Inert until a plugin contributes. */}
         <PluginHardwarePanels />
@@ -77,12 +77,12 @@ export function SystemTab({
       <ServicesPanel />
       <FleetNetworkPanel />
       <AdapterStabilityCard />
-      <RadioNetworkHealthPanel />
+      <RadioNetworkHealthPanel nodeDeviceId={nodeDeviceId} />
       <RegulatoryRegionPanel
         nodeDeviceId={nodeDeviceId}
         relayReach={relayReach}
       />
-      <DashboardAccessPinCard />
+      <DashboardAccessPinCard nodeDeviceId={nodeDeviceId} />
       {/* Fleet hardware.tab slot — a GCS-level plugin's hardware panels render
           here. Inert until a plugin contributes. */}
       <PluginHardwarePanels />

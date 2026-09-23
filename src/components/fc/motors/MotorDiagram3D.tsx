@@ -1,12 +1,13 @@
 "use client";
 
-import { useRef, useState, useMemo } from "react";
+import { useRef, useState, useMemo, useCallback } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, Environment } from "@react-three/drei";
 import * as THREE from "three";
 import type { Group } from "three";
 import type { FrameLayout } from "@/lib/motor-layouts";
 import { useTelemetryStore } from "@/stores/telemetry-store";
+import { isFresh } from "@/lib/telemetry/freshness";
 import {
   COLOR_CW, COLOR_BODY, SCALE,
   buildCoaxialOffsets,
@@ -27,8 +28,9 @@ function DroneScene({ layout }: { layout: FrameLayout }) {
     [layout.motors],
   );
 
+  // The ring is read inside useFrame, so the scene does not re-render on
+  // every telemetry push.
   const attitude = useTelemetryStore((s) => s.attitude);
-  const version = useTelemetryStore((s) => s._version);
   // Reused per frame so the render loop does not allocate.
   const targetEuler = useMemo(() => new THREE.Euler(), []);
   const targetQuat = useMemo(() => new THREE.Quaternion(), []);
@@ -37,7 +39,8 @@ function DroneScene({ layout }: { layout: FrameLayout }) {
     if (!droneGroupRef.current) return;
     const latest = attitude.latest();
 
-    if (!latest) {
+    // Stale attitude after a link loss must not hold the model at its last pose.
+    if (!latest || !isFresh(latest.timestamp, Date.now())) {
       if (isGyroActive) setIsGyroActive(false);
       return;
     }
@@ -50,7 +53,8 @@ function DroneScene({ layout }: { layout: FrameLayout }) {
     droneGroupRef.current.quaternion.slerp(targetQuat, 0.15);
   });
 
-  void version;
+  const handleHover = useCallback((n: number) => setHoveredMotor(n), []);
+  const handleUnhover = useCallback(() => setHoveredMotor(null), []);
 
   return (
     <>
@@ -83,7 +87,7 @@ function DroneScene({ layout }: { layout: FrameLayout }) {
           }
           return (
             <MotorAssembly key={`motor-${motor.number}`} motor={motor} yOffset={yOffset}
-              onHover={() => setHoveredMotor(motor.number)} onUnhover={() => setHoveredMotor(null)}
+              onHover={handleHover} onUnhover={handleUnhover}
               isHovered={hoveredMotor === motor.number} />
           );
         })}

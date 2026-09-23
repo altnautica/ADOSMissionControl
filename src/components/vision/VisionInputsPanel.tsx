@@ -73,7 +73,11 @@ export function VisionInputsPanel({ droneId }: { droneId: string }) {
                   cam.streaming ? "text-status-success" : "text-text-tertiary"
                 }`}
               >
-                {cam.streaming ? t("cameraStreaming") : t("cameraIdle")}
+                {cam.streaming === null
+                  ? t("cameraStreamUnknown")
+                  : cam.streaming
+                    ? t("cameraStreaming")
+                    : t("cameraIdle")}
               </span>
             </div>
           ))}

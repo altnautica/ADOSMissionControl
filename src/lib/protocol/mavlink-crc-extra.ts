@@ -73,6 +73,7 @@ export const CRC_EXTRA: ReadonlyMap<number, number> = new Map([
   [86, 5],      // SET_POSITION_TARGET_GLOBAL_INT
   [111, 34],    // TIMESYNC
   [245, 130],   // EXTENDED_SYS_STATE
+  [246, 184],   // ADSB_VEHICLE
   [251, 170],   // NAMED_VALUE_FLOAT
   [252, 44],    // NAMED_VALUE_INT
   [254, 46],    // DEBUG
@@ -108,12 +109,13 @@ export const CRC_EXTRA: ReadonlyMap<number, number> = new Map([
 ]);
 
 /**
- * Expected payload lengths for known messages.
- * Used to restore zero-trimmed payloads to their canonical size.
+ * Full payload length of each known message, extensions included. The parser
+ * zero-restores a trimmed payload up to this size and never keeps bytes past
+ * it, so a value short of the full length silently discards extension fields.
  */
 export const PAYLOAD_LENGTHS: ReadonlyMap<number, number> = new Map([
   [0, 9],     // HEARTBEAT
-  [1, 31],    // SYS_STATUS
+  [1, 43],    // SYS_STATUS (31 base + onboard_control_sensors_*_extended)
   [11, 6],    // SET_MODE
   [20, 20],   // PARAM_REQUEST_READ
   [21, 2],    // PARAM_REQUEST_LIST
@@ -125,25 +127,25 @@ export const PAYLOAD_LENGTHS: ReadonlyMap<number, number> = new Map([
   [41, 4],    // MISSION_SET_CURRENT
   [40, 5],    // MISSION_REQUEST (4 base + 1 missionType extension)
   [48, 21],   // SET_GPS_GLOBAL_ORIGIN (13 base + 8 time_usec extension)
-  [44, 5],    // MISSION_COUNT (4 base + 1 missionType extension)
-  [47, 4],    // MISSION_ACK (3 base + 1 missionType extension)
+  [44, 9],    // MISSION_COUNT (4 base + mission_type/opaque_id)
+  [47, 8],    // MISSION_ACK (3 base + mission_type/opaque_id)
   [51, 5],    // MISSION_REQUEST_INT (4 base + 1 missionType extension)
   [65, 42],   // RC_CHANNELS
-  [69, 11],   // MANUAL_CONTROL
+  [69, 30],   // MANUAL_CONTROL (11 base + buttons2/enabled_extensions/s/t/aux1-6)
   [73, 38],   // MISSION_ITEM_INT (37 base + 1 missionType extension)
   [74, 20],   // VFR_HUD
   [75, 35],   // COMMAND_INT
   [76, 33],   // COMMAND_LONG
   [77, 10],   // COMMAND_ACK (3 base + progress/result_param2/target_system/target_component)
-  [126, 79],  // SERIAL_CONTROL
+  [126, 81],  // SERIAL_CONTROL (79 base + target_system/target_component)
   [147, 54],  // BATTERY_STATUS (36 base + time_remaining/charge_state/voltages_ext/mode/fault_bitmask)
   [253, 54],  // STATUSTEXT (severity + 50 chars + 3 id bytes)
-  [42, 2],    // MISSION_CURRENT
+  [42, 18],   // MISSION_CURRENT (2 base + total/mission_state/mission_mode/mission_id/fence_id/rally_points_id)
   [43, 3],    // MISSION_REQUEST_LIST (2 base + 1 missionType extension)
   [45, 3],    // MISSION_CLEAR_ALL (2 base + 1 missionType extension)
   [46, 2],    // MISSION_ITEM_REACHED
   [109, 9],   // RADIO_STATUS
-  [36, 21],   // SERVO_OUTPUT_RAW
+  [36, 37],   // SERVO_OUTPUT_RAW (21 base + servo9-16)
   [136, 22],  // TERRAIN_REPORT
   [168, 12],  // WIND
   [191, 27],  // MAG_CAL_PROGRESS
@@ -151,15 +153,15 @@ export const PAYLOAD_LENGTHS: ReadonlyMap<number, number> = new Map([
   [241, 32],  // VIBRATION
   [193, 26],  // EKF_STATUS_REPORT (22 base + airspeed_variance extension)
   [66, 6],    // REQUEST_DATA_STREAM
-  [242, 52],  // HOME_POSITION (base, without time_usec extension)
-  [148, 60],  // AUTOPILOT_VERSION (base, without uid2 extension)
+  [242, 60],  // HOME_POSITION (52 base + time_usec)
+  [148, 78],  // AUTOPILOT_VERSION (60 base + uid2)
   [125, 6],   // POWER_STATUS
   [132, 39],  // DISTANCE_SENSOR (14 base + horizontal_fov/vertical_fov/quaternion/signal_quality)
-  [162, 8],   // FENCE_STATUS
+  [162, 9],   // FENCE_STATUS (8 base + breach_mitigation)
   [62, 26],   // NAV_CONTROLLER_OUTPUT
-  [26, 22],   // SCALED_IMU
-  [29, 14],   // SCALED_PRESSURE
-  [124, 35],  // GPS2_RAW
+  [26, 24],   // SCALED_IMU (22 base + temperature)
+  [29, 16],   // SCALED_PRESSURE (14 base + temperature_press_diff)
+  [124, 57],  // GPS2_RAW (35 base + yaw/alt_ellipsoid/h_acc/v_acc/vel_acc/hdg_acc)
   [117, 6],   // LOG_REQUEST_LIST
   [118, 14],  // LOG_ENTRY
   [119, 12],  // LOG_REQUEST_DATA
@@ -169,10 +171,11 @@ export const PAYLOAD_LENGTHS: ReadonlyMap<number, number> = new Map([
   [110, 254], // FILE_TRANSFER_PROTOCOL (3 header + 251 payload)
   [2, 12],      // SYSTEM_TIME
   [32, 28],     // LOCAL_POSITION_NED
-  [82, 39],     // SET_ATTITUDE_TARGET
+  [82, 51],     // SET_ATTITUDE_TARGET (39 base + thrust_body)
   [86, 53],     // SET_POSITION_TARGET_GLOBAL_INT
-  [111, 17],    // TIMESYNC
+  [111, 18],    // TIMESYNC (16 base + target_system/target_component)
   [245, 2],     // EXTENDED_SYS_STATE
+  [246, 38],    // ADSB_VEHICLE
   [251, 18],    // NAMED_VALUE_FLOAT
   [252, 18],    // NAMED_VALUE_INT
   [254, 9],     // DEBUG
@@ -180,16 +183,16 @@ export const PAYLOAD_LENGTHS: ReadonlyMap<number, number> = new Map([
   [285, 49],    // GIMBAL_DEVICE_ATTITUDE_STATUS
   [330, 167],   // OBSTACLE_DISTANCE (158 base + increment_f/angle_offset/frame extensions)
   [160, 12],    // FENCE_POINT
-  [161, 6],     // FENCE_FETCH_POINT
-  [70, 18],     // RC_CHANNELS_OVERRIDE
+  [161, 3],     // FENCE_FETCH_POINT
+  [70, 38],     // RC_CHANNELS_OVERRIDE (18 base + chan9-18)
   [112, 12],    // CAMERA_TRIGGER — uint64 time_usec + uint32 seq, nothing else
   [230, 42],    // ESTIMATOR_STATUS
-  [27, 26],     // RAW_IMU
-  [105, 62],    // HIGHRES_IMU
-  [116, 22],    // SCALED_IMU2 (same layout as SCALED_IMU)
-  [129, 22],    // SCALED_IMU3 (same layout as SCALED_IMU)
+  [27, 29],     // RAW_IMU (26 base + id/temperature)
+  [105, 63],    // HIGHRES_IMU (62 base + id)
+  [116, 24],    // SCALED_IMU2 (same layout as SCALED_IMU)
+  [129, 24],    // SCALED_IMU3 (same layout as SCALED_IMU)
   [35, 22],     // RC_CHANNELS_RAW
-  [39, 37],     // MISSION_ITEM
+  [39, 38],     // MISSION_ITEM (37 base + mission_type)
   [141, 32],    // ALTITUDE
   [231, 40],    // WIND_COV
   [301, 58],    // AIS_VESSEL

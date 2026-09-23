@@ -4,7 +4,9 @@ import { useState } from "react";
 import { useMutation } from "convex/react";
 import { Trash2 } from "lucide-react";
 import { communityApi } from "@/lib/community-api";
-import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
+import { useConvexSkipQueryState } from "@/hooks/use-convex-skip-query";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/components/ui/toast";
 import { useAuthStore } from "@/stores/auth-store";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 import { formatDate } from "@/lib/utils";
@@ -19,7 +21,7 @@ interface CommunityCommentsProps {
 export function CommunityComments({ targetType, targetId }: CommunityCommentsProps) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const isAdmin = useIsAdmin();
-  const comments = useConvexSkipQuery(communityApi.comments.list, {
+  const { data: comments, state } = useConvexSkipQueryState(communityApi.comments.list, {
     args: { targetType, targetId },
     enabled: !!targetId,
   });
@@ -27,30 +29,56 @@ export function CommunityComments({ targetType, targetId }: CommunityCommentsPro
   const removeComment = useMutation(communityApi.comments.remove);
   const [body, setBody] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [postError, setPostError] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!body.trim() || submitting) return;
     setSubmitting(true);
+    setPostError(null);
     try {
       await createComment({ targetType, targetId, body: body.trim() });
       setBody("");
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "";
-      if (msg.includes("Not authenticated")) {
-        console.error("Comment failed: not authenticated");
-      } else {
-        console.error("Failed to create comment:", err);
-      }
+      const msg = err instanceof Error ? err.message : String(err);
+      setPostError(
+        msg.includes("Not authenticated")
+          ? "Sign in again to post a comment."
+          : `Could not post the comment: ${msg}`,
+      );
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleDelete = (commentId: string) => {
-    removeComment({ id: commentId as never });
+  const confirmDelete = async () => {
+    const id = pendingDelete;
+    setPendingDelete(null);
+    if (!id) return;
+    try {
+      await removeComment({ id: id as never });
+    } catch (err) {
+      toast(
+        `Could not delete the comment: ${err instanceof Error ? err.message : String(err)}`,
+        "error",
+      );
+    }
   };
 
+  if (state === "skipped") {
+    return (
+      <div className="py-4 text-sm text-text-tertiary">
+        Comments need the community backend, which is not available here.
+      </div>
+    );
+  }
+  if (state === "error") {
+    return (
+      <div className="py-4 text-sm text-text-tertiary">Comments could not be loaded.</div>
+    );
+  }
   if (comments === undefined) {
     return (
       <div className="py-4 text-sm text-text-tertiary">Loading comments...</div>
@@ -84,7 +112,7 @@ export function CommunityComments({ targetType, targetId }: CommunityCommentsPro
               </div>
               {isAdmin && (
                 <button
-                  onClick={() => handleDelete(comment._id)}
+                  onClick={() => setPendingDelete(comment._id)}
                   className="text-text-tertiary hover:text-status-error transition-colors"
                   title="Delete comment"
                 >
@@ -119,7 +147,22 @@ export function CommunityComments({ targetType, targetId }: CommunityCommentsPro
             </button>
           </form>
         )}
+        {postError && (
+          <p role="alert" className="mt-1 text-xs text-status-error">
+            {postError}
+          </p>
+        )}
       </AuthGate>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="Delete comment"
+        message="This removes the comment for everyone. It cannot be undone."
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={() => void confirmDelete()}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   );
 }

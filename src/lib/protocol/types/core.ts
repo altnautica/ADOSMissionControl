@@ -25,6 +25,8 @@ export interface VehicleInfo {
    * consumers render "unknown" rather than assuming.
    */
   gyroSampleRateHz?: number;
+  /** MSP_API_VERSION of an MSP flight controller; undefined on MAVLink links. */
+  mspApiVersion?: { major: number; minor: number };
 }
 
 /** Result of a command acknowledged by the flight controller. */

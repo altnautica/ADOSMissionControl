@@ -13,6 +13,7 @@ import { useMap } from "react-leaflet";
 import { LocateFixed, Locate } from "lucide-react";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useGcsLocationStore } from "@/stores/gcs-location-store";
+import { MapControl } from "./MapControl";
 
 interface LocateControlProps {
   style?: React.CSSProperties;
@@ -61,11 +62,11 @@ export function LocateControl({ style }: LocateControlProps) {
   const active = hasPosition && iscentered;
 
   return (
-    <div className="leaflet-bottom leaflet-right" style={{ pointerEvents: "auto", ...style }}>
+    <MapControl className="leaflet-bottom leaflet-right" style={style}>
       <div className="leaflet-control" style={{ marginBottom: 10, marginRight: 10 }}>
         <button
           onClick={handleClick}
-          className={`bg-surface-primary border px-1.5 py-1.5 transition-colors ${
+          className={`bg-bg-primary border px-1.5 py-1.5 transition-colors ${
             active
               ? "border-accent-primary text-accent-primary"
               : hasPosition
@@ -77,6 +78,6 @@ export function LocateControl({ style }: LocateControlProps) {
           <Icon size={14} />
         </button>
       </div>
-    </div>
+    </MapControl>
   );
 }

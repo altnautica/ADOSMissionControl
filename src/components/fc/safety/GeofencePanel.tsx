@@ -6,12 +6,13 @@ import { usePanelParams } from "@/hooks/use-panel-params";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { useParamLabel } from "@/hooks/use-param-label";
 import { useParamMetadataMap } from "@/hooks/use-param-metadata";
-import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
+import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { PanelHeader } from "../shared/PanelHeader";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
 import { useGeofenceStore } from "@/stores/geofence-store";
+import { useDroneManager } from "@/stores/drone-manager";
 import { useFenceUploadStatus } from "@/hooks/use-upload-status";
 import { Shield, HardDrive, Save, MapPin, ArrowUp, Circle, Download, Upload, Plus, Trash2, ToggleLeft, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -67,6 +68,7 @@ function ArduPilotGeofencePanel() {
     loadProgress, hasLoaded, refresh, setLocalValue, saveAllToRam, commitToFlash,
   } = usePanelParams({ paramNames: FENCE_PARAMS, panelId: "geofence", autoLoad: true });
   useUnsavedGuard(dirtyParams.size > 0);
+  const connected = useDroneManager((s) => !!s.getSelectedProtocol());
 
   const [saving, setSaving] = useState(false);
   const [committing, setCommitting] = useState(false);
@@ -94,7 +96,9 @@ function ArduPilotGeofencePanel() {
   const fenceMargin = params.get("FENCE_MARGIN") ?? 2;
   const fenceTotal = params.get("FENCE_TOTAL") ?? 0;
 
-  const hasAltFence = (fenceType & (FENCE_TYPE_BITS.ALT_MAX | FENCE_TYPE_BITS.ALT_MIN)) !== 0;
+  const hasCeiling = (fenceType & FENCE_TYPE_BITS.ALT_MAX) !== 0;
+  const hasFloor = (fenceType & FENCE_TYPE_BITS.ALT_MIN) !== 0;
+  const hasAltFence = hasCeiling || hasFloor;
   const hasCircleFence = (fenceType & FENCE_TYPE_BITS.CIRCLE) !== 0;
   const hasPolygonFence = (fenceType & FENCE_TYPE_BITS.POLYGON) !== 0;
   const hasDirty = dirtyParams.size > 0;
@@ -126,12 +130,12 @@ function ArduPilotGeofencePanel() {
   const breachLabel = breachType === 0 ? "None" : breachType === 1 ? "Min Altitude" : breachType === 2 ? "Max Altitude" : "Boundary";
 
   return (
-    <ArmedLockOverlay>
+    <ArmedWarningBanner>
       <div className="flex-1 overflow-y-auto p-6">
         <div className="max-w-2xl space-y-6">
           <PanelHeader title="Geofence Configuration" subtitle="Configure geographical boundary enforcement and breach actions"
             icon={<Shield size={16} />} loading={loading} loadProgress={loadProgress}
-            hasLoaded={hasLoaded} onRead={refresh} connected={true} error={error} />
+            hasLoaded={hasLoaded} onRead={refresh} connected={connected} error={error} />
 
           <Card icon={<Shield size={14} />} title="Geofence Enable" description="Master enable for fence enforcement">
             <FenceEnableToggle label={pl("FENCE_ENABLE")} enabled={fenceEnable !== 0} onChange={(v) => setLocalValue("FENCE_ENABLE", v)} />
@@ -150,9 +154,9 @@ function ArduPilotGeofencePanel() {
 
           {hasAltFence && (
             <Card icon={<ArrowUp size={14} />} title="Altitude Fence" description="Altitude ceiling and floor">
-              <ParamInput label={lbl("FENCE_ALT_MAX — Max Altitude")} value={fenceAltMax} unit="m" min={0} step={5} onChange={(v) => setLocalValue("FENCE_ALT_MAX", v)} />
-              <ParamInput label={lbl("FENCE_ALT_MIN — Min Altitude")} value={fenceAltMin} unit="m" min={-100} step={0.5} onChange={(v) => setLocalValue("FENCE_ALT_MIN", v)} />
-              <AltitudeBandViz altMin={fenceAltMin} altMax={fenceAltMax} />
+              {hasCeiling && <ParamInput label={lbl("FENCE_ALT_MAX — Max Altitude")} value={fenceAltMax} unit="m" min={0} step={5} onChange={(v) => setLocalValue("FENCE_ALT_MAX", v)} />}
+              {hasFloor && <ParamInput label={lbl("FENCE_ALT_MIN — Min Altitude")} value={fenceAltMin} unit="m" min={-100} step={0.5} onChange={(v) => setLocalValue("FENCE_ALT_MIN", v)} />}
+              <AltitudeBandViz altMin={hasFloor ? fenceAltMin : null} altMax={hasCeiling ? fenceAltMax : null} />
             </Card>
           )}
 
@@ -224,6 +228,6 @@ function ArduPilotGeofencePanel() {
           </div>
         </div>
       </div>
-    </ArmedLockOverlay>
+    </ArmedWarningBanner>
   );
 }

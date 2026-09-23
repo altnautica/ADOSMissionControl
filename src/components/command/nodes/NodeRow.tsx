@@ -12,7 +12,6 @@
  * @license GPL-3.0-only
  */
 
-import { RefObject } from "react";
 import { MoreHorizontal, Wifi } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
@@ -23,7 +22,6 @@ import {
   tintStyle,
 } from "@/lib/nodes/node-profile";
 import { NodeGlyph } from "./node-glyph";
-import { NodeAgentBadge } from "./NodeAgentBadge";
 import { NodeStatusHoverCard } from "./NodeStatusHoverCard";
 import { Tooltip } from "@/components/ui/tooltip";
 import { StatusDot, type StatusLevel } from "@/components/ui/status-dot";
@@ -44,7 +42,7 @@ export function effProfileForNode(node: FleetNodeEntry): EffProfile {
   return "drone";
 }
 
-/** Health only, from the verified lastSeen freshness signal (Rule 44 — never a
+/** Health only, from the verified lastSeen freshness signal (never a
  * fabricated reading). `stale` maps to the 4th `serious` step so a degraded but
  * not-dead node is distinguishable from both healthy and offline. */
 export function nodeStatusLevel(node: FleetNodeEntry): StatusLevel {
@@ -110,8 +108,8 @@ export function nodeSubtitleLabels(
 
 /**
  * Profile-correct subtitle: role/type first, then board, collapsing to a single
- * "Offline" line when the freshness signal says the node is unreachable (Rule 44
- * — no stale sub-metrics). `typeLabel` is the resolved `type.*` string.
+ * "Offline" line when the freshness signal says the node is unreachable (no
+ * stale sub-metrics). `typeLabel` is the resolved `type.*` string.
  */
 export function nodeSubtitle(
   node: FleetNodeEntry,
@@ -137,28 +135,11 @@ export function nodeSubtitle(
 interface NodeRowProps {
   node: FleetNodeEntry;
   selected: boolean;
-  renaming: boolean;
-  renameValue: string;
-  renameInputRef: RefObject<HTMLInputElement | null>;
   onSelect: (node: FleetNodeEntry) => void;
   onContext: (nodeId: string, x: number, y: number) => void;
-  onRenameChange: (value: string) => void;
-  onRenameSubmit: (nodeId: string) => void;
-  onRenameCancel: () => void;
 }
 
-export function NodeRow({
-  node,
-  selected,
-  renaming,
-  renameValue,
-  renameInputRef,
-  onSelect,
-  onContext,
-  onRenameChange,
-  onRenameSubmit,
-  onRenameCancel,
-}: NodeRowProps) {
+export function NodeRow({ node, selected, onSelect, onContext }: NodeRowProps) {
   const t = useTranslations("nodeConsole");
   const effProfile = effProfileForNode(node);
   const status = nodeStatusLevel(node);
@@ -173,7 +154,7 @@ export function NodeRow({
   const displayName = personalization?.label?.trim() || node.name;
   // The tile wash + accent take the operator's swatch when set, else the profile
   // accent. Only the wash is used on the tile — the border stays the health
-  // ring, so an error still reads red on any tile colour (Rule 44).
+  // ring, so an error still reads red on any tile colour (no fabricated reading).
   const tileCssVar = personalization?.color
     ? swatchVar(personalization.color)
     : NODE_ACCENT_VAR[effProfile];
@@ -258,95 +239,74 @@ export function NodeRow({
       {/* Two-line body: the name owns its own full-width line (line 1) so the
           flavor / status badges below (line 2) can never truncate it. */}
       <div className="min-w-0 flex-1">
-        {renaming ? (
-          <input
-            ref={renameInputRef}
-            value={renameValue}
-            onChange={(e) => onRenameChange(e.target.value)}
-            onBlur={() => onRenameSubmit(node._id)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") onRenameSubmit(node._id);
-              if (e.key === "Escape") onRenameCancel();
+        {/* Line 1: name + overflow action */}
+        <div className="flex items-center gap-1.5">
+          <p className="min-w-0 flex-1 truncate text-xs font-medium text-text-primary">
+            {displayName}
+          </p>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+              onContext(node._id, rect.right, rect.bottom);
             }}
-            className="w-full rounded border border-accent-primary bg-bg-primary px-1 py-0.5 text-xs text-text-primary outline-none"
-            onClick={(e) => e.stopPropagation()}
-          />
-        ) : (
-          <>
-            {/* Line 1: name + overflow action */}
-            <div className="flex items-center gap-1.5">
-              <p className="min-w-0 flex-1 truncate text-xs font-medium text-text-primary">
-                {displayName}
-              </p>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                  onContext(node._id, rect.right, rect.bottom);
-                }}
-                title={t("actions.menu")}
-                aria-label={t("actions.nodeActions")}
-                className="shrink-0 p-0.5 text-text-tertiary opacity-60 transition-all hover:text-text-primary group-hover:opacity-100"
-              >
-                <MoreHorizontal size={14} />
-              </button>
-            </div>
-            {/* Line 2: firmware·airframe / role / tier badges + opt-in signal
-                dots, wrapping so they never steal width from the name. */}
-            <div className="mt-1 flex flex-wrap items-center gap-1">
-              {featureDots.length > 0 && (
-                <div className="flex items-center gap-0.5" aria-label={t("signalDots")}>
-                  {featureDots.slice(0, 4).map((dot) => {
-                    const resolved = resolveFeatureDot(dot.signal, node);
-                    return (
-                      <StatusDot
-                        key={dot.signal}
-                        status={resolved.level}
-                        shape={resolved.known ? "dot" : "ring"}
-                        size="xs"
-                        label={t("signalTooltip", {
-                          signal: t(resolved.labelKey),
-                          state: t(resolved.stateKey),
-                        })}
-                      />
-                    );
-                  })}
-                </div>
-              )}
-              {personalization?.badge && (
-                <Badge variant="neutral" className="rounded normal-case tracking-normal">
-                  {personalization.badge}
-                </Badge>
-              )}
-              {authority.show && (
-                <Badge
-                  variant={authority.level === "warning" ? "warning" : "neutral"}
-                  className="gap-1 rounded normal-case tracking-normal"
-                >
-                  {/* The dot carries the full sentence as its aria-label and
-                      title, so the reason survives the short badge text. */}
+            title={t("actions.menu")}
+            aria-label={t("actions.nodeActions")}
+            className="shrink-0 p-0.5 text-text-tertiary opacity-60 transition-all hover:text-text-primary group-hover:opacity-100"
+          >
+            <MoreHorizontal size={14} />
+          </button>
+        </div>
+        {/* Line 2: firmware·airframe / role / tier badges + opt-in signal
+            dots, wrapping so they never steal width from the name. */}
+        <div className="mt-1 flex flex-wrap items-center gap-1">
+          {featureDots.length > 0 && (
+            <div className="flex items-center gap-0.5" aria-label={t("signalDots")}>
+              {featureDots.slice(0, 4).map((dot) => {
+                const resolved = resolveFeatureDot(dot.signal, node);
+                return (
                   <StatusDot
-                    status={authority.level}
+                    key={dot.signal}
+                    status={resolved.level}
+                    shape={resolved.known ? "dot" : "ring"}
                     size="xs"
-                    label={authority.detail}
+                    label={t("signalTooltip", {
+                      signal: t(resolved.labelKey),
+                      state: t(resolved.stateKey),
+                    })}
                   />
-                  {authority.label}
-                </Badge>
-              )}
-              <NodeBadgeSet node={node} effProfile={effProfile} max={3} />
-              {effProfile === "drone" && node.board && <NodeAgentBadge />}
+                );
+              })}
             </div>
-          </>
-        )}
+          )}
+          {personalization?.badge && (
+            <Badge variant="neutral" className="rounded normal-case tracking-normal">
+              {personalization.badge}
+            </Badge>
+          )}
+          {authority.show && (
+            <Badge
+              variant={authority.level === "warning" ? "warning" : "neutral"}
+              className="gap-1 rounded normal-case tracking-normal"
+            >
+              {/* The dot carries the full sentence as its aria-label and
+                  title, so the reason survives the short badge text. */}
+              <StatusDot
+                status={authority.level}
+                size="xs"
+                label={authority.detail}
+              />
+              {authority.label}
+            </Badge>
+          )}
+          <NodeBadgeSet node={node} effProfile={effProfile} max={3} />
+        </div>
       </div>
     </div>
   );
 
-  // The whole row is the hover trigger for the profile-aware status card. While
-  // renaming, the inline input owns the row, so render it bare (no hover card).
-  return renaming ? (
-    row
-  ) : (
+  // The whole row is the hover trigger for the profile-aware status card.
+  return (
     <Tooltip
       triggerClassName="relative block w-full"
       position="right"

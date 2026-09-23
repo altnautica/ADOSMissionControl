@@ -41,6 +41,8 @@ export function Px4ActuatorTest({ connected }: { connected: boolean }) {
   const motor = isMotor(func);
   const min = motor ? 0 : -100;
 
+  // True only when the FC acknowledged the command. A NACK, timeout or
+  // dropped link is toasted with the FC's reason, never reported as running.
   const send = useCallback(
     async (value: number, timeoutS: number) => {
       const protocol = getSelectedProtocol();
@@ -54,8 +56,14 @@ export function Px4ActuatorTest({ connected }: { connected: boolean }) {
       }
       setBusy(true);
       try {
-        await protocol.actuatorTest(func, value, timeoutS);
-        return true;
+        const result = await protocol.actuatorTest(func, value, timeoutS);
+        if (!result.success) {
+          toast(`Actuator test refused: ${result.message || "no acknowledgement from the flight controller"}`, "error");
+        }
+        return result.success;
+      } catch (err) {
+        toast(`Actuator test failed: ${err instanceof Error ? err.message : String(err)}`, "error");
+        return false;
       } finally {
         setBusy(false);
       }
@@ -74,7 +82,11 @@ export function Px4ActuatorTest({ connected }: { connected: boolean }) {
       toast(`Testing ${OUTPUT_OPTIONS.find((o) => o.value === fn)?.label} for ${TEST_TIMEOUT_S}s — keep clear`, "warning");
     }
   };
-  const stop = () => send(NaN, 0); // NaN = disarm/stop the output immediately
+  // NaN stops the output immediately. The FC restores it after the timeout
+  // anyway, but a refused Stop must still be visible.
+  const stop = async () => {
+    if (await send(NaN, 0)) toast("Actuator test stopped", "info");
+  };
 
   const disabled = !connected || isHardBlocked || busy || !propsRemoved;
 

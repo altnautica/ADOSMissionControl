@@ -183,14 +183,26 @@ describe("the Agent page has one sidebar", () => {
     // rather than disappearing with the host it has none of.
     expect(screen.getByText("Radio")).toBeTruthy();
     expect(screen.queryByText("Video")).toBeNull();
+    // Only a ground station runs a modem manager, so Cellular is offered here
+    // and nowhere else.
+    expect(screen.getByText("Cellular")).toBeTruthy();
+  });
+
+  it("does not offer Cellular on a drone, whose services read no cellular setting", () => {
+    renderWithIntl(<AgentTab ctx={ctxFor("drone")} />);
+    expect(screen.getByText("Wi-Fi")).toBeTruthy();
+    expect(screen.queryByText("Cellular")).toBeNull();
   });
 
   it("groups a drone's live surfaces with the configuration for the same subsystem", () => {
     const { container } = renderWithIntl(<AgentTab ctx={ctxFor("drone")} />);
+    // No config document reaches this node, and an unread document says
+    // nothing about the swarm block, so the Fleet page stays offered.
     expect(sectionHeaders(container)).toEqual([
       "Node",
       "Radio & link",
       "Networking",
+      "Fleet",
       "Video & vision",
       "Cloud & remote",
       "System & safety",
@@ -218,7 +230,6 @@ describe("the Agent page has one sidebar", () => {
       "Link",
       "Network",
       "Wi-Fi",
-      "Cellular",
       "MAC pinning",
       "Discovery",
       "MAVLink",

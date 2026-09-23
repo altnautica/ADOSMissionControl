@@ -31,7 +31,7 @@ export function WindCard({ wind, hasMetar }: { wind: WindEstimate; hasMetar: boo
         <Row label="Speed" value={`${wind.speedMs.toFixed(1)} m/s`} mono />
         <Row label="From" value={`${wind.fromDirDeg}° (${compassLabel(wind.fromDirDeg)})`} mono />
         <Row label="Samples" value={wind.sampleCount.toString()} mono />
-        <Row label="Method" value={wind.method === "vfr_diff" ? "GS − AS" : "Attitude track"} />
+        <Row label="Method" value={wind.method === "vfr_diff" ? "Ground track − airspeed" : "FC estimate"} />
       </div>
       {hasMetar && (
         <span className="text-[9px] text-text-tertiary mt-0.5">

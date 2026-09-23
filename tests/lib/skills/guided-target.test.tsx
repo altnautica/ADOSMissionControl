@@ -21,6 +21,7 @@ import {
   LAND_REPOSITION_TIMEOUT_MS,
   cancelGuidedTarget,
   landAtPoint,
+  loiterAtPoint,
   superviseGuidedTarget,
 } from "@/lib/skills/guided-target";
 import { GuidedTargetOverlay } from "@/components/flight/GuidedTargetOverlay";
@@ -38,9 +39,11 @@ const ONE_METRE_DEG = 1e-5;
 const ok = { success: true, resultCode: 0, message: "" };
 const guidedGoto = vi.fn(async () => ok);
 const land = vi.fn(async () => ok);
+const setFlightMode = vi.fn(async () => ok);
 const protocol = {
   guidedGoto,
   land,
+  setFlightMode,
   getVehicleInfo: () => ({ firmwareType: "ardupilot-copter" }),
 } as unknown as DroneProtocol;
 const report = vi.fn();
@@ -74,6 +77,7 @@ beforeEach(() => {
   vi.useFakeTimers();
   guidedGoto.mockClear();
   land.mockClear();
+  setFlightMode.mockClear();
   report.mockClear();
   (activate as unknown as ReturnType<typeof vi.fn>).mockClear();
   useTelemetryStore.getState().clear();
@@ -195,5 +199,57 @@ describe("guided target overlay", () => {
     at(50, 5);
     render(<GuidedTargetOverlay />);
     expect(screen.queryByText("Flying to target")).toBeNull();
+  });
+});
+
+describe("Loiter Here", () => {
+  async function startLoiterHere(): Promise<void> {
+    await loiterAtPoint({ protocol, droneId: DRONE, ...TARGET, alt: 10, report });
+  }
+
+  it("repositions first and engages LOITER only once holding over the point", async () => {
+    await startLoiterHere();
+    expect(guidedGoto).toHaveBeenCalledWith(TARGET.lat, TARGET.lon, 10);
+    // A LOITER sent before the reposition would be undone by it.
+    expect(setFlightMode).not.toHaveBeenCalled();
+    expect(useGuidedStore.getState().target?.purpose).toBe("loiter");
+
+    at(60, 5);
+    await tick();
+    expect(setFlightMode).not.toHaveBeenCalled();
+
+    at(2, 0.3);
+    await tick();
+    expect(setFlightMode).toHaveBeenCalledTimes(1);
+    expect(setFlightMode).toHaveBeenCalledWith("LOITER");
+    expect(report).toHaveBeenLastCalledWith("Loitering at the selected point", "success");
+    expect(useGuidedStore.getState().target).toBeNull();
+  });
+
+  it("reports a refused LOITER switch", async () => {
+    setFlightMode.mockResolvedValueOnce({ success: false, resultCode: 4, message: "denied" });
+    await startLoiterHere();
+    at(1, 0.1);
+    await tick();
+    expect(report).toHaveBeenLastCalledWith("Loiter failed: denied", "error");
+  });
+
+  it("never switches mode when the reposition is rejected", async () => {
+    guidedGoto.mockResolvedValueOnce({ success: false, resultCode: 4, message: "denied" });
+    await startLoiterHere();
+    at(0, 0);
+    await tick();
+    expect(setFlightMode).not.toHaveBeenCalled();
+    expect(report).toHaveBeenCalledWith("Loiter here failed — reposition rejected: denied", "error");
+  });
+
+  it("is cancelled with a report when the mode leaves GUIDED before arrival", async () => {
+    await startLoiterHere();
+    at(60, 5);
+    await tick();
+    useDroneStore.setState({ flightMode: "RTL" });
+    await tick();
+    expect(setFlightMode).not.toHaveBeenCalled();
+    expect(report).toHaveBeenLastCalledWith("Loiter here cancelled: flight mode changed to RTL", "warning");
   });
 });

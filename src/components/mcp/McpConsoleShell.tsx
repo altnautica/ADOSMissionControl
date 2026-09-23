@@ -9,6 +9,9 @@
 "use client";
 
 import { useMcpTabStore } from "@/stores/mcp-tab-store";
+import { useClockStore } from "@/stores/clock-store";
+import { useClockTick } from "@/lib/agent/freshness";
+import { credentialStatus } from "./mcp-shared";
 import { McpSidebar } from "./McpSidebar";
 import { McpOverview } from "./McpOverview";
 import { McpConnect } from "./McpConnect";
@@ -22,7 +25,9 @@ import { McpAuditLog } from "./McpAuditLog";
 
 export function McpConsoleShell({ rows }: { rows: McpTokenRow[] }) {
   const view = useMcpTabStore((s) => s.view);
-  const activeCredentials = rows.filter((r) => r.revokedAt == null).length;
+  useClockTick();
+  const now = useClockStore((s) => s.now);
+  const activeCredentials = rows.filter((r) => credentialStatus(r, now) === "active").length;
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden md:flex-row">

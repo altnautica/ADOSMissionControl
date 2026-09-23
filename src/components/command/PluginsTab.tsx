@@ -8,20 +8,21 @@
  * (`agent-nav-items.tsx`). Renders the install affordance and the list of
  * installed plugins for the node the panel already resolved.
  *
- * Why this is its own component rather than a thin re-export of the
- * dashboard's DronePluginsTab: the dashboard version looks up the
- * target drone in `useFleetStore`, which is only populated by demo
- * mode. This adapter instead resolves its target drone from the
- * already-computed `SurfaceContext` that `NodeDetailPanel` derives once
- * per render — the same contract every other Agent sub-page reads —
- * rather than re-deriving from `agent-connection-store` / `pairing-store`
- * / `local-nodes-store`, which never resolve a ground-relayed drone.
+ * It resolves its target drone from the already-computed `SurfaceContext`
+ * that `NodeDetailPanel` derives once per render — the same contract every
+ * other Agent sub-page reads — rather than re-deriving from
+ * `agent-connection-store` / `pairing-store` / `local-nodes-store`, which
+ * never resolve a ground-relayed drone.
+ *
+ * A Settings "Install on a node…" hand-off leaves the plugin id in
+ * `ui-store.pendingRegistryPluginId`; the catalog below highlights that card,
+ * and the id is released when this page unmounts.
  *
  * @license GPL-3.0-only
  */
 
 import type { SurfaceContext } from "@/components/dashboard/node-detail/surface-types";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useTranslations } from "next-intl";
 
 import { useSurfaceGate } from "@/hooks/use-surface-gate";
@@ -31,10 +32,16 @@ import { DronePluginsList } from "@/components/dashboard/drone-plugins/DronePlug
 import { InstallPluginButton } from "@/components/dashboard/drone-plugins/InstallPluginButton";
 import { RegistryPluginGrid } from "@/components/dashboard/drone-plugins/RegistryPluginGrid";
 import type { FleetDrone } from "@/lib/types";
+import { useUiStore } from "@/stores/ui-store";
 
 export function PluginsTab({ ctx }: { ctx: SurfaceContext }) {
   const t = useTranslations("dronePlugins");
   const agentGate = useSurfaceGate("agent-online");
+  const preselectPluginId = useUiStore((s) => s.pendingRegistryPluginId);
+  useEffect(
+    () => () => useUiStore.getState().setPendingRegistryPluginId(null),
+    [],
+  );
 
   // ctx.drone.id is the canonical `node:<deviceId>` selection id (the same
   // id NodeDetailPanel keys `drones.find` on); every downstream consumer
@@ -92,6 +99,7 @@ export function PluginsTab({ ctx }: { ctx: SurfaceContext }) {
               deviceId: activeDrone.cloudDeviceId ?? activeDrone.id,
               name: activeDrone.name ?? activeDrone.id,
             }}
+            preselectPluginId={preselectPluginId}
           />
         </div>
       </div>

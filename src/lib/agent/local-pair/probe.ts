@@ -13,13 +13,14 @@ import { combineSignals, normaliseHost, safeJson, shouldUseProxy } from "./trans
 import { pairFailureFromResponse } from "./failure-copy";
 
 /** Hit ``/api/pairing/info`` and return the agent identity.
- * Times out after 8s so a non-responsive host doesn't hang the UI.
+ * Bounded by the pair-flow deadline so a non-responsive host doesn't hang
+ * the UI.
  *
- * Cross-protocol path: when the GCS is on HTTPS, the request goes
- * through Mission Control's own `/api/lan-pair/probe` route, which
- * forwards the HTTP request to the LAN agent server-side. On HTTP
- * origins the direct fetch is preferred so the pair stays a single
- * round-trip.
+ * In a browser the request always goes through Mission Control's own
+ * `/api/lan-pair/probe` route, which forwards it to the LAN agent
+ * server-side (see `shouldUseProxy`); only a window-less caller fetches the
+ * agent directly. Either way a request nothing answered maps onto the
+ * unreachable copy rather than escaping as a raw fetch error.
  */
 export async function probeAgent(
   rawHost: string,
@@ -57,25 +58,33 @@ export async function probeAgent(
   }
   let body: Record<string, unknown>;
   if (shouldUseProxy()) {
-    const resp = await fetch(`/api/lan-pair/probe`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify({ host }),
-      signal: combineSignals(signal),
-    });
+    // The route answers its own unreachable reply when the agent is silent;
+    // a rejection here means the route itself did not answer in time.
+    let resp: Response;
+    try {
+      resp = await fetch(`/api/lan-pair/probe`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ host }),
+        signal: combineSignals(signal),
+      });
+    } catch (e) {
+      if (signal?.aborted) throw e;
+      throw pairFailureFromResponse("probe", host, { status: 0 }, null);
+    }
     if (!resp.ok) {
       throw pairFailureFromResponse("probe", host, resp, await safeJson(resp));
     }
     body = (await resp.json()) as Record<string, unknown>;
   } else {
-    // Direct path (desktop build / http origin): a fetch rejection here is a
-    // real "nothing answered" — DNS failure, connection refused, or the 8 s
-    // timeout — so it maps onto the same unreachable branch the proxy's 502
-    // produces rather than escaping as a raw TypeError. An operator-triggered
-    // abort is not a failure and is re-thrown untouched.
+    // Direct path (no window): a fetch rejection here is a real "nothing
+    // answered" — DNS failure, connection refused, or the timeout — so it
+    // maps onto the same unreachable branch the proxy's 502 produces rather
+    // than escaping as a raw TypeError. An operator-triggered abort is not a
+    // failure and is re-thrown untouched.
     let resp: Response;
     try {
       resp = await fetch(`${host}/api/pairing/info`, {

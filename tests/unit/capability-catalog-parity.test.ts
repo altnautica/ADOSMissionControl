@@ -53,7 +53,7 @@ describe("capability catalog parity (vision-nav)", () => {
     const emptyDescriptions: string[] = [];
 
     for (const perm of parsed.permissions) {
-      const meta = getMergedCapabilityMeta(perm.id);
+      const meta = getMergedCapabilityMeta(perm.id, perm.half);
       if ((meta as { unknown?: boolean }).unknown === true) {
         unknown.push(perm.id);
         continue;

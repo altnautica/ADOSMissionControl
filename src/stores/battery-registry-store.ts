@@ -16,13 +16,6 @@ import { createIdbStoreLoader } from "@/lib/idb-store-loader";
 
 const IDB_KEY = "altcmd:battery-registry";
 
-/**
- * Cycle-based linear health degradation model. LiPo packs typically lose
- * ~0.04% per cycle in light use, ~0.08% in heavy use. We use 0.05% as a
- * conservative middle ground; operators can override the per-pack
- * `healthPercent` manually.
- */
-const HEALTH_LOSS_PER_CYCLE_PCT = 0.05;
 
 interface State {
   packs: Record<string, BatteryPack>;
@@ -42,7 +35,7 @@ interface Actions {
    */
   listAll: () => BatteryPack[];
   /**
-   * Increment a pack's cycle count and decay its health estimate.
+   * Increment a pack's cycle count; the projected health follows from it.
    * Called by the loadout linkage after a flight finalizes with this pack.
    */
   recordCycle: (id: string) => void;
@@ -94,14 +87,7 @@ export const useBatteryRegistryStore = create<State & Actions>((set, getState) =
     set((s) => {
       const existing = s.packs[id];
       if (!existing) return s;
-      const cycles = (existing.cycleCount ?? 0) + 1;
-      // Project health from initial 100% minus cycle decay.
-      const projectedHealth = Math.max(0, 100 - cycles * HEALTH_LOSS_PER_CYCLE_PCT);
-      const next: BatteryPack = {
-        ...existing,
-        cycleCount: cycles,
-        healthPercent: existing.healthPercent ?? projectedHealth,
-      };
+      const next: BatteryPack = { ...existing, cycleCount: (existing.cycleCount ?? 0) + 1 };
       return { packs: { ...s.packs, [id]: next } };
     });
     void getState().persistToIDB();

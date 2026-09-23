@@ -8,8 +8,10 @@ import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
 import {
   type CalibrationState,
   type CalibrationLogEntry,
+  type CompassParams,
   INITIAL_STATE,
   ACCEL_STEPS,
+  COMPASS_PARAM_NAMES,
   LOG_KEYWORDS,
   MAX_LOG_ENTRIES,
 } from "./calibration-types";
@@ -61,14 +63,10 @@ export function useCalibrationEngine() {
   const [calDiff, setCalDiff] = useState<Array<{ name: string; before: number; after: number }> | null>(null);
   const [calDiffType, setCalDiffType] = useState<string | null>(null);
 
-  const [compassParams, setCompassParams] = useState<{
-    COMPASS_USE: number | null;
-    COMPASS_ORIENT: number | null;
-    COMPASS_AUTO_ROT: number | null;
-    COMPASS_OFFS_MAX: number | null;
-    COMPASS_LEARN: number | null;
-    COMPASS_EXTERNAL: number | null;
-  }>({ COMPASS_USE: null, COMPASS_ORIENT: null, COMPASS_AUTO_ROT: null, COMPASS_OFFS_MAX: null, COMPASS_LEARN: null, COMPASS_EXTERNAL: null });
+  const [compassParams, setCompassParams] = useState<CompassParams>({
+    COMPASS_USE: undefined, COMPASS_ORIENT: undefined, COMPASS_AUTO_ROT: undefined,
+    COMPASS_OFFS_MAX: undefined, COMPASS_LEARN: undefined, COMPASS_EXTERNAL: undefined,
+  });
 
   const subsRef = useRef<Map<string, (() => void)[]>>(new Map());
   const timeoutRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
@@ -102,15 +100,15 @@ export function useCalibrationEngine() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPx4, getSelectedProtocol, toast]);
 
-  // Fetch compass params
+  // Fetch compass params. A failed read is `null` ("unavailable"), not a
+  // permanent "loading".
   useEffect(() => {
     const protocol = getSelectedProtocol();
     if (!protocol) return;
-    const names = ["COMPASS_USE", "COMPASS_ORIENT", "COMPASS_AUTO_ROT", "COMPASS_OFFS_MAX", "COMPASS_LEARN", "COMPASS_EXTERNAL"] as const;
-    Promise.allSettled(names.map((n) => protocol.getParameter(n))).then((results) => {
-      const vals: Record<string, number | null> = {};
-      names.forEach((n, i) => { const r = results[i]; vals[n] = r.status === "fulfilled" ? r.value.value : null; });
-      setCompassParams({ COMPASS_USE: vals.COMPASS_USE ?? null, COMPASS_ORIENT: vals.COMPASS_ORIENT ?? null, COMPASS_AUTO_ROT: vals.COMPASS_AUTO_ROT ?? null, COMPASS_OFFS_MAX: vals.COMPASS_OFFS_MAX ?? null, COMPASS_LEARN: vals.COMPASS_LEARN ?? null, COMPASS_EXTERNAL: vals.COMPASS_EXTERNAL ?? null });
+    Promise.allSettled(COMPASS_PARAM_NAMES.map((n) => protocol.getParameter(n))).then((results) => {
+      const vals: CompassParams = { COMPASS_USE: null, COMPASS_ORIENT: null, COMPASS_AUTO_ROT: null, COMPASS_OFFS_MAX: null, COMPASS_LEARN: null, COMPASS_EXTERNAL: null };
+      COMPASS_PARAM_NAMES.forEach((n, i) => { const r = results[i]; vals[n] = r.status === "fulfilled" ? r.value.value : null; });
+      setCompassParams(vals);
     });
   }, [getSelectedProtocol]);
 
@@ -175,6 +173,7 @@ export function useCalibrationEngine() {
     if (protocol) { if (type === "compass" && protocol.cancelCompassCal) protocol.cancelCompassCal(); else if (protocol.cancelCalibration) protocol.cancelCalibration(); }
     cleanupSubs(manager, type);
     useDiagnosticsStore.getState().logCalibration(type, "cancelled");
+    setPx4CalActiveType(null);
     setter(INITIAL_STATE);
   }, [getSelectedProtocol]);
 
@@ -238,8 +237,14 @@ export function useCalibrationEngine() {
       paramNames.forEach((name, i) => { const r = results[i]; if (r.status === "fulfilled") snap.set(name, r.value.value); });
       setCalSnapshot(snap);
     } else { setCalSnapshot(null); }
-    if (!isPx4 && type === "compass" && compassParams.COMPASS_AUTO_ROT !== null && compassParams.COMPASS_AUTO_ROT !== 3) {
-      try { await protocol.setParameter("COMPASS_AUTO_ROT", 3); setCompassParams((p) => ({ ...p, COMPASS_AUTO_ROT: 3 })); toast("COMPASS_AUTO_ROT set to 3 (lenient) to prevent orientation flickering", "info"); } catch { /* non-fatal */ }
+    if (!isPx4 && type === "compass" && typeof compassParams.COMPASS_AUTO_ROT === "number" && compassParams.COMPASS_AUTO_ROT !== 3) {
+      const autoRot = await protocol.setParameter("COMPASS_AUTO_ROT", 3).catch(() => null);
+      if (autoRot?.success) {
+        setCompassParams((p) => ({ ...p, COMPASS_AUTO_ROT: 3 }));
+        toast("COMPASS_AUTO_ROT set to 3 (lenient) to prevent orientation flickering", "info");
+      } else {
+        toast(`COMPASS_AUTO_ROT was not changed: ${autoRot?.message ?? "no reply"}. Calibrating with the current setting.`, "warning");
+      }
     }
     if (isPx4) { setPx4CalActiveType(type); px4CalCompletedSidesRef.current = new Set(); }
     setter({ ...INITIAL_STATE, status: "in_progress", message: "Starting calibration..." });
@@ -275,16 +280,16 @@ export function useCalibrationEngine() {
     } catch { cleanupSubs(manager, "level"); setPx4CalActiveType(null); setPx4QuickLevel((prev) => ({ ...prev, status: "error", message: "Failed to send quick level command" })); toast("Failed to send quick level command", "error"); }
   }, [getSelectedProtocol, toast]);
 
-  const startPx4GnssMagCal = useCallback(async () => {
+  const startPx4GnssMagCal = useCallback(async (yawDeg: number) => {
     const protocol = getSelectedProtocol();
     if (!protocol) return;
     setPx4CalActiveType("gnss-mag");
-    setPx4GnssMagCal({ ...INITIAL_STATE, status: "in_progress", message: "Starting GNSS mag calibration... Ensure GPS fix." });
+    setPx4GnssMagCal({ ...INITIAL_STATE, status: "in_progress", message: `Calibrating compass for a vehicle yaw of ${yawDeg}°...` });
     try {
-      const result = protocol.startGnssMagCal ? await protocol.startGnssMagCal() : { success: false, resultCode: -1, message: "GNSS mag cal not supported by this firmware" };
-      if (!result.success) { setPx4CalActiveType(null); setPx4GnssMagCal((prev) => ({ ...prev, status: "error", message: result.message || "GNSS mag cal command rejected. Ensure GPS has a fix." })); toast("GNSS mag calibration failed", "error"); }
-      else { setPx4GnssMagCal(() => ({ ...INITIAL_STATE, status: "success", progress: 100, message: "GNSS mag calibration complete. Compass yaw aligned to GPS heading.", needsReboot: true })); setPx4CalActiveType(null); toast("GNSS mag calibration complete", "success"); useDiagnosticsStore.getState().logCalibration("gnss-mag", "success"); }
-    } catch { setPx4CalActiveType(null); setPx4GnssMagCal((prev) => ({ ...prev, status: "error", message: "Failed to send GNSS mag cal command" })); toast("Failed to send GNSS mag cal command", "error"); }
+      const result = protocol.startGnssMagCal ? await protocol.startGnssMagCal(yawDeg) : { success: false, resultCode: -1, message: "Known-heading compass calibration is not supported by this firmware" };
+      if (!result.success) { setPx4CalActiveType(null); setPx4GnssMagCal((prev) => ({ ...prev, status: "error", message: result.message || "Known-heading compass calibration was rejected. Ensure the vehicle has a position fix." })); toast("Compass calibration failed", "error"); }
+      else { setPx4GnssMagCal(() => ({ ...INITIAL_STATE, status: "success", progress: 100, message: `Compass calibrated against the magnetic model for a vehicle yaw of ${yawDeg}°.`, needsReboot: true })); setPx4CalActiveType(null); toast("Compass calibration complete", "success"); useDiagnosticsStore.getState().logCalibration("gnss-mag", "success"); }
+    } catch { setPx4CalActiveType(null); setPx4GnssMagCal((prev) => ({ ...prev, status: "error", message: "Failed to send the compass calibration command" })); toast("Failed to send the compass calibration command", "error"); }
   }, [getSelectedProtocol, toast]);
 
   return {
@@ -294,7 +299,7 @@ export function useCalibrationEngine() {
     logEntries, setLogEntries, baroPressure,
     compassParams, setCompassParams,
     calDiff, setCalDiff, calDiffType, setCalDiffType,
-    px4QuickLevel, px4GnssMagCal, isPx4,
+    px4QuickLevel, setPx4QuickLevel, px4GnssMagCal, isPx4,
     startCalibration, cancelCalibration,
     confirmAccelPosition, acceptCompass, forceCompassSave,
     startPx4QuickLevel, startPx4GnssMagCal,

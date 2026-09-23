@@ -115,8 +115,15 @@ export function SwarmActionBar({
           ready: ready.length,
           total: selectedRows.length,
         }),
-        disabled: ready.length === 0,
-        title: ready.length === 0 ? tSwarm("bulk.noneReady") : undefined,
+        // The trigger's gate does not reach a menu that is already open, so
+        // every item carries it too: an arm window that lapses while the menu
+        // is open leaves nothing clickable.
+        disabled: gated || ready.length === 0,
+        title: gated
+          ? tSwarm("broadcast.required")
+          : ready.length === 0
+            ? tSwarm("bulk.noneReady")
+            : undefined,
       },
     ];
   });
@@ -128,11 +135,17 @@ export function SwarmActionBar({
       ready: configTargets.length,
       total: selectedRows.length,
     }),
-    disabled: configTargets.length === 0 || configWrite.pending,
-    title: configTargets.length === 0 ? tSwarm("bulk.noPath") : undefined,
+    disabled: gated || configTargets.length === 0 || configWrite.pending,
+    title: gated
+      ? tSwarm("broadcast.required")
+      : configTargets.length === 0
+        ? tSwarm("bulk.noPath")
+        : undefined,
   }));
 
   function beginSkill(skillId: string) {
+    // Re-read the gate at the moment of selection, not at menu open.
+    if (gated) return;
     const skill = skills.get(skillId);
     if (!skill) return;
     const targets = resolveFleetSkillTargets(skill, nodeRows, laneOptions);
@@ -141,6 +154,7 @@ export function SwarmActionBar({
   }
 
   function beginFormation(name: string) {
+    if (gated) return;
     const picked = SWARM_FORMATIONS.find((f) => f === name);
     if (!picked || configTargets.length === 0) return;
     setPending({ kind: "formation", formation: picked, targets: configTargets });

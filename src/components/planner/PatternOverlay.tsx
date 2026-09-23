@@ -14,7 +14,6 @@ import { usePatternStore, parallelTrackRect, expandingSquareReach } from "@/stor
 import { useDrawingStore } from "@/stores/drawing-store";
 import { useGeofenceStore } from "@/stores/geofence-store";
 import { MAP_COLORS, withAlpha } from "@/lib/map-constants";
-import L from "leaflet";
 
 const Polyline = dynamic(
   () => import("react-leaflet").then((m) => m.Polyline),
@@ -30,10 +29,6 @@ const CircleMarker = dynamic(
 );
 const LeafletCircle = dynamic(
   () => import("react-leaflet").then((m) => m.Circle),
-  { ssr: false }
-);
-const Marker = dynamic(
-  () => import("react-leaflet").then((m) => m.Marker),
   { ssr: false }
 );
 
@@ -76,15 +71,6 @@ const APPLIED_POINT_OPTS = {
   fillColor: PATTERN_COLOR,
   fillOpacity: 0.2,
 } as const;
-
-function makeAreaLabel(text: string): L.DivIcon {
-  return L.divIcon({
-    className: "",
-    iconSize: [120, 20],
-    iconAnchor: [60, 10],
-    html: `<div style="font-size:10px;font-family:JetBrains Mono,monospace;color:${MAP_COLORS.accentPrimary};white-space:nowrap;text-align:center;background:${withAlpha(MAP_COLORS.background, 0.8)};padding:2px 6px;border:1px solid ${withAlpha(MAP_COLORS.accentPrimary, 0.3)}">${text}</div>`,
-  });
-}
 
 export function PatternOverlay() {
   const activeType = usePatternStore((s) => s.activePatternType);

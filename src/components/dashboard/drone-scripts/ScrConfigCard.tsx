@@ -22,7 +22,7 @@ import { usePanelParams } from "@/hooks/use-panel-params";
 import { useParamPanelActions } from "@/hooks/use-param-panel-actions";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { PanelHeader } from "@/components/fc/shared/PanelHeader";
-import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
+import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import {
   SCR_PARAM_NAMES,
   SCR_OPTIONAL_PARAM_NAMES,
@@ -78,8 +78,12 @@ export function ScrConfigCard() {
     if (!protocol) return;
     setRebooting(true);
     try {
-      await protocol.reboot();
-      toast("Reboot command sent to the flight controller", "info");
+      const result = await protocol.reboot();
+      if (result.success) {
+        toast("Reboot command sent to the flight controller", "info");
+      } else {
+        toast(result.message || "The flight controller refused the reboot command", "error");
+      }
     } catch {
       toast("Failed to send reboot command", "error");
     } finally {
@@ -88,7 +92,7 @@ export function ScrConfigCard() {
   }
 
   return (
-    <ArmedLockOverlay>
+    <ArmedWarningBanner>
       <div className="border border-border-default bg-bg-secondary p-4 space-y-4">
         <PanelHeader
           title="Scripting Engine"
@@ -200,6 +204,6 @@ export function ScrConfigCard() {
           }}
         />
       </div>
-    </ArmedLockOverlay>
+    </ArmedWarningBanner>
   );
 }

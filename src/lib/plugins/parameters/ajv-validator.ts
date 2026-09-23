@@ -3,8 +3,10 @@
  * @description The `ajv`-backed (JSON Schema Draft-07) value validator shared by
  * the parameter pipeline — one of the three shared validator surfaces: the
  * GCS manifest parse, the GCS form commit, and (mirrored in Rust) the agent
- * config writer. A single shared `Ajv` instance compiles + memoises each
- * parameter schema and validates a committed value against it, so a richer
+ * config writer. A single shared `Ajv` instance compiles each distinct
+ * parameter schema once (memoised by the schema's JSON form, since callers
+ * rebuild schema objects freely and ajv caches by object identity) and
+ * validates a committed value against it, so a richer
  * schema (beyond the scalar subset) validates correctly without a hand-rolled
  * codepath per keyword.
  *
@@ -17,7 +19,7 @@
  * @license GPL-3.0-only
  */
 
-import Ajv, { type ErrorObject } from "ajv";
+import Ajv, { type ErrorObject, type ValidateFunction } from "ajv";
 
 import type { ParameterSchema, ValidationResult } from "./schema";
 
@@ -54,6 +56,30 @@ function friendly(errors: ErrorObject[] | null | undefined): string {
 }
 
 /**
+ * Compiled validators keyed by the JSON form of the validation schema. ajv
+ * caches by object identity and never evicts, so compiling a freshly built
+ * schema object per call would generate and retain a new validator every
+ * time; this cache compiles each distinct schema once. A schema that does not
+ * compile is cached as `null`.
+ */
+const compiled = new Map<string, ValidateFunction | null>();
+
+function compiledFor(schema: ParameterSchema): ValidateFunction | null {
+  const jsonSchema = toJsonSchema(schema);
+  const key = JSON.stringify(jsonSchema);
+  const hit = compiled.get(key);
+  if (hit !== undefined) return hit;
+  let fn: ValidateFunction | null;
+  try {
+    fn = ajv.compile(jsonSchema);
+  } catch {
+    fn = null;
+  }
+  compiled.set(key, fn);
+  return fn;
+}
+
+/**
  * Validate a committed value against a (well-formed) parameter schema via ajv.
  * Returns the same `{ ok, error? }` shape the form + parser already consume.
  */
@@ -61,18 +87,16 @@ export function validateValueAjv(
   schema: ParameterSchema,
   value: unknown,
 ): ValidationResult {
-  const ok = ajv.validate(toJsonSchema(schema), value) === true;
-  return ok ? { ok: true } : { ok: false, error: friendly(ajv.errors) };
+  const validate = compiledFor(schema);
+  if (!validate) return { ok: false, error: "has an invalid schema" };
+  return validate(value) === true
+    ? { ok: true }
+    : { ok: false, error: friendly(validate.errors) };
 }
 
 /** Whether the parameter schema compiles as a Draft-07 schema (structural
  * well-formedness — the parse gate's ajv check, complementing the domain rules
  * JSON Schema can't express such as `minimum <= maximum`). */
 export function schemaCompiles(schema: ParameterSchema): boolean {
-  try {
-    ajv.compile(toJsonSchema(schema));
-    return true;
-  } catch {
-    return false;
-  }
+  return compiledFor(schema) !== null;
 }

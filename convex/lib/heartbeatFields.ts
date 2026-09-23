@@ -122,8 +122,12 @@ export function serviceListField(
   return services;
 }
 
-export function commandStatusField(value: string | undefined): "completed" | "failed" {
-  return value === "failed" ? "failed" : "completed";
+/** A command ack's terminal status, or null when the agent stated neither
+ * `completed` nor `failed` (missing, `error`, `timeout`, ...). */
+export function commandStatusField(
+  value: string | undefined,
+): "completed" | "failed" | null {
+  return value === "completed" || value === "failed" ? value : null;
 }
 
 export interface RadioPayload {
@@ -421,15 +425,17 @@ export function peripheralStatesField(
 export interface ComputeSlaveEntry {
   nodeId: string;
   accelerators: string[];
-  workersIdle: number;
-  queueDepth: number;
+  /** Idle workers, or null when the slave did not report it. */
+  workersIdle: number | null;
+  /** Queued jobs, or null when the slave did not report it. */
+  queueDepth: number | null;
 }
 
 // Build the compute cluster's slave list, forwarding only well-formed entries
 // and coercing each field to the validator-accepted shape so a malformed agent
 // payload cannot fail the whole heartbeat. An entry without a node id is
-// dropped; the numeric/array fields default so the strict inner validator
-// (every field required) never throws. Returns undefined when absent.
+// dropped; a missing counter is forwarded as null (not measured), never as a
+// fabricated 0. Returns undefined when absent.
 export function computeClusterSlavesField(
   body: Record<string, unknown>,
 ): ComputeSlaveEntry[] | undefined {
@@ -453,8 +459,8 @@ export function computeClusterSlavesField(
     out.push({
       nodeId,
       accelerators: stringArrayField(row, "accelerators") ?? [],
-      workersIdle: numberField(row, "workersIdle") ?? 0,
-      queueDepth: numberField(row, "queueDepth") ?? 0,
+      workersIdle: numberField(row, "workersIdle") ?? null,
+      queueDepth: numberField(row, "queueDepth") ?? null,
     });
   }
   return out;

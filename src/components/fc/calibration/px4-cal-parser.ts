@@ -13,6 +13,20 @@ import {
 import { type SubsManager, resetTimeout } from "./cal-sub-helpers";
 import type { DroneProtocol } from "@/lib/protocol/types";
 
+/**
+ * PX4 accel-calibration orientation names (commander detect_orientation_str:
+ * back = tail down, front = nose down, up = upside down, down = right side up)
+ * mapped to the ACCEL_STEPS wizard index.
+ */
+export const PX4_ORIENTATION_STEP: Record<string, number> = {
+  down: 0, // Level
+  left: 1, // Left Side
+  right: 2, // Right Side
+  front: 3, // Nose Down
+  back: 4, // Nose Up
+  up: 5, // Back (upside down)
+};
+
 export function subscribePx4CalStatus(
   protocol: DroneProtocol,
   px4CalActiveTypeRef: React.MutableRefObject<string | null>,
@@ -90,8 +104,7 @@ export function subscribePx4CalStatus(
 
     const orientMatch = text.match(/\[cal\] orientation detected: (\w+)/);
     if (orientMatch && px4CalActiveTypeRef.current === "accel") {
-      const sideNameMap: Record<string, number> = { back: 0, front: 1, left: 2, right: 3, up: 4, down: 5 };
-      const stepIdx = sideNameMap[orientMatch[1].toLowerCase()];
+      const stepIdx = PX4_ORIENTATION_STEP[orientMatch[1].toLowerCase()];
       if (stepIdx !== undefined) { setAccel((prev) => prev.status === "in_progress" ? { ...prev, currentStep: stepIdx, message: `Detected: ${orientMatch[1]}. Hold still...` } : prev); bumpTimeout(); }
       return;
     }

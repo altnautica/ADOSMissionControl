@@ -154,6 +154,8 @@ export function HistoryTable({
                   <td className="px-3 py-2 text-text-primary font-mono">
                     {rec.customName ? (
                       <span className="text-text-primary">{rec.customName}</span>
+                    ) : rec.startTimeUnknown ? (
+                      <span className="text-text-tertiary" title="The log carried no clock time">Date unknown</span>
                     ) : (
                       formatDate(rec.startTime ?? rec.date)
                     )}
@@ -186,9 +188,9 @@ export function HistoryTable({
                   {!compact && (
                     <>
                       <td className="px-3 py-2 text-text-primary font-mono">
-                        {formatKilometres(rec.distance / 1000, 1, locale)}
+                        {rec.distance !== undefined ? formatKilometres(rec.distance / 1000, 1, locale) : "—"}
                       </td>
-                      <td className="px-3 py-2 text-text-primary font-mono">{rec.maxAlt}m</td>
+                      <td className="px-3 py-2 text-text-primary font-mono">{rec.maxAlt !== undefined ? `${rec.maxAlt}m` : "—"}</td>
                     </>
                   )}
                   <td className="px-3 py-2">
@@ -197,7 +199,9 @@ export function HistoryTable({
                     </Badge>
                   </td>
                   {!compact && (
-                    <td className="px-3 py-2 text-text-primary font-mono">{rec.batteryUsed}%</td>
+                    <td className="px-3 py-2 text-text-primary font-mono">
+                      {rec.batteryUsed !== undefined ? `${rec.batteryUsed}%` : "—"}
+                    </td>
                   )}
                   {!compact && (
                     <td className="px-1 py-2 text-center" title={rec.cloudSynced ? "Synced to cloud" : "Local only"}>
@@ -225,7 +229,7 @@ export function HistoryTable({
             variant="ghost"
             size="sm"
             disabled={safePage === 0}
-            onClick={() => setPage((p) => p - 1)}
+            onClick={() => setPage(safePage - 1)}
             icon={<ChevronLeft size={14} />}
           >
             {t("prev")}
@@ -234,7 +238,7 @@ export function HistoryTable({
             variant="ghost"
             size="sm"
             disabled={safePage >= totalPages - 1}
-            onClick={() => setPage((p) => p + 1)}
+            onClick={() => setPage(safePage + 1)}
             icon={<ChevronRight size={14} />}
           >
             {t("next")}

@@ -22,6 +22,12 @@ export function sanitizeChangelogHtml(html: string): string {
       code: ["class"],
       pre: ["class"],
     },
+    // Only syntax-highlight language classes survive; any other class could
+    // restyle an entry into a page-covering overlay.
+    allowedClasses: {
+      code: [/^language-[\w-]+$/],
+      pre: [/^language-[\w-]+$/],
+    },
     allowedSchemes: ["http", "https", "mailto"],
     transformTags: {
       a: sanitizeHtml.simpleTransform("a", {

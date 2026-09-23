@@ -16,43 +16,30 @@ export const POLL_BASE_MS = 3000;
  * One consolidated round trip per 10 s instead of the LAN cadence keeps the
  * control lane responsive without starving the video it shares. */
 export const POLL_BASE_RELAY_MS = 10_000;
-/** Failure count past which the loop stops hammering at the base cadence and
- * begins backing off. Matches the offline threshold in the staleness cascade
- * (`noteFetchFailure`), so backoff begins exactly when the header flips
- * offline. */
+/** Failure count past which the agent is declared offline and the loop moves
+ * to its fixed recovery retry. Matches the offline threshold in the staleness
+ * cascade (`noteFetchFailure`), so the retry cadence switches exactly when the
+ * header flips offline. */
 export const OFFLINE_FAILURE_THRESHOLD = 6;
-/** Backoff ceiling once the agent is declared offline, expressed as a
- * multiple of the caller's own base cadence rather than an absolute
- * duration. A shared absolute ceiling scales with neither lane: at 30 s
- * the LAN lane (3 s base) backs off 10x while the relay lane (10 s base)
- * backs off only 3x — the least backoff on the lane whose polls cost
- * scarce radio airtime rather than idle LAN traffic. Deriving the
- * ceiling from the base gives both lanes the same shape: 30 s on the
- * LAN, 100 s over the relay. */
-export const POLL_BACKOFF_MAX_MULTIPLE = 10;
+/** Bounds of the fixed recovery retry once the agent is offline. A recovery
+ * loop retries forever at a fixed 2-5 s: never faster (a dead host is not
+ * hammered at a sub-second cadence), and never slower (a node that comes back
+ * is seen within seconds, not after a long backoff). */
+export const OFFLINE_RETRY_MIN_MS = 2000;
+export const OFFLINE_RETRY_MAX_MS = 5000;
 
 /** Reschedule delay derived from the consecutive-failure count. Stays at the
- * caller's base cadence until the agent is declared offline, then ramps
- * geometrically toward the ceiling so a dead host is not hammered. A small
- * jitter avoids synchronised retries across tabs/agents. The first
- * `noteFetchSuccess` resets `consecutiveFailures` to 0, which snaps this
- * straight back to the base.
+ * caller's base cadence until the agent is declared offline, then retries at
+ * the base clamped into the fixed recovery window: 3 s on the LAN, 5 s over
+ * the relay. The first `noteFetchSuccess` resets `consecutiveFailures` to 0,
+ * which snaps this straight back to the base.
  *
  * `baseMs` is a parameter rather than the fixed `POLL_BASE_MS` because a
- * relayed agent polls an order of magnitude slower (`POLL_BASE_RELAY_MS`);
- * the backoff shape is identical, only its unit differs. */
+ * relayed agent polls slower (`POLL_BASE_RELAY_MS`). */
 export function nextPollDelay(
   consecutiveFailures: number,
   baseMs: number = POLL_BASE_MS,
 ): number {
   if (consecutiveFailures < OFFLINE_FAILURE_THRESHOLD) return baseMs;
-  // 0 extra steps → 2x base, then 4x, 8x … capped at
-  // POLL_BACKOFF_MAX_MULTIPLE x base.
-  const steps = consecutiveFailures - OFFLINE_FAILURE_THRESHOLD;
-  const backoff = Math.min(
-    baseMs * 2 ** (steps + 1),
-    baseMs * POLL_BACKOFF_MAX_MULTIPLE,
-  );
-  const jitter = Math.floor(Math.random() * 1000);
-  return backoff + jitter;
+  return Math.min(Math.max(baseMs, OFFLINE_RETRY_MIN_MS), OFFLINE_RETRY_MAX_MS);
 }

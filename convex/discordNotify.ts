@@ -31,23 +31,19 @@ export const sendContactSubmission = internalAction({
     message: v.string(),
     source: v.optional(v.string()),
     company: v.optional(v.string()),
-    investorType: v.optional(v.string()),
     linkedin: v.optional(v.string()),
   },
   handler: async (_ctx, args) => {
     const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
     if (!webhookUrl) {
       console.warn(
-        "[discordNotify] DISCORD_WEBHOOK_URL not set; skipping lead notification.",
+        "[discordNotify] DISCORD_WEBHOOK_URL not set; skipping contact notification.",
       );
       return;
     }
 
-    const isInvestor = args.source === "investor-request";
-    const title = isInvestor
-      ? "New investor request"
-      : "New contact form submission";
-    const color = isInvestor ? 0x10b981 : 0x3b82f6;
+    const title = "New contact form submission";
+    const color = 0x3b82f6;
 
     const fields: Array<{ name: string; value: string; inline: boolean }> = [];
     pushField(fields, "Name", args.name, true);
@@ -55,7 +51,6 @@ export const sendContactSubmission = internalAction({
     pushField(fields, "Subject", args.subject, true);
     pushField(fields, "Source", args.source, true);
     pushField(fields, "Company", args.company, true);
-    pushField(fields, "Investor Type", args.investorType, true);
     pushField(fields, "LinkedIn", args.linkedin, false);
 
     const description = `**Message**\n${truncate(

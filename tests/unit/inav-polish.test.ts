@@ -151,9 +151,20 @@ describe("encodeMspINavSetOsdAlarms", () => {
     baroTempMin: 0, baroTempMax: 0, adsbDistanceWarning: 0, adsbDistanceAlert: 0,
   };
 
-  it("produces a 28-byte buffer", () => {
-    const buf = encodeMspINavSetOsdAlarms(zeroAlarms);
-    expect(buf.byteLength).toBe(28);
+  it("produces the 24-byte frame the firmware accepts, without the ADS-B read-only tail", () => {
+    const buf = encodeMspINavSetOsdAlarms({ ...zeroAlarms, adsbDistanceWarning: 20000, adsbDistanceAlert: 3000 });
+    expect(buf.byteLength).toBe(24);
+  });
+
+  it("encodes g-force as g x1000 and signed axis limits, and baro temps at the tail", () => {
+    const buf = encodeMspINavSetOsdAlarms({
+      ...zeroAlarms, gforce: 5000, gforceAxisMin: -5000, gforceAxisMax: 5000, baroTempMax: -100,
+    });
+    const dv = new DataView(buf.buffer);
+    expect(dv.getUint16(9, true)).toBe(5000);
+    expect(dv.getInt16(11, true)).toBe(-5000);
+    expect(dv.getInt16(13, true)).toBe(5000);
+    expect(dv.getInt16(22, true)).toBe(-100);
   });
 
   it("encodes rssi as U8 in byte 0", () => {

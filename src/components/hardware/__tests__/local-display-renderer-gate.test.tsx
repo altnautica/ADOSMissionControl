@@ -74,7 +74,7 @@ describe("local display renderer gate", () => {
   it("offers only the renderers the node reports as attached", async () => {
     // An SPI LCD is bound; no HDMI sink was reported.
     seed({ display: { type: "spi-lcd" }, displayType: "lcd" });
-    render(<LocalDisplayCard nodeDeviceId="gs-1" />);
+    render(<LocalDisplayCard nodeDeviceId="gs-1" relayReach={null} />);
 
     fireEvent.click(screen.getByRole("combobox"));
 
@@ -88,7 +88,7 @@ describe("local display renderer gate", () => {
 
   it("does not write an absent renderer, and says why", async () => {
     seed({ display: { type: "spi-lcd" }, displayType: "lcd" });
-    render(<LocalDisplayCard nodeDeviceId="gs-1" />);
+    render(<LocalDisplayCard nodeDeviceId="gs-1" relayReach={null} />);
 
     fireEvent.click(screen.getByRole("combobox"));
     fireEvent.click(
@@ -104,7 +104,7 @@ describe("local display renderer gate", () => {
   it("holds a renderer change behind an explicit confirmation", async () => {
     // Both renderers present, so presence is not what is under test here.
     seed({ display: { type: "hdmi" }, displayType: "hdmi" });
-    render(<LocalDisplayCard nodeDeviceId="gs-1" />);
+    render(<LocalDisplayCard nodeDeviceId="gs-1" relayReach={null} />);
 
     fireEvent.click(screen.getByRole("combobox"));
     fireEvent.click(
@@ -129,7 +129,7 @@ describe("local display renderer gate", () => {
 
   it("writes nothing when the confirmation is dismissed", async () => {
     seed({ display: { type: "hdmi" }, displayType: "hdmi" });
-    render(<LocalDisplayCard nodeDeviceId="gs-1" />);
+    render(<LocalDisplayCard nodeDeviceId="gs-1" relayReach={null} />);
 
     fireEvent.click(screen.getByRole("combobox"));
     fireEvent.click(

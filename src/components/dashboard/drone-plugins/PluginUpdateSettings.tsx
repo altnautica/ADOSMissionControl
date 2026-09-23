@@ -4,31 +4,21 @@
  * @module PluginUpdateSettings
  * @description Per-plugin update settings drawer. Shown inside the
  * per-drone Plugins tab when the operator clicks an
- * `<UpdateAvailableBadge>` or a "Configure updates" action on a plugin
- * card. Surfaces the auto-update toggle, the optional version pin, and
- * the last-checked timestamp from the agent's auto-update loop.
+ * `<UpdateAvailableBadge>` on a plugin card. Shows the auto-update switch,
+ * the version pin, and the last registry sweep the agent reported.
  *
- * v1 limitation: the GCS cannot mutate the agent's auto-update config
- * from this drawer. The two controls (auto-update toggle + version
- * pin) are read-only with a hint pointing the operator at the `ados
- * plugin auto-update` CLI on the drone itself. A follow-up cycle will
- * add a REST surface on the agent that lets the GCS enqueue a config
- * mutation through the existing command queue.
+ * Read-only: the agent's auto-update config is edited with the
+ * `ados plugin auto-update` CLI on the drone. A value the agent has not
+ * reported renders as unknown, never as a default.
  *
  * @license GPL-3.0-only
  */
 
-import { useMemo } from "react";
-import { useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 import { X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Select, type SelectOption } from "@/components/ui/select";
-import { useAuthStore } from "@/stores/auth-store";
 import { usePluginUpdateStore } from "@/stores/plugin-update-store";
-import { isDemoMode } from "@/lib/utils";
-import { api } from "../../../../convex/_generated/api";
 
 interface PluginUpdateSettingsProps {
   /** Cloud device id of the drone the plugin is installed on. */
@@ -39,12 +29,13 @@ interface PluginUpdateSettingsProps {
   pluginName: string;
   /** Version currently running on the agent. */
   currentVersion: string;
-  /** Whether the agent has auto-update enabled for this plugin. */
-  autoUpdate: boolean;
-  /** Operator-selected pinned version, if any. */
-  pinnedVersion?: string | null;
-  /** Epoch ms the agent last ran its registry sweep, if known. */
-  lastUpdateCheckAt?: number | null;
+  /** Whether the agent has auto-update enabled for this plugin; null when the
+   * agent has not reported it. */
+  autoUpdate: boolean | null;
+  /** Whether a version pin holds the plugin; null when not reported. */
+  pinned: boolean | null;
+  /** Epoch ms the agent last ran its registry sweep; null when not reported. */
+  lastUpdateCheckAt: number | null;
   /** Closes the drawer. */
   onClose: () => void;
 }
@@ -55,44 +46,11 @@ export function PluginUpdateSettings({
   pluginName,
   currentVersion,
   autoUpdate,
-  pinnedVersion,
+  pinned,
   lastUpdateCheckAt,
   onClose,
 }: PluginUpdateSettingsProps) {
   const t = useTranslations("pluginRegistry.autoUpdate.settings");
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-
-  // Fetch the registry catalog for this plugin so the operator can
-  // see the list of versions in the pin dropdown. Skip in demo mode
-  // and when not authenticated so the drawer doesn't crash on a
-  // missing Convex deployment.
-  const catalog = useQuery(
-    api.pluginRegistry.getPlugin,
-    isAuthenticated && !isDemoMode() ? { pluginId } : "skip",
-  );
-
-  const versionOptions = useMemo<SelectOption[]>(() => {
-    const opts: SelectOption[] = [
-      { value: "__auto__", label: t("pinnedVersionAuto") },
-    ];
-    if (catalog?.versions) {
-      for (const v of catalog.versions) {
-        opts.push({ value: v.version, label: `v${v.version}` });
-      }
-    }
-    return opts;
-  }, [catalog, t]);
-
-  const pinnedValue = pinnedVersion ?? "__auto__";
-
-  // The agent emits a relative-time string the GCS cannot match
-  // without locale-aware formatting. Keep it simple: render the
-  // English-style absolute date when known, fallback when not.
-  const lastCheckedLabel = useMemo(() => {
-    if (!lastUpdateCheckAt) return t("lastCheckedNever");
-    const date = new Date(lastUpdateCheckAt);
-    return t("lastChecked", { time: date.toLocaleString() });
-  }, [lastUpdateCheckAt, t]);
 
   // Surface the pending event for this plugin (if any) so the operator
   // can confirm which version the badge was pointing at. Reading the
@@ -103,6 +61,15 @@ export function PluginUpdateSettings({
       (e) => e.deviceId === deviceId && e.pluginId === pluginId,
     ),
   );
+
+  const autoUpdateLabel =
+    autoUpdate === null ? t("unknown") : autoUpdate ? t("on") : t("off");
+  const pinnedLabel =
+    pinned === null ? t("unknown") : pinned ? t("pinned") : t("pinnedVersionAuto");
+  const lastCheckedLabel =
+    lastUpdateCheckAt === null
+      ? t("unknown")
+      : new Date(lastUpdateCheckAt).toLocaleString();
 
   return (
     <div
@@ -144,45 +111,15 @@ export function PluginUpdateSettings({
               <dd className="text-status-warning">v{pending.latestVersion}</dd>
             </>
           ) : null}
+          <dt className="text-text-tertiary">{t("autoUpdateLabel")}</dt>
+          <dd className="text-text-primary">{autoUpdateLabel}</dd>
+          <dt className="text-text-tertiary">{t("pinnedVersionLabel")}</dt>
+          <dd className="text-text-primary">{pinnedLabel}</dd>
+          <dt className="text-text-tertiary">{t("lastCheckedLabel")}</dt>
+          <dd className="text-text-primary">{lastCheckedLabel}</dd>
         </dl>
 
-        <fieldset className="mb-3 space-y-2" disabled>
-          <div className="flex items-center justify-between gap-3">
-            <label
-              htmlFor={`auto-update-toggle-${pluginId}`}
-              className="text-xs text-text-primary"
-            >
-              {t("autoUpdateLabel")}
-            </label>
-            <input
-              id={`auto-update-toggle-${pluginId}`}
-              type="checkbox"
-              checked={autoUpdate}
-              readOnly
-              disabled
-              className="h-4 w-4 cursor-not-allowed accent-accent-primary"
-            />
-          </div>
-          <div>
-            <label
-              htmlFor={`pinned-version-${pluginId}`}
-              className="mb-1 block text-xs text-text-primary"
-            >
-              {t("pinnedVersionLabel")}
-            </label>
-            <Select
-              value={pinnedValue}
-              options={versionOptions}
-              onChange={() => {
-                /* read-only in v1 */
-              }}
-              disabled
-            />
-          </div>
-          <p className="text-[11px] text-text-tertiary">{t("autoUpdateHint")}</p>
-        </fieldset>
-
-        <p className="mb-3 text-[11px] text-text-tertiary">{lastCheckedLabel}</p>
+        <p className="mb-3 text-[11px] text-text-tertiary">{t("autoUpdateHint")}</p>
 
         <div className="flex justify-end">
           <Button variant="secondary" size="sm" onClick={onClose}>

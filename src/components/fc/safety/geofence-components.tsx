@@ -137,15 +137,19 @@ export function ParamInput({
 
 // ── AltitudeBandViz ───────────────────────────────────────────
 
-/** Visual altitude band showing the valid flight altitude range */
-export function AltitudeBandViz({ altMin, altMax }: { altMin: number; altMax: number }) {
-  const displayMax = Math.max(altMax, 10);
-  const displayMin = Math.max(altMin, 0);
-  const range = displayMax - displayMin;
+/**
+ * Visual altitude band. A limit is `null` when its FENCE_TYPE bit is clear:
+ * ArduPilot enforces FENCE_ALT_MAX only with bit 0 and FENCE_ALT_MIN only
+ * with bit 3, so an unenforced value is never drawn as a boundary.
+ */
+export function AltitudeBandViz({ altMin, altMax }: { altMin: number | null; altMax: number | null }) {
+  const floor = altMin === null ? 0 : Math.max(altMin, 0);
+  const displayMax = Math.max(altMax ?? floor * 2, 10);
+  const range = displayMax - floor;
 
   const BAR_HEIGHT = 80;
-  const minPct = displayMax > 0 ? (displayMin / displayMax) * 100 : 0;
-  const bandPct = displayMax > 0 ? (range / displayMax) * 100 : 100;
+  const minPct = (floor / displayMax) * 100;
+  const bandPct = (range / displayMax) * 100;
 
   return (
     <div className="flex items-start gap-3 mt-2">
@@ -162,20 +166,22 @@ export function AltitudeBandViz({ altMin, altMax }: { altMin: number; altMax: nu
             borderRadius: 1,
           }}
         />
-        <div
-          className="absolute left-0 right-0 h-px bg-status-error"
-          style={{ bottom: `${100}%`, transform: "translateY(1px)" }}
-        />
+        {altMax !== null && (
+          <div
+            className="absolute left-0 right-0 h-px bg-status-error"
+            style={{ bottom: `${100}%`, transform: "translateY(1px)" }}
+          />
+        )}
       </div>
       <div className="flex flex-col justify-between" style={{ height: BAR_HEIGHT }}>
         <div className="text-[10px] font-mono text-status-error">
-          {altMax}m MAX
+          {altMax !== null ? `${altMax}m MAX` : "No ceiling"}
         </div>
         <div className="text-[10px] font-mono text-status-success">
-          Valid: {displayMin}m - {altMax}m
+          Valid: {altMin !== null ? `${floor}m` : "ground"} - {altMax !== null ? `${altMax}m` : "no ceiling"}
         </div>
         <div className="text-[10px] font-mono text-text-tertiary">
-          {altMin > 0 ? `${altMin}m MIN` : "0m GND"}
+          {altMin !== null ? `${altMin}m MIN` : "No floor"}
         </div>
       </div>
     </div>

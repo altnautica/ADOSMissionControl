@@ -32,15 +32,16 @@ export const SCR_ENABLE_VALUES = new Map<number, string>([
   [1, "Lua scripts"],
 ]);
 
-/** SCR_DEBUG_OPTS bit index → label. Controls scripting log/diagnostic output
- * and a few safety toggles. Bits are preserved if undocumented (BitmaskEditor). */
+/** SCR_DEBUG_OPTS bit index → label, matching the firmware's bitmask
+ * definition. Controls scripting log/diagnostic output and a few safety
+ * toggles. Bits are preserved if undocumented (BitmaskEditor). */
 export const SCR_DEBUG_OPTS_BITS = new Map<number, string>([
-  [0, 'Suppress "no scripts to run" message'],
-  [1, "Runtime messages to console"],
-  [2, "Suppress script warnings"],
+  [0, 'Send "No scripts to run" message'],
+  [1, "Runtime memory/time messages"],
+  [2, "Do not log script contents to dataflash"],
   [3, "Log runtime memory + execution time"],
   [4, "Disable pre-arm check"],
-  [5, "Save CRC of loaded scripts"],
+  [5, "Save CRC of current scripts to SCR_LD/RUN_CHECKSUM"],
   [6, "Disable heap expansion on out-of-memory"],
 ]);
 

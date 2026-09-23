@@ -34,7 +34,7 @@ const CRUISE_GS_MS = 2.0;
 const HOVER_GS_MS = 1.0;
 
 /** Minimum height above home (m) to be considered airborne at all. */
-const AIRBORNE_ALT_M = 2.0;
+export const AIRBORNE_ALT_M = 2.0;
 
 /** First-N-seconds window classified as takeoff after leaving the ground. */
 const TAKEOFF_WINDOW_MS = 8000;

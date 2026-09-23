@@ -1,147 +1,124 @@
 /**
- * Verifies permissionsToChips() — the wire-permission to chip-label
- * resolver that the plugin install dialog and the future plugin-backed
- * catalog use to summarise hardware requirements.
+ * Verifies permissionsToChips(): the manifest-declaration to chip-label
+ * resolver the plugin install dialog uses to summarise the hardware a
+ * plugin needs. Chips come only from explicit declarations, and the
+ * first-party manifests must map to the hardware they really use.
  *
  * @license GPL-3.0-only
  */
 
+import fs from "node:fs";
+import path from "node:path";
+
 import { describe, it, expect } from "vitest";
-import { permissionsToChips } from "@/lib/plugins/capability-chips";
+
+import { parseManifestYaml } from "@/components/plugins/transports/manifest-parse";
+import { permissionsToChips, type CapabilityChip } from "@/lib/plugins/capability-chips";
+
+const ids = (chips: CapabilityChip[]) => chips.map((c) => c.id);
 
 describe("permissionsToChips", () => {
   it("returns empty list for a GCS-only plugin with no hardware permissions", () => {
+    expect(permissionsToChips(["ui.slot.drone-detail-tab", "telemetry.subscribe"])).toEqual([]);
+  });
+
+  it("maps each camera-binding permission to one Camera chip", () => {
+    for (const p of [
+      "hardware.usb.uvc",
+      "hardware.camera.csi",
+      "sensor.camera.register",
+      "mavlink.component.camera",
+      "vision.frame.read",
+    ]) {
+      expect(ids(permissionsToChips([p])), p).toEqual(["camera"]);
+    }
     expect(
-      permissionsToChips(["ui.slot.drone-detail-tab", "telemetry.subscribe"]),
+      ids(permissionsToChips(["hardware.camera.csi", "hardware.usb.uvc", "sensor.camera.register"])),
+    ).toEqual(["camera"]);
+  });
+
+  it("maps a declared hardware_requirements camera to a Camera chip", () => {
+    expect(
+      ids(permissionsToChips([], { hardwareRequirements: { cameras: "USB UVC camera" } })),
+    ).toEqual(["camera"]);
+    expect(permissionsToChips([], { hardwareRequirements: { cameras: "  " } })).toEqual([]);
+  });
+
+  it("maps model registration and compute streams to an NPU chip", () => {
+    expect(ids(permissionsToChips(["vision.model.register"]))).toEqual(["npu"]);
+    expect(ids(permissionsToChips(["compute.stream.open"]))).toEqual(["npu"]);
+  });
+
+  it("does not treat VIO as an NPU requirement", () => {
+    expect(permissionsToChips(["mavlink.component.vio"])).toEqual([]);
+  });
+
+  it("maps process.spawn plus an NPU runtime attribution to an NPU chip", () => {
+    expect(
+      ids(permissionsToChips(["process.spawn"], { vendorAttribution: [{ name: "RKNN runtime" }] })),
+    ).toEqual(["npu"]);
+    expect(
+      permissionsToChips(["process.spawn"], { vendorAttribution: [{ name: "libusb" }] }),
     ).toEqual([]);
   });
 
-  it("maps hardware.usb.uvc to a Camera chip", () => {
-    const chips = permissionsToChips(["hardware.usb.uvc"]);
-    expect(chips.map((c) => c.id)).toEqual(["camera"]);
+  it("never derives GPS or IMU from telemetry reads", () => {
+    expect(permissionsToChips(["telemetry.read"])).toEqual([]);
   });
 
-  it("maps hardware.camera.csi to a Camera chip", () => {
-    const chips = permissionsToChips(["hardware.camera.csi"]);
-    expect(chips.map((c) => c.id)).toEqual(["camera"]);
+  it("maps sensor.imu.register to an IMU chip", () => {
+    expect(ids(permissionsToChips(["sensor.imu.register"]))).toEqual(["imu"]);
   });
 
-  it("maps sensor.camera.register to a Camera chip", () => {
-    const chips = permissionsToChips(["sensor.camera.register"]);
-    expect(chips.map((c) => c.id)).toEqual(["camera"]);
+  it("does not treat raw USB access as a thermal camera", () => {
+    expect(permissionsToChips(["hardware.usb"])).toEqual([]);
   });
 
-  it("maps mavlink.component.vio to an NPU chip", () => {
-    const chips = permissionsToChips(["mavlink.component.vio"]);
-    expect(chips.map((c) => c.id)).toEqual(["npu"]);
-  });
-
-  it("maps process.spawn + rknn vendor attribution to an NPU chip", () => {
-    const chips = permissionsToChips(["process.spawn"], {
-      vendorAttribution: [
-        { name: "RKNN runtime", license: "Apache-2.0" },
-      ],
-    });
-    expect(chips.map((c) => c.id)).toEqual(["npu"]);
-  });
-
-  it("maps process.spawn + tensorrt vendor attribution to an NPU chip", () => {
-    const chips = permissionsToChips(["process.spawn"], {
-      vendorAttribution: [{ name: "NVIDIA TensorRT" }],
-    });
-    expect(chips.map((c) => c.id)).toEqual(["npu"]);
-  });
-
-  it("does NOT add an NPU chip for process.spawn with a non-NPU vendor binary", () => {
-    const chips = permissionsToChips(["process.spawn"], {
-      vendorAttribution: [{ name: "libusb" }],
-    });
-    expect(chips).toEqual([]);
-  });
-
-  it("maps telemetry.read (FC connected default) to GPS + IMU chips", () => {
-    const chips = permissionsToChips(["telemetry.read"]);
-    expect(chips.map((c) => c.id)).toEqual(["gps", "imu"]);
-  });
-
-  it("drops GPS + IMU chips when FC is reported disconnected", () => {
-    const chips = permissionsToChips(["telemetry.read"], {
-      fcConnected: false,
-    });
-    expect(chips).toEqual([]);
-  });
-
-  it("maps sensor.imu.register to an IMU chip even without an FC", () => {
-    const chips = permissionsToChips(["sensor.imu.register"], {
-      fcConnected: false,
-    });
-    expect(chips.map((c) => c.id)).toEqual(["imu"]);
-  });
-
-  it("maps hardware.usb (without uvc) to a Thermal chip", () => {
-    const chips = permissionsToChips(["hardware.usb"]);
-    expect(chips.map((c) => c.id)).toEqual(["thermal"]);
-  });
-
-  it("does not classify hardware.usb.uvc as Thermal — only as Camera", () => {
-    const chips = permissionsToChips(["hardware.usb.uvc"]);
-    expect(chips.map((c) => c.id)).toEqual(["camera"]);
-    expect(chips.some((c) => c.id === "thermal")).toBe(false);
+  it("maps a declared thermal telemetry field to a Thermal chip", () => {
+    expect(ids(permissionsToChips([], { telemetryFields: ["thermal"] }))).toEqual(["thermal"]);
   });
 
   it("maps sensor.lidar.register to a LIDAR chip", () => {
-    const chips = permissionsToChips(["sensor.lidar.register"]);
-    expect(chips.map((c) => c.id)).toEqual(["lidar"]);
+    expect(ids(permissionsToChips(["sensor.lidar.register"]))).toEqual(["lidar"]);
   });
 
-  it("renders chips in the canonical order (camera, npu, gps, imu, thermal, lidar)", () => {
-    // Pass permissions in jumbled order so we can verify the resolver
-    // imposes its own ordering rather than echoing input order.
-    const chips = permissionsToChips([
-      "sensor.lidar.register",
-      "hardware.usb",
-      "telemetry.read",
-      "mavlink.component.vio",
-      "hardware.camera.csi",
-    ]);
-    expect(chips.map((c) => c.id)).toEqual([
-      "camera",
-      "npu",
-      "gps",
-      "imu",
-      "thermal",
-      "lidar",
-    ]);
+  it("renders chips in the canonical order with stable labels", () => {
+    const chips = permissionsToChips(
+      ["sensor.lidar.register", "sensor.imu.register", "vision.model.register", "hardware.camera.csi"],
+      { telemetryFields: ["thermal"] },
+    );
+    expect(ids(chips)).toEqual(["camera", "npu", "imu", "thermal", "lidar"]);
+    expect(chips.map((c) => c.label)).toEqual(["Camera", "NPU", "IMU", "Thermal", "LIDAR"]);
   });
+});
 
-  it("deduplicates a chip when multiple permissions trigger it", () => {
-    // hardware.camera.csi + hardware.usb.uvc + sensor.camera.register all
-    // point at the camera. The output should list a single Camera chip,
-    // not three.
-    const chips = permissionsToChips([
-      "hardware.camera.csi",
-      "hardware.usb.uvc",
-      "sensor.camera.register",
-    ]);
-    expect(chips.map((c) => c.id)).toEqual(["camera"]);
-  });
+// The first-party manifests live in the sibling extensions checkout. A
+// standalone GCS clone skips this block rather than failing.
+const EXTENSIONS_DIR = path.resolve(__dirname, "..", "..", "..", "ADOSExtensions", "extensions");
 
-  it("returns a stable label string for each chip", () => {
-    const chips = permissionsToChips([
-      "hardware.camera.csi",
-      "mavlink.component.vio",
-      "sensor.lidar.register",
-    ]);
-    expect(chips.find((c) => c.id === "camera")?.label).toBe("Camera");
-    expect(chips.find((c) => c.id === "npu")?.label).toBe("NPU");
-    expect(chips.find((c) => c.id === "lidar")?.label).toBe("LIDAR");
-  });
+const FIRST_PARTY_CHIPS: ReadonlyArray<[string, string[]]> = [
+  ["vision-nav", ["camera"]],
+  ["thermal-camera-flir-lepton-usb", ["camera", "thermal"]],
+  ["siyi-pod", ["camera"]],
+  ["follow-me", ["camera"]],
+  ["mavlink-gimbal-v2", []],
+  ["battery-health-panel", []],
+];
 
-  it("ignores unknown permission strings", () => {
-    const chips = permissionsToChips([
-      "hardware.camera.csi",
-      "future.unknown.capability",
-    ]);
-    expect(chips.map((c) => c.id)).toEqual(["camera"]);
-  });
+describe("permissionsToChips on first-party manifests", () => {
+  for (const [dir, expected] of FIRST_PARTY_CHIPS) {
+    const file = path.join(EXTENSIONS_DIR, dir, "manifest.yaml");
+    const maybeIt = fs.existsSync(file) ? it : it.skip;
+    maybeIt(`${dir} shows ${expected.join(", ") || "no chips"}`, () => {
+      const parsed = parseManifestYaml(fs.readFileSync(file, "utf-8"));
+      const chips = permissionsToChips(
+        parsed.permissions.map((p) => p.id),
+        {
+          hardwareRequirements: parsed.hardwareRequirements,
+          telemetryFields: parsed.telemetryFields,
+        },
+      );
+      expect(ids(chips)).toEqual(expected);
+    });
+  }
 });

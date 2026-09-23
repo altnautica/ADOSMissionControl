@@ -82,8 +82,8 @@ interface DeviationPoint {
 
 export function PlannedVsActualOverlay() {
   const waypoints = useMissionStore((s) => s.waypoints);
+  const ring = useTrailStore((s) => s._ring);
   const trailVersion = useTrailStore((s) => s._version);
-  const trail = useTrailStore.getState()._ring.toArray();
 
   const plannedPositions = useMemo<[number, number][]>(
     () =>
@@ -93,11 +93,11 @@ export function PlannedVsActualOverlay() {
     [waypoints]
   );
 
-  const actualPositions = useMemo<[number, number][]>(
-    () => trail.map((p) => [p.lat, p.lon]),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [trailVersion]
-  );
+  // The ring mutates in place; the version is the trigger.
+  const actualPositions = useMemo<[number, number][]>(() => {
+    void trailVersion;
+    return ring.toArray().map((p): [number, number] => [p.lat, p.lon]);
+  }, [ring, trailVersion]);
 
   // Find trail points that deviate >5m from the planned path
   const deviationMarkers = useMemo<DeviationPoint[]>(() => {

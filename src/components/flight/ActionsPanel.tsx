@@ -17,13 +17,14 @@ import { useDroneManager } from "@/stores/drone-manager";
 import { useChecklistStore, checklistReadyFor } from "@/stores/checklist-store";
 import { useFollowMeStore } from "@/stores/follow-me-store";
 import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
-import { useFlightShortcuts } from "@/hooks/use-flight-shortcuts";
+import { useFlightInputSurface } from "@/hooks/use-skill-input";
+import { useSkillInputStore } from "@/stores/skill-input-store";
 import { useSkillToastBridge } from "@/hooks/use-skill-toast-bridge";
 import { useToast } from "@/components/ui/toast";
 import { useShallow } from "zustand/react/shallow";
 import { buildSkillContext, activate } from "@/lib/skills";
 import type { SkillActivateArgs } from "@/lib/skills";
-import { TAKEOFF_ALTITUDE_M } from "@/lib/skills/builtins/takeoff";
+import { TAKEOFF_ALTITUDE_M, parseTakeoffAltitude } from "@/lib/skills/builtins/takeoff";
 import { cn } from "@/lib/utils";
 
 
@@ -43,7 +44,17 @@ export function ActionsPanel() {
   // an aircraft that is not the one shown here.
   const followMeActive = useFollowMeStore((s) => s.isActive);
 
-  const [takeoffAlt, setTakeoffAlt] = useState("10");
+  const [takeoffAlt, setTakeoffAltRaw] = useState(() => {
+    const stored = useSkillInputStore.getState().takeoffAltitudeM;
+    return stored === null ? "" : String(stored);
+  });
+  // The field is also the altitude a key- or button-fired take-off commands,
+  // so every take-off path flies to the same number and an out-of-range entry
+  // blocks all of them.
+  const setTakeoffAlt = (text: string) => {
+    setTakeoffAltRaw(text);
+    useSkillInputStore.getState().setTakeoffAltitudeM(parseTakeoffAltitude(text));
+  };
   const [showChecklist, setShowChecklist] = useState(false);
   const checklistReady = useChecklistStore((s) => checklistReadyFor(s, selectedId));
   const checklistProgress = useChecklistStore(
@@ -76,13 +87,8 @@ export function ActionsPanel() {
   const fireTakeoff = () => {
     // A typed value is not bound by the input's min/max, so the advertised
     // range is enforced here before the confirm dialog opens.
-    const alt = Number(takeoffAlt);
-    if (
-      takeoffAlt.trim() === "" ||
-      !Number.isFinite(alt) ||
-      alt < TAKEOFF_ALTITUDE_M.min ||
-      alt > TAKEOFF_ALTITUDE_M.max
-    ) {
+    const alt = parseTakeoffAltitude(takeoffAlt);
+    if (alt === null) {
       toast(
         t("takeoffAltitudeOutOfRange", {
           min: TAKEOFF_ALTITUDE_M.min,
@@ -100,18 +106,9 @@ export function ActionsPanel() {
   const isResumable = hasMissions && flightMode === "LOITER" && previousMode === "AUTO";
   const firePauseResume = () => fire(isResumable ? "resume" : "pause");
 
-  // Keep the keyboard shortcuts working until the global dispatcher lands, but
-  // route them through the same pipeline so the confirm flow is identical.
-  useFlightShortcuts({
-    enabled: true,
-    onArmConfirm: () => fire("arm"),
-    onDisarmConfirm: () => fire("disarm"),
-    onRthConfirm: () => fire("rth"),
-    onTakeoffConfirm: fireTakeoff,
-    onLandConfirm: () => fire("land"),
-    onAbortConfirm: () => fire("abort"),
-    onPauseResume: firePauseResume,
-  });
+  // The shell-level dispatcher serves this panel's key and gamepad bindings
+  // from the operator's loadout, through the same pipeline as the buttons.
+  useFlightInputSurface();
 
   return (
     <>

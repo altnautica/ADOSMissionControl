@@ -17,15 +17,13 @@
  * (Overview, Flights, Calibrate, Parameters, Configure, Plugins,
  * Radio).
  *
- * Behaviour contract (matches slot 13 spec at
- * `product/specs/ados-plugin-system/08-ui-extension-points.md` 3.13):
+ * Behaviour contract:
  *
  *   - Tab bodies render only when their tab is the currently active
  *     plugin tab. Inactive bodies render `null` so no iframe is
  *     mounted before its tab is clicked.
  *   - On drone switch the provider remounts, this component unmounts,
- *     and every active iframe tears down with it. The 300 ms pause
- *     grace lives in `PluginHostProvider` not here.
+ *     and every active iframe tears down with it.
  *   - The host does not own the static tabs. `DroneDetailPanel`
  *     renders the static tab strip and this component sits to the
  *     right of it as an additive surface.
@@ -61,14 +59,17 @@ if (!isPerDroneSlot(NODE_DETAIL_TAB_SLOT)) {
   );
 }
 
+/** The identity of one plugin tab: an install can contribute several
+ * `node.detail.tab` panels, so the install id alone is not unique. */
+type PluginTabKey = Readonly<{ installId: string; panelId: string }>;
+
 /**
- * Stable tab-id derivation from an install row id. Keeps the
- * DroneDetailPanel switch insensitive to plugin id collisions
- * (plugin id is reverse-DNS and unique per row, but install row id
- * is the canonical primary key in `cmd_pluginInstalls`).
+ * Stable tab id for one contribution: the install row id (the canonical
+ * primary key, insensitive to plugin id collisions) plus the panel id
+ * within that plugin.
  */
-export function pluginTabId(installId: string): string {
-  return `plugin:${installId}`;
+export function pluginTabId(c: PluginTabKey): string {
+  return `plugin:${c.installId}:${c.panelId}`;
 }
 
 /** Sniff: does this active tab id come from a plugin contribution? */
@@ -82,9 +83,9 @@ export function isPluginTabId(tabId: string): boolean {
  * navigation spans plugin tabs too.
  */
 export function pluginTabIds(
-  contributions: ReadonlyArray<{ installId: string }>,
+  contributions: ReadonlyArray<PluginTabKey>,
 ): string[] {
-  return contributions.map((c) => pluginTabId(c.installId));
+  return contributions.map(pluginTabId);
 }
 
 interface DroneDetailTabHeadersProps {
@@ -129,11 +130,11 @@ export function DroneDetailTabHeaders({
   return (
     <>
       {contributions.map((c) => {
-        const tabId = pluginTabId(c.installId);
+        const tabId = pluginTabId(c);
         const selected = activeTabId === tabId;
         return (
           <button
-            key={c.installId}
+            key={tabId}
             id={`drone-tab-${tabId}`}
             role="tab"
             aria-selected={selected}
@@ -197,9 +198,7 @@ export function DroneDetailTabBody({
   // The provider carries every plugin's node.detail.tab iframe; the body
   // mounts only the active tab's own contribution.
   const slotContributions = useSlotContributions(NODE_DETAIL_TAB_SLOT);
-  const active = contributions.find(
-    (c) => pluginTabId(c.installId) === activeTabId,
-  );
+  const active = contributions.find((c) => pluginTabId(c) === activeTabId);
   const activeSlot = useMemo(
     () =>
       active
@@ -213,7 +212,7 @@ export function DroneDetailTabBody({
   );
   if (!active) return null;
 
-  const tabId = pluginTabId(active.installId);
+  const tabId = pluginTabId(active);
   const hasParameters = active.parameters.length > 0;
   return (
     <div

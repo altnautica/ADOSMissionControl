@@ -27,6 +27,7 @@ import type {
   ServiceInfo,
 } from "@/lib/agent/types";
 import { inferCapabilities } from "@/lib/agent/infer-capabilities";
+import { normalizeServiceInfo } from "@/lib/agent/service-state";
 import { resolveAgentWhepUrl } from "@/lib/video/rewrite-whep-host";
 import { useAgentCapabilitiesStore } from "../agent-capabilities-store";
 import { useAgentPeripheralsStore } from "../agent-peripherals-store";
@@ -106,52 +107,12 @@ export function applyFullStatus(
   const status = fullStatusToAgentStatus(full);
   useAgentSystemStore.getState().setStatus(status as AgentStatus);
   if (full.services) {
-    // Map the consolidated service shape (`state` + camelCase
-    // metric fields) into the canonical ServiceInfo the rest
-    // of the GCS consumes (`status` + snake_case fields).
-    // Defensive on each field so a partial agent response
-    // never produces NaN.toFixed() crashes downstream.
-    type RawService = {
-      name?: unknown;
-      state?: unknown;
-      pid?: unknown;
-      cpu_percent?: unknown;
-      cpuPercent?: unknown;
-      memory_mb?: unknown;
-      memoryMb?: unknown;
-      uptime_seconds?: unknown;
-      uptimeSeconds?: unknown;
-      category?: unknown;
-    };
-    const mapped: ServiceInfo[] = (full.services as RawService[]).map((s) => ({
-      name: typeof s.name === "string" ? s.name : "unknown",
-      status: (typeof s.state === "string"
-        ? s.state
-        : "stopped") as ServiceInfo["status"],
-      pid: typeof s.pid === "number" ? s.pid : null,
-      cpu_percent:
-        typeof s.cpu_percent === "number"
-          ? s.cpu_percent
-          : typeof s.cpuPercent === "number"
-            ? s.cpuPercent
-            : 0,
-      memory_mb:
-        typeof s.memory_mb === "number"
-          ? s.memory_mb
-          : typeof s.memoryMb === "number"
-            ? s.memoryMb
-            : 0,
-      uptime_seconds:
-        typeof s.uptime_seconds === "number"
-          ? s.uptime_seconds
-          : typeof s.uptimeSeconds === "number"
-            ? s.uptimeSeconds
-            : 0,
-      category:
-        typeof s.category === "string"
-          ? (s.category as ServiceInfo["category"])
-          : undefined,
-    }));
+    // Map the consolidated service shape (`state` + camelCase metric fields)
+    // into the canonical ServiceInfo through the shared normaliser, so a
+    // missing metric stays null and a missing state is not read as stopped.
+    const mapped: ServiceInfo[] = (
+      full.services as Array<Record<string, unknown>>
+    ).map((s) => normalizeServiceInfo(s));
     useAgentSystemStore.setState({ services: mapped });
   }
   if (full.resources) {
@@ -248,7 +209,7 @@ export function applyFullStatus(
   // the lane over the local-first LAN path, and there is no null-then-real
   // window between the capability write and a follow-up crsf fetch. An
   // absent key normalizes to null inside setCapabilities, so a node with
-  // no lane clears the field rather than pinning a stale reading (Rule 44).
+  // no lane clears the field rather than pinning a stale reading (no fabricated reading).
   if (full.crsf && typeof full.crsf === "object") {
     statusExtras.crsf = full.crsf;
   }

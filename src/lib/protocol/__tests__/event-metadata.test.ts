@@ -126,7 +126,7 @@ describe("px4-events-store", () => {
     expect(events[0].severity).toBe(4);
   });
 
-  it("falls back honestly for an unknown event id (Rule 44 — no fabricated text)", () => {
+  it("falls back honestly for an unknown event id (no fabricated text)", () => {
     usePx4EventsStore.getState().pushRaw({
       id: 999999,
       logLevels: 0x03,

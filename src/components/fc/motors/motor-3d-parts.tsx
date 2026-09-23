@@ -7,7 +7,7 @@ import * as THREE from "three";
 import type { Group } from "three";
 import type { MotorPosition } from "@/lib/motor-layouts";
 import { BODY_PLANE_ROTATION, motorScenePosition } from "./motor-scene-frame";
-import { useTelemetryStore } from "@/stores/telemetry-store";
+import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
 
 // ── Brand colors ──────────────────────────────────────────────
 
@@ -158,7 +158,7 @@ export const MotorAssembly = memo(function MotorAssembly({
 }: {
   motor: MotorPosition;
   yOffset: number;
-  onHover: () => void;
+  onHover: (motorNumber: number) => void;
   onUnhover: () => void;
   isHovered: boolean;
 }) {
@@ -169,7 +169,7 @@ export const MotorAssembly = memo(function MotorAssembly({
   return (
     <group position={[x, y, z]}>
       <group
-        onPointerEnter={(e) => { e.stopPropagation(); onHover(); }}
+        onPointerEnter={(e) => { e.stopPropagation(); onHover(motor.number); }}
         onPointerLeave={(e) => { e.stopPropagation(); onUnhover(); }}
       >
         <BellMotor color={color} isUnknown={isUnknown} />
@@ -294,11 +294,9 @@ export function ShadowDisc() {
 
 // ── Attitude HUD overlay ─────────────────────────────────────
 
+/** Live attitude readout; stale attitude reads as no telemetry, never as live. */
 export function AttitudeHUD() {
-  const attitude = useTelemetryStore((s) => s.attitude);
-  const version = useTelemetryStore((s) => s._version);
-  const latest = attitude.latest();
-  void version;
+  const latest = useFreshTelemetry("attitude");
 
   if (!latest) {
     return (

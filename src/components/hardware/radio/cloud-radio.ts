@@ -43,7 +43,7 @@ export interface PickedCloudRadio {
  * Pick the radio block belonging to the node whose panel is rendering,
  * keyed by that node's deviceId. Selecting "the freshest row carrying any
  * radio block" would render one node's radio on another node's panel — a
- * status surface reporting a different node's link (Rule 44). When the
+ * status surface reporting a different node's link (no fabricated reading). When the
  * deviceId is unknown, or no matching row carries a radio block, this
  * returns nulls so the panel falls back to its own direct-poll data rather
  * than borrowing a peer's snapshot.

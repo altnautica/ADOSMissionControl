@@ -20,7 +20,6 @@
 import { useEffect, useRef } from "react";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
-import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { onUnexpectedDisconnect, useDroneManager } from "@/stores/drone-manager";
 import { useNodeRegistryStore } from "@/stores/node-registry";
 import { resolveNodeId } from "@/lib/agent/node-id";
@@ -37,9 +36,6 @@ export function AgentMavlinkBridge() {
   const connected = useAgentConnectionStore((s) => s.connected);
   const nodeDeviceId = useAgentConnectionStore((s) => s.nodeDeviceId);
   const status = useAgentSystemStore((s) => s.status);
-  const mavlinkWsUrlPrev = useAgentCapabilitiesStore(
-    (s) => s.mavlinkWsUrlPrev,
-  );
   // An MSP FC (Betaflight/iNav) never reports fc_connected — it sends no MAVLink
   // heartbeat — but it is reachable once the agent has identified the variant
   // and the serial transport is open, over the same byte-transparent proxy.
@@ -109,7 +105,6 @@ export function AgentMavlinkBridge() {
       const conn = useAgentConnectionStore.getState();
       return {
         mavlinkUrl,
-        mavlinkWsUrlPrev,
         agentUrl: conn.agentUrl,
         apiKey: conn.apiKey,
         cloudDeviceId: conn.cloudDeviceId,
@@ -226,7 +221,6 @@ export function AgentMavlinkBridge() {
     };
   }, [
     mavlinkUrl,
-    mavlinkWsUrlPrev,
     connected,
     fcActive,
     nodeDeviceId,

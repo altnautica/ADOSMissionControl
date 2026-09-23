@@ -32,20 +32,22 @@ import { Monitor } from "lucide-react";
 
 import { HdmiKioskCard } from "@/components/hardware/HdmiKioskCard";
 import { LocalDisplayCard } from "@/components/hardware/LocalDisplayCard";
+import type { RelayReach } from "@/lib/nodes/relay-reach";
 import { Section } from "./Section";
 
 export interface DisplaySectionProps {
   nodeDeviceId: string | null;
+  relayReach: RelayReach | null;
 }
 
-export function DisplaySection({ nodeDeviceId }: DisplaySectionProps) {
+export function DisplaySection({ nodeDeviceId, relayReach }: DisplaySectionProps) {
   const t = useTranslations("nodeSettings.display");
 
   return (
     <div className="space-y-4">
       <Section title={t("rendererTitle")} icon={Monitor} blurb={t("rendererBlurb")}>
         {/* The presence-gated, confirmation-guarded picker. */}
-        <LocalDisplayCard nodeDeviceId={nodeDeviceId} />
+        <LocalDisplayCard nodeDeviceId={nodeDeviceId} relayReach={relayReach} />
       </Section>
 
       <Section title={t("kioskTitle")} blurb={t("kioskBlurb")}>
@@ -53,7 +55,7 @@ export function DisplaySection({ nodeDeviceId }: DisplaySectionProps) {
           {t("kioskAlwaysOn")}
         </p>
         {/* The kiosk target URL's existing owner — reused, not re-implemented. */}
-        <HdmiKioskCard nodeDeviceId={nodeDeviceId} />
+        <HdmiKioskCard nodeDeviceId={nodeDeviceId} relayReach={relayReach} />
       </Section>
     </div>
   );

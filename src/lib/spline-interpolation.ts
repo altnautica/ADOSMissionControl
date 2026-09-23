@@ -56,9 +56,10 @@ export function catmullRomSegment(
 }
 
 /**
- * Generate a smooth spline path through a sequence of waypoints.
- * Only generates curves for consecutive SPLINE_WAYPOINT segments.
- * Returns the full interpolated path for map rendering.
+ * Generate the map path through a sequence of waypoints. A SPLINE_WAYPOINT
+ * shapes the leg flown TO it, so a segment is curved only when its destination
+ * is a spline waypoint; the leg leaving a spline waypoint toward a normal
+ * waypoint is flown, and drawn, straight.
  *
  * @param waypoints - Array of {lat, lon, command} objects
  * @returns Array of [lat, lon] points for the curved path
@@ -71,9 +72,7 @@ export function generateSplinePath(
   const result: [number, number][] = [];
 
   for (let i = 0; i < waypoints.length - 1; i++) {
-    const isSplineSegment =
-      waypoints[i].command === "SPLINE_WAYPOINT" ||
-      waypoints[i + 1].command === "SPLINE_WAYPOINT";
+    const isSplineSegment = waypoints[i + 1].command === "SPLINE_WAYPOINT";
 
     if (!isSplineSegment) {
       // Straight segment — just add endpoints

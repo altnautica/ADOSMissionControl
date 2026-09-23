@@ -58,8 +58,8 @@ export function ParamCompare({ fcParams, metadata, onApplied }: ParamCompareProp
       result = result.filter((d) => d.status === filterMode);
     }
     if (search) {
-      const q = search.toUpperCase();
-      result = result.filter((d) => d.name.includes(q));
+      const q = search.toLowerCase();
+      result = result.filter((d) => d.name.toLowerCase().includes(q));
     }
     return result;
   }, [diffs, filterMode, search]);

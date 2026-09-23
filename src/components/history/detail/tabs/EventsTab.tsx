@@ -6,15 +6,12 @@
  * @license GPL-3.0-only
  */
 
-import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Play } from "lucide-react";
-import { loadRecordingFrames } from "@/lib/telemetry-recorder";
-import { analyzeFlight } from "@/lib/flight-analysis/analyzer";
-import { useHistoryStore } from "@/stores/history-store";
 import type { FlightRecord, FlightEvent } from "@/lib/types";
+import { useReanalysis } from "./use-reanalysis";
 
 interface EventsTabProps {
   record: FlightRecord;
@@ -34,26 +31,8 @@ function fmtOffset(ms: number): string {
 }
 
 export function EventsTab({ record }: EventsTabProps) {
-  const [running, setRunning] = useState(false);
+  const reanalysis = useReanalysis(record);
   const events = record.events ?? [];
-
-  const handleRunAnalysis = async () => {
-    if (!record.recordingId) return;
-    setRunning(true);
-    try {
-      const frames = await loadRecordingFrames(record.recordingId);
-      const result = analyzeFlight(frames);
-      const store = useHistoryStore.getState();
-      store.updateRecord(record.id, {
-        events: result.events,
-        flags: result.flags,
-        health: result.health,
-      });
-      void store.persistToIDB();
-    } finally {
-      setRunning(false);
-    }
-  };
 
   if (events.length === 0) {
     return (
@@ -66,11 +45,16 @@ export function EventsTab({ record }: EventsTabProps) {
             variant="secondary"
             size="sm"
             icon={<Play size={12} />}
-            onClick={handleRunAnalysis}
-            disabled={running}
+            onClick={reanalysis.run}
+            disabled={reanalysis.running || reanalysis.recordingMissing}
           >
-            {running ? "Analyzing…" : "Run analysis"}
+            {reanalysis.running ? "Analyzing…" : "Run analysis"}
           </Button>
+        )}
+        {reanalysis.recordingMissing && (
+          <p className="text-[10px] text-text-tertiary mt-2">
+            The telemetry recording for this flight is no longer stored, so it cannot be analyzed.
+          </p>
         )}
       </Card>
     );

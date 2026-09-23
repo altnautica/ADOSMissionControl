@@ -11,6 +11,7 @@ import type {
   MotorTimeSeries,
   MotorAnalysis,
   MotorAnalysisResult,
+  TimeSample,
 } from "@/lib/analysis/types";
 
 // ---------------------------------------------------------------------------
@@ -20,8 +21,18 @@ import type {
 /** PWM threshold for motor saturation (microseconds). */
 const SATURATION_THRESHOLD = 1900;
 
-/** Std deviation threshold for oscillation detection. */
+/**
+ * Threshold, in microseconds, for the standard deviation of a motor output
+ * about its own slow trend.
+ */
 const OSCILLATION_STDDEV_THRESHOLD = 50;
+
+/**
+ * Half-width of the moving average that forms the slow trend (≈4 Hz): spool
+ * up, hover and climbs move the output far more than 50 us but slowly, and
+ * are not oscillation.
+ */
+const TREND_HALF_WINDOW_US = 125_000;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -44,6 +55,30 @@ function stddev(values: number[], avg: number): number {
     sumSq += d * d;
   }
   return Math.sqrt(sumSq / (values.length - 1));
+}
+
+/**
+ * Each sample minus the centred moving average of the samples within
+ * TREND_HALF_WINDOW_US of it: what remains is the fast movement only.
+ */
+function detrend(samples: TimeSample[]): number[] {
+  const out: number[] = new Array(samples.length);
+  let lo = 0;
+  let hi = 0;
+  let sum = 0;
+  for (let i = 0; i < samples.length; i++) {
+    const t = samples[i].timeUs;
+    while (hi < samples.length && samples[hi].timeUs <= t + TREND_HALF_WINDOW_US) {
+      sum += samples[hi].value;
+      hi++;
+    }
+    while (samples[lo].timeUs < t - TREND_HALF_WINDOW_US) {
+      sum -= samples[lo].value;
+      lo++;
+    }
+    out[i] = samples[i].value - sum / (hi - lo);
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -69,17 +104,9 @@ export function analyzeMotors(timeSeries: MotorTimeSeries): MotorAnalysis {
 
   for (let m = 0; m < timeSeries.motorCount; m++) {
     const samples = timeSeries.motors[m];
-    if (!samples || samples.length === 0) {
-      motorResults.push({
-        motorIndex: m,
-        averagePwm: 0,
-        saturationPercent: 0,
-        oscillationScore: 0,
-        hasOscillation: false,
-      });
-      averages.push(0);
-      continue;
-    }
+    // A channel with nothing logged was not measured; it must not pull the
+    // saturation and imbalance figures towards zero.
+    if (!samples || samples.length === 0) continue;
 
     const values = samples.map((s) => s.value);
     const avg = mean(values);
@@ -92,8 +119,9 @@ export function analyzeMotors(timeSeries: MotorTimeSeries): MotorAnalysis {
     }
     const saturationPercent = (saturatedCount / values.length) * 100;
 
-    // Oscillation: standard deviation of PWM output
-    const sd = stddev(values, avg);
+    // Oscillation: spread of the output about its own slow trend
+    const residual = detrend(samples);
+    const sd = stddev(residual, mean(residual));
     const hasOscillation = sd > OSCILLATION_STDDEV_THRESHOLD;
 
     motorResults.push({

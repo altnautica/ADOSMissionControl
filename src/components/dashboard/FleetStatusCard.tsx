@@ -33,8 +33,9 @@ export function FleetStatusCard() {
     return acc;
   }, {});
 
+  // An offline node's navigation flag is its last report, not a current fact.
   const gpsDeniedCount = drones.reduce(
-    (n, d) => (d.navigationGpsDenied === true ? n + 1 : n),
+    (n, d) => (d.status !== "offline" && d.navigationGpsDenied === true ? n + 1 : n),
     0,
   );
   // Counted under their node's liveness above, but their FC went silent: the

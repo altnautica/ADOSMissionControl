@@ -21,7 +21,7 @@ export function CpuSparkline() {
 
   if (data.length < 2) return null;
 
-  const strokeColor = isStale ? "#6B7280" : "#3A82FF";
+  const strokeColor = isStale ? "var(--color-text-tertiary)" : "var(--color-accent-primary)";
 
   return (
     <div
@@ -63,7 +63,7 @@ export function CpuSparkline() {
         {isStale && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <span className="text-[10px] uppercase tracking-widest text-text-tertiary bg-bg-primary/70 px-2 py-0.5 rounded">
-              Paused
+              {t("sparklinePaused")}
             </span>
           </div>
         )}

@@ -70,9 +70,12 @@ export function SimCameraCluster({ viewer }: SimCameraClusterProps) {
     const camera = viewer.camera;
     const height = camera.positionCartographic.height;
     if (dir === 1) {
-      // zoomIn bypasses the controller's minimumZoomDistance clamp — cap the
-      // step so a click never dives below the 15 m terrain floor.
-      camera.zoomIn(Math.min(height * 0.3, Math.max(0, height - 20)));
+      // zoomIn bypasses the controller's minimumZoomDistance clamp and terrain
+      // collision, so cap the step by the height above the GROUND below the
+      // camera (not the ellipsoid) to keep a click 20 m clear of the terrain.
+      const ground = viewer.scene.globe.getHeight(camera.positionCartographic) ?? 0;
+      const agl = height - ground;
+      camera.zoomIn(Math.min(agl * 0.3, Math.max(0, agl - 20)));
     } else {
       camera.zoomOut(height * 0.3);
     }

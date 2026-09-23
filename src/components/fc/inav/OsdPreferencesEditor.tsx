@@ -9,49 +9,16 @@
 
 import { Select } from "@/components/ui/select";
 import type { INavOsdPreferences } from "@/lib/protocol/msp/msp-decoders-inav";
-
-const VIDEO_SYSTEM_OPTIONS = [
-  { value: "0", label: "Auto" },
-  { value: "1", label: "PAL" },
-  { value: "2", label: "NTSC" },
-];
-
-const UNITS_OPTIONS = [
-  { value: "0", label: "Imperial" },
-  { value: "1", label: "Metric" },
-  { value: "2", label: "UK" },
-  { value: "3", label: "Aviation" },
-];
-
-const ENERGY_UNIT_OPTIONS = [
-  { value: "0", label: "mAh" },
-  { value: "1", label: "Wh" },
-];
-
-const CROSSHAIRS_OPTIONS = [
-  { value: "0", label: "Default" },
-  { value: "1", label: "Crosshairs 1" },
-  { value: "2", label: "Crosshairs 2" },
-  { value: "3", label: "Crosshairs 3" },
-];
-
-const SIDEBAR_SCROLL_OPTIONS = [
-  { value: "0", label: "None" },
-  { value: "1", label: "Altitude" },
-  { value: "2", label: "Ground speed" },
-  { value: "3", label: "Home distance" },
-  { value: "4", label: "Moving direction" },
-  { value: "5", label: "Current" },
-  { value: "6", label: "Pitch angle" },
-  { value: "7", label: "Roll angle" },
-  { value: "8", label: "GPS accuracy" },
-];
-
-const ADSB_WARNING_STYLE_OPTIONS = [
-  { value: "0", label: "None" },
-  { value: "1", label: "Text" },
-  { value: "2", label: "Symbol" },
-];
+import {
+  ADSB_WARNING_STYLE_OPTIONS,
+  CROSSHAIRS_OPTIONS,
+  ENERGY_UNIT_OPTIONS,
+  SIDEBAR_SCROLL_OPTIONS,
+  UNITS_OPTIONS,
+  VIDEO_SYSTEM_OPTIONS,
+  VOLTAGE_DECIMALS_MAX,
+  VOLTAGE_DECIMALS_MIN,
+} from "./osd-preference-options";
 
 interface OsdPreferencesEditorProps {
   preferences: INavOsdPreferences | null;
@@ -126,12 +93,14 @@ export function OsdPreferencesEditor({
       <Row label="Voltage decimals">
         <input
           type="number"
-          min={0}
-          max={1}
+          min={VOLTAGE_DECIMALS_MIN}
+          max={VOLTAGE_DECIMALS_MAX}
           value={preferences.mainVoltageDecimals}
-          onChange={(e) =>
-            onUpdate("mainVoltageDecimals", parseInt(e.target.value, 10) || 0)
-          }
+          onChange={(e) => {
+            const v = parseInt(e.target.value, 10);
+            if (!Number.isFinite(v)) return;
+            onUpdate("mainVoltageDecimals", Math.min(VOLTAGE_DECIMALS_MAX, Math.max(VOLTAGE_DECIMALS_MIN, v)));
+          }}
           className="w-28 bg-bg-tertiary border border-border-default rounded px-2 py-1 text-[11px] font-mono text-text-primary text-right"
         />
       </Row>

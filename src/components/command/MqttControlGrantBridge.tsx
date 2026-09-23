@@ -10,7 +10,7 @@
  * the transports read the credential synchronously at dial time. This component
  * is the only place that knows the lifecycle is backed by Convex, and it supplies
  * three things the store cannot obtain on its own — the mint/revoke/confirm
- * calls, the server's view of the operator's current grant, and the fact that
+ * calls, the server's view of the grant this session holds, and the fact that
  * there is a signed-in operator at all.
  *
  * Mounted once in `AgentBridges`, which is itself mounted once per session and
@@ -28,6 +28,7 @@ import {
   attachGrantBackend,
   ensureGrant,
   syncServerGrant,
+  useMqttControlGrantStore,
   type GrantBackend,
 } from "@/stores/mqtt-control-grant-store";
 
@@ -42,13 +43,17 @@ export function MqttControlGrantBridge() {
   const mint = useAction(cmdMqttControlGrantsApi.mint);
   const revoke = useMutation(cmdMqttControlGrantsApi.revoke);
   const confirmWrite = useMutation(cmdMqttControlGrantsApi.confirmWrite);
+  // The server row of the grant THIS session holds; nothing to ask about
+  // before it holds one.
+  const principal = useMqttControlGrantStore((s) => s.principal);
   const current = useConvexSkipQuery(cmdMqttControlGrantsApi.myCurrent, {
-    enabled,
+    args: { principal: principal ?? "" },
+    enabled: enabled && principal !== null,
   });
 
   const backend = useMemo<GrantBackend>(
     () => ({
-      mint: () => mint({}),
+      mint: (replaces: string | null) => mint(replaces === null ? {} : { replaces }),
       revoke: () => revoke({}),
       confirmWrite: (principal: string) => confirmWrite({ principal }),
     }),
@@ -70,12 +75,14 @@ export function MqttControlGrantBridge() {
 
   useEffect(() => {
     if (!enabled) return;
-    // `undefined` is "not answered yet", distinct from `null` ("no live grant").
-    // Acting on the first is what would mint a second grant on every page load.
-    if (current === undefined) return;
-    syncServerGrant(current);
+    if (principal !== null) {
+      // `undefined` is "not answered yet", distinct from `null` ("this grant
+      // is gone"). Only the settled answer may drop the held grant.
+      if (current === undefined) return;
+      syncServerGrant(current);
+    }
     void ensureGrant();
-  }, [enabled, current]);
+  }, [enabled, principal, current]);
 
   return null;
 }

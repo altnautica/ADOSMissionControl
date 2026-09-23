@@ -1,12 +1,15 @@
 /**
  * @module planner-map-helpers
- * @description Icon factories, helper functions, and constants for PlannerMap.
+ * @description Icon factories, helper functions, constants and the hint-banner
+ * descriptor for PlannerMap.
  * @license GPL-3.0-only
  */
 
 import L from "leaflet";
 import { MAP_COLORS } from "@/lib/map-constants";
 import type { PlannerTool } from "@/lib/types";
+import type { PlannerMode } from "@/lib/planner-mode";
+import { datumPatternFor } from "@/lib/planner-mode";
 
 const waypointIconCache = new Map<string, L.DivIcon>();
 
@@ -16,7 +19,7 @@ export function makeWaypointIcon(index: number, selected: boolean): L.DivIcon {
   if (cached) return cached;
   const fill = selected ? MAP_COLORS.accentSelected : MAP_COLORS.accentPrimary;
   const stroke = selected ? MAP_COLORS.accentPrimary : MAP_COLORS.foreground;
-  const textFill = selected ? MAP_COLORS.background : "#fff";
+  const textFill = selected ? MAP_COLORS.background : MAP_COLORS.foreground;
   const icon = L.divIcon({
     className: "",
     iconSize: [24, 24],
@@ -37,8 +40,8 @@ export function makeSplineWaypointIcon(index: number, selected: boolean): L.DivI
   const cached = splineIconCache.get(key);
   if (cached) return cached;
   const fill = selected ? MAP_COLORS.accentSelected : MAP_COLORS.background;
-  const stroke = "#00bcd4"; // teal for spline distinction
-  const textFill = selected ? MAP_COLORS.background : "#00bcd4";
+  const stroke = MAP_COLORS.spline;
+  const textFill = selected ? MAP_COLORS.background : MAP_COLORS.spline;
   const icon = L.divIcon({
     className: "",
     iconSize: [24, 24],
@@ -132,14 +135,78 @@ export const TOOL_CURSORS: Record<PlannerTool, string> = {
   datum: "crosshair",
 };
 
-export const TOOL_INSTRUCTIONS: Partial<Record<PlannerTool, string>> = {
-  select: "Click map to add a waypoint",
-  waypoint: "Click map to place waypoint",
-  takeoff: "Click map to place takeoff point",
-  land: "Click map to place landing point",
-  loiter: "Click map to place loiter point",
-  roi: "Click map to set region of interest",
-  rally: "Click map to place rally point",
-  poi: "Click map to place a point of interest",
-  datum: "Click map to set the search datum point",
-};
+/**
+ * A single in-map hint surface. `tone` controls whether the banner reads as the
+ * always-on subdued select hint or the louder accent hint shown while an
+ * explicit placement / drawing mode is armed.
+ */
+export interface BannerDescriptor {
+  readonly message: string;
+  readonly tone: "subdued" | "accent";
+}
+
+/**
+ * Map the authoritative interaction mode to the hint banner shown over the map.
+ * Pure: no React, no leaflet, no store access — every placement, draw, datum,
+ * and rally mode resolves to one consistent descriptor here so the map renders a
+ * single banner driven by `mode.kind` instead of several bespoke blocks.
+ *
+ * Returns `null` for the rare modes that should show no banner (none today; the
+ * select mode keeps a subdued always-on hint).
+ */
+export function mapBannerDescriptor(mode: PlannerMode): BannerDescriptor | null {
+  switch (mode.kind) {
+    case "select":
+      return { message: "Click map to add a waypoint", tone: "subdued" };
+    case "waypoint":
+      switch (mode.tool) {
+        case "waypoint":
+          return { message: "Click map to place waypoint", tone: "accent" };
+        case "takeoff":
+          return { message: "Click map to place takeoff point", tone: "accent" };
+        case "land":
+          return { message: "Click map to place landing point", tone: "accent" };
+        case "loiter":
+          return { message: "Click map to place loiter point", tone: "accent" };
+        case "roi":
+          return { message: "Click map to set region of interest", tone: "accent" };
+      }
+    // falls through (every waypoint tool is handled above)
+    case "rally":
+      return { message: "Click map to place rally point", tone: "accent" };
+    case "poi":
+      return { message: "Click map to place a point of interest", tone: "accent" };
+    case "datum": {
+      // Reflect the armed search pattern so the operator knows which point the
+      // next click sets (a parallel-track sets a start point, the radial patterns
+      // set a centre datum; with no pattern armed, prompt them to pick one).
+      const pattern = datumPatternFor(mode);
+      if (pattern === "parallelTrack") {
+        return { message: "Click map to set the search start point", tone: "accent" };
+      }
+      if (pattern === "expandingSquare" || pattern === "sectorSearch") {
+        return { message: "Click map to set the search datum point", tone: "accent" };
+      }
+      if (pattern === null) {
+        return { message: "Select a search pattern, then click map to set its datum", tone: "accent" };
+      }
+      // survey / orbit / corridor / structureScan set their area by drawing, so a
+      // datum click does nothing — say so rather than promise a datum placement.
+      return { message: "This pattern's area is set by drawing, not a datum click", tone: "accent" };
+    }
+    case "draw":
+      switch (mode.shape) {
+        case "polygon":
+          return {
+            message:
+              "Click to place vertices. Right-click or click first vertex to close. Backspace to undo. Escape to cancel.",
+            tone: "accent",
+          };
+        case "circle":
+          return { message: "Click and drag to draw circle. Right-click to cancel.", tone: "accent" };
+        case "measure":
+          return { message: "Click to add points, double-click to finish. Right-click to cancel.", tone: "accent" };
+      }
+  }
+  return null;
+}

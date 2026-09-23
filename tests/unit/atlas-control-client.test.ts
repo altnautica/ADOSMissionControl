@@ -158,7 +158,7 @@ describe("AtlasControlClient (direct / HTTP origin)", () => {
     const c = new AtlasControlClient("http://d.local:8080", "KEY");
     const out = await c.setConfig({ enabled: true, captureProfile: "fast" });
     expect(out).toEqual({
-      status: "ok",
+      ok: true,
       enabled: true,
       restart: { ados_atlas: true },
     });
@@ -169,6 +169,33 @@ describe("AtlasControlClient (direct / HTTP origin)", () => {
       enabled: true,
       capture_profile: "fast",
     });
+  });
+
+  it("setConfig reports a failed service restart as a failure with its reason", async () => {
+    fetchMock.mockResolvedValue(
+      res(502, {
+        status: "error",
+        enabled: true,
+        persisted: true,
+        restart: { status: "error", message: "Restart timed out for ados-atlas" },
+      }),
+    );
+    const c = new AtlasControlClient("http://d.local:8080", "KEY");
+    expect(await c.setConfig({ enabled: true })).toEqual({
+      ok: false,
+      message: "Restart timed out for ados-atlas",
+    });
+  });
+
+  it("setConfig's deadline covers the agent's service restart", async () => {
+    // The agent restarts the capture service (up to ~35 s) before it answers
+    // a config write; the 6 s read deadline aborted a write that then landed.
+    const timeout = vi.spyOn(AbortSignal, "timeout");
+    fetchMock.mockResolvedValue(res(200, { status: "ok", enabled: true, restart: { status: "ok" } }));
+    const c = new AtlasControlClient("http://d.local:8080", "KEY");
+    await c.setConfig({ enabled: true });
+    expect(timeout).toHaveBeenCalledTimes(1);
+    expect(timeout.mock.calls[0][0]).toBeGreaterThanOrEqual(40_000);
   });
 
   it("captureStart returns ok:true with the coerced status", async () => {

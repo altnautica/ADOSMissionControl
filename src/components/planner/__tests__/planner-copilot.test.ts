@@ -5,9 +5,11 @@
  * through `parseMissionIntent`.
  * @license GPL-3.0-only
  */
-import { describe, it, expect } from "vitest";
-import { planCopilotActions } from "@/components/planner/PlannerCopilot";
+import { describe, it, expect, beforeEach } from "vitest";
+import { applyCopilotPlan, planCopilotActions } from "@/components/planner/PlannerCopilot";
 import { parseMissionIntent, type MissionIntent } from "@/lib/nl-intent-parser";
+import { usePatternStore } from "@/stores/pattern-store";
+import { CAMERA_PROFILES, computeLineSpacing, computeTriggerDistance } from "@/lib/patterns/gsd-calculator";
 
 describe("planCopilotActions", () => {
   it("maps a survey pattern to the survey pattern type and is actionable", () => {
@@ -80,5 +82,31 @@ describe("planCopilotActions", () => {
     expect(plan.patternType).toBe("orbit");
     expect(plan.radiusM).toBe(120);
     expect(plan.actionable).toBe(true);
+  });
+});
+
+describe("applyCopilotPlan", () => {
+  const camera = CAMERA_PROFILES[0];
+
+  beforeEach(() => {
+    usePatternStore.getState().setPatternType("survey");
+    usePatternStore.getState().updateSurveyConfig({
+      altitude: 50,
+      lineSpacing: computeLineSpacing(50, camera, 0.7),
+      cameraTriggerDistance: computeTriggerDistance(50, camera, 0.8),
+      _cameraName: camera.name,
+      _sidelap: 70,
+      _frontlap: 80,
+    } as Record<string, unknown>);
+  });
+
+  it("keeps the stored overlap true when only the altitude changes", () => {
+    applyCopilotPlan(planCopilotActions(parseMissionIntent("survey at 25m") as MissionIntent));
+    const cfg = usePatternStore.getState().surveyConfig as Record<string, number>;
+    expect(cfg.altitude).toBe(25);
+    expect(cfg.lineSpacing).toBeCloseTo(computeLineSpacing(25, camera, 0.7), 1);
+    expect(cfg.cameraTriggerDistance).toBeCloseTo(computeTriggerDistance(25, camera, 0.8), 1);
+    expect(cfg._sidelap).toBe(70);
+    expect(cfg._frontlap).toBe(80);
   });
 });

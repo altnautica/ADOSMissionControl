@@ -3,7 +3,7 @@
 /**
  * @module use-drone-world-model
  * @description Local-first source for a drone's reconstructed world model
- * (Rule 39). Resolves the paired compute / workstation node the drone
+ * (local-first). Resolves the paired compute / workstation node the drone
  * reconstructs on (from `local-nodes-store`), polls its job API (reusing
  * `use-compute-jobs`, the engine's own `:8092` listener), and resolves the
  * newest completed reconstruction for a session — correlated by `session_id`,
@@ -70,7 +70,7 @@ export interface DroneWorldModel {
   viewerHint: AtlasViewer | null;
   /** The concrete reconstruction backend of the resolved artifact (`"mock"` =
    * placeholder, else the real backend name), or null when none is resolved.
-   * Drives the reconstruction-honesty badge (Rule 44). */
+   * Drives the reconstruction-honesty badge (no fabricated reading). */
   backend: string | null;
   /** Completed reconstruction sessions on the node, newest-first (selector). */
   sessions: WorldModelSession[];

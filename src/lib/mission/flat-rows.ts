@@ -12,6 +12,7 @@
 import type {
   ActionCommand,
   CommandMissionAction,
+  RawMissionAction,
   Waypoint,
 } from "@/lib/types/mission";
 import { isNavCommand, POSITION_BEARING_ACTIONS } from "./command-classes";
@@ -21,7 +22,8 @@ import { isNavCommand, POSITION_BEARING_ACTIONS } from "./command-classes";
  * top-level row rather than nested under a navigation waypoint. Identical to a
  * `Waypoint` plus the action-only parameters: the fourth (a nav waypoint's
  * fourth wire slot is `param3`) and, for a non-positional action, the fifth to
- * seventh (its x/y/z wire slots).
+ * seventh (its x/y/z wire slots). A row with `raw` set is a passthrough action
+ * the GCS does not model; its `command` is ignored.
  */
 export interface FlatWaypointRow extends Waypoint {
   /** Only meaningful on a flattened ACTION row: the action's `param4`. */
@@ -30,6 +32,8 @@ export interface FlatWaypointRow extends Waypoint {
   param5?: number;
   param6?: number;
   param7?: number;
+  /** A passthrough action's wire fields, carried verbatim. */
+  raw?: Omit<RawMissionAction, "id" | "command">;
 }
 
 /**
@@ -65,6 +69,14 @@ export function foldLegacyWaypoints(flat: readonly FlatWaypointRow[]): Waypoint[
   let current: Waypoint | undefined;
 
   flat.forEach((wp, idx) => {
+    if (wp.raw) {
+      if (!current) {
+        console.warn(`foldLegacyWaypoints: dropping leading raw command ${wp.raw.rawCommand} that precedes any navigation waypoint`);
+        return;
+      }
+      current.actions = [...(current.actions ?? []), { id: wp.id, command: "RAW", ...wp.raw }];
+      return;
+    }
     const command = wp.command ?? "WAYPOINT";
 
     if (isNavCommand(command)) {
@@ -131,8 +143,8 @@ export function foldLegacyWaypoints(flat: readonly FlatWaypointRow[]): Waypoint[
  * position-bearing action (`ROI` / `DO_SET_HOME`) keeps its own coordinates; any
  * other action inherits its parent waypoint's position + frame so the flat row
  * is well-formed. An action's `param4`..`param7` ride in the row's own
- * action-only fields. A `RAW` passthrough action has no command name the flat
- * row can carry, so it is not written.
+ * action-only fields. A `RAW` passthrough action rides in `raw`, verbatim, at
+ * its parent's position.
  */
 export function flattenForSerialization(waypoints: readonly Waypoint[]): FlatWaypointRow[] {
   const flat: FlatWaypointRow[] = [];
@@ -148,7 +160,11 @@ export function flattenForSerialization(waypoints: readonly Waypoint[]): FlatWay
     navFlatIndex.set(wp.id, flat.length); // 1-based position of the row just pushed
 
     for (const act of wp.actions ?? []) {
-      if (act.command === "RAW") continue;
+      if (act.command === "RAW") {
+        const { id, command: _raw, ...wire } = act;
+        flat.push({ id, lat: wp.lat, lon: wp.lon, alt: wp.alt, frame: wp.frame, raw: wire });
+        continue;
+      }
       const positional = POSITION_BEARING_ACTIONS.has(act.command);
       const isJump = act.command === "DO_JUMP";
       const row: FlatWaypointRow = {

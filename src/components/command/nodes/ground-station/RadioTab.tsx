@@ -2,10 +2,8 @@
 
 /**
  * @module RadioTab
- * @description Command-tab home for the WFB-ng radio link surface.
- * Renders the topology badge, live link stats, and the TX power
- * slider. Renders the radio surface for a ground-station node; the surface
- * stays available as a thin passthrough during the transition.
+ * @description Command-tab home for a ground-station node's WFB-ng radio link
+ * surface: the topology badge, live link stats and the TX power slider.
  * @license GPL-3.0-only
  */
 

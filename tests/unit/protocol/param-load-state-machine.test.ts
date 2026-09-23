@@ -4,6 +4,7 @@ import type { FrameHandlerState } from '@/lib/protocol/mavlink-adapter-frame-han
 import { getAllParameters, getParameter, ParamAbsentError, type ParamContext } from '@/lib/protocol/mavlink-adapter-params';
 import type { MAVLinkFrame } from '@/lib/protocol/mavlink-parser';
 import { createCallbackStore } from '@/lib/protocol/mavlink-adapter-callbacks';
+import { StatusTextAssembler } from '@/lib/protocol/handlers/info-handlers';
 import type { ParameterValue, FirmwareHandler, UnifiedFlightMode } from '@/lib/protocol/types';
 
 // ── Fake transport recording encoded frames ──
@@ -73,6 +74,7 @@ function makeContext(t: FakeTransport): ParamContext & FrameHandlerState {
     lastVehicleHeartbeat: Date.now(),
     linkIsLost: false,
     HEARTBEAT_TIMEOUT_MS: 5000,
+    statusText: new StatusTextAssembler(),
   };
 }
 

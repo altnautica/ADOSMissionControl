@@ -22,9 +22,13 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { createTranslator } from "next-intl";
 
 import messages from "../../../../../locales/en.json";
-import { pairFailure, type PairFailureInput } from "../failure-copy";
+import {
+  isServedRemotely,
+  pairFailure,
+  type PairFailureInput,
+} from "../failure-copy";
 
-const HOST = "http://skynode.local:8080";
+const HOST = "http://testnode.local:8080";
 
 const t = createTranslator({
   locale: "en",
@@ -160,10 +164,10 @@ describe("pair failure matrix", () => {
       // The address is named the way the operator typed it — no scheme, no
       // implicit port. A full URL is allowed only where it is a link the
       // operator is meant to open (the node's own settings page).
-      expect(message).toContain("skynode.local");
+      expect(message).toContain("testnode.local");
       expect(
-        message.replaceAll("http://skynode.local:8080/settings", ""),
-      ).not.toContain("http://skynode.local:8080");
+        message.replaceAll("http://testnode.local:8080/settings", ""),
+      ).not.toContain("http://testnode.local:8080");
     });
   }
 
@@ -235,5 +239,29 @@ describe("pair failure matrix", () => {
     ) => string)("codeNoLanMatchError", { hint: "" });
     expect(message.toLowerCase()).not.toContain("cloud relay");
     expect(message).toContain("hostname or IP");
+  });
+});
+
+describe("isServedRemotely", () => {
+  const dom = (window as unknown as { happyDOM: { setURL(url: string): void } })
+    .happyDOM;
+  afterEach(() => dom.setURL("http://localhost:3000/"));
+
+  it("reads a Mission Control served from the operator's LAN as on-network", () => {
+    for (const origin of [
+      "https://192.168.1.50/",
+      "https://10.0.0.7:8443/",
+      "https://gcs.local/",
+      "https://localhost:3000/",
+      "http://gcs.example.com/",
+    ]) {
+      dom.setURL(origin);
+      expect(isServedRemotely(), origin).toBe(false);
+    }
+  });
+
+  it("reads an https Mission Control on a public host as off-network", () => {
+    dom.setURL("https://gcs.example.com/");
+    expect(isServedRemotely()).toBe(true);
   });
 });

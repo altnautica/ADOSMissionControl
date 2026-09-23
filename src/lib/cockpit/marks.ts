@@ -114,6 +114,15 @@ export function mapPoint(
  * against a runaway plugin flooding the composited layer. */
 export const MAX_MARKS_PER_SOURCE = 512;
 
+/** Points kept from one polyline; the rest are dropped. */
+export const MAX_POINTS_PER_POLYLINE = 1024;
+
+/** Polyline points accepted from one source across all its marks in one post. */
+export const MAX_POINTS_PER_SOURCE = 4096;
+
+/** Characters kept from one label's text. */
+export const MAX_LABEL_CHARS = 64;
+
 function isFiniteNumber(v: unknown): v is number {
   return typeof v === "number" && Number.isFinite(v);
 }
@@ -170,7 +179,7 @@ function parseMark(value: unknown): CockpitMark | null {
     case "polyline": {
       if (!Array.isArray(v.points) || v.points.length === 0) return null;
       const points: Array<[number, number]> = [];
-      for (const p of v.points) {
+      for (const p of v.points.slice(0, MAX_POINTS_PER_POLYLINE)) {
         if (
           !Array.isArray(p) ||
           p.length < 2 ||
@@ -192,7 +201,7 @@ function parseMark(value: unknown): CockpitMark | null {
       if (!isFiniteNumber(v.x) || !isFiniteNumber(v.y) || typeof v.text !== "string") {
         return null;
       }
-      return { ...base, kind: "label", x: v.x, y: v.y, text: v.text };
+      return { ...base, kind: "label", x: v.x, y: v.y, text: v.text.slice(0, MAX_LABEL_CHARS) };
     }
     default:
       return null;
@@ -203,16 +212,25 @@ function parseMark(value: unknown): CockpitMark | null {
  * Parse an untrusted marks payload (from a sandboxed plugin iframe over the
  * bridge) into a validated `CockpitMark[]`. Non-array input yields `[]`;
  * malformed entries are dropped; the list is capped at
- * {@link MAX_MARKS_PER_SOURCE}. This is the host's guard on the mark contract —
- * a plugin posts marks and the host composites the valid ones.
+ * {@link MAX_MARKS_PER_SOURCE}, each polyline at {@link MAX_POINTS_PER_POLYLINE}
+ * points and all polylines together at {@link MAX_POINTS_PER_SOURCE}, and label
+ * text at {@link MAX_LABEL_CHARS}. This is the host's guard on the mark
+ * contract — a plugin posts marks and the host composites the valid ones.
  */
 export function parseCockpitMarks(value: unknown): CockpitMark[] {
   if (!Array.isArray(value)) return [];
   const out: CockpitMark[] = [];
+  let pointBudget = MAX_POINTS_PER_SOURCE;
   for (const item of value) {
     if (out.length >= MAX_MARKS_PER_SOURCE) break;
     const mark = parseMark(item);
-    if (mark) out.push(mark);
+    if (!mark) continue;
+    if (mark.kind === "polyline") {
+      if (pointBudget === 0) continue;
+      if (mark.points.length > pointBudget) mark.points = mark.points.slice(0, pointBudget);
+      pointBudget -= mark.points.length;
+    }
+    out.push(mark);
   }
   return out;
 }

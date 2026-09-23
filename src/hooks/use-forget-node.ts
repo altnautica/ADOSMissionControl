@@ -19,9 +19,15 @@
 
 import { useCallback } from "react";
 import { useMutation } from "convex/react";
+import { useTranslations } from "next-intl";
 import { useConvexAvailable } from "@/app/ConvexClientProvider";
+import { useToast } from "@/components/ui/toast";
 import { cmdDronesApi } from "@/lib/community-api-drones";
-import { forgetNode, type UnpairDroneMutation } from "@/lib/agent/forget-node";
+import {
+  forgetNode,
+  type ForgetNodeResult,
+  type UnpairDroneMutation,
+} from "@/lib/agent/forget-node";
 
 export interface UseForgetNodeOptions {
   /** Convex doc id for the cloud row, when this node is cloud-paired. */
@@ -31,27 +37,40 @@ export interface UseForgetNodeOptions {
 /**
  * Returns the forget action with the Convex delete already wired: callers
  * hand over the node id (and its Convex doc id when cloud-paired) and every
- * presence source — including the cloud row — is cleared.
+ * presence source — including the cloud row — is cleared. A cloud row that
+ * could not be removed leaves the node paired; this hook reports that as an
+ * error toast, and the resolved result lets a caller confirm success.
  */
 export function useForgetNode(): (
   nodeId: string,
   options?: UseForgetNodeOptions,
-) => void {
+) => Promise<ForgetNodeResult> {
   // A ConvexProvider is always mounted (local-only uses a non-resolving
   // client), so useMutation never throws; the handle is only INVOKED when
   // Convex is actually available.
   const convexAvailable = useConvexAvailable();
   const unpairDroneMutation = useMutation(cmdDronesApi.unpairDrone);
+  const t = useTranslations("dronePanel");
+  const { toast } = useToast();
 
   return useCallback(
-    (nodeId, options = {}) => {
-      forgetNode(nodeId, {
+    async (nodeId, options = {}) => {
+      const result = await forgetNode(nodeId, {
         convexId: options.convexId ?? null,
         unpairMutation: convexAvailable
           ? (unpairDroneMutation as UnpairDroneMutation)
           : null,
       });
+      if (!result.ok) {
+        toast(
+          result.reason === "cloudUnavailable"
+            ? t("forgetCloudUnavailable")
+            : t("forgetCloudFailed", { error: result.message }),
+          "error",
+        );
+      }
+      return result;
     },
-    [convexAvailable, unpairDroneMutation],
+    [convexAvailable, unpairDroneMutation, t, toast],
   );
 }

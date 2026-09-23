@@ -5,10 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { useDroneManager } from "@/stores/drone-manager";
+import { useToast } from "@/components/ui/toast";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useParamPanelActions } from "@/hooks/use-param-panel-actions";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
-import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
+import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { PanelHeader } from "../shared/PanelHeader";
 import { useParamEnums } from "../shared/ParamEnumSelect";
 import { EnumSelect } from "../parameters/EnumSelect";
@@ -33,6 +34,7 @@ export function PortsPanel() {
   const { firmwareType } = useFirmwareCapabilities();
   const isPx4 = firmwareType === "px4";
   const [needsReboot, setNeedsReboot] = useState(false);
+  const { toast } = useToast();
   // SERIALn_PROTOCOL / SERIALn_BAUD options come from the firmware metadata
   // (verbatim ArduPilot @Values as the offline floor), never a hand table.
   const { enumValues } = useParamEnums(useParamMetadataMap());
@@ -81,7 +83,11 @@ export function PortsPanel() {
 
   async function handleReboot() {
     if (!protocol) return;
-    await protocol.reboot();
+    const result = await protocol.reboot();
+    if (!result.success) {
+      toast(`Reboot refused: ${result.message}`, "error");
+      return;
+    }
     setNeedsReboot(false);
   }
 
@@ -101,7 +107,7 @@ export function PortsPanel() {
   }
 
   return (
-    <ArmedLockOverlay>
+    <ArmedWarningBanner>
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Header */}
         <div className="flex-shrink-0 border-b border-border-default bg-bg-secondary px-4 py-3 space-y-3">
@@ -184,23 +190,6 @@ export function PortsPanel() {
               <div className="flex items-center justify-center py-16">
                 <span className="text-xs text-text-tertiary">Loading serial parameters...</span>
               </div>
-            ) : firmwareType === 'betaflight' ? (
-              <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <Usb size={14} className="text-accent-primary" />
-                  <h2 className="text-sm font-medium text-text-primary">Betaflight Serial Ports</h2>
-                </div>
-                <p className="text-xs text-text-secondary">
-                  Serial port configuration for Betaflight uses packed bitmask data that is best configured through the CLI.
-                </p>
-                <p className="text-xs text-text-tertiary">
-                  Use the <span className="font-mono text-accent-primary">serial</span> command in the FC Console panel to view and configure serial port assignments.
-                </p>
-                <div className="bg-bg-tertiary px-3 py-2 font-mono text-[10px] text-text-secondary space-y-1">
-                  <p><span className="text-accent-primary">serial</span> — Show current serial port configuration</p>
-                  <p><span className="text-accent-primary">serial 0 64 115200 57600 0 115200</span> — Example: set port 0</p>
-                </div>
-              </div>
             ) : isPx4 ? (
               <div className="space-y-3">
                 <p className="text-xs text-text-tertiary">
@@ -271,6 +260,6 @@ export function PortsPanel() {
           </div>
         </div>
       </div>
-    </ArmedLockOverlay>
+    </ArmedWarningBanner>
   );
 }

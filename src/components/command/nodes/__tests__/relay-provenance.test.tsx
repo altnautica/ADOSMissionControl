@@ -3,7 +3,7 @@
  * @description Render tests for the transitive-reach provenance UX: the
  * "Relayed" sidebar badge and the hover card's WFB reach section (which ground
  * node a drone is linked through + the WFB `-p1` RSSI). Honest surfaces: an
- * unverified RSSI reads "unverified", never a confident value (Rule 44).
+ * unverified RSSI reads "unverified", never a confident value (no fabricated reading).
  *
  * @license GPL-3.0-only
  */
@@ -93,7 +93,7 @@ describe("NodeBadgeSet — relayed badge", () => {
     expect(screen.queryByText("Relayed")).toBeNull();
   });
 
-  it("suppresses the Relayed badge on an offline node (Rule 44)", () => {
+  it("suppresses the Relayed badge on an offline node (no fabricated reading)", () => {
     // A stale pair-time timestamp reads offline; the liveness badge stands alone.
     renderIntl(
       <NodeBadgeSet
@@ -133,7 +133,7 @@ describe("NodeStatusHoverCard — WFB reach section", () => {
     expect(screen.getByText("WFB -51 dBm")).toBeTruthy();
   });
 
-  it("reads the WFB link unverified when no RSSI is known (Rule 44)", () => {
+  it("reads the WFB link unverified when no RSSI is known (no fabricated reading)", () => {
     renderIntl(<NodeStatusHoverCard node={relayedDrone()} />);
     // No status row → no RSSI → honest "unverified", never a fabricated value.
     expect(screen.getByText("WFB link unverified")).toBeTruthy();

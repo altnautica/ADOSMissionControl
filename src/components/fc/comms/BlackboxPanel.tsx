@@ -11,32 +11,13 @@ import { usePanelParams } from "@/hooks/use-panel-params";
 import { usePanelScroll } from "@/hooks/use-panel-scroll";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { PanelHeader } from "../shared/PanelHeader";
-import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
+import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { Database, Save, HardDrive, Download, Trash2, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   blackboxParamNames, DEVICE_OPTIONS, RATE_PRESETS,
   formatBytes, type DataflashSummary,
 } from "./blackbox-constants";
-
-/**
- * Build a raw blackbox blob for adapters that cannot read onboard flash (demo
- * mode). Deterministic non-zero filler so the saved `.bbl` is a plausible
- * binary, with the progress callback animated across a few frames.
- */
-async function synthesizeBlackbox(
-  usedSize: number,
-  onProgress: (pct: number) => void,
-): Promise<Uint8Array> {
-  const total = Math.min(Math.max(usedSize, 4096), 128 * 1024);
-  const out = new Uint8Array(total);
-  for (let i = 0; i < total; i++) out[i] = (i * 31 + 7) & 0xff;
-  for (let pct = 20; pct <= 100; pct += 20) {
-    onProgress(pct);
-    await new Promise<void>((r) => setTimeout(r, 60));
-  }
-  return out;
-}
 
 export function BlackboxPanel() {
   const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
@@ -68,17 +49,20 @@ export function BlackboxPanel() {
   const ratePercentage = useMemo(() => rateDenom === 0 ? 100 : Math.round((rateNum / rateDenom) * 100), [rateNum, rateDenom]);
   const usagePercent = useMemo(() => (!flashInfo || flashInfo.totalSize === 0) ? 0 : Math.round((flashInfo.usedSize / flashInfo.totalSize) * 100), [flashInfo]);
 
+  const [flashUnsupported, setFlashUnsupported] = useState(false);
+
   const loadFlashInfo = useCallback(async () => {
     const protocol = getSelectedProtocol();
     if (!protocol || !protocol.isConnected) return;
+    if (!protocol.getDataflashSummary) {
+      setFlashUnsupported(true);
+      setFlashInfo(null);
+      return;
+    }
+    setFlashUnsupported(false);
     setFlashLoading(true);
     try {
-      if ("getDataflashSummary" in protocol && typeof protocol.getDataflashSummary === "function") {
-        const summary = await (protocol as { getDataflashSummary: () => Promise<DataflashSummary> }).getDataflashSummary();
-        setFlashInfo(summary);
-      } else {
-        setFlashInfo({ totalSize: 2 * 1024 * 1024, usedSize: 768 * 1024, ready: true });
-      }
+      setFlashInfo(await protocol.getDataflashSummary());
     } catch { setFlashInfo(null); }
     finally { setFlashLoading(false); }
   }, [getSelectedProtocol]);
@@ -91,18 +75,11 @@ export function BlackboxPanel() {
   async function handleDownload() {
     const protocol = getSelectedProtocol();
     if (!protocol || !protocol.isConnected) { toast("Not connected to flight controller", "error"); return; }
+    if (!protocol.downloadBlackbox) { toast("This connection cannot download blackbox logs", "error"); return; }
     setDownloading(true);
     setDownloadProgress(0);
     try {
-      let data: Uint8Array;
-      if ("downloadBlackbox" in protocol && typeof protocol.downloadBlackbox === "function") {
-        data = await (protocol as { downloadBlackbox: (cb?: (p: { percentComplete: number }) => void) => Promise<Uint8Array> })
-          .downloadBlackbox((p) => setDownloadProgress(p.percentComplete));
-      } else {
-        // Adapter without an onboard-flash download path (e.g. demo mode):
-        // synthesize a raw log so the download flow is exercisable end-to-end.
-        data = await synthesizeBlackbox(flashInfo?.usedSize ?? 256 * 1024, setDownloadProgress);
-      }
+      const data = await protocol.downloadBlackbox((p) => setDownloadProgress(p.percentComplete));
       if (data.length === 0) { toast("No blackbox data on the flight controller", "warning"); return; }
       // Copy into a fresh ArrayBuffer-backed view so the Blob part is typed
       // Uint8Array<ArrayBuffer> (not the adapter's ArrayBufferLike return).
@@ -125,10 +102,11 @@ export function BlackboxPanel() {
     if (!window.confirm("Erase all blackbox logs? This cannot be undone.")) return;
     const protocol = getSelectedProtocol();
     if (!protocol || !protocol.isConnected) { toast("Not connected to flight controller", "error"); return; }
+    if (!protocol.eraseDataflash) { toast("This connection cannot erase blackbox logs", "error"); return; }
     setErasing(true);
     try {
-      if ("eraseDataflash" in protocol && typeof protocol.eraseDataflash === "function") { await (protocol as { eraseDataflash: () => Promise<void> }).eraseDataflash(); toast("Blackbox logs erased", "success"); }
-      else { await new Promise((r) => setTimeout(r, 1500)); toast("Blackbox logs erased", "success"); }
+      await protocol.eraseDataflash();
+      toast("Blackbox logs erased", "success");
       setFlashInfo((prev) => prev ? { ...prev, usedSize: 0 } : null);
     } catch { toast("Failed to erase blackbox logs", "error"); }
     finally { setErasing(false); }
@@ -137,7 +115,7 @@ export function BlackboxPanel() {
   function handleRatePreset(num: number, denom: number) { setLocalValue("BF_BLACKBOX_RATE_NUM", num); setLocalValue("BF_BLACKBOX_RATE_DENOM", denom); }
 
   return (
-    <ArmedLockOverlay>
+    <ArmedWarningBanner>
     <div ref={scrollRef} className="flex-1 overflow-y-auto p-6">
       <div className="max-w-2xl space-y-6">
         <PanelHeader title="Blackbox" subtitle="Flight data recording device and logging rate" icon={<Database size={16} />} loading={loading} loadProgress={loadProgress} hasLoaded={hasLoaded} onRead={refresh} connected={connected} error={error} />
@@ -191,7 +169,11 @@ export function BlackboxPanel() {
                 )}
               </>
             )}
-            {!flashLoading && !flashInfo && <p className="text-[10px] text-text-tertiary">Could not read storage info. Connect to a flight controller with onboard storage.</p>}
+            {!flashLoading && !flashInfo && (
+              <p className="text-[10px] text-text-tertiary">
+                {flashUnsupported ? "This connection cannot read onboard log storage." : "Could not read storage info from the flight controller."}
+              </p>
+            )}
           </div>
         )}
 
@@ -203,6 +185,6 @@ export function BlackboxPanel() {
         </div>
       </div>
     </div>
-    </ArmedLockOverlay>
+    </ArmedWarningBanner>
   );
 }

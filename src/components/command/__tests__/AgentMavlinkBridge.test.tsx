@@ -131,12 +131,6 @@ vi.mock("@/stores/agent-system-store", () => {
   return { useAgentSystemStore: hook };
 });
 
-vi.mock("@/stores/agent-capabilities-store", () => {
-  const hook = (sel: (s: Record<string, unknown>) => unknown) =>
-    sel({ mavlinkWsUrlPrev: null });
-  return { useAgentCapabilitiesStore: hook };
-});
-
 vi.mock("@/stores/drone-manager", () => {
   const state = {
     drones: h.drones,

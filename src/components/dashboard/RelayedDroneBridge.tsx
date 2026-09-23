@@ -49,36 +49,25 @@ import {
 const RELAYED_STATUS_POLL_MS = 5000;
 
 /** True only when the node's WFB link is verified up (frames confirmed
- * received). A missing or unproven radio block is NOT up (Rule 44). */
+ * received). A missing or unproven radio block is NOT up (no fabricated reading). */
 function radioUpFor(status: CommandCloudStatus | undefined): boolean {
   const radio = status?.radio ? normalizeRadio(status.radio) : null;
   return radio != null && linkStateReach(radio.state) === "up";
 }
 
 /** The funneled fields this bridge owns on a relayed drone's status row. A write
- * is skipped when they already match, so the bridge's own writes do not loop. */
+ * is skipped when every one of them already matches, so the bridge's own
+ * writes do not loop. Compares the whole funneled subset rather than a
+ * hand-kept field list: the relayed-status poll runs on its own cadence,
+ * independent of the peer-observation `updatedAt`, so a change to any single
+ * funneled field with an unmoved `updatedAt` must still be written. */
 function funneledDiffers(
   existing: CommandCloudStatus | undefined,
-  next: CommandCloudStatus,
+  funneled: CommandCloudStatus,
 ): boolean {
   if (!existing) return true;
-  return (
-    existing.videoState !== next.videoState ||
-    existing.videoWhepUrl !== next.videoWhepUrl ||
-    existing.peerDeviceId !== next.peerDeviceId ||
-    existing.peerRssiDbm !== next.peerRssiDbm ||
-    existing.updatedAt !== next.updatedAt ||
-    // The relayed-status poll runs on its own cadence, independent of the
-    // peer-observation timestamp above, so a resource/FC-state change with an
-    // unmoved `updatedAt` must still be checked or it would silently stall.
-    existing.fcConnected !== next.fcConnected ||
-    existing.mavlinkAlive !== next.mavlinkAlive ||
-    existing.fcVariant !== next.fcVariant ||
-    existing.cpuPercent !== next.cpuPercent ||
-    existing.memoryPercent !== next.memoryPercent ||
-    existing.diskPercent !== next.diskPercent ||
-    existing.temperature !== next.temperature ||
-    existing.cameraState !== next.cameraState
+  return (Object.keys(funneled) as (keyof CommandCloudStatus)[]).some(
+    (key) => existing[key] !== funneled[key],
   );
 }
 
@@ -98,7 +87,7 @@ export function RelayedDroneBridge() {
   // drone's flight-controller, service and resource fields come from what the
   // ground station actually decoded off the aux lane, not left permanently
   // absent. Cloud-paired ground stations are not polled here: this is the
-  // LAN-direct local-first path (Rule 39), and a cloud ground station has no
+  // LAN-direct local-first path, and a cloud ground station has no
   // browser-reachable host to poll directly.
   const [relayedStatusByGround, setRelayedStatusByGround] = useState<
     ReadonlyMap<string, ReadonlyMap<string, RelayedPeerStatus>>
@@ -172,33 +161,24 @@ export function RelayedDroneBridge() {
 
     for (const e of enrollments) {
       nextNodeIds.add(e.nodeId);
-      // Skip an unchanged presence upsert so a self-triggered re-run does not
-      // churn the registry.
-      const entry = registry.getEntry(e.nodeId);
+      // The registry skips an upsert that changes nothing, so a self-triggered
+      // re-run does not churn it.
       const relayedProfile: "drone" | "ground-station" | "workstation" =
         e.realProfile === "ground-station" || e.realProfile === "workstation"
           ? e.realProfile
           : "drone";
-      const presenceUnchanged =
-        entry?.presence.sources.includes("relayed") &&
-        entry.presence.reachedVia === e.reachedVia &&
-        entry.presence.lastHeartbeat >= e.lastHeartbeat &&
-        entry.presence.agentIdentityKnown === e.agentIdentityKnown &&
-        entry.presence.profile === relayedProfile;
-      if (!presenceUnchanged) {
-        registry.upsertPresence(
-          e.nodeId,
-          {
-            deviceId: e.deviceId,
-            name: e.realName || `Agent ${e.deviceId.slice(0, 8)}`,
-            profile: relayedProfile,
-            agentIdentityKnown: e.agentIdentityKnown,
-            reachedVia: e.reachedVia,
-            lastHeartbeat: e.lastHeartbeat,
-          },
-          "relayed",
-        );
-      }
+      registry.upsertPresence(
+        e.nodeId,
+        {
+          deviceId: e.deviceId,
+          name: e.realName || `Agent ${e.deviceId.slice(0, 8)}`,
+          profile: relayedProfile,
+          agentIdentityKnown: e.agentIdentityKnown,
+          reachedVia: e.reachedVia,
+          lastHeartbeat: e.lastHeartbeat,
+        },
+        "relayed",
+      );
 
       if (e.funneledStatus) {
         nextStatusIds.add(e.deviceId);
@@ -207,7 +187,7 @@ export function RelayedDroneBridge() {
           ...(existing ?? { deviceId: e.deviceId }),
           ...e.funneledStatus,
         };
-        if (funneledDiffers(existing, merged)) funneledRows.push(merged);
+        if (funneledDiffers(existing, e.funneledStatus)) funneledRows.push(merged);
       }
     }
 

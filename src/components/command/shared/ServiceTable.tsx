@@ -1,14 +1,19 @@
 "use client";
 
+import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { RotateCw, AlertTriangle } from "lucide-react";
+import { RotateCw, AlertTriangle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatDuration } from "@/lib/utils";
+import { formatDurationSeconds } from "@/lib/i18n/format";
 import type { ServiceInfo } from "@/lib/agent/types";
 import { countRunning } from "@/lib/agent/service-state";
+import { nodeIdForDevice } from "@/lib/agent/node-id";
 import { useVideoStore } from "@/stores/video-store";
+import { useAgentConnectionStore } from "@/stores/agent-connection";
+import { useNodeRegistryStore } from "@/stores/node-registry";
 import { useFreshness } from "@/lib/agent/freshness";
 import { useToast } from "@/components/ui/toast";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface ServiceTableProps {
   services: ServiceInfo[];
@@ -52,20 +57,96 @@ const categoryColors: Record<string, string> = {
   ondemand: "text-text-tertiary",
 };
 
+/**
+ * Units whose restart interrupts the vehicle's flight link, radio, video,
+ * RC path or the GCS's reach to the node. Keyed without the `ados-` prefix.
+ */
+const LINK_CRITICAL_UNITS: Record<string, true> = {
+  mavlink: true,
+  control: true,
+  wfb: true,
+  "wfb-rx": true,
+  "wfb-relay": true,
+  crsf: true,
+  video: true,
+  cloud: true,
+  "uplink-router": true,
+  supervisor: true,
+};
+
+type RestartTarget = { kind: "one"; name: string } | { kind: "all" };
+
+/** In-flight key for the restart-all action; never a unit name. */
+const ALL_KEY = "*";
+
 export function ServiceTable({ services, onRestart, onRestartAll, processCpu, processMemoryMb }: ServiceTableProps) {
   const t = useTranslations("agent");
   const agentDependencies = useVideoStore((s) => s.agentDependencies);
   const freshness = useFreshness();
   const { toast } = useToast();
+  const nodeDeviceId = useAgentConnectionStore((s) => s.nodeDeviceId);
+  const vehicleArmed = useNodeRegistryStore((s) =>
+    nodeDeviceId ? s.nodes[nodeIdForDevice(nodeDeviceId)]?.fc.armState === "armed" : false,
+  );
+  const [confirmTarget, setConfirmTarget] = useState<RestartTarget | null>(null);
+  const [inFlight, setInFlight] = useState<Record<string, true>>({});
   const isStale = freshness.state !== "live" && freshness.state !== "unknown";
-  const report = (pending: Promise<string | null>) => {
-    pending.then(
-      (message) => {
-        if (message) toast(message, "success");
-      },
-      (err: unknown) => toast(err instanceof Error ? err.message : String(err), "error"),
-    );
+
+  const runRestart = (target: RestartTarget) => {
+    const key = target.kind === "all" ? ALL_KEY : target.name;
+    const pending =
+      target.kind === "all" && onRestartAll ? onRestartAll() : target.kind === "one" ? onRestart(target.name) : null;
+    if (!pending) return;
+    setInFlight((s) => ({ ...s, [key]: true }));
+    pending
+      .then(
+        (message) => {
+          // Null means the restart was queued over the cloud relay, where no
+          // answer comes back on this request.
+          if (message) toast(message, "success");
+          else toast(t("restartQueued", { name: key }), "info");
+        },
+        (err: unknown) => toast(err instanceof Error ? err.message : String(err), "error"),
+      )
+      .finally(() =>
+        setInFlight((s) => {
+          const next = { ...s };
+          delete next[key];
+          return next;
+        }),
+      );
   };
+
+  const confirmCritical =
+    confirmTarget?.kind === "all" ||
+    (confirmTarget?.kind === "one" && LINK_CRITICAL_UNITS[confirmTarget.name.replace(/^ados-/, "")] === true);
+  const armedWarning = vehicleArmed && confirmCritical;
+  const confirmDialog = (
+    <ConfirmDialog
+      open={confirmTarget !== null}
+      title={
+        confirmTarget?.kind === "one"
+          ? t("restartConfirmTitle", { name: confirmTarget.name })
+          : t("restartAllConfirmTitle")
+      }
+      message={[
+        confirmTarget?.kind === "one"
+          ? t("restartConfirmMessage", { name: confirmTarget.name })
+          : t("restartAllConfirmMessage"),
+        armedWarning ? t("restartArmedWarning") : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      confirmLabel={t("restartConfirmLabel")}
+      variant={armedWarning ? "danger" : "primary"}
+      onCancel={() => setConfirmTarget(null)}
+      onConfirm={() => {
+        if (confirmTarget) runRestart(confirmTarget);
+        setConfirmTarget(null);
+      }}
+    />
+  );
+
   if (!services || !Array.isArray(services) || services.length === 0) {
     return (
       <div className="border border-border-default rounded-lg p-4">
@@ -106,11 +187,17 @@ export function ServiceTable({ services, onRestart, onRestartAll, processCpu, pr
           <span>{runningCount}/{services.length} running</span>
           {onRestartAll && (
             <button
-              onClick={() => report(onRestartAll())}
-              className="p-1 rounded hover:bg-white/10 text-text-tertiary hover:text-text-primary transition-colors"
-              title="Restart all services"
+              onClick={() => setConfirmTarget({ kind: "all" })}
+              disabled={inFlight[ALL_KEY] === true}
+              className="p-1 rounded hover:bg-bg-tertiary text-text-tertiary hover:text-text-primary transition-colors disabled:opacity-50"
+              title={t("restartAllServices")}
+              aria-label={t("restartAllServices")}
             >
-              <RotateCw className="w-3.5 h-3.5" />
+              {inFlight[ALL_KEY] ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <RotateCw className="w-3.5 h-3.5" />
+              )}
             </button>
           )}
           {processCpu != null && (
@@ -177,23 +264,29 @@ export function ServiceTable({ services, onRestart, onRestartAll, processCpu, pr
                       {svc.pid ?? "-"}
                     </td>
                     <td className="py-1.5 pr-3 text-right text-text-secondary font-mono">
-                      {svc.status === "running" ? (svc.cpu_percent ?? 0).toFixed(1) : "-"}
+                      {svc.status === "running" && svc.cpu_percent != null ? svc.cpu_percent.toFixed(1) : "—"}
                     </td>
                     <td className="py-1.5 pr-3 text-right text-text-secondary font-mono">
-                      {svc.status === "running" ? (svc.memory_mb ?? 0).toFixed(1) : "-"}
+                      {svc.status === "running" && svc.memory_mb != null ? svc.memory_mb.toFixed(1) : "—"}
                     </td>
                   </>
                 )}
                 <td className="py-1.5 pr-3 text-right text-text-secondary font-mono">
-                  {svc.status === "running" ? formatDuration(svc.uptime_seconds) : "-"}
+                  {svc.status === "running" ? formatDurationSeconds(svc.uptime_seconds) : "—"}
                 </td>
                 <td className="py-1.5 text-right">
                   <button
-                    onClick={() => report(onRestart(svc.name))}
-                    className="p-1 text-text-tertiary hover:text-accent-primary transition-colors"
+                    onClick={() => setConfirmTarget({ kind: "one", name: svc.name })}
+                    disabled={inFlight[svc.name] === true || inFlight[ALL_KEY] === true}
+                    className="p-1 text-text-tertiary hover:text-accent-primary transition-colors disabled:opacity-50"
                     title={t("restartService", { name: svc.name })}
+                    aria-label={t("restartService", { name: svc.name })}
                   >
-                    <RotateCw size={12} />
+                    {inFlight[svc.name] ? (
+                      <Loader2 size={12} className="animate-spin" />
+                    ) : (
+                      <RotateCw size={12} />
+                    )}
                   </button>
                 </td>
               </tr>
@@ -201,6 +294,7 @@ export function ServiceTable({ services, onRestart, onRestartAll, processCpu, pr
           </tbody>
         </table>
       </div>
+      {confirmDialog}
     </div>
   );
 }

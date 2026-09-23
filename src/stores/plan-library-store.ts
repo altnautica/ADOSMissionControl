@@ -103,6 +103,8 @@ interface PlanLibraryState {
   toggleLibrary: () => void;
   setLibraryCollapsed: (collapsed: boolean) => void;
   setSearchQuery: (query: string) => void;
+  /** Pick the sort field; the direction resets to that field's natural order
+   * (names A→Z, newest and largest first). */
   setSortBy: (sort: "name" | "date" | "waypoints") => void;
   toggleSortDirection: () => void;
   toggleFolder: (id: string) => void;
@@ -248,7 +250,7 @@ export const usePlanLibraryStore = create<PlanLibraryState>()(
       toggleLibrary: () => set((s) => ({ libraryCollapsed: !s.libraryCollapsed })),
       setLibraryCollapsed: (libraryCollapsed) => set({ libraryCollapsed }),
       setSearchQuery: (searchQuery) => set({ searchQuery }),
-      setSortBy: (sortBy) => set({ sortBy }),
+      setSortBy: (sortBy) => set({ sortBy, sortDirection: sortBy === "name" ? "asc" : "desc" }),
       toggleSortDirection: () =>
         set((s) => ({ sortDirection: s.sortDirection === "asc" ? "desc" : "asc" })),
       toggleFolder: (id) =>

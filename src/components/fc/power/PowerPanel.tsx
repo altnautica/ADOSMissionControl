@@ -9,7 +9,7 @@ import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
 import { useParamLabel } from "@/hooks/use-param-label";
 import { useParamMetadataMap } from "@/hooks/use-param-metadata";
 import { PanelHeader } from "../shared/PanelHeader";
-import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
+import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { Battery, Zap, ShieldAlert, Save, HardDrive } from "lucide-react";
 import { StarredParam } from "../parameters/ParamStar";
 import { ParamFieldLabel } from "../parameters/ParamFieldLabel";
@@ -69,7 +69,7 @@ export function PowerPanel() {
   );
 
   return (
-    <ArmedLockOverlay>
+    <ArmedWarningBanner>
     <div ref={scrollRef} className="flex-1 overflow-y-auto p-6">
       <div className="max-w-2xl space-y-6">
         <PanelHeader title="Power / Battery" subtitle="Battery capacity, current sensor calibration, live cell monitoring"
@@ -201,6 +201,6 @@ export function PowerPanel() {
         </div>
       </div>
     </div>
-    </ArmedLockOverlay>
+    </ArmedWarningBanner>
   );
 }

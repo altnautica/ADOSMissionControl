@@ -194,7 +194,8 @@ export function useCommandAgentFleet(
       const active = activeVideoIds.has(drone.deviceId);
       const canStream =
         !radioLinkDown && liveness === "live" && !!whepUrl && !paused;
-      const agentVideoState = status?.videoState ?? (whepUrl ? "running" : "unknown");
+      // No reported video state is unknown; a URL alone proves no stream.
+      const agentVideoState = status?.videoState ?? "unknown";
       const services = status?.services ?? [];
 
       return {
@@ -246,7 +247,10 @@ export function useCommandAgentFleet(
           active,
           queued: canStream && !active,
         },
-        telemetry: normalizeFleetTelemetry(telemetry),
+        // A stale or offline node's last snapshot is not a current reading:
+        // armed state, battery, mode and position show as unknown until the
+        // node is heard from again.
+        telemetry: normalizeFleetTelemetry(liveness === "live" ? telemetry : undefined),
       };
     });
 

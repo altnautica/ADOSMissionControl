@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  advanceBoxes,
   boxDistance,
   easeBox,
   smoothingAlpha,
@@ -119,5 +120,33 @@ describe("critically-damped convergence over a frame sequence", () => {
     for (let i = 0; i < 120; i++)
       box = easeBox(box, second, smoothingAlpha(dt, tau));
     expect(boxDistance(box, second)).toBeLessThan(0.5);
+  });
+});
+
+describe("advanceBoxes", () => {
+  const target = { x: 100, y: 100, width: 50, height: 50 };
+
+  it("keeps running while a box is still easing and settles once it lands", () => {
+    const displayed = new Map([["cam:1", { x: 0, y: 0, width: 50, height: 50 }]]);
+    const targets = new Map([["cam:1", target]]);
+    const moving = advanceBoxes(displayed, targets, 0.5, 0.5);
+    expect(moving.settled).toBe(false);
+    const landed = advanceBoxes(moving.next, targets, 1, 0.5);
+    expect(landed.settled).toBe(true);
+    expect(landed.next.get("cam:1")).toEqual(target);
+  });
+
+  it("is settled with nothing to draw, returning the same map", () => {
+    const displayed = new Map<string, typeof target>();
+    const step = advanceBoxes(displayed, new Map(), 0.5, 0.5);
+    expect(step.settled).toBe(true);
+    expect(step.next).toBe(displayed);
+  });
+
+  it("drops a box whose track left and settles", () => {
+    const displayed = new Map([["cam:1", target]]);
+    const step = advanceBoxes(displayed, new Map(), 0.5, 0.5);
+    expect(step.next.size).toBe(0);
+    expect(step.settled).toBe(true);
   });
 });

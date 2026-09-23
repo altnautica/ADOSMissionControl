@@ -58,7 +58,12 @@ export async function pairBluetooth(
     if (res.paired) {
       try {
         const list = await api.getPairedBluetooth();
-        set({ bluetooth: { ...get().bluetooth, paired: list.devices } });
+        const owner = get().bluetooth.pairedFor;
+        if (owner === null || owner === api.baseUrl) {
+          set({
+            bluetooth: { ...get().bluetooth, paired: list.devices, pairedFor: api.baseUrl },
+          });
+        }
       } catch {
         // non-fatal
       }
@@ -81,7 +86,7 @@ export async function forgetBluetooth(
 ): Promise<boolean> {
   try {
     const res = await api.forgetBluetooth(mac);
-    if (res.forgotten) {
+    if (res.forgotten && get().bluetooth.pairedFor === api.baseUrl) {
       const remaining = get().bluetooth.paired.filter((d) => d.mac !== mac);
       set({ bluetooth: { ...get().bluetooth, paired: remaining } });
     }
@@ -98,13 +103,20 @@ export async function loadPairedBluetooth(
   set: Setter,
   get: Getter,
 ): Promise<void> {
+  const target = api.baseUrl;
+  // Switching node drops the previous node's list immediately.
+  if (get().bluetooth.pairedFor !== target) {
+    set({ bluetooth: { ...get().bluetooth, paired: [], pairedFor: target } });
+  }
   try {
     const list = await api.getPairedBluetooth();
+    if (get().bluetooth.pairedFor !== target) return;
     set({
       bluetooth: { ...get().bluetooth, paired: list.devices, error: null },
     });
   } catch (err) {
     const { message } = errorMessage(err);
+    if (get().bluetooth.pairedFor !== target) return;
     set({ bluetooth: { ...get().bluetooth, error: message } });
   }
 }

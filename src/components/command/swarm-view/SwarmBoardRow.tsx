@@ -34,6 +34,8 @@ import {
   SWARM_SEVERITY_LEVEL,
   SWARM_SEVERITY_SHAPE,
   swarmBeaconFreshness,
+  swarmRowDeviceId,
+  swarmRowName,
   type SwarmSlotRow,
 } from "./swarm-rows";
 import {
@@ -71,7 +73,7 @@ export function SwarmBoardRow({
   const t = useTranslations("swarmView.table");
   const freshness = swarmBeaconFreshness(row.beacon);
   const slotLabel = t("slotLabel", { slot: row.slot });
-  const deviceId = row.node?.deviceId ?? row.beacon?.deviceId ?? null;
+  const deviceId = swarmRowDeviceId(row);
 
   return (
     <tr
@@ -111,10 +113,10 @@ export function SwarmBoardRow({
         {row.node ? (
           <NodeIdentityCell node={row.node} onOpen={(node) => onOpen(node.deviceId)} />
         ) : (
-          // A beacon from a slot no registered node claims: named by its own
-          // device id so the operator can go find out who it is.
+          // A slot with no paired node: named by its beacon's device id, else
+          // the registry's, so the operator can go find out who it is.
           <span className="font-mono text-[11px] text-text-secondary">
-            {row.beacon?.deviceId ?? slotLabel}
+            {swarmRowName(row, slotLabel)}
           </span>
         )}
       </td>

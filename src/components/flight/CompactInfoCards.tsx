@@ -9,7 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/utils";
+import { knownRemainingPct } from "@/lib/battery-bands";
 import { useSettingsStore } from "@/stores/settings-store";
+import { useHistoryStore } from "@/stores/history-store";
 import { useDroneMetadataStore, type DroneMetadata } from "@/stores/drone-metadata-store";
 import { getJurisdictionConfig } from "@/lib/jurisdiction";
 import { Pencil, Check, X } from "lucide-react";
@@ -154,6 +156,11 @@ export function CompactInfoCards({ drone }: CompactInfoCardsProps) {
   const jConfig = getJurisdictionConfig(jurisdiction);
   const metadata = useDroneMetadataStore((s) => s.profiles[drone.id]);
   const upsertProfile = useDroneMetadataStore((s) => s.upsertProfile);
+  // Records are kept newest-first, so the first one for this drone is its
+  // most recent flight. A heartbeat is not a flight.
+  const lastFlightAt = useHistoryStore(
+    (s) => s.records.find((r) => r.droneId === drone.id)?.startTime ?? null,
+  );
 
   const [editingSection, setEditingSection] = useState<EditSection>(null);
 
@@ -182,8 +189,12 @@ export function CompactInfoCards({ drone }: CompactInfoCardsProps) {
     } else if (section === "stats") {
       setEditFlights(String(metadata?.totalFlights ?? 0));
       setEditHours(String(metadata?.totalHours ?? 0));
-      const enrolled = metadata?.enrolledAt ?? Date.now() - 30 * 24 * 60 * 60 * 1000;
-      setEditEnrolled(new Date(enrolled).toISOString().split("T")[0]);
+      // An unset date stays unset: pre-filling one would persist a guess on save.
+      setEditEnrolled(
+        metadata?.enrolledAt === undefined
+          ? ""
+          : new Date(metadata.enrolledAt).toISOString().split("T")[0],
+      );
     }
     setEditingSection(section);
   }
@@ -206,24 +217,27 @@ export function CompactInfoCards({ drone }: CompactInfoCardsProps) {
   }
 
   function saveStats() {
+    // An empty or unparseable date leaves the stored value alone.
+    const enrolledAt = new Date(editEnrolled).getTime();
     upsertProfile(drone.id, {
       totalFlights: parseInt(editFlights) || 0,
       totalHours: parseFloat(editHours) || 0,
-      enrolledAt: new Date(editEnrolled).getTime() || Date.now(),
+      ...(Number.isFinite(enrolledAt) ? { enrolledAt } : {}),
     });
     setEditingSection(null);
   }
 
-  // FC-gated telemetry is only real when an FC is delivering MAVLink. With a
-  // detached or silent FC (fcAttached === false) the registry leaves
-  // battery/gps undefined, so a `?? 0` fallback would fabricate a confident
-  // "0.0 V / No Fix / 0%". Blank those to placeholders instead.
+  // FC-gated telemetry is only real when an FC is delivering MAVLink, and only
+  // once it has reported: battery/gps stay undefined until the first sample
+  // (and for a detached FC), so every reading falls back to a placeholder
+  // rather than a confident "0.0 V / 0 sats / 0%".
   const fcLive = drone.fcAttached !== false;
-  const fixType = drone.gps?.fixType;
+  const battery = fcLive ? drone.battery : undefined;
+  const gps = fcLive ? drone.gps : undefined;
+  const remaining = knownRemainingPct(battery?.remaining);
   // MAVLink GPS_FIX_TYPE -> `indicators.gpsFix.*`. Types above 6 (STATIC,
-  // PPP) have no entry and read as 3D, which is what the old `>= 3` branch
-  // showed them as; an absent GPS report reads as "no fix", also as before.
-  const fixKey = fixType == null ? "noFix" : (GPS_FIX_KEYS[fixType] ?? "fix3d");
+  // PPP) have no entry and read as 3D.
+  const fixKey = gps ? (GPS_FIX_KEYS[gps.fixType] ?? "fix3d") : null;
   return (
     <div className="bg-bg-secondary">
       {/* Health — READ-ONLY */}
@@ -235,16 +249,16 @@ export function CompactInfoCards({ drone }: CompactInfoCardsProps) {
             value={drone.healthScore ?? "--"}
             unit={drone.healthScore === undefined ? "" : "%"}
           />
-          <MetricCell label={t("voltage")} value={fcLive ? (drone.battery?.voltage ?? 0).toFixed(1) : "--"} unit={fcLive ? "V" : ""} />
-          <MetricCell label={t("gpsSats")} value={fcLive ? (drone.gps?.satellites ?? 0) : "--"} />
-          <MetricCell label={t("fixType")} value={fcLive ? tFix(fixKey) : "--"} />
+          <MetricCell label={t("voltage")} value={battery ? battery.voltage.toFixed(1) : "--"} unit={battery ? "V" : ""} />
+          <MetricCell label={t("gpsSats")} value={gps?.satellites ?? "--"} />
+          <MetricCell label={t("fixType")} value={fixKey ? tFix(fixKey) : "--"} />
         </div>
         <div className="mt-2">
           <div className="flex items-center justify-between text-[10px] text-text-tertiary mb-1">
             <span>{t("battery")}</span>
-            <span className="font-mono tabular-nums">{fcLive ? `${Math.round(drone.battery?.remaining ?? 0)}%` : "--"}</span>
+            <span className="font-mono tabular-nums">{remaining !== null ? `${Math.round(remaining)}%` : "--"}</span>
           </div>
-          <BatteryBar percentage={fcLive ? (drone.battery?.remaining ?? 0) : 0} />
+          <BatteryBar percentage={remaining} showLabel={false} />
         </div>
       </Section>
 
@@ -259,15 +273,15 @@ export function CompactInfoCards({ drone }: CompactInfoCardsProps) {
       >
         {editingSection === "vehicle" ? (
           <div className="grid grid-cols-2 gap-2">
-            <MetricCell label={t("frame")} value={drone.frameType || "copter"} />
-            <MetricCell label={t("firmware")} value={drone.firmwareVersion || "ArduCopter"} />
+            <MetricCell label={t("frame")} value={drone.frameType || "—"} />
+            <MetricCell label={t("firmware")} value={drone.firmwareVersion || "—"} />
             <EditField label={t("compute")} value={editCompute} onChange={setEditCompute} />
             <EditSelect label={t("weight")} value={editWeight} onChange={setEditWeight} options={WEIGHT_OPTIONS} />
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-2">
-            <MetricCell label={t("frame")} value={drone.frameType || "copter"} />
-            <MetricCell label={t("firmware")} value={drone.firmwareVersion || "ArduCopter"} />
+            <MetricCell label={t("frame")} value={drone.frameType || "—"} />
+            <MetricCell label={t("firmware")} value={drone.firmwareVersion || "—"} />
             <MetricCell label={t("compute")} value={metadata?.computeModule || "—"} />
             <MetricCell label={t("weight")} value={metadata?.weightClass || "—"} />
           </div>
@@ -318,14 +332,14 @@ export function CompactInfoCards({ drone }: CompactInfoCardsProps) {
             <EditField label={t("totalFlights")} value={editFlights} onChange={setEditFlights} type="number" />
             <EditField label={t("hours")} value={editHours} onChange={setEditHours} type="number" />
             <EditField label={t("enrolled")} value={editEnrolled} onChange={setEditEnrolled} type="date" />
-            <MetricCell label={t("lastFlight")} value={formatDate(drone.lastHeartbeat)} />
+            <MetricCell label={t("lastFlight")} value={lastFlightAt === null ? "—" : formatDate(lastFlightAt)} />
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-2">
             <MetricCell label={t("totalFlights")} value={metadata?.totalFlights ?? 0} />
             <MetricCell label={t("hours")} value={metadata?.totalHours ?? 0} unit="h" />
-            <MetricCell label={t("enrolled")} value={formatDate(metadata?.enrolledAt ?? Date.now() - 30 * 24 * 60 * 60 * 1000)} />
-            <MetricCell label={t("lastFlight")} value={formatDate(drone.lastHeartbeat)} />
+            <MetricCell label={t("enrolled")} value={metadata?.enrolledAt === undefined ? "—" : formatDate(metadata.enrolledAt)} />
+            <MetricCell label={t("lastFlight")} value={lastFlightAt === null ? "—" : formatDate(lastFlightAt)} />
           </div>
         )}
       </Section>

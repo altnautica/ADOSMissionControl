@@ -196,7 +196,7 @@ export { methodForSkill };
  * The fleet rows a skill can actually be dispatched to right now — the same gate
  * stack a single row's own control runs, applied across the fleet. A fleet-wide
  * command fans over exactly these rows and honestly skips the rest, so "return
- * everything home" never claims to reach a node that cannot hear it (Rule 44).
+ * everything home" never claims to reach a node that cannot hear it (no fabricated reading).
  * Pure and exported so the fan / skip contract holds without mounting the
  * confirmation dialog that consumes it.
  */

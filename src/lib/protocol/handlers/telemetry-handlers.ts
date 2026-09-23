@@ -48,9 +48,9 @@ export function handleGlobalPosition(payload: DataView, callbacks: PositionCallb
       lon: data.lon / 1e7,
       alt: data.alt / 1000,           // mm → m
       relativeAlt: data.relativeAlt / 1000,
-      heading: data.hdg / 100,         // cdeg → deg
+      // UINT16_MAX = heading unknown (e.g. PX4 without a yaw estimate).
+      heading: data.hdg === 0xffff ? undefined : data.hdg / 100, // cdeg → deg
       groundSpeed: Math.sqrt(data.vx * data.vx + data.vy * data.vy) / 100, // cm/s → m/s
-      airSpeed: 0, // Not in this message — comes from VFR_HUD
       climbRate: -data.vz / 100,       // cm/s → m/s (NED, so negate)
     })
   }
@@ -89,7 +89,7 @@ export function handleBattery(payload: DataView, callbacks: BatteryCallback[]): 
       voltage: totalVoltage,
       // -1 marks a quantity the monitor does not measure.
       current: data.currentBattery === -1 ? undefined : data.currentBattery / 100, // cA → A
-      remaining: data.batteryRemaining,          // already %, -1 = not estimated
+      remaining: data.batteryRemaining,          // already %; -1 = not estimated, rendered as no-data downstream
       consumed: data.currentConsumed === -1 ? undefined : data.currentConsumed, // mAh
       temperature,
       cellVoltages,
@@ -104,8 +104,9 @@ export function handleGpsRaw(payload: DataView, callbacks: GpsCallback[]): void 
     cb({
       timestamp: Date.now(),
       fixType: data.fixType,
-      satellites: data.satellitesVisible,
-      hdop: data.eph / 100,        // cm → m
+      // 255 satellites / UINT16_MAX eph are the "unknown" sentinels.
+      satellites: data.satellitesVisible === 255 ? undefined : data.satellitesVisible,
+      hdop: data.eph === 0xffff ? undefined : data.eph / 100, // eph is HDOP ×100
       lat: data.lat / 1e7,
       lon: data.lon / 1e7,
       alt: data.alt / 1000,        // mm → m
@@ -148,8 +149,8 @@ export function handleSysStatus(payload: DataView, callbacks: SysStatusCallback[
       sensorsPresent: data.onboardControlSensorsPresent,
       sensorsEnabled: data.onboardControlSensorsEnabled,
       sensorsHealthy: data.onboardControlSensorsHealth,
-      voltageMv: data.voltageBattery,
-      currentCa: data.currentBattery,
+      voltageMv: data.voltageBattery === 0xffff ? undefined : data.voltageBattery, // UINT16_MAX = not sent
+      currentCa: data.currentBattery === -1 ? undefined : data.currentBattery,     // -1 = not measured
       batteryRemaining: data.batteryRemaining,
       dropRateComm: data.dropRateComm,
       errorsComm: data.errorsComm,
@@ -157,7 +158,11 @@ export function handleSysStatus(payload: DataView, callbacks: SysStatusCallback[
   }
 }
 
-export function handleRadioStatus(payload: DataView, callbacks: RadioCallback[]): void {
+export function handleRadioStatus(
+  payload: DataView,
+  callbacks: RadioCallback[],
+  sourceSystemId: number,
+): void {
   const data = decodeRadioStatus(payload)
   for (const cb of callbacks) {
     cb({
@@ -169,6 +174,7 @@ export function handleRadioStatus(payload: DataView, callbacks: RadioCallback[])
       remnoise: data.remnoise,
       rxerrors: data.rxerrors,
       fixed: data.fixed,
+      sourceSystemId,
     })
   }
 }
@@ -185,11 +191,13 @@ export function handlePowerStatus(payload: DataView, callbacks: PowerStatusCallb
   }
 }
 
-export function handleScaledImu(payload: DataView, callbacks: ScaledImuCallback[]): void {
+/** `imu` is the instance the message id names: 0 SCALED_IMU, 1 SCALED_IMU2, 2 SCALED_IMU3. */
+export function handleScaledImu(payload: DataView, callbacks: ScaledImuCallback[], imu: number): void {
   const data = decodeScaledImu(payload)
   for (const cb of callbacks) {
     cb({
       timestamp: Date.now(),
+      imu,
       xacc: data.xacc,
       yacc: data.yacc,
       zacc: data.zacc,

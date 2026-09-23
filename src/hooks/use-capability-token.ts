@@ -29,7 +29,7 @@
 import { useAction } from "convex/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { resolveLanTarget } from "@/components/plugins/transports/resolve-lan-url";
+import { resolveLanAgent } from "@/lib/agent/resolve-agent";
 import { type TokenClaims } from "@/lib/plugins/capability-token-claims";
 import { api as convexApi } from "../../convex/_generated/api";
 import {
@@ -67,13 +67,10 @@ export interface UseCapabilityTokenResult {
  *                        looks the install up by it.
  * @param deviceId        Bare agent device id.
  */
-/**
- * Mint through the drone's agent, reached with the same local-nodes then
- * pairing-store host/key resolution the install dialog uses.
- */
+/** Mint through the drone's agent, reached with the shared plugin LAN resolver. */
 function mintLanFor(deviceId: string, pluginId: string): Promise<MintedToken> {
-  const lan = resolveLanTarget(deviceId);
-  return mintLan(lan?.url ?? null, lan?.apiKey ?? null, pluginId);
+  const lan = resolveLanAgent(deviceId);
+  return mintLan(lan?.agentUrl ?? null, lan?.apiKey ?? null, pluginId);
 }
 
 export function useCapabilityToken(
@@ -121,8 +118,11 @@ export function useCapabilityToken(
     async (force: boolean): Promise<MintedToken> => {
       const cached = !force ? readCache(cacheKey) : null;
       if (cached) return cached;
+      // A forced refresh skips the cache (its token is expiring) but joins a
+      // mint already in flight: that mint is newer than the cached token, and
+      // a burst of expiry callbacks must not start one mint each.
       const inflight = readInflight(cacheKey);
-      if (inflight && !force) return inflight;
+      if (inflight) return inflight;
 
       const inputs = inputsRef.current;
       const promise =

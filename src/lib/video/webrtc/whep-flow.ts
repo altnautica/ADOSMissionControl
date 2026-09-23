@@ -185,7 +185,7 @@ async function negotiateWhep(
         clearDisconnectGrace();
         s.setVideoDegraded(null);
         s.setStreaming(false);
-        s.updateStats(0, 0);
+        s.updateStats(null, null);
         stopStatsPolling();
         reportHealth(transport, {
           state: "failed",

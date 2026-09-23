@@ -26,6 +26,8 @@ const COUNTERS: SwarmBeaconCounters = {
   beaconsBadMagic: 0,
   beaconsBadTag: 0,
   beaconsStaleDropped: 0,
+  beaconsReplayed: 0,
+  beaconsSlotConflict: 0,
   neighborsNow: 1,
 };
 
@@ -65,8 +67,8 @@ beforeEach(() => {
 describe("upsertBeacons", () => {
   it("merges by slot, replacing a slot's row and leaving other slots intact", () => {
     const store = useSwarmBeaconStore.getState();
-    store.upsertBeacons([row(3), row(7)], 1, COUNTERS, []);
-    store.upsertBeacons([row(3, { armed: true, altM: 90 })], 1, COUNTERS, []);
+    store.upsertBeacons([row(3), row(7)], 1, COUNTERS, [], null, null);
+    store.upsertBeacons([row(3, { armed: true, altM: 90 })], 1, COUNTERS, [], null, null);
 
     const state = useSwarmBeaconStore.getState();
     expect(Object.keys(state.bySlot).sort()).toEqual(["3", "7"]);
@@ -79,8 +81,7 @@ describe("upsertBeacons", () => {
 
   it("records fleet id, counters and the write timestamp", () => {
     useSwarmBeaconStore
-      .getState()
-      .upsertBeacons([row(2, { receivedAtMs: 5_555 })], 9, COUNTERS, []);
+      .getState().upsertBeacons([row(2, { receivedAtMs: 5_555 })], 9, COUNTERS, [], null, null);
 
     const state = useSwarmBeaconStore.getState();
     expect(state.fleetId).toBe(9);
@@ -90,8 +91,7 @@ describe("upsertBeacons", () => {
 
   it("selectSwarmRows orders by slot and is referentially stable between writes", () => {
     useSwarmBeaconStore
-      .getState()
-      .upsertBeacons([row(9), row(2)], 1, COUNTERS, []);
+      .getState().upsertBeacons([row(9), row(2)], 1, COUNTERS, [], null, null);
 
     const first = selectSwarmRows(useSwarmBeaconStore.getState());
     expect(first.map((r) => r.slot)).toEqual([2, 9]);
@@ -101,7 +101,7 @@ describe("upsertBeacons", () => {
   });
 
   it("selectSwarmRowBySlot reads one slot and misses cleanly", () => {
-    useSwarmBeaconStore.getState().upsertBeacons([row(4)], 1, COUNTERS, []);
+    useSwarmBeaconStore.getState().upsertBeacons([row(4)], 1, COUNTERS, [], null, null);
     const state = useSwarmBeaconStore.getState();
     expect(selectSwarmRowBySlot(4)(state)?.deviceId).toBe("ados-4");
     expect(selectSwarmRowBySlot(5)(state)).toBeUndefined();
@@ -112,7 +112,7 @@ describe("upsertBeacons", () => {
     store.upsertBeacons([], 1, COUNTERS, [
       slotEntry(1, "ados-1"),
       slotEntry(2, "ados-2"),
-    ]);
+    ], null, null);
     expect(useSwarmBeaconStore.getState().registeredBySlot).toEqual({
       1: slotEntry(1, "ados-1"),
       2: slotEntry(2, "ados-2"),
@@ -121,7 +121,7 @@ describe("upsertBeacons", () => {
     // Slot 2 released on the next registry write — unlike the beacon merge
     // above, its absence must clear it, not leave a stale copy of a drone
     // that has been unpaired.
-    store.upsertBeacons([], 1, COUNTERS, [slotEntry(1, "ados-1")]);
+    store.upsertBeacons([], 1, COUNTERS, [slotEntry(1, "ados-1")], null, null);
     expect(useSwarmBeaconStore.getState().registeredBySlot).toEqual({
       1: slotEntry(1, "ados-1"),
     });
@@ -129,11 +129,10 @@ describe("upsertBeacons", () => {
 
   it("selectSwarmFleetSlots orders by slot and is referentially stable between writes", () => {
     useSwarmBeaconStore
-      .getState()
-      .upsertBeacons([], 1, COUNTERS, [
-        slotEntry(9, "ados-9"),
-        slotEntry(2, "ados-2"),
-      ]);
+      .getState().upsertBeacons([], 1, COUNTERS, [
+      slotEntry(9, "ados-9"),
+      slotEntry(2, "ados-2"),
+    ], null, null);
 
     const first = selectSwarmFleetSlots(useSwarmBeaconStore.getState());
     expect(first.map((s) => s.slot)).toEqual([2, 9]);
@@ -143,16 +142,11 @@ describe("upsertBeacons", () => {
 
 describe("dropStale", () => {
   it("evicts rows at or past the stale horizon and keeps fresher ones", () => {
-    useSwarmBeaconStore.getState().upsertBeacons(
-      [
-        row(1, { receivedAtMs: 10_000 }), // exactly stale at the horizon
-        row(2, { receivedAtMs: 10_001 }), // one ms inside it
-        row(3, { receivedAtMs: 5_000 }), // long gone
-      ],
-      1,
-      COUNTERS,
-      [],
-    );
+    useSwarmBeaconStore.getState().upsertBeacons([
+      row(1, { receivedAtMs: 10_000 }), // exactly stale at the horizon
+      row(2, { receivedAtMs: 10_001 }), // one ms inside it
+      row(3, { receivedAtMs: 5_000 }), // long gone
+    ], 1, COUNTERS, [], null, null);
 
     useSwarmBeaconStore
       .getState()
@@ -162,7 +156,7 @@ describe("dropStale", () => {
   });
 
   it("leaves the map reference untouched when nothing expired", () => {
-    useSwarmBeaconStore.getState().upsertBeacons([row(1)], 1, COUNTERS, []);
+    useSwarmBeaconStore.getState().upsertBeacons([row(1)], 1, COUNTERS, [], null, null);
     const before = useSwarmBeaconStore.getState().bySlot;
     useSwarmBeaconStore.getState().dropStale(10_100, SWARM_BEACON_STALE_MS);
     expect(useSwarmBeaconStore.getState().bySlot).toBe(before);
@@ -170,13 +164,7 @@ describe("dropStale", () => {
 
   it("evicts a stale beacon while leaving registeredBySlot intact — a registry fact has no shelf life", () => {
     useSwarmBeaconStore
-      .getState()
-      .upsertBeacons(
-        [row(1, { receivedAtMs: 5_000 })],
-        1,
-        COUNTERS,
-        [slotEntry(1, "ados-1")],
-      );
+      .getState().upsertBeacons([row(1, { receivedAtMs: 5_000 })], 1, COUNTERS, [slotEntry(1, "ados-1")], null, null);
     useSwarmBeaconStore
       .getState()
       .dropStale(5_000 + SWARM_BEACON_STALE_MS, SWARM_BEACON_STALE_MS);
@@ -190,8 +178,7 @@ describe("dropStale", () => {
 describe("clear", () => {
   it("empties rows, fleet id, counters, the timestamp and the registry", () => {
     useSwarmBeaconStore
-      .getState()
-      .upsertBeacons([row(1), row(2)], 4, COUNTERS, [slotEntry(1, "ados-1")]);
+      .getState().upsertBeacons([row(1), row(2)], 4, COUNTERS, [slotEntry(1, "ados-1")], null, null);
     useSwarmBeaconStore.getState().clear();
 
     const state = useSwarmBeaconStore.getState();

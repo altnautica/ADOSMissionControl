@@ -14,7 +14,6 @@ describe('ConnectionQualityMeter', () => {
     mockQuality.mockReturnValue({
       quality: 'unknown',
       signalStrength: 0,
-      latencyMs: 0,
       rssi: 0,
     });
 
@@ -26,7 +25,6 @@ describe('ConnectionQualityMeter', () => {
     mockQuality.mockReturnValue({
       quality: 'excellent',
       signalStrength: 100,
-      latencyMs: 20,
       rssi: -50,
     });
 
@@ -41,7 +39,6 @@ describe('ConnectionQualityMeter', () => {
     mockQuality.mockReturnValue({
       quality: 'poor',
       signalStrength: 20,
-      latencyMs: 800,
       rssi: -90,
     });
 
@@ -51,35 +48,10 @@ describe('ConnectionQualityMeter', () => {
     expect(errorBars.length).toBe(1);
   });
 
-  it('shows latency badge when latencyMs > 0', () => {
-    mockQuality.mockReturnValue({
-      quality: 'good',
-      signalStrength: 80,
-      latencyMs: 45,
-      rssi: -60,
-    });
-
-    renderWithIntl(<ConnectionQualityMeter />);
-    expect(screen.getByText('45ms')).toBeDefined();
-  });
-
-  it('does not show latency badge when latencyMs is 0', () => {
-    mockQuality.mockReturnValue({
-      quality: 'good',
-      signalStrength: 80,
-      latencyMs: 0,
-      rssi: -60,
-    });
-
-    renderWithIntl(<ConnectionQualityMeter />);
-    expect(screen.queryByText(/ms$/)).toBeNull();
-  });
-
   it('shows warning color for fair quality', () => {
     mockQuality.mockReturnValue({
       quality: 'fair',
       signalStrength: 50,
-      latencyMs: 200,
       rssi: -75,
     });
 
@@ -93,13 +65,14 @@ describe('ConnectionQualityMeter', () => {
     mockQuality.mockReturnValue({
       quality: 'good',
       signalStrength: 80,
-      latencyMs: 30,
       rssi: -55,
+      txBuf: 50,
     });
 
     const { container } = renderWithIntl(<ConnectionQualityMeter />);
     const root = container.firstChild as HTMLElement;
     expect(root.getAttribute('title')).toContain('Signal: 80%');
-    expect(root.getAttribute('title')).toContain('Latency: 30ms');
+    expect(root.getAttribute('title')).toContain('TX buffer free: 50%');
+    expect(root.getAttribute('title')).not.toMatch(/ms\b/);
   });
 });

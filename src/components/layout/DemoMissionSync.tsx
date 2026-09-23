@@ -15,7 +15,8 @@ import { useMissionStore } from "@/stores/mission-store";
 import { useGeofenceStore } from "@/stores/geofence-store";
 import { useRallyStore } from "@/stores/rally-store";
 import { applyPlanToWorkspace } from "@/lib/plan-workspace";
-import { DEMO_PLANS, DEMO_MISSION_FOLDER, DEMO_MISSION_FOLDER_ID, isDemoPlanId } from "@/mock/demo-missions";
+import { DEMO_PLANS, DEMO_MISSION_FOLDER } from "@/mock/demo-missions";
+import { DEMO_MISSION_FOLDER_ID, isDemoPlanId } from "@/lib/demo/demo-ids";
 
 export function DemoMissionSync() {
   useEffect(() => {

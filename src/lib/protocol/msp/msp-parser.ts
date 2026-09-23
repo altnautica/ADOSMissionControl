@@ -53,6 +53,7 @@ const DOLLAR = 0x24;
 const M_CHAR = 0x4d;
 const X_CHAR = 0x58;
 const FROM_FC = 0x3e; // '>'
+const TO_FC = 0x3c; // '<'
 const ERROR_CHAR = 0x21; // '!'
 const STX = 0x02;
 const ETX = 0x03;
@@ -60,6 +61,13 @@ const LF = 0x0a;
 const CR = 0x0d;
 
 const JUMBO_FRAME_MIN_SIZE = 255;
+
+/**
+ * Largest payload the parser will buffer. No flight-controller reply comes
+ * close; a larger declared length is noise (e.g. a stray `$X` in CLI text),
+ * and honouring it would swallow the following valid frames.
+ */
+export const MSP_MAX_PAYLOAD = 4096;
 
 // ── Parser Class ───────────────────────────────────────────
 
@@ -157,17 +165,17 @@ export class MspParser {
         }
         break;
 
-      // ── Direction V1 ───────────────────────────────────
+      // ── Direction (V1 and V2) ──────────────────────────
+      // Only '>' (reply), '<' (request echo) and '!' (error) are valid; any
+      // other byte means the '$M'/'$X' was noise, so resync.
       case State.DIRECTION_V1:
-        this.isError = byte === ERROR_CHAR;
-        // Accept '>' (response), '!' (error), '<' (request echo) all move forward
-        this.state = State.PAYLOAD_LENGTH_V1;
-        break;
-
-      // ── Direction V2 ───────────────────────────────────
       case State.DIRECTION_V2:
+        if (byte !== FROM_FC && byte !== TO_FC && byte !== ERROR_CHAR) {
+          this.state = State.IDLE;
+          break;
+        }
         this.isError = byte === ERROR_CHAR;
-        this.state = State.FLAG_V2;
+        this.state = this.state === State.DIRECTION_V1 ? State.PAYLOAD_LENGTH_V1 : State.FLAG_V2;
         break;
 
       // ── V2 Flag byte ──────────────────────────────────
@@ -210,6 +218,10 @@ export class MspParser {
       // ── V1: Jumbo length high byte ─────────────────────
       case State.PAYLOAD_LENGTH_JUMBO_HIGH:
         this.expectedLength |= byte << 8;
+        if (this.expectedLength > MSP_MAX_PAYLOAD) {
+          this.state = State.IDLE;
+          break;
+        }
         this.initBuffer();
         this.state = this.expectedLength > 0 ? State.PAYLOAD_V1 : State.CHECKSUM_V1;
         break;
@@ -238,6 +250,10 @@ export class MspParser {
       // ── V2: Payload length high byte ───────────────────
       case State.PAYLOAD_LENGTH_V2_HIGH:
         this.expectedLength |= byte << 8;
+        if (this.expectedLength > MSP_MAX_PAYLOAD) {
+          this.state = State.IDLE;
+          break;
+        }
         this.crcV2 = crc8DvbS2Update(this.crcV2, byte);
         this.initBuffer();
         this.state = this.expectedLength > 0 ? State.PAYLOAD_V2 : State.CHECKSUM_V2;

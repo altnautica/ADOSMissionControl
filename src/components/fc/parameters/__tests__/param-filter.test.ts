@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { paramMatchesFilter, buildSearchHaystack } from "../parameter-grid-utils";
+import { filterBySearch, buildSearchHaystack, isReadOnly } from "../parameter-grid-utils";
 import type { ParamMetadata } from "@/lib/protocol/param-metadata";
 
 const hnt: ParamMetadata = {
@@ -20,21 +20,41 @@ const fltmode: ParamMetadata = {
   values: new Map([[5, "Loiter"]]),
 };
 
-describe("paramMatchesFilter", () => {
-  it("matches the parameter name", () => {
-    expect(paramMatchesFilter("INS_HNTCH_OPTS", hnt, "hntch")).toBe(true);
+describe("grid search filter", () => {
+  const meta = new Map([["INS_HNTCH_OPTS", hnt], ["FLTMODE1", fltmode]]);
+  const rows = [{ name: "INS_HNTCH_OPTS" }, { name: "FLTMODE1" }, { name: "nav_rth_altitude" }];
+  const hay = buildSearchHaystack(meta, [...meta.keys()]);
+  const search = (term: string) => filterBySearch(rows, hay, term).map((r) => r.name);
+
+  it("matches the parameter name in any case", () => {
+    expect(search("HNTCH")).toEqual(["INS_HNTCH_OPTS"]);
   });
   it("matches a bitmask bit label", () => {
-    expect(paramMatchesFilter("INS_HNTCH_OPTS", hnt, "double notch")).toBe(true);
+    expect(search("double notch")).toEqual(["INS_HNTCH_OPTS"]);
   });
-  it("matches an enum value label", () => {
-    expect(paramMatchesFilter("FLTMODE1", fltmode, "loiter")).toBe(true);
+  it("matches an enum value label and the human name", () => {
+    expect(search("loiter")).toEqual(["FLTMODE1"]);
+    expect(search("Flight Mode")).toEqual(["FLTMODE1"]);
   });
-  it("matches the human name", () => {
-    expect(paramMatchesFilter("FLTMODE1", fltmode, "flight mode")).toBe(true);
+  it("matches a lowercase name that has no metadata", () => {
+    expect(search("NAV_RTH")).toEqual(["nav_rth_altitude"]);
   });
-  it("returns false when nothing matches", () => {
-    expect(paramMatchesFilter("FLTMODE1", fltmode, "zzz")).toBe(false);
+  it("returns nothing when nothing matches", () => {
+    expect(search("zzz")).toEqual([]);
+  });
+});
+
+describe("isReadOnly", () => {
+  const ro: ParamMetadata = { name: "X", humanName: "", description: "", readOnly: true };
+  it("honours the metadata ReadOnly flag", () => {
+    expect(isReadOnly("COMPASS_DEV_ID", { ...ro, name: "COMPASS_DEV_ID" })).toBe(true);
+  });
+  it("keeps STAT_RESET writable although the docs mark it ReadOnly", () => {
+    expect(isReadOnly("STAT_RESET", { ...ro, name: "STAT_RESET" })).toBe(false);
+    expect(isReadOnly("STAT_RESET", undefined)).toBe(false);
+  });
+  it("locks the statistics counters", () => {
+    expect(isReadOnly("STAT_BOOTCNT", undefined)).toBe(true);
   });
 });
 

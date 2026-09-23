@@ -26,9 +26,11 @@ export type PositionCallback = (data: {
   lon: number;
   alt: number;
   relativeAlt: number;
-  heading: number;
+  /** Degrees; absent when the source reports no heading (GLOBAL_POSITION_INT hdg UINT16_MAX). */
+  heading?: number;
   groundSpeed: number;
-  airSpeed: number;
+  /** m/s; omitted when the message carries no airspeed (on MAVLink, VFR_HUD owns it). */
+  airSpeed?: number;
   climbRate: number;
 }) => void;
 
@@ -54,8 +56,10 @@ export type BatteryCallback = (data: {
 export type GpsCallback = (data: {
   timestamp: number;
   fixType: number;
-  satellites: number;
-  hdop: number;
+  /** Absent when the receiver reports the count as unknown (255). */
+  satellites?: number;
+  /** Absent when the receiver reports no HDOP (eph UINT16_MAX) or omits it. */
+  hdop?: number;
   lat: number;
   lon: number;
   alt: number;
@@ -114,8 +118,9 @@ export type SysStatusCallback = (data: {
   sensorsPresent: number;
   sensorsEnabled: number;
   sensorsHealthy: number;
-  voltageMv: number;
-  currentCa: number;
+  /** Absent when the source does not measure it. */
+  voltageMv?: number;
+  currentCa?: number;
   batteryRemaining: number;
   dropRateComm: number;
   errorsComm: number;
@@ -130,6 +135,8 @@ export type RadioCallback = (data: {
   remnoise: number;
   rxerrors: number;
   fixed: number;
+  /** MAVLink system id of the radio that sent the report; decides the rssi scale. */
+  sourceSystemId: number;
 }) => void;
 
 export type MissionProgressCallback = (data: {
@@ -271,8 +278,11 @@ export type NavControllerCallback = (data: {
   xtrackError: number;
 }) => void;
 
+/** SCALED_IMU/2/3: acceleration in mG, angular rate in mrad/s, field in mgauss. */
 export type ScaledImuCallback = (data: {
   timestamp: number;
+  /** IMU instance: 0 for SCALED_IMU, 1 for SCALED_IMU2, 2 for SCALED_IMU3. */
+  imu: number;
   xacc: number;
   yacc: number;
   zacc: number;
@@ -350,6 +360,30 @@ export type ObstacleDistanceCallback = (data: {
   angleOffset: number;
   frame: number;
 }) => void;
+
+/**
+ * One ADS-B contact (MAVLink ADSB_VEHICLE). Only contacts whose position the
+ * receiver marks valid are delivered; every other field is `undefined` when its
+ * ADSB_FLAGS bit says it is not valid.
+ */
+export interface AdsbContact {
+  timestamp: number;
+  icao: number;
+  lat: number;
+  lon: number;
+  /** Metres; datum per `altitudeGeometric` (true = GNSS, false = pressure QNH). */
+  altitudeM?: number;
+  altitudeGeometric: boolean;
+  headingDeg?: number;
+  groundSpeedMs?: number;
+  callsign?: string;
+  squawk?: number;
+  emitterType: number;
+  /** Seconds since the receiver last heard this aircraft. */
+  tslc: number;
+}
+
+export type AdsbVehicleCallback = (data: AdsbContact) => void;
 
 export type CameraImageCapturedCallback = (data: {
   timestamp: number;

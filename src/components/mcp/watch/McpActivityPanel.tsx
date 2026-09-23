@@ -33,7 +33,7 @@ import { StatusDot } from "@/components/ui/status-dot";
 import { useClockTick } from "@/lib/agent/freshness";
 import { useMcpActivityStore } from "@/stores/mcp-activity-store";
 import { useMcpFollowStore } from "@/stores/mcp-follow-store";
-import { navigateToRow, nodeDisplayName } from "@/lib/mcp/navigate";
+import { canNavigateToRow, navigateToRow, nodeDisplayName } from "@/lib/mcp/navigate";
 import { decisionStatus, type McpActivityRow, type McpCategory } from "@/lib/mcp/activity";
 
 const CATEGORY_ICON: Record<McpCategory, typeof Activity> = {
@@ -85,7 +85,9 @@ function ActivityRow({
 }) {
   const t = useTranslations("mcp");
   const Icon = CATEGORY_ICON[row.category];
-  const canJump = row.surface != null;
+  // Re-evaluated on the panel's 1 Hz tick, so a node joining the fleet (or the
+  // agent connecting) enables the jump within a second.
+  const canJump = canNavigateToRow(row);
 
   const argsText = (() => {
     try {

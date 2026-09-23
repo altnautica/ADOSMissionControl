@@ -129,4 +129,25 @@ describe('frame + full-command-set round-trip', () => {
     expect(jump?.command === 'DO_JUMP' ? jump.jumpTargetId : undefined).toBe(parsed[1].id);
   });
 
+  it('round-trips a raw passthrough command and action params 5..7 without shifting a jump', () => {
+    const original: Waypoint[] = [
+      {
+        id: 'wp-0', lat: 12.9716, lon: 77.5946, alt: 30, command: 'WAYPOINT', frame: 'relative',
+        actions: [
+          { id: 'raw', command: 'RAW', rawCommand: 31000, param1: 1.5, param2: 0, param3: 0, param4: -2, x: 1234567, y: -7, z: 9.25, frame: 2 },
+          { id: 'shoot', command: 'DO_DIGICAM', param5: 1 },
+        ],
+      },
+      {
+        id: 'wp-1', lat: 12.972, lon: 77.595, alt: 50, command: 'WAYPOINT',
+        actions: [{ id: 'jmp', command: 'DO_JUMP', jumpTargetId: 'wp-0', param2: 1 }],
+      },
+    ];
+    const parsed = parseCSV(exportCSV(original));
+    const [raw, shoot] = parsed[0].actions ?? [];
+    expect(raw).toMatchObject({ command: 'RAW', rawCommand: 31000, param1: 1.5, param4: -2, x: 1234567, y: -7, z: 9.25, frame: 2 });
+    expect(shoot).toMatchObject({ command: 'DO_DIGICAM', param5: 1 });
+    const jump = parsed[1].actions?.[0];
+    expect(jump?.command === 'DO_JUMP' ? jump.jumpTargetId : undefined).toBe(parsed[0].id);
+  });
 });

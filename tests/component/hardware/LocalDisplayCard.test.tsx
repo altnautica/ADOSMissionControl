@@ -82,7 +82,7 @@ describe("LocalDisplayCard", () => {
       display: { type: "none" },
       displayType: undefined,
     });
-    const { container } = renderWithIntl(<LocalDisplayCard nodeDeviceId="gs-1" />);
+    const { container } = renderWithIntl(<LocalDisplayCard nodeDeviceId="gs-1" relayReach={null} />);
     expect(container.firstChild).toBeNull();
   });
 
@@ -93,7 +93,7 @@ describe("LocalDisplayCard", () => {
       display: undefined,
       displayType: "hdmi",
     });
-    renderWithIntl(<LocalDisplayCard nodeDeviceId="gs-1" />);
+    renderWithIntl(<LocalDisplayCard nodeDeviceId="gs-1" relayReach={null} />);
     // Effective-primary row + override picker render even when no SPI
     // panel is bound. We assert both surfaces are present.
     expect(screen.getByText("Effective primary path")).toBeDefined();
@@ -111,7 +111,7 @@ describe("LocalDisplayCard", () => {
       display: { type: "spi-lcd", controller: "ili9486" },
       displayType: "hdmi",
     });
-    renderWithIntl(<LocalDisplayCard nodeDeviceId="gs-1" />);
+    renderWithIntl(<LocalDisplayCard nodeDeviceId="gs-1" relayReach={null} />);
     // Open the override Select; the trigger button carries the
     // currently selected label ("HDMI") inside it.
     const trigger = screen
@@ -147,7 +147,7 @@ describe("LocalDisplayCard", () => {
       display: undefined,
       displayType: "hdmi",
     });
-    renderWithIntl(<LocalDisplayCard nodeDeviceId="gs-1" />);
+    renderWithIntl(<LocalDisplayCard nodeDeviceId="gs-1" relayReach={null} />);
     const trigger = screen
       .getAllByRole("combobox")
       .find((el) => el.textContent?.includes("HDMI"));
@@ -170,7 +170,7 @@ describe("LocalDisplayCard", () => {
         touchCalibrated: true,
       },
     });
-    renderWithIntl(<LocalDisplayCard nodeDeviceId="gs-1" />);
+    renderWithIntl(<LocalDisplayCard nodeDeviceId="gs-1" relayReach={null} />);
     const pill = screen.getByText("Calibrated");
     expect(pill).toBeDefined();
     expect(pill.className).toMatch(/text-status-success/);
@@ -186,7 +186,7 @@ describe("LocalDisplayCard", () => {
         touchCalibrated: false,
       },
     });
-    renderWithIntl(<LocalDisplayCard nodeDeviceId="gs-1" />);
+    renderWithIntl(<LocalDisplayCard nodeDeviceId="gs-1" relayReach={null} />);
     const pill = screen.getByText("Not calibrated");
     expect(pill).toBeDefined();
     expect(pill.className).toMatch(/text-status-warning/);
@@ -201,7 +201,7 @@ describe("LocalDisplayCard", () => {
         hasTouch: false,
       },
     });
-    renderWithIntl(<LocalDisplayCard nodeDeviceId="gs-1" />);
+    renderWithIntl(<LocalDisplayCard nodeDeviceId="gs-1" relayReach={null} />);
     const pills = screen.getAllByText("No touch");
     expect(pills.length).toBeGreaterThan(0);
   });
@@ -213,7 +213,7 @@ describe("LocalDisplayCard", () => {
       uiTheme: "light",
       display: { type: "spi-lcd", hasTouch: true, touchCalibrated: true },
     });
-    renderWithIntl(<LocalDisplayCard nodeDeviceId="gs-1" />);
+    renderWithIntl(<LocalDisplayCard nodeDeviceId="gs-1" relayReach={null} />);
     expect(screen.getByText("Light")).toBeDefined();
   });
 
@@ -230,7 +230,7 @@ describe("LocalDisplayCard", () => {
         activePage: "dashboard",
       },
     });
-    renderWithIntl(<LocalDisplayCard nodeDeviceId="gs-1" />);
+    renderWithIntl(<LocalDisplayCard nodeDeviceId="gs-1" relayReach={null} />);
     expect(screen.getByText(/3 s ago/)).toBeDefined();
     expect(screen.getByText("dashboard")).toBeDefined();
   });
@@ -241,7 +241,7 @@ describe("LocalDisplayCard", () => {
       loaded: true,
       display: { type: "spi-lcd", hasTouch: true, touchCalibrated: true },
     });
-    renderWithIntl(<LocalDisplayCard nodeDeviceId="gs-1" />);
+    renderWithIntl(<LocalDisplayCard nodeDeviceId="gs-1" relayReach={null} />);
     expect(screen.queryByText(/Last touch/)).toBeNull();
   });
 
@@ -251,7 +251,7 @@ describe("LocalDisplayCard", () => {
       loaded: true,
       display: { type: "spi-lcd", hasTouch: true, touchCalibrated: false },
     });
-    renderWithIntl(<LocalDisplayCard nodeDeviceId="gs-1" />);
+    renderWithIntl(<LocalDisplayCard nodeDeviceId="gs-1" relayReach={null} />);
     fireEvent.click(screen.getByText("Calibrate touch"));
     await waitFor(() => {
       expect(mockClient.startDisplayCalibration).toHaveBeenCalledTimes(1);
@@ -273,7 +273,7 @@ describe("LocalDisplayCard", () => {
       displayType: "lcd",
       display: { type: "spi-lcd", hasTouch: true, touchCalibrated: true },
     });
-    renderWithIntl(<LocalDisplayCard nodeDeviceId="gs-1" />);
+    renderWithIntl(<LocalDisplayCard nodeDeviceId="gs-1" relayReach={null} />);
 
     // No pairing record for gs-1 either, so there is genuinely no lane: the
     // picker is disabled rather than writing to the wrong box.
@@ -290,7 +290,7 @@ describe("LocalDisplayCard", () => {
       loaded: true,
       display: { type: "spi-lcd", hasTouch: false },
     });
-    renderWithIntl(<LocalDisplayCard nodeDeviceId="gs-1" />);
+    renderWithIntl(<LocalDisplayCard nodeDeviceId="gs-1" relayReach={null} />);
     expect(screen.queryByText("Calibrate touch")).toBeNull();
   });
 });

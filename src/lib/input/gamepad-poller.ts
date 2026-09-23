@@ -16,13 +16,12 @@
  * override on the connected aircraft.
  */
 
-import { useInputStore } from "@/stores/input-store";
+import { useInputStore, type TxMode } from "@/stores/input-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useDroneStore } from "@/stores/drone-store";
+import { selectedDroneMqttAuthority } from "@/hooks/use-mqtt-control-authority";
+import { canPublishFcFrames } from "@/lib/nodes/mqtt-control-authority";
 import { manualControlAllowed } from "./manual-control-gate";
-
-// TX mode: which physical stick controls which axis
-export type TxMode = 1 | 2; // Mode 1: throttle right. Mode 2: throttle left (default)
 
 export interface GamepadMapping {
   rollAxis: number;
@@ -110,19 +109,45 @@ const MIN_HZ = 1;
  */
 const STALE_AXES_MS = 50;
 
+/**
+ * How long a pad may hold a deflected stick without the device itself
+ * reporting before its sample stops counting as live.
+ *
+ * `getGamepads()` keeps returning the last snapshot of a Bluetooth pad that
+ * went out of range until the OS drops the device, which can take seconds.
+ * A held deflection from a real hand carries analogue noise, so the pad's own
+ * `timestamp` keeps advancing; a frozen one is a pad that stopped reporting.
+ */
+const FROZEN_DEFLECTION_MS = 500;
+
+/** Why the stream sends nothing on a relay link that cannot publish. */
+const RELAY_WRITE_BLOCK = "the cloud relay holds no broker write grant for this drone";
+
 let pollAnimFrame: number | null = null;
 let manualControlTimer: ReturnType<typeof setTimeout> | null = null;
 let activeGamepadIndex: number | null = null;
-let currentMapping: GamepadMapping = MODE_2_MAPPING;
+/** The active pad's last reported `timestamp`, and when it last advanced. */
+let lastPadTimestamp: number | null = null;
+let lastPadReportAt = 0;
 
 /** Get the mapping for a TX mode. */
 export function getMappingForMode(mode: TxMode): GamepadMapping {
   return mode === 1 ? MODE_1_MAPPING : MODE_2_MAPPING;
 }
 
-/** Set the active TX mode. */
-export function setTxMode(mode: TxMode): void {
-  currentMapping = getMappingForMode(mode);
+/**
+ * Whether the pad itself has reported recently enough for a deflected stick
+ * to be trusted. A pad that reports no timestamp (0) is not judged by it.
+ */
+function padReporting(gp: Gamepad, deflected: boolean, now: number): boolean {
+  const ts = gp.timestamp;
+  if (!Number.isFinite(ts) || ts <= 0) return true;
+  if (ts !== lastPadTimestamp) {
+    lastPadTimestamp = ts;
+    lastPadReportAt = now;
+    return true;
+  }
+  return !deflected || now - lastPadReportAt <= FROZEN_DEFLECTION_MS;
 }
 
 /**
@@ -155,6 +180,7 @@ export function startGamepadPolling(): void {
         if (gamepads[i]) {
           gp = gamepads[i];
           activeGamepadIndex = i;
+          lastPadTimestamp = null;
           break;
         }
       }
@@ -163,12 +189,11 @@ export function startGamepadPolling(): void {
     const inputStore = useInputStore.getState();
 
     if (!gp) {
-      if (inputStore.activeController === "gamepad") {
-        inputStore.setController("none");
-        inputStore.setAxes([0, 0, 0, 0]);
-        inputStore.setButtons(new Array(16).fill(false));
-      }
+      // Losing the pad revokes the stick-control opt-in. A pad that comes
+      // back must not silently resume an RC override on an armed aircraft.
+      if (inputStore.activeController === "gamepad") inputStore.resetInput();
       activeGamepadIndex = null;
+      lastPadTimestamp = null;
       return;
     }
 
@@ -177,19 +202,15 @@ export function startGamepadPolling(): void {
       inputStore.setController("gamepad");
     }
 
-    const { deadzone, expo, calibration } = inputStore;
+    const { deadzone, expo, calibration, txMode } = inputStore;
+    const mapping = getMappingForMode(txMode);
 
     // Read raw axes and apply mapping
-    let rawRoll = gp.axes[currentMapping.rollAxis] ?? 0;
-    let rawPitch = -(gp.axes[currentMapping.pitchAxis] ?? 0); // Invert Y
-    let rawThrottle = -(gp.axes[currentMapping.throttleAxis] ?? 0); // Invert Y: up = positive
-    let rawYaw = gp.axes[currentMapping.yawAxis] ?? 0;
-
-    // Store raw axes for calibration wizard display
-    inputStore.setRawAxes([rawRoll, rawPitch, rawThrottle, rawYaw]);
-    // The physical right stick, independent of the TX-mode mapping, for
-    // on-screen aiming. Y is inverted so up is positive.
-    inputStore.setRightStick([gp.axes[2] ?? 0, -(gp.axes[3] ?? 0)]);
+    let rawRoll = gp.axes[mapping.rollAxis] ?? 0;
+    let rawPitch = -(gp.axes[mapping.pitchAxis] ?? 0); // Invert Y
+    let rawThrottle = -(gp.axes[mapping.throttleAxis] ?? 0); // Invert Y: up = positive
+    let rawYaw = gp.axes[mapping.yawAxis] ?? 0;
+    const rawAxes: [number, number, number, number] = [rawRoll, rawPitch, rawThrottle, rawYaw];
 
     // Apply calibration offsets if available
     if (calibration) {
@@ -200,13 +221,24 @@ export function startGamepadPolling(): void {
     }
 
     // Apply deadzone + expo
-    const roll = applyExpo(applyDeadzone(rawRoll, deadzone), expo);
-    const pitch = applyExpo(applyDeadzone(rawPitch, deadzone), expo);
-    const throttle = applyExpo(applyDeadzone(rawThrottle, deadzone), expo);
-    const yaw = applyExpo(applyDeadzone(rawYaw, deadzone), expo);
+    const axes: [number, number, number, number] = [
+      applyExpo(applyDeadzone(rawRoll, deadzone), expo),
+      applyExpo(applyDeadzone(rawPitch, deadzone), expo),
+      applyExpo(applyDeadzone(rawThrottle, deadzone), expo),
+      applyExpo(applyDeadzone(rawYaw, deadzone), expo),
+    ];
 
-    inputStore.setAxes([roll, pitch, throttle, yaw]);
-    inputStore.setButtons(buttonsToArray(gp.buttons));
+    // One store update per frame: three separate writes re-rendered every
+    // subscriber three times at display rate.
+    inputStore.publishGamepadFrame({
+      axes,
+      rawAxes,
+      // The physical right stick, independent of the TX-mode mapping, for
+      // on-screen aiming. Y is inverted so up is positive.
+      rightStick: [gp.axes[2] ?? 0, -(gp.axes[3] ?? 0)],
+      buttons: buttonsToArray(gp.buttons),
+      live: padReporting(gp, axes.some((v) => v !== 0), Date.now()),
+    });
   }
 
   function pollSafely() {
@@ -281,13 +313,21 @@ export function manualControlTick(): number {
   const { axes, axesAt, buttons, activeController, manualControlEnabled } = input;
   const { armState, flightMode } = useDroneStore.getState();
 
+  // A cloud-relayed link without a broker write grant has every stick frame
+  // discarded by the broker, silently, so nothing is sent and the reason is
+  // shown. A direct link, or no transport at all, is not the broker's call.
+  const relay = selectedDroneMqttAuthority(Date.now());
+  const relayBlocked = relay.reason !== "no-transport" && !canPublishFcFrames(relay);
+
   // Republish the link's own refusal whether or not the gate would let a frame
   // through, so an operator who has not armed yet still learns that arming
   // will not help.
-  const linkBlock = protocol?.getManualControlBlockedReason?.() ?? null;
+  const linkBlock =
+    protocol?.getManualControlBlockedReason?.() ?? (relayBlocked ? RELAY_WRITE_BLOCK : null);
   if (input.manualControlLinkBlock !== linkBlock) {
     input.setManualControlLinkBlock(linkBlock);
   }
+  if (relayBlocked) return GATE_RECHECK_MS;
 
   const allowed = manualControlAllowed({
     enabled: manualControlEnabled,
@@ -388,6 +428,7 @@ export function stopGamepadPolling(): void {
   }
   stopManualControlStream();
   activeGamepadIndex = null;
+  lastPadTimestamp = null;
 
   const inputStore = useInputStore.getState();
   if (inputStore.activeController === "gamepad") {

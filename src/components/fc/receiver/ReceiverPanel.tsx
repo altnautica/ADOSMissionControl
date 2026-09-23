@@ -14,13 +14,14 @@ import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { PanelHeader } from "../shared/PanelHeader";
 import { RcChannelBar } from "./RcChannelBar";
 import { ReceiverBindingUI } from "./ReceiverBindingUI";
-import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
+import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { BitmaskEditor } from "@/components/ui/bitmask-editor";
 import { Save, Radio, HardDrive } from "lucide-react";
+import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
 
 import {
   RC_CHANNEL_COUNT, CHANNEL_OPTIONS, RC_PROTOCOLS_BITMASK,
-  RSSI_TYPE_OPTIONS, RECEIVER_PARAMS,
+  RSSI_TYPE_OPTIONS, RC_REVERSAL, receiverParams,
 } from "./receiver-constants";
 
 export function ReceiverPanel() {
@@ -38,11 +39,18 @@ export function ReceiverPanel() {
   // dead link, which is a stronger claim than having heard nothing yet.
   const rssi = latestRc?.rssi;
 
+  // PX4 names reversal RCn_REV (-1/1) and has no RC_PROTOCOLS, RSSI_TYPE or
+  // per-channel deadzone, so those rows are hidden there.
+  const { firmwareType } = useFirmwareCapabilities();
+  const isPx4 = firmwareType === "px4";
+  const reversal = RC_REVERSAL[isPx4 ? "px4" : "ardupilot"];
+  const paramNames = useMemo(() => receiverParams(isPx4), [isPx4]);
+
   const {
     params, loading, error, dirtyParams, hasRamWrites,
     loadProgress, hasLoaded,
     refresh, setLocalValue, saveAllToRam, commitToFlash,
-  } = usePanelParams({ paramNames: RECEIVER_PARAMS, panelId: "receiver", autoLoad: true });
+  } = usePanelParams({ paramNames, panelId: "receiver", autoLoad: true });
   useUnsavedGuard(dirtyParams.size > 0);
 
   // ── Helpers to read/write params from flat Map ──────────────
@@ -51,8 +59,8 @@ export function ReceiverPanel() {
   const getChannelMin = (i: number) => params.get(`RC${i + 1}_MIN`) ?? 1000;
   const getChannelMax = (i: number) => params.get(`RC${i + 1}_MAX`) ?? 2000;
   const getChannelTrim = (i: number) => params.get(`RC${i + 1}_TRIM`) ?? 1500;
-  const getChannelReversed = (i: number) => (params.get(`RC${i + 1}_REVERSED`) ?? 0) !== 0;
-  const getChannelDz = (i: number) => params.get(`RC${i + 1}_DZ`) ?? 30;
+  const getChannelReversed = (i: number) => reversal.isReversed(params.get(reversal.param(i + 1)));
+  const getChannelDz = (i: number) => (isPx4 ? 0 : params.get(`RC${i + 1}_DZ`) ?? 30);
 
   // ── RC_PROTOCOLS bitmask ───────────────────────────────────
 
@@ -106,7 +114,7 @@ export function ReceiverPanel() {
   }
 
   return (
-    <ArmedLockOverlay>
+    <ArmedWarningBanner>
     <div className="flex-1 overflow-y-auto p-6">
       <div className="max-w-3xl space-y-4">
         <PanelHeader
@@ -211,6 +219,7 @@ export function ReceiverPanel() {
 
         {/* ── RC Protocol & RSSI ──────────────────────────── */}
 
+        {!isPx4 && (
         <Card title="RC Protocol & RSSI">
           <div className="space-y-3">
             {/* RC_PROTOCOLS is a real bitmask: several protocols can be
@@ -244,6 +253,7 @@ export function ReceiverPanel() {
             />
           </div>
         </Card>
+        )}
 
         {/* ── Per-Channel Settings ─────────────────────────── */}
 
@@ -256,7 +266,7 @@ export function ReceiverPanel() {
                   <th className="px-3 py-2 text-left font-medium">Min</th>
                   <th className="px-3 py-2 text-left font-medium">Max</th>
                   <th className="px-3 py-2 text-left font-medium">Trim</th>
-                  <th className="px-3 py-2 text-left font-medium">DZ</th>
+                  {!isPx4 && <th className="px-3 py-2 text-left font-medium">DZ</th>}
                   <th className="px-3 py-2 text-left font-medium">Rev</th>
                 </tr>
               </thead>
@@ -288,6 +298,7 @@ export function ReceiverPanel() {
                         className="w-16 h-7 px-1.5 bg-bg-tertiary border border-border-default text-xs font-mono text-text-primary focus:outline-none focus:border-accent-primary"
                       />
                     </td>
+                    {!isPx4 && (
                     <td className="px-3 py-1.5">
                       <input
                         type="number"
@@ -296,11 +307,12 @@ export function ReceiverPanel() {
                         className="w-14 h-7 px-1.5 bg-bg-tertiary border border-border-default text-xs font-mono text-text-primary focus:outline-none focus:border-accent-primary"
                       />
                     </td>
+                    )}
                     <td className="px-3 py-1.5">
                       <Toggle
                         label=""
                         checked={getChannelReversed(i)}
-                        onChange={(v) => setLocalValue(`RC${i + 1}_REVERSED`, v ? 1 : 0)}
+                        onChange={(v) => setLocalValue(reversal.param(i + 1), reversal.encode(v))}
                       />
                     </td>
                   </tr>
@@ -333,6 +345,6 @@ export function ReceiverPanel() {
         onApply={(next) => setLocalValue("RC_PROTOCOLS", next)}
       />
     </div>
-    </ArmedLockOverlay>
+    </ArmedWarningBanner>
   );
 }

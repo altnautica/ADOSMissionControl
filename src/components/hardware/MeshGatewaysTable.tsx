@@ -65,14 +65,14 @@ export function MeshGatewaysTable() {
 
   if (gateways.length === 0) {
     return (
-      <div className="p-4 bg-surface-primary border border-border-default/40">
+      <div className="p-4 bg-bg-primary border border-border-default/40">
         <div className="text-sm text-text-tertiary italic">{t("noGateways")}</div>
       </div>
     );
   }
 
   return (
-    <div className="bg-surface-primary border border-border-default/40">
+    <div className="bg-bg-primary border border-border-default/40">
       <div className="px-4 py-2 flex items-center justify-between border-b border-border-default/40">
         <div className="text-sm font-medium text-text-primary">
           {t("gateways")} ({gateways.length})

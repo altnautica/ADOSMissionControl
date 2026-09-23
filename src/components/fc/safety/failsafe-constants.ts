@@ -2,19 +2,6 @@
 
 export const RC_CHANNEL_COUNT = 8;
 
-export const BF_FAILSAFE_PARAMS = [
-  'BF_FS_DELAY',
-  'BF_FS_OFF_DELAY',
-  'BF_FS_THROTTLE',
-  'BF_FS_PROCEDURE',
-] as const;
-
-export const BF_FS_PROCEDURE_OPTIONS = [
-  { value: "0", label: "0 — Drop" },
-  { value: "1", label: "1 — Land" },
-  { value: "2", label: "2 — GPS Rescue" },
-];
-
 /** ArduCopter FS_OPTIONS bitmask bits */
 export const FS_OPTION_BITS = [
   { mask: 1 << 0, label: "Bit 0 — Continue if in auto mode on RC failsafe" },
@@ -41,8 +28,11 @@ export const PLANE_FS_PARAMS = [
   "THR_FAILSAFE", "THR_FS_VALUE", "TERRAIN_ENABLE",
 ];
 
-/** Plane params that newer firmware no longer carries. */
-export const PLANE_FS_OPTIONAL_PARAMS = ["FS_SHORT_TIMEOUT"];
+/**
+ * Plane params that only some firmware carries: FS_SHORT_TIMEOUT on older
+ * ArduPlane, RC_FS_TIMEOUT (RC_Channels, the RC failsafe timeout) on current.
+ */
+export const PLANE_FS_OPTIONAL_PARAMS = ["FS_SHORT_TIMEOUT", "RC_FS_TIMEOUT"];
 
 /** ArduPilot params common to every vehicle. */
 export const AP_SHARED_FS_PARAMS = [

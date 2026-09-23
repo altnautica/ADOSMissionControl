@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { BatteryThresholdFields } from "./BatteryThresholdFields";
 import { Select } from "@/components/ui/select";
 import { Toggle } from "@/components/ui/toggle";
 import { Button } from "@/components/ui/button";
@@ -69,11 +69,7 @@ export function NotificationsSection() {
   const setAudioEnabled = useSettingsStore((s) => s.setAudioEnabled);
   const setAudioVolume = useSettingsStore((s) => s.setAudioVolume);
   const setAlert = useSettingsStore((s) => s.setAlert);
-  const batteryWarningPct = useSettingsStore((s) => s.batteryWarningPct);
-  const batteryCriticalPct = useSettingsStore((s) => s.batteryCriticalPct);
   const alertPopupDuration = useSettingsStore((s) => s.alertPopupDuration);
-  const setBatteryWarningPct = useSettingsStore((s) => s.setBatteryWarningPct);
-  const setBatteryCriticalPct = useSettingsStore((s) => s.setBatteryCriticalPct);
   const setAlertPopupDuration = useSettingsStore((s) => s.setAlertPopupDuration);
   const changelogNotificationsEnabled = useSettingsStore((s) => s.changelogNotificationsEnabled);
   const setChangelogNotificationsEnabled = useSettingsStore((s) => s.setChangelogNotificationsEnabled);
@@ -174,30 +170,7 @@ export function NotificationsSection() {
       {/* Card 3: Alert Thresholds */}
       <Card title={t("thresholdsTitle")}>
         <div className="space-y-4">
-          <Input
-            label={t("batteryWarning")}
-            type="number"
-            min={10}
-            max={50}
-            value={String(batteryWarningPct)}
-            onChange={(e) => {
-              const v = Math.max(10, Math.min(50, Number(e.target.value)));
-              setBatteryWarningPct(v);
-            }}
-            unit="%"
-          />
-          <Input
-            label={t("batteryCritical")}
-            type="number"
-            min={5}
-            max={30}
-            value={String(batteryCriticalPct)}
-            onChange={(e) => {
-              const v = Math.max(5, Math.min(30, Number(e.target.value)));
-              setBatteryCriticalPct(v);
-            }}
-            unit="%"
-          />
+          <BatteryThresholdFields />
           <Select
             label={t("alertDuration")}
             value={alertPopupDuration}

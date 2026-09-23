@@ -9,7 +9,7 @@ import { useParamMetadataMap } from "@/hooks/use-param-metadata";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useToast } from "@/components/ui/toast";
 import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
-import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
+import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { PanelHeader } from "../shared/PanelHeader";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -99,7 +99,7 @@ export function GimbalPanel() {
   }
 
   return (
-    <ArmedLockOverlay>
+    <ArmedWarningBanner>
       <div className="flex-1 overflow-y-auto p-6">
         <div className="max-w-2xl space-y-6">
           <PanelHeader title="Gimbal" subtitle="Mount type, axis limits, RC rate, and manual control" icon={<Move3D size={16} />} loading={loading} loadProgress={loadProgress} hasLoaded={hasLoaded} onRead={refresh} connected={connected} error={error} />
@@ -197,6 +197,6 @@ export function GimbalPanel() {
           </div>
         </div>
       </div>
-    </ArmedLockOverlay>
+    </ArmedWarningBanner>
   );
 }

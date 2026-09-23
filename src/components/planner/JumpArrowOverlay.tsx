@@ -6,10 +6,11 @@
  */
 "use client";
 
-import { useMemo } from "react";
+import { Fragment, memo, useMemo } from "react";
 import { Polyline, Marker } from "react-leaflet";
 import L from "leaflet";
 import type { Waypoint } from "@/lib/types";
+import { MAP_COLORS } from "@/lib/map-constants";
 
 interface JumpArrowOverlayProps {
   waypoints: Waypoint[];
@@ -48,12 +49,14 @@ const arrowIcon = L.divIcon({
   className: "",
   iconSize: [12, 12],
   iconAnchor: [6, 6],
-  html: `<svg width="12" height="12" viewBox="0 0 12 12"><text x="6" y="9" text-anchor="middle" fill="#f59e0b" font-size="10" font-family="monospace">J</text></svg>`,
+  html: `<svg width="12" height="12" viewBox="0 0 12 12"><text x="6" y="9" text-anchor="middle" fill="${MAP_COLORS.jump}" font-size="10" font-family="monospace">J</text></svg>`,
 });
 
-export function JumpArrowOverlay({ waypoints }: JumpArrowOverlayProps) {
+const ARC_STYLE = { color: MAP_COLORS.jump, weight: 2, dashArray: "6 4", opacity: 0.8 };
+
+export const JumpArrowOverlay = memo(function JumpArrowOverlay({ waypoints }: JumpArrowOverlayProps) {
   const jumpArrows = useMemo(() => {
-    const arrows: { from: [number, number]; to: [number, number]; label: string }[] = [];
+    const arrows: { key: string; arc: [number, number][]; midpoint: [number, number] }[] = [];
 
     // A DO_JUMP now rides as an action attached to the waypoint it fires at, and
     // targets another waypoint by stable id, so an arrow runs from that waypoint
@@ -69,12 +72,8 @@ export function JumpArrowOverlay({ waypoints }: JumpArrowOverlayProps) {
         if (targetIdx < 0) continue;
 
         const targetWp = waypoints[targetIdx];
-        const repeat = count < 0 ? " ×∞" : count > 1 ? ` ×${count}` : "";
-        arrows.push({
-          from: [wp.lat, wp.lon],
-          to: [targetWp.lat, targetWp.lon],
-          label: `J→${targetIdx + 1}${repeat}`,
-        });
+        const arc = generateArc([wp.lat, wp.lon], [targetWp.lat, targetWp.lon]);
+        arrows.push({ key: `${wp.id}-${action.id}`, arc, midpoint: arc[Math.floor(arc.length / 2)] });
       }
     }
 
@@ -85,29 +84,12 @@ export function JumpArrowOverlay({ waypoints }: JumpArrowOverlayProps) {
 
   return (
     <>
-      {jumpArrows.map((arrow, i) => {
-        const arc = generateArc(arrow.from, arrow.to);
-        const midpoint = arc[Math.floor(arc.length / 2)];
-        return (
-          <div key={`jump-${arrow.from[0].toFixed(5)}-${arrow.to[0].toFixed(5)}-${arrow.label}`}>
-            <Polyline
-              positions={arc}
-              pathOptions={{
-                color: "#f59e0b",
-                weight: 2,
-                dashArray: "6 4",
-                opacity: 0.8,
-              }}
-              interactive={false}
-            />
-            <Marker
-              position={midpoint}
-              icon={arrowIcon}
-              interactive={false}
-            />
-          </div>
-        );
-      })}
+      {jumpArrows.map((arrow) => (
+        <Fragment key={arrow.key}>
+          <Polyline positions={arrow.arc} pathOptions={ARC_STYLE} interactive={false} />
+          <Marker position={arrow.midpoint} icon={arrowIcon} interactive={false} />
+        </Fragment>
+      ))}
     </>
   );
-}
+});

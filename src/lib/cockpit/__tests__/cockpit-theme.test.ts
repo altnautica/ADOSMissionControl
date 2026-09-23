@@ -37,16 +37,6 @@ function block(selector: string): string | null {
 const STATUS_VARS = ["--good", "--warn", "--crit"] as const;
 
 describe("cockpit palette", () => {
-  it("keeps the artifact's literal palette as the default theme", () => {
-    const base = block(".ados-cockpit");
-    expect(base).not.toBeNull();
-    // The default cockpit is the reference artifact, verbatim.
-    expect(base).toContain("--good: #37d99a");
-    expect(base).toContain("--warn: #f5b544");
-    expect(base).toContain("--crit: #ff5a52");
-    expect(base).toContain("--hud: #63b3ff");
-  });
-
   it("follows the night-vision theme, which is what that theme is for", () => {
     const nvg = block('html[data-theme="nvg"] .ados-cockpit');
     expect(

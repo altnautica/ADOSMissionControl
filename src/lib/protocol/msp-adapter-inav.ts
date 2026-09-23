@@ -46,7 +46,7 @@ export {
   inavUploadServoMixer,
 } from './msp-adapter/inav/mixer'
 
-export { inavGetTempSensorConfigs } from './msp-adapter/inav/sensors'
+export { inavGetTempSensorConfigs, inavGetTemperatures, inavGetCalibrationData } from './msp-adapter/inav/sensors'
 
 export {
   inavGetMcBraking,

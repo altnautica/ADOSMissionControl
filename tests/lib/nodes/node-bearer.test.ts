@@ -4,7 +4,7 @@
  *
  * The board must never dress a link up as proven when it is not: a relayed drone
  * with no heard frame reads unverified, a dark one reads down, and a directly-
- * reached drone's secondary WFB provenance is never green (Rule 44 / Rule 37).
+ * reached drone's secondary WFB provenance is never green (no fabricated reading, no unproven link).
  *
  * @license GPL-3.0-only
  */

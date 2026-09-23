@@ -42,9 +42,12 @@ import {
   CLAIM_POLICY,
   REGISTER_POLICY,
   SESSION_MINT_POLICY,
+  chargeAttempt,
+  checkBucket,
   clearAttempts,
-  consumeAttempt,
   mintSecret,
+  noteAttempt,
+  rateLimitedResult,
   sha256Hex,
 } from "./lib/rateLimit";
 
@@ -58,6 +61,8 @@ const MAX_DEVICE_ID_LENGTH = 96;
 const MAX_LABEL_LENGTH = 128;
 const MAX_API_KEY_LENGTH = 256;
 const MAX_SECRET_LENGTH = 128;
+/** Shared bucket every failed anonymous code claim charges. */
+const CLAIM_GLOBAL_BUCKET = "claim:global";
 /** A browser session is a long-lived local identity; 180 days of idle is dead. */
 const BROWSER_SESSION_TTL_MS = 180 * 24 * 60 * 60 * 1000;
 /** Cap on the rows `getMyPendingCodes` returns; a UI list, not a bulk export. */
@@ -129,9 +134,11 @@ export const issueBrowserSession = mutation({
   args: {},
   handler: async (ctx): Promise<{ browserSessionSecret: string }> => {
     const now = Date.now();
-    // No caller identity to bucket by, so the bound is global. Minting is a
-    // once-per-browser event; a legitimate deployment never approaches this.
-    await consumeAttempt(ctx, "session:mint:global", SESSION_MINT_POLICY, now);
+    // No caller identity to bucket by. A blocking global limit here would let
+    // one script stop every new browser from pairing, so the global count is
+    // an alarm that logs, never a gate. Unused sessions are swept by
+    // `cleanExpiredSecurityState`.
+    await noteAttempt(ctx, "session:mint:global", SESSION_MINT_POLICY, now);
 
     const secret = mintSecret();
     await ctx.db.insert("cmd_browserSessions", {
@@ -187,13 +194,16 @@ export const claimPairingCodeAnon = mutation({
     );
     const secretHash = await sha256Hex(secret);
 
-    // Two buckets, both consumed before any lookup. Per-session bounds one
-    // browser guessing codes; the global bucket is the backstop against the
-    // same guess spread across many freshly-minted sessions. A successful
-    // claim clears both, so a real operator never ladders.
+    // Two buckets. Per-session bounds one browser guessing codes: consumed
+    // before any lookup and cleared on its own success. The global bucket is
+    // the backstop against the same guess spread across many sessions: checked
+    // on every claim, charged only by a failed code, and never reset by any
+    // one caller's success.
     const sessionBucket = `claim:session:${secretHash}`;
-    await consumeAttempt(ctx, sessionBucket, CLAIM_POLICY, now);
-    await consumeAttempt(ctx, "claim:global", CLAIM_GLOBAL_POLICY, now);
+    const sessionVerdict = await chargeAttempt(ctx, sessionBucket, CLAIM_POLICY, now);
+    if (!sessionVerdict.ok) return rateLimitedResult(sessionVerdict.retryAfterMs);
+    const globalVerdict = await checkBucket(ctx, CLAIM_GLOBAL_BUCKET, CLAIM_GLOBAL_POLICY, now);
+    if (!globalVerdict.ok) return rateLimitedResult(globalVerdict.retryAfterMs);
 
     const browserMarker = await resolveBrowserOwner(ctx, secretHash, now);
     if (!browserMarker) return { error: "invalid_browser_session" as const };
@@ -203,12 +213,17 @@ export const claimPairingCodeAnon = mutation({
       .withIndex("by_pairingCode", (q) => q.eq("pairingCode", pairingCode))
       .first();
 
-    if (!request) return { error: "invalid_pairing_code" as const };
+    if (!request) {
+      await chargeAttempt(ctx, CLAIM_GLOBAL_BUCKET, CLAIM_GLOBAL_POLICY, now);
+      return { error: "invalid_pairing_code" as const };
+    }
     if (request.expiresAt < now) {
       await ctx.db.delete(request._id);
+      await chargeAttempt(ctx, CLAIM_GLOBAL_BUCKET, CLAIM_GLOBAL_POLICY, now);
       return { error: "pairing_code_expired" as const };
     }
     if (request.claimedBy && request.claimedBy !== browserMarker) {
+      await chargeAttempt(ctx, CLAIM_GLOBAL_BUCKET, CLAIM_GLOBAL_POLICY, now);
       return { error: "code_already_claimed" as const };
     }
 
@@ -272,7 +287,6 @@ export const claimPairingCodeAnon = mutation({
     }
 
     await clearAttempts(ctx, sessionBucket);
-    await clearAttempts(ctx, "claim:global");
 
     // NO apiKey. The browser resolves the agent's address here and takes the
     // durable credential from the agent itself over the LAN pair, which is the
@@ -301,7 +315,8 @@ export const claimPairingCode = mutation({
     // Signed in, but still a bearer-code guess: bucket by the account so one
     // compromised session cannot walk the code space.
     const bucket = `claim:user:${userId}`;
-    await consumeAttempt(ctx, bucket, CLAIM_POLICY, now);
+    const verdict = await chargeAttempt(ctx, bucket, CLAIM_POLICY, now);
+    if (!verdict.ok) return rateLimitedResult(verdict.retryAfterMs);
 
     const request = await ctx.db
       .query("cmd_pairingRequests")
@@ -490,6 +505,23 @@ export const getMyPendingCodes = query({
 });
 
 /**
+ * The device that registered against one of the caller's pre-generated codes,
+ * or null while the code is still unclaimed. Scoped to the code's creator, so a
+ * request id tells nobody else anything.
+ */
+export const getPreGeneratedClaim = query({
+  args: { requestId: v.id("cmd_pairingRequests") },
+  handler: async (ctx, { requestId }) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return null;
+    const request = await ctx.db.get(requestId);
+    if (!request || request.createdBy !== userId) return null;
+    if (!request.claimedBy || !request.deviceId) return null;
+    return { deviceId: request.deviceId };
+  },
+});
+
+/**
  * Called by the `/pairing/register` HTTP route when an agent beacons its
  * pairing code. Handles upsert and auto-matching with pre-generated codes.
  *
@@ -601,12 +633,17 @@ export const registerAgent = internalMutation({
         return { alreadyClaimed: true, userId: existing.claimedBy };
       }
       // A beacon re-presenting the key it registered with is free — that is the
-      // steady state and it must never ladder toward a lockout. Replacing the
-      // key on a pending row is allowed (the agent's accept-code action mints a
-      // fresh one per invocation) but is charged as a novel registration, so
-      // rotating keys is not a way around the bound.
+      // steady state and it must never ladder toward a lockout. A different key
+      // on a LIVE pending row is refused: otherwise anyone who learned the
+      // device id could swap in their own key and code and claim the device.
+      // Once the row's window lapses (the old key stopped beaconing), a new key
+      // may take it over, charged as a novel registration.
       if (!agentKeyMatches(existing.apiKey, apiKey)) {
-        await consumeAttempt(ctx, clientBucket, REGISTER_POLICY, now);
+        const verdict = await chargeAttempt(ctx, clientBucket, REGISTER_POLICY, now);
+        if (!verdict.ok) return rateLimitedResult(verdict.retryAfterMs);
+        if (existing.expiresAt >= now) {
+          return { error: "device_registration_conflict" };
+        }
       }
       await ctx.db.patch(existing._id, {
         pairingCode,
@@ -624,8 +661,19 @@ export const registerAgent = internalMutation({
       return { registered: true };
     }
 
-    // First contact for this device id, from this source address.
-    await consumeAttempt(ctx, clientBucket, REGISTER_POLICY, now);
+    // First contact for this device id, from this source address. The code is
+    // bucketed too: the auto-match branch below turns a guessed pre-generated
+    // code into a device in someone's fleet, so each code gets a bounded
+    // number of first-contact tries however many addresses present it.
+    const clientVerdict = await chargeAttempt(ctx, clientBucket, REGISTER_POLICY, now);
+    if (!clientVerdict.ok) return rateLimitedResult(clientVerdict.retryAfterMs);
+    const codeVerdict = await chargeAttempt(
+      ctx,
+      `register:code:${pairingCode}`,
+      REGISTER_POLICY,
+      now,
+    );
+    if (!codeVerdict.ok) return rateLimitedResult(codeVerdict.retryAfterMs);
 
     // Check if a pre-generated code matches (zero-touch flow)
     const preGenerated = await ctx.db
@@ -713,44 +761,42 @@ export const registerAgent = internalMutation({
   },
 });
 
-// Upper bound on rows deleted per sweep so one cron tick stays within
-// transaction limits even if a large backlog accrued. A 15-minute cron drains
-// the rest on the next ticks.
+// Upper bound on rows deleted per sweep so one call stays within transaction
+// limits; a full batch reschedules the sweep until the range is drained.
 const CLEAN_EXPIRED_BATCH = 256;
 
 /**
  * Cron job: clean expired UNCLAIMED pairing requests.
  *
  * Internal (cron-only): a public no-auth mutation let any client trigger the
- * scan on demand. The query walks the `by_expiresAt` index range below `now`
- * instead of a full-table `.filter().collect()`, and the batch is bounded so
- * a backlog cannot blow the per-call limits.
+ * scan on demand. It ranges `by_claimedBy_expiresAt` over unclaimed rows only,
+ * so kept rows never occupy the head of the range, and reschedules itself
+ * while a full batch was deleted so a backlog drains without waiting for the
+ * next tick.
  *
- * A CLAIMED row is never deleted. `expiresAt` is `now + 15 min` and bounds how
- * long an unclaimed CODE stays offerable; it is not a lifetime for the pairing
- * itself. Deleting claimed rows meant `/pairing/status` — which reads only
- * `cmd_pairingRequests` — started answering `{authorized:false}` → 401 about
- * fifteen minutes after a SUCCESSFUL pairing, indistinguishable from a bad
- * key. If the agent then re-registered, `registerAgent` found no row and
- * inserted a fresh UNCLAIMED one returning `{registered:true}`, so the node
- * displayed a new pairing code to the operator for a drone that was already
- * paired.
+ * A CLAIMED row is never deleted. `expiresAt` bounds how long an unclaimed
+ * CODE stays offerable; it is not a lifetime for the pairing itself. Deleting
+ * claimed rows made `/pairing/status` answer `{authorized:false}` -> 401 about
+ * fifteen minutes after a SUCCESSFUL pairing, and a re-registering agent then
+ * displayed a fresh pairing code for a drone that was already paired.
  */
 export const cleanExpiredRequests = internalMutation({
   args: {},
-  handler: async (ctx) => {
+  handler: async (ctx): Promise<{ deleted: number }> => {
     const now = Date.now();
     const expired = await ctx.db
       .query("cmd_pairingRequests")
-      .withIndex("by_expiresAt", (q) => q.lt("expiresAt", now))
+      .withIndex("by_claimedBy_expiresAt", (q) =>
+        q.eq("claimedBy", undefined).lt("expiresAt", now),
+      )
       .take(CLEAN_EXPIRED_BATCH);
-    let deleted = 0;
     for (const req of expired) {
-      if (req.claimedBy) continue;
       await ctx.db.delete(req._id);
-      deleted += 1;
     }
-    return { deleted };
+    if (expired.length === CLEAN_EXPIRED_BATCH) {
+      await ctx.scheduler.runAfter(0, internal.cmdPairing.cleanExpiredRequests, {});
+    }
+    return { deleted: expired.length };
   },
 });
 

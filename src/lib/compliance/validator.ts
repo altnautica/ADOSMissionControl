@@ -48,7 +48,16 @@ export function validateForJurisdiction(
   code: JurisdictionCode,
 ): ValidationIssue[] {
   const spec = JURISDICTIONS[code];
-  if (!spec) return [];
+  if (!spec) {
+    return [
+      {
+        field: "Jurisdiction",
+        severity: "error",
+        message: `Unknown jurisdiction "${code}": no regulator rules to check against.`,
+        fixTab: "operator",
+      },
+    ];
+  }
 
   const issues: ValidationIssue[] = [];
 
@@ -77,7 +86,7 @@ export function validateForJurisdiction(
 
   // DGCA-specific rule: over 120 m requires an authorisation reference.
   // record.maxAlt is height above home, the only frame every flight records.
-  if (code === "IN_DGCA" && record.maxAlt > 120) {
+  if (code === "IN_DGCA" && record.maxAlt !== undefined && record.maxAlt > 120) {
     issues.push({
       field: "record.maxAlt",
       severity: "warning",

@@ -21,14 +21,12 @@ import type {
   InstallSource,
   InstallTargetDrone,
 } from "@/components/plugins/install-dialog/types";
-import {
-  parseManifestYaml,
-  toInstallSummary,
-} from "@/components/plugins/transports/manifest-parse";
+import { parseManifestYaml } from "@/components/plugins/transports/manifest-parse";
+import { toInstallSummary } from "@/components/plugins/transports/manifest-summary";
 import {
   DEMO_REGISTRY_ENTRIES,
   type DemoRegistryEntry,
-} from "@/lib/plugins/first-party-registry";
+} from "@/mock/first-party-registry";
 
 interface PendingInstall {
   manifest: InstallManifestSummary;

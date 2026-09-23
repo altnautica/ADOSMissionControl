@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useLayoutEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
 import { useDroneManager } from "@/stores/drone-manager";
@@ -10,38 +9,47 @@ import { usePanelParams } from "@/hooks/use-panel-params";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
 import { PanelHeader } from "../shared/PanelHeader";
-import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
+import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { SlidersHorizontal, Save, RotateCcw, HardDrive, Zap, Filter } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { PidAxisRow } from "./PidAxisRow";
+import { PX4_PARAM_MAP } from "@/lib/protocol/firmware/px4-params";
+import { PidAxisRow, PidParamRow } from "./PidAxisRow";
 import {
-  type PidPreset, type VehicleType,
-  PLANE_AXES, COPTER_AXES, ROVER_AXES, ROVER_NAV_PARAMS, ACRO_PARAMS, FILTER_PARAMS, COPTER_PRESETS,
-  BF_PID_AXES, BF_FILTER_PARAMS, BF_PID_PRESETS,
+  type AxisConfig, type PidParam, type PidPreset,
+  PLANE_AXES, COPTER_AXES, ROVER_AXES, ROVER_NAV_PARAMS, COPTER_ACRO_PARAMS, PLANE_ACRO_PARAMS,
+  FILTER_PARAMS, COPTER_PRESETS,
 } from "./pid-constants";
+import type { TuningVehicleType } from "@/lib/analysis/types";
 import { useParamLabel } from "@/hooks/use-param-label";
 import { useParamMetadataMap } from "@/hooks/use-param-metadata";
 import { usePanelScroll } from "@/hooks/use-panel-scroll";
 import { ParamTooltip } from "../parameters/ParamTooltip";
 import { PidAnalysisSection } from "./PidAnalysisSection";
-import type { SuggestionTarget } from "@/stores/pid-analysis-store";
+import { usePidAnalysisStore, type SuggestionTarget } from "@/stores/pid-analysis-store";
 import { AutotuneSection, LivePidResponseGraph, PidSnapshotComparison, Px4GainMultipliers } from "./PidComparisonSection";
 
 export function PidTuningPanel() {
   const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
   const getSelectedDrone = useDroneManager((s) => s.getSelectedDrone);
+  const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
+  const bindAnalysisDrone = usePidAnalysisStore((s) => s.bindDrone);
   const { toast } = useToast();
   const { showFlashResult } = useFlashCommitToast();
   const [saving, setSaving] = useState(false);
   const { firmwareType } = useFirmwareCapabilities();
-  const isPx4 = firmwareType === 'px4';
-  const isBetaflight = firmwareType === 'betaflight';
+  const isPx4 = firmwareType === "px4";
+
+  // Log analysis and AI suggestions describe one vehicle; clear them before
+  // another drone's panel paints.
+  useLayoutEffect(() => {
+    bindAnalysisDrone(selectedDroneId ?? null);
+  }, [selectedDroneId, bindAnalysisDrone]);
 
   const drone = getSelectedDrone();
   const { paramName: pn } = useParamLabel();
   const paramMeta = useParamMetadataMap();
   const scrollRef = usePanelScroll("pid-tuning");
-  const detectedVehicle: VehicleType | null = useMemo(() => {
+  const detectedVehicle: TuningVehicleType | null = useMemo(() => {
     const vc = drone?.vehicleInfo?.vehicleClass;
     if (vc === "copter") return "copter";
     if (vc === "plane" || vc === "vtol") return "plane";
@@ -49,30 +57,34 @@ export function PidTuningPanel() {
     return null;
   }, [drone?.vehicleInfo?.vehicleClass]);
 
-  const [vehicleType, setVehicleType] = useState<VehicleType>(detectedVehicle ?? "copter");
-  const apAxes = vehicleType === "copter" ? COPTER_AXES : vehicleType === "rover" ? ROVER_AXES : PLANE_AXES;
-  const activeAxes = isBetaflight ? BF_PID_AXES : apAxes;
-  const activeFilterParams = isBetaflight ? BF_FILTER_PARAMS : FILTER_PARAMS;
-  const activePresets = isBetaflight ? BF_PID_PRESETS : COPTER_PRESETS;
-
+  const [vehicleType, setVehicleType] = useState<TuningVehicleType>(detectedVehicle ?? "copter");
   const [showFilters, setShowFilters] = useState(false);
 
-  const paramNames = useMemo(() => {
-    if (isBetaflight) {
-      return [
-        ...BF_PID_AXES.flatMap((a) => a.params.map((p) => p.param)),
-        ...(showFilters ? BF_FILTER_PARAMS.map((p) => p.param) : []),
-      ];
-    }
-    return [
-      ...apAxes.flatMap((a) => a.params.map((p) => p.param)),
-      ...(vehicleType === "rover"
-        ? ROVER_NAV_PARAMS.map((p) => p.param)
-        : ACRO_PARAMS.map((p) => p.param)),
-      ...(showFilters ? FILTER_PARAMS.map((p) => p.param) : []),
-      ...(isPx4 ? ["MC_ROLLRATE_K", "MC_PITCHRATE_K", "MC_YAWRATE_K"] : []),
-    ];
-  }, [apAxes, vehicleType, showFilters, isPx4, isBetaflight]);
+  // PX4 has no counterpart for a canonical name outside the PX4 map; those rows are hidden there.
+  const available = useMemo(
+    () => (p: PidParam) => !isPx4 || PX4_PARAM_MAP[p.param] !== undefined,
+    [isPx4],
+  );
+  const axes: AxisConfig[] = useMemo(() => {
+    const base = vehicleType === "copter" ? COPTER_AXES : vehicleType === "rover" ? ROVER_AXES : PLANE_AXES;
+    return base
+      .map((a) => ({ ...a, params: a.params.filter(available) }))
+      .filter((a) => a.params.length > 0);
+  }, [vehicleType, available]);
+  const secondaryParams = useMemo(
+    () => (vehicleType === "rover" ? ROVER_NAV_PARAMS
+      : vehicleType === "plane" ? PLANE_ACRO_PARAMS
+      : COPTER_ACRO_PARAMS).filter(available),
+    [vehicleType, available],
+  );
+  const filterParams = useMemo(() => FILTER_PARAMS.filter(available), [available]);
+
+  const paramNames = useMemo(() => [
+    ...axes.flatMap((a) => a.params.map((p) => p.param)),
+    ...secondaryParams.map((p) => p.param),
+    ...(showFilters ? filterParams.map((p) => p.param) : []),
+    ...(isPx4 ? ["MC_ROLLRATE_K", "MC_PITCHRATE_K", "MC_YAWRATE_K"] : []),
+  ], [axes, secondaryParams, filterParams, showFilters, isPx4]);
 
   const {
     params, loading, error, dirtyParams, hasRamWrites,
@@ -101,8 +113,7 @@ export function PidTuningPanel() {
   }
 
   async function handleFlash() {
-    const ok = await commitToFlash();
-    showFlashResult(ok);
+    showFlashResult(await commitToFlash());
   }
 
   function handleRevert() {
@@ -117,107 +128,67 @@ export function PidTuningPanel() {
     toast(`Applied "${preset.name}" preset — save to apply`, "info");
   }
 
-  const subtitle = isBetaflight
-    ? "Betaflight PID gains — roll, pitch, yaw"
-    : vehicleType === "copter"
-      ? "ArduCopter rate PIDs — roll, pitch, yaw"
-      : vehicleType === "rover"
-        ? "ArduRover steering-rate and speed/throttle PIDs"
-        : "ArduPlane roll, pitch, yaw servo PID gains";
+  const subtitle = vehicleType === "copter"
+    ? "ArduCopter rate PIDs — roll, pitch, yaw"
+    : vehicleType === "rover"
+      ? "ArduRover steering-rate and speed/throttle PIDs"
+      : "ArduPlane roll, pitch, yaw servo PID gains";
+
+  const paramRow = (pidP: PidParam, gridClass: string, unit?: string) => (
+    <PidParamRow
+      key={pidP.param}
+      pidP={pidP}
+      value={params.get(pidP.param)}
+      hasLoaded={hasLoaded}
+      isDirty={dirtyParams.has(pidP.param)}
+      onChange={(v) => setLocalValue(pidP.param, v)}
+      name={<ParamTooltip meta={paramMeta.get(pidP.param)}><span className="text-[9px] text-text-tertiary block cursor-default">{pn(pidP.param)}</span></ParamTooltip>}
+      gridClass={gridClass}
+      unit={unit}
+    />
+  );
 
   return (
-    <ArmedLockOverlay>
+    <ArmedWarningBanner>
     <div ref={scrollRef} className="flex-1 overflow-y-auto p-6">
       <div className="max-w-3xl space-y-6">
         <PanelHeader title="PID Tuning" subtitle={subtitle} icon={<SlidersHorizontal size={16} />}
           loading={loading} loadProgress={loadProgress} hasLoaded={hasLoaded}
           onRead={refresh} connected={connected} error={error} />
 
-        {!isBetaflight && (
-          <div className="flex items-center gap-1 bg-bg-secondary border border-border-default p-1 w-fit">
-            <button onClick={() => setVehicleType("copter")} className={cn("px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer", vehicleType === "copter" ? "bg-accent-primary text-white" : "text-text-secondary hover:text-text-primary")}>Copter</button>
-            <button onClick={() => setVehicleType("plane")} className={cn("px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer", vehicleType === "plane" ? "bg-accent-primary text-white" : "text-text-secondary hover:text-text-primary")}>Plane</button>
-            <button onClick={() => setVehicleType("rover")} className={cn("px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer", vehicleType === "rover" ? "bg-accent-primary text-white" : "text-text-secondary hover:text-text-primary")}>Rover</button>
-            {detectedVehicle && <span className="text-[10px] text-text-tertiary ml-2">Detected: {detectedVehicle}</span>}
-          </div>
-        )}
+        <div className="flex items-center gap-1 bg-bg-secondary border border-border-default p-1 w-fit">
+          {(["copter", "plane", "rover"] as const).map((vt) => (
+            <button key={vt} onClick={() => setVehicleType(vt)} className={cn("px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer capitalize", vehicleType === vt ? "bg-accent-primary text-white" : "text-text-secondary hover:text-text-primary")}>{vt}</button>
+          ))}
+          {detectedVehicle && <span className="text-[10px] text-text-tertiary ml-2">Detected: {detectedVehicle}</span>}
+        </div>
 
-        {activeAxes.map((axis) => (
-          <PidAxisRow key={axis.axis} axis={axis} params={params} dirtyParams={dirtyParams} setLocalValue={setLocalValue} mapParamName={pn} />
+        {axes.map((axis) => (
+          <PidAxisRow key={axis.axis} axis={axis} params={params} hasLoaded={hasLoaded} dirtyParams={dirtyParams} setLocalValue={setLocalValue} mapParamName={pn} />
         ))}
 
-        {!isBetaflight && vehicleType !== "rover" && (
+        {secondaryParams.length > 0 && (
           <div className="border border-border-default bg-bg-secondary p-4">
             <div className="flex items-center gap-2 mb-3">
               <SlidersHorizontal size={14} className="text-accent-primary" />
-              <h2 className="text-sm font-medium text-text-primary">Acro Rates</h2>
+              <h2 className="text-sm font-medium text-text-primary">{vehicleType === "rover" ? "Navigation" : "Acro Rates"}</h2>
             </div>
             <div className="space-y-3">
-              {ACRO_PARAMS.map((pidP) => {
-                const value = params.get(pidP.param) ?? 0;
-                const isDirty = dirtyParams.has(pidP.param);
-                return (
-                  <div key={pidP.param} className="grid grid-cols-[160px_1fr_80px] items-center gap-3">
-                    <div>
-                      <span className="text-xs font-mono text-text-secondary">{pidP.label}</span>
-                      <ParamTooltip meta={paramMeta.get(pidP.param)}><span className="text-[9px] text-text-tertiary block cursor-default">{pn(pidP.param)}</span></ParamTooltip>
-                    </div>
-                    <div className="relative">
-                      <input type="range" min={pidP.min} max={pidP.max} step={pidP.step} value={value}
-                        onChange={(e) => setLocalValue(pidP.param, parseFloat(e.target.value))}
-                        className="w-full h-1.5 bg-bg-tertiary appearance-none cursor-pointer accent-accent-primary [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-accent-primary [&::-webkit-slider-thumb]:cursor-pointer" />
-                      <div className="flex justify-between text-[8px] text-text-tertiary font-mono mt-0.5"><span>{pidP.min}</span><span>{pidP.max} deg/s</span></div>
-                    </div>
-                    <input type="number" min={pidP.min} max={pidP.max} step={pidP.step} value={value}
-                      onChange={(e) => setLocalValue(pidP.param, parseFloat(e.target.value) || 0)}
-                      className={cn("w-full h-7 px-1.5 bg-bg-tertiary border text-xs font-mono text-text-primary text-right focus:outline-none focus:border-accent-primary transition-colors", isDirty ? "border-status-warning" : "border-border-default")} />
-                  </div>
-                );
-              })}
+              {secondaryParams.map((pidP) => vehicleType === "rover"
+                ? paramRow(pidP, "grid-cols-[180px_1fr_80px]")
+                : paramRow(pidP, "grid-cols-[160px_1fr_80px]", "deg/s"))}
             </div>
           </div>
         )}
 
-        {vehicleType === "rover" && (
-          <div className="border border-border-default bg-bg-secondary p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <SlidersHorizontal size={14} className="text-accent-primary" />
-              <h2 className="text-sm font-medium text-text-primary">Navigation</h2>
-            </div>
-            <div className="space-y-3">
-              {ROVER_NAV_PARAMS.map((pidP) => {
-                const value = params.get(pidP.param) ?? 0;
-                const isDirty = dirtyParams.has(pidP.param);
-                return (
-                  <div key={pidP.param} className="grid grid-cols-[180px_1fr_80px] items-center gap-3">
-                    <div>
-                      <span className="text-xs font-mono text-text-secondary">{pidP.label}</span>
-                      <ParamTooltip meta={paramMeta.get(pidP.param)}><span className="text-[9px] text-text-tertiary block cursor-default">{pn(pidP.param)}</span></ParamTooltip>
-                    </div>
-                    <div className="relative">
-                      <input type="range" min={pidP.min} max={pidP.max} step={pidP.step} value={value}
-                        onChange={(e) => setLocalValue(pidP.param, parseFloat(e.target.value))}
-                        className="w-full h-1.5 bg-bg-tertiary appearance-none cursor-pointer accent-accent-primary [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-accent-primary [&::-webkit-slider-thumb]:cursor-pointer" />
-                      <div className="flex justify-between text-[8px] text-text-tertiary font-mono mt-0.5"><span>{pidP.min}</span><span>{pidP.max}</span></div>
-                    </div>
-                    <input type="number" min={pidP.min} max={pidP.max} step={pidP.step} value={value}
-                      onChange={(e) => setLocalValue(pidP.param, parseFloat(e.target.value) || 0)}
-                      className={cn("w-full h-7 px-1.5 bg-bg-tertiary border text-xs font-mono text-text-primary text-right focus:outline-none focus:border-accent-primary transition-colors", isDirty ? "border-status-warning" : "border-border-default")} />
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {(isBetaflight || vehicleType === "copter") && (
+        {vehicleType === "copter" && (
           <div className="border border-border-default bg-bg-secondary p-4">
             <div className="flex items-center gap-2 mb-3">
               <Zap size={14} className="text-accent-primary" />
               <h2 className="text-sm font-medium text-text-primary">Preset Profiles</h2>
             </div>
             <div className="flex gap-2">
-              {activePresets.map((preset) => (
+              {COPTER_PRESETS.map((preset) => (
                 <button key={preset.name} onClick={() => applyPreset(preset)}
                   className="flex-1 border border-border-default px-3 py-2 text-xs hover:bg-bg-tertiary hover:border-accent-primary/50 cursor-pointer transition-colors">
                   <span className="font-semibold text-text-primary block">{preset.name}</span>
@@ -228,41 +199,23 @@ export function PidTuningPanel() {
           </div>
         )}
 
-        <div className="border border-border-default bg-bg-secondary">
-          <button onClick={() => setShowFilters((f) => !f)} className="flex items-center gap-2 w-full px-4 py-3 text-left cursor-pointer hover:bg-bg-tertiary/50">
-            <Filter size={14} className="text-accent-primary" />
-            <h2 className="text-sm font-medium text-text-primary">Filter Settings</h2>
-            <span className="text-[10px] text-text-tertiary ml-auto">{showFilters ? "\u25BE" : "\u25B8"}</span>
-          </button>
-          {showFilters && (
-            <div className="px-4 pb-4 space-y-3">
-              <p className="text-[10px] text-text-tertiary">{isBetaflight ? "Gyro and D-term low-pass and notch filters" : "INS gyro/accel low-pass filters and harmonic notch filter"}</p>
-              {activeFilterParams.map((fp) => {
-                const value = params.get(fp.param) ?? 0;
-                const isDirty = dirtyParams.has(fp.param);
-                return (
-                  <div key={fp.param} className="grid grid-cols-[180px_1fr_80px] items-center gap-3">
-                    <div>
-                      <span className="text-xs font-mono text-text-secondary">{fp.label}</span>
-                      <ParamTooltip meta={paramMeta.get(fp.param)}><span className="text-[9px] text-text-tertiary block cursor-default">{pn(fp.param)}</span></ParamTooltip>
-                    </div>
-                    <div className="relative">
-                      <input type="range" min={fp.min} max={fp.max} step={fp.step} value={value}
-                        onChange={(e) => setLocalValue(fp.param, parseFloat(e.target.value))}
-                        className="w-full h-1.5 bg-bg-tertiary appearance-none cursor-pointer accent-accent-primary [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-accent-primary [&::-webkit-slider-thumb]:cursor-pointer" />
-                      <div className="flex justify-between text-[8px] text-text-tertiary font-mono mt-0.5"><span>{fp.min}</span><span>{fp.max}</span></div>
-                    </div>
-                    <input type="number" min={fp.min} max={fp.max} step={fp.step} value={value}
-                      onChange={(e) => setLocalValue(fp.param, parseFloat(e.target.value) || 0)}
-                      className={cn("w-full h-7 px-1.5 bg-bg-tertiary border text-xs font-mono text-text-primary text-right focus:outline-none focus:border-accent-primary transition-colors", isDirty ? "border-status-warning" : "border-border-default")} />
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+        {filterParams.length > 0 && (
+          <div className="border border-border-default bg-bg-secondary">
+            <button onClick={() => setShowFilters((f) => !f)} className="flex items-center gap-2 w-full px-4 py-3 text-left cursor-pointer hover:bg-bg-tertiary/50">
+              <Filter size={14} className="text-accent-primary" />
+              <h2 className="text-sm font-medium text-text-primary">Filter Settings</h2>
+              <span className="text-[10px] text-text-tertiary ml-auto">{showFilters ? "\u25BE" : "\u25B8"}</span>
+            </button>
+            {showFilters && (
+              <div className="px-4 pb-4 space-y-3">
+                <p className="text-[10px] text-text-tertiary">INS gyro/accel low-pass filters and harmonic notch filter</p>
+                {filterParams.map((fp) => paramRow(fp, "grid-cols-[180px_1fr_80px]"))}
+              </div>
+            )}
+          </div>
+        )}
 
-        {!isBetaflight && <AutotuneSection connected={connected} vehicleType={vehicleType} />}
+        {!isPx4 && vehicleType === "copter" && <AutotuneSection connected={connected} />}
 
         <PidAnalysisSection target={suggestionTarget} connected={connected} />
 
@@ -281,6 +234,6 @@ export function PidTuningPanel() {
         </div>
       </div>
     </div>
-    </ArmedLockOverlay>
+    </ArmedWarningBanner>
   );
 }

@@ -6,7 +6,7 @@
  *
  *  - **A reconstruction exists** → the viewer: a session selector + a viewer
  *    switcher (Rerun / Splat / Cloud / …) over the world a captured session
- *    reconstructed. Sourced LOCAL-FIRST (Rule 39) from the paired compute /
+ *    reconstructed. Sourced LOCAL-FIRST from the paired compute /
  *    workstation node (`useDroneWorldModel`), correlated by `session_id`; the
  *    Convex `cmd_atlasJobs` path is the cloud fallback.
  *  - **No reconstruction yet** → a self-explaining setup surface: the live video
@@ -167,7 +167,7 @@ export function DroneWorldModelTab({ droneId }: { droneId?: string }) {
   // Resolve a unified view model from the active source.
   let artifactUrl: string | null;
   let hint: AtlasViewer | null;
-  // The honest reconstruction backend for the badge (Rule 44). The cloud path
+  // The honest reconstruction backend for the badge (no fabricated reading). The cloud path
   // reads it defensively off the opaque job metadata (null until the
   // compute→Convex producer forwards it).
   let backend: string | null;

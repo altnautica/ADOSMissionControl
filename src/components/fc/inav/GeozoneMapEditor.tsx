@@ -122,7 +122,6 @@ function PolygonGeozoneMapEditor({
       center: initCenter,
       zoom: initZoom,
       zoomControl: true,
-      attributionControl: false,
     });
 
     L.tileLayer(TILE_URL, { attribution: TILE_ATTR, maxZoom: 20 }).addTo(map);
@@ -200,9 +199,27 @@ function PolygonGeozoneMapEditor({
   function undoVertex() {
     const manager = managerRef.current;
     if (!manager || !isDrawing) return;
-    // Simulate Backspace via keyboard event dispatch
-    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Backspace", bubbles: true }));
+    manager.popVertex();
   }
+
+  // This editor owns its DrawingManager, so it also owns the draw keys the
+  // footer advertises (the planner's keyboard dispatcher never sees this map).
+  useEffect(() => {
+    if (!isDrawing) return;
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return;
+      const manager = managerRef.current;
+      if (!manager) return;
+      if (e.key === "Escape") manager.cancelDraw();
+      else if (e.key === "Backspace") manager.popVertex();
+      else if (e.key === "Enter") manager.complete();
+      else return;
+      e.preventDefault();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [isDrawing]);
 
   function cancelDraw() {
     const manager = managerRef.current;
@@ -319,7 +336,7 @@ function PolygonGeozoneMapEditor({
       {/* Instruction footer when drawing */}
       {isDrawing && (
         <div className="px-3 py-1.5 bg-bg-secondary border-t border-border-default text-[10px] font-mono text-text-tertiary">
-          Click to add vertices. Double-click or right-click first vertex to close. Esc to cancel. Backspace removes last vertex.
+          Click to add vertices. Double-click, right-click the first vertex or press Enter to close. Esc cancels the draw. Backspace removes the last vertex.
         </div>
       )}
     </div>

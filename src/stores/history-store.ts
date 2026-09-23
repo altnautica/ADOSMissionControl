@@ -11,8 +11,18 @@ import type { FlightRecord } from "@/lib/types";
 import { createIdbStoreLoader } from "@/lib/idb-store-loader";
 
 const IDB_HISTORY_KEY = "altcmd:flight-history";
+const IDB_TOMBSTONES_KEY = "altcmd:flight-history-tombstones";
 const IDB_RECORDINGS_PREFIX = "altcmd:recording:";
 const IDB_RECORDINGS_INDEX = "altcmd:recordings-index";
+/** Tombstones kept so a cloud page cannot resurrect a permanently deleted flight. */
+const MAX_TOMBSTONES = 2000;
+
+interface StoredTombstones {
+  /** Every permanently deleted clientId, oldest first. */
+  ids: string[];
+  /** The subset whose cloud row has not been confirmed removed yet. */
+  pending: string[];
+}
 
 /** On-board log entry received via LOG_ENTRY (msg 118). */
 export interface LogEntry {
@@ -49,22 +59,34 @@ interface HistoryState {
   lastSyncError: string | null;
   /** clientIds dirty since the last successful upsert. */
   pendingSyncIds: Set<string>;
+  /**
+   * clientIds the cloud refused, with the refusal. The periodic retry skips
+   * them until the record changes or the operator retries by hand.
+   */
+  syncErrors: Map<string, string>;
+  /** clientIds permanently deleted here; cloud rows with these ids are never merged back. */
+  tombstoneIds: Set<string>;
+  /** Tombstoned clientIds whose cloud row still has to be removed. */
+  pendingDeleteIds: Set<string>;
 }
 
 interface HistoryActions {
   /** One-time init from mock/history.ts seed data. */
   initWithSeedData: (records: FlightRecord[]) => void;
-  /** Prepend a new flight record (cap at 500). Marks the row dirty for cloud sync. */
-  addRecord: (record: FlightRecord) => void;
+  /**
+   * Add a new flight record (cap at 500) and mark it dirty for cloud sync.
+   * A record whose id is already stored is left alone; returns false then.
+   */
+  addRecord: (record: FlightRecord) => boolean;
   /** Patch an existing record by id. Sets `updatedAt` and marks dirty. Noop if not found. */
   updateRecord: (id: string, patch: Partial<FlightRecord>) => void;
   /** Soft-delete a record (move to trash). */
   removeRecord: (id: string) => void;
   /** Restore a soft-deleted record from trash. */
   restoreRecord: (id: string) => void;
-  /** Permanently delete a record (bypasses trash). */
+  /** Permanently delete a record (bypasses trash), tombstone it and drop its media blobs. */
   permanentlyDelete: (id: string) => void;
-  /** Permanently delete all trashed records. */
+  /** Permanently delete all trashed records, like {@link permanentlyDelete}. */
   emptyTrash: () => void;
   /**
    * Async: read persisted records once and merge them into memory (stored
@@ -75,7 +97,8 @@ interface HistoryActions {
   persistToIDB: () => Promise<void>;
   /**
    * Merge a list of cloud records into the local store. Last-write-wins on
-   * `updatedAt`. Records that exist locally but not in cloud stay put.
+   * `updatedAt`. Records that exist locally but not in cloud stay put, and
+   * tombstoned ids are never merged back.
    * Returns the count of records that were updated by the merge.
    */
   mergeCloudRecords: (cloudRecords: FlightRecord[]) => number;
@@ -83,7 +106,11 @@ interface HistoryActions {
   setSyncStatus: (status: CloudSyncStatus, error?: string | null) => void;
   /** Record a successful sync timestamp and clear the dirty set. */
   markSynced: (ids: string[]) => void;
-  /** Explicitly mark a clientId as dirty so the next sync picks it up. */
+  /** Quarantine a record the cloud refused, keeping the refusal for display. */
+  markSyncFailed: (id: string, error: string) => void;
+  /** Record that the cloud rows of these tombstoned ids are gone. */
+  markCloudDeleted: (ids: string[]) => void;
+  /** Explicitly mark a clientId as dirty (and out of quarantine) so the next sync picks it up. */
   markDirty: (id: string) => void;
   /**
    * Async: drop demo flight records (id prefix "demo-") and demo telemetry
@@ -102,6 +129,62 @@ interface HistoryActions {
 
 const MAX_RECORDS = 500;
 
+/** Copy of `set` with `id` removed; the same instance when absent. */
+function without<T>(set: Set<T>, id: T): Set<T> {
+  if (!set.has(id)) return set;
+  const next = new Set(set);
+  next.delete(id);
+  return next;
+}
+
+/** Copy of `errors` with `id` removed; the same instance when absent. */
+function withoutError(errors: Map<string, string>, id: string): Map<string, string> {
+  if (!errors.has(id)) return errors;
+  const next = new Map(errors);
+  next.delete(id);
+  return next;
+}
+
+/** Mark `id` dirty and lift any quarantine, since the record changed. */
+function dirtied(s: HistoryState, id: string): Pick<HistoryState, "pendingSyncIds" | "syncErrors"> {
+  const pendingSyncIds = new Set(s.pendingSyncIds);
+  pendingSyncIds.add(id);
+  return { pendingSyncIds, syncErrors: withoutError(s.syncErrors, id) };
+}
+
+/** Drop the stored media blobs of records that are gone for good. */
+function deleteMediaBlobs(records: FlightRecord[]): void {
+  const keys = records.flatMap((r) => (r.media ?? []).map((m) => m.blobKey));
+  for (const key of keys) {
+    idbDel(key).catch((err: unknown) => {
+      console.warn("[history-store] media blob delete failed", key, err);
+    });
+  }
+}
+
+/** Remove `doomed` from the store: tombstone each id and queue its cloud delete. */
+function purge(s: HistoryState, doomed: FlightRecord[]): Partial<HistoryState> {
+  if (doomed.length === 0) return {};
+  const ids = new Set(doomed.map((r) => r.id));
+  const pendingSyncIds = new Set(s.pendingSyncIds);
+  const syncErrors = new Map(s.syncErrors);
+  const tombstoneIds = new Set(s.tombstoneIds);
+  const pendingDeleteIds = new Set(s.pendingDeleteIds);
+  for (const id of ids) {
+    pendingSyncIds.delete(id);
+    syncErrors.delete(id);
+    tombstoneIds.add(id);
+    pendingDeleteIds.add(id);
+  }
+  return {
+    records: s.records.filter((r) => !ids.has(r.id)),
+    pendingSyncIds,
+    syncErrors,
+    tombstoneIds,
+    pendingDeleteIds,
+  };
+}
+
 export const useHistoryStore = create<HistoryState & HistoryActions>((set, get) => ({
   records: [],
   logEntries: new Map(),
@@ -113,6 +196,9 @@ export const useHistoryStore = create<HistoryState & HistoryActions>((set, get) 
   lastSyncAt: null,
   lastSyncError: null,
   pendingSyncIds: new Set<string>(),
+  syncErrors: new Map<string, string>(),
+  tombstoneIds: new Set<string>(),
+  pendingDeleteIds: new Set<string>(),
 
   initWithSeedData: (records) => {
     if (get()._seeded) return;
@@ -127,14 +213,15 @@ export const useHistoryStore = create<HistoryState & HistoryActions>((set, get) 
   },
 
   addRecord: (record) => {
-    set((s) => {
-      const next = new Set(s.pendingSyncIds);
-      next.add(record.id);
-      return {
-        records: [{ ...record, cloudSynced: false }, ...s.records].slice(0, MAX_RECORDS),
-        pendingSyncIds: next,
-      };
-    });
+    if (get().records.some((r) => r.id === record.id)) return false;
+    set((s) => ({
+      records: [{ ...record, cloudSynced: false }, ...s.records].slice(0, MAX_RECORDS),
+      ...dirtied(s, record.id),
+      // Re-adding a deleted flight (a re-import) supersedes its tombstone.
+      tombstoneIds: without(s.tombstoneIds, record.id),
+      pendingDeleteIds: without(s.pendingDeleteIds, record.id),
+    }));
+    return true;
   },
 
   updateRecord: (id, patch) => {
@@ -146,9 +233,7 @@ export const useHistoryStore = create<HistoryState & HistoryActions>((set, get) 
         return { ...r, ...patch, updatedAt: Date.now(), cloudSynced: false };
       });
       if (!changed) return s;
-      const next = new Set(s.pendingSyncIds);
-      next.add(id);
-      return { records, pendingSyncIds: next };
+      return { records, ...dirtied(s, id) };
     });
   },
 
@@ -162,9 +247,7 @@ export const useHistoryStore = create<HistoryState & HistoryActions>((set, get) 
         return { ...r, deleted: true, deletedAt: Date.now(), updatedAt: Date.now(), cloudSynced: false };
       });
       if (!changed) return s;
-      const next = new Set(s.pendingSyncIds);
-      next.add(id);
-      return { records, pendingSyncIds: next };
+      return { records, ...dirtied(s, id) };
     });
   },
 
@@ -177,33 +260,20 @@ export const useHistoryStore = create<HistoryState & HistoryActions>((set, get) 
         return { ...r, deleted: undefined, deletedAt: undefined, updatedAt: Date.now(), cloudSynced: false };
       });
       if (!changed) return s;
-      const next = new Set(s.pendingSyncIds);
-      next.add(id);
-      return { records, pendingSyncIds: next };
+      return { records, ...dirtied(s, id) };
     });
   },
 
   permanentlyDelete: (id) => {
-    set((s) => {
-      const next = new Set(s.pendingSyncIds);
-      next.delete(id);
-      return {
-        records: s.records.filter((r) => r.id !== id),
-        pendingSyncIds: next,
-      };
-    });
+    const doomed = get().records.filter((r) => r.id === id);
+    set((s) => purge(s, doomed));
+    deleteMediaBlobs(doomed);
   },
 
   emptyTrash: () => {
-    set((s) => {
-      const next = new Set(s.pendingSyncIds);
-      const trashed = s.records.filter((r) => r.deleted);
-      for (const r of trashed) next.delete(r.id);
-      return {
-        records: s.records.filter((r) => !r.deleted),
-        pendingSyncIds: next,
-      };
-    });
+    const doomed = get().records.filter((r) => r.deleted);
+    set((s) => purge(s, doomed));
+    deleteMediaBlobs(doomed);
   },
 
   ensureLoaded: () => idb.ensureLoaded(),
@@ -212,15 +282,22 @@ export const useHistoryStore = create<HistoryState & HistoryActions>((set, get) 
   // load and must never pollute IDB. Real imports, dataflash logs, and
   // live-hardware flights use other id schemes and persist normally.
   persistToIDB: () =>
-    idb.persist(() =>
-      idbSet(IDB_HISTORY_KEY, get().records.filter((r) => !r.id.startsWith("demo-"))),
-    ),
+    idb.persist(async () => {
+      await idbSet(IDB_HISTORY_KEY, get().records.filter((r) => !r.id.startsWith("demo-")));
+      const { tombstoneIds, pendingDeleteIds } = get();
+      const stored: StoredTombstones = {
+        ids: Array.from(tombstoneIds).slice(-MAX_TOMBSTONES),
+        pending: Array.from(pendingDeleteIds),
+      };
+      await idbSet(IDB_TOMBSTONES_KEY, stored);
+    }),
 
   mergeCloudRecords: (cloudRecords) => {
     let updatedCount = 0;
     set((s) => {
       const localById = new Map(s.records.map((r) => [r.id, r] as const));
       for (const remote of cloudRecords) {
+        if (s.tombstoneIds.has(remote.id)) continue;
         const local = localById.get(remote.id);
         if (!local) {
           localById.set(remote.id, { ...remote, cloudSynced: true });
@@ -252,23 +329,40 @@ export const useHistoryStore = create<HistoryState & HistoryActions>((set, get) 
         idSet.has(r.id) ? { ...r, cloudSynced: true } : r,
       );
       const next = new Set(s.pendingSyncIds);
-      for (const id of ids) next.delete(id);
+      const syncErrors = new Map(s.syncErrors);
+      for (const id of ids) {
+        next.delete(id);
+        syncErrors.delete(id);
+      }
       return {
         records,
         pendingSyncIds: next,
+        syncErrors,
         lastSyncAt: Date.now(),
-        syncStatus: "idle" as const,
-        lastSyncError: null,
       };
+    });
+  },
+
+  markSyncFailed: (id, error) => {
+    set((s) => {
+      const syncErrors = new Map(s.syncErrors);
+      syncErrors.set(id, error);
+      return { syncErrors };
+    });
+  },
+
+  markCloudDeleted: (ids) => {
+    set((s) => {
+      const next = new Set(s.pendingDeleteIds);
+      for (const id of ids) next.delete(id);
+      return { pendingDeleteIds: next };
     });
   },
 
   markDirty: (id) => {
     set((s) => {
-      if (s.pendingSyncIds.has(id)) return s;
-      const next = new Set(s.pendingSyncIds);
-      next.add(id);
-      return { pendingSyncIds: next };
+      if (s.pendingSyncIds.has(id) && !s.syncErrors.has(id)) return s;
+      return dirtied(s, id);
     });
   },
 
@@ -338,8 +432,11 @@ export const useHistoryStore = create<HistoryState & HistoryActions>((set, get) 
 
 const idb = createIdbStoreLoader("history-store", async () => {
   const stored = (await idbGet(IDB_HISTORY_KEY)) as FlightRecord[] | undefined;
-  if (!stored || !Array.isArray(stored)) return;
+  const tombstones = (await idbGet(IDB_TOMBSTONES_KEY)) as StoredTombstones | undefined;
   useHistoryStore.setState((s) => {
+    const tombstoneIds = new Set([...(tombstones?.ids ?? []), ...s.tombstoneIds]);
+    const pendingDeleteIds = new Set([...(tombstones?.pending ?? []), ...s.pendingDeleteIds]);
+    if (!stored || !Array.isArray(stored)) return { tombstoneIds, pendingDeleteIds };
     // Merge with anything already in memory (a demo seed or a flight armed
     // before the read finished). Stored records win on id conflict.
     const existing = new Map(s.records.map((r) => [r.id, r] as const));
@@ -347,6 +444,6 @@ const idb = createIdbStoreLoader("history-store", async () => {
     const merged = Array.from(existing.values()).sort(
       (a, b) => (b.startTime ?? b.date) - (a.startTime ?? a.date),
     );
-    return { records: merged.slice(0, MAX_RECORDS) };
+    return { records: merged.slice(0, MAX_RECORDS), tombstoneIds, pendingDeleteIds };
   });
 });

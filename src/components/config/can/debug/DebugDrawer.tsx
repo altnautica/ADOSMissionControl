@@ -22,6 +22,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { ChevronRight, ChevronLeft, Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useClockTick } from "@/lib/agent/freshness";
 import { useDroneCanFlashStore, useDroneCanBusStore } from "@/stores/dronecan";
 import { StateMachineRibbon } from "./StateMachineRibbon";
 import { FrameLogPanel } from "./FrameLogPanel";
@@ -44,6 +45,8 @@ export interface DebugDrawerProps {
   className?: string;
 }
 
+const LIVE_WINDOW_MS = 2_000;
+
 export function DebugDrawer({
   mode,
   open: openProp,
@@ -60,16 +63,16 @@ export function DebugDrawer({
   };
 
   const flashState = useDroneCanFlashStore((s) => s.state);
-  const busVersion = useDroneCanBusStore((s) => s._version);
-  const flashVersion = useDroneCanFlashStore((s) => s._version);
+  const lastFrameAt = useDroneCanBusStore((s) => s.lastFrameAt);
+  // Re-evaluate the "live" indicator every second so it goes out when the
+  // bus falls silent, not only when the store next changes.
+  useClockTick();
 
   const otaActive = flashState !== "IDLE";
   const showRibbon = mode === "flash" || otaActive;
   const showByteCounter = otaActive;
-  // "live" indicator — either we just saw a frame or the OTA snapshot is
-  // moving. Both versions increment monotonically so any non-zero value is
-  // a hint that data is flowing.
-  const live = busVersion > 0 || flashVersion > 0;
+  // "live" = a CAN frame arrived within the last LIVE_WINDOW_MS.
+  const live = lastFrameAt !== null && Date.now() - lastFrameAt < LIVE_WINDOW_MS;
 
   if (!open) {
     return (

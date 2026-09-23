@@ -98,7 +98,7 @@ export function RadioPanel() {
     enabled: hasAgent,
   });
   // Key the radio block to THIS node — the freshest cloud row anywhere could
-  // belong to another node and render its link on this panel (Rule 44).
+  // belong to another node and render its link on this panel (no fabricated reading).
   const { radio: cloudRadioRow, hostname, updatedAt: cloudUpdatedAt } = useMemo(
     () => pickRadioFromCloud(cloudStatuses, nodeDeviceId),
     [cloudStatuses, nodeDeviceId],
@@ -109,12 +109,10 @@ export function RadioPanel() {
   // (transmit) agent; the score reads this receiver's decode-side stats. A ref
   // tracks the latest snapshot so the calibration loop reads fresh values
   // between heartbeats without re-rendering the wizard.
-  const { radio: receiverRadio, hostname: receiverName } = useMemo(
-    () => pickReceiverFromCloud(cloudStatuses),
-    [cloudStatuses],
-  );
-  const receiverRadioRef = useRef(receiverRadio);
-  receiverRadioRef.current = receiverRadio;
+  const receiver = useMemo(() => pickReceiverFromCloud(cloudStatuses), [cloudStatuses]);
+  const receiverName = receiver.hostname;
+  const receiverRef = useRef(receiver);
+  receiverRef.current = receiver;
   const [calibrateOpen, setCalibrateOpen] = useState(false);
 
   // Which source may speak. Local-first: the LAN poll is this node's own agent
@@ -473,8 +471,11 @@ export function RadioPanel() {
     await api.setMcs(trio.mcs);
   };
   const calibrationMeasure = (): CalMeasurement => {
-    const r = receiverRadioRef.current;
+    const { radio: r, updatedAt } = receiverRef.current;
     return {
+      // The row's own write stamp: the engine only scores snapshots written
+      // after the trio under test was applied.
+      sampledAtMs: r ? updatedAt : null,
       lossPercent: r?.lossPercent ?? null,
       // The receiver's unrecoverable-block counter is the decode-side fail
       // signal: scored from confirmed reception, never the transmitter's

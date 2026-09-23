@@ -28,12 +28,15 @@ describe("generateFixedWingLanding", () => {
     speed: 15,
   };
 
-  it("produces an approach -> land-start -> land sequence", () => {
-    const result = generateFixedWingLanding(config);
-    const commands = result.waypoints.map((wp) => wp.command);
-    expect(commands[0]).toBe("WAYPOINT");
-    expect(commands).toContain("DO_LAND_START");
-    expect(commands[commands.length - 1]).toBe("LAND");
+  it("leads with DO_LAND_START so an RTL autoland jump still flies the approach waypoint", () => {
+    const waypoints = patternToMission(generateFixedWingLanding(config).waypoints, "relative");
+    const commands = expandToItems(waypoints, { defaultFrame: "relative", defaultSpeed: 15 })
+      .map((it) => it.command)
+      .filter((c) => c !== cmdMap.DO_SET_SPEED);
+    const landStart = commands.indexOf(cmdMap.DO_LAND_START);
+    expect(landStart).toBeGreaterThanOrEqual(0);
+    // The FC resumes at the item after the marker: the approach, then the landing.
+    expect(commands.slice(landStart)).toEqual([cmdMap.DO_LAND_START, cmdMap.WAYPOINT, cmdMap.LAND]);
   });
 
   it("ends at the configured landing point on the ground", () => {

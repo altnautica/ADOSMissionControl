@@ -12,7 +12,7 @@
  * context (no per-swap context leak), and the explicit geometry/material/renderer
  * dispose() frees the GPU buffers + compiled programs (a missing teardown leaks
  * those per swap). A failed chunk/artifact load surfaces an error overlay rather
- * than a silent blank viewport (Rule 44).
+ * than a silent blank viewport (no fabricated reading).
  *
  * Vertex colours are honoured when the cloud carries them; otherwise the points
  * render in a flat accent so a colourless cloud is still legible. This is a
@@ -28,6 +28,7 @@ import type { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js
 import { ViewerError } from "./ViewerError";
 import { ViewerLoading } from "./ViewerLoading";
 import { orientCloudToYUp } from "./coordinate-frame";
+import { followCanvasSize, frameCloud } from "./cloud-view";
 import {
   fetchArrayBufferWithProgress,
   type FetchProgress,
@@ -53,6 +54,7 @@ export default function PointCloudViewer({ url }: { url: string }) {
     let controls: OrbitControls | null = null;
     let geometry: BufferGeometry | null = null;
     let material: Material | null = null;
+    let stopResize: (() => void) | null = null;
 
     void (async () => {
       try {
@@ -74,6 +76,7 @@ export default function PointCloudViewer({ url }: { url: string }) {
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x0a0a0a);
         const camera = new THREE.PerspectiveCamera(60, width / height, 0.01, 1000);
+        stopResize = followCanvasSize(canvas, r, camera);
         const ctrl = new Orbit(camera, canvas);
         controls = ctrl;
 
@@ -100,11 +103,16 @@ export default function PointCloudViewer({ url }: { url: string }) {
         material = mat;
         scene.add(new THREE.Points(geom, mat));
 
-        // Frame the cloud from its bounding sphere so it fills the view.
+        // Frame the cloud from its bounding sphere so it fills the view, with
+        // clip planes fitted to its size.
         const bs = geom.boundingSphere;
         if (bs) {
-          const dist = Math.max(bs.radius * 2.5, 0.5);
-          camera.position.set(bs.center.x, bs.center.y, bs.center.z + dist);
+          const fit = frameCloud(bs.radius);
+          camera.near = fit.near;
+          camera.far = fit.far;
+          camera.updateProjectionMatrix();
+          ctrl.maxDistance = fit.maxDistance;
+          camera.position.set(bs.center.x, bs.center.y, bs.center.z + fit.distance);
           ctrl.target.copy(bs.center);
         }
         ctrl.update();
@@ -128,6 +136,7 @@ export default function PointCloudViewer({ url }: { url: string }) {
       disposed = true;
       abort.abort();
       cancelAnimationFrame(raf);
+      stopResize?.();
       controls?.dispose();
       geometry?.dispose();
       material?.dispose();

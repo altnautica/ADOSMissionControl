@@ -9,9 +9,10 @@
  * live or idle. The main video canvas shows one feed; this is the "what other
  * eyes does this drone have" strip beside it.
  *
- * Honest by construction (Rule 44): every row is a real camera from the agent
+ * Honest by construction (no fabricated reading): every row is a real camera from the agent
  * capability probe, and its LIVE / IDLE state is the agent's own `streaming`
- * flag — never a fabricated thumbnail or a synthesized second feed. Only ONE
+ * flag; a camera the agent reports no flag for reads UNKNOWN (detection is not
+ * publication). Never a fabricated thumbnail or a synthesized second feed. Only ONE
  * WHEP stream is decoded, so idle cameras are shown as roster tiles, not fake
  * video. Self-gated: with fewer than two cameras there is nothing to roster
  * (the top-right CAM pill already names the single feed), so it renders null
@@ -38,14 +39,19 @@ export function CockpitCameraRoster() {
     <div className="camroster panel" data-cockpit-widget="camera-roster">
       <div className="rhead">Cameras</div>
       {cameras.map((cam, i) => {
-        const sub = [cam.type?.toUpperCase(), cam.resolution]
+        const sub = [
+          cam.type?.toUpperCase(),
+          cam.resolution === "unknown" ? null : cam.resolution,
+        ]
           .filter(Boolean)
           .join(" · ");
+        const badge =
+          cam.streaming === null ? "Unknown" : cam.streaming ? "Live" : "Idle";
         return (
           <div
             key={`${cam.name}-${i}`}
-            className={`crow${cam.streaming ? " live" : ""}`}
-            data-streaming={cam.streaming}
+            className={`crow${cam.streaming === true ? " live" : ""}`}
+            data-streaming={String(cam.streaming)}
           >
             <span className="dot" aria-hidden="true" />
             <span className="meta">
@@ -54,7 +60,7 @@ export function CockpitCameraRoster() {
               </span>
               {sub ? <span className="sub">{sub}</span> : null}
             </span>
-            <span className="badge">{cam.streaming ? "Live" : "Idle"}</span>
+            <span className="badge">{badge}</span>
           </div>
         );
       })}

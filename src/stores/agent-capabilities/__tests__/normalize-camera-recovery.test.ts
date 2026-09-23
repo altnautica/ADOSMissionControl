@@ -9,7 +9,7 @@ describe("normalizeCapabilities cameraUsbRecovery clamp", () => {
         state: "port_cycling",
         case: "present_wedged",
         attempts: 1,
-        maxAttempts: 3,
+        cooldownSeconds: 60,
         cameraPresent: false,
         expected: true,
         pppsCapable: true,
@@ -20,7 +20,7 @@ describe("normalizeCapabilities cameraUsbRecovery clamp", () => {
     expect(caps.cameraUsbRecovery?.state).toBe("port_cycling");
     expect(caps.cameraUsbRecovery?.case).toBe("present_wedged");
     expect(caps.cameraUsbRecovery?.attempts).toBe(1);
-    expect(caps.cameraUsbRecovery?.maxAttempts).toBe(3);
+    expect(caps.cameraUsbRecovery?.cooldownSeconds).toBe(60);
     expect(caps.cameraUsbRecovery?.cameraPresent).toBe(false);
     expect(caps.cameraUsbRecovery?.expected).toBe(true);
     expect(caps.cameraUsbRecovery?.pppsCapable).toBe(true);
@@ -28,16 +28,19 @@ describe("normalizeCapabilities cameraUsbRecovery clamp", () => {
     expect(caps.cameraUsbRecovery?.contentionPeer).toBe("1-1.2");
   });
 
-  it("accepts each known recovery state", () => {
+  it("accepts every state the agent's status route emits", () => {
+    // The agent's allowlist, including the cooldown between two attempts.
+    // Dropping "retrying" froze the page on the previous step for the whole
+    // cooldown.
     for (const state of [
       "idle",
       "monitoring",
       "rebinding",
       "port_cycling",
       "hub_resetting",
+      "retrying",
       "needs_hub_reset",
       "guard_blocked",
-      "exhausted",
     ] as const) {
       const caps = normalizeCapabilities({
         tier: 4,
@@ -53,12 +56,12 @@ describe("normalizeCapabilities cameraUsbRecovery clamp", () => {
       cameraUsbRecovery: {
         state: "monitoring",
         attempts: "nope",
-        maxAttempts: Infinity,
+        cooldownSeconds: Infinity,
         case: 123,
       },
     });
     expect(caps.cameraUsbRecovery?.attempts).toBe(0);
-    expect(caps.cameraUsbRecovery?.maxAttempts).toBe(0);
+    expect(caps.cameraUsbRecovery?.cooldownSeconds).toBe(0);
     // A non-string case drops to null rather than surfacing junk.
     expect(caps.cameraUsbRecovery?.case).toBeNull();
     // Missing booleans default to false.

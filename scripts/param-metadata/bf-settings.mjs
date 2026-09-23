@@ -97,7 +97,7 @@ const tableToArray = new Map(tableSymbols.map((sym, i) => [sym, arrayNames[i]]))
 
 // 3. Array bodies defined in settings.c → labels. Arrays defined in other
 //    files (currentMeterSourceNames, debugModeNames, *Hardware, …) are absent
-//    here → those tables ship without enum labels (Rule 44: omit, don't guess).
+//    here → those tables ship without enum labels (omit, don't guess).
 const arrayLabels = new Map();
 for (const m of settingsC.matchAll(/const char \* const (\w+)\[\]\s*=\s*\{([\s\S]*?)\};/g)) {
   const labels = [...m[2].matchAll(/"([^"]*)"/g)].map((x) => x[1]);
@@ -168,7 +168,7 @@ for (const row of splitRows(vtBody)) {
     if (mm) { const lo = intOrNull(mm[1]), hi = intOrNull(mm[2]); if (lo !== undefined && hi !== undefined) range = { min: lo, max: hi }; }
     else if (mu) { const lo = intOrNull(mu[1]), hi = intOrNull(mu[2]); if (lo !== undefined && hi !== undefined) range = { min: lo, max: hi }; }
     else if (u32) { const hi = intOrNull(u32[1]); if (hi !== undefined) range = { min: 0, max: hi }; }
-    // d32Max (signed max) intentionally left without a range — Rule 44 (min is not sourced).
+    // d32Max (signed max) intentionally left without a range (min is not sourced).
   }
 
   seen.add(name);
@@ -177,7 +177,7 @@ for (const row of splitRows(vtBody)) {
 
 params.sort((a, b) => a.name.localeCompare(b.name));
 
-// ── Anchor validation (Rule 44: fail loudly on a parse regression) ──
+// ── Anchor validation (fail loudly on a parse regression) ──
 const byName = new Map(params.map((p) => [p.name, p]));
 function assertAnchor(name, expectType, expectLabel) {
   const p = byName.get(name);

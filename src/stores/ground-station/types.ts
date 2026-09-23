@@ -30,40 +30,6 @@ import type {
   WifiScanResult,
 } from "@/lib/api/ground-station-api";
 
-export interface GroundStationLinkHealth {
-  rssi_dbm: number | null;
-  bitrate_mbps: number | null;
-  fec_rec: number;
-  fec_lost: number;
-  channel: number | null;
-}
-
-export type WfbBitrateProfile = "low-latency" | "balanced" | "long-range";
-
-export interface WfbConfig {
-  channel: number;
-  bitrate_profile: WfbBitrateProfile;
-  /** Optional regulatory/transmit-power request, in dBm. Caller-supplied;
-   *  the agent clamps to the per-driver maximum and reports back the
-   *  effective value via the radio status block. */
-  tx_power_dbm?: number;
-  /** Optional MCS index for the radio link; agent rejects unsupported
-   *  values per the active driver. */
-  mcs_index?: number;
-}
-
-export type GroundStationProfile =
-  | "ground_station"
-  | "drone"
-  | "auto"
-  | "unconfigured";
-
-export interface GroundStationStatus {
-  paired_drone: string | null;
-  profile: GroundStationProfile;
-  uplink_active: string | null;
-}
-
 export interface PairSlice {
   loading: boolean;
   result: PairResult | null;
@@ -90,6 +56,9 @@ export interface BluetoothSlice {
   scanning: boolean;
   scan_results: BluetoothDevice[];
   paired: BluetoothDevice[];
+  /** Agent origin `paired` belongs to; a list read for another origin is
+   * dropped so a late read never lists the previous node's devices. */
+  pairedFor: string | null;
   pairing_mac: string | null;
   error: string | null;
 }
@@ -153,8 +122,20 @@ export interface PeripheralsSlice {
 
 // Distributed receive + mesh slices.
 
+/**
+ * The role as the GCS knows it. A full role read carries every field; the
+ * cloud heartbeat reports only the current role, so the fields it does not
+ * carry stay null (unknown) instead of being filled with defaults.
+ */
+export interface RoleSnapshot {
+  current: RoleInfo["current"];
+  configured: RoleInfo["configured"] | null;
+  supported: RoleInfo["supported"] | null;
+  mesh_capable: boolean | null;
+}
+
 export interface RoleSlice {
-  info: RoleInfo | null;
+  info: RoleSnapshot | null;
   loading: boolean;
   switching: boolean;
   error: string | null;
@@ -172,6 +153,9 @@ export interface DistributedRxSlice {
   relayStatus: WfbRelayStatus | null;
   pairingWindowOpen: boolean;
   pairingWindowExpiresAt: number | null;
+  /** The open window's six-digit join code, read from the receiver; null when
+   * no window is open or none has been read yet. */
+  pairingCode: string | null;
   pendingRequests: PairingPendingRequest[];
   loading: boolean;
   error: string | null;

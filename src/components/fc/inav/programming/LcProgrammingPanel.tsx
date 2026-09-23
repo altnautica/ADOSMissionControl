@@ -35,7 +35,7 @@ function operandLabel(type: number, value: number): string {
 export function LcProgrammingPanel() {
   const [source, setSource] = useState(EXAMPLE);
   const [result, setResult] = useState<CompiledProgram | null>(null);
-  const loadConditions = useProgrammingStore((s) => s.loadConditions);
+  const placeProgram = useProgrammingStore((s) => s.placeProgram);
   const { toast } = useToast();
 
   const compiled = result && !result.error ? result.conditions.filter((c) => c.enabled) : [];
@@ -44,8 +44,15 @@ export function LcProgrammingPanel() {
 
   const handleLoad = () => {
     if (!result || result.error) return;
-    loadConditions(result.conditions);
-    toast(`Loaded ${compiled.length} logic conditions — review and Write in the Logic Conditions tab`, "success");
+    const placed = placeProgram(compiled);
+    if ("error" in placed) {
+      toast(placed.error, "error");
+      return;
+    }
+    toast(
+      `Placed ${compiled.length} logic conditions in free slots ${placed.slots.join(", ")}; review and Write in the Logic Conditions tab`,
+      "success",
+    );
   };
 
   return (
@@ -58,8 +65,9 @@ export function LcProgrammingPanel() {
         </div>
 
         <p className="text-[10px] text-text-tertiary">
-          Write expressions and compile them into Logic Condition slots. Compiled conditions are loaded
-          into the Logic Conditions editor for review; they are written to the FC from there.
+          Write expressions and compile them into Logic Conditions. Loading places them in the slots the
+          flight controller has free, leaving every condition already in use as it is; review them in the
+          Logic Conditions editor and write them to the FC from there.
         </p>
 
         <textarea

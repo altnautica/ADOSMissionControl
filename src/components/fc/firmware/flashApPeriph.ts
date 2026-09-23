@@ -16,7 +16,7 @@ import {
   MavlinkCanForwardTransport,
   type CanTransport,
 } from "@/lib/protocol/transport/can-transport";
-import { enterSlcanMode } from "@/lib/protocol/transport/slcan-flash-arbiter";
+import { enterSlcanMode, SLCAN_TIMEOUT_MAX_S } from "@/lib/protocol/transport/slcan-flash-arbiter";
 import { DroneCanOtaOrchestrator } from "@/lib/dronecan/ota";
 import { startDroneCanSession } from "@/lib/dronecan/session";
 import { ApPeriphManifest } from "@/lib/protocol/firmware/ap-periph-manifest";
@@ -38,7 +38,7 @@ export interface FlashApPeriphParams {
   transport?: "slcan" | "can-forward";
   /** SLCAN bitrate in bits/s (only used when `transport === "slcan"`). */
   slcanBitrate?: number;
-  /** SLCAN auto-revert timeout in seconds (only used when `transport === "slcan"`). */
+  /** SLCAN auto-revert timeout in seconds, 0..127 (only used when `transport === "slcan"`). */
   slcanTimeoutSec?: number;
 }
 
@@ -59,7 +59,7 @@ export async function flashApPeriph(
     bus = 1,
     transport: transportKind = "can-forward",
     slcanBitrate = 1_000_000,
-    slcanTimeoutSec = 300,
+    slcanTimeoutSec = SLCAN_TIMEOUT_MAX_S,
   } = params;
 
   // 1. Fetch the firmware payload. Do this BEFORE we mess with the CAN

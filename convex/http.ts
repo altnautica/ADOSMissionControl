@@ -5,6 +5,7 @@ import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { snakeToCamelObject } from "./heartbeatCasing";
 import { agentKeyMatches, constantTimeEqual } from "./lib/credentials";
+import { sourceBucketKey } from "./lib/rateLimit";
 import { pushStatusArgs } from "./cmdDroneStatus";
 import {
   booleanField,
@@ -94,37 +95,6 @@ async function readJsonObject(request: Request): Promise<Record<string, unknown>
 
 // ── ADOS Pairing: agent registers its pairing code ──────────
 
-/**
- * Salted digest of the request's source address, for use as a rate-limit
- * bucket key only.
- *
- * Hashed rather than stored raw: the bucket table would otherwise be a log of
- * every address that ever touched the pairing endpoint, which is personal data
- * this system has no reason to retain. Salted with the same relay secret the
- * admin route uses so the digest is not a rainbow-table lookup of the IPv4
- * space; falls back to an unsalted digest when unconfigured, which is still
- * fine for bucketing.
- *
- * `x-forwarded-for` is a hop list; the FIRST entry is the client as seen by the
- * outermost proxy. Convex terminates TLS in front of this handler, so there is
- * always at least one hop. A request arriving with no header at all buckets
- * into one shared "unknown" pool rather than escaping the limit entirely.
- */
-async function sourceBucketKey(request: Request): Promise<string> {
-  const forwarded = request.headers.get("x-forwarded-for") ?? "";
-  const first = forwarded.split(",")[0]?.trim();
-  const source = first || "unknown";
-  const salt = process.env.MQTT_AUTH_RELAY_SECRET ?? "";
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(`${salt}:${source}`),
-  );
-  return [...new Uint8Array(digest)]
-    .slice(0, 12)
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-
 http.route({
   path: "/pairing/register",
   method: "POST",
@@ -145,35 +115,34 @@ http.route({
       );
     }
 
-    let result;
-    try {
-      result = await ctx.runMutation(internal.cmdPairing.registerAgent, {
-        clientKey: await sourceBucketKey(request),
-        deviceId,
-        pairingCode,
-        apiKey,
-        name: stringField(body, "name"),
-        version: stringField(body, "version"),
-        board: stringField(body, "board"),
-        tier: numberField(body, "tier"),
-        os: stringField(body, "os"),
-        mdnsHost: stringField(body, "mdnsHost"),
-        localIp: stringField(body, "localIp"),
-        pairingCodeExpiresAt: numberField(body, "pairingCodeExpiresAt"),
+    const result = await ctx.runMutation(internal.cmdPairing.registerAgent, {
+      clientKey: await sourceBucketKey(request),
+      deviceId,
+      pairingCode,
+      apiKey,
+      name: stringField(body, "name"),
+      version: stringField(body, "version"),
+      board: stringField(body, "board"),
+      tier: numberField(body, "tier"),
+      os: stringField(body, "os"),
+      mdnsHost: stringField(body, "mdnsHost"),
+      localIp: stringField(body, "localIp"),
+      pairingCodeExpiresAt: numberField(body, "pairingCodeExpiresAt"),
+    });
+
+    // A lockout is a distinct, temporary, actionable condition. Reporting it
+    // as a generic failure would leave an operator unable to tell a throttled
+    // beacon from a broken backend, which is the same indistinguishable
+    // failure the limiter exists to remove. The mutation returns the refusal
+    // (rather than throwing) so the recorded attempt commits.
+    if ("retryAfterMs" in result) {
+      return new Response(JSON.stringify({ error: "rate_limited" }), {
+        status: 429,
+        headers: {
+          ...jsonHeaders,
+          "Retry-After": String(Math.ceil(result.retryAfterMs / 1000)),
+        },
       });
-    } catch (err) {
-      // A lockout is a distinct, temporary, actionable condition. Reporting it
-      // as a generic 500 would leave an operator unable to tell a throttled
-      // beacon from a broken backend, which is the same indistinguishable
-      // failure the limiter exists to remove.
-      const message = err instanceof Error ? err.message : String(err);
-      if (message.startsWith("rate_limited")) {
-        return new Response(JSON.stringify({ error: "rate_limited" }), {
-          status: 429,
-          headers: jsonHeaders,
-        });
-      }
-      throw err;
     }
 
     return new Response(JSON.stringify(result), {
@@ -465,7 +434,6 @@ http.route({
       videoRestartAttempts: numberField(body, "videoRestartAttempts"),
       mavlinkWsPort: numberField(body, "mavlinkWsPort"),
       mavlinkWsUrl: stringField(body, "mavlinkWsUrl"),
-      mavlinkWsUrlPrev: stringField(body, "mavlinkWsUrlPrev"),
       // LAN-routable manual-connection URLs the operator can dial directly.
       manualConnectionUrls: manualConnectionUrlsField(body),
       // Cloud posture + the two remote-reach URLs. The drone card renders a
@@ -650,13 +618,10 @@ http.route({
 
 // ── Cloud Relay: agent polls for pending commands ──────────
 //
-// The poll hands out the queued rows the agent may still run (a row past its
-// delivery window is failed instead) and stamps each first hand-out; the agent
-// then executes and acks each. An at-most-once delivery path exists in
-// cmdDroneCommands.claimCommands (it leases each row before execution so a
-// retried poll cannot re-return an in-flight command, bounded by an attempt
-// budget). Switching this route to claimCommands is a coordinated change with
-// the agent's claim-before-execute loop and is intentionally not made here.
+// The poll leases the rows the agent may still run (cmdDroneCommands.
+// claimCommands): a leased row is not handed out again while its lease holds,
+// a row past its delivery window is failed instead, and the agent executes and
+// acks each.
 
 http.route({
   path: "/agent/commands",
@@ -682,7 +647,7 @@ http.route({
       );
     }
 
-    const commands = await ctx.runMutation(internal.cmdDroneCommands.takeDeliverableCommands, { deviceId });
+    const commands = await ctx.runMutation(internal.cmdDroneCommands.claimCommands, { deviceId });
     return new Response(JSON.stringify({ commands }), {
       status: 200,
       headers: jsonHeaders,
@@ -721,10 +686,20 @@ http.route({
       );
     }
 
+    // Only a terminal verdict the agent actually stated is recorded; a missing
+    // or unknown status is refused rather than read as success.
+    const ackStatus = commandStatusField(status);
+    if (!ackStatus) {
+      return new Response(
+        JSON.stringify({ error: "status must be completed or failed" }),
+        { status: 400, headers: jsonHeaders }
+      );
+    }
+
     const ackResult = await ctx.runMutation(internal.cmdDroneCommands.ackCommand, {
       commandId: commandId as Id<"cmd_droneCommands">,
       deviceId,
-      status: commandStatusField(status),
+      status: ackStatus,
       result,
       data,
     });

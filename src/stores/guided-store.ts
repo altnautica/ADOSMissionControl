@@ -20,8 +20,9 @@ export interface GuidedTarget {
   lon: number;
   alt: number;       // meters relative to home
   timestamp: number;  // when the vehicle accepted the reposition
-  /** "goto" for Fly Here; "land" while Land Here repositions before descending. */
-  purpose: "goto" | "land";
+  /** "goto" for Fly Here; "land" while Land Here repositions before descending;
+   * "loiter" while Loiter Here repositions before switching to LOITER. */
+  purpose: "goto" | "land" | "loiter";
 }
 
 export interface GuidedConfirmPending {

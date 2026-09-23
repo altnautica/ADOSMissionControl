@@ -78,13 +78,30 @@ describe("node feature dots", () => {
     expect(typeof nodeConsole(dot.stateKey)).toBe("string");
   });
 
-  it("an unverifiable signal carries the honest no-reading state key", () => {
-    for (const signal of ALL_SIGNALS.filter((s) => s !== "link")) {
-      const dot = resolveFeatureDot(signal, { lastSeen: Date.now() });
-      expect(dot.known, signal).toBe(false);
-      expect(dot.stateKey, signal).toBe("signalState.unknown");
+  it("every pinnable signal resolves to a reading on a live node that reports it", () => {
+    const reporting = { lastSeen: Date.now(), fcConnected: true };
+    for (const [profile, signals] of Object.entries(SIGNAL_ALLOWLIST)) {
+      for (const signal of signals) {
+        expect(resolveFeatureDot(signal, reporting).known, `${profile}/${signal}`).toBe(true);
+      }
     }
+  });
+
+  it("reads the FC link from the agent's report, including an MSP transport", () => {
+    const now = Date.now();
+    expect(resolveFeatureDot("fc", { lastSeen: now, fcConnected: true }).level).toBe("good");
+    expect(resolveFeatureDot("fc", { lastSeen: now, transportOpen: true }).level).toBe("good");
+    const down = resolveFeatureDot("fc", { lastSeen: now, fcConnected: false });
+    expect(down.known).toBe(true);
+    expect(down.stateKey).toBe("signalState.offline");
+  });
+
+  it("an FC verdict from a node that is no longer heard from is no reading", () => {
+    const dot = resolveFeatureDot("fc", { lastSeen: Date.now() - 600_000, fcConnected: true });
+    expect(dot.known).toBe(false);
+    expect(dot.stateKey).toBe("signalState.unknown");
     expect(typeof nodeConsole("signalState.unknown")).toBe("string");
+    expect(resolveFeatureDot("fc", { lastSeen: Date.now() }).known).toBe(false);
   });
 
   it("every status band a dot can carry has a state key", () => {

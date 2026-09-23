@@ -1,9 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 const encodeCommandLong = vi.fn<(...args: number[]) => Uint8Array>(() => new Uint8Array(42));
+const encodeCommandInt = vi.fn<(...args: number[]) => Uint8Array>(() => new Uint8Array(47));
 
 vi.mock('@/lib/protocol/mavlink-encoder', () => ({
   encodeCommandLong: (...args: number[]) => encodeCommandLong(...args),
+  encodeCommandInt: (...args: number[]) => encodeCommandInt(...args),
 }));
 
 import { CommandQueue, MAV_RESULT } from '@/lib/protocol/command-queue';
@@ -18,6 +20,7 @@ describe('CommandQueue', () => {
     queue = new CommandQueue(3000);
     sendFn = vi.fn<(data: Uint8Array) => void>();
     encodeCommandLong.mockClear();
+    encodeCommandInt.mockClear();
   });
 
   afterEach(() => {
@@ -418,5 +421,47 @@ describe('CommandQueue', () => {
     queue.handleAck(400, MAV_RESULT.ACCEPTED);
     const result = await promise;
     expect(result.success).toBe(true);
+  });
+
+  // ── COMMAND_INT_ONLY fallback ──
+
+  it('re-sends a COMMAND_LONG as COMMAND_INT when the vehicle acks COMMAND_INT_ONLY', async () => {
+    const promise = queue.sendCommand(400, [1, 21196, 0, 0, 3, 4, 5], sendFn, 1, 1, 255, 190);
+    queue.handleAck(400, MAV_RESULT.COMMAND_INT_ONLY);
+    expect(sendFn).toHaveBeenCalledTimes(2);
+    // (targetSys, targetComp, frame, command, current, autocontinue, p1..p4, x, y, z, sysId, compId)
+    expect(encodeCommandInt).toHaveBeenCalledWith(1, 1, 3, 400, 0, 0, 1, 21196, 0, 0, 3, 4, 5, 255, 190);
+
+    queue.handleAck(400, MAV_RESULT.ACCEPTED);
+    const result = await promise;
+    expect(result.success).toBe(true);
+  });
+
+  it('scales lat/lon by 1e7 when converting a location command', () => {
+    void queue.sendCommand(179, [0, 0, 0, 0, 12.5, 77.25, 900], sendFn, 1, 1, 255, 190);
+    queue.handleAck(179, MAV_RESULT.COMMAND_INT_ONLY);
+    const call = encodeCommandInt.mock.calls[0];
+    expect(call[2]).toBe(0); // MAV_FRAME_GLOBAL for DO_SET_HOME
+    expect(call[10]).toBe(125000000);
+    expect(call[11]).toBe(772500000);
+  });
+
+  it('does not loop when a COMMAND_INT resend is itself refused', async () => {
+    const promise = queue.sendCommand(400, params, sendFn, 1, 1, 255, 190);
+    queue.handleAck(400, MAV_RESULT.COMMAND_INT_ONLY);
+    queue.handleAck(400, MAV_RESULT.COMMAND_INT_ONLY);
+    const result = await promise;
+    expect(sendFn).toHaveBeenCalledTimes(2);
+    expect(result.success).toBe(false);
+    expect(result.message).toBe('Command must be sent as COMMAND_INT');
+  });
+
+  it('names the newer MAV_RESULT codes instead of reporting them unknown', async () => {
+    for (const code of [7, 9, 10]) {
+      const promise = queue.sendCommand(400, params, sendFn, 1, 1, 255, 190);
+      queue.handleAck(400, code);
+      const result = await promise;
+      expect(result.message).not.toMatch(/Unknown result code/);
+    }
   });
 });

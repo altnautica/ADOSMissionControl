@@ -76,7 +76,7 @@ export const enqueueCommand = mutation({
 const MAX_DELIVERY_BATCH = 25;
 
 // Lease window for a claimed ("delivering") row. If the agent crashes or
-// disconnects between claim and ack, the lease expires after this window and
+// loses its ack between claim and ack, the lease expires after this window and
 // the next poll may reclaim the row.
 const CLAIM_LEASE_MS = 60_000;
 
@@ -84,70 +84,32 @@ const CLAIM_LEASE_MS = 60_000;
 // row is failed as undeliverable so a non-idempotent command cannot loop.
 const MAX_DELIVERY_ATTEMPTS = 5;
 
+// Delivery window for a row queued without an explicit TTL. A command the node
+// has not taken within it is failed rather than run long after the operator
+// who queued it stopped watching.
+const DEFAULT_DELIVERY_WINDOW_MS = 10 * 60 * 1000;
+
 /**
- * Hand the agent its deliverable commands (called by the agent's poll route).
+ * Claim the device's deliverable commands (the agent's poll route). The only
+ * delivery path.
  *
- * Returns the device's pending rows in queue order. A row whose delivery
- * window has closed is never handed out: if the agent never received it, it is
- * failed as expired; if it was handed out in time, it is left to its pending
- * ack. The first hand-out of a row stamps `deliveredAt`, which is how a watcher
- * tells "the node has it" apart from "still queued".
- */
-export const takeDeliverableCommands = internalMutation({
-  args: { deviceId: v.string() },
-  handler: async (ctx, { deviceId }) => {
-    const now = Date.now();
-    const pending = await ctx.db
-      .query("cmd_droneCommands")
-      .withIndex("by_deviceId_status", (q) =>
-        q.eq("deviceId", deviceId).eq("status", "pending")
-      )
-      .collect();
-
-    const deliverable: Array<typeof pending[number]> = [];
-    for (const row of pending) {
-      if (row.expiresAt !== undefined && row.expiresAt <= now) {
-        if (row.deliveredAt === undefined) {
-          await ctx.db.patch(row._id, {
-            status: "failed",
-            result: { success: false, message: EXPIRED_BEFORE_DELIVERY },
-            completedAt: now,
-          });
-        }
-        continue;
-      }
-      if (row.deliveredAt === undefined) {
-        await ctx.db.patch(row._id, { deliveredAt: now });
-        deliverable.push({ ...row, deliveredAt: now });
-      } else {
-        deliverable.push(row);
-      }
-    }
-    return deliverable;
-  },
-});
-
-/**
- * Claim a batch of commands for execution (called by the agent before it
- * runs them). Atomically leases each row by flipping pending → delivering
- * with a fresh `claimedAt` and an incremented `attempts`, then returns the
- * claimed set. The agent executes the returned commands and acks each to a
+ * Atomically leases each row by flipping pending -> delivering with a fresh
+ * `claimedAt` and an incremented `attempts`; the first claim also stamps
+ * `deliveredAt`, which is how a watcher tells "the node has it" apart from
+ * "still queued". The agent executes the returned commands and acks each to a
  * terminal status.
  *
- * Two reliability properties:
+ *  - A row still inside its lease belongs to an in-flight agent run and is not
+ *    handed out again, so a slow ack never re-executes a command.
+ *  - A delivering row whose lease expired (the agent crashed or its ack was
+ *    lost) is re-leased, bounded by `MAX_DELIVERY_ATTEMPTS`.
+ *  - A row past its delivery window (`expiresAt`, or `createdAt` plus the
+ *    default window) is failed, never leased: a command queued while the node
+ *    was away must not execute when it comes back.
  *
- *  - A "delivering" row whose lease has expired (the agent crashed or lost
- *    the network between claim and ack) is reclaimable, so a command is not
- *    stranded forever. It is re-leased, not duplicated, because the row id is
- *    stable and only one claim window can hold a fresh lease at a time.
- *  - A row that has been claimed `MAX_DELIVERY_ATTEMPTS` times without a
- *    terminal ack is failed as undeliverable rather than re-leased, so a
- *    command the agent keeps failing to ack cannot loop indefinitely. This
- *    bounds the at-least-once window for non-idempotent commands.
- *
- * The Convex mutation runs in a single transaction, so two concurrent polls
- * for the same device serialize: the first claim flips the row out of the
- * claimable set the second one sees.
+ * The mutation runs in one transaction, so two concurrent polls for the same
+ * device serialize: the first claim moves the row out of the set the second
+ * one sees.
  */
 export const claimCommands = internalMutation({
   args: { deviceId: v.string() },
@@ -168,8 +130,6 @@ export const claimCommands = internalMutation({
       )
       .collect();
 
-    // Reclaimable = a delivering row whose lease has expired. A row still
-    // inside its lease window belongs to an in-flight agent run; leave it.
     const reclaimable = delivering.filter(
       (row) => (row.claimedAt ?? 0) + CLAIM_LEASE_MS <= now,
     );
@@ -181,8 +141,8 @@ export const claimCommands = internalMutation({
 
     const claimed: Array<typeof candidates[number]> = [];
     for (const row of candidates) {
-      // A closed delivery window is final: the row is failed, never leased.
-      if (row.expiresAt !== undefined && row.expiresAt <= now) {
+      const deadline = row.expiresAt ?? row.createdAt + DEFAULT_DELIVERY_WINDOW_MS;
+      if (deadline <= now) {
         await ctx.db.patch(row._id, {
           status: "failed",
           result: {
@@ -196,10 +156,8 @@ export const claimCommands = internalMutation({
         });
         continue;
       }
-      const nextAttempts = (row.attempts ?? 0) + 1;
-      if (nextAttempts > MAX_DELIVERY_ATTEMPTS) {
-        // Out of attempts: fail the row instead of re-leasing it so a
-        // command the agent cannot ack does not re-execute forever.
+      const attempts = (row.attempts ?? 0) + 1;
+      if (attempts > MAX_DELIVERY_ATTEMPTS) {
         await ctx.db.patch(row._id, {
           status: "failed",
           result: {
@@ -210,12 +168,14 @@ export const claimCommands = internalMutation({
         });
         continue;
       }
+      const deliveredAt = row.deliveredAt ?? now;
       await ctx.db.patch(row._id, {
         status: "delivering",
         claimedAt: now,
-        attempts: nextAttempts,
+        attempts,
+        deliveredAt,
       });
-      claimed.push({ ...row, status: "delivering", claimedAt: now, attempts: nextAttempts });
+      claimed.push({ ...row, status: "delivering", claimedAt: now, attempts, deliveredAt });
     }
 
     return claimed;
@@ -224,10 +184,18 @@ export const claimCommands = internalMutation({
 
 /**
  * Acknowledge a command (called by agent via HTTP).
+ *
+ * Only a row still awaiting its verdict (pending or delivering) takes an ack.
+ * A row already terminal — failed as expired, cancelled by the GCS, or acked
+ * once — keeps its verdict: a late ack is ignored, never allowed to overwrite
+ * it.
  */
 export const ackCommand = internalMutation({
   args: {
     commandId: v.id("cmd_droneCommands"),
+    // Required, so the row can be bound to the device whose API key the HTTP
+    // route just verified. Without it an agent holding one device's valid key
+    // could ack, and write arbitrary `data` into, any other device's row.
     deviceId: v.string(),
     status: v.union(v.literal("completed"), v.literal("failed")),
     result: v.optional(v.object({
@@ -238,6 +206,9 @@ export const ackCommand = internalMutation({
   },
   handler: async (ctx, { commandId, deviceId, status, result, data }) => {
     const command = await requireCommandForDevice(ctx, commandId, deviceId);
+    if (command.status !== "pending" && command.status !== "delivering") {
+      return { ok: true, ignored: true };
+    }
     await ctx.db.patch(commandId, {
       status,
       result,

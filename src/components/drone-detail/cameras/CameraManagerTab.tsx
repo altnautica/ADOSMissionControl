@@ -118,7 +118,7 @@ export function CameraManagerTab({ droneId }: { droneId: string }) {
         await client.setCameraRoster(legs);
         setRestartPending(droneId, true);
         // The agent restarts the pipeline; re-read after so the roster shows
-        // the true persisted + live state, not the optimistic bridge (Rule 44).
+        // the true persisted + live state, not the optimistic bridge (no fabricated reading).
         if (restartTimerRef.current !== null) {
           clearTimeout(restartTimerRef.current);
         }

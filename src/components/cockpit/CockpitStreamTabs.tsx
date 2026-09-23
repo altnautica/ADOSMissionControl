@@ -114,7 +114,7 @@ export function CockpitStreamTabs({ droneId }: CockpitStreamTabsProps) {
           const isActive = s.id === active;
           const isDead = s.live === false;
           // A dead leg names its state so the reason it is disabled is not a
-          // silent gray-out (Rule 44 — the surface says why).
+          // silent gray-out (the surface says why).
           const hint = isDead
             ? `${t("selectStream", { label })} — ${t("pipNoSignal")}`
             : t("selectStream", { label });

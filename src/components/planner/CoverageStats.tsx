@@ -1,9 +1,9 @@
 /**
  * @module CoverageStats
- * @description Survey coverage statistics panel. Derives image count, swept
- * ground coverage, front/side overlap, and line spacing from the generated
- * survey waypoints, camera profile, and altitude, and flags a coverage gap when
- * the line spacing is too wide for the target side overlap.
+ * @description Survey coverage statistics panel. Derives image count and front
+ * overlap from the camera trigger distance, side overlap and line spacing from
+ * the survey's navigation points, and swept ground coverage, and flags a
+ * coverage gap when the line spacing is too wide for the target side overlap.
  * @license GPL-3.0-only
  */
 "use client";
@@ -47,7 +47,7 @@ export function CoverageStats({ camera, altitude, minSideOverlap = 0.6 }: Covera
   const rows: Array<[string, string]> = [
     [t("coverage.images"), String(stats.imageCount)],
     [t("coverage.groundCoverage"), formatArea(stats.groundCoverageM2)],
-    [t("coverage.frontOverlap"), `${stats.overlapFrontPct.toFixed(0)}%`],
+    [t("coverage.frontOverlap"), stats.overlapFrontPct === null ? "—" : `${stats.overlapFrontPct.toFixed(0)}%`],
     [t("coverage.sideOverlap"), `${stats.overlapSidePct.toFixed(0)}%`],
     [t("coverage.lineSpacing"), `${stats.lineSpacingM.toFixed(1)} m`],
   ];

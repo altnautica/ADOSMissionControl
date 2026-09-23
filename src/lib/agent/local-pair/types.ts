@@ -92,6 +92,7 @@ export type CodeClaimResult =
         | "device_owned_by_other"
         | "invalid_browser_session";
     }
+  | { error: "rate_limited"; retryAfterMs: number }
   | {
       error?: null;
       deviceId: string;

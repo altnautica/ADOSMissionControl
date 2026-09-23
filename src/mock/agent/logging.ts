@@ -158,14 +158,6 @@ function mockTail(replay: number, handlers: LogTailHandlers): LogTail {
 }
 
 export class MockLoggingService {
-  resetTier(): void {
-    /* no-op in demo */
-  }
-
-  get resolvedSource(): "logd" {
-    return "logd";
-  }
-
   async query<T = LoggingRow>(
     params: QueryParams = {},
   ): Promise<LoggingEnvelope<T>> {

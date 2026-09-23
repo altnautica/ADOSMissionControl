@@ -5,11 +5,12 @@
  * @description The one polling loop every ground-station tab uses.
  *
  * A fixed `setInterval` queues overlapping requests onto an agent that is
- * already slow, which is exactly the load that made it slow; and with no
- * failure backoff an unreachable agent is hammered at full cadence for as long
- * as the tab is open. This re-arms a `setTimeout` in a `finally`, so there is
- * at most one request in flight, the cadence backs off once the agent stops
- * answering, and a hidden document costs nothing.
+ * already slow, which is exactly the load that made it slow. This re-arms a
+ * `setTimeout` once each request settles, so there is at most one request in
+ * flight and later responses can never land out of order. The cadence is
+ * fixed: a node that stops answering is retried at the same interval, so a
+ * rebooted ground station is noticed on the next tick. A hidden document
+ * costs nothing.
  *
  * The callback is held in a ref written from an effect (never during render —
  * a discarded concurrent render would leave the ref pointing at a URL that was
@@ -22,7 +23,6 @@ import {
   groundStationApiFromAgent,
   type GroundStationApi,
 } from "@/lib/api/ground-station-api";
-import { nextPollDelay } from "@/stores/agent-connection/poll-backoff";
 
 export function useGroundStationPoll(
   agentUrl: string | null,
@@ -43,37 +43,24 @@ export function useGroundStationPoll(
     if (!api) return;
 
     let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    let failures = 0;
-
-    const arm = (delay: number) => {
-      if (cancelled) return;
-      timer = setTimeout(tick, delay);
-    };
+    let timer: ReturnType<typeof setTimeout> | undefined;
 
     const tick = async () => {
       if (cancelled) return;
-      if (document.hidden) {
-        // Nothing on screen to keep fresh; check back at the base cadence.
-        arm(baseMs);
-        return;
+      if (!document.hidden) {
+        try {
+          await runRef.current(api);
+        } catch {
+          // The store each loader writes owns the operator-visible error.
+        }
       }
-      try {
-        await runRef.current(api);
-        failures = 0;
-      } catch {
-        // The store each loader writes owns the operator-visible error; the
-        // loop's only job is to slow down rather than to report.
-        failures += 1;
-      } finally {
-        arm(nextPollDelay(failures, baseMs));
-      }
+      if (!cancelled) timer = setTimeout(tick, baseMs);
     };
 
     void tick();
     return () => {
       cancelled = true;
-      clearTimeout(timer ?? undefined);
+      clearTimeout(timer);
     };
   }, [agentUrl, apiKey, baseMs]);
 }

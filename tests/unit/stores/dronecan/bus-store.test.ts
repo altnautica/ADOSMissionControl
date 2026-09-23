@@ -43,6 +43,8 @@ describe("useDroneCanBusStore", () => {
         "Date",
         "setTimeout",
         "clearTimeout",
+        "setInterval",
+        "clearInterval",
         "requestAnimationFrame",
         "cancelAnimationFrame",
       ],
@@ -116,6 +118,23 @@ describe("useDroneCanBusStore", () => {
     expect(useDroneCanBusStore.getState().counters.fps).toBeGreaterThan(0);
   });
 
+  it("fps and errors/s fall to 0 once frames stop arriving", () => {
+    const { pushFrame } = useDroneCanBusStore.getState();
+    for (let i = 0; i < 50; i++) pushFrame(makeFrame({ error: i % 10 === 0 }));
+    vi.advanceTimersByTime(1_000);
+    flushFrame();
+    expect(useDroneCanBusStore.getState().counters.fps).toBe(50);
+    expect(useDroneCanBusStore.getState().counters.errorsPs).toBe(5);
+
+    // No frames for the next window: the rate must decay, not freeze.
+    vi.advanceTimersByTime(1_000);
+    flushFrame();
+    const after = useDroneCanBusStore.getState();
+    expect(after.counters.fps).toBe(0);
+    expect(after.counters.errorsPs).toBe(0);
+    expect(after.lastFrameAt).toBe(new Date(2026, 0, 1, 12, 0, 0).getTime());
+  });
+
   it("clear() resets buffer and counters", () => {
     const { pushFrame } = useDroneCanBusStore.getState();
     pushFrame(makeFrame({ dir: "in", payload: new Uint8Array(8) }));
@@ -123,5 +142,6 @@ describe("useDroneCanBusStore", () => {
     const after = useDroneCanBusStore.getState();
     expect(after.frames.length).toBe(0);
     expect(after.counters.bytesIn).toBe(0);
+    expect(after.lastFrameAt).toBeNull();
   });
 });

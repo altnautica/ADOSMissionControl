@@ -16,7 +16,7 @@ import { getRecentConnections } from "@/lib/recent-connections";
 import { WebSerialTransport } from "@/lib/protocol/transport/webserial";
 import { WebSocketTransport } from "@/lib/protocol/transport/websocket";
 import { createFcAdapter } from "@/lib/protocol/select-fc-adapter";
-import { serialPortManager } from "@/lib/serial-port-manager";
+import { matchKnownPort, serialPortManager } from "@/lib/serial-port-manager";
 import { pairedAgentDeviceIdForUrl } from "@/lib/agent/paired-agent-match";
 import { resolveNodeId } from "@/lib/agent/node-id";
 
@@ -50,6 +50,13 @@ export function useAutoReconnect() {
       // reconnect this manager is actually going to run.
       if (manager.startReconnect(droneId, droneName, meta)) {
         toast(`${droneName} disconnected — reconnecting...`, "warning");
+      } else if (meta.type === "ble") {
+        // The browser only opens a Bluetooth device from an operator gesture,
+        // so a BLE link cannot be re-dialled in the background.
+        toast(
+          `Bluetooth link to ${droneName} lost. Reconnect it from the Connect dialog.`,
+          "warning",
+        );
       }
     });
 
@@ -99,13 +106,21 @@ export function useAutoReconnect() {
           addDrone(id, name, adapter, transport, vehicleInfo, {
             type: "websocket",
             url: last.url,
+            firmwareType: last.firmwareType,
           });
           toast(`Auto-connected to ${name}`, "success");
         } else if (last.type === "serial") {
-          const ports = await serialPortManager.getKnownPorts();
-          if (ports.length === 0) return;
+          // Only the port that carried this link, never whichever permitted
+          // port is listed first; with no unique match there is nothing to
+          // open without asking.
+          const port = matchKnownPort(
+            await serialPortManager.getKnownPorts(),
+            last.portVendorId,
+            last.portProductId,
+          );
+          if (!port) return;
           const transport = new WebSerialTransport();
-          await transport.connectToPort(ports[0].port, last.baudRate || 115200);
+          await transport.connectToPort(port.port, last.baudRate || 115200);
           const adapter = await createFcAdapter(last.firmwareType);
           const vehicleInfo = await adapter.connect(transport);
           const id = resolveNodeId();
@@ -113,8 +128,9 @@ export function useAutoReconnect() {
           addDrone(id, name, adapter, transport, vehicleInfo, {
             type: "serial",
             baudRate: last.baudRate,
-            portVendorId: ports[0].vendorId,
-            portProductId: ports[0].productId,
+            portVendorId: port.vendorId,
+            portProductId: port.productId,
+            firmwareType: last.firmwareType,
           });
           toast(`Auto-connected to ${name}`, "success");
         }

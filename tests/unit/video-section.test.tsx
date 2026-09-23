@@ -135,6 +135,13 @@ describe("VideoSection camera streams", () => {
     expect(screen.getByText(/rtsp:\/\/192\.168\.144\.25:8554\/main\.264/)).toBeTruthy();
     expect(screen.getByText("disabled")).toBeTruthy();
   });
+
+  it("offers no camera-block writers the multi-stream pipeline never reads", () => {
+    renderSection("drone", MULTI_CONFIG);
+    expect(screen.queryByLabelText("Encode bitrate (kbps)")).toBeNull();
+    expect(screen.queryByLabelText("Rotation")).toBeNull();
+    expect(screen.getByText(/each stream takes its orientation and bitrate/)).toBeTruthy();
+  });
 });
 
 describe("VideoSection writable fields", () => {
@@ -148,16 +155,9 @@ describe("VideoSection writable fields", () => {
     );
   });
 
-  it("writes the wire codec preference through the shared config writer", async () => {
-    const { setValue } = renderSection("drone");
-    // The Select is a button + portalled listbox, not a native <select>.
-    fireEvent.click(screen.getByLabelText("Wire codec preference"));
-    fireEvent.click(screen.getByText("H.265"));
-    await waitFor(() =>
-      expect(setValue).toHaveBeenCalledWith(
-        "video.camera.codec_preference",
-        "h265",
-      ),
-    );
+  it("offers no wire codec control, since the encoder sends H.264 only", () => {
+    renderSection("drone");
+    expect(screen.queryByLabelText("Wire codec preference")).toBeNull();
+    expect(screen.queryByText("H.265")).toBeNull();
   });
 });

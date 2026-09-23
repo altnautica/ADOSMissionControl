@@ -20,7 +20,7 @@ import {
   useVisionPipelines,
   type VisionPipeline,
 } from "@/hooks/use-vision-pipelines";
-import { useVisionEngineModels } from "@/hooks/use-vision-engine-models";
+import { useVisionEngineStatus } from "@/hooks/use-vision-engine-models";
 import type { EngineModel } from "@/lib/agent/vision-client";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import {
@@ -35,7 +35,7 @@ function ageLabel(ms: number): string {
 }
 
 /** Per-model inference metrics + honesty badge, shown only when the agent
- * forwards real values (Rule 44). A mock/CPU backend that reports
+ * forwards real values (no fabricated reading). A mock/CPU backend that reports
  * `isInferenceCapable === false` is badged as such rather than implying it
  * produces real detections. Renders nothing when there's nothing truthful. */
 function ModelMetricsLine({ model }: { model?: EngineModel }) {
@@ -69,7 +69,7 @@ function ModelMetricsLine({ model }: { model?: EngineModel }) {
 
 /** Where a pipeline's detection runs — local (on-edge), offload ‹target›, or
  * auto (hybrid) — derived from the node's resolved perception tier. Hidden when
- * the tier is unknown so a target is never fabricated (Rule 44). */
+ * the tier is unknown so a target is never fabricated (no fabricated reading). */
 function ExecTargetBadge({ exec }: { exec: ExecutionTarget | null }) {
   const t = useTranslations("vision");
   if (!exec) return null;
@@ -212,7 +212,8 @@ export function VisionPipelinesPanel({
 }) {
   const t = useTranslations("vision");
   const pipelines = useVisionPipelines(droneId);
-  const engineModels = useVisionEngineModels();
+  const engineStatus = useVisionEngineStatus();
+  const engineModels = engineStatus.models;
   const runningCount = pipelines.filter((p) => p.active).length;
 
   // Where detection runs for this node (tier-derived), stamped onto every row.
@@ -254,7 +255,8 @@ export function VisionPipelinesPanel({
       </div>
       {isEmpty ? (
         <p className="py-4 text-center text-[11px] text-text-tertiary">
-          {t("noPipelines")}
+          {/* With no engine read-back an empty list is "not known", not "none". */}
+          {engineStatus.known ? t("noPipelines") : t("engineStatusUnavailable")}
         </p>
       ) : (
         <div className="flex flex-col gap-1.5">

@@ -28,8 +28,10 @@ import {
   usePairingFlow,
   buildInstallCommand,
   type ClaimCodeMutation,
+  type ClaimWatch,
   type PreGenerateMutation,
 } from "./pairing/use-pairing-flow";
+import { useConvexClaimWatch } from "./pairing/use-claim-watch";
 
 type DialogTab = "add" | "generate";
 
@@ -53,8 +55,10 @@ export function AgentConnectPanel(props: AgentConnectPanelProps) {
   return (
     <AgentConnectPanelBase
       {...props}
+      cloudAvailable={false}
       claimCode={null}
       preGenerate={null}
+      watchClaim={null}
       requiresSignIn={false}
     />
   );
@@ -65,20 +69,28 @@ function AgentConnectPanelWithConvex(props: AgentConnectPanelProps) {
   const isAuthLoading = useAuthStore((s) => s.isLoading);
   const claimCode = useMutation(cmdPairingApi.claimPairingCode);
   const preGenerate = useMutation(cmdPairingApi.preGenerateCode);
+  const watchClaim = useConvexClaimWatch();
 
   return (
     <AgentConnectPanelBase
       {...props}
+      cloudAvailable
       claimCode={isAuthenticated ? (claimCode as ClaimCodeMutation) : null}
       preGenerate={isAuthenticated ? (preGenerate as PreGenerateMutation) : null}
+      watchClaim={isAuthenticated ? watchClaim : null}
       requiresSignIn={!isAuthenticated && !isAuthLoading}
     />
   );
 }
 
 interface BaseProps extends AgentConnectPanelProps {
+  /** False when this build has no cloud backend, so no generated code can
+   *  ever be claimed. */
+  cloudAvailable: boolean;
+  /** Null while auth is settling; generation waits for it. */
   claimCode: ClaimCodeMutation;
   preGenerate: PreGenerateMutation;
+  watchClaim: ClaimWatch | null;
   requiresSignIn: boolean;
 }
 
@@ -87,8 +99,10 @@ function AgentConnectPanelBase({
   onPaired,
   onClose,
   initialTab = "add",
+  cloudAvailable,
   claimCode,
   preGenerate,
+  watchClaim,
   requiresSignIn,
 }: BaseProps) {
   const t = useTranslations("command");
@@ -111,28 +125,21 @@ function AgentConnectPanelBase({
   // The Add-a-drone tab renders <AddNodeForm/> standalone (it owns its own
   // probe + claim state); the flow state machine is only relevant on the
   // generate-code tab. autoGenerate gates code generation so we don't burn a
-  // pre-gen code when the operator is on the Add-a-drone tab.
+  // pre-gen code when the operator is on the Add-a-drone tab; the flow
+  // generates when the tab opens and again once auth has settled.
   const flow = usePairingFlow({
     open,
     requiresSignIn,
     claimCode,
     preGenerate,
+    watchClaim,
     onPaired,
     onCodeReset,
     initialCode: null,
-    autoGenerate: activeTab === "generate",
+    autoGenerate: cloudAvailable && activeTab === "generate",
   });
 
   const discoveredAgents = usePairingStore((s) => s.discoveredAgents);
-
-  // When the operator switches to the generate-code tab and we haven't
-  // generated a code yet (state still "setup"), kick off generation.
-  useEffect(() => {
-    if (!open || requiresSignIn) return;
-    if (activeTab === "generate" && flow.state === "setup") {
-      flow.generateCode();
-    }
-  }, [activeTab, open, requiresSignIn, flow]);
 
   const handleCopyCode = useCallback(() => {
     if (!flow.preGenCode) return;
@@ -208,7 +215,20 @@ function AgentConnectPanelBase({
             aria-labelledby={tabButtonId("generate")}
             className="space-y-5"
           >
-            {requiresSignIn ? (
+            {!cloudAvailable ? (
+              <div className="flex flex-col items-center gap-3 py-4 text-center">
+                <p className="text-xs text-text-secondary leading-relaxed">
+                  {t("pairing.cloudRequired")}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("add")}
+                  className="px-3 py-1.5 text-xs font-medium text-accent-primary border border-accent-primary/30 rounded hover:bg-accent-primary/10 transition-colors focus-ring"
+                >
+                  {t("pairing.pairOnNetwork")}
+                </button>
+              </div>
+            ) : requiresSignIn ? (
               <PairingPrompt
                 variant="sign-in"
                 onSignIn={() => setSignInOpen(true)}

@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
 import type { UnifiedFlightMode } from "@/lib/protocol/types";
 import type { FirmwareHandler } from "@/lib/protocol/types/firmware";
-import { PwmRangeBar } from "../motors/PwmRangeBar";
+import { PwmRangeBar } from "./PwmRangeBar";
 import type { FlightModeGlobalConfig } from "./flight-mode-constants";
 
 interface FlightModeChannelControlsProps {

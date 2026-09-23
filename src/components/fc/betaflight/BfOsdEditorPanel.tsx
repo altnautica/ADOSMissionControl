@@ -13,7 +13,8 @@
 import { useState, useCallback, useRef } from "react";
 import { useToast } from "@/components/ui/toast";
 import { useDroneManager } from "@/stores/drone-manager";
-import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
+import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
+import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { PanelHeader } from "../shared/PanelHeader";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,11 @@ import {
 import { parseMcmFont } from "./bf-osd-font";
 import { BfOsdGrid } from "./BfOsdGrid";
 import { BfOsdElementList } from "./BfOsdElementList";
+
+/** What the FC holds for the editable layout: every element's position word and the video system. */
+function layoutSnapshot(els: BfOsdElement[], vs: VideoSystem): string {
+  return JSON.stringify({ p: els.map(encodePosition), v: vs });
+}
 
 export function BfOsdEditorPanel() {
   const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
@@ -49,6 +55,10 @@ export function BfOsdEditorPanel() {
   // only changed elements are written, and the general block is round-tripped
   // from it so units and alarm thresholds keep their FC values.
   const fcConfig = useRef<MspOsdConfig | null>(null);
+  // Layout snapshot of what the FC holds, for the unsaved-change guard.
+  const [baseline, setBaseline] = useState<string | null>(null);
+  const dirty = baseline !== null && layoutSnapshot(elements, videoSystem) !== baseline;
+  useUnsavedGuard(dirty);
 
   // ── Element operations ──────────────────────────────────────
 
@@ -79,8 +89,7 @@ export function BfOsdEditorPanel() {
   const handleRead = useCallback(async () => {
     const protocol = getSelectedDrone()?.protocol;
     if (!protocol?.getOsdConfig) {
-      setHasLoaded(true);
-      toast("Loaded default OSD layout (demo mode)", "info");
+      setError("This connection cannot read the Betaflight OSD configuration");
       return;
     }
     setLoading(true);
@@ -88,11 +97,14 @@ export function BfOsdEditorPanel() {
     try {
       const cfg = await protocol.getOsdConfig();
       // Positions arrive in `osd_items_e` order: the index is the element id.
-      setElements(cfg.items.map((item, id) => decodePosition(item.position, id)));
-      setVideoSystem(videoSystemFromCode(cfg.videoSystem));
+      const loaded = cfg.items.map((item, id) => decodePosition(item.position, id));
+      const loadedVideo = videoSystemFromCode(cfg.videoSystem);
+      setElements(loaded);
+      setVideoSystem(loadedVideo);
       setProfileCount(Math.min(OSD_PROFILE_COUNT, cfg.osdProfileCount));
       setActiveProfile(Math.min(OSD_PROFILE_COUNT, cfg.osdProfileCount, cfg.osdProfileIndex));
       fcConfig.current = cfg;
+      setBaseline(layoutSnapshot(loaded, loadedVideo));
       setHasLoaded(true);
       toast("OSD config loaded", "success");
     } catch (err) {
@@ -107,7 +119,7 @@ export function BfOsdEditorPanel() {
   const handleSave = useCallback(async () => {
     const protocol = getSelectedDrone()?.protocol;
     if (!protocol?.writeOsdLayout) {
-      toast("OSD layout saved (demo mode)", "success");
+      toast("This connection cannot write the Betaflight OSD configuration", "error");
       return;
     }
     const fc = fcConfig.current;
@@ -136,6 +148,7 @@ export function BfOsdEditorPanel() {
         const nextItems = fc.items.map((it) => ({ ...it }));
         for (const it of items) nextItems[it.index] = { position: it.position };
         fcConfig.current = { ...fc, items: nextItems, videoSystem: videoCode };
+        setBaseline(layoutSnapshot(elements, videoSystem));
         toast(`Saved ${items.length} OSD element${items.length === 1 ? "" : "s"} to flight controller`, "success");
       } else {
         toast(r.message, "error");
@@ -170,7 +183,7 @@ export function BfOsdEditorPanel() {
   // ── Render ────────────────────────────────────────────────
 
   return (
-    <ArmedLockOverlay>
+    <ArmedWarningBanner>
       <div className="h-full flex flex-col gap-3 p-4 overflow-auto">
         <PanelHeader
           title="Betaflight OSD"
@@ -259,6 +272,6 @@ export function BfOsdEditorPanel() {
           </div>
         )}
       </div>
-    </ArmedLockOverlay>
+    </ArmedWarningBanner>
   );
 }

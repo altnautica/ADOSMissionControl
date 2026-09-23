@@ -33,6 +33,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Select, type SelectOption } from "@/components/ui/select";
+import type { RelayReach } from "@/lib/nodes/relay-reach";
 
 /** Format an absolute epoch ms into a short relative string. */
 function formatLastTouch(ts: number | undefined): string | null {
@@ -53,9 +54,12 @@ export interface LocalDisplayCardProps {
    * the FOCUSED node and focus lags the render, so an ambient write can retire
    * the display on a different box. */
   nodeDeviceId: string | null;
+  /** The ground station's relay-proxy reach when this node is reached only
+   * over another node's radio; null when it has none. */
+  relayReach: RelayReach | null;
 }
 
-export function LocalDisplayCard({ nodeDeviceId }: LocalDisplayCardProps) {
+export function LocalDisplayCard({ nodeDeviceId, relayReach }: LocalDisplayCardProps) {
   const display = useAgentCapabilitiesStore((s) => s.display);
   const displayType = useAgentCapabilitiesStore((s) => s.displayType);
   const uiTheme = useAgentCapabilitiesStore((s) => s.uiTheme);
@@ -78,8 +82,9 @@ export function LocalDisplayCard({ nodeDeviceId }: LocalDisplayCardProps) {
     nodeDeviceId,
   );
   // This node's own config lane: its direct client when the attached one
-  // serves it, else the server-side proxy against its stored LAN pairing.
-  const access = resolveConfigAccess(nodeClient, nodeDeviceId, {
+  // serves it, else the server-side proxy against its stored LAN pairing,
+  // else its ground station's relay-proxy.
+  const access = resolveConfigAccess(nodeClient, nodeDeviceId, relayReach, {
     localNodes,
     pairedDrones,
   });

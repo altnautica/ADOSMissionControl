@@ -71,7 +71,7 @@ const baseManifest: InstallManifestSummary = {
       risk: "high",
     },
     {
-      id: "cloud.write",
+      id: "network.outbound",
       required: false,
       label: "Publish data to the cloud relay",
       description: "Push messages to the cloud bridge.",
@@ -99,7 +99,7 @@ describe("ReviewStage", () => {
       wrap(
         <ReviewStage
           manifest={baseManifest}
-          targetName="skynode"
+          targetName="testnode"
           boardLabel="rock-5c-lite"
           compatibility={compat(true)}
           granted={
@@ -113,7 +113,7 @@ describe("ReviewStage", () => {
     );
     expect(screen.getByText("Vision Nav")).toBeInTheDocument();
     expect(screen.getByText(/by Altnautica/)).toBeInTheDocument();
-    expect(screen.getByText(/Installing to: skynode/)).toBeInTheDocument();
+    expect(screen.getByText(/Installing to: testnode/)).toBeInTheDocument();
   });
 
   it("renders the rich permissions consent block with each category", () => {
@@ -121,7 +121,7 @@ describe("ReviewStage", () => {
       wrap(
         <ReviewStage
           manifest={baseManifest}
-          targetName="skynode"
+          targetName="testnode"
           boardLabel="rock-5c-lite"
           compatibility={compat(true)}
           granted={
@@ -152,7 +152,7 @@ describe("ReviewStage", () => {
       wrap(
         <ReviewStage
           manifest={baseManifest}
-          targetName="skynode"
+          targetName="testnode"
           boardLabel="rock-5c-lite"
           compatibility={compat(true)}
           granted={
@@ -175,7 +175,7 @@ describe("ReviewStage", () => {
       wrap(
         <ReviewStage
           manifest={baseManifest}
-          targetName="skynode"
+          targetName="testnode"
           boardLabel="rock-5c-lite"
           compatibility={compat(true)}
           granted={new Set(["hardware.usb.uvc", "mavlink.write"])}
@@ -222,7 +222,7 @@ describe("ReviewStage", () => {
       wrap(
         <ReviewStage
           manifest={baseManifest}
-          targetName="skynode"
+          targetName="testnode"
           boardLabel="rpi4b"
           compatibility={compat(false)}
           granted={new Set(["hardware.usb.uvc"])}
@@ -244,7 +244,7 @@ describe("ReviewStage", () => {
       wrap(
         <ReviewStage
           manifest={baseManifest}
-          targetName="skynode"
+          targetName="testnode"
           boardLabel="rock-5c-lite"
           compatibility={compat(true)}
           granted={new Set(["hardware.usb.uvc"])}
@@ -265,7 +265,7 @@ describe("ReviewStage", () => {
       wrap(
         <ReviewStage
           manifest={baseManifest}
-          targetName="skynode"
+          targetName="testnode"
           boardLabel="rock-5c-lite"
           compatibility={compat(true)}
           granted={new Set()}
@@ -285,8 +285,8 @@ describe("ReviewStage", () => {
       wrap(
         <ReviewStage
           manifest={baseManifest}
-          targetName="skynode"
-          agentTargetName="skynode"
+          targetName="testnode"
+          agentTargetName="testnode"
           boardLabel="rock-5c-lite"
           compatibility={compat(true)}
           granted={new Set(["hardware.usb.uvc"])}
@@ -299,7 +299,7 @@ describe("ReviewStage", () => {
     expect(screen.getByText("Agent half")).toBeInTheDocument();
     expect(screen.getByText("GCS half")).toBeInTheDocument();
     // Agent half resolves to the drone; GCS half to this Mission Control.
-    expect(screen.getAllByText("skynode").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("testnode").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("this Mission Control")).toBeInTheDocument();
     expect(screen.queryByText(/installs per-drone/)).toBeNull();
   });
@@ -356,7 +356,7 @@ describe("ReviewStage", () => {
       wrap(
         <ReviewStage
           manifest={manifest}
-          targetName="skynode"
+          targetName="testnode"
           boardLabel="rock-5c-lite"
           compatibility={compat(true)}
           granted={new Set()}

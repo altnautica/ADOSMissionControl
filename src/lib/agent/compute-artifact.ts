@@ -9,7 +9,7 @@
  * so we keep the path and route it through `/api/lan-pair/artifact` at the host
  * the operator actually paired with — the Next server resolves `.local`→IPv4
  * server-side and streams the blob back over the same origin (no mixed-content,
- * no `.local` resolution in the browser). Rule 39 local-first.
+ * no `.local` resolution in the browser). local-first.
  *
  * @license GPL-3.0-only
  */

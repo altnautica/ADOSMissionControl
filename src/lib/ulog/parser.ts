@@ -47,7 +47,6 @@ const MSG_DATA = 0x44;         // 'D'
 const MSG_INFO = 0x49;         // 'I'
 const MSG_INFO_MULTI = 0x4d;   // 'M'
 const MSG_PARAM = 0x50;        // 'P'
-const MSG_PARAM_DEFAULT = 0x51; // 'Q'
 const MSG_ADD_LOGGED = 0x41;   // 'A'
 const MSG_REMOVE_LOGGED = 0x52; // 'R'
 const MSG_LOGGING = 0x4c;      // 'L'
@@ -162,17 +161,19 @@ export function parseUlog(buffer: ArrayBuffer): UlogFile {
         break;
       }
 
-      case MSG_PARAM:
-      case MSG_PARAM_DEFAULT: {
+      // A parameter's key is "<type> <name>" (`int32_t SYS_AUTOSTART`,
+      // `float MPC_XY_VEL_MAX`), and the type says how to read the value.
+      // Parameter defaults ('Q') are not the flown values and are skipped.
+      case MSG_PARAM: {
         const keyLen = bytes[msgStart];
         const key = textDecoder.decode(bytes.slice(msgStart + 1, msgStart + 1 + keyLen));
         const valOffset = msgStart + 1 + keyLen;
-        // Params are either int32 or float — detect by remaining size
-        const remaining = msgEnd - valOffset;
-        if (remaining >= 4) {
-          // Try float first (PX4 convention)
-          result.params.set(key, dv.getFloat32(valOffset, true));
-        }
+        const space = key.indexOf(" ");
+        if (space <= 0 || msgEnd - valOffset < 4) break;
+        const type = key.slice(0, space);
+        const name = key.slice(space + 1);
+        if (type === "int32_t") result.params.set(name, dv.getInt32(valOffset, true));
+        else if (type === "float") result.params.set(name, dv.getFloat32(valOffset, true));
         break;
       }
 

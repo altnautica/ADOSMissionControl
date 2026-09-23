@@ -12,10 +12,12 @@
  * derived from the item frame; a terrain-relative item has no iNav datum and is
  * refused.
  *
- * iNav has no speed-change item: a WAYPOINT carries its leg speed in `p1`
- * (cm/s, 0 = the mission default). A DO_CHANGE_SPEED item is therefore folded
- * into the `p1` of every following WAYPOINT until the next change, and DO_JUMP
- * targets are renumbered to account for the removed items.
+ * iNav has no speed-change item: a WAYPOINT or LAND carries the speed of the
+ * leg into it in `p1`, a POSHOLD_TIME in `p2` (cm/s; under 50 = the mission
+ * default). A DO_CHANGE_SPEED item is therefore folded into every following
+ * speed slot until the next change, and DO_JUMP targets are renumbered to
+ * account for the removed items. A download turns each speed change back into
+ * a DO_CHANGE_SPEED item ahead of the waypoint that sets it.
  *
  * @module mission/inav-translator
  */
@@ -32,7 +34,7 @@ import {
   MAV_FRAME_GLOBAL_RELATIVE_ALT,
   MAV_FRAME_GLOBAL_RELATIVE_ALT_INT,
 } from '@/lib/mission/altitude-frame'
-import { missionCommandName } from '@/lib/mission/mission-expand'
+import { missionCommandName, speedItem } from '@/lib/mission/mission-expand'
 
 // MAV_CMD constants used in translation
 const MAV_CMD_NAV_WAYPOINT     = 16
@@ -45,6 +47,9 @@ const MAV_CMD_CONDITION_YAW    = 115
 const MAV_CMD_DO_JUMP          = 177
 const MAV_CMD_DO_CHANGE_SPEED  = 178
 const MAV_CMD_DO_SET_ROI       = 201
+
+/** Smallest per-waypoint speed (cm/s) iNav honours; lower flies the default. */
+const INAV_MIN_WP_SPEED_CMS = 50
 
 /** iNav firmware hard limit on waypoints per mission. */
 export const INAV_MAX_WAYPOINTS = 60
@@ -75,25 +80,26 @@ function toInavAction(
   switch (item.command) {
     case MAV_CMD_NAV_TAKEOFF:
       // iNav starts a mission airborne; the takeoff point is flown as a waypoint.
-      return { action: INAV_WP_ACTION.WAYPOINT, p1: 0, p2: 0, p3: altitudeDatumBit(item, number) }
+      return { action: INAV_WP_ACTION.WAYPOINT, p1: speedCmS, p2: 0, p3: altitudeDatumBit(item, number) }
     case MAV_CMD_NAV_WAYPOINT: {
       // MAVLink param1 is a hold time. iNav WAYPOINT p1 is a leg speed, so a
-      // held waypoint becomes a timed position hold.
+      // held waypoint becomes a timed position hold (speed in p2).
       const hold = Math.round(item.param1)
       return hold > 0
-        ? { action: INAV_WP_ACTION.POSHOLD_TIME, p1: hold, p2: 0, p3: altitudeDatumBit(item, number) }
+        ? { action: INAV_WP_ACTION.POSHOLD_TIME, p1: hold, p2: speedCmS, p3: altitudeDatumBit(item, number) }
         : { action: INAV_WP_ACTION.WAYPOINT, p1: speedCmS, p2: 0, p3: altitudeDatumBit(item, number) }
     }
     case MAV_CMD_NAV_LOITER_UNLIM:
       return { action: INAV_WP_ACTION.POSHOLD_UNLIM, p1: 0, p2: 0, p3: altitudeDatumBit(item, number) }
     case MAV_CMD_NAV_LOITER_TIME:
-      return { action: INAV_WP_ACTION.POSHOLD_TIME, p1: Math.round(item.param1), p2: 0, p3: altitudeDatumBit(item, number) }
+      return { action: INAV_WP_ACTION.POSHOLD_TIME, p1: Math.round(item.param1), p2: speedCmS, p3: altitudeDatumBit(item, number) }
     case MAV_CMD_NAV_RETURN_TO_LAUNCH:
       // MAVLink RTL returns and lands; iNav RTH lands only when p1 is set.
       return { action: INAV_WP_ACTION.RTH, p1: 1, p2: 0, p3: 0 }
     case MAV_CMD_NAV_LAND:
-      // p2 is the landing-site elevation (metres) in the same datum as the waypoint.
-      return { action: INAV_WP_ACTION.LAND, p1: 0, p2: Math.round(item.param2), p3: altitudeDatumBit(item, number) }
+      // p1 is the approach speed; p2 is the landing-site elevation (metres)
+      // in the same datum as the waypoint.
+      return { action: INAV_WP_ACTION.LAND, p1: speedCmS, p2: Math.round(item.param2), p3: altitudeDatumBit(item, number) }
     case MAV_CMD_DO_JUMP:
       return { action: INAV_WP_ACTION.JUMP, p1: jumpTargetNumber(Math.round(item.param1)), p2: Math.round(item.param2), p3: 0 }
     case MAV_CMD_DO_SET_ROI:
@@ -165,7 +171,7 @@ export function translateToInavWaypoints(items: MissionItem[]): INavWaypoint[] {
 /** The MAV_CMD and param1/param2 for one iNav waypoint. */
 function fromInavAction(wp: INavWaypoint): Pick<MissionItem, 'command' | 'param1' | 'param2'> {
   switch (wp.action) {
-    // WAYPOINT p1 is a leg speed; the MAVLink waypoint has no speed slot.
+    // WAYPOINT p1 and POSHOLD_TIME p2 are leg speeds, carried as speed items.
     case INAV_WP_ACTION.WAYPOINT:      return { command: MAV_CMD_NAV_WAYPOINT, param1: 0, param2: 0 }
     case INAV_WP_ACTION.POSHOLD_UNLIM: return { command: MAV_CMD_NAV_LOITER_UNLIM, param1: 0, param2: 0 }
     case INAV_WP_ACTION.POSHOLD_TIME:  return { command: MAV_CMD_NAV_LOITER_TIME, param1: wp.p1, param2: 0 }
@@ -179,24 +185,55 @@ function fromInavAction(wp: INavWaypoint): Pick<MissionItem, 'command' | 'param1
   }
 }
 
+/** The leg speed (m/s) an iNav waypoint sets, or undefined for the mission default. */
+function inavLegSpeed(wp: INavWaypoint): number | undefined {
+  const cms = wp.action === INAV_WP_ACTION.WAYPOINT || wp.action === INAV_WP_ACTION.LAND
+    ? wp.p1
+    : wp.action === INAV_WP_ACTION.POSHOLD_TIME ? wp.p2 : 0
+  return cms >= INAV_MIN_WP_SPEED_CMS ? cms / 100 : undefined
+}
+
 /**
  * Convert iNav waypoints into MissionItems.
  *
  * Altitude: INavWaypoint.altitude is cm, MissionItem.z is meters.
  * Position: INavWaypoint.lat/lon are float degrees, MissionItem.x/y are lat*1e7/lon*1e7.
  * Frame: `p3` bit 0 set means AMSL (MAV_FRAME_GLOBAL), clear means above home.
+ * Speed: a waypoint whose leg speed differs from the one carried so far is
+ * preceded by a DO_CHANGE_SPEED item, and a JUMP to it targets that item so
+ * the repeated leg flies at the same speed. A return to the mission default
+ * after a set speed has no DO_CHANGE_SPEED form, so the set speed carries on.
  */
 export function translateFromInavWaypoints(wps: INavWaypoint[]): MissionItem[] {
-  return wps.map((wp, idx) => ({
+  const items: MissionItem[] = []
+  /** Output index of the first item each iNav waypoint (by position) produced. */
+  const firstIndex: number[] = []
+  let carried: number | undefined
+  for (const wp of wps) {
+    firstIndex.push(items.length)
+    const frame = (wp.p3 & 1) === 1 ? MAV_FRAME_GLOBAL : MAV_FRAME_GLOBAL_RELATIVE_ALT
+    const speed = inavLegSpeed(wp)
+    if (speed !== undefined && speed !== carried) {
+      items.push(speedItem(speed, 0, frame))
+      carried = speed
+    }
+    items.push({
+      seq: 0,
+      frame,
+      ...fromInavAction(wp),
+      current: 0,
+      autocontinue: 1,
+      param3: 0,
+      param4: 0,
+      x: Math.round(wp.lat * 1e7),
+      y: Math.round(wp.lon * 1e7),
+      z: wp.altitude / 100, // cm to meters
+    })
+  }
+  return items.map((item, idx) => ({
+    ...item,
     seq: idx,
-    frame: (wp.p3 & 1) === 1 ? MAV_FRAME_GLOBAL : MAV_FRAME_GLOBAL_RELATIVE_ALT,
-    ...fromInavAction(wp),
     current: idx === 0 ? 1 : 0,
-    autocontinue: 1,
-    param3: 0,
-    param4: 0,
-    x: Math.round(wp.lat * 1e7),
-    y: Math.round(wp.lon * 1e7),
-    z: wp.altitude / 100, // cm to meters
+    param1: item.command === MAV_CMD_DO_JUMP ? firstIndex[item.param1] ?? item.param1 : item.param1,
   }))
 }

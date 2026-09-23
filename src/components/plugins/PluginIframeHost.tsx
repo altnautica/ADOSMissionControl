@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  forwardRef,
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  useRef,
-} from "react";
+import { useEffect, useRef } from "react";
 
 import {
   createPluginBridge,
@@ -24,32 +18,9 @@ import {
   usePluginConfigCache,
 } from "@/lib/plugins/config-cache";
 import { PluginAgentClient } from "@/lib/agent/plugin-client";
-import { resolveLocalAgentForDrone } from "@/lib/agent/resolve-agent";
+import { resolveLanAgent } from "@/lib/agent/resolve-agent";
 
-/** Maximum time the host will wait for a pause/resume ACK before proceeding. */
-export const LIFECYCLE_ACK_TIMEOUT_MS = 300;
-
-/**
- * Imperative API exposed via `ref`. The drone-switcher uses these to
- * gracefully pause the iframe (giving the plugin a chance to persist
- * state) before the React subtree unmounts.
- */
-export interface PluginIframeHostHandle {
-  /**
-   * Post a `lifecycle.pause` event to the iframe and resolve once an
-   * ACK is received, or after `LIFECYCLE_ACK_TIMEOUT_MS`, whichever is
-   * first. In demo mode this short-circuits and resolves immediately.
-   */
-  pause: () => Promise<void>;
-  /**
-   * Post a `lifecycle.resume` event so the plugin can re-attach its
-   * telemetry subscriptions for the newly-selected drone. Resolves on
-   * ACK or after the same grace window.
-   */
-  resume: (opts?: { agentId?: string | null }) => Promise<void>;
-  /** Direct iframe element access for parents that need it (e.g. focus). */
-  getIframe: () => HTMLIFrameElement | null;
-}
+import { useHostThemeVars } from "./host-theme-vars";
 
 interface PluginIframeHostProps {
   pluginId: string;
@@ -61,18 +32,13 @@ interface PluginIframeHostProps {
   grantedCapabilities: ReadonlySet<string>;
   /** Method handlers; the bridge dispatches RPC calls into these. */
   handlers: Record<string, BridgeHandler>;
-  /** Optional CSS variable map streamed to the plugin on mount. */
-  themeVars?: Record<string, string>;
   /** Title for assistive tech. Defaults to pluginId. */
   title?: string;
   /** Width/height controlled by the parent slot; iframe fills its box. */
   className?: string;
-  /** Optional security event sink (e.g. emit to plugin events log). */
-  onSecurityEvent?: Parameters<typeof createPluginBridge>[0]["onSecurityEvent"];
   /**
-   * Optional drone id the iframe is bound to. Sent as part of the
-   * `lifecycle.resume` payload so per-drone plugins know which agent
-   * they should subscribe to.
+   * Optional drone id the iframe is bound to: its config is read from and
+   * its agent-published state forwarded for this drone.
    */
   agentId?: string | null;
   /**
@@ -111,26 +77,6 @@ interface PluginIframeHostProps {
   };
 }
 
-interface LifecyclePayload {
-  type: "lifecycle";
-  method: "pause" | "resume";
-  agentId?: string | null;
-}
-
-interface LifecycleAckPayload {
-  type: "lifecycle-ack";
-  method: "pause" | "resume";
-}
-
-function isLifecycleAck(data: unknown): data is LifecycleAckPayload {
-  if (!data || typeof data !== "object") return false;
-  const obj = data as Record<string, unknown>;
-  return (
-    obj.type === "lifecycle-ack" &&
-    (obj.method === "pause" || obj.method === "resume")
-  );
-}
-
 /**
  * Sandboxed plugin iframe.
  *
@@ -151,44 +97,38 @@ function isLifecycleAck(data: unknown): data is LifecycleAckPayload {
  *
  * Capability tokens are one-way (host -> iframe) via `capability.token`, and
  * theming via `theme.changed`, both on the bridge's event channel. Plugins
- * subscribe to the theme via `plugin.theme.useTheme(...)`.
+ * subscribe to the theme via `ctx.theme.onChange(...)`.
  *
- * Lifecycle: parents (typically the drone-switcher) call `pause()` /
- * `resume()` via a ref. The host posts a `lifecycle` event and waits
- * up to 300 ms for a matching `lifecycle-ack` before resolving. This
- * gives the plugin a chance to flush state to `ctx.config.set` or to
- * re-attach telemetry subscriptions for the new drone.
+ * The iframe has no pause/resume protocol: a drone switch or tab switch
+ * unmounts it, so a plugin persists anything it needs as it goes.
+ *
+ * Every RPC the bridge refuses is logged once per (reason, method) for the
+ * iframe's lifetime, so a plugin failing its calls leaves a trace without
+ * flooding the console. Messages from other frames are not this plugin's
+ * doing and are not logged.
  */
-export const PluginIframeHost = forwardRef<
-  PluginIframeHostHandle,
-  PluginIframeHostProps
->(function PluginIframeHost(
-  {
-    pluginId,
-    slot,
-    bundleUrl,
-    grantedCapabilities,
-    handlers,
-    themeVars,
-    title,
-    className,
-    onSecurityEvent,
-    agentId,
-    tokenValidator,
-    token,
-    hostEvent,
-  },
-  ref,
-) {
+export function PluginIframeHost({
+  pluginId,
+  slot,
+  bundleUrl,
+  grantedCapabilities,
+  handlers,
+  title,
+  className,
+  agentId,
+  tokenValidator,
+  token,
+  hostEvent,
+}: PluginIframeHostProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const themeVars = useHostThemeVars();
 
-  // Refs hold the latest handler set + cap set + sink so the bridge
+  // Refs hold the latest handler set + cap set so the bridge
   // effect can stay attached across parent re-renders even when the
   // parent passes fresh object identities. Without this, every render
   // would dispose-and-recreate the bridge, dropping in-flight RPC.
   const handlersRef = useRef(handlers);
   const capsRef = useRef(grantedCapabilities);
-  const sinkRef = useRef(onSecurityEvent);
   // The validator also lives behind a ref so token-refresh callbacks
   // and updated secret resolvers take effect without tearing down the
   // bridge. The bridge sees a stable wrapper that delegates to the
@@ -198,7 +138,6 @@ export const PluginIframeHost = forwardRef<
   );
   handlersRef.current = handlers;
   capsRef.current = grantedCapabilities;
-  sinkRef.current = onSecurityEvent;
   validatorRef.current = tokenValidator;
   // Bridge effect keys only on whether a validator is configured. The
   // validator's internals (resolver function identity, onTokenExpired
@@ -212,11 +151,15 @@ export const PluginIframeHost = forwardRef<
     const proxyHandlers: Record<string, BridgeHandler> = new Proxy(
       {},
       {
+        // Own properties only, so an inherited name such as `constructor`
+        // never resolves to an Object.prototype member.
         get(_t, key: string) {
-          return handlersRef.current[key];
+          return Object.hasOwn(handlersRef.current, key)
+            ? handlersRef.current[key]
+            : undefined;
         },
         has(_t, key: string) {
-          return key in handlersRef.current;
+          return Object.hasOwn(handlersRef.current, key);
         },
         ownKeys() {
           return Reflect.ownKeys(handlersRef.current);
@@ -252,6 +195,7 @@ export const PluginIframeHost = forwardRef<
             onTokenExpired: () => validatorRef.current?.onTokenExpired?.(),
           }
         : undefined;
+    const logged = new Set<string>();
     const bridge = createPluginBridge({
       pluginId,
       // The live getter form lets grant/revoke take effect without
@@ -259,7 +203,15 @@ export const PluginIframeHost = forwardRef<
       grantedCapabilities: () => capsRef.current,
       iframe,
       handlers: proxyHandlers,
-      onSecurityEvent: (event) => sinkRef.current?.(event),
+      onSecurityEvent: (event) => {
+        if (event.code === "origin_mismatch") return;
+        const key = `${event.code}:${event.method ?? ""}`;
+        if (logged.has(key)) return;
+        logged.add(key);
+        console.warn(
+          `Plugin ${pluginId} call refused (${event.code}${event.method ? `, ${event.method}` : ""}): ${event.message}`,
+        );
+      },
       tokenValidator: validatorForBridge,
     });
     return () => bridge.dispose();
@@ -327,7 +279,7 @@ export const PluginIframeHost = forwardRef<
   // until a write here records a value.
   useEffect(() => {
     if (!agentId || isDemoMode()) return;
-    const agent = resolveLocalAgentForDrone(agentId);
+    const agent = resolveLanAgent(agentId);
     if (!agent) return;
     let cancelled = false;
     new PluginAgentClient(agent.agentUrl, agent.apiKey)
@@ -427,56 +379,6 @@ export const PluginIframeHost = forwardRef<
     };
   }, [hostEvent]);
 
-  /**
-   * Post a lifecycle event and resolve when the iframe ACKs or after
-   * the grace window. In demo mode there is no real plugin to talk to,
-   * so we short-circuit and resolve on the next microtask.
-   */
-  const postLifecycle = useCallback(
-    async (payload: LifecyclePayload): Promise<void> => {
-      if (isDemoMode()) return;
-      const iframe = iframeRef.current;
-      const target = iframe?.contentWindow;
-      if (!iframe || !target) return;
-
-      return new Promise<void>((resolve) => {
-        let settled = false;
-        const finalize = () => {
-          if (settled) return;
-          settled = true;
-          window.removeEventListener("message", onMessage);
-          clearTimeout(timer);
-          resolve();
-        };
-        const onMessage = (ev: MessageEvent) => {
-          if (ev.source !== target) return;
-          if (!isLifecycleAck(ev.data)) return;
-          if (ev.data.method !== payload.method) return;
-          finalize();
-        };
-        window.addEventListener("message", onMessage);
-        const timer = window.setTimeout(finalize, LIFECYCLE_ACK_TIMEOUT_MS);
-        target.postMessage(payload, "*");
-      });
-    },
-    [],
-  );
-
-  useImperativeHandle(
-    ref,
-    (): PluginIframeHostHandle => ({
-      pause: () => postLifecycle({ type: "lifecycle", method: "pause" }),
-      resume: (opts) =>
-        postLifecycle({
-          type: "lifecycle",
-          method: "resume",
-          agentId: opts?.agentId ?? agentId ?? null,
-        }),
-      getIframe: () => iframeRef.current,
-    }),
-    [postLifecycle, agentId],
-  );
-
   // An empty bundle URL would render `<iframe src="">`, which loads nothing and
   // trips the `frame-src` CSP ("Framing '' violates ..."). A plugin with no
   // resolvable bundle has nothing to show, so render nothing instead.
@@ -501,4 +403,4 @@ export const PluginIframeHost = forwardRef<
       className={className}
     />
   );
-});
+}

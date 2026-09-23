@@ -50,12 +50,12 @@ describe("resolveRelayReach", () => {
     const reach = resolveRelayReach({
       agentDeviceId: null,
       reachedVia: "node:gs-1",
-      droneDeviceId: "77735cd38937",
+      droneDeviceId: "0a1b2c3d4e5f",
     });
     expect(reach).toEqual({
       baseUrl: "http://192.168.1.50:8080",
       apiKey: "gs-key",
-      peerDeviceId: "77735cd38937",
+      peerDeviceId: "0a1b2c3d4e5f",
     });
   });
 
@@ -64,9 +64,9 @@ describe("resolveRelayReach", () => {
     const reach = resolveRelayReach({
       agentDeviceId: null,
       reachedVia: "node:gs-1",
-      droneDeviceId: "node:77735cd38937",
+      droneDeviceId: "node:0a1b2c3d4e5f",
     });
-    expect(reach?.peerDeviceId).toBe("77735cd38937");
+    expect(reach?.peerDeviceId).toBe("0a1b2c3d4e5f");
   });
 
   it("returns null for a node with direct reach", () => {
@@ -75,9 +75,9 @@ describe("resolveRelayReach", () => {
     useLocalNodesStore.setState({ nodes: [GS] as never });
     expect(
       resolveRelayReach({
-        agentDeviceId: "77735cd38937",
+        agentDeviceId: "0a1b2c3d4e5f",
         reachedVia: "node:gs-1",
-        droneDeviceId: "77735cd38937",
+        droneDeviceId: "0a1b2c3d4e5f",
       }),
     ).toBeNull();
   });
@@ -87,7 +87,7 @@ describe("resolveRelayReach", () => {
       resolveRelayReach({
         agentDeviceId: null,
         reachedVia: "node:gs-1",
-        droneDeviceId: "77735cd38937",
+        droneDeviceId: "0a1b2c3d4e5f",
       }),
     ).toBeNull();
   });
@@ -98,7 +98,7 @@ describe("resolveRelayReach", () => {
       resolveRelayReach({
         agentDeviceId: null,
         reachedVia: "node:gs-1",
-        droneDeviceId: "77735cd38937",
+        droneDeviceId: "0a1b2c3d4e5f",
       }),
     ).toBeNull();
   });
@@ -110,7 +110,7 @@ describe("resolveRelayReach", () => {
         resolveRelayReach({
           agentDeviceId: null,
           reachedVia,
-          droneDeviceId: "77735cd38937",
+          droneDeviceId: "0a1b2c3d4e5f",
         }),
       ).toBeNull();
     }
@@ -126,10 +126,10 @@ describe("relayProxyBaseUrl", () => {
       relayProxyBaseUrl({
         baseUrl: "http://192.168.1.50:8080",
         apiKey: "k",
-        peerDeviceId: "77735cd38937",
+        peerDeviceId: "0a1b2c3d4e5f",
       }),
     ).toBe(
-      "http://192.168.1.50:8080/api/v1/ground-station/relay-proxy/77735cd38937",
+      "http://192.168.1.50:8080/api/v1/ground-station/relay-proxy/0a1b2c3d4e5f",
     );
   });
 });

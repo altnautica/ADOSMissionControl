@@ -224,9 +224,6 @@ export function INavOsdPanel() {
                     <span className="text-text-secondary">Items per layout</span>
                     <span className="font-mono text-text-primary">{layoutsHeader.itemCount}</span>
                   </div>
-                  <p className="text-[10px] text-text-tertiary pt-1">
-                    Full layout editor coming in a future update. Use the CLI for fine-grained control today.
-                  </p>
                 </div>
               ) : (
                 <p className="text-[11px] text-text-tertiary">No layout data.</p>

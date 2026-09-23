@@ -14,7 +14,6 @@ import type { DroneSigningState } from "@/stores/signing-store";
 import { KeyAgeNudge } from "../KeyAgeNudge";
 import { SigningHistorySection } from "../SigningHistorySection";
 import { SigningDebugSection } from "../SigningDebugSection";
-import { isCloudSigningKeySyncEnabled } from "@/lib/api/signing-cloud-sync";
 
 export interface SigningEnabledSectionProps {
   droneId: string;
@@ -54,7 +53,6 @@ export function SigningEnabledSection({
   onCloudSyncToggle,
 }: SigningEnabledSectionProps) {
   const settling = state.enrollmentState === "unconfirmed" || state.enrollmentState === "disable_unconfirmed";
-  const cloudSyncAvailable = isCloudSigningKeySyncEnabled();
 
   return (
     <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
@@ -140,11 +138,9 @@ export function SigningEnabledSection({
               <p className="text-xs text-text-tertiary">
                 {!isAuthenticated
                   ? "Sign in to enable cloud key sync across devices."
-                  : !cloudSyncAvailable
-                    ? "Cloud key sync is disabled until encrypted storage is available."
-                  : cloudSyncIntent && !cloudRowPresent
-                    ? "Will sync on next rotation. Click Rotate key to upload the current key now."
-                    : "Share this key with your other signed-in browsers."}
+                  : cloudSyncIntent
+                    ? "Turn off to remove the cloud copy of this key."
+                    : "Cloud key sync is disabled until encrypted storage is available."}
               </p>
             </div>
           </div>
@@ -157,7 +153,7 @@ export function SigningEnabledSection({
               !isAuthenticated ||
               authLoading ||
               cloudSyncBusy ||
-              (!cloudSyncIntent && !cloudSyncAvailable)
+              !cloudSyncIntent
             }
             onClick={onCloudSyncToggle}
             className={`relative inline-flex h-5 w-9 shrink-0 items-center border transition-colors disabled:opacity-40 ${cloudSyncIntent ? "bg-accent-primary border-accent-primary" : "bg-bg-primary border-border-default"}`}

@@ -57,22 +57,24 @@ export function BoardPinoutView() {
   });
   const [boardId, setBoardId] = useState<number | null>(null);
 
-  // Subscribe to AUTOPILOT_VERSION and read initial value if already received
+  // Subscribe to AUTOPILOT_VERSION for the selected drone. The board id is
+  // cleared first so a drone switch never shows the previous drone's timer
+  // table under the new drone while its AUTOPILOT_VERSION is still pending.
   useEffect(() => {
-    if (!drone?.protocol) return;
-    // Read current vehicleInfo (may already have boardId if AUTOPILOT_VERSION arrived)
-    const currentInfo = drone.protocol.getVehicleInfo();
+    setBoardId(null);
+    const protocol = drone?.protocol;
+    if (!protocol) return;
+    const currentInfo = protocol.getVehicleInfo();
     if (currentInfo?.boardId !== undefined) {
       setBoardId(currentInfo.boardId);
     }
-    // Also subscribe to future updates
-    if (drone.protocol.onAutopilotVersion) {
-      const unsub = drone.protocol.onAutopilotVersion((info) => {
-        // 0 = the firmware reported no board id; renders as an unknown board.
-        setBoardId(info.boardId ?? 0);
-      });
-      return unsub;
-    }
+    if (!protocol.onAutopilotVersion) return;
+    const unsub = protocol.onAutopilotVersion((info) => {
+      // 0 = the firmware reported no board id; renders as an unknown board.
+      setBoardId(info.boardId ?? 0);
+    });
+    protocol.requestMessage?.(148).catch(() => {});
+    return unsub;
   }, [drone?.protocol]);
 
   const profile = useMemo(() => {

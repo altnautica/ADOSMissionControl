@@ -58,6 +58,23 @@ export function toolSafetyClassBadge(safetyClass: string | undefined): string {
   );
 }
 
+/** Lifecycle state of a minted MCP credential. Only `active` can call a tool. */
+export type McpCredentialStatus = "active" | "revoked" | "expired";
+
+/**
+ * The one status check every MCP surface uses (list, overview, sidebar badge,
+ * catalog picker, detail drawer): revoked wins, then an expiry at or before
+ * `now`, else active.
+ */
+export function credentialStatus(
+  row: { revokedAt: number | null; expiresAt: number | null },
+  now: number,
+): McpCredentialStatus {
+  if (row.revokedAt != null) return "revoked";
+  if (row.expiresAt != null && row.expiresAt <= now) return "expired";
+  return "active";
+}
+
 /** The scope set each preset mints. Read-only, Operate (the default), Full. */
 export const SCOPE_PRESETS: Record<string, string[]> = {
   read: ["read"],
@@ -119,7 +136,7 @@ export function verifyRecipe(credential: string, clonePath = CLONE_PATH_PLACEHOL
   return `ADOS_MCP_TOKEN=${credential} node ${clonePath}/dist/index.js --target fleet --gcs prod --verify`;
 }
 
-// --- LOCAL-FIRST (agent-mode) recipes (Rule 39) -----------------------------
+// --- LOCAL-FIRST (agent-mode) recipes (local-first) -----------------------------
 //
 // The LAN-direct path is the primary, default way to connect: the server runs on
 // the operator's own machine and reaches ONE drone directly over the LAN with the
@@ -133,15 +150,25 @@ export function localConnectRecipe(host: string, apiKey: string, clonePath = CLO
   return `claude mcp add ados -e ADOS_MCP_AGENT_KEY=${apiKey} -- node ${clonePath}/dist/index.js --target agent ${host}`;
 }
 
-/** A project-scoped `.mcp.json` for the LAN-direct (agent-mode) single-drone path. */
-export function localMcpJsonSnippet(host: string, apiKey: string, clonePath = CLONE_PATH_PLACEHOLDER): string {
+/** The shell line that sets a secret the `.mcp.json` snippets read by reference. */
+export function envExportLine(name: string, value: string): string {
+  return `export ${name}=${value}`;
+}
+
+/**
+ * A project-scoped `.mcp.json` for the LAN-direct (agent-mode) single-drone
+ * path. The pairing key is referenced as `${ADOS_MCP_AGENT_KEY}` and expanded
+ * from the environment by the client, so the file itself holds no secret and
+ * is safe to commit.
+ */
+export function localMcpJsonSnippet(host: string, clonePath = CLONE_PATH_PLACEHOLDER): string {
   return JSON.stringify(
     {
       mcpServers: {
         ados: {
           command: "node",
           args: [`${clonePath}/dist/index.js`, "--target", "agent", host],
-          env: { ADOS_MCP_AGENT_KEY: apiKey },
+          env: { ADOS_MCP_AGENT_KEY: "${ADOS_MCP_AGENT_KEY}" },
         },
       },
     },
@@ -155,7 +182,7 @@ export function localVerifyRecipe(host: string, apiKey: string, clonePath = CLON
   return `ADOS_MCP_AGENT_KEY=${apiKey} node ${clonePath}/dist/index.js --target agent ${host} --verify`;
 }
 
-// --- LOCAL-FIRST multi-drone fleet (Rule 39) --------------------------------
+// --- LOCAL-FIRST multi-drone fleet (local-first) --------------------------------
 //
 // For a whole LAN fleet the operator exports an `ados-fleet.json` (every paired
 // drone's host + its own pairing key) from the wizard and points the server at it
@@ -225,16 +252,17 @@ export function localFleetEnvRecipe(
   return `claude mcp add ados -e ADOS_MCP_FLEET=${fleetB64} -- node ${clonePath}/dist/index.js --target local-fleet${discoverFlag(opts)}`;
 }
 
-/** The `.mcp.json` equivalent of the no-file, whole-fleet command. */
+/** The `.mcp.json` equivalent of the no-file, whole-fleet command. The fleet
+ * blob carries every drone's pairing key, so it is referenced as
+ * `${ADOS_MCP_FLEET}` and expanded from the environment, never embedded. */
 export function localFleetEnvJsonSnippet(
-  fleetB64: string,
   opts: FleetRecipeOpts = {},
   clonePath = CLONE_PATH_PLACEHOLDER,
 ): string {
   const args = [`${clonePath}/dist/index.js`, "--target", "local-fleet"];
   if (opts.discover) args.push("--discover");
   return JSON.stringify(
-    { mcpServers: { ados: { command: "node", args, env: { ADOS_MCP_FLEET: fleetB64 } } } },
+    { mcpServers: { ados: { command: "node", args, env: { ADOS_MCP_FLEET: "${ADOS_MCP_FLEET}" } } } },
     null,
     2,
   );

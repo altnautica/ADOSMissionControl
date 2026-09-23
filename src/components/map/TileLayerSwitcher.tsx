@@ -12,7 +12,7 @@
 
 "use client";
 
-import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useMap } from "react-leaflet";
 import { useSettingsStore, type MapTileSource } from "@/stores/settings-store";
 import {
@@ -27,24 +27,22 @@ import L from "leaflet";
 import { CachedTileLayer } from "./CachedTileLayer";
 import { NoFlyZoneOverlay } from "./NoFlyZoneOverlay";
 import type { NoFlyDataState } from "./NoFlyZoneOverlay";
-import { NO_FLY_ZONES_BY_REGION } from "@/lib/no-fly-zones";
+import { NO_FLY_ZONES_BY_REGION, noFlyZonesForRegion } from "@/lib/no-fly-zones";
 import { COMMON_REGIONS, normalizeRegionCode } from "@/lib/operating-region";
 import { Select } from "@/components/ui/select";
 import { BasemapSwitcher } from "./BasemapSwitcher";
+import { MapControl } from "./MapControl";
 
-/** TileLayer that uses setUrl() on source change instead of unmounting/remounting.
- *  Preserves loaded tiles during transition for smoother switching. */
+/** Tile layer rebuilt whenever the source changes, so each source brings its
+ *  own maxZoom and attribution rather than inheriting the first one's. */
 function ManagedTileLayer({ url, attribution, maxZoom }: { url: string; attribution: string; maxZoom: number }) {
   const map = useMap();
-  const layerRef = useRef<L.TileLayer | null>(null);
-  const initialUrlRef = useRef(url);
 
-  // Create layer once on mount
   useEffect(() => {
-    const layer = L.tileLayer(initialUrlRef.current, { attribution, maxZoom });
+    useTileHealthStore.getState().observe(url);
+    const layer = L.tileLayer(url, { attribution, maxZoom });
     try {
       layer.addTo(map);
-      layerRef.current = layer;
       layer.on("tileload", () => useTileHealthStore.getState().recordLoad());
       layer.on("tileerror", (e) => {
         const tile = (e as L.TileEvent).tile as HTMLImageElement | undefined;
@@ -55,26 +53,13 @@ function ManagedTileLayer({ url, attribution, maxZoom }: { url: string; attribut
       return;
     }
     return () => {
-      if (layerRef.current) {
-        try {
-          map.removeLayer(layerRef.current);
-        } catch {
-          /* map may already be destroyed during dev reconnect */
-        }
-        layerRef.current = null;
+      try {
+        map.removeLayer(layer);
+      } catch {
+        /* map may already be destroyed during dev reconnect */
       }
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [map]);
-
-  // Update URL without remounting. This effect — not the mount effect — is the
-  // one that sees a template change, so the health counters reset here.
-  useEffect(() => {
-    useTileHealthStore.getState().observe(url);
-    if (layerRef.current && layerRef.current.getTileUrl !== undefined) {
-      layerRef.current.setUrl(url);
-    }
-  }, [url]);
+  }, [map, url, attribution, maxZoom]);
 
   return null;
 }
@@ -138,7 +123,7 @@ export function TileLayerSwitcher({ showControls = true }: TileLayerSwitcherProp
 
       {/* Layer switcher control — top right */}
       {showControls && (
-        <div className="leaflet-top leaflet-right" style={{ pointerEvents: "auto" }}>
+        <MapControl className="leaflet-top leaflet-right">
           <div className="leaflet-control" style={{ marginTop: 10, marginRight: 10 }}>
             <button
               onClick={() => setShowPicker((v) => !v)}
@@ -174,7 +159,7 @@ export function TileLayerSwitcher({ showControls = true }: TileLayerSwitcherProp
                   className={`w-full px-3 py-1.5 text-[10px] font-mono transition-colors rounded-sm ${
                     showNfz
                       ? "text-status-error bg-status-error/10"
-                      : "text-text-secondary hover:text-text-primary hover:bg-surface-secondary"
+                      : "text-text-secondary hover:text-text-primary hover:bg-bg-secondary"
                   }`}
                 >
                   {showNfz ? "NFZ ON" : "NFZ OFF"}
@@ -194,15 +179,15 @@ export function TileLayerSwitcher({ showControls = true }: TileLayerSwitcherProp
                         ...COMMON_REGIONS.map((r) => ({
                           value: r.code,
                           label: `${r.code} — ${r.name}`,
-                          description: NO_FLY_ZONES_BY_REGION[r.code]
-                            ? undefined
-                            : "No no-fly data in this build",
+                          description:
+                            NO_FLY_ZONES_BY_REGION[r.code]?.coverage ??
+                            "No no-fly data in this build",
                         })),
                       ]}
                     />
                     <span className="px-1 text-[9px] font-mono text-text-secondary">
                       {nfzState === "drawn"
-                        ? `Showing ${noFlyRegion} no-fly data`
+                        ? `Showing ${noFlyRegion} no-fly data: ${noFlyZonesForRegion(noFlyRegion)?.coverage ?? ""}`
                         : nfzState === "no-region"
                           ? "No region set. Nothing is drawn, and that is not a clear-airspace result"
                           : `No no-fly data for ${noFlyRegion} in this build. Nothing is drawn`}
@@ -212,7 +197,7 @@ export function TileLayerSwitcher({ showControls = true }: TileLayerSwitcherProp
               </div>
             )}
           </div>
-        </div>
+        </MapControl>
       )}
     </>
 

@@ -46,10 +46,14 @@ function labelFor(
 /** Profile — read-only in v1 (a switch is a transactional setup change). */
 export function ProfilePage({ config }: Pick<PageProps, "config">) {
   const t = useTranslations("nodeSettings");
+  // The agent's stored `agent.profile` values (underscore, not the GCS's
+  // hyphenated NodeProfile).
   const profileOptions = [
+    { value: "auto", label: t("profile.optionAuto") },
     { value: "drone", label: t("profile.optionDrone") },
-    { value: "ground-station", label: t("profile.optionGroundStation") },
+    { value: "ground_station", label: t("profile.optionGroundStation") },
     { value: "workstation", label: t("profile.optionWorkstation") },
+    { value: "compute", label: t("profile.optionCompute") },
   ];
   return (
     <Section title={t("profile.title")}>

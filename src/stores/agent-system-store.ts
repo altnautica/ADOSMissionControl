@@ -115,8 +115,7 @@ export const useAgentSystemStore = create<AgentSystemStore>((set, get) => ({
     }
     if (!client) return false;
     try {
-      const agentUptime = get().status?.uptime_seconds ?? 0;
-      const services = await client.getServices(agentUptime);
+      const services = await client.getServices();
       set({ services, lastUpdatedAt: Date.now(), stale: false });
       useAgentConnectionStore.getState().noteFetchSuccess();
       return true;

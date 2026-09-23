@@ -13,20 +13,19 @@ import { useGeofenceStore } from "@/stores/geofence-store";
 import { useRallyStore } from "@/stores/rally-store";
 import { usePlanPoiStore } from "@/stores/plan-poi-store";
 import { useMissionStore } from "@/stores/mission-store";
-import { capturePlanExtras } from "@/lib/plan-workspace";
+import { capturePlanExtras, clearPlanWorkspace } from "@/lib/plan-workspace";
 import { planSnapshotString } from "@/lib/plan-snapshot";
 import {
   autoSave,
   flushAutoSave,
   getAutoSave,
-  exportWaypointsFormat,
-  exportQGCPlan,
   exportMissionKML,
   exportMissionCSV,
   exportMissionKMZ,
   downloadMissionFile,
   currentExportOptions,
 } from "@/lib/mission-io";
+import { exportWaypointsFormat, exportQGCPlan } from "@/lib/mission-io-formats";
 import type { Waypoint } from "@/lib/types";
 
 interface IODeps {
@@ -42,7 +41,6 @@ interface IODeps {
   setSelectedWaypoint: (id: string | null) => void;
   setExpandedWaypoint: (id: string | null) => void;
   setShowDownloadConfirm: (show: boolean) => void;
-  clearMission: () => void;
   downloadMission: () => Promise<Waypoint[]>;
   toast: (message: string, status?: "success" | "warning" | "error" | "info") => void;
 }
@@ -52,7 +50,7 @@ export function usePlannerIO(deps: IODeps) {
     waypoints, missionName, selectedDroneId, activePlanId, isDirty,
     libAutoSaveTimer, setWaypoints, setMissionName, setSelectedDroneId,
     setSelectedWaypoint, setExpandedWaypoint, setShowDownloadConfirm,
-    clearMission, downloadMission, toast,
+    downloadMission, toast,
   } = deps;
 
   // Every field `capturePlanExtras` reads, selected individually so a fence /
@@ -226,10 +224,10 @@ export function usePlannerIO(deps: IODeps) {
     toast("Exported (.kmz)", "success");
   }, [waypoints, missionName, toast]);
 
-  const handleExportNative = useCallback(async () => {
+  const handleExportNative = useCallback(() => {
     // Native .altmission format — captures the whole plan (path + fence + rally),
     // unlike the interchange formats which drop fields on round-trip.
-    await downloadMissionFile(waypoints, {
+    downloadMissionFile(waypoints, {
       name: missionName || "mission",
       droneId: selectedDroneId || undefined,
       createdAt: Date.now(),
@@ -251,13 +249,13 @@ export function usePlannerIO(deps: IODeps) {
   const handleNewPlan = useCallback(() => {
     const libStore = usePlanLibraryStore.getState();
     libStore.createPlan();
-    clearMission();
+    clearPlanWorkspace();
     setMissionName("Untitled Plan");
     setSelectedDroneId("");
     setSelectedWaypoint(null);
     setExpandedWaypoint(null);
     toast("New plan created", "info");
-  }, [clearMission, setSelectedWaypoint, setExpandedWaypoint, toast, setMissionName, setSelectedDroneId]);
+  }, [setSelectedWaypoint, setExpandedWaypoint, toast, setMissionName, setSelectedDroneId]);
 
   const handleFocusSearch = useCallback(() => {
     document.dispatchEvent(new CustomEvent("plan-library:focus-search"));

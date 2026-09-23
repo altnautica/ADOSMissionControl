@@ -28,6 +28,7 @@ const SYNCED: Record<SyncedFlightKey, true> = {
   droneId: true,
   droneName: true,
   startTime: true,
+  startTimeUnknown: true,
   endTime: true,
   duration: true,
   distance: true,
@@ -105,14 +106,29 @@ export function toCloudShape(record: FlightRecord): CloudFlightRow {
 /**
  * Translate a cloud row back into the local FlightRecord shape. `date` is not
  * stored in the cloud, so it is rebuilt from `startTime`; the row's Convex
- * bookkeeping and the retired `suiteType` column are dropped.
+ * bookkeeping, the server-kept unseal record and the retired `suiteType`
+ * column are dropped (a field the record does not carry would change its
+ * seal digest).
  */
 export function fromCloudShape(row: Doc<"cmd_flightLogs">): FlightRecord {
-  const { _id, _creationTime, userId, clientId, suiteType, ...rest } = row;
+  const {
+    _id,
+    _creationTime,
+    userId,
+    clientId,
+    suiteType,
+    unsealedHash,
+    unsealedContentDigest,
+    unsealedAt,
+    ...rest
+  } = row;
   void _id;
   void _creationTime;
   void userId;
   void suiteType;
+  void unsealedHash;
+  void unsealedContentDigest;
+  void unsealedAt;
   // The validator spells coordinate pairs as number[][]; every row was written
   // from a FlightRecord by toCloudShape, so the pairs narrow back as written.
   return { ...rest, id: clientId, date: rest.startTime } as FlightRecord;

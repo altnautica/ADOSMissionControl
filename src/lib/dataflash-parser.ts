@@ -15,11 +15,14 @@ export interface FormatDef {
   columns: string[];
 }
 
+/** A decoded field: a number, a string, or an `a` field's int16 array. */
+export type DataFlashFieldValue = number | string | number[];
+
 export interface DataFlashMessage {
   type: number;
   name: string;
   timestamp?: number;
-  fields: Record<string, number | string>;
+  fields: Record<string, DataFlashFieldValue>;
 }
 
 export interface DataFlashLog {
@@ -40,8 +43,10 @@ export const FMT_LENGTH = 89;
 
 // Size in bytes for each format character
 const FORMAT_SIZES: Record<string, number> = {
+  a: 64, // int16[32]
   b: 1, // int8
   B: 1, // uint8
+  g: 2, // float16
   h: 2, // int16
   H: 2, // uint16
   i: 4, // int32
@@ -60,6 +65,31 @@ const FORMAT_SIZES: Record<string, number> = {
   q: 8, // int64
   Q: 8, // uint64
 };
+
+/**
+ * The message length a format string implies (header, type byte and every
+ * field), or undefined when it holds a character with no known size.
+ */
+function formatLength(formatStr: string): number | undefined {
+  let length = 3;
+  for (const ch of formatStr) {
+    const size = FORMAT_SIZES[ch];
+    if (size === undefined) return undefined;
+    length += size;
+  }
+  return length;
+}
+
+/** IEEE 754 half-precision float. */
+function readFloat16(view: DataView, offset: number): number {
+  const bits = view.getUint16(offset, true);
+  const sign = bits & 0x8000 ? -1 : 1;
+  const exponent = (bits >> 10) & 0x1f;
+  const fraction = bits & 0x3ff;
+  if (exponent === 0) return sign * 2 ** -14 * (fraction / 1024);
+  if (exponent === 0x1f) return fraction === 0 ? sign * Infinity : NaN;
+  return sign * 2 ** (exponent - 15) * (1 + fraction / 1024);
+}
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -87,8 +117,15 @@ export function readField(
   view: DataView,
   offset: number,
   fmt: string,
-): { value: number | string; size: number } {
+): { value: DataFlashFieldValue; size: number } {
   switch (fmt) {
+    case "a": {
+      const values: number[] = [];
+      for (let i = 0; i < 32; i++) values.push(view.getInt16(offset + i * 2, true));
+      return { value: values, size: 64 };
+    }
+    case "g":
+      return { value: readFloat16(view, offset), size: 2 };
     case "b":
       return { value: view.getInt8(offset), size: 1 };
     case "B":
@@ -133,8 +170,8 @@ export function readField(
       return { value: hi * 0x100000000 + lo, size: 8 };
     }
     default:
-      // Unknown format — skip 1 byte
-      return { value: 0, size: 1 };
+      // Unreachable for a validated FMT: every character has a known size.
+      return { value: 0, size: FORMAT_SIZES[fmt] ?? 1 };
   }
 }
 
@@ -149,113 +186,114 @@ export function parseFmt(view: DataView, offset: number): FormatDef {
   return { type, length, name, formatStr, columns };
 }
 
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
+/** Parse state shared by the synchronous and streaming entry points. */
+export interface DataFlashScan {
+  view: DataView;
+  formats: Map<number, FormatDef>;
+  messages: Map<string, DataFlashMessage[]>;
+  /** Byte offset of the next unread byte. */
+  pos: number;
+}
+
+export function createDataFlashScan(buffer: ArrayBuffer): DataFlashScan {
+  return { view: new DataView(buffer), formats: new Map(), messages: new Map(), pos: 0 };
+}
+
+function pushMessage(messages: Map<string, DataFlashMessage[]>, msg: DataFlashMessage): void {
+  let list = messages.get(msg.name);
+  if (!list) {
+    list = [];
+    messages.set(msg.name, list);
+  }
+  list.push(msg);
+}
 
 /**
- * Parse a DataFlash .bin log file.
+ * Decode messages from `scan.pos` until the position reaches `until` or the
+ * buffer ends. Returns false once the buffer is exhausted or truncated.
  *
- * Performs a two-pass approach:
- *   1. Scan for FMT messages to build the format table
- *   2. Re-scan to decode all messages using discovered formats
- *
- * In practice both passes happen in a single sweep — FMT messages are
- * processed immediately and subsequent messages decoded on-the-fly.
+ * A FMT record is registered only when its length matches the size its
+ * format string implies. A zero or short length would never advance the
+ * position, and a mismatched one misreads every later field; either is a
+ * corrupt record or a false header match while resyncing, so the scan
+ * steps one byte and resyncs.
  */
-export function parseDataFlashLog(buffer: ArrayBuffer): DataFlashLog {
-  const view = new DataView(buffer);
-  const len = buffer.byteLength;
-  const formats = new Map<number, FormatDef>();
-  const messages = new Map<string, DataFlashMessage[]>();
-
-  let pos = 0;
-
-  while (pos + 3 <= len) {
-    // Scan for header bytes
-    if (view.getUint8(pos) !== HEADER_0 || view.getUint8(pos + 1) !== HEADER_1) {
-      // Lost sync — advance one byte and retry
-      pos++;
-      continue;
-    }
-
-    const msgType = view.getUint8(pos + 2);
-
-    // --- FMT messages (self-describing, always 89 bytes) ---
-    if (msgType === FMT_TYPE) {
-      if (pos + FMT_LENGTH > len) break; // truncated
-      const fmt = parseFmt(view, pos + 3);
-      formats.set(fmt.type, fmt);
-
-      // Also store the FMT message itself in the messages map
-      const fmtMsg: DataFlashMessage = {
-        type: FMT_TYPE,
-        name: "FMT",
-        fields: {
-          Type: fmt.type,
-          Length: fmt.length,
-          Name: fmt.name,
-          Format: fmt.formatStr,
-          Columns: fmt.columns.join(","),
-        },
-      };
-      let fmtList = messages.get("FMT");
-      if (!fmtList) {
-        fmtList = [];
-        messages.set("FMT", fmtList);
-      }
-      fmtList.push(fmtMsg);
-
-      pos += FMT_LENGTH;
-      continue;
-    }
-
-    // --- All other messages ---
-    const fmt = formats.get(msgType);
-    if (!fmt) {
-      // Unknown message type and no FMT yet — skip header + type and resync
-      pos += 3;
-      continue;
-    }
-
-    if (pos + fmt.length > len) break; // truncated
-
-    // Payload starts after header (2) + type (1) = offset 3
-    let fieldOffset = pos + 3;
-    const fields: Record<string, number | string> = {};
-    let timestamp: number | undefined;
-
-    for (let i = 0; i < fmt.formatStr.length && i < fmt.columns.length; i++) {
-      const ch = fmt.formatStr[i];
-      const col = fmt.columns[i];
-      const { value, size } = readField(view, fieldOffset, ch);
-      fields[col] = value;
-
-      if (col === "TimeUS" && typeof value === "number") {
-        timestamp = value;
+export function scanDataFlash(scan: DataFlashScan, until: number): boolean {
+  const { view, formats, messages } = scan;
+  const len = view.byteLength;
+  let pos = scan.pos;
+  try {
+    while (pos + 3 <= len) {
+      if (pos >= until) return true;
+      // Scan for header bytes; on lost sync advance one byte and retry.
+      if (view.getUint8(pos) !== HEADER_0 || view.getUint8(pos + 1) !== HEADER_1) {
+        pos++;
+        continue;
       }
 
-      fieldOffset += size;
+      const msgType = view.getUint8(pos + 2);
+
+      // --- FMT messages (self-describing, always 89 bytes) ---
+      if (msgType === FMT_TYPE) {
+        if (pos + FMT_LENGTH > len) return false; // truncated
+        const fmt = parseFmt(view, pos + 3);
+        if (fmt.length < 3 || formatLength(fmt.formatStr) !== fmt.length) {
+          pos++;
+          continue;
+        }
+        formats.set(fmt.type, fmt);
+        pushMessage(messages, {
+          type: FMT_TYPE,
+          name: "FMT",
+          fields: {
+            Type: fmt.type,
+            Length: fmt.length,
+            Name: fmt.name,
+            Format: fmt.formatStr,
+            Columns: fmt.columns.join(","),
+          },
+        });
+        pos += FMT_LENGTH;
+        continue;
+      }
+
+      // --- All other messages ---
+      const fmt = formats.get(msgType);
+      if (!fmt) {
+        // Unknown message type and no FMT yet — skip header + type and resync
+        pos += 3;
+        continue;
+      }
+
+      if (pos + fmt.length > len) return false; // truncated
+
+      // Payload starts after header (2) + type (1) = offset 3
+      let fieldOffset = pos + 3;
+      const fields: Record<string, DataFlashFieldValue> = {};
+      let timestamp: number | undefined;
+
+      for (let i = 0; i < fmt.formatStr.length && i < fmt.columns.length; i++) {
+        const col = fmt.columns[i];
+        const { value, size } = readField(view, fieldOffset, fmt.formatStr[i]);
+        fields[col] = value;
+        if (col === "TimeUS" && typeof value === "number") timestamp = value;
+        fieldOffset += size;
+      }
+
+      pushMessage(messages, { type: msgType, name: fmt.name, timestamp, fields });
+      pos += fmt.length;
     }
-
-    const msg: DataFlashMessage = {
-      type: msgType,
-      name: fmt.name,
-      timestamp,
-      fields,
-    };
-
-    let list = messages.get(fmt.name);
-    if (!list) {
-      list = [];
-      messages.set(fmt.name, list);
-    }
-    list.push(msg);
-
-    pos += fmt.length;
+    return false;
+  } finally {
+    scan.pos = pos;
   }
+}
 
-  return { formats, messages };
+/** Parse a DataFlash .bin log file in one synchronous sweep. */
+export function parseDataFlashLog(buffer: ArrayBuffer): DataFlashLog {
+  const scan = createDataFlashScan(buffer);
+  scanDataFlash(scan, Infinity);
+  return { formats: scan.formats, messages: scan.messages };
 }
 
 /** Get all message type names present in a parsed log. */

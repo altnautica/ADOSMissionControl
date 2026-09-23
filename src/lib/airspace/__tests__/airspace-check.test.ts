@@ -55,4 +55,21 @@ describe("checkAirportProximity", () => {
     expect(issues).toHaveLength(1);
     expect(issues[0].waypointIndex).toBe(1);
   });
+
+  it("flags a leg that overflies an airport between two distant waypoints", () => {
+    // ~9 km west and ~9 km east of the field: both waypoints sit outside the
+    // 8 km ring, but the straight leg between them crosses the runway.
+    const dLon = 9 / (111.32 * Math.cos((LAX.lat * Math.PI) / 180));
+    const issues = checkAirportProximity([
+      { lat: LAX.lat, lon: LAX.lon - dLon },
+      { lat: LAX.lat, lon: LAX.lon + dLon },
+    ]);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].airport.icao).toBe("KLAX");
+    expect(issues[0].level).toBe("error");
+    expect(issues[0].onLeg).toBe(true);
+    expect(issues[0].waypointIndex).toBe(0);
+    expect(issues[0].distanceKm).toBeLessThan(0.1);
+    expect(issues[0].message).toContain("WP1→WP2");
+  });
 });

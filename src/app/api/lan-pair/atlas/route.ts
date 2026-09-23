@@ -2,7 +2,7 @@
  * @module LanPairAtlasRoute
  * @description Server-side proxy for a drone agent's Atlas capture-control
  * surface (`/api/atlas/*` on the ados-control front, `:8080`). Sibling to the
- * pairing / vision / compute proxy routes (Rule 39 local-first): lets an HTTPS
+ * pairing / vision / compute proxy routes (local-first): lets an HTTPS
  * Mission Control reach a plain-HTTP LAN agent without tripping the browser's
  * mixed-content guard, and resolves `*.local` server-side.
  *
@@ -26,6 +26,7 @@ import {
   proxyToAgent,
   readJsonEnvelope,
 } from "../_proxy";
+import { AGENT_SERVICE_RESTART_TIMEOUT_MS } from "@/lib/agent/agent-client/timeout";
 
 export const runtime = "nodejs";
 
@@ -64,6 +65,10 @@ export async function POST(req: NextRequest) {
     method,
     apiKey: String(payload.apiKey ?? "").trim(),
     json: hasBody ? payload.body : undefined,
-    timeoutMs: UPSTREAM_TIMEOUT_MS,
+    // A config write restarts the capture service before the agent answers.
+    timeoutMs:
+      method === "PUT" && payload.path === "config"
+        ? AGENT_SERVICE_RESTART_TIMEOUT_MS
+        : UPSTREAM_TIMEOUT_MS,
   });
 }

@@ -14,10 +14,13 @@
  *       set of MAV_CMD ids can NEVER be sent from a plugin.
  *     - strict target: the protocol is resolved ONLY from the plugin's drone
  *       (never the operator's selection).
- *     - operator confirmation (armed-aware), then the arm/link state is read
- *       again so the prompt's severity matched the vehicle that gets the
- *       command.
- *     - per-plugin rate limit on confirmed sends.
+ *     - per-plugin rate limit on confirmed sends, checked before the prompt
+ *       (an exhausted plugin never reaches the operator) and consumed on
+ *       approval.
+ *     - operator confirmation (armed-aware) naming the target drone, then
+ *       the arm/link state is read again so the prompt's severity matched the
+ *       vehicle that gets the command. An approved command that is then
+ *       refused or fails is reported to the operator, not only the plugin.
  *
  *   command.send "vision.designate" (retarget the follow tracker)
  *     - the same cross-drone guard, operator confirmation (critical while
@@ -35,16 +38,17 @@
 
 import type { BridgeHandler, BridgeHandlerContext } from "@/lib/plugins/bridge";
 import { useDroneManager } from "@/stores/drone-manager";
-import { requestPluginConfirm } from "@/lib/plugins/confirm";
+import { confirmRefusal, requestPluginConfirm } from "@/lib/plugins/confirm";
+import { pluginNotify } from "@/lib/plugins/notifier";
 import { writePluginConfigValue } from "@/lib/skills/plugin-config-writer";
-import { resolveLocalAgentForDrone } from "@/lib/agent/resolve-agent";
+import { resolveLanAgent } from "@/lib/agent/resolve-agent";
 import { VisionAgentClient } from "@/lib/agent/vision-client";
 import {
   PLUGIN_CONFIG_WRITE_COMMAND,
   VISION_DESIGNATE_COMMAND,
 } from "@/lib/plugins/methods";
 import { asRecord } from "./args";
-import { checkCommandRateLimit } from "./command-rate";
+import { checkCommandRateLimit, commandRateAvailable } from "./command-rate";
 import { buildMissionWriteHandler } from "./mission-write";
 import {
   readTargetVehicle,
@@ -130,6 +134,26 @@ function changedSincePrompt(
 }
 
 /**
+ * Tell the operator an action they approved did not reach the vehicle. The
+ * plugin gets the same reason in its RPC result, but the operator believes the
+ * action went out and must learn otherwise.
+ */
+function reportApprovedFailure(
+  pluginId: string,
+  action: string,
+  target: PluginTarget,
+  reason: string,
+): void {
+  pluginNotify(
+    pluginId,
+    `approved ${action} for ${targetDisplayName(target)} was not sent (${reason})`,
+    "error",
+  );
+}
+
+const RATE_LIMITED = "command rate limit exceeded";
+
+/**
  * Build the `command.send` + `mission.write` handlers for one plugin bound to
  * `target`. No long-lived subscriptions are opened, so there is nothing to
  * dispose.
@@ -151,25 +175,35 @@ export function buildControlHandlers(
     ) {
       return { ok: false, error: "vision.designate requires camera_id + a numeric bbox" };
     }
-    const agent = resolveLocalAgentForDrone(t.deviceId);
+    const agent = resolveLanAgent(t.deviceId);
     if (!agent) {
       return { ok: false, error: "no local agent seam for this drone" };
     }
     // Retargeting the tracker retargets whatever follows it, so the operator
     // approves every designation; an airborne (or unknown) vehicle escalates.
+    if (!commandRateAvailable(pluginId, Date.now())) {
+      return { ok: false, error: RATE_LIMITED };
+    }
+    const name = targetDisplayName(t);
     const before = readTargetVehicle(t);
-    const ok = await requestPluginConfirm({
+    const answer = await requestPluginConfirm({
       pluginId,
-      targetName: targetDisplayName(t),
+      targetName: name,
+      targetId: t.deviceId,
       title: "Plugin follow target",
-      body: `${pluginId} wants to change the tracked follow target${armSuffix(before)}`,
+      body: `${pluginId} wants to change the tracked follow target of ${name}${armSuffix(before)}`,
       severity: mayBeFlying(before) ? "critical" : "warning",
     });
-    if (!ok) return { ok: false, error: "operator denied" };
+    if (answer !== "approved") return { ok: false, error: confirmRefusal(answer) };
+    const action = "follow-target change";
     const changed = changedSincePrompt(t, before);
-    if (changed) return { ok: false, error: changed };
+    if (changed) {
+      reportApprovedFailure(pluginId, action, t, changed);
+      return { ok: false, error: changed };
+    }
     if (!checkCommandRateLimit(pluginId, Date.now())) {
-      return { ok: false, error: "command rate limit exceeded" };
+      reportApprovedFailure(pluginId, action, t, RATE_LIMITED);
+      return { ok: false, error: RATE_LIMITED };
     }
     try {
       const client = new VisionAgentClient(agent.agentUrl, agent.apiKey);
@@ -181,12 +215,14 @@ export function buildControlHandlers(
           confidence: isFiniteNumber(p.confidence) ? p.confidence : undefined,
         },
       );
+      if (!result.designated) {
+        reportApprovedFailure(pluginId, action, t, "the tracker refused it");
+      }
       return { ok: result.designated, result };
     } catch (e) {
-      return {
-        ok: false,
-        error: e instanceof Error ? e.message : "vision designate failed",
-      };
+      const reason = e instanceof Error ? e.message : "vision designate failed";
+      reportApprovedFailure(pluginId, action, t, reason);
+      return { ok: false, error: reason };
     }
   };
 
@@ -271,23 +307,35 @@ export function buildControlHandlers(
     // Arm state comes from this plugin's own node registry entry, not the
     // operator's selection. A lost link leaves the arm state unknown, which
     // escalates like armed: the aircraft may be flying.
+    if (!commandRateAvailable(pluginId, Date.now())) {
+      return { ok: false, error: RATE_LIMITED };
+    }
+    const name = targetDisplayName(target);
     const before = readTargetVehicle(target);
-    const ok = await requestPluginConfirm({
+    const answer = await requestPluginConfirm({
       pluginId,
-      targetName: targetDisplayName(target),
+      targetName: name,
+      targetId: target.deviceId,
       title: "Plugin command",
-      body: `${pluginId} wants to send "${command}"${armSuffix(before)}`,
+      body: `${pluginId} wants to send "${command}" to ${name}${armSuffix(before)}`,
       severity: mayBeFlying(before) ? "critical" : "warning",
     });
-    if (!ok) return { ok: false, error: "operator denied" };
+    if (answer !== "approved") return { ok: false, error: confirmRefusal(answer) };
+    const action = `"${command}"`;
     const changed = changedSincePrompt(target, before);
-    if (changed) return { ok: false, error: changed };
-
+    if (changed) {
+      reportApprovedFailure(pluginId, action, target, changed);
+      return { ok: false, error: changed };
+    }
     if (!checkCommandRateLimit(pluginId, Date.now())) {
-      return { ok: false, error: "command rate limit exceeded" };
+      reportApprovedFailure(pluginId, action, target, RATE_LIMITED);
+      return { ok: false, error: RATE_LIMITED };
     }
 
     const res = await protocol.sendCommand(entry.id, params);
+    if (!res.success) {
+      reportApprovedFailure(pluginId, action, target, res.message || "the vehicle rejected it");
+    }
     return { ok: res.success, result: res };
   };
 

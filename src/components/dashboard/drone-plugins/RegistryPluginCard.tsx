@@ -21,51 +21,20 @@
 import { useId, useMemo, useState } from "react";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import { useTranslations } from "next-intl";
-import { useRouter } from "next/navigation";
 import { Cpu, Layout, Package, PenTool, Radio, Sparkles } from "lucide-react";
 
 import { api } from "../../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { resolveNamedIcon } from "@/lib/icons/icon-registry";
-import {
-  pluginMatchesProfile,
-  type PluginTargetProfile,
-} from "@/lib/plugins/types";
+import { pluginMatchesProfile } from "@/lib/plugins/types";
+import type { RegistryCategory, RegistryPluginRow } from "@/lib/plugins/registry-row";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
-import { useFleetStore } from "@/stores/fleet-store";
-import { useDroneManager } from "@/stores/drone-manager";
-import type { FleetDrone } from "@/lib/types";
-import { resolveRelayReach } from "@/lib/nodes/relay-reach";
 import { cn } from "@/lib/utils";
 
+import { RegistryNodePicker } from "./RegistryNodePicker";
+
 import { useRegistryCompatibility } from "../../plugins/install-dialog/use-registry-compatibility";
-
-type RegistryCategory = "drivers" | "ui" | "ai" | "telemetry" | "tools";
-
-export interface RegistryPluginRow {
-  _id: string;
-  plugin_id: string;
-  name: string;
-  description: string;
-  category: RegistryCategory;
-  license: string;
-  author_id: string;
-  verified_publisher: boolean;
-  latest_version: string;
-  icon_url?: string;
-  /** A declared named icon (shared icon vocabulary, e.g. "camera"). When the
-   * catalog carries one it drives the preview glyph; otherwise the per-plugin
-   * fallback map below (then the category glyph) applies. */
-  icon?: string;
-  tier?: "first_party" | "verified" | "community";
-  /** Node profiles the plugin's agent half targets (`drone` /
-   * `ground-station` / `workstation`), denormalized from the manifest. Absent
-   * on older catalog rows → treated as drone-only by {@link pluginMatchesProfile}
-   * so a drone-targeting plugin is not offered on a ground-station or
-   * workstation node. */
-  target_profiles?: PluginTargetProfile[];
-}
 
 type CardState = "loading" | { error: string } | undefined;
 
@@ -84,11 +53,13 @@ export interface RegistryPluginCardProps {
    * the fleet-wide Settings -> Extensions overview, which has no single
    * node context to gate compatibility against — Install opens a node
    * picker and routes the operator to that node's own Extensions tab
-   * instead of installing here (plan step 10). */
+   * instead of installing here. */
   surface?: "node" | "settings";
+  /** Device id of the node Install targets on the per-node surface; the
+   * compatibility gate reads that node's own reported version and board. */
+  targetDeviceId?: string | null;
   /** True when a Settings "Install on a node…" hand-off landed on this
-   * card (the `?preselect=` query param matched its plugin id). Drives a
-   * highlight ring; the grid also scrolls it into view on mount. */
+   * card. Drives a highlight ring; the grid also scrolls it into view. */
   highlighted?: boolean;
 }
 
@@ -125,7 +96,7 @@ const CATEGORY_STYLE: Record<
   tools: {
     icon: PenTool,
     classes:
-      "border-text-secondary/40 bg-surface-secondary text-text-secondary",
+      "border-text-secondary/40 bg-bg-secondary text-text-secondary",
   },
 };
 
@@ -150,10 +121,10 @@ export function RegistryPluginCard({
   state,
   onInstall,
   surface = "node",
+  targetDeviceId = null,
   highlighted = false,
 }: RegistryPluginCardProps) {
   const t = useTranslations("pluginRegistry.browse");
-  const router = useRouter();
   const descId = useId();
   const isSettingsSurface = surface === "settings";
 
@@ -161,7 +132,7 @@ export function RegistryPluginCard({
   // loaded, so we can gate Install on a plugin the paired node cannot host
   // (a drone-only plugin on a workstation, a ground-station-only plugin on a
   // drone). Only meaningful on the per-node surface — Settings has no single
-  // node to gate against (plan step 10).
+  // node to gate against.
   const nodeProfile = useAgentCapabilitiesStore((s) => s.profile);
   const profileLoaded = useAgentCapabilitiesStore((s) => s.loaded);
 
@@ -201,7 +172,7 @@ export function RegistryPluginCard({
       agent_min_version: plugin.latest_version,
       supported_boards: undefined,
     },
-    { surface },
+    { surface, deviceId: targetDeviceId },
   );
 
   const isLoading = state === "loading";
@@ -292,34 +263,9 @@ export function RegistryPluginCard({
 
   // ── Settings-surface node picker ──────────────────────────────────────
   // Install has no single node to target here, so it opens a picker of
-  // every node whose own Extensions tab can accept an install — the same
-  // reach gate `DronePluginsTab.tsx` widens (`agentDeviceId !== null ||
-  // relayReach !== null`). Picking one focuses that drone (the same store
-  // `NodeDetailPanel` reads) and hands off to the dashboard with this
-  // plugin flagged for preselection.
+  // every node whose own Extensions tab can accept an install. The picker
+  // (and its fleet subscription) mounts only while open.
   const [pickerOpen, setPickerOpen] = useState(false);
-  const drones = useFleetStore((s) => s.drones);
-  const selectDrone = useDroneManager((s) => s.selectDrone);
-  const eligibleNodes = useMemo<FleetDrone[]>(() => {
-    if (!isSettingsSurface) return [];
-    return drones.filter((d) => {
-      const agentDeviceId = d.cloudDeviceId ?? null;
-      if (agentDeviceId !== null) return true;
-      return (
-        resolveRelayReach({
-          agentDeviceId,
-          reachedVia: d.reachedVia,
-          droneDeviceId: d.id,
-        }) !== null
-      );
-    });
-  }, [isSettingsSurface, drones]);
-
-  function handlePickNode(node: FleetDrone) {
-    setPickerOpen(false);
-    selectDrone(node.id);
-    router.push(`/?preselect=${encodeURIComponent(plugin.plugin_id)}`);
-  }
 
   function handlePrimaryAction() {
     if (isSettingsSurface) {
@@ -442,36 +388,10 @@ export function RegistryPluginCard({
         </p>
 
         {isSettingsSurface && pickerOpen && (
-          <div
-            className="space-y-1 rounded-md border border-border-default bg-bg-tertiary p-2"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <p className="px-1 text-[11px] font-medium text-text-tertiary">
-              {t("card.pickNodeHeading")}
-            </p>
-            {eligibleNodes.length === 0 ? (
-              <p className="px-1 text-[11px] text-text-tertiary">
-                {t("card.pickNodeEmpty")}
-              </p>
-            ) : (
-              <ul className="space-y-0.5">
-                {eligibleNodes.map((node) => (
-                  <li key={node.id}>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handlePickNode(node);
-                      }}
-                      className="w-full rounded px-2 py-1 text-left text-xs text-text-primary hover:bg-bg-primary"
-                    >
-                      {node.name ?? node.id}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          <RegistryNodePicker
+            pluginId={plugin.plugin_id}
+            onPicked={() => setPickerOpen(false)}
+          />
         )}
 
         {errMessage && (

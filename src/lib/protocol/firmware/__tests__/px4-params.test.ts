@@ -1,7 +1,7 @@
 /**
  * Tests for the PX4 parameter name map (canonical ArduPilot -> PX4).
  *
- * These assert that the bounded audit fill resolves the newly-added canonical
+ * These assert that the map resolves the listed canonical
  * names to their genuine PX4 equivalents, that pass-through and reverse mapping
  * still behave, and that no target collides in the reverse map.
  */
@@ -9,7 +9,7 @@ import { describe, it, expect } from "vitest";
 import { PX4_PARAM_MAP, PX4_REVERSE_MAP } from "../px4-params";
 import { createPX4Handler } from "../px4";
 
-describe("PX4_PARAM_MAP bounded audit fill", () => {
+describe("PX4_PARAM_MAP canonical name mappings", () => {
   const handler = createPX4Handler("copter");
 
   const NEW_MAPPINGS: Array<[string, string]> = [

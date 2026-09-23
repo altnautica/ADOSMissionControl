@@ -21,10 +21,8 @@
  * `_canonical_claims_blob`) reads back, because both sides verify
  * against the exact bytes received off the wire.
  *
- * The signer mirrors `src/lib/plugins/canonical-token.ts`. The two
- * implementations cannot share a module today because Convex actions
- * run in a Convex-managed runtime that does not resolve the `@/` path
- * alias; mirror manually if you change one.
+ * The signer lives in `lib/capabilityTokenSigner`, which the GCS test
+ * suite round-trips through the bridge verifier.
  *
  * Crypto: Web Crypto (`crypto.subtle`), no "use node" needed.
  *
@@ -42,75 +40,15 @@ import { action } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { api, internal } from "./_generated/api";
 import { deriveCapabilityTokenKey } from "./lib/capabilityTokenKeys";
+import { signTokenCanonical, type TokenClaims } from "./lib/capabilityTokenSigner";
 import type { Doc } from "./_generated/dataModel";
 
 /** Tokens expire 10 minutes after mint. */
 const TOKEN_TTL_MS = 10 * 60 * 1000;
 
-interface TokenClaims {
-  pluginId: string;
-  agentId: string;
-  operatorId: string;
-  expiresAt: number;
-  grantedCapabilities: string[];
-  iss: string;
-}
-
 interface MintResult {
   token: string;
   expiresAt: number;
-}
-
-// ──────────────────────────────────────────────────────────────
-// Helpers (Web Crypto + canonical JSON)
-// ──────────────────────────────────────────────────────────────
-
-function base64ToBytes(b64: string): Uint8Array {
-  const bin = atob(b64);
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i += 1) out[i] = bin.charCodeAt(i);
-  return out;
-}
-
-function urlsafeB64NoPad(bytes: Uint8Array): string {
-  let bin = "";
-  for (let i = 0; i < bytes.length; i += 1) bin += String.fromCharCode(bytes[i]);
-  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-/** Sorted top-level keys, no whitespace. Matches the agent's
- * `_canonical_claims_blob`. Keep in sync with
- * `src/lib/plugins/canonical-token.ts`. */
-function canonicalClaimsBytes(claims: TokenClaims): Uint8Array {
-  const sortedKeys: (keyof TokenClaims)[] = [
-    "agentId",
-    "expiresAt",
-    "grantedCapabilities",
-    "iss",
-    "operatorId",
-    "pluginId",
-  ];
-  const obj: Record<string, unknown> = {};
-  for (const k of sortedKeys) obj[k] = claims[k];
-  return new TextEncoder().encode(JSON.stringify(obj));
-}
-
-async function signTokenCanonical(
-  claims: TokenClaims,
-  secretBase64: string,
-): Promise<string> {
-  const key = await crypto.subtle.importKey(
-    "raw",
-    base64ToBytes(secretBase64) as BufferSource,
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const blob = canonicalClaimsBytes(claims);
-  const sig = new Uint8Array(
-    await crypto.subtle.sign("HMAC", key, blob as BufferSource),
-  );
-  return `${urlsafeB64NoPad(blob)}.${urlsafeB64NoPad(sig)}`;
 }
 
 // ──────────────────────────────────────────────────────────────

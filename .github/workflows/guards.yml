@@ -42,8 +42,10 @@ jobs:
           # The digit run is {2,} rather than {3}: a two-digit and a
           # four-digit tag are both real, and a fixed {3} makes both invisible.
           # No \b anywhere — git grep's ERE does not support it and silently
-          # matches nothing when it appears.
-          TAG_PATTERN='(^|[^A-Za-z])(DEC|MSN|LRN)-[0-9]{2,}|(^|[^A-Za-z])Wave [0-9]'
+          # matches nothing when it appears. An internal rule number ("rule"
+          # plus a digit run) is the same leak: it points a public reader at a
+          # private rulebook; name the principle instead.
+          TAG_PATTERN='(^|[^A-Za-z])(DEC|MSN|LRN)-[0-9]{2,}|(^|[^A-Za-z])Wave [0-9]|(^|[^A-Za-z])[Rr]ule #?[0-9]+'
 
           # An absolute path under a home directory is a developer machine
           # baked into shipped source. Obvious placeholders are allowed
@@ -57,20 +59,26 @@ jobs:
           # this file would make the file its own first hit, and "the guard
           # found itself" is indistinguishable from a real leak.
           SAMPLE_TAG="$(printf 'DEC%s284' '-')"
+          SAMPLE_RULE="$(printf 'per Rule %s' '44')"
           SAMPLE_HOME="$(printf '/Users/%s/src/x' 'realname')"
           printf 'ref %s and path %s\n' "$SAMPLE_TAG" "$SAMPLE_HOME" > .guard-selftest
-          git add -f .guard-selftest
-          if ! git grep -qIE "$TAG_PATTERN" -- .guard-selftest; then
-            echo "SELF-TEST FAILED: the planning-tag pattern does not match a known tag."
-            echo "  The pattern is broken; this job would have reported a clean tree."
-            fail=1
-          fi
+          # The rule sample gets its own file so each alternative of the tag
+          # pattern is proven on its own, not carried by the other one.
+          printf 'see %s\n' "$SAMPLE_RULE" > .guard-selftest-rule
+          git add -f .guard-selftest .guard-selftest-rule
+          for sample in .guard-selftest .guard-selftest-rule; do
+            if ! git grep -qIE "$TAG_PATTERN" -- "$sample"; then
+              echo "SELF-TEST FAILED: the planning-tag pattern does not match the known sample in $sample."
+              echo "  The pattern is broken; this job would have reported a clean tree."
+              fail=1
+            fi
+          done
           if ! git grep -IE "$HOME_PATTERN" -- .guard-selftest | grep -qvE "$HOME_ALLOW"; then
             echo "SELF-TEST FAILED: the home-path pattern does not match a known absolute home path."
             fail=1
           fi
-          git rm -q --cached .guard-selftest
-          rm -f .guard-selftest
+          git rm -q --cached .guard-selftest .guard-selftest-rule
+          rm -f .guard-selftest .guard-selftest-rule
           [ "$fail" -eq 0 ] || exit 1
 
           # ---- check 1: the private agent-context bridge is gitignored and
@@ -313,12 +321,6 @@ jobs:
           cmdMcpReach.ts:recordAudit
           cmdPairing.ts:issueBrowserSession
           cmdPluginArchives.ts:getSignedDownloadUrl
-          cmdRadioPairing.ts:enqueueWfbPairInit
-          cmdRadioPairing.ts:enqueueWfbPairApply
-          cmdRadioPairing.ts:enqueueWfbPairUnpair
-          cmdRadioPairing.ts:getCommandWithData
-          cmdRadioPairing.ts:finalizePairing
-          cmdRadioPairing.ts:cancelCommand
           comments.ts:countByTarget
           comments.ts:countByTargets
           communityChangelog.ts:list

@@ -18,6 +18,7 @@ function deferredProtocol() {
   const protocol = {
     downloadMotorMixer: () => motors,
     downloadServoMixer: async () => [],
+    getMixerConfig: async () => ({ maxSupportedMotors: 12, maxSupportedServos: 18 }),
   } as unknown as DroneProtocol
   return { protocol, resolve }
 }

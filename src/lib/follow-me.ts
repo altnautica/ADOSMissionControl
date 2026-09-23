@@ -161,7 +161,7 @@ function tick(s: FollowSession): void {
   if (!fix || fix.timestamp < s.startedAt) return; // waiting for a current fix
 
   const store = useFollowMeStore.getState();
-  store.updateAccuracy(fix.accuracy);
+  store.updateAccuracy(Number.isFinite(fix.accuracy) ? fix.accuracy : null);
   if (Number.isFinite(fix.accuracy) && fix.accuracy > MAX_ACCURACY_M) {
     // An imprecise fix is not a flight target. Hold where the drone is rather
     // than leave it flying to the last target, and resume when it improves.
@@ -175,18 +175,23 @@ function tick(s: FollowSession): void {
   sendReposition(s, fix.lat, fix.lon, targetAlt);
 }
 
+/** Outcome of {@link startFollowMe}: a refusal names its reason for the operator. */
+export type FollowMeStart = { ok: true } | { ok: false; reason: string };
+
 /**
  * Start following the GCS with drone `droneId`.
  * @param droneId - drone-manager id of the drone to command
  * @param minAltitude - Minimum altitude in meters (drone won't go below this). Default 10m.
- * @returns false when a session is running, the drone is not connected and
- *   armed, or location permission was refused.
+ * @returns a refusal with its reason when a session is running, the drone is
+ *   not connected and armed, or the GCS location cannot be read.
  */
-export async function startFollowMe(droneId: string, minAltitude = 10): Promise<boolean> {
-  if (session || starting) return false;
+export async function startFollowMe(droneId: string, minAltitude = 10): Promise<FollowMeStart> {
+  if (session || starting) return { ok: false, reason: "a follow-me session is already running" };
   const drone = useDroneManager.getState().drones.get(droneId);
-  if (!drone?.protocol.isConnected) return false;
-  if (useNodeRegistryStore.getState().getEntry(droneId)?.fc.armState !== "armed") return false;
+  if (!drone?.protocol.isConnected) return { ok: false, reason: "the drone is not connected" };
+  if (useNodeRegistryStore.getState().getEntry(droneId)?.fc.armState !== "armed") {
+    return { ok: false, reason: "the drone is not armed" };
+  }
 
   starting = true;
   try {
@@ -194,7 +199,9 @@ export async function startFollowMe(droneId: string, minAltitude = 10): Promise<
     const gcsStore = useGcsLocationStore.getState();
     if (gcsStore.permission !== "granted") {
       const perm = await gcsStore.requestPermission();
-      if (perm !== "granted") return false;
+      if (perm !== "granted") {
+        return { ok: false, reason: "location permission was not granted to this browser" };
+      }
     }
     gcsStore.startWatching();
 
@@ -214,7 +221,9 @@ export async function startFollowMe(droneId: string, minAltitude = 10): Promise<
     };
     session = s;
     useFollowMeStore.getState().activate(droneId, drone.name);
-    return true;
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, reason: `the GCS location could not be read (${String(err)})` };
   } finally {
     starting = false;
   }

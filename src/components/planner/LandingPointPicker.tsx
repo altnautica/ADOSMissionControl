@@ -8,7 +8,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Input } from "@/components/ui/input";
+import { NumericField } from "@/components/ui/numeric-field";
 import { usePlannerStore } from "@/stores/planner-store";
 import { Plane, Crosshair } from "lucide-react";
 
@@ -25,13 +25,13 @@ export function LandingPointPicker({ landingPoint, onChange }: LandingPointPicke
   const lat = landingPoint?.[0];
   const lon = landingPoint?.[1];
 
-  const setLat = (value: string) => {
-    const v = parseFloat(value);
-    onChange([Number.isFinite(v) ? v : 0, lon ?? 0]);
+  // A coordinate entered before the point exists pairs with the map centre's
+  // other coordinate rather than 0 (the equator / prime meridian).
+  const setLat = (v: number) => {
+    onChange([v, lon ?? usePlannerStore.getState().mapCenter[1]]);
   };
-  const setLon = (value: string) => {
-    const v = parseFloat(value);
-    onChange([lat ?? 0, Number.isFinite(v) ? v : 0]);
+  const setLon = (v: number) => {
+    onChange([lat ?? usePlannerStore.getState().mapCenter[0], v]);
   };
   const useMapCenter = () => {
     const center = usePlannerStore.getState().mapCenter;
@@ -49,19 +49,23 @@ export function LandingPointPicker({ landingPoint, onChange }: LandingPointPicke
         </span>
       </div>
       <div className="grid grid-cols-2 gap-2">
-        <Input
+        <NumericField
           label={t("lat")}
-          type="number"
-          value={lat !== undefined ? String(lat) : ""}
+          value={lat}
+          min={-90}
+          max={90}
+          step="any"
           placeholder="—"
-          onChange={(e) => setLat(e.target.value)}
+          onCommit={setLat}
         />
-        <Input
+        <NumericField
           label={t("lon")}
-          type="number"
-          value={lon !== undefined ? String(lon) : ""}
+          value={lon}
+          min={-180}
+          max={180}
+          step="any"
           placeholder="—"
-          onChange={(e) => setLon(e.target.value)}
+          onCommit={setLon}
         />
       </div>
       <button

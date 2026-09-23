@@ -4,7 +4,7 @@ import { splatArtifactExt } from "@/components/atlas/viewers/splat-format";
 describe("splatArtifactExt", () => {
   it("reads the extension from the proxy `path` param, not the URL tail", () => {
     // The proxied URL ends in a query string, not `.ply` — the exact case
-    // that made mkkellogg's `endsWith` sniffing fail. The real ext is in
+    // that made the library's `endsWith` sniffing fail. The real ext is in
     // `path`, and `path` is not the last param.
     const url =
       "/api/lan-pair/artifact?path=artifacts/ds/output.ply&host=192.168.1.5";

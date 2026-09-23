@@ -1,13 +1,18 @@
 /**
  * @module airspace/airspace-check
  * @description Keyless static-ring airspace proximity gate. Flags mission
- * waypoints that fall within warning / error distance rings of a major airport,
- * using the offline {@link MAJOR_AIRPORTS} dataset (no OpenAIP, no network).
+ * waypoints, and the legs flown between them, that come within warning /
+ * error distance rings of a major airport, using the offline
+ * {@link MAJOR_AIRPORTS} dataset (no OpenAIP, no network).
  * Pure logic — no store or React imports.
  * @license GPL-3.0-only
  */
 
-import { nearestAirport, type Airport } from "./airports";
+import { MAJOR_AIRPORTS, type Airport } from "./airports";
+
+/** Mean Earth radius (km) for the local projection around each airport. */
+const EARTH_RADIUS_KM = 6371.0088;
+const DEG_TO_RAD = Math.PI / 180;
 
 /** A point with a latitude and longitude. Any waypoint-like shape works. */
 export interface LatLon {
@@ -24,10 +29,13 @@ export interface AirspaceProximityIssue {
   level: AirspaceIssueLevel;
   /** The nearest airport that triggered the issue. */
   airport: Airport;
-  /** Closest-approach distance across the mission's waypoints (kilometers). */
+  /** Closest-approach distance across the mission's route (kilometers). */
   distanceKm: number;
-  /** Index of the waypoint at the closest approach to this airport. */
+  /** Waypoint at the closest approach; with `onLeg`, the start of that leg. */
   waypointIndex: number;
+  /** True when the closest approach lies between `waypointIndex` and the next
+   * waypoint rather than at a waypoint. */
+  onLeg: boolean;
   /** Human-readable summary. */
   message: string;
 }
@@ -41,12 +49,18 @@ export interface AirspaceCheckOptions {
 }
 
 /**
- * Check every waypoint against the static airport rings.
+ * Check the mission route against the static airport rings.
  *
- * For each airport that any waypoint approaches within `warnKm`, a single issue
- * is emitted at the closest approach (deduplicated per airport so a mission that
- * lingers near one field does not flood the panel). A waypoint inside `errorKm`
- * raises the issue to `"error"`; between `errorKm` and `warnKm` it is `"warn"`.
+ * Each waypoint and each straight leg between consecutive waypoints is
+ * measured against every airport; a leg that overflies a field is caught even
+ * when both of its waypoints sit outside the rings. For each airport the route
+ * approaches within `warnKm`, a single issue is emitted at the closest
+ * approach (deduplicated per airport so a mission that lingers near one field
+ * does not flood the panel). Inside `errorKm` the issue is `"error"`; between
+ * `errorKm` and `warnKm` it is `"warn"`.
+ *
+ * Distances are measured in a local east/north plane centred on each airport,
+ * which is accurate well beyond the ring radii.
  *
  * @param waypoints ordered mission waypoints (lat/lon)
  * @param options ring radii; `errorKm` should be <= `warnKm`
@@ -62,48 +76,94 @@ export function checkAirportProximity(
   // larger than the warning ring.
   const errorKm = Math.min(errorKmRaw, warnKm);
 
-  // Closest approach per airport (keyed by ICAO).
-  const closest = new Map<
-    string,
-    { airport: Airport; distanceKm: number; waypointIndex: number }
-  >();
-
+  const route: { lat: number; lon: number; index: number }[] = [];
   for (let i = 0; i < waypoints.length; i++) {
     const wp = waypoints[i];
-    if (!Number.isFinite(wp.lat) || !Number.isFinite(wp.lon)) continue;
-
-    const near = nearestAirport(wp.lat, wp.lon);
-    if (near === null) continue;
-    if (near.distanceKm > warnKm) continue;
-
-    const prev = closest.get(near.airport.icao);
-    if (prev === undefined || near.distanceKm < prev.distanceKm) {
-      closest.set(near.airport.icao, {
-        airport: near.airport,
-        distanceKm: near.distanceKm,
-        waypointIndex: i,
-      });
+    if (Number.isFinite(wp.lat) && Number.isFinite(wp.lon)) {
+      route.push({ lat: wp.lat, lon: wp.lon, index: i });
     }
   }
+  if (route.length === 0) return [];
 
   const issues: AirspaceProximityIssue[] = [];
-  for (const entry of closest.values()) {
-    const level: AirspaceIssueLevel = entry.distanceKm <= errorKm ? "error" : "warn";
+  for (const airport of MAJOR_AIRPORTS) {
+    const approach = closestApproach(route, airport);
+    if (approach.distanceKm > warnKm) continue;
+
+    const level: AirspaceIssueLevel = approach.distanceKm <= errorKm ? "error" : "warn";
     const ring = level === "error" ? errorKm : warnKm;
-    const wpLabel = `WP${entry.waypointIndex + 1}`;
+    const where = approach.onLeg
+      ? `Leg WP${approach.waypointIndex + 1}→WP${approach.nextIndex + 1} passes`
+      : `WP${approach.waypointIndex + 1} is`;
     const message =
-      `${wpLabel} is ${entry.distanceKm.toFixed(1)} km from ${entry.airport.name} ` +
-      `(${entry.airport.icao}), inside the ${ring} km ` +
+      `${where} ${approach.distanceKm.toFixed(1)} km from ${airport.name} ` +
+      `(${airport.icao}), inside the ${ring} km ` +
       `${level === "error" ? "no-fly" : "caution"} ring.`;
     issues.push({
       level,
-      airport: entry.airport,
-      distanceKm: entry.distanceKm,
-      waypointIndex: entry.waypointIndex,
+      airport,
+      distanceKm: approach.distanceKm,
+      waypointIndex: approach.waypointIndex,
+      onLeg: approach.onLeg,
       message,
     });
   }
 
   issues.sort((a, b) => a.distanceKm - b.distanceKm);
   return issues;
+}
+
+interface Approach {
+  distanceKm: number;
+  waypointIndex: number;
+  nextIndex: number;
+  onLeg: boolean;
+}
+
+/** Closest approach of the route (vertices and legs) to one airport. */
+function closestApproach(
+  route: readonly { lat: number; lon: number; index: number }[],
+  airport: Airport,
+): Approach {
+  const cosLat = Math.cos(airport.lat * DEG_TO_RAD);
+  // East/north offset (km) of a route point from the airport.
+  const local = (p: { lat: number; lon: number }): [number, number] => {
+    let dLon = p.lon - airport.lon;
+    if (dLon > 180) dLon -= 360;
+    else if (dLon < -180) dLon += 360;
+    return [
+      dLon * DEG_TO_RAD * EARTH_RADIUS_KM * cosLat,
+      (p.lat - airport.lat) * DEG_TO_RAD * EARTH_RADIUS_KM,
+    ];
+  };
+
+  const [x0, y0] = local(route[0]);
+  let best: Approach = {
+    distanceKm: Math.hypot(x0, y0),
+    waypointIndex: route[0].index,
+    nextIndex: route[0].index,
+    onLeg: false,
+  };
+  let [ax, ay] = [x0, y0];
+  for (let i = 1; i < route.length; i++) {
+    const [bx, by] = local(route[i]);
+    const dx = bx - ax;
+    const dy = by - ay;
+    const lenSq = dx * dx + dy * dy;
+    // Parameter of the airport's projection onto the leg, clamped to the leg.
+    const t = lenSq > 0 ? Math.min(1, Math.max(0, -(ax * dx + ay * dy) / lenSq)) : 0;
+    const distanceKm = Math.hypot(ax + t * dx, ay + t * dy);
+    if (distanceKm < best.distanceKm) {
+      const atStart = t === 0;
+      const atEnd = t === 1;
+      best = {
+        distanceKm,
+        waypointIndex: atEnd ? route[i].index : route[i - 1].index,
+        nextIndex: route[i].index,
+        onLeg: !atStart && !atEnd,
+      };
+    }
+    [ax, ay] = [bx, by];
+  }
+  return best;
 }

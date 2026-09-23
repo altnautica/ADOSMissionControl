@@ -56,14 +56,18 @@ export function OverviewTab({ record }: OverviewTabProps) {
       <Card title="Metrics" padding={true}>
         <div className="grid grid-cols-2 gap-3">
           <DataValue label="Duration" value={formatDuration(record.duration)} />
-          <DataValue label="Distance" value={formatDecimal(record.distance / 1000, 2, locale)} unit="km" />
-          <DataValue label="Max Altitude" value={record.maxAlt} unit="m" />
-          <DataValue label="Max Speed" value={record.maxSpeed} unit="m/s" />
+          <DataValue label="Distance" value={record.distance !== undefined ? formatDecimal(record.distance / 1000, 2, locale) : "—"} unit="km" />
+          <DataValue label="Max Altitude" value={record.maxAlt ?? "—"} unit="m" />
+          <DataValue label="Max Speed" value={record.maxSpeed ?? "—"} unit="m/s" />
           {record.avgSpeed !== undefined && (
             <DataValue label="Avg Speed" value={record.avgSpeed} unit="m/s" />
           )}
           <DataValue label="Waypoints" value={record.waypointCount} />
-          <DataValue label="Battery Used" value={record.batteryUsed} unit="%" />
+          {record.batteryUsed !== undefined ? (
+            <DataValue label="Battery Used" value={record.batteryUsed} unit="%" />
+          ) : (
+            <DataValue label="Battery Used" value="—" />
+          )}
           {record.batteryStartV !== undefined && (
             <DataValue label="Batt Start" value={formatDecimal(record.batteryStartV, 2, locale)} unit="V" />
           )}

@@ -5,7 +5,7 @@
  * @description The reconstruction "detail level" picker for a drone's Atlas
  * capture surface. The operator chooses how much the compute node trains a
  * reconstruction (Draft → Maximum, mapping to Brush training steps — the one
- * real quality knob, Rule 44). The choice persists on the drone's atlas config
+ * real quality knob, no fabricated reading). The choice persists on the drone's atlas config
  * (`reconstruct_steps`, alongside the capture profile) and rides the reconstruct
  * job's `params.steps`. Rendered with the capture controls (both the setup
  * surface and the Live World tab) so it sits where a reconstruction is

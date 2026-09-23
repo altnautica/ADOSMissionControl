@@ -13,6 +13,16 @@ import { disabledIfNoLink, disabledUnlessDisarmed } from "./_shared";
 /** Take-off altitude bounds and default, metres above home. */
 export const TAKEOFF_ALTITUDE_M = { min: 1, max: 120, default: 10 } as const;
 
+/**
+ * Parse a typed take-off altitude. Returns metres, or `null` when the entry is
+ * blank, not a number, or outside {@link TAKEOFF_ALTITUDE_M}.
+ */
+export function parseTakeoffAltitude(text: string): number | null {
+  const alt = Number(text);
+  if (text.trim() === "" || !Number.isFinite(alt)) return null;
+  return alt >= TAKEOFF_ALTITUDE_M.min && alt <= TAKEOFF_ALTITUDE_M.max ? alt : null;
+}
+
 function takeoffAltitude(args?: SkillActivateArgs): number {
   return typeof args?.altitudeM === "number" && args.altitudeM > 0
     ? args.altitudeM

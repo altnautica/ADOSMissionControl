@@ -8,7 +8,6 @@
 import { readU8, readU16, readS32 } from "./helpers";
 import type {
   INavLogicCondition,
-  INavLogicConditionsStatus,
   INavGvarStatus,
   INavProgrammingPid,
   INavProgrammingPidStatus,
@@ -23,7 +22,7 @@ import type {
  *
  * Per condition (14 bytes):
  *   U8  enabled
- *   U8  activatorId
+ *   S8  activatorId (-1 = none, the condition always evaluates)
  *   U8  operation
  *   U8  operandAType
  *   S32 operandAValue
@@ -38,7 +37,7 @@ export function decodeMspINavLogicConditions(dv: DataView): INavLogicCondition[]
   while (offset + ENTRY <= dv.byteLength) {
     result.push({
       enabled: readU8(dv, offset) !== 0,
-      activatorId: readU8(dv, offset + 1),
+      activatorId: dv.getInt8(offset + 1),
       operation: readU8(dv, offset + 2),
       operandAType: readU8(dv, offset + 3),
       operandAValue: readS32(dv, offset + 4),
@@ -56,20 +55,13 @@ export function decodeMspINavLogicConditions(dv: DataView): INavLogicCondition[]
 /**
  * MSP2_INAV_LOGIC_CONDITIONS_STATUS (0x2026)
  *
- * Repeated per condition:
- *   U8  id
- *   S32 value
+ * S32[MAX_LOGIC_CONDITIONS] the current value of every logic condition, in
+ * slot order (logicConditionGetValue(0..n-1)). Index i is slot i.
  */
-export function decodeMspINavLogicConditionsStatus(dv: DataView): INavLogicConditionsStatus[] {
-  const result: INavLogicConditionsStatus[] = [];
-  const ENTRY = 5;
-  let offset = 0;
-  while (offset + ENTRY <= dv.byteLength) {
-    result.push({
-      id: readU8(dv, offset),
-      value: readS32(dv, offset + 1),
-    });
-    offset += ENTRY;
+export function decodeMspINavLogicConditionsStatus(dv: DataView): number[] {
+  const result: number[] = [];
+  for (let offset = 0; offset + 4 <= dv.byteLength; offset += 4) {
+    result.push(readS32(dv, offset));
   }
   return result;
 }
@@ -79,12 +71,13 @@ export function decodeMspINavLogicConditionsStatus(dv: DataView): INavLogicCondi
 /**
  * MSP2_INAV_GVAR_STATUS (0x2027)
  *
- * S32[8] live global-variable values (gvGet(0..7)); 32 bytes total.
+ * S32[8] live global-variable values (gvGet(0..7)); 32 bytes total. A short
+ * reply yields only the values it carries.
  */
 export function decodeMspINavGvarStatus(dv: DataView): INavGvarStatus {
   const values: number[] = [];
-  for (let i = 0; i < 8; i++) {
-    values.push(dv.byteLength >= (i + 1) * 4 ? readS32(dv, i * 4) : 0);
+  for (let offset = 0; offset + 4 <= dv.byteLength && values.length < 8; offset += 4) {
+    values.push(readS32(dv, offset));
   }
   return { values };
 }

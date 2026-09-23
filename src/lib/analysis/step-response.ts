@@ -108,11 +108,33 @@ function estimateDampingRatio(
 // Public API
 // ---------------------------------------------------------------------------
 
+/** Index of the first sample at or after `tUs`, or `series.length` if none. */
+function firstAtOrAfter(series: TimeSample[], tUs: number): number {
+  let lo = 0;
+  let hi = series.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (series[mid].timeUs < tUs) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
+}
+
+/**
+ * Longest span the detection window may stretch to when the log has no sample
+ * exactly STEP_DETECT_WINDOW_MS later. Covers RATE logged at 5 Hz or faster;
+ * a longer gap is a logging dropout, not a step.
+ */
+const MAX_DETECT_SPAN_US = 4 * STEP_DETECT_WINDOW_MS * 1000;
+
 /**
  * Extract step response events from desired and actual rate time series.
  *
  * A step event is detected when the desired rate changes by more than
- * `MIN_STEP_SIZE` deg/s within `STEP_DETECT_WINDOW_MS` milliseconds.
+ * `MIN_STEP_SIZE` deg/s within `STEP_DETECT_WINDOW_MS` milliseconds. The
+ * autopilot limits how fast the desired rate may change, so a stick step
+ * arrives as a ramp over many samples: the event is anchored where that ramp
+ * starts and its target is where the ramp ends.
  */
 export function extractStepResponses(
   desired: TimeSample[],
@@ -131,31 +153,52 @@ export function extractStepResponses(
 
   for (let i = 0; i < desired.length - 1; i++) {
     const curr = desired[i];
-    const next = desired[i + 1];
-    const dt = next.timeUs - curr.timeUs;
-
-    if (dt <= 0 || dt > detectWindowUs) continue;
-
-    const stepSize = next.value - curr.value;
-    if (Math.abs(stepSize) < MIN_STEP_SIZE) continue;
-
-    // Avoid overlapping with previous step
     if (curr.timeUs - lastStepUs < minGapUs) continue;
-    lastStepUs = curr.timeUs;
 
-    // Define analysis window
-    const windowStartUs = curr.timeUs;
-    const windowEndUs = curr.timeUs + analysisWindowUs;
+    const j = firstAtOrAfter(desired, curr.timeUs + detectWindowUs);
+    if (j >= desired.length) break;
+    if (desired[j].timeUs - curr.timeUs > MAX_DETECT_SPAN_US) continue;
+
+    const change = desired[j].value - curr.value;
+    if (Math.abs(change) < MIN_STEP_SIZE) continue;
+    const dir = Math.sign(change);
+    const moves = (k: number) => (desired[k + 1].value - desired[k].value) * dir > 0;
+
+    // Ramp start: the sample before the desired rate starts moving toward the
+    // new value, including any part of the ramp already under way at i.
+    let start = i;
+    while (start < j && !moves(start)) start++;
+    while (
+      start > 0 &&
+      moves(start - 1) &&
+      desired[start - 1].timeUs > lastStepUs + minGapUs &&
+      curr.timeUs - desired[start - 1].timeUs < analysisWindowUs
+    ) {
+      start--;
+    }
+    // Ramp end: where the desired rate stops moving toward the new value.
+    let end = Math.max(j, start + 1);
+    while (
+      end + 1 < desired.length &&
+      moves(end) &&
+      desired[end + 1].timeUs - desired[start].timeUs <= analysisWindowUs
+    ) {
+      end++;
+    }
+
+    const preStepValue = desired[start].value;
+    const stepTarget = desired[end].value;
+    const stepMagnitude = stepTarget - preStepValue;
+    if (Math.abs(stepMagnitude) < MIN_STEP_SIZE) continue;
+
+    const windowStartUs = desired[start].timeUs;
+    const windowEndUs = windowStartUs + analysisWindowUs;
+    lastStepUs = windowStartUs;
 
     const desiredSlice = sliceSeries(desired, windowStartUs, windowEndUs);
     const actualSlice = sliceSeries(actual, windowStartUs, windowEndUs);
 
     if (desiredSlice.length < 3 || actualSlice.length < 3) continue;
-
-    // Step target: desired value after the step
-    const preStepValue = curr.value;
-    const stepTarget = next.value;
-    const stepMagnitude = stepTarget - preStepValue;
 
     // Measure rise time (10% to 90% of step target relative to pre-step)
     const threshold10 = preStepValue + stepMagnitude * RISE_LOW;

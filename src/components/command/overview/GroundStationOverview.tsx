@@ -5,8 +5,8 @@
  * @description Per-node overview for the `ground-station` profile.
  * Renders mesh role, paired-drone summary, RX link quality, uplink
  * status — the surface a ground-station operator needs at a glance.
- * The full hardware-config drilldown stays in `GroundStationDetailPanel`'s
- * 8-tab interior; this is the landing summary.
+ * The node's own ground-station tabs carry the full hardware configuration;
+ * this is the landing summary.
  * @license GPL-3.0-only
  */
 
@@ -15,6 +15,7 @@ import { useTranslations } from "next-intl";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
 import { useGroundStationStore } from "@/stores/ground-station-store";
+import { groundStationApiFromAgent } from "@/lib/api/ground-station-api";
 import { useGroundStationPoll } from "../nodes/ground-station/use-gs-poll";
 import { AgentStatusCard } from "../shared/AgentStatusCard";
 import { SystemResourceGauges } from "../shared/SystemResourceGauges";
@@ -89,6 +90,16 @@ export function GroundStationOverview({ name }: { name?: string }) {
     await loadMesh(api);
     await loadNetwork(api);
   });
+
+  // Uplink health (ok / degraded / down) and the failover log arrive only on
+  // the uplink event stream; the REST network read does not carry them, so
+  // subscribe while the overview is mounted.
+  const subscribeUplinkWs = useGroundStationStore((s) => s.subscribeUplinkWs);
+  useEffect(() => {
+    const api = groundStationApiFromAgent(agentUrl, apiKey);
+    if (!api) return;
+    return subscribeUplinkWs(api);
+  }, [agentUrl, apiKey, subscribeUplinkWs]);
 
   if (!status) {
     if (!connected) return <AgentDisconnectedPage />;

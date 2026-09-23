@@ -70,11 +70,12 @@ const { zipCollection, bareGeometries } = vi.hoisted(() => {
 
 vi.mock("shpjs", () => {
   const fn = vi.fn(async () => zipCollection);
-  return { default: Object.assign(fn, { parseShp: () => bareGeometries }) };
+  return { default: Object.assign(fn, { parseShp: vi.fn(() => bareGeometries) }) };
 });
 
 // Import after the mock so the mocked module is picked up.
-import { parseShapefile } from "@/lib/formats/shp-import";
+import shp from "shpjs";
+import { parseShapefile, ShapefileNotGeographicError } from "@/lib/formats/shp-import";
 
 function zipBuffer(): ArrayBuffer {
   // PK\x03\x04 local-file-header magic + filler.
@@ -157,5 +158,25 @@ describe("parseShapefile", () => {
       [60, 51],
       [61, 51],
     ]);
+  });
+
+  it("refuses a bare .shp in projected coordinates instead of returning off-planet rings", async () => {
+    // UTM easting/northing: no .prj travels with a bare .shp to reproject it.
+    vi.mocked(shp.parseShp).mockReturnValueOnce([
+      {
+        type: "Polygon",
+        coordinates: [
+          [
+            [500000, 4100000],
+            [500100, 4100000],
+            [500100, 4100100],
+            [500000, 4100000],
+          ],
+        ],
+      },
+    ]);
+    await expect(parseShapefile(bareShpBuffer())).rejects.toBeInstanceOf(
+      ShapefileNotGeographicError,
+    );
   });
 });

@@ -1,10 +1,17 @@
 /**
  * @module selected-target-store
- * @description The host-owned SELECTED target — the detection the operator
- * clicked in the cockpit overlay. It is the shared anchor for target-scoped
- * actions: the target-action popup reads it, and every action (built-in or
- * plugin-contributed) operates on it. Ephemeral UI state (not persisted); it
- * clears on drone switch or when the operator dismisses the popup.
+ * @description The host-owned cockpit target state. Two separate slots:
+ *
+ *  - `popupTarget`: the detection the operator clicked, whose target-action
+ *    popup is open. Dismissable (Escape, outside click, running an action, a
+ *    stale feed). Hotkeys and the popup act on it.
+ *  - `designated`: the target the vision engine acknowledged as designated.
+ *    Set only on the engine's acknowledgement of a designate; it survives the
+ *    popup closing and stays until the operator releases it or designates
+ *    another target. The lock chip, the lock brackets and the lead reticle read
+ *    it, and report "Lost" / "Not in view" while the tracker cannot see it.
+ *
+ * Ephemeral UI state (not persisted). Both clear on drone switch.
  *
  * @license GPL-3.0-only
  */
@@ -27,13 +34,39 @@ export interface SelectedTarget {
 }
 
 interface SelectedTargetState {
-  selected: SelectedTarget | null;
-  select: (target: SelectedTarget) => void;
-  clear: () => void;
+  popupTarget: SelectedTarget | null;
+  designated: SelectedTarget | null;
+  openPopup: (target: SelectedTarget) => void;
+  closePopup: () => void;
+  setDesignated: (target: SelectedTarget) => void;
+  release: () => void;
+  /** Drop both slots (drone switch / overlay unmount). */
+  reset: () => void;
 }
 
 export const useSelectedTargetStore = create<SelectedTargetState>()((set) => ({
-  selected: null,
-  select: (target) => set({ selected: target }),
-  clear: () => set({ selected: null }),
+  popupTarget: null,
+  designated: null,
+  openPopup: (target) => set({ popupTarget: target }),
+  closePopup: () => set({ popupTarget: null }),
+  setDesignated: (target) => set({ designated: target }),
+  release: () => set({ designated: null }),
+  reset: () => set({ popupTarget: null, designated: null }),
 }));
+
+/** Whether a detection on `cameraId` with `trackId` is the given target. A
+ * tracked target matches on (camera, track) because track ids repeat across
+ * cameras; an untracked one never matches a later frame by id. */
+export function isSameTrack(
+  target: Pick<SelectedTarget, "cameraId" | "trackId"> | null,
+  cameraId: string,
+  trackId: number | null | undefined,
+): boolean {
+  return (
+    target != null &&
+    target.trackId != null &&
+    trackId != null &&
+    target.cameraId === cameraId &&
+    target.trackId === trackId
+  );
+}

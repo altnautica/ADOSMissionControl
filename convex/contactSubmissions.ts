@@ -5,7 +5,8 @@ import { internal } from "./_generated/api";
 import {
   CONTACT_GLOBAL_POLICY,
   CONTACT_POLICY,
-  consumeAttempt,
+  chargeAttempt,
+  rateLimitedResult,
   sha256Hex,
 } from "./lib/rateLimit";
 
@@ -41,7 +42,6 @@ export const submit = mutation({
     message: v.string(),
     source: v.optional(v.string()),
     company: v.optional(v.string()),
-    investorType: v.optional(v.string()),
     linkedin: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -56,12 +56,14 @@ export const submit = mutation({
     // second copy of the contact list, plus a global backstop for an address
     // that changes every call. Consumed before the insert, so a burst is
     // stopped before it reaches the webhook scheduler.
-    await consumeAttempt(
+    const perAddress = await chargeAttempt(
       ctx,
       `contact:${await sha256Hex(email.toLowerCase())}`,
       CONTACT_POLICY,
     );
-    await consumeAttempt(ctx, "contact:global", CONTACT_GLOBAL_POLICY);
+    if (!perAddress.ok) return rateLimitedResult(perAddress.retryAfterMs);
+    const global = await chargeAttempt(ctx, "contact:global", CONTACT_GLOBAL_POLICY);
+    if (!global.ok) return rateLimitedResult(global.retryAfterMs);
 
     const bounded = {
       name,
@@ -70,21 +72,16 @@ export const submit = mutation({
       subject: boundedOptional(args.subject, "subject", MAX_SHORT_FIELD),
       source: boundedOptional(args.source, "source", MAX_SHORT_FIELD),
       company: boundedOptional(args.company, "company", MAX_SHORT_FIELD),
-      investorType: boundedOptional(
-        args.investorType,
-        "investorType",
-        MAX_SHORT_FIELD,
-      ),
       linkedin: boundedOptional(args.linkedin, "linkedin", MAX_SHORT_FIELD),
     };
 
-    const id = await ctx.db.insert("contactSubmissions", bounded);
+    await ctx.db.insert("contactSubmissions", bounded);
     await ctx.scheduler.runAfter(
       0,
       internal.discordNotify.sendContactSubmission,
       bounded,
     );
-    return id;
+    return { error: null };
   },
 });
 

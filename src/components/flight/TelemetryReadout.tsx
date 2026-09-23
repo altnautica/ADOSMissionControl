@@ -2,12 +2,14 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
+import { useLiveFlightMode } from "@/hooks/use-live-flight-mode";
 import { useTelemetryStore } from "@/stores/telemetry-store";
-import { useDroneStore } from "@/stores/drone-store";
 import { mpsToKph, normalizeHeading } from "@/lib/telemetry-utils";
+import { knownRemainingPct } from "@/lib/battery-bands";
 import { MODE_DESCRIPTIONS } from "@/components/fc/flight-modes/flight-mode-constants";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
+import type { FlightMode } from "@/lib/types";
 import type { UnifiedFlightMode } from "@/lib/protocol/types";
 import { useTelemetryDeck } from "./telemetry-deck/TelemetryDeck";
 
@@ -43,7 +45,9 @@ export function TelemetryReadout() {
   const vfr = useFreshTelemetry("vfr");
   const bat = useFreshTelemetry("battery");
   const gps = useFreshTelemetry("gps");
-  const mode = useDroneStore((s) => s.flightMode);
+  // Null until a live heartbeat backs it: the store holds a placeholder after
+  // a drone switch and the last mode after the link goes quiet.
+  const mode = useLiveFlightMode();
   const { controls: deckControls, panel: deckPanel } = useTelemetryDeck();
 
   // Height above home (relative_alt). GLOBAL_POSITION_INT.alt and VFR_HUD.alt
@@ -52,11 +56,7 @@ export function TelemetryReadout() {
   const speedMps = vfr?.groundspeed ?? pos?.groundSpeed;
   const headingDeg = pos?.heading ?? vfr?.heading;
   const vs = vfr?.climb ?? pos?.climbRate;
-  // -1 is the FC's "capacity unknown", not an empty pack.
-  const batteryPct =
-    bat !== undefined && Number.isFinite(bat.remaining) && bat.remaining >= 0
-      ? bat.remaining
-      : null;
+  const batteryPct = knownRemainingPct(bat?.remaining);
   const batteryLabel = batteryPct !== null ? `${Math.round(batteryPct)}%` : "--%";
   // Buffered flight data exists but none of it is fresh: the link is silent.
   const buffers = useTelemetryStore.getState();
@@ -145,22 +145,24 @@ export function TelemetryReadout() {
   );
 }
 
-function ModeLabel({ mode }: { mode: string }) {
+function ModeLabel({ mode }: { mode: FlightMode | null }) {
   const [show, setShow] = useState(false);
   const [highlight, setHighlight] = useState(false);
   const prevModeRef = useRef(mode);
   const { toast } = useToast();
-  const desc = MODE_DESCRIPTIONS[mode as UnifiedFlightMode];
+  const desc = mode === null ? undefined : MODE_DESCRIPTIONS[mode as UnifiedFlightMode];
 
   useEffect(() => {
-    if (prevModeRef.current !== mode && prevModeRef.current !== "") {
-      setHighlight(true);
-      toast(`Mode changed: ${prevModeRef.current} -> ${mode}`, "info");
-      const timer = setTimeout(() => setHighlight(false), 1500);
-      prevModeRef.current = mode;
-      return () => clearTimeout(timer);
-    }
+    const prev = prevModeRef.current;
     prevModeRef.current = mode;
+    // Only a change between two heartbeat-backed modes is a transition. A
+    // switch from "no live mode" (link just came up, drone just selected) is
+    // the first reading, not something the aircraft did.
+    if (prev === null || mode === null || prev === mode) return;
+    setHighlight(true);
+    toast(`Mode changed: ${prev} -> ${mode}`, "info");
+    const timer = setTimeout(() => setHighlight(false), 1500);
+    return () => clearTimeout(timer);
   }, [mode, toast]);
 
   return (
@@ -179,7 +181,7 @@ function ModeLabel({ mode }: { mode: string }) {
           textShadow: "0 0 8px rgba(34, 197, 94, 0.6)",
         } : undefined}
       >
-        {mode}
+        {mode ?? "--"}
       </span>
       {show && desc && (
         <div className="absolute right-0 bottom-full mb-1 z-50 bg-bg-tertiary border border-border-default px-2 py-1.5 text-[10px] text-text-secondary whitespace-nowrap">

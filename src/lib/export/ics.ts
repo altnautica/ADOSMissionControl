@@ -22,6 +22,8 @@ export function buildIcsCalendar(records: FlightRecord[]): string {
   ];
 
   for (const r of records) {
+    // A calendar entry needs a real date; flights with none are left out.
+    if (r.startTimeUnknown) continue;
     const start = r.startTime ?? r.date;
     const end = r.endTime ?? start + r.duration * 1000;
     const title = r.customName ?? `${r.droneName} — ${formatDurationShort(r.duration)}`;
@@ -30,10 +32,10 @@ export function buildIcsCalendar(records: FlightRecord[]): string {
     const descParts: string[] = [
       `Drone: ${r.droneName}`,
       `Duration: ${formatDurationShort(r.duration)}`,
-      `Distance: ${(r.distance / 1000).toFixed(2)} km`,
-      `Max alt: ${r.maxAlt.toFixed(0)} m`,
-      `Max speed: ${r.maxSpeed.toFixed(1)} m/s`,
-      `Battery used: ${r.batteryUsed.toFixed(0)}%`,
+      `Distance: ${r.distance !== undefined ? `${(r.distance / 1000).toFixed(2)} km` : "not measured"}`,
+      `Max alt: ${r.maxAlt !== undefined ? `${r.maxAlt.toFixed(0)} m` : "not measured"}`,
+      `Max speed: ${r.maxSpeed !== undefined ? `${r.maxSpeed.toFixed(1)} m/s` : "not measured"}`,
+      `Battery used: ${r.batteryUsed !== undefined ? `${r.batteryUsed.toFixed(0)}%` : "not measured"}`,
       `Status: ${r.status}`,
     ];
     if (r.notes) descParts.push(`Notes: ${r.notes.slice(0, 200)}`);
@@ -43,7 +45,7 @@ export function buildIcsCalendar(records: FlightRecord[]): string {
     lines.push(`DTSTART:${toIcsDate(start)}`);
     lines.push(`DTEND:${toIcsDate(end)}`);
     lines.push(`SUMMARY:${escapeIcs(title)}`);
-    lines.push(`DESCRIPTION:${escapeIcs(descParts.join("\\n"))}`);
+    lines.push(`DESCRIPTION:${escapeIcs(descParts.join("\n"))}`);
     if (location) lines.push(`LOCATION:${escapeIcs(location)}`);
     if (r.takeoffLat !== undefined && r.takeoffLon !== undefined) {
       lines.push(`GEO:${r.takeoffLat};${r.takeoffLon}`);
@@ -79,7 +81,7 @@ function toIcsDate(ms: number): string {
 }
 
 function escapeIcs(text: string): string {
-  return text.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n");
+  return text.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r\n?|\n/g, "\\n");
 }
 
 function formatDurationShort(sec: number): string {

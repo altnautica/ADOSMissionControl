@@ -1,6 +1,6 @@
 /**
- * iNav navigation decoders: waypoints, extended status, safehome, legacy
- * nav config, MISC/MISC2 telemetry, and fixed-wing landing approach.
+ * iNav navigation decoders: waypoints, extended status, safehome,
+ * MISC/MISC2 telemetry, and fixed-wing landing approach.
  *
  * Includes two encoders colocated with their paired decoders for symmetry:
  * `encodeMspSetWp` and `encodeMspINavSetSafehome`.
@@ -15,7 +15,6 @@ import type {
   INavStatus,
   INavMisc2,
   INavSafehome,
-  INavNavConfig,
   INavMisc,
   INavFwApproach,
 } from "./types";
@@ -87,7 +86,8 @@ export function encodeMspSetWp(wp: INavWaypoint): Uint8Array {
  * U16 averageSystemLoadPercent      @6
  * U8  batteryProfile<<4 | profile   @8
  * U32 armingFlags                   @9
- * ... boxModeFlags                  @13
+ * U32[] boxModeFlags                @13 (whole u32 words, count by build)
+ * U8  mixerProfile                  last byte (firmware with mixer profiles)
  * ```
  *
  * There is NO nav state in this message — `MSP_NAV_STATUS` (121) carries it.
@@ -105,6 +105,18 @@ export function decodeMspINavStatus(dv: DataView): INavStatus {
     profiles: readU8(dv, 8),
     armingFlags: readU32(dv, 9),
   };
+}
+
+/**
+ * The active mixer profile from MSP2_INAV_STATUS, 0-based. It is the byte
+ * after the box-mode bitmask, whose length is a whole number of u32 words
+ * that varies with the build's box count, so the byte is found from the
+ * payload length. Null when the firmware sends no mixer-profile byte.
+ */
+export function decodeMspINavStatusMixerProfile(dv: DataView): number | null {
+  const afterArming = dv.byteLength - 13;
+  if (afterArming < 1 || afterArming % 4 !== 1) return null;
+  return readU8(dv, dv.byteLength - 1);
 }
 
 // ── iNav MISC2 decoder ───────────────────────────────────────
@@ -161,52 +173,6 @@ export function encodeMspINavSetSafehome(sh: INavSafehome): Uint8Array {
 
   return buf;
 }
-
-// ── iNav NAV config decoder (legacy, 0x2100) ─────────────────
-
-/**
- * Decodes the legacy nav-config response at ID 0x2100.
- *
- * NOTE: ID 0x2100 collides with MSP2_INAV_CUSTOM_OSD_ELEMENTS in
- * newer iNav builds. This decoder is retained for pre-7.x compatibility
- * and should not be used on builds that report Custom OSD Elements at 0x2100.
- *
- * Payload layout:
- * U32 maxNavAltitude (cm)
- * U16 maxNavSpeed (cm/s)
- * U16 maxClimbRate (cm/s)
- * U16 maxManualClimbRate (cm/s)
- * U16 maxManualSpeed (cm/s)
- * U16 landSlowdownMinAlt (cm)
- * U16 landSlowdownMaxAlt (cm)
- * U16 navEmergencyLandingSpeed (cm/s)
- * U16 navMinRthDistance (cm)
- * U8  navOverclimbAngle (degrees)
- * U8  useMidThrottleForAlthold (bool)
- * U8  navExtraArming
- */
-export function decodeMspINavNavConfigLegacy(dv: DataView): INavNavConfig {
-  return {
-    maxNavAltitude: readU32(dv, 0),
-    maxNavSpeed: readU16(dv, 4),
-    maxClimbRate: readU16(dv, 6),
-    maxManualClimbRate: readU16(dv, 8),
-    maxManualSpeed: readU16(dv, 10),
-    landSlowdownMinAlt: readU16(dv, 12),
-    landSlowdownMaxAlt: readU16(dv, 14),
-    navEmergencyLandingSpeed: readU16(dv, 16),
-    navMinRthDistance: readU16(dv, 18),
-    navOverclimbAngle: readU8(dv, 20),
-    useMidThrottleForAlthold: readU8(dv, 21) !== 0,
-    navExtraArming: dv.byteLength > 22 ? readU8(dv, 22) : 0,
-  };
-}
-
-/**
- * Alias for the legacy nav config decoder.
- * @deprecated Use decodeMspINavNavConfigLegacy. This name existed before the ID collision was identified.
- */
-export const decodeMspNavConfig = decodeMspINavNavConfigLegacy;
 
 // ── iNav MISC decoder ────────────────────────────────────────
 

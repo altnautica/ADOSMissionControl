@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -10,14 +10,15 @@ import { useParamPanelActions } from "@/hooks/use-param-panel-actions";
 import { usePanelScroll } from "@/hooks/use-panel-scroll";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { PanelHeader } from "../shared/PanelHeader";
-import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
+import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { Radio, Save, HardDrive, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   vtxParamNames, VTX_BANDS, BAND_INDEX_TO_LETTER, BAND_LETTER_TO_INDEX,
-  VTX_TYPE_OPTIONS, POWER_OPTIONS, PIT_MODE_OPTIONS, LOW_POWER_DISARM_OPTIONS,
+  VTX_TYPE_LABELS, VTX_TYPE_NONE, PIT_MODE_OPTIONS, LOW_POWER_DISARM_OPTIONS,
   BAND_NAMES, CHANNEL_COUNT,
 } from "./vtx-constants";
+import type { MspVtxTablePowerLevel } from "@/lib/protocol/msp/msp-decoders-ext";
 
 export function VtxPanel() {
   const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
@@ -38,7 +39,32 @@ export function VtxPanel() {
   const p = (name: string, fallback = "0") => String(params.get(name) ?? fallback);
   const set = (name: string, v: string) => setLocalValue(name, Number(v) || 0);
 
-  const vtxType = Number(params.get("BF_VTX_TYPE") ?? 0);
+  const vtxType = params.get("BF_VTX_TYPE");
+
+  // BF_VTX_POWER is a 1-based index into the FC's VTX table; the labels come
+  // from that table, since the mW behind each index depends on the device.
+  const [powerLevels, setPowerLevels] = useState<MspVtxTablePowerLevel[] | null>(null);
+  useEffect(() => {
+    const protocol = getSelectedProtocol();
+    if (!hasLoaded || !protocol?.getVtxPowerLevels) return;
+    let cancelled = false;
+    protocol.getVtxPowerLevels().then(
+      (levels) => { if (!cancelled) setPowerLevels(levels); },
+      () => { if (!cancelled) setPowerLevels([]); },
+    );
+    return () => { cancelled = true; };
+  }, [getSelectedProtocol, hasLoaded]);
+  const powerValue = params.get("BF_VTX_POWER");
+  const powerOptions = useMemo(() => {
+    const options = (powerLevels ?? []).map((l) => ({
+      value: String(l.powerNumber),
+      label: `${l.powerNumber} — ${l.powerLabel.trim() || `${l.powerValue}`}`,
+    }));
+    if (powerValue !== undefined && !options.some((o) => o.value === String(powerValue))) {
+      options.push({ value: String(powerValue), label: `${powerValue} — not in the VTX table` });
+    }
+    return options;
+  }, [powerLevels, powerValue]);
   const selectedBand = Number(params.get("BF_VTX_BAND") ?? 1);
   const selectedChannel = Number(params.get("BF_VTX_CHANNEL") ?? 1);
 
@@ -62,7 +88,7 @@ export function VtxPanel() {
   );
 
   return (
-    <ArmedLockOverlay>
+    <ArmedWarningBanner>
     <div ref={scrollRef} className="flex-1 overflow-y-auto p-6">
       <div className="max-w-2xl space-y-6">
         <PanelHeader
@@ -77,30 +103,30 @@ export function VtxPanel() {
           error={error}
         />
 
-        {/* VTX Type */}
+        {/* VTX Type: detected by the FC, not configurable */}
         <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
           <div className="flex items-center gap-2 mb-1">
             <Radio size={14} className="text-accent-primary" />
             <h2 className="text-sm font-medium text-text-primary">VTX Type</h2>
           </div>
-          <Select
-            label="VTX Protocol"
-            options={VTX_TYPE_OPTIONS}
-            value={p("BF_VTX_TYPE")}
-            onChange={(v) => set("BF_VTX_TYPE", v)}
-          />
+          <p className="text-xs font-mono text-text-primary">
+            {vtxType === undefined ? "—" : `${vtxType} — ${VTX_TYPE_LABELS[vtxType] ?? "Unknown"}`}
+          </p>
+          <p className="text-[10px] text-text-tertiary">Detected by the flight controller from the connected device.</p>
         </div>
 
-        {vtxType === 0 && hasLoaded && (
+        {(vtxType === 0 || vtxType === VTX_TYPE_NONE) && hasLoaded && (
           <div className="border border-status-warning/30 bg-status-warning/5 p-4 flex items-center gap-3">
             <AlertTriangle size={16} className="text-status-warning shrink-0" />
             <p className="text-xs text-text-secondary">
-              No VTX detected. Set the VTX type above to configure band and channel settings.
+              {vtxType === 0
+                ? "The connected VTX cannot be controlled by the flight controller."
+                : "No VTX detected. Check the VTX wiring and the peripheral port assignment."}
             </p>
           </div>
         )}
 
-        {vtxType !== 0 && (
+        {vtxType !== undefined && vtxType !== 0 && (
           <>
             {/* Band / Channel Grid */}
             <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
@@ -170,15 +196,19 @@ export function VtxPanel() {
                 <Radio size={14} className="text-accent-primary" />
                 <h2 className="text-sm font-medium text-text-primary">Power Settings</h2>
               </div>
-              <Select
-                label="Power Level"
-                options={POWER_OPTIONS}
-                value={p("BF_VTX_POWER")}
-                onChange={(v) => set("BF_VTX_POWER", v)}
-              />
-              <p className="text-[10px] text-text-tertiary">
-                Actual output power depends on your VTX hardware. Values shown are typical.
-              </p>
+              {powerLevels !== null && powerLevels.length === 0 ? (
+                <p className="text-[10px] text-text-tertiary">
+                  This flight controller reports no VTX power table, so the power level cannot be labelled.
+                  Current level: {powerValue ?? "—"}
+                </p>
+              ) : (
+                <Select
+                  label="Power Level"
+                  options={powerOptions}
+                  value={powerValue === undefined ? "" : String(powerValue)}
+                  onChange={(v) => set("BF_VTX_POWER", v)}
+                />
+              )}
               <Select
                 label="Pit Mode"
                 options={PIT_MODE_OPTIONS}
@@ -247,6 +277,6 @@ export function VtxPanel() {
         </div>
       </div>
     </div>
-    </ArmedLockOverlay>
+    </ArmedWarningBanner>
   );
 }

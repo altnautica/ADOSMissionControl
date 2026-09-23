@@ -23,7 +23,7 @@ import { useParamPanelActions } from "@/hooks/use-param-panel-actions";
 import { usePanelScroll } from "@/hooks/use-panel-scroll";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { PanelHeader } from "../shared/PanelHeader";
-import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
+import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import {
   SENSOR_TYPES, INSTANCES, ENABLE_OPTIONS, TRIGGER_OPTIONS, LIMITS, PARAM_NAMES, OPTIONAL_NAMES,
 } from "./px4-thermal-params";
@@ -55,7 +55,7 @@ export function Px4ThermalCalPanel() {
   const str = (name: string, fallback = "0") => String(params.get(name) ?? fallback);
 
   return (
-    <ArmedLockOverlay>
+    <ArmedWarningBanner>
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-6">
         <div className="max-w-2xl space-y-6">
           <PanelHeader
@@ -193,6 +193,6 @@ export function Px4ThermalCalPanel() {
           </div>
         </div>
       </div>
-    </ArmedLockOverlay>
+    </ArmedWarningBanner>
   );
 }

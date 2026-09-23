@@ -26,8 +26,7 @@ import type { InstallKickoffResult, TransportContext } from "./types";
  * validators on the server own the authoritative shape; the wire
  * arguments below match the fields they accept. */
 export type GenerateUploadUrlAction = () => Promise<string>;
-/** Server-side verifier + inserter. Replaces the old client-trusting
- * `recordArchive` mutation. The action revalidates SHA-256 against
+/** Server-side verifier + inserter. The action revalidates SHA-256 against
  * storage metadata, extracts `manifest.yaml` from the archive, hashes
  * its bytes, and only inserts the row when both digests match. The
  * client's claims still appear in the call so the operator sees a

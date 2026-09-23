@@ -7,13 +7,11 @@
  * registered nothing, so it falls back to the Agent page and the panel never
  * renders empty.
  *
- * Scope, stated precisely because the earlier version of this note was wrong:
- * **plugin-contributed node-detail tabs do NOT register here.** They reach the
- * UI through `useDronePluginContributions`, rendered by
+ * Scope: **plugin-contributed node-detail tabs do NOT register here.** They
+ * reach the UI through `useDronePluginContributions`, rendered by
  * `DroneDetailTabHeaders` / `DroneDetailTabBody` as a sibling strip after the
  * resolved built-in tabs (`NodeDetailPanel` short-circuits the registry for a
- * `plugin:` tab id). The only exerciser of a `source: "plugin"` contribution on
- * this registry is `__tests__/surface-registry.test.ts`.
+ * `plugin:` tab id).
  *
  * That split is deliberate, not a missing migration. This registry is
  * populated once at module load from three static arrays, and `resolveSurfaces`
@@ -36,19 +34,14 @@ import { WORKSTATION_SURFACES } from "./surfaces/workstation";
 import { AGENT_SURFACE } from "./agent/agent-surface";
 
 /**
- * One registered node-detail surface. A built-in profile surface and a
- * plugin-contributed tab share this shape ({ id, source, order, when, payload })
- * so both live in the one registry and resolve through one ordered list.
+ * One registered built-in node-detail surface, in the generic contribution
+ * shape ({ id, order, when, payload }).
  */
 export interface SurfaceContribution {
   /** Registry key — profile-namespaced ("drone:overview") so tab ids that
    * repeat across profiles (every profile has an "overview" + "agent") stay
    * unique in the single registry. */
   id: string;
-  /** Provenance tag carried by the generic contribution shape. Every
-   * contribution on THIS registry is `"builtin"`; see the module note for why
-   * plugin node-detail tabs take a different path. */
-  source: "builtin" | "plugin";
   /** Sort hint; an unordered contribution sorts after every ordered one, then
    * by registration order — so a profile's built-in array keeps its authored
    * order without per-item `order` numbers. */
@@ -79,15 +72,14 @@ const PROFILE_ENTRIES: ReadonlyArray<readonly [NodeProfile, SurfaceSpec[]]> = [
   ["workstation", WORKSTATION_SURFACES],
 ];
 
-/** Wrap a built-in profile surface as a source-tagged contribution. `when` is
- * lifted from the spec so the resolve filter reads the gate directly. */
+/** Wrap a built-in profile surface as a contribution. `when` is lifted from
+ * the spec so the resolve filter reads the gate directly. */
 function builtinContribution(
   profile: NodeProfile,
   spec: SurfaceSpec,
 ): SurfaceContribution {
   return {
     id: `${profile}:${spec.id}`,
-    source: "builtin",
     profile,
     when: spec.when,
     payload: spec,
@@ -114,8 +106,8 @@ export function registerBuiltinSurfaces(): void {
 registerBuiltinSurfaces();
 
 /** The ordered, capability/role-filtered surface list for the selected node.
- * Built-in surfaces and plugin tabs resolve through the one registry; an
- * unknown / future profile registered nothing so it gets just the Agent page. */
+ * An unknown / future profile registered nothing so it gets just the Agent
+ * page. */
 export function resolveSurfaces(ctx: SurfaceContext): SurfaceSpec[] {
   const profile = (ctx.drone.profile ?? "drone") as NodeProfile;
   const matched = useSurfaceRegistry

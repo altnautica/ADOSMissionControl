@@ -12,19 +12,12 @@
 import JSZip from "jszip";
 import { get as idbGet, set as idbSet } from "idb-keyval";
 import type { FlightRecord } from "../types";
+import { BACKUP_STORE_KEYS } from "./exporter";
 
-/** Known store filenames → IDB keys. */
-const STORE_MAP: Record<string, string> = {
-  "flight-history.json": "altcmd:flight-history",
-  "settings.json": "altcmd:settings",
-  "operator-profile.json": "altcmd:operator-profile",
-  "aircraft-registry.json": "altcmd:aircraft-registry",
-  "battery-registry.json": "altcmd:battery-registry",
-  "equipment-registry.json": "altcmd:equipment-registry",
-  "recordings-index.json": "altcmd:recordings-index",
-  "plan-library.json": "altcmd:plan-library",
-  "loadouts.json": "altcmd:loadouts",
-};
+/** Archive filenames → IDB keys, the same set the exporter writes. */
+const STORE_MAP: Record<string, string> = Object.fromEntries(
+  BACKUP_STORE_KEYS.map((key) => [`${key.replace("altcmd:", "")}.json`, key]),
+);
 
 /** Array-type stores that should be merged by `id` instead of replaced. */
 const MERGE_BY_ID_STORES = new Set(["altcmd:flight-history"]);

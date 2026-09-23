@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusDot } from "@/components/ui/status-dot";
+import { Select } from "@/components/ui/select";
 import { useInputStore } from "@/stores/input-store";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
@@ -50,10 +51,19 @@ function AxisBar({ label, value }: { label: string; value: number }) {
 
 export function ControllersSection() {
   const t = useTranslations("inputDevices");
-  const {
-    activeController, axes, deadzone, expo, setDeadzone, setExpo, calibration, clearCalibration,
-    manualControlEnabled, setManualControlEnabled, manualControlLinkBlock,
-  } = useInputStore();
+  const activeController = useInputStore((s) => s.activeController);
+  const axes = useInputStore((s) => s.axes);
+  const deadzone = useInputStore((s) => s.deadzone);
+  const expo = useInputStore((s) => s.expo);
+  const setDeadzone = useInputStore((s) => s.setDeadzone);
+  const setExpo = useInputStore((s) => s.setExpo);
+  const calibration = useInputStore((s) => s.calibration);
+  const clearCalibration = useInputStore((s) => s.clearCalibration);
+  const manualControlEnabled = useInputStore((s) => s.manualControlEnabled);
+  const setManualControlEnabled = useInputStore((s) => s.setManualControlEnabled);
+  const manualControlLinkBlock = useInputStore((s) => s.manualControlLinkBlock);
+  const txMode = useInputStore((s) => s.txMode);
+  const setTxMode = useInputStore((s) => s.setTxMode);
   const { toast } = useToast();
   const [showCalWizard, setShowCalWizard] = useState(false);
 
@@ -170,6 +180,17 @@ export function ControllersSection() {
 
       {/* Axis Mapping */}
       <Card title={t("axisMapping")}>
+        <div className="mb-3">
+          <Select
+            label={t("stickMode")}
+            value={String(txMode)}
+            onChange={(v) => setTxMode(v === "1" ? 1 : 2)}
+            options={[
+              { value: "2", label: t("stickMode2") },
+              { value: "1", label: t("stickMode1") },
+            ]}
+          />
+        </div>
         <div className="space-y-3">
           {AXIS_LABEL_KEYS.map((labelKey, i) => (
             <AxisBar key={labelKey} label={t(labelKey)} value={axes[i]} />

@@ -85,7 +85,7 @@ export const GROUND_STATION_SURFACES: SurfaceSpec[] = [
     id: "network",
     labelKey: "command.groundStation.tabs.network",
     group: LINK_GROUP,
-    render: () => <NetworkTab />,
+    render: (ctx) => <NetworkTab nodeDeviceId={surfaceNodeDeviceId(ctx)} />,
   },
   {
     // Mesh control plane + distributed-RX data plane, and the node's one role
@@ -126,7 +126,9 @@ export const GROUND_STATION_SURFACES: SurfaceSpec[] = [
   {
     id: "logs",
     labelKey: "dronePanel.logs",
-    render: (ctx) => <LogsTab droneId={ctx.droneId} showFlights={false} />,
+    render: (ctx) => (
+      <LogsTab droneId={ctx.droneId} nodeDeviceId={surfaceNodeDeviceId(ctx)} showFlights={false} />
+    ),
   },
   AGENT_SURFACE,
 ];

@@ -10,7 +10,7 @@ import type { VehicleInfo } from './types'
 import type { CallbackStore } from './mavlink-adapter-callbacks'
 import { MSP } from './msp/msp-constants'
 import { resolveActiveMode } from './msp/msp-mode-map'
-import { INAV_MSP, decodeMspAdsbVehicleList } from './msp/msp-decoders-inav'
+import { INAV_MSP, decodeMspAdsbVehicleList, decodeMspINavAnalog } from './msp/msp-decoders-inav'
 import { mspSensorFlagsToMavlink } from './msp/msp-sensor-flags'
 import { useTelemetryStore } from '@/stores/telemetry-store'
 
@@ -63,14 +63,12 @@ export function dispatchMspTelemetry(
     }
 
     case MSP.MSP_ANALOG: {
+      // Only the RSSI is taken from here. MSP_BATTERY_STATE is polled in the
+      // same group and carries the pack voltage (0.01 V), current and mAh
+      // drawn; a battery sample from this frame (legacy 0.1 V voltage) would
+      // alternate with it.
       if (payload.length < 7) break
-      const voltage = u8(payload, 0) / 10
-      const mah = u16(payload, 1)
       const rssi = u16(payload, 3)
-      const amps = i16(payload, 5) / 100
-      for (const cb of cbs.batteryCallbacks) {
-        cb({ id: 0, voltage, current: amps, remaining: -1, consumed: mah, timestamp: ts })
-      }
       for (const cb of cbs.rcCallbacks) {
         cb({ channels: [], rssi: Math.round(rssi / 1023 * 255), timestamp: ts })
       }
@@ -78,20 +76,37 @@ export function dispatchMspTelemetry(
     }
 
     case MSP.MSP_BATTERY_STATE: {
+      // iNav's battery sample comes from MSP2_INAV_ANALOG, which carries the
+      // FC's own state of charge; a second sample from here would alternate
+      // with it.
+      if (vehicleInfo?.firmwareType === 'inav') break
+      // U8 cellCount, U16 capacity mAh, U8 voltage 0.1 V, U16 mAh drawn,
+      // I16 amperage 0.01 A, U8 battery state, U16 voltage 0.01 V.
       if (payload.length < 9) break
-      const cellCount = u8(payload, 0)
-      const _capacity = u16(payload, 1)
       const volts = u8(payload, 3) / 10
       const mahDrawn = u16(payload, 4)
-      const amps2 = u16(payload, 6) / 100
-      const _batteryState = u8(payload, 8)
-      const voltage2 = payload.length >= 11 ? u16(payload, 9) / 100 : volts
-      const perCell = cellCount > 0 ? voltage2 / cellCount : voltage2
-      const remaining = cellCount > 0
-        ? Math.max(0, Math.min(100, Math.round((perCell - 3.3) / (4.2 - 3.3) * 100)))
-        : -1
+      const amps = i16(payload, 6) / 100
+      const voltage = payload.length >= 11 ? u16(payload, 9) / 100 : volts
+      // Betaflight reports no state of charge over MSP, so remaining stays
+      // -1 (not reported) rather than being estimated from pack voltage.
       for (const cb of cbs.batteryCallbacks) {
-        cb({ id: 0, voltage: voltage2, current: amps2, remaining, consumed: mahDrawn, timestamp: ts })
+        cb({ id: 0, voltage, current: amps, remaining: -1, consumed: mahDrawn, timestamp: ts })
+      }
+      break
+    }
+
+    case INAV_MSP.MSP2_INAV_ANALOG: {
+      if (vehicleInfo?.firmwareType !== 'inav' || payload.length < 24) break
+      const analog = decodeMspINavAnalog(new DataView(payload.buffer, payload.byteOffset, payload.byteLength))
+      for (const cb of cbs.batteryCallbacks) {
+        cb({
+          id: 0,
+          voltage: analog.voltage,
+          current: analog.amperage,
+          remaining: analog.batteryPercent ?? -1,
+          consumed: analog.mAhDrawn,
+          timestamp: ts,
+        })
       }
       break
     }
@@ -119,9 +134,10 @@ export function dispatchMspTelemetry(
       const mavSensors = mspSensorFlagsToMavlink(sensorFlags, vehicleInfo?.firmwareType)
       for (const cb of cbs.sysStatusCallbacks) {
         cb({
-          timestamp: ts, cpuLoad: cpuLoad / 10,
+          // MSP reports average system load in whole percent; the contract is 0.1 %.
+          timestamp: ts, cpuLoad: cpuLoad * 10,
           sensorsPresent: mavSensors, sensorsEnabled: mavSensors, sensorsHealthy: mavSensors,
-          voltageMv: 0, currentCa: 0, batteryRemaining: -1, dropRateComm: 0, errorsComm: i2cErrors,
+          batteryRemaining: -1, dropRateComm: 0, errorsComm: i2cErrors,
         })
       }
       // Betaflight reports its arming-disable flags after the variable-length
@@ -205,17 +221,16 @@ export function dispatchMspTelemetry(
       const speed = u16(payload, 12)
       const groundCourse = u16(payload, 14)
       // HDOP (fix precision) rides at the tail when the FC reports it (iNav
-      // always; Betaflight 4.x+), scaled ×100. Read the real value instead of
-      // the hard-coded 0 that read as a perfect fix; leave 0 only when the FC
-      // omits the field (a short payload), never inventing a precision.
-      const hdop = payload.length >= 18 ? u16(payload, 16) / 100 : 0
+      // always; Betaflight 4.x+), scaled ×100. A short payload omits it, so
+      // hdop stays absent rather than reading as a perfect fix.
+      const hdop = payload.length >= 18 ? u16(payload, 16) / 100 : undefined
       for (const cb of cbs.gpsCallbacks) {
         cb({ timestamp: ts, fixType, satellites: numSat, hdop, lat, lon, alt: altGps })
       }
       for (const cb of cbs.positionCallbacks) {
         cb({
           timestamp: ts, lat, lon, alt: altGps, relativeAlt: altGps,
-          heading: groundCourse / 10, groundSpeed: speed / 100, airSpeed: 0, climbRate: 0,
+          heading: groundCourse / 10, groundSpeed: speed / 100, climbRate: 0,
         })
       }
       break

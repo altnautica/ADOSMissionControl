@@ -3,16 +3,17 @@
  * @description The `LoggingService` domain module. Reads the durable
  * on-device log/telemetry/event/hardware store over the LAN and surfaces
  * it through a single typed client. Transport resolution is local-first
- * and three-tier, which is also the dual-run feature flag:
+ * and two-tier:
  *
- *   1. LAN-direct   http://<host>:8090/v1/...            (primary)
- *   2. proxy        http://<host>:8080/api/v2/observability/v1/...
- *   3. legacy       http://<host>:8080/api/logs          (older agents)
+ *   1. proxy        http://<host>:8080/api/v2/observability/v1/...  (primary)
+ *   2. legacy       http://<host>:8080/api/logs                     (older agents)
  *
- * Once a tier answers, subsequent calls try it first and only cascade
- * to the next tier on a service-unavailable signal (404 / 502 / 503 /
- * network error). Bad-request / auth / rate-limit responses (400 / 401 /
- * 403 / 429) do NOT cascade — they are surfaced as the real error.
+ * The store's own query port is not a tier: it serves no CORS headers, so a
+ * browser (and the desktop app, which keeps web security on) can never read
+ * its answers. Every call tries the tiers in natural order and only cascades
+ * on a service-unavailable signal (404 / 502 / 503 / network error).
+ * Bad-request / auth / rate-limit responses (400 / 401 / 403 / 429) do NOT
+ * cascade — they are surfaced as the real error.
  *
  * Every successful response is normalised to one envelope shape so a
  * caller never has to know which tier answered. The legacy tier (a flat
@@ -169,26 +170,27 @@ export interface ExportParams extends QueryParams {
   format?: ExportFormat;
 }
 
-/** Selector for an explicit, operator-triggered cloud export of a chosen
- * window. Same vocabulary as a query: a session and/or a closed time range
- * scope the rows; the format defaults to `jsonl.zst`. */
+/** Selector for an explicit, operator-triggered cloud export. These are the
+ * only fields the agent's push route reads: an empty selector exports every
+ * unsynced row of all four kinds. */
 export interface PushParams {
-  from?: string;
-  to?: string;
-  kind?: LoggingKind;
-  source?: string[];
-  level?: string;
-  text?: string;
+  /** Restrict to one store session id (an integer on the wire). */
   session?: string;
-  format?: ExportFormat;
+  /** Lower time bound: ISO-8601, epoch microseconds, or relative (`-2h`). */
+  since?: string;
+  /** Tables to export; absent means all four. */
+  kinds?: LoggingKind[];
 }
 
-/** The agent's canonical acknowledgement for one pushed window. */
+/** The agent's answer for one push request. */
 export interface PushResult {
-  /** Cloud record id for the stored window. */
-  window_id: string;
-  /** Server-recomputed sha256 of the uploaded bytes, hex. */
-  sha256: string;
+  /** The cloud service had not answered inside the agent's poll window. The
+   * request is on disk and may still complete; nothing is confirmed yet. */
+  pending: boolean;
+  /** Cloud record id for the stored window; null while pending. */
+  window_id: string | null;
+  /** Server-recomputed sha256 of the uploaded bytes, hex; null while pending. */
+  sha256: string | null;
   /** Byte size of the uploaded window. */
   bytes: number;
   /** Row count in the window. */
@@ -280,24 +282,24 @@ export interface HealthzResponse {
 
 // ── Tier resolution ───────────────────────────────────────────────────
 
-/** Listener ports/paths. `:8090` is the dedicated query port; the proxy
- * bridge is mounted under FastAPI at `:8080`. */
-const LOGD_PORT = 8090;
+/** The agent REST port; the proxy bridge and the legacy route both live here. */
 const FASTAPI_PORT = 8080;
 const PROXY_PREFIX = "/api/v2/observability";
 
-/** Deadline for the streaming export + the cloud-push write. Far above the
- * per-read default (`AGENT_FETCH_TIMEOUT_MS`) so a legitimately large
- * window has room to drain, while still guarding against a half-open
- * socket that would otherwise hang the call forever. */
-const EXPORT_TIMEOUT_MS = AGENT_FETCH_TIMEOUT_MS * 10;
+/** Longest the streaming export may wait for its next bytes (headers first,
+ * then each chunk). An inactivity bound, not a total one: a large window
+ * that keeps arriving is never cut off, while a silently-dead socket is. */
+const EXPORT_IDLE_TIMEOUT_MS = AGENT_FETCH_TIMEOUT_MS * 10;
 
-type Tier = "direct" | "proxy" | "legacy";
+/** The push write waits for the agent's own result poll (up to ~8 s) before
+ * it answers, so its deadline sits well above the read default. */
+const PUSH_TIMEOUT_MS = AGENT_FETCH_TIMEOUT_MS * 10;
 
-const TIER_ORDER: readonly Tier[] = ["direct", "proxy", "legacy"];
+type Tier = "proxy" | "legacy";
+
+const TIER_ORDER: readonly Tier[] = ["proxy", "legacy"];
 
 const TIER_SOURCE: Record<Tier, LoggingSource> = {
-  direct: "logd",
   proxy: "proxy",
   legacy: "legacy",
 };
@@ -340,7 +342,7 @@ class TierHardError extends Error {
  * Under relay there is no port to swap: `ctx.baseUrl` is the ground
  * station's relay-proxy prefix, and only `:8080/api/...` traverses the
  * radio. Rebuilding an origin here would discard the prefix and dial the
- * GROUND STATION's `:8090`, returning the ground station's own logs labelled
+ * GROUND STATION's own REST port, returning the ground station's own logs labelled
  * as the drone's. So the relay pins the legacy shape and returns the prefix
  * verbatim — no `new URL()`, no port surgery. */
 function tierBase(
@@ -354,13 +356,51 @@ function tierBase(
   const proto = u.protocol; // http: on LAN; https: cloud origins won't take this path
   const host = u.hostname;
   switch (tier) {
-    case "direct":
-      return { origin: `${proto}//${host}:${LOGD_PORT}`, prefix: "/v1" };
     case "proxy":
       return { origin: `${proto}//${host}:${FASTAPI_PORT}`, prefix: `${PROXY_PREFIX}/v1` };
     case "legacy":
       return { origin: `${proto}//${host}:${FASTAPI_PORT}`, prefix: "/api/logs" };
   }
+}
+
+/** Wrap an export body so a read that waits longer than `idleMs` for the
+ * next chunk aborts the request. The timer runs only while a read is
+ * outstanding, so a consumer that pauses is never mistaken for a stall. */
+function withIdleDeadline(
+  body: ReadableStream<Uint8Array>,
+  controller: AbortController,
+  idleMs: number,
+): ReadableStream<Uint8Array> {
+  const reader = body.getReader();
+  return new ReadableStream<Uint8Array>({
+    async pull(out) {
+      const timer = setTimeout(
+        () => controller.abort(new DOMException("export stalled", "TimeoutError")),
+        idleMs,
+      );
+      try {
+        const { done, value } = await reader.read();
+        if (done) out.close();
+        else out.enqueue(value);
+      } finally {
+        clearTimeout(timer);
+      }
+    },
+    cancel(reason) {
+      return reader.cancel(reason);
+    },
+  });
+}
+
+/** The push route takes an integer session id; anything else would be
+ * refused with a 400, so it is refused here with the reason. */
+function pushSessionId(session: string | undefined): number | undefined {
+  if (session === undefined) return undefined;
+  const n = Number(session);
+  if (!Number.isInteger(n)) {
+    throw new Error(`push failed: session ${session} is not a store session id`);
+  }
+  return n;
 }
 
 function appendList(qs: URLSearchParams, key: string, vals?: string[]): void {
@@ -486,40 +526,9 @@ function asEnvelope<T>(
 
 export class LoggingService {
   private ctx: RequestContext;
-  /** The tier that last answered successfully. Tried first on the next
-   * call; the cascade still re-probes the earlier tiers ahead of it so a
-   * recovered `:8090` is picked back up. */
-  private preferredTier: Tier | null = null;
 
   constructor(ctx: RequestContext) {
     this.ctx = ctx;
-  }
-
-  /** Force-reset the resolved tier (e.g. for an explicit "retry direct"). */
-  resetTier(): void {
-    this.preferredTier = null;
-  }
-
-  /** The currently-resolved tier as a source label, or null if unprobed. */
-  get resolvedSource(): LoggingSource | null {
-    return this.preferredTier ? TIER_SOURCE[this.preferredTier] : null;
-  }
-
-  /** Tiers to try, preferred-first but always keeping the natural order so
-   * a recovered higher tier is re-probed ahead of a lower fallback.
-   *
-   * Under relay only one tier exists: the radio lane carries `:8080/api/...`
-   * and nothing else, so probing `direct` (`:8090`) and `proxy` would each
-   * cost a full relay round trip before failing. */
-  private tierSequence(): Tier[] {
-    if (this.ctx.relay) return ["legacy"];
-    if (!this.preferredTier || this.preferredTier === "direct") {
-      return [...TIER_ORDER];
-    }
-    // Put the preferred tier first, then the rest in natural order minus it,
-    // but still re-probe `direct` first so a recovered :8090 wins back.
-    const rest = TIER_ORDER.filter((t) => t !== this.preferredTier);
-    return ["direct", this.preferredTier, ...rest.filter((t) => t !== "direct")];
   }
 
   /** Issue one fetch against a tier and return the parsed JSON body, or
@@ -579,17 +588,24 @@ export class LoggingService {
     return (await res.json()) as unknown;
   }
 
-  /** Run `path` across the tier sequence, returning the first success +
-   * the tier that produced it. */
+  /** Run `path` across the tiers, returning the first success + the tier
+   * that produced it. Every call tries the tiers in natural order: the
+   * legacy route answers any path, so letting a tier that answered last time
+   * jump the queue would stop the proxy from ever being retried after one
+   * outage.
+   *
+   * Under relay only one tier exists: the radio lane carries `:8080/api/...`
+   * and nothing else, so probing the proxy would cost a full relay round
+   * trip before failing. */
   private async resolve(
     path: string,
     query: string,
   ): Promise<{ body: unknown; tier: Tier }> {
     let lastErr: Error | null = null;
-    for (const tier of this.tierSequence()) {
+    const tiers: readonly Tier[] = this.ctx.relay ? ["legacy"] : TIER_ORDER;
+    for (const tier of tiers) {
       try {
         const body = await this.fetchTier(tier, path, query);
-        this.preferredTier = tier;
         return { body, tier };
       } catch (err) {
         if (err instanceof TierHardError) {
@@ -656,7 +672,7 @@ export class LoggingService {
   /** Open a live log tail (`kind=logs`). The stream is read with `fetch` so
    * the key travels in the `X-ADOS-Key` header, never in the URL; each row
    * reaches `handlers.onRow` already normalised, and a dropped or refused
-   * stream reaches `handlers.onError` once. Tail is direct-only (the legacy
+   * stream reaches `handlers.onError` once. Tail rides the proxy bridge (the legacy
    * `/api/logs/stream` is not wired here — callers fall back to polling when
    * no tail source is available). Throws when no host is resolvable or the
    * agent is reached through a radio relay (so the caller can fall back). */
@@ -673,9 +689,7 @@ export class LoggingService {
         "log tail is not yet multiplexed onto the relay lane — polling instead",
       );
     }
-    // Tail rides the direct tier when reachable, else the proxy bridge.
-    const tier: Tier = this.preferredTier === "proxy" ? "proxy" : "direct";
-    const { origin, prefix } = tierBase(this.ctx, tier);
+    const { origin, prefix } = tierBase(this.ctx, "proxy");
     const qs = new URLSearchParams(buildQueryString({ ...params, kind: "logs" }));
     if (params.replay != null) qs.set("replay", String(params.replay));
     const url = `${origin}${prefix}/tail?${qs.toString()}`;
@@ -749,10 +763,11 @@ export class LoggingService {
 
   /** Stream a bulk export. Returns the raw byte stream so the caller can
    * pipe it to a Blob/download without buffering the whole window. The
-   * format defaults to `jsonl.zst`. Export is a logd/proxy capability;
-   * throws on a pre-logd agent (the caller surfaces "export unavailable"),
-   * and throws with a relay-specific message over the radio, where neither
-   * tier is reachable and the archive could not be carried anyway.
+   * format defaults to `jsonl.zst`. Export is a store capability served by
+   * the proxy bridge (legacy has no export endpoint); throws on a pre-store
+   * agent (the caller surfaces "export unavailable"), throws the refusal on
+   * an auth or request error, and throws with a relay-specific message over
+   * the radio, where the archive could not be carried anyway.
    */
   async export(params: ExportParams = {}): Promise<{
     stream: ReadableStream<Uint8Array>;
@@ -777,49 +792,52 @@ export class LoggingService {
       );
     }
 
-    // Export does not parse JSON, so it resolves the tier itself with a
-    // streaming fetch. Cascade direct → proxy and skip legacy, which has no
-    // export endpoint.
-    let lastErr: Error | null = null;
-    for (const tier of this.tierSequence()) {
-      if (tier === "legacy") continue;
-      let origin: string;
-      let prefix: string;
-      try {
-        ({ origin, prefix } = tierBase(this.ctx, tier));
-      } catch (err) {
-        lastErr = err instanceof Error ? err : new Error(String(err));
-        continue;
-      }
-      const url = `${origin}${prefix}/export?${query}`;
-      const headers: Record<string, string> = {};
-      if (this.ctx.apiKey) headers["X-ADOS-Key"] = this.ctx.apiKey;
-      try {
-        // Bound the connection so a hung tier cascades to the next one. A
-        // generous ceiling (vs the read default) leaves room for a real
-        // bulk-window stream to drain — the deadline guards against a
-        // silently-dead socket, not a slow-but-progressing download.
-        const res = await timedFetch(url, { headers }, EXPORT_TIMEOUT_MS);
-        if (!res.ok) {
-          if (isHardError(res.status)) {
-            throw new Error(`${res.status}`);
-          }
-          lastErr = new Error(`${res.status}`);
-          continue;
-        }
-        if (!res.body) {
-          lastErr = new Error("empty export body");
-          continue;
-        }
-        this.preferredTier = tier;
-        return { stream: res.body, format, source: TIER_SOURCE[tier] };
-      } catch (err) {
-        lastErr = err instanceof Error ? err : new Error(String(err));
-      }
+    let origin: string;
+    let prefix: string;
+    try {
+      ({ origin, prefix } = tierBase(this.ctx, "proxy"));
+    } catch {
+      throw new Error("export unavailable: unusable base url");
     }
-    throw new Error(
-      `export unavailable: ${lastErr ? lastErr.message : "no tier answered"}`,
+    const headers: Record<string, string> = {};
+    if (this.ctx.apiKey) headers["X-ADOS-Key"] = this.ctx.apiKey;
+
+    // An inactivity deadline, not a total one: it covers the wait for the
+    // response headers here and then every chunk wait inside the returned
+    // stream, so a dead socket aborts while a long, still-arriving window
+    // is never cut off.
+    const controller = new AbortController();
+    const connectTimer = setTimeout(
+      () => controller.abort(new DOMException("export stalled", "TimeoutError")),
+      EXPORT_IDLE_TIMEOUT_MS,
     );
+    let res: Response;
+    try {
+      res = await fetch(`${origin}${prefix}/export?${query}`, {
+        headers,
+        signal: controller.signal,
+      });
+    } catch (err) {
+      throw new Error(
+        `export unavailable: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    } finally {
+      clearTimeout(connectTimer);
+    }
+    if (!res.ok) {
+      if (isHardError(res.status)) {
+        throw new Error(`export refused: ${res.status}`);
+      }
+      throw new Error(`export unavailable: ${res.status}`);
+    }
+    if (!res.body) {
+      throw new Error("export unavailable: empty export body");
+    }
+    return {
+      stream: withIdleDeadline(res.body, controller, EXPORT_IDLE_TIMEOUT_MS),
+      format,
+      source: TIER_SOURCE.proxy,
+    };
   }
 
   // ── push ───────────────────────────────────────────────────────────────
@@ -827,13 +845,16 @@ export class LoggingService {
   /** Explicitly export a chosen window from the durable store to the paired
    * cloud account. Unlike the read surfaces, push is a WRITE and has exactly
    * ONE path: the agent's REST process at `:8080/api/logs/push`. There is no
-   * tier cascade and the dedicated query port is never used, because the
-   * agent process is the only thing that owns the writer-control socket that
-   * flips a row as exported. The browser must never reach the query port for
-   * a write. Cloud (https) origins short-circuit so a remote session degrades
-   * to "push unavailable" rather than posting against the wrong host; a
-   * relayed client posts through the relay-proxy prefix, which already lands
-   * on the drone's own `:8080`, so it must not rebuild an origin. */
+   * tier cascade, because the agent process is the only thing that owns the
+   * writer-control socket that flips a row as exported. Cloud (https) origins
+   * short-circuit so a remote session degrades to "push unavailable" rather
+   * than posting against the wrong host; a relayed client posts through the
+   * relay-proxy prefix, which already lands on the drone's own `:8080`, so it
+   * must not rebuild an origin.
+   *
+   * Resolves with `pending: true` when the agent accepted the request but the
+   * cloud service had not answered yet. Throws when the service answered
+   * with an error or without exporting the window. */
   async pushWindow(params: PushParams = {}): Promise<PushResult> {
     let origin: string;
     if (this.ctx.relay) {
@@ -852,32 +873,35 @@ export class LoggingService {
     };
     if (this.ctx.apiKey) headers["X-ADOS-Key"] = this.ctx.apiKey;
     const body = JSON.stringify({
-      from: params.from,
-      to: params.to,
-      kind: params.kind,
-      source: params.source,
-      level: params.level,
-      text: params.text,
-      session: params.session,
-      format: params.format ?? "jsonl.zst",
+      session: pushSessionId(params.session),
+      since: params.since,
+      kinds: params.kinds,
     });
     const res = await timedFetch(
       `${origin}/api/logs/push`,
       { method: "POST", headers, body },
-      EXPORT_TIMEOUT_MS,
+      PUSH_TIMEOUT_MS,
     );
     if (!res.ok) {
       const detail = await res.text().catch(() => "");
       throw new Error(`push failed ${res.status}: ${detail}`);
     }
     const j = (await res.json()) as Record<string, unknown>;
+    if (typeof j.error === "string" && j.error) {
+      throw new Error(`push failed: ${j.error}`);
+    }
+    const pending = j.pending === true;
+    if (!pending && j.pushed !== true) {
+      throw new Error("push failed: the window was not exported");
+    }
     return {
-      window_id: String(j.window_id ?? ""),
-      sha256: String(j.sha256 ?? ""),
+      pending,
+      window_id: j.window_id == null ? null : String(j.window_id),
+      sha256: typeof j.sha256 === "string" ? j.sha256 : null,
       bytes: Number(j.bytes ?? 0),
       rows: Number(j.rows ?? 0),
-      deduped: Boolean(j.deduped),
-      synced: Boolean(j.synced),
+      deduped: j.deduped === true,
+      synced: j.synced === true,
     };
   }
 

@@ -12,7 +12,6 @@
 import { Check, Copy, Loader2, Terminal, Cpu, Wifi } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { DiscoveredAgent } from "@/stores/pairing-store";
-import { PairingCodeCountdown } from "./PairingCodeCountdown";
 
 interface Props {
   code: string;
@@ -82,7 +81,6 @@ export function PairingConfirm({
             {formatTime(secondsLeft)}
           </span>
         </p>
-        <PairingCodeCountdown />
       </div>
 
       {/* Install command */}
@@ -112,10 +110,7 @@ export function PairingConfirm({
         </div>
 
         <p className="text-[10px] text-text-tertiary">
-          {t("alreadyInstalled")}{" "}
-          <code className="font-mono text-text-secondary">
-            sudo ados pair {code}
-          </code>
+          {t("alreadyInstalledRepair")}
         </p>
       </div>
 

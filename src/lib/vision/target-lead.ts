@@ -5,7 +5,7 @@
  * LEAD point a fixed time ahead — where the target is heading, so a pilot (or a
  * gimbal/behaviour) aims ahead of a mover instead of chasing it.
  *
- * Honesty (Rule 44): a lead is returned ONLY when there is real, measurable
+ * Honesty (no fabricated reading): a lead is returned ONLY when there is real, measurable
  * motion. Fewer than two samples, a zero-time span, or a measured speed below
  * the stationary threshold all return `null` — the reticle is simply not drawn
  * rather than inventing a heading for a still (or untracked) target.

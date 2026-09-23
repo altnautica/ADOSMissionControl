@@ -27,14 +27,12 @@ export type PluginSource =
   | "agent_webapp";
 
 /**
- * The well-known UI slots a plugin can mount into
- * (`product/specs/ados-plugin-platform/03-slot-verdicts.md`).
+ * The well-known UI slots a plugin can mount into.
  * `node.detail.tab` is the per-node tab a plugin mounts on any node
  * profile (drone / ground-station / compute); `cockpit.panel` is the
  * in-`/fly` quick-settings surface; `flight.skill` is the cockpit Skill
  * Bar contribution. The first set is fleet-scoped; `node.detail.tab`,
- * `cockpit.panel`, and `flight.skill` are per-drone scoped and follow the
- * pause/resume + LRU lifecycle.
+ * `cockpit.panel`, and `flight.skill` are per-drone scoped.
  *
  * Each slot id maps 1-to-1 to a `ui.slot.<kebab-id>` capability string
  * via `slotToCapability()` below.
@@ -57,8 +55,6 @@ export type PluginSlotName = (typeof PLUGIN_SLOTS)[number];
 /**
  * Slots whose contribution is bound to the currently-selected drone and
  * is torn down + re-mounted when the operator switches between drones.
- * The host follows a 300 ms pause/resume grace period before unmounting
- * and enforces an LRU cap of 8 mounted iframes per drone-detail panel.
  * Plugins contributing to these slots receive a capability token whose
  * `agentId` claim matches the currently-selected drone; cross-drone RPCs
  * are rejected at the bridge layer.
@@ -111,12 +107,6 @@ export interface PluginRpcEnvelope {
   token?: string;
 }
 
-/** Strong type for the response variant. */
-export interface PluginRpcResponse extends PluginRpcEnvelope {
-  type: "response";
-  result?: unknown;
-}
-
 /**
  * Capability identifiers known to the GCS host.
  *
@@ -135,19 +125,6 @@ export interface PluginRpcResponse extends PluginRpcEnvelope {
  * then silently never rendered.
  */
 export type PluginCapability = GcsCapability;
-
-/**
- * Capability token shape held by the host. Plugin code never sees the
- * full token. The bridge attaches the signed `value` internally.
- */
-export interface CapabilityToken {
-  pluginId: string;
-  sessionId: string;
-  grantedCaps: ReadonlyArray<string>;
-  issuedAt: number;
-  expiresAt: number;
-  value: string;
-}
 
 export interface PluginInstallSummary {
   pluginId: string;

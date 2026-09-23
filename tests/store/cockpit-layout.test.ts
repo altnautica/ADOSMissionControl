@@ -249,6 +249,7 @@ describe("v37 layout migration", () => {
         proximityRadar: false,
         density: "standard",
       },
+      seededSkillIds: [],
     };
     const result = migrateSettings(
       { loadouts: { [DEFAULT_LOADOUT_ID]: existing } },
@@ -257,6 +258,24 @@ describe("v37 layout migration", () => {
     const loadouts = result.loadouts as Record<string, Loadout>;
     expect(loadouts[DEFAULT_LOADOUT_ID].layout.telemetryStrip).toBe(true);
     expect(loadouts[DEFAULT_LOADOUT_ID].layout.topBar).toBe(false);
+  });
+
+  it("v49 records slotted plugin skills as already seeded", () => {
+    const legacy: Partial<Loadout> = {
+      id: DEFAULT_LOADOUT_ID,
+      name: "Default",
+      slots: [
+        { index: 0, skillId: "arm", key: "shift+a", gamepadButton: 0 },
+        { index: 1, skillId: "survey-kit:orbit", key: "g", gamepadButton: null },
+        { index: 2, skillId: null, key: null, gamepadButton: null },
+      ],
+    };
+    const result = migrateSettings(
+      { loadouts: { [DEFAULT_LOADOUT_ID]: legacy } },
+      48,
+    ) as unknown as Record<string, unknown>;
+    const loadouts = result.loadouts as Record<string, Loadout>;
+    expect(loadouts[DEFAULT_LOADOUT_ID].seededSkillIds).toEqual(["survey-kit:orbit"]);
   });
 
   it("seeds a full default loadout (with layout) when migrating from below v36", () => {

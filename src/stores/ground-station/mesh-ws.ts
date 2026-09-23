@@ -97,6 +97,7 @@ export function subscribeMeshWs(
               ...state.distributedRx,
               pairingWindowOpen: false,
               pairingWindowExpiresAt: null,
+              pairingCode: null,
               pendingRequests: [],
             },
           });

@@ -3,7 +3,7 @@
  * @description pickRadioFromCloud must render the radio block of the node
  * whose panel is asking, keyed by deviceId — never "the freshest row that
  * carries any radio block", which would render one node's link on another
- * node's panel (Rule 44).
+ * node's panel (no fabricated reading).
  * @license GPL-3.0-only
  */
 

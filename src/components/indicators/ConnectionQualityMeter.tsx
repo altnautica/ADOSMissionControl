@@ -5,14 +5,15 @@ import { useConnectionQuality } from "@/hooks/use-connection-quality";
 import { cn } from "@/lib/utils";
 
 /**
- * Signal bars + latency badge for connection quality display.
+ * Signal bars for connection quality display. RADIO_STATUS measures no latency,
+ * so none is shown; the tooltip gives signal, RSSI and free TX buffer.
  * Renders 4 bars that fill based on signal quality rating. A radio that has
  * stopped reporting renders as an explicit no-data state (empty bars, red
  * outline), never as its last reading.
  */
 export function ConnectionQualityMeter({ className }: { className?: string }) {
   const t = useTranslations("indicators");
-  const { quality, stale, signalStrength, latencyMs, rssi } = useConnectionQuality();
+  const { quality, stale, signalStrength, txBuf, rssi } = useConnectionQuality();
 
   if (quality === "unknown") return null;
 
@@ -50,7 +51,7 @@ export function ConnectionQualityMeter({ className }: { className?: string }) {
     : "bg-status-error";
 
   return (
-    <div className={cn("flex items-center gap-1.5", className)} title={`${t("signal")}: ${signalStrength}% | ${t("rssi")}: ${rssi} | ${t("latency")}: ${latencyMs}ms`}>
+    <div className={cn("flex items-center gap-1.5", className)} title={`${t("signal")}: ${Math.round(signalStrength)}% | ${t("rssi")}: ${rssi} | ${t("txBufferFree")}: ${txBuf}%`}>
       {/* Signal bars */}
       <div className="flex items-end gap-px h-3.5">
         {[1, 2, 3, 4].map((level) => (
@@ -64,15 +65,6 @@ export function ConnectionQualityMeter({ className }: { className?: string }) {
           />
         ))}
       </div>
-      {/* Latency badge */}
-      {latencyMs > 0 && (
-        <span className={cn(
-          "text-[9px] font-mono tabular-nums",
-          latencyMs < 100 ? "text-text-tertiary" : latencyMs < 500 ? "text-status-warning" : "text-status-error",
-        )}>
-          {latencyMs}ms
-        </span>
-      )}
     </div>
   );
 }

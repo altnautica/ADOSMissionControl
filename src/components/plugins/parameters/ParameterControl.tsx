@@ -44,7 +44,7 @@ interface ParameterControlProps {
   disabled?: boolean;
   onCommit: (value: ParameterValue) => void;
   /** Drone whose engine detector a model / model_upload widget manages. The
-   * picker routes its engine-wide write to this drone's agent (Rule 39).
+   * picker routes its engine-wide write to this drone's agent (local-first).
    * Required for the model widgets; ignored by all other widgets. */
   droneId?: string;
 }

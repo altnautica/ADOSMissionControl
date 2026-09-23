@@ -1,20 +1,22 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { listPresets, listCategories } from "@/lib/presets/presets";
 import type { PresetCategory } from "@/lib/presets/types";
 import { BuildPresetCard } from "./BuildPresetCard";
 import { BuildPresetDetail } from "./BuildPresetDetail";
 
-const CATEGORY_LABELS: Record<PresetCategory, string> = {
-  fpv: "FPV",
-  "long-range": "Long Range",
-  "heavy-lift": "Heavy Lift",
-  cine: "Cine",
-  racing: "Racing",
-  micro: "Micro",
-  reference: "ADOS",
-};
+/** Category pill labels, as `connect.buildPreset.category.*` keys. */
+const CATEGORY_KEYS = {
+  fpv: "buildPreset.category.fpv",
+  "long-range": "buildPreset.category.longRange",
+  "heavy-lift": "buildPreset.category.heavyLift",
+  cine: "buildPreset.category.cine",
+  racing: "buildPreset.category.racing",
+  micro: "buildPreset.category.micro",
+  reference: "buildPreset.category.reference",
+} as const satisfies Record<PresetCategory, string>;
 
 export function BuildPresetPicker({
   selectedPresetId,
@@ -23,6 +25,7 @@ export function BuildPresetPicker({
   selectedPresetId: string | null;
   onSelect: (presetId: string | null) => void;
 }) {
+  const t = useTranslations("connect");
   const [categoryFilter, setCategoryFilter] = useState<PresetCategory | null>(null);
   const [detailPresetId, setDetailPresetId] = useState<string | null>(null);
 
@@ -42,14 +45,14 @@ export function BuildPresetPicker({
       {/* Section header */}
       <div className="flex items-center justify-between">
         <h3 className="text-xs font-mono text-text-tertiary uppercase tracking-wider">
-          SITL Build Preset
+          {t("buildPreset.title")}
         </h3>
         {selectedPresetId && (
           <button
             onClick={() => onSelect(null)}
             className="text-[10px] text-text-tertiary hover:text-text-secondary cursor-pointer"
           >
-            Clear selection
+            {t("buildPreset.clearSelection")}
           </button>
         )}
       </div>
@@ -64,7 +67,7 @@ export function BuildPresetPicker({
               : "border-border-default text-text-tertiary hover:text-text-secondary hover:border-border-strong"
           }`}
         >
-          All
+          {t("buildPreset.all")}
         </button>
         {categories.map((cat) => (
           <button
@@ -76,7 +79,7 @@ export function BuildPresetPicker({
                 : "border-border-default text-text-tertiary hover:text-text-secondary hover:border-border-strong"
             }`}
           >
-            {CATEGORY_LABELS[cat] ?? cat}
+            {t(CATEGORY_KEYS[cat])}
           </button>
         ))}
       </div>
@@ -106,8 +109,7 @@ export function BuildPresetPicker({
 
       {/* Hint */}
       <p className="text-[9px] text-text-tertiary">
-        Selecting a preset configures the SITL autopilot with matching frame, battery, and sensor parameters.
-        The architecture diagram will populate with the preset&apos;s components.
+        {t("buildPreset.hint")}
       </p>
     </div>
   );

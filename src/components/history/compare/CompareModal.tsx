@@ -27,6 +27,7 @@ import { Card } from "@/components/ui/card";
 import { loadRecordingFrames } from "@/lib/telemetry-recorder";
 import { buildSeries, EMPTY_SERIES, type SeriesData } from "@/lib/flight-analysis/series-builder";
 import type { FlightRecord } from "@/lib/types";
+import { formatDuration } from "@/lib/utils";
 
 const CompareMapInner = dynamic(() => import("./CompareMapInner"), {
   ssr: false,
@@ -110,19 +111,28 @@ function Legend2({ colorA, labelA, colorB, labelB }: { colorA: string; labelA: s
 
 // ── Stats delta table ─────────────────────────────────────────
 
+interface DeltaRow {
+  label: string;
+  /** Undefined when the flight did not measure this value. */
+  a: number | undefined;
+  b: number | undefined;
+  fmt: (v: number) => string;
+  unit: string;
+}
+
 function StatsDelta({ recordA, recordB }: { recordA: FlightRecord; recordB: FlightRecord }) {
-  const rows = [
+  const rows: DeltaRow[] = [
     {
       label: "Duration",
       a: recordA.duration,
       b: recordB.duration,
-      fmt: (v: number) => `${Math.floor(v / 60)}m ${(v % 60).toString().padStart(2, "0")}s`,
+      fmt: (v: number) => formatDuration(Math.round(v)),
       unit: "",
     },
     {
       label: "Distance",
-      a: recordA.distance / 1000,
-      b: recordB.distance / 1000,
+      a: recordA.distance !== undefined ? recordA.distance / 1000 : undefined,
+      b: recordB.distance !== undefined ? recordB.distance / 1000 : undefined,
       fmt: (v: number) => v.toFixed(2),
       unit: "km",
     },
@@ -177,10 +187,12 @@ function StatsDelta({ recordA, recordB }: { recordA: FlightRecord; recordB: Flig
         </thead>
         <tbody>
           {rows.map((row) => {
-            const delta = row.b - row.a;
-            const sign = delta > 0 ? "+" : delta < 0 ? "" : "";
+            const delta = row.a !== undefined && row.b !== undefined ? row.b - row.a : undefined;
+            // Format the magnitude and prefix the sign, so a formatter that
+            // splits a value into parts (duration) never sees a negative.
+            const sign = delta === undefined || delta === 0 ? "" : delta > 0 ? "+" : "−";
             const colorClass =
-              delta === 0
+              delta === undefined || delta === 0
                 ? "text-text-tertiary"
                 : delta > 0
                   ? "text-status-success"
@@ -189,14 +201,13 @@ function StatsDelta({ recordA, recordB }: { recordA: FlightRecord; recordB: Flig
               <tr key={row.label} className="border-b border-border-default last:border-0">
                 <td className="py-1.5 px-2 text-text-secondary">{row.label}</td>
                 <td className="py-1.5 px-2 text-right text-text-primary font-mono tabular-nums">
-                  {row.fmt(row.a)} {row.unit}
+                  {row.a !== undefined ? `${row.fmt(row.a)} ${row.unit}` : "—"}
                 </td>
                 <td className="py-1.5 px-2 text-right text-text-primary font-mono tabular-nums">
-                  {row.fmt(row.b)} {row.unit}
+                  {row.b !== undefined ? `${row.fmt(row.b)} ${row.unit}` : "—"}
                 </td>
                 <td className={`py-1.5 px-2 text-right font-mono tabular-nums ${colorClass}`}>
-                  {sign}
-                  {row.fmt(delta)} {row.unit}
+                  {delta !== undefined ? `${sign}${row.fmt(Math.abs(delta))} ${row.unit}` : "—"}
                 </td>
               </tr>
             );
@@ -255,8 +266,8 @@ function CompareCharts({ recordA, recordB }: { recordA: FlightRecord; recordB: F
       />
       <DualPanel
         title="Battery remaining (%)"
-        seriesA={data.a.battery.map((p) => ({ t: p.t, v: p.pct ?? 0 }))}
-        seriesB={data.b.battery.map((p) => ({ t: p.t, v: p.pct ?? 0 }))}
+        seriesA={data.a.battery.flatMap((p) => (p.pct !== undefined ? [{ t: p.t, v: p.pct }] : []))}
+        seriesB={data.b.battery.flatMap((p) => (p.pct !== undefined ? [{ t: p.t, v: p.pct }] : []))}
       />
       <DualPanel
         title="Vibration X (m/s²)"

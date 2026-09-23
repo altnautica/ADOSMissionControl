@@ -41,6 +41,7 @@ export function usePanelParams(
   const abortedRef = useRef(false);
 
   const getProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
   const commitFlashStore = useParamSafetyStore((s) => s.commitFlash);
   const markPanelLoaded = useParamSafetyStore((s) => s.markPanelLoaded);
   const cachePanel = usePanelCacheStore((s) => s.cachePanel);
@@ -134,12 +135,14 @@ export function usePanelParams(
 
       markPanelLoaded(panelId);
       cachePanel(panelId, new Map(loaded), new Map(loaded));
-      cachePanelToIDB(panelId, loaded).catch(() => {});
+      if (selectedDroneId) {
+        cachePanelToIDB(selectedDroneId, panelId, loaded).catch(() => {});
+      }
       setIdbCacheTimestamp(null);
     } finally {
       if (!abortedRef.current) setLoading(false);
     }
-  }, [getProtocol, loadNames, optionalSet, panelId, maxRetries, batchSize, markPanelLoaded, cachePanel, onEvent]);
+  }, [getProtocol, selectedDroneId, loadNames, optionalSet, panelId, maxRetries, batchSize, markPanelLoaded, cachePanel, onEvent]);
 
   const loadParamsRef = useRef(loadParams);
   loadParamsRef.current = loadParams;
@@ -156,8 +159,8 @@ export function usePanelParams(
     } else {
       const protocol = getProtocol();
       const isDisconnected = !protocol || !protocol.isConnected;
-      if (isDisconnected) {
-        getCachedPanelFromIDB(panelId).then((idbData) => {
+      if (isDisconnected && selectedDroneId) {
+        getCachedPanelFromIDB(selectedDroneId, panelId).then((idbData) => {
           if (idbData) {
             const paramMap = new Map(Object.entries(idbData.params).map(([k, v]) => [k, v]));
             setParams(paramMap);
@@ -200,7 +203,6 @@ export function usePanelParams(
   // key — because the consequence is not cosmetic: `saveToRam` resolves
   // `getProtocol()` live, so a carried-over dirty edit writes drone A's
   // numbers into drone B.
-  const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
   const seenDroneRef = useRef(selectedDroneId);
   useEffect(() => {
     if (seenDroneRef.current === selectedDroneId) return;

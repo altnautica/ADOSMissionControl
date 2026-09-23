@@ -7,6 +7,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { useSettingsStore } from "@/stores/settings-store";
 import { screen, fireEvent, act } from "@testing-library/react";
 import { renderWithIntl } from "../../../../helpers/intl-wrapper";
 
@@ -90,7 +91,7 @@ describe("FirmwareApPeriphSection", () => {
     // Clear demo flag.
     delete (globalThis as Record<string, unknown>).__demoMode;
     if (typeof window !== "undefined") {
-      window.history.replaceState({}, "", "/");
+      useSettingsStore.setState({ demoMode: false });
     }
   });
 
@@ -115,7 +116,7 @@ describe("FirmwareApPeriphSection", () => {
 
   it("renders the three synthetic node rows in demo mode", () => {
     // Activate demo mode via URL param (matches isDemoMode() probe).
-    window.history.replaceState({}, "", "/?demo=true");
+    useSettingsStore.setState({ demoMode: true });
 
     renderWithIntl(
       <FirmwareApPeriphSection
@@ -131,7 +132,7 @@ describe("FirmwareApPeriphSection", () => {
   });
 
   it("disables the flash button until checklist, node, and firmware are selected", () => {
-    window.history.replaceState({}, "", "/?demo=true");
+    useSettingsStore.setState({ demoMode: true });
 
     const onFlash = vi.fn();
     const { rerender } = renderWithIntl(
@@ -162,7 +163,7 @@ describe("FirmwareApPeriphSection", () => {
   });
 
   it("surfaces the post-flash prompts once the OTA store hits DONE", () => {
-    window.history.replaceState({}, "", "/?demo=true");
+    useSettingsStore.setState({ demoMode: true });
 
     renderWithIntl(
       <FirmwareApPeriphSection
@@ -235,7 +236,7 @@ describe("FirmwareApPeriphSection", () => {
   });
 
   it("enables the CAN_FORWARD radio in demo mode even without an agent capability payload", () => {
-    window.history.replaceState({}, "", "/?demo=true");
+    useSettingsStore.setState({ demoMode: true });
 
     renderWithIntl(
       <FirmwareApPeriphSection

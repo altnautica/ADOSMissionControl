@@ -4,7 +4,7 @@
  * @module vision/PerceptionUsageCard
  * @description Compute usage for the Perception hub: the node's core (CPU /
  * memory / disk / temp) gauges plus an NPU-utilization bar. The NPU bar renders
- * ONLY when the engine forwards a real utilization value (Rule 44 — no
+ * ONLY when the engine forwards a real utilization value (no
  * fabricated 0); otherwise a calm "not reported" line stands. Reuses the same
  * ResourceBar the system gauges use so the NPU bar reads on the same scale.
  * @license GPL-3.0-only

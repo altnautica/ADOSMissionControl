@@ -1,15 +1,14 @@
 /**
  * Telemetry recording system.
  *
- * Captures all telemetry data with timestamps to IndexedDB for
- * later replay, export, and analysis. Start/stop recording from
- * the UI header. Recordings persist across sessions.
+ * Captures telemetry frames per drone with timestamps to IndexedDB for
+ * later replay, export, and analysis. Recordings persist across sessions.
  *
  * @module telemetry-recorder
  * @license GPL-3.0-only
  */
 
-import { get as idbGet, set as idbSet, del as idbDel, keys as idbKeys } from "idb-keyval";
+import { get as idbGet, set as idbSet, del as idbDel } from "idb-keyval";
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -56,6 +55,12 @@ export interface TelemetryRecording {
   droneName?: string;
   /** Timeline markers, if any were placed during the recording. */
   markers?: RecordingMarker[];
+  /**
+   * True for a recording brought in from a log file. Imports are kept until
+   * the operator deletes them; only live recordings are trimmed to the
+   * newest {@link MAX_LIVE_RECORDINGS}.
+   */
+  imported?: boolean;
 }
 
 // ── IDB Keys ─────────────────────────────────────────────────
@@ -65,10 +70,8 @@ const IDB_RECORDINGS_INDEX = "altcmd:recordings-index";
 
 // ── Recorder ─────────────────────────────────────────────────
 
-type RecordingState = "idle" | "recording" | "error";
-
+/** A slot is recording while it is in {@link _slots}; finalizing removes it first. */
 interface RecorderSlot {
-  state: RecordingState;
   startTime: number;
   frames: TelemetryFrame[];
   channels: Set<string>;
@@ -123,11 +126,11 @@ const DEFAULT_RATE_HZ = 20;
 /** Channels that bypass rate limiting (e.g. high-rate IMU). */
 const CAP_BYPASS_CHANNELS = new Set<string>(["imu_highrate"]);
 
-/** Sentinel slot key for the legacy single-drone API. */
-const DEFAULT_SLOT = "__default__";
-
 /** Max frames per recording. ~8 min at full rate before rate limiting. */
 const MAX_FRAMES = 500_000;
+
+/** Live recordings kept in the index; the oldest beyond this are deleted. */
+const MAX_LIVE_RECORDINGS = 20;
 
 const _slots = new Map<string, RecorderSlot>();
 /** Mirror slot keys fed by a drone's frame stream, keyed by drone id. */
@@ -135,7 +138,6 @@ const _mirrors = new Map<string, Set<string>>();
 
 function newSlot(droneId?: string, droneName?: string): RecorderSlot {
   return {
-    state: "recording",
     startTime: Date.now(),
     frames: [],
     channels: new Set(),
@@ -147,20 +149,16 @@ function newSlot(droneId?: string, droneName?: string): RecorderSlot {
   };
 }
 
-function getSlot(key: string): RecorderSlot | undefined {
-  return _slots.get(key);
-}
-
 // ── Per-drone API ────────────────────────────────────────────
 
 /**
  * Start a recording for a specific drone slot. Independent from any other
- * drone's slot and from the legacy default slot. Returns the recording id.
+ * drone's slot. Returns the recording id.
  *
  * @throws if a recording is already in progress for this drone.
  */
 export function startRecordingFor(droneId: string, droneName?: string): string {
-  if (_slots.get(droneId)?.state === "recording") {
+  if (_slots.has(droneId)) {
     throw new Error(`Already recording for drone ${droneId}`);
   }
   const slot = newSlot(droneId, droneName);
@@ -185,7 +183,6 @@ export function recordFrameFor(droneId: string, channel: string, data: unknown):
 }
 
 function appendFrame(slot: RecorderSlot, channel: string, data: unknown): void {
-  if (slot.state !== "recording") return;
   if (slot.frames.length >= MAX_FRAMES) return;
 
   if (!CAP_BYPASS_CHANNELS.has(channel)) {
@@ -215,7 +212,7 @@ function appendFrame(slot: RecorderSlot, channel: string, data: unknown): void {
  * @throws if a recording is already in progress for this slot.
  */
 export function startMirrorRecording(slotKey: string, droneId: string, droneName?: string): string {
-  if (_slots.get(slotKey)?.state === "recording") {
+  if (_slots.has(slotKey)) {
     throw new Error(`Already recording for ${slotKey}`);
   }
   const slot = newSlot(droneId, droneName);
@@ -239,7 +236,7 @@ export function markRecording(
   data?: Record<string, unknown>,
 ): boolean {
   const slot = _slots.get(droneId);
-  if (!slot || slot.state !== "recording") return false;
+  if (!slot) return false;
   slot.markers.push({
     offsetMs: Date.now() - slot.startTime,
     label,
@@ -254,80 +251,110 @@ export function markRecording(
  */
 export async function stopRecordingFor(droneId: string): Promise<TelemetryRecording | null> {
   const slot = _slots.get(droneId);
-  if (!slot || slot.state !== "recording") return null;
+  if (!slot) return null;
   return await finalizeSlot(droneId, slot);
 }
 
 /** True if a recording is active for the given drone. */
 export function isRecordingFor(droneId: string): boolean {
-  return _slots.get(droneId)?.state === "recording";
+  return _slots.has(droneId);
 }
 
-/** Get recording state for the given drone. */
-export function getRecordingStateFor(droneId: string): {
-  state: RecordingState;
-  durationMs: number;
-  frameCount: number;
-} {
+/** The recording currently capturing {@link droneId}'s frames, if any. */
+export function activeRecordingFor(droneId: string): { recordingId: string; startTime: number } | undefined {
   const slot = _slots.get(droneId);
-  if (!slot) return { state: "idle", durationMs: 0, frameCount: 0 };
-  return {
-    state: slot.state,
-    durationMs: slot.state === "recording" ? Date.now() - slot.startTime : 0,
-    frameCount: slot.frames.length,
-  };
+  return slot ? { recordingId: slot.recordingId, startTime: slot.startTime } : undefined;
 }
 
-// ── Legacy single-slot API (kept for RecordingControls header button) ────
-
 /**
- * Start a new telemetry recording on the default slot.
- *
- * @deprecated Prefer {@link startRecordingFor} for multi-drone scenarios.
- * Retained so the existing header start/stop button keeps working.
+ * The frames recording {@link recordingId} captured between two wall-clock
+ * times, with offsets rebased to `fromMs`. Reads the live slot while the
+ * recording is still running on {@link droneId}, otherwise the stored frames.
  */
-export function startRecording(droneId?: string, droneName?: string): string {
-  if (_slots.get(DEFAULT_SLOT)?.state === "recording") {
-    throw new Error("Already recording — stop current recording first");
+export async function recordingFramesBetween(
+  droneId: string,
+  recordingId: string,
+  fromMs: number,
+  toMs: number,
+): Promise<TelemetryFrame[]> {
+  const slot = _slots.get(droneId);
+  let startTime: number;
+  let frames: TelemetryFrame[];
+  if (slot?.recordingId === recordingId) {
+    startTime = slot.startTime;
+    frames = slot.frames;
+  } else {
+    const stored = (await listRecordings()).find((r) => r.id === recordingId);
+    if (!stored) return [];
+    startTime = stored.startTime;
+    frames = await loadRecordingFrames(recordingId);
   }
-  const slot = newSlot(droneId, droneName);
-  _slots.set(DEFAULT_SLOT, slot);
-  return slot.recordingId;
+  const fromOffset = fromMs - startTime;
+  const toOffset = toMs - startTime;
+  const out: TelemetryFrame[] = [];
+  for (const f of frames) {
+    if (f.offsetMs < fromOffset || f.offsetMs > toOffset) continue;
+    out.push({ offsetMs: f.offsetMs - fromOffset, channel: f.channel, data: f.data });
+  }
+  return out;
+}
+
+// ── Internal: the recordings index ───────────────────────────
+
+/**
+ * Every read-modify-write of the index runs on this chain, so two writers
+ * (two drones disarming together, an import during a finalize) never read
+ * the same index and overwrite each other's entry.
+ */
+let _indexChain: Promise<unknown> = Promise.resolve();
+
+function mutateIndex(mutate: (index: TelemetryRecording[]) => Promise<TelemetryRecording[]>): Promise<void> {
+  const run = _indexChain.then(async () => {
+    const index: TelemetryRecording[] = (await idbGet(IDB_RECORDINGS_INDEX)) ?? [];
+    await idbSet(IDB_RECORDINGS_INDEX, await mutate(index));
+  });
+  _indexChain = run.catch(() => undefined);
+  return run;
 }
 
 /**
- * Stop the default-slot recording and persist it.
- *
- * @deprecated Prefer {@link stopRecordingFor}.
+ * Store {@link recording}'s frames and add it to the index, replacing an
+ * entry with the same id. Live recordings beyond the newest
+ * {@link MAX_LIVE_RECORDINGS} are deleted; imports are never trimmed.
  */
-export async function stopRecording(): Promise<TelemetryRecording | null> {
-  const slot = _slots.get(DEFAULT_SLOT);
-  if (!slot || slot.state !== "recording") return null;
-  return await finalizeSlot(DEFAULT_SLOT, slot);
-}
-
-/**
- * Get default-slot recording state.
- *
- * @deprecated Prefer {@link getRecordingStateFor}.
- */
-export function getRecordingState(): {
-  state: RecordingState;
-  durationMs: number;
-  frameCount: number;
-} {
-  const slot = _slots.get(DEFAULT_SLOT);
-  if (!slot) return { state: "idle", durationMs: 0, frameCount: 0 };
-  return {
-    state: slot.state,
-    durationMs: slot.state === "recording" ? Date.now() - slot.startTime : 0,
-    frameCount: slot.frames.length,
-  };
+async function storeRecording(recording: TelemetryRecording, frames: TelemetryFrame[]): Promise<void> {
+  await idbSet(`${IDB_RECORDINGS_PREFIX}${recording.id}`, frames);
+  await mutateIndex(async (index) => {
+    const next = index.filter((r) => r.id !== recording.id);
+    next.push(recording);
+    let excess = next.filter((r) => !r.imported).length - MAX_LIVE_RECORDINGS;
+    if (excess <= 0) return next;
+    const kept: TelemetryRecording[] = [];
+    for (const r of next) {
+      if (excess > 0 && !r.imported) {
+        excess--;
+        await idbDel(`${IDB_RECORDINGS_PREFIX}${r.id}`);
+      } else {
+        kept.push(r);
+      }
+    }
+    return kept;
+  });
 }
 
 // ── Internal: persist a slot ─────────────────────────────────
 
 async function finalizeSlot(slotKey: string, slot: RecorderSlot): Promise<TelemetryRecording> {
+  // Leave the slot map before the first await: the drone is no longer
+  // recording, so a re-arm during the IndexedDB writes starts a fresh slot
+  // instead of being mistaken for this one.
+  _slots.delete(slotKey);
+  if (slot.droneId !== undefined) {
+    const mirrors = _mirrors.get(slot.droneId);
+    mirrors?.delete(slotKey);
+    if (mirrors?.size === 0) _mirrors.delete(slot.droneId);
+  }
+
   const endTime = Date.now();
   const recording: TelemetryRecording = {
     id: slot.recordingId,
@@ -343,35 +370,57 @@ async function finalizeSlot(slotKey: string, slot: RecorderSlot): Promise<Teleme
     // when none were placed so the persisted shape stays minimal.
     markers: slot.markers.length > 0 ? slot.markers.map((m) => ({ ...m })) : undefined,
   };
+  await storeRecording(recording, slot.frames);
+  return recording;
+}
 
-  await idbSet(`${IDB_RECORDINGS_PREFIX}${slot.recordingId}`, slot.frames);
+function recordingOf(
+  id: string,
+  name: string,
+  frames: TelemetryFrame[],
+  options: { droneId?: string; droneName?: string; startTimeMs?: number },
+): TelemetryRecording {
+  const startTime = options.startTimeMs ?? Date.now();
+  const lastOffsetMs = frames.length > 0 ? frames[frames.length - 1].offsetMs : 0;
+  const channels = new Set<string>();
+  for (const frame of frames) channels.add(frame.channel);
+  return {
+    id,
+    name,
+    startTime,
+    endTime: startTime + lastOffsetMs,
+    durationMs: lastOffsetMs,
+    frameCount: frames.length,
+    channels: Array.from(channels),
+    droneId: options.droneId,
+    droneName: options.droneName,
+  };
+}
 
-  const index: TelemetryRecording[] = (await idbGet(IDB_RECORDINGS_INDEX)) ?? [];
-  index.push(recording);
-  while (index.length > 20) {
-    const oldest = index.shift()!;
-    await idbDel(`${IDB_RECORDINGS_PREFIX}${oldest.id}`);
-  }
-  await idbSet(IDB_RECORDINGS_INDEX, index);
-
-  _slots.delete(slotKey);
-  if (slot.droneId !== undefined) {
-    const mirrors = _mirrors.get(slot.droneId);
-    mirrors?.delete(slotKey);
-    if (mirrors?.size === 0) _mirrors.delete(slot.droneId);
-  }
+/**
+ * Store the frames of one flight cut from a longer live recording (see
+ * {@link recordingFramesBetween}) as a live recording of its own. It counts
+ * toward the live-recording cap like any other.
+ */
+export async function saveFlightRecording(
+  frames: TelemetryFrame[],
+  options: { droneId: string; droneName?: string; startTimeMs: number },
+): Promise<TelemetryRecording> {
+  const id = `rec-${options.startTimeMs}-${Math.random().toString(36).slice(2, 8)}`;
+  const recording = recordingOf(id, `Recording ${new Date(options.startTimeMs).toLocaleString()}`, frames, options);
+  await storeRecording(recording, frames);
   return recording;
 }
 
 /**
  * Insert a fully-formed recording into IDB without going through the live
- * arm/disarm slot machinery. Used by importers (dataflash and ULog) that
+ * arm/disarm slot machinery. Used by importers (dataflash, ULog, tlog) that
  * already have all frames in memory and just need them stored
  * + indexed so the existing Charts/Replay/Analysis pipeline can read them.
  *
  * Caller is responsible for choosing a unique `id` (e.g. `dataflash-<uuid>`).
- * The LRU cap on the recordings index does not apply to imported recordings —
- * they're typically larger and the user explicitly asked to import them.
+ * Imported recordings are exempt from the live-recording cap: the user
+ * explicitly asked to import them. Re-importing the same id replaces it.
  */
 export async function setRecordingFromFrames(
   id: string,
@@ -383,33 +432,8 @@ export async function setRecordingFromFrames(
     startTimeMs?: number;
   } = {},
 ): Promise<TelemetryRecording> {
-  const startTime = options.startTimeMs ?? Date.now();
-  const lastOffsetMs = frames.length > 0 ? frames[frames.length - 1].offsetMs : 0;
-  const endTime = startTime + lastOffsetMs;
-
-  const channels = new Set<string>();
-  for (const frame of frames) channels.add(frame.channel);
-
-  const recording: TelemetryRecording = {
-    id,
-    name,
-    startTime,
-    endTime,
-    durationMs: endTime - startTime,
-    frameCount: frames.length,
-    channels: Array.from(channels),
-    droneId: options.droneId,
-    droneName: options.droneName,
-  };
-
-  await idbSet(`${IDB_RECORDINGS_PREFIX}${id}`, frames);
-
-  const index: TelemetryRecording[] = (await idbGet(IDB_RECORDINGS_INDEX)) ?? [];
-  // Replace any existing entry with the same id (idempotent re-import).
-  const filtered = index.filter((r) => r.id !== id);
-  filtered.push(recording);
-  await idbSet(IDB_RECORDINGS_INDEX, filtered);
-
+  const recording: TelemetryRecording = { ...recordingOf(id, name, frames, options), imported: true };
+  await storeRecording(recording, frames);
   return recording;
 }
 
@@ -432,69 +456,5 @@ export async function loadRecordingFrames(recordingId: string): Promise<Telemetr
  */
 export async function deleteRecording(recordingId: string): Promise<void> {
   await idbDel(`${IDB_RECORDINGS_PREFIX}${recordingId}`);
-  const index: TelemetryRecording[] = (await idbGet(IDB_RECORDINGS_INDEX)) ?? [];
-  const filtered = index.filter((r) => r.id !== recordingId);
-  await idbSet(IDB_RECORDINGS_INDEX, filtered);
-}
-
-/**
- * Export a recording as CSV.
- */
-export async function exportRecordingCSV(recordingId: string): Promise<string> {
-  const frames = await loadRecordingFrames(recordingId);
-  if (frames.length === 0) return "";
-
-  const rows = ["offsetMs,channel,data"];
-  for (const frame of frames) {
-    rows.push(`${frame.offsetMs},${frame.channel},"${JSON.stringify(frame.data).replace(/"/g, '""')}"`);
-  }
-  return rows.join("\n");
-}
-
-/**
- * Export a recording as .tlog binary format.
- *
- * .tlog format: for each frame, write an 8-byte little-endian timestamp
- * (microseconds since epoch) followed by the frame data encoded as JSON
- * with a 4-byte little-endian length prefix.
- *
- * Since we don't store raw MAVLink bytes, we use a structured binary
- * format: [8-byte timestamp (uint64 LE, microseconds)] [4-byte length (uint32 LE)]
- * [UTF-8 JSON payload of {channel, data}].
- *
- * This can be converted to standard .tlog with external tooling if needed.
- */
-export async function exportTlog(recordingId: string): Promise<Blob | null> {
-  const recordings = await listRecordings();
-  const recording = recordings.find((r) => r.id === recordingId);
-  if (!recording) return null;
-
-  const frames = await loadRecordingFrames(recordingId);
-  if (frames.length === 0) return null;
-
-  const encoder = new TextEncoder();
-  const chunks: ArrayBuffer[] = [];
-
-  for (const frame of frames) {
-    // Absolute timestamp in microseconds (split into low/high 32-bit words for LE uint64)
-    const timestampMs = recording.startTime + frame.offsetMs;
-    const timestampUs = timestampMs * 1000;
-    const low = timestampUs % 0x100000000;
-    const high = Math.floor(timestampUs / 0x100000000);
-
-    // Encode the frame payload as JSON
-    const payload = encoder.encode(JSON.stringify({ channel: frame.channel, data: frame.data }));
-
-    // 8-byte timestamp (uint64 LE) + 4-byte payload length (uint32 LE) + payload
-    const header = new ArrayBuffer(12);
-    const view = new DataView(header);
-    view.setUint32(0, low, true);
-    view.setUint32(4, high, true);
-    view.setUint32(8, payload.byteLength, true);
-
-    chunks.push(header);
-    chunks.push(payload.buffer as ArrayBuffer);
-  }
-
-  return new Blob(chunks, { type: "application/octet-stream" });
+  await mutateIndex(async (index) => index.filter((r) => r.id !== recordingId));
 }

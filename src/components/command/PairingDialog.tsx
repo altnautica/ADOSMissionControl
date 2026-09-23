@@ -156,6 +156,8 @@ function PairingDialogDeepLinkBase({
     requiresSignIn,
     claimCode,
     preGenerate,
+    // The deep-link path claims a supplied code; it never generates one.
+    watchClaim: null,
     onPaired,
     onCodeReset: () => {},
     initialCode,
